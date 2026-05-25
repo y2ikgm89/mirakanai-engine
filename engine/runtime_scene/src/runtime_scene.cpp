@@ -107,12 +107,12 @@ void append_reference(std::vector<RuntimeSceneReference>& references, SceneNodeI
     return actual_kind == expected_kind;
 }
 
-[[nodiscard]] std::unordered_map<AssetId, AssetIdentityRowV2, AssetIdHash>
-make_identity_lookup(const AssetIdentityDocumentV2& identities) {
-    std::unordered_map<AssetId, AssetIdentityRowV2, AssetIdHash> lookup;
+[[nodiscard]] std::unordered_map<AssetId, AssetIdentityRow, AssetIdHash>
+make_identity_lookup(const AssetIdentityDocument& identities) {
+    std::unordered_map<AssetId, AssetIdentityRow, AssetIdHash> lookup;
     lookup.reserve(identities.assets.size());
     for (const auto& row : identities.assets) {
-        const auto asset = asset_id_from_key_v2(row.key);
+        const auto asset = asset_id_from_key(row.key);
         if (!lookup.contains(asset)) {
             lookup.emplace(asset, row);
         }
@@ -121,22 +121,22 @@ make_identity_lookup(const AssetIdentityDocumentV2& identities) {
 }
 
 void append_invalid_identity_document_diagnostic(RuntimeSceneAssetIdentityAudit& audit,
-                                                 const AssetIdentityDiagnosticV2& diagnostic) {
+                                                 const AssetIdentityDiagnostic& diagnostic) {
     audit.diagnostics.push_back(RuntimeSceneAssetIdentityDiagnostic{
         .code = RuntimeSceneAssetIdentityDiagnosticCode::invalid_identity_document,
         .placement = "asset_identity.document",
         .node = null_scene_node,
-        .asset = asset_id_from_key_v2(diagnostic.key),
+        .asset = asset_id_from_key(diagnostic.key),
         .key = diagnostic.key,
         .expected_kind = AssetKind::unknown,
         .actual_kind = AssetKind::unknown,
         .source_path = diagnostic.source_path,
-        .message = "Asset Identity v2 document is invalid",
+        .message = "Asset Identity document is invalid",
     });
 }
 
 void append_asset_identity_audit(RuntimeSceneAssetIdentityAudit& audit,
-                                 const std::unordered_map<AssetId, AssetIdentityRowV2, AssetIdHash>& identities,
+                                 const std::unordered_map<AssetId, AssetIdentityRow, AssetIdHash>& identities,
                                  std::string placement, SceneNodeId node, AssetId asset,
                                  RuntimeSceneReferenceKind reference_kind, AssetKind expected_kind) {
     const auto identity = identities.find(asset);
@@ -150,7 +150,7 @@ void append_asset_identity_audit(RuntimeSceneAssetIdentityAudit& audit,
             .expected_kind = expected_kind,
             .actual_kind = AssetKind::unknown,
             .source_path = {},
-            .message = "runtime scene reference has no Asset Identity v2 row",
+            .message = "runtime scene reference has no Asset Identity row",
         });
         return;
     }
@@ -166,7 +166,7 @@ void append_asset_identity_audit(RuntimeSceneAssetIdentityAudit& audit,
             .expected_kind = expected_kind,
             .actual_kind = row.kind,
             .source_path = row.source_path,
-            .message = "runtime scene reference Asset Identity v2 kind mismatch",
+            .message = "runtime scene reference Asset Identity kind mismatch",
         });
         return;
     }
@@ -705,9 +705,9 @@ bool RuntimeSceneConstructionPlacementIntentPlan::succeeded() const noexcept {
 }
 
 RuntimeSceneAssetIdentityAudit audit_runtime_scene_asset_identity(const Scene& scene,
-                                                                  const AssetIdentityDocumentV2& identities) {
+                                                                  const AssetIdentityDocument& identities) {
     RuntimeSceneAssetIdentityAudit audit;
-    const auto identity_diagnostics = validate_asset_identity_document_v2(identities);
+    const auto identity_diagnostics = validate_asset_identity_document(identities);
     if (!identity_diagnostics.empty()) {
         for (const auto& diagnostic : identity_diagnostics) {
             append_invalid_identity_document_diagnostic(audit, diagnostic);

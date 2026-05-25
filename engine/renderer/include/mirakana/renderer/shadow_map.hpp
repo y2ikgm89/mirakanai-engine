@@ -194,7 +194,7 @@ struct ShadowMapPlan {
     rhi::Extent2D cascade_tile_extent{};
     rhi::TextureDesc depth_texture;
     /// Compiled Frame Graph v1 plan for the directional shadow-depth to receiver resolve subgraph.
-    FrameGraphV1BuildResult frame_graph_plan;
+    FrameGraphBuildResult frame_graph_plan;
     /// Deterministic barrier + pass_invoke schedule for `frame_graph_plan` when compilation succeeded.
     std::vector<FrameGraphExecutionStep> frame_graph_execution;
     std::vector<ShadowMapDiagnostic> diagnostics;

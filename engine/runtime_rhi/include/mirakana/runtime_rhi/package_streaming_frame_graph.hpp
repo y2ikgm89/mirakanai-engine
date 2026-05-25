@@ -168,7 +168,7 @@ struct RuntimePackageResourceUpdate {
     AssetId asset;
     RuntimePackageResourceUpdateKind kind{RuntimePackageResourceUpdateKind::texture};
     AssetKind catalog_kind{AssetKind::unknown};
-    runtime::RuntimeResourceHandleV2 resource_handle;
+    runtime::RuntimeResourceHandle resource_handle;
     runtime::RuntimeAssetHandle package_handle;
     std::string resource;
     rhi::FenceValue submitted_upload_fence{};
@@ -251,35 +251,35 @@ struct RuntimePackageUploadStagingEvidence {
 [[nodiscard]] RuntimePackageStreamingFrameGraphTextureBindingResult
 make_runtime_package_streaming_frame_graph_texture_bindings(
     const runtime::RuntimePackageStreamingExecutionResult& streaming_result,
-    const runtime::RuntimeResourceCatalogV2& resident_catalog,
+    const runtime::RuntimeResourceCatalog& resident_catalog,
     std::span<const RuntimePackageStreamingFrameGraphTextureBindingSource> sources);
 
 [[nodiscard]] RuntimePackageStreamingFrameGraphTextureUploadBindingResult
 upload_runtime_package_streaming_frame_graph_texture_bindings(
     rhi::IRhiDevice& device, const runtime::RuntimePackageStreamingExecutionResult& streaming_result,
-    const runtime::RuntimeResourceCatalogV2& resident_catalog,
+    const runtime::RuntimeResourceCatalog& resident_catalog,
     std::span<const RuntimePackageStreamingFrameGraphTextureUploadSource> sources);
 
 [[nodiscard]] RuntimePackageStreamingMeshUploadBindingResult upload_runtime_package_streaming_mesh_gpu_bindings(
     rhi::IRhiDevice& device, const runtime::RuntimePackageStreamingExecutionResult& streaming_result,
-    const runtime::RuntimeResourceCatalogV2& resident_catalog,
+    const runtime::RuntimeResourceCatalog& resident_catalog,
     std::span<const RuntimePackageStreamingMeshUploadSource> sources);
 
 [[nodiscard]] RuntimePackageStreamingSkinnedMeshUploadBindingResult
 upload_runtime_package_streaming_skinned_mesh_gpu_bindings(
     rhi::IRhiDevice& device, const runtime::RuntimePackageStreamingExecutionResult& streaming_result,
-    const runtime::RuntimeResourceCatalogV2& resident_catalog,
+    const runtime::RuntimeResourceCatalog& resident_catalog,
     std::span<const RuntimePackageStreamingSkinnedMeshUploadSource> sources);
 
 [[nodiscard]] RuntimePackageStreamingMorphMeshUploadBindingResult
 upload_runtime_package_streaming_morph_mesh_gpu_bindings(
     rhi::IRhiDevice& device, const runtime::RuntimePackageStreamingExecutionResult& streaming_result,
-    const runtime::RuntimeResourceCatalogV2& resident_catalog,
+    const runtime::RuntimeResourceCatalog& resident_catalog,
     std::span<const RuntimePackageStreamingMorphMeshUploadSource> sources);
 
 [[nodiscard]] RuntimePackageResourceUpdateReadinessResult
 make_runtime_package_resource_update_readiness(const runtime::RuntimePackageStreamingExecutionResult& streaming_result,
-                                               const runtime::RuntimeResourceCatalogV2& resident_catalog,
+                                               const runtime::RuntimeResourceCatalog& resident_catalog,
                                                const RuntimePackageResourceUpdateReadinessSources& sources);
 
 [[nodiscard]] RuntimePackageUploadStagingEvidence

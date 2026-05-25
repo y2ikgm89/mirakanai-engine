@@ -287,7 +287,7 @@
         "tools/register-runtime-package-files.ps1",
         "tools/register-source-asset.ps1",
         "tools/cook-registered-source-assets.ps1",
-        "tools/migrate-scene-v2-runtime-package.ps1",
+        "tools/migrate-scene-runtime-package.ps1",
         "tools/run-validation-recipe.ps1",
         "tools/validate-network-enet.ps1",
         "tools/ready-task-pr.ps1",

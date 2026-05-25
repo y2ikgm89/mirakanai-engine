@@ -220,7 +220,7 @@ make_upload_staging_morph_mesh_payload(AssetId asset, runtime::RuntimeAssetHandl
 
 RuntimePackageStreamingFrameGraphTextureBindingResult make_runtime_package_streaming_frame_graph_texture_bindings(
     const runtime::RuntimePackageStreamingExecutionResult& streaming_result,
-    const runtime::RuntimeResourceCatalogV2& resident_catalog,
+    const runtime::RuntimeResourceCatalog& resident_catalog,
     std::span<const RuntimePackageStreamingFrameGraphTextureBindingSource> sources) {
     RuntimePackageStreamingFrameGraphTextureBindingResult result;
 
@@ -243,12 +243,12 @@ RuntimePackageStreamingFrameGraphTextureBindingResult make_runtime_package_strea
             seen_resources.push_back(source.resource);
         }
 
-        const auto handle = runtime::find_runtime_resource_v2(resident_catalog, source.asset);
+        const auto handle = runtime::find_runtime_resource(resident_catalog, source.asset);
         if (!handle.has_value()) {
             add_diagnostic(result, source.asset, source.resource, "runtime-resource-not-live",
                            "texture asset is not live in the resident runtime resource catalog");
         } else {
-            const auto* const record = runtime::runtime_resource_record_v2(resident_catalog, *handle);
+            const auto* const record = runtime::runtime_resource_record(resident_catalog, *handle);
             if (record == nullptr) {
                 add_diagnostic(result, source.asset, source.resource, "runtime-resource-not-live",
                                "texture asset catalog handle is stale");
@@ -291,7 +291,7 @@ RuntimePackageStreamingFrameGraphTextureBindingResult make_runtime_package_strea
 RuntimePackageStreamingFrameGraphTextureUploadBindingResult
 upload_runtime_package_streaming_frame_graph_texture_bindings(
     rhi::IRhiDevice& device, const runtime::RuntimePackageStreamingExecutionResult& streaming_result,
-    const runtime::RuntimeResourceCatalogV2& resident_catalog,
+    const runtime::RuntimeResourceCatalog& resident_catalog,
     std::span<const RuntimePackageStreamingFrameGraphTextureUploadSource> sources) {
     RuntimePackageStreamingFrameGraphTextureUploadBindingResult result;
 
@@ -314,13 +314,13 @@ upload_runtime_package_streaming_frame_graph_texture_bindings(
             seen_resources.push_back(source.resource);
         }
 
-        const auto handle = runtime::find_runtime_resource_v2(resident_catalog, source.asset);
-        const runtime::RuntimeResourceRecordV2* record = nullptr;
+        const auto handle = runtime::find_runtime_resource(resident_catalog, source.asset);
+        const runtime::RuntimeResourceRecord* record = nullptr;
         if (!handle.has_value()) {
             add_diagnostic(result, source.asset, source.resource, "runtime-resource-not-live",
                            "texture asset is not live in the resident runtime resource catalog");
         } else {
-            record = runtime::runtime_resource_record_v2(resident_catalog, *handle);
+            record = runtime::runtime_resource_record(resident_catalog, *handle);
             if (record == nullptr) {
                 add_diagnostic(result, source.asset, source.resource, "runtime-resource-not-live",
                                "texture asset catalog handle is stale");
@@ -407,7 +407,7 @@ upload_runtime_package_streaming_frame_graph_texture_bindings(
 
 RuntimePackageStreamingMeshUploadBindingResult upload_runtime_package_streaming_mesh_gpu_bindings(
     rhi::IRhiDevice& device, const runtime::RuntimePackageStreamingExecutionResult& streaming_result,
-    const runtime::RuntimeResourceCatalogV2& resident_catalog,
+    const runtime::RuntimeResourceCatalog& resident_catalog,
     std::span<const RuntimePackageStreamingMeshUploadSource> sources) {
     RuntimePackageStreamingMeshUploadBindingResult result;
 
@@ -427,13 +427,13 @@ RuntimePackageStreamingMeshUploadBindingResult upload_runtime_package_streaming_
             seen_assets.push_back(source.asset);
         }
 
-        const auto handle = runtime::find_runtime_resource_v2(resident_catalog, source.asset);
-        const runtime::RuntimeResourceRecordV2* record = nullptr;
+        const auto handle = runtime::find_runtime_resource(resident_catalog, source.asset);
+        const runtime::RuntimeResourceRecord* record = nullptr;
         if (!handle.has_value()) {
             add_diagnostic(result, source.asset, "runtime-resource-not-live",
                            "mesh asset is not live in the resident runtime resource catalog");
         } else {
-            record = runtime::runtime_resource_record_v2(resident_catalog, *handle);
+            record = runtime::runtime_resource_record(resident_catalog, *handle);
             if (record == nullptr) {
                 add_diagnostic(result, source.asset, "runtime-resource-not-live", "mesh asset catalog handle is stale");
             } else if (record->kind != AssetKind::mesh) {
@@ -520,7 +520,7 @@ RuntimePackageStreamingMeshUploadBindingResult upload_runtime_package_streaming_
 
 RuntimePackageStreamingSkinnedMeshUploadBindingResult upload_runtime_package_streaming_skinned_mesh_gpu_bindings(
     rhi::IRhiDevice& device, const runtime::RuntimePackageStreamingExecutionResult& streaming_result,
-    const runtime::RuntimeResourceCatalogV2& resident_catalog,
+    const runtime::RuntimeResourceCatalog& resident_catalog,
     std::span<const RuntimePackageStreamingSkinnedMeshUploadSource> sources) {
     RuntimePackageStreamingSkinnedMeshUploadBindingResult result;
 
@@ -540,13 +540,13 @@ RuntimePackageStreamingSkinnedMeshUploadBindingResult upload_runtime_package_str
             seen_assets.push_back(source.asset);
         }
 
-        const auto handle = runtime::find_runtime_resource_v2(resident_catalog, source.asset);
-        const runtime::RuntimeResourceRecordV2* record = nullptr;
+        const auto handle = runtime::find_runtime_resource(resident_catalog, source.asset);
+        const runtime::RuntimeResourceRecord* record = nullptr;
         if (!handle.has_value()) {
             add_diagnostic(result, source.asset, "runtime-resource-not-live",
                            "skinned mesh asset is not live in the resident runtime resource catalog");
         } else {
-            record = runtime::runtime_resource_record_v2(resident_catalog, *handle);
+            record = runtime::runtime_resource_record(resident_catalog, *handle);
             if (record == nullptr) {
                 add_diagnostic(result, source.asset, "runtime-resource-not-live",
                                "skinned mesh asset catalog handle is stale");
@@ -636,7 +636,7 @@ RuntimePackageStreamingSkinnedMeshUploadBindingResult upload_runtime_package_str
 
 RuntimePackageStreamingMorphMeshUploadBindingResult upload_runtime_package_streaming_morph_mesh_gpu_bindings(
     rhi::IRhiDevice& device, const runtime::RuntimePackageStreamingExecutionResult& streaming_result,
-    const runtime::RuntimeResourceCatalogV2& resident_catalog,
+    const runtime::RuntimeResourceCatalog& resident_catalog,
     std::span<const RuntimePackageStreamingMorphMeshUploadSource> sources) {
     RuntimePackageStreamingMorphMeshUploadBindingResult result;
 
@@ -656,13 +656,13 @@ RuntimePackageStreamingMorphMeshUploadBindingResult upload_runtime_package_strea
             seen_assets.push_back(source.asset);
         }
 
-        const auto handle = runtime::find_runtime_resource_v2(resident_catalog, source.asset);
-        const runtime::RuntimeResourceRecordV2* record = nullptr;
+        const auto handle = runtime::find_runtime_resource(resident_catalog, source.asset);
+        const runtime::RuntimeResourceRecord* record = nullptr;
         if (!handle.has_value()) {
             add_diagnostic(result, source.asset, "runtime-resource-not-live",
                            "morph mesh asset is not live in the resident runtime resource catalog");
         } else {
-            record = runtime::runtime_resource_record_v2(resident_catalog, *handle);
+            record = runtime::runtime_resource_record(resident_catalog, *handle);
             if (record == nullptr) {
                 add_diagnostic(result, source.asset, "runtime-resource-not-live",
                                "morph mesh asset catalog handle is stale");
@@ -795,18 +795,18 @@ void record_resource_update(RuntimePackageResourceUpdateReadinessResult& result,
 }
 
 void append_resource_update(RuntimePackageResourceUpdateReadinessResult& result,
-                            const runtime::RuntimeResourceCatalogV2& resident_catalog, AssetId asset,
+                            const runtime::RuntimeResourceCatalog& resident_catalog, AssetId asset,
                             RuntimePackageResourceUpdateKind update_kind, AssetKind expected_kind, std::string resource,
                             rhi::FenceValue fence, std::size_t& graphics_waits_remaining) {
-    const auto handle = runtime::find_runtime_resource_v2(resident_catalog, asset);
-    const runtime::RuntimeResourceRecordV2* record = nullptr;
+    const auto handle = runtime::find_runtime_resource(resident_catalog, asset);
+    const runtime::RuntimeResourceRecord* record = nullptr;
     if (!handle.has_value()) {
         add_diagnostic(result, asset, update_kind, "runtime-resource-not-live",
                        "package resource update asset is not live in the resident runtime resource catalog");
         return;
     }
 
-    record = runtime::runtime_resource_record_v2(resident_catalog, *handle);
+    record = runtime::runtime_resource_record(resident_catalog, *handle);
     if (record == nullptr) {
         add_diagnostic(result, asset, update_kind, "runtime-resource-not-live",
                        "package resource update catalog handle is stale");
@@ -860,7 +860,7 @@ void append_resource_update(RuntimePackageResourceUpdateReadinessResult& result,
 
 RuntimePackageResourceUpdateReadinessResult
 make_runtime_package_resource_update_readiness(const runtime::RuntimePackageStreamingExecutionResult& streaming_result,
-                                               const runtime::RuntimeResourceCatalogV2& resident_catalog,
+                                               const runtime::RuntimeResourceCatalog& resident_catalog,
                                                const RuntimePackageResourceUpdateReadinessSources& sources) {
     RuntimePackageResourceUpdateReadinessResult result;
 
@@ -1030,9 +1030,9 @@ RuntimePackageUploadStagingEvidence execute_runtime_package_upload_staging_evide
     records.push_back(make_upload_staging_evidence_record(morph_mesh_asset, morph_mesh_handle,
                                                           AssetKind::morph_mesh_cpu, "morph_mesh_cpu"));
 
-    runtime::RuntimeResourceCatalogV2 catalog;
+    runtime::RuntimeResourceCatalog catalog;
     const auto catalog_build =
-        runtime::build_runtime_resource_catalog_v2(catalog, runtime::RuntimeAssetPackage{std::move(records)});
+        runtime::build_runtime_resource_catalog(catalog, runtime::RuntimeAssetPackage{std::move(records)});
     if (!catalog_build.succeeded()) {
         add_diagnostic(result, "catalog-build-failed",
                        catalog_build.diagnostics.empty() ? "runtime package upload staging catalog build failed"

@@ -4,7 +4,7 @@ add_library(mirakana_scene
     src/prefab_overrides.cpp
     src/playable_2d.cpp
     src/render_packet.cpp
-    src/schema_v2.cpp
+    src/schema.cpp
     src/scene.cpp
     src/scene_io.cpp
 )

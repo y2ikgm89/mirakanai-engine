@@ -96,7 +96,7 @@ bool validate_residency_hints(const RuntimePackageStreamingExecutionDesc& desc, 
 }
 
 bool validate_projected_resident_catalog_hints(const RuntimePackageStreamingExecutionDesc& desc,
-                                               const RuntimeResourceCatalogV2& catalog,
+                                               const RuntimeResourceCatalog& catalog,
                                                RuntimePackageStreamingExecutionResult& result,
                                                std::uint32_t resident_package_count) {
     result.required_preload_asset_count = static_cast<std::uint32_t>(desc.required_preload_assets.size());
@@ -111,7 +111,7 @@ bool validate_projected_resident_catalog_hints(const RuntimePackageStreamingExec
     }
 
     for (const auto asset : desc.required_preload_assets) {
-        if (!find_runtime_resource_v2(catalog, asset).has_value()) {
+        if (!find_runtime_resource(catalog, asset).has_value()) {
             add_diagnostic(result, "preload-asset-missing",
                            "projected resident catalog does not contain required preload asset id " +
                                std::to_string(asset.value));
@@ -133,19 +133,18 @@ bool validate_projected_resident_catalog_hints(const RuntimePackageStreamingExec
     return valid;
 }
 
-bool contains_mount_id(const RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentPackageMountIdV2 mount_id) {
-    return std::ranges::any_of(mount_set.mounts(), [mount_id](const RuntimeResidentPackageMountRecordV2& mounted) {
+bool contains_mount_id(const RuntimeResidentPackageMountSet& mount_set, RuntimeResidentPackageMountId mount_id) {
+    return std::ranges::any_of(mount_set.mounts(), [mount_id](const RuntimeResidentPackageMountRecord& mounted) {
         return mounted.id == mount_id;
     });
 }
 
-void set_resident_mount_failure(RuntimePackageStreamingExecutionResult& result,
-                                RuntimeResidentPackageMountIdV2 mount_id, RuntimeResidentPackageMountStatusV2 status,
-                                std::string code, std::string message) {
-    result.resident_mount = RuntimeResidentPackageMountResultV2{
+void set_resident_mount_failure(RuntimePackageStreamingExecutionResult& result, RuntimeResidentPackageMountId mount_id,
+                                RuntimeResidentPackageMountStatus status, std::string code, std::string message) {
+    result.resident_mount = RuntimeResidentPackageMountResult{
         .status = status,
         .diagnostic =
-            RuntimeResidentPackageMountDiagnosticV2{
+            RuntimeResidentPackageMountDiagnostic{
                 .mount = mount_id,
                 .code = code,
                 .message = message,
@@ -155,13 +154,13 @@ void set_resident_mount_failure(RuntimePackageStreamingExecutionResult& result,
 }
 
 void set_resident_replace_failure(RuntimePackageStreamingExecutionResult& result,
-                                  RuntimeResidentPackageMountIdV2 mount_id,
-                                  RuntimeResidentPackageReplaceCommitStatusV2 status, std::string code,
+                                  RuntimeResidentPackageMountId mount_id,
+                                  RuntimeResidentPackageReplaceCommitStatus status, std::string code,
                                   std::string message) {
-    result.resident_replace = RuntimeResidentPackageReplaceCommitResultV2{
+    result.resident_replace = RuntimeResidentPackageReplaceCommitResult{
         .status = status,
         .diagnostic =
-            RuntimeResidentPackageMountDiagnosticV2{
+            RuntimeResidentPackageMountDiagnostic{
                 .mount = mount_id,
                 .code = code,
                 .message = message,
@@ -176,33 +175,32 @@ void set_resident_replace_failure(RuntimePackageStreamingExecutionResult& result
     add_diagnostic(result, std::move(code), std::move(message));
 }
 
-bool validate_resident_mount_id(const RuntimeResidentPackageMountSetV2& mount_set,
-                                RuntimeResidentPackageMountIdV2 mount_id,
+bool validate_resident_mount_id(const RuntimeResidentPackageMountSet& mount_set, RuntimeResidentPackageMountId mount_id,
                                 RuntimePackageStreamingExecutionResult& result) {
     if (mount_id.value == 0) {
-        set_resident_mount_failure(result, mount_id, RuntimeResidentPackageMountStatusV2::invalid_mount_id,
+        set_resident_mount_failure(result, mount_id, RuntimeResidentPackageMountStatus::invalid_mount_id,
                                    "invalid-mount-id", "resident package streaming mount id must be non-zero");
         return false;
     }
     if (contains_mount_id(mount_set, mount_id)) {
-        set_resident_mount_failure(result, mount_id, RuntimeResidentPackageMountStatusV2::duplicate_mount_id,
+        set_resident_mount_failure(result, mount_id, RuntimeResidentPackageMountStatus::duplicate_mount_id,
                                    "duplicate-mount-id", "resident package streaming mount id is already mounted");
         return false;
     }
     return true;
 }
 
-bool validate_resident_replace_mount_id(const RuntimeResidentPackageMountSetV2& mount_set,
-                                        RuntimeResidentPackageMountIdV2 mount_id,
+bool validate_resident_replace_mount_id(const RuntimeResidentPackageMountSet& mount_set,
+                                        RuntimeResidentPackageMountId mount_id,
                                         RuntimePackageStreamingExecutionResult& result) {
     if (mount_id.value == 0) {
-        set_resident_replace_failure(result, mount_id, RuntimeResidentPackageReplaceCommitStatusV2::invalid_mount_id,
+        set_resident_replace_failure(result, mount_id, RuntimeResidentPackageReplaceCommitStatus::invalid_mount_id,
                                      "invalid-mount-id",
                                      "resident package streaming replacement mount id must be non-zero");
         return false;
     }
     if (!contains_mount_id(mount_set, mount_id)) {
-        set_resident_replace_failure(result, mount_id, RuntimeResidentPackageReplaceCommitStatusV2::missing_mount_id,
+        set_resident_replace_failure(result, mount_id, RuntimeResidentPackageReplaceCommitStatus::missing_mount_id,
                                      "missing-mount-id",
                                      "resident package streaming replacement mount id is not mounted");
         return false;
@@ -211,8 +209,7 @@ bool validate_resident_replace_mount_id(const RuntimeResidentPackageMountSetV2& 
 }
 
 [[nodiscard]] std::vector<RuntimeAssetPackage>
-project_resident_packages(const RuntimeResidentPackageMountSetV2& mount_set,
-                          const RuntimeAssetPackage& loaded_package) {
+project_resident_packages(const RuntimeResidentPackageMountSet& mount_set, const RuntimeAssetPackage& loaded_package) {
     std::vector<RuntimeAssetPackage> projected;
     projected.reserve(mount_set.mounts().size() + 1U);
     for (const auto& mount : mount_set.mounts()) {
@@ -222,13 +219,13 @@ project_resident_packages(const RuntimeResidentPackageMountSetV2& mount_set,
     return projected;
 }
 
-[[nodiscard]] RuntimeResourceResidencyBudgetExecutionResultV2
-evaluate_projected_resident_budget(const RuntimeResidentPackageMountSetV2& mount_set,
+[[nodiscard]] RuntimeResourceResidencyBudgetExecutionResult
+evaluate_projected_resident_budget(const RuntimeResidentPackageMountSet& mount_set,
                                    const RuntimeAssetPackage& loaded_package, RuntimePackageMountOverlay overlay,
                                    const RuntimePackageStreamingExecutionDesc& desc) {
     const auto projected_packages = project_resident_packages(mount_set, loaded_package);
     const RuntimeAssetPackage projected_view = merge_runtime_asset_packages_overlay(projected_packages, overlay);
-    const RuntimeResourceResidencyBudgetV2 budget{
+    const RuntimeResourceResidencyBudget budget{
         .max_resident_content_bytes = desc.resident_budget_bytes,
         .max_resident_asset_records = {},
     };
@@ -236,7 +233,7 @@ evaluate_projected_resident_budget(const RuntimeResidentPackageMountSetV2& mount
 }
 
 void add_budget_diagnostics(RuntimePackageStreamingExecutionResult& result,
-                            const RuntimeResourceResidencyBudgetExecutionResultV2& budget_execution) {
+                            const RuntimeResourceResidencyBudgetExecutionResult& budget_execution) {
     add_diagnostic(result, "resident-budget-intent-exceeded",
                    "projected resident package content bytes exceed the selected resident budget intent");
     for (const auto& diagnostic : budget_execution.diagnostics) {
@@ -245,7 +242,7 @@ void add_budget_diagnostics(RuntimePackageStreamingExecutionResult& result,
 }
 
 void add_catalog_refresh_diagnostics(RuntimePackageStreamingExecutionResult& result,
-                                     const RuntimeResidentCatalogCacheRefreshResultV2& refresh) {
+                                     const RuntimeResidentCatalogCacheRefreshResult& refresh) {
     for (const auto& diagnostic : refresh.budget_execution.diagnostics) {
         add_diagnostic(result, diagnostic.code, diagnostic.message);
     }
@@ -255,14 +252,14 @@ void add_catalog_refresh_diagnostics(RuntimePackageStreamingExecutionResult& res
 }
 
 void add_candidate_catalog_build_diagnostics(RuntimePackageStreamingExecutionResult& result,
-                                             const RuntimeResourceCatalogBuildResultV2& catalog_build) {
+                                             const RuntimeResourceCatalogBuildResult& catalog_build) {
     for (const auto& diagnostic : catalog_build.diagnostics) {
         add_diagnostic(result, "catalog-build-failed", diagnostic.diagnostic);
     }
 }
 
 void add_candidate_load_diagnostics(RuntimePackageStreamingExecutionResult& result,
-                                    const RuntimePackageCandidateLoadResultV2& candidate_load) {
+                                    const RuntimePackageCandidateLoadResult& candidate_load) {
     if (candidate_load.diagnostics.empty()) {
         add_diagnostic(result, "package-load-failed", "runtime package candidate load failed");
         return;
@@ -280,7 +277,7 @@ void add_candidate_load_diagnostics(RuntimePackageStreamingExecutionResult& resu
 
 void add_reviewed_evictions_mount_diagnostics(
     RuntimePackageStreamingExecutionResult& result,
-    const RuntimePackageCandidateResidentMountReviewedEvictionsResultV2& reviewed_mount) {
+    const RuntimePackageCandidateResidentMountReviewedEvictionsResult& reviewed_mount) {
     for (const auto& diagnostic : reviewed_mount.diagnostics) {
         std::string message = diagnostic.message;
         if (!diagnostic.path.empty()) {
@@ -292,23 +289,23 @@ void add_reviewed_evictions_mount_diagnostics(
 }
 
 [[nodiscard]] RuntimePackageStreamingExecutionStatus
-map_reviewed_evictions_mount_status(RuntimePackageCandidateResidentMountReviewedEvictionsStatusV2 status) noexcept {
+map_reviewed_evictions_mount_status(RuntimePackageCandidateResidentMountReviewedEvictionsStatus status) noexcept {
     switch (status) {
-    case RuntimePackageCandidateResidentMountReviewedEvictionsStatusV2::mounted:
+    case RuntimePackageCandidateResidentMountReviewedEvictionsStatus::mounted:
         return RuntimePackageStreamingExecutionStatus::committed;
-    case RuntimePackageCandidateResidentMountReviewedEvictionsStatusV2::invalid_mount_id:
-    case RuntimePackageCandidateResidentMountReviewedEvictionsStatusV2::duplicate_mount_id:
+    case RuntimePackageCandidateResidentMountReviewedEvictionsStatus::invalid_mount_id:
+    case RuntimePackageCandidateResidentMountReviewedEvictionsStatus::duplicate_mount_id:
         return RuntimePackageStreamingExecutionStatus::resident_mount_failed;
-    case RuntimePackageCandidateResidentMountReviewedEvictionsStatusV2::candidate_load_failed:
+    case RuntimePackageCandidateResidentMountReviewedEvictionsStatus::candidate_load_failed:
         return RuntimePackageStreamingExecutionStatus::package_load_failed;
-    case RuntimePackageCandidateResidentMountReviewedEvictionsStatusV2::invalid_eviction_candidate_mount_id:
-    case RuntimePackageCandidateResidentMountReviewedEvictionsStatusV2::duplicate_eviction_candidate_mount_id:
-    case RuntimePackageCandidateResidentMountReviewedEvictionsStatusV2::missing_eviction_candidate_mount_id:
-    case RuntimePackageCandidateResidentMountReviewedEvictionsStatusV2::protected_eviction_candidate_mount_id:
+    case RuntimePackageCandidateResidentMountReviewedEvictionsStatus::invalid_eviction_candidate_mount_id:
+    case RuntimePackageCandidateResidentMountReviewedEvictionsStatus::duplicate_eviction_candidate_mount_id:
+    case RuntimePackageCandidateResidentMountReviewedEvictionsStatus::missing_eviction_candidate_mount_id:
+    case RuntimePackageCandidateResidentMountReviewedEvictionsStatus::protected_eviction_candidate_mount_id:
         return RuntimePackageStreamingExecutionStatus::resident_eviction_plan_failed;
-    case RuntimePackageCandidateResidentMountReviewedEvictionsStatusV2::budget_failed:
+    case RuntimePackageCandidateResidentMountReviewedEvictionsStatus::budget_failed:
         return RuntimePackageStreamingExecutionStatus::over_budget_intent;
-    case RuntimePackageCandidateResidentMountReviewedEvictionsStatusV2::catalog_refresh_failed:
+    case RuntimePackageCandidateResidentMountReviewedEvictionsStatus::catalog_refresh_failed:
         return RuntimePackageStreamingExecutionStatus::resident_catalog_refresh_failed;
     }
     return RuntimePackageStreamingExecutionStatus::resident_eviction_plan_failed;
@@ -316,7 +313,7 @@ map_reviewed_evictions_mount_status(RuntimePackageCandidateResidentMountReviewed
 
 void add_reviewed_evictions_replace_diagnostics(
     RuntimePackageStreamingExecutionResult& result,
-    const RuntimePackageCandidateResidentReplaceReviewedEvictionsResultV2& reviewed_replace) {
+    const RuntimePackageCandidateResidentReplaceReviewedEvictionsResult& reviewed_replace) {
     for (const auto& diagnostic : reviewed_replace.diagnostics) {
         std::string message = diagnostic.message;
         if (!diagnostic.path.empty()) {
@@ -328,24 +325,24 @@ void add_reviewed_evictions_replace_diagnostics(
 }
 
 [[nodiscard]] RuntimePackageStreamingExecutionStatus
-map_reviewed_evictions_replace_status(RuntimePackageCandidateResidentReplaceReviewedEvictionsStatusV2 status) noexcept {
+map_reviewed_evictions_replace_status(RuntimePackageCandidateResidentReplaceReviewedEvictionsStatus status) noexcept {
     switch (status) {
-    case RuntimePackageCandidateResidentReplaceReviewedEvictionsStatusV2::replaced:
+    case RuntimePackageCandidateResidentReplaceReviewedEvictionsStatus::replaced:
         return RuntimePackageStreamingExecutionStatus::committed;
-    case RuntimePackageCandidateResidentReplaceReviewedEvictionsStatusV2::invalid_mount_id:
-    case RuntimePackageCandidateResidentReplaceReviewedEvictionsStatusV2::missing_mount_id:
-    case RuntimePackageCandidateResidentReplaceReviewedEvictionsStatusV2::resident_replace_failed:
+    case RuntimePackageCandidateResidentReplaceReviewedEvictionsStatus::invalid_mount_id:
+    case RuntimePackageCandidateResidentReplaceReviewedEvictionsStatus::missing_mount_id:
+    case RuntimePackageCandidateResidentReplaceReviewedEvictionsStatus::resident_replace_failed:
         return RuntimePackageStreamingExecutionStatus::resident_replace_failed;
-    case RuntimePackageCandidateResidentReplaceReviewedEvictionsStatusV2::candidate_load_failed:
+    case RuntimePackageCandidateResidentReplaceReviewedEvictionsStatus::candidate_load_failed:
         return RuntimePackageStreamingExecutionStatus::package_load_failed;
-    case RuntimePackageCandidateResidentReplaceReviewedEvictionsStatusV2::invalid_eviction_candidate_mount_id:
-    case RuntimePackageCandidateResidentReplaceReviewedEvictionsStatusV2::duplicate_eviction_candidate_mount_id:
-    case RuntimePackageCandidateResidentReplaceReviewedEvictionsStatusV2::missing_eviction_candidate_mount_id:
-    case RuntimePackageCandidateResidentReplaceReviewedEvictionsStatusV2::protected_eviction_candidate_mount_id:
+    case RuntimePackageCandidateResidentReplaceReviewedEvictionsStatus::invalid_eviction_candidate_mount_id:
+    case RuntimePackageCandidateResidentReplaceReviewedEvictionsStatus::duplicate_eviction_candidate_mount_id:
+    case RuntimePackageCandidateResidentReplaceReviewedEvictionsStatus::missing_eviction_candidate_mount_id:
+    case RuntimePackageCandidateResidentReplaceReviewedEvictionsStatus::protected_eviction_candidate_mount_id:
         return RuntimePackageStreamingExecutionStatus::resident_eviction_plan_failed;
-    case RuntimePackageCandidateResidentReplaceReviewedEvictionsStatusV2::budget_failed:
+    case RuntimePackageCandidateResidentReplaceReviewedEvictionsStatus::budget_failed:
         return RuntimePackageStreamingExecutionStatus::over_budget_intent;
-    case RuntimePackageCandidateResidentReplaceReviewedEvictionsStatusV2::catalog_refresh_failed:
+    case RuntimePackageCandidateResidentReplaceReviewedEvictionsStatus::catalog_refresh_failed:
         return RuntimePackageStreamingExecutionStatus::resident_catalog_refresh_failed;
     }
     return RuntimePackageStreamingExecutionStatus::resident_eviction_plan_failed;
@@ -353,7 +350,7 @@ map_reviewed_evictions_replace_status(RuntimePackageCandidateResidentReplaceRevi
 
 void copy_reviewed_evictions_mount_result(
     RuntimePackageStreamingExecutionResult& result,
-    const RuntimePackageCandidateResidentMountReviewedEvictionsResultV2& reviewed_mount) {
+    const RuntimePackageCandidateResidentMountReviewedEvictionsResult& reviewed_mount) {
     result.candidate_load = reviewed_mount.candidate_load;
     result.resident_mount = reviewed_mount.resident_mount;
     result.eviction_plan = reviewed_mount.eviction_plan;
@@ -368,7 +365,7 @@ void copy_reviewed_evictions_mount_result(
 
 void copy_reviewed_evictions_replace_result(
     RuntimePackageStreamingExecutionResult& result,
-    const RuntimePackageCandidateResidentReplaceReviewedEvictionsResultV2& reviewed_replace) {
+    const RuntimePackageCandidateResidentReplaceReviewedEvictionsResult& reviewed_replace) {
     result.candidate_load = reviewed_replace.candidate_load;
     result.resident_replace = reviewed_replace.resident_replace;
     result.eviction_plan = reviewed_replace.eviction_plan;
@@ -382,11 +379,11 @@ void copy_reviewed_evictions_replace_result(
 }
 
 void set_resident_catalog_build_failure(RuntimePackageStreamingExecutionResult& result,
-                                        RuntimeResourceCatalogBuildResultV2 catalog_build,
+                                        RuntimeResourceCatalogBuildResult catalog_build,
                                         std::size_t projected_package_count, std::uint32_t mount_generation,
                                         std::uint32_t catalog_generation) {
-    result.resident_catalog_refresh = RuntimeResidentCatalogCacheRefreshResultV2{
-        .status = RuntimeResidentCatalogCacheStatusV2::catalog_build_failed,
+    result.resident_catalog_refresh = RuntimeResidentCatalogCacheRefreshResult{
+        .status = RuntimeResidentCatalogCacheStatus::catalog_build_failed,
         .budget_execution = {},
         .catalog_build = std::move(catalog_build),
         .mounted_package_count = projected_package_count,
@@ -402,10 +399,10 @@ void set_resident_catalog_build_failure(RuntimePackageStreamingExecutionResult& 
 bool validate_loaded_package_catalog_before_mount(RuntimePackageStreamingExecutionResult& result,
                                                   const RuntimeAssetPackage& loaded_package,
                                                   std::size_t projected_package_count,
-                                                  const RuntimeResidentPackageMountSetV2& mount_set,
-                                                  const RuntimeResidentCatalogCacheV2& catalog_cache) {
-    RuntimeResourceCatalogV2 scratch;
-    auto catalog_build = build_runtime_resource_catalog_v2(scratch, loaded_package);
+                                                  const RuntimeResidentPackageMountSet& mount_set,
+                                                  const RuntimeResidentCatalogCache& catalog_cache) {
+    RuntimeResourceCatalog scratch;
+    auto catalog_build = build_runtime_resource_catalog(scratch, loaded_package);
     if (catalog_build.succeeded()) {
         return true;
     }
@@ -415,9 +412,9 @@ bool validate_loaded_package_catalog_before_mount(RuntimePackageStreamingExecuti
     return false;
 }
 
-[[nodiscard]] RuntimePackageIndexDiscoveryCandidateV2
+[[nodiscard]] RuntimePackageIndexDiscoveryCandidate
 make_package_streaming_candidate(const RuntimePackageStreamingExecutionDesc& desc) {
-    return RuntimePackageIndexDiscoveryCandidateV2{
+    return RuntimePackageIndexDiscoveryCandidate{
         .package_index_path = desc.package_index_path,
         .content_root = desc.content_root,
         .label = desc.target_id,
@@ -430,9 +427,10 @@ bool RuntimePackageStreamingExecutionResult::succeeded() const noexcept {
     return status == RuntimePackageStreamingExecutionStatus::committed && committed;
 }
 
-RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streaming_safe_point(
-    RuntimeAssetPackageStore& store, RuntimeResourceCatalogV2& catalog,
-    const RuntimePackageStreamingExecutionDesc& desc, RuntimeAssetPackageLoadResult loaded_package) {
+RuntimePackageStreamingExecutionResult
+execute_selected_runtime_package_streaming_safe_point(RuntimeAssetPackageStore& store, RuntimeResourceCatalog& catalog,
+                                                      const RuntimePackageStreamingExecutionDesc& desc,
+                                                      RuntimeAssetPackageLoadResult loaded_package) {
     RuntimePackageStreamingExecutionResult result;
     result.target_id = desc.target_id;
     result.package_index_path = desc.package_index_path;
@@ -501,8 +499,8 @@ RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streamin
 }
 
 RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streaming_safe_point(
-    RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
-    RuntimeResidentPackageMountIdV2 mount_id, RuntimePackageMountOverlay overlay,
+    RuntimeResidentPackageMountSet& mount_set, RuntimeResidentCatalogCache& catalog_cache,
+    RuntimeResidentPackageMountId mount_id, RuntimePackageMountOverlay overlay,
     const RuntimePackageStreamingExecutionDesc& desc, RuntimeAssetPackageLoadResult loaded_package) {
     RuntimePackageStreamingExecutionResult result;
     result.target_id = desc.target_id;
@@ -564,7 +562,7 @@ RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streamin
         return result;
     }
 
-    result.resident_mount = mount_set.mount(RuntimeResidentPackageMountRecordV2{
+    result.resident_mount = mount_set.mount(RuntimeResidentPackageMountRecord{
         .id = mount_id,
         .label = desc.target_id,
         .package = std::move(loaded_package.package),
@@ -578,7 +576,7 @@ RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streamin
         return result;
     }
 
-    const RuntimeResourceResidencyBudgetV2 budget{
+    const RuntimeResourceResidencyBudget budget{
         .max_resident_content_bytes = desc.resident_budget_bytes,
         .max_resident_asset_records = {},
     };
@@ -602,8 +600,8 @@ RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streamin
 }
 
 RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streaming_candidate_resident_mount_safe_point(
-    IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
-    RuntimeResidentPackageMountIdV2 mount_id, RuntimePackageMountOverlay overlay,
+    IFileSystem& filesystem, RuntimeResidentPackageMountSet& mount_set, RuntimeResidentCatalogCache& catalog_cache,
+    RuntimeResidentPackageMountId mount_id, RuntimePackageMountOverlay overlay,
     const RuntimePackageStreamingExecutionDesc& desc) {
     RuntimePackageStreamingExecutionResult result;
     result.target_id = desc.target_id;
@@ -630,7 +628,7 @@ RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streamin
         return result;
     }
 
-    result.candidate_load = load_runtime_package_candidate_v2(filesystem, make_package_streaming_candidate(desc));
+    result.candidate_load = load_runtime_package_candidate(filesystem, make_package_streaming_candidate(desc));
     if (!result.candidate_load.succeeded()) {
         result.status = RuntimePackageStreamingExecutionStatus::package_load_failed;
         add_candidate_load_diagnostics(result, result.candidate_load);
@@ -644,8 +642,8 @@ RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streamin
         return result;
     }
 
-    RuntimeResidentPackageMountSetV2 projected_mount_set = mount_set;
-    result.resident_mount = projected_mount_set.mount(RuntimeResidentPackageMountRecordV2{
+    RuntimeResidentPackageMountSet projected_mount_set = mount_set;
+    result.resident_mount = projected_mount_set.mount(RuntimeResidentPackageMountRecord{
         .id = mount_id,
         .label = desc.target_id,
         .package = result.candidate_load.loaded_package.package,
@@ -658,16 +656,16 @@ RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streamin
         return result;
     }
 
-    const RuntimeResourceResidencyBudgetV2 budget{
+    const RuntimeResourceResidencyBudget budget{
         .max_resident_content_bytes = desc.resident_budget_bytes,
         .max_resident_asset_records = {},
     };
-    RuntimeResidentCatalogCacheV2 projected_catalog_cache = catalog_cache;
+    RuntimeResidentCatalogCache projected_catalog_cache = catalog_cache;
     result.resident_catalog_refresh = projected_catalog_cache.refresh(projected_mount_set, overlay, budget);
     result.estimated_resident_bytes = result.resident_catalog_refresh.budget_execution.estimated_resident_content_bytes;
     result.resident_package_count = static_cast<std::uint32_t>(projected_mount_set.mounts().size());
     if (!result.resident_catalog_refresh.succeeded()) {
-        if (result.resident_catalog_refresh.status == RuntimeResidentCatalogCacheStatusV2::budget_failed) {
+        if (result.resident_catalog_refresh.status == RuntimeResidentCatalogCacheStatus::budget_failed) {
             result.status = RuntimePackageStreamingExecutionStatus::over_budget_intent;
             add_budget_diagnostics(result, result.resident_catalog_refresh.budget_execution);
         } else {
@@ -688,11 +686,11 @@ RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streamin
 
 RuntimePackageStreamingExecutionResult
 execute_selected_runtime_package_streaming_candidate_resident_mount_with_reviewed_evictions_safe_point(
-    IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
-    RuntimeResidentPackageMountIdV2 mount_id, RuntimePackageMountOverlay overlay,
+    IFileSystem& filesystem, RuntimeResidentPackageMountSet& mount_set, RuntimeResidentCatalogCache& catalog_cache,
+    RuntimeResidentPackageMountId mount_id, RuntimePackageMountOverlay overlay,
     const RuntimePackageStreamingExecutionDesc& desc,
-    std::vector<RuntimeResidentPackageMountIdV2> eviction_candidate_unmount_order,
-    std::vector<RuntimeResidentPackageMountIdV2> protected_mount_ids) {
+    std::vector<RuntimeResidentPackageMountId> eviction_candidate_unmount_order,
+    std::vector<RuntimeResidentPackageMountId> protected_mount_ids) {
     RuntimePackageStreamingExecutionResult result;
     result.target_id = desc.target_id;
     result.package_index_path = desc.package_index_path;
@@ -713,15 +711,15 @@ execute_selected_runtime_package_streaming_candidate_resident_mount_with_reviewe
         return result;
     }
 
-    const RuntimeResourceResidencyBudgetV2 budget{
+    const RuntimeResourceResidencyBudget budget{
         .max_resident_content_bytes = desc.resident_budget_bytes,
         .max_resident_asset_records = {},
     };
-    RuntimeResidentPackageMountSetV2 projected_mount_set = mount_set;
-    RuntimeResidentCatalogCacheV2 projected_catalog_cache = catalog_cache;
-    const auto reviewed_mount = commit_runtime_package_candidate_resident_mount_with_reviewed_evictions_v2(
+    RuntimeResidentPackageMountSet projected_mount_set = mount_set;
+    RuntimeResidentCatalogCache projected_catalog_cache = catalog_cache;
+    const auto reviewed_mount = commit_runtime_package_candidate_resident_mount_with_reviewed_evictions(
         filesystem, projected_mount_set, projected_catalog_cache,
-        RuntimePackageCandidateResidentMountReviewedEvictionsDescV2{
+        RuntimePackageCandidateResidentMountReviewedEvictionsDesc{
             .candidate = make_package_streaming_candidate(desc),
             .mount_id = mount_id,
             .overlay = overlay,
@@ -760,8 +758,8 @@ execute_selected_runtime_package_streaming_candidate_resident_mount_with_reviewe
 }
 
 RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streaming_resident_replace_safe_point(
-    RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
-    RuntimeResidentPackageMountIdV2 mount_id, RuntimePackageMountOverlay overlay,
+    RuntimeResidentPackageMountSet& mount_set, RuntimeResidentCatalogCache& catalog_cache,
+    RuntimeResidentPackageMountId mount_id, RuntimePackageMountOverlay overlay,
     const RuntimePackageStreamingExecutionDesc& desc, RuntimeAssetPackageLoadResult loaded_package) {
     RuntimePackageStreamingExecutionResult result;
     result.target_id = desc.target_id;
@@ -810,11 +808,11 @@ RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streamin
         return result;
     }
 
-    const RuntimeResourceResidencyBudgetV2 budget{
+    const RuntimeResourceResidencyBudget budget{
         .max_resident_content_bytes = desc.resident_budget_bytes,
         .max_resident_asset_records = {},
     };
-    result.resident_replace = commit_runtime_resident_package_replace_v2(
+    result.resident_replace = commit_runtime_resident_package_replace(
         mount_set, catalog_cache, mount_id, std::move(loaded_package.package), overlay, budget);
     result.resident_catalog_refresh = result.resident_replace.catalog_refresh;
     result.resident_mount_generation = result.resident_replace.mount_generation;
@@ -824,19 +822,19 @@ RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streamin
 
     if (!result.resident_replace.succeeded()) {
         switch (result.resident_replace.status) {
-        case RuntimeResidentPackageReplaceCommitStatusV2::invalid_mount_id:
-        case RuntimeResidentPackageReplaceCommitStatusV2::missing_mount_id:
+        case RuntimeResidentPackageReplaceCommitStatus::invalid_mount_id:
+        case RuntimeResidentPackageReplaceCommitStatus::missing_mount_id:
             result.status = RuntimePackageStreamingExecutionStatus::resident_replace_failed;
             if (!result.resident_replace.diagnostic.code.empty()) {
                 add_diagnostic(result, result.resident_replace.diagnostic.code,
                                result.resident_replace.diagnostic.message);
             }
             break;
-        case RuntimeResidentPackageReplaceCommitStatusV2::budget_failed:
+        case RuntimeResidentPackageReplaceCommitStatus::budget_failed:
             result.status = RuntimePackageStreamingExecutionStatus::over_budget_intent;
             add_budget_diagnostics(result, result.resident_replace.catalog_refresh.budget_execution);
             break;
-        case RuntimeResidentPackageReplaceCommitStatusV2::catalog_build_failed:
+        case RuntimeResidentPackageReplaceCommitStatus::catalog_build_failed:
             result.status = RuntimePackageStreamingExecutionStatus::resident_catalog_refresh_failed;
             if (result.resident_replace.invoked_candidate_catalog_build &&
                 !result.resident_replace.candidate_catalog_build.succeeded()) {
@@ -845,7 +843,7 @@ RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streamin
                 add_catalog_refresh_diagnostics(result, result.resident_replace.catalog_refresh);
             }
             break;
-        case RuntimeResidentPackageReplaceCommitStatusV2::replaced:
+        case RuntimeResidentPackageReplaceCommitStatus::replaced:
             result.status = RuntimePackageStreamingExecutionStatus::committed;
             result.committed = true;
             break;
@@ -859,8 +857,8 @@ RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streamin
 }
 
 RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streaming_candidate_resident_replace_safe_point(
-    IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
-    RuntimeResidentPackageMountIdV2 mount_id, RuntimePackageMountOverlay overlay,
+    IFileSystem& filesystem, RuntimeResidentPackageMountSet& mount_set, RuntimeResidentCatalogCache& catalog_cache,
+    RuntimeResidentPackageMountId mount_id, RuntimePackageMountOverlay overlay,
     const RuntimePackageStreamingExecutionDesc& desc) {
     RuntimePackageStreamingExecutionResult result;
     result.target_id = desc.target_id;
@@ -887,7 +885,7 @@ RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streamin
         return result;
     }
 
-    result.candidate_load = load_runtime_package_candidate_v2(filesystem, make_package_streaming_candidate(desc));
+    result.candidate_load = load_runtime_package_candidate(filesystem, make_package_streaming_candidate(desc));
     if (!result.candidate_load.succeeded()) {
         result.status = RuntimePackageStreamingExecutionStatus::package_load_failed;
         add_candidate_load_diagnostics(result, result.candidate_load);
@@ -902,11 +900,11 @@ RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streamin
     }
 
     result.estimated_resident_bytes = result.candidate_load.estimated_resident_bytes;
-    const RuntimeResourceResidencyBudgetV2 budget{
+    const RuntimeResourceResidencyBudget budget{
         .max_resident_content_bytes = desc.resident_budget_bytes,
         .max_resident_asset_records = {},
     };
-    result.resident_replace = commit_runtime_resident_package_replace_v2(
+    result.resident_replace = commit_runtime_resident_package_replace(
         mount_set, catalog_cache, mount_id, result.candidate_load.loaded_package.package, overlay, budget);
     result.resident_catalog_refresh = result.resident_replace.catalog_refresh;
     result.resident_mount_generation = result.resident_replace.mount_generation;
@@ -916,19 +914,19 @@ RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streamin
 
     if (!result.resident_replace.succeeded()) {
         switch (result.resident_replace.status) {
-        case RuntimeResidentPackageReplaceCommitStatusV2::invalid_mount_id:
-        case RuntimeResidentPackageReplaceCommitStatusV2::missing_mount_id:
+        case RuntimeResidentPackageReplaceCommitStatus::invalid_mount_id:
+        case RuntimeResidentPackageReplaceCommitStatus::missing_mount_id:
             result.status = RuntimePackageStreamingExecutionStatus::resident_replace_failed;
             if (!result.resident_replace.diagnostic.code.empty()) {
                 add_diagnostic(result, result.resident_replace.diagnostic.code,
                                result.resident_replace.diagnostic.message);
             }
             break;
-        case RuntimeResidentPackageReplaceCommitStatusV2::budget_failed:
+        case RuntimeResidentPackageReplaceCommitStatus::budget_failed:
             result.status = RuntimePackageStreamingExecutionStatus::over_budget_intent;
             add_budget_diagnostics(result, result.resident_replace.catalog_refresh.budget_execution);
             break;
-        case RuntimeResidentPackageReplaceCommitStatusV2::catalog_build_failed:
+        case RuntimeResidentPackageReplaceCommitStatus::catalog_build_failed:
             result.status = RuntimePackageStreamingExecutionStatus::resident_catalog_refresh_failed;
             if (result.resident_replace.invoked_candidate_catalog_build &&
                 !result.resident_replace.candidate_catalog_build.succeeded()) {
@@ -937,7 +935,7 @@ RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streamin
                 add_catalog_refresh_diagnostics(result, result.resident_replace.catalog_refresh);
             }
             break;
-        case RuntimeResidentPackageReplaceCommitStatusV2::replaced:
+        case RuntimeResidentPackageReplaceCommitStatus::replaced:
             result.status = RuntimePackageStreamingExecutionStatus::committed;
             result.committed = true;
             break;
@@ -952,11 +950,11 @@ RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streamin
 
 RuntimePackageStreamingExecutionResult
 execute_selected_runtime_package_streaming_candidate_resident_replace_with_reviewed_evictions_safe_point(
-    IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
-    RuntimeResidentPackageMountIdV2 mount_id, RuntimePackageMountOverlay overlay,
+    IFileSystem& filesystem, RuntimeResidentPackageMountSet& mount_set, RuntimeResidentCatalogCache& catalog_cache,
+    RuntimeResidentPackageMountId mount_id, RuntimePackageMountOverlay overlay,
     const RuntimePackageStreamingExecutionDesc& desc,
-    std::vector<RuntimeResidentPackageMountIdV2> eviction_candidate_unmount_order,
-    std::vector<RuntimeResidentPackageMountIdV2> protected_mount_ids) {
+    std::vector<RuntimeResidentPackageMountId> eviction_candidate_unmount_order,
+    std::vector<RuntimeResidentPackageMountId> protected_mount_ids) {
     RuntimePackageStreamingExecutionResult result;
     result.target_id = desc.target_id;
     result.package_index_path = desc.package_index_path;
@@ -977,15 +975,15 @@ execute_selected_runtime_package_streaming_candidate_resident_replace_with_revie
         return result;
     }
 
-    const RuntimeResourceResidencyBudgetV2 budget{
+    const RuntimeResourceResidencyBudget budget{
         .max_resident_content_bytes = desc.resident_budget_bytes,
         .max_resident_asset_records = {},
     };
-    RuntimeResidentPackageMountSetV2 projected_mount_set = mount_set;
-    RuntimeResidentCatalogCacheV2 projected_catalog_cache = catalog_cache;
-    const auto reviewed_replace = commit_runtime_package_candidate_resident_replace_with_reviewed_evictions_v2(
+    RuntimeResidentPackageMountSet projected_mount_set = mount_set;
+    RuntimeResidentCatalogCache projected_catalog_cache = catalog_cache;
+    const auto reviewed_replace = commit_runtime_package_candidate_resident_replace_with_reviewed_evictions(
         filesystem, projected_mount_set, projected_catalog_cache,
-        RuntimePackageCandidateResidentReplaceReviewedEvictionsDescV2{
+        RuntimePackageCandidateResidentReplaceReviewedEvictionsDesc{
             .candidate = make_package_streaming_candidate(desc),
             .mount_id = mount_id,
             .overlay = overlay,
@@ -1024,8 +1022,8 @@ execute_selected_runtime_package_streaming_candidate_resident_replace_with_revie
 }
 
 RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streaming_resident_unmount_safe_point(
-    RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
-    RuntimeResidentPackageMountIdV2 mount_id, RuntimePackageMountOverlay overlay,
+    RuntimeResidentPackageMountSet& mount_set, RuntimeResidentCatalogCache& catalog_cache,
+    RuntimeResidentPackageMountId mount_id, RuntimePackageMountOverlay overlay,
     const RuntimePackageStreamingExecutionDesc& desc) {
     RuntimePackageStreamingExecutionResult result;
     result.target_id = desc.target_id;
@@ -1047,15 +1045,15 @@ RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streamin
         return result;
     }
 
-    const RuntimeResourceResidencyBudgetV2 budget{
+    const RuntimeResourceResidencyBudget budget{
         .max_resident_content_bytes = desc.resident_budget_bytes,
         .max_resident_asset_records = {},
     };
 
-    RuntimeResidentPackageMountSetV2 projected_mount_set = mount_set;
-    RuntimeResidentCatalogCacheV2 projected_catalog_cache = catalog_cache;
-    const auto projected_unmount = commit_runtime_resident_package_unmount_v2(
-        projected_mount_set, projected_catalog_cache, mount_id, overlay, budget);
+    RuntimeResidentPackageMountSet projected_mount_set = mount_set;
+    RuntimeResidentCatalogCache projected_catalog_cache = catalog_cache;
+    const auto projected_unmount = commit_runtime_resident_package_unmount(projected_mount_set, projected_catalog_cache,
+                                                                           mount_id, overlay, budget);
     result.resident_catalog_refresh = projected_unmount.catalog_refresh;
     result.resident_mount_generation = projected_unmount.mount_generation;
     result.resident_package_count = static_cast<std::uint32_t>(projected_unmount.mounted_package_count);
@@ -1065,23 +1063,23 @@ RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streamin
     if (!projected_unmount.succeeded()) {
         result.resident_unmount = projected_unmount;
         switch (projected_unmount.status) {
-        case RuntimeResidentPackageUnmountCommitStatusV2::invalid_mount_id:
-        case RuntimeResidentPackageUnmountCommitStatusV2::missing_mount_id:
+        case RuntimeResidentPackageUnmountCommitStatus::invalid_mount_id:
+        case RuntimeResidentPackageUnmountCommitStatus::missing_mount_id:
             result.status = RuntimePackageStreamingExecutionStatus::resident_unmount_failed;
             if (!projected_unmount.unmount.diagnostic.code.empty()) {
                 add_diagnostic(result, projected_unmount.unmount.diagnostic.code,
                                projected_unmount.unmount.diagnostic.message);
             }
             break;
-        case RuntimeResidentPackageUnmountCommitStatusV2::budget_failed:
+        case RuntimeResidentPackageUnmountCommitStatus::budget_failed:
             result.status = RuntimePackageStreamingExecutionStatus::over_budget_intent;
             add_budget_diagnostics(result, projected_unmount.catalog_refresh.budget_execution);
             break;
-        case RuntimeResidentPackageUnmountCommitStatusV2::catalog_build_failed:
+        case RuntimeResidentPackageUnmountCommitStatus::catalog_build_failed:
             result.status = RuntimePackageStreamingExecutionStatus::resident_catalog_refresh_failed;
             add_catalog_refresh_diagnostics(result, projected_unmount.catalog_refresh);
             break;
-        case RuntimeResidentPackageUnmountCommitStatusV2::unmounted:
+        case RuntimeResidentPackageUnmountCommitStatus::unmounted:
             result.status = RuntimePackageStreamingExecutionStatus::committed;
             result.committed = true;
             break;
@@ -1100,7 +1098,7 @@ RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streamin
     }
 
     result.resident_unmount =
-        commit_runtime_resident_package_unmount_v2(mount_set, catalog_cache, mount_id, overlay, budget);
+        commit_runtime_resident_package_unmount(mount_set, catalog_cache, mount_id, overlay, budget);
     result.resident_catalog_refresh = result.resident_unmount.catalog_refresh;
     result.resident_mount_generation = result.resident_unmount.mount_generation;
     result.resident_package_count = static_cast<std::uint32_t>(result.resident_unmount.mounted_package_count);
@@ -1109,23 +1107,23 @@ RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streamin
 
     if (!result.resident_unmount.succeeded()) {
         switch (result.resident_unmount.status) {
-        case RuntimeResidentPackageUnmountCommitStatusV2::invalid_mount_id:
-        case RuntimeResidentPackageUnmountCommitStatusV2::missing_mount_id:
+        case RuntimeResidentPackageUnmountCommitStatus::invalid_mount_id:
+        case RuntimeResidentPackageUnmountCommitStatus::missing_mount_id:
             result.status = RuntimePackageStreamingExecutionStatus::resident_unmount_failed;
             if (!result.resident_unmount.unmount.diagnostic.code.empty()) {
                 add_diagnostic(result, result.resident_unmount.unmount.diagnostic.code,
                                result.resident_unmount.unmount.diagnostic.message);
             }
             break;
-        case RuntimeResidentPackageUnmountCommitStatusV2::budget_failed:
+        case RuntimeResidentPackageUnmountCommitStatus::budget_failed:
             result.status = RuntimePackageStreamingExecutionStatus::over_budget_intent;
             add_budget_diagnostics(result, result.resident_unmount.catalog_refresh.budget_execution);
             break;
-        case RuntimeResidentPackageUnmountCommitStatusV2::catalog_build_failed:
+        case RuntimeResidentPackageUnmountCommitStatus::catalog_build_failed:
             result.status = RuntimePackageStreamingExecutionStatus::resident_catalog_refresh_failed;
             add_catalog_refresh_diagnostics(result, result.resident_unmount.catalog_refresh);
             break;
-        case RuntimeResidentPackageUnmountCommitStatusV2::unmounted:
+        case RuntimeResidentPackageUnmountCommitStatus::unmounted:
             result.status = RuntimePackageStreamingExecutionStatus::committed;
             result.committed = true;
             break;

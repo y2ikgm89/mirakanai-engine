@@ -443,7 +443,7 @@ function Assert-RuntimeSceneValidationTargets($game, [string]$relativePath, [boo
             Write-Error "$relativePath runtimeSceneValidationTargets packageIndexPath must also be declared in runtimePackageFiles: $packageIndexPath"
         }
         if (-not (Test-SafeAssetKey $sceneAssetKey)) {
-            Write-Error "$relativePath runtimeSceneValidationTargets sceneAssetKey must be a non-empty safe AssetKeyV2: $sceneAssetKey"
+            Write-Error "$relativePath runtimeSceneValidationTargets sceneAssetKey must be a non-empty safe AssetKey: $sceneAssetKey"
         }
 
         if ($target.PSObject.Properties.Name.Contains("contentRoot")) {
@@ -693,7 +693,7 @@ function Assert-AtlasTilemapAuthoringTargets($game, [string]$relativePath, [bool
 
         foreach ($assetKey in @($tilemapAssetKey, $atlasTextureAssetKey)) {
             if (-not (Test-SafeAssetKey $assetKey)) {
-                Write-Error "$relativePath atlasTilemapAuthoringTargets asset keys must be safe AssetKeyV2 values: $assetKey"
+                Write-Error "$relativePath atlasTilemapAuthoringTargets asset keys must be safe AssetKey values: $assetKey"
             }
         }
         if ([string]$target.mode -ne "deterministic-package-data") {
@@ -801,7 +801,7 @@ function Assert-SpriteAtlasSourceAuthoringTargets($game, [string]$relativePath, 
         }
 
         if (-not (Test-SafeAssetKey $atlasAssetKey)) {
-            Write-Error "$relativePath spriteAtlasSourceAuthoringTargets atlasAssetKey must be a safe AssetKeyV2 value: $atlasAssetKey"
+            Write-Error "$relativePath spriteAtlasSourceAuthoringTargets atlasAssetKey must be a safe AssetKey value: $atlasAssetKey"
         }
         if ([string]$target.mode -ne "reviewed-rgba8-source-frames") {
             Write-Error "$relativePath spriteAtlasSourceAuthoringTargets mode must be reviewed-rgba8-source-frames"
@@ -1015,7 +1015,7 @@ function Assert-PackageStreamingResidencyTargets($game, [string]$relativePath, [
             }
             foreach ($assetKey in @($target.preloadAssetKeys)) {
                 if (-not (Test-SafeAssetKey ([string]$assetKey))) {
-                    Write-Error "$relativePath packageStreamingResidencyTargets preloadAssetKeys entries must be safe AssetKeyV2 values: $assetKey"
+                    Write-Error "$relativePath packageStreamingResidencyTargets preloadAssetKeys entries must be safe AssetKey values: $assetKey"
                 }
             }
         }
@@ -1177,7 +1177,7 @@ function Assert-PrefabScenePackageAuthoringTargets($game, [string]$relativePath,
         }
 
         if (-not (Test-SafeAssetKey $sceneAssetKey)) {
-            Write-Error "$relativePath prefabScenePackageAuthoringTargets sceneAssetKey must be a safe AssetKeyV2 value: $sceneAssetKey"
+            Write-Error "$relativePath prefabScenePackageAuthoringTargets sceneAssetKey must be a safe AssetKey value: $sceneAssetKey"
         }
         if ($runtimeSceneValidationTargetId -notmatch "^[a-z][a-z0-9-]*$" -or -not $sceneTargetRows.ContainsKey($runtimeSceneValidationTargetId)) {
             Write-Error "$relativePath prefabScenePackageAuthoringTargets runtimeSceneValidationTargetId must reference runtimeSceneValidationTargets: $runtimeSceneValidationTargetId"
@@ -1196,8 +1196,8 @@ function Assert-PrefabScenePackageAuthoringTargets($game, [string]$relativePath,
         if ([string]$target.sourceCookMode -ne "selected-source-registry-rows") {
             Write-Error "$relativePath prefabScenePackageAuthoringTargets sourceCookMode must be selected-source-registry-rows"
         }
-        if ([string]$target.sceneMigration -ne "migrate-scene-v2-runtime-package") {
-            Write-Error "$relativePath prefabScenePackageAuthoringTargets sceneMigration must be migrate-scene-v2-runtime-package"
+        if ([string]$target.sceneMigration -ne "migrate-scene-runtime-package") {
+            Write-Error "$relativePath prefabScenePackageAuthoringTargets sceneMigration must be migrate-scene-runtime-package"
         }
         if ([string]$target.runtimeSceneValidation -ne "validate-runtime-scene-package") {
             Write-Error "$relativePath prefabScenePackageAuthoringTargets runtimeSceneValidation must be validate-runtime-scene-package"
@@ -1215,7 +1215,7 @@ function Assert-PrefabScenePackageAuthoringTargets($game, [string]$relativePath,
                 Write-Error "$relativePath prefabScenePackageAuthoringTargets authoringCommandRows id must be kebab-case: $($row.id)"
             }
             if (@($allowedSurfaces) -notcontains ([string]$row.surface)) {
-                Write-Error "$relativePath prefabScenePackageAuthoringTargets authoringCommandRows surface must be a reviewed Scene/Prefab v2 surface: $($row.surface)"
+                Write-Error "$relativePath prefabScenePackageAuthoringTargets authoringCommandRows surface must be a reviewed Scene/Prefab surface: $($row.surface)"
             }
             if (@($expectedAuthoringOperations) -notcontains ([string]$row.operation)) {
                 Write-Error "$relativePath prefabScenePackageAuthoringTargets authoringCommandRows operation is unsupported: $($row.operation)"
@@ -1279,7 +1279,7 @@ function Assert-PrefabScenePackageAuthoringTargets($game, [string]$relativePath,
         foreach ($assetKey in @($target.selectedSourceAssetKeys)) {
             $key = [string]$assetKey
             if (-not (Test-SafeAssetKey $key)) {
-                Write-Error "$relativePath prefabScenePackageAuthoringTargets selectedSourceAssetKeys entries must be safe AssetKeyV2 values: $key"
+                Write-Error "$relativePath prefabScenePackageAuthoringTargets selectedSourceAssetKeys entries must be safe AssetKey values: $key"
             }
             if (-not [System.Text.RegularExpressions.Regex]::IsMatch($normalizedSourceRegistryText, "(?m)^asset\.\d+\.key=$([System.Text.RegularExpressions.Regex]::Escape($key))$")) {
                 Write-Error "$relativePath prefabScenePackageAuthoringTargets selectedSourceAssetKeys must exist in sourceRegistryPath: $key"
@@ -1464,7 +1464,7 @@ function Assert-RegisteredSourceAssetCookTargets($game, [string]$relativePath, [
         foreach ($assetKey in @($target.selectedAssetKeys)) {
             $key = [string]$assetKey
             if (-not (Test-SafeAssetKey $key)) {
-                Write-Error "$relativePath registeredSourceAssetCookTargets '$id' selectedAssetKeys entries must be safe AssetKeyV2 values: $key"
+                Write-Error "$relativePath registeredSourceAssetCookTargets '$id' selectedAssetKeys entries must be safe AssetKey values: $key"
             }
             if (-not [System.Text.RegularExpressions.Regex]::IsMatch($normalizedSourceRegistryText, "(?m)^asset\.\d+\.key=$([System.Text.RegularExpressions.Regex]::Escape($key))$")) {
                 Write-Error "$relativePath registeredSourceAssetCookTargets '$id' selectedAssetKeys must exist in sourceRegistryPath: $key"

@@ -15,7 +15,7 @@
 namespace mirakana {
 
 struct PlaceholderAssetRequest {
-    AssetKeyV2 asset_key;
+    AssetKey asset_key;
     AssetKind asset_kind{AssetKind::unknown};
     std::string source_path;
     std::string imported_path;
@@ -41,7 +41,7 @@ struct PlaceholderAssetChangedFile {
 };
 
 struct PlaceholderAssetProvenanceRow {
-    AssetKeyV2 asset_key;
+    AssetKey asset_key;
     AssetId asset;
     AssetKind asset_kind{AssetKind::unknown};
     std::string source_path;
@@ -57,7 +57,7 @@ struct PlaceholderAssetDiagnostic {
     std::string code;
     std::string message;
     std::string path;
-    AssetKeyV2 asset_key;
+    AssetKey asset_key;
 };
 
 struct PlaceholderAssetBundlePlan {

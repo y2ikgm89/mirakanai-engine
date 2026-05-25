@@ -26,15 +26,15 @@ enum class AssetRuntimePackageHotReloadReplacementDiagnosticPhase : std::uint8_t
 };
 
 struct AssetRuntimePackageHotReloadRuntimeReplacementDesc {
-    std::vector<runtime::RuntimePackageIndexDiscoveryCandidateV2> candidates;
-    runtime::RuntimePackageIndexDiscoveryDescV2 discovery;
+    std::vector<runtime::RuntimePackageIndexDiscoveryCandidate> candidates;
+    runtime::RuntimePackageIndexDiscoveryDesc discovery;
     std::string selected_package_index_path;
-    runtime::RuntimeResidentPackageMountIdV2 mount_id;
-    std::vector<runtime::RuntimeResidentPackageMountIdV2> reviewed_existing_mount_ids;
+    runtime::RuntimeResidentPackageMountId mount_id;
+    std::vector<runtime::RuntimeResidentPackageMountId> reviewed_existing_mount_ids;
     runtime::RuntimePackageMountOverlay overlay{runtime::RuntimePackageMountOverlay::last_mount_wins};
-    runtime::RuntimeResourceResidencyBudgetV2 budget;
-    std::vector<runtime::RuntimeResidentPackageMountIdV2> eviction_candidate_unmount_order;
-    std::vector<runtime::RuntimeResidentPackageMountIdV2> protected_mount_ids;
+    runtime::RuntimeResourceResidencyBudget budget;
+    std::vector<runtime::RuntimeResidentPackageMountId> eviction_candidate_unmount_order;
+    std::vector<runtime::RuntimeResidentPackageMountId> protected_mount_ids;
 };
 
 struct AssetRuntimePackageHotReloadReplacementDesc {
@@ -48,7 +48,7 @@ struct AssetRuntimePackageHotReloadReplacementDiagnostic {
     AssetRuntimePackageHotReloadReplacementDiagnosticPhase phase{
         AssetRuntimePackageHotReloadReplacementDiagnosticPhase::recook_execution};
     AssetId asset;
-    runtime::RuntimeResidentPackageMountIdV2 mount;
+    runtime::RuntimeResidentPackageMountId mount;
     std::string path;
     std::string code;
     std::string message;
@@ -57,7 +57,7 @@ struct AssetRuntimePackageHotReloadReplacementDiagnostic {
 struct AssetRuntimePackageHotReloadReplacementResult {
     AssetRuntimePackageHotReloadReplacementStatus status{AssetRuntimePackageHotReloadReplacementStatus::recook_failed};
     AssetRuntimeRecookExecutionResult recook;
-    runtime::RuntimePackageHotReloadRecookReplacementResultV2 runtime_replacement;
+    runtime::RuntimePackageHotReloadRecookReplacementResult runtime_replacement;
     std::vector<AssetHotReloadApplyResult> committed_apply_results;
     std::vector<AssetRuntimePackageHotReloadReplacementDiagnostic> diagnostics;
     bool invoked_file_watch{false};
@@ -105,7 +105,7 @@ struct AssetRuntimePackageHotReloadRegisteredAssetWatchTickDiagnostic {
     AssetRuntimePackageHotReloadRegisteredAssetWatchTickDiagnosticPhase phase{
         AssetRuntimePackageHotReloadRegisteredAssetWatchTickDiagnosticPhase::scan};
     AssetId asset;
-    runtime::RuntimeResidentPackageMountIdV2 mount;
+    runtime::RuntimeResidentPackageMountId mount;
     std::string path;
     std::string code;
     std::string message;
@@ -134,7 +134,7 @@ struct AssetRuntimePackageHotReloadRegisteredAssetWatchTickResult {
 [[nodiscard]] AssetRuntimePackageHotReloadReplacementResult
 execute_asset_runtime_package_hot_reload_replacement_safe_point(
     IFileSystem& filesystem, AssetRuntimeReplacementState& replacements,
-    runtime::RuntimeResidentPackageMountSetV2& mount_set, runtime::RuntimeResidentCatalogCacheV2& catalog_cache,
+    runtime::RuntimeResidentPackageMountSet& mount_set, runtime::RuntimeResidentCatalogCache& catalog_cache,
     const AssetRuntimePackageHotReloadReplacementDesc& desc);
 
 /// Scans caller-registered asset files, advances the caller-owned tracker/scheduler, and executes the reviewed recook
@@ -145,7 +145,7 @@ execute_asset_runtime_package_hot_reload_replacement_safe_point(
 execute_asset_runtime_package_hot_reload_registered_asset_watch_tick_safe_point(
     IFileSystem& filesystem, const AssetRegistry& assets, const AssetDependencyGraph& dependencies,
     AssetRuntimePackageHotReloadRegisteredAssetWatchTickState& tick_state, AssetRuntimeReplacementState& replacements,
-    runtime::RuntimeResidentPackageMountSetV2& mount_set, runtime::RuntimeResidentCatalogCacheV2& catalog_cache,
+    runtime::RuntimeResidentPackageMountSet& mount_set, runtime::RuntimeResidentCatalogCache& catalog_cache,
     const AssetRuntimePackageHotReloadRegisteredAssetWatchTickDesc& desc);
 
 } // namespace mirakana

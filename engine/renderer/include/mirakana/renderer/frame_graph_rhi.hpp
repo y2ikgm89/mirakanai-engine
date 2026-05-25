@@ -253,10 +253,10 @@ struct FrameGraphRhiTextureExecutionResult {
 [[nodiscard]] std::optional<rhi::ResourceState> frame_graph_texture_state_for_access(FrameGraphAccess access) noexcept;
 
 [[nodiscard]] std::vector<FrameGraphTexturePassTargetAccess>
-build_frame_graph_texture_pass_target_accesses(const FrameGraphV1Desc& desc);
+build_frame_graph_texture_pass_target_accesses(const FrameGraphDesc& desc);
 
 [[nodiscard]] FrameGraphTransientTextureAliasPlan
-plan_frame_graph_transient_texture_aliases(const FrameGraphV1Desc& desc,
+plan_frame_graph_transient_texture_aliases(const FrameGraphDesc& desc,
                                            std::span<const FrameGraphTransientTextureDesc> texture_descs);
 
 [[nodiscard]] FrameGraphTransientTextureLeaseBindingResult

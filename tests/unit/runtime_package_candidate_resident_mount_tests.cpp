@@ -60,17 +60,17 @@ class CountingFileSystem final : public mirakana::IFileSystem {
     bool fail_read_text_{false};
 };
 
-[[nodiscard]] mirakana::runtime::RuntimePackageIndexDiscoveryCandidateV2 make_candidate() {
-    return mirakana::runtime::RuntimePackageIndexDiscoveryCandidateV2{
+[[nodiscard]] mirakana::runtime::RuntimePackageIndexDiscoveryCandidate make_candidate() {
+    return mirakana::runtime::RuntimePackageIndexDiscoveryCandidate{
         .package_index_path = "runtime/packages/main.geindex",
         .content_root = "runtime",
         .label = "packages/main",
     };
 }
 
-[[nodiscard]] mirakana::runtime::RuntimePackageCandidateResidentMountDescV2
-make_mount_desc(mirakana::runtime::RuntimeResidentPackageMountIdV2 mount_id) {
-    return mirakana::runtime::RuntimePackageCandidateResidentMountDescV2{
+[[nodiscard]] mirakana::runtime::RuntimePackageCandidateResidentMountDesc
+make_mount_desc(mirakana::runtime::RuntimeResidentPackageMountId mount_id) {
+    return mirakana::runtime::RuntimePackageCandidateResidentMountDesc{
         .candidate = make_candidate(),
         .mount_id = mount_id,
         .overlay = mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins,
@@ -114,18 +114,18 @@ MK_TEST("runtime package candidate resident mount loads selected candidate and r
     const auto texture = mirakana::AssetId::from_name("textures/player");
     const std::string payload = "format=GameEngine.CookedTexture\ntexture.width=4\n";
     write_package(filesystem, texture, mirakana::AssetKind::texture, payload);
-    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
-    mirakana::runtime::RuntimeResidentCatalogCacheV2 catalog_cache;
+    mirakana::runtime::RuntimeResidentPackageMountSet mount_set;
+    mirakana::runtime::RuntimeResidentCatalogCache catalog_cache;
 
-    const auto result = mirakana::runtime::commit_runtime_package_candidate_resident_mount_v2(
+    const auto result = mirakana::runtime::commit_runtime_package_candidate_resident_mount(
         filesystem, mount_set, catalog_cache,
-        make_mount_desc(mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 4}));
+        make_mount_desc(mirakana::runtime::RuntimeResidentPackageMountId{.value = 4}));
 
     MK_REQUIRE(result.succeeded());
-    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageCandidateResidentMountStatusV2::mounted);
-    MK_REQUIRE(result.candidate_load.status == mirakana::runtime::RuntimePackageCandidateLoadStatusV2::loaded);
-    MK_REQUIRE(result.resident_mount.status == mirakana::runtime::RuntimeResidentPackageMountStatusV2::mounted);
-    MK_REQUIRE(result.catalog_refresh.status == mirakana::runtime::RuntimeResidentCatalogCacheStatusV2::rebuilt);
+    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageCandidateResidentMountStatus::mounted);
+    MK_REQUIRE(result.candidate_load.status == mirakana::runtime::RuntimePackageCandidateLoadStatus::loaded);
+    MK_REQUIRE(result.resident_mount.status == mirakana::runtime::RuntimeResidentPackageMountStatus::mounted);
+    MK_REQUIRE(result.catalog_refresh.status == mirakana::runtime::RuntimeResidentCatalogCacheStatus::rebuilt);
     MK_REQUIRE(result.invoked_candidate_load);
     MK_REQUIRE(result.invoked_catalog_refresh);
     MK_REQUIRE(result.committed);
@@ -137,10 +137,10 @@ MK_TEST("runtime package candidate resident mount loads selected candidate and r
     MK_REQUIRE(result.mount_generation == mount_set.generation());
     MK_REQUIRE(result.mount_generation != result.previous_mount_generation);
     MK_REQUIRE(mount_set.mounts().size() == 1);
-    MK_REQUIRE(mount_set.mounts()[0].id == mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 4});
+    MK_REQUIRE(mount_set.mounts()[0].id == mirakana::runtime::RuntimeResidentPackageMountId{.value = 4});
     MK_REQUIRE(mount_set.mounts()[0].label == "packages/main");
     MK_REQUIRE(catalog_cache.has_value());
-    MK_REQUIRE(mirakana::runtime::find_runtime_resource_v2(catalog_cache.catalog(), texture).has_value());
+    MK_REQUIRE(mirakana::runtime::find_runtime_resource(catalog_cache.catalog(), texture).has_value());
     MK_REQUIRE(result.diagnostics.empty());
     MK_REQUIRE(filesystem.read_text_count() == 2);
 }
@@ -149,31 +149,31 @@ MK_TEST("runtime package candidate resident mount rejects invalid and duplicate 
     CountingFileSystem filesystem;
     const auto texture = mirakana::AssetId::from_name("textures/player");
     write_package(filesystem, texture, mirakana::AssetKind::texture, "not read");
-    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    mirakana::runtime::RuntimeResidentPackageMountSet mount_set;
     MK_REQUIRE(mount_set
-                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
-                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 7},
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecord{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountId{.value = 7},
                        .label = "base",
                        .package = make_loaded_package(texture, "base"),
                    })
                    .succeeded());
-    mirakana::runtime::RuntimeResidentCatalogCacheV2 catalog_cache;
+    mirakana::runtime::RuntimeResidentCatalogCache catalog_cache;
     MK_REQUIRE(catalog_cache
                    .refresh(mount_set, mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins,
-                            mirakana::runtime::RuntimeResourceResidencyBudgetV2{})
+                            mirakana::runtime::RuntimeResourceResidencyBudget{})
                    .succeeded());
     const auto previous_mount_generation = mount_set.generation();
     const auto previous_catalog_generation = catalog_cache.catalog().generation();
 
-    const auto invalid_id = mirakana::runtime::commit_runtime_package_candidate_resident_mount_v2(
-        filesystem, mount_set, catalog_cache, make_mount_desc(mirakana::runtime::RuntimeResidentPackageMountIdV2{}));
-    const auto duplicate_id = mirakana::runtime::commit_runtime_package_candidate_resident_mount_v2(
+    const auto invalid_id = mirakana::runtime::commit_runtime_package_candidate_resident_mount(
+        filesystem, mount_set, catalog_cache, make_mount_desc(mirakana::runtime::RuntimeResidentPackageMountId{}));
+    const auto duplicate_id = mirakana::runtime::commit_runtime_package_candidate_resident_mount(
         filesystem, mount_set, catalog_cache,
-        make_mount_desc(mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 7}));
+        make_mount_desc(mirakana::runtime::RuntimeResidentPackageMountId{.value = 7}));
 
-    MK_REQUIRE(invalid_id.status == mirakana::runtime::RuntimePackageCandidateResidentMountStatusV2::invalid_mount_id);
+    MK_REQUIRE(invalid_id.status == mirakana::runtime::RuntimePackageCandidateResidentMountStatus::invalid_mount_id);
     MK_REQUIRE(duplicate_id.status ==
-               mirakana::runtime::RuntimePackageCandidateResidentMountStatusV2::duplicate_mount_id);
+               mirakana::runtime::RuntimePackageCandidateResidentMountStatus::duplicate_mount_id);
     MK_REQUIRE(!invalid_id.invoked_candidate_load);
     MK_REQUIRE(!duplicate_id.invoked_candidate_load);
     MK_REQUIRE(!invalid_id.invoked_catalog_refresh);
@@ -191,42 +191,42 @@ MK_TEST("runtime package candidate resident mount rejects invalid and duplicate 
 MK_TEST("runtime package candidate resident mount preserves state on candidate load failures") {
     CountingFileSystem filesystem;
     const auto texture = mirakana::AssetId::from_name("textures/base");
-    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    mirakana::runtime::RuntimeResidentPackageMountSet mount_set;
     MK_REQUIRE(mount_set
-                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
-                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1},
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecord{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountId{.value = 1},
                        .label = "base",
                        .package = make_loaded_package(texture, "base"),
                    })
                    .succeeded());
-    mirakana::runtime::RuntimeResidentCatalogCacheV2 catalog_cache;
+    mirakana::runtime::RuntimeResidentCatalogCache catalog_cache;
     MK_REQUIRE(catalog_cache
                    .refresh(mount_set, mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins,
-                            mirakana::runtime::RuntimeResourceResidencyBudgetV2{})
+                            mirakana::runtime::RuntimeResourceResidencyBudget{})
                    .succeeded());
     const auto previous_mount_generation = mount_set.generation();
     const auto previous_catalog_generation = catalog_cache.catalog().generation();
 
-    auto desc = make_mount_desc(mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 2});
+    auto desc = make_mount_desc(mirakana::runtime::RuntimeResidentPackageMountId{.value = 2});
     desc.candidate.package_index_path = "runtime/../escape.geindex";
-    const auto invalid_candidate = mirakana::runtime::commit_runtime_package_candidate_resident_mount_v2(
-        filesystem, mount_set, catalog_cache, desc);
+    const auto invalid_candidate =
+        mirakana::runtime::commit_runtime_package_candidate_resident_mount(filesystem, mount_set, catalog_cache, desc);
 
     filesystem.write_text("runtime/packages/main.geindex", "not a cooked package index");
-    const auto invalid_index = mirakana::runtime::commit_runtime_package_candidate_resident_mount_v2(
+    const auto invalid_index = mirakana::runtime::commit_runtime_package_candidate_resident_mount(
         filesystem, mount_set, catalog_cache,
-        make_mount_desc(mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 3}));
+        make_mount_desc(mirakana::runtime::RuntimeResidentPackageMountId{.value = 3}));
 
     MK_REQUIRE(invalid_candidate.status ==
-               mirakana::runtime::RuntimePackageCandidateResidentMountStatusV2::candidate_load_failed);
+               mirakana::runtime::RuntimePackageCandidateResidentMountStatus::candidate_load_failed);
     MK_REQUIRE(invalid_candidate.candidate_load.status ==
-               mirakana::runtime::RuntimePackageCandidateLoadStatusV2::invalid_candidate);
+               mirakana::runtime::RuntimePackageCandidateLoadStatus::invalid_candidate);
     MK_REQUIRE(invalid_index.status ==
-               mirakana::runtime::RuntimePackageCandidateResidentMountStatusV2::candidate_load_failed);
+               mirakana::runtime::RuntimePackageCandidateResidentMountStatus::candidate_load_failed);
     MK_REQUIRE(invalid_index.candidate_load.status ==
-               mirakana::runtime::RuntimePackageCandidateLoadStatusV2::package_load_failed);
+               mirakana::runtime::RuntimePackageCandidateLoadStatus::package_load_failed);
     MK_REQUIRE(invalid_candidate.diagnostics[0].phase ==
-               mirakana::runtime::RuntimePackageCandidateResidentMountDiagnosticPhaseV2::candidate_load);
+               mirakana::runtime::RuntimePackageCandidateResidentMountDiagnosticPhase::candidate_load);
     MK_REQUIRE(invalid_index.diagnostics[0].code == "package-index-invalid");
     MK_REQUIRE(invalid_candidate.invoked_candidate_load);
     MK_REQUIRE(invalid_index.invoked_candidate_load);
@@ -243,15 +243,15 @@ MK_TEST("runtime package candidate resident mount preserves state on read except
     CountingFileSystem filesystem;
     filesystem.write_text("runtime/packages/main.geindex", "not read");
     filesystem.fail_read_text(true);
-    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
-    mirakana::runtime::RuntimeResidentCatalogCacheV2 catalog_cache;
+    mirakana::runtime::RuntimeResidentPackageMountSet mount_set;
+    mirakana::runtime::RuntimeResidentCatalogCache catalog_cache;
 
-    const auto result = mirakana::runtime::commit_runtime_package_candidate_resident_mount_v2(
+    const auto result = mirakana::runtime::commit_runtime_package_candidate_resident_mount(
         filesystem, mount_set, catalog_cache,
-        make_mount_desc(mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 2}));
+        make_mount_desc(mirakana::runtime::RuntimeResidentPackageMountId{.value = 2}));
 
-    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageCandidateResidentMountStatusV2::candidate_load_failed);
-    MK_REQUIRE(result.candidate_load.status == mirakana::runtime::RuntimePackageCandidateLoadStatusV2::read_failed);
+    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageCandidateResidentMountStatus::candidate_load_failed);
+    MK_REQUIRE(result.candidate_load.status == mirakana::runtime::RuntimePackageCandidateLoadStatus::read_failed);
     MK_REQUIRE(result.diagnostics[0].code == "package-read-failed");
     MK_REQUIRE(result.invoked_candidate_load);
     MK_REQUIRE(!result.invoked_catalog_refresh);
@@ -267,45 +267,45 @@ MK_TEST("runtime package candidate resident mount preserves state on projected b
     const auto texture = mirakana::AssetId::from_name("textures/player");
     const std::string payload = "format=GameEngine.CookedTexture\ntexture.width=4\n";
     write_package(filesystem, texture, mirakana::AssetKind::texture, payload);
-    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    mirakana::runtime::RuntimeResidentPackageMountSet mount_set;
     MK_REQUIRE(mount_set
-                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
-                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1},
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecord{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountId{.value = 1},
                        .label = "base",
                        .package = make_loaded_package(base, "base"),
                    })
                    .succeeded());
-    mirakana::runtime::RuntimeResidentCatalogCacheV2 catalog_cache;
+    mirakana::runtime::RuntimeResidentCatalogCache catalog_cache;
     MK_REQUIRE(catalog_cache
                    .refresh(mount_set, mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins,
-                            mirakana::runtime::RuntimeResourceResidencyBudgetV2{})
+                            mirakana::runtime::RuntimeResourceResidencyBudget{})
                    .succeeded());
     const auto previous_mount_generation = mount_set.generation();
     const auto previous_catalog_generation = catalog_cache.catalog().generation();
-    const auto base_handle = mirakana::runtime::find_runtime_resource_v2(catalog_cache.catalog(), base);
+    const auto base_handle = mirakana::runtime::find_runtime_resource(catalog_cache.catalog(), base);
     MK_REQUIRE(base_handle.has_value());
-    auto desc = make_mount_desc(mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 2});
+    auto desc = make_mount_desc(mirakana::runtime::RuntimeResidentPackageMountId{.value = 2});
     desc.budget.max_resident_content_bytes = 4;
 
-    const auto result = mirakana::runtime::commit_runtime_package_candidate_resident_mount_v2(filesystem, mount_set,
-                                                                                              catalog_cache, desc);
+    const auto result =
+        mirakana::runtime::commit_runtime_package_candidate_resident_mount(filesystem, mount_set, catalog_cache, desc);
 
-    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageCandidateResidentMountStatusV2::budget_failed);
-    MK_REQUIRE(result.candidate_load.status == mirakana::runtime::RuntimePackageCandidateLoadStatusV2::loaded);
-    MK_REQUIRE(result.resident_mount.status == mirakana::runtime::RuntimeResidentPackageMountStatusV2::mounted);
-    MK_REQUIRE(result.catalog_refresh.status == mirakana::runtime::RuntimeResidentCatalogCacheStatusV2::budget_failed);
+    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageCandidateResidentMountStatus::budget_failed);
+    MK_REQUIRE(result.candidate_load.status == mirakana::runtime::RuntimePackageCandidateLoadStatus::loaded);
+    MK_REQUIRE(result.resident_mount.status == mirakana::runtime::RuntimeResidentPackageMountStatus::mounted);
+    MK_REQUIRE(result.catalog_refresh.status == mirakana::runtime::RuntimeResidentCatalogCacheStatus::budget_failed);
     MK_REQUIRE(result.invoked_candidate_load);
     MK_REQUIRE(result.invoked_catalog_refresh);
     MK_REQUIRE(!result.committed);
     MK_REQUIRE(result.loaded_record_count == 1);
     MK_REQUIRE(result.projected_resident_bytes > *desc.budget.max_resident_content_bytes);
     MK_REQUIRE(result.diagnostics[0].phase ==
-               mirakana::runtime::RuntimePackageCandidateResidentMountDiagnosticPhaseV2::resident_budget);
+               mirakana::runtime::RuntimePackageCandidateResidentMountDiagnosticPhase::resident_budget);
     MK_REQUIRE(mount_set.generation() == previous_mount_generation);
     MK_REQUIRE(mount_set.mounts().size() == 1);
     MK_REQUIRE(catalog_cache.catalog().generation() == previous_catalog_generation);
-    MK_REQUIRE(mirakana::runtime::is_runtime_resource_handle_live_v2(catalog_cache.catalog(), *base_handle));
-    MK_REQUIRE(!mirakana::runtime::find_runtime_resource_v2(catalog_cache.catalog(), texture).has_value());
+    MK_REQUIRE(mirakana::runtime::is_runtime_resource_handle_live(catalog_cache.catalog(), *base_handle));
+    MK_REQUIRE(!mirakana::runtime::find_runtime_resource(catalog_cache.catalog(), texture).has_value());
 }
 
 int main() {

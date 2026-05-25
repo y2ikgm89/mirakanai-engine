@@ -281,7 +281,7 @@ enum class RuntimePackageMountOverlay : std::uint8_t {
 };
 
 /// Deterministically merges multiple loaded runtime packages into a single overlay package suitable for
-/// `build_runtime_resource_catalog_v2`. Asset handles are reassigned in stable `AssetId` order; dependency
+/// `build_runtime_resource_catalog`. Asset handles are reassigned in stable `AssetId` order; dependency
 /// vectors are filtered to assets that survive the merge; dependency edges are unioned and deduplicated.
 [[nodiscard]] RuntimeAssetPackage merge_runtime_asset_packages_overlay(const std::vector<RuntimeAssetPackage>& mounts,
                                                                        RuntimePackageMountOverlay overlay);

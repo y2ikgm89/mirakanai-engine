@@ -119,7 +119,7 @@ constexpr std::string_view kHudAtlasProofResourceId{"hud.texture_atlas_proof"};
 constexpr std::string_view kHudAtlasProofAssetUri{"runtime/assets/desktop_runtime/base_color.texture.geasset"};
 
 [[nodiscard]] mirakana::AssetId asset_id_from_game_asset_key(std::string_view key) {
-    return mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{.value = std::string{key}});
+    return mirakana::asset_id_from_key(mirakana::AssetKey{.value = std::string{key}});
 }
 
 [[nodiscard]] mirakana::AssetId packaged_scene_asset_id() {

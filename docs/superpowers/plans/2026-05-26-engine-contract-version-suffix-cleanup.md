@@ -60,8 +60,8 @@ Likely modify during implementation:
 
 - `engine/assets/include/mirakana/assets/*.hpp`
 - `engine/assets/src/*.cpp`
-- `engine/scene/include/mirakana/scene/schema_v2.hpp`
-- `engine/scene/src/schema_v2.cpp`
+- `engine/scene/include/mirakana/scene/schema.hpp`
+- `engine/scene/src/schema.cpp`
 - `engine/scene/src/scene_io.cpp`
 - `engine/scene/src/prefab.cpp`
 - `engine/scene/src/prefab_overrides.cpp`
@@ -163,7 +163,7 @@ Expected: one planning commit containing only design, plan, and registry pointer
 - Modify: `engine/scene/src/scene_io.cpp`
 - Modify: `engine/scene/src/prefab.cpp`
 - Modify: `engine/scene/src/prefab_overrides.cpp`
-- Modify: `engine/scene/src/schema_v2.cpp`
+- Modify: `engine/scene/src/schema.cpp`
 - Modify: `engine/tools/asset/*.cpp`
 - Modify: `engine/tools/scene/*.cpp`
 - Modify: `engine/tools/shader/*.cpp`
@@ -298,8 +298,8 @@ GameEngine.AiCommand.CreateScene.Request.v1 -> GameEngine.AiCommand.CreateScene.
 GameEngine.AiCommand.CreateScene.Result.v1 -> GameEngine.AiCommand.CreateScene.Result
 GameEngine.AiCommand.InstantiatePrefab.Request.v1 -> GameEngine.AiCommand.InstantiatePrefab.Request
 GameEngine.AiCommand.InstantiatePrefab.Result.v1 -> GameEngine.AiCommand.InstantiatePrefab.Result
-GameEngine.AiCommand.MigrateSceneV2RuntimePackage.Request.v1 -> GameEngine.AiCommand.MigrateSceneV2RuntimePackage.Request
-GameEngine.AiCommand.MigrateSceneV2RuntimePackage.Result.v1 -> GameEngine.AiCommand.MigrateSceneV2RuntimePackage.Result
+GameEngine.AiCommand.MigrateSceneRuntimePackage.Request.v1 -> GameEngine.AiCommand.MigrateSceneRuntimePackage.Request
+GameEngine.AiCommand.MigrateSceneRuntimePackage.Result.v1 -> GameEngine.AiCommand.MigrateSceneRuntimePackage.Result
 GameEngine.AiCommand.RefreshPrefabInstance.Request.v1 -> GameEngine.AiCommand.RefreshPrefabInstance.Request
 GameEngine.AiCommand.RefreshPrefabInstance.Result.v1 -> GameEngine.AiCommand.RefreshPrefabInstance.Result
 GameEngine.AiCommand.RegisterRuntimePackageFiles.Request.v1 -> GameEngine.AiCommand.RegisterRuntimePackageFiles.Request
@@ -342,8 +342,8 @@ Run:
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_identity_runtime_resource_tests MK_scene_schema_v2_tests MK_runtime_tests MK_runtime_scene_tests MK_tools_tests MK_editor_core_tests
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_(asset_identity_runtime_resource_tests|scene_schema_v2_tests|runtime_tests|runtime_scene_tests|tools_tests|editor_core_tests)"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_identity_runtime_resource_tests MK_scene_schema_tests MK_runtime_tests MK_runtime_scene_tests MK_tools_tests MK_editor_core_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_(asset_identity_runtime_resource_tests|scene_schema_tests|runtime_tests|runtime_scene_tests|tools_tests|editor_core_tests)"
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
 ```
@@ -372,13 +372,13 @@ Expected: one validated commit with saved-format code/data/test changes only. If
 
 **Files:**
 
-- Modify/rename: `engine/scene/include/mirakana/scene/schema_v2.hpp`
-- Modify/rename: `engine/scene/src/schema_v2.cpp`
-- Modify/rename: `tests/unit/scene_schema_v2_tests.cpp`
+- Modify/rename: `engine/scene/include/mirakana/scene/schema.hpp`
+- Modify/rename: `engine/scene/src/schema.cpp`
+- Modify/rename: `tests/unit/scene_schema_tests.cpp`
 - Modify: public headers and sources under `engine/assets`, `engine/runtime`, `engine/renderer`, `engine/tools`, `editor/core`
 - Modify: dependent tests under `tests/unit`
 
-- [ ] **Step 1: Build the exact C++ suffix map**
+- [x] **Step 1: Build the exact C++ suffix map**
 
 Run:
 
@@ -392,38 +392,38 @@ rg -o --no-line-number --no-filename "\b[A-Za-z][A-Za-z0-9]*V[0-9]+\b|\b[a-z][a-
 
 Expected: an inventory used to drive the rename. Do not mechanically change `uv.v1`, `u1`, `v1`, `schemaVersion`, or external version fields.
 
-- [ ] **Step 2: Rename the highest-blast-radius families first**
+- [x] **Step 2: Rename the highest-blast-radius families first**
 
 Apply canonical renames in this order:
 
 ```text
-AssetKeyV2 -> AssetKey
-AssetIdentityDocumentV2 -> AssetIdentityDocument
-AssetIdentityRowV2 -> AssetIdentityRow
-AssetIdentityDiagnosticCodeV2 -> AssetIdentityDiagnosticCode
-asset_id_from_key_v2 -> asset_id_from_key
-plan_asset_identity_placements_v2 -> plan_asset_identity_placements
-SourceAssetRegistryDocumentV1 -> SourceAssetRegistryDocument
-SourceAssetRegistryRowV1 -> SourceAssetRegistryRow
-SourceAssetDependencyRowV1 -> SourceAssetDependencyRow
-SceneDocumentV2 -> SceneDocument
-PrefabDocumentV2 -> PrefabDocument
-SceneNodeDocumentV2 -> SceneNodeDocument
-SceneComponentDocumentV2 -> SceneComponentDocument
-serialize_scene_document_v2 -> serialize_scene_document
-deserialize_scene_document_v2 -> deserialize_scene_document
-validate_scene_document_v2 -> validate_scene_document
-serialize_prefab_document_v2 -> serialize_prefab_document
-deserialize_prefab_document_v2 -> deserialize_prefab_document
-validate_prefab_document_v2 -> validate_prefab_document
-RuntimeResourceCatalogV2 -> RuntimeResourceCatalog
-RuntimeResourceHandleV2 -> RuntimeResourceHandle
-RuntimeResidentPackageMountSetV2 -> RuntimeResidentPackageMountSet
-RuntimeResidentPackageMountIdV2 -> RuntimeResidentPackageMountId
-find_runtime_resource_v2 -> find_runtime_resource
-build_runtime_resource_catalog_v2 -> build_runtime_resource_catalog
-runtime_resource_record_v2 -> runtime_resource_record
-compile_frame_graph_v1 -> compile_frame_graph
+AssetKey -> AssetKey
+AssetIdentityDocument -> AssetIdentityDocument
+AssetIdentityRow -> AssetIdentityRow
+AssetIdentityDiagnosticCode -> AssetIdentityDiagnosticCode
+asset_id_from_key -> asset_id_from_key
+plan_asset_identity_placements -> plan_asset_identity_placements
+SourceAssetRegistryDocument -> SourceAssetRegistryDocument
+SourceAssetRegistryRow -> SourceAssetRegistryRow
+SourceAssetDependencyRow -> SourceAssetDependencyRow
+SceneDocument -> SceneDocument
+PrefabDocument -> PrefabDocument
+SceneNodeDocument -> SceneNodeDocument
+SceneComponentDocument -> SceneComponentDocument
+serialize_scene_document -> serialize_scene_document
+deserialize_scene_document -> deserialize_scene_document
+validate_scene_document -> validate_scene_document
+serialize_prefab_document -> serialize_prefab_document
+deserialize_prefab_document -> deserialize_prefab_document
+validate_prefab_document -> validate_prefab_document
+RuntimeResourceCatalog -> RuntimeResourceCatalog
+RuntimeResourceHandle -> RuntimeResourceHandle
+RuntimeResidentPackageMountSet -> RuntimeResidentPackageMountSet
+RuntimeResidentPackageMountId -> RuntimeResidentPackageMountId
+find_runtime_resource -> find_runtime_resource
+build_runtime_resource_catalog -> build_runtime_resource_catalog
+runtime_resource_record -> runtime_resource_record
+compile_frame_graph -> compile_frame_graph
 ```
 
 Keep numeric value fields such as `abi_version`, `schemaVersion`, and `generation` unchanged.
@@ -463,43 +463,43 @@ SceneNodePrefabSource*
 ScenePrefabInstanceRefresh*
 SourceAssetRegistry*
 SourceAssetDependency*
-ResourceStateV1 -> ResourceState
-ResourceUseV1 -> ResourceUse
-add_scene_prefab_instance_refresh_row_v2 -> add_scene_prefab_instance_refresh_row
-apply_scene_prefab_instance_refresh_v2 -> apply_scene_prefab_instance_refresh
-collect_scene_subtree_node_ids_v2 -> collect_scene_subtree_node_ids
-compose_prefab_variant_v2 -> compose_prefab_variant
-deserialize_asset_identity_document_v2 -> deserialize_asset_identity_document
-emit_material_graph_reviewed_hlsl_v0 -> emit_material_graph_reviewed_hlsl
-expected_source_asset_format_v1 -> expected_source_asset_format
-is_supported_source_asset_kind_v1 -> is_supported_source_asset_kind
-parse_source_asset_dependency_kind_v1 -> parse_source_asset_dependency_kind
-parse_source_asset_registry_document_unvalidated_v1 -> parse_source_asset_registry_document_unvalidated
-plan_scene_prefab_instance_refresh_v2 -> plan_scene_prefab_instance_refresh
-project_source_asset_registry_identity_v2 -> project_source_asset_registry_identity
-commit_runtime_package_candidate_resident_mount_v2 -> commit_runtime_package_candidate_resident_mount
-commit_runtime_package_candidate_resident_mount_with_reviewed_evictions_v2 -> commit_runtime_package_candidate_resident_mount_with_reviewed_evictions
-commit_runtime_package_candidate_resident_replace_v2 -> commit_runtime_package_candidate_resident_replace
-commit_runtime_package_candidate_resident_replace_with_reviewed_evictions_v2 -> commit_runtime_package_candidate_resident_replace_with_reviewed_evictions
-commit_runtime_package_discovery_resident_v2 -> commit_runtime_package_discovery_resident
-commit_runtime_package_discovery_resident_mount_with_reviewed_evictions_v2 -> commit_runtime_package_discovery_resident_mount_with_reviewed_evictions
-commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2 -> commit_runtime_package_discovery_resident_replace_with_reviewed_evictions
-commit_runtime_package_hot_reload_recook_replacement_v2 -> commit_runtime_package_hot_reload_recook_replacement
-commit_runtime_resident_package_replace_v2 -> commit_runtime_resident_package_replace
-commit_runtime_resident_package_reviewed_evictions_v2 -> commit_runtime_resident_package_reviewed_evictions
-commit_runtime_resident_package_unmount_v2 -> commit_runtime_resident_package_unmount
-discover_runtime_package_indexes_v2 -> discover_runtime_package_indexes
-is_runtime_resource_handle_live_v2 -> is_runtime_resource_handle_live
-load_runtime_package_candidate_v2 -> load_runtime_package_candidate
-plan_runtime_package_hot_reload_candidate_review_v2 -> plan_runtime_package_hot_reload_candidate_review
-plan_runtime_package_hot_reload_recook_change_review_v2 -> plan_runtime_package_hot_reload_recook_change_review
-plan_runtime_package_hot_reload_replacement_intent_review_v2 -> plan_runtime_package_hot_reload_replacement_intent_review
-plan_runtime_resident_package_evictions_v2 -> plan_runtime_resident_package_evictions
+ResourceState -> ResourceState
+ResourceUse -> ResourceUse
+add_scene_prefab_instance_refresh_row -> add_scene_prefab_instance_refresh_row
+apply_scene_prefab_instance_refresh -> apply_scene_prefab_instance_refresh
+collect_scene_subtree_node_ids -> collect_scene_subtree_node_ids
+compose_prefab_variant -> compose_prefab_variant
+deserialize_asset_identity_document -> deserialize_asset_identity_document
+emit_material_graph_reviewed_hlsl -> emit_material_graph_reviewed_hlsl
+expected_source_asset_format -> expected_source_asset_format
+is_supported_source_asset_kind -> is_supported_source_asset_kind
+parse_source_asset_dependency_kind -> parse_source_asset_dependency_kind
+parse_source_asset_registry_document_unvalidated -> parse_source_asset_registry_document_unvalidated
+plan_scene_prefab_instance_refresh -> plan_scene_prefab_instance_refresh
+project_source_asset_registry_identity -> project_source_asset_registry_identity
+commit_runtime_package_candidate_resident_mount -> commit_runtime_package_candidate_resident_mount
+commit_runtime_package_candidate_resident_mount_with_reviewed_evictions -> commit_runtime_package_candidate_resident_mount_with_reviewed_evictions
+commit_runtime_package_candidate_resident_replace -> commit_runtime_package_candidate_resident_replace
+commit_runtime_package_candidate_resident_replace_with_reviewed_evictions -> commit_runtime_package_candidate_resident_replace_with_reviewed_evictions
+commit_runtime_package_discovery_resident -> commit_runtime_package_discovery_resident
+commit_runtime_package_discovery_resident_mount_with_reviewed_evictions -> commit_runtime_package_discovery_resident_mount_with_reviewed_evictions
+commit_runtime_package_discovery_resident_replace_with_reviewed_evictions -> commit_runtime_package_discovery_resident_replace_with_reviewed_evictions
+commit_runtime_package_hot_reload_recook_replacement -> commit_runtime_package_hot_reload_recook_replacement
+commit_runtime_resident_package_replace -> commit_runtime_resident_package_replace
+commit_runtime_resident_package_reviewed_evictions -> commit_runtime_resident_package_reviewed_evictions
+commit_runtime_resident_package_unmount -> commit_runtime_resident_package_unmount
+discover_runtime_package_indexes -> discover_runtime_package_indexes
+is_runtime_resource_handle_live -> is_runtime_resource_handle_live
+load_runtime_package_candidate -> load_runtime_package_candidate
+plan_runtime_package_hot_reload_candidate_review -> plan_runtime_package_hot_reload_candidate_review
+plan_runtime_package_hot_reload_recook_change_review -> plan_runtime_package_hot_reload_recook_change_review
+plan_runtime_package_hot_reload_replacement_intent_review -> plan_runtime_package_hot_reload_replacement_intent_review
+plan_runtime_resident_package_evictions -> plan_runtime_resident_package_evictions
 ```
 
 Stale `compile_frame_graph_v0` helpers are not a new canonical API. Remove them or convert their coverage into explicit stale-schedule rejection tests while keeping `compile_frame_graph` as the only current compile entrypoint.
 
-- [ ] **Step 3: Rename files and build references**
+- [x] **Step 3: Rename files and build references**
 
 Use native Git moves when Git metadata writes are available:
 
@@ -511,29 +511,37 @@ git mv tests/unit/scene_schema_v2_tests.cpp tests/unit/scene_schema_tests.cpp
 
 Then update `CMakeLists.txt`, includes, manifest public header lists, and static-check needles.
 
-- [ ] **Step 4: Run focused public API checks**
+- [x] **Step 4: Run focused public API checks**
 
 Run:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_identity_runtime_resource_tests MK_scene_schema_tests MK_runtime_tests MK_runtime_scene_tests MK_tools_tests MK_editor_core_tests
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_(asset_identity_runtime_resource_tests|scene_schema_tests|runtime_tests|runtime_scene_tests|tools_tests|editor_core_tests)"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_identity_runtime_resource_tests MK_scene_schema_tests MK_runtime_tests MK_runtime_scene_tests MK_tools_tests MK_editor_core_tests MK_renderer_tests MK_runtime_rhi_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_(asset_identity_runtime_resource_tests|scene_schema_tests|runtime_tests|runtime_scene_tests|tools_tests|editor_core_tests|renderer_tests|runtime_rhi_tests)"
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1
 ```
 
 Expected: targeted tests and public API checks pass.
 
-- [ ] **Step 5: Commit public API canonicalization**
+- [x] **Step 5: Commit public API canonicalization**
 
 Run:
 
 ```powershell
-git add engine editor tests tools games CMakeLists.txt
+git add CMakeLists.txt docs engine editor games schemas tests tools
 git diff --cached --check
 git commit -m "refactor: canonicalize current C++ contracts"
 ```
 
 Expected: one validated commit with API/file/caller updates.
+
+Candidate 3 evidence:
+
+- Focused configure/build passed for `MK_scene_schema_tests`, `MK_asset_identity_runtime_resource_tests`, `MK_runtime_tests`, `MK_runtime_scene_tests`, `MK_tools_tests`, `MK_editor_core_tests`, `MK_renderer_tests`, and `MK_runtime_rhi_tests`.
+- Focused CTest passed 8/8 for the same test set.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` passed.
+- `git diff --check`, `tools/check-format.ps1`, `tools/check-text-format.ps1`, `tools/check-agents.ps1`, `tools/check-ai-integration.ps1`, and `tools/check-json-contracts.ps1` passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with 87/87 tests.
 
 ## Candidate 4: Editor ABI And Tool-Surface Canonicalization
 

@@ -26,7 +26,7 @@ Accepted as the repository **target layout** for `engine/tools` implementation s
 | Shader | `engine/tools/shader/` | `shader_compile_action.cpp`, `shader_tool_process.cpp`, `shader_toolchain.cpp`, `material_graph_shader_pipeline.cpp` | Shader toolchain runner, compile actions, material graph shader pipeline |
 | glTF | `engine/tools/gltf/` | `gltf_mesh_inspect.cpp`, `gltf_skin_animation_inspect.cpp`, `gltf_skin_animation_import.cpp`, `gltf_morph_animation_import.cpp`, `gltf_node_animation_import.cpp` | glTF inspect/import adapters (importer-gated sections) |
 | Asset | `engine/tools/asset/` | `asset_file_scanner.cpp`, `asset_import_adapters.cpp`, `asset_import_tool.cpp`, `asset_package_tool.cpp`, `morph_mesh_cpu_source_bridge.cpp`, `registered_source_asset_cook_package_tool.cpp`, `source_asset_registration_tool.cpp`, `source_image_decode.cpp`, `material_tool.cpp`, `tilemap_tool.cpp`, `ui_atlas_tool.cpp` | Asset registration, import, packages, cook, materials, UI atlas |
-| Scene / package | `engine/tools/scene/` | `physics_collision_package_tool.cpp`, `runtime_scene_package_validation_tool.cpp`, `scene_prefab_authoring_tool.cpp`, `scene_tool.cpp`, `scene_v2_runtime_package_migration_tool.cpp` | Scene authoring, migration, runtime package validation, collision package helpers |
+| Scene / package | `engine/tools/scene/` | `physics_collision_package_tool.cpp`, `runtime_scene_package_validation_tool.cpp`, `scene_prefab_authoring_tool.cpp`, `scene_tool.cpp`, `scene_runtime_package_migration_tool.cpp` | Scene authoring, migration, runtime package validation, collision package helpers |
 
 ## Validation evidence (implementation slice)
 

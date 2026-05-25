@@ -160,20 +160,20 @@ void validate_material_gpu_binding(const MaterialGpuBinding& binding, const rhi:
     }
 }
 
-[[nodiscard]] FrameGraphV1Desc make_postprocess_frame_graph_v1_desc(bool depth_input_enabled,
-                                                                    std::uint32_t postprocess_stage_count) {
-    FrameGraphV1Desc desc;
+[[nodiscard]] FrameGraphDesc make_postprocess_frame_graph_v1_desc(bool depth_input_enabled,
+                                                                  std::uint32_t postprocess_stage_count) {
+    FrameGraphDesc desc;
     desc.resources.push_back(
-        FrameGraphResourceV1Desc{.name = "swapchain", .lifetime = FrameGraphResourceLifetime::imported});
+        FrameGraphResourceDesc{.name = "swapchain", .lifetime = FrameGraphResourceLifetime::imported});
     desc.resources.push_back(
-        FrameGraphResourceV1Desc{.name = "scene_color", .lifetime = FrameGraphResourceLifetime::transient});
+        FrameGraphResourceDesc{.name = "scene_color", .lifetime = FrameGraphResourceLifetime::transient});
     if (depth_input_enabled) {
         desc.resources.push_back(
-            FrameGraphResourceV1Desc{.name = "scene_depth", .lifetime = FrameGraphResourceLifetime::transient});
+            FrameGraphResourceDesc{.name = "scene_depth", .lifetime = FrameGraphResourceLifetime::transient});
     }
     if (postprocess_stage_count >= 2) {
         desc.resources.push_back(
-            FrameGraphResourceV1Desc{.name = "post_work", .lifetime = FrameGraphResourceLifetime::transient});
+            FrameGraphResourceDesc{.name = "post_work", .lifetime = FrameGraphResourceLifetime::transient});
     }
 
     std::vector<FrameGraphResourceAccess> scene_writes;
@@ -183,7 +183,7 @@ void validate_material_gpu_binding(const MaterialGpuBinding& binding, const rhi:
         scene_writes.push_back(
             FrameGraphResourceAccess{.resource = "scene_depth", .access = FrameGraphAccess::depth_attachment_write});
     }
-    desc.passes.push_back(FrameGraphPassV1Desc{.name = "scene_color", .reads = {}, .writes = std::move(scene_writes)});
+    desc.passes.push_back(FrameGraphPassDesc{.name = "scene_color", .reads = {}, .writes = std::move(scene_writes)});
 
     if (postprocess_stage_count == 1) {
         std::vector<FrameGraphResourceAccess> postprocess_reads;
@@ -193,7 +193,7 @@ void validate_material_gpu_binding(const MaterialGpuBinding& binding, const rhi:
             postprocess_reads.push_back(
                 FrameGraphResourceAccess{.resource = "scene_depth", .access = FrameGraphAccess::shader_read});
         }
-        desc.passes.push_back(FrameGraphPassV1Desc{
+        desc.passes.push_back(FrameGraphPassDesc{
             .name = "postprocess",
             .reads = std::move(postprocess_reads),
             .writes = {FrameGraphResourceAccess{.resource = "swapchain",
@@ -207,13 +207,13 @@ void validate_material_gpu_binding(const MaterialGpuBinding& binding, const rhi:
             first_reads.push_back(
                 FrameGraphResourceAccess{.resource = "scene_depth", .access = FrameGraphAccess::shader_read});
         }
-        desc.passes.push_back(FrameGraphPassV1Desc{
+        desc.passes.push_back(FrameGraphPassDesc{
             .name = "postprocess_chain_0",
             .reads = std::move(first_reads),
             .writes = {FrameGraphResourceAccess{.resource = "post_work",
                                                 .access = FrameGraphAccess::color_attachment_write}},
         });
-        desc.passes.push_back(FrameGraphPassV1Desc{
+        desc.passes.push_back(FrameGraphPassDesc{
             .name = "postprocess_chain_1",
             .reads = {FrameGraphResourceAccess{.resource = "post_work", .access = FrameGraphAccess::shader_read}},
             .writes = {FrameGraphResourceAccess{.resource = "swapchain",
@@ -274,12 +274,12 @@ RhiPostprocessFrameRenderer::RhiPostprocessFrameRenderer(const RhiPostprocessFra
 
     const auto postprocess_frame_graph_desc =
         make_postprocess_frame_graph_v1_desc(depth_input_enabled_, postprocess_stage_count_);
-    postprocess_frame_graph_plan_ = compile_frame_graph_v1(postprocess_frame_graph_desc);
+    postprocess_frame_graph_plan_ = compile_frame_graph(postprocess_frame_graph_desc);
     const auto expected_pass_count = 1U + postprocess_stage_count_;
     if (!postprocess_frame_graph_plan_.succeeded() || postprocess_frame_graph_plan_.pass_count != expected_pass_count) {
         throw std::logic_error("rhi postprocess renderer frame graph v1 is invalid");
     }
-    postprocess_frame_graph_execution_ = schedule_frame_graph_v1_execution(postprocess_frame_graph_plan_);
+    postprocess_frame_graph_execution_ = schedule_frame_graph_execution(postprocess_frame_graph_plan_);
     postprocess_frame_graph_target_accesses_ =
         build_frame_graph_texture_pass_target_accesses(postprocess_frame_graph_desc);
     frame_graph_pass_count_ = static_cast<std::uint32_t>(postprocess_frame_graph_plan_.ordered_passes.size());

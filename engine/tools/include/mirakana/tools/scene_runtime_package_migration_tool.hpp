@@ -5,7 +5,7 @@
 
 #include "mirakana/assets/source_asset_registry.hpp"
 #include "mirakana/platform/filesystem.hpp"
-#include "mirakana/scene/schema_v2.hpp"
+#include "mirakana/scene/schema.hpp"
 
 #include <cstdint>
 #include <string>
@@ -13,35 +13,35 @@
 
 namespace mirakana {
 
-enum class SceneV2RuntimePackageMigrationCommandKind : std::uint8_t {
-    migrate_scene_v2_runtime_package,
+enum class SceneRuntimePackageMigrationCommandKind : std::uint8_t {
+    migrate_scene_runtime_package,
     free_form_edit,
 };
 
-struct SceneV2RuntimePackageMigrationChangedFile {
+struct SceneRuntimePackageMigrationChangedFile {
     std::string path;
     std::string document_kind;
     std::string content;
     std::uint64_t content_hash{0};
 };
 
-struct SceneV2RuntimePackageMigrationModelMutation {
+struct SceneRuntimePackageMigrationModelMutation {
     std::string kind;
     std::string target_path;
-    std::string scene_v2_path;
+    std::string scene_path;
     std::string package_index_path;
-    AssetKeyV2 scene_asset_key;
+    AssetKey scene_asset_key;
     AssetId scene_asset;
-    std::vector<AssetIdentityPlacementRowV2> placement_rows;
-    std::vector<SourceAssetDependencyRowV1> dependency_rows;
+    std::vector<AssetIdentityPlacementRow> placement_rows;
+    std::vector<SourceAssetDependencyRow> dependency_rows;
 };
 
-struct SceneV2RuntimePackageMigrationDiagnostic {
+struct SceneRuntimePackageMigrationDiagnostic {
     std::string severity{"error"};
     std::string code;
     std::string message;
     std::string path;
-    AssetKeyV2 asset_key;
+    AssetKey asset_key;
     AuthoringId node;
     AuthoringId component;
     SceneComponentTypeId component_type;
@@ -50,18 +50,18 @@ struct SceneV2RuntimePackageMigrationDiagnostic {
     std::string validation_recipe;
 };
 
-struct SceneV2RuntimePackageMigrationRequest {
-    SceneV2RuntimePackageMigrationCommandKind kind{
-        SceneV2RuntimePackageMigrationCommandKind::migrate_scene_v2_runtime_package};
+struct SceneRuntimePackageMigrationRequest {
+    SceneRuntimePackageMigrationCommandKind kind{
+        SceneRuntimePackageMigrationCommandKind::migrate_scene_runtime_package};
 
-    std::string scene_v2_path;
-    std::string scene_v2_content;
+    std::string scene_path;
+    std::string scene_content;
     std::string source_registry_path;
     std::string source_registry_content;
     std::string package_index_path;
     std::string package_index_content;
     std::string output_scene_path;
-    AssetKeyV2 scene_asset_key;
+    AssetKey scene_asset_key;
     std::uint64_t source_revision{0};
 
     std::string package_cooking{"unsupported"};
@@ -80,12 +80,12 @@ struct SceneV2RuntimePackageMigrationRequest {
     std::string free_form_edit{"unsupported"};
 };
 
-struct SceneV2RuntimePackageMigrationResult {
-    std::string scene_v1_content;
+struct SceneRuntimePackageMigrationResult {
+    std::string runtime_scene_content;
     std::string package_index_content;
-    std::vector<SceneV2RuntimePackageMigrationChangedFile> changed_files;
-    std::vector<SceneV2RuntimePackageMigrationModelMutation> model_mutations;
-    std::vector<SceneV2RuntimePackageMigrationDiagnostic> diagnostics;
+    std::vector<SceneRuntimePackageMigrationChangedFile> changed_files;
+    std::vector<SceneRuntimePackageMigrationModelMutation> model_mutations;
+    std::vector<SceneRuntimePackageMigrationDiagnostic> diagnostics;
     std::vector<std::string> validation_recipes;
     std::vector<std::string> unsupported_gap_ids;
     std::string undo_token{"placeholder-only"};
@@ -95,9 +95,9 @@ struct SceneV2RuntimePackageMigrationResult {
     }
 };
 
-[[nodiscard]] SceneV2RuntimePackageMigrationResult
-plan_scene_v2_runtime_package_migration(const SceneV2RuntimePackageMigrationRequest& request);
-[[nodiscard]] SceneV2RuntimePackageMigrationResult
-apply_scene_v2_runtime_package_migration(IFileSystem& filesystem, const SceneV2RuntimePackageMigrationRequest& request);
+[[nodiscard]] SceneRuntimePackageMigrationResult
+plan_scene_runtime_package_migration(const SceneRuntimePackageMigrationRequest& request);
+[[nodiscard]] SceneRuntimePackageMigrationResult
+apply_scene_runtime_package_migration(IFileSystem& filesystem, const SceneRuntimePackageMigrationRequest& request);
 
 } // namespace mirakana

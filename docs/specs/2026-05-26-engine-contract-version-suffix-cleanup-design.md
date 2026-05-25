@@ -13,8 +13,8 @@ Before the first public release, remove removable `vN` / `VN` / `_vN` suffixes f
 The repository is still greenfield and explicitly does not preserve backward compatibility unless a future release policy requires it. Current engine contracts contain many pre-release generation suffixes:
 
 - persisted text formats such as `GameEngine.Scene.v2`, `GameEngine.AssetIdentity.v2`, `GameEngine.CookedPackageIndex.v1`, and `GameEngine.RuntimeInputActions.v4`
-- public C++ symbols such as `AssetKeyV2`, `SourceAssetRegistryDocumentV1`, `SceneDocumentV2`, `RuntimeResourceCatalogV2`, and `compile_frame_graph_v1`
-- source filenames such as `schema_v2.hpp`
+- public C++ symbols such as `AssetKey`, `SourceAssetRegistryDocument`, `SceneDocument`, `RuntimeResourceCatalog`, and `compile_frame_graph`
+- source filenames such as `schema.hpp`
 - AI command schema names such as `GameEngine.AiCommand.CreateGameRecipe.Request.v1`
 - dynamic editor ABI names such as `GameEngine.EditorGameModuleDriver.v1` and `mirakana_create_editor_game_module_driver_v1`
 - current-truth docs, manifest fragments, JSON schemas, and static checks that enforce those names
@@ -33,13 +33,13 @@ Examples of canonical replacements:
 | `GameEngine.CookedPackageIndex.v1` | `GameEngine.CookedPackageIndex` |
 | `GameEngine.RuntimeInputActions.v4` | `GameEngine.RuntimeInputActions` |
 | `GameEngine.AiCommand.CreateGameRecipe.Request.v1` | `GameEngine.AiCommand.CreateGameRecipe.Request` |
-| `AssetKeyV2` | `AssetKey` |
-| `SourceAssetRegistryDocumentV1` | `SourceAssetRegistryDocument` |
-| `SceneDocumentV2` | `SceneDocument` |
-| `RuntimeResourceCatalogV2` | `RuntimeResourceCatalog` |
-| `asset_id_from_key_v2` | `asset_id_from_key` |
-| `compile_frame_graph_v1` | `compile_frame_graph` |
-| `schema_v2.hpp` | `schema.hpp` |
+| `AssetKey` | `AssetKey` |
+| `SourceAssetRegistryDocument` | `SourceAssetRegistryDocument` |
+| `SceneDocument` | `SceneDocument` |
+| `RuntimeResourceCatalog` | `RuntimeResourceCatalog` |
+| `asset_id_from_key` | `asset_id_from_key` |
+| `compile_frame_graph` | `compile_frame_graph` |
+| `schema.hpp` | `schema.hpp` |
 | `mirakana_create_editor_game_module_driver_v1` | `mirakana_create_editor_game_module_driver` |
 
 Do not add compatibility aliases, fallback parsers, dual writers, or migration shims for the removed names. Repository-owned samples, fixtures, templates, schemas, docs, manifest fragments, static checks, and tests must move in the same candidate as the owning contract.
@@ -137,8 +137,8 @@ Contract-changing candidates require focused checks first:
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_identity_runtime_resource_tests MK_scene_schema_v2_tests MK_runtime_tests MK_runtime_scene_tests MK_tools_tests MK_editor_core_tests
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_(asset_identity_runtime_resource_tests|scene_schema_v2_tests|runtime_tests|runtime_scene_tests|tools_tests|editor_core_tests)"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_identity_runtime_resource_tests MK_scene_schema_tests MK_runtime_tests MK_runtime_scene_tests MK_tools_tests MK_editor_core_tests MK_renderer_tests MK_runtime_rhi_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_(asset_identity_runtime_resource_tests|scene_schema_tests|runtime_tests|runtime_scene_tests|tools_tests|editor_core_tests|renderer_tests|runtime_rhi_tests)"
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1

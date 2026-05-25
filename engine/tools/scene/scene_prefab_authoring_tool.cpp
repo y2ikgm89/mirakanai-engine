@@ -19,7 +19,7 @@ namespace {
 }
 
 [[nodiscard]] std::vector<std::string> default_unsupported_gap_ids() {
-    return {"scene-component-prefab-schema-v2", "editor-productization", "3d-playable-vertical-slice"};
+    return {"scene-component-prefab-schema", "editor-productization", "3d-playable-vertical-slice"};
 }
 
 [[nodiscard]] std::string command_kind_name(ScenePrefabAuthoringCommandKind kind) {
@@ -126,36 +126,34 @@ void validate_claim(std::vector<ScenePrefabAuthoringDiagnostic>& diagnostics, st
 void validate_unsupported_claims(std::vector<ScenePrefabAuthoringDiagnostic>& diagnostics,
                                  const ScenePrefabAuthoringRequest& request) {
     validate_claim(diagnostics, request.runtime_package_migration, "unsupported_runtime_package_migration",
-                   "Scene v2 runtime package migration is not supported by Scene/Prefab v2 authoring tooling",
-                   "scene-component-prefab-schema-v2");
+                   "Scene runtime package migration is not supported by Scene/Prefab authoring tooling",
+                   "scene-component-prefab-schema");
     validate_claim(diagnostics, request.source_asset_import, "unsupported_source_asset_import",
-                   "source asset import is not supported by Scene/Prefab v2 authoring tooling", {});
+                   "source asset import is not supported by Scene/Prefab authoring tooling", {});
     validate_claim(diagnostics, request.package_cooking, "unsupported_package_cooking",
-                   "package cooking is not supported by Scene/Prefab v2 authoring tooling", "runtime-resource-v2");
+                   "package cooking is not supported by Scene/Prefab authoring tooling", "runtime-resource");
     validate_claim(diagnostics, request.editor_productization, "unsupported_editor_productization",
-                   "editor productization is not supported by Scene/Prefab v2 authoring tooling",
-                   "editor-productization");
+                   "editor productization is not supported by Scene/Prefab authoring tooling", "editor-productization");
     validate_claim(diagnostics, request.nested_prefab_conflict_ux, "unsupported_nested_prefab_conflict_ux",
-                   "nested prefab conflict UX is not supported by Scene/Prefab v2 authoring tooling",
+                   "nested prefab conflict UX is not supported by Scene/Prefab authoring tooling",
                    "editor-productization");
     validate_claim(diagnostics, request.renderer_rhi_residency, "unsupported_renderer_rhi_residency",
-                   "renderer/RHI residency is not supported by Scene/Prefab v2 authoring tooling",
+                   "renderer/RHI residency is not supported by Scene/Prefab authoring tooling",
                    "renderer-rhi-resource-foundation");
     validate_claim(diagnostics, request.package_streaming, "unsupported_package_streaming",
-                   "package streaming is not supported by Scene/Prefab v2 authoring tooling", "runtime-resource-v2");
+                   "package streaming is not supported by Scene/Prefab authoring tooling", "runtime-resource");
     validate_claim(diagnostics, request.material_graph, "unsupported_material_graph",
-                   "material graph is not supported by Scene/Prefab v2 authoring tooling",
-                   "3d-playable-vertical-slice");
+                   "material graph is not supported by Scene/Prefab authoring tooling", "3d-playable-vertical-slice");
     validate_claim(diagnostics, request.shader_graph, "unsupported_shader_graph",
-                   "shader graph is not supported by Scene/Prefab v2 authoring tooling", "3d-playable-vertical-slice");
+                   "shader graph is not supported by Scene/Prefab authoring tooling", "3d-playable-vertical-slice");
     validate_claim(diagnostics, request.live_shader_generation, "unsupported_live_shader_generation",
-                   "live shader generation is not supported by Scene/Prefab v2 authoring tooling",
+                   "live shader generation is not supported by Scene/Prefab authoring tooling",
                    "3d-playable-vertical-slice");
     validate_claim(diagnostics, request.arbitrary_shell, "unsupported_arbitrary_shell",
-                   "arbitrary shell execution is not supported by Scene/Prefab v2 authoring tooling",
+                   "arbitrary shell execution is not supported by Scene/Prefab authoring tooling",
                    "editor-productization");
     validate_claim(diagnostics, request.free_form_edit, "unsupported_free_form_edit",
-                   "free-form edits are not supported by Scene/Prefab v2 authoring tooling", "editor-productization");
+                   "free-form edits are not supported by Scene/Prefab authoring tooling", "editor-productization");
 }
 
 void append_changed_file(std::vector<ScenePrefabAuthoringChangedFile>& files, std::string path,
@@ -180,87 +178,87 @@ void append_model_mutation(std::vector<ScenePrefabAuthoringModelMutation>& mutat
     });
 }
 
-[[nodiscard]] std::string scene_schema_code_name(SceneSchemaV2DiagnosticCode code) {
+[[nodiscard]] std::string scene_schema_code_name(SceneSchemaDiagnosticCode code) {
     switch (code) {
-    case SceneSchemaV2DiagnosticCode::invalid_scene_name:
+    case SceneSchemaDiagnosticCode::invalid_scene_name:
         return "invalid_scene_name";
-    case SceneSchemaV2DiagnosticCode::invalid_authoring_id:
+    case SceneSchemaDiagnosticCode::invalid_authoring_id:
         return "invalid_authoring_id";
-    case SceneSchemaV2DiagnosticCode::duplicate_node_id:
+    case SceneSchemaDiagnosticCode::duplicate_node_id:
         return "duplicate_node_id";
-    case SceneSchemaV2DiagnosticCode::duplicate_component_id:
+    case SceneSchemaDiagnosticCode::duplicate_component_id:
         return "duplicate_component_id";
-    case SceneSchemaV2DiagnosticCode::missing_parent_node:
+    case SceneSchemaDiagnosticCode::missing_parent_node:
         return "missing_parent_node";
-    case SceneSchemaV2DiagnosticCode::missing_component_node:
+    case SceneSchemaDiagnosticCode::missing_component_node:
         return "missing_component_node";
-    case SceneSchemaV2DiagnosticCode::invalid_component_type:
+    case SceneSchemaDiagnosticCode::invalid_component_type:
         return "invalid_component_type";
-    case SceneSchemaV2DiagnosticCode::duplicate_component_property:
+    case SceneSchemaDiagnosticCode::duplicate_component_property:
         return "duplicate_component_property";
-    case SceneSchemaV2DiagnosticCode::invalid_component_property:
+    case SceneSchemaDiagnosticCode::invalid_component_property:
         return "invalid_component_property";
-    case SceneSchemaV2DiagnosticCode::invalid_text_value:
+    case SceneSchemaDiagnosticCode::invalid_text_value:
         return "invalid_text_value";
-    case SceneSchemaV2DiagnosticCode::invalid_transform:
+    case SceneSchemaDiagnosticCode::invalid_transform:
         return "invalid_transform";
-    case SceneSchemaV2DiagnosticCode::missing_override_target:
+    case SceneSchemaDiagnosticCode::missing_override_target:
         return "missing_override_target";
-    case SceneSchemaV2DiagnosticCode::duplicate_override_path:
+    case SceneSchemaDiagnosticCode::duplicate_override_path:
         return "duplicate_override_path";
-    case SceneSchemaV2DiagnosticCode::duplicate_prefab_source_identity:
+    case SceneSchemaDiagnosticCode::duplicate_prefab_source_identity:
         return "duplicate_prefab_source_identity";
-    case SceneSchemaV2DiagnosticCode::unsupported_nested_prefab_instance:
+    case SceneSchemaDiagnosticCode::unsupported_nested_prefab_instance:
         return "unsupported_nested_prefab_instance";
-    case SceneSchemaV2DiagnosticCode::unsupported_local_prefab_child:
+    case SceneSchemaDiagnosticCode::unsupported_local_prefab_child:
         return "unsupported_local_prefab_child";
-    case SceneSchemaV2DiagnosticCode::unsupported_local_prefab_component:
+    case SceneSchemaDiagnosticCode::unsupported_local_prefab_component:
         return "unsupported_local_prefab_component";
     }
-    return "unknown_scene_schema_v2_diagnostic";
+    return "unknown_scene_schema_diagnostic";
 }
 
-[[nodiscard]] std::string scene_schema_message(const SceneSchemaV2Diagnostic& diagnostic) {
+[[nodiscard]] std::string scene_schema_message(const SceneSchemaDiagnostic& diagnostic) {
     switch (diagnostic.code) {
-    case SceneSchemaV2DiagnosticCode::duplicate_node_id:
-    case SceneSchemaV2DiagnosticCode::duplicate_component_id:
+    case SceneSchemaDiagnosticCode::duplicate_node_id:
+    case SceneSchemaDiagnosticCode::duplicate_component_id:
         return "duplicate authoring id";
-    case SceneSchemaV2DiagnosticCode::missing_parent_node:
+    case SceneSchemaDiagnosticCode::missing_parent_node:
         return "missing parent authoring id";
-    case SceneSchemaV2DiagnosticCode::missing_component_node:
+    case SceneSchemaDiagnosticCode::missing_component_node:
         return "missing component node authoring id";
-    case SceneSchemaV2DiagnosticCode::invalid_component_type:
+    case SceneSchemaDiagnosticCode::invalid_component_type:
         return "unsupported component type";
-    case SceneSchemaV2DiagnosticCode::duplicate_component_property:
+    case SceneSchemaDiagnosticCode::duplicate_component_property:
         return "duplicate component property";
-    case SceneSchemaV2DiagnosticCode::invalid_component_property:
+    case SceneSchemaDiagnosticCode::invalid_component_property:
         return "invalid component property";
-    case SceneSchemaV2DiagnosticCode::invalid_text_value:
-        return "invalid Scene/Prefab v2 line-oriented text value";
-    case SceneSchemaV2DiagnosticCode::invalid_transform:
-        return "invalid Scene/Prefab v2 transform";
-    case SceneSchemaV2DiagnosticCode::invalid_authoring_id:
+    case SceneSchemaDiagnosticCode::invalid_text_value:
+        return "invalid Scene/Prefab line-oriented text value";
+    case SceneSchemaDiagnosticCode::invalid_transform:
+        return "invalid Scene/Prefab transform";
+    case SceneSchemaDiagnosticCode::invalid_authoring_id:
         return "invalid authoring id";
-    case SceneSchemaV2DiagnosticCode::invalid_scene_name:
-        return "invalid Scene/Prefab v2 name";
-    case SceneSchemaV2DiagnosticCode::missing_override_target:
+    case SceneSchemaDiagnosticCode::invalid_scene_name:
+        return "invalid Scene/Prefab name";
+    case SceneSchemaDiagnosticCode::missing_override_target:
         return "missing prefab override target";
-    case SceneSchemaV2DiagnosticCode::duplicate_override_path:
+    case SceneSchemaDiagnosticCode::duplicate_override_path:
         return "duplicate prefab override path";
-    case SceneSchemaV2DiagnosticCode::duplicate_prefab_source_identity:
+    case SceneSchemaDiagnosticCode::duplicate_prefab_source_identity:
         return "duplicate prefab source identity";
-    case SceneSchemaV2DiagnosticCode::unsupported_nested_prefab_instance:
+    case SceneSchemaDiagnosticCode::unsupported_nested_prefab_instance:
         return "nested prefab instance refresh is not supported";
-    case SceneSchemaV2DiagnosticCode::unsupported_local_prefab_child:
+    case SceneSchemaDiagnosticCode::unsupported_local_prefab_child:
         return "local prefab child merge resolution is not supported";
-    case SceneSchemaV2DiagnosticCode::unsupported_local_prefab_component:
+    case SceneSchemaDiagnosticCode::unsupported_local_prefab_component:
         return "local prefab component merge resolution is not supported";
     }
     return scene_schema_code_name(diagnostic.code);
 }
 
 void append_scene_schema_diagnostics(std::vector<ScenePrefabAuthoringDiagnostic>& diagnostics,
-                                     const std::vector<SceneSchemaV2Diagnostic>& schema_diagnostics,
+                                     const std::vector<SceneSchemaDiagnostic>& schema_diagnostics,
                                      std::string_view path) {
     for (const auto& diagnostic : schema_diagnostics) {
         add_diagnostic(diagnostics, scene_schema_code_name(diagnostic.code), scene_schema_message(diagnostic),
@@ -268,15 +266,15 @@ void append_scene_schema_diagnostics(std::vector<ScenePrefabAuthoringDiagnostic>
     }
 }
 
-[[nodiscard]] const SceneNodeDocumentV2* find_node(const SceneDocumentV2& scene, std::string_view id) noexcept {
+[[nodiscard]] const SceneNodeDocument* find_node(const SceneDocument& scene, std::string_view id) noexcept {
     const auto it =
-        std::ranges::find_if(scene.nodes, [id](const SceneNodeDocumentV2& node) { return node.id.value == id; });
+        std::ranges::find_if(scene.nodes, [id](const SceneNodeDocument& node) { return node.id.value == id; });
     return it == scene.nodes.end() ? nullptr : &*it;
 }
 
-[[nodiscard]] SceneComponentDocumentV2* find_component(SceneDocumentV2& scene, std::string_view id) noexcept {
+[[nodiscard]] SceneComponentDocument* find_component(SceneDocument& scene, std::string_view id) noexcept {
     const auto it = std::ranges::find_if(
-        scene.components, [id](const SceneComponentDocumentV2& component) { return component.id.value == id; });
+        scene.components, [id](const SceneComponentDocument& component) { return component.id.value == id; });
     return it == scene.components.end() ? nullptr : &*it;
 }
 
@@ -289,21 +287,21 @@ void append_scene_schema_diagnostics(std::vector<ScenePrefabAuthoringDiagnostic>
     });
 }
 
-[[nodiscard]] SceneDocumentV2 parse_scene_content(const ScenePrefabAuthoringRequest& request,
-                                                  ScenePrefabAuthoringResult& result) {
+[[nodiscard]] SceneDocument parse_scene_content(const ScenePrefabAuthoringRequest& request,
+                                                ScenePrefabAuthoringResult& result) {
     try {
-        return deserialize_scene_document_v2(request.scene_content);
+        return deserialize_scene_document(request.scene_content);
     } catch (const std::exception& error) {
-        add_diagnostic(result.diagnostics, "invalid_scene_v2_document",
-                       std::string{"Scene v2 document is invalid: "} + error.what(), request.scene_path);
+        add_diagnostic(result.diagnostics, "invalid_scene_document",
+                       std::string{"Scene document is invalid: "} + error.what(), request.scene_path);
         return {};
     }
 }
 
-[[nodiscard]] PrefabDocumentV2 parse_prefab_content(const ScenePrefabAuthoringRequest& request,
-                                                    ScenePrefabAuthoringResult& result) {
+[[nodiscard]] PrefabDocument parse_prefab_content(const ScenePrefabAuthoringRequest& request,
+                                                  ScenePrefabAuthoringResult& result) {
     try {
-        return deserialize_prefab_document_v2(request.prefab_content);
+        return deserialize_prefab_document(request.prefab_content);
     } catch (const std::exception& error) {
         add_diagnostic(result.diagnostics, "stale_prefab_reference",
                        std::string{"stale prefab reference: "} + error.what(), request.prefab_path);
@@ -311,19 +309,19 @@ void append_scene_schema_diagnostics(std::vector<ScenePrefabAuthoringDiagnostic>
     }
 }
 
-void finalize_scene_change(ScenePrefabAuthoringResult& result, const SceneDocumentV2& scene, std::string_view path,
+void finalize_scene_change(ScenePrefabAuthoringResult& result, const SceneDocument& scene, std::string_view path,
                            std::string mutation_kind, AuthoringId node = {}, AuthoringId component = {},
                            std::string prefab_path = {}) {
-    append_scene_schema_diagnostics(result.diagnostics, validate_scene_document_v2(scene), path);
+    append_scene_schema_diagnostics(result.diagnostics, validate_scene_document(scene), path);
     if (!result.succeeded()) {
         return;
     }
 
     try {
-        result.scene_content = serialize_scene_document_v2(scene);
+        result.scene_content = serialize_scene_document(scene);
     } catch (const std::exception& error) {
-        add_diagnostic(result.diagnostics, "invalid_scene_v2_document",
-                       std::string{"Scene v2 document could not be serialized: "} + error.what(), std::string{path});
+        add_diagnostic(result.diagnostics, "invalid_scene_document",
+                       std::string{"Scene document could not be serialized: "} + error.what(), std::string{path});
         return;
     }
 
@@ -332,15 +330,15 @@ void finalize_scene_change(ScenePrefabAuthoringResult& result, const SceneDocume
                           std::move(component), std::move(prefab_path));
 }
 
-void finalize_prefab_change(ScenePrefabAuthoringResult& result, const PrefabDocumentV2& prefab, std::string_view path,
+void finalize_prefab_change(ScenePrefabAuthoringResult& result, const PrefabDocument& prefab, std::string_view path,
                             std::string mutation_kind) {
-    append_scene_schema_diagnostics(result.diagnostics, validate_prefab_document_v2(prefab), path);
+    append_scene_schema_diagnostics(result.diagnostics, validate_prefab_document(prefab), path);
     if (!result.succeeded()) {
         return;
     }
 
     try {
-        result.prefab_content = serialize_prefab_document_v2(prefab);
+        result.prefab_content = serialize_prefab_document(prefab);
     } catch (const std::exception& error) {
         add_diagnostic(result.diagnostics, "invalid_prefab_v2_document",
                        std::string{"Prefab v2 document could not be serialized: "} + error.what(), std::string{path});
@@ -383,7 +381,7 @@ void validate_request_shape(std::vector<ScenePrefabAuthoringDiagnostic>& diagnos
 
     if (request.kind == ScenePrefabAuthoringCommandKind::free_form_edit) {
         add_diagnostic(diagnostics, "unsupported_free_form_edit",
-                       "free-form edits are not supported by Scene/Prefab v2 authoring tooling", request.scene_path, {},
+                       "free-form edits are not supported by Scene/Prefab authoring tooling", request.scene_path, {},
                        {}, "editor-productization");
     }
 
@@ -411,7 +409,7 @@ void plan_add_node(const ScenePrefabAuthoringRequest& request, ScenePrefabAuthor
         return;
     }
 
-    scene.nodes.push_back(SceneNodeDocumentV2{
+    scene.nodes.push_back(SceneNodeDocument{
         .id = request.node_id,
         .name = request.node_name,
         .transform = request.node_transform,
@@ -426,7 +424,7 @@ void plan_add_or_update_component(const ScenePrefabAuthoringRequest& request, Sc
         return;
     }
 
-    SceneComponentDocumentV2 component{
+    SceneComponentDocument component{
         .id = request.component_id,
         .node = request.component_node_id,
         .type = request.component_type,
@@ -457,7 +455,7 @@ void plan_instantiate_prefab(const ScenePrefabAuthoringRequest& request, ScenePr
         return;
     }
 
-    const auto prefab_diagnostics = validate_prefab_document_v2(prefab);
+    const auto prefab_diagnostics = validate_prefab_document(prefab);
     if (!prefab_diagnostics.empty()) {
         add_diagnostic(result.diagnostics, "stale_prefab_reference",
                        "stale prefab reference: Prefab v2 document has invalid internal references",
@@ -482,7 +480,7 @@ void plan_instantiate_prefab(const ScenePrefabAuthoringRequest& request, ScenePr
         } else {
             node.parent.value = request.instance_id_prefix + node.parent.value;
         }
-        scene.node_prefab_sources.push_back(SceneNodePrefabSourceV2{
+        scene.node_prefab_sources.push_back(SceneNodePrefabSource{
             .node = node.id,
             .prefab_path = request.prefab_path,
             .source_node_id = source_node_id,
@@ -494,7 +492,7 @@ void plan_instantiate_prefab(const ScenePrefabAuthoringRequest& request, ScenePr
         const auto source_component_id = component.id;
         component.id.value = request.instance_id_prefix + component.id.value;
         component.node.value = request.instance_id_prefix + component.node.value;
-        scene.component_prefab_sources.push_back(SceneComponentPrefabSourceV2{
+        scene.component_prefab_sources.push_back(SceneComponentPrefabSource{
             .component = component.id,
             .prefab_path = request.prefab_path,
             .source_component_id = source_component_id,
@@ -516,7 +514,7 @@ void plan_refresh_prefab_instance(const ScenePrefabAuthoringRequest& request, Sc
         return;
     }
 
-    const auto refresh_plan = plan_scene_prefab_instance_refresh_v2(scene, request.node_id, prefab);
+    const auto refresh_plan = plan_scene_prefab_instance_refresh(scene, request.node_id, prefab);
     append_scene_schema_diagnostics(result.diagnostics, refresh_plan.diagnostics, request.scene_path);
     if (!result.succeeded()) {
         return;
@@ -528,7 +526,7 @@ void plan_refresh_prefab_instance(const ScenePrefabAuthoringRequest& request, Sc
         return;
     }
 
-    const auto refreshed = apply_scene_prefab_instance_refresh_v2(scene, request.node_id, prefab);
+    const auto refreshed = apply_scene_prefab_instance_refresh(scene, request.node_id, prefab);
     append_scene_schema_diagnostics(result.diagnostics, refreshed.diagnostics, request.scene_path);
     if (!result.succeeded()) {
         return;
@@ -545,7 +543,7 @@ void load_apply_inputs(IFileSystem& filesystem, ScenePrefabAuthoringRequest& req
         case ScenePrefabAuthoringCommandKind::create_scene:
             if (filesystem.exists(request.scene_path)) {
                 add_diagnostic(result.diagnostics, "target_exists",
-                               "create scene apply refuses to overwrite an existing Scene v2 document",
+                               "create scene apply refuses to overwrite an existing Scene document",
                                request.scene_path);
             }
             break;
@@ -570,7 +568,7 @@ void load_apply_inputs(IFileSystem& filesystem, ScenePrefabAuthoringRequest& req
         }
     } catch (const std::exception& error) {
         add_diagnostic(result.diagnostics, "filesystem_read_failed",
-                       std::string{"failed to read Scene/Prefab v2 authoring input: "} + error.what());
+                       std::string{"failed to read Scene/Prefab authoring input: "} + error.what());
     }
 }
 
@@ -608,7 +606,7 @@ ScenePrefabAuthoringResult plan_scene_prefab_authoring(const ScenePrefabAuthorin
         break;
     case ScenePrefabAuthoringCommandKind::free_form_edit:
         add_diagnostic(result.diagnostics, "unsupported_free_form_edit",
-                       "free-form edits are not supported by Scene/Prefab v2 authoring tooling", request.scene_path, {},
+                       "free-form edits are not supported by Scene/Prefab authoring tooling", request.scene_path, {},
                        {}, "editor-productization");
         break;
     }
@@ -646,7 +644,7 @@ ScenePrefabAuthoringResult apply_scene_prefab_authoring(IFileSystem& filesystem,
         }
     } catch (const std::exception& error) {
         add_diagnostic(result.diagnostics, "filesystem_write_failed",
-                       std::string{"failed to write Scene/Prefab v2 authoring update: "} + error.what());
+                       std::string{"failed to write Scene/Prefab authoring update: "} + error.what());
         sort_diagnostics(result.diagnostics);
     }
     return result;

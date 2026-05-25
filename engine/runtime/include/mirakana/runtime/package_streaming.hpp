@@ -64,12 +64,12 @@ struct RuntimePackageStreamingExecutionResult {
     std::uint32_t resident_package_count{0};
     std::uint32_t resident_mount_generation{0};
     RuntimePackageSafePointReplacementResult replacement;
-    RuntimePackageCandidateLoadResultV2 candidate_load;
-    RuntimeResidentPackageMountResultV2 resident_mount;
-    RuntimeResidentPackageUnmountCommitResultV2 resident_unmount;
-    RuntimeResidentPackageReplaceCommitResultV2 resident_replace;
-    RuntimeResidentPackageEvictionPlanResultV2 eviction_plan;
-    RuntimeResidentCatalogCacheRefreshResultV2 resident_catalog_refresh;
+    RuntimePackageCandidateLoadResult candidate_load;
+    RuntimeResidentPackageMountResult resident_mount;
+    RuntimeResidentPackageUnmountCommitResult resident_unmount;
+    RuntimeResidentPackageReplaceCommitResult resident_replace;
+    RuntimeResidentPackageEvictionPlanResult eviction_plan;
+    RuntimeResidentCatalogCacheRefreshResult resident_catalog_refresh;
     std::vector<RuntimePackageStreamingExecutionDiagnostic> diagnostics;
     std::size_t evicted_mount_count{0};
     bool invoked_eviction_plan{false};
@@ -78,19 +78,20 @@ struct RuntimePackageStreamingExecutionResult {
     [[nodiscard]] bool succeeded() const noexcept;
 };
 
-[[nodiscard]] RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streaming_safe_point(
-    RuntimeAssetPackageStore& store, RuntimeResourceCatalogV2& catalog,
-    const RuntimePackageStreamingExecutionDesc& desc, RuntimeAssetPackageLoadResult loaded_package);
+[[nodiscard]] RuntimePackageStreamingExecutionResult
+execute_selected_runtime_package_streaming_safe_point(RuntimeAssetPackageStore& store, RuntimeResourceCatalog& catalog,
+                                                      const RuntimePackageStreamingExecutionDesc& desc,
+                                                      RuntimeAssetPackageLoadResult loaded_package);
 
 [[nodiscard]] RuntimePackageStreamingExecutionResult execute_selected_runtime_package_streaming_safe_point(
-    RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
-    RuntimeResidentPackageMountIdV2 mount_id, RuntimePackageMountOverlay overlay,
+    RuntimeResidentPackageMountSet& mount_set, RuntimeResidentCatalogCache& catalog_cache,
+    RuntimeResidentPackageMountId mount_id, RuntimePackageMountOverlay overlay,
     const RuntimePackageStreamingExecutionDesc& desc, RuntimeAssetPackageLoadResult loaded_package);
 
 [[nodiscard]] RuntimePackageStreamingExecutionResult
 execute_selected_runtime_package_streaming_candidate_resident_mount_safe_point(
-    IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
-    RuntimeResidentPackageMountIdV2 mount_id, RuntimePackageMountOverlay overlay,
+    IFileSystem& filesystem, RuntimeResidentPackageMountSet& mount_set, RuntimeResidentCatalogCache& catalog_cache,
+    RuntimeResidentPackageMountId mount_id, RuntimePackageMountOverlay overlay,
     const RuntimePackageStreamingExecutionDesc& desc);
 
 /// Builds the descriptor-selected package candidate, delegates projected resident mounting and caller-reviewed
@@ -98,24 +99,24 @@ execute_selected_runtime_package_streaming_candidate_resident_mount_safe_point(
 /// mount/cache state only after every projected step succeeds.
 [[nodiscard]] RuntimePackageStreamingExecutionResult
 execute_selected_runtime_package_streaming_candidate_resident_mount_with_reviewed_evictions_safe_point(
-    IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
-    RuntimeResidentPackageMountIdV2 mount_id, RuntimePackageMountOverlay overlay,
+    IFileSystem& filesystem, RuntimeResidentPackageMountSet& mount_set, RuntimeResidentCatalogCache& catalog_cache,
+    RuntimeResidentPackageMountId mount_id, RuntimePackageMountOverlay overlay,
     const RuntimePackageStreamingExecutionDesc& desc,
-    std::vector<RuntimeResidentPackageMountIdV2> eviction_candidate_unmount_order,
-    std::vector<RuntimeResidentPackageMountIdV2> protected_mount_ids);
+    std::vector<RuntimeResidentPackageMountId> eviction_candidate_unmount_order,
+    std::vector<RuntimeResidentPackageMountId> protected_mount_ids);
 
 [[nodiscard]] RuntimePackageStreamingExecutionResult
-execute_selected_runtime_package_streaming_resident_replace_safe_point(RuntimeResidentPackageMountSetV2& mount_set,
-                                                                       RuntimeResidentCatalogCacheV2& catalog_cache,
-                                                                       RuntimeResidentPackageMountIdV2 mount_id,
+execute_selected_runtime_package_streaming_resident_replace_safe_point(RuntimeResidentPackageMountSet& mount_set,
+                                                                       RuntimeResidentCatalogCache& catalog_cache,
+                                                                       RuntimeResidentPackageMountId mount_id,
                                                                        RuntimePackageMountOverlay overlay,
                                                                        const RuntimePackageStreamingExecutionDesc& desc,
                                                                        RuntimeAssetPackageLoadResult loaded_package);
 
 [[nodiscard]] RuntimePackageStreamingExecutionResult
 execute_selected_runtime_package_streaming_candidate_resident_replace_safe_point(
-    IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
-    RuntimeResidentPackageMountIdV2 mount_id, RuntimePackageMountOverlay overlay,
+    IFileSystem& filesystem, RuntimeResidentPackageMountSet& mount_set, RuntimeResidentCatalogCache& catalog_cache,
+    RuntimeResidentPackageMountId mount_id, RuntimePackageMountOverlay overlay,
     const RuntimePackageStreamingExecutionDesc& desc);
 
 /// Builds the descriptor-selected package candidate, delegates projected resident replacement and caller-reviewed
@@ -123,16 +124,16 @@ execute_selected_runtime_package_streaming_candidate_resident_replace_safe_point
 /// mount/cache state only after every projected step succeeds.
 [[nodiscard]] RuntimePackageStreamingExecutionResult
 execute_selected_runtime_package_streaming_candidate_resident_replace_with_reviewed_evictions_safe_point(
-    IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
-    RuntimeResidentPackageMountIdV2 mount_id, RuntimePackageMountOverlay overlay,
+    IFileSystem& filesystem, RuntimeResidentPackageMountSet& mount_set, RuntimeResidentCatalogCache& catalog_cache,
+    RuntimeResidentPackageMountId mount_id, RuntimePackageMountOverlay overlay,
     const RuntimePackageStreamingExecutionDesc& desc,
-    std::vector<RuntimeResidentPackageMountIdV2> eviction_candidate_unmount_order,
-    std::vector<RuntimeResidentPackageMountIdV2> protected_mount_ids);
+    std::vector<RuntimeResidentPackageMountId> eviction_candidate_unmount_order,
+    std::vector<RuntimeResidentPackageMountId> protected_mount_ids);
 
 [[nodiscard]] RuntimePackageStreamingExecutionResult
 execute_selected_runtime_package_streaming_resident_unmount_safe_point(
-    RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
-    RuntimeResidentPackageMountIdV2 mount_id, RuntimePackageMountOverlay overlay,
+    RuntimeResidentPackageMountSet& mount_set, RuntimeResidentCatalogCache& catalog_cache,
+    RuntimeResidentPackageMountId mount_id, RuntimePackageMountOverlay overlay,
     const RuntimePackageStreamingExecutionDesc& desc);
 
 } // namespace mirakana::runtime

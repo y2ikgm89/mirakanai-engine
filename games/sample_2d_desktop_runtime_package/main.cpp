@@ -4858,7 +4858,7 @@ count_production_authoring_diagnostics(const mirakana::ProductionAuthoringWorkfl
 }
 
 [[nodiscard]] mirakana::AssetId asset_id_from_game_asset_key(std::string_view key) {
-    return mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{.value = std::string{key}});
+    return mirakana::asset_id_from_key(mirakana::AssetKey{.value = std::string{key}});
 }
 
 [[nodiscard]] mirakana::AssetId packaged_scene_asset_id() {
@@ -7341,12 +7341,12 @@ make_world_region_desc(std::string region_id, std::uint32_t mount_id, std::strin
     return mirakana::runtime::RuntimeWorldRegionPackageDesc{
         .region_id = std::move(region_id),
         .candidate =
-            mirakana::runtime::RuntimePackageIndexDiscoveryCandidateV2{
+            mirakana::runtime::RuntimePackageIndexDiscoveryCandidate{
                 .package_index_path = std::move(package_path),
                 .content_root = {},
                 .label = "sample-2d-world-region",
             },
-        .mount_id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = mount_id},
+        .mount_id = mirakana::runtime::RuntimeResidentPackageMountId{.value = mount_id},
         .estimated_resident_bytes = resident_bytes,
         .estimated_asset_records = asset_records,
         .required_preload_assets = {packaged_scene_asset_id(), packaged_tilemap_asset_id(),
@@ -7390,7 +7390,7 @@ run_world_region_streaming_probe(const char* executable_path, std::string_view p
     }
 
     const auto budget_bytes = (package_bytes * 2U) + 1U;
-    const mirakana::runtime::RuntimeResourceResidencyBudgetV2 budget{
+    const mirakana::runtime::RuntimeResourceResidencyBudget budget{
         .max_resident_content_bytes = budget_bytes,
         .max_resident_asset_records = (package_records * 2U) + 1U,
     };
@@ -7400,10 +7400,10 @@ run_world_region_streaming_probe(const char* executable_path, std::string_view p
     regions.push_back(make_world_region_desc("town", 1U, std::string{package_path}, package_bytes, package_records));
     regions.push_back(make_world_region_desc("field", 2U, std::string{package_path}, package_bytes, package_records));
 
-    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    mirakana::runtime::RuntimeResidentPackageMountSet mount_set;
     if (!mount_set
-             .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
-                 .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1U},
+             .mount(mirakana::runtime::RuntimeResidentPackageMountRecord{
+                 .id = mirakana::runtime::RuntimeResidentPackageMountId{.value = 1U},
                  .label = "town",
                  .package = runtime_package,
              })
@@ -7411,7 +7411,7 @@ run_world_region_streaming_probe(const char* executable_path, std::string_view p
         return probe;
     }
 
-    mirakana::runtime::RuntimeResidentCatalogCacheV2 catalog_cache;
+    mirakana::runtime::RuntimeResidentCatalogCache catalog_cache;
     if (!catalog_cache.refresh(mount_set, mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins, budget)
              .succeeded()) {
         return probe;
@@ -7446,7 +7446,7 @@ run_world_region_streaming_probe(const char* executable_path, std::string_view p
             .safe_point_required = true,
             .runtime_scene_validation_succeeded = true,
             .eviction_candidate_unmount_order = {},
-            .protected_mount_ids = {mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1U}},
+            .protected_mount_ids = {mirakana::runtime::RuntimeResidentPackageMountId{.value = 1U}},
         };
         const auto load_result = mirakana::runtime::execute_runtime_world_region_streaming_safe_point(
             filesystem, mount_set, catalog_cache, load_desc);
@@ -7494,7 +7494,7 @@ run_world_region_streaming_probe(const char* executable_path, std::string_view p
             .safe_point_required = true,
             .runtime_scene_validation_succeeded = true,
             .eviction_candidate_unmount_order = {},
-            .protected_mount_ids = {mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 2U}},
+            .protected_mount_ids = {mirakana::runtime::RuntimeResidentPackageMountId{.value = 2U}},
         };
         const auto unload_result = mirakana::runtime::execute_runtime_world_region_streaming_safe_point(
             filesystem, mount_set, catalog_cache, unload_desc);

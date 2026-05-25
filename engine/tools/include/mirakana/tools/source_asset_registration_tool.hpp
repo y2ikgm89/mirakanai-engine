@@ -28,13 +28,13 @@ struct SourceAssetRegistrationChangedFile {
 struct SourceAssetRegistrationModelMutation {
     std::string kind;
     std::string target_path;
-    AssetKeyV2 asset_key;
+    AssetKey asset_key;
     AssetId asset;
     AssetKind asset_kind{AssetKind::unknown};
     std::string source_path;
     std::string source_format;
     std::string imported_path;
-    std::vector<SourceAssetDependencyRowV1> dependency_rows;
+    std::vector<SourceAssetDependencyRow> dependency_rows;
 };
 
 struct SourceAssetRegistrationImportMetadata {
@@ -42,7 +42,7 @@ struct SourceAssetRegistrationImportMetadata {
     AssetImportActionKind kind{AssetImportActionKind::unknown};
     std::string source_path;
     std::string imported_path;
-    std::vector<SourceAssetDependencyRowV1> dependency_rows;
+    std::vector<SourceAssetDependencyRow> dependency_rows;
 };
 
 struct SourceAssetRegistrationDiagnostic {
@@ -50,7 +50,7 @@ struct SourceAssetRegistrationDiagnostic {
     std::string code;
     std::string message;
     std::string path;
-    AssetKeyV2 asset_key;
+    AssetKey asset_key;
     std::string unsupported_gap_id;
     std::string validation_recipe;
 };
@@ -60,12 +60,12 @@ struct SourceAssetRegistrationRequest {
 
     std::string source_registry_path;
     std::string source_registry_content;
-    AssetKeyV2 asset_key;
+    AssetKey asset_key;
     AssetKind asset_kind{AssetKind::unknown};
     std::string source_path;
     std::string source_format;
     std::string imported_path;
-    std::vector<SourceAssetDependencyRowV1> dependency_rows;
+    std::vector<SourceAssetDependencyRow> dependency_rows;
 
     std::string import_settings{"default-only"};
     std::string external_importer{"unsupported"};
@@ -88,7 +88,7 @@ struct SourceAssetRegistrationResult {
     std::vector<SourceAssetRegistrationChangedFile> changed_files;
     std::vector<SourceAssetRegistrationModelMutation> model_mutations;
     std::vector<SourceAssetRegistrationImportMetadata> import_metadata;
-    AssetIdentityDocumentV2 asset_identity_projection;
+    AssetIdentityDocument asset_identity_projection;
     std::vector<SourceAssetRegistrationDiagnostic> diagnostics;
     std::vector<std::string> validation_recipes;
     std::vector<std::string> unsupported_gap_ids;

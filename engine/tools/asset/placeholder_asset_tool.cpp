@@ -70,7 +70,7 @@ constexpr std::uint64_t max_placeholder_audio_frame_count = 384000;
 }
 
 void add_diagnostic(std::vector<PlaceholderAssetDiagnostic>& diagnostics, std::string code, std::string message,
-                    std::string path = {}, AssetKeyV2 key = {}) {
+                    std::string path = {}, AssetKey key = {}) {
     diagnostics.push_back(PlaceholderAssetDiagnostic{
         .code = std::move(code),
         .message = std::move(message),
@@ -155,7 +155,7 @@ void validate_request_shape(std::vector<PlaceholderAssetDiagnostic>& diagnostics
     }
 }
 
-[[nodiscard]] SourceAssetRegistryDocumentV1
+[[nodiscard]] SourceAssetRegistryDocument
 parse_source_registry_content(std::vector<PlaceholderAssetDiagnostic>& diagnostics,
                               const PlaceholderAssetBundleRequest& request) {
     if (request.source_registry_content.empty()) {
@@ -172,46 +172,46 @@ parse_source_registry_content(std::vector<PlaceholderAssetDiagnostic>& diagnosti
     return {};
 }
 
-[[nodiscard]] std::string registry_diagnostic_code(SourceAssetRegistryDiagnosticCodeV1 code) {
+[[nodiscard]] std::string registry_diagnostic_code(SourceAssetRegistryDiagnosticCode code) {
     switch (code) {
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_key:
+    case SourceAssetRegistryDiagnosticCode::invalid_key:
         return "invalid_asset_key";
-    case SourceAssetRegistryDiagnosticCodeV1::duplicate_key:
+    case SourceAssetRegistryDiagnosticCode::duplicate_key:
         return "duplicate_asset_key";
-    case SourceAssetRegistryDiagnosticCodeV1::duplicate_asset_id:
+    case SourceAssetRegistryDiagnosticCode::duplicate_asset_id:
         return "duplicate_asset_id";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_kind:
+    case SourceAssetRegistryDiagnosticCode::invalid_kind:
         return "unsupported_asset_kind";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_source_path:
+    case SourceAssetRegistryDiagnosticCode::invalid_source_path:
         return "unsafe_source_path";
-    case SourceAssetRegistryDiagnosticCodeV1::duplicate_source_path:
+    case SourceAssetRegistryDiagnosticCode::duplicate_source_path:
         return "duplicate_source_path";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_source_format:
+    case SourceAssetRegistryDiagnosticCode::invalid_source_format:
         return "unsupported_source_format";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_imported_path:
+    case SourceAssetRegistryDiagnosticCode::invalid_imported_path:
         return "unsafe_imported_path";
-    case SourceAssetRegistryDiagnosticCodeV1::duplicate_imported_path:
+    case SourceAssetRegistryDiagnosticCode::duplicate_imported_path:
         return "duplicate_imported_path";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_dependency_kind:
+    case SourceAssetRegistryDiagnosticCode::invalid_dependency_kind:
         return "invalid_dependency_kind";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_dependency_target:
+    case SourceAssetRegistryDiagnosticCode::invalid_dependency_target:
         return "invalid_dependency_target";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_dependency_key:
+    case SourceAssetRegistryDiagnosticCode::invalid_dependency_key:
         return "invalid_dependency_key";
-    case SourceAssetRegistryDiagnosticCodeV1::missing_dependency_key:
+    case SourceAssetRegistryDiagnosticCode::missing_dependency_key:
         return "missing_dependency_key";
-    case SourceAssetRegistryDiagnosticCodeV1::duplicate_dependency:
+    case SourceAssetRegistryDiagnosticCode::duplicate_dependency:
         return "duplicate_dependency";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_identity_projection:
+    case SourceAssetRegistryDiagnosticCode::invalid_identity_projection:
         return "invalid_identity_projection";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_import_metadata:
+    case SourceAssetRegistryDiagnosticCode::invalid_import_metadata:
         return "invalid_import_metadata";
     }
     return "invalid_source_asset_registry";
 }
 
 void append_registry_diagnostics(std::vector<PlaceholderAssetDiagnostic>& diagnostics,
-                                 const std::vector<SourceAssetRegistryDiagnosticV1>& registry_diagnostics,
+                                 const std::vector<SourceAssetRegistryDiagnostic>& registry_diagnostics,
                                  const std::string& source_registry_path) {
     for (const auto& diagnostic : registry_diagnostics) {
         add_diagnostic(diagnostics, registry_diagnostic_code(diagnostic.code), "source asset registry is invalid",
@@ -219,40 +219,40 @@ void append_registry_diagnostics(std::vector<PlaceholderAssetDiagnostic>& diagno
     }
 }
 
-[[nodiscard]] bool source_asset_dependency_less(const SourceAssetDependencyRowV1& lhs,
-                                                const SourceAssetDependencyRowV1& rhs) noexcept {
-    const auto lhs_kind = source_asset_dependency_kind_name_v1(lhs.kind);
-    const auto rhs_kind = source_asset_dependency_kind_name_v1(rhs.kind);
+[[nodiscard]] bool source_asset_dependency_less(const SourceAssetDependencyRow& lhs,
+                                                const SourceAssetDependencyRow& rhs) noexcept {
+    const auto lhs_kind = source_asset_dependency_kind_name(lhs.kind);
+    const auto rhs_kind = source_asset_dependency_kind_name(rhs.kind);
     if (lhs_kind != rhs_kind) {
         return lhs_kind < rhs_kind;
     }
     return lhs.key.value < rhs.key.value;
 }
 
-void canonicalize(SourceAssetRegistryDocumentV1& document) {
+void canonicalize(SourceAssetRegistryDocument& document) {
     for (auto& asset : document.assets) {
         std::ranges::sort(asset.dependencies, source_asset_dependency_less);
     }
-    std::ranges::sort(document.assets, [](const SourceAssetRegistryRowV1& lhs, const SourceAssetRegistryRowV1& rhs) {
+    std::ranges::sort(document.assets, [](const SourceAssetRegistryRow& lhs, const SourceAssetRegistryRow& rhs) {
         return lhs.key.value < rhs.key.value;
     });
 }
 
-[[nodiscard]] bool same_registry_row(const SourceAssetRegistryRowV1& row, const PlaceholderAssetRequest& request) {
+[[nodiscard]] bool same_registry_row(const SourceAssetRegistryRow& row, const PlaceholderAssetRequest& request) {
     return row.key.value == request.asset_key.value && row.kind == request.asset_kind &&
            row.source_path == request.source_path &&
-           row.source_format == expected_source_asset_format_v1(request.asset_kind) &&
+           row.source_format == expected_source_asset_format(request.asset_kind) &&
            row.imported_path == request.imported_path && row.dependencies.empty();
 }
 
-[[nodiscard]] const SourceAssetRegistryRowV1* find_row_by_key(const SourceAssetRegistryDocumentV1& document,
-                                                              const AssetKeyV2& key) noexcept {
+[[nodiscard]] const SourceAssetRegistryRow* find_row_by_key(const SourceAssetRegistryDocument& document,
+                                                            const AssetKey& key) noexcept {
     const auto it =
         std::ranges::find_if(document.assets, [&key](const auto& row) { return row.key.value == key.value; });
     return it == document.assets.end() ? nullptr : &*it;
 }
 
-[[nodiscard]] std::string name_from_asset_key(const AssetKeyV2& key) {
+[[nodiscard]] std::string name_from_asset_key(const AssetKey& key) {
     const auto separator = key.value.find_last_of('/');
     if (separator == std::string::npos) {
         return key.value;
@@ -335,7 +335,7 @@ void append_f32_le(std::vector<std::uint8_t>& bytes, float value) {
 
 [[nodiscard]] MaterialDefinition make_material_definition(const PlaceholderAssetRequest& request) {
     MaterialDefinition material;
-    material.id = asset_id_from_key_v2(request.asset_key);
+    material.id = asset_id_from_key(request.asset_key);
     material.name = name_from_asset_key(request.asset_key);
     material.shading_model = MaterialShadingModel::unlit;
     material.surface_mode = MaterialSurfaceMode::opaque;
@@ -364,7 +364,7 @@ void append_f32_le(std::vector<std::uint8_t>& bytes, float value) {
 [[nodiscard]] PlaceholderAssetChangedFile make_source_file(const PlaceholderAssetRequest& request) {
     PlaceholderAssetChangedFile file;
     file.path = request.source_path;
-    file.document_kind = std::string{expected_source_asset_format_v1(request.asset_kind)};
+    file.document_kind = std::string{expected_source_asset_format(request.asset_kind)};
 
     switch (request.asset_kind) {
     case AssetKind::texture:
@@ -438,11 +438,11 @@ PlaceholderAssetBundlePlan plan_placeholder_asset_bundle(const PlaceholderAssetB
     canonicalize(registry);
 
     for (const auto& asset : request.assets) {
-        const SourceAssetRegistryRowV1 row{
+        const SourceAssetRegistryRow row{
             .key = asset.asset_key,
             .kind = asset.asset_kind,
             .source_path = asset.source_path,
-            .source_format = std::string{expected_source_asset_format_v1(asset.asset_kind)},
+            .source_format = std::string{expected_source_asset_format(asset.asset_kind)},
             .imported_path = asset.imported_path,
             .dependencies = {},
         };
@@ -471,10 +471,10 @@ PlaceholderAssetBundlePlan plan_placeholder_asset_bundle(const PlaceholderAssetB
         auto source_file = make_source_file(asset);
         plan.provenance_rows.push_back(PlaceholderAssetProvenanceRow{
             .asset_key = asset.asset_key,
-            .asset = asset_id_from_key_v2(asset.asset_key),
+            .asset = asset_id_from_key(asset.asset_key),
             .asset_kind = asset.asset_kind,
             .source_path = asset.source_path,
-            .source_format = std::string{expected_source_asset_format_v1(asset.asset_kind)},
+            .source_format = std::string{expected_source_asset_format(asset.asset_kind)},
             .imported_path = asset.imported_path,
             .generator = std::string{placeholder_generator_id},
             .license = std::string{proprietary_license_id},
@@ -484,8 +484,8 @@ PlaceholderAssetBundlePlan plan_placeholder_asset_bundle(const PlaceholderAssetB
         plan.changed_files.push_back(std::move(source_file));
     }
 
-    append_changed_file(plan.changed_files, request.source_registry_path,
-                        std::string{source_asset_registry_format_v1()}, plan.source_registry_content);
+    append_changed_file(plan.changed_files, request.source_registry_path, std::string{source_asset_registry_format()},
+                        plan.source_registry_content);
     sort_changed_files(plan.changed_files);
     sort_provenance_rows(plan.provenance_rows);
     return plan;

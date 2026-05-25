@@ -52,7 +52,7 @@ struct RuntimeSceneAssetIdentityReferenceRow {
     std::string placement;
     SceneNodeId node;
     AssetId asset;
-    AssetKeyV2 key;
+    AssetKey key;
     AssetKind expected_kind{AssetKind::unknown};
     AssetKind actual_kind{AssetKind::unknown};
     std::string source_path;
@@ -63,7 +63,7 @@ struct RuntimeSceneAssetIdentityDiagnostic {
     std::string placement;
     SceneNodeId node;
     AssetId asset;
-    AssetKeyV2 key;
+    AssetKey key;
     AssetKind expected_kind{AssetKind::unknown};
     AssetKind actual_kind{AssetKind::unknown};
     std::string source_path;
@@ -370,7 +370,7 @@ struct RuntimeSceneAnimationTransformApplyResult {
                                                                AssetId scene, RuntimeSceneLoadOptions options = {});
 
 [[nodiscard]] RuntimeSceneAssetIdentityAudit
-audit_runtime_scene_asset_identity(const Scene& scene, const AssetIdentityDocumentV2& identities);
+audit_runtime_scene_asset_identity(const Scene& scene, const AssetIdentityDocument& identities);
 
 [[nodiscard]] std::vector<SceneNodeId> find_runtime_scene_nodes_by_name(const RuntimeSceneInstance& instance,
                                                                         std::string_view name);

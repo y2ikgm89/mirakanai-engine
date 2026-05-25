@@ -195,7 +195,7 @@ validate_material_graph_shader_export(const MaterialGraphShaderExportDesc& desc)
     return diagnostics;
 }
 
-std::string emit_material_graph_reviewed_hlsl_v0(const MaterialGraphDesc& graph) {
+std::string emit_material_graph_reviewed_hlsl(const MaterialGraphDesc& graph) {
     if (!validate_material_graph(graph).empty()) {
         throw std::invalid_argument("material graph must validate before HLSL emission");
     }

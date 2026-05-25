@@ -43,13 +43,13 @@ struct RegisteredSourceAssetCookPackageModelMutation {
     std::string target_path;
     std::string source_registry_path;
     std::string package_index_path;
-    AssetKeyV2 asset_key;
+    AssetKey asset_key;
     AssetId asset;
     AssetKind asset_kind{AssetKind::unknown};
     std::string source_path;
     std::string source_format;
     std::string imported_path;
-    std::vector<SourceAssetDependencyRowV1> dependency_rows;
+    std::vector<SourceAssetDependencyRow> dependency_rows;
 };
 
 struct RegisteredSourceAssetCookPackageDiagnostic {
@@ -57,7 +57,7 @@ struct RegisteredSourceAssetCookPackageDiagnostic {
     std::string code;
     std::string message;
     std::string path;
-    AssetKeyV2 asset_key;
+    AssetKey asset_key;
     std::string unsupported_gap_id;
     std::string validation_recipe;
 };
@@ -70,7 +70,7 @@ struct RegisteredSourceAssetCookPackageRequest {
     std::string source_registry_content;
     std::string package_index_path;
     std::string package_index_content;
-    std::vector<AssetKeyV2> selected_asset_keys;
+    std::vector<AssetKey> selected_asset_keys;
     std::vector<RegisteredSourceAssetCookPackageSourceFile> source_files;
     std::uint64_t source_revision{0};
 

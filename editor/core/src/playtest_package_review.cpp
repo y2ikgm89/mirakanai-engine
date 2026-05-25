@@ -990,7 +990,7 @@ EditorRuntimeScenePackageValidationExecutionModel make_editor_runtime_scene_pack
         model.request.kind = RuntimeScenePackageValidationCommandKind::validate_runtime_scene_package;
         model.request.package_index_path = target.package_index_path;
         model.request.content_root = target.content_root;
-        model.request.scene_asset_key = AssetKeyV2{target.scene_asset_key};
+        model.request.scene_asset_key = AssetKey{target.scene_asset_key};
         model.request.validate_asset_references = target.validate_asset_references;
         model.request.require_unique_node_names = target.require_unique_node_names;
 

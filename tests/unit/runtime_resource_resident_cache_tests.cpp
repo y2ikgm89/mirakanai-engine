@@ -34,69 +34,69 @@ namespace {
 
 MK_TEST("runtime resident catalog cache reuses catalog for unchanged mount generation and budget") {
     const auto texture = mirakana::AssetId::from_name("textures/player/albedo");
-    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    mirakana::runtime::RuntimeResidentPackageMountSet mount_set;
     MK_REQUIRE(mount_set
-                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
-                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1},
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecord{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountId{.value = 1},
                        .label = "base",
                        .package = make_runtime_package(texture, mirakana::AssetKind::texture,
                                                        mirakana::runtime::RuntimeAssetHandle{.value = 1}, "abcd"),
                    })
                    .succeeded());
 
-    mirakana::runtime::RuntimeResidentCatalogCacheV2 cache;
-    const mirakana::runtime::RuntimeResourceResidencyBudgetV2 budget{
+    mirakana::runtime::RuntimeResidentCatalogCache cache;
+    const mirakana::runtime::RuntimeResourceResidencyBudget budget{
         .max_resident_content_bytes = 16,
         .max_resident_asset_records = 1,
     };
     const auto first = cache.refresh(mount_set, mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins, budget);
 
     MK_REQUIRE(first.succeeded());
-    MK_REQUIRE(first.status == mirakana::runtime::RuntimeResidentCatalogCacheStatusV2::rebuilt);
+    MK_REQUIRE(first.status == mirakana::runtime::RuntimeResidentCatalogCacheStatus::rebuilt);
     MK_REQUIRE(first.invoked_catalog_build);
     MK_REQUIRE(!first.reused_cache);
     MK_REQUIRE(first.mounted_package_count == 1);
     MK_REQUIRE(first.mount_generation == mount_set.generation());
     MK_REQUIRE(cache.has_value());
     const auto first_generation = cache.catalog().generation();
-    const auto handle = mirakana::runtime::find_runtime_resource_v2(cache.catalog(), texture);
+    const auto handle = mirakana::runtime::find_runtime_resource(cache.catalog(), texture);
     MK_REQUIRE(handle.has_value());
 
     const auto second =
         cache.refresh(mount_set, mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins, budget);
 
     MK_REQUIRE(second.succeeded());
-    MK_REQUIRE(second.status == mirakana::runtime::RuntimeResidentCatalogCacheStatusV2::cache_hit);
+    MK_REQUIRE(second.status == mirakana::runtime::RuntimeResidentCatalogCacheStatus::cache_hit);
     MK_REQUIRE(!second.invoked_catalog_build);
     MK_REQUIRE(second.reused_cache);
     MK_REQUIRE(second.catalog_generation == first_generation);
     MK_REQUIRE(cache.catalog().generation() == first_generation);
-    MK_REQUIRE(mirakana::runtime::is_runtime_resource_handle_live_v2(cache.catalog(), *handle));
+    MK_REQUIRE(mirakana::runtime::is_runtime_resource_handle_live(cache.catalog(), *handle));
 }
 
 MK_TEST("runtime resident catalog cache rebuilds when mount set generation changes") {
     const auto texture = mirakana::AssetId::from_name("textures/player/albedo");
     const auto material = mirakana::AssetId::from_name("materials/player");
-    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    mirakana::runtime::RuntimeResidentPackageMountSet mount_set;
     MK_REQUIRE(mount_set
-                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
-                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1},
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecord{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountId{.value = 1},
                        .label = "base",
                        .package = make_runtime_package(texture, mirakana::AssetKind::texture,
                                                        mirakana::runtime::RuntimeAssetHandle{.value = 1}, "tex"),
                    })
                    .succeeded());
 
-    mirakana::runtime::RuntimeResidentCatalogCacheV2 cache;
-    const mirakana::runtime::RuntimeResourceResidencyBudgetV2 budget{};
+    mirakana::runtime::RuntimeResidentCatalogCache cache;
+    const mirakana::runtime::RuntimeResourceResidencyBudget budget{};
     MK_REQUIRE(
         cache.refresh(mount_set, mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins, budget).succeeded());
-    const auto stale = mirakana::runtime::find_runtime_resource_v2(cache.catalog(), texture);
+    const auto stale = mirakana::runtime::find_runtime_resource(cache.catalog(), texture);
     MK_REQUIRE(stale.has_value());
 
     MK_REQUIRE(mount_set
-                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
-                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 2},
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecord{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountId{.value = 2},
                        .label = "overlay",
                        .package = make_runtime_package(material, mirakana::AssetKind::material,
                                                        mirakana::runtime::RuntimeAssetHandle{.value = 2}, "mat"),
@@ -106,51 +106,51 @@ MK_TEST("runtime resident catalog cache rebuilds when mount set generation chang
         cache.refresh(mount_set, mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins, budget);
 
     MK_REQUIRE(rebuild.succeeded());
-    MK_REQUIRE(rebuild.status == mirakana::runtime::RuntimeResidentCatalogCacheStatusV2::rebuilt);
+    MK_REQUIRE(rebuild.status == mirakana::runtime::RuntimeResidentCatalogCacheStatus::rebuilt);
     MK_REQUIRE(rebuild.invoked_catalog_build);
     MK_REQUIRE(rebuild.previous_catalog_generation != rebuild.catalog_generation);
-    MK_REQUIRE(!mirakana::runtime::is_runtime_resource_handle_live_v2(cache.catalog(), *stale));
-    MK_REQUIRE(mirakana::runtime::find_runtime_resource_v2(cache.catalog(), texture).has_value());
-    MK_REQUIRE(mirakana::runtime::find_runtime_resource_v2(cache.catalog(), material).has_value());
+    MK_REQUIRE(!mirakana::runtime::is_runtime_resource_handle_live(cache.catalog(), *stale));
+    MK_REQUIRE(mirakana::runtime::find_runtime_resource(cache.catalog(), texture).has_value());
+    MK_REQUIRE(mirakana::runtime::find_runtime_resource(cache.catalog(), material).has_value());
 }
 
 MK_TEST("runtime resident catalog cache rejects budget changes without replacing cached catalog") {
     const auto texture = mirakana::AssetId::from_name("textures/player/albedo");
-    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    mirakana::runtime::RuntimeResidentPackageMountSet mount_set;
     MK_REQUIRE(mount_set
-                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
-                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1},
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecord{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountId{.value = 1},
                        .label = "base",
                        .package = make_runtime_package(texture, mirakana::AssetKind::texture,
                                                        mirakana::runtime::RuntimeAssetHandle{.value = 1}, "abcd"),
                    })
                    .succeeded());
 
-    mirakana::runtime::RuntimeResidentCatalogCacheV2 cache;
-    const mirakana::runtime::RuntimeResourceResidencyBudgetV2 generous{
+    mirakana::runtime::RuntimeResidentCatalogCache cache;
+    const mirakana::runtime::RuntimeResourceResidencyBudget generous{
         .max_resident_content_bytes = 16,
         .max_resident_asset_records = 1,
     };
     MK_REQUIRE(
         cache.refresh(mount_set, mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins, generous).succeeded());
     const auto cached_generation = cache.catalog().generation();
-    const auto cached_handle = mirakana::runtime::find_runtime_resource_v2(cache.catalog(), texture);
+    const auto cached_handle = mirakana::runtime::find_runtime_resource(cache.catalog(), texture);
     MK_REQUIRE(cached_handle.has_value());
 
-    const mirakana::runtime::RuntimeResourceResidencyBudgetV2 tight{
+    const mirakana::runtime::RuntimeResourceResidencyBudget tight{
         .max_resident_content_bytes = 2,
         .max_resident_asset_records = 1,
     };
     const auto failed = cache.refresh(mount_set, mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins, tight);
 
     MK_REQUIRE(!failed.succeeded());
-    MK_REQUIRE(failed.status == mirakana::runtime::RuntimeResidentCatalogCacheStatusV2::budget_failed);
+    MK_REQUIRE(failed.status == mirakana::runtime::RuntimeResidentCatalogCacheStatus::budget_failed);
     MK_REQUIRE(!failed.invoked_catalog_build);
     MK_REQUIRE(!failed.reused_cache);
     MK_REQUIRE(!failed.budget_execution.within_budget);
     MK_REQUIRE(failed.budget_execution.diagnostics.size() == 1);
     MK_REQUIRE(cache.catalog().generation() == cached_generation);
-    MK_REQUIRE(mirakana::runtime::is_runtime_resource_handle_live_v2(cache.catalog(), *cached_handle));
+    MK_REQUIRE(mirakana::runtime::is_runtime_resource_handle_live(cache.catalog(), *cached_handle));
 }
 
 int main() {

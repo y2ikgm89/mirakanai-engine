@@ -18,7 +18,7 @@
 namespace mirakana {
 namespace {
 
-constexpr std::string_view source_asset_registry_format = "GameEngine.SourceAssetRegistry";
+constexpr std::string_view source_asset_registry_format_name = "GameEngine.SourceAssetRegistry";
 constexpr std::string_view texture_source_format = "GameEngine.TextureSource";
 constexpr std::string_view mesh_source_format = "GameEngine.MeshSource";
 constexpr std::string_view audio_source_format = "GameEngine.AudioSource";
@@ -270,7 +270,7 @@ void parse_dependency_value(SourceAssetTextRow& row, std::string_view dependency
 
     if (field == "kind") {
         dependency.has_kind = true;
-        dependency.kind = parse_source_asset_dependency_kind_v1(value);
+        dependency.kind = parse_source_asset_dependency_kind(value);
     } else if (field == "key") {
         dependency.has_key = true;
         dependency.key = std::string(value);
@@ -321,10 +321,10 @@ void parse_asset_row_value(std::unordered_map<std::size_t, SourceAssetTextRow>& 
     }
 }
 
-void add_diagnostic(std::vector<SourceAssetRegistryDiagnosticV1>& diagnostics, SourceAssetRegistryDiagnosticCodeV1 code,
-                    const SourceAssetRegistryRowV1& row, std::string path = {},
-                    const SourceAssetDependencyRowV1* dependency = nullptr) {
-    SourceAssetRegistryDiagnosticV1 diagnostic;
+void add_diagnostic(std::vector<SourceAssetRegistryDiagnostic>& diagnostics, SourceAssetRegistryDiagnosticCode code,
+                    const SourceAssetRegistryRow& row, std::string path = {},
+                    const SourceAssetDependencyRow* dependency = nullptr) {
+    SourceAssetRegistryDiagnostic diagnostic;
     diagnostic.code = code;
     diagnostic.key = row.key;
     diagnostic.path = std::move(path);
@@ -335,13 +335,13 @@ void add_diagnostic(std::vector<SourceAssetRegistryDiagnosticV1>& diagnostics, S
     diagnostics.push_back(std::move(diagnostic));
 }
 
-[[nodiscard]] std::string dependency_sort_key(const SourceAssetDependencyRowV1& dependency) {
-    return std::string{source_asset_dependency_kind_name_v1(dependency.kind)} + ":" + dependency.key.value;
+[[nodiscard]] std::string dependency_sort_key(const SourceAssetDependencyRow& dependency) {
+    return std::string{source_asset_dependency_kind_name(dependency.kind)} + ":" + dependency.key.value;
 }
 
-void sort_diagnostics(std::vector<SourceAssetRegistryDiagnosticV1>& diagnostics) {
+void sort_diagnostics(std::vector<SourceAssetRegistryDiagnostic>& diagnostics) {
     std::ranges::sort(diagnostics,
-                      [](const SourceAssetRegistryDiagnosticV1& lhs, const SourceAssetRegistryDiagnosticV1& rhs) {
+                      [](const SourceAssetRegistryDiagnostic& lhs, const SourceAssetRegistryDiagnostic& rhs) {
                           if (lhs.key.value != rhs.key.value) {
                               return lhs.key.value < rhs.key.value;
                           }
@@ -354,18 +354,18 @@ void sort_diagnostics(std::vector<SourceAssetRegistryDiagnosticV1>& diagnostics)
                           if (lhs.dependency_key.value != rhs.dependency_key.value) {
                               return lhs.dependency_key.value < rhs.dependency_key.value;
                           }
-                          return source_asset_dependency_kind_name_v1(lhs.dependency_kind) <
-                                 source_asset_dependency_kind_name_v1(rhs.dependency_kind);
+                          return source_asset_dependency_kind_name(lhs.dependency_kind) <
+                                 source_asset_dependency_kind_name(rhs.dependency_kind);
                       });
 }
 
 } // namespace
 
-std::string_view source_asset_registry_format_v1() noexcept {
-    return source_asset_registry_format;
+std::string_view source_asset_registry_format() noexcept {
+    return source_asset_registry_format_name;
 }
 
-bool is_supported_source_asset_kind_v1(AssetKind kind) noexcept {
+bool is_supported_source_asset_kind(AssetKind kind) noexcept {
     switch (kind) {
     case AssetKind::texture:
     case AssetKind::mesh:
@@ -389,7 +389,7 @@ bool is_supported_source_asset_kind_v1(AssetKind kind) noexcept {
     return false;
 }
 
-std::string_view expected_source_asset_format_v1(AssetKind kind) noexcept {
+std::string_view expected_source_asset_format(AssetKind kind) noexcept {
     switch (kind) {
     case AssetKind::texture:
         return texture_source_format;
@@ -420,7 +420,7 @@ std::string_view expected_source_asset_format_v1(AssetKind kind) noexcept {
     return {};
 }
 
-std::string_view source_asset_dependency_kind_name_v1(AssetDependencyKind kind) noexcept {
+std::string_view source_asset_dependency_kind_name(AssetDependencyKind kind) noexcept {
     switch (kind) {
     case AssetDependencyKind::material_texture:
         return "material_texture";
@@ -443,7 +443,7 @@ std::string_view source_asset_dependency_kind_name_v1(AssetDependencyKind kind) 
     return "unknown";
 }
 
-AssetDependencyKind parse_source_asset_dependency_kind_v1(std::string_view value) noexcept {
+AssetDependencyKind parse_source_asset_dependency_kind(std::string_view value) noexcept {
     if (value == "material_texture") {
         return AssetDependencyKind::material_texture;
     }
@@ -459,9 +459,9 @@ AssetDependencyKind parse_source_asset_dependency_kind_v1(std::string_view value
     return AssetDependencyKind::unknown;
 }
 
-std::vector<SourceAssetRegistryDiagnosticV1>
-validate_source_asset_registry_document(const SourceAssetRegistryDocumentV1& document) {
-    std::vector<SourceAssetRegistryDiagnosticV1> diagnostics;
+std::vector<SourceAssetRegistryDiagnostic>
+validate_source_asset_registry_document(const SourceAssetRegistryDocument& document) {
+    std::vector<SourceAssetRegistryDiagnostic> diagnostics;
     std::unordered_set<std::string> keys;
     std::unordered_set<std::uint64_t> ids;
     std::unordered_set<std::string> source_paths;
@@ -476,73 +476,72 @@ validate_source_asset_registry_document(const SourceAssetRegistryDocumentV1& doc
 
     for (const auto& row : document.assets) {
         if (!is_valid_asset_key(row.key.value)) {
-            add_diagnostic(diagnostics, SourceAssetRegistryDiagnosticCodeV1::invalid_key, row);
+            add_diagnostic(diagnostics, SourceAssetRegistryDiagnosticCode::invalid_key, row);
         } else {
             if (!keys.insert(row.key.value).second) {
-                add_diagnostic(diagnostics, SourceAssetRegistryDiagnosticCodeV1::duplicate_key, row);
+                add_diagnostic(diagnostics, SourceAssetRegistryDiagnosticCode::duplicate_key, row);
             }
-            const auto id = asset_id_from_key_v2(row.key);
+            const auto id = asset_id_from_key(row.key);
             if (!ids.insert(id.value).second) {
-                add_diagnostic(diagnostics, SourceAssetRegistryDiagnosticCodeV1::duplicate_asset_id, row);
+                add_diagnostic(diagnostics, SourceAssetRegistryDiagnosticCode::duplicate_asset_id, row);
             }
         }
 
-        if (!is_supported_source_asset_kind_v1(row.kind)) {
-            add_diagnostic(diagnostics, SourceAssetRegistryDiagnosticCodeV1::invalid_kind, row);
+        if (!is_supported_source_asset_kind(row.kind)) {
+            add_diagnostic(diagnostics, SourceAssetRegistryDiagnosticCode::invalid_kind, row);
         }
 
         if (!is_safe_repository_path(row.source_path)) {
-            add_diagnostic(diagnostics, SourceAssetRegistryDiagnosticCodeV1::invalid_source_path, row, row.source_path);
+            add_diagnostic(diagnostics, SourceAssetRegistryDiagnosticCode::invalid_source_path, row, row.source_path);
         } else if (!source_paths.insert(row.source_path).second) {
-            add_diagnostic(diagnostics, SourceAssetRegistryDiagnosticCodeV1::duplicate_source_path, row,
-                           row.source_path);
+            add_diagnostic(diagnostics, SourceAssetRegistryDiagnosticCode::duplicate_source_path, row, row.source_path);
         }
 
-        if (row.source_format != expected_source_asset_format_v1(row.kind)) {
-            add_diagnostic(diagnostics, SourceAssetRegistryDiagnosticCodeV1::invalid_source_format, row);
+        if (row.source_format != expected_source_asset_format(row.kind)) {
+            add_diagnostic(diagnostics, SourceAssetRegistryDiagnosticCode::invalid_source_format, row);
         }
 
         if (!is_safe_repository_path(row.imported_path)) {
-            add_diagnostic(diagnostics, SourceAssetRegistryDiagnosticCodeV1::invalid_imported_path, row,
+            add_diagnostic(diagnostics, SourceAssetRegistryDiagnosticCode::invalid_imported_path, row,
                            row.imported_path);
         } else if (!imported_paths.insert(row.imported_path).second) {
-            add_diagnostic(diagnostics, SourceAssetRegistryDiagnosticCodeV1::duplicate_imported_path, row,
+            add_diagnostic(diagnostics, SourceAssetRegistryDiagnosticCode::duplicate_imported_path, row,
                            row.imported_path);
         }
 
         std::unordered_set<std::string> dependencies;
         for (const auto& dependency : row.dependencies) {
             if (!dependency_kind_allowed_for_asset(row.kind, dependency.kind)) {
-                add_diagnostic(diagnostics, SourceAssetRegistryDiagnosticCodeV1::invalid_dependency_kind, row, {},
+                add_diagnostic(diagnostics, SourceAssetRegistryDiagnosticCode::invalid_dependency_kind, row, {},
                                &dependency);
             }
             if (!is_valid_asset_key(dependency.key.value)) {
-                add_diagnostic(diagnostics, SourceAssetRegistryDiagnosticCodeV1::invalid_dependency_key, row, {},
+                add_diagnostic(diagnostics, SourceAssetRegistryDiagnosticCode::invalid_dependency_key, row, {},
                                &dependency);
             } else {
                 const auto target_kind = kinds_by_valid_key.find(dependency.key.value);
                 if (target_kind == kinds_by_valid_key.end()) {
-                    add_diagnostic(diagnostics, SourceAssetRegistryDiagnosticCodeV1::missing_dependency_key, row, {},
+                    add_diagnostic(diagnostics, SourceAssetRegistryDiagnosticCode::missing_dependency_key, row, {},
                                    &dependency);
                 } else if (dependency.key.value == row.key.value ||
                            !dependency_target_kind_matches(dependency.kind, target_kind->second)) {
-                    add_diagnostic(diagnostics, SourceAssetRegistryDiagnosticCodeV1::invalid_dependency_target, row, {},
+                    add_diagnostic(diagnostics, SourceAssetRegistryDiagnosticCode::invalid_dependency_target, row, {},
                                    &dependency);
                 }
             }
 
             if (!dependencies.insert(dependency_sort_key(dependency)).second) {
-                add_diagnostic(diagnostics, SourceAssetRegistryDiagnosticCodeV1::duplicate_dependency, row, {},
+                add_diagnostic(diagnostics, SourceAssetRegistryDiagnosticCode::duplicate_dependency, row, {},
                                &dependency);
             }
         }
     }
 
     if (diagnostics.empty()) {
-        const auto identity = project_source_asset_registry_identity_v2(document);
-        if (!validate_asset_identity_document_v2(identity).empty()) {
-            diagnostics.push_back(SourceAssetRegistryDiagnosticV1{
-                .code = SourceAssetRegistryDiagnosticCodeV1::invalid_identity_projection,
+        const auto identity = project_source_asset_registry_identity(document);
+        if (!validate_asset_identity_document(identity).empty()) {
+            diagnostics.push_back(SourceAssetRegistryDiagnostic{
+                .code = SourceAssetRegistryDiagnosticCode::invalid_identity_projection,
                 .key = {},
                 .path = {},
                 .dependency_kind = AssetDependencyKind::unknown,
@@ -553,8 +552,8 @@ validate_source_asset_registry_document(const SourceAssetRegistryDocumentV1& doc
         try {
             (void)build_source_asset_import_metadata_registry(document);
         } catch (const std::exception&) {
-            diagnostics.push_back(SourceAssetRegistryDiagnosticV1{
-                .code = SourceAssetRegistryDiagnosticCodeV1::invalid_import_metadata,
+            diagnostics.push_back(SourceAssetRegistryDiagnostic{
+                .code = SourceAssetRegistryDiagnosticCode::invalid_import_metadata,
                 .key = {},
                 .path = {},
                 .dependency_kind = AssetDependencyKind::unknown,
@@ -567,18 +566,18 @@ validate_source_asset_registry_document(const SourceAssetRegistryDocumentV1& doc
     return diagnostics;
 }
 
-std::string serialize_source_asset_registry_document(const SourceAssetRegistryDocumentV1& document) {
+std::string serialize_source_asset_registry_document(const SourceAssetRegistryDocument& document) {
     const auto diagnostics = validate_source_asset_registry_document(document);
     if (!diagnostics.empty()) {
         throw std::invalid_argument("source asset registry document is invalid");
     }
 
     std::ostringstream output;
-    output << "format=" << source_asset_registry_format << '\n';
+    output << "format=" << source_asset_registry_format() << '\n';
     for (std::size_t ordinal = 0; ordinal < document.assets.size(); ++ordinal) {
         const auto& row = document.assets[ordinal];
         output << "asset." << ordinal << ".key=" << row.key.value << '\n';
-        output << "asset." << ordinal << ".id=" << asset_id_from_key_v2(row.key).value << '\n';
+        output << "asset." << ordinal << ".id=" << asset_id_from_key(row.key).value << '\n';
         output << "asset." << ordinal << ".kind=" << asset_kind_name(row.kind) << '\n';
         output << "asset." << ordinal << ".source=" << row.source_path << '\n';
         output << "asset." << ordinal << ".source_format=" << row.source_format << '\n';
@@ -586,7 +585,7 @@ std::string serialize_source_asset_registry_document(const SourceAssetRegistryDo
         for (std::size_t dependency_ordinal = 0; dependency_ordinal < row.dependencies.size(); ++dependency_ordinal) {
             const auto& dependency = row.dependencies[dependency_ordinal];
             output << "asset." << ordinal << ".dependency." << dependency_ordinal
-                   << ".kind=" << source_asset_dependency_kind_name_v1(dependency.kind) << '\n';
+                   << ".kind=" << source_asset_dependency_kind_name(dependency.kind) << '\n';
             output << "asset." << ordinal << ".dependency." << dependency_ordinal << ".key=" << dependency.key.value
                    << '\n';
         }
@@ -594,7 +593,7 @@ std::string serialize_source_asset_registry_document(const SourceAssetRegistryDo
     return output.str();
 }
 
-SourceAssetRegistryDocumentV1 parse_source_asset_registry_document_unvalidated_v1(std::string_view text) {
+SourceAssetRegistryDocument parse_source_asset_registry_document_unvalidated(std::string_view text) {
     bool saw_format = false;
     std::unordered_set<std::string> seen_keys;
     std::unordered_map<std::size_t, SourceAssetTextRow> rows;
@@ -622,7 +621,7 @@ SourceAssetRegistryDocumentV1 parse_source_asset_registry_document_unvalidated_v
         }
         if (key == "format") {
             saw_format = true;
-            if (value != source_asset_registry_format) {
+            if (value != source_asset_registry_format()) {
                 throw std::invalid_argument("source asset registry format is unsupported");
             }
             continue;
@@ -642,7 +641,7 @@ SourceAssetRegistryDocumentV1 parse_source_asset_registry_document_unvalidated_v
     }
     std::ranges::sort(ordinals);
 
-    SourceAssetRegistryDocumentV1 document;
+    SourceAssetRegistryDocument document;
     document.assets.reserve(ordinals.size());
     std::size_t expected_ordinal = 0;
     for (const auto ordinal : ordinals) {
@@ -656,7 +655,7 @@ SourceAssetRegistryDocumentV1 parse_source_asset_registry_document_unvalidated_v
             !row.has_imported) {
             throw std::invalid_argument("source asset registry row is incomplete");
         }
-        if (AssetId{row.id} != asset_id_from_key_v2(AssetKeyV2{row.key})) {
+        if (AssetId{row.id} != asset_id_from_key(AssetKey{row.key})) {
             throw std::invalid_argument("source asset registry row id does not match key");
         }
 
@@ -667,7 +666,7 @@ SourceAssetRegistryDocumentV1 parse_source_asset_registry_document_unvalidated_v
         }
         std::ranges::sort(dependency_ordinals);
 
-        std::vector<SourceAssetDependencyRowV1> dependencies;
+        std::vector<SourceAssetDependencyRow> dependencies;
         dependencies.reserve(dependency_ordinals.size());
         std::size_t expected_dependency = 0;
         for (const auto dependency_ordinal : dependency_ordinals) {
@@ -680,14 +679,14 @@ SourceAssetRegistryDocumentV1 parse_source_asset_registry_document_unvalidated_v
             if (!dependency.has_kind || !dependency.has_key) {
                 throw std::invalid_argument("source asset registry dependency row is incomplete");
             }
-            dependencies.push_back(SourceAssetDependencyRowV1{
+            dependencies.push_back(SourceAssetDependencyRow{
                 .kind = dependency.kind,
-                .key = AssetKeyV2{dependency.key},
+                .key = AssetKey{dependency.key},
             });
         }
 
-        document.assets.push_back(SourceAssetRegistryRowV1{
-            .key = AssetKeyV2{row.key},
+        document.assets.push_back(SourceAssetRegistryRow{
+            .key = AssetKey{row.key},
             .kind = row.kind,
             .source_path = row.source,
             .source_format = row.source_format,
@@ -699,8 +698,8 @@ SourceAssetRegistryDocumentV1 parse_source_asset_registry_document_unvalidated_v
     return document;
 }
 
-SourceAssetRegistryDocumentV1 deserialize_source_asset_registry_document(std::string_view text) {
-    auto document = parse_source_asset_registry_document_unvalidated_v1(text);
+SourceAssetRegistryDocument deserialize_source_asset_registry_document(std::string_view text) {
+    auto document = parse_source_asset_registry_document_unvalidated(text);
     const auto diagnostics = validate_source_asset_registry_document(document);
     if (!diagnostics.empty()) {
         throw std::invalid_argument("source asset registry document is invalid");
@@ -708,11 +707,11 @@ SourceAssetRegistryDocumentV1 deserialize_source_asset_registry_document(std::st
     return document;
 }
 
-AssetIdentityDocumentV2 project_source_asset_registry_identity_v2(const SourceAssetRegistryDocumentV1& document) {
-    AssetIdentityDocumentV2 identity;
+AssetIdentityDocument project_source_asset_registry_identity(const SourceAssetRegistryDocument& document) {
+    AssetIdentityDocument identity;
     identity.assets.reserve(document.assets.size());
     for (const auto& row : document.assets) {
-        identity.assets.push_back(AssetIdentityRowV2{
+        identity.assets.push_back(AssetIdentityRow{
             .key = row.key,
             .kind = row.kind,
             .source_path = row.source_path,
@@ -721,16 +720,16 @@ AssetIdentityDocumentV2 project_source_asset_registry_identity_v2(const SourceAs
     return identity;
 }
 
-AssetImportMetadataRegistry build_source_asset_import_metadata_registry(const SourceAssetRegistryDocumentV1& document) {
+AssetImportMetadataRegistry build_source_asset_import_metadata_registry(const SourceAssetRegistryDocument& document) {
     AssetImportMetadataRegistry registry;
     std::unordered_map<std::string, AssetId> ids_by_key;
     ids_by_key.reserve(document.assets.size());
     for (const auto& row : document.assets) {
-        ids_by_key.emplace(row.key.value, asset_id_from_key_v2(row.key));
+        ids_by_key.emplace(row.key.value, asset_id_from_key(row.key));
     }
 
     for (const auto& row : document.assets) {
-        const auto id = asset_id_from_key_v2(row.key);
+        const auto id = asset_id_from_key(row.key);
         if (row.kind == AssetKind::texture) {
             registry.add_texture(TextureImportMetadata{
                 .id = id,

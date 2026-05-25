@@ -268,47 +268,47 @@ void parse_asset_row_value(std::unordered_map<std::size_t, AssetIdentityTextRow>
 
 } // namespace
 
-AssetId asset_id_from_key_v2(const AssetKeyV2& key) noexcept {
+AssetId asset_id_from_key(const AssetKey& key) noexcept {
     return AssetId::from_name(key.value);
 }
 
-std::vector<AssetIdentityDiagnosticV2> validate_asset_identity_document_v2(const AssetIdentityDocumentV2& document) {
-    std::vector<AssetIdentityDiagnosticV2> diagnostics;
+std::vector<AssetIdentityDiagnostic> validate_asset_identity_document(const AssetIdentityDocument& document) {
+    std::vector<AssetIdentityDiagnostic> diagnostics;
     std::unordered_set<std::string> keys;
     std::unordered_set<std::string> source_paths;
 
     for (const auto& row : document.assets) {
         if (!valid_key(row.key.value)) {
-            diagnostics.push_back(AssetIdentityDiagnosticV2{
-                .code = AssetIdentityDiagnosticCodeV2::invalid_key,
+            diagnostics.push_back(AssetIdentityDiagnostic{
+                .code = AssetIdentityDiagnosticCode::invalid_key,
                 .key = row.key,
                 .source_path = row.source_path,
             });
         } else if (!keys.insert(row.key.value).second) {
-            diagnostics.push_back(AssetIdentityDiagnosticV2{
-                .code = AssetIdentityDiagnosticCodeV2::duplicate_key,
+            diagnostics.push_back(AssetIdentityDiagnostic{
+                .code = AssetIdentityDiagnosticCode::duplicate_key,
                 .key = row.key,
                 .source_path = row.source_path,
             });
         }
 
         if (!valid_kind(row.kind)) {
-            diagnostics.push_back(AssetIdentityDiagnosticV2{
-                .code = AssetIdentityDiagnosticCodeV2::invalid_kind,
+            diagnostics.push_back(AssetIdentityDiagnostic{
+                .code = AssetIdentityDiagnosticCode::invalid_kind,
                 .key = row.key,
                 .source_path = row.source_path,
             });
         }
 
         if (!valid_source_path(row.source_path)) {
-            diagnostics.push_back(AssetIdentityDiagnosticV2{
-                .code = AssetIdentityDiagnosticCodeV2::invalid_source_path,
+            diagnostics.push_back(AssetIdentityDiagnostic{
+                .code = AssetIdentityDiagnosticCode::invalid_source_path,
                 .key = row.key,
                 .source_path = row.source_path,
             });
         } else if (!source_paths.insert(row.source_path).second) {
-            diagnostics.push_back(AssetIdentityDiagnosticV2{
-                .code = AssetIdentityDiagnosticCodeV2::duplicate_source_path,
+            diagnostics.push_back(AssetIdentityDiagnostic{
+                .code = AssetIdentityDiagnosticCode::duplicate_source_path,
                 .key = row.key,
                 .source_path = row.source_path,
             });
@@ -318,8 +318,8 @@ std::vector<AssetIdentityDiagnosticV2> validate_asset_identity_document_v2(const
     return diagnostics;
 }
 
-std::string serialize_asset_identity_document_v2(const AssetIdentityDocumentV2& document) {
-    const auto diagnostics = validate_asset_identity_document_v2(document);
+std::string serialize_asset_identity_document(const AssetIdentityDocument& document) {
+    const auto diagnostics = validate_asset_identity_document(document);
     if (!diagnostics.empty()) {
         throw std::invalid_argument("asset identity document is invalid");
     }
@@ -329,14 +329,14 @@ std::string serialize_asset_identity_document_v2(const AssetIdentityDocumentV2& 
     for (std::size_t ordinal = 0; ordinal < document.assets.size(); ++ordinal) {
         const auto& row = document.assets[ordinal];
         output << "asset." << ordinal << ".key=" << row.key.value << '\n';
-        output << "asset." << ordinal << ".id=" << asset_id_from_key_v2(row.key).value << '\n';
+        output << "asset." << ordinal << ".id=" << asset_id_from_key(row.key).value << '\n';
         output << "asset." << ordinal << ".kind=" << asset_kind_name(row.kind) << '\n';
         output << "asset." << ordinal << ".source=" << row.source_path << '\n';
     }
     return output.str();
 }
 
-AssetIdentityDocumentV2 deserialize_asset_identity_document_v2(std::string_view text) {
+AssetIdentityDocument deserialize_asset_identity_document(std::string_view text) {
     bool saw_format = false;
     std::unordered_set<std::string> seen_keys;
     std::unordered_map<std::size_t, AssetIdentityTextRow> rows;
@@ -384,7 +384,7 @@ AssetIdentityDocumentV2 deserialize_asset_identity_document_v2(std::string_view 
     }
     std::ranges::sort(ordinals);
 
-    AssetIdentityDocumentV2 document;
+    AssetIdentityDocument document;
     document.assets.reserve(ordinals.size());
     std::size_t expected_ordinal = 0;
     for (const auto ordinal : ordinals) {
@@ -400,34 +400,33 @@ AssetIdentityDocumentV2 deserialize_asset_identity_document_v2(std::string_view 
         if (AssetId{row.id} != AssetId::from_name(row.key)) {
             throw std::invalid_argument("asset identity row id does not match key");
         }
-        document.assets.push_back(AssetIdentityRowV2{
-            .key = AssetKeyV2{row.key},
+        document.assets.push_back(AssetIdentityRow{
+            .key = AssetKey{row.key},
             .kind = row.kind,
             .source_path = row.source,
         });
     }
 
-    const auto diagnostics = validate_asset_identity_document_v2(document);
+    const auto diagnostics = validate_asset_identity_document(document);
     if (!diagnostics.empty()) {
         throw std::invalid_argument("asset identity document is invalid");
     }
     return document;
 }
 
-AssetIdentityPlacementPlanV2
-plan_asset_identity_placements_v2(const AssetIdentityDocumentV2& document,
-                                  std::span<const AssetIdentityPlacementRequestV2> requests) {
-    AssetIdentityPlacementPlanV2 plan;
+AssetIdentityPlacementPlan plan_asset_identity_placements(const AssetIdentityDocument& document,
+                                                          std::span<const AssetIdentityPlacementRequest> requests) {
+    AssetIdentityPlacementPlan plan;
 
-    plan.identity_diagnostics = validate_asset_identity_document_v2(document);
+    plan.identity_diagnostics = validate_asset_identity_document(document);
     if (!plan.identity_diagnostics.empty()) {
-        plan.diagnostics.push_back(AssetIdentityPlacementDiagnosticV2{
-            .code = AssetIdentityPlacementDiagnosticCodeV2::invalid_identity_document,
+        plan.diagnostics.push_back(AssetIdentityPlacementDiagnostic{
+            .code = AssetIdentityPlacementDiagnosticCode::invalid_identity_document,
         });
         return plan;
     }
 
-    std::unordered_map<std::string, const AssetIdentityRowV2*> rows_by_key;
+    std::unordered_map<std::string, const AssetIdentityRow*> rows_by_key;
     rows_by_key.reserve(document.assets.size());
     for (const auto& row : document.assets) {
         rows_by_key.emplace(row.key.value, &row);
@@ -438,16 +437,16 @@ plan_asset_identity_placements_v2(const AssetIdentityDocumentV2& document,
     for (const auto& request : requests) {
         bool request_valid = true;
         if (!valid_placement(request.placement)) {
-            plan.diagnostics.push_back(AssetIdentityPlacementDiagnosticV2{
-                .code = AssetIdentityPlacementDiagnosticCodeV2::invalid_placement,
+            plan.diagnostics.push_back(AssetIdentityPlacementDiagnostic{
+                .code = AssetIdentityPlacementDiagnosticCode::invalid_placement,
                 .placement = request.placement,
                 .key = request.key,
                 .expected_kind = request.expected_kind,
             });
             request_valid = false;
         } else if (!placements.insert(request.placement).second) {
-            plan.diagnostics.push_back(AssetIdentityPlacementDiagnosticV2{
-                .code = AssetIdentityPlacementDiagnosticCodeV2::duplicate_placement,
+            plan.diagnostics.push_back(AssetIdentityPlacementDiagnostic{
+                .code = AssetIdentityPlacementDiagnosticCode::duplicate_placement,
                 .placement = request.placement,
                 .key = request.key,
                 .expected_kind = request.expected_kind,
@@ -456,8 +455,8 @@ plan_asset_identity_placements_v2(const AssetIdentityDocumentV2& document,
         }
 
         if (!valid_key(request.key.value)) {
-            plan.diagnostics.push_back(AssetIdentityPlacementDiagnosticV2{
-                .code = AssetIdentityPlacementDiagnosticCodeV2::invalid_key,
+            plan.diagnostics.push_back(AssetIdentityPlacementDiagnostic{
+                .code = AssetIdentityPlacementDiagnosticCode::invalid_key,
                 .placement = request.placement,
                 .key = request.key,
                 .expected_kind = request.expected_kind,
@@ -465,8 +464,8 @@ plan_asset_identity_placements_v2(const AssetIdentityDocumentV2& document,
             request_valid = false;
         }
         if (!valid_kind(request.expected_kind)) {
-            plan.diagnostics.push_back(AssetIdentityPlacementDiagnosticV2{
-                .code = AssetIdentityPlacementDiagnosticCodeV2::invalid_expected_kind,
+            plan.diagnostics.push_back(AssetIdentityPlacementDiagnostic{
+                .code = AssetIdentityPlacementDiagnosticCode::invalid_expected_kind,
                 .placement = request.placement,
                 .key = request.key,
                 .expected_kind = request.expected_kind,
@@ -479,8 +478,8 @@ plan_asset_identity_placements_v2(const AssetIdentityDocumentV2& document,
 
         const auto row = rows_by_key.find(request.key.value);
         if (row == rows_by_key.end()) {
-            plan.diagnostics.push_back(AssetIdentityPlacementDiagnosticV2{
-                .code = AssetIdentityPlacementDiagnosticCodeV2::missing_key,
+            plan.diagnostics.push_back(AssetIdentityPlacementDiagnostic{
+                .code = AssetIdentityPlacementDiagnosticCode::missing_key,
                 .placement = request.placement,
                 .key = request.key,
                 .expected_kind = request.expected_kind,
@@ -489,8 +488,8 @@ plan_asset_identity_placements_v2(const AssetIdentityDocumentV2& document,
         }
 
         if (row->second->kind != request.expected_kind) {
-            plan.diagnostics.push_back(AssetIdentityPlacementDiagnosticV2{
-                .code = AssetIdentityPlacementDiagnosticCodeV2::kind_mismatch,
+            plan.diagnostics.push_back(AssetIdentityPlacementDiagnostic{
+                .code = AssetIdentityPlacementDiagnosticCode::kind_mismatch,
                 .placement = request.placement,
                 .key = request.key,
                 .expected_kind = request.expected_kind,
@@ -499,10 +498,10 @@ plan_asset_identity_placements_v2(const AssetIdentityDocumentV2& document,
             continue;
         }
 
-        plan.rows.push_back(AssetIdentityPlacementRowV2{
+        plan.rows.push_back(AssetIdentityPlacementRow{
             .placement = request.placement,
             .key = row->second->key,
-            .id = asset_id_from_key_v2(row->second->key),
+            .id = asset_id_from_key(row->second->key),
             .kind = row->second->kind,
             .source_path = row->second->source_path,
         });

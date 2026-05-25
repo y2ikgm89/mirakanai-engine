@@ -184,7 +184,7 @@ if ($prefabScene3dAuthoringLoop.Count -ne 1) {
         "select-prefab-scene-package-authoring-target",
         "apply-scene-prefab-v2-authoring-commands",
         "cook-selected-source-registry-rows",
-        "migrate-scene-v2-runtime-package",
+        "migrate-scene-runtime-package",
         "validate-runtime-scene-package",
         "run-host-gated-3d-package-smoke"
     )
@@ -205,7 +205,7 @@ if ($prefabScene3dAuthoringLoop.Count -ne 1) {
             Write-Error "engine manifest 3d-prefab-scene-package-authoring descriptorFields missing: $field"
         }
     }
-    foreach ($gate in @("scene-prefab-authoring", "cook-registered-source-assets", "migrate-scene-v2-runtime-package", "validate-runtime-scene-package", "desktop-game-runtime", "desktop-runtime-release-target")) {
+    foreach ($gate in @("scene-prefab-authoring", "cook-registered-source-assets", "migrate-scene-runtime-package", "validate-runtime-scene-package", "desktop-game-runtime", "desktop-runtime-release-target")) {
         if (@($prefabScene3dAuthoringLoop[0].preflightGates) -notcontains $gate) {
             Write-Error "engine manifest 3d-prefab-scene-package-authoring preflightGates missing: $gate"
         }
@@ -664,7 +664,7 @@ $expectedCommandSurfaceIds = @(
     "create-game-recipe",
     "create-scene",
     "update-scene-package",
-    "migrate-scene-v2-runtime-package",
+    "migrate-scene-runtime-package",
     "validate-runtime-scene-package",
     "add-scene-node",
     "add-or-update-component",
@@ -732,7 +732,7 @@ foreach ($commandSurface in $productionLoop.commandSurfaces) {
         Write-Error "engine manifest aiOperableProductionLoop command surface '$($commandSurface.id)' cannot make execute ready before dry-run is ready"
     }
     if ($modeIds.ContainsKey("apply") -and $modeIds["apply"].status -eq "ready" -and
-        @("create-game-recipe", "register-runtime-package-files", "update-ui-atlas-metadata-package", "create-material-instance", "create-material-from-graph", "update-scene-package", "migrate-scene-v2-runtime-package", "create-scene", "add-scene-node", "add-or-update-component", "create-prefab", "instantiate-prefab", "refresh-prefab-instance", "register-source-asset", "cook-registered-source-assets") -notcontains $commandSurface.id) {
+        @("create-game-recipe", "register-runtime-package-files", "update-ui-atlas-metadata-package", "create-material-instance", "create-material-from-graph", "update-scene-package", "migrate-scene-runtime-package", "create-scene", "add-scene-node", "add-or-update-component", "create-prefab", "instantiate-prefab", "refresh-prefab-instance", "register-source-asset", "cook-registered-source-assets") -notcontains $commandSurface.id) {
         Write-Error "engine manifest aiOperableProductionLoop command surface '$($commandSurface.id)' cannot make apply ready without a focused apply tooling slice"
     }
     if ($modeIds.ContainsKey("execute") -and $modeIds["execute"].status -eq "ready" -and

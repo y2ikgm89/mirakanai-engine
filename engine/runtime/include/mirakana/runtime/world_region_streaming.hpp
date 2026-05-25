@@ -50,8 +50,8 @@ enum class RuntimeWorldRegionStreamingDiagnosticCode : std::uint8_t {
 
 struct RuntimeWorldRegionPackageDesc {
     std::string region_id;
-    RuntimePackageIndexDiscoveryCandidateV2 candidate;
-    RuntimeResidentPackageMountIdV2 mount_id;
+    RuntimePackageIndexDiscoveryCandidate candidate;
+    RuntimeResidentPackageMountId mount_id;
     std::uint64_t estimated_resident_bytes{0};
     std::size_t estimated_asset_records{0};
     std::vector<AssetId> required_preload_assets;
@@ -63,7 +63,7 @@ struct RuntimeWorldRegionStreamingPlanRequest {
     std::vector<std::string> active_region_ids;
     std::vector<std::string> desired_region_ids;
     std::vector<std::string> protected_region_ids;
-    RuntimeResourceResidencyBudgetV2 budget;
+    RuntimeResourceResidencyBudget budget;
     std::size_t max_resident_regions{0};
 };
 
@@ -76,7 +76,7 @@ struct RuntimeWorldRegionStreamingDiagnostic {
 struct RuntimeWorldRegionStreamingPlanRow {
     RuntimeWorldRegionStreamingActionKind action{RuntimeWorldRegionStreamingActionKind::keep_resident};
     std::string region_id;
-    RuntimeResidentPackageMountIdV2 mount_id;
+    RuntimeResidentPackageMountId mount_id;
     std::string package_index_path;
     std::string content_root;
     std::uint64_t estimated_resident_bytes{0};
@@ -146,7 +146,7 @@ struct RuntimeWorldRegionNavigationRefReviewRequest {
 
 struct RuntimeWorldRegionNavigationRefRow {
     std::string region_id;
-    RuntimeResidentPackageMountIdV2 mount_id;
+    RuntimeResidentPackageMountId mount_id;
     std::string package_index_path;
     std::string content_root;
     bool resident{false};
@@ -167,7 +167,7 @@ struct RuntimeWorldRegionNavigationRefReviewResult {
 /// mounts. This value-only helper does not read package files, execute streaming safe points, mutate resident state,
 /// refresh catalogs, bake navigation data, or touch renderer/RHI/native handles.
 [[nodiscard]] RuntimeWorldRegionNavigationRefReviewResult
-review_runtime_world_region_navigation_refs(const RuntimeResidentPackageMountSetV2& mount_set,
+review_runtime_world_region_navigation_refs(const RuntimeResidentPackageMountSet& mount_set,
                                             const RuntimeWorldRegionNavigationRefReviewRequest& request);
 
 struct RuntimeWorldRegionNavigationPathCacheEntry {
@@ -201,8 +201,8 @@ struct RuntimeWorldRegionNavigationPathCacheReviewResult {
 /// package/catalog generations. The coarse generation key is conservative: it may invalidate too often, but it never
 /// reuses stale package-backed navigation rows as ready.
 [[nodiscard]] RuntimeWorldRegionNavigationPathCacheReviewResult
-review_runtime_world_region_navigation_path_cache(const RuntimeResidentPackageMountSetV2& mount_set,
-                                                  const RuntimeResidentCatalogCacheV2& catalog_cache,
+review_runtime_world_region_navigation_path_cache(const RuntimeResidentPackageMountSet& mount_set,
+                                                  const RuntimeResidentCatalogCache& catalog_cache,
                                                   const RuntimeWorldRegionNavigationPathCacheReviewRequest& request);
 
 enum class RuntimeWorldRegionStreamingSafePointStatus : std::uint8_t {
@@ -218,18 +218,18 @@ struct RuntimeWorldRegionStreamingSafePointDesc {
     std::string target_id;
     std::string runtime_scene_validation_target_id;
     RuntimePackageMountOverlay overlay{RuntimePackageMountOverlay::last_mount_wins};
-    RuntimeResourceResidencyBudgetV2 budget;
+    RuntimeResourceResidencyBudget budget;
     std::uint32_t max_resident_packages{0};
     bool safe_point_required{true};
     bool runtime_scene_validation_succeeded{false};
-    std::vector<RuntimeResidentPackageMountIdV2> eviction_candidate_unmount_order;
-    std::vector<RuntimeResidentPackageMountIdV2> protected_mount_ids;
+    std::vector<RuntimeResidentPackageMountId> eviction_candidate_unmount_order;
+    std::vector<RuntimeResidentPackageMountId> protected_mount_ids;
 };
 
 struct RuntimeWorldRegionStreamingSafePointRowResult {
     RuntimeWorldRegionStreamingActionKind action{RuntimeWorldRegionStreamingActionKind::keep_resident};
     std::string region_id;
-    RuntimeResidentPackageMountIdV2 mount_id;
+    RuntimeResidentPackageMountId mount_id;
     RuntimePackageStreamingExecutionResult streaming;
     bool committed{false};
 };
@@ -252,8 +252,8 @@ struct RuntimeWorldRegionStreamingSafePointResult {
 /// not discover packages, infer eviction policy, stream in the background, upload renderer resources, or touch native
 /// handles.
 [[nodiscard]] RuntimeWorldRegionStreamingSafePointResult
-execute_runtime_world_region_streaming_safe_point(IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set,
-                                                  RuntimeResidentCatalogCacheV2& catalog_cache,
+execute_runtime_world_region_streaming_safe_point(IFileSystem& filesystem, RuntimeResidentPackageMountSet& mount_set,
+                                                  RuntimeResidentCatalogCache& catalog_cache,
                                                   const RuntimeWorldRegionStreamingSafePointDesc& desc);
 
 enum class RuntimeWorldStreamingLargeSceneReadinessStatus : std::uint8_t {

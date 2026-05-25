@@ -1122,7 +1122,7 @@ std::optional<rhi::ResourceState> frame_graph_texture_state_for_access(FrameGrap
 }
 
 std::vector<FrameGraphTexturePassTargetAccess>
-build_frame_graph_texture_pass_target_accesses(const FrameGraphV1Desc& desc) {
+build_frame_graph_texture_pass_target_accesses(const FrameGraphDesc& desc) {
     std::vector<FrameGraphTexturePassTargetAccess> pass_target_accesses;
     for (const auto& pass : desc.passes) {
         for (const auto& write : pass.writes) {
@@ -1140,10 +1140,10 @@ build_frame_graph_texture_pass_target_accesses(const FrameGraphV1Desc& desc) {
 }
 
 FrameGraphTransientTextureAliasPlan
-plan_frame_graph_transient_texture_aliases(const FrameGraphV1Desc& desc,
+plan_frame_graph_transient_texture_aliases(const FrameGraphDesc& desc,
                                            std::span<const FrameGraphTransientTextureDesc> texture_descs) {
     FrameGraphTransientTextureAliasPlan result;
-    const auto built = compile_frame_graph_v1(desc);
+    const auto built = compile_frame_graph(desc);
     if (!built.succeeded()) {
         result.diagnostics = built.diagnostics;
         return result;
@@ -2067,37 +2067,37 @@ execute_frame_graph_rhi_multi_queue_schedule(const FrameGraphRhiMultiQueueExecut
 FrameGraphRhiMultiQueuePackageEvidence execute_frame_graph_rhi_multi_queue_package_evidence(rhi::IRhiDevice& device) {
     FrameGraphRhiMultiQueuePackageEvidence result;
 
-    FrameGraphV1Desc desc;
-    desc.resources.push_back(FrameGraphResourceV1Desc{
+    FrameGraphDesc desc;
+    desc.resources.push_back(FrameGraphResourceDesc{
         .name = "package.alias.early",
         .lifetime = FrameGraphResourceLifetime::transient,
     });
-    desc.resources.push_back(FrameGraphResourceV1Desc{
+    desc.resources.push_back(FrameGraphResourceDesc{
         .name = "package.alias.late",
         .lifetime = FrameGraphResourceLifetime::transient,
     });
-    desc.passes.push_back(FrameGraphPassV1Desc{
+    desc.passes.push_back(FrameGraphPassDesc{
         .name = "early.copy",
         .writes = {FrameGraphResourceAccess{
             .resource = "package.alias.early",
             .access = FrameGraphAccess::copy_destination,
         }},
     });
-    desc.passes.push_back(FrameGraphPassV1Desc{
+    desc.passes.push_back(FrameGraphPassDesc{
         .name = "early.sample",
         .reads = {FrameGraphResourceAccess{
             .resource = "package.alias.early",
             .access = FrameGraphAccess::shader_read,
         }},
     });
-    desc.passes.push_back(FrameGraphPassV1Desc{
+    desc.passes.push_back(FrameGraphPassDesc{
         .name = "late.copy",
         .writes = {FrameGraphResourceAccess{
             .resource = "package.alias.late",
             .access = FrameGraphAccess::copy_destination,
         }},
     });
-    desc.passes.push_back(FrameGraphPassV1Desc{
+    desc.passes.push_back(FrameGraphPassDesc{
         .name = "late.sample",
         .reads = {FrameGraphResourceAccess{
             .resource = "package.alias.late",
@@ -2105,12 +2105,12 @@ FrameGraphRhiMultiQueuePackageEvidence execute_frame_graph_rhi_multi_queue_packa
         }},
     });
 
-    const auto plan = compile_frame_graph_v1(desc);
+    const auto plan = compile_frame_graph(desc);
     if (!plan.succeeded()) {
         result.diagnostics = plan.diagnostics;
         return result;
     }
-    const auto schedule = schedule_frame_graph_v1_execution(plan);
+    const auto schedule = schedule_frame_graph_execution(plan);
 
     const auto texture_desc = rhi::TextureDesc{
         .extent = rhi::Extent3D{.width = 8, .height = 8, .depth = 1},

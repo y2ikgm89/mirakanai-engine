@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 GameEngine contributors
 // SPDX-License-Identifier: LicenseRef-Proprietary
 
-#include "mirakana/tools/scene_v2_runtime_package_migration_tool.hpp"
+#include "mirakana/tools/scene_runtime_package_migration_tool.hpp"
 
 #include "mirakana/assets/asset_dependency_graph.hpp"
 #include "mirakana/assets/asset_identity.hpp"
@@ -11,7 +11,7 @@
 #include "mirakana/platform/filesystem.hpp"
 #include "mirakana/scene/components.hpp"
 #include "mirakana/scene/scene.hpp"
-#include "mirakana/scene/schema_v2.hpp"
+#include "mirakana/scene/schema.hpp"
 #include "mirakana/tools/scene_tool.hpp"
 
 #include <algorithm>
@@ -38,23 +38,23 @@ struct ProjectedScene {
     std::vector<AssetId> mesh_dependencies;
     std::vector<AssetId> material_dependencies;
     std::vector<AssetId> sprite_dependencies;
-    std::vector<AssetIdentityPlacementRequestV2> placement_requests;
-    std::vector<SourceAssetDependencyRowV1> dependency_rows;
-    std::vector<SceneV2RuntimePackageMigrationDiagnostic> diagnostics;
+    std::vector<AssetIdentityPlacementRequest> placement_requests;
+    std::vector<SourceAssetDependencyRow> dependency_rows;
+    std::vector<SceneRuntimePackageMigrationDiagnostic> diagnostics;
 };
 
-struct PreparedSceneV2RuntimePackageMigration {
+struct PreparedSceneRuntimePackageMigration {
     Scene scene{"Scene"};
     AssetId scene_asset;
     std::vector<AssetId> mesh_dependencies;
     std::vector<AssetId> material_dependencies;
     std::vector<AssetId> sprite_dependencies;
-    std::vector<AssetIdentityPlacementRowV2> placement_rows;
-    std::vector<SourceAssetDependencyRowV1> dependency_rows;
+    std::vector<AssetIdentityPlacementRow> placement_rows;
+    std::vector<SourceAssetDependencyRow> dependency_rows;
 };
 
 struct ResolvedAssetReference {
-    AssetKeyV2 key;
+    AssetKey key;
     AssetId id;
 };
 
@@ -64,9 +64,8 @@ struct ResolvedAssetReference {
 
 [[nodiscard]] std::vector<std::string> default_unsupported_gap_ids() {
     return {
-        "scene-component-prefab-schema-v2", "runtime-resource-v2",
-        "renderer-rhi-resource-foundation", "editor-productization",
-        "3d-playable-vertical-slice",
+        "scene-component-prefab-schema", "runtime-resource",           "renderer-rhi-resource-foundation",
+        "editor-productization",         "3d-playable-vertical-slice",
     };
 }
 
@@ -162,11 +161,11 @@ struct ResolvedAssetReference {
     return value.size() >= suffix.size() && value.substr(value.size() - suffix.size()) == suffix;
 }
 
-void add_diagnostic(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& diagnostics, std::string code,
-                    std::string message, std::string path = {}, AssetKeyV2 asset_key = {}, AuthoringId node = {},
+void add_diagnostic(std::vector<SceneRuntimePackageMigrationDiagnostic>& diagnostics, std::string code,
+                    std::string message, std::string path = {}, AssetKey asset_key = {}, AuthoringId node = {},
                     AuthoringId component = {}, SceneComponentTypeId component_type = {}, std::string property = {},
                     std::string unsupported_gap_id = {}, std::string validation_recipe = {}) {
-    diagnostics.push_back(SceneV2RuntimePackageMigrationDiagnostic{
+    diagnostics.push_back(SceneRuntimePackageMigrationDiagnostic{
         .severity = "error",
         .code = std::move(code),
         .message = std::move(message),
@@ -181,9 +180,9 @@ void add_diagnostic(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& diagn
     });
 }
 
-void sort_diagnostics(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& diagnostics) {
-    std::ranges::sort(diagnostics, [](const SceneV2RuntimePackageMigrationDiagnostic& lhs,
-                                      const SceneV2RuntimePackageMigrationDiagnostic& rhs) {
+void sort_diagnostics(std::vector<SceneRuntimePackageMigrationDiagnostic>& diagnostics) {
+    std::ranges::sort(diagnostics, [](const SceneRuntimePackageMigrationDiagnostic& lhs,
+                                      const SceneRuntimePackageMigrationDiagnostic& rhs) {
         if (lhs.path != rhs.path) {
             return lhs.path < rhs.path;
         }
@@ -206,7 +205,7 @@ void sort_diagnostics(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& dia
     });
 }
 
-void validate_claim(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& diagnostics, std::string_view value,
+void validate_claim(std::vector<SceneRuntimePackageMigrationDiagnostic>& diagnostics, std::string_view value,
                     std::string code, std::string message, std::string unsupported_gap_id) {
     if (value != "unsupported") {
         add_diagnostic(diagnostics, std::move(code), std::move(message), {}, {}, {}, {}, {}, {},
@@ -214,53 +213,51 @@ void validate_claim(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& diagn
     }
 }
 
-void validate_unsupported_claims(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& diagnostics,
-                                 const SceneV2RuntimePackageMigrationRequest& request) {
+void validate_unsupported_claims(std::vector<SceneRuntimePackageMigrationDiagnostic>& diagnostics,
+                                 const SceneRuntimePackageMigrationRequest& request) {
     validate_claim(diagnostics, request.package_cooking, "unsupported_package_cooking",
-                   "package cooking is not supported by Scene v2 runtime package migration", "runtime-resource-v2");
+                   "package cooking is not supported by Scene runtime package migration", "runtime-resource");
     validate_claim(diagnostics, request.dependent_asset_cooking, "unsupported_dependent_asset_cooking",
-                   "dependent asset cooking is not supported by Scene v2 runtime package migration",
-                   "runtime-resource-v2");
+                   "dependent asset cooking is not supported by Scene runtime package migration", "runtime-resource");
     validate_claim(diagnostics, request.external_importer_execution, "unsupported_external_importer_execution",
-                   "external importer execution is not supported by Scene v2 runtime package migration", {});
+                   "external importer execution is not supported by Scene runtime package migration", {});
     validate_claim(diagnostics, request.renderer_rhi_residency, "unsupported_renderer_rhi_residency",
-                   "renderer/RHI residency is not supported by Scene v2 runtime package migration",
+                   "renderer/RHI residency is not supported by Scene runtime package migration",
                    "renderer-rhi-resource-foundation");
     validate_claim(diagnostics, request.package_streaming, "unsupported_package_streaming",
-                   "package streaming is not supported by Scene v2 runtime package migration", "runtime-resource-v2");
+                   "package streaming is not supported by Scene runtime package migration", "runtime-resource");
     validate_claim(diagnostics, request.material_graph, "unsupported_material_graph",
-                   "material graph is not supported by Scene v2 runtime package migration",
-                   "3d-playable-vertical-slice");
+                   "material graph is not supported by Scene runtime package migration", "3d-playable-vertical-slice");
     validate_claim(diagnostics, request.shader_graph, "unsupported_shader_graph",
-                   "shader graph is not supported by Scene v2 runtime package migration", "3d-playable-vertical-slice");
+                   "shader graph is not supported by Scene runtime package migration", "3d-playable-vertical-slice");
     validate_claim(diagnostics, request.live_shader_generation, "unsupported_live_shader_generation",
-                   "live shader generation is not supported by Scene v2 runtime package migration",
+                   "live shader generation is not supported by Scene runtime package migration",
                    "3d-playable-vertical-slice");
     validate_claim(diagnostics, request.editor_productization, "unsupported_editor_productization",
-                   "editor productization is not supported by Scene v2 runtime package migration",
+                   "editor productization is not supported by Scene runtime package migration",
                    "editor-productization");
     validate_claim(diagnostics, request.metal_readiness, "unsupported_metal_readiness",
-                   "Metal readiness is host-gated and is not supported by Scene v2 runtime package migration",
+                   "Metal readiness is host-gated and is not supported by Scene runtime package migration",
                    "3d-playable-vertical-slice");
     validate_claim(diagnostics, request.public_native_rhi_handles, "unsupported_public_native_rhi_handles",
-                   "public native/RHI handles are not supported by Scene v2 runtime package migration",
+                   "public native/RHI handles are not supported by Scene runtime package migration",
                    "renderer-rhi-resource-foundation");
     validate_claim(diagnostics, request.general_production_renderer_quality,
                    "unsupported_general_production_renderer_quality",
-                   "general production renderer quality is not supported by Scene v2 runtime package migration",
+                   "general production renderer quality is not supported by Scene runtime package migration",
                    "renderer-rhi-resource-foundation");
     validate_claim(diagnostics, request.arbitrary_shell, "unsupported_arbitrary_shell",
-                   "arbitrary shell execution is not supported by Scene v2 runtime package migration",
+                   "arbitrary shell execution is not supported by Scene runtime package migration",
                    "editor-productization");
     validate_claim(diagnostics, request.free_form_edit, "unsupported_free_form_edit",
-                   "free-form edits are not supported by Scene v2 runtime package migration", "editor-productization");
+                   "free-form edits are not supported by Scene runtime package migration", "editor-productization");
 }
 
-void validate_request_shape(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& diagnostics,
-                            const SceneV2RuntimePackageMigrationRequest& request) {
-    if (!is_safe_repository_path(request.scene_v2_path) || !ends_with(request.scene_v2_path, ".scene")) {
-        add_diagnostic(diagnostics, "unsafe_scene_v2_path",
-                       "scene v2 path must be a safe repository-relative .scene path", request.scene_v2_path);
+void validate_request_shape(std::vector<SceneRuntimePackageMigrationDiagnostic>& diagnostics,
+                            const SceneRuntimePackageMigrationRequest& request) {
+    if (!is_safe_repository_path(request.scene_path) || !ends_with(request.scene_path, ".scene")) {
+        add_diagnostic(diagnostics, "unsafe_scene_path", "scene v2 path must be a safe repository-relative .scene path",
+                       request.scene_path);
     }
     if (!is_safe_repository_path(request.source_registry_path) ||
         !ends_with(request.source_registry_path, ".geassets")) {
@@ -280,86 +277,86 @@ void validate_request_shape(std::vector<SceneV2RuntimePackageMigrationDiagnostic
                        "output scene path must be a safe repository-relative package-relative .scene path",
                        request.output_scene_path);
     }
-    if (!request.output_scene_path.empty() && (request.output_scene_path == request.scene_v2_path ||
-                                               request.output_scene_path == request.source_registry_path ||
-                                               request.output_scene_path == request.package_index_path)) {
+    if (!request.output_scene_path.empty() &&
+        (request.output_scene_path == request.scene_path || request.output_scene_path == request.source_registry_path ||
+         request.output_scene_path == request.package_index_path)) {
         add_diagnostic(diagnostics, "aliased_output_path",
-                       "output scene path must not alias an input path for Scene v2 runtime package migration",
+                       "output scene path must not alias an input path for Scene runtime package migration",
                        request.output_scene_path, request.scene_asset_key);
     }
 
     validate_unsupported_claims(diagnostics, request);
 
-    if (request.kind == SceneV2RuntimePackageMigrationCommandKind::free_form_edit) {
+    if (request.kind == SceneRuntimePackageMigrationCommandKind::free_form_edit) {
         add_diagnostic(diagnostics, "unsupported_free_form_edit",
-                       "free-form edits are not supported by Scene v2 runtime package migration", request.scene_v2_path,
+                       "free-form edits are not supported by Scene runtime package migration", request.scene_path,
                        request.scene_asset_key, {}, {}, {}, {}, "editor-productization");
         return;
     }
-    if (request.kind != SceneV2RuntimePackageMigrationCommandKind::migrate_scene_v2_runtime_package) {
+    if (request.kind != SceneRuntimePackageMigrationCommandKind::migrate_scene_runtime_package) {
         add_diagnostic(diagnostics, "unsupported_operation",
-                       "only migrate_scene_v2_runtime_package is supported by Scene v2 runtime package migration",
-                       request.scene_v2_path, request.scene_asset_key);
+                       "only migrate_scene_runtime_package is supported by Scene runtime package migration",
+                       request.scene_path, request.scene_asset_key);
     }
     if (request.scene_asset_key.value.empty()) {
         add_diagnostic(diagnostics, "invalid_scene_asset_key",
-                       "scene asset key must be non-empty for Scene v2 runtime package migration",
-                       request.scene_v2_path, request.scene_asset_key);
+                       "scene asset key must be non-empty for Scene runtime package migration", request.scene_path,
+                       request.scene_asset_key);
     } else if (!is_valid_asset_key(request.scene_asset_key.value)) {
         add_diagnostic(diagnostics, "invalid_scene_asset_key",
-                       "scene asset key must be a valid AssetKeyV2 for Scene v2 runtime package migration",
-                       request.scene_v2_path, request.scene_asset_key);
+                       "scene asset key must be a valid AssetKey for Scene runtime package migration",
+                       request.scene_path, request.scene_asset_key);
     }
     if (request.source_revision == 0) {
         add_diagnostic(diagnostics, "invalid_source_revision",
-                       "scene source revision must be non-zero for Scene v2 runtime package migration",
+                       "scene source revision must be non-zero for Scene runtime package migration",
                        request.output_scene_path, request.scene_asset_key);
     }
 }
 
-[[nodiscard]] std::string schema_diagnostic_code(SceneSchemaV2DiagnosticCode code) {
+[[nodiscard]] std::string schema_diagnostic_code(SceneSchemaDiagnosticCode code) {
     switch (code) {
-    case SceneSchemaV2DiagnosticCode::invalid_scene_name:
+    case SceneSchemaDiagnosticCode::invalid_scene_name:
         return "invalid_scene_name";
-    case SceneSchemaV2DiagnosticCode::invalid_authoring_id:
+    case SceneSchemaDiagnosticCode::invalid_authoring_id:
         return "invalid_authoring_id";
-    case SceneSchemaV2DiagnosticCode::duplicate_node_id:
+    case SceneSchemaDiagnosticCode::duplicate_node_id:
         return "duplicate_node_id";
-    case SceneSchemaV2DiagnosticCode::duplicate_component_id:
+    case SceneSchemaDiagnosticCode::duplicate_component_id:
         return "duplicate_component_id";
-    case SceneSchemaV2DiagnosticCode::missing_parent_node:
+    case SceneSchemaDiagnosticCode::missing_parent_node:
         return "missing_parent_node";
-    case SceneSchemaV2DiagnosticCode::missing_component_node:
+    case SceneSchemaDiagnosticCode::missing_component_node:
         return "missing_component_node";
-    case SceneSchemaV2DiagnosticCode::invalid_component_type:
+    case SceneSchemaDiagnosticCode::invalid_component_type:
         return "invalid_component_type";
-    case SceneSchemaV2DiagnosticCode::duplicate_component_property:
+    case SceneSchemaDiagnosticCode::duplicate_component_property:
         return "duplicate_component_property";
-    case SceneSchemaV2DiagnosticCode::invalid_component_property:
+    case SceneSchemaDiagnosticCode::invalid_component_property:
         return "invalid_component_property";
-    case SceneSchemaV2DiagnosticCode::invalid_text_value:
+    case SceneSchemaDiagnosticCode::invalid_text_value:
         return "invalid_text_value";
-    case SceneSchemaV2DiagnosticCode::invalid_transform:
+    case SceneSchemaDiagnosticCode::invalid_transform:
         return "invalid_transform";
-    case SceneSchemaV2DiagnosticCode::missing_override_target:
+    case SceneSchemaDiagnosticCode::missing_override_target:
         return "missing_override_target";
-    case SceneSchemaV2DiagnosticCode::duplicate_override_path:
+    case SceneSchemaDiagnosticCode::duplicate_override_path:
         return "duplicate_override_path";
     }
-    return "invalid_scene_v2_document";
+    return "invalid_scene_document";
 }
 
-[[nodiscard]] std::string schema_diagnostic_message(SceneSchemaV2DiagnosticCode code) {
+[[nodiscard]] std::string schema_diagnostic_message(SceneSchemaDiagnosticCode code) {
     switch (code) {
-    case SceneSchemaV2DiagnosticCode::duplicate_component_id:
+    case SceneSchemaDiagnosticCode::duplicate_component_id:
         return "duplicate component id";
-    case SceneSchemaV2DiagnosticCode::duplicate_node_id:
+    case SceneSchemaDiagnosticCode::duplicate_node_id:
         return "duplicate node id";
-    case SceneSchemaV2DiagnosticCode::invalid_transform:
+    case SceneSchemaDiagnosticCode::invalid_transform:
         return "scene v2 transform is invalid";
-    case SceneSchemaV2DiagnosticCode::missing_component_node:
+    case SceneSchemaDiagnosticCode::missing_component_node:
         return "scene v2 component node is missing";
-    case SceneSchemaV2DiagnosticCode::missing_parent_node:
+    case SceneSchemaDiagnosticCode::missing_parent_node:
         return "scene v2 parent node is missing";
     default:
         break;
@@ -367,8 +364,8 @@ void validate_request_shape(std::vector<SceneV2RuntimePackageMigrationDiagnostic
     return "scene v2 document is invalid";
 }
 
-void append_scene_schema_diagnostics(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& diagnostics,
-                                     const std::vector<SceneSchemaV2Diagnostic>& schema_diagnostics,
+void append_scene_schema_diagnostics(std::vector<SceneRuntimePackageMigrationDiagnostic>& diagnostics,
+                                     const std::vector<SceneSchemaDiagnostic>& schema_diagnostics,
                                      const std::string& scene_path) {
     for (const auto& diagnostic : schema_diagnostics) {
         add_diagnostic(diagnostics, schema_diagnostic_code(diagnostic.code), schema_diagnostic_message(diagnostic.code),
@@ -377,7 +374,7 @@ void append_scene_schema_diagnostics(std::vector<SceneV2RuntimePackageMigrationD
     }
 }
 
-void append_scene_package_failures(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& diagnostics,
+void append_scene_package_failures(std::vector<SceneRuntimePackageMigrationDiagnostic>& diagnostics,
                                    const std::vector<ScenePackageUpdateFailure>& failures) {
     for (const auto& failure : failures) {
         add_diagnostic(diagnostics, "scene_package_update_failed", "scene package update failed: " + failure.diagnostic,
@@ -385,7 +382,7 @@ void append_scene_package_failures(std::vector<SceneV2RuntimePackageMigrationDia
     }
 }
 
-void append_duplicate_identity_diagnostics(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& diagnostics,
+void append_duplicate_identity_diagnostics(std::vector<SceneRuntimePackageMigrationDiagnostic>& diagnostics,
                                            std::string_view text, const std::string& scene_path) {
     std::unordered_set<std::string> node_ids;
     std::unordered_set<std::string> component_ids;
@@ -421,8 +418,8 @@ void append_duplicate_identity_diagnostics(std::vector<SceneV2RuntimePackageMigr
     }
 }
 
-[[nodiscard]] std::optional<float> parse_float_value(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& diagnostics,
-                                                     std::string_view text, const SceneComponentDocumentV2& component,
+[[nodiscard]] std::optional<float> parse_float_value(std::vector<SceneRuntimePackageMigrationDiagnostic>& diagnostics,
+                                                     std::string_view text, const SceneComponentDocument& component,
                                                      std::string_view property, const std::string& scene_path) {
     try {
         const auto value_text = std::string(text);
@@ -439,8 +436,8 @@ void append_duplicate_identity_diagnostics(std::vector<SceneV2RuntimePackageMigr
     return std::nullopt;
 }
 
-[[nodiscard]] std::optional<bool> parse_bool_value(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& diagnostics,
-                                                   std::string_view text, const SceneComponentDocumentV2& component,
+[[nodiscard]] std::optional<bool> parse_bool_value(std::vector<SceneRuntimePackageMigrationDiagnostic>& diagnostics,
+                                                   std::string_view text, const SceneComponentDocument& component,
                                                    std::string_view property, const std::string& scene_path) {
     if (text == "true") {
         return true;
@@ -453,8 +450,8 @@ void append_duplicate_identity_diagnostics(std::vector<SceneV2RuntimePackageMigr
     return std::nullopt;
 }
 
-[[nodiscard]] std::optional<Vec2> parse_vec2_value(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& diagnostics,
-                                                   std::string_view text, const SceneComponentDocumentV2& component,
+[[nodiscard]] std::optional<Vec2> parse_vec2_value(std::vector<SceneRuntimePackageMigrationDiagnostic>& diagnostics,
+                                                   std::string_view text, const SceneComponentDocument& component,
                                                    std::string_view property, const std::string& scene_path) {
     const auto separator = text.find(',');
     if (separator == std::string_view::npos || text.find(',', separator + 1U) != std::string_view::npos) {
@@ -470,8 +467,8 @@ void append_duplicate_identity_diagnostics(std::vector<SceneV2RuntimePackageMigr
     return Vec2{.x = *x, .y = *y};
 }
 
-[[nodiscard]] std::optional<Vec3> parse_vec3_value(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& diagnostics,
-                                                   std::string_view text, const SceneComponentDocumentV2& component,
+[[nodiscard]] std::optional<Vec3> parse_vec3_value(std::vector<SceneRuntimePackageMigrationDiagnostic>& diagnostics,
+                                                   std::string_view text, const SceneComponentDocument& component,
                                                    std::string_view property, const std::string& scene_path) {
     const auto first = text.find(',');
     const auto second = first == std::string_view::npos ? std::string_view::npos : text.find(',', first + 1U);
@@ -492,8 +489,8 @@ void append_duplicate_identity_diagnostics(std::vector<SceneV2RuntimePackageMigr
 }
 
 [[nodiscard]] std::optional<std::array<float, 4>>
-parse_rgba_value(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& diagnostics, std::string_view text,
-                 const SceneComponentDocumentV2& component, std::string_view property, const std::string& scene_path) {
+parse_rgba_value(std::vector<SceneRuntimePackageMigrationDiagnostic>& diagnostics, std::string_view text,
+                 const SceneComponentDocument& component, std::string_view property, const std::string& scene_path) {
     const auto first = text.find(',');
     const auto second = first == std::string_view::npos ? std::string_view::npos : text.find(',', first + 1U);
     const auto third = second == std::string_view::npos ? std::string_view::npos : text.find(',', second + 1U);
@@ -515,16 +512,16 @@ parse_rgba_value(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& diagnost
     return std::array<float, 4>{*r, *g, *b, *a};
 }
 
-[[nodiscard]] std::string_view property_value(const SceneComponentDocumentV2& component,
+[[nodiscard]] std::string_view property_value(const SceneComponentDocument& component,
                                               std::string_view property) noexcept {
     const auto it = std::ranges::find_if(
-        component.properties, [property](const SceneComponentPropertyV2& row) { return row.name == property; });
+        component.properties, [property](const SceneComponentProperty& row) { return row.name == property; });
     return it == component.properties.end() ? std::string_view{} : std::string_view{it->value};
 }
 
-[[nodiscard]] bool has_property(const SceneComponentDocumentV2& component, std::string_view property) noexcept {
+[[nodiscard]] bool has_property(const SceneComponentDocument& component, std::string_view property) noexcept {
     return std::ranges::any_of(component.properties,
-                               [property](const SceneComponentPropertyV2& row) { return row.name == property; });
+                               [property](const SceneComponentProperty& row) { return row.name == property; });
 }
 
 [[nodiscard]] bool is_allowed_property(std::string_view type, std::string_view property) noexcept {
@@ -546,19 +543,19 @@ parse_rgba_value(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& diagnost
     return false;
 }
 
-void validate_supported_properties(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& diagnostics,
-                                   const SceneComponentDocumentV2& component, const std::string& scene_path) {
+void validate_supported_properties(std::vector<SceneRuntimePackageMigrationDiagnostic>& diagnostics,
+                                   const SceneComponentDocument& component, const std::string& scene_path) {
     for (const auto& property : component.properties) {
         if (!is_allowed_property(component.type.value, property.name)) {
             add_diagnostic(diagnostics, "unsupported_component_property",
-                           "unsupported component property for Scene v2 runtime package migration", scene_path, {},
+                           "unsupported component property for Scene runtime package migration", scene_path, {},
                            component.node, component.id, component.type, property.name);
         }
     }
 }
 
-[[nodiscard]] const SourceAssetRegistryRowV1* find_source_row(const SourceAssetRegistryDocumentV1& registry,
-                                                              std::string_view key) noexcept {
+[[nodiscard]] const SourceAssetRegistryRow* find_source_row(const SourceAssetRegistryDocument& registry,
+                                                            std::string_view key) noexcept {
     const auto it = std::ranges::find_if(registry.assets, [key](const auto& row) { return row.key.value == key; });
     return it == registry.assets.end() ? nullptr : &*it;
 }
@@ -598,14 +595,14 @@ void validate_supported_properties(std::vector<SceneV2RuntimePackageMigrationDia
 }
 
 [[nodiscard]] std::optional<ResolvedAssetReference>
-resolve_asset_reference(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& diagnostics,
-                        const SourceAssetRegistryDocumentV1& registry, const SceneComponentDocumentV2& component,
+resolve_asset_reference(std::vector<SceneRuntimePackageMigrationDiagnostic>& diagnostics,
+                        const SourceAssetRegistryDocument& registry, const SceneComponentDocument& component,
                         std::string_view property, AssetKind required_kind, std::string_view required_label,
                         const std::string& scene_path) {
     const auto key = property_value(component, property);
     if (key.empty()) {
         add_diagnostic(diagnostics, "missing_required_component_property",
-                       "required component property is missing for Scene v2 runtime package migration", scene_path, {},
+                       "required component property is missing for Scene runtime package migration", scene_path, {},
                        component.node, component.id, component.type, std::string{property});
         return std::nullopt;
     }
@@ -613,8 +610,7 @@ resolve_asset_reference(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& d
     const auto* row = find_source_row(registry, key);
     if (row == nullptr) {
         add_diagnostic(diagnostics, "missing_source_asset_key", "source asset key is missing", scene_path,
-                       AssetKeyV2{std::string{key}}, component.node, component.id, component.type,
-                       std::string{property});
+                       AssetKey{std::string{key}}, component.node, component.id, component.type, std::string{property});
         return std::nullopt;
     }
     if (row->kind != required_kind) {
@@ -624,13 +620,13 @@ resolve_asset_reference(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& d
                        scene_path, row->key, component.node, component.id, component.type, std::string{property});
         return std::nullopt;
     }
-    return ResolvedAssetReference{.key = row->key, .id = asset_id_from_key_v2(row->key)};
+    return ResolvedAssetReference{.key = row->key, .id = asset_id_from_key(row->key)};
 }
 
-void append_dependency(std::vector<AssetId>& ids, std::vector<SourceAssetDependencyRowV1>& rows, AssetId id,
-                       AssetDependencyKind kind, AssetKeyV2 key) {
+void append_dependency(std::vector<AssetId>& ids, std::vector<SourceAssetDependencyRow>& rows, AssetId id,
+                       AssetDependencyKind kind, AssetKey key) {
     ids.push_back(id);
-    rows.push_back(SourceAssetDependencyRowV1{.kind = kind, .key = std::move(key)});
+    rows.push_back(SourceAssetDependencyRow{.kind = kind, .key = std::move(key)});
 }
 
 void sort_unique_asset_ids(std::vector<AssetId>& ids) {
@@ -639,20 +635,20 @@ void sort_unique_asset_ids(std::vector<AssetId>& ids) {
     ids.erase(duplicates.begin(), duplicates.end());
 }
 
-[[nodiscard]] bool dependency_row_less(const SourceAssetDependencyRowV1& lhs,
-                                       const SourceAssetDependencyRowV1& rhs) noexcept {
-    const auto lhs_kind = source_asset_dependency_kind_name_v1(lhs.kind);
-    const auto rhs_kind = source_asset_dependency_kind_name_v1(rhs.kind);
+[[nodiscard]] bool dependency_row_less(const SourceAssetDependencyRow& lhs,
+                                       const SourceAssetDependencyRow& rhs) noexcept {
+    const auto lhs_kind = source_asset_dependency_kind_name(lhs.kind);
+    const auto rhs_kind = source_asset_dependency_kind_name(rhs.kind);
     if (lhs_kind != rhs_kind) {
         return lhs_kind < rhs_kind;
     }
     return lhs.key.value < rhs.key.value;
 }
 
-void sort_unique_dependency_rows(std::vector<SourceAssetDependencyRowV1>& rows) {
+void sort_unique_dependency_rows(std::vector<SourceAssetDependencyRow>& rows) {
     std::ranges::sort(rows, dependency_row_less);
     const auto duplicates =
-        std::ranges::unique(rows, [](const SourceAssetDependencyRowV1& lhs, const SourceAssetDependencyRowV1& rhs) {
+        std::ranges::unique(rows, [](const SourceAssetDependencyRow& lhs, const SourceAssetDependencyRow& rhs) {
             return lhs.kind == rhs.kind && lhs.key.value == rhs.key.value;
         });
     rows.erase(duplicates.begin(), duplicates.end());
@@ -663,13 +659,13 @@ void sort_unique_dependency_rows(std::vector<SourceAssetDependencyRowV1>& rows) 
            (placement.starts_with(base) && placement.size() > base.size() && placement[base.size()] == '.');
 }
 
-[[nodiscard]] bool placement_exists(const std::vector<AssetIdentityPlacementRequestV2>& requests,
+[[nodiscard]] bool placement_exists(const std::vector<AssetIdentityPlacementRequest>& requests,
                                     std::string_view placement) noexcept {
     return std::ranges::any_of(requests, [placement](const auto& request) { return request.placement == placement; });
 }
 
-void append_placement_request(std::vector<AssetIdentityPlacementRequestV2>& requests, std::string_view placement,
-                              AssetKeyV2 key, AssetKind expected_kind) {
+void append_placement_request(std::vector<AssetIdentityPlacementRequest>& requests, std::string_view placement,
+                              AssetKey key, AssetKind expected_kind) {
     for (const auto& request : requests) {
         if (placement_name_matches_base(request.placement, placement) && request.key.value == key.value &&
             request.expected_kind == expected_kind) {
@@ -682,14 +678,14 @@ void append_placement_request(std::vector<AssetIdentityPlacementRequestV2>& requ
         resolved_placement = std::string{placement} + "." + std::to_string(ordinal);
     }
 
-    requests.push_back(AssetIdentityPlacementRequestV2{
+    requests.push_back(AssetIdentityPlacementRequest{
         .placement = std::move(resolved_placement),
         .key = std::move(key),
         .expected_kind = expected_kind,
     });
 }
 
-void sort_placement_requests(std::vector<AssetIdentityPlacementRequestV2>& requests) {
+void sort_placement_requests(std::vector<AssetIdentityPlacementRequest>& requests) {
     std::ranges::sort(requests, [](const auto& lhs, const auto& rhs) {
         if (lhs.placement != rhs.placement) {
             return lhs.placement < rhs.placement;
@@ -698,25 +694,25 @@ void sort_placement_requests(std::vector<AssetIdentityPlacementRequestV2>& reque
     });
 }
 
-[[nodiscard]] AssetIdentityDocumentV2
-make_scene_runtime_package_identity_document(const SourceAssetRegistryDocumentV1& registry,
-                                             const SceneV2RuntimePackageMigrationRequest& request) {
-    auto identity = project_source_asset_registry_identity_v2(registry);
+[[nodiscard]] AssetIdentityDocument
+make_scene_runtime_package_identity_document(const SourceAssetRegistryDocument& registry,
+                                             const SceneRuntimePackageMigrationRequest& request) {
+    auto identity = project_source_asset_registry_identity(registry);
     const auto existing_scene_row = std::ranges::find_if(
         identity.assets, [&request](const auto& row) { return row.key.value == request.scene_asset_key.value; });
     if (existing_scene_row == identity.assets.end()) {
-        identity.assets.push_back(AssetIdentityRowV2{
+        identity.assets.push_back(AssetIdentityRow{
             .key = request.scene_asset_key,
             .kind = AssetKind::scene,
-            .source_path = request.scene_v2_path,
+            .source_path = request.scene_path,
         });
     }
     return identity;
 }
 
-void append_placement_plan_diagnostics(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& diagnostics,
-                                       const AssetIdentityPlacementPlanV2& plan,
-                                       const SceneV2RuntimePackageMigrationRequest& request) {
+void append_placement_plan_diagnostics(std::vector<SceneRuntimePackageMigrationDiagnostic>& diagnostics,
+                                       const AssetIdentityPlacementPlan& plan,
+                                       const SceneRuntimePackageMigrationRequest& request) {
     for (const auto& diagnostic : plan.identity_diagnostics) {
         add_diagnostic(diagnostics, "invalid_asset_identity_projection",
                        "source asset registry identity projection is invalid", request.source_registry_path,
@@ -729,16 +725,14 @@ void append_placement_plan_diagnostics(std::vector<SceneV2RuntimePackageMigratio
     }
 }
 
-[[nodiscard]] std::vector<AssetIdentityPlacementRowV2>
-plan_scene_runtime_package_placement_rows(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& diagnostics,
-                                          const SourceAssetRegistryDocumentV1& registry,
-                                          const SceneV2RuntimePackageMigrationRequest& request,
-                                          std::vector<AssetIdentityPlacementRequestV2> placement_requests) {
+[[nodiscard]] std::vector<AssetIdentityPlacementRow> plan_scene_runtime_package_placement_rows(
+    std::vector<SceneRuntimePackageMigrationDiagnostic>& diagnostics, const SourceAssetRegistryDocument& registry,
+    const SceneRuntimePackageMigrationRequest& request, std::vector<AssetIdentityPlacementRequest> placement_requests) {
     append_placement_request(placement_requests, "scene.runtime_package", request.scene_asset_key, AssetKind::scene);
     sort_placement_requests(placement_requests);
 
     const auto identity = make_scene_runtime_package_identity_document(registry, request);
-    auto plan = plan_asset_identity_placements_v2(identity, placement_requests);
+    auto plan = plan_asset_identity_placements(identity, placement_requests);
     if (!plan.can_place) {
         append_placement_plan_diagnostics(diagnostics, plan, request);
         return {};
@@ -746,8 +740,8 @@ plan_scene_runtime_package_placement_rows(std::vector<SceneV2RuntimePackageMigra
     return std::move(plan.rows);
 }
 
-void assign_camera_component(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& diagnostics,
-                             SceneNodeComponents& components, const SceneComponentDocumentV2& component,
+void assign_camera_component(std::vector<SceneRuntimePackageMigrationDiagnostic>& diagnostics,
+                             SceneNodeComponents& components, const SceneComponentDocument& component,
                              const std::string& scene_path) {
     CameraComponent camera;
     const auto projection = property_value(component, "projection");
@@ -805,8 +799,8 @@ void assign_camera_component(std::vector<SceneV2RuntimePackageMigrationDiagnosti
     components.camera = camera;
 }
 
-void assign_light_component(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& diagnostics,
-                            SceneNodeComponents& components, const SceneComponentDocumentV2& component,
+void assign_light_component(std::vector<SceneRuntimePackageMigrationDiagnostic>& diagnostics,
+                            SceneNodeComponents& components, const SceneComponentDocument& component,
                             const std::string& scene_path) {
     LightComponent light;
     const auto type = property_value(component, "type");
@@ -817,7 +811,7 @@ void assign_light_component(std::vector<SceneV2RuntimePackageMigrationDiagnostic
             light.type = LightType::point;
         } else if (type == "spot") {
             add_diagnostic(diagnostics, "unsupported_component_value",
-                           "spot lights are not supported by the first Scene v2 runtime package migration slice",
+                           "spot lights are not supported by the first Scene runtime package migration slice",
                            scene_path, {}, component.node, component.id, component.type, "type");
         } else {
             add_diagnostic(diagnostics, "invalid_component_value", "light type is unsupported", scene_path, {},
@@ -875,9 +869,9 @@ void assign_light_component(std::vector<SceneV2RuntimePackageMigrationDiagnostic
     components.light = light;
 }
 
-void assign_mesh_renderer_component(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& diagnostics,
-                                    SceneNodeComponents& components, const SourceAssetRegistryDocumentV1& registry,
-                                    ProjectedScene& projected, const SceneComponentDocumentV2& component,
+void assign_mesh_renderer_component(std::vector<SceneRuntimePackageMigrationDiagnostic>& diagnostics,
+                                    SceneNodeComponents& components, const SourceAssetRegistryDocument& registry,
+                                    ProjectedScene& projected, const SceneComponentDocument& component,
                                     const std::string& scene_path) {
     MeshRendererComponent renderer;
     const auto mesh =
@@ -914,9 +908,9 @@ void assign_mesh_renderer_component(std::vector<SceneV2RuntimePackageMigrationDi
     components.mesh_renderer = renderer;
 }
 
-void assign_sprite_renderer_component(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& diagnostics,
-                                      SceneNodeComponents& components, const SourceAssetRegistryDocumentV1& registry,
-                                      ProjectedScene& projected, const SceneComponentDocumentV2& component,
+void assign_sprite_renderer_component(std::vector<SceneRuntimePackageMigrationDiagnostic>& diagnostics,
+                                      SceneNodeComponents& components, const SourceAssetRegistryDocument& registry,
+                                      ProjectedScene& projected, const SceneComponentDocument& component,
                                       const std::string& scene_path) {
     SpriteRendererComponent renderer;
     const auto sprite =
@@ -971,9 +965,9 @@ void assign_sprite_renderer_component(std::vector<SceneV2RuntimePackageMigration
     return type == "camera" || type == "light" || type == "mesh_renderer" || type == "sprite_renderer";
 }
 
-[[nodiscard]] ProjectedScene project_scene_v2_to_runtime_scene(const SceneDocumentV2& scene,
-                                                               const SourceAssetRegistryDocumentV1& registry,
-                                                               const std::string& scene_path) {
+[[nodiscard]] ProjectedScene project_scene_to_runtime_scene(const SceneDocument& scene,
+                                                            const SourceAssetRegistryDocument& registry,
+                                                            const std::string& scene_path) {
     ProjectedScene projected{.scene = Scene{scene.name}};
 
     std::unordered_map<std::string, SceneNodeId> runtime_nodes;
@@ -991,7 +985,7 @@ void assign_sprite_renderer_component(std::vector<SceneV2RuntimePackageMigration
     for (const auto& component : scene.components) {
         if (!is_supported_runtime_component_type(component.type.value)) {
             add_diagnostic(projected.diagnostics, "unsupported_component_type",
-                           "unsupported component type for Scene v2 runtime package migration", scene_path, {},
+                           "unsupported component type for Scene runtime package migration", scene_path, {},
                            component.node, component.id, component.type);
             continue;
         }
@@ -1058,9 +1052,9 @@ void assign_sprite_renderer_component(std::vector<SceneV2RuntimePackageMigration
     return projected;
 }
 
-void append_changed_file(std::vector<SceneV2RuntimePackageMigrationChangedFile>& files,
-                         const ScenePackageChangedFile& source, const SceneV2RuntimePackageMigrationRequest& request) {
-    files.push_back(SceneV2RuntimePackageMigrationChangedFile{
+void append_changed_file(std::vector<SceneRuntimePackageMigrationChangedFile>& files,
+                         const ScenePackageChangedFile& source, const SceneRuntimePackageMigrationRequest& request) {
+    files.push_back(SceneRuntimePackageMigrationChangedFile{
         .path = source.path,
         .document_kind =
             source.path == request.output_scene_path ? "GameEngine.Scene" : "GameEngine.CookedPackageIndex",
@@ -1069,25 +1063,25 @@ void append_changed_file(std::vector<SceneV2RuntimePackageMigrationChangedFile>&
     });
 }
 
-void append_model_mutation(std::vector<SceneV2RuntimePackageMigrationModelMutation>& mutations,
-                           const SceneV2RuntimePackageMigrationRequest& request,
-                           std::vector<AssetIdentityPlacementRowV2> placement_rows,
-                           std::vector<SourceAssetDependencyRowV1> dependency_rows) {
-    mutations.push_back(SceneV2RuntimePackageMigrationModelMutation{
-        .kind = "migrate_scene_v2_runtime_package",
+void append_model_mutation(std::vector<SceneRuntimePackageMigrationModelMutation>& mutations,
+                           const SceneRuntimePackageMigrationRequest& request,
+                           std::vector<AssetIdentityPlacementRow> placement_rows,
+                           std::vector<SourceAssetDependencyRow> dependency_rows) {
+    mutations.push_back(SceneRuntimePackageMigrationModelMutation{
+        .kind = "migrate_scene_runtime_package",
         .target_path = request.output_scene_path,
-        .scene_v2_path = request.scene_v2_path,
+        .scene_path = request.scene_path,
         .package_index_path = request.package_index_path,
         .scene_asset_key = request.scene_asset_key,
-        .scene_asset = asset_id_from_key_v2(request.scene_asset_key),
+        .scene_asset = asset_id_from_key(request.scene_asset_key),
         .placement_rows = std::move(placement_rows),
         .dependency_rows = std::move(dependency_rows),
     });
 }
 
-[[nodiscard]] SourceAssetRegistryDocumentV1
-parse_source_registry_content(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& diagnostics,
-                              const SceneV2RuntimePackageMigrationRequest& request) {
+[[nodiscard]] SourceAssetRegistryDocument
+parse_source_registry_content(std::vector<SceneRuntimePackageMigrationDiagnostic>& diagnostics,
+                              const SceneRuntimePackageMigrationRequest& request) {
     try {
         return deserialize_source_asset_registry_document(request.source_registry_content);
     } catch (const std::exception& error) {
@@ -1098,29 +1092,29 @@ parse_source_registry_content(std::vector<SceneV2RuntimePackageMigrationDiagnost
     return {};
 }
 
-[[nodiscard]] SceneDocumentV2 parse_scene_v2_content(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& diagnostics,
-                                                     const SceneV2RuntimePackageMigrationRequest& request) {
+[[nodiscard]] SceneDocument parse_scene_content(std::vector<SceneRuntimePackageMigrationDiagnostic>& diagnostics,
+                                                const SceneRuntimePackageMigrationRequest& request) {
     try {
-        auto scene = deserialize_scene_document_v2(request.scene_v2_content);
-        append_scene_schema_diagnostics(diagnostics, validate_scene_document_v2(scene), request.scene_v2_path);
+        auto scene = deserialize_scene_document(request.scene_content);
+        append_scene_schema_diagnostics(diagnostics, validate_scene_document(scene), request.scene_path);
         return scene;
     } catch (const std::exception& error) {
-        add_diagnostic(diagnostics, "invalid_scene_v2_document",
-                       std::string{"failed to parse Scene v2 document: "} + error.what(), request.scene_v2_path,
+        add_diagnostic(diagnostics, "invalid_scene_document",
+                       std::string{"failed to parse Scene document: "} + error.what(), request.scene_path,
                        request.scene_asset_key);
     }
     return {};
 }
 
-[[nodiscard]] std::optional<PreparedSceneV2RuntimePackageMigration>
-prepare_scene_v2_runtime_package_migration(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& diagnostics,
-                                           const SceneV2RuntimePackageMigrationRequest& request) {
-    append_duplicate_identity_diagnostics(diagnostics, request.scene_v2_content, request.scene_v2_path);
+[[nodiscard]] std::optional<PreparedSceneRuntimePackageMigration>
+prepare_scene_runtime_package_migration(std::vector<SceneRuntimePackageMigrationDiagnostic>& diagnostics,
+                                        const SceneRuntimePackageMigrationRequest& request) {
+    append_duplicate_identity_diagnostics(diagnostics, request.scene_content, request.scene_path);
     if (!diagnostics.empty()) {
         return std::nullopt;
     }
 
-    const auto scene = parse_scene_v2_content(diagnostics, request);
+    const auto scene = parse_scene_content(diagnostics, request);
     if (!diagnostics.empty()) {
         return std::nullopt;
     }
@@ -1130,7 +1124,7 @@ prepare_scene_v2_runtime_package_migration(std::vector<SceneV2RuntimePackageMigr
         return std::nullopt;
     }
 
-    auto projected = project_scene_v2_to_runtime_scene(scene, registry, request.scene_v2_path);
+    auto projected = project_scene_to_runtime_scene(scene, registry, request.scene_path);
     if (!projected.diagnostics.empty()) {
         diagnostics = std::move(projected.diagnostics);
         return std::nullopt;
@@ -1142,9 +1136,9 @@ prepare_scene_v2_runtime_package_migration(std::vector<SceneV2RuntimePackageMigr
         return std::nullopt;
     }
 
-    PreparedSceneV2RuntimePackageMigration prepared;
+    PreparedSceneRuntimePackageMigration prepared;
     prepared.scene = std::move(projected.scene);
-    prepared.scene_asset = asset_id_from_key_v2(request.scene_asset_key);
+    prepared.scene_asset = asset_id_from_key(request.scene_asset_key);
     prepared.mesh_dependencies = std::move(projected.mesh_dependencies);
     prepared.material_dependencies = std::move(projected.material_dependencies);
     prepared.sprite_dependencies = std::move(projected.sprite_dependencies);
@@ -1155,9 +1149,9 @@ prepare_scene_v2_runtime_package_migration(std::vector<SceneV2RuntimePackageMigr
 
 } // namespace
 
-SceneV2RuntimePackageMigrationResult
-plan_scene_v2_runtime_package_migration(const SceneV2RuntimePackageMigrationRequest& request) {
-    SceneV2RuntimePackageMigrationResult result;
+SceneRuntimePackageMigrationResult
+plan_scene_runtime_package_migration(const SceneRuntimePackageMigrationRequest& request) {
+    SceneRuntimePackageMigrationResult result;
     result.validation_recipes = default_validation_recipes();
     result.unsupported_gap_ids = default_unsupported_gap_ids();
 
@@ -1167,7 +1161,7 @@ plan_scene_v2_runtime_package_migration(const SceneV2RuntimePackageMigrationRequ
         return result;
     }
 
-    auto prepared = prepare_scene_v2_runtime_package_migration(result.diagnostics, request);
+    auto prepared = prepare_scene_runtime_package_migration(result.diagnostics, request);
     if (!prepared.has_value()) {
         sort_diagnostics(result.diagnostics);
         return result;
@@ -1191,7 +1185,7 @@ plan_scene_v2_runtime_package_migration(const SceneV2RuntimePackageMigrationRequ
         return result;
     }
 
-    result.scene_v1_content = package_result.scene_content;
+    result.runtime_scene_content = package_result.scene_content;
     result.package_index_content = package_result.package_index_content;
     for (const auto& file : package_result.changed_files) {
         append_changed_file(result.changed_files, file, request);
@@ -1201,10 +1195,9 @@ plan_scene_v2_runtime_package_migration(const SceneV2RuntimePackageMigrationRequ
     return result;
 }
 
-SceneV2RuntimePackageMigrationResult
-apply_scene_v2_runtime_package_migration(IFileSystem& filesystem,
-                                         const SceneV2RuntimePackageMigrationRequest& request) {
-    SceneV2RuntimePackageMigrationResult input_result;
+SceneRuntimePackageMigrationResult
+apply_scene_runtime_package_migration(IFileSystem& filesystem, const SceneRuntimePackageMigrationRequest& request) {
+    SceneRuntimePackageMigrationResult input_result;
     input_result.validation_recipes = default_validation_recipes();
     input_result.unsupported_gap_ids = default_unsupported_gap_ids();
     validate_request_shape(input_result.diagnostics, request);
@@ -1215,17 +1208,17 @@ apply_scene_v2_runtime_package_migration(IFileSystem& filesystem,
 
     auto apply_request = request;
     try {
-        apply_request.scene_v2_content = filesystem.read_text(request.scene_v2_path);
+        apply_request.scene_content = filesystem.read_text(request.scene_path);
         apply_request.source_registry_content = filesystem.read_text(request.source_registry_path);
     } catch (const std::exception& error) {
         add_diagnostic(input_result.diagnostics, "filesystem_read_failed",
-                       std::string{"failed to read Scene v2 migration inputs: "} + error.what(), request.scene_v2_path,
+                       std::string{"failed to read Scene migration inputs: "} + error.what(), request.scene_path,
                        request.scene_asset_key);
         sort_diagnostics(input_result.diagnostics);
         return input_result;
     }
 
-    auto prepared = prepare_scene_v2_runtime_package_migration(input_result.diagnostics, apply_request);
+    auto prepared = prepare_scene_runtime_package_migration(input_result.diagnostics, apply_request);
     if (!prepared.has_value()) {
         sort_diagnostics(input_result.diagnostics);
         return input_result;
@@ -1242,7 +1235,7 @@ apply_scene_v2_runtime_package_migration(IFileSystem& filesystem,
     package_apply.sprite_dependencies = prepared->sprite_dependencies;
 
     const auto package_result = apply_scene_package_update(filesystem, package_apply);
-    input_result.scene_v1_content = package_result.scene_content;
+    input_result.runtime_scene_content = package_result.scene_content;
     input_result.package_index_content = package_result.package_index_content;
     for (const auto& file : package_result.changed_files) {
         append_changed_file(input_result.changed_files, file, request);

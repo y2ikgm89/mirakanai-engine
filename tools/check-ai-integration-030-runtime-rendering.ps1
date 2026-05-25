@@ -230,20 +230,20 @@ if ($geUiModule[0].status -ne "implemented-production-runtime-ui-workbench") { W
 if ($geUiRendererModule[0].status -ne "implemented-runtime-ui-font-image-adapter") {
     Write-Error "engine/agent/manifest.json MK_ui_renderer status must advertise the runtime UI font image adapter slice honestly"
 }
-if ($geSceneModule[0].status -ne "implemented-scene-schema-v2-contract") {
-    Write-Error "engine/agent/manifest.json MK_scene status must advertise the Scene/Component/Prefab Schema v2 contract slice honestly"
+if ($geSceneModule[0].status -ne "implemented-scene-schema-contract") {
+    Write-Error "engine/agent/manifest.json MK_scene status must advertise the Scene/Component/Prefab Schema contract slice honestly"
 }
-if (@($geSceneModule[0].publicHeaders) -notcontains "engine/scene/include/mirakana/scene/schema_v2.hpp") {
-    Write-Error "engine/agent/manifest.json MK_scene publicHeaders must include schema_v2.hpp"
+if (@($geSceneModule[0].publicHeaders) -notcontains "engine/scene/include/mirakana/scene/schema.hpp") {
+    Write-Error "engine/agent/manifest.json MK_scene publicHeaders must include schema.hpp"
 }
-if ($geAssetsModule[0].status -ne "implemented-asset-identity-v2-foundation") {
-    Write-Error "engine/agent/manifest.json MK_assets status must advertise the Asset Identity v2 foundation slice honestly"
+if ($geAssetsModule[0].status -ne "implemented-asset-identity-foundation") {
+    Write-Error "engine/agent/manifest.json MK_assets status must advertise the Asset Identity foundation slice honestly"
 }
 if (@($geAssetsModule[0].publicHeaders) -notcontains "engine/assets/include/mirakana/assets/asset_identity.hpp") {
     Write-Error "engine/agent/manifest.json MK_assets publicHeaders must include asset_identity.hpp"
 }
-if ($geRuntimeModule[0].status -ne "ready-runtime-resource-v2-gameplay-interaction-framework") {
-    Write-Error "engine/agent/manifest.json MK_runtime status must advertise the closed Runtime Resource v2 plus gameplay interaction framework surface honestly"
+if ($geRuntimeModule[0].status -ne "ready-runtime-resource-gameplay-interaction-framework") {
+    Write-Error "engine/agent/manifest.json MK_runtime status must advertise the closed Runtime Resource plus gameplay interaction framework surface honestly"
 }
 if (@($geRuntimeModule[0].publicHeaders) -notcontains "engine/runtime/include/mirakana/runtime/resource_runtime.hpp") {
     Write-Error "engine/agent/manifest.json MK_runtime publicHeaders must include resource_runtime.hpp"
@@ -320,11 +320,11 @@ Assert-ContainsText ([string]$geUiRendererModule[0].purpose) "text glyph sprite 
 Assert-ContainsText ([string]$geUiRendererModule[0].purpose) "image sprite submission" "MK_ui_renderer module purpose"
 Assert-ContainsText ([string]$geSceneModule[0].purpose) "contract-only" "MK_scene module purpose"
 Assert-ContainsText ([string]$geSceneModule[0].purpose) "GameEngine.Scene" "MK_scene module purpose"
-Assert-ContainsText ([string]$geSceneModule[0].purpose) "ScenePrefabInstanceRefreshPlanV2" "MK_scene module purpose"
-Assert-ContainsText ([string]$geSceneModule[0].purpose) "ScenePrefabInstanceRefreshRowV2" "MK_scene module purpose"
-Assert-ContainsText ([string]$geSceneModule[0].purpose) "plan_scene_prefab_instance_refresh_v2" "MK_scene module purpose"
-Assert-ContainsText ([string]$geSceneModule[0].purpose) "ScenePrefabInstanceRefreshResultV2" "MK_scene module purpose"
-Assert-ContainsText ([string]$geSceneModule[0].purpose) "apply_scene_prefab_instance_refresh_v2" "MK_scene module purpose"
+Assert-ContainsText ([string]$geSceneModule[0].purpose) "ScenePrefabInstanceRefreshPlan" "MK_scene module purpose"
+Assert-ContainsText ([string]$geSceneModule[0].purpose) "ScenePrefabInstanceRefreshRow" "MK_scene module purpose"
+Assert-ContainsText ([string]$geSceneModule[0].purpose) "plan_scene_prefab_instance_refresh" "MK_scene module purpose"
+Assert-ContainsText ([string]$geSceneModule[0].purpose) "ScenePrefabInstanceRefreshResult" "MK_scene module purpose"
+Assert-ContainsText ([string]$geSceneModule[0].purpose) "apply_scene_prefab_instance_refresh" "MK_scene module purpose"
 Assert-ContainsText ([string]$geSceneModule[0].purpose) "duplicate_prefab_source_identity" "MK_scene module purpose"
 Assert-ContainsText ([string]$geSceneModule[0].purpose) "unsupported_nested_prefab_instance" "MK_scene module purpose"
 Assert-ContainsText ([string]$geSceneModule[0].purpose) "unsupported_local_prefab_child" "MK_scene module purpose"
@@ -332,7 +332,7 @@ Assert-ContainsText ([string]$geSceneModule[0].purpose) "unsupported_local_prefa
 Assert-ContainsText ([string]$geSceneModule[0].purpose) "source_node_id" "MK_scene module purpose"
 Assert-ContainsText ([string]$geSceneModule[0].purpose) "source_component_id" "MK_scene module purpose"
 Assert-ContainsText ([string]$geSceneModule[0].purpose) "nested prefab propagation/merge resolution UX" "MK_scene module purpose"
-Assert-ContainsText ([string]$geAssetsModule[0].purpose) "Asset Identity v2" "MK_assets module purpose"
+Assert-ContainsText ([string]$geAssetsModule[0].purpose) "Asset Identity" "MK_assets module purpose"
 Assert-ContainsText ([string]$geAssetsModule[0].purpose) "GameEngine.AssetIdentity" "MK_assets module purpose"
 Assert-ContainsText ([string]$geAssetsModule[0].purpose) "foundation-only" "MK_assets module purpose"
 Assert-ContainsText ([string]$geAssetsModule[0].purpose) "renderer/RHI residency" "MK_assets module purpose"
@@ -401,7 +401,7 @@ Assert-ContainsText ([string]$geToolsModule[0].purpose) "import_gltf_node_transf
 Assert-ContainsText ([string]$geToolsModule[0].purpose) "import_gltf_node_transform_animation_float_clip" "MK_tools module purpose"
 Assert-ContainsText ([string]$geToolsModule[0].purpose) "import_gltf_node_transform_animation_binding_source" "MK_tools module purpose"
 Assert-ContainsText ([string]$geToolsModule[0].purpose) "refresh-prefab-instance" "MK_tools module purpose"
-Assert-ContainsText ([string]$geToolsModule[0].purpose) "apply_scene_prefab_instance_refresh_v2" "MK_tools module purpose"
+Assert-ContainsText ([string]$geToolsModule[0].purpose) "apply_scene_prefab_instance_refresh" "MK_tools module purpose"
 Assert-ContainsText ([string]$geToolsModule[0].purpose) "PngImageDecodingAdapter" "MK_tools module purpose"
 Assert-ContainsText ([string]$geToolsModule[0].purpose) "IImageDecodingAdapter" "MK_tools module purpose"
 Assert-ContainsText ([string]$geToolsModule[0].purpose) "decode_audited_png_rgba8" "MK_tools module purpose"
@@ -414,20 +414,20 @@ Assert-ContainsText ([string]$geToolsModule[0].purpose) "author_packed_ui_glyph_
 Assert-ContainsText ([string]$geToolsModule[0].purpose) "plan_packed_ui_glyph_atlas_package_update" "MK_tools module purpose"
 Assert-ContainsText ([string]$geToolsModule[0].purpose) "UiAtlasMetadataGlyph" "MK_tools module purpose"
 Assert-ContainsText ([string]$geToolsModule[0].purpose) "GameEngine.UiAtlas" "MK_tools module purpose"
-Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "Runtime Resource v2" "MK_runtime module purpose"
+Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "Runtime Resource" "MK_runtime module purpose"
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "generation-checked" "MK_runtime module purpose"
-Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "commit_runtime_resident_package_replace_v2" "MK_runtime module purpose"
-Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "commit_runtime_resident_package_unmount_v2" "MK_runtime module purpose"
-Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2" "MK_runtime module purpose"
+Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "commit_runtime_resident_package_replace" "MK_runtime module purpose"
+Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "commit_runtime_resident_package_unmount" "MK_runtime module purpose"
+Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "commit_runtime_package_discovery_resident_replace_with_reviewed_evictions" "MK_runtime module purpose"
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "host-driven reviewed hot-reload replacement safe point" "MK_runtime module purpose"
-Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "plan_runtime_package_hot_reload_candidate_review_v2" "MK_runtime module purpose"
-Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "RuntimePackageHotReloadCandidateReviewResultV2" "MK_runtime module purpose"
-Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "plan_runtime_package_hot_reload_recook_change_review_v2" "MK_runtime module purpose"
-Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "RuntimePackageHotReloadRecookChangeReviewResultV2" "MK_runtime module purpose"
-Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "plan_runtime_package_hot_reload_replacement_intent_review_v2" "MK_runtime module purpose"
-Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "RuntimePackageHotReloadReplacementIntentReviewResultV2" "MK_runtime module purpose"
-Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "commit_runtime_package_hot_reload_recook_replacement_v2" "MK_runtime module purpose"
-Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "RuntimePackageHotReloadRecookReplacementResultV2" "MK_runtime module purpose"
+Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "plan_runtime_package_hot_reload_candidate_review" "MK_runtime module purpose"
+Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "RuntimePackageHotReloadCandidateReviewResult" "MK_runtime module purpose"
+Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "plan_runtime_package_hot_reload_recook_change_review" "MK_runtime module purpose"
+Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "RuntimePackageHotReloadRecookChangeReviewResult" "MK_runtime module purpose"
+Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "plan_runtime_package_hot_reload_replacement_intent_review" "MK_runtime module purpose"
+Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "RuntimePackageHotReloadReplacementIntentReviewResult" "MK_runtime module purpose"
+Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "commit_runtime_package_hot_reload_recook_replacement" "MK_runtime module purpose"
+Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "RuntimePackageHotReloadRecookReplacementResult" "MK_runtime module purpose"
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "candidate/discovery root coherence" "MK_runtime module purpose"
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "defined overlay" "MK_runtime module purpose"
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "file watching/recook execution" "MK_runtime module purpose"
@@ -666,7 +666,7 @@ Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/s
 Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/sprite_atlas_tool.hpp") "SpriteAtlasSourceAuthoringDesc" "MK_tools sprite atlas tool public header"
 Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/sprite_atlas_tool.hpp") "SpriteAtlasSourceAuthoringPlan" "MK_tools sprite atlas tool public header"
 Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/sprite_atlas_tool.hpp") "plan_sprite_atlas_source_authoring" "MK_tools sprite atlas tool public header"
-Assert-ContainsText (Get-AgentSurfaceText "engine/tools/asset/placeholder_asset_tool.cpp") "source_asset_registry_format_v1" "MK_tools placeholder asset tool source"
+Assert-ContainsText (Get-AgentSurfaceText "engine/tools/asset/placeholder_asset_tool.cpp") "source_asset_registry_format" "MK_tools placeholder asset tool source"
 Assert-ContainsText (Get-AgentSurfaceText "engine/tools/asset/placeholder_asset_tool.cpp") "serialize_source_asset_registry_document" "MK_tools placeholder asset tool source"
 Assert-ContainsText (Get-AgentSurfaceText "engine/tools/asset/placeholder_asset_tool.cpp") "plan_registered_source_asset_cook_package" "MK_tools placeholder asset tool source"
 Assert-ContainsText (Get-AgentSurfaceText "engine/tools/asset/placeholder_asset_tool.cpp") "mirakana-placeholder-asset-tool-v1" "MK_tools placeholder asset tool source"
@@ -1161,8 +1161,8 @@ $geRuntimeModule = @($manifest.modules | Where-Object { $_.name -eq "MK_runtime"
 if ($geRuntimeModule.Count -ne 1) {
     Write-Error "engine/agent/manifest.json must expose exactly one MK_runtime module"
 }
-if ($geRuntimeModule[0].status -ne "ready-runtime-resource-v2-gameplay-interaction-framework") {
-    Write-Error "engine/agent/manifest.json MK_runtime status must advertise the closed Runtime Resource v2 plus gameplay interaction framework surface honestly"
+if ($geRuntimeModule[0].status -ne "ready-runtime-resource-gameplay-interaction-framework") {
+    Write-Error "engine/agent/manifest.json MK_runtime status must advertise the closed Runtime Resource plus gameplay interaction framework surface honestly"
 }
 if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentInput")) {
     Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentInput"
@@ -1379,7 +1379,7 @@ foreach ($worldRegionNavigationGuidanceNeedle in @(
     "RuntimeWorldRegionNavigationPathCacheReviewResult",
     "review_runtime_world_region_navigation_refs",
     "review_runtime_world_region_navigation_path_cache",
-    "RuntimeResidentCatalogCacheV2",
+    "RuntimeResidentCatalogCache",
     "unrefreshed",
     "value-only"
 )) {
@@ -1840,10 +1840,10 @@ Assert-ContainsText $geRhiRecentEvidenceText "RhiUploadGpuBatchExecutionResult" 
 Assert-ContainsText $geRhiRecentEvidenceText "Staging Pool Lease Adoption v1" "MK_rhi module recentEvidence"
 Assert-ContainsText $geRhiRecentEvidenceText "RhiStagingBufferLease" "MK_rhi module recentEvidence"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph v1 foundation-only" "MK_renderer module purpose"
-Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphV1Desc" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphDesc" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "barrier intent" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph Pass Callback Execution v1" "MK_renderer module purpose"
-Assert-ContainsText ([string]$geRendererModule[0].purpose) "execute_frame_graph_v1_schedule" "MK_renderer module purpose"
+Assert-ContainsText ([string]$geRendererModule[0].purpose) "execute_frame_graph_schedule" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph RHI Texture Schedule Execution v1" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph Render Pass Envelope v1" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphRhiTextureExecutionDesc" "MK_renderer module purpose"
@@ -1957,7 +1957,7 @@ if ($recommendedPlanId -eq "general-purpose-game-production-v1") {
 } else {
     Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "Frame Graph v1" "recommended next plan reason"
     Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "upload-staging-v1" "recommended next plan reason"
-    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "scene-component-prefab-schema-v2" "recommended next plan reason"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "scene-component-prefab-schema" "recommended next plan reason"
     Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "2d-playable-vertical-slice" "recommended next plan reason"
     Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "3d-playable-vertical-slice" "recommended next plan reason"
 }
@@ -2130,8 +2130,8 @@ $rendererRhiTests = Get-AgentSurfaceText "tests/unit/renderer_rhi_tests.cpp"
 Assert-ContainsText $rendererRhiTests "frame graph production ownership boundary selects reviewed executor rows" "Frame graph production ownership boundary tests"
 Assert-ContainsText $rendererRhiTests "frame graph production ownership boundary rejects broadened ownership claims" "Frame graph production ownership boundary tests"
 Assert-ContainsText $rendererRhiTests "frame graph production ownership boundary rejects invalid candidate rows" "Frame graph production ownership boundary tests"
-Assert-ContainsText $rendererRhiTests "frame graph v1 texture barrier recording propagates shared texture handle state" "Frame graph shared TextureHandle state handoff tests"
-Assert-ContainsText $rendererRhiTests "frame graph v1 texture barrier recording rejects conflicting shared texture handle states" "Frame graph shared TextureHandle state handoff tests"
+Assert-ContainsText $rendererRhiTests "frame graph texture barrier recording propagates shared texture handle state" "Frame graph shared TextureHandle state handoff tests"
+Assert-ContainsText $rendererRhiTests "frame graph texture barrier recording rejects conflicting shared texture handle states" "Frame graph shared TextureHandle state handoff tests"
 Assert-ContainsText $rendererRhiTests "frame graph rhi texture schedule execution hands off shared texture handle state between aliases" "Frame graph shared TextureHandle state handoff tests"
 Assert-ContainsText $rendererRhiTests "frame graph rhi texture aliasing barrier recording maps resource names to texture handles" "Frame graph texture aliasing barrier command tests"
 Assert-ContainsText $rendererRhiTests "frame graph rhi texture aliasing barrier recording maps empty resource names to wildcards" "Frame graph public null aliasing barrier tests"

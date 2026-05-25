@@ -17,7 +17,7 @@ namespace {
 }
 
 [[nodiscard]] std::vector<std::string> default_unsupported_gap_ids() {
-    return {"asset-identity-v2", "runtime-resource-v2", "renderer-rhi-resource-foundation", "editor-productization",
+    return {"asset-identity", "runtime-resource", "renderer-rhi-resource-foundation", "editor-productization",
             "3d-playable-vertical-slice"};
 }
 
@@ -91,7 +91,7 @@ namespace {
 }
 
 void add_diagnostic(std::vector<SourceAssetRegistrationDiagnostic>& diagnostics, std::string code, std::string message,
-                    std::string path = {}, AssetKeyV2 asset_key = {}, std::string unsupported_gap_id = {},
+                    std::string path = {}, AssetKey asset_key = {}, std::string unsupported_gap_id = {},
                     std::string validation_recipe = {}) {
     diagnostics.push_back(SourceAssetRegistrationDiagnostic{
         .severity = "error",
@@ -136,12 +136,12 @@ void validate_unsupported_claims(std::vector<SourceAssetRegistrationDiagnostic>&
     validate_claim(diagnostics, request.external_importer, "unsupported_external_importer",
                    "external importer execution is not supported by source asset registration tooling", {});
     validate_claim(diagnostics, request.package_cooking, "unsupported_package_cooking",
-                   "package cooking is not supported by source asset registration tooling", "runtime-resource-v2");
+                   "package cooking is not supported by source asset registration tooling", "runtime-resource");
     validate_claim(diagnostics, request.renderer_rhi_residency, "unsupported_renderer_rhi_residency",
                    "renderer/RHI residency is not supported by source asset registration tooling",
                    "renderer-rhi-resource-foundation");
     validate_claim(diagnostics, request.package_streaming, "unsupported_package_streaming",
-                   "package streaming is not supported by source asset registration tooling", "runtime-resource-v2");
+                   "package streaming is not supported by source asset registration tooling", "runtime-resource");
     validate_claim(diagnostics, request.material_graph, "unsupported_material_graph",
                    "material graph is not supported by source asset registration tooling",
                    "3d-playable-vertical-slice");
@@ -201,8 +201,8 @@ void validate_request_shape(std::vector<SourceAssetRegistrationDiagnostic>& diag
         add_diagnostic(diagnostics, "unsafe_imported_path", "imported path must be a safe repository-relative path",
                        request.imported_path, request.asset_key);
     }
-    if (!is_supported_source_asset_kind_v1(request.asset_kind) ||
-        request.source_format != expected_source_asset_format_v1(request.asset_kind)) {
+    if (!is_supported_source_asset_kind(request.asset_kind) ||
+        request.source_format != expected_source_asset_format(request.asset_kind)) {
         add_diagnostic(diagnostics, "unsupported_source_format",
                        "unsupported source format for source asset registration", request.source_path,
                        request.asset_key);
@@ -220,12 +220,12 @@ void append_changed_file(std::vector<SourceAssetRegistrationChangedFile>& files,
 }
 
 void append_model_mutation(std::vector<SourceAssetRegistrationModelMutation>& mutations,
-                           const std::string& source_registry_path, const SourceAssetRegistryRowV1& row) {
+                           const std::string& source_registry_path, const SourceAssetRegistryRow& row) {
     mutations.push_back(SourceAssetRegistrationModelMutation{
         .kind = "register_source_asset",
         .target_path = source_registry_path,
         .asset_key = row.key,
-        .asset = asset_id_from_key_v2(row.key),
+        .asset = asset_id_from_key(row.key),
         .asset_kind = row.kind,
         .source_path = row.source_path,
         .source_format = row.source_format,
@@ -235,9 +235,9 @@ void append_model_mutation(std::vector<SourceAssetRegistrationModelMutation>& mu
 }
 
 void append_import_metadata(std::vector<SourceAssetRegistrationImportMetadata>& metadata,
-                            const SourceAssetRegistryRowV1& row) {
+                            const SourceAssetRegistryRow& row) {
     metadata.push_back(SourceAssetRegistrationImportMetadata{
-        .asset = asset_id_from_key_v2(row.key),
+        .asset = asset_id_from_key(row.key),
         .kind = import_action_kind_from_asset_kind(row.kind),
         .source_path = row.source_path,
         .imported_path = row.imported_path,
@@ -245,26 +245,25 @@ void append_import_metadata(std::vector<SourceAssetRegistrationImportMetadata>& 
     });
 }
 
-[[nodiscard]] bool dependency_less(const SourceAssetDependencyRowV1& lhs,
-                                   const SourceAssetDependencyRowV1& rhs) noexcept {
-    const auto lhs_kind = source_asset_dependency_kind_name_v1(lhs.kind);
-    const auto rhs_kind = source_asset_dependency_kind_name_v1(rhs.kind);
+[[nodiscard]] bool dependency_less(const SourceAssetDependencyRow& lhs, const SourceAssetDependencyRow& rhs) noexcept {
+    const auto lhs_kind = source_asset_dependency_kind_name(lhs.kind);
+    const auto rhs_kind = source_asset_dependency_kind_name(rhs.kind);
     if (lhs_kind != rhs_kind) {
         return lhs_kind < rhs_kind;
     }
     return lhs.key.value < rhs.key.value;
 }
 
-void canonicalize(SourceAssetRegistryDocumentV1& document) {
+void canonicalize(SourceAssetRegistryDocument& document) {
     for (auto& row : document.assets) {
         std::ranges::sort(row.dependencies, dependency_less);
     }
-    std::ranges::sort(document.assets, [](const SourceAssetRegistryRowV1& lhs, const SourceAssetRegistryRowV1& rhs) {
+    std::ranges::sort(document.assets, [](const SourceAssetRegistryRow& lhs, const SourceAssetRegistryRow& rhs) {
         return lhs.key.value < rhs.key.value;
     });
 }
 
-[[nodiscard]] bool row_equals_request(const SourceAssetRegistryRowV1& row,
+[[nodiscard]] bool row_equals_request(const SourceAssetRegistryRow& row,
                                       const SourceAssetRegistrationRequest& request) {
     auto row_dependencies = row.dependencies;
     auto request_dependencies = request.dependency_rows;
@@ -275,7 +274,7 @@ void canonicalize(SourceAssetRegistryDocumentV1& document) {
            row.imported_path == request.imported_path && row_dependencies == request_dependencies;
 }
 
-[[nodiscard]] SourceAssetRegistryDocumentV1
+[[nodiscard]] SourceAssetRegistryDocument
 parse_source_registry_content(std::vector<SourceAssetRegistrationDiagnostic>& diagnostics,
                               const SourceAssetRegistrationRequest& request) {
     if (request.source_registry_content.empty()) {
@@ -292,84 +291,84 @@ parse_source_registry_content(std::vector<SourceAssetRegistrationDiagnostic>& di
     return {};
 }
 
-[[nodiscard]] std::string registry_diagnostic_code(SourceAssetRegistryDiagnosticCodeV1 code) {
+[[nodiscard]] std::string registry_diagnostic_code(SourceAssetRegistryDiagnosticCode code) {
     switch (code) {
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_key:
+    case SourceAssetRegistryDiagnosticCode::invalid_key:
         return "invalid_asset_key";
-    case SourceAssetRegistryDiagnosticCodeV1::duplicate_key:
+    case SourceAssetRegistryDiagnosticCode::duplicate_key:
         return "duplicate_asset_key";
-    case SourceAssetRegistryDiagnosticCodeV1::duplicate_asset_id:
+    case SourceAssetRegistryDiagnosticCode::duplicate_asset_id:
         return "duplicate_asset_id";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_kind:
+    case SourceAssetRegistryDiagnosticCode::invalid_kind:
         return "invalid_asset_kind";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_source_path:
+    case SourceAssetRegistryDiagnosticCode::invalid_source_path:
         return "unsafe_source_path";
-    case SourceAssetRegistryDiagnosticCodeV1::duplicate_source_path:
+    case SourceAssetRegistryDiagnosticCode::duplicate_source_path:
         return "duplicate_source_path";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_source_format:
+    case SourceAssetRegistryDiagnosticCode::invalid_source_format:
         return "unsupported_source_format";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_imported_path:
+    case SourceAssetRegistryDiagnosticCode::invalid_imported_path:
         return "unsafe_imported_path";
-    case SourceAssetRegistryDiagnosticCodeV1::duplicate_imported_path:
+    case SourceAssetRegistryDiagnosticCode::duplicate_imported_path:
         return "duplicate_imported_path";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_dependency_kind:
+    case SourceAssetRegistryDiagnosticCode::invalid_dependency_kind:
         return "invalid_dependency_kind";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_dependency_target:
+    case SourceAssetRegistryDiagnosticCode::invalid_dependency_target:
         return "invalid_dependency_target";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_dependency_key:
+    case SourceAssetRegistryDiagnosticCode::invalid_dependency_key:
         return "invalid_dependency_key";
-    case SourceAssetRegistryDiagnosticCodeV1::missing_dependency_key:
+    case SourceAssetRegistryDiagnosticCode::missing_dependency_key:
         return "missing_dependency_key";
-    case SourceAssetRegistryDiagnosticCodeV1::duplicate_dependency:
+    case SourceAssetRegistryDiagnosticCode::duplicate_dependency:
         return "duplicate_dependency";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_identity_projection:
+    case SourceAssetRegistryDiagnosticCode::invalid_identity_projection:
         return "invalid_identity_projection";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_import_metadata:
+    case SourceAssetRegistryDiagnosticCode::invalid_import_metadata:
         return "invalid_import_metadata";
     }
     return "invalid_source_asset_registry";
 }
 
-[[nodiscard]] std::string registry_diagnostic_message(SourceAssetRegistryDiagnosticCodeV1 code) {
+[[nodiscard]] std::string registry_diagnostic_message(SourceAssetRegistryDiagnosticCode code) {
     switch (code) {
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_key:
+    case SourceAssetRegistryDiagnosticCode::invalid_key:
         return "invalid asset key";
-    case SourceAssetRegistryDiagnosticCodeV1::duplicate_key:
+    case SourceAssetRegistryDiagnosticCode::duplicate_key:
         return "duplicate asset key";
-    case SourceAssetRegistryDiagnosticCodeV1::duplicate_asset_id:
+    case SourceAssetRegistryDiagnosticCode::duplicate_asset_id:
         return "duplicate asset id";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_kind:
+    case SourceAssetRegistryDiagnosticCode::invalid_kind:
         return "unsupported asset kind";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_source_path:
+    case SourceAssetRegistryDiagnosticCode::invalid_source_path:
         return "source path must be a safe repository-relative path";
-    case SourceAssetRegistryDiagnosticCodeV1::duplicate_source_path:
+    case SourceAssetRegistryDiagnosticCode::duplicate_source_path:
         return "duplicate source path";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_source_format:
+    case SourceAssetRegistryDiagnosticCode::invalid_source_format:
         return "unsupported source format";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_imported_path:
+    case SourceAssetRegistryDiagnosticCode::invalid_imported_path:
         return "imported path must be a safe repository-relative path";
-    case SourceAssetRegistryDiagnosticCodeV1::duplicate_imported_path:
+    case SourceAssetRegistryDiagnosticCode::duplicate_imported_path:
         return "duplicate imported path";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_dependency_kind:
+    case SourceAssetRegistryDiagnosticCode::invalid_dependency_kind:
         return "unsupported dependency kind";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_dependency_target:
+    case SourceAssetRegistryDiagnosticCode::invalid_dependency_target:
         return "dependency target kind does not match dependency kind";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_dependency_key:
+    case SourceAssetRegistryDiagnosticCode::invalid_dependency_key:
         return "invalid dependency key";
-    case SourceAssetRegistryDiagnosticCodeV1::missing_dependency_key:
+    case SourceAssetRegistryDiagnosticCode::missing_dependency_key:
         return "dependency key must already be registered";
-    case SourceAssetRegistryDiagnosticCodeV1::duplicate_dependency:
+    case SourceAssetRegistryDiagnosticCode::duplicate_dependency:
         return "duplicate dependency";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_identity_projection:
+    case SourceAssetRegistryDiagnosticCode::invalid_identity_projection:
         return "asset identity projection is invalid";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_import_metadata:
+    case SourceAssetRegistryDiagnosticCode::invalid_import_metadata:
         return "source import metadata is invalid";
     }
     return "source asset registry is invalid";
 }
 
 void append_registry_diagnostics(std::vector<SourceAssetRegistrationDiagnostic>& diagnostics,
-                                 const std::vector<SourceAssetRegistryDiagnosticV1>& registry_diagnostics,
+                                 const std::vector<SourceAssetRegistryDiagnostic>& registry_diagnostics,
                                  const std::string& source_registry_path) {
     for (const auto& diagnostic : registry_diagnostics) {
         add_diagnostic(diagnostics, registry_diagnostic_code(diagnostic.code),
@@ -378,8 +377,8 @@ void append_registry_diagnostics(std::vector<SourceAssetRegistrationDiagnostic>&
     }
 }
 
-[[nodiscard]] const SourceAssetRegistryRowV1* find_row_by_key(const SourceAssetRegistryDocumentV1& document,
-                                                              const AssetKeyV2& key) noexcept {
+[[nodiscard]] const SourceAssetRegistryRow* find_row_by_key(const SourceAssetRegistryDocument& document,
+                                                            const AssetKey& key) noexcept {
     const auto it =
         std::ranges::find_if(document.assets, [&key](const auto& row) { return row.key.value == key.value; });
     return it == document.assets.end() ? nullptr : &*it;
@@ -415,7 +414,7 @@ SourceAssetRegistrationResult plan_source_asset_registration(const SourceAssetRe
             return result;
         }
     } else {
-        document.assets.push_back(SourceAssetRegistryRowV1{
+        document.assets.push_back(SourceAssetRegistryRow{
             .key = request.asset_key,
             .kind = request.asset_kind,
             .source_path = request.source_path,
@@ -435,7 +434,7 @@ SourceAssetRegistrationResult plan_source_asset_registration(const SourceAssetRe
     }
 
     result.source_registry_content = serialize_source_asset_registry_document(document);
-    result.asset_identity_projection = project_source_asset_registry_identity_v2(document);
+    result.asset_identity_projection = project_source_asset_registry_identity(document);
     if (registered_new_asset) {
         if (const auto* registered = find_row_by_key(document, request.asset_key); registered != nullptr) {
             append_model_mutation(result.model_mutations, request.source_registry_path, *registered);
@@ -450,7 +449,7 @@ SourceAssetRegistrationResult plan_source_asset_registration(const SourceAssetRe
                   deserialize_source_asset_registry_document(request.source_registry_content));
     if (result.source_registry_content != previous_content) {
         append_changed_file(result.changed_files, request.source_registry_path,
-                            std::string{source_asset_registry_format_v1()}, result.source_registry_content);
+                            std::string{source_asset_registry_format()}, result.source_registry_content);
     }
 
     return result;

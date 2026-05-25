@@ -123,11 +123,11 @@ class TextureSourceExternalImporter final : public mirakana::IExternalAssetImpor
     }});
 }
 
-void mount_package(mirakana::runtime::RuntimeResidentPackageMountSetV2& mount_set,
-                   mirakana::runtime::RuntimeResidentPackageMountIdV2 id, std::string_view label,
-                   mirakana::AssetId asset, std::string_view path, std::string_view content) {
+void mount_package(mirakana::runtime::RuntimeResidentPackageMountSet& mount_set,
+                   mirakana::runtime::RuntimeResidentPackageMountId id, std::string_view label, mirakana::AssetId asset,
+                   std::string_view path, std::string_view content) {
     MK_REQUIRE(mount_set
-                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecord{
                        .id = id,
                        .label = std::string(label),
                        .package = make_loaded_package(asset, path, content),
@@ -149,12 +149,12 @@ void write_package_index(CountingFileSystem& filesystem, std::string_view index_
     filesystem.write_text(index_path, mirakana::serialize_asset_cooked_package_index(index));
 }
 
-[[nodiscard]] mirakana::runtime::RuntimeResidentCatalogCacheV2
-make_refreshed_cache(const mirakana::runtime::RuntimeResidentPackageMountSetV2& mount_set) {
-    mirakana::runtime::RuntimeResidentCatalogCacheV2 catalog_cache;
+[[nodiscard]] mirakana::runtime::RuntimeResidentCatalogCache
+make_refreshed_cache(const mirakana::runtime::RuntimeResidentPackageMountSet& mount_set) {
+    mirakana::runtime::RuntimeResidentCatalogCache catalog_cache;
     const auto refresh =
         catalog_cache.refresh(mount_set, mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins,
-                              mirakana::runtime::RuntimeResourceResidencyBudgetV2{
+                              mirakana::runtime::RuntimeResourceResidencyBudget{
                                   .max_resident_content_bytes = 4096U,
                                   .max_resident_asset_records = {},
                               });
@@ -188,27 +188,27 @@ make_recook_request(mirakana::AssetId asset,
         .dependencies = {},
     });
     desc.recook_requests.push_back(make_recook_request(replacement));
-    desc.runtime_replacement.candidates.push_back(mirakana::runtime::RuntimePackageIndexDiscoveryCandidateV2{
+    desc.runtime_replacement.candidates.push_back(mirakana::runtime::RuntimePackageIndexDiscoveryCandidate{
         .package_index_path = "runtime/packages/replacement.geindex",
         .content_root = "runtime",
         .label = "replacement",
     });
-    desc.runtime_replacement.discovery = mirakana::runtime::RuntimePackageIndexDiscoveryDescV2{
+    desc.runtime_replacement.discovery = mirakana::runtime::RuntimePackageIndexDiscoveryDesc{
         .root = "runtime/packages",
         .content_root = "runtime",
     };
     desc.runtime_replacement.selected_package_index_path = "runtime/packages/replacement.geindex";
-    desc.runtime_replacement.mount_id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 7};
+    desc.runtime_replacement.mount_id = mirakana::runtime::RuntimeResidentPackageMountId{.value = 7};
     desc.runtime_replacement.reviewed_existing_mount_ids = {
-        mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 7},
+        mirakana::runtime::RuntimeResidentPackageMountId{.value = 7},
     };
     desc.runtime_replacement.overlay = mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins;
-    desc.runtime_replacement.budget = mirakana::runtime::RuntimeResourceResidencyBudgetV2{
+    desc.runtime_replacement.budget = mirakana::runtime::RuntimeResourceResidencyBudget{
         .max_resident_content_bytes = 4096U,
         .max_resident_asset_records = {},
     };
     desc.runtime_replacement.protected_mount_ids = {
-        mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 7},
+        mirakana::runtime::RuntimeResidentPackageMountId{.value = 7},
     };
     return desc;
 }
@@ -260,11 +260,11 @@ struct HotReloadFixture {
     CountingFileSystem filesystem;
     mirakana::AssetId base{mirakana::AssetId::from_name("textures/base")};
     mirakana::AssetId replacement{mirakana::AssetId::from_name("textures/replacement")};
-    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    mirakana::runtime::RuntimeResidentPackageMountSet mount_set;
     mirakana::AssetRuntimeReplacementState replacements;
 
     HotReloadFixture() {
-        mount_package(mount_set, mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 7}, "base", base,
+        mount_package(mount_set, mirakana::runtime::RuntimeResidentPackageMountId{.value = 7}, "base", base,
                       "textures/base.texture", "old");
         replacements.seed({
             mirakana::AssetFileSnapshot{
@@ -301,8 +301,8 @@ MK_TEST("asset runtime package hot reload replacement commits recook and residen
     MK_REQUIRE(fixture.replacements.pending_count() == 0);
     MK_REQUIRE(fixture.replacements.find_active(fixture.replacement)->revision == 9);
     MK_REQUIRE(fixture.mount_set.generation() > previous_generation);
-    MK_REQUIRE(mirakana::runtime::find_runtime_resource_v2(catalog_cache.catalog(), fixture.replacement).has_value());
-    MK_REQUIRE(!mirakana::runtime::find_runtime_resource_v2(catalog_cache.catalog(), fixture.base).has_value());
+    MK_REQUIRE(mirakana::runtime::find_runtime_resource(catalog_cache.catalog(), fixture.replacement).has_value());
+    MK_REQUIRE(!mirakana::runtime::find_runtime_resource(catalog_cache.catalog(), fixture.base).has_value());
     MK_REQUIRE(result.invoked_recook);
     MK_REQUIRE(result.invoked_runtime_replacement);
     MK_REQUIRE(!result.invoked_file_watch);
@@ -367,7 +367,7 @@ MK_TEST("asset runtime package hot reload replacement passes external import opt
     MK_REQUIRE(result.recook.import_result.imported.size() == 1);
     MK_REQUIRE(result.committed_apply_results.size() == 1);
     MK_REQUIRE(fixture.replacements.find_active(fixture.replacement)->revision == 9);
-    MK_REQUIRE(mirakana::runtime::find_runtime_resource_v2(catalog_cache.catalog(), fixture.replacement).has_value());
+    MK_REQUIRE(mirakana::runtime::find_runtime_resource(catalog_cache.catalog(), fixture.replacement).has_value());
 }
 
 MK_TEST("asset runtime package hot reload replacement blocks recook failure before runtime package reads") {
@@ -382,7 +382,7 @@ MK_TEST("asset runtime package hot reload replacement blocks recook failure befo
     MK_REQUIRE(result.status == mirakana::AssetRuntimePackageHotReloadReplacementStatus::recook_failed);
     MK_REQUIRE(!result.recook.succeeded());
     MK_REQUIRE(result.runtime_replacement.status ==
-               mirakana::runtime::RuntimePackageHotReloadRecookReplacementStatusV2::recook_change_review_failed);
+               mirakana::runtime::RuntimePackageHotReloadRecookReplacementStatus::recook_change_review_failed);
     MK_REQUIRE(!result.invoked_runtime_replacement);
     MK_REQUIRE(!result.committed);
     MK_REQUIRE(result.diagnostics.size() == 1);
@@ -440,15 +440,15 @@ MK_TEST("asset runtime package hot reload replacement preserves staged recook wh
     MK_REQUIRE(result.recook.succeeded());
     MK_REQUIRE(!result.runtime_replacement.succeeded());
     MK_REQUIRE(result.runtime_replacement.status ==
-               mirakana::runtime::RuntimePackageHotReloadRecookReplacementStatusV2::candidate_not_found);
+               mirakana::runtime::RuntimePackageHotReloadRecookReplacementStatus::candidate_not_found);
     MK_REQUIRE(result.committed_apply_results.empty());
     MK_REQUIRE(result.invoked_runtime_replacement);
     MK_REQUIRE(!result.committed);
     MK_REQUIRE(fixture.mount_set.generation() == previous_generation);
     MK_REQUIRE(fixture.replacements.pending_count() == 1);
     MK_REQUIRE(fixture.replacements.find_active(fixture.replacement)->revision == 7);
-    MK_REQUIRE(mirakana::runtime::find_runtime_resource_v2(catalog_cache.catalog(), fixture.base).has_value());
-    MK_REQUIRE(!mirakana::runtime::find_runtime_resource_v2(catalog_cache.catalog(), fixture.replacement).has_value());
+    MK_REQUIRE(mirakana::runtime::find_runtime_resource(catalog_cache.catalog(), fixture.base).has_value());
+    MK_REQUIRE(!mirakana::runtime::find_runtime_resource(catalog_cache.catalog(), fixture.replacement).has_value());
 }
 
 MK_TEST("asset runtime package registered watch tick primes without recook or native watcher") {

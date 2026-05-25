@@ -44,7 +44,7 @@ struct SpriteAtlasSourceFrameDesc {
 struct SpriteAtlasSourceAuthoringDesc {
     std::string source_registry_path;
     std::string source_registry_content;
-    AssetKeyV2 atlas_asset_key;
+    AssetKey atlas_asset_key;
     std::string atlas_source_path;
     std::string atlas_imported_path;
     std::uint32_t max_side{sprite_atlas_packing_max_side};
@@ -71,7 +71,7 @@ struct SpriteAtlasSourceChangedFile {
 struct SpriteAtlasSourceFrameRow {
     std::string frame_id;
     std::string source_path;
-    AssetKeyV2 atlas_asset_key;
+    AssetKey atlas_asset_key;
     AssetId atlas_asset;
     std::string atlas_source_path;
     std::string atlas_imported_path;
@@ -99,7 +99,7 @@ struct SpriteAtlasSourceAuthoringDiagnostic {
     std::string message;
     std::string path;
     std::string frame_id;
-    AssetKeyV2 asset_key;
+    AssetKey asset_key;
 };
 
 struct SpriteAtlasSourceAuthoringPlan {

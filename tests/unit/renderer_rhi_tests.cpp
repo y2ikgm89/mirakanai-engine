@@ -510,102 +510,24 @@ create_directional_shadow_smoke_test_renderer(mirakana::rhi::IRhiDevice& device,
 
 } // namespace
 
-MK_TEST("frame graph v0 orders scene color before postprocess") {
+MK_TEST("frame graph plans deterministic barriers between writer and reader") {
     mirakana::FrameGraphDesc desc;
-    desc.resources.push_back(mirakana::FrameGraphResourceDesc{.name = "backbuffer", .imported = true});
-    desc.passes.push_back(mirakana::FrameGraphPassDesc{
-        .name = "postprocess",
-        .reads = {"scene_color"},
-        .writes = {"backbuffer"},
-    });
-    desc.passes.push_back(mirakana::FrameGraphPassDesc{
-        .name = "scene_color",
-        .writes = {"scene_color"},
-    });
-
-    const auto result = mirakana::compile_frame_graph_v0(desc);
-
-    MK_REQUIRE(result.succeeded());
-    MK_REQUIRE(result.ordered_passes.size() == 2);
-    MK_REQUIRE(result.ordered_passes[0] == "scene_color");
-    MK_REQUIRE(result.ordered_passes[1] == "postprocess");
-    MK_REQUIRE(result.pass_count == 2);
-    MK_REQUIRE(result.diagnostics.empty());
-}
-
-MK_TEST("frame graph v0 rejects deterministic resource hazards") {
-    mirakana::FrameGraphDesc missing_producer;
-    missing_producer.passes.push_back(mirakana::FrameGraphPassDesc{
-        .name = "postprocess",
-        .reads = {"scene_color"},
-        .writes = {"backbuffer"},
-    });
-    const auto missing_result = mirakana::compile_frame_graph_v0(missing_producer);
-    MK_REQUIRE(!missing_result.succeeded());
-    MK_REQUIRE(!missing_result.diagnostics.empty());
-    MK_REQUIRE(missing_result.diagnostics.front().code == mirakana::FrameGraphDiagnosticCode::missing_producer);
-
-    mirakana::FrameGraphDesc write_hazard;
-    write_hazard.passes.push_back(mirakana::FrameGraphPassDesc{.name = "first", .writes = {"scene_color"}});
-    write_hazard.passes.push_back(mirakana::FrameGraphPassDesc{.name = "second", .writes = {"scene_color"}});
-    const auto hazard_result = mirakana::compile_frame_graph_v0(write_hazard);
-    MK_REQUIRE(!hazard_result.succeeded());
-    MK_REQUIRE(hazard_result.diagnostics.front().code == mirakana::FrameGraphDiagnosticCode::write_write_hazard);
-
-    mirakana::FrameGraphDesc cycle;
-    cycle.passes.push_back(mirakana::FrameGraphPassDesc{.name = "a", .reads = {"b_out"}, .writes = {"a_out"}});
-    cycle.passes.push_back(mirakana::FrameGraphPassDesc{.name = "b", .reads = {"a_out"}, .writes = {"b_out"}});
-    const auto cycle_result = mirakana::compile_frame_graph_v0(cycle);
-    MK_REQUIRE(!cycle_result.succeeded());
-    MK_REQUIRE(cycle_result.diagnostics.front().code == mirakana::FrameGraphDiagnosticCode::cycle);
-
-    mirakana::FrameGraphDesc missing_consumer;
-    missing_consumer.resources.push_back(
-        mirakana::FrameGraphResourceDesc{.name = "scene_color", .requires_consumer = true});
-    missing_consumer.passes.push_back(mirakana::FrameGraphPassDesc{.name = "scene", .writes = {"scene_color"}});
-    const auto consumer_result = mirakana::compile_frame_graph_v0(missing_consumer);
-    MK_REQUIRE(!consumer_result.succeeded());
-    MK_REQUIRE(consumer_result.diagnostics.front().code == mirakana::FrameGraphDiagnosticCode::missing_consumer);
-}
-
-MK_TEST("frame graph v0 rejects duplicate pass and resource declarations") {
-    mirakana::FrameGraphDesc dup_pass;
-    dup_pass.resources.push_back(mirakana::FrameGraphResourceDesc{.name = "x"});
-    dup_pass.passes.push_back(mirakana::FrameGraphPassDesc{.name = "scene", .writes = {"x"}});
-    dup_pass.passes.push_back(mirakana::FrameGraphPassDesc{.name = "scene", .writes = {}});
-
-    const auto dup_pass_result = mirakana::compile_frame_graph_v0(dup_pass);
-    MK_REQUIRE(!dup_pass_result.succeeded());
-    MK_REQUIRE(dup_pass_result.diagnostics.front().code == mirakana::FrameGraphDiagnosticCode::invalid_pass);
-
-    mirakana::FrameGraphDesc dup_resource;
-    dup_resource.resources.push_back(mirakana::FrameGraphResourceDesc{.name = "x"});
-    dup_resource.resources.push_back(mirakana::FrameGraphResourceDesc{.name = "x"});
-    dup_resource.passes.push_back(mirakana::FrameGraphPassDesc{.name = "a", .writes = {"x"}});
-
-    const auto dup_resource_result = mirakana::compile_frame_graph_v0(dup_resource);
-    MK_REQUIRE(!dup_resource_result.succeeded());
-    MK_REQUIRE(dup_resource_result.diagnostics.front().code == mirakana::FrameGraphDiagnosticCode::invalid_resource);
-}
-
-MK_TEST("frame graph v1 plans deterministic barriers between writer and reader") {
-    mirakana::FrameGraphV1Desc desc;
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "scene-color", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "scene",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
                                                       .access = mirakana::FrameGraphAccess::color_attachment_write}},
     });
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "postprocess",
         .reads = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
                                                      .access = mirakana::FrameGraphAccess::shader_read}},
         .writes = {},
     });
 
-    const auto plan = mirakana::compile_frame_graph_v1(desc);
+    const auto plan = mirakana::compile_frame_graph(desc);
 
     MK_REQUIRE(plan.succeeded());
     MK_REQUIRE(plan.ordered_passes.size() == 2);
@@ -619,28 +541,28 @@ MK_TEST("frame graph v1 plans deterministic barriers between writer and reader")
     MK_REQUIRE(plan.barriers[0].to == mirakana::FrameGraphAccess::shader_read);
 }
 
-MK_TEST("frame graph v1 schedule pass_invoke order matches ordered_passes") {
-    mirakana::FrameGraphV1Desc desc;
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+MK_TEST("frame graph schedule pass_invoke order matches ordered_passes") {
+    mirakana::FrameGraphDesc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "scene-color", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "scene",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
                                                       .access = mirakana::FrameGraphAccess::color_attachment_write}},
     });
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "postprocess",
         .reads = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
                                                      .access = mirakana::FrameGraphAccess::shader_read}},
         .writes = {},
     });
 
-    const auto plan = mirakana::compile_frame_graph_v1(desc);
+    const auto plan = mirakana::compile_frame_graph(desc);
     MK_REQUIRE(plan.succeeded());
     MK_REQUIRE(plan.barriers.size() == 1);
 
-    const auto schedule = mirakana::schedule_frame_graph_v1_execution(plan);
+    const auto schedule = mirakana::schedule_frame_graph_execution(plan);
     std::vector<std::string> pass_invokes;
     pass_invokes.reserve(plan.ordered_passes.size());
     for (const auto& step : schedule) {
@@ -651,36 +573,36 @@ MK_TEST("frame graph v1 schedule pass_invoke order matches ordered_passes") {
     MK_REQUIRE(pass_invokes == plan.ordered_passes);
 }
 
-MK_TEST("frame graph v1 orders directional shadow scene and postprocess for a minimal desktop-style stack") {
+MK_TEST("frame graph orders directional shadow scene and postprocess for a minimal desktop-style stack") {
     // Compile-only proof for Phase 4 milestone scheduling: shadow map depth before lit scene, scene color before post.
     // Does not invoke SDL/RHI or claim production render-graph ownership.
-    mirakana::FrameGraphV1Desc desc;
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    mirakana::FrameGraphDesc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "shadow-depth", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "scene-color", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
 
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "directional_shadow",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "shadow-depth",
                                                       .access = mirakana::FrameGraphAccess::depth_attachment_write}},
     });
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "scene",
         .reads = {mirakana::FrameGraphResourceAccess{.resource = "shadow-depth",
                                                      .access = mirakana::FrameGraphAccess::shader_read}},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
                                                       .access = mirakana::FrameGraphAccess::color_attachment_write}},
     });
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "postprocess",
         .reads = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
                                                      .access = mirakana::FrameGraphAccess::shader_read}},
         .writes = {},
     });
 
-    const auto plan = mirakana::compile_frame_graph_v1(desc);
+    const auto plan = mirakana::compile_frame_graph(desc);
 
     MK_REQUIRE(plan.succeeded());
     MK_REQUIRE(plan.ordered_passes.size() == 3);
@@ -689,7 +611,7 @@ MK_TEST("frame graph v1 orders directional shadow scene and postprocess for a mi
     MK_REQUIRE(plan.ordered_passes[2] == "postprocess");
     MK_REQUIRE(plan.barriers.size() == 2);
 
-    const auto schedule = mirakana::schedule_frame_graph_v1_execution(plan);
+    const auto schedule = mirakana::schedule_frame_graph_execution(plan);
     MK_REQUIRE(schedule.size() == 5);
     MK_REQUIRE(schedule[0].kind == mirakana::FrameGraphExecutionStep::Kind::pass_invoke);
     MK_REQUIRE(schedule[0].pass_name == "directional_shadow");
@@ -703,29 +625,29 @@ MK_TEST("frame graph v1 orders directional shadow scene and postprocess for a mi
     MK_REQUIRE(schedule[4].pass_name == "postprocess");
 }
 
-MK_TEST("frame graph v1 breaks parallel-ready tie by pass declaration order") {
-    // When two passes have indegree zero, compile_frame_graph_v1 picks the smallest pass index first.
-    mirakana::FrameGraphV1Desc desc;
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+MK_TEST("frame graph breaks parallel-ready tie by pass declaration order") {
+    // When two passes have indegree zero, compile_frame_graph picks the smallest pass index first.
+    mirakana::FrameGraphDesc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "effect-a-out", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "effect-b-out", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "combine-out", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
 
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "effect_a",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "effect-a-out",
                                                       .access = mirakana::FrameGraphAccess::color_attachment_write}},
     });
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "effect_b",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "effect-b-out",
                                                       .access = mirakana::FrameGraphAccess::color_attachment_write}},
     });
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "combine",
         .reads = {mirakana::FrameGraphResourceAccess{.resource = "effect-a-out",
                                                      .access = mirakana::FrameGraphAccess::shader_read},
@@ -735,7 +657,7 @@ MK_TEST("frame graph v1 breaks parallel-ready tie by pass declaration order") {
                                                       .access = mirakana::FrameGraphAccess::color_attachment_write}},
     });
 
-    const auto plan = mirakana::compile_frame_graph_v1(desc);
+    const auto plan = mirakana::compile_frame_graph(desc);
 
     MK_REQUIRE(plan.succeeded());
     MK_REQUIRE(plan.ordered_passes.size() == 3);
@@ -743,7 +665,7 @@ MK_TEST("frame graph v1 breaks parallel-ready tie by pass declaration order") {
     MK_REQUIRE(plan.ordered_passes[1] == "effect_b");
     MK_REQUIRE(plan.ordered_passes[2] == "combine");
 
-    const auto schedule = mirakana::schedule_frame_graph_v1_execution(plan);
+    const auto schedule = mirakana::schedule_frame_graph_execution(plan);
     MK_REQUIRE(schedule.size() == 5);
     MK_REQUIRE(schedule[0].kind == mirakana::FrameGraphExecutionStep::Kind::pass_invoke);
     MK_REQUIRE(schedule[0].pass_name == "effect_a");
@@ -759,21 +681,21 @@ MK_TEST("frame graph v1 breaks parallel-ready tie by pass declaration order") {
     MK_REQUIRE(schedule[4].pass_name == "combine");
 }
 
-MK_TEST("frame graph v1 diagnoses dependency cycle for ping-pong resources") {
-    mirakana::FrameGraphV1Desc desc;
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
-        .name = "a-out", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
-        .name = "b-out", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
+MK_TEST("frame graph diagnoses dependency cycle for ping-pong resources") {
+    mirakana::FrameGraphDesc desc;
+    desc.resources.push_back(
+        mirakana::FrameGraphResourceDesc{.name = "a-out", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
+    desc.resources.push_back(
+        mirakana::FrameGraphResourceDesc{.name = "b-out", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
 
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "pass-a",
         .reads = {mirakana::FrameGraphResourceAccess{.resource = "b-out",
                                                      .access = mirakana::FrameGraphAccess::shader_read}},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "a-out",
                                                       .access = mirakana::FrameGraphAccess::color_attachment_write}},
     });
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "pass-b",
         .reads = {mirakana::FrameGraphResourceAccess{.resource = "a-out",
                                                      .access = mirakana::FrameGraphAccess::shader_read}},
@@ -781,7 +703,7 @@ MK_TEST("frame graph v1 diagnoses dependency cycle for ping-pong resources") {
                                                       .access = mirakana::FrameGraphAccess::color_attachment_write}},
     });
 
-    const auto plan = mirakana::compile_frame_graph_v1(desc);
+    const auto plan = mirakana::compile_frame_graph(desc);
 
     MK_REQUIRE(!plan.succeeded());
     MK_REQUIRE(plan.ordered_passes.empty());
@@ -789,25 +711,25 @@ MK_TEST("frame graph v1 diagnoses dependency cycle for ping-pong resources") {
     MK_REQUIRE(plan.diagnostics[0].code == mirakana::FrameGraphDiagnosticCode::cycle);
 }
 
-MK_TEST("frame graph v1 diagnoses transient reads without producers and same-pass hazards") {
-    mirakana::FrameGraphV1Desc transient_read;
-    transient_read.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+MK_TEST("frame graph diagnoses transient reads without producers and same-pass hazards") {
+    mirakana::FrameGraphDesc transient_read;
+    transient_read.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "scene-color", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
-    transient_read.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    transient_read.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "postprocess",
         .reads = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
                                                      .access = mirakana::FrameGraphAccess::shader_read}},
         .writes = {},
     });
 
-    const auto transient_result = mirakana::compile_frame_graph_v1(transient_read);
+    const auto transient_result = mirakana::compile_frame_graph(transient_read);
     MK_REQUIRE(!transient_result.succeeded());
     MK_REQUIRE(transient_result.diagnostics[0].code == mirakana::FrameGraphDiagnosticCode::missing_producer);
 
-    mirakana::FrameGraphV1Desc same_pass;
-    same_pass.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    mirakana::FrameGraphDesc same_pass;
+    same_pass.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "history", .lifetime = mirakana::FrameGraphResourceLifetime::imported});
-    same_pass.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    same_pass.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "feedback",
         .reads = {mirakana::FrameGraphResourceAccess{.resource = "history",
                                                      .access = mirakana::FrameGraphAccess::shader_read}},
@@ -815,92 +737,92 @@ MK_TEST("frame graph v1 diagnoses transient reads without producers and same-pas
                                                       .access = mirakana::FrameGraphAccess::copy_destination}},
     });
 
-    const auto hazard_result = mirakana::compile_frame_graph_v1(same_pass);
+    const auto hazard_result = mirakana::compile_frame_graph(same_pass);
     MK_REQUIRE(!hazard_result.succeeded());
     MK_REQUIRE(hazard_result.diagnostics[0].code == mirakana::FrameGraphDiagnosticCode::read_write_hazard);
 }
 
-MK_TEST("frame graph v1 allows imported reads and rejects duplicate writers") {
-    mirakana::FrameGraphV1Desc imported_read;
-    imported_read.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+MK_TEST("frame graph allows imported reads and rejects duplicate writers") {
+    mirakana::FrameGraphDesc imported_read;
+    imported_read.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "backbuffer", .lifetime = mirakana::FrameGraphResourceLifetime::imported});
-    imported_read.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    imported_read.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "present",
         .reads = {mirakana::FrameGraphResourceAccess{.resource = "backbuffer",
                                                      .access = mirakana::FrameGraphAccess::present}},
         .writes = {},
     });
 
-    const auto imported_result = mirakana::compile_frame_graph_v1(imported_read);
+    const auto imported_result = mirakana::compile_frame_graph(imported_read);
     MK_REQUIRE(imported_result.succeeded());
     MK_REQUIRE(imported_result.ordered_passes.size() == 1);
     MK_REQUIRE(imported_result.barriers.empty());
 
-    mirakana::FrameGraphV1Desc duplicate_write;
-    duplicate_write.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    mirakana::FrameGraphDesc duplicate_write;
+    duplicate_write.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "scene-color", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
-    duplicate_write.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    duplicate_write.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "scene-a",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
                                                       .access = mirakana::FrameGraphAccess::color_attachment_write}},
     });
-    duplicate_write.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    duplicate_write.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "scene-b",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
                                                       .access = mirakana::FrameGraphAccess::copy_destination}},
     });
 
-    const auto duplicate_result = mirakana::compile_frame_graph_v1(duplicate_write);
+    const auto duplicate_result = mirakana::compile_frame_graph(duplicate_write);
     MK_REQUIRE(!duplicate_result.succeeded());
     MK_REQUIRE(duplicate_result.diagnostics[0].code == mirakana::FrameGraphDiagnosticCode::write_write_hazard);
 }
 
-MK_TEST("frame graph v1 rejects duplicate pass and resource declarations") {
-    mirakana::FrameGraphV1Desc dup_pass;
+MK_TEST("frame graph rejects duplicate pass and resource declarations") {
+    mirakana::FrameGraphDesc dup_pass;
     dup_pass.resources.push_back(
-        mirakana::FrameGraphResourceV1Desc{.name = "x", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
-    dup_pass.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        mirakana::FrameGraphResourceDesc{.name = "x", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
+    dup_pass.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "scene",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "x",
                                                       .access = mirakana::FrameGraphAccess::color_attachment_write}},
     });
-    dup_pass.passes.push_back(mirakana::FrameGraphPassV1Desc{.name = "scene", .reads = {}, .writes = {}});
+    dup_pass.passes.push_back(mirakana::FrameGraphPassDesc{.name = "scene", .reads = {}, .writes = {}});
 
-    const auto dup_pass_result = mirakana::compile_frame_graph_v1(dup_pass);
+    const auto dup_pass_result = mirakana::compile_frame_graph(dup_pass);
     MK_REQUIRE(!dup_pass_result.succeeded());
     MK_REQUIRE(dup_pass_result.diagnostics[0].code == mirakana::FrameGraphDiagnosticCode::invalid_pass);
 
-    mirakana::FrameGraphV1Desc dup_resource;
+    mirakana::FrameGraphDesc dup_resource;
     dup_resource.resources.push_back(
-        mirakana::FrameGraphResourceV1Desc{.name = "x", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
+        mirakana::FrameGraphResourceDesc{.name = "x", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
     dup_resource.resources.push_back(
-        mirakana::FrameGraphResourceV1Desc{.name = "x", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
-    dup_resource.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        mirakana::FrameGraphResourceDesc{.name = "x", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
+    dup_resource.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "a",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "x",
                                                       .access = mirakana::FrameGraphAccess::color_attachment_write}},
     });
 
-    const auto dup_resource_result = mirakana::compile_frame_graph_v1(dup_resource);
+    const auto dup_resource_result = mirakana::compile_frame_graph(dup_resource);
     MK_REQUIRE(!dup_resource_result.succeeded());
     MK_REQUIRE(dup_resource_result.diagnostics[0].code == mirakana::FrameGraphDiagnosticCode::invalid_resource);
 }
 
-MK_TEST("frame graph v1 rejects unknown resource access kinds") {
-    mirakana::FrameGraphV1Desc desc;
+MK_TEST("frame graph rejects unknown resource access kinds") {
+    mirakana::FrameGraphDesc desc;
     desc.resources.push_back(
-        mirakana::FrameGraphResourceV1Desc{.name = "x", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        mirakana::FrameGraphResourceDesc{.name = "x", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "w",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "x", .access = mirakana::FrameGraphAccess::unknown}},
     });
 
-    const auto result = mirakana::compile_frame_graph_v1(desc);
+    const auto result = mirakana::compile_frame_graph(desc);
     MK_REQUIRE(!result.succeeded());
     MK_REQUIRE(result.diagnostics[0].code == mirakana::FrameGraphDiagnosticCode::invalid_resource);
 }
@@ -912,42 +834,42 @@ MK_TEST("frame graph rhi transient texture alias planner reuses exact non overla
         .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::shader_resource,
     };
 
-    mirakana::FrameGraphV1Desc desc;
+    mirakana::FrameGraphDesc desc;
     for (const std::string_view name : {"early", "late", "overlap-a", "overlap-b"}) {
-        desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+        desc.resources.push_back(mirakana::FrameGraphResourceDesc{
             .name = std::string(name), .lifetime = mirakana::FrameGraphResourceLifetime::transient});
     }
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "write_early",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "early",
                                                       .access = mirakana::FrameGraphAccess::color_attachment_write}}});
     desc.passes.push_back(
-        mirakana::FrameGraphPassV1Desc{.name = "read_early",
-                                       .reads = {mirakana::FrameGraphResourceAccess{
-                                           .resource = "early", .access = mirakana::FrameGraphAccess::shader_read}},
-                                       .writes = {}});
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        mirakana::FrameGraphPassDesc{.name = "read_early",
+                                     .reads = {mirakana::FrameGraphResourceAccess{
+                                         .resource = "early", .access = mirakana::FrameGraphAccess::shader_read}},
+                                     .writes = {}});
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "write_late",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "late",
                                                       .access = mirakana::FrameGraphAccess::color_attachment_write}}});
     desc.passes.push_back(
-        mirakana::FrameGraphPassV1Desc{.name = "read_late",
-                                       .reads = {mirakana::FrameGraphResourceAccess{
-                                           .resource = "late", .access = mirakana::FrameGraphAccess::shader_read}},
-                                       .writes = {}});
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        mirakana::FrameGraphPassDesc{.name = "read_late",
+                                     .reads = {mirakana::FrameGraphResourceAccess{
+                                         .resource = "late", .access = mirakana::FrameGraphAccess::shader_read}},
+                                     .writes = {}});
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "write_overlap_a",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "overlap-a",
                                                       .access = mirakana::FrameGraphAccess::color_attachment_write}}});
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "write_overlap_b",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "overlap-b",
                                                       .access = mirakana::FrameGraphAccess::color_attachment_write}}});
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "read_overlap",
         .reads = {mirakana::FrameGraphResourceAccess{.resource = "overlap-a",
                                                      .access = mirakana::FrameGraphAccess::shader_read},
@@ -993,31 +915,31 @@ MK_TEST("frame graph rhi transient texture alias planner keeps incompatible desc
         .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::shader_resource,
     };
 
-    mirakana::FrameGraphV1Desc desc;
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
-        .name = "small", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
-        .name = "large", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    mirakana::FrameGraphDesc desc;
+    desc.resources.push_back(
+        mirakana::FrameGraphResourceDesc{.name = "small", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
+    desc.resources.push_back(
+        mirakana::FrameGraphResourceDesc{.name = "large", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "write_small",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "small",
                                                       .access = mirakana::FrameGraphAccess::color_attachment_write}}});
     desc.passes.push_back(
-        mirakana::FrameGraphPassV1Desc{.name = "read_small",
-                                       .reads = {mirakana::FrameGraphResourceAccess{
-                                           .resource = "small", .access = mirakana::FrameGraphAccess::shader_read}},
-                                       .writes = {}});
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        mirakana::FrameGraphPassDesc{.name = "read_small",
+                                     .reads = {mirakana::FrameGraphResourceAccess{
+                                         .resource = "small", .access = mirakana::FrameGraphAccess::shader_read}},
+                                     .writes = {}});
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "write_large",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "large",
                                                       .access = mirakana::FrameGraphAccess::color_attachment_write}}});
     desc.passes.push_back(
-        mirakana::FrameGraphPassV1Desc{.name = "read_large",
-                                       .reads = {mirakana::FrameGraphResourceAccess{
-                                           .resource = "large", .access = mirakana::FrameGraphAccess::shader_read}},
-                                       .writes = {}});
+        mirakana::FrameGraphPassDesc{.name = "read_large",
+                                     .reads = {mirakana::FrameGraphResourceAccess{
+                                         .resource = "large", .access = mirakana::FrameGraphAccess::shader_read}},
+                                     .writes = {}});
 
     const auto plan = mirakana::plan_frame_graph_transient_texture_aliases(
         desc, std::vector<mirakana::FrameGraphTransientTextureDesc>{
@@ -1040,19 +962,19 @@ MK_TEST("frame graph rhi transient texture alias planner rejects unsafe descript
         .usage = mirakana::rhi::TextureUsage::shader_resource,
     };
 
-    mirakana::FrameGraphV1Desc desc;
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    mirakana::FrameGraphDesc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "backbuffer", .lifetime = mirakana::FrameGraphResourceLifetime::imported});
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "scene-color", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "post-work", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "scene",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
                                                       .access = mirakana::FrameGraphAccess::color_attachment_write}}});
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "postprocess",
         .reads = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
                                                      .access = mirakana::FrameGraphAccess::shader_read}},
@@ -1096,27 +1018,27 @@ MK_TEST("frame graph rhi transient texture alias planner rejects backend incompa
         .usage = mirakana::rhi::TextureUsage::depth_stencil | mirakana::rhi::TextureUsage::copy_source,
     };
 
-    mirakana::FrameGraphV1Desc desc;
+    mirakana::FrameGraphDesc desc;
     for (const std::string_view name : {"sampled-depth", "volume-depth", "copy-depth"}) {
-        desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+        desc.resources.push_back(mirakana::FrameGraphResourceDesc{
             .name = std::string(name), .lifetime = mirakana::FrameGraphResourceLifetime::transient});
     }
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "upload_sampled_depth",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "sampled-depth",
                                                       .access = mirakana::FrameGraphAccess::copy_destination}}});
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "read_sampled_depth",
         .reads = {mirakana::FrameGraphResourceAccess{.resource = "sampled-depth",
                                                      .access = mirakana::FrameGraphAccess::shader_read}},
         .writes = {}});
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "write_volume_depth",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "volume-depth",
                                                       .access = mirakana::FrameGraphAccess::depth_attachment_write}}});
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "write_copy_depth",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "copy-depth",
@@ -1151,10 +1073,10 @@ MK_TEST("frame graph rhi transient texture alias planner rejects byte estimate o
         .usage = mirakana::rhi::TextureUsage::render_target,
     };
 
-    mirakana::FrameGraphV1Desc desc;
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    mirakana::FrameGraphDesc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "huge-color", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "write_huge_color",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "huge-color",
@@ -1376,13 +1298,13 @@ MK_TEST("frame graph rhi transient texture lease binding rejects duplicate backe
     MK_REQUIRE(stats.transient_resources_active == 0);
 }
 
-MK_TEST("frame graph v1 execution schedule interleaves sorted barriers before each pass") {
-    mirakana::FrameGraphV1Desc desc;
+MK_TEST("frame graph execution schedule interleaves sorted barriers before each pass") {
+    mirakana::FrameGraphDesc desc;
     desc.resources.push_back(
-        mirakana::FrameGraphResourceV1Desc{.name = "a", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
+        mirakana::FrameGraphResourceDesc{.name = "a", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
     desc.resources.push_back(
-        mirakana::FrameGraphResourceV1Desc{.name = "b", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        mirakana::FrameGraphResourceDesc{.name = "b", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "w",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "a",
@@ -1390,7 +1312,7 @@ MK_TEST("frame graph v1 execution schedule interleaves sorted barriers before ea
                    mirakana::FrameGraphResourceAccess{.resource = "b",
                                                       .access = mirakana::FrameGraphAccess::color_attachment_write}},
     });
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "r",
         .reads = {mirakana::FrameGraphResourceAccess{.resource = "a",
                                                      .access = mirakana::FrameGraphAccess::shader_read},
@@ -1399,9 +1321,9 @@ MK_TEST("frame graph v1 execution schedule interleaves sorted barriers before ea
         .writes = {},
     });
 
-    const auto plan = mirakana::compile_frame_graph_v1(desc);
+    const auto plan = mirakana::compile_frame_graph(desc);
     MK_REQUIRE(plan.succeeded());
-    const auto schedule = mirakana::schedule_frame_graph_v1_execution(plan);
+    const auto schedule = mirakana::schedule_frame_graph_execution(plan);
     MK_REQUIRE(schedule.size() == 4);
     MK_REQUIRE(schedule[0].kind == mirakana::FrameGraphExecutionStep::Kind::pass_invoke);
     MK_REQUIRE(schedule[0].pass_name == "w");
@@ -1413,23 +1335,23 @@ MK_TEST("frame graph v1 execution schedule interleaves sorted barriers before ea
     MK_REQUIRE(schedule[3].pass_name == "r");
 }
 
-MK_TEST("frame graph v1 execution schedule is empty when compilation failed") {
-    mirakana::FrameGraphV1Desc bad;
+MK_TEST("frame graph execution schedule is empty when compilation failed") {
+    mirakana::FrameGraphDesc bad;
     bad.resources.push_back(
-        mirakana::FrameGraphResourceV1Desc{.name = "x", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
-    bad.passes.push_back(mirakana::FrameGraphPassV1Desc{
+        mirakana::FrameGraphResourceDesc{.name = "x", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
+    bad.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "lonely",
         .reads = {mirakana::FrameGraphResourceAccess{.resource = "x",
                                                      .access = mirakana::FrameGraphAccess::shader_read}},
         .writes = {},
     });
-    const auto plan = mirakana::compile_frame_graph_v1(bad);
+    const auto plan = mirakana::compile_frame_graph(bad);
     MK_REQUIRE(!plan.succeeded());
-    const auto schedule = mirakana::schedule_frame_graph_v1_execution(plan);
+    const auto schedule = mirakana::schedule_frame_graph_execution(plan);
     MK_REQUIRE(schedule.empty());
 }
 
-MK_TEST("frame graph v1 dispatches barrier and pass callbacks in schedule order") {
+MK_TEST("frame graph dispatches barrier and pass callbacks in schedule order") {
     const std::vector<mirakana::FrameGraphExecutionStep> schedule{
         mirakana::FrameGraphExecutionStep::make_pass_invoke("scene"),
         mirakana::FrameGraphExecutionStep::make_barrier(mirakana::FrameGraphBarrier{
@@ -1461,7 +1383,7 @@ MK_TEST("frame graph v1 dispatches barrier and pass callbacks in schedule order"
         },
     };
 
-    const auto result = mirakana::execute_frame_graph_v1_schedule(
+    const auto result = mirakana::execute_frame_graph_schedule(
         schedule, mirakana::FrameGraphExecutionCallbacks{
                       .pass_callbacks = passes,
                       .barrier_callback =
@@ -1480,7 +1402,7 @@ MK_TEST("frame graph v1 dispatches barrier and pass callbacks in schedule order"
     MK_REQUIRE(events[2] == "postprocess");
 }
 
-MK_TEST("frame graph v1 callback execution diagnoses missing callbacks before later passes") {
+MK_TEST("frame graph callback execution diagnoses missing callbacks before later passes") {
     const std::vector<mirakana::FrameGraphExecutionStep> schedule{
         mirakana::FrameGraphExecutionStep::make_pass_invoke("scene"),
         mirakana::FrameGraphExecutionStep::make_pass_invoke("postprocess"),
@@ -1497,7 +1419,7 @@ MK_TEST("frame graph v1 callback execution diagnoses missing callbacks before la
         },
     };
 
-    const auto result = mirakana::execute_frame_graph_v1_schedule(
+    const auto result = mirakana::execute_frame_graph_schedule(
         schedule, mirakana::FrameGraphExecutionCallbacks{.pass_callbacks = passes});
 
     MK_REQUIRE(!result.succeeded());
@@ -1510,7 +1432,7 @@ MK_TEST("frame graph v1 callback execution diagnoses missing callbacks before la
     MK_REQUIRE(events[0] == "scene");
 }
 
-MK_TEST("frame graph v1 callback execution converts thrown callbacks to diagnostics") {
+MK_TEST("frame graph callback execution converts thrown callbacks to diagnostics") {
     const std::vector<mirakana::FrameGraphExecutionStep> schedule{
         mirakana::FrameGraphExecutionStep::make_pass_invoke("scene"),
         mirakana::FrameGraphExecutionStep::make_pass_invoke("postprocess"),
@@ -1528,7 +1450,7 @@ MK_TEST("frame graph v1 callback execution converts thrown callbacks to diagnost
         },
     };
 
-    const auto result = mirakana::execute_frame_graph_v1_schedule(
+    const auto result = mirakana::execute_frame_graph_schedule(
         schedule, mirakana::FrameGraphExecutionCallbacks{.pass_callbacks = passes});
 
     MK_REQUIRE(!result.succeeded());
@@ -1539,7 +1461,7 @@ MK_TEST("frame graph v1 callback execution converts thrown callbacks to diagnost
     MK_REQUIRE(result.diagnostics[0].message == "frame graph pass callback threw an exception: renderer pass failed");
 }
 
-MK_TEST("frame graph v1 callback execution copies pass bindings before dispatch") {
+MK_TEST("frame graph callback execution copies pass bindings before dispatch") {
     const std::vector<mirakana::FrameGraphExecutionStep> schedule{
         mirakana::FrameGraphExecutionStep::make_pass_invoke("scene"),
         mirakana::FrameGraphExecutionStep::make_pass_invoke("postprocess"),
@@ -1564,7 +1486,7 @@ MK_TEST("frame graph v1 callback execution copies pass bindings before dispatch"
             },
     });
 
-    const auto result = mirakana::execute_frame_graph_v1_schedule(
+    const auto result = mirakana::execute_frame_graph_schedule(
         schedule, mirakana::FrameGraphExecutionCallbacks{.pass_callbacks = passes});
 
     MK_REQUIRE(result.succeeded());
@@ -1574,7 +1496,7 @@ MK_TEST("frame graph v1 callback execution copies pass bindings before dispatch"
     MK_REQUIRE(events[1] == "postprocess");
 }
 
-MK_TEST("frame graph v1 callback execution reports returned callback failures") {
+MK_TEST("frame graph callback execution reports returned callback failures") {
     const std::vector<mirakana::FrameGraphExecutionStep> pass_schedule{
         mirakana::FrameGraphExecutionStep::make_pass_invoke("scene"),
     };
@@ -1587,7 +1509,7 @@ MK_TEST("frame graph v1 callback execution reports returned callback failures") 
                 },
         },
     };
-    const auto pass_result = mirakana::execute_frame_graph_v1_schedule(
+    const auto pass_result = mirakana::execute_frame_graph_schedule(
         pass_schedule, mirakana::FrameGraphExecutionCallbacks{.pass_callbacks = failing_passes});
 
     MK_REQUIRE(!pass_result.succeeded());
@@ -1606,7 +1528,7 @@ MK_TEST("frame graph v1 callback execution reports returned callback failures") 
             .to = mirakana::FrameGraphAccess::shader_read,
         }),
     };
-    const auto barrier_result = mirakana::execute_frame_graph_v1_schedule(
+    const auto barrier_result = mirakana::execute_frame_graph_schedule(
         barrier_schedule, mirakana::FrameGraphExecutionCallbacks{
                               .pass_callbacks = {},
                               .barrier_callback =
@@ -1625,7 +1547,7 @@ MK_TEST("frame graph v1 callback execution reports returned callback failures") 
     MK_REQUIRE(barrier_result.diagnostics[0].message == "barrier declined");
 }
 
-MK_TEST("frame graph v1 callback execution converts thrown barrier callbacks to diagnostics") {
+MK_TEST("frame graph callback execution converts thrown barrier callbacks to diagnostics") {
     const std::vector<mirakana::FrameGraphExecutionStep> schedule{
         mirakana::FrameGraphExecutionStep::make_barrier(mirakana::FrameGraphBarrier{
             .resource = "scene-color",
@@ -1636,7 +1558,7 @@ MK_TEST("frame graph v1 callback execution converts thrown barrier callbacks to 
         }),
     };
 
-    const auto result = mirakana::execute_frame_graph_v1_schedule(
+    const auto result = mirakana::execute_frame_graph_schedule(
         schedule,
         mirakana::FrameGraphExecutionCallbacks{
             .pass_callbacks = {},
@@ -1654,7 +1576,7 @@ MK_TEST("frame graph v1 callback execution converts thrown barrier callbacks to 
     MK_REQUIRE(result.diagnostics[0].message == "frame graph barrier callback threw an exception");
 }
 
-MK_TEST("frame graph v1 maps texture barrier accesses to rhi resource states") {
+MK_TEST("frame graph maps texture barrier accesses to rhi resource states") {
     MK_REQUIRE(mirakana::frame_graph_texture_state_for_access(mirakana::FrameGraphAccess::color_attachment_write) ==
                mirakana::rhi::ResourceState::render_target);
     MK_REQUIRE(mirakana::frame_graph_texture_state_for_access(mirakana::FrameGraphAccess::depth_attachment_write) ==
@@ -1670,26 +1592,26 @@ MK_TEST("frame graph v1 maps texture barrier accesses to rhi resource states") {
     MK_REQUIRE(!mirakana::frame_graph_texture_state_for_access(mirakana::FrameGraphAccess::unknown).has_value());
 }
 
-MK_TEST("frame graph v1 records scheduled texture barriers through rhi command lists") {
-    mirakana::FrameGraphV1Desc desc;
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+MK_TEST("frame graph records scheduled texture barriers through rhi command lists") {
+    mirakana::FrameGraphDesc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "scene-color", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "scene",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
                                                       .access = mirakana::FrameGraphAccess::color_attachment_write}},
     });
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "postprocess",
         .reads = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
                                                      .access = mirakana::FrameGraphAccess::shader_read}},
         .writes = {},
     });
 
-    const auto plan = mirakana::compile_frame_graph_v1(desc);
+    const auto plan = mirakana::compile_frame_graph(desc);
     MK_REQUIRE(plan.succeeded());
-    const auto schedule = mirakana::schedule_frame_graph_v1_execution(plan);
+    const auto schedule = mirakana::schedule_frame_graph_execution(plan);
 
     mirakana::rhi::NullRhiDevice device;
     const auto texture = device.create_texture(mirakana::rhi::TextureDesc{
@@ -1714,7 +1636,7 @@ MK_TEST("frame graph v1 records scheduled texture barriers through rhi command l
     MK_REQUIRE(device.stats().resource_transitions == 2);
 }
 
-MK_TEST("frame graph v1 records sequential texture barriers for the same binding") {
+MK_TEST("frame graph records sequential texture barriers for the same binding") {
     const std::vector<mirakana::FrameGraphExecutionStep> schedule{
         mirakana::FrameGraphExecutionStep::make_barrier(mirakana::FrameGraphBarrier{
             .resource = "scene-color",
@@ -1758,7 +1680,7 @@ MK_TEST("frame graph v1 records sequential texture barriers for the same binding
     MK_REQUIRE(device.stats().resource_transitions == 3);
 }
 
-MK_TEST("frame graph v1 skips duplicate texture barriers already satisfied by an earlier barrier") {
+MK_TEST("frame graph skips duplicate texture barriers already satisfied by an earlier barrier") {
     const std::vector<mirakana::FrameGraphExecutionStep> schedule{
         mirakana::FrameGraphExecutionStep::make_barrier(mirakana::FrameGraphBarrier{
             .resource = "scene-color",
@@ -1800,7 +1722,7 @@ MK_TEST("frame graph v1 skips duplicate texture barriers already satisfied by an
     MK_REQUIRE(device.stats().resource_transitions == 2);
 }
 
-MK_TEST("frame graph v1 texture barrier recording propagates shared texture handle state") {
+MK_TEST("frame graph texture barrier recording propagates shared texture handle state") {
     const std::vector<mirakana::FrameGraphExecutionStep> schedule{
         mirakana::FrameGraphExecutionStep::make_barrier(mirakana::FrameGraphBarrier{
             .resource = "early-color",
@@ -1843,7 +1765,7 @@ MK_TEST("frame graph v1 texture barrier recording propagates shared texture hand
     MK_REQUIRE(device.stats().resource_transitions == 2);
 }
 
-MK_TEST("frame graph v1 texture barrier recording rejects conflicting shared texture handle states") {
+MK_TEST("frame graph texture barrier recording rejects conflicting shared texture handle states") {
     const std::vector<mirakana::FrameGraphExecutionStep> schedule{
         mirakana::FrameGraphExecutionStep::make_barrier(mirakana::FrameGraphBarrier{
             .resource = "early-color",
@@ -2046,7 +1968,7 @@ MK_TEST("frame graph rhi texture aliasing barrier recording rejects closed comma
                "frame graph texture aliasing barriers cannot record to a closed command list");
 }
 
-MK_TEST("frame graph v1 texture barrier recording returns stable diagnostics for rhi failures") {
+MK_TEST("frame graph texture barrier recording returns stable diagnostics for rhi failures") {
     ThrowingTransitionRhiDevice device;
     device.throw_on_submit = false;
     device.throw_on_transition = 2;
@@ -2083,7 +2005,7 @@ MK_TEST("frame graph v1 texture barrier recording returns stable diagnostics for
     MK_REQUIRE(bindings[0].current_state == mirakana::rhi::ResourceState::render_target);
 }
 
-MK_TEST("frame graph v1 texture barrier recording diagnoses missing and stale bindings") {
+MK_TEST("frame graph texture barrier recording diagnoses missing and stale bindings") {
     const std::vector<mirakana::FrameGraphExecutionStep> schedule{
         mirakana::FrameGraphExecutionStep::make_barrier(mirakana::FrameGraphBarrier{
             .resource = "scene-color",
@@ -2121,25 +2043,25 @@ MK_TEST("frame graph v1 texture barrier recording diagnoses missing and stale bi
 }
 
 MK_TEST("frame graph rhi texture schedule execution interleaves barriers and pass callbacks") {
-    mirakana::FrameGraphV1Desc desc;
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    mirakana::FrameGraphDesc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "scene-color", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "scene",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
                                                       .access = mirakana::FrameGraphAccess::color_attachment_write}},
     });
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "postprocess",
         .reads = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
                                                      .access = mirakana::FrameGraphAccess::shader_read}},
         .writes = {},
     });
 
-    const auto plan = mirakana::compile_frame_graph_v1(desc);
+    const auto plan = mirakana::compile_frame_graph(desc);
     MK_REQUIRE(plan.succeeded());
-    const auto schedule = mirakana::schedule_frame_graph_v1_execution(plan);
+    const auto schedule = mirakana::schedule_frame_graph_execution(plan);
 
     mirakana::rhi::NullRhiDevice device;
     const auto texture = device.create_texture(mirakana::rhi::TextureDesc{
@@ -2197,25 +2119,25 @@ MK_TEST("frame graph rhi texture schedule execution interleaves barriers and pas
 }
 
 MK_TEST("frame graph rhi texture schedule execution rejects undeclared writer-updated states before callbacks") {
-    mirakana::FrameGraphV1Desc desc;
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    mirakana::FrameGraphDesc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "scene-color", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "scene",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
                                                       .access = mirakana::FrameGraphAccess::color_attachment_write}},
     });
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "postprocess",
         .reads = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
                                                      .access = mirakana::FrameGraphAccess::shader_read}},
         .writes = {},
     });
 
-    const auto plan = mirakana::compile_frame_graph_v1(desc);
+    const auto plan = mirakana::compile_frame_graph(desc);
     MK_REQUIRE(plan.succeeded());
-    const auto schedule = mirakana::schedule_frame_graph_v1_execution(plan);
+    const auto schedule = mirakana::schedule_frame_graph_execution(plan);
 
     mirakana::rhi::NullRhiDevice device;
     const auto texture = device.create_texture(mirakana::rhi::TextureDesc{
@@ -2279,25 +2201,25 @@ MK_TEST("frame graph rhi texture schedule execution rejects undeclared writer-up
 }
 
 MK_TEST("frame graph rhi texture schedule execution records pass target states before callbacks") {
-    mirakana::FrameGraphV1Desc desc;
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    mirakana::FrameGraphDesc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "scene-color", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "scene",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
                                                       .access = mirakana::FrameGraphAccess::color_attachment_write}},
     });
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "postprocess",
         .reads = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
                                                      .access = mirakana::FrameGraphAccess::shader_read}},
         .writes = {},
     });
 
-    const auto plan = mirakana::compile_frame_graph_v1(desc);
+    const auto plan = mirakana::compile_frame_graph(desc);
     MK_REQUIRE(plan.succeeded());
-    const auto schedule = mirakana::schedule_frame_graph_v1_execution(plan);
+    const auto schedule = mirakana::schedule_frame_graph_execution(plan);
 
     mirakana::rhi::NullRhiDevice device;
     const auto texture = device.create_texture(mirakana::rhi::TextureDesc{
@@ -2362,19 +2284,19 @@ MK_TEST("frame graph rhi texture schedule execution records pass target states b
 }
 
 MK_TEST("frame graph rhi texture schedule execution wraps render pass envelopes around callbacks") {
-    mirakana::FrameGraphV1Desc desc;
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    mirakana::FrameGraphDesc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "scene-color", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "scene",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
                                                       .access = mirakana::FrameGraphAccess::color_attachment_write}},
     });
 
-    const auto plan = mirakana::compile_frame_graph_v1(desc);
+    const auto plan = mirakana::compile_frame_graph(desc);
     MK_REQUIRE(plan.succeeded());
-    const auto schedule = mirakana::schedule_frame_graph_v1_execution(plan);
+    const auto schedule = mirakana::schedule_frame_graph_execution(plan);
 
     mirakana::rhi::NullRhiDevice device;
     const auto texture = device.create_texture(mirakana::rhi::TextureDesc{
@@ -2613,39 +2535,39 @@ MK_TEST("frame graph rhi texture schedule execution hands off shared texture han
 }
 
 MK_TEST("frame graph rhi texture schedule execution inserts aliasing barriers between alias group lifetimes") {
-    mirakana::FrameGraphV1Desc desc;
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    mirakana::FrameGraphDesc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "early-color", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "late-color", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "early.write",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "early-color",
                                                       .access = mirakana::FrameGraphAccess::color_attachment_write}},
     });
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "early.read",
         .reads = {mirakana::FrameGraphResourceAccess{.resource = "early-color",
                                                      .access = mirakana::FrameGraphAccess::shader_read}},
         .writes = {},
     });
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "late.write",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "late-color",
                                                       .access = mirakana::FrameGraphAccess::color_attachment_write}},
     });
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "late.read",
         .reads = {mirakana::FrameGraphResourceAccess{.resource = "late-color",
                                                      .access = mirakana::FrameGraphAccess::shader_read}},
         .writes = {},
     });
 
-    const auto built = mirakana::compile_frame_graph_v1(desc);
+    const auto built = mirakana::compile_frame_graph(desc);
     MK_REQUIRE(built.succeeded());
-    const auto schedule = mirakana::schedule_frame_graph_v1_execution(built);
+    const auto schedule = mirakana::schedule_frame_graph_execution(built);
     const auto texture_desc = mirakana::rhi::TextureDesc{
         .extent = mirakana::rhi::Extent3D{.width = 16, .height = 16, .depth = 1},
         .format = mirakana::rhi::Format::rgba8_unorm,
@@ -2725,27 +2647,27 @@ MK_TEST("frame graph rhi texture schedule execution inserts aliasing barriers be
 }
 
 MK_TEST("frame graph rhi texture schedule execution rejects transient alias first render pass load") {
-    mirakana::FrameGraphV1Desc desc;
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    mirakana::FrameGraphDesc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "early-color", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "late-color", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "early.draw",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "early-color",
                                                       .access = mirakana::FrameGraphAccess::color_attachment_write}},
     });
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "late.draw",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "late-color",
                                                       .access = mirakana::FrameGraphAccess::color_attachment_write}},
     });
 
-    const auto built = mirakana::compile_frame_graph_v1(desc);
+    const auto built = mirakana::compile_frame_graph(desc);
     MK_REQUIRE(built.succeeded());
-    const auto schedule = mirakana::schedule_frame_graph_v1_execution(built);
+    const auto schedule = mirakana::schedule_frame_graph_execution(built);
     const auto texture_desc = mirakana::rhi::TextureDesc{
         .extent = mirakana::rhi::Extent3D{.width = 16, .height = 16, .depth = 1},
         .format = mirakana::rhi::Format::rgba8_unorm,
@@ -2978,25 +2900,25 @@ MK_TEST("frame graph rhi texture schedule execution rejects same handle automati
 }
 
 MK_TEST("frame graph rhi queue wait planning derives cross queue waits from scheduled barriers") {
-    mirakana::FrameGraphV1Desc desc;
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    mirakana::FrameGraphDesc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "streamed-texture", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "copy.upload",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "streamed-texture",
                                                       .access = mirakana::FrameGraphAccess::copy_destination}},
     });
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "graphics.draw",
         .reads = {mirakana::FrameGraphResourceAccess{.resource = "streamed-texture",
                                                      .access = mirakana::FrameGraphAccess::shader_read}},
         .writes = {},
     });
 
-    const auto built = mirakana::compile_frame_graph_v1(desc);
+    const auto built = mirakana::compile_frame_graph(desc);
     MK_REQUIRE(built.succeeded());
-    const auto schedule = mirakana::schedule_frame_graph_v1_execution(built);
+    const auto schedule = mirakana::schedule_frame_graph_execution(built);
 
     const std::vector<mirakana::FrameGraphRhiPassQueueBinding> pass_queues{
         mirakana::FrameGraphRhiPassQueueBinding{
@@ -3195,28 +3117,28 @@ MK_TEST("frame graph rhi multi queue executor submits declared pass queues and w
 }
 
 MK_TEST("frame graph rhi multi queue executor records texture barriers before consumer callbacks") {
-    mirakana::FrameGraphV1Desc desc;
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    mirakana::FrameGraphDesc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "upload-target",
         .lifetime = mirakana::FrameGraphResourceLifetime::imported,
     });
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "upload",
         .writes = {mirakana::FrameGraphResourceAccess{
             .resource = "upload-target",
             .access = mirakana::FrameGraphAccess::copy_destination,
         }},
     });
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "consume",
         .reads = {mirakana::FrameGraphResourceAccess{
             .resource = "upload-target",
             .access = mirakana::FrameGraphAccess::shader_read,
         }},
     });
-    const auto plan = mirakana::compile_frame_graph_v1(desc);
+    const auto plan = mirakana::compile_frame_graph(desc);
     MK_REQUIRE(plan.succeeded());
-    const auto schedule = mirakana::schedule_frame_graph_v1_execution(plan);
+    const auto schedule = mirakana::schedule_frame_graph_execution(plan);
 
     mirakana::rhi::NullRhiDevice device;
     const auto texture = device.create_texture(mirakana::rhi::TextureDesc{
@@ -3287,46 +3209,46 @@ MK_TEST("frame graph rhi multi queue executor records texture barriers before co
 }
 
 MK_TEST("frame graph rhi multi queue executor inserts aliasing barriers before later alias callbacks") {
-    mirakana::FrameGraphV1Desc desc;
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    mirakana::FrameGraphDesc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "early-color",
         .lifetime = mirakana::FrameGraphResourceLifetime::transient,
     });
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "late-color",
         .lifetime = mirakana::FrameGraphResourceLifetime::transient,
     });
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "early.upload",
         .writes = {mirakana::FrameGraphResourceAccess{
             .resource = "early-color",
             .access = mirakana::FrameGraphAccess::copy_destination,
         }},
     });
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "early.sample",
         .reads = {mirakana::FrameGraphResourceAccess{
             .resource = "early-color",
             .access = mirakana::FrameGraphAccess::shader_read,
         }},
     });
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "late.upload",
         .writes = {mirakana::FrameGraphResourceAccess{
             .resource = "late-color",
             .access = mirakana::FrameGraphAccess::copy_destination,
         }},
     });
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "late.sample",
         .reads = {mirakana::FrameGraphResourceAccess{
             .resource = "late-color",
             .access = mirakana::FrameGraphAccess::shader_read,
         }},
     });
-    const auto plan = mirakana::compile_frame_graph_v1(desc);
+    const auto plan = mirakana::compile_frame_graph(desc);
     MK_REQUIRE(plan.succeeded());
-    const auto schedule = mirakana::schedule_frame_graph_v1_execution(plan);
+    const auto schedule = mirakana::schedule_frame_graph_execution(plan);
 
     const auto texture_desc = mirakana::rhi::TextureDesc{
         .extent = mirakana::rhi::Extent3D{.width = 8, .height = 8, .depth = 1},
@@ -3429,32 +3351,32 @@ MK_TEST("frame graph rhi multi queue executor inserts aliasing barriers before l
 }
 
 MK_TEST("frame graph rhi multi queue executor rejects transient alias first render pass load") {
-    mirakana::FrameGraphV1Desc desc;
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    mirakana::FrameGraphDesc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "early-color",
         .lifetime = mirakana::FrameGraphResourceLifetime::transient,
     });
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "late-color",
         .lifetime = mirakana::FrameGraphResourceLifetime::transient,
     });
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "early.draw",
         .writes = {mirakana::FrameGraphResourceAccess{
             .resource = "early-color",
             .access = mirakana::FrameGraphAccess::color_attachment_write,
         }},
     });
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "late.draw",
         .writes = {mirakana::FrameGraphResourceAccess{
             .resource = "late-color",
             .access = mirakana::FrameGraphAccess::color_attachment_write,
         }},
     });
-    const auto plan = mirakana::compile_frame_graph_v1(desc);
+    const auto plan = mirakana::compile_frame_graph(desc);
     MK_REQUIRE(plan.succeeded());
-    const auto schedule = mirakana::schedule_frame_graph_v1_execution(plan);
+    const auto schedule = mirakana::schedule_frame_graph_execution(plan);
 
     const auto texture_desc = mirakana::rhi::TextureDesc{
         .extent = mirakana::rhi::Extent3D{.width = 16, .height = 16, .depth = 1},
@@ -3554,21 +3476,21 @@ MK_TEST("frame graph rhi multi queue executor rejects transient alias first rend
 }
 
 MK_TEST("frame graph rhi multi queue executor records final texture state after producer callback") {
-    mirakana::FrameGraphV1Desc desc;
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    mirakana::FrameGraphDesc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "upload-target",
         .lifetime = mirakana::FrameGraphResourceLifetime::imported,
     });
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "upload",
         .writes = {mirakana::FrameGraphResourceAccess{
             .resource = "upload-target",
             .access = mirakana::FrameGraphAccess::copy_destination,
         }},
     });
-    const auto plan = mirakana::compile_frame_graph_v1(desc);
+    const auto plan = mirakana::compile_frame_graph(desc);
     MK_REQUIRE(plan.succeeded());
-    const auto schedule = mirakana::schedule_frame_graph_v1_execution(plan);
+    const auto schedule = mirakana::schedule_frame_graph_execution(plan);
 
     mirakana::rhi::NullRhiDevice device;
     const auto texture = device.create_texture(mirakana::rhi::TextureDesc{
@@ -3632,21 +3554,21 @@ MK_TEST("frame graph rhi multi queue executor records final texture state after 
 }
 
 MK_TEST("frame graph rhi multi queue executor records render pass target state before graphics callback") {
-    mirakana::FrameGraphV1Desc desc;
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    mirakana::FrameGraphDesc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "scene-color",
         .lifetime = mirakana::FrameGraphResourceLifetime::imported,
     });
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "graphics.draw",
         .writes = {mirakana::FrameGraphResourceAccess{
             .resource = "scene-color",
             .access = mirakana::FrameGraphAccess::color_attachment_write,
         }},
     });
-    const auto plan = mirakana::compile_frame_graph_v1(desc);
+    const auto plan = mirakana::compile_frame_graph(desc);
     MK_REQUIRE(plan.succeeded());
-    const auto schedule = mirakana::schedule_frame_graph_v1_execution(plan);
+    const auto schedule = mirakana::schedule_frame_graph_execution(plan);
 
     mirakana::rhi::NullRhiDevice device;
     const auto color = device.create_texture(mirakana::rhi::TextureDesc{
@@ -3730,28 +3652,28 @@ MK_TEST("frame graph rhi multi queue executor records render pass target state b
 }
 
 MK_TEST("frame graph rhi multi queue executor simulates target state before downstream texture barriers") {
-    mirakana::FrameGraphV1Desc desc;
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    mirakana::FrameGraphDesc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "scene-color",
         .lifetime = mirakana::FrameGraphResourceLifetime::imported,
     });
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "graphics.write",
         .writes = {mirakana::FrameGraphResourceAccess{
             .resource = "scene-color",
             .access = mirakana::FrameGraphAccess::color_attachment_write,
         }},
     });
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "graphics.sample",
         .reads = {mirakana::FrameGraphResourceAccess{
             .resource = "scene-color",
             .access = mirakana::FrameGraphAccess::shader_read,
         }},
     });
-    const auto plan = mirakana::compile_frame_graph_v1(desc);
+    const auto plan = mirakana::compile_frame_graph(desc);
     MK_REQUIRE(plan.succeeded());
-    const auto schedule = mirakana::schedule_frame_graph_v1_execution(plan);
+    const auto schedule = mirakana::schedule_frame_graph_execution(plan);
 
     mirakana::rhi::NullRhiDevice device;
     const auto color = device.create_texture(mirakana::rhi::TextureDesc{
@@ -4410,12 +4332,12 @@ MK_TEST("frame graph production ownership boundary rejects invalid candidate row
 }
 
 MK_TEST("frame graph rhi texture target access helper derives concrete writer rows") {
-    mirakana::FrameGraphV1Desc desc;
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    mirakana::FrameGraphDesc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "scene-color", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "scene-depth", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "scene",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
@@ -4423,7 +4345,7 @@ MK_TEST("frame graph rhi texture target access helper derives concrete writer ro
                    mirakana::FrameGraphResourceAccess{.resource = "scene-depth",
                                                       .access = mirakana::FrameGraphAccess::depth_attachment_write}},
     });
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "postprocess",
         .reads = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
                                                      .access = mirakana::FrameGraphAccess::shader_read}},
@@ -4810,25 +4732,25 @@ MK_TEST("frame graph rhi texture schedule execution rejects undefined pass targe
 }
 
 MK_TEST("frame graph rhi texture schedule execution records final texture states after callbacks") {
-    mirakana::FrameGraphV1Desc desc;
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    mirakana::FrameGraphDesc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "scene-color", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "scene",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
                                                       .access = mirakana::FrameGraphAccess::color_attachment_write}},
     });
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "postprocess",
         .reads = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
                                                      .access = mirakana::FrameGraphAccess::shader_read}},
         .writes = {},
     });
 
-    const auto plan = mirakana::compile_frame_graph_v1(desc);
+    const auto plan = mirakana::compile_frame_graph(desc);
     MK_REQUIRE(plan.succeeded());
-    const auto schedule = mirakana::schedule_frame_graph_v1_execution(plan);
+    const auto schedule = mirakana::schedule_frame_graph_execution(plan);
 
     mirakana::rhi::NullRhiDevice device;
     const auto texture = device.create_texture(mirakana::rhi::TextureDesc{
@@ -4952,25 +4874,25 @@ MK_TEST("frame graph rhi texture schedule execution validates final states befor
 }
 
 MK_TEST("frame graph rhi texture schedule execution reports final-state transition failures") {
-    mirakana::FrameGraphV1Desc desc;
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    mirakana::FrameGraphDesc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "scene-color", .lifetime = mirakana::FrameGraphResourceLifetime::transient});
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "scene",
         .reads = {},
         .writes = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
                                                       .access = mirakana::FrameGraphAccess::color_attachment_write}},
     });
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "postprocess",
         .reads = {mirakana::FrameGraphResourceAccess{.resource = "scene-color",
                                                      .access = mirakana::FrameGraphAccess::shader_read}},
         .writes = {},
     });
 
-    const auto plan = mirakana::compile_frame_graph_v1(desc);
+    const auto plan = mirakana::compile_frame_graph(desc);
     MK_REQUIRE(plan.succeeded());
-    const auto schedule = mirakana::schedule_frame_graph_v1_execution(plan);
+    const auto schedule = mirakana::schedule_frame_graph_execution(plan);
 
     ThrowingTransitionRhiDevice device;
     device.throw_on_submit = false;

@@ -1313,7 +1313,7 @@ if ($prefabScene3dAuthoringLoop.Count -eq 1) {
         "select-prefab-scene-package-authoring-target",
         "apply-scene-prefab-v2-authoring-commands",
         "cook-selected-source-registry-rows",
-        "migrate-scene-v2-runtime-package",
+        "migrate-scene-runtime-package",
         "validate-runtime-scene-package",
         "run-host-gated-3d-package-smoke"
     )

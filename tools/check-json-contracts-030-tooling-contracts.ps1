@@ -6,7 +6,7 @@
 foreach ($commandId in $scenePrefabAuthoringCommandIds) {
     $scenePrefabCommand = @($productionLoop.commandSurfaces | Where-Object { $_.id -eq $commandId })
     if ($scenePrefabCommand.Count -ne 1 -or $scenePrefabCommand[0].status -ne "ready") {
-        Write-Error "engine manifest aiOperableProductionLoop must expose one ready Scene/Prefab v2 authoring command surface: $commandId"
+        Write-Error "engine manifest aiOperableProductionLoop must expose one ready Scene/Prefab authoring command surface: $commandId"
     } else {
         $scenePrefabModes = @{}
         foreach ($mode in @($scenePrefabCommand[0].requestModes)) {
@@ -14,21 +14,21 @@ foreach ($commandId in $scenePrefabAuthoringCommandIds) {
         }
         if (-not $scenePrefabModes.ContainsKey("dry-run") -or $scenePrefabModes["dry-run"].status -ne "ready" -or
             -not $scenePrefabModes.ContainsKey("apply") -or $scenePrefabModes["apply"].status -ne "ready") {
-            Write-Error "engine manifest Scene/Prefab v2 authoring command '$commandId' must keep dry-run and apply ready"
+            Write-Error "engine manifest Scene/Prefab authoring command '$commandId' must keep dry-run and apply ready"
         }
         foreach ($module in @("MK_scene", "MK_tools")) {
             if (@($scenePrefabCommand[0].requiredModules) -notcontains $module) {
-                Write-Error "engine manifest Scene/Prefab v2 authoring command '$commandId' missing required module: $module"
+                Write-Error "engine manifest Scene/Prefab authoring command '$commandId' missing required module: $module"
             }
         }
         foreach ($field in @("changedFiles", "modelMutations", "validationRecipes", "unsupportedGapIds", "undoToken")) {
             if (@($scenePrefabCommand[0].resultShape.dryRunFields) -notcontains $field) {
-                Write-Error "engine manifest Scene/Prefab v2 authoring command '$commandId' dryRunFields missing: $field"
+                Write-Error "engine manifest Scene/Prefab authoring command '$commandId' dryRunFields missing: $field"
             }
         }
         foreach ($field in @("changedFiles", "validationRecipes", "undoToken")) {
             if (@($scenePrefabCommand[0].resultShape.applyFields) -notcontains $field) {
-                Write-Error "engine manifest Scene/Prefab v2 authoring command '$commandId' applyFields missing: $field"
+                Write-Error "engine manifest Scene/Prefab authoring command '$commandId' applyFields missing: $field"
             }
         }
         $scenePrefabPolicyText = "$($scenePrefabCommand[0].summary) $($scenePrefabCommand[0].requestShape.pathPolicy) $($scenePrefabCommand[0].notes)"
@@ -40,12 +40,12 @@ foreach ($commandId in $scenePrefabAuthoringCommandIds) {
                 "safe repository-relative",
                 "does not evaluate arbitrary shell",
                 "free-form edits are not supported",
-                "Scene v2 runtime package migration",
+                "Scene runtime package migration",
                 "editor productization",
                 "nested prefab merge/resolution UX"
             )) {
             if (-not $scenePrefabPolicyText.Contains($needle)) {
-                Write-Error "engine manifest Scene/Prefab v2 authoring command '$commandId' must document reviewed helper/policy text: $needle"
+                Write-Error "engine manifest Scene/Prefab authoring command '$commandId' must document reviewed helper/policy text: $needle"
             }
         }
     }
@@ -236,9 +236,9 @@ if ($registeredCookCommand.Count -ne 1 -or $registeredCookCommand[0].status -ne 
         }
     }
 }
-$sceneMigrationCommand = @($productionLoop.commandSurfaces | Where-Object { $_.id -eq "migrate-scene-v2-runtime-package" })
+$sceneMigrationCommand = @($productionLoop.commandSurfaces | Where-Object { $_.id -eq "migrate-scene-runtime-package" })
 if ($sceneMigrationCommand.Count -ne 1 -or $sceneMigrationCommand[0].status -ne "ready") {
-    Write-Error "engine manifest aiOperableProductionLoop must expose one ready migrate-scene-v2-runtime-package command surface"
+    Write-Error "engine manifest aiOperableProductionLoop must expose one ready migrate-scene-runtime-package command surface"
 } else {
     $sceneMigrationModes = @{}
     foreach ($mode in @($sceneMigrationCommand[0].requestModes)) {
@@ -246,27 +246,27 @@ if ($sceneMigrationCommand.Count -ne 1 -or $sceneMigrationCommand[0].status -ne 
     }
     if (-not $sceneMigrationModes.ContainsKey("dry-run") -or $sceneMigrationModes["dry-run"].status -ne "ready" -or
         -not $sceneMigrationModes.ContainsKey("apply") -or $sceneMigrationModes["apply"].status -ne "ready") {
-        Write-Error "engine manifest migrate-scene-v2-runtime-package must keep dry-run and apply ready"
+        Write-Error "engine manifest migrate-scene-runtime-package must keep dry-run and apply ready"
     }
     foreach ($module in @("MK_scene", "MK_assets", "MK_tools")) {
         if (@($sceneMigrationCommand[0].requiredModules) -notcontains $module) {
-            Write-Error "engine manifest migrate-scene-v2-runtime-package missing required module: $module"
+            Write-Error "engine manifest migrate-scene-runtime-package missing required module: $module"
         }
     }
     foreach ($field in @("changedFiles", "modelMutations", "validationRecipes", "unsupportedGapIds", "undoToken")) {
         if (@($sceneMigrationCommand[0].resultShape.dryRunFields) -notcontains $field) {
-            Write-Error "engine manifest migrate-scene-v2-runtime-package dryRunFields missing: $field"
+            Write-Error "engine manifest migrate-scene-runtime-package dryRunFields missing: $field"
         }
     }
     foreach ($field in @("changedFiles", "validationRecipes", "undoToken")) {
         if (@($sceneMigrationCommand[0].resultShape.applyFields) -notcontains $field) {
-            Write-Error "engine manifest migrate-scene-v2-runtime-package applyFields missing: $field"
+            Write-Error "engine manifest migrate-scene-runtime-package applyFields missing: $field"
         }
     }
     foreach ($forbiddenField in @("backend", "nativeHandle", "rhiHandle", "rendererBackend", "metalDevice")) {
         if (@($sceneMigrationCommand[0].requestShape.optionalFields) -contains $forbiddenField -or
             @($sceneMigrationCommand[0].requestShape.requiredFields) -contains $forbiddenField) {
-            Write-Error "engine manifest migrate-scene-v2-runtime-package must not expose renderer/native handle field: $forbiddenField"
+            Write-Error "engine manifest migrate-scene-runtime-package must not expose renderer/native handle field: $forbiddenField"
         }
     }
     $sceneMigrationPolicyText = "$($sceneMigrationCommand[0].summary) $($sceneMigrationCommand[0].requestShape.pathPolicy) $($sceneMigrationCommand[0].notes)"
@@ -274,8 +274,8 @@ if ($sceneMigrationCommand.Count -ne 1 -or $sceneMigrationCommand[0].status -ne 
             "GameEngine.Scene",
             "GameEngine.SourceAssetRegistry",
             "GameEngine.Scene",
-            "plan_scene_v2_runtime_package_migration",
-            "apply_scene_v2_runtime_package_migration",
+            "plan_scene_runtime_package_migration",
+            "apply_scene_runtime_package_migration",
             "plan_scene_package_update",
             "apply_scene_package_update",
             "safe repository-relative",
@@ -295,14 +295,14 @@ if ($sceneMigrationCommand.Count -ne 1 -or $sceneMigrationCommand[0].status -ne 
             "free-form edits are not supported"
         )) {
         if (-not $sceneMigrationPolicyText.Contains($needle)) {
-            Write-Error "engine manifest migrate-scene-v2-runtime-package must document reviewed helper/policy text: $needle"
+            Write-Error "engine manifest migrate-scene-runtime-package must document reviewed helper/policy text: $needle"
         }
     }
-    $sceneMigrationHeaderPath = Join-Path $root "engine/tools/include/mirakana/tools/scene_v2_runtime_package_migration_tool.hpp"
-    $sceneMigrationSourcePath = Join-Path $root "engine/tools/scene/scene_v2_runtime_package_migration_tool.cpp"
+    $sceneMigrationHeaderPath = Join-Path $root "engine/tools/include/mirakana/tools/scene_runtime_package_migration_tool.hpp"
+    $sceneMigrationSourcePath = Join-Path $root "engine/tools/scene/scene_runtime_package_migration_tool.cpp"
     foreach ($requiredPath in @($sceneMigrationHeaderPath, $sceneMigrationSourcePath)) {
         if (-not (Test-Path -LiteralPath $requiredPath -PathType Leaf)) {
-            Write-Error "migrate-scene-v2-runtime-package reviewed helper file is missing: $requiredPath"
+            Write-Error "migrate-scene-runtime-package reviewed helper file is missing: $requiredPath"
         }
     }
     foreach ($helperPath in @($sceneMigrationHeaderPath, $sceneMigrationSourcePath)) {
@@ -334,7 +334,7 @@ if ($sceneMigrationCommand.Count -ne 1 -or $sceneMigrationCommand[0].status -ne 
                 "apply_scene_package_update("
             )) {
             if (-not $sceneMigrationSourceText.Contains($requiredCall)) {
-                Write-Error "migrate-scene-v2-runtime-package source must reuse existing scene package helper call: $requiredCall"
+                Write-Error "migrate-scene-runtime-package source must reuse existing scene package helper call: $requiredCall"
             }
         }
     }
@@ -630,7 +630,7 @@ $handoffPromptText = Get-Content -LiteralPath (Join-Path $root "docs/specs/2026-
 $roadmapText = Get-Content -LiteralPath (Join-Path $root "docs/roadmap.md") -Raw
 $authoredRuntimeWorkflowRequiredText = @(
     "validated authored-to-runtime workflow",
-    "register-source-asset -> cook-registered-source-assets -> migrate-scene-v2-runtime-package -> validate-runtime-scene-package"
+    "register-source-asset -> cook-registered-source-assets -> migrate-scene-runtime-package -> validate-runtime-scene-package"
 )
 foreach ($workflowDoc in @(
     @{ Text = $aiGameDevelopmentText; Label = "docs/ai-game-development.md" },
@@ -666,13 +666,13 @@ foreach ($runtimeSceneValidationDoc in @(
     }
 }
 foreach ($forbiddenScenePrefabAuthoringClaim in @(
-    "Scene/Prefab v2 authoring makes Scene v2 runtime package migration ready",
-    "Scene/Prefab v2 authoring alone makes Scene v2 package migration ready",
+    "Scene/Prefab authoring makes Scene runtime package migration ready",
+    "Scene/Prefab authoring alone makes Scene package migration ready",
     "editor productization is ready",
     "nested prefab merge/resolution UX is ready",
     "arbitrary free-form scene edits are supported",
     "arbitrary free-form prefab edits are supported",
-    "Scene/Prefab v2 authoring runs arbitrary shell"
+    "Scene/Prefab authoring runs arbitrary shell"
 )) {
     foreach ($doc in @(
         @{ Text = $aiIntegrationText; Label = "docs/ai-integration.md" },
@@ -683,35 +683,35 @@ foreach ($forbiddenScenePrefabAuthoringClaim in @(
         @{ Text = $roadmapText; Label = "docs/roadmap.md" }
     )) {
         if ($doc.Text.Contains($forbiddenScenePrefabAuthoringClaim)) {
-            Write-Error "$($doc.Label) contains forbidden Scene/Prefab v2 authoring claim: $forbiddenScenePrefabAuthoringClaim"
+            Write-Error "$($doc.Label) contains forbidden Scene/Prefab authoring claim: $forbiddenScenePrefabAuthoringClaim"
         }
     }
 }
 foreach ($forbiddenSceneMigrationClaim in @(
-    "migrate-scene-v2-runtime-package executes external importers",
-    "Scene v2 runtime package migration executes external importers",
-    "migrate-scene-v2-runtime-package cooks dependent assets",
-    "Scene v2 runtime package migration cooks dependent assets",
-    "migrate-scene-v2-runtime-package performs broad package cooking",
-    "Scene v2 runtime package migration performs broad package cooking",
-    "migrate-scene-v2-runtime-package makes renderer/RHI residency ready",
-    "Scene v2 runtime package migration makes renderer/RHI residency ready",
-    "migrate-scene-v2-runtime-package makes package streaming ready",
-    "Scene v2 runtime package migration makes package streaming ready",
-    "migrate-scene-v2-runtime-package supports material graphs",
-    "Scene v2 runtime package migration supports material graphs",
-    "migrate-scene-v2-runtime-package supports shader graphs",
-    "Scene v2 runtime package migration supports shader graphs",
-    "migrate-scene-v2-runtime-package supports live shader generation",
-    "Scene v2 runtime package migration supports live shader generation",
-    "migrate-scene-v2-runtime-package makes editor productization ready",
-    "Scene v2 runtime package migration makes editor productization ready",
-    "migrate-scene-v2-runtime-package makes Metal ready",
-    "Scene v2 runtime package migration makes Metal ready",
-    "migrate-scene-v2-runtime-package exposes public native/RHI handles",
-    "Scene v2 runtime package migration exposes public native/RHI handles",
-    "migrate-scene-v2-runtime-package makes general production renderer quality ready",
-    "Scene v2 runtime package migration makes general production renderer quality ready"
+    "migrate-scene-runtime-package executes external importers",
+    "Scene runtime package migration executes external importers",
+    "migrate-scene-runtime-package cooks dependent assets",
+    "Scene runtime package migration cooks dependent assets",
+    "migrate-scene-runtime-package performs broad package cooking",
+    "Scene runtime package migration performs broad package cooking",
+    "migrate-scene-runtime-package makes renderer/RHI residency ready",
+    "Scene runtime package migration makes renderer/RHI residency ready",
+    "migrate-scene-runtime-package makes package streaming ready",
+    "Scene runtime package migration makes package streaming ready",
+    "migrate-scene-runtime-package supports material graphs",
+    "Scene runtime package migration supports material graphs",
+    "migrate-scene-runtime-package supports shader graphs",
+    "Scene runtime package migration supports shader graphs",
+    "migrate-scene-runtime-package supports live shader generation",
+    "Scene runtime package migration supports live shader generation",
+    "migrate-scene-runtime-package makes editor productization ready",
+    "Scene runtime package migration makes editor productization ready",
+    "migrate-scene-runtime-package makes Metal ready",
+    "Scene runtime package migration makes Metal ready",
+    "migrate-scene-runtime-package exposes public native/RHI handles",
+    "Scene runtime package migration exposes public native/RHI handles",
+    "migrate-scene-runtime-package makes general production renderer quality ready",
+    "Scene runtime package migration makes general production renderer quality ready"
 )) {
     foreach ($doc in @(
         @{ Text = $aiIntegrationText; Label = "docs/ai-integration.md" },
@@ -722,7 +722,7 @@ foreach ($forbiddenSceneMigrationClaim in @(
         @{ Text = $roadmapText; Label = "docs/roadmap.md" }
     )) {
         if ($doc.Text.Contains($forbiddenSceneMigrationClaim)) {
-            Write-Error "$($doc.Label) contains forbidden Scene v2 runtime package migration claim: $forbiddenSceneMigrationClaim"
+            Write-Error "$($doc.Label) contains forbidden Scene runtime package migration claim: $forbiddenSceneMigrationClaim"
         }
     }
 }
@@ -847,18 +847,18 @@ foreach ($authoringSurface in $productionLoop.authoringSurfaces) {
         Write-Error "engine manifest aiOperableProductionLoop authoring surface '$($authoringSurface.id)' has invalid status: $($authoringSurface.status)"
     }
 }
-$sceneAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "scene-component-prefab-schema-v2" })
+$sceneAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "scene-component-prefab-schema" })
 if ($sceneAuthoringSurface.Count -ne 1 -or $sceneAuthoringSurface[0].status -ne "ready") {
-    Write-Error "engine manifest aiOperableProductionLoop authoring surface scene-component-prefab-schema-v2 must be ready as a contract-only MK_scene surface"
+    Write-Error "engine manifest aiOperableProductionLoop authoring surface scene-component-prefab-schema must be ready as a contract-only MK_scene surface"
 }
 if (-not ([string]$sceneAuthoringSurface[0].notes).Contains("Contract-only") -or
-    -not ([string]$sceneAuthoringSurface[0].notes).Contains("SceneNodePrefabSourceV2") -or
-    -not ([string]$sceneAuthoringSurface[0].notes).Contains("SceneComponentPrefabSourceV2") -or
+    -not ([string]$sceneAuthoringSurface[0].notes).Contains("SceneNodePrefabSource") -or
+    -not ([string]$sceneAuthoringSurface[0].notes).Contains("SceneComponentPrefabSource") -or
     -not ([string]$sceneAuthoringSurface[0].notes).Contains("prefab_source") -or
-    -not ([string]$sceneAuthoringSurface[0].notes).Contains("ScenePrefabInstanceRefreshPlanV2") -or
-    -not ([string]$sceneAuthoringSurface[0].notes).Contains("plan_scene_prefab_instance_refresh_v2") -or
-    -not ([string]$sceneAuthoringSurface[0].notes).Contains("ScenePrefabInstanceRefreshResultV2") -or
-    -not ([string]$sceneAuthoringSurface[0].notes).Contains("apply_scene_prefab_instance_refresh_v2") -or
+    -not ([string]$sceneAuthoringSurface[0].notes).Contains("ScenePrefabInstanceRefreshPlan") -or
+    -not ([string]$sceneAuthoringSurface[0].notes).Contains("plan_scene_prefab_instance_refresh") -or
+    -not ([string]$sceneAuthoringSurface[0].notes).Contains("ScenePrefabInstanceRefreshResult") -or
+    -not ([string]$sceneAuthoringSurface[0].notes).Contains("apply_scene_prefab_instance_refresh") -or
     -not ([string]$sceneAuthoringSurface[0].notes).Contains("duplicate_prefab_source_identity") -or
     -not ([string]$sceneAuthoringSurface[0].notes).Contains("unsupported_nested_prefab_instance") -or
     -not ([string]$sceneAuthoringSurface[0].notes).Contains("unsupported_local_prefab_child") -or
@@ -867,30 +867,30 @@ if (-not ([string]$sceneAuthoringSurface[0].notes).Contains("Contract-only") -or
     -not ([string]$sceneAuthoringSurface[0].notes).Contains("source_component_id") -or
     -not ([string]$sceneAuthoringSurface[0].notes).Contains("nested prefab propagation/merge resolution UX") -or
     -not ([string]$sceneAuthoringSurface[0].notes).Contains("2D/3D vertical slices")) {
-    Write-Error "engine manifest scene-component-prefab-schema-v2 authoring surface must keep contract-only follow-up limits explicit"
+    Write-Error "engine manifest scene-component-prefab-schema authoring surface must keep contract-only follow-up limits explicit"
 }
-$assetIdentityAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "asset-identity-v2" })
+$assetIdentityAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "asset-identity" })
 if ($assetIdentityAuthoringSurface.Count -ne 1 -or $assetIdentityAuthoringSurface[0].status -ne "ready") {
-    Write-Error "engine manifest aiOperableProductionLoop authoring surface asset-identity-v2 must be ready as a foundation-only MK_assets surface"
+    Write-Error "engine manifest aiOperableProductionLoop authoring surface asset-identity must be ready as a foundation-only MK_assets surface"
 }
 if (-not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("Foundation-only") -or
     -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("GameEngine.AssetIdentity") -or
-    -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("plan_asset_identity_placements_v2") -or
+    -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("plan_asset_identity_placements") -or
     -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("Reviewed command-owned apply surfaces") -or
     -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("placement_rows") -or
     -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("ContentBrowserState") -or
-    -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("SourceAssetRegistryDocumentV1") -or
+    -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("SourceAssetRegistryDocument") -or
     -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("ContentBrowserState::refresh_from") -or
     -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("content_browser_import.assets") -or
     -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("GameEngine.Project project.source_registry") -or
     -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("refresh_content_browser_from_project_source_registry") -or
     -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("Reload Source Registry") -or
     -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("audit_runtime_scene_asset_identity") -or
-    -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("AssetKeyV2 key-first") -or
+    -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("AssetKey key-first") -or
     -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("tools/new-game.ps1") -or
     -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("runtime source registry parsing") -or
     -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("2D/3D vertical slices")) {
-    Write-Error "engine manifest asset-identity-v2 authoring surface must keep foundation-only follow-up limits explicit"
+    Write-Error "engine manifest asset-identity authoring surface must keep foundation-only follow-up limits explicit"
 }
 $uiAtlasAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { $_.id -eq "ui-atlas-metadata-authoring-tooling-v1" })
 if ($uiAtlasAuthoringSurface.Count -ne 1 -or $uiAtlasAuthoringSurface[0].status -ne "ready") {
@@ -998,9 +998,9 @@ foreach ($gapId in $requiredGapIds) {
         Write-Error "engine manifest aiOperableProductionLoop missing unsupported gap id: $gapId"
     }
 }
-$sceneSchemaGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "scene-component-prefab-schema-v2" })
+$sceneSchemaGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "scene-component-prefab-schema" })
 if ($sceneSchemaGap.Count -ne 0) {
-    Write-Error "engine manifest aiOperableProductionLoop scene-component-prefab-schema-v2 gap must leave unsupportedProductionGaps after foundation closeout"
+    Write-Error "engine manifest aiOperableProductionLoop scene-component-prefab-schema gap must leave unsupportedProductionGaps after foundation closeout"
 }
 $playable2dGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "2d-playable-vertical-slice" })
 if ($playable2dGap.Count -ne 0) {
@@ -1022,13 +1022,13 @@ $fullRepoQualityGap = @($productionLoop.unsupportedProductionGaps | Where-Object
 if ($fullRepoQualityGap.Count -ne 0) {
     Write-Error "engine manifest aiOperableProductionLoop full-repository-quality-gate gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
-$assetIdentityGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "asset-identity-v2" })
+$assetIdentityGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "asset-identity" })
 if ($assetIdentityGap.Count -ne 0) {
-    Write-Error "engine manifest aiOperableProductionLoop asset-identity-v2 gap must leave unsupportedProductionGaps after reference cleanup closeout"
+    Write-Error "engine manifest aiOperableProductionLoop asset-identity gap must leave unsupportedProductionGaps after reference cleanup closeout"
 }
-$runtimeResourceGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "runtime-resource-v2" })
+$runtimeResourceGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "runtime-resource" })
 if ($runtimeResourceGap.Count -ne 0) {
-    Write-Error "engine manifest aiOperableProductionLoop runtime-resource-v2 gap must leave unsupportedProductionGaps after 1.0 scope closeout"
+    Write-Error "engine manifest aiOperableProductionLoop runtime-resource gap must leave unsupportedProductionGaps after 1.0 scope closeout"
 }
 $recommendedText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
 if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-production-v1") {

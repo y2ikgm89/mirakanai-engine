@@ -1503,18 +1503,18 @@ $editorContentBrowserImportPanelChecks = @(
     @{
         Path = "editor/core/include/mirakana/editor/content_browser.hpp"
         Needles = @(
-            "SourceAssetRegistryDocumentV1",
-            "refresh_from(const SourceAssetRegistryDocumentV1& registry)",
-            "select(const AssetKeyV2& key)"
+            "SourceAssetRegistryDocument",
+            "refresh_from(const SourceAssetRegistryDocument& registry)",
+            "select(const AssetKey& key)"
         )
     },
     @{
         Path = "editor/core/src/content_browser.cpp"
         Needles = @(
-            "make_content_browser_item(const SourceAssetRegistryRowV1& row)",
-            "asset_id_from_key_v2(row.key)",
+            "make_content_browser_item(const SourceAssetRegistryRow& row)",
+            "asset_id_from_key(row.key)",
             "identity_backed = true",
-            "ContentBrowserState::refresh_from(const SourceAssetRegistryDocumentV1& registry)"
+            "ContentBrowserState::refresh_from(const SourceAssetRegistryDocument& registry)"
         )
     },
     @{
@@ -1682,7 +1682,7 @@ $editorContentBrowserImportPanelChecks = @(
             "Reload Source Registry",
             "Editor Content Browser Import Diagnostics v1",
             "Editor Content Browser Source Registry Population v1",
-            "SourceAssetRegistryDocumentV1",
+            "SourceAssetRegistryDocument",
             "EditorContentBrowserImportPanelModel",
             "make_content_browser_import_panel_ui_model",
             "hot-reload summaries",

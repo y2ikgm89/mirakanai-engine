@@ -51,16 +51,16 @@ namespace {
             }).empty();
 }
 
-[[nodiscard]] const AssetIdentityRowV2* find_identity_row(const AssetIdentityDocumentV2& identity, AssetId id,
-                                                          AssetKind kind) noexcept {
-    const auto it = std::ranges::find_if(identity.assets, [id, kind](const AssetIdentityRowV2& row) {
-        return row.kind == kind && asset_id_from_key_v2(row.key) == id;
+[[nodiscard]] const AssetIdentityRow* find_identity_row(const AssetIdentityDocument& identity, AssetId id,
+                                                        AssetKind kind) noexcept {
+    const auto it = std::ranges::find_if(identity.assets, [id, kind](const AssetIdentityRow& row) {
+        return row.kind == kind && asset_id_from_key(row.key) == id;
     });
     return it == identity.assets.end() ? nullptr : &*it;
 }
 
 [[nodiscard]] ContentBrowserItem make_content_browser_item(const AssetRecord& record,
-                                                           const AssetIdentityRowV2* identity_row) {
+                                                           const AssetIdentityRow* identity_row) {
     ContentBrowserItem item{
         .id = record.id,
         .kind = record.kind,
@@ -77,9 +77,9 @@ namespace {
     return item;
 }
 
-[[nodiscard]] ContentBrowserItem make_content_browser_item(const SourceAssetRegistryRowV1& row) {
+[[nodiscard]] ContentBrowserItem make_content_browser_item(const SourceAssetRegistryRow& row) {
     ContentBrowserItem item{
-        .id = asset_id_from_key_v2(row.key),
+        .id = asset_id_from_key(row.key),
         .kind = row.kind,
         .path = row.imported_path,
         .display_name = display_name_from_path(row.imported_path),
@@ -98,7 +98,7 @@ void sort_items(std::vector<ContentBrowserItem>& items) {
 }
 
 void refresh_items(std::vector<ContentBrowserItem>& items, const AssetRegistry& registry,
-                   const AssetIdentityDocumentV2* identity) {
+                   const AssetIdentityDocument* identity) {
     items.clear();
     for (const auto& record : registry.records()) {
         const auto* identity_row = identity == nullptr ? nullptr : find_identity_row(*identity, record.id, record.kind);
@@ -108,7 +108,7 @@ void refresh_items(std::vector<ContentBrowserItem>& items, const AssetRegistry& 
     sort_items(items);
 }
 
-void refresh_items(std::vector<ContentBrowserItem>& items, const SourceAssetRegistryDocumentV1& registry) {
+void refresh_items(std::vector<ContentBrowserItem>& items, const SourceAssetRegistryDocument& registry) {
     items.clear();
     for (const auto& row : registry.assets) {
         items.push_back(make_content_browser_item(row));
@@ -124,12 +124,12 @@ void ContentBrowserState::refresh_from(const AssetRegistry& registry) {
     clear_missing_selection();
 }
 
-void ContentBrowserState::refresh_from(const AssetRegistry& registry, const AssetIdentityDocumentV2& identity) {
+void ContentBrowserState::refresh_from(const AssetRegistry& registry, const AssetIdentityDocument& identity) {
     refresh_items(items_, registry, &identity);
     clear_missing_selection();
 }
 
-void ContentBrowserState::refresh_from(const SourceAssetRegistryDocumentV1& registry) {
+void ContentBrowserState::refresh_from(const SourceAssetRegistryDocument& registry) {
     refresh_items(items_, registry);
     clear_missing_selection();
 }
@@ -187,8 +187,8 @@ bool ContentBrowserState::select(AssetId id) noexcept {
     return true;
 }
 
-bool ContentBrowserState::select(const AssetKeyV2& key) noexcept {
-    return select(asset_id_from_key_v2(key));
+bool ContentBrowserState::select(const AssetKey& key) noexcept {
+    return select(asset_id_from_key(key));
 }
 
 void ContentBrowserState::clear_selection() noexcept {

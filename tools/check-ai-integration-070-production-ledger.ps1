@@ -2198,7 +2198,7 @@ $roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
 $rhiText = Get-AgentSurfaceText "docs/rhi.md"
 $authoredRuntimeWorkflowRequiredText = @(
     "validated authored-to-runtime workflow",
-    "register-source-asset -> cook-registered-source-assets -> migrate-scene-v2-runtime-package -> validate-runtime-scene-package"
+    "register-source-asset -> cook-registered-source-assets -> migrate-scene-runtime-package -> validate-runtime-scene-package"
 )
 foreach ($workflowDoc in @(
     @{ Text = $aiGameDevelopmentText; Label = "docs/ai-game-development.md" },
@@ -2241,7 +2241,7 @@ foreach ($sceneSchemaDoc in @(
     @{ Text = $promptPackText; Label = "docs/specs/game-prompt-pack.md" },
     @{ Text = $handoffPromptText; Label = "docs/specs/2026-05-01-ai-operable-game-engine-handoff-prompt.md" }
 )) {
-    Assert-ContainsText $sceneSchemaDoc.Text "Scene/Component/Prefab Schema v2" $sceneSchemaDoc.Label
+    Assert-ContainsText $sceneSchemaDoc.Text "Scene/Component/Prefab Schema" $sceneSchemaDoc.Label
     Assert-ContainsText $sceneSchemaDoc.Text "contract-only" $sceneSchemaDoc.Label
 }
 foreach ($assetResourceDoc in @(
@@ -2252,8 +2252,8 @@ foreach ($assetResourceDoc in @(
     @{ Text = $architectureText; Label = "docs/architecture.md" },
     @{ Text = $roadmapText; Label = "docs/roadmap.md" }
 )) {
-    Assert-ContainsText $assetResourceDoc.Text "Asset Identity v2" $assetResourceDoc.Label
-    Assert-ContainsText $assetResourceDoc.Text "Runtime Resource v2" $assetResourceDoc.Label
+    Assert-ContainsText $assetResourceDoc.Text "Asset Identity" $assetResourceDoc.Label
+    Assert-ContainsText $assetResourceDoc.Text "Runtime Resource" $assetResourceDoc.Label
     Assert-ContainsText $assetResourceDoc.Text "closed" $assetResourceDoc.Label
 }
 foreach ($rendererResourceDoc in @(
@@ -2326,9 +2326,9 @@ foreach ($sceneSchemaDoc in @(
     @{ Text = $handoffPromptText; Label = "docs/specs/2026-05-01-ai-operable-game-engine-handoff-prompt.md" },
     @{ Text = $roadmapText; Label = "docs/roadmap.md" }
 )) {
-    Assert-ContainsText $sceneSchemaDoc.Text "plan_scene_prefab_instance_refresh_v2" $sceneSchemaDoc.Label
-    Assert-ContainsText $sceneSchemaDoc.Text "ScenePrefabInstanceRefreshResultV2" $sceneSchemaDoc.Label
-    Assert-ContainsText $sceneSchemaDoc.Text "apply_scene_prefab_instance_refresh_v2" $sceneSchemaDoc.Label
+    Assert-ContainsText $sceneSchemaDoc.Text "plan_scene_prefab_instance_refresh" $sceneSchemaDoc.Label
+    Assert-ContainsText $sceneSchemaDoc.Text "ScenePrefabInstanceRefreshResult" $sceneSchemaDoc.Label
+    Assert-ContainsText $sceneSchemaDoc.Text "apply_scene_prefab_instance_refresh" $sceneSchemaDoc.Label
     Assert-ContainsText $sceneSchemaDoc.Text "duplicate_prefab_source_identity" $sceneSchemaDoc.Label
     Assert-ContainsText $sceneSchemaDoc.Text "unsupported_nested_prefab_instance" $sceneSchemaDoc.Label
     Assert-ContainsText $sceneSchemaDoc.Text "unsupported_local_prefab_child" $sceneSchemaDoc.Label
@@ -2337,13 +2337,13 @@ foreach ($sceneSchemaDoc in @(
     Assert-ContainsText $sceneSchemaDoc.Text "nested prefab" $sceneSchemaDoc.Label
 }
 foreach ($forbiddenScenePrefabAuthoringClaim in @(
-    "Scene/Prefab v2 authoring makes Scene v2 runtime package migration ready",
-    "Scene/Prefab v2 authoring alone makes Scene v2 package migration ready",
+    "Scene/Prefab authoring makes Scene runtime package migration ready",
+    "Scene/Prefab authoring alone makes Scene package migration ready",
     "editor productization is ready",
     "nested prefab merge/resolution UX is ready",
     "arbitrary free-form scene edits are supported",
     "arbitrary free-form prefab edits are supported",
-    "Scene/Prefab v2 authoring runs arbitrary shell"
+    "Scene/Prefab authoring runs arbitrary shell"
 )) {
     foreach ($doc in @(
         @{ Text = $aiIntegrationText; Label = "docs/ai-integration.md" },
@@ -2354,35 +2354,35 @@ foreach ($forbiddenScenePrefabAuthoringClaim in @(
         @{ Text = $roadmapText; Label = "docs/roadmap.md" }
     )) {
         if ($doc.Text.Contains($forbiddenScenePrefabAuthoringClaim)) {
-            Write-Error "$($doc.Label) contains forbidden Scene/Prefab v2 authoring claim: $forbiddenScenePrefabAuthoringClaim"
+            Write-Error "$($doc.Label) contains forbidden Scene/Prefab authoring claim: $forbiddenScenePrefabAuthoringClaim"
         }
     }
 }
 foreach ($forbiddenSceneMigrationClaim in @(
-    "migrate-scene-v2-runtime-package executes external importers",
-    "Scene v2 runtime package migration executes external importers",
-    "migrate-scene-v2-runtime-package cooks dependent assets",
-    "Scene v2 runtime package migration cooks dependent assets",
-    "migrate-scene-v2-runtime-package performs broad package cooking",
-    "Scene v2 runtime package migration performs broad package cooking",
-    "migrate-scene-v2-runtime-package makes renderer/RHI residency ready",
-    "Scene v2 runtime package migration makes renderer/RHI residency ready",
-    "migrate-scene-v2-runtime-package makes package streaming ready",
-    "Scene v2 runtime package migration makes package streaming ready",
-    "migrate-scene-v2-runtime-package supports material graphs",
-    "Scene v2 runtime package migration supports material graphs",
-    "migrate-scene-v2-runtime-package supports shader graphs",
-    "Scene v2 runtime package migration supports shader graphs",
-    "migrate-scene-v2-runtime-package supports live shader generation",
-    "Scene v2 runtime package migration supports live shader generation",
-    "migrate-scene-v2-runtime-package makes editor productization ready",
-    "Scene v2 runtime package migration makes editor productization ready",
-    "migrate-scene-v2-runtime-package makes Metal ready",
-    "Scene v2 runtime package migration makes Metal ready",
-    "migrate-scene-v2-runtime-package exposes public native/RHI handles",
-    "Scene v2 runtime package migration exposes public native/RHI handles",
-    "migrate-scene-v2-runtime-package makes general production renderer quality ready",
-    "Scene v2 runtime package migration makes general production renderer quality ready"
+    "migrate-scene-runtime-package executes external importers",
+    "Scene runtime package migration executes external importers",
+    "migrate-scene-runtime-package cooks dependent assets",
+    "Scene runtime package migration cooks dependent assets",
+    "migrate-scene-runtime-package performs broad package cooking",
+    "Scene runtime package migration performs broad package cooking",
+    "migrate-scene-runtime-package makes renderer/RHI residency ready",
+    "Scene runtime package migration makes renderer/RHI residency ready",
+    "migrate-scene-runtime-package makes package streaming ready",
+    "Scene runtime package migration makes package streaming ready",
+    "migrate-scene-runtime-package supports material graphs",
+    "Scene runtime package migration supports material graphs",
+    "migrate-scene-runtime-package supports shader graphs",
+    "Scene runtime package migration supports shader graphs",
+    "migrate-scene-runtime-package supports live shader generation",
+    "Scene runtime package migration supports live shader generation",
+    "migrate-scene-runtime-package makes editor productization ready",
+    "Scene runtime package migration makes editor productization ready",
+    "migrate-scene-runtime-package makes Metal ready",
+    "Scene runtime package migration makes Metal ready",
+    "migrate-scene-runtime-package exposes public native/RHI handles",
+    "Scene runtime package migration exposes public native/RHI handles",
+    "migrate-scene-runtime-package makes general production renderer quality ready",
+    "Scene runtime package migration makes general production renderer quality ready"
 )) {
     foreach ($doc in @(
         @{ Text = $aiIntegrationText; Label = "docs/ai-integration.md" },
@@ -2393,7 +2393,7 @@ foreach ($forbiddenSceneMigrationClaim in @(
         @{ Text = $roadmapText; Label = "docs/roadmap.md" }
     )) {
         if ($doc.Text.Contains($forbiddenSceneMigrationClaim)) {
-            Write-Error "$($doc.Label) contains forbidden Scene v2 runtime package migration claim: $forbiddenSceneMigrationClaim"
+            Write-Error "$($doc.Label) contains forbidden Scene runtime package migration claim: $forbiddenSceneMigrationClaim"
         }
     }
 }
@@ -2524,9 +2524,9 @@ foreach ($staleScenarioClaim in @(
     "3d-playable-desktop-package makes package streaming ready",
     "3d-playable-desktop-package makes production renderer ready",
     "prefab variants no longer need nested prefab propagation/merge resolution follow-up work",
-    "Asset Identity v2 and Runtime Resource v2 remain planned gaps",
-    "Runtime Resource v2 makes renderer residency ready",
-    "Asset Identity v2 makes 2D/3D playable vertical slices ready",
+    "Asset Identity and Runtime Resource remain planned gaps",
+    "Runtime Resource makes renderer residency ready",
+    "Asset Identity makes 2D/3D playable vertical slices ready",
     "Renderer/RHI Resource Foundation remains planned",
     "Renderer/RHI Resource Foundation makes GPU allocator ready",
     "Renderer/RHI Resource Foundation makes upload/staging ready",

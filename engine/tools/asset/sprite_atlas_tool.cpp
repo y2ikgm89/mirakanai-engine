@@ -88,7 +88,7 @@ constexpr std::string_view sprite_atlas_page_policy = "single-page-tight-rgba8-t
 }
 
 void add_diagnostic(std::vector<SpriteAtlasSourceAuthoringDiagnostic>& diagnostics, std::string code,
-                    std::string message, std::string path = {}, std::string frame_id = {}, AssetKeyV2 asset_key = {}) {
+                    std::string message, std::string path = {}, std::string frame_id = {}, AssetKey asset_key = {}) {
     diagnostics.push_back(SpriteAtlasSourceAuthoringDiagnostic{
         .code = std::move(code),
         .message = std::move(message),
@@ -275,8 +275,8 @@ canonical_frame_order(const std::vector<SpriteAtlasSourceFrameDesc>& frames) {
     return "sprite atlas packing failed: " + packing_diagnostic_code(code);
 }
 
-[[nodiscard]] SourceAssetRegistryDocumentV1 parse_registry(SpriteAtlasSourceAuthoringPlan& plan,
-                                                           const SpriteAtlasSourceAuthoringDesc& desc) {
+[[nodiscard]] SourceAssetRegistryDocument parse_registry(SpriteAtlasSourceAuthoringPlan& plan,
+                                                         const SpriteAtlasSourceAuthoringDesc& desc) {
     if (desc.source_registry_content.empty()) {
         return {};
     }
@@ -290,19 +290,19 @@ canonical_frame_order(const std::vector<SpriteAtlasSourceFrameDesc>& frames) {
     return {};
 }
 
-[[nodiscard]] bool same_atlas_registry_row(const SourceAssetRegistryRowV1& row,
+[[nodiscard]] bool same_atlas_registry_row(const SourceAssetRegistryRow& row,
                                            const SpriteAtlasSourceAuthoringDesc& desc) {
     return row.key.value == desc.atlas_asset_key.value && row.kind == AssetKind::texture &&
            row.source_path == desc.atlas_source_path &&
-           row.source_format == expected_source_asset_format_v1(AssetKind::texture) &&
+           row.source_format == expected_source_asset_format(AssetKind::texture) &&
            row.imported_path == desc.atlas_imported_path && row.dependencies.empty();
 }
 
-void canonicalize(SourceAssetRegistryDocumentV1& document) {
+void canonicalize(SourceAssetRegistryDocument& document) {
     for (auto& asset : document.assets) {
         std::ranges::sort(asset.dependencies, [](const auto& lhs, const auto& rhs) {
-            const auto lhs_kind = source_asset_dependency_kind_name_v1(lhs.kind);
-            const auto rhs_kind = source_asset_dependency_kind_name_v1(rhs.kind);
+            const auto lhs_kind = source_asset_dependency_kind_name(lhs.kind);
+            const auto rhs_kind = source_asset_dependency_kind_name(rhs.kind);
             if (lhs_kind != rhs_kind) {
                 return lhs_kind < rhs_kind;
             }
@@ -312,7 +312,7 @@ void canonicalize(SourceAssetRegistryDocumentV1& document) {
     std::ranges::sort(document.assets, [](const auto& lhs, const auto& rhs) { return lhs.key.value < rhs.key.value; });
 }
 
-void add_or_validate_atlas_registry_row(SpriteAtlasSourceAuthoringPlan& plan, SourceAssetRegistryDocumentV1& registry,
+void add_or_validate_atlas_registry_row(SpriteAtlasSourceAuthoringPlan& plan, SourceAssetRegistryDocument& registry,
                                         const SpriteAtlasSourceAuthoringDesc& desc) {
     const auto existing = std::ranges::find_if(
         registry.assets, [&desc](const auto& row) { return row.key.value == desc.atlas_asset_key.value; });
@@ -325,18 +325,18 @@ void add_or_validate_atlas_registry_row(SpriteAtlasSourceAuthoringPlan& plan, So
         return;
     }
 
-    registry.assets.push_back(SourceAssetRegistryRowV1{
+    registry.assets.push_back(SourceAssetRegistryRow{
         .key = desc.atlas_asset_key,
         .kind = AssetKind::texture,
         .source_path = desc.atlas_source_path,
-        .source_format = std::string{expected_source_asset_format_v1(AssetKind::texture)},
+        .source_format = std::string{expected_source_asset_format(AssetKind::texture)},
         .imported_path = desc.atlas_imported_path,
         .dependencies = {},
     });
 }
 
 void append_registry_diagnostics(SpriteAtlasSourceAuthoringPlan& plan,
-                                 const std::vector<SourceAssetRegistryDiagnosticV1>& diagnostics,
+                                 const std::vector<SourceAssetRegistryDiagnostic>& diagnostics,
                                  const SpriteAtlasSourceAuthoringDesc& desc) {
     for (const auto& diagnostic : diagnostics) {
         add_diagnostic(plan.diagnostics, "invalid_source_registry", "source asset registry is invalid",
@@ -359,7 +359,7 @@ void append_frame_rows(SpriteAtlasSourceAuthoringPlan& plan, const SpriteAtlasSo
                        const std::vector<SpriteAtlasSourceFrameDesc>& frames,
                        const std::vector<SpriteAtlasPackedPlacement>& placements) {
     plan.frame_rows.reserve(placements.size());
-    const auto atlas_asset = asset_id_from_key_v2(desc.atlas_asset_key);
+    const auto atlas_asset = asset_id_from_key(desc.atlas_asset_key);
     for (std::size_t index = 0; index < placements.size(); ++index) {
         const auto& frame = frames[index];
         const auto& placement = placements[index];
@@ -440,8 +440,8 @@ SpriteAtlasSourceAuthoringPlan plan_sprite_atlas_source_authoring(const SpriteAt
 
     plan.source_registry_content = serialize_source_asset_registry_document(registry);
     append_changed_file(plan.changed_files, desc.atlas_source_path,
-                        std::string{expected_source_asset_format_v1(AssetKind::texture)}, plan.atlas_texture_content);
-    append_changed_file(plan.changed_files, desc.source_registry_path, std::string{source_asset_registry_format_v1()},
+                        std::string{expected_source_asset_format(AssetKind::texture)}, plan.atlas_texture_content);
+    append_changed_file(plan.changed_files, desc.source_registry_path, std::string{source_asset_registry_format()},
                         plan.source_registry_content);
     append_frame_rows(plan, desc, frames, output.placements);
     return plan;

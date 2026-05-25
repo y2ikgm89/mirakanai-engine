@@ -1173,7 +1173,7 @@
             "surface": "game.agent.json.atlasTilemapAuthoringTargets",
             "status": "ready",
             "mutates": false,
-            "notes": "Select a descriptor row that references a manifest runtime .geindex, .tilemap file, cooked atlas texture file, and explicit AssetKeyV2 values."
+            "notes": "Select a descriptor row that references a manifest runtime .geindex, .tilemap file, cooked atlas texture file, and explicit AssetKey values."
           },
           {
             "id": "author-deterministic-tilemap-metadata",
@@ -1251,7 +1251,7 @@
         "id": "3d-prefab-scene-package-authoring",
         "status": "host-gated",
         "owner": "MK_scene-MK_assets-MK_tools-generated-3d-package",
-        "summary": "Reviewed generated 3D prefab/scene package authoring loop for DesktopRuntime3DPackage manifests. It sequences descriptor-selected Scene/Prefab v2 authoring command rows, selected SourceAssetRegistry v1 rows, Scene v2 runtime package migration, runtime scene package validation, and host-gated desktop smoke without claiming broad importer execution, broad/dependent package cooking, runtime source parsing, material/shader graphs, live shader generation, skeletal animation, GPU skinning, public native/RHI handles, Metal readiness, or renderer quality.",
+        "summary": "Reviewed generated 3D prefab/scene package authoring loop for DesktopRuntime3DPackage manifests. It sequences descriptor-selected Scene/Prefab authoring command rows, selected SourceAssetRegistry v1 rows, Scene runtime package migration, runtime scene package validation, and host-gated desktop smoke without claiming broad importer execution, broad/dependent package cooking, runtime source parsing, material/shader graphs, live shader generation, skeletal animation, GPU skinning, public native/RHI handles, Metal readiness, or renderer quality.",
         "orderedSteps": [
           {
             "id": "select-prefab-scene-package-authoring-target",
@@ -1265,7 +1265,7 @@
             "surface": "create-scene, add-scene-node, add-or-update-component, create-prefab, instantiate-prefab",
             "status": "ready",
             "mutates": true,
-            "notes": "Apply only reviewed Scene/Prefab v2 command rows through the existing authoring helpers."
+            "notes": "Apply only reviewed Scene/Prefab command rows through the existing authoring helpers."
           },
           {
             "id": "cook-selected-source-registry-rows",
@@ -1275,11 +1275,11 @@
             "notes": "Cook descriptor-selected registry roots using dependencyExpansion/dependencyCooking; registry_closure expands only in-registry dependency keys. No external importer execution or broad out-of-registry cooking is implied."
           },
           {
-            "id": "migrate-scene-v2-runtime-package",
-            "surface": "migrate-scene-v2-runtime-package",
+            "id": "migrate-scene-runtime-package",
+            "surface": "migrate-scene-runtime-package",
             "status": "ready",
             "mutates": true,
-            "notes": "Bridge the authored Scene v2 document into the existing Scene v1 runtime package surface."
+            "notes": "Bridge the authored Scene document into the existing Scene v1 runtime package surface."
           },
           {
             "id": "validate-runtime-scene-package",
@@ -1346,7 +1346,7 @@
         "preflightGates": [
           "scene-prefab-authoring",
           "cook-registered-source-assets",
-          "migrate-scene-v2-runtime-package",
+          "migrate-scene-runtime-package",
           "validate-runtime-scene-package",
           "desktop-game-runtime",
           "desktop-runtime-release-target"
@@ -1493,21 +1493,21 @@
             "surface": "mirakana::runtime::execute_selected_runtime_package_streaming_safe_point",
             "status": "ready",
             "mutates": true,
-            "notes": "Mounts an already-loaded package under a new explicit RuntimeResidentPackageMountIdV2 and refreshes RuntimeResidentCatalogCacheV2 only after descriptor, hint, budget, and raw catalog preflights pass."
+            "notes": "Mounts an already-loaded package under a new explicit RuntimeResidentPackageMountId and refreshes RuntimeResidentCatalogCache only after descriptor, hint, budget, and raw catalog preflights pass."
           },
           {
             "id": "commit-resident-package-streaming-replacement",
             "surface": "mirakana::runtime::execute_selected_runtime_package_streaming_resident_replace_safe_point",
             "status": "ready",
             "mutates": true,
-            "notes": "Replaces one existing RuntimeResidentPackageMountIdV2 through commit_runtime_resident_package_replace_v2, reports resident_replace rows, and preserves the live mount set plus cached catalog on invalid id, missing id, candidate catalog, budget, or cache-refresh failure."
+            "notes": "Replaces one existing RuntimeResidentPackageMountId through commit_runtime_resident_package_replace, reports resident_replace rows, and preserves the live mount set plus cached catalog on invalid id, missing id, candidate catalog, budget, or cache-refresh failure."
           },
           {
             "id": "commit-resident-package-streaming-unmount",
             "surface": "mirakana::runtime::execute_selected_runtime_package_streaming_resident_unmount_safe_point",
             "status": "ready",
             "mutates": true,
-            "notes": "Removes one existing RuntimeResidentPackageMountIdV2 through commit_runtime_resident_package_unmount_v2, reports resident_unmount rows, validates projected remaining preload/kind/count hints before live mutation, and preserves the live mount set plus cached catalog on invalid id, missing id, residency hint, budget, or cache-refresh failure."
+            "notes": "Removes one existing RuntimeResidentPackageMountId through commit_runtime_resident_package_unmount, reports resident_unmount rows, validates projected remaining preload/kind/count hints before live mutation, and preserves the live mount set plus cached catalog on invalid id, missing id, residency hint, budget, or cache-refresh failure."
           },
           {
             "id": "report-streaming-execution-diagnostics",
@@ -1590,7 +1590,7 @@
         "id": "safe-point-package-unload-replacement-execution",
         "status": "ready",
         "owner": "MK_runtime",
-        "summary": "Host-owned safe-point package replacement and unload execution for preloaded runtime packages. Replacement rebuilds a RuntimeResourceCatalogV2 from the pending package, commits the RuntimeAssetPackageStore and catalog together only at a safe point, and rolls back invalid pending packages before active swap. Unload clears the active package and commits an empty catalog only at a safe point, discarding pending replacement state when an active package exists. Both paths report deterministic generation and stale-handle invalidation counters without executing async streaming, eviction, renderer/RHI teardown, public native/RHI handles, Metal readiness, or renderer quality claims.",
+        "summary": "Host-owned safe-point package replacement and unload execution for preloaded runtime packages. Replacement rebuilds a RuntimeResourceCatalog from the pending package, commits the RuntimeAssetPackageStore and catalog together only at a safe point, and rolls back invalid pending packages before active swap. Unload clears the active package and commits an empty catalog only at a safe point, discarding pending replacement state when an active package exists. Both paths report deterministic generation and stale-handle invalidation counters without executing async streaming, eviction, renderer/RHI teardown, public native/RHI handles, Metal readiness, or renderer quality claims.",
         "orderedSteps": [
           {
             "id": "stage-loaded-runtime-package",
@@ -1601,7 +1601,7 @@
           },
           {
             "id": "build-pending-resource-catalog",
-            "surface": "mirakana::runtime::build_runtime_resource_catalog_v2",
+            "surface": "mirakana::runtime::build_runtime_resource_catalog",
             "status": "ready",
             "mutates": false,
             "notes": "Build a candidate catalog from the pending package before touching the active package or active catalog."
@@ -1895,7 +1895,7 @@
           "public native or RHI handle access",
           "general production renderer quality"
         ],
-        "followUpCapability": "Scene/Component/Prefab Schema v2, Material/Shader Authoring v1, and renderer resource foundations remain required before this becomes a broad production 3D authoring recipe; Asset Identity v2 and the Runtime Resource v2 safe-point/controller prerequisites are satisfied for the Engine 1.0 ready surface."
+        "followUpCapability": "Scene/Component/Prefab Schema, Material/Shader Authoring v1, and renderer resource foundations remain required before this becomes a broad production 3D authoring recipe; Asset Identity and the Runtime Resource safe-point/controller prerequisites are satisfied for the Engine 1.0 ready surface."
       },
       {
         "id": "ai-navigation-headless",
@@ -2112,7 +2112,7 @@
       {
         "id": "2d-desktop-runtime-package",
         "status": "host-gated",
-        "summary": "Host-gated SDL3 desktop runtime package proof for 2D gameplay using cooked first-party texture, material, audio, and Scene.v1 payloads plus reviewed sprite atlas source authoring descriptors, reusable SdlDesktopGameHost, deterministic NullRenderer fallback, selected generated 2D gameplay systems composition smoke, packaged D3D12 DXIL window smoke, native 2D sprite package proof for committed and generated 2D package targets, and strict Vulkan SPIR-V window smoke.",
+        "summary": "Host-gated SDL3 desktop runtime package proof for 2D gameplay using cooked first-party texture, material, audio, and Scene payloads plus reviewed sprite atlas source authoring descriptors, reusable SdlDesktopGameHost, deterministic NullRenderer fallback, selected generated 2D gameplay systems composition smoke, packaged D3D12 DXIL window smoke, native 2D sprite package proof for committed and generated 2D package targets, and strict Vulkan SPIR-V window smoke.",
         "requiredModules": [
           "MK_core",
           "MK_math",
@@ -2178,7 +2178,7 @@
       {
         "id": "3d-playable-desktop-package",
         "status": "host-gated",
-        "summary": "Host-gated first 3D desktop package foundation using the sample_desktop_runtime_game target and generated DesktopRuntime3DPackage scaffolds with cooked config, .geindex, texture, mesh, morph_mesh_cpu, material, scalar animation_float_clip, quaternion animation_quaternion_clip, Scene.v1 payloads, source Scene/Prefab v2 authoring data, selected SourceAssetRegistry rows, static mesh scene submission, material instance intent, primary camera/controller movement, generated transform-animation binding smoke, generated CPU morph package consumption smoke, generated quaternion scene-transform package smoke, selected generated gameplay systems composition smoke, scene mesh planning telemetry, directional light/postprocess metadata, target-specific D3D12 shader artifacts, selected D3D12 graphics morph + directional shadow receiver package smoke through --require-shadow-morph-composition, and strict Vulkan gated shader artifacts.",
+        "summary": "Host-gated first 3D desktop package foundation using the sample_desktop_runtime_game target and generated DesktopRuntime3DPackage scaffolds with cooked config, .geindex, texture, mesh, morph_mesh_cpu, material, scalar animation_float_clip, quaternion animation_quaternion_clip, Scene payloads, source Scene/Prefab authoring data, selected SourceAssetRegistry rows, static mesh scene submission, material instance intent, primary camera/controller movement, generated transform-animation binding smoke, generated CPU morph package consumption smoke, generated quaternion scene-transform package smoke, selected generated gameplay systems composition smoke, scene mesh planning telemetry, directional light/postprocess metadata, target-specific D3D12 shader artifacts, selected D3D12 graphics morph + directional shadow receiver package smoke through --require-shadow-morph-composition, and strict Vulkan gated shader artifacts.",
         "requiredModules": [
           "MK_animation",
           "MK_ai",
@@ -2226,7 +2226,7 @@
           ],
           "externalImportersRequired": false
         },
-        "cookedRuntimeAssumptions": "runtimePackageFiles contains config, .geindex, and cooked texture/mesh/morph_mesh_cpu/material/animation_float_clip/animation_quaternion_clip/scene payloads. Gameplay consumes cooked records through MK_runtime/MK_runtime_scene, public scene-renderer helpers, optional MK_ui HUD contracts, and mirakana::IRenderer. DesktopRuntime3DPackage emits runtimeSceneValidationTargets so validate-runtime-scene-package can be selected from the manifest before host-gated package smoke, prefabScenePackageAuthoringTargets so deterministic Scene/Prefab v2 command rows, selected SourceAssetRegistry rows, Scene v2 runtime package migration, runtime validation, and host smoke remain separate, registeredSourceAssetCookTargets so cook-registered-source-assets inputs pair to those prefab rows with explicit or registry-closure dependency expansion without shell commands, and host-gated packageStreamingResidencyTargets so selected safe-point package streaming execution can reference validated package inputs without broad background streaming or arbitrary eviction. Generated 3D scaffolds may decode a cooked scalar animation clip via runtime_animation_float_clip_payload and apply binding rows to RuntimeSceneRenderInstance data through sample_and_apply_runtime_scene_render_animation_float_clip. Generated 3D scaffolds may also decode cooked morph_mesh_cpu rows via runtime_morph_mesh_cpu_payload, sample morph-weight clips through sample_runtime_morph_mesh_cpu_animation_float_clip for CPU morph package smoke counters, decode cooked quaternion clips via runtime_animation_quaternion_clip_payload, convert byte rows with make_animation_joint_tracks_3d_from_f32_bytes, sample AnimationPose3d through sample_animation_local_pose_3d for quaternion package smoke counters, run selected --require-gameplay-systems smoke through public MK_physics authored collision/controller, MK_navigation route planning/ticks, MK_ai perception/blackboard/behavior tree, MK_audio device stream rendering, MK_animation state transitions, scene gameplay binding readiness through gameplay_systems_scene_binding_* fields, and scene gameplay interaction rows through gameplay_systems_scene_interaction_* fields, run selected --require-scene-collision-package smoke through cooked GameEngine.PhysicsCollisionScene3D rows, runtime_physics_collision_scene_3d_payload, and build_physics_world_3d_from_runtime_collision_scene, use explicit D3D12 scene mesh-to-morph bindings for package-visible POSITION-delta morph draw counters, run the selected --require-shadow-morph-composition package smoke to validate renderer_gpu_morph_draws, renderer_morph_descriptor_binds, directional_shadow_ready=1, framegraph_passes=3, framegraph_passes_executed=6, framegraph_render_passes_recorded=6, and framegraph_barrier_steps_executed=15 on the shifted directional shadow receiver path, run the selected --require-visible-3d-production-proof package smoke to validate visible_3d_* aggregate counters over D3D12 scene GPU, postprocess, renderer-quality, playable, gameplay-system, and native UI overlay readiness, and run selected --require-native-ui-overlay / --require-native-ui-textured-sprite-atlas / --require-native-ui-text-glyph-atlas package smokes to validate MK_ui HUD box submission plus cooked GameEngine.UiAtlas image sprite and text glyph submission through the host-owned native UI overlay path. Source material/HLSL, morph source, animation source, quaternion animation source, Scene/Prefab v2 files, and UI atlas metadata files remain authoring or cooked package inputs, and runtime source asset parsing remains unsupported.",
+        "cookedRuntimeAssumptions": "runtimePackageFiles contains config, .geindex, and cooked texture/mesh/morph_mesh_cpu/material/animation_float_clip/animation_quaternion_clip/scene payloads. Gameplay consumes cooked records through MK_runtime/MK_runtime_scene, public scene-renderer helpers, optional MK_ui HUD contracts, and mirakana::IRenderer. DesktopRuntime3DPackage emits runtimeSceneValidationTargets so validate-runtime-scene-package can be selected from the manifest before host-gated package smoke, prefabScenePackageAuthoringTargets so deterministic Scene/Prefab command rows, selected SourceAssetRegistry rows, Scene runtime package migration, runtime validation, and host smoke remain separate, registeredSourceAssetCookTargets so cook-registered-source-assets inputs pair to those prefab rows with explicit or registry-closure dependency expansion without shell commands, and host-gated packageStreamingResidencyTargets so selected safe-point package streaming execution can reference validated package inputs without broad background streaming or arbitrary eviction. Generated 3D scaffolds may decode a cooked scalar animation clip via runtime_animation_float_clip_payload and apply binding rows to RuntimeSceneRenderInstance data through sample_and_apply_runtime_scene_render_animation_float_clip. Generated 3D scaffolds may also decode cooked morph_mesh_cpu rows via runtime_morph_mesh_cpu_payload, sample morph-weight clips through sample_runtime_morph_mesh_cpu_animation_float_clip for CPU morph package smoke counters, decode cooked quaternion clips via runtime_animation_quaternion_clip_payload, convert byte rows with make_animation_joint_tracks_3d_from_f32_bytes, sample AnimationPose3d through sample_animation_local_pose_3d for quaternion package smoke counters, run selected --require-gameplay-systems smoke through public MK_physics authored collision/controller, MK_navigation route planning/ticks, MK_ai perception/blackboard/behavior tree, MK_audio device stream rendering, MK_animation state transitions, scene gameplay binding readiness through gameplay_systems_scene_binding_* fields, and scene gameplay interaction rows through gameplay_systems_scene_interaction_* fields, run selected --require-scene-collision-package smoke through cooked GameEngine.PhysicsCollisionScene3D rows, runtime_physics_collision_scene_3d_payload, and build_physics_world_3d_from_runtime_collision_scene, use explicit D3D12 scene mesh-to-morph bindings for package-visible POSITION-delta morph draw counters, run the selected --require-shadow-morph-composition package smoke to validate renderer_gpu_morph_draws, renderer_morph_descriptor_binds, directional_shadow_ready=1, framegraph_passes=3, framegraph_passes_executed=6, framegraph_render_passes_recorded=6, and framegraph_barrier_steps_executed=15 on the shifted directional shadow receiver path, run the selected --require-visible-3d-production-proof package smoke to validate visible_3d_* aggregate counters over D3D12 scene GPU, postprocess, renderer-quality, playable, gameplay-system, and native UI overlay readiness, and run selected --require-native-ui-overlay / --require-native-ui-textured-sprite-atlas / --require-native-ui-text-glyph-atlas package smokes to validate MK_ui HUD box submission plus cooked GameEngine.UiAtlas image sprite and text glyph submission through the host-owned native UI overlay path. Source material/HLSL, morph source, animation source, quaternion animation source, Scene/Prefab files, and UI atlas metadata files remain authoring or cooked package inputs, and runtime source asset parsing remains unsupported.",
         "rendererBackendAssumptions": {
           "d3d12": "primary Windows package proof through host-owned shader artifacts, scene GPU binding, depth-aware postprocess, fixed 3x3 PCF directional shadow smoke, selected generated graphics morph + directional shadow receiver package smoke, selected generated visible production-style aggregate proof, and selected generated native UI overlay plus cooked UI atlas image sprite package smokes",
           "vulkan": "strict Windows host/toolchain/runtime gated package proof with target-specific SPIR-V artifacts and spirv-val; shadow-morph shifted artifacts can be generated but no Vulkan shadow-morph validation recipe is ready",
@@ -2588,7 +2588,7 @@
           "general multi-light production path",
           "Metal ready"
         ],
-        "followUpCapability": "Implement after Scene/Component/Prefab Schema v2, renderer resource lifetime, frame graph, upload/staging, and material/shader authoring foundations; Asset Identity v2 and the Runtime Resource v2 safe-point/controller prerequisites are satisfied for the Engine 1.0 ready surface."
+        "followUpCapability": "Implement after Scene/Component/Prefab Schema, renderer resource lifetime, frame graph, upload/staging, and material/shader authoring foundations; Asset Identity and the Runtime Resource safe-point/controller prerequisites are satisfied for the Engine 1.0 ready surface."
       }
     ],
     "commandSurfaces": [
@@ -2701,7 +2701,7 @@
         "schemaVersion": 1,
         "status": "ready",
         "owner": "MK_tools scene_prefab_authoring_tool",
-        "summary": "Dry-run or apply a new GameEngine.Scene scene document through the reviewed Scene/Prefab v2 authoring helper.",
+        "summary": "Dry-run or apply a new GameEngine.Scene scene document through the reviewed Scene/Prefab authoring helper.",
         "requestModes": [
           {
             "id": "dry-run",
@@ -2775,7 +2775,7 @@
         ],
         "capabilityGates": [
           {
-            "id": "scene-component-prefab-schema-v2",
+            "id": "scene-component-prefab-schema",
             "source": "authoring-surface",
             "requiredStatus": "ready",
             "notes": "The command is limited to the contract-only MK_scene authoring model."
@@ -2791,7 +2791,7 @@
           "status": "placeholder-only",
           "notes": "Undo tokens are placeholders; the helper reports deterministic changed files but not full editor history entries."
         },
-        "notes": "Ready Scene/Prefab v2 authoring surface through plan_scene_prefab_authoring and apply_scene_prefab_authoring for GameEngine.Scene and GameEngine.Prefab documents. The helper does not evaluate arbitrary shell, and free-form edits are not supported. Scene v2 runtime package migration is handled by the separate migrate-scene-v2-runtime-package reviewed bridge; editor productization, nested prefab merge/resolution UX, source asset import execution, package cooking, renderer/RHI residency, package streaming, public native/RHI handles, Metal readiness, and broad renderer quality remain unsupported or host-gated."
+        "notes": "Ready Scene/Prefab authoring surface through plan_scene_prefab_authoring and apply_scene_prefab_authoring for GameEngine.Scene and GameEngine.Prefab documents. The helper does not evaluate arbitrary shell, and free-form edits are not supported. Scene runtime package migration is handled by the separate migrate-scene-runtime-package reviewed bridge; editor productization, nested prefab merge/resolution UX, source asset import execution, package cooking, renderer/RHI residency, package streaming, public native/RHI handles, Metal readiness, and broad renderer quality remain unsupported or host-gated."
       },
       {
         "id": "update-scene-package",
@@ -2884,13 +2884,13 @@
         ],
         "capabilityGates": [
           {
-            "id": "scene-component-prefab-schema-v2",
+            "id": "scene-component-prefab-schema",
             "source": "authoring-surface",
             "requiredStatus": "ready",
             "notes": "Scene payloads must use first-party MK_scene contracts while create-scene remains authored-only."
           },
           {
-            "id": "asset-identity-v2",
+            "id": "asset-identity",
             "source": "authoring-surface",
             "requiredStatus": "ready",
             "notes": "Scene mesh/material/sprite references must use stable asset identity rows."
@@ -2915,10 +2915,10 @@
         "notes": "Ready narrow scene package apply surface through plan_scene_package_update and apply_scene_package_update. It updates explicit .scene and .geindex rows together with AssetKind::scene plus scene_mesh, scene_material, and scene_sprite dependency rows, while create-scene stays authored-only. editor productization, prefab mutation, runtime source import, renderer/RHI residency, package streaming, material graph, shader graph, live shader generation, public native/RHI handles, Metal readiness, and broad renderer quality remain unsupported or host-gated."
       },
       {
-        "id": "migrate-scene-v2-runtime-package",
+        "id": "migrate-scene-runtime-package",
         "schemaVersion": 1,
         "status": "ready",
-        "owner": "MK_tools scene_v2_runtime_package_migration_tool",
+        "owner": "MK_tools scene_runtime_package_migration_tool",
         "summary": "Dry-run or apply a reviewed bridge from authored GameEngine.Scene plus GameEngine.SourceAssetRegistry rows into the existing GameEngine.Scene runtime package update surface.",
         "requestModes": [
           {
@@ -2926,22 +2926,22 @@
             "status": "ready",
             "mutates": false,
             "requiresDryRun": false,
-            "notes": "Dry-run uses plan_scene_v2_runtime_package_migration to parse GameEngine.Scene, resolve mesh/material/sprite keys through GameEngine.SourceAssetRegistry, populate modelMutations placement_rows through plan_asset_identity_placements_v2, call plan_scene_package_update, and report deterministic changedFiles, modelMutations, validationRecipes, unsupportedGapIds, and placeholder undoToken without writing."
+            "notes": "Dry-run uses plan_scene_runtime_package_migration to parse GameEngine.Scene, resolve mesh/material/sprite keys through GameEngine.SourceAssetRegistry, populate modelMutations placement_rows through plan_asset_identity_placements, call plan_scene_package_update, and report deterministic changedFiles, modelMutations, validationRecipes, unsupportedGapIds, and placeholder undoToken without writing."
           },
           {
             "id": "apply",
             "status": "ready",
             "mutates": true,
             "requiresDryRun": true,
-            "notes": "Apply uses apply_scene_v2_runtime_package_migration, rereads sceneV2Path, sourceRegistryPath, and packageIndexPath, then writes only the validated GameEngine.Scene .scene and .geindex changedFiles."
+            "notes": "Apply uses apply_scene_runtime_package_migration, rereads scenePath, sourceRegistryPath, and packageIndexPath, then writes only the validated GameEngine.Scene .scene and .geindex changedFiles."
           }
         ],
         "requestShape": {
-          "schema": "GameEngine.AiCommand.MigrateSceneV2RuntimePackage.Request",
+          "schema": "GameEngine.AiCommand.MigrateSceneRuntimePackage.Request",
           "requiredFields": [
             "mode",
             "operation",
-            "sceneV2Path",
+            "scenePath",
             "sourceRegistryPath",
             "packageIndexPath",
             "outputScenePath",
@@ -2949,7 +2949,7 @@
             "sourceRevision"
           ],
           "optionalFields": [
-            "sceneV2Content",
+            "sceneContent",
             "sourceRegistryContent",
             "packageIndexContent",
             "packageCooking",
@@ -2967,11 +2967,11 @@
             "arbitraryShell",
             "freeFormEdit"
           ],
-          "pathPolicy": "sceneV2Path and sourceRegistryPath must be safe repository-relative paths ending in .scene and .geassets; packageIndexPath and outputScenePath must be both safe repository-relative and package-relative paths ending in .geindex and .scene; empty, absolute, drive-colon, backslash, control-character, semicolon, '.', and '..' segments are rejected.",
+          "pathPolicy": "scenePath and sourceRegistryPath must be safe repository-relative paths ending in .scene and .geassets; packageIndexPath and outputScenePath must be both safe repository-relative and package-relative paths ending in .geindex and .scene; empty, absolute, drive-colon, backslash, control-character, semicolon, '.', and '..' segments are rejected.",
           "nativeHandlePolicy": "forbidden"
         },
         "resultShape": {
-          "schema": "GameEngine.AiCommand.MigrateSceneV2RuntimePackage.Result",
+          "schema": "GameEngine.AiCommand.MigrateSceneRuntimePackage.Result",
           "requiredFields": [
             "commandId",
             "mode",
@@ -2992,7 +2992,7 @@
           "dryRunFields": [
             "changedFiles",
             "modelMutations",
-            "sceneV1Content",
+            "runtimeSceneContent",
             "packageIndexContent",
             "validationRecipes",
             "unsupportedGapIds",
@@ -3011,16 +3011,16 @@
         ],
         "capabilityGates": [
           {
-            "id": "scene-component-prefab-schema-v2",
+            "id": "scene-component-prefab-schema",
             "source": "authoring-surface",
             "requiredStatus": "ready",
             "notes": "Authored GameEngine.Scene validation and component rows are required."
           },
           {
-            "id": "asset-identity-v2",
+            "id": "asset-identity",
             "source": "authoring-surface",
             "requiredStatus": "ready",
-            "notes": "GameEngine.SourceAssetRegistry and stable AssetKeyV2 projection are required."
+            "notes": "GameEngine.SourceAssetRegistry and stable AssetKey projection are required."
           },
           {
             "id": "MK_tools",
@@ -3046,14 +3046,14 @@
           "status": "placeholder-only",
           "notes": "The helper reports deterministic changed files, but structured undo tokens remain placeholders."
         },
-        "notes": "Ready narrow Scene v2 runtime package migration through plan_scene_v2_runtime_package_migration and apply_scene_v2_runtime_package_migration. It maps supported GameEngine.Scene camera/light/mesh_renderer/sprite_renderer properties, including light inner_cone_radians and outer_cone_radians, and GameEngine.SourceAssetRegistry mesh/material/texture keys into GameEngine.Scene content, emits SceneV2RuntimePackageMigrationModelMutation placement_rows through plan_asset_identity_placements_v2 for scene package, mesh renderer, and sprite renderer references, then reuses plan_scene_package_update and apply_scene_package_update for the .scene and .geindex writes. It requires safe repository-relative and package-relative paths, does not evaluate arbitrary shell, and free-form edits are not supported. external importer execution is not supported; package cooking, dependent asset cooking, renderer/RHI residency, package streaming, material graph, shader graph, live shader generation, editor productization, Metal readiness, public native/RHI handles, and general production renderer quality remain unsupported or host-gated."
+        "notes": "Ready narrow Scene runtime package migration through plan_scene_runtime_package_migration and apply_scene_runtime_package_migration. It maps supported GameEngine.Scene camera/light/mesh_renderer/sprite_renderer properties, including light inner_cone_radians and outer_cone_radians, and GameEngine.SourceAssetRegistry mesh/material/texture keys into GameEngine.Scene content, emits SceneRuntimePackageMigrationModelMutation placement_rows through plan_asset_identity_placements for scene package, mesh renderer, and sprite renderer references, then reuses plan_scene_package_update and apply_scene_package_update for the .scene and .geindex writes. It requires safe repository-relative and package-relative paths, does not evaluate arbitrary shell, and free-form edits are not supported. external importer execution is not supported; package cooking, dependent asset cooking, renderer/RHI residency, package streaming, material graph, shader graph, live shader generation, editor productization, Metal readiness, public native/RHI handles, and general production renderer quality remain unsupported or host-gated."
       },
       {
         "id": "validate-runtime-scene-package",
         "schemaVersion": 1,
         "status": "ready",
         "owner": "MK_tools runtime_scene_package_validation_tool",
-        "summary": "Dry-run or execute reviewed non-mutating runtime scene package validation for an explicit .geindex package and Scene AssetKeyV2 through MK_runtime and MK_runtime_scene.",
+        "summary": "Dry-run or execute reviewed non-mutating runtime scene package validation for an explicit .geindex package and Scene AssetKey through MK_runtime and MK_runtime_scene.",
         "requestModes": [
           {
             "id": "dry-run",
@@ -3184,14 +3184,14 @@
           "status": "placeholder-only",
           "notes": "The helper does not mutate files, so structured undo tokens remain placeholders."
         },
-        "notes": "Ready narrow non-mutating runtime scene package validation through plan_runtime_scene_package_validation and execute_runtime_scene_package_validation. It validates safe package-relative .geindex paths, optional safe package-relative content roots that prefix cooked package entry paths without duplicating entry prefixes already present in the index, explicit AssetKeyV2 scene keys, and unsupported claim sentinels, then executes mirakana::runtime::load_runtime_asset_package and mirakana::runtime_scene::instantiate_runtime_scene for package load failures, missing scene rows, wrong scene kind, malformed scene payloads, missing referenced assets, referenced kind mismatches, and optional duplicate node name diagnostics. It does not mutate files, does not evaluate arbitrary shell, and free-form edits are not supported. runtime source parsing is not supported; package cooking is not supported; external importer execution, renderer/RHI residency, package streaming, material graph, shader graph, live shader generation, editor productization, Metal readiness, public native/RHI handles, and general production renderer quality remain unsupported or host-gated."
+        "notes": "Ready narrow non-mutating runtime scene package validation through plan_runtime_scene_package_validation and execute_runtime_scene_package_validation. It validates safe package-relative .geindex paths, optional safe package-relative content roots that prefix cooked package entry paths without duplicating entry prefixes already present in the index, explicit AssetKey scene keys, and unsupported claim sentinels, then executes mirakana::runtime::load_runtime_asset_package and mirakana::runtime_scene::instantiate_runtime_scene for package load failures, missing scene rows, wrong scene kind, malformed scene payloads, missing referenced assets, referenced kind mismatches, and optional duplicate node name diagnostics. It does not mutate files, does not evaluate arbitrary shell, and free-form edits are not supported. runtime source parsing is not supported; package cooking is not supported; external importer execution, renderer/RHI residency, package streaming, material graph, shader graph, live shader generation, editor productization, Metal readiness, public native/RHI handles, and general production renderer quality remain unsupported or host-gated."
       },
       {
         "id": "add-scene-node",
         "schemaVersion": 1,
         "status": "ready",
         "owner": "MK_tools scene_prefab_authoring_tool",
-        "summary": "Dry-run or apply a stable-id GameEngine.Scene scene node insertion through the reviewed Scene/Prefab v2 authoring helper.",
+        "summary": "Dry-run or apply a stable-id GameEngine.Scene scene node insertion through the reviewed Scene/Prefab authoring helper.",
         "requestModes": [
           {
             "id": "dry-run",
@@ -3267,7 +3267,7 @@
         ],
         "capabilityGates": [
           {
-            "id": "scene-component-prefab-schema-v2",
+            "id": "scene-component-prefab-schema",
             "source": "authoring-surface",
             "requiredStatus": "ready",
             "notes": "Stable authoring ids and schema-driven component rows must remain the source of truth."
@@ -3283,14 +3283,14 @@
           "status": "placeholder-only",
           "notes": "Undo tokens are placeholders; the helper reports deterministic changed files but not full editor history entries."
         },
-        "notes": "Ready Scene/Prefab v2 authoring surface through plan_scene_prefab_authoring and apply_scene_prefab_authoring for GameEngine.Scene and GameEngine.Prefab documents. The helper does not evaluate arbitrary shell, and free-form edits are not supported. Scene v2 runtime package migration is handled by the separate migrate-scene-v2-runtime-package reviewed bridge; editor productization, nested prefab merge/resolution UX, source asset import execution, package cooking, renderer/RHI residency, package streaming, public native/RHI handles, Metal readiness, and broad renderer quality remain unsupported or host-gated."
+        "notes": "Ready Scene/Prefab authoring surface through plan_scene_prefab_authoring and apply_scene_prefab_authoring for GameEngine.Scene and GameEngine.Prefab documents. The helper does not evaluate arbitrary shell, and free-form edits are not supported. Scene runtime package migration is handled by the separate migrate-scene-runtime-package reviewed bridge; editor productization, nested prefab merge/resolution UX, source asset import execution, package cooking, renderer/RHI residency, package streaming, public native/RHI handles, Metal readiness, and broad renderer quality remain unsupported or host-gated."
       },
       {
         "id": "add-or-update-component",
         "schemaVersion": 1,
         "status": "ready",
         "owner": "MK_tools scene_prefab_authoring_tool",
-        "summary": "Dry-run or apply a schema-driven GameEngine.Scene component add/update through the reviewed Scene/Prefab v2 authoring helper.",
+        "summary": "Dry-run or apply a schema-driven GameEngine.Scene component add/update through the reviewed Scene/Prefab authoring helper.",
         "requestModes": [
           {
             "id": "dry-run",
@@ -3321,7 +3321,7 @@
             "replaceExisting",
             "prefabOverridePath"
           ],
-          "pathPolicy": "Only safe repository-relative authored GameEngine.Scene .scene paths and Schema v2 property rows are accepted; unsupported component payload formats are rejected.",
+          "pathPolicy": "Only safe repository-relative authored GameEngine.Scene .scene paths and Schema property rows are accepted; unsupported component payload formats are rejected.",
           "nativeHandlePolicy": "forbidden"
         },
         "resultShape": {
@@ -3366,7 +3366,7 @@
         ],
         "capabilityGates": [
           {
-            "id": "scene-component-prefab-schema-v2",
+            "id": "scene-component-prefab-schema",
             "source": "authoring-surface",
             "requiredStatus": "ready",
             "notes": "The command must stay on schema-driven component rows and stable override paths."
@@ -3382,14 +3382,14 @@
           "status": "placeholder-only",
           "notes": "Undo tokens are placeholders; the helper reports deterministic changed files but not full editor history entries."
         },
-        "notes": "Ready Scene/Prefab v2 authoring surface through plan_scene_prefab_authoring and apply_scene_prefab_authoring for GameEngine.Scene and GameEngine.Prefab documents. The helper does not evaluate arbitrary shell, and free-form edits are not supported. Scene v2 runtime package migration is handled by the separate migrate-scene-v2-runtime-package reviewed bridge; editor productization, nested prefab merge/resolution UX, source asset import execution, package cooking, renderer/RHI residency, package streaming, public native/RHI handles, Metal readiness, and broad renderer quality remain unsupported or host-gated."
+        "notes": "Ready Scene/Prefab authoring surface through plan_scene_prefab_authoring and apply_scene_prefab_authoring for GameEngine.Scene and GameEngine.Prefab documents. The helper does not evaluate arbitrary shell, and free-form edits are not supported. Scene runtime package migration is handled by the separate migrate-scene-runtime-package reviewed bridge; editor productization, nested prefab merge/resolution UX, source asset import execution, package cooking, renderer/RHI residency, package streaming, public native/RHI handles, Metal readiness, and broad renderer quality remain unsupported or host-gated."
       },
       {
         "id": "create-prefab",
         "schemaVersion": 1,
         "status": "ready",
         "owner": "MK_tools scene_prefab_authoring_tool",
-        "summary": "Dry-run or apply a GameEngine.Prefab document through the reviewed Scene/Prefab v2 authoring helper.",
+        "summary": "Dry-run or apply a GameEngine.Prefab document through the reviewed Scene/Prefab authoring helper.",
         "requestModes": [
           {
             "id": "dry-run",
@@ -3464,10 +3464,10 @@
         ],
         "capabilityGates": [
           {
-            "id": "scene-component-prefab-schema-v2",
+            "id": "scene-component-prefab-schema",
             "source": "authoring-surface",
             "requiredStatus": "ready",
-            "notes": "Prefab rows must use the Schema v2 contract and stable override paths."
+            "notes": "Prefab rows must use the Schema contract and stable override paths."
           }
         ],
         "hostGates": [],
@@ -3480,14 +3480,14 @@
           "status": "placeholder-only",
           "notes": "Undo tokens are placeholders; the helper reports deterministic changed files but not full editor history entries."
         },
-        "notes": "Ready Scene/Prefab v2 authoring surface through plan_scene_prefab_authoring and apply_scene_prefab_authoring for GameEngine.Scene and GameEngine.Prefab documents. The helper does not evaluate arbitrary shell, and free-form edits are not supported. Scene v2 runtime package migration is handled by the separate migrate-scene-v2-runtime-package reviewed bridge; editor productization, nested prefab merge/resolution UX, source asset import execution, package cooking, renderer/RHI residency, package streaming, public native/RHI handles, Metal readiness, and broad renderer quality remain unsupported or host-gated."
+        "notes": "Ready Scene/Prefab authoring surface through plan_scene_prefab_authoring and apply_scene_prefab_authoring for GameEngine.Scene and GameEngine.Prefab documents. The helper does not evaluate arbitrary shell, and free-form edits are not supported. Scene runtime package migration is handled by the separate migrate-scene-runtime-package reviewed bridge; editor productization, nested prefab merge/resolution UX, source asset import execution, package cooking, renderer/RHI residency, package streaming, public native/RHI handles, Metal readiness, and broad renderer quality remain unsupported or host-gated."
       },
       {
         "id": "instantiate-prefab",
         "schemaVersion": 1,
         "status": "ready",
         "owner": "MK_tools scene_prefab_authoring_tool",
-        "summary": "Dry-run or apply a GameEngine.Prefab instantiation into a GameEngine.Scene document through the reviewed Scene/Prefab v2 authoring helper.",
+        "summary": "Dry-run or apply a GameEngine.Prefab instantiation into a GameEngine.Scene document through the reviewed Scene/Prefab authoring helper.",
         "requestModes": [
           {
             "id": "dry-run",
@@ -3562,7 +3562,7 @@
         ],
         "capabilityGates": [
           {
-            "id": "scene-component-prefab-schema-v2",
+            "id": "scene-component-prefab-schema",
             "source": "authoring-surface",
             "requiredStatus": "ready",
             "notes": "Prefab instancing must preserve stable ids and schema-owned override paths."
@@ -3578,21 +3578,21 @@
           "status": "placeholder-only",
           "notes": "Undo tokens are placeholders; the helper reports deterministic changed files but not full editor history entries."
         },
-        "notes": "Ready Scene/Prefab v2 authoring surface through plan_scene_prefab_authoring and apply_scene_prefab_authoring for GameEngine.Scene and GameEngine.Prefab documents. The helper does not evaluate arbitrary shell, and free-form edits are not supported. Scene v2 runtime package migration is handled by the separate migrate-scene-v2-runtime-package reviewed bridge; editor productization, nested prefab merge/resolution UX, source asset import execution, package cooking, renderer/RHI residency, package streaming, public native/RHI handles, Metal readiness, and broad renderer quality remain unsupported or host-gated."
+        "notes": "Ready Scene/Prefab authoring surface through plan_scene_prefab_authoring and apply_scene_prefab_authoring for GameEngine.Scene and GameEngine.Prefab documents. The helper does not evaluate arbitrary shell, and free-form edits are not supported. Scene runtime package migration is handled by the separate migrate-scene-runtime-package reviewed bridge; editor productization, nested prefab merge/resolution UX, source asset import execution, package cooking, renderer/RHI residency, package streaming, public native/RHI handles, Metal readiness, and broad renderer quality remain unsupported or host-gated."
       },
       {
         "id": "refresh-prefab-instance",
         "schemaVersion": 1,
         "status": "ready",
         "owner": "MK_tools scene_prefab_authoring_tool",
-        "summary": "Dry-run or apply a stable-id GameEngine.Prefab refresh into a selected GameEngine.Scene prefab instance root through the reviewed Scene/Prefab v2 authoring helper.",
+        "summary": "Dry-run or apply a stable-id GameEngine.Prefab refresh into a selected GameEngine.Scene prefab instance root through the reviewed Scene/Prefab authoring helper.",
         "requestModes": [
           {
             "id": "dry-run",
             "status": "ready",
             "mutates": false,
             "requiresDryRun": false,
-            "notes": "Dry-run uses plan_scene_prefab_authoring, plan_scene_prefab_instance_refresh_v2, and apply_scene_prefab_instance_refresh_v2 over loaded documents to validate stable source ids and report deterministic changedFiles/modelMutations without writing."
+            "notes": "Dry-run uses plan_scene_prefab_authoring, plan_scene_prefab_instance_refresh, and apply_scene_prefab_instance_refresh over loaded documents to validate stable source ids and report deterministic changedFiles/modelMutations without writing."
           },
           {
             "id": "apply",
@@ -3659,10 +3659,10 @@
         ],
         "capabilityGates": [
           {
-            "id": "scene-component-prefab-schema-v2",
+            "id": "scene-component-prefab-schema",
             "source": "authoring-surface",
             "requiredStatus": "ready",
-            "notes": "Prefab refresh must stay on stable source_node_id / source_component_id provenance and reviewed Schema v2 rows."
+            "notes": "Prefab refresh must stay on stable source_node_id / source_component_id provenance and reviewed Schema rows."
           }
         ],
         "hostGates": [],
@@ -3675,7 +3675,7 @@
           "status": "placeholder-only",
           "notes": "Undo tokens are placeholders; the helper reports deterministic changed files but not full editor history entries."
         },
-        "notes": "Ready Scene/Prefab v2 authoring surface through plan_scene_prefab_authoring and apply_scene_prefab_authoring for GameEngine.Scene and GameEngine.Prefab documents. The refresh-prefab-instance mode maps to ScenePrefabAuthoringCommandKind::refresh_prefab_instance, uses plan_scene_prefab_instance_refresh_v2 and apply_scene_prefab_instance_refresh_v2 for stable-id preserve/add/remove rows, preserves matched scene ids and author-owned state, adds deterministic instance_root/refresh/<source-id> rows, removes stale sourced rows, and writes only the selected authored .scene after validation. The helper does not evaluate arbitrary shell, and free-form edits are not supported. Scene v2 runtime package migration is handled by the separate migrate-scene-v2-runtime-package reviewed bridge; editor productization, nested prefab merge/resolution UX, nested prefab propagation, runtime prefab semantics, source asset import execution, package cooking, renderer/RHI residency, package streaming, public native/RHI handles, Metal readiness, and broad renderer quality remain unsupported or host-gated."
+        "notes": "Ready Scene/Prefab authoring surface through plan_scene_prefab_authoring and apply_scene_prefab_authoring for GameEngine.Scene and GameEngine.Prefab documents. The refresh-prefab-instance mode maps to ScenePrefabAuthoringCommandKind::refresh_prefab_instance, uses plan_scene_prefab_instance_refresh and apply_scene_prefab_instance_refresh for stable-id preserve/add/remove rows, preserves matched scene ids and author-owned state, adds deterministic instance_root/refresh/<source-id> rows, removes stale sourced rows, and writes only the selected authored .scene after validation. The helper does not evaluate arbitrary shell, and free-form edits are not supported. Scene runtime package migration is handled by the separate migrate-scene-runtime-package reviewed bridge; editor productization, nested prefab merge/resolution UX, nested prefab propagation, runtime prefab semantics, source asset import execution, package cooking, renderer/RHI residency, package streaming, public native/RHI handles, Metal readiness, and broad renderer quality remain unsupported or host-gated."
       },
       {
         "id": "create-material-instance",
@@ -3756,7 +3756,7 @@
         ],
         "capabilityGates": [
           {
-            "id": "asset-identity-v2",
+            "id": "asset-identity",
             "source": "authoring-surface",
             "requiredStatus": "ready",
             "notes": "Material references must use stable asset identity rows."
@@ -3858,7 +3858,7 @@
         ],
         "capabilityGates": [
           {
-            "id": "asset-identity-v2",
+            "id": "asset-identity",
             "source": "authoring-surface",
             "requiredStatus": "ready",
             "notes": "Material graph texture references must resolve to stable cooked texture package rows."
@@ -3964,7 +3964,7 @@
         ],
         "capabilityGates": [
           {
-            "id": "asset-identity-v2",
+            "id": "asset-identity",
             "source": "authoring-surface",
             "requiredStatus": "ready",
             "notes": "Stable asset keys, deterministic GameEngine.AssetIdentity projection, and source registry validation are required."
@@ -4076,10 +4076,10 @@
         ],
         "capabilityGates": [
           {
-            "id": "asset-identity-v2",
+            "id": "asset-identity",
             "source": "authoring-surface",
             "requiredStatus": "ready",
-            "notes": "GameEngine.SourceAssetRegistry rows, stable AssetKeyV2 projection, and source registry validation are required."
+            "notes": "GameEngine.SourceAssetRegistry rows, stable AssetKey projection, and source registry validation are required."
           },
           {
             "id": "MK_tools",
@@ -4644,19 +4644,19 @@
         "id": "game-agent-manifest",
         "status": "ready",
         "owner": "schemas/game-agent.schema.json and tools/check-json-contracts.ps1",
-        "notes": "Game manifests expose backend readiness, importer requirements, packaging targets, runtimePackageFiles, runtimeSceneValidationTargets, atlasTilemapAuthoringTargets, prefabScenePackageAuthoringTargets, registeredSourceAssetCookTargets, packageStreamingResidencyTargets, and validation recipes for generated games. runtimeSceneValidationTargets rows are descriptor-only inputs for validate-runtime-scene-package; atlasTilemapAuthoringTargets rows are deterministic data-only 2D tilemap package authoring descriptors; prefabScenePackageAuthoringTargets rows are deterministic 3D Scene/Prefab v2 plus selected SourceAssetRegistry package authoring descriptors; registeredSourceAssetCookTargets rows are descriptor-only cook-registered-source-assets inputs paired to prefab authoring rows with explicit or registry-closure dependency expansion; packageStreamingResidencyTargets rows are selected host-gated safe-point package streaming descriptors and do not add shell commands, runtime source parsing, renderer/RHI residency execution, broad background streaming, arbitrary eviction, editor productization, or native handles."
+        "notes": "Game manifests expose backend readiness, importer requirements, packaging targets, runtimePackageFiles, runtimeSceneValidationTargets, atlasTilemapAuthoringTargets, prefabScenePackageAuthoringTargets, registeredSourceAssetCookTargets, packageStreamingResidencyTargets, and validation recipes for generated games. runtimeSceneValidationTargets rows are descriptor-only inputs for validate-runtime-scene-package; atlasTilemapAuthoringTargets rows are deterministic data-only 2D tilemap package authoring descriptors; prefabScenePackageAuthoringTargets rows are deterministic 3D Scene/Prefab plus selected SourceAssetRegistry package authoring descriptors; registeredSourceAssetCookTargets rows are descriptor-only cook-registered-source-assets inputs paired to prefab authoring rows with explicit or registry-closure dependency expansion; packageStreamingResidencyTargets rows are selected host-gated safe-point package streaming descriptors and do not add shell commands, runtime source parsing, renderer/RHI residency execution, broad background streaming, arbitrary eviction, editor productization, or native handles."
       },
       {
         "id": "editor-core-scene-prefab-material-models",
         "status": "ready",
         "owner": "MK_editor_core and MK_scene",
-        "notes": "GUI-independent v0 authoring models exist, but they are not yet the future stable-id Scene/Component/Prefab Schema v2 command layer."
+        "notes": "GUI-independent v0 authoring models exist, but they are not yet the future stable-id Scene/Component/Prefab Schema command layer."
       },
       {
-        "id": "scene-component-prefab-schema-v2",
+        "id": "scene-component-prefab-schema",
         "status": "ready",
         "owner": "MK_scene",
-        "notes": "Contract-only stable-id scene/component/prefab v2 value APIs, validation, deterministic text IO, stable prefab override path composition, deterministic prefab source provenance rows through SceneNodePrefabSourceV2 / SceneComponentPrefabSourceV2 `prefab_source` text fields, non-mutating stable-id prefab instance refresh planning through ScenePrefabInstanceRefreshPlanV2, ScenePrefabInstanceRefreshRowV2, and plan_scene_prefab_instance_refresh_v2 comparing a selected instance root against PrefabDocumentV2 source_node_id / source_component_id rows, fail-closed duplicate_prefab_source_identity diagnostics for duplicate copied source identities, unsupported_nested_prefab_instance diagnostics for descendant nested prefab roots, unsupported_local_prefab_child / unsupported_local_prefab_component diagnostics for local selected-subtree rows without selected-prefab provenance, and pure value stable-id prefab instance refresh apply through ScenePrefabInstanceRefreshResultV2 and apply_scene_prefab_instance_refresh_v2 are implemented in MK_scene. The value apply preserves matched node/component ids and state, adds deterministic instance_root/refresh/<source-id> rows, removes stale sourced rows, returns source-to-result mappings, and does not create editor actions, implement runtime prefab semantics, or perform nested propagation. Reviewed MK_tools dry-run/apply authoring commands now operate on this contract, instantiate-prefab records source prefab path plus source node/component ids, refresh-prefab-instance wraps the stable-id value apply into a reviewed safe .scene write surface, and the separate migrate-scene-v2-runtime-package surface bridges supported Scene v2 rows into the existing Scene v1 package update helper. A focused command-authored workflow proof now drives apply_source_asset_registration -> apply_registered_source_asset_cook_package -> apply_scene_v2_runtime_package_migration -> execute_runtime_scene_package_validation, including perspective camera and directional light cone-field projection. Source asset registration is ready through GameEngine.SourceAssetRegistry. Editor migration, nested prefab propagation/merge resolution UX, broad/dependent package cooking, and 2D/3D vertical slices remain follow-up work."
+        "notes": "Contract-only stable-id scene/component/prefab v2 value APIs, validation, deterministic text IO, stable prefab override path composition, deterministic prefab source provenance rows through SceneNodePrefabSource / SceneComponentPrefabSource `prefab_source` text fields, non-mutating stable-id prefab instance refresh planning through ScenePrefabInstanceRefreshPlan, ScenePrefabInstanceRefreshRow, and plan_scene_prefab_instance_refresh comparing a selected instance root against PrefabDocument source_node_id / source_component_id rows, fail-closed duplicate_prefab_source_identity diagnostics for duplicate copied source identities, unsupported_nested_prefab_instance diagnostics for descendant nested prefab roots, unsupported_local_prefab_child / unsupported_local_prefab_component diagnostics for local selected-subtree rows without selected-prefab provenance, and pure value stable-id prefab instance refresh apply through ScenePrefabInstanceRefreshResult and apply_scene_prefab_instance_refresh are implemented in MK_scene. The value apply preserves matched node/component ids and state, adds deterministic instance_root/refresh/<source-id> rows, removes stale sourced rows, returns source-to-result mappings, and does not create editor actions, implement runtime prefab semantics, or perform nested propagation. Reviewed MK_tools dry-run/apply authoring commands now operate on this contract, instantiate-prefab records source prefab path plus source node/component ids, refresh-prefab-instance wraps the stable-id value apply into a reviewed safe .scene write surface, and the separate migrate-scene-runtime-package surface bridges supported Scene rows into the existing Scene package update helper. A focused command-authored workflow proof now drives apply_source_asset_registration -> apply_registered_source_asset_cook_package -> apply_scene_runtime_package_migration -> execute_runtime_scene_package_validation, including perspective camera and directional light cone-field projection. Source asset registration is ready through GameEngine.SourceAssetRegistry. Editor migration, nested prefab propagation/merge resolution UX, broad/dependent package cooking, and 2D/3D vertical slices remain follow-up work."
       },
       {
         "id": "runtime-scene-gameplay-binding-v1",
@@ -4752,7 +4752,7 @@
         "id": "asset-placeholder-generation-v1",
         "status": "ready",
         "owner": "MK_tools",
-        "notes": "Asset Placeholder Generation v1 exposes plan_placeholder_asset_bundle and plan_placeholder_asset_cook_package through placeholder_asset_tool.hpp so reviewed engine tooling can derive deterministic first-party placeholder texture, mesh, material, and audio source documents, synchronized GameEngine.SourceAssetRegistry content, changed-file hashes, provenance rows, and registered source cook/package planning through PlaceholderAssetBundleRequest, PlaceholderAssetBundlePlan, PlaceholderAssetCookPackageRequest, PlaceholderAssetCookPackagePlan, PlaceholderAssetChangedFile, PlaceholderAssetProvenanceRow, and PlaceholderAssetDiagnostic. Selected replacement recooks preserve stable AssetKeyV2 rows, source revisions, content hashes, provenance/license rows, existing source registry/package index handoff, and package handoff counters through game.agent.json placeholderAssetPipeline replacementWorkflow rows for sprite, mesh, material, audio, UI, and scene-prop placeholder coverage. Diagnostics fail closed for unsafe registry/source/imported paths, duplicate asset keys, unsupported asset kinds, invalid texture dimensions, and invalid audio/material shapes. This is not an external asset downloader, image/audio generation service, broad source importer execution path, renderer/RHI residency path, package streaming path, game-specific art direction system, native handle surface, or broad generated-game production readiness claim."
+        "notes": "Asset Placeholder Generation v1 exposes plan_placeholder_asset_bundle and plan_placeholder_asset_cook_package through placeholder_asset_tool.hpp so reviewed engine tooling can derive deterministic first-party placeholder texture, mesh, material, and audio source documents, synchronized GameEngine.SourceAssetRegistry content, changed-file hashes, provenance rows, and registered source cook/package planning through PlaceholderAssetBundleRequest, PlaceholderAssetBundlePlan, PlaceholderAssetCookPackageRequest, PlaceholderAssetCookPackagePlan, PlaceholderAssetChangedFile, PlaceholderAssetProvenanceRow, and PlaceholderAssetDiagnostic. Selected replacement recooks preserve stable AssetKey rows, source revisions, content hashes, provenance/license rows, existing source registry/package index handoff, and package handoff counters through game.agent.json placeholderAssetPipeline replacementWorkflow rows for sprite, mesh, material, audio, UI, and scene-prop placeholder coverage. Diagnostics fail closed for unsafe registry/source/imported paths, duplicate asset keys, unsupported asset kinds, invalid texture dimensions, and invalid audio/material shapes. This is not an external asset downloader, image/audio generation service, broad source importer execution path, renderer/RHI residency path, package streaming path, game-specific art direction system, native handle surface, or broad generated-game production readiness claim."
       },
       {
         "id": "sprite-atlas-authoring-v1",
@@ -4767,10 +4767,10 @@
         "notes": "Sprite Batching Renderer v1 exposes SpriteBatchBudgetLane, SpriteBatchBudgetProfileStatus, SpriteBatchBudgetDiagnosticCode, SpriteBatchBudgetDesc, SpriteBatchBudgetLanePlanDesc, SpriteBatchBudgetRow, SpriteBatchBudgetDiagnostic, SpriteBatchBudgetProfile, and plan_sprite_batch_budget_profile so reviewed renderer/gameplay workflows can evaluate world, UI, and effects lane budgets over existing SpriteBatchPlan rows. Diagnostics fail closed for missing plans, invalid budgets, plan diagnostics, sprite budget excess, draw budget excess, and texture-bind budget excess. sample_2d_desktop_runtime_package reports sprite_batch_budget_status, sprite_batch_budget_profiles_ready, sprite_batch_budget_rows, sprite_batch_budget_diagnostics, sprite_batch_budget_total_sprites, sprite_batch_budget_total_draws, sprite_batch_budget_total_texture_binds, per-lane ready counters, and per-lane max budget counters alongside existing sprite_batch_plan_* and native_2d_sprite_batch_* package evidence. This is selected plan/budget/native-execution evidence only; material policy, transparency/sorting quality, high-density performance proof, backend renderer-quality gates, Metal readiness, and broad production sprite batching readiness remain follow-up work."
       },
       {
-        "id": "asset-identity-v2",
+        "id": "asset-identity",
         "status": "ready",
         "owner": "MK_assets",
-        "notes": "Foundation-only Asset Identity v2 authoring/reference surface is ready for the Engine 1.0 identity boundary: GameEngine.AssetIdentity stable keys, deterministic validation, AssetId derivation, text IO, GameEngine.SourceAssetRegistry source registration, plan_asset_identity_placements_v2 production placement rows, Reviewed command-owned apply surfaces, Scene v2 runtime package migration placement_rows, ContentBrowserState Asset Identity labels, SourceAssetRegistryDocumentV1 population through ContentBrowserState::refresh_from, retained content_browser_import.assets key/source labels, GameEngine.Project project.source_registry, refresh_content_browser_from_project_source_registry, visible MK_editor Reload Source Registry loading, audit_runtime_scene_asset_identity runtime-scene provenance rows, and AssetKeyV2 key-first committed game plus tools/new-game.ps1 template references are implemented. Runtime/cooked/render/UI payloads still consume validated AssetId; runtime source registry parsing, renderer/RHI residency, package streaming, native handles, and 2D/3D vertical slices remain outside this identity closeout."
+        "notes": "Foundation-only Asset Identity authoring/reference surface is ready for the Engine 1.0 identity boundary: GameEngine.AssetIdentity stable keys, deterministic validation, AssetId derivation, text IO, GameEngine.SourceAssetRegistry source registration, plan_asset_identity_placements production placement rows, Reviewed command-owned apply surfaces, Scene runtime package migration placement_rows, ContentBrowserState Asset Identity labels, SourceAssetRegistryDocument population through ContentBrowserState::refresh_from, retained content_browser_import.assets key/source labels, GameEngine.Project project.source_registry, refresh_content_browser_from_project_source_registry, visible MK_editor Reload Source Registry loading, audit_runtime_scene_asset_identity runtime-scene provenance rows, and AssetKey key-first committed game plus tools/new-game.ps1 template references are implemented. Runtime/cooked/render/UI payloads still consume validated AssetId; runtime source registry parsing, renderer/RHI residency, package streaming, native handles, and 2D/3D vertical slices remain outside this identity closeout."
       },
       {
         "id": "ui-atlas-metadata-authoring-tooling-v1",

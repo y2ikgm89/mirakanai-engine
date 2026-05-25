@@ -213,7 +213,7 @@ plan_material_graph_production_authoring(const MaterialGraphProductionAuthoringD
     MaterialGraphDesc graph;
     try {
         graph = deserialize_material_graph(desc.material_graph_content);
-        result.hlsl_content = emit_material_graph_reviewed_hlsl_v0(graph);
+        result.hlsl_content = emit_material_graph_reviewed_hlsl(graph);
     } catch (const std::exception& error) {
         add_failure(std::string("material graph HLSL emission failed: ") + error.what());
         return result;

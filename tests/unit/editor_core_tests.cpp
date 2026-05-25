@@ -1109,11 +1109,11 @@ MK_TEST("editor content browser filters sorts and selects assets") {
 }
 
 MK_TEST("editor content browser annotates asset identity rows") {
-    const mirakana::AssetKeyV2 material_key{"assets/materials/player"};
-    const mirakana::AssetKeyV2 pose_key{"assets/animations/player_pose"};
-    const mirakana::AssetKeyV2 texture_key{"assets/textures/player"};
-    const auto material_id = mirakana::asset_id_from_key_v2(material_key);
-    const auto texture_id = mirakana::asset_id_from_key_v2(texture_key);
+    const mirakana::AssetKey material_key{"assets/materials/player"};
+    const mirakana::AssetKey pose_key{"assets/animations/player_pose"};
+    const mirakana::AssetKey texture_key{"assets/textures/player"};
+    const auto material_id = mirakana::asset_id_from_key(material_key);
+    const auto texture_id = mirakana::asset_id_from_key(texture_key);
 
     mirakana::AssetRegistry registry;
     registry.add(mirakana::AssetRecord{
@@ -1121,10 +1121,10 @@ MK_TEST("editor content browser annotates asset identity rows") {
     registry.add(mirakana::AssetRecord{
         .id = material_id, .kind = mirakana::AssetKind::material, .path = "assets/materials/player.material"});
 
-    mirakana::AssetIdentityDocumentV2 identity;
-    identity.assets.push_back(mirakana::AssetIdentityRowV2{
+    mirakana::AssetIdentityDocument identity;
+    identity.assets.push_back(mirakana::AssetIdentityRow{
         .key = material_key, .kind = mirakana::AssetKind::material, .source_path = "source/materials/player.material"});
-    identity.assets.push_back(mirakana::AssetIdentityRowV2{
+    identity.assets.push_back(mirakana::AssetIdentityRow{
         .key = texture_key, .kind = mirakana::AssetKind::texture, .source_path = "source/textures/player.texture"});
 
     mirakana::editor::ContentBrowserState browser;
@@ -1153,27 +1153,27 @@ MK_TEST("editor content browser annotates asset identity rows") {
 }
 
 MK_TEST("editor content browser populates source registry rows") {
-    const mirakana::AssetKeyV2 material_key{"assets/materials/player"};
-    const mirakana::AssetKeyV2 texture_key{"assets/textures/player"};
-    const auto material_id = mirakana::asset_id_from_key_v2(material_key);
-    const auto texture_id = mirakana::asset_id_from_key_v2(texture_key);
+    const mirakana::AssetKey material_key{"assets/materials/player"};
+    const mirakana::AssetKey texture_key{"assets/textures/player"};
+    const auto material_id = mirakana::asset_id_from_key(material_key);
+    const auto texture_id = mirakana::asset_id_from_key(texture_key);
 
-    mirakana::SourceAssetRegistryDocumentV1 source_registry;
-    source_registry.assets.push_back(mirakana::SourceAssetRegistryRowV1{
+    mirakana::SourceAssetRegistryDocument source_registry;
+    source_registry.assets.push_back(mirakana::SourceAssetRegistryRow{
         .key = texture_key,
         .kind = mirakana::AssetKind::texture,
         .source_path = "source/textures/player.png",
-        .source_format = std::string{mirakana::expected_source_asset_format_v1(mirakana::AssetKind::texture)},
+        .source_format = std::string{mirakana::expected_source_asset_format(mirakana::AssetKind::texture)},
         .imported_path = "assets/textures/player.texture",
     });
-    source_registry.assets.push_back(mirakana::SourceAssetRegistryRowV1{
+    source_registry.assets.push_back(mirakana::SourceAssetRegistryRow{
         .key = material_key,
         .kind = mirakana::AssetKind::material,
         .source_path = "source/materials/player.material",
-        .source_format = std::string{mirakana::expected_source_asset_format_v1(mirakana::AssetKind::material)},
+        .source_format = std::string{mirakana::expected_source_asset_format(mirakana::AssetKind::material)},
         .imported_path = "assets/materials/player.material",
-        .dependencies = {mirakana::SourceAssetDependencyRowV1{.kind = mirakana::AssetDependencyKind::material_texture,
-                                                              .key = texture_key}},
+        .dependencies = {mirakana::SourceAssetDependencyRow{.kind = mirakana::AssetDependencyKind::material_texture,
+                                                            .key = texture_key}},
     });
     const auto source_registry_diagnostics = mirakana::validate_source_asset_registry_document(source_registry);
     MK_REQUIRE(source_registry_diagnostics.empty());
@@ -1239,36 +1239,36 @@ MK_TEST("editor content browser populates source registry rows") {
 }
 
 MK_TEST("editor source registry browser refresh loads project registry into content browser") {
-    const mirakana::AssetKeyV2 material_key{"assets/materials/player"};
-    const mirakana::AssetKeyV2 pose_key{"assets/animations/player_pose"};
-    const mirakana::AssetKeyV2 texture_key{"assets/textures/player"};
-    const auto material_id = mirakana::asset_id_from_key_v2(material_key);
-    const auto pose_id = mirakana::asset_id_from_key_v2(pose_key);
-    const auto texture_id = mirakana::asset_id_from_key_v2(texture_key);
+    const mirakana::AssetKey material_key{"assets/materials/player"};
+    const mirakana::AssetKey pose_key{"assets/animations/player_pose"};
+    const mirakana::AssetKey texture_key{"assets/textures/player"};
+    const auto material_id = mirakana::asset_id_from_key(material_key);
+    const auto pose_id = mirakana::asset_id_from_key(pose_key);
+    const auto texture_id = mirakana::asset_id_from_key(texture_key);
 
-    mirakana::SourceAssetRegistryDocumentV1 source_registry;
-    source_registry.assets.push_back(mirakana::SourceAssetRegistryRowV1{
+    mirakana::SourceAssetRegistryDocument source_registry;
+    source_registry.assets.push_back(mirakana::SourceAssetRegistryRow{
         .key = texture_key,
         .kind = mirakana::AssetKind::texture,
         .source_path = "source/textures/player.texture",
-        .source_format = std::string{mirakana::expected_source_asset_format_v1(mirakana::AssetKind::texture)},
+        .source_format = std::string{mirakana::expected_source_asset_format(mirakana::AssetKind::texture)},
         .imported_path = "assets/textures/player.texture",
     });
-    source_registry.assets.push_back(mirakana::SourceAssetRegistryRowV1{
+    source_registry.assets.push_back(mirakana::SourceAssetRegistryRow{
         .key = material_key,
         .kind = mirakana::AssetKind::material,
         .source_path = "source/materials/player.material",
-        .source_format = std::string{mirakana::expected_source_asset_format_v1(mirakana::AssetKind::material)},
+        .source_format = std::string{mirakana::expected_source_asset_format(mirakana::AssetKind::material)},
         .imported_path = "assets/materials/player.material",
-        .dependencies = {mirakana::SourceAssetDependencyRowV1{.kind = mirakana::AssetDependencyKind::material_texture,
-                                                              .key = texture_key}},
+        .dependencies = {mirakana::SourceAssetDependencyRow{.kind = mirakana::AssetDependencyKind::material_texture,
+                                                            .key = texture_key}},
     });
-    source_registry.assets.push_back(mirakana::SourceAssetRegistryRowV1{
+    source_registry.assets.push_back(mirakana::SourceAssetRegistryRow{
         .key = pose_key,
         .kind = mirakana::AssetKind::animation_quaternion_clip,
         .source_path = "source/animations/player_pose.animation_quaternion_clip_source",
         .source_format =
-            std::string{mirakana::expected_source_asset_format_v1(mirakana::AssetKind::animation_quaternion_clip)},
+            std::string{mirakana::expected_source_asset_format(mirakana::AssetKind::animation_quaternion_clip)},
         .imported_path = "assets/animations/player_pose.animation_quaternion_clip",
     });
 
@@ -2550,14 +2550,14 @@ MK_TEST("editor content browser import panel model summarizes assets imports and
     registry.add(
         mirakana::AssetRecord{.id = audio_id, .kind = mirakana::AssetKind::audio, .path = "assets/audio/hit.audio"});
 
-    mirakana::AssetIdentityDocumentV2 identity;
-    identity.assets.push_back(mirakana::AssetIdentityRowV2{
-        .key = mirakana::AssetKeyV2{"textures/player"},
+    mirakana::AssetIdentityDocument identity;
+    identity.assets.push_back(mirakana::AssetIdentityRow{
+        .key = mirakana::AssetKey{"textures/player"},
         .kind = mirakana::AssetKind::texture,
         .source_path = "source/textures/player.texture-source",
     });
-    identity.assets.push_back(mirakana::AssetIdentityRowV2{
-        .key = mirakana::AssetKeyV2{"materials/player"},
+    identity.assets.push_back(mirakana::AssetIdentityRow{
+        .key = mirakana::AssetKey{"materials/player"},
         .kind = mirakana::AssetKind::material,
         .source_path = "source/materials/player.material",
     });
@@ -2692,14 +2692,14 @@ MK_TEST("editor content browser import panel retained ui exposes all diagnostic 
     registry.add(mirakana::AssetRecord{
         .id = material_id, .kind = mirakana::AssetKind::material, .path = "assets/materials/player.material"});
 
-    mirakana::AssetIdentityDocumentV2 identity;
-    identity.assets.push_back(mirakana::AssetIdentityRowV2{
-        .key = mirakana::AssetKeyV2{"textures/player"},
+    mirakana::AssetIdentityDocument identity;
+    identity.assets.push_back(mirakana::AssetIdentityRow{
+        .key = mirakana::AssetKey{"textures/player"},
         .kind = mirakana::AssetKind::texture,
         .source_path = "source/textures/player.texture-source",
     });
-    identity.assets.push_back(mirakana::AssetIdentityRowV2{
-        .key = mirakana::AssetKeyV2{"materials/player"},
+    identity.assets.push_back(mirakana::AssetIdentityRow{
+        .key = mirakana::AssetKey{"materials/player"},
         .kind = mirakana::AssetKind::material,
         .source_path = "source/materials/player.material",
     });
@@ -9611,12 +9611,11 @@ MK_TEST("editor playtest package review model rejects missing validation targets
 }
 
 MK_TEST("editor runtime scene package validation execution records reviewed evidence") {
-    const mirakana::AssetKeyV2 scene_key{"assets/scenes/validation-level"};
-    const auto scene_asset = mirakana::asset_id_from_key_v2(scene_key);
-    const auto mesh_asset = mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{"assets/meshes/validation-cube"});
-    const auto material_asset =
-        mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{"assets/materials/validation-hero"});
-    const auto sprite_asset = mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{"assets/textures/validation-sprite"});
+    const mirakana::AssetKey scene_key{"assets/scenes/validation-level"};
+    const auto scene_asset = mirakana::asset_id_from_key(scene_key);
+    const auto mesh_asset = mirakana::asset_id_from_key(mirakana::AssetKey{"assets/meshes/validation-cube"});
+    const auto material_asset = mirakana::asset_id_from_key(mirakana::AssetKey{"assets/materials/validation-hero"});
+    const auto sprite_asset = mirakana::asset_id_from_key(mirakana::AssetKey{"assets/textures/validation-sprite"});
 
     mirakana::Scene scene{"Validated Runtime Level"};
     const auto root = scene.create_node("Root");

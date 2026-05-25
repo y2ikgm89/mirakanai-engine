@@ -13,7 +13,7 @@ namespace {
 
 void add_diagnostic(AssetRuntimePackageHotReloadReplacementResult& result,
                     AssetRuntimePackageHotReloadReplacementDiagnosticPhase phase, AssetId asset,
-                    runtime::RuntimeResidentPackageMountIdV2 mount, std::string path, std::string code,
+                    runtime::RuntimeResidentPackageMountId mount, std::string path, std::string code,
                     std::string message) {
     result.diagnostics.push_back(AssetRuntimePackageHotReloadReplacementDiagnostic{
         .phase = phase,
@@ -56,7 +56,7 @@ void add_runtime_replacement_diagnostics(AssetRuntimePackageHotReloadReplacement
 
 void add_watch_diagnostic(AssetRuntimePackageHotReloadRegisteredAssetWatchTickResult& result,
                           AssetRuntimePackageHotReloadRegisteredAssetWatchTickDiagnosticPhase phase, AssetId asset,
-                          runtime::RuntimeResidentPackageMountIdV2 mount, std::string path, std::string code,
+                          runtime::RuntimeResidentPackageMountId mount, std::string path, std::string code,
                           std::string message) {
     result.diagnostics.push_back(AssetRuntimePackageHotReloadRegisteredAssetWatchTickDiagnostic{
         .phase = phase,
@@ -102,10 +102,10 @@ watch_status_for_replacement_failure(AssetRuntimePackageHotReloadReplacementStat
     return AssetRuntimePackageHotReloadRegisteredAssetWatchTickStatus::runtime_replacement_failed;
 }
 
-[[nodiscard]] runtime::RuntimePackageHotReloadRecookReplacementDescV2
+[[nodiscard]] runtime::RuntimePackageHotReloadRecookReplacementDesc
 make_runtime_replacement_desc(const AssetRuntimePackageHotReloadRuntimeReplacementDesc& desc,
                               std::vector<AssetHotReloadApplyResult> apply_results) {
-    return runtime::RuntimePackageHotReloadRecookReplacementDescV2{
+    return runtime::RuntimePackageHotReloadRecookReplacementDesc{
         .recook_apply_results = std::move(apply_results),
         .candidates = desc.candidates,
         .discovery = desc.discovery,
@@ -121,7 +121,7 @@ make_runtime_replacement_desc(const AssetRuntimePackageHotReloadRuntimeReplaceme
 
 [[nodiscard]] std::vector<AssetId>
 selected_assets_for_runtime_candidate(const std::vector<AssetHotReloadApplyResult>& apply_results,
-                                      const runtime::RuntimePackageHotReloadCandidateReviewRowV2& selected_candidate) {
+                                      const runtime::RuntimePackageHotReloadCandidateReviewRow& selected_candidate) {
     std::unordered_set<std::string> selected_paths;
     selected_paths.reserve(selected_candidate.matched_changes.size());
     for (const auto& change : selected_candidate.matched_changes) {
@@ -168,7 +168,7 @@ bool AssetRuntimePackageHotReloadRegisteredAssetWatchTickResult::succeeded() con
 
 AssetRuntimePackageHotReloadReplacementResult execute_asset_runtime_package_hot_reload_replacement_safe_point(
     IFileSystem& filesystem, AssetRuntimeReplacementState& replacements,
-    runtime::RuntimeResidentPackageMountSetV2& mount_set, runtime::RuntimeResidentCatalogCacheV2& catalog_cache,
+    runtime::RuntimeResidentPackageMountSet& mount_set, runtime::RuntimeResidentCatalogCache& catalog_cache,
     const AssetRuntimePackageHotReloadReplacementDesc& desc) {
     AssetRuntimePackageHotReloadReplacementResult result;
     result.invoked_file_watch = false;
@@ -189,15 +189,15 @@ AssetRuntimePackageHotReloadReplacementResult execute_asset_runtime_package_hot_
         return result;
     }
 
-    const auto review = runtime::plan_runtime_package_hot_reload_recook_change_review_v2(
-        runtime::RuntimePackageHotReloadRecookChangeReviewDescV2{
+    const auto review = runtime::plan_runtime_package_hot_reload_recook_change_review(
+        runtime::RuntimePackageHotReloadRecookChangeReviewDesc{
             .recook_apply_results = result.recook.apply_results,
             .candidates = desc.runtime_replacement.candidates,
         });
     std::vector<AssetId> selected_assets;
     if (review.succeeded()) {
         const auto selected = std::ranges::find_if(
-            review.candidate_review.rows, [&desc](const runtime::RuntimePackageHotReloadCandidateReviewRowV2& row) {
+            review.candidate_review.rows, [&desc](const runtime::RuntimePackageHotReloadCandidateReviewRow& row) {
                 return row.candidate.package_index_path == desc.runtime_replacement.selected_package_index_path;
             });
         if (selected != review.candidate_review.rows.end()) {
@@ -216,7 +216,7 @@ AssetRuntimePackageHotReloadReplacementResult execute_asset_runtime_package_hot_
     auto runtime_replacement_desc =
         make_runtime_replacement_desc(desc.runtime_replacement, result.recook.apply_results);
     result.invoked_runtime_replacement = true;
-    result.runtime_replacement = runtime::commit_runtime_package_hot_reload_recook_replacement_v2(
+    result.runtime_replacement = runtime::commit_runtime_package_hot_reload_recook_replacement(
         filesystem, mount_set, catalog_cache, runtime_replacement_desc);
 
     if (!result.runtime_replacement.succeeded()) {
@@ -235,7 +235,7 @@ AssetRuntimePackageHotReloadRegisteredAssetWatchTickResult
 execute_asset_runtime_package_hot_reload_registered_asset_watch_tick_safe_point(
     IFileSystem& filesystem, const AssetRegistry& assets, const AssetDependencyGraph& dependencies,
     AssetRuntimePackageHotReloadRegisteredAssetWatchTickState& tick_state, AssetRuntimeReplacementState& replacements,
-    runtime::RuntimeResidentPackageMountSetV2& mount_set, runtime::RuntimeResidentCatalogCacheV2& catalog_cache,
+    runtime::RuntimeResidentPackageMountSet& mount_set, runtime::RuntimeResidentCatalogCache& catalog_cache,
     const AssetRuntimePackageHotReloadRegisteredAssetWatchTickDesc& desc) {
     AssetRuntimePackageHotReloadRegisteredAssetWatchTickResult result;
     result.invoked_scan = true;

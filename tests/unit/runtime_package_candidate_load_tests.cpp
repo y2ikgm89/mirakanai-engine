@@ -60,8 +60,8 @@ class CountingFileSystem final : public mirakana::IFileSystem {
     bool fail_read_text_{false};
 };
 
-[[nodiscard]] mirakana::runtime::RuntimePackageIndexDiscoveryCandidateV2 make_candidate() {
-    return mirakana::runtime::RuntimePackageIndexDiscoveryCandidateV2{
+[[nodiscard]] mirakana::runtime::RuntimePackageIndexDiscoveryCandidate make_candidate() {
+    return mirakana::runtime::RuntimePackageIndexDiscoveryCandidate{
         .package_index_path = "runtime/packages/main.geindex",
         .content_root = "runtime",
         .label = "packages/main",
@@ -86,10 +86,10 @@ MK_TEST("runtime package candidate load reads selected candidate into typed load
     filesystem.write_text("runtime/packages/main.geindex", mirakana::serialize_asset_cooked_package_index(index));
     filesystem.write_text("runtime/textures/player.texture", payload);
 
-    const auto result = mirakana::runtime::load_runtime_package_candidate_v2(filesystem, make_candidate());
+    const auto result = mirakana::runtime::load_runtime_package_candidate(filesystem, make_candidate());
 
     MK_REQUIRE(result.succeeded());
-    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageCandidateLoadStatusV2::loaded);
+    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageCandidateLoadStatus::loaded);
     MK_REQUIRE(result.candidate.package_index_path == "runtime/packages/main.geindex");
     MK_REQUIRE(result.package_desc.index_path == "runtime/packages/main.geindex");
     MK_REQUIRE(result.package_desc.content_root == "runtime");
@@ -109,28 +109,28 @@ MK_TEST("runtime package candidate load rejects unsafe candidates before reading
     CountingFileSystem filesystem;
     filesystem.write_text("runtime/packages/main.geindex", "not read");
 
-    const auto bad_index = mirakana::runtime::load_runtime_package_candidate_v2(
-        filesystem, mirakana::runtime::RuntimePackageIndexDiscoveryCandidateV2{
+    const auto bad_index = mirakana::runtime::load_runtime_package_candidate(
+        filesystem, mirakana::runtime::RuntimePackageIndexDiscoveryCandidate{
                         .package_index_path = "runtime/../escape.geindex",
                         .content_root = "runtime",
                         .label = "escape",
                     });
-    const auto bad_content_root = mirakana::runtime::load_runtime_package_candidate_v2(
-        filesystem, mirakana::runtime::RuntimePackageIndexDiscoveryCandidateV2{
+    const auto bad_content_root = mirakana::runtime::load_runtime_package_candidate(
+        filesystem, mirakana::runtime::RuntimePackageIndexDiscoveryCandidate{
                         .package_index_path = "runtime/packages/main.geindex",
                         .content_root = "../runtime",
                         .label = "packages/main",
                     });
-    const auto bad_label = mirakana::runtime::load_runtime_package_candidate_v2(
-        filesystem, mirakana::runtime::RuntimePackageIndexDiscoveryCandidateV2{
+    const auto bad_label = mirakana::runtime::load_runtime_package_candidate(
+        filesystem, mirakana::runtime::RuntimePackageIndexDiscoveryCandidate{
                         .package_index_path = "runtime/packages/main.geindex",
                         .content_root = "runtime",
                         .label = "",
                     });
 
-    MK_REQUIRE(bad_index.status == mirakana::runtime::RuntimePackageCandidateLoadStatusV2::invalid_candidate);
-    MK_REQUIRE(bad_content_root.status == mirakana::runtime::RuntimePackageCandidateLoadStatusV2::invalid_candidate);
-    MK_REQUIRE(bad_label.status == mirakana::runtime::RuntimePackageCandidateLoadStatusV2::invalid_candidate);
+    MK_REQUIRE(bad_index.status == mirakana::runtime::RuntimePackageCandidateLoadStatus::invalid_candidate);
+    MK_REQUIRE(bad_content_root.status == mirakana::runtime::RuntimePackageCandidateLoadStatus::invalid_candidate);
+    MK_REQUIRE(bad_label.status == mirakana::runtime::RuntimePackageCandidateLoadStatus::invalid_candidate);
     MK_REQUIRE(bad_index.diagnostics.size() == 1);
     MK_REQUIRE(bad_index.diagnostics[0].code == "invalid-package-index-path");
     MK_REQUIRE(bad_content_root.diagnostics[0].code == "invalid-content-root");
@@ -159,10 +159,10 @@ MK_TEST("runtime package candidate load reports package load failures without pa
                                                                   {});
     filesystem.write_text("runtime/packages/main.geindex", mirakana::serialize_asset_cooked_package_index(index));
 
-    const auto result = mirakana::runtime::load_runtime_package_candidate_v2(filesystem, make_candidate());
+    const auto result = mirakana::runtime::load_runtime_package_candidate(filesystem, make_candidate());
 
     MK_REQUIRE(!result.succeeded());
-    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageCandidateLoadStatusV2::package_load_failed);
+    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageCandidateLoadStatus::package_load_failed);
     MK_REQUIRE(result.invoked_load);
     MK_REQUIRE(result.loaded_package.package.empty());
     MK_REQUIRE(result.loaded_package.failures.size() == 1);
@@ -176,10 +176,10 @@ MK_TEST("runtime package candidate load converts invalid package index text to d
     CountingFileSystem filesystem;
     filesystem.write_text("runtime/packages/main.geindex", "not a cooked package index");
 
-    const auto result = mirakana::runtime::load_runtime_package_candidate_v2(filesystem, make_candidate());
+    const auto result = mirakana::runtime::load_runtime_package_candidate(filesystem, make_candidate());
 
     MK_REQUIRE(!result.succeeded());
-    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageCandidateLoadStatusV2::package_load_failed);
+    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageCandidateLoadStatus::package_load_failed);
     MK_REQUIRE(result.invoked_load);
     MK_REQUIRE(result.loaded_package.package.empty());
     MK_REQUIRE(result.diagnostics.size() == 1);
@@ -192,10 +192,10 @@ MK_TEST("runtime package candidate load reports filesystem read exceptions witho
     filesystem.write_text("runtime/packages/main.geindex", "not read");
     filesystem.fail_read_text(true);
 
-    const auto result = mirakana::runtime::load_runtime_package_candidate_v2(filesystem, make_candidate());
+    const auto result = mirakana::runtime::load_runtime_package_candidate(filesystem, make_candidate());
 
     MK_REQUIRE(!result.succeeded());
-    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageCandidateLoadStatusV2::read_failed);
+    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageCandidateLoadStatus::read_failed);
     MK_REQUIRE(result.invoked_load);
     MK_REQUIRE(result.loaded_package.package.empty());
     MK_REQUIRE(result.diagnostics.size() == 1);

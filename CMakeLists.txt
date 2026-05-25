@@ -438,13 +438,13 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_runtime_scene_tests)
     add_test(NAME MK_runtime_scene_tests COMMAND MK_runtime_scene_tests)
 
-    add_executable(MK_scene_schema_v2_tests
-        tests/unit/scene_schema_v2_tests.cpp
+    add_executable(MK_scene_schema_tests
+        tests/unit/scene_schema_tests.cpp
     )
-    target_link_libraries(MK_scene_schema_v2_tests PRIVATE MK_scene)
-    target_include_directories(MK_scene_schema_v2_tests PRIVATE tests)
-    MK_apply_common_target_options(MK_scene_schema_v2_tests)
-    add_test(NAME MK_scene_schema_v2_tests COMMAND MK_scene_schema_v2_tests)
+    target_link_libraries(MK_scene_schema_tests PRIVATE MK_scene)
+    target_include_directories(MK_scene_schema_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_scene_schema_tests)
+    add_test(NAME MK_scene_schema_tests COMMAND MK_scene_schema_tests)
 
     add_executable(MK_playable_2d_tests
         tests/unit/playable_2d_tests.cpp

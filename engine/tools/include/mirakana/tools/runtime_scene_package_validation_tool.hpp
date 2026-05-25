@@ -30,7 +30,7 @@ struct RuntimeScenePackageValidationReference {
 struct RuntimeScenePackageValidationSummary {
     std::string package_index_path;
     std::string content_root;
-    AssetKeyV2 scene_asset_key;
+    AssetKey scene_asset_key;
     AssetId scene_asset;
     std::uint64_t package_record_count{0};
     std::string scene_name;
@@ -43,7 +43,7 @@ struct RuntimeScenePackageValidationDiagnostic {
     std::string code;
     std::string message;
     std::string path;
-    AssetKeyV2 scene_asset_key;
+    AssetKey scene_asset_key;
     AssetId asset;
     SceneNodeId node;
     std::string reference_kind;
@@ -59,7 +59,7 @@ struct RuntimeScenePackageValidationRequest {
 
     std::string package_index_path;
     std::string content_root;
-    AssetKeyV2 scene_asset_key;
+    AssetKey scene_asset_key;
     bool validate_asset_references{true};
     bool require_unique_node_names{false};
 

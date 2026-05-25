@@ -22,7 +22,7 @@ namespace {
 
 [[nodiscard]] std::vector<std::string> default_unsupported_gap_ids() {
     return {
-        "runtime-resource-v2",
+        "runtime-resource",
         "renderer-rhi-resource-foundation",
         "editor-productization",
         "3d-playable-vertical-slice",
@@ -103,7 +103,7 @@ namespace {
 }
 
 void add_diagnostic(std::vector<RuntimeScenePackageValidationDiagnostic>& diagnostics, std::string code,
-                    std::string message, std::string path = {}, AssetKeyV2 scene_asset_key = {}, AssetId asset = {},
+                    std::string message, std::string path = {}, AssetKey scene_asset_key = {}, AssetId asset = {},
                     SceneNodeId node = {}, std::string reference_kind = {},
                     AssetKind expected_kind = AssetKind::unknown, AssetKind actual_kind = AssetKind::unknown,
                     std::string unsupported_gap_id = {}, std::string validation_recipe = {}) {
@@ -165,17 +165,16 @@ void validate_claim(std::vector<RuntimeScenePackageValidationDiagnostic>& diagno
 void validate_unsupported_claims(std::vector<RuntimeScenePackageValidationDiagnostic>& diagnostics,
                                  const RuntimeScenePackageValidationRequest& request) {
     validate_claim(diagnostics, request.package_cooking, "unsupported_package_cooking",
-                   "package cooking is not supported by runtime scene package validation", "runtime-resource-v2");
+                   "package cooking is not supported by runtime scene package validation", "runtime-resource");
     validate_claim(diagnostics, request.runtime_source_parsing, "unsupported_runtime_source_parsing",
-                   "runtime source parsing is not supported by runtime scene package validation",
-                   "runtime-resource-v2");
+                   "runtime source parsing is not supported by runtime scene package validation", "runtime-resource");
     validate_claim(diagnostics, request.external_importer_execution, "unsupported_external_importer_execution",
                    "external importer execution is not supported by runtime scene package validation", {});
     validate_claim(diagnostics, request.renderer_rhi_residency, "unsupported_renderer_rhi_residency",
                    "renderer/RHI residency is not supported by runtime scene package validation",
                    "renderer-rhi-resource-foundation");
     validate_claim(diagnostics, request.package_streaming, "unsupported_package_streaming",
-                   "package streaming is not supported by runtime scene package validation", "runtime-resource-v2");
+                   "package streaming is not supported by runtime scene package validation", "runtime-resource");
     validate_claim(diagnostics, request.material_graph, "unsupported_material_graph",
                    "material graph is not supported by runtime scene package validation", "3d-playable-vertical-slice");
     validate_claim(diagnostics, request.shader_graph, "unsupported_shader_graph",
@@ -235,7 +234,7 @@ void validate_request_shape(std::vector<RuntimeScenePackageValidationDiagnostic>
                        request.package_index_path, request.scene_asset_key);
     } else if (!is_valid_asset_key(request.scene_asset_key.value)) {
         add_diagnostic(diagnostics, "invalid_scene_asset_key",
-                       "scene asset key must be a valid AssetKeyV2 for runtime scene package validation",
+                       "scene asset key must be a valid AssetKey for runtime scene package validation",
                        request.package_index_path, request.scene_asset_key);
     }
 }
@@ -326,7 +325,7 @@ make_base_result(const RuntimeScenePackageValidationRequest& request) {
     result.summary.content_root = request.content_root;
     result.summary.scene_asset_key = request.scene_asset_key;
     if (!request.scene_asset_key.value.empty() && is_valid_asset_key(request.scene_asset_key.value)) {
-        result.summary.scene_asset = asset_id_from_key_v2(request.scene_asset_key);
+        result.summary.scene_asset = asset_id_from_key(request.scene_asset_key);
     }
     return result;
 }

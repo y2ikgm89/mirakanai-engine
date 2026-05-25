@@ -4,7 +4,7 @@
 #pragma once
 
 #include "mirakana/platform/filesystem.hpp"
-#include "mirakana/scene/schema_v2.hpp"
+#include "mirakana/scene/schema.hpp"
 
 #include <cstdint>
 #include <string>
@@ -53,11 +53,11 @@ struct ScenePrefabAuthoringRequest {
 
     std::string scene_path;
     std::string scene_content;
-    SceneDocumentV2 scene;
+    SceneDocument scene;
 
     std::string prefab_path;
     std::string prefab_content;
-    PrefabDocumentV2 prefab;
+    PrefabDocument prefab;
 
     AuthoringId node_id;
     std::string node_name;
@@ -67,7 +67,7 @@ struct ScenePrefabAuthoringRequest {
     AuthoringId component_id;
     AuthoringId component_node_id;
     SceneComponentTypeId component_type;
-    std::vector<SceneComponentPropertyV2> component_properties;
+    std::vector<SceneComponentProperty> component_properties;
     std::string component_payload_format{"properties"};
 
     std::string instance_id_prefix;

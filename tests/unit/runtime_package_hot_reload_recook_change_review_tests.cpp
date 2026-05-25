@@ -13,9 +13,9 @@
 
 namespace {
 
-[[nodiscard]] mirakana::runtime::RuntimePackageIndexDiscoveryCandidateV2
+[[nodiscard]] mirakana::runtime::RuntimePackageIndexDiscoveryCandidate
 make_candidate(std::string index_path, std::string content_root, std::string label) {
-    return mirakana::runtime::RuntimePackageIndexDiscoveryCandidateV2{
+    return mirakana::runtime::RuntimePackageIndexDiscoveryCandidate{
         .package_index_path = std::move(index_path),
         .content_root = std::move(content_root),
         .label = std::move(label),
@@ -35,9 +35,9 @@ make_candidate(std::string index_path, std::string content_root, std::string lab
     };
 }
 
-[[nodiscard]] bool has_matched_change(const mirakana::runtime::RuntimePackageHotReloadCandidateReviewResultV2& result,
+[[nodiscard]] bool has_matched_change(const mirakana::runtime::RuntimePackageHotReloadCandidateReviewResult& result,
                                       std::string_view path,
-                                      mirakana::runtime::RuntimePackageHotReloadCandidateReviewMatchKindV2 kind) {
+                                      mirakana::runtime::RuntimePackageHotReloadCandidateReviewMatchKind kind) {
     for (const auto& row : result.rows) {
         for (const auto& change : row.matched_changes) {
             if (change.path == path && change.kind == kind) {
@@ -51,8 +51,8 @@ make_candidate(std::string index_path, std::string content_root, std::string lab
 } // namespace
 
 MK_TEST("runtime package hot reload recook change review maps staged and applied recook outputs") {
-    const auto result = mirakana::runtime::plan_runtime_package_hot_reload_recook_change_review_v2(
-        mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewDescV2{
+    const auto result = mirakana::runtime::plan_runtime_package_hot_reload_recook_change_review(
+        mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewDesc{
             .recook_apply_results =
                 {
                     make_recook_result(mirakana::AssetHotReloadApplyResultKind::staged, 11, "runtime/ui/hud.material"),
@@ -68,7 +68,7 @@ MK_TEST("runtime package hot reload recook change review maps staged and applied
         });
 
     MK_REQUIRE(result.succeeded());
-    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewStatusV2::review_ready);
+    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewStatus::review_ready);
     MK_REQUIRE(result.recook_apply_result_count == 3);
     MK_REQUIRE(result.staged_recook_change_count == 2);
     MK_REQUIRE(result.applied_recook_change_count == 1);
@@ -77,9 +77,9 @@ MK_TEST("runtime package hot reload recook change review maps staged and applied
     MK_REQUIRE(result.candidate_review.succeeded());
     MK_REQUIRE(result.candidate_review.rows.size() == 2);
     MK_REQUIRE(has_matched_change(result.candidate_review, "runtime/ui/hud.material",
-                                  mirakana::runtime::RuntimePackageHotReloadCandidateReviewMatchKindV2::content));
+                                  mirakana::runtime::RuntimePackageHotReloadCandidateReviewMatchKind::content));
     MK_REQUIRE(has_matched_change(result.candidate_review, "runtime/packages/characters.geindex",
-                                  mirakana::runtime::RuntimePackageHotReloadCandidateReviewMatchKindV2::package_index));
+                                  mirakana::runtime::RuntimePackageHotReloadCandidateReviewMatchKind::package_index));
     MK_REQUIRE(result.diagnostics.empty());
     MK_REQUIRE(result.invoked_candidate_review);
     MK_REQUIRE(!result.invoked_file_watch);
@@ -90,8 +90,8 @@ MK_TEST("runtime package hot reload recook change review maps staged and applied
 }
 
 MK_TEST("runtime package hot reload recook change review blocks failed recook rows before candidate review") {
-    const auto result = mirakana::runtime::plan_runtime_package_hot_reload_recook_change_review_v2(
-        mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewDescV2{
+    const auto result = mirakana::runtime::plan_runtime_package_hot_reload_recook_change_review(
+        mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewDesc{
             .recook_apply_results =
                 {
                     make_recook_result(mirakana::AssetHotReloadApplyResultKind::failed_rolled_back, 11,
@@ -105,14 +105,14 @@ MK_TEST("runtime package hot reload recook change review blocks failed recook ro
 
     MK_REQUIRE(!result.succeeded());
     MK_REQUIRE(result.status ==
-               mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewStatusV2::failed_recook_apply_result);
+               mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewStatus::failed_recook_apply_result);
     MK_REQUIRE(result.recook_apply_result_count == 1);
     MK_REQUIRE(result.failed_recook_apply_result_count == 1);
     MK_REQUIRE(result.accepted_recook_change_count == 0);
     MK_REQUIRE(result.candidate_review.rows.empty());
     MK_REQUIRE(result.diagnostics.size() == 1);
     MK_REQUIRE(result.diagnostics[0].phase ==
-               mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewDiagnosticPhaseV2::recook_apply_result);
+               mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewDiagnosticPhase::recook_apply_result);
     MK_REQUIRE(result.diagnostics[0].asset.value == 11);
     MK_REQUIRE(result.diagnostics[0].path == "runtime/ui/hud.material");
     MK_REQUIRE(result.diagnostics[0].code == "recook-failed");
@@ -122,8 +122,8 @@ MK_TEST("runtime package hot reload recook change review blocks failed recook ro
 }
 
 MK_TEST("runtime package hot reload recook change review rejects invalid recook rows before candidate review") {
-    const auto unknown_kind = mirakana::runtime::plan_runtime_package_hot_reload_recook_change_review_v2(
-        mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewDescV2{
+    const auto unknown_kind = mirakana::runtime::plan_runtime_package_hot_reload_recook_change_review(
+        mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewDesc{
             .recook_apply_results =
                 {
                     make_recook_result(mirakana::AssetHotReloadApplyResultKind::unknown, 11, "runtime/ui/hud.material"),
@@ -136,13 +136,13 @@ MK_TEST("runtime package hot reload recook change review rejects invalid recook 
 
     MK_REQUIRE(!unknown_kind.succeeded());
     MK_REQUIRE(unknown_kind.status ==
-               mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewStatusV2::invalid_recook_apply_result);
+               mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewStatus::invalid_recook_apply_result);
     MK_REQUIRE(unknown_kind.diagnostics.size() == 1);
     MK_REQUIRE(unknown_kind.diagnostics[0].code == "invalid-recook-result-kind");
     MK_REQUIRE(!unknown_kind.invoked_candidate_review);
 
-    const auto out_of_range_kind = mirakana::runtime::plan_runtime_package_hot_reload_recook_change_review_v2(
-        mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewDescV2{
+    const auto out_of_range_kind = mirakana::runtime::plan_runtime_package_hot_reload_recook_change_review(
+        mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewDesc{
             .recook_apply_results =
                 {
                     make_recook_result(static_cast<mirakana::AssetHotReloadApplyResultKind>(255), 11,
@@ -156,13 +156,13 @@ MK_TEST("runtime package hot reload recook change review rejects invalid recook 
 
     MK_REQUIRE(!out_of_range_kind.succeeded());
     MK_REQUIRE(out_of_range_kind.status ==
-               mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewStatusV2::invalid_recook_apply_result);
+               mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewStatus::invalid_recook_apply_result);
     MK_REQUIRE(out_of_range_kind.diagnostics.size() == 1);
     MK_REQUIRE(out_of_range_kind.diagnostics[0].code == "invalid-recook-result-kind");
     MK_REQUIRE(!out_of_range_kind.invoked_candidate_review);
 
-    const auto invalid_path = mirakana::runtime::plan_runtime_package_hot_reload_recook_change_review_v2(
-        mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewDescV2{
+    const auto invalid_path = mirakana::runtime::plan_runtime_package_hot_reload_recook_change_review(
+        mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewDesc{
             .recook_apply_results =
                 {
                     make_recook_result(mirakana::AssetHotReloadApplyResultKind::staged, 11,
@@ -176,15 +176,15 @@ MK_TEST("runtime package hot reload recook change review rejects invalid recook 
 
     MK_REQUIRE(!invalid_path.succeeded());
     MK_REQUIRE(invalid_path.status ==
-               mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewStatusV2::invalid_recook_apply_result);
+               mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewStatus::invalid_recook_apply_result);
     MK_REQUIRE(invalid_path.diagnostics.size() == 1);
     MK_REQUIRE(invalid_path.diagnostics[0].code == "invalid-recook-result-path");
     MK_REQUIRE(!invalid_path.invoked_candidate_review);
     MK_REQUIRE(!invalid_path.invoked_package_load);
     MK_REQUIRE(!invalid_path.committed);
 
-    const auto zero_asset = mirakana::runtime::plan_runtime_package_hot_reload_recook_change_review_v2(
-        mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewDescV2{
+    const auto zero_asset = mirakana::runtime::plan_runtime_package_hot_reload_recook_change_review(
+        mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewDesc{
             .recook_apply_results =
                 {
                     make_recook_result(mirakana::AssetHotReloadApplyResultKind::staged, 0, "runtime/ui/hud.material"),
@@ -197,7 +197,7 @@ MK_TEST("runtime package hot reload recook change review rejects invalid recook 
 
     MK_REQUIRE(!zero_asset.succeeded());
     MK_REQUIRE(zero_asset.status ==
-               mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewStatusV2::invalid_recook_apply_result);
+               mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewStatus::invalid_recook_apply_result);
     MK_REQUIRE(zero_asset.diagnostics.size() == 1);
     MK_REQUIRE(zero_asset.diagnostics[0].code == "invalid-recook-apply-result-asset");
     MK_REQUIRE(!zero_asset.invoked_candidate_review);
@@ -205,8 +205,8 @@ MK_TEST("runtime package hot reload recook change review rejects invalid recook 
     auto applied_without_active_revision =
         make_recook_result(mirakana::AssetHotReloadApplyResultKind::applied, 11, "runtime/ui/hud.material");
     applied_without_active_revision.active_revision = 0;
-    const auto invalid_revision = mirakana::runtime::plan_runtime_package_hot_reload_recook_change_review_v2(
-        mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewDescV2{
+    const auto invalid_revision = mirakana::runtime::plan_runtime_package_hot_reload_recook_change_review(
+        mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewDesc{
             .recook_apply_results =
                 {
                     applied_without_active_revision,
@@ -219,15 +219,15 @@ MK_TEST("runtime package hot reload recook change review rejects invalid recook 
 
     MK_REQUIRE(!invalid_revision.succeeded());
     MK_REQUIRE(invalid_revision.status ==
-               mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewStatusV2::invalid_recook_apply_result);
+               mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewStatus::invalid_recook_apply_result);
     MK_REQUIRE(invalid_revision.diagnostics.size() == 1);
     MK_REQUIRE(invalid_revision.diagnostics[0].code == "invalid-recook-apply-result-revision");
     MK_REQUIRE(!invalid_revision.invoked_candidate_review);
 }
 
 MK_TEST("runtime package hot reload recook change review reports no recook rows without reading packages") {
-    const auto result = mirakana::runtime::plan_runtime_package_hot_reload_recook_change_review_v2(
-        mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewDescV2{
+    const auto result = mirakana::runtime::plan_runtime_package_hot_reload_recook_change_review(
+        mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewDesc{
             .recook_apply_results = {},
             .candidates =
                 {
@@ -236,8 +236,7 @@ MK_TEST("runtime package hot reload recook change review reports no recook rows 
         });
 
     MK_REQUIRE(!result.succeeded());
-    MK_REQUIRE(result.status ==
-               mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewStatusV2::no_recook_changes);
+    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewStatus::no_recook_changes);
     MK_REQUIRE(result.recook_apply_result_count == 0);
     MK_REQUIRE(result.accepted_recook_change_count == 0);
     MK_REQUIRE(result.diagnostics.empty());
@@ -248,8 +247,8 @@ MK_TEST("runtime package hot reload recook change review reports no recook rows 
 }
 
 MK_TEST("runtime package hot reload recook change review surfaces candidate review failures") {
-    const auto result = mirakana::runtime::plan_runtime_package_hot_reload_recook_change_review_v2(
-        mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewDescV2{
+    const auto result = mirakana::runtime::plan_runtime_package_hot_reload_recook_change_review(
+        mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewDesc{
             .recook_apply_results =
                 {
                     make_recook_result(mirakana::AssetHotReloadApplyResultKind::staged, 11, "runtime/ui/hud.material"),
@@ -262,14 +261,14 @@ MK_TEST("runtime package hot reload recook change review surfaces candidate revi
 
     MK_REQUIRE(!result.succeeded());
     MK_REQUIRE(result.status ==
-               mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewStatusV2::candidate_review_failed);
+               mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewStatus::candidate_review_failed);
     MK_REQUIRE(result.accepted_recook_change_count == 1);
     MK_REQUIRE(result.candidate_review.status ==
-               mirakana::runtime::RuntimePackageHotReloadCandidateReviewStatusV2::no_matches);
+               mirakana::runtime::RuntimePackageHotReloadCandidateReviewStatus::no_matches);
     MK_REQUIRE(result.candidate_review.diagnostics.size() == 1);
     MK_REQUIRE(result.diagnostics.size() == 1);
     MK_REQUIRE(result.diagnostics[0].phase ==
-               mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewDiagnosticPhaseV2::candidate_review);
+               mirakana::runtime::RuntimePackageHotReloadRecookChangeReviewDiagnosticPhase::candidate_review);
     MK_REQUIRE(result.diagnostics[0].path == "runtime/ui/hud.material");
     MK_REQUIRE(result.diagnostics[0].code == "unmatched-changed-path");
     MK_REQUIRE(result.invoked_candidate_review);

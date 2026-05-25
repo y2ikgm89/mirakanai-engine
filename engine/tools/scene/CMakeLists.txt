@@ -3,7 +3,7 @@ add_library(MK_tools_scene OBJECT
     runtime_scene_package_validation_tool.cpp
     scene_prefab_authoring_tool.cpp
     scene_tool.cpp
-    scene_v2_runtime_package_migration_tool.cpp
+    scene_runtime_package_migration_tool.cpp
 )
 
 target_include_directories(MK_tools_scene PUBLIC

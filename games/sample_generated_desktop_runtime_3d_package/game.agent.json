@@ -2170,7 +2170,7 @@
         "sample-generated-desktop-runtime-3d-package/animations/packaged-pose"
       ],
       "sourceCookMode": "selected-source-registry-rows",
-      "sceneMigration": "migrate-scene-v2-runtime-package",
+      "sceneMigration": "migrate-scene-runtime-package",
       "runtimeSceneValidation": "validate-runtime-scene-package",
       "hostGatedSmokeRecipeIds": [
         "desktop-game-runtime",

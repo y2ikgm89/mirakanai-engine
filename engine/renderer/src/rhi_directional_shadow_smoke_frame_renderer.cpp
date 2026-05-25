@@ -190,20 +190,20 @@ void validate_material_gpu_binding(const MaterialGpuBinding& binding, const rhi:
     }
 }
 
-[[nodiscard]] FrameGraphV1Desc make_shadow_smoke_frame_graph_v1_desc() {
-    FrameGraphV1Desc desc;
+[[nodiscard]] FrameGraphDesc make_shadow_smoke_frame_graph_v1_desc() {
+    FrameGraphDesc desc;
     desc.resources.push_back(
-        FrameGraphResourceV1Desc{.name = "swapchain", .lifetime = FrameGraphResourceLifetime::imported});
+        FrameGraphResourceDesc{.name = "swapchain", .lifetime = FrameGraphResourceLifetime::imported});
     desc.resources.push_back(
-        FrameGraphResourceV1Desc{.name = "shadow_color", .lifetime = FrameGraphResourceLifetime::transient});
+        FrameGraphResourceDesc{.name = "shadow_color", .lifetime = FrameGraphResourceLifetime::transient});
     desc.resources.push_back(
-        FrameGraphResourceV1Desc{.name = "shadow_depth", .lifetime = FrameGraphResourceLifetime::transient});
+        FrameGraphResourceDesc{.name = "shadow_depth", .lifetime = FrameGraphResourceLifetime::transient});
     desc.resources.push_back(
-        FrameGraphResourceV1Desc{.name = "scene_color", .lifetime = FrameGraphResourceLifetime::transient});
+        FrameGraphResourceDesc{.name = "scene_color", .lifetime = FrameGraphResourceLifetime::transient});
     desc.resources.push_back(
-        FrameGraphResourceV1Desc{.name = "scene_depth", .lifetime = FrameGraphResourceLifetime::transient});
+        FrameGraphResourceDesc{.name = "scene_depth", .lifetime = FrameGraphResourceLifetime::transient});
 
-    desc.passes.push_back(FrameGraphPassV1Desc{
+    desc.passes.push_back(FrameGraphPassDesc{
         .name = "shadow.directional.depth",
         .reads = {},
         .writes = {FrameGraphResourceAccess{.resource = "shadow_color",
@@ -211,7 +211,7 @@ void validate_material_gpu_binding(const MaterialGpuBinding& binding, const rhi:
                    FrameGraphResourceAccess{.resource = "shadow_depth",
                                             .access = FrameGraphAccess::depth_attachment_write}},
     });
-    desc.passes.push_back(FrameGraphPassV1Desc{
+    desc.passes.push_back(FrameGraphPassDesc{
         .name = "scene.shadow_receiver",
         .reads = {FrameGraphResourceAccess{.resource = "shadow_depth", .access = FrameGraphAccess::shader_read}},
         .writes = {FrameGraphResourceAccess{.resource = "scene_color",
@@ -219,7 +219,7 @@ void validate_material_gpu_binding(const MaterialGpuBinding& binding, const rhi:
                    FrameGraphResourceAccess{.resource = "scene_depth",
                                             .access = FrameGraphAccess::depth_attachment_write}},
     });
-    desc.passes.push_back(FrameGraphPassV1Desc{
+    desc.passes.push_back(FrameGraphPassDesc{
         .name = "postprocess",
         .reads = {FrameGraphResourceAccess{.resource = "scene_color", .access = FrameGraphAccess::shader_read},
                   FrameGraphResourceAccess{.resource = "scene_depth", .access = FrameGraphAccess::shader_read}},
@@ -311,11 +311,11 @@ RhiDirectionalShadowSmokeFrameRenderer::RhiDirectionalShadowSmokeFrameRenderer(
     }
 
     const auto shadow_smoke_frame_graph_desc = make_shadow_smoke_frame_graph_v1_desc();
-    shadow_smoke_frame_graph_plan_ = compile_frame_graph_v1(shadow_smoke_frame_graph_desc);
+    shadow_smoke_frame_graph_plan_ = compile_frame_graph(shadow_smoke_frame_graph_desc);
     if (!shadow_smoke_frame_graph_plan_.succeeded() || shadow_smoke_frame_graph_plan_.pass_count != 3) {
         throw std::logic_error("rhi shadow smoke renderer frame graph v1 is invalid");
     }
-    shadow_smoke_frame_graph_execution_ = schedule_frame_graph_v1_execution(shadow_smoke_frame_graph_plan_);
+    shadow_smoke_frame_graph_execution_ = schedule_frame_graph_execution(shadow_smoke_frame_graph_plan_);
     shadow_smoke_frame_graph_target_accesses_ =
         build_frame_graph_texture_pass_target_accesses(shadow_smoke_frame_graph_desc);
     frame_graph_pass_count_ = static_cast<std::uint32_t>(shadow_smoke_frame_graph_plan_.ordered_passes.size());

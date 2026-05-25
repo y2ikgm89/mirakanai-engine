@@ -110,16 +110,16 @@ make_runtime_morph_mesh_record(mirakana::AssetId asset, mirakana::runtime::Runti
     };
 }
 
-[[nodiscard]] mirakana::runtime::RuntimeResourceCatalogV2
+[[nodiscard]] mirakana::runtime::RuntimeResourceCatalog
 make_runtime_catalog(std::vector<mirakana::runtime::RuntimeAssetRecord> records) {
-    mirakana::runtime::RuntimeResourceCatalogV2 catalog;
-    const auto build = mirakana::runtime::build_runtime_resource_catalog_v2(
+    mirakana::runtime::RuntimeResourceCatalog catalog;
+    const auto build = mirakana::runtime::build_runtime_resource_catalog(
         catalog, mirakana::runtime::RuntimeAssetPackage{std::move(records)});
     MK_REQUIRE(build.succeeded());
     return catalog;
 }
 
-[[nodiscard]] mirakana::runtime::RuntimeResourceCatalogV2
+[[nodiscard]] mirakana::runtime::RuntimeResourceCatalog
 make_runtime_texture_catalog(std::vector<mirakana::runtime::RuntimeAssetRecord> records) {
     return make_runtime_catalog(std::move(records));
 }
@@ -443,18 +443,18 @@ MK_TEST("runtime package streaming frame graph handoff builds imported texture b
     MK_REQUIRE(handoff.texture_bindings[0].texture.value == upload.texture.value);
     MK_REQUIRE(handoff.texture_bindings[0].current_state == mirakana::rhi::ResourceState::shader_read);
 
-    mirakana::FrameGraphV1Desc desc;
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    mirakana::FrameGraphDesc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "package_albedo", .lifetime = mirakana::FrameGraphResourceLifetime::imported});
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "sample_package_texture",
         .reads = {mirakana::FrameGraphResourceAccess{.resource = "package_albedo",
                                                      .access = mirakana::FrameGraphAccess::shader_read}},
         .writes = {},
     });
-    const auto plan = mirakana::compile_frame_graph_v1(desc);
+    const auto plan = mirakana::compile_frame_graph(desc);
     MK_REQUIRE(plan.succeeded());
-    const auto schedule = mirakana::schedule_frame_graph_v1_execution(plan);
+    const auto schedule = mirakana::schedule_frame_graph_execution(plan);
     auto commands = device.begin_command_list(mirakana::rhi::QueueKind::graphics);
 
     std::size_t callbacks_invoked = 0;
@@ -529,21 +529,21 @@ MK_TEST("runtime package streaming frame graph upload binding transaction upload
     MK_REQUIRE(transaction.texture_bindings[1].resource == "package_normal");
     MK_REQUIRE(transaction.texture_bindings[1].texture.value == transaction.uploads[1].texture.value);
 
-    mirakana::FrameGraphV1Desc desc;
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    mirakana::FrameGraphDesc desc;
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "package_albedo", .lifetime = mirakana::FrameGraphResourceLifetime::imported});
-    desc.resources.push_back(mirakana::FrameGraphResourceV1Desc{
+    desc.resources.push_back(mirakana::FrameGraphResourceDesc{
         .name = "package_normal", .lifetime = mirakana::FrameGraphResourceLifetime::imported});
-    desc.passes.push_back(mirakana::FrameGraphPassV1Desc{
+    desc.passes.push_back(mirakana::FrameGraphPassDesc{
         .name = "sample_package_textures",
         .reads = {mirakana::FrameGraphResourceAccess{.resource = "package_albedo",
                                                      .access = mirakana::FrameGraphAccess::shader_read},
                   mirakana::FrameGraphResourceAccess{.resource = "package_normal",
                                                      .access = mirakana::FrameGraphAccess::shader_read}},
     });
-    const auto plan = mirakana::compile_frame_graph_v1(desc);
+    const auto plan = mirakana::compile_frame_graph(desc);
     MK_REQUIRE(plan.succeeded());
-    const auto schedule = mirakana::schedule_frame_graph_v1_execution(plan);
+    const auto schedule = mirakana::schedule_frame_graph_execution(plan);
     auto commands = device.begin_command_list(mirakana::rhi::QueueKind::graphics);
     std::size_t callbacks_invoked = 0;
     const std::vector<mirakana::FrameGraphPassExecutionBinding> callbacks{
@@ -660,7 +660,7 @@ MK_TEST("runtime package streaming frame graph upload binding transaction reject
 MK_TEST("runtime package streaming frame graph handoff rejects non committed streaming result") {
     mirakana::runtime::RuntimePackageStreamingExecutionResult streaming;
     streaming.status = mirakana::runtime::RuntimePackageStreamingExecutionStatus::validation_preflight_required;
-    const mirakana::runtime::RuntimeResourceCatalogV2 catalog;
+    const mirakana::runtime::RuntimeResourceCatalog catalog;
 
     const auto handoff =
         mirakana::runtime_rhi::make_runtime_package_streaming_frame_graph_texture_bindings(streaming, catalog, {});
@@ -674,7 +674,7 @@ MK_TEST("runtime package streaming frame graph handoff rejects non committed str
 MK_TEST("runtime package streaming frame graph handoff rejects texture assets missing from resident catalog") {
     const auto texture = mirakana::AssetId::from_name("textures/missing/albedo");
     const auto streaming = make_committed_package_streaming_result();
-    const mirakana::runtime::RuntimeResourceCatalogV2 catalog;
+    const mirakana::runtime::RuntimeResourceCatalog catalog;
     mirakana::rhi::NullRhiDevice device;
     const auto upload = make_runtime_texture_upload(device, texture);
 

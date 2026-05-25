@@ -27,7 +27,7 @@ namespace {
 }
 
 [[nodiscard]] std::vector<std::string> default_unsupported_gap_ids() {
-    return {"runtime-resource-v2", "renderer-rhi-resource-foundation", "editor-productization",
+    return {"runtime-resource", "renderer-rhi-resource-foundation", "editor-productization",
             "3d-playable-vertical-slice"};
 }
 
@@ -104,7 +104,7 @@ namespace {
 }
 
 void add_diagnostic(std::vector<RegisteredSourceAssetCookPackageDiagnostic>& diagnostics, std::string code,
-                    std::string message, std::string path = {}, AssetKeyV2 asset_key = {},
+                    std::string message, std::string path = {}, AssetKey asset_key = {},
                     std::string unsupported_gap_id = {}, std::string validation_recipe = {}) {
     diagnostics.push_back(RegisteredSourceAssetCookPackageDiagnostic{
         .severity = "error",
@@ -159,7 +159,7 @@ void validate_dependency_cooking_sentinel(std::vector<RegisteredSourceAssetCookP
                 add_diagnostic(diagnostics, "unsupported_dependency_cooking",
                                "broad dependency cooking is not supported by registered source asset cook/package "
                                "tooling",
-                               request.source_registry_path, {}, "runtime-resource-v2");
+                               request.source_registry_path, {}, "runtime-resource");
             }
         }
         break;
@@ -184,7 +184,7 @@ void validate_unsupported_claims(std::vector<RegisteredSourceAssetCookPackageDia
                    "renderer-rhi-resource-foundation");
     validate_claim(diagnostics, request.package_streaming, "unsupported_package_streaming",
                    "package streaming is not supported by registered source asset cook/package tooling",
-                   "runtime-resource-v2");
+                   "runtime-resource");
     validate_claim(diagnostics, request.material_graph, "unsupported_material_graph",
                    "material graph is not supported by registered source asset cook/package tooling",
                    "3d-playable-vertical-slice");
@@ -257,7 +257,7 @@ void validate_request_shape(std::vector<RegisteredSourceAssetCookPackageDiagnost
     selected_keys.reserve(request.selected_asset_keys.size());
     for (const auto& key : request.selected_asset_keys) {
         if (!is_valid_asset_key(key.value)) {
-            add_diagnostic(diagnostics, "invalid_selected_asset_key", "selected asset key must be a valid AssetKeyV2",
+            add_diagnostic(diagnostics, "invalid_selected_asset_key", "selected asset key must be a valid AssetKey",
                            request.source_registry_path, key);
         }
         if (!selected_keys.insert(key.value).second) {
@@ -283,14 +283,14 @@ void validate_request_shape(std::vector<RegisteredSourceAssetCookPackageDiagnost
     }
 }
 
-[[nodiscard]] SourceAssetRegistryDocumentV1
+[[nodiscard]] SourceAssetRegistryDocument
 parse_source_registry(std::vector<RegisteredSourceAssetCookPackageDiagnostic>& diagnostics,
                       const RegisteredSourceAssetCookPackageRequest& request) {
     if (request.source_registry_content.empty()) {
         return {};
     }
     try {
-        return parse_source_asset_registry_document_unvalidated_v1(request.source_registry_content);
+        return parse_source_asset_registry_document_unvalidated(request.source_registry_content);
     } catch (const std::exception& error) {
         add_diagnostic(diagnostics, "invalid_source_registry",
                        std::string{"failed to parse source asset registry: "} + error.what(),
@@ -299,84 +299,84 @@ parse_source_registry(std::vector<RegisteredSourceAssetCookPackageDiagnostic>& d
     return {};
 }
 
-[[nodiscard]] std::string registry_diagnostic_code(SourceAssetRegistryDiagnosticCodeV1 code) {
+[[nodiscard]] std::string registry_diagnostic_code(SourceAssetRegistryDiagnosticCode code) {
     switch (code) {
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_key:
+    case SourceAssetRegistryDiagnosticCode::invalid_key:
         return "invalid_asset_key";
-    case SourceAssetRegistryDiagnosticCodeV1::duplicate_key:
+    case SourceAssetRegistryDiagnosticCode::duplicate_key:
         return "duplicate_asset_key";
-    case SourceAssetRegistryDiagnosticCodeV1::duplicate_asset_id:
+    case SourceAssetRegistryDiagnosticCode::duplicate_asset_id:
         return "duplicate_asset_id";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_kind:
+    case SourceAssetRegistryDiagnosticCode::invalid_kind:
         return "unsupported_source_kind";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_source_path:
+    case SourceAssetRegistryDiagnosticCode::invalid_source_path:
         return "unsafe_source_path";
-    case SourceAssetRegistryDiagnosticCodeV1::duplicate_source_path:
+    case SourceAssetRegistryDiagnosticCode::duplicate_source_path:
         return "duplicate_source_path";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_source_format:
+    case SourceAssetRegistryDiagnosticCode::invalid_source_format:
         return "unsupported_source_format";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_imported_path:
+    case SourceAssetRegistryDiagnosticCode::invalid_imported_path:
         return "unsafe_imported_path";
-    case SourceAssetRegistryDiagnosticCodeV1::duplicate_imported_path:
+    case SourceAssetRegistryDiagnosticCode::duplicate_imported_path:
         return "duplicate_imported_path";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_dependency_kind:
+    case SourceAssetRegistryDiagnosticCode::invalid_dependency_kind:
         return "invalid_dependency_kind";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_dependency_target:
+    case SourceAssetRegistryDiagnosticCode::invalid_dependency_target:
         return "invalid_dependency_target";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_dependency_key:
+    case SourceAssetRegistryDiagnosticCode::invalid_dependency_key:
         return "invalid_dependency_key";
-    case SourceAssetRegistryDiagnosticCodeV1::missing_dependency_key:
+    case SourceAssetRegistryDiagnosticCode::missing_dependency_key:
         return "missing_dependency_key";
-    case SourceAssetRegistryDiagnosticCodeV1::duplicate_dependency:
+    case SourceAssetRegistryDiagnosticCode::duplicate_dependency:
         return "duplicate_dependency";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_identity_projection:
+    case SourceAssetRegistryDiagnosticCode::invalid_identity_projection:
         return "invalid_identity_projection";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_import_metadata:
+    case SourceAssetRegistryDiagnosticCode::invalid_import_metadata:
         return "invalid_import_metadata";
     }
     return "invalid_source_asset_registry";
 }
 
-[[nodiscard]] std::string registry_diagnostic_message(SourceAssetRegistryDiagnosticCodeV1 code) {
+[[nodiscard]] std::string registry_diagnostic_message(SourceAssetRegistryDiagnosticCode code) {
     switch (code) {
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_key:
+    case SourceAssetRegistryDiagnosticCode::invalid_key:
         return "invalid asset key";
-    case SourceAssetRegistryDiagnosticCodeV1::duplicate_key:
+    case SourceAssetRegistryDiagnosticCode::duplicate_key:
         return "duplicate asset key";
-    case SourceAssetRegistryDiagnosticCodeV1::duplicate_asset_id:
+    case SourceAssetRegistryDiagnosticCode::duplicate_asset_id:
         return "duplicate asset id";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_kind:
+    case SourceAssetRegistryDiagnosticCode::invalid_kind:
         return "unsupported source asset kind";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_source_path:
+    case SourceAssetRegistryDiagnosticCode::invalid_source_path:
         return "source path must be a safe repository-relative path";
-    case SourceAssetRegistryDiagnosticCodeV1::duplicate_source_path:
+    case SourceAssetRegistryDiagnosticCode::duplicate_source_path:
         return "duplicate source path";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_source_format:
+    case SourceAssetRegistryDiagnosticCode::invalid_source_format:
         return "unsupported source format";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_imported_path:
+    case SourceAssetRegistryDiagnosticCode::invalid_imported_path:
         return "imported path must be a safe repository-relative path";
-    case SourceAssetRegistryDiagnosticCodeV1::duplicate_imported_path:
+    case SourceAssetRegistryDiagnosticCode::duplicate_imported_path:
         return "duplicate imported path";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_dependency_kind:
+    case SourceAssetRegistryDiagnosticCode::invalid_dependency_kind:
         return "unsupported dependency kind";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_dependency_target:
+    case SourceAssetRegistryDiagnosticCode::invalid_dependency_target:
         return "dependency target kind does not match dependency kind";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_dependency_key:
+    case SourceAssetRegistryDiagnosticCode::invalid_dependency_key:
         return "invalid dependency key";
-    case SourceAssetRegistryDiagnosticCodeV1::missing_dependency_key:
+    case SourceAssetRegistryDiagnosticCode::missing_dependency_key:
         return "dependency key must already be registered";
-    case SourceAssetRegistryDiagnosticCodeV1::duplicate_dependency:
+    case SourceAssetRegistryDiagnosticCode::duplicate_dependency:
         return "duplicate dependency";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_identity_projection:
+    case SourceAssetRegistryDiagnosticCode::invalid_identity_projection:
         return "asset identity projection is invalid";
-    case SourceAssetRegistryDiagnosticCodeV1::invalid_import_metadata:
+    case SourceAssetRegistryDiagnosticCode::invalid_import_metadata:
         return "source import metadata is invalid";
     }
     return "source asset registry is invalid";
 }
 
 void append_registry_diagnostics(std::vector<RegisteredSourceAssetCookPackageDiagnostic>& diagnostics,
-                                 const std::vector<SourceAssetRegistryDiagnosticV1>& registry_diagnostics,
+                                 const std::vector<SourceAssetRegistryDiagnostic>& registry_diagnostics,
                                  const std::string& source_registry_path) {
     for (const auto& diagnostic : registry_diagnostics) {
         add_diagnostic(diagnostics, registry_diagnostic_code(diagnostic.code),
@@ -385,14 +385,14 @@ void append_registry_diagnostics(std::vector<RegisteredSourceAssetCookPackageDia
     }
 }
 
-[[nodiscard]] const SourceAssetRegistryRowV1* find_row_by_key(const SourceAssetRegistryDocumentV1& document,
-                                                              const AssetKeyV2& key) noexcept {
+[[nodiscard]] const SourceAssetRegistryRow* find_row_by_key(const SourceAssetRegistryDocument& document,
+                                                            const AssetKey& key) noexcept {
     const auto it =
         std::ranges::find_if(document.assets, [&key](const auto& row) { return row.key.value == key.value; });
     return it == document.assets.end() ? nullptr : &*it;
 }
 
-[[nodiscard]] bool row_less(const SourceAssetRegistryRowV1& lhs, const SourceAssetRegistryRowV1& rhs) noexcept {
+[[nodiscard]] bool row_less(const SourceAssetRegistryRow& lhs, const SourceAssetRegistryRow& rhs) noexcept {
     if (lhs.imported_path != rhs.imported_path) {
         return lhs.imported_path < rhs.imported_path;
     }
@@ -401,7 +401,7 @@ void append_registry_diagnostics(std::vector<RegisteredSourceAssetCookPackageDia
 
 void append_selected_path_diagnostics(std::vector<RegisteredSourceAssetCookPackageDiagnostic>& diagnostics,
                                       const RegisteredSourceAssetCookPackageRequest& request,
-                                      const SourceAssetRegistryRowV1& row) {
+                                      const SourceAssetRegistryRow& row) {
     if (!is_safe_repository_path(row.source_path)) {
         add_diagnostic(diagnostics, "unsafe_source_path", "source path must be a safe repository-relative path",
                        row.source_path, row.key);
@@ -418,12 +418,12 @@ void append_selected_path_diagnostics(std::vector<RegisteredSourceAssetCookPacka
     }
 }
 
-/// Expands the selected asset key set by following `SourceAssetRegistryRowV1::dependencies[].key` edges
+/// Expands the selected asset key set by following `SourceAssetRegistryRow::dependencies[].key` edges
 /// within the same validated registry document. This is intentionally registry-local: it does not
 /// infer cross-package dependencies, importer graphs, or scene references.
 [[nodiscard]] std::unordered_set<std::string>
 compute_registry_dependency_closure_keys(std::vector<RegisteredSourceAssetCookPackageDiagnostic>& diagnostics,
-                                         const SourceAssetRegistryDocumentV1& document,
+                                         const SourceAssetRegistryDocument& document,
                                          const RegisteredSourceAssetCookPackageRequest& request) {
     std::unordered_set<std::string> closure;
     std::queue<std::string> pending;
@@ -438,11 +438,11 @@ compute_registry_dependency_closure_keys(std::vector<RegisteredSourceAssetCookPa
             continue;
         }
 
-        const auto* row = find_row_by_key(document, AssetKeyV2{k});
+        const auto* row = find_row_by_key(document, AssetKey{k});
         if (row == nullptr) {
             add_diagnostic(diagnostics, "missing_source_asset_key",
                            "selected source asset key is missing from GameEngine.SourceAssetRegistry",
-                           request.source_registry_path, AssetKeyV2{k});
+                           request.source_registry_path, AssetKey{k});
             return {};
         }
         append_selected_path_diagnostics(diagnostics, request, *row);
@@ -458,7 +458,7 @@ compute_registry_dependency_closure_keys(std::vector<RegisteredSourceAssetCookPa
 }
 
 /// Detects directed cycles within the dependency subgraph induced by `closure_keys`.
-[[nodiscard]] bool registry_dependency_subgraph_has_cycle(const SourceAssetRegistryDocumentV1& document,
+[[nodiscard]] bool registry_dependency_subgraph_has_cycle(const SourceAssetRegistryDocument& document,
                                                           const std::unordered_set<std::string>& closure_keys) {
     enum class Color : std::uint8_t { white, gray, black };
     std::unordered_map<std::string, Color> colors;
@@ -472,7 +472,7 @@ compute_registry_dependency_closure_keys(std::vector<RegisteredSourceAssetCookPa
             return false;
         }
         mark = Color::gray;
-        const auto* row = find_row_by_key(document, AssetKeyV2{key});
+        const auto* row = find_row_by_key(document, AssetKey{key});
         if (row != nullptr) {
             for (const auto& dependency : row->dependencies) {
                 if (closure_keys.find(dependency.key.value) == closure_keys.end()) {
@@ -499,7 +499,7 @@ compute_registry_dependency_closure_keys(std::vector<RegisteredSourceAssetCookPa
     return false;
 }
 
-[[nodiscard]] std::vector<SourceAssetRegistryRowV1>
+[[nodiscard]] std::vector<SourceAssetRegistryRow>
 prepare_selected_rows(std::vector<RegisteredSourceAssetCookPackageDiagnostic>& diagnostics,
                       const RegisteredSourceAssetCookPackageRequest& request) {
     auto document = parse_source_registry(diagnostics, request);
@@ -527,10 +527,10 @@ prepare_selected_rows(std::vector<RegisteredSourceAssetCookPackageDiagnostic>& d
         }
         std::vector<std::string> ordered(closure_keys.begin(), closure_keys.end());
         std::ranges::sort(ordered);
-        std::vector<SourceAssetRegistryRowV1> rows;
+        std::vector<SourceAssetRegistryRow> rows;
         rows.reserve(ordered.size());
         for (const auto& key_value : ordered) {
-            const auto* row = find_row_by_key(document, AssetKeyV2{key_value});
+            const auto* row = find_row_by_key(document, AssetKey{key_value});
             if (row != nullptr) {
                 rows.push_back(*row);
             }
@@ -545,7 +545,7 @@ prepare_selected_rows(std::vector<RegisteredSourceAssetCookPackageDiagnostic>& d
         selected_keys.insert(key.value);
     }
 
-    std::vector<SourceAssetRegistryRowV1> rows;
+    std::vector<SourceAssetRegistryRow> rows;
     rows.reserve(request.selected_asset_keys.size());
     for (const auto& key : request.selected_asset_keys) {
         const auto* row = find_row_by_key(document, key);
@@ -570,9 +570,8 @@ prepare_selected_rows(std::vector<RegisteredSourceAssetCookPackageDiagnostic>& d
     return rows;
 }
 
-[[nodiscard]] SourceAssetRegistryDocumentV1
-selected_document_from_rows(const std::vector<SourceAssetRegistryRowV1>& rows) {
-    SourceAssetRegistryDocumentV1 document;
+[[nodiscard]] SourceAssetRegistryDocument selected_document_from_rows(const std::vector<SourceAssetRegistryRow>& rows) {
+    SourceAssetRegistryDocument document;
     document.assets = rows;
     return document;
 }
@@ -581,7 +580,7 @@ using SourceFileMap = std::unordered_map<std::string, std::string>;
 
 [[nodiscard]] SourceFileMap build_source_file_map(std::vector<RegisteredSourceAssetCookPackageDiagnostic>& diagnostics,
                                                   const RegisteredSourceAssetCookPackageRequest& request,
-                                                  const std::vector<SourceAssetRegistryRowV1>& selected_rows) {
+                                                  const std::vector<SourceAssetRegistryRow>& selected_rows) {
     SourceFileMap files;
     files.reserve(request.source_files.size());
     for (const auto& file : request.source_files) {
@@ -781,7 +780,7 @@ void append_changed_files(RegisteredSourceAssetCookPackageResult& result, IFileS
 
 void append_model_mutations(RegisteredSourceAssetCookPackageResult& result,
                             const RegisteredSourceAssetCookPackageRequest& request,
-                            const std::vector<SourceAssetRegistryRowV1>& selected_rows) {
+                            const std::vector<SourceAssetRegistryRow>& selected_rows) {
     for (const auto& row : selected_rows) {
         result.model_mutations.push_back(RegisteredSourceAssetCookPackageModelMutation{
             .kind = "cook_registered_source_asset",
@@ -789,7 +788,7 @@ void append_model_mutations(RegisteredSourceAssetCookPackageResult& result,
             .source_registry_path = request.source_registry_path,
             .package_index_path = request.package_index_path,
             .asset_key = row.key,
-            .asset = asset_id_from_key_v2(row.key),
+            .asset = asset_id_from_key(row.key),
             .asset_kind = row.kind,
             .source_path = row.source_path,
             .source_format = row.source_format,

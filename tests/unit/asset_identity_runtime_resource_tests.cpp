@@ -102,29 +102,29 @@ namespace {
 } // namespace
 
 MK_TEST("asset identity v2 rejects duplicate keys deterministically") {
-    mirakana::AssetIdentityDocumentV2 document;
-    document.assets.push_back(mirakana::AssetIdentityRowV2{
-        .key = mirakana::AssetKeyV2{.value = "textures/player/albedo"},
+    mirakana::AssetIdentityDocument document;
+    document.assets.push_back(mirakana::AssetIdentityRow{
+        .key = mirakana::AssetKey{.value = "textures/player/albedo"},
         .kind = mirakana::AssetKind::texture,
         .source_path = "source/textures/player_albedo.png",
     });
-    document.assets.push_back(mirakana::AssetIdentityRowV2{
-        .key = mirakana::AssetKeyV2{.value = "textures/player/albedo"},
+    document.assets.push_back(mirakana::AssetIdentityRow{
+        .key = mirakana::AssetKey{.value = "textures/player/albedo"},
         .kind = mirakana::AssetKind::material,
         .source_path = "source/materials/player.material",
     });
 
-    const auto diagnostics = mirakana::validate_asset_identity_document_v2(document);
+    const auto diagnostics = mirakana::validate_asset_identity_document(document);
 
     MK_REQUIRE(diagnostics.size() == 1);
-    MK_REQUIRE(diagnostics[0].code == mirakana::AssetIdentityDiagnosticCodeV2::duplicate_key);
+    MK_REQUIRE(diagnostics[0].code == mirakana::AssetIdentityDiagnosticCode::duplicate_key);
     MK_REQUIRE(diagnostics[0].key.value == "textures/player/albedo");
 }
 
 MK_TEST("asset identity v2 serializes stable text and derives asset ids from keys") {
-    mirakana::AssetIdentityDocumentV2 document;
-    document.assets.push_back(mirakana::AssetIdentityRowV2{
-        .key = mirakana::AssetKeyV2{.value = "materials/player"},
+    mirakana::AssetIdentityDocument document;
+    document.assets.push_back(mirakana::AssetIdentityRow{
+        .key = mirakana::AssetKey{.value = "materials/player"},
         .kind = mirakana::AssetKind::material,
         .source_path = "source/materials/player.material",
     });
@@ -137,20 +137,20 @@ MK_TEST("asset identity v2 serializes stable text and derives asset ids from key
                                  "asset.0.kind=material\n"
                                  "asset.0.source=source/materials/player.material\n";
 
-    MK_REQUIRE(mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{.value = "materials/player"}) ==
+    MK_REQUIRE(mirakana::asset_id_from_key(mirakana::AssetKey{.value = "materials/player"}) ==
                mirakana::AssetId::from_name("materials/player"));
-    MK_REQUIRE(mirakana::serialize_asset_identity_document_v2(document) == expected);
+    MK_REQUIRE(mirakana::serialize_asset_identity_document(document) == expected);
 
-    const auto round_trip = mirakana::deserialize_asset_identity_document_v2(expected);
+    const auto round_trip = mirakana::deserialize_asset_identity_document(expected);
     MK_REQUIRE(round_trip.assets.size() == 1);
     MK_REQUIRE(round_trip.assets[0].key.value == "materials/player");
     MK_REQUIRE(round_trip.assets[0].kind == mirakana::AssetKind::material);
 }
 
 MK_TEST("physics collision scene kind round trips through asset identity and source registry text") {
-    mirakana::AssetIdentityDocumentV2 identity;
-    identity.assets.push_back(mirakana::AssetIdentityRowV2{
-        .key = mirakana::AssetKeyV2{.value = "physics/collision/main"},
+    mirakana::AssetIdentityDocument identity;
+    identity.assets.push_back(mirakana::AssetIdentityRow{
+        .key = mirakana::AssetKey{.value = "physics/collision/main"},
         .kind = mirakana::AssetKind::physics_collision_scene,
         .source_path = "source/physics/main.collision3d",
     });
@@ -163,8 +163,8 @@ MK_TEST("physics collision scene kind round trips through asset identity and sou
                                           "asset.0.kind=physics_collision_scene\n"
                                           "asset.0.source=source/physics/main.collision3d\n";
 
-    MK_REQUIRE(mirakana::serialize_asset_identity_document_v2(identity) == expected_identity);
-    const auto identity_round_trip = mirakana::deserialize_asset_identity_document_v2(expected_identity);
+    MK_REQUIRE(mirakana::serialize_asset_identity_document(identity) == expected_identity);
+    const auto identity_round_trip = mirakana::deserialize_asset_identity_document(expected_identity);
     MK_REQUIRE(identity_round_trip.assets.size() == 1);
     MK_REQUIRE(identity_round_trip.assets[0].kind == mirakana::AssetKind::physics_collision_scene);
 
@@ -177,60 +177,60 @@ MK_TEST("physics collision scene kind round trips through asset identity and sou
                                         "asset.0.source=source/physics/main.collision3d\n"
                                         "asset.0.source_format=\n"
                                         "asset.0.imported=runtime/assets/physics/main.collision3d\n";
-    const auto source_round_trip = mirakana::parse_source_asset_registry_document_unvalidated_v1(source_registry);
+    const auto source_round_trip = mirakana::parse_source_asset_registry_document_unvalidated(source_registry);
     MK_REQUIRE(source_round_trip.assets.size() == 1);
     MK_REQUIRE(source_round_trip.assets[0].kind == mirakana::AssetKind::physics_collision_scene);
-    MK_REQUIRE(!mirakana::is_supported_source_asset_kind_v1(mirakana::AssetKind::physics_collision_scene));
-    MK_REQUIRE(mirakana::expected_source_asset_format_v1(mirakana::AssetKind::physics_collision_scene).empty());
+    MK_REQUIRE(!mirakana::is_supported_source_asset_kind(mirakana::AssetKind::physics_collision_scene));
+    MK_REQUIRE(mirakana::expected_source_asset_format(mirakana::AssetKind::physics_collision_scene).empty());
 }
 
 MK_TEST("asset identity v2 rejects duplicate source paths") {
-    mirakana::AssetIdentityDocumentV2 document;
-    document.assets.push_back(mirakana::AssetIdentityRowV2{
-        .key = mirakana::AssetKeyV2{.value = "textures/player/albedo"},
+    mirakana::AssetIdentityDocument document;
+    document.assets.push_back(mirakana::AssetIdentityRow{
+        .key = mirakana::AssetKey{.value = "textures/player/albedo"},
         .kind = mirakana::AssetKind::texture,
         .source_path = "source/shared.asset",
     });
-    document.assets.push_back(mirakana::AssetIdentityRowV2{
-        .key = mirakana::AssetKeyV2{.value = "materials/player"},
+    document.assets.push_back(mirakana::AssetIdentityRow{
+        .key = mirakana::AssetKey{.value = "materials/player"},
         .kind = mirakana::AssetKind::material,
         .source_path = "source/shared.asset",
     });
 
-    const auto diagnostics = mirakana::validate_asset_identity_document_v2(document);
+    const auto diagnostics = mirakana::validate_asset_identity_document(document);
 
     MK_REQUIRE(diagnostics.size() == 1);
-    MK_REQUIRE(diagnostics[0].code == mirakana::AssetIdentityDiagnosticCodeV2::duplicate_source_path);
+    MK_REQUIRE(diagnostics[0].code == mirakana::AssetIdentityDiagnosticCode::duplicate_source_path);
     MK_REQUIRE(diagnostics[0].source_path == "source/shared.asset");
 }
 
 MK_TEST("asset identity v2 plans production placement references from stable keys") {
-    mirakana::AssetIdentityDocumentV2 document;
-    document.assets.push_back(mirakana::AssetIdentityRowV2{
-        .key = mirakana::AssetKeyV2{.value = "meshes/hero"},
+    mirakana::AssetIdentityDocument document;
+    document.assets.push_back(mirakana::AssetIdentityRow{
+        .key = mirakana::AssetKey{.value = "meshes/hero"},
         .kind = mirakana::AssetKind::mesh,
         .source_path = "source/meshes/hero.mesh",
     });
-    document.assets.push_back(mirakana::AssetIdentityRowV2{
-        .key = mirakana::AssetKeyV2{.value = "materials/hero"},
+    document.assets.push_back(mirakana::AssetIdentityRow{
+        .key = mirakana::AssetKey{.value = "materials/hero"},
         .kind = mirakana::AssetKind::material,
         .source_path = "source/materials/hero.material",
     });
 
     const std::array requests{
-        mirakana::AssetIdentityPlacementRequestV2{
+        mirakana::AssetIdentityPlacementRequest{
             .placement = "scene.hero.mesh",
-            .key = mirakana::AssetKeyV2{.value = "meshes/hero"},
+            .key = mirakana::AssetKey{.value = "meshes/hero"},
             .expected_kind = mirakana::AssetKind::mesh,
         },
-        mirakana::AssetIdentityPlacementRequestV2{
+        mirakana::AssetIdentityPlacementRequest{
             .placement = "scene.hero.material",
-            .key = mirakana::AssetKeyV2{.value = "materials/hero"},
+            .key = mirakana::AssetKey{.value = "materials/hero"},
             .expected_kind = mirakana::AssetKind::material,
         },
     };
 
-    const auto plan = mirakana::plan_asset_identity_placements_v2(document, requests);
+    const auto plan = mirakana::plan_asset_identity_placements(document, requests);
 
     MK_REQUIRE(plan.can_place);
     MK_REQUIRE(plan.identity_diagnostics.empty());
@@ -245,115 +245,115 @@ MK_TEST("asset identity v2 plans production placement references from stable key
 }
 
 MK_TEST("asset identity v2 placement rejects missing keys and kind mismatches") {
-    mirakana::AssetIdentityDocumentV2 document;
-    document.assets.push_back(mirakana::AssetIdentityRowV2{
-        .key = mirakana::AssetKeyV2{.value = "textures/hero"},
+    mirakana::AssetIdentityDocument document;
+    document.assets.push_back(mirakana::AssetIdentityRow{
+        .key = mirakana::AssetKey{.value = "textures/hero"},
         .kind = mirakana::AssetKind::texture,
         .source_path = "source/textures/hero.png",
     });
 
     const std::array requests{
-        mirakana::AssetIdentityPlacementRequestV2{
+        mirakana::AssetIdentityPlacementRequest{
             .placement = "scene.hero.material",
-            .key = mirakana::AssetKeyV2{.value = "textures/hero"},
+            .key = mirakana::AssetKey{.value = "textures/hero"},
             .expected_kind = mirakana::AssetKind::material,
         },
-        mirakana::AssetIdentityPlacementRequestV2{
+        mirakana::AssetIdentityPlacementRequest{
             .placement = "scene.hero.mesh",
-            .key = mirakana::AssetKeyV2{.value = "meshes/hero"},
+            .key = mirakana::AssetKey{.value = "meshes/hero"},
             .expected_kind = mirakana::AssetKind::mesh,
         },
     };
 
-    const auto plan = mirakana::plan_asset_identity_placements_v2(document, requests);
+    const auto plan = mirakana::plan_asset_identity_placements(document, requests);
 
     MK_REQUIRE(!plan.can_place);
     MK_REQUIRE(plan.identity_diagnostics.empty());
     MK_REQUIRE(plan.rows.empty());
     MK_REQUIRE(plan.diagnostics.size() == 2);
-    MK_REQUIRE(plan.diagnostics[0].code == mirakana::AssetIdentityPlacementDiagnosticCodeV2::kind_mismatch);
+    MK_REQUIRE(plan.diagnostics[0].code == mirakana::AssetIdentityPlacementDiagnosticCode::kind_mismatch);
     MK_REQUIRE(plan.diagnostics[0].actual_kind == mirakana::AssetKind::texture);
-    MK_REQUIRE(plan.diagnostics[1].code == mirakana::AssetIdentityPlacementDiagnosticCodeV2::missing_key);
+    MK_REQUIRE(plan.diagnostics[1].code == mirakana::AssetIdentityPlacementDiagnosticCode::missing_key);
     MK_REQUIRE(plan.diagnostics[1].key.value == "meshes/hero");
 }
 
 MK_TEST("asset identity v2 placement carries invalid identity details") {
-    mirakana::AssetIdentityDocumentV2 document;
-    document.assets.push_back(mirakana::AssetIdentityRowV2{
-        .key = mirakana::AssetKeyV2{.value = "meshes/hero"},
+    mirakana::AssetIdentityDocument document;
+    document.assets.push_back(mirakana::AssetIdentityRow{
+        .key = mirakana::AssetKey{.value = "meshes/hero"},
         .kind = mirakana::AssetKind::mesh,
         .source_path = "source/meshes/hero.mesh",
     });
-    document.assets.push_back(mirakana::AssetIdentityRowV2{
-        .key = mirakana::AssetKeyV2{.value = "meshes/hero"},
+    document.assets.push_back(mirakana::AssetIdentityRow{
+        .key = mirakana::AssetKey{.value = "meshes/hero"},
         .kind = mirakana::AssetKind::material,
         .source_path = "source/materials/hero.material",
     });
     const std::array requests{
-        mirakana::AssetIdentityPlacementRequestV2{
+        mirakana::AssetIdentityPlacementRequest{
             .placement = "scene.hero.mesh",
-            .key = mirakana::AssetKeyV2{.value = "meshes/hero"},
+            .key = mirakana::AssetKey{.value = "meshes/hero"},
             .expected_kind = mirakana::AssetKind::mesh,
         },
     };
 
-    const auto plan = mirakana::plan_asset_identity_placements_v2(document, requests);
+    const auto plan = mirakana::plan_asset_identity_placements(document, requests);
 
     MK_REQUIRE(!plan.can_place);
     MK_REQUIRE(plan.rows.empty());
     MK_REQUIRE(plan.diagnostics.size() == 1);
-    MK_REQUIRE(plan.diagnostics[0].code == mirakana::AssetIdentityPlacementDiagnosticCodeV2::invalid_identity_document);
+    MK_REQUIRE(plan.diagnostics[0].code == mirakana::AssetIdentityPlacementDiagnosticCode::invalid_identity_document);
     MK_REQUIRE(plan.identity_diagnostics.size() == 1);
-    MK_REQUIRE(plan.identity_diagnostics[0].code == mirakana::AssetIdentityDiagnosticCodeV2::duplicate_key);
+    MK_REQUIRE(plan.identity_diagnostics[0].code == mirakana::AssetIdentityDiagnosticCode::duplicate_key);
     MK_REQUIRE(plan.identity_diagnostics[0].key.value == "meshes/hero");
 }
 
 MK_TEST("asset identity v2 placement validates placement grammar and stays all or nothing") {
-    mirakana::AssetIdentityDocumentV2 document;
-    document.assets.push_back(mirakana::AssetIdentityRowV2{
-        .key = mirakana::AssetKeyV2{.value = "meshes/hero"},
+    mirakana::AssetIdentityDocument document;
+    document.assets.push_back(mirakana::AssetIdentityRow{
+        .key = mirakana::AssetKey{.value = "meshes/hero"},
         .kind = mirakana::AssetKind::mesh,
         .source_path = "source/meshes/hero.mesh",
     });
     const std::array requests{
-        mirakana::AssetIdentityPlacementRequestV2{
+        mirakana::AssetIdentityPlacementRequest{
             .placement = "scene.hero.mesh",
-            .key = mirakana::AssetKeyV2{.value = "meshes/hero"},
+            .key = mirakana::AssetKey{.value = "meshes/hero"},
             .expected_kind = mirakana::AssetKind::mesh,
         },
-        mirakana::AssetIdentityPlacementRequestV2{
+        mirakana::AssetIdentityPlacementRequest{
             .placement = "../scene",
-            .key = mirakana::AssetKeyV2{.value = "meshes/hero"},
+            .key = mirakana::AssetKey{.value = "meshes/hero"},
             .expected_kind = mirakana::AssetKind::mesh,
         },
-        mirakana::AssetIdentityPlacementRequestV2{
+        mirakana::AssetIdentityPlacementRequest{
             .placement = "scene.hero.mesh",
-            .key = mirakana::AssetKeyV2{.value = "meshes/hero"},
+            .key = mirakana::AssetKey{.value = "meshes/hero"},
             .expected_kind = mirakana::AssetKind::mesh,
         },
-        mirakana::AssetIdentityPlacementRequestV2{
+        mirakana::AssetIdentityPlacementRequest{
             .placement = "scene.hero.bad_key",
-            .key = mirakana::AssetKeyV2{.value = "bad key"},
+            .key = mirakana::AssetKey{.value = "bad key"},
             .expected_kind = mirakana::AssetKind::mesh,
         },
-        mirakana::AssetIdentityPlacementRequestV2{
+        mirakana::AssetIdentityPlacementRequest{
             .placement = "scene.hero.unknown_kind",
-            .key = mirakana::AssetKeyV2{.value = "meshes/hero"},
+            .key = mirakana::AssetKey{.value = "meshes/hero"},
             .expected_kind = mirakana::AssetKind::unknown,
         },
     };
 
-    const auto plan = mirakana::plan_asset_identity_placements_v2(document, requests);
+    const auto plan = mirakana::plan_asset_identity_placements(document, requests);
 
     MK_REQUIRE(!plan.can_place);
     MK_REQUIRE(plan.identity_diagnostics.empty());
     MK_REQUIRE(plan.rows.empty());
     MK_REQUIRE(plan.diagnostics.size() == 4);
-    MK_REQUIRE(plan.diagnostics[0].code == mirakana::AssetIdentityPlacementDiagnosticCodeV2::invalid_placement);
+    MK_REQUIRE(plan.diagnostics[0].code == mirakana::AssetIdentityPlacementDiagnosticCode::invalid_placement);
     MK_REQUIRE(plan.diagnostics[0].placement == "../scene");
-    MK_REQUIRE(plan.diagnostics[1].code == mirakana::AssetIdentityPlacementDiagnosticCodeV2::duplicate_placement);
-    MK_REQUIRE(plan.diagnostics[2].code == mirakana::AssetIdentityPlacementDiagnosticCodeV2::invalid_key);
-    MK_REQUIRE(plan.diagnostics[3].code == mirakana::AssetIdentityPlacementDiagnosticCodeV2::invalid_expected_kind);
+    MK_REQUIRE(plan.diagnostics[1].code == mirakana::AssetIdentityPlacementDiagnosticCode::duplicate_placement);
+    MK_REQUIRE(plan.diagnostics[2].code == mirakana::AssetIdentityPlacementDiagnosticCode::invalid_key);
+    MK_REQUIRE(plan.diagnostics[3].code == mirakana::AssetIdentityPlacementDiagnosticCode::invalid_expected_kind);
 }
 
 MK_TEST("ui atlas metadata serializes deterministic cooked document text") {
@@ -571,14 +571,14 @@ MK_TEST("runtime resource v2 resolves handles and rejects stale generations") {
         },
     });
 
-    mirakana::runtime::RuntimeResourceCatalogV2 catalog;
-    const auto first_build = mirakana::runtime::build_runtime_resource_catalog_v2(catalog, first_package);
+    mirakana::runtime::RuntimeResourceCatalog catalog;
+    const auto first_build = mirakana::runtime::build_runtime_resource_catalog(catalog, first_package);
 
     MK_REQUIRE(first_build.succeeded());
-    const auto first_handle_opt = mirakana::runtime::find_runtime_resource_v2(catalog, texture);
+    const auto first_handle_opt = mirakana::runtime::find_runtime_resource(catalog, texture);
     MK_REQUIRE(first_handle_opt.has_value());
-    const mirakana::runtime::RuntimeResourceHandleV2 first_handle = *first_handle_opt;
-    MK_REQUIRE(mirakana::runtime::is_runtime_resource_handle_live_v2(catalog, first_handle));
+    const mirakana::runtime::RuntimeResourceHandle first_handle = *first_handle_opt;
+    MK_REQUIRE(mirakana::runtime::is_runtime_resource_handle_live(catalog, first_handle));
 
     const mirakana::runtime::RuntimeAssetPackage second_package({
         mirakana::runtime::RuntimeAssetRecord{
@@ -593,17 +593,17 @@ MK_TEST("runtime resource v2 resolves handles and rejects stale generations") {
         },
     });
 
-    const auto second_build = mirakana::runtime::build_runtime_resource_catalog_v2(catalog, second_package);
+    const auto second_build = mirakana::runtime::build_runtime_resource_catalog(catalog, second_package);
     MK_REQUIRE(second_build.succeeded());
 
-    MK_REQUIRE(!mirakana::runtime::is_runtime_resource_handle_live_v2(catalog, first_handle));
-    const auto second_handle_opt = mirakana::runtime::find_runtime_resource_v2(catalog, texture);
+    MK_REQUIRE(!mirakana::runtime::is_runtime_resource_handle_live(catalog, first_handle));
+    const auto second_handle_opt = mirakana::runtime::find_runtime_resource(catalog, texture);
     MK_REQUIRE(second_handle_opt.has_value());
-    const mirakana::runtime::RuntimeResourceHandleV2 second_handle = *second_handle_opt;
+    const mirakana::runtime::RuntimeResourceHandle second_handle = *second_handle_opt;
     const auto first_generation = first_handle.generation;
     const auto second_generation = second_handle.generation;
     MK_REQUIRE(second_generation != first_generation);
-    const auto* record = mirakana::runtime::runtime_resource_record_v2(catalog, second_handle);
+    const auto* record = mirakana::runtime::runtime_resource_record(catalog, second_handle);
     MK_REQUIRE(record != nullptr);
     MK_REQUIRE(record->asset == texture);
     MK_REQUIRE(record->package_handle == mirakana::runtime::RuntimeAssetHandle{.value = 9});
@@ -612,9 +612,9 @@ MK_TEST("runtime resource v2 resolves handles and rejects stale generations") {
 MK_TEST("runtime resource v2 duplicate asset leaves existing catalog live") {
     const auto texture = mirakana::AssetId::from_name("textures/player/albedo");
     const auto mesh = mirakana::AssetId::from_name("meshes/player");
-    mirakana::runtime::RuntimeResourceCatalogV2 catalog;
+    mirakana::runtime::RuntimeResourceCatalog catalog;
 
-    const auto first_build = mirakana::runtime::build_runtime_resource_catalog_v2(
+    const auto first_build = mirakana::runtime::build_runtime_resource_catalog(
         catalog, mirakana::runtime::RuntimeAssetPackage({
                      mirakana::runtime::RuntimeAssetRecord{
                          .handle = mirakana::runtime::RuntimeAssetHandle{.value = 1},
@@ -628,11 +628,11 @@ MK_TEST("runtime resource v2 duplicate asset leaves existing catalog live") {
                      },
                  }));
     MK_REQUIRE(first_build.succeeded());
-    const auto live_handle_opt = mirakana::runtime::find_runtime_resource_v2(catalog, texture);
+    const auto live_handle_opt = mirakana::runtime::find_runtime_resource(catalog, texture);
     MK_REQUIRE(live_handle_opt.has_value());
-    const mirakana::runtime::RuntimeResourceHandleV2 live_handle = *live_handle_opt;
+    const mirakana::runtime::RuntimeResourceHandle live_handle = *live_handle_opt;
 
-    const auto duplicate_build = mirakana::runtime::build_runtime_resource_catalog_v2(
+    const auto duplicate_build = mirakana::runtime::build_runtime_resource_catalog(
         catalog, mirakana::runtime::RuntimeAssetPackage({
                      mirakana::runtime::RuntimeAssetRecord{
                          .handle = mirakana::runtime::RuntimeAssetHandle{.value = 1},
@@ -659,15 +659,15 @@ MK_TEST("runtime resource v2 duplicate asset leaves existing catalog live") {
     MK_REQUIRE(!duplicate_build.succeeded());
     MK_REQUIRE(duplicate_build.diagnostics.size() == 1);
     MK_REQUIRE(duplicate_build.diagnostics[0].asset == mesh);
-    MK_REQUIRE(mirakana::runtime::is_runtime_resource_handle_live_v2(catalog, live_handle));
-    MK_REQUIRE(!mirakana::runtime::find_runtime_resource_v2(catalog, mesh).has_value());
+    MK_REQUIRE(mirakana::runtime::is_runtime_resource_handle_live(catalog, live_handle));
+    MK_REQUIRE(!mirakana::runtime::find_runtime_resource(catalog, mesh).has_value());
 }
 
 MK_TEST("runtime package safe point unload clears active package and invalidates handles") {
     const auto texture = mirakana::AssetId::from_name("textures/player/albedo");
     const auto mesh = mirakana::AssetId::from_name("meshes/player");
     mirakana::runtime::RuntimeAssetPackageStore store;
-    mirakana::runtime::RuntimeResourceCatalogV2 catalog;
+    mirakana::runtime::RuntimeResourceCatalog catalog;
 
     store.seed(mirakana::runtime::RuntimeAssetPackage({
         mirakana::runtime::RuntimeAssetRecord{
@@ -681,10 +681,10 @@ MK_TEST("runtime package safe point unload clears active package and invalidates
             .content = "active texture",
         },
     }));
-    MK_REQUIRE(mirakana::runtime::build_runtime_resource_catalog_v2(catalog, *store.active()).succeeded());
-    const auto stale_handle_opt = mirakana::runtime::find_runtime_resource_v2(catalog, texture);
+    MK_REQUIRE(mirakana::runtime::build_runtime_resource_catalog(catalog, *store.active()).succeeded());
+    const auto stale_handle_opt = mirakana::runtime::find_runtime_resource(catalog, texture);
     MK_REQUIRE(stale_handle_opt.has_value());
-    const mirakana::runtime::RuntimeResourceHandleV2 stale_handle = *stale_handle_opt;
+    const mirakana::runtime::RuntimeResourceHandle stale_handle = *stale_handle_opt;
 
     store.stage(mirakana::runtime::RuntimeAssetPackage({
         mirakana::runtime::RuntimeAssetRecord{
@@ -711,13 +711,13 @@ MK_TEST("runtime package safe point unload clears active package and invalidates
     MK_REQUIRE(store.active() == nullptr);
     MK_REQUIRE(store.pending() == nullptr);
     MK_REQUIRE(catalog.records().empty());
-    MK_REQUIRE(!mirakana::runtime::is_runtime_resource_handle_live_v2(catalog, stale_handle));
+    MK_REQUIRE(!mirakana::runtime::is_runtime_resource_handle_live(catalog, stale_handle));
 }
 
 MK_TEST("runtime package safe point unload without active package preserves pending package") {
     const auto texture = mirakana::AssetId::from_name("textures/player/albedo");
     mirakana::runtime::RuntimeAssetPackageStore store;
-    mirakana::runtime::RuntimeResourceCatalogV2 catalog;
+    mirakana::runtime::RuntimeResourceCatalog catalog;
 
     store.stage(mirakana::runtime::RuntimeAssetPackage({
         mirakana::runtime::RuntimeAssetRecord{
@@ -750,7 +750,7 @@ MK_TEST("runtime package safe point unload without active package preserves pend
 MK_TEST("runtime package safe point replacement commits package and catalog together") {
     const auto texture = mirakana::AssetId::from_name("textures/player/albedo");
     mirakana::runtime::RuntimeAssetPackageStore store;
-    mirakana::runtime::RuntimeResourceCatalogV2 catalog;
+    mirakana::runtime::RuntimeResourceCatalog catalog;
 
     store.seed(mirakana::runtime::RuntimeAssetPackage({
         mirakana::runtime::RuntimeAssetRecord{
@@ -764,10 +764,10 @@ MK_TEST("runtime package safe point replacement commits package and catalog toge
             .content = "format=GameEngine.CookedTexture\ntexture.width=4\n",
         },
     }));
-    MK_REQUIRE(mirakana::runtime::build_runtime_resource_catalog_v2(catalog, *store.active()).succeeded());
-    const auto stale_handle_opt = mirakana::runtime::find_runtime_resource_v2(catalog, texture);
+    MK_REQUIRE(mirakana::runtime::build_runtime_resource_catalog(catalog, *store.active()).succeeded());
+    const auto stale_handle_opt = mirakana::runtime::find_runtime_resource(catalog, texture);
     MK_REQUIRE(stale_handle_opt.has_value());
-    const mirakana::runtime::RuntimeResourceHandleV2 stale_handle = *stale_handle_opt;
+    const mirakana::runtime::RuntimeResourceHandle stale_handle = *stale_handle_opt;
 
     store.stage(mirakana::runtime::RuntimeAssetPackage({
         mirakana::runtime::RuntimeAssetRecord{
@@ -792,12 +792,12 @@ MK_TEST("runtime package safe point replacement commits package and catalog toge
     MK_REQUIRE(store.pending() == nullptr);
     MK_REQUIRE(store.active() != nullptr);
     MK_REQUIRE(store.active()->find(texture)->content.find("texture.width=8") != std::string::npos);
-    MK_REQUIRE(!mirakana::runtime::is_runtime_resource_handle_live_v2(catalog, stale_handle));
+    MK_REQUIRE(!mirakana::runtime::is_runtime_resource_handle_live(catalog, stale_handle));
 
-    const auto live_handle_opt = mirakana::runtime::find_runtime_resource_v2(catalog, texture);
+    const auto live_handle_opt = mirakana::runtime::find_runtime_resource(catalog, texture);
     MK_REQUIRE(live_handle_opt.has_value());
-    const mirakana::runtime::RuntimeResourceHandleV2 live_handle = *live_handle_opt;
-    const auto* record = mirakana::runtime::runtime_resource_record_v2(catalog, live_handle);
+    const mirakana::runtime::RuntimeResourceHandle live_handle = *live_handle_opt;
+    const auto* record = mirakana::runtime::runtime_resource_record(catalog, live_handle);
     MK_REQUIRE(record != nullptr);
     MK_REQUIRE(record->package_handle == mirakana::runtime::RuntimeAssetHandle{.value = 9});
 }
@@ -806,7 +806,7 @@ MK_TEST("runtime package safe point replacement rejects invalid pending package 
     const auto texture = mirakana::AssetId::from_name("textures/player/albedo");
     const auto mesh = mirakana::AssetId::from_name("meshes/player");
     mirakana::runtime::RuntimeAssetPackageStore store;
-    mirakana::runtime::RuntimeResourceCatalogV2 catalog;
+    mirakana::runtime::RuntimeResourceCatalog catalog;
 
     store.seed(mirakana::runtime::RuntimeAssetPackage({
         mirakana::runtime::RuntimeAssetRecord{
@@ -820,10 +820,10 @@ MK_TEST("runtime package safe point replacement rejects invalid pending package 
             .content = "active",
         },
     }));
-    MK_REQUIRE(mirakana::runtime::build_runtime_resource_catalog_v2(catalog, *store.active()).succeeded());
-    const auto active_handle_opt = mirakana::runtime::find_runtime_resource_v2(catalog, texture);
+    MK_REQUIRE(mirakana::runtime::build_runtime_resource_catalog(catalog, *store.active()).succeeded());
+    const auto active_handle_opt = mirakana::runtime::find_runtime_resource(catalog, texture);
     MK_REQUIRE(active_handle_opt.has_value());
-    const mirakana::runtime::RuntimeResourceHandleV2 active_handle = *active_handle_opt;
+    const mirakana::runtime::RuntimeResourceHandle active_handle = *active_handle_opt;
 
     store.stage(mirakana::runtime::RuntimeAssetPackage({
         mirakana::runtime::RuntimeAssetRecord{
@@ -858,14 +858,14 @@ MK_TEST("runtime package safe point replacement rejects invalid pending package 
     MK_REQUIRE(store.pending() == nullptr);
     MK_REQUIRE(store.active() != nullptr);
     MK_REQUIRE(store.active()->find(texture)->content == "active");
-    MK_REQUIRE(mirakana::runtime::is_runtime_resource_handle_live_v2(catalog, active_handle));
-    MK_REQUIRE(!mirakana::runtime::find_runtime_resource_v2(catalog, mesh).has_value());
+    MK_REQUIRE(mirakana::runtime::is_runtime_resource_handle_live(catalog, active_handle));
+    MK_REQUIRE(!mirakana::runtime::find_runtime_resource(catalog, mesh).has_value());
 }
 
 MK_TEST("runtime package streaming execution requires validation preflight before safe point commit") {
     const auto texture = mirakana::AssetId::from_name("textures/player/albedo");
     mirakana::runtime::RuntimeAssetPackageStore store;
-    mirakana::runtime::RuntimeResourceCatalogV2 catalog;
+    mirakana::runtime::RuntimeResourceCatalog catalog;
 
     store.seed(mirakana::runtime::RuntimeAssetPackage({
         mirakana::runtime::RuntimeAssetRecord{
@@ -879,10 +879,10 @@ MK_TEST("runtime package streaming execution requires validation preflight befor
             .content = "active",
         },
     }));
-    MK_REQUIRE(mirakana::runtime::build_runtime_resource_catalog_v2(catalog, *store.active()).succeeded());
-    const auto active_handle_opt = mirakana::runtime::find_runtime_resource_v2(catalog, texture);
+    MK_REQUIRE(mirakana::runtime::build_runtime_resource_catalog(catalog, *store.active()).succeeded());
+    const auto active_handle_opt = mirakana::runtime::find_runtime_resource(catalog, texture);
     MK_REQUIRE(active_handle_opt.has_value());
-    const mirakana::runtime::RuntimeResourceHandleV2 active_handle = *active_handle_opt;
+    const mirakana::runtime::RuntimeResourceHandle active_handle = *active_handle_opt;
 
     const mirakana::runtime::RuntimePackageStreamingExecutionDesc desc{
         .target_id = "packaged-scene-streaming",
@@ -921,14 +921,14 @@ MK_TEST("runtime package streaming execution requires validation preflight befor
     MK_REQUIRE(store.pending() == nullptr);
     MK_REQUIRE(store.active() != nullptr);
     MK_REQUIRE(store.active()->find(texture)->content == "active");
-    MK_REQUIRE(mirakana::runtime::is_runtime_resource_handle_live_v2(catalog, active_handle));
+    MK_REQUIRE(mirakana::runtime::is_runtime_resource_handle_live(catalog, active_handle));
 }
 
 MK_TEST("runtime package streaming execution commits selected loaded package at safe point") {
     const auto texture = mirakana::AssetId::from_name("textures/player/albedo");
     const auto material = mirakana::AssetId::from_name("materials/player");
     mirakana::runtime::RuntimeAssetPackageStore store;
-    mirakana::runtime::RuntimeResourceCatalogV2 catalog;
+    mirakana::runtime::RuntimeResourceCatalog catalog;
 
     store.seed(mirakana::runtime::RuntimeAssetPackage({
         mirakana::runtime::RuntimeAssetRecord{
@@ -942,10 +942,10 @@ MK_TEST("runtime package streaming execution commits selected loaded package at 
             .content = "active",
         },
     }));
-    MK_REQUIRE(mirakana::runtime::build_runtime_resource_catalog_v2(catalog, *store.active()).succeeded());
-    const auto stale_handle_opt = mirakana::runtime::find_runtime_resource_v2(catalog, texture);
+    MK_REQUIRE(mirakana::runtime::build_runtime_resource_catalog(catalog, *store.active()).succeeded());
+    const auto stale_handle_opt = mirakana::runtime::find_runtime_resource(catalog, texture);
     MK_REQUIRE(stale_handle_opt.has_value());
-    const mirakana::runtime::RuntimeResourceHandleV2 stale_handle = *stale_handle_opt;
+    const mirakana::runtime::RuntimeResourceHandle stale_handle = *stale_handle_opt;
 
     const mirakana::runtime::RuntimePackageStreamingExecutionDesc desc{
         .target_id = "packaged-scene-streaming",
@@ -993,14 +993,14 @@ MK_TEST("runtime package streaming execution commits selected loaded package at 
     MK_REQUIRE(result.estimated_resident_bytes <= desc.resident_budget_bytes);
     MK_REQUIRE(result.replacement.status == mirakana::runtime::RuntimePackageSafePointReplacementStatus::committed);
     MK_REQUIRE(result.replacement.stale_handle_count == 1);
-    MK_REQUIRE(!mirakana::runtime::is_runtime_resource_handle_live_v2(catalog, stale_handle));
-    MK_REQUIRE(mirakana::runtime::find_runtime_resource_v2(catalog, material).has_value());
+    MK_REQUIRE(!mirakana::runtime::is_runtime_resource_handle_live(catalog, stale_handle));
+    MK_REQUIRE(mirakana::runtime::find_runtime_resource(catalog, material).has_value());
 }
 
 MK_TEST("runtime package streaming execution rejects planning-only or unsafe descriptors") {
     const auto texture = mirakana::AssetId::from_name("textures/player/albedo");
     mirakana::runtime::RuntimeAssetPackageStore store;
-    mirakana::runtime::RuntimeResourceCatalogV2 catalog;
+    mirakana::runtime::RuntimeResourceCatalog catalog;
 
     store.seed(mirakana::runtime::RuntimeAssetPackage({
         mirakana::runtime::RuntimeAssetRecord{
@@ -1014,7 +1014,7 @@ MK_TEST("runtime package streaming execution rejects planning-only or unsafe des
             .content = "active",
         },
     }));
-    MK_REQUIRE(mirakana::runtime::build_runtime_resource_catalog_v2(catalog, *store.active()).succeeded());
+    MK_REQUIRE(mirakana::runtime::build_runtime_resource_catalog(catalog, *store.active()).succeeded());
 
     mirakana::runtime::RuntimePackageStreamingExecutionDesc desc{
         .target_id = "packaged-scene-streaming",
@@ -1082,7 +1082,7 @@ MK_TEST("runtime package streaming execution rejects planning-only or unsafe des
 MK_TEST("runtime package streaming execution reports over budget intent without allocator enforcement claim") {
     const auto texture = mirakana::AssetId::from_name("textures/player/albedo");
     mirakana::runtime::RuntimeAssetPackageStore store;
-    mirakana::runtime::RuntimeResourceCatalogV2 catalog;
+    mirakana::runtime::RuntimeResourceCatalog catalog;
 
     store.seed(mirakana::runtime::RuntimeAssetPackage({
         mirakana::runtime::RuntimeAssetRecord{
@@ -1096,7 +1096,7 @@ MK_TEST("runtime package streaming execution reports over budget intent without 
             .content = "active",
         },
     }));
-    MK_REQUIRE(mirakana::runtime::build_runtime_resource_catalog_v2(catalog, *store.active()).succeeded());
+    MK_REQUIRE(mirakana::runtime::build_runtime_resource_catalog(catalog, *store.active()).succeeded());
 
     const mirakana::runtime::RuntimePackageStreamingExecutionDesc desc{
         .target_id = "packaged-scene-streaming",
@@ -1140,7 +1140,7 @@ MK_TEST("runtime package streaming execution rejects missing required preload as
     const auto texture = mirakana::AssetId::from_name("textures/player/albedo");
     const auto material = mirakana::AssetId::from_name("materials/player");
     mirakana::runtime::RuntimeAssetPackageStore store;
-    mirakana::runtime::RuntimeResourceCatalogV2 catalog;
+    mirakana::runtime::RuntimeResourceCatalog catalog;
 
     store.seed(mirakana::runtime::RuntimeAssetPackage({
         mirakana::runtime::RuntimeAssetRecord{
@@ -1154,10 +1154,10 @@ MK_TEST("runtime package streaming execution rejects missing required preload as
             .content = "active",
         },
     }));
-    MK_REQUIRE(mirakana::runtime::build_runtime_resource_catalog_v2(catalog, *store.active()).succeeded());
-    const auto active_handle_opt = mirakana::runtime::find_runtime_resource_v2(catalog, texture);
+    MK_REQUIRE(mirakana::runtime::build_runtime_resource_catalog(catalog, *store.active()).succeeded());
+    const auto active_handle_opt = mirakana::runtime::find_runtime_resource(catalog, texture);
     MK_REQUIRE(active_handle_opt.has_value());
-    const mirakana::runtime::RuntimeResourceHandleV2 active_handle = *active_handle_opt;
+    const mirakana::runtime::RuntimeResourceHandle active_handle = *active_handle_opt;
 
     const mirakana::runtime::RuntimePackageStreamingExecutionDesc desc{
         .target_id = "packaged-scene-streaming",
@@ -1195,15 +1195,15 @@ MK_TEST("runtime package streaming execution rejects missing required preload as
     MK_REQUIRE(store.pending() == nullptr);
     MK_REQUIRE(store.active() != nullptr);
     MK_REQUIRE(store.active()->find(texture)->content == "active");
-    MK_REQUIRE(mirakana::runtime::is_runtime_resource_handle_live_v2(catalog, active_handle));
-    MK_REQUIRE(!mirakana::runtime::find_runtime_resource_v2(catalog, material).has_value());
+    MK_REQUIRE(mirakana::runtime::is_runtime_resource_handle_live(catalog, active_handle));
+    MK_REQUIRE(!mirakana::runtime::find_runtime_resource(catalog, material).has_value());
 }
 
 MK_TEST("runtime package streaming execution rejects disallowed resident resource kinds before staging") {
     const auto texture = mirakana::AssetId::from_name("textures/player/albedo");
     const auto material = mirakana::AssetId::from_name("materials/player");
     mirakana::runtime::RuntimeAssetPackageStore store;
-    mirakana::runtime::RuntimeResourceCatalogV2 catalog;
+    mirakana::runtime::RuntimeResourceCatalog catalog;
 
     store.seed(mirakana::runtime::RuntimeAssetPackage({
         mirakana::runtime::RuntimeAssetRecord{
@@ -1217,7 +1217,7 @@ MK_TEST("runtime package streaming execution rejects disallowed resident resourc
             .content = "active",
         },
     }));
-    MK_REQUIRE(mirakana::runtime::build_runtime_resource_catalog_v2(catalog, *store.active()).succeeded());
+    MK_REQUIRE(mirakana::runtime::build_runtime_resource_catalog(catalog, *store.active()).succeeded());
 
     const mirakana::runtime::RuntimePackageStreamingExecutionDesc desc{
         .target_id = "packaged-scene-streaming",
@@ -1265,14 +1265,14 @@ MK_TEST("runtime package streaming execution rejects disallowed resident resourc
     MK_REQUIRE(store.pending() == nullptr);
     MK_REQUIRE(store.active() != nullptr);
     MK_REQUIRE(store.active()->find(texture)->content == "active");
-    MK_REQUIRE(!mirakana::runtime::find_runtime_resource_v2(catalog, material).has_value());
+    MK_REQUIRE(!mirakana::runtime::find_runtime_resource(catalog, material).has_value());
 }
 
 MK_TEST("runtime package streaming execution commits when residency hints match loaded package") {
     const auto texture = mirakana::AssetId::from_name("textures/player/albedo");
     const auto material = mirakana::AssetId::from_name("materials/player");
     mirakana::runtime::RuntimeAssetPackageStore store;
-    mirakana::runtime::RuntimeResourceCatalogV2 catalog;
+    mirakana::runtime::RuntimeResourceCatalog catalog;
 
     store.seed(mirakana::runtime::RuntimeAssetPackage({
         mirakana::runtime::RuntimeAssetRecord{
@@ -1286,7 +1286,7 @@ MK_TEST("runtime package streaming execution commits when residency hints match 
             .content = "active",
         },
     }));
-    MK_REQUIRE(mirakana::runtime::build_runtime_resource_catalog_v2(catalog, *store.active()).succeeded());
+    MK_REQUIRE(mirakana::runtime::build_runtime_resource_catalog(catalog, *store.active()).succeeded());
 
     const mirakana::runtime::RuntimePackageStreamingExecutionDesc desc{
         .target_id = "packaged-scene-streaming",
@@ -1337,7 +1337,7 @@ MK_TEST("runtime package streaming execution commits when residency hints match 
     MK_REQUIRE(store.pending() == nullptr);
     MK_REQUIRE(store.active() != nullptr);
     MK_REQUIRE(store.active()->find(material)->content == "replacement material");
-    MK_REQUIRE(mirakana::runtime::find_runtime_resource_v2(catalog, material).has_value());
+    MK_REQUIRE(mirakana::runtime::find_runtime_resource(catalog, material).has_value());
 }
 
 MK_TEST("runtime resident mount overlay merges packages deterministically") {
@@ -1389,26 +1389,26 @@ MK_TEST("runtime resident mount overlay merges packages deterministically") {
             },
         });
 
-    mirakana::runtime::RuntimeResourceCatalogV2 catalog;
+    mirakana::runtime::RuntimeResourceCatalog catalog;
     {
         std::vector<mirakana::runtime::RuntimeAssetPackage> mounts{base, overlay};
-        MK_REQUIRE(mirakana::runtime::build_runtime_resource_catalog_v2_from_resident_mounts(
+        MK_REQUIRE(mirakana::runtime::build_runtime_resource_catalog_from_resident_mounts(
                        catalog, mounts, mirakana::runtime::RuntimePackageMountOverlay::first_mount_wins)
                        .succeeded());
-        const auto handle_opt = mirakana::runtime::find_runtime_resource_v2(catalog, texture);
+        const auto handle_opt = mirakana::runtime::find_runtime_resource(catalog, texture);
         MK_REQUIRE(handle_opt.has_value());
-        const auto* tex_record = mirakana::runtime::runtime_resource_record_v2(catalog, *handle_opt);
+        const auto* tex_record = mirakana::runtime::runtime_resource_record(catalog, *handle_opt);
         MK_REQUIRE(tex_record != nullptr);
         MK_REQUIRE(tex_record->content_hash == 100);
     }
     {
         std::vector<mirakana::runtime::RuntimeAssetPackage> mounts{base, overlay};
-        MK_REQUIRE(mirakana::runtime::build_runtime_resource_catalog_v2_from_resident_mounts(
+        MK_REQUIRE(mirakana::runtime::build_runtime_resource_catalog_from_resident_mounts(
                        catalog, mounts, mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins)
                        .succeeded());
-        const auto handle_opt = mirakana::runtime::find_runtime_resource_v2(catalog, texture);
+        const auto handle_opt = mirakana::runtime::find_runtime_resource(catalog, texture);
         MK_REQUIRE(handle_opt.has_value());
-        const auto* tex_record = mirakana::runtime::runtime_resource_record_v2(catalog, *handle_opt);
+        const auto* tex_record = mirakana::runtime::runtime_resource_record(catalog, *handle_opt);
         MK_REQUIRE(tex_record != nullptr);
         MK_REQUIRE(tex_record->content_hash == 101);
     }
@@ -1463,17 +1463,17 @@ MK_TEST("runtime resident package mount set rebuilds catalog from explicit mount
         },
     });
 
-    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    mirakana::runtime::RuntimeResidentPackageMountSet mount_set;
     MK_REQUIRE(mount_set
-                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
-                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1},
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecord{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountId{.value = 1},
                        .label = "base",
                        .package = base,
                    })
                    .succeeded());
     MK_REQUIRE(mount_set
-                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
-                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 2},
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecord{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountId{.value = 2},
                        .label = "overlay",
                        .package = overlay,
                    })
@@ -1481,20 +1481,20 @@ MK_TEST("runtime resident package mount set rebuilds catalog from explicit mount
     MK_REQUIRE(mount_set.mounts().size() == 2);
     MK_REQUIRE(mount_set.generation() == 2);
 
-    mirakana::runtime::RuntimeResourceCatalogV2 catalog;
-    const auto build = mirakana::runtime::build_runtime_resource_catalog_v2_from_resident_mount_set(
+    mirakana::runtime::RuntimeResourceCatalog catalog;
+    const auto build = mirakana::runtime::build_runtime_resource_catalog_from_resident_mount_set(
         catalog, mount_set, mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins);
 
     MK_REQUIRE(build.succeeded());
     MK_REQUIRE(build.catalog_build.succeeded());
     MK_REQUIRE(build.mounted_package_count == 2);
     MK_REQUIRE(build.mount_generation == mount_set.generation());
-    const auto handle_opt = mirakana::runtime::find_runtime_resource_v2(catalog, texture);
+    const auto handle_opt = mirakana::runtime::find_runtime_resource(catalog, texture);
     MK_REQUIRE(handle_opt.has_value());
-    const auto* tex_record = mirakana::runtime::runtime_resource_record_v2(catalog, *handle_opt);
+    const auto* tex_record = mirakana::runtime::runtime_resource_record(catalog, *handle_opt);
     MK_REQUIRE(tex_record != nullptr);
     MK_REQUIRE(tex_record->content_hash == 101);
-    MK_REQUIRE(mirakana::runtime::find_runtime_resource_v2(catalog, mesh).has_value());
+    MK_REQUIRE(mirakana::runtime::find_runtime_resource(catalog, mesh).has_value());
 }
 
 MK_TEST("runtime resident package mount set rejects duplicate invalid and missing ids") {
@@ -1512,41 +1512,41 @@ MK_TEST("runtime resident package mount set rejects duplicate invalid and missin
         },
     });
 
-    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
-    const auto invalid = mount_set.mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
-        .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{},
+    mirakana::runtime::RuntimeResidentPackageMountSet mount_set;
+    const auto invalid = mount_set.mount(mirakana::runtime::RuntimeResidentPackageMountRecord{
+        .id = mirakana::runtime::RuntimeResidentPackageMountId{},
         .label = "invalid",
         .package = package,
     });
     MK_REQUIRE(!invalid.succeeded());
-    MK_REQUIRE(invalid.status == mirakana::runtime::RuntimeResidentPackageMountStatusV2::invalid_mount_id);
+    MK_REQUIRE(invalid.status == mirakana::runtime::RuntimeResidentPackageMountStatus::invalid_mount_id);
     MK_REQUIRE(invalid.diagnostic.code == "invalid-mount-id");
     MK_REQUIRE(mount_set.mounts().empty());
     MK_REQUIRE(mount_set.generation() == 0);
 
     MK_REQUIRE(mount_set
-                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
-                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 7},
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecord{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountId{.value = 7},
                        .label = "base",
                        .package = package,
                    })
                    .succeeded());
     const std::uint32_t generation_after_mount = mount_set.generation();
-    const auto duplicate = mount_set.mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
-        .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 7},
+    const auto duplicate = mount_set.mount(mirakana::runtime::RuntimeResidentPackageMountRecord{
+        .id = mirakana::runtime::RuntimeResidentPackageMountId{.value = 7},
         .label = "duplicate",
         .package = package,
     });
     MK_REQUIRE(!duplicate.succeeded());
-    MK_REQUIRE(duplicate.status == mirakana::runtime::RuntimeResidentPackageMountStatusV2::duplicate_mount_id);
-    MK_REQUIRE(duplicate.diagnostic.mount == mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 7});
+    MK_REQUIRE(duplicate.status == mirakana::runtime::RuntimeResidentPackageMountStatus::duplicate_mount_id);
+    MK_REQUIRE(duplicate.diagnostic.mount == mirakana::runtime::RuntimeResidentPackageMountId{.value = 7});
     MK_REQUIRE(mount_set.mounts().size() == 1);
     MK_REQUIRE(mount_set.mounts()[0].label == "base");
     MK_REQUIRE(mount_set.generation() == generation_after_mount);
 
-    const auto missing = mount_set.unmount(mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 8});
+    const auto missing = mount_set.unmount(mirakana::runtime::RuntimeResidentPackageMountId{.value = 8});
     MK_REQUIRE(!missing.succeeded());
-    MK_REQUIRE(missing.status == mirakana::runtime::RuntimeResidentPackageMountStatusV2::missing_mount_id);
+    MK_REQUIRE(missing.status == mirakana::runtime::RuntimeResidentPackageMountStatus::missing_mount_id);
     MK_REQUIRE(missing.diagnostic.code == "missing-mount-id");
     MK_REQUIRE(mount_set.mounts().size() == 1);
     MK_REQUIRE(mount_set.generation() == generation_after_mount);
@@ -1580,42 +1580,42 @@ MK_TEST("runtime resident package mount set unmounts package and invalidates cat
         },
     });
 
-    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    mirakana::runtime::RuntimeResidentPackageMountSet mount_set;
     MK_REQUIRE(mount_set
-                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
-                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 1},
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecord{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountId{.value = 1},
                        .label = "base",
                        .package = base,
                    })
                    .succeeded());
     MK_REQUIRE(mount_set
-                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
-                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 2},
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecord{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountId{.value = 2},
                        .label = "overlay",
                        .package = overlay,
                    })
                    .succeeded());
 
-    mirakana::runtime::RuntimeResourceCatalogV2 catalog;
-    MK_REQUIRE(mirakana::runtime::build_runtime_resource_catalog_v2_from_resident_mount_set(
+    mirakana::runtime::RuntimeResourceCatalog catalog;
+    MK_REQUIRE(mirakana::runtime::build_runtime_resource_catalog_from_resident_mount_set(
                    catalog, mount_set, mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins)
                    .succeeded());
-    const auto stale_handle_opt = mirakana::runtime::find_runtime_resource_v2(catalog, material);
+    const auto stale_handle_opt = mirakana::runtime::find_runtime_resource(catalog, material);
     MK_REQUIRE(stale_handle_opt.has_value());
-    const mirakana::runtime::RuntimeResourceHandleV2 stale_handle = *stale_handle_opt;
+    const mirakana::runtime::RuntimeResourceHandle stale_handle = *stale_handle_opt;
 
-    const auto unmount = mount_set.unmount(mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 2});
+    const auto unmount = mount_set.unmount(mirakana::runtime::RuntimeResidentPackageMountId{.value = 2});
     MK_REQUIRE(unmount.succeeded());
-    MK_REQUIRE(unmount.status == mirakana::runtime::RuntimeResidentPackageMountStatusV2::unmounted);
-    const auto rebuild = mirakana::runtime::build_runtime_resource_catalog_v2_from_resident_mount_set(
+    MK_REQUIRE(unmount.status == mirakana::runtime::RuntimeResidentPackageMountStatus::unmounted);
+    const auto rebuild = mirakana::runtime::build_runtime_resource_catalog_from_resident_mount_set(
         catalog, mount_set, mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins);
 
     MK_REQUIRE(rebuild.succeeded());
     MK_REQUIRE(rebuild.mounted_package_count == 1);
     MK_REQUIRE(rebuild.mount_generation == mount_set.generation());
-    MK_REQUIRE(!mirakana::runtime::is_runtime_resource_handle_live_v2(catalog, stale_handle));
-    MK_REQUIRE(!mirakana::runtime::find_runtime_resource_v2(catalog, material).has_value());
-    MK_REQUIRE(mirakana::runtime::find_runtime_resource_v2(catalog, texture).has_value());
+    MK_REQUIRE(!mirakana::runtime::is_runtime_resource_handle_live(catalog, stale_handle));
+    MK_REQUIRE(!mirakana::runtime::find_runtime_resource(catalog, material).has_value());
+    MK_REQUIRE(mirakana::runtime::find_runtime_resource(catalog, texture).has_value());
 }
 
 MK_TEST("estimate_runtime_asset_package_resident_bytes sums cooked record payload sizes") {
@@ -1660,14 +1660,14 @@ MK_TEST("runtime resource residency budget execution passes when caps are unset 
             .content = "hello",
         },
     });
-    const mirakana::runtime::RuntimeResourceResidencyBudgetV2 no_limits{};
+    const mirakana::runtime::RuntimeResourceResidencyBudget no_limits{};
     const auto pass0 = mirakana::runtime::evaluate_runtime_resource_residency_budget(package, no_limits);
     MK_REQUIRE(pass0.within_budget);
     MK_REQUIRE(pass0.diagnostics.empty());
     MK_REQUIRE(pass0.estimated_resident_content_bytes == 5);
     MK_REQUIRE(pass0.resident_asset_record_count == 1);
 
-    const mirakana::runtime::RuntimeResourceResidencyBudgetV2 generous{
+    const mirakana::runtime::RuntimeResourceResidencyBudget generous{
         .max_resident_content_bytes = 100,
         .max_resident_asset_records = 10,
     };
@@ -1702,7 +1702,7 @@ MK_TEST("runtime resource residency budget execution fails deterministically on 
         },
     });
 
-    const mirakana::runtime::RuntimeResourceResidencyBudgetV2 byte_tight{
+    const mirakana::runtime::RuntimeResourceResidencyBudget byte_tight{
         .max_resident_content_bytes = 2,
     };
     const auto byte_fail = mirakana::runtime::evaluate_runtime_resource_residency_budget(package, byte_tight);
@@ -1710,7 +1710,7 @@ MK_TEST("runtime resource residency budget execution fails deterministically on 
     MK_REQUIRE(byte_fail.diagnostics.size() == 1);
     MK_REQUIRE(byte_fail.diagnostics[0].code == "resident-content-bytes-exceed-budget");
 
-    const mirakana::runtime::RuntimeResourceResidencyBudgetV2 record_tight{
+    const mirakana::runtime::RuntimeResourceResidencyBudget record_tight{
         .max_resident_asset_records = 1,
     };
     const auto record_fail = mirakana::runtime::evaluate_runtime_resource_residency_budget(package, record_tight);
@@ -1718,7 +1718,7 @@ MK_TEST("runtime resource residency budget execution fails deterministically on 
     MK_REQUIRE(record_fail.diagnostics.size() == 1);
     MK_REQUIRE(record_fail.diagnostics[0].code == "resident-asset-record-count-exceeds-budget");
 
-    const mirakana::runtime::RuntimeResourceResidencyBudgetV2 both_fail{
+    const mirakana::runtime::RuntimeResourceResidencyBudget both_fail{
         .max_resident_content_bytes = 1,
         .max_resident_asset_records = 1,
     };
@@ -1744,10 +1744,10 @@ MK_TEST("runtime resident mount catalog budget bundle skips catalog rebuild when
         },
     });
 
-    mirakana::runtime::RuntimeResourceCatalogV2 catalog;
-    MK_REQUIRE(mirakana::runtime::build_runtime_resource_catalog_v2(catalog, seed_pkg).succeeded());
+    mirakana::runtime::RuntimeResourceCatalog catalog;
+    MK_REQUIRE(mirakana::runtime::build_runtime_resource_catalog(catalog, seed_pkg).succeeded());
     const std::uint32_t generation_before = catalog.generation();
-    const auto seed_handle = mirakana::runtime::find_runtime_resource_v2(catalog, texture);
+    const auto seed_handle = mirakana::runtime::find_runtime_resource(catalog, texture);
     MK_REQUIRE(seed_handle.has_value());
 
     mirakana::runtime::RuntimeAssetPackage overlay({
@@ -1764,18 +1764,18 @@ MK_TEST("runtime resident mount catalog budget bundle skips catalog rebuild when
     });
 
     std::vector<mirakana::runtime::RuntimeAssetPackage> mounts{seed_pkg, overlay};
-    const mirakana::runtime::RuntimeResourceResidencyBudgetV2 budget{
+    const mirakana::runtime::RuntimeResourceResidencyBudget budget{
         .max_resident_content_bytes = 5,
     };
-    const auto bundle = mirakana::runtime::build_runtime_resource_catalog_v2_from_resident_mounts_with_budget(
+    const auto bundle = mirakana::runtime::build_runtime_resource_catalog_from_resident_mounts_with_budget(
         catalog, mounts, mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins, budget);
 
     MK_REQUIRE(!bundle.ok());
     MK_REQUIRE(!bundle.budget_execution.within_budget);
     MK_REQUIRE(!bundle.invoked_catalog_build);
     MK_REQUIRE(catalog.generation() == generation_before);
-    MK_REQUIRE(mirakana::runtime::is_runtime_resource_handle_live_v2(catalog, *seed_handle));
-    MK_REQUIRE(!mirakana::runtime::find_runtime_resource_v2(catalog, mesh).has_value());
+    MK_REQUIRE(mirakana::runtime::is_runtime_resource_handle_live(catalog, *seed_handle));
+    MK_REQUIRE(!mirakana::runtime::find_runtime_resource(catalog, mesh).has_value());
 }
 
 MK_TEST("runtime resident mount catalog budget bundle rebuilds catalog when budget passes") {
@@ -1807,21 +1807,21 @@ MK_TEST("runtime resident mount catalog budget bundle rebuilds catalog when budg
         },
     });
 
-    mirakana::runtime::RuntimeResourceCatalogV2 catalog;
+    mirakana::runtime::RuntimeResourceCatalog catalog;
     std::vector<mirakana::runtime::RuntimeAssetPackage> mounts{base, overlay};
-    const mirakana::runtime::RuntimeResourceResidencyBudgetV2 budget{
+    const mirakana::runtime::RuntimeResourceResidencyBudget budget{
         .max_resident_content_bytes = 100,
         .max_resident_asset_records = 10,
     };
-    const auto bundle = mirakana::runtime::build_runtime_resource_catalog_v2_from_resident_mounts_with_budget(
+    const auto bundle = mirakana::runtime::build_runtime_resource_catalog_from_resident_mounts_with_budget(
         catalog, mounts, mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins, budget);
 
     MK_REQUIRE(bundle.ok());
     MK_REQUIRE(bundle.budget_execution.within_budget);
     MK_REQUIRE(bundle.invoked_catalog_build);
     MK_REQUIRE(bundle.catalog_build.succeeded());
-    MK_REQUIRE(mirakana::runtime::find_runtime_resource_v2(catalog, texture).has_value());
-    MK_REQUIRE(mirakana::runtime::find_runtime_resource_v2(catalog, mesh).has_value());
+    MK_REQUIRE(mirakana::runtime::find_runtime_resource(catalog, texture).has_value());
+    MK_REQUIRE(mirakana::runtime::find_runtime_resource(catalog, mesh).has_value());
 }
 
 int main() {

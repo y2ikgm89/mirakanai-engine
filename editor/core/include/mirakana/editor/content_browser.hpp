@@ -20,7 +20,7 @@ struct ContentBrowserItem {
     std::string path;
     std::string display_name;
     std::string directory;
-    AssetKeyV2 asset_key;
+    AssetKey asset_key;
     std::string asset_key_label;
     std::string identity_source_path;
     bool identity_backed{false};
@@ -29,8 +29,8 @@ struct ContentBrowserItem {
 class ContentBrowserState {
   public:
     void refresh_from(const AssetRegistry& registry);
-    void refresh_from(const AssetRegistry& registry, const AssetIdentityDocumentV2& identity);
-    void refresh_from(const SourceAssetRegistryDocumentV1& registry);
+    void refresh_from(const AssetRegistry& registry, const AssetIdentityDocument& identity);
+    void refresh_from(const SourceAssetRegistryDocument& registry);
 
     [[nodiscard]] std::size_t item_count() const noexcept;
     [[nodiscard]] const std::vector<ContentBrowserItem>& items() const noexcept;
@@ -42,7 +42,7 @@ class ContentBrowserState {
     void set_text_filter(std::string filter);
     void set_kind_filter(AssetKind kind) noexcept;
     [[nodiscard]] bool select(AssetId id) noexcept;
-    [[nodiscard]] bool select(const AssetKeyV2& key) noexcept;
+    [[nodiscard]] bool select(const AssetKey& key) noexcept;
     void clear_selection() noexcept;
 
   private:

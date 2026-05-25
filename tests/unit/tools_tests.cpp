@@ -36,8 +36,8 @@
 #include "mirakana/tools/registered_source_asset_cook_package_tool.hpp"
 #include "mirakana/tools/runtime_scene_package_validation_tool.hpp"
 #include "mirakana/tools/scene_prefab_authoring_tool.hpp"
+#include "mirakana/tools/scene_runtime_package_migration_tool.hpp"
 #include "mirakana/tools/scene_tool.hpp"
-#include "mirakana/tools/scene_v2_runtime_package_migration_tool.hpp"
 #include "mirakana/tools/shader_compile_action.hpp"
 #include "mirakana/tools/shader_tool_process.hpp"
 #include "mirakana/tools/shader_toolchain.hpp"
@@ -409,7 +409,7 @@ void append_le_f32(std::string& output, float value) {
 [[nodiscard]] mirakana::SpriteAtlasSourceAuthoringDesc make_sprite_atlas_source_authoring_desc() {
     mirakana::SpriteAtlasSourceAuthoringDesc desc;
     desc.source_registry_path = "source/assets/game.geassets";
-    desc.atlas_asset_key = mirakana::AssetKeyV2{"assets/sprites/player_atlas"};
+    desc.atlas_asset_key = mirakana::AssetKey{"assets/sprites/player_atlas"};
     desc.atlas_source_path = "source/sprites/player_atlas.texture_source";
     desc.atlas_imported_path = "runtime/assets/2d/player_atlas.texture";
     desc.frames = {
@@ -791,8 +791,8 @@ void append_le_f32(std::string& output, float value) {
 }
 
 [[nodiscard]] std::string registered_cook_material_source_content() {
-    const auto material = mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{"assets/materials/hero"});
-    const auto texture = mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{"assets/textures/hero"});
+    const auto material = mirakana::asset_id_from_key(mirakana::AssetKey{"assets/materials/hero"});
+    const auto texture = mirakana::asset_id_from_key(mirakana::AssetKey{"assets/textures/hero"});
     return mirakana::serialize_material_definition(mirakana::MaterialDefinition{
         .id = material,
         .name = "Hero Material",
@@ -805,27 +805,27 @@ void append_le_f32(std::string& output, float value) {
     });
 }
 
-[[nodiscard]] mirakana::SourceAssetRegistryDocumentV1 make_registered_cook_source_registry() {
-    mirakana::SourceAssetRegistryDocumentV1 registry;
-    registry.assets.push_back(mirakana::SourceAssetRegistryRowV1{
-        .key = mirakana::AssetKeyV2{"assets/materials/hero"},
+[[nodiscard]] mirakana::SourceAssetRegistryDocument make_registered_cook_source_registry() {
+    mirakana::SourceAssetRegistryDocument registry;
+    registry.assets.push_back(mirakana::SourceAssetRegistryRow{
+        .key = mirakana::AssetKey{"assets/materials/hero"},
         .kind = mirakana::AssetKind::material,
         .source_path = "source/materials/hero.material",
         .source_format = "GameEngine.Material",
         .imported_path = "runtime/assets/materials/hero.material",
-        .dependencies = {mirakana::SourceAssetDependencyRowV1{.kind = mirakana::AssetDependencyKind::material_texture,
-                                                              .key = mirakana::AssetKeyV2{"assets/textures/hero"}}},
+        .dependencies = {mirakana::SourceAssetDependencyRow{.kind = mirakana::AssetDependencyKind::material_texture,
+                                                            .key = mirakana::AssetKey{"assets/textures/hero"}}},
     });
-    registry.assets.push_back(mirakana::SourceAssetRegistryRowV1{
-        .key = mirakana::AssetKeyV2{"assets/meshes/cube"},
+    registry.assets.push_back(mirakana::SourceAssetRegistryRow{
+        .key = mirakana::AssetKey{"assets/meshes/cube"},
         .kind = mirakana::AssetKind::mesh,
         .source_path = "source/meshes/cube.mesh_source",
         .source_format = "GameEngine.MeshSource",
         .imported_path = "runtime/assets/meshes/cube.mesh",
         .dependencies = {},
     });
-    registry.assets.push_back(mirakana::SourceAssetRegistryRowV1{
-        .key = mirakana::AssetKeyV2{"assets/textures/hero"},
+    registry.assets.push_back(mirakana::SourceAssetRegistryRow{
+        .key = mirakana::AssetKey{"assets/textures/hero"},
         .kind = mirakana::AssetKind::texture,
         .source_path = "source/textures/hero.texture_source",
         .source_format = "GameEngine.TextureSource",
@@ -843,8 +843,8 @@ void append_le_f32(std::string& output, float value) {
         mirakana::serialize_source_asset_registry_document(make_registered_cook_source_registry());
     request.package_index_path = "runtime/game.geindex";
     request.package_index_content = empty_package_index_content();
-    request.selected_asset_keys = {mirakana::AssetKeyV2{"assets/textures/hero"},
-                                   mirakana::AssetKeyV2{"assets/materials/hero"}};
+    request.selected_asset_keys = {mirakana::AssetKey{"assets/textures/hero"},
+                                   mirakana::AssetKey{"assets/materials/hero"}};
     request.source_files = {
         mirakana::RegisteredSourceAssetCookPackageSourceFile{.path = "source/textures/hero.texture_source",
                                                              .content = registered_cook_texture_source_content()},
@@ -858,9 +858,9 @@ void append_le_f32(std::string& output, float value) {
 [[nodiscard]] mirakana::RegisteredSourceAssetCookPackageRequest make_registered_scene_workflow_cook_request() {
     auto request = make_registered_cook_request();
     request.selected_asset_keys = {
-        mirakana::AssetKeyV2{"assets/meshes/cube"},
-        mirakana::AssetKeyV2{"assets/textures/hero"},
-        mirakana::AssetKeyV2{"assets/materials/hero"},
+        mirakana::AssetKey{"assets/meshes/cube"},
+        mirakana::AssetKey{"assets/textures/hero"},
+        mirakana::AssetKey{"assets/materials/hero"},
     };
     request.source_files.insert(request.source_files.begin(), mirakana::RegisteredSourceAssetCookPackageSourceFile{
                                                                   .path = "source/meshes/cube.mesh_source",
@@ -952,21 +952,21 @@ void append_le_f32(std::string& output, float value) {
     return update;
 }
 
-[[nodiscard]] mirakana::SceneDocumentV2 make_scene_prefab_authoring_scene_v2() {
-    mirakana::SceneDocumentV2 scene;
+[[nodiscard]] mirakana::SceneDocument make_scene_prefab_authoring_scene() {
+    mirakana::SceneDocument scene;
     scene.name = "Authoring Level";
-    scene.nodes.push_back(mirakana::SceneNodeDocumentV2{.id = mirakana::AuthoringId{"node/root"}, .name = "Root"});
+    scene.nodes.push_back(mirakana::SceneNodeDocument{.id = mirakana::AuthoringId{"node/root"}, .name = "Root"});
     return scene;
 }
 
-[[nodiscard]] mirakana::SceneDocumentV2 make_runtime_migration_scene_v2() {
-    mirakana::SceneDocumentV2 scene;
+[[nodiscard]] mirakana::SceneDocument make_runtime_migration_scene() {
+    mirakana::SceneDocument scene;
     scene.name = "Migrated Level";
-    scene.nodes.push_back(mirakana::SceneNodeDocumentV2{.id = mirakana::AuthoringId{"node/root"}, .name = "Root"});
-    scene.nodes.push_back(mirakana::SceneNodeDocumentV2{.id = mirakana::AuthoringId{"node/child"}, .name = "Child"});
+    scene.nodes.push_back(mirakana::SceneNodeDocument{.id = mirakana::AuthoringId{"node/root"}, .name = "Root"});
+    scene.nodes.push_back(mirakana::SceneNodeDocument{.id = mirakana::AuthoringId{"node/child"}, .name = "Child"});
     scene.nodes[1].parent = mirakana::AuthoringId{"node/root"};
     scene.nodes[1].transform.position = mirakana::Vec3{.x = 4.0F, .y = 5.0F, .z = 6.0F};
-    scene.components.push_back(mirakana::SceneComponentDocumentV2{
+    scene.components.push_back(mirakana::SceneComponentDocument{
         .id = mirakana::AuthoringId{"component/root/camera"},
         .node = mirakana::AuthoringId{"node/root"},
         .type = mirakana::SceneComponentTypeId{"camera"},
@@ -980,7 +980,7 @@ void append_le_f32(std::string& output, float value) {
                 {.name = "far_plane", .value = "500"},
             },
     });
-    scene.components.push_back(mirakana::SceneComponentDocumentV2{
+    scene.components.push_back(mirakana::SceneComponentDocument{
         .id = mirakana::AuthoringId{"component/root/mesh"},
         .node = mirakana::AuthoringId{"node/root"},
         .type = mirakana::SceneComponentTypeId{"mesh_renderer"},
@@ -991,7 +991,7 @@ void append_le_f32(std::string& output, float value) {
                 {.name = "visible", .value = "true"},
             },
     });
-    scene.components.push_back(mirakana::SceneComponentDocumentV2{
+    scene.components.push_back(mirakana::SceneComponentDocument{
         .id = mirakana::AuthoringId{"component/child/light"},
         .node = mirakana::AuthoringId{"node/child"},
         .type = mirakana::SceneComponentTypeId{"light"},
@@ -1004,7 +1004,7 @@ void append_le_f32(std::string& output, float value) {
                 {.name = "casts_shadows", .value = "true"},
             },
     });
-    scene.components.push_back(mirakana::SceneComponentDocumentV2{
+    scene.components.push_back(mirakana::SceneComponentDocument{
         .id = mirakana::AuthoringId{"component/child/sprite"},
         .node = mirakana::AuthoringId{"node/child"},
         .type = mirakana::SceneComponentTypeId{"sprite_renderer"},
@@ -1020,26 +1020,26 @@ void append_le_f32(std::string& output, float value) {
     return scene;
 }
 
-[[nodiscard]] mirakana::SourceAssetRegistryDocumentV1 make_runtime_migration_source_registry() {
-    mirakana::SourceAssetRegistryDocumentV1 registry;
-    registry.assets.push_back(mirakana::SourceAssetRegistryRowV1{
-        .key = mirakana::AssetKeyV2{"assets/materials/base"},
+[[nodiscard]] mirakana::SourceAssetRegistryDocument make_runtime_migration_source_registry() {
+    mirakana::SourceAssetRegistryDocument registry;
+    registry.assets.push_back(mirakana::SourceAssetRegistryRow{
+        .key = mirakana::AssetKey{"assets/materials/base"},
         .kind = mirakana::AssetKind::material,
         .source_path = "source/materials/base.material",
         .source_format = "GameEngine.Material",
         .imported_path = "runtime/assets/materials/base.material",
         .dependencies = {},
     });
-    registry.assets.push_back(mirakana::SourceAssetRegistryRowV1{
-        .key = mirakana::AssetKeyV2{"assets/meshes/cube"},
+    registry.assets.push_back(mirakana::SourceAssetRegistryRow{
+        .key = mirakana::AssetKey{"assets/meshes/cube"},
         .kind = mirakana::AssetKind::mesh,
         .source_path = "source/meshes/cube.gemesh",
         .source_format = "GameEngine.MeshSource",
         .imported_path = "runtime/assets/meshes/cube.mesh",
         .dependencies = {},
     });
-    registry.assets.push_back(mirakana::SourceAssetRegistryRowV1{
-        .key = mirakana::AssetKeyV2{"assets/textures/hero"},
+    registry.assets.push_back(mirakana::SourceAssetRegistryRow{
+        .key = mirakana::AssetKey{"assets/textures/hero"},
         .kind = mirakana::AssetKind::texture,
         .source_path = "source/textures/hero.getexture",
         .source_format = "GameEngine.TextureSource",
@@ -1050,9 +1050,9 @@ void append_le_f32(std::string& output, float value) {
 }
 
 [[nodiscard]] std::string runtime_migration_package_index_content() {
-    const auto mesh = mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{"assets/meshes/cube"});
-    const auto material = mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{"assets/materials/base"});
-    const auto sprite = mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{"assets/textures/hero"});
+    const auto mesh = mirakana::asset_id_from_key(mirakana::AssetKey{"assets/meshes/cube"});
+    const auto material = mirakana::asset_id_from_key(mirakana::AssetKey{"assets/materials/base"});
+    const auto sprite = mirakana::asset_id_from_key(mirakana::AssetKey{"assets/textures/hero"});
     return mirakana::serialize_asset_cooked_package_index(mirakana::build_asset_cooked_package_index(
         {
             mirakana::AssetCookedArtifact{.asset = mesh,
@@ -1077,30 +1077,30 @@ void append_le_f32(std::string& output, float value) {
         {}));
 }
 
-[[nodiscard]] mirakana::SceneV2RuntimePackageMigrationRequest make_runtime_migration_request() {
-    mirakana::SceneV2RuntimePackageMigrationRequest request;
-    request.kind = mirakana::SceneV2RuntimePackageMigrationCommandKind::migrate_scene_v2_runtime_package;
-    request.scene_v2_path = "source/scenes/level.scene";
-    request.scene_v2_content = mirakana::serialize_scene_document_v2(make_runtime_migration_scene_v2());
+[[nodiscard]] mirakana::SceneRuntimePackageMigrationRequest make_runtime_migration_request() {
+    mirakana::SceneRuntimePackageMigrationRequest request;
+    request.kind = mirakana::SceneRuntimePackageMigrationCommandKind::migrate_scene_runtime_package;
+    request.scene_path = "source/scenes/level.scene";
+    request.scene_content = mirakana::serialize_scene_document(make_runtime_migration_scene());
     request.source_registry_path = "source/assets/game.geassets";
     request.source_registry_content =
         mirakana::serialize_source_asset_registry_document(make_runtime_migration_source_registry());
     request.package_index_path = "runtime/game.geindex";
     request.package_index_content = runtime_migration_package_index_content();
     request.output_scene_path = "runtime/assets/scenes/level.scene";
-    request.scene_asset_key = mirakana::AssetKeyV2{"assets/scenes/level"};
+    request.scene_asset_key = mirakana::AssetKey{"assets/scenes/level"};
     request.source_revision = 21;
     return request;
 }
 
-[[nodiscard]] mirakana::SceneDocumentV2 make_registered_scene_workflow_scene_v2() {
-    mirakana::SceneDocumentV2 scene;
+[[nodiscard]] mirakana::SceneDocument make_registered_scene_workflow_scene() {
+    mirakana::SceneDocument scene;
     scene.name = "Registered Runtime Level";
-    scene.nodes.push_back(mirakana::SceneNodeDocumentV2{.id = mirakana::AuthoringId{"node/root"}, .name = "Root"});
-    scene.nodes.push_back(mirakana::SceneNodeDocumentV2{.id = mirakana::AuthoringId{"node/prop"}, .name = "Prop"});
+    scene.nodes.push_back(mirakana::SceneNodeDocument{.id = mirakana::AuthoringId{"node/root"}, .name = "Root"});
+    scene.nodes.push_back(mirakana::SceneNodeDocument{.id = mirakana::AuthoringId{"node/prop"}, .name = "Prop"});
     scene.nodes[1].parent = mirakana::AuthoringId{"node/root"};
     scene.nodes[1].transform.position = mirakana::Vec3{.x = 2.0F, .y = 0.0F, .z = 1.0F};
-    scene.components.push_back(mirakana::SceneComponentDocumentV2{
+    scene.components.push_back(mirakana::SceneComponentDocument{
         .id = mirakana::AuthoringId{"component/root/camera"},
         .node = mirakana::AuthoringId{"node/root"},
         .type = mirakana::SceneComponentTypeId{"camera"},
@@ -1113,7 +1113,7 @@ void append_le_f32(std::string& output, float value) {
                 {.name = "far_plane", .value = "250"},
             },
     });
-    scene.components.push_back(mirakana::SceneComponentDocumentV2{
+    scene.components.push_back(mirakana::SceneComponentDocument{
         .id = mirakana::AuthoringId{"component/prop/mesh"},
         .node = mirakana::AuthoringId{"node/prop"},
         .type = mirakana::SceneComponentTypeId{"mesh_renderer"},
@@ -1124,7 +1124,7 @@ void append_le_f32(std::string& output, float value) {
                 {.name = "visible", .value = "true"},
             },
     });
-    scene.components.push_back(mirakana::SceneComponentDocumentV2{
+    scene.components.push_back(mirakana::SceneComponentDocument{
         .id = mirakana::AuthoringId{"component/prop/sprite"},
         .node = mirakana::AuthoringId{"node/prop"},
         .type = mirakana::SceneComponentTypeId{"sprite_renderer"},
@@ -1139,31 +1139,31 @@ void append_le_f32(std::string& output, float value) {
     return scene;
 }
 
-[[nodiscard]] mirakana::SceneV2RuntimePackageMigrationRequest
+[[nodiscard]] mirakana::SceneRuntimePackageMigrationRequest
 make_registered_scene_workflow_migration_request(std::string package_index_content = empty_package_index_content()) {
-    mirakana::SceneV2RuntimePackageMigrationRequest request;
-    request.kind = mirakana::SceneV2RuntimePackageMigrationCommandKind::migrate_scene_v2_runtime_package;
-    request.scene_v2_path = "source/scenes/registered-level.scene";
-    request.scene_v2_content = mirakana::serialize_scene_document_v2(make_registered_scene_workflow_scene_v2());
+    mirakana::SceneRuntimePackageMigrationRequest request;
+    request.kind = mirakana::SceneRuntimePackageMigrationCommandKind::migrate_scene_runtime_package;
+    request.scene_path = "source/scenes/registered-level.scene";
+    request.scene_content = mirakana::serialize_scene_document(make_registered_scene_workflow_scene());
     request.source_registry_path = "source/assets/game.geassets";
     request.source_registry_content =
         mirakana::serialize_source_asset_registry_document(make_registered_cook_source_registry());
     request.package_index_path = "runtime/game.geindex";
     request.package_index_content = std::move(package_index_content);
     request.output_scene_path = "runtime/assets/scenes/registered-level.scene";
-    request.scene_asset_key = mirakana::AssetKeyV2{"assets/scenes/registered-level"};
+    request.scene_asset_key = mirakana::AssetKey{"assets/scenes/registered-level"};
     request.source_revision = 41;
     return request;
 }
 
 struct RuntimeScenePackageValidationFixture {
-    mirakana::AssetKeyV2 scene_key{"assets/scenes/validation-level"};
-    mirakana::AssetId scene_asset{mirakana::asset_id_from_key_v2(scene_key)};
-    mirakana::AssetId mesh_asset{mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{"assets/meshes/validation-cube"})};
+    mirakana::AssetKey scene_key{"assets/scenes/validation-level"};
+    mirakana::AssetId scene_asset{mirakana::asset_id_from_key(scene_key)};
+    mirakana::AssetId mesh_asset{mirakana::asset_id_from_key(mirakana::AssetKey{"assets/meshes/validation-cube"})};
     mirakana::AssetId material_asset{
-        mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{"assets/materials/validation-hero"})};
+        mirakana::asset_id_from_key(mirakana::AssetKey{"assets/materials/validation-hero"})};
     mirakana::AssetId sprite_asset{
-        mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{"assets/textures/validation-sprite"})};
+        mirakana::asset_id_from_key(mirakana::AssetKey{"assets/textures/validation-sprite"})};
     std::string package_index_path{"runtime/validation.geindex"};
     std::string scene_path{"runtime/assets/scenes/validation-level.scene"};
     std::string mesh_path{"runtime/assets/meshes/validation-cube.mesh"};
@@ -1249,8 +1249,8 @@ void write_valid_runtime_scene_validation_fixture(mirakana::MemoryFileSystem& fs
                                            });
 }
 
-[[nodiscard]] std::string runtime_migration_scene_v2_with_duplicate_component_id_content() {
-    auto content = mirakana::serialize_scene_document_v2(make_runtime_migration_scene_v2());
+[[nodiscard]] std::string runtime_migration_scene_with_duplicate_component_id_content() {
+    auto content = mirakana::serialize_scene_document(make_runtime_migration_scene());
     content += "component.4.id=component/root/camera\n";
     content += "component.4.node=node/root\n";
     content += "component.4.type=camera\n";
@@ -1259,13 +1259,13 @@ void write_valid_runtime_scene_validation_fixture(mirakana::MemoryFileSystem& fs
     return content;
 }
 
-[[nodiscard]] mirakana::PrefabDocumentV2 make_scene_prefab_authoring_prefab_v2() {
-    mirakana::PrefabDocumentV2 prefab;
+[[nodiscard]] mirakana::PrefabDocument make_scene_prefab_authoring_prefab() {
+    mirakana::PrefabDocument prefab;
     prefab.name = "Enemy";
     prefab.scene.name = "Enemy Scene";
     prefab.scene.nodes.push_back(
-        mirakana::SceneNodeDocumentV2{.id = mirakana::AuthoringId{"node/enemy-root"}, .name = "EnemyRoot"});
-    prefab.scene.components.push_back(mirakana::SceneComponentDocumentV2{
+        mirakana::SceneNodeDocument{.id = mirakana::AuthoringId{"node/enemy-root"}, .name = "EnemyRoot"});
+    prefab.scene.components.push_back(mirakana::SceneComponentDocument{
         .id = mirakana::AuthoringId{"component/enemy/mesh"},
         .node = mirakana::AuthoringId{"node/enemy-root"},
         .type = mirakana::SceneComponentTypeId{"mesh_renderer"},
@@ -1275,50 +1275,50 @@ void write_valid_runtime_scene_validation_fixture(mirakana::MemoryFileSystem& fs
     return prefab;
 }
 
-[[nodiscard]] mirakana::SceneDocumentV2 make_scene_prefab_refresh_authoring_scene_v2() {
+[[nodiscard]] mirakana::SceneDocument make_scene_prefab_refresh_authoring_scene() {
     constexpr std::string_view prefab_path = "source/prefabs/enemy.prefab";
 
-    mirakana::SceneDocumentV2 scene;
+    mirakana::SceneDocument scene;
     scene.name = "Refresh Authoring Level";
     scene.nodes.push_back(
-        mirakana::SceneNodeDocumentV2{.id = mirakana::AuthoringId{"node/level/root"}, .name = "LevelRoot"});
-    scene.nodes.push_back(mirakana::SceneNodeDocumentV2{
+        mirakana::SceneNodeDocument{.id = mirakana::AuthoringId{"node/level/root"}, .name = "LevelRoot"});
+    scene.nodes.push_back(mirakana::SceneNodeDocument{
         .id = mirakana::AuthoringId{"node/instance/root"},
         .name = "EnemyInstance",
         .parent = mirakana::AuthoringId{"node/level/root"},
     });
-    scene.nodes.push_back(mirakana::SceneNodeDocumentV2{
+    scene.nodes.push_back(mirakana::SceneNodeDocument{
         .id = mirakana::AuthoringId{"node/instance/stale"},
         .name = "StaleChild",
         .parent = mirakana::AuthoringId{"node/instance/root"},
     });
-    scene.components.push_back(mirakana::SceneComponentDocumentV2{
+    scene.components.push_back(mirakana::SceneComponentDocument{
         .id = mirakana::AuthoringId{"component/instance/mesh"},
         .node = mirakana::AuthoringId{"node/instance/root"},
         .type = mirakana::SceneComponentTypeId{"mesh_renderer"},
         .properties = {{.name = "mesh", .value = "assets/meshes/custom-enemy"}},
     });
-    scene.components.push_back(mirakana::SceneComponentDocumentV2{
+    scene.components.push_back(mirakana::SceneComponentDocument{
         .id = mirakana::AuthoringId{"component/instance/stale"},
         .node = mirakana::AuthoringId{"node/instance/stale"},
         .type = mirakana::SceneComponentTypeId{"light"},
     });
-    scene.node_prefab_sources.push_back(mirakana::SceneNodePrefabSourceV2{
+    scene.node_prefab_sources.push_back(mirakana::SceneNodePrefabSource{
         .node = mirakana::AuthoringId{"node/instance/root"},
         .prefab_path = std::string(prefab_path),
         .source_node_id = mirakana::AuthoringId{"node/source/root"},
     });
-    scene.node_prefab_sources.push_back(mirakana::SceneNodePrefabSourceV2{
+    scene.node_prefab_sources.push_back(mirakana::SceneNodePrefabSource{
         .node = mirakana::AuthoringId{"node/instance/stale"},
         .prefab_path = std::string(prefab_path),
         .source_node_id = mirakana::AuthoringId{"node/source/stale"},
     });
-    scene.component_prefab_sources.push_back(mirakana::SceneComponentPrefabSourceV2{
+    scene.component_prefab_sources.push_back(mirakana::SceneComponentPrefabSource{
         .component = mirakana::AuthoringId{"component/instance/mesh"},
         .prefab_path = std::string(prefab_path),
         .source_component_id = mirakana::AuthoringId{"component/source/mesh"},
     });
-    scene.component_prefab_sources.push_back(mirakana::SceneComponentPrefabSourceV2{
+    scene.component_prefab_sources.push_back(mirakana::SceneComponentPrefabSource{
         .component = mirakana::AuthoringId{"component/instance/stale"},
         .prefab_path = std::string(prefab_path),
         .source_component_id = mirakana::AuthoringId{"component/source/stale"},
@@ -1326,24 +1326,24 @@ void write_valid_runtime_scene_validation_fixture(mirakana::MemoryFileSystem& fs
     return scene;
 }
 
-[[nodiscard]] mirakana::PrefabDocumentV2 make_scene_prefab_refresh_authoring_prefab_v2() {
-    mirakana::PrefabDocumentV2 prefab;
+[[nodiscard]] mirakana::PrefabDocument make_scene_prefab_refresh_authoring_prefab() {
+    mirakana::PrefabDocument prefab;
     prefab.name = "Enemy";
     prefab.scene.name = "Enemy Scene";
     prefab.scene.nodes.push_back(
-        mirakana::SceneNodeDocumentV2{.id = mirakana::AuthoringId{"node/source/root"}, .name = "EnemyRoot"});
-    prefab.scene.nodes.push_back(mirakana::SceneNodeDocumentV2{
+        mirakana::SceneNodeDocument{.id = mirakana::AuthoringId{"node/source/root"}, .name = "EnemyRoot"});
+    prefab.scene.nodes.push_back(mirakana::SceneNodeDocument{
         .id = mirakana::AuthoringId{"node/source/weapon"},
         .name = "Weapon",
         .parent = mirakana::AuthoringId{"node/source/root"},
     });
-    prefab.scene.components.push_back(mirakana::SceneComponentDocumentV2{
+    prefab.scene.components.push_back(mirakana::SceneComponentDocument{
         .id = mirakana::AuthoringId{"component/source/mesh"},
         .node = mirakana::AuthoringId{"node/source/root"},
         .type = mirakana::SceneComponentTypeId{"mesh_renderer"},
         .properties = {{.name = "mesh", .value = "assets/meshes/source-enemy"}},
     });
-    prefab.scene.components.push_back(mirakana::SceneComponentDocumentV2{
+    prefab.scene.components.push_back(mirakana::SceneComponentDocument{
         .id = mirakana::AuthoringId{"component/source/light"},
         .node = mirakana::AuthoringId{"node/source/weapon"},
         .type = mirakana::SceneComponentTypeId{"light"},
@@ -1402,7 +1402,7 @@ void write_valid_runtime_scene_validation_fixture(mirakana::MemoryFileSystem& fs
         failures, [needle](const auto& failure) { return failure.message.find(needle) != std::string::npos; });
 }
 
-[[nodiscard]] bool failures_contain(const std::vector<mirakana::SceneV2RuntimePackageMigrationDiagnostic>& failures,
+[[nodiscard]] bool failures_contain(const std::vector<mirakana::SceneRuntimePackageMigrationDiagnostic>& failures,
                                     std::string_view needle) {
     return std::ranges::any_of(failures, [needle](const auto& failure) {
         return failure.message.find(needle) != std::string::npos || failure.code.find(needle) != std::string::npos;
@@ -1628,7 +1628,7 @@ MK_TEST("material graph shader export serializes emits hlsl and plans shader com
     const auto round_trip = mirakana::deserialize_material_graph_shader_export(serialized);
     MK_REQUIRE(round_trip == export_desc);
 
-    const auto hlsl = mirakana::emit_material_graph_reviewed_hlsl_v0(graph);
+    const auto hlsl = mirakana::emit_material_graph_reviewed_hlsl(graph);
     MK_REQUIRE(hlsl.find("VSMain") != std::string::npos);
     MK_REQUIRE(hlsl.find("PSMain") != std::string::npos);
     MK_REQUIRE(hlsl.find("register(b6)") != std::string::npos);
@@ -3333,14 +3333,14 @@ MK_TEST("sprite atlas source authoring packs deterministic texture source and re
     MK_REQUIRE(registry.assets[0].kind == mirakana::AssetKind::texture);
     MK_REQUIRE(registry.assets[0].source_path == desc.atlas_source_path);
     MK_REQUIRE(registry.assets[0].source_format ==
-               mirakana::expected_source_asset_format_v1(mirakana::AssetKind::texture));
+               mirakana::expected_source_asset_format(mirakana::AssetKind::texture));
     MK_REQUIRE(registry.assets[0].imported_path == desc.atlas_imported_path);
 
     MK_REQUIRE(plan.changed_files.size() == 2);
     MK_REQUIRE(plan.changed_files[0].path == desc.atlas_source_path);
     MK_REQUIRE(plan.changed_files[0].document_kind == "GameEngine.TextureSource");
     MK_REQUIRE(plan.changed_files[1].path == desc.source_registry_path);
-    MK_REQUIRE(plan.changed_files[1].document_kind == mirakana::source_asset_registry_format_v1());
+    MK_REQUIRE(plan.changed_files[1].document_kind == mirakana::source_asset_registry_format());
 }
 
 MK_TEST("sprite atlas source authoring records page policy pivots and slice borders") {
@@ -3805,13 +3805,13 @@ MK_TEST("scene prefab authoring dry-runs create scene add node and component cha
     mirakana::ScenePrefabAuthoringRequest create;
     create.kind = mirakana::ScenePrefabAuthoringCommandKind::create_scene;
     create.scene_path = "source/scenes/level.scene";
-    create.scene = make_scene_prefab_authoring_scene_v2();
+    create.scene = make_scene_prefab_authoring_scene();
 
     const auto created = mirakana::plan_scene_prefab_authoring(create);
 
     MK_REQUIRE(created.succeeded());
     MK_REQUIRE(created.diagnostics.empty());
-    MK_REQUIRE(created.scene_content == mirakana::serialize_scene_document_v2(create.scene));
+    MK_REQUIRE(created.scene_content == mirakana::serialize_scene_document(create.scene));
     MK_REQUIRE(created.changed_files.size() == 1);
     MK_REQUIRE(created.changed_files[0].path == create.scene_path);
     MK_REQUIRE(created.changed_files[0].content == created.scene_content);
@@ -3859,12 +3859,12 @@ MK_TEST("scene prefab authoring dry-runs create prefab and instantiate prefab") 
     mirakana::ScenePrefabAuthoringRequest create_prefab;
     create_prefab.kind = mirakana::ScenePrefabAuthoringCommandKind::create_prefab;
     create_prefab.prefab_path = "source/prefabs/enemy.prefab";
-    create_prefab.prefab = make_scene_prefab_authoring_prefab_v2();
+    create_prefab.prefab = make_scene_prefab_authoring_prefab();
 
     const auto prefab_created = mirakana::plan_scene_prefab_authoring(create_prefab);
 
     MK_REQUIRE(prefab_created.succeeded());
-    MK_REQUIRE(prefab_created.prefab_content == mirakana::serialize_prefab_document_v2(create_prefab.prefab));
+    MK_REQUIRE(prefab_created.prefab_content == mirakana::serialize_prefab_document(create_prefab.prefab));
     MK_REQUIRE(prefab_created.changed_files.size() == 1);
     MK_REQUIRE(prefab_created.changed_files[0].path == create_prefab.prefab_path);
     MK_REQUIRE(prefab_created.model_mutations[0].kind == "create_prefab");
@@ -3872,7 +3872,7 @@ MK_TEST("scene prefab authoring dry-runs create prefab and instantiate prefab") 
     mirakana::ScenePrefabAuthoringRequest instantiate;
     instantiate.kind = mirakana::ScenePrefabAuthoringCommandKind::instantiate_prefab;
     instantiate.scene_path = "source/scenes/level.scene";
-    instantiate.scene_content = mirakana::serialize_scene_document_v2(make_scene_prefab_authoring_scene_v2());
+    instantiate.scene_content = mirakana::serialize_scene_document(make_scene_prefab_authoring_scene());
     instantiate.prefab_path = create_prefab.prefab_path;
     instantiate.prefab_content = prefab_created.prefab_content;
     instantiate.parent_id = mirakana::AuthoringId{"node/root"};
@@ -3901,8 +3901,7 @@ MK_TEST("scene prefab authoring dry-runs create prefab and instantiate prefab") 
 
 MK_TEST("scene prefab authoring apply writes only validated deterministic changes") {
     mirakana::MemoryFileSystem fs;
-    fs.write_text("source/scenes/level.scene",
-                  mirakana::serialize_scene_document_v2(make_scene_prefab_authoring_scene_v2()));
+    fs.write_text("source/scenes/level.scene", mirakana::serialize_scene_document(make_scene_prefab_authoring_scene()));
 
     mirakana::ScenePrefabAuthoringRequest add_node;
     add_node.kind = mirakana::ScenePrefabAuthoringCommandKind::add_node;
@@ -3919,7 +3918,7 @@ MK_TEST("scene prefab authoring apply writes only validated deterministic change
     MK_REQUIRE(applied.changed_files[0].content_hash == mirakana::hash_asset_cooked_content(applied.scene_content));
     MK_REQUIRE(fs.read_text(add_node.scene_path) == applied.scene_content);
     MK_REQUIRE(applied.scene_content ==
-               mirakana::serialize_scene_document_v2(mirakana::deserialize_scene_document_v2(applied.scene_content)));
+               mirakana::serialize_scene_document(mirakana::deserialize_scene_document(applied.scene_content)));
 
     auto duplicate = add_node;
     duplicate.node_id = mirakana::AuthoringId{"node/root"};
@@ -3939,8 +3938,8 @@ MK_TEST("scene prefab authoring refreshes prefab instances through reviewed appl
     constexpr std::string_view added_light_id = "node/instance/root/refresh/component/source/light";
 
     mirakana::MemoryFileSystem fs;
-    fs.write_text(scene_path, mirakana::serialize_scene_document_v2(make_scene_prefab_refresh_authoring_scene_v2()));
-    fs.write_text(prefab_path, mirakana::serialize_prefab_document_v2(make_scene_prefab_refresh_authoring_prefab_v2()));
+    fs.write_text(scene_path, mirakana::serialize_scene_document(make_scene_prefab_refresh_authoring_scene()));
+    fs.write_text(prefab_path, mirakana::serialize_prefab_document(make_scene_prefab_refresh_authoring_prefab()));
 
     mirakana::ScenePrefabAuthoringRequest refresh;
     refresh.kind = mirakana::ScenePrefabAuthoringCommandKind::refresh_prefab_instance;
@@ -3961,7 +3960,7 @@ MK_TEST("scene prefab authoring refreshes prefab instances through reviewed appl
     MK_REQUIRE(applied.model_mutations[0].prefab_path == refresh.prefab_path);
     MK_REQUIRE(fs.read_text(refresh.scene_path) == applied.scene_content);
     MK_REQUIRE(applied.scene_content ==
-               mirakana::serialize_scene_document_v2(mirakana::deserialize_scene_document_v2(applied.scene_content)));
+               mirakana::serialize_scene_document(mirakana::deserialize_scene_document(applied.scene_content)));
     MK_REQUIRE(text_contains(applied.scene_content, std::string{"node.2.id="} + std::string{added_weapon_id} + "\n"));
     MK_REQUIRE(
         text_contains(applied.scene_content, std::string{"component.1.id="} + std::string{added_light_id} + "\n"));
@@ -3978,7 +3977,7 @@ MK_TEST("scene prefab authoring rejects unsafe paths unsupported payloads stale 
     mirakana::ScenePrefabAuthoringRequest unsafe;
     unsafe.kind = mirakana::ScenePrefabAuthoringCommandKind::create_scene;
     unsafe.scene_path = "../level.scene";
-    unsafe.scene = make_scene_prefab_authoring_scene_v2();
+    unsafe.scene = make_scene_prefab_authoring_scene();
 
     const auto unsafe_result = mirakana::plan_scene_prefab_authoring(unsafe);
 
@@ -3996,7 +3995,7 @@ MK_TEST("scene prefab authoring rejects unsafe paths unsupported payloads stale 
     mirakana::ScenePrefabAuthoringRequest line_injection;
     line_injection.kind = mirakana::ScenePrefabAuthoringCommandKind::add_node;
     line_injection.scene_path = "source/scenes/level.scene";
-    line_injection.scene_content = mirakana::serialize_scene_document_v2(make_scene_prefab_authoring_scene_v2());
+    line_injection.scene_content = mirakana::serialize_scene_document(make_scene_prefab_authoring_scene());
     line_injection.node_id = mirakana::AuthoringId{"node/injected"};
     line_injection.node_name = "Injected\ncomponent.0.id=component/injected";
 
@@ -4008,7 +4007,7 @@ MK_TEST("scene prefab authoring rejects unsafe paths unsupported payloads stale 
     mirakana::ScenePrefabAuthoringRequest unsupported_payload;
     unsupported_payload.kind = mirakana::ScenePrefabAuthoringCommandKind::add_or_update_component;
     unsupported_payload.scene_path = "source/scenes/level.scene";
-    unsupported_payload.scene_content = mirakana::serialize_scene_document_v2(make_scene_prefab_authoring_scene_v2());
+    unsupported_payload.scene_content = mirakana::serialize_scene_document(make_scene_prefab_authoring_scene());
     unsupported_payload.component_id = mirakana::AuthoringId{"component/root/raw"};
     unsupported_payload.component_node_id = mirakana::AuthoringId{"node/root"};
     unsupported_payload.component_type = mirakana::SceneComponentTypeId{"mesh_renderer"};
@@ -4022,7 +4021,7 @@ MK_TEST("scene prefab authoring rejects unsafe paths unsupported payloads stale 
     mirakana::ScenePrefabAuthoringRequest stale_prefab;
     stale_prefab.kind = mirakana::ScenePrefabAuthoringCommandKind::instantiate_prefab;
     stale_prefab.scene_path = "source/scenes/level.scene";
-    stale_prefab.scene_content = mirakana::serialize_scene_document_v2(make_scene_prefab_authoring_scene_v2());
+    stale_prefab.scene_content = mirakana::serialize_scene_document(make_scene_prefab_authoring_scene());
     stale_prefab.prefab_path = "source/prefabs/stale.prefab";
     stale_prefab.instance_id_prefix = "inst/stale/";
     stale_prefab.instance_name_prefix = "Stale ";
@@ -4053,11 +4052,11 @@ MK_TEST("scene prefab authoring rejects unsafe paths unsupported payloads stale 
     auto runtime_migration = free_form;
     runtime_migration.kind = mirakana::ScenePrefabAuthoringCommandKind::create_scene;
     runtime_migration.free_form_edit = "unsupported";
-    runtime_migration.scene = make_scene_prefab_authoring_scene_v2();
+    runtime_migration.scene = make_scene_prefab_authoring_scene();
     runtime_migration.runtime_package_migration = "ready";
     const auto migration_result = mirakana::plan_scene_prefab_authoring(runtime_migration);
     MK_REQUIRE(!migration_result.succeeded());
-    MK_REQUIRE(failures_contain(migration_result.diagnostics, "Scene v2 runtime package migration is not supported"));
+    MK_REQUIRE(failures_contain(migration_result.diagnostics, "Scene runtime package migration is not supported"));
 }
 
 MK_TEST("source asset registration dry-runs registry and import metadata changes") {
@@ -4071,7 +4070,7 @@ MK_TEST("source asset registration dry-runs registry and import metadata changes
                                       "asset.0.source=source/materials/base.material\n"
                                       "asset.0.source_format=GameEngine.Material\n"
                                       "asset.0.imported=intermediate/imported/materials/base.material\n";
-    request.asset_key = mirakana::AssetKeyV2{"assets/textures/hero"};
+    request.asset_key = mirakana::AssetKey{"assets/textures/hero"};
     request.asset_kind = mirakana::AssetKind::texture;
     request.source_path = "source/textures/hero.getexture";
     request.source_format = "GameEngine.TextureSource";
@@ -4114,7 +4113,7 @@ MK_TEST("source asset registration apply writes only validated deterministic reg
     mirakana::SourceAssetRegistrationRequest request;
     request.kind = mirakana::SourceAssetRegistrationCommandKind::register_source_asset;
     request.source_registry_path = "source/assets/game.geassets";
-    request.asset_key = mirakana::AssetKeyV2{"assets/audio/theme"};
+    request.asset_key = mirakana::AssetKey{"assets/audio/theme"};
     request.asset_kind = mirakana::AssetKind::audio;
     request.source_path = "source/audio/theme.geaudio";
     request.source_format = "GameEngine.AudioSource";
@@ -4131,10 +4130,10 @@ MK_TEST("source asset registration apply writes only validated deterministic reg
                    mirakana::deserialize_source_asset_registry_document(applied.source_registry_content)));
     MK_REQUIRE(text_contains(applied.source_registry_content, "key=assets/audio/theme\n"));
     MK_REQUIRE(text_contains(applied.source_registry_content, "kind=audio\n"));
-    MK_REQUIRE(mirakana::validate_asset_identity_document_v2(applied.asset_identity_projection).empty());
+    MK_REQUIRE(mirakana::validate_asset_identity_document(applied.asset_identity_projection).empty());
 
     auto duplicate = request;
-    duplicate.asset_key = mirakana::AssetKeyV2{"assets/materials/base"};
+    duplicate.asset_key = mirakana::AssetKey{"assets/materials/base"};
     duplicate.source_path = "source/audio/duplicate.geaudio";
     const auto before = fs.read_text(request.source_registry_path);
     const auto failed = mirakana::apply_source_asset_registration(fs, duplicate);
@@ -4148,7 +4147,7 @@ MK_TEST("source asset registration rejects unsafe paths unsupported formats exte
     mirakana::SourceAssetRegistrationRequest unsafe;
     unsafe.kind = mirakana::SourceAssetRegistrationCommandKind::register_source_asset;
     unsafe.source_registry_path = "../assets/game.geassets";
-    unsafe.asset_key = mirakana::AssetKeyV2{"assets/textures/hero"};
+    unsafe.asset_key = mirakana::AssetKey{"assets/textures/hero"};
     unsafe.asset_kind = mirakana::AssetKind::texture;
     unsafe.source_path = "source/textures/hero.getexture";
     unsafe.source_format = "GameEngine.TextureSource";
@@ -4220,7 +4219,7 @@ MK_TEST("placeholder asset bundle plans deterministic legal source documents and
     request.source_registry_path = "source/assets/game.geassets";
     request.assets = {
         mirakana::PlaceholderAssetRequest{
-            .asset_key = mirakana::AssetKeyV2{"assets/placeholders/hero_sprite"},
+            .asset_key = mirakana::AssetKey{"assets/placeholders/hero_sprite"},
             .asset_kind = mirakana::AssetKind::texture,
             .source_path = "source/placeholders/hero_sprite.texture_source",
             .imported_path = "intermediate/imported/placeholders/hero_sprite.texture",
@@ -4229,20 +4228,20 @@ MK_TEST("placeholder asset bundle plans deterministic legal source documents and
             .texture_height = 4,
         },
         mirakana::PlaceholderAssetRequest{
-            .asset_key = mirakana::AssetKeyV2{"assets/placeholders/unit_quad"},
+            .asset_key = mirakana::AssetKey{"assets/placeholders/unit_quad"},
             .asset_kind = mirakana::AssetKind::mesh,
             .source_path = "source/placeholders/unit_quad.mesh_source",
             .imported_path = "intermediate/imported/placeholders/unit_quad.mesh",
         },
         mirakana::PlaceholderAssetRequest{
-            .asset_key = mirakana::AssetKeyV2{"assets/placeholders/base_material"},
+            .asset_key = mirakana::AssetKey{"assets/placeholders/base_material"},
             .asset_kind = mirakana::AssetKind::material,
             .source_path = "source/placeholders/base_material.material",
             .imported_path = "intermediate/imported/placeholders/base_material.material",
             .material_base_color = {0.25F, 0.5F, 0.75F, 1.0F},
         },
         mirakana::PlaceholderAssetRequest{
-            .asset_key = mirakana::AssetKeyV2{"assets/placeholders/jump_beep"},
+            .asset_key = mirakana::AssetKey{"assets/placeholders/jump_beep"},
             .asset_kind = mirakana::AssetKind::audio,
             .source_path = "source/placeholders/jump_beep.audio_source",
             .imported_path = "intermediate/imported/placeholders/jump_beep.audio",
@@ -4295,8 +4294,7 @@ MK_TEST("placeholder asset bundle plans deterministic legal source documents and
     MK_REQUIRE(mesh.index_count == 6);
     MK_REQUIRE(mesh.vertex_bytes.size() == 48);
     MK_REQUIRE(mesh.index_bytes.size() == 24);
-    MK_REQUIRE(material.id ==
-               mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{"assets/placeholders/base_material"}));
+    MK_REQUIRE(material.id == mirakana::asset_id_from_key(mirakana::AssetKey{"assets/placeholders/base_material"}));
     MK_REQUIRE(material.factors.base_color[2] == 0.75F);
     MK_REQUIRE(audio.sample_rate == 8000);
     MK_REQUIRE(audio.channel_count == 1);
@@ -4313,7 +4311,7 @@ MK_TEST("placeholder asset bundle fails closed on unsafe duplicate and unsupport
     request.source_registry_path = "../game.geassets";
     request.assets = {
         mirakana::PlaceholderAssetRequest{
-            .asset_key = mirakana::AssetKeyV2{"assets/placeholders/hero_sprite"},
+            .asset_key = mirakana::AssetKey{"assets/placeholders/hero_sprite"},
             .asset_kind = mirakana::AssetKind::texture,
             .source_path = "source/placeholders/hero_sprite.texture_source",
             .imported_path = "intermediate/imported/placeholders/hero_sprite.texture",
@@ -4321,7 +4319,7 @@ MK_TEST("placeholder asset bundle fails closed on unsafe duplicate and unsupport
             .texture_height = 4,
         },
         mirakana::PlaceholderAssetRequest{
-            .asset_key = mirakana::AssetKeyV2{"assets/placeholders/hero_sprite"},
+            .asset_key = mirakana::AssetKey{"assets/placeholders/hero_sprite"},
             .asset_kind = mirakana::AssetKind::script,
             .source_path = "source/placeholders/hero_script.script",
             .imported_path = "intermediate/imported/placeholders/hero_script.script",
@@ -4350,7 +4348,7 @@ MK_TEST("placeholder asset cook package routes generated source documents throug
     request.placeholder_assets.source_registry_path = "source/assets/game.geassets";
     request.placeholder_assets.assets = {
         mirakana::PlaceholderAssetRequest{
-            .asset_key = mirakana::AssetKeyV2{"assets/placeholders/debug_texture"},
+            .asset_key = mirakana::AssetKey{"assets/placeholders/debug_texture"},
             .asset_kind = mirakana::AssetKind::texture,
             .source_path = "source/placeholders/debug_texture.texture_source",
             .imported_path = "runtime/assets/placeholders/debug_texture.texture",
@@ -4359,7 +4357,7 @@ MK_TEST("placeholder asset cook package routes generated source documents throug
             .texture_height = 4,
         },
         mirakana::PlaceholderAssetRequest{
-            .asset_key = mirakana::AssetKeyV2{"assets/placeholders/debug_material"},
+            .asset_key = mirakana::AssetKey{"assets/placeholders/debug_material"},
             .asset_kind = mirakana::AssetKind::material,
             .source_path = "source/placeholders/debug_material.material",
             .imported_path = "runtime/assets/placeholders/debug_material.material",
@@ -4401,15 +4399,15 @@ MK_TEST("placeholder asset cook package routes generated source documents throug
     MK_REQUIRE(package_index_file->content == plan.package_plan.package_index_content);
 
     const auto index = mirakana::deserialize_asset_cooked_package_index(plan.package_plan.package_index_content);
-    const auto has_entry = [&index](const mirakana::AssetKeyV2& key, std::string_view path) {
-        const auto asset = mirakana::asset_id_from_key_v2(key);
+    const auto has_entry = [&index](const mirakana::AssetKey& key, std::string_view path) {
+        const auto asset = mirakana::asset_id_from_key(key);
         return std::ranges::any_of(index.entries, [asset, path](const mirakana::AssetCookedPackageEntry& entry) {
             return entry.asset == asset && entry.path == path;
         });
     };
-    MK_REQUIRE(has_entry(mirakana::AssetKeyV2{"assets/placeholders/debug_material"},
+    MK_REQUIRE(has_entry(mirakana::AssetKey{"assets/placeholders/debug_material"},
                          "runtime/assets/placeholders/debug_material.material"));
-    MK_REQUIRE(has_entry(mirakana::AssetKeyV2{"assets/placeholders/debug_texture"},
+    MK_REQUIRE(has_entry(mirakana::AssetKey{"assets/placeholders/debug_texture"},
                          "runtime/assets/placeholders/debug_texture.texture"));
 }
 
@@ -4418,7 +4416,7 @@ MK_TEST("placeholder asset cook package supports reviewed replacement recooks th
     request.placeholder_assets.source_registry_path = "source/assets/game.geassets";
     request.placeholder_assets.assets = {
         mirakana::PlaceholderAssetRequest{
-            .asset_key = mirakana::AssetKeyV2{"assets/placeholders/debug_texture"},
+            .asset_key = mirakana::AssetKey{"assets/placeholders/debug_texture"},
             .asset_kind = mirakana::AssetKind::texture,
             .source_path = "source/placeholders/debug_texture.texture_source",
             .imported_path = "runtime/assets/placeholders/debug_texture.texture",
@@ -4487,31 +4485,31 @@ MK_TEST("placeholder asset cook package supports reviewed replacement recooks th
     const auto index = mirakana::deserialize_asset_cooked_package_index(recook.package_plan.package_index_content);
     MK_REQUIRE(index.entries.size() == 1);
     MK_REQUIRE(index.entries[0].asset ==
-               mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{"assets/placeholders/debug_texture"}));
+               mirakana::asset_id_from_key(mirakana::AssetKey{"assets/placeholders/debug_texture"}));
     MK_REQUIRE(index.entries[0].path == "runtime/assets/placeholders/debug_texture.texture");
     MK_REQUIRE(index.entries[0].source_revision == 44);
 }
 
 MK_TEST("source asset registration validates dependency targets and canonical dry-run rows") {
-    mirakana::SourceAssetRegistryDocumentV1 base_registry;
-    base_registry.assets.push_back(mirakana::SourceAssetRegistryRowV1{
-        .key = mirakana::AssetKeyV2{"assets/meshes/cube"},
+    mirakana::SourceAssetRegistryDocument base_registry;
+    base_registry.assets.push_back(mirakana::SourceAssetRegistryRow{
+        .key = mirakana::AssetKey{"assets/meshes/cube"},
         .kind = mirakana::AssetKind::mesh,
         .source_path = "source/meshes/cube.gemesh",
         .source_format = "GameEngine.MeshSource",
         .imported_path = "intermediate/imported/meshes/cube.mesh",
         .dependencies = {},
     });
-    base_registry.assets.push_back(mirakana::SourceAssetRegistryRowV1{
-        .key = mirakana::AssetKeyV2{"assets/materials/hero"},
+    base_registry.assets.push_back(mirakana::SourceAssetRegistryRow{
+        .key = mirakana::AssetKey{"assets/materials/hero"},
         .kind = mirakana::AssetKind::material,
         .source_path = "source/materials/hero.material",
         .source_format = "GameEngine.Material",
         .imported_path = "intermediate/imported/materials/hero.material",
         .dependencies = {},
     });
-    base_registry.assets.push_back(mirakana::SourceAssetRegistryRowV1{
-        .key = mirakana::AssetKeyV2{"assets/textures/hero"},
+    base_registry.assets.push_back(mirakana::SourceAssetRegistryRow{
+        .key = mirakana::AssetKey{"assets/textures/hero"},
         .kind = mirakana::AssetKind::texture,
         .source_path = "source/textures/hero.getexture",
         .source_format = "GameEngine.TextureSource",
@@ -4523,18 +4521,18 @@ MK_TEST("source asset registration validates dependency targets and canonical dr
     scene_request.kind = mirakana::SourceAssetRegistrationCommandKind::register_source_asset;
     scene_request.source_registry_path = "source/assets/game.geassets";
     scene_request.source_registry_content = mirakana::serialize_source_asset_registry_document(base_registry);
-    scene_request.asset_key = mirakana::AssetKeyV2{"assets/scenes/level"};
+    scene_request.asset_key = mirakana::AssetKey{"assets/scenes/level"};
     scene_request.asset_kind = mirakana::AssetKind::scene;
     scene_request.source_path = "source/scenes/level.scene";
     scene_request.source_format = "GameEngine.Scene";
     scene_request.imported_path = "intermediate/imported/scenes/level.scene";
     scene_request.dependency_rows = {
-        mirakana::SourceAssetDependencyRowV1{.kind = mirakana::AssetDependencyKind::scene_sprite,
-                                             .key = mirakana::AssetKeyV2{"assets/textures/hero"}},
-        mirakana::SourceAssetDependencyRowV1{.kind = mirakana::AssetDependencyKind::scene_mesh,
-                                             .key = mirakana::AssetKeyV2{"assets/meshes/cube"}},
-        mirakana::SourceAssetDependencyRowV1{.kind = mirakana::AssetDependencyKind::scene_material,
-                                             .key = mirakana::AssetKeyV2{"assets/materials/hero"}},
+        mirakana::SourceAssetDependencyRow{.kind = mirakana::AssetDependencyKind::scene_sprite,
+                                           .key = mirakana::AssetKey{"assets/textures/hero"}},
+        mirakana::SourceAssetDependencyRow{.kind = mirakana::AssetDependencyKind::scene_mesh,
+                                           .key = mirakana::AssetKey{"assets/meshes/cube"}},
+        mirakana::SourceAssetDependencyRow{.kind = mirakana::AssetDependencyKind::scene_material,
+                                           .key = mirakana::AssetKey{"assets/materials/hero"}},
     };
 
     const auto planned_scene = mirakana::plan_source_asset_registration(scene_request);
@@ -4569,14 +4567,14 @@ MK_TEST("source asset registration validates dependency targets and canonical dr
     MK_REQUIRE(duplicate_result.import_metadata.empty());
 
     auto wrong_kind = scene_request;
-    wrong_kind.asset_key = mirakana::AssetKeyV2{"assets/materials/broken"};
+    wrong_kind.asset_key = mirakana::AssetKey{"assets/materials/broken"};
     wrong_kind.asset_kind = mirakana::AssetKind::material;
     wrong_kind.source_path = "source/materials/broken.material";
     wrong_kind.source_format = "GameEngine.Material";
     wrong_kind.imported_path = "intermediate/imported/materials/broken.material";
     wrong_kind.dependency_rows = {
-        mirakana::SourceAssetDependencyRowV1{.kind = mirakana::AssetDependencyKind::material_texture,
-                                             .key = mirakana::AssetKeyV2{"assets/meshes/cube"}},
+        mirakana::SourceAssetDependencyRow{.kind = mirakana::AssetDependencyKind::material_texture,
+                                           .key = mirakana::AssetKey{"assets/meshes/cube"}},
     };
     const auto wrong_kind_result = mirakana::plan_source_asset_registration(wrong_kind);
     MK_REQUIRE(!wrong_kind_result.succeeded());
@@ -4584,12 +4582,12 @@ MK_TEST("source asset registration validates dependency targets and canonical dr
         failures_contain(wrong_kind_result.diagnostics, "dependency target kind does not match dependency kind"));
 
     auto self_dependency = wrong_kind;
-    self_dependency.asset_key = mirakana::AssetKeyV2{"assets/materials/self"};
+    self_dependency.asset_key = mirakana::AssetKey{"assets/materials/self"};
     self_dependency.source_path = "source/materials/self.material";
     self_dependency.imported_path = "intermediate/imported/materials/self.material";
     self_dependency.dependency_rows = {
-        mirakana::SourceAssetDependencyRowV1{.kind = mirakana::AssetDependencyKind::material_texture,
-                                             .key = mirakana::AssetKeyV2{"assets/materials/self"}},
+        mirakana::SourceAssetDependencyRow{.kind = mirakana::AssetDependencyKind::material_texture,
+                                           .key = mirakana::AssetKey{"assets/materials/self"}},
     };
     const auto self_result = mirakana::plan_source_asset_registration(self_dependency);
     MK_REQUIRE(!self_result.succeeded());
@@ -5042,8 +5040,8 @@ MK_TEST("registered source asset cook package rejects empty selected asset keys"
 MK_TEST("registered source asset cook package rejects duplicate selected asset keys") {
     auto request = make_registered_cook_request();
     request.selected_asset_keys = {
-        mirakana::AssetKeyV2{"assets/textures/hero"},
-        mirakana::AssetKeyV2{"assets/textures/hero"},
+        mirakana::AssetKey{"assets/textures/hero"},
+        mirakana::AssetKey{"assets/textures/hero"},
     };
 
     const auto result = mirakana::plan_registered_source_asset_cook_package(request);
@@ -5066,13 +5064,13 @@ MK_TEST("registered source asset cook package rejects zero source revision") {
 
 MK_TEST("registered source asset cook package rejects invalid selected asset keys") {
     auto request = make_registered_cook_request();
-    request.selected_asset_keys = {mirakana::AssetKeyV2{R"(bad\slash)"}};
+    request.selected_asset_keys = {mirakana::AssetKey{R"(bad\slash)"}};
 
     const auto result = mirakana::plan_registered_source_asset_cook_package(request);
 
     MK_REQUIRE(!result.succeeded());
     MK_REQUIRE(failures_contain(result.diagnostics, "invalid_selected_asset_key"));
-    MK_REQUIRE(failures_contain(result.diagnostics, "valid AssetKeyV2"));
+    MK_REQUIRE(failures_contain(result.diagnostics, "valid AssetKey"));
 }
 
 MK_TEST("registered source asset cook package rejects duplicate inline source file paths") {
@@ -5146,8 +5144,8 @@ MK_TEST("registered source asset cook package dry-runs selected rows into cooked
     MK_REQUIRE(result.undo_token == "placeholder-only");
 
     const auto index = mirakana::deserialize_asset_cooked_package_index(result.package_index_content);
-    const auto texture = mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{"assets/textures/hero"});
-    const auto material = mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{"assets/materials/hero"});
+    const auto texture = mirakana::asset_id_from_key(mirakana::AssetKey{"assets/textures/hero"});
+    const auto material = mirakana::asset_id_from_key(mirakana::AssetKey{"assets/materials/hero"});
     MK_REQUIRE(index.entries.size() == 2);
     MK_REQUIRE(index.dependencies.size() == 1);
     MK_REQUIRE(index.dependencies[0].asset == material);
@@ -5200,7 +5198,7 @@ MK_TEST("registered source asset cook package apply rereads registry sources and
 
 MK_TEST("registered source asset cook package rejects missing rows unsupported formats and unsafe paths") {
     auto missing = make_registered_cook_request();
-    missing.selected_asset_keys = {mirakana::AssetKeyV2{"assets/textures/missing"}};
+    missing.selected_asset_keys = {mirakana::AssetKey{"assets/textures/missing"}};
     missing.source_files = {};
     const auto missing_result = mirakana::plan_registered_source_asset_cook_package(missing);
     MK_REQUIRE(!missing_result.succeeded());
@@ -5231,7 +5229,7 @@ MK_TEST("registered source asset cook package rejects missing rows unsupported f
     MK_REQUIRE(counting_fs.write_calls == 0);
 
     auto unselected_dependency = make_registered_cook_request();
-    unselected_dependency.selected_asset_keys = {mirakana::AssetKeyV2{"assets/materials/hero"}};
+    unselected_dependency.selected_asset_keys = {mirakana::AssetKey{"assets/materials/hero"}};
     unselected_dependency.source_files = {
         mirakana::RegisteredSourceAssetCookPackageSourceFile{.path = "source/materials/hero.material",
                                                              .content = registered_cook_material_source_content()},
@@ -5246,7 +5244,7 @@ MK_TEST("registered source asset cook package registry closure expands registere
     closure_request.dependency_expansion =
         mirakana::RegisteredSourceAssetCookDependencyExpansion::registered_source_registry_closure;
     closure_request.dependency_cooking = "registry_closure";
-    closure_request.selected_asset_keys = {mirakana::AssetKeyV2{"assets/materials/hero"}};
+    closure_request.selected_asset_keys = {mirakana::AssetKey{"assets/materials/hero"}};
     closure_request.source_files = {
         mirakana::RegisteredSourceAssetCookPackageSourceFile{.path = "source/materials/hero.material",
                                                              .content = registered_cook_material_source_content()},
@@ -5275,7 +5273,7 @@ MK_TEST("registered source asset cook package registry closure expands registere
 
 MK_TEST("registered source asset cook package rejects malformed payloads and package index conflicts") {
     auto malformed = make_registered_cook_request();
-    malformed.selected_asset_keys = {mirakana::AssetKeyV2{"assets/textures/hero"}};
+    malformed.selected_asset_keys = {mirakana::AssetKey{"assets/textures/hero"}};
     malformed.source_files = {
         mirakana::RegisteredSourceAssetCookPackageSourceFile{
             .path = "source/textures/hero.texture_source",
@@ -5364,9 +5362,9 @@ MK_TEST("registered source asset workflow cooks migrates loads and instantiates 
     MK_REQUIRE(cooked.changed_files[3].path == cook_request.package_index_path);
 
     const auto migration_request = make_registered_scene_workflow_migration_request(cooked.package_index_content);
-    fs.write_text(migration_request.scene_v2_path, migration_request.scene_v2_content);
+    fs.write_text(migration_request.scene_path, migration_request.scene_content);
 
-    const auto migrated = mirakana::apply_scene_v2_runtime_package_migration(fs, migration_request);
+    const auto migrated = mirakana::apply_scene_runtime_package_migration(fs, migration_request);
 
     MK_REQUIRE(migrated.succeeded());
     MK_REQUIRE(migrated.changed_files.size() == 2);
@@ -5378,7 +5376,7 @@ MK_TEST("registered source asset workflow cooks migrates loads and instantiates 
     MK_REQUIRE(package.succeeded());
     MK_REQUIRE(package.package.records().size() == 4);
 
-    const auto scene_asset = mirakana::asset_id_from_key_v2(migration_request.scene_asset_key);
+    const auto scene_asset = mirakana::asset_id_from_key(migration_request.scene_asset_key);
     const auto instantiated = mirakana::runtime_scene::instantiate_runtime_scene(package.package, scene_asset);
     MK_REQUIRE(instantiated.succeeded());
     MK_REQUIRE(instantiated.instance.has_value());
@@ -5400,9 +5398,9 @@ MK_TEST("scene prefab authoring commands feed registered cook migration and runt
         fs.write_text(source.path, source.content);
     }
 
-    auto register_source = [&](mirakana::AssetKeyV2 key, mirakana::AssetKind kind, std::string source_path,
+    auto register_source = [&](mirakana::AssetKey key, mirakana::AssetKind kind, std::string source_path,
                                std::string source_format, std::string imported_path,
-                               std::vector<mirakana::SourceAssetDependencyRowV1> dependency_rows = {}) {
+                               std::vector<mirakana::SourceAssetDependencyRow> dependency_rows = {}) {
         mirakana::SourceAssetRegistrationRequest request;
         request.kind = mirakana::SourceAssetRegistrationCommandKind::register_source_asset;
         request.source_registry_path = cook_request.source_registry_path;
@@ -5415,25 +5413,25 @@ MK_TEST("scene prefab authoring commands feed registered cook migration and runt
         return mirakana::apply_source_asset_registration(fs, request);
     };
 
-    const auto texture_registered = register_source(mirakana::AssetKeyV2{"assets/textures/hero"},
+    const auto texture_registered = register_source(mirakana::AssetKey{"assets/textures/hero"},
                                                     mirakana::AssetKind::texture, "source/textures/hero.texture_source",
                                                     "GameEngine.TextureSource", "runtime/assets/textures/hero.texture");
     MK_REQUIRE(texture_registered.succeeded());
     const auto mesh_registered =
-        register_source(mirakana::AssetKeyV2{"assets/meshes/cube"}, mirakana::AssetKind::mesh,
+        register_source(mirakana::AssetKey{"assets/meshes/cube"}, mirakana::AssetKind::mesh,
                         "source/meshes/cube.mesh_source", "GameEngine.MeshSource", "runtime/assets/meshes/cube.mesh");
     MK_REQUIRE(mesh_registered.succeeded());
     const auto material_registered = register_source(
-        mirakana::AssetKeyV2{"assets/materials/hero"}, mirakana::AssetKind::material, "source/materials/hero.material",
+        mirakana::AssetKey{"assets/materials/hero"}, mirakana::AssetKind::material, "source/materials/hero.material",
         "GameEngine.Material", "runtime/assets/materials/hero.material",
-        {mirakana::SourceAssetDependencyRowV1{.kind = mirakana::AssetDependencyKind::material_texture,
-                                              .key = mirakana::AssetKeyV2{"assets/textures/hero"}}});
+        {mirakana::SourceAssetDependencyRow{.kind = mirakana::AssetDependencyKind::material_texture,
+                                            .key = mirakana::AssetKey{"assets/textures/hero"}}});
     MK_REQUIRE(material_registered.succeeded());
 
     const auto cooked = mirakana::apply_registered_source_asset_cook_package(fs, cook_request);
     MK_REQUIRE(cooked.succeeded());
 
-    mirakana::SceneDocumentV2 authored_scene;
+    mirakana::SceneDocument authored_scene;
     authored_scene.name = "Command Authored Runtime Level";
 
     mirakana::ScenePrefabAuthoringRequest create_scene;
@@ -5506,12 +5504,12 @@ MK_TEST("scene prefab authoring commands feed registered cook migration and runt
     const auto mesh_renderer_added = mirakana::apply_scene_prefab_authoring(fs, add_mesh_renderer);
     MK_REQUIRE(mesh_renderer_added.succeeded());
 
-    mirakana::PrefabDocumentV2 prefab;
+    mirakana::PrefabDocument prefab;
     prefab.name = "Command Authored Static Prop";
     prefab.scene.name = "Command Authored Static Prop";
     prefab.scene.nodes.push_back(
-        mirakana::SceneNodeDocumentV2{.id = mirakana::AuthoringId{"node/prefab-prop"}, .name = "Prefab Prop"});
-    prefab.scene.components.push_back(mirakana::SceneComponentDocumentV2{
+        mirakana::SceneNodeDocument{.id = mirakana::AuthoringId{"node/prefab-prop"}, .name = "Prefab Prop"});
+    prefab.scene.components.push_back(mirakana::SceneComponentDocument{
         .id = mirakana::AuthoringId{"component/prefab-prop/mesh"},
         .node = mirakana::AuthoringId{"node/prefab-prop"},
         .type = mirakana::SceneComponentTypeId{"mesh_renderer"},
@@ -5541,24 +5539,24 @@ MK_TEST("scene prefab authoring commands feed registered cook migration and runt
     const auto prefab_instantiated = mirakana::apply_scene_prefab_authoring(fs, instantiate_prefab);
     MK_REQUIRE(prefab_instantiated.succeeded());
 
-    mirakana::SceneV2RuntimePackageMigrationRequest migration_request;
-    migration_request.kind = mirakana::SceneV2RuntimePackageMigrationCommandKind::migrate_scene_v2_runtime_package;
-    migration_request.scene_v2_path = create_scene.scene_path;
+    mirakana::SceneRuntimePackageMigrationRequest migration_request;
+    migration_request.kind = mirakana::SceneRuntimePackageMigrationCommandKind::migrate_scene_runtime_package;
+    migration_request.scene_path = create_scene.scene_path;
     migration_request.source_registry_path = cook_request.source_registry_path;
     migration_request.package_index_path = cook_request.package_index_path;
     migration_request.output_scene_path = "runtime/assets/scenes/command-authored.scene";
-    migration_request.scene_asset_key = mirakana::AssetKeyV2{"assets/scenes/command-authored"};
+    migration_request.scene_asset_key = mirakana::AssetKey{"assets/scenes/command-authored"};
     migration_request.source_revision = 43;
 
-    const auto migrated = mirakana::apply_scene_v2_runtime_package_migration(fs, migration_request);
+    const auto migrated = mirakana::apply_scene_runtime_package_migration(fs, migration_request);
     MK_REQUIRE(migrated.succeeded());
-    MK_REQUIRE(text_contains(migrated.scene_v1_content, "scene.name=Command Authored Runtime Level\n"));
-    MK_REQUIRE(text_contains(migrated.scene_v1_content, "node.count=3\n"));
-    MK_REQUIRE(text_contains(migrated.scene_v1_content, "node.1.camera.projection=perspective\n"));
-    MK_REQUIRE(text_contains(migrated.scene_v1_content, "node.1.light.type=directional\n"));
-    MK_REQUIRE(text_contains(migrated.scene_v1_content, "node.1.light.inner_cone_radians=0\n"));
-    MK_REQUIRE(text_contains(migrated.scene_v1_content, "node.1.light.outer_cone_radians=0\n"));
-    MK_REQUIRE(text_contains(migrated.scene_v1_content, "node.1.light.casts_shadows=true\n"));
+    MK_REQUIRE(text_contains(migrated.runtime_scene_content, "scene.name=Command Authored Runtime Level\n"));
+    MK_REQUIRE(text_contains(migrated.runtime_scene_content, "node.count=3\n"));
+    MK_REQUIRE(text_contains(migrated.runtime_scene_content, "node.1.camera.projection=perspective\n"));
+    MK_REQUIRE(text_contains(migrated.runtime_scene_content, "node.1.light.type=directional\n"));
+    MK_REQUIRE(text_contains(migrated.runtime_scene_content, "node.1.light.inner_cone_radians=0\n"));
+    MK_REQUIRE(text_contains(migrated.runtime_scene_content, "node.1.light.outer_cone_radians=0\n"));
+    MK_REQUIRE(text_contains(migrated.runtime_scene_content, "node.1.light.casts_shadows=true\n"));
 
     mirakana::RuntimeScenePackageValidationRequest validation_request;
     validation_request.package_index_path = migration_request.package_index_path;
@@ -5575,7 +5573,7 @@ MK_TEST("scene prefab authoring commands feed registered cook migration and runt
 
 MK_TEST("registered source asset workflow rejects skipped or stale cooked package prerequisites") {
     auto skipped_cook = make_registered_scene_workflow_migration_request();
-    const auto skipped_result = mirakana::plan_scene_v2_runtime_package_migration(skipped_cook);
+    const auto skipped_result = mirakana::plan_scene_runtime_package_migration(skipped_cook);
     MK_REQUIRE(!skipped_result.succeeded());
     MK_REQUIRE(failures_contain(skipped_result.diagnostics, "scene mesh package entry is missing"));
     MK_REQUIRE(failures_contain(skipped_result.diagnostics, "scene material package entry is missing"));
@@ -5585,7 +5583,7 @@ MK_TEST("registered source asset workflow rejects skipped or stale cooked packag
         mirakana::plan_registered_source_asset_cook_package(make_registered_scene_workflow_cook_request());
     MK_REQUIRE(cooked.succeeded());
     auto stale_index = mirakana::deserialize_asset_cooked_package_index(cooked.package_index_content);
-    const auto texture = mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{"assets/textures/hero"});
+    const auto texture = mirakana::asset_id_from_key(mirakana::AssetKey{"assets/textures/hero"});
     const auto removed_entries =
         std::ranges::remove_if(stale_index.entries, [texture](const mirakana::AssetCookedPackageEntry& entry) {
             return entry.asset == texture;
@@ -5599,7 +5597,7 @@ MK_TEST("registered source asset workflow rejects skipped or stale cooked packag
 
     auto stale_package =
         make_registered_scene_workflow_migration_request(mirakana::serialize_asset_cooked_package_index(stale_index));
-    const auto stale_result = mirakana::plan_scene_v2_runtime_package_migration(stale_package);
+    const auto stale_result = mirakana::plan_scene_runtime_package_migration(stale_package);
     MK_REQUIRE(!stale_result.succeeded());
     MK_REQUIRE(failures_contain(stale_result.diagnostics, "scene sprite package entry is missing"));
 }
@@ -5726,7 +5724,7 @@ MK_TEST("runtime scene package validation reports scene row and payload failures
                                                                                  .source_revision = 7,
                                                                                  .dependencies = {}},
                                                });
-        fixture.request.scene_asset_key = mirakana::AssetKeyV2{"assets/scenes/missing"};
+        fixture.request.scene_asset_key = mirakana::AssetKey{"assets/scenes/missing"};
 
         const auto result = mirakana::execute_runtime_scene_package_validation(fs, fixture.request);
 
@@ -5786,7 +5784,7 @@ MK_TEST("runtime scene package validation rejects unsafe paths unsupported claim
 
     auto invalid_key = RuntimeScenePackageValidationFixture{};
     configure_runtime_scene_validation_request(invalid_key);
-    invalid_key.request.scene_asset_key = mirakana::AssetKeyV2{"bad key"};
+    invalid_key.request.scene_asset_key = mirakana::AssetKey{"bad key"};
     const auto invalid_key_result = mirakana::plan_runtime_scene_package_validation(invalid_key.request);
     MK_REQUIRE(!invalid_key_result.succeeded());
     MK_REQUIRE(failures_contain(invalid_key_result.diagnostics, "invalid_scene_asset_key"));
@@ -5828,57 +5826,58 @@ MK_TEST("runtime scene package validation rejects unsafe paths unsupported claim
     mirakana::RuntimeScenePackageValidationRequest free_form;
     free_form.kind = mirakana::RuntimeScenePackageValidationCommandKind::free_form_edit;
     free_form.package_index_path = "runtime/validation.geindex";
-    free_form.scene_asset_key = mirakana::AssetKeyV2{"assets/scenes/validation-level"};
+    free_form.scene_asset_key = mirakana::AssetKey{"assets/scenes/validation-level"};
     free_form.free_form_edit = "append raw package text";
     const auto free_form_result = mirakana::plan_runtime_scene_package_validation(free_form);
     MK_REQUIRE(!free_form_result.succeeded());
     MK_REQUIRE(failures_contain(free_form_result.diagnostics, "free-form edits are not supported"));
 }
 
-MK_TEST("scene v2 runtime package migration dry-runs scene and package index changes") {
+MK_TEST("scene runtime package migration dry-runs scene and package index changes") {
     const auto request = make_runtime_migration_request();
 
-    const auto result = mirakana::plan_scene_v2_runtime_package_migration(request);
+    const auto result = mirakana::plan_scene_runtime_package_migration(request);
 
     MK_REQUIRE(result.succeeded());
-    MK_REQUIRE(result.scene_v1_content ==
-               mirakana::serialize_scene(mirakana::deserialize_scene(result.scene_v1_content)));
+    MK_REQUIRE(result.runtime_scene_content ==
+               mirakana::serialize_scene(mirakana::deserialize_scene(result.runtime_scene_content)));
     MK_REQUIRE(result.changed_files.size() == 2);
     MK_REQUIRE(result.changed_files[0].path == request.output_scene_path);
     MK_REQUIRE(result.changed_files[0].document_kind == "GameEngine.Scene");
-    MK_REQUIRE(result.changed_files[0].content == result.scene_v1_content);
-    MK_REQUIRE(result.changed_files[0].content_hash == mirakana::hash_asset_cooked_content(result.scene_v1_content));
+    MK_REQUIRE(result.changed_files[0].content == result.runtime_scene_content);
+    MK_REQUIRE(result.changed_files[0].content_hash ==
+               mirakana::hash_asset_cooked_content(result.runtime_scene_content));
     MK_REQUIRE(result.changed_files[1].path == request.package_index_path);
     MK_REQUIRE(result.changed_files[1].document_kind == "GameEngine.CookedPackageIndex");
     MK_REQUIRE(result.changed_files[1].content == result.package_index_content);
 
-    MK_REQUIRE(text_contains(result.scene_v1_content, "format=GameEngine.Scene\n"));
-    MK_REQUIRE(text_contains(result.scene_v1_content, "scene.name=Migrated Level\n"));
-    MK_REQUIRE(text_contains(result.scene_v1_content, "node.count=2\n"));
-    MK_REQUIRE(text_contains(result.scene_v1_content, "node.2.parent=1\n"));
-    MK_REQUIRE(text_contains(result.scene_v1_content, "node.1.camera.projection=orthographic\n"));
-    MK_REQUIRE(text_contains(result.scene_v1_content, "node.1.camera.primary=true\n"));
-    MK_REQUIRE(text_contains(result.scene_v1_content, "node.2.light.type=point\n"));
-    MK_REQUIRE(text_contains(result.scene_v1_content, "node.2.light.color=0.5,0.25,1\n"));
-    MK_REQUIRE(text_contains(result.scene_v1_content, "node.2.sprite_renderer.visible=false\n"));
+    MK_REQUIRE(text_contains(result.runtime_scene_content, "format=GameEngine.Scene\n"));
+    MK_REQUIRE(text_contains(result.runtime_scene_content, "scene.name=Migrated Level\n"));
+    MK_REQUIRE(text_contains(result.runtime_scene_content, "node.count=2\n"));
+    MK_REQUIRE(text_contains(result.runtime_scene_content, "node.2.parent=1\n"));
+    MK_REQUIRE(text_contains(result.runtime_scene_content, "node.1.camera.projection=orthographic\n"));
+    MK_REQUIRE(text_contains(result.runtime_scene_content, "node.1.camera.primary=true\n"));
+    MK_REQUIRE(text_contains(result.runtime_scene_content, "node.2.light.type=point\n"));
+    MK_REQUIRE(text_contains(result.runtime_scene_content, "node.2.light.color=0.5,0.25,1\n"));
+    MK_REQUIRE(text_contains(result.runtime_scene_content, "node.2.sprite_renderer.visible=false\n"));
 
-    const auto mesh = mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{"assets/meshes/cube"});
-    const auto material = mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{"assets/materials/base"});
-    const auto sprite = mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{"assets/textures/hero"});
+    const auto mesh = mirakana::asset_id_from_key(mirakana::AssetKey{"assets/meshes/cube"});
+    const auto material = mirakana::asset_id_from_key(mirakana::AssetKey{"assets/materials/base"});
+    const auto sprite = mirakana::asset_id_from_key(mirakana::AssetKey{"assets/textures/hero"});
     MK_REQUIRE(
-        text_contains(result.scene_v1_content, "node.1.mesh_renderer.mesh=" + std::to_string(mesh.value) + "\n"));
-    MK_REQUIRE(text_contains(result.scene_v1_content,
+        text_contains(result.runtime_scene_content, "node.1.mesh_renderer.mesh=" + std::to_string(mesh.value) + "\n"));
+    MK_REQUIRE(text_contains(result.runtime_scene_content,
                              "node.1.mesh_renderer.material=" + std::to_string(material.value) + "\n"));
-    MK_REQUIRE(
-        text_contains(result.scene_v1_content, "node.2.sprite_renderer.sprite=" + std::to_string(sprite.value) + "\n"));
-    MK_REQUIRE(text_contains(result.scene_v1_content,
+    MK_REQUIRE(text_contains(result.runtime_scene_content,
+                             "node.2.sprite_renderer.sprite=" + std::to_string(sprite.value) + "\n"));
+    MK_REQUIRE(text_contains(result.runtime_scene_content,
                              "node.2.sprite_renderer.material=" + std::to_string(material.value) + "\n"));
 
     MK_REQUIRE(result.model_mutations.size() == 1);
-    MK_REQUIRE(result.model_mutations[0].kind == "migrate_scene_v2_runtime_package");
+    MK_REQUIRE(result.model_mutations[0].kind == "migrate_scene_runtime_package");
     MK_REQUIRE(result.model_mutations[0].target_path == request.output_scene_path);
     MK_REQUIRE(result.model_mutations[0].scene_asset_key.value == request.scene_asset_key.value);
-    MK_REQUIRE(result.model_mutations[0].scene_asset == mirakana::asset_id_from_key_v2(request.scene_asset_key));
+    MK_REQUIRE(result.model_mutations[0].scene_asset == mirakana::asset_id_from_key(request.scene_asset_key));
     MK_REQUIRE(result.model_mutations[0].placement_rows.size() == 5);
     MK_REQUIRE(result.model_mutations[0].placement_rows[0].placement == "scene.component.mesh_renderer.material");
     MK_REQUIRE(result.model_mutations[0].placement_rows[0].key.value == "assets/materials/base");
@@ -5902,10 +5901,9 @@ MK_TEST("scene v2 runtime package migration dry-runs scene and package index cha
     MK_REQUIRE(result.model_mutations[0].placement_rows[3].source_path == "source/textures/hero.getexture");
     MK_REQUIRE(result.model_mutations[0].placement_rows[4].placement == "scene.runtime_package");
     MK_REQUIRE(result.model_mutations[0].placement_rows[4].key.value == request.scene_asset_key.value);
-    MK_REQUIRE(result.model_mutations[0].placement_rows[4].id ==
-               mirakana::asset_id_from_key_v2(request.scene_asset_key));
+    MK_REQUIRE(result.model_mutations[0].placement_rows[4].id == mirakana::asset_id_from_key(request.scene_asset_key));
     MK_REQUIRE(result.model_mutations[0].placement_rows[4].kind == mirakana::AssetKind::scene);
-    MK_REQUIRE(result.model_mutations[0].placement_rows[4].source_path == request.scene_v2_path);
+    MK_REQUIRE(result.model_mutations[0].placement_rows[4].source_path == request.scene_path);
     MK_REQUIRE(result.model_mutations[0].dependency_rows.size() == 3);
     MK_REQUIRE(result.model_mutations[0].dependency_rows[0].kind == mirakana::AssetDependencyKind::scene_material);
     MK_REQUIRE(result.model_mutations[0].dependency_rows[1].kind == mirakana::AssetDependencyKind::scene_mesh);
@@ -5916,7 +5914,7 @@ MK_TEST("scene v2 runtime package migration dry-runs scene and package index cha
     MK_REQUIRE(result.undo_token == "placeholder-only");
 
     const auto index = mirakana::deserialize_asset_cooked_package_index(result.package_index_content);
-    const auto scene_asset = mirakana::asset_id_from_key_v2(request.scene_asset_key);
+    const auto scene_asset = mirakana::asset_id_from_key(request.scene_asset_key);
     const auto scene_entry =
         std::ranges::find_if(index.entries, [scene_asset](const auto& entry) { return entry.asset == scene_asset; });
     MK_REQUIRE(scene_entry != index.entries.end());
@@ -5928,34 +5926,34 @@ MK_TEST("scene v2 runtime package migration dry-runs scene and package index cha
     MK_REQUIRE(scene_entry->dependencies == expected_dependencies);
 }
 
-MK_TEST("scene v2 runtime package migration apply rereads validated paths and writes deterministic changed files") {
+MK_TEST("scene runtime package migration apply rereads validated paths and writes deterministic changed files") {
     mirakana::MemoryFileSystem fs;
     const auto request = make_runtime_migration_request();
-    fs.write_text(request.scene_v2_path, request.scene_v2_content);
+    fs.write_text(request.scene_path, request.scene_content);
     fs.write_text(request.source_registry_path, request.source_registry_content);
     fs.write_text(request.package_index_path, request.package_index_content);
 
     auto apply_request = request;
-    apply_request.scene_v2_content = "stale inline scene content must be ignored by apply";
+    apply_request.scene_content = "stale inline scene content must be ignored by apply";
     apply_request.source_registry_content = "stale inline registry content must be ignored by apply";
     apply_request.package_index_content = "stale inline package content must be ignored by apply";
 
-    const auto result = mirakana::apply_scene_v2_runtime_package_migration(fs, apply_request);
+    const auto result = mirakana::apply_scene_runtime_package_migration(fs, apply_request);
 
     MK_REQUIRE(result.succeeded());
     MK_REQUIRE(result.changed_files.size() == 2);
     MK_REQUIRE(result.changed_files[0].path == request.output_scene_path);
     MK_REQUIRE(result.changed_files[1].path == request.package_index_path);
-    MK_REQUIRE(fs.read_text(request.output_scene_path) == result.scene_v1_content);
+    MK_REQUIRE(fs.read_text(request.output_scene_path) == result.runtime_scene_content);
     MK_REQUIRE(fs.read_text(request.package_index_path) == result.package_index_content);
 
     auto duplicate = request;
-    duplicate.scene_v2_content = runtime_migration_scene_v2_with_duplicate_component_id_content();
-    fs.write_text(request.scene_v2_path, duplicate.scene_v2_content);
+    duplicate.scene_content = runtime_migration_scene_with_duplicate_component_id_content();
+    fs.write_text(request.scene_path, duplicate.scene_content);
     const auto scene_before = fs.read_text(request.output_scene_path);
     const auto index_before = fs.read_text(request.package_index_path);
 
-    const auto failed = mirakana::apply_scene_v2_runtime_package_migration(fs, request);
+    const auto failed = mirakana::apply_scene_runtime_package_migration(fs, request);
 
     MK_REQUIRE(!failed.succeeded());
     MK_REQUIRE(failures_contain(failed.diagnostics, "duplicate component id"));
@@ -5963,12 +5961,12 @@ MK_TEST("scene v2 runtime package migration apply rereads validated paths and wr
     MK_REQUIRE(fs.read_text(request.package_index_path) == index_before);
 }
 
-MK_TEST("scene v2 runtime package migration rejects source asset row and component mapping errors") {
+MK_TEST("scene runtime package migration rejects source asset row and component mapping errors") {
     auto request = make_runtime_migration_request();
-    auto missing_asset_scene = make_runtime_migration_scene_v2();
+    auto missing_asset_scene = make_runtime_migration_scene();
     missing_asset_scene.components[1].properties[0].value = "assets/meshes/missing";
-    request.scene_v2_content = mirakana::serialize_scene_document_v2(missing_asset_scene);
-    const auto missing_asset = mirakana::plan_scene_v2_runtime_package_migration(request);
+    request.scene_content = mirakana::serialize_scene_document(missing_asset_scene);
+    const auto missing_asset = mirakana::plan_scene_runtime_package_migration(request);
     MK_REQUIRE(!missing_asset.succeeded());
     MK_REQUIRE(failures_contain(missing_asset.diagnostics, "source asset key is missing"));
 
@@ -5983,55 +5981,55 @@ MK_TEST("scene v2 runtime package migration rejects source asset row and compone
         }
     }
     request.source_registry_content = mirakana::serialize_source_asset_registry_document(wrong_registry);
-    const auto wrong_kind = mirakana::plan_scene_v2_runtime_package_migration(request);
+    const auto wrong_kind = mirakana::plan_scene_runtime_package_migration(request);
     MK_REQUIRE(!wrong_kind.succeeded());
     MK_REQUIRE(failures_contain(wrong_kind.diagnostics, "must reference a texture source asset"));
 
     request = make_runtime_migration_request();
-    request.scene_v2_content = runtime_migration_scene_v2_with_duplicate_component_id_content();
-    const auto duplicate_component = mirakana::plan_scene_v2_runtime_package_migration(request);
+    request.scene_content = runtime_migration_scene_with_duplicate_component_id_content();
+    const auto duplicate_component = mirakana::plan_scene_runtime_package_migration(request);
     MK_REQUIRE(!duplicate_component.succeeded());
     MK_REQUIRE(failures_contain(duplicate_component.diagnostics, "duplicate component id"));
 
     request = make_runtime_migration_request();
-    auto malformed_scene = make_runtime_migration_scene_v2();
+    auto malformed_scene = make_runtime_migration_scene();
     malformed_scene.components[0].properties[2].value = "not-a-number";
-    request.scene_v2_content = mirakana::serialize_scene_document_v2(malformed_scene);
-    const auto malformed = mirakana::plan_scene_v2_runtime_package_migration(request);
+    request.scene_content = mirakana::serialize_scene_document(malformed_scene);
+    const auto malformed = mirakana::plan_scene_runtime_package_migration(request);
     MK_REQUIRE(!malformed.succeeded());
     MK_REQUIRE(failures_contain(malformed.diagnostics, "numeric value is invalid"));
 
     request = make_runtime_migration_request();
-    auto unsupported_property_scene = make_runtime_migration_scene_v2();
+    auto unsupported_property_scene = make_runtime_migration_scene();
     unsupported_property_scene.components[0].properties.push_back({.name = "aperture", .value = "2"});
-    request.scene_v2_content = mirakana::serialize_scene_document_v2(unsupported_property_scene);
-    const auto unsupported_property = mirakana::plan_scene_v2_runtime_package_migration(request);
+    request.scene_content = mirakana::serialize_scene_document(unsupported_property_scene);
+    const auto unsupported_property = mirakana::plan_scene_runtime_package_migration(request);
     MK_REQUIRE(!unsupported_property.succeeded());
     MK_REQUIRE(failures_contain(unsupported_property.diagnostics, "unsupported component property"));
 
     request = make_runtime_migration_request();
-    auto unsupported_component_scene = make_runtime_migration_scene_v2();
-    unsupported_component_scene.components.push_back(mirakana::SceneComponentDocumentV2{
+    auto unsupported_component_scene = make_runtime_migration_scene();
+    unsupported_component_scene.components.push_back(mirakana::SceneComponentDocument{
         .id = mirakana::AuthoringId{"component/root/tilemap"},
         .node = mirakana::AuthoringId{"node/root"},
         .type = mirakana::SceneComponentTypeId{"tilemap"},
         .properties = {{.name = "tileset", .value = "assets/textures/hero"}},
     });
-    request.scene_v2_content = mirakana::serialize_scene_document_v2(unsupported_component_scene);
-    const auto unsupported_component = mirakana::plan_scene_v2_runtime_package_migration(request);
+    request.scene_content = mirakana::serialize_scene_document(unsupported_component_scene);
+    const auto unsupported_component = mirakana::plan_scene_runtime_package_migration(request);
     MK_REQUIRE(!unsupported_component.succeeded());
     MK_REQUIRE(failures_contain(unsupported_component.diagnostics, "unsupported component type"));
 }
 
-MK_TEST("scene v2 runtime package migration rejects unsafe paths unsupported claims and free form edits") {
+MK_TEST("scene runtime package migration rejects unsafe paths unsupported claims and free form edits") {
     auto request = make_runtime_migration_request();
-    request.scene_v2_path = "../source/scenes/level.scene";
-    const auto unsafe = mirakana::plan_scene_v2_runtime_package_migration(request);
+    request.scene_path = "../source/scenes/level.scene";
+    const auto unsafe = mirakana::plan_scene_runtime_package_migration(request);
     MK_REQUIRE(!unsafe.succeeded());
     MK_REQUIRE(failures_contain(unsafe.diagnostics, "safe repository-relative"));
 
     CountingFileSystem counting_fs;
-    const auto unsafe_apply = mirakana::apply_scene_v2_runtime_package_migration(counting_fs, request);
+    const auto unsafe_apply = mirakana::apply_scene_runtime_package_migration(counting_fs, request);
     MK_REQUIRE(!unsafe_apply.succeeded());
     MK_REQUIRE(failures_contain(unsafe_apply.diagnostics, "safe repository-relative"));
     MK_REQUIRE(counting_fs.exists_calls == 0);
@@ -6040,28 +6038,28 @@ MK_TEST("scene v2 runtime package migration rejects unsafe paths unsupported cla
 
     request = make_runtime_migration_request();
     request.output_scene_path = "runtime/../assets/scenes/level.scene";
-    const auto unsafe_output = mirakana::plan_scene_v2_runtime_package_migration(request);
+    const auto unsafe_output = mirakana::plan_scene_runtime_package_migration(request);
     MK_REQUIRE(!unsafe_output.succeeded());
     MK_REQUIRE(failures_contain(unsafe_output.diagnostics, "package-relative"));
 
     request = make_runtime_migration_request();
-    request.output_scene_path = request.scene_v2_path;
-    const auto aliased_output = mirakana::plan_scene_v2_runtime_package_migration(request);
+    request.output_scene_path = request.scene_path;
+    const auto aliased_output = mirakana::plan_scene_runtime_package_migration(request);
     MK_REQUIRE(!aliased_output.succeeded());
     MK_REQUIRE(failures_contain(aliased_output.diagnostics, "must not alias an input path"));
 
     CountingFileSystem alias_counting_fs;
-    const auto aliased_apply = mirakana::apply_scene_v2_runtime_package_migration(alias_counting_fs, request);
+    const auto aliased_apply = mirakana::apply_scene_runtime_package_migration(alias_counting_fs, request);
     MK_REQUIRE(!aliased_apply.succeeded());
     MK_REQUIRE(failures_contain(aliased_apply.diagnostics, "must not alias an input path"));
     MK_REQUIRE(alias_counting_fs.read_calls == 0);
     MK_REQUIRE(alias_counting_fs.write_calls == 0);
 
     request = make_runtime_migration_request();
-    request.scene_asset_key = mirakana::AssetKeyV2{"assets/scenes/bad key"};
-    const auto invalid_scene_key = mirakana::plan_scene_v2_runtime_package_migration(request);
+    request.scene_asset_key = mirakana::AssetKey{"assets/scenes/bad key"};
+    const auto invalid_scene_key = mirakana::plan_scene_runtime_package_migration(request);
     MK_REQUIRE(!invalid_scene_key.succeeded());
-    MK_REQUIRE(failures_contain(invalid_scene_key.diagnostics, "valid AssetKeyV2"));
+    MK_REQUIRE(failures_contain(invalid_scene_key.diagnostics, "valid AssetKey"));
 
     request = make_runtime_migration_request();
     request.package_cooking = "ready";
@@ -6078,7 +6076,7 @@ MK_TEST("scene v2 runtime package migration rejects unsafe paths unsupported cla
     request.general_production_renderer_quality = "ready";
     request.arbitrary_shell = "ready";
     request.free_form_edit = "ready";
-    const auto unsupported = mirakana::plan_scene_v2_runtime_package_migration(request);
+    const auto unsupported = mirakana::plan_scene_runtime_package_migration(request);
     MK_REQUIRE(!unsupported.succeeded());
     MK_REQUIRE(failures_contain(unsupported.diagnostics, "package cooking is not supported"));
     MK_REQUIRE(failures_contain(unsupported.diagnostics, "dependent asset cooking is not supported"));
@@ -6095,27 +6093,27 @@ MK_TEST("scene v2 runtime package migration rejects unsafe paths unsupported cla
     MK_REQUIRE(failures_contain(unsupported.diagnostics, "arbitrary shell execution is not supported"));
     MK_REQUIRE(failures_contain(unsupported.diagnostics, "free-form edits are not supported"));
 
-    mirakana::SceneV2RuntimePackageMigrationRequest free_form;
-    free_form.kind = mirakana::SceneV2RuntimePackageMigrationCommandKind::free_form_edit;
-    free_form.scene_v2_path = "source/scenes/level.scene";
+    mirakana::SceneRuntimePackageMigrationRequest free_form;
+    free_form.kind = mirakana::SceneRuntimePackageMigrationCommandKind::free_form_edit;
+    free_form.scene_path = "source/scenes/level.scene";
     free_form.source_registry_path = "source/assets/game.geassets";
     free_form.package_index_path = "runtime/game.geindex";
     free_form.output_scene_path = "runtime/assets/scenes/level.scene";
     free_form.free_form_edit = "append raw scene package text";
-    const auto free_form_result = mirakana::plan_scene_v2_runtime_package_migration(free_form);
+    const auto free_form_result = mirakana::plan_scene_runtime_package_migration(free_form);
     MK_REQUIRE(!free_form_result.succeeded());
     MK_REQUIRE(failures_contain(free_form_result.diagnostics, "free-form edits are not supported"));
 }
 
-MK_TEST("scene v2 runtime package migration apply reports centralized scene package write failures") {
+MK_TEST("scene runtime package migration apply reports centralized scene package write failures") {
     auto request = make_runtime_migration_request();
     ThrowingWriteFileSystem fs;
-    fs.files[request.scene_v2_path] = request.scene_v2_content;
+    fs.files[request.scene_path] = request.scene_content;
     fs.files[request.source_registry_path] = request.source_registry_content;
     fs.files[request.package_index_path] = request.package_index_content;
     fs.failing_write_path = request.package_index_path;
 
-    const auto result = mirakana::apply_scene_v2_runtime_package_migration(fs, request);
+    const auto result = mirakana::apply_scene_runtime_package_migration(fs, request);
 
     MK_REQUIRE(!result.succeeded());
     MK_REQUIRE(failures_contain(result.diagnostics, "failed to write"));

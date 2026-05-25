@@ -586,7 +586,7 @@ foreach ($needle in @(
     "FrameGraphPassExecutionBinding",
     "FrameGraphExecutionCallbacks",
     "FrameGraphExecutionResult",
-    "execute_frame_graph_v1_schedule"
+    "execute_frame_graph_schedule"
 )) {
     Assert-ContainsText $frameGraphHeader $needle "Frame Graph callback execution header"
 }
@@ -601,12 +601,12 @@ foreach ($needle in @(
     Assert-ContainsText $frameGraphSource $needle "Frame Graph callback execution source"
 }
 foreach ($needle in @(
-    "frame graph v1 dispatches barrier and pass callbacks in schedule order",
-    "frame graph v1 callback execution diagnoses missing callbacks before later passes",
-    "frame graph v1 callback execution converts thrown callbacks to diagnostics",
-    "frame graph v1 callback execution copies pass bindings before dispatch",
-    "frame graph v1 callback execution reports returned callback failures",
-    "frame graph v1 callback execution converts thrown barrier callbacks to diagnostics"
+    "frame graph dispatches barrier and pass callbacks in schedule order",
+    "frame graph callback execution diagnoses missing callbacks before later passes",
+    "frame graph callback execution converts thrown callbacks to diagnostics",
+    "frame graph callback execution copies pass bindings before dispatch",
+    "frame graph callback execution reports returned callback failures",
+    "frame graph callback execution converts thrown barrier callbacks to diagnostics"
 )) {
     Assert-ContainsText $rendererTests $needle "MK_renderer_tests Frame Graph callback execution coverage"
 }

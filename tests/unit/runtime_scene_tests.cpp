@@ -61,7 +61,7 @@ namespace {
 }
 
 [[nodiscard]] mirakana::AssetId asset_id_from_test_key(std::string_view key) {
-    return mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{.value = std::string{key}});
+    return mirakana::asset_id_from_key(mirakana::AssetKey{.value = std::string{key}});
 }
 
 [[nodiscard]] const mirakana::runtime_scene::RuntimeSceneAssetIdentityReferenceRow*
@@ -308,17 +308,17 @@ MK_TEST("runtime scene audits asset identity keys for component references") {
     const auto material = asset_id_from_test_key("materials/player");
     const auto sprite = asset_id_from_test_key("sprites/nameplate");
     const auto source_scene = make_mesh_and_sprite_scene(mesh, material, sprite);
-    const mirakana::AssetIdentityDocumentV2 identities{.assets = {
-                                                           {.key = {.value = "meshes/player"},
-                                                            .kind = mirakana::AssetKind::mesh,
-                                                            .source_path = "source/meshes/player.mesh"},
-                                                           {.key = {.value = "materials/player"},
-                                                            .kind = mirakana::AssetKind::material,
-                                                            .source_path = "source/materials/player.material"},
-                                                           {.key = {.value = "sprites/nameplate"},
-                                                            .kind = mirakana::AssetKind::texture,
-                                                            .source_path = "source/textures/nameplate.texture"},
-                                                       }};
+    const mirakana::AssetIdentityDocument identities{.assets = {
+                                                         {.key = {.value = "meshes/player"},
+                                                          .kind = mirakana::AssetKind::mesh,
+                                                          .source_path = "source/meshes/player.mesh"},
+                                                         {.key = {.value = "materials/player"},
+                                                          .kind = mirakana::AssetKind::material,
+                                                          .source_path = "source/materials/player.material"},
+                                                         {.key = {.value = "sprites/nameplate"},
+                                                          .kind = mirakana::AssetKind::texture,
+                                                          .source_path = "source/textures/nameplate.texture"},
+                                                     }};
 
     const auto audit = mirakana::runtime_scene::audit_runtime_scene_asset_identity(source_scene, identities);
 
@@ -358,14 +358,14 @@ MK_TEST("runtime scene asset identity audit reports missing and wrong-kind rows"
     const auto material = asset_id_from_test_key("materials/missing");
     const auto sprite = asset_id_from_test_key("sprites/nameplate");
     const auto source_scene = make_mesh_and_sprite_scene(mesh, material, sprite);
-    const mirakana::AssetIdentityDocumentV2 identities{.assets = {
-                                                           {.key = {.value = "meshes/player"},
-                                                            .kind = mirakana::AssetKind::mesh,
-                                                            .source_path = "source/meshes/player.mesh"},
-                                                           {.key = {.value = "sprites/nameplate"},
-                                                            .kind = mirakana::AssetKind::material,
-                                                            .source_path = "source/materials/nameplate.material"},
-                                                       }};
+    const mirakana::AssetIdentityDocument identities{.assets = {
+                                                         {.key = {.value = "meshes/player"},
+                                                          .kind = mirakana::AssetKind::mesh,
+                                                          .source_path = "source/meshes/player.mesh"},
+                                                         {.key = {.value = "sprites/nameplate"},
+                                                          .kind = mirakana::AssetKind::material,
+                                                          .source_path = "source/materials/nameplate.material"},
+                                                     }};
 
     const auto audit = mirakana::runtime_scene::audit_runtime_scene_asset_identity(source_scene, identities);
 
@@ -394,17 +394,17 @@ MK_TEST("runtime scene asset identity audit rejects invalid identity documents")
     const auto mesh = asset_id_from_test_key("meshes/player");
     const auto material = asset_id_from_test_key("materials/player");
     const auto source_scene = make_mesh_scene(mesh, material);
-    const mirakana::AssetIdentityDocumentV2 identities{.assets = {
-                                                           {.key = {.value = "meshes/player"},
-                                                            .kind = mirakana::AssetKind::mesh,
-                                                            .source_path = "source/meshes/player.mesh"},
-                                                           {.key = {.value = "meshes/player"},
-                                                            .kind = mirakana::AssetKind::mesh,
-                                                            .source_path = "source/meshes/player-copy.mesh"},
-                                                           {.key = {.value = "materials/player"},
-                                                            .kind = mirakana::AssetKind::material,
-                                                            .source_path = "source/materials/player.material"},
-                                                       }};
+    const mirakana::AssetIdentityDocument identities{.assets = {
+                                                         {.key = {.value = "meshes/player"},
+                                                          .kind = mirakana::AssetKind::mesh,
+                                                          .source_path = "source/meshes/player.mesh"},
+                                                         {.key = {.value = "meshes/player"},
+                                                          .kind = mirakana::AssetKind::mesh,
+                                                          .source_path = "source/meshes/player-copy.mesh"},
+                                                         {.key = {.value = "materials/player"},
+                                                          .kind = mirakana::AssetKind::material,
+                                                          .source_path = "source/materials/player.material"},
+                                                     }};
 
     const auto audit = mirakana::runtime_scene::audit_runtime_scene_asset_identity(source_scene, identities);
 
@@ -421,14 +421,14 @@ MK_TEST("runtime scene asset identity audit accepts skinned meshes for mesh refe
     const auto mesh = asset_id_from_test_key("meshes/player");
     const auto material = asset_id_from_test_key("materials/player");
     const auto source_scene = make_mesh_scene(mesh, material);
-    const mirakana::AssetIdentityDocumentV2 identities{.assets = {
-                                                           {.key = {.value = "meshes/player"},
-                                                            .kind = mirakana::AssetKind::skinned_mesh,
-                                                            .source_path = "source/meshes/player.mesh"},
-                                                           {.key = {.value = "materials/player"},
-                                                            .kind = mirakana::AssetKind::material,
-                                                            .source_path = "source/materials/player.material"},
-                                                       }};
+    const mirakana::AssetIdentityDocument identities{.assets = {
+                                                         {.key = {.value = "meshes/player"},
+                                                          .kind = mirakana::AssetKind::skinned_mesh,
+                                                          .source_path = "source/meshes/player.mesh"},
+                                                         {.key = {.value = "materials/player"},
+                                                          .kind = mirakana::AssetKind::material,
+                                                          .source_path = "source/materials/player.material"},
+                                                     }};
 
     const auto audit = mirakana::runtime_scene::audit_runtime_scene_asset_identity(source_scene, identities);
 

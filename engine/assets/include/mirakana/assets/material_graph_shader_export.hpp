@@ -61,6 +61,6 @@ validate_material_graph_shader_export(const MaterialGraphShaderExportDesc& desc)
  * Deterministic HLSL v0 stub synthesized from a validated material graph by lowering to `MaterialDefinition`.
  * Intended for reviewed compilation through `plan_material_graph_shader_pipeline`; not a production shading model.
  */
-[[nodiscard]] std::string emit_material_graph_reviewed_hlsl_v0(const MaterialGraphDesc& graph);
+[[nodiscard]] std::string emit_material_graph_reviewed_hlsl(const MaterialGraphDesc& graph);
 
 } // namespace mirakana

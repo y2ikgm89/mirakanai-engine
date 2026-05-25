@@ -22,9 +22,9 @@ namespace {
     return std::ranges::any_of(ids, [id](const std::string& candidate) { return candidate == id; });
 }
 
-[[nodiscard]] bool contains_mount_id(const std::vector<RuntimeResidentPackageMountIdV2>& ids,
-                                     RuntimeResidentPackageMountIdV2 id) {
-    return std::ranges::any_of(ids, [id](RuntimeResidentPackageMountIdV2 candidate) { return candidate == id; });
+[[nodiscard]] bool contains_mount_id(const std::vector<RuntimeResidentPackageMountId>& ids,
+                                     RuntimeResidentPackageMountId id) {
+    return std::ranges::any_of(ids, [id](RuntimeResidentPackageMountId candidate) { return candidate == id; });
 }
 
 [[nodiscard]] const RuntimeWorldRegionPackageDesc*
@@ -34,9 +34,9 @@ find_region(const std::vector<RuntimeWorldRegionPackageDesc>& regions, std::stri
     return found == regions.end() ? nullptr : &(*found);
 }
 
-[[nodiscard]] bool has_mount_id(const RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentPackageMountIdV2 id) {
+[[nodiscard]] bool has_mount_id(const RuntimeResidentPackageMountSet& mount_set, RuntimeResidentPackageMountId id) {
     return std::ranges::any_of(mount_set.mounts(),
-                               [id](const RuntimeResidentPackageMountRecordV2& mount) { return mount.id == id; });
+                               [id](const RuntimeResidentPackageMountRecord& mount) { return mount.id == id; });
 }
 
 void add_diagnostic(RuntimeWorldRegionStreamingPlan& plan, RuntimeWorldRegionStreamingDiagnosticCode code,
@@ -70,7 +70,7 @@ void add_navigation_diagnostic(Result& result, RuntimeWorldRegionNavigationDiagn
 void validate_region_catalog(RuntimeWorldRegionStreamingPlan& plan,
                              const std::vector<RuntimeWorldRegionPackageDesc>& regions) {
     std::vector<std::string> seen;
-    std::vector<RuntimeResidentPackageMountIdV2> seen_mount_ids;
+    std::vector<RuntimeResidentPackageMountId> seen_mount_ids;
     for (const auto& region : regions) {
         if (!is_valid_region_id(region.region_id)) {
             add_diagnostic(plan, RuntimeWorldRegionStreamingDiagnosticCode::invalid_region_id, region.region_id,
@@ -102,7 +102,7 @@ void validate_navigation_region_catalog(RuntimeWorldRegionNavigationRefReviewRes
                                         const std::vector<RuntimeWorldRegionPackageDesc>& regions) {
     std::vector<std::string> seen_regions;
     std::vector<std::string> seen_package_refs;
-    std::vector<RuntimeResidentPackageMountIdV2> seen_mount_ids;
+    std::vector<RuntimeResidentPackageMountId> seen_mount_ids;
     for (const auto& region : regions) {
         if (!is_valid_region_id(region.region_id)) {
             add_navigation_diagnostic(result, RuntimeWorldRegionNavigationDiagnosticCode::invalid_region_id,
@@ -191,7 +191,7 @@ void validate_navigation_route(RuntimeWorldRegionNavigationRefReviewResult& resu
 }
 
 void append_navigation_ref_rows(RuntimeWorldRegionNavigationRefReviewResult& result,
-                                const RuntimeResidentPackageMountSetV2& mount_set,
+                                const RuntimeResidentPackageMountSet& mount_set,
                                 const RuntimeWorldRegionNavigationRefReviewRequest& request) {
     for (const auto& id : request.route_region_ids) {
         const auto* region = find_region(request.regions, id);
@@ -304,7 +304,7 @@ make_streaming_desc(const RuntimeWorldRegionStreamingSafePointDesc& desc, const 
     };
 }
 
-void append_protected_plan_mount_ids(std::vector<RuntimeResidentPackageMountIdV2>& protected_mount_ids,
+void append_protected_plan_mount_ids(std::vector<RuntimeResidentPackageMountId>& protected_mount_ids,
                                      const RuntimeWorldRegionStreamingPlan& plan) {
     for (const auto& row : plan.rows) {
         if (row.protected_region && row.mount_id.value != 0U && !contains_mount_id(protected_mount_ids, row.mount_id)) {
@@ -515,7 +515,7 @@ plan_runtime_world_region_streaming(const RuntimeWorldRegionStreamingPlanRequest
 }
 
 RuntimeWorldRegionNavigationRefReviewResult
-review_runtime_world_region_navigation_refs(const RuntimeResidentPackageMountSetV2& mount_set,
+review_runtime_world_region_navigation_refs(const RuntimeResidentPackageMountSet& mount_set,
                                             const RuntimeWorldRegionNavigationRefReviewRequest& request) {
     RuntimeWorldRegionNavigationRefReviewResult result;
     result.current_mount_generation = mount_set.generation();
@@ -534,8 +534,8 @@ review_runtime_world_region_navigation_refs(const RuntimeResidentPackageMountSet
 }
 
 RuntimeWorldRegionNavigationPathCacheReviewResult
-review_runtime_world_region_navigation_path_cache(const RuntimeResidentPackageMountSetV2& mount_set,
-                                                  const RuntimeResidentCatalogCacheV2& catalog_cache,
+review_runtime_world_region_navigation_path_cache(const RuntimeResidentPackageMountSet& mount_set,
+                                                  const RuntimeResidentCatalogCache& catalog_cache,
                                                   const RuntimeWorldRegionNavigationPathCacheReviewRequest& request) {
     const auto ref_review = review_runtime_world_region_navigation_refs(
         mount_set, RuntimeWorldRegionNavigationRefReviewRequest{.regions = request.regions,
@@ -594,8 +594,8 @@ review_runtime_world_region_navigation_path_cache(const RuntimeResidentPackageMo
 }
 
 RuntimeWorldRegionStreamingSafePointResult
-execute_runtime_world_region_streaming_safe_point(IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set,
-                                                  RuntimeResidentCatalogCacheV2& catalog_cache,
+execute_runtime_world_region_streaming_safe_point(IFileSystem& filesystem, RuntimeResidentPackageMountSet& mount_set,
+                                                  RuntimeResidentCatalogCache& catalog_cache,
                                                   const RuntimeWorldRegionStreamingSafePointDesc& desc) {
     RuntimeWorldRegionStreamingSafePointResult result;
 
@@ -610,9 +610,9 @@ execute_runtime_world_region_streaming_safe_point(IFileSystem& filesystem, Runti
         return result;
     }
 
-    RuntimeResidentPackageMountSetV2 projected_mount_set = mount_set;
-    RuntimeResidentCatalogCacheV2 projected_catalog_cache = catalog_cache;
-    std::vector<RuntimeResidentPackageMountIdV2> protected_mount_ids = desc.protected_mount_ids;
+    RuntimeResidentPackageMountSet projected_mount_set = mount_set;
+    RuntimeResidentCatalogCache projected_catalog_cache = catalog_cache;
+    std::vector<RuntimeResidentPackageMountId> protected_mount_ids = desc.protected_mount_ids;
     append_protected_plan_mount_ids(protected_mount_ids, desc.plan);
 
     for (const auto* row : make_execution_rows(desc.plan)) {

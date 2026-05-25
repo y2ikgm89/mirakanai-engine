@@ -90,7 +90,7 @@ if (@($geRuntimeModuleForNavigation[0].publicHeaders) -notcontains "engine/runti
     Write-Error "engine manifest MK_runtime publicHeaders missing world_region_streaming.hpp"
 }
 $worldRegionNavigationText = (([string]$engine.gameCodeGuidance.currentWorldRegionNavigationRefs), ((@($geRuntimeModuleForNavigation[0].recentEvidence) -join " "))) -join " "
-foreach ($needle in @("RuntimeWorldRegionNavigationRefReviewRequest", "RuntimeWorldRegionNavigationRefReviewResult", "RuntimeWorldRegionNavigationPathCacheReviewRequest", "RuntimeWorldRegionNavigationPathCacheReviewResult", "review_runtime_world_region_navigation_refs", "review_runtime_world_region_navigation_path_cache", "RuntimeResidentCatalogCacheV2", "unrefreshed", "without package reads")) {
+foreach ($needle in @("RuntimeWorldRegionNavigationRefReviewRequest", "RuntimeWorldRegionNavigationRefReviewResult", "RuntimeWorldRegionNavigationPathCacheReviewRequest", "RuntimeWorldRegionNavigationPathCacheReviewResult", "review_runtime_world_region_navigation_refs", "review_runtime_world_region_navigation_path_cache", "RuntimeResidentCatalogCache", "unrefreshed", "without package reads")) {
     if (-not $worldRegionNavigationText.Contains($needle)) {
         Write-Error "engine manifest world-region navigation review surface missing $needle"
     }
@@ -457,18 +457,18 @@ $geToolsModule = @($engine.modules | Where-Object { $_.name -eq "MK_tools" })
 if ($geToolsModule.Count -ne 1) {
     Write-Error "engine manifest must expose exactly one MK_tools module"
 }
-if ($geSceneModule[0].status -ne "implemented-scene-schema-v2-contract") {
-    Write-Error "engine manifest MK_scene status must advertise the Scene/Component/Prefab Schema v2 contract slice honestly"
+if ($geSceneModule[0].status -ne "implemented-scene-schema-contract") {
+    Write-Error "engine manifest MK_scene status must advertise the Scene/Component/Prefab Schema contract slice honestly"
 }
-if (@($geSceneModule[0].publicHeaders) -notcontains "engine/scene/include/mirakana/scene/schema_v2.hpp") {
-    Write-Error "engine manifest MK_scene publicHeaders must include schema_v2.hpp"
+if (@($geSceneModule[0].publicHeaders) -notcontains "engine/scene/include/mirakana/scene/schema.hpp") {
+    Write-Error "engine manifest MK_scene publicHeaders must include schema.hpp"
 }
 if (-not ([string]$geSceneModule[0].purpose).Contains("contract-only") -or
     -not ([string]$geSceneModule[0].purpose).Contains("GameEngine.Scene") -or
-    -not ([string]$geSceneModule[0].purpose).Contains("ScenePrefabInstanceRefreshPlanV2") -or
-    -not ([string]$geSceneModule[0].purpose).Contains("plan_scene_prefab_instance_refresh_v2") -or
-    -not ([string]$geSceneModule[0].purpose).Contains("ScenePrefabInstanceRefreshResultV2") -or
-    -not ([string]$geSceneModule[0].purpose).Contains("apply_scene_prefab_instance_refresh_v2") -or
+    -not ([string]$geSceneModule[0].purpose).Contains("ScenePrefabInstanceRefreshPlan") -or
+    -not ([string]$geSceneModule[0].purpose).Contains("plan_scene_prefab_instance_refresh") -or
+    -not ([string]$geSceneModule[0].purpose).Contains("ScenePrefabInstanceRefreshResult") -or
+    -not ([string]$geSceneModule[0].purpose).Contains("apply_scene_prefab_instance_refresh") -or
     -not ([string]$geSceneModule[0].purpose).Contains("duplicate_prefab_source_identity") -or
     -not ([string]$geSceneModule[0].purpose).Contains("unsupported_nested_prefab_instance") -or
     -not ([string]$geSceneModule[0].purpose).Contains("unsupported_local_prefab_child") -or
@@ -476,22 +476,22 @@ if (-not ([string]$geSceneModule[0].purpose).Contains("contract-only") -or
     -not ([string]$geSceneModule[0].purpose).Contains("source_node_id") -or
     -not ([string]$geSceneModule[0].purpose).Contains("source_component_id") -or
     -not ([string]$geSceneModule[0].purpose).Contains("nested prefab propagation/merge resolution UX")) {
-    Write-Error "engine manifest MK_scene purpose must describe Schema v2 as contract-only and keep follow-up limits explicit"
+    Write-Error "engine manifest MK_scene purpose must describe Schema as contract-only and keep follow-up limits explicit"
 }
-if ($geAssetsModule[0].status -ne "implemented-asset-identity-v2-foundation") {
-    Write-Error "engine manifest MK_assets status must advertise the Asset Identity v2 foundation slice honestly"
+if ($geAssetsModule[0].status -ne "implemented-asset-identity-foundation") {
+    Write-Error "engine manifest MK_assets status must advertise the Asset Identity foundation slice honestly"
 }
 if (@($geAssetsModule[0].publicHeaders) -notcontains "engine/assets/include/mirakana/assets/asset_identity.hpp") {
     Write-Error "engine manifest MK_assets publicHeaders must include asset_identity.hpp"
 }
-if (-not ([string]$geAssetsModule[0].purpose).Contains("Asset Identity v2") -or
+if (-not ([string]$geAssetsModule[0].purpose).Contains("Asset Identity") -or
     -not ([string]$geAssetsModule[0].purpose).Contains("GameEngine.AssetIdentity") -or
     -not ([string]$geAssetsModule[0].purpose).Contains("foundation-only") -or
     -not ([string]$geAssetsModule[0].purpose).Contains("renderer/RHI residency")) {
-    Write-Error "engine manifest MK_assets purpose must describe Asset Identity v2 as foundation-only and keep follow-up limits explicit"
+    Write-Error "engine manifest MK_assets purpose must describe Asset Identity as foundation-only and keep follow-up limits explicit"
 }
-if ($geRuntimeModule[0].status -ne "ready-runtime-resource-v2-gameplay-interaction-framework") {
-    Write-Error "engine manifest MK_runtime status must advertise the closed Runtime Resource v2 plus gameplay interaction framework surface honestly"
+if ($geRuntimeModule[0].status -ne "ready-runtime-resource-gameplay-interaction-framework") {
+    Write-Error "engine manifest MK_runtime status must advertise the closed Runtime Resource plus gameplay interaction framework surface honestly"
 }
 if (@($geRuntimeModule[0].publicHeaders) -notcontains "engine/runtime/include/mirakana/runtime/resource_runtime.hpp") {
     Write-Error "engine manifest MK_runtime publicHeaders must include resource_runtime.hpp"
@@ -586,20 +586,20 @@ if (-not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsCharacterControl
     -not ([string]$gePhysicsModule[0].purpose).Contains("PhysicsWorld3D::step remains discrete")) {
     Write-Error "engine manifest MK_physics purpose must describe query batches, exact shape sweeps, contact manifold stability, CCD foundation, character/dynamic policy, advanced controller planning, joints/constraints foundation, and benchmark determinism gates honestly"
 }
-if (-not ([string]$geRuntimeModule[0].purpose).Contains("Runtime Resource v2") -or
+if (-not ([string]$geRuntimeModule[0].purpose).Contains("Runtime Resource") -or
     -not ([string]$geRuntimeModule[0].purpose).Contains("generation-checked") -or
-    -not ([string]$geRuntimeModule[0].purpose).Contains("commit_runtime_resident_package_replace_v2") -or
-    -not ([string]$geRuntimeModule[0].purpose).Contains("commit_runtime_resident_package_unmount_v2") -or
-    -not ([string]$geRuntimeModule[0].purpose).Contains("commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2") -or
+    -not ([string]$geRuntimeModule[0].purpose).Contains("commit_runtime_resident_package_replace") -or
+    -not ([string]$geRuntimeModule[0].purpose).Contains("commit_runtime_resident_package_unmount") -or
+    -not ([string]$geRuntimeModule[0].purpose).Contains("commit_runtime_package_discovery_resident_replace_with_reviewed_evictions") -or
     -not ([string]$geRuntimeModule[0].purpose).Contains("host-driven reviewed hot-reload replacement safe point") -or
-    -not ([string]$geRuntimeModule[0].purpose).Contains("plan_runtime_package_hot_reload_candidate_review_v2") -or
-    -not ([string]$geRuntimeModule[0].purpose).Contains("RuntimePackageHotReloadCandidateReviewResultV2") -or
-    -not ([string]$geRuntimeModule[0].purpose).Contains("plan_runtime_package_hot_reload_recook_change_review_v2") -or
-    -not ([string]$geRuntimeModule[0].purpose).Contains("RuntimePackageHotReloadRecookChangeReviewResultV2") -or
-    -not ([string]$geRuntimeModule[0].purpose).Contains("plan_runtime_package_hot_reload_replacement_intent_review_v2") -or
-    -not ([string]$geRuntimeModule[0].purpose).Contains("RuntimePackageHotReloadReplacementIntentReviewResultV2") -or
-    -not ([string]$geRuntimeModule[0].purpose).Contains("commit_runtime_package_hot_reload_recook_replacement_v2") -or
-    -not ([string]$geRuntimeModule[0].purpose).Contains("RuntimePackageHotReloadRecookReplacementResultV2") -or
+    -not ([string]$geRuntimeModule[0].purpose).Contains("plan_runtime_package_hot_reload_candidate_review") -or
+    -not ([string]$geRuntimeModule[0].purpose).Contains("RuntimePackageHotReloadCandidateReviewResult") -or
+    -not ([string]$geRuntimeModule[0].purpose).Contains("plan_runtime_package_hot_reload_recook_change_review") -or
+    -not ([string]$geRuntimeModule[0].purpose).Contains("RuntimePackageHotReloadRecookChangeReviewResult") -or
+    -not ([string]$geRuntimeModule[0].purpose).Contains("plan_runtime_package_hot_reload_replacement_intent_review") -or
+    -not ([string]$geRuntimeModule[0].purpose).Contains("RuntimePackageHotReloadReplacementIntentReviewResult") -or
+    -not ([string]$geRuntimeModule[0].purpose).Contains("commit_runtime_package_hot_reload_recook_replacement") -or
+    -not ([string]$geRuntimeModule[0].purpose).Contains("RuntimePackageHotReloadRecookReplacementResult") -or
     -not ([string]$geRuntimeModule[0].purpose).Contains("candidate/discovery root coherence") -or
     -not ([string]$geRuntimeModule[0].purpose).Contains("defined overlay") -or
     -not ([string]$geRuntimeModule[0].purpose).Contains("file watching/recook execution") -or
@@ -607,7 +607,7 @@ if (-not ([string]$geRuntimeModule[0].purpose).Contains("Runtime Resource v2") -
     -not ([string]$geRuntimeModule[0].purpose).Contains("package streaming") -or
     -not ([string]$geRuntimeModule[0].purpose).Contains("native watcher ownership") -or
     -not ([string]$geRuntimeModule[0].purpose).Contains("renderer/RHI resource ownership")) {
-    Write-Error "engine manifest MK_runtime purpose must describe Runtime Resource v2 as a closed safe-point/controller surface and keep follow-up limits explicit"
+    Write-Error "engine manifest MK_runtime purpose must describe Runtime Resource as a closed safe-point/controller surface and keep follow-up limits explicit"
 }
 if (-not ([string]$geRuntimeModule[0].purpose).Contains("RuntimeInputRebindingPresentationModel") -or
     -not ([string]$geRuntimeModule[0].purpose).Contains("make_runtime_input_rebinding_presentation") -or
@@ -621,9 +621,9 @@ if (-not ([string]$geToolsModule[0].purpose).Contains("PngImageDecodingAdapter")
     Write-Error "engine manifest MK_tools purpose must describe Runtime UI PNG image decoding adapter boundary explicitly"
 }
 if (-not ([string]$geToolsModule[0].purpose).Contains("refresh-prefab-instance") -or
-    -not ([string]$geToolsModule[0].purpose).Contains("plan_scene_prefab_instance_refresh_v2") -or
-    -not ([string]$geToolsModule[0].purpose).Contains("apply_scene_prefab_instance_refresh_v2")) {
-    Write-Error "engine manifest MK_tools purpose must describe reviewed Scene/Prefab v2 prefab refresh authoring surface explicitly"
+    -not ([string]$geToolsModule[0].purpose).Contains("plan_scene_prefab_instance_refresh") -or
+    -not ([string]$geToolsModule[0].purpose).Contains("apply_scene_prefab_instance_refresh")) {
+    Write-Error "engine manifest MK_tools purpose must describe reviewed Scene/Prefab prefab refresh authoring surface explicitly"
 }
 if (-not ([string]$geToolsModule[0].purpose).Contains("PackedUiAtlasAuthoringDesc") -or
     -not ([string]$geToolsModule[0].purpose).Contains("author_packed_ui_atlas_from_decoded_images") -or

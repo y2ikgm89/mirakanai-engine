@@ -110,18 +110,18 @@ struct PrimaryColorFrameGraphExecutionPlan {
 
 [[nodiscard]] PrimaryColorFrameGraphExecutionPlan
 make_primary_color_frame_graph_execution_plan(bool has_depth_attachment) {
-    FrameGraphV1Desc desc;
-    desc.resources.push_back(FrameGraphResourceV1Desc{
+    FrameGraphDesc desc;
+    desc.resources.push_back(FrameGraphResourceDesc{
         .name = "primary_color",
         .lifetime = FrameGraphResourceLifetime::imported,
     });
     if (has_depth_attachment) {
-        desc.resources.push_back(FrameGraphResourceV1Desc{
+        desc.resources.push_back(FrameGraphResourceDesc{
             .name = "primary_depth",
             .lifetime = FrameGraphResourceLifetime::imported,
         });
     }
-    desc.passes.push_back(FrameGraphPassV1Desc{
+    desc.passes.push_back(FrameGraphPassDesc{
         .name = "primary_color",
         .reads = {},
         .writes = {FrameGraphResourceAccess{.resource = "primary_color",
@@ -134,12 +134,12 @@ make_primary_color_frame_graph_execution_plan(bool has_depth_attachment) {
         });
     }
 
-    const auto plan = compile_frame_graph_v1(desc);
+    const auto plan = compile_frame_graph(desc);
     if (!plan.succeeded()) {
         return {};
     }
     return PrimaryColorFrameGraphExecutionPlan{
-        .schedule = schedule_frame_graph_v1_execution(plan),
+        .schedule = schedule_frame_graph_execution(plan),
         .pass_target_accesses = build_frame_graph_texture_pass_target_accesses(desc),
     };
 }

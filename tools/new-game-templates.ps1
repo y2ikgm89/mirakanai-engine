@@ -622,7 +622,7 @@ struct ModernMaterialShaderEvidenceReadiness {
 $materialGraphEvidenceTypes
 
 [[nodiscard]] mirakana::AssetId asset_id_from_game_asset_key(std::string_view key) {
-    return mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{.value = std::string{key}});
+    return mirakana::asset_id_from_key(mirakana::AssetKey{.value = std::string{key}});
 }
 
 [[nodiscard]] mirakana::AssetId packaged_scene_asset_id() {
@@ -2589,7 +2589,7 @@ load_packaged_vulkan_shifted_shadow_receiver_scene_shaders(const char* executabl
 [[nodiscard]] mirakana::runtime::RuntimePackageStreamingExecutionResult execute_package_streaming_safe_point_smoke(
     const mirakana::runtime::RuntimeAssetPackage& package, std::string_view package_path) {
     mirakana::runtime::RuntimeAssetPackageStore store;
-    mirakana::runtime::RuntimeResourceCatalogV2 catalog;
+    mirakana::runtime::RuntimeResourceCatalog catalog;
     mirakana::runtime::RuntimeAssetPackageLoadResult loaded_package{
         .package = package,
         .failures = {},
@@ -7277,7 +7277,7 @@ function New-DesktopRuntime3DManifest {
                     "$assetKeyPrefix/animations/packaged-pose"
                 )
                 sourceCookMode = "selected-source-registry-rows"
-                sceneMigration = "migrate-scene-v2-runtime-package"
+                sceneMigration = "migrate-scene-runtime-package"
                 runtimeSceneValidation = "validate-runtime-scene-package"
                 hostGatedSmokeRecipeIds = @(
                     "desktop-game-runtime",

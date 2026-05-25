@@ -154,7 +154,7 @@ function Assert-NoGameSourceRawAssetIdFromName {
     }
 
     if ($rawAssetIdMatches.Count -gt 0) {
-        Write-Error "Game sources and tools/new-game.ps1 must derive asset references from AssetKeyV2 via asset_id_from_key_v2 instead of AssetId::from_name: $($rawAssetIdMatches -join ', ')"
+        Write-Error "Game sources and tools/new-game.ps1 must derive asset references from AssetKey via asset_id_from_key instead of AssetId::from_name: $($rawAssetIdMatches -join ', ')"
     }
 }
 
@@ -607,8 +607,8 @@ function Assert-PrefabScenePackageAuthoringTarget($manifest, [string]$label, [st
     if ($targets[0].sourceCookMode -ne "selected-source-registry-rows") {
         Write-Error "$label prefabScenePackageAuthoringTargets '$id' sourceCookMode must be selected-source-registry-rows"
     }
-    if ($targets[0].sceneMigration -ne "migrate-scene-v2-runtime-package") {
-        Write-Error "$label prefabScenePackageAuthoringTargets '$id' sceneMigration must be migrate-scene-v2-runtime-package"
+    if ($targets[0].sceneMigration -ne "migrate-scene-runtime-package") {
+        Write-Error "$label prefabScenePackageAuthoringTargets '$id' sceneMigration must be migrate-scene-runtime-package"
     }
     if ($targets[0].runtimeSceneValidation -ne "validate-runtime-scene-package") {
         Write-Error "$label prefabScenePackageAuthoringTargets '$id' runtimeSceneValidation must be validate-runtime-scene-package"
@@ -647,7 +647,7 @@ function Assert-PrefabScenePackageAuthoringTarget($manifest, [string]$label, [st
     }
     foreach ($assetKey in @($targets[0].selectedSourceAssetKeys)) {
         if ([string]::IsNullOrWhiteSpace($assetKey) -or ([string]$assetKey).Contains(" ")) {
-            Write-Error "$label prefabScenePackageAuthoringTargets '$id' selectedSourceAssetKeys must be safe AssetKeyV2 values: $assetKey"
+            Write-Error "$label prefabScenePackageAuthoringTargets '$id' selectedSourceAssetKeys must be safe AssetKey values: $assetKey"
         }
     }
     foreach ($recipeId in @($targets[0].hostGatedSmokeRecipeIds)) {

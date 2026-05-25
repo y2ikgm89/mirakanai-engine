@@ -560,23 +560,23 @@ RuntimeTextureUploadResult upload_runtime_texture(rhi::IRhiDevice& device,
         }
         const auto texture = device.create_texture(desc);
 
-        FrameGraphV1Desc upload_graph;
-        upload_graph.resources.push_back(FrameGraphResourceV1Desc{
+        FrameGraphDesc upload_graph;
+        upload_graph.resources.push_back(FrameGraphResourceDesc{
             .name = "runtime.uploaded_texture",
             .lifetime = FrameGraphResourceLifetime::imported,
         });
-        upload_graph.passes.push_back(FrameGraphPassV1Desc{
+        upload_graph.passes.push_back(FrameGraphPassDesc{
             .name = "runtime.texture_upload.copy",
             .writes = {FrameGraphResourceAccess{
                 .resource = "runtime.uploaded_texture",
                 .access = FrameGraphAccess::copy_destination,
             }},
         });
-        const auto upload_plan = compile_frame_graph_v1(upload_graph);
+        const auto upload_plan = compile_frame_graph(upload_graph);
         if (!upload_plan.succeeded()) {
             return texture_upload_failure(runtime_texture_upload_frame_graph_diagnostic(upload_plan.diagnostics));
         }
-        const auto upload_schedule = schedule_frame_graph_v1_execution(upload_plan);
+        const auto upload_schedule = schedule_frame_graph_execution(upload_plan);
         const auto pass_target_accesses = build_frame_graph_texture_pass_target_accesses(upload_graph);
         std::vector<FrameGraphTextureBinding> texture_bindings{FrameGraphTextureBinding{
             .resource = "runtime.uploaded_texture",
@@ -766,16 +766,16 @@ RuntimeMeshUploadResult upload_runtime_mesh(rhi::IRhiDevice& device, const runti
         const auto vertex_buffer = device.create_buffer(vertex_desc);
         const auto index_buffer = device.create_buffer(index_desc);
 
-        FrameGraphV1Desc upload_graph;
-        upload_graph.resources.push_back(FrameGraphResourceV1Desc{
+        FrameGraphDesc upload_graph;
+        upload_graph.resources.push_back(FrameGraphResourceDesc{
             .name = "runtime.mesh_upload.vertex_buffer",
             .lifetime = FrameGraphResourceLifetime::imported,
         });
-        upload_graph.resources.push_back(FrameGraphResourceV1Desc{
+        upload_graph.resources.push_back(FrameGraphResourceDesc{
             .name = "runtime.mesh_upload.index_buffer",
             .lifetime = FrameGraphResourceLifetime::imported,
         });
-        upload_graph.passes.push_back(FrameGraphPassV1Desc{
+        upload_graph.passes.push_back(FrameGraphPassDesc{
             .name = "runtime.mesh_upload.copy",
             .writes = {FrameGraphResourceAccess{
                            .resource = "runtime.mesh_upload.vertex_buffer",
@@ -786,11 +786,11 @@ RuntimeMeshUploadResult upload_runtime_mesh(rhi::IRhiDevice& device, const runti
                            .access = FrameGraphAccess::copy_destination,
                        }},
         });
-        const auto upload_plan = compile_frame_graph_v1(upload_graph);
+        const auto upload_plan = compile_frame_graph(upload_graph);
         if (!upload_plan.succeeded()) {
             return mesh_upload_failure(runtime_mesh_upload_frame_graph_diagnostic(upload_plan.diagnostics));
         }
-        const auto upload_schedule = schedule_frame_graph_v1_execution(upload_plan);
+        const auto upload_schedule = schedule_frame_graph_execution(upload_plan);
         const std::vector<FrameGraphRhiPassCommandBinding> pass_commands{FrameGraphRhiPassCommandBinding{
             .pass_name = "runtime.mesh_upload.copy",
             .queue = upload_options.queue,
@@ -1065,20 +1065,20 @@ RuntimeSkinnedMeshUploadResult upload_runtime_skinned_mesh(rhi::IRhiDevice& devi
         const auto index_buffer = device.create_buffer(index_desc);
         const auto joint_palette_buffer = device.create_buffer(joint_palette_desc);
 
-        FrameGraphV1Desc upload_graph;
-        upload_graph.resources.push_back(FrameGraphResourceV1Desc{
+        FrameGraphDesc upload_graph;
+        upload_graph.resources.push_back(FrameGraphResourceDesc{
             .name = "runtime.skinned_mesh_upload.vertex_buffer",
             .lifetime = FrameGraphResourceLifetime::imported,
         });
-        upload_graph.resources.push_back(FrameGraphResourceV1Desc{
+        upload_graph.resources.push_back(FrameGraphResourceDesc{
             .name = "runtime.skinned_mesh_upload.index_buffer",
             .lifetime = FrameGraphResourceLifetime::imported,
         });
-        upload_graph.resources.push_back(FrameGraphResourceV1Desc{
+        upload_graph.resources.push_back(FrameGraphResourceDesc{
             .name = "runtime.skinned_mesh_upload.joint_palette_buffer",
             .lifetime = FrameGraphResourceLifetime::imported,
         });
-        upload_graph.passes.push_back(FrameGraphPassV1Desc{
+        upload_graph.passes.push_back(FrameGraphPassDesc{
             .name = "runtime.skinned_mesh_upload.copy",
             .writes = {FrameGraphResourceAccess{
                            .resource = "runtime.skinned_mesh_upload.vertex_buffer",
@@ -1093,11 +1093,11 @@ RuntimeSkinnedMeshUploadResult upload_runtime_skinned_mesh(rhi::IRhiDevice& devi
                            .access = FrameGraphAccess::copy_destination,
                        }},
         });
-        const auto upload_plan = compile_frame_graph_v1(upload_graph);
+        const auto upload_plan = compile_frame_graph(upload_graph);
         if (!upload_plan.succeeded()) {
             return skinned_upload_failure(runtime_skinned_mesh_upload_frame_graph_diagnostic(upload_plan.diagnostics));
         }
-        const auto upload_schedule = schedule_frame_graph_v1_execution(upload_plan);
+        const auto upload_schedule = schedule_frame_graph_execution(upload_plan);
         const std::vector<FrameGraphRhiPassCommandBinding> pass_commands{FrameGraphRhiPassCommandBinding{
             .pass_name = "runtime.skinned_mesh_upload.copy",
             .queue = options.queue,
@@ -1436,24 +1436,24 @@ RuntimeMorphMeshUploadResult upload_runtime_morph_mesh_cpu(rhi::IRhiDevice& devi
             has_tangent_deltas ? device.create_buffer(tangent_delta_desc) : rhi::BufferHandle{};
         const auto morph_weight_buffer = device.create_buffer(morph_weight_desc);
 
-        FrameGraphV1Desc upload_graph;
-        upload_graph.resources.push_back(FrameGraphResourceV1Desc{
+        FrameGraphDesc upload_graph;
+        upload_graph.resources.push_back(FrameGraphResourceDesc{
             .name = "runtime.morph_mesh_upload.position_delta_buffer",
             .lifetime = FrameGraphResourceLifetime::imported,
         });
         if (has_normal_deltas) {
-            upload_graph.resources.push_back(FrameGraphResourceV1Desc{
+            upload_graph.resources.push_back(FrameGraphResourceDesc{
                 .name = "runtime.morph_mesh_upload.normal_delta_buffer",
                 .lifetime = FrameGraphResourceLifetime::imported,
             });
         }
         if (has_tangent_deltas) {
-            upload_graph.resources.push_back(FrameGraphResourceV1Desc{
+            upload_graph.resources.push_back(FrameGraphResourceDesc{
                 .name = "runtime.morph_mesh_upload.tangent_delta_buffer",
                 .lifetime = FrameGraphResourceLifetime::imported,
             });
         }
-        upload_graph.resources.push_back(FrameGraphResourceV1Desc{
+        upload_graph.resources.push_back(FrameGraphResourceDesc{
             .name = "runtime.morph_mesh_upload.weight_buffer",
             .lifetime = FrameGraphResourceLifetime::imported,
         });
@@ -1479,15 +1479,15 @@ RuntimeMorphMeshUploadResult upload_runtime_morph_mesh_cpu(rhi::IRhiDevice& devi
             .resource = "runtime.morph_mesh_upload.weight_buffer",
             .access = FrameGraphAccess::copy_destination,
         });
-        upload_graph.passes.push_back(FrameGraphPassV1Desc{
+        upload_graph.passes.push_back(FrameGraphPassDesc{
             .name = "runtime.morph_mesh_upload.copy",
             .writes = std::move(morph_upload_writes),
         });
-        const auto upload_plan = compile_frame_graph_v1(upload_graph);
+        const auto upload_plan = compile_frame_graph(upload_graph);
         if (!upload_plan.succeeded()) {
             return morph_upload_failure(runtime_morph_mesh_upload_frame_graph_diagnostic(upload_plan.diagnostics));
         }
-        const auto upload_schedule = schedule_frame_graph_v1_execution(upload_plan);
+        const auto upload_schedule = schedule_frame_graph_execution(upload_plan);
         const std::vector<FrameGraphRhiPassCommandBinding> pass_commands{FrameGraphRhiPassCommandBinding{
             .pass_name = "runtime.morph_mesh_upload.copy",
             .queue = options.queue,
@@ -2300,24 +2300,24 @@ RuntimeMaterialGpuBinding create_runtime_material_gpu_binding(
                             .destination_offset = 0,
                             .size_bytes = runtime_material_uniform_buffer_allocation_size_bytes,
                         };
-                        FrameGraphV1Desc upload_graph;
-                        upload_graph.resources.push_back(FrameGraphResourceV1Desc{
+                        FrameGraphDesc upload_graph;
+                        upload_graph.resources.push_back(FrameGraphResourceDesc{
                             .name = "runtime.material_upload.factor_buffer",
                             .lifetime = FrameGraphResourceLifetime::imported,
                         });
-                        upload_graph.passes.push_back(FrameGraphPassV1Desc{
+                        upload_graph.passes.push_back(FrameGraphPassDesc{
                             .name = "runtime.material_upload.copy",
                             .writes = {FrameGraphResourceAccess{
                                 .resource = "runtime.material_upload.factor_buffer",
                                 .access = FrameGraphAccess::copy_destination,
                             }},
                         });
-                        const auto upload_plan = compile_frame_graph_v1(upload_graph);
+                        const auto upload_plan = compile_frame_graph(upload_graph);
                         if (!upload_plan.succeeded()) {
                             return material_binding_failure(
                                 runtime_material_upload_frame_graph_diagnostic(upload_plan.diagnostics));
                         }
-                        const auto upload_schedule = schedule_frame_graph_v1_execution(upload_plan);
+                        const auto upload_schedule = schedule_frame_graph_execution(upload_plan);
                         const std::vector<FrameGraphRhiPassCommandBinding> pass_commands{
                             FrameGraphRhiPassCommandBinding{
                                 .pass_name = "runtime.material_upload.copy",

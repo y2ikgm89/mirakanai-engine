@@ -84,11 +84,11 @@ MK_TEST("runtime package index discovery returns sorted reviewed geindex candida
     filesystem.write_text("runtime/readme.txt", "ignored");
     filesystem.write_text("runtime2/not-under-root.geindex", "ignored");
 
-    const auto result = mirakana::runtime::discover_runtime_package_indexes_v2(
-        filesystem, mirakana::runtime::RuntimePackageIndexDiscoveryDescV2{.root = "runtime/"});
+    const auto result = mirakana::runtime::discover_runtime_package_indexes(
+        filesystem, mirakana::runtime::RuntimePackageIndexDiscoveryDesc{.root = "runtime/"});
 
     MK_REQUIRE(result.succeeded());
-    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageIndexDiscoveryStatusV2::discovered);
+    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageIndexDiscoveryStatus::discovered);
     MK_REQUIRE(result.root == "runtime");
     MK_REQUIRE(result.candidates.size() == 3);
     MK_REQUIRE(result.candidates[0].package_index_path == "runtime/base/main.geindex");
@@ -109,9 +109,9 @@ MK_TEST("runtime package index discovery supports explicit content root for late
     CountingFileSystem filesystem;
     filesystem.write_text("runtime/packages/scene.geindex", "index");
 
-    const auto result = mirakana::runtime::discover_runtime_package_indexes_v2(
+    const auto result = mirakana::runtime::discover_runtime_package_indexes(
         filesystem,
-        mirakana::runtime::RuntimePackageIndexDiscoveryDescV2{.root = "runtime/packages", .content_root = "runtime"});
+        mirakana::runtime::RuntimePackageIndexDiscoveryDesc{.root = "runtime/packages", .content_root = "runtime"});
 
     MK_REQUIRE(result.succeeded());
     MK_REQUIRE(result.candidates.size() == 1);
@@ -125,11 +125,11 @@ MK_TEST("runtime package index discovery reports no candidates for a valid empty
     CountingFileSystem filesystem;
     filesystem.write_text("runtime/readme.txt", "not a package index");
 
-    const auto result = mirakana::runtime::discover_runtime_package_indexes_v2(
-        filesystem, mirakana::runtime::RuntimePackageIndexDiscoveryDescV2{.root = "runtime"});
+    const auto result = mirakana::runtime::discover_runtime_package_indexes(
+        filesystem, mirakana::runtime::RuntimePackageIndexDiscoveryDesc{.root = "runtime"});
 
     MK_REQUIRE(result.succeeded());
-    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageIndexDiscoveryStatusV2::no_candidates);
+    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageIndexDiscoveryStatus::no_candidates);
     MK_REQUIRE(result.candidates.empty());
     MK_REQUIRE(result.diagnostics.empty());
     MK_REQUIRE(filesystem.list_files_count() == 1);
@@ -140,20 +140,20 @@ MK_TEST("runtime package index discovery rejects invalid or missing roots before
     CountingFileSystem filesystem;
     filesystem.write_text("other/game.geindex", "index");
 
-    const auto invalid = mirakana::runtime::discover_runtime_package_indexes_v2(
-        filesystem, mirakana::runtime::RuntimePackageIndexDiscoveryDescV2{.root = ""});
+    const auto invalid = mirakana::runtime::discover_runtime_package_indexes(
+        filesystem, mirakana::runtime::RuntimePackageIndexDiscoveryDesc{.root = ""});
 
     MK_REQUIRE(!invalid.succeeded());
-    MK_REQUIRE(invalid.status == mirakana::runtime::RuntimePackageIndexDiscoveryStatusV2::invalid_descriptor);
+    MK_REQUIRE(invalid.status == mirakana::runtime::RuntimePackageIndexDiscoveryStatus::invalid_descriptor);
     MK_REQUIRE(invalid.diagnostics.size() == 1);
     MK_REQUIRE(invalid.diagnostics[0].code == "invalid-root");
     MK_REQUIRE(invalid.candidates.empty());
 
-    const auto missing = mirakana::runtime::discover_runtime_package_indexes_v2(
-        filesystem, mirakana::runtime::RuntimePackageIndexDiscoveryDescV2{.root = "runtime"});
+    const auto missing = mirakana::runtime::discover_runtime_package_indexes(
+        filesystem, mirakana::runtime::RuntimePackageIndexDiscoveryDesc{.root = "runtime"});
 
     MK_REQUIRE(!missing.succeeded());
-    MK_REQUIRE(missing.status == mirakana::runtime::RuntimePackageIndexDiscoveryStatusV2::missing_root);
+    MK_REQUIRE(missing.status == mirakana::runtime::RuntimePackageIndexDiscoveryStatus::missing_root);
     MK_REQUIRE(missing.diagnostics.size() == 1);
     MK_REQUIRE(missing.diagnostics[0].code == "missing-root");
     MK_REQUIRE(missing.diagnostics[0].path == "runtime");
@@ -164,26 +164,26 @@ MK_TEST("runtime package index discovery rejects unsafe descriptor paths before 
     CountingFileSystem filesystem;
     filesystem.write_text("runtime/game.geindex", "index");
 
-    const auto absolute = mirakana::runtime::discover_runtime_package_indexes_v2(
-        filesystem, mirakana::runtime::RuntimePackageIndexDiscoveryDescV2{.root = "/runtime"});
-    const auto drive = mirakana::runtime::discover_runtime_package_indexes_v2(
-        filesystem, mirakana::runtime::RuntimePackageIndexDiscoveryDescV2{.root = "C:/runtime"});
-    const auto parent = mirakana::runtime::discover_runtime_package_indexes_v2(
-        filesystem, mirakana::runtime::RuntimePackageIndexDiscoveryDescV2{.root = "runtime/../escape"});
-    const auto backslash = mirakana::runtime::discover_runtime_package_indexes_v2(
-        filesystem, mirakana::runtime::RuntimePackageIndexDiscoveryDescV2{.root = "runtime\\packages"});
-    const auto control = mirakana::runtime::discover_runtime_package_indexes_v2(
-        filesystem, mirakana::runtime::RuntimePackageIndexDiscoveryDescV2{.root = "runtime\tpackages"});
-    const auto content_root = mirakana::runtime::discover_runtime_package_indexes_v2(
+    const auto absolute = mirakana::runtime::discover_runtime_package_indexes(
+        filesystem, mirakana::runtime::RuntimePackageIndexDiscoveryDesc{.root = "/runtime"});
+    const auto drive = mirakana::runtime::discover_runtime_package_indexes(
+        filesystem, mirakana::runtime::RuntimePackageIndexDiscoveryDesc{.root = "C:/runtime"});
+    const auto parent = mirakana::runtime::discover_runtime_package_indexes(
+        filesystem, mirakana::runtime::RuntimePackageIndexDiscoveryDesc{.root = "runtime/../escape"});
+    const auto backslash = mirakana::runtime::discover_runtime_package_indexes(
+        filesystem, mirakana::runtime::RuntimePackageIndexDiscoveryDesc{.root = "runtime\\packages"});
+    const auto control = mirakana::runtime::discover_runtime_package_indexes(
+        filesystem, mirakana::runtime::RuntimePackageIndexDiscoveryDesc{.root = "runtime\tpackages"});
+    const auto content_root = mirakana::runtime::discover_runtime_package_indexes(
         filesystem,
-        mirakana::runtime::RuntimePackageIndexDiscoveryDescV2{.root = "runtime", .content_root = "../content"});
+        mirakana::runtime::RuntimePackageIndexDiscoveryDesc{.root = "runtime", .content_root = "../content"});
 
-    MK_REQUIRE(absolute.status == mirakana::runtime::RuntimePackageIndexDiscoveryStatusV2::invalid_descriptor);
-    MK_REQUIRE(drive.status == mirakana::runtime::RuntimePackageIndexDiscoveryStatusV2::invalid_descriptor);
-    MK_REQUIRE(parent.status == mirakana::runtime::RuntimePackageIndexDiscoveryStatusV2::invalid_descriptor);
-    MK_REQUIRE(backslash.status == mirakana::runtime::RuntimePackageIndexDiscoveryStatusV2::invalid_descriptor);
-    MK_REQUIRE(control.status == mirakana::runtime::RuntimePackageIndexDiscoveryStatusV2::invalid_descriptor);
-    MK_REQUIRE(content_root.status == mirakana::runtime::RuntimePackageIndexDiscoveryStatusV2::invalid_descriptor);
+    MK_REQUIRE(absolute.status == mirakana::runtime::RuntimePackageIndexDiscoveryStatus::invalid_descriptor);
+    MK_REQUIRE(drive.status == mirakana::runtime::RuntimePackageIndexDiscoveryStatus::invalid_descriptor);
+    MK_REQUIRE(parent.status == mirakana::runtime::RuntimePackageIndexDiscoveryStatus::invalid_descriptor);
+    MK_REQUIRE(backslash.status == mirakana::runtime::RuntimePackageIndexDiscoveryStatus::invalid_descriptor);
+    MK_REQUIRE(control.status == mirakana::runtime::RuntimePackageIndexDiscoveryStatus::invalid_descriptor);
+    MK_REQUIRE(content_root.status == mirakana::runtime::RuntimePackageIndexDiscoveryStatus::invalid_descriptor);
     MK_REQUIRE(content_root.diagnostics.size() == 1);
     MK_REQUIRE(content_root.diagnostics[0].code == "invalid-content-root");
     MK_REQUIRE(filesystem.list_files_count() == 0);
@@ -195,11 +195,11 @@ MK_TEST("runtime package index discovery filters invalid geindex paths with diag
     filesystem.write_text("runtime/valid.geindex", "index");
     filesystem.write_text("runtime/../escape.geindex", "invalid");
 
-    const auto result = mirakana::runtime::discover_runtime_package_indexes_v2(
-        filesystem, mirakana::runtime::RuntimePackageIndexDiscoveryDescV2{.root = "runtime"});
+    const auto result = mirakana::runtime::discover_runtime_package_indexes(
+        filesystem, mirakana::runtime::RuntimePackageIndexDiscoveryDesc{.root = "runtime"});
 
     MK_REQUIRE(result.succeeded());
-    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageIndexDiscoveryStatusV2::discovered);
+    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageIndexDiscoveryStatus::discovered);
     MK_REQUIRE(result.candidates.size() == 1);
     MK_REQUIRE(result.candidates[0].package_index_path == "runtime/valid.geindex");
     MK_REQUIRE(result.diagnostics.size() == 1);
@@ -213,11 +213,11 @@ MK_TEST("runtime package index discovery reports directory probe failures withou
     filesystem.write_text("runtime/game.geindex", "index");
     filesystem.fail_is_directory(true);
 
-    const auto result = mirakana::runtime::discover_runtime_package_indexes_v2(
-        filesystem, mirakana::runtime::RuntimePackageIndexDiscoveryDescV2{.root = "runtime"});
+    const auto result = mirakana::runtime::discover_runtime_package_indexes(
+        filesystem, mirakana::runtime::RuntimePackageIndexDiscoveryDesc{.root = "runtime"});
 
     MK_REQUIRE(!result.succeeded());
-    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageIndexDiscoveryStatusV2::scan_failed);
+    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageIndexDiscoveryStatus::scan_failed);
     MK_REQUIRE(result.candidates.empty());
     MK_REQUIRE(result.diagnostics.size() == 1);
     MK_REQUIRE(result.diagnostics[0].code == "scan-failed");
@@ -231,11 +231,11 @@ MK_TEST("runtime package index discovery reports list failures without throwing"
     filesystem.write_text("runtime/game.geindex", "index");
     filesystem.fail_list_files(true);
 
-    const auto result = mirakana::runtime::discover_runtime_package_indexes_v2(
-        filesystem, mirakana::runtime::RuntimePackageIndexDiscoveryDescV2{.root = "runtime"});
+    const auto result = mirakana::runtime::discover_runtime_package_indexes(
+        filesystem, mirakana::runtime::RuntimePackageIndexDiscoveryDesc{.root = "runtime"});
 
     MK_REQUIRE(!result.succeeded());
-    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageIndexDiscoveryStatusV2::scan_failed);
+    MK_REQUIRE(result.status == mirakana::runtime::RuntimePackageIndexDiscoveryStatus::scan_failed);
     MK_REQUIRE(result.candidates.empty());
     MK_REQUIRE(result.diagnostics.size() == 1);
     MK_REQUIRE(result.diagnostics[0].code == "scan-failed");

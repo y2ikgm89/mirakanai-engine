@@ -2197,7 +2197,7 @@
           },
           "sceneMigration": {
             "type": "string",
-            "const": "migrate-scene-v2-runtime-package"
+            "const": "migrate-scene-runtime-package"
           },
           "runtimeSceneValidation": {
             "type": "string",

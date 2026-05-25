@@ -25,7 +25,7 @@
 namespace {
 
 [[nodiscard]] mirakana::AssetId asset_id_from_game_asset_key(std::string_view key) {
-    return mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{.value = std::string{key}});
+    return mirakana::asset_id_from_key(mirakana::AssetKey{.value = std::string{key}});
 }
 
 class SampleUiAudioAssetsGame final : public mirakana::GameApp {

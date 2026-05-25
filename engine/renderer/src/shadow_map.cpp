@@ -66,19 +66,19 @@ void append_diagnostic(DirectionalShadowLightSpacePlan& plan, DirectionalShadowL
     });
 }
 
-[[nodiscard]] FrameGraphV1Desc make_shadow_frame_graph_v1_desc() {
-    FrameGraphV1Desc frame_graph;
-    frame_graph.resources.push_back(FrameGraphResourceV1Desc{
+[[nodiscard]] FrameGraphDesc make_shadow_frame_graph_v1_desc() {
+    FrameGraphDesc frame_graph;
+    frame_graph.resources.push_back(FrameGraphResourceDesc{
         .name = std::string(shadow_depth_resource),
         .lifetime = FrameGraphResourceLifetime::transient,
     });
-    frame_graph.passes.push_back(FrameGraphPassV1Desc{
+    frame_graph.passes.push_back(FrameGraphPassDesc{
         .name = std::string(shadow_depth_pass),
         .reads = {},
         .writes = {FrameGraphResourceAccess{.resource = std::string(shadow_depth_resource),
                                             .access = FrameGraphAccess::depth_attachment_write}},
     });
-    frame_graph.passes.push_back(FrameGraphPassV1Desc{
+    frame_graph.passes.push_back(FrameGraphPassDesc{
         .name = std::string(shadow_receiver_pass),
         .reads = {FrameGraphResourceAccess{.resource = std::string(shadow_depth_resource),
                                            .access = FrameGraphAccess::shader_read}},
@@ -484,12 +484,12 @@ ShadowMapPlan build_shadow_map_plan(const ShadowMapDesc& desc) {
         .format = desc.depth_format,
         .usage = rhi::TextureUsage::depth_stencil | rhi::TextureUsage::shader_resource,
     };
-    plan.frame_graph_plan = compile_frame_graph_v1(make_shadow_frame_graph_v1_desc());
+    plan.frame_graph_plan = compile_frame_graph(make_shadow_frame_graph_v1_desc());
     if (!plan.frame_graph_plan.succeeded()) {
         append_diagnostic(plan, ShadowMapDiagnosticCode::frame_graph_failed,
                           "shadow map frame graph declaration failed validation");
     } else {
-        plan.frame_graph_execution = schedule_frame_graph_v1_execution(plan.frame_graph_plan);
+        plan.frame_graph_execution = schedule_frame_graph_execution(plan.frame_graph_plan);
     }
     return plan;
 }

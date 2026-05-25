@@ -15,7 +15,7 @@
 
 namespace mirakana::runtime {
 
-enum class RuntimePackageIndexDiscoveryStatusV2 : std::uint8_t {
+enum class RuntimePackageIndexDiscoveryStatus : std::uint8_t {
     discovered = 0,
     no_candidates,
     invalid_descriptor,
@@ -23,52 +23,52 @@ enum class RuntimePackageIndexDiscoveryStatusV2 : std::uint8_t {
     scan_failed,
 };
 
-struct RuntimePackageIndexDiscoveryDescV2 {
+struct RuntimePackageIndexDiscoveryDesc {
     std::string root;
     std::string content_root;
 };
 
-struct RuntimePackageIndexDiscoveryCandidateV2 {
+struct RuntimePackageIndexDiscoveryCandidate {
     std::string package_index_path;
     std::string content_root;
     std::string label;
 };
 
-struct RuntimePackageIndexDiscoveryDiagnosticV2 {
+struct RuntimePackageIndexDiscoveryDiagnostic {
     std::string path;
     std::string code;
     std::string message;
 };
 
-struct RuntimePackageIndexDiscoveryResultV2 {
-    RuntimePackageIndexDiscoveryStatusV2 status{RuntimePackageIndexDiscoveryStatusV2::invalid_descriptor};
+struct RuntimePackageIndexDiscoveryResult {
+    RuntimePackageIndexDiscoveryStatus status{RuntimePackageIndexDiscoveryStatus::invalid_descriptor};
     std::string root;
-    std::vector<RuntimePackageIndexDiscoveryCandidateV2> candidates;
-    std::vector<RuntimePackageIndexDiscoveryDiagnosticV2> diagnostics;
+    std::vector<RuntimePackageIndexDiscoveryCandidate> candidates;
+    std::vector<RuntimePackageIndexDiscoveryDiagnostic> diagnostics;
 
     [[nodiscard]] bool succeeded() const noexcept;
 };
 
-enum class RuntimePackageCandidateLoadStatusV2 : std::uint8_t {
+enum class RuntimePackageCandidateLoadStatus : std::uint8_t {
     loaded = 0,
     invalid_candidate,
     package_load_failed,
     read_failed,
 };
 
-struct RuntimePackageCandidateLoadDiagnosticV2 {
+struct RuntimePackageCandidateLoadDiagnostic {
     AssetId asset;
     std::string path;
     std::string code;
     std::string message;
 };
 
-struct RuntimePackageCandidateLoadResultV2 {
-    RuntimePackageCandidateLoadStatusV2 status{RuntimePackageCandidateLoadStatusV2::invalid_candidate};
-    RuntimePackageIndexDiscoveryCandidateV2 candidate;
+struct RuntimePackageCandidateLoadResult {
+    RuntimePackageCandidateLoadStatus status{RuntimePackageCandidateLoadStatus::invalid_candidate};
+    RuntimePackageIndexDiscoveryCandidate candidate;
     RuntimeAssetPackageDesc package_desc;
     RuntimeAssetPackageLoadResult loaded_package;
-    std::vector<RuntimePackageCandidateLoadDiagnosticV2> diagnostics;
+    std::vector<RuntimePackageCandidateLoadDiagnostic> diagnostics;
     std::size_t loaded_record_count{0};
     std::uint64_t estimated_resident_bytes{0};
     bool invoked_load{false};
@@ -80,53 +80,53 @@ struct RuntimePackageCandidateLoadResultV2 {
 /// This helper does not read index contents, load packages, mount resident packages, refresh catalogs, stream in the
 /// background, or touch renderer/RHI/native handles. `content_root` is caller-provided and may be empty; discovery does
 /// not infer package payload roots from index locations.
-[[nodiscard]] RuntimePackageIndexDiscoveryResultV2
-discover_runtime_package_indexes_v2(const IFileSystem& filesystem, const RuntimePackageIndexDiscoveryDescV2& desc);
+[[nodiscard]] RuntimePackageIndexDiscoveryResult
+discover_runtime_package_indexes(const IFileSystem& filesystem, const RuntimePackageIndexDiscoveryDesc& desc);
 
 /// Loads one reviewed package index discovery candidate into a typed package load result.
 /// This helper validates the selected candidate again, converts loader failures/exceptions into diagnostics, and does
 /// not stage, mount, refresh resident catalogs, stream in the background, or touch renderer/RHI/native handles.
-[[nodiscard]] RuntimePackageCandidateLoadResultV2
-load_runtime_package_candidate_v2(IFileSystem& filesystem, const RuntimePackageIndexDiscoveryCandidateV2& candidate);
+[[nodiscard]] RuntimePackageCandidateLoadResult
+load_runtime_package_candidate(IFileSystem& filesystem, const RuntimePackageIndexDiscoveryCandidate& candidate);
 
-enum class RuntimePackageHotReloadCandidateReviewStatusV2 : std::uint8_t {
+enum class RuntimePackageHotReloadCandidateReviewStatus : std::uint8_t {
     review_ready = 0,
     no_changes,
     no_candidates,
     no_matches,
 };
 
-enum class RuntimePackageHotReloadCandidateReviewMatchKindV2 : std::uint8_t {
+enum class RuntimePackageHotReloadCandidateReviewMatchKind : std::uint8_t {
     package_index = 0,
     content,
 };
 
-struct RuntimePackageHotReloadCandidateReviewDescV2 {
+struct RuntimePackageHotReloadCandidateReviewDesc {
     std::vector<std::string> changed_paths;
-    std::vector<RuntimePackageIndexDiscoveryCandidateV2> candidates;
+    std::vector<RuntimePackageIndexDiscoveryCandidate> candidates;
 };
 
-struct RuntimePackageHotReloadCandidateReviewChangeV2 {
+struct RuntimePackageHotReloadCandidateReviewChange {
     std::string path;
-    RuntimePackageHotReloadCandidateReviewMatchKindV2 kind{
-        RuntimePackageHotReloadCandidateReviewMatchKindV2::package_index};
+    RuntimePackageHotReloadCandidateReviewMatchKind kind{
+        RuntimePackageHotReloadCandidateReviewMatchKind::package_index};
 };
 
-struct RuntimePackageHotReloadCandidateReviewRowV2 {
-    RuntimePackageIndexDiscoveryCandidateV2 candidate;
-    std::vector<RuntimePackageHotReloadCandidateReviewChangeV2> matched_changes;
+struct RuntimePackageHotReloadCandidateReviewRow {
+    RuntimePackageIndexDiscoveryCandidate candidate;
+    std::vector<RuntimePackageHotReloadCandidateReviewChange> matched_changes;
 };
 
-struct RuntimePackageHotReloadCandidateReviewDiagnosticV2 {
+struct RuntimePackageHotReloadCandidateReviewDiagnostic {
     std::string path;
     std::string code;
     std::string message;
 };
 
-struct RuntimePackageHotReloadCandidateReviewResultV2 {
-    RuntimePackageHotReloadCandidateReviewStatusV2 status{RuntimePackageHotReloadCandidateReviewStatusV2::no_matches};
-    std::vector<RuntimePackageHotReloadCandidateReviewRowV2> rows;
-    std::vector<RuntimePackageHotReloadCandidateReviewDiagnosticV2> diagnostics;
+struct RuntimePackageHotReloadCandidateReviewResult {
+    RuntimePackageHotReloadCandidateReviewStatus status{RuntimePackageHotReloadCandidateReviewStatus::no_matches};
+    std::vector<RuntimePackageHotReloadCandidateReviewRow> rows;
+    std::vector<RuntimePackageHotReloadCandidateReviewDiagnostic> diagnostics;
     std::size_t changed_path_count{0};
     std::size_t matched_changed_path_count{0};
     std::size_t invalid_changed_path_count{0};
@@ -142,10 +142,10 @@ struct RuntimePackageHotReloadCandidateReviewResultV2 {
 /// This pure planner consumes caller-provided changed relative VFS paths and already-discovered candidate rows only; it
 /// does not read files, load packages, infer content roots, mutate resident state, watch files, recook assets, stream
 /// in the background, apply eviction policy, or touch renderer/RHI/native handles.
-[[nodiscard]] RuntimePackageHotReloadCandidateReviewResultV2
-plan_runtime_package_hot_reload_candidate_review_v2(const RuntimePackageHotReloadCandidateReviewDescV2& desc);
+[[nodiscard]] RuntimePackageHotReloadCandidateReviewResult
+plan_runtime_package_hot_reload_candidate_review(const RuntimePackageHotReloadCandidateReviewDesc& desc);
 
-enum class RuntimePackageHotReloadRecookChangeReviewStatusV2 : std::uint8_t {
+enum class RuntimePackageHotReloadRecookChangeReviewStatus : std::uint8_t {
     review_ready = 0,
     no_recook_changes,
     invalid_recook_apply_result,
@@ -153,31 +153,31 @@ enum class RuntimePackageHotReloadRecookChangeReviewStatusV2 : std::uint8_t {
     candidate_review_failed,
 };
 
-enum class RuntimePackageHotReloadRecookChangeReviewDiagnosticPhaseV2 : std::uint8_t {
+enum class RuntimePackageHotReloadRecookChangeReviewDiagnosticPhase : std::uint8_t {
     recook_apply_result = 0,
     candidate_review,
 };
 
-struct RuntimePackageHotReloadRecookChangeReviewDescV2 {
+struct RuntimePackageHotReloadRecookChangeReviewDesc {
     std::vector<AssetHotReloadApplyResult> recook_apply_results;
-    std::vector<RuntimePackageIndexDiscoveryCandidateV2> candidates;
+    std::vector<RuntimePackageIndexDiscoveryCandidate> candidates;
 };
 
-struct RuntimePackageHotReloadRecookChangeReviewDiagnosticV2 {
-    RuntimePackageHotReloadRecookChangeReviewDiagnosticPhaseV2 phase{
-        RuntimePackageHotReloadRecookChangeReviewDiagnosticPhaseV2::recook_apply_result};
+struct RuntimePackageHotReloadRecookChangeReviewDiagnostic {
+    RuntimePackageHotReloadRecookChangeReviewDiagnosticPhase phase{
+        RuntimePackageHotReloadRecookChangeReviewDiagnosticPhase::recook_apply_result};
     AssetId asset;
     std::string path;
     std::string code;
     std::string message;
 };
 
-struct RuntimePackageHotReloadRecookChangeReviewResultV2 {
-    RuntimePackageHotReloadRecookChangeReviewStatusV2 status{
-        RuntimePackageHotReloadRecookChangeReviewStatusV2::no_recook_changes};
-    RuntimePackageHotReloadCandidateReviewDescV2 candidate_review_desc;
-    RuntimePackageHotReloadCandidateReviewResultV2 candidate_review;
-    std::vector<RuntimePackageHotReloadRecookChangeReviewDiagnosticV2> diagnostics;
+struct RuntimePackageHotReloadRecookChangeReviewResult {
+    RuntimePackageHotReloadRecookChangeReviewStatus status{
+        RuntimePackageHotReloadRecookChangeReviewStatus::no_recook_changes};
+    RuntimePackageHotReloadCandidateReviewDesc candidate_review_desc;
+    RuntimePackageHotReloadCandidateReviewResult candidate_review;
+    std::vector<RuntimePackageHotReloadRecookChangeReviewDiagnostic> diagnostics;
     std::size_t recook_apply_result_count{0};
     std::size_t accepted_recook_change_count{0};
     std::size_t staged_recook_change_count{0};
@@ -197,22 +197,22 @@ struct RuntimePackageHotReloadRecookChangeReviewResultV2 {
 /// Converts reviewed recook apply-result rows into hot-reload candidate-review rows.
 /// `AssetHotReloadApplyResult::path` is treated as a caller-reviewed runtime package/index/content relative VFS path,
 /// not as a source-asset path. This pure planner validates apply rows, delegates exact package-index/content matching
-/// to `plan_runtime_package_hot_reload_candidate_review_v2`, and does not watch files, run recook, read packages,
+/// to `plan_runtime_package_hot_reload_candidate_review`, and does not watch files, run recook, read packages,
 /// mutate resident state, stream in the background, or touch renderer/RHI/native handles.
-[[nodiscard]] RuntimePackageHotReloadRecookChangeReviewResultV2
-plan_runtime_package_hot_reload_recook_change_review_v2(const RuntimePackageHotReloadRecookChangeReviewDescV2& desc);
+[[nodiscard]] RuntimePackageHotReloadRecookChangeReviewResult
+plan_runtime_package_hot_reload_recook_change_review(const RuntimePackageHotReloadRecookChangeReviewDesc& desc);
 
-struct RuntimeResourceHandleV2 {
+struct RuntimeResourceHandle {
     std::uint32_t index{0};
     std::uint32_t generation{0};
 
-    friend bool operator==(RuntimeResourceHandleV2 lhs, RuntimeResourceHandleV2 rhs) noexcept {
+    friend bool operator==(RuntimeResourceHandle lhs, RuntimeResourceHandle rhs) noexcept {
         return lhs.index == rhs.index && lhs.generation == rhs.generation;
     }
 };
 
-struct RuntimeResourceRecordV2 {
-    RuntimeResourceHandleV2 handle;
+struct RuntimeResourceRecord {
+    RuntimeResourceHandle handle;
     AssetId asset;
     AssetKind kind{AssetKind::unknown};
     RuntimeAssetHandle package_handle;
@@ -221,58 +221,58 @@ struct RuntimeResourceRecordV2 {
     std::uint64_t source_revision{0};
 };
 
-struct RuntimeResourceCatalogBuildDiagnosticV2 {
+struct RuntimeResourceCatalogBuildDiagnostic {
     AssetId asset;
     std::string diagnostic;
 };
 
-struct RuntimeResourceCatalogBuildResultV2 {
-    std::vector<RuntimeResourceCatalogBuildDiagnosticV2> diagnostics;
+struct RuntimeResourceCatalogBuildResult {
+    std::vector<RuntimeResourceCatalogBuildDiagnostic> diagnostics;
 
     [[nodiscard]] bool succeeded() const noexcept {
         return diagnostics.empty();
     }
 };
 
-class RuntimeResourceCatalogV2 {
+class RuntimeResourceCatalog {
   public:
-    [[nodiscard]] const std::vector<RuntimeResourceRecordV2>& records() const noexcept;
+    [[nodiscard]] const std::vector<RuntimeResourceRecord>& records() const noexcept;
     [[nodiscard]] std::uint32_t generation() const noexcept;
 
   private:
-    friend RuntimeResourceCatalogBuildResultV2 build_runtime_resource_catalog_v2(RuntimeResourceCatalogV2& catalog,
-                                                                                 const RuntimeAssetPackage& package);
+    friend RuntimeResourceCatalogBuildResult build_runtime_resource_catalog(RuntimeResourceCatalog& catalog,
+                                                                            const RuntimeAssetPackage& package);
 
-    std::vector<RuntimeResourceRecordV2> records_;
+    std::vector<RuntimeResourceRecord> records_;
     std::uint32_t generation_{0};
 };
 
-[[nodiscard]] RuntimeResourceCatalogBuildResultV2 build_runtime_resource_catalog_v2(RuntimeResourceCatalogV2& catalog,
-                                                                                    const RuntimeAssetPackage& package);
+[[nodiscard]] RuntimeResourceCatalogBuildResult build_runtime_resource_catalog(RuntimeResourceCatalog& catalog,
+                                                                               const RuntimeAssetPackage& package);
 
 /// Rebuilds `catalog` from an ordered list of resident runtime packages using explicit overlay semantics.
 /// This is the narrow "multi-mount resident view" entrypoint: it does not load filesystem data, stage safe-point
 /// replacements, or integrate streaming or RHI teardown.
-[[nodiscard]] RuntimeResourceCatalogBuildResultV2
-build_runtime_resource_catalog_v2_from_resident_mounts(RuntimeResourceCatalogV2& catalog,
-                                                       const std::vector<RuntimeAssetPackage>& mounts,
-                                                       RuntimePackageMountOverlay overlay);
+[[nodiscard]] RuntimeResourceCatalogBuildResult
+build_runtime_resource_catalog_from_resident_mounts(RuntimeResourceCatalog& catalog,
+                                                    const std::vector<RuntimeAssetPackage>& mounts,
+                                                    RuntimePackageMountOverlay overlay);
 
-struct RuntimeResidentPackageMountIdV2 {
+struct RuntimeResidentPackageMountId {
     std::uint32_t value{0};
 
-    friend bool operator==(RuntimeResidentPackageMountIdV2 lhs, RuntimeResidentPackageMountIdV2 rhs) noexcept {
+    friend bool operator==(RuntimeResidentPackageMountId lhs, RuntimeResidentPackageMountId rhs) noexcept {
         return lhs.value == rhs.value;
     }
 };
 
-struct RuntimeResidentPackageMountRecordV2 {
-    RuntimeResidentPackageMountIdV2 id;
+struct RuntimeResidentPackageMountRecord {
+    RuntimeResidentPackageMountId id;
     std::string label;
     RuntimeAssetPackage package;
 };
 
-enum class RuntimeResidentPackageMountStatusV2 : std::uint8_t {
+enum class RuntimeResidentPackageMountStatus : std::uint8_t {
     mounted = 0,
     unmounted,
     invalid_mount_id,
@@ -280,36 +280,36 @@ enum class RuntimeResidentPackageMountStatusV2 : std::uint8_t {
     missing_mount_id,
 };
 
-struct RuntimeResidentPackageMountDiagnosticV2 {
-    RuntimeResidentPackageMountIdV2 mount;
+struct RuntimeResidentPackageMountDiagnostic {
+    RuntimeResidentPackageMountId mount;
     std::string code;
     std::string message;
 };
 
-struct RuntimeResidentPackageMountResultV2 {
-    RuntimeResidentPackageMountStatusV2 status{RuntimeResidentPackageMountStatusV2::invalid_mount_id};
-    RuntimeResidentPackageMountDiagnosticV2 diagnostic;
+struct RuntimeResidentPackageMountResult {
+    RuntimeResidentPackageMountStatus status{RuntimeResidentPackageMountStatus::invalid_mount_id};
+    RuntimeResidentPackageMountDiagnostic diagnostic;
 
     [[nodiscard]] bool succeeded() const noexcept;
 };
 
-class RuntimeResidentPackageMountSetV2 {
+class RuntimeResidentPackageMountSet {
   public:
-    [[nodiscard]] const std::vector<RuntimeResidentPackageMountRecordV2>& mounts() const noexcept;
+    [[nodiscard]] const std::vector<RuntimeResidentPackageMountRecord>& mounts() const noexcept;
     [[nodiscard]] std::uint32_t generation() const noexcept;
 
-    [[nodiscard]] RuntimeResidentPackageMountResultV2 mount(RuntimeResidentPackageMountRecordV2 record);
-    [[nodiscard]] RuntimeResidentPackageMountResultV2 unmount(RuntimeResidentPackageMountIdV2 id);
+    [[nodiscard]] RuntimeResidentPackageMountResult mount(RuntimeResidentPackageMountRecord record);
+    [[nodiscard]] RuntimeResidentPackageMountResult unmount(RuntimeResidentPackageMountId id);
 
   private:
-    friend struct RuntimeResidentPackageMountSetReplaceAccessV2;
+    friend struct RuntimeResidentPackageMountSetReplaceAccess;
 
-    std::vector<RuntimeResidentPackageMountRecordV2> mounts_;
+    std::vector<RuntimeResidentPackageMountRecord> mounts_;
     std::uint32_t generation_{0};
 };
 
-struct RuntimeResidentPackageMountCatalogBuildResultV2 {
-    RuntimeResourceCatalogBuildResultV2 catalog_build;
+struct RuntimeResidentPackageMountCatalogBuildResult {
+    RuntimeResourceCatalogBuildResult catalog_build;
     std::size_t mounted_package_count{0};
     std::uint32_t mount_generation{0};
 
@@ -318,37 +318,37 @@ struct RuntimeResidentPackageMountCatalogBuildResultV2 {
 
 /// Rebuilds `catalog` from the explicit resident package mount set. The mount set owns already-loaded package values;
 /// this helper does not load from disk, stream in the background, evict resources, or touch renderer/RHI ownership.
-[[nodiscard]] RuntimeResidentPackageMountCatalogBuildResultV2
-build_runtime_resource_catalog_v2_from_resident_mount_set(RuntimeResourceCatalogV2& catalog,
-                                                          const RuntimeResidentPackageMountSetV2& mount_set,
-                                                          RuntimePackageMountOverlay overlay);
+[[nodiscard]] RuntimeResidentPackageMountCatalogBuildResult
+build_runtime_resource_catalog_from_resident_mount_set(RuntimeResourceCatalog& catalog,
+                                                       const RuntimeResidentPackageMountSet& mount_set,
+                                                       RuntimePackageMountOverlay overlay);
 
-struct RuntimeResourceResidencyBudgetDiagnosticV2 {
+struct RuntimeResourceResidencyBudgetDiagnostic {
     std::string code;
     std::string message;
 };
 
 /// Explicit optional caps for resident runtime package views. Unset fields impose no limit on that axis.
-struct RuntimeResourceResidencyBudgetV2 {
+struct RuntimeResourceResidencyBudget {
     std::optional<std::uint64_t> max_resident_content_bytes;
     std::optional<std::size_t> max_resident_asset_records;
 };
 
-struct RuntimeResourceResidencyBudgetExecutionResultV2 {
+struct RuntimeResourceResidencyBudgetExecutionResult {
     bool within_budget{true};
     std::uint64_t estimated_resident_content_bytes{0};
     std::size_t resident_asset_record_count{0};
-    std::vector<RuntimeResourceResidencyBudgetDiagnosticV2> diagnostics;
+    std::vector<RuntimeResourceResidencyBudgetDiagnostic> diagnostics;
 };
 
 /// Evaluates merged or single-package resident view against optional byte and record caps (no eviction).
-[[nodiscard]] RuntimeResourceResidencyBudgetExecutionResultV2
+[[nodiscard]] RuntimeResourceResidencyBudgetExecutionResult
 evaluate_runtime_resource_residency_budget(const RuntimeAssetPackage& resident_package_view,
-                                           const RuntimeResourceResidencyBudgetV2& budget);
+                                           const RuntimeResourceResidencyBudget& budget);
 
 struct RuntimeResidentMountCatalogBudgetBundleResult {
-    RuntimeResourceResidencyBudgetExecutionResultV2 budget_execution{};
-    RuntimeResourceCatalogBuildResultV2 catalog_build{};
+    RuntimeResourceResidencyBudgetExecutionResult budget_execution{};
+    RuntimeResourceCatalogBuildResult catalog_build{};
     bool invoked_catalog_build{false};
 
     [[nodiscard]] bool ok() const noexcept {
@@ -359,22 +359,22 @@ struct RuntimeResidentMountCatalogBudgetBundleResult {
 /// Merges mounts, enforces the residency budget on the merged view, then rebuilds `catalog` only when the budget
 /// passes. On budget failure, `catalog` is left unchanged and `invoked_catalog_build` is false.
 [[nodiscard]] RuntimeResidentMountCatalogBudgetBundleResult
-build_runtime_resource_catalog_v2_from_resident_mounts_with_budget(RuntimeResourceCatalogV2& catalog,
-                                                                   const std::vector<RuntimeAssetPackage>& mounts,
-                                                                   RuntimePackageMountOverlay overlay,
-                                                                   const RuntimeResourceResidencyBudgetV2& budget);
+build_runtime_resource_catalog_from_resident_mounts_with_budget(RuntimeResourceCatalog& catalog,
+                                                                const std::vector<RuntimeAssetPackage>& mounts,
+                                                                RuntimePackageMountOverlay overlay,
+                                                                const RuntimeResourceResidencyBudget& budget);
 
-enum class RuntimeResidentCatalogCacheStatusV2 : std::uint8_t {
+enum class RuntimeResidentCatalogCacheStatus : std::uint8_t {
     rebuilt = 0,
     cache_hit,
     budget_failed,
     catalog_build_failed,
 };
 
-struct RuntimeResidentCatalogCacheRefreshResultV2 {
-    RuntimeResidentCatalogCacheStatusV2 status{RuntimeResidentCatalogCacheStatusV2::catalog_build_failed};
-    RuntimeResourceResidencyBudgetExecutionResultV2 budget_execution{};
-    RuntimeResourceCatalogBuildResultV2 catalog_build{};
+struct RuntimeResidentCatalogCacheRefreshResult {
+    RuntimeResidentCatalogCacheStatus status{RuntimeResidentCatalogCacheStatus::catalog_build_failed};
+    RuntimeResourceResidencyBudgetExecutionResult budget_execution{};
+    RuntimeResourceCatalogBuildResult catalog_build{};
     std::size_t mounted_package_count{0};
     std::uint32_t mount_generation{0};
     std::uint32_t previous_catalog_generation{0};
@@ -388,28 +388,28 @@ struct RuntimeResidentCatalogCacheRefreshResultV2 {
 /// Host-independent resident catalog cache for an explicit loaded-package mount set.
 /// The cache rebuilds only when the mount generation, overlay policy, or residency budget changes. It does not load
 /// packages, stream in the background, evict resources, enforce GPU budgets, or own renderer/RHI resources.
-class RuntimeResidentCatalogCacheV2 {
+class RuntimeResidentCatalogCache {
   public:
-    [[nodiscard]] const RuntimeResourceCatalogV2& catalog() const noexcept;
+    [[nodiscard]] const RuntimeResourceCatalog& catalog() const noexcept;
     [[nodiscard]] bool has_value() const noexcept;
     [[nodiscard]] std::uint32_t cached_mount_generation() const noexcept;
 
-    [[nodiscard]] RuntimeResidentCatalogCacheRefreshResultV2 refresh(const RuntimeResidentPackageMountSetV2& mount_set,
-                                                                     RuntimePackageMountOverlay overlay,
-                                                                     const RuntimeResourceResidencyBudgetV2& budget);
+    [[nodiscard]] RuntimeResidentCatalogCacheRefreshResult refresh(const RuntimeResidentPackageMountSet& mount_set,
+                                                                   RuntimePackageMountOverlay overlay,
+                                                                   const RuntimeResourceResidencyBudget& budget);
 
     void clear();
 
   private:
-    RuntimeResourceCatalogV2 catalog_;
-    RuntimeResourceResidencyBudgetExecutionResultV2 cached_budget_execution_{};
-    RuntimeResourceResidencyBudgetV2 cached_budget_{};
+    RuntimeResourceCatalog catalog_;
+    RuntimeResourceResidencyBudgetExecutionResult cached_budget_execution_{};
+    RuntimeResourceResidencyBudget cached_budget_{};
     RuntimePackageMountOverlay cached_overlay_{RuntimePackageMountOverlay::first_mount_wins};
     std::uint32_t cached_mount_generation_{0};
     bool has_cache_{false};
 };
 
-enum class RuntimePackageCandidateResidentMountStatusV2 : std::uint8_t {
+enum class RuntimePackageCandidateResidentMountStatus : std::uint8_t {
     mounted = 0,
     invalid_mount_id,
     duplicate_mount_id,
@@ -418,39 +418,39 @@ enum class RuntimePackageCandidateResidentMountStatusV2 : std::uint8_t {
     catalog_refresh_failed,
 };
 
-enum class RuntimePackageCandidateResidentMountDiagnosticPhaseV2 : std::uint8_t {
+enum class RuntimePackageCandidateResidentMountDiagnosticPhase : std::uint8_t {
     resident_mount = 0,
     candidate_load,
     resident_budget,
     catalog_refresh,
 };
 
-struct RuntimePackageCandidateResidentMountDescV2 {
-    RuntimePackageIndexDiscoveryCandidateV2 candidate;
-    RuntimeResidentPackageMountIdV2 mount_id;
+struct RuntimePackageCandidateResidentMountDesc {
+    RuntimePackageIndexDiscoveryCandidate candidate;
+    RuntimeResidentPackageMountId mount_id;
     RuntimePackageMountOverlay overlay{RuntimePackageMountOverlay::last_mount_wins};
-    RuntimeResourceResidencyBudgetV2 budget{};
+    RuntimeResourceResidencyBudget budget{};
 };
 
-struct RuntimePackageCandidateResidentMountDiagnosticV2 {
-    RuntimePackageCandidateResidentMountDiagnosticPhaseV2 phase{
-        RuntimePackageCandidateResidentMountDiagnosticPhaseV2::candidate_load};
+struct RuntimePackageCandidateResidentMountDiagnostic {
+    RuntimePackageCandidateResidentMountDiagnosticPhase phase{
+        RuntimePackageCandidateResidentMountDiagnosticPhase::candidate_load};
     AssetId asset;
-    RuntimeResidentPackageMountIdV2 mount;
+    RuntimeResidentPackageMountId mount;
     std::string path;
     std::string code;
     std::string message;
 };
 
-struct RuntimePackageCandidateResidentMountResultV2 {
-    RuntimePackageCandidateResidentMountStatusV2 status{
-        RuntimePackageCandidateResidentMountStatusV2::candidate_load_failed};
-    RuntimePackageIndexDiscoveryCandidateV2 candidate;
+struct RuntimePackageCandidateResidentMountResult {
+    RuntimePackageCandidateResidentMountStatus status{
+        RuntimePackageCandidateResidentMountStatus::candidate_load_failed};
+    RuntimePackageIndexDiscoveryCandidate candidate;
     RuntimeAssetPackageDesc package_desc;
-    RuntimePackageCandidateLoadResultV2 candidate_load;
-    RuntimeResidentPackageMountResultV2 resident_mount;
-    RuntimeResidentCatalogCacheRefreshResultV2 catalog_refresh;
-    std::vector<RuntimePackageCandidateResidentMountDiagnosticV2> diagnostics;
+    RuntimePackageCandidateLoadResult candidate_load;
+    RuntimeResidentPackageMountResult resident_mount;
+    RuntimeResidentCatalogCacheRefreshResult catalog_refresh;
+    std::vector<RuntimePackageCandidateResidentMountDiagnostic> diagnostics;
     std::size_t loaded_record_count{0};
     std::uint64_t loaded_resident_bytes{0};
     std::uint64_t projected_resident_bytes{0};
@@ -469,12 +469,12 @@ struct RuntimePackageCandidateResidentMountResultV2 {
 /// Mount id preflight happens before filesystem reads, and live mount/cache state changes only after projected catalog
 /// refresh succeeds. This helper does not use package-streaming descriptors, background workers, hot reload,
 /// upload/staging, renderer/RHI ownership, or native handles.
-[[nodiscard]] RuntimePackageCandidateResidentMountResultV2
-commit_runtime_package_candidate_resident_mount_v2(IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set,
-                                                   RuntimeResidentCatalogCacheV2& catalog_cache,
-                                                   const RuntimePackageCandidateResidentMountDescV2& desc);
+[[nodiscard]] RuntimePackageCandidateResidentMountResult
+commit_runtime_package_candidate_resident_mount(IFileSystem& filesystem, RuntimeResidentPackageMountSet& mount_set,
+                                                RuntimeResidentCatalogCache& catalog_cache,
+                                                const RuntimePackageCandidateResidentMountDesc& desc);
 
-enum class RuntimeResidentPackageUnmountCommitStatusV2 : std::uint8_t {
+enum class RuntimeResidentPackageUnmountCommitStatus : std::uint8_t {
     unmounted = 0,
     invalid_mount_id,
     missing_mount_id,
@@ -482,10 +482,10 @@ enum class RuntimeResidentPackageUnmountCommitStatusV2 : std::uint8_t {
     catalog_build_failed,
 };
 
-struct RuntimeResidentPackageUnmountCommitResultV2 {
-    RuntimeResidentPackageUnmountCommitStatusV2 status{RuntimeResidentPackageUnmountCommitStatusV2::missing_mount_id};
-    RuntimeResidentPackageMountResultV2 unmount;
-    RuntimeResidentCatalogCacheRefreshResultV2 catalog_refresh;
+struct RuntimeResidentPackageUnmountCommitResult {
+    RuntimeResidentPackageUnmountCommitStatus status{RuntimeResidentPackageUnmountCommitStatus::missing_mount_id};
+    RuntimeResidentPackageMountResult unmount;
+    RuntimeResidentCatalogCacheRefreshResult catalog_refresh;
     std::uint32_t previous_mount_generation{0};
     std::uint32_t mount_generation{0};
     std::size_t previous_mount_count{0};
@@ -496,13 +496,11 @@ struct RuntimeResidentPackageUnmountCommitResultV2 {
 
 /// Removes one explicit resident package mount and refreshes the resident catalog cache as one safe-point-style
 /// operation. Budget and catalog preflight run on the projected remaining mount set before live mutation.
-[[nodiscard]] RuntimeResidentPackageUnmountCommitResultV2
-commit_runtime_resident_package_unmount_v2(RuntimeResidentPackageMountSetV2& mount_set,
-                                           RuntimeResidentCatalogCacheV2& catalog_cache,
-                                           RuntimeResidentPackageMountIdV2 id, RuntimePackageMountOverlay overlay,
-                                           const RuntimeResourceResidencyBudgetV2& budget);
+[[nodiscard]] RuntimeResidentPackageUnmountCommitResult commit_runtime_resident_package_unmount(
+    RuntimeResidentPackageMountSet& mount_set, RuntimeResidentCatalogCache& catalog_cache,
+    RuntimeResidentPackageMountId id, RuntimePackageMountOverlay overlay, const RuntimeResourceResidencyBudget& budget);
 
-enum class RuntimeResidentPackageEvictionPlanStatusV2 : std::uint8_t {
+enum class RuntimeResidentPackageEvictionPlanStatus : std::uint8_t {
     no_eviction_required = 0,
     planned,
     invalid_candidate_mount_id,
@@ -513,31 +511,31 @@ enum class RuntimeResidentPackageEvictionPlanStatusV2 : std::uint8_t {
     catalog_build_failed,
 };
 
-struct RuntimeResidentPackageEvictionPlanDiagnosticV2 {
-    RuntimeResidentPackageMountIdV2 mount;
+struct RuntimeResidentPackageEvictionPlanDiagnostic {
+    RuntimeResidentPackageMountId mount;
     std::string code;
     std::string message;
 };
 
-struct RuntimeResidentPackageEvictionPlanDescV2 {
-    RuntimeResourceResidencyBudgetV2 target_budget;
+struct RuntimeResidentPackageEvictionPlanDesc {
+    RuntimeResourceResidencyBudget target_budget;
     RuntimePackageMountOverlay overlay{RuntimePackageMountOverlay::last_mount_wins};
-    std::vector<RuntimeResidentPackageMountIdV2> candidate_unmount_order;
-    std::vector<RuntimeResidentPackageMountIdV2> protected_mount_ids;
+    std::vector<RuntimeResidentPackageMountId> candidate_unmount_order;
+    std::vector<RuntimeResidentPackageMountId> protected_mount_ids;
 };
 
-struct RuntimeResidentPackageEvictionPlanStepV2 {
-    RuntimeResidentPackageMountIdV2 mount_id;
-    RuntimeResidentPackageMountResultV2 unmount;
-    RuntimeResidentCatalogCacheRefreshResultV2 catalog_refresh;
+struct RuntimeResidentPackageEvictionPlanStep {
+    RuntimeResidentPackageMountId mount_id;
+    RuntimeResidentPackageMountResult unmount;
+    RuntimeResidentCatalogCacheRefreshResult catalog_refresh;
 };
 
-struct RuntimeResidentPackageEvictionPlanResultV2 {
-    RuntimeResidentPackageEvictionPlanStatusV2 status{RuntimeResidentPackageEvictionPlanStatusV2::budget_unreachable};
-    RuntimeResidentCatalogCacheRefreshResultV2 current_refresh;
-    RuntimeResidentCatalogCacheRefreshResultV2 projected_refresh;
-    std::vector<RuntimeResidentPackageEvictionPlanStepV2> steps;
-    std::vector<RuntimeResidentPackageEvictionPlanDiagnosticV2> diagnostics;
+struct RuntimeResidentPackageEvictionPlanResult {
+    RuntimeResidentPackageEvictionPlanStatus status{RuntimeResidentPackageEvictionPlanStatus::budget_unreachable};
+    RuntimeResidentCatalogCacheRefreshResult current_refresh;
+    RuntimeResidentCatalogCacheRefreshResult projected_refresh;
+    std::vector<RuntimeResidentPackageEvictionPlanStep> steps;
+    std::vector<RuntimeResidentPackageEvictionPlanDiagnostic> diagnostics;
     std::uint32_t mount_generation{0};
     std::size_t previous_mount_count{0};
     std::size_t projected_mount_count{0};
@@ -548,11 +546,11 @@ struct RuntimeResidentPackageEvictionPlanResultV2 {
 /// Plans reviewed resident package removals from an explicit candidate order until the projected resident view fits
 /// the target budget. This is a pure planning helper: it does not mutate the live mount set, load packages, discover
 /// files, infer LRU policy, enforce GPU budgets, or touch renderer/RHI resources.
-[[nodiscard]] RuntimeResidentPackageEvictionPlanResultV2
-plan_runtime_resident_package_evictions_v2(const RuntimeResidentPackageMountSetV2& mount_set,
-                                           const RuntimeResidentPackageEvictionPlanDescV2& desc);
+[[nodiscard]] RuntimeResidentPackageEvictionPlanResult
+plan_runtime_resident_package_evictions(const RuntimeResidentPackageMountSet& mount_set,
+                                        const RuntimeResidentPackageEvictionPlanDesc& desc);
 
-enum class RuntimeResidentPackageReviewedEvictionCommitStatusV2 : std::uint8_t {
+enum class RuntimeResidentPackageReviewedEvictionCommitStatus : std::uint8_t {
     committed = 0,
     no_eviction_required,
     invalid_candidate_mount_id,
@@ -563,34 +561,34 @@ enum class RuntimeResidentPackageReviewedEvictionCommitStatusV2 : std::uint8_t {
     catalog_refresh_failed,
 };
 
-enum class RuntimeResidentPackageReviewedEvictionCommitDiagnosticPhaseV2 : std::uint8_t {
+enum class RuntimeResidentPackageReviewedEvictionCommitDiagnosticPhase : std::uint8_t {
     eviction_plan = 0,
     resident_budget,
     catalog_refresh,
 };
 
-struct RuntimeResidentPackageReviewedEvictionCommitDescV2 {
-    RuntimeResourceResidencyBudgetV2 target_budget;
+struct RuntimeResidentPackageReviewedEvictionCommitDesc {
+    RuntimeResourceResidencyBudget target_budget;
     RuntimePackageMountOverlay overlay{RuntimePackageMountOverlay::last_mount_wins};
-    std::vector<RuntimeResidentPackageMountIdV2> candidate_unmount_order;
-    std::vector<RuntimeResidentPackageMountIdV2> protected_mount_ids;
+    std::vector<RuntimeResidentPackageMountId> candidate_unmount_order;
+    std::vector<RuntimeResidentPackageMountId> protected_mount_ids;
 };
 
-struct RuntimeResidentPackageReviewedEvictionCommitDiagnosticV2 {
-    RuntimeResidentPackageReviewedEvictionCommitDiagnosticPhaseV2 phase{
-        RuntimeResidentPackageReviewedEvictionCommitDiagnosticPhaseV2::eviction_plan};
+struct RuntimeResidentPackageReviewedEvictionCommitDiagnostic {
+    RuntimeResidentPackageReviewedEvictionCommitDiagnosticPhase phase{
+        RuntimeResidentPackageReviewedEvictionCommitDiagnosticPhase::eviction_plan};
     AssetId asset;
-    RuntimeResidentPackageMountIdV2 mount;
+    RuntimeResidentPackageMountId mount;
     std::string code;
     std::string message;
 };
 
-struct RuntimeResidentPackageReviewedEvictionCommitResultV2 {
-    RuntimeResidentPackageReviewedEvictionCommitStatusV2 status{
-        RuntimeResidentPackageReviewedEvictionCommitStatusV2::budget_failed};
-    RuntimeResidentPackageEvictionPlanResultV2 eviction_plan;
-    RuntimeResidentCatalogCacheRefreshResultV2 catalog_refresh;
-    std::vector<RuntimeResidentPackageReviewedEvictionCommitDiagnosticV2> diagnostics;
+struct RuntimeResidentPackageReviewedEvictionCommitResult {
+    RuntimeResidentPackageReviewedEvictionCommitStatus status{
+        RuntimeResidentPackageReviewedEvictionCommitStatus::budget_failed};
+    RuntimeResidentPackageEvictionPlanResult eviction_plan;
+    RuntimeResidentCatalogCacheRefreshResult catalog_refresh;
+    std::vector<RuntimeResidentPackageReviewedEvictionCommitDiagnostic> diagnostics;
     std::uint64_t projected_resident_bytes{0};
     std::uint32_t previous_mount_generation{0};
     std::uint32_t mount_generation{0};
@@ -607,12 +605,12 @@ struct RuntimeResidentPackageReviewedEvictionCommitResultV2 {
 /// Applies only caller-reviewed resident eviction candidates to a projected mount/cache view and commits the final
 /// state atomically. No packages are loaded or discovered, no eviction policy is inferred, and renderer/RHI/native
 /// handles are outside this host-independent safe point.
-[[nodiscard]] RuntimeResidentPackageReviewedEvictionCommitResultV2
-commit_runtime_resident_package_reviewed_evictions_v2(RuntimeResidentPackageMountSetV2& mount_set,
-                                                      RuntimeResidentCatalogCacheV2& catalog_cache,
-                                                      const RuntimeResidentPackageReviewedEvictionCommitDescV2& desc);
+[[nodiscard]] RuntimeResidentPackageReviewedEvictionCommitResult
+commit_runtime_resident_package_reviewed_evictions(RuntimeResidentPackageMountSet& mount_set,
+                                                   RuntimeResidentCatalogCache& catalog_cache,
+                                                   const RuntimeResidentPackageReviewedEvictionCommitDesc& desc);
 
-enum class RuntimePackageCandidateResidentMountReviewedEvictionsStatusV2 : std::uint8_t {
+enum class RuntimePackageCandidateResidentMountReviewedEvictionsStatus : std::uint8_t {
     mounted = 0,
     invalid_mount_id,
     duplicate_mount_id,
@@ -625,7 +623,7 @@ enum class RuntimePackageCandidateResidentMountReviewedEvictionsStatusV2 : std::
     catalog_refresh_failed,
 };
 
-enum class RuntimePackageCandidateResidentMountReviewedEvictionsDiagnosticPhaseV2 : std::uint8_t {
+enum class RuntimePackageCandidateResidentMountReviewedEvictionsDiagnosticPhase : std::uint8_t {
     resident_mount = 0,
     candidate_load,
     eviction_plan,
@@ -633,35 +631,35 @@ enum class RuntimePackageCandidateResidentMountReviewedEvictionsDiagnosticPhaseV
     catalog_refresh,
 };
 
-struct RuntimePackageCandidateResidentMountReviewedEvictionsDescV2 {
-    RuntimePackageIndexDiscoveryCandidateV2 candidate;
-    RuntimeResidentPackageMountIdV2 mount_id;
+struct RuntimePackageCandidateResidentMountReviewedEvictionsDesc {
+    RuntimePackageIndexDiscoveryCandidate candidate;
+    RuntimeResidentPackageMountId mount_id;
     RuntimePackageMountOverlay overlay{RuntimePackageMountOverlay::last_mount_wins};
-    RuntimeResourceResidencyBudgetV2 budget{};
-    std::vector<RuntimeResidentPackageMountIdV2> eviction_candidate_unmount_order;
-    std::vector<RuntimeResidentPackageMountIdV2> protected_mount_ids;
+    RuntimeResourceResidencyBudget budget{};
+    std::vector<RuntimeResidentPackageMountId> eviction_candidate_unmount_order;
+    std::vector<RuntimeResidentPackageMountId> protected_mount_ids;
 };
 
-struct RuntimePackageCandidateResidentMountReviewedEvictionsDiagnosticV2 {
-    RuntimePackageCandidateResidentMountReviewedEvictionsDiagnosticPhaseV2 phase{
-        RuntimePackageCandidateResidentMountReviewedEvictionsDiagnosticPhaseV2::candidate_load};
+struct RuntimePackageCandidateResidentMountReviewedEvictionsDiagnostic {
+    RuntimePackageCandidateResidentMountReviewedEvictionsDiagnosticPhase phase{
+        RuntimePackageCandidateResidentMountReviewedEvictionsDiagnosticPhase::candidate_load};
     AssetId asset;
-    RuntimeResidentPackageMountIdV2 mount;
+    RuntimeResidentPackageMountId mount;
     std::string path;
     std::string code;
     std::string message;
 };
 
-struct RuntimePackageCandidateResidentMountReviewedEvictionsResultV2 {
-    RuntimePackageCandidateResidentMountReviewedEvictionsStatusV2 status{
-        RuntimePackageCandidateResidentMountReviewedEvictionsStatusV2::candidate_load_failed};
-    RuntimePackageIndexDiscoveryCandidateV2 candidate;
+struct RuntimePackageCandidateResidentMountReviewedEvictionsResult {
+    RuntimePackageCandidateResidentMountReviewedEvictionsStatus status{
+        RuntimePackageCandidateResidentMountReviewedEvictionsStatus::candidate_load_failed};
+    RuntimePackageIndexDiscoveryCandidate candidate;
     RuntimeAssetPackageDesc package_desc;
-    RuntimePackageCandidateLoadResultV2 candidate_load;
-    RuntimeResidentPackageEvictionPlanResultV2 eviction_plan;
-    RuntimeResidentPackageMountResultV2 resident_mount;
-    RuntimeResidentCatalogCacheRefreshResultV2 catalog_refresh;
-    std::vector<RuntimePackageCandidateResidentMountReviewedEvictionsDiagnosticV2> diagnostics;
+    RuntimePackageCandidateLoadResult candidate_load;
+    RuntimeResidentPackageEvictionPlanResult eviction_plan;
+    RuntimeResidentPackageMountResult resident_mount;
+    RuntimeResidentCatalogCacheRefreshResult catalog_refresh;
+    std::vector<RuntimePackageCandidateResidentMountReviewedEvictionsDiagnostic> diagnostics;
     std::size_t loaded_record_count{0};
     std::uint64_t loaded_resident_bytes{0};
     std::uint64_t projected_resident_bytes{0};
@@ -682,12 +680,12 @@ struct RuntimePackageCandidateResidentMountReviewedEvictionsResultV2 {
 /// eviction candidates when the projected view exceeds the target budget, and commits the final mount/cache view
 /// atomically. This helper does not infer eviction policy, stream in the background, hot reload, upload/stage renderer
 /// resources, enforce GPU budgets, or touch renderer/RHI/native handles.
-[[nodiscard]] RuntimePackageCandidateResidentMountReviewedEvictionsResultV2
-commit_runtime_package_candidate_resident_mount_with_reviewed_evictions_v2(
-    IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
-    const RuntimePackageCandidateResidentMountReviewedEvictionsDescV2& desc);
+[[nodiscard]] RuntimePackageCandidateResidentMountReviewedEvictionsResult
+commit_runtime_package_candidate_resident_mount_with_reviewed_evictions(
+    IFileSystem& filesystem, RuntimeResidentPackageMountSet& mount_set, RuntimeResidentCatalogCache& catalog_cache,
+    const RuntimePackageCandidateResidentMountReviewedEvictionsDesc& desc);
 
-enum class RuntimeResidentPackageReplaceCommitStatusV2 : std::uint8_t {
+enum class RuntimeResidentPackageReplaceCommitStatus : std::uint8_t {
     replaced = 0,
     invalid_mount_id,
     missing_mount_id,
@@ -695,11 +693,11 @@ enum class RuntimeResidentPackageReplaceCommitStatusV2 : std::uint8_t {
     catalog_build_failed,
 };
 
-struct RuntimeResidentPackageReplaceCommitResultV2 {
-    RuntimeResidentPackageReplaceCommitStatusV2 status{RuntimeResidentPackageReplaceCommitStatusV2::missing_mount_id};
-    RuntimeResidentPackageMountDiagnosticV2 diagnostic;
-    RuntimeResourceCatalogBuildResultV2 candidate_catalog_build;
-    RuntimeResidentCatalogCacheRefreshResultV2 catalog_refresh;
+struct RuntimeResidentPackageReplaceCommitResult {
+    RuntimeResidentPackageReplaceCommitStatus status{RuntimeResidentPackageReplaceCommitStatus::missing_mount_id};
+    RuntimeResidentPackageMountDiagnostic diagnostic;
+    RuntimeResourceCatalogBuildResult candidate_catalog_build;
+    RuntimeResidentCatalogCacheRefreshResult catalog_refresh;
     std::uint32_t previous_mount_generation{0};
     std::uint32_t mount_generation{0};
     std::size_t mounted_package_count{0};
@@ -711,12 +709,13 @@ struct RuntimeResidentPackageReplaceCommitResultV2 {
 /// Replaces one existing explicit resident package mount while preserving its mount slot/order, then refreshes the
 /// resident catalog cache as one safe-point-style operation. Candidate package validation, budget checks, and catalog
 /// refresh run on projected state before live mutation.
-[[nodiscard]] RuntimeResidentPackageReplaceCommitResultV2 commit_runtime_resident_package_replace_v2(
-    RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
-    RuntimeResidentPackageMountIdV2 id, RuntimeAssetPackage replacement_package, RuntimePackageMountOverlay overlay,
-    const RuntimeResourceResidencyBudgetV2& budget);
+[[nodiscard]] RuntimeResidentPackageReplaceCommitResult
+commit_runtime_resident_package_replace(RuntimeResidentPackageMountSet& mount_set,
+                                        RuntimeResidentCatalogCache& catalog_cache, RuntimeResidentPackageMountId id,
+                                        RuntimeAssetPackage replacement_package, RuntimePackageMountOverlay overlay,
+                                        const RuntimeResourceResidencyBudget& budget);
 
-enum class RuntimePackageCandidateResidentReplaceStatusV2 : std::uint8_t {
+enum class RuntimePackageCandidateResidentReplaceStatus : std::uint8_t {
     replaced = 0,
     invalid_mount_id,
     missing_mount_id,
@@ -726,7 +725,7 @@ enum class RuntimePackageCandidateResidentReplaceStatusV2 : std::uint8_t {
     catalog_refresh_failed,
 };
 
-enum class RuntimePackageCandidateResidentReplaceDiagnosticPhaseV2 : std::uint8_t {
+enum class RuntimePackageCandidateResidentReplaceDiagnosticPhase : std::uint8_t {
     resident_replace = 0,
     candidate_load,
     candidate_catalog,
@@ -734,32 +733,32 @@ enum class RuntimePackageCandidateResidentReplaceDiagnosticPhaseV2 : std::uint8_
     catalog_refresh,
 };
 
-struct RuntimePackageCandidateResidentReplaceDescV2 {
-    RuntimePackageIndexDiscoveryCandidateV2 candidate;
-    RuntimeResidentPackageMountIdV2 mount_id;
+struct RuntimePackageCandidateResidentReplaceDesc {
+    RuntimePackageIndexDiscoveryCandidate candidate;
+    RuntimeResidentPackageMountId mount_id;
     RuntimePackageMountOverlay overlay{RuntimePackageMountOverlay::last_mount_wins};
-    RuntimeResourceResidencyBudgetV2 budget{};
+    RuntimeResourceResidencyBudget budget{};
 };
 
-struct RuntimePackageCandidateResidentReplaceDiagnosticV2 {
-    RuntimePackageCandidateResidentReplaceDiagnosticPhaseV2 phase{
-        RuntimePackageCandidateResidentReplaceDiagnosticPhaseV2::candidate_load};
+struct RuntimePackageCandidateResidentReplaceDiagnostic {
+    RuntimePackageCandidateResidentReplaceDiagnosticPhase phase{
+        RuntimePackageCandidateResidentReplaceDiagnosticPhase::candidate_load};
     AssetId asset;
-    RuntimeResidentPackageMountIdV2 mount;
+    RuntimeResidentPackageMountId mount;
     std::string path;
     std::string code;
     std::string message;
 };
 
-struct RuntimePackageCandidateResidentReplaceResultV2 {
-    RuntimePackageCandidateResidentReplaceStatusV2 status{
-        RuntimePackageCandidateResidentReplaceStatusV2::candidate_load_failed};
-    RuntimePackageIndexDiscoveryCandidateV2 candidate;
+struct RuntimePackageCandidateResidentReplaceResult {
+    RuntimePackageCandidateResidentReplaceStatus status{
+        RuntimePackageCandidateResidentReplaceStatus::candidate_load_failed};
+    RuntimePackageIndexDiscoveryCandidate candidate;
     RuntimeAssetPackageDesc package_desc;
-    RuntimePackageCandidateLoadResultV2 candidate_load;
-    RuntimeResidentPackageReplaceCommitResultV2 resident_replace;
-    RuntimeResidentCatalogCacheRefreshResultV2 catalog_refresh;
-    std::vector<RuntimePackageCandidateResidentReplaceDiagnosticV2> diagnostics;
+    RuntimePackageCandidateLoadResult candidate_load;
+    RuntimeResidentPackageReplaceCommitResult resident_replace;
+    RuntimeResidentCatalogCacheRefreshResult catalog_refresh;
+    std::vector<RuntimePackageCandidateResidentReplaceDiagnostic> diagnostics;
     std::size_t loaded_record_count{0};
     std::uint64_t loaded_resident_bytes{0};
     std::uint64_t projected_resident_bytes{0};
@@ -779,11 +778,12 @@ struct RuntimePackageCandidateResidentReplaceResultV2 {
 /// Mount id preflight happens before filesystem reads, and live mount/cache state changes only after the delegated
 /// resident replacement path succeeds on projected state. This helper does not use package-streaming descriptors,
 /// background workers, hot reload, upload/staging, renderer/RHI ownership, or native handles.
-[[nodiscard]] RuntimePackageCandidateResidentReplaceResultV2 commit_runtime_package_candidate_resident_replace_v2(
-    IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
-    const RuntimePackageCandidateResidentReplaceDescV2& desc);
+[[nodiscard]] RuntimePackageCandidateResidentReplaceResult
+commit_runtime_package_candidate_resident_replace(IFileSystem& filesystem, RuntimeResidentPackageMountSet& mount_set,
+                                                  RuntimeResidentCatalogCache& catalog_cache,
+                                                  const RuntimePackageCandidateResidentReplaceDesc& desc);
 
-enum class RuntimePackageCandidateResidentReplaceReviewedEvictionsStatusV2 : std::uint8_t {
+enum class RuntimePackageCandidateResidentReplaceReviewedEvictionsStatus : std::uint8_t {
     replaced = 0,
     invalid_mount_id,
     missing_mount_id,
@@ -797,7 +797,7 @@ enum class RuntimePackageCandidateResidentReplaceReviewedEvictionsStatusV2 : std
     catalog_refresh_failed,
 };
 
-enum class RuntimePackageCandidateResidentReplaceReviewedEvictionsDiagnosticPhaseV2 : std::uint8_t {
+enum class RuntimePackageCandidateResidentReplaceReviewedEvictionsDiagnosticPhase : std::uint8_t {
     resident_replace = 0,
     candidate_load,
     candidate_catalog,
@@ -806,35 +806,35 @@ enum class RuntimePackageCandidateResidentReplaceReviewedEvictionsDiagnosticPhas
     catalog_refresh,
 };
 
-struct RuntimePackageCandidateResidentReplaceReviewedEvictionsDescV2 {
-    RuntimePackageIndexDiscoveryCandidateV2 candidate;
-    RuntimeResidentPackageMountIdV2 mount_id;
+struct RuntimePackageCandidateResidentReplaceReviewedEvictionsDesc {
+    RuntimePackageIndexDiscoveryCandidate candidate;
+    RuntimeResidentPackageMountId mount_id;
     RuntimePackageMountOverlay overlay{RuntimePackageMountOverlay::last_mount_wins};
-    RuntimeResourceResidencyBudgetV2 budget{};
-    std::vector<RuntimeResidentPackageMountIdV2> eviction_candidate_unmount_order;
-    std::vector<RuntimeResidentPackageMountIdV2> protected_mount_ids;
+    RuntimeResourceResidencyBudget budget{};
+    std::vector<RuntimeResidentPackageMountId> eviction_candidate_unmount_order;
+    std::vector<RuntimeResidentPackageMountId> protected_mount_ids;
 };
 
-struct RuntimePackageCandidateResidentReplaceReviewedEvictionsDiagnosticV2 {
-    RuntimePackageCandidateResidentReplaceReviewedEvictionsDiagnosticPhaseV2 phase{
-        RuntimePackageCandidateResidentReplaceReviewedEvictionsDiagnosticPhaseV2::candidate_load};
+struct RuntimePackageCandidateResidentReplaceReviewedEvictionsDiagnostic {
+    RuntimePackageCandidateResidentReplaceReviewedEvictionsDiagnosticPhase phase{
+        RuntimePackageCandidateResidentReplaceReviewedEvictionsDiagnosticPhase::candidate_load};
     AssetId asset;
-    RuntimeResidentPackageMountIdV2 mount;
+    RuntimeResidentPackageMountId mount;
     std::string path;
     std::string code;
     std::string message;
 };
 
-struct RuntimePackageCandidateResidentReplaceReviewedEvictionsResultV2 {
-    RuntimePackageCandidateResidentReplaceReviewedEvictionsStatusV2 status{
-        RuntimePackageCandidateResidentReplaceReviewedEvictionsStatusV2::candidate_load_failed};
-    RuntimePackageIndexDiscoveryCandidateV2 candidate;
+struct RuntimePackageCandidateResidentReplaceReviewedEvictionsResult {
+    RuntimePackageCandidateResidentReplaceReviewedEvictionsStatus status{
+        RuntimePackageCandidateResidentReplaceReviewedEvictionsStatus::candidate_load_failed};
+    RuntimePackageIndexDiscoveryCandidate candidate;
     RuntimeAssetPackageDesc package_desc;
-    RuntimePackageCandidateLoadResultV2 candidate_load;
-    RuntimeResidentPackageReplaceCommitResultV2 resident_replace;
-    RuntimeResidentPackageEvictionPlanResultV2 eviction_plan;
-    RuntimeResidentCatalogCacheRefreshResultV2 catalog_refresh;
-    std::vector<RuntimePackageCandidateResidentReplaceReviewedEvictionsDiagnosticV2> diagnostics;
+    RuntimePackageCandidateLoadResult candidate_load;
+    RuntimeResidentPackageReplaceCommitResult resident_replace;
+    RuntimeResidentPackageEvictionPlanResult eviction_plan;
+    RuntimeResidentCatalogCacheRefreshResult catalog_refresh;
+    std::vector<RuntimePackageCandidateResidentReplaceReviewedEvictionsDiagnostic> diagnostics;
     std::size_t loaded_record_count{0};
     std::uint64_t loaded_resident_bytes{0};
     std::uint64_t projected_resident_bytes{0};
@@ -857,17 +857,17 @@ struct RuntimePackageCandidateResidentReplaceReviewedEvictionsResultV2 {
 /// final mount/cache view atomically. The replacement mount id is always protected from eviction. This helper does not
 /// discover packages, infer eviction policy, stream in the background, hot reload, upload/stage renderer resources,
 /// enforce GPU budgets, or touch renderer/RHI/native handles.
-[[nodiscard]] RuntimePackageCandidateResidentReplaceReviewedEvictionsResultV2
-commit_runtime_package_candidate_resident_replace_with_reviewed_evictions_v2(
-    IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
-    const RuntimePackageCandidateResidentReplaceReviewedEvictionsDescV2& desc);
+[[nodiscard]] RuntimePackageCandidateResidentReplaceReviewedEvictionsResult
+commit_runtime_package_candidate_resident_replace_with_reviewed_evictions(
+    IFileSystem& filesystem, RuntimeResidentPackageMountSet& mount_set, RuntimeResidentCatalogCache& catalog_cache,
+    const RuntimePackageCandidateResidentReplaceReviewedEvictionsDesc& desc);
 
-enum class RuntimePackageDiscoveryResidentCommitModeV2 : std::uint8_t {
+enum class RuntimePackageDiscoveryResidentCommitMode : std::uint8_t {
     mount = 0,
     replace,
 };
 
-enum class RuntimePackageDiscoveryResidentCommitStatusV2 : std::uint8_t {
+enum class RuntimePackageDiscoveryResidentCommitStatus : std::uint8_t {
     committed = 0,
     invalid_descriptor,
     invalid_mount_id,
@@ -881,7 +881,7 @@ enum class RuntimePackageDiscoveryResidentCommitStatusV2 : std::uint8_t {
     resident_commit_failed,
 };
 
-enum class RuntimePackageDiscoveryResidentCommitDiagnosticPhaseV2 : std::uint8_t {
+enum class RuntimePackageDiscoveryResidentCommitDiagnosticPhase : std::uint8_t {
     descriptor = 0,
     resident_mount,
     resident_replace,
@@ -893,33 +893,32 @@ enum class RuntimePackageDiscoveryResidentCommitDiagnosticPhaseV2 : std::uint8_t
     resident_commit,
 };
 
-struct RuntimePackageDiscoveryResidentCommitDescV2 {
-    RuntimePackageIndexDiscoveryDescV2 discovery;
+struct RuntimePackageDiscoveryResidentCommitDesc {
+    RuntimePackageIndexDiscoveryDesc discovery;
     std::string selected_package_index_path;
-    RuntimePackageDiscoveryResidentCommitModeV2 mode{RuntimePackageDiscoveryResidentCommitModeV2::mount};
-    RuntimeResidentPackageMountIdV2 mount_id;
+    RuntimePackageDiscoveryResidentCommitMode mode{RuntimePackageDiscoveryResidentCommitMode::mount};
+    RuntimeResidentPackageMountId mount_id;
     RuntimePackageMountOverlay overlay{RuntimePackageMountOverlay::last_mount_wins};
-    RuntimeResourceResidencyBudgetV2 budget{};
+    RuntimeResourceResidencyBudget budget{};
 };
 
-struct RuntimePackageDiscoveryResidentCommitDiagnosticV2 {
-    RuntimePackageDiscoveryResidentCommitDiagnosticPhaseV2 phase{
-        RuntimePackageDiscoveryResidentCommitDiagnosticPhaseV2::candidate_selection};
-    RuntimeResidentPackageMountIdV2 mount;
+struct RuntimePackageDiscoveryResidentCommitDiagnostic {
+    RuntimePackageDiscoveryResidentCommitDiagnosticPhase phase{
+        RuntimePackageDiscoveryResidentCommitDiagnosticPhase::candidate_selection};
+    RuntimeResidentPackageMountId mount;
     std::string path;
     std::string code;
     std::string message;
 };
 
-struct RuntimePackageDiscoveryResidentCommitResultV2 {
-    RuntimePackageDiscoveryResidentCommitStatusV2 status{
-        RuntimePackageDiscoveryResidentCommitStatusV2::invalid_descriptor};
-    RuntimePackageIndexDiscoveryResultV2 discovery;
-    RuntimePackageIndexDiscoveryCandidateV2 selected_candidate;
-    RuntimePackageCandidateResidentMountResultV2 resident_mount;
-    RuntimePackageCandidateResidentReplaceResultV2 resident_replace;
-    RuntimeResidentCatalogCacheRefreshResultV2 catalog_refresh;
-    std::vector<RuntimePackageDiscoveryResidentCommitDiagnosticV2> diagnostics;
+struct RuntimePackageDiscoveryResidentCommitResult {
+    RuntimePackageDiscoveryResidentCommitStatus status{RuntimePackageDiscoveryResidentCommitStatus::invalid_descriptor};
+    RuntimePackageIndexDiscoveryResult discovery;
+    RuntimePackageIndexDiscoveryCandidate selected_candidate;
+    RuntimePackageCandidateResidentMountResult resident_mount;
+    RuntimePackageCandidateResidentReplaceResult resident_replace;
+    RuntimeResidentCatalogCacheRefreshResult catalog_refresh;
+    std::vector<RuntimePackageDiscoveryResidentCommitDiagnostic> diagnostics;
     std::size_t loaded_record_count{0};
     std::uint64_t loaded_resident_bytes{0};
     std::uint64_t projected_resident_bytes{0};
@@ -939,12 +938,12 @@ struct RuntimePackageDiscoveryResidentCommitResultV2 {
 /// happens before discovery/package reads, and live mount/cache state changes only after the delegated copy-then-commit
 /// path succeeds. This helper does not stream in the background, infer content roots, apply eviction policy, hot
 /// reload, upload/stage renderer resources, enforce GPU budgets, or touch renderer/RHI/native handles.
-[[nodiscard]] RuntimePackageDiscoveryResidentCommitResultV2
-commit_runtime_package_discovery_resident_v2(IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set,
-                                             RuntimeResidentCatalogCacheV2& catalog_cache,
-                                             const RuntimePackageDiscoveryResidentCommitDescV2& desc);
+[[nodiscard]] RuntimePackageDiscoveryResidentCommitResult
+commit_runtime_package_discovery_resident(IFileSystem& filesystem, RuntimeResidentPackageMountSet& mount_set,
+                                          RuntimeResidentCatalogCache& catalog_cache,
+                                          const RuntimePackageDiscoveryResidentCommitDesc& desc);
 
-enum class RuntimePackageDiscoveryResidentMountReviewedEvictionsStatusV2 : std::uint8_t {
+enum class RuntimePackageDiscoveryResidentMountReviewedEvictionsStatus : std::uint8_t {
     committed = 0,
     invalid_descriptor,
     invalid_mount_id,
@@ -960,7 +959,7 @@ enum class RuntimePackageDiscoveryResidentMountReviewedEvictionsStatusV2 : std::
     catalog_refresh_failed,
 };
 
-enum class RuntimePackageDiscoveryResidentMountReviewedEvictionsDiagnosticPhaseV2 : std::uint8_t {
+enum class RuntimePackageDiscoveryResidentMountReviewedEvictionsDiagnosticPhase : std::uint8_t {
     descriptor = 0,
     resident_mount,
     discovery,
@@ -972,35 +971,35 @@ enum class RuntimePackageDiscoveryResidentMountReviewedEvictionsDiagnosticPhaseV
     resident_commit,
 };
 
-struct RuntimePackageDiscoveryResidentMountReviewedEvictionsDescV2 {
-    RuntimePackageIndexDiscoveryDescV2 discovery;
+struct RuntimePackageDiscoveryResidentMountReviewedEvictionsDesc {
+    RuntimePackageIndexDiscoveryDesc discovery;
     std::string selected_package_index_path;
-    RuntimeResidentPackageMountIdV2 mount_id;
+    RuntimeResidentPackageMountId mount_id;
     RuntimePackageMountOverlay overlay{RuntimePackageMountOverlay::last_mount_wins};
-    RuntimeResourceResidencyBudgetV2 budget{};
-    std::vector<RuntimeResidentPackageMountIdV2> eviction_candidate_unmount_order;
-    std::vector<RuntimeResidentPackageMountIdV2> protected_mount_ids;
+    RuntimeResourceResidencyBudget budget{};
+    std::vector<RuntimeResidentPackageMountId> eviction_candidate_unmount_order;
+    std::vector<RuntimeResidentPackageMountId> protected_mount_ids;
 };
 
-struct RuntimePackageDiscoveryResidentMountReviewedEvictionsDiagnosticV2 {
-    RuntimePackageDiscoveryResidentMountReviewedEvictionsDiagnosticPhaseV2 phase{
-        RuntimePackageDiscoveryResidentMountReviewedEvictionsDiagnosticPhaseV2::candidate_selection};
+struct RuntimePackageDiscoveryResidentMountReviewedEvictionsDiagnostic {
+    RuntimePackageDiscoveryResidentMountReviewedEvictionsDiagnosticPhase phase{
+        RuntimePackageDiscoveryResidentMountReviewedEvictionsDiagnosticPhase::candidate_selection};
     AssetId asset;
-    RuntimeResidentPackageMountIdV2 mount;
+    RuntimeResidentPackageMountId mount;
     std::string path;
     std::string code;
     std::string message;
 };
 
-struct RuntimePackageDiscoveryResidentMountReviewedEvictionsResultV2 {
-    RuntimePackageDiscoveryResidentMountReviewedEvictionsStatusV2 status{
-        RuntimePackageDiscoveryResidentMountReviewedEvictionsStatusV2::invalid_descriptor};
-    RuntimePackageIndexDiscoveryResultV2 discovery;
-    RuntimePackageIndexDiscoveryCandidateV2 selected_candidate;
-    RuntimePackageCandidateResidentMountReviewedEvictionsResultV2 candidate_resident_mount;
-    RuntimeResidentPackageEvictionPlanResultV2 eviction_plan;
-    RuntimeResidentCatalogCacheRefreshResultV2 catalog_refresh;
-    std::vector<RuntimePackageDiscoveryResidentMountReviewedEvictionsDiagnosticV2> diagnostics;
+struct RuntimePackageDiscoveryResidentMountReviewedEvictionsResult {
+    RuntimePackageDiscoveryResidentMountReviewedEvictionsStatus status{
+        RuntimePackageDiscoveryResidentMountReviewedEvictionsStatus::invalid_descriptor};
+    RuntimePackageIndexDiscoveryResult discovery;
+    RuntimePackageIndexDiscoveryCandidate selected_candidate;
+    RuntimePackageCandidateResidentMountReviewedEvictionsResult candidate_resident_mount;
+    RuntimeResidentPackageEvictionPlanResult eviction_plan;
+    RuntimeResidentCatalogCacheRefreshResult catalog_refresh;
+    std::vector<RuntimePackageDiscoveryResidentMountReviewedEvictionsDiagnostic> diagnostics;
     std::size_t loaded_record_count{0};
     std::uint64_t loaded_resident_bytes{0};
     std::uint64_t projected_resident_bytes{0};
@@ -1021,12 +1020,12 @@ struct RuntimePackageDiscoveryResidentMountReviewedEvictionsResultV2 {
 /// happens before discovery/package reads, and live mount/cache state changes only after the delegated copy-then-commit
 /// path succeeds. This helper does not infer content roots, stream in the background, choose eviction policy, hot
 /// reload, upload/stage renderer resources, enforce GPU budgets, or touch renderer/RHI/native handles.
-[[nodiscard]] RuntimePackageDiscoveryResidentMountReviewedEvictionsResultV2
-commit_runtime_package_discovery_resident_mount_with_reviewed_evictions_v2(
-    IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
-    const RuntimePackageDiscoveryResidentMountReviewedEvictionsDescV2& desc);
+[[nodiscard]] RuntimePackageDiscoveryResidentMountReviewedEvictionsResult
+commit_runtime_package_discovery_resident_mount_with_reviewed_evictions(
+    IFileSystem& filesystem, RuntimeResidentPackageMountSet& mount_set, RuntimeResidentCatalogCache& catalog_cache,
+    const RuntimePackageDiscoveryResidentMountReviewedEvictionsDesc& desc);
 
-enum class RuntimePackageDiscoveryResidentReplaceReviewedEvictionsStatusV2 : std::uint8_t {
+enum class RuntimePackageDiscoveryResidentReplaceReviewedEvictionsStatus : std::uint8_t {
     committed = 0,
     invalid_descriptor,
     invalid_mount_id,
@@ -1043,7 +1042,7 @@ enum class RuntimePackageDiscoveryResidentReplaceReviewedEvictionsStatusV2 : std
     catalog_refresh_failed,
 };
 
-enum class RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2 : std::uint8_t {
+enum class RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhase : std::uint8_t {
     descriptor = 0,
     resident_replace,
     discovery,
@@ -1056,35 +1055,35 @@ enum class RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhas
     resident_commit,
 };
 
-struct RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDescV2 {
-    RuntimePackageIndexDiscoveryDescV2 discovery;
+struct RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDesc {
+    RuntimePackageIndexDiscoveryDesc discovery;
     std::string selected_package_index_path;
-    RuntimeResidentPackageMountIdV2 mount_id;
+    RuntimeResidentPackageMountId mount_id;
     RuntimePackageMountOverlay overlay{RuntimePackageMountOverlay::last_mount_wins};
-    RuntimeResourceResidencyBudgetV2 budget{};
-    std::vector<RuntimeResidentPackageMountIdV2> eviction_candidate_unmount_order;
-    std::vector<RuntimeResidentPackageMountIdV2> protected_mount_ids;
+    RuntimeResourceResidencyBudget budget{};
+    std::vector<RuntimeResidentPackageMountId> eviction_candidate_unmount_order;
+    std::vector<RuntimeResidentPackageMountId> protected_mount_ids;
 };
 
-struct RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticV2 {
-    RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2 phase{
-        RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhaseV2::candidate_selection};
+struct RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnostic {
+    RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhase phase{
+        RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticPhase::candidate_selection};
     AssetId asset;
-    RuntimeResidentPackageMountIdV2 mount;
+    RuntimeResidentPackageMountId mount;
     std::string path;
     std::string code;
     std::string message;
 };
 
-struct RuntimePackageDiscoveryResidentReplaceReviewedEvictionsResultV2 {
-    RuntimePackageDiscoveryResidentReplaceReviewedEvictionsStatusV2 status{
-        RuntimePackageDiscoveryResidentReplaceReviewedEvictionsStatusV2::invalid_descriptor};
-    RuntimePackageIndexDiscoveryResultV2 discovery;
-    RuntimePackageIndexDiscoveryCandidateV2 selected_candidate;
-    RuntimePackageCandidateResidentReplaceReviewedEvictionsResultV2 candidate_resident_replace;
-    RuntimeResidentPackageEvictionPlanResultV2 eviction_plan;
-    RuntimeResidentCatalogCacheRefreshResultV2 catalog_refresh;
-    std::vector<RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnosticV2> diagnostics;
+struct RuntimePackageDiscoveryResidentReplaceReviewedEvictionsResult {
+    RuntimePackageDiscoveryResidentReplaceReviewedEvictionsStatus status{
+        RuntimePackageDiscoveryResidentReplaceReviewedEvictionsStatus::invalid_descriptor};
+    RuntimePackageIndexDiscoveryResult discovery;
+    RuntimePackageIndexDiscoveryCandidate selected_candidate;
+    RuntimePackageCandidateResidentReplaceReviewedEvictionsResult candidate_resident_replace;
+    RuntimeResidentPackageEvictionPlanResult eviction_plan;
+    RuntimeResidentCatalogCacheRefreshResult catalog_refresh;
+    std::vector<RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDiagnostic> diagnostics;
     std::size_t loaded_record_count{0};
     std::uint64_t loaded_resident_bytes{0};
     std::uint64_t projected_resident_bytes{0};
@@ -1106,12 +1105,12 @@ struct RuntimePackageDiscoveryResidentReplaceReviewedEvictionsResultV2 {
 /// delegated copy-then-commit path succeeds. This helper does not infer content roots, stream in the background, choose
 /// eviction policy, hot reload, upload/stage renderer resources, enforce GPU budgets, or touch renderer/RHI/native
 /// handles.
-[[nodiscard]] RuntimePackageDiscoveryResidentReplaceReviewedEvictionsResultV2
-commit_runtime_package_discovery_resident_replace_with_reviewed_evictions_v2(
-    IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
-    const RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDescV2& desc);
+[[nodiscard]] RuntimePackageDiscoveryResidentReplaceReviewedEvictionsResult
+commit_runtime_package_discovery_resident_replace_with_reviewed_evictions(
+    IFileSystem& filesystem, RuntimeResidentPackageMountSet& mount_set, RuntimeResidentCatalogCache& catalog_cache,
+    const RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDesc& desc);
 
-enum class RuntimePackageHotReloadReplacementIntentReviewStatusV2 : std::uint8_t {
+enum class RuntimePackageHotReloadReplacementIntentReviewStatus : std::uint8_t {
     review_ready = 0,
     invalid_candidate,
     missing_matched_change,
@@ -1125,38 +1124,38 @@ enum class RuntimePackageHotReloadReplacementIntentReviewStatusV2 : std::uint8_t
     protected_eviction_candidate_mount_id,
 };
 
-enum class RuntimePackageHotReloadReplacementIntentReviewDiagnosticPhaseV2 : std::uint8_t {
+enum class RuntimePackageHotReloadReplacementIntentReviewDiagnosticPhase : std::uint8_t {
     candidate = 0,
     descriptor,
     resident_replace,
     eviction_plan,
 };
 
-struct RuntimePackageHotReloadReplacementIntentReviewDescV2 {
-    RuntimePackageHotReloadCandidateReviewRowV2 selected_candidate;
-    RuntimePackageIndexDiscoveryDescV2 discovery;
-    RuntimeResidentPackageMountIdV2 mount_id;
-    std::vector<RuntimeResidentPackageMountIdV2> reviewed_existing_mount_ids;
+struct RuntimePackageHotReloadReplacementIntentReviewDesc {
+    RuntimePackageHotReloadCandidateReviewRow selected_candidate;
+    RuntimePackageIndexDiscoveryDesc discovery;
+    RuntimeResidentPackageMountId mount_id;
+    std::vector<RuntimeResidentPackageMountId> reviewed_existing_mount_ids;
     RuntimePackageMountOverlay overlay{RuntimePackageMountOverlay::last_mount_wins};
-    RuntimeResourceResidencyBudgetV2 budget{};
-    std::vector<RuntimeResidentPackageMountIdV2> eviction_candidate_unmount_order;
-    std::vector<RuntimeResidentPackageMountIdV2> protected_mount_ids;
+    RuntimeResourceResidencyBudget budget{};
+    std::vector<RuntimeResidentPackageMountId> eviction_candidate_unmount_order;
+    std::vector<RuntimeResidentPackageMountId> protected_mount_ids;
 };
 
-struct RuntimePackageHotReloadReplacementIntentReviewDiagnosticV2 {
-    RuntimePackageHotReloadReplacementIntentReviewDiagnosticPhaseV2 phase{
-        RuntimePackageHotReloadReplacementIntentReviewDiagnosticPhaseV2::candidate};
-    RuntimeResidentPackageMountIdV2 mount;
+struct RuntimePackageHotReloadReplacementIntentReviewDiagnostic {
+    RuntimePackageHotReloadReplacementIntentReviewDiagnosticPhase phase{
+        RuntimePackageHotReloadReplacementIntentReviewDiagnosticPhase::candidate};
+    RuntimeResidentPackageMountId mount;
     std::string path;
     std::string code;
     std::string message;
 };
 
-struct RuntimePackageHotReloadReplacementIntentReviewResultV2 {
-    RuntimePackageHotReloadReplacementIntentReviewStatusV2 status{
-        RuntimePackageHotReloadReplacementIntentReviewStatusV2::invalid_candidate};
-    RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDescV2 replacement_desc;
-    std::vector<RuntimePackageHotReloadReplacementIntentReviewDiagnosticV2> diagnostics;
+struct RuntimePackageHotReloadReplacementIntentReviewResult {
+    RuntimePackageHotReloadReplacementIntentReviewStatus status{
+        RuntimePackageHotReloadReplacementIntentReviewStatus::invalid_candidate};
+    RuntimePackageDiscoveryResidentReplaceReviewedEvictionsDesc replacement_desc;
+    std::vector<RuntimePackageHotReloadReplacementIntentReviewDiagnostic> diagnostics;
     std::size_t matched_change_count{0};
     std::size_t eviction_candidate_count{0};
     std::size_t protected_mount_count{0};
@@ -1172,11 +1171,11 @@ struct RuntimePackageHotReloadReplacementIntentReviewResultV2 {
 /// This pure planner validates the selected candidate, caller-reviewed existing mount ids, discovery descriptor, and
 /// reviewed eviction ids only. It does not scan discovery roots, read package indexes, load packages, mutate resident
 /// state, watch files, recook assets, stream in the background, or touch renderer/RHI/native handles.
-[[nodiscard]] RuntimePackageHotReloadReplacementIntentReviewResultV2
-plan_runtime_package_hot_reload_replacement_intent_review_v2(
-    const RuntimePackageHotReloadReplacementIntentReviewDescV2& desc);
+[[nodiscard]] RuntimePackageHotReloadReplacementIntentReviewResult
+plan_runtime_package_hot_reload_replacement_intent_review(
+    const RuntimePackageHotReloadReplacementIntentReviewDesc& desc);
 
-enum class RuntimePackageHotReloadRecookReplacementStatusV2 : std::uint8_t {
+enum class RuntimePackageHotReloadRecookReplacementStatus : std::uint8_t {
     committed = 0,
     recook_change_review_failed,
     candidate_not_found,
@@ -1184,7 +1183,7 @@ enum class RuntimePackageHotReloadRecookReplacementStatusV2 : std::uint8_t {
     replacement_commit_failed,
 };
 
-enum class RuntimePackageHotReloadRecookReplacementDiagnosticPhaseV2 : std::uint8_t {
+enum class RuntimePackageHotReloadRecookReplacementDiagnosticPhase : std::uint8_t {
     recook_change_review = 0,
     candidate_selection,
     replacement_intent_review,
@@ -1198,37 +1197,37 @@ enum class RuntimePackageHotReloadRecookReplacementDiagnosticPhaseV2 : std::uint
     resident_commit,
 };
 
-struct RuntimePackageHotReloadRecookReplacementDescV2 {
+struct RuntimePackageHotReloadRecookReplacementDesc {
     std::vector<AssetHotReloadApplyResult> recook_apply_results;
-    std::vector<RuntimePackageIndexDiscoveryCandidateV2> candidates;
-    RuntimePackageIndexDiscoveryDescV2 discovery;
+    std::vector<RuntimePackageIndexDiscoveryCandidate> candidates;
+    RuntimePackageIndexDiscoveryDesc discovery;
     std::string selected_package_index_path;
-    RuntimeResidentPackageMountIdV2 mount_id;
-    std::vector<RuntimeResidentPackageMountIdV2> reviewed_existing_mount_ids;
+    RuntimeResidentPackageMountId mount_id;
+    std::vector<RuntimeResidentPackageMountId> reviewed_existing_mount_ids;
     RuntimePackageMountOverlay overlay{RuntimePackageMountOverlay::last_mount_wins};
-    RuntimeResourceResidencyBudgetV2 budget{};
-    std::vector<RuntimeResidentPackageMountIdV2> eviction_candidate_unmount_order;
-    std::vector<RuntimeResidentPackageMountIdV2> protected_mount_ids;
+    RuntimeResourceResidencyBudget budget{};
+    std::vector<RuntimeResidentPackageMountId> eviction_candidate_unmount_order;
+    std::vector<RuntimeResidentPackageMountId> protected_mount_ids;
 };
 
-struct RuntimePackageHotReloadRecookReplacementDiagnosticV2 {
-    RuntimePackageHotReloadRecookReplacementDiagnosticPhaseV2 phase{
-        RuntimePackageHotReloadRecookReplacementDiagnosticPhaseV2::recook_change_review};
+struct RuntimePackageHotReloadRecookReplacementDiagnostic {
+    RuntimePackageHotReloadRecookReplacementDiagnosticPhase phase{
+        RuntimePackageHotReloadRecookReplacementDiagnosticPhase::recook_change_review};
     AssetId asset;
-    RuntimeResidentPackageMountIdV2 mount;
+    RuntimeResidentPackageMountId mount;
     std::string path;
     std::string code;
     std::string message;
 };
 
-struct RuntimePackageHotReloadRecookReplacementResultV2 {
-    RuntimePackageHotReloadRecookReplacementStatusV2 status{
-        RuntimePackageHotReloadRecookReplacementStatusV2::recook_change_review_failed};
-    RuntimePackageHotReloadRecookChangeReviewResultV2 recook_change_review;
-    RuntimePackageHotReloadCandidateReviewRowV2 selected_candidate;
-    RuntimePackageHotReloadReplacementIntentReviewResultV2 replacement_intent_review;
-    RuntimePackageDiscoveryResidentReplaceReviewedEvictionsResultV2 replacement_commit;
-    std::vector<RuntimePackageHotReloadRecookReplacementDiagnosticV2> diagnostics;
+struct RuntimePackageHotReloadRecookReplacementResult {
+    RuntimePackageHotReloadRecookReplacementStatus status{
+        RuntimePackageHotReloadRecookReplacementStatus::recook_change_review_failed};
+    RuntimePackageHotReloadRecookChangeReviewResult recook_change_review;
+    RuntimePackageHotReloadCandidateReviewRow selected_candidate;
+    RuntimePackageHotReloadReplacementIntentReviewResult replacement_intent_review;
+    RuntimePackageDiscoveryResidentReplaceReviewedEvictionsResult replacement_commit;
+    std::vector<RuntimePackageHotReloadRecookReplacementDiagnostic> diagnostics;
     std::size_t selected_candidate_count{0};
     std::size_t loaded_record_count{0};
     std::uint64_t loaded_resident_bytes{0};
@@ -1254,16 +1253,17 @@ struct RuntimePackageHotReloadRecookReplacementResultV2 {
 /// discovery-backed resident replacement commit. It does not watch files, run recook, infer roots, choose eviction
 /// policy, stream in the background, upload/stage renderer resources, enforce GPU budgets, or touch renderer/RHI/native
 /// handles.
-[[nodiscard]] RuntimePackageHotReloadRecookReplacementResultV2 commit_runtime_package_hot_reload_recook_replacement_v2(
-    IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,
-    const RuntimePackageHotReloadRecookReplacementDescV2& desc);
+[[nodiscard]] RuntimePackageHotReloadRecookReplacementResult
+commit_runtime_package_hot_reload_recook_replacement(IFileSystem& filesystem, RuntimeResidentPackageMountSet& mount_set,
+                                                     RuntimeResidentCatalogCache& catalog_cache,
+                                                     const RuntimePackageHotReloadRecookReplacementDesc& desc);
 
-[[nodiscard]] std::optional<RuntimeResourceHandleV2> find_runtime_resource_v2(const RuntimeResourceCatalogV2& catalog,
-                                                                              AssetId asset) noexcept;
-[[nodiscard]] bool is_runtime_resource_handle_live_v2(const RuntimeResourceCatalogV2& catalog,
-                                                      RuntimeResourceHandleV2 handle) noexcept;
-[[nodiscard]] const RuntimeResourceRecordV2* runtime_resource_record_v2(const RuntimeResourceCatalogV2& catalog,
-                                                                        RuntimeResourceHandleV2 handle) noexcept;
+[[nodiscard]] std::optional<RuntimeResourceHandle> find_runtime_resource(const RuntimeResourceCatalog& catalog,
+                                                                         AssetId asset) noexcept;
+[[nodiscard]] bool is_runtime_resource_handle_live(const RuntimeResourceCatalog& catalog,
+                                                   RuntimeResourceHandle handle) noexcept;
+[[nodiscard]] const RuntimeResourceRecord* runtime_resource_record(const RuntimeResourceCatalog& catalog,
+                                                                   RuntimeResourceHandle handle) noexcept;
 
 enum class RuntimePackageSafePointReplacementStatus : std::uint8_t {
     no_pending_package = 0,
@@ -1278,13 +1278,13 @@ struct RuntimePackageSafePointReplacementResult {
     std::uint32_t previous_generation{0};
     std::uint32_t committed_generation{0};
     std::size_t stale_handle_count{0};
-    std::vector<RuntimeResourceCatalogBuildDiagnosticV2> diagnostics;
+    std::vector<RuntimeResourceCatalogBuildDiagnostic> diagnostics;
 
     [[nodiscard]] bool succeeded() const noexcept;
 };
 
 [[nodiscard]] RuntimePackageSafePointReplacementResult
-commit_runtime_package_safe_point_replacement(RuntimeAssetPackageStore& store, RuntimeResourceCatalogV2& catalog);
+commit_runtime_package_safe_point_replacement(RuntimeAssetPackageStore& store, RuntimeResourceCatalog& catalog);
 
 enum class RuntimePackageSafePointUnloadStatus : std::uint8_t {
     no_active_package = 0,
@@ -1304,6 +1304,6 @@ struct RuntimePackageSafePointUnloadResult {
 };
 
 [[nodiscard]] RuntimePackageSafePointUnloadResult
-commit_runtime_package_safe_point_unload(RuntimeAssetPackageStore& store, RuntimeResourceCatalogV2& catalog);
+commit_runtime_package_safe_point_unload(RuntimeAssetPackageStore& store, RuntimeResourceCatalog& catalog);
 
 } // namespace mirakana::runtime
