@@ -26,6 +26,7 @@
 #include "mirakana/runtime/entity_scale_culling.hpp"
 #include "mirakana/runtime/gameplay_interaction.hpp"
 #include "mirakana/runtime/gameplay_runtime_scheduler.hpp"
+#include "mirakana/runtime/genre_rpg_systems.hpp"
 #include "mirakana/runtime/package_streaming.hpp"
 #include "mirakana/runtime/physics_collision_runtime.hpp"
 #include "mirakana/runtime/resource_runtime.hpp"
@@ -827,6 +828,18 @@ addressable_content_status_name(mirakana::runtime::RuntimeAddressableContentStre
     return "unknown";
 }
 
+[[nodiscard]] const char* rpg_systems_status_name(mirakana::runtime::RuntimeRpgSystemsStatus status) noexcept {
+    switch (status) {
+    case mirakana::runtime::RuntimeRpgSystemsStatus::ready:
+        return "ready";
+    case mirakana::runtime::RuntimeRpgSystemsStatus::no_rows:
+        return "no_rows";
+    case mirakana::runtime::RuntimeRpgSystemsStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
 struct SceneGameplayBindingProbeResult {
     std::size_t source_rows{0U};
     std::size_t binding_rows{0U};
@@ -897,6 +910,29 @@ struct AddressableContentStreamingProbeResult {
     bool package_io{false};
     bool async_execution{false};
     bool committed{false};
+    bool ready{false};
+};
+
+struct RpgSystemsProbeResult {
+    mirakana::runtime::RuntimeRpgSystemsStatus status{mirakana::runtime::RuntimeRpgSystemsStatus::invalid_request};
+    std::size_t party_members{0U};
+    std::size_t enemy_members{0U};
+    std::size_t stat_rows{0U};
+    std::size_t progression_rows{0U};
+    std::size_t skill_rows{0U};
+    std::size_t blocked_skill_rows{0U};
+    std::size_t equipment_rows{0U};
+    std::size_t blocked_equipment_rows{0U};
+    std::size_t combat_turn_rows{0U};
+    std::size_t combat_rounds{0U};
+    std::size_t reward_rows{0U};
+    std::size_t save_validation_rows{0U};
+    std::size_t repairable_save_validation_rows{0U};
+    std::size_t diagnostics{0U};
+    std::uint64_t replay_hash{0U};
+    bool invoked_combat_execution{false};
+    bool invoked_reward_application{false};
+    bool invoked_save_io{false};
     bool ready{false};
 };
 
@@ -973,6 +1009,195 @@ struct InputContextRebindingProbeResult {
                    result.planned_steps == 2U && result.step_rows == 2U && result.system_rows == 6U &&
                    result.command_rows == 2U && result.consumed_time_us == 33'332U &&
                    result.remaining_time_us == 16'666U && result.diagnostics == 0U && result.replay_hash != 0U;
+    return result;
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeWorldEntityId make_rpg_entity(std::string value) {
+    return mirakana::runtime::RuntimeWorldEntityId{.value = std::move(value)};
+}
+
+[[nodiscard]] RpgSystemsProbeResult validate_rpg_systems_package_evidence(std::string_view sample_id) {
+    using Combat = mirakana::runtime::RuntimeRpgCombatLoopRequest;
+    using Equipment = mirakana::runtime::RuntimeRpgEquipmentRow;
+    using EquipmentStatus = mirakana::runtime::RuntimeRpgEquipmentStatus;
+    using Progression = mirakana::runtime::RuntimeRpgProgressionRow;
+    using Request = mirakana::runtime::RuntimeRpgSystemsRequest;
+    using Reward = mirakana::runtime::RuntimeRpgRewardRow;
+    using RewardKind = mirakana::runtime::RuntimeRpgRewardKind;
+    using Save = mirakana::runtime::RuntimeRpgSaveValidationRow;
+    using SaveStatus = mirakana::runtime::RuntimeRpgSaveValidationStatus;
+    using Skill = mirakana::runtime::RuntimeRpgSkillRow;
+    using SkillStatus = mirakana::runtime::RuntimeRpgSkillStatus;
+    using Stat = mirakana::runtime::RuntimeRpgStatRow;
+    using Status = mirakana::runtime::RuntimeRpgSystemsStatus;
+
+    const auto sample_prefix = std::string{sample_id};
+    const auto plan =
+        mirakana::runtime::plan_runtime_rpg_systems(
+            Request{
+                .system_id = sample_prefix + ".rpg",
+                .world_id = sample_prefix + ".world",
+                .world_tick = 42U,
+                .party_entity_ids = {make_rpg_entity("party.entity.0"), make_rpg_entity("party.entity.1")},
+                .enemy_entity_ids = {make_rpg_entity("opponent.entity.0")},
+                .stat_rows =
+                    std::vector<Stat>{
+                        Stat{.entity_id = make_rpg_entity("party.entity.0"),
+                             .stat_id = "health",
+                             .current_value = 30,
+                             .max_value = 30,
+                             .source_index = 1U},
+                        Stat{.entity_id = make_rpg_entity("party.entity.0"),
+                             .stat_id = "focus",
+                             .current_value = 7,
+                             .max_value = 10,
+                             .source_index = 2U},
+                        Stat{.entity_id = make_rpg_entity("party.entity.0"),
+                             .stat_id = "initiative",
+                             .current_value = 12,
+                             .max_value = 12,
+                             .source_index = 3U},
+                        Stat{.entity_id = make_rpg_entity("party.entity.1"),
+                             .stat_id = "health",
+                             .current_value = 24,
+                             .max_value = 24,
+                             .source_index = 4U},
+                        Stat{.entity_id = make_rpg_entity("party.entity.1"),
+                             .stat_id = "focus",
+                             .current_value = 2,
+                             .max_value = 10,
+                             .source_index = 5U},
+                        Stat{.entity_id = make_rpg_entity("party.entity.1"),
+                             .stat_id = "initiative",
+                             .current_value = 8,
+                             .max_value = 8,
+                             .source_index = 6U},
+                        Stat{.entity_id = make_rpg_entity("opponent.entity.0"),
+                             .stat_id = "health",
+                             .current_value = 18,
+                             .max_value = 18,
+                             .source_index = 7U},
+                        Stat{.entity_id = make_rpg_entity("opponent.entity.0"),
+                             .stat_id = "initiative",
+                             .current_value = 10,
+                             .max_value = 10,
+                             .source_index = 8U},
+                    },
+                .progression_rows =
+                    std::vector<Progression>{
+                        Progression{.entity_id = make_rpg_entity("party.entity.0"),
+                                    .track_id = "track.core",
+                                    .level = 3U,
+                                    .experience = 120U,
+                                    .skill_points = 1U,
+                                    .source_index = 1U},
+                        Progression{.entity_id = make_rpg_entity("party.entity.1"),
+                                    .track_id = "track.core",
+                                    .level = 1U,
+                                    .experience = 25U,
+                                    .skill_points = 0U,
+                                    .source_index = 2U},
+                    },
+                .skill_rows =
+                    std::vector<Skill>{
+                        Skill{.entity_id = make_rpg_entity("party.entity.0"),
+                              .skill_id = "skill.primary",
+                              .required_level = 2U,
+                              .required_stat_id = "focus",
+                              .required_stat_value = 6,
+                              .status = SkillStatus::invalid,
+                              .source_index = 1U},
+                        Skill{.entity_id = make_rpg_entity("party.entity.1"),
+                              .skill_id = "skill.support",
+                              .required_level = 1U,
+                              .required_stat_id = "focus",
+                              .required_stat_value = 6,
+                              .status = SkillStatus::invalid,
+                              .source_index = 2U},
+                    },
+                .equipment_rows =
+                    std::vector<Equipment>{
+                        Equipment{.entity_id = make_rpg_entity("party.entity.0"),
+                                  .slot_id = "slot.primary",
+                                  .item_id = "item.primary",
+                                  .required_level = 2U,
+                                  .required_stat_id = "focus",
+                                  .required_stat_value = 5,
+                                  .status = EquipmentStatus::invalid,
+                                  .source_index = 1U},
+                        Equipment{.entity_id = make_rpg_entity("party.entity.1"),
+                                  .slot_id = "slot.support",
+                                  .item_id = "item.support",
+                                  .required_level = 1U,
+                                  .required_stat_id = "focus",
+                                  .required_stat_value = 5,
+                                  .status = EquipmentStatus::invalid,
+                                  .source_index = 2U},
+                    },
+                .combat_request =
+                    Combat{.encounter_id = "encounter.package", .initiative_stat_id = "initiative", .max_rounds = 2U},
+                .reward_rows =
+                    std::vector<Reward>{
+                        Reward{.reward_id = "reward.progress",
+                               .entity_id = make_rpg_entity("party.entity.0"),
+                               .kind = RewardKind::experience,
+                               .item_id = "",
+                               .quantity = 50U,
+                               .source_index = 1U},
+                        Reward{.reward_id = "reward.item",
+                               .entity_id = make_rpg_entity("party.entity.1"),
+                               .kind = RewardKind::item,
+                               .item_id = "item.resource",
+                               .quantity = 1U,
+                               .source_index = 2U},
+                    },
+                .save_validation_rows =
+                    std::vector<Save>{
+                        Save{.entity_id = make_rpg_entity("party.entity.0"),
+                             .domain = "profile",
+                             .key = "state.party.0",
+                             .expected_schema_version = 1U,
+                             .observed_schema_version = 1U,
+                             .status = SaveStatus::rejected,
+                             .source_index = 1U},
+                        Save{.entity_id = make_rpg_entity("party.entity.1"),
+                             .domain = "profile",
+                             .key = "state.party.1",
+                             .expected_schema_version = 2U,
+                             .observed_schema_version = 1U,
+                             .status = SaveStatus::rejected,
+                             .source_index = 2U},
+                    },
+            });
+
+    RpgSystemsProbeResult result;
+    result.status = plan.status;
+    result.party_members = plan.party_member_count;
+    result.enemy_members = plan.enemy_member_count;
+    result.stat_rows = plan.stat_count;
+    result.progression_rows = plan.progression_count;
+    result.skill_rows = plan.skill_rows.size();
+    result.blocked_skill_rows = plan.blocked_skill_count;
+    result.equipment_rows = plan.equipment_rows.size();
+    result.blocked_equipment_rows = plan.blocked_equipment_count;
+    result.combat_turn_rows = plan.combat_turn_count;
+    result.combat_rounds = plan.combat_round_count;
+    result.reward_rows = plan.reward_count;
+    result.save_validation_rows = plan.save_validation_count;
+    result.repairable_save_validation_rows = plan.repairable_save_validation_count;
+    result.diagnostics = plan.diagnostics.size();
+    result.replay_hash = plan.replay_hash;
+    result.invoked_combat_execution = plan.invoked_combat_execution;
+    result.invoked_reward_application = plan.invoked_reward_application;
+    result.invoked_save_io = plan.invoked_save_io;
+    result.ready = plan.status == Status::ready && plan.succeeded() && result.party_members == 2U &&
+                   result.enemy_members == 1U && result.stat_rows == 8U && result.progression_rows == 2U &&
+                   result.skill_rows == 2U && result.blocked_skill_rows == 1U && result.equipment_rows == 2U &&
+                   result.blocked_equipment_rows == 1U && result.combat_turn_rows == 6U && result.combat_rounds == 2U &&
+                   result.reward_rows == 2U && result.save_validation_rows == 2U &&
+                   result.repairable_save_validation_rows == 1U && result.diagnostics == 0U &&
+                   result.replay_hash != 0U && !result.invoked_combat_execution && !result.invoked_reward_application &&
+                   !result.invoked_save_io;
     return result;
 }
 
@@ -7564,18 +7789,21 @@ int main(int argc, char** argv) {
         options.require_gameplay_systems && runtime_package.has_value()
             ? validate_addressable_content_streaming_package_evidence(*runtime_package)
             : AddressableContentStreamingProbeResult{};
+    const auto rpg_systems_probe =
+        options.require_gameplay_systems ? validate_rpg_systems_package_evidence("sample3d") : RpgSystemsProbeResult{};
     const auto gameplay_systems_ready =
-        gameplay_systems_core_ready &&
-        (!options.require_gameplay_systems ||
-         (game.gameplay_systems_scene_binding_ready() && input_context_rebinding.ready &&
-          gameplay_runtime_scheduler_probe.ready && world_entity_model_probe.ready && addressable_content_probe.ready));
+        gameplay_systems_core_ready && (!options.require_gameplay_systems ||
+                                        (game.gameplay_systems_scene_binding_ready() && input_context_rebinding.ready &&
+                                         gameplay_runtime_scheduler_probe.ready && world_entity_model_probe.ready &&
+                                         addressable_content_probe.ready && rpg_systems_probe.ready));
     const auto gameplay_systems_diagnostics =
         game.gameplay_systems_diagnostics_count(options.max_frames) +
         ((options.require_gameplay_systems && !game.gameplay_systems_scene_binding_ready()) ? 1U : 0U) +
         ((options.require_gameplay_systems && !input_context_rebinding.ready) ? 1U : 0U) +
         ((options.require_gameplay_systems && !gameplay_runtime_scheduler_probe.ready) ? 1U : 0U) +
         ((options.require_gameplay_systems && !world_entity_model_probe.ready) ? 1U : 0U) +
-        ((options.require_gameplay_systems && !addressable_content_probe.ready) ? 1U : 0U);
+        ((options.require_gameplay_systems && !addressable_content_probe.ready) ? 1U : 0U) +
+        ((options.require_gameplay_systems && !rpg_systems_probe.ready) ? 1U : 0U);
     const auto visible_3d = evaluate_visible_3d_production_proof(options, result, report, renderer_quality, playable_3d,
                                                                  gameplay_systems_ready);
     const auto entity_scale_culling_probe = options.require_entity_scale_culling
@@ -7882,6 +8110,26 @@ int main(int argc, char** argv) {
         << " addressable_content_async_execution=" << (addressable_content_probe.async_execution ? 1 : 0)
         << " addressable_content_committed=" << (addressable_content_probe.committed ? 1 : 0)
         << " addressable_content_diagnostics=" << addressable_content_probe.diagnostics
+        << " rpg_systems_status=" << rpg_systems_status_name(rpg_systems_probe.status)
+        << " rpg_systems_ready=" << (rpg_systems_probe.ready ? 1 : 0)
+        << " rpg_systems_party_members=" << rpg_systems_probe.party_members
+        << " rpg_systems_enemy_members=" << rpg_systems_probe.enemy_members
+        << " rpg_systems_stat_rows=" << rpg_systems_probe.stat_rows
+        << " rpg_systems_progression_rows=" << rpg_systems_probe.progression_rows
+        << " rpg_systems_skill_rows=" << rpg_systems_probe.skill_rows
+        << " rpg_systems_skill_blocked_rows=" << rpg_systems_probe.blocked_skill_rows
+        << " rpg_systems_equipment_rows=" << rpg_systems_probe.equipment_rows
+        << " rpg_systems_equipment_blocked_rows=" << rpg_systems_probe.blocked_equipment_rows
+        << " rpg_systems_combat_turn_rows=" << rpg_systems_probe.combat_turn_rows
+        << " rpg_systems_combat_rounds=" << rpg_systems_probe.combat_rounds
+        << " rpg_systems_reward_rows=" << rpg_systems_probe.reward_rows
+        << " rpg_systems_save_validation_rows=" << rpg_systems_probe.save_validation_rows
+        << " rpg_systems_save_validation_repairable_rows=" << rpg_systems_probe.repairable_save_validation_rows
+        << " rpg_systems_replay_hash=" << rpg_systems_probe.replay_hash
+        << " rpg_systems_invoked_combat_execution=" << (rpg_systems_probe.invoked_combat_execution ? 1 : 0)
+        << " rpg_systems_invoked_reward_application=" << (rpg_systems_probe.invoked_reward_application ? 1 : 0)
+        << " rpg_systems_invoked_save_io=" << (rpg_systems_probe.invoked_save_io ? 1 : 0)
+        << " rpg_systems_diagnostics=" << rpg_systems_probe.diagnostics
         << " gameplay_systems_ticks=" << game.gameplay_systems_ticks()
         << " gameplay_systems_physics_ticks=" << game.gameplay_systems_physics_ticks()
         << " gameplay_systems_authored_collision_bodies=" << game.gameplay_systems_authored_collision_bodies()
@@ -8356,7 +8604,11 @@ int main(int argc, char** argv) {
                       << " addressable_content_package_io=" << (addressable_content_probe.package_io ? 1 : 0)
                       << " addressable_content_async_execution=" << (addressable_content_probe.async_execution ? 1 : 0)
                       << " addressable_content_committed=" << (addressable_content_probe.committed ? 1 : 0)
-                      << " addressable_content_diagnostics=" << addressable_content_probe.diagnostics << '\n';
+                      << " addressable_content_diagnostics=" << addressable_content_probe.diagnostics
+                      << " rpg_systems_status=" << rpg_systems_status_name(rpg_systems_probe.status)
+                      << " rpg_systems_ready=" << (rpg_systems_probe.ready ? 1 : 0)
+                      << " rpg_systems_diagnostics=" << rpg_systems_probe.diagnostics
+                      << " rpg_systems_replay_hash=" << rpg_systems_probe.replay_hash << '\n';
             return 3;
         }
         if (options.require_scene_collision_package && !collision_package.ready) {

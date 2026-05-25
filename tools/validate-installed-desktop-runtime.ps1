@@ -920,13 +920,33 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
                 "gameplay_systems_procedural_generation_replay_hash",
                 "gameplay_systems_procedural_generation_package_visible_rows",
                 "gameplay_systems_procedural_generation_placement_intent_rows",
-                "gameplay_systems_procedural_generation_placement_intent_accepted_rows"
+                "gameplay_systems_procedural_generation_placement_intent_accepted_rows",
+                "rpg_systems_status",
+                "rpg_systems_ready",
+                "rpg_systems_party_members",
+                "rpg_systems_enemy_members",
+                "rpg_systems_stat_rows",
+                "rpg_systems_progression_rows",
+                "rpg_systems_skill_rows",
+                "rpg_systems_skill_blocked_rows",
+                "rpg_systems_equipment_rows",
+                "rpg_systems_equipment_blocked_rows",
+                "rpg_systems_combat_turn_rows",
+                "rpg_systems_combat_rounds",
+                "rpg_systems_reward_rows",
+                "rpg_systems_save_validation_rows",
+                "rpg_systems_save_validation_repairable_rows",
+                "rpg_systems_replay_hash",
+                "rpg_systems_invoked_combat_execution",
+                "rpg_systems_invoked_reward_application",
+                "rpg_systems_invoked_save_io",
+                "rpg_systems_diagnostics"
             )) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
                 Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not include gameplay systems field: $field"
             }
         }
-        foreach ($field in @("gameplay_systems_ready", "gameplay_systems_navigation_reached", "gameplay_systems_perception_has_primary_target", "gameplay_systems_blackboard_has_target", "gameplay_systems_blackboard_needs_move", "gameplay_systems_behavior_authoring_ready", "gameplay_systems_behavior_authoring_deterministic_trace_ready", "gameplay_systems_quest_dialogue_ready", "gameplay_systems_inventory_items_ready", "gameplay_systems_construction_placement_ready", "gameplay_systems_procedural_generation_ready")) {
+        foreach ($field in @("gameplay_systems_ready", "gameplay_systems_navigation_reached", "gameplay_systems_perception_has_primary_target", "gameplay_systems_blackboard_has_target", "gameplay_systems_blackboard_needs_move", "gameplay_systems_behavior_authoring_ready", "gameplay_systems_behavior_authoring_deterministic_trace_ready", "gameplay_systems_quest_dialogue_ready", "gameplay_systems_inventory_items_ready", "gameplay_systems_construction_placement_ready", "gameplay_systems_procedural_generation_ready", "rpg_systems_ready")) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=1\b") {
                 Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove ready gameplay systems field: $field"
             }
@@ -1150,6 +1170,33 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_construction_placement_intent_occupied_cells=2\b") {
             Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove exact construction placement occupied cells."
         }
+        foreach ($expected in @{
+                "rpg_systems_status" = "ready"
+                "rpg_systems_party_members" = "2"
+                "rpg_systems_enemy_members" = "1"
+                "rpg_systems_stat_rows" = "8"
+                "rpg_systems_progression_rows" = "2"
+                "rpg_systems_skill_rows" = "2"
+                "rpg_systems_skill_blocked_rows" = "1"
+                "rpg_systems_equipment_rows" = "2"
+                "rpg_systems_equipment_blocked_rows" = "1"
+                "rpg_systems_combat_turn_rows" = "6"
+                "rpg_systems_combat_rounds" = "2"
+                "rpg_systems_reward_rows" = "2"
+                "rpg_systems_save_validation_rows" = "2"
+                "rpg_systems_save_validation_repairable_rows" = "1"
+                "rpg_systems_invoked_combat_execution" = "0"
+                "rpg_systems_invoked_reward_application" = "0"
+                "rpg_systems_invoked_save_io" = "0"
+                "rpg_systems_diagnostics" = "0"
+            }.GetEnumerator()) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$([regex]::Escape($expected.Key))=$([regex]::Escape($expected.Value))\b") {
+                Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove RPG systems field: $($expected.Key)=$($expected.Value)."
+            }
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\brpg_systems_replay_hash=[1-9]\d*\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove positive RPG systems replay hash."
+        }
     }
     if ($requiresProceduralGeneration) {
         foreach ($expected in @{
@@ -1222,6 +1269,26 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
             "addressable_content_async_execution",
             "addressable_content_committed",
             "addressable_content_diagnostics",
+            "rpg_systems_status",
+            "rpg_systems_ready",
+            "rpg_systems_party_members",
+            "rpg_systems_enemy_members",
+            "rpg_systems_stat_rows",
+            "rpg_systems_progression_rows",
+            "rpg_systems_skill_rows",
+            "rpg_systems_skill_blocked_rows",
+            "rpg_systems_equipment_rows",
+            "rpg_systems_equipment_blocked_rows",
+            "rpg_systems_combat_turn_rows",
+            "rpg_systems_combat_rounds",
+            "rpg_systems_reward_rows",
+            "rpg_systems_save_validation_rows",
+            "rpg_systems_save_validation_repairable_rows",
+            "rpg_systems_replay_hash",
+            "rpg_systems_invoked_combat_execution",
+            "rpg_systems_invoked_reward_application",
+            "rpg_systems_invoked_save_io",
+            "rpg_systems_diagnostics",
             "gameplay_systems_scene_binding_ready",
             "gameplay_systems_scene_binding_source_rows",
             "gameplay_systems_scene_binding_rows",
@@ -1402,6 +1469,36 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
             Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove addressable content field $field=$expectedValue."
         }
+    }
+    $expectedRpgSystemsFields = @{
+        "rpg_systems_status" = "ready"
+        "rpg_systems_ready" = "1"
+        "rpg_systems_party_members" = "2"
+        "rpg_systems_enemy_members" = "1"
+        "rpg_systems_stat_rows" = "8"
+        "rpg_systems_progression_rows" = "2"
+        "rpg_systems_skill_rows" = "2"
+        "rpg_systems_skill_blocked_rows" = "1"
+        "rpg_systems_equipment_rows" = "2"
+        "rpg_systems_equipment_blocked_rows" = "1"
+        "rpg_systems_combat_turn_rows" = "6"
+        "rpg_systems_combat_rounds" = "2"
+        "rpg_systems_reward_rows" = "2"
+        "rpg_systems_save_validation_rows" = "2"
+        "rpg_systems_save_validation_repairable_rows" = "1"
+        "rpg_systems_invoked_combat_execution" = "0"
+        "rpg_systems_invoked_reward_application" = "0"
+        "rpg_systems_invoked_save_io" = "0"
+        "rpg_systems_diagnostics" = "0"
+    }
+    foreach ($field in $expectedRpgSystemsFields.Keys) {
+        $expectedValue = $expectedRpgSystemsFields[$field]
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove RPG systems field $field=$expectedValue."
+        }
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\brpg_systems_replay_hash=[1-9]\d*\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove positive RPG systems replay hash."
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_scene_binding_ready=1\b") {
         Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove ready scene gameplay bindings."

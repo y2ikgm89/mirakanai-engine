@@ -51,7 +51,7 @@ Add the following canonical rows to the backlog under a new `General-Purpose Gam
 | `addressable-content-streaming-production-v1` | `implemented-production-surface` | Addressable package/content handles with dependency tracking, explicit load/release/refcount plans, resident budget diagnostics, and package evidence. |
 | `production-authoring-workflows-v1` | `implemented-production-surface` | Reviewed authoring flows for scene, placement, quest/dialogue, item/economy, AI behavior, world regions, and validation repair without free-form engine mutation. |
 | `production-runtime-ui-workbench-v1` | `implemented-production-surface` | Dense runtime UI primitives for menus, inventory/equipment/shop, simulation dashboards, tables, graphs, focus navigation, text input, localization, and accessibility boundaries. |
-| `genre-rpg-systems-pack-v1` | `production-candidate` | Reusable RPG systems for stats, progression, skills, equipment, party/enemy combat loops, rewards, and save validation. |
+| `genre-rpg-systems-pack-v1` | `implemented-production-surface` | Reusable RPG systems for stats, progression, skills, equipment, party/enemy combat loops, rewards, and save validation. |
 | `genre-sandbox-world-pack-v1` | `production-candidate` | Reusable sandbox systems for block/voxel-like world chunks, placement/destruction rules, construction costs, world mutation validation, and persistence. |
 | `genre-simulation-management-pack-v1` | `production-candidate` | Reusable simulation systems for economy, logistics, jobs, population/needs, production chains, schedules, and deterministic long-run validation. |
 | `production-network-replication-v1` | `production-candidate` | Authoritative session, replication, rollback/lockstep hooks, security/threat model, and real transport host evidence. |
@@ -475,17 +475,26 @@ PR: #231 merged addressable-content-streaming-production-v1 at merge commit 7109
 - Test: `tests/unit/runtime_genre_rpg_systems_tests.cpp`
 - Package evidence: selected 2D and 3D package counters.
 
-- [ ] **Step 1: Write failing RPG system tests**
+- [x] **Step 1: Write failing RPG system tests**
 
   Test stat rows, progression rows, skill unlock prerequisites, equipment slot validation, party/enemy combat-loop intents, reward rows, and save-validation summaries. The tests must use generic engine vocabulary and must not encode story, balance, enemy names, or genre-specific content values.
 
-- [ ] **Step 2: Implement first-party RPG value contracts**
+- [x] **Step 2: Implement first-party RPG value contracts**
 
   Add `RuntimeRpgStatRow`, `RuntimeRpgProgressionRow`, `RuntimeRpgSkillRow`, `RuntimeRpgEquipmentRow`, `RuntimeRpgCombatLoopRequest`, `RuntimeRpgRewardRow`, `RuntimeRpgSystemsPlan`, and `plan_runtime_rpg_systems`.
 
-- [ ] **Step 3: Add package evidence and manifest rows**
+- [x] **Step 3: Add package evidence and manifest rows**
 
   Add selected package counters for validated stats, progression rows, skills, equipment rows, combat-loop rows, rewards, save-validation rows, and clean diagnostics.
+
+  OFFICIAL: Context7 Unreal Engine Gameplay Ability System documentation reinforced attributes, abilities, effects, cooldowns, costs, and level scaling as data-driven gameplay concepts, while Context7 Unity documentation reinforced XP/level/reward/cloud-save boundaries behind validated services rather than direct runtime side effects. The implemented MIRAIKANAI surface keeps RPG evidence value-only.
+  RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev; if ($LASTEXITCODE -eq 0) { pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_genre_rpg_systems_tests }` failed before `mirakana/runtime/genre_rpg_systems.hpp` existed.
+  GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_genre_rpg_systems_tests`
+  GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_genre_rpg_systems_tests`
+  GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_genre_rpg_systems_tests sample_2d_desktop_runtime_package sample_generated_desktop_runtime_3d_package`
+  GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_genre_rpg_systems_tests|sample_2d_desktop_runtime_package|sample_generated_desktop_runtime_3d_package"`
+  GREEN: `sample_2d_desktop_runtime_package --smoke --require-gameplay-systems --require-procedural-generation` emitted `rpg_systems_status=ready`, `rpg_systems_ready=1`, two party rows, one enemy row, eight stat rows, two progression rows, two skill rows with one blocked row, two equipment rows with one blocked row, six combat turn rows across two rounds, two reward rows, two save validation rows with one repairable row, positive `rpg_systems_replay_hash`, zero combat/reward/save side-effect counters, and `rpg_systems_diagnostics=0`.
+  GREEN: `sample_generated_desktop_runtime_3d_package --smoke --require-gameplay-systems` emitted the same RPG systems counter contract with a target-specific positive replay hash.
 
 ## Phase 7: Sandbox World Pack Production Surface
 
