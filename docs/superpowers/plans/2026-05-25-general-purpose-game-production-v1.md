@@ -55,7 +55,7 @@ Add the following canonical rows to the backlog under a new `General-Purpose Gam
 | `genre-sandbox-world-pack-v1` | `implemented-production-surface` | Reusable sandbox systems for block/voxel-like world chunks, placement/destruction rules, construction costs, world mutation validation, and persistence. |
 | `genre-simulation-management-pack-v1` | `implemented-production-surface` | Reusable simulation systems for economy, logistics, jobs, population/needs, production chains, schedules, and deterministic long-run validation. |
 | `production-network-replication-v1` | `implemented-production-surface` | Value-only authoritative replication planner with session, object, input, snapshot, rollback, replay-hash, and host-evidence diagnostics. |
-| `production-rendering-vfx-profiling-v1` | `host-gated-production` | Broader renderer/VFX/profile production evidence, including GPU particles, richer postprocess, backend-specific timing, crash/telemetry handoff, and strict backend parity gates. |
+| `production-rendering-vfx-profiling-v1` | `host-gated-production` | Broader renderer/VFX/profile production evidence through value-only GPU particle, postprocess, backend timing, crash/telemetry handoff, package counters, and strict backend parity gates. |
 
 ## Long-Running Execution Strategy
 
@@ -597,17 +597,28 @@ PR: #231 merged addressable-content-streaming-production-v1 at merge commit 7109
 - Test: `tests/unit/renderer_production_vfx_profiling_tests.cpp`
 - Host evidence: D3D12/Vulkan/Metal-specific validation where available.
 
-- [ ] **Step 1: Write failing renderer/VFX/profile tests**
+- [x] **Step 1: Write failing renderer/VFX/profile tests**
 
   Test GPU particle budget rows, richer postprocess feature rows, backend timing/profile rows, crash/telemetry handoff rows, backend parity requirements, and host-gated Metal evidence diagnostics. D3D12 evidence must not imply Vulkan or Metal readiness.
 
-- [ ] **Step 2: Implement backend-neutral renderer production evidence contracts**
+- [x] **Step 2: Implement backend-neutral renderer production evidence contracts**
 
   Add `RendererProductionVfxFeatureRow`, `RendererProductionGpuParticleBudgetRow`, `RendererProductionPostprocessRow`, `RendererProductionBackendTimingRow`, `RendererProductionCrashTelemetryHandoffRow`, `RendererProductionVfxProfilingPlan`, and `plan_renderer_production_vfx_profiling`.
 
-- [ ] **Step 3: Add package and host-gated validation**
+- [x] **Step 3: Add package and host-gated validation**
 
   Add selected package counters for VFX/profile rows and backend evidence. Mark backend-specific readiness as `host-gated-production` until the matching D3D12, Vulkan, or Metal host proof exists.
+
+**Phase 10 evidence:**
+
+- OFFICIAL: Context7 Direct3D 12 documentation confirmed timestamp query heaps, `ResolveQueryData`, `ID3D12CommandQueue::GetTimestampFrequency`, and `GetClockCalibration` as queue-owned timing evidence; Context7 Vulkan documentation confirmed timestamp queries, calibrated timestamp queries, and debug utils labels as backend-specific evidence; Apple/Metal evidence remains host-gated and is not inferred from D3D12 or Vulkan rows.
+- RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_production_vfx_profiling_tests` failed before `mirakana/renderer/production_vfx_profiling.hpp` existed.
+- GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_production_vfx_profiling_tests`
+- GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_renderer_production_vfx_profiling_tests`
+- GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_production_vfx_profiling_tests sample_generated_desktop_runtime_3d_package`
+- GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_renderer_production_vfx_profiling_tests|sample_generated_desktop_runtime_3d_package_smoke"`
+- GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package`
+- GREEN: selected generated 3D package smoke and installed validation require `rendering_vfx_profiling_status=host_evidence_required`, `rendering_vfx_profiling_reviewed=1`, `rendering_vfx_profiling_ready=0`, two rows each for feature, GPU particle budget, postprocess, backend timing, and crash telemetry handoff, one host-validated backend, positive `rendering_vfx_profiling_replay_hash`, Metal host evidence required but absent, zero GPU command/native capture/crash upload side-effect counters, and `rendering_vfx_profiling_diagnostics=0`.
 
 ## Validation
 

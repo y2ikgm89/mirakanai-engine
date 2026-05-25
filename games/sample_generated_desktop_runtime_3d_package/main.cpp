@@ -20,6 +20,7 @@
 #include "mirakana/physics/physics3d.hpp"
 #include "mirakana/platform/filesystem.hpp"
 #include "mirakana/platform/input.hpp"
+#include "mirakana/renderer/production_vfx_profiling.hpp"
 #include "mirakana/renderer/renderer.hpp"
 #include "mirakana/runtime/addressable_content_streaming.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
@@ -82,6 +83,7 @@ struct DesktopRuntimeOptions {
     bool require_directional_shadow_filtering{false};
     bool require_shadow_morph_composition{false};
     bool require_renderer_quality_gates{false};
+    bool require_rendering_vfx_profiling{false};
     bool require_playable_3d_slice{false};
     bool require_visible_3d_production_proof{false};
     bool require_vulkan_visible_3d_production_proof{false};
@@ -883,6 +885,21 @@ network_replication_status_name(mirakana::runtime::RuntimeNetworkReplicationStat
     return "unknown";
 }
 
+[[nodiscard]] const char*
+rendering_vfx_profiling_status_name(mirakana::RendererProductionVfxProfilingStatus status) noexcept {
+    switch (status) {
+    case mirakana::RendererProductionVfxProfilingStatus::ready:
+        return "ready";
+    case mirakana::RendererProductionVfxProfilingStatus::host_evidence_required:
+        return "host_evidence_required";
+    case mirakana::RendererProductionVfxProfilingStatus::no_rows:
+        return "no_rows";
+    case mirakana::RendererProductionVfxProfilingStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
 struct SceneGameplayBindingProbeResult {
     std::size_t source_rows{0U};
     std::size_t binding_rows{0U};
@@ -1043,6 +1060,27 @@ struct NetworkReplicationProbeResult {
     bool invoked_network_io{false};
     bool invoked_rollback_execution{false};
     bool invoked_world_mutation{false};
+    std::size_t diagnostics{0U};
+    bool reviewed{false};
+    bool ready{false};
+};
+
+struct RenderingVfxProfilingProbeResult {
+    mirakana::RendererProductionVfxProfilingStatus status{
+        mirakana::RendererProductionVfxProfilingStatus::invalid_request};
+    std::size_t feature_rows{0U};
+    std::size_t gpu_particle_budget_rows{0U};
+    std::size_t postprocess_rows{0U};
+    std::size_t backend_timing_rows{0U};
+    std::size_t crash_telemetry_handoff_rows{0U};
+    std::size_t host_validated_backends{0U};
+    std::size_t rejected_unsafe_rows{0U};
+    std::uint64_t replay_hash{0U};
+    bool requires_metal_host_evidence{false};
+    bool has_metal_host_evidence{false};
+    bool invoked_gpu_commands{false};
+    bool invoked_native_capture{false};
+    bool invoked_crash_upload{false};
     std::size_t diagnostics{0U};
     bool reviewed{false};
     bool ready{false};
@@ -1828,6 +1866,189 @@ validate_simulation_management_package_evidence(std::string_view sample_id) {
                    result.rejected_unsafe_rows == 0U && result.replay_hash != 0U &&
                    result.requires_transport_host_evidence && result.has_transport_host_evidence &&
                    !result.invoked_network_io && !result.invoked_rollback_execution && !result.invoked_world_mutation &&
+                   result.diagnostics == 0U;
+    return result;
+}
+
+[[nodiscard]] RenderingVfxProfilingProbeResult validate_rendering_vfx_profiling_package_evidence() {
+    using Backend = mirakana::rhi::BackendKind;
+    using FeatureKind = mirakana::RendererProductionVfxFeatureKind;
+    using Request = mirakana::RendererProductionVfxProfilingRequest;
+    using Status = mirakana::RendererProductionVfxProfilingStatus;
+
+    const auto
+        plan =
+            mirakana::plan_renderer_production_vfx_profiling(
+                Request{
+                    .required_backends =
+                        {
+                            Backend::d3d12,
+                            Backend::metal,
+                        },
+                    .feature_rows =
+                        {
+                            mirakana::RendererProductionVfxFeatureRow{
+                                .feature_id = "vfx.particles.spark",
+                                .kind = FeatureKind::gpu_particles,
+                                .backend = Backend::d3d12,
+                                .reviewed = true,
+                                .request_broad_performance_claim = false,
+                                .request_native_handle_access = false,
+                                .source_index = 1U,
+                            },
+                            mirakana::RendererProductionVfxFeatureRow{
+                                .feature_id = "vfx.particles.spark",
+                                .kind = FeatureKind::gpu_particles,
+                                .backend = Backend::metal,
+                                .reviewed = true,
+                                .request_broad_performance_claim = false,
+                                .request_native_handle_access = false,
+                                .source_index = 3U,
+                            },
+                        },
+                    .gpu_particle_budget_rows =
+                        {
+                            mirakana::RendererProductionGpuParticleBudgetRow{
+                                .effect_id = "vfx.particles.spark",
+                                .backend = Backend::d3d12,
+                                .max_particles = 4096U,
+                                .max_emitters = 16U,
+                                .max_spawn_per_frame = 256U,
+                                .simulation_budget_us = 700U,
+                                .submission_budget_us = 300U,
+                                .requires_compute_simulation = true,
+                                .requires_gpu_sort = true,
+                                .source_index = 4U,
+                            },
+                            mirakana::RendererProductionGpuParticleBudgetRow{
+                                .effect_id = "vfx.particles.spark",
+                                .backend = Backend::metal,
+                                .max_particles = 4096U,
+                                .max_emitters = 16U,
+                                .max_spawn_per_frame = 256U,
+                                .simulation_budget_us = 700U,
+                                .submission_budget_us = 300U,
+                                .requires_compute_simulation = true,
+                                .requires_gpu_sort = true,
+                                .source_index = 6U,
+                            },
+                        },
+                    .postprocess_rows =
+                        {
+                            mirakana::RendererProductionPostprocessRow{
+                                .chain_id = "post.fx",
+                                .backend = Backend::d3d12,
+                                .pass_count = 3U,
+                                .scene_color_available = true,
+                                .scene_depth_available = true,
+                                .hdr_available = true,
+                                .history_available = true,
+                                .backend_shader_evidence_ready = true,
+                                .source_index = 7U,
+                            },
+                            mirakana::RendererProductionPostprocessRow{
+                                .chain_id = "post.fx",
+                                .backend = Backend::metal,
+                                .pass_count = 3U,
+                                .scene_color_available = true,
+                                .scene_depth_available = true,
+                                .hdr_available = true,
+                                .history_available = true,
+                                .backend_shader_evidence_ready = true,
+                                .source_index = 9U,
+                            },
+                        },
+                    .backend_timing_rows =
+                        {
+                            mirakana::RendererProductionBackendTimingRow{
+                                .backend = Backend::d3d12,
+                                .profile_zone_id = "frame.main",
+                                .gpu_timestamp_frequency_hz = 1000000000ULL,
+                                .begin_tick = 1000ULL,
+                                .end_tick = 1900ULL,
+                                .calibrated_cpu_begin_tick = 2000ULL,
+                                .calibrated_cpu_end_tick = 2900ULL,
+                                .max_clock_deviation_ns = 250ULL,
+                                .debug_scope_count = 2U,
+                                .debug_marker_count = 1U,
+                                .host_validated = true,
+                                .source_index = 10U,
+                            },
+                            mirakana::RendererProductionBackendTimingRow{
+                                .backend = Backend::metal,
+                                .profile_zone_id = "frame.main",
+                                .gpu_timestamp_frequency_hz = 1000000000ULL,
+                                .begin_tick = 5000ULL,
+                                .end_tick = 5900ULL,
+                                .calibrated_cpu_begin_tick = 6000ULL,
+                                .calibrated_cpu_end_tick = 6900ULL,
+                                .max_clock_deviation_ns = 250ULL,
+                                .debug_scope_count = 2U,
+                                .debug_marker_count = 1U,
+                                .host_validated = false,
+                                .source_index = 12U,
+                            },
+                        },
+                    .crash_telemetry_handoff_rows =
+                        {
+                            mirakana::RendererProductionCrashTelemetryHandoffRow{
+                                .handoff_id = "handoff.primary",
+                                .backend = Backend::d3d12,
+                                .trace_event_count = 8U,
+                                .crash_dump_reviewed = true,
+                                .symbolication_ready = true,
+                                .telemetry_schema_reviewed = true,
+                                .operator_handoff_ready = true,
+                                .request_crash_upload = false,
+                                .request_native_capture = false,
+                                .source_index = 13U,
+                            },
+                            mirakana::RendererProductionCrashTelemetryHandoffRow{
+                                .handoff_id = "handoff.apple",
+                                .backend = Backend::metal,
+                                .trace_event_count = 8U,
+                                .crash_dump_reviewed = true,
+                                .symbolication_ready = true,
+                                .telemetry_schema_reviewed = true,
+                                .operator_handoff_ready = true,
+                                .request_crash_upload = false,
+                                .request_native_capture = false,
+                                .source_index = 15U,
+                            },
+                        },
+                    .row_budget = 32U,
+                    .seed = 123U,
+                });
+
+    RenderingVfxProfilingProbeResult result;
+    result.status = plan.status;
+    result.feature_rows = plan.feature_row_count;
+    result.gpu_particle_budget_rows = plan.gpu_particle_budget_row_count;
+    result.postprocess_rows = plan.postprocess_row_count;
+    result.backend_timing_rows = plan.backend_timing_row_count;
+    result.crash_telemetry_handoff_rows = plan.crash_telemetry_handoff_row_count;
+    result.host_validated_backends = plan.host_validated_backend_count;
+    result.rejected_unsafe_rows = plan.rejected_unsafe_row_count;
+    result.replay_hash = plan.replay_hash;
+    result.requires_metal_host_evidence = plan.requires_metal_host_evidence;
+    result.has_metal_host_evidence = plan.has_metal_host_evidence;
+    result.invoked_gpu_commands = plan.invoked_gpu_commands;
+    result.invoked_native_capture = plan.invoked_native_capture;
+    result.invoked_crash_upload = plan.invoked_crash_upload;
+    result.diagnostics = plan.diagnostics.size();
+    result.reviewed = plan.status == Status::host_evidence_required && result.feature_rows == 2U &&
+                      result.gpu_particle_budget_rows == 2U && result.postprocess_rows == 2U &&
+                      result.backend_timing_rows == 2U && result.crash_telemetry_handoff_rows == 2U &&
+                      result.host_validated_backends == 1U && result.rejected_unsafe_rows == 0U &&
+                      result.replay_hash != 0U && result.requires_metal_host_evidence &&
+                      !result.has_metal_host_evidence && !result.invoked_gpu_commands &&
+                      !result.invoked_native_capture && !result.invoked_crash_upload && result.diagnostics == 0U;
+    result.ready = plan.status == Status::ready && plan.succeeded() && result.feature_rows == 2U &&
+                   result.gpu_particle_budget_rows == 2U && result.postprocess_rows == 2U &&
+                   result.backend_timing_rows == 2U && result.crash_telemetry_handoff_rows == 2U &&
+                   result.host_validated_backends == 2U && result.rejected_unsafe_rows == 0U &&
+                   result.replay_hash != 0U && result.requires_metal_host_evidence && result.has_metal_host_evidence &&
+                   !result.invoked_gpu_commands && !result.invoked_native_capture && !result.invoked_crash_upload &&
                    result.diagnostics == 0U;
     return result;
 }
@@ -6005,7 +6226,7 @@ void print_usage() {
                  "[--require-scene-gpu-bindings] [--require-postprocess] [--require-postprocess-depth-input] "
                  "[--require-directional-shadow] [--require-directional-shadow-filtering] "
                  "[--require-shadow-morph-composition] "
-                 "[--require-renderer-quality-gates] "
+                 "[--require-renderer-quality-gates] [--require-rendering-vfx-profiling] "
                  "[--require-playable-3d-slice] [--require-visible-3d-production-proof] "
                  "[--require-vulkan-visible-3d-production-proof] "
                  "[--require-native-ui-overlay] "
@@ -6059,6 +6280,14 @@ void print_usage() {
         if (arg == "--require-postprocess-depth-input") {
             options.require_postprocess = true;
             options.require_postprocess_depth_input = true;
+            continue;
+        }
+        if (arg == "--require-rendering-vfx-profiling") {
+            options.require_scene_gpu_bindings = true;
+            options.require_postprocess = true;
+            options.require_postprocess_depth_input = true;
+            options.require_renderer_quality_gates = true;
+            options.require_rendering_vfx_profiling = true;
             continue;
         }
         if (arg == "--require-directional-shadow") {
@@ -8431,6 +8660,9 @@ int main(int argc, char** argv) {
     const auto network_replication_probe = options.require_gameplay_systems
                                                ? validate_network_replication_package_evidence("sample3d")
                                                : NetworkReplicationProbeResult{};
+    const auto rendering_vfx_profiling_probe = options.require_rendering_vfx_profiling
+                                                   ? validate_rendering_vfx_profiling_package_evidence()
+                                                   : RenderingVfxProfilingProbeResult{};
     const auto gameplay_systems_ready =
         gameplay_systems_core_ready &&
         (!options.require_gameplay_systems ||
@@ -8839,6 +9071,31 @@ int main(int argc, char** argv) {
         << (network_replication_probe.invoked_rollback_execution ? 1 : 0)
         << " network_replication_invoked_world_mutation=" << (network_replication_probe.invoked_world_mutation ? 1 : 0)
         << " network_replication_diagnostics=" << network_replication_probe.diagnostics
+        << " rendering_vfx_profiling_status="
+        << rendering_vfx_profiling_status_name(rendering_vfx_profiling_probe.status)
+        << " rendering_vfx_profiling_reviewed=" << (rendering_vfx_profiling_probe.reviewed ? 1 : 0)
+        << " rendering_vfx_profiling_ready=" << (rendering_vfx_profiling_probe.ready ? 1 : 0)
+        << " rendering_vfx_profiling_feature_rows=" << rendering_vfx_profiling_probe.feature_rows
+        << " rendering_vfx_profiling_gpu_particle_budget_rows="
+        << rendering_vfx_profiling_probe.gpu_particle_budget_rows
+        << " rendering_vfx_profiling_postprocess_rows=" << rendering_vfx_profiling_probe.postprocess_rows
+        << " rendering_vfx_profiling_backend_timing_rows=" << rendering_vfx_profiling_probe.backend_timing_rows
+        << " rendering_vfx_profiling_crash_telemetry_handoff_rows="
+        << rendering_vfx_profiling_probe.crash_telemetry_handoff_rows
+        << " rendering_vfx_profiling_host_validated_backends=" << rendering_vfx_profiling_probe.host_validated_backends
+        << " rendering_vfx_profiling_rejected_unsafe_rows=" << rendering_vfx_profiling_probe.rejected_unsafe_rows
+        << " rendering_vfx_profiling_replay_hash=" << rendering_vfx_profiling_probe.replay_hash
+        << " rendering_vfx_profiling_requires_metal_host_evidence="
+        << (rendering_vfx_profiling_probe.requires_metal_host_evidence ? 1 : 0)
+        << " rendering_vfx_profiling_metal_host_evidence="
+        << (rendering_vfx_profiling_probe.has_metal_host_evidence ? 1 : 0)
+        << " rendering_vfx_profiling_invoked_gpu_commands="
+        << (rendering_vfx_profiling_probe.invoked_gpu_commands ? 1 : 0)
+        << " rendering_vfx_profiling_invoked_native_capture="
+        << (rendering_vfx_profiling_probe.invoked_native_capture ? 1 : 0)
+        << " rendering_vfx_profiling_invoked_crash_upload="
+        << (rendering_vfx_profiling_probe.invoked_crash_upload ? 1 : 0)
+        << " rendering_vfx_profiling_diagnostics=" << rendering_vfx_profiling_probe.diagnostics
         << " gameplay_systems_ticks=" << game.gameplay_systems_ticks()
         << " gameplay_systems_physics_ticks=" << game.gameplay_systems_physics_ticks()
         << " gameplay_systems_authored_collision_bodies=" << game.gameplay_systems_authored_collision_bodies()
@@ -9338,6 +9595,30 @@ int main(int argc, char** argv) {
                 << " network_replication_diagnostics=" << network_replication_probe.diagnostics
                 << " network_replication_replay_hash=" << network_replication_probe.replay_hash << '\n';
             return 3;
+        }
+        if (options.require_rendering_vfx_profiling && !rendering_vfx_profiling_probe.reviewed) {
+            std::cout << "sample_generated_desktop_runtime_3d_package required_rendering_vfx_profiling_unavailable"
+                      << " rendering_vfx_profiling_status="
+                      << rendering_vfx_profiling_status_name(rendering_vfx_profiling_probe.status)
+                      << " rendering_vfx_profiling_reviewed=" << (rendering_vfx_profiling_probe.reviewed ? 1 : 0)
+                      << " rendering_vfx_profiling_ready=" << (rendering_vfx_profiling_probe.ready ? 1 : 0)
+                      << " rendering_vfx_profiling_feature_rows=" << rendering_vfx_profiling_probe.feature_rows
+                      << " rendering_vfx_profiling_gpu_particle_budget_rows="
+                      << rendering_vfx_profiling_probe.gpu_particle_budget_rows
+                      << " rendering_vfx_profiling_postprocess_rows=" << rendering_vfx_profiling_probe.postprocess_rows
+                      << " rendering_vfx_profiling_backend_timing_rows="
+                      << rendering_vfx_profiling_probe.backend_timing_rows
+                      << " rendering_vfx_profiling_crash_telemetry_handoff_rows="
+                      << rendering_vfx_profiling_probe.crash_telemetry_handoff_rows
+                      << " rendering_vfx_profiling_host_validated_backends="
+                      << rendering_vfx_profiling_probe.host_validated_backends
+                      << " rendering_vfx_profiling_requires_metal_host_evidence="
+                      << (rendering_vfx_profiling_probe.requires_metal_host_evidence ? 1 : 0)
+                      << " rendering_vfx_profiling_metal_host_evidence="
+                      << (rendering_vfx_profiling_probe.has_metal_host_evidence ? 1 : 0)
+                      << " rendering_vfx_profiling_diagnostics=" << rendering_vfx_profiling_probe.diagnostics
+                      << " rendering_vfx_profiling_replay_hash=" << rendering_vfx_profiling_probe.replay_hash << '\n';
+            return 19;
         }
         if (options.require_scene_collision_package && !collision_package.ready) {
             return 3;

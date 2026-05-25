@@ -2294,6 +2294,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-postprocess
             --require-postprocess-depth-input
             --require-renderer-quality-gates
+            --require-rendering-vfx-profiling
             --require-playable-3d-slice
             --require-native-ui-overlay
             --require-visible-3d-production-proof
@@ -2313,6 +2314,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             MK_runtime
             MK_runtime_rhi
             MK_runtime_scene
+            MK_renderer
             MK_scene
             MK_scene_renderer
             MK_ui
