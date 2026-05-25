@@ -68,9 +68,9 @@ void probe_destroy(void* user_data) noexcept {
 } // namespace
 
 extern "C" MK_EDITOR_GAME_MODULE_DRIVER_PROBE_EXPORT mirakana::editor::EditorGameModuleDriverApi
-mirakana_create_editor_game_module_driver_v1() {
+mirakana_create_editor_game_module_driver() {
     mirakana::editor::EditorGameModuleDriverApi api;
-    api.abi_version = mirakana::editor::editor_game_module_driver_abi_version_v1;
+    api.abi_version = mirakana::editor::editor_game_module_driver_abi_version;
     api.user_data = &probe_state();
     api.begin = probe_begin;
     api.tick = probe_tick;

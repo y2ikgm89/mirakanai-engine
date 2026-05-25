@@ -4732,9 +4732,9 @@ class EditorState {
             return;
         }
 
-        imgui_text_unformatted(mirakana::editor::editor_resources_capture_execution_contract_v1());
+        imgui_text_unformatted(mirakana::editor::editor_resources_capture_execution_contract());
         imgui_text_unformatted(
-            mirakana::editor::editor_resources_capture_operator_validated_launch_workflow_contract_v1());
+            mirakana::editor::editor_resources_capture_operator_validated_launch_workflow_contract());
 
 #if defined(_WIN32)
         if (ImGui::BeginTable("Resource Capture Execution Evidence", 8,
@@ -5108,7 +5108,7 @@ class EditorState {
         desc.id = "reviewed_driver";
         desc.label = "Reviewed Game Module Driver";
         desc.module_path = game_module_driver_path_.data();
-        desc.factory_symbol = std::string(mirakana::editor::editor_game_module_driver_factory_symbol_v1);
+        desc.factory_symbol = std::string(mirakana::editor::editor_game_module_driver_factory_symbol);
         desc.play_session_active = play_session_.active();
         desc.driver_already_loaded = game_module_driver_ != nullptr;
         return desc;
@@ -5123,7 +5123,7 @@ class EditorState {
         desc.id = "reviewed_driver";
         desc.label = "Reviewed Game Module Driver Reload";
         desc.module_path = game_module_driver_path_.data();
-        desc.factory_symbol = std::string(mirakana::editor::editor_game_module_driver_factory_symbol_v1);
+        desc.factory_symbol = std::string(mirakana::editor::editor_game_module_driver_factory_symbol);
         desc.driver_loaded = game_module_driver_ != nullptr;
         desc.play_session_active = play_session_.active();
         return desc;
@@ -5270,9 +5270,9 @@ class EditorState {
         ImGui::TextDisabled(
             "Reload transaction validation recipe evidence (reviewed commands; editor does not run the recipe here)");
         // Retained agent needle (check-ai-integration):
-        // ge.editor.editor_game_module_driver_reload_transaction_recipe_evidence.v1
+        // ge.editor.editor_game_module_driver_reload_transaction_recipe_evidence
         imgui_text_unformatted(
-            mirakana::editor::editor_game_module_driver_reload_transaction_recipe_evidence_contract_v1());
+            mirakana::editor::editor_game_module_driver_reload_transaction_recipe_evidence_contract());
         // Retained agent needle (check-ai-integration): dev-windows-editor-game-module-driver-load-tests (reviewed argv
         // only)
         ImGui::TextWrapped("Validation recipe: %s", reload_transaction_recipe_evidence.validation_recipe_id.c_str());

@@ -548,17 +548,22 @@ Candidate 3 evidence:
 **Files:**
 
 - Modify: `editor/core/include/mirakana/editor/game_module_driver.hpp`
+- Modify: `editor/core/include/mirakana/editor/resource_panel.hpp`
+- Modify: `editor/core/src/game_module_driver.cpp`
+- Modify: `editor/core/src/resource_panel.cpp`
 - Modify: `editor/src/main.cpp`
+- Modify: `tests/fixtures/editor_game_module_driver_probe.cpp`
 - Modify: `tests/unit/editor_game_module_driver_load_tests.cpp`
 - Modify: `tests/unit/editor_core_tests.cpp`
-- Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
+- Modify: `engine/agent/manifest.fragments/014-gameCodeGuidance.json`
 - Modify/generated: `engine/agent/manifest.json`
 - Modify: `tools/check-ai-integration-040-agent-surfaces.ps1`
+- Modify: `tools/check-ai-integration-050-game-generation.ps1`
 - Modify: `tools/check-json-contracts-010-engine-manifest.ps1`
 - Modify: `docs/architecture.md`, `docs/editor.md`, `docs/current-capabilities.md`, `docs/legal-and-licensing.md`, `docs/testing.md`
 - Modify: `docs/specs/2026-05-11-editor-game-module-driver-hot-reload-session-state-machine-v1.md` only where current ABI guidance must name the canonical symbol
 
-- [ ] **Step 1: Canonicalize editor ABI names**
+- [x] **Step 1: Canonicalize editor ABI names**
 
 Apply these renames:
 
@@ -572,15 +577,27 @@ editor_game_module_driver_host_session_dll_barriers_contract_v1 -> editor_game_m
 editor_game_module_driver_reload_transaction_recipe_evidence_contract_v1 -> editor_game_module_driver_reload_transaction_recipe_evidence_contract
 mirakana_create_editor_game_module_driver_v1 -> mirakana_create_editor_game_module_driver
 GameEngine.EditorGameModuleDriver.v1 -> GameEngine.EditorGameModuleDriver
+ge.editor.editor_game_module_driver_host_session.v1 -> ge.editor.editor_game_module_driver_host_session
+ge.editor.editor_game_module_driver_host_session_dll_barriers.v1 -> ge.editor.editor_game_module_driver_host_session_dll_barriers
+ge.editor.editor_game_module_driver_reload_transaction_recipe_evidence.v1 -> ge.editor.editor_game_module_driver_reload_transaction_recipe_evidence
 ```
 
 Keep the numeric `editor_game_module_driver_abi_version` value at `1`.
 
-- [ ] **Step 2: Update probe/export tests and docs**
+- [x] **Step 2: Update probe/export tests and docs**
 
 Update all probe/load tests to resolve `mirakana_create_editor_game_module_driver`. Update current docs to describe the canonical factory symbol and numeric ABI version separately.
 
-- [ ] **Step 3: Run editor ABI tests**
+Also canonicalize editor resource capture retained contract helpers in the same owner slice:
+
+```text
+editor_resources_capture_execution_contract_v1 -> editor_resources_capture_execution_contract
+editor_resources_capture_operator_validated_launch_workflow_contract_v1 -> editor_resources_capture_operator_validated_launch_workflow_contract
+ge.editor.resources_capture_execution.v1 -> ge.editor.resources_capture_execution
+ge.editor.resources_capture_operator_validated_launch_workflow.v1 -> ge.editor.resources_capture_operator_validated_launch_workflow
+```
+
+- [x] **Step 3: Run editor ABI tests**
 
 Run:
 
@@ -592,6 +609,14 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
 ```
 
 Expected: editor-core, dynamic probe, and owning manifest/static checks pass.
+
+Candidate 4 evidence:
+
+- TDD RED: after switching editor ABI/resource-capture tests to canonical names first, `MK_editor_core_tests` build failed on missing unsuffixed `mirakana::editor` constants/functions.
+- Focused build passed for `MK_editor_core_tests` and `MK_editor_game_module_driver_load_tests`.
+- Focused CTest passed 2/2 for `MK_editor_core_tests` and `MK_editor_game_module_driver_load_tests`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` passed.
 
 - [ ] **Step 4: Commit editor ABI canonicalization**
 

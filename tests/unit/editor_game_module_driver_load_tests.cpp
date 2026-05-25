@@ -40,14 +40,14 @@ MK_TEST("editor game module driver loads real dynamic probe and ticks isolated s
     desc.id = "reviewed_dynamic_probe";
     desc.label = "Reviewed Dynamic Probe";
     desc.module_path = probe_path.string();
-    desc.factory_symbol = std::string(mirakana::editor::editor_game_module_driver_factory_symbol_v1);
-    MK_REQUIRE(desc.factory_symbol == "mirakana_create_editor_game_module_driver_v1");
+    desc.factory_symbol = std::string(mirakana::editor::editor_game_module_driver_factory_symbol);
+    MK_REQUIRE(desc.factory_symbol == "mirakana_create_editor_game_module_driver");
 
     const auto load_model = mirakana::editor::make_editor_game_module_driver_load_model(desc);
     MK_REQUIRE(load_model.status == mirakana::editor::EditorGameModuleDriverStatus::ready);
     MK_REQUIRE(load_model.can_load);
     MK_REQUIRE(load_model.unsupported_claims.empty());
-    MK_REQUIRE(load_model.abi_contract == mirakana::editor::editor_game_module_driver_abi_name_v1);
+    MK_REQUIRE(load_model.abi_contract == mirakana::editor::editor_game_module_driver_abi_name);
 
     auto load_result = mirakana::load_dynamic_library(probe_path);
     MK_REQUIRE(load_result.status == mirakana::DynamicLibraryLoadStatus::loaded);
@@ -75,7 +75,7 @@ MK_TEST("editor game module driver loads real dynamic probe and ticks isolated s
     MK_REQUIRE(destroy_count() == 0);
 
     const auto factory_symbol = mirakana::resolve_dynamic_library_symbol(
-        load_result.library, mirakana::editor::editor_game_module_driver_factory_symbol_v1);
+        load_result.library, mirakana::editor::editor_game_module_driver_factory_symbol);
     MK_REQUIRE(factory_symbol.status == mirakana::DynamicLibrarySymbolStatus::resolved);
     MK_REQUIRE(factory_symbol.address != nullptr);
     const auto factory = reinterpret_cast<mirakana::editor::EditorGameModuleDriverFactoryFn>(factory_symbol.address);
@@ -122,7 +122,7 @@ MK_TEST("editor game module driver stopped state reload transaction reloads prob
     desc.id = "reviewed_dynamic_probe_reload_tx";
     desc.label = "Reviewed Dynamic Probe Reload Tx";
     desc.module_path = probe_path.string();
-    desc.factory_symbol = std::string(mirakana::editor::editor_game_module_driver_factory_symbol_v1);
+    desc.factory_symbol = std::string(mirakana::editor::editor_game_module_driver_factory_symbol);
 
     const auto assert_ready_load_model = [&] {
         const auto load_model = mirakana::editor::make_editor_game_module_driver_load_model(desc);
@@ -156,7 +156,7 @@ MK_TEST("editor game module driver stopped state reload transaction reloads prob
         MK_REQUIRE(destroy_count() == 0);
 
         const auto factory_symbol = mirakana::resolve_dynamic_library_symbol(
-            library, mirakana::editor::editor_game_module_driver_factory_symbol_v1);
+            library, mirakana::editor::editor_game_module_driver_factory_symbol);
         MK_REQUIRE(factory_symbol.status == mirakana::DynamicLibrarySymbolStatus::resolved);
         const auto factory =
             reinterpret_cast<mirakana::editor::EditorGameModuleDriverFactoryFn>(factory_symbol.address);
@@ -221,7 +221,7 @@ MK_TEST("editor game module driver paired dynamic library handles keep module re
     MK_REQUIRE(destroy_count_primary() == 0);
 
     const auto factory_symbol = mirakana::resolve_dynamic_library_symbol(
-        first.library, mirakana::editor::editor_game_module_driver_factory_symbol_v1);
+        first.library, mirakana::editor::editor_game_module_driver_factory_symbol);
     MK_REQUIRE(factory_symbol.status == mirakana::DynamicLibrarySymbolStatus::resolved);
     const auto factory = reinterpret_cast<mirakana::editor::EditorGameModuleDriverFactoryFn>(factory_symbol.address);
 

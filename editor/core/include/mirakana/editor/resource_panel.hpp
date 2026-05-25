@@ -128,14 +128,14 @@ struct EditorResourcePanelModel {
 
 /// Retained MK_ui / agent contract root for `resources.capture_execution` (Editor Resource Capture Execution Evidence
 /// v1).
-[[nodiscard]] constexpr std::string_view editor_resources_capture_execution_contract_v1() noexcept {
-    return std::string_view{"ge.editor.resources_capture_execution.v1"};
+[[nodiscard]] constexpr std::string_view editor_resources_capture_execution_contract() noexcept {
+    return std::string_view{"ge.editor.resources_capture_execution"};
 }
 
 /// Retained MK_ui contract for operator-confirmed PIX helper launch (Resources capture execution stream).
 [[nodiscard]] constexpr std::string_view
-editor_resources_capture_operator_validated_launch_workflow_contract_v1() noexcept {
-    return std::string_view{"ge.editor.resources_capture_operator_validated_launch_workflow.v1"};
+editor_resources_capture_operator_validated_launch_workflow_contract() noexcept {
+    return std::string_view{"ge.editor.resources_capture_operator_validated_launch_workflow"};
 }
 
 } // namespace mirakana::editor

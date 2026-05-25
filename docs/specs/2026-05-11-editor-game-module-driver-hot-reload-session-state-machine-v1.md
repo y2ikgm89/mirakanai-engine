@@ -11,7 +11,7 @@ Current implementation truth lives in editor/core tests and `engine/agent/manife
 Define a **deterministic, host-independent session phase model** for combining:
 
 1. Whether **Play-In-Editor** is active (`play_session_active`).
-2. Whether a **`GameEngine.EditorGameModuleDriver.v1`** dynamic module is **resident** (`driver_loaded`: editor holds `DynamicLibrary` + `IEditorPlaySessionDriver`).
+2. Whether a **`GameEngine.EditorGameModuleDriver`** dynamic module is **resident** (`driver_loaded`: editor holds `DynamicLibrary` + `IEditorPlaySessionDriver`).
 
 This model is the specification backbone for **stopped-state** load / unload / reload reviews (`EditorGameModuleDriverLoadModel`, `EditorGameModuleDriverUnloadModel`, `EditorGameModuleDriverReloadModel`). It explicitly **does not** specify active-session DLL replacement or hot reload while play is running.
 
@@ -45,9 +45,9 @@ Retained rows under root id **`play_in_editor.game_module_driver.session`** expo
 
 - `phase_id` — stable identifier from the table above.
 - `summary` — single-line human summary for operators and AI contracts.
-- `contract_label` — `ge.editor.editor_game_module_driver_host_session.v1`.
+- `contract_label` — `ge.editor.editor_game_module_driver_host_session`.
 - `play_session_active` / `driver_loaded` — boolean diagnostics as `true` / `false` text.
-- `barriers_contract_label` — `ge.editor.editor_game_module_driver_host_session_dll_barriers.v1` (read-only DLL barrier/policy bundle).
+- `barriers_contract_label` — `ge.editor.editor_game_module_driver_host_session_dll_barriers` (read-only DLL barrier/policy bundle).
 - `barrier.play_dll_surface_mutation.status` — `enforced_block_load_unload_reload` while Play-In-Editor is active; `inactive_play_stopped` when play is stopped.
 - `policy.active_session_hot_reload` — `unsupported_no_silent_dll_replacement_mid_play` (no mid-play silent replacement; no operator override in this slice).
 - `policy.stopped_state_reload_scope` — `reload_and_duplicate_load_reviews_require_play_stopped_explicit_paths`.
@@ -59,7 +59,7 @@ Retained rows under root id **`play_in_editor.game_module_driver.session`** expo
 
 ## DLL mutation order guidance (fail-closed slice, 2026-05-11)
 
-`EditorGameModuleDriverHostSessionSnapshot::policy_dll_mutation_order_guidance` is a **stable machine string** summarizing the **canonical operator order** for same-process `GameEngine.EditorGameModuleDriver.v1` residency on Windows-class hosts: finish play, destroy the driver adapter (so DLL exports are not called), release `DynamicLibrary` handles, then reload or load. It does **not** authorize mid-play mutation; barriers remain as in the phase table above.
+`EditorGameModuleDriverHostSessionSnapshot::policy_dll_mutation_order_guidance` is a **stable machine string** summarizing the **canonical operator order** for same-process `GameEngine.EditorGameModuleDriver` residency on Windows-class hosts: finish play, destroy the driver adapter (so DLL exports are not called), release `DynamicLibrary` handles, then reload or load. It does **not** authorize mid-play mutation; barriers remain as in the phase table above.
 
 Retained MK_ui row: `play_in_editor.game_module_driver.session.policy.dll_mutation_order_guidance`.
 

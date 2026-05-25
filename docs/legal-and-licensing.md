@@ -75,7 +75,7 @@ AI-generated code and assets still require review. Record substantial AI-generat
 
 ## Editor game module driver and third-party DLL ABI (1.0 scope)
 
-For MIRAIKANAI Engine **1.0**, the editor **Play-In-Editor** path may load a **same-repository, same-engine-build** native module that implements `GameEngine.EditorGameModuleDriver.v1` and the reviewed factory export (`mirakana_create_editor_game_module_driver_v1`). That contract is an **internal interchange** for AI-operable workflows and diagnostics; it is **not** a supported **stable third-party binary ABI** for shipping arbitrary out-of-tree game or middleware DLLs against multiple engine minors or toolchains.
+For MIRAIKANAI Engine **1.0**, the editor **Play-In-Editor** path may load a **same-repository, same-engine-build** native module that implements `GameEngine.EditorGameModuleDriver` and the reviewed factory export (`mirakana_create_editor_game_module_driver`). That contract is an **internal interchange** for AI-operable workflows and diagnostics; it is **not** a supported **stable third-party binary ABI** for shipping arbitrary out-of-tree game or middleware DLLs against multiple engine minors or toolchains.
 
 A **vendor-stable** editor extension surface would require its own program of work: explicit versioned C (or stable C++) ABI, export surface and calling convention documentation, symbol visibility and MSVC runtime pairing policy, compatibility tests across releases, and distribution/legal packaging for third-party binaries. None of that is in the **1.0 ready claim** for this repository. Future releases may introduce a separate SDK plan; until then, treat out-of-tree editor DLLs as **unsupported** for compatibility guarantees.
 

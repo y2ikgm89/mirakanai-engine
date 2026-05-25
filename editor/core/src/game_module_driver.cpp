@@ -359,7 +359,7 @@ mirakana::ui::UiDocument make_editor_game_module_driver_reload_transaction_recip
     const mirakana::ui::ElementId root{"play_in_editor.game_module_driver.reload_transaction_recipe_evidence"};
 
     append_label(document, root, "play_in_editor.game_module_driver.reload_transaction_recipe_evidence.contract_label",
-                 std::string{editor_game_module_driver_reload_transaction_recipe_evidence_contract_v1()});
+                 std::string{editor_game_module_driver_reload_transaction_recipe_evidence_contract()});
     append_label(document, root,
                  "play_in_editor.game_module_driver.reload_transaction_recipe_evidence.validation_recipe_id",
                  model.validation_recipe_id);
@@ -383,10 +383,10 @@ EditorGameModuleDriverLoadModel make_editor_game_module_driver_load_model(const 
     model.id = sanitize_element_id(desc.id);
     model.label = desc.label.empty() ? model.id : sanitize_text(desc.label);
     model.module_path = sanitize_text(desc.module_path);
-    model.factory_symbol = desc.factory_symbol.empty() ? std::string(editor_game_module_driver_factory_symbol_v1)
+    model.factory_symbol = desc.factory_symbol.empty() ? std::string(editor_game_module_driver_factory_symbol)
                                                        : sanitize_text(desc.factory_symbol);
-    model.abi_contract = std::string(editor_game_module_driver_abi_name_v1);
-    model.abi_version = editor_game_module_driver_abi_version_v1;
+    model.abi_contract = std::string(editor_game_module_driver_abi_name);
+    model.abi_version = editor_game_module_driver_abi_version;
 
     if (!is_safe_absolute_module_path(desc.module_path)) {
         append_blocker(model, "absolute-module-path-required",
@@ -517,7 +517,7 @@ make_editor_game_module_driver_reload_model(const EditorGameModuleDriverReloadDe
 
 EditorGameModuleDriverCreateResult make_editor_game_module_driver_from_api(EditorGameModuleDriverApi api) {
     EditorGameModuleDriverCreateResult result;
-    if (api.abi_version != editor_game_module_driver_abi_version_v1) {
+    if (api.abi_version != editor_game_module_driver_abi_version) {
         append_blocker(result, "invalid-abi-version",
                        "game module driver function table uses an unsupported ABI version");
     }
@@ -697,7 +697,7 @@ make_editor_game_module_driver_host_session_ui_model(const EditorGameModuleDrive
     add_or_throw(document, make_root("play_in_editor.game_module_driver.session", mirakana::ui::SemanticRole::panel));
     const mirakana::ui::ElementId root{"play_in_editor.game_module_driver.session"};
     append_label(document, root, "play_in_editor.game_module_driver.session.contract_label",
-                 std::string(editor_game_module_driver_host_session_contract_v1));
+                 std::string(editor_game_module_driver_host_session_contract));
     append_label(document, root, "play_in_editor.game_module_driver.session.phase_id", snapshot.phase_id);
     append_label(document, root, "play_in_editor.game_module_driver.session.summary", snapshot.summary);
     append_label(document, root, "play_in_editor.game_module_driver.session.play_session_active",
@@ -705,7 +705,7 @@ make_editor_game_module_driver_host_session_ui_model(const EditorGameModuleDrive
     append_label(document, root, "play_in_editor.game_module_driver.session.driver_loaded",
                  snapshot.driver_loaded ? std::string{"true"} : std::string{"false"});
     append_label(document, root, "play_in_editor.game_module_driver.session.barriers_contract_label",
-                 std::string(editor_game_module_driver_host_session_dll_barriers_contract_v1));
+                 std::string(editor_game_module_driver_host_session_dll_barriers_contract));
     append_label(document, root, "play_in_editor.game_module_driver.session.barrier.play_dll_surface_mutation.status",
                  snapshot.barrier_play_dll_surface_mutation_status);
     append_label(document, root, "play_in_editor.game_module_driver.session.policy.active_session_hot_reload",

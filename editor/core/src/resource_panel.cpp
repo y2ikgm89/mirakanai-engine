@@ -234,13 +234,13 @@ void append_capture_execution_rows(mirakana::ui::UiDocument& document, const mir
     const std::string section_id = "resources.capture_execution";
     add_or_throw(document, make_child(section_id, root, mirakana::ui::SemanticRole::list));
     const mirakana::ui::ElementId section_root{section_id};
-    // Retained agent needle (check-ai-integration): ge.editor.resources_capture_execution.v1
+    // Retained agent needle (check-ai-integration): ge.editor.resources_capture_execution
     append_label(document, section_root, "resources.capture_execution.contract_label",
-                 std::string{editor_resources_capture_execution_contract_v1()});
-    // Retained agent needle: ge.editor.resources_capture_operator_validated_launch_workflow.v1
+                 std::string{editor_resources_capture_execution_contract()});
+    // Retained agent needle: ge.editor.resources_capture_operator_validated_launch_workflow
     append_label(document, section_root,
                  "resources.capture_execution.operator_validated_launch_workflow_contract_label",
-                 std::string{editor_resources_capture_operator_validated_launch_workflow_contract_v1()});
+                 std::string{editor_resources_capture_operator_validated_launch_workflow_contract()});
     for (const auto& row : rows) {
         append_capture_execution(document, section_root, section_id, row);
     }

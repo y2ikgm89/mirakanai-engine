@@ -14,10 +14,9 @@
 
 namespace mirakana::editor {
 
-inline constexpr std::string_view editor_game_module_driver_abi_name_v1{"GameEngine.EditorGameModuleDriver.v1"};
-inline constexpr std::uint32_t editor_game_module_driver_abi_version_v1{1U};
-inline constexpr std::string_view editor_game_module_driver_factory_symbol_v1{
-    "mirakana_create_editor_game_module_driver_v1"};
+inline constexpr std::string_view editor_game_module_driver_abi_name{"GameEngine.EditorGameModuleDriver"};
+inline constexpr std::uint32_t editor_game_module_driver_abi_version{1U};
+inline constexpr std::string_view editor_game_module_driver_factory_symbol{"mirakana_create_editor_game_module_driver"};
 
 using EditorGameModuleDriverBeginCallback = void (*)(void* user_data, Scene* scene);
 using EditorGameModuleDriverTickCallback = void (*)(void* user_data, Scene* scene,
@@ -26,7 +25,7 @@ using EditorGameModuleDriverEndCallback = void (*)(void* user_data, Scene* scene
 using EditorGameModuleDriverDestroyCallback = void (*)(void* user_data) noexcept;
 
 struct EditorGameModuleDriverApi {
-    std::uint32_t abi_version{editor_game_module_driver_abi_version_v1};
+    std::uint32_t abi_version{editor_game_module_driver_abi_version};
     void* user_data{nullptr};
     EditorGameModuleDriverBeginCallback begin{nullptr};
     EditorGameModuleDriverTickCallback tick{nullptr};
@@ -51,10 +50,10 @@ struct EditorGameModuleDriverContractMetadataRow {
 };
 
 struct EditorGameModuleDriverContractMetadataModel {
-    std::string id{"editor_game_module_driver_contract_v1"};
-    std::string abi_contract{std::string(editor_game_module_driver_abi_name_v1)};
-    std::uint32_t abi_version{editor_game_module_driver_abi_version_v1};
-    std::string factory_symbol{std::string(editor_game_module_driver_factory_symbol_v1)};
+    std::string id{"editor_game_module_driver_contract"};
+    std::string abi_contract{std::string(editor_game_module_driver_abi_name)};
+    std::uint32_t abi_version{editor_game_module_driver_abi_version};
+    std::string factory_symbol{std::string(editor_game_module_driver_factory_symbol)};
     std::vector<EditorGameModuleDriverContractMetadataRow> rows;
     bool same_engine_build_required{true};
     bool stable_third_party_abi_supported{false};
@@ -76,7 +75,7 @@ struct EditorGameModuleDriverLoadDesc {
     std::string id;
     std::string label;
     std::string module_path;
-    std::string factory_symbol{std::string(editor_game_module_driver_factory_symbol_v1)};
+    std::string factory_symbol{std::string(editor_game_module_driver_factory_symbol)};
     /// When true, load review blocks until Play-In-Editor stops (matches shell gate).
     bool play_session_active{false};
     /// When true, load review blocks because a driver is already loaded (use reload/unload first).
@@ -99,7 +98,7 @@ struct EditorGameModuleDriverLoadModel {
     std::string module_path;
     std::string factory_symbol;
     std::string abi_contract;
-    std::uint32_t abi_version{editor_game_module_driver_abi_version_v1};
+    std::uint32_t abi_version{editor_game_module_driver_abi_version};
     EditorGameModuleDriverStatus status{EditorGameModuleDriverStatus::blocked};
     std::string status_label;
     bool can_load{false};
@@ -113,7 +112,7 @@ struct EditorGameModuleDriverReloadDesc {
     std::string id;
     std::string label;
     std::string module_path;
-    std::string factory_symbol{std::string(editor_game_module_driver_factory_symbol_v1)};
+    std::string factory_symbol{std::string(editor_game_module_driver_factory_symbol)};
     bool driver_loaded{false};
     bool play_session_active{false};
     bool request_hot_reload{false};
@@ -135,7 +134,7 @@ struct EditorGameModuleDriverReloadModel {
     std::string module_path;
     std::string factory_symbol;
     std::string abi_contract;
-    std::uint32_t abi_version{editor_game_module_driver_abi_version_v1};
+    std::uint32_t abi_version{editor_game_module_driver_abi_version};
     EditorGameModuleDriverStatus status{EditorGameModuleDriverStatus::blocked};
     std::string status_label;
     bool can_reload{false};
@@ -146,10 +145,10 @@ struct EditorGameModuleDriverReloadModel {
 };
 
 struct EditorGameModuleDriverCtestProbeEvidenceModel {
-    std::string id{"editor_game_module_driver_ctest_probe_evidence_v1"};
+    std::string id{"editor_game_module_driver_ctest_probe_evidence"};
     std::string probe_shared_library_target{"MK_editor_game_module_driver_probe"};
     std::string ctest_executable_target{"MK_editor_game_module_driver_load_tests"};
-    std::string factory_symbol{std::string(editor_game_module_driver_factory_symbol_v1)};
+    std::string factory_symbol{std::string(editor_game_module_driver_factory_symbol)};
     std::string host_scope_note{
         "Windows-only CTest target resolves the probe DLL via MK_EDITOR_GAME_MODULE_DRIVER_PROBE_PATH"};
     std::string editor_boundary_note{
@@ -157,7 +156,7 @@ struct EditorGameModuleDriverCtestProbeEvidenceModel {
 };
 
 struct EditorGameModuleDriverReloadTransactionRecipeEvidenceModel {
-    std::string id{"editor_game_module_driver_reload_transaction_recipe_evidence_v1"};
+    std::string id{"editor_game_module_driver_reload_transaction_recipe_evidence"};
     std::string validation_recipe_id;
     std::string host_gate_acknowledgement_id;
     std::string reviewed_dry_run_command;
@@ -166,8 +165,8 @@ struct EditorGameModuleDriverReloadTransactionRecipeEvidenceModel {
 };
 
 [[nodiscard]] constexpr std::string_view
-editor_game_module_driver_reload_transaction_recipe_evidence_contract_v1() noexcept {
-    return "ge.editor.editor_game_module_driver_reload_transaction_recipe_evidence.v1";
+editor_game_module_driver_reload_transaction_recipe_evidence_contract() noexcept {
+    return "ge.editor.editor_game_module_driver_reload_transaction_recipe_evidence";
 }
 
 struct EditorGameModuleDriverUnloadDesc {
@@ -180,8 +179,8 @@ struct EditorGameModuleDriverUnloadDesc {
 struct EditorGameModuleDriverUnloadModel {
     std::string id;
     std::string label;
-    std::string abi_contract{std::string(editor_game_module_driver_abi_name_v1)};
-    std::uint32_t abi_version{editor_game_module_driver_abi_version_v1};
+    std::string abi_contract{std::string(editor_game_module_driver_abi_name)};
+    std::uint32_t abi_version{editor_game_module_driver_abi_version};
     EditorGameModuleDriverStatus status{EditorGameModuleDriverStatus::blocked};
     std::string status_label;
     bool can_unload{false};
@@ -190,10 +189,10 @@ struct EditorGameModuleDriverUnloadModel {
     std::vector<std::string> diagnostics;
 };
 
-inline constexpr std::string_view editor_game_module_driver_host_session_contract_v1{
-    "ge.editor.editor_game_module_driver_host_session.v1"};
-inline constexpr std::string_view editor_game_module_driver_host_session_dll_barriers_contract_v1{
-    "ge.editor.editor_game_module_driver_host_session_dll_barriers.v1"};
+inline constexpr std::string_view editor_game_module_driver_host_session_contract{
+    "ge.editor.editor_game_module_driver_host_session"};
+inline constexpr std::string_view editor_game_module_driver_host_session_dll_barriers_contract{
+    "ge.editor.editor_game_module_driver_host_session_dll_barriers"};
 
 enum class EditorGameModuleDriverHostSessionPhase : std::uint8_t {
     idle_no_driver_play_stopped,

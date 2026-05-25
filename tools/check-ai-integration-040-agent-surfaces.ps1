@@ -564,9 +564,9 @@ $editorGameModuleDriverLoadChecks = @(
         Path = "editor/core/include/mirakana/editor/game_module_driver.hpp"
         Needles = @(
             "EditorGameModuleDriverApi",
-            "GameEngine.EditorGameModuleDriver.v1",
-            "editor_game_module_driver_factory_symbol_v1",
-            "mirakana_create_editor_game_module_driver_v1",
+            "GameEngine.EditorGameModuleDriver",
+            "editor_game_module_driver_factory_symbol",
+            "mirakana_create_editor_game_module_driver",
             "EditorGameModuleDriverContractMetadataRow",
             "EditorGameModuleDriverContractMetadataModel",
             "EditorGameModuleDriverLoadDesc",
@@ -586,8 +586,8 @@ $editorGameModuleDriverLoadChecks = @(
             "EditorGameModuleDriverHostSessionSnapshot",
             "make_editor_game_module_driver_host_session_snapshot",
             "make_editor_game_module_driver_host_session_ui_model",
-            "editor_game_module_driver_host_session_contract_v1",
-            "editor_game_module_driver_host_session_dll_barriers_contract_v1"
+            "editor_game_module_driver_host_session_contract",
+            "editor_game_module_driver_host_session_dll_barriers_contract"
         )
     },
     @{
@@ -632,7 +632,7 @@ $editorGameModuleDriverLoadChecks = @(
             "make_editor_game_module_driver_ctest_probe_evidence_model",
             "make_editor_game_module_driver_reload_transaction_recipe_evidence_model",
             "dev-windows-editor-game-module-driver-load-tests",
-            "ge.editor.editor_game_module_driver_reload_transaction_recipe_evidence.v1",
+            "ge.editor.editor_game_module_driver_reload_transaction_recipe_evidence",
             "MK_editor_game_module_driver_probe",
             "game_module_driver_library_",
             "DLL mutation order guidance:",
@@ -642,7 +642,7 @@ $editorGameModuleDriverLoadChecks = @(
     @{
         Path = "tests/fixtures/editor_game_module_driver_probe.cpp"
         Needles = @(
-            "mirakana_create_editor_game_module_driver_v1",
+            "mirakana_create_editor_game_module_driver",
             "MK_editor_game_module_driver_probe_reset",
             "MK_editor_game_module_driver_probe_tick_count",
             "EditorGameModuleDriverApi"
@@ -654,7 +654,7 @@ $editorGameModuleDriverLoadChecks = @(
             "editor game module driver loads real dynamic probe and ticks isolated session",
             "MK_EDITOR_GAME_MODULE_DRIVER_PROBE_PATH",
             "MK_editor_game_module_driver_probe_reset",
-            "mirakana_create_editor_game_module_driver_v1",
+            "mirakana_create_editor_game_module_driver",
             "make_editor_game_module_driver_from_symbol"
         )
     },
@@ -690,7 +690,7 @@ $editorGameModuleDriverLoadChecks = @(
             "play_in_editor.game_module_driver.unload",
             "play_in_editor.game_module_driver.ctest_probe_evidence",
             "play_in_editor.game_module_driver.session",
-            "ge.editor.editor_game_module_driver_host_session.v1",
+            "ge.editor.editor_game_module_driver_host_session",
             "stable third-party ABI"
         )
     },
@@ -714,7 +714,7 @@ $editorGameModuleDriverLoadChecks = @(
             "Load Game Module Driver",
             "Reload Game Module Driver",
             "Unload Game Module Driver",
-            "mirakana_create_editor_game_module_driver_v1"
+            "mirakana_create_editor_game_module_driver"
         )
     },
     @{
@@ -733,7 +733,7 @@ $editorGameModuleDriverLoadChecks = @(
             "play_in_editor.game_module_driver.ctest_probe_evidence",
             "Load Game Module Driver",
             "Reload Game Module Driver",
-            "mirakana_create_editor_game_module_driver_v1"
+            "mirakana_create_editor_game_module_driver"
         )
     },
     @{
@@ -751,7 +751,7 @@ $editorGameModuleDriverLoadChecks = @(
             "play_in_editor.game_module_driver.contract",
             "Editor Game Module Driver CTest Probe Evidence UI v1",
             "play_in_editor.game_module_driver.ctest_probe_evidence",
-            "mirakana_create_editor_game_module_driver_v1"
+            "mirakana_create_editor_game_module_driver"
         )
     },
     @{
@@ -779,7 +779,7 @@ $editorGameModuleDriverLoadChecks = @(
         Path = "engine/agent/manifest.json"
         Needles = @(
             "currentEditorGameModuleDriverLoad",
-            "GameEngine.EditorGameModuleDriver.v1",
+            "GameEngine.EditorGameModuleDriver",
             "play_in_editor.game_module_driver",
             "play_in_editor.game_module_driver.reload",
             "play_in_editor.game_module_driver.contract",

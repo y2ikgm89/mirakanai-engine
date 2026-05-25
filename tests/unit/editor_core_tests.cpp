@@ -3845,7 +3845,7 @@ void module_driver_destroy(void* user_data) noexcept {
 [[nodiscard]] mirakana::editor::EditorGameModuleDriverApi
 make_test_game_module_driver_api(FunctionTableDriverState& state) {
     mirakana::editor::EditorGameModuleDriverApi api;
-    api.abi_version = mirakana::editor::editor_game_module_driver_abi_version_v1;
+    api.abi_version = mirakana::editor::editor_game_module_driver_abi_version;
     api.user_data = &state;
     api.begin = module_driver_begin;
     api.tick = module_driver_tick;
@@ -3891,9 +3891,9 @@ MK_TEST("editor play in editor gameplay driver mutates only isolated simulation 
 }
 
 MK_TEST("editor game module function table driver mutates only isolated simulation scene") {
-    MK_REQUIRE(mirakana::editor::editor_game_module_driver_abi_name_v1 == "GameEngine.EditorGameModuleDriver.v1");
-    MK_REQUIRE(mirakana::editor::editor_game_module_driver_factory_symbol_v1 ==
-               "mirakana_create_editor_game_module_driver_v1");
+    MK_REQUIRE(mirakana::editor::editor_game_module_driver_abi_name == "GameEngine.EditorGameModuleDriver");
+    MK_REQUIRE(mirakana::editor::editor_game_module_driver_factory_symbol ==
+               "mirakana_create_editor_game_module_driver");
 
     mirakana::Scene scene("Editor Scene");
     const auto player = scene.create_node("Player");
@@ -3933,7 +3933,7 @@ MK_TEST("editor game module driver rejects invalid function tables") {
     auto api = make_test_game_module_driver_api(state);
 
     auto invalid_abi = api;
-    invalid_abi.abi_version = mirakana::editor::editor_game_module_driver_abi_version_v1 + 1U;
+    invalid_abi.abi_version = mirakana::editor::editor_game_module_driver_abi_version + 1U;
     const auto invalid_abi_result = mirakana::editor::make_editor_game_module_driver_from_api(invalid_abi);
     MK_REQUIRE(invalid_abi_result.status == mirakana::editor::EditorGameModuleDriverStatus::blocked);
     MK_REQUIRE(invalid_abi_result.driver == nullptr);
@@ -4002,7 +4002,7 @@ MK_TEST("editor game module driver load model defaults empty factory symbol") {
     const auto model = mirakana::editor::make_editor_game_module_driver_load_model(desc);
     MK_REQUIRE(model.status == mirakana::editor::EditorGameModuleDriverStatus::ready);
     MK_REQUIRE(model.can_load);
-    MK_REQUIRE(model.factory_symbol == mirakana::editor::editor_game_module_driver_factory_symbol_v1);
+    MK_REQUIRE(model.factory_symbol == mirakana::editor::editor_game_module_driver_factory_symbol);
 }
 
 MK_TEST("editor game module driver load model gates active play session and already loaded driver") {
@@ -4066,8 +4066,8 @@ MK_TEST("editor game module driver load ui model keeps retained rows") {
     const auto model = mirakana::editor::make_editor_game_module_driver_load_model(desc);
     MK_REQUIRE(model.status == mirakana::editor::EditorGameModuleDriverStatus::ready);
     MK_REQUIRE(model.can_load);
-    MK_REQUIRE(model.abi_contract == "GameEngine.EditorGameModuleDriver.v1");
-    MK_REQUIRE(model.factory_symbol == mirakana::editor::editor_game_module_driver_factory_symbol_v1);
+    MK_REQUIRE(model.abi_contract == "GameEngine.EditorGameModuleDriver");
+    MK_REQUIRE(model.factory_symbol == mirakana::editor::editor_game_module_driver_factory_symbol);
 
     const auto ui = mirakana::editor::make_editor_game_module_driver_load_ui_model(model);
     MK_REQUIRE(ui.find(mirakana::ui::ElementId{"play_in_editor.game_module_driver"}) != nullptr);
@@ -4092,8 +4092,8 @@ MK_TEST("editor game module driver reload model reviews stopped safe reload") {
     MK_REQUIRE(model.can_reload);
     MK_REQUIRE(model.blocked_by.empty());
     MK_REQUIRE(model.unsupported_claims.empty());
-    MK_REQUIRE(model.factory_symbol == mirakana::editor::editor_game_module_driver_factory_symbol_v1);
-    MK_REQUIRE(model.abi_contract == "GameEngine.EditorGameModuleDriver.v1");
+    MK_REQUIRE(model.factory_symbol == mirakana::editor::editor_game_module_driver_factory_symbol);
+    MK_REQUIRE(model.abi_contract == "GameEngine.EditorGameModuleDriver");
 
     const auto ui = mirakana::editor::make_editor_game_module_driver_reload_ui_model(model);
     MK_REQUIRE(ui.find(mirakana::ui::ElementId{"play_in_editor.game_module_driver.reload"}) != nullptr);
@@ -4244,10 +4244,10 @@ MK_TEST("editor game module driver host session snapshot classifies play and res
                    "play_in_editor.game_module_driver.session.policy.stopped_state_reload_scope"}) != nullptr);
     MK_REQUIRE(ui.find(mirakana::ui::ElementId{
                    "play_in_editor.game_module_driver.session.policy.dll_mutation_order_guidance"}) != nullptr);
-    MK_REQUIRE(mirakana::editor::editor_game_module_driver_host_session_contract_v1 ==
-               "ge.editor.editor_game_module_driver_host_session.v1");
-    MK_REQUIRE(mirakana::editor::editor_game_module_driver_host_session_dll_barriers_contract_v1 ==
-               "ge.editor.editor_game_module_driver_host_session_dll_barriers.v1");
+    MK_REQUIRE(mirakana::editor::editor_game_module_driver_host_session_contract ==
+               "ge.editor.editor_game_module_driver_host_session");
+    MK_REQUIRE(mirakana::editor::editor_game_module_driver_host_session_dll_barriers_contract ==
+               "ge.editor.editor_game_module_driver_host_session_dll_barriers");
 
     const auto ui_play = mirakana::editor::make_editor_game_module_driver_host_session_ui_model(play_driver);
     MK_REQUIRE(ui_play.find(mirakana::ui::ElementId{
@@ -4290,10 +4290,10 @@ MK_TEST("editor game module driver load reload unload models block dll mutation 
 
 MK_TEST("editor game module driver contract metadata documents same engine ABI boundary") {
     const auto model = mirakana::editor::make_editor_game_module_driver_contract_metadata_model();
-    MK_REQUIRE(model.id == "editor_game_module_driver_contract_v1");
-    MK_REQUIRE(model.abi_contract == mirakana::editor::editor_game_module_driver_abi_name_v1);
-    MK_REQUIRE(model.abi_version == mirakana::editor::editor_game_module_driver_abi_version_v1);
-    MK_REQUIRE(model.factory_symbol == mirakana::editor::editor_game_module_driver_factory_symbol_v1);
+    MK_REQUIRE(model.id == "editor_game_module_driver_contract");
+    MK_REQUIRE(model.abi_contract == mirakana::editor::editor_game_module_driver_abi_name);
+    MK_REQUIRE(model.abi_version == mirakana::editor::editor_game_module_driver_abi_version);
+    MK_REQUIRE(model.factory_symbol == mirakana::editor::editor_game_module_driver_factory_symbol);
     MK_REQUIRE(model.same_engine_build_required);
     MK_REQUIRE(!model.stable_third_party_abi_supported);
     MK_REQUIRE(!model.hot_reload_supported);
@@ -4312,7 +4312,7 @@ MK_TEST("editor game module driver contract metadata documents same engine ABI b
     MK_REQUIRE(abi != nullptr);
     MK_REQUIRE(abi->required);
     MK_REQUIRE(abi->supported);
-    MK_REQUIRE(abi->value == "GameEngine.EditorGameModuleDriver.v1");
+    MK_REQUIRE(abi->value == "GameEngine.EditorGameModuleDriver");
 
     const auto* tick = find_row("callback.tick");
     MK_REQUIRE(tick != nullptr);
@@ -4357,10 +4357,10 @@ MK_TEST("editor game module driver contract metadata documents same engine ABI b
 
 MK_TEST("editor game module driver ctest probe evidence ui exposes retained ids") {
     const auto model = mirakana::editor::make_editor_game_module_driver_ctest_probe_evidence_model();
-    MK_REQUIRE(model.id == "editor_game_module_driver_ctest_probe_evidence_v1");
+    MK_REQUIRE(model.id == "editor_game_module_driver_ctest_probe_evidence");
     MK_REQUIRE(model.probe_shared_library_target == "MK_editor_game_module_driver_probe");
     MK_REQUIRE(model.ctest_executable_target == "MK_editor_game_module_driver_load_tests");
-    MK_REQUIRE(model.factory_symbol == mirakana::editor::editor_game_module_driver_factory_symbol_v1);
+    MK_REQUIRE(model.factory_symbol == mirakana::editor::editor_game_module_driver_factory_symbol);
 
     const auto ui = mirakana::editor::make_editor_game_module_driver_ctest_probe_evidence_ui_model(model);
     MK_REQUIRE(ui.find(mirakana::ui::ElementId{"play_in_editor.game_module_driver.ctest_probe_evidence"}) != nullptr);
@@ -4378,11 +4378,11 @@ MK_TEST("editor game module driver ctest probe evidence ui exposes retained ids"
 
 MK_TEST("editor game module driver reload transaction recipe evidence ui exposes retained ids") {
     const auto model = mirakana::editor::make_editor_game_module_driver_reload_transaction_recipe_evidence_model();
-    MK_REQUIRE(model.id == "editor_game_module_driver_reload_transaction_recipe_evidence_v1");
+    MK_REQUIRE(model.id == "editor_game_module_driver_reload_transaction_recipe_evidence");
     MK_REQUIRE(model.validation_recipe_id == "dev-windows-editor-game-module-driver-load-tests");
     MK_REQUIRE(model.host_gate_acknowledgement_id == "windows-msvc-dev-editor-game-module-driver-ctest");
-    MK_REQUIRE(mirakana::editor::editor_game_module_driver_reload_transaction_recipe_evidence_contract_v1() ==
-               "ge.editor.editor_game_module_driver_reload_transaction_recipe_evidence.v1");
+    MK_REQUIRE(mirakana::editor::editor_game_module_driver_reload_transaction_recipe_evidence_contract() ==
+               "ge.editor.editor_game_module_driver_reload_transaction_recipe_evidence");
 
     const auto ui = mirakana::editor::make_editor_game_module_driver_reload_transaction_recipe_evidence_ui_model(model);
     MK_REQUIRE(ui.find(mirakana::ui::ElementId{
@@ -13956,21 +13956,19 @@ MK_TEST("editor resource capture execution evidence reports host owned snapshots
     MK_REQUIRE(unsafe->diagnostic.contains("native handle"));
 
     const auto document = mirakana::editor::make_resource_panel_ui_model(model);
-    // Retained agent needle (check-ai-integration): ge.editor.resources_capture_execution.v1
+    // Retained agent needle (check-ai-integration): ge.editor.resources_capture_execution
     MK_REQUIRE(document.find(mirakana::ui::ElementId{"resources.capture_execution.contract_label"}) != nullptr);
     MK_REQUIRE(document.find(mirakana::ui::ElementId{"resources.capture_execution.contract_label"})->text.label ==
-               std::string{mirakana::editor::editor_resources_capture_execution_contract_v1()});
+               std::string{mirakana::editor::editor_resources_capture_execution_contract()});
     MK_REQUIRE(document.find(mirakana::ui::ElementId{
                    "resources.capture_execution.operator_validated_launch_workflow_contract_label"}) != nullptr);
-    MK_REQUIRE(
-        document
-            .find(mirakana::ui::ElementId{
-                "resources.capture_execution.operator_validated_launch_workflow_contract_label"})
-            ->text.label ==
-        std::string{mirakana::editor::editor_resources_capture_operator_validated_launch_workflow_contract_v1()});
-    MK_REQUIRE(
-        std::string{mirakana::editor::editor_resources_capture_operator_validated_launch_workflow_contract_v1()} ==
-        "ge.editor.resources_capture_operator_validated_launch_workflow.v1");
+    MK_REQUIRE(document
+                   .find(mirakana::ui::ElementId{
+                       "resources.capture_execution.operator_validated_launch_workflow_contract_label"})
+                   ->text.label ==
+               std::string{mirakana::editor::editor_resources_capture_operator_validated_launch_workflow_contract()});
+    MK_REQUIRE(std::string{mirakana::editor::editor_resources_capture_operator_validated_launch_workflow_contract()} ==
+               "ge.editor.resources_capture_operator_validated_launch_workflow");
     MK_REQUIRE(
         document.find(mirakana::ui::ElementId{"resources.capture_execution.pix_gpu_capture.phase"})->text.label ==
         "captured");

@@ -666,8 +666,8 @@ $editorResourceCaptureExecutionChecks = @(
             "resources.capture_execution",
             "resources.capture_execution.contract_label",
             "resources.capture_execution.operator_validated_launch_workflow_contract_label",
-            "ge.editor.resources_capture_execution.v1",
-            "ge.editor.resources_capture_operator_validated_launch_workflow.v1",
+            "ge.editor.resources_capture_execution",
+            "ge.editor.resources_capture_operator_validated_launch_workflow",
             "capture_execution_status_label",
             "capture_execution_phase_code",
             "bound_sanitized_field",
@@ -699,8 +699,8 @@ $editorResourceCaptureExecutionChecks = @(
             "resources.capture_execution.pix_gpu_capture.host_helper_hint",
             "resources.capture_execution.contract_label",
             "resources.capture_execution.operator_validated_launch_workflow_contract_label",
-            "ge.editor.resources_capture_execution.v1",
-            "ge.editor.resources_capture_operator_validated_launch_workflow.v1",
+            "ge.editor.resources_capture_execution",
+            "ge.editor.resources_capture_operator_validated_launch_workflow",
             "unsafe_native_capture"
         )
     },
@@ -713,8 +713,8 @@ $editorResourceCaptureExecutionChecks = @(
             "resources.capture_execution",
             "resources.capture_execution.contract_label",
             "resources.capture_execution.operator_validated_launch_workflow_contract_label",
-            "ge.editor.resources_capture_execution.v1",
-            "ge.editor.resources_capture_operator_validated_launch_workflow.v1",
+            "ge.editor.resources_capture_execution",
+            "ge.editor.resources_capture_operator_validated_launch_workflow",
             "host-owned evidence reporting",
             "Run helper (-SkipLaunch)",
             "Run helper (launch PIX)"
@@ -726,7 +726,7 @@ $editorResourceCaptureExecutionChecks = @(
             "Resource Capture Execution Evidence v1",
             "EditorResourceCaptureExecutionInput",
             "resources.capture_execution",
-            "ge.editor.resources_capture_execution.v1",
+            "ge.editor.resources_capture_execution",
             "host-owned capture execution evidence"
         )
     },
@@ -778,8 +778,8 @@ $editorResourceCaptureExecutionChecks = @(
             "host-owned capture execution evidence rows",
             "EditorResourceCaptureExecutionInput",
             "resources.capture_execution",
-            "ge.editor.resources_capture_execution.v1",
-            "ge.editor.resources_capture_operator_validated_launch_workflow.v1"
+            "ge.editor.resources_capture_execution",
+            "ge.editor.resources_capture_operator_validated_launch_workflow"
         )
     },
     @{
@@ -788,8 +788,8 @@ $editorResourceCaptureExecutionChecks = @(
             "host-owned capture execution evidence rows",
             "EditorResourceCaptureExecutionInput",
             "resources.capture_execution",
-            "ge.editor.resources_capture_execution.v1",
-            "ge.editor.resources_capture_operator_validated_launch_workflow.v1"
+            "ge.editor.resources_capture_execution",
+            "ge.editor.resources_capture_operator_validated_launch_workflow"
         )
     }
 )
