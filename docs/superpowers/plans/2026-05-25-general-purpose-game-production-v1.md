@@ -354,23 +354,35 @@ The milestone itself changes documentation and manifest pointers first. Later ph
 - Create: `engine/runtime/include/mirakana/runtime/addressable_content_streaming.hpp`
 - Create: `engine/runtime/src/addressable_content_streaming.cpp`
 - Modify: `engine/runtime/CMakeLists.txt`
-- Test: `tests/unit/runtime_tests.cpp`
+- Test: `tests/unit/runtime_addressable_content_streaming_tests.cpp`
 
-- [ ] **Step 1: Write failing address/dependency tests**
+- [x] **Step 1: Write failing address/dependency tests**
 
-  Test deterministic address lookup, dependency rows, explicit load handles, explicit release rows, reference counts, budget rejection, and missing dependency diagnostics.
+  Test deterministic address lookup, one-address-per-package-asset rejection, dependency rows, explicit load handles, explicit release rows, reference counts, dependency-cycle root suppression, fail-closed release-underflow diagnostics, budget rejection, and missing dependency diagnostics.
 
-- [ ] **Step 2: Implement addressable value contracts**
+- [x] **Step 2: Implement addressable value contracts**
 
-  Add `RuntimeAddressableAssetId`, `RuntimeAddressableLoadRequest`, `RuntimeAddressableLoadPlan`, `RuntimeAddressableReleaseRequest`, `RuntimeAddressableReleasePlan`, and dependency/refcount diagnostics over existing runtime package/catalog rows.
+  Added `RuntimeAddressableAssetId`, `RuntimeAddressableLoadRequest`, `RuntimeAddressableReleaseRequest`, `RuntimeAddressableContentStreamingRequest`, `RuntimeAddressableContentStreamingPlan`, and dependency/refcount diagnostics over existing runtime package rows through `mirakana::runtime::plan_runtime_addressable_content_streaming`.
 
-- [ ] **Step 3: Keep async execution host-owned**
+- [x] **Step 3: Keep async execution host-owned**
 
-  The production contract may plan asynchronous work, but actual threads, file watching, package reads, renderer residency, and RHI uploads remain behind reviewed host/runtime safe points.
+  The production contract remains value-only and reports `invoked_package_io=0`, `invoked_async_execution=0`, and `committed=0`; actual threads, file watching, package reads, renderer residency, and RHI uploads remain behind reviewed host/runtime safe points.
 
-- [ ] **Step 4: Prove package counters**
+- [x] **Step 4: Prove package counters**
 
-  Add selected package counters for address rows, dependency rows, planned loads, releases, resident byte estimates, and clean diagnostics.
+  Added selected 2D/3D package counters for address rows, dependency rows, planned loads, releases, refcount rows, resident byte estimates, budget-limited rejection diagnostics, host-owned execution boundaries, and clean diagnostics.
+
+**Focused validation evidence:**
+
+```text
+RED: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_addressable_content_streaming_tests; if ($LASTEXITCODE -eq 0) { pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_addressable_content_streaming_tests" }
+  Expected failures: alias rows did not produce invalid_request, and root release underflow left a dependency release row.
+GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_addressable_content_streaming_tests; if ($LASTEXITCODE -eq 0) { pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_addressable_content_streaming_tests" }
+GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_addressable_content_streaming_tests sample_2d_desktop_runtime_package sample_generated_desktop_runtime_3d_package
+GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_addressable_content_streaming_tests|sample_2d_desktop_runtime_package|sample_generated_desktop_runtime_3d_package"
+GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package
+GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package
+```
 
 ## Phase 4: Production Authoring Workflows
 
