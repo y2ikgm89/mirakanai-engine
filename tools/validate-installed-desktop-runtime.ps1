@@ -194,6 +194,7 @@ if ($requiresD3d12DebugProfilingEvidence -or $requiresVulkanDebugProfilingEviden
 }
 $requiresShadowMorphComposition = @($SmokeArgs) -contains "--require-shadow-morph-composition"
 $requiresRendererQualityGates = @($SmokeArgs) -contains "--require-renderer-quality-gates"
+$requiresRenderingVfxProfiling = @($SmokeArgs) -contains "--require-rendering-vfx-profiling"
 $requiresPlayable3dSlice = @($SmokeArgs) -contains "--require-playable-3d-slice"
 $requiresVisible3dProductionProof = @($SmokeArgs) -contains "--require-visible-3d-production-proof"
 $requiresVulkanVisible3dProductionProof = @($SmokeArgs) -contains "--require-vulkan-visible-3d-production-proof"
@@ -212,6 +213,9 @@ if ($requiresD3d12GpuSkinningEvidence) {
 }
 if ($requiresVulkanGpuSkinningEvidence) {
     $requiresGpuSkinning = $true
+}
+if ($requiresRenderingVfxProfiling) {
+    $requiresRendererQualityGates = $true
 }
 $requiresFrameGraphMultiQueueEvidence = @($SmokeArgs) -contains "--require-framegraph-multiqueue-evidence"
 $requiresVulkanFrameGraphMultiQueueEvidence = @($SmokeArgs) -contains "--require-vulkan-framegraph-multiqueue-evidence"
@@ -3469,6 +3473,35 @@ if ($requiresRendererQualityGates) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove renderer quality gate field: $field=$($expectedRendererQualityFields[$field])"
         }
+    }
+}
+if ($requiresRenderingVfxProfiling) {
+    $expectedRenderingVfxProfilingFields = @{
+        "rendering_vfx_profiling_status" = "host_evidence_required"
+        "rendering_vfx_profiling_reviewed" = "1"
+        "rendering_vfx_profiling_ready" = "0"
+        "rendering_vfx_profiling_feature_rows" = "2"
+        "rendering_vfx_profiling_gpu_particle_budget_rows" = "2"
+        "rendering_vfx_profiling_postprocess_rows" = "2"
+        "rendering_vfx_profiling_backend_timing_rows" = "2"
+        "rendering_vfx_profiling_crash_telemetry_handoff_rows" = "2"
+        "rendering_vfx_profiling_host_validated_backends" = "1"
+        "rendering_vfx_profiling_rejected_unsafe_rows" = "0"
+        "rendering_vfx_profiling_requires_metal_host_evidence" = "1"
+        "rendering_vfx_profiling_metal_host_evidence" = "0"
+        "rendering_vfx_profiling_invoked_gpu_commands" = "0"
+        "rendering_vfx_profiling_invoked_native_capture" = "0"
+        "rendering_vfx_profiling_invoked_crash_upload" = "0"
+        "rendering_vfx_profiling_diagnostics" = "0"
+    }
+    foreach ($field in $expectedRenderingVfxProfilingFields.Keys) {
+        $expectedValue = [regex]::Escape($expectedRenderingVfxProfilingFields[$field])
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove rendering VFX/profiling field: $field=$($expectedRenderingVfxProfilingFields[$field])"
+        }
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\brendering_vfx_profiling_replay_hash=[1-9]\d*\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove positive rendering VFX/profiling replay hash."
     }
 }
 if ($requiresFrameGraphMultiQueueEvidence -or $requiresVulkanFrameGraphMultiQueueEvidence) {
