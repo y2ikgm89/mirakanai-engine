@@ -4,6 +4,7 @@ add_library(mirakana_runtime
     src/entity_scale_culling.cpp
     src/genre_rpg_systems.cpp
     src/genre_sandbox_world.cpp
+    src/genre_simulation_management.cpp
     src/gameplay_runtime_scheduler.cpp
     src/gameplay_interaction.cpp
     src/inventory_items.cpp
