@@ -25,36 +25,6 @@ constexpr std::string_view deterministic_rgba8_atlas_packing = "deterministic-sp
 constexpr std::string_view rasterized_glyph_adapter_source_decoding = "rasterized-glyph-adapter";
 constexpr std::string_view deterministic_glyph_atlas_packing = "deterministic-glyph-atlas-rgba8-max-side";
 
-struct UiAtlasTextImageRow {
-    bool has_resource_id{false};
-    bool has_asset_uri{false};
-    bool has_page{false};
-    bool has_u0{false};
-    bool has_v0{false};
-    bool has_u1{false};
-    bool has_v1{false};
-    bool has_color{false};
-    UiAtlasMetadataImage image;
-};
-
-struct UiAtlasTextGlyphRow {
-    bool has_font_family{false};
-    bool has_glyph{false};
-    bool has_page{false};
-    bool has_u0{false};
-    bool has_v0{false};
-    bool has_u1{false};
-    bool has_v1{false};
-    bool has_color{false};
-    UiAtlasMetadataGlyph glyph;
-};
-
-struct UiAtlasTextPageRow {
-    bool has_asset{false};
-    bool has_asset_uri{false};
-    UiAtlasMetadataPage page;
-};
-
 using KeyValues = std::unordered_map<std::string, std::string>;
 
 [[nodiscard]] bool valid_text_field(std::string_view value) noexcept {
