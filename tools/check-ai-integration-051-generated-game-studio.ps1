@@ -188,4 +188,3 @@ foreach ($check in $generatedGameStudioChecks) {
         Write-Error "ai-integration-check: $($check.Path) missing generated game studio v1 contract: $($missingNeedles -join ', ')"
     }
 }
-

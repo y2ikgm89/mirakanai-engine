@@ -104,4 +104,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
   - `tools/check-agents.ps1`: passed.
   - `tools/validate.ps1`: passed, including build and 87/87 CTest tests.
   - Diagnostic-only host gates remain expected for Metal/Apple host evidence on this Windows host; `unsupportedProductionGaps` remains empty.
-- Publication evidence: pending PR creation for branch `codex/generated-game-studio-v1`.
+- Publication evidence:
+  - PR: https://github.com/y2ikgm89/mirakanai-engine/pull/239
+  - Branch: `codex/generated-game-studio-v1`
+  - Initial commit: `3eaead43` (`Add Generated Game Studio v1`)
+  - Hosted checks and merge evidence: pending.
