@@ -152,6 +152,7 @@
         "rpg-systems",
         "sandbox-world",
         "simulation-management",
+        "network-replication",
         "animation",
         "package-streaming"
       ],
@@ -204,6 +205,13 @@
         {
           "id": "simulation-management",
           "evidence": "Simulation management smoke reports deterministic resource balance, job assignment, logistics transfer, economy summary, population need, schedule, save-review, dashboard, replay-hash, and zero side-effect counters.",
+          "recipeIds": [
+            "installed-d3d12-3d-package-smoke"
+          ]
+        },
+        {
+          "id": "network-replication",
+          "evidence": "Network replication smoke reports network_replication_status=host_evidence_required, network_replication_reviewed=1, network_replication_ready=0, network_replication_object_rows=2, network_replication_input_rows=2, network_replication_snapshot_rows=2, network_replication_rollback_rows=1, network_replication_transport_host_evidence=0, network_replication_diagnostics=0, positive replay-hash, and zero network/world/rollback side-effect counters.",
           "recipeIds": [
             "installed-d3d12-3d-package-smoke"
           ]

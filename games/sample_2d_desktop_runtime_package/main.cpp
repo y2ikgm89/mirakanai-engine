@@ -25,6 +25,7 @@
 #include "mirakana/runtime/inventory_items.hpp"
 #include "mirakana/runtime/networking_foundation.hpp"
 #include "mirakana/runtime/procedural_generation.hpp"
+#include "mirakana/runtime/production_network_replication.hpp"
 #include "mirakana/runtime/quest_dialogue.hpp"
 #include "mirakana/runtime/runtime_diagnostics.hpp"
 #include "mirakana/runtime/scripting_sandbox.hpp"
@@ -230,6 +231,25 @@ struct NetworkingFoundationProbeResult {
     std::size_t secure_remote_session_rows{0U};
     std::size_t security_diagnostics{0U};
     std::size_t diagnostics{0U};
+    bool ready{false};
+};
+
+struct NetworkReplicationProbeResult {
+    mirakana::runtime::RuntimeNetworkReplicationStatus status{
+        mirakana::runtime::RuntimeNetworkReplicationStatus::invalid_request};
+    std::size_t object_rows{0U};
+    std::size_t input_rows{0U};
+    std::size_t snapshot_rows{0U};
+    std::size_t rollback_rows{0U};
+    std::size_t rejected_unsafe_rows{0U};
+    std::uint64_t replay_hash{0U};
+    bool requires_transport_host_evidence{false};
+    bool has_transport_host_evidence{false};
+    bool invoked_network_io{false};
+    bool invoked_rollback_execution{false};
+    bool invoked_world_mutation{false};
+    std::size_t diagnostics{0U};
+    bool reviewed{false};
     bool ready{false};
 };
 
@@ -904,6 +924,21 @@ networking_foundation_status_name(mirakana::runtime::RuntimeNetworkFoundationPla
     case mirakana::runtime::RuntimeNetworkFoundationPlanStatus::no_sessions:
         return "no_sessions";
     case mirakana::runtime::RuntimeNetworkFoundationPlanStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] const char*
+network_replication_status_name(mirakana::runtime::RuntimeNetworkReplicationStatus status) noexcept {
+    switch (status) {
+    case mirakana::runtime::RuntimeNetworkReplicationStatus::ready:
+        return "ready";
+    case mirakana::runtime::RuntimeNetworkReplicationStatus::host_evidence_required:
+        return "host_evidence_required";
+    case mirakana::runtime::RuntimeNetworkReplicationStatus::no_rows:
+        return "no_rows";
+    case mirakana::runtime::RuntimeNetworkReplicationStatus::invalid_request:
         return "invalid_request";
     }
     return "unknown";
@@ -3358,6 +3393,207 @@ count_networking_foundation_diagnostics(const mirakana::runtime::RuntimeNetworkF
                    result.replay_seed_sum == 49U && result.remote_session_rows == 1U &&
                    result.secure_remote_session_rows == 1U && result.security_diagnostics == 2U &&
                    result.diagnostics == 0U && unsafe_plan.status == Status::invalid_request;
+    return result;
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeNetworkFoundationPlan make_network_replication_foundation_plan() {
+    using Authority = mirakana::runtime::RuntimeNetworkReplicationAuthority;
+    using Capability = mirakana::runtime::RuntimeNetworkTransportCapabilityKind;
+    using Delivery = mirakana::runtime::RuntimeNetworkReplicationDelivery;
+    using Role = mirakana::runtime::RuntimeNetworkLocalRole;
+    using Topology = mirakana::runtime::RuntimeNetworkSessionTopology;
+    using Trust = mirakana::runtime::RuntimeNetworkTrustBoundary;
+
+    return mirakana::runtime::plan_runtime_network_foundation(
+        mirakana::runtime::RuntimeNetworkFoundationPolicyDesc{
+            .sessions =
+                std::vector<mirakana::runtime::RuntimeNetworkSessionDesc>{
+                    mirakana::runtime::RuntimeNetworkSessionDesc{
+                        .session_id = "arena",
+                        .topology = Topology::listen_server,
+                        .local_role = Role::host,
+                        .trust_boundary = Trust::untrusted_remote_peers,
+                        .transports =
+                            std::vector<mirakana::runtime::RuntimeNetworkTransportRequirementDesc>{
+                                mirakana::runtime::RuntimeNetworkTransportRequirementDesc{
+                                    .capability = Capability::reliable_ordered, .source_index = 1U},
+                                mirakana::runtime::RuntimeNetworkTransportRequirementDesc{
+                                    .capability = Capability::unreliable_unordered, .source_index = 2U},
+                                mirakana::runtime::RuntimeNetworkTransportRequirementDesc{
+                                    .capability = Capability::encrypted_transport, .source_index = 3U},
+                                mirakana::runtime::RuntimeNetworkTransportRequirementDesc{
+                                    .capability = Capability::authenticated_peer, .source_index = 4U},
+                            },
+                        .channels =
+                            std::vector<mirakana::runtime::RuntimeNetworkReplicationChannelDesc>{
+                                mirakana::runtime::RuntimeNetworkReplicationChannelDesc{
+                                    .channel_id = "state",
+                                    .authority = Authority::server,
+                                    .delivery = Delivery::state_snapshot,
+                                    .tick_rate_hz = 60U,
+                                    .source_index = 5U,
+                                },
+                                mirakana::runtime::RuntimeNetworkReplicationChannelDesc{
+                                    .channel_id = "input",
+                                    .authority = Authority::client,
+                                    .delivery = Delivery::unreliable_unordered,
+                                    .tick_rate_hz = 60U,
+                                    .source_index = 6U,
+                                },
+                            },
+                        .replay =
+                            mirakana::runtime::RuntimeNetworkReplayPrerequisiteDesc{
+                                .replay_seed = 42U,
+                                .fixed_tick_rate_hz = 60U,
+                                .deterministic_simulation = true,
+                                .ordered_inputs = true,
+                                .source_index = 7U,
+                            },
+                        .source_index = 8U,
+                    },
+                },
+            .reviewed_transport_capabilities =
+                {
+                    Capability::reliable_ordered,
+                    Capability::unreliable_unordered,
+                    Capability::encrypted_transport,
+                    Capability::authenticated_peer,
+                },
+        });
+}
+
+[[nodiscard]] NetworkReplicationProbeResult validate_network_replication_package_evidence(std::string_view sample_id) {
+    using Mode = mirakana::runtime::RuntimeNetworkReplicationMode;
+    using Ownership = mirakana::runtime::RuntimeReplicationOwnership;
+    using Request = mirakana::runtime::RuntimeNetworkReplicationRequest;
+    using RollbackMode = mirakana::runtime::RuntimeRollbackMode;
+    using SnapshotKind = mirakana::runtime::RuntimeReplicationSnapshotKind;
+    using Status = mirakana::runtime::RuntimeNetworkReplicationStatus;
+
+    const auto sample_prefix = std::string{sample_id};
+    const auto plan =
+        mirakana::runtime::plan_runtime_network_replication(
+            Request{.foundation_plan = make_network_replication_foundation_plan(),
+                    .session =
+                        mirakana::runtime::RuntimeNetworkReplicationSessionDesc{
+                            .session_id = "arena",
+                            .world_id = sample_prefix + ".network.world",
+                            .mode = Mode::authoritative_snapshot,
+                            .fixed_tick_rate_hz = 60U,
+                            .max_players = 4U,
+                            .max_objects = 16U,
+                            .source_index = 1U,
+                        },
+                    .object_rows =
+                        std::vector<mirakana::runtime::RuntimeReplicatedObjectRow>{
+                            mirakana::runtime::RuntimeReplicatedObjectRow{
+                                .object_id = "player.0",
+                                .entity_id = mirakana::runtime::RuntimeWorldEntityId{.value = "entity.player0"},
+                                .region_id = mirakana::runtime::RuntimeWorldRegionId{.value = "region.arena"},
+                                .schema_id =
+                                    mirakana::runtime::RuntimeWorldComponentSchemaId{.value = "schema.transform"},
+                                .channel_id = "state",
+                                .ownership = Ownership::server_owned,
+                                .priority = 10U,
+                                .source_index = 1U,
+                            },
+                            mirakana::runtime::RuntimeReplicatedObjectRow{
+                                .object_id = "crate.0",
+                                .entity_id = mirakana::runtime::RuntimeWorldEntityId{.value = "entity.crate0"},
+                                .region_id = mirakana::runtime::RuntimeWorldRegionId{.value = "region.arena"},
+                                .schema_id =
+                                    mirakana::runtime::RuntimeWorldComponentSchemaId{.value = "schema.transform"},
+                                .channel_id = "state",
+                                .ownership = Ownership::server_owned,
+                                .priority = 8U,
+                                .source_index = 2U,
+                            },
+                        },
+                    .input_rows =
+                        std::vector<mirakana::runtime::RuntimeReplicationInputCommandRow>{
+                            mirakana::runtime::RuntimeReplicationInputCommandRow{
+                                .player_id = "player.0",
+                                .command_id = "move.left",
+                                .channel_id = "input",
+                                .target_tick = 100U,
+                                .sequence = 1U,
+                                .payload_hash = 1001U,
+                                .source_index = 1U,
+                            },
+                            mirakana::runtime::RuntimeReplicationInputCommandRow{
+                                .player_id = "player.0",
+                                .command_id = "move.right",
+                                .channel_id = "input",
+                                .target_tick = 101U,
+                                .sequence = 2U,
+                                .payload_hash = 1002U,
+                                .source_index = 2U,
+                            },
+                        },
+                    .snapshot_rows =
+                        std::vector<mirakana::runtime::RuntimeReplicationSnapshotRow>{
+                            mirakana::runtime::RuntimeReplicationSnapshotRow{
+                                .snapshot_id = "snapshot.100",
+                                .channel_id = "state",
+                                .tick = 100U,
+                                .kind = SnapshotKind::full_state,
+                                .object_ids = {"player.0", "crate.0"},
+                                .state_hash = 9001U,
+                                .byte_count = 256U,
+                                .source_index = 1U,
+                            },
+                            mirakana::runtime::RuntimeReplicationSnapshotRow{
+                                .snapshot_id = "snapshot.101",
+                                .channel_id = "state",
+                                .tick = 101U,
+                                .kind = SnapshotKind::delta_state,
+                                .object_ids = {"player.0", "crate.0"},
+                                .state_hash = 9002U,
+                                .byte_count = 128U,
+                                .source_index = 2U,
+                            },
+                        },
+                    .rollback_policy =
+                        mirakana::runtime::RuntimeRollbackPolicyRow{
+                            .mode = RollbackMode::input_resimulation,
+                            .max_rollback_ticks = 8U,
+                            .input_delay_ticks = 2U,
+                            .snapshot_history_limit = 16U,
+                            .requires_deterministic_simulation = true,
+                            .requires_ordered_inputs = true,
+                            .requires_transport_host_evidence = true,
+                            .source_index = 20U,
+                        },
+                    .row_budget = 32U,
+                    .snapshot_byte_budget = 1024U,
+                    .seed = 99U});
+
+    NetworkReplicationProbeResult result;
+    result.status = plan.status;
+    result.object_rows = plan.replicated_object_count;
+    result.input_rows = plan.input_row_count;
+    result.snapshot_rows = plan.snapshot_row_count;
+    result.rollback_rows = plan.rollback_row_count;
+    result.rejected_unsafe_rows = plan.rejected_unsafe_row_count;
+    result.replay_hash = plan.replay_hash;
+    result.requires_transport_host_evidence = plan.requires_transport_host_evidence;
+    result.has_transport_host_evidence = plan.has_transport_host_evidence;
+    result.invoked_network_io = plan.invoked_network_io;
+    result.invoked_rollback_execution = plan.invoked_rollback_execution;
+    result.invoked_world_mutation = plan.invoked_world_mutation;
+    result.diagnostics = plan.diagnostics.size();
+    result.reviewed = plan.status == Status::host_evidence_required && result.object_rows == 2U &&
+                      result.input_rows == 2U && result.snapshot_rows == 2U && result.rollback_rows == 1U &&
+                      result.rejected_unsafe_rows == 0U && result.replay_hash != 0U &&
+                      result.requires_transport_host_evidence && !result.has_transport_host_evidence &&
+                      !result.invoked_network_io && !result.invoked_rollback_execution &&
+                      !result.invoked_world_mutation && result.diagnostics == 0U;
+    result.ready = plan.status == Status::ready && plan.succeeded() && result.object_rows == 2U &&
+                   result.input_rows == 2U && result.snapshot_rows == 2U && result.rollback_rows == 1U &&
+                   result.rejected_unsafe_rows == 0U && result.replay_hash != 0U &&
+                   result.requires_transport_host_evidence && result.has_transport_host_evidence &&
+                   !result.invoked_network_io && !result.invoked_rollback_execution && !result.invoked_world_mutation &&
+                   result.diagnostics == 0U;
     return result;
 }
 
@@ -7507,6 +7743,9 @@ int main(int argc, char** argv) {
         (options.require_simulation_orchestration || options.require_gameplay_systems)
             ? validate_simulation_management_package_evidence("sample2d")
             : SimulationManagementProbeResult{};
+    const auto network_replication_probe = options.require_gameplay_systems
+                                               ? validate_network_replication_package_evidence("sample2d")
+                                               : NetworkReplicationProbeResult{};
     const auto gameplay_runtime_scheduler_probe = options.require_simulation_orchestration
                                                       ? validate_gameplay_runtime_scheduler_package_evidence()
                                                       : GameplayRuntimeSchedulerProbeResult{};
@@ -8085,6 +8324,24 @@ int main(int argc, char** argv) {
         << " simulation_management_invoked_runtime_ui=" << (simulation_management_probe.invoked_runtime_ui ? 1 : 0)
         << " simulation_management_invoked_package_io=" << (simulation_management_probe.invoked_package_io ? 1 : 0)
         << " simulation_management_diagnostics=" << simulation_management_probe.diagnostics
+        << " network_replication_status=" << network_replication_status_name(network_replication_probe.status)
+        << " network_replication_reviewed=" << (network_replication_probe.reviewed ? 1 : 0)
+        << " network_replication_ready=" << (network_replication_probe.ready ? 1 : 0)
+        << " network_replication_object_rows=" << network_replication_probe.object_rows
+        << " network_replication_input_rows=" << network_replication_probe.input_rows
+        << " network_replication_snapshot_rows=" << network_replication_probe.snapshot_rows
+        << " network_replication_rollback_rows=" << network_replication_probe.rollback_rows
+        << " network_replication_rejected_unsafe_rows=" << network_replication_probe.rejected_unsafe_rows
+        << " network_replication_replay_hash=" << network_replication_probe.replay_hash
+        << " network_replication_requires_transport_host_evidence="
+        << (network_replication_probe.requires_transport_host_evidence ? 1 : 0)
+        << " network_replication_transport_host_evidence="
+        << (network_replication_probe.has_transport_host_evidence ? 1 : 0)
+        << " network_replication_invoked_network_io=" << (network_replication_probe.invoked_network_io ? 1 : 0)
+        << " network_replication_invoked_rollback_execution="
+        << (network_replication_probe.invoked_rollback_execution ? 1 : 0)
+        << " network_replication_invoked_world_mutation=" << (network_replication_probe.invoked_world_mutation ? 1 : 0)
+        << " network_replication_diagnostics=" << network_replication_probe.diagnostics
         << " gameplay_runtime_scheduler_status="
         << gameplay_runtime_scheduler_status_name(gameplay_runtime_scheduler_probe.status)
         << " gameplay_runtime_scheduler_ready=" << (gameplay_runtime_scheduler_probe.ready ? 1 : 0)
@@ -8362,7 +8619,7 @@ int main(int argc, char** argv) {
     if (options.require_gameplay_systems &&
         (!game.gameplay_systems_passed(options.max_frames) || !game.gameplay_systems_scene_binding_ready() ||
          !input_context_rebinding.ready || !rpg_systems_probe.ready || !sandbox_world_probe.ready ||
-         !simulation_management_probe.ready)) {
+         !simulation_management_probe.ready || !network_replication_probe.reviewed)) {
         std::cout
             << "sample_2d_desktop_runtime_package required_gameplay_systems_unavailable"
             << " gameplay_systems_status="
@@ -8462,7 +8719,19 @@ int main(int argc, char** argv) {
             << " simulation_management_status=" << simulation_management_status_name(simulation_management_probe.status)
             << " simulation_management_ready=" << (simulation_management_probe.ready ? 1 : 0)
             << " simulation_management_diagnostics=" << simulation_management_probe.diagnostics
-            << " simulation_management_replay_hash=" << simulation_management_probe.replay_hash << '\n';
+            << " simulation_management_replay_hash=" << simulation_management_probe.replay_hash
+            << " network_replication_status=" << network_replication_status_name(network_replication_probe.status)
+            << " network_replication_reviewed=" << (network_replication_probe.reviewed ? 1 : 0)
+            << " network_replication_ready=" << (network_replication_probe.ready ? 1 : 0)
+            << " network_replication_object_rows=" << network_replication_probe.object_rows
+            << " network_replication_input_rows=" << network_replication_probe.input_rows
+            << " network_replication_snapshot_rows=" << network_replication_probe.snapshot_rows
+            << " network_replication_rollback_rows=" << network_replication_probe.rollback_rows
+            << " network_replication_rejected_unsafe_rows=" << network_replication_probe.rejected_unsafe_rows
+            << " network_replication_transport_host_evidence="
+            << (network_replication_probe.has_transport_host_evidence ? 1 : 0)
+            << " network_replication_diagnostics=" << network_replication_probe.diagnostics
+            << " network_replication_replay_hash=" << network_replication_probe.replay_hash << '\n';
         return 12;
     }
 

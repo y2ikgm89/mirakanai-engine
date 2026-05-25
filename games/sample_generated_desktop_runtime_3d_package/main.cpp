@@ -31,6 +31,7 @@
 #include "mirakana/runtime/genre_simulation_management.hpp"
 #include "mirakana/runtime/package_streaming.hpp"
 #include "mirakana/runtime/physics_collision_runtime.hpp"
+#include "mirakana/runtime/production_network_replication.hpp"
 #include "mirakana/runtime/resource_runtime.hpp"
 #include "mirakana/runtime/session_services.hpp"
 #include "mirakana/runtime/world_entity_model.hpp"
@@ -867,6 +868,21 @@ simulation_management_status_name(mirakana::runtime::RuntimeSimulationManagement
     return "unknown";
 }
 
+[[nodiscard]] const char*
+network_replication_status_name(mirakana::runtime::RuntimeNetworkReplicationStatus status) noexcept {
+    switch (status) {
+    case mirakana::runtime::RuntimeNetworkReplicationStatus::ready:
+        return "ready";
+    case mirakana::runtime::RuntimeNetworkReplicationStatus::host_evidence_required:
+        return "host_evidence_required";
+    case mirakana::runtime::RuntimeNetworkReplicationStatus::no_rows:
+        return "no_rows";
+    case mirakana::runtime::RuntimeNetworkReplicationStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
 struct SceneGameplayBindingProbeResult {
     std::size_t source_rows{0U};
     std::size_t binding_rows{0U};
@@ -1010,6 +1026,25 @@ struct SimulationManagementProbeResult {
     bool invoked_save_io{false};
     bool invoked_runtime_ui{false};
     bool invoked_package_io{false};
+    bool ready{false};
+};
+
+struct NetworkReplicationProbeResult {
+    mirakana::runtime::RuntimeNetworkReplicationStatus status{
+        mirakana::runtime::RuntimeNetworkReplicationStatus::invalid_request};
+    std::size_t object_rows{0U};
+    std::size_t input_rows{0U};
+    std::size_t snapshot_rows{0U};
+    std::size_t rollback_rows{0U};
+    std::size_t rejected_unsafe_rows{0U};
+    std::uint64_t replay_hash{0U};
+    bool requires_transport_host_evidence{false};
+    bool has_transport_host_evidence{false};
+    bool invoked_network_io{false};
+    bool invoked_rollback_execution{false};
+    bool invoked_world_mutation{false};
+    std::size_t diagnostics{0U};
+    bool reviewed{false};
     bool ready{false};
 };
 
@@ -1593,6 +1628,207 @@ validate_simulation_management_package_evidence(std::string_view sample_id) {
                    result.dashboard_rows == 7U && result.diagnostics == 0U && result.replay_hash != 0U &&
                    !result.invoked_economy_execution && !result.invoked_save_io && !result.invoked_runtime_ui &&
                    !result.invoked_package_io;
+    return result;
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeNetworkFoundationPlan make_network_replication_foundation_plan() {
+    using Authority = mirakana::runtime::RuntimeNetworkReplicationAuthority;
+    using Capability = mirakana::runtime::RuntimeNetworkTransportCapabilityKind;
+    using Delivery = mirakana::runtime::RuntimeNetworkReplicationDelivery;
+    using Role = mirakana::runtime::RuntimeNetworkLocalRole;
+    using Topology = mirakana::runtime::RuntimeNetworkSessionTopology;
+    using Trust = mirakana::runtime::RuntimeNetworkTrustBoundary;
+
+    return mirakana::runtime::plan_runtime_network_foundation(
+        mirakana::runtime::RuntimeNetworkFoundationPolicyDesc{
+            .sessions =
+                std::vector<mirakana::runtime::RuntimeNetworkSessionDesc>{
+                    mirakana::runtime::RuntimeNetworkSessionDesc{
+                        .session_id = "arena",
+                        .topology = Topology::listen_server,
+                        .local_role = Role::host,
+                        .trust_boundary = Trust::untrusted_remote_peers,
+                        .transports =
+                            std::vector<mirakana::runtime::RuntimeNetworkTransportRequirementDesc>{
+                                mirakana::runtime::RuntimeNetworkTransportRequirementDesc{
+                                    .capability = Capability::reliable_ordered, .source_index = 1U},
+                                mirakana::runtime::RuntimeNetworkTransportRequirementDesc{
+                                    .capability = Capability::unreliable_unordered, .source_index = 2U},
+                                mirakana::runtime::RuntimeNetworkTransportRequirementDesc{
+                                    .capability = Capability::encrypted_transport, .source_index = 3U},
+                                mirakana::runtime::RuntimeNetworkTransportRequirementDesc{
+                                    .capability = Capability::authenticated_peer, .source_index = 4U},
+                            },
+                        .channels =
+                            std::vector<mirakana::runtime::RuntimeNetworkReplicationChannelDesc>{
+                                mirakana::runtime::RuntimeNetworkReplicationChannelDesc{
+                                    .channel_id = "state",
+                                    .authority = Authority::server,
+                                    .delivery = Delivery::state_snapshot,
+                                    .tick_rate_hz = 60U,
+                                    .source_index = 5U,
+                                },
+                                mirakana::runtime::RuntimeNetworkReplicationChannelDesc{
+                                    .channel_id = "input",
+                                    .authority = Authority::client,
+                                    .delivery = Delivery::unreliable_unordered,
+                                    .tick_rate_hz = 60U,
+                                    .source_index = 6U,
+                                },
+                            },
+                        .replay =
+                            mirakana::runtime::RuntimeNetworkReplayPrerequisiteDesc{
+                                .replay_seed = 42U,
+                                .fixed_tick_rate_hz = 60U,
+                                .deterministic_simulation = true,
+                                .ordered_inputs = true,
+                                .source_index = 7U,
+                            },
+                        .source_index = 8U,
+                    },
+                },
+            .reviewed_transport_capabilities =
+                {
+                    Capability::reliable_ordered,
+                    Capability::unreliable_unordered,
+                    Capability::encrypted_transport,
+                    Capability::authenticated_peer,
+                },
+        });
+}
+
+[[nodiscard]] NetworkReplicationProbeResult validate_network_replication_package_evidence(std::string_view sample_id) {
+    using Mode = mirakana::runtime::RuntimeNetworkReplicationMode;
+    using Ownership = mirakana::runtime::RuntimeReplicationOwnership;
+    using Request = mirakana::runtime::RuntimeNetworkReplicationRequest;
+    using RollbackMode = mirakana::runtime::RuntimeRollbackMode;
+    using SnapshotKind = mirakana::runtime::RuntimeReplicationSnapshotKind;
+    using Status = mirakana::runtime::RuntimeNetworkReplicationStatus;
+
+    const auto sample_prefix = std::string{sample_id};
+    const auto plan =
+        mirakana::runtime::plan_runtime_network_replication(
+            Request{.foundation_plan = make_network_replication_foundation_plan(),
+                    .session =
+                        mirakana::runtime::RuntimeNetworkReplicationSessionDesc{
+                            .session_id = "arena",
+                            .world_id = sample_prefix + ".network.world",
+                            .mode = Mode::authoritative_snapshot,
+                            .fixed_tick_rate_hz = 60U,
+                            .max_players = 4U,
+                            .max_objects = 16U,
+                            .source_index = 1U,
+                        },
+                    .object_rows =
+                        std::vector<mirakana::runtime::RuntimeReplicatedObjectRow>{
+                            mirakana::runtime::RuntimeReplicatedObjectRow{
+                                .object_id = "player.0",
+                                .entity_id = mirakana::runtime::RuntimeWorldEntityId{.value = "entity.player0"},
+                                .region_id = mirakana::runtime::RuntimeWorldRegionId{.value = "region.arena"},
+                                .schema_id =
+                                    mirakana::runtime::RuntimeWorldComponentSchemaId{.value = "schema.transform"},
+                                .channel_id = "state",
+                                .ownership = Ownership::server_owned,
+                                .priority = 10U,
+                                .source_index = 1U,
+                            },
+                            mirakana::runtime::RuntimeReplicatedObjectRow{
+                                .object_id = "crate.0",
+                                .entity_id = mirakana::runtime::RuntimeWorldEntityId{.value = "entity.crate0"},
+                                .region_id = mirakana::runtime::RuntimeWorldRegionId{.value = "region.arena"},
+                                .schema_id =
+                                    mirakana::runtime::RuntimeWorldComponentSchemaId{.value = "schema.transform"},
+                                .channel_id = "state",
+                                .ownership = Ownership::server_owned,
+                                .priority = 8U,
+                                .source_index = 2U,
+                            },
+                        },
+                    .input_rows =
+                        std::vector<mirakana::runtime::RuntimeReplicationInputCommandRow>{
+                            mirakana::runtime::RuntimeReplicationInputCommandRow{
+                                .player_id = "player.0",
+                                .command_id = "move.left",
+                                .channel_id = "input",
+                                .target_tick = 100U,
+                                .sequence = 1U,
+                                .payload_hash = 1001U,
+                                .source_index = 1U,
+                            },
+                            mirakana::runtime::RuntimeReplicationInputCommandRow{
+                                .player_id = "player.0",
+                                .command_id = "move.right",
+                                .channel_id = "input",
+                                .target_tick = 101U,
+                                .sequence = 2U,
+                                .payload_hash = 1002U,
+                                .source_index = 2U,
+                            },
+                        },
+                    .snapshot_rows =
+                        std::vector<mirakana::runtime::RuntimeReplicationSnapshotRow>{
+                            mirakana::runtime::RuntimeReplicationSnapshotRow{
+                                .snapshot_id = "snapshot.100",
+                                .channel_id = "state",
+                                .tick = 100U,
+                                .kind = SnapshotKind::full_state,
+                                .object_ids = {"player.0", "crate.0"},
+                                .state_hash = 9001U,
+                                .byte_count = 256U,
+                                .source_index = 1U,
+                            },
+                            mirakana::runtime::RuntimeReplicationSnapshotRow{
+                                .snapshot_id = "snapshot.101",
+                                .channel_id = "state",
+                                .tick = 101U,
+                                .kind = SnapshotKind::delta_state,
+                                .object_ids = {"player.0", "crate.0"},
+                                .state_hash = 9002U,
+                                .byte_count = 128U,
+                                .source_index = 2U,
+                            },
+                        },
+                    .rollback_policy =
+                        mirakana::runtime::RuntimeRollbackPolicyRow{
+                            .mode = RollbackMode::input_resimulation,
+                            .max_rollback_ticks = 8U,
+                            .input_delay_ticks = 2U,
+                            .snapshot_history_limit = 16U,
+                            .requires_deterministic_simulation = true,
+                            .requires_ordered_inputs = true,
+                            .requires_transport_host_evidence = true,
+                            .source_index = 20U,
+                        },
+                    .row_budget = 32U,
+                    .snapshot_byte_budget = 1024U,
+                    .seed = 99U});
+
+    NetworkReplicationProbeResult result;
+    result.status = plan.status;
+    result.object_rows = plan.replicated_object_count;
+    result.input_rows = plan.input_row_count;
+    result.snapshot_rows = plan.snapshot_row_count;
+    result.rollback_rows = plan.rollback_row_count;
+    result.rejected_unsafe_rows = plan.rejected_unsafe_row_count;
+    result.replay_hash = plan.replay_hash;
+    result.requires_transport_host_evidence = plan.requires_transport_host_evidence;
+    result.has_transport_host_evidence = plan.has_transport_host_evidence;
+    result.invoked_network_io = plan.invoked_network_io;
+    result.invoked_rollback_execution = plan.invoked_rollback_execution;
+    result.invoked_world_mutation = plan.invoked_world_mutation;
+    result.diagnostics = plan.diagnostics.size();
+    result.reviewed = plan.status == Status::host_evidence_required && result.object_rows == 2U &&
+                      result.input_rows == 2U && result.snapshot_rows == 2U && result.rollback_rows == 1U &&
+                      result.rejected_unsafe_rows == 0U && result.replay_hash != 0U &&
+                      result.requires_transport_host_evidence && !result.has_transport_host_evidence &&
+                      !result.invoked_network_io && !result.invoked_rollback_execution &&
+                      !result.invoked_world_mutation && result.diagnostics == 0U;
+    result.ready = plan.status == Status::ready && plan.succeeded() && result.object_rows == 2U &&
+                   result.input_rows == 2U && result.snapshot_rows == 2U && result.rollback_rows == 1U &&
+                   result.rejected_unsafe_rows == 0U && result.replay_hash != 0U &&
+                   result.requires_transport_host_evidence && result.has_transport_host_evidence &&
+                   !result.invoked_network_io && !result.invoked_rollback_execution && !result.invoked_world_mutation &&
+                   result.diagnostics == 0U;
     return result;
 }
 
@@ -8192,12 +8428,16 @@ int main(int argc, char** argv) {
     const auto simulation_management_probe = options.require_gameplay_systems
                                                  ? validate_simulation_management_package_evidence("sample3d")
                                                  : SimulationManagementProbeResult{};
+    const auto network_replication_probe = options.require_gameplay_systems
+                                               ? validate_network_replication_package_evidence("sample3d")
+                                               : NetworkReplicationProbeResult{};
     const auto gameplay_systems_ready =
         gameplay_systems_core_ready &&
         (!options.require_gameplay_systems ||
          (game.gameplay_systems_scene_binding_ready() && input_context_rebinding.ready &&
           gameplay_runtime_scheduler_probe.ready && world_entity_model_probe.ready && addressable_content_probe.ready &&
-          rpg_systems_probe.ready && sandbox_world_probe.ready && simulation_management_probe.ready));
+          rpg_systems_probe.ready && sandbox_world_probe.ready && simulation_management_probe.ready &&
+          network_replication_probe.reviewed));
     const auto gameplay_systems_diagnostics =
         game.gameplay_systems_diagnostics_count(options.max_frames) +
         ((options.require_gameplay_systems && !game.gameplay_systems_scene_binding_ready()) ? 1U : 0U) +
@@ -8207,7 +8447,8 @@ int main(int argc, char** argv) {
         ((options.require_gameplay_systems && !addressable_content_probe.ready) ? 1U : 0U) +
         ((options.require_gameplay_systems && !rpg_systems_probe.ready) ? 1U : 0U) +
         ((options.require_gameplay_systems && !sandbox_world_probe.ready) ? 1U : 0U) +
-        ((options.require_gameplay_systems && !simulation_management_probe.ready) ? 1U : 0U);
+        ((options.require_gameplay_systems && !simulation_management_probe.ready) ? 1U : 0U) +
+        ((options.require_gameplay_systems && !network_replication_probe.reviewed) ? 1U : 0U);
     const auto visible_3d = evaluate_visible_3d_production_proof(options, result, report, renderer_quality, playable_3d,
                                                                  gameplay_systems_ready);
     const auto entity_scale_culling_probe = options.require_entity_scale_culling
@@ -8580,6 +8821,24 @@ int main(int argc, char** argv) {
         << " simulation_management_invoked_runtime_ui=" << (simulation_management_probe.invoked_runtime_ui ? 1 : 0)
         << " simulation_management_invoked_package_io=" << (simulation_management_probe.invoked_package_io ? 1 : 0)
         << " simulation_management_diagnostics=" << simulation_management_probe.diagnostics
+        << " network_replication_status=" << network_replication_status_name(network_replication_probe.status)
+        << " network_replication_reviewed=" << (network_replication_probe.reviewed ? 1 : 0)
+        << " network_replication_ready=" << (network_replication_probe.ready ? 1 : 0)
+        << " network_replication_object_rows=" << network_replication_probe.object_rows
+        << " network_replication_input_rows=" << network_replication_probe.input_rows
+        << " network_replication_snapshot_rows=" << network_replication_probe.snapshot_rows
+        << " network_replication_rollback_rows=" << network_replication_probe.rollback_rows
+        << " network_replication_rejected_unsafe_rows=" << network_replication_probe.rejected_unsafe_rows
+        << " network_replication_replay_hash=" << network_replication_probe.replay_hash
+        << " network_replication_requires_transport_host_evidence="
+        << (network_replication_probe.requires_transport_host_evidence ? 1 : 0)
+        << " network_replication_transport_host_evidence="
+        << (network_replication_probe.has_transport_host_evidence ? 1 : 0)
+        << " network_replication_invoked_network_io=" << (network_replication_probe.invoked_network_io ? 1 : 0)
+        << " network_replication_invoked_rollback_execution="
+        << (network_replication_probe.invoked_rollback_execution ? 1 : 0)
+        << " network_replication_invoked_world_mutation=" << (network_replication_probe.invoked_world_mutation ? 1 : 0)
+        << " network_replication_diagnostics=" << network_replication_probe.diagnostics
         << " gameplay_systems_ticks=" << game.gameplay_systems_ticks()
         << " gameplay_systems_physics_ticks=" << game.gameplay_systems_physics_ticks()
         << " gameplay_systems_authored_collision_bodies=" << game.gameplay_systems_authored_collision_bodies()
@@ -9001,73 +9260,83 @@ int main(int argc, char** argv) {
             return 18;
         }
         if (options.require_gameplay_systems && !gameplay_systems_ready) {
-            std::cout << "sample_generated_desktop_runtime_3d_package required_gameplay_systems_unavailable"
-                      << " gameplay_systems_status=" << gameplay_systems_status_name(gameplay_systems_status)
-                      << " gameplay_systems_ready=" << (gameplay_systems_ready ? 1 : 0)
-                      << " gameplay_systems_diagnostics=" << gameplay_systems_diagnostics
-                      << " gameplay_runtime_scheduler_status="
-                      << gameplay_runtime_scheduler_status_name(gameplay_runtime_scheduler_probe.status)
-                      << " gameplay_runtime_scheduler_ready=" << (gameplay_runtime_scheduler_probe.ready ? 1 : 0)
-                      << " gameplay_runtime_scheduler_steps=" << gameplay_runtime_scheduler_probe.step_rows
-                      << " gameplay_runtime_scheduler_system_rows=" << gameplay_runtime_scheduler_probe.system_rows
-                      << " gameplay_runtime_scheduler_command_rows=" << gameplay_runtime_scheduler_probe.command_rows
-                      << " gameplay_runtime_scheduler_budget_limited="
-                      << (gameplay_runtime_scheduler_probe.budget_limited ? 1 : 0)
-                      << " gameplay_runtime_scheduler_diagnostics=" << gameplay_runtime_scheduler_probe.diagnostics
-                      << " world_entity_model_status="
-                      << world_entity_model_status_name(world_entity_model_probe.status)
-                      << " world_entity_model_ready=" << (world_entity_model_probe.ready ? 1 : 0)
-                      << " world_entity_model_entities=" << world_entity_model_probe.entity_rows
-                      << " world_entity_model_components=" << world_entity_model_probe.component_rows
-                      << " world_entity_model_region_ownership_rows=" << world_entity_model_probe.region_ownership_rows
-                      << " world_entity_model_lifecycle_rows=" << world_entity_model_probe.lifecycle_rows
-                      << " world_entity_model_persistence_rows=" << world_entity_model_probe.persistence_rows
-                      << " world_entity_model_streaming_region_rows=" << world_entity_model_probe.streaming_region_rows
-                      << " world_entity_model_duplicate_entity_diagnostics="
-                      << world_entity_model_probe.duplicate_entity_diagnostics
-                      << " world_entity_model_bridge_rejection_status="
-                      << world_entity_model_status_name(world_entity_model_probe.bridge_rejection_status)
-                      << " world_entity_model_bridge_rejection_diagnostics="
-                      << world_entity_model_probe.bridge_rejection_diagnostics
-                      << " world_entity_model_bridge_rejection_persistence_rows="
-                      << world_entity_model_probe.bridge_rejection_persistence_rows
-                      << " world_entity_model_bridge_rejection_streaming_region_rows="
-                      << world_entity_model_probe.bridge_rejection_streaming_region_rows
-                      << " world_entity_model_bridge_rejection_streaming_diagnostics_present="
-                      << world_entity_model_probe.bridge_rejection_streaming_diagnostics_present
-                      << " world_entity_model_bridge_rejection_fail_closed="
-                      << (world_entity_model_probe.bridge_rejection_fail_closed ? 1 : 0)
-                      << " world_entity_model_diagnostics=" << world_entity_model_probe.diagnostics
-                      << " addressable_content_status="
-                      << addressable_content_status_name(addressable_content_probe.status)
-                      << " addressable_content_ready=" << (addressable_content_probe.ready ? 1 : 0)
-                      << " addressable_content_address_rows=" << addressable_content_probe.address_rows
-                      << " addressable_content_dependency_rows=" << addressable_content_probe.dependency_rows
-                      << " addressable_content_load_rows=" << addressable_content_probe.load_rows
-                      << " addressable_content_release_rows=" << addressable_content_probe.release_rows
-                      << " addressable_content_refcount_rows=" << addressable_content_probe.refcount_rows
-                      << " addressable_content_resident_bytes=" << addressable_content_probe.resident_bytes
-                      << " addressable_content_budget_rejection_status="
-                      << addressable_content_status_name(addressable_content_probe.budget_rejection_status)
-                      << " addressable_content_budget_rejection_diagnostics="
-                      << addressable_content_probe.budget_rejection_diagnostics
-                      << " addressable_content_package_io=" << (addressable_content_probe.package_io ? 1 : 0)
-                      << " addressable_content_async_execution=" << (addressable_content_probe.async_execution ? 1 : 0)
-                      << " addressable_content_committed=" << (addressable_content_probe.committed ? 1 : 0)
-                      << " addressable_content_diagnostics=" << addressable_content_probe.diagnostics
-                      << " rpg_systems_status=" << rpg_systems_status_name(rpg_systems_probe.status)
-                      << " rpg_systems_ready=" << (rpg_systems_probe.ready ? 1 : 0)
-                      << " rpg_systems_diagnostics=" << rpg_systems_probe.diagnostics
-                      << " rpg_systems_replay_hash=" << rpg_systems_probe.replay_hash
-                      << " sandbox_world_status=" << sandbox_world_status_name(sandbox_world_probe.status)
-                      << " sandbox_world_ready=" << (sandbox_world_probe.ready ? 1 : 0)
-                      << " sandbox_world_diagnostics=" << sandbox_world_probe.diagnostics
-                      << " sandbox_world_replay_hash=" << sandbox_world_probe.replay_hash
-                      << " simulation_management_status="
-                      << simulation_management_status_name(simulation_management_probe.status)
-                      << " simulation_management_ready=" << (simulation_management_probe.ready ? 1 : 0)
-                      << " simulation_management_diagnostics=" << simulation_management_probe.diagnostics
-                      << " simulation_management_replay_hash=" << simulation_management_probe.replay_hash << '\n';
+            std::cout
+                << "sample_generated_desktop_runtime_3d_package required_gameplay_systems_unavailable"
+                << " gameplay_systems_status=" << gameplay_systems_status_name(gameplay_systems_status)
+                << " gameplay_systems_ready=" << (gameplay_systems_ready ? 1 : 0)
+                << " gameplay_systems_diagnostics=" << gameplay_systems_diagnostics
+                << " gameplay_runtime_scheduler_status="
+                << gameplay_runtime_scheduler_status_name(gameplay_runtime_scheduler_probe.status)
+                << " gameplay_runtime_scheduler_ready=" << (gameplay_runtime_scheduler_probe.ready ? 1 : 0)
+                << " gameplay_runtime_scheduler_steps=" << gameplay_runtime_scheduler_probe.step_rows
+                << " gameplay_runtime_scheduler_system_rows=" << gameplay_runtime_scheduler_probe.system_rows
+                << " gameplay_runtime_scheduler_command_rows=" << gameplay_runtime_scheduler_probe.command_rows
+                << " gameplay_runtime_scheduler_budget_limited="
+                << (gameplay_runtime_scheduler_probe.budget_limited ? 1 : 0)
+                << " gameplay_runtime_scheduler_diagnostics=" << gameplay_runtime_scheduler_probe.diagnostics
+                << " world_entity_model_status=" << world_entity_model_status_name(world_entity_model_probe.status)
+                << " world_entity_model_ready=" << (world_entity_model_probe.ready ? 1 : 0)
+                << " world_entity_model_entities=" << world_entity_model_probe.entity_rows
+                << " world_entity_model_components=" << world_entity_model_probe.component_rows
+                << " world_entity_model_region_ownership_rows=" << world_entity_model_probe.region_ownership_rows
+                << " world_entity_model_lifecycle_rows=" << world_entity_model_probe.lifecycle_rows
+                << " world_entity_model_persistence_rows=" << world_entity_model_probe.persistence_rows
+                << " world_entity_model_streaming_region_rows=" << world_entity_model_probe.streaming_region_rows
+                << " world_entity_model_duplicate_entity_diagnostics="
+                << world_entity_model_probe.duplicate_entity_diagnostics
+                << " world_entity_model_bridge_rejection_status="
+                << world_entity_model_status_name(world_entity_model_probe.bridge_rejection_status)
+                << " world_entity_model_bridge_rejection_diagnostics="
+                << world_entity_model_probe.bridge_rejection_diagnostics
+                << " world_entity_model_bridge_rejection_persistence_rows="
+                << world_entity_model_probe.bridge_rejection_persistence_rows
+                << " world_entity_model_bridge_rejection_streaming_region_rows="
+                << world_entity_model_probe.bridge_rejection_streaming_region_rows
+                << " world_entity_model_bridge_rejection_streaming_diagnostics_present="
+                << world_entity_model_probe.bridge_rejection_streaming_diagnostics_present
+                << " world_entity_model_bridge_rejection_fail_closed="
+                << (world_entity_model_probe.bridge_rejection_fail_closed ? 1 : 0)
+                << " world_entity_model_diagnostics=" << world_entity_model_probe.diagnostics
+                << " addressable_content_status=" << addressable_content_status_name(addressable_content_probe.status)
+                << " addressable_content_ready=" << (addressable_content_probe.ready ? 1 : 0)
+                << " addressable_content_address_rows=" << addressable_content_probe.address_rows
+                << " addressable_content_dependency_rows=" << addressable_content_probe.dependency_rows
+                << " addressable_content_load_rows=" << addressable_content_probe.load_rows
+                << " addressable_content_release_rows=" << addressable_content_probe.release_rows
+                << " addressable_content_refcount_rows=" << addressable_content_probe.refcount_rows
+                << " addressable_content_resident_bytes=" << addressable_content_probe.resident_bytes
+                << " addressable_content_budget_rejection_status="
+                << addressable_content_status_name(addressable_content_probe.budget_rejection_status)
+                << " addressable_content_budget_rejection_diagnostics="
+                << addressable_content_probe.budget_rejection_diagnostics
+                << " addressable_content_package_io=" << (addressable_content_probe.package_io ? 1 : 0)
+                << " addressable_content_async_execution=" << (addressable_content_probe.async_execution ? 1 : 0)
+                << " addressable_content_committed=" << (addressable_content_probe.committed ? 1 : 0)
+                << " addressable_content_diagnostics=" << addressable_content_probe.diagnostics
+                << " rpg_systems_status=" << rpg_systems_status_name(rpg_systems_probe.status)
+                << " rpg_systems_ready=" << (rpg_systems_probe.ready ? 1 : 0)
+                << " rpg_systems_diagnostics=" << rpg_systems_probe.diagnostics
+                << " rpg_systems_replay_hash=" << rpg_systems_probe.replay_hash
+                << " sandbox_world_status=" << sandbox_world_status_name(sandbox_world_probe.status)
+                << " sandbox_world_ready=" << (sandbox_world_probe.ready ? 1 : 0)
+                << " sandbox_world_diagnostics=" << sandbox_world_probe.diagnostics
+                << " sandbox_world_replay_hash=" << sandbox_world_probe.replay_hash << " simulation_management_status="
+                << simulation_management_status_name(simulation_management_probe.status)
+                << " simulation_management_ready=" << (simulation_management_probe.ready ? 1 : 0)
+                << " simulation_management_diagnostics=" << simulation_management_probe.diagnostics
+                << " simulation_management_replay_hash=" << simulation_management_probe.replay_hash
+                << " network_replication_status=" << network_replication_status_name(network_replication_probe.status)
+                << " network_replication_reviewed=" << (network_replication_probe.reviewed ? 1 : 0)
+                << " network_replication_ready=" << (network_replication_probe.ready ? 1 : 0)
+                << " network_replication_object_rows=" << network_replication_probe.object_rows
+                << " network_replication_input_rows=" << network_replication_probe.input_rows
+                << " network_replication_snapshot_rows=" << network_replication_probe.snapshot_rows
+                << " network_replication_rollback_rows=" << network_replication_probe.rollback_rows
+                << " network_replication_rejected_unsafe_rows=" << network_replication_probe.rejected_unsafe_rows
+                << " network_replication_transport_host_evidence="
+                << (network_replication_probe.has_transport_host_evidence ? 1 : 0)
+                << " network_replication_diagnostics=" << network_replication_probe.diagnostics
+                << " network_replication_replay_hash=" << network_replication_probe.replay_hash << '\n';
             return 3;
         }
         if (options.require_scene_collision_package && !collision_package.ready) {

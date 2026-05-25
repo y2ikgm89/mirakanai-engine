@@ -54,7 +54,7 @@ Add the following canonical rows to the backlog under a new `General-Purpose Gam
 | `genre-rpg-systems-pack-v1` | `implemented-production-surface` | Reusable RPG systems for stats, progression, skills, equipment, party/enemy combat loops, rewards, and save validation. |
 | `genre-sandbox-world-pack-v1` | `implemented-production-surface` | Reusable sandbox systems for block/voxel-like world chunks, placement/destruction rules, construction costs, world mutation validation, and persistence. |
 | `genre-simulation-management-pack-v1` | `implemented-production-surface` | Reusable simulation systems for economy, logistics, jobs, population/needs, production chains, schedules, and deterministic long-run validation. |
-| `production-network-replication-v1` | `production-candidate` | Authoritative session, replication, rollback/lockstep hooks, security/threat model, and real transport host evidence. |
+| `production-network-replication-v1` | `implemented-production-surface` | Value-only authoritative replication planner with session, object, input, snapshot, rollback, replay-hash, and host-evidence diagnostics. |
 | `production-rendering-vfx-profiling-v1` | `host-gated-production` | Broader renderer/VFX/profile production evidence, including GPU particles, richer postprocess, backend-specific timing, crash/telemetry handoff, and strict backend parity gates. |
 
 ## Long-Running Execution Strategy
@@ -566,17 +566,27 @@ PR: #231 merged addressable-content-streaming-production-v1 at merge commit 7109
 - Test: `tests/unit/runtime_production_network_replication_tests.cpp`
 - Optional host evidence: `tools/validate-network-enet.ps1` when the `network-enet` feature is available.
 
-- [ ] **Step 1: Write failing replication plan tests**
+- [x] **Step 1: Write failing replication plan tests**
 
   Test authoritative session rows, replicated object rows, input-command sequencing, snapshot/rollback rows, lockstep policy diagnostics, transport capability review, and threat-model/security diagnostics. Loopback-only proof must not create a broad multiplayer ready claim.
 
-- [ ] **Step 2: Implement replication value contracts**
+- [x] **Step 2: Implement replication value contracts**
 
   Add `RuntimeNetworkReplicationSessionDesc`, `RuntimeReplicatedObjectRow`, `RuntimeReplicationInputCommandRow`, `RuntimeReplicationSnapshotRow`, `RuntimeRollbackPolicyRow`, `RuntimeNetworkReplicationPlan`, and `plan_runtime_network_replication`.
 
-- [ ] **Step 3: Add package and host-gate evidence**
+- [x] **Step 3: Add package and host-gate evidence**
 
   Add selected package counters for replicated objects, input rows, snapshot rows, rollback rows, rejected unsafe rows, and clean diagnostics. Record real-transport evidence only through the optional network validation wrapper and keep unsupported rows explicit when host evidence is absent.
+
+**Phase 9 evidence:**
+
+- OFFICIAL: Context7 Unity Netcode for GameObjects documentation confirmed explicit NetworkVariable/RPC ownership and state synchronization boundaries; Context7 Unreal Engine documentation confirmed actor/property replication, RPC ownership, relevancy/priority, and replication graph concepts; ENet documentation confirmed host/service/send/flush/packet lifecycle as transport-adapter concerns. Phase 9 follows those official patterns as first-party value-only replication review rows and keeps transport IO behind separate host evidence.
+- RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_production_network_replication_tests` failed before `mirakana/runtime/production_network_replication.hpp` existed.
+- GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_production_network_replication_tests`
+- GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_production_network_replication_tests`
+- GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_production_network_replication_tests sample_2d_desktop_runtime_package sample_generated_desktop_runtime_3d_package`
+- GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_production_network_replication_tests|sample_2d_desktop_runtime_package|sample_generated_desktop_runtime_3d_package"`
+- GREEN: selected 2D/3D package smokes and installed validation require `network_replication_status=host_evidence_required`, `network_replication_reviewed=1`, `network_replication_ready=0`, object/input/snapshot/rollback counters, positive `network_replication_replay_hash`, `network_replication_requires_transport_host_evidence=1`, `network_replication_transport_host_evidence=0`, zero network/rollback/world side-effect counters, and `network_replication_diagnostics=0`.
 
 ## Phase 10: Rendering VFX Profiling Production Surface
 

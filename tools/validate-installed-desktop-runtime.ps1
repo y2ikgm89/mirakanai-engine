@@ -983,13 +983,28 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
                 "simulation_management_invoked_save_io",
                 "simulation_management_invoked_runtime_ui",
                 "simulation_management_invoked_package_io",
-                "simulation_management_diagnostics"
+                "simulation_management_diagnostics",
+                "network_replication_status",
+                "network_replication_reviewed",
+                "network_replication_ready",
+                "network_replication_object_rows",
+                "network_replication_input_rows",
+                "network_replication_snapshot_rows",
+                "network_replication_rollback_rows",
+                "network_replication_rejected_unsafe_rows",
+                "network_replication_replay_hash",
+                "network_replication_requires_transport_host_evidence",
+                "network_replication_transport_host_evidence",
+                "network_replication_invoked_network_io",
+                "network_replication_invoked_rollback_execution",
+                "network_replication_invoked_world_mutation",
+                "network_replication_diagnostics"
             )) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
                 Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not include gameplay systems field: $field"
             }
         }
-        foreach ($field in @("gameplay_systems_ready", "gameplay_systems_navigation_reached", "gameplay_systems_perception_has_primary_target", "gameplay_systems_blackboard_has_target", "gameplay_systems_blackboard_needs_move", "gameplay_systems_behavior_authoring_ready", "gameplay_systems_behavior_authoring_deterministic_trace_ready", "gameplay_systems_quest_dialogue_ready", "gameplay_systems_inventory_items_ready", "gameplay_systems_construction_placement_ready", "gameplay_systems_procedural_generation_ready", "rpg_systems_ready", "sandbox_world_ready", "simulation_management_ready")) {
+        foreach ($field in @("gameplay_systems_ready", "gameplay_systems_navigation_reached", "gameplay_systems_perception_has_primary_target", "gameplay_systems_blackboard_has_target", "gameplay_systems_blackboard_needs_move", "gameplay_systems_behavior_authoring_ready", "gameplay_systems_behavior_authoring_deterministic_trace_ready", "gameplay_systems_quest_dialogue_ready", "gameplay_systems_inventory_items_ready", "gameplay_systems_construction_placement_ready", "gameplay_systems_procedural_generation_ready", "rpg_systems_ready", "sandbox_world_ready", "simulation_management_ready", "network_replication_reviewed")) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=1\b") {
                 Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove ready gameplay systems field: $field"
             }
@@ -1299,6 +1314,29 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsimulation_management_replay_hash=[1-9]\d*\b") {
             Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove positive simulation management replay hash."
         }
+        foreach ($expected in @{
+                "network_replication_status" = "host_evidence_required"
+                "network_replication_reviewed" = "1"
+                "network_replication_ready" = "0"
+                "network_replication_object_rows" = "2"
+                "network_replication_input_rows" = "2"
+                "network_replication_snapshot_rows" = "2"
+                "network_replication_rollback_rows" = "1"
+                "network_replication_rejected_unsafe_rows" = "0"
+                "network_replication_requires_transport_host_evidence" = "1"
+                "network_replication_transport_host_evidence" = "0"
+                "network_replication_invoked_network_io" = "0"
+                "network_replication_invoked_rollback_execution" = "0"
+                "network_replication_invoked_world_mutation" = "0"
+                "network_replication_diagnostics" = "0"
+            }.GetEnumerator()) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$([regex]::Escape($expected.Key))=$([regex]::Escape($expected.Value))\b") {
+                Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove network replication field: $($expected.Key)=$($expected.Value)."
+            }
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bnetwork_replication_replay_hash=[1-9]\d*\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove positive network replication replay hash."
+        }
     }
     if ($requiresProceduralGeneration) {
         foreach ($expected in @{
@@ -1434,6 +1472,21 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
             "simulation_management_invoked_runtime_ui",
             "simulation_management_invoked_package_io",
             "simulation_management_diagnostics",
+            "network_replication_status",
+            "network_replication_reviewed",
+            "network_replication_ready",
+            "network_replication_object_rows",
+            "network_replication_input_rows",
+            "network_replication_snapshot_rows",
+            "network_replication_rollback_rows",
+            "network_replication_rejected_unsafe_rows",
+            "network_replication_replay_hash",
+            "network_replication_requires_transport_host_evidence",
+            "network_replication_transport_host_evidence",
+            "network_replication_invoked_network_io",
+            "network_replication_invoked_rollback_execution",
+            "network_replication_invoked_world_mutation",
+            "network_replication_diagnostics",
             "gameplay_systems_scene_binding_ready",
             "gameplay_systems_scene_binding_source_rows",
             "gameplay_systems_scene_binding_rows",
@@ -1707,6 +1760,31 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsimulation_management_replay_hash=[1-9]\d*\b") {
         Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove positive simulation management replay hash."
+    }
+    $expectedNetworkReplicationFields = @{
+        "network_replication_status" = "host_evidence_required"
+        "network_replication_reviewed" = "1"
+        "network_replication_ready" = "0"
+        "network_replication_object_rows" = "2"
+        "network_replication_input_rows" = "2"
+        "network_replication_snapshot_rows" = "2"
+        "network_replication_rollback_rows" = "1"
+        "network_replication_rejected_unsafe_rows" = "0"
+        "network_replication_requires_transport_host_evidence" = "1"
+        "network_replication_transport_host_evidence" = "0"
+        "network_replication_invoked_network_io" = "0"
+        "network_replication_invoked_rollback_execution" = "0"
+        "network_replication_invoked_world_mutation" = "0"
+        "network_replication_diagnostics" = "0"
+    }
+    foreach ($field in $expectedNetworkReplicationFields.Keys) {
+        $expectedValue = $expectedNetworkReplicationFields[$field]
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove network replication field $field=$expectedValue."
+        }
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bnetwork_replication_replay_hash=[1-9]\d*\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove positive network replication replay hash."
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_scene_binding_ready=1\b") {
         Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove ready scene gameplay bindings."

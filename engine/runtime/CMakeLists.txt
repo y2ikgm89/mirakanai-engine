@@ -12,6 +12,7 @@ add_library(mirakana_runtime
     src/network_transport.cpp
     src/package_streaming.cpp
     src/physics_collision_runtime.cpp
+    src/production_network_replication.cpp
     src/procedural_generation.cpp
     src/quest_dialogue.cpp
     src/resource_runtime.cpp
