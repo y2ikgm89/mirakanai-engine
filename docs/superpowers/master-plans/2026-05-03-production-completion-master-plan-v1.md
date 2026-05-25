@@ -15,9 +15,10 @@ Use the chapter that matches the current decision. Do not bulk-read every chapte
 
 - 1.0 closeout readiness remains manifest-led: every `unsupportedProductionGaps` row in `engine/agent/manifest.json.aiOperableProductionLoop` must be implemented, host-gated with evidence, or explicitly excluded with evidence before a ready claim; the current composed manifest has no remaining rows.
 - Current execution remains manifest-led. Do not hand-edit `engine/agent/manifest.json`; edit `engine/agent/manifest.fragments/*.json` and run the compose script when manifest state changes.
-- Current active plan: this master plan index is selected after [Foundation Ready Burn-down v1](../plans/2026-05-24-foundation-ready-burn-down-v1.md) completed all 15 canonical `foundation-ready` rows through `procedural-content-generation-v1`. Completed optional-adapter and foundation-ready child evidence remains recorded in the plan registry.
-- Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan.id = next-production-gap-selection` until a new focused production slice is selected. Historical zero-gap closeout evidence remains discoverable through the retained plan registry and archive.
-- Current gap cluster: no Engine 1.0 unsupported gap or post-1.0 child milestone is selected.
+- Current active plan: [General Purpose Game Production v1](../plans/2026-05-25-general-purpose-game-production-v1.md) is selected after [Foundation Ready Burn-down v1](../plans/2026-05-24-foundation-ready-burn-down-v1.md) completed all 15 canonical `foundation-ready` rows through `procedural-content-generation-v1`. Completed optional-adapter and foundation-ready child evidence remains recorded in the plan registry.
+- Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan.id = general-purpose-game-production-v1` while the new post-foundation production track is active. Historical zero-gap closeout evidence remains discoverable through the retained plan registry and archive.
+- Historical idle state before this selection used `recommendedNextPlan.id = next-production-gap-selection`; keep that marker only as evidence that the previous no-child state closed cleanly.
+- Current gap cluster: no Engine 1.0 unsupported gap is open; the active post-foundation milestone selects reusable production surfaces without reopening completed foundation rows.
 
 ## Plan map
 

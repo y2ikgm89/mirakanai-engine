@@ -14,8 +14,9 @@ Each child plan that touches the listed surface must include a short "official p
 - **D3D12 / Vulkan / Metal:** require backend-private resource ownership, barriers/synchronization, queue/fence timelines, upload/staging retirement, debug names/markers, and validation-layer or host-tool evidence before promotion. D3D12 may be the Windows primary lane; Vulkan and Metal must not inherit D3D12 ready claims without their own strict host evidence.
 - **Android / Apple release lanes:** Android work must use the GameActivity/Prefab/NDK path accepted by the Android docs and must not store signing keys or SDK caches in the repo. Apple/iOS/Metal readiness requires macOS/Xcode/Simulator or device evidence; Windows diagnostics can only record host-gated blockers for those lanes.
 - **AI/operator command surfaces:** every convenience feature must be a reviewed dry-run/apply or reviewed execution surface with typed diagnostics, host-gate acknowledgement where needed, undo/remediation rows when it mutates content, and manifest/static-check synchronization.
+- **General-purpose production surfaces:** large-world, addressable-content, data-oriented scale, and runtime UI work may cite vendor engine guidance for architecture comparison, but implementation must stay first-party, backend-neutral, and free of Unity/Unreal/Godot API vocabulary unless a first-party contract explicitly adopts it.
 
-Source anchors for these checks: [CMake presets](https://cmake.org/cmake/help/latest/manual/cmake-presets.7.html), [CMake packages](https://cmake.org/cmake/help/latest/manual/cmake-packages.7.html), [CMake install/export](https://cmake.org/cmake/help/latest/command/install.html), [Microsoft vcpkg manifest mode](https://learn.microsoft.com/en-us/vcpkg/concepts/manifest-mode), [vcpkg CMake integration](https://learn.microsoft.com/en-us/vcpkg/users/buildsystems/cmake-integration), [vcpkg binary caching](https://learn.microsoft.com/en-us/vcpkg/reference/binarycaching), [SDL3 CMake/text/audio/clipboard API docs](https://wiki.libsdl.org/SDL3/), [Microsoft Direct3D 12 resource barriers](https://learn.microsoft.com/en-us/windows/win32/direct3d12/using-resource-barriers-to-synchronize-resource-states-in-direct3d-12), [Microsoft Direct3D 12 multi-engine synchronization](https://learn.microsoft.com/en-us/windows/win32/direct3d12/user-mode-heap-synchronization), [Khronos Vulkan synchronization guide](https://docs.vulkan.org/guide/latest/synchronization.html), [Khronos Vulkan validation overview](https://docs.vulkan.org/guide/latest/validation_overview.html), [Apple Metal resource synchronization](https://developer.apple.com/documentation/metal/resource-synchronization), [Apple Metal feature set tables](https://developer.apple.com/metal/capabilities/), and [Android GameActivity](https://developer.android.com/games/agdk/game-activity). Use newer official docs when a child plan is authored after this ledger edit.
+Source anchors for these checks: [CMake presets](https://cmake.org/cmake/help/latest/manual/cmake-presets.7.html), [CMake packages](https://cmake.org/cmake/help/latest/manual/cmake-packages.7.html), [CMake install/export](https://cmake.org/cmake/help/latest/command/install.html), [Microsoft vcpkg manifest mode](https://learn.microsoft.com/en-us/vcpkg/concepts/manifest-mode), [vcpkg CMake integration](https://learn.microsoft.com/en-us/vcpkg/users/buildsystems/cmake-integration), [vcpkg binary caching](https://learn.microsoft.com/en-us/vcpkg/reference/binarycaching), [SDL3 CMake/text/audio/clipboard API docs](https://wiki.libsdl.org/SDL3/), [Microsoft Direct3D 12 resource barriers](https://learn.microsoft.com/en-us/windows/win32/direct3d12/using-resource-barriers-to-synchronize-resource-states-in-direct3d-12), [Microsoft Direct3D 12 multi-engine synchronization](https://learn.microsoft.com/en-us/windows/win32/direct3d12/user-mode-heap-synchronization), [Khronos Vulkan synchronization guide](https://docs.vulkan.org/guide/latest/synchronization.html), [Khronos Vulkan validation overview](https://docs.vulkan.org/guide/latest/validation_overview.html), [Apple Metal resource synchronization](https://developer.apple.com/documentation/metal/resource-synchronization), [Apple Metal feature set tables](https://developer.apple.com/metal/capabilities/), [Android GameActivity](https://developer.android.com/games/agdk/game-activity), [Unreal Engine World Partition](https://dev.epicgames.com/documentation/en-us/unreal-engine/world-partition-in-unreal-engine), [Unity Addressables](https://docs.unity3d.com/Packages/com.unity.addressables@latest), [Unity Entities](https://docs.unity3d.com/Packages/com.unity.entities@latest), and [Unity UI Toolkit](https://docs.unity3d.com/Manual/UIElements.html). Use newer official docs when a child plan is authored after this ledger edit.
 
 Concrete evidence requirements:
 
@@ -209,6 +210,41 @@ This chapter is the high-freedom game creation projection over the canonical bac
 | Multiplayer | `engine-networking-foundation-v1`, `networking-and-multiplayer-v1`, `gameplay-simulation-orchestration-v1`, `simulation-persistence-v1` | Separate architecture/security plan, threat model, replay/determinism proof, transport/session gates, and no broad multiplayer claim from local gameplay. |
 
 When a high-freedom wave is selected, prefer one dated milestone plan that states the target freedom level, supported gameplay families, AI-operable authoring surface, persistence model, validation recipes, and explicit non-goals.
+
+## General-Purpose Game Production Track
+
+## Purpose
+
+This chapter is the fifth production track. It projects the new `General-Purpose Game Production` canonical rows from [04-developer-owned-engine-capability-backlog.md](04-developer-owned-engine-capability-backlog.md) into a post-foundation milestone that can support RPG, sandbox, simulation, and broad 2D/3D game creation without reopening completed foundation rows.
+
+This track is not a genre-specific backlog. It promotes only reusable production primitives: scheduler, world/entity model, addressable content, authoring workflows, runtime UI, genre-pack validation surfaces, network replication, and renderer/VFX/profiling evidence.
+
+## General-Purpose Production Rules
+
+- Keep completed `implemented-1x-foundation` rows closed. New breadth belongs to `production-candidate`, `selected-production-slice`, `implemented-production-surface`, or `host-gated-production` rows.
+- Prefer clean breaking public contracts over compatibility shims when a foundation-era value-only API blocks a production data model.
+- Keep production systems first-party and backend-neutral. Public APIs must not expose SDL3, Dear ImGui, native OS handles, renderer internals, RHI handles, backend types, or middleware types.
+- Split reusable engine production primitives from genre content. Stats, schedules, inventory, jobs, chunks, and dashboards can be engine primitives; story, balance, enemy names, biome rules, and economy numbers stay game-owned.
+- Use vendor engine documentation as comparison evidence only. Unreal World Partition, Unity Addressables, Unity Entities, and Unity UI Toolkit should inform boundaries and validation expectations, not dictate API names.
+- Each production phase must prove at least one generated or sample package counter set before making a broader ready claim.
+
+## General-Purpose Production Projection
+
+| Production concern | Canonical rows | Evidence boundary |
+| --- | --- | --- |
+| Track selection and governance | `general-purpose-game-production-v1` | Dated milestone plan, manifest active pointer, updated backlog/projection docs, official practice anchors, and docs/static checks. |
+| Authoritative game loop | `gameplay-runtime-scheduler-production-v1` | Fixed-tick system order, command playback, replay hashes, pause/step policy, budget diagnostics, selected 2D/3D package counters, and rollback/network hooks without transport claims. |
+| World and entity ownership | `world-entity-model-production-v1` | Stable ids, component schema rows, region ownership, lifecycle diagnostics, persistence bridge, streaming bridge, and no implicit scene mutation. |
+| Addressable content and streaming | `addressable-content-streaming-production-v1` | Address/dependency/refcount/load/release plans over reviewed package/catalog rows, resident budget diagnostics, package counters, and host-owned async execution. |
+| Production authoring | `production-authoring-workflows-v1` | Reviewed tool/editor workflows for scene, placement, quest/dialogue, item/economy, AI, world regions, and validation repair with mutation-ledger evidence and no arbitrary shell. |
+| Runtime UI workbench | `production-runtime-ui-workbench-v1` | Dense UI model rows, data binding, tables, graphs, inventory/equipment/shop, focus, localization, text input, accessibility payloads, and adapter boundaries. |
+| RPG production surface | `genre-rpg-systems-pack-v1` | Generic stats/progression/skills/equipment/combat/reward/save evidence across at least two gameplay families without engine-owned story or balance. |
+| Sandbox production surface | `genre-sandbox-world-pack-v1` | Chunk/region ownership, placement/destruction intent, construction costs, world mutation validation, persistence, and package evidence without engine-owned biome/content rules. |
+| Simulation production surface | `genre-simulation-management-pack-v1` | Jobs, resources, logistics, economy summaries, population/needs, schedules, deterministic long-run replay, save/load, and dashboard package evidence. |
+| Networked production surface | `production-network-replication-v1` | Separate architecture/security plan, deterministic replay proof, optional transport adapter evidence, real host validation, and no broad multiplayer claim from loopback evidence. |
+| Rendering/VFX/profiling production breadth | `production-rendering-vfx-profiling-v1` | Backend-specific D3D12/Vulkan/Metal evidence, GPU timing/profile rows, GPU particles/VFX counters, crash/telemetry handoff, and host-gated Apple/Metal proof. |
+
+When this track is active, the dated milestone plan owns sequencing. Keep each implementation PR focused on one production surface, but keep shared governance, docs, manifest, and validation context in the milestone rather than creating unrelated micro-plans.
 
 ## 2D Sprite Production Pipeline Track
 
