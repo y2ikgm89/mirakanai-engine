@@ -2,6 +2,7 @@ add_library(mirakana_runtime
     src/addressable_content_streaming.cpp
     src/asset_runtime.cpp
     src/entity_scale_culling.cpp
+    src/genre_rpg_systems.cpp
     src/gameplay_runtime_scheduler.cpp
     src/gameplay_interaction.cpp
     src/inventory_items.cpp

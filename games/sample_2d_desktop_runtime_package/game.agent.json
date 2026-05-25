@@ -117,6 +117,7 @@
         "physics-2d",
         "navigation-grid",
         "behavior-ai",
+        "rpg-systems",
         "simulation-orchestration"
       ],
       "packageTargets": [
@@ -150,6 +151,13 @@
           "recipeIds": [
             "installed-2d-gameplay-systems-smoke",
             "installed-native-2d-sprite-smoke"
+          ]
+        },
+        {
+          "id": "rpg-systems",
+          "evidence": "RPG systems smoke reports deterministic stat, progression, skill, equipment, combat-loop intent, reward, save-validation, replay-hash, and zero side-effect counters.",
+          "recipeIds": [
+            "installed-2d-gameplay-systems-smoke"
           ]
         },
         {
@@ -1763,6 +1771,7 @@
     "gameplayRuntimeScheduler": "mirakana::runtime::plan_runtime_gameplay_schedule under --require-simulation-orchestration; selected smoke requires gameplay_runtime_scheduler_status=budget_limited, gameplay_runtime_scheduler_ready=1, gameplay_runtime_scheduler_available_steps=3, gameplay_runtime_scheduler_steps=2, gameplay_runtime_scheduler_system_rows=6, gameplay_runtime_scheduler_command_rows=2, gameplay_runtime_scheduler_budget_limited=1, positive replay hash evidence, and gameplay_runtime_scheduler_diagnostics=0 without running game rules, renderer frame pacing, transport I/O, rollback/lockstep execution, package mutation, or native handles",
     "worldEntityModel": "mirakana::runtime::plan_runtime_world_entity_lifecycle under --require-simulation-orchestration; selected smoke requires world_entity_model_status=ready, world_entity_model_ready=1, 3 entity rows, 4 component rows, 3 region ownership rows, 3 lifecycle rows, one persistence bridge row, one streaming bridge row, one duplicate-entity diagnostic probe, invalid_request bridge rejection with five diagnostics, zero rejected bridge rows, one propagated streaming diagnostic, fail-closed evidence, and world_entity_model_diagnostics=0 without scene mutation, lifecycle execution, package IO, streaming execution, renderer/RHI work, threads, or native handles",
     "addressableContentStreaming": "mirakana::runtime::plan_runtime_addressable_content_streaming under --require-simulation-orchestration; selected smoke requires addressable_content_status=ready, addressable_content_ready=1, 5 address rows, 6 dependency rows, 3 load rows, 1 release row, 4 refcount rows, resident byte and budget counters, budget_limited rejection diagnostics, and addressable_content_package_io=0/addressable_content_async_execution=0/addressable_content_committed=0/addressable_content_diagnostics=0 without reading packages, mutating resident state, executing async work, creating renderer/RHI resources, creating threads, or exposing native handles",
+    "rpgSystems": "mirakana::runtime::plan_runtime_rpg_systems under --require-gameplay-systems; selected smoke requires rpg_systems_status=ready, rpg_systems_ready=1, rpg_systems_party_members=2, rpg_systems_enemy_members=1, rpg_systems_stat_rows=8, rpg_systems_progression_rows=2, rpg_systems_skill_rows=2, rpg_systems_skill_blocked_rows=1, rpg_systems_equipment_rows=2, rpg_systems_equipment_blocked_rows=1, rpg_systems_combat_turn_rows=6, rpg_systems_combat_rounds=2, rpg_systems_reward_rows=2, rpg_systems_save_validation_rows=2, rpg_systems_save_validation_repairable_rows=1, positive rpg_systems_replay_hash, zero combat/reward/save side-effect counters, and rpg_systems_diagnostics=0 without combat execution, reward application, save IO, package/world mutation, renderer/RHI work, native handles, or story/balance/tuning claims",
     "inputContextRebinding": "mirakana::runtime::plan_runtime_input_context_stack, apply_runtime_input_rebinding_profile, capture_runtime_input_rebinding_action, capture_runtime_input_rebinding_axis, capture_runtime_input_rebinding_action_with_focus, and make_runtime_input_rebinding_presentation under --require-gameplay-systems; selected smoke requires input_context_rebinding_ready=1, 3 requested layers, 1 active modal rebinding context, capture_context_active=1, gameplay input consumption, 2 applied profile overlays, captured action/axis candidates, retained focused waiting capture, 2 presentation rows, 5 symbolic glyph lookup keys, and clean diagnostics without real platform glyph assets, keyboard-layout localization, multiplayer device assignment, native handles, SDL3 input APIs, or full runtime/game rebinding panels",
     "sceneRenderer": "mirakana::submit_scene_render_packet",
     "ui": "mirakana::ui::UiDocument through mirakana::submit_ui_renderer_submission",
@@ -1781,7 +1790,7 @@
     "ui": "mirakana_ui-headless renderer submission plus Runtime UI Workbench package evidence through --require-runtime-ui-workbench",
     "physics": "MK_physics 2D deterministic contact and trigger proof through --require-gameplay-systems",
     "navigation": "MK_navigation grid path planning and agent update proof through --require-gameplay-systems",
-    "ai": "MK_ai behavior authoring, perception-blackboard, and behavior-tree proof plus MK_runtime quest/dialogue progression, inventory items crafting, construction placement validation, procedural generation, entity scale/culling package evidence, scripting sandbox policy package evidence, networking foundation policy package evidence, simulation orchestration package evidence, MK_tools gameplay authoring review and production authoring workflow package evidence, and MK_runtime_scene placement/procedural-placement intent proof through --require-gameplay-systems, --require-procedural-generation, --require-entity-scale-culling, --require-scripting-sandbox-policy, --require-networking-foundation-policy, --require-simulation-orchestration, --require-gameplay-authoring-review, and --require-production-authoring-workflows"
+    "ai": "MK_ai behavior authoring, perception-blackboard, and behavior-tree proof plus MK_runtime quest/dialogue progression, inventory items crafting, RPG systems review, construction placement validation, procedural generation, entity scale/culling package evidence, scripting sandbox policy package evidence, networking foundation policy package evidence, simulation orchestration package evidence, MK_tools gameplay authoring review and production authoring workflow package evidence, and MK_runtime_scene placement/procedural-placement intent proof through --require-gameplay-systems, --require-procedural-generation, --require-entity-scale-culling, --require-scripting-sandbox-policy, --require-networking-foundation-policy, --require-simulation-orchestration, --require-gameplay-authoring-review, and --require-production-authoring-workflows"
   },
   "importerRequirements": {
     "sourceFormats": [
