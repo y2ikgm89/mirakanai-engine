@@ -861,6 +861,34 @@ foreach ($needle in @(
     "production_authoring_workflow_invoked_package_io=0",
     "production_authoring_workflow_invoked_command_execution=0",
     "production_authoring_workflow_diagnostics=0",
+    "runtime UI workbench proof",
+    "--require-runtime-ui-workbench",
+    "installed-2d-runtime-ui-workbench-smoke",
+    "runtime_ui_workbench_status=ready",
+    "runtime_ui_workbench_ready=1",
+    "runtime_ui_workbench_panels=5",
+    "runtime_ui_workbench_table_columns=3",
+    "runtime_ui_workbench_table_rows=2",
+    "runtime_ui_workbench_graph_series=2",
+    "runtime_ui_workbench_item_rows=3",
+    "runtime_ui_workbench_inventory_rows=1",
+    "runtime_ui_workbench_equipment_rows=1",
+    "runtime_ui_workbench_shop_rows=1",
+    "runtime_ui_workbench_text_inputs=1",
+    "runtime_ui_workbench_platform_text_input_requests=1",
+    "runtime_ui_workbench_focus_edges=4",
+    "runtime_ui_workbench_localization_refs=17",
+    "runtime_ui_workbench_localization_identity_ready=1",
+    "runtime_ui_workbench_accessibility_refs=11",
+    "runtime_ui_workbench_accessibility_identity_ready=1",
+    "runtime_ui_workbench_renderer_submission=0",
+    "runtime_ui_workbench_text_shaping=0",
+    "runtime_ui_workbench_font_rasterization=0",
+    "runtime_ui_workbench_ime_sessions=0",
+    "runtime_ui_workbench_accessibility_bridge=0",
+    "runtime_ui_workbench_image_decoding=0",
+    "runtime_ui_workbench_native_platform=0",
+    "runtime_ui_workbench_diagnostics=0",
     "sceneGameplayBinding",
     "gameplay_systems_scene_binding_ready=1",
     "gameplay_systems_scene_interaction_final_session_state",
@@ -887,10 +915,12 @@ foreach ($needle in @(
     "mirakana/runtime/world_entity_model.hpp",
     "mirakana/runtime/addressable_content_streaming.hpp",
     "mirakana/tools/production_authoring_workflows.hpp",
+    "mirakana/ui/runtime_ui_workbench.hpp",
     "plan_runtime_gameplay_schedule",
     "plan_runtime_world_entity_lifecycle",
     "plan_runtime_addressable_content_streaming",
     "review_production_authoring_workflow",
+    "plan_runtime_ui_workbench",
     "installed-2d-production-authoring-workflows-smoke",
     "--require-native-2d-sprites",
     "--require-sprite-animation",
@@ -900,6 +930,7 @@ foreach ($needle in @(
     "--require-networking-foundation-policy",
     "--require-simulation-orchestration",
     "--require-production-authoring-workflows",
+    "--require-runtime-ui-workbench",
     "runtime_sprite_animation_payload",
     "runtime_tilemap_payload",
     "sample_runtime_tilemap_visible_cells",
@@ -1049,10 +1080,36 @@ foreach ($needle in @(
     "production_authoring_workflow_invoked_package_io=",
     "production_authoring_workflow_invoked_command_execution=",
     "production_authoring_workflow_diagnostics=",
+    "runtime_ui_workbench_status=",
+    "runtime_ui_workbench_ready=",
+    "runtime_ui_workbench_panels=",
+    "runtime_ui_workbench_table_columns=",
+    "runtime_ui_workbench_table_rows=",
+    "runtime_ui_workbench_graph_series=",
+    "runtime_ui_workbench_item_rows=",
+    "runtime_ui_workbench_inventory_rows=",
+    "runtime_ui_workbench_equipment_rows=",
+    "runtime_ui_workbench_shop_rows=",
+    "runtime_ui_workbench_text_inputs=",
+    "runtime_ui_workbench_platform_text_input_requests=",
+    "runtime_ui_workbench_focus_edges=",
+    "runtime_ui_workbench_localization_refs=",
+    "runtime_ui_workbench_localization_identity_ready=",
+    "runtime_ui_workbench_accessibility_refs=",
+    "runtime_ui_workbench_accessibility_identity_ready=",
+    "runtime_ui_workbench_renderer_submission=",
+    "runtime_ui_workbench_text_shaping=",
+    "runtime_ui_workbench_font_rasterization=",
+    "runtime_ui_workbench_ime_sessions=",
+    "runtime_ui_workbench_accessibility_bridge=",
+    "runtime_ui_workbench_image_decoding=",
+    "runtime_ui_workbench_native_platform=",
+    "runtime_ui_workbench_diagnostics=",
     "required_gameplay_runtime_scheduler_unavailable",
     "required_world_entity_model_unavailable",
     "required_addressable_content_unavailable",
     "required_production_authoring_workflows_unavailable",
+    "required_runtime_ui_workbench_unavailable",
     "required_simulation_orchestration_unavailable",
     "required_networking_foundation_policy_unavailable",
     "required_scripting_sandbox_policy_unavailable",
@@ -1208,7 +1265,32 @@ foreach ($needle in @(
     "production_authoring_workflow_invoked_file_mutation",
     "production_authoring_workflow_invoked_package_io",
     "production_authoring_workflow_invoked_command_execution",
-    "production_authoring_workflow_diagnostics"
+    "production_authoring_workflow_diagnostics",
+    "runtime_ui_workbench_status",
+    "runtime_ui_workbench_ready",
+    "runtime_ui_workbench_panels",
+    "runtime_ui_workbench_table_columns",
+    "runtime_ui_workbench_table_rows",
+    "runtime_ui_workbench_graph_series",
+    "runtime_ui_workbench_item_rows",
+    "runtime_ui_workbench_inventory_rows",
+    "runtime_ui_workbench_equipment_rows",
+    "runtime_ui_workbench_shop_rows",
+    "runtime_ui_workbench_text_inputs",
+    "runtime_ui_workbench_platform_text_input_requests",
+    "runtime_ui_workbench_focus_edges",
+    "runtime_ui_workbench_localization_refs",
+    "runtime_ui_workbench_localization_identity_ready",
+    "runtime_ui_workbench_accessibility_refs",
+    "runtime_ui_workbench_accessibility_identity_ready",
+    "runtime_ui_workbench_renderer_submission",
+    "runtime_ui_workbench_text_shaping",
+    "runtime_ui_workbench_font_rasterization",
+    "runtime_ui_workbench_ime_sessions",
+    "runtime_ui_workbench_accessibility_bridge",
+    "runtime_ui_workbench_image_decoding",
+    "runtime_ui_workbench_native_platform",
+    "runtime_ui_workbench_diagnostics"
 )) {
     Assert-ContainsText $sample2dInstalledRuntimeValidationText $needle "tools/validate-installed-desktop-runtime.ps1"
 }
@@ -1225,7 +1307,8 @@ foreach ($needle in @(
     "--require-scripting-sandbox-policy",
     "--require-networking-foundation-policy",
     "--require-simulation-orchestration",
-    "--require-production-authoring-workflows"
+    "--require-production-authoring-workflows",
+    "--require-runtime-ui-workbench"
 )) {
     Assert-ContainsText $sample2dDesktopCMakeText $needle "games/CMakeLists.txt"
 }
@@ -1413,8 +1496,14 @@ $currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
 Assert-ContainsText $currentCapabilitiesText "3D Scene Mesh Package Telemetry v1" "docs/current-capabilities.md"
 Assert-ContainsText $currentCapabilitiesText "Addressable Content Streaming Production v1" "docs/current-capabilities.md"
 Assert-ContainsText $currentCapabilitiesText "Production Authoring Workflows v1" "docs/current-capabilities.md"
+Assert-ContainsText $currentCapabilitiesText "Runtime UI Workbench Production v1" "docs/current-capabilities.md"
+foreach ($runtimeUiWorkbenchDocPath in @("docs/current-capabilities.md", "docs/ai-game-development.md", "docs/specs/generated-game-validation-scenarios.md", "docs/superpowers/plans/2026-05-25-general-purpose-game-production-v1.md", "games/sample_2d_desktop_runtime_package/README.md")) {
+    $runtimeUiWorkbenchDocText = Get-AgentSurfaceText $runtimeUiWorkbenchDocPath
+    foreach ($runtimeUiWorkbenchDocNeedle in @("runtime_ui_workbench_inventory_rows=1", "runtime_ui_workbench_equipment_rows=1", "runtime_ui_workbench_shop_rows=1", "runtime_ui_workbench_localization_identity_ready=1", "runtime_ui_workbench_accessibility_identity_ready=1")) { Assert-ContainsText $runtimeUiWorkbenchDocText $runtimeUiWorkbenchDocNeedle $runtimeUiWorkbenchDocPath }
+}
 $roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
 Assert-ContainsText $roadmapText "3D Scene Mesh Package Telemetry v1" "docs/roadmap.md"
+Assert-ContainsText $roadmapText "Runtime UI Workbench Production v1" "docs/roadmap.md"
 $engineManifestText = Get-AgentSurfaceText "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "prepare-worktree.ps1" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "normalized-configure-environment" "engine/agent/manifest.json"
@@ -1430,7 +1519,9 @@ foreach ($needle in @(
     "plan_runtime_addressable_content_streaming",
     "addressable_content_*",
     "review_production_authoring_workflow",
-    "production_authoring_workflow_*"
+    "production_authoring_workflow_*",
+    "plan_runtime_ui_workbench",
+    "runtime_ui_workbench_*"
 )) {
     Assert-ContainsText $engineManifestText $needle "engine/agent/manifest.json"
 }

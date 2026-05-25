@@ -50,7 +50,7 @@ Add the following canonical rows to the backlog under a new `General-Purpose Gam
 | `world-entity-model-production-v1` | `implemented-production-surface` | Stable entity/component/region ownership model with lifecycle, identity, serialization boundaries, persistence/streaming bridge diagnostics, and package-visible counters. |
 | `addressable-content-streaming-production-v1` | `implemented-production-surface` | Addressable package/content handles with dependency tracking, explicit load/release/refcount plans, resident budget diagnostics, and package evidence. |
 | `production-authoring-workflows-v1` | `implemented-production-surface` | Reviewed authoring flows for scene, placement, quest/dialogue, item/economy, AI behavior, world regions, and validation repair without free-form engine mutation. |
-| `production-runtime-ui-workbench-v1` | `production-candidate` | Dense runtime UI primitives for menus, inventory/equipment/shop, simulation dashboards, tables, graphs, focus navigation, text input, localization, and accessibility boundaries. |
+| `production-runtime-ui-workbench-v1` | `implemented-production-surface` | Dense runtime UI primitives for menus, inventory/equipment/shop, simulation dashboards, tables, graphs, focus navigation, text input, localization, and accessibility boundaries. |
 | `genre-rpg-systems-pack-v1` | `production-candidate` | Reusable RPG systems for stats, progression, skills, equipment, party/enemy combat loops, rewards, and save validation. |
 | `genre-sandbox-world-pack-v1` | `production-candidate` | Reusable sandbox systems for block/voxel-like world chunks, placement/destruction rules, construction costs, world mutation validation, and persistence. |
 | `genre-simulation-management-pack-v1` | `production-candidate` | Reusable simulation systems for economy, logistics, jobs, population/needs, production chains, schedules, and deterministic long-run validation. |
@@ -439,19 +439,32 @@ PR: #231 merged addressable-content-streaming-production-v1 at merge commit 7109
 - Create: `engine/ui/include/mirakana/ui/runtime_ui_workbench.hpp`
 - Create: `engine/ui/src/runtime_ui_workbench.cpp`
 - Modify: `engine/ui/CMakeLists.txt`
-- Test: `tests/unit/ui_tests.cpp`
+- Test: `tests/unit/runtime_ui_workbench_tests.cpp`
 
-- [ ] **Step 1: Write failing dense UI model tests**
+- [x] **Step 1: Write failing dense UI model tests**
 
   Test table rows, graph series, inventory/equipment/shop rows, focus navigation, text input request rows, localization keys, and accessibility payload references.
 
-- [ ] **Step 2: Implement retained UI workbench value types**
+- [x] **Step 2: Implement retained UI workbench value types**
 
   Add `RuntimeUiWorkbenchDocument`, `RuntimeUiWorkbenchPanelRow`, `RuntimeUiWorkbenchTableRow`, `RuntimeUiWorkbenchGraphSeries`, `RuntimeUiWorkbenchFocusPlan`, and `plan_runtime_ui_workbench`.
 
-- [ ] **Step 3: Keep rendering/adapters separate**
+- [x] **Step 3: Keep rendering/adapters separate**
 
   UI workbench rows describe validated runtime UI intent. Text shaping, font rasterization, IME, OS accessibility, image decoding, and renderer texture upload stay behind the existing adapter boundaries until selected production phases promote them.
+
+  OFFICIAL: Context7 Unity UI Toolkit `/needle-mirror/com.unity.ui` reinforced runtime UI features with runtime/editor separation, and Context7 Unreal Common UI/UMG `/websites/dev_epicgames_en-us_unreal-engine` reinforced activatable widgets/stacks/switchers and input metadata/subsystems while keeping runtime UI separate from editor/debug shells.
+  RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_ui_workbench_tests` failed before `mirakana/ui/runtime_ui_workbench.hpp` existed.
+  GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_ui_workbench_tests`
+  GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_ui_workbench_tests`
+  GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target sample_2d_desktop_runtime_package`
+  GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_ui_workbench_tests|sample_2d_desktop_runtime_package"`
+  RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_ui_workbench_tests` failed on review-hardening tests before empty/colliding graph/item/text/focus id diagnostics and bounded backend-token matching were implemented.
+  RED: `pwsh -NoProfile -ExecutionPolicy Bypass -Command "& './tools/validate-installed-desktop-runtime.ps1' -GameTarget sample_2d_desktop_runtime_package -SmokeArgs @('--smoke','--require-config','runtime/sample_2d_desktop_runtime_package.config','--require-scene-package','runtime/sample_2d_desktop_runtime_package.geindex','--require-runtime-ui-workbench')"` failed before installed smoke validation required `runtime_ui_workbench_localization_identity_ready`.
+  GREEN: `sample_2d_desktop_runtime_package --smoke --require-runtime-ui-workbench` emitted `runtime_ui_workbench_status=ready`, five panels, three table columns, two table rows, two graph series, three item rows, `runtime_ui_workbench_inventory_rows=1`, `runtime_ui_workbench_equipment_rows=1`, `runtime_ui_workbench_shop_rows=1`, one text input, one platform text-input request, four focus edges, seventeen localization refs, `runtime_ui_workbench_localization_identity_ready=1`, eleven accessibility refs, `runtime_ui_workbench_accessibility_identity_ready=1`, zero adapter invocation flags, and `runtime_ui_workbench_diagnostics=0`.
+  GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package`
+  GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -Command "& './tools/validate-installed-desktop-runtime.ps1' -GameTarget sample_2d_desktop_runtime_package -SmokeArgs @('--smoke','--require-config','runtime/sample_2d_desktop_runtime_package.config','--require-scene-package','runtime/sample_2d_desktop_runtime_package.geindex','--require-runtime-ui-workbench')"`
+  GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`
 
 ## Phase 6: RPG Systems Pack Production Surface
 

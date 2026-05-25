@@ -167,18 +167,11 @@ if (-not $manifest.commands.PSObject.Properties.Name.Contains("registerRuntimePa
 if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("gameRoot")) {
     Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.gameRoot"
 }
-if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentRuntimeUi")) {
-    Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentRuntimeUi"
-}
-if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentEditorAiReviewedValidationExecution")) {
-    Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentEditorAiReviewedValidationExecution"
-}
-if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentEditorProfilerTraceExport")) {
-    Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentEditorProfilerTraceExport"
-}
-if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentEditorPrefabVariantFileDialogs")) {
-    Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentEditorPrefabVariantFileDialogs"
-}
+if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentRuntimeUi")) { Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentRuntimeUi" }
+if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentRuntimeUiWorkbench")) { Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentRuntimeUiWorkbench" }
+if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentEditorAiReviewedValidationExecution")) { Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentEditorAiReviewedValidationExecution" }
+if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentEditorProfilerTraceExport")) { Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentEditorProfilerTraceExport" }
+if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentEditorPrefabVariantFileDialogs")) { Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentEditorPrefabVariantFileDialogs" }
 if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentEditorPrefabInstanceSourceLinks")) {
     Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentEditorPrefabInstanceSourceLinks"
 }
@@ -233,9 +226,7 @@ $geEditorCoreModule = @($manifest.modules | Where-Object { $_.name -eq "MK_edito
 if ($geEditorCoreModule.Count -ne 1) {
     Write-Error "engine/agent/manifest.json must expose exactly one MK_editor_core module"
 }
-if ($geUiModule[0].status -ne "implemented-runtime-ui-monospace-text-layout") {
-    Write-Error "engine/agent/manifest.json MK_ui status must advertise the runtime UI monospace text layout slice honestly"
-}
+if ($geUiModule[0].status -ne "implemented-production-runtime-ui-workbench") { Write-Error "engine/agent/manifest.json MK_ui status must advertise the production runtime UI workbench slice honestly" }
 if ($geUiRendererModule[0].status -ne "implemented-runtime-ui-font-image-adapter") {
     Write-Error "engine/agent/manifest.json MK_ui_renderer status must advertise the runtime UI font image adapter slice honestly"
 }
@@ -287,6 +278,8 @@ if (@($geToolsModule[0].publicHeaders) -notcontains "engine/tools/include/miraka
 if (@($geEditorCoreModule[0].publicHeaders) -notcontains "editor/core/include/mirakana/editor/play_in_editor.hpp") {
     Write-Error "engine/agent/manifest.json MK_editor_core publicHeaders must include play_in_editor.hpp"
 }
+if (@($geUiModule[0].publicHeaders) -notcontains "engine/ui/include/mirakana/ui/runtime_ui_workbench.hpp") { Write-Error "engine/agent/manifest.json MK_ui publicHeaders must include runtime_ui_workbench.hpp" }
+foreach ($runtimeUiWorkbenchModuleNeedle in @("Runtime UI Workbench Production v1", "RuntimeUiWorkbenchDocument", "RuntimeUiWorkbenchPlan", "plan_runtime_ui_workbench", "backend/native/editor/RHI/UI-middleware", "zero renderer/text-shaping/font-rasterization/IME/accessibility-bridge/image-decoding/native-platform adapter invocation")) { Assert-ContainsText ([string]$geUiModule[0].purpose) $runtimeUiWorkbenchModuleNeedle "MK_ui module purpose" }
 Assert-ContainsText ([string]$geUiModule[0].purpose) "MonospaceTextLayoutPolicy" "MK_ui module purpose"
 Assert-ContainsText ([string]$geUiModule[0].purpose) "stable glyph ids" "MK_ui module purpose"
 Assert-ContainsText ([string]$geUiModule[0].purpose) "AccessibilityPublishPlan" "MK_ui module purpose"
@@ -872,6 +865,7 @@ foreach ($inventoryItemPackageSurface in @(
     Assert-ContainsText $inventoryItemPackageText "gameplay_systems_construction_placement_intent_accepted_rows" $inventoryItemPackageSurface
     Assert-ContainsText $inventoryItemPackageText "gameplay_systems_construction_placement_intent_occupied_cells" $inventoryItemPackageSurface
 }
+foreach ($runtimeUiWorkbenchGuidanceNeedle in @("RuntimeUiWorkbenchDocument", "RuntimeUiWorkbenchPanelRow", "RuntimeUiWorkbenchTableRow", "RuntimeUiWorkbenchGraphSeries", "RuntimeUiWorkbenchItemRow", "RuntimeUiWorkbenchTextInputFieldRow", "RuntimeUiWorkbenchFocusPlan", "RuntimeUiWorkbenchLocalizationRef", "RuntimeUiWorkbenchAccessibilityRef", "RuntimeUiWorkbenchPlan", "plan_runtime_ui_workbench", "--require-runtime-ui-workbench", "runtime_ui_workbench_status=ready", "runtime_ui_workbench_panels=5", "runtime_ui_workbench_table_columns=3", "runtime_ui_workbench_table_rows=2", "runtime_ui_workbench_graph_series=2", "runtime_ui_workbench_item_rows=3", "runtime_ui_workbench_inventory_rows=1", "runtime_ui_workbench_equipment_rows=1", "runtime_ui_workbench_shop_rows=1", "runtime_ui_workbench_text_inputs=1", "runtime_ui_workbench_platform_text_input_requests=1", "runtime_ui_workbench_focus_edges=4", "runtime_ui_workbench_localization_refs=17", "runtime_ui_workbench_localization_identity_ready=1", "runtime_ui_workbench_accessibility_refs=11", "runtime_ui_workbench_accessibility_identity_ready=1", "runtime_ui_workbench_diagnostics=0", "zero renderer/text-shaping/font-rasterization/IME/accessibility-bridge/image-decoding/native-platform adapter invocation", "Dear ImGui/SDL3/UI middleware")) { Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUiWorkbench) $runtimeUiWorkbenchGuidanceNeedle "runtime UI workbench game guidance" }
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUi) "MonospaceTextLayoutPolicy" "runtime UI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUi) "plan_accessibility_publish" "runtime UI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUi) "publish_accessibility_payload" "runtime UI game guidance"
@@ -981,6 +975,7 @@ foreach ($runtimeUiDecodedAtlasGuidance in @(
 }
 $geUiHeaderText = Get-AgentSurfaceText "engine/ui/include/mirakana/ui/ui.hpp"
 $geUiSourceText = Get-AgentSurfaceText "engine/ui/src/ui.cpp"
+$runtimeUiWorkbenchHeaderText = Get-AgentSurfaceText "engine/ui/include/mirakana/ui/runtime_ui_workbench.hpp"; $runtimeUiWorkbenchSourceText = Get-AgentSurfaceText "engine/ui/src/runtime_ui_workbench.cpp"; $runtimeUiWorkbenchTestsText = Get-AgentSurfaceText "tests/unit/runtime_ui_workbench_tests.cpp"
 $sourceImageDecodeHeaderText = Get-AgentSurfaceText "engine/tools/include/mirakana/tools/source_image_decode.hpp"
 $sourceImageDecodeSourceText = Get-AgentSurfaceText "engine/tools/asset/source_image_decode.cpp"
 $uiAtlasToolHeaderText = Get-AgentSurfaceText "engine/tools/include/mirakana/tools/ui_atlas_tool.hpp"
@@ -1090,6 +1085,11 @@ foreach ($gameplayDebugOverlaySourceNeedle in @(
 )) {
     Assert-ContainsText $geUiSourceText $gameplayDebugOverlaySourceNeedle "MK_ui source"
 }
+foreach ($runtimeUiWorkbenchHeaderNeedle in @("RuntimeUiWorkbenchStatus", "RuntimeUiWorkbenchPanelKind", "RuntimeUiWorkbenchItemRowKind", "RuntimeUiWorkbenchDiagnosticCode", "RuntimeUiWorkbenchPanelRow", "RuntimeUiWorkbenchTableColumn", "RuntimeUiWorkbenchTableRow", "RuntimeUiWorkbenchGraphSeries", "RuntimeUiWorkbenchItemRow", "RuntimeUiWorkbenchTextInputFieldRow", "RuntimeUiWorkbenchFocusPlan", "RuntimeUiWorkbenchLocalizationRef", "RuntimeUiWorkbenchAccessibilityRef", "RuntimeUiWorkbenchDocument", "RuntimeUiWorkbenchPlan", "PlatformTextInputRequest", "plan_runtime_ui_workbench")) { Assert-ContainsText $runtimeUiWorkbenchHeaderText $runtimeUiWorkbenchHeaderNeedle "runtime UI workbench public header" }
+foreach ($runtimeUiWorkbenchSourceNeedle in @("RuntimeUiWorkbenchPlan::succeeded", "is_valid_panel_kind", "is_valid_item_kind", "has_backend_reference", "is_forbidden_backend_token", "table_column_owner_id", "unsupported_backend_reference", "invalid_graph_point", "invalid_shop_price", "invalid_text_input_bounds", "missing_focus_target_id", "unknown_focus_target", "RuntimeUiWorkbenchStatus::ready")) { Assert-ContainsText $runtimeUiWorkbenchSourceText $runtimeUiWorkbenchSourceNeedle "runtime UI workbench source" }
+foreach ($runtimeUiWorkbenchTestNeedle in @("runtime ui workbench plans dense runtime rows without adapter invocation", "runtime ui workbench fails closed for invalid dense ui and backend references", "runtime ui workbench accepts bounded natural language and localization tokens", "runtime ui workbench rejects empty focus target ids", "runtime ui workbench rejects colliding focus target ids", "RuntimeUiWorkbenchDiagnosticCode::unsupported_backend_reference", "RuntimeUiWorkbenchDiagnosticCode::unknown_focus_target", "invoked_renderer_submission", "platform_text_input_requests.size() == 1U")) { Assert-ContainsText $runtimeUiWorkbenchTestsText $runtimeUiWorkbenchTestNeedle "runtime UI workbench tests" }
+Assert-ContainsText (Get-AgentSurfaceText "engine/ui/CMakeLists.txt") "runtime_ui_workbench.cpp" "MK_ui source list"
+Assert-ContainsText (Get-AgentSurfaceText "CMakeLists.txt") "MK_runtime_ui_workbench_tests" "runtime UI workbench test target"
 Assert-ContainsText (Get-AgentSurfaceText "tests/unit/core_tests.cpp") "runtime gameplay debug overlay plan produces deterministic display rows" "tests/unit/core_tests.cpp"
 Assert-ContainsText (Get-AgentSurfaceText "tests/unit/core_tests.cpp") "runtime gameplay debug overlay plan rejects duplicate and invalid rows" "tests/unit/core_tests.cpp"
 Assert-ContainsText $sourceImageDecodeHeaderText "PngImageDecodingAdapter" "MK_tools source image decode public header"
