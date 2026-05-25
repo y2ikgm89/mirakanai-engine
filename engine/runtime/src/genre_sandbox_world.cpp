@@ -605,7 +605,7 @@ void mix_hash(std::uint64_t& hash, RuntimeSandboxCellCoord coord) noexcept {
 
 [[nodiscard]] std::uint64_t compute_replay_hash(const RuntimeSandboxWorldMutationRequest& request,
                                                 const RuntimeSandboxWorldMutationPlan& plan) {
-    auto hash = 1469598103934665603ULL;
+    auto hash = std::uint64_t{1469598103934665603ULL};
     mix_hash(hash, request.world_id);
     mix_hash(hash, request.world_tick);
     mix_hash(hash, request.seed);
