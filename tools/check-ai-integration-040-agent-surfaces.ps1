@@ -880,6 +880,97 @@ foreach ($check in $editorGameModuleDriverLoadChecks) {
     }
 }
 
+function Assert-NoLiveVersionSuffixContractText {
+    param(
+        [Parameter(Mandatory = $true)][string[]]$RelativeRoots,
+        [Parameter(Mandatory = $true)][object[]]$AllowedLiterals
+    )
+
+    $textExtensions = @(
+        ".c",
+        ".cc",
+        ".cmake",
+        ".comp",
+        ".cpp",
+        ".cppm",
+        ".cxx",
+        ".frag",
+        ".glsl",
+        ".h",
+        ".hpp",
+        ".hxx",
+        ".inl",
+        ".ipp",
+        ".ixx",
+        ".json",
+        ".md",
+        ".metal",
+        ".ps1",
+        ".schema",
+        ".txt",
+        ".vert",
+        ".yaml",
+        ".yml"
+    )
+    $contractTextPattern = "GameEngine\.[A-Za-z0-9_.]+\.v[0-9]+|\b[A-Za-z][A-Za-z0-9]*V[0-9]+\b|\b[a-z][a-z0-9_]*_v[0-9]+\b"
+    $contractPathPattern = "(^|/)[^/]*(?:\.v[0-9]+|_v[0-9]+|V[0-9]+)(?:[._/\-]|$)"
+    $allowedByPath = @{}
+    foreach ($allowedLiteral in $AllowedLiterals) {
+        $allowedPath = ([string]$allowedLiteral.Path) -replace "\\", "/"
+        if (-not $allowedByPath.ContainsKey($allowedPath)) {
+            $allowedByPath[$allowedPath] = [System.Collections.Generic.List[string]]::new()
+        }
+        $allowedByPath[$allowedPath].Add([string]$allowedLiteral.Needle)
+    }
+
+    foreach ($relativeRoot in $RelativeRoots) {
+        $fullRoot = Resolve-RequiredAgentPath $relativeRoot
+        $sourceFiles = @(Get-ChildItem -LiteralPath $fullRoot -Recurse -File |
+            Where-Object { $textExtensions -contains $_.Extension.ToLowerInvariant() } |
+            Sort-Object FullName)
+        foreach ($sourceFile in $sourceFiles) {
+            $relativePath = Get-RelativeRepoPath $sourceFile.FullName
+            if ([System.Text.RegularExpressions.Regex]::IsMatch($relativePath, $contractPathPattern)) {
+                Write-Error "ai-integration-check: live contract path must not retain removable version suffix: $relativePath"
+            }
+
+            $scanText = Get-Content -LiteralPath $sourceFile.FullName -Raw
+            if ($allowedByPath.ContainsKey($relativePath)) {
+                foreach ($allowedNeedle in $allowedByPath[$relativePath]) {
+                    $scanText = $scanText.Replace($allowedNeedle, "")
+                }
+            }
+
+            $versionSuffixMatches = @(
+                [System.Text.RegularExpressions.Regex]::Matches($scanText, $contractTextPattern) |
+                    ForEach-Object { $_.Value } |
+                    Sort-Object -Unique |
+                    Select-Object -First 5
+            )
+            if ($versionSuffixMatches.Count -gt 0) {
+                Write-Error "ai-integration-check: live contract text must not retain removable version suffix in $($relativePath): $($versionSuffixMatches -join ', ')"
+            }
+        }
+    }
+}
+
+Assert-NoLiveVersionSuffixContractText -RelativeRoots @(
+    "engine",
+    "games",
+    "editor",
+    "tools",
+    "schemas"
+) -AllowedLiterals @(
+    @{
+        Path = "tools/check-ai-integration-040-agent-surfaces.ps1"
+        Needle = "GameEngine.Unknown.v1"
+    },
+    @{
+        Path = "tools/check-ai-integration-040-agent-surfaces.ps1"
+        Needle = "mirakana_create_editor_game_module_driver_v1"
+    }
+)
+
 $canonicalUnknownFormatChecks = @(
     "engine/tools/asset/asset_import_tool.cpp",
     "engine/tools/asset/registered_source_asset_cook_package_tool.cpp"

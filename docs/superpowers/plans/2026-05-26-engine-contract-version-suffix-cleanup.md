@@ -713,6 +713,8 @@ Candidate 5 evidence:
 - Final suffix audit leaves only approved stale-format rejection fixtures, explicit unknown-format fixtures, cleanup mapping/design evidence, historical archive evidence, external standard language, numeric version fields, and coordinate/variable false positives.
 - Follow-up audit after PR #246 found current-sounding retained analysis text in `docs/specs/2026-04-27-engine-essential-gap-analysis.md`; those `GameEngine.*.vN` contract names were canonicalized while leaving the cleanup design/plan and historical archive evidence intact.
 - Hosted PR #246 static analysis exposed a stale Linux tidy build-cache path after the `schema_v2` file renames. `tools/check-tidy.ps1` now detects stale compile database source paths, reconfigures before running clang-tidy, and is guarded by `check-ai-integration` / `check-json-contracts`.
+- Follow-up audit removed unused `UiAtlasText*Row` parse-row structs whose `has_v0` / `has_v1` members were not future contracts and only created suffix false positives.
+- TDD RED: `check-ai-integration` and `check-json-contracts` were first updated to require a live suffix guard and failed until `Assert-NoLiveVersionSuffixContractText` was added. The guard scans `engine`, `games`, `editor`, `tools`, and `schemas` for removable version-suffix contract text and tracked path segments, with only explicit static-check literals allowed.
 
 - [ ] **Step 6: Publish through GitHub Flow**
 
@@ -739,5 +741,5 @@ Expected: the branch is not `main`, the branch is pushed, and a draft PR exists 
 | Old parser branches removed | stale-format rejection tests in the owning unit tests |
 | Samples/templates canonicalized | searches over `games/**` and `tools/new-game-templates.ps1` |
 | Editor ABI canonicalized | `MK_editor_game_module_driver_load_tests` and `MK_editor_core_tests` |
-| Agent surface aligned | `check-ai-integration.ps1`, `check-json-contracts.ps1`, composed manifest diff |
+| Agent surface aligned | `check-ai-integration.ps1`, `check-json-contracts.ps1`, composed manifest diff, and `Assert-NoLiveVersionSuffixContractText` live-surface guard |
 | Whole repository still works | `tools/validate.ps1` |

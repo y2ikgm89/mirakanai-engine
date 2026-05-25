@@ -743,6 +743,7 @@ $commonScriptText = Get-Content -LiteralPath (Join-Path $root "tools/common.ps1"
 $buildScriptText = Get-Content -LiteralPath (Join-Path $root "tools/build.ps1") -Raw
 $testScriptText = Get-Content -LiteralPath (Join-Path $root "tools/test.ps1") -Raw
 $tidyScriptText = Get-Content -LiteralPath (Join-Path $root "tools/check-tidy.ps1") -Raw
+$checkAiAgentSurfacesText = Get-Content -LiteralPath (Join-Path $root "tools/check-ai-integration-040-agent-surfaces.ps1") -Raw
 $evaluateCpp23ScriptText = Get-Content -LiteralPath (Join-Path $root "tools/evaluate-cpp23.ps1") -Raw
 $checkAiIntegrationText = Get-Content -LiteralPath (Join-Path $root "tools/check-ai-integration.ps1") -Raw
 $checkAiIntegrationCoreText = Get-Content -LiteralPath (Join-Path $root "tools/check-ai-integration-core.ps1") -Raw
@@ -773,6 +774,8 @@ foreach ($parallelScript in @(
 }
 Assert-ContainsText $tidyScriptText "Test-ClangTidyCompileDatabaseSourceFiles" "tools/check-tidy.ps1"
 Assert-ContainsText $tidyScriptText "compile database contains stale source path" "tools/check-tidy.ps1"
+Assert-ContainsText $checkAiAgentSurfacesText "Assert-NoLiveVersionSuffixContractText" "tools/check-ai-integration-040-agent-surfaces.ps1"
+Assert-ContainsText $checkAiAgentSurfacesText "live contract text must not retain removable version suffix" "tools/check-ai-integration-040-agent-surfaces.ps1"
 foreach ($commonHelperNeedle in @(
         "function Read-Json",
         "function ConvertTo-LfText",
