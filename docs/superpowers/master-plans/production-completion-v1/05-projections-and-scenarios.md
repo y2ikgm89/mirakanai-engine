@@ -205,17 +205,43 @@ This chapter is the high-freedom game creation projection over the canonical bac
 | Sandbox construction/crafting | `engine-construction-placement-v1`, `engine-inventory-items-crafting-v1`, `engine-procedural-generation-v1`, `simulation-persistence-v1` | Placement validation, physics/nav update diagnostics, persistence tests, and package evidence. |
 | Large worlds | `engine-world-region-streaming-v1`, `world-streaming-and-large-scenes-v1`, `engine-entity-scale-and-culling-v1`, `navigation-hierarchical-world-v1` | Region packages, safe-point load/unload, resource budgets, nav/physics partitioning, and explicit host-gated streaming claims. |
 | Procedural worlds and encounters | `procedural-content-generation-v1`, `engine-procedural-generation-v1`, `ai-gameplay-authoring-tools-v1` | Generator ids, seeds, deterministic output hashes/summaries, validation of generated scenes/assets, and quality-rubric rows. |
-| AI-authored games | `ai-game-design-spec-v1`, `ai-game-generation-orchestrator-v1`, `ai-safe-content-mutation-ledger-v1`, `ai-generated-game-playtest-loop-v1`, `ai-validation-remediation-recipes-v1`, `ai-generated-game-quality-rubric-v1`, `ai-codex-claude-agent-surface-v1`, `ai-engine-capability-handoff-v1` | Design-spec to game-owned content flow, mutation ledger, validation recipes, remediation rows, quality-rubric gates, cross-tool agent-surface alignment, and no engine-internal edits. |
+| AI-authored games | `ai-game-design-spec-v1`, `ai-game-generation-orchestrator-v1`, `ai-safe-content-mutation-ledger-v1`, `ai-generated-game-playtest-loop-v1`, `ai-validation-remediation-recipes-v1`, `ai-generated-game-quality-rubric-v1`, `ai-codex-claude-agent-surface-v1`, `ai-engine-capability-handoff-v1`, `generated-game-studio-v1` | Design-spec to game-owned content flow, mutation ledger, validation recipes, remediation rows, quality-rubric gates, studio-loop evidence aggregation, cross-tool agent-surface alignment, and no engine-internal edits. |
 | Scripting and modding | `engine-scripting-sandbox-v1`, `scripting-and-mod-sandbox-v1` | Reviewed sandbox policy rows, caller-owned adapter dispatch, execution budgets, deterministic replay signatures, package counters, no filesystem/network/process access by default, and no bundled VM/runtime dependency until a separate adapter decision. |
 | Multiplayer | `engine-networking-foundation-v1`, `networking-and-multiplayer-v1`, `gameplay-simulation-orchestration-v1`, `simulation-persistence-v1` | Separate architecture/security plan, threat model, replay/determinism proof, transport/session gates, and no broad multiplayer claim from local gameplay. |
 
 When a high-freedom wave is selected, prefer one dated milestone plan that states the target freedom level, supported gameplay families, AI-operable authoring surface, persistence model, validation recipes, and explicit non-goals.
 
+## Generated Game Studio Track
+
+## Purpose
+
+This chapter is the active AI game-creation studio track. It projects the canonical AI game workflow rows into one operator-visible milestone that can iterate generated 2D and 3D package games without granting engine-internal write scope to game-creation agents.
+
+The track is an orchestration and review surface, not a new renderer, runtime, package, or editor-productization claim. It must use existing first-party descriptors, package review rows, validation preflight rows, evidence import rows, remediation queue rows, quality-rubric rows, and command-panel rows before adding broader capability.
+
+## Generated Studio Rules
+
+- Start every session from a selected `game.agent.json.aiWorkflow.gameDesignSpec` row and same-manifest package/validation recipe ids.
+- Keep all game-content mutation under reviewed command surfaces and mutation-ledger rows; shared `engine/`, `editor/`, `tools/`, schemas, docs, and agent surfaces require a separate developer-owned task.
+- Treat host-gated D3D12/Vulkan/Metal/mobile/desktop package evidence as external operator evidence until the relevant validation recipe passes.
+- Route failed, blocked, missing, or host-gated evidence into remediation queue and handoff rows; do not weaken validation or delete evidence.
+- Keep the editor-core studio model read-only and deterministic. Execution stays in reviewed validation runners and editor-shell host controls.
+- If a requested generated-game behavior needs a missing reusable engine capability, emit `ai-engine-capability-handoff-v1` evidence against a canonical backlog row.
+
+## Generated Studio Projection
+
+| Studio concern | Canonical rows | Evidence boundary |
+| --- | --- | --- |
+| Track selection and governance | `generated-game-studio-v1` | Dated milestone plan, manifest active pointer, updated AI game-creation/backlog/projection docs, static checks, and explicit non-goals. |
+| 2D generated package loop | `ai-game-design-spec-v1`, `ai-game-generation-orchestrator-v1`, `ai-generated-game-playtest-loop-v1`, `ai-validation-remediation-recipes-v1`, `ai-generated-game-quality-rubric-v1` | Reviewed 2D design/spec rows, `DesktopRuntime2DPackage` scaffold/package rows, validation recipe preflight, imported evidence rows, remediation/handoff rows, and quality gates without engine internals or arbitrary shell. |
+| 3D generated package loop | `ai-game-design-spec-v1`, `ai-game-generation-orchestrator-v1`, `production-rendering-vfx-profiling-v1`, `ai-generated-game-playtest-loop-v1`, `ai-validation-remediation-recipes-v1`, `ai-generated-game-quality-rubric-v1` | Reviewed 3D design/spec rows, selected 3D package rows, host-gated renderer evidence rows, imported package-smoke evidence, remediation/handoff rows, and explicit Metal/broad-renderer non-goals. |
+| Editor/operator workflow | `generated-game-studio-v1`, existing `MK_editor_core` AI playtest package review and command panel models | GUI-independent editor-core value contract plus retained `generated_game_studio` UI/editor-shell evidence that summarizes session status, package readiness, validation preflight, reviewed commands, evidence, remediation, handoff, unsupported claims, and diagnostics without executing commands from editor core. |
+
 ## General-Purpose Game Production Track
 
 ## Purpose
 
-This chapter is the fifth production track. It projects the new `General-Purpose Game Production` canonical rows from [04-developer-owned-engine-capability-backlog.md](04-developer-owned-engine-capability-backlog.md) into a post-foundation milestone that can support RPG, sandbox, simulation, and broad 2D/3D game creation without reopening completed foundation rows.
+This chapter is the completed fifth production track. It projects the `General-Purpose Game Production` canonical rows from [04-developer-owned-engine-capability-backlog.md](04-developer-owned-engine-capability-backlog.md) into a post-foundation milestone that can support RPG, sandbox, simulation, and broad 2D/3D game creation without reopening completed foundation rows.
 
 This track is not a genre-specific backlog. It promotes only reusable production primitives: scheduler, world/entity model, addressable content, authoring workflows, runtime UI, genre-pack validation surfaces, network replication, and renderer/VFX/profiling evidence.
 

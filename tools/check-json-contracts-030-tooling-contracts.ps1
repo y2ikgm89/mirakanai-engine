@@ -1043,6 +1043,17 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     )) {
         Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan production milestone"
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "generated-game-studio-v1") {
+    foreach ($needle in @(
+        "Generated Game Studio v1",
+        "EditorAiGeneratedGameStudioV1Model",
+        "EditorAiCommandPanelModel",
+        "ai-generated-game-playtest-loop-v1",
+        "ai-validation-remediation-recipes-v1",
+        "unsupportedProductionGaps empty"
+    )) {
+        Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan generated game studio milestone"
+    }
 } else {
     foreach ($needle in @(
     "Frame Graph Transient Texture Alias Planning v1",

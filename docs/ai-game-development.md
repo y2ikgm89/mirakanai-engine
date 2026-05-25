@@ -57,6 +57,12 @@ Generated or sample 2D/3D package manifests must carry AI Validation Remediation
 
 Generated or sample 2D/3D package manifests must carry AI Generated Game Quality Rubric v1 through `game.agent.json.aiWorkflow.generatedGameQualityRubric` before a generated game can claim quality-gate readiness beyond compile or scaffold creation. The descriptor links same-manifest design spec, playtest loop, remediation recipe, validation recipe, and report ids into objective, controls, feedback, fail/restart, deterministic package smoke, and budget evidence gates. It records headless and package sample report paths plus explicit unsupported rows, and it allows no subjective fun, commercial quality, platform parity, unbounded performance, unreviewed content, autonomous balancing, native handles, validation weakening, or broad production readiness claim.
 
+## Generated Game Studio v1
+
+Generated Game Studio v1 is the active AI game-creation studio loop. It composes `game.agent.json.aiWorkflow.gameDesignSpec`, the game generation orchestrator, content mutation ledger, placeholder asset pipeline, playtest loop, validation remediation recipes, quality rubric, engine capability handoffs, and the editor AI package/validation/evidence/remediation workflow into one reviewed 2D/3D iteration surface.
+
+`mirakana::editor::EditorAiGeneratedGameStudioV1Model`, `EditorAiGeneratedGameStudioV1LoopRow`, `make_editor_ai_generated_game_studio_v1_model`, and `make_editor_ai_generated_game_studio_v1_ui_model` are read-only editor-core contracts. They aggregate design spec rows, scene package registration drafts, scene authoring diagnostics, `EditorAiPlaytestOperatorWorkflowReportModel`, and `EditorAiCommandPanelModel` into retained `generated_game_studio` UI ids for the visible AI Commands panel. They do not mutate manifests, execute validation recipes, run package scripts, edit engine internals, expose native handles, create renderer/RHI residency, make Metal ready, or claim broad editor/renderer productization.
+
 ## AI Command Surfaces
 
 `aiCommandSurfaces` describes which AI-facing mutations may be dry-run or applied. Each descriptor has `schemaVersion`, `requestModes`, `requestShape`, `resultShape`, `requiredModules`, `capabilityGates`, `hostGates`, `validationRecipes`, `unsupportedGapIds`, and a placeholder `undoToken`; `unsupportedGapIds` can be empty after a narrow reviewed surface has no current `unsupportedProductionGaps` blocker. Agents must treat these rows as capability gates before editing game files, scene/prefab/material/package data, or manifests.

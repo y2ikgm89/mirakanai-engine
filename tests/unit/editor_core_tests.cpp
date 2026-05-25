@@ -12,6 +12,7 @@
 #include "mirakana/editor/content_browser.hpp"
 #include "mirakana/editor/content_browser_import_panel.hpp"
 #include "mirakana/editor/game_module_driver.hpp"
+#include "mirakana/editor/generated_game_studio.hpp"
 #include "mirakana/editor/gltf_mesh_catalog.hpp"
 #include "mirakana/editor/history.hpp"
 #include "mirakana/editor/input_rebinding.hpp"
@@ -11978,6 +11979,363 @@ MK_TEST("editor ai command panel blocks mutating or executing workflow inputs") 
     MK_REQUIRE(has_diagnostic("read-only"));
     MK_REQUIRE(has_diagnostic("must not execute"));
     MK_REQUIRE(has_diagnostic("upstream workflow blocked"));
+}
+
+MK_TEST("editor ai generated game studio v1 model aggregates design workflow and command panel rows") {
+    mirakana::editor::EditorAiGeneratedGameStudioV1DesignSpecRow design_2d{
+        .id = "arena-2d",
+        .gameplay_family = "2d-desktop-runtime-package",
+        .template_id = "DesktopRuntime2DPackage",
+        .package_target_id = "sample_2d_desktop_runtime_package",
+        .validation_recipe_ids = {"agent-contract", "desktop-runtime-2d-package-smoke"},
+        .scene_package_registration_draft_rows = {mirakana::editor::ScenePackageRegistrationDraftRow{
+            .kind = mirakana::editor::ScenePackageCandidateKind::scene_cooked,
+            .candidate_path = "games/arena/source/scenes/arena.scene",
+            .runtime_package_path = "runtime/scenes/arena.scene",
+            .runtime_file = true,
+            .status = mirakana::editor::ScenePackageRegistrationDraftStatus::add_runtime_file,
+            .diagnostic = "2D runtime scene package row ready",
+        }},
+        .scene_nodes = {mirakana::editor::SceneAuthoringNodeRow{.node = mirakana::SceneNodeId{1},
+                                                                .parent = mirakana::null_scene_node,
+                                                                .name = "player",
+                                                                .depth = 0,
+                                                                .selected = true,
+                                                                .has_camera = true,
+                                                                .has_light = false,
+                                                                .has_mesh_renderer = false,
+                                                                .has_sprite_renderer = true}},
+        .diagnostics = {},
+        .three_dimensional = false,
+        .host_gated_package_evidence_required = false,
+    };
+    mirakana::editor::EditorAiGeneratedGameStudioV1DesignSpecRow design_3d{
+        .id = "arena-3d",
+        .gameplay_family = "3d-playable-desktop-package",
+        .template_id = "DesktopRuntime3DPackage",
+        .package_target_id = "sample_generated_desktop_runtime_3d_package",
+        .validation_recipe_ids = {"desktop-runtime-3d-package-smoke"},
+        .scene_package_registration_draft_rows = {},
+        .scene_nodes = {},
+        .diagnostics = {},
+        .three_dimensional = true,
+        .host_gated_package_evidence_required = true,
+    };
+
+    mirakana::editor::EditorAiPlaytestOperatorWorkflowReportModel workflow;
+    workflow.stage_rows.push_back(mirakana::editor::EditorAiPlaytestOperatorWorkflowStageRow{
+        .id = "package-diagnostics",
+        .source_model = "EditorAiPackageAuthoringDiagnosticsModel",
+        .status = mirakana::editor::EditorAiPlaytestOperatorWorkflowStageStatus::ready,
+        .source_row_count = 1,
+        .source_row_ids = {"runtime-scene-target"},
+        .host_gates = {},
+        .blocked_by = {},
+        .diagnostic = "package diagnostics ready",
+    });
+
+    mirakana::editor::EditorAiCommandPanelModel panel;
+    panel.status = mirakana::editor::EditorAiCommandPanelStatus::ready;
+    panel.status_label = "ready";
+    panel.ready_stage_count = 1;
+    panel.command_rows.push_back(mirakana::editor::EditorAiCommandPanelCommandRow{
+        .recipe_id = "agent-contract",
+        .status_label = "ready",
+        .command_display =
+            "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Recipe agent-contract",
+        .argv = {"pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools/run-validation-recipe.ps1",
+                 "-Recipe", "agent-contract"},
+        .host_gates = {},
+        .blocked_by = {},
+        .readiness_dependency = "EditorAiPlaytestReadinessReportModel.ready_for_operator_validation",
+        .diagnostic = "reviewed command ready",
+    });
+
+    const auto model = mirakana::editor::make_editor_ai_generated_game_studio_v1_model(
+        mirakana::editor::EditorAiGeneratedGameStudioV1Desc{
+            .design_specs = {design_2d, design_3d},
+            .operator_workflow_report = workflow,
+            .ai_command_panel = panel,
+        });
+
+    MK_REQUIRE(model.status == mirakana::editor::EditorAiGeneratedGameStudioV1Status::host_gated);
+    MK_REQUIRE(model.status_label == "host_gated");
+    MK_REQUIRE(model.design_specs.size() == 2);
+    MK_REQUIRE(model.loop_rows.size() == 2);
+    MK_REQUIRE(model.loop_rows[0].design_spec_id == "arena-2d");
+    MK_REQUIRE(model.loop_rows[0].package_registration_draft_count == 1);
+    MK_REQUIRE(model.loop_rows[0].scene_node_count == 1);
+    MK_REQUIRE(!model.loop_rows[0].three_dimensional);
+    MK_REQUIRE(model.loop_rows[1].design_spec_id == "arena-3d");
+    MK_REQUIRE(model.loop_rows[1].three_dimensional);
+    MK_REQUIRE(model.loop_rows[1].host_gated_package_evidence_required);
+    MK_REQUIRE(model.command_row_count == 1);
+    MK_REQUIRE(model.workflow_stage_count == 1);
+    MK_REQUIRE(model.host_gated_loop_count == 1);
+    MK_REQUIRE(!model.mutates);
+    MK_REQUIRE(!model.executes);
+}
+
+MK_TEST("editor ai generated game studio v1 model keeps recipe evidence scoped to each design") {
+    mirakana::editor::EditorAiPlaytestOperatorWorkflowReportModel workflow;
+    workflow.remediation_required = true;
+    workflow.external_action_required = true;
+    workflow.stage_rows.push_back(mirakana::editor::EditorAiPlaytestOperatorWorkflowStageRow{
+        .id = "remediation-queue",
+        .source_model = "EditorAiPlaytestRemediationQueueModel",
+        .status = mirakana::editor::EditorAiPlaytestOperatorWorkflowStageStatus::remediation_required,
+        .source_row_count = 1,
+        .source_row_ids = {"desktop-runtime-2d-package-smoke"},
+        .host_gates = {},
+        .blocked_by = {},
+        .diagnostic = "2D package smoke requires remediation",
+    });
+
+    mirakana::editor::EditorAiCommandPanelModel panel;
+    panel.status = mirakana::editor::EditorAiCommandPanelStatus::external_action_required;
+    panel.status_label = "external_action_required";
+    panel.external_action_required = true;
+    panel.remediation_required = true;
+    panel.command_rows.push_back(mirakana::editor::EditorAiCommandPanelCommandRow{
+        .recipe_id = "desktop-runtime-2d-package-smoke",
+        .status_label = "ready",
+        .command_display = "run 2d",
+        .argv = {"pwsh"},
+        .host_gates = {},
+        .blocked_by = {},
+        .readiness_dependency = "ready",
+        .diagnostic = "2D reviewed command",
+    });
+    panel.command_rows.push_back(mirakana::editor::EditorAiCommandPanelCommandRow{
+        .recipe_id = "desktop-runtime-3d-package-smoke",
+        .status_label = "ready",
+        .command_display = "run 3d",
+        .argv = {"pwsh"},
+        .host_gates = {},
+        .blocked_by = {},
+        .readiness_dependency = "ready",
+        .diagnostic = "3D reviewed command",
+    });
+    panel.evidence_rows.push_back(mirakana::editor::EditorAiCommandPanelEvidenceRow{
+        .recipe_id = "desktop-runtime-2d-package-smoke",
+        .status_label = "failed",
+        .handoff_status_label = "ready",
+        .handoff_row_available = true,
+        .exit_code = 1,
+        .summary = "2D smoke failed",
+        .stdout_summary = "",
+        .stderr_summary = "",
+        .host_gates = {},
+        .blocked_by = {"package-smoke-failed"},
+        .readiness_dependency = "ready",
+        .diagnostic = "repair 2D package",
+    });
+
+    const auto model = mirakana::editor::make_editor_ai_generated_game_studio_v1_model(
+        mirakana::editor::EditorAiGeneratedGameStudioV1Desc{
+            .design_specs = {mirakana::editor::EditorAiGeneratedGameStudioV1DesignSpecRow{
+                                 .id = "arena-2d",
+                                 .gameplay_family = "2d-desktop-runtime-package",
+                                 .template_id = "DesktopRuntime2DPackage",
+                                 .package_target_id = "sample_2d_desktop_runtime_package",
+                                 .validation_recipe_ids = {"desktop-runtime-2d-package-smoke"},
+                                 .scene_package_registration_draft_rows = {},
+                                 .scene_nodes = {},
+                                 .diagnostics = {},
+                                 .three_dimensional = false,
+                                 .host_gated_package_evidence_required = false,
+                             },
+                             mirakana::editor::EditorAiGeneratedGameStudioV1DesignSpecRow{
+                                 .id = "arena-3d",
+                                 .gameplay_family = "3d-playable-desktop-package",
+                                 .template_id = "DesktopRuntime3DPackage",
+                                 .package_target_id = "sample_generated_desktop_runtime_3d_package",
+                                 .validation_recipe_ids = {"desktop-runtime-3d-package-smoke"},
+                                 .scene_package_registration_draft_rows = {},
+                                 .scene_nodes = {},
+                                 .diagnostics = {},
+                                 .three_dimensional = true,
+                                 .host_gated_package_evidence_required = false,
+                             }},
+            .operator_workflow_report = workflow,
+            .ai_command_panel = panel,
+        });
+
+    MK_REQUIRE(model.loop_rows.size() == 2);
+    MK_REQUIRE(model.loop_rows[0].design_spec_id == "arena-2d");
+    MK_REQUIRE(model.loop_rows[0].status ==
+               mirakana::editor::EditorAiGeneratedGameStudioV1Status::remediation_required);
+    MK_REQUIRE(model.loop_rows[0].command_row_count == 1);
+    MK_REQUIRE(model.loop_rows[0].evidence_row_count == 1);
+    MK_REQUIRE(model.loop_rows[0].remediation_row_count == 1);
+    MK_REQUIRE(model.loop_rows[1].design_spec_id == "arena-3d");
+    MK_REQUIRE(model.loop_rows[1].status == mirakana::editor::EditorAiGeneratedGameStudioV1Status::ready);
+    MK_REQUIRE(model.loop_rows[1].command_row_count == 1);
+    MK_REQUIRE(model.loop_rows[1].evidence_row_count == 0);
+    MK_REQUIRE(model.loop_rows[1].remediation_row_count == 0);
+}
+
+MK_TEST("editor ai generated game studio v1 ui model exposes retained dashboard ids") {
+    const auto model = mirakana::editor::make_editor_ai_generated_game_studio_v1_model(
+        mirakana::editor::EditorAiGeneratedGameStudioV1Desc{
+            .design_specs = {mirakana::editor::EditorAiGeneratedGameStudioV1DesignSpecRow{
+                .id = "arena-2d",
+                .gameplay_family = "2d-desktop-runtime-package",
+                .template_id = "DesktopRuntime2DPackage",
+                .package_target_id = "sample_2d_desktop_runtime_package",
+                .validation_recipe_ids = {"desktop-runtime-2d-package-smoke"},
+                .scene_package_registration_draft_rows = {},
+                .scene_nodes = {},
+                .diagnostics = {},
+                .three_dimensional = false,
+                .host_gated_package_evidence_required = false,
+            }},
+            .operator_workflow_report = mirakana::editor::EditorAiPlaytestOperatorWorkflowReportModel{},
+            .ai_command_panel = mirakana::editor::EditorAiCommandPanelModel{},
+        });
+
+    const auto ui = mirakana::editor::make_editor_ai_generated_game_studio_v1_ui_model(model);
+
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"generated_game_studio"}) != nullptr);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"generated_game_studio.status"}) != nullptr);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"generated_game_studio.loops"}) != nullptr);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"generated_game_studio.loops.arena-2d"}) != nullptr);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"generated_game_studio.loops.arena-2d.status"}) != nullptr);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"generated_game_studio.loops.arena-2d.package_target"}) != nullptr);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"generated_game_studio.unsupported_claims"}) != nullptr);
+    MK_REQUIRE(ui.find(mirakana::ui::ElementId{"generated_game_studio.diagnostics"}) != nullptr);
+}
+
+MK_TEST("editor ai generated game studio v1 model preserves evidence remediation and handoff state") {
+    mirakana::editor::EditorAiPlaytestOperatorWorkflowReportModel workflow;
+    workflow.remediation_required = true;
+    workflow.handoff_required = true;
+    workflow.external_action_required = true;
+    workflow.stage_rows.push_back(mirakana::editor::EditorAiPlaytestOperatorWorkflowStageRow{
+        .id = "evidence-summary",
+        .source_model = "EditorAiPlaytestEvidenceSummaryModel",
+        .status = mirakana::editor::EditorAiPlaytestOperatorWorkflowStageStatus::remediation_required,
+        .source_row_count = 1,
+        .source_row_ids = {"desktop-runtime-2d-package-smoke"},
+        .host_gates = {},
+        .blocked_by = {},
+        .diagnostic = "failed package smoke requires remediation",
+    });
+    workflow.stage_rows.push_back(mirakana::editor::EditorAiPlaytestOperatorWorkflowStageRow{
+        .id = "remediation-queue",
+        .source_model = "EditorAiPlaytestRemediationQueueModel",
+        .status = mirakana::editor::EditorAiPlaytestOperatorWorkflowStageStatus::remediation_required,
+        .source_row_count = 1,
+        .source_row_ids = {"desktop-runtime-2d-package-smoke"},
+        .host_gates = {},
+        .blocked_by = {},
+        .diagnostic = "non-passing evidence has remediation rows",
+    });
+    workflow.stage_rows.push_back(mirakana::editor::EditorAiPlaytestOperatorWorkflowStageRow{
+        .id = "remediation-handoff",
+        .source_model = "EditorAiPlaytestRemediationHandoffModel",
+        .status = mirakana::editor::EditorAiPlaytestOperatorWorkflowStageStatus::handoff_required,
+        .source_row_count = 1,
+        .source_row_ids = {"desktop-runtime-2d-package-smoke"},
+        .host_gates = {},
+        .blocked_by = {},
+        .diagnostic = "remediation handoff rows require external operator action",
+    });
+
+    mirakana::editor::EditorAiCommandPanelModel panel;
+    panel.status = mirakana::editor::EditorAiCommandPanelStatus::external_action_required;
+    panel.status_label = "external_action_required";
+    panel.external_action_required = true;
+    panel.remediation_required = true;
+    panel.handoff_required = true;
+    panel.evidence_rows.push_back(mirakana::editor::EditorAiCommandPanelEvidenceRow{
+        .recipe_id = "desktop-runtime-2d-package-smoke",
+        .status_label = "failed",
+        .handoff_status_label = "ready",
+        .handoff_row_available = true,
+        .exit_code = 1,
+        .summary = "package smoke failed",
+        .stdout_summary = "scene_package_loaded=0",
+        .stderr_summary = "",
+        .host_gates = {},
+        .blocked_by = {"package-smoke-failed"},
+        .readiness_dependency = "EditorAiPlaytestReadinessReportModel.ready_for_operator_validation",
+        .diagnostic = "rerun after remediation",
+    });
+
+    const auto model = mirakana::editor::make_editor_ai_generated_game_studio_v1_model(
+        mirakana::editor::EditorAiGeneratedGameStudioV1Desc{
+            .design_specs = {mirakana::editor::EditorAiGeneratedGameStudioV1DesignSpecRow{
+                .id = "arena-2d",
+                .gameplay_family = "2d-desktop-runtime-package",
+                .template_id = "DesktopRuntime2DPackage",
+                .package_target_id = "sample_2d_desktop_runtime_package",
+                .validation_recipe_ids = {"desktop-runtime-2d-package-smoke"},
+                .scene_package_registration_draft_rows = {},
+                .scene_nodes = {},
+                .diagnostics = {},
+                .three_dimensional = false,
+                .host_gated_package_evidence_required = false,
+            }},
+            .operator_workflow_report = workflow,
+            .ai_command_panel = panel,
+        });
+
+    MK_REQUIRE(model.status == mirakana::editor::EditorAiGeneratedGameStudioV1Status::remediation_required);
+    MK_REQUIRE(model.remediation_required);
+    MK_REQUIRE(model.handoff_required);
+    MK_REQUIRE(model.external_action_required);
+    MK_REQUIRE(model.evidence_row_count == 1);
+    MK_REQUIRE(model.remediation_row_count == 1);
+    MK_REQUIRE(model.handoff_row_count == 1);
+    MK_REQUIRE(model.loop_rows[0].remediation_row_count == 1);
+    MK_REQUIRE(model.loop_rows[0].handoff_row_count == 1);
+    MK_REQUIRE(model.loop_rows[0].evidence_row_count == 1);
+}
+
+MK_TEST("editor ai generated game studio v1 model rejects mutation execution and native claims") {
+    mirakana::editor::EditorAiPlaytestOperatorWorkflowReportModel unsafe_workflow;
+    unsafe_workflow.mutates = true;
+    unsafe_workflow.executes = true;
+    mirakana::editor::EditorAiCommandPanelModel unsafe_panel;
+    unsafe_panel.mutates = true;
+    unsafe_panel.executes = true;
+
+    const auto model = mirakana::editor::make_editor_ai_generated_game_studio_v1_model(
+        mirakana::editor::EditorAiGeneratedGameStudioV1Desc{
+            .design_specs = {},
+            .operator_workflow_report = unsafe_workflow,
+            .ai_command_panel = unsafe_panel,
+            .request_manifest_mutation = true,
+            .request_validation_execution = true,
+            .request_arbitrary_shell_execution = true,
+            .request_engine_internal_mutation = true,
+            .request_renderer_rhi_handle_exposure = true,
+            .request_broad_editor_productization = true,
+        });
+
+    auto has_diagnostic = [&model](std::string_view text) {
+        return std::ranges::any_of(model.diagnostics,
+                                   [text](const std::string& diagnostic) { return diagnostic.contains(text); });
+    };
+    auto has_unsupported_claim = [&model](std::string_view text) {
+        return std::ranges::any_of(model.unsupported_claims,
+                                   [text](const std::string& claim) { return claim.contains(text); });
+    };
+
+    MK_REQUIRE(model.status == mirakana::editor::EditorAiGeneratedGameStudioV1Status::blocked);
+    MK_REQUIRE(model.has_blocking_diagnostics);
+    MK_REQUIRE(!model.mutates);
+    MK_REQUIRE(!model.executes);
+    MK_REQUIRE(has_diagnostic("at least one design spec row"));
+    MK_REQUIRE(has_diagnostic("input must not mutate"));
+    MK_REQUIRE(has_diagnostic("input must not execute"));
+    MK_REQUIRE(has_unsupported_claim("manifest mutation"));
+    MK_REQUIRE(has_unsupported_claim("validation execution"));
+    MK_REQUIRE(has_unsupported_claim("arbitrary shell"));
+    MK_REQUIRE(has_unsupported_claim("engine internal mutation"));
+    MK_REQUIRE(has_unsupported_claim("renderer/RHI handle exposure"));
+    MK_REQUIRE(has_unsupported_claim("broad editor productization"));
 }
 
 MK_TEST("editor ai reviewed validation execution plan converts reviewed dry run argv") {

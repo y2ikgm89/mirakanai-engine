@@ -2254,13 +2254,15 @@ if ($runtimeResourceGap.Count -ne 0) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop runtime-resource-v2 gap must leave unsupportedProductionGaps after 1.0 scope closeout"
 }
 $recommendedText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
+$recommendedPlanId = [string]$productionLoop.recommendedNextPlan.id
+$recommendedPlanUsesLegacyCloseoutContext = $recommendedPlanId -notin @("general-purpose-game-production-v1", "generated-game-studio-v1")
 if ($productionLoop.currentActivePlan -eq "docs/superpowers/plans/2026-05-23-candidate-backlog-burn-down-v1.md") {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop.currentActivePlan must not point at completed Candidate Backlog Burn-down v1"
 }
 if ($productionLoop.recommendedNextPlan.id -eq "simulation-persistence-v1") {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop.recommendedNextPlan.id must not point at merged simulation-persistence-v1"
 }
-if ([string]$productionLoop.recommendedNextPlan.id -ne "general-purpose-game-production-v1") {
+if ($recommendedPlanUsesLegacyCloseoutContext) {
     Assert-ContainsText $recommendedText "Candidate Backlog Burn-down v1 completed all seven canonical post-1.0 candidate rows" "engine/agent/manifest.json candidate backlog closeout evidence"
     Assert-ContainsText $recommendedText "PR #204" "engine/agent/manifest.json simulation persistence PR closeout evidence"
     Assert-ContainsText $recommendedText "971cee3f6c5b42965721c06974bc506f1b35508c" "engine/agent/manifest.json simulation persistence merge evidence"
@@ -2269,7 +2271,7 @@ if ([string]$productionLoop.recommendedNextPlan.id -ne "general-purpose-game-pro
 $candidateBacklogPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-23-candidate-backlog-burn-down-v1.md"
 Assert-ContainsText $candidateBacklogPlanText "**Status:** Completed." "Candidate Backlog Burn-down v1 status"
 Assert-ContainsText $candidateBacklogPlanText '| simulation-persistence-v1 | #204 | `971cee3f6c5b42965721c06974bc506f1b35508c` | pass |' "Candidate Backlog Burn-down v1 simulation persistence closeout row"
-if ([string]$productionLoop.recommendedNextPlan.id -ne "general-purpose-game-production-v1") {
+if ($recommendedPlanUsesLegacyCloseoutContext) {
     foreach ($needle in @(
     "Frame Graph Transient Texture Alias Planning v1",
     "FrameGraphTransientTextureAliasPlan",
@@ -2422,7 +2424,7 @@ foreach ($check in @(
         Assert-ContainsText $fileText $needle "$($check.Path) upload-staging-v1 closeout evidence"
     }
 }
-if ([string]$productionLoop.recommendedNextPlan.id -ne "general-purpose-game-production-v1") {
+if ($recommendedPlanUsesLegacyCloseoutContext) {
     foreach ($needle in @(
             "3d-playable-vertical-slice",
             "generated desktop 3D package proof",
@@ -2447,7 +2449,7 @@ foreach ($closedGameplayGapId in @(
         Write-Error "engine/agent/manifest.json aiOperableProductionLoop $closedGameplayGapId gap must leave unsupportedProductionGaps after gameplay physics/navigation closeout"
     }
 }
-if ([string]$productionLoop.recommendedNextPlan.id -ne "general-purpose-game-production-v1") {
+if ($recommendedPlanUsesLegacyCloseoutContext) {
     foreach ($needle in @(
             "gameplay-physics-navigation-ai-foundation-v1",
             "NavigationNavmeshPathRequest",
@@ -2470,7 +2472,7 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContex
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "viewport_color" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Texture Aliasing Barrier Command v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "record_frame_graph_texture_aliasing_barriers" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-if ([string]$productionLoop.recommendedNextPlan.id -ne "general-purpose-game-production-v1") {
+if ($recommendedPlanUsesLegacyCloseoutContext) {
     Assert-ContainsText $recommendedText "Package Streaming Frame Graph Texture Binding Handoff v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package streaming handoff"
     Assert-ContainsText $recommendedText "make_runtime_package_streaming_frame_graph_texture_bindings" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package streaming handoff"
     Assert-ContainsText $recommendedText "Runtime Package Streaming RHI Upload Binding Transaction v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package streaming upload transaction"
@@ -2522,7 +2524,7 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContex
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph v1 1.0 Scope Closeout v1 closes frame-graph-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "broad production render graph scheduling" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Metal memory alias allocation" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-production-v1") {
+if ($recommendedPlanId -eq "general-purpose-game-production-v1") {
     foreach ($needle in @(
             "General Purpose Game Production v1",
             "gameplay-runtime-scheduler-production-v1",
@@ -2534,6 +2536,13 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
         )) {
         Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan production milestone"
     }
+} elseif ($recommendedPlanId -eq "generated-game-studio-v1") {
+    Assert-ContainsText $recommendedText "Generated Game Studio v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
+    Assert-ContainsText $recommendedText "EditorAiGeneratedGameStudioV1Model" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
+    Assert-ContainsText $recommendedText "EditorAiCommandPanelModel" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
+    Assert-ContainsText $recommendedText "ai-generated-game-playtest-loop-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
+    Assert-ContainsText $recommendedText "ai-validation-remediation-recipes-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
+    Assert-ContainsText $recommendedText "unsupportedProductionGaps empty" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
 } else {
     Assert-ContainsText $recommendedText "Frame Graph v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
     Assert-ContainsText $recommendedText "upload-staging-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
@@ -2541,7 +2550,7 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     Assert-ContainsText $recommendedText "2d-playable-vertical-slice" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
     Assert-ContainsText $recommendedText "3d-playable-vertical-slice" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
 }
-if ([string]$productionLoop.recommendedNextPlan.id -ne "general-purpose-game-production-v1") {
+if ($recommendedPlanUsesLegacyCloseoutContext) {
     foreach ($needle in @(
             "editor-productization",
             "reviewed editor authoring/playtest/AI command/resource/input/prefab/material-preview evidence",

@@ -19,6 +19,8 @@ Full workflow lives in shared skills. Start with the short `SKILL.md` routers, t
 
 Validation: use `tools/validate.ps1` at slice boundaries per `AGENTS.md`. After new retained editor ids or AI-checked literals, run `tools/check-ai-integration.ps1` (see **Repository consistency checklist** in `docs/workflows.md`).
 
+Generated Game Studio v1 uses `EditorAiGeneratedGameStudioV1Model`, `make_editor_ai_generated_game_studio_v1_model`, `make_editor_ai_generated_game_studio_v1_ui_model`, and retained `generated_game_studio` rows over existing AI playtest/operator workflow models. Keep it read-only, GUI-independent in `editor/core`, and free of validation execution, manifest mutation, engine-internal edits, native handles, renderer/RHI residency, Metal readiness, or broad editor productization.
+
 ## Cursor-only note
 
 Nested prefab refresh rows may expose **`nested_prefab_variant_alignment`** contract labels (`ge.editor.scene_prefab_nested_variant_alignment.v1`) and per-row `nested_variant_alignment.resolution_kind` via `prefab_variant_conflict_resolution_kind_label`, mirroring Prefab Variant conflict `resolution_kind` tooling. Local-child and stale-source subtree refresh rows may additionally expose **`local_child_variant_alignment`** / **`stale_source_variant_alignment`** (`ge.editor.scene_prefab_local_child_variant_alignment.v1`, `ge.editor.scene_prefab_stale_source_variant_alignment.v1`) with per-row `local_child_variant_alignment.resolution_kind` and `stale_source_variant_alignment.resolution_kind`.

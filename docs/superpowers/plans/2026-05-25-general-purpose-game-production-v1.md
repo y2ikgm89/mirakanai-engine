@@ -4,7 +4,7 @@
 
 **Plan ID:** `general-purpose-game-production-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
 **Goal:** Add a post-foundation production track that turns the completed 1.x foundations into reusable, production-oriented game creation surfaces for RPG, sandbox, simulation, and broad 2D/3D games.
 
@@ -23,7 +23,7 @@ Do not add new work back into `foundation-ready`. That status described rows who
 - `implemented-production-surface`: production surface with tests, package evidence, docs, manifest rows, and static checks.
 - `host-gated-production`: production surface that needs backend, platform, SDK, device, or toolchain evidence before ready claims.
 
-This plan selects the new `general-purpose-game-production-v1` milestone. Each phase may land through a separate PR, but the dated plan stays the milestone record while related phases share one architecture decision: clean, first-party, backend-neutral production surfaces for general game creation.
+This plan selected the `general-purpose-game-production-v1` milestone and completed its independently reviewable phases. Future work must use a new dated successor plan rather than appending Phase 11 to this completed milestone.
 
 ## Official Practice Baseline
 
