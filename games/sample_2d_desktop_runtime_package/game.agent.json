@@ -118,6 +118,7 @@
         "navigation-grid",
         "behavior-ai",
         "rpg-systems",
+        "sandbox-world",
         "simulation-orchestration"
       ],
       "packageTargets": [
@@ -156,6 +157,13 @@
         {
           "id": "rpg-systems",
           "evidence": "RPG systems smoke reports deterministic stat, progression, skill, equipment, combat-loop intent, reward, save-validation, replay-hash, and zero side-effect counters.",
+          "recipeIds": [
+            "installed-2d-gameplay-systems-smoke"
+          ]
+        },
+        {
+          "id": "sandbox-world",
+          "evidence": "Sandbox world smoke reports deterministic chunk, resident chunk, existing cell, placement/destruction intent, cost, mutation, persistence, repairable persistence, unsafe rejection, replay-hash, and zero world/persistence/package side-effect counters.",
           "recipeIds": [
             "installed-2d-gameplay-systems-smoke"
           ]
@@ -1772,6 +1780,7 @@
     "worldEntityModel": "mirakana::runtime::plan_runtime_world_entity_lifecycle under --require-simulation-orchestration; selected smoke requires world_entity_model_status=ready, world_entity_model_ready=1, 3 entity rows, 4 component rows, 3 region ownership rows, 3 lifecycle rows, one persistence bridge row, one streaming bridge row, one duplicate-entity diagnostic probe, invalid_request bridge rejection with five diagnostics, zero rejected bridge rows, one propagated streaming diagnostic, fail-closed evidence, and world_entity_model_diagnostics=0 without scene mutation, lifecycle execution, package IO, streaming execution, renderer/RHI work, threads, or native handles",
     "addressableContentStreaming": "mirakana::runtime::plan_runtime_addressable_content_streaming under --require-simulation-orchestration; selected smoke requires addressable_content_status=ready, addressable_content_ready=1, 5 address rows, 6 dependency rows, 3 load rows, 1 release row, 4 refcount rows, resident byte and budget counters, budget_limited rejection diagnostics, and addressable_content_package_io=0/addressable_content_async_execution=0/addressable_content_committed=0/addressable_content_diagnostics=0 without reading packages, mutating resident state, executing async work, creating renderer/RHI resources, creating threads, or exposing native handles",
     "rpgSystems": "mirakana::runtime::plan_runtime_rpg_systems under --require-gameplay-systems; selected smoke requires rpg_systems_status=ready, rpg_systems_ready=1, rpg_systems_party_members=2, rpg_systems_enemy_members=1, rpg_systems_stat_rows=8, rpg_systems_progression_rows=2, rpg_systems_skill_rows=2, rpg_systems_skill_blocked_rows=1, rpg_systems_equipment_rows=2, rpg_systems_equipment_blocked_rows=1, rpg_systems_combat_turn_rows=6, rpg_systems_combat_rounds=2, rpg_systems_reward_rows=2, rpg_systems_save_validation_rows=2, rpg_systems_save_validation_repairable_rows=1, positive rpg_systems_replay_hash, zero combat/reward/save side-effect counters, and rpg_systems_diagnostics=0 without combat execution, reward application, save IO, package/world mutation, renderer/RHI work, native handles, or story/balance/tuning claims",
+    "sandboxWorld": "mirakana::runtime::plan_runtime_sandbox_world_mutation under --require-gameplay-systems; selected smoke requires sandbox_world_status=ready, sandbox_world_ready=1, sandbox_world_chunk_rows=2, sandbox_world_resident_chunk_rows=2, sandbox_world_existing_cell_rows=2, sandbox_world_placement_intent_rows=3, sandbox_world_placement_accepted_rows=1, sandbox_world_placement_rejected_rows=2, sandbox_world_destruction_intent_rows=2, sandbox_world_destruction_accepted_rows=1, sandbox_world_destruction_rejected_rows=1, sandbox_world_construction_cost_rows=2, sandbox_world_mutation_rows=5, sandbox_world_persistence_rows=2, sandbox_world_persistence_repairable_rows=1, sandbox_world_rejected_unsafe_mutation_rows=3, positive sandbox_world_replay_hash, zero world mutation/persistence IO/package IO side-effect counters, and sandbox_world_diagnostics=0 without mutating the world, writing persistence, loading packages, executing streaming, owning biome/block-art rules, calling renderer/platform/editor APIs, creating threads, or exposing native handles",
     "inputContextRebinding": "mirakana::runtime::plan_runtime_input_context_stack, apply_runtime_input_rebinding_profile, capture_runtime_input_rebinding_action, capture_runtime_input_rebinding_axis, capture_runtime_input_rebinding_action_with_focus, and make_runtime_input_rebinding_presentation under --require-gameplay-systems; selected smoke requires input_context_rebinding_ready=1, 3 requested layers, 1 active modal rebinding context, capture_context_active=1, gameplay input consumption, 2 applied profile overlays, captured action/axis candidates, retained focused waiting capture, 2 presentation rows, 5 symbolic glyph lookup keys, and clean diagnostics without real platform glyph assets, keyboard-layout localization, multiplayer device assignment, native handles, SDL3 input APIs, or full runtime/game rebinding panels",
     "sceneRenderer": "mirakana::submit_scene_render_packet",
     "ui": "mirakana::ui::UiDocument through mirakana::submit_ui_renderer_submission",

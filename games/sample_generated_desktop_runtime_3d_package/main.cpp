@@ -27,6 +27,7 @@
 #include "mirakana/runtime/gameplay_interaction.hpp"
 #include "mirakana/runtime/gameplay_runtime_scheduler.hpp"
 #include "mirakana/runtime/genre_rpg_systems.hpp"
+#include "mirakana/runtime/genre_sandbox_world.hpp"
 #include "mirakana/runtime/package_streaming.hpp"
 #include "mirakana/runtime/physics_collision_runtime.hpp"
 #include "mirakana/runtime/resource_runtime.hpp"
@@ -840,6 +841,18 @@ addressable_content_status_name(mirakana::runtime::RuntimeAddressableContentStre
     return "unknown";
 }
 
+[[nodiscard]] const char* sandbox_world_status_name(mirakana::runtime::RuntimeSandboxWorldStatus status) noexcept {
+    switch (status) {
+    case mirakana::runtime::RuntimeSandboxWorldStatus::ready:
+        return "ready";
+    case mirakana::runtime::RuntimeSandboxWorldStatus::no_rows:
+        return "no_rows";
+    case mirakana::runtime::RuntimeSandboxWorldStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
 struct SceneGameplayBindingProbeResult {
     std::size_t source_rows{0U};
     std::size_t binding_rows{0U};
@@ -933,6 +946,30 @@ struct RpgSystemsProbeResult {
     bool invoked_combat_execution{false};
     bool invoked_reward_application{false};
     bool invoked_save_io{false};
+    bool ready{false};
+};
+
+struct SandboxWorldProbeResult {
+    mirakana::runtime::RuntimeSandboxWorldStatus status{mirakana::runtime::RuntimeSandboxWorldStatus::invalid_request};
+    std::size_t chunk_rows{0U};
+    std::size_t resident_chunk_rows{0U};
+    std::size_t existing_cell_rows{0U};
+    std::size_t placement_intent_rows{0U};
+    std::size_t placement_accepted_rows{0U};
+    std::size_t placement_rejected_rows{0U};
+    std::size_t destruction_intent_rows{0U};
+    std::size_t destruction_accepted_rows{0U};
+    std::size_t destruction_rejected_rows{0U};
+    std::size_t construction_cost_rows{0U};
+    std::size_t mutation_rows{0U};
+    std::size_t persistence_rows{0U};
+    std::size_t persistence_repairable_rows{0U};
+    std::size_t rejected_unsafe_mutation_rows{0U};
+    std::size_t diagnostics{0U};
+    std::uint64_t replay_hash{0U};
+    bool invoked_world_mutation{false};
+    bool invoked_persistence_io{false};
+    bool invoked_package_io{false};
     bool ready{false};
 };
 
@@ -1198,6 +1235,157 @@ struct InputContextRebindingProbeResult {
                    result.repairable_save_validation_rows == 1U && result.diagnostics == 0U &&
                    result.replay_hash != 0U && !result.invoked_combat_execution && !result.invoked_reward_application &&
                    !result.invoked_save_io;
+    return result;
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeSandboxCellCoord make_sandbox_cell(std::int32_t x, std::int32_t y,
+                                                                           std::int32_t z) {
+    return mirakana::runtime::RuntimeSandboxCellCoord{.x = x, .y = y, .z = z};
+}
+
+[[nodiscard]] SandboxWorldProbeResult validate_sandbox_world_package_evidence(std::string_view sample_id) {
+    using Chunk = mirakana::runtime::RuntimeSandboxChunkRow;
+    using Cost = mirakana::runtime::RuntimeSandboxConstructionCostRow;
+    using Destruction = mirakana::runtime::RuntimeSandboxDestructionIntent;
+    using ExistingCell = mirakana::runtime::RuntimeSandboxExistingCellRow;
+    using Persistence = mirakana::runtime::RuntimeSandboxPersistenceRow;
+    using PersistenceStatus = mirakana::runtime::RuntimeSandboxPersistenceStatus;
+    using Placement = mirakana::runtime::RuntimeSandboxPlacementIntent;
+    using Request = mirakana::runtime::RuntimeSandboxWorldMutationRequest;
+    using Status = mirakana::runtime::RuntimeSandboxWorldStatus;
+
+    const auto sample_prefix = std::string{sample_id};
+    const auto plan =
+        mirakana::runtime::plan_runtime_sandbox_world_mutation(
+            Request{.world_id = sample_prefix + ".sandbox.world",
+                    .world_tick = 64U,
+                    .chunk_rows =
+                        std::vector<Chunk>{
+                            Chunk{.chunk_id = "chunk.0",
+                                  .region_id = "region.spawn",
+                                  .origin_x = 0,
+                                  .origin_y = 0,
+                                  .origin_z = 0,
+                                  .size_x = 8U,
+                                  .size_y = 8U,
+                                  .size_z = 8U,
+                                  .resident = true,
+                                  .persistent = true,
+                                  .source_index = 1U},
+                            Chunk{.chunk_id = "chunk.1",
+                                  .region_id = "region.spawn",
+                                  .origin_x = 8,
+                                  .origin_y = 0,
+                                  .origin_z = 0,
+                                  .size_x = 8U,
+                                  .size_y = 8U,
+                                  .size_z = 8U,
+                                  .resident = true,
+                                  .persistent = true,
+                                  .source_index = 2U},
+                        },
+                    .existing_cell_rows =
+                        std::vector<ExistingCell>{
+                            ExistingCell{.chunk_id = "chunk.0",
+                                         .coord = make_sandbox_cell(1, 0, 1),
+                                         .block_id = "block.soil",
+                                         .destructible = true,
+                                         .protected_cell = false,
+                                         .source_index = 1U},
+                            ExistingCell{.chunk_id = "chunk.0",
+                                         .coord = make_sandbox_cell(2, 0, 1),
+                                         .block_id = "block.stone",
+                                         .destructible = false,
+                                         .protected_cell = true,
+                                         .source_index = 2U},
+                        },
+                    .placement_intents =
+                        std::vector<Placement>{
+                            Placement{.intent_id = "place.wall",
+                                      .chunk_id = "chunk.0",
+                                      .coord = make_sandbox_cell(3, 0, 1),
+                                      .block_id = "block.wall",
+                                      .provided_costs = {Cost{.block_id = "block.wall",
+                                                              .item_id = "item.wood",
+                                                              .quantity = 3U,
+                                                              .source_index = 1U}},
+                                      .source_index = 1U},
+                            Placement{.intent_id = "place.occupied",
+                                      .chunk_id = "chunk.0",
+                                      .coord = make_sandbox_cell(1, 0, 1),
+                                      .block_id = "block.wall",
+                                      .provided_costs = {Cost{.block_id = "block.wall",
+                                                              .item_id = "item.wood",
+                                                              .quantity = 3U,
+                                                              .source_index = 2U}},
+                                      .source_index = 2U},
+                            Placement{.intent_id = "place.missing_cost",
+                                      .chunk_id = "chunk.1",
+                                      .coord = make_sandbox_cell(9, 0, 1),
+                                      .block_id = "block.door",
+                                      .source_index = 3U},
+                        },
+                    .destruction_intents =
+                        std::vector<Destruction>{
+                            Destruction{.intent_id = "destroy.soil",
+                                        .chunk_id = "chunk.0",
+                                        .coord = make_sandbox_cell(1, 0, 1),
+                                        .source_index = 1U},
+                            Destruction{.intent_id = "destroy.protected",
+                                        .chunk_id = "chunk.0",
+                                        .coord = make_sandbox_cell(2, 0, 1),
+                                        .source_index = 2U},
+                        },
+                    .construction_cost_rows =
+                        std::vector<Cost>{
+                            Cost{.block_id = "block.wall", .item_id = "item.wood", .quantity = 3U, .source_index = 1U},
+                            Cost{.block_id = "block.door", .item_id = "item.wood", .quantity = 4U, .source_index = 2U},
+                        },
+                    .persistence_rows = std::vector<Persistence>{
+                        Persistence{.chunk_id = "chunk.0",
+                                    .key = "persist.chunk.0",
+                                    .expected_schema_version = 2U,
+                                    .observed_schema_version = 2U,
+                                    .status = PersistenceStatus::rejected,
+                                    .source_index = 1U},
+                        Persistence{.chunk_id = "chunk.1",
+                                    .key = "persist.chunk.1",
+                                    .expected_schema_version = 3U,
+                                    .observed_schema_version = 2U,
+                                    .status = PersistenceStatus::rejected,
+                                    .source_index = 2U},
+                    }});
+
+    SandboxWorldProbeResult result;
+    result.status = plan.status;
+    result.chunk_rows = plan.chunk_count;
+    result.resident_chunk_rows = plan.resident_chunk_count;
+    result.existing_cell_rows = plan.existing_cell_rows.size();
+    result.placement_intent_rows = plan.placement_intent_count;
+    result.placement_accepted_rows = plan.accepted_placement_count;
+    result.placement_rejected_rows = plan.rejected_placement_count;
+    result.destruction_intent_rows = plan.destruction_intent_count;
+    result.destruction_accepted_rows = plan.accepted_destruction_count;
+    result.destruction_rejected_rows = plan.rejected_destruction_count;
+    result.construction_cost_rows = plan.construction_cost_count;
+    result.mutation_rows = plan.mutation_rows.size();
+    result.persistence_rows = plan.persistence_row_count;
+    result.persistence_repairable_rows = plan.repairable_persistence_row_count;
+    result.rejected_unsafe_mutation_rows = plan.rejected_unsafe_mutation_count;
+    result.diagnostics = plan.diagnostics.size();
+    result.replay_hash = plan.replay_hash;
+    result.invoked_world_mutation = plan.invoked_world_mutation;
+    result.invoked_persistence_io = plan.invoked_persistence_io;
+    result.invoked_package_io = plan.invoked_package_io;
+    result.ready = plan.status == Status::ready && plan.succeeded() && result.chunk_rows == 2U &&
+                   result.resident_chunk_rows == 2U && result.existing_cell_rows == 2U &&
+                   result.placement_intent_rows == 3U && result.placement_accepted_rows == 1U &&
+                   result.placement_rejected_rows == 2U && result.destruction_intent_rows == 2U &&
+                   result.destruction_accepted_rows == 1U && result.destruction_rejected_rows == 1U &&
+                   result.construction_cost_rows == 2U && result.mutation_rows == 5U && result.persistence_rows == 2U &&
+                   result.persistence_repairable_rows == 1U && result.rejected_unsafe_mutation_rows == 3U &&
+                   result.diagnostics == 0U && result.replay_hash != 0U && !result.invoked_world_mutation &&
+                   !result.invoked_persistence_io && !result.invoked_package_io;
     return result;
 }
 
@@ -7791,11 +7979,15 @@ int main(int argc, char** argv) {
             : AddressableContentStreamingProbeResult{};
     const auto rpg_systems_probe =
         options.require_gameplay_systems ? validate_rpg_systems_package_evidence("sample3d") : RpgSystemsProbeResult{};
+    const auto sandbox_world_probe = options.require_gameplay_systems
+                                         ? validate_sandbox_world_package_evidence("sample3d")
+                                         : SandboxWorldProbeResult{};
     const auto gameplay_systems_ready =
-        gameplay_systems_core_ready && (!options.require_gameplay_systems ||
-                                        (game.gameplay_systems_scene_binding_ready() && input_context_rebinding.ready &&
-                                         gameplay_runtime_scheduler_probe.ready && world_entity_model_probe.ready &&
-                                         addressable_content_probe.ready && rpg_systems_probe.ready));
+        gameplay_systems_core_ready &&
+        (!options.require_gameplay_systems ||
+         (game.gameplay_systems_scene_binding_ready() && input_context_rebinding.ready &&
+          gameplay_runtime_scheduler_probe.ready && world_entity_model_probe.ready && addressable_content_probe.ready &&
+          rpg_systems_probe.ready && sandbox_world_probe.ready));
     const auto gameplay_systems_diagnostics =
         game.gameplay_systems_diagnostics_count(options.max_frames) +
         ((options.require_gameplay_systems && !game.gameplay_systems_scene_binding_ready()) ? 1U : 0U) +
@@ -7803,7 +7995,8 @@ int main(int argc, char** argv) {
         ((options.require_gameplay_systems && !gameplay_runtime_scheduler_probe.ready) ? 1U : 0U) +
         ((options.require_gameplay_systems && !world_entity_model_probe.ready) ? 1U : 0U) +
         ((options.require_gameplay_systems && !addressable_content_probe.ready) ? 1U : 0U) +
-        ((options.require_gameplay_systems && !rpg_systems_probe.ready) ? 1U : 0U);
+        ((options.require_gameplay_systems && !rpg_systems_probe.ready) ? 1U : 0U) +
+        ((options.require_gameplay_systems && !sandbox_world_probe.ready) ? 1U : 0U);
     const auto visible_3d = evaluate_visible_3d_production_proof(options, result, report, renderer_quality, playable_3d,
                                                                  gameplay_systems_ready);
     const auto entity_scale_culling_probe = options.require_entity_scale_culling
@@ -8130,6 +8323,27 @@ int main(int argc, char** argv) {
         << " rpg_systems_invoked_reward_application=" << (rpg_systems_probe.invoked_reward_application ? 1 : 0)
         << " rpg_systems_invoked_save_io=" << (rpg_systems_probe.invoked_save_io ? 1 : 0)
         << " rpg_systems_diagnostics=" << rpg_systems_probe.diagnostics
+        << " sandbox_world_status=" << sandbox_world_status_name(sandbox_world_probe.status)
+        << " sandbox_world_ready=" << (sandbox_world_probe.ready ? 1 : 0)
+        << " sandbox_world_chunk_rows=" << sandbox_world_probe.chunk_rows
+        << " sandbox_world_resident_chunk_rows=" << sandbox_world_probe.resident_chunk_rows
+        << " sandbox_world_existing_cell_rows=" << sandbox_world_probe.existing_cell_rows
+        << " sandbox_world_placement_intent_rows=" << sandbox_world_probe.placement_intent_rows
+        << " sandbox_world_placement_accepted_rows=" << sandbox_world_probe.placement_accepted_rows
+        << " sandbox_world_placement_rejected_rows=" << sandbox_world_probe.placement_rejected_rows
+        << " sandbox_world_destruction_intent_rows=" << sandbox_world_probe.destruction_intent_rows
+        << " sandbox_world_destruction_accepted_rows=" << sandbox_world_probe.destruction_accepted_rows
+        << " sandbox_world_destruction_rejected_rows=" << sandbox_world_probe.destruction_rejected_rows
+        << " sandbox_world_construction_cost_rows=" << sandbox_world_probe.construction_cost_rows
+        << " sandbox_world_mutation_rows=" << sandbox_world_probe.mutation_rows
+        << " sandbox_world_persistence_rows=" << sandbox_world_probe.persistence_rows
+        << " sandbox_world_persistence_repairable_rows=" << sandbox_world_probe.persistence_repairable_rows
+        << " sandbox_world_rejected_unsafe_mutation_rows=" << sandbox_world_probe.rejected_unsafe_mutation_rows
+        << " sandbox_world_replay_hash=" << sandbox_world_probe.replay_hash
+        << " sandbox_world_invoked_world_mutation=" << (sandbox_world_probe.invoked_world_mutation ? 1 : 0)
+        << " sandbox_world_invoked_persistence_io=" << (sandbox_world_probe.invoked_persistence_io ? 1 : 0)
+        << " sandbox_world_invoked_package_io=" << (sandbox_world_probe.invoked_package_io ? 1 : 0)
+        << " sandbox_world_diagnostics=" << sandbox_world_probe.diagnostics
         << " gameplay_systems_ticks=" << game.gameplay_systems_ticks()
         << " gameplay_systems_physics_ticks=" << game.gameplay_systems_physics_ticks()
         << " gameplay_systems_authored_collision_bodies=" << game.gameplay_systems_authored_collision_bodies()
@@ -8608,7 +8822,11 @@ int main(int argc, char** argv) {
                       << " rpg_systems_status=" << rpg_systems_status_name(rpg_systems_probe.status)
                       << " rpg_systems_ready=" << (rpg_systems_probe.ready ? 1 : 0)
                       << " rpg_systems_diagnostics=" << rpg_systems_probe.diagnostics
-                      << " rpg_systems_replay_hash=" << rpg_systems_probe.replay_hash << '\n';
+                      << " rpg_systems_replay_hash=" << rpg_systems_probe.replay_hash
+                      << " sandbox_world_status=" << sandbox_world_status_name(sandbox_world_probe.status)
+                      << " sandbox_world_ready=" << (sandbox_world_probe.ready ? 1 : 0)
+                      << " sandbox_world_diagnostics=" << sandbox_world_probe.diagnostics
+                      << " sandbox_world_replay_hash=" << sandbox_world_probe.replay_hash << '\n';
             return 3;
         }
         if (options.require_scene_collision_package && !collision_package.ready) {
