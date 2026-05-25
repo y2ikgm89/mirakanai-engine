@@ -29,6 +29,7 @@
 #include "mirakana/runtime/physics_collision_runtime.hpp"
 #include "mirakana/runtime/resource_runtime.hpp"
 #include "mirakana/runtime/session_services.hpp"
+#include "mirakana/runtime/world_entity_model.hpp"
 #include "mirakana/runtime_host/sdl3/sdl_desktop_game_host.hpp"
 #include "mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp"
 #include "mirakana/runtime_host/shader_bytecode.hpp"
@@ -789,6 +790,19 @@ gameplay_runtime_scheduler_status_name(mirakana::runtime::RuntimeGameplaySchedul
     return "unknown";
 }
 
+[[nodiscard]] const char*
+world_entity_model_status_name(mirakana::runtime::RuntimeWorldEntityLifecycleStatus status) noexcept {
+    switch (status) {
+    case mirakana::runtime::RuntimeWorldEntityLifecycleStatus::ready:
+        return "ready";
+    case mirakana::runtime::RuntimeWorldEntityLifecycleStatus::no_entities:
+        return "no_entities";
+    case mirakana::runtime::RuntimeWorldEntityLifecycleStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
 struct SceneGameplayBindingProbeResult {
     std::size_t source_rows{0U};
     std::size_t binding_rows{0U};
@@ -815,6 +829,30 @@ struct GameplayRuntimeSchedulerProbeResult {
     bool budget_limited{false};
     std::size_t diagnostics{0U};
     std::uint64_t replay_hash{0U};
+    bool ready{false};
+};
+
+struct WorldEntityModelProbeResult {
+    mirakana::runtime::RuntimeWorldEntityLifecycleStatus status{
+        mirakana::runtime::RuntimeWorldEntityLifecycleStatus::invalid_request};
+    std::size_t entity_rows{0U};
+    std::size_t component_rows{0U};
+    std::size_t region_ownership_rows{0U};
+    std::size_t lifecycle_rows{0U};
+    std::size_t persistence_rows{0U};
+    std::size_t streaming_region_rows{0U};
+    std::size_t spawn_rows{0U};
+    std::size_t move_rows{0U};
+    std::size_t despawn_rows{0U};
+    std::size_t duplicate_entity_diagnostics{0U};
+    mirakana::runtime::RuntimeWorldEntityLifecycleStatus bridge_rejection_status{
+        mirakana::runtime::RuntimeWorldEntityLifecycleStatus::invalid_request};
+    std::size_t bridge_rejection_diagnostics{0U};
+    std::size_t bridge_rejection_persistence_rows{0U};
+    std::size_t bridge_rejection_streaming_region_rows{0U};
+    std::size_t bridge_rejection_streaming_diagnostics_present{0U};
+    bool bridge_rejection_fail_closed{false};
+    std::size_t diagnostics{0U};
     bool ready{false};
 };
 
@@ -891,6 +929,250 @@ struct InputContextRebindingProbeResult {
                    result.planned_steps == 2U && result.step_rows == 2U && result.system_rows == 6U &&
                    result.command_rows == 2U && result.consumed_time_us == 33'332U &&
                    result.remaining_time_us == 16'666U && result.diagnostics == 0U && result.replay_hash != 0U;
+    return result;
+}
+
+[[nodiscard]] std::size_t count_world_entity_diagnostics(const mirakana::runtime::RuntimeWorldEntityLifecyclePlan& plan,
+                                                         mirakana::runtime::RuntimeWorldEntityDiagnosticCode code) {
+    std::size_t count{0U};
+    for (const auto& diagnostic : plan.diagnostics) {
+        if (diagnostic.code == code) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+[[nodiscard]] WorldEntityModelProbeResult validate_world_entity_model_package_evidence() {
+    using Action = mirakana::runtime::RuntimeWorldEntityLifecycleAction;
+    using Code = mirakana::runtime::RuntimeWorldEntityDiagnosticCode;
+    using Component = mirakana::runtime::RuntimeWorldComponentRow;
+    using Entity = mirakana::runtime::RuntimeWorldEntityRow;
+    using EntityId = mirakana::runtime::RuntimeWorldEntityId;
+    using PersistEntity = mirakana::runtime::RuntimeSimulationPersistentEntityRow;
+    using PersistPlan = mirakana::runtime::RuntimeSimulationPersistencePlan;
+    using PersistStatus = mirakana::runtime::RuntimeSimulationPersistenceStatus;
+    using Region = mirakana::runtime::RuntimeWorldRegionRow;
+    using RegionAction = mirakana::runtime::RuntimeWorldRegionStreamingActionKind;
+    using RegionCode = mirakana::runtime::RuntimeWorldRegionStreamingDiagnosticCode;
+    using RegionId = mirakana::runtime::RuntimeWorldRegionId;
+    using StreamingDiagnostic = mirakana::runtime::RuntimeWorldRegionStreamingDiagnostic;
+    using StreamingPlan = mirakana::runtime::RuntimeWorldRegionStreamingPlan;
+    using StreamingRow = mirakana::runtime::RuntimeWorldRegionStreamingPlanRow;
+    using StreamingStatus = mirakana::runtime::RuntimeWorldRegionStreamingPlanStatus;
+    using Request = mirakana::runtime::RuntimeWorldEntityLifecycleRequest;
+    using Schema = mirakana::runtime::RuntimeWorldComponentSchemaRow;
+    using SchemaId = mirakana::runtime::RuntimeWorldComponentSchemaId;
+    using Status = mirakana::runtime::RuntimeWorldEntityLifecycleStatus;
+
+    const auto
+        plan =
+            mirakana::runtime::plan_runtime_world_entity_lifecycle(
+                Request{
+                    .world_id = "sample3d.world",
+                    .regions =
+                        std::vector<Region>{
+                            Region{.region_id = RegionId{.value = "field"}, .source_index = 1U},
+                            Region{.region_id = RegionId{.value = "town"}, .source_index = 2U},
+                        },
+                    .entities =
+                        std::vector<Entity>{
+                            Entity{.entity_id = EntityId{.value = "player"},
+                                   .region_id = RegionId{.value = "field"},
+                                   .archetype_id = "hero",
+                                   .active = true,
+                                   .generation = 1U,
+                                   .source_index = 1U},
+                            Entity{.entity_id = EntityId{.value = "npc.vendor"},
+                                   .region_id = RegionId{.value = "town"},
+                                   .archetype_id = "vendor",
+                                   .active = true,
+                                   .generation = 1U,
+                                   .source_index = 2U},
+                            Entity{.entity_id = EntityId{.value = "crate"},
+                                   .region_id = RegionId{.value = "town"},
+                                   .archetype_id = "prop",
+                                   .active = true,
+                                   .generation = 1U,
+                                   .source_index = 3U},
+                        },
+                    .component_schemas =
+                        std::vector<Schema>{
+                            Schema{.schema_id = SchemaId{.value = "physics"}, .version = 1U, .source_index = 2U},
+                            Schema{.schema_id = SchemaId{.value = "transform"}, .version = 1U, .source_index = 1U},
+                        },
+                    .components =
+                        std::vector<Component>{
+                            Component{.entity_id = EntityId{.value = "player"},
+                                      .schema_id = SchemaId{.value = "transform"},
+                                      .state_hash = "hash.player.transform",
+                                      .source_index = 1U},
+                            Component{.entity_id = EntityId{.value = "player"},
+                                      .schema_id = SchemaId{.value = "physics"},
+                                      .state_hash = "hash.player.physics",
+                                      .source_index = 2U},
+                            Component{.entity_id = EntityId{.value = "npc.vendor"},
+                                      .schema_id = SchemaId{.value = "transform"},
+                                      .state_hash = "hash.vendor.transform",
+                                      .source_index = 3U},
+                            Component{.entity_id = EntityId{.value = "crate"},
+                                      .schema_id = SchemaId{.value = "physics"},
+                                      .state_hash = "hash.crate.physics",
+                                      .source_index = 4U},
+                        },
+                    .lifecycle_intents =
+                        {
+                            mirakana::runtime::RuntimeWorldEntityLifecycleIntent{
+                                .action = Action::spawn_entity,
+                                .entity_id = EntityId{.value = "pickup.gem"},
+                                .target_region_id = RegionId{.value = "town"},
+                                .archetype_id = "pickup",
+                                .source_index = 1U},
+                            mirakana::runtime::RuntimeWorldEntityLifecycleIntent{
+                                .action = Action::move_entity_region,
+                                .entity_id = EntityId{.value = "player"},
+                                .target_region_id = RegionId{.value = "town"},
+                                .source_index = 2U},
+                            mirakana::runtime::RuntimeWorldEntityLifecycleIntent{.action = Action::despawn_entity,
+                                                                                 .entity_id =
+                                                                                     EntityId{.value = "npc.vendor"},
+                                                                                 .source_index = 3U},
+                        },
+                    .persistence_bridge =
+                        mirakana::runtime::RuntimeWorldEntityPersistenceBridgeDesc{
+                            .required = true,
+                            .plan =
+                                PersistPlan{
+                                    .status = PersistStatus::ready,
+                                    .world_id = "sample3d.world",
+                                    .world_tick = 240U,
+                                    .entity_rows =
+                                        {
+                                            PersistEntity{.entity_id = "player",
+                                                          .entity_type = "hero",
+                                                          .region_id = "field",
+                                                          .state_hash = "hash.player"},
+                                        },
+                                },
+                        },
+                    .streaming_bridge =
+                        mirakana::runtime::RuntimeWorldEntityStreamingBridgeDesc{
+                            .required = true,
+                            .plan =
+                                StreamingPlan{
+                                    .status = StreamingStatus::planned,
+                                    .rows =
+                                        {
+                                            StreamingRow{.action = RegionAction::load_region,
+                                                         .region_id = "town",
+                                                         .estimated_resident_bytes = 8192U,
+                                                         .estimated_asset_records = 12U},
+                                        },
+                                },
+                        },
+                });
+
+    const auto duplicate_plan = mirakana::runtime::plan_runtime_world_entity_lifecycle(Request{
+        .world_id = "sample3d.world",
+        .regions = std::vector<Region>{Region{.region_id = RegionId{.value = "field"}, .source_index = 1U}},
+        .entities =
+            std::vector<Entity>{
+                Entity{.entity_id = EntityId{.value = "player"},
+                       .region_id = RegionId{.value = "field"},
+                       .archetype_id = "hero",
+                       .active = true,
+                       .generation = 1U,
+                       .source_index = 1U},
+                Entity{.entity_id = EntityId{.value = "player"},
+                       .region_id = RegionId{.value = "field"},
+                       .archetype_id = "hero.copy",
+                       .active = true,
+                       .generation = 1U,
+                       .source_index = 2U},
+            },
+    });
+    const auto bridge_rejection_plan = mirakana::runtime::plan_runtime_world_entity_lifecycle(Request{
+        .world_id = "sample3d.world",
+        .regions = std::vector<Region>{Region{.region_id = RegionId{.value = "field"}, .source_index = 1U}},
+        .entities =
+            std::vector<Entity>{
+                Entity{.entity_id = EntityId{.value = "player"},
+                       .region_id = RegionId{.value = "field"},
+                       .archetype_id = "hero",
+                       .active = true,
+                       .generation = 1U,
+                       .source_index = 1U},
+            },
+        .persistence_bridge =
+            mirakana::runtime::RuntimeWorldEntityPersistenceBridgeDesc{
+                .required = true,
+                .plan =
+                    PersistPlan{
+                        .status = PersistStatus::ready,
+                        .world_id = "other_world",
+                        .world_tick = 240U,
+                        .entity_rows =
+                            {
+                                PersistEntity{.entity_id = "ghost",
+                                              .entity_type = "npc",
+                                              .region_id = "missing_region",
+                                              .state_hash = "hash.ghost"},
+                            },
+                    },
+            },
+        .streaming_bridge =
+            mirakana::runtime::RuntimeWorldEntityStreamingBridgeDesc{
+                .required = true,
+                .plan =
+                    StreamingPlan{
+                        .status = StreamingStatus::planned,
+                        .diagnostics =
+                            {
+                                StreamingDiagnostic{.code = RegionCode::missing_desired_region,
+                                                    .region_id = "missing_region",
+                                                    .message = "synthetic bridge diagnostic"},
+                            },
+                        .rows =
+                            {
+                                StreamingRow{.action = RegionAction::load_region,
+                                             .region_id = "missing_region",
+                                             .estimated_resident_bytes = 8192U,
+                                             .estimated_asset_records = 12U},
+                            },
+                    },
+            },
+    });
+
+    WorldEntityModelProbeResult result;
+    result.status = plan.status;
+    result.entity_rows = plan.entity_rows.size();
+    result.component_rows = plan.component_rows.size();
+    result.region_ownership_rows = plan.region_ownership_rows.size();
+    result.lifecycle_rows = plan.lifecycle_rows.size();
+    result.persistence_rows = plan.persistence_rows.size();
+    result.streaming_region_rows = plan.streaming_region_rows.size();
+    result.spawn_rows = plan.spawn_count;
+    result.move_rows = plan.move_count;
+    result.despawn_rows = plan.despawn_count;
+    result.duplicate_entity_diagnostics = count_world_entity_diagnostics(duplicate_plan, Code::duplicate_entity_id);
+    result.bridge_rejection_status = bridge_rejection_plan.status;
+    result.bridge_rejection_diagnostics = bridge_rejection_plan.diagnostics.size();
+    result.bridge_rejection_persistence_rows = bridge_rejection_plan.persistence_rows.size();
+    result.bridge_rejection_streaming_region_rows = bridge_rejection_plan.streaming_region_rows.size();
+    result.bridge_rejection_streaming_diagnostics_present =
+        count_world_entity_diagnostics(bridge_rejection_plan, Code::streaming_bridge_diagnostics_present);
+    result.bridge_rejection_fail_closed =
+        bridge_rejection_plan.status == Status::invalid_request && !bridge_rejection_plan.succeeded() &&
+        result.bridge_rejection_persistence_rows == 0U && result.bridge_rejection_streaming_region_rows == 0U;
+    result.diagnostics = plan.diagnostics.size();
+    result.ready = plan.status == Status::ready && plan.succeeded() && result.entity_rows == 3U &&
+                   result.component_rows == 4U && result.region_ownership_rows == 3U && result.lifecycle_rows == 3U &&
+                   result.persistence_rows == 1U && result.streaming_region_rows == 1U && result.spawn_rows == 1U &&
+                   result.move_rows == 1U && result.despawn_rows == 1U && result.duplicate_entity_diagnostics == 1U &&
+                   result.bridge_rejection_status == Status::invalid_request &&
+                   result.bridge_rejection_diagnostics == 5U &&
+                   result.bridge_rejection_streaming_diagnostics_present == 1U && result.bridge_rejection_fail_closed &&
+                   result.diagnostics == 0U;
     return result;
 }
 
@@ -7136,15 +7418,19 @@ int main(int argc, char** argv) {
     const auto gameplay_runtime_scheduler_probe = options.require_gameplay_systems
                                                       ? validate_gameplay_runtime_scheduler_package_evidence()
                                                       : GameplayRuntimeSchedulerProbeResult{};
+    const auto world_entity_model_probe = options.require_gameplay_systems
+                                              ? validate_world_entity_model_package_evidence()
+                                              : WorldEntityModelProbeResult{};
     const auto gameplay_systems_ready =
         gameplay_systems_core_ready && (!options.require_gameplay_systems ||
                                         (game.gameplay_systems_scene_binding_ready() && input_context_rebinding.ready &&
-                                         gameplay_runtime_scheduler_probe.ready));
+                                         gameplay_runtime_scheduler_probe.ready && world_entity_model_probe.ready));
     const auto gameplay_systems_diagnostics =
         game.gameplay_systems_diagnostics_count(options.max_frames) +
         ((options.require_gameplay_systems && !game.gameplay_systems_scene_binding_ready()) ? 1U : 0U) +
         ((options.require_gameplay_systems && !input_context_rebinding.ready) ? 1U : 0U) +
-        ((options.require_gameplay_systems && !gameplay_runtime_scheduler_probe.ready) ? 1U : 0U);
+        ((options.require_gameplay_systems && !gameplay_runtime_scheduler_probe.ready) ? 1U : 0U) +
+        ((options.require_gameplay_systems && !world_entity_model_probe.ready) ? 1U : 0U);
     const auto visible_3d = evaluate_visible_3d_production_proof(options, result, report, renderer_quality, playable_3d,
                                                                  gameplay_systems_ready);
     const auto entity_scale_culling_probe = options.require_entity_scale_culling
@@ -7410,6 +7696,30 @@ int main(int argc, char** argv) {
         << " gameplay_runtime_scheduler_budget_limited=" << (gameplay_runtime_scheduler_probe.budget_limited ? 1 : 0)
         << " gameplay_runtime_scheduler_replay_hash=" << gameplay_runtime_scheduler_probe.replay_hash
         << " gameplay_runtime_scheduler_diagnostics=" << gameplay_runtime_scheduler_probe.diagnostics
+        << " world_entity_model_status=" << world_entity_model_status_name(world_entity_model_probe.status)
+        << " world_entity_model_ready=" << (world_entity_model_probe.ready ? 1 : 0)
+        << " world_entity_model_entities=" << world_entity_model_probe.entity_rows
+        << " world_entity_model_components=" << world_entity_model_probe.component_rows
+        << " world_entity_model_region_ownership_rows=" << world_entity_model_probe.region_ownership_rows
+        << " world_entity_model_lifecycle_rows=" << world_entity_model_probe.lifecycle_rows
+        << " world_entity_model_persistence_rows=" << world_entity_model_probe.persistence_rows
+        << " world_entity_model_streaming_region_rows=" << world_entity_model_probe.streaming_region_rows
+        << " world_entity_model_spawn_rows=" << world_entity_model_probe.spawn_rows
+        << " world_entity_model_move_rows=" << world_entity_model_probe.move_rows
+        << " world_entity_model_despawn_rows=" << world_entity_model_probe.despawn_rows
+        << " world_entity_model_duplicate_entity_diagnostics=" << world_entity_model_probe.duplicate_entity_diagnostics
+        << " world_entity_model_bridge_rejection_status="
+        << world_entity_model_status_name(world_entity_model_probe.bridge_rejection_status)
+        << " world_entity_model_bridge_rejection_diagnostics=" << world_entity_model_probe.bridge_rejection_diagnostics
+        << " world_entity_model_bridge_rejection_persistence_rows="
+        << world_entity_model_probe.bridge_rejection_persistence_rows
+        << " world_entity_model_bridge_rejection_streaming_region_rows="
+        << world_entity_model_probe.bridge_rejection_streaming_region_rows
+        << " world_entity_model_bridge_rejection_streaming_diagnostics_present="
+        << world_entity_model_probe.bridge_rejection_streaming_diagnostics_present
+        << " world_entity_model_bridge_rejection_fail_closed="
+        << (world_entity_model_probe.bridge_rejection_fail_closed ? 1 : 0)
+        << " world_entity_model_diagnostics=" << world_entity_model_probe.diagnostics
         << " gameplay_systems_ticks=" << game.gameplay_systems_ticks()
         << " gameplay_systems_physics_ticks=" << game.gameplay_systems_physics_ticks()
         << " gameplay_systems_authored_collision_bodies=" << game.gameplay_systems_authored_collision_bodies()
@@ -7844,7 +8154,30 @@ int main(int argc, char** argv) {
                       << " gameplay_runtime_scheduler_budget_limited="
                       << (gameplay_runtime_scheduler_probe.budget_limited ? 1 : 0)
                       << " gameplay_runtime_scheduler_diagnostics=" << gameplay_runtime_scheduler_probe.diagnostics
-                      << '\n';
+                      << " world_entity_model_status="
+                      << world_entity_model_status_name(world_entity_model_probe.status)
+                      << " world_entity_model_ready=" << (world_entity_model_probe.ready ? 1 : 0)
+                      << " world_entity_model_entities=" << world_entity_model_probe.entity_rows
+                      << " world_entity_model_components=" << world_entity_model_probe.component_rows
+                      << " world_entity_model_region_ownership_rows=" << world_entity_model_probe.region_ownership_rows
+                      << " world_entity_model_lifecycle_rows=" << world_entity_model_probe.lifecycle_rows
+                      << " world_entity_model_persistence_rows=" << world_entity_model_probe.persistence_rows
+                      << " world_entity_model_streaming_region_rows=" << world_entity_model_probe.streaming_region_rows
+                      << " world_entity_model_duplicate_entity_diagnostics="
+                      << world_entity_model_probe.duplicate_entity_diagnostics
+                      << " world_entity_model_bridge_rejection_status="
+                      << world_entity_model_status_name(world_entity_model_probe.bridge_rejection_status)
+                      << " world_entity_model_bridge_rejection_diagnostics="
+                      << world_entity_model_probe.bridge_rejection_diagnostics
+                      << " world_entity_model_bridge_rejection_persistence_rows="
+                      << world_entity_model_probe.bridge_rejection_persistence_rows
+                      << " world_entity_model_bridge_rejection_streaming_region_rows="
+                      << world_entity_model_probe.bridge_rejection_streaming_region_rows
+                      << " world_entity_model_bridge_rejection_streaming_diagnostics_present="
+                      << world_entity_model_probe.bridge_rejection_streaming_diagnostics_present
+                      << " world_entity_model_bridge_rejection_fail_closed="
+                      << (world_entity_model_probe.bridge_rejection_fail_closed ? 1 : 0)
+                      << " world_entity_model_diagnostics=" << world_entity_model_probe.diagnostics << '\n';
             return 3;
         }
         if (options.require_scene_collision_package && !collision_package.ready) {

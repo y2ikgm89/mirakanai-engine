@@ -47,7 +47,7 @@ Add the following canonical rows to the backlog under a new `General-Purpose Gam
 | --- | --- | --- |
 | `general-purpose-game-production-v1` | `selected-production-slice` | Milestone row selecting this post-foundation production track. |
 | `gameplay-runtime-scheduler-production-v1` | `implemented-production-surface` | Authoritative fixed-tick gameplay scheduler with explicit system order, command playback, replay diagnostics, budget rows, pause/step policies, and rollback/network extension points. |
-| `world-entity-model-production-v1` | `production-candidate` | Stable entity/component/region ownership model with lifecycle, identity, serialization boundaries, and scene/runtime bridge diagnostics. |
+| `world-entity-model-production-v1` | `implemented-production-surface` | Stable entity/component/region ownership model with lifecycle, identity, serialization boundaries, persistence/streaming bridge diagnostics, and package-visible counters. |
 | `addressable-content-streaming-production-v1` | `production-candidate` | Addressable package/content handles with dependency tracking, explicit load/release/refcount plans, resident budget diagnostics, and package evidence. |
 | `production-authoring-workflows-v1` | `production-candidate` | Reviewed authoring flows for scene, placement, quest/dialogue, item/economy, AI behavior, world regions, and validation repair without free-form engine mutation. |
 | `production-runtime-ui-workbench-v1` | `production-candidate` | Dense runtime UI primitives for menus, inventory/equipment/shop, simulation dashboards, tables, graphs, focus navigation, text input, localization, and accessibility boundaries. |
@@ -306,23 +306,47 @@ The milestone itself changes documentation and manifest pointers first. Later ph
 - Create: `engine/runtime/include/mirakana/runtime/world_entity_model.hpp`
 - Create: `engine/runtime/src/world_entity_model.cpp`
 - Modify: `engine/runtime/CMakeLists.txt`
-- Test: `tests/unit/runtime_tests.cpp`
+- Modify: `CMakeLists.txt`
+- Test: `tests/unit/runtime_world_entity_model_tests.cpp`
 
-- [ ] **Step 1: Write failing identity/lifecycle tests**
+- [x] **Step 1: Write failing identity/lifecycle tests**
 
   Test stable entity ids, component schema ids, region ownership, spawn/despawn rows, and duplicate id diagnostics. The smallest durable guarantee is that the model can validate a world snapshot without scene mutation.
 
-- [ ] **Step 2: Implement first-party world/entity value rows**
+- [x] **Step 2: Implement first-party world/entity value rows**
 
   Add `RuntimeWorldEntityId`, `RuntimeWorldRegionId`, `RuntimeWorldComponentSchemaId`, `RuntimeWorldEntityRow`, `RuntimeWorldComponentRow`, `RuntimeWorldEntityLifecycleRequest`, `RuntimeWorldEntityLifecyclePlan`, and `plan_runtime_world_entity_lifecycle`.
 
-- [ ] **Step 3: Bridge to persistence and streaming**
+- [x] **Step 3: Bridge to persistence and streaming**
 
   Add review-only adapters from existing simulation persistence and world-region streaming rows. The bridge must not load packages, mutate scenes, upload renderer resources, or expose native handles.
 
-- [ ] **Step 4: Add package evidence**
+- [x] **Step 4: Add package evidence**
 
   Add counters for validated entity rows, component rows, region ownership rows, lifecycle rows, rejected duplicate ids, and clean diagnostics.
+
+- [x] **Step 5: Close Phase 2**
+
+  Update docs, manifest fragments, generated-game guidance, and static checks for the world/entity counters. Run focused package validation and then `tools/validate.ps1` because this phase changes runtime C++ and package contracts.
+
+  Evidence captured so far:
+
+  ```text
+  OFFICIAL: Context7 C++ Core Guidelines `/isocpp/cppcoreguidelines` reinforced RAII/value-return ownership and implementation-handle encapsulation; Context7 Unity Entities 1.4 `/websites/unity3d_packages_com_unity_entities_1_4` reinforced separate entity identity, component data, and systems; Epic World Partition docs reinforced region/cell/data-layer comparison boundaries without adopting Unreal APIs.
+  RED: MK_runtime_world_entity_model_tests failed to build before mirakana/runtime/world_entity_model.hpp existed.
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_world_entity_model_tests
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_world_entity_model_tests
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_world_entity_model_tests sample_2d_desktop_runtime_package sample_generated_desktop_runtime_3d_package
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_world_entity_model_tests|sample_2d_desktop_runtime_package_smoke|sample_generated_desktop_runtime_3d_package_smoke"
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/runtime/src/world_entity_model.cpp,games/sample_2d_desktop_runtime_package/main.cpp,games/sample_generated_desktop_runtime_3d_package/main.cpp,tests/unit/runtime_world_entity_model_tests.cpp
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
+  ```
 
 ## Phase 3: Addressable Content Streaming Production Surface
 

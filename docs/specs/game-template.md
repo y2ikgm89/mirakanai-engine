@@ -23,6 +23,7 @@ Describe what the player does repeatedly.
 - Asset import: runtime code consumes cooked artifacts only; external PNG, glTF, and common audio source files are imported only through optional `mirakana_tools` adapters behind the `asset-importers` feature.
 - Packaging: list only supported `packagingTargets` from the engine manifest; Android/iOS targets are template-toolchain-gated and require `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-mobile-packaging.ps1` plus the relevant SDK build script on a configured host.
 - Gameplay loop: use `mirakana::runtime::plan_runtime_gameplay_schedule` for fixed-tick system order, command playback, pause/single-step policy, and replay hash evidence before game-owned state mutation; mirror selected `gameplay_runtime_scheduler_*` package counters in `validationRecipes` when a generated game claims deterministic scheduler evidence.
+- World model: use `mirakana::runtime::plan_runtime_world_entity_lifecycle` for stable entity/component/region identity review, lifecycle intent rows, persistence bridge rows, streaming bridge rows, duplicate rejection, bridge fail-closed diagnostics, and clean diagnostics before game-owned world mutation; mirror selected `world_entity_model_*` package counters in `validationRecipes` when a generated game claims reusable world/entity evidence.
 
 ## Entities and Components
 
