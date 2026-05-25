@@ -2260,14 +2260,17 @@ if ($productionLoop.currentActivePlan -eq "docs/superpowers/plans/2026-05-23-can
 if ($productionLoop.recommendedNextPlan.id -eq "simulation-persistence-v1") {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop.recommendedNextPlan.id must not point at merged simulation-persistence-v1"
 }
-Assert-ContainsText $recommendedText "Candidate Backlog Burn-down v1 completed all seven canonical post-1.0 candidate rows" "engine/agent/manifest.json candidate backlog closeout evidence"
-Assert-ContainsText $recommendedText "PR #204" "engine/agent/manifest.json simulation persistence PR closeout evidence"
-Assert-ContainsText $recommendedText "971cee3f6c5b42965721c06974bc506f1b35508c" "engine/agent/manifest.json simulation persistence merge evidence"
-Assert-ContainsText $recommendedText "plan_runtime_simulation_persistence" "engine/agent/manifest.json simulation persistence closeout evidence"
+if ([string]$productionLoop.recommendedNextPlan.id -ne "general-purpose-game-production-v1") {
+    Assert-ContainsText $recommendedText "Candidate Backlog Burn-down v1 completed all seven canonical post-1.0 candidate rows" "engine/agent/manifest.json candidate backlog closeout evidence"
+    Assert-ContainsText $recommendedText "PR #204" "engine/agent/manifest.json simulation persistence PR closeout evidence"
+    Assert-ContainsText $recommendedText "971cee3f6c5b42965721c06974bc506f1b35508c" "engine/agent/manifest.json simulation persistence merge evidence"
+    Assert-ContainsText $recommendedText "plan_runtime_simulation_persistence" "engine/agent/manifest.json simulation persistence closeout evidence"
+}
 $candidateBacklogPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-23-candidate-backlog-burn-down-v1.md"
 Assert-ContainsText $candidateBacklogPlanText "**Status:** Completed." "Candidate Backlog Burn-down v1 status"
 Assert-ContainsText $candidateBacklogPlanText '| simulation-persistence-v1 | #204 | `971cee3f6c5b42965721c06974bc506f1b35508c` | pass |' "Candidate Backlog Burn-down v1 simulation persistence closeout row"
-foreach ($needle in @(
+if ([string]$productionLoop.recommendedNextPlan.id -ne "general-purpose-game-production-v1") {
+    foreach ($needle in @(
     "Frame Graph Transient Texture Alias Planning v1",
     "FrameGraphTransientTextureAliasPlan",
     "plan_frame_graph_transient_texture_aliases",
@@ -2302,8 +2305,9 @@ foreach ($needle in @(
     "framegraph_multiqueue_aliasing_barriers_recorded",
     "alias-induced cross-queue waits",
     "frame-graph-v1"
-)) {
-    Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan frame-graph closeout evidence"
+    )) {
+        Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan frame-graph closeout evidence"
+    }
 }
 foreach ($check in @(
     @{
@@ -2418,14 +2422,16 @@ foreach ($check in @(
         Assert-ContainsText $fileText $needle "$($check.Path) upload-staging-v1 closeout evidence"
     }
 }
-foreach ($needle in @(
-    "3d-playable-vertical-slice",
-    "generated desktop 3D package proof",
-    "host-gated D3D12/Vulkan package smokes",
-    "visible 3D aggregate counters",
-    "native UI overlay/atlas package counters"
-)) {
-    Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan 3d closeout"
+if ([string]$productionLoop.recommendedNextPlan.id -ne "general-purpose-game-production-v1") {
+    foreach ($needle in @(
+            "3d-playable-vertical-slice",
+            "generated desktop 3D package proof",
+            "host-gated D3D12/Vulkan package smokes",
+            "visible 3D aggregate counters",
+            "native UI overlay/atlas package counters"
+        )) {
+        Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan 3d closeout"
+    }
 }
 $physicsCollisionGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "physics-1-0-collision-system" })
 if ($physicsCollisionGap.Count -ne 0) {
@@ -2441,17 +2447,19 @@ foreach ($closedGameplayGapId in @(
         Write-Error "engine/agent/manifest.json aiOperableProductionLoop $closedGameplayGapId gap must leave unsupportedProductionGaps after gameplay physics/navigation closeout"
     }
 }
-foreach ($needle in @(
-    "gameplay-physics-navigation-ai-foundation-v1",
-    "NavigationNavmeshPathRequest",
-    "plan_navigation_navmesh_path",
-    "evaluate_physics_character_dynamic_policy_3d",
-    "selected generated 2D and 3D package gameplay systems composition smokes",
-    "navigation-navmesh-and-dynamic-obstacle-follow-up",
-    "physics-advanced-dynamics-follow-up",
-    "gameplay-2d-3d-package-evidence"
-)) {
-    Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan gameplay closeout evidence"
+if ([string]$productionLoop.recommendedNextPlan.id -ne "general-purpose-game-production-v1") {
+    foreach ($needle in @(
+            "gameplay-physics-navigation-ai-foundation-v1",
+            "NavigationNavmeshPathRequest",
+            "plan_navigation_navmesh_path",
+            "evaluate_physics_character_dynamic_policy_3d",
+            "selected generated 2D and 3D package gameplay systems composition smokes",
+            "navigation-navmesh-and-dynamic-obstacle-follow-up",
+            "physics-advanced-dynamics-follow-up",
+            "gameplay-2d-3d-package-evidence"
+        )) {
+        Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan gameplay closeout evidence"
+    }
 }
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Transient Texture Alias Planning v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "FrameGraphTransientTextureAliasPlan" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
@@ -2462,32 +2470,34 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContex
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "viewport_color" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Texture Aliasing Barrier Command v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "record_frame_graph_texture_aliasing_barriers" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText $recommendedText "Package Streaming Frame Graph Texture Binding Handoff v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package streaming handoff"
-Assert-ContainsText $recommendedText "make_runtime_package_streaming_frame_graph_texture_bindings" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package streaming handoff"
-Assert-ContainsText $recommendedText "Runtime Package Streaming RHI Upload Binding Transaction v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package streaming upload transaction"
-Assert-ContainsText $recommendedText "upload_runtime_package_streaming_frame_graph_texture_bindings" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package streaming upload transaction"
-Assert-ContainsText $recommendedText "Runtime Ring-Backed Texture Upload v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime ring-backed texture upload"
-Assert-ContainsText $recommendedText "RuntimeTextureUploadOptions::upload_ring" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime ring-backed texture upload"
-Assert-ContainsText $recommendedText "Upload Staging v1 Runtime Ring Backed Texture Upload v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime ring-backed texture upload"
-Assert-ContainsText $recommendedText "Runtime Buffer Ring-Backed Uploads v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime buffer ring-backed uploads"
-Assert-ContainsText $recommendedText "RuntimeMeshUploadOptions::upload_ring" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime buffer ring-backed uploads"
-Assert-ContainsText $recommendedText "RuntimeSkinnedMeshUploadOptions::upload_ring" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime buffer ring-backed uploads"
-Assert-ContainsText $recommendedText "RuntimeMorphMeshUploadOptions::upload_ring" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime buffer ring-backed uploads"
-Assert-ContainsText $recommendedText "Upload Staging v1 Runtime Buffer Ring Backed Uploads v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime buffer ring-backed uploads"
-Assert-ContainsText $recommendedText "Package Static Mesh Upload Binding Transaction v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package static mesh upload transaction"
-Assert-ContainsText $recommendedText "RuntimePackageStreamingMeshUploadSource" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package static mesh upload transaction"
-Assert-ContainsText $recommendedText "RuntimePackageStreamingMeshUploadBindingResult" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package static mesh upload transaction"
-Assert-ContainsText $recommendedText "upload_runtime_package_streaming_mesh_gpu_bindings" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package static mesh upload transaction"
-Assert-ContainsText $recommendedText "Upload Staging v1 Package Static Mesh Upload Binding Transaction v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package static mesh upload transaction"
-Assert-ContainsText $recommendedText "Runtime Upload Queue Wait v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime upload queue wait"
-Assert-ContainsText $recommendedText "wait_for_runtime_uploads_on_queue" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime upload queue wait"
-Assert-ContainsText $recommendedText "upload_queue_waits_recorded" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime upload queue wait"
-Assert-ContainsText $recommendedText "Upload Staging v1 Runtime Upload Queue Wait v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime upload queue wait"
-Assert-ContainsText $recommendedText "Staging Pool Lease Adoption v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan staging pool lease adoption"
-Assert-ContainsText $recommendedText "RhiStagingBufferLease" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan staging pool lease adoption"
-Assert-ContainsText $recommendedText "RhiUploadRingDesc::buffer" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan staging pool lease adoption"
-Assert-ContainsText $recommendedText "Upload Staging v1 Staging Pool Lease Adoption v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan staging pool lease adoption"
-Assert-ContainsText $recommendedText "Frame Graph Automatic Aliasing Barrier Insertion v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan automatic aliasing barrier"
+if ([string]$productionLoop.recommendedNextPlan.id -ne "general-purpose-game-production-v1") {
+    Assert-ContainsText $recommendedText "Package Streaming Frame Graph Texture Binding Handoff v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package streaming handoff"
+    Assert-ContainsText $recommendedText "make_runtime_package_streaming_frame_graph_texture_bindings" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package streaming handoff"
+    Assert-ContainsText $recommendedText "Runtime Package Streaming RHI Upload Binding Transaction v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package streaming upload transaction"
+    Assert-ContainsText $recommendedText "upload_runtime_package_streaming_frame_graph_texture_bindings" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package streaming upload transaction"
+    Assert-ContainsText $recommendedText "Runtime Ring-Backed Texture Upload v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime ring-backed texture upload"
+    Assert-ContainsText $recommendedText "RuntimeTextureUploadOptions::upload_ring" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime ring-backed texture upload"
+    Assert-ContainsText $recommendedText "Upload Staging v1 Runtime Ring Backed Texture Upload v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime ring-backed texture upload"
+    Assert-ContainsText $recommendedText "Runtime Buffer Ring-Backed Uploads v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime buffer ring-backed uploads"
+    Assert-ContainsText $recommendedText "RuntimeMeshUploadOptions::upload_ring" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime buffer ring-backed uploads"
+    Assert-ContainsText $recommendedText "RuntimeSkinnedMeshUploadOptions::upload_ring" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime buffer ring-backed uploads"
+    Assert-ContainsText $recommendedText "RuntimeMorphMeshUploadOptions::upload_ring" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime buffer ring-backed uploads"
+    Assert-ContainsText $recommendedText "Upload Staging v1 Runtime Buffer Ring Backed Uploads v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime buffer ring-backed uploads"
+    Assert-ContainsText $recommendedText "Package Static Mesh Upload Binding Transaction v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package static mesh upload transaction"
+    Assert-ContainsText $recommendedText "RuntimePackageStreamingMeshUploadSource" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package static mesh upload transaction"
+    Assert-ContainsText $recommendedText "RuntimePackageStreamingMeshUploadBindingResult" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package static mesh upload transaction"
+    Assert-ContainsText $recommendedText "upload_runtime_package_streaming_mesh_gpu_bindings" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package static mesh upload transaction"
+    Assert-ContainsText $recommendedText "Upload Staging v1 Package Static Mesh Upload Binding Transaction v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package static mesh upload transaction"
+    Assert-ContainsText $recommendedText "Runtime Upload Queue Wait v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime upload queue wait"
+    Assert-ContainsText $recommendedText "wait_for_runtime_uploads_on_queue" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime upload queue wait"
+    Assert-ContainsText $recommendedText "upload_queue_waits_recorded" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime upload queue wait"
+    Assert-ContainsText $recommendedText "Upload Staging v1 Runtime Upload Queue Wait v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan runtime upload queue wait"
+    Assert-ContainsText $recommendedText "Staging Pool Lease Adoption v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan staging pool lease adoption"
+    Assert-ContainsText $recommendedText "RhiStagingBufferLease" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan staging pool lease adoption"
+    Assert-ContainsText $recommendedText "RhiUploadRingDesc::buffer" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan staging pool lease adoption"
+    Assert-ContainsText $recommendedText "Upload Staging v1 Staging Pool Lease Adoption v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan staging pool lease adoption"
+    Assert-ContainsText $recommendedText "Frame Graph Automatic Aliasing Barrier Insertion v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan automatic aliasing barrier"
+}
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Render Pass Envelope v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "render_passes_recorded" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph RHI Queue Dependency Plan v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
@@ -2512,21 +2522,37 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContex
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph v1 1.0 Scope Closeout v1 closes frame-graph-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "broad production render graph scheduling" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Metal memory alias allocation" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText $recommendedText "Frame Graph v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
-Assert-ContainsText $recommendedText "upload-staging-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
-Assert-ContainsText $recommendedText "scene-component-prefab-schema-v2" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
-Assert-ContainsText $recommendedText "2d-playable-vertical-slice" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
-Assert-ContainsText $recommendedText "3d-playable-vertical-slice" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
-foreach ($needle in @(
-    "editor-productization",
-    "reviewed editor authoring/playtest/AI command/resource/input/prefab/material-preview evidence",
-    "explicit host-gated exclusion of Vulkan/Metal material-preview display parity",
-    "production-ui-importer-platform-adapters",
-    "reviewed runtime UI adapter contracts",
-    "selected SDL3 text/clipboard bridges",
-    "reviewed PNG/UI atlas/glyph atlas package bridges",
-    "explicit future/dependency-gated exclusions for broad low-level UI, codec, importer, platform SDK",
-    "full-repository-quality-gate"
-)) {
-    Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan closeout wedges"
+if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-production-v1") {
+    foreach ($needle in @(
+            "General Purpose Game Production v1",
+            "gameplay-runtime-scheduler-production-v1",
+            "world-entity-model-production-v1",
+            "addressable-content-streaming-production-v1",
+            "production-authoring-workflows-v1",
+            "production-runtime-ui-workbench-v1",
+            "unsupportedProductionGaps empty"
+        )) {
+        Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan production milestone"
+    }
+} else {
+    Assert-ContainsText $recommendedText "Frame Graph v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
+    Assert-ContainsText $recommendedText "upload-staging-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
+    Assert-ContainsText $recommendedText "scene-component-prefab-schema-v2" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
+    Assert-ContainsText $recommendedText "2d-playable-vertical-slice" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
+    Assert-ContainsText $recommendedText "3d-playable-vertical-slice" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
+}
+if ([string]$productionLoop.recommendedNextPlan.id -ne "general-purpose-game-production-v1") {
+    foreach ($needle in @(
+            "editor-productization",
+            "reviewed editor authoring/playtest/AI command/resource/input/prefab/material-preview evidence",
+            "explicit host-gated exclusion of Vulkan/Metal material-preview display parity",
+            "production-ui-importer-platform-adapters",
+            "reviewed runtime UI adapter contracts",
+            "selected SDL3 text/clipboard bridges",
+            "reviewed PNG/UI atlas/glyph atlas package bridges",
+            "explicit future/dependency-gated exclusions for broad low-level UI, codec, importer, platform SDK",
+            "full-repository-quality-gate"
+        )) {
+        Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan closeout wedges"
+    }
 }

@@ -32,6 +32,7 @@
 #include "mirakana/tools/material_tool.hpp"
 #include "mirakana/tools/physics_collision_package_tool.hpp"
 #include "mirakana/tools/placeholder_asset_tool.hpp"
+#include "mirakana/tools/production_authoring_workflows.hpp"
 #include "mirakana/tools/registered_source_asset_cook_package_tool.hpp"
 #include "mirakana/tools/runtime_scene_package_validation_tool.hpp"
 #include "mirakana/tools/scene_prefab_authoring_tool.hpp"
@@ -4683,6 +4684,240 @@ MK_TEST("gameplay authoring review fails closed on duplicates missing evidence a
     MK_REQUIRE(has_diagnostic("missing_validation_recipe"));
     MK_REQUIRE(has_diagnostic("missing_package_evidence"));
     MK_REQUIRE(has_diagnostic("unsupported_claim"));
+}
+
+MK_TEST("production authoring workflow review accepts reviewed scene gameplay and repair rows") {
+    mirakana::ProductionAuthoringWorkflowRequest request;
+    request.supported_capability_ids = {"scene-placement-v1", "quest-dialogue-v1", "item-economy-v1",
+                                        "ai-behavior-v1",     "world-region-v1",   "validation-repair-v1"};
+    request.validation_recipe_ids = {"desktop-2d-package", "desktop-3d-package",
+                                     "installed-2d-production-authoring-workflows-smoke"};
+    request.package_evidence_ids = {"sample_2d_desktop_runtime_package", "sample_generated_desktop_runtime_3d_package"};
+    request.reviewed_surface_ids = {"scene-prefab-authoring", "gameplay-authoring-review", "runtime-scene-validation"};
+    request.workflow_rows = {
+        mirakana::ProductionAuthoringWorkflowRow{
+            .workflow_id = "place_spawn_points",
+            .kind = mirakana::ProductionAuthoringWorkflowKind::scene_placement,
+            .target_path = "games/sample_2d_desktop_runtime_package/source/scenes/playable.scene",
+            .required_capability_ids = {"scene-placement-v1"},
+            .validation_recipe_ids = {"desktop-2d-package"},
+            .package_evidence_ids = {"sample_2d_desktop_runtime_package"},
+            .reviewed_surface_ids = {"scene-prefab-authoring"},
+            .claimed_scope_ids = {},
+            .requests_shared_surface_mutation = false,
+            .requests_arbitrary_shell = false,
+            .requests_cooked_package_mutation = false,
+            .source_index = 1,
+        },
+        mirakana::ProductionAuthoringWorkflowRow{
+            .workflow_id = "intro_dialogue",
+            .kind = mirakana::ProductionAuthoringWorkflowKind::quest_dialogue,
+            .target_path = "games/sample_2d_desktop_runtime_package/source/gameplay/intro.quest",
+            .required_capability_ids = {"quest-dialogue-v1"},
+            .validation_recipe_ids = {"desktop-2d-package"},
+            .package_evidence_ids = {"sample_2d_desktop_runtime_package"},
+            .reviewed_surface_ids = {"gameplay-authoring-review"},
+            .claimed_scope_ids = {},
+            .requests_shared_surface_mutation = false,
+            .requests_arbitrary_shell = false,
+            .requests_cooked_package_mutation = false,
+            .source_index = 2,
+        },
+        mirakana::ProductionAuthoringWorkflowRow{
+            .workflow_id = "shop_catalog",
+            .kind = mirakana::ProductionAuthoringWorkflowKind::item_economy,
+            .target_path = "games/sample_2d_desktop_runtime_package/source/gameplay/shop.items",
+            .required_capability_ids = {"item-economy-v1"},
+            .validation_recipe_ids = {"desktop-2d-package"},
+            .package_evidence_ids = {"sample_2d_desktop_runtime_package"},
+            .reviewed_surface_ids = {"gameplay-authoring-review"},
+            .claimed_scope_ids = {},
+            .requests_shared_surface_mutation = false,
+            .requests_arbitrary_shell = false,
+            .requests_cooked_package_mutation = false,
+            .source_index = 3,
+        },
+        mirakana::ProductionAuthoringWorkflowRow{
+            .workflow_id = "npc_patrol_ai",
+            .kind = mirakana::ProductionAuthoringWorkflowKind::ai_behavior,
+            .target_path = "games/sample_generated_desktop_runtime_3d_package/source/ai/patrol.behavior",
+            .required_capability_ids = {"ai-behavior-v1"},
+            .validation_recipe_ids = {"desktop-3d-package"},
+            .package_evidence_ids = {"sample_generated_desktop_runtime_3d_package"},
+            .reviewed_surface_ids = {"gameplay-authoring-review"},
+            .claimed_scope_ids = {},
+            .requests_shared_surface_mutation = false,
+            .requests_arbitrary_shell = false,
+            .requests_cooked_package_mutation = false,
+            .source_index = 4,
+        },
+        mirakana::ProductionAuthoringWorkflowRow{
+            .workflow_id = "region_streaming_links",
+            .kind = mirakana::ProductionAuthoringWorkflowKind::world_region,
+            .target_path = "games/sample_2d_desktop_runtime_package/source/world/regions.world",
+            .required_capability_ids = {"world-region-v1"},
+            .validation_recipe_ids = {"desktop-2d-package"},
+            .package_evidence_ids = {"sample_2d_desktop_runtime_package"},
+            .reviewed_surface_ids = {"runtime-scene-validation"},
+            .claimed_scope_ids = {},
+            .requests_shared_surface_mutation = false,
+            .requests_arbitrary_shell = false,
+            .requests_cooked_package_mutation = false,
+            .source_index = 5,
+        },
+        mirakana::ProductionAuthoringWorkflowRow{
+            .workflow_id = "rerun_package_smoke",
+            .kind = mirakana::ProductionAuthoringWorkflowKind::validation_repair,
+            .target_path = "games/sample_2d_desktop_runtime_package/game.agent.json",
+            .required_capability_ids = {"validation-repair-v1"},
+            .validation_recipe_ids = {"installed-2d-production-authoring-workflows-smoke"},
+            .package_evidence_ids = {"sample_2d_desktop_runtime_package"},
+            .reviewed_surface_ids = {"runtime-scene-validation"},
+            .claimed_scope_ids = {},
+            .requests_shared_surface_mutation = false,
+            .requests_arbitrary_shell = false,
+            .requests_cooked_package_mutation = false,
+            .source_index = 6,
+        },
+    };
+
+    const auto result = mirakana::review_production_authoring_workflow(request);
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.accepted_rows.size() == 6U);
+    MK_REQUIRE(result.mutation_ledger_rows.size() == 6U);
+    MK_REQUIRE(result.validation_repair_rows.size() == 1U);
+    MK_REQUIRE(result.accepted_rows[0].workflow_id == "place_spawn_points");
+    MK_REQUIRE(result.accepted_rows[5].kind == mirakana::ProductionAuthoringWorkflowKind::validation_repair);
+    MK_REQUIRE(result.mutation_ledger_rows[3].ledger_id == "production-authoring:npc_patrol_ai");
+    MK_REQUIRE(result.validation_repair_rows[0].workflow_id == "rerun_package_smoke");
+    MK_REQUIRE(result.validation_repair_rows[0].action == "rerun-selected-validation-recipe");
+    MK_REQUIRE(result.validation_repair_rows[0].validation_recipe_ids.size() == 1U);
+    MK_REQUIRE(result.validation_repair_rows[0].validation_recipe_ids[0] ==
+               "installed-2d-production-authoring-workflows-smoke");
+    MK_REQUIRE(!result.invoked_file_mutation);
+    MK_REQUIRE(!result.invoked_package_io);
+    MK_REQUIRE(!result.invoked_command_execution);
+}
+
+MK_TEST("production authoring workflow review fails closed on shared mutation shell package io and native terms") {
+    mirakana::ProductionAuthoringWorkflowRequest request;
+    request.supported_capability_ids = {"scene-placement-v1"};
+    request.validation_recipe_ids = {"desktop-2d-package"};
+    request.package_evidence_ids = {"sample_2d_desktop_runtime_package"};
+    request.reviewed_surface_ids = {"scene-prefab-authoring"};
+    request.workflow_rows.push_back(mirakana::ProductionAuthoringWorkflowRow{
+        .workflow_id = "unsafe",
+        .kind = mirakana::ProductionAuthoringWorkflowKind::scene_placement,
+        .target_path = "engine/runtime/src/unsafe.cpp",
+        .required_capability_ids = {"scene-placement-v1"},
+        .validation_recipe_ids = {"desktop-2d-package"},
+        .package_evidence_ids = {"sample_2d_desktop_runtime_package"},
+        .reviewed_surface_ids = {"scene-prefab-authoring"},
+        .claimed_scope_ids = {"native D3D12 handle", "arbitrary shell", "cooked package mutation"},
+        .requests_shared_surface_mutation = true,
+        .requests_arbitrary_shell = true,
+        .requests_cooked_package_mutation = true,
+        .source_index = 9,
+    });
+
+    const auto result = mirakana::review_production_authoring_workflow(request);
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.accepted_rows.empty());
+    MK_REQUIRE(result.mutation_ledger_rows.empty());
+    MK_REQUIRE(result.validation_repair_rows.empty());
+    const auto has_diagnostic = [&result](std::string_view code) {
+        return std::ranges::any_of(result.diagnostics,
+                                   [code](const auto& diagnostic) { return diagnostic.code == code; });
+    };
+    MK_REQUIRE(has_diagnostic("shared_surface_mutation"));
+    MK_REQUIRE(has_diagnostic("arbitrary_shell"));
+    MK_REQUIRE(has_diagnostic("cooked_package_mutation"));
+    MK_REQUIRE(has_diagnostic("native_backend_term"));
+    MK_REQUIRE(has_diagnostic("invalid_target_path"));
+    MK_REQUIRE(!result.invoked_file_mutation);
+    MK_REQUIRE(!result.invoked_package_io);
+    MK_REQUIRE(!result.invoked_command_execution);
+}
+
+MK_TEST("production authoring workflow review fails closed on incomplete duplicate and unsupported references") {
+    mirakana::ProductionAuthoringWorkflowRequest request;
+    request.supported_capability_ids = {"scene-placement-v1"};
+    request.validation_recipe_ids = {"desktop-2d-package"};
+    request.package_evidence_ids = {"sample_2d_desktop_runtime_package"};
+    request.reviewed_surface_ids = {"scene-prefab-authoring"};
+    request.workflow_rows = {
+        mirakana::ProductionAuthoringWorkflowRow{
+            .workflow_id = {},
+            .kind = mirakana::ProductionAuthoringWorkflowKind::scene_placement,
+            .target_path = {},
+            .required_capability_ids = {},
+            .validation_recipe_ids = {},
+            .package_evidence_ids = {},
+            .reviewed_surface_ids = {},
+            .claimed_scope_ids = {"broad final content automation"},
+            .requests_shared_surface_mutation = false,
+            .requests_arbitrary_shell = false,
+            .requests_cooked_package_mutation = false,
+            .source_index = 1,
+        },
+        mirakana::ProductionAuthoringWorkflowRow{
+            .workflow_id = "duplicate",
+            .kind = mirakana::ProductionAuthoringWorkflowKind::scene_placement,
+            .target_path = "games/sample_2d_desktop_runtime_package/source/scenes/review.scene",
+            .required_capability_ids = {"unsupported-capability"},
+            .validation_recipe_ids = {"unsupported-recipe"},
+            .package_evidence_ids = {"unsupported-package"},
+            .reviewed_surface_ids = {"unsupported-surface"},
+            .claimed_scope_ids = {},
+            .requests_shared_surface_mutation = false,
+            .requests_arbitrary_shell = false,
+            .requests_cooked_package_mutation = false,
+            .source_index = 2,
+        },
+        mirakana::ProductionAuthoringWorkflowRow{
+            .workflow_id = "duplicate",
+            .kind = mirakana::ProductionAuthoringWorkflowKind::scene_placement,
+            .target_path = "games/sample_2d_desktop_runtime_package/source/scenes/review2.scene",
+            .required_capability_ids = {"scene-placement-v1"},
+            .validation_recipe_ids = {"desktop-2d-package"},
+            .package_evidence_ids = {"sample_2d_desktop_runtime_package"},
+            .reviewed_surface_ids = {"scene-prefab-authoring"},
+            .claimed_scope_ids = {},
+            .requests_shared_surface_mutation = false,
+            .requests_arbitrary_shell = false,
+            .requests_cooked_package_mutation = false,
+            .source_index = 3,
+        },
+    };
+
+    const auto result = mirakana::review_production_authoring_workflow(request);
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.accepted_rows.empty());
+    MK_REQUIRE(result.mutation_ledger_rows.empty());
+    MK_REQUIRE(result.validation_repair_rows.empty());
+    const auto has_diagnostic = [&result](std::string_view code, std::string_view referenced_id = {}) {
+        return std::ranges::any_of(result.diagnostics, [code, referenced_id](const auto& diagnostic) {
+            return diagnostic.code == code && (referenced_id.empty() || diagnostic.referenced_id == referenced_id);
+        });
+    };
+    MK_REQUIRE(has_diagnostic("missing_workflow_id"));
+    MK_REQUIRE(has_diagnostic("duplicate_workflow_id", "duplicate"));
+    MK_REQUIRE(has_diagnostic("missing_target_path"));
+    MK_REQUIRE(has_diagnostic("missing_required_capability"));
+    MK_REQUIRE(has_diagnostic("unsupported_required_capability", "unsupported-capability"));
+    MK_REQUIRE(has_diagnostic("missing_validation_recipe"));
+    MK_REQUIRE(has_diagnostic("unsupported_validation_recipe", "unsupported-recipe"));
+    MK_REQUIRE(has_diagnostic("missing_package_evidence"));
+    MK_REQUIRE(has_diagnostic("unsupported_package_evidence", "unsupported-package"));
+    MK_REQUIRE(has_diagnostic("missing_reviewed_surface"));
+    MK_REQUIRE(has_diagnostic("unsupported_reviewed_surface", "unsupported-surface"));
+    MK_REQUIRE(has_diagnostic("unsupported_claim", "broad final content automation"));
+    MK_REQUIRE(!result.invoked_file_mutation);
+    MK_REQUIRE(!result.invoked_package_io);
+    MK_REQUIRE(!result.invoked_command_execution);
 }
 
 MK_TEST("engine capability handoff review accepts canonical developer handoff rows") {

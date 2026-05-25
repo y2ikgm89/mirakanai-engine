@@ -844,6 +844,23 @@ foreach ($needle in @(
     "addressable_content_async_execution=0",
     "addressable_content_committed=0",
     "addressable_content_diagnostics=0",
+    "production authoring workflow proof",
+    "--require-production-authoring-workflows",
+    "installed-2d-production-authoring-workflows-smoke",
+    "production_authoring_workflow_status=ready",
+    "production_authoring_workflow_rows=6",
+    "production_authoring_workflow_accepted_rows=6",
+    "production_authoring_workflow_mutation_ledger_rows=6",
+    "production_authoring_workflow_validation_repair_rows=1",
+    "production_authoring_workflow_shared_surface_mutation_diagnostics=1",
+    "production_authoring_workflow_arbitrary_shell_diagnostics=1",
+    "production_authoring_workflow_cooked_package_mutation_diagnostics=1",
+    "production_authoring_workflow_native_backend_term_diagnostics=1",
+    "production_authoring_workflow_invalid_target_path_diagnostics=1",
+    "production_authoring_workflow_invoked_file_mutation=0",
+    "production_authoring_workflow_invoked_package_io=0",
+    "production_authoring_workflow_invoked_command_execution=0",
+    "production_authoring_workflow_diagnostics=0",
     "sceneGameplayBinding",
     "gameplay_systems_scene_binding_ready=1",
     "gameplay_systems_scene_interaction_final_session_state",
@@ -869,9 +886,12 @@ foreach ($needle in @(
     "mirakana/runtime/gameplay_runtime_scheduler.hpp",
     "mirakana/runtime/world_entity_model.hpp",
     "mirakana/runtime/addressable_content_streaming.hpp",
+    "mirakana/tools/production_authoring_workflows.hpp",
     "plan_runtime_gameplay_schedule",
     "plan_runtime_world_entity_lifecycle",
     "plan_runtime_addressable_content_streaming",
+    "review_production_authoring_workflow",
+    "installed-2d-production-authoring-workflows-smoke",
     "--require-native-2d-sprites",
     "--require-sprite-animation",
     "--require-tilemap-runtime-ux",
@@ -879,6 +899,7 @@ foreach ($needle in @(
     "--require-scripting-sandbox-policy",
     "--require-networking-foundation-policy",
     "--require-simulation-orchestration",
+    "--require-production-authoring-workflows",
     "runtime_sprite_animation_payload",
     "runtime_tilemap_payload",
     "sample_runtime_tilemap_visible_cells",
@@ -1013,9 +1034,25 @@ foreach ($needle in @(
     "addressable_content_async_execution=",
     "addressable_content_committed=",
     "addressable_content_diagnostics=",
+    "production_authoring_workflow_status=",
+    "production_authoring_workflow_ready=",
+    "production_authoring_workflow_rows=",
+    "production_authoring_workflow_accepted_rows=",
+    "production_authoring_workflow_mutation_ledger_rows=",
+    "production_authoring_workflow_validation_repair_rows=",
+    "production_authoring_workflow_shared_surface_mutation_diagnostics=",
+    "production_authoring_workflow_arbitrary_shell_diagnostics=",
+    "production_authoring_workflow_cooked_package_mutation_diagnostics=",
+    "production_authoring_workflow_native_backend_term_diagnostics=",
+    "production_authoring_workflow_invalid_target_path_diagnostics=",
+    "production_authoring_workflow_invoked_file_mutation=",
+    "production_authoring_workflow_invoked_package_io=",
+    "production_authoring_workflow_invoked_command_execution=",
+    "production_authoring_workflow_diagnostics=",
     "required_gameplay_runtime_scheduler_unavailable",
     "required_world_entity_model_unavailable",
     "required_addressable_content_unavailable",
+    "required_production_authoring_workflows_unavailable",
     "required_simulation_orchestration_unavailable",
     "required_networking_foundation_policy_unavailable",
     "required_scripting_sandbox_policy_unavailable",
@@ -1156,7 +1193,22 @@ foreach ($needle in @(
     "addressable_content_package_io",
     "addressable_content_async_execution",
     "addressable_content_committed",
-    "addressable_content_diagnostics"
+    "addressable_content_diagnostics",
+    "production_authoring_workflow_status",
+    "production_authoring_workflow_ready",
+    "production_authoring_workflow_rows",
+    "production_authoring_workflow_accepted_rows",
+    "production_authoring_workflow_mutation_ledger_rows",
+    "production_authoring_workflow_validation_repair_rows",
+    "production_authoring_workflow_shared_surface_mutation_diagnostics",
+    "production_authoring_workflow_arbitrary_shell_diagnostics",
+    "production_authoring_workflow_cooked_package_mutation_diagnostics",
+    "production_authoring_workflow_native_backend_term_diagnostics",
+    "production_authoring_workflow_invalid_target_path_diagnostics",
+    "production_authoring_workflow_invoked_file_mutation",
+    "production_authoring_workflow_invoked_package_io",
+    "production_authoring_workflow_invoked_command_execution",
+    "production_authoring_workflow_diagnostics"
 )) {
     Assert-ContainsText $sample2dInstalledRuntimeValidationText $needle "tools/validate-installed-desktop-runtime.ps1"
 }
@@ -1172,7 +1224,8 @@ foreach ($needle in @(
     "--require-entity-scale-culling",
     "--require-scripting-sandbox-policy",
     "--require-networking-foundation-policy",
-    "--require-simulation-orchestration"
+    "--require-simulation-orchestration",
+    "--require-production-authoring-workflows"
 )) {
     Assert-ContainsText $sample2dDesktopCMakeText $needle "games/CMakeLists.txt"
 }
@@ -1359,6 +1412,7 @@ Assert-ContainsText $historicalPlanEvidenceText "3D Scene Mesh Package Telemetry
 $currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
 Assert-ContainsText $currentCapabilitiesText "3D Scene Mesh Package Telemetry v1" "docs/current-capabilities.md"
 Assert-ContainsText $currentCapabilitiesText "Addressable Content Streaming Production v1" "docs/current-capabilities.md"
+Assert-ContainsText $currentCapabilitiesText "Production Authoring Workflows v1" "docs/current-capabilities.md"
 $roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
 Assert-ContainsText $roadmapText "3D Scene Mesh Package Telemetry v1" "docs/roadmap.md"
 $engineManifestText = Get-AgentSurfaceText "engine/agent/manifest.json"
@@ -1374,7 +1428,9 @@ foreach ($needle in @(
     "plan_scene_mesh_draws",
     "scene_mesh_plan_*",
     "plan_runtime_addressable_content_streaming",
-    "addressable_content_*"
+    "addressable_content_*",
+    "review_production_authoring_workflow",
+    "production_authoring_workflow_*"
 )) {
     Assert-ContainsText $engineManifestText $needle "engine/agent/manifest.json"
 }

@@ -539,20 +539,36 @@ if ($playable3dGap.Count -ne 0) {
     Write-Error "engine manifest aiOperableProductionLoop 3d-playable-vertical-slice gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
 $recommendedText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
-foreach ($needle in @(
-    "3d-playable-vertical-slice",
-    "generated desktop 3D package proof",
-    "host-gated D3D12/Vulkan package smokes",
-    "visible 3D aggregate counters",
-    "native UI overlay/atlas package counters"
-)) {
-    Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan 3d closeout"
+if ([string]$productionLoop.recommendedNextPlan.id -ne "general-purpose-game-production-v1") {
+    foreach ($needle in @(
+        "3d-playable-vertical-slice",
+        "generated desktop 3D package proof",
+        "host-gated D3D12/Vulkan package smokes",
+        "visible 3D aggregate counters",
+        "native UI overlay/atlas package counters"
+    )) {
+        Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan 3d closeout"
+    }
 }
 $physicsCollisionGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "physics-1-0-collision-system" })
 if ($physicsCollisionGap.Count -ne 0) {
     Write-Error "engine manifest aiOperableProductionLoop physics-1-0-collision-system gap must leave unsupportedProductionGaps after Physics 1.0 closeout"
 }
 foreach ($needle in @(
+    "General Purpose Game Production v1",
+    "gameplay-runtime-scheduler-production-v1",
+    "world-entity-model-production-v1",
+    "addressable-content-streaming-production-v1",
+    "production-authoring-workflows-v1",
+    "production-runtime-ui-workbench-v1",
+    "unsupportedProductionGaps empty"
+)) {
+    if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-production-v1") {
+        Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan production milestone"
+    }
+}
+if ([string]$productionLoop.recommendedNextPlan.id -ne "general-purpose-game-production-v1") {
+    foreach ($needle in @(
     "Frame Graph Transient Texture Alias Planning v1",
     "FrameGraphTransientTextureAliasPlan",
     "plan_frame_graph_transient_texture_aliases",
@@ -602,9 +618,10 @@ foreach ($needle in @(
     "refresh-prefab-instance",
     "2d-playable-vertical-slice",
     "3d-playable-vertical-slice"
-)) {
-    if (-not $recommendedText.Contains($needle)) {
-        Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe frame-graph closeout and upload-staging next gap: $needle"
+    )) {
+        if (-not $recommendedText.Contains($needle)) {
+            Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe frame-graph closeout and upload-staging next gap: $needle"
+        }
     }
 }
 $editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "editor-productization" })

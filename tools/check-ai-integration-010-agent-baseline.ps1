@@ -1509,7 +1509,20 @@ if ($activeChildProductionPlans.Count -eq 0) {
     Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.path) "2026-05-03-production-completion-master-plan-v1.md" "engine/agent/manifest.json aiOperableProductionLoop.recommendedNextPlan.path"
 }
 $recommendedNextPlanText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
-foreach ($needle in @(
+if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-production-v1") {
+    foreach ($needle in @(
+        "General Purpose Game Production v1",
+        "gameplay-runtime-scheduler-production-v1",
+        "world-entity-model-production-v1",
+        "addressable-content-streaming-production-v1",
+        "production-authoring-workflows-v1",
+        "production-runtime-ui-workbench-v1",
+        "unsupportedProductionGaps empty"
+    )) {
+        Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan production milestone"
+    }
+} else {
+    foreach ($needle in @(
     "Frame Graph Transient Texture Alias Planning v1",
     "FrameGraphTransientTextureAliasPlan",
     "plan_frame_graph_transient_texture_aliases",
@@ -1533,8 +1546,9 @@ foreach ($needle in @(
     "native async upload execution",
     "package skinned/morph streaming",
     "staging-pool production adoption"
-)) {
-    Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan frame-graph closeout and upload-staging next gap"
+    )) {
+        Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan frame-graph closeout and upload-staging next gap"
+    }
 }
 $planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
 $masterPlanText = Get-AgentSurfaceText "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"

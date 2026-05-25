@@ -228,6 +228,7 @@ $requiresScriptingSandboxPolicy = @($SmokeArgs) -contains "--require-scripting-s
 $requiresNetworkingFoundationPolicy = @($SmokeArgs) -contains "--require-networking-foundation-policy"
 $requiresSimulationOrchestration = @($SmokeArgs) -contains "--require-simulation-orchestration"
 $requiresGameplayAuthoringReview = @($SmokeArgs) -contains "--require-gameplay-authoring-review"
+$requiresProductionAuthoringWorkflows = @($SmokeArgs) -contains "--require-production-authoring-workflows"
 $requiresPackageStreamingSafePoint = @($SmokeArgs) -contains "--require-package-streaming-safe-point"
 $requiresSceneCollisionPackage = @($SmokeArgs) -contains "--require-scene-collision-package"
 $expectedSmokeFrames = if ($GameTarget -eq "sample_2d_desktop_runtime_package") { 3 } else { 2 }
@@ -2549,6 +2550,52 @@ if ($requiresGameplayAuthoringReview) {
         $expectedValue = $expectedGameplayAuthoringReviewFields[$field]
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove gameplay authoring review field $field=$expectedValue."
+        }
+    }
+}
+if ($requiresProductionAuthoringWorkflows) {
+    foreach ($field in @(
+            "production_authoring_workflow_status",
+            "production_authoring_workflow_ready",
+            "production_authoring_workflow_rows",
+            "production_authoring_workflow_accepted_rows",
+            "production_authoring_workflow_mutation_ledger_rows",
+            "production_authoring_workflow_validation_repair_rows",
+            "production_authoring_workflow_shared_surface_mutation_diagnostics",
+            "production_authoring_workflow_arbitrary_shell_diagnostics",
+            "production_authoring_workflow_cooked_package_mutation_diagnostics",
+            "production_authoring_workflow_native_backend_term_diagnostics",
+            "production_authoring_workflow_invalid_target_path_diagnostics",
+            "production_authoring_workflow_invoked_file_mutation",
+            "production_authoring_workflow_invoked_package_io",
+            "production_authoring_workflow_invoked_command_execution",
+            "production_authoring_workflow_diagnostics"
+        )) {
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
+            Write-Error "Installed desktop runtime smoke status line did not include production authoring workflow field: $field"
+        }
+    }
+    $expectedProductionAuthoringWorkflowFields = @{
+        "production_authoring_workflow_status" = "ready"
+        "production_authoring_workflow_ready" = "1"
+        "production_authoring_workflow_rows" = "6"
+        "production_authoring_workflow_accepted_rows" = "6"
+        "production_authoring_workflow_mutation_ledger_rows" = "6"
+        "production_authoring_workflow_validation_repair_rows" = "1"
+        "production_authoring_workflow_shared_surface_mutation_diagnostics" = "1"
+        "production_authoring_workflow_arbitrary_shell_diagnostics" = "1"
+        "production_authoring_workflow_cooked_package_mutation_diagnostics" = "1"
+        "production_authoring_workflow_native_backend_term_diagnostics" = "1"
+        "production_authoring_workflow_invalid_target_path_diagnostics" = "1"
+        "production_authoring_workflow_invoked_file_mutation" = "0"
+        "production_authoring_workflow_invoked_package_io" = "0"
+        "production_authoring_workflow_invoked_command_execution" = "0"
+        "production_authoring_workflow_diagnostics" = "0"
+    }
+    foreach ($field in $expectedProductionAuthoringWorkflowFields.Keys) {
+        $expectedValue = $expectedProductionAuthoringWorkflowFields[$field]
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove production authoring workflow field $field=$expectedValue."
         }
     }
 }
