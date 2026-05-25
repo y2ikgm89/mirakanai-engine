@@ -1,4 +1,4 @@
-format=GameEngine.MorphMeshCpuSource.v1
+format=GameEngine.MorphMeshCpuSource
 morph.vertex_count=3
 morph.target_count=1
 morph.bind_positions_hex=000000bf000000bf000000000000003f000000bf00000000000000000000003f00000000

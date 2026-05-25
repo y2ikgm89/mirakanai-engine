@@ -1,4 +1,4 @@
-format=GameEngine.Material.v1
+format=GameEngine.Material
 material.id=15400142031960749401
 material.name=sample-generated-desktop-runtime-material-shader-package Lit Material
 material.shading=lit

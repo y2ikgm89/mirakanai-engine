@@ -1,4 +1,4 @@
-format=GameEngine.CookedAudio.v1
+format=GameEngine.CookedAudio
 asset.id=12959726139531902455
 asset.kind=audio
 source.path=source/sample_2d_desktop_runtime_package/jump.audio

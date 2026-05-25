@@ -142,7 +142,7 @@ foreach ($needle in @(
 }
 foreach ($needle in @(
     "pack_sprite_atlas_rgba8_max_side",
-    "GameEngine.CookedTexture.v1",
+    "GameEngine.CookedTexture",
     "decoded image must be RGBA8",
     "ui atlas page output path collides"
 )) {
@@ -1157,7 +1157,7 @@ if ($null -eq $sample3dManifestEntry) {
     }
     $sample3dUiAtlasPath = Join-Path $root "games/sample_desktop_runtime_game/runtime/assets/desktop_runtime/hud.uiatlas"
     $sample3dUiAtlasText = Get-Content -LiteralPath $sample3dUiAtlasPath -Raw
-    foreach ($needle in @("format=GameEngine.UiAtlas.v1", "source.decoding=unsupported", "atlas.packing=unsupported", "page.count=1", "image.count=1")) {
+    foreach ($needle in @("format=GameEngine.UiAtlas", "source.decoding=unsupported", "atlas.packing=unsupported", "page.count=1", "image.count=1")) {
         if (-not $sample3dUiAtlasText.Contains($needle)) {
             Write-Error "games/sample_desktop_runtime_game/runtime/assets/desktop_runtime/hud.uiatlas missing cooked UI atlas metadata text: $needle"
         }
@@ -1436,10 +1436,10 @@ if ($null -eq $generated3dPackageManifestEntry) {
     Assert-ContainsText $gamesCMakeText "--require-visible-3d-production-proof" "games/CMakeLists.txt"
     Assert-ContainsText $gamesCMakeText "--require-native-ui-textured-sprite-atlas" "games/CMakeLists.txt"
     $generated3dPackageUiAtlasText = Get-Content -LiteralPath (Join-Path $root "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/hud.uiatlas") -Raw
-    Assert-ContainsText $generated3dPackageUiAtlasText "format=GameEngine.UiAtlas.v1" "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/hud.uiatlas"
+    Assert-ContainsText $generated3dPackageUiAtlasText "format=GameEngine.UiAtlas" "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/hud.uiatlas"
     Assert-ContainsText $generated3dPackageUiAtlasText "page.0.asset_uri=runtime/assets/3d/base_color.texture.geasset" "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/hud.uiatlas"
     $generated3dPackageUiTextGlyphAtlasText = Get-Content -LiteralPath (Join-Path $root "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/hud_text.uiatlas") -Raw
-    Assert-ContainsText $generated3dPackageUiTextGlyphAtlasText "format=GameEngine.UiAtlas.v1" "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/hud_text.uiatlas"
+    Assert-ContainsText $generated3dPackageUiTextGlyphAtlasText "format=GameEngine.UiAtlas" "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/hud_text.uiatlas"
     Assert-ContainsText $generated3dPackageUiTextGlyphAtlasText "glyph.0.font_family=engine-default" "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/hud_text.uiatlas"
     Assert-ContainsText $generated3dPackageUiTextGlyphAtlasText "glyph.0.glyph=65" "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/hud_text.uiatlas"
     Assert-ContainsText (Get-Content -LiteralPath (Join-Path $root "games/sample_generated_desktop_runtime_3d_package/runtime/sample_generated_desktop_runtime_3d_package.geindex") -Raw) "kind=ui_atlas_texture" "games/sample_generated_desktop_runtime_3d_package/runtime/sample_generated_desktop_runtime_3d_package.geindex"

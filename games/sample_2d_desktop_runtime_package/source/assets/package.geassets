@@ -1,7 +1,7 @@
-format=GameEngine.SourceAssetRegistry.v1
+format=GameEngine.SourceAssetRegistry
 asset.0.key=sample/2d-desktop-runtime-package/player-sprite
 asset.0.id=7223550242185374713
 asset.0.kind=texture
 asset.0.source=source/sprites/player_atlas.texture_source
-asset.0.source_format=GameEngine.TextureSource.v1
+asset.0.source_format=GameEngine.TextureSource
 asset.0.imported=runtime/assets/2d/player.texture.geasset

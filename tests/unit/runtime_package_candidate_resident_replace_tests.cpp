@@ -113,7 +113,7 @@ MK_TEST("runtime package candidate resident replace loads selected candidate and
     CountingFileSystem filesystem;
     const auto texture = mirakana::AssetId::from_name("textures/player");
     const auto mesh = mirakana::AssetId::from_name("meshes/prop");
-    const std::string payload = "format=GameEngine.CookedTexture.v1\ntexture.width=4\n";
+    const std::string payload = "format=GameEngine.CookedTexture\ntexture.width=4\n";
     write_package(filesystem, texture, mirakana::AssetKind::texture, "textures/player.texture", payload);
     mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
     MK_REQUIRE(mount_set
@@ -314,7 +314,7 @@ MK_TEST("runtime package candidate resident replace preserves state on projected
     CountingFileSystem filesystem;
     const auto base = mirakana::AssetId::from_name("textures/base");
     const auto texture = mirakana::AssetId::from_name("textures/player");
-    const std::string payload = "format=GameEngine.CookedTexture.v1\ntexture.width=4\n";
+    const std::string payload = "format=GameEngine.CookedTexture\ntexture.width=4\n";
     write_package(filesystem, texture, mirakana::AssetKind::texture, "textures/player.texture", payload);
     mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
     MK_REQUIRE(mount_set

@@ -539,7 +539,7 @@ if ($playable3dGap.Count -ne 0) {
     Write-Error "engine manifest aiOperableProductionLoop 3d-playable-vertical-slice gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
 $recommendedText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
-if ([string]$productionLoop.recommendedNextPlan.id -notin @("general-purpose-game-production-v1", "generated-game-studio-v1")) {
+if ([string]$productionLoop.recommendedNextPlan.id -notin @("general-purpose-game-production-v1", "generated-game-studio-v1", "engine-contract-version-suffix-cleanup")) {
     foreach ($needle in @(
         "3d-playable-vertical-slice",
         "generated desktop 3D package proof",
@@ -578,6 +578,18 @@ if ([string]$productionLoop.recommendedNextPlan.id -ne "general-purpose-game-pro
             "unsupportedProductionGaps empty"
         )) {
             Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan generated game studio milestone"
+        }
+    } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "engine-contract-version-suffix-cleanup") {
+        foreach ($needle in @(
+                "Engine Contract Version Suffix Cleanup",
+                "Candidate 1",
+                "Candidate 2",
+                "codex/versionless-saved-formats",
+                "removable pre-release contract suffixes",
+                "without compatibility parsers",
+                "Generated Game Studio v1 remains the broader successor game-surface milestone"
+            )) {
+            Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan version suffix cleanup"
         }
     } else {
         foreach ($needle in @(
@@ -1104,8 +1116,8 @@ foreach ($needle in @(
     "plan_packed_ui_atlas_package_update",
     "apply_packed_ui_atlas_package_update",
     "pack_sprite_atlas_rgba8_max_side",
-    "GameEngine.CookedTexture.v1",
-    "GameEngine.UiAtlas.v1",
+    "GameEngine.CookedTexture",
+    "GameEngine.UiAtlas",
     "MK_tools_tests"
 )) {
     if (-not $runtimeUiDecodedImageAtlasPackageBridgePlanText.Contains($needle)) {
@@ -1123,8 +1135,8 @@ foreach ($needle in @(
     "plan_packed_ui_glyph_atlas_package_update",
     "apply_packed_ui_glyph_atlas_package_update",
     "build_ui_renderer_glyph_atlas_palette_from_runtime_ui_atlas",
-    "GameEngine.CookedTexture.v1",
-    "GameEngine.UiAtlas.v1",
+    "GameEngine.CookedTexture",
+    "GameEngine.UiAtlas",
     "MK_tools_tests"
 )) {
     if (-not $runtimeUiGlyphAtlasPackageBridgePlanText.Contains($needle)) {
@@ -1227,15 +1239,15 @@ foreach ($docPath in $runtimeUiPngDocs.Keys) {
     }
 }
 $runtimeUiDecodedAtlasDocs = @{
-    "docs/current-capabilities.md" = @("Runtime UI Decoded Image Atlas Package Bridge v1", "author_packed_ui_atlas_from_decoded_images", "GameEngine.CookedTexture.v1")
-    "docs/dependencies.md" = @("author_packed_ui_atlas_from_decoded_images", "plan_packed_ui_atlas_package_update", "GameEngine.CookedTexture.v1")
-    "docs/ui.md" = @("Runtime UI Decoded Image Atlas Package Bridge v1", "author_packed_ui_atlas_from_decoded_images", "GameEngine.CookedTexture.v1")
-    "docs/architecture.md" = @("author_packed_ui_atlas_from_decoded_images", "plan_packed_ui_atlas_package_update", "GameEngine.CookedTexture.v1")
-    "docs/roadmap.md" = @("Runtime UI Decoded Image Atlas Package Bridge v1", "author_packed_ui_atlas_from_decoded_images", "GameEngine.CookedTexture.v1")
-    "docs/specs/2026-04-27-engine-essential-gap-analysis.md" = @("author_packed_ui_atlas_from_decoded_images", "plan_packed_ui_atlas_package_update", "GameEngine.CookedTexture.v1")
-    "docs/ai-game-development.md" = @("author_packed_ui_atlas_from_decoded_images", "plan_packed_ui_atlas_package_update", "GameEngine.CookedTexture.v1")
-    "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md" = @("2026-05-08-runtime-ui-decoded-image-atlas-package-bridge-v1.md", "PackedUiAtlasAuthoringDesc", "GameEngine.CookedTexture.v1")
-    "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md" = @("Runtime UI Decoded Image Atlas Package Bridge v1", "author_packed_ui_atlas_from_decoded_images", "GameEngine.CookedTexture.v1")
+    "docs/current-capabilities.md" = @("Runtime UI Decoded Image Atlas Package Bridge v1", "author_packed_ui_atlas_from_decoded_images", "GameEngine.CookedTexture")
+    "docs/dependencies.md" = @("author_packed_ui_atlas_from_decoded_images", "plan_packed_ui_atlas_package_update", "GameEngine.CookedTexture")
+    "docs/ui.md" = @("Runtime UI Decoded Image Atlas Package Bridge v1", "author_packed_ui_atlas_from_decoded_images", "GameEngine.CookedTexture")
+    "docs/architecture.md" = @("author_packed_ui_atlas_from_decoded_images", "plan_packed_ui_atlas_package_update", "GameEngine.CookedTexture")
+    "docs/roadmap.md" = @("Runtime UI Decoded Image Atlas Package Bridge v1", "author_packed_ui_atlas_from_decoded_images", "GameEngine.CookedTexture")
+    "docs/specs/2026-04-27-engine-essential-gap-analysis.md" = @("author_packed_ui_atlas_from_decoded_images", "plan_packed_ui_atlas_package_update", "GameEngine.CookedTexture")
+    "docs/ai-game-development.md" = @("author_packed_ui_atlas_from_decoded_images", "plan_packed_ui_atlas_package_update", "GameEngine.CookedTexture")
+    "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md" = @("2026-05-08-runtime-ui-decoded-image-atlas-package-bridge-v1.md", "PackedUiAtlasAuthoringDesc", "GameEngine.CookedTexture")
+    "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md" = @("Runtime UI Decoded Image Atlas Package Bridge v1", "author_packed_ui_atlas_from_decoded_images", "GameEngine.CookedTexture")
 }
 foreach ($docPath in $runtimeUiDecodedAtlasDocs.Keys) {
     $docText = Get-JsonContractSurfaceText $docPath
@@ -1246,11 +1258,11 @@ foreach ($docPath in $runtimeUiDecodedAtlasDocs.Keys) {
     }
 }
 $runtimeUiGlyphAtlasDocs = @{
-    "docs/current-capabilities.md" = @("Runtime UI Glyph Atlas Package Bridge v1", "UiAtlasMetadataGlyph", "RuntimeUiAtlasGlyph", "author_packed_ui_glyph_atlas_from_rasterized_glyphs", "GameEngine.CookedTexture.v1", "GameEngine.UiAtlas.v1")
-    "docs/dependencies.md" = @("author_packed_ui_glyph_atlas_from_rasterized_glyphs", "plan_packed_ui_glyph_atlas_package_update", "GameEngine.CookedTexture.v1", "GameEngine.UiAtlas.v1")
+    "docs/current-capabilities.md" = @("Runtime UI Glyph Atlas Package Bridge v1", "UiAtlasMetadataGlyph", "RuntimeUiAtlasGlyph", "author_packed_ui_glyph_atlas_from_rasterized_glyphs", "GameEngine.CookedTexture", "GameEngine.UiAtlas")
+    "docs/dependencies.md" = @("author_packed_ui_glyph_atlas_from_rasterized_glyphs", "plan_packed_ui_glyph_atlas_package_update", "GameEngine.CookedTexture", "GameEngine.UiAtlas")
     "docs/testing.md" = @("UiAtlasMetadataGlyph", "RuntimeUiAtlasGlyph", "author_packed_ui_glyph_atlas_from_rasterized_glyphs", "build_ui_renderer_glyph_atlas_palette_from_runtime_ui_atlas")
     "docs/ui.md" = @("Runtime UI Glyph Atlas Package Bridge v1", "UiAtlasMetadataGlyph", "author_packed_ui_glyph_atlas_from_rasterized_glyphs", "source.decoding=rasterized-glyph-adapter", "atlas.packing=deterministic-glyph-atlas-rgba8-max-side")
-    "docs/architecture.md" = @("author_packed_ui_glyph_atlas_from_rasterized_glyphs", "build_ui_renderer_glyph_atlas_palette_from_runtime_ui_atlas", "GameEngine.CookedTexture.v1")
+    "docs/architecture.md" = @("author_packed_ui_glyph_atlas_from_rasterized_glyphs", "build_ui_renderer_glyph_atlas_palette_from_runtime_ui_atlas", "GameEngine.CookedTexture")
     "docs/roadmap.md" = @("Runtime UI Glyph Atlas Package Bridge v1", "UiAtlasMetadataGlyph", "RuntimeUiAtlasGlyph", "author_packed_ui_glyph_atlas_from_rasterized_glyphs")
     "docs/specs/2026-04-27-engine-essential-gap-analysis.md" = @("Runtime UI Glyph Atlas Package Bridge v1", "UiAtlasMetadataGlyph", "RuntimeUiAtlasGlyph", "author_packed_ui_glyph_atlas_from_rasterized_glyphs")
     "docs/ai-game-development.md" = @("author_packed_ui_glyph_atlas_from_rasterized_glyphs", "plan_packed_ui_glyph_atlas_package_update", "source.decoding=rasterized-glyph-adapter", "atlas.packing=deterministic-glyph-atlas-rgba8-max-side")

@@ -1,4 +1,4 @@
-format=GameEngine.CookedSpriteAnimation.v1
+format=GameEngine.CookedSpriteAnimation
 asset.id=11755882508838935962
 asset.kind=sprite_animation
 target.node=Player

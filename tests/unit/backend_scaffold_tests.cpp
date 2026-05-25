@@ -210,7 +210,7 @@ void append_le_f32(std::vector<std::uint8_t>& bytes, float value) {
 }
 
 [[nodiscard]] std::string vulkan_runtime_scene_texture_payload(mirakana::AssetId texture) {
-    return "format=GameEngine.CookedTexture.v1\n"
+    return "format=GameEngine.CookedTexture\n"
            "asset.id=" +
            std::to_string(texture.value) +
            "\n"
@@ -242,7 +242,7 @@ void append_le_f32(std::vector<std::uint8_t>& bytes, float value) {
     append_le_u32(index_bytes, 1);
     append_le_u32(index_bytes, 2);
 
-    return "format=GameEngine.CookedMesh.v2\n"
+    return "format=GameEngine.CookedMesh\n"
            "asset.id=" +
            std::to_string(mesh.value) +
            "\n"

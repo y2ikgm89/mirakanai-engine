@@ -16,8 +16,8 @@
 namespace mirakana {
 namespace {
 
-constexpr std::string_view variant_format = "GameEngine.PrefabVariant.v1";
-constexpr std::string_view prefab_format = "GameEngine.Prefab.v1";
+constexpr std::string_view variant_format = "GameEngine.PrefabVariant";
+constexpr std::string_view prefab_format = "GameEngine.Prefab";
 
 struct OverrideKey {
     std::uint32_t node_index{0};

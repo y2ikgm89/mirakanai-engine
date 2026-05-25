@@ -1,4 +1,4 @@
-format=GameEngine.Material.v1
+format=GameEngine.Material
 material.id=11460315010553722633
 material.name=Sample 2D Player Material
 material.shading=unlit

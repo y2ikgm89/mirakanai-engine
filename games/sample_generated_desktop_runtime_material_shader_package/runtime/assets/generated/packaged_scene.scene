@@ -1,4 +1,4 @@
-format=GameEngine.Scene.v1
+format=GameEngine.Scene
 scene.name=sample-generated-desktop-runtime-material-shader-package Generated Scene
 node.count=2
 node.1.name=PackagedMesh

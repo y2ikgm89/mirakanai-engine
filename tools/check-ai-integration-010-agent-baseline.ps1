@@ -762,7 +762,7 @@ Assert-ContainsText $aiGameDevelopmentContent "SpriteAtlasSourceAuthoringDesc" "
 Assert-ContainsText $aiGameDevelopmentContent "PlaceholderAssetBundlePlan" "docs/ai-game-development.md"
 Assert-ContainsText $aiGameDevelopmentContent "plan_placeholder_asset_cook_package" "docs/ai-game-development.md"
 Assert-ContainsText $aiGameDevelopmentContent "PlaceholderAssetCookPackageRequest" "docs/ai-game-development.md"
-Assert-ContainsText $aiGameDevelopmentContent "GameEngine.SourceAssetRegistry.v1" "docs/ai-game-development.md"
+Assert-ContainsText $aiGameDevelopmentContent "GameEngine.SourceAssetRegistry" "docs/ai-game-development.md"
 Assert-ContainsText $aiGameDevelopmentContent "safe-point package replacement" "docs/ai-game-development.md"
 Assert-ContainsText $aiGameDevelopmentContent "commit_runtime_package_safe_point_unload" "docs/ai-game-development.md"
 Assert-ContainsText $roadmapContent "runtimeSceneValidationTargets" "docs/roadmap.md"
@@ -802,7 +802,7 @@ Assert-ContainsText $aiGameDevelopmentContent "AnimationTransformBindingSourceDo
 Assert-ContainsText $roadmapContent "serialize_animation_transform_binding_source_document" "docs/roadmap.md"
 Assert-ContainsText $productionCompletionMasterPlanContent "animation-transform-binding-source-v1" "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
 Assert-ContainsText $historicalPlanEvidenceText "2026-05-05-animation-transform-binding-source-v1.md" "docs/superpowers/plans/README.md"
-Assert-ContainsText $manifestRaw "GameEngine.AnimationTransformBindingSource.v1" "engine/agent/manifest.json"
+Assert-ContainsText $manifestRaw "GameEngine.AnimationTransformBindingSource" "engine/agent/manifest.json"
 Assert-ContainsText (Get-AgentSurfaceText "engine/assets/include/mirakana/assets/asset_source_format.hpp") "AnimationTransformBindingSourceDocument" "engine/assets/include/mirakana/assets/asset_source_format.hpp"
 Assert-ContainsText $currentCapabilitiesContent "Runtime Scene Animation Transform Binding v1" "docs/current-capabilities.md"
 Assert-ContainsText $aiGameDevelopmentContent "resolve_runtime_scene_animation_transform_bindings" "docs/ai-game-development.md"
@@ -821,7 +821,7 @@ Assert-ContainsText $currentCapabilitiesContent "Cooked Animation Quaternion Cli
 Assert-ContainsText $aiGameDevelopmentContent "runtime_animation_quaternion_clip_payload" "docs/ai-game-development.md"
 Assert-ContainsText $aiGameDevelopmentContent "make_animation_joint_tracks_3d_from_f32_bytes" "docs/ai-game-development.md"
 Assert-ContainsText $aiGameDevelopmentContent "import_gltf_node_transform_animation_quaternion_clip" "docs/ai-game-development.md"
-Assert-ContainsText $roadmapContent "GameEngine.CookedAnimationQuaternionClip.v1" "docs/roadmap.md"
+Assert-ContainsText $roadmapContent "GameEngine.CookedAnimationQuaternionClip" "docs/roadmap.md"
 Assert-ContainsText $productionCompletionMasterPlanContent "cooked-animation-quaternion-clip-v1" "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
 Assert-ContainsText $historicalPlanEvidenceText "2026-05-05-cooked-animation-quaternion-clip-v1.md" "docs/superpowers/plans/README.md"
 Assert-ContainsText $manifestRaw "runtime_animation_quaternion_clip_payload" "engine/agent/manifest.json"
@@ -1535,6 +1535,18 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     )) {
         Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan generated game studio milestone"
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "engine-contract-version-suffix-cleanup") {
+    foreach ($needle in @(
+        "Engine Contract Version Suffix Cleanup",
+        "Candidate 1",
+        "Candidate 2",
+        "codex/versionless-saved-formats",
+        "removable pre-release contract suffixes",
+        "without compatibility parsers",
+        "Generated Game Studio v1 remains the broader successor game-surface milestone"
+    )) {
+        Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan version suffix cleanup"
+    }
 } else {
     foreach ($needle in @(
     "Frame Graph Transient Texture Alias Planning v1",
@@ -1978,7 +1990,7 @@ Assert-ContainsText $runtimeUiDecodedImageAtlasPackageBridgePlanText "PackedUiAt
 Assert-ContainsText $runtimeUiDecodedImageAtlasPackageBridgePlanText "author_packed_ui_atlas_from_decoded_images" "Runtime UI decoded image atlas package bridge plan"
 Assert-ContainsText $runtimeUiDecodedImageAtlasPackageBridgePlanText "plan_packed_ui_atlas_package_update" "Runtime UI decoded image atlas package bridge plan"
 Assert-ContainsText $runtimeUiDecodedImageAtlasPackageBridgePlanText "apply_packed_ui_atlas_package_update" "Runtime UI decoded image atlas package bridge plan"
-Assert-ContainsText $runtimeUiDecodedImageAtlasPackageBridgePlanText "GameEngine.CookedTexture.v1" "Runtime UI decoded image atlas package bridge plan"
+Assert-ContainsText $runtimeUiDecodedImageAtlasPackageBridgePlanText "GameEngine.CookedTexture" "Runtime UI decoded image atlas package bridge plan"
 Assert-ContainsText $runtimeUiDecodedImageAtlasPackageBridgePlanText "MK_tools_tests" "Runtime UI decoded image atlas package bridge plan"
 $runtimeUiGlyphAtlasPackageBridgePlanText = Get-AgentSurfaceText "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
 Assert-ContainsText $runtimeUiGlyphAtlasPackageBridgePlanText "Runtime UI Glyph Atlas Package Bridge v1" "Runtime UI glyph atlas package bridge plan"
@@ -1990,8 +2002,8 @@ Assert-ContainsText $runtimeUiGlyphAtlasPackageBridgePlanText "author_packed_ui_
 Assert-ContainsText $runtimeUiGlyphAtlasPackageBridgePlanText "plan_packed_ui_glyph_atlas_package_update" "Runtime UI glyph atlas package bridge plan"
 Assert-ContainsText $runtimeUiGlyphAtlasPackageBridgePlanText "apply_packed_ui_glyph_atlas_package_update" "Runtime UI glyph atlas package bridge plan"
 Assert-ContainsText $runtimeUiGlyphAtlasPackageBridgePlanText "build_ui_renderer_glyph_atlas_palette_from_runtime_ui_atlas" "Runtime UI glyph atlas package bridge plan"
-Assert-ContainsText $runtimeUiGlyphAtlasPackageBridgePlanText "GameEngine.CookedTexture.v1" "Runtime UI glyph atlas package bridge plan"
-Assert-ContainsText $runtimeUiGlyphAtlasPackageBridgePlanText "GameEngine.UiAtlas.v1" "Runtime UI glyph atlas package bridge plan"
+Assert-ContainsText $runtimeUiGlyphAtlasPackageBridgePlanText "GameEngine.CookedTexture" "Runtime UI glyph atlas package bridge plan"
+Assert-ContainsText $runtimeUiGlyphAtlasPackageBridgePlanText "GameEngine.UiAtlas" "Runtime UI glyph atlas package bridge plan"
 Assert-ContainsText $runtimeUiGlyphAtlasPackageBridgePlanText "MK_tools_tests" "Runtime UI glyph atlas package bridge plan"
 Assert-ContainsText $queueSyncPlanText "Runtime RHI Compute Morph Queue Synchronization D3D12 v1" "Runtime RHI compute morph queue synchronization plan"
 Assert-ContainsText $queueSyncPlanText "wait_for_queue(QueueKind queue, FenceValue fence)" "Runtime RHI compute morph queue synchronization plan"
@@ -2130,12 +2142,12 @@ Assert-ContainsText $spriteAnimationPackagePlanText "deterministic frame samplin
 Assert-ContainsText $spriteAnimationPackagePlanText "sprite_animation_frames_sampled=3" "2D sprite animation package plan"
 Assert-ContainsText $tilemapEditorRuntimeUxPlanText "2D Tilemap Editor Runtime UX v1" "2D tilemap editor runtime UX plan"
 Assert-ContainsText $tilemapEditorRuntimeUxPlanText "**Status:** Completed" "2D tilemap editor runtime UX plan"
-Assert-ContainsText $tilemapEditorRuntimeUxPlanText "GameEngine.Tilemap.v1" "2D tilemap editor runtime UX plan"
+Assert-ContainsText $tilemapEditorRuntimeUxPlanText "GameEngine.Tilemap" "2D tilemap editor runtime UX plan"
 Assert-ContainsText $tilemapEditorRuntimeUxPlanText "package-visible tilemap runtime/editor counters" "2D tilemap editor runtime UX plan"
 Assert-ContainsText $tilemapEditorRuntimeUxPlanText "tilemap_cells_sampled=3" "2D tilemap editor runtime UX plan"
 Assert-ContainsText $inputRebindingProfileUxPlanText "Input Rebinding Profile UX v1" "input rebinding profile UX plan"
 Assert-ContainsText $inputRebindingProfileUxPlanText "**Status:** Completed" "input rebinding profile UX plan"
-Assert-ContainsText $inputRebindingProfileUxPlanText "GameEngine.RuntimeInputRebindingProfile.v1" "input rebinding profile UX plan"
+Assert-ContainsText $inputRebindingProfileUxPlanText "GameEngine.RuntimeInputRebindingProfile" "input rebinding profile UX plan"
 Assert-ContainsText $inputRebindingProfileUxPlanText "apply_runtime_input_rebinding_profile" "input rebinding profile UX plan"
 Assert-ContainsText $inputRebindingProfileUxPlanText "EditorInputRebindingProfileReviewModel" "input rebinding profile UX plan"
 Assert-ContainsText $runtimeInputRebindingCapturePlanText "Runtime Input Rebinding Capture Contract v1" "runtime input rebinding capture plan"

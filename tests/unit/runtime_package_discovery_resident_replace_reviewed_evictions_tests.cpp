@@ -137,7 +137,7 @@ void write_duplicate_asset_package(CountingFileSystem& filesystem, std::string_v
                                    std::string_view content_root, mirakana::AssetId asset,
                                    std::string_view first_payload_path, std::string_view first_payload,
                                    std::string_view second_payload_path, std::string_view second_payload) {
-    const std::string index = "format=GameEngine.CookedPackageIndex.v1\n"
+    const std::string index = "format=GameEngine.CookedPackageIndex\n"
                               "entry.count=2\n"
                               "entry.0.asset=" +
                               std::to_string(asset.value) +

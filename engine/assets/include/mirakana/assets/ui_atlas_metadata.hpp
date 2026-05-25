@@ -82,7 +82,7 @@ struct UiAtlasMetadataDiagnostic {
 [[nodiscard]] std::vector<UiAtlasMetadataDiagnostic>
 validate_ui_atlas_metadata_document(const UiAtlasMetadataDocument& document);
 
-// Serializes the cooked metadata-only GameEngine.UiAtlas.v1 format. This document does not
+// Serializes the cooked metadata-only GameEngine.UiAtlas format. This document does not
 // embed decoded pixels or automatic pack results. `mirakana_tools` may stamp the reviewed
 // decoded-image adapter / deterministic RGBA8 packing labels after composing a cooked page.
 [[nodiscard]] std::string serialize_ui_atlas_metadata_document(const UiAtlasMetadataDocument& document);

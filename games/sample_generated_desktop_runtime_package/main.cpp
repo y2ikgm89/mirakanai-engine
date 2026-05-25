@@ -31,7 +31,7 @@ struct DesktopRuntimeOptions {
     std::string required_config_path;
 };
 
-constexpr std::string_view kExpectedConfigFormat{"format=GameEngine.GeneratedDesktopRuntimePackage.Config.v1"};
+constexpr std::string_view kExpectedConfigFormat{"format=GameEngine.GeneratedDesktopRuntimePackage.Config"};
 
 class sample_generated_desktop_runtime_package_Game final : public mirakana::GameApp {
   public:

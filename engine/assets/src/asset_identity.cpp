@@ -325,7 +325,7 @@ std::string serialize_asset_identity_document_v2(const AssetIdentityDocumentV2& 
     }
 
     std::ostringstream output;
-    output << "format=GameEngine.AssetIdentity.v2\n";
+    output << "format=GameEngine.AssetIdentity\n";
     for (std::size_t ordinal = 0; ordinal < document.assets.size(); ++ordinal) {
         const auto& row = document.assets[ordinal];
         output << "asset." << ordinal << ".key=" << row.key.value << '\n';
@@ -364,7 +364,7 @@ AssetIdentityDocumentV2 deserialize_asset_identity_document_v2(std::string_view 
         }
         if (key == "format") {
             saw_format = true;
-            if (value != "GameEngine.AssetIdentity.v2") {
+            if (value != "GameEngine.AssetIdentity") {
                 throw std::invalid_argument("asset identity format is unsupported");
             }
             continue;

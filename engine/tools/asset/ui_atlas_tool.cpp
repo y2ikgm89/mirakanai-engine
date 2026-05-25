@@ -292,7 +292,7 @@ void write_changed_files_transactionally(IFileSystem& filesystem,
 [[nodiscard]] std::string cooked_texture_payload(AssetId asset, std::string_view source_path,
                                                  const TextureSourceDocument& texture) {
     std::ostringstream output;
-    output << "format=GameEngine.CookedTexture.v1\n";
+    output << "format=GameEngine.CookedTexture\n";
     output << "asset.id=" << asset.value << '\n';
     output << "asset.kind=texture\n";
     output << "source.path=" << source_path << '\n';

@@ -217,7 +217,7 @@ class SampleUiAudioAssetsGame final : public mirakana::GameApp {
             mirakana::MeshRendererComponent{.mesh = mesh_, .material = material_, .visible = true};
         scene_document.set_components(mesh_node, components);
 
-        const auto texture_payload = std::string{"format=GameEngine.CookedTexture.v1\n"
+        const auto texture_payload = std::string{"format=GameEngine.CookedTexture\n"
                                                  "asset.id="} +
                                      std::to_string(texture_.value) +
                                      "\n"
@@ -227,7 +227,7 @@ class SampleUiAudioAssetsGame final : public mirakana::GameApp {
                                      "texture.height=32\n"
                                      "texture.pixel_format=rgba8_unorm\n"
                                      "texture.source_bytes=8192\n";
-        const auto mesh_payload = std::string{"format=GameEngine.CookedMesh.v2\n"
+        const auto mesh_payload = std::string{"format=GameEngine.CookedMesh\n"
                                               "asset.id="} +
                                   std::to_string(mesh_.value) +
                                   "\n"

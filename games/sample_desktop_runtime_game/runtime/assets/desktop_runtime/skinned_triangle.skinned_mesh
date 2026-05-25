@@ -1,4 +1,4 @@
-format=GameEngine.CookedSkinnedMesh.v1
+format=GameEngine.CookedSkinnedMesh
 asset.id=14916403522558035861
 asset.kind=skinned_mesh
 source.path=source/desktop_runtime/skinned_triangle.skinned_mesh

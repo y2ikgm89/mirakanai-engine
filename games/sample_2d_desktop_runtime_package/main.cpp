@@ -104,7 +104,7 @@ struct DesktopRuntimeOptions {
     std::string required_scene_package_path;
 };
 
-constexpr std::string_view kExpectedConfigFormat{"format=GameEngine.Sample2DDesktopRuntimePackage.Config.v1"};
+constexpr std::string_view kExpectedConfigFormat{"format=GameEngine.Sample2DDesktopRuntimePackage.Config"};
 constexpr std::string_view kRuntime2dVertexShaderPath{"shaders/sample_2d_desktop_runtime_package_sprite.vs.dxil"};
 constexpr std::string_view kRuntime2dFragmentShaderPath{"shaders/sample_2d_desktop_runtime_package_sprite.ps.dxil"};
 constexpr std::string_view kRuntime2dVulkanVertexShaderPath{"shaders/sample_2d_desktop_runtime_package_sprite.vs.spv"};

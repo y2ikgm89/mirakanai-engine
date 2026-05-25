@@ -129,7 +129,7 @@ MK_TEST("asset identity v2 serializes stable text and derives asset ids from key
         .source_path = "source/materials/player.material",
     });
 
-    const std::string expected = "format=GameEngine.AssetIdentity.v2\n"
+    const std::string expected = "format=GameEngine.AssetIdentity\n"
                                  "asset.0.key=materials/player\n"
                                  "asset.0.id=" +
                                  std::to_string(mirakana::AssetId::from_name("materials/player").value) +
@@ -155,7 +155,7 @@ MK_TEST("physics collision scene kind round trips through asset identity and sou
         .source_path = "source/physics/main.collision3d",
     });
 
-    const std::string expected_identity = "format=GameEngine.AssetIdentity.v2\n"
+    const std::string expected_identity = "format=GameEngine.AssetIdentity\n"
                                           "asset.0.key=physics/collision/main\n"
                                           "asset.0.id=" +
                                           std::to_string(mirakana::AssetId::from_name("physics/collision/main").value) +
@@ -168,7 +168,7 @@ MK_TEST("physics collision scene kind round trips through asset identity and sou
     MK_REQUIRE(identity_round_trip.assets.size() == 1);
     MK_REQUIRE(identity_round_trip.assets[0].kind == mirakana::AssetKind::physics_collision_scene);
 
-    const std::string source_registry = "format=GameEngine.SourceAssetRegistry.v1\n"
+    const std::string source_registry = "format=GameEngine.SourceAssetRegistry\n"
                                         "asset.0.key=physics/collision/main\n"
                                         "asset.0.id=" +
                                         std::to_string(mirakana::AssetId::from_name("physics/collision/main").value) +
@@ -358,7 +358,7 @@ MK_TEST("asset identity v2 placement validates placement grammar and stays all o
 
 MK_TEST("ui atlas metadata serializes deterministic cooked document text") {
     const auto document = make_ui_atlas_metadata_document();
-    const std::string expected = "format=GameEngine.UiAtlas.v1\n"
+    const std::string expected = "format=GameEngine.UiAtlas\n"
                                  "asset.id=100\n"
                                  "asset.kind=ui_atlas\n"
                                  "source.decoding=unsupported\n"
@@ -472,7 +472,7 @@ MK_TEST("ui atlas metadata rejects duplicate identities malformed uvs and unsupp
 
 MK_TEST("tilemap metadata serializes deterministic package data without production claims") {
     const auto document = make_tilemap_metadata_document();
-    const std::string expected = "format=GameEngine.Tilemap.v1\n"
+    const std::string expected = "format=GameEngine.Tilemap\n"
                                  "asset.id=300\n"
                                  "asset.kind=tilemap\n"
                                  "source.decoding=unsupported\n"
@@ -567,7 +567,7 @@ MK_TEST("runtime resource v2 resolves handles and rejects stale generations") {
             .content_hash = 11,
             .source_revision = 1,
             .dependencies = {},
-            .content = "format=GameEngine.CookedTexture.v1\ntexture.width=4\n",
+            .content = "format=GameEngine.CookedTexture\ntexture.width=4\n",
         },
     });
 
@@ -589,7 +589,7 @@ MK_TEST("runtime resource v2 resolves handles and rejects stale generations") {
             .content_hash = 22,
             .source_revision = 2,
             .dependencies = {},
-            .content = "format=GameEngine.CookedTexture.v1\ntexture.width=8\n",
+            .content = "format=GameEngine.CookedTexture\ntexture.width=8\n",
         },
     });
 
@@ -761,7 +761,7 @@ MK_TEST("runtime package safe point replacement commits package and catalog toge
             .content_hash = 11,
             .source_revision = 1,
             .dependencies = {},
-            .content = "format=GameEngine.CookedTexture.v1\ntexture.width=4\n",
+            .content = "format=GameEngine.CookedTexture\ntexture.width=4\n",
         },
     }));
     MK_REQUIRE(mirakana::runtime::build_runtime_resource_catalog_v2(catalog, *store.active()).succeeded());
@@ -778,7 +778,7 @@ MK_TEST("runtime package safe point replacement commits package and catalog toge
             .content_hash = 22,
             .source_revision = 2,
             .dependencies = {},
-            .content = "format=GameEngine.CookedTexture.v1\ntexture.width=8\n",
+            .content = "format=GameEngine.CookedTexture\ntexture.width=8\n",
         },
     }));
 

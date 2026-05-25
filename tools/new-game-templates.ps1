@@ -286,7 +286,7 @@ struct DesktopRuntimeOptions {
     std::string required_config_path;
 };
 
-constexpr std::string_view kExpectedConfigFormat{"format=GameEngine.GeneratedDesktopRuntimePackage.Config.v1"};
+constexpr std::string_view kExpectedConfigFormat{"format=GameEngine.GeneratedDesktopRuntimePackage.Config"};
 
 class ${TargetName}_Game final : public mirakana::GameApp {
   public:
@@ -589,7 +589,7 @@ $materialGraphOptionField    std::uint32_t max_frames{0};
 };
 
 constexpr std::string_view kExpectedConfigFormat{
-    "format=GameEngine.GeneratedDesktopRuntimeCookedScenePackage.Config.v1"};
+    "format=GameEngine.GeneratedDesktopRuntimeCookedScenePackage.Config"};
 constexpr std::string_view kRuntimeSceneVertexShaderPath{"shaders/${TargetName}_scene.vs.dxil"};
 constexpr std::string_view kRuntimeSceneFragmentShaderPath{"shaders/${TargetName}_scene.ps.dxil"};
 constexpr std::string_view kRuntimeSceneVulkanVertexShaderPath{"shaders/${TargetName}_scene.vs.spv"};
@@ -1235,8 +1235,8 @@ function New-DesktopRuntime3DMainCpp {
     $text = $text.Replace("#include <chrono>`n", "#include <chrono>`n#include <cmath>`n")
     $text = $text.Replace("GeneratedDesktopRuntimeCookedSceneGame", "GeneratedDesktopRuntime3DPackageGame")
     $text = $text.Replace(
-        "GameEngine.GeneratedDesktopRuntimeCookedScenePackage.Config.v1",
-        "GameEngine.GeneratedDesktopRuntime3DPackage.Config.v1")
+        "GameEngine.GeneratedDesktopRuntimeCookedScenePackage.Config",
+        "GameEngine.GeneratedDesktopRuntime3DPackage.Config")
     $text = $text.Replace(@"
 constexpr std::string_view kRuntimeSceneVertexShaderPath{"shaders/${TargetName}_scene.vs.dxil"};
 constexpr std::string_view kRuntimeSceneFragmentShaderPath{"shaders/${TargetName}_scene.ps.dxil"};
@@ -3380,7 +3380,7 @@ function New-DesktopRuntimeCookedScenePackageFiles {
     $sceneId = Get-Fnv1a64Decimal -Text $sceneName
 
     $texture = @"
-format=GameEngine.CookedTexture.v1
+format=GameEngine.CookedTexture
 asset.id=$textureId
 asset.kind=texture
 source.path=source/$GameName/base_color.texture
@@ -3393,7 +3393,7 @@ texture.data_hex=59bf7aff
     $texture = ConvertTo-LfText -Text $texture
 
     $mesh = @"
-format=GameEngine.CookedMesh.v2
+format=GameEngine.CookedMesh
 asset.id=$meshId
 asset.kind=mesh
 source.path=source/$GameName/triangle.mesh
@@ -3408,7 +3408,7 @@ mesh.index_data_hex=000000000100000002000000
     $mesh = ConvertTo-LfText -Text $mesh
 
     $material = @"
-format=GameEngine.Material.v1
+format=GameEngine.Material
 material.id=$materialId
 material.name=$DisplayTitle Lit Material
 material.shading=lit
@@ -3425,7 +3425,7 @@ texture.1.id=$textureId
     $material = ConvertTo-LfText -Text $material
 
     $scene = @"
-format=GameEngine.Scene.v1
+format=GameEngine.Scene
 scene.name=$DisplayTitle Generated Scene
 node.count=2
 node.1.name=PackagedMesh
@@ -3452,7 +3452,7 @@ node.2.light.casts_shadows=false
     $scene = ConvertTo-LfText -Text $scene
 
     $sourceTexture = @"
-format=GameEngine.TextureSource.v1
+format=GameEngine.TextureSource
 texture.width=1
 texture.height=1
 texture.pixel_format=rgba8_unorm
@@ -3461,7 +3461,7 @@ texture.data_hex=59bf7aff
     $sourceTexture = ConvertTo-LfText -Text $sourceTexture
 
     $sourceMesh = @"
-format=GameEngine.MeshSource.v2
+format=GameEngine.MeshSource
 mesh.vertex_count=3
 mesh.index_count=3
 mesh.has_normals=true
@@ -3473,7 +3473,7 @@ mesh.index_data_hex=000000000100000002000000
     $sourceMesh = ConvertTo-LfText -Text $sourceMesh
 
     $sourceScene = @"
-format=GameEngine.Scene.v2
+format=GameEngine.Scene
 scene.name=$DisplayTitle Authored 3D Scene
 node.0.id=node/root
 node.0.name=Root
@@ -3544,7 +3544,7 @@ component.2.property.5.value=1.04719758
     $sourceScene = ConvertTo-LfText -Text $sourceScene
 
     $sourcePrefab = @"
-format=GameEngine.Prefab.v2
+format=GameEngine.Prefab
 prefab.name=$DisplayTitle Static Prop Prefab
 scene.name=$DisplayTitle Static Prop Prefab Scene
 node.0.id=node/static-prop
@@ -3566,24 +3566,24 @@ component.0.property.2.value=true
     $sourcePrefab = ConvertTo-LfText -Text $sourcePrefab
 
     $sourceRegistry = @"
-format=GameEngine.SourceAssetRegistry.v1
+format=GameEngine.SourceAssetRegistry
 asset.0.key=$textureName
 asset.0.id=$textureId
 asset.0.kind=texture
 asset.0.source=source/textures/base_color.texture_source
-asset.0.source_format=GameEngine.TextureSource.v1
+asset.0.source_format=GameEngine.TextureSource
 asset.0.imported=runtime/assets/3d/base_color.texture.geasset
 asset.1.key=$meshName
 asset.1.id=$meshId
 asset.1.kind=mesh
 asset.1.source=source/meshes/triangle.mesh_source
-asset.1.source_format=GameEngine.MeshSource.v2
+asset.1.source_format=GameEngine.MeshSource
 asset.1.imported=runtime/assets/3d/triangle.mesh
 asset.2.key=$materialName
 asset.2.id=$materialId
 asset.2.kind=material
 asset.2.source=source/materials/lit.material
-asset.2.source_format=GameEngine.Material.v1
+asset.2.source_format=GameEngine.Material
 asset.2.imported=runtime/assets/3d/lit.material
 asset.2.dependency.0.kind=material_texture
 asset.2.dependency.0.key=$textureName
@@ -3606,7 +3606,7 @@ asset.2.dependency.0.key=$textureName
     $sceneHash = Get-Fnv1a64Decimal -Text $scene
 
     $index = @"
-format=GameEngine.CookedPackageIndex.v1
+format=GameEngine.CookedPackageIndex
 entry.count=4
 entry.0.asset=$textureId
 entry.0.kind=texture
@@ -3678,7 +3678,7 @@ function New-DesktopRuntime2DMainCpp {
     $text = Get-Content -LiteralPath $templatePath -Raw
     $text = $text.Replace("sample_2d_desktop_runtime_package", $TargetName)
     $text = $text.Replace("Sample 2D Desktop Runtime Package", $titleLiteral)
-    $text = $text.Replace("GameEngine.Sample2DDesktopRuntimePackage.Config.v1", "GameEngine.GeneratedDesktopRuntime2DPackage.Config.v1")
+    $text = $text.Replace("GameEngine.Sample2DDesktopRuntimePackage.Config", "GameEngine.GeneratedDesktopRuntime2DPackage.Config")
     $text = $text.Replace("sample/2d-desktop-runtime-package/scene", "$assetKeyPrefix/scenes/packaged-2d-scene")
     $text = $text.Replace("sample/2d-desktop-runtime-package/jump-audio", "$assetKeyPrefix/audio/jump")
     $text = $text.Replace("sample/2d-desktop-runtime-package/player-sprite-animation", "$assetKeyPrefix/animations/player-sprite-animation")
@@ -3721,7 +3721,7 @@ function New-DesktopRuntime3DPackageFiles {
     $collisionId = Get-Fnv1a64Decimal -Text $collisionName
 
     $texture = @"
-format=GameEngine.CookedTexture.v1
+format=GameEngine.CookedTexture
 asset.id=$textureId
 asset.kind=texture
 source.path=source/$GameName/base_color.texture
@@ -3734,7 +3734,7 @@ texture.data_hex=59bf7aff
     $texture = ConvertTo-LfText -Text $texture
 
     $mesh = @"
-format=GameEngine.CookedMesh.v2
+format=GameEngine.CookedMesh
 asset.id=$meshId
 asset.kind=mesh
 source.path=source/$GameName/triangle.mesh
@@ -3749,7 +3749,7 @@ mesh.index_data_hex=000000000100000002000000
     $mesh = ConvertTo-LfText -Text $mesh
 
     $skinnedMesh = @"
-format=GameEngine.CookedSkinnedMesh.v1
+format=GameEngine.CookedSkinnedMesh
 asset.id=$skinnedMeshId
 asset.kind=skinned_mesh
 source.path=source/$GameName/skinned_triangle.skinned_mesh
@@ -3763,7 +3763,7 @@ skinned_mesh.joint_palette_hex=0000803f000000000000000000000000000000000000803f0
     $skinnedMesh = ConvertTo-LfText -Text $skinnedMesh
 
     $morph = @"
-format=GameEngine.CookedMorphMeshCpu.v1
+format=GameEngine.CookedMorphMeshCpu
 asset.id=$morphId
 asset.kind=morph_mesh_cpu
 source.path=source/morphs/packaged_mesh.morph_mesh_cpu_source
@@ -3780,7 +3780,7 @@ morph.target.0.tangent_deltas_hex=000080bf0000803f00000000000080bf0000803f000000
     $morph = ConvertTo-LfText -Text $morph
 
     $material = @"
-format=GameEngine.Material.v1
+format=GameEngine.Material
 material.id=$materialId
 material.name=$DisplayTitle Lit Material
 material.shading=lit
@@ -3797,7 +3797,7 @@ texture.1.id=$textureId
     $material = ConvertTo-LfText -Text $material
 
     $animation = @"
-format=GameEngine.CookedAnimationFloatClip.v1
+format=GameEngine.CookedAnimationFloatClip
 asset.id=$animationId
 asset.kind=animation_float_clip
 source.path=source/animations/packaged_mesh_bob.animation_float_clip_source
@@ -3810,7 +3810,7 @@ clip.track.0.values_hex=000000000000003f
     $animation = ConvertTo-LfText -Text $animation
 
     $morphAnimation = @"
-format=GameEngine.CookedAnimationFloatClip.v1
+format=GameEngine.CookedAnimationFloatClip
 asset.id=$morphAnimationId
 asset.kind=animation_float_clip
 source.path=source/animations/packaged_mesh_morph_weights.animation_float_clip_source
@@ -3823,7 +3823,7 @@ clip.track.0.values_hex=000000000000003f
     $morphAnimation = ConvertTo-LfText -Text $morphAnimation
 
     $quaternionAnimation = @"
-format=GameEngine.CookedAnimationQuaternionClip.v1
+format=GameEngine.CookedAnimationQuaternionClip
 asset.id=$quaternionAnimationId
 asset.kind=animation_quaternion_clip
 source.path=source/animations/packaged_pose.animation_quaternion_clip_source
@@ -3843,7 +3843,7 @@ clip.track.0.scales_xyz_hex=
     $quaternionAnimation = ConvertTo-LfText -Text $quaternionAnimation
 
     $uiAtlas = @"
-format=GameEngine.UiAtlas.v1
+format=GameEngine.UiAtlas
 asset.id=$uiAtlasId
 asset.kind=ui_atlas
 source.decoding=unsupported
@@ -3864,7 +3864,7 @@ image.0.color=1,1,1,1
     $uiAtlas = ConvertTo-LfText -Text $uiAtlas
 
     $uiTextGlyphAtlas = @"
-format=GameEngine.UiAtlas.v1
+format=GameEngine.UiAtlas
 asset.id=$uiTextGlyphAtlasId
 asset.kind=ui_atlas
 source.decoding=unsupported
@@ -3886,7 +3886,7 @@ glyph.0.color=1,1,1,1
     $uiTextGlyphAtlas = ConvertTo-LfText -Text $uiTextGlyphAtlas
 
     $collision = @"
-format=GameEngine.PhysicsCollisionScene3D.v1
+format=GameEngine.PhysicsCollisionScene3D
 asset.id=$collisionId
 asset.kind=physics_collision_scene
 backend.native=unsupported
@@ -3941,7 +3941,7 @@ body.2.compound=interaction_triggers
     $collision = ConvertTo-LfText -Text $collision
 
     $scene = @"
-format=GameEngine.Scene.v1
+format=GameEngine.Scene
 scene.name=$DisplayTitle Generated 3D Scene
 node.count=3
 node.1.name=PackagedMesh
@@ -3979,7 +3979,7 @@ node.3.camera.far=100
     $scene = ConvertTo-LfText -Text $scene
 
     $sourceTexture = @"
-format=GameEngine.TextureSource.v1
+format=GameEngine.TextureSource
 texture.width=1
 texture.height=1
 texture.pixel_format=rgba8_unorm
@@ -3988,7 +3988,7 @@ texture.data_hex=59bf7aff
     $sourceTexture = ConvertTo-LfText -Text $sourceTexture
 
     $sourceMesh = @"
-format=GameEngine.MeshSource.v2
+format=GameEngine.MeshSource
 mesh.vertex_count=3
 mesh.index_count=3
 mesh.has_normals=true
@@ -4000,7 +4000,7 @@ mesh.index_data_hex=000000000100000002000000
     $sourceMesh = ConvertTo-LfText -Text $sourceMesh
 
     $sourceMorph = @"
-format=GameEngine.MorphMeshCpuSource.v1
+format=GameEngine.MorphMeshCpuSource
 morph.vertex_count=3
 morph.target_count=1
 morph.bind_positions_hex=000000bf000000bf000000000000003f000000bf00000000000000000000003f00000000
@@ -4014,7 +4014,7 @@ morph.target.0.tangent_deltas_hex=000080bf0000803f00000000000080bf0000803f000000
     $sourceMorph = ConvertTo-LfText -Text $sourceMorph
 
     $sourceAnimation = @"
-format=GameEngine.AnimationFloatClipSource.v1
+format=GameEngine.AnimationFloatClipSource
 clip.track_count=1
 clip.track.0.target=gltf/node/0/translation/x
 clip.track.0.keyframe_count=2
@@ -4024,7 +4024,7 @@ clip.track.0.values_hex=000000000000003f
     $sourceAnimation = ConvertTo-LfText -Text $sourceAnimation
 
     $sourceMorphAnimation = @"
-format=GameEngine.AnimationFloatClipSource.v1
+format=GameEngine.AnimationFloatClipSource
 clip.track_count=1
 clip.track.0.target=gltf/node/0/weights/0
 clip.track.0.keyframe_count=2
@@ -4034,7 +4034,7 @@ clip.track.0.values_hex=000000000000003f
     $sourceMorphAnimation = ConvertTo-LfText -Text $sourceMorphAnimation
 
     $sourceQuaternionAnimation = @"
-format=GameEngine.AnimationQuaternionClipSource.v1
+format=GameEngine.AnimationQuaternionClipSource
 clip.track_count=1
 clip.track.0.target=$assetKeyPrefix/pose/root
 clip.track.0.joint_index=0
@@ -4051,7 +4051,7 @@ clip.track.0.scales_xyz_hex=
     $sourceQuaternionAnimation = ConvertTo-LfText -Text $sourceQuaternionAnimation
 
     $sourceScene = @"
-format=GameEngine.Scene.v2
+format=GameEngine.Scene
 scene.name=$DisplayTitle Generated 3D Scene
 node.0.id=node/packaged-mesh
 node.0.name=PackagedMesh
@@ -4116,7 +4116,7 @@ component.2.property.5.value=1.04719758
     $sourceScene = ConvertTo-LfText -Text $sourceScene
 
     $sourcePrefab = @"
-format=GameEngine.Prefab.v2
+format=GameEngine.Prefab
 prefab.name=$DisplayTitle Static Prop Prefab
 scene.name=$DisplayTitle Static Prop Prefab Scene
 node.0.id=node/static-prop
@@ -4138,30 +4138,30 @@ component.0.property.2.value=true
     $sourcePrefab = ConvertTo-LfText -Text $sourcePrefab
 
     $sourceRegistry = @"
-format=GameEngine.SourceAssetRegistry.v1
+format=GameEngine.SourceAssetRegistry
 asset.0.key=$textureName
 asset.0.id=$textureId
 asset.0.kind=texture
 asset.0.source=source/textures/base_color.texture_source
-asset.0.source_format=GameEngine.TextureSource.v1
+asset.0.source_format=GameEngine.TextureSource
 asset.0.imported=runtime/assets/3d/base_color.texture.geasset
 asset.1.key=$meshName
 asset.1.id=$meshId
 asset.1.kind=mesh
 asset.1.source=source/meshes/triangle.mesh_source
-asset.1.source_format=GameEngine.MeshSource.v2
+asset.1.source_format=GameEngine.MeshSource
 asset.1.imported=runtime/assets/3d/triangle.mesh
 asset.2.key=$morphName
 asset.2.id=$morphId
 asset.2.kind=morph_mesh_cpu
 asset.2.source=source/morphs/packaged_mesh.morph_mesh_cpu_source
-asset.2.source_format=GameEngine.MorphMeshCpuSource.v1
+asset.2.source_format=GameEngine.MorphMeshCpuSource
 asset.2.imported=runtime/assets/3d/packaged_mesh.morph_mesh_cpu
 asset.3.key=$materialName
 asset.3.id=$materialId
 asset.3.kind=material
 asset.3.source=source/materials/lit.material
-asset.3.source_format=GameEngine.Material.v1
+asset.3.source_format=GameEngine.Material
 asset.3.imported=runtime/assets/3d/lit.material
 asset.3.dependency.0.kind=material_texture
 asset.3.dependency.0.key=$textureName
@@ -4169,19 +4169,19 @@ asset.4.key=$animationName
 asset.4.id=$animationId
 asset.4.kind=animation_float_clip
 asset.4.source=source/animations/packaged_mesh_bob.animation_float_clip_source
-asset.4.source_format=GameEngine.AnimationFloatClipSource.v1
+asset.4.source_format=GameEngine.AnimationFloatClipSource
 asset.4.imported=runtime/assets/3d/packaged_mesh_bob.animation_float_clip
 asset.5.key=$morphAnimationName
 asset.5.id=$morphAnimationId
 asset.5.kind=animation_float_clip
 asset.5.source=source/animations/packaged_mesh_morph_weights.animation_float_clip_source
-asset.5.source_format=GameEngine.AnimationFloatClipSource.v1
+asset.5.source_format=GameEngine.AnimationFloatClipSource
 asset.5.imported=runtime/assets/3d/packaged_mesh_morph_weights.animation_float_clip
 asset.6.key=$quaternionAnimationName
 asset.6.id=$quaternionAnimationId
 asset.6.kind=animation_quaternion_clip
 asset.6.source=source/animations/packaged_pose.animation_quaternion_clip_source
-asset.6.source_format=GameEngine.AnimationQuaternionClipSource.v1
+asset.6.source_format=GameEngine.AnimationQuaternionClipSource
 asset.6.imported=runtime/assets/3d/packaged_pose.animation_quaternion_clip
 "@
     $sourceRegistry = ConvertTo-LfText -Text $sourceRegistry
@@ -4219,7 +4219,7 @@ asset.6.imported=runtime/assets/3d/packaged_pose.animation_quaternion_clip
     $collisionHash = Get-Fnv1a64Decimal -Text $collision
 
     $index = @"
-format=GameEngine.CookedPackageIndex.v1
+format=GameEngine.CookedPackageIndex
 entry.count=12
 entry.0.asset=$textureId
 entry.0.kind=texture
@@ -4369,7 +4369,7 @@ function New-DesktopRuntime2DPackageFiles {
     $spriteAnimationId = Get-Fnv1a64Decimal -Text $spriteAnimationName
 
     $texture = @"
-format=GameEngine.CookedTexture.v1
+format=GameEngine.CookedTexture
 asset.id=$textureId
 asset.kind=texture
 source.path=source/$GameName/player.texture
@@ -4382,7 +4382,7 @@ texture.data_hex=33b3ffff
     $texture = ConvertTo-LfText -Text $texture
 
     $material = @"
-format=GameEngine.Material.v1
+format=GameEngine.Material
 material.id=$materialId
 material.name=$DisplayTitle Player Material
 material.shading=unlit
@@ -4399,7 +4399,7 @@ texture.1.id=$textureId
     $material = ConvertTo-LfText -Text $material
 
     $audio = @"
-format=GameEngine.CookedAudio.v1
+format=GameEngine.CookedAudio
 asset.id=$audioId
 asset.kind=audio
 source.path=source/$GameName/jump.audio
@@ -4413,7 +4413,7 @@ audio.data_hex=0000803e0000003f0000803e00000000
     $audio = ConvertTo-LfText -Text $audio
 
     $scene = @"
-format=GameEngine.Scene.v1
+format=GameEngine.Scene
 scene.name=$DisplayTitle Generated 2D Scene
 node.count=3
 node.1.name=Main Camera
@@ -4451,7 +4451,7 @@ node.3.sprite_renderer.visible=true
     $scene = ConvertTo-LfText -Text $scene
 
     $tilemap = @"
-format=GameEngine.Tilemap.v1
+format=GameEngine.Tilemap
 asset.id=$tilemapId
 asset.kind=tilemap
 source.decoding=unsupported
@@ -4485,7 +4485,7 @@ layer.0.cells=grass,water,,grass
     $tilemap = ConvertTo-LfText -Text $tilemap
 
     $spriteAnimation = @"
-format=GameEngine.CookedSpriteAnimation.v1
+format=GameEngine.CookedSpriteAnimation
 asset.id=$spriteAnimationId
 asset.kind=sprite_animation
 target.node=Player
@@ -4505,7 +4505,7 @@ frame.1.tint=1,0.4,0.2,1
     $spriteAnimation = ConvertTo-LfText -Text $spriteAnimation
 
     $sourceAtlasTexture = @"
-format=GameEngine.TextureSource.v1
+format=GameEngine.TextureSource
 texture.width=1
 texture.height=1
 texture.pixel_format=rgba8_unorm
@@ -4514,12 +4514,12 @@ texture.data_hex=33b3ffff
     $sourceAtlasTexture = ConvertTo-LfText -Text $sourceAtlasTexture
 
     $sourceRegistry = @"
-format=GameEngine.SourceAssetRegistry.v1
+format=GameEngine.SourceAssetRegistry
 asset.0.key=$textureName
 asset.0.id=$textureId
 asset.0.kind=texture
 asset.0.source=source/sprites/player_atlas.texture_source
-asset.0.source_format=GameEngine.TextureSource.v1
+asset.0.source_format=GameEngine.TextureSource
 asset.0.imported=runtime/assets/2d/player.texture.geasset
 "@
     $sourceRegistry = ConvertTo-LfText -Text $sourceRegistry
@@ -4609,7 +4609,7 @@ float4 ps_native_sprite_overlay(NativeSpriteOverlayVertexOut input) : SV_Target 
     $spriteAnimationHash = Get-Fnv1a64Decimal -Text $spriteAnimation
 
     $index = @"
-format=GameEngine.CookedPackageIndex.v1
+format=GameEngine.CookedPackageIndex
 entry.count=6
 entry.0.asset=$sceneId
 entry.0.kind=scene
@@ -5051,7 +5051,7 @@ float4 ps_postprocess(VsOut input) : SV_Target {
 "@
 
     $materialGraph = @"
-format=GameEngine.MaterialGraph.v1
+format=GameEngine.MaterialGraph
 material.id=$materialId
 material.name=$DisplayTitle Lit Material
 material.shading=lit
@@ -5081,7 +5081,7 @@ edges.1.to_socket=texture.base_color
     $materialGraph = ConvertTo-LfText -Text $materialGraph
 
     $shaderExport = @"
-format=GameEngine.MaterialGraphShaderExport.v0
+format=GameEngine.MaterialGraphShaderExport
 export.id=$shaderExportId
 export.name=${GameName}_lit
 material_graph.path=source/materials/lit.materialgraph
@@ -5094,7 +5094,7 @@ entry.fragment=PSMain
     $materialGraphHlsl = @"
 // SPDX-FileCopyrightText: 2026 GameEngine contributors
 // SPDX-License-Identifier: LicenseRef-Proprietary
-// GameEngine.MaterialGraphGeneratedHlsl.v0
+// GameEngine.MaterialGraphGeneratedHlsl
 // Deterministic reviewed bridge for material graph authoring evidence.
 
 cbuffer MaterialFactors : register(b0) {
@@ -6790,7 +6790,7 @@ function New-DesktopRuntime2DManifest {
             appType = "mirakana::GameApp"
             runner = "mirakana::SdlDesktopGameHost"
             input = "mirakana::runtime::RuntimeInputActionMap over mirakana::VirtualInput"
-            scene = "GameEngine.Scene.v1 loaded from a cooked package and validated by mirakana::validate_playable_2d_scene"
+            scene = "GameEngine.Scene loaded from a cooked package and validated by mirakana::validate_playable_2d_scene"
             sceneRenderer = "mirakana::submit_scene_render_packet"
             ui = "mirakana::ui::UiDocument through mirakana::submit_ui_renderer_submission"
             audio = "mirakana::AudioMixer using a cooked audio payload"
@@ -6798,7 +6798,7 @@ function New-DesktopRuntime2DManifest {
             navigation = "mirakana::plan_navigation_grid_agent_path plus mirakana::update_navigation_agent"
             ai = "mirakana::build_ai_perception_snapshot_2d, mirakana::write_ai_perception_blackboard, mirakana::evaluate_ai_perception_readiness_2d, and mirakana::evaluate_behavior_tree"
             renderer = "mirakana::IRenderer from the desktop host with deterministic NullRenderer fallback or host-owned RHI-backed native 2D sprite overlay when packaged shader artifacts are present"
-            currentRuntime = "generated host-gated SDL3 desktop runtime package proof for 2D gameplay. D3D12 package smoke uses generated shader artifacts and --require-native-2d-sprites so cooked scene sprite texture/material identity, atlas-backed scene sprite planning counters including sprite_batch_plan_atlas_backed_batches, sprite_batch_plan_repeated_atlas_batches, and sprite_batch_plan_repeated_atlas_sprites, and HUD submission flow through the host-owned native RHI sprite overlay path with native_2d_sprite_batches_executed counters. The sprite atlas source authoring target records reviewed RGBA8 frame rows plus selected page policy, pivot, and slice-border metadata for plan_sprite_atlas_source_authoring, emits GameEngine.TextureSource.v1 plus GameEngine.SourceAssetRegistry.v1 authoring files, and keeps those source files outside runtimePackageFiles before cooked runtime consumption. The sprite animation package proof uses a first-party cooked sprite_animation payload and --require-sprite-animation so deterministic flipbook ticks through advance_runtime_sprite_flipbook emit sprite_flipbook_frames_sampled and sprite_flipbook_frames_applied counters before sprite frame application emits sprite_animation_frames_sampled and sprite_animation_frames_applied counters. The tilemap runtime UX proof uses first-party GameEngine.Tilemap.v1 metadata and --require-tilemap-runtime-ux so visible tile cells emit tilemap_cells_sampled and tilemap_diagnostics counters without claiming runtime image decoding, production atlas packing, or full tilemap editor UX. The gameplay systems package proof uses --require-gameplay-systems so 2D PhysicsWorld contacts/triggers, NavigationGrid path/agent movement, AI perception blackboard, perception readiness through evaluate_ai_perception_readiness_2d, behavior authoring readiness through evaluate_behavior_authoring_readiness, and behavior tree counters emit gameplay_systems_* fields including gameplay_systems_perception_readiness_status, gameplay_systems_perception_readiness_diagnostics, gameplay_systems_perception_stable_primary_target_ready, gameplay_systems_perception_blackboard_projection_ready, gameplay_systems_behavior_authoring_readiness_status, gameplay_systems_behavior_authoring_readiness_diagnostics, gameplay_systems_behavior_authoring_deterministic_trace_ready, gameplay_systems_behavior_authoring_action_bindings, and gameplay_systems_behavior_authoring_blackboard_conditions. The world streaming and large-scene package proof uses --require-world-region-streaming so plan_runtime_world_region_streaming, execute_runtime_world_region_streaming_safe_point, and evaluate_runtime_world_streaming_large_scene_readiness emit world_region_streaming_* counters including load/keep/unload rows, reviewed package adoption, missing-region diagnostics, world_region_streaming_large_scene_readiness_status, and world_region_streaming_navigation_path_cache_ready. The entity scale/culling package proof uses --require-entity-scale-culling so plan_runtime_entity_scale_culling emits entity_scale_culling_* counters for planned rows, visible/culled rows, LOD rows, update buckets, projected draw/update costs, budget-protected rows, clean diagnostics, and budget diagnostic evidence. public native or RHI handle access remains unsupported, broad production sprite batching readiness remains unsupported, broad/background world streaming, open-world parity, platform async job systems, broad entity scale execution/performance/GPU culling, visual scripting, arbitrary AI code execution, ML inference, networked AI replication, and general production renderer quality remain unsupported."
+            currentRuntime = "generated host-gated SDL3 desktop runtime package proof for 2D gameplay. D3D12 package smoke uses generated shader artifacts and --require-native-2d-sprites so cooked scene sprite texture/material identity, atlas-backed scene sprite planning counters including sprite_batch_plan_atlas_backed_batches, sprite_batch_plan_repeated_atlas_batches, and sprite_batch_plan_repeated_atlas_sprites, and HUD submission flow through the host-owned native RHI sprite overlay path with native_2d_sprite_batches_executed counters. The sprite atlas source authoring target records reviewed RGBA8 frame rows plus selected page policy, pivot, and slice-border metadata for plan_sprite_atlas_source_authoring, emits GameEngine.TextureSource plus GameEngine.SourceAssetRegistry authoring files, and keeps those source files outside runtimePackageFiles before cooked runtime consumption. The sprite animation package proof uses a first-party cooked sprite_animation payload and --require-sprite-animation so deterministic flipbook ticks through advance_runtime_sprite_flipbook emit sprite_flipbook_frames_sampled and sprite_flipbook_frames_applied counters before sprite frame application emits sprite_animation_frames_sampled and sprite_animation_frames_applied counters. The tilemap runtime UX proof uses first-party GameEngine.Tilemap metadata and --require-tilemap-runtime-ux so visible tile cells emit tilemap_cells_sampled and tilemap_diagnostics counters without claiming runtime image decoding, production atlas packing, or full tilemap editor UX. The gameplay systems package proof uses --require-gameplay-systems so 2D PhysicsWorld contacts/triggers, NavigationGrid path/agent movement, AI perception blackboard, perception readiness through evaluate_ai_perception_readiness_2d, behavior authoring readiness through evaluate_behavior_authoring_readiness, and behavior tree counters emit gameplay_systems_* fields including gameplay_systems_perception_readiness_status, gameplay_systems_perception_readiness_diagnostics, gameplay_systems_perception_stable_primary_target_ready, gameplay_systems_perception_blackboard_projection_ready, gameplay_systems_behavior_authoring_readiness_status, gameplay_systems_behavior_authoring_readiness_diagnostics, gameplay_systems_behavior_authoring_deterministic_trace_ready, gameplay_systems_behavior_authoring_action_bindings, and gameplay_systems_behavior_authoring_blackboard_conditions. The world streaming and large-scene package proof uses --require-world-region-streaming so plan_runtime_world_region_streaming, execute_runtime_world_region_streaming_safe_point, and evaluate_runtime_world_streaming_large_scene_readiness emit world_region_streaming_* counters including load/keep/unload rows, reviewed package adoption, missing-region diagnostics, world_region_streaming_large_scene_readiness_status, and world_region_streaming_navigation_path_cache_ready. The entity scale/culling package proof uses --require-entity-scale-culling so plan_runtime_entity_scale_culling emits entity_scale_culling_* counters for planned rows, visible/culled rows, LOD rows, update buckets, projected draw/update costs, budget-protected rows, clean diagnostics, and budget diagnostic evidence. public native or RHI handle access remains unsupported, broad production sprite batching readiness remains unsupported, broad/background world streaming, open-world parity, platform async job systems, broad entity scale execution/performance/GPU culling, visual scripting, arbitrary AI code execution, ML inference, networked AI replication, and general production renderer quality remain unsupported."
         }
         backendReadiness = [ordered]@{
             platform = "sdl3-desktop-host-gated"
@@ -6811,8 +6811,8 @@ function New-DesktopRuntime2DManifest {
         }
         importerRequirements = [ordered]@{
             sourceFormats = @(
-                "GameEngine.TextureSource.v1",
-                "GameEngine.SourceAssetRegistry.v1",
+                "GameEngine.TextureSource",
+                "GameEngine.SourceAssetRegistry",
                 "first-party-cooked-fixture"
             )
             cookedOnlyRuntime = $true
@@ -7105,7 +7105,7 @@ function New-DesktopRuntime3DManifest {
             appType = "mirakana::GameApp"
             runner = "mirakana::SdlDesktopGameHost"
             input = "mirakana::VirtualInput deterministic right-key camera/controller movement over the cooked primary camera node"
-            scene = "GameEngine.Scene.v1 loaded from a cooked package with static mesh, primary perspective camera, and directional light metadata"
+            scene = "GameEngine.Scene loaded from a cooked package with static mesh, primary perspective camera, and directional light metadata"
             sceneRenderer = "mirakana::submit_scene_render_packet with material instance intent through first-party scene/material contracts"
             renderer = "mirakana::IRenderer from the desktop host with deterministic NullRenderer fallback and host-gated scene GPU binding when selected"
         currentRuntime = "generated host-gated SDL3 desktop runtime package proof for 3D gameplay with camera/controller movement, transform/quaternion animation, morph and compute morph package smokes, selected host-gated package streaming safe-point smoke, selected generated 3D renderer quality smoke over scene GPU + depth-aware postprocess with framegraph_passes=2, framegraph_passes_executed=4, framegraph_render_passes_recorded=4, framegraph_barrier_steps_executed=9, renderer_quality_expected_framegraph_render_passes=4, and renderer_quality_expected_framegraph_barrier_steps=9 counters, selected generated 3D postprocess depth-input smoke through postprocess_depth_input_ready=1 and renderer_quality_postprocess_depth_input_ready=1, selected generated 3D playable package smoke through playable_3d_* counters, selected generated 3D directional shadow package smoke through directional_shadow_* counters with fixed_pcf_3x3 filtering, framegraph_passes=3, framegraph_passes_executed=6, framegraph_render_passes_recorded=6, and framegraph_barrier_steps_executed=15, selected D3D12 generated 3D graphics morph + directional shadow receiver smoke through --require-shadow-morph-composition with renderer_gpu_morph_draws, renderer_morph_descriptor_binds, directional_shadow_ready=1, framegraph_passes=3, framegraph_passes_executed=6, framegraph_render_passes_recorded=6, and framegraph_barrier_steps_executed=15, selected generated 3D gameplay systems package smoke through gameplay_systems_* counters over deterministic public physics, navmesh dynamic obstacles, navmesh/crowd readiness value rows, local avoidance, navigation, AI, audio, animation, and lifecycle APIs, including gameplay_systems_navigation_navmesh_dynamic_obstacles=1, gameplay_systems_navigation_navmesh_readiness_status=ready, gameplay_systems_navigation_navmesh_readiness_diagnostics=0, gameplay_systems_navigation_navmesh_scene_refs=3, gameplay_systems_navigation_navmesh_visited_polygons=3, gameplay_systems_navigation_crowd_source_order_ready=1, gameplay_systems_navigation_crowd_applied_neighbors=2, gameplay_systems_navigation_crowd_readiness_status=ready, gameplay_systems_navigation_crowd_readiness_diagnostics=0, gameplay_systems_navigation_crowd_readiness_source_order_ready=1, gameplay_systems_navigation_crowd_readiness_applied_neighbors=2, gameplay_systems_navigation_crowd_readiness_dynamic_obstacles=2, gameplay_systems_local_avoidance_applied_neighbors, gameplay_systems_physics_policy_dynamic_pushes=1, gameplay_systems_advanced_controller_status=moved, gameplay_systems_advanced_controller_platform_applied=1, gameplay_systems_advanced_controller_constraint_rows=1, gameplay_systems_advanced_controller_replay_changed=1, gameplay_systems_character_dynamics_status=ready, gameplay_systems_character_dynamics_step_ups=1, gameplay_systems_character_dynamics_walkable_slope_rows=1, gameplay_systems_character_dynamics_ground_probes=1, gameplay_systems_character_dynamics_replay_changed=1, gameplay_systems_physics_constraints_status=solved, gameplay_systems_physics_constraints_diagnostic=none, gameplay_systems_physics_constraints_rows=2, gameplay_systems_physics_constraints_fixed_rows=1, gameplay_systems_physics_constraints_linear_axis_rows=1, gameplay_systems_physics_constraints_axis_limit_clamped=1, gameplay_systems_vehicle_status=grounded, gameplay_systems_vehicle_diagnostic=none, gameplay_systems_vehicle_wheel_rows=4, gameplay_systems_vehicle_grounded_wheels=4, and gameplay_systems_vehicle_wheel_probe_hits=4, selected generated 3D scene collision package smoke through --require-scene-collision-package, collision_package_status=ready, collision_package_bodies=3, collision_package_trigger_overlaps=1, collision_query_readiness_status=ready, collision_query_readiness_diagnostic=none, collision_query_readiness_diagnostics=0, and gameplay_systems_collision_package_ready=1, selected D3D12 visible generated 3D production-style package proof through --require-visible-3d-production-proof and visible_3d_* counters, selected D3D12 generated 3D native UI overlay HUD box package smoke through --require-native-ui-overlay, hud_boxes=2, ui_overlay_ready=1, ui_overlay_sprites_submitted=2, and ui_overlay_draws=2, selected D3D12 generated 3D cooked UI atlas image sprite package smoke through --require-native-ui-textured-sprite-atlas, hud_images=2, ui_atlas_metadata_status=ready, ui_texture_overlay_atlas_ready=1, ui_texture_overlay_sprites_submitted=2, ui_texture_overlay_texture_binds=2, and ui_texture_overlay_draws=2, and selected D3D12 generated 3D cooked UI atlas text glyph package smoke through --require-native-ui-text-glyph-atlas, hud_text_glyphs=2, text_glyphs_resolved=2, text_glyphs_missing=0, ui_atlas_metadata_glyphs=1, ui_texture_overlay_sprites_submitted=2, ui_texture_overlay_texture_binds=2, and ui_texture_overlay_draws=2; runtime source asset parsing remains unsupported; broad dependency cooking remains unsupported; broad async/background package streaming remains unsupported; scene/physics perception integration remains unsupported; navmesh asset import and persistent/full crowd simulation beyond value-only batch planning, animation-aware steering, and networked crowd determinism remain unsupported; middleware remains unsupported; production physics middleware/native backend readiness, dynamic-vs-dynamic TOI, rotational CCD, rotational rigid-body constraints, 2D CCD, persistent joint assets, broad vehicle dynamics, and persistent vehicle simulation remain unsupported; production text shaping, font rasterization, glyph atlas generation, runtime source image decoding, source image atlas packing, material graph, and live shader generation remain unsupported; broad directional shadow production quality, morph-deformed shadow-caster silhouettes, compute morph + shadow composition, and broad shadow+morph composition remain unsupported for this generated sample; public native or RHI handle access remains unsupported; Vulkan/Metal parity for the visible proof remains unsupported; Metal readiness remains unsupported; broad generated 3D production readiness remains unsupported"
@@ -7114,20 +7114,20 @@ function New-DesktopRuntime3DManifest {
             platform = "sdl3-desktop-host-gated"
             graphics = "host-built D3D12 DXIL shader artifacts for selected package validation with optional generated 3D renderer quality counters for scene GPU + depth-aware postprocess with framegraph_passes=2, framegraph_passes_executed=4, framegraph_render_passes_recorded=4, framegraph_barrier_steps_executed=9, renderer_quality_expected_framegraph_render_passes=4, and renderer_quality_expected_framegraph_barrier_steps=9, selected visible generated 3D production-style counters, selected directional shadow smoke counters with framegraph_render_passes_recorded=6, selected D3D12 graphics morph + directional shadow receiver counters with framegraph_render_passes_recorded=6, selected D3D12 native UI overlay HUD box counters, selected D3D12 cooked UI atlas image sprite and text glyph texture overlay counters, and selected playable_3d_* package counters; Vulkan SPIR-V artifacts are toolchain-gated for generated 3D quality, shadow, playable, and native UI overlay artifacts, while visible proof, shadow-morph composition, native UI overlay readiness, and generated 3D cooked UI atlas texture overlay readiness remain D3D12-selected until separate Vulkan recipes land; NullRenderer fallback remains available; Metal readiness, broad shadow quality, morph-deformed shadow-caster silhouettes, compute morph + shadow composition, broad shadow+morph composition, production text/font UI, runtime source image decoding, source image atlas packing, GPU timestamps, backend-native stats, broad renderer quality, and broad generated 3D readiness remain unsupported"
             audio = "device-independent gameplay systems package smoke plus deterministic NullRenderer fallback"
-            ui = "MK_ui HUD box submission plus one cooked GameEngine.UiAtlas.v1 image sprite and one cooked GameEngine.UiAtlas.v1 text glyph are validated through selected D3D12 host-owned native UI overlay package smokes; production text shaping, font rasterization, glyph atlas generation, runtime source image decoding, source image atlas packing, native accessibility bridges, Metal overlay readiness, and broad UI renderer quality remain unsupported"
-        physics = "first-party deterministic authored-collision/controller package smoke, character/dynamic interaction policy counters, selected distance/fixed/linear-axis positional constraint counters, selected `PhysicsSimpleVehicle3DDesc` / `plan_physics_simple_vehicle_3d` kinematic/simple vehicle policy counters, and selected GameEngine.PhysicsCollisionScene3D.v1 package collision smoke only; no middleware, native physics backend, dynamic-vs-dynamic TOI, rotational CCD, rotational rigid-body constraints, 2D CCD, persistent joint assets, broad vehicle dynamics, persistent vehicle simulation, or scene/physics perception integration"
+            ui = "MK_ui HUD box submission plus one cooked GameEngine.UiAtlas image sprite and one cooked GameEngine.UiAtlas text glyph are validated through selected D3D12 host-owned native UI overlay package smokes; production text shaping, font rasterization, glyph atlas generation, runtime source image decoding, source image atlas packing, native accessibility bridges, Metal overlay readiness, and broad UI renderer quality remain unsupported"
+        physics = "first-party deterministic authored-collision/controller package smoke, character/dynamic interaction policy counters, selected distance/fixed/linear-axis positional constraint counters, selected `PhysicsSimpleVehicle3DDesc` / `plan_physics_simple_vehicle_3d` kinematic/simple vehicle policy counters, and selected GameEngine.PhysicsCollisionScene3D package collision smoke only; no middleware, native physics backend, dynamic-vs-dynamic TOI, rotational CCD, rotational rigid-body constraints, 2D CCD, persistent joint assets, broad vehicle dynamics, persistent vehicle simulation, or scene/physics perception integration"
         }
         importerRequirements = [ordered]@{
             sourceFormats = @(
-                "GameEngine.TextureSource.v1",
-                "GameEngine.MeshSource.v2",
-                "GameEngine.MorphMeshCpuSource.v1",
-                "GameEngine.AnimationFloatClipSource.v1",
-                "GameEngine.AnimationQuaternionClipSource.v1",
-                "GameEngine.Material.v1",
-                "GameEngine.SourceAssetRegistry.v1",
-                "GameEngine.Scene.v2",
-                "GameEngine.Prefab.v2",
+                "GameEngine.TextureSource",
+                "GameEngine.MeshSource",
+                "GameEngine.MorphMeshCpuSource",
+                "GameEngine.AnimationFloatClipSource",
+                "GameEngine.AnimationQuaternionClipSource",
+                "GameEngine.Material",
+                "GameEngine.SourceAssetRegistry",
+                "GameEngine.Scene",
+                "GameEngine.Prefab",
                 "first-party-material-source",
                 "hlsl-source",
                 "first-party-cooked-fixture"
@@ -7243,27 +7243,27 @@ function New-DesktopRuntime3DManifest {
                 authoringCommandRows = @(
                     [ordered]@{
                         id = "create-packaged-scene"
-                        surface = "GameEngine.Scene.v2"
+                        surface = "GameEngine.Scene"
                         operation = "create-scene"
                     },
                     [ordered]@{
                         id = "add-static-mesh-node"
-                        surface = "GameEngine.Scene.v2"
+                        surface = "GameEngine.Scene"
                         operation = "add-scene-node"
                     },
                     [ordered]@{
                         id = "add-static-mesh-renderer"
-                        surface = "GameEngine.Scene.v2"
+                        surface = "GameEngine.Scene"
                         operation = "add-or-update-component"
                     },
                     [ordered]@{
                         id = "create-static-prop-prefab"
-                        surface = "GameEngine.Prefab.v2"
+                        surface = "GameEngine.Prefab"
                         operation = "create-prefab"
                     },
                     [ordered]@{
                         id = "instantiate-static-prop-prefab"
-                        surface = "GameEngine.Scene.v2"
+                        surface = "GameEngine.Scene"
                         operation = "instantiate-prefab"
                     }
                 )

@@ -73,7 +73,7 @@ class CountingFileSystem final : public mirakana::IFileSystem {
 MK_TEST("runtime package candidate load reads selected candidate into typed loaded package") {
     CountingFileSystem filesystem;
     const auto texture = mirakana::AssetId::from_name("textures/player");
-    const std::string payload = "format=GameEngine.CookedTexture.v1\ntexture.width=4\n";
+    const std::string payload = "format=GameEngine.CookedTexture\ntexture.width=4\n";
     const auto index = mirakana::build_asset_cooked_package_index({mirakana::AssetCookedArtifact{
                                                                       .asset = texture,
                                                                       .kind = mirakana::AssetKind::texture,
@@ -147,7 +147,7 @@ MK_TEST("runtime package candidate load rejects unsafe candidates before reading
 MK_TEST("runtime package candidate load reports package load failures without partial package") {
     CountingFileSystem filesystem;
     const auto texture = mirakana::AssetId::from_name("textures/missing");
-    const std::string payload = "format=GameEngine.CookedTexture.v1\ntexture.width=4\n";
+    const std::string payload = "format=GameEngine.CookedTexture\ntexture.width=4\n";
     const auto index = mirakana::build_asset_cooked_package_index({mirakana::AssetCookedArtifact{
                                                                       .asset = texture,
                                                                       .kind = mirakana::AssetKind::texture,

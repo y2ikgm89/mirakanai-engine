@@ -3141,7 +3141,7 @@ MK_TEST("cooked package index records content hashes and dependency edges determ
     MK_REQUIRE(index.dependencies[1].kind == mirakana::AssetDependencyKind::material_texture);
 
     const auto serialized = mirakana::serialize_asset_cooked_package_index(index);
-    MK_REQUIRE(serialized.starts_with("format=GameEngine.CookedPackageIndex.v1\n"));
+    MK_REQUIRE(serialized.starts_with("format=GameEngine.CookedPackageIndex\n"));
     MK_REQUIRE(serialized.contains("dependency.0.kind=scene_material\n"));
     const auto roundtrip = mirakana::deserialize_asset_cooked_package_index(serialized);
     MK_REQUIRE(roundtrip.entries.size() == 3);
@@ -3155,7 +3155,7 @@ MK_TEST("cooked package index records content hashes and dependency edges determ
 
 MK_TEST("cooked package index round trips physics collision scene assets") {
     const auto collision_scene = mirakana::AssetId::from_name("physics/collision/main");
-    const std::string payload = "format=GameEngine.PhysicsCollisionScene3D.v1\n"
+    const std::string payload = "format=GameEngine.PhysicsCollisionScene3D\n"
                                 "asset.id=" +
                                 std::to_string(collision_scene.value) +
                                 "\n"
@@ -3349,7 +3349,7 @@ MK_TEST("cooked package recook decisions are deterministic for missing stale and
 }
 
 MK_TEST("texture source document parses deterministic metadata") {
-    const auto texture = mirakana::deserialize_texture_source_document("format=GameEngine.TextureSource.v1\n"
+    const auto texture = mirakana::deserialize_texture_source_document("format=GameEngine.TextureSource\n"
                                                                        "texture.width=4\n"
                                                                        "texture.height=2\n"
                                                                        "texture.pixel_format=rgba8_unorm\n");
@@ -3360,12 +3360,12 @@ MK_TEST("texture source document parses deterministic metadata") {
     MK_REQUIRE(mirakana::texture_source_uncompressed_bytes(texture) == 32);
 
     const auto text = mirakana::serialize_texture_source_document(texture);
-    MK_REQUIRE(text.starts_with("format=GameEngine.TextureSource.v1\n"));
+    MK_REQUIRE(text.starts_with("format=GameEngine.TextureSource\n"));
     MK_REQUIRE(text.contains("texture.pixel_format=rgba8_unorm\n"));
 }
 
 MK_TEST("mesh source document parses deterministic metadata") {
-    const auto mesh = mirakana::deserialize_mesh_source_document("format=GameEngine.MeshSource.v2\n"
+    const auto mesh = mirakana::deserialize_mesh_source_document("format=GameEngine.MeshSource\n"
                                                                  "mesh.vertex_count=24\n"
                                                                  "mesh.index_count=36\n"
                                                                  "mesh.has_normals=true\n"
@@ -3379,7 +3379,7 @@ MK_TEST("mesh source document parses deterministic metadata") {
     MK_REQUIRE(mesh.has_tangent_frame);
 
     const auto text = mirakana::serialize_mesh_source_document(mesh);
-    MK_REQUIRE(text.starts_with("format=GameEngine.MeshSource.v2\n"));
+    MK_REQUIRE(text.starts_with("format=GameEngine.MeshSource\n"));
     MK_REQUIRE(text.contains("mesh.index_count=36\n"));
 }
 
@@ -3450,7 +3450,7 @@ MK_TEST("animation transform binding source document serializes round-trip") {
 
     MK_REQUIRE(mirakana::is_valid_animation_transform_binding_source_document(document));
     const auto text = mirakana::serialize_animation_transform_binding_source_document(document);
-    MK_REQUIRE(text.starts_with("format=GameEngine.AnimationTransformBindingSource.v1\n"));
+    MK_REQUIRE(text.starts_with("format=GameEngine.AnimationTransformBindingSource\n"));
     MK_REQUIRE(text.contains("binding.count=2\n"));
     MK_REQUIRE(text.contains("binding.0.component=translation_x\n"));
     MK_REQUIRE(text.contains("binding.1.component=rotation_z\n"));
@@ -3510,7 +3510,7 @@ MK_TEST("animation transform binding source document rejects duplicate and inval
     bool threw = false;
     try {
         (void)mirakana::deserialize_animation_transform_binding_source_document(
-            "format=GameEngine.AnimationTransformBindingSource.v1\n"
+            "format=GameEngine.AnimationTransformBindingSource\n"
             "binding.count=1\n"
             "binding.0.target=curve/a\n"
             "binding.0.node_name=animated_node\n"
@@ -3522,7 +3522,7 @@ MK_TEST("animation transform binding source document rejects duplicate and inval
 }
 
 MK_TEST("audio source document parses deterministic metadata") {
-    const auto audio = mirakana::deserialize_audio_source_document("format=GameEngine.AudioSource.v1\n"
+    const auto audio = mirakana::deserialize_audio_source_document("format=GameEngine.AudioSource\n"
                                                                    "audio.sample_rate=48000\n"
                                                                    "audio.channel_count=2\n"
                                                                    "audio.frame_count=24000\n"
@@ -3535,12 +3535,12 @@ MK_TEST("audio source document parses deterministic metadata") {
     MK_REQUIRE(mirakana::audio_source_uncompressed_bytes(audio) == 96000);
 
     const auto text = mirakana::serialize_audio_source_document(audio);
-    MK_REQUIRE(text.starts_with("format=GameEngine.AudioSource.v1\n"));
+    MK_REQUIRE(text.starts_with("format=GameEngine.AudioSource\n"));
     MK_REQUIRE(text.contains("audio.sample_format=pcm16\n"));
 }
 
 MK_TEST("asset source documents parse deterministic byte payloads") {
-    const auto texture = mirakana::deserialize_texture_source_document("format=GameEngine.TextureSource.v1\n"
+    const auto texture = mirakana::deserialize_texture_source_document("format=GameEngine.TextureSource\n"
                                                                        "texture.width=2\n"
                                                                        "texture.height=1\n"
                                                                        "texture.pixel_format=rgba8_unorm\n"
@@ -3552,7 +3552,7 @@ MK_TEST("asset source documents parse deterministic byte payloads") {
     MK_REQUIRE(mirakana::serialize_texture_source_document(texture).contains("texture.data_hex=0001020304050607\n"));
 
     const auto mesh = mirakana::deserialize_mesh_source_document(
-        "format=GameEngine.MeshSource.v2\n"
+        "format=GameEngine.MeshSource\n"
         "mesh.vertex_count=3\n"
         "mesh.index_count=3\n"
         "mesh.has_normals=false\n"
@@ -3569,7 +3569,7 @@ MK_TEST("asset source documents parse deterministic byte payloads") {
     MK_REQUIRE(
         mirakana::serialize_mesh_source_document(mesh).contains("mesh.index_data_hex=000000000100000002000000\n"));
 
-    const auto audio = mirakana::deserialize_audio_source_document("format=GameEngine.AudioSource.v1\n"
+    const auto audio = mirakana::deserialize_audio_source_document("format=GameEngine.AudioSource\n"
                                                                    "audio.sample_rate=48000\n"
                                                                    "audio.channel_count=2\n"
                                                                    "audio.frame_count=1\n"
@@ -3584,7 +3584,7 @@ MK_TEST("asset source documents parse deterministic byte payloads") {
 MK_TEST("asset source documents reject invalid dimensions and duplicate keys") {
     bool rejected_texture = false;
     try {
-        (void)mirakana::deserialize_texture_source_document("format=GameEngine.TextureSource.v1\n"
+        (void)mirakana::deserialize_texture_source_document("format=GameEngine.TextureSource\n"
                                                             "texture.width=0\n"
                                                             "texture.height=2\n"
                                                             "texture.pixel_format=rgba8_unorm\n");
@@ -3594,7 +3594,7 @@ MK_TEST("asset source documents reject invalid dimensions and duplicate keys") {
 
     bool rejected_mesh = false;
     try {
-        (void)mirakana::deserialize_mesh_source_document("format=GameEngine.MeshSource.v2\n"
+        (void)mirakana::deserialize_mesh_source_document("format=GameEngine.MeshSource\n"
                                                          "mesh.vertex_count=24\n"
                                                          "mesh.vertex_count=24\n"
                                                          "mesh.index_count=36\n"
@@ -3610,7 +3610,7 @@ MK_TEST("asset source documents reject invalid dimensions and duplicate keys") {
 
     bool rejected_audio = false;
     try {
-        (void)mirakana::deserialize_audio_source_document("format=GameEngine.AudioSource.v1\n"
+        (void)mirakana::deserialize_audio_source_document("format=GameEngine.AudioSource\n"
                                                           "audio.sample_rate=0\n"
                                                           "audio.channel_count=2\n"
                                                           "audio.frame_count=24000\n"
@@ -3624,7 +3624,7 @@ MK_TEST("asset source documents reject invalid dimensions and duplicate keys") {
 MK_TEST("asset source documents reject malformed byte payloads") {
     bool rejected_odd_texture_hex = false;
     try {
-        (void)mirakana::deserialize_texture_source_document("format=GameEngine.TextureSource.v1\n"
+        (void)mirakana::deserialize_texture_source_document("format=GameEngine.TextureSource\n"
                                                             "texture.width=2\n"
                                                             "texture.height=1\n"
                                                             "texture.pixel_format=rgba8_unorm\n"
@@ -3636,7 +3636,7 @@ MK_TEST("asset source documents reject malformed byte payloads") {
 
     bool rejected_bad_mesh_hex = false;
     try {
-        (void)mirakana::deserialize_mesh_source_document("format=GameEngine.MeshSource.v2\n"
+        (void)mirakana::deserialize_mesh_source_document("format=GameEngine.MeshSource\n"
                                                          "mesh.vertex_count=3\n"
                                                          "mesh.index_count=3\n"
                                                          "mesh.has_normals=false\n"
@@ -3650,7 +3650,7 @@ MK_TEST("asset source documents reject malformed byte payloads") {
 
     bool rejected_texture_size = false;
     try {
-        (void)mirakana::deserialize_texture_source_document("format=GameEngine.TextureSource.v1\n"
+        (void)mirakana::deserialize_texture_source_document("format=GameEngine.TextureSource\n"
                                                             "texture.width=2\n"
                                                             "texture.height=1\n"
                                                             "texture.pixel_format=rgba8_unorm\n"
@@ -3662,7 +3662,7 @@ MK_TEST("asset source documents reject malformed byte payloads") {
 
     bool rejected_audio_size = false;
     try {
-        (void)mirakana::deserialize_audio_source_document("format=GameEngine.AudioSource.v1\n"
+        (void)mirakana::deserialize_audio_source_document("format=GameEngine.AudioSource\n"
                                                           "audio.sample_rate=48000\n"
                                                           "audio.channel_count=2\n"
                                                           "audio.frame_count=1\n"
@@ -4012,7 +4012,7 @@ MK_TEST("material definition serializes deterministic text") {
     };
 
     const auto text = mirakana::serialize_material_definition(material);
-    MK_REQUIRE(text.starts_with("format=GameEngine.Material.v1\n"));
+    MK_REQUIRE(text.starts_with("format=GameEngine.Material\n"));
     MK_REQUIRE(text.contains("material.name=Player\n"));
     MK_REQUIRE(text.contains("texture.1.slot=base_color\n"));
     MK_REQUIRE(text.contains("texture.2.slot=normal\n"));
@@ -4356,7 +4356,7 @@ MK_TEST("material instance serializes deterministic text") {
 
     const auto text = mirakana::serialize_material_instance_definition(instance);
 
-    MK_REQUIRE(text.starts_with("format=GameEngine.MaterialInstance.v1\n"));
+    MK_REQUIRE(text.starts_with("format=GameEngine.MaterialInstance\n"));
     MK_REQUIRE(text.contains("instance.name=Player Team Blue\n"));
     MK_REQUIRE(text.contains("factor.override=true\n"));
     MK_REQUIRE(text.contains("texture.1.slot=base_color\n"));
@@ -4501,7 +4501,7 @@ MK_TEST("shader artifact manifests round trip deterministic records") {
     });
 
     const auto text = mirakana::serialize_shader_artifact_manifest(shaders);
-    MK_REQUIRE(text.starts_with("format=GameEngine.ShaderArtifacts.v1\n"));
+    MK_REQUIRE(text.starts_with("format=GameEngine.ShaderArtifacts\n"));
     MK_REQUIRE(text.contains("shader.1.source=assets/shaders/a.hlsl"));
     MK_REQUIRE(text.contains("shader.2.source=assets/shaders/z.hlsl"));
 
@@ -4718,7 +4718,7 @@ MK_TEST("scene serializes and restores hierarchy and transforms") {
     scene.find_node(parent)->transform.rotation_radians = mirakana::Vec3{.x = 0.1F, .y = 0.2F, .z = 0.3F};
 
     const auto serialized = mirakana::serialize_scene(scene);
-    MK_REQUIRE(serialized.contains("format=GameEngine.Scene.v1"));
+    MK_REQUIRE(serialized.contains("format=GameEngine.Scene"));
     MK_REQUIRE(serialized.contains("scene.name=level-01"));
     MK_REQUIRE(serialized.contains("node.1.name=Player"));
     MK_REQUIRE(serialized.contains("node.2.parent=1"));
@@ -5131,7 +5131,7 @@ MK_TEST("scene serializes restores and validates prefab source links") {
 
     bool rejected = false;
     try {
-        (void)mirakana::deserialize_scene("format=GameEngine.Scene.v1\n"
+        (void)mirakana::deserialize_scene("format=GameEngine.Scene\n"
                                           "scene.name=broken\n"
                                           "node.count=1\n"
                                           "node.1.name=Player\n"
@@ -5187,7 +5187,7 @@ MK_TEST("prefab definition serializes deterministically and rejects malformed pa
     prefab.nodes.push_back(grandchild);
 
     const auto serialized = mirakana::serialize_prefab_definition(prefab);
-    MK_REQUIRE(serialized.starts_with("format=GameEngine.Prefab.v1\n"));
+    MK_REQUIRE(serialized.starts_with("format=GameEngine.Prefab\n"));
     MK_REQUIRE(serialized.contains("prefab.name=player.prefab\n"));
     MK_REQUIRE(serialized.contains("node.2.parent=1\n"));
     MK_REQUIRE(serialized.contains("node.3.parent=2\n"));
@@ -5204,7 +5204,7 @@ MK_TEST("prefab definition serializes deterministically and rejects malformed pa
 
     bool rejected_format = false;
     try {
-        (void)mirakana::deserialize_prefab_definition("format=GameEngine.Prefab.v0\n"
+        (void)mirakana::deserialize_prefab_definition("format=GameEngine.Prefab\n"
                                                       "prefab.name=broken.prefab\n"
                                                       "node.count=0\n");
     } catch (const std::invalid_argument&) {
@@ -5214,7 +5214,7 @@ MK_TEST("prefab definition serializes deterministically and rejects malformed pa
 
     bool rejected_missing_field = false;
     try {
-        (void)mirakana::deserialize_prefab_definition("format=GameEngine.Prefab.v1\n"
+        (void)mirakana::deserialize_prefab_definition("format=GameEngine.Prefab\n"
                                                       "prefab.name=broken.prefab\n"
                                                       "node.count=1\n"
                                                       "node.1.name=Child\n"
@@ -5228,7 +5228,7 @@ MK_TEST("prefab definition serializes deterministically and rejects malformed pa
 
     bool rejected_invalid_component = false;
     try {
-        (void)mirakana::deserialize_prefab_definition("format=GameEngine.Prefab.v1\n"
+        (void)mirakana::deserialize_prefab_definition("format=GameEngine.Prefab\n"
                                                       "prefab.name=broken.prefab\n"
                                                       "node.count=1\n"
                                                       "node.1.name=Child\n"
@@ -5246,7 +5246,7 @@ MK_TEST("prefab definition serializes deterministically and rejects malformed pa
 
     bool rejected_parent = false;
     try {
-        (void)mirakana::deserialize_prefab_definition("format=GameEngine.Prefab.v1\n"
+        (void)mirakana::deserialize_prefab_definition("format=GameEngine.Prefab\n"
                                                       "prefab.name=broken.prefab\n"
                                                       "node.count=1\n"
                                                       "node.1.name=Child\n"
@@ -5470,9 +5470,9 @@ MK_TEST("prefab variant serializes deterministically and round trips") {
     variant.overrides.push_back(sprite_override);
 
     const auto serialized = mirakana::serialize_prefab_variant_definition(variant);
-    MK_REQUIRE(serialized.starts_with("format=GameEngine.PrefabVariant.v1\n"));
+    MK_REQUIRE(serialized.starts_with("format=GameEngine.PrefabVariant\n"));
     MK_REQUIRE(serialized.contains("variant.name=sprite-variant.prefabvariant\n"));
-    MK_REQUIRE(serialized.contains("base.format=GameEngine.Prefab.v1\n"));
+    MK_REQUIRE(serialized.contains("base.format=GameEngine.Prefab\n"));
     MK_REQUIRE(serialized.contains("override.count=2\n"));
     MK_REQUIRE(serialized.contains("override.2.sprite_renderer.sprite="));
 
@@ -5493,9 +5493,9 @@ MK_TEST("prefab variant serializes deterministically and round trips") {
 }
 
 MK_TEST("prefab variant preserves source node name hints") {
-    const std::string text = "format=GameEngine.PrefabVariant.v1\n"
+    const std::string text = "format=GameEngine.PrefabVariant\n"
                              "variant.name=camera-variant.prefabvariant\n"
-                             "base.format=GameEngine.Prefab.v1\n"
+                             "base.format=GameEngine.Prefab\n"
                              "base.prefab.name=camera.prefab\n"
                              "base.node.count=2\n"
                              "base.node.1.name=Root\n"
@@ -16119,7 +16119,7 @@ MK_TEST("scene deserialization rejects unsupported or incomplete text") {
 
     bool rejected_parent = false;
     try {
-        (void)mirakana::deserialize_scene("format=GameEngine.Scene.v1\n"
+        (void)mirakana::deserialize_scene("format=GameEngine.Scene\n"
                                           "scene.name=broken\n"
                                           "node.count=1\n"
                                           "node.1.name=Child\n"

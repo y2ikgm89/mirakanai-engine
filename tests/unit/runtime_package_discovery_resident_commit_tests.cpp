@@ -154,7 +154,7 @@ MK_TEST("runtime package discovery resident commit mounts selected discovered ca
     CountingFileSystem filesystem;
     const auto texture = mirakana::AssetId::from_name("textures/player/albedo");
     const auto material = mirakana::AssetId::from_name("materials/base");
-    const std::string payload = "format=GameEngine.CookedTexture.v1\ntexture.width=4\n";
+    const std::string payload = "format=GameEngine.CookedTexture\ntexture.width=4\n";
     write_package(filesystem, "runtime/packages/base.geindex", "runtime", material, mirakana::AssetKind::material,
                   "materials/base.material", "base material");
     write_package(filesystem, "runtime/packages/characters/player.geindex", "runtime", texture,

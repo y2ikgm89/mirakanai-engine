@@ -51,7 +51,7 @@ import_gltf_morph_mesh_cpu_primitive(std::string_view document_bytes_utf8,
     std::string_view document_bytes_utf8, std::string_view source_path_for_external_buffers,
     std::size_t animation_index, std::size_t mesh_index, std::size_t primitive_index, std::size_t animated_node_index);
 
-/// Imports the selected glTF morph `weights` animation as `GameEngine.AnimationFloatClipSource.v1` rows so the same
+/// Imports the selected glTF morph `weights` animation as `GameEngine.AnimationFloatClipSource` rows so the same
 /// data can be cooked as `AssetKind::animation_float_clip` and sampled through `mirakana_animation` float tracks.
 [[nodiscard]] GltfAnimationFloatClipImportReport import_gltf_morph_weights_animation_float_clip(
     std::string_view document_bytes_utf8, std::string_view source_path_for_external_buffers,

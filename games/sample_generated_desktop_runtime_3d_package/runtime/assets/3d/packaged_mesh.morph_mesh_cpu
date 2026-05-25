@@ -1,4 +1,4 @@
-format=GameEngine.CookedMorphMeshCpu.v1
+format=GameEngine.CookedMorphMeshCpu
 asset.id=16053280253437616279
 asset.kind=morph_mesh_cpu
 source.path=source/morphs/packaged_mesh.morph_mesh_cpu_source

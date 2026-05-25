@@ -17,10 +17,10 @@ namespace mirakana {
  * Canonical text format id for the Phase-4 shader-generation bridge document.
  * This slice keeps authored HLSL on disk (repository-relative paths) and uses `mirakana_tools` shader runners only.
  */
-inline constexpr std::string_view material_graph_shader_export_format_id = "GameEngine.MaterialGraphShaderExport.v0";
+inline constexpr std::string_view material_graph_shader_export_format_id = "GameEngine.MaterialGraphShaderExport";
 
 /**
- * Declares how a validated `GameEngine.MaterialGraph.v1` (or future graph) maps to first-party HLSL entry points.
+ * Declares how a validated `GameEngine.MaterialGraph` (or future graph) maps to first-party HLSL entry points.
  * `hlsl_source_path` is repository-relative and must exist before compile planning.
  */
 struct MaterialGraphShaderExportDesc {

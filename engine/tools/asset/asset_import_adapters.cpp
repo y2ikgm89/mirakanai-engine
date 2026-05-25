@@ -368,7 +368,7 @@ void append_generated_gltf_indices(std::uint32_t vertex_base, std::size_t primit
                 const auto tangent = primitive.findAttribute("TANGENT");
                 if (tangent == primitive.attributes.end()) {
                     throw std::runtime_error(
-                        "glTF lit primitive is missing TANGENT (required for GameEngine.MeshSource.v2 tangent-space "
+                        "glTF lit primitive is missing TANGENT (required for GameEngine.MeshSource tangent-space "
                         "vertices)");
                 }
                 const auto& normal_accessor = require_accessor(gltf, normal->accessorIndex, "glTF NORMAL");

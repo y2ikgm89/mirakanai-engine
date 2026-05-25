@@ -15,7 +15,7 @@
 namespace mirakana::editor {
 
 /**
- * Editor-side wrapper for `GameEngine.MaterialGraph.v1` documents. Mirrors `MaterialAuthoringDocument` patterns:
+ * Editor-side wrapper for `GameEngine.MaterialGraph` documents. Mirrors `MaterialAuthoringDocument` patterns:
  * dirty/staged tracking, `ITextStore` save/load, and registry-aware validation for texture nodes.
  */
 class MaterialGraphAuthoringDocument {

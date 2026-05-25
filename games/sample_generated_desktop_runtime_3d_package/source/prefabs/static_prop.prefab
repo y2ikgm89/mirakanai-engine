@@ -1,4 +1,4 @@
-format=GameEngine.Prefab.v2
+format=GameEngine.Prefab
 prefab.name=sample-generated-desktop-runtime-3d-package Static Prop Prefab
 scene.name=sample-generated-desktop-runtime-3d-package Static Prop Prefab Scene
 node.0.id=node/static-prop

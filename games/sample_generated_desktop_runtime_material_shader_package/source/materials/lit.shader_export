@@ -1,4 +1,4 @@
-format=GameEngine.MaterialGraphShaderExport.v0
+format=GameEngine.MaterialGraphShaderExport
 export.id=700
 export.name=sample_generated_desktop_runtime_material_shader_package_lit
 material_graph.path=source/materials/lit.materialgraph

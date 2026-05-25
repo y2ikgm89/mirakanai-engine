@@ -515,7 +515,7 @@ build_asset_cooked_package_recook_decisions(const AssetCookedPackageIndex& previ
 
 std::string serialize_asset_cooked_package_index(const AssetCookedPackageIndex& index) {
     std::ostringstream output;
-    output << "format=GameEngine.CookedPackageIndex.v1\n";
+    output << "format=GameEngine.CookedPackageIndex\n";
     output << "entry.count=" << index.entries.size() << '\n';
     for (std::size_t ordinal = 0; ordinal < index.entries.size(); ++ordinal) {
         const auto& entry = index.entries[ordinal];
@@ -547,7 +547,7 @@ std::string serialize_asset_cooked_package_index(const AssetCookedPackageIndex& 
 
 AssetCookedPackageIndex deserialize_asset_cooked_package_index(std::string_view text) {
     const auto values = parse_key_values(text);
-    if (required_value(values, "format") != "GameEngine.CookedPackageIndex.v1") {
+    if (required_value(values, "format") != "GameEngine.CookedPackageIndex") {
         throw std::invalid_argument("asset cooked package index format is unsupported");
     }
 

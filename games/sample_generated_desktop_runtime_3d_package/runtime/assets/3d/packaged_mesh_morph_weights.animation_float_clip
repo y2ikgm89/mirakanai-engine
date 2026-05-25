@@ -1,4 +1,4 @@
-format=GameEngine.CookedAnimationFloatClip.v1
+format=GameEngine.CookedAnimationFloatClip
 asset.id=10778680525492427944
 asset.kind=animation_float_clip
 source.path=source/animations/packaged_mesh_morph_weights.animation_float_clip_source

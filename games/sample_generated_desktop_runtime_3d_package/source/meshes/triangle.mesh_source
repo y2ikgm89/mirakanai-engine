@@ -1,4 +1,4 @@
-format=GameEngine.MeshSource.v2
+format=GameEngine.MeshSource
 mesh.vertex_count=3
 mesh.index_count=3
 mesh.has_normals=true

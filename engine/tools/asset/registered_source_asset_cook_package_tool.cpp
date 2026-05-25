@@ -441,7 +441,7 @@ compute_registry_dependency_closure_keys(std::vector<RegisteredSourceAssetCookPa
         const auto* row = find_row_by_key(document, AssetKeyV2{k});
         if (row == nullptr) {
             add_diagnostic(diagnostics, "missing_source_asset_key",
-                           "selected source asset key is missing from GameEngine.SourceAssetRegistry.v1",
+                           "selected source asset key is missing from GameEngine.SourceAssetRegistry",
                            request.source_registry_path, AssetKeyV2{k});
             return {};
         }
@@ -551,7 +551,7 @@ prepare_selected_rows(std::vector<RegisteredSourceAssetCookPackageDiagnostic>& d
         const auto* row = find_row_by_key(document, key);
         if (row == nullptr) {
             add_diagnostic(diagnostics, "missing_source_asset_key",
-                           "selected source asset key is missing from GameEngine.SourceAssetRegistry.v1",
+                           "selected source asset key is missing from GameEngine.SourceAssetRegistry",
                            request.source_registry_path, key);
             continue;
         }
@@ -642,19 +642,19 @@ parse_package_index(std::vector<RegisteredSourceAssetCookPackageDiagnostic>& dia
 [[nodiscard]] std::string document_kind(AssetImportActionKind kind) {
     switch (kind) {
     case AssetImportActionKind::texture:
-        return "GameEngine.CookedTexture.v1";
+        return "GameEngine.CookedTexture";
     case AssetImportActionKind::mesh:
-        return "GameEngine.CookedMesh.v2";
+        return "GameEngine.CookedMesh";
     case AssetImportActionKind::morph_mesh_cpu:
-        return "GameEngine.CookedMorphMeshCpu.v1";
+        return "GameEngine.CookedMorphMeshCpu";
     case AssetImportActionKind::animation_float_clip:
-        return "GameEngine.CookedAnimationFloatClip.v1";
+        return "GameEngine.CookedAnimationFloatClip";
     case AssetImportActionKind::audio:
-        return "GameEngine.CookedAudio.v1";
+        return "GameEngine.CookedAudio";
     case AssetImportActionKind::material:
-        return "GameEngine.Material.v1";
+        return "GameEngine.Material";
     case AssetImportActionKind::scene:
-        return "GameEngine.Scene.v1";
+        return "GameEngine.Scene";
     case AssetImportActionKind::unknown:
         break;
     }
@@ -773,7 +773,7 @@ void append_changed_files(RegisteredSourceAssetCookPackageResult& result, IFileS
     result.changed_files.insert(result.changed_files.end(), files.begin(), files.end());
     result.changed_files.push_back(RegisteredSourceAssetCookPackageChangedFile{
         .path = package_index_path,
-        .document_kind = "GameEngine.CookedPackageIndex.v1",
+        .document_kind = "GameEngine.CookedPackageIndex",
         .content = result.package_index_content,
         .content_hash = hash_asset_cooked_content(result.package_index_content),
     });

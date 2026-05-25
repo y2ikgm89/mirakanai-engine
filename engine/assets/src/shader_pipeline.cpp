@@ -21,7 +21,7 @@
 namespace mirakana {
 namespace {
 
-constexpr std::string_view shader_artifact_manifest_format = "GameEngine.ShaderArtifacts.v1";
+constexpr std::string_view shader_artifact_manifest_format = "GameEngine.ShaderArtifacts";
 
 [[nodiscard]] bool valid_token(std::string_view value) noexcept {
     return !value.empty() && value.find('\n') == std::string_view::npos && value.find('\r') == std::string_view::npos;

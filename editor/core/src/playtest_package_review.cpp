@@ -1622,7 +1622,7 @@ make_editor_ai_playtest_evidence_import_model(const EditorAiPlaytestEvidenceImpo
                 const auto key = trim_text(std::string_view{line}.substr(0, equals));
                 const auto value = trim_text(std::string_view{line}.substr(equals + 1U));
                 if (key == "format") {
-                    format_seen = value == "GameEngine.EditorAiPlaytestEvidence.v1";
+                    format_seen = value == "GameEngine.EditorAiPlaytestEvidence";
                     if (!format_seen) {
                         add_global_blocker("unsupported evidence import format: " + value);
                     }
@@ -1699,7 +1699,7 @@ make_editor_ai_playtest_evidence_import_model(const EditorAiPlaytestEvidenceImpo
     }
 
     if (!format_seen) {
-        add_global_blocker("missing GameEngine.EditorAiPlaytestEvidence.v1 format line");
+        add_global_blocker("missing GameEngine.EditorAiPlaytestEvidence format line");
     }
 
     const auto finalize_pending_row = [&model, &expected_recipe_ids](PendingEvidenceImportRow& pending, bool expected) {

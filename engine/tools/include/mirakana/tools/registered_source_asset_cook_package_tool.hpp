@@ -20,7 +20,7 @@ enum class RegisteredSourceAssetCookPackageCommandKind : std::uint8_t {
 /// Selects how `selected_asset_keys` are interpreted for `cook_registered_source_assets`.
 /// - `explicit_dependency_selection`: every registered dependency key must appear in `selected_asset_keys`.
 /// - `registered_source_registry_closure`: expand the selection to the transitive closure of registry
-///   `dependencies[].key` rows within the same `GameEngine.SourceAssetRegistry.v1` document.
+///   `dependencies[].key` rows within the same `GameEngine.SourceAssetRegistry` document.
 enum class RegisteredSourceAssetCookDependencyExpansion : std::uint8_t {
     explicit_dependency_selection,
     registered_source_registry_closure,

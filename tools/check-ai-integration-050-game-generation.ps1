@@ -205,7 +205,7 @@ $aiGameGenerationOrchestratorChecks = @(
         Path = "tools/create-game-recipe.ps1"
         Needles = @(
             "[CmdletBinding(SupportsShouldProcess = `$true)]",
-            "GameEngine.AiCommand.CreateGameRecipe.Result.v1",
+            "GameEngine.AiCommand.CreateGameRecipe.Result",
             "tools/new-game.ps1",
             "aiWorkflow.gameDesignSpec",
             "DesktopRuntime2DPackage",
@@ -989,7 +989,7 @@ $editorAiEvidenceImportReviewChecks = @(
     @{
         Path = "editor/core/src/playtest_package_review.cpp"
         Needles = @(
-            "GameEngine.EditorAiPlaytestEvidence.v1",
+            "GameEngine.EditorAiPlaytestEvidence",
             "ai_evidence_import",
             "claims_editor_core_execution",
             "evidence-not-externally-supplied",
@@ -1014,7 +1014,7 @@ $editorAiEvidenceImportReviewChecks = @(
         Needles = @(
             "editor ai playtest evidence import parses external rows without execution",
             "editor ai playtest evidence import blocks malformed rows and unsupported claims",
-            "GameEngine.EditorAiPlaytestEvidence.v1",
+            "GameEngine.EditorAiPlaytestEvidence",
             "EditorAiPlaytestEvidenceImportReviewRow",
             "ai_evidence_import.rows.agent-contract.status"
         )
@@ -1024,7 +1024,7 @@ $editorAiEvidenceImportReviewChecks = @(
         Needles = @(
             "Editor AI Evidence Import Review v1",
             "EditorAiPlaytestEvidenceImportModel",
-            "GameEngine.EditorAiPlaytestEvidence.v1",
+            "GameEngine.EditorAiPlaytestEvidence",
             "ai_evidence_import",
             "transient"
         )
@@ -1043,7 +1043,7 @@ $editorAiEvidenceImportReviewChecks = @(
         Needles = @(
             "Editor AI Evidence Import Review v1",
             "EditorAiPlaytestEvidenceImportReviewRow",
-            "GameEngine.EditorAiPlaytestEvidence.v1",
+            "GameEngine.EditorAiPlaytestEvidence",
             "transient local editor state"
         )
     },
@@ -1089,7 +1089,7 @@ $editorAiEvidenceImportReviewChecks = @(
             "currentEditorAiEvidenceImportReview",
             "Editor AI Evidence Import Review v1",
             "EditorAiPlaytestEvidenceImportModel",
-            "GameEngine.EditorAiPlaytestEvidence.v1",
+            "GameEngine.EditorAiPlaytestEvidence",
             "ai_evidence_import",
             "host-gated AI command execution workflows"
         )
@@ -1099,7 +1099,7 @@ $editorAiEvidenceImportReviewChecks = @(
         Needles = @(
             "make_editor_ai_playtest_evidence_import_model",
             "make_editor_ai_playtest_evidence_import_ui_model",
-            "GameEngine.EditorAiPlaytestEvidence.v1",
+            "GameEngine.EditorAiPlaytestEvidence",
             "ai_evidence_import"
         )
     },
@@ -1108,7 +1108,7 @@ $editorAiEvidenceImportReviewChecks = @(
         Needles = @(
             "make_editor_ai_playtest_evidence_import_model",
             "make_editor_ai_playtest_evidence_import_ui_model",
-            "GameEngine.EditorAiPlaytestEvidence.v1",
+            "GameEngine.EditorAiPlaytestEvidence",
             "ai_evidence_import"
         )
     }
@@ -1553,7 +1553,7 @@ $editorContentBrowserImportPanelChecks = @(
             "editor content browser import panel model summarizes assets imports and diagnostics",
             "editor content browser populates source registry rows",
             "editor source registry browser refresh loads project registry into content browser",
-            "GameEngine.Project.v4",
+            "GameEngine.Project",
             "project.source_registry=source/assets/package.geassets",
             "animation_quaternion_clip",
             "validate_source_asset_registry_document",
@@ -1585,7 +1585,7 @@ $editorContentBrowserImportPanelChecks = @(
     @{
         Path = "docs/editor.md"
         Needles = @(
-            "GameEngine.Project.v4",
+            "GameEngine.Project",
             "project.source_registry=source/assets/package.geassets",
             "refresh_content_browser_from_project_source_registry",
             "Reload Source Registry",
@@ -1600,7 +1600,7 @@ $editorContentBrowserImportPanelChecks = @(
         Path = "docs/current-capabilities.md"
         Needles = @(
             "Editor Source Registry Visible Content Browser v1",
-            "GameEngine.Project.v4",
+            "GameEngine.Project",
             "project.source_registry",
             "refresh_content_browser_from_project_source_registry",
             "Reload Source Registry",
@@ -1616,7 +1616,7 @@ $editorContentBrowserImportPanelChecks = @(
         Path = "docs/ai-game-development.md"
         Needles = @(
             "Editor Source Registry Visible Content Browser v1",
-            "GameEngine.Project.v4",
+            "GameEngine.Project",
             "project.source_registry",
             "refresh_content_browser_from_project_source_registry",
             "Reload Source Registry",
@@ -1676,7 +1676,7 @@ $editorContentBrowserImportPanelChecks = @(
         Path = "engine/agent/manifest.json"
         Needles = @(
             "Editor Source Registry Visible Content Browser v1",
-            "GameEngine.Project.v4 project.source_registry",
+            "GameEngine.Project project.source_registry",
             "source/assets/package.geassets",
             "refresh_content_browser_from_project_source_registry",
             "Reload Source Registry",

@@ -278,7 +278,7 @@ mirakana::ui::UiDocument make_timeline_ui_model(const EditorTimelinePanelModel& 
 std::string serialize_editor_ui_model(const mirakana::ui::UiDocument& document) {
     const auto elements = document.traverse();
     std::ostringstream out;
-    out << "format=GameEngine.EditorUiModel.v1\n";
+    out << "format=GameEngine.EditorUiModel\n";
     out << "element.count=" << elements.size() << '\n';
 
     std::size_t index = 1;

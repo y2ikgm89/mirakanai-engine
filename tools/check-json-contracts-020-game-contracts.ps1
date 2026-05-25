@@ -539,7 +539,7 @@ if ($desktop2dRecipe.Count -ne 1) {
         }
     }
     Assert-ContainsText ([string]$desktop2dRecipe[0].cookedRuntimeAssumptions) "spriteAtlasSourceAuthoringTargets" "2d-desktop-runtime-package cooked runtime assumptions"
-    foreach ($sourceFormat in @("GameEngine.TextureSource.v1", "GameEngine.SourceAssetRegistry.v1", "first-party-cooked-fixture")) {
+    foreach ($sourceFormat in @("GameEngine.TextureSource", "GameEngine.SourceAssetRegistry", "first-party-cooked-fixture")) {
         if (@($desktop2dRecipe[0].importerAssumptions.sourceFormats) -notcontains $sourceFormat) {
             Write-Error "engine manifest 2d-desktop-runtime-package recipe importerAssumptions.sourceFormats missing $sourceFormat"
         }
@@ -864,7 +864,7 @@ if ($uiAtlasPackageCommand.Count -ne 1 -or $uiAtlasPackageCommand[0].status -ne 
         -not $uiAtlasNotes.Contains("author_packed_ui_atlas_from_decoded_images") -or
         -not $uiAtlasNotes.Contains("author_packed_ui_glyph_atlas_from_rasterized_glyphs") -or
         -not $uiAtlasNotes.Contains("plan_packed_ui_glyph_atlas_package_update") -or
-        -not $uiAtlasNotes.Contains("GameEngine.CookedTexture.v1") -or
+        -not $uiAtlasNotes.Contains("GameEngine.CookedTexture") -or
         -not $uiAtlasNotes.Contains("renderer texture upload")) {
         Write-Error "engine manifest update-ui-atlas-metadata-package notes must keep cooked helper names, decoded/glyph atlas bridges, and renderer-upload limits explicit"
     }
@@ -906,8 +906,8 @@ if ($materialGraphCommand.Count -ne 1 -or $materialGraphCommand[0].status -ne "r
     foreach ($needle in @(
             "plan_material_graph_package_update",
             "apply_material_graph_package_update",
-            "GameEngine.MaterialGraph.v1",
-            "GameEngine.Material.v1",
+            "GameEngine.MaterialGraph",
+            "GameEngine.Material",
             "material_texture",
             "shader graph",
             "shader compiler execution",

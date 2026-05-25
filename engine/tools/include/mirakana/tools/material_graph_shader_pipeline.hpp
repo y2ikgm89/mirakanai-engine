@@ -43,8 +43,8 @@ plan_material_graph_shader_pipeline(const IFileSystem& filesystem, const Materia
 /**
  * Reviewed material graph production-authoring workflow.
  *
- * This value-only plan lowers one validated `GameEngine.MaterialGraph.v1` document into a runtime material package row,
- * emits the reviewed HLSL v0 bridge plus a `GameEngine.MaterialGraphShaderExport.v0` descriptor, and returns shell-free
+ * This value-only plan lowers one validated `GameEngine.MaterialGraph` document into a runtime material package row,
+ * emits the reviewed HLSL v0 bridge plus a `GameEngine.MaterialGraphShaderExport` descriptor, and returns shell-free
  * DXC compile execution requests. It does not execute compilers, mutate files, stream packages, create renderer/RHI
  * residency, or support arbitrary shader graph execution.
  */

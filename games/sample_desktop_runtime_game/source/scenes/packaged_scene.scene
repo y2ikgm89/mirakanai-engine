@@ -1,4 +1,4 @@
-format=GameEngine.Scene.v2
+format=GameEngine.Scene
 scene.name=DesktopRuntimePackagedScene
 node.0.id=node/packaged-mesh
 node.0.name=PackagedMesh

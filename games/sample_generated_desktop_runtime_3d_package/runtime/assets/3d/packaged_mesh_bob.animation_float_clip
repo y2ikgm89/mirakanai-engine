@@ -1,4 +1,4 @@
-format=GameEngine.CookedAnimationFloatClip.v1
+format=GameEngine.CookedAnimationFloatClip
 asset.id=64105046659587721
 asset.kind=animation_float_clip
 source.path=source/animations/packaged_mesh_bob.animation_float_clip_source

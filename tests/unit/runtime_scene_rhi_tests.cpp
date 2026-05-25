@@ -33,7 +33,7 @@ namespace {
 }
 
 [[nodiscard]] std::string texture_payload(mirakana::AssetId texture) {
-    return "format=GameEngine.CookedTexture.v1\n"
+    return "format=GameEngine.CookedTexture\n"
            "asset.id=" +
            std::to_string(texture.value) +
            "\n"
@@ -47,7 +47,7 @@ namespace {
 }
 
 [[nodiscard]] std::string mesh_payload(mirakana::AssetId mesh) {
-    return "format=GameEngine.CookedMesh.v2\n"
+    return "format=GameEngine.CookedMesh\n"
            "asset.id=" +
            std::to_string(mesh.value) +
            "\n"
@@ -64,7 +64,7 @@ namespace {
 }
 
 [[nodiscard]] std::string lit_mesh_payload(mirakana::AssetId mesh) {
-    return "format=GameEngine.CookedMesh.v2\n"
+    return "format=GameEngine.CookedMesh\n"
            "asset.id=" +
            std::to_string(mesh.value) +
            "\n"
@@ -372,7 +372,7 @@ make_mixed_material_layout_package(mirakana::AssetId mesh, mirakana::AssetId tex
 }
 
 [[nodiscard]] std::string skinned_mesh_payload(mirakana::AssetId mesh) {
-    return std::string("format=GameEngine.CookedSkinnedMesh.v1\n") + "asset.id=" + std::to_string(mesh.value) +
+    return std::string("format=GameEngine.CookedSkinnedMesh\n") + "asset.id=" + std::to_string(mesh.value) +
            "\n"
            "asset.kind=skinned_mesh\n"
            "skinned_mesh.vertex_count=3\n"
@@ -387,7 +387,7 @@ make_mixed_material_layout_package(mirakana::AssetId mesh, mirakana::AssetId tex
 }
 
 [[nodiscard]] std::string morph_mesh_payload(mirakana::AssetId morph) {
-    return std::string("format=GameEngine.CookedMorphMeshCpu.v1\n") + "asset.id=" + std::to_string(morph.value) +
+    return std::string("format=GameEngine.CookedMorphMeshCpu\n") + "asset.id=" + std::to_string(morph.value) +
            "\n"
            "asset.kind=morph_mesh_cpu\n"
            "morph.vertex_count=3\n"

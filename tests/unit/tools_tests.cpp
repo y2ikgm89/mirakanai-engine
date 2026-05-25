@@ -315,7 +315,7 @@ void append_le_f32(std::string& output, float value) {
 }
 
 [[nodiscard]] std::string expected_cooked_ui_atlas_metadata() {
-    return "format=GameEngine.UiAtlas.v1\n"
+    return "format=GameEngine.UiAtlas\n"
            "asset.id=100\n"
            "asset.kind=ui_atlas\n"
            "source.decoding=unsupported\n"
@@ -491,7 +491,7 @@ void append_le_f32(std::string& output, float value) {
 }
 
 [[nodiscard]] std::string expected_cooked_tilemap_metadata() {
-    return "format=GameEngine.Tilemap.v1\n"
+    return "format=GameEngine.Tilemap\n"
            "asset.id=300\n"
            "asset.kind=tilemap\n"
            "source.decoding=unsupported\n"
@@ -581,7 +581,7 @@ void append_le_f32(std::string& output, float value) {
 }
 
 [[nodiscard]] std::string expected_physics_collision_package_payload() {
-    return "format=GameEngine.PhysicsCollisionScene3D.v1\n"
+    return "format=GameEngine.PhysicsCollisionScene3D\n"
            "asset.id=700\n"
            "asset.kind=physics_collision_scene\n"
            "backend.native=unsupported\n"
@@ -775,14 +775,14 @@ void append_le_f32(std::string& output, float value) {
 }
 
 [[nodiscard]] std::string registered_cook_texture_source_content() {
-    return "format=GameEngine.TextureSource.v1\n"
+    return "format=GameEngine.TextureSource\n"
            "texture.width=4\n"
            "texture.height=2\n"
            "texture.pixel_format=rgba8_unorm\n";
 }
 
 [[nodiscard]] std::string registered_cook_mesh_source_content() {
-    return "format=GameEngine.MeshSource.v2\n"
+    return "format=GameEngine.MeshSource\n"
            "mesh.vertex_count=3\n"
            "mesh.index_count=3\n"
            "mesh.has_normals=false\n"
@@ -811,7 +811,7 @@ void append_le_f32(std::string& output, float value) {
         .key = mirakana::AssetKeyV2{"assets/materials/hero"},
         .kind = mirakana::AssetKind::material,
         .source_path = "source/materials/hero.material",
-        .source_format = "GameEngine.Material.v1",
+        .source_format = "GameEngine.Material",
         .imported_path = "runtime/assets/materials/hero.material",
         .dependencies = {mirakana::SourceAssetDependencyRowV1{.kind = mirakana::AssetDependencyKind::material_texture,
                                                               .key = mirakana::AssetKeyV2{"assets/textures/hero"}}},
@@ -820,7 +820,7 @@ void append_le_f32(std::string& output, float value) {
         .key = mirakana::AssetKeyV2{"assets/meshes/cube"},
         .kind = mirakana::AssetKind::mesh,
         .source_path = "source/meshes/cube.mesh_source",
-        .source_format = "GameEngine.MeshSource.v2",
+        .source_format = "GameEngine.MeshSource",
         .imported_path = "runtime/assets/meshes/cube.mesh",
         .dependencies = {},
     });
@@ -828,7 +828,7 @@ void append_le_f32(std::string& output, float value) {
         .key = mirakana::AssetKeyV2{"assets/textures/hero"},
         .kind = mirakana::AssetKind::texture,
         .source_path = "source/textures/hero.texture_source",
-        .source_format = "GameEngine.TextureSource.v1",
+        .source_format = "GameEngine.TextureSource",
         .imported_path = "runtime/assets/textures/hero.texture",
         .dependencies = {},
     });
@@ -1026,7 +1026,7 @@ void append_le_f32(std::string& output, float value) {
         .key = mirakana::AssetKeyV2{"assets/materials/base"},
         .kind = mirakana::AssetKind::material,
         .source_path = "source/materials/base.material",
-        .source_format = "GameEngine.Material.v1",
+        .source_format = "GameEngine.Material",
         .imported_path = "runtime/assets/materials/base.material",
         .dependencies = {},
     });
@@ -1034,7 +1034,7 @@ void append_le_f32(std::string& output, float value) {
         .key = mirakana::AssetKeyV2{"assets/meshes/cube"},
         .kind = mirakana::AssetKind::mesh,
         .source_path = "source/meshes/cube.gemesh",
-        .source_format = "GameEngine.MeshSource.v2",
+        .source_format = "GameEngine.MeshSource",
         .imported_path = "runtime/assets/meshes/cube.mesh",
         .dependencies = {},
     });
@@ -1042,7 +1042,7 @@ void append_le_f32(std::string& output, float value) {
         .key = mirakana::AssetKeyV2{"assets/textures/hero"},
         .kind = mirakana::AssetKind::texture,
         .source_path = "source/textures/hero.getexture",
-        .source_format = "GameEngine.TextureSource.v1",
+        .source_format = "GameEngine.TextureSource",
         .imported_path = "runtime/assets/textures/hero.texture",
         .dependencies = {},
     });
@@ -1692,9 +1692,8 @@ MK_TEST("material graph production authoring emits package rows shader export an
     MK_REQUIRE(result.failures.empty());
     MK_REQUIRE(result.material_content == expected_material_content);
     MK_REQUIRE(result.package_index_content.find("asset=400") != std::string::npos);
-    MK_REQUIRE(result.hlsl_content.find("GameEngine.MaterialGraphGeneratedHlsl.v0") != std::string::npos);
-    MK_REQUIRE(result.shader_export_content.find("format=GameEngine.MaterialGraphShaderExport.v0") !=
-               std::string::npos);
+    MK_REQUIRE(result.hlsl_content.find("GameEngine.MaterialGraphGeneratedHlsl") != std::string::npos);
+    MK_REQUIRE(result.shader_export_content.find("format=GameEngine.MaterialGraphShaderExport") != std::string::npos);
     MK_REQUIRE(result.shader_export_content.find("material_graph.path=source/materials/graph.materialgraph") !=
                std::string::npos);
     MK_REQUIRE(result.changed_files.size() == 4);
@@ -2137,7 +2136,7 @@ MK_TEST("shader artifact provenance serializes deterministic records") {
     const auto text = mirakana::serialize_shader_artifact_provenance(provenance);
     const auto restored = mirakana::deserialize_shader_artifact_provenance(text);
 
-    MK_REQUIRE(text.find("format=GameEngine.ShaderArtifactProvenance.v1\n") == 0);
+    MK_REQUIRE(text.find("format=GameEngine.ShaderArtifactProvenance\n") == 0);
     MK_REQUIRE(text.find("tool.kind=dxc\n") != std::string::npos);
     MK_REQUIRE(text.find("input.1.path=assets/shaders/common.hlsl\n") != std::string::npos);
     MK_REQUIRE(restored.artifact.path == "out/shaders/fullscreen.vs.dxil");
@@ -2162,7 +2161,7 @@ MK_TEST("shader artifact cache index serializes deterministic entries") {
     const auto text = mirakana::serialize_shader_artifact_cache_index(index);
     const auto restored = mirakana::deserialize_shader_artifact_cache_index(text);
 
-    MK_REQUIRE(text.find("format=GameEngine.ShaderArtifactCacheIndex.v1\n") == 0);
+    MK_REQUIRE(text.find("format=GameEngine.ShaderArtifactCacheIndex\n") == 0);
     MK_REQUIRE(text.find("entry.1.artifact=out/shaders/a.vs.dxil\n") != std::string::npos);
     MK_REQUIRE(restored.entries.size() == 2);
     MK_REQUIRE(restored.entries[0].artifact_path == "out/shaders/a.vs.dxil");
@@ -2485,22 +2484,22 @@ MK_TEST("asset import executor writes cooked artifacts through filesystem") {
     const auto audio_id = mirakana::AssetId::from_name("audio/hit");
     const auto scene_id = mirakana::AssetId::from_name("scenes/level");
 
-    fs.write_text("source/textures/player_albedo.texture_source", "format=GameEngine.TextureSource.v1\n"
+    fs.write_text("source/textures/player_albedo.texture_source", "format=GameEngine.TextureSource\n"
                                                                   "texture.width=4\n"
                                                                   "texture.height=2\n"
                                                                   "texture.pixel_format=rgba8_unorm\n");
-    fs.write_text("source/meshes/player.mesh_source", "format=GameEngine.MeshSource.v2\n"
+    fs.write_text("source/meshes/player.mesh_source", "format=GameEngine.MeshSource\n"
                                                       "mesh.vertex_count=24\n"
                                                       "mesh.index_count=36\n"
                                                       "mesh.has_normals=false\n"
                                                       "mesh.has_uvs=false\n"
                                                       "mesh.has_tangent_frame=false\n");
-    fs.write_text("source/audio/hit.audio_source", "format=GameEngine.AudioSource.v1\n"
+    fs.write_text("source/audio/hit.audio_source", "format=GameEngine.AudioSource\n"
                                                    "audio.sample_rate=48000\n"
                                                    "audio.channel_count=2\n"
                                                    "audio.frame_count=24000\n"
                                                    "audio.sample_format=pcm16\n");
-    fs.write_text("source/scenes/level.scene", "format=GameEngine.Scene.v1\n"
+    fs.write_text("source/scenes/level.scene", "format=GameEngine.Scene\n"
                                                "scene.name=Level\n"
                                                "node.count=1\n"
                                                "node.1.name=Root\n"
@@ -2567,18 +2566,18 @@ MK_TEST("asset import executor writes cooked artifacts through filesystem") {
     MK_REQUIRE(fs.exists("assets/meshes/player.mesh"));
     MK_REQUIRE(fs.exists("assets/scenes/level.scene"));
     MK_REQUIRE(fs.exists("assets/textures/player_albedo.texture"));
-    MK_REQUIRE(fs.read_text("assets/materials/player.material").find("format=GameEngine.Material.v1\n") == 0);
-    MK_REQUIRE(fs.read_text("assets/textures/player_albedo.texture").find("format=GameEngine.CookedTexture.v1\n") == 0);
+    MK_REQUIRE(fs.read_text("assets/materials/player.material").find("format=GameEngine.Material\n") == 0);
+    MK_REQUIRE(fs.read_text("assets/textures/player_albedo.texture").find("format=GameEngine.CookedTexture\n") == 0);
     MK_REQUIRE(fs.read_text("assets/textures/player_albedo.texture").find("texture.width=4\n") != std::string::npos);
     MK_REQUIRE(fs.read_text("assets/textures/player_albedo.texture").find("texture.source_bytes=32\n") !=
                std::string::npos);
-    MK_REQUIRE(fs.read_text("assets/meshes/player.mesh").find("format=GameEngine.CookedMesh.v2\n") == 0);
+    MK_REQUIRE(fs.read_text("assets/meshes/player.mesh").find("format=GameEngine.CookedMesh\n") == 0);
     MK_REQUIRE(fs.read_text("assets/meshes/player.mesh").find("mesh.vertex_count=24\n") != std::string::npos);
     MK_REQUIRE(fs.read_text("assets/meshes/player.mesh").find("mesh.has_normals=false\n") != std::string::npos);
-    MK_REQUIRE(fs.read_text("assets/audio/hit.audio").find("format=GameEngine.CookedAudio.v1\n") == 0);
+    MK_REQUIRE(fs.read_text("assets/audio/hit.audio").find("format=GameEngine.CookedAudio\n") == 0);
     MK_REQUIRE(fs.read_text("assets/audio/hit.audio").find("audio.frame_count=24000\n") != std::string::npos);
     MK_REQUIRE(fs.read_text("assets/audio/hit.audio").find("audio.source_bytes=96000\n") != std::string::npos);
-    MK_REQUIRE(fs.read_text("assets/scenes/level.scene").find("format=GameEngine.Scene.v1\n") == 0);
+    MK_REQUIRE(fs.read_text("assets/scenes/level.scene").find("format=GameEngine.Scene\n") == 0);
     MK_REQUIRE(fs.read_text("assets/scenes/level.scene").find("scene.name=Level\n") != std::string::npos);
 }
 
@@ -3144,7 +3143,7 @@ MK_TEST("packed runtime UI atlas authoring maps decoded images into texture page
     MK_REQUIRE(result.atlas_texture.pixel_format == mirakana::TextureSourcePixelFormat::rgba8_unorm);
     MK_REQUIRE(result.atlas_texture.bytes ==
                std::vector<std::uint8_t>({0xFF, 0x00, 0x00, 0xFF, 0x00, 0x00, 0xFF, 0xFF}));
-    MK_REQUIRE(result.atlas_texture_content.find("format=GameEngine.CookedTexture.v1\n") == 0);
+    MK_REQUIRE(result.atlas_texture_content.find("format=GameEngine.CookedTexture\n") == 0);
     MK_REQUIRE(result.atlas_texture_content.find("texture.width=2\n") != std::string::npos);
     MK_REQUIRE(result.atlas_texture_content.find("texture.height=1\n") != std::string::npos);
     MK_REQUIRE(result.atlas_texture_content.find("texture.data_hex=ff0000ff0000ffff\n") != std::string::npos);
@@ -3315,7 +3314,7 @@ MK_TEST("sprite atlas source authoring packs deterministic texture source and re
     MK_REQUIRE(plan.atlas_texture.height == 1);
     MK_REQUIRE(plan.atlas_texture.pixel_format == mirakana::TextureSourcePixelFormat::rgba8_unorm);
     MK_REQUIRE(plan.atlas_texture.bytes == std::vector<std::uint8_t>({0xFF, 0x00, 0x00, 0xFF, 0x00, 0x00, 0xFF, 0xFF}));
-    MK_REQUIRE(plan.atlas_texture_content.contains("format=GameEngine.TextureSource.v1\n"));
+    MK_REQUIRE(plan.atlas_texture_content.contains("format=GameEngine.TextureSource\n"));
     MK_REQUIRE(plan.atlas_texture_content.contains("texture.data_hex=ff0000ff0000ffff\n"));
 
     MK_REQUIRE(plan.frame_rows.size() == 2);
@@ -3339,7 +3338,7 @@ MK_TEST("sprite atlas source authoring packs deterministic texture source and re
 
     MK_REQUIRE(plan.changed_files.size() == 2);
     MK_REQUIRE(plan.changed_files[0].path == desc.atlas_source_path);
-    MK_REQUIRE(plan.changed_files[0].document_kind == "GameEngine.TextureSource.v1");
+    MK_REQUIRE(plan.changed_files[0].document_kind == "GameEngine.TextureSource");
     MK_REQUIRE(plan.changed_files[1].path == desc.source_registry_path);
     MK_REQUIRE(plan.changed_files[1].document_kind == mirakana::source_asset_registry_format_v1());
 }
@@ -3531,7 +3530,7 @@ MK_TEST("packed runtime UI glyph atlas authoring maps rasterized glyphs into tex
     MK_REQUIRE(result.atlas_texture.pixel_format == mirakana::TextureSourcePixelFormat::rgba8_unorm);
     MK_REQUIRE(result.atlas_texture.bytes ==
                std::vector<std::uint8_t>({0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0xFF, 0xFF}));
-    MK_REQUIRE(result.atlas_texture_content.find("format=GameEngine.CookedTexture.v1\n") == 0);
+    MK_REQUIRE(result.atlas_texture_content.find("format=GameEngine.CookedTexture\n") == 0);
     MK_REQUIRE(result.atlas_texture_content.find("texture.width=2\n") != std::string::npos);
     MK_REQUIRE(result.atlas_texture_content.find("texture.height=1\n") != std::string::npos);
     MK_REQUIRE(result.atlas_texture_content.find("texture.data_hex=ffffffff0000ffff\n") != std::string::npos);
@@ -3954,7 +3953,7 @@ MK_TEST("scene prefab authoring refreshes prefab instances through reviewed appl
     MK_REQUIRE(applied.succeeded());
     MK_REQUIRE(applied.changed_files.size() == 1);
     MK_REQUIRE(applied.changed_files[0].path == refresh.scene_path);
-    MK_REQUIRE(applied.changed_files[0].document_kind == "GameEngine.Scene.v2");
+    MK_REQUIRE(applied.changed_files[0].document_kind == "GameEngine.Scene");
     MK_REQUIRE(applied.changed_files[0].content_hash == mirakana::hash_asset_cooked_content(applied.scene_content));
     MK_REQUIRE(applied.model_mutations.size() == 1);
     MK_REQUIRE(applied.model_mutations[0].kind == "refresh_prefab_instance");
@@ -4027,7 +4026,7 @@ MK_TEST("scene prefab authoring rejects unsafe paths unsupported payloads stale 
     stale_prefab.prefab_path = "source/prefabs/stale.prefab";
     stale_prefab.instance_id_prefix = "inst/stale/";
     stale_prefab.instance_name_prefix = "Stale ";
-    stale_prefab.prefab_content = "format=GameEngine.Prefab.v2\n"
+    stale_prefab.prefab_content = "format=GameEngine.Prefab\n"
                                   "prefab.name=Stale\n"
                                   "scene.name=Stale Scene\n"
                                   "component.0.id=component/stale/mesh\n"
@@ -4065,17 +4064,17 @@ MK_TEST("source asset registration dry-runs registry and import metadata changes
     mirakana::SourceAssetRegistrationRequest request;
     request.kind = mirakana::SourceAssetRegistrationCommandKind::register_source_asset;
     request.source_registry_path = "source/assets/game.geassets";
-    request.source_registry_content = "format=GameEngine.SourceAssetRegistry.v1\n"
+    request.source_registry_content = "format=GameEngine.SourceAssetRegistry\n"
                                       "asset.0.key=assets/materials/base\n"
                                       "asset.0.id=4082249533130855295\n"
                                       "asset.0.kind=material\n"
                                       "asset.0.source=source/materials/base.material\n"
-                                      "asset.0.source_format=GameEngine.Material.v1\n"
+                                      "asset.0.source_format=GameEngine.Material\n"
                                       "asset.0.imported=intermediate/imported/materials/base.material\n";
     request.asset_key = mirakana::AssetKeyV2{"assets/textures/hero"};
     request.asset_kind = mirakana::AssetKind::texture;
     request.source_path = "source/textures/hero.getexture";
-    request.source_format = "GameEngine.TextureSource.v1";
+    request.source_format = "GameEngine.TextureSource";
     request.imported_path = "intermediate/imported/textures/hero.texture";
 
     const auto planned = mirakana::plan_source_asset_registration(request);
@@ -4083,14 +4082,14 @@ MK_TEST("source asset registration dry-runs registry and import metadata changes
     MK_REQUIRE(planned.succeeded());
     MK_REQUIRE(planned.changed_files.size() == 1);
     MK_REQUIRE(planned.changed_files[0].path == request.source_registry_path);
-    MK_REQUIRE(planned.changed_files[0].document_kind == "GameEngine.SourceAssetRegistry.v1");
+    MK_REQUIRE(planned.changed_files[0].document_kind == "GameEngine.SourceAssetRegistry");
     MK_REQUIRE(planned.changed_files[0].content == planned.source_registry_content);
     MK_REQUIRE(planned.changed_files[0].content_hash ==
                mirakana::hash_asset_cooked_content(planned.source_registry_content));
     MK_REQUIRE(text_contains(planned.source_registry_content, "asset.1.key=assets/textures/hero\n"));
     MK_REQUIRE(text_contains(planned.source_registry_content, "asset.1.kind=texture\n"));
     MK_REQUIRE(text_contains(planned.source_registry_content, "asset.1.source=source/textures/hero.getexture\n"));
-    MK_REQUIRE(text_contains(planned.source_registry_content, "asset.1.source_format=GameEngine.TextureSource.v1\n"));
+    MK_REQUIRE(text_contains(planned.source_registry_content, "asset.1.source_format=GameEngine.TextureSource\n"));
     MK_REQUIRE(text_contains(planned.source_registry_content,
                              "asset.1.imported=intermediate/imported/textures/hero.texture\n"));
     MK_REQUIRE(planned.asset_identity_projection.assets.size() == 2);
@@ -4104,12 +4103,12 @@ MK_TEST("source asset registration dry-runs registry and import metadata changes
 
 MK_TEST("source asset registration apply writes only validated deterministic registry changes") {
     mirakana::MemoryFileSystem fs;
-    fs.write_text("source/assets/game.geassets", "format=GameEngine.SourceAssetRegistry.v1\n"
+    fs.write_text("source/assets/game.geassets", "format=GameEngine.SourceAssetRegistry\n"
                                                  "asset.0.key=assets/materials/base\n"
                                                  "asset.0.id=4082249533130855295\n"
                                                  "asset.0.kind=material\n"
                                                  "asset.0.source=source/materials/base.material\n"
-                                                 "asset.0.source_format=GameEngine.Material.v1\n"
+                                                 "asset.0.source_format=GameEngine.Material\n"
                                                  "asset.0.imported=intermediate/imported/materials/base.material\n");
 
     mirakana::SourceAssetRegistrationRequest request;
@@ -4118,7 +4117,7 @@ MK_TEST("source asset registration apply writes only validated deterministic reg
     request.asset_key = mirakana::AssetKeyV2{"assets/audio/theme"};
     request.asset_kind = mirakana::AssetKind::audio;
     request.source_path = "source/audio/theme.geaudio";
-    request.source_format = "GameEngine.AudioSource.v1";
+    request.source_format = "GameEngine.AudioSource";
     request.imported_path = "intermediate/imported/audio/theme.audio";
 
     const auto applied = mirakana::apply_source_asset_registration(fs, request);
@@ -4152,7 +4151,7 @@ MK_TEST("source asset registration rejects unsafe paths unsupported formats exte
     unsafe.asset_key = mirakana::AssetKeyV2{"assets/textures/hero"};
     unsafe.asset_kind = mirakana::AssetKind::texture;
     unsafe.source_path = "source/textures/hero.getexture";
-    unsafe.source_format = "GameEngine.TextureSource.v1";
+    unsafe.source_format = "GameEngine.TextureSource";
     unsafe.imported_path = "intermediate/imported/textures/hero.texture";
 
     const auto unsafe_result = mirakana::plan_source_asset_registration(unsafe);
@@ -4182,7 +4181,7 @@ MK_TEST("source asset registration rejects unsafe paths unsupported formats exte
     MK_REQUIRE(failures_contain(format_result.diagnostics, "unsupported source format"));
 
     auto external_claim = unsupported_format;
-    external_claim.source_format = "GameEngine.TextureSource.v1";
+    external_claim.source_format = "GameEngine.TextureSource";
     external_claim.external_importer = "ready";
     const auto external_result = mirakana::plan_source_asset_registration(external_claim);
     MK_REQUIRE(!external_result.succeeded());
@@ -4197,7 +4196,7 @@ MK_TEST("source asset registration rejects unsafe paths unsupported formats exte
     MK_REQUIRE(failures_contain(free_form_result.diagnostics, "free-form edits are not supported"));
 
     auto package_claim = unsupported_format;
-    package_claim.source_format = "GameEngine.TextureSource.v1";
+    package_claim.source_format = "GameEngine.TextureSource";
     package_claim.package_cooking = "ready";
     package_claim.renderer_rhi_residency = "ready";
     package_claim.package_streaming = "ready";
@@ -4281,8 +4280,8 @@ MK_TEST("placeholder asset bundle plans deterministic legal source documents and
     MK_REQUIRE(mesh_file != nullptr);
     MK_REQUIRE(material_file != nullptr);
     MK_REQUIRE(audio_file != nullptr);
-    MK_REQUIRE(texture_file->document_kind == "GameEngine.TextureSource.v1");
-    MK_REQUIRE(material_file->document_kind == "GameEngine.Material.v1");
+    MK_REQUIRE(texture_file->document_kind == "GameEngine.TextureSource");
+    MK_REQUIRE(material_file->document_kind == "GameEngine.Material");
 
     const auto texture = mirakana::deserialize_texture_source_document(texture_file->content);
     const auto mesh = mirakana::deserialize_mesh_source_document(mesh_file->content);
@@ -4396,9 +4395,9 @@ MK_TEST("placeholder asset cook package routes generated source documents throug
     MK_REQUIRE(material_file != nullptr);
     MK_REQUIRE(texture_file != nullptr);
     MK_REQUIRE(package_index_file != nullptr);
-    MK_REQUIRE(material_file->document_kind == "GameEngine.Material.v1");
-    MK_REQUIRE(texture_file->document_kind == "GameEngine.CookedTexture.v1");
-    MK_REQUIRE(package_index_file->document_kind == "GameEngine.CookedPackageIndex.v1");
+    MK_REQUIRE(material_file->document_kind == "GameEngine.Material");
+    MK_REQUIRE(texture_file->document_kind == "GameEngine.CookedTexture");
+    MK_REQUIRE(package_index_file->document_kind == "GameEngine.CookedPackageIndex");
     MK_REQUIRE(package_index_file->content == plan.package_plan.package_index_content);
 
     const auto index = mirakana::deserialize_asset_cooked_package_index(plan.package_plan.package_index_content);
@@ -4499,7 +4498,7 @@ MK_TEST("source asset registration validates dependency targets and canonical dr
         .key = mirakana::AssetKeyV2{"assets/meshes/cube"},
         .kind = mirakana::AssetKind::mesh,
         .source_path = "source/meshes/cube.gemesh",
-        .source_format = "GameEngine.MeshSource.v2",
+        .source_format = "GameEngine.MeshSource",
         .imported_path = "intermediate/imported/meshes/cube.mesh",
         .dependencies = {},
     });
@@ -4507,7 +4506,7 @@ MK_TEST("source asset registration validates dependency targets and canonical dr
         .key = mirakana::AssetKeyV2{"assets/materials/hero"},
         .kind = mirakana::AssetKind::material,
         .source_path = "source/materials/hero.material",
-        .source_format = "GameEngine.Material.v1",
+        .source_format = "GameEngine.Material",
         .imported_path = "intermediate/imported/materials/hero.material",
         .dependencies = {},
     });
@@ -4515,7 +4514,7 @@ MK_TEST("source asset registration validates dependency targets and canonical dr
         .key = mirakana::AssetKeyV2{"assets/textures/hero"},
         .kind = mirakana::AssetKind::texture,
         .source_path = "source/textures/hero.getexture",
-        .source_format = "GameEngine.TextureSource.v1",
+        .source_format = "GameEngine.TextureSource",
         .imported_path = "intermediate/imported/textures/hero.texture",
         .dependencies = {},
     });
@@ -4527,7 +4526,7 @@ MK_TEST("source asset registration validates dependency targets and canonical dr
     scene_request.asset_key = mirakana::AssetKeyV2{"assets/scenes/level"};
     scene_request.asset_kind = mirakana::AssetKind::scene;
     scene_request.source_path = "source/scenes/level.scene";
-    scene_request.source_format = "GameEngine.Scene.v1";
+    scene_request.source_format = "GameEngine.Scene";
     scene_request.imported_path = "intermediate/imported/scenes/level.scene";
     scene_request.dependency_rows = {
         mirakana::SourceAssetDependencyRowV1{.kind = mirakana::AssetDependencyKind::scene_sprite,
@@ -4573,7 +4572,7 @@ MK_TEST("source asset registration validates dependency targets and canonical dr
     wrong_kind.asset_key = mirakana::AssetKeyV2{"assets/materials/broken"};
     wrong_kind.asset_kind = mirakana::AssetKind::material;
     wrong_kind.source_path = "source/materials/broken.material";
-    wrong_kind.source_format = "GameEngine.Material.v1";
+    wrong_kind.source_format = "GameEngine.Material";
     wrong_kind.imported_path = "intermediate/imported/materials/broken.material";
     wrong_kind.dependency_rows = {
         mirakana::SourceAssetDependencyRowV1{.kind = mirakana::AssetDependencyKind::material_texture,
@@ -5122,16 +5121,16 @@ MK_TEST("registered source asset cook package dry-runs selected rows into cooked
     MK_REQUIRE(result.succeeded());
     MK_REQUIRE(result.changed_files.size() == 3);
     MK_REQUIRE(result.changed_files[0].path == "runtime/assets/materials/hero.material");
-    MK_REQUIRE(result.changed_files[0].document_kind == "GameEngine.Material.v1");
+    MK_REQUIRE(result.changed_files[0].document_kind == "GameEngine.Material");
     MK_REQUIRE(result.changed_files[0].content == registered_cook_material_source_content());
     MK_REQUIRE(result.changed_files[0].content_hash ==
                mirakana::hash_asset_cooked_content(result.changed_files[0].content));
     MK_REQUIRE(result.changed_files[1].path == "runtime/assets/textures/hero.texture");
-    MK_REQUIRE(result.changed_files[1].document_kind == "GameEngine.CookedTexture.v1");
-    MK_REQUIRE(text_contains(result.changed_files[1].content, "format=GameEngine.CookedTexture.v1\n"));
+    MK_REQUIRE(result.changed_files[1].document_kind == "GameEngine.CookedTexture");
+    MK_REQUIRE(text_contains(result.changed_files[1].content, "format=GameEngine.CookedTexture\n"));
     MK_REQUIRE(text_contains(result.changed_files[1].content, "texture.width=4\n"));
     MK_REQUIRE(result.changed_files[2].path == request.package_index_path);
-    MK_REQUIRE(result.changed_files[2].document_kind == "GameEngine.CookedPackageIndex.v1");
+    MK_REQUIRE(result.changed_files[2].document_kind == "GameEngine.CookedPackageIndex");
     MK_REQUIRE(result.changed_files[2].content == result.package_index_content);
 
     MK_REQUIRE(result.model_mutations.size() == 2);
@@ -5208,7 +5207,7 @@ MK_TEST("registered source asset cook package rejects missing rows unsupported f
     MK_REQUIRE(failures_contain(missing_result.diagnostics, "source asset key is missing"));
 
     auto unsupported_format = make_registered_cook_request();
-    const auto format_needle = std::string{"asset.2.source_format=GameEngine.TextureSource.v1\n"};
+    const auto format_needle = std::string{"asset.2.source_format=GameEngine.TextureSource\n"};
     const auto format_pos = unsupported_format.source_registry_content.find(format_needle);
     MK_REQUIRE(format_pos != std::string::npos);
     unsupported_format.source_registry_content.replace(format_pos, format_needle.size(),
@@ -5280,7 +5279,7 @@ MK_TEST("registered source asset cook package rejects malformed payloads and pac
     malformed.source_files = {
         mirakana::RegisteredSourceAssetCookPackageSourceFile{
             .path = "source/textures/hero.texture_source",
-            .content = "format=GameEngine.TextureSource.v1\ntexture.width=bad\n"},
+            .content = "format=GameEngine.TextureSource\ntexture.width=bad\n"},
     };
     const auto malformed_result = mirakana::plan_registered_source_asset_cook_package(malformed);
     MK_REQUIRE(!malformed_result.succeeded());
@@ -5416,17 +5415,17 @@ MK_TEST("scene prefab authoring commands feed registered cook migration and runt
         return mirakana::apply_source_asset_registration(fs, request);
     };
 
-    const auto texture_registered = register_source(
-        mirakana::AssetKeyV2{"assets/textures/hero"}, mirakana::AssetKind::texture,
-        "source/textures/hero.texture_source", "GameEngine.TextureSource.v1", "runtime/assets/textures/hero.texture");
+    const auto texture_registered = register_source(mirakana::AssetKeyV2{"assets/textures/hero"},
+                                                    mirakana::AssetKind::texture, "source/textures/hero.texture_source",
+                                                    "GameEngine.TextureSource", "runtime/assets/textures/hero.texture");
     MK_REQUIRE(texture_registered.succeeded());
-    const auto mesh_registered = register_source(mirakana::AssetKeyV2{"assets/meshes/cube"}, mirakana::AssetKind::mesh,
-                                                 "source/meshes/cube.mesh_source", "GameEngine.MeshSource.v2",
-                                                 "runtime/assets/meshes/cube.mesh");
+    const auto mesh_registered =
+        register_source(mirakana::AssetKeyV2{"assets/meshes/cube"}, mirakana::AssetKind::mesh,
+                        "source/meshes/cube.mesh_source", "GameEngine.MeshSource", "runtime/assets/meshes/cube.mesh");
     MK_REQUIRE(mesh_registered.succeeded());
     const auto material_registered = register_source(
         mirakana::AssetKeyV2{"assets/materials/hero"}, mirakana::AssetKind::material, "source/materials/hero.material",
-        "GameEngine.Material.v1", "runtime/assets/materials/hero.material",
+        "GameEngine.Material", "runtime/assets/materials/hero.material",
         {mirakana::SourceAssetDependencyRowV1{.kind = mirakana::AssetDependencyKind::material_texture,
                                               .key = mirakana::AssetKeyV2{"assets/textures/hero"}}});
     MK_REQUIRE(material_registered.succeeded());
@@ -5763,7 +5762,7 @@ MK_TEST("runtime scene package validation reports scene row and payload failures
         mirakana::MemoryFileSystem fs;
         RuntimeScenePackageValidationFixture fixture;
         write_runtime_scene_validation_fixture(fs, fixture, {},
-                                               "format=GameEngine.Scene.v1\nscene.name=Broken\nnode.count=1\n");
+                                               "format=GameEngine.Scene\nscene.name=Broken\nnode.count=1\n");
 
         const auto result = mirakana::execute_runtime_scene_package_validation(fs, fixture.request);
 
@@ -5846,14 +5845,14 @@ MK_TEST("scene v2 runtime package migration dry-runs scene and package index cha
                mirakana::serialize_scene(mirakana::deserialize_scene(result.scene_v1_content)));
     MK_REQUIRE(result.changed_files.size() == 2);
     MK_REQUIRE(result.changed_files[0].path == request.output_scene_path);
-    MK_REQUIRE(result.changed_files[0].document_kind == "GameEngine.Scene.v1");
+    MK_REQUIRE(result.changed_files[0].document_kind == "GameEngine.Scene");
     MK_REQUIRE(result.changed_files[0].content == result.scene_v1_content);
     MK_REQUIRE(result.changed_files[0].content_hash == mirakana::hash_asset_cooked_content(result.scene_v1_content));
     MK_REQUIRE(result.changed_files[1].path == request.package_index_path);
-    MK_REQUIRE(result.changed_files[1].document_kind == "GameEngine.CookedPackageIndex.v1");
+    MK_REQUIRE(result.changed_files[1].document_kind == "GameEngine.CookedPackageIndex");
     MK_REQUIRE(result.changed_files[1].content == result.package_index_content);
 
-    MK_REQUIRE(text_contains(result.scene_v1_content, "format=GameEngine.Scene.v1\n"));
+    MK_REQUIRE(text_contains(result.scene_v1_content, "format=GameEngine.Scene\n"));
     MK_REQUIRE(text_contains(result.scene_v1_content, "scene.name=Migrated Level\n"));
     MK_REQUIRE(text_contains(result.scene_v1_content, "node.count=2\n"));
     MK_REQUIRE(text_contains(result.scene_v1_content, "node.2.parent=1\n"));
@@ -5979,7 +5978,7 @@ MK_TEST("scene v2 runtime package migration rejects source asset row and compone
         if (row.key.value == "assets/textures/hero") {
             row.kind = mirakana::AssetKind::material;
             row.source_path = "source/materials/hero.material";
-            row.source_format = "GameEngine.Material.v1";
+            row.source_format = "GameEngine.Material";
             row.imported_path = "runtime/assets/materials/hero.material";
         }
     }
@@ -6357,7 +6356,7 @@ MK_TEST("material graph package tooling rejects inconsistent rows and unsupporte
     MK_REQUIRE(failures_contain(zero_revision.failures, "source revision must be non-zero"));
 
     update = make_material_graph_package_update_desc();
-    update.material_graph_content = "format=GameEngine.MaterialGraph.v1\n";
+    update.material_graph_content = "format=GameEngine.MaterialGraph\n";
     const auto malformed = mirakana::plan_material_graph_package_update(update);
     MK_REQUIRE(!malformed.succeeded());
     MK_REQUIRE(failures_contain(malformed.failures, "material graph is invalid"));
@@ -6720,11 +6719,11 @@ MK_TEST("asset package assembly builds runtime-loadable index from imported scen
     const auto material_id = mirakana::AssetId::from_name("materials/package.material");
     const auto scene_id = mirakana::AssetId::from_name("scenes/package.scene");
 
-    fs.write_text("source/textures/package.texture_source", "format=GameEngine.TextureSource.v1\n"
+    fs.write_text("source/textures/package.texture_source", "format=GameEngine.TextureSource\n"
                                                             "texture.width=1\n"
                                                             "texture.height=1\n"
                                                             "texture.pixel_format=rgba8_unorm\n");
-    fs.write_text("source/meshes/package.mesh_source", "format=GameEngine.MeshSource.v2\n"
+    fs.write_text("source/meshes/package.mesh_source", "format=GameEngine.MeshSource\n"
                                                        "mesh.vertex_count=3\n"
                                                        "mesh.index_count=3\n"
                                                        "mesh.has_normals=false\n"
@@ -6742,7 +6741,7 @@ MK_TEST("asset package assembly builds runtime-loadable index from imported scen
                       .double_sided = false,
                   }));
     fs.write_text("source/scenes/package.scene",
-                  "format=GameEngine.Scene.v1\n"
+                  "format=GameEngine.Scene\n"
                   "scene.name=Packaged\n"
                   "node.count=1\n"
                   "node.1.name=Root\n"
@@ -6868,7 +6867,7 @@ MK_TEST("asset package assembly rejects failed imports missing artifacts duplica
     MK_REQUIRE(found_missing_artifact);
 
     fs.write_text("assets/textures/package_missing.texture",
-                  "format=GameEngine.CookedTexture.v1\n"
+                  "format=GameEngine.CookedTexture\n"
                   "asset.id=" +
                       std::to_string(texture_id.value) +
                       "\nasset.kind=texture\n"
@@ -6929,7 +6928,7 @@ MK_TEST("asset package assembly rejects incomplete imports and missing declared 
     const auto audio_id = mirakana::AssetId::from_name("audio/package_complete");
 
     fs.write_text("assets/textures/package_complete.texture",
-                  "format=GameEngine.CookedTexture.v1\n"
+                  "format=GameEngine.CookedTexture\n"
                   "asset.id=" +
                       std::to_string(texture_id.value) +
                       "\nasset.kind=texture\n"
@@ -7046,11 +7045,11 @@ MK_TEST("asset import executor rejects malformed scene sources without artifacts
     const auto mesh_id = mirakana::AssetId::from_name("meshes/rollback");
     const auto material_id = mirakana::AssetId::from_name("materials/rollback");
     const auto scene_id = mirakana::AssetId::from_name("scenes/broken");
-    fs.write_text("source/textures/rollback.texture_source", "format=GameEngine.TextureSource.v1\n"
+    fs.write_text("source/textures/rollback.texture_source", "format=GameEngine.TextureSource\n"
                                                              "texture.width=1\n"
                                                              "texture.height=1\n"
                                                              "texture.pixel_format=rgba8_unorm\n");
-    fs.write_text("source/meshes/rollback.mesh_source", "format=GameEngine.MeshSource.v2\n"
+    fs.write_text("source/meshes/rollback.mesh_source", "format=GameEngine.MeshSource\n"
                                                         "mesh.vertex_count=3\n"
                                                         "mesh.index_count=3\n"
                                                         "mesh.has_normals=false\n"
@@ -7067,7 +7066,7 @@ MK_TEST("asset import executor rejects malformed scene sources without artifacts
                           .slot = mirakana::MaterialTextureSlot::base_color, .texture = texture_id}},
                       .double_sided = false,
                   }));
-    fs.write_text("source/scenes/broken.scene", "format=GameEngine.Scene.v1\n"
+    fs.write_text("source/scenes/broken.scene", "format=GameEngine.Scene\n"
                                                 "scene.name=Broken\n"
                                                 "node.count=1\n"
                                                 "node.1.name=Root\n"
@@ -7124,13 +7123,13 @@ MK_TEST("asset import executor preserves first-party source byte payloads") {
     const auto mesh_id = mirakana::AssetId::from_name("meshes/test_triangle");
     const auto audio_id = mirakana::AssetId::from_name("audio/test_click");
 
-    fs.write_text("source/textures/test.texture_source", "format=GameEngine.TextureSource.v1\n"
+    fs.write_text("source/textures/test.texture_source", "format=GameEngine.TextureSource\n"
                                                          "texture.width=2\n"
                                                          "texture.height=1\n"
                                                          "texture.pixel_format=rgba8_unorm\n"
                                                          "texture.data_hex=0001020304050607\n");
     fs.write_text("source/meshes/test.mesh_source",
-                  "format=GameEngine.MeshSource.v2\n"
+                  "format=GameEngine.MeshSource\n"
                   "mesh.vertex_count=3\n"
                   "mesh.index_count=3\n"
                   "mesh.has_normals=false\n"
@@ -7139,7 +7138,7 @@ MK_TEST("asset import executor preserves first-party source byte payloads") {
                   "mesh.vertex_data_hex="
                   "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f20212223\n"
                   "mesh.index_data_hex=000000000100000002000000\n");
-    fs.write_text("source/audio/test.audio_source", "format=GameEngine.AudioSource.v1\n"
+    fs.write_text("source/audio/test.audio_source", "format=GameEngine.AudioSource\n"
                                                     "audio.sample_rate=48000\n"
                                                     "audio.channel_count=2\n"
                                                     "audio.frame_count=1\n"
@@ -7188,12 +7187,12 @@ MK_TEST("asset import executor rejects invalid first-party byte payloads without
     const auto texture_id = mirakana::AssetId::from_name("textures/bad_pixels");
     const auto audio_id = mirakana::AssetId::from_name("audio/bad_samples");
 
-    fs.write_text("source/textures/bad.texture_source", "format=GameEngine.TextureSource.v1\n"
+    fs.write_text("source/textures/bad.texture_source", "format=GameEngine.TextureSource\n"
                                                         "texture.width=2\n"
                                                         "texture.height=1\n"
                                                         "texture.pixel_format=rgba8_unorm\n"
                                                         "texture.data_hex=00010203\n");
-    fs.write_text("source/audio/bad.audio_source", "format=GameEngine.AudioSource.v1\n"
+    fs.write_text("source/audio/bad.audio_source", "format=GameEngine.AudioSource\n"
                                                    "audio.sample_rate=48000\n"
                                                    "audio.channel_count=2\n"
                                                    "audio.frame_count=1\n"
@@ -7767,7 +7766,7 @@ MK_TEST("asset import executor reports missing source without partial success") 
 MK_TEST("asset runtime recook execution stages imported artifacts for safe replacement") {
     mirakana::MemoryFileSystem fs;
     const auto texture_id = mirakana::AssetId::from_name("textures/player.albedo");
-    fs.write_text("source/textures/player_albedo.texture_source", "format=GameEngine.TextureSource.v1\n"
+    fs.write_text("source/textures/player_albedo.texture_source", "format=GameEngine.TextureSource\n"
                                                                   "texture.width=8\n"
                                                                   "texture.height=4\n"
                                                                   "texture.pixel_format=rgba8_unorm\n");
@@ -7822,7 +7821,7 @@ MK_TEST("asset runtime recook execution rolls back every requested asset on tran
     mirakana::MemoryFileSystem fs;
     const auto texture_id = mirakana::AssetId::from_name("textures/player.albedo");
     const auto mesh_id = mirakana::AssetId::from_name("meshes/player");
-    fs.write_text("source/textures/player_albedo.texture_source", "format=GameEngine.TextureSource.v1\n"
+    fs.write_text("source/textures/player_albedo.texture_source", "format=GameEngine.TextureSource\n"
                                                                   "texture.width=8\n"
                                                                   "texture.height=4\n"
                                                                   "texture.pixel_format=rgba8_unorm\n");
@@ -8718,7 +8717,7 @@ MK_TEST("gltf node transform animation imports as cooked quaternion clip and sam
         mirakana::execute_asset_import_plan(fs, cook_plan, mirakana::AssetImportExecutionOptions{});
     MK_REQUIRE(cook_result.succeeded());
     const auto cooked = fs.read_text("runtime/assets/animation/node_transform.animation_quaternion_clip");
-    MK_REQUIRE(cooked.find("format=GameEngine.CookedAnimationQuaternionClip.v1") != std::string::npos);
+    MK_REQUIRE(cooked.find("format=GameEngine.CookedAnimationQuaternionClip") != std::string::npos);
     MK_REQUIRE(cooked.find("asset.kind=animation_quaternion_clip") != std::string::npos);
 
     mirakana::runtime::RuntimeAssetPackageLoadResult package;
@@ -8975,7 +8974,7 @@ MK_TEST("gltf node transform animation imports transform binding source rows") {
                mirakana::AnimationTransformBindingComponent::rotation_z);
 
     const auto serialized = mirakana::serialize_animation_transform_binding_source_document(imported.binding_source);
-    MK_REQUIRE(serialized.find("format=GameEngine.AnimationTransformBindingSource.v1\n") == 0);
+    MK_REQUIRE(serialized.find("format=GameEngine.AnimationTransformBindingSource\n") == 0);
     MK_REQUIRE(serialized.find("binding.count=7\n") != std::string::npos);
 }
 
@@ -9118,7 +9117,7 @@ MK_TEST("gltf morph mesh and weights animation import succeeds when importers ar
     const auto cook_result = mirakana::execute_asset_import_plan(fs, cook_plan, cook_adapters.options());
     MK_REQUIRE(cook_result.succeeded());
     const auto cooked = fs.read_text("runtime/assets/morph/morph_cook_tri.morph_mesh_cpu");
-    MK_REQUIRE(cooked.find("format=GameEngine.CookedMorphMeshCpu.v1") != std::string::npos);
+    MK_REQUIRE(cooked.find("format=GameEngine.CookedMorphMeshCpu") != std::string::npos);
     MK_REQUIRE(cooked.find("asset.kind=morph_mesh_cpu") != std::string::npos);
     MK_REQUIRE(cooked.find("morph.vertex_count=3") != std::string::npos);
     MK_REQUIRE(cooked.find("morph.target_count=1") != std::string::npos);
@@ -9299,7 +9298,7 @@ MK_TEST("animation float clip cook loads through runtime package") {
         mirakana::execute_asset_import_plan(fs, cook_plan, mirakana::AssetImportExecutionOptions{});
     MK_REQUIRE(cook_result.succeeded());
     const auto cooked = fs.read_text("runtime/assets/animation/demo.animation_float_clip");
-    MK_REQUIRE(cooked.find("format=GameEngine.CookedAnimationFloatClip.v1") != std::string::npos);
+    MK_REQUIRE(cooked.find("format=GameEngine.CookedAnimationFloatClip") != std::string::npos);
     MK_REQUIRE(cooked.find("asset.kind=animation_float_clip") != std::string::npos);
     MK_REQUIRE(cooked.find("clip.track_count=1") != std::string::npos);
 

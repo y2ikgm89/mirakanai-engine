@@ -1,4 +1,4 @@
-format=GameEngine.Scene.v2
+format=GameEngine.Scene
 scene.name=sample-generated-desktop-runtime-3d-package Generated 3D Scene
 node.0.id=node/packaged-mesh
 node.0.name=PackagedMesh

@@ -1,4 +1,4 @@
-format=GameEngine.CookedAnimationQuaternionClip.v1
+format=GameEngine.CookedAnimationQuaternionClip
 asset.id=5695298831954023444
 asset.kind=animation_quaternion_clip
 source.path=source/animations/packaged_pose.animation_quaternion_clip_source

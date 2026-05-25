@@ -95,7 +95,7 @@ namespace {
 }
 
 [[nodiscard]] std::string package_mesh_payload(mirakana::AssetId asset) {
-    return "format=GameEngine.CookedMesh.v2\n"
+    return "format=GameEngine.CookedMesh\n"
            "asset.id=" +
            std::to_string(asset.value) +
            "\n"
@@ -1962,7 +1962,7 @@ MK_TEST("scene renderer reports cyclic scene payloads during runtime scene insta
     const auto mesh = mirakana::AssetId::from_name("meshes/player");
     const auto material = mirakana::AssetId::from_name("materials/player");
     const auto scene_asset = mirakana::AssetId::from_name("scenes/cyclic");
-    const auto scene_payload = std::string{"format=GameEngine.Scene.v1\n"
+    const auto scene_payload = std::string{"format=GameEngine.Scene\n"
                                            "scene.name=Cyclic\n"
                                            "node.count=2\n"
                                            "node.1.name=A\n"
@@ -2084,7 +2084,7 @@ MK_TEST("scene renderer reports malformed runtime scene payloads before render s
             .content_hash = 1,
             .source_revision = 1,
             .dependencies = {},
-            .content = "format=GameEngine.Scene.v1\nscene.name=Broken\nnode.count=1\n",
+            .content = "format=GameEngine.Scene\nscene.name=Broken\nnode.count=1\n",
         },
     });
 

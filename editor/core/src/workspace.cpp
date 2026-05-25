@@ -55,10 +55,7 @@ PanelId panel_id_from_string(std::string_view token) {
 }
 
 int parse_workspace_format_version(std::string_view value) {
-    if (value == "GameEngine.Workspace.v0") {
-        return 0;
-    }
-    if (value == "GameEngine.Workspace.v1") {
+    if (value == "GameEngine.Workspace") {
         return 1;
     }
     throw std::invalid_argument("unsupported workspace format");
@@ -134,7 +131,7 @@ std::string_view panel_id_to_string(PanelId id) noexcept {
 
 std::string serialize_workspace(const Workspace& workspace) {
     std::ostringstream output;
-    output << "format=GameEngine.Workspace.v1\n";
+    output << "format=GameEngine.Workspace\n";
     output << "project.name=" << workspace.project().name << '\n';
     output << "project.root=" << workspace.project().root_path << '\n';
     for (const auto& panel : workspace.panels()) {

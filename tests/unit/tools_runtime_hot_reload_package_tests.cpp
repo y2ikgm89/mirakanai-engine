@@ -90,7 +90,7 @@ class TextureSourceExternalImporter final : public mirakana::IExternalAssetImpor
 };
 
 [[nodiscard]] std::string texture_source_document() {
-    return "format=GameEngine.TextureSource.v1\n"
+    return "format=GameEngine.TextureSource\n"
            "texture.width=8\n"
            "texture.height=4\n"
            "texture.pixel_format=rgba8_unorm\n";
@@ -98,7 +98,7 @@ class TextureSourceExternalImporter final : public mirakana::IExternalAssetImpor
 
 [[nodiscard]] std::string cooked_texture_document(mirakana::AssetId asset, std::string_view source_path) {
     std::ostringstream output;
-    output << "format=GameEngine.CookedTexture.v1\n";
+    output << "format=GameEngine.CookedTexture\n";
     output << "asset.id=" << asset.value << '\n';
     output << "asset.kind=texture\n";
     output << "source.path=" << source_path << '\n';

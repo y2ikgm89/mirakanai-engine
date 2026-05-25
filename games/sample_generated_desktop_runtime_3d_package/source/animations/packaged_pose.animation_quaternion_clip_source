@@ -1,4 +1,4 @@
-format=GameEngine.AnimationQuaternionClipSource.v1
+format=GameEngine.AnimationQuaternionClipSource
 clip.track_count=1
 clip.track.0.target=sample-generated-desktop-runtime-3d-package/pose/root
 clip.track.0.joint_index=0

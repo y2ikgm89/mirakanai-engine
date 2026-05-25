@@ -22,7 +22,7 @@
 namespace mirakana {
 namespace {
 
-constexpr std::string_view graph_format = "GameEngine.MaterialGraph.v1";
+constexpr std::string_view graph_format = "GameEngine.MaterialGraph";
 
 [[nodiscard]] bool valid_token(std::string_view value) noexcept {
     return !value.empty() && value.find('\n') == std::string_view::npos && value.find('\r') == std::string_view::npos;

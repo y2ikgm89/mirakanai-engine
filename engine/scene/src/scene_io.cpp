@@ -437,7 +437,7 @@ void assign_node_field(PendingNode& node, std::string_view field, std::string_vi
 void assign_scene_key(std::string_view key, std::string_view value, bool& has_format, bool& has_name, bool& has_count,
                       std::string& scene_name, std::vector<PendingNode>& nodes) {
     if (key == "format") {
-        if (value != "GameEngine.Scene.v1") {
+        if (value != "GameEngine.Scene") {
             throw std::invalid_argument("unsupported scene format");
         }
         has_format = true;
@@ -564,7 +564,7 @@ std::string serialize_scene(const Scene& scene) {
     validate_text_field(scene.name(), "scene name");
 
     std::ostringstream output;
-    output << "format=GameEngine.Scene.v1\n";
+    output << "format=GameEngine.Scene\n";
     output << "scene.name=" << scene.name() << '\n';
     output << "node.count=" << scene.nodes().size() << '\n';
 

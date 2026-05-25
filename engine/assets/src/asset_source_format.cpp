@@ -24,13 +24,13 @@
 namespace mirakana {
 namespace {
 
-constexpr std::string_view texture_source_format = "GameEngine.TextureSource.v1";
-constexpr std::string_view mesh_source_format = "GameEngine.MeshSource.v2";
-constexpr std::string_view audio_source_format = "GameEngine.AudioSource.v1";
-constexpr std::string_view morph_mesh_cpu_source_format = "GameEngine.MorphMeshCpuSource.v1";
-constexpr std::string_view animation_float_clip_source_format = "GameEngine.AnimationFloatClipSource.v1";
-constexpr std::string_view animation_quaternion_clip_source_format = "GameEngine.AnimationQuaternionClipSource.v1";
-constexpr std::string_view animation_transform_binding_source_format = "GameEngine.AnimationTransformBindingSource.v1";
+constexpr std::string_view texture_source_format = "GameEngine.TextureSource";
+constexpr std::string_view mesh_source_format = "GameEngine.MeshSource";
+constexpr std::string_view audio_source_format = "GameEngine.AudioSource";
+constexpr std::string_view morph_mesh_cpu_source_format = "GameEngine.MorphMeshCpuSource";
+constexpr std::string_view animation_float_clip_source_format = "GameEngine.AnimationFloatClipSource";
+constexpr std::string_view animation_quaternion_clip_source_format = "GameEngine.AnimationQuaternionClipSource";
+constexpr std::string_view animation_transform_binding_source_format = "GameEngine.AnimationTransformBindingSource";
 constexpr std::uint32_t max_morph_mesh_cpu_vertex_count = 1'000'000U;
 constexpr std::uint32_t max_morph_mesh_cpu_target_count = 4096U;
 constexpr std::uint32_t max_animation_float_clip_track_count = 4096U;

@@ -1,4 +1,4 @@
-format=GameEngine.PhysicsCollisionScene3D.v1
+format=GameEngine.PhysicsCollisionScene3D
 asset.id=10649012244701190341
 asset.kind=physics_collision_scene
 backend.native=unsupported

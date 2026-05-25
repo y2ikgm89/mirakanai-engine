@@ -316,7 +316,7 @@ MK_TEST("runtime package streaming candidate resident mount loads selected packa
     CountingFileSystem filesystem;
     const auto texture = mirakana::AssetId::from_name("textures/player/albedo");
     const auto material = mirakana::AssetId::from_name("materials/base");
-    const std::string payload = "format=GameEngine.CookedTexture.v1\ntexture.width=4\n";
+    const std::string payload = "format=GameEngine.CookedTexture\ntexture.width=4\n";
     write_package(filesystem, texture, mirakana::AssetKind::texture, "textures/player.texture", payload, 19);
     mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
     MK_REQUIRE(mount_set
@@ -1085,7 +1085,7 @@ MK_TEST("runtime package streaming resident replace commit preserves state on pr
 MK_TEST("runtime package streaming candidate resident replace loads selected package and preserves mount slot") {
     CountingFileSystem filesystem;
     const auto texture = mirakana::AssetId::from_name("textures/player/albedo");
-    const std::string payload = "format=GameEngine.CookedTexture.v1\ntexture.width=4\n";
+    const std::string payload = "format=GameEngine.CookedTexture\ntexture.width=4\n";
     write_package(filesystem, texture, mirakana::AssetKind::texture, "textures/player.texture", payload, 17);
     mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
     MK_REQUIRE(

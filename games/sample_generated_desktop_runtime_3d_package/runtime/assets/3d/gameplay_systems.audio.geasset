@@ -1,4 +1,4 @@
-format=GameEngine.CookedAudio.v1
+format=GameEngine.CookedAudio
 asset.id=11990366725617787177
 asset.kind=audio
 source.path=source/sample_generated_desktop_runtime_3d_package/gameplay_systems.audio

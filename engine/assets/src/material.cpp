@@ -18,8 +18,8 @@
 namespace mirakana {
 namespace {
 
-constexpr std::string_view material_format = "GameEngine.Material.v1";
-constexpr std::string_view material_instance_format = "GameEngine.MaterialInstance.v1";
+constexpr std::string_view material_format = "GameEngine.Material";
+constexpr std::string_view material_instance_format = "GameEngine.MaterialInstance";
 
 [[nodiscard]] bool valid_token(std::string_view value) noexcept {
     return !value.empty() && value.find('\n') == std::string_view::npos && value.find('\r') == std::string_view::npos;

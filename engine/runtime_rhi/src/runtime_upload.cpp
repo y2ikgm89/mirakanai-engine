@@ -2215,7 +2215,7 @@ RuntimeMeshVertexLayoutDesc make_runtime_mesh_vertex_layout_desc(const runtime::
     }
     if (payload.has_normals || payload.has_uvs) {
         return mesh_layout_failure(
-            "runtime mesh payload must not set normals or uvs without tangent_frame (use GameEngine.CookedMesh.v2 "
+            "runtime mesh payload must not set normals or uvs without tangent_frame (use GameEngine.CookedMesh "
             "tangent-space layout)");
     }
     return RuntimeMeshVertexLayoutDesc{

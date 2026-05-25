@@ -360,7 +360,7 @@ void validate_authoring_desc(std::vector<PhysicsCollisionPackageDiagnostic>& dia
 
 [[nodiscard]] std::string make_collision_payload(const PhysicsCollisionPackageAuthoringDesc& desc) {
     std::ostringstream output;
-    output << "format=GameEngine.PhysicsCollisionScene3D.v1\n";
+    output << "format=GameEngine.PhysicsCollisionScene3D\n";
     output << "asset.id=" << desc.collision_asset.value << '\n';
     output << "asset.kind=physics_collision_scene\n";
     output << "backend.native=" << desc.native_backend << '\n';
@@ -410,7 +410,7 @@ void validate_payload_rows(std::vector<PhysicsCollisionPackageDiagnostic>& diagn
                            std::string_view content) {
     try {
         const auto values = parse_key_values(content, "physics collision payload");
-        if (required_value(values, "format", "physics collision payload") != "GameEngine.PhysicsCollisionScene3D.v1") {
+        if (required_value(values, "format", "physics collision payload") != "GameEngine.PhysicsCollisionScene3D") {
             add_diagnostic(diagnostics, "unsupported_collision_payload_format",
                            "physics collision payload format is unsupported");
         }

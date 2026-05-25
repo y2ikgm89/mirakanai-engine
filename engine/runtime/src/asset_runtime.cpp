@@ -484,7 +484,7 @@ RuntimePayloadAccessResult<RuntimeTexturePayload> runtime_texture_payload(const 
 
     try {
         const auto values = parse_payload_key_values(record.content, "runtime texture");
-        validate_payload_header(values, record, "GameEngine.CookedTexture.v1", "texture", "runtime texture");
+        validate_payload_header(values, record, "GameEngine.CookedTexture", "texture", "runtime texture");
         const RuntimeTexturePayload payload{
             .asset = record.asset,
             .handle = record.handle,
@@ -522,7 +522,7 @@ RuntimePayloadAccessResult<RuntimeMeshPayload> runtime_mesh_payload(const Runtim
 
     try {
         const auto values = parse_payload_key_values(record.content, "runtime mesh");
-        validate_payload_header(values, record, "GameEngine.CookedMesh.v2", "mesh", "runtime mesh");
+        validate_payload_header(values, record, "GameEngine.CookedMesh", "mesh", "runtime mesh");
         const RuntimeMeshPayload payload{
             .asset = record.asset,
             .handle = record.handle,
@@ -680,7 +680,7 @@ runtime_morph_mesh_cpu_payload(const RuntimeAssetRecord& record) {
 
     try {
         const auto values = parse_payload_key_values(record.content, "runtime morph mesh CPU");
-        validate_payload_header(values, record, "GameEngine.CookedMorphMeshCpu.v1", "morph_mesh_cpu",
+        validate_payload_header(values, record, "GameEngine.CookedMorphMeshCpu", "morph_mesh_cpu",
                                 "runtime morph mesh CPU");
         const auto morph = morph_mesh_cpu_document_from_runtime_payload(values, "runtime morph mesh CPU");
         return RuntimePayloadAccessResult<RuntimeMorphMeshCpuPayload>{
@@ -701,7 +701,7 @@ runtime_animation_float_clip_payload(const RuntimeAssetRecord& record) {
 
     try {
         const auto values = parse_payload_key_values(record.content, "runtime animation float clip");
-        validate_payload_header(values, record, "GameEngine.CookedAnimationFloatClip.v1", "animation_float_clip",
+        validate_payload_header(values, record, "GameEngine.CookedAnimationFloatClip", "animation_float_clip",
                                 "runtime animation float clip");
         const auto clip = animation_float_clip_document_from_runtime_payload(values, "runtime animation float clip");
         return RuntimePayloadAccessResult<RuntimeAnimationFloatClipPayload>{
@@ -722,8 +722,8 @@ runtime_animation_quaternion_clip_payload(const RuntimeAssetRecord& record) {
 
     try {
         const auto values = parse_payload_key_values(record.content, "runtime animation quaternion clip");
-        validate_payload_header(values, record, "GameEngine.CookedAnimationQuaternionClip.v1",
-                                "animation_quaternion_clip", "runtime animation quaternion clip");
+        validate_payload_header(values, record, "GameEngine.CookedAnimationQuaternionClip", "animation_quaternion_clip",
+                                "runtime animation quaternion clip");
         const auto clip =
             animation_quaternion_clip_document_from_runtime_payload(values, "runtime animation quaternion clip");
         return RuntimePayloadAccessResult<RuntimeAnimationQuaternionClipPayload>{
@@ -744,7 +744,7 @@ runtime_sprite_animation_payload(const RuntimeAssetRecord& record) {
 
     try {
         const auto values = parse_payload_key_values(record.content, "runtime sprite animation");
-        validate_payload_header(values, record, "GameEngine.CookedSpriteAnimation.v1", "sprite_animation",
+        validate_payload_header(values, record, "GameEngine.CookedSpriteAnimation", "sprite_animation",
                                 "runtime sprite animation");
 
         const auto target_node = required_payload_value(values, "target.node", "runtime sprite animation");
@@ -813,8 +813,7 @@ RuntimePayloadAccessResult<RuntimeSkinnedMeshPayload> runtime_skinned_mesh_paylo
         constexpr std::uint32_t k_joint_matrix_bytes = 64U;
 
         const auto values = parse_payload_key_values(record.content, "runtime skinned mesh");
-        validate_payload_header(values, record, "GameEngine.CookedSkinnedMesh.v1", "skinned_mesh",
-                                "runtime skinned mesh");
+        validate_payload_header(values, record, "GameEngine.CookedSkinnedMesh", "skinned_mesh", "runtime skinned mesh");
         const auto vertex_count =
             parse_payload_u32(required_payload_value(values, "skinned_mesh.vertex_count", "runtime skinned mesh"),
                               "runtime skinned mesh");
@@ -871,7 +870,7 @@ RuntimePayloadAccessResult<RuntimeAudioPayload> runtime_audio_payload(const Runt
 
     try {
         const auto values = parse_payload_key_values(record.content, "runtime audio");
-        validate_payload_header(values, record, "GameEngine.CookedAudio.v1", "audio", "runtime audio");
+        validate_payload_header(values, record, "GameEngine.CookedAudio", "audio", "runtime audio");
         const RuntimeAudioPayload payload{
             .asset = record.asset,
             .handle = record.handle,
@@ -1120,7 +1119,7 @@ runtime_physics_collision_scene_3d_payload(const RuntimeAssetRecord& record) {
     try {
         constexpr std::uint32_t max_body_count = 4096U;
         const auto values = parse_payload_key_values(record.content, "runtime physics collision scene");
-        validate_payload_header(values, record, "GameEngine.PhysicsCollisionScene3D.v1", "physics_collision_scene",
+        validate_payload_header(values, record, "GameEngine.PhysicsCollisionScene3D", "physics_collision_scene",
                                 "runtime physics collision scene");
         if (required_payload_value(values, "backend.native", "runtime physics collision scene") != "unsupported") {
             return payload_failure<RuntimePhysicsCollisionScene3DPayload>(
@@ -1228,7 +1227,7 @@ RuntimePayloadAccessResult<RuntimeScenePayload> runtime_scene_payload(const Runt
 
     try {
         const auto values = parse_payload_key_values(record.content, "runtime scene");
-        if (required_payload_value(values, "format", "runtime scene") != "GameEngine.Scene.v1") {
+        if (required_payload_value(values, "format", "runtime scene") != "GameEngine.Scene") {
             return payload_failure<RuntimeScenePayload>("runtime scene payload format is unsupported");
         }
         const auto& name = required_payload_value(values, "scene.name", "runtime scene");

@@ -112,7 +112,7 @@ void write_package(CountingFileSystem& filesystem, mirakana::AssetId asset, mira
 MK_TEST("runtime package candidate resident mount loads selected candidate and refreshes cache") {
     CountingFileSystem filesystem;
     const auto texture = mirakana::AssetId::from_name("textures/player");
-    const std::string payload = "format=GameEngine.CookedTexture.v1\ntexture.width=4\n";
+    const std::string payload = "format=GameEngine.CookedTexture\ntexture.width=4\n";
     write_package(filesystem, texture, mirakana::AssetKind::texture, payload);
     mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
     mirakana::runtime::RuntimeResidentCatalogCacheV2 catalog_cache;
@@ -265,7 +265,7 @@ MK_TEST("runtime package candidate resident mount preserves state on projected b
     CountingFileSystem filesystem;
     const auto base = mirakana::AssetId::from_name("textures/base");
     const auto texture = mirakana::AssetId::from_name("textures/player");
-    const std::string payload = "format=GameEngine.CookedTexture.v1\ntexture.width=4\n";
+    const std::string payload = "format=GameEngine.CookedTexture\ntexture.width=4\n";
     write_package(filesystem, texture, mirakana::AssetKind::texture, payload);
     mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
     MK_REQUIRE(mount_set

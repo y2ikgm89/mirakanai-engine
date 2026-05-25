@@ -1,4 +1,4 @@
-format=GameEngine.Material.v1
+format=GameEngine.Material
 material.id=5514279199260054295
 material.name=Desktop Runtime Lit Material
 material.shading=lit

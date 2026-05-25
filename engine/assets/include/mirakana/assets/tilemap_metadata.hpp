@@ -81,7 +81,7 @@ struct TilemapMetadataDiagnostic {
 [[nodiscard]] std::vector<TilemapMetadataDiagnostic>
 validate_tilemap_metadata_document(const TilemapMetadataDocument& document);
 
-// Serializes a cooked data-only GameEngine.Tilemap.v1 descriptor. Source image
+// Serializes a cooked data-only GameEngine.Tilemap descriptor. Source image
 // decoding, production atlas packing, and native GPU sprite batching must remain
 // unsupported in this format.
 [[nodiscard]] std::string serialize_tilemap_metadata_document(const TilemapMetadataDocument& document);

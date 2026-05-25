@@ -78,7 +78,7 @@ struct DesktopRuntimeGameOptions {
     std::string required_scene_package_path;
 };
 
-constexpr std::string_view kExpectedConfigFormat{"format=GameEngine.SampleDesktopRuntimeGame.Config.v1"};
+constexpr std::string_view kExpectedConfigFormat{"format=GameEngine.SampleDesktopRuntimeGame.Config"};
 constexpr std::string_view kRuntimeSceneVertexShaderPath{"shaders/sample_desktop_runtime_game_scene.vs.dxil"};
 constexpr std::string_view kRuntimeSceneSkinnedVertexShaderPath{
     "shaders/sample_desktop_runtime_game_scene_skinned.vs.dxil"};

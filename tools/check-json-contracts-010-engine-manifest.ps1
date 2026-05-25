@@ -464,7 +464,7 @@ if (@($geSceneModule[0].publicHeaders) -notcontains "engine/scene/include/miraka
     Write-Error "engine manifest MK_scene publicHeaders must include schema_v2.hpp"
 }
 if (-not ([string]$geSceneModule[0].purpose).Contains("contract-only") -or
-    -not ([string]$geSceneModule[0].purpose).Contains("GameEngine.Scene.v2") -or
+    -not ([string]$geSceneModule[0].purpose).Contains("GameEngine.Scene") -or
     -not ([string]$geSceneModule[0].purpose).Contains("ScenePrefabInstanceRefreshPlanV2") -or
     -not ([string]$geSceneModule[0].purpose).Contains("plan_scene_prefab_instance_refresh_v2") -or
     -not ([string]$geSceneModule[0].purpose).Contains("ScenePrefabInstanceRefreshResultV2") -or
@@ -485,7 +485,7 @@ if (@($geAssetsModule[0].publicHeaders) -notcontains "engine/assets/include/mira
     Write-Error "engine manifest MK_assets publicHeaders must include asset_identity.hpp"
 }
 if (-not ([string]$geAssetsModule[0].purpose).Contains("Asset Identity v2") -or
-    -not ([string]$geAssetsModule[0].purpose).Contains("GameEngine.AssetIdentity.v2") -or
+    -not ([string]$geAssetsModule[0].purpose).Contains("GameEngine.AssetIdentity") -or
     -not ([string]$geAssetsModule[0].purpose).Contains("foundation-only") -or
     -not ([string]$geAssetsModule[0].purpose).Contains("renderer/RHI residency")) {
     Write-Error "engine manifest MK_assets purpose must describe Asset Identity v2 as foundation-only and keep follow-up limits explicit"
@@ -628,16 +628,16 @@ if (-not ([string]$geToolsModule[0].purpose).Contains("refresh-prefab-instance")
 if (-not ([string]$geToolsModule[0].purpose).Contains("PackedUiAtlasAuthoringDesc") -or
     -not ([string]$geToolsModule[0].purpose).Contains("author_packed_ui_atlas_from_decoded_images") -or
     -not ([string]$geToolsModule[0].purpose).Contains("plan_packed_ui_atlas_package_update") -or
-    -not ([string]$geToolsModule[0].purpose).Contains("GameEngine.CookedTexture.v1") -or
-    -not ([string]$geToolsModule[0].purpose).Contains("GameEngine.UiAtlas.v1")) {
+    -not ([string]$geToolsModule[0].purpose).Contains("GameEngine.CookedTexture") -or
+    -not ([string]$geToolsModule[0].purpose).Contains("GameEngine.UiAtlas")) {
     Write-Error "engine manifest MK_tools purpose must describe Runtime UI decoded image atlas package bridge explicitly"
 }
 if (-not ([string]$geToolsModule[0].purpose).Contains("PackedUiGlyphAtlasAuthoringDesc") -or
     -not ([string]$geToolsModule[0].purpose).Contains("author_packed_ui_glyph_atlas_from_rasterized_glyphs") -or
     -not ([string]$geToolsModule[0].purpose).Contains("plan_packed_ui_glyph_atlas_package_update") -or
     -not ([string]$geToolsModule[0].purpose).Contains("UiAtlasMetadataGlyph") -or
-    -not ([string]$geToolsModule[0].purpose).Contains("GameEngine.CookedTexture.v1") -or
-    -not ([string]$geToolsModule[0].purpose).Contains("GameEngine.UiAtlas.v1")) {
+    -not ([string]$geToolsModule[0].purpose).Contains("GameEngine.CookedTexture") -or
+    -not ([string]$geToolsModule[0].purpose).Contains("GameEngine.UiAtlas")) {
     Write-Error "engine manifest MK_tools purpose must describe Runtime UI glyph atlas package bridge explicitly"
 }
 

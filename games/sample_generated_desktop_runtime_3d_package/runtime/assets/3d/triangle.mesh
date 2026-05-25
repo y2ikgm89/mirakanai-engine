@@ -1,4 +1,4 @@
-format=GameEngine.CookedMesh.v2
+format=GameEngine.CookedMesh
 asset.id=1794431388050150217
 asset.kind=mesh
 source.path=source/sample_generated_desktop_runtime_3d_package/triangle.mesh

@@ -1063,7 +1063,7 @@ void append_changed_file(std::vector<SceneV2RuntimePackageMigrationChangedFile>&
     files.push_back(SceneV2RuntimePackageMigrationChangedFile{
         .path = source.path,
         .document_kind =
-            source.path == request.output_scene_path ? "GameEngine.Scene.v1" : "GameEngine.CookedPackageIndex.v1",
+            source.path == request.output_scene_path ? "GameEngine.Scene" : "GameEngine.CookedPackageIndex",
         .content = source.content,
         .content_hash = source.content_hash,
     });

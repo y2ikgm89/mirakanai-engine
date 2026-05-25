@@ -17,8 +17,8 @@
 namespace mirakana {
 namespace {
 
-constexpr std::string_view shader_provenance_format = "GameEngine.ShaderArtifactProvenance.v1";
-constexpr std::string_view shader_cache_index_format = "GameEngine.ShaderArtifactCacheIndex.v1";
+constexpr std::string_view shader_provenance_format = "GameEngine.ShaderArtifactProvenance";
+constexpr std::string_view shader_cache_index_format = "GameEngine.ShaderArtifactCacheIndex";
 
 struct ToolProbe {
     ShaderToolKind kind{ShaderToolKind::unknown};

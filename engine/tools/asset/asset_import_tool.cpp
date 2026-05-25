@@ -89,21 +89,21 @@ struct PreparedImport {
 [[nodiscard]] const char* cooked_format_name(AssetImportActionKind kind) {
     switch (kind) {
     case AssetImportActionKind::texture:
-        return "GameEngine.CookedTexture.v1";
+        return "GameEngine.CookedTexture";
     case AssetImportActionKind::mesh:
-        return "GameEngine.CookedMesh.v2";
+        return "GameEngine.CookedMesh";
     case AssetImportActionKind::morph_mesh_cpu:
-        return "GameEngine.CookedMorphMeshCpu.v1";
+        return "GameEngine.CookedMorphMeshCpu";
     case AssetImportActionKind::animation_float_clip:
-        return "GameEngine.CookedAnimationFloatClip.v1";
+        return "GameEngine.CookedAnimationFloatClip";
     case AssetImportActionKind::animation_quaternion_clip:
-        return "GameEngine.CookedAnimationQuaternionClip.v1";
+        return "GameEngine.CookedAnimationQuaternionClip";
     case AssetImportActionKind::material:
-        return "GameEngine.Material.v1";
+        return "GameEngine.Material";
     case AssetImportActionKind::scene:
-        return "GameEngine.Scene.v1";
+        return "GameEngine.Scene";
     case AssetImportActionKind::audio:
-        return "GameEngine.CookedAudio.v1";
+        return "GameEngine.CookedAudio";
     case AssetImportActionKind::unknown:
         break;
     }

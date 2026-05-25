@@ -1,4 +1,4 @@
-format=GameEngine.TextureSource.v1
+format=GameEngine.TextureSource
 texture.width=1
 texture.height=1
 texture.pixel_format=rgba8_unorm

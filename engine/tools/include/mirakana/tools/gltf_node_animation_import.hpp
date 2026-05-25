@@ -90,21 +90,21 @@ import_gltf_node_transform_animation_tracks_3d(std::string_view document_bytes_u
                                                std::string_view source_path_for_external_buffers,
                                                std::size_t animation_index);
 
-/// Imports the selected glTF node transform animation as `GameEngine.AnimationFloatClipSource.v1` rows so ordinary TRS
+/// Imports the selected glTF node transform animation as `GameEngine.AnimationFloatClipSource` rows so ordinary TRS
 /// animation can use the existing `AssetKind::animation_float_clip` cook/package/runtime path.
 [[nodiscard]] GltfNodeTransformAnimationFloatClipImportReport
 import_gltf_node_transform_animation_float_clip(std::string_view document_bytes_utf8,
                                                 std::string_view source_path_for_external_buffers,
                                                 std::size_t animation_index);
 
-/// Imports the selected glTF node transform animation as `GameEngine.AnimationQuaternionClipSource.v1` rows so 3D
+/// Imports the selected glTF node transform animation as `GameEngine.AnimationQuaternionClipSource` rows so 3D
 /// local-pose workflows can use the `AssetKind::animation_quaternion_clip` cook/package/runtime path.
 [[nodiscard]] GltfNodeTransformAnimationQuaternionClipImportReport
 import_gltf_node_transform_animation_quaternion_clip(std::string_view document_bytes_utf8,
                                                      std::string_view source_path_for_external_buffers,
                                                      std::size_t animation_index);
 
-/// Imports the selected glTF node transform animation as `GameEngine.AnimationTransformBindingSource.v1` rows that can
+/// Imports the selected glTF node transform animation as `GameEngine.AnimationTransformBindingSource` rows that can
 /// be resolved by `mirakana_runtime_scene` against loaded scene node names.
 [[nodiscard]] GltfNodeTransformAnimationBindingSourceImportReport
 import_gltf_node_transform_animation_binding_source(std::string_view document_bytes_utf8,

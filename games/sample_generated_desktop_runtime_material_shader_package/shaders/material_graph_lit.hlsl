@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2026 GameEngine contributors
 // SPDX-License-Identifier: LicenseRef-Proprietary
-// GameEngine.MaterialGraphGeneratedHlsl.v0
+// GameEngine.MaterialGraphGeneratedHlsl
 // Deterministic reviewed bridge for material graph authoring evidence.
 
 cbuffer MaterialFactors : register(b0) {

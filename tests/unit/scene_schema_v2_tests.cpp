@@ -139,7 +139,7 @@ MK_TEST("scene schema v2 serializes deterministic text and round trips authoring
         .properties = {{.name = "mesh", .value = "assets/meshes/player"}},
     });
 
-    const std::string expected = "format=GameEngine.Scene.v2\n"
+    const std::string expected = "format=GameEngine.Scene\n"
                                  "scene.name=Level\n"
                                  "node.0.id=node/player\n"
                                  "node.0.name=Player\n"
@@ -164,7 +164,7 @@ MK_TEST("scene schema v2 serializes deterministic text and round trips authoring
 MK_TEST("scene schema v2 rejects oversized sparse indexes") {
     bool threw = false;
     try {
-        (void)mirakana::deserialize_scene_document_v2("format=GameEngine.Scene.v2\n"
+        (void)mirakana::deserialize_scene_document_v2("format=GameEngine.Scene\n"
                                                       "scene.name=Level\n"
                                                       "node.18446744073709551615.id=node/root\n");
     } catch (const std::invalid_argument&) {

@@ -1960,7 +1960,7 @@
     "appType": "mirakana::GameApp",
     "runner": "mirakana::SdlDesktopGameHost",
     "input": "mirakana::VirtualInput deterministic right-key camera/controller movement over the cooked primary camera node",
-    "scene": "GameEngine.Scene.v1 loaded from a cooked package with static mesh, primary perspective camera, and directional light metadata",
+    "scene": "GameEngine.Scene loaded from a cooked package with static mesh, primary perspective camera, and directional light metadata",
     "sceneGameplayBinding": "mirakana::runtime_scene::resolve_runtime_scene_gameplay_bindings plus mirakana::runtime_scene::plan_runtime_scene_gameplay_interactions under --require-gameplay-systems; selected smoke requires gameplay_systems_scene_binding_ready=1, 3 source rows, 3 resolved rows, 3 gameplay systems, 3 component-backed rows, clean diagnostics, 3 scene interaction rows, and gameplay_systems_scene_interaction_final_session_state=won",
     "inputContextRebinding": "mirakana::runtime::plan_runtime_input_context_stack, apply_runtime_input_rebinding_profile, capture_runtime_input_rebinding_action, capture_runtime_input_rebinding_axis, capture_runtime_input_rebinding_action_with_focus, and make_runtime_input_rebinding_presentation under --require-gameplay-systems; selected smoke requires input_context_rebinding_ready=1, 3 requested layers, 1 active modal rebinding context, capture_context_active=1, gameplay input consumption, 2 applied profile overlays, captured action/axis candidates, retained focused waiting capture, 2 presentation rows, 5 symbolic glyph lookup keys, and clean diagnostics without real platform glyph assets, keyboard-layout localization, multiplayer device assignment, native handles, SDL3 input APIs, or full runtime/game rebinding panels",
     "gameplayRuntimeScheduler": "mirakana::runtime::plan_runtime_gameplay_schedule under --require-gameplay-systems; selected smoke requires gameplay_runtime_scheduler_status=budget_limited, gameplay_runtime_scheduler_ready=1, gameplay_runtime_scheduler_available_steps=3, gameplay_runtime_scheduler_steps=2, gameplay_runtime_scheduler_system_rows=6, gameplay_runtime_scheduler_command_rows=2, gameplay_runtime_scheduler_budget_limited=1, positive replay hash evidence, and gameplay_runtime_scheduler_diagnostics=0 without running game rules, renderer frame pacing, transport I/O, rollback/lockstep execution, package mutation, or native handles",
@@ -1977,20 +1977,20 @@
     "platform": "sdl3-desktop-host-gated",
     "graphics": "host-built D3D12 DXIL shader artifacts for selected package validation with optional generated 3D renderer quality counters for scene GPU + depth-aware postprocess with framegraph_passes=2, framegraph_passes_executed=4, framegraph_render_passes_recorded=4, framegraph_barrier_steps_executed=9, renderer_quality_expected_framegraph_render_passes=4, and renderer_quality_expected_framegraph_barrier_steps=9, selected visible generated 3D production-style counters, selected directional shadow smoke counters with framegraph_render_passes_recorded=6, selected D3D12 graphics morph + directional shadow receiver counters with framegraph_render_passes_recorded=6, selected D3D12 native UI overlay HUD box counters, selected D3D12 cooked UI atlas image sprite and text glyph texture overlay counters, selected playable_3d_* package counters, and selected D3D12 package upload staging/resource-update counters through --require-package-upload-staging; Vulkan SPIR-V artifacts are toolchain-gated for generated 3D quality, shadow, playable, and native UI overlay artifacts, while visible proof, shadow-morph composition, native UI overlay readiness, generated 3D cooked UI atlas texture overlay readiness, and package upload staging readiness remain D3D12-selected until separate Vulkan recipes land; NullRenderer fallback remains available; Metal readiness, broad shadow quality, morph-deformed shadow-caster silhouettes, compute morph + shadow composition, production text/font UI, runtime source image decoding, source image atlas packing, broad GPU timestamp execution beyond reviewed timing rows, backend-native stats beyond reviewed handoff rows, broad renderer quality, and broad generated 3D readiness remain unsupported",
     "audio": "device-independent gameplay systems package smoke plus deterministic NullRenderer fallback",
-    "ui": "mirakana_ui HUD box submission plus one cooked GameEngine.UiAtlas.v1 image sprite and one cooked GameEngine.UiAtlas.v1 text glyph are validated through selected D3D12 host-owned native UI overlay package smokes; production text shaping, font rasterization, glyph atlas generation, runtime source image decoding, source image atlas packing, native accessibility bridges, Metal overlay readiness, and broad UI renderer quality remain unsupported",
-    "physics": "first-party deterministic authored-collision/controller package smoke, character/dynamic interaction policy counters, selected distance/fixed/linear-axis positional constraint counters, selected value-only kinematic motion and public simple vehicle policy counters, selected GameEngine.PhysicsCollisionScene3D.v1 package collision smoke, and selected collision_query_batch_ready package counters only; no middleware, native physics backend, dynamic-vs-dynamic TOI, rotational CCD, rotational rigid-body constraints, 2D CCD, persistent joint assets, broad vehicle dynamics/persistent vehicle simulation APIs, or scene/physics perception integration"
+    "ui": "mirakana_ui HUD box submission plus one cooked GameEngine.UiAtlas image sprite and one cooked GameEngine.UiAtlas text glyph are validated through selected D3D12 host-owned native UI overlay package smokes; production text shaping, font rasterization, glyph atlas generation, runtime source image decoding, source image atlas packing, native accessibility bridges, Metal overlay readiness, and broad UI renderer quality remain unsupported",
+    "physics": "first-party deterministic authored-collision/controller package smoke, character/dynamic interaction policy counters, selected distance/fixed/linear-axis positional constraint counters, selected value-only kinematic motion and public simple vehicle policy counters, selected GameEngine.PhysicsCollisionScene3D package collision smoke, and selected collision_query_batch_ready package counters only; no middleware, native physics backend, dynamic-vs-dynamic TOI, rotational CCD, rotational rigid-body constraints, 2D CCD, persistent joint assets, broad vehicle dynamics/persistent vehicle simulation APIs, or scene/physics perception integration"
   },
   "importerRequirements": {
     "sourceFormats": [
-      "GameEngine.TextureSource.v1",
-      "GameEngine.MeshSource.v2",
-      "GameEngine.MorphMeshCpuSource.v1",
-      "GameEngine.AnimationFloatClipSource.v1",
-      "GameEngine.AnimationQuaternionClipSource.v1",
-      "GameEngine.Material.v1",
-      "GameEngine.SourceAssetRegistry.v1",
-      "GameEngine.Scene.v2",
-      "GameEngine.Prefab.v2",
+      "GameEngine.TextureSource",
+      "GameEngine.MeshSource",
+      "GameEngine.MorphMeshCpuSource",
+      "GameEngine.AnimationFloatClipSource",
+      "GameEngine.AnimationQuaternionClipSource",
+      "GameEngine.Material",
+      "GameEngine.SourceAssetRegistry",
+      "GameEngine.Scene",
+      "GameEngine.Prefab",
       "first-party-material-source",
       "hlsl-source",
       "first-party-cooked-fixture"
@@ -2136,27 +2136,27 @@
       "authoringCommandRows": [
         {
           "id": "create-packaged-scene",
-          "surface": "GameEngine.Scene.v2",
+          "surface": "GameEngine.Scene",
           "operation": "create-scene"
         },
         {
           "id": "add-static-mesh-node",
-          "surface": "GameEngine.Scene.v2",
+          "surface": "GameEngine.Scene",
           "operation": "add-scene-node"
         },
         {
           "id": "add-static-mesh-renderer",
-          "surface": "GameEngine.Scene.v2",
+          "surface": "GameEngine.Scene",
           "operation": "add-or-update-component"
         },
         {
           "id": "create-static-prop-prefab",
-          "surface": "GameEngine.Prefab.v2",
+          "surface": "GameEngine.Prefab",
           "operation": "create-prefab"
         },
         {
           "id": "instantiate-static-prop-prefab",
-          "surface": "GameEngine.Scene.v2",
+          "surface": "GameEngine.Scene",
           "operation": "instantiate-prefab"
         }
       ],

@@ -17,7 +17,6 @@ namespace mirakana::editor {
 namespace {
 
 constexpr int current_project_format_version = 4;
-constexpr std::string_view default_source_registry_path = "source/assets/package.geassets";
 
 void validate_field(std::string_view field, const char* name) {
     if (field.empty()) {
@@ -329,20 +328,8 @@ void validate_shader_tool_settings(const ProjectShaderToolSettings& settings) {
 }
 
 int parse_project_format_version(std::string_view value) {
-    if (value == "GameEngine.Project.v0") {
-        return 0;
-    }
-    if (value == "GameEngine.Project.v1") {
-        return 1;
-    }
-    if (value == "GameEngine.Project.v2") {
-        return 2;
-    }
-    if (value == "GameEngine.Project.v3") {
-        return 3;
-    }
-    if (value == "GameEngine.Project.v4") {
-        return 4;
+    if (value == "GameEngine.Project") {
+        return current_project_format_version;
     }
     throw std::invalid_argument("unsupported project format");
 }
@@ -430,7 +417,7 @@ std::string serialize_project_document(const ProjectDocument& document) {
     validate_project_document(document);
 
     std::ostringstream output;
-    output << "format=GameEngine.Project.v4\n";
+    output << "format=GameEngine.Project\n";
     output << "project.name=" << document.name << '\n';
     output << "project.root=" << document.root_path << '\n';
     output << "project.asset_root=" << document.asset_root << '\n';
@@ -447,7 +434,7 @@ std::string serialize_project_document(const ProjectDocument& document) {
 
 ProjectMigrationResult migrate_project_document(std::string_view text) {
     bool has_format = false;
-    int source_version = 1;
+    int source_version = current_project_format_version;
     ProjectDocument document;
     std::istringstream input(std::string{text});
     std::string line;
@@ -501,21 +488,6 @@ ProjectMigrationResult migrate_project_document(std::string_view text) {
 
     if (!has_format) {
         throw std::invalid_argument("project format is missing");
-    }
-
-    if (source_version == 0) {
-        if (document.asset_root.empty()) {
-            document.asset_root = "assets";
-        }
-        if (document.game_manifest_path.empty()) {
-            document.game_manifest_path = "game.agent.json";
-        }
-        if (document.startup_scene_path.empty()) {
-            document.startup_scene_path = "scenes/start.scene";
-        }
-    }
-    if (source_version <= 3 && document.source_registry_path.empty()) {
-        document.source_registry_path = std::string(default_source_registry_path);
     }
 
     validate_project_document(document);

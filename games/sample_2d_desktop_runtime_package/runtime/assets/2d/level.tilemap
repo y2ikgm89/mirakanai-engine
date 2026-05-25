@@ -1,4 +1,4 @@
-format=GameEngine.Tilemap.v1
+format=GameEngine.Tilemap
 asset.id=4819170742299961378
 asset.kind=tilemap
 source.decoding=unsupported

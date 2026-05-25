@@ -18,15 +18,15 @@
 namespace mirakana {
 namespace {
 
-constexpr std::string_view source_asset_registry_format = "GameEngine.SourceAssetRegistry.v1";
-constexpr std::string_view texture_source_format = "GameEngine.TextureSource.v1";
-constexpr std::string_view mesh_source_format = "GameEngine.MeshSource.v2";
-constexpr std::string_view audio_source_format = "GameEngine.AudioSource.v1";
-constexpr std::string_view material_source_format = "GameEngine.Material.v1";
-constexpr std::string_view scene_source_format = "GameEngine.Scene.v1";
-constexpr std::string_view morph_mesh_cpu_source_format = "GameEngine.MorphMeshCpuSource.v1";
-constexpr std::string_view animation_float_clip_source_format = "GameEngine.AnimationFloatClipSource.v1";
-constexpr std::string_view animation_quaternion_clip_source_format = "GameEngine.AnimationQuaternionClipSource.v1";
+constexpr std::string_view source_asset_registry_format = "GameEngine.SourceAssetRegistry";
+constexpr std::string_view texture_source_format = "GameEngine.TextureSource";
+constexpr std::string_view mesh_source_format = "GameEngine.MeshSource";
+constexpr std::string_view audio_source_format = "GameEngine.AudioSource";
+constexpr std::string_view material_source_format = "GameEngine.Material";
+constexpr std::string_view scene_source_format = "GameEngine.Scene";
+constexpr std::string_view morph_mesh_cpu_source_format = "GameEngine.MorphMeshCpuSource";
+constexpr std::string_view animation_float_clip_source_format = "GameEngine.AnimationFloatClipSource";
+constexpr std::string_view animation_quaternion_clip_source_format = "GameEngine.AnimationQuaternionClipSource";
 
 struct SourceAssetTextDependencyRow {
     bool has_kind{false};

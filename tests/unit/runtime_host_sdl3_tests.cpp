@@ -168,7 +168,7 @@ class SdlDesktopGameHostProbeApp final : public mirakana::GameApp {
 }
 
 [[nodiscard]] std::string probe_mesh_payload(mirakana::AssetId mesh, bool lit_layout) {
-    return "format=GameEngine.CookedMesh.v2\n"
+    return "format=GameEngine.CookedMesh\n"
            "asset.id=" +
            std::to_string(mesh.value) +
            "\n"

@@ -1,4 +1,4 @@
-format=GameEngine.CookedTexture.v1
+format=GameEngine.CookedTexture
 asset.id=7223550242185374713
 asset.kind=texture
 source.path=source/sample_2d_desktop_runtime_package/player.texture

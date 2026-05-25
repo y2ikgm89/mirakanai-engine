@@ -212,7 +212,7 @@ make_runtime_record(mirakana::runtime::RuntimeAssetHandle handle, mirakana::Asse
 }
 
 [[nodiscard]] std::string cooked_texture_payload(mirakana::AssetId asset) {
-    return "format=GameEngine.CookedTexture.v1\n"
+    return "format=GameEngine.CookedTexture\n"
            "asset.id=" +
            std::to_string(asset.value) +
            "\n"
@@ -226,7 +226,7 @@ make_runtime_record(mirakana::runtime::RuntimeAssetHandle handle, mirakana::Asse
 }
 
 [[nodiscard]] std::string cooked_material_payload(mirakana::AssetId asset) {
-    return "format=GameEngine.Material.v1\n"
+    return "format=GameEngine.Material\n"
            "material.id=" +
            std::to_string(asset.value) +
            "\n"
@@ -236,7 +236,7 @@ make_runtime_record(mirakana::runtime::RuntimeAssetHandle handle, mirakana::Asse
 }
 
 [[nodiscard]] std::string cooked_ui_atlas_payload(mirakana::AssetId atlas_asset, mirakana::AssetId page_asset) {
-    return "format=GameEngine.UiAtlas.v1\n"
+    return "format=GameEngine.UiAtlas\n"
            "asset.id=" +
            std::to_string(atlas_asset.value) +
            "\n"
@@ -263,7 +263,7 @@ make_runtime_record(mirakana::runtime::RuntimeAssetHandle handle, mirakana::Asse
 }
 
 [[nodiscard]] std::string cooked_ui_glyph_atlas_payload(mirakana::AssetId atlas_asset, mirakana::AssetId page_asset) {
-    return "format=GameEngine.UiAtlas.v1\n"
+    return "format=GameEngine.UiAtlas\n"
            "asset.id=" +
            std::to_string(atlas_asset.value) +
            "\n"

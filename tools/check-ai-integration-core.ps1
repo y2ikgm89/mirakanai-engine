@@ -526,7 +526,7 @@ function Assert-SpriteAtlasSourceAuthoringTarget($manifest, [string]$label, [str
             Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' preflightRecipeIds must reference validationRecipes: $recipeId"
         }
     }
-    foreach ($sourceFormat in @("GameEngine.TextureSource.v1", "GameEngine.SourceAssetRegistry.v1")) {
+    foreach ($sourceFormat in @("GameEngine.TextureSource", "GameEngine.SourceAssetRegistry")) {
         if (@($manifest.importerRequirements.sourceFormats) -notcontains $sourceFormat) {
             Write-Error "$label spriteAtlasSourceAuthoringTargets '$id' importerRequirements.sourceFormats missing $sourceFormat"
         }
@@ -629,7 +629,7 @@ function Assert-PrefabScenePackageAuthoringTarget($manifest, [string]$label, [st
         Write-Error "$label prefabScenePackageAuthoringTargets '$id' authoringCommandRows must be: $($expectedOperations -join ', ')"
     }
     foreach ($row in @($targets[0].authoringCommandRows)) {
-        $expectedSurface = if ($row.operation -eq "create-prefab") { "GameEngine.Prefab.v2" } else { "GameEngine.Scene.v2" }
+        $expectedSurface = if ($row.operation -eq "create-prefab") { "GameEngine.Prefab" } else { "GameEngine.Scene" }
         if ($row.surface -ne $expectedSurface) {
             Write-Error "$label prefabScenePackageAuthoringTargets '$id' operation '$($row.operation)' must use $expectedSurface"
         }

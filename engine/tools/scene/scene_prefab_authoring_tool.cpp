@@ -327,7 +327,7 @@ void finalize_scene_change(ScenePrefabAuthoringResult& result, const SceneDocume
         return;
     }
 
-    append_changed_file(result.changed_files, std::string{path}, "GameEngine.Scene.v2", result.scene_content);
+    append_changed_file(result.changed_files, std::string{path}, "GameEngine.Scene", result.scene_content);
     append_model_mutation(result.model_mutations, std::move(mutation_kind), std::string{path}, std::move(node),
                           std::move(component), std::move(prefab_path));
 }
@@ -347,7 +347,7 @@ void finalize_prefab_change(ScenePrefabAuthoringResult& result, const PrefabDocu
         return;
     }
 
-    append_changed_file(result.changed_files, std::string{path}, "GameEngine.Prefab.v2", result.prefab_content);
+    append_changed_file(result.changed_files, std::string{path}, "GameEngine.Prefab", result.prefab_content);
     append_model_mutation(result.model_mutations, std::move(mutation_kind), std::string{path}, {}, {},
                           std::string{path});
 }

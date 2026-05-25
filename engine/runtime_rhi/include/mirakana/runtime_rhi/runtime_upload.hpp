@@ -27,7 +27,7 @@ inline constexpr std::uint32_t runtime_mesh_position_vertex_stride_bytes = 12;
 inline constexpr std::uint32_t runtime_mesh_tangent_space_vertex_stride_bytes = 48;
 /// Interleaved GPU skinning vertex layout: `POSITION` (12) + `NORMAL` (12) + `TEXCOORD0` (8) + `TANGENT` (16) +
 /// `BLENDINDICES` `uint16x4` (8) + `BLENDWEIGHT` `float32x4` (16) - must match
-/// `GameEngine.CookedSkinnedMesh.v1` cook.
+/// `GameEngine.CookedSkinnedMesh` cook.
 inline constexpr std::uint32_t runtime_skinned_mesh_vertex_stride_bytes = 72;
 inline constexpr std::uint32_t runtime_skinned_mesh_joint_matrix_bytes = 64;
 /// Maximum joints per draw for D3D12 root constant buffer sizing (`joint_count * 64` aligned to 256 bytes).

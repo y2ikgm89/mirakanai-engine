@@ -530,14 +530,14 @@ try {
     Assert-ContainsText $desktop2dIndex "dependency.3.kind=tilemap_texture" "Desktop 2D scaffold geindex"
     Assert-ContainsText $desktop2dIndex "dependency.4.kind=sprite_animation_texture" "Desktop 2D scaffold geindex"
     Assert-ContainsText $desktop2dIndex "dependency.5.kind=sprite_animation_material" "Desktop 2D scaffold geindex"
-    Assert-ContainsText $desktop2dSpriteAnimation "format=GameEngine.CookedSpriteAnimation.v1" "Desktop 2D scaffold sprite animation"
+    Assert-ContainsText $desktop2dSpriteAnimation "format=GameEngine.CookedSpriteAnimation" "Desktop 2D scaffold sprite animation"
     Assert-ContainsText $desktop2dSpriteAnimation "asset.kind=sprite_animation" "Desktop 2D scaffold sprite animation"
     Assert-ContainsText $desktop2dSpriteAnimation "target.node=Player" "Desktop 2D scaffold sprite animation"
-    Assert-ContainsText $desktop2dSourceRegistry "format=GameEngine.SourceAssetRegistry.v1" "Desktop 2D scaffold source registry"
+    Assert-ContainsText $desktop2dSourceRegistry "format=GameEngine.SourceAssetRegistry" "Desktop 2D scaffold source registry"
     Assert-ContainsText $desktop2dSourceRegistry "asset.0.key=desktop-2d-package-game/textures/player" "Desktop 2D scaffold source registry"
     Assert-ContainsText $desktop2dSourceRegistry "asset.0.source=source/sprites/player_atlas.texture_source" "Desktop 2D scaffold source registry"
     Assert-ContainsText $desktop2dSourceRegistry "asset.0.imported=runtime/assets/2d/player.texture.geasset" "Desktop 2D scaffold source registry"
-    Assert-ContainsText $desktop2dAtlasSource "format=GameEngine.TextureSource.v1" "Desktop 2D scaffold atlas source"
+    Assert-ContainsText $desktop2dAtlasSource "format=GameEngine.TextureSource" "Desktop 2D scaffold atlas source"
     Assert-ContainsText $desktop2dAtlasSource "texture.pixel_format=rgba8_unorm" "Desktop 2D scaffold atlas source"
     Assert-ContainsText $desktop2dAtlasSource "texture.data_hex=33b3ffff" "Desktop 2D scaffold atlas source"
     if ($desktop2dIndex.Contains("kind=source_file")) {
@@ -1243,11 +1243,11 @@ try {
             Write-Error "Desktop runtime 3D package scaffold must not ship source authoring file in runtimePackageFiles: $authoringPath"
         }
     }
-    if (@($desktop3dManifest.importerRequirements.sourceFormats) -notcontains "GameEngine.MorphMeshCpuSource.v1") {
-        Write-Error "Desktop runtime 3D package scaffold manifest sourceFormats must include GameEngine.MorphMeshCpuSource.v1"
+    if (@($desktop3dManifest.importerRequirements.sourceFormats) -notcontains "GameEngine.MorphMeshCpuSource") {
+        Write-Error "Desktop runtime 3D package scaffold manifest sourceFormats must include GameEngine.MorphMeshCpuSource"
     }
-    if (@($desktop3dManifest.importerRequirements.sourceFormats) -notcontains "GameEngine.AnimationQuaternionClipSource.v1") {
-        Write-Error "Desktop runtime 3D package scaffold manifest sourceFormats must include GameEngine.AnimationQuaternionClipSource.v1"
+    if (@($desktop3dManifest.importerRequirements.sourceFormats) -notcontains "GameEngine.AnimationQuaternionClipSource") {
+        Write-Error "Desktop runtime 3D package scaffold manifest sourceFormats must include GameEngine.AnimationQuaternionClipSource"
     }
     $desktop3dResidencyKinds = @($desktop3dManifest.packageStreamingResidencyTargets[0].residentResourceKinds)
     if ($desktop3dResidencyKinds -notcontains "morph_mesh_cpu") {
@@ -1668,50 +1668,50 @@ try {
     Assert-ContainsText $desktop3dIndex "runtime/assets/3d/skinned_triangle.skinned_mesh" "Desktop 3D scaffold geindex"
     Assert-ContainsText $desktop3dIndex "kind=physics_collision_scene" "Desktop 3D scaffold geindex"
     Assert-ContainsText $desktop3dIndex "runtime/assets/3d/collision.collision3d" "Desktop 3D scaffold geindex"
-    Assert-ContainsText $desktop3dMorph "format=GameEngine.CookedMorphMeshCpu.v1" "Desktop 3D scaffold morph mesh CPU"
+    Assert-ContainsText $desktop3dMorph "format=GameEngine.CookedMorphMeshCpu" "Desktop 3D scaffold morph mesh CPU"
     Assert-ContainsText $desktop3dMorph "morph.vertex_count=3" "Desktop 3D scaffold morph mesh CPU"
     Assert-ContainsText $desktop3dMorph "morph.target.0.position_deltas_hex=0000803f" "Desktop 3D scaffold morph mesh CPU"
     Assert-ContainsText $desktop3dMorph "morph.bind_normals_hex=" "Desktop 3D scaffold morph mesh CPU"
     Assert-ContainsText $desktop3dMorph "morph.bind_tangents_hex=" "Desktop 3D scaffold morph mesh CPU"
     Assert-ContainsText $desktop3dMorph "morph.target.0.normal_deltas_hex=" "Desktop 3D scaffold morph mesh CPU"
     Assert-ContainsText $desktop3dMorph "morph.target.0.tangent_deltas_hex=" "Desktop 3D scaffold morph mesh CPU"
-    Assert-ContainsText $desktop3dAnimation "format=GameEngine.CookedAnimationFloatClip.v1" "Desktop 3D scaffold animation clip"
+    Assert-ContainsText $desktop3dAnimation "format=GameEngine.CookedAnimationFloatClip" "Desktop 3D scaffold animation clip"
     Assert-ContainsText $desktop3dAnimation "clip.track.0.target=gltf/node/0/translation/x" "Desktop 3D scaffold animation clip"
     Assert-ContainsText $desktop3dAnimation "clip.track.0.values_hex=000000000000003f" "Desktop 3D scaffold animation clip"
-    Assert-ContainsText $desktop3dMorphAnimation "format=GameEngine.CookedAnimationFloatClip.v1" "Desktop 3D scaffold morph animation clip"
+    Assert-ContainsText $desktop3dMorphAnimation "format=GameEngine.CookedAnimationFloatClip" "Desktop 3D scaffold morph animation clip"
     Assert-ContainsText $desktop3dMorphAnimation "clip.track.0.target=gltf/node/0/weights/0" "Desktop 3D scaffold morph animation clip"
     Assert-ContainsText $desktop3dMorphAnimation "clip.track.0.values_hex=000000000000003f" "Desktop 3D scaffold morph animation clip"
-    Assert-ContainsText $desktop3dQuaternionAnimation "format=GameEngine.CookedAnimationQuaternionClip.v1" "Desktop 3D scaffold quaternion animation clip"
+    Assert-ContainsText $desktop3dQuaternionAnimation "format=GameEngine.CookedAnimationQuaternionClip" "Desktop 3D scaffold quaternion animation clip"
     Assert-ContainsText $desktop3dQuaternionAnimation "asset.kind=animation_quaternion_clip" "Desktop 3D scaffold quaternion animation clip"
     Assert-ContainsText $desktop3dQuaternionAnimation "clip.track.0.rotation_keyframe_count=2" "Desktop 3D scaffold quaternion animation clip"
     Assert-ContainsText $desktop3dQuaternionAnimation "clip.track.0.rotations_xyzw_hex=0000000000000000000000000000803f00000000000000000000803f00000000" "Desktop 3D scaffold quaternion animation clip"
-    Assert-ContainsText $desktop3dSkinnedMesh "format=GameEngine.CookedSkinnedMesh.v1" "Desktop 3D scaffold skinned mesh"
+    Assert-ContainsText $desktop3dSkinnedMesh "format=GameEngine.CookedSkinnedMesh" "Desktop 3D scaffold skinned mesh"
     Assert-ContainsText $desktop3dSkinnedMesh "asset.kind=skinned_mesh" "Desktop 3D scaffold skinned mesh"
     Assert-ContainsText $desktop3dSkinnedMesh "skinned_mesh.vertex_count=3" "Desktop 3D scaffold skinned mesh"
     Assert-ContainsText $desktop3dSkinnedMesh "skinned_mesh.joint_count=1" "Desktop 3D scaffold skinned mesh"
     Assert-ContainsText $desktop3dSkinnedMesh "skinned_mesh.vertex_data_hex=" "Desktop 3D scaffold skinned mesh"
     Assert-ContainsText $desktop3dSkinnedMesh "skinned_mesh.joint_palette_hex=" "Desktop 3D scaffold skinned mesh"
-    Assert-ContainsText $desktop3dSourceRegistry "format=GameEngine.SourceAssetRegistry.v1" "Desktop 3D scaffold source registry"
-    Assert-ContainsText $desktop3dSourceRegistry "asset.0.source_format=GameEngine.TextureSource.v1" "Desktop 3D scaffold source registry"
-    Assert-ContainsText $desktop3dSourceRegistry "asset.1.source_format=GameEngine.MeshSource.v2" "Desktop 3D scaffold source registry"
-    Assert-ContainsText $desktop3dSourceRegistry "asset.2.source_format=GameEngine.MorphMeshCpuSource.v1" "Desktop 3D scaffold source registry"
-    Assert-ContainsText $desktop3dSourceRegistry "asset.3.source_format=GameEngine.Material.v1" "Desktop 3D scaffold source registry"
-    Assert-ContainsText $desktop3dSourceRegistry "asset.4.source_format=GameEngine.AnimationFloatClipSource.v1" "Desktop 3D scaffold source registry"
-    Assert-ContainsText $desktop3dSourceRegistry "asset.5.source_format=GameEngine.AnimationFloatClipSource.v1" "Desktop 3D scaffold source registry"
-    Assert-ContainsText $desktop3dSourceRegistry "asset.6.source_format=GameEngine.AnimationQuaternionClipSource.v1" "Desktop 3D scaffold source registry"
-    Assert-ContainsText $desktop3dSourceScene "format=GameEngine.Scene.v2" "Desktop 3D scaffold source scene"
+    Assert-ContainsText $desktop3dSourceRegistry "format=GameEngine.SourceAssetRegistry" "Desktop 3D scaffold source registry"
+    Assert-ContainsText $desktop3dSourceRegistry "asset.0.source_format=GameEngine.TextureSource" "Desktop 3D scaffold source registry"
+    Assert-ContainsText $desktop3dSourceRegistry "asset.1.source_format=GameEngine.MeshSource" "Desktop 3D scaffold source registry"
+    Assert-ContainsText $desktop3dSourceRegistry "asset.2.source_format=GameEngine.MorphMeshCpuSource" "Desktop 3D scaffold source registry"
+    Assert-ContainsText $desktop3dSourceRegistry "asset.3.source_format=GameEngine.Material" "Desktop 3D scaffold source registry"
+    Assert-ContainsText $desktop3dSourceRegistry "asset.4.source_format=GameEngine.AnimationFloatClipSource" "Desktop 3D scaffold source registry"
+    Assert-ContainsText $desktop3dSourceRegistry "asset.5.source_format=GameEngine.AnimationFloatClipSource" "Desktop 3D scaffold source registry"
+    Assert-ContainsText $desktop3dSourceRegistry "asset.6.source_format=GameEngine.AnimationQuaternionClipSource" "Desktop 3D scaffold source registry"
+    Assert-ContainsText $desktop3dSourceScene "format=GameEngine.Scene" "Desktop 3D scaffold source scene"
     Assert-ContainsText $desktop3dSourceScene "node.2.id=node/primary-camera" "Desktop 3D scaffold source scene"
-    Assert-ContainsText $desktop3dSourcePrefab "format=GameEngine.Prefab.v2" "Desktop 3D scaffold source prefab"
-    Assert-ContainsText $desktop3dSourceTexture "format=GameEngine.TextureSource.v1" "Desktop 3D scaffold source texture"
-    Assert-ContainsText $desktop3dSourceMesh "format=GameEngine.MeshSource.v2" "Desktop 3D scaffold source mesh"
-    Assert-ContainsText $desktop3dSourceMorph "format=GameEngine.MorphMeshCpuSource.v1" "Desktop 3D scaffold source morph"
+    Assert-ContainsText $desktop3dSourcePrefab "format=GameEngine.Prefab" "Desktop 3D scaffold source prefab"
+    Assert-ContainsText $desktop3dSourceTexture "format=GameEngine.TextureSource" "Desktop 3D scaffold source texture"
+    Assert-ContainsText $desktop3dSourceMesh "format=GameEngine.MeshSource" "Desktop 3D scaffold source mesh"
+    Assert-ContainsText $desktop3dSourceMorph "format=GameEngine.MorphMeshCpuSource" "Desktop 3D scaffold source morph"
     Assert-ContainsText $desktop3dSourceMorph "morph.bind_normals_hex=" "Desktop 3D scaffold source morph"
     Assert-ContainsText $desktop3dSourceMorph "morph.bind_tangents_hex=" "Desktop 3D scaffold source morph"
     Assert-ContainsText $desktop3dSourceMorph "morph.target.0.normal_deltas_hex=" "Desktop 3D scaffold source morph"
     Assert-ContainsText $desktop3dSourceMorph "morph.target.0.tangent_deltas_hex=" "Desktop 3D scaffold source morph"
-    Assert-ContainsText $desktop3dSourceAnimation "format=GameEngine.AnimationFloatClipSource.v1" "Desktop 3D scaffold source animation"
+    Assert-ContainsText $desktop3dSourceAnimation "format=GameEngine.AnimationFloatClipSource" "Desktop 3D scaffold source animation"
     Assert-ContainsText $desktop3dSourceMorphAnimation "clip.track.0.target=gltf/node/0/weights/0" "Desktop 3D scaffold source morph animation"
-    Assert-ContainsText $desktop3dSourceQuaternionAnimation "format=GameEngine.AnimationQuaternionClipSource.v1" "Desktop 3D scaffold source quaternion animation"
+    Assert-ContainsText $desktop3dSourceQuaternionAnimation "format=GameEngine.AnimationQuaternionClipSource" "Desktop 3D scaffold source quaternion animation"
     Assert-ContainsText $desktop3dSourceQuaternionAnimation "clip.track.0.target=desktop-3d-package-game/pose/root" "Desktop 3D scaffold source quaternion animation"
     Assert-ContainsText $desktop3dMain "kRuntimeSceneTangentSpaceStrideBytes{48}" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "mirakana::rhi::VertexSemantic::tangent" "Desktop 3D scaffold main.cpp"
@@ -1739,13 +1739,13 @@ try {
     Assert-ContainsText $desktop3dSceneHlsl "BLENDWEIGHT" "Desktop 3D scaffold scene shader"
     Assert-ContainsText $desktop3dUiOverlayHlsl "vs_native_ui_overlay" "Desktop 3D scaffold UI overlay shader"
     Assert-ContainsText $desktop3dUiOverlayHlsl "ps_native_ui_overlay" "Desktop 3D scaffold UI overlay shader"
-    foreach ($needle in @("format=GameEngine.UiAtlas.v1", "asset.kind=ui_atlas", "source.decoding=unsupported", "atlas.packing=unsupported", "page.0.asset_uri=runtime/assets/3d/base_color.texture.geasset", "image.0.resource_id=hud.texture_atlas_proof")) {
+    foreach ($needle in @("format=GameEngine.UiAtlas", "asset.kind=ui_atlas", "source.decoding=unsupported", "atlas.packing=unsupported", "page.0.asset_uri=runtime/assets/3d/base_color.texture.geasset", "image.0.resource_id=hud.texture_atlas_proof")) {
         Assert-ContainsText $desktop3dUiAtlas $needle "Desktop 3D scaffold hud.uiatlas"
     }
-    foreach ($needle in @("format=GameEngine.UiAtlas.v1", "asset.kind=ui_atlas", "source.decoding=unsupported", "atlas.packing=unsupported", "page.0.asset_uri=runtime/assets/3d/base_color.texture.geasset", "glyph.0.font_family=engine-default", "glyph.0.glyph=65")) {
+    foreach ($needle in @("format=GameEngine.UiAtlas", "asset.kind=ui_atlas", "source.decoding=unsupported", "atlas.packing=unsupported", "page.0.asset_uri=runtime/assets/3d/base_color.texture.geasset", "glyph.0.font_family=engine-default", "glyph.0.glyph=65")) {
         Assert-ContainsText $desktop3dUiTextGlyphAtlas $needle "Desktop 3D scaffold hud_text.uiatlas"
     }
-    foreach ($needle in @("format=GameEngine.PhysicsCollisionScene3D.v1", "asset.kind=physics_collision_scene", "backend.native=unsupported", "body.0.name=floor", "body.0.compound=level_static", "body.1.name=collision_probe", "body.1.compound=level_static", "body.2.name=pickup_trigger", "body.2.trigger=true", "body.2.compound=interaction_triggers")) {
+    foreach ($needle in @("format=GameEngine.PhysicsCollisionScene3D", "asset.kind=physics_collision_scene", "backend.native=unsupported", "body.0.name=floor", "body.0.compound=level_static", "body.1.name=collision_probe", "body.1.compound=level_static", "body.2.name=pickup_trigger", "body.2.trigger=true", "body.2.compound=interaction_triggers")) {
         Assert-ContainsText $desktop3dCollision $needle "Desktop 3D scaffold collision.collision3d"
     }
     Assert-ContainsText $desktop3dIndex "kind=ui_atlas" "Desktop 3D scaffold package index"
@@ -2200,13 +2200,13 @@ foreach ($needle in @(
 )) {
     Assert-ContainsText $committedDesktop3dUiOverlayShaderText $needle "committed generated 3D sample UI overlay shader"
 }
-foreach ($needle in @("format=GameEngine.UiAtlas.v1", "asset.kind=ui_atlas", "source.decoding=unsupported", "atlas.packing=unsupported", "page.0.asset_uri=runtime/assets/3d/base_color.texture.geasset", "image.0.resource_id=hud.texture_atlas_proof")) {
+foreach ($needle in @("format=GameEngine.UiAtlas", "asset.kind=ui_atlas", "source.decoding=unsupported", "atlas.packing=unsupported", "page.0.asset_uri=runtime/assets/3d/base_color.texture.geasset", "image.0.resource_id=hud.texture_atlas_proof")) {
     Assert-ContainsText $committedDesktop3dUiAtlasText $needle "committed generated 3D sample hud.uiatlas"
 }
-foreach ($needle in @("format=GameEngine.UiAtlas.v1", "asset.kind=ui_atlas", "source.decoding=unsupported", "atlas.packing=unsupported", "page.0.asset_uri=runtime/assets/3d/base_color.texture.geasset", "glyph.0.font_family=engine-default", "glyph.0.glyph=65")) {
+foreach ($needle in @("format=GameEngine.UiAtlas", "asset.kind=ui_atlas", "source.decoding=unsupported", "atlas.packing=unsupported", "page.0.asset_uri=runtime/assets/3d/base_color.texture.geasset", "glyph.0.font_family=engine-default", "glyph.0.glyph=65")) {
     Assert-ContainsText $committedDesktop3dUiTextGlyphAtlasText $needle "committed generated 3D sample hud_text.uiatlas"
 }
-foreach ($needle in @("format=GameEngine.PhysicsCollisionScene3D.v1", "asset.kind=physics_collision_scene", "backend.native=unsupported", "body.0.name=floor", "body.0.compound=level_static", "body.1.name=collision_probe", "body.1.compound=level_static", "body.2.name=pickup_trigger", "body.2.trigger=true", "body.2.compound=interaction_triggers")) {
+foreach ($needle in @("format=GameEngine.PhysicsCollisionScene3D", "asset.kind=physics_collision_scene", "backend.native=unsupported", "body.0.name=floor", "body.0.compound=level_static", "body.1.name=collision_probe", "body.1.compound=level_static", "body.2.name=pickup_trigger", "body.2.trigger=true", "body.2.compound=interaction_triggers")) {
     Assert-ContainsText $committedDesktop3dCollisionText $needle "committed generated 3D sample collision.collision3d"
 }
 Assert-ContainsText $committedDesktop3dIndexText "kind=ui_atlas" "committed generated 3D sample package index"

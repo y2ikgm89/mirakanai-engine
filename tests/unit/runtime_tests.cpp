@@ -22,7 +22,7 @@
 namespace {
 
 [[nodiscard]] std::string cooked_texture_payload(mirakana::AssetId asset) {
-    return "format=GameEngine.CookedTexture.v1\n"
+    return "format=GameEngine.CookedTexture\n"
            "asset.id=" +
            std::to_string(asset.value) +
            "\n"
@@ -37,7 +37,7 @@ namespace {
 [[nodiscard]] std::string cooked_ui_atlas_payload(mirakana::AssetId atlas_asset, mirakana::AssetId texture_asset,
                                                   std::string_view source_decoding = "unsupported",
                                                   std::string_view atlas_packing = "unsupported") {
-    return "format=GameEngine.UiAtlas.v1\n"
+    return "format=GameEngine.UiAtlas\n"
            "asset.id=" +
            std::to_string(atlas_asset.value) +
            "\n"
@@ -79,7 +79,7 @@ namespace {
 
 [[nodiscard]] std::string cooked_tilemap_payload(mirakana::AssetId tilemap_asset, mirakana::AssetId atlas_page,
                                                  std::string_view atlas_page_uri) {
-    return "format=GameEngine.Tilemap.v1\n"
+    return "format=GameEngine.Tilemap\n"
            "asset.id=" +
            std::to_string(tilemap_asset.value) +
            "\n"
@@ -117,7 +117,7 @@ namespace {
                                                                  std::string_view second_body_shape = "sphere",
                                                                  std::string_view second_body_layer = "2",
                                                                  std::string_view backend_native = "unsupported") {
-    return "format=GameEngine.PhysicsCollisionScene3D.v1\n"
+    return "format=GameEngine.PhysicsCollisionScene3D\n"
            "asset.id=" +
            std::to_string(collision_scene.value) +
            "\n"
@@ -166,7 +166,7 @@ namespace {
 
 [[nodiscard]] std::string cooked_sprite_animation_payload(mirakana::AssetId animation_asset, mirakana::AssetId sprite,
                                                           mirakana::AssetId material) {
-    return "format=GameEngine.CookedSpriteAnimation.v1\n"
+    return "format=GameEngine.CookedSpriteAnimation\n"
            "asset.id=" +
            std::to_string(animation_asset.value) +
            "\n"
@@ -277,7 +277,7 @@ namespace {
 }
 
 [[nodiscard]] std::string cooked_mesh_payload(mirakana::AssetId asset) {
-    return "format=GameEngine.CookedMesh.v2\n"
+    return "format=GameEngine.CookedMesh\n"
            "asset.id=" +
            std::to_string(asset.value) +
            "\n"
@@ -293,7 +293,7 @@ namespace {
 }
 
 [[nodiscard]] std::string cooked_audio_payload(mirakana::AssetId asset) {
-    return "format=GameEngine.CookedAudio.v1\n"
+    return "format=GameEngine.CookedAudio\n"
            "asset.id=" +
            std::to_string(asset.value) +
            "\n"
@@ -307,7 +307,7 @@ namespace {
 }
 
 [[nodiscard]] std::string cooked_scene_payload() {
-    return "format=GameEngine.Scene.v1\n"
+    return "format=GameEngine.Scene\n"
            "scene.name=Level01\n"
            "node.count=1\n"
            "node.1.name=Root\n"
@@ -403,7 +403,7 @@ find_session_profile_document_row(const std::vector<mirakana::runtime::RuntimeSe
 MK_TEST("runtime asset package loads cooked payloads with stable handles") {
     mirakana::MemoryFileSystem fs;
     const auto texture = mirakana::AssetId::from_name("textures/player");
-    const std::string payload = "format=GameEngine.CookedTexture.v1\ntexture.width=4\n";
+    const std::string payload = "format=GameEngine.CookedTexture\ntexture.width=4\n";
 
     const auto index = mirakana::build_asset_cooked_package_index(
         {mirakana::AssetCookedArtifact{.asset = texture,
@@ -436,8 +436,8 @@ MK_TEST("runtime asset package loads cooked payloads with stable handles") {
 MK_TEST("runtime asset package rejects payload hash mismatches without partial package") {
     mirakana::MemoryFileSystem fs;
     const auto texture = mirakana::AssetId::from_name("textures/player");
-    const auto good_payload = std::string{"format=GameEngine.CookedTexture.v1\ntexture.width=4\n"};
-    const auto bad_payload = std::string{"format=GameEngine.CookedTexture.v1\ntexture.width=8\n"};
+    const auto good_payload = std::string{"format=GameEngine.CookedTexture\ntexture.width=4\n"};
+    const auto bad_payload = std::string{"format=GameEngine.CookedTexture\ntexture.width=8\n"};
     const auto index = mirakana::build_asset_cooked_package_index({mirakana::AssetCookedArtifact{
                                                                       .asset = texture,
                                                                       .kind = mirakana::AssetKind::texture,
@@ -462,7 +462,7 @@ MK_TEST("runtime asset package rejects dependencies missing from the package") {
     mirakana::MemoryFileSystem fs;
     const auto material = mirakana::AssetId::from_name("materials/player");
     const auto texture = mirakana::AssetId::from_name("textures/player");
-    const auto payload = std::string{"format=GameEngine.Material.v1\nmaterial.name=Player\n"};
+    const auto payload = std::string{"format=GameEngine.Material\nmaterial.name=Player\n"};
     const auto index = mirakana::AssetCookedPackageIndex{
         .entries = {mirakana::AssetCookedPackageEntry{
             .asset = material,
@@ -1041,7 +1041,7 @@ MK_TEST("runtime scene workflow reports malformed dependent materials without th
             .content_hash = 1,
             .source_revision = 1,
             .dependencies = {},
-            .content = "format=GameEngine.Material.v1\nmaterial.name=Broken\n",
+            .content = "format=GameEngine.Material\nmaterial.name=Broken\n",
         },
         mirakana::runtime::RuntimeAssetRecord{
             .handle = mirakana::runtime::RuntimeAssetHandle{2},
@@ -1095,7 +1095,7 @@ MK_TEST("runtime typed payload access reports malformed cooked payloads without 
         .content_hash = 0,
         .source_revision = 1,
         .dependencies = {},
-        .content = "format=GameEngine.CookedTexture.v1\ntexture.width=4\n",
+        .content = "format=GameEngine.CookedTexture\ntexture.width=4\n",
     };
 
     const auto result = mirakana::runtime::runtime_texture_payload(record);
@@ -1330,7 +1330,7 @@ MK_TEST("runtime diagnostics inspect typed payload and scene material failures")
             .content_hash = 2,
             .source_revision = 1,
             .dependencies = {},
-            .content = "format=GameEngine.CookedMesh.v2\nmesh.vertex_count=3\n",
+            .content = "format=GameEngine.CookedMesh\nmesh.vertex_count=3\n",
         },
         mirakana::runtime::RuntimeAssetRecord{
             .handle = mirakana::runtime::RuntimeAssetHandle{3},
@@ -1340,7 +1340,7 @@ MK_TEST("runtime diagnostics inspect typed payload and scene material failures")
             .content_hash = 3,
             .source_revision = 1,
             .dependencies = {},
-            .content = "format=GameEngine.Material.v1\nmaterial.name=Broken\n",
+            .content = "format=GameEngine.Material\nmaterial.name=Broken\n",
         },
         mirakana::runtime::RuntimeAssetRecord{
             .handle = mirakana::runtime::RuntimeAssetHandle{4},
@@ -1376,7 +1376,7 @@ MK_TEST("runtime diagnostics inspect typed payload and scene material failures")
 }
 
 MK_TEST("runtime diagnostics report session document load failures") {
-    const auto settings = mirakana::runtime::deserialize_runtime_settings("format=GameEngine.RuntimeSettings.v1\n"
+    const auto settings = mirakana::runtime::deserialize_runtime_settings("format=GameEngine.RuntimeSettings\n"
                                                                           "schema.version=1\n"
                                                                           "entry.audio.master_volume=0.75\n"
                                                                           "entry.audio.master_volume=1.0\n");
@@ -1388,7 +1388,7 @@ MK_TEST("runtime diagnostics report session document load failures") {
     MK_REQUIRE(settings_report.diagnostics[0].path == "settings/broken.settings");
     MK_REQUIRE(settings_report.diagnostics[0].message.find("duplicate") != std::string::npos);
 
-    const auto input = mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions.v2\n"
+    const auto input = mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions.v4\n"
                                                                             "bind.jump=key:space,key:missing\n");
     const auto input_report = mirakana::runtime::make_runtime_session_diagnostic_report(input, "input/broken.geinput");
     MK_REQUIRE(!input_report.succeeded());
@@ -1415,7 +1415,7 @@ MK_TEST("runtime save data writes and loads deterministic key values") {
     mirakana::runtime::write_runtime_save_data(fs, "saves/slot01.gesave", save);
 
     const auto text = fs.read_text("saves/slot01.gesave");
-    MK_REQUIRE(text.find("format=GameEngine.RuntimeSaveData.v1\n") == 0);
+    MK_REQUIRE(text.find("format=GameEngine.RuntimeSaveData\n") == 0);
     MK_REQUIRE(text.find("schema.version=3\n") != std::string::npos);
     MK_REQUIRE(text.find("entry.player.level=4\nentry.player.name=Grace\n") != std::string::npos);
 
@@ -1429,7 +1429,7 @@ MK_TEST("runtime save data writes and loads deterministic key values") {
 
 MK_TEST("runtime settings loads defaults and rejects malformed documents") {
     mirakana::MemoryFileSystem fs;
-    fs.write_text("settings/game.settings", "format=GameEngine.RuntimeSettings.v1\n"
+    fs.write_text("settings/game.settings", "format=GameEngine.RuntimeSettings\n"
                                             "schema.version=2\n"
                                             "entry.audio.master_volume=0.75\n"
                                             "entry.video.fullscreen=false\n");
@@ -1440,7 +1440,7 @@ MK_TEST("runtime settings loads defaults and rejects malformed documents") {
     MK_REQUIRE(loaded.settings.value_or("audio.master_volume", "1.0") == "0.75");
     MK_REQUIRE(loaded.settings.value_or("video.fullscreen", "true") == "false");
 
-    fs.write_text("settings/broken.settings", "format=GameEngine.RuntimeSettings.v1\n"
+    fs.write_text("settings/broken.settings", "format=GameEngine.RuntimeSettings\n"
                                               "schema.version=1\n"
                                               "entry.audio.master_volume=0.75\n"
                                               "entry.audio.master_volume=1.0\n");
@@ -1565,7 +1565,7 @@ MK_TEST("runtime session profile document bundle separates corrupt and unsupport
         .game_id = "sample_game", .profile_id = "slot_1", .root_path = "profiles"};
     const auto paths = mirakana::runtime::plan_runtime_session_profile_paths(profile);
     fs.write_text(paths.save_data_path, "format=GameEngine.RuntimeSaveData.v0\nschema.version=1\n");
-    fs.write_text(paths.settings_path, "format=GameEngine.RuntimeSettings.v1\nentry.audio.master_volume=0.75\n");
+    fs.write_text(paths.settings_path, "format=GameEngine.RuntimeSettings\nentry.audio.master_volume=0.75\n");
     fs.write_text(paths.input_rebinding_profile_path,
                   "format=GameEngine.RuntimeInputRebindingProfile.v0\nprofile.id=slot_1\n");
 
@@ -1977,7 +1977,7 @@ MK_TEST("runtime simulation persistence plan keeps valid save recovery when sett
     save.set_value("entity.player.region", "region_a");
     save.set_value("entity.player.state_hash", "hash_player_12");
     mirakana::runtime::write_runtime_save_data(fs, paths.save_data_path, save);
-    fs.write_text(paths.settings_path, "format=GameEngine.RuntimeSettings.v1\nentry.audio=bad\tvalue\n");
+    fs.write_text(paths.settings_path, "format=GameEngine.RuntimeSettings\nentry.audio=bad\tvalue\n");
     mirakana::runtime::RuntimeInputRebindingProfile input_profile;
     input_profile.profile_id = "slot_1";
     mirakana::runtime::write_runtime_input_rebinding_profile(fs, paths.input_rebinding_profile_path, input_profile);
@@ -2010,7 +2010,7 @@ MK_TEST("runtime simulation persistence plan recommends corrupt save remediation
     const auto profile = mirakana::runtime::RuntimeSessionProfilePathRequest{
         .game_id = "sample_game", .profile_id = "slot_1", .root_path = "profiles"};
     const auto paths = mirakana::runtime::plan_runtime_session_profile_paths(profile);
-    fs.write_text(paths.save_data_path, "format=GameEngine.RuntimeSaveData.v1\n"
+    fs.write_text(paths.save_data_path, "format=GameEngine.RuntimeSaveData\n"
                                         "schema.version=3\n"
                                         "entry.world.id=bad\tworld\n");
     mirakana::runtime::RuntimeSettings settings;
@@ -2571,7 +2571,7 @@ MK_TEST("runtime input action maps serialize with stable key names") {
     actions.bind_key("move_left", mirakana::Key::left);
 
     const auto text = mirakana::runtime::serialize_runtime_input_actions(actions);
-    MK_REQUIRE(text == "format=GameEngine.RuntimeInputActions.v4\n"
+    MK_REQUIRE(text == "format=GameEngine.RuntimeInputActions\n"
                        "bind.default.jump=key:space,key:up\n"
                        "bind.default.move_left=key:left\n");
 
@@ -2594,7 +2594,7 @@ MK_TEST("runtime input action maps support text edit key names") {
     actions.bind_key("line_start", mirakana::Key::home);
 
     const auto text = mirakana::runtime::serialize_runtime_input_actions(actions);
-    MK_REQUIRE(text == "format=GameEngine.RuntimeInputActions.v4\n"
+    MK_REQUIRE(text == "format=GameEngine.RuntimeInputActions\n"
                        "bind.default.erase_backward=key:backspace\n"
                        "bind.default.erase_forward=key:delete\n"
                        "bind.default.line_end=key:end\n"
@@ -2626,7 +2626,7 @@ MK_TEST("runtime input action maps serialize canonical device triggers") {
 
     const auto text = mirakana::runtime::serialize_runtime_input_actions(actions);
 
-    MK_REQUIRE(text == "format=GameEngine.RuntimeInputActions.v4\n"
+    MK_REQUIRE(text == "format=GameEngine.RuntimeInputActions\n"
                        "bind.default.jump=key:space,pointer:1,gamepad:1:south\n"
                        "bind.default.move_left=key:left\n");
 
@@ -2660,7 +2660,7 @@ MK_TEST("runtime input action maps serialize canonical v4 default axis documents
 
     const auto text = mirakana::runtime::serialize_runtime_input_actions(actions);
 
-    MK_REQUIRE(text == "format=GameEngine.RuntimeInputActions.v4\n"
+    MK_REQUIRE(text == "format=GameEngine.RuntimeInputActions\n"
                        "bind.default.jump=key:space\n"
                        "axis.default.look_y=gamepad:1:right_y:-1:0.2\n"
                        "axis.default.move_x=keys:left:right,gamepad:1:left_x:1:0.25\n");
@@ -2693,7 +2693,7 @@ MK_TEST("runtime input action maps serialize canonical v4 context documents") {
 
     const auto text = mirakana::runtime::serialize_runtime_input_actions(actions);
 
-    MK_REQUIRE(text == "format=GameEngine.RuntimeInputActions.v4\n"
+    MK_REQUIRE(text == "format=GameEngine.RuntimeInputActions\n"
                        "bind.gameplay.confirm=gamepad:1:south\n"
                        "bind.menu.confirm=key:space\n"
                        "axis.gameplay.move_x=keys:left:right,gamepad:1:left_x:1:0.25\n");
@@ -2722,7 +2722,7 @@ MK_TEST("runtime input action serialization is canonical across insertion order"
 
     const auto text = mirakana::runtime::serialize_runtime_input_actions(actions);
 
-    MK_REQUIRE(text == "format=GameEngine.RuntimeInputActions.v4\n"
+    MK_REQUIRE(text == "format=GameEngine.RuntimeInputActions\n"
                        "bind.default.jump=key:space,key:up\n");
 }
 
@@ -3356,7 +3356,7 @@ MK_TEST("runtime input rebinding profiles serialize and deserialize canonically"
 
     const auto text = mirakana::runtime::serialize_runtime_input_rebinding_profile(profile);
 
-    MK_REQUIRE(text == "format=GameEngine.RuntimeInputRebindingProfile.v1\n"
+    MK_REQUIRE(text == "format=GameEngine.RuntimeInputRebindingProfile\n"
                        "profile.id=player_one\n"
                        "bind.gameplay.confirm=key:space,gamepad:1:south\n"
                        "axis.gameplay.move_x=keys:left:right,gamepad:1:left_x:1:0.25\n");
@@ -3462,14 +3462,14 @@ MK_TEST("runtime input rebinding profile validation reports malformed and confli
 }
 
 MK_TEST("runtime session documents reject malformed save localization and input action documents") {
-    const auto bad_save = mirakana::runtime::deserialize_runtime_save_data("format=GameEngine.RuntimeSaveData.v1\n"
+    const auto bad_save = mirakana::runtime::deserialize_runtime_save_data("format=GameEngine.RuntimeSaveData\n"
                                                                            "schema.version=1\n"
                                                                            "entry.player.name=bad\tvalue\n");
     MK_REQUIRE(!bad_save.succeeded());
     MK_REQUIRE(bad_save.diagnostic.find("control") != std::string::npos);
 
     const auto bad_localization =
-        mirakana::runtime::deserialize_runtime_localization_catalog("format=GameEngine.RuntimeLocalizationCatalog.v1\n"
+        mirakana::runtime::deserialize_runtime_localization_catalog("format=GameEngine.RuntimeLocalizationCatalog\n"
                                                                     "locale=en-US\n"
                                                                     "text.menu.start=Start\n"
                                                                     "text.menu.start=Again\n");
@@ -3477,7 +3477,7 @@ MK_TEST("runtime session documents reject malformed save localization and input 
     MK_REQUIRE(bad_localization.diagnostic.find("duplicate") != std::string::npos);
 
     const auto bad_input =
-        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions.v4\n"
+        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions\n"
                                                              "bind.default.jump=key:space,key:missing\n");
     MK_REQUIRE(!bad_input.succeeded());
     MK_REQUIRE(bad_input.diagnostic.find("unsupported") != std::string::npos);
@@ -3501,99 +3501,99 @@ MK_TEST("runtime session documents reject malformed save localization and input 
     MK_REQUIRE(old_v3_input_format.diagnostic.find("unsupported") != std::string::npos);
 
     const auto bad_trigger_kind =
-        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions.v4\n"
+        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions\n"
                                                              "bind.default.jump=touch:1\n");
     MK_REQUIRE(!bad_trigger_kind.succeeded());
     MK_REQUIRE(bad_trigger_kind.diagnostic.find("unsupported") != std::string::npos);
 
     const auto bad_pointer =
-        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions.v4\n"
+        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions\n"
                                                              "bind.default.jump=pointer:0\n");
     MK_REQUIRE(!bad_pointer.succeeded());
     MK_REQUIRE(bad_pointer.diagnostic.find("pointer") != std::string::npos);
 
     const auto bad_gamepad =
-        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions.v4\n"
+        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions\n"
                                                              "bind.default.jump=gamepad:1:unknown\n");
     MK_REQUIRE(!bad_gamepad.succeeded());
     MK_REQUIRE(bad_gamepad.diagnostic.find("gamepad") != std::string::npos);
 
     const auto duplicate_action =
-        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions.v4\n"
+        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions\n"
                                                              "bind.default.jump=key:space\n"
                                                              "bind.default.jump=pointer:1\n");
     MK_REQUIRE(!duplicate_action.succeeded());
     MK_REQUIRE(duplicate_action.diagnostic.find("duplicate") != std::string::npos);
 
     const auto duplicate_trigger =
-        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions.v4\n"
+        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions\n"
                                                              "bind.default.jump=key:space,key:space\n");
     MK_REQUIRE(!duplicate_trigger.succeeded());
     MK_REQUIRE(duplicate_trigger.diagnostic.find("duplicate") != std::string::npos);
 
     const auto bad_axis_kind =
-        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions.v4\n"
+        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions\n"
                                                              "axis.default.move_x=pointer:delta_x\n");
     MK_REQUIRE(!bad_axis_kind.succeeded());
     MK_REQUIRE(bad_axis_kind.diagnostic.find("unsupported") != std::string::npos);
 
     const auto bad_axis_key =
-        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions.v4\n"
+        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions\n"
                                                              "axis.default.move_x=keys:missing:right\n");
     MK_REQUIRE(!bad_axis_key.succeeded());
     MK_REQUIRE(bad_axis_key.diagnostic.find("unsupported") != std::string::npos);
 
     const auto bad_axis_gamepad_id =
-        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions.v4\n"
+        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions\n"
                                                              "axis.default.move_x=gamepad:0:left_x:1:0\n");
     MK_REQUIRE(!bad_axis_gamepad_id.succeeded());
     MK_REQUIRE(bad_axis_gamepad_id.diagnostic.find("gamepad") != std::string::npos);
 
     const auto bad_axis_name =
-        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions.v4\n"
+        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions\n"
                                                              "axis.default.move_x=gamepad:1:missing:1:0\n");
     MK_REQUIRE(!bad_axis_name.succeeded());
     MK_REQUIRE(bad_axis_name.diagnostic.find("axis") != std::string::npos);
 
     const auto bad_axis_scale =
-        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions.v4\n"
+        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions\n"
                                                              "axis.default.move_x=gamepad:1:left_x:0:0\n");
     MK_REQUIRE(!bad_axis_scale.succeeded());
     MK_REQUIRE(bad_axis_scale.diagnostic.find("scale") != std::string::npos);
 
     const auto bad_axis_deadzone =
-        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions.v4\n"
+        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions\n"
                                                              "axis.default.move_x=gamepad:1:left_x:1:1\n");
     MK_REQUIRE(!bad_axis_deadzone.succeeded());
     MK_REQUIRE(bad_axis_deadzone.diagnostic.find("deadzone") != std::string::npos);
 
     const auto duplicate_axis_action =
-        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions.v4\n"
+        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions\n"
                                                              "axis.default.move_x=keys:left:right\n"
                                                              "axis.default.move_x=gamepad:1:left_x:1:0\n");
     MK_REQUIRE(!duplicate_axis_action.succeeded());
     MK_REQUIRE(duplicate_axis_action.diagnostic.find("duplicate") != std::string::npos);
 
     const auto duplicate_axis_source =
-        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions.v4\n"
+        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions\n"
                                                              "axis.default.move_x=keys:left:right,keys:left:right\n");
     MK_REQUIRE(!duplicate_axis_source.succeeded());
     MK_REQUIRE(duplicate_axis_source.diagnostic.find("duplicate") != std::string::npos);
 
     const auto missing_context_action_separator =
-        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions.v4\n"
+        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions\n"
                                                              "bind.jump=key:space\n");
     MK_REQUIRE(!missing_context_action_separator.succeeded());
     MK_REQUIRE(missing_context_action_separator.diagnostic.find("context") != std::string::npos);
 
     const auto invalid_context_name =
-        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions.v4\n"
+        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions\n"
                                                              "bind.menu layer.confirm=key:space\n");
     MK_REQUIRE(!invalid_context_name.succeeded());
     MK_REQUIRE(invalid_context_name.diagnostic.find("context") != std::string::npos);
 
     const auto invalid_action_name =
-        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions.v4\n"
+        mirakana::runtime::deserialize_runtime_input_actions("format=GameEngine.RuntimeInputActions\n"
                                                              "bind.menu.con firm=key:space\n");
     MK_REQUIRE(!invalid_action_name.succeeded());
     MK_REQUIRE(invalid_action_name.diagnostic.find("action") != std::string::npos);

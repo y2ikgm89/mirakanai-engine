@@ -750,7 +750,7 @@ function Assert-SpriteAtlasSourceAuthoringTargets($game, [string]$relativePath, 
     }
 
     $sourceFormats = @($game.importerRequirements.sourceFormats)
-    foreach ($sourceFormat in @("GameEngine.TextureSource.v1", "GameEngine.SourceAssetRegistry.v1")) {
+    foreach ($sourceFormat in @("GameEngine.TextureSource", "GameEngine.SourceAssetRegistry")) {
         if ($sourceFormats -notcontains $sourceFormat) {
             Write-Error "$relativePath spriteAtlasSourceAuthoringTargets requires importerRequirements.sourceFormats entry: $sourceFormat"
         }
@@ -835,14 +835,14 @@ function Assert-SpriteAtlasSourceAuthoringTargets($game, [string]$relativePath, 
         }
 
         $sourceRegistryText = Get-Content -LiteralPath (Join-Path $root "$gameDirectory/$sourceRegistryPath") -Raw
-        if (-not (Test-TextStartsWithLine $sourceRegistryText "format=GameEngine.SourceAssetRegistry.v1")) {
-            Write-Error "$relativePath spriteAtlasSourceAuthoringTargets sourceRegistryPath must contain GameEngine.SourceAssetRegistry.v1 text: $sourceRegistryPath"
+        if (-not (Test-TextStartsWithLine $sourceRegistryText "format=GameEngine.SourceAssetRegistry")) {
+            Write-Error "$relativePath spriteAtlasSourceAuthoringTargets sourceRegistryPath must contain GameEngine.SourceAssetRegistry text: $sourceRegistryPath"
         }
         foreach ($needle in @(
                 "asset.0.key=$atlasAssetKey",
                 "asset.0.kind=texture",
                 "asset.0.source=$atlasSourcePath",
-                "asset.0.source_format=GameEngine.TextureSource.v1",
+                "asset.0.source_format=GameEngine.TextureSource",
                 "asset.0.imported=$atlasImportedPath"
             )) {
             if (-not $sourceRegistryText.Contains($needle)) {
@@ -851,8 +851,8 @@ function Assert-SpriteAtlasSourceAuthoringTargets($game, [string]$relativePath, 
         }
 
         $atlasSourceText = Get-Content -LiteralPath (Join-Path $root "$gameDirectory/$atlasSourcePath") -Raw
-        if (-not (Test-TextStartsWithLine $atlasSourceText "format=GameEngine.TextureSource.v1")) {
-            Write-Error "$relativePath spriteAtlasSourceAuthoringTargets atlasSourcePath must contain GameEngine.TextureSource.v1 text: $atlasSourcePath"
+        if (-not (Test-TextStartsWithLine $atlasSourceText "format=GameEngine.TextureSource")) {
+            Write-Error "$relativePath spriteAtlasSourceAuthoringTargets atlasSourcePath must contain GameEngine.TextureSource text: $atlasSourcePath"
         }
         foreach ($needle in @("texture.pixel_format=rgba8_unorm", "texture.data_hex=")) {
             if (-not $atlasSourceText.Contains($needle)) {
@@ -1094,7 +1094,7 @@ function Assert-PrefabScenePackageAuthoringTargets($game, [string]$relativePath,
         "create-prefab",
         "instantiate-prefab"
     )
-    $allowedSurfaces = @("GameEngine.Scene.v2", "GameEngine.Prefab.v2")
+    $allowedSurfaces = @("GameEngine.Scene", "GameEngine.Prefab")
     $unsupportedSentinelFields = @(
         "broadImporterExecution",
         "broadDependencyCooking",
@@ -1220,7 +1220,7 @@ function Assert-PrefabScenePackageAuthoringTargets($game, [string]$relativePath,
             if (@($expectedAuthoringOperations) -notcontains ([string]$row.operation)) {
                 Write-Error "$relativePath prefabScenePackageAuthoringTargets authoringCommandRows operation is unsupported: $($row.operation)"
             }
-            $expectedSurface = if ([string]$row.operation -eq "create-prefab") { "GameEngine.Prefab.v2" } else { "GameEngine.Scene.v2" }
+            $expectedSurface = if ([string]$row.operation -eq "create-prefab") { "GameEngine.Prefab" } else { "GameEngine.Scene" }
             if ([string]$row.surface -ne $expectedSurface) {
                 Write-Error "$relativePath prefabScenePackageAuthoringTargets authoringCommandRows operation '$($row.operation)' must use $expectedSurface"
             }
@@ -1232,18 +1232,18 @@ function Assert-PrefabScenePackageAuthoringTargets($game, [string]$relativePath,
 
         $sourceSceneText = Get-Content -LiteralPath (Join-Path $root "$gameDirectory/$sceneAuthoringPath") -Raw
         $sourcePrefabText = Get-Content -LiteralPath (Join-Path $root "$gameDirectory/$prefabAuthoringPath") -Raw
-        if (-not (Test-TextStartsWithLine $sourceSceneText "format=GameEngine.Scene.v2")) {
-            Write-Error "$relativePath prefabScenePackageAuthoringTargets sceneAuthoringPath must contain GameEngine.Scene.v2 text: $sceneAuthoringPath"
+        if (-not (Test-TextStartsWithLine $sourceSceneText "format=GameEngine.Scene")) {
+            Write-Error "$relativePath prefabScenePackageAuthoringTargets sceneAuthoringPath must contain GameEngine.Scene text: $sceneAuthoringPath"
         }
-        if (-not (Test-TextStartsWithLine $sourcePrefabText "format=GameEngine.Prefab.v2")) {
-            Write-Error "$relativePath prefabScenePackageAuthoringTargets prefabAuthoringPath must contain GameEngine.Prefab.v2 text: $prefabAuthoringPath"
+        if (-not (Test-TextStartsWithLine $sourcePrefabText "format=GameEngine.Prefab")) {
+            Write-Error "$relativePath prefabScenePackageAuthoringTargets prefabAuthoringPath must contain GameEngine.Prefab text: $prefabAuthoringPath"
         }
 
         $sourceRegistryFullPath = Join-Path $root "$gameDirectory/$sourceRegistryPath"
         $sourceRegistryText = Get-Content -LiteralPath $sourceRegistryFullPath -Raw
         $normalizedSourceRegistryText = ConvertTo-LfText $sourceRegistryText
-        if (-not (Test-TextStartsWithLine $sourceRegistryText "format=GameEngine.SourceAssetRegistry.v1")) {
-            Write-Error "$relativePath prefabScenePackageAuthoringTargets sourceRegistryPath must contain GameEngine.SourceAssetRegistry.v1 text: $sourceRegistryPath"
+        if (-not (Test-TextStartsWithLine $sourceRegistryText "format=GameEngine.SourceAssetRegistry")) {
+            Write-Error "$relativePath prefabScenePackageAuthoringTargets sourceRegistryPath must contain GameEngine.SourceAssetRegistry text: $sourceRegistryPath"
         }
         $sourceRegistryRows = @{}
         foreach ($line in ($sourceRegistryText -split "`r?`n")) {
@@ -1256,9 +1256,9 @@ function Assert-PrefabScenePackageAuthoringTargets($game, [string]$relativePath,
             }
         }
         foreach ($sourceRow in @(
-                @{ SourceFormat = "GameEngine.TextureSource.v1"; Kind = "texture" },
-                @{ SourceFormat = "GameEngine.MeshSource.v2"; Kind = "mesh" },
-                @{ SourceFormat = "GameEngine.Material.v1"; Kind = "material" }
+                @{ SourceFormat = "GameEngine.TextureSource"; Kind = "texture" },
+                @{ SourceFormat = "GameEngine.MeshSource"; Kind = "mesh" },
+                @{ SourceFormat = "GameEngine.Material"; Kind = "material" }
             )) {
             $hasMatchingSourceRow = $false
             foreach ($registryRow in $sourceRegistryRows.Values) {
@@ -1309,7 +1309,7 @@ function Assert-PrefabScenePackageAuthoringTargets($game, [string]$relativePath,
             $graphicsReadiness = [string]$game.backendReadiness.graphics
             if (-not $hasSkinnedMeshRuntimeFile -or
                 -not $gpuSkinningValue.Contains("host-gated D3D12 package smoke") -or
-                -not $gpuSkinningValue.Contains("GameEngine.CookedSkinnedMesh.v1") -or
+                -not $gpuSkinningValue.Contains("GameEngine.CookedSkinnedMesh") -or
                 -not $gpuSkinningValue.Contains("gpu_skinning_draws") -or
                 -not $graphicsReadiness.Contains("--require-gpu-skinning") -or
                 -not $graphicsReadiness.Contains("renderer_gpu_skinning_draws")) {
@@ -1454,8 +1454,8 @@ function Assert-RegisteredSourceAssetCookTargets($game, [string]$relativePath, [
         $sourceRegistryFullPath = Join-Path $root "$gameDirectory/$($target.sourceRegistryPath)"
         $sourceRegistryText = Get-Content -LiteralPath $sourceRegistryFullPath -Raw
         $normalizedSourceRegistryText = ConvertTo-LfText $sourceRegistryText
-        if (-not (Test-TextStartsWithLine $sourceRegistryText "format=GameEngine.SourceAssetRegistry.v1")) {
-            Write-Error "$relativePath registeredSourceAssetCookTargets sourceRegistryPath must contain GameEngine.SourceAssetRegistry.v1 text: $($target.sourceRegistryPath)"
+        if (-not (Test-TextStartsWithLine $sourceRegistryText "format=GameEngine.SourceAssetRegistry")) {
+            Write-Error "$relativePath registeredSourceAssetCookTargets sourceRegistryPath must contain GameEngine.SourceAssetRegistry text: $($target.sourceRegistryPath)"
         }
 
         if ($target.selectedAssetKeys -isnot [System.Array] -or @($target.selectedAssetKeys).Count -lt 1) {

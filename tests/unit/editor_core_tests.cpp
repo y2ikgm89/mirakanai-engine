@@ -73,7 +73,7 @@
 namespace {
 
 [[nodiscard]] std::string editor_test_cooked_texture_payload(mirakana::AssetId asset) {
-    return "format=GameEngine.CookedTexture.v1\n"
+    return "format=GameEngine.CookedTexture\n"
            "asset.id=" +
            std::to_string(asset.value) +
            "\n"
@@ -165,7 +165,7 @@ namespace {
 [[nodiscard]] std::string editor_test_sprite_animation_payload(mirakana::AssetId animation, mirakana::AssetId sprite,
                                                                mirakana::AssetId material,
                                                                std::string_view target_node = "player") {
-    return "format=GameEngine.CookedSpriteAnimation.v1\n"
+    return "format=GameEngine.CookedSpriteAnimation\n"
            "asset.id=" +
            std::to_string(animation.value) +
            "\n"
@@ -407,7 +407,7 @@ MK_TEST("editor workspace serializes and restores panel state") {
     workspace.set_panel_visible(mirakana::editor::PanelId::profiler, true);
 
     const auto serialized = mirakana::editor::serialize_workspace(workspace);
-    MK_REQUIRE(serialized.contains("format=GameEngine.Workspace.v1"));
+    MK_REQUIRE(serialized.contains("format=GameEngine.Workspace"));
     MK_REQUIRE(serialized.contains("project.name=sample"));
     MK_REQUIRE(serialized.contains("panel.assets=hidden"));
     MK_REQUIRE(!serialized.contains("panel.resources=visible"));
@@ -432,15 +432,15 @@ MK_TEST("editor workspace serializes and restores panel state") {
     MK_REQUIRE(restored.is_panel_visible(mirakana::editor::PanelId::scene));
 }
 
-MK_TEST("editor workspace migrates v0 panel state to current defaults") {
-    const auto migrated = mirakana::editor::migrate_workspace("format=GameEngine.Workspace.v0\n"
+MK_TEST("editor workspace migration reports canonical format without suffix") {
+    const auto migrated = mirakana::editor::migrate_workspace("format=GameEngine.Workspace\n"
                                                               "project.name=legacy\n"
                                                               "project.root=games/legacy\n"
                                                               "panel.assets=hidden\n");
 
-    MK_REQUIRE(migrated.source_version == 0);
+    MK_REQUIRE(migrated.source_version == 1);
     MK_REQUIRE(migrated.target_version == 1);
-    MK_REQUIRE(migrated.migrated);
+    MK_REQUIRE(!migrated.migrated);
     MK_REQUIRE(migrated.workspace.project().name == "legacy");
     MK_REQUIRE(!migrated.workspace.is_panel_visible(mirakana::editor::PanelId::assets));
     MK_REQUIRE(migrated.workspace.is_panel_visible(mirakana::editor::PanelId::viewport));
@@ -450,10 +450,23 @@ MK_TEST("editor workspace migrates v0 panel state to current defaults") {
     MK_REQUIRE(!migrated.workspace.is_panel_visible(mirakana::editor::PanelId::profiler));
 }
 
+MK_TEST("editor workspace rejects stale suffixed formats") {
+    for (const auto format : std::vector<std::string_view>{"GameEngine.Workspace.v0", "GameEngine.Workspace.v1"}) {
+        bool rejected = false;
+        try {
+            (void)mirakana::editor::deserialize_workspace(std::string{"format="} + std::string{format} +
+                                                          "\nproject.name=legacy\nproject.root=games/legacy\n");
+        } catch (const std::invalid_argument&) {
+            rejected = true;
+        }
+        MK_REQUIRE(rejected);
+    }
+}
+
 MK_TEST("editor workspace rejects duplicate panel state") {
     bool rejected_duplicate_panel = false;
     try {
-        (void)mirakana::editor::deserialize_workspace("format=GameEngine.Workspace.v1\n"
+        (void)mirakana::editor::deserialize_workspace("format=GameEngine.Workspace\n"
                                                       "project.name=sample\n"
                                                       "project.root=games/sample\n"
                                                       "panel.assets=visible\n"
@@ -501,7 +514,7 @@ MK_TEST("editor project document serializes and restores project paths") {
     };
 
     const auto serialized = mirakana::editor::serialize_project_document(document);
-    MK_REQUIRE(serialized.contains("format=GameEngine.Project.v4"));
+    MK_REQUIRE(serialized.contains("format=GameEngine.Project"));
     MK_REQUIRE(serialized.contains("project.name=sample"));
     MK_REQUIRE(serialized.contains("project.asset_root=assets"));
     MK_REQUIRE(serialized.contains("project.source_registry=source/assets/package.geassets"));
@@ -525,50 +538,13 @@ MK_TEST("editor project document serializes and restores project paths") {
     MK_REQUIRE(restored.shader_tool.cache_index_path == "out/editor/shaders/shader-cache.gecache");
 }
 
-MK_TEST("editor project document migrates v0 defaults") {
-    const auto migrated = mirakana::editor::migrate_project_document("format=GameEngine.Project.v0\n"
-                                                                     "project.name=legacy\n"
-                                                                     "project.root=games/legacy\n");
-
-    MK_REQUIRE(migrated.source_version == 0);
-    MK_REQUIRE(migrated.target_version == 4);
-    MK_REQUIRE(migrated.migrated);
-    MK_REQUIRE(migrated.document.name == "legacy");
-    MK_REQUIRE(migrated.document.asset_root == "assets");
-    MK_REQUIRE(migrated.document.source_registry_path == "source/assets/package.geassets");
-    MK_REQUIRE(migrated.document.game_manifest_path == "game.agent.json");
-    MK_REQUIRE(migrated.document.startup_scene_path == "scenes/start.scene");
-    MK_REQUIRE(migrated.document.render_backend == mirakana::editor::EditorRenderBackend::automatic);
-    MK_REQUIRE(migrated.document.shader_tool.executable == "dxc");
-    MK_REQUIRE(migrated.document.shader_tool.artifact_output_root == "out/editor/shaders");
-    MK_REQUIRE(migrated.document.shader_tool.cache_index_path == "out/editor/shaders/shader-cache.gecache");
-}
-
-MK_TEST("editor project document migrates v1 shader tool defaults") {
-    const auto migrated = mirakana::editor::migrate_project_document("format=GameEngine.Project.v1\n"
-                                                                     "project.name=legacy\n"
-                                                                     "project.root=games/legacy\n"
-                                                                     "project.asset_root=assets\n"
-                                                                     "project.game_manifest=game.agent.json\n"
-                                                                     "project.startup_scene=scenes/start.scene\n");
-
-    MK_REQUIRE(migrated.source_version == 1);
-    MK_REQUIRE(migrated.target_version == 4);
-    MK_REQUIRE(migrated.migrated);
-    MK_REQUIRE(migrated.document.source_registry_path == "source/assets/package.geassets");
-    MK_REQUIRE(migrated.document.render_backend == mirakana::editor::EditorRenderBackend::automatic);
-    MK_REQUIRE(migrated.document.shader_tool.executable == "dxc");
-    MK_REQUIRE(migrated.document.shader_tool.working_directory == ".");
-    MK_REQUIRE(migrated.document.shader_tool.artifact_output_root == "out/editor/shaders");
-    MK_REQUIRE(migrated.document.shader_tool.cache_index_path == "out/editor/shaders/shader-cache.gecache");
-}
-
-MK_TEST("editor project document migrates v3 source registry path default") {
+MK_TEST("editor project document migration reports canonical format without suffix") {
     const auto migrated =
-        mirakana::editor::migrate_project_document("format=GameEngine.Project.v3\n"
+        mirakana::editor::migrate_project_document("format=GameEngine.Project\n"
                                                    "project.name=legacy\n"
                                                    "project.root=games/legacy\n"
                                                    "project.asset_root=assets\n"
+                                                   "project.source_registry=source/assets/package.geassets\n"
                                                    "project.game_manifest=game.agent.json\n"
                                                    "project.startup_scene=scenes/start.scene\n"
                                                    "project.render_backend=vulkan\n"
@@ -578,11 +554,37 @@ MK_TEST("editor project document migrates v3 source registry path default") {
                                                    "project.shader_tool.cache_index=out/editor/shaders/"
                                                    "shader-cache.gecache\n");
 
-    MK_REQUIRE(migrated.source_version == 3);
+    MK_REQUIRE(migrated.source_version == 4);
     MK_REQUIRE(migrated.target_version == 4);
-    MK_REQUIRE(migrated.migrated);
+    MK_REQUIRE(!migrated.migrated);
     MK_REQUIRE(migrated.document.source_registry_path == "source/assets/package.geassets");
     MK_REQUIRE(migrated.document.render_backend == mirakana::editor::EditorRenderBackend::vulkan);
+}
+
+MK_TEST("editor project document rejects stale suffixed formats") {
+    for (const auto format :
+         std::vector<std::string_view>{"GameEngine.Project.v0", "GameEngine.Project.v1", "GameEngine.Project.v2",
+                                       "GameEngine.Project.v3", "GameEngine.Project.v4"}) {
+        bool rejected = false;
+        try {
+            (void)mirakana::editor::deserialize_project_document(
+                std::string{"format="} + std::string{format} +
+                "\nproject.name=legacy\n"
+                "project.root=games/legacy\n"
+                "project.asset_root=assets\n"
+                "project.source_registry=source/assets/package.geassets\n"
+                "project.game_manifest=game.agent.json\n"
+                "project.startup_scene=scenes/start.scene\n"
+                "project.render_backend=auto\n"
+                "project.shader_tool.executable=dxc\n"
+                "project.shader_tool.working_directory=.\n"
+                "project.shader_tool.artifact_output_root=out/editor/shaders\n"
+                "project.shader_tool.cache_index=out/editor/shaders/shader-cache.gecache\n");
+        } catch (const std::invalid_argument&) {
+            rejected = true;
+        }
+        MK_REQUIRE(rejected);
+    }
 }
 
 MK_TEST("editor project document persists render backend preference") {
@@ -609,7 +611,7 @@ MK_TEST("editor project document rejects unknown render backend preference") {
     bool rejected_unknown_backend = false;
     try {
         (void)mirakana::editor::deserialize_project_document(
-            "format=GameEngine.Project.v3\n"
+            "format=GameEngine.Project\n"
             "project.name=sample\n"
             "project.root=games/sample\n"
             "project.asset_root=assets\n"
@@ -949,7 +951,7 @@ MK_TEST("editor project bundle saves and loads project workspace and scene text"
     workspace.set_panel_visible(mirakana::editor::PanelId::profiler, true);
 
     mirakana::editor::save_project_bundle(store, paths, project, workspace,
-                                          "format=GameEngine.Scene.v1\nscene.name=start\nnode.count=0\n");
+                                          "format=GameEngine.Scene\nscene.name=start\nnode.count=0\n");
 
     MK_REQUIRE(store.exists("game.geproject"));
     MK_REQUIRE(store.exists("workspace.geworkspace"));
@@ -1372,7 +1374,7 @@ MK_TEST("editor source registry browser refresh leaves browser unchanged when re
 
     mirakana::editor::MemoryTextStore store;
     store.write_text("games/sample/source/assets/package.geassets",
-                     "format=GameEngine.SourceAssetRegistry.v1\nasset.0.key=bad key\n");
+                     "format=GameEngine.SourceAssetRegistry\nasset.0.key=bad key\n");
     const mirakana::editor::ProjectDocument project{
         .name = "sample",
         .root_path = "games/sample",
@@ -2088,7 +2090,7 @@ MK_TEST("editor material gpu preview plan reports invalid cooked texture payload
                           .slot = mirakana::MaterialTextureSlot::base_color, .texture = texture_id}},
                       .double_sided = false,
                   }));
-    fs.write_text("assets/textures/player.texture", "format=GameEngine.CookedTexture.v1\n");
+    fs.write_text("assets/textures/player.texture", "format=GameEngine.CookedTexture\n");
 
     const auto plan = mirakana::editor::make_editor_material_gpu_preview_plan(fs, registry, material_id);
 
@@ -2435,7 +2437,7 @@ MK_TEST("editor selected material preview reports malformed material diagnostic 
     const auto material_id = mirakana::AssetId::from_name("materials/broken");
     registry.add(mirakana::AssetRecord{
         .id = material_id, .kind = mirakana::AssetKind::material, .path = "assets/materials/broken.material"});
-    fs.write_text("assets/materials/broken.material", "format=GameEngine.Material.v1\nmaterial.name=Broken\n");
+    fs.write_text("assets/materials/broken.material", "format=GameEngine.Material\nmaterial.name=Broken\n");
 
     const auto preview = mirakana::editor::make_editor_selected_material_preview(fs, registry, material_id);
 
@@ -8189,9 +8191,9 @@ MK_TEST("editor prefab variant missing node cleanup resolves stale raw variants"
 
 MK_TEST("editor prefab variant authoring loads stale variants for reviewed missing node cleanup") {
     mirakana::editor::MemoryTextStore store;
-    store.write_text("assets/prefabs/stale-player.prefabvariant", "format=GameEngine.PrefabVariant.v1\n"
+    store.write_text("assets/prefabs/stale-player.prefabvariant", "format=GameEngine.PrefabVariant\n"
                                                                   "variant.name=stale-player.prefabvariant\n"
-                                                                  "base.format=GameEngine.Prefab.v1\n"
+                                                                  "base.format=GameEngine.Prefab\n"
                                                                   "base.prefab.name=player.prefab\n"
                                                                   "base.node.count=1\n"
                                                                   "base.node.1.name=Player\n"
@@ -8229,9 +8231,9 @@ MK_TEST("editor prefab variant authoring loads stale variants for reviewed missi
 
 MK_TEST("editor prefab variant reviewed retarget resolves unique source node hints") {
     mirakana::editor::MemoryTextStore store;
-    store.write_text("assets/prefabs/camera-retarget.prefabvariant", "format=GameEngine.PrefabVariant.v1\n"
+    store.write_text("assets/prefabs/camera-retarget.prefabvariant", "format=GameEngine.PrefabVariant\n"
                                                                      "variant.name=camera-retarget.prefabvariant\n"
-                                                                     "base.format=GameEngine.Prefab.v1\n"
+                                                                     "base.format=GameEngine.Prefab\n"
                                                                      "base.prefab.name=camera.prefab\n"
                                                                      "base.node.count=2\n"
                                                                      "base.node.1.name=Root\n"
@@ -8297,9 +8299,9 @@ MK_TEST("editor prefab variant reviewed retarget resolves unique source node hin
 
 MK_TEST("editor prefab variant reviewed retarget falls back when source node hints are ambiguous") {
     mirakana::editor::MemoryTextStore store;
-    store.write_text("assets/prefabs/ambiguous-camera.prefabvariant", "format=GameEngine.PrefabVariant.v1\n"
+    store.write_text("assets/prefabs/ambiguous-camera.prefabvariant", "format=GameEngine.PrefabVariant\n"
                                                                       "variant.name=ambiguous-camera.prefabvariant\n"
-                                                                      "base.format=GameEngine.Prefab.v1\n"
+                                                                      "base.format=GameEngine.Prefab\n"
                                                                       "base.prefab.name=camera.prefab\n"
                                                                       "base.node.count=3\n"
                                                                       "base.node.1.name=Root\n"
@@ -8340,9 +8342,9 @@ MK_TEST("editor prefab variant reviewed retarget falls back when source node hin
 MK_TEST("editor prefab variant source mismatch retargets existing stale node hints") {
     mirakana::editor::MemoryTextStore store;
     store.write_text("assets/prefabs/source-mismatch-camera.prefabvariant",
-                     "format=GameEngine.PrefabVariant.v1\n"
+                     "format=GameEngine.PrefabVariant\n"
                      "variant.name=source-mismatch-camera.prefabvariant\n"
-                     "base.format=GameEngine.Prefab.v1\n"
+                     "base.format=GameEngine.Prefab\n"
                      "base.prefab.name=camera.prefab\n"
                      "base.node.count=2\n"
                      "base.node.1.name=Enemy\n"
@@ -8412,9 +8414,9 @@ MK_TEST("editor prefab variant source mismatch retargets existing stale node hin
 MK_TEST("editor prefab variant source mismatch accepts current indexed node hints") {
     mirakana::editor::MemoryTextStore store;
     store.write_text("assets/prefabs/source-mismatch-renamed.prefabvariant",
-                     "format=GameEngine.PrefabVariant.v1\n"
+                     "format=GameEngine.PrefabVariant\n"
                      "variant.name=source-mismatch-renamed.prefabvariant\n"
-                     "base.format=GameEngine.Prefab.v1\n"
+                     "base.format=GameEngine.Prefab\n"
                      "base.prefab.name=renamed.prefab\n"
                      "base.node.count=2\n"
                      "base.node.1.name=Enemy\n"
@@ -8491,9 +8493,9 @@ MK_TEST("editor prefab variant source mismatch accepts current indexed node hint
 
 MK_TEST("editor prefab variant batch resolution applies reviewed rows with one undo") {
     mirakana::editor::MemoryTextStore store;
-    store.write_text("assets/prefabs/batch-camera.prefabvariant", "format=GameEngine.PrefabVariant.v1\n"
+    store.write_text("assets/prefabs/batch-camera.prefabvariant", "format=GameEngine.PrefabVariant\n"
                                                                   "variant.name=batch-camera.prefabvariant\n"
-                                                                  "base.format=GameEngine.Prefab.v1\n"
+                                                                  "base.format=GameEngine.Prefab\n"
                                                                   "base.prefab.name=camera.prefab\n"
                                                                   "base.node.count=2\n"
                                                                   "base.node.1.name=Player\n"
@@ -11033,7 +11035,7 @@ MK_TEST("editor ai playtest evidence import parses external rows without executi
         "desktop-runtime-sample-game-scene-gpu-package",
         "desktop-game-runtime",
     };
-    desc.text = "format=GameEngine.EditorAiPlaytestEvidence.v1\n"
+    desc.text = "format=GameEngine.EditorAiPlaytestEvidence\n"
                 "evidence.agent-contract.status=passed\n"
                 "evidence.agent-contract.exit_code=0\n"
                 "evidence.agent-contract.summary=agent-contract passed after external operator validation\n"
@@ -11092,7 +11094,7 @@ MK_TEST("editor ai playtest evidence import blocks malformed rows and unsupporte
     desc.request_validation_execution = true;
     desc.request_arbitrary_shell_execution = true;
     desc.request_package_script_execution = true;
-    desc.text = "format=GameEngine.EditorAiPlaytestEvidence.v1\n"
+    desc.text = "format=GameEngine.EditorAiPlaytestEvidence\n"
                 "evidence.agent-contract.status=passed\n"
                 "evidence.agent-contract.status=wat\n"
                 "evidence.agent-contract.exit_code=nope\n"
@@ -12923,7 +12925,7 @@ MK_TEST("editor ui models build retained inspector assets commands and diagnosti
                    mirakana::editor::EditorDiagnosticSeverity::warning) == "Warning");
 
     const auto serialized = mirakana::editor::serialize_editor_ui_model(inspector);
-    MK_REQUIRE(serialized.contains("format=GameEngine.EditorUiModel.v1"));
+    MK_REQUIRE(serialized.contains("format=GameEngine.EditorUiModel"));
     MK_REQUIRE(serialized.contains("element.2.id=inspector.transform.position.label"));
     MK_REQUIRE(serialized.contains("element.3.label=1,2,3"));
 }

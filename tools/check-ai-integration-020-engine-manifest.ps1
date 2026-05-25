@@ -53,7 +53,7 @@ foreach ($docText in @($currentCapabilitiesText, $aiGameDevelopmentText, $roadma
     Assert-ContainsText $docText "2D Native Sprite Batching Execution v1" "2D native sprite batching execution docs"
     Assert-ContainsText $docText "2D Sprite Animation Package v1" "2D sprite animation package docs"
     Assert-ContainsText $docText "2D Tilemap Editor Runtime UX v1" "2D tilemap editor runtime UX docs"
-    Assert-ContainsText $docText "GameEngine.RuntimeInputRebindingProfile.v1" "input rebinding profile UX docs"
+    Assert-ContainsText $docText "GameEngine.RuntimeInputRebindingProfile" "input rebinding profile UX docs"
     Assert-ContainsText $docText "Runtime Input Rebinding Capture Contract v1" "runtime input rebinding capture docs"
     Assert-ContainsText $docText "capture_runtime_input_rebinding_action" "runtime input rebinding capture docs"
     Assert-ContainsText $docText "Runtime Input Rebinding Focus Consumption v1" "runtime input rebinding focus consumption docs"
@@ -540,7 +540,7 @@ if ($desktop2dRecipe.Count -ne 1) {
     Assert-ContainsText ([string]$desktop2dRecipe[0].cookedRuntimeAssumptions) "--require-gameplay-systems" "2d-desktop-runtime-package cooked runtime assumptions"
     Assert-ContainsText ([string]$desktop2dRecipe[0].cookedRuntimeAssumptions) "gameplay_systems_*" "2d-desktop-runtime-package cooked runtime assumptions"
     Assert-ContainsText ([string]$desktop2dRecipe[0].cookedRuntimeAssumptions) "spriteAtlasSourceAuthoringTargets" "2d-desktop-runtime-package cooked runtime assumptions"
-    foreach ($sourceFormat in @("GameEngine.TextureSource.v1", "GameEngine.SourceAssetRegistry.v1", "first-party-cooked-fixture")) {
+    foreach ($sourceFormat in @("GameEngine.TextureSource", "GameEngine.SourceAssetRegistry", "first-party-cooked-fixture")) {
         if (@($desktop2dRecipe[0].importerAssumptions.sourceFormats) -notcontains $sourceFormat) {
             Write-Error "engine/agent/manifest.json 2d-desktop-runtime-package recipe importerAssumptions.sourceFormats missing $sourceFormat"
         }
@@ -573,10 +573,10 @@ if ($desktop3dRecipe.Count -ne 1) {
             Write-Error "engine/agent/manifest.json 3d-playable-desktop-package recipe missing required module: $module"
         }
     }
-    if (@($desktop3dRecipe[0].importerAssumptions.sourceFormats) -notcontains "GameEngine.AnimationFloatClipSource.v1") {
+    if (@($desktop3dRecipe[0].importerAssumptions.sourceFormats) -notcontains "GameEngine.AnimationFloatClipSource") {
         Write-Error "engine/agent/manifest.json 3d-playable-desktop-package recipe must include animation float clip source format"
     }
-    if (@($desktop3dRecipe[0].importerAssumptions.sourceFormats) -notcontains "GameEngine.MorphMeshCpuSource.v1") {
+    if (@($desktop3dRecipe[0].importerAssumptions.sourceFormats) -notcontains "GameEngine.MorphMeshCpuSource") {
         Write-Error "engine/agent/manifest.json 3d-playable-desktop-package recipe must include morph mesh CPU source format"
     }
     Assert-ContainsText ([string]$desktop3dRecipe[0].cookedRuntimeAssumptions) "sample_and_apply_runtime_scene_render_animation_float_clip" "3d-playable-desktop-package cooked runtime assumptions"
@@ -889,7 +889,7 @@ if ($uiAtlasPackageCommand.Count -ne 1 -or $uiAtlasPackageCommand[0].status -ne 
     if (-not $uiAtlasNotes.Contains("plan_cooked_ui_atlas_package_update") -or
         -not $uiAtlasNotes.Contains("apply_cooked_ui_atlas_package_update") -or
         -not $uiAtlasNotes.Contains("author_packed_ui_atlas_from_decoded_images") -or
-        -not $uiAtlasNotes.Contains("GameEngine.CookedTexture.v1") -or
+        -not $uiAtlasNotes.Contains("GameEngine.CookedTexture") -or
         -not $uiAtlasNotes.Contains("renderer texture upload")) {
         Write-Error "engine/agent/manifest.json update-ui-atlas-metadata-package notes must keep cooked helper names, decoded atlas bridge, and renderer-upload limits explicit"
     }
@@ -931,8 +931,8 @@ if ($materialGraphCommand.Count -ne 1 -or $materialGraphCommand[0].status -ne "r
     foreach ($needle in @(
             "plan_material_graph_package_update",
             "apply_material_graph_package_update",
-            "GameEngine.MaterialGraph.v1",
-            "GameEngine.Material.v1",
+            "GameEngine.MaterialGraph",
+            "GameEngine.Material",
             "material_texture",
             "shader graph",
             "shader compiler execution",
@@ -1016,8 +1016,8 @@ foreach ($commandId in $scenePrefabAuthoringCommandIds) {
         }
         $scenePrefabPolicyText = "$($scenePrefabCommand[0].summary) $($scenePrefabCommand[0].requestShape.pathPolicy) $($scenePrefabCommand[0].notes)"
         foreach ($needle in @(
-                "GameEngine.Scene.v2",
-                "GameEngine.Prefab.v2",
+                "GameEngine.Scene",
+                "GameEngine.Prefab",
                 "plan_scene_prefab_authoring",
                 "apply_scene_prefab_authoring",
                 "safe repository-relative",
@@ -1068,8 +1068,8 @@ if ($sourceAssetCommand.Count -ne 1 -or $sourceAssetCommand[0].status -ne "ready
     }
     $sourceAssetPolicyText = "$($sourceAssetCommand[0].summary) $($sourceAssetCommand[0].requestShape.pathPolicy) $($sourceAssetCommand[0].notes)"
     foreach ($needle in @(
-            "GameEngine.AssetIdentity.v2",
-            "GameEngine.SourceAssetRegistry.v1",
+            "GameEngine.AssetIdentity",
+            "GameEngine.SourceAssetRegistry",
             "plan_source_asset_registration",
             "apply_source_asset_registration",
             "safe repository-relative",
@@ -1154,7 +1154,7 @@ if ($registeredCookCommand.Count -ne 1 -or $registeredCookCommand[0].status -ne 
     }
     $registeredCookPolicyText = "$($registeredCookCommand[0].summary) $($registeredCookCommand[0].requestShape.pathPolicy) $($registeredCookCommand[0].notes)"
     foreach ($needle in @(
-            "GameEngine.SourceAssetRegistry.v1",
+            "GameEngine.SourceAssetRegistry",
             "explicitly selected",
             "plan_registered_source_asset_cook_package",
             "apply_registered_source_asset_cook_package",
@@ -1254,9 +1254,9 @@ if ($sceneMigrationCommand.Count -ne 1 -or $sceneMigrationCommand[0].status -ne 
     }
     $sceneMigrationPolicyText = "$($sceneMigrationCommand[0].summary) $($sceneMigrationCommand[0].requestShape.pathPolicy) $($sceneMigrationCommand[0].notes)"
     foreach ($needle in @(
-            "GameEngine.Scene.v2",
-            "GameEngine.SourceAssetRegistry.v1",
-            "GameEngine.Scene.v1",
+            "GameEngine.Scene",
+            "GameEngine.SourceAssetRegistry",
+            "GameEngine.Scene",
             "plan_scene_v2_runtime_package_migration",
             "apply_scene_v2_runtime_package_migration",
             "plan_scene_package_update",
@@ -2115,7 +2115,7 @@ if (-not [regex]::Match($sample3DPackageManifestText, '(?s)"residentResourceKind
 }
 Assert-ContainsText $sample3DPackageText "mirakana::AssetKind::audio" "games/sample_generated_desktop_runtime_3d_package/main.cpp package streaming resident kinds"
 Assert-ContainsText (Get-AgentSurfaceText "games/sample_generated_desktop_runtime_3d_package/runtime/sample_generated_desktop_runtime_3d_package.geindex") "runtime/assets/3d/gameplay_systems.audio.geasset" "games/sample_generated_desktop_runtime_3d_package/runtime/sample_generated_desktop_runtime_3d_package.geindex"
-Assert-ContainsText (Get-AgentSurfaceText "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/gameplay_systems.audio.geasset") "GameEngine.CookedAudio.v1" "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/gameplay_systems.audio.geasset"
+Assert-ContainsText (Get-AgentSurfaceText "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/gameplay_systems.audio.geasset") "GameEngine.CookedAudio" "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/gameplay_systems.audio.geasset"
 foreach ($docSurface in @(
         @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
         @{ Text = $roadmapText; Label = "docs/roadmap.md" },
@@ -2133,7 +2133,7 @@ if ($assetIdentityAuthoringSurface.Count -ne 1 -or $assetIdentityAuthoringSurfac
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop authoring surface asset-identity-v2 must be ready as a foundation-only MK_assets surface"
 }
 if (-not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("Foundation-only") -or
-    -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("GameEngine.AssetIdentity.v2") -or
+    -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("GameEngine.AssetIdentity") -or
     -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("plan_asset_identity_placements_v2") -or
     -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("Reviewed command-owned apply surfaces") -or
     -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("placement_rows") -or
@@ -2141,7 +2141,7 @@ if (-not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("Foundation-
     -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("SourceAssetRegistryDocumentV1") -or
     -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("ContentBrowserState::refresh_from") -or
     -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("content_browser_import.assets") -or
-    -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("GameEngine.Project.v4 project.source_registry") -or
+    -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("GameEngine.Project project.source_registry") -or
     -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("refresh_content_browser_from_project_source_registry") -or
     -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("Reload Source Registry") -or
     -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("audit_runtime_scene_asset_identity") -or
@@ -2155,11 +2155,11 @@ $uiAtlasAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { 
 if ($uiAtlasAuthoringSurface.Count -ne 1 -or $uiAtlasAuthoringSurface[0].status -ne "ready") {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop authoring surface ui-atlas-metadata-authoring-tooling-v1 must be ready as a cooked-metadata-only MK_assets/MK_tools surface"
 }
-if (-not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("GameEngine.UiAtlas.v1") -or
+if (-not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("GameEngine.UiAtlas") -or
     -not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("author_cooked_ui_atlas_metadata") -or
     -not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("verify_cooked_ui_atlas_package_metadata") -or
     -not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("author_packed_ui_atlas_from_decoded_images") -or
-    -not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("GameEngine.CookedTexture.v1") -or
+    -not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("GameEngine.CookedTexture") -or
     -not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("renderer texture upload")) {
     Write-Error "engine/agent/manifest.json ui-atlas-metadata-authoring-tooling-v1 authoring surface must keep cooked metadata tooling, decoded atlas bridge, and renderer-upload limits explicit"
 }
@@ -2177,7 +2177,7 @@ if (-not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("plan_pla
     -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("PlaceholderAssetChangedFile") -or
     -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("PlaceholderAssetProvenanceRow") -or
     -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("PlaceholderAssetDiagnostic") -or
-    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("GameEngine.SourceAssetRegistry.v1") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("GameEngine.SourceAssetRegistry") -or
     -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("replacement recooks") -or
     -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("placeholderAssetPipeline replacementWorkflow") -or
     -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("package handoff counters") -or
@@ -2197,8 +2197,8 @@ if (-not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("SpriteAtlasSo
     -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("SpriteAtlasSourceAuthoringPlan") -or
     -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("plan_sprite_atlas_source_authoring") -or
     -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("sprite_atlas_tool.hpp") -or
-    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("GameEngine.TextureSource.v1") -or
-    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("GameEngine.SourceAssetRegistry.v1") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("GameEngine.TextureSource") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("GameEngine.SourceAssetRegistry") -or
     -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("single-page-tight-rgba8-texture-source") -or
     -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("slice-border") -or
     -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("renderer/RHI residency") -or
@@ -2255,7 +2255,7 @@ if ($runtimeResourceGap.Count -ne 0) {
 }
 $recommendedText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
 $recommendedPlanId = [string]$productionLoop.recommendedNextPlan.id
-$recommendedPlanUsesLegacyCloseoutContext = $recommendedPlanId -notin @("general-purpose-game-production-v1", "generated-game-studio-v1")
+$recommendedPlanUsesLegacyCloseoutContext = $recommendedPlanId -notin @("general-purpose-game-production-v1", "generated-game-studio-v1", "engine-contract-version-suffix-cleanup")
 if ($productionLoop.currentActivePlan -eq "docs/superpowers/plans/2026-05-23-candidate-backlog-burn-down-v1.md") {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop.currentActivePlan must not point at completed Candidate Backlog Burn-down v1"
 }
@@ -2309,6 +2309,19 @@ if ($recommendedPlanUsesLegacyCloseoutContext) {
     "frame-graph-v1"
     )) {
         Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan frame-graph closeout evidence"
+    }
+}
+if ($recommendedPlanId -eq "engine-contract-version-suffix-cleanup") {
+    foreach ($needle in @(
+            "Engine Contract Version Suffix Cleanup",
+            "Candidate 1",
+            "Candidate 2",
+            "codex/versionless-saved-formats",
+            "removable pre-release contract suffixes",
+            "without compatibility parsers",
+            "Generated Game Studio v1 remains the broader successor game-surface milestone"
+        )) {
+        Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan version suffix cleanup"
     }
 }
 foreach ($check in @(
@@ -2463,6 +2476,7 @@ if ($recommendedPlanUsesLegacyCloseoutContext) {
         Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan gameplay closeout evidence"
     }
 }
+if ($recommendedPlanUsesLegacyCloseoutContext) {
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Transient Texture Alias Planning v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "FrameGraphTransientTextureAliasPlan" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Shadow Scratch Color Target-State Ownership v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
@@ -2524,6 +2538,7 @@ Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContex
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph v1 1.0 Scope Closeout v1 closes frame-graph-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "broad production render graph scheduling" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Metal memory alias allocation" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+}
 if ($recommendedPlanId -eq "general-purpose-game-production-v1") {
     foreach ($needle in @(
             "General Purpose Game Production v1",
@@ -2543,6 +2558,10 @@ if ($recommendedPlanId -eq "general-purpose-game-production-v1") {
     Assert-ContainsText $recommendedText "ai-generated-game-playtest-loop-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
     Assert-ContainsText $recommendedText "ai-validation-remediation-recipes-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
     Assert-ContainsText $recommendedText "unsupportedProductionGaps empty" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
+} elseif ($recommendedPlanId -eq "engine-contract-version-suffix-cleanup") {
+    Assert-ContainsText $recommendedText "Engine Contract Version Suffix Cleanup" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
+    Assert-ContainsText $recommendedText "removable pre-release contract suffixes" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
+    Assert-ContainsText $recommendedText "Generated Game Studio v1 remains the broader successor game-surface milestone" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
 } else {
     Assert-ContainsText $recommendedText "Frame Graph v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
     Assert-ContainsText $recommendedText "upload-staging-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"

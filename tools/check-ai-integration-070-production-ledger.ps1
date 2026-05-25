@@ -1410,7 +1410,7 @@ if ($sample3dManifestText.Contains("native GPU HUD or sprite overlay output rema
 Assert-ContainsText $sample3dManifestText "runtime/assets/desktop_runtime/hud.uiatlas" $sample3dManifestPath
 $sample3dUiAtlasText = Get-AgentSurfaceText "games/sample_desktop_runtime_game/runtime/assets/desktop_runtime/hud.uiatlas"
 foreach ($needle in @(
-    "format=GameEngine.UiAtlas.v1",
+    "format=GameEngine.UiAtlas",
     "source.decoding=unsupported",
     "atlas.packing=unsupported",
     "page.count=1",

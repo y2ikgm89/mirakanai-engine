@@ -1,4 +1,4 @@
-format=GameEngine.Material.v1
+format=GameEngine.Material
 material.id=16402748845073726916
 material.name=sample-generated-desktop-runtime-cooked-scene-package Lit Material
 material.shading=lit

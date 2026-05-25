@@ -112,7 +112,7 @@ struct DesktopRuntimeOptions {
     std::string required_scene_package_path;
 };
 
-constexpr std::string_view kExpectedConfigFormat{"format=GameEngine.GeneratedDesktopRuntime3DPackage.Config.v1"};
+constexpr std::string_view kExpectedConfigFormat{"format=GameEngine.GeneratedDesktopRuntime3DPackage.Config"};
 constexpr std::string_view kRuntimeSceneVertexShaderPath{"shaders/generated_3d_package_scene.vs.dxil"};
 constexpr std::string_view kRuntimeSceneMorphVertexShaderPath{"shaders/generated_3d_package_scene_morph.vs.dxil"};
 constexpr std::string_view kRuntimeSceneComputeMorphVertexShaderPath{

@@ -6020,7 +6020,7 @@ class EditorState {
             ImGui::TextWrapped("Runtime input conflicts must be resolved before saving the profile.");
         }
 
-        ImGui::SeparatorText("Profile file (GameEngine.RuntimeInputRebindingProfile.v1)");
+        ImGui::SeparatorText("Profile file (GameEngine.RuntimeInputRebindingProfile)");
         ImGui::InputText("Project-relative path", input_rebinding_profile_store_path_.data(),
                          input_rebinding_profile_store_path_.size());
         {

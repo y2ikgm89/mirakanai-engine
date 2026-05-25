@@ -52,14 +52,14 @@ struct MorphMeshCpuTargetSourceDocument {
 };
 
 /// One scalar float track: `time_seconds` and `value` keyframes as concatenated little-endian `float32` blobs
-/// (`keyframe_count` floats each), matching `GameEngine.AnimationFloatClipSource.v1` / cooked clip payloads.
+/// (`keyframe_count` floats each), matching `GameEngine.AnimationFloatClipSource` / cooked clip payloads.
 struct AnimationFloatClipTrackSourceDocument {
     std::string target;
     std::vector<std::uint8_t> time_seconds_bytes;
     std::vector<std::uint8_t> value_bytes;
 };
 
-/// Multi-track scalar float clip (`GameEngine.AnimationFloatClipSource.v1`).
+/// Multi-track scalar float clip (`GameEngine.AnimationFloatClipSource`).
 struct AnimationFloatClipSourceDocument {
     std::vector<AnimationFloatClipTrackSourceDocument> tracks;
 };
@@ -78,7 +78,7 @@ struct AnimationQuaternionClipTrackSourceDocument {
     std::vector<std::uint8_t> scale_xyz_bytes;
 };
 
-/// Multi-track 3D TRS quaternion clip (`GameEngine.AnimationQuaternionClipSource.v1`).
+/// Multi-track 3D TRS quaternion clip (`GameEngine.AnimationQuaternionClipSource`).
 struct AnimationQuaternionClipSourceDocument {
     std::vector<AnimationQuaternionClipTrackSourceDocument> tracks;
 };
@@ -103,12 +103,12 @@ struct AnimationTransformBindingSourceRow {
 };
 
 /// Authored scalar curve target to transform component bindings
-/// (`GameEngine.AnimationTransformBindingSource.v1`).
+/// (`GameEngine.AnimationTransformBindingSource`).
 struct AnimationTransformBindingSourceDocument {
     std::vector<AnimationTransformBindingSourceRow> bindings;
 };
 
-/// CPU morph mesh source aligned with glTF-style additive morph targets (`GameEngine.MorphMeshCpuSource.v1`).
+/// CPU morph mesh source aligned with glTF-style additive morph targets (`GameEngine.MorphMeshCpuSource`).
 /// `bind_position_bytes` holds `vertex_count` vec3f positions; optional bind normal/tangent bases follow the same
 /// animation morph rules as `mirakana_animation` morph validation when normal/tangent delta streams are present.
 struct MorphMeshCpuSourceDocument {

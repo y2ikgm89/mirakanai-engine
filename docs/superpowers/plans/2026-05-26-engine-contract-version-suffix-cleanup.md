@@ -12,7 +12,9 @@
 
 **Plan ID:** `engine-contract-version-suffix-cleanup`
 
-**Status:** Candidate 1 completed on linked worktree `G:\workspace\development\GameEngine\.worktrees\version-suffix-cleanup` branch `codex/version-suffix-cleanup`; Candidate 2 has not started. Do not switch `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` until implementation starts in a branch or linked worktree that can be published.
+**Status:** Active.
+
+Candidate 2 is validated locally on linked worktree `G:\workspace\development\GameEngine\.worktrees\versionless-saved-formats` branch `codex/versionless-saved-formats`. Candidate 1 is published as draft PR #242.
 
 **Design:** [Engine Contract Version Suffix Cleanup Design](../../specs/2026-05-26-engine-contract-version-suffix-cleanup-design.md)
 
@@ -180,7 +182,7 @@ Expected: one planning commit containing only design, plan, and registry pointer
 - Modify: current docs that name saved formats, including `docs/ai-game-development.md`, `docs/architecture.md`, `docs/current-capabilities.md`, `docs/editor.md`, `docs/roadmap.md`, and `docs/testing.md`
 - Modify: `tests/unit/*.cpp`
 
-- [ ] **Step 1: Build the exact saved-format map**
+- [x] **Step 1: Build the exact saved-format map**
 
 Run:
 
@@ -194,7 +196,7 @@ rg -o --no-line-number --no-filename "GameEngine\.[A-Za-z0-9_.]+\.v[0-9]+" engin
 
 Expected: a complete pre-change inventory. Save the output in the PR description, not in source files.
 
-- [ ] **Step 2: Update canonical format constants**
+- [x] **Step 2: Update canonical format constants**
 
 Replace current engine-owned constants according to this map:
 
@@ -255,7 +257,6 @@ GameEngine.ShaderArtifactCacheIndex.v1 -> GameEngine.ShaderArtifactCacheIndex
 GameEngine.ShaderArtifactProvenance.v1 -> GameEngine.ShaderArtifactProvenance
 GameEngine.EditorAiPlaytestEvidence.v1 -> GameEngine.EditorAiPlaytestEvidence
 GameEngine.EditorUiModel.v1 -> GameEngine.EditorUiModel
-GameEngine.EditorGameModuleDriver.v1 -> GameEngine.EditorGameModuleDriver
 ```
 
 Generated package config names also lose `.v1`, for example `GameEngine.GeneratedDesktopRuntime3DPackage.Config.v1` becomes `GameEngine.GeneratedDesktopRuntime3DPackage.Config`.
@@ -317,13 +318,13 @@ GameEngine.AiCommand.ValidateRuntimeScenePackage.Request.v1 -> GameEngine.AiComm
 GameEngine.AiCommand.ValidateRuntimeScenePackage.Result.v1 -> GameEngine.AiCommand.ValidateRuntimeScenePackage.Result
 ```
 
-`GameEngine.Unknown.v1` is not a current contract. Keep it only as an explicit stale/unknown-format rejection fixture if a test still needs it; otherwise replace it with `GameEngine.Unknown`.
+`GameEngine.EditorGameModuleDriver.v1` is owned by Candidate 4 and intentionally remains after Candidate 2. `GameEngine.Unknown.v1` is not a current contract. Keep it only as an explicit stale/unknown-format rejection fixture if a test still needs it; otherwise replace it with `GameEngine.Unknown`.
 
-- [ ] **Step 3: Remove stale parser migrations**
+- [x] **Step 3: Remove stale parser migrations**
 
 For each parser that currently accepts multiple `GameEngine.*.vN` values, keep only the canonical value. Add or update rejection tests for stale pre-release values where the behavior matters externally.
 
-- [ ] **Step 4: Update repository-owned saved files and templates**
+- [x] **Step 4: Update repository-owned saved files and templates**
 
 Run targeted searches after editing:
 
@@ -334,7 +335,7 @@ rg -n "GameEngine\.[A-Za-z0-9_.]+\.v[0-9]+" tools/new-game-templates.ps1 games
 
 Expected: no current sample/template saved format requires a pre-release suffix. Remaining hits must be historical docs or explicitly exempt text.
 
-- [ ] **Step 5: Run focused saved-format tests**
+- [x] **Step 5: Run focused saved-format tests**
 
 Run:
 
@@ -349,7 +350,13 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
 
 Expected: targeted tests and the owning manifest/static checks pass.
 
-- [ ] **Step 6: Commit saved-format canonicalization**
+Candidate 2 evidence:
+
+- Focused build and CTest passed for saved-format/runtime/editor/package targets after the canonicalization edits.
+- Suffix audit leaves only stale rejection fixtures, `GameEngine.Unknown.v1`, and Candidate 4 `GameEngine.EditorGameModuleDriver.v1` hits.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed on 2026-05-26 after package index content hashes were regenerated for the updated runtime payload text.
+
+- [x] **Step 6: Commit saved-format canonicalization**
 
 Run:
 

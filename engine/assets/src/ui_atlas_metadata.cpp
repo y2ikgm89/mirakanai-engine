@@ -383,7 +383,7 @@ std::string serialize_ui_atlas_metadata_document(const UiAtlasMetadataDocument& 
     const auto canonical = canonical_document(document);
 
     std::ostringstream output;
-    output << "format=GameEngine.UiAtlas.v1\n";
+    output << "format=GameEngine.UiAtlas\n";
     output << "asset.id=" << canonical.asset.value << '\n';
     output << "asset.kind=ui_atlas\n";
     output << "source.decoding=" << canonical.source_decoding << '\n';
@@ -425,7 +425,7 @@ std::string serialize_ui_atlas_metadata_document(const UiAtlasMetadataDocument& 
 
 UiAtlasMetadataDocument deserialize_ui_atlas_metadata_document(std::string_view text) {
     const auto values = parse_key_values(text);
-    if (required_value(values, "format") != "GameEngine.UiAtlas.v1") {
+    if (required_value(values, "format") != "GameEngine.UiAtlas") {
         throw std::invalid_argument("ui atlas metadata format is unsupported");
     }
     if (required_value(values, "asset.kind") != "ui_atlas") {

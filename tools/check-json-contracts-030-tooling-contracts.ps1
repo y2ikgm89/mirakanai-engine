@@ -33,8 +33,8 @@ foreach ($commandId in $scenePrefabAuthoringCommandIds) {
         }
         $scenePrefabPolicyText = "$($scenePrefabCommand[0].summary) $($scenePrefabCommand[0].requestShape.pathPolicy) $($scenePrefabCommand[0].notes)"
         foreach ($needle in @(
-                "GameEngine.Scene.v2",
-                "GameEngine.Prefab.v2",
+                "GameEngine.Scene",
+                "GameEngine.Prefab",
                 "plan_scene_prefab_authoring",
                 "apply_scene_prefab_authoring",
                 "safe repository-relative",
@@ -85,8 +85,8 @@ if ($sourceAssetCommand.Count -ne 1 -or $sourceAssetCommand[0].status -ne "ready
     }
     $sourceAssetPolicyText = "$($sourceAssetCommand[0].summary) $($sourceAssetCommand[0].requestShape.pathPolicy) $($sourceAssetCommand[0].notes)"
     foreach ($needle in @(
-            "GameEngine.AssetIdentity.v2",
-            "GameEngine.SourceAssetRegistry.v1",
+            "GameEngine.AssetIdentity",
+            "GameEngine.SourceAssetRegistry",
             "plan_source_asset_registration",
             "apply_source_asset_registration",
             "safe repository-relative",
@@ -171,7 +171,7 @@ if ($registeredCookCommand.Count -ne 1 -or $registeredCookCommand[0].status -ne 
     }
     $registeredCookPolicyText = "$($registeredCookCommand[0].summary) $($registeredCookCommand[0].requestShape.pathPolicy) $($registeredCookCommand[0].notes)"
     foreach ($needle in @(
-            "GameEngine.SourceAssetRegistry.v1",
+            "GameEngine.SourceAssetRegistry",
             "explicitly selected",
             "plan_registered_source_asset_cook_package",
             "apply_registered_source_asset_cook_package",
@@ -271,9 +271,9 @@ if ($sceneMigrationCommand.Count -ne 1 -or $sceneMigrationCommand[0].status -ne 
     }
     $sceneMigrationPolicyText = "$($sceneMigrationCommand[0].summary) $($sceneMigrationCommand[0].requestShape.pathPolicy) $($sceneMigrationCommand[0].notes)"
     foreach ($needle in @(
-            "GameEngine.Scene.v2",
-            "GameEngine.SourceAssetRegistry.v1",
-            "GameEngine.Scene.v1",
+            "GameEngine.Scene",
+            "GameEngine.SourceAssetRegistry",
+            "GameEngine.Scene",
             "plan_scene_v2_runtime_package_migration",
             "apply_scene_v2_runtime_package_migration",
             "plan_scene_package_update",
@@ -874,7 +874,7 @@ if ($assetIdentityAuthoringSurface.Count -ne 1 -or $assetIdentityAuthoringSurfac
     Write-Error "engine manifest aiOperableProductionLoop authoring surface asset-identity-v2 must be ready as a foundation-only MK_assets surface"
 }
 if (-not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("Foundation-only") -or
-    -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("GameEngine.AssetIdentity.v2") -or
+    -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("GameEngine.AssetIdentity") -or
     -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("plan_asset_identity_placements_v2") -or
     -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("Reviewed command-owned apply surfaces") -or
     -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("placement_rows") -or
@@ -882,7 +882,7 @@ if (-not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("Foundation-
     -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("SourceAssetRegistryDocumentV1") -or
     -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("ContentBrowserState::refresh_from") -or
     -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("content_browser_import.assets") -or
-    -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("GameEngine.Project.v4 project.source_registry") -or
+    -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("GameEngine.Project project.source_registry") -or
     -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("refresh_content_browser_from_project_source_registry") -or
     -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("Reload Source Registry") -or
     -not ([string]$assetIdentityAuthoringSurface[0].notes).Contains("audit_runtime_scene_asset_identity") -or
@@ -896,13 +896,13 @@ $uiAtlasAuthoringSurface = @($productionLoop.authoringSurfaces | Where-Object { 
 if ($uiAtlasAuthoringSurface.Count -ne 1 -or $uiAtlasAuthoringSurface[0].status -ne "ready") {
     Write-Error "engine manifest aiOperableProductionLoop authoring surface ui-atlas-metadata-authoring-tooling-v1 must be ready as a cooked-metadata-only MK_assets/MK_tools surface"
 }
-if (-not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("GameEngine.UiAtlas.v1") -or
+if (-not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("GameEngine.UiAtlas") -or
     -not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("author_cooked_ui_atlas_metadata") -or
     -not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("verify_cooked_ui_atlas_package_metadata") -or
     -not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("author_packed_ui_atlas_from_decoded_images") -or
     -not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("author_packed_ui_glyph_atlas_from_rasterized_glyphs") -or
     -not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("RuntimeUiAtlasGlyph") -or
-    -not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("GameEngine.CookedTexture.v1") -or
+    -not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("GameEngine.CookedTexture") -or
     -not ([string]$uiAtlasAuthoringSurface[0].notes).Contains("renderer texture upload")) {
     Write-Error "engine manifest ui-atlas-metadata-authoring-tooling-v1 authoring surface must keep cooked metadata tooling, decoded/glyph atlas bridges, and renderer-upload limits explicit"
 }
@@ -920,7 +920,7 @@ if (-not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("plan_pla
     -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("PlaceholderAssetChangedFile") -or
     -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("PlaceholderAssetProvenanceRow") -or
     -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("PlaceholderAssetDiagnostic") -or
-    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("GameEngine.SourceAssetRegistry.v1") -or
+    -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("GameEngine.SourceAssetRegistry") -or
     -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("external asset downloader") -or
     -not ([string]$assetPlaceholderAuthoringSurface[0].notes).Contains("renderer/RHI residency")) {
     Write-Error "engine manifest asset-placeholder-generation-v1 authoring surface must keep placeholder contract and non-goals explicit"
@@ -937,8 +937,8 @@ if (-not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("SpriteAtlasSo
     -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("SpriteAtlasSourceAuthoringPlan") -or
     -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("plan_sprite_atlas_source_authoring") -or
     -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("sprite_atlas_tool.hpp") -or
-    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("GameEngine.TextureSource.v1") -or
-    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("GameEngine.SourceAssetRegistry.v1") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("GameEngine.TextureSource") -or
+    -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("GameEngine.SourceAssetRegistry") -or
     -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("single-page-tight-rgba8-texture-source") -or
     -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("slice-border") -or
     -not ([string]$spriteAtlasAuthoringSurface[0].notes).Contains("renderer/RHI residency") -or
@@ -1053,6 +1053,18 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
         "unsupportedProductionGaps empty"
     )) {
         Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan generated game studio milestone"
+    }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "engine-contract-version-suffix-cleanup") {
+    foreach ($needle in @(
+        "Engine Contract Version Suffix Cleanup",
+        "Candidate 1",
+        "Candidate 2",
+        "codex/versionless-saved-formats",
+        "removable pre-release contract suffixes",
+        "without compatibility parsers",
+        "Generated Game Studio v1 remains the broader successor game-surface milestone"
+    )) {
+        Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan version suffix cleanup"
     }
 } else {
     foreach ($needle in @(

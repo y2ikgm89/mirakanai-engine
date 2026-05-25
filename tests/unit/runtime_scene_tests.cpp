@@ -474,7 +474,7 @@ MK_TEST("runtime scene reports malformed scene payloads without throwing") {
     const auto scene_asset = mirakana::AssetId::from_name("scenes/broken");
     const mirakana::runtime::RuntimeAssetPackage package(std::vector<mirakana::runtime::RuntimeAssetRecord>{
         make_record(mirakana::runtime::RuntimeAssetHandle{1}, scene_asset, mirakana::AssetKind::scene,
-                    "assets/scenes/broken.scene", "format=GameEngine.Scene.v1\nscene.name=Broken\nnode.count=1\n", {}),
+                    "assets/scenes/broken.scene", "format=GameEngine.Scene\nscene.name=Broken\nnode.count=1\n", {}),
     });
 
     const auto result = mirakana::runtime_scene::instantiate_runtime_scene(package, scene_asset);

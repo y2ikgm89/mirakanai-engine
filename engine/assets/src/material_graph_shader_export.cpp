@@ -201,7 +201,7 @@ std::string emit_material_graph_reviewed_hlsl_v0(const MaterialGraphDesc& graph)
     }
     const auto material = lower_material_graph_to_definition(graph);
     std::ostringstream hlsl;
-    hlsl << "// GameEngine.MaterialGraphGeneratedHlsl.v0\n";
+    hlsl << "// GameEngine.MaterialGraphGeneratedHlsl\n";
     hlsl << "// Deterministic stub from lowered MaterialDefinition; reviewed compile only.\n";
     hlsl << "// Descriptor bindings align with `build_material_pipeline_binding_metadata` (scene frame uses b6).\n";
     hlsl << "// lowered.material_id=" << material.id.value << '\n';

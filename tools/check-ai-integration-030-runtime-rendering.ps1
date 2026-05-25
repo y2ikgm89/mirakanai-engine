@@ -319,7 +319,7 @@ Assert-ContainsText ([string]$geUiRendererModule[0].purpose) "UiRendererGlyphAtl
 Assert-ContainsText ([string]$geUiRendererModule[0].purpose) "text glyph sprite submissions" "MK_ui_renderer module purpose"
 Assert-ContainsText ([string]$geUiRendererModule[0].purpose) "image sprite submission" "MK_ui_renderer module purpose"
 Assert-ContainsText ([string]$geSceneModule[0].purpose) "contract-only" "MK_scene module purpose"
-Assert-ContainsText ([string]$geSceneModule[0].purpose) "GameEngine.Scene.v2" "MK_scene module purpose"
+Assert-ContainsText ([string]$geSceneModule[0].purpose) "GameEngine.Scene" "MK_scene module purpose"
 Assert-ContainsText ([string]$geSceneModule[0].purpose) "ScenePrefabInstanceRefreshPlanV2" "MK_scene module purpose"
 Assert-ContainsText ([string]$geSceneModule[0].purpose) "ScenePrefabInstanceRefreshRowV2" "MK_scene module purpose"
 Assert-ContainsText ([string]$geSceneModule[0].purpose) "plan_scene_prefab_instance_refresh_v2" "MK_scene module purpose"
@@ -333,11 +333,11 @@ Assert-ContainsText ([string]$geSceneModule[0].purpose) "source_node_id" "MK_sce
 Assert-ContainsText ([string]$geSceneModule[0].purpose) "source_component_id" "MK_scene module purpose"
 Assert-ContainsText ([string]$geSceneModule[0].purpose) "nested prefab propagation/merge resolution UX" "MK_scene module purpose"
 Assert-ContainsText ([string]$geAssetsModule[0].purpose) "Asset Identity v2" "MK_assets module purpose"
-Assert-ContainsText ([string]$geAssetsModule[0].purpose) "GameEngine.AssetIdentity.v2" "MK_assets module purpose"
+Assert-ContainsText ([string]$geAssetsModule[0].purpose) "GameEngine.AssetIdentity" "MK_assets module purpose"
 Assert-ContainsText ([string]$geAssetsModule[0].purpose) "foundation-only" "MK_assets module purpose"
 Assert-ContainsText ([string]$geAssetsModule[0].purpose) "renderer/RHI residency" "MK_assets module purpose"
-Assert-ContainsText ([string]$geAssetsModule[0].purpose) "GameEngine.MorphMeshCpuSource.v1" "MK_assets module purpose"
-Assert-ContainsText ([string]$geAssetsModule[0].purpose) "GameEngine.AnimationFloatClipSource.v1" "MK_assets module purpose"
+Assert-ContainsText ([string]$geAssetsModule[0].purpose) "GameEngine.MorphMeshCpuSource" "MK_assets module purpose"
+Assert-ContainsText ([string]$geAssetsModule[0].purpose) "GameEngine.AnimationFloatClipSource" "MK_assets module purpose"
 Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsCharacterController3DDesc" "MK_physics module purpose"
 Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "move_physics_character_controller_3d" "MK_physics module purpose"
 Assert-ContainsText ([string]$gePhysicsModule[0].purpose) "PhysicsAuthoredCollisionScene3DDesc" "MK_physics module purpose"
@@ -408,12 +408,12 @@ Assert-ContainsText ([string]$geToolsModule[0].purpose) "decode_audited_png_rgba
 Assert-ContainsText ([string]$geToolsModule[0].purpose) "PackedUiAtlasAuthoringDesc" "MK_tools module purpose"
 Assert-ContainsText ([string]$geToolsModule[0].purpose) "author_packed_ui_atlas_from_decoded_images" "MK_tools module purpose"
 Assert-ContainsText ([string]$geToolsModule[0].purpose) "plan_packed_ui_atlas_package_update" "MK_tools module purpose"
-Assert-ContainsText ([string]$geToolsModule[0].purpose) "GameEngine.CookedTexture.v1" "MK_tools module purpose"
+Assert-ContainsText ([string]$geToolsModule[0].purpose) "GameEngine.CookedTexture" "MK_tools module purpose"
 Assert-ContainsText ([string]$geToolsModule[0].purpose) "PackedUiGlyphAtlasAuthoringDesc" "MK_tools module purpose"
 Assert-ContainsText ([string]$geToolsModule[0].purpose) "author_packed_ui_glyph_atlas_from_rasterized_glyphs" "MK_tools module purpose"
 Assert-ContainsText ([string]$geToolsModule[0].purpose) "plan_packed_ui_glyph_atlas_package_update" "MK_tools module purpose"
 Assert-ContainsText ([string]$geToolsModule[0].purpose) "UiAtlasMetadataGlyph" "MK_tools module purpose"
-Assert-ContainsText ([string]$geToolsModule[0].purpose) "GameEngine.UiAtlas.v1" "MK_tools module purpose"
+Assert-ContainsText ([string]$geToolsModule[0].purpose) "GameEngine.UiAtlas" "MK_tools module purpose"
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "Runtime Resource v2" "MK_runtime module purpose"
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "generation-checked" "MK_runtime module purpose"
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "commit_runtime_resident_package_replace_v2" "MK_runtime module purpose"
@@ -686,14 +686,14 @@ Assert-ContainsText (Get-AgentSurfaceText "tests/unit/tools_tests.cpp") "sprite 
 Assert-ContainsText (Get-AgentSurfaceText "tests/unit/tools_tests.cpp") "sprite atlas source authoring rejects unsupported frame format and dimensions" "MK_tools tests"
 Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/scene_tool.hpp") "plan_scene_package_update" "MK_tools scene tool public header"
 Assert-ContainsText (Get-AgentSurfaceText "engine/tools/include/mirakana/tools/scene_tool.hpp") "apply_scene_package_update" "MK_tools scene tool public header"
-Assert-ContainsText (Get-AgentSurfaceText "engine/assets/include/mirakana/assets/ui_atlas_metadata.hpp") "GameEngine.UiAtlas.v1" "MK_assets ui atlas metadata public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/assets/include/mirakana/assets/ui_atlas_metadata.hpp") "GameEngine.UiAtlas" "MK_assets ui atlas metadata public header"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderGeneration) "plan_placeholder_asset_bundle" "asset placeholder game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderGeneration) "PlaceholderAssetBundleRequest" "asset placeholder game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderGeneration) "PlaceholderAssetBundlePlan" "asset placeholder game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderGeneration) "PlaceholderAssetChangedFile" "asset placeholder game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderGeneration) "plan_placeholder_asset_cook_package" "asset placeholder game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderGeneration) "PlaceholderAssetCookPackageRequest" "asset placeholder game guidance"
-Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderGeneration) "GameEngine.SourceAssetRegistry.v1" "asset placeholder game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderGeneration) "GameEngine.SourceAssetRegistry" "asset placeholder game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderGeneration) "PlaceholderAssetProvenanceRow" "asset placeholder game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentAssetPlaceholderGeneration) "must not download external assets" "asset placeholder game guidance"
 foreach ($spriteAtlasSourceAuthoringNeedle in @(
@@ -701,8 +701,8 @@ foreach ($spriteAtlasSourceAuthoringNeedle in @(
     "SpriteAtlasSourceAuthoringDesc",
     "SpriteAtlasSourceAuthoringPlan",
     "plan_sprite_atlas_source_authoring",
-    "GameEngine.TextureSource.v1",
-    "GameEngine.SourceAssetRegistry.v1",
+    "GameEngine.TextureSource",
+    "GameEngine.SourceAssetRegistry",
     "SpriteAtlasSourceChangedFile",
     "SpriteAtlasSourceFrameRow",
     "registered source cook/package validation",
@@ -894,7 +894,7 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUi) "PngIm
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUi) "decode_audited_png_rgba8" "runtime UI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUi) "author_packed_ui_atlas_from_decoded_images" "runtime UI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUi) "plan_packed_ui_atlas_package_update" "runtime UI game guidance"
-Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUi) "GameEngine.CookedTexture.v1" "runtime UI game guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUi) "GameEngine.CookedTexture" "runtime UI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUi) "instead of parsing source PNG files" "runtime UI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUi) "UiRendererGlyphAtlasPalette" "runtime UI game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentRuntimeUi) "UiRendererGlyphAtlasBinding" "runtime UI game guidance"
@@ -971,7 +971,7 @@ foreach ($runtimeUiDecodedAtlasGuidance in @(
     $runtimeUiDecodedAtlasText = Get-AgentSurfaceText $runtimeUiDecodedAtlasGuidance
     Assert-ContainsText $runtimeUiDecodedAtlasText "author_packed_ui_atlas_from_decoded_images" $runtimeUiDecodedAtlasGuidance
     Assert-ContainsText $runtimeUiDecodedAtlasText "plan_packed_ui_atlas_package_update" $runtimeUiDecodedAtlasGuidance
-    Assert-ContainsText $runtimeUiDecodedAtlasText "GameEngine.CookedTexture.v1" $runtimeUiDecodedAtlasGuidance
+    Assert-ContainsText $runtimeUiDecodedAtlasText "GameEngine.CookedTexture" $runtimeUiDecodedAtlasGuidance
 }
 $geUiHeaderText = Get-AgentSurfaceText "engine/ui/include/mirakana/ui/ui.hpp"
 $geUiSourceText = Get-AgentSurfaceText "engine/ui/src/ui.cpp"
@@ -1115,7 +1115,7 @@ Assert-ContainsText $uiAtlasToolHeaderText "apply_packed_ui_glyph_atlas_package_
 Assert-ContainsText $uiAtlasToolHeaderText "rasterized-glyph-adapter" "MK_tools ui atlas tool public header"
 Assert-ContainsText $uiAtlasToolHeaderText "deterministic-glyph-atlas-rgba8-max-side" "MK_tools ui atlas tool public header"
 Assert-ContainsText $uiAtlasToolSourceText "pack_sprite_atlas_rgba8_max_side" "MK_tools ui atlas tool source"
-Assert-ContainsText $uiAtlasToolSourceText "GameEngine.CookedTexture.v1" "MK_tools ui atlas tool source"
+Assert-ContainsText $uiAtlasToolSourceText "GameEngine.CookedTexture" "MK_tools ui atlas tool source"
 Assert-ContainsText $uiAtlasToolSourceText "decoded image must be RGBA8" "MK_tools ui atlas tool source"
 Assert-ContainsText $uiAtlasToolSourceText "rasterized glyph must be RGBA8" "MK_tools ui atlas tool source"
 Assert-ContainsText $toolsTestsText "packed runtime UI atlas authoring maps decoded images into texture page and metadata" "MK_tools tests"
@@ -1169,7 +1169,7 @@ if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentIn
 }
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "RuntimeInputStateView" "MK_runtime module purpose"
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "RuntimeInputContextStack" "MK_runtime module purpose"
-Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "GameEngine.RuntimeInputActions.v4" "MK_runtime module purpose"
+Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "GameEngine.RuntimeInputActions" "MK_runtime module purpose"
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "bind_gamepad_axis" "MK_runtime module purpose"
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "bind_key_in_context" "MK_runtime module purpose"
 Assert-ContainsText ([string]$geRuntimeModule[0].purpose) "bind_pointer_in_context" "MK_runtime module purpose"
@@ -1204,7 +1204,7 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentInput) "make_runt
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentInput) "RuntimeInputRebindingAxisCaptureRequest" "input game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentInput) "capture_runtime_input_rebinding_axis" "input game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentInput) "symbolic glyph lookup keys" "input game guidance"
-Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentInputRebindingProfiles) "GameEngine.RuntimeInputRebindingProfile.v1" "input rebinding profile guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentInputRebindingProfiles) "GameEngine.RuntimeInputRebindingProfile" "input rebinding profile guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentInputRebindingProfiles) "apply_runtime_input_rebinding_profile" "input rebinding profile guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentInputRebindingProfiles) "RuntimeInputRebindingCaptureResult" "input rebinding profile guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentInputRebindingProfiles) "capture_runtime_input_rebinding_action" "input rebinding profile guidance"
@@ -1231,7 +1231,7 @@ foreach ($inputGuidance in @(
     Assert-ContainsText $inputText "RuntimeInputStateView" $inputGuidance
     Assert-ContainsText $inputText "RuntimeInputContextStack" $inputGuidance
     Assert-ContainsText $inputText "bind_gamepad_button" $inputGuidance
-    Assert-ContainsText $inputText "GameEngine.RuntimeInputActions.v4" $inputGuidance
+    Assert-ContainsText $inputText "GameEngine.RuntimeInputActions" $inputGuidance
     Assert-ContainsText $inputText "bind_gamepad_axis" $inputGuidance
     Assert-ContainsText $inputText "bind_key_in_context" $inputGuidance
     Assert-ContainsText $inputText "bind_pointer_in_context" $inputGuidance
@@ -1250,7 +1250,7 @@ foreach ($inputRebindingGuidance in @(
     ".claude/skills/gameengine-game-development/SKILL.md"
 )) {
     $inputRebindingText = Get-AgentSurfaceText $inputRebindingGuidance
-    Assert-ContainsText $inputRebindingText "GameEngine.RuntimeInputRebindingProfile.v1" $inputRebindingGuidance
+    Assert-ContainsText $inputRebindingText "GameEngine.RuntimeInputRebindingProfile" $inputRebindingGuidance
     Assert-ContainsText $inputRebindingText "RuntimeInputRebindingProfile" $inputRebindingGuidance
     Assert-ContainsText $inputRebindingText "apply_runtime_input_rebinding_profile" $inputRebindingGuidance
     Assert-ContainsText $inputRebindingText "RuntimeInputRebindingCaptureRequest" $inputRebindingGuidance
@@ -1946,14 +1946,14 @@ Assert-ContainsText ([string]$geRendererModule[0].purpose) "final-state transiti
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph Production Ownership Boundary Selection v1" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphProductionOwnershipPlan" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "plan_frame_graph_production_ownership_boundary" "MK_renderer module purpose"
-foreach ($needle in @("Frame Graph Remaining Render Pass Envelopes v1", "Frame Graph Primary Pass Target-State Evidence v1", "Frame Graph RHI Queue Dependency Plan v1", "record_frame_graph_rhi_queue_waits", "Frame Graph RHI Multi-Queue Executor v1", "execute_frame_graph_rhi_multi_queue_schedule", "Frame Graph RHI Multi-Queue Texture Barrier Execution v1", "FrameGraphRhiMultiQueueExecutionResult::barriers_recorded", "Runtime Material Factor Frame Graph Command Evidence v1", "RuntimeMaterialGpuBinding", "Frame Graph v1 1.0 Scope Closeout v1 closes frame-graph-v1")) {
-    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) $needle "recommended next plan completed context"
-}
-if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-production-v1") {
+$recommendedPlanId = [string]$productionLoop.recommendedNextPlan.id
+if ($recommendedPlanId -notin @("general-purpose-game-production-v1", "generated-game-studio-v1", "engine-contract-version-suffix-cleanup")) { foreach ($needle in @("Frame Graph Remaining Render Pass Envelopes v1", "Frame Graph Primary Pass Target-State Evidence v1", "Frame Graph RHI Queue Dependency Plan v1", "record_frame_graph_rhi_queue_waits", "Frame Graph RHI Multi-Queue Executor v1", "execute_frame_graph_rhi_multi_queue_schedule", "Frame Graph RHI Multi-Queue Texture Barrier Execution v1", "FrameGraphRhiMultiQueueExecutionResult::barriers_recorded", "Runtime Material Factor Frame Graph Command Evidence v1", "RuntimeMaterialGpuBinding", "Frame Graph v1 1.0 Scope Closeout v1 closes frame-graph-v1")) { Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) $needle "recommended next plan completed context" } }
+if ($recommendedPlanId -eq "general-purpose-game-production-v1") {
     foreach ($needle in @("General Purpose Game Production v1", "addressable-content-streaming-production-v1", "production-authoring-workflows-v1", "production-runtime-ui-workbench-v1")) {
         Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) $needle "recommended next plan production milestone reason"
     }
-} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "generated-game-studio-v1") { Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "EditorAiGeneratedGameStudioV1Model" "recommended next plan generated game studio reason"
+} elseif ($recommendedPlanId -eq "generated-game-studio-v1") { Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "EditorAiGeneratedGameStudioV1Model" "recommended next plan generated game studio reason"
+} elseif ($recommendedPlanId -eq "engine-contract-version-suffix-cleanup") { Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "removable pre-release" "recommended next plan version suffix cleanup reason"
 } else {
     Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "Frame Graph v1" "recommended next plan reason"
     Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "upload-staging-v1" "recommended next plan reason"

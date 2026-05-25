@@ -1,4 +1,4 @@
-format=GameEngine.AnimationFloatClipSource.v1
+format=GameEngine.AnimationFloatClipSource
 clip.track_count=1
 clip.track.0.target=gltf/node/0/translation/x
 clip.track.0.keyframe_count=2

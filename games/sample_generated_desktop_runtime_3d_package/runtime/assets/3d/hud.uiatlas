@@ -1,4 +1,4 @@
-format=GameEngine.UiAtlas.v1
+format=GameEngine.UiAtlas
 asset.id=745649157576380515
 asset.kind=ui_atlas
 source.decoding=unsupported

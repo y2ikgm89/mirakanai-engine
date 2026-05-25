@@ -590,7 +590,7 @@ std::string serialize_scene_document_v2(const SceneDocumentV2& scene) {
     throw_if_invalid(scene, "scene v2 document is invalid");
 
     std::ostringstream output;
-    output << "format=GameEngine.Scene.v2\n";
+    output << "format=GameEngine.Scene\n";
     output << "scene.name=" << scene.name << '\n';
 
     for (std::size_t index = 0; index < scene.nodes.size(); ++index) {
@@ -653,7 +653,7 @@ SceneDocumentV2 deserialize_scene_document_v2(std::string_view text) {
         const auto key = std::string_view(line).substr(0, separator);
         const auto value = std::string_view(line).substr(separator + 1U);
         if (key == "format") {
-            if (value != "GameEngine.Scene.v2") {
+            if (value != "GameEngine.Scene") {
                 throw std::invalid_argument("unsupported scene v2 format");
             }
             has_format = true;
@@ -767,14 +767,14 @@ std::string serialize_prefab_document_v2(const PrefabDocumentV2& prefab) {
         throw std::invalid_argument("prefab v2 document is invalid");
     }
 
-    constexpr std::string_view scene_format = "format=GameEngine.Scene.v2\n";
+    constexpr std::string_view scene_format = "format=GameEngine.Scene\n";
     auto scene_text = serialize_scene_document_v2(prefab.scene);
     if (!starts_with(scene_text, scene_format)) {
         throw std::invalid_argument("scene v2 serializer returned an unsupported format");
     }
 
     std::ostringstream output;
-    output << "format=GameEngine.Prefab.v2\n";
+    output << "format=GameEngine.Prefab\n";
     output << "prefab.name=" << prefab.name << '\n';
     output << std::string_view(scene_text).substr(scene_format.size());
     return output.str();
@@ -784,7 +784,7 @@ PrefabDocumentV2 deserialize_prefab_document_v2(std::string_view text) {
     bool has_format = false;
     PrefabDocumentV2 prefab;
     std::ostringstream scene_text;
-    scene_text << "format=GameEngine.Scene.v2\n";
+    scene_text << "format=GameEngine.Scene\n";
 
     std::istringstream input{std::string(text)};
     std::string line;
@@ -801,7 +801,7 @@ PrefabDocumentV2 deserialize_prefab_document_v2(std::string_view text) {
         const auto key = std::string_view(line).substr(0, separator);
         const auto value = std::string_view(line).substr(separator + 1U);
         if (key == "format") {
-            if (value != "GameEngine.Prefab.v2") {
+            if (value != "GameEngine.Prefab") {
                 throw std::invalid_argument("unsupported prefab v2 format");
             }
             has_format = true;

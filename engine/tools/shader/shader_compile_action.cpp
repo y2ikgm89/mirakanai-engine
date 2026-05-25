@@ -49,7 +49,7 @@ namespace {
                                                         const ShaderCompileCommand& command,
                                                         const ShaderToolRunResult& result) {
     std::ostringstream output;
-    output << "format=GameEngine.ShaderArtifact.v1\n";
+    output << "format=GameEngine.ShaderArtifact\n";
     output << "source=" << request.compile_request.source.source_path << '\n';
     output << "artifact=" << command.artifact.path << '\n';
     output << "profile=" << command.artifact.profile << '\n';

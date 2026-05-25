@@ -23,11 +23,11 @@
 namespace mirakana::runtime {
 namespace {
 
-constexpr std::string_view save_data_format = "GameEngine.RuntimeSaveData.v1";
-constexpr std::string_view settings_format = "GameEngine.RuntimeSettings.v1";
-constexpr std::string_view localization_format = "GameEngine.RuntimeLocalizationCatalog.v1";
-constexpr std::string_view input_actions_format = "GameEngine.RuntimeInputActions.v4";
-constexpr std::string_view input_rebinding_profile_format = "GameEngine.RuntimeInputRebindingProfile.v1";
+constexpr std::string_view save_data_format = "GameEngine.RuntimeSaveData";
+constexpr std::string_view settings_format = "GameEngine.RuntimeSettings";
+constexpr std::string_view localization_format = "GameEngine.RuntimeLocalizationCatalog";
+constexpr std::string_view input_actions_format = "GameEngine.RuntimeInputActions";
+constexpr std::string_view input_rebinding_profile_format = "GameEngine.RuntimeInputRebindingProfile";
 
 [[nodiscard]] bool contains_control_characters(std::string_view value) noexcept {
     return std::ranges::any_of(value, [](char character) {

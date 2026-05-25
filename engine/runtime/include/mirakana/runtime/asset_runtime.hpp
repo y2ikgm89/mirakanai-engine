@@ -112,7 +112,7 @@ struct RuntimeSpriteAnimationPayload {
     std::vector<RuntimeSpriteAnimationFrame> frames;
 };
 
-/// Cooked GPU skinning mesh (`GameEngine.CookedSkinnedMesh.v1`). Vertex layout is a fixed interleaved stride
+/// Cooked GPU skinning mesh (`GameEngine.CookedSkinnedMesh`). Vertex layout is a fixed interleaved stride
 /// (`runtime_skinned_mesh_vertex_stride_bytes` in `mirakana_runtime_rhi`) with position, normal, UV, tangent frame,
 /// packed joint indices (`uint16x4`), and joint weights (`float32x4`). `joint_palette_bytes` stores one
 /// row-major `float4x4` per joint in **little-endian float32** (64 bytes per joint), matching GPU constant-buffer

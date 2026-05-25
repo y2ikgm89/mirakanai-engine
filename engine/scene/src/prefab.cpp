@@ -82,7 +82,7 @@ bool append_prefab_subtree(const Scene& scene, SceneNodeId node_id, std::uint32_
 
     std::string output;
     output.reserve(scene_text.size() + 8U);
-    output += "format=GameEngine.Prefab.v1\n";
+    output += "format=GameEngine.Prefab\n";
     output += "prefab.name=";
     output += prefab_name;
     output += '\n';
@@ -107,10 +107,10 @@ bool append_prefab_subtree(const Scene& scene, SceneNodeId node_id, std::uint32_
         const auto key = std::string_view(line).substr(0, separator);
         const auto value = std::string_view(line).substr(separator + 1U);
         if (key == "format") {
-            if (value != "GameEngine.Prefab.v1") {
+            if (value != "GameEngine.Prefab") {
                 throw std::invalid_argument("unsupported prefab format");
             }
-            output << "format=GameEngine.Scene.v1\n";
+            output << "format=GameEngine.Scene\n";
         } else if (key == "prefab.name") {
             output << "scene.name=" << value << '\n';
         } else if (key == "node.count" || key.starts_with("node.")) {
