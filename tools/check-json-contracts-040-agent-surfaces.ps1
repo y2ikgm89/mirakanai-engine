@@ -539,7 +539,7 @@ if ($playable3dGap.Count -ne 0) {
     Write-Error "engine manifest aiOperableProductionLoop 3d-playable-vertical-slice gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
 $recommendedText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
-if ([string]$productionLoop.recommendedNextPlan.id -ne "general-purpose-game-production-v1") {
+if ([string]$productionLoop.recommendedNextPlan.id -notin @("general-purpose-game-production-v1", "generated-game-studio-v1")) {
     foreach ($needle in @(
         "3d-playable-vertical-slice",
         "generated desktop 3D package proof",
@@ -568,7 +568,19 @@ foreach ($needle in @(
     }
 }
 if ([string]$productionLoop.recommendedNextPlan.id -ne "general-purpose-game-production-v1") {
-    foreach ($needle in @(
+    if ([string]$productionLoop.recommendedNextPlan.id -eq "generated-game-studio-v1") {
+        foreach ($needle in @(
+            "Generated Game Studio v1",
+            "EditorAiGeneratedGameStudioV1Model",
+            "EditorAiCommandPanelModel",
+            "ai-generated-game-playtest-loop-v1",
+            "ai-validation-remediation-recipes-v1",
+            "unsupportedProductionGaps empty"
+        )) {
+            Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan generated game studio milestone"
+        }
+    } else {
+        foreach ($needle in @(
     "Frame Graph Transient Texture Alias Planning v1",
     "FrameGraphTransientTextureAliasPlan",
     "plan_frame_graph_transient_texture_aliases",
@@ -622,6 +634,7 @@ if ([string]$productionLoop.recommendedNextPlan.id -ne "general-purpose-game-pro
         if (-not $recommendedText.Contains($needle)) {
             Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe frame-graph closeout and upload-staging next gap: $needle"
         }
+    }
     }
 }
 $editorProductizationGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "editor-productization" })

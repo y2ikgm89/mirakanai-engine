@@ -1953,6 +1953,7 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     foreach ($needle in @("General Purpose Game Production v1", "addressable-content-streaming-production-v1", "production-authoring-workflows-v1", "production-runtime-ui-workbench-v1")) {
         Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) $needle "recommended next plan production milestone reason"
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "generated-game-studio-v1") { Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "EditorAiGeneratedGameStudioV1Model" "recommended next plan generated game studio reason"
 } else {
     Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "Frame Graph v1" "recommended next plan reason"
     Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "upload-staging-v1" "recommended next plan reason"

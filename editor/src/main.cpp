@@ -13,6 +13,7 @@
 #include "mirakana/editor/content_browser.hpp"
 #include "mirakana/editor/content_browser_import_panel.hpp"
 #include "mirakana/editor/game_module_driver.hpp"
+#include "mirakana/editor/generated_game_studio.hpp"
 #include "mirakana/editor/gltf_mesh_catalog.hpp"
 #include "mirakana/editor/history.hpp"
 #include "mirakana/editor/input_rebinding.hpp"
@@ -4522,7 +4523,48 @@ class EditorState {
     struct AiCommandPanelContext {
         mirakana::editor::EditorAiPlaytestOperatorHandoffModel operator_handoff;
         mirakana::editor::EditorAiCommandPanelModel panel_model;
+        mirakana::editor::EditorAiGeneratedGameStudioV1Model studio_model;
     };
+
+    [[nodiscard]] std::vector<mirakana::editor::EditorAiGeneratedGameStudioV1DesignSpecRow>
+    make_generated_game_studio_design_specs() const {
+        const auto prefab_path = current_prefab_path();
+        const auto package_candidates = mirakana::editor::make_scene_package_candidate_rows(
+            scene_document_, current_cooked_scene_path(), current_package_index_path(),
+            {std::string_view(prefab_path)});
+        const auto package_registration_draft = mirakana::editor::make_scene_package_registration_draft_rows(
+            package_candidates, project_.root_path, current_runtime_package_files());
+        const auto scene_nodes = scene_document_.hierarchy_rows();
+        const auto recipe_ids = make_ai_validation_recipe_ids();
+        const std::string package_target = project_.name.empty() ? std::string("current-project") : project_.name;
+
+        return {
+            mirakana::editor::EditorAiGeneratedGameStudioV1DesignSpecRow{
+                .id = "current-project-2d",
+                .gameplay_family = "2d-desktop-runtime-package",
+                .template_id = "DesktopRuntime2DPackage",
+                .package_target_id = package_target,
+                .validation_recipe_ids = recipe_ids,
+                .scene_package_registration_draft_rows = package_registration_draft,
+                .scene_nodes = scene_nodes,
+                .diagnostics = mirakana::editor::validate_scene_authoring_references(scene_document_.scene(), assets_),
+                .three_dimensional = false,
+                .host_gated_package_evidence_required = false,
+            },
+            mirakana::editor::EditorAiGeneratedGameStudioV1DesignSpecRow{
+                .id = "current-project-3d",
+                .gameplay_family = "3d-playable-desktop-package",
+                .template_id = "DesktopRuntime3DPackage",
+                .package_target_id = package_target,
+                .validation_recipe_ids = recipe_ids,
+                .scene_package_registration_draft_rows = package_registration_draft,
+                .scene_nodes = scene_nodes,
+                .diagnostics = mirakana::editor::validate_scene_authoring_references(scene_document_.scene(), assets_),
+                .three_dimensional = true,
+                .host_gated_package_evidence_required = true,
+            },
+        };
+    }
 
     [[nodiscard]] mirakana::editor::EditorAiPlaytestEvidenceImportModel make_ai_evidence_import_model() const {
         mirakana::editor::EditorAiPlaytestEvidenceImportDesc desc;
@@ -4567,9 +4609,16 @@ class EditorState {
             mirakana::editor::EditorAiCommandPanelDesc{.workflow_report = workflow_report,
                                                        .operator_handoff = operator_handoff,
                                                        .evidence_summary = evidence_summary});
+        auto studio_model = mirakana::editor::make_editor_ai_generated_game_studio_v1_model(
+            mirakana::editor::EditorAiGeneratedGameStudioV1Desc{
+                .design_specs = make_generated_game_studio_design_specs(),
+                .operator_workflow_report = workflow_report,
+                .ai_command_panel = panel_model,
+            });
         return AiCommandPanelContext{
             .operator_handoff = operator_handoff,
             .panel_model = std::move(panel_model),
+            .studio_model = std::move(studio_model),
         };
     }
 
@@ -4837,6 +4886,43 @@ class EditorState {
                 ImGui::TextUnformatted(host_gates.c_str());
                 ImGui::TableSetColumnIndex(4);
                 ImGui::TextUnformatted(row.diagnostic.c_str());
+            }
+            ImGui::EndTable();
+        }
+    }
+
+    static void draw_generated_game_studio_loop_table(
+        std::span<const mirakana::editor::EditorAiGeneratedGameStudioV1LoopRow> rows) {
+        if (rows.empty()) {
+            ImGui::TextUnformatted("No generated game studio loops");
+            return;
+        }
+        if (ImGui::BeginTable("Generated Game Studio Loops", 7,
+                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable)) {
+            ImGui::TableSetupColumn("Design");
+            ImGui::TableSetupColumn("Family");
+            ImGui::TableSetupColumn("Template");
+            ImGui::TableSetupColumn("Status");
+            ImGui::TableSetupColumn("Recipes");
+            ImGui::TableSetupColumn("Evidence");
+            ImGui::TableSetupColumn("Remediation");
+            ImGui::TableHeadersRow();
+            for (const auto& row : rows) {
+                ImGui::TableNextRow();
+                ImGui::TableSetColumnIndex(0);
+                ImGui::TextUnformatted(row.design_spec_id.c_str());
+                ImGui::TableSetColumnIndex(1);
+                ImGui::TextUnformatted(row.gameplay_family.c_str());
+                ImGui::TableSetColumnIndex(2);
+                ImGui::TextUnformatted(row.template_id.c_str());
+                ImGui::TableSetColumnIndex(3);
+                ImGui::TextUnformatted(row.status_label.c_str());
+                ImGui::TableSetColumnIndex(4);
+                ImGui::Text("%zu", row.validation_recipe_count);
+                ImGui::TableSetColumnIndex(5);
+                ImGui::Text("%zu", row.evidence_row_count);
+                ImGui::TableSetColumnIndex(6);
+                ImGui::Text("%zu / %zu", row.remediation_row_count, row.handoff_row_count);
             }
             ImGui::EndTable();
         }
@@ -5585,6 +5671,12 @@ class EditorState {
         ImGui::Text("Status: %s", model.status_label.c_str());
         ImGui::Text("Stages: ready %zu  host-gated %zu  blocked %zu  external %zu", model.ready_stage_count,
                     model.host_gated_stage_count, model.blocked_stage_count, model.external_stage_count);
+        ImGui::SeparatorText("Generated Game Studio");
+        ImGui::Text("Studio: %s  Loops: %zu  Evidence: %zu  Remediation: %zu  Handoff: %zu",
+                    context.studio_model.status_label.c_str(), context.studio_model.loop_rows.size(),
+                    context.studio_model.evidence_row_count, context.studio_model.remediation_row_count,
+                    context.studio_model.handoff_row_count);
+        draw_generated_game_studio_loop_table(context.studio_model.loop_rows);
         if (model.external_action_required) {
             ImGui::TextWrapped("External operator validation or evidence collection is required.");
         }

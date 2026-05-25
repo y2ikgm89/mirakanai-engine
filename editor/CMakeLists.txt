@@ -5,6 +5,7 @@ add_library(MK_editor_core
     core/src/content_browser.cpp
     core/src/content_browser_import_panel.cpp
     core/src/game_module_driver.cpp
+    core/src/generated_game_studio.cpp
     core/src/gltf_mesh_catalog.cpp
     core/src/history.cpp
     core/src/input_rebinding.cpp
