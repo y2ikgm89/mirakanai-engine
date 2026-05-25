@@ -961,13 +961,35 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
                 "sandbox_world_invoked_world_mutation",
                 "sandbox_world_invoked_persistence_io",
                 "sandbox_world_invoked_package_io",
-                "sandbox_world_diagnostics"
+                "sandbox_world_diagnostics",
+                "simulation_management_status",
+                "simulation_management_ready",
+                "simulation_management_tick_count",
+                "simulation_management_resource_balance_rows",
+                "simulation_management_job_rows",
+                "simulation_management_job_assignment_rows",
+                "simulation_management_logistics_links",
+                "simulation_management_logistics_transfer_rows",
+                "simulation_management_logistics_scheduled_transfer_rows",
+                "simulation_management_economy_summary_rows",
+                "simulation_management_population_need_rows",
+                "simulation_management_need_deficit_rows",
+                "simulation_management_schedule_rows",
+                "simulation_management_save_review_rows",
+                "simulation_management_save_review_repairable_rows",
+                "simulation_management_dashboard_rows",
+                "simulation_management_replay_hash",
+                "simulation_management_invoked_economy_execution",
+                "simulation_management_invoked_save_io",
+                "simulation_management_invoked_runtime_ui",
+                "simulation_management_invoked_package_io",
+                "simulation_management_diagnostics"
             )) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
                 Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not include gameplay systems field: $field"
             }
         }
-        foreach ($field in @("gameplay_systems_ready", "gameplay_systems_navigation_reached", "gameplay_systems_perception_has_primary_target", "gameplay_systems_blackboard_has_target", "gameplay_systems_blackboard_needs_move", "gameplay_systems_behavior_authoring_ready", "gameplay_systems_behavior_authoring_deterministic_trace_ready", "gameplay_systems_quest_dialogue_ready", "gameplay_systems_inventory_items_ready", "gameplay_systems_construction_placement_ready", "gameplay_systems_procedural_generation_ready", "rpg_systems_ready", "sandbox_world_ready")) {
+        foreach ($field in @("gameplay_systems_ready", "gameplay_systems_navigation_reached", "gameplay_systems_perception_has_primary_target", "gameplay_systems_blackboard_has_target", "gameplay_systems_blackboard_needs_move", "gameplay_systems_behavior_authoring_ready", "gameplay_systems_behavior_authoring_deterministic_trace_ready", "gameplay_systems_quest_dialogue_ready", "gameplay_systems_inventory_items_ready", "gameplay_systems_construction_placement_ready", "gameplay_systems_procedural_generation_ready", "rpg_systems_ready", "sandbox_world_ready", "simulation_management_ready")) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=1\b") {
                 Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove ready gameplay systems field: $field"
             }
@@ -1247,6 +1269,36 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsandbox_world_replay_hash=[1-9]\d*\b") {
             Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove positive sandbox world replay hash."
         }
+        foreach ($expected in @{
+                "simulation_management_status" = "ready"
+                "simulation_management_ready" = "1"
+                "simulation_management_tick_count" = "240"
+                "simulation_management_resource_balance_rows" = "4"
+                "simulation_management_job_rows" = "2"
+                "simulation_management_job_assignment_rows" = "1"
+                "simulation_management_logistics_links" = "2"
+                "simulation_management_logistics_transfer_rows" = "2"
+                "simulation_management_logistics_scheduled_transfer_rows" = "1"
+                "simulation_management_economy_summary_rows" = "1"
+                "simulation_management_population_need_rows" = "2"
+                "simulation_management_need_deficit_rows" = "1"
+                "simulation_management_schedule_rows" = "2"
+                "simulation_management_save_review_rows" = "2"
+                "simulation_management_save_review_repairable_rows" = "1"
+                "simulation_management_dashboard_rows" = "7"
+                "simulation_management_invoked_economy_execution" = "0"
+                "simulation_management_invoked_save_io" = "0"
+                "simulation_management_invoked_runtime_ui" = "0"
+                "simulation_management_invoked_package_io" = "0"
+                "simulation_management_diagnostics" = "0"
+            }.GetEnumerator()) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$([regex]::Escape($expected.Key))=$([regex]::Escape($expected.Value))\b") {
+                Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove simulation management field: $($expected.Key)=$($expected.Value)."
+            }
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsimulation_management_replay_hash=[1-9]\d*\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove positive simulation management replay hash."
+        }
     }
     if ($requiresProceduralGeneration) {
         foreach ($expected in @{
@@ -1360,6 +1412,28 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
             "sandbox_world_invoked_persistence_io",
             "sandbox_world_invoked_package_io",
             "sandbox_world_diagnostics",
+            "simulation_management_status",
+            "simulation_management_ready",
+            "simulation_management_tick_count",
+            "simulation_management_resource_balance_rows",
+            "simulation_management_job_rows",
+            "simulation_management_job_assignment_rows",
+            "simulation_management_logistics_links",
+            "simulation_management_logistics_transfer_rows",
+            "simulation_management_logistics_scheduled_transfer_rows",
+            "simulation_management_economy_summary_rows",
+            "simulation_management_population_need_rows",
+            "simulation_management_need_deficit_rows",
+            "simulation_management_schedule_rows",
+            "simulation_management_save_review_rows",
+            "simulation_management_save_review_repairable_rows",
+            "simulation_management_dashboard_rows",
+            "simulation_management_replay_hash",
+            "simulation_management_invoked_economy_execution",
+            "simulation_management_invoked_save_io",
+            "simulation_management_invoked_runtime_ui",
+            "simulation_management_invoked_package_io",
+            "simulation_management_diagnostics",
             "gameplay_systems_scene_binding_ready",
             "gameplay_systems_scene_binding_source_rows",
             "gameplay_systems_scene_binding_rows",
@@ -1601,6 +1675,38 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsandbox_world_replay_hash=[1-9]\d*\b") {
         Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove positive sandbox world replay hash."
+    }
+    $expectedSimulationManagementFields = @{
+        "simulation_management_status" = "ready"
+        "simulation_management_ready" = "1"
+        "simulation_management_tick_count" = "240"
+        "simulation_management_resource_balance_rows" = "4"
+        "simulation_management_job_rows" = "2"
+        "simulation_management_job_assignment_rows" = "1"
+        "simulation_management_logistics_links" = "2"
+        "simulation_management_logistics_transfer_rows" = "2"
+        "simulation_management_logistics_scheduled_transfer_rows" = "1"
+        "simulation_management_economy_summary_rows" = "1"
+        "simulation_management_population_need_rows" = "2"
+        "simulation_management_need_deficit_rows" = "1"
+        "simulation_management_schedule_rows" = "2"
+        "simulation_management_save_review_rows" = "2"
+        "simulation_management_save_review_repairable_rows" = "1"
+        "simulation_management_dashboard_rows" = "7"
+        "simulation_management_invoked_economy_execution" = "0"
+        "simulation_management_invoked_save_io" = "0"
+        "simulation_management_invoked_runtime_ui" = "0"
+        "simulation_management_invoked_package_io" = "0"
+        "simulation_management_diagnostics" = "0"
+    }
+    foreach ($field in $expectedSimulationManagementFields.Keys) {
+        $expectedValue = $expectedSimulationManagementFields[$field]
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove simulation management field $field=$expectedValue."
+        }
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsimulation_management_replay_hash=[1-9]\d*\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove positive simulation management replay hash."
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_scene_binding_ready=1\b") {
         Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove ready scene gameplay bindings."
@@ -2570,6 +2676,28 @@ if ($requiresSimulationOrchestration) {
             "simulation_orchestration_budget_limited_remaining_time_us",
             "simulation_orchestration_invalid_command_diagnostics",
             "simulation_orchestration_diagnostics",
+            "simulation_management_status",
+            "simulation_management_ready",
+            "simulation_management_tick_count",
+            "simulation_management_resource_balance_rows",
+            "simulation_management_job_rows",
+            "simulation_management_job_assignment_rows",
+            "simulation_management_logistics_links",
+            "simulation_management_logistics_transfer_rows",
+            "simulation_management_logistics_scheduled_transfer_rows",
+            "simulation_management_economy_summary_rows",
+            "simulation_management_population_need_rows",
+            "simulation_management_need_deficit_rows",
+            "simulation_management_schedule_rows",
+            "simulation_management_save_review_rows",
+            "simulation_management_save_review_repairable_rows",
+            "simulation_management_dashboard_rows",
+            "simulation_management_replay_hash",
+            "simulation_management_invoked_economy_execution",
+            "simulation_management_invoked_save_io",
+            "simulation_management_invoked_runtime_ui",
+            "simulation_management_invoked_package_io",
+            "simulation_management_diagnostics",
             "gameplay_runtime_scheduler_status",
             "gameplay_runtime_scheduler_ready",
             "gameplay_runtime_scheduler_available_steps",
@@ -2642,6 +2770,38 @@ if ($requiresSimulationOrchestration) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove simulation orchestration field $field=$expectedValue."
         }
+    }
+    $expectedSimulationManagementFields = @{
+        "simulation_management_status" = "ready"
+        "simulation_management_ready" = "1"
+        "simulation_management_tick_count" = "240"
+        "simulation_management_resource_balance_rows" = "4"
+        "simulation_management_job_rows" = "2"
+        "simulation_management_job_assignment_rows" = "1"
+        "simulation_management_logistics_links" = "2"
+        "simulation_management_logistics_transfer_rows" = "2"
+        "simulation_management_logistics_scheduled_transfer_rows" = "1"
+        "simulation_management_economy_summary_rows" = "1"
+        "simulation_management_population_need_rows" = "2"
+        "simulation_management_need_deficit_rows" = "1"
+        "simulation_management_schedule_rows" = "2"
+        "simulation_management_save_review_rows" = "2"
+        "simulation_management_save_review_repairable_rows" = "1"
+        "simulation_management_dashboard_rows" = "7"
+        "simulation_management_invoked_economy_execution" = "0"
+        "simulation_management_invoked_save_io" = "0"
+        "simulation_management_invoked_runtime_ui" = "0"
+        "simulation_management_invoked_package_io" = "0"
+        "simulation_management_diagnostics" = "0"
+    }
+    foreach ($field in $expectedSimulationManagementFields.Keys) {
+        $expectedValue = $expectedSimulationManagementFields[$field]
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove simulation management field $field=$expectedValue."
+        }
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsimulation_management_replay_hash=[1-9]\d*\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove positive simulation management replay hash."
     }
     $expectedGameplayRuntimeSchedulerFields = @{
         "gameplay_runtime_scheduler_status" = "budget_limited"

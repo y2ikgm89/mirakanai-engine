@@ -28,6 +28,7 @@
 #include "mirakana/runtime/gameplay_runtime_scheduler.hpp"
 #include "mirakana/runtime/genre_rpg_systems.hpp"
 #include "mirakana/runtime/genre_sandbox_world.hpp"
+#include "mirakana/runtime/genre_simulation_management.hpp"
 #include "mirakana/runtime/package_streaming.hpp"
 #include "mirakana/runtime/physics_collision_runtime.hpp"
 #include "mirakana/runtime/resource_runtime.hpp"
@@ -853,6 +854,19 @@ addressable_content_status_name(mirakana::runtime::RuntimeAddressableContentStre
     return "unknown";
 }
 
+[[nodiscard]] const char*
+simulation_management_status_name(mirakana::runtime::RuntimeSimulationManagementStatus status) noexcept {
+    switch (status) {
+    case mirakana::runtime::RuntimeSimulationManagementStatus::ready:
+        return "ready";
+    case mirakana::runtime::RuntimeSimulationManagementStatus::no_rows:
+        return "no_rows";
+    case mirakana::runtime::RuntimeSimulationManagementStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
 struct SceneGameplayBindingProbeResult {
     std::size_t source_rows{0U};
     std::size_t binding_rows{0U};
@@ -969,6 +983,32 @@ struct SandboxWorldProbeResult {
     std::uint64_t replay_hash{0U};
     bool invoked_world_mutation{false};
     bool invoked_persistence_io{false};
+    bool invoked_package_io{false};
+    bool ready{false};
+};
+
+struct SimulationManagementProbeResult {
+    mirakana::runtime::RuntimeSimulationManagementStatus status{
+        mirakana::runtime::RuntimeSimulationManagementStatus::invalid_request};
+    std::uint64_t tick_count{0U};
+    std::size_t resource_balance_rows{0U};
+    std::size_t job_rows{0U};
+    std::size_t job_assignment_rows{0U};
+    std::size_t logistics_links{0U};
+    std::size_t logistics_transfer_rows{0U};
+    std::size_t logistics_scheduled_transfer_rows{0U};
+    std::size_t economy_summary_rows{0U};
+    std::size_t population_need_rows{0U};
+    std::size_t need_deficit_rows{0U};
+    std::size_t schedule_rows{0U};
+    std::size_t save_review_rows{0U};
+    std::size_t save_review_repairable_rows{0U};
+    std::size_t dashboard_rows{0U};
+    std::uint64_t replay_hash{0U};
+    std::size_t diagnostics{0U};
+    bool invoked_economy_execution{false};
+    bool invoked_save_io{false};
+    bool invoked_runtime_ui{false};
     bool invoked_package_io{false};
     bool ready{false};
 };
@@ -1386,6 +1426,173 @@ struct InputContextRebindingProbeResult {
                    result.persistence_repairable_rows == 1U && result.rejected_unsafe_mutation_rows == 3U &&
                    result.diagnostics == 0U && result.replay_hash != 0U && !result.invoked_world_mutation &&
                    !result.invoked_persistence_io && !result.invoked_package_io;
+    return result;
+}
+
+[[nodiscard]] SimulationManagementProbeResult
+validate_simulation_management_package_evidence(std::string_view sample_id) {
+    using Economy = mirakana::runtime::RuntimeSimulationEconomySummary;
+    using Job = mirakana::runtime::RuntimeSimulationJobRow;
+    using JobStatus = mirakana::runtime::RuntimeSimulationJobStatus;
+    using Link = mirakana::runtime::RuntimeSimulationLogisticsLink;
+    using Need = mirakana::runtime::RuntimeSimulationPopulationNeedRow;
+    using NeedStatus = mirakana::runtime::RuntimeSimulationNeedStatus;
+    using Request = mirakana::runtime::RuntimeSimulationManagementRequest;
+    using Resource = mirakana::runtime::RuntimeSimulationResourceRow;
+    using Save = mirakana::runtime::RuntimeSimulationSaveReviewRow;
+    using SaveStatus = mirakana::runtime::RuntimeSimulationSaveReviewStatus;
+    using Schedule = mirakana::runtime::RuntimeSimulationScheduleRow;
+    using Status = mirakana::runtime::RuntimeSimulationManagementStatus;
+
+    const auto sample_prefix = std::string{sample_id};
+    const auto plan = mirakana::runtime::plan_runtime_simulation_management(Request{
+        .simulation_id = sample_prefix + ".simulation.management",
+        .world_tick = 100U,
+        .long_run_tick_count = 240U,
+        .resource_rows =
+            std::vector<Resource>{
+                Resource{
+                    .resource_id = "food", .storage_id = "colony", .quantity = 25, .capacity = 100, .source_index = 1U},
+                Resource{
+                    .resource_id = "meal", .storage_id = "colony", .quantity = 2, .capacity = 30, .source_index = 2U},
+                Resource{
+                    .resource_id = "ore", .storage_id = "mine", .quantity = 12, .capacity = 40, .source_index = 3U},
+                Resource{
+                    .resource_id = "ore", .storage_id = "colony", .quantity = 0, .capacity = 40, .source_index = 4U},
+            },
+        .job_rows =
+            std::vector<Job>{
+                Job{.job_id = "job.cook",
+                    .worker_id = "worker.0",
+                    .input_resource_id = "food",
+                    .input_storage_id = "colony",
+                    .output_resource_id = "meal",
+                    .output_storage_id = "colony",
+                    .input_quantity = 5,
+                    .output_quantity = 3,
+                    .duration_ticks = 4U,
+                    .status = JobStatus::invalid,
+                    .source_index = 1U},
+                Job{.job_id = "job.shortage",
+                    .worker_id = "worker.1",
+                    .input_resource_id = "ore",
+                    .input_storage_id = "mine",
+                    .output_resource_id = "meal",
+                    .output_storage_id = "colony",
+                    .input_quantity = 99,
+                    .output_quantity = 1,
+                    .duration_ticks = 4U,
+                    .status = JobStatus::invalid,
+                    .source_index = 2U},
+            },
+        .logistics_links =
+            std::vector<Link>{
+                Link{.link_id = "route.ore",
+                     .resource_id = "ore",
+                     .source_storage_id = "mine",
+                     .destination_storage_id = "colony",
+                     .transfer_quantity = 4,
+                     .travel_ticks = 6U,
+                     .enabled = true,
+                     .source_index = 1U},
+                Link{.link_id = "route.ore.back",
+                     .resource_id = "ore",
+                     .source_storage_id = "colony",
+                     .destination_storage_id = "mine",
+                     .transfer_quantity = 99,
+                     .travel_ticks = 6U,
+                     .enabled = true,
+                     .source_index = 2U},
+            },
+        .economy_summaries = std::vector<Economy>{Economy{.summary_id = "economy.food",
+                                                          .resource_id = "food",
+                                                          .produced_quantity = 6,
+                                                          .consumed_quantity = 5,
+                                                          .traded_quantity = 0,
+                                                          .source_index = 1U}},
+        .population_need_rows =
+            std::vector<Need>{
+                Need{.population_id = "population.colony",
+                     .need_id = "need.food",
+                     .resource_id = "food",
+                     .storage_id = "colony",
+                     .required_quantity = 20,
+                     .available_quantity = 0,
+                     .status = NeedStatus::invalid,
+                     .source_index = 1U},
+                Need{.population_id = "population.colony",
+                     .need_id = "need.comfort",
+                     .resource_id = "meal",
+                     .storage_id = "colony",
+                     .required_quantity = 5,
+                     .available_quantity = 0,
+                     .status = NeedStatus::invalid,
+                     .source_index = 2U},
+            },
+        .schedule_rows =
+            std::vector<Schedule>{
+                Schedule{.schedule_id = "schedule.job.cook",
+                         .target_id = "job.cook",
+                         .start_tick = 90U,
+                         .end_tick = 200U,
+                         .enabled = true,
+                         .source_index = 1U},
+                Schedule{.schedule_id = "schedule.route.ore",
+                         .target_id = "route.ore",
+                         .start_tick = 90U,
+                         .end_tick = 200U,
+                         .enabled = true,
+                         .source_index = 2U},
+            },
+        .save_review_rows =
+            std::vector<Save>{
+                Save{.domain = "simulation",
+                     .key = "state",
+                     .expected_schema_version = 2U,
+                     .observed_schema_version = 2U,
+                     .status = SaveStatus::rejected,
+                     .source_index = 1U},
+                Save{.domain = "simulation",
+                     .key = "balances",
+                     .expected_schema_version = 3U,
+                     .observed_schema_version = 2U,
+                     .status = SaveStatus::rejected,
+                     .source_index = 2U},
+            },
+        .seed = 42U,
+    });
+
+    SimulationManagementProbeResult result;
+    result.status = plan.status;
+    result.tick_count = plan.tick_count;
+    result.resource_balance_rows = plan.resource_balance_rows.size();
+    result.job_rows = plan.job_rows.size();
+    result.job_assignment_rows = plan.job_assignment_count;
+    result.logistics_links = plan.logistics_links.size();
+    result.logistics_transfer_rows = plan.logistics_transfer_rows.size();
+    result.logistics_scheduled_transfer_rows = plan.scheduled_logistics_transfer_count;
+    result.economy_summary_rows = plan.economy_summaries.size();
+    result.population_need_rows = plan.population_need_rows.size();
+    result.need_deficit_rows = plan.need_deficit_count;
+    result.schedule_rows = plan.schedule_rows.size();
+    result.save_review_rows = plan.save_review_rows.size();
+    result.save_review_repairable_rows = plan.repairable_save_review_count;
+    result.dashboard_rows = plan.dashboard_rows.size();
+    result.diagnostics = plan.diagnostics.size();
+    result.replay_hash = plan.replay_hash;
+    result.invoked_economy_execution = plan.invoked_economy_execution;
+    result.invoked_save_io = plan.invoked_save_io;
+    result.invoked_runtime_ui = plan.invoked_runtime_ui;
+    result.invoked_package_io = plan.invoked_package_io;
+    result.ready = plan.status == Status::ready && plan.succeeded() && result.tick_count == 240U &&
+                   result.resource_balance_rows == 4U && result.job_rows == 2U && result.job_assignment_rows == 1U &&
+                   result.logistics_links == 2U && result.logistics_transfer_rows == 2U &&
+                   result.logistics_scheduled_transfer_rows == 1U && result.economy_summary_rows == 1U &&
+                   result.population_need_rows == 2U && result.need_deficit_rows == 1U && result.schedule_rows == 2U &&
+                   result.save_review_rows == 2U && result.save_review_repairable_rows == 1U &&
+                   result.dashboard_rows == 7U && result.diagnostics == 0U && result.replay_hash != 0U &&
+                   !result.invoked_economy_execution && !result.invoked_save_io && !result.invoked_runtime_ui &&
+                   !result.invoked_package_io;
     return result;
 }
 
@@ -7982,12 +8189,15 @@ int main(int argc, char** argv) {
     const auto sandbox_world_probe = options.require_gameplay_systems
                                          ? validate_sandbox_world_package_evidence("sample3d")
                                          : SandboxWorldProbeResult{};
+    const auto simulation_management_probe = options.require_gameplay_systems
+                                                 ? validate_simulation_management_package_evidence("sample3d")
+                                                 : SimulationManagementProbeResult{};
     const auto gameplay_systems_ready =
         gameplay_systems_core_ready &&
         (!options.require_gameplay_systems ||
          (game.gameplay_systems_scene_binding_ready() && input_context_rebinding.ready &&
           gameplay_runtime_scheduler_probe.ready && world_entity_model_probe.ready && addressable_content_probe.ready &&
-          rpg_systems_probe.ready && sandbox_world_probe.ready));
+          rpg_systems_probe.ready && sandbox_world_probe.ready && simulation_management_probe.ready));
     const auto gameplay_systems_diagnostics =
         game.gameplay_systems_diagnostics_count(options.max_frames) +
         ((options.require_gameplay_systems && !game.gameplay_systems_scene_binding_ready()) ? 1U : 0U) +
@@ -7996,7 +8206,8 @@ int main(int argc, char** argv) {
         ((options.require_gameplay_systems && !world_entity_model_probe.ready) ? 1U : 0U) +
         ((options.require_gameplay_systems && !addressable_content_probe.ready) ? 1U : 0U) +
         ((options.require_gameplay_systems && !rpg_systems_probe.ready) ? 1U : 0U) +
-        ((options.require_gameplay_systems && !sandbox_world_probe.ready) ? 1U : 0U);
+        ((options.require_gameplay_systems && !sandbox_world_probe.ready) ? 1U : 0U) +
+        ((options.require_gameplay_systems && !simulation_management_probe.ready) ? 1U : 0U);
     const auto visible_3d = evaluate_visible_3d_production_proof(options, result, report, renderer_quality, playable_3d,
                                                                  gameplay_systems_ready);
     const auto entity_scale_culling_probe = options.require_entity_scale_culling
@@ -8344,6 +8555,31 @@ int main(int argc, char** argv) {
         << " sandbox_world_invoked_persistence_io=" << (sandbox_world_probe.invoked_persistence_io ? 1 : 0)
         << " sandbox_world_invoked_package_io=" << (sandbox_world_probe.invoked_package_io ? 1 : 0)
         << " sandbox_world_diagnostics=" << sandbox_world_probe.diagnostics
+        << " simulation_management_status=" << simulation_management_status_name(simulation_management_probe.status)
+        << " simulation_management_ready=" << (simulation_management_probe.ready ? 1 : 0)
+        << " simulation_management_tick_count=" << simulation_management_probe.tick_count
+        << " simulation_management_resource_balance_rows=" << simulation_management_probe.resource_balance_rows
+        << " simulation_management_job_rows=" << simulation_management_probe.job_rows
+        << " simulation_management_job_assignment_rows=" << simulation_management_probe.job_assignment_rows
+        << " simulation_management_logistics_links=" << simulation_management_probe.logistics_links
+        << " simulation_management_logistics_transfer_rows=" << simulation_management_probe.logistics_transfer_rows
+        << " simulation_management_logistics_scheduled_transfer_rows="
+        << simulation_management_probe.logistics_scheduled_transfer_rows
+        << " simulation_management_economy_summary_rows=" << simulation_management_probe.economy_summary_rows
+        << " simulation_management_population_need_rows=" << simulation_management_probe.population_need_rows
+        << " simulation_management_need_deficit_rows=" << simulation_management_probe.need_deficit_rows
+        << " simulation_management_schedule_rows=" << simulation_management_probe.schedule_rows
+        << " simulation_management_save_review_rows=" << simulation_management_probe.save_review_rows
+        << " simulation_management_save_review_repairable_rows="
+        << simulation_management_probe.save_review_repairable_rows
+        << " simulation_management_dashboard_rows=" << simulation_management_probe.dashboard_rows
+        << " simulation_management_replay_hash=" << simulation_management_probe.replay_hash
+        << " simulation_management_invoked_economy_execution="
+        << (simulation_management_probe.invoked_economy_execution ? 1 : 0)
+        << " simulation_management_invoked_save_io=" << (simulation_management_probe.invoked_save_io ? 1 : 0)
+        << " simulation_management_invoked_runtime_ui=" << (simulation_management_probe.invoked_runtime_ui ? 1 : 0)
+        << " simulation_management_invoked_package_io=" << (simulation_management_probe.invoked_package_io ? 1 : 0)
+        << " simulation_management_diagnostics=" << simulation_management_probe.diagnostics
         << " gameplay_systems_ticks=" << game.gameplay_systems_ticks()
         << " gameplay_systems_physics_ticks=" << game.gameplay_systems_physics_ticks()
         << " gameplay_systems_authored_collision_bodies=" << game.gameplay_systems_authored_collision_bodies()
@@ -8826,7 +9062,12 @@ int main(int argc, char** argv) {
                       << " sandbox_world_status=" << sandbox_world_status_name(sandbox_world_probe.status)
                       << " sandbox_world_ready=" << (sandbox_world_probe.ready ? 1 : 0)
                       << " sandbox_world_diagnostics=" << sandbox_world_probe.diagnostics
-                      << " sandbox_world_replay_hash=" << sandbox_world_probe.replay_hash << '\n';
+                      << " sandbox_world_replay_hash=" << sandbox_world_probe.replay_hash
+                      << " simulation_management_status="
+                      << simulation_management_status_name(simulation_management_probe.status)
+                      << " simulation_management_ready=" << (simulation_management_probe.ready ? 1 : 0)
+                      << " simulation_management_diagnostics=" << simulation_management_probe.diagnostics
+                      << " simulation_management_replay_hash=" << simulation_management_probe.replay_hash << '\n';
             return 3;
         }
         if (options.require_scene_collision_package && !collision_package.ready) {

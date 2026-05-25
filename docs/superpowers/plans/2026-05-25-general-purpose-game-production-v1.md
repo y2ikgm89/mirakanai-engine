@@ -53,7 +53,7 @@ Add the following canonical rows to the backlog under a new `General-Purpose Gam
 | `production-runtime-ui-workbench-v1` | `implemented-production-surface` | Dense runtime UI primitives for menus, inventory/equipment/shop, simulation dashboards, tables, graphs, focus navigation, text input, localization, and accessibility boundaries. |
 | `genre-rpg-systems-pack-v1` | `implemented-production-surface` | Reusable RPG systems for stats, progression, skills, equipment, party/enemy combat loops, rewards, and save validation. |
 | `genre-sandbox-world-pack-v1` | `implemented-production-surface` | Reusable sandbox systems for block/voxel-like world chunks, placement/destruction rules, construction costs, world mutation validation, and persistence. |
-| `genre-simulation-management-pack-v1` | `production-candidate` | Reusable simulation systems for economy, logistics, jobs, population/needs, production chains, schedules, and deterministic long-run validation. |
+| `genre-simulation-management-pack-v1` | `implemented-production-surface` | Reusable simulation systems for economy, logistics, jobs, population/needs, production chains, schedules, and deterministic long-run validation. |
 | `production-network-replication-v1` | `production-candidate` | Authoritative session, replication, rollback/lockstep hooks, security/threat model, and real transport host evidence. |
 | `production-rendering-vfx-profiling-v1` | `host-gated-production` | Broader renderer/VFX/profile production evidence, including GPU particles, richer postprocess, backend-specific timing, crash/telemetry handoff, and strict backend parity gates. |
 
@@ -535,17 +535,27 @@ PR: #231 merged addressable-content-streaming-production-v1 at merge commit 7109
 - Test: `tests/unit/runtime_genre_simulation_management_tests.cpp`
 - Package evidence: selected long-run validation recipe.
 
-- [ ] **Step 1: Write failing simulation management tests**
+- [x] **Step 1: Write failing simulation management tests**
 
   Test resources, jobs, logistics links, economy summaries, population/needs rows, schedules, deterministic long-run replay hashes, save/load review rows, and runtime UI dashboard counter handoff.
 
-- [ ] **Step 2: Implement simulation management value contracts**
+- [x] **Step 2: Implement simulation management value contracts**
 
   Add `RuntimeSimulationResourceRow`, `RuntimeSimulationJobRow`, `RuntimeSimulationLogisticsLink`, `RuntimeSimulationEconomySummary`, `RuntimeSimulationPopulationNeedRow`, `RuntimeSimulationScheduleRow`, `RuntimeSimulationManagementPlan`, and `plan_runtime_simulation_management`.
 
-- [ ] **Step 3: Add long-run package evidence**
+- [x] **Step 3: Add long-run package evidence**
 
   Add deterministic long-run counters for tick count, resource balance rows, job assignments, logistics transfers, need deficits, dashboard rows, replay hash, and clean diagnostics.
+
+**Phase 8 evidence:**
+
+- OFFICIAL: Context7 Unity Entities documentation confirmed data-first component rows, explicit system queries, and disabled-state query behavior; Context7 Unreal Mass Entity documentation confirmed data-oriented fragments/processors/queries for large-scale agent simulation. Phase 8 follows those official patterns as first-party `mirakana::runtime` value rows rather than adopting Unity/Unreal APIs or ECS vocabulary.
+- RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_genre_simulation_management_tests` failed before `mirakana/runtime/genre_simulation_management.hpp` existed.
+- GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_genre_simulation_management_tests`
+- GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_genre_simulation_management_tests`
+- GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_genre_simulation_management_tests sample_2d_desktop_runtime_package sample_generated_desktop_runtime_3d_package`
+- GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_genre_simulation_management_tests|sample_2d_desktop_runtime_package|sample_generated_desktop_runtime_3d_package"`
+- GREEN: selected 2D/3D package smokes and installed validation require `simulation_management_status=ready`, `simulation_management_ready=1`, `simulation_management_tick_count=240`, resource balance/job assignment/logistics transfer/economy summary/population need/schedule/save-review/dashboard counters, positive `simulation_management_replay_hash`, zero economy/save/runtime-UI/package side-effect counters, and `simulation_management_diagnostics=0`.
 
 ## Phase 9: Network Replication Production Surface
 
