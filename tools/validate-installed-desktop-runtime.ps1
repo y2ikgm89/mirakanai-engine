@@ -1175,6 +1175,17 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
             "gameplay_systems_status",
             "gameplay_systems_ready",
             "gameplay_systems_diagnostics",
+            "gameplay_runtime_scheduler_status",
+            "gameplay_runtime_scheduler_ready",
+            "gameplay_runtime_scheduler_available_steps",
+            "gameplay_runtime_scheduler_steps",
+            "gameplay_runtime_scheduler_system_rows",
+            "gameplay_runtime_scheduler_command_rows",
+            "gameplay_runtime_scheduler_consumed_time_us",
+            "gameplay_runtime_scheduler_remaining_time_us",
+            "gameplay_runtime_scheduler_budget_limited",
+            "gameplay_runtime_scheduler_replay_hash",
+            "gameplay_runtime_scheduler_diagnostics",
             "gameplay_systems_scene_binding_ready",
             "gameplay_systems_scene_binding_source_rows",
             "gameplay_systems_scene_binding_rows",
@@ -1284,6 +1295,27 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_diagnostics=0\b") {
         Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove clean gameplay systems diagnostics."
+    }
+    $expectedGameplayRuntimeSchedulerFields = @{
+        "gameplay_runtime_scheduler_status" = "budget_limited"
+        "gameplay_runtime_scheduler_ready" = "1"
+        "gameplay_runtime_scheduler_available_steps" = "3"
+        "gameplay_runtime_scheduler_steps" = "2"
+        "gameplay_runtime_scheduler_system_rows" = "6"
+        "gameplay_runtime_scheduler_command_rows" = "2"
+        "gameplay_runtime_scheduler_consumed_time_us" = "33332"
+        "gameplay_runtime_scheduler_remaining_time_us" = "16666"
+        "gameplay_runtime_scheduler_budget_limited" = "1"
+        "gameplay_runtime_scheduler_diagnostics" = "0"
+    }
+    foreach ($field in $expectedGameplayRuntimeSchedulerFields.Keys) {
+        $expectedValue = $expectedGameplayRuntimeSchedulerFields[$field]
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove gameplay runtime scheduler field $field=$expectedValue."
+        }
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_runtime_scheduler_replay_hash=[1-9]\d*\b") {
+        Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove positive gameplay runtime scheduler replay hash."
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_scene_binding_ready=1\b") {
         Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove ready scene gameplay bindings."
@@ -2252,7 +2284,18 @@ if ($requiresSimulationOrchestration) {
             "simulation_orchestration_budget_limited_planned_steps",
             "simulation_orchestration_budget_limited_remaining_time_us",
             "simulation_orchestration_invalid_command_diagnostics",
-            "simulation_orchestration_diagnostics"
+            "simulation_orchestration_diagnostics",
+            "gameplay_runtime_scheduler_status",
+            "gameplay_runtime_scheduler_ready",
+            "gameplay_runtime_scheduler_available_steps",
+            "gameplay_runtime_scheduler_steps",
+            "gameplay_runtime_scheduler_system_rows",
+            "gameplay_runtime_scheduler_command_rows",
+            "gameplay_runtime_scheduler_consumed_time_us",
+            "gameplay_runtime_scheduler_remaining_time_us",
+            "gameplay_runtime_scheduler_budget_limited",
+            "gameplay_runtime_scheduler_replay_hash",
+            "gameplay_runtime_scheduler_diagnostics"
         )) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
             Write-Error "Installed desktop runtime smoke status line did not include simulation orchestration field: $field"
@@ -2280,6 +2323,27 @@ if ($requiresSimulationOrchestration) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove simulation orchestration field $field=$expectedValue."
         }
+    }
+    $expectedGameplayRuntimeSchedulerFields = @{
+        "gameplay_runtime_scheduler_status" = "budget_limited"
+        "gameplay_runtime_scheduler_ready" = "1"
+        "gameplay_runtime_scheduler_available_steps" = "3"
+        "gameplay_runtime_scheduler_steps" = "2"
+        "gameplay_runtime_scheduler_system_rows" = "6"
+        "gameplay_runtime_scheduler_command_rows" = "2"
+        "gameplay_runtime_scheduler_consumed_time_us" = "33332"
+        "gameplay_runtime_scheduler_remaining_time_us" = "16666"
+        "gameplay_runtime_scheduler_budget_limited" = "1"
+        "gameplay_runtime_scheduler_diagnostics" = "0"
+    }
+    foreach ($field in $expectedGameplayRuntimeSchedulerFields.Keys) {
+        $expectedValue = $expectedGameplayRuntimeSchedulerFields[$field]
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove gameplay runtime scheduler field $field=$expectedValue."
+        }
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_runtime_scheduler_replay_hash=[1-9]\d*\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove positive gameplay runtime scheduler replay hash."
     }
 }
 if ($requiresGameplayAuthoringReview) {

@@ -22,6 +22,7 @@ Describe what the player does repeatedly.
 - Backend readiness: select only entries from `engine/agent/manifest.json` `runtimeBackendReadiness` whose status is validated or optional for the intended host.
 - Asset import: runtime code consumes cooked artifacts only; external PNG, glTF, and common audio source files are imported only through optional `mirakana_tools` adapters behind the `asset-importers` feature.
 - Packaging: list only supported `packagingTargets` from the engine manifest; Android/iOS targets are template-toolchain-gated and require `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-mobile-packaging.ps1` plus the relevant SDK build script on a configured host.
+- Gameplay loop: use `mirakana::runtime::plan_runtime_gameplay_schedule` for fixed-tick system order, command playback, pause/single-step policy, and replay hash evidence before game-owned state mutation; mirror selected `gameplay_runtime_scheduler_*` package counters in `validationRecipes` when a generated game claims deterministic scheduler evidence.
 
 ## Entities and Components
 
