@@ -1,4 +1,5 @@
 add_library(mirakana_runtime
+    src/addressable_content_streaming.cpp
     src/asset_runtime.cpp
     src/entity_scale_culling.cpp
     src/gameplay_runtime_scheduler.cpp

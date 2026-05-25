@@ -438,6 +438,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_runtime_package_index_discovery_tests)
     add_test(NAME MK_runtime_package_index_discovery_tests COMMAND MK_runtime_package_index_discovery_tests)
 
+    add_executable(MK_runtime_addressable_content_streaming_tests
+        tests/unit/runtime_addressable_content_streaming_tests.cpp
+    )
+    target_link_libraries(MK_runtime_addressable_content_streaming_tests PRIVATE MK_runtime)
+    target_include_directories(MK_runtime_addressable_content_streaming_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_runtime_addressable_content_streaming_tests)
+    add_test(NAME MK_runtime_addressable_content_streaming_tests COMMAND MK_runtime_addressable_content_streaming_tests)
+
     add_executable(MK_runtime_package_candidate_load_tests
         tests/unit/runtime_package_candidate_load_tests.cpp
     )

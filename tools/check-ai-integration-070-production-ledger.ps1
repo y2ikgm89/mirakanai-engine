@@ -830,6 +830,20 @@ foreach ($needle in @(
     "world_entity_model_move_rows=1",
     "world_entity_model_despawn_rows=1",
     "world_entity_model_bridge_rejection_fail_closed=1",
+    "addressableContentStreaming",
+    "addressable_content_status=ready",
+    "addressable_content_ready=1",
+    "addressable_content_address_rows=5",
+    "addressable_content_dependency_rows=6",
+    "addressable_content_load_rows=3",
+    "addressable_content_release_rows=1",
+    "addressable_content_refcount_rows=4",
+    "addressable_content_budget_rejection_status=budget_limited",
+    "addressable_content_budget_rejection_diagnostics=1",
+    "addressable_content_package_io=0",
+    "addressable_content_async_execution=0",
+    "addressable_content_committed=0",
+    "addressable_content_diagnostics=0",
     "sceneGameplayBinding",
     "gameplay_systems_scene_binding_ready=1",
     "gameplay_systems_scene_interaction_final_session_state",
@@ -854,8 +868,10 @@ foreach ($needle in @(
     "mirakana/runtime/simulation_orchestration.hpp",
     "mirakana/runtime/gameplay_runtime_scheduler.hpp",
     "mirakana/runtime/world_entity_model.hpp",
+    "mirakana/runtime/addressable_content_streaming.hpp",
     "plan_runtime_gameplay_schedule",
     "plan_runtime_world_entity_lifecycle",
+    "plan_runtime_addressable_content_streaming",
     "--require-native-2d-sprites",
     "--require-sprite-animation",
     "--require-tilemap-runtime-ux",
@@ -982,8 +998,24 @@ foreach ($needle in @(
     "world_entity_model_bridge_rejection_streaming_diagnostics_present=",
     "world_entity_model_bridge_rejection_fail_closed=",
     "world_entity_model_diagnostics=",
+    "addressable_content_status=",
+    "addressable_content_ready=",
+    "addressable_content_address_rows=",
+    "addressable_content_dependency_rows=",
+    "addressable_content_load_rows=",
+    "addressable_content_release_rows=",
+    "addressable_content_refcount_rows=",
+    "addressable_content_resident_bytes=",
+    "addressable_content_resident_budget_bytes=",
+    "addressable_content_budget_rejection_status=",
+    "addressable_content_budget_rejection_diagnostics=",
+    "addressable_content_package_io=",
+    "addressable_content_async_execution=",
+    "addressable_content_committed=",
+    "addressable_content_diagnostics=",
     "required_gameplay_runtime_scheduler_unavailable",
     "required_world_entity_model_unavailable",
+    "required_addressable_content_unavailable",
     "required_simulation_orchestration_unavailable",
     "required_networking_foundation_policy_unavailable",
     "required_scripting_sandbox_policy_unavailable",
@@ -1109,7 +1141,22 @@ foreach ($needle in @(
     "world_entity_model_bridge_rejection_streaming_region_rows",
     "world_entity_model_bridge_rejection_streaming_diagnostics_present",
     "world_entity_model_bridge_rejection_fail_closed",
-    "world_entity_model_diagnostics"
+    "world_entity_model_diagnostics",
+    "addressable_content_status",
+    "addressable_content_ready",
+    "addressable_content_address_rows",
+    "addressable_content_dependency_rows",
+    "addressable_content_load_rows",
+    "addressable_content_release_rows",
+    "addressable_content_refcount_rows",
+    "addressable_content_resident_bytes",
+    "addressable_content_resident_budget_bytes",
+    "addressable_content_budget_rejection_status",
+    "addressable_content_budget_rejection_diagnostics",
+    "addressable_content_package_io",
+    "addressable_content_async_execution",
+    "addressable_content_committed",
+    "addressable_content_diagnostics"
 )) {
     Assert-ContainsText $sample2dInstalledRuntimeValidationText $needle "tools/validate-installed-desktop-runtime.ps1"
 }
@@ -1311,6 +1358,7 @@ $historicalPlanEvidenceText = Get-AgentSurfaceText "docs/superpowers/master-plan
 Assert-ContainsText $historicalPlanEvidenceText "3D Scene Mesh Package Telemetry v1" "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
 $currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
 Assert-ContainsText $currentCapabilitiesText "3D Scene Mesh Package Telemetry v1" "docs/current-capabilities.md"
+Assert-ContainsText $currentCapabilitiesText "Addressable Content Streaming Production v1" "docs/current-capabilities.md"
 $roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
 Assert-ContainsText $roadmapText "3D Scene Mesh Package Telemetry v1" "docs/roadmap.md"
 $engineManifestText = Get-AgentSurfaceText "engine/agent/manifest.json"
@@ -1324,7 +1372,9 @@ Assert-ContainsText $engineManifestText "tools/ctest.ps1" "engine/agent/manifest
 foreach ($needle in @(
     "3d-scene-mesh-package-telemetry",
     "plan_scene_mesh_draws",
-    "scene_mesh_plan_*"
+    "scene_mesh_plan_*",
+    "plan_runtime_addressable_content_streaming",
+    "addressable_content_*"
 )) {
     Assert-ContainsText $engineManifestText $needle "engine/agent/manifest.json"
 }

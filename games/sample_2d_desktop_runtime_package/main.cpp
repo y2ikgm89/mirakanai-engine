@@ -14,6 +14,7 @@
 #include "mirakana/platform/input.hpp"
 #include "mirakana/renderer/renderer.hpp"
 #include "mirakana/renderer/sprite_batch.hpp"
+#include "mirakana/runtime/addressable_content_streaming.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
 #include "mirakana/runtime/entity_scale_culling.hpp"
 #include "mirakana/runtime/gameplay_interaction.hpp"
@@ -282,6 +283,26 @@ struct WorldEntityModelProbeResult {
     std::size_t bridge_rejection_streaming_diagnostics_present{0U};
     bool bridge_rejection_fail_closed{false};
     std::size_t diagnostics{0U};
+    bool ready{false};
+};
+
+struct AddressableContentStreamingProbeResult {
+    mirakana::runtime::RuntimeAddressableContentStreamingStatus status{
+        mirakana::runtime::RuntimeAddressableContentStreamingStatus::invalid_request};
+    mirakana::runtime::RuntimeAddressableContentStreamingStatus budget_rejection_status{
+        mirakana::runtime::RuntimeAddressableContentStreamingStatus::invalid_request};
+    std::size_t address_rows{0U};
+    std::size_t dependency_rows{0U};
+    std::size_t load_rows{0U};
+    std::size_t release_rows{0U};
+    std::size_t refcount_rows{0U};
+    std::uint64_t resident_bytes{0U};
+    std::uint64_t resident_budget_bytes{0U};
+    std::size_t budget_rejection_diagnostics{0U};
+    std::size_t diagnostics{0U};
+    bool package_io{false};
+    bool async_execution{false};
+    bool committed{false};
     bool ready{false};
 };
 
@@ -821,6 +842,21 @@ world_entity_model_status_name(mirakana::runtime::RuntimeWorldEntityLifecycleSta
 }
 
 [[nodiscard]] const char*
+addressable_content_status_name(mirakana::runtime::RuntimeAddressableContentStreamingStatus status) noexcept {
+    switch (status) {
+    case mirakana::runtime::RuntimeAddressableContentStreamingStatus::ready:
+        return "ready";
+    case mirakana::runtime::RuntimeAddressableContentStreamingStatus::no_requests:
+        return "no_requests";
+    case mirakana::runtime::RuntimeAddressableContentStreamingStatus::budget_limited:
+        return "budget_limited";
+    case mirakana::runtime::RuntimeAddressableContentStreamingStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] const char*
 sprite_effect_particle_status_name(mirakana::runtime::RuntimeSpriteEffectParticlePlanStatus status) noexcept {
     switch (status) {
     case mirakana::runtime::RuntimeSpriteEffectParticlePlanStatus::ready:
@@ -1227,7 +1263,11 @@ struct Gameplay2DProceduralGenerationProbeResult {
     std::size_t placement_intent_accepted_rows{0U};
 };
 
+[[nodiscard]] mirakana::AssetId packaged_scene_asset_id();
 [[nodiscard]] mirakana::AssetId packaged_sprite_texture_asset_id();
+[[nodiscard]] mirakana::AssetId packaged_material_asset_id();
+[[nodiscard]] mirakana::AssetId packaged_sprite_animation_asset_id();
+[[nodiscard]] mirakana::AssetId packaged_tilemap_asset_id();
 
 [[nodiscard]] mirakana::runtime::RuntimeQuestDialogueDocument gameplay_2d_quest_dialogue_document() {
     using namespace mirakana::runtime;
@@ -3173,6 +3213,99 @@ count_simulation_orchestration_diagnostics(const mirakana::runtime::RuntimeSimul
     return result;
 }
 
+[[nodiscard]] std::size_t
+count_runtime_addressable_diagnostics(const mirakana::runtime::RuntimeAddressableContentStreamingPlan& plan,
+                                      mirakana::runtime::RuntimeAddressableContentDiagnosticCode code) {
+    std::size_t count{0U};
+    for (const auto& diagnostic : plan.diagnostics) {
+        if (diagnostic.code == code) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+[[nodiscard]] AddressableContentStreamingProbeResult
+validate_addressable_content_streaming_package_evidence(const mirakana::runtime::RuntimeAssetPackage& runtime_package) {
+    using AddressId = mirakana::runtime::RuntimeAddressableAssetId;
+    using AddressRow = mirakana::runtime::RuntimeAddressableAssetRow;
+    using Budget = mirakana::runtime::RuntimeAddressableResidentBudget;
+    using Code = mirakana::runtime::RuntimeAddressableContentDiagnosticCode;
+    using LoadRequest = mirakana::runtime::RuntimeAddressableLoadRequest;
+    using ReleaseRequest = mirakana::runtime::RuntimeAddressableReleaseRequest;
+    using Request = mirakana::runtime::RuntimeAddressableContentStreamingRequest;
+    using ResidentRow = mirakana::runtime::RuntimeAddressableResidentAssetRow;
+    using Status = mirakana::runtime::RuntimeAddressableContentStreamingStatus;
+
+    const std::vector<AddressRow> address_rows{
+        AddressRow{
+            .address_id = AddressId{.value = "scene/playable"}, .asset = packaged_scene_asset_id(), .source_index = 1U},
+        AddressRow{.address_id = AddressId{.value = "texture/player"},
+                   .asset = packaged_sprite_texture_asset_id(),
+                   .source_index = 2U},
+        AddressRow{.address_id = AddressId{.value = "material/player"},
+                   .asset = packaged_material_asset_id(),
+                   .source_index = 3U},
+        AddressRow{.address_id = AddressId{.value = "tilemap/level"},
+                   .asset = packaged_tilemap_asset_id(),
+                   .source_index = 4U},
+        AddressRow{.address_id = AddressId{.value = "animation/player"},
+                   .asset = packaged_sprite_animation_asset_id(),
+                   .source_index = 5U},
+    };
+    const Request request{
+        .stream_id = "sample2d.addressable_content",
+        .package = runtime_package,
+        .addressable_assets = address_rows,
+        .resident_assets =
+            {
+                ResidentRow{.address_id = AddressId{.value = "material/player"}, .ref_count = 1U, .source_index = 1U},
+            },
+        .load_requests =
+            {
+                LoadRequest{.address_id = AddressId{.value = "scene/playable"},
+                            .include_dependencies = true,
+                            .source_index = 1U},
+            },
+        .release_requests =
+            {
+                ReleaseRequest{.address_id = AddressId{.value = "material/player"},
+                               .release_count = 1U,
+                               .include_dependencies = false,
+                               .source_index = 1U},
+            },
+        .budget = Budget{.max_resident_bytes = 16U * 1024U * 1024U},
+    };
+    auto budget_request = request;
+    budget_request.budget = Budget{.max_resident_bytes = 1U};
+
+    const auto plan = mirakana::runtime::plan_runtime_addressable_content_streaming(request);
+    const auto budget_plan = mirakana::runtime::plan_runtime_addressable_content_streaming(budget_request);
+
+    AddressableContentStreamingProbeResult result;
+    result.status = plan.status;
+    result.budget_rejection_status = budget_plan.status;
+    result.address_rows = plan.address_rows.size();
+    result.dependency_rows = plan.dependency_rows.size();
+    result.load_rows = plan.load_rows.size();
+    result.release_rows = plan.release_rows.size();
+    result.refcount_rows = plan.load_rows.size() + plan.release_rows.size();
+    result.resident_bytes = plan.final_resident_bytes;
+    result.resident_budget_bytes = plan.resident_budget_bytes;
+    result.budget_rejection_diagnostics =
+        count_runtime_addressable_diagnostics(budget_plan, Code::resident_budget_exceeded);
+    result.diagnostics = plan.diagnostics.size();
+    result.package_io = plan.invoked_package_io || budget_plan.invoked_package_io;
+    result.async_execution = plan.invoked_async_execution || budget_plan.invoked_async_execution;
+    result.committed = plan.committed || budget_plan.committed;
+    result.ready = plan.status == Status::ready && plan.succeeded() && result.address_rows == 5U &&
+                   result.dependency_rows == 6U && result.load_rows == 3U && result.release_rows == 1U &&
+                   result.refcount_rows == 4U && result.resident_bytes > 0U && result.resident_budget_bytes > 0U &&
+                   budget_plan.status == Status::budget_limited && result.budget_rejection_diagnostics == 1U &&
+                   !result.package_io && !result.async_execution && !result.committed && result.diagnostics == 0U;
+    return result;
+}
+
 [[nodiscard]] SimulationOrchestrationProbeResult validate_simulation_orchestration_package_evidence() {
     using Code = mirakana::runtime::RuntimeSimulationOrchestrationDiagnosticCode;
     using Command = mirakana::runtime::RuntimeSimulationInputCommandDesc;
@@ -3381,6 +3514,10 @@ count_simulation_orchestration_diagnostics(const mirakana::runtime::RuntimeSimul
 
 [[nodiscard]] mirakana::AssetId packaged_sprite_texture_asset_id() {
     return asset_id_from_game_asset_key("sample/2d-desktop-runtime-package/player-sprite");
+}
+
+[[nodiscard]] mirakana::AssetId packaged_material_asset_id() {
+    return mirakana::AssetId{11460315010553722633ULL};
 }
 
 [[nodiscard]] mirakana::AssetId packaged_sprite_animation_asset_id() {
@@ -6242,6 +6379,10 @@ int main(int argc, char** argv) {
     const auto world_entity_model_probe = options.require_simulation_orchestration
                                               ? validate_world_entity_model_package_evidence()
                                               : WorldEntityModelProbeResult{};
+    const auto addressable_content_probe =
+        options.require_simulation_orchestration && runtime_package.has_value()
+            ? validate_addressable_content_streaming_package_evidence(*runtime_package)
+            : AddressableContentStreamingProbeResult{};
     const auto gameplay_authoring_review_probe = options.require_gameplay_authoring_review
                                                      ? validate_gameplay_authoring_review_package_evidence()
                                                      : GameplayAuthoringReviewProbeResult{};
@@ -6766,6 +6907,23 @@ int main(int argc, char** argv) {
         << " world_entity_model_bridge_rejection_fail_closed="
         << (world_entity_model_probe.bridge_rejection_fail_closed ? 1 : 0)
         << " world_entity_model_diagnostics=" << world_entity_model_probe.diagnostics
+        << " addressable_content_status=" << addressable_content_status_name(addressable_content_probe.status)
+        << " addressable_content_ready=" << (addressable_content_probe.ready ? 1 : 0)
+        << " addressable_content_address_rows=" << addressable_content_probe.address_rows
+        << " addressable_content_dependency_rows=" << addressable_content_probe.dependency_rows
+        << " addressable_content_load_rows=" << addressable_content_probe.load_rows
+        << " addressable_content_release_rows=" << addressable_content_probe.release_rows
+        << " addressable_content_refcount_rows=" << addressable_content_probe.refcount_rows
+        << " addressable_content_resident_bytes=" << addressable_content_probe.resident_bytes
+        << " addressable_content_resident_budget_bytes=" << addressable_content_probe.resident_budget_bytes
+        << " addressable_content_budget_rejection_status="
+        << addressable_content_status_name(addressable_content_probe.budget_rejection_status)
+        << " addressable_content_budget_rejection_diagnostics="
+        << addressable_content_probe.budget_rejection_diagnostics
+        << " addressable_content_package_io=" << (addressable_content_probe.package_io ? 1 : 0)
+        << " addressable_content_async_execution=" << (addressable_content_probe.async_execution ? 1 : 0)
+        << " addressable_content_committed=" << (addressable_content_probe.committed ? 1 : 0)
+        << " addressable_content_diagnostics=" << addressable_content_probe.diagnostics
         << " gameplay_authoring_review_status="
         << gameplay_authoring_review_status_name(gameplay_authoring_review_probe)
         << " gameplay_authoring_review_ready=" << (gameplay_authoring_review_probe.ready ? 1 : 0)
@@ -7222,6 +7380,26 @@ int main(int argc, char** argv) {
                   << " world_entity_model_bridge_rejection_fail_closed="
                   << (world_entity_model_probe.bridge_rejection_fail_closed ? 1 : 0)
                   << " world_entity_model_diagnostics=" << world_entity_model_probe.diagnostics << '\n';
+        return 18;
+    }
+
+    if (options.require_simulation_orchestration && !addressable_content_probe.ready) {
+        std::cout << "sample_2d_desktop_runtime_package required_addressable_content_unavailable"
+                  << " addressable_content_status=" << addressable_content_status_name(addressable_content_probe.status)
+                  << " addressable_content_address_rows=" << addressable_content_probe.address_rows
+                  << " addressable_content_dependency_rows=" << addressable_content_probe.dependency_rows
+                  << " addressable_content_load_rows=" << addressable_content_probe.load_rows
+                  << " addressable_content_release_rows=" << addressable_content_probe.release_rows
+                  << " addressable_content_refcount_rows=" << addressable_content_probe.refcount_rows
+                  << " addressable_content_resident_bytes=" << addressable_content_probe.resident_bytes
+                  << " addressable_content_budget_rejection_status="
+                  << addressable_content_status_name(addressable_content_probe.budget_rejection_status)
+                  << " addressable_content_budget_rejection_diagnostics="
+                  << addressable_content_probe.budget_rejection_diagnostics
+                  << " addressable_content_package_io=" << (addressable_content_probe.package_io ? 1 : 0)
+                  << " addressable_content_async_execution=" << (addressable_content_probe.async_execution ? 1 : 0)
+                  << " addressable_content_committed=" << (addressable_content_probe.committed ? 1 : 0)
+                  << " addressable_content_diagnostics=" << addressable_content_probe.diagnostics << '\n';
         return 18;
     }
 

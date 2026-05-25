@@ -1205,6 +1205,21 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
             "world_entity_model_bridge_rejection_streaming_diagnostics_present",
             "world_entity_model_bridge_rejection_fail_closed",
             "world_entity_model_diagnostics",
+            "addressable_content_status",
+            "addressable_content_ready",
+            "addressable_content_address_rows",
+            "addressable_content_dependency_rows",
+            "addressable_content_load_rows",
+            "addressable_content_release_rows",
+            "addressable_content_refcount_rows",
+            "addressable_content_resident_bytes",
+            "addressable_content_resident_budget_bytes",
+            "addressable_content_budget_rejection_status",
+            "addressable_content_budget_rejection_diagnostics",
+            "addressable_content_package_io",
+            "addressable_content_async_execution",
+            "addressable_content_committed",
+            "addressable_content_diagnostics",
             "gameplay_systems_scene_binding_ready",
             "gameplay_systems_scene_binding_source_rows",
             "gameplay_systems_scene_binding_rows",
@@ -1361,6 +1376,29 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_3d_package" -and $requires
         $expectedValue = $expectedWorldEntityModelFields[$field]
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
             Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove world entity model field $field=$expectedValue."
+        }
+    }
+    $expectedAddressableContentFields = @{
+        "addressable_content_status" = "ready"
+        "addressable_content_ready" = "1"
+        "addressable_content_address_rows" = "6"
+        "addressable_content_dependency_rows" = "5"
+        "addressable_content_load_rows" = "4"
+        "addressable_content_release_rows" = "1"
+        "addressable_content_refcount_rows" = "5"
+        "addressable_content_resident_bytes" = "2222"
+        "addressable_content_resident_budget_bytes" = "67108864"
+        "addressable_content_budget_rejection_status" = "budget_limited"
+        "addressable_content_budget_rejection_diagnostics" = "1"
+        "addressable_content_package_io" = "0"
+        "addressable_content_async_execution" = "0"
+        "addressable_content_committed" = "0"
+        "addressable_content_diagnostics" = "0"
+    }
+    foreach ($field in $expectedAddressableContentFields.Keys) {
+        $expectedValue = $expectedAddressableContentFields[$field]
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed sample_generated_desktop_runtime_3d_package smoke status line did not prove addressable content field $field=$expectedValue."
         }
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgameplay_systems_scene_binding_ready=1\b") {
@@ -2360,7 +2398,22 @@ if ($requiresSimulationOrchestration) {
             "world_entity_model_bridge_rejection_streaming_region_rows",
             "world_entity_model_bridge_rejection_streaming_diagnostics_present",
             "world_entity_model_bridge_rejection_fail_closed",
-            "world_entity_model_diagnostics"
+            "world_entity_model_diagnostics",
+            "addressable_content_status",
+            "addressable_content_ready",
+            "addressable_content_address_rows",
+            "addressable_content_dependency_rows",
+            "addressable_content_load_rows",
+            "addressable_content_release_rows",
+            "addressable_content_refcount_rows",
+            "addressable_content_resident_bytes",
+            "addressable_content_resident_budget_bytes",
+            "addressable_content_budget_rejection_status",
+            "addressable_content_budget_rejection_diagnostics",
+            "addressable_content_package_io",
+            "addressable_content_async_execution",
+            "addressable_content_committed",
+            "addressable_content_diagnostics"
         )) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
             Write-Error "Installed desktop runtime smoke status line did not include simulation orchestration field: $field"
@@ -2435,6 +2488,29 @@ if ($requiresSimulationOrchestration) {
         $expectedValue = $expectedWorldEntityModelFields[$field]
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove world entity model field $field=$expectedValue."
+        }
+    }
+    $expectedAddressableContentFields = @{
+        "addressable_content_status" = "ready"
+        "addressable_content_ready" = "1"
+        "addressable_content_address_rows" = "5"
+        "addressable_content_dependency_rows" = "6"
+        "addressable_content_load_rows" = "3"
+        "addressable_content_release_rows" = "1"
+        "addressable_content_refcount_rows" = "4"
+        "addressable_content_resident_bytes" = "1626"
+        "addressable_content_resident_budget_bytes" = "16777216"
+        "addressable_content_budget_rejection_status" = "budget_limited"
+        "addressable_content_budget_rejection_diagnostics" = "1"
+        "addressable_content_package_io" = "0"
+        "addressable_content_async_execution" = "0"
+        "addressable_content_committed" = "0"
+        "addressable_content_diagnostics" = "0"
+    }
+    foreach ($field in $expectedAddressableContentFields.Keys) {
+        $expectedValue = $expectedAddressableContentFields[$field]
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove addressable content field $field=$expectedValue."
         }
     }
 }
