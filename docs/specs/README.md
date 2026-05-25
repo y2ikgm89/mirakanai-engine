@@ -28,6 +28,7 @@ Every non-README Markdown file in this directory must contain a `## Status` sect
 | **Current generated-game guide** | [`game-prompt-pack.md`](game-prompt-pack.md) | Short **prompt templates** for recipe selection, AI command surfaces, Scene v2 migration, and schema contracts—always after `tools/agent-context.ps1`. |
 | **Accepted narrow specification** | [`2026-05-11-directory-layout-target-v1.md`](2026-05-11-directory-layout-target-v1.md) | Target on-disk split for `MK_tools` sources (`engine/tools/shader|gltf|asset|scene`) with stable public includes; see ADR 0003. |
 | **Accepted narrow specification** | [`2026-05-11-editor-game-module-driver-hot-reload-session-state-machine-v1.md`](2026-05-11-editor-game-module-driver-hot-reload-session-state-machine-v1.md) | Phase table for Play-In-Editor activity vs `GameEngine.EditorGameModuleDriver.v1` DLL residency; stops at stopped-state load/reload/unload reviews (no active-session hot reload). |
+| **Accepted narrow specification** | [`2026-05-26-engine-contract-version-suffix-cleanup-design.md`](2026-05-26-engine-contract-version-suffix-cleanup-design.md) | Clean-breaking pre-release contract reset that removes removable current `vN` suffixes from engine-owned saved formats, public C++ APIs, editor ABI names, docs, schemas, manifests, and static checks. |
 
 ---
 
