@@ -12,9 +12,9 @@
 
 **Plan ID:** `engine-contract-version-suffix-cleanup`
 
-**Status:** Active.
+**Status:** Completed.
 
-Candidate 2 is validated locally on linked worktree `G:\workspace\development\GameEngine\.worktrees\versionless-saved-formats` branch `codex/versionless-saved-formats`. Candidate 1 is published as draft PR #242.
+Completed through stacked draft PRs #242-#245 plus Candidate 5 closeout on `codex/version-suffix-closeout`. `currentActivePlan` returned to `docs/superpowers/plans/2026-05-26-generated-game-studio-v1.md`.
 
 **Design:** [Engine Contract Version Suffix Cleanup Design](../../specs/2026-05-26-engine-contract-version-suffix-cleanup-design.md)
 
@@ -318,7 +318,7 @@ GameEngine.AiCommand.ValidateRuntimeScenePackage.Request.v1 -> GameEngine.AiComm
 GameEngine.AiCommand.ValidateRuntimeScenePackage.Result.v1 -> GameEngine.AiCommand.ValidateRuntimeScenePackage.Result
 ```
 
-`GameEngine.EditorGameModuleDriver.v1` is owned by Candidate 4 and intentionally remains after Candidate 2. `GameEngine.Unknown.v1` is not a current contract. Keep it only as an explicit stale/unknown-format rejection fixture if a test still needs it; otherwise replace it with `GameEngine.Unknown`.
+The editor game module driver ABI suffix was owned by Candidate 4 after Candidate 2 and was later canonicalized by Candidate 4. The unknown-format fallback is canonicalized by Candidate 5 and should remain unsuffixed in live code.
 
 - [x] **Step 3: Remove stale parser migrations**
 
@@ -353,7 +353,7 @@ Expected: targeted tests and the owning manifest/static checks pass.
 Candidate 2 evidence:
 
 - Focused build and CTest passed for saved-format/runtime/editor/package targets after the canonicalization edits.
-- Suffix audit leaves only stale rejection fixtures, `GameEngine.Unknown.v1`, and Candidate 4 `GameEngine.EditorGameModuleDriver.v1` hits.
+- Suffix audit left only stale rejection fixtures, explicit unknown-format fixtures, and Candidate 4 editor ABI hits before later candidates canonicalized their owned current surfaces.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed on 2026-05-26 after package index content hashes were regenerated for the updated runtime payload text.
 
 - [x] **Step 6: Commit saved-format canonicalization**
@@ -652,13 +652,13 @@ Expected: one validated commit with ABI names and docs/static checks aligned.
 
 Candidate 5 is the final audit and lifecycle closeout. It must not be used to postpone manifest, schema, static-check, docs, or test updates that belong to the contract-owning Candidates 2-4.
 
-- [ ] **Step 1: Switch and close out the active plan deliberately**
+- [x] **Step 1: Switch and close out the active plan deliberately**
 
 When Candidate 2 begins on a branch/worktree, update `docs/superpowers/plans/README.md`, `docs/roadmap.md`, and `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` so `currentActivePlan` points to this plan. Do not claim completion until Candidates 2-5 validate.
 
 When Candidate 5 closes, update `currentActivePlan`, `recommendedNextPlan`, registry status, and roadmap wording in the same change. If `Generated Game Studio v1` is still the broader active milestone, return this cleanup from active child status to completed docs/governance evidence under that milestone; otherwise point back to the production-completion master plan and record the selected next plan explicitly.
 
-- [ ] **Step 2: Compose the manifest**
+- [x] **Step 2: Compose the manifest**
 
 Run:
 
@@ -668,7 +668,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -
 
 Expected: `engine/agent/manifest.json` is regenerated from fragments.
 
-- [ ] **Step 3: Run canonical-name audits**
+- [x] **Step 3: Run canonical-name audits**
 
 Run:
 
@@ -680,7 +680,7 @@ rg -n "mirakana_create_editor_game_module_driver_v1|GameEngine\.EditorGameModule
 
 Expected: remaining hits are only approved historical plan/spec/evidence text, external standards, numeric fields, or coordinate-style false positives. Record the approved remaining-hit classes in the PR.
 
-- [ ] **Step 4: Run agent and schema checks**
+- [x] **Step 4: Run agent and schema checks**
 
 Run:
 
@@ -693,7 +693,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1
 
 Expected: all pass.
 
-- [ ] **Step 5: Run full validation**
+- [x] **Step 5: Run full validation**
 
 Run:
 
@@ -702,6 +702,15 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 ```
 
 Expected: full validation passes, or host/toolchain blockers are concrete and recorded.
+
+Candidate 5 evidence:
+
+- `currentActivePlan` and `recommendedNextPlan.id` returned to `Generated Game Studio v1`; the cleanup plan status is completed, the plan registry, roadmap, production master-plan pointers, manifest fragment, and composed manifest agree.
+- TDD RED: the new `check-ai-integration` guard failed on live `GameEngine.Unknown.v1` fallback diagnostics in `engine/tools/asset/asset_import_tool.cpp`; both live unknown-format fallbacks now use canonical `GameEngine.Unknown`.
+- Focused C++ verification passed: `tools/cmake.ps1 --preset dev`, `tools/cmake.ps1 --build --preset dev --target MK_tools_tests`, and `tools/ctest.ps1 --preset dev --output-on-failure -R "MK_tools_tests"`.
+- Static verification passed: `git diff --check`, `tools/check-format.ps1`, `tools/check-text-format.ps1`, `tools/check-agents.ps1`, `tools/check-ai-integration.ps1`, `tools/check-json-contracts.ps1`, and `tools/check-public-api-boundaries.ps1`.
+- Full validation passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` reported `validate: ok` and 87/87 tests passing; Metal and Apple lanes remained diagnostic/host-gated on this Windows host.
+- Final suffix audit leaves only approved stale-format rejection fixtures, explicit unknown-format fixtures, cleanup mapping/design evidence, historical archive evidence, external standard language, numeric version fields, and coordinate/variable false positives.
 
 - [ ] **Step 6: Publish through GitHub Flow**
 

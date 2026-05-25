@@ -107,7 +107,7 @@ struct PreparedImport {
     case AssetImportActionKind::unknown:
         break;
     }
-    return "GameEngine.Unknown.v1";
+    return "GameEngine.Unknown";
 }
 
 [[nodiscard]] char hex_digit(std::uint8_t value) noexcept {

@@ -880,6 +880,17 @@ foreach ($check in $editorGameModuleDriverLoadChecks) {
     }
 }
 
+$canonicalUnknownFormatChecks = @(
+    "engine/tools/asset/asset_import_tool.cpp",
+    "engine/tools/asset/registered_source_asset_cook_package_tool.cpp"
+)
+foreach ($path in $canonicalUnknownFormatChecks) {
+    $fileText = Get-AgentSurfaceText $path
+    if ($fileText.Contains("GameEngine.Unknown.v1")) {
+        Write-Error "ai-integration-check: $path must use canonical GameEngine.Unknown for unknown package/document diagnostics"
+    }
+}
+
 $editorRuntimeScenePackageValidationExecutionChecks = @(
     @{
         Path = "editor/core/include/mirakana/editor/playtest_package_review.hpp"

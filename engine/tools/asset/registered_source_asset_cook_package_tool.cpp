@@ -657,7 +657,7 @@ parse_package_index(std::vector<RegisteredSourceAssetCookPackageDiagnostic>& dia
     case AssetImportActionKind::unknown:
         break;
     }
-    return "GameEngine.Unknown.v1";
+    return "GameEngine.Unknown";
 }
 
 [[nodiscard]] bool same_edge(const AssetDependencyEdge& lhs, const AssetDependencyEdge& rhs) noexcept {
