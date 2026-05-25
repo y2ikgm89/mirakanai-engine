@@ -1,6 +1,7 @@
 add_library(mirakana_runtime
     src/asset_runtime.cpp
     src/entity_scale_culling.cpp
+    src/gameplay_runtime_scheduler.cpp
     src/gameplay_interaction.cpp
     src/inventory_items.cpp
     src/networking_foundation.cpp

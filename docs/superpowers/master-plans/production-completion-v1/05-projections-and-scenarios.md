@@ -233,7 +233,7 @@ This track is not a genre-specific backlog. It promotes only reusable production
 | Production concern | Canonical rows | Evidence boundary |
 | --- | --- | --- |
 | Track selection and governance | `general-purpose-game-production-v1` | Dated milestone plan, manifest active pointer, updated backlog/projection docs, official practice anchors, and docs/static checks. |
-| Authoritative game loop | `gameplay-runtime-scheduler-production-v1` | Fixed-tick system order, command playback, replay hashes, pause/step policy, budget diagnostics, selected 2D/3D package counters, and rollback/network hooks without transport claims. |
+| Authoritative game loop | `gameplay-runtime-scheduler-production-v1` | Implemented first-party `MK_runtime` scheduler value contract for fixed-tick system order, command playback, replay hashes, pause/step policy, budget diagnostics, and selected 2D/3D package counters; rollback/network hooks remain design extension points without transport claims. |
 | World and entity ownership | `world-entity-model-production-v1` | Stable ids, component schema rows, region ownership, lifecycle diagnostics, persistence bridge, streaming bridge, and no implicit scene mutation. |
 | Addressable content and streaming | `addressable-content-streaming-production-v1` | Address/dependency/refcount/load/release plans over reviewed package/catalog rows, resident budget diagnostics, package counters, and host-owned async execution. |
 | Production authoring | `production-authoring-workflows-v1` | Reviewed tool/editor workflows for scene, placement, quest/dialogue, item/economy, AI, world regions, and validation repair with mutation-ledger evidence and no arbitrary shell. |

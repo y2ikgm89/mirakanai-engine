@@ -46,7 +46,7 @@ Add the following canonical rows to the backlog under a new `General-Purpose Gam
 | Capability id | Initial status | Purpose |
 | --- | --- | --- |
 | `general-purpose-game-production-v1` | `selected-production-slice` | Milestone row selecting this post-foundation production track. |
-| `gameplay-runtime-scheduler-production-v1` | `production-candidate` | Authoritative fixed-tick gameplay scheduler with explicit system order, command playback, replay diagnostics, budget rows, pause/step policies, and rollback/network extension points. |
+| `gameplay-runtime-scheduler-production-v1` | `implemented-production-surface` | Authoritative fixed-tick gameplay scheduler with explicit system order, command playback, replay diagnostics, budget rows, pause/step policies, and rollback/network extension points. |
 | `world-entity-model-production-v1` | `production-candidate` | Stable entity/component/region ownership model with lifecycle, identity, serialization boundaries, and scene/runtime bridge diagnostics. |
 | `addressable-content-streaming-production-v1` | `production-candidate` | Addressable package/content handles with dependency tracking, explicit load/release/refcount plans, resident budget diagnostics, and package evidence. |
 | `production-authoring-workflows-v1` | `production-candidate` | Reviewed authoring flows for scene, placement, quest/dialogue, item/economy, AI behavior, world regions, and validation repair without free-form engine mutation. |
@@ -56,6 +56,27 @@ Add the following canonical rows to the backlog under a new `General-Purpose Gam
 | `genre-simulation-management-pack-v1` | `production-candidate` | Reusable simulation systems for economy, logistics, jobs, population/needs, production chains, schedules, and deterministic long-run validation. |
 | `production-network-replication-v1` | `production-candidate` | Authoritative session, replication, rollback/lockstep hooks, security/threat model, and real transport host evidence. |
 | `production-rendering-vfx-profiling-v1` | `host-gated-production` | Broader renderer/VFX/profile production evidence, including GPU particles, richer postprocess, backend-specific timing, crash/telemetry handoff, and strict backend parity gates. |
+
+## Long-Running Execution Strategy
+
+Execute this milestone as ten reviewable candidate slices after Phase 0 selection:
+
+1. `gameplay-runtime-scheduler-production-v1`
+2. `world-entity-model-production-v1`
+3. `addressable-content-streaming-production-v1`
+4. `production-authoring-workflows-v1`
+5. `production-runtime-ui-workbench-v1`
+6. `genre-rpg-systems-pack-v1`
+7. `genre-sandbox-world-pack-v1`
+8. `genre-simulation-management-pack-v1`
+9. `production-network-replication-v1`
+10. `production-rendering-vfx-profiling-v1`
+
+Each candidate gets its own validated commit. Push, PR, hosted validation, merge, and main-sync happen per candidate when the candidate is independently reviewable. If two adjacent candidates become tightly coupled during implementation, keep multiple validated commits but publish them in one reviewable PR with the coupling reason recorded in the PR body and plan evidence.
+
+Use a linked worktree branch (`codex/general-purpose-production-v1` or a candidate-specific `codex/<candidate-id>` branch) rather than working directly on `main`. Use subagents for bounded read-only research, spec/agent-surface audit, implementation sidecars with disjoint write scopes, and C++/rendering review; close each subagent after its result is consumed. The controller owns sequencing, integration, final validation, commit, push, and PR state.
+
+Every candidate starts with current official practice evidence. Prefer Context7 for CMake, vcpkg, SDL3, Direct3D 12, Vulkan, Metal, and C++ tooling documentation where available, official vendor documentation otherwise, and repository skills for project-local rules. Do not use compatibility shims or deprecated aliases when a clean breaking value contract is better for the greenfield production model.
 
 ## File Structure
 
@@ -84,6 +105,16 @@ The milestone itself changes documentation and manifest pointers first. Later ph
   - `engine/ui/src/runtime_ui_workbench.cpp`
   - `engine/tools/include/mirakana/tools/production_authoring_workflows.hpp`
   - `engine/tools/asset/production_authoring_workflows.cpp`
+  - `engine/runtime/include/mirakana/runtime/genre_rpg_systems.hpp`
+  - `engine/runtime/src/genre_rpg_systems.cpp`
+  - `engine/runtime/include/mirakana/runtime/genre_sandbox_world.hpp`
+  - `engine/runtime/src/genre_sandbox_world.cpp`
+  - `engine/runtime/include/mirakana/runtime/genre_simulation_management.hpp`
+  - `engine/runtime/src/genre_simulation_management.cpp`
+  - `engine/runtime/include/mirakana/runtime/production_network_replication.hpp`
+  - `engine/runtime/src/production_network_replication.cpp`
+  - `engine/renderer/include/mirakana/renderer/production_vfx_profiling.hpp`
+  - `engine/renderer/src/production_vfx_profiling.cpp`
   - Focused tests under `tests/unit/*_tests.cpp`.
 
 ## Phase 0: Select The Production Track
@@ -146,10 +177,10 @@ The milestone itself changes documentation and manifest pointers first. Later ph
 - Create: `engine/runtime/include/mirakana/runtime/gameplay_runtime_scheduler.hpp`
 - Create: `engine/runtime/src/gameplay_runtime_scheduler.cpp`
 - Modify: `engine/runtime/CMakeLists.txt`
-- Test: `tests/unit/runtime_tests.cpp`
+- Test: `tests/unit/runtime_gameplay_scheduler_tests.cpp`
 - Update: manifest/docs/validation recipes when evidence lands.
 
-- [ ] **Step 1: Write failing scheduler tests**
+- [x] **Step 1: Write failing scheduler tests**
 
   Add tests that construct three systems, two input commands, and a fixed tick budget. Assert deterministic system order, command playback before system ticks, clamped step count, and replay hash stability.
 
@@ -183,18 +214,18 @@ The milestone itself changes documentation and manifest pointers first. Later ph
   }
   ```
 
-- [ ] **Step 2: Run focused tests and verify failure**
+- [x] **Step 2: Run focused tests and verify failure**
 
   Run:
 
   ```powershell
-  pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests
-  pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_core_tests
+  pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev
+  pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_gameplay_scheduler_tests
   ```
 
   Expected: compile failure for missing scheduler types or a failing runtime scheduler test.
 
-- [ ] **Step 3: Implement the public scheduler contract**
+- [x] **Step 3: Implement the public scheduler contract**
 
   Add value types:
 
@@ -229,11 +260,11 @@ The milestone itself changes documentation and manifest pointers first. Later ph
   }
   ```
 
-- [ ] **Step 4: Pass focused tests**
+- [x] **Step 4: Pass focused tests**
 
   Run the same focused build and CTest commands. Expected: runtime tests pass.
 
-- [ ] **Step 5: Add package-visible scheduler evidence**
+- [x] **Step 5: Add package-visible scheduler evidence**
 
   Extend the selected 2D and 3D package smoke paths with counters:
 
@@ -246,9 +277,28 @@ The milestone itself changes documentation and manifest pointers first. Later ph
   gameplay_runtime_scheduler_diagnostics=0
   ```
 
-- [ ] **Step 6: Close Phase 1**
+- [x] **Step 6: Close Phase 1**
 
   Update docs, manifest fragments, generated-game guidance, and static checks for the scheduler counters. Run focused package validation and then `tools/validate.ps1` because this phase changes runtime C++ and package contracts.
+
+  Evidence captured for the closeout gate:
+
+  ```text
+  RED: MK_runtime_gameplay_scheduler_tests failed to build before mirakana/runtime/gameplay_runtime_scheduler.hpp existed.
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_gameplay_scheduler_tests
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_gameplay_scheduler_tests
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_gameplay_scheduler_tests sample_2d_desktop_runtime_package sample_generated_desktop_runtime_3d_package
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_gameplay_scheduler_tests|sample_2d_desktop_runtime_package_smoke|sample_generated_desktop_runtime_3d_package_smoke"
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/runtime/src/gameplay_runtime_scheduler.cpp,games/sample_2d_desktop_runtime_package/main.cpp,games/sample_generated_desktop_runtime_3d_package/main.cpp,tests/unit/runtime_gameplay_scheduler_tests.cpp
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
+  DIRECT: sample_2d_desktop_runtime_package and sample_generated_desktop_runtime_3d_package direct package-smoke invocations emitted gameplay_runtime_scheduler_status=budget_limited, gameplay_runtime_scheduler_ready=1, gameplay_runtime_scheduler_steps=2, gameplay_runtime_scheduler_system_rows=6, gameplay_runtime_scheduler_command_rows=2, positive gameplay_runtime_scheduler_replay_hash, and gameplay_runtime_scheduler_diagnostics=0.
+  ```
 
 ## Phase 2: World Entity Model Production Surface
 
@@ -338,29 +388,110 @@ The milestone itself changes documentation and manifest pointers first. Later ph
 
   UI workbench rows describe validated runtime UI intent. Text shaping, font rasterization, IME, OS accessibility, image decoding, and renderer texture upload stay behind the existing adapter boundaries until selected production phases promote them.
 
-## Phase 6: Genre Packs As Reusable Validation Surfaces
+## Phase 6: RPG Systems Pack Production Surface
 
 **Files:**
-- Modify: `games/sample_2d_desktop_runtime_package/game.agent.json`
-- Modify: `games/sample_generated_desktop_runtime_3d_package/game.agent.json`
-- Modify: `tools/new-game-templates.ps1`
-- Test: selected package validation recipes.
+- Create: `engine/runtime/include/mirakana/runtime/genre_rpg_systems.hpp`
+- Create: `engine/runtime/src/genre_rpg_systems.cpp`
+- Modify: `engine/runtime/CMakeLists.txt`
+- Test: `tests/unit/runtime_genre_rpg_systems_tests.cpp`
+- Package evidence: selected 2D and 3D package counters.
 
-- [ ] **Step 1: Add RPG validation rows**
+- [ ] **Step 1: Write failing RPG system tests**
 
-  Add rows proving stats, progression, skills, equipment, party/enemy state, rewards, and save evidence through first-party generic systems. Keep story, balance, enemy names, and combat tuning game-owned.
+  Test stat rows, progression rows, skill unlock prerequisites, equipment slot validation, party/enemy combat-loop intents, reward rows, and save-validation summaries. The tests must use generic engine vocabulary and must not encode story, balance, enemy names, or genre-specific content values.
 
-- [ ] **Step 2: Add sandbox validation rows**
+- [ ] **Step 2: Implement first-party RPG value contracts**
 
-  Add rows proving chunk/region ownership, construction/destruction intent, item costs, generated object rows, and persistence evidence. Keep block art, biome rules, and world content game-owned.
+  Add `RuntimeRpgStatRow`, `RuntimeRpgProgressionRow`, `RuntimeRpgSkillRow`, `RuntimeRpgEquipmentRow`, `RuntimeRpgCombatLoopRequest`, `RuntimeRpgRewardRow`, `RuntimeRpgSystemsPlan`, and `plan_runtime_rpg_systems`.
 
-- [ ] **Step 3: Add simulation validation rows**
+- [ ] **Step 3: Add package evidence and manifest rows**
 
-  Add rows proving jobs, resources, logistics, economy summaries, population/needs, schedules, long-run deterministic replay, and dashboard UI evidence. Keep balance and scenario content game-owned.
+  Add selected package counters for validated stats, progression rows, skills, equipment rows, combat-loop rows, rewards, save-validation rows, and clean diagnostics.
 
-- [ ] **Step 4: Add network and rendering follow-on handoffs**
+## Phase 7: Sandbox World Pack Production Surface
 
-  Record typed handoff rows for production replication and production VFX/profiling when the generic systems need real transport, backend timing, GPU particles, or host-gated backend evidence.
+**Files:**
+- Create: `engine/runtime/include/mirakana/runtime/genre_sandbox_world.hpp`
+- Create: `engine/runtime/src/genre_sandbox_world.cpp`
+- Modify: `engine/runtime/CMakeLists.txt`
+- Test: `tests/unit/runtime_genre_sandbox_world_tests.cpp`
+- Package evidence: selected package validation recipes.
+
+- [ ] **Step 1: Write failing sandbox world tests**
+
+  Test chunk/region identity, placement intent validation, destruction intent validation, construction cost rows, world mutation review rows, persistence bridge rows, and rejection of game-owned biome/content rules inside engine contracts.
+
+- [ ] **Step 2: Implement sandbox world value contracts**
+
+  Add `RuntimeSandboxChunkRow`, `RuntimeSandboxPlacementIntent`, `RuntimeSandboxDestructionIntent`, `RuntimeSandboxConstructionCostRow`, `RuntimeSandboxWorldMutationPlan`, and `plan_runtime_sandbox_world_mutation`.
+
+- [ ] **Step 3: Add package evidence and static checks**
+
+  Add selected package counters for chunks, placement/destruction intents, construction costs, persistence rows, rejected unsafe mutation rows, and clean diagnostics.
+
+## Phase 8: Simulation Management Pack Production Surface
+
+**Files:**
+- Create: `engine/runtime/include/mirakana/runtime/genre_simulation_management.hpp`
+- Create: `engine/runtime/src/genre_simulation_management.cpp`
+- Modify: `engine/runtime/CMakeLists.txt`
+- Test: `tests/unit/runtime_genre_simulation_management_tests.cpp`
+- Package evidence: selected long-run validation recipe.
+
+- [ ] **Step 1: Write failing simulation management tests**
+
+  Test resources, jobs, logistics links, economy summaries, population/needs rows, schedules, deterministic long-run replay hashes, save/load review rows, and runtime UI dashboard counter handoff.
+
+- [ ] **Step 2: Implement simulation management value contracts**
+
+  Add `RuntimeSimulationResourceRow`, `RuntimeSimulationJobRow`, `RuntimeSimulationLogisticsLink`, `RuntimeSimulationEconomySummary`, `RuntimeSimulationPopulationNeedRow`, `RuntimeSimulationScheduleRow`, `RuntimeSimulationManagementPlan`, and `plan_runtime_simulation_management`.
+
+- [ ] **Step 3: Add long-run package evidence**
+
+  Add deterministic long-run counters for tick count, resource balance rows, job assignments, logistics transfers, need deficits, dashboard rows, replay hash, and clean diagnostics.
+
+## Phase 9: Network Replication Production Surface
+
+**Files:**
+- Create: `engine/runtime/include/mirakana/runtime/production_network_replication.hpp`
+- Create: `engine/runtime/src/production_network_replication.cpp`
+- Modify: `engine/runtime/CMakeLists.txt`
+- Test: `tests/unit/runtime_production_network_replication_tests.cpp`
+- Optional host evidence: `tools/validate-network-enet.ps1` when the `network-enet` feature is available.
+
+- [ ] **Step 1: Write failing replication plan tests**
+
+  Test authoritative session rows, replicated object rows, input-command sequencing, snapshot/rollback rows, lockstep policy diagnostics, transport capability review, and threat-model/security diagnostics. Loopback-only proof must not create a broad multiplayer ready claim.
+
+- [ ] **Step 2: Implement replication value contracts**
+
+  Add `RuntimeNetworkReplicationSessionDesc`, `RuntimeReplicatedObjectRow`, `RuntimeReplicationInputCommandRow`, `RuntimeReplicationSnapshotRow`, `RuntimeRollbackPolicyRow`, `RuntimeNetworkReplicationPlan`, and `plan_runtime_network_replication`.
+
+- [ ] **Step 3: Add package and host-gate evidence**
+
+  Add selected package counters for replicated objects, input rows, snapshot rows, rollback rows, rejected unsafe rows, and clean diagnostics. Record real-transport evidence only through the optional network validation wrapper and keep unsupported rows explicit when host evidence is absent.
+
+## Phase 10: Rendering VFX Profiling Production Surface
+
+**Files:**
+- Create: `engine/renderer/include/mirakana/renderer/production_vfx_profiling.hpp`
+- Create: `engine/renderer/src/production_vfx_profiling.cpp`
+- Modify: `engine/renderer/CMakeLists.txt`
+- Test: `tests/unit/renderer_production_vfx_profiling_tests.cpp`
+- Host evidence: D3D12/Vulkan/Metal-specific validation where available.
+
+- [ ] **Step 1: Write failing renderer/VFX/profile tests**
+
+  Test GPU particle budget rows, richer postprocess feature rows, backend timing/profile rows, crash/telemetry handoff rows, backend parity requirements, and host-gated Metal evidence diagnostics. D3D12 evidence must not imply Vulkan or Metal readiness.
+
+- [ ] **Step 2: Implement backend-neutral renderer production evidence contracts**
+
+  Add `RendererProductionVfxFeatureRow`, `RendererProductionGpuParticleBudgetRow`, `RendererProductionPostprocessRow`, `RendererProductionBackendTimingRow`, `RendererProductionCrashTelemetryHandoffRow`, `RendererProductionVfxProfilingPlan`, and `plan_renderer_production_vfx_profiling`.
+
+- [ ] **Step 3: Add package and host-gated validation**
+
+  Add selected package counters for VFX/profile rows and backend evidence. Mark backend-specific readiness as `host-gated-production` until the matching D3D12, Vulkan, or Metal host proof exists.
 
 ## Validation
 

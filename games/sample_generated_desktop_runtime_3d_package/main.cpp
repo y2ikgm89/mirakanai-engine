@@ -24,6 +24,7 @@
 #include "mirakana/runtime/asset_runtime.hpp"
 #include "mirakana/runtime/entity_scale_culling.hpp"
 #include "mirakana/runtime/gameplay_interaction.hpp"
+#include "mirakana/runtime/gameplay_runtime_scheduler.hpp"
 #include "mirakana/runtime/package_streaming.hpp"
 #include "mirakana/runtime/physics_collision_runtime.hpp"
 #include "mirakana/runtime/resource_runtime.hpp"
@@ -771,6 +772,23 @@ runtime_session_profile_resume_status_name(mirakana::runtime::RuntimeSessionProf
     return "unknown";
 }
 
+[[nodiscard]] const char*
+gameplay_runtime_scheduler_status_name(mirakana::runtime::RuntimeGameplaySchedulerStatus status) noexcept {
+    switch (status) {
+    case mirakana::runtime::RuntimeGameplaySchedulerStatus::ready:
+        return "ready";
+    case mirakana::runtime::RuntimeGameplaySchedulerStatus::no_steps:
+        return "no_steps";
+    case mirakana::runtime::RuntimeGameplaySchedulerStatus::budget_limited:
+        return "budget_limited";
+    case mirakana::runtime::RuntimeGameplaySchedulerStatus::paused:
+        return "paused";
+    case mirakana::runtime::RuntimeGameplaySchedulerStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
 struct SceneGameplayBindingProbeResult {
     std::size_t source_rows{0U};
     std::size_t binding_rows{0U};
@@ -781,6 +799,22 @@ struct SceneGameplayBindingProbeResult {
     std::size_t interaction_diagnostics{0U};
     mirakana::runtime_scene::RuntimeSceneGameplaySessionState final_session_state{
         mirakana::runtime_scene::RuntimeSceneGameplaySessionState::running};
+    bool ready{false};
+};
+
+struct GameplayRuntimeSchedulerProbeResult {
+    mirakana::runtime::RuntimeGameplaySchedulerStatus status{
+        mirakana::runtime::RuntimeGameplaySchedulerStatus::invalid_request};
+    std::size_t available_steps{0U};
+    std::size_t planned_steps{0U};
+    std::size_t step_rows{0U};
+    std::size_t system_rows{0U};
+    std::size_t command_rows{0U};
+    std::uint64_t consumed_time_us{0U};
+    std::uint64_t remaining_time_us{0U};
+    bool budget_limited{false};
+    std::size_t diagnostics{0U};
+    std::uint64_t replay_hash{0U};
     bool ready{false};
 };
 
@@ -812,6 +846,52 @@ struct InputContextRebindingProbeResult {
         }
     }
     return systems.size();
+}
+
+[[nodiscard]] GameplayRuntimeSchedulerProbeResult validate_gameplay_runtime_scheduler_package_evidence() {
+    using Command = mirakana::runtime::RuntimeGameplaySchedulerInputCommandDesc;
+    using Mode = mirakana::runtime::RuntimeGameplaySchedulerMode;
+    using Request = mirakana::runtime::RuntimeGameplaySchedulerRequest;
+    using Status = mirakana::runtime::RuntimeGameplaySchedulerStatus;
+    using System = mirakana::runtime::RuntimeGameplaySchedulerSystemDesc;
+
+    const auto plan = mirakana::runtime::plan_runtime_gameplay_schedule(Request{
+        .scheduler_id = "sample3d.gameplay",
+        .next_tick = 42U,
+        .tick_delta_us = 16'666U,
+        .accumulated_time_us = 49'998U,
+        .max_steps_per_frame = 2U,
+        .mode = Mode::run,
+        .systems =
+            std::vector<System>{
+                System{.system_id = "physics", .order = 20, .enabled = true, .budget_us = 400U, .source_index = 2U},
+                System{.system_id = "input", .order = 10, .enabled = true, .budget_us = 100U, .source_index = 1U},
+                System{.system_id = "ai", .order = 30, .enabled = true, .budget_us = 300U, .source_index = 3U},
+            },
+        .input_commands =
+            std::vector<Command>{
+                Command{.command_id = "cmd.move", .target_tick = 42U, .payload_hash = 1001U, .source_index = 1U},
+                Command{.command_id = "cmd.interact", .target_tick = 43U, .payload_hash = 1002U, .source_index = 2U},
+            },
+    });
+
+    GameplayRuntimeSchedulerProbeResult result;
+    result.status = plan.status;
+    result.available_steps = plan.available_step_count;
+    result.planned_steps = plan.planned_step_count;
+    result.step_rows = plan.steps.size();
+    result.system_rows = plan.total_system_rows;
+    result.command_rows = plan.total_command_rows;
+    result.consumed_time_us = plan.consumed_time_us;
+    result.remaining_time_us = plan.remaining_time_us;
+    result.budget_limited = plan.status == Status::budget_limited;
+    result.diagnostics = plan.diagnostics.size();
+    result.replay_hash = plan.replay_hash;
+    result.ready = plan.succeeded() && result.budget_limited && result.available_steps == 3U &&
+                   result.planned_steps == 2U && result.step_rows == 2U && result.system_rows == 6U &&
+                   result.command_rows == 2U && result.consumed_time_us == 33'332U &&
+                   result.remaining_time_us == 16'666U && result.diagnostics == 0U && result.replay_hash != 0U;
+    return result;
 }
 
 [[nodiscard]] std::string_view
@@ -7053,13 +7133,18 @@ int main(int argc, char** argv) {
     const auto gameplay_systems_status = game.gameplay_systems_status(options.max_frames);
     const auto gameplay_systems_core_ready = game.gameplay_systems_passed(options.max_frames);
     const auto input_context_rebinding = validate_sample_input_context_rebinding();
+    const auto gameplay_runtime_scheduler_probe = options.require_gameplay_systems
+                                                      ? validate_gameplay_runtime_scheduler_package_evidence()
+                                                      : GameplayRuntimeSchedulerProbeResult{};
     const auto gameplay_systems_ready =
         gameplay_systems_core_ready && (!options.require_gameplay_systems ||
-                                        (game.gameplay_systems_scene_binding_ready() && input_context_rebinding.ready));
+                                        (game.gameplay_systems_scene_binding_ready() && input_context_rebinding.ready &&
+                                         gameplay_runtime_scheduler_probe.ready));
     const auto gameplay_systems_diagnostics =
         game.gameplay_systems_diagnostics_count(options.max_frames) +
         ((options.require_gameplay_systems && !game.gameplay_systems_scene_binding_ready()) ? 1U : 0U) +
-        ((options.require_gameplay_systems && !input_context_rebinding.ready) ? 1U : 0U);
+        ((options.require_gameplay_systems && !input_context_rebinding.ready) ? 1U : 0U) +
+        ((options.require_gameplay_systems && !gameplay_runtime_scheduler_probe.ready) ? 1U : 0U);
     const auto visible_3d = evaluate_visible_3d_production_proof(options, result, report, renderer_quality, playable_3d,
                                                                  gameplay_systems_ready);
     const auto entity_scale_culling_probe = options.require_entity_scale_culling
@@ -7313,7 +7398,18 @@ int main(int argc, char** argv) {
         << " entity_scale_culling_budget_diagnostics=" << entity_scale_culling_probe.budget_diagnostics
         << " gameplay_systems_status=" << gameplay_systems_status_name(gameplay_systems_status)
         << " gameplay_systems_ready=" << (gameplay_systems_ready ? 1 : 0)
-        << " gameplay_systems_diagnostics=" << gameplay_systems_diagnostics
+        << " gameplay_systems_diagnostics=" << gameplay_systems_diagnostics << " gameplay_runtime_scheduler_status="
+        << gameplay_runtime_scheduler_status_name(gameplay_runtime_scheduler_probe.status)
+        << " gameplay_runtime_scheduler_ready=" << (gameplay_runtime_scheduler_probe.ready ? 1 : 0)
+        << " gameplay_runtime_scheduler_available_steps=" << gameplay_runtime_scheduler_probe.available_steps
+        << " gameplay_runtime_scheduler_steps=" << gameplay_runtime_scheduler_probe.step_rows
+        << " gameplay_runtime_scheduler_system_rows=" << gameplay_runtime_scheduler_probe.system_rows
+        << " gameplay_runtime_scheduler_command_rows=" << gameplay_runtime_scheduler_probe.command_rows
+        << " gameplay_runtime_scheduler_consumed_time_us=" << gameplay_runtime_scheduler_probe.consumed_time_us
+        << " gameplay_runtime_scheduler_remaining_time_us=" << gameplay_runtime_scheduler_probe.remaining_time_us
+        << " gameplay_runtime_scheduler_budget_limited=" << (gameplay_runtime_scheduler_probe.budget_limited ? 1 : 0)
+        << " gameplay_runtime_scheduler_replay_hash=" << gameplay_runtime_scheduler_probe.replay_hash
+        << " gameplay_runtime_scheduler_diagnostics=" << gameplay_runtime_scheduler_probe.diagnostics
         << " gameplay_systems_ticks=" << game.gameplay_systems_ticks()
         << " gameplay_systems_physics_ticks=" << game.gameplay_systems_physics_ticks()
         << " gameplay_systems_authored_collision_bodies=" << game.gameplay_systems_authored_collision_bodies()
@@ -7735,6 +7831,20 @@ int main(int argc, char** argv) {
             return 18;
         }
         if (options.require_gameplay_systems && !gameplay_systems_ready) {
+            std::cout << "sample_generated_desktop_runtime_3d_package required_gameplay_systems_unavailable"
+                      << " gameplay_systems_status=" << gameplay_systems_status_name(gameplay_systems_status)
+                      << " gameplay_systems_ready=" << (gameplay_systems_ready ? 1 : 0)
+                      << " gameplay_systems_diagnostics=" << gameplay_systems_diagnostics
+                      << " gameplay_runtime_scheduler_status="
+                      << gameplay_runtime_scheduler_status_name(gameplay_runtime_scheduler_probe.status)
+                      << " gameplay_runtime_scheduler_ready=" << (gameplay_runtime_scheduler_probe.ready ? 1 : 0)
+                      << " gameplay_runtime_scheduler_steps=" << gameplay_runtime_scheduler_probe.step_rows
+                      << " gameplay_runtime_scheduler_system_rows=" << gameplay_runtime_scheduler_probe.system_rows
+                      << " gameplay_runtime_scheduler_command_rows=" << gameplay_runtime_scheduler_probe.command_rows
+                      << " gameplay_runtime_scheduler_budget_limited="
+                      << (gameplay_runtime_scheduler_probe.budget_limited ? 1 : 0)
+                      << " gameplay_runtime_scheduler_diagnostics=" << gameplay_runtime_scheduler_probe.diagnostics
+                      << '\n';
             return 3;
         }
         if (options.require_scene_collision_package && !collision_package.ready) {
