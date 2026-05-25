@@ -52,7 +52,7 @@ Add the following canonical rows to the backlog under a new `General-Purpose Gam
 | `production-authoring-workflows-v1` | `implemented-production-surface` | Reviewed authoring flows for scene, placement, quest/dialogue, item/economy, AI behavior, world regions, and validation repair without free-form engine mutation. |
 | `production-runtime-ui-workbench-v1` | `implemented-production-surface` | Dense runtime UI primitives for menus, inventory/equipment/shop, simulation dashboards, tables, graphs, focus navigation, text input, localization, and accessibility boundaries. |
 | `genre-rpg-systems-pack-v1` | `implemented-production-surface` | Reusable RPG systems for stats, progression, skills, equipment, party/enemy combat loops, rewards, and save validation. |
-| `genre-sandbox-world-pack-v1` | `production-candidate` | Reusable sandbox systems for block/voxel-like world chunks, placement/destruction rules, construction costs, world mutation validation, and persistence. |
+| `genre-sandbox-world-pack-v1` | `implemented-production-surface` | Reusable sandbox systems for block/voxel-like world chunks, placement/destruction rules, construction costs, world mutation validation, and persistence. |
 | `genre-simulation-management-pack-v1` | `production-candidate` | Reusable simulation systems for economy, logistics, jobs, population/needs, production chains, schedules, and deterministic long-run validation. |
 | `production-network-replication-v1` | `production-candidate` | Authoritative session, replication, rollback/lockstep hooks, security/threat model, and real transport host evidence. |
 | `production-rendering-vfx-profiling-v1` | `host-gated-production` | Broader renderer/VFX/profile production evidence, including GPU particles, richer postprocess, backend-specific timing, crash/telemetry handoff, and strict backend parity gates. |
@@ -505,17 +505,26 @@ PR: #231 merged addressable-content-streaming-production-v1 at merge commit 7109
 - Test: `tests/unit/runtime_genre_sandbox_world_tests.cpp`
 - Package evidence: selected package validation recipes.
 
-- [ ] **Step 1: Write failing sandbox world tests**
+- [x] **Step 1: Write failing sandbox world tests**
 
   Test chunk/region identity, placement intent validation, destruction intent validation, construction cost rows, world mutation review rows, persistence bridge rows, and rejection of game-owned biome/content rules inside engine contracts.
 
-- [ ] **Step 2: Implement sandbox world value contracts**
+- [x] **Step 2: Implement sandbox world value contracts**
 
   Add `RuntimeSandboxChunkRow`, `RuntimeSandboxPlacementIntent`, `RuntimeSandboxDestructionIntent`, `RuntimeSandboxConstructionCostRow`, `RuntimeSandboxWorldMutationPlan`, and `plan_runtime_sandbox_world_mutation`.
 
-- [ ] **Step 3: Add package evidence and static checks**
+- [x] **Step 3: Add package evidence and static checks**
 
   Add selected package counters for chunks, placement/destruction intents, construction costs, persistence rows, rejected unsafe mutation rows, and clean diagnostics.
+
+  OFFICIAL: Context7 Unity Entities documentation reinforced value-separated entities/components/chunks and change-set style mutation boundaries; this phase keeps sandbox world evidence value-only and leaves actual world mutation, persistence IO, package loading, streaming execution, biome/block art rules, renderer/platform/editor APIs, threads, and native handles outside the claim.
+  RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_genre_sandbox_world_tests` failed before `mirakana/runtime/genre_sandbox_world.hpp` existed.
+  GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_genre_sandbox_world_tests`
+  GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_genre_sandbox_world_tests`
+  GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_genre_sandbox_world_tests sample_2d_desktop_runtime_package sample_generated_desktop_runtime_3d_package`
+  GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_genre_sandbox_world_tests|sample_2d_desktop_runtime_package|sample_generated_desktop_runtime_3d_package"`
+  GREEN: `sample_2d_desktop_runtime_package --smoke --require-gameplay-systems --require-procedural-generation` emitted `sandbox_world_status=ready`, `sandbox_world_ready=1`, two chunks, two resident chunks, two existing cells, three placement intents with one accepted row, two destruction intents with one accepted row, two construction cost rows, five mutation rows, two persistence rows with one repairable row, three rejected unsafe mutation rows, positive `sandbox_world_replay_hash`, zero world/persistence/package side-effect counters, and `sandbox_world_diagnostics=0`.
+  GREEN: `sample_generated_desktop_runtime_3d_package --smoke --require-gameplay-systems` emitted the same sandbox world counter contract with a target-specific positive replay hash.
 
 ## Phase 8: Simulation Management Pack Production Surface
 

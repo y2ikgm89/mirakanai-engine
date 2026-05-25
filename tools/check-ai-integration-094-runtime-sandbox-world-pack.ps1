@@ -1,0 +1,157 @@
+#requires -Version 7.0
+#requires -PSEdition Core
+
+# Chapter 9.4 for check-ai-integration.ps1 Runtime Sandbox World Pack production contracts.
+
+$sandboxHeaderText = Get-AgentSurfaceText "engine/runtime/include/mirakana/runtime/genre_sandbox_world.hpp"
+$sandboxSourceText = Get-AgentSurfaceText "engine/runtime/src/genre_sandbox_world.cpp"
+$runtimeCMakeText = Get-AgentSurfaceText "engine/runtime/CMakeLists.txt"
+$rootCMakeText = Get-AgentSurfaceText "CMakeLists.txt"
+$sandboxTestsText = Get-AgentSurfaceText "tests/unit/runtime_genre_sandbox_world_tests.cpp"
+$sample2dMainText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/main.cpp"
+$sample3dMainText = Get-AgentSurfaceText "games/sample_generated_desktop_runtime_3d_package/main.cpp"
+$sample2dManifestText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/game.agent.json"
+$sample3dManifestText = Get-AgentSurfaceText "games/sample_generated_desktop_runtime_3d_package/game.agent.json"
+$installedValidationText = Get-AgentSurfaceText "tools/validate-installed-desktop-runtime.ps1"
+$planText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-25-general-purpose-game-production-v1.md"
+$planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
+$currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
+$roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
+$generatedValidationText = Get-AgentSurfaceText "docs/specs/generated-game-validation-scenarios.md"
+$aiGameDevelopmentText = Get-AgentSurfaceText "docs/ai-game-development.md"
+$sample2dReadmeText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/README.md"
+$sample3dReadmeText = Get-AgentSurfaceText "games/sample_generated_desktop_runtime_3d_package/README.md"
+$backlogText = Get-AgentSurfaceText "docs/superpowers/master-plans/production-completion-v1/04-developer-owned-engine-capability-backlog.md"
+$projectionText = Get-AgentSurfaceText "docs/superpowers/master-plans/production-completion-v1/05-projections-and-scenarios.md"
+$manifestText = Get-AgentSurfaceText "engine/agent/manifest.json"
+
+foreach ($needle in @(
+        "RuntimeSandboxChunkRow",
+        "RuntimeSandboxExistingCellRow",
+        "RuntimeSandboxPlacementIntent",
+        "RuntimeSandboxDestructionIntent",
+        "RuntimeSandboxConstructionCostRow",
+        "RuntimeSandboxPersistenceRow",
+        "RuntimeSandboxWorldMutationPlan",
+        "plan_runtime_sandbox_world_mutation"
+    )) {
+    Assert-ContainsText $sandboxHeaderText $needle "engine/runtime/include/mirakana/runtime/genre_sandbox_world.hpp"
+}
+
+foreach ($needle in @(
+        "RuntimeSandboxDiagnosticCode::unsupported_backend_reference",
+        "RuntimeSandboxDiagnosticCode::unsupported_game_content_rule",
+        "RuntimeSandboxDiagnosticCode::row_budget_exceeded",
+        "RuntimeSandboxWorldStatus::invalid_request",
+        "lhs.message < rhs.message",
+        "is_valid_id(intent.chunk_id)",
+        "row.provided_costs.size()"
+    )) {
+    Assert-ContainsText $sandboxSourceText $needle "engine/runtime/src/genre_sandbox_world.cpp"
+}
+
+foreach ($needle in @(
+        "bool invoked_world_mutation{false}",
+        "bool invoked_persistence_io{false}",
+        "bool invoked_package_io{false}"
+    )) {
+    Assert-ContainsText $sandboxHeaderText $needle "engine/runtime/include/mirakana/runtime/genre_sandbox_world.hpp"
+}
+
+Assert-ContainsText $runtimeCMakeText "src/genre_sandbox_world.cpp" "engine/runtime/CMakeLists.txt"
+Assert-ContainsText $rootCMakeText "MK_runtime_genre_sandbox_world_tests" "CMakeLists.txt"
+Assert-ContainsText $sandboxTestsText "runtime sandbox world plans chunk placement destruction costs mutation rows and persistence" "tests/unit/runtime_genre_sandbox_world_tests.cpp"
+Assert-ContainsText $sandboxTestsText "runtime sandbox world rejects malformed rows and game-owned content rules before output rows" "tests/unit/runtime_genre_sandbox_world_tests.cpp"
+Assert-ContainsText $sandboxTestsText "runtime sandbox world diagnostics are totally ordered by stable public fields" "tests/unit/runtime_genre_sandbox_world_tests.cpp"
+Assert-ContainsText $sandboxTestsText "changed_destruction.replay_hash != first.replay_hash" "tests/unit/runtime_genre_sandbox_world_tests.cpp"
+Assert-ContainsText $sandboxTestsText "changed_provided_cost.replay_hash != first.replay_hash" "tests/unit/runtime_genre_sandbox_world_tests.cpp"
+
+foreach ($sampleSurface in @(
+        @{ Text = $sample2dMainText; Label = "games/sample_2d_desktop_runtime_package/main.cpp" },
+        @{ Text = $sample3dMainText; Label = "games/sample_generated_desktop_runtime_3d_package/main.cpp" }
+    )) {
+    foreach ($needle in @(
+            "mirakana/runtime/genre_sandbox_world.hpp",
+            "plan_runtime_sandbox_world_mutation",
+            "sandbox_world_status=",
+            "sandbox_world_ready=",
+            "sandbox_world_mutation_rows=",
+            "sandbox_world_replay_hash=",
+            "sandbox_world_diagnostics="
+        )) {
+        Assert-ContainsText $sampleSurface.Text $needle $sampleSurface.Label
+    }
+}
+
+foreach ($manifestSurface in @(
+        @{ Text = $sample2dManifestText; Label = "games/sample_2d_desktop_runtime_package/game.agent.json" },
+        @{ Text = $sample3dManifestText; Label = "games/sample_generated_desktop_runtime_3d_package/game.agent.json" }
+    )) {
+    foreach ($needle in @(
+            '"sandbox-world"',
+            '"sandboxWorld"',
+            "sandbox_world_status=ready",
+            "sandbox_world_ready=1",
+            "sandbox_world_chunk_rows=2",
+            "sandbox_world_placement_accepted_rows=1",
+            "sandbox_world_destruction_accepted_rows=1",
+            "sandbox_world_persistence_repairable_rows=1",
+            "sandbox_world_diagnostics=0"
+        )) {
+        Assert-ContainsText $manifestSurface.Text $needle $manifestSurface.Label
+    }
+}
+
+foreach ($needle in @(
+        "sandbox_world_status",
+        "sandbox_world_ready",
+        "sandbox_world_chunk_rows",
+        "sandbox_world_resident_chunk_rows",
+        "sandbox_world_existing_cell_rows",
+        "sandbox_world_placement_accepted_rows",
+        "sandbox_world_destruction_accepted_rows",
+        "sandbox_world_mutation_rows",
+        "sandbox_world_persistence_repairable_rows",
+        "sandbox_world_rejected_unsafe_mutation_rows",
+        "sandbox_world_replay_hash",
+        "sandbox_world_diagnostics"
+    )) {
+    Assert-ContainsText $installedValidationText $needle "tools/validate-installed-desktop-runtime.ps1"
+}
+
+foreach ($docSurface in @(
+        @{ Text = $planText; Label = "docs/superpowers/plans/2026-05-25-general-purpose-game-production-v1.md" },
+        @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
+        @{ Text = $generatedValidationText; Label = "docs/specs/generated-game-validation-scenarios.md" },
+        @{ Text = $aiGameDevelopmentText; Label = "docs/ai-game-development.md" },
+        @{ Text = $sample2dReadmeText; Label = "games/sample_2d_desktop_runtime_package/README.md" },
+        @{ Text = $sample3dReadmeText; Label = "games/sample_generated_desktop_runtime_3d_package/README.md" }
+    )) {
+    Assert-ContainsText $docSurface.Text "plan_runtime_sandbox_world_mutation" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "sandbox_world_ready=1" $docSurface.Label
+}
+
+foreach ($docSurface in @(
+        @{ Text = $planRegistryText; Label = "docs/superpowers/plans/README.md" },
+        @{ Text = $roadmapText; Label = "docs/roadmap.md" },
+        @{ Text = $backlogText; Label = "docs/superpowers/master-plans/production-completion-v1/04-developer-owned-engine-capability-backlog.md" },
+        @{ Text = $projectionText; Label = "docs/superpowers/master-plans/production-completion-v1/05-projections-and-scenarios.md" }
+    )) {
+    Assert-ContainsText $docSurface.Text "genre-sandbox-world-pack-v1" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "plan_runtime_sandbox_world_mutation" $docSurface.Label
+}
+
+foreach ($needle in @(
+        "genre-sandbox-world-pack-v1",
+        '"unsupportedProductionGaps": []',
+        "genre-simulation-management-pack-v1",
+        "production-network-replication-v1",
+        "production-rendering-vfx-profiling-v1",
+        "engine/runtime/include/mirakana/runtime/genre_sandbox_world.hpp",
+        "RuntimeSandboxChunkRow",
+        "plan_runtime_sandbox_world_mutation",
+        "sandbox_world_*",
+        "currentRuntimeSandboxWorld"
+    )) {
+    Assert-ContainsText $manifestText $needle "engine/agent/manifest.json"
+}
