@@ -771,6 +771,8 @@ foreach ($parallelScript in @(
     Assert-DoesNotContainText $parallelScript.Text "function Resolve-ParallelJobCount" $parallelScript.Name
     Assert-DoesNotContainText $parallelScript.Text "[Environment]::ProcessorCount" $parallelScript.Name
 }
+Assert-ContainsText $tidyScriptText "Test-ClangTidyCompileDatabaseSourceFiles" "tools/check-tidy.ps1"
+Assert-ContainsText $tidyScriptText "compile database contains stale source path" "tools/check-tidy.ps1"
 foreach ($commonHelperNeedle in @(
         "function Read-Json",
         "function ConvertTo-LfText",

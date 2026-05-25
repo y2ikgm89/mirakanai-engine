@@ -437,6 +437,8 @@ Assert-ContainsText $tidyWrapperContent '[int]$ShardIndex' "tools/check-tidy.ps1
 Assert-ContainsText $tidyWrapperContent 'tidy-check: shard' "tools/check-tidy.ps1"
 Assert-ContainsText $tidyWrapperContent "--warnings-as-errors=*" "tools/check-tidy.ps1"
 Assert-ContainsText $tidyWrapperContent "ForEach-Object -Parallel" "tools/check-tidy.ps1"
+Assert-ContainsText $tidyWrapperContent "Test-ClangTidyCompileDatabaseSourceFiles" "tools/check-tidy.ps1"
+Assert-ContainsText $tidyWrapperContent "compile database contains stale source path" "tools/check-tidy.ps1"
 $clangTidyContent = Get-AgentSurfaceText ".clang-tidy"
 Assert-ContainsText $clangTidyContent '(^|.*[/\\])(engine|editor|examples|games|tests)[/\\].*' ".clang-tidy"
 Assert-DoesNotContainText $clangTidyContent "-performance-enum-size" ".clang-tidy"

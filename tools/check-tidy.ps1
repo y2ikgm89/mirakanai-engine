@@ -114,6 +114,58 @@ function Test-NativeCompileCommandsGenerator {
     return ($Generator -match "Ninja" -or $Generator -match "Makefiles")
 }
 
+function Test-ClangTidyCompileDatabaseSourceFiles {
+    param(
+        [Parameter(Mandatory = $true)][string]$CompileCommands,
+        [Parameter(Mandatory = $true)][string]$RootPath,
+        [Parameter(Mandatory = $true)][string]$Preset
+    )
+
+    if (-not (Test-Path -LiteralPath $CompileCommands -PathType Leaf)) {
+        return $false
+    }
+
+    try {
+        $compileDatabase = @(Get-Content -LiteralPath $CompileCommands -Raw | ConvertFrom-Json)
+    } catch {
+        Write-Host "tidy-check: compile database could not be parsed for preset '$Preset'; reconfiguring."
+        return $false
+    }
+
+    $repoPrefix = $RootPath.Replace('\', '/').TrimEnd('/') + '/'
+    $missingFiles = [System.Collections.Generic.List[string]]::new()
+    foreach ($entry in $compileDatabase) {
+        $file = [string]$entry.file
+        if ([string]::IsNullOrWhiteSpace($file)) {
+            continue
+        }
+
+        $normalized = $file.Replace('\', '/')
+        if (-not $normalized.StartsWith($repoPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+            continue
+        }
+        if ($normalized -match '/(?:out|external|vcpkg_installed)/') {
+            continue
+        }
+        if ($normalized -notmatch '\.(?:cc|cpp|cxx)$') {
+            continue
+        }
+        if (-not (Test-Path -LiteralPath $file -PathType Leaf)) {
+            $missingFiles.Add($file) | Out-Null
+        }
+    }
+
+    if ($missingFiles.Count -gt 0) {
+        Write-Host "tidy-check: compile database contains stale source path(s) for preset '$Preset'; reconfiguring ($($missingFiles.Count) missing)."
+        foreach ($missingFile in @($missingFiles | Select-Object -First 3)) {
+            Write-Host "tidy-check: stale source path: $missingFile"
+        }
+        return $false
+    }
+
+    return $true
+}
+
 function Resolve-FileApiPath {
     param(
         [Parameter(Mandatory = $true)][string]$Path,
@@ -311,7 +363,9 @@ function Resolve-ClangTidyCompileDatabase {
 
     $generator = Get-CMakeCacheValue -BuildDir $BuildDir -Name "CMAKE_GENERATOR"
     if ((Test-Path -LiteralPath $CompileCommands -PathType Leaf) -and (Test-NativeCompileCommandsGenerator -Generator $generator)) {
-        return $true
+        if (Test-ClangTidyCompileDatabaseSourceFiles -CompileCommands $CompileCommands -RootPath $root -Preset $Preset) {
+            return $true
+        }
     }
 
     New-FileApiCodemodelQuery -BuildDir $BuildDir
@@ -327,8 +381,10 @@ function Resolve-ClangTidyCompileDatabase {
                 -Configuration $Configuration `
                 -OutputPath $CompileCommands
             if ($existingEntryCount -gt 0) {
-                Write-Host "tidy-check: reused existing CMake File API reply for preset '$Preset' configuration '$Configuration' ($existingEntryCount files)"
-                return $true
+                if (Test-ClangTidyCompileDatabaseSourceFiles -CompileCommands $CompileCommands -RootPath $root -Preset $Preset) {
+                    Write-Host "tidy-check: reused existing CMake File API reply for preset '$Preset' configuration '$Configuration' ($existingEntryCount files)"
+                    return $true
+                }
             }
         }
     }
@@ -344,7 +400,13 @@ function Resolve-ClangTidyCompileDatabase {
 
     $generator = Get-CMakeCacheValue -BuildDir $BuildDir -Name "CMAKE_GENERATOR"
     if ((Test-Path -LiteralPath $CompileCommands -PathType Leaf) -and (Test-NativeCompileCommandsGenerator -Generator $generator)) {
-        return $true
+        if (Test-ClangTidyCompileDatabaseSourceFiles -CompileCommands $CompileCommands -RootPath $root -Preset $Preset) {
+            return $true
+        }
+
+        $message = "tidy-check: blocker - compile_commands.json for preset '$Preset' still references missing source files after CMake configure."
+        Write-TidyBlocker -Message $message -RequireStrict:$RequireStrict
+        return $false
     }
 
     $reply = Get-FileApiCodemodelReply -BuildDir $BuildDir
@@ -356,8 +418,14 @@ function Resolve-ClangTidyCompileDatabase {
             -Configuration $Configuration `
             -OutputPath $CompileCommands
         if ($entryCount -gt 0) {
-            Write-Host "tidy-check: generated compile database from CMake File API for preset '$Preset' configuration '$Configuration' ($entryCount files)"
-            return $true
+            if (Test-ClangTidyCompileDatabaseSourceFiles -CompileCommands $CompileCommands -RootPath $root -Preset $Preset) {
+                Write-Host "tidy-check: generated compile database from CMake File API for preset '$Preset' configuration '$Configuration' ($entryCount files)"
+                return $true
+            }
+
+            $message = "tidy-check: blocker - synthesized compile database for preset '$Preset' still references missing source files after CMake configure."
+            Write-TidyBlocker -Message $message -RequireStrict:$RequireStrict
+            return $false
         }
     }
 

@@ -711,6 +711,8 @@ Candidate 5 evidence:
 - Static verification passed: `git diff --check`, `tools/check-format.ps1`, `tools/check-text-format.ps1`, `tools/check-agents.ps1`, `tools/check-ai-integration.ps1`, `tools/check-json-contracts.ps1`, and `tools/check-public-api-boundaries.ps1`.
 - Full validation passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` reported `validate: ok` and 87/87 tests passing; Metal and Apple lanes remained diagnostic/host-gated on this Windows host.
 - Final suffix audit leaves only approved stale-format rejection fixtures, explicit unknown-format fixtures, cleanup mapping/design evidence, historical archive evidence, external standard language, numeric version fields, and coordinate/variable false positives.
+- Follow-up audit after PR #246 found current-sounding retained analysis text in `docs/specs/2026-04-27-engine-essential-gap-analysis.md`; those `GameEngine.*.vN` contract names were canonicalized while leaving the cleanup design/plan and historical archive evidence intact.
+- Hosted PR #246 static analysis exposed a stale Linux tidy build-cache path after the `schema_v2` file renames. `tools/check-tidy.ps1` now detects stale compile database source paths, reconfigures before running clang-tidy, and is guarded by `check-ai-integration` / `check-json-contracts`.
 
 - [ ] **Step 6: Publish through GitHub Flow**
 
