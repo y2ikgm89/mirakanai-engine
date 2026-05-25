@@ -43,13 +43,13 @@ Every implementation phase starts by recording current official guidance for the
 
 Add the following canonical rows to the backlog under a new `General-Purpose Game Production` group. These are production candidates until their phase lands:
 
-| Capability id | Initial status | Purpose |
+| Capability id | Current status | Purpose |
 | --- | --- | --- |
 | `general-purpose-game-production-v1` | `selected-production-slice` | Milestone row selecting this post-foundation production track. |
 | `gameplay-runtime-scheduler-production-v1` | `implemented-production-surface` | Authoritative fixed-tick gameplay scheduler with explicit system order, command playback, replay diagnostics, budget rows, pause/step policies, and rollback/network extension points. |
 | `world-entity-model-production-v1` | `implemented-production-surface` | Stable entity/component/region ownership model with lifecycle, identity, serialization boundaries, persistence/streaming bridge diagnostics, and package-visible counters. |
-| `addressable-content-streaming-production-v1` | `production-candidate` | Addressable package/content handles with dependency tracking, explicit load/release/refcount plans, resident budget diagnostics, and package evidence. |
-| `production-authoring-workflows-v1` | `production-candidate` | Reviewed authoring flows for scene, placement, quest/dialogue, item/economy, AI behavior, world regions, and validation repair without free-form engine mutation. |
+| `addressable-content-streaming-production-v1` | `implemented-production-surface` | Addressable package/content handles with dependency tracking, explicit load/release/refcount plans, resident budget diagnostics, and package evidence. |
+| `production-authoring-workflows-v1` | `implemented-production-surface` | Reviewed authoring flows for scene, placement, quest/dialogue, item/economy, AI behavior, world regions, and validation repair without free-form engine mutation. |
 | `production-runtime-ui-workbench-v1` | `production-candidate` | Dense runtime UI primitives for menus, inventory/equipment/shop, simulation dashboards, tables, graphs, focus navigation, text input, localization, and accessibility boundaries. |
 | `genre-rpg-systems-pack-v1` | `production-candidate` | Reusable RPG systems for stats, progression, skills, equipment, party/enemy combat loops, rewards, and save validation. |
 | `genre-sandbox-world-pack-v1` | `production-candidate` | Reusable sandbox systems for block/voxel-like world chunks, placement/destruction rules, construction costs, world mutation validation, and persistence. |
@@ -382,6 +382,9 @@ GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --p
 GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_addressable_content_streaming_tests|sample_2d_desktop_runtime_package|sample_generated_desktop_runtime_3d_package"
 GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package
 GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package
+GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/runtime/src/addressable_content_streaming.cpp,games/sample_2d_desktop_runtime_package/main.cpp,games/sample_generated_desktop_runtime_3d_package/main.cpp,tests/unit/runtime_addressable_content_streaming_tests.cpp
+GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
+PR: #231 merged addressable-content-streaming-production-v1 at merge commit 71092e687c4ae2866e2a90af6afe380baad52bdf.
 ```
 
 ## Phase 4: Production Authoring Workflows
@@ -392,17 +395,43 @@ GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runti
 - Modify: `engine/tools/asset/CMakeLists.txt`
 - Test: `tests/unit/tools_tests.cpp`
 
-- [ ] **Step 1: Write failing workflow review tests**
+- [x] **Step 1: Write failing workflow review tests**
 
   Test reviewed authoring requests for scene placement, quest/dialogue, item/economy, AI behavior, world region, and validation repair rows. Reject shared-surface mutation, arbitrary shell commands, cooked package mutation, and native/backend terms.
 
-- [ ] **Step 2: Implement workflow review contracts**
+- [x] **Step 2: Implement workflow review contracts**
 
   Add `ProductionAuthoringWorkflowRequest`, `ProductionAuthoringWorkflowRow`, `ProductionAuthoringWorkflowReviewResult`, and `review_production_authoring_workflow`.
 
-- [ ] **Step 3: Connect to editor without engine mutation**
+- [x] **Step 3: Add package evidence without editor execution backdoors**
 
-  Add retained editor rows only after the tool review contract lands. Editor UI remains a caller of reviewed rows; it must not become an execution backdoor.
+  Added selected 2D package evidence through `--require-production-authoring-workflows` and `production_authoring_workflow_*` counters. The contract remains review-only: no file mutation, package IO, command execution, native/editor/RHI handles, or cooked package mutation.
+
+- [x] **Step 4: Close Phase 4**
+
+  Update docs, manifest fragments, generated-game guidance, and static checks for production authoring workflows. Run focused package validation and then `tools/validate.ps1` because this phase changes public `MK_tools` APIs and package contracts.
+
+  Evidence captured so far:
+
+  ```text
+  OFFICIAL: Context7 Unreal Engine docs reinforced editor utility/data validation boundaries as editor/tooling workflows, not runtime execution; Context7 Unity docs reinforced separation of editor scripts from runtime scripts and deterministic editor asset build inputs.
+  RED: MK_tools_tests failed to build before mirakana/tools/production_authoring_workflows.hpp existed.
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_tools_tests
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_tools_tests
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_tools_tests sample_2d_desktop_runtime_package
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_tools_tests|sample_2d_desktop_runtime_package"
+  REVIEW: cpp-reviewer found the validation-repair row contract was ambiguous; fixed review_production_authoring_workflow to emit validation_repair_rows only for ProductionAuthoringWorkflowKind::validation_repair, updated the selected repair recipe to installed-2d-production-authoring-workflows-smoke, and added fail-closed tests for missing/duplicate/unsupported references and broad claims.
+  REVIEW: agent-surface-auditor found no stale production-authoring or addressable-content closeout drift; completed agents were closed after their reports were consumed.
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package
+  GREEN: installed smoke emitted production_authoring_workflow_validation_repair_rows=1 and production_authoring_workflow_diagnostics=0.
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/tools/asset/production_authoring_workflows.cpp,games/sample_2d_desktop_runtime_package/main.cpp,tests/unit/tools_tests.cpp
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1
+  GREEN: pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
+  ```
 
 ## Phase 5: Production Runtime UI Workbench
 

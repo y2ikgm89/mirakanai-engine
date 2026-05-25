@@ -412,6 +412,7 @@
         "engine/tools/include/mirakana/tools/asset_package_tool.hpp",
         "engine/tools/include/mirakana/tools/asset_runtime_package_hot_reload_tool.hpp",
         "engine/tools/include/mirakana/tools/gameplay_authoring_tool.hpp",
+        "engine/tools/include/mirakana/tools/production_authoring_workflows.hpp",
         "engine/tools/include/mirakana/tools/gltf_mesh_inspect.hpp",
         "engine/tools/include/mirakana/tools/gltf_skin_animation_inspect.hpp",
         "engine/tools/include/mirakana/tools/gltf_skin_animation_import.hpp",

@@ -40,6 +40,7 @@
 #include "mirakana/scene/scene.hpp"
 #include "mirakana/scene_renderer/scene_renderer.hpp"
 #include "mirakana/tools/gameplay_authoring_tool.hpp"
+#include "mirakana/tools/production_authoring_workflows.hpp"
 #include "mirakana/ui/ui.hpp"
 #include "mirakana/ui_renderer/ui_renderer.hpp"
 
@@ -87,6 +88,7 @@ struct DesktopRuntimeOptions {
     bool require_networking_foundation_policy{false};
     bool require_simulation_orchestration{false};
     bool require_gameplay_authoring_review{false};
+    bool require_production_authoring_workflows{false};
     bool require_runtime_profile_resume{false};
     bool require_runtime_menu_hud{false};
     bool require_audio_gameplay_mixer{false};
@@ -316,6 +318,23 @@ struct GameplayAuthoringReviewProbeResult {
     std::size_t missing_package_evidence_diagnostics{0U};
     std::size_t unsupported_claim_diagnostics{0U};
     std::size_t diagnostics{0U};
+    bool ready{false};
+};
+
+struct ProductionAuthoringWorkflowProbeResult {
+    std::size_t workflow_rows{0U};
+    std::size_t accepted_rows{0U};
+    std::size_t mutation_ledger_rows{0U};
+    std::size_t validation_repair_rows{0U};
+    std::size_t shared_surface_mutation_diagnostics{0U};
+    std::size_t arbitrary_shell_diagnostics{0U};
+    std::size_t cooked_package_mutation_diagnostics{0U};
+    std::size_t native_backend_term_diagnostics{0U};
+    std::size_t invalid_target_path_diagnostics{0U};
+    std::size_t diagnostics{0U};
+    bool invoked_file_mutation{false};
+    bool invoked_package_io{false};
+    bool invoked_command_execution{false};
     bool ready{false};
 };
 
@@ -668,6 +687,11 @@ count_input_rebinding_glyph_lookup_keys(const mirakana::runtime::RuntimeInputReb
 
 [[nodiscard]] std::string_view
 gameplay_authoring_review_status_name(const GameplayAuthoringReviewProbeResult& result) noexcept {
+    return result.ready ? "ready" : "diagnostics";
+}
+
+[[nodiscard]] std::string_view
+production_authoring_workflow_status_name(const ProductionAuthoringWorkflowProbeResult& result) noexcept {
     return result.ready ? "ready" : "diagnostics";
 }
 
@@ -3394,6 +3418,18 @@ validate_addressable_content_streaming_package_evidence(const mirakana::runtime:
     return count;
 }
 
+[[nodiscard]] std::size_t
+count_production_authoring_diagnostics(const mirakana::ProductionAuthoringWorkflowReviewResult& result,
+                                       std::string_view code) {
+    std::size_t count{0U};
+    for (const auto& diagnostic : result.diagnostics) {
+        if (diagnostic.code == code) {
+            ++count;
+        }
+    }
+    return count;
+}
+
 [[nodiscard]] GameplayAuthoringReviewProbeResult validate_gameplay_authoring_review_package_evidence() {
     const mirakana::GameplayAuthoringCapabilityProfile profile{
         .supported_capability_ids = {"gameplay-authoring-foundation-v1", "engine-quest-dialogue-state-v1",
@@ -3497,6 +3533,158 @@ validate_addressable_content_streaming_package_evidence(const mirakana::runtime:
                    result.missing_validation_recipe_diagnostics == 1U &&
                    result.missing_package_evidence_diagnostics == 1U && result.unsupported_claim_diagnostics == 1U &&
                    result.diagnostics == 0U;
+    return result;
+}
+
+[[nodiscard]] ProductionAuthoringWorkflowProbeResult validate_production_authoring_workflow_package_evidence() {
+    mirakana::ProductionAuthoringWorkflowRequest request;
+    request.supported_capability_ids = {"scene-placement-v1", "quest-dialogue-v1", "item-economy-v1",
+                                        "ai-behavior-v1",     "world-region-v1",   "validation-repair-v1"};
+    request.validation_recipe_ids = {"installed-2d-gameplay-systems-smoke", "installed-2d-world-region-streaming-smoke",
+                                     "installed-2d-gameplay-authoring-review-smoke",
+                                     "installed-2d-production-authoring-workflows-smoke"};
+    request.package_evidence_ids = {"sample_2d_desktop_runtime_package"};
+    request.reviewed_surface_ids = {"scene-prefab-authoring", "gameplay-authoring-review", "runtime-scene-validation"};
+    request.workflow_rows = {
+        mirakana::ProductionAuthoringWorkflowRow{
+            .workflow_id = "scene_spawn_review",
+            .kind = mirakana::ProductionAuthoringWorkflowKind::scene_placement,
+            .target_path = "games/sample_2d_desktop_runtime_package/source/scenes/playable.scene",
+            .required_capability_ids = {"scene-placement-v1"},
+            .validation_recipe_ids = {"installed-2d-gameplay-systems-smoke"},
+            .package_evidence_ids = {"sample_2d_desktop_runtime_package"},
+            .reviewed_surface_ids = {"scene-prefab-authoring"},
+            .claimed_scope_ids = {},
+            .requests_shared_surface_mutation = false,
+            .requests_arbitrary_shell = false,
+            .requests_cooked_package_mutation = false,
+            .source_index = 1U,
+        },
+        mirakana::ProductionAuthoringWorkflowRow{
+            .workflow_id = "quest_dialogue_review",
+            .kind = mirakana::ProductionAuthoringWorkflowKind::quest_dialogue,
+            .target_path = "games/sample_2d_desktop_runtime_package/source/gameplay/intro.quest",
+            .required_capability_ids = {"quest-dialogue-v1"},
+            .validation_recipe_ids = {"installed-2d-gameplay-systems-smoke"},
+            .package_evidence_ids = {"sample_2d_desktop_runtime_package"},
+            .reviewed_surface_ids = {"gameplay-authoring-review"},
+            .claimed_scope_ids = {},
+            .requests_shared_surface_mutation = false,
+            .requests_arbitrary_shell = false,
+            .requests_cooked_package_mutation = false,
+            .source_index = 2U,
+        },
+        mirakana::ProductionAuthoringWorkflowRow{
+            .workflow_id = "item_economy_review",
+            .kind = mirakana::ProductionAuthoringWorkflowKind::item_economy,
+            .target_path = "games/sample_2d_desktop_runtime_package/source/gameplay/shop.items",
+            .required_capability_ids = {"item-economy-v1"},
+            .validation_recipe_ids = {"installed-2d-gameplay-systems-smoke"},
+            .package_evidence_ids = {"sample_2d_desktop_runtime_package"},
+            .reviewed_surface_ids = {"gameplay-authoring-review"},
+            .claimed_scope_ids = {},
+            .requests_shared_surface_mutation = false,
+            .requests_arbitrary_shell = false,
+            .requests_cooked_package_mutation = false,
+            .source_index = 3U,
+        },
+        mirakana::ProductionAuthoringWorkflowRow{
+            .workflow_id = "ai_behavior_review",
+            .kind = mirakana::ProductionAuthoringWorkflowKind::ai_behavior,
+            .target_path = "games/sample_2d_desktop_runtime_package/source/ai/patrol.behavior",
+            .required_capability_ids = {"ai-behavior-v1"},
+            .validation_recipe_ids = {"installed-2d-gameplay-systems-smoke"},
+            .package_evidence_ids = {"sample_2d_desktop_runtime_package"},
+            .reviewed_surface_ids = {"gameplay-authoring-review"},
+            .claimed_scope_ids = {},
+            .requests_shared_surface_mutation = false,
+            .requests_arbitrary_shell = false,
+            .requests_cooked_package_mutation = false,
+            .source_index = 4U,
+        },
+        mirakana::ProductionAuthoringWorkflowRow{
+            .workflow_id = "world_region_review",
+            .kind = mirakana::ProductionAuthoringWorkflowKind::world_region,
+            .target_path = "games/sample_2d_desktop_runtime_package/source/world/regions.world",
+            .required_capability_ids = {"world-region-v1"},
+            .validation_recipe_ids = {"installed-2d-world-region-streaming-smoke"},
+            .package_evidence_ids = {"sample_2d_desktop_runtime_package"},
+            .reviewed_surface_ids = {"runtime-scene-validation"},
+            .claimed_scope_ids = {},
+            .requests_shared_surface_mutation = false,
+            .requests_arbitrary_shell = false,
+            .requests_cooked_package_mutation = false,
+            .source_index = 5U,
+        },
+        mirakana::ProductionAuthoringWorkflowRow{
+            .workflow_id = "validation_repair_review",
+            .kind = mirakana::ProductionAuthoringWorkflowKind::validation_repair,
+            .target_path = "games/sample_2d_desktop_runtime_package/game.agent.json",
+            .required_capability_ids = {"validation-repair-v1"},
+            .validation_recipe_ids = {"installed-2d-production-authoring-workflows-smoke"},
+            .package_evidence_ids = {"sample_2d_desktop_runtime_package"},
+            .reviewed_surface_ids = {"runtime-scene-validation"},
+            .claimed_scope_ids = {},
+            .requests_shared_surface_mutation = false,
+            .requests_arbitrary_shell = false,
+            .requests_cooked_package_mutation = false,
+            .source_index = 6U,
+        },
+    };
+    const auto reviewed_result = mirakana::review_production_authoring_workflow(request);
+
+    mirakana::ProductionAuthoringWorkflowRequest invalid_request;
+    invalid_request.supported_capability_ids = {"scene-placement-v1"};
+    invalid_request.validation_recipe_ids = {"installed-2d-gameplay-systems-smoke"};
+    invalid_request.package_evidence_ids = {"sample_2d_desktop_runtime_package"};
+    invalid_request.reviewed_surface_ids = {"scene-prefab-authoring"};
+    invalid_request.workflow_rows.push_back(mirakana::ProductionAuthoringWorkflowRow{
+        .workflow_id = "unsafe_authoring",
+        .kind = mirakana::ProductionAuthoringWorkflowKind::scene_placement,
+        .target_path = "engine/runtime/src/unsafe.cpp",
+        .required_capability_ids = {"scene-placement-v1"},
+        .validation_recipe_ids = {"installed-2d-gameplay-systems-smoke"},
+        .package_evidence_ids = {"sample_2d_desktop_runtime_package"},
+        .reviewed_surface_ids = {"scene-prefab-authoring"},
+        .claimed_scope_ids = {"native D3D12 handle", "arbitrary shell", "cooked package mutation"},
+        .requests_shared_surface_mutation = true,
+        .requests_arbitrary_shell = true,
+        .requests_cooked_package_mutation = true,
+        .source_index = 99U,
+    });
+    const auto invalid_result = mirakana::review_production_authoring_workflow(invalid_request);
+
+    ProductionAuthoringWorkflowProbeResult result;
+    result.workflow_rows = request.workflow_rows.size();
+    result.accepted_rows = reviewed_result.accepted_rows.size();
+    result.mutation_ledger_rows = reviewed_result.mutation_ledger_rows.size();
+    result.validation_repair_rows = reviewed_result.validation_repair_rows.size();
+    result.shared_surface_mutation_diagnostics =
+        count_production_authoring_diagnostics(invalid_result, "shared_surface_mutation");
+    result.arbitrary_shell_diagnostics = count_production_authoring_diagnostics(invalid_result, "arbitrary_shell");
+    result.cooked_package_mutation_diagnostics =
+        count_production_authoring_diagnostics(invalid_result, "cooked_package_mutation");
+    result.native_backend_term_diagnostics =
+        count_production_authoring_diagnostics(invalid_result, "native_backend_term");
+    result.invalid_target_path_diagnostics =
+        count_production_authoring_diagnostics(invalid_result, "invalid_target_path");
+    result.diagnostics = reviewed_result.diagnostics.size();
+    result.invoked_file_mutation = reviewed_result.invoked_file_mutation || invalid_result.invoked_file_mutation;
+    result.invoked_package_io = reviewed_result.invoked_package_io || invalid_result.invoked_package_io;
+    result.invoked_command_execution =
+        reviewed_result.invoked_command_execution || invalid_result.invoked_command_execution;
+    const auto repair_recipe_targets_production_smoke =
+        reviewed_result.validation_repair_rows.size() == 1U &&
+        std::ranges::find(reviewed_result.validation_repair_rows[0].validation_recipe_ids,
+                          "installed-2d-production-authoring-workflows-smoke") !=
+            reviewed_result.validation_repair_rows[0].validation_recipe_ids.end();
+    result.ready = reviewed_result.succeeded() && !invalid_result.succeeded() && result.workflow_rows == 6U &&
+                   result.accepted_rows == 6U && result.mutation_ledger_rows == 6U &&
+                   result.validation_repair_rows == 1U && result.shared_surface_mutation_diagnostics == 1U &&
+                   result.arbitrary_shell_diagnostics == 1U && result.cooked_package_mutation_diagnostics == 1U &&
+                   result.native_backend_term_diagnostics == 1U && result.invalid_target_path_diagnostics == 1U &&
+                   result.diagnostics == 0U && repair_recipe_targets_production_smoke &&
+                   !result.invoked_file_mutation && !result.invoked_package_io && !result.invoked_command_execution;
     return result;
 }
 
@@ -5680,8 +5868,8 @@ void print_usage() {
                  "[--require-procedural-generation] [--require-world-region-streaming] "
                  "[--require-entity-scale-culling] [--require-scripting-sandbox-policy] "
                  "[--require-networking-foundation-policy] [--require-simulation-orchestration] "
-                 "[--require-gameplay-authoring-review] [--require-runtime-profile-resume] "
-                 "[--require-runtime-menu-hud] [--require-audio-gameplay-mixer]\n";
+                 "[--require-gameplay-authoring-review] [--require-production-authoring-workflows] "
+                 "[--require-runtime-profile-resume] [--require-runtime-menu-hud] [--require-audio-gameplay-mixer]\n";
 }
 
 [[nodiscard]] bool parse_args(int argc, char** argv, DesktopRuntimeOptions& options) {
@@ -5771,6 +5959,10 @@ void print_usage() {
         }
         if (arg == "--require-gameplay-authoring-review") {
             options.require_gameplay_authoring_review = true;
+            continue;
+        }
+        if (arg == "--require-production-authoring-workflows") {
+            options.require_production_authoring_workflows = true;
             continue;
         }
         if (arg == "--require-runtime-profile-resume") {
@@ -6386,6 +6578,9 @@ int main(int argc, char** argv) {
     const auto gameplay_authoring_review_probe = options.require_gameplay_authoring_review
                                                      ? validate_gameplay_authoring_review_package_evidence()
                                                      : GameplayAuthoringReviewProbeResult{};
+    const auto production_authoring_workflow_probe = options.require_production_authoring_workflows
+                                                         ? validate_production_authoring_workflow_package_evidence()
+                                                         : ProductionAuthoringWorkflowProbeResult{};
 
     auto shader_bytecode = load_packaged_d3d12_shaders(argc > 0 ? argv[0] : nullptr);
     if (!shader_bytecode.ready()) {
@@ -6940,6 +7135,32 @@ int main(int argc, char** argv) {
         << " gameplay_authoring_review_unsupported_claim_diagnostics="
         << gameplay_authoring_review_probe.unsupported_claim_diagnostics
         << " gameplay_authoring_review_diagnostics=" << gameplay_authoring_review_probe.diagnostics
+        << " production_authoring_workflow_status="
+        << production_authoring_workflow_status_name(production_authoring_workflow_probe)
+        << " production_authoring_workflow_ready=" << (production_authoring_workflow_probe.ready ? 1 : 0)
+        << " production_authoring_workflow_rows=" << production_authoring_workflow_probe.workflow_rows
+        << " production_authoring_workflow_accepted_rows=" << production_authoring_workflow_probe.accepted_rows
+        << " production_authoring_workflow_mutation_ledger_rows="
+        << production_authoring_workflow_probe.mutation_ledger_rows
+        << " production_authoring_workflow_validation_repair_rows="
+        << production_authoring_workflow_probe.validation_repair_rows
+        << " production_authoring_workflow_shared_surface_mutation_diagnostics="
+        << production_authoring_workflow_probe.shared_surface_mutation_diagnostics
+        << " production_authoring_workflow_arbitrary_shell_diagnostics="
+        << production_authoring_workflow_probe.arbitrary_shell_diagnostics
+        << " production_authoring_workflow_cooked_package_mutation_diagnostics="
+        << production_authoring_workflow_probe.cooked_package_mutation_diagnostics
+        << " production_authoring_workflow_native_backend_term_diagnostics="
+        << production_authoring_workflow_probe.native_backend_term_diagnostics
+        << " production_authoring_workflow_invalid_target_path_diagnostics="
+        << production_authoring_workflow_probe.invalid_target_path_diagnostics
+        << " production_authoring_workflow_invoked_file_mutation="
+        << (production_authoring_workflow_probe.invoked_file_mutation ? 1 : 0)
+        << " production_authoring_workflow_invoked_package_io="
+        << (production_authoring_workflow_probe.invoked_package_io ? 1 : 0)
+        << " production_authoring_workflow_invoked_command_execution="
+        << (production_authoring_workflow_probe.invoked_command_execution ? 1 : 0)
+        << " production_authoring_workflow_diagnostics=" << production_authoring_workflow_probe.diagnostics
         << " hud_boxes=" << game.hud_boxes_submitted() << " audio_commands=" << game.audio_commands()
         << " audio_underruns=" << game.audio_underruns()
         << " audio_gameplay_mixer_ready=" << (audio_gameplay_mixer.ready ? 1 : 0)
@@ -7422,6 +7643,38 @@ int main(int argc, char** argv) {
                   << gameplay_authoring_review_probe.unsupported_claim_diagnostics
                   << " gameplay_authoring_review_diagnostics=" << gameplay_authoring_review_probe.diagnostics << '\n';
         return 19;
+    }
+
+    if (options.require_production_authoring_workflows && !production_authoring_workflow_probe.ready) {
+        std::cout << "sample_2d_desktop_runtime_package required_production_authoring_workflows_unavailable"
+                  << " production_authoring_workflow_status="
+                  << production_authoring_workflow_status_name(production_authoring_workflow_probe)
+                  << " production_authoring_workflow_rows=" << production_authoring_workflow_probe.workflow_rows
+                  << " production_authoring_workflow_accepted_rows="
+                  << production_authoring_workflow_probe.accepted_rows
+                  << " production_authoring_workflow_mutation_ledger_rows="
+                  << production_authoring_workflow_probe.mutation_ledger_rows
+                  << " production_authoring_workflow_validation_repair_rows="
+                  << production_authoring_workflow_probe.validation_repair_rows
+                  << " production_authoring_workflow_shared_surface_mutation_diagnostics="
+                  << production_authoring_workflow_probe.shared_surface_mutation_diagnostics
+                  << " production_authoring_workflow_arbitrary_shell_diagnostics="
+                  << production_authoring_workflow_probe.arbitrary_shell_diagnostics
+                  << " production_authoring_workflow_cooked_package_mutation_diagnostics="
+                  << production_authoring_workflow_probe.cooked_package_mutation_diagnostics
+                  << " production_authoring_workflow_native_backend_term_diagnostics="
+                  << production_authoring_workflow_probe.native_backend_term_diagnostics
+                  << " production_authoring_workflow_invalid_target_path_diagnostics="
+                  << production_authoring_workflow_probe.invalid_target_path_diagnostics
+                  << " production_authoring_workflow_invoked_file_mutation="
+                  << (production_authoring_workflow_probe.invoked_file_mutation ? 1 : 0)
+                  << " production_authoring_workflow_invoked_package_io="
+                  << (production_authoring_workflow_probe.invoked_package_io ? 1 : 0)
+                  << " production_authoring_workflow_invoked_command_execution="
+                  << (production_authoring_workflow_probe.invoked_command_execution ? 1 : 0)
+                  << " production_authoring_workflow_diagnostics=" << production_authoring_workflow_probe.diagnostics
+                  << '\n';
+        return 20;
     }
 
     if (options.smoke &&

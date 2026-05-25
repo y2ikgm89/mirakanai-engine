@@ -1540,6 +1540,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-networking-foundation-policy
             --require-simulation-orchestration
             --require-gameplay-authoring-review
+            --require-production-authoring-workflows
         PACKAGE_SMOKE_ARGS
             --smoke
             --require-config
@@ -1565,6 +1566,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-networking-foundation-policy
             --require-simulation-orchestration
             --require-gameplay-authoring-review
+            --require-production-authoring-workflows
         REQUIRES_D3D12_SHADERS
         PACKAGE_FILES_FROM_MANIFEST
     )

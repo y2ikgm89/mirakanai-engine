@@ -1946,22 +1946,20 @@ Assert-ContainsText ([string]$geRendererModule[0].purpose) "final-state transiti
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "Frame Graph Production Ownership Boundary Selection v1" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "FrameGraphProductionOwnershipPlan" "MK_renderer module purpose"
 Assert-ContainsText ([string]$geRendererModule[0].purpose) "plan_frame_graph_production_ownership_boundary" "MK_renderer module purpose"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Remaining Render Pass Envelopes v1" "recommended next plan completed context"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Primary Pass Target-State Evidence v1" "recommended next plan completed context"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph RHI Queue Dependency Plan v1" "recommended next plan completed context"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "record_frame_graph_rhi_queue_waits" "recommended next plan completed context"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph RHI Multi-Queue Executor v1" "recommended next plan completed context"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "execute_frame_graph_rhi_multi_queue_schedule" "recommended next plan completed context"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph RHI Multi-Queue Texture Barrier Execution v1" "recommended next plan completed context"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "FrameGraphRhiMultiQueueExecutionResult::barriers_recorded" "recommended next plan completed context"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Runtime Material Factor Frame Graph Command Evidence v1" "recommended next plan completed context"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "RuntimeMaterialGpuBinding" "recommended next plan completed context"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph v1 1.0 Scope Closeout v1 closes frame-graph-v1" "recommended next plan completed context"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "Frame Graph v1" "recommended next plan reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "upload-staging-v1" "recommended next plan reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "scene-component-prefab-schema-v2" "recommended next plan reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "2d-playable-vertical-slice" "recommended next plan reason"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "3d-playable-vertical-slice" "recommended next plan reason"
+foreach ($needle in @("Frame Graph Remaining Render Pass Envelopes v1", "Frame Graph Primary Pass Target-State Evidence v1", "Frame Graph RHI Queue Dependency Plan v1", "record_frame_graph_rhi_queue_waits", "Frame Graph RHI Multi-Queue Executor v1", "execute_frame_graph_rhi_multi_queue_schedule", "Frame Graph RHI Multi-Queue Texture Barrier Execution v1", "FrameGraphRhiMultiQueueExecutionResult::barriers_recorded", "Runtime Material Factor Frame Graph Command Evidence v1", "RuntimeMaterialGpuBinding", "Frame Graph v1 1.0 Scope Closeout v1 closes frame-graph-v1")) {
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) $needle "recommended next plan completed context"
+}
+if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-production-v1") {
+    foreach ($needle in @("General Purpose Game Production v1", "addressable-content-streaming-production-v1", "production-authoring-workflows-v1", "production-runtime-ui-workbench-v1")) {
+        Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) $needle "recommended next plan production milestone reason"
+    }
+} else {
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "Frame Graph v1" "recommended next plan reason"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "upload-staging-v1" "recommended next plan reason"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "scene-component-prefab-schema-v2" "recommended next plan reason"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "2d-playable-vertical-slice" "recommended next plan reason"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "3d-playable-vertical-slice" "recommended next plan reason"
+}
 foreach ($needle in @("RHI Depth Attachment Contract v0", "GPU Memory Policy v1", "GpuMemoryPolicyPlan", "GpuMemoryResidencyClass", "plan_gpu_memory_policy", "Debug Profiling Policy v1", "DebugProfilingPolicyPlan", "plan_debug_profiling_policy", "Scene Scale Policy v1", "SceneScalePolicyPlan", "SceneScaleBatchingMode", "plan_scene_scale_policy", "Postprocess Chain Policy v1", "PostprocessChainPolicyPlan", "plan_postprocess_chain_policy", "Lighting Shadow Policy v1", "LightingShadowPolicyPlan", "plan_lighting_shadow_policy", "Stable Directional Light-Space Policy v0", "DirectionalShadowLightSpacePlan")) {
     Assert-ContainsText ([string]$geRendererModule[0].purpose) $needle "MK_renderer module purpose"
 }

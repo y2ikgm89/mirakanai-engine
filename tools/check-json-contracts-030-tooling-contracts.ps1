@@ -1030,8 +1030,21 @@ $runtimeResourceGap = @($productionLoop.unsupportedProductionGaps | Where-Object
 if ($runtimeResourceGap.Count -ne 0) {
     Write-Error "engine manifest aiOperableProductionLoop runtime-resource-v2 gap must leave unsupportedProductionGaps after 1.0 scope closeout"
 }
-$recommendedText = (([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
-foreach ($needle in @(
+$recommendedText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
+if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-production-v1") {
+    foreach ($needle in @(
+        "General Purpose Game Production v1",
+        "gameplay-runtime-scheduler-production-v1",
+        "world-entity-model-production-v1",
+        "addressable-content-streaming-production-v1",
+        "production-authoring-workflows-v1",
+        "production-runtime-ui-workbench-v1",
+        "unsupportedProductionGaps empty"
+    )) {
+        Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan production milestone"
+    }
+} else {
+    foreach ($needle in @(
     "Frame Graph Transient Texture Alias Planning v1",
     "FrameGraphTransientTextureAliasPlan",
     "plan_frame_graph_transient_texture_aliases",
@@ -1062,9 +1075,10 @@ foreach ($needle in @(
     "native async upload execution",
     "package skinned/morph streaming",
     "staging-pool production adoption"
-)) {
-    if (-not $recommendedText.Contains($needle)) {
-        Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe frame-graph closeout and upload-staging next gap: $needle"
+    )) {
+        if (-not $recommendedText.Contains($needle)) {
+            Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe frame-graph closeout and upload-staging next gap: $needle"
+        }
     }
 }
 $rendererRhiGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "renderer-rhi-resource-foundation" })
