@@ -147,7 +147,7 @@ Execute phases in this order. Each phase should be a reviewable PR or a small cl
 - [ ] Implement backend-neutral `RendererQualityMatrix*` value rows and diagnostics. Keep data explicit: feature id, backend id, proof source, shader/tool validation, resource synchronization, package counter ids, timing budget rows, host gate, and unsupported claim rows.
 - [ ] Emit selected package counters for D3D12 and strict Vulkan only when their row evidence is ready; emit Metal as host-gated until Apple evidence exists.
 - [ ] Update generated 3D package smoke and installed validation to require exact renderer quality fields, not a single broad `renderer_ready` flag.
-- [ ] Run focused validation:
+- [x] Run focused validation:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_production_vfx_profiling_tests sample_generated_desktop_runtime_3d_package
@@ -244,6 +244,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 - Modify: `engine/physics/include/mirakana/physics/collision_query.hpp`
 - Modify: `engine/physics/include/mirakana/physics/native_adapter.hpp`
 - Modify: `engine/physics/src/native_adapter.cpp`
+- Create: `engine/physics/include/mirakana/physics/physics_production_breadth.hpp`
+- Create: `engine/physics/src/physics_production_breadth.cpp`
 - Modify optional: `engine/physics/jolt/`
 - Modify: `engine/navigation/include/mirakana/navigation/navigation_navmesh.hpp`
 - Modify: `engine/navigation/src/navigation_navmesh.cpp`
@@ -251,23 +253,37 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 - Modify: `engine/navigation/src/navigation_crowd.cpp`
 - Modify: `engine/navigation/include/mirakana/navigation/navigation_hierarchical_world.hpp`
 - Modify: `engine/navigation/src/navigation_hierarchical_world.cpp`
+- Create: `engine/navigation/include/mirakana/navigation/navigation_production_breadth.hpp`
+- Create: `engine/navigation/src/navigation_production_breadth.cpp`
+- Create: `tests/unit/physics_navigation_production_breadth_tests.cpp`
 - Modify: `tests/unit/physics_*`
 - Modify: `tests/unit/navigation_tests.cpp`
+- Create or modify: `tools/check-ai-integration-101-physics-navigation-production-breadth.ps1`
 - Modify 2D/3D package samples and installed validation after focused APIs are green.
 
-- [ ] Re-check Jolt and Recast/Detour documentation before optional adapter or navmesh import changes.
-- [ ] Add RED tests for oriented box/convex/mesh query review rows, persistent joint asset validation, ragdoll/constraint group diagnostics, controller tuning rows, vehicle policy rows, and deterministic replay signatures.
-- [ ] Add RED tests for navmesh asset import/bake review rows, agent dimension gates, polygon corridor rows, string-pulling path rows, dynamic obstacle updates, tiled/region nav references, crowd/local-avoidance budgets, and streaming nav data readiness.
-- [ ] Implement first-party value contracts before optional adapters. Native middleware remains opaque and optional.
+- [x] Re-check Jolt and Recast/Detour documentation before optional adapter or navmesh import changes.
+- [x] Add RED tests for oriented box/convex/mesh query review rows, persistent joint asset validation, ragdoll/constraint group diagnostics, controller tuning rows, vehicle policy rows, and deterministic replay signatures.
+- [x] Add RED tests for navmesh asset import/bake review rows, agent dimension gates, polygon corridor rows, string-pulling path rows, dynamic obstacle updates, tiled/region nav references, crowd/local-avoidance budgets, and streaming nav data readiness.
+- [x] Implement first-party value contracts before optional adapters. Native middleware remains opaque and optional.
 - [ ] Add package-visible counters for selected 2D/3D physics/nav production probes with exact body/query/agent/path/crowd budgets.
 - [ ] Run focused validation:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_physics_tests MK_navigation_tests sample_2d_desktop_runtime_package sample_generated_desktop_runtime_3d_package
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "physics|navigation|sample_2d_desktop_runtime_package_smoke|sample_generated_desktop_runtime_3d_package_smoke"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_physics_navigation_production_breadth_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "physics_navigation_production_breadth"
 ```
 
-**Phase Evidence:** Not started.
+**Phase Evidence:** Initial review-gate slice in progress.
+
+Initial Phase 4 evidence on 2026-05-26:
+
+- Official practice re-check: Context7 returned Jolt Physics collision/query documentation around `BroadPhaseQuery`, `NarrowPhaseQuery`, ray casts, shape casts, and point tests from `https://jrouwe.github.io/JoltPhysics/`; Context7 returned Recast Navigation module and tiled-navmesh/crowd/corridor documentation from `https://recastnav.com/`.
+- RED evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_physics_navigation_production_breadth_tests` failed while `mirakana/navigation/navigation_production_breadth.hpp` did not exist.
+- GREEN focused build: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_physics_navigation_production_breadth_tests` passed.
+- GREEN focused test: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "physics_navigation_production_breadth"` passed.
+- Full slice validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with 88/88 tests. Apple/Metal checks remained diagnostic-only host gates on this Windows host.
+- Implemented scope: first-party value-only `review_physics_production_breadth` and `review_navigation_production_breadth` gates with fail-closed diagnostics for missing review, missing official source, missing budgets, missing required features, native handle exposure, source geometry mutation, arbitrary runtime-bake claims, unsupported broad middleware parity, and host-gated optional adapter rows.
+- Remaining Phase 4 work: package-visible 2D/3D counters and any actual optional Jolt/Recast/Detour adapter expansion remain unclaimed until later evidence.
 
 ## Phase 5 - Networking Production Execution And Security Gate
 
