@@ -31,10 +31,10 @@
 Use this selection order:
 
 1. Finish this governance slice by syncing the current matrix and pointers.
-2. Select `sprite-collision-hitbox-v1` as the first concrete implementation candidate unless the operator explicitly chooses a different row before implementation starts. It is a narrow, high-value 2D production primitive that currently appears as a post-1.x row and improves platformers, action games, adventure games, projectile games, and combat interactions without requiring backend or platform host gates.
-3. After `sprite-collision-hitbox-v1`, prefer a short 2D production wave over a broad 3D wave: `sprite-sorting-layer-v1`, `sprite-9slice-and-tiled-v1`, and `sprite-effects-particles-v1`.
-4. Start a separate `generated-3d-production-vertical-slice-v1` milestone only after the 2D production wave has a clean package evidence path, or if the operator explicitly prioritizes 3D.
-5. Keep runtime/background streaming, runtime UI platform adapters, editor productization, multiplayer execution, and Apple/Metal host evidence as later separate plans because they cross different architecture and validation boundaries.
+2. Do not select `sprite-collision-hitbox-v1`, `sprite-sorting-layer-v1`, `sprite-9slice-and-tiled-v1`, or `sprite-effects-particles-v1` as new implementation candidates because the canonical backlog already records them as `implemented-1x-foundation`.
+3. Select `renderer-backend-parity-v1` strict Vulkan evidence as the first concrete follow-up candidate on a host with Vulkan runtime, DXC SPIR-V CodeGen, and `spirv-val`. This is the only remaining actionable canonical row on the current Windows host after non-host-gated rows are closed.
+4. Keep Apple/Metal evidence as a separate Apple-host-gated candidate; Windows-only validation must not promote Metal readiness.
+5. Keep runtime/background streaming, runtime UI platform adapters, editor productization, and multiplayer execution as later separate plans only if future canonical rows reopen those surfaces with explicit evidence requirements.
 
 ## File Structure
 
@@ -82,7 +82,7 @@ In `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`, set:
   "path": "docs/superpowers/plans/2026-05-26-engine-1-0-gap-matrix-v1.md",
   "latestCloseoutEvidence": "Engine 1.0 Gap Matrix v1 is the active docs/manifest governance slice after Generated Game Studio v1. It reconciles the 2D/3D coverage matrix, active plan registry, current-truth docs, and next implementation selection while keeping unsupportedProductionGaps empty and broad commercial-engine claims out of ready status.",
   "completedContext": "<retain Generated Game Studio v1 closeout evidence plus historical renderer/RHI, Frame Graph, upload staging, and UI/importer closeout context>",
-  "reason": "Engine 1.0 Gap Matrix v1 is the active official selection pass after Generated Game Studio v1. It keeps unsupportedProductionGaps empty, avoids broad commercial-engine ready claims, and selects sprite-collision-hitbox-v1 as the next implementation candidate unless the operator changes the canonical row before implementation starts."
+  "reason": "Engine 1.0 Gap Matrix v1 is the active official selection pass after Generated Game Studio v1. It keeps unsupportedProductionGaps empty, avoids broad commercial-engine ready claims, recognizes the sprite 2D rows as implemented-1x-foundation, and selects renderer-backend-parity-v1 strict Vulkan evidence as the next host-gated implementation candidate while Metal remains Apple-host-gated."
 }
 ```
 

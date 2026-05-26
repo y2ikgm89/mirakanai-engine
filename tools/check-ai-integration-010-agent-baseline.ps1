@@ -1539,7 +1539,10 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     foreach ($needle in @(
         "Engine 1.0 Gap Matrix v1",
         "Generated Game Studio v1",
-        "sprite-collision-hitbox-v1",
+        "implemented-1x-foundation",
+        "renderer-backend-parity-v1",
+        "strict Vulkan evidence",
+        "Metal remains Apple-host-gated",
         "unsupportedProductionGaps empty",
         "broad commercial-engine"
     )) {

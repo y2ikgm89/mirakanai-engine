@@ -2546,7 +2546,10 @@ if ($recommendedPlanId -eq "general-purpose-game-production-v1") {
 } elseif ($recommendedPlanId -eq "engine-1-0-gap-matrix-v1") {
     Assert-ContainsText $recommendedText "Engine 1.0 Gap Matrix v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
     Assert-ContainsText $recommendedText "Generated Game Studio v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
-    Assert-ContainsText $recommendedText "sprite-collision-hitbox-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
+    Assert-ContainsText $recommendedText "implemented-1x-foundation" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
+    Assert-ContainsText $recommendedText "renderer-backend-parity-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
+    Assert-ContainsText $recommendedText "strict Vulkan evidence" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
+    Assert-ContainsText $recommendedText "Metal remains Apple-host-gated" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
     Assert-ContainsText $recommendedText "unsupportedProductionGaps empty" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
     Assert-ContainsText $recommendedText "broad commercial-engine" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
 } else {
