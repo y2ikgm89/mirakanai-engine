@@ -4,6 +4,7 @@ add_library(mirakana_renderer
     src/null_renderer.cpp
     src/postprocess_policy.cpp
     src/production_vfx_profiling.cpp
+    src/renderer_quality_matrix.cpp
     src/rhi_directional_shadow_smoke_frame_renderer.cpp
     src/rhi_frame_renderer.cpp
     src/rhi_native_ui_overlay.cpp
