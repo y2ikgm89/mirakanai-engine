@@ -1542,6 +1542,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-gameplay-authoring-review
             --require-production-authoring-workflows
             --require-runtime-ui-workbench
+            --require-runtime-ui-production-stack
         PACKAGE_SMOKE_ARGS
             --smoke
             --require-config
@@ -1569,6 +1570,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-gameplay-authoring-review
             --require-production-authoring-workflows
             --require-runtime-ui-workbench
+            --require-runtime-ui-production-stack
         REQUIRES_D3D12_SHADERS
         PACKAGE_FILES_FROM_MANIFEST
     )

@@ -236,6 +236,7 @@ $requiresSimulationOrchestration = @($SmokeArgs) -contains "--require-simulation
 $requiresGameplayAuthoringReview = @($SmokeArgs) -contains "--require-gameplay-authoring-review"
 $requiresProductionAuthoringWorkflows = @($SmokeArgs) -contains "--require-production-authoring-workflows"
 $requiresRuntimeUiWorkbench = @($SmokeArgs) -contains "--require-runtime-ui-workbench"
+$requiresRuntimeUiProductionStack = @($SmokeArgs) -contains "--require-runtime-ui-production-stack"
 $requiresPackageStreamingSafePoint = @($SmokeArgs) -contains "--require-package-streaming-safe-point"
 $requiresSceneCollisionPackage = @($SmokeArgs) -contains "--require-scene-collision-package"
 $expectedSmokeFrames = if ($GameTarget -eq "sample_2d_desktop_runtime_package") { 3 } else { 2 }
@@ -3107,6 +3108,66 @@ if ($requiresRuntimeUiWorkbench) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove runtime UI workbench field $field=$expectedValue."
         }
+    }
+}
+if ($requiresRuntimeUiProductionStack) {
+    foreach ($field in @(
+            "runtime_ui_production_stack_status",
+            "runtime_ui_production_stack_reviewed",
+            "runtime_ui_production_stack_ready",
+            "runtime_ui_production_stack_rows",
+            "runtime_ui_production_stack_ready_rows",
+            "runtime_ui_production_stack_host_gated_rows",
+            "runtime_ui_production_stack_text_contract_ready",
+            "runtime_ui_production_stack_selected_package_evidence_ready",
+            "runtime_ui_production_stack_production_ready",
+            "runtime_ui_production_stack_requires_ime_host_evidence",
+            "runtime_ui_production_stack_ime_host_evidence",
+            "runtime_ui_production_stack_requires_accessibility_host_evidence",
+            "runtime_ui_production_stack_accessibility_host_evidence",
+            "runtime_ui_production_stack_invoked_text_shaping",
+            "runtime_ui_production_stack_invoked_font_rasterization",
+            "runtime_ui_production_stack_invoked_ime",
+            "runtime_ui_production_stack_invoked_accessibility_bridge",
+            "runtime_ui_production_stack_invoked_native_platform",
+            "runtime_ui_production_stack_invoked_renderer_upload",
+            "runtime_ui_production_stack_diagnostics",
+            "runtime_ui_production_stack_replay_hash"
+        )) {
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
+            Write-Error "Installed desktop runtime smoke status line did not include runtime UI production stack field: $field"
+        }
+    }
+    $expectedRuntimeUiProductionStackFields = @{
+        "runtime_ui_production_stack_status" = "host_evidence_required"
+        "runtime_ui_production_stack_reviewed" = "1"
+        "runtime_ui_production_stack_ready" = "1"
+        "runtime_ui_production_stack_rows" = "6"
+        "runtime_ui_production_stack_ready_rows" = "4"
+        "runtime_ui_production_stack_host_gated_rows" = "2"
+        "runtime_ui_production_stack_text_contract_ready" = "1"
+        "runtime_ui_production_stack_selected_package_evidence_ready" = "1"
+        "runtime_ui_production_stack_production_ready" = "0"
+        "runtime_ui_production_stack_requires_ime_host_evidence" = "1"
+        "runtime_ui_production_stack_ime_host_evidence" = "0"
+        "runtime_ui_production_stack_requires_accessibility_host_evidence" = "1"
+        "runtime_ui_production_stack_accessibility_host_evidence" = "0"
+        "runtime_ui_production_stack_invoked_text_shaping" = "0"
+        "runtime_ui_production_stack_invoked_font_rasterization" = "0"
+        "runtime_ui_production_stack_invoked_ime" = "0"
+        "runtime_ui_production_stack_invoked_accessibility_bridge" = "0"
+        "runtime_ui_production_stack_invoked_native_platform" = "0"
+        "runtime_ui_production_stack_invoked_renderer_upload" = "0"
+        "runtime_ui_production_stack_diagnostics" = "0"
+    }
+    foreach ($field in $expectedRuntimeUiProductionStackFields.Keys) {
+        $expectedValue = $expectedRuntimeUiProductionStackFields[$field]
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove runtime UI production stack field $field=$expectedValue."
+        }
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bruntime_ui_production_stack_replay_hash=[1-9]\d*\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove positive runtime UI production stack replay hash."
     }
 }
 if ($requiresPackageUploadStaging) {
