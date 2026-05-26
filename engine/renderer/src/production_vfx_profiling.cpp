@@ -224,6 +224,60 @@ void validate_postprocess_rows(RendererProductionVfxProfilingPlan& plan,
            (row.debug_scope_count > 0U || row.debug_marker_count > 0U);
 }
 
+[[nodiscard]] bool requires_strict_backend_evidence(rhi::BackendKind backend) noexcept {
+    return backend == rhi::BackendKind::d3d12 || backend == rhi::BackendKind::vulkan;
+}
+
+[[nodiscard]] bool backend_synchronization_evidence_ready(const RendererProductionBackendTimingRow& row) noexcept {
+    return row.resource_barrier_count > 0U && row.layout_transition_count > 0U && row.queue_wait_count > 0U &&
+           row.queue_ownership_transfer_reviewed;
+}
+
+[[nodiscard]] bool backend_shader_validation_ready(const RendererProductionBackendTimingRow& row) noexcept {
+    return row.shader_validation_count > 0U;
+}
+
+[[nodiscard]] bool backend_host_recipe_ready(const RendererProductionBackendTimingRow& row) noexcept {
+    return row.host_validated && row.strict_host_recipe_ready;
+}
+
+[[nodiscard]] bool backend_host_evidence_ready(const RendererProductionBackendTimingRow& row) noexcept {
+    return is_valid_timing_row(row) && backend_synchronization_evidence_ready(row) &&
+           backend_shader_validation_ready(row) && row.backend_validation_ready && backend_host_recipe_ready(row) &&
+           row.capture_handoff_ready;
+}
+
+[[nodiscard]] bool should_validate_full_backend_evidence(const RendererProductionBackendTimingRow& row) noexcept {
+    return requires_strict_backend_evidence(row.backend) || row.host_validated;
+}
+
+[[nodiscard]] RendererProductionBackendEvidenceRow
+make_backend_evidence_row(const RendererProductionBackendTimingRow& row) {
+    const auto timing_ready = is_valid_timing_row(row);
+    const auto synchronization_ready = backend_synchronization_evidence_ready(row);
+    const auto shader_ready = backend_shader_validation_ready(row);
+    const auto host_recipe_ready = backend_host_recipe_ready(row);
+    const auto host_ready = backend_host_evidence_ready(row);
+    return RendererProductionBackendEvidenceRow{
+        .backend = row.backend,
+        .profile_zone_id = row.profile_zone_id,
+        .resource_barrier_count = row.resource_barrier_count,
+        .layout_transition_count = row.layout_transition_count,
+        .queue_wait_count = row.queue_wait_count,
+        .queue_ownership_transfer_reviewed = row.queue_ownership_transfer_reviewed,
+        .shader_validation_count = row.shader_validation_count,
+        .timing_ready = timing_ready,
+        .synchronization_ready = synchronization_ready,
+        .shader_validation_ready = shader_ready,
+        .backend_validation_ready = row.backend_validation_ready,
+        .host_recipe_ready = host_recipe_ready,
+        .capture_handoff_ready = row.capture_handoff_ready,
+        .host_evidence_ready = host_ready,
+        .host_gated = row.backend == rhi::BackendKind::metal && !host_ready,
+        .source_index = row.source_index,
+    };
+}
+
 void validate_timing_rows(RendererProductionVfxProfilingPlan& plan,
                           const RendererProductionVfxProfilingRequest& request) {
     for (const auto& row : request.backend_timing_rows) {
@@ -233,12 +287,43 @@ void validate_timing_rows(RendererProductionVfxProfilingPlan& plan,
                            "backend timing row backend must be one of the required production backends",
                            row.source_index);
         }
-        if (!is_valid_timing_row(row) ||
-            (row.backend != rhi::BackendKind::metal && !row.host_validated && is_supported_backend(row.backend))) {
+        if (!is_valid_timing_row(row)) {
             add_diagnostic(plan, RendererProductionVfxProfilingDiagnosticCode::invalid_backend_timing, row.backend,
                            row.profile_zone_id,
-                           "backend timing rows require timestamp frequency, ordered ticks, calibration, markers, and "
-                           "host proof for non-Metal rows",
+                           "backend timing rows require timestamp frequency, ordered ticks, calibration, and markers",
+                           row.source_index);
+            continue;
+        }
+        if (!should_validate_full_backend_evidence(row)) {
+            continue;
+        }
+        if (!backend_synchronization_evidence_ready(row)) {
+            add_diagnostic(plan, RendererProductionVfxProfilingDiagnosticCode::missing_backend_synchronization_evidence,
+                           row.backend, row.profile_zone_id,
+                           "backend evidence requires reviewed barriers, layout transitions, queue waits, and queue "
+                           "ownership transfer assumptions",
+                           row.source_index);
+        }
+        if (!backend_shader_validation_ready(row)) {
+            add_diagnostic(plan, RendererProductionVfxProfilingDiagnosticCode::missing_backend_shader_validation,
+                           row.backend, row.profile_zone_id,
+                           "backend evidence requires shader artifact or tool validation proof", row.source_index);
+        }
+        if (!row.backend_validation_ready) {
+            add_diagnostic(plan, RendererProductionVfxProfilingDiagnosticCode::missing_backend_validation_evidence,
+                           row.backend, row.profile_zone_id,
+                           "backend evidence requires debug layer or validation layer proof", row.source_index);
+        }
+        if (!backend_host_recipe_ready(row)) {
+            add_diagnostic(plan, RendererProductionVfxProfilingDiagnosticCode::missing_backend_host_evidence,
+                           row.backend, row.profile_zone_id,
+                           "backend evidence requires an explicit host validation recipe result", row.source_index);
+        }
+        if (!row.capture_handoff_ready) {
+            add_diagnostic(plan, RendererProductionVfxProfilingDiagnosticCode::missing_backend_capture_handoff,
+                           row.backend, row.profile_zone_id,
+                           "backend evidence requires reviewed operator capture handoff proof without executing "
+                           "external capture",
                            row.source_index);
         }
     }
@@ -350,11 +435,17 @@ void append_output_rows(RendererProductionVfxProfilingPlan& plan,
     sort_rows(plan.postprocess_rows, [](const auto& row) -> std::string_view { return row.chain_id; });
     sort_rows(plan.backend_timing_rows, [](const auto& row) -> std::string_view { return row.profile_zone_id; });
     sort_rows(plan.crash_telemetry_handoff_rows, [](const auto& row) -> std::string_view { return row.handoff_id; });
+    plan.backend_evidence_rows.reserve(plan.backend_timing_rows.size());
+    for (const auto& row : plan.backend_timing_rows) {
+        plan.backend_evidence_rows.push_back(make_backend_evidence_row(row));
+    }
+    sort_rows(plan.backend_evidence_rows, [](const auto& row) -> std::string_view { return row.profile_zone_id; });
 
     plan.feature_row_count = plan.feature_rows.size();
     plan.gpu_particle_budget_row_count = plan.gpu_particle_budget_rows.size();
     plan.postprocess_row_count = plan.postprocess_rows.size();
     plan.backend_timing_row_count = plan.backend_timing_rows.size();
+    plan.backend_evidence_row_count = plan.backend_evidence_rows.size();
     plan.crash_telemetry_handoff_row_count = plan.crash_telemetry_handoff_rows.size();
 }
 
@@ -421,6 +512,14 @@ void hash_string(std::uint64_t& hash, std::string_view value) noexcept {
         hash_mix(hash, row.max_clock_deviation_ns);
         hash_mix(hash, row.debug_scope_count);
         hash_mix(hash, row.debug_marker_count);
+        hash_mix(hash, row.resource_barrier_count);
+        hash_mix(hash, row.layout_transition_count);
+        hash_mix(hash, row.queue_wait_count);
+        hash_mix(hash, row.queue_ownership_transfer_reviewed ? 1U : 0U);
+        hash_mix(hash, row.shader_validation_count);
+        hash_mix(hash, row.backend_validation_ready ? 1U : 0U);
+        hash_mix(hash, row.strict_host_recipe_ready ? 1U : 0U);
+        hash_mix(hash, row.capture_handoff_ready ? 1U : 0U);
         hash_mix(hash, row.host_validated ? 1U : 0U);
         hash_mix(hash, row.source_index);
     }
@@ -441,15 +540,36 @@ void hash_string(std::uint64_t& hash, std::string_view value) noexcept {
 
 void compute_host_evidence(RendererProductionVfxProfilingPlan& plan) {
     std::vector<rhi::BackendKind> host_validated_backends;
-    for (const auto& row : plan.backend_timing_rows) {
-        if (row.host_validated && !contains_backend(host_validated_backends, row.backend)) {
-            host_validated_backends.push_back(row.backend);
+    for (const auto& row : plan.backend_evidence_rows) {
+        if (row.host_evidence_ready) {
+            ++plan.backend_evidence_ready_count;
         }
-        if (row.backend == rhi::BackendKind::metal) {
-            plan.requires_metal_host_evidence = true;
-            if (row.host_validated) {
-                plan.has_metal_host_evidence = true;
+        if (row.host_gated) {
+            ++plan.backend_evidence_host_gated_count;
+        }
+    }
+    for (const auto backend : plan.required_backends) {
+        bool has_backend_row{false};
+        bool all_backend_rows_ready{true};
+        for (const auto& row : plan.backend_evidence_rows) {
+            if (row.backend != backend) {
+                continue;
             }
+            has_backend_row = true;
+            all_backend_rows_ready = all_backend_rows_ready && row.host_evidence_ready;
+        }
+        const auto backend_ready = has_backend_row && all_backend_rows_ready;
+        if (backend_ready && !contains_backend(host_validated_backends, backend)) {
+            host_validated_backends.push_back(backend);
+        }
+        if (backend == rhi::BackendKind::d3d12) {
+            plan.d3d12_host_evidence_ready = backend_ready;
+        } else if (backend == rhi::BackendKind::vulkan) {
+            plan.vulkan_strict_host_evidence_ready = backend_ready;
+        } else if (backend == rhi::BackendKind::metal) {
+            plan.requires_metal_host_evidence = true;
+            plan.metal_host_evidence_ready = backend_ready;
+            plan.has_metal_host_evidence = backend_ready;
         }
     }
     plan.host_validated_backend_count = host_validated_backends.size();

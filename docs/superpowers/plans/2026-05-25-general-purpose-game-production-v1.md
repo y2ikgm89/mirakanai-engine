@@ -618,7 +618,7 @@ PR: #231 merged addressable-content-streaming-production-v1 at merge commit 7109
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_production_vfx_profiling_tests sample_generated_desktop_runtime_3d_package`
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_renderer_production_vfx_profiling_tests|sample_generated_desktop_runtime_3d_package_smoke"`
 - GREEN: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package`
-- GREEN: selected generated 3D package smoke and installed validation require `rendering_vfx_profiling_status=host_evidence_required`, `rendering_vfx_profiling_reviewed=1`, `rendering_vfx_profiling_ready=0`, two rows each for feature, GPU particle budget, postprocess, backend timing, and crash telemetry handoff, one host-validated backend, positive `rendering_vfx_profiling_replay_hash`, Metal host evidence required but absent, zero GPU command/native capture/crash upload side-effect counters, and `rendering_vfx_profiling_diagnostics=0`.
+- GREEN: selected generated 3D package smoke and installed validation now require `rendering_vfx_profiling_status=host_evidence_required`, `rendering_vfx_profiling_reviewed=1`, `rendering_vfx_profiling_ready=0`, three rows each for feature, GPU particle budget, postprocess, backend timing, backend evidence, and crash telemetry handoff, D3D12 and strict Vulkan host evidence ready, positive `rendering_vfx_profiling_replay_hash`, Metal host evidence absent, zero GPU command/native capture/crash upload side-effect counters, and `rendering_vfx_profiling_diagnostics=0`.
 
 ## Validation
 
