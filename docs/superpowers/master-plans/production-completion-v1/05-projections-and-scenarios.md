@@ -92,6 +92,16 @@ Coverage statuses:
 | `host-gated` | Requires backend, platform, SDK, device, or toolchain evidence. |
 | `game-owned` | Belongs in `games/<game_name>/` unless it becomes a reusable engine primitive. |
 
+## Current Recommended Implementation Sequence
+
+The active selection slice is [Engine 1.0 Gap Matrix v1](../../plans/2026-05-26-engine-1-0-gap-matrix-v1.md). It keeps `unsupportedProductionGaps = []` and uses this matrix to choose the next implementation from the canonical rows in [04-developer-owned-engine-capability-backlog.md](04-developer-owned-engine-capability-backlog.md).
+
+1. Finish `engine-1-0-gap-matrix-v1` by syncing manifest pointers, current-truth docs, this matrix, and validation evidence.
+2. Select `sprite-collision-hitbox-v1` as the first concrete implementation candidate unless the operator explicitly chooses a different canonical row before implementation starts. It is narrow, not host-gated, and improves platformers, projectile games, adventure games, combat interactions, and dense 2D action scenarios.
+3. Prefer a short 2D production wave next: `sprite-sorting-layer-v1`, `sprite-9slice-and-tiled-v1`, and `sprite-effects-particles-v1`.
+4. Start a separate generated 3D production vertical-slice milestone only after the 2D production wave has a clean package evidence path, or when the operator explicitly prioritizes 3D.
+5. Keep runtime/background streaming, runtime UI platform adapters, editor productization, multiplayer execution, and Apple/Metal host evidence as later separate plans because they cross different architecture and validation boundaries.
+
 ## 2D Coverage Projection
 
 | Capability area | Current boundary | Canonical rows to select when broader support is needed |

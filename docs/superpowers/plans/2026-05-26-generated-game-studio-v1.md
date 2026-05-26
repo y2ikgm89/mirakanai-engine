@@ -4,7 +4,7 @@
 
 **Plan ID:** `generated-game-studio-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
 **Goal:** Turn the completed AI game-creation descriptors, package review loops, validation recipes, evidence import, remediation queue, and quality rubric into one reviewable Generated Game Studio workflow for AI-assisted 2D and 3D game iteration.
 
