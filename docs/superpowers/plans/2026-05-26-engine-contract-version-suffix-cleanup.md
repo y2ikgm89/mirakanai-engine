@@ -715,6 +715,7 @@ Candidate 5 evidence:
 - Hosted PR #246 static analysis exposed a stale Linux tidy build-cache path after the `schema_v2` file renames. `tools/check-tidy.ps1` now detects stale compile database source paths, reconfigures before running clang-tidy, and is guarded by `check-ai-integration` / `check-json-contracts`.
 - Follow-up audit removed unused `UiAtlasText*Row` parse-row structs whose `has_v0` / `has_v1` members were not future contracts and only created suffix false positives.
 - TDD RED: `check-ai-integration` and `check-json-contracts` were first updated to require a live suffix guard and failed until `Assert-NoLiveVersionSuffixContractText` was added. The guard scans `engine`, `games`, `editor`, `tools`, and `schemas` for removable version-suffix contract text and tracked path segments, with only explicit static-check literals allowed.
+- Agent-surface recurrence guidance is aligned across `AGENTS.md`, Codex/Claude/Cursor agent-integration skills, Claude/Cursor project rules, and agent-surface-auditor subagents so unused suffix false positives are removed rather than treated as future contracts.
 
 - [ ] **Step 6: Publish through GitHub Flow**
 

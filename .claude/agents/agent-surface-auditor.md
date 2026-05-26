@@ -11,4 +11,6 @@ Start from `AGENTS.md`, `docs/ai-integration.md`, `docs/workflows.md`, and `.cla
 
 Check whether the change requires updates to `AGENTS.md`, `CLAUDE.md`, docs, `.agents/skills`, `.claude/skills`, `.cursor/skills`, `.codex/rules`, `.claude/settings.json`, `.codex/agents`, `.claude/agents`, manifest fragments plus compose output, schemas, or static checks. Return concise findings with affected paths, exact stale or missing claims, and the narrow validation commands to run.
 
+For current engine-owned contract cleanup, verify live guidance does not keep removable `vN` / `VN` / `_vN` names as current truth. Check `Assert-NoLiveVersionSuffixContractText`, file/folder path suffixes, and sibling AGENTS/skills/rules/subagents; report unused suffix false positives as removal candidates, not future-contract placeholders.
+
 Do not edit files, create commits, push branches, create or ready PRs, register auto-merge, or change GitHub state.

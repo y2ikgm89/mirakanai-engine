@@ -564,6 +564,21 @@ Assert-ContainsText $cursorAgentIntegrationSkillText "Use lightweight static val
 Assert-ContainsText $cursorAgentIntegrationSkillText "HeaderFilterRegex" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "NN warnings generated." ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "agent-surface drift check" ".cursor/skills/gameengine-agent-integration/SKILL.md"
+foreach ($versionSuffixGuidanceFile in @(
+        "AGENTS.md",
+        ".agents/skills/gameengine-agent-integration/SKILL.md",
+        ".claude/skills/gameengine-agent-integration/SKILL.md",
+        ".cursor/skills/gameengine-agent-integration/SKILL.md",
+        ".claude/rules/ai-agent-integration.md",
+        ".cursor/rules/mirakana-repository-baseline.mdc",
+        ".codex/agents/agent-surface-auditor.toml",
+        ".claude/agents/agent-surface-auditor.md",
+        ".cursor/agents/agent-surface-auditor.md"
+    )) {
+    $versionSuffixGuidanceText = Get-AgentSurfaceText $versionSuffixGuidanceFile
+    Assert-ContainsText $versionSuffixGuidanceText "Assert-NoLiveVersionSuffixContractText" $versionSuffixGuidanceFile
+    Assert-ContainsText $versionSuffixGuidanceText "unused suffix false positives" $versionSuffixGuidanceFile
+}
 $cursorCmakeSkillText = Get-AgentSurfaceText ".cursor/skills/gameengine-cmake-build-system/SKILL.md"
 Assert-ContainsText $cursorCmakeSkillText "lcov --ignore-errors unused" ".cursor/skills/gameengine-cmake-build-system/SKILL.md"
 Assert-ContainsText $cursorCmakeSkillText "tools/check-coverage-thresholds.ps1" ".cursor/skills/gameengine-cmake-build-system/SKILL.md"
