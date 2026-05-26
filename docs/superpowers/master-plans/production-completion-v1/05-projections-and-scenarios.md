@@ -94,7 +94,7 @@ Coverage statuses:
 
 ## Current Recommended Implementation Sequence
 
-The latest selection slice, [Engine 1.0 Gap Matrix v1](../../plans/2026-05-26-engine-1-0-gap-matrix-v1.md), is complete. It kept `unsupportedProductionGaps = []`, selected `renderer-backend-parity-v1` strict Vulkan evidence as the first follow-up, and that follow-up landed with package-generated mapping compute SPIR-V proof plus reviewed validation-recipe execution. The manifest now points back to `next-production-gap-selection` until a future explicit developer-owned capability selection creates or activates the next dated plan.
+The latest selection slice, [Engine 1.0 Gap Matrix v1](../../plans/2026-05-26-engine-1-0-gap-matrix-v1.md), is complete. It kept `unsupportedProductionGaps = []`, selected `renderer-backend-parity-v1` strict Vulkan evidence as the first follow-up, and that follow-up landed with package-generated mapping compute SPIR-V proof plus reviewed validation-recipe execution. The manifest now selects [Renderer Production VFX Profiling Host Gate v1](../../plans/2026-05-26-renderer-production-vfx-profiling-host-gate-v1.md) as the next developer-owned capability slice for D3D12 and strict Vulkan renderer/VFX/profiling host evidence while Metal remains Apple-host-gated.
 
 1. Keep `sprite-collision-hitbox-v1`, `sprite-sorting-layer-v1`, `sprite-9slice-and-tiled-v1`, and `sprite-effects-particles-v1` out of new implementation selection unless a future row intentionally expands them beyond `implemented-1x-foundation`.
 2. Treat `renderer-backend-parity-v1` as still host-gated for Apple/Metal evidence; Windows/Vulkan proof must not promote Metal readiness.
