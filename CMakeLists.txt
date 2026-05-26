@@ -471,6 +471,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_playable_2d_tests)
     add_test(NAME MK_playable_2d_tests COMMAND MK_playable_2d_tests)
 
+    add_executable(MK_audio_tests
+        tests/unit/audio_production_tests.cpp
+    )
+    target_link_libraries(MK_audio_tests PRIVATE MK_audio)
+    target_include_directories(MK_audio_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_audio_tests)
+    add_test(NAME MK_audio_tests COMMAND MK_audio_tests)
+
     add_executable(MK_asset_identity_runtime_resource_tests
         tests/unit/asset_identity_runtime_resource_tests.cpp
     )

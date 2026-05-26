@@ -31,6 +31,20 @@ MK_TEST("sdl3 audio adapter validates engine audio device formats") {
     }));
 }
 
+MK_TEST("sdl3 audio adapter exposes production stream queue lifecycle evidence") {
+    const auto evidence = mirakana::sdl3_audio_device_lifecycle_evidence(true);
+
+    MK_REQUIRE(evidence.backend_id == "sdl3");
+    MK_REQUIRE(evidence.uses_logical_device);
+    MK_REQUIRE(evidence.uses_audio_stream);
+    MK_REQUIRE(evidence.uses_queueing);
+    MK_REQUIRE(!evidence.uses_callback);
+    MK_REQUIRE(evidence.can_pause_resume);
+    MK_REQUIRE(evidence.can_clear);
+    MK_REQUIRE(evidence.host_evidence_available);
+    MK_REQUIRE(!evidence.native_handle_exposed);
+}
+
 MK_TEST("sdl3 audio device opens dummy playback stream and queues pcm data") {
     mirakana::SdlAudioRuntime runtime(mirakana::SdlAudioRuntimeDesc{
         "dummy",

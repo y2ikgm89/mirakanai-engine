@@ -49,14 +49,14 @@
       {
         "name": "device-independent",
         "module": "MK_audio",
-        "status": "validated-gameplay-audio-mix-planner",
+        "status": "validated-gameplay-and-production-audio-review",
         "hosts": [
           "windows",
           "linux",
           "macos"
         ],
         "validation": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1",
-        "notes": "Gameplay cue/bus/fade/pause/loop/trigger planning through plan_gameplay_audio_mix, mixer scheduling, spatial voice/listener attenuation and pan metadata, decoded streaming queue append/consume/starvation state, streaming buffer state, format conversion intent, underrun diagnostics, selectable nearest/linear resampling, deterministic interleaved float PCM generation, and bounded device queue-fill planning through plan_audio_device_stream / render_audio_device_stream_interleaved_float are validated without opening an OS audio device."
+        "notes": "Gameplay cue/bus/fade/pause/loop/trigger planning through plan_gameplay_audio_mix, mixer scheduling, spatial voice/listener attenuation and pan metadata, decoded streaming queue append/consume/starvation state, streaming buffer state, format conversion intent, underrun diagnostics, selectable nearest/linear resampling, deterministic interleaved float PCM generation, and bounded device queue-fill planning through plan_audio_device_stream / render_audio_device_stream_interleaved_float are validated without opening an OS audio device. Audio Production Playback/Streaming/DSP/Spatialization Evidence v1 adds review_audio_production_readiness for reviewed decoded source, streaming chunk, conversion, budget, DSP graph, spatial/listener, HRTF host-gate, device lifecycle, unsupported claim, side-effect, selected-package, production-readiness, diagnostic, and replay-hash rows. sample_2d_desktop_runtime_package emits audio_production_* counters with selected package evidence ready while device and HRTF evidence remain host-gated; broad codec support, middleware parity, HRTF execution parity, background streaming execution, native handles, and general production audio quality remain unclaimed."
       },
       {
         "name": "sdl3-desktop",
@@ -68,7 +68,7 @@
           "macos"
         ],
         "validation": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1",
-        "notes": "Optional adapter opens SDL3 default playback streams and queues silence or interleaved float PCM while SDL handles remain private."
+        "notes": "Optional adapter opens SDL3 default playback streams and queues silence or interleaved float PCM while SDL handles remain private. sdl3_audio_device_lifecycle_evidence records callback-free SDL3 logical-device/audio-stream/queueing/pause-resume/clear evidence for audio production review; it is not device hotplug/selection parity, codec execution, HRTF execution, or public SDL/native handle access."
       }
     ],
     "ui": [

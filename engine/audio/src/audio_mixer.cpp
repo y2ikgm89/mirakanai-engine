@@ -177,6 +177,104 @@ void append_gameplay_mix_diagnostic(std::vector<AudioGameplayMixDiagnostic>& dia
         .code = code, .bus = std::move(bus), .cue_id = std::move(cue_id), .message = std::move(message)});
 }
 
+void append_audio_production_diagnostic(std::vector<AudioProductionDiagnostic>& diagnostics,
+                                        AudioProductionDiagnosticCode code, std::string evidence_id,
+                                        std::string message, std::uint32_t source_index) {
+    diagnostics.push_back(AudioProductionDiagnostic{
+        .code = code,
+        .evidence_id = std::move(evidence_id),
+        .message = std::move(message),
+        .source_index = source_index,
+    });
+}
+
+[[nodiscard]] bool valid_audio_production_dsp_node_kind(AudioProductionDspNodeKind kind) noexcept {
+    switch (kind) {
+    case AudioProductionDspNodeKind::gain:
+    case AudioProductionDspNodeKind::limiter:
+    case AudioProductionDspNodeKind::filter:
+    case AudioProductionDspNodeKind::send:
+        return true;
+    }
+    return false;
+}
+
+[[nodiscard]] bool valid_audio_production_decoded_source(const AudioProductionDecodedSourceEvidenceRow& row) noexcept {
+    return row.clip.value != 0U && is_valid_audio_device_format(row.format) && row.frame_count > 0U &&
+           row.decoded_byte_count > 0U && row.reviewed;
+}
+
+[[nodiscard]] bool
+valid_audio_production_streaming_chunk(const AudioProductionStreamingChunkEvidenceRow& row) noexcept {
+    return row.chunk.clip.value != 0U && is_valid_audio_device_format(row.chunk.format) && row.chunk.frame_count > 0U &&
+           row.queued_frame_count >= row.chunk.frame_count && row.reviewed;
+}
+
+[[nodiscard]] bool
+valid_audio_production_format_conversion_policy(const AudioProductionFormatConversionPolicyRow& row) noexcept {
+    return row.clip.value != 0U && is_valid_audio_device_format(row.source_format) &&
+           is_valid_audio_device_format(row.device_format) && valid_resampling_quality(row.resampling_quality) &&
+           row.reviewed;
+}
+
+[[nodiscard]] bool valid_audio_production_dsp_graph_row(const AudioProductionDspGraphRow& row) noexcept {
+    return valid_name(row.node_id) && valid_audio_production_dsp_node_kind(row.kind) && row.input_count > 0U &&
+           row.output_count > 0U && row.deterministic && row.reviewed;
+}
+
+[[nodiscard]] bool valid_audio_production_device_lifecycle(const AudioProductionDeviceLifecycleRow& row) noexcept {
+    return valid_name(row.backend_id) && row.uses_logical_device && row.uses_audio_stream && row.uses_queueing &&
+           !row.uses_callback && row.can_pause_resume && row.can_clear && !row.native_handle_exposed;
+}
+
+[[nodiscard]] std::size_t audio_production_row_count(const AudioProductionReviewRequest& request) noexcept {
+    return request.decoded_sources.size() + request.streaming_chunks.size() +
+           request.format_conversion_policies.size() + request.dsp_graph_rows.size() + request.spatial_voices.size() +
+           request.device_lifecycle_rows.size() + request.unsupported_claim_rows.size();
+}
+
+void mix_audio_production_hash(std::uint64_t& hash, std::uint64_t value) noexcept {
+    for (std::uint32_t byte_index = 0; byte_index < 8U; ++byte_index) {
+        const auto byte = static_cast<std::uint8_t>((value >> (byte_index * 8U)) & 0xFFU);
+        hash ^= byte;
+        hash *= 1099511628211ULL;
+    }
+}
+
+void mix_audio_production_hash(std::uint64_t& hash, std::string_view value) noexcept {
+    for (const auto character : value) {
+        hash ^= static_cast<std::uint8_t>(character);
+        hash *= 1099511628211ULL;
+    }
+}
+
+[[nodiscard]] std::uint64_t replay_hash_for_audio_production(const AudioProductionReviewRequest& request,
+                                                             const AudioProductionReadinessPlan& plan) noexcept {
+    auto hash = 1469598103934665603ULL;
+    mix_audio_production_hash(hash, request.seed);
+    mix_audio_production_hash(hash, plan.decoded_source_rows);
+    mix_audio_production_hash(hash, plan.streaming_chunk_rows);
+    mix_audio_production_hash(hash, plan.format_conversion_policy_rows);
+    mix_audio_production_hash(hash, plan.dsp_graph_rows);
+    mix_audio_production_hash(hash, plan.spatial_source_rows);
+    mix_audio_production_hash(hash, plan.device_lifecycle_rows);
+    mix_audio_production_hash(hash, plan.unsupported_claim_rows);
+    for (const auto& row : request.decoded_sources) {
+        mix_audio_production_hash(hash, row.clip.value);
+        mix_audio_production_hash(hash, row.frame_count);
+        mix_audio_production_hash(hash, row.decoded_byte_count);
+    }
+    for (const auto& row : request.dsp_graph_rows) {
+        mix_audio_production_hash(hash, row.node_id);
+        mix_audio_production_hash(hash, static_cast<std::uint64_t>(row.kind));
+    }
+    for (const auto& row : request.device_lifecycle_rows) {
+        mix_audio_production_hash(hash, row.backend_id);
+        mix_audio_production_hash(hash, row.host_evidence_available ? 1U : 0U);
+    }
+    return hash;
+}
+
 [[nodiscard]] float clamp_audio_sample(float sample) noexcept {
     return std::clamp(sample, -1.0F, 1.0F);
 }
@@ -332,6 +430,10 @@ bool is_valid_audio_device_stream_request(const AudioDeviceStreamRequest& reques
 
 bool AudioGameplayMixPlan::succeeded() const noexcept {
     return diagnostics.empty();
+}
+
+bool AudioProductionReadinessPlan::succeeded() const noexcept {
+    return status == AudioProductionReadinessStatus::ready && production_audio_ready && diagnostics.empty();
 }
 
 AudioGameplayMixPlan plan_gameplay_audio_mix(const AudioGameplayMixRequest& request) {
@@ -517,6 +619,236 @@ AudioDeviceStreamPlan plan_audio_device_stream(AudioDeviceStreamRequest request)
     plan.queued_frames_after = request.queued_frames + frames_to_render;
     plan.render_request.frame_count = frames_to_render;
     plan.render_request.device_frame = render_start_frame;
+    return plan;
+}
+
+AudioProductionReadinessPlan review_audio_production_readiness(const AudioProductionReviewRequest& request) {
+    AudioProductionReadinessPlan plan;
+    plan.decoded_source_rows = request.decoded_sources.size();
+    plan.streaming_chunk_rows = request.streaming_chunks.size();
+    plan.format_conversion_policy_rows = request.format_conversion_policies.size();
+    plan.bus_budget_rows = request.max_bus_budget > 0U ? 1U : 0U;
+    plan.voice_budget_rows = request.max_voice_budget > 0U ? 1U : 0U;
+    plan.dsp_graph_rows = request.dsp_graph_rows.size();
+    plan.listener_rows = is_valid_audio_spatial_listener_desc(request.listener) ? 1U : 0U;
+    plan.spatial_source_rows = request.spatial_voices.size();
+    plan.hrtf_host_gate_rows = request.spatial_voices.empty() ? 0U : 1U;
+    plan.device_lifecycle_rows = request.device_lifecycle_rows.size();
+    plan.unsupported_claim_rows = request.unsupported_claim_rows.size();
+    plan.requested_native_device_handles = request.request_native_device_handles;
+    plan.invoked_codec_decode = request.invoked_codec_decode;
+    plan.invoked_background_streaming = request.invoked_background_streaming;
+    plan.invoked_middleware = request.invoked_middleware;
+    plan.invoked_hrtf = request.invoked_hrtf;
+    plan.invoked_device_callback = request.invoked_device_callback;
+    plan.invoked_device_io = request.invoked_device_io;
+
+    bool invalid = false;
+    bool host_evidence_missing = false;
+    auto append_invalid = [&](AudioProductionDiagnosticCode code, std::string evidence_id, std::string message,
+                              std::uint32_t source_index) {
+        invalid = true;
+        append_audio_production_diagnostic(plan.diagnostics, code, std::move(evidence_id), std::move(message),
+                                           source_index);
+    };
+    auto append_host_missing = [&](AudioProductionDiagnosticCode code, std::string evidence_id, std::string message,
+                                   std::uint32_t source_index) {
+        host_evidence_missing = true;
+        append_audio_production_diagnostic(plan.diagnostics, code, std::move(evidence_id), std::move(message),
+                                           source_index);
+    };
+
+    bool rows_reviewed = request.official_sources_reviewed;
+    if (!request.official_sources_reviewed) {
+        append_invalid(AudioProductionDiagnosticCode::missing_official_source_review, "official-sources",
+                       "audio production evidence must record official source review", 0U);
+    }
+
+    bool decoded_sources_valid = !request.decoded_sources.empty();
+    if (request.decoded_sources.empty()) {
+        append_invalid(AudioProductionDiagnosticCode::missing_decoded_source, "decoded-sources",
+                       "audio production evidence requires reviewed decoded source rows", 0U);
+    }
+    for (const auto& row : request.decoded_sources) {
+        rows_reviewed = rows_reviewed && row.reviewed;
+        if (!valid_audio_production_decoded_source(row)) {
+            decoded_sources_valid = false;
+            append_invalid(AudioProductionDiagnosticCode::invalid_decoded_source, std::to_string(row.clip.value),
+                           "decoded source evidence must reference a reviewed non-empty decoded clip",
+                           row.source_index);
+        }
+    }
+
+    bool streaming_chunks_valid = !request.streaming_chunks.empty();
+    if (request.streaming_chunks.empty()) {
+        append_invalid(AudioProductionDiagnosticCode::missing_streaming_chunk, "streaming-chunks",
+                       "audio production evidence requires reviewed streaming chunk rows", 0U);
+    }
+    for (const auto& row : request.streaming_chunks) {
+        rows_reviewed = rows_reviewed && row.reviewed;
+        if (!valid_audio_production_streaming_chunk(row)) {
+            streaming_chunks_valid = false;
+            append_invalid(AudioProductionDiagnosticCode::invalid_streaming_chunk, std::to_string(row.chunk.clip.value),
+                           "streaming evidence must queue reviewed contiguous non-empty chunks", row.source_index);
+        }
+    }
+
+    bool format_conversion_valid = !request.format_conversion_policies.empty();
+    if (request.format_conversion_policies.empty()) {
+        append_invalid(AudioProductionDiagnosticCode::missing_format_conversion_policy, "format-conversion",
+                       "audio production evidence requires explicit format conversion policy rows", 0U);
+    }
+    for (const auto& row : request.format_conversion_policies) {
+        rows_reviewed = rows_reviewed && row.reviewed;
+        if (!valid_audio_production_format_conversion_policy(row)) {
+            format_conversion_valid = false;
+            append_invalid(
+                AudioProductionDiagnosticCode::invalid_format_conversion_policy, std::to_string(row.clip.value),
+                "format conversion policy must use reviewed valid source and device formats", row.source_index);
+        }
+    }
+
+    const auto voice_budget_valid =
+        request.max_voice_budget > 0U && request.active_voice_count <= request.max_voice_budget;
+    if (!voice_budget_valid) {
+        append_invalid(AudioProductionDiagnosticCode::invalid_voice_budget, "voice-budget",
+                       "audio production evidence requires active voices within a non-zero voice budget", 0U);
+    }
+
+    const auto bus_budget_valid = request.max_bus_budget > 0U && request.active_bus_count <= request.max_bus_budget;
+    if (!bus_budget_valid) {
+        append_invalid(AudioProductionDiagnosticCode::invalid_bus_budget, "bus-budget",
+                       "audio production evidence requires active buses within a non-zero bus budget", 0U);
+    }
+
+    const auto row_count = audio_production_row_count(request);
+    const auto row_budget_valid = request.row_budget > 0U && row_count <= request.row_budget;
+    if (!row_budget_valid) {
+        append_invalid(AudioProductionDiagnosticCode::row_budget_exceeded, "row-budget",
+                       "audio production evidence must fit inside the declared row budget", 0U);
+    }
+
+    bool dsp_graph_valid = !request.dsp_graph_rows.empty();
+    if (request.dsp_graph_rows.empty()) {
+        append_invalid(AudioProductionDiagnosticCode::missing_dsp_graph, "dsp-graph",
+                       "audio production evidence requires a reviewed deterministic DSP graph row", 0U);
+    }
+    for (const auto& row : request.dsp_graph_rows) {
+        rows_reviewed = rows_reviewed && row.reviewed;
+        if (!valid_audio_production_dsp_graph_row(row)) {
+            dsp_graph_valid = false;
+            append_invalid(AudioProductionDiagnosticCode::invalid_dsp_graph, row.node_id,
+                           "DSP graph rows must be reviewed deterministic nodes with inputs and outputs",
+                           row.source_index);
+        }
+    }
+
+    const auto listener_valid = is_valid_audio_spatial_listener_desc(request.listener);
+    if (!listener_valid) {
+        append_invalid(AudioProductionDiagnosticCode::missing_spatial_listener, "listener",
+                       "audio production evidence requires a valid spatial listener", 0U);
+    }
+
+    bool spatial_sources_valid = !request.spatial_voices.empty();
+    if (request.spatial_voices.empty()) {
+        append_invalid(AudioProductionDiagnosticCode::missing_spatial_source, "spatial-sources",
+                       "audio production evidence requires at least one spatial source row", 0U);
+    }
+    for (const auto& row : request.spatial_voices) {
+        if (!is_valid_audio_spatial_voice_desc(row)) {
+            spatial_sources_valid = false;
+            append_invalid(AudioProductionDiagnosticCode::invalid_spatial_evidence, std::to_string(row.voice.value),
+                           "spatial source rows must use valid voice ids, positions, and distance ranges", 0U);
+        }
+    }
+    if (!request.spatial_voices.empty() && !request.hrtf_host_evidence_available) {
+        append_host_missing(AudioProductionDiagnosticCode::missing_hrtf_host_gate, "hrtf-host-evidence",
+                            "selected package evidence is present, but HRTF or spatial host proof is still required",
+                            0U);
+    }
+    plan.hrtf_host_evidence_available = request.hrtf_host_evidence_available && !request.spatial_voices.empty();
+
+    bool device_lifecycle_valid = !request.device_lifecycle_rows.empty();
+    if (request.device_lifecycle_rows.empty()) {
+        append_invalid(AudioProductionDiagnosticCode::missing_device_lifecycle, "device-lifecycle",
+                       "audio production evidence requires a reviewed device lifecycle row", 0U);
+    }
+    plan.device_host_evidence_available =
+        !request.device_lifecycle_rows.empty() &&
+        std::ranges::all_of(request.device_lifecycle_rows,
+                            [](const AudioProductionDeviceLifecycleRow& row) { return row.host_evidence_available; });
+    for (const auto& row : request.device_lifecycle_rows) {
+        if (!valid_audio_production_device_lifecycle(row)) {
+            device_lifecycle_valid = false;
+            append_invalid(AudioProductionDiagnosticCode::invalid_device_lifecycle, row.backend_id,
+                           "device lifecycle rows must use logical stream queueing without callbacks or native handles",
+                           row.source_index);
+        }
+        if (row.native_handle_exposed) {
+            append_invalid(AudioProductionDiagnosticCode::native_handle_exposure, row.backend_id,
+                           "audio production review forbids exposing native device handles", row.source_index);
+        }
+    }
+    if (device_lifecycle_valid && !plan.device_host_evidence_available) {
+        append_host_missing(AudioProductionDiagnosticCode::missing_device_host_evidence, "device-host-evidence",
+                            "selected package evidence is present, but device host proof is still required", 0U);
+    }
+
+    for (const auto& row : request.unsupported_claim_rows) {
+        if (row.requested) {
+            append_invalid(AudioProductionDiagnosticCode::unsupported_audio_claim, row.claim_id,
+                           "audio production review rejects broad codec, middleware, and platform-parity claims",
+                           row.source_index);
+        }
+    }
+
+    if (request.request_native_device_handles) {
+        append_invalid(AudioProductionDiagnosticCode::native_handle_exposure, "native-device-handles",
+                       "audio production review does not expose native device handles", 0U);
+    }
+    if (request.invoked_codec_decode) {
+        append_invalid(AudioProductionDiagnosticCode::side_effect_claim, "codec-decode",
+                       "audio production review must not invoke arbitrary codec decode", 0U);
+    }
+    if (request.invoked_background_streaming) {
+        append_invalid(AudioProductionDiagnosticCode::side_effect_claim, "background-streaming",
+                       "audio production review must not start background streaming execution", 0U);
+    }
+    if (request.invoked_middleware) {
+        append_invalid(AudioProductionDiagnosticCode::side_effect_claim, "middleware",
+                       "audio production review must not invoke audio middleware", 0U);
+    }
+    if (request.invoked_hrtf) {
+        append_invalid(AudioProductionDiagnosticCode::side_effect_claim, "hrtf-execution",
+                       "audio production review records HRTF gates without executing HRTF processing", 0U);
+    }
+    if (request.invoked_device_callback) {
+        append_invalid(AudioProductionDiagnosticCode::side_effect_claim, "device-callback",
+                       "audio production review must not install device callbacks", 0U);
+    }
+    if (request.invoked_device_io) {
+        append_invalid(AudioProductionDiagnosticCode::side_effect_claim, "device-io",
+                       "audio production review must not perform device IO", 0U);
+    }
+
+    plan.reviewed = rows_reviewed;
+    plan.selected_package_evidence_ready =
+        !invalid && rows_reviewed && decoded_sources_valid && streaming_chunks_valid && format_conversion_valid &&
+        voice_budget_valid && bus_budget_valid && row_budget_valid && dsp_graph_valid && listener_valid &&
+        spatial_sources_valid && plan.hrtf_host_gate_rows > 0U && device_lifecycle_valid;
+    plan.production_audio_ready = plan.selected_package_evidence_ready && plan.device_host_evidence_available &&
+                                  plan.hrtf_host_evidence_available;
+
+    if (invalid) {
+        plan.status = AudioProductionReadinessStatus::invalid_request;
+    } else if (plan.production_audio_ready) {
+        plan.status = AudioProductionReadinessStatus::ready;
+    } else if (plan.selected_package_evidence_ready && host_evidence_missing) {
+        plan.status = AudioProductionReadinessStatus::host_evidence_required;
+    } else {
+        plan.status = AudioProductionReadinessStatus::invalid_request;
+    }
+    plan.replay_hash = replay_hash_for_audio_production(request, plan);
     return plan;
 }
 

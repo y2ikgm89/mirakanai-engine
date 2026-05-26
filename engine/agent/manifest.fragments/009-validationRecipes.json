@@ -176,6 +176,16 @@
       "purpose": "Validate the first-party networking production security gate, networking foundation, transport adapter facade, and replication review tests, including threat-model, session lifecycle, connection state, channel policy, sequence/replay rejection, input command validation, snapshot validation, rollback-window diagnostics, and host-gated loopback/replication separation without broad online-service claims."
     },
     {
+      "name": "audio-production",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R \"MK_audio_tests|MK_sdl3_audio_tests\"",
+      "purpose": "Validate Audio Production Playback/Streaming/DSP/Spatialization Evidence v1, including review_audio_production_readiness over decoded source, streaming chunk, conversion, budget, DSP graph, spatial/listener, HRTF host-gate, device lifecycle, unsupported-claim, side-effect, selected-package, production-readiness, diagnostic, and replay-hash rows plus SDL3 callback-free device lifecycle evidence without broad codec, middleware, HRTF execution, background streaming, native-handle, or general production audio quality claims."
+    },
+    {
+      "name": "desktop-runtime-2d-audio-production-proof",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools\\package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package",
+      "purpose": "Build the selected 2D desktop runtime package proof and validate audio_production_* counters for reviewed decoded source, streaming chunk, conversion, DSP, spatial/listener, HRTF host gate, SDL3 device lifecycle, unsupported-claim, side-effect, diagnostic, and replay-hash evidence. Installed validation expects audio_production_status=host_evidence_required, selected package evidence ready, device and HRTF host evidence unavailable, zero codec/background/middleware/HRTF/device-callback/device-IO side effects, two host-gate diagnostics, and a positive replay hash without claiming broad codec support, middleware parity, HRTF execution parity, background streaming execution, native handles, or general production audio quality."
+    },
+    {
       "name": "network-enet",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-network-enet.ps1",
       "purpose": "Validate the optional ENet network adapter lane behind MK_runtime_network_enet, including network-enet configure/build/CTest for the transport adapter and production security gate targets, local reliable/unreliable loopback host evidence, install/export, and an installed SDK consumer that links mirakana::runtime_network_enet when Mirakanai_HAS_NETWORK_ENET is true."
