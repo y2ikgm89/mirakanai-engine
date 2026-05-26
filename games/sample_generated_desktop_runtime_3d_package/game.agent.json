@@ -2004,7 +2004,27 @@
       "first-party-cooked-fixture"
     ],
     "cookedOnlyRuntime": true,
-    "externalImportersRequired": []
+    "externalImportersRequired": [],
+    "productionImportReview": {
+      "id": "broad-reviewed-asset-import-production-review-v1",
+      "status": "descriptor-only",
+      "reviewApi": "mirakana::review_asset_import_production_readiness",
+      "reviewedAdapters": [
+        "first-party-source-documents",
+        "gltf",
+        "material-source",
+        "hlsl-offline-compile-request"
+      ],
+      "implementedExternalAdaptersRequired": [],
+      "unsupportedClaims": [
+        "arbitrary-importer-plugin",
+        "external-asset-download",
+        "live-shader-generation",
+        "runtime-source-parsing",
+        "native-handle-access",
+        "broad-codec-readiness"
+      ]
+    }
   },
   "packagingTargets": [
     "desktop-game-runtime",

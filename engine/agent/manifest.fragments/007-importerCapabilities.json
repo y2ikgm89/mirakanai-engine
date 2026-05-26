@@ -35,6 +35,42 @@
         "status": "implemented-optional-adapter",
         "ownerModule": "MK_tools"
       }
-    ]
+    ],
+    "productionReview": {
+      "id": "broad-reviewed-asset-import-production-review-v1",
+      "status": "implemented-value-contract",
+      "ownerModule": "MK_assets",
+      "publicApi": "mirakana::review_asset_import_production_readiness",
+      "requiredFeatureRows": [
+        "source_root_policy",
+        "gltf_geometry",
+        "gltf_animation",
+        "ktx_texture",
+        "source_image",
+        "source_audio",
+        "material_source",
+        "shader_offline_compile_request",
+        "package_cook_output"
+      ],
+      "implementedAdapterEvidence": [
+        "first-party-source-documents",
+        "png",
+        "gltf",
+        "common-audio"
+      ],
+      "reviewOnlyRows": [
+        "KTX2/Basis evidence rows may be reviewed when supplied, but no first-party KTX importer adapter is implemented by this row.",
+        "Shader rows are reviewed offline compile-request/package-cache evidence only, not compiler execution."
+      ],
+      "unsupportedClaims": [
+        "arbitrary importer plugin execution",
+        "external asset download",
+        "live shader generation",
+        "source mutation outside reviewed roots",
+        "runtime source parsing",
+        "native handle exposure",
+        "broad codec readiness"
+      ]
+    }
   }
 }
