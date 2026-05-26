@@ -1,5 +1,9 @@
 # Prompt or narrowly allow commands that commonly need local trust, network
 # access, user caches, signing state, or out-of-sandbox execution.
+# Keep Codex rules as scoped command policy. Current engine contract cleanup
+# stays versionless: keep Assert-NoLiveVersionSuffixContractText aligned and
+# treat unused suffix false positives as removal candidates, not future
+# placeholders.
 # Rule edits are not guaranteed to relax the active Codex command policy in
 # the same session; rely on policy reload or a new session before running
 # newly allowed commands.

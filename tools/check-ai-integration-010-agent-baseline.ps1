@@ -569,6 +569,7 @@ foreach ($versionSuffixGuidanceFile in @(
         ".agents/skills/gameengine-agent-integration/SKILL.md",
         ".claude/skills/gameengine-agent-integration/SKILL.md",
         ".cursor/skills/gameengine-agent-integration/SKILL.md",
+        ".codex/rules/gameengine.rules",
         ".claude/rules/ai-agent-integration.md",
         ".cursor/rules/mirakana-repository-baseline.mdc",
         ".codex/agents/agent-surface-auditor.toml",
