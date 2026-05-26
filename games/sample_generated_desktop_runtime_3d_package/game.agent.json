@@ -156,7 +156,8 @@
         "renderer-quality-matrix",
         "rendering-vfx-profiling",
         "animation",
-        "package-streaming"
+        "package-streaming",
+        "audio-production"
       ],
       "packageTargets": [
         "desktop-game-runtime",
@@ -168,6 +169,7 @@
         "installed-d3d12-3d-package-smoke",
         "installed-3d-runtime-menu-hud-smoke",
         "installed-3d-audio-gameplay-mixer-smoke",
+        "installed-3d-audio-production-smoke",
         "installed-d3d12-3d-scene-collision-package-smoke",
         "installed-d3d12-3d-native-ui-overlay-smoke",
         "installed-d3d12-3d-directional-shadow-smoke"
@@ -244,6 +246,13 @@
           "evidence": "Audio gameplay mixer smoke reads a cooked package audio payload, then reports deterministic bus, cue, trigger, command, pause, fade, loop, spatial, render, and payload diagnostic counters without native device handles.",
           "recipeIds": [
             "installed-3d-audio-gameplay-mixer-smoke"
+          ]
+        },
+        {
+          "id": "audio-production",
+          "evidence": "Audio production smoke reads the same cooked package audio payload, then reports audio_production_status=host_evidence_required, reviewed selected-package evidence, decoded source, streaming chunk, format conversion, DSP graph, bus/voice budget, spatial/listener, HRTF host-gate, SDL3 device lifecycle, zero side-effect, two diagnostic, and positive replay-hash counters without claiming broad codec, middleware, HRTF execution, background streaming, native handles, or general production audio quality.",
+          "recipeIds": [
+            "installed-3d-audio-production-smoke"
           ]
         },
         {
@@ -1984,7 +1993,7 @@
   "backendReadiness": {
     "platform": "sdl3-desktop-host-gated",
     "graphics": "host-built D3D12 DXIL shader artifacts for selected package validation with optional generated 3D renderer quality counters for scene GPU + depth-aware postprocess with framegraph_passes=2, framegraph_passes_executed=4, framegraph_render_passes_recorded=4, framegraph_barrier_steps_executed=9, renderer_quality_expected_framegraph_render_passes=4, and renderer_quality_expected_framegraph_barrier_steps=9, selected visible generated 3D production-style counters, selected directional shadow smoke counters with framegraph_render_passes_recorded=6, selected D3D12 graphics morph + directional shadow receiver counters with framegraph_render_passes_recorded=6, selected D3D12 native UI overlay HUD box counters, selected D3D12 cooked UI atlas image sprite and text glyph texture overlay counters, selected playable_3d_* package counters, and selected D3D12 package upload staging/resource-update counters through --require-package-upload-staging, and selected renderer_quality_matrix_* package counters with D3D12/Vulkan matrix readiness plus Metal host-gated rows; Vulkan SPIR-V artifacts are toolchain-gated for generated 3D quality, shadow, playable, and native UI overlay artifacts, while visible proof, shadow-morph composition, native UI overlay readiness, generated 3D cooked UI atlas texture overlay readiness, and package upload staging readiness remain D3D12-selected until separate Vulkan recipes land; NullRenderer fallback remains available; Metal readiness, broad shadow quality, morph-deformed shadow-caster silhouettes, compute morph + shadow composition, production text/font UI, runtime source image decoding, source image atlas packing, broad GPU timestamp execution beyond reviewed timing rows, backend-native stats beyond reviewed handoff rows, broad renderer quality, and broad generated 3D readiness remain unsupported",
-    "audio": "device-independent gameplay systems package smoke plus deterministic NullRenderer fallback",
+    "audio": "selected cooked gameplay-audio package payload proof through --require-audio-gameplay-mixer and --require-audio-production; audio_production_* evidence stays host-gated for real device and HRTF evidence and does not claim broad codec support, middleware parity, background streaming execution, native handles, or general production audio quality",
     "ui": "mirakana_ui HUD box submission plus one cooked GameEngine.UiAtlas.v1 image sprite and one cooked GameEngine.UiAtlas.v1 text glyph are validated through selected D3D12 host-owned native UI overlay package smokes; production text shaping, font rasterization, glyph atlas generation, runtime source image decoding, source image atlas packing, native accessibility bridges, Metal overlay readiness, and broad UI renderer quality remain unsupported",
     "physics": "first-party deterministic authored-collision/controller package smoke, character/dynamic interaction policy counters, selected distance/fixed/linear-axis positional constraint counters, selected value-only kinematic motion and public simple vehicle policy counters, selected GameEngine.PhysicsCollisionScene3D.v1 package collision smoke, and selected collision_query_batch_ready package counters only; no middleware, native physics backend, dynamic-vs-dynamic TOI, rotational CCD, rotational rigid-body constraints, 2D CCD, persistent joint assets, broad vehicle dynamics/persistent vehicle simulation APIs, or scene/physics perception integration"
   },
@@ -2272,6 +2281,10 @@
     {
       "name": "installed-3d-audio-gameplay-mixer-smoke",
       "command": "out\\install\\desktop-runtime-release\\bin\\sample_generated_desktop_runtime_3d_package.exe --smoke --require-config runtime/sample_generated_desktop_runtime_3d_package.config --require-scene-package runtime/sample_generated_desktop_runtime_3d_package.geindex --require-audio-gameplay-mixer"
+    },
+    {
+      "name": "installed-3d-audio-production-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_generated_desktop_runtime_3d_package.exe --smoke --require-config runtime/sample_generated_desktop_runtime_3d_package.config --require-scene-package runtime/sample_generated_desktop_runtime_3d_package.geindex --require-audio-production"
     },
     {
       "name": "installed-d3d12-3d-native-ui-overlay-smoke",

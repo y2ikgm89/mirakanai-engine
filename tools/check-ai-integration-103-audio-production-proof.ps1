@@ -13,6 +13,8 @@ $sdlAudioTestText = Get-AgentSurfaceText "tests/unit/sdl3_audio_tests.cpp"
 $specText = Get-AgentSurfaceText "docs/specs/2026-05-27-audio-production-playback-streaming-dsp-spatialization.md"
 $sampleMainText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/main.cpp"
 $sampleManifestText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/game.agent.json"
+$sample3dMainText = Get-AgentSurfaceText "games/sample_generated_desktop_runtime_3d_package/main.cpp"
+$sample3dManifestText = Get-AgentSurfaceText "games/sample_generated_desktop_runtime_3d_package/game.agent.json"
 $installedValidationText = Get-AgentSurfaceText "tools/validate-installed-desktop-runtime.ps1"
 $planText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-26-engine-general-production-quality-expansion-v1.md"
 $registryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
@@ -106,9 +108,12 @@ foreach ($needle in @(
         "audio_production_replay_hash"
     )) {
     Assert-ContainsText $sampleMainText $needle "games/sample_2d_desktop_runtime_package/main.cpp"
+    Assert-ContainsText $sample3dMainText $needle "games/sample_generated_desktop_runtime_3d_package/main.cpp"
 }
+Assert-ContainsText $sample3dMainText "--require-audio-production" "games/sample_generated_desktop_runtime_3d_package/main.cpp"
 
 foreach ($needle in @(
+        "--require-audio-production",
         "audio_production_status",
         "audio_production_selected_package_ready",
         "audio_production_invoked_codec_decode",
@@ -126,6 +131,18 @@ foreach ($needle in @(
         "hrtf-execution-parity"
     )) {
     Assert-ContainsText $sampleManifestText $needle "games/sample_2d_desktop_runtime_package/game.agent.json"
+}
+
+foreach ($needle in @(
+        "audio-production",
+        "installed-3d-audio-production-smoke",
+        "--require-audio-production",
+        "audio_production_*",
+        "broad codec",
+        "middleware",
+        "HRTF"
+    )) {
+    Assert-ContainsText $sample3dManifestText $needle "games/sample_generated_desktop_runtime_3d_package/game.agent.json"
 }
 
 foreach ($docSurface in @(
@@ -154,6 +171,8 @@ foreach ($needle in @(
 Assert-ContainsText $readinessFragmentText "audio_production_*" "engine/agent/manifest.fragments/006-runtimeBackendReadiness.json"
 Assert-ContainsText $recipesFragmentText '"audio-production"' "engine/agent/manifest.fragments/009-validationRecipes.json"
 Assert-ContainsText $recipesFragmentText '"desktop-runtime-2d-audio-production-proof"' "engine/agent/manifest.fragments/009-validationRecipes.json"
+Assert-ContainsText $recipesFragmentText '"desktop-runtime-3d-audio-production-proof"' "engine/agent/manifest.fragments/009-validationRecipes.json"
 Assert-ContainsText $manifestText "desktop-runtime-2d-audio-production-proof" "engine/agent/manifest.json"
+Assert-ContainsText $manifestText "desktop-runtime-3d-audio-production-proof" "engine/agent/manifest.json"
 Assert-ContainsText $loopFragmentText "Audio Production Playback/Streaming/DSP/Spatialization Evidence v1" "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json"
 Assert-ContainsText $gameGuidanceFragmentText "currentAudioProductionEvidence" "engine/agent/manifest.fragments/014-gameCodeGuidance.json"
