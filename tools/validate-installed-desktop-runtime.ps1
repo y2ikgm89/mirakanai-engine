@@ -194,6 +194,7 @@ if ($requiresD3d12DebugProfilingEvidence -or $requiresVulkanDebugProfilingEviden
 }
 $requiresShadowMorphComposition = @($SmokeArgs) -contains "--require-shadow-morph-composition"
 $requiresRendererQualityGates = @($SmokeArgs) -contains "--require-renderer-quality-gates"
+$requiresRendererQualityMatrix = @($SmokeArgs) -contains "--require-renderer-quality-matrix"
 $requiresRenderingVfxProfiling = @($SmokeArgs) -contains "--require-rendering-vfx-profiling"
 $requiresPlayable3dSlice = @($SmokeArgs) -contains "--require-playable-3d-slice"
 $requiresVisible3dProductionProof = @($SmokeArgs) -contains "--require-visible-3d-production-proof"
@@ -216,6 +217,7 @@ if ($requiresVulkanGpuSkinningEvidence) {
 }
 if ($requiresRenderingVfxProfiling) {
     $requiresRendererQualityGates = $true
+    $requiresRendererQualityMatrix = $true
 }
 $requiresFrameGraphMultiQueueEvidence = @($SmokeArgs) -contains "--require-framegraph-multiqueue-evidence"
 $requiresVulkanFrameGraphMultiQueueEvidence = @($SmokeArgs) -contains "--require-vulkan-framegraph-multiqueue-evidence"
@@ -3473,6 +3475,37 @@ if ($requiresRendererQualityGates) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove renderer quality gate field: $field=$($expectedRendererQualityFields[$field])"
         }
+    }
+}
+if ($requiresRendererQualityMatrix) {
+    $expectedRendererQualityMatrixFields = @{
+        "renderer_quality_matrix_status" = "host_evidence_required"
+        "renderer_quality_matrix_reviewed" = "1"
+        "renderer_quality_matrix_ready" = "0"
+        "renderer_quality_matrix_rows" = "21"
+        "renderer_quality_matrix_ready_rows" = "14"
+        "renderer_quality_matrix_host_gated_rows" = "7"
+        "renderer_quality_matrix_host_validated_backends" = "2"
+        "renderer_quality_matrix_d3d12_ready" = "1"
+        "renderer_quality_matrix_vulkan_strict_ready" = "1"
+        "renderer_quality_matrix_metal_ready" = "0"
+        "renderer_quality_matrix_requires_metal_host_evidence" = "1"
+        "renderer_quality_matrix_metal_host_evidence" = "0"
+        "renderer_quality_matrix_selected_package_evidence_ready" = "1"
+        "renderer_quality_matrix_general_renderer_quality_ready" = "0"
+        "renderer_quality_matrix_invoked_gpu_commands" = "0"
+        "renderer_quality_matrix_invoked_native_capture" = "0"
+        "renderer_quality_matrix_invoked_crash_upload" = "0"
+        "renderer_quality_matrix_diagnostics" = "0"
+    }
+    foreach ($field in $expectedRendererQualityMatrixFields.Keys) {
+        $expectedValue = [regex]::Escape($expectedRendererQualityMatrixFields[$field])
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove renderer quality matrix field: $field=$($expectedRendererQualityMatrixFields[$field])"
+        }
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\brenderer_quality_matrix_replay_hash=[1-9]\d*\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove positive renderer quality matrix replay hash."
     }
 }
 if ($requiresRenderingVfxProfiling) {

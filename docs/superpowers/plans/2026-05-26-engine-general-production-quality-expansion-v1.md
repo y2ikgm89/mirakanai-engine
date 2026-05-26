@@ -119,7 +119,7 @@ Phase 0 evidence on 2026-05-26:
 
 Execute phases in this order. Each phase should be a reviewable PR or a small cluster of tightly related PRs. Do not promote a phase from planned to ready until its "Phase Evidence" section is filled with commands, results, and host gates.
 
-## Phase 1 - Renderer General Quality Matrix
+## Phase 1 - Renderer General Quality Matrix v1
 
 **Goal:** Replace selected-package renderer confidence with explicit production-quality gates across materials, lighting/shadows, postprocess, sprite/UI, scene scale, GPU memory, profiling, and backend parity.
 
@@ -140,22 +140,36 @@ Execute phases in this order. Each phase should be a reviewable PR or a small cl
 - Modify: `tools/validate-installed-desktop-runtime.ps1`
 - Modify or create: `tools/check-ai-integration-098-renderer-quality-matrix.ps1`
 
-- [ ] Re-check D3D12, Vulkan, and Metal official docs for any API touched in this phase and record the exact URLs in this plan.
-- [ ] Add RED tests requiring a renderer quality matrix to fail closed when any claim lacks backend-local evidence.
-- [ ] Add RED tests for D3D12 resource-state/barrier/fence evidence, strict Vulkan synchronization2/layout/validation/SPIR-V evidence, and Apple-host-gated Metal evidence as independent rows.
-- [ ] Add RED tests that reject public native handles, capture execution side effects, crash upload execution, inferred backend parity, and subjective visual-quality claims without evidence.
-- [ ] Implement backend-neutral `RendererQualityMatrix*` value rows and diagnostics. Keep data explicit: feature id, backend id, proof source, shader/tool validation, resource synchronization, package counter ids, timing budget rows, host gate, and unsupported claim rows.
-- [ ] Emit selected package counters for D3D12 and strict Vulkan only when their row evidence is ready; emit Metal as host-gated until Apple evidence exists.
-- [ ] Update generated 3D package smoke and installed validation to require exact renderer quality fields, not a single broad `renderer_ready` flag.
-- [ ] Run focused validation:
+- [x] Re-check D3D12, Vulkan, and Metal official docs for any API touched in this phase and record the exact URLs in this plan.
+- [x] Add RED tests requiring a renderer quality matrix to fail closed when any claim lacks backend-local evidence.
+- [x] Add RED tests for D3D12 resource-state/barrier/fence evidence, strict Vulkan synchronization2/layout/validation/SPIR-V evidence, and Apple-host-gated Metal evidence as independent rows.
+- [x] Add RED tests that reject public native handles, capture execution side effects, crash upload execution, inferred backend parity, and subjective visual-quality claims without evidence.
+- [x] Implement backend-neutral `RendererQualityMatrix*` value rows and diagnostics. Keep data explicit: feature id, backend id, proof source, shader/tool validation, resource synchronization, package counter ids, timing budget rows, host gate, and unsupported claim rows.
+- [x] Emit selected package counters for D3D12 and strict Vulkan only when their row evidence is ready; emit Metal as host-gated until Apple evidence exists.
+- [x] Update generated 3D package smoke and installed validation to require exact renderer quality fields, not a single broad `renderer_ready` flag.
+- [x] Run focused validation:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_production_vfx_profiling_tests sample_generated_desktop_runtime_3d_package
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "renderer_quality_matrix|MK_renderer_production_vfx_profiling_tests|sample_generated_desktop_runtime_3d_package_smoke"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_production_vfx_profiling_tests MK_renderer_quality_matrix_tests sample_generated_desktop_runtime_3d_package
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_renderer_production_vfx_profiling_tests|MK_renderer_quality_matrix_tests|sample_generated_desktop_runtime_3d_package_smoke"
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 ```
 
-**Phase Evidence:** Not started.
+**Phase Evidence:** Phase 1 implementation and local validation complete; GitHub Flow publication is in progress.
+
+- Official docs rechecked on 2026-05-26:
+  - Microsoft Learn Direct3D 12 resource barriers: <https://learn.microsoft.com/en-us/windows/win32/direct3d12/using-resource-barriers-to-synchronize-resource-states-in-direct3d-12>
+  - Microsoft Learn Direct3D 12 multi-engine synchronization/fences: <https://learn.microsoft.com/en-us/windows/win32/direct3d12/user-mode-heap-synchronization>
+  - Microsoft Learn D3D12 GPU-based validation/debug layer: <https://learn.microsoft.com/en-us/windows/win32/direct3d12/using-d3d12-debug-layer-gpu-based-validation>
+  - Khronos Vulkan synchronization/cache control: <https://docs.vulkan.org/spec/latest/chapters/synchronization.html>
+  - Apple Metal resource synchronization: <https://developer.apple.com/documentation/metal/resource-synchronization>
+  - Apple Metal feature set tables: <https://developer.apple.com/metal/capabilities/>
+- RED test evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_quality_matrix_tests` failed before implementation because `mirakana/renderer/renderer_quality_matrix.hpp` did not exist.
+- Focused build evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_production_vfx_profiling_tests MK_renderer_quality_matrix_tests sample_generated_desktop_runtime_3d_package` passed.
+- Focused test evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_renderer_production_vfx_profiling_tests|MK_renderer_quality_matrix_tests|sample_generated_desktop_runtime_3d_package_smoke"` passed.
+- Package evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package` passed; `plan_renderer_quality_matrix` installed smoke required `renderer_quality_matrix_status=host_evidence_required`, `renderer_quality_matrix_rows=21`, `renderer_quality_matrix_ready_rows=14`, `renderer_quality_matrix_host_gated_rows=7`, D3D12/Vulkan ready, Metal host-gated, side effects zero, and `renderer_quality_matrix_general_renderer_quality_ready=0`.
+- Full slice validation evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed; 88/88 CTest tests passed, and Apple/Metal evidence remained diagnostic host-gated on this Windows host.
 
 ## Phase 2 - Runtime UI Text, Font, IME, And Accessibility Production Stack
 
