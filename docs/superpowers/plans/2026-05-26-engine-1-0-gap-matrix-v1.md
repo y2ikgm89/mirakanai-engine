@@ -12,7 +12,7 @@
 
 **Plan ID:** `engine-1-0-gap-matrix-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
 **Context:** `Generated Game Studio v1` has package/evidence orchestration implemented. The next recommended work is not another broad implementation wave; it is a short official selection pass that maps 2D/3D "necessary / useful / future" engine capabilities onto canonical backlog rows and records the next concrete implementation target.
 
@@ -35,6 +35,12 @@ Use this selection order:
 3. Select `renderer-backend-parity-v1` strict Vulkan evidence as the first concrete follow-up candidate on a host with Vulkan runtime, DXC SPIR-V CodeGen, and `spirv-val`. This is the only remaining actionable canonical row on the current Windows host after non-host-gated rows are closed.
 4. Keep Apple/Metal evidence as a separate Apple-host-gated candidate; Windows-only validation must not promote Metal readiness.
 5. Keep runtime/background streaming, runtime UI platform adapters, editor productization, and multiplayer execution as later separate plans only if future canonical rows reopen those surfaces with explicit evidence requirements.
+
+## Closeout Evidence
+
+Engine 1.0 Gap Matrix v1 completed the governance selection pass through PR #247, then the selected `renderer-backend-parity-v1` strict Vulkan follow-up completed through PR #248. The strict Vulkan package proof now includes the sample-owned mapping compute SPIR-V artifact and reviewed `run-validation-recipe` execution for hyphen-prefixed `SmokeArgs`.
+
+No Engine 1.0 unsupported gap was reopened. The closeout returns `currentActivePlan` to the production-completion master plan with `recommendedNextPlan.id = next-production-gap-selection`; Apple/Metal evidence remains Apple-host-gated.
 
 ## File Structure
 
