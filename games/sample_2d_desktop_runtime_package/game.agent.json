@@ -133,6 +133,7 @@
         "installed-2d-package-smoke",
         "installed-2d-gameplay-systems-smoke",
         "installed-2d-runtime-ui-workbench-smoke",
+        "installed-2d-runtime-ui-production-stack-smoke",
         "installed-2d-runtime-menu-hud-smoke",
         "installed-2d-audio-gameplay-mixer-smoke",
         "installed-2d-simulation-orchestration-smoke",
@@ -197,6 +198,13 @@
           "evidence": "Runtime UI workbench smoke reports deterministic menu, inventory, equipment, shop, simulation dashboard table and graph, focus navigation, text input, localization identity, and accessibility identity counters.",
           "recipeIds": [
             "installed-2d-runtime-ui-workbench-smoke"
+          ]
+        },
+        {
+          "id": "runtime-ui-production-stack",
+          "evidence": "Runtime UI production stack smoke reports side-effect-free text/font/IME/accessibility evidence rows, selected package counters, host gates, zero adapter invocation, and a positive replay hash without claiming broad production UI readiness.",
+          "recipeIds": [
+            "installed-2d-runtime-ui-production-stack-smoke"
           ]
         },
         {
@@ -412,6 +420,7 @@
             "installed-2d-simulation-orchestration-smoke",
             "installed-2d-gameplay-authoring-review-smoke",
             "installed-2d-runtime-ui-workbench-smoke",
+            "installed-2d-runtime-ui-production-stack-smoke",
             "installed-2d-sprite-effects-particles-smoke",
             "installed-d3d12-window-smoke",
             "installed-native-2d-sprite-smoke",
@@ -450,6 +459,7 @@
             "installed-2d-simulation-orchestration-smoke",
             "installed-2d-gameplay-authoring-review-smoke",
             "installed-2d-runtime-ui-workbench-smoke",
+            "installed-2d-runtime-ui-production-stack-smoke",
             "installed-d3d12-window-smoke",
             "installed-native-2d-sprite-smoke",
             "installed-vulkan-window-smoke"
@@ -486,6 +496,7 @@
             "installed-2d-simulation-orchestration-smoke",
             "installed-2d-gameplay-authoring-review-smoke",
             "installed-2d-runtime-ui-workbench-smoke",
+            "installed-2d-runtime-ui-production-stack-smoke",
             "installed-d3d12-window-smoke",
             "installed-native-2d-sprite-smoke",
             "installed-vulkan-window-smoke"
@@ -564,6 +575,7 @@
             "installed-2d-simulation-orchestration-smoke",
             "installed-2d-gameplay-authoring-review-smoke",
             "installed-2d-runtime-ui-workbench-smoke",
+            "installed-2d-runtime-ui-production-stack-smoke",
             "installed-d3d12-window-smoke",
             "installed-native-2d-sprite-smoke",
             "installed-vulkan-window-smoke"
@@ -1814,7 +1826,7 @@
     "platform": "sdl3-desktop-host-gated",
     "graphics": "NullRenderer fallback plus host-gated D3D12 package window smoke, native 2D sprite package proof with atlas-backed scene sprite plan counters, selected world/UI/effects sprite batch budget profile counters, and renderer-owned native sprite batch execution counters, and Vulkan package window smoke through packaged shader artifacts. Sprite atlas source authoring remains a reviewed tooling/source contract only; runtime image decoding, renderer/RHI residency from source images, public native or RHI handle access, broad production sprite batching readiness beyond selected plan/budget/native-execution evidence, and general production renderer quality remain unsupported.",
     "audio": "device-independent cooked audio payload mixed through mirakana_audio",
-    "ui": "mirakana_ui-headless renderer submission plus Runtime UI Workbench package evidence through --require-runtime-ui-workbench",
+    "ui": "mirakana_ui-headless renderer submission plus Runtime UI Workbench package evidence through --require-runtime-ui-workbench and Runtime UI Production Stack selected package evidence through --require-runtime-ui-production-stack",
     "physics": "MK_physics 2D deterministic contact and trigger proof through --require-gameplay-systems",
     "navigation": "MK_navigation grid path planning and agent update proof through --require-gameplay-systems",
     "ai": "MK_ai behavior authoring, perception-blackboard, and behavior-tree proof plus MK_runtime quest/dialogue progression, inventory items crafting, RPG systems review, construction placement validation, procedural generation, entity scale/culling package evidence, scripting sandbox policy package evidence, networking foundation policy package evidence, simulation orchestration package evidence, MK_tools gameplay authoring review and production authoring workflow package evidence, and MK_runtime_scene placement/procedural-placement intent proof through --require-gameplay-systems, --require-procedural-generation, --require-entity-scale-culling, --require-scripting-sandbox-policy, --require-networking-foundation-policy, --require-simulation-orchestration, --require-gameplay-authoring-review, and --require-production-authoring-workflows"
@@ -1901,6 +1913,7 @@
         "installed-2d-simulation-orchestration-smoke",
         "installed-2d-gameplay-authoring-review-smoke",
         "installed-2d-runtime-ui-workbench-smoke",
+        "installed-2d-runtime-ui-production-stack-smoke",
         "installed-2d-sprite-effects-particles-smoke"
       ]
     }
@@ -1931,6 +1944,7 @@
         "installed-2d-simulation-orchestration-smoke",
         "installed-2d-gameplay-authoring-review-smoke",
         "installed-2d-runtime-ui-workbench-smoke",
+        "installed-2d-runtime-ui-production-stack-smoke",
         "installed-2d-sprite-effects-particles-smoke",
         "installed-d3d12-window-smoke",
         "installed-vulkan-window-smoke"
@@ -1983,6 +1997,7 @@
         "installed-2d-gameplay-authoring-review-smoke",
         "installed-2d-production-authoring-workflows-smoke",
         "installed-2d-runtime-ui-workbench-smoke",
+        "installed-2d-runtime-ui-production-stack-smoke",
         "installed-native-2d-sprite-smoke",
         "installed-d3d12-window-smoke",
         "installed-vulkan-window-smoke"
@@ -2063,12 +2078,16 @@
       "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-runtime-ui-workbench"
     },
     {
+      "name": "installed-2d-runtime-ui-production-stack-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-runtime-ui-production-stack"
+    },
+    {
       "name": "installed-d3d12-window-smoke",
       "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-d3d12-shaders --video-driver windows --require-d3d12-renderer"
     },
     {
       "name": "installed-native-2d-sprite-smoke",
-      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-d3d12-shaders --video-driver windows --require-d3d12-renderer --require-native-2d-sprites --require-sprite-animation --require-sprite-9slice-tiled --require-sprite-effects-particles --require-tilemap-runtime-ux --require-gameplay-systems --require-procedural-generation --require-world-region-streaming --require-entity-scale-culling --require-scripting-sandbox-policy --require-networking-foundation-policy --require-simulation-orchestration --require-gameplay-authoring-review --require-production-authoring-workflows --require-runtime-ui-workbench --require-runtime-profile-resume --require-runtime-menu-hud"
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-d3d12-shaders --video-driver windows --require-d3d12-renderer --require-native-2d-sprites --require-sprite-animation --require-sprite-9slice-tiled --require-sprite-effects-particles --require-tilemap-runtime-ux --require-gameplay-systems --require-procedural-generation --require-world-region-streaming --require-entity-scale-culling --require-scripting-sandbox-policy --require-networking-foundation-policy --require-simulation-orchestration --require-gameplay-authoring-review --require-production-authoring-workflows --require-runtime-ui-workbench --require-runtime-ui-production-stack --require-runtime-profile-resume --require-runtime-menu-hud"
     },
     {
       "name": "installed-vulkan-window-smoke",

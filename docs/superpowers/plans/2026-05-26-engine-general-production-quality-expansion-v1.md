@@ -163,36 +163,36 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 
 
 **Files:**
 
-- Modify: `engine/ui/include/mirakana/ui/ui.hpp`
-- Modify: `engine/ui/src/ui.cpp`
-- Modify: `engine/ui/include/mirakana/ui/runtime_ui_workbench.hpp`
-- Modify: `engine/ui/src/runtime_ui_workbench.cpp`
+- Create: `engine/ui/include/mirakana/ui/runtime_ui_production_stack.hpp`
+- Create: `engine/ui/src/runtime_ui_production_stack.cpp`
+- Modify: `engine/ui/CMakeLists.txt`
 - Modify: `engine/ui_renderer/include/mirakana/ui_renderer/ui_renderer.hpp`
 - Modify: `engine/ui_renderer/src/ui_renderer.cpp`
 - Modify: `engine/platform/sdl3/include/mirakana/platform/sdl3/sdl_ui_platform_integration.hpp`
 - Modify: `engine/platform/sdl3/src/sdl_ui_platform_integration.cpp`
 - Create optional adapter folders only when selected: `engine/ui/text/`, `engine/ui/font/`, or equivalent existing ownership-compatible paths.
+- Create: `tests/unit/runtime_ui_production_stack_tests.cpp`
 - Modify: `tests/unit/runtime_ui_workbench_tests.cpp`
 - Modify: `tests/unit/ui_renderer_tests.cpp`
 - Modify: `docs/ui.md`
 - Modify package sample files only after value contracts are green.
 
-- [ ] Re-check SDL3 text input/clipboard, HarfBuzz shaping, FreeType glyph metrics/rasterization, and platform accessibility docs for the exact adapter path selected.
-- [ ] Add RED tests for shaping request segmentation, glyph clusters, advances/offsets, fallback-font rows, bidi/line-break boundaries, and unsupported broad text-layout claims.
-- [ ] Add RED tests for glyph rasterization request validation, glyph bitmap rows, atlas placement rows, eviction/budget diagnostics, and renderer texture upload handoff without public RHI handles.
-- [ ] Add RED tests for IME session begin/update/end, candidate rows, text input area/cursor rows, committed text application, and platform adapter dispatch boundaries.
-- [ ] Add RED tests for accessibility semantic tree rows: role, label, state, focus, action, relationships, live-region/update rows, and OS publication host gates.
-- [ ] Implement the clean-break first-party text stack contracts. Keep shaping, rasterization, atlas packing, renderer submission, IME, and accessibility publication as separate value rows.
-- [ ] Add optional dependency adapter plans only after dependency/legal review. Do not add HarfBuzz, FreeType, ICU, or platform SDK dependencies silently.
-- [ ] Add selected package counters for visible runtime UI text/atlas and accessibility/IME readiness. Counters must report adapter invocations and host gates separately.
-- [ ] Run focused validation:
+- [x] Re-check SDL3 text input/clipboard, HarfBuzz shaping, FreeType glyph metrics/rasterization, and platform accessibility docs for the exact adapter path selected.
+- [x] Add RED tests for shaping request segmentation, glyph clusters, advances/offsets, fallback-font rows, bidi/line-break boundaries, and unsupported broad text-layout claims.
+- [x] Add RED tests for glyph rasterization request validation, glyph bitmap rows, atlas placement rows, eviction/budget diagnostics, and renderer texture upload handoff without public RHI handles.
+- [x] Add RED tests for IME session begin/update/end, candidate rows, text input area/cursor rows, committed text application, and platform adapter dispatch boundaries.
+- [x] Add RED tests for accessibility semantic tree rows: role, label, state, focus, action, relationships, live-region/update rows, and OS publication host gates.
+- [x] Implement the clean-break first-party text stack contracts. Keep shaping, rasterization, atlas packing, renderer submission, IME, and accessibility publication as separate value rows.
+- [x] Add optional dependency adapter plans only after dependency/legal review. Do not add HarfBuzz, FreeType, ICU, or platform SDK dependencies silently.
+- [x] Add selected package counters for visible runtime UI text/atlas and accessibility/IME readiness. Counters report adapter invocations and host gates separately.
+- [x] Run focused validation:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_ui_tests MK_ui_renderer_tests sample_2d_desktop_runtime_package sample_generated_desktop_runtime_3d_package
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_ui_production_stack_tests MK_runtime_ui_workbench_tests MK_ui_renderer_tests sample_2d_desktop_runtime_package sample_generated_desktop_runtime_3d_package
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "runtime_ui|ui_renderer|sample_2d_desktop_runtime_package_smoke|sample_generated_desktop_runtime_3d_package_smoke"
 ```
 
-**Phase Evidence:** Not started.
+**Phase Evidence:** Complete. RED: `tools/cmake.ps1 --build --preset dev --target MK_runtime_ui_production_stack_tests` failed because `mirakana/ui/runtime_ui_production_stack.hpp` did not exist. GREEN focused evidence: `plan_runtime_ui_production_stack` plus `RuntimeUiProductionEvidenceRow` / `RuntimeUiProductionStackRequest` / `RuntimeUiProductionStackPlan` landed in `MK_ui`; `tools/cmake.ps1 --build --preset dev --target MK_runtime_ui_production_stack_tests MK_runtime_ui_workbench_tests sample_2d_desktop_runtime_package sample_generated_desktop_runtime_3d_package`, then `tools/cmake.ps1 --build --preset dev --target MK_ui_renderer_tests`, `tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_ui_production_stack_tests|MK_runtime_ui_workbench_tests|MK_ui_renderer_tests"`, `tools/ctest.ps1 --preset dev --output-on-failure -R "sample_2d_desktop_runtime_package"`, and `tools/ctest.ps1 --preset dev --output-on-failure -R "sample_generated_desktop_runtime_3d_package"` passed on Windows/MSVC dev. The selected package lane now includes `sample_2d_desktop_runtime_package --require-runtime-ui-production-stack`, which reports `runtime_ui_production_stack_status=host_evidence_required`, six evidence rows, four ready rows, two host-gated rows, zero adapter/native/renderer-upload invocation fields, clean diagnostics, and a positive replay hash without claiming broad production runtime UI readiness. Package proof `tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package` and full `tools/validate.ps1` passed.
 
 ## Phase 3 - Broad Reviewed Asset Import And Cook Pipeline
 
