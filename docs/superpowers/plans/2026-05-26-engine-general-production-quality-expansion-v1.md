@@ -435,17 +435,28 @@ Initial Phase 6 evidence on 2026-05-27:
 - Modify editor rows only if selected: `editor/core/`, `editor/src/`, editor tests.
 - Modify docs/specs and validation recipes for generated-game guidance.
 
-- [ ] Add package/generator descriptors for only the phases that have landed. Avoid forward-declaring ready recipe ids.
-- [ ] Add smoke flags and installed validation fields for renderer quality, runtime UI text/font/IME/accessibility, broad import, physics/nav breadth, networking execution, and audio production evidence as each phase lands.
-- [ ] Add editor/operator review rows only for reviewed evidence import, diagnostics, or safe execution. Do not add arbitrary shell or raw manifest command execution.
-- [ ] Run package validation lanes selected by the implemented phase set:
+- [x] Add package/generator descriptors for only the phases that have landed. Avoid forward-declaring ready recipe ids.
+- [x] Add smoke flags and installed validation fields for renderer quality, runtime UI text/font/IME/accessibility, broad import, physics/nav breadth, networking execution, and audio production evidence as each phase lands.
+- [x] Add editor/operator review rows only for reviewed evidence import, diagnostics, or safe execution. Do not add arbitrary shell or raw manifest command execution.
+- [x] Run package validation lanes selected by the implemented phase set:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package
 ```
 
-**Phase Evidence:** Not started.
+**Phase Evidence:**
+
+- RED evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -Command "& .\tools\package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package -SmokeArgs @('--smoke','--require-config','runtime/sample_generated_desktop_runtime_3d_package.config','--require-scene-package','runtime/sample_generated_desktop_runtime_3d_package.geindex','--require-audio-production')"` failed before implementation with `unknown argument: --require-audio-production`.
+- GREEN focused build: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset desktop-runtime-release --target sample_generated_desktop_runtime_3d_package` passed after adding the selected audio production package smoke.
+- Package proof: `sample_generated_desktop_runtime_3d_package` now accepts `--require-audio-production`, loads the cooked generated 3D gameplay audio payload, and emits `audio_production_*` counters with `audio_production_status=host_evidence_required`, selected package evidence ready, device/HRTF host evidence unavailable, zero unsupported/side-effect rows, `audio_production_diagnostics=2`, and a positive replay hash.
+- Installed validation: `tools/validate-installed-desktop-runtime.ps1` now validates the shared `audio_production_*` field set for any installed smoke requiring `--require-audio-production`, while preserving the existing default 2D package audio production assertions.
+- Package validation passed for:
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -Command "& .\tools\package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package -SmokeArgs @('--smoke','--require-config','runtime/sample_generated_desktop_runtime_3d_package.config','--require-scene-package','runtime/sample_generated_desktop_runtime_3d_package.geindex','--require-audio-production')"`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package`
+- Editor/operator rows were not selected for this slice because the new evidence is package/runtime-only and does not add an editor import, diagnostics, or execution surface. `tools/new-game-templates.ps1` was also left unchanged because the generic 3D scaffold does not yet own the committed sample's cooked gameplay audio payload contract; adding generic scaffold audio production remains a separate generator-template slice.
+- Slice validation passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` completed with all 93 CTest tests passing. Diagnostic-only host gates remained unchanged: Metal tools are missing on Windows, Apple packaging/host evidence is blocked on non-macOS, and Android is ready except release signing/device smoke configuration.
 
 ## Phase 8 - Agent Surface Drift, Closeout, And Publication
 
