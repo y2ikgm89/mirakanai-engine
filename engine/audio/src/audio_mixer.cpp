@@ -234,23 +234,25 @@ valid_audio_production_format_conversion_policy(const AudioProductionFormatConve
 }
 
 void mix_audio_production_hash(std::uint64_t& hash, std::uint64_t value) noexcept {
+    constexpr std::uint64_t hash_prime = 1099511628211ULL;
     for (std::uint32_t byte_index = 0; byte_index < 8U; ++byte_index) {
         const auto byte = static_cast<std::uint8_t>((value >> (byte_index * 8U)) & 0xFFU);
         hash ^= byte;
-        hash *= 1099511628211ULL;
+        hash *= hash_prime;
     }
 }
 
 void mix_audio_production_hash(std::uint64_t& hash, std::string_view value) noexcept {
+    constexpr std::uint64_t hash_prime = 1099511628211ULL;
     for (const auto character : value) {
         hash ^= static_cast<std::uint8_t>(character);
-        hash *= 1099511628211ULL;
+        hash *= hash_prime;
     }
 }
 
 [[nodiscard]] std::uint64_t replay_hash_for_audio_production(const AudioProductionReviewRequest& request,
                                                              const AudioProductionReadinessPlan& plan) noexcept {
-    auto hash = 1469598103934665603ULL;
+    std::uint64_t hash = 1469598103934665603ULL;
     mix_audio_production_hash(hash, request.seed);
     mix_audio_production_hash(hash, plan.decoded_source_rows);
     mix_audio_production_hash(hash, plan.streaming_chunk_rows);
