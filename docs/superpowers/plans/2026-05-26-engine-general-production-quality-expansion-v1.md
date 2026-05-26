@@ -147,7 +147,7 @@ Execute phases in this order. Each phase should be a reviewable PR or a small cl
 - [ ] Implement backend-neutral `RendererQualityMatrix*` value rows and diagnostics. Keep data explicit: feature id, backend id, proof source, shader/tool validation, resource synchronization, package counter ids, timing budget rows, host gate, and unsupported claim rows.
 - [ ] Emit selected package counters for D3D12 and strict Vulkan only when their row evidence is ready; emit Metal as host-gated until Apple evidence exists.
 - [ ] Update generated 3D package smoke and installed validation to require exact renderer quality fields, not a single broad `renderer_ready` flag.
-- [ ] Run focused validation:
+- [x] Run focused validation:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_production_vfx_profiling_tests sample_generated_desktop_runtime_3d_package
@@ -202,6 +202,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 
 - Modify: `engine/assets/include/mirakana/assets/asset_import_pipeline.hpp`
 - Modify: `engine/assets/src/asset_import_pipeline.cpp`
+- Create: `engine/assets/include/mirakana/assets/asset_import_production_review.hpp`
+- Create: `engine/assets/src/asset_import_production_review.cpp`
 - Modify: `engine/tools/include/mirakana/tools/asset_import_tool.hpp`
 - Modify: `engine/tools/asset/asset_import_tool.cpp`
 - Modify: `engine/tools/include/mirakana/tools/asset_import_adapters.hpp`
@@ -215,14 +217,15 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 - Modify: `THIRD_PARTY_NOTICES.md`
 - Modify: `tests/unit/assets_*`
 - Modify: `tests/unit/tools_*`
+- Create: `tests/unit/asset_import_production_review_tests.cpp`
 - Modify: sample `game.agent.json` importer capability rows.
 
-- [ ] Re-check Khronos glTF 2.0, glTF Validator, KTX2/Basis, DXC/SPIR-V validation, selected image/audio codec, and vcpkg official docs before dependency changes.
-- [ ] Add RED tests for reviewed import manifests: allowed source roots, explicit importer id, declared extensions, declared output package rows, license/provenance rows, and deterministic content hashes.
-- [ ] Add RED tests that reject arbitrary importer plugins, external downloads, live shader generation, source mutation outside reviewed roots, native handles, and compiler execution without reviewed command rows.
+- [x] Re-check Khronos glTF 2.0, glTF Validator, KTX2/Basis, DXC/SPIR-V validation, selected image/audio codec, and vcpkg official docs before dependency changes.
+- [x] Add RED tests for reviewed import manifests: allowed source roots, explicit importer id, declared extensions, declared output package rows, license/provenance rows, and deterministic content hashes.
+- [x] Add RED tests that reject arbitrary importer plugins, external downloads, live shader generation, source mutation outside reviewed roots, native handles, and compiler execution without reviewed command rows.
 - [ ] Add glTF/KTX/source-image/audio import breadth in small sub-phases. Each adapter must have schema validation, source diagnostics, package handoff rows, and legal/dependency records before promotion.
-- [ ] Add shader generation only as reviewed offline compile-request/package-cache planning unless a separate phase implements actual compiler execution with host/toolchain evidence.
-- [ ] Update generated 2D/3D game manifests with broad import capability descriptors only for implemented adapters.
+- [x] Add shader generation only as reviewed offline compile-request/package-cache planning unless a separate phase implements actual compiler execution with host/toolchain evidence.
+- [x] Update generated 2D/3D game manifests with broad import capability descriptors only for implemented adapters.
 - [ ] Run focused validation:
 
 ```powershell
@@ -231,7 +234,20 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "asset|tools|gltf|import"
 ```
 
-**Phase Evidence:** Not started.
+**Phase Evidence:** In progress.
+
+Phase 3 candidate evidence on 2026-05-26:
+
+- Official sources checked before this candidate: Microsoft vcpkg manifest mode / `vcpkg.json` docs, Khronos glTF 2.0 specification and glTF Validator docs, Khronos KTX/KTX2/Basis pages, Context7 `/microsoft/vcpkg`, Context7 `/khronosgroup/ktx-software`, and Context7 `/jkuhlmann/cgltf`.
+- RED evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_import_production_review_tests` failed while `mirakana/assets/asset_import_production_review.hpp` did not exist.
+- GREEN evidence so far: `MK_assets` now exposes `AssetImportProductionReviewRequest`, `AssetImportProductionEvidenceRow`, `AssetImportProductionDiagnosticCode`, `AssetImportProductionReview`, and `review_asset_import_production_readiness` as a value-only review surface. Focused build and CTest passed for `MK_asset_import_production_review_tests`.
+- Focused validation passed:
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_import_production_review_tests MK_assets_tests MK_tools_tests`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_identity_runtime_resource_tests MK_tools_runtime_hot_reload_package_tests sample_ui_audio_assets`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "asset|tools|gltf|import"` passed 6/6 tests.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1`, `tools/build-asset-importers.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, and `tools/check-format.ps1` passed.
+- Full slice validation passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` completed with `validate: ok` and CTest 88/88 passed. Diagnostic-only host gates remained Metal/Apple host evidence, as expected on this Windows host.
+- This candidate intentionally does not implement a KTX2/Basis importer adapter, new image/audio codecs, live shader generation, compiler execution, package mutation, runtime source parsing, external downloads, or broad codec readiness. Adapter sub-phases remain unchecked until dependency/legal records and host/package evidence exist.
 
 ## Phase 4 - Physics And Navigation Production Breadth
 

@@ -175,6 +175,7 @@ For editor-assisted packaged playtests, use Editor Playtest Package Review Loop 
 - Use for: engine-owned PNG, glTF, or common audio source importer validation, not game runtime parsing.
 - Modules: `mirakana_assets`, `mirakana_platform`, `mirakana_tools`.
 - Importer requirements: `sourceFormats=["png","gltf","common-audio"]`, `cookedOnlyRuntime=true`.
+- Production review: engine-owned broad import promotion must use `mirakana::review_asset_import_production_readiness` over explicit `AssetImportProductionEvidenceRow` rows before claiming broad source/cook readiness. Descriptor-only `game.agent.json.importerRequirements.productionImportReview` rows may name implemented adapters already present in the manifest, but they must not imply arbitrary importer plugins, external downloads, live shader generation, runtime source parsing, native handle access, or broad codec/KTX2/Basis readiness.
 - Packaging target: `asset-importers`.
 - Proof: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1`.
 
