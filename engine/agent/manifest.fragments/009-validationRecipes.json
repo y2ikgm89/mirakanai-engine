@@ -171,9 +171,14 @@
       "purpose": "Validate the optional Jolt Physics adapter lane behind MK_physics_jolt, including physics-jolt configure/build/CTest, install/export, and an installed SDK consumer that links mirakana::physics_jolt when Mirakanai_HAS_PHYSICS_JOLT is true."
     },
     {
+      "name": "network-production-security",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R \"runtime_network|production_network_replication\"",
+      "purpose": "Validate the first-party networking production security gate, networking foundation, transport adapter facade, and replication review tests, including threat-model, session lifecycle, connection state, channel policy, sequence/replay rejection, input command validation, snapshot validation, rollback-window diagnostics, and host-gated loopback/replication separation without broad online-service claims."
+    },
+    {
       "name": "network-enet",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-network-enet.ps1",
-      "purpose": "Validate the optional ENet network adapter lane behind MK_runtime_network_enet, including network-enet configure/build/CTest, install/export, and an installed SDK consumer that links mirakana::runtime_network_enet when Mirakanai_HAS_NETWORK_ENET is true."
+      "purpose": "Validate the optional ENet network adapter lane behind MK_runtime_network_enet, including network-enet configure/build/CTest for the transport adapter and production security gate targets, local reliable/unreliable loopback host evidence, install/export, and an installed SDK consumer that links mirakana::runtime_network_enet when Mirakanai_HAS_NETWORK_ENET is true."
     },
     {
       "name": "release-package",

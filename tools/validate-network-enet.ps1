@@ -50,13 +50,14 @@ $sdkTargets = @(
     "sample_ui_audio_assets"
 )
 $testTargets = @(
+    "MK_runtime_network_production_security_tests",
     "MK_runtime_network_transport_adapter_tests",
     "MK_runtime_network_enet_tests"
 )
 $buildArguments = @("--build", "--preset", "network-enet", "--target") + $sdkTargets + $testTargets
 Invoke-CheckedCommand $tools.CMake @buildArguments
 
-Invoke-CheckedCommand $tools.CTest --preset network-enet --output-on-failure -R "MK_runtime_network_(transport_adapter|enet)_tests"
+Invoke-CheckedCommand $tools.CTest --preset network-enet --output-on-failure -R "MK_runtime_network_(production_security|transport_adapter|enet)_tests"
 
 $installPrefix = Join-Path $root "out/install/network-enet"
 $vcpkgInstalled = Join-Path $root "vcpkg_installed/x64-windows"

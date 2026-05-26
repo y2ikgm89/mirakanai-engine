@@ -23,6 +23,7 @@
 #include "mirakana/runtime/genre_sandbox_world.hpp"
 #include "mirakana/runtime/genre_simulation_management.hpp"
 #include "mirakana/runtime/inventory_items.hpp"
+#include "mirakana/runtime/network_production_security.hpp"
 #include "mirakana/runtime/networking_foundation.hpp"
 #include "mirakana/runtime/procedural_generation.hpp"
 #include "mirakana/runtime/production_network_replication.hpp"
@@ -251,6 +252,33 @@ struct NetworkReplicationProbeResult {
     bool invoked_rollback_execution{false};
     bool invoked_world_mutation{false};
     std::size_t diagnostics{0U};
+    bool reviewed{false};
+    bool ready{false};
+};
+
+struct NetworkProductionSecurityProbeResult {
+    mirakana::runtime::RuntimeNetworkProductionSecurityStatus status{
+        mirakana::runtime::RuntimeNetworkProductionSecurityStatus::invalid_request};
+    std::size_t session_lifecycle_rows{0U};
+    std::size_t connection_state_rows{0U};
+    std::size_t channel_policy_rows{0U};
+    std::size_t reliable_delivery_rows{0U};
+    std::size_t unreliable_delivery_rows{0U};
+    std::size_t sequence_replay_rejection_rows{0U};
+    std::size_t input_command_validation_rows{0U};
+    std::size_t snapshot_validation_rows{0U};
+    std::size_t rollback_window_diagnostic_rows{0U};
+    std::size_t unsupported_online_claim_rows{0U};
+    std::size_t diagnostics{0U};
+    std::uint64_t replay_hash{0U};
+    bool threat_model_reviewed{false};
+    bool loopback_host_evidence{false};
+    bool replication_evidence_ready{false};
+    bool general_online_ready{false};
+    bool invoked_external_network_io{false};
+    bool invoked_threads{false};
+    bool invoked_save_io{false};
+    bool invoked_world_mutation{false};
     bool reviewed{false};
     bool ready{false};
 };
@@ -941,6 +969,19 @@ network_replication_status_name(mirakana::runtime::RuntimeNetworkReplicationStat
     case mirakana::runtime::RuntimeNetworkReplicationStatus::no_rows:
         return "no_rows";
     case mirakana::runtime::RuntimeNetworkReplicationStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] const char*
+network_production_security_status_name(mirakana::runtime::RuntimeNetworkProductionSecurityStatus status) noexcept {
+    switch (status) {
+    case mirakana::runtime::RuntimeNetworkProductionSecurityStatus::ready:
+        return "ready";
+    case mirakana::runtime::RuntimeNetworkProductionSecurityStatus::host_evidence_required:
+        return "host_evidence_required";
+    case mirakana::runtime::RuntimeNetworkProductionSecurityStatus::invalid_request:
         return "invalid_request";
     }
     return "unknown";
@@ -3745,6 +3786,133 @@ count_networking_foundation_diagnostics(const mirakana::runtime::RuntimeNetworkF
                    result.requires_transport_host_evidence && result.has_transport_host_evidence &&
                    !result.invoked_network_io && !result.invoked_rollback_execution && !result.invoked_world_mutation &&
                    result.diagnostics == 0U;
+    return result;
+}
+
+[[nodiscard]] NetworkProductionSecurityProbeResult validate_network_production_security_package_evidence() {
+    using Kind = mirakana::runtime::RuntimeNetworkProductionValidationKind;
+    using SecurityRequest = mirakana::runtime::RuntimeNetworkProductionSecurityRequest;
+    using SecurityStatus = mirakana::runtime::RuntimeNetworkProductionSecurityStatus;
+
+    const auto plan =
+        mirakana::runtime::plan_runtime_network_production_security_gate(
+            SecurityRequest{
+                .threat_model =
+                    mirakana::runtime::RuntimeNetworkProductionThreatModelEvidenceRow{
+                        .evidence_id = "docs/specs/2026-05-26-networking-production-security-threat-model.md",
+                        .attacker_capabilities_reviewed = true,
+                        .trust_boundaries_reviewed = true,
+                        .packet_tampering_reviewed = true,
+                        .packet_replay_reviewed = true,
+                        .authentication_gap_reviewed = true,
+                        .denial_of_service_reviewed = true,
+                        .nat_matchmaking_exclusions_reviewed = true,
+                        .save_rollback_abuse_reviewed = true,
+                        .official_sources_reviewed = true,
+                        .source_index = 1U,
+                    },
+                .foundation_plan = make_network_replication_foundation_plan(),
+                .replication_plan =
+                    mirakana::runtime::RuntimeNetworkReplicationPlan{
+                        .status = mirakana::runtime::RuntimeNetworkReplicationStatus::host_evidence_required,
+                        .diagnostics = {},
+                        .session_rows =
+                            {
+                                mirakana::runtime::RuntimeNetworkReplicationSessionDesc{
+                                    .session_id = "arena",
+                                    .world_id = "sample2d.network.world",
+                                    .mode = mirakana::runtime::RuntimeNetworkReplicationMode::authoritative_snapshot,
+                                    .fixed_tick_rate_hz = 60U,
+                                    .max_players = 4U,
+                                    .max_objects = 16U,
+                                    .source_index = 2U,
+                                },
+                            },
+                        .object_rows = {},
+                        .input_rows = {},
+                        .snapshot_rows = {},
+                        .rollback_rows = {},
+                        .transport_evidence_rows = {},
+                        .replicated_object_count = 2U,
+                        .input_row_count = 2U,
+                        .snapshot_row_count = 2U,
+                        .rollback_row_count = 1U,
+                        .rejected_unsafe_row_count = 0U,
+                        .replay_hash = 99U,
+                        .requires_transport_host_evidence = true,
+                        .has_transport_host_evidence = false,
+                        .invoked_network_io = false,
+                        .invoked_rollback_execution = false,
+                        .invoked_world_mutation = false,
+                    },
+                .loopback_exchange = mirakana::runtime::RuntimeNetworkLoopbackExchangeResult{},
+                .validation_evidence_rows =
+                    {
+                        mirakana::runtime::RuntimeNetworkProductionValidationEvidenceRow{
+                            .kind = Kind::sequence_replay_rejection,
+                            .evidence_id = "sequence-replay",
+                            .reviewed = true,
+                            .source_index = 3U,
+                        },
+                        mirakana::runtime::RuntimeNetworkProductionValidationEvidenceRow{
+                            .kind = Kind::input_command_validation,
+                            .evidence_id = "input-command",
+                            .reviewed = true,
+                            .source_index = 4U,
+                        },
+                        mirakana::runtime::RuntimeNetworkProductionValidationEvidenceRow{
+                            .kind = Kind::snapshot_validation,
+                            .evidence_id = "snapshot-validation",
+                            .reviewed = true,
+                            .source_index = 5U,
+                        },
+                        mirakana::runtime::RuntimeNetworkProductionValidationEvidenceRow{
+                            .kind = Kind::rollback_window_diagnostic,
+                            .evidence_id = "rollback-window",
+                            .reviewed = true,
+                            .source_index = 6U,
+                        },
+                    },
+                .unsupported_online_claim_rows = {},
+                .row_budget = 64U,
+                .request_native_handles = false,
+                .invoked_external_network_io = false,
+                .invoked_threads = false,
+                .invoked_save_io = false,
+                .invoked_world_mutation = false,
+                .seed = 123U});
+
+    NetworkProductionSecurityProbeResult result;
+    result.status = plan.status;
+    result.session_lifecycle_rows = plan.session_lifecycle_rows;
+    result.connection_state_rows = plan.connection_state_rows;
+    result.channel_policy_rows = plan.channel_policy_rows;
+    result.reliable_delivery_rows = plan.reliable_delivery_rows;
+    result.unreliable_delivery_rows = plan.unreliable_delivery_rows;
+    result.sequence_replay_rejection_rows = plan.sequence_replay_rejection_rows;
+    result.input_command_validation_rows = plan.input_command_validation_rows;
+    result.snapshot_validation_rows = plan.snapshot_validation_rows;
+    result.rollback_window_diagnostic_rows = plan.rollback_window_diagnostic_rows;
+    result.unsupported_online_claim_rows = plan.unsupported_online_claim_rows;
+    result.diagnostics = plan.diagnostics.size();
+    result.replay_hash = plan.replay_hash;
+    result.threat_model_reviewed = plan.threat_model_reviewed;
+    result.loopback_host_evidence = plan.loopback_host_evidence;
+    result.replication_evidence_ready = plan.replication_evidence_ready;
+    result.general_online_ready = plan.general_online_ready;
+    result.invoked_external_network_io = plan.invoked_external_network_io;
+    result.invoked_threads = plan.invoked_threads;
+    result.invoked_save_io = plan.invoked_save_io;
+    result.invoked_world_mutation = plan.invoked_world_mutation;
+    result.reviewed = plan.status == SecurityStatus::host_evidence_required && result.threat_model_reviewed &&
+                      !result.loopback_host_evidence && !result.replication_evidence_ready &&
+                      !result.general_online_ready && result.sequence_replay_rejection_rows == 1U &&
+                      result.input_command_validation_rows == 1U && result.snapshot_validation_rows == 1U &&
+                      result.rollback_window_diagnostic_rows == 1U && result.unsupported_online_claim_rows == 0U &&
+                      result.diagnostics == 2U && result.replay_hash != 0U && !result.invoked_external_network_io &&
+                      !result.invoked_threads && !result.invoked_save_io && !result.invoked_world_mutation;
+    result.ready = plan.status == SecurityStatus::ready && plan.succeeded() && result.loopback_host_evidence &&
+                   result.replication_evidence_ready && !result.general_online_ready && result.diagnostics == 0U;
     return result;
 }
 
@@ -7903,6 +8071,9 @@ int main(int argc, char** argv) {
     const auto network_replication_probe = options.require_gameplay_systems
                                                ? validate_network_replication_package_evidence("sample2d")
                                                : NetworkReplicationProbeResult{};
+    const auto network_production_security_probe = options.require_gameplay_systems
+                                                       ? validate_network_production_security_package_evidence()
+                                                       : NetworkProductionSecurityProbeResult{};
     const auto gameplay_runtime_scheduler_probe = options.require_simulation_orchestration
                                                       ? validate_gameplay_runtime_scheduler_package_evidence()
                                                       : GameplayRuntimeSchedulerProbeResult{};
@@ -8502,6 +8673,47 @@ int main(int argc, char** argv) {
         << (network_replication_probe.invoked_rollback_execution ? 1 : 0)
         << " network_replication_invoked_world_mutation=" << (network_replication_probe.invoked_world_mutation ? 1 : 0)
         << " network_replication_diagnostics=" << network_replication_probe.diagnostics
+        << " network_production_security_status="
+        << network_production_security_status_name(network_production_security_probe.status)
+        << " network_production_security_reviewed=" << (network_production_security_probe.reviewed ? 1 : 0)
+        << " network_production_security_ready=" << (network_production_security_probe.ready ? 1 : 0)
+        << " network_production_security_threat_model_reviewed="
+        << (network_production_security_probe.threat_model_reviewed ? 1 : 0)
+        << " network_production_security_loopback_host_evidence="
+        << (network_production_security_probe.loopback_host_evidence ? 1 : 0)
+        << " network_production_security_replication_evidence_ready="
+        << (network_production_security_probe.replication_evidence_ready ? 1 : 0)
+        << " network_production_security_general_online_ready="
+        << (network_production_security_probe.general_online_ready ? 1 : 0)
+        << " network_production_security_session_lifecycle_rows="
+        << network_production_security_probe.session_lifecycle_rows
+        << " network_production_security_connection_state_rows="
+        << network_production_security_probe.connection_state_rows
+        << " network_production_security_channel_policy_rows=" << network_production_security_probe.channel_policy_rows
+        << " network_production_security_reliable_delivery_rows="
+        << network_production_security_probe.reliable_delivery_rows
+        << " network_production_security_unreliable_delivery_rows="
+        << network_production_security_probe.unreliable_delivery_rows
+        << " network_production_security_sequence_replay_rejection_rows="
+        << network_production_security_probe.sequence_replay_rejection_rows
+        << " network_production_security_input_command_validation_rows="
+        << network_production_security_probe.input_command_validation_rows
+        << " network_production_security_snapshot_validation_rows="
+        << network_production_security_probe.snapshot_validation_rows
+        << " network_production_security_rollback_window_diagnostic_rows="
+        << network_production_security_probe.rollback_window_diagnostic_rows
+        << " network_production_security_unsupported_online_claim_rows="
+        << network_production_security_probe.unsupported_online_claim_rows
+        << " network_production_security_replay_hash=" << network_production_security_probe.replay_hash
+        << " network_production_security_invoked_external_network_io="
+        << (network_production_security_probe.invoked_external_network_io ? 1 : 0)
+        << " network_production_security_invoked_threads="
+        << (network_production_security_probe.invoked_threads ? 1 : 0)
+        << " network_production_security_invoked_save_io="
+        << (network_production_security_probe.invoked_save_io ? 1 : 0)
+        << " network_production_security_invoked_world_mutation="
+        << (network_production_security_probe.invoked_world_mutation ? 1 : 0)
+        << " network_production_security_diagnostics=" << network_production_security_probe.diagnostics
         << " gameplay_runtime_scheduler_status="
         << gameplay_runtime_scheduler_status_name(gameplay_runtime_scheduler_probe.status)
         << " gameplay_runtime_scheduler_ready=" << (gameplay_runtime_scheduler_probe.ready ? 1 : 0)
@@ -8813,7 +9025,8 @@ int main(int argc, char** argv) {
     if (options.require_gameplay_systems &&
         (!game.gameplay_systems_passed(options.max_frames) || !game.gameplay_systems_scene_binding_ready() ||
          !input_context_rebinding.ready || !rpg_systems_probe.ready || !sandbox_world_probe.ready ||
-         !simulation_management_probe.ready || !network_replication_probe.reviewed)) {
+         !simulation_management_probe.ready || !network_replication_probe.reviewed ||
+         !network_production_security_probe.reviewed)) {
         std::cout
             << "sample_2d_desktop_runtime_package required_gameplay_systems_unavailable"
             << " gameplay_systems_status="
@@ -8925,7 +9138,18 @@ int main(int argc, char** argv) {
             << " network_replication_transport_host_evidence="
             << (network_replication_probe.has_transport_host_evidence ? 1 : 0)
             << " network_replication_diagnostics=" << network_replication_probe.diagnostics
-            << " network_replication_replay_hash=" << network_replication_probe.replay_hash << '\n';
+            << " network_replication_replay_hash=" << network_replication_probe.replay_hash
+            << " network_production_security_status="
+            << network_production_security_status_name(network_production_security_probe.status)
+            << " network_production_security_reviewed=" << (network_production_security_probe.reviewed ? 1 : 0)
+            << " network_production_security_threat_model_reviewed="
+            << (network_production_security_probe.threat_model_reviewed ? 1 : 0)
+            << " network_production_security_loopback_host_evidence="
+            << (network_production_security_probe.loopback_host_evidence ? 1 : 0)
+            << " network_production_security_replication_evidence_ready="
+            << (network_production_security_probe.replication_evidence_ready ? 1 : 0)
+            << " network_production_security_diagnostics=" << network_production_security_probe.diagnostics
+            << " network_production_security_replay_hash=" << network_production_security_probe.replay_hash << '\n';
         return 12;
     }
 

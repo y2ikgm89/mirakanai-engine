@@ -149,6 +149,18 @@
         "notes": "Runtime Network Transport Adapter Facade v1 validates one loopback-only caller-owned adapter exchange through RuntimeNetworkLoopbackExchangeRequest, IRuntimeNetworkTransportAdapter, and execute_runtime_network_loopback_exchange. The facade fails closed before dispatch for missing or unavailable adapters, unsupported loopback/reliable/unreliable capabilities, native-handle requests, peer_count != 1, invalid channel counts/channels, payloads above the first-party ceiling, invalid service budgets, and adapter exceptions. MK_runtime does not open sockets, own native handles, implement encryption/authentication, matchmaking, NAT traversal, replication, rollback, or claim broad multiplayer readiness."
       },
       {
+        "name": "network-production-security-gate",
+        "module": "MK_runtime",
+        "status": "validated-host-gated-production-security-contract",
+        "hosts": [
+          "windows",
+          "linux",
+          "macos"
+        ],
+        "validation": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-network-enet.ps1",
+        "notes": "Runtime Network Production Security Gate v1 validates threat-modeled local loopback, session lifecycle, connection state, channel policy, reliable/unreliable delivery rows, replication security evidence, sequence/replay rejection, input command validation, snapshot validation, and rollback-window diagnostics through plan_runtime_network_production_security_gate. sample_2d_desktop_runtime_package --require-gameplay-systems emits network_production_security_* counters with host-gated loopback/replication readiness and zero side effects. Optional ENet host evidence feeds the same gate through validate-network-enet. This is not encryption/authentication, matchmaking, NAT traversal, cloud/backend services, internet-facing execution, rollback execution, or broad online readiness."
+      },
+      {
         "name": "enet-loopback",
         "module": "MK_runtime_network_enet",
         "status": "optional-host-gated-loopback-adapter",

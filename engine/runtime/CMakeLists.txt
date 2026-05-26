@@ -9,6 +9,7 @@ add_library(mirakana_runtime
     src/gameplay_interaction.cpp
     src/inventory_items.cpp
     src/networking_foundation.cpp
+    src/network_production_security.cpp
     src/network_transport.cpp
     src/package_streaming.cpp
     src/physics_collision_runtime.cpp

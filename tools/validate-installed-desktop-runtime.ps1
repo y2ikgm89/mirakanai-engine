@@ -1005,13 +1005,36 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
                 "network_replication_invoked_network_io",
                 "network_replication_invoked_rollback_execution",
                 "network_replication_invoked_world_mutation",
-                "network_replication_diagnostics"
+                "network_replication_diagnostics",
+                "network_production_security_status",
+                "network_production_security_reviewed",
+                "network_production_security_ready",
+                "network_production_security_threat_model_reviewed",
+                "network_production_security_loopback_host_evidence",
+                "network_production_security_replication_evidence_ready",
+                "network_production_security_general_online_ready",
+                "network_production_security_session_lifecycle_rows",
+                "network_production_security_connection_state_rows",
+                "network_production_security_channel_policy_rows",
+                "network_production_security_reliable_delivery_rows",
+                "network_production_security_unreliable_delivery_rows",
+                "network_production_security_sequence_replay_rejection_rows",
+                "network_production_security_input_command_validation_rows",
+                "network_production_security_snapshot_validation_rows",
+                "network_production_security_rollback_window_diagnostic_rows",
+                "network_production_security_unsupported_online_claim_rows",
+                "network_production_security_replay_hash",
+                "network_production_security_invoked_external_network_io",
+                "network_production_security_invoked_threads",
+                "network_production_security_invoked_save_io",
+                "network_production_security_invoked_world_mutation",
+                "network_production_security_diagnostics"
             )) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
                 Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not include gameplay systems field: $field"
             }
         }
-        foreach ($field in @("gameplay_systems_ready", "gameplay_systems_navigation_reached", "gameplay_systems_perception_has_primary_target", "gameplay_systems_blackboard_has_target", "gameplay_systems_blackboard_needs_move", "gameplay_systems_behavior_authoring_ready", "gameplay_systems_behavior_authoring_deterministic_trace_ready", "gameplay_systems_quest_dialogue_ready", "gameplay_systems_inventory_items_ready", "gameplay_systems_construction_placement_ready", "gameplay_systems_procedural_generation_ready", "rpg_systems_ready", "sandbox_world_ready", "simulation_management_ready", "network_replication_reviewed")) {
+        foreach ($field in @("gameplay_systems_ready", "gameplay_systems_navigation_reached", "gameplay_systems_perception_has_primary_target", "gameplay_systems_blackboard_has_target", "gameplay_systems_blackboard_needs_move", "gameplay_systems_behavior_authoring_ready", "gameplay_systems_behavior_authoring_deterministic_trace_ready", "gameplay_systems_quest_dialogue_ready", "gameplay_systems_inventory_items_ready", "gameplay_systems_construction_placement_ready", "gameplay_systems_procedural_generation_ready", "rpg_systems_ready", "sandbox_world_ready", "simulation_management_ready", "network_replication_reviewed", "network_production_security_reviewed", "network_production_security_threat_model_reviewed")) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=1\b") {
                 Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove ready gameplay systems field: $field"
             }
@@ -1343,6 +1366,37 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
         }
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bnetwork_replication_replay_hash=[1-9]\d*\b") {
             Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove positive network replication replay hash."
+        }
+        foreach ($expected in @{
+                "network_production_security_status" = "host_evidence_required"
+                "network_production_security_reviewed" = "1"
+                "network_production_security_ready" = "0"
+                "network_production_security_threat_model_reviewed" = "1"
+                "network_production_security_loopback_host_evidence" = "0"
+                "network_production_security_replication_evidence_ready" = "0"
+                "network_production_security_general_online_ready" = "0"
+                "network_production_security_session_lifecycle_rows" = "1"
+                "network_production_security_connection_state_rows" = "1"
+                "network_production_security_channel_policy_rows" = "2"
+                "network_production_security_reliable_delivery_rows" = "0"
+                "network_production_security_unreliable_delivery_rows" = "0"
+                "network_production_security_sequence_replay_rejection_rows" = "1"
+                "network_production_security_input_command_validation_rows" = "1"
+                "network_production_security_snapshot_validation_rows" = "1"
+                "network_production_security_rollback_window_diagnostic_rows" = "1"
+                "network_production_security_unsupported_online_claim_rows" = "0"
+                "network_production_security_invoked_external_network_io" = "0"
+                "network_production_security_invoked_threads" = "0"
+                "network_production_security_invoked_save_io" = "0"
+                "network_production_security_invoked_world_mutation" = "0"
+                "network_production_security_diagnostics" = "2"
+            }.GetEnumerator()) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$([regex]::Escape($expected.Key))=$([regex]::Escape($expected.Value))\b") {
+                Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove network production security field: $($expected.Key)=$($expected.Value)."
+            }
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bnetwork_production_security_replay_hash=[1-9]\d*\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove positive network production security replay hash."
         }
     }
     if ($requiresProceduralGeneration) {
