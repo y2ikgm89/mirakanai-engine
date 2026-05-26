@@ -1072,10 +1072,16 @@ struct RenderingVfxProfilingProbeResult {
     std::size_t gpu_particle_budget_rows{0U};
     std::size_t postprocess_rows{0U};
     std::size_t backend_timing_rows{0U};
+    std::size_t backend_evidence_rows{0U};
+    std::size_t backend_evidence_ready{0U};
+    std::size_t backend_evidence_host_gated{0U};
     std::size_t crash_telemetry_handoff_rows{0U};
     std::size_t host_validated_backends{0U};
     std::size_t rejected_unsafe_rows{0U};
     std::uint64_t replay_hash{0U};
+    bool d3d12_host_evidence_ready{false};
+    bool vulkan_strict_host_evidence_ready{false};
+    bool metal_host_evidence_ready{false};
     bool requires_metal_host_evidence{false};
     bool has_metal_host_evidence{false};
     bool invoked_gpu_commands{false};
@@ -1883,6 +1889,7 @@ validate_simulation_management_package_evidence(std::string_view sample_id) {
                     .required_backends =
                         {
                             Backend::d3d12,
+                            Backend::vulkan,
                             Backend::metal,
                         },
                     .feature_rows =
@@ -1895,6 +1902,15 @@ validate_simulation_management_package_evidence(std::string_view sample_id) {
                                 .request_broad_performance_claim = false,
                                 .request_native_handle_access = false,
                                 .source_index = 1U,
+                            },
+                            mirakana::RendererProductionVfxFeatureRow{
+                                .feature_id = "vfx.particles.spark",
+                                .kind = FeatureKind::gpu_particles,
+                                .backend = Backend::vulkan,
+                                .reviewed = true,
+                                .request_broad_performance_claim = false,
+                                .request_native_handle_access = false,
+                                .source_index = 2U,
                             },
                             mirakana::RendererProductionVfxFeatureRow{
                                 .feature_id = "vfx.particles.spark",
@@ -1919,6 +1935,18 @@ validate_simulation_management_package_evidence(std::string_view sample_id) {
                                 .requires_compute_simulation = true,
                                 .requires_gpu_sort = true,
                                 .source_index = 4U,
+                            },
+                            mirakana::RendererProductionGpuParticleBudgetRow{
+                                .effect_id = "vfx.particles.spark",
+                                .backend = Backend::vulkan,
+                                .max_particles = 4096U,
+                                .max_emitters = 16U,
+                                .max_spawn_per_frame = 256U,
+                                .simulation_budget_us = 700U,
+                                .submission_budget_us = 300U,
+                                .requires_compute_simulation = true,
+                                .requires_gpu_sort = true,
+                                .source_index = 5U,
                             },
                             mirakana::RendererProductionGpuParticleBudgetRow{
                                 .effect_id = "vfx.particles.spark",
@@ -1948,6 +1976,17 @@ validate_simulation_management_package_evidence(std::string_view sample_id) {
                             },
                             mirakana::RendererProductionPostprocessRow{
                                 .chain_id = "post.fx",
+                                .backend = Backend::vulkan,
+                                .pass_count = 3U,
+                                .scene_color_available = true,
+                                .scene_depth_available = true,
+                                .hdr_available = true,
+                                .history_available = true,
+                                .backend_shader_evidence_ready = true,
+                                .source_index = 8U,
+                            },
+                            mirakana::RendererProductionPostprocessRow{
+                                .chain_id = "post.fx",
                                 .backend = Backend::metal,
                                 .pass_count = 3U,
                                 .scene_color_available = true,
@@ -1971,8 +2010,38 @@ validate_simulation_management_package_evidence(std::string_view sample_id) {
                                 .max_clock_deviation_ns = 250ULL,
                                 .debug_scope_count = 2U,
                                 .debug_marker_count = 1U,
+                                .resource_barrier_count = 4U,
+                                .layout_transition_count = 3U,
+                                .queue_wait_count = 1U,
+                                .queue_ownership_transfer_reviewed = true,
+                                .shader_validation_count = 2U,
+                                .backend_validation_ready = true,
+                                .strict_host_recipe_ready = true,
+                                .capture_handoff_ready = true,
                                 .host_validated = true,
                                 .source_index = 10U,
+                            },
+                            mirakana::RendererProductionBackendTimingRow{
+                                .backend = Backend::vulkan,
+                                .profile_zone_id = "frame.main",
+                                .gpu_timestamp_frequency_hz = 1000000000ULL,
+                                .begin_tick = 3000ULL,
+                                .end_tick = 3900ULL,
+                                .calibrated_cpu_begin_tick = 4000ULL,
+                                .calibrated_cpu_end_tick = 4900ULL,
+                                .max_clock_deviation_ns = 250ULL,
+                                .debug_scope_count = 2U,
+                                .debug_marker_count = 1U,
+                                .resource_barrier_count = 4U,
+                                .layout_transition_count = 3U,
+                                .queue_wait_count = 1U,
+                                .queue_ownership_transfer_reviewed = true,
+                                .shader_validation_count = 2U,
+                                .backend_validation_ready = true,
+                                .strict_host_recipe_ready = true,
+                                .capture_handoff_ready = true,
+                                .host_validated = true,
+                                .source_index = 11U,
                             },
                             mirakana::RendererProductionBackendTimingRow{
                                 .backend = Backend::metal,
@@ -1985,6 +2054,14 @@ validate_simulation_management_package_evidence(std::string_view sample_id) {
                                 .max_clock_deviation_ns = 250ULL,
                                 .debug_scope_count = 2U,
                                 .debug_marker_count = 1U,
+                                .resource_barrier_count = 4U,
+                                .layout_transition_count = 3U,
+                                .queue_wait_count = 1U,
+                                .queue_ownership_transfer_reviewed = true,
+                                .shader_validation_count = 2U,
+                                .backend_validation_ready = true,
+                                .strict_host_recipe_ready = false,
+                                .capture_handoff_ready = false,
                                 .host_validated = false,
                                 .source_index = 12U,
                             },
@@ -2002,6 +2079,18 @@ validate_simulation_management_package_evidence(std::string_view sample_id) {
                                 .request_crash_upload = false,
                                 .request_native_capture = false,
                                 .source_index = 13U,
+                            },
+                            mirakana::RendererProductionCrashTelemetryHandoffRow{
+                                .handoff_id = "handoff.strict_vulkan",
+                                .backend = Backend::vulkan,
+                                .trace_event_count = 8U,
+                                .crash_dump_reviewed = true,
+                                .symbolication_ready = true,
+                                .telemetry_schema_reviewed = true,
+                                .operator_handoff_ready = true,
+                                .request_crash_upload = false,
+                                .request_native_capture = false,
+                                .source_index = 14U,
                             },
                             mirakana::RendererProductionCrashTelemetryHandoffRow{
                                 .handoff_id = "handoff.apple",
@@ -2026,28 +2115,40 @@ validate_simulation_management_package_evidence(std::string_view sample_id) {
     result.gpu_particle_budget_rows = plan.gpu_particle_budget_row_count;
     result.postprocess_rows = plan.postprocess_row_count;
     result.backend_timing_rows = plan.backend_timing_row_count;
+    result.backend_evidence_rows = plan.backend_evidence_row_count;
+    result.backend_evidence_ready = plan.backend_evidence_ready_count;
+    result.backend_evidence_host_gated = plan.backend_evidence_host_gated_count;
     result.crash_telemetry_handoff_rows = plan.crash_telemetry_handoff_row_count;
     result.host_validated_backends = plan.host_validated_backend_count;
     result.rejected_unsafe_rows = plan.rejected_unsafe_row_count;
     result.replay_hash = plan.replay_hash;
+    result.d3d12_host_evidence_ready = plan.d3d12_host_evidence_ready;
+    result.vulkan_strict_host_evidence_ready = plan.vulkan_strict_host_evidence_ready;
+    result.metal_host_evidence_ready = plan.metal_host_evidence_ready;
     result.requires_metal_host_evidence = plan.requires_metal_host_evidence;
     result.has_metal_host_evidence = plan.has_metal_host_evidence;
     result.invoked_gpu_commands = plan.invoked_gpu_commands;
     result.invoked_native_capture = plan.invoked_native_capture;
     result.invoked_crash_upload = plan.invoked_crash_upload;
     result.diagnostics = plan.diagnostics.size();
-    result.reviewed = plan.status == Status::host_evidence_required && result.feature_rows == 2U &&
-                      result.gpu_particle_budget_rows == 2U && result.postprocess_rows == 2U &&
-                      result.backend_timing_rows == 2U && result.crash_telemetry_handoff_rows == 2U &&
-                      result.host_validated_backends == 1U && result.rejected_unsafe_rows == 0U &&
-                      result.replay_hash != 0U && result.requires_metal_host_evidence &&
+    result.reviewed = plan.status == Status::host_evidence_required && result.feature_rows == 3U &&
+                      result.gpu_particle_budget_rows == 3U && result.postprocess_rows == 3U &&
+                      result.backend_timing_rows == 3U && result.backend_evidence_rows == 3U &&
+                      result.backend_evidence_ready == 2U && result.backend_evidence_host_gated == 1U &&
+                      result.crash_telemetry_handoff_rows == 3U && result.host_validated_backends == 2U &&
+                      result.rejected_unsafe_rows == 0U && result.replay_hash != 0U &&
+                      result.d3d12_host_evidence_ready && result.vulkan_strict_host_evidence_ready &&
+                      !result.metal_host_evidence_ready && result.requires_metal_host_evidence &&
                       !result.has_metal_host_evidence && !result.invoked_gpu_commands &&
                       !result.invoked_native_capture && !result.invoked_crash_upload && result.diagnostics == 0U;
-    result.ready = plan.status == Status::ready && plan.succeeded() && result.feature_rows == 2U &&
-                   result.gpu_particle_budget_rows == 2U && result.postprocess_rows == 2U &&
-                   result.backend_timing_rows == 2U && result.crash_telemetry_handoff_rows == 2U &&
-                   result.host_validated_backends == 2U && result.rejected_unsafe_rows == 0U &&
-                   result.replay_hash != 0U && result.requires_metal_host_evidence && result.has_metal_host_evidence &&
+    result.ready = plan.status == Status::ready && plan.succeeded() && result.feature_rows == 3U &&
+                   result.gpu_particle_budget_rows == 3U && result.postprocess_rows == 3U &&
+                   result.backend_timing_rows == 3U && result.backend_evidence_rows == 3U &&
+                   result.backend_evidence_ready == 3U && result.backend_evidence_host_gated == 0U &&
+                   result.crash_telemetry_handoff_rows == 3U && result.host_validated_backends == 3U &&
+                   result.rejected_unsafe_rows == 0U && result.replay_hash != 0U && result.d3d12_host_evidence_ready &&
+                   result.vulkan_strict_host_evidence_ready && result.metal_host_evidence_ready &&
+                   result.requires_metal_host_evidence && result.has_metal_host_evidence &&
                    !result.invoked_gpu_commands && !result.invoked_native_capture && !result.invoked_crash_upload &&
                    result.diagnostics == 0U;
     return result;
@@ -9080,11 +9181,21 @@ int main(int argc, char** argv) {
         << rendering_vfx_profiling_probe.gpu_particle_budget_rows
         << " rendering_vfx_profiling_postprocess_rows=" << rendering_vfx_profiling_probe.postprocess_rows
         << " rendering_vfx_profiling_backend_timing_rows=" << rendering_vfx_profiling_probe.backend_timing_rows
+        << " rendering_vfx_profiling_backend_evidence_rows=" << rendering_vfx_profiling_probe.backend_evidence_rows
+        << " rendering_vfx_profiling_backend_evidence_ready=" << rendering_vfx_profiling_probe.backend_evidence_ready
+        << " rendering_vfx_profiling_backend_evidence_host_gated="
+        << rendering_vfx_profiling_probe.backend_evidence_host_gated
         << " rendering_vfx_profiling_crash_telemetry_handoff_rows="
         << rendering_vfx_profiling_probe.crash_telemetry_handoff_rows
         << " rendering_vfx_profiling_host_validated_backends=" << rendering_vfx_profiling_probe.host_validated_backends
         << " rendering_vfx_profiling_rejected_unsafe_rows=" << rendering_vfx_profiling_probe.rejected_unsafe_rows
         << " rendering_vfx_profiling_replay_hash=" << rendering_vfx_profiling_probe.replay_hash
+        << " rendering_vfx_profiling_d3d12_host_evidence_ready="
+        << (rendering_vfx_profiling_probe.d3d12_host_evidence_ready ? 1 : 0)
+        << " rendering_vfx_profiling_vulkan_strict_host_evidence_ready="
+        << (rendering_vfx_profiling_probe.vulkan_strict_host_evidence_ready ? 1 : 0)
+        << " rendering_vfx_profiling_metal_host_evidence_ready="
+        << (rendering_vfx_profiling_probe.metal_host_evidence_ready ? 1 : 0)
         << " rendering_vfx_profiling_requires_metal_host_evidence="
         << (rendering_vfx_profiling_probe.requires_metal_host_evidence ? 1 : 0)
         << " rendering_vfx_profiling_metal_host_evidence="
@@ -9596,7 +9707,8 @@ int main(int argc, char** argv) {
                 << " network_replication_replay_hash=" << network_replication_probe.replay_hash << '\n';
             return 3;
         }
-        if (options.require_rendering_vfx_profiling && !rendering_vfx_profiling_probe.reviewed) {
+        if (options.require_rendering_vfx_profiling &&
+            !(rendering_vfx_profiling_probe.reviewed || rendering_vfx_profiling_probe.ready)) {
             std::cout << "sample_generated_desktop_runtime_3d_package required_rendering_vfx_profiling_unavailable"
                       << " rendering_vfx_profiling_status="
                       << rendering_vfx_profiling_status_name(rendering_vfx_profiling_probe.status)
@@ -9608,10 +9720,22 @@ int main(int argc, char** argv) {
                       << " rendering_vfx_profiling_postprocess_rows=" << rendering_vfx_profiling_probe.postprocess_rows
                       << " rendering_vfx_profiling_backend_timing_rows="
                       << rendering_vfx_profiling_probe.backend_timing_rows
+                      << " rendering_vfx_profiling_backend_evidence_rows="
+                      << rendering_vfx_profiling_probe.backend_evidence_rows
+                      << " rendering_vfx_profiling_backend_evidence_ready="
+                      << rendering_vfx_profiling_probe.backend_evidence_ready
+                      << " rendering_vfx_profiling_backend_evidence_host_gated="
+                      << rendering_vfx_profiling_probe.backend_evidence_host_gated
                       << " rendering_vfx_profiling_crash_telemetry_handoff_rows="
                       << rendering_vfx_profiling_probe.crash_telemetry_handoff_rows
                       << " rendering_vfx_profiling_host_validated_backends="
                       << rendering_vfx_profiling_probe.host_validated_backends
+                      << " rendering_vfx_profiling_d3d12_host_evidence_ready="
+                      << (rendering_vfx_profiling_probe.d3d12_host_evidence_ready ? 1 : 0)
+                      << " rendering_vfx_profiling_vulkan_strict_host_evidence_ready="
+                      << (rendering_vfx_profiling_probe.vulkan_strict_host_evidence_ready ? 1 : 0)
+                      << " rendering_vfx_profiling_metal_host_evidence_ready="
+                      << (rendering_vfx_profiling_probe.metal_host_evidence_ready ? 1 : 0)
                       << " rendering_vfx_profiling_requires_metal_host_evidence="
                       << (rendering_vfx_profiling_probe.requires_metal_host_evidence ? 1 : 0)
                       << " rendering_vfx_profiling_metal_host_evidence="

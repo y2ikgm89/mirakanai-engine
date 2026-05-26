@@ -41,6 +41,11 @@ enum class RendererProductionVfxProfilingDiagnosticCode : std::uint8_t {
     unsupported_crash_upload,
     missing_backend_parity,
     missing_backend_timing,
+    missing_backend_synchronization_evidence,
+    missing_backend_shader_validation,
+    missing_backend_validation_evidence,
+    missing_backend_host_evidence,
+    missing_backend_capture_handoff,
     row_budget_exceeded,
 };
 
@@ -90,7 +95,34 @@ struct RendererProductionBackendTimingRow {
     std::uint64_t max_clock_deviation_ns{0U};
     std::uint32_t debug_scope_count{0U};
     std::uint32_t debug_marker_count{0U};
+    std::uint32_t resource_barrier_count{0U};
+    std::uint32_t layout_transition_count{0U};
+    std::uint32_t queue_wait_count{0U};
+    bool queue_ownership_transfer_reviewed{false};
+    std::uint32_t shader_validation_count{0U};
+    bool backend_validation_ready{false};
+    bool strict_host_recipe_ready{false};
+    bool capture_handoff_ready{false};
     bool host_validated{false};
+    std::uint32_t source_index{0U};
+};
+
+struct RendererProductionBackendEvidenceRow {
+    rhi::BackendKind backend{rhi::BackendKind::null};
+    std::string profile_zone_id;
+    std::uint32_t resource_barrier_count{0U};
+    std::uint32_t layout_transition_count{0U};
+    std::uint32_t queue_wait_count{0U};
+    bool queue_ownership_transfer_reviewed{false};
+    std::uint32_t shader_validation_count{0U};
+    bool timing_ready{false};
+    bool synchronization_ready{false};
+    bool shader_validation_ready{false};
+    bool backend_validation_ready{false};
+    bool host_recipe_ready{false};
+    bool capture_handoff_ready{false};
+    bool host_evidence_ready{false};
+    bool host_gated{false};
     std::uint32_t source_index{0U};
 };
 
@@ -134,15 +166,22 @@ struct RendererProductionVfxProfilingPlan {
     std::vector<RendererProductionGpuParticleBudgetRow> gpu_particle_budget_rows;
     std::vector<RendererProductionPostprocessRow> postprocess_rows;
     std::vector<RendererProductionBackendTimingRow> backend_timing_rows;
+    std::vector<RendererProductionBackendEvidenceRow> backend_evidence_rows;
     std::vector<RendererProductionCrashTelemetryHandoffRow> crash_telemetry_handoff_rows;
     std::size_t feature_row_count{0U};
     std::size_t gpu_particle_budget_row_count{0U};
     std::size_t postprocess_row_count{0U};
     std::size_t backend_timing_row_count{0U};
+    std::size_t backend_evidence_row_count{0U};
+    std::size_t backend_evidence_ready_count{0U};
+    std::size_t backend_evidence_host_gated_count{0U};
     std::size_t crash_telemetry_handoff_row_count{0U};
     std::size_t host_validated_backend_count{0U};
     std::size_t rejected_unsafe_row_count{0U};
     std::uint64_t replay_hash{0U};
+    bool d3d12_host_evidence_ready{false};
+    bool vulkan_strict_host_evidence_ready{false};
+    bool metal_host_evidence_ready{false};
     bool requires_metal_host_evidence{false};
     bool has_metal_host_evidence{false};
     bool invoked_gpu_commands{false};

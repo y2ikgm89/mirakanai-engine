@@ -20,6 +20,7 @@ $aiGameDevelopmentText = Get-AgentSurfaceText "docs/ai-game-development.md"
 $sample3dReadmeText = Get-AgentSurfaceText "games/sample_generated_desktop_runtime_3d_package/README.md"
 $backlogText = Get-AgentSurfaceText "docs/superpowers/master-plans/production-completion-v1/04-developer-owned-engine-capability-backlog.md"
 $projectionText = Get-AgentSurfaceText "docs/superpowers/master-plans/production-completion-v1/05-projections-and-scenarios.md"
+$modulesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/004-modules.json"
 $manifestText = Get-AgentSurfaceText "engine/agent/manifest.json"
 
 foreach ($needle in @(
@@ -27,6 +28,7 @@ foreach ($needle in @(
         "RendererProductionGpuParticleBudgetRow",
         "RendererProductionPostprocessRow",
         "RendererProductionBackendTimingRow",
+        "RendererProductionBackendEvidenceRow",
         "RendererProductionCrashTelemetryHandoffRow",
         "RendererProductionVfxProfilingPlan",
         "RendererProductionVfxProfilingDiagnosticCode",
@@ -48,6 +50,11 @@ foreach ($needle in @(
 foreach ($needle in @(
         "RendererProductionVfxProfilingDiagnosticCode::missing_backend_parity",
         "RendererProductionVfxProfilingDiagnosticCode::missing_backend_timing",
+        "RendererProductionVfxProfilingDiagnosticCode::missing_backend_synchronization_evidence",
+        "RendererProductionVfxProfilingDiagnosticCode::missing_backend_shader_validation",
+        "RendererProductionVfxProfilingDiagnosticCode::missing_backend_validation_evidence",
+        "RendererProductionVfxProfilingDiagnosticCode::missing_backend_host_evidence",
+        "RendererProductionVfxProfilingDiagnosticCode::missing_backend_capture_handoff",
         "RendererProductionVfxProfilingDiagnosticCode::broad_performance_claim",
         "RendererProductionVfxProfilingDiagnosticCode::unsupported_native_handle_claim",
         "RendererProductionVfxProfilingDiagnosticCode::unsupported_crash_upload",
@@ -77,8 +84,14 @@ foreach ($needle in @(
         "rendering_vfx_profiling_gpu_particle_budget_rows=",
         "rendering_vfx_profiling_postprocess_rows=",
         "rendering_vfx_profiling_backend_timing_rows=",
+        "rendering_vfx_profiling_backend_evidence_rows=",
+        "rendering_vfx_profiling_backend_evidence_ready=",
+        "rendering_vfx_profiling_backend_evidence_host_gated=",
         "rendering_vfx_profiling_crash_telemetry_handoff_rows=",
         "rendering_vfx_profiling_replay_hash=",
+        "rendering_vfx_profiling_d3d12_host_evidence_ready=",
+        "rendering_vfx_profiling_vulkan_strict_host_evidence_ready=",
+        "rendering_vfx_profiling_metal_host_evidence_ready=",
         "rendering_vfx_profiling_requires_metal_host_evidence=",
         "rendering_vfx_profiling_metal_host_evidence=",
         "rendering_vfx_profiling_invoked_gpu_commands=",
@@ -95,7 +108,7 @@ foreach ($needle in @(
         "rendering_vfx_profiling_reviewed=1",
         "rendering_vfx_profiling_ready=0",
         "rendering_vfx_profiling_diagnostics=0",
-        "one host-validated backend row",
+        "D3D12 and strict Vulkan host evidence ready",
         "--require-native-ui-overlay",
         "--require-visible-3d-production-proof",
         "--require-scene-collision-package",
@@ -114,10 +127,16 @@ foreach ($needle in @(
         "rendering_vfx_profiling_gpu_particle_budget_rows",
         "rendering_vfx_profiling_postprocess_rows",
         "rendering_vfx_profiling_backend_timing_rows",
+        "rendering_vfx_profiling_backend_evidence_rows",
+        "rendering_vfx_profiling_backend_evidence_ready",
+        "rendering_vfx_profiling_backend_evidence_host_gated",
         "rendering_vfx_profiling_crash_telemetry_handoff_rows",
         "rendering_vfx_profiling_host_validated_backends",
         "rendering_vfx_profiling_rejected_unsafe_rows",
         "rendering_vfx_profiling_replay_hash",
+        "rendering_vfx_profiling_d3d12_host_evidence_ready",
+        "rendering_vfx_profiling_vulkan_strict_host_evidence_ready",
+        "rendering_vfx_profiling_metal_host_evidence_ready",
         "rendering_vfx_profiling_requires_metal_host_evidence",
         "rendering_vfx_profiling_metal_host_evidence",
         "rendering_vfx_profiling_invoked_gpu_commands",
@@ -127,8 +146,9 @@ foreach ($needle in @(
     )) {
     Assert-ContainsText $installedValidationText $needle "tools/validate-installed-desktop-runtime.ps1"
 }
-Assert-ContainsText $installedValidationText '"rendering_vfx_profiling_feature_rows" = "2"' "tools/validate-installed-desktop-runtime.ps1"
-Assert-ContainsText $installedValidationText '"rendering_vfx_profiling_host_validated_backends" = "1"' "tools/validate-installed-desktop-runtime.ps1"
+Assert-ContainsText $installedValidationText '"rendering_vfx_profiling_feature_rows" = "3"' "tools/validate-installed-desktop-runtime.ps1"
+Assert-ContainsText $installedValidationText '"rendering_vfx_profiling_host_validated_backends" = "2"' "tools/validate-installed-desktop-runtime.ps1"
+Assert-ContainsText $installedValidationText '"rendering_vfx_profiling_vulkan_strict_host_evidence_ready" = "1"' "tools/validate-installed-desktop-runtime.ps1"
 
 foreach ($docSurface in @(
         @{ Text = $planText; Label = "docs/superpowers/plans/2026-05-25-general-purpose-game-production-v1.md" },
@@ -140,7 +160,7 @@ foreach ($docSurface in @(
     Assert-ContainsText $docSurface.Text "plan_renderer_production_vfx_profiling" $docSurface.Label
     Assert-ContainsText $docSurface.Text "rendering_vfx_profiling_reviewed=1" $docSurface.Label
     Assert-ContainsText $docSurface.Text "rendering_vfx_profiling_ready=0" $docSurface.Label
-    Assert-ContainsText $docSurface.Text "one host-validated backend" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "D3D12 and strict Vulkan host evidence" $docSurface.Label
 }
 
 foreach ($docSurface in @(
@@ -157,10 +177,20 @@ foreach ($needle in @(
         "production-rendering-vfx-profiling-v1",
         '"unsupportedProductionGaps": []',
         "engine/renderer/include/mirakana/renderer/production_vfx_profiling.hpp",
+        "RendererProductionBackendEvidenceRow",
         "RendererProductionVfxProfilingPlan",
         "plan_renderer_production_vfx_profiling",
         "rendering_vfx_profiling_*",
         "currentRendererProductionVfxProfiling"
     )) {
     Assert-ContainsText $manifestText $needle "engine/agent/manifest.json"
+}
+
+foreach ($needle in @(
+        "Production Rendering VFX Profiling v1",
+        "RendererProductionBackendEvidenceRow",
+        "D3D12 and strict Vulkan host evidence ready",
+        "Metal host evidence absent"
+    )) {
+    Assert-ContainsText $modulesFragmentText $needle "engine/agent/manifest.fragments/004-modules.json"
 }

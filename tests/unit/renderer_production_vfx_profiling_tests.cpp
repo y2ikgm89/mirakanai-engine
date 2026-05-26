@@ -76,6 +76,14 @@ make_timing(mirakana::rhi::BackendKind backend, bool host_validated, std::uint32
         .max_clock_deviation_ns = 250ULL,
         .debug_scope_count = 2U,
         .debug_marker_count = 1U,
+        .resource_barrier_count = 4U,
+        .layout_transition_count = 3U,
+        .queue_wait_count = 1U,
+        .queue_ownership_transfer_reviewed = true,
+        .shader_validation_count = 2U,
+        .backend_validation_ready = true,
+        .strict_host_recipe_ready = host_validated,
+        .capture_handoff_ready = host_validated,
         .host_validated = host_validated,
         .source_index = source_index,
     };
@@ -173,6 +181,13 @@ MK_TEST("production renderer VFX profiling keeps Metal host evidence gated") {
     MK_REQUIRE(plan.backend_timing_row_count == 3U);
     MK_REQUIRE(plan.crash_telemetry_handoff_row_count == 3U);
     MK_REQUIRE(plan.host_validated_backend_count == 2U);
+    MK_REQUIRE(plan.backend_evidence_rows.size() == 3U);
+    MK_REQUIRE(plan.backend_evidence_row_count == 3U);
+    MK_REQUIRE(plan.backend_evidence_ready_count == 2U);
+    MK_REQUIRE(plan.backend_evidence_host_gated_count == 1U);
+    MK_REQUIRE(plan.d3d12_host_evidence_ready);
+    MK_REQUIRE(plan.vulkan_strict_host_evidence_ready);
+    MK_REQUIRE(!plan.metal_host_evidence_ready);
     MK_REQUIRE(plan.requires_metal_host_evidence);
     MK_REQUIRE(!plan.has_metal_host_evidence);
     MK_REQUIRE(plan.replay_hash != 0U);
@@ -188,9 +203,37 @@ MK_TEST("production renderer VFX profiling is ready with per-backend host timing
     MK_REQUIRE(plan.succeeded());
     MK_REQUIRE(plan.diagnostics.empty());
     MK_REQUIRE(plan.host_validated_backend_count == 3U);
+    MK_REQUIRE(plan.backend_evidence_row_count == 3U);
+    MK_REQUIRE(plan.backend_evidence_ready_count == 3U);
+    MK_REQUIRE(plan.backend_evidence_host_gated_count == 0U);
+    MK_REQUIRE(plan.d3d12_host_evidence_ready);
+    MK_REQUIRE(plan.vulkan_strict_host_evidence_ready);
+    MK_REQUIRE(plan.metal_host_evidence_ready);
     MK_REQUIRE(plan.requires_metal_host_evidence);
     MK_REQUIRE(plan.has_metal_host_evidence);
     MK_REQUIRE(plan.replay_hash != 0U);
+}
+
+MK_TEST("production renderer VFX profiling keeps Metal gated when any Metal evidence row lacks host proof") {
+    auto request = make_valid_request(true);
+    auto gated_metal_timing = make_timing(mirakana::rhi::BackendKind::metal, false, 16U);
+    gated_metal_timing.profile_zone_id = "frame.post";
+    request.backend_timing_rows.push_back(std::move(gated_metal_timing));
+
+    const auto plan = mirakana::plan_renderer_production_vfx_profiling(request);
+
+    MK_REQUIRE(plan.status == RendererProductionVfxProfilingStatus::host_evidence_required);
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.diagnostics.empty());
+    MK_REQUIRE(plan.backend_evidence_row_count == 4U);
+    MK_REQUIRE(plan.backend_evidence_ready_count == 3U);
+    MK_REQUIRE(plan.backend_evidence_host_gated_count == 1U);
+    MK_REQUIRE(plan.d3d12_host_evidence_ready);
+    MK_REQUIRE(plan.vulkan_strict_host_evidence_ready);
+    MK_REQUIRE(!plan.metal_host_evidence_ready);
+    MK_REQUIRE(plan.requires_metal_host_evidence);
+    MK_REQUIRE(!plan.has_metal_host_evidence);
+    MK_REQUIRE(plan.host_validated_backend_count == 2U);
 }
 
 MK_TEST("production renderer VFX profiling replay hash includes accepted row details") {
@@ -213,6 +256,60 @@ MK_TEST("production renderer VFX profiling replay hash includes accepted row det
     MK_REQUIRE(base_plan.replay_hash != 0U);
     MK_REQUIRE(particle_plan.replay_hash != base_plan.replay_hash);
     MK_REQUIRE(timing_plan.replay_hash != base_plan.replay_hash);
+}
+
+MK_TEST("production renderer VFX profiling rejects missing backend synchronization evidence") {
+    auto request = make_valid_request(true);
+    request.backend_timing_rows[1].resource_barrier_count = 0U;
+    request.backend_timing_rows[1].layout_transition_count = 0U;
+    request.backend_timing_rows[1].queue_wait_count = 0U;
+    request.backend_timing_rows[1].queue_ownership_transfer_reviewed = false;
+
+    const auto plan = mirakana::plan_renderer_production_vfx_profiling(request);
+
+    MK_REQUIRE(plan.status == RendererProductionVfxProfilingStatus::invalid_request);
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(diagnostic_count(
+                   plan, RendererProductionVfxProfilingDiagnosticCode::missing_backend_synchronization_evidence) == 1U);
+    MK_REQUIRE(plan.backend_evidence_rows.empty());
+    MK_REQUIRE(plan.replay_hash == 0U);
+}
+
+MK_TEST("production renderer VFX profiling rejects missing Vulkan strict shader and validation evidence") {
+    auto request = make_valid_request(true);
+    request.backend_timing_rows[1].shader_validation_count = 0U;
+    request.backend_timing_rows[1].backend_validation_ready = false;
+    request.backend_timing_rows[1].strict_host_recipe_ready = false;
+    request.backend_timing_rows[1].capture_handoff_ready = false;
+
+    const auto plan = mirakana::plan_renderer_production_vfx_profiling(request);
+
+    MK_REQUIRE(plan.status == RendererProductionVfxProfilingStatus::invalid_request);
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(
+        diagnostic_count(plan, RendererProductionVfxProfilingDiagnosticCode::missing_backend_shader_validation) == 1U);
+    MK_REQUIRE(diagnostic_count(
+                   plan, RendererProductionVfxProfilingDiagnosticCode::missing_backend_validation_evidence) == 1U);
+    MK_REQUIRE(diagnostic_count(plan, RendererProductionVfxProfilingDiagnosticCode::missing_backend_host_evidence) ==
+               1U);
+    MK_REQUIRE(diagnostic_count(plan, RendererProductionVfxProfilingDiagnosticCode::missing_backend_capture_handoff) ==
+               1U);
+    MK_REQUIRE(plan.backend_evidence_rows.empty());
+}
+
+MK_TEST("production renderer VFX profiling rejects invalid and duplicate required backends") {
+    auto request = make_valid_request(true);
+    request.required_backends.push_back(mirakana::rhi::BackendKind::d3d12);
+    request.required_backends.push_back(mirakana::rhi::BackendKind::null);
+
+    const auto plan = mirakana::plan_renderer_production_vfx_profiling(request);
+
+    MK_REQUIRE(plan.status == RendererProductionVfxProfilingStatus::invalid_request);
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(diagnostic_count(plan, RendererProductionVfxProfilingDiagnosticCode::duplicate_required_backend) == 1U);
+    MK_REQUIRE(diagnostic_count(plan, RendererProductionVfxProfilingDiagnosticCode::invalid_required_backend) == 1U);
+    MK_REQUIRE(plan.backend_evidence_rows.empty());
+    MK_REQUIRE(plan.replay_hash == 0U);
 }
 
 MK_TEST("production renderer VFX profiling rejects cross-backend proof transfer") {
