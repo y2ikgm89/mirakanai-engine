@@ -121,6 +121,49 @@ function Get-PwshScriptCommandPlan {
     return New-CommandPlanEntry -Command "pwsh" -Argv $mergedArgv
 }
 
+function ConvertTo-PwshSingleQuotedLiteral {
+    param(
+        [AllowNull()]
+        [string]$Text
+    )
+
+    return "'" + ([string]$Text).Replace("'", "''") + "'"
+}
+
+function Get-DesktopRuntimePackageCommandPlan {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ScriptPath,
+        [Parameter(Mandatory = $true)]
+        [string]$GameTarget,
+        [switch]$RequireVulkanShaders,
+        [Parameter()]
+        [System.String[]]$SmokeArgs = @()
+    )
+
+    $commandParts = New-Object System.Collections.ArrayList
+    $null = $commandParts.Add('&')
+    $null = $commandParts.Add((ConvertTo-PwshSingleQuotedLiteral $ScriptPath))
+    $null = $commandParts.Add('-GameTarget')
+    $null = $commandParts.Add((ConvertTo-PwshSingleQuotedLiteral $GameTarget))
+    if ($RequireVulkanShaders.IsPresent) {
+        $null = $commandParts.Add('-RequireVulkanShaders')
+    }
+    if (@($SmokeArgs).Count -gt 0) {
+        $literalArgs = @($SmokeArgs | ForEach-Object { ConvertTo-PwshSingleQuotedLiteral $_ })
+        $null = $commandParts.Add('-SmokeArgs')
+        $null = $commandParts.Add('@(' + ([string]::Join(', ', $literalArgs)) + ')')
+    }
+
+    return New-CommandPlanEntry -Command "pwsh" -Argv @(
+        '-NoProfile',
+        '-ExecutionPolicy',
+        'Bypass',
+        '-Command',
+        ([string]::Join(' ', @($commandParts)))
+    )
+}
+
 function Get-RepositoryToolCommandPlan {
     param(
         [Parameter(Mandatory = $true)]

@@ -258,3 +258,8 @@ VsOut vs_skinned(VsSkinnedIn input) {
     output.uv = input.uv;
     return output;
 }
+
+[numthreads(1, 1, 1)]
+void cs_vulkan_mapping_proof(uint3 dispatch_id : SV_DispatchThreadID) {
+    const uint mapping_proof_lane = dispatch_id.x;
+}

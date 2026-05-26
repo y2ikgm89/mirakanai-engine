@@ -60,16 +60,14 @@ function Get-ValidationRecipeCommandPlan {
     elseif ($RecipeName -eq 'desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict') {
         $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_generated_desktop_runtime_material_shader_package' } else { $SelectedGameTarget }
         $smokeTail = @(Get-GeneratedMaterialShaderScaffoldPackageVulkanSmokeArgs)
-        $vulkanPkgArgs = @('-GameTarget', $target, '-RequireVulkanShaders', '-SmokeArgs') + $smokeTail
-        $pwEntry = Get-PwshScriptCommandPlan -ScriptPath $packageScript -ScriptArguments $vulkanPkgArgs
+        $pwEntry = Get-DesktopRuntimePackageCommandPlan -ScriptPath $packageScript -GameTarget $target -RequireVulkanShaders -SmokeArgs $smokeTail
         $diagVulkan = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'Strict Vulkan generated material/shader scaffold package validation requires local Vulkan runtime, DXC SPIR-V CodeGen, and spirv-val readiness.' -ValidationRecipe $RecipeName -HostGate 'vulkan-strict'
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('vulkan-strict') -RequiredAcknowledgements @('vulkan-strict') -AllowedGameTargets @('sample_generated_desktop_runtime_material_shader_package') -AllowedStrictBackend @('', 'Vulkan') -Diagnostics @($diagVulkan)
     }
     elseif ($RecipeName -eq 'desktop-runtime-sample-game-vulkan-ui-atlas-metadata-package') {
         $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
         $smokeTail = @(Get-SampleDesktopRuntimeGameVulkanSmokeArgs)
-        $vulkanPkgArgs = @('-GameTarget', $target, '-RequireVulkanShaders', '-SmokeArgs') + $smokeTail
-        $pwEntry = Get-PwshScriptCommandPlan -ScriptPath $packageScript -ScriptArguments $vulkanPkgArgs
+        $pwEntry = Get-DesktopRuntimePackageCommandPlan -ScriptPath $packageScript -GameTarget $target -RequireVulkanShaders -SmokeArgs $smokeTail
         $diagVulkan = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'Strict Vulkan selected package validation requires local Vulkan runtime, DXC SPIR-V CodeGen, and spirv-val readiness.' -ValidationRecipe $RecipeName -HostGate 'vulkan-strict'
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('vulkan-strict') -RequiredAcknowledgements @('vulkan-strict') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'Vulkan') -Diagnostics @($diagVulkan)
     }

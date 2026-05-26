@@ -1242,6 +1242,9 @@ if ($null -eq $sample3dManifestEntry) {
         "framegraph_multiqueue_pass_callbacks_invoked=",
         "framegraph_multiqueue_submitted_pass_fences=",
         "framegraph_multiqueue_graphics_waited_for_copy=",
+        "kRuntimeSceneVulkanComputeMappingShaderPath",
+        "sample_desktop_runtime_game_scene_mapping.cs.spv",
+        "cs_vulkan_mapping_proof",
         "primary_camera_seen_",
         "hud_boxes_submitted_"
     )) {
@@ -1249,6 +1252,8 @@ if ($null -eq $sample3dManifestEntry) {
             Write-Error "games/sample_desktop_runtime_game/main.cpp missing 3D smoke field or HUD contract: $needle"
         }
     }
+    $sample3dCMakeText = Get-Content -LiteralPath (Join-Path $root "games/CMakeLists.txt") -Raw
+    foreach ($needle in @("MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_COMPUTE_MAPPING_SHADER_OUTPUT", "sample_desktop_runtime_game_scene_mapping.cs.spv", "-E cs_vulkan_mapping_proof -T cs_6_0 -spirv -fspv-target-env=vulkan1.3")) { if (-not $sample3dCMakeText.Contains($needle)) { Write-Error "games/CMakeLists.txt missing sample_desktop_runtime_game Vulkan compute mapping proof: $needle" } }
     $sceneRendererHeaderText = Get-Content -LiteralPath (Join-Path $root "engine/scene_renderer/include/mirakana/scene_renderer/scene_renderer.hpp") -Raw
     foreach ($needle in @(
         "SceneMeshDrawPlan",
