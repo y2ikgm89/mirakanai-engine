@@ -15,8 +15,8 @@ Use the chapter that matches the current decision. Do not bulk-read every chapte
 
 - 1.0 closeout readiness remains manifest-led: every `unsupportedProductionGaps` row in `engine/agent/manifest.json.aiOperableProductionLoop` must be implemented, host-gated with evidence, or explicitly excluded with evidence before a ready claim; the current composed manifest has no remaining rows.
 - Current execution remains manifest-led. Do not hand-edit `engine/agent/manifest.json`; edit `engine/agent/manifest.fragments/*.json` and run the compose script when manifest state changes.
-- Current active plan: this master plan index. [Renderer Production VFX Profiling Host Gate v1](../plans/2026-05-26-renderer-production-vfx-profiling-host-gate-v1.md) completed its selected D3D12 and strict Vulkan renderer/VFX/profiling host-evidence slice while Metal remains Apple-host-gated.
-- Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan.id = next-production-gap-selection` until the next explicit developer-owned dated plan is selected. Historical zero-gap closeout evidence remains discoverable through the retained plan registry and archive.
+- Current active plan: [Engine General Production Quality Expansion v1](../plans/2026-05-26-engine-general-production-quality-expansion-v1.md), a post-1.0 milestone selected to strengthen renderer quality, runtime UI text/font/IME/accessibility, broad reviewed import, physics/navigation, networking, and audio production breadth without reopening Engine 1.0 blockers.
+- Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan.id = engine-general-production-quality-expansion-v1` while the selected milestone is active. Historical zero-gap closeout evidence remains discoverable through the retained plan registry and archive.
 - Current gap cluster: no Engine 1.0 unsupported gap is open; the active post-foundation milestone selects reusable production surfaces without reopening completed foundation rows.
 
 ## Plan map

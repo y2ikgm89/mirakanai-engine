@@ -94,11 +94,11 @@ Coverage statuses:
 
 ## Current Recommended Implementation Sequence
 
-The latest selection sequence, [Engine 1.0 Gap Matrix v1](../../plans/2026-05-26-engine-1-0-gap-matrix-v1.md), is complete. It kept `unsupportedProductionGaps = []`, selected `renderer-backend-parity-v1` strict Vulkan evidence as the first follow-up, that follow-up landed with package-generated mapping compute SPIR-V proof plus reviewed validation-recipe execution, and [Renderer Production VFX Profiling Host Gate v1](../../plans/2026-05-26-renderer-production-vfx-profiling-host-gate-v1.md) then completed selected D3D12 and strict Vulkan renderer/VFX/profiling host evidence while keeping Metal Apple-host-gated. The manifest now returns to `recommendedNextPlan.id = next-production-gap-selection` until the next developer-owned capability slice is selected.
+The latest selection sequence, [Engine 1.0 Gap Matrix v1](../../plans/2026-05-26-engine-1-0-gap-matrix-v1.md), is complete. It kept `unsupportedProductionGaps = []`, selected `renderer-backend-parity-v1` strict Vulkan evidence as the first follow-up, that follow-up landed with package-generated mapping compute SPIR-V proof plus reviewed validation-recipe execution, and [Renderer Production VFX Profiling Host Gate v1](../../plans/2026-05-26-renderer-production-vfx-profiling-host-gate-v1.md) then completed selected D3D12 and strict Vulkan renderer/VFX/profiling host evidence while keeping Metal Apple-host-gated. The active selection is now [Engine General Production Quality Expansion v1](../../plans/2026-05-26-engine-general-production-quality-expansion-v1.md), a post-1.0 production breadth milestone; it does not reopen `unsupportedProductionGaps = []`.
 
 1. Keep `sprite-collision-hitbox-v1`, `sprite-sorting-layer-v1`, `sprite-9slice-and-tiled-v1`, and `sprite-effects-particles-v1` out of new implementation selection unless a future row intentionally expands them beyond `implemented-1x-foundation`.
 2. Treat `renderer-backend-parity-v1` as still host-gated for Apple/Metal evidence; Windows/Vulkan proof must not promote Metal readiness.
-3. Keep runtime/background streaming, runtime UI platform adapters, editor productization, and multiplayer execution as later separate plans only if future canonical rows reopen those surfaces with explicit evidence requirements.
+3. Execute `Engine General Production Quality Expansion v1` in phase order: renderer quality matrix, runtime UI text/font/IME/accessibility, broad reviewed import/cook, physics/navigation breadth, networking execution/security, audio production, cross-domain package evidence, and final agent-surface closeout.
 
 ## 2D Coverage Projection
 
