@@ -6,6 +6,7 @@ add_library(mirakana_navigation
     src/navigation_hierarchical_world.cpp
     src/navigation_navmesh.cpp
     src/navigation_path_planner.cpp
+    src/navigation_production_breadth.cpp
     src/navigation_replan.cpp
     src/path_following.cpp
     src/path_smoothing.cpp
