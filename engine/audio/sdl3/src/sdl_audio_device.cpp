@@ -84,6 +84,21 @@ bool sdl3_audio_device_format_supported(AudioDeviceFormat format) noexcept {
            (format.sample_format == AudioSampleFormat::float32 || format.sample_format == AudioSampleFormat::pcm16);
 }
 
+AudioProductionDeviceLifecycleRow sdl3_audio_device_lifecycle_evidence(bool host_evidence_available) {
+    return AudioProductionDeviceLifecycleRow{
+        .backend_id = "sdl3",
+        .uses_logical_device = true,
+        .uses_audio_stream = true,
+        .uses_queueing = true,
+        .uses_callback = false,
+        .can_pause_resume = true,
+        .can_clear = true,
+        .host_evidence_available = host_evidence_available,
+        .native_handle_exposed = false,
+        .source_index = 0U,
+    };
+}
+
 SdlAudioRuntime::SdlAudioRuntime(SdlAudioRuntimeDesc desc) {
     if (!desc.audio_driver_hint.empty()) {
         SDL_SetHint(SDL_HINT_AUDIO_DRIVER, desc.audio_driver_hint.c_str());

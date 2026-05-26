@@ -65,5 +65,7 @@ class SdlAudioDevice final {
 };
 
 [[nodiscard]] bool sdl3_audio_device_format_supported(AudioDeviceFormat format) noexcept;
+[[nodiscard]] AudioProductionDeviceLifecycleRow
+sdl3_audio_device_lifecycle_evidence(bool host_evidence_available = false);
 
 } // namespace mirakana

@@ -387,19 +387,37 @@ Initial Phase 5 evidence on 2026-05-26:
 - Modify: `tests/unit/sdl3_audio_tests.cpp`
 - Modify package audio payloads and validation scripts after focused APIs are green.
 
-- [ ] Re-check SDL3 audio stream/device docs and selected codec/spatialization dependency docs before dependency changes.
-- [ ] Add RED tests for decoded audio source rows, streaming chunk plans, sample-rate/channel conversion policy, voice/bus budgets, DSP graph rows, spatial source/listener rows, HRTF host gates, and device callback lifecycle.
-- [ ] Add RED tests that reject broad codec support, middleware parity, native device handles, background streaming, and subjective mix-quality claims until implemented.
-- [ ] Implement first-party audio execution contracts and optional adapter rows. Keep codec and spatialization dependencies auditable and feature-gated.
-- [ ] Add package-visible counters for selected 2D/3D audio playback, streaming, and spatialization evidence.
-- [ ] Run focused validation:
+- [x] Re-check SDL3 audio stream/device docs and selected codec/spatialization dependency docs before dependency changes.
+- [x] Add RED tests for decoded audio source rows, streaming chunk plans, sample-rate/channel conversion policy, voice/bus budgets, DSP graph rows, spatial source/listener rows, HRTF host gates, and device callback lifecycle.
+- [x] Add RED tests that reject broad codec support, middleware parity, native device handles, background streaming, and subjective mix-quality claims until implemented.
+- [x] Implement first-party audio execution contracts and optional adapter rows. Keep codec and spatialization dependencies auditable and feature-gated.
+- [x] Add package-visible counters for selected 2D audio playback, streaming, DSP, and spatialization evidence. Generated 3D audio production counters remain a Phase 7 package-evidence expansion.
+- [x] Run focused validation:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_audio_tests MK_audio_sdl3_tests sample_2d_desktop_runtime_package sample_generated_desktop_runtime_3d_package
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "audio|sample_2d_desktop_runtime_package_smoke|sample_generated_desktop_runtime_3d_package_smoke"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_audio_tests MK_sdl3_audio_tests sample_2d_desktop_runtime_package
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_audio_tests|MK_sdl3_audio_tests|sample_2d_desktop_runtime_package"
 ```
 
-**Phase Evidence:** Not started.
+**Phase Evidence:** Complete locally; PR publication pending.
+
+Initial Phase 6 evidence on 2026-05-27:
+
+- Official practice re-check: Context7 selected `/libsdl-org/sdl` for SDL3. SDL3 audio playback documentation confirms `SDL_OpenAudioDeviceStream`, `SDL_PutAudioStreamData`, `SDL_GetAudioStreamQueued`, and `SDL_ResumeAudioStreamDevice` over `SDL_AudioStream`; devices start paused, queue-style playback can avoid callbacks, and logical device streams handle playback queueing. No OpenAL, miniaudio, Steam Audio, codec, or HRTF dependency was selected in this slice, so dependency/legal records were intentionally unchanged.
+- Spec: `docs/specs/2026-05-27-audio-production-playback-streaming-dsp-spatialization.md` records the host-gated selected-package contract and non-claims.
+- RED evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_audio_tests MK_sdl3_audio_tests` failed before implementation because `AudioProductionDecodedSourceEvidenceRow`, `AudioProductionReviewRequest`, `review_audio_production_readiness`, and `sdl3_audio_device_lifecycle_evidence` were not present.
+- GREEN focused evidence: `review_audio_production_readiness` now returns ready/host-evidence-required/invalid-request over reviewed decoded source rows, streaming chunk rows, format conversion policy rows, bus/voice budgets, DSP graph rows, spatial listener/source rows, device lifecycle rows, unsupported claim rows, side-effect flags, host-gate booleans, diagnostics, selected-package readiness, production readiness, and deterministic replay hash. It rejects broad codec support, middleware parity, native handles, background streaming, device callback/IO, HRTF execution, incomplete rows, budget overflow, and unreviewed official-source evidence.
+- SDL3 adapter evidence: `sdl3_audio_device_lifecycle_evidence` records logical-device, audio-stream, queueing, pause/resume, clear, callback-free, and native-handle-free lifecycle evidence. The runtime adapter continues to keep SDL handles private.
+- Package proof: `sample_2d_desktop_runtime_package` emits `audio_production_*` counters with `audio_production_status=host_evidence_required`, `audio_production_reviewed=1`, `audio_production_selected_package_ready=1`, `audio_production_package_evidence_ready=1`, one decoded/streaming/conversion/budget/DSP/listener/spatial/HRTF/device row each, zero unsupported claims, zero codec/background/middleware/HRTF/device-callback/device-IO side effects, `audio_production_diagnostics=2`, and a positive replay hash. It intentionally reports production audio ready as `0` until device and HRTF host evidence exists.
+- Focused validation passed:
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_audio_tests MK_sdl3_audio_tests`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_audio_tests|MK_sdl3_audio_tests"`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target sample_2d_desktop_runtime_package`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "sample_2d_desktop_runtime_package"`
+- Package validation passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package` asserted the installed `audio_production_*` fields, including `audio_production_status=host_evidence_required`, selected package evidence ready, device/HRTF host evidence unavailable, zero side-effect invocation fields, `audio_production_diagnostics=2`, and positive replay hash.
+- Agent/static/API validation passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`.
+- Full slice validation passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with 93/93 tests. Apple/Metal and mobile Apple paths remained diagnostic-only host gates on this Windows host.
 
 ## Phase 7 - Cross-Domain Package, Generated Game, And Editor Evidence
 

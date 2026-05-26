@@ -777,6 +777,40 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsprite_batch_plan_diagnostics=0\b") {
         Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove clean sprite batch planning diagnostics."
     }
+    foreach ($expected in @{
+            "audio_production_status" = "host_evidence_required"
+            "audio_production_reviewed" = "1"
+            "audio_production_ready" = "0"
+            "audio_production_selected_package_ready" = "1"
+            "audio_production_package_evidence_ready" = "1"
+            "audio_production_decoded_source_rows" = "1"
+            "audio_production_streaming_chunk_rows" = "1"
+            "audio_production_format_conversion_policy_rows" = "1"
+            "audio_production_bus_budget_rows" = "1"
+            "audio_production_voice_budget_rows" = "1"
+            "audio_production_dsp_graph_rows" = "1"
+            "audio_production_listener_rows" = "1"
+            "audio_production_spatial_source_rows" = "1"
+            "audio_production_hrtf_host_gate_rows" = "1"
+            "audio_production_device_lifecycle_rows" = "1"
+            "audio_production_device_host_evidence" = "0"
+            "audio_production_hrtf_host_evidence" = "0"
+            "audio_production_unsupported_claim_rows" = "0"
+            "audio_production_invoked_codec_decode" = "0"
+            "audio_production_invoked_background_streaming" = "0"
+            "audio_production_invoked_middleware" = "0"
+            "audio_production_invoked_hrtf" = "0"
+            "audio_production_invoked_device_callback" = "0"
+            "audio_production_invoked_device_io" = "0"
+            "audio_production_diagnostics" = "2"
+        }.GetEnumerator()) {
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$([regex]::Escape($expected.Key))=$([regex]::Escape($expected.Value))\b") {
+            Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove audio production field: $($expected.Key)=$($expected.Value)."
+        }
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\baudio_production_replay_hash=[1-9]\d*\b") {
+        Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove positive audio production replay hash."
+    }
     foreach ($field in @(
             "sprite_batch_budget_status",
             "sprite_batch_budget_profiles_ready",

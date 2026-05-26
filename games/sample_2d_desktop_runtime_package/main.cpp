@@ -987,6 +987,18 @@ network_production_security_status_name(mirakana::runtime::RuntimeNetworkProduct
     return "unknown";
 }
 
+[[nodiscard]] const char* audio_production_status_name(mirakana::AudioProductionReadinessStatus status) noexcept {
+    switch (status) {
+    case mirakana::AudioProductionReadinessStatus::ready:
+        return "ready";
+    case mirakana::AudioProductionReadinessStatus::host_evidence_required:
+        return "host_evidence_required";
+    case mirakana::AudioProductionReadinessStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
 [[nodiscard]] const char*
 simulation_orchestration_status_name(mirakana::runtime::RuntimeSimulationOrchestrationPlanStatus status) noexcept {
     switch (status) {
@@ -1519,6 +1531,35 @@ struct AudioGameplayMixerProbeResult {
     std::size_t render_samples{0U};
     float sample_abs_sum{0.0F};
     std::size_t payload_diagnostics{0U};
+};
+
+struct AudioProductionProbeResult {
+    mirakana::AudioProductionReadinessStatus status{mirakana::AudioProductionReadinessStatus::invalid_request};
+    bool reviewed{false};
+    bool production_audio_ready{false};
+    bool selected_package_evidence_ready{false};
+    std::size_t decoded_source_rows{0U};
+    std::size_t streaming_chunk_rows{0U};
+    std::size_t format_conversion_policy_rows{0U};
+    std::size_t bus_budget_rows{0U};
+    std::size_t voice_budget_rows{0U};
+    std::size_t dsp_graph_rows{0U};
+    std::size_t listener_rows{0U};
+    std::size_t spatial_source_rows{0U};
+    std::size_t hrtf_host_gate_rows{0U};
+    std::size_t device_lifecycle_rows{0U};
+    bool device_host_evidence_available{false};
+    bool hrtf_host_evidence_available{false};
+    std::size_t unsupported_claim_rows{0U};
+    bool invoked_codec_decode{false};
+    bool invoked_background_streaming{false};
+    bool invoked_middleware{false};
+    bool invoked_hrtf{false};
+    bool invoked_device_callback{false};
+    bool invoked_device_io{false};
+    std::size_t diagnostics{0U};
+    std::uint64_t replay_hash{0U};
+    bool package_evidence_ready{false};
 };
 
 struct Gameplay2DConstructionPlacementProbeResult {
@@ -2702,6 +2743,149 @@ validate_audio_gameplay_mixer_package_evidence(const mirakana::AudioClipSampleDa
                    result.faded_buses == 1U && result.looping_commands == 1U && result.spatial_commands == 1U &&
                    result.render_commands == 2U && result.render_frames == 2U && result.render_samples == 2U &&
                    result.sample_abs_sum > 0.0F;
+    return result;
+}
+
+[[nodiscard]] AudioProductionProbeResult
+validate_audio_production_package_evidence(const mirakana::AudioClipSampleData& samples) {
+    AudioProductionProbeResult result;
+    const auto reviewed_frames = std::min<std::uint64_t>(samples.frame_count, 4U);
+    const auto clip = samples.clip;
+    const auto request = mirakana::AudioProductionReviewRequest{
+        .decoded_sources =
+            {
+                mirakana::AudioProductionDecodedSourceEvidenceRow{
+                    .clip = clip,
+                    .format = samples.format,
+                    .frame_count = reviewed_frames,
+                    .decoded_byte_count = reviewed_frames * samples.format.channel_count * sizeof(float),
+                    .reviewed = true,
+                    .source_index = 1U,
+                },
+            },
+        .streaming_chunks =
+            {
+                mirakana::AudioProductionStreamingChunkEvidenceRow{
+                    .chunk =
+                        mirakana::AudioStreamingChunkDesc{
+                            .clip = clip,
+                            .format = samples.format,
+                            .start_frame = 0U,
+                            .frame_count = reviewed_frames,
+                        },
+                    .queued_frame_count = reviewed_frames,
+                    .reviewed = true,
+                    .source_index = 2U,
+                },
+            },
+        .format_conversion_policies =
+            {
+                mirakana::AudioProductionFormatConversionPolicyRow{
+                    .clip = clip,
+                    .source_format = samples.format,
+                    .device_format = samples.format,
+                    .resampling_quality = mirakana::AudioResamplingQuality::linear,
+                    .reviewed = true,
+                    .source_index = 3U,
+                },
+            },
+        .dsp_graph_rows =
+            {
+                mirakana::AudioProductionDspGraphRow{
+                    .node_id = "sample2d.audio.limiter",
+                    .kind = mirakana::AudioProductionDspNodeKind::limiter,
+                    .input_count = 1U,
+                    .output_count = 1U,
+                    .deterministic = true,
+                    .reviewed = true,
+                    .source_index = 4U,
+                },
+            },
+        .listener =
+            mirakana::AudioSpatialListenerDesc{
+                .position = mirakana::AudioPoint3{},
+                .right = mirakana::AudioPoint3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+            },
+        .spatial_voices =
+            {
+                mirakana::AudioSpatialVoiceDesc{
+                    .voice = mirakana::AudioVoiceId{1U},
+                    .position = mirakana::AudioPoint3{.x = 1.0F, .y = 0.0F, .z = 0.0F},
+                    .min_distance = 1.0F,
+                    .max_distance = 8.0F,
+                    .spatialized = true,
+                },
+            },
+        .device_lifecycle_rows =
+            {
+                mirakana::AudioProductionDeviceLifecycleRow{
+                    .backend_id = "sdl3",
+                    .uses_logical_device = true,
+                    .uses_audio_stream = true,
+                    .uses_queueing = true,
+                    .uses_callback = false,
+                    .can_pause_resume = true,
+                    .can_clear = true,
+                    .host_evidence_available = false,
+                    .native_handle_exposed = false,
+                    .source_index = 5U,
+                },
+            },
+        .unsupported_claim_rows = {},
+        .max_voice_budget = 8U,
+        .active_voice_count = 1U,
+        .max_bus_budget = 4U,
+        .active_bus_count = 2U,
+        .row_budget = 32U,
+        .official_sources_reviewed = true,
+        .hrtf_host_evidence_available = false,
+        .request_native_device_handles = false,
+        .invoked_codec_decode = false,
+        .invoked_background_streaming = false,
+        .invoked_middleware = false,
+        .invoked_hrtf = false,
+        .invoked_device_callback = false,
+        .invoked_device_io = false,
+        .seed = 20260527U,
+    };
+
+    const auto plan = mirakana::review_audio_production_readiness(request);
+    result.status = plan.status;
+    result.reviewed = plan.reviewed;
+    result.production_audio_ready = plan.production_audio_ready;
+    result.selected_package_evidence_ready = plan.selected_package_evidence_ready;
+    result.decoded_source_rows = plan.decoded_source_rows;
+    result.streaming_chunk_rows = plan.streaming_chunk_rows;
+    result.format_conversion_policy_rows = plan.format_conversion_policy_rows;
+    result.bus_budget_rows = plan.bus_budget_rows;
+    result.voice_budget_rows = plan.voice_budget_rows;
+    result.dsp_graph_rows = plan.dsp_graph_rows;
+    result.listener_rows = plan.listener_rows;
+    result.spatial_source_rows = plan.spatial_source_rows;
+    result.hrtf_host_gate_rows = plan.hrtf_host_gate_rows;
+    result.device_lifecycle_rows = plan.device_lifecycle_rows;
+    result.device_host_evidence_available = plan.device_host_evidence_available;
+    result.hrtf_host_evidence_available = plan.hrtf_host_evidence_available;
+    result.unsupported_claim_rows = plan.unsupported_claim_rows;
+    result.invoked_codec_decode = plan.invoked_codec_decode;
+    result.invoked_background_streaming = plan.invoked_background_streaming;
+    result.invoked_middleware = plan.invoked_middleware;
+    result.invoked_hrtf = plan.invoked_hrtf;
+    result.invoked_device_callback = plan.invoked_device_callback;
+    result.invoked_device_io = plan.invoked_device_io;
+    result.diagnostics = plan.diagnostics.size();
+    result.replay_hash = plan.replay_hash;
+    result.package_evidence_ready =
+        result.status == mirakana::AudioProductionReadinessStatus::host_evidence_required && result.reviewed &&
+        !result.production_audio_ready && result.selected_package_evidence_ready && result.decoded_source_rows == 1U &&
+        result.streaming_chunk_rows == 1U && result.format_conversion_policy_rows == 1U &&
+        result.bus_budget_rows == 1U && result.voice_budget_rows == 1U && result.dsp_graph_rows == 1U &&
+        result.listener_rows == 1U && result.spatial_source_rows == 1U && result.hrtf_host_gate_rows == 1U &&
+        result.device_lifecycle_rows == 1U && !result.device_host_evidence_available &&
+        !result.hrtf_host_evidence_available && result.unsupported_claim_rows == 0U && !result.invoked_codec_decode &&
+        !result.invoked_background_streaming && !result.invoked_middleware && !result.invoked_hrtf &&
+        !result.invoked_device_callback && !result.invoked_device_io && result.diagnostics == 2U &&
+        result.replay_hash != 0U;
     return result;
 }
 
@@ -8096,6 +8280,9 @@ int main(int argc, char** argv) {
     const auto runtime_ui_production_stack_probe = options.require_runtime_ui_production_stack
                                                        ? validate_runtime_ui_production_stack_package_evidence()
                                                        : RuntimeUiProductionStackProbeResult{};
+    const auto audio_production_probe = audio_samples.has_value()
+                                            ? validate_audio_production_package_evidence(*audio_samples)
+                                            : AudioProductionProbeResult{};
 
     auto shader_bytecode = load_packaged_d3d12_shaders(argc > 0 ? argv[0] : nullptr);
     if (!shader_bytecode.ready()) {
@@ -8871,6 +9058,34 @@ int main(int argc, char** argv) {
         << (runtime_ui_production_stack_probe.invoked_renderer_upload ? 1 : 0)
         << " runtime_ui_production_stack_diagnostics=" << runtime_ui_production_stack_probe.diagnostics
         << " runtime_ui_production_stack_replay_hash=" << runtime_ui_production_stack_probe.replay_hash
+        << " audio_production_status=" << audio_production_status_name(audio_production_probe.status)
+        << " audio_production_reviewed=" << (audio_production_probe.reviewed ? 1 : 0)
+        << " audio_production_ready=" << (audio_production_probe.production_audio_ready ? 1 : 0)
+        << " audio_production_selected_package_ready="
+        << (audio_production_probe.selected_package_evidence_ready ? 1 : 0)
+        << " audio_production_package_evidence_ready=" << (audio_production_probe.package_evidence_ready ? 1 : 0)
+        << " audio_production_decoded_source_rows=" << audio_production_probe.decoded_source_rows
+        << " audio_production_streaming_chunk_rows=" << audio_production_probe.streaming_chunk_rows
+        << " audio_production_format_conversion_policy_rows=" << audio_production_probe.format_conversion_policy_rows
+        << " audio_production_bus_budget_rows=" << audio_production_probe.bus_budget_rows
+        << " audio_production_voice_budget_rows=" << audio_production_probe.voice_budget_rows
+        << " audio_production_dsp_graph_rows=" << audio_production_probe.dsp_graph_rows
+        << " audio_production_listener_rows=" << audio_production_probe.listener_rows
+        << " audio_production_spatial_source_rows=" << audio_production_probe.spatial_source_rows
+        << " audio_production_hrtf_host_gate_rows=" << audio_production_probe.hrtf_host_gate_rows
+        << " audio_production_device_lifecycle_rows=" << audio_production_probe.device_lifecycle_rows
+        << " audio_production_device_host_evidence=" << (audio_production_probe.device_host_evidence_available ? 1 : 0)
+        << " audio_production_hrtf_host_evidence=" << (audio_production_probe.hrtf_host_evidence_available ? 1 : 0)
+        << " audio_production_unsupported_claim_rows=" << audio_production_probe.unsupported_claim_rows
+        << " audio_production_invoked_codec_decode=" << (audio_production_probe.invoked_codec_decode ? 1 : 0)
+        << " audio_production_invoked_background_streaming="
+        << (audio_production_probe.invoked_background_streaming ? 1 : 0)
+        << " audio_production_invoked_middleware=" << (audio_production_probe.invoked_middleware ? 1 : 0)
+        << " audio_production_invoked_hrtf=" << (audio_production_probe.invoked_hrtf ? 1 : 0)
+        << " audio_production_invoked_device_callback=" << (audio_production_probe.invoked_device_callback ? 1 : 0)
+        << " audio_production_invoked_device_io=" << (audio_production_probe.invoked_device_io ? 1 : 0)
+        << " audio_production_diagnostics=" << audio_production_probe.diagnostics
+        << " audio_production_replay_hash=" << audio_production_probe.replay_hash
         << " hud_boxes=" << game.hud_boxes_submitted() << " audio_commands=" << game.audio_commands()
         << " audio_underruns=" << game.audio_underruns()
         << " audio_gameplay_mixer_ready=" << (audio_gameplay_mixer.ready ? 1 : 0)

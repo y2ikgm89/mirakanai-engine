@@ -5,6 +5,7 @@
 
 #include "mirakana/assets/asset_registry.hpp"
 
+#include <cstddef>
 #include <cstdint>
 #include <span>
 #include <string>
@@ -311,6 +312,173 @@ struct AudioStreamingConsumeResult {
     bool starved{false};
 };
 
+enum class AudioProductionReadinessStatus : std::uint8_t {
+    ready,
+    host_evidence_required,
+    invalid_request,
+};
+
+enum class AudioProductionDspNodeKind : std::uint8_t {
+    gain,
+    limiter,
+    filter,
+    send,
+};
+
+enum class AudioProductionUnsupportedClaimKind : std::uint8_t {
+    broad_codec_support,
+    middleware_parity,
+    native_device_handle_access,
+    background_streaming_execution,
+    subjective_mix_quality,
+    hrtf_execution,
+    platform_device_parity,
+};
+
+enum class AudioProductionDiagnosticCode : std::uint8_t {
+    missing_official_source_review,
+    missing_decoded_source,
+    invalid_decoded_source,
+    missing_streaming_chunk,
+    invalid_streaming_chunk,
+    missing_format_conversion_policy,
+    invalid_format_conversion_policy,
+    invalid_voice_budget,
+    invalid_bus_budget,
+    row_budget_exceeded,
+    missing_dsp_graph,
+    invalid_dsp_graph,
+    missing_spatial_listener,
+    invalid_spatial_evidence,
+    missing_spatial_source,
+    missing_hrtf_host_gate,
+    missing_device_lifecycle,
+    invalid_device_lifecycle,
+    missing_device_host_evidence,
+    unsupported_audio_claim,
+    native_handle_exposure,
+    side_effect_claim,
+};
+
+struct AudioProductionDecodedSourceEvidenceRow {
+    AssetId clip;
+    AudioDeviceFormat format;
+    std::uint64_t frame_count{0};
+    std::uint64_t decoded_byte_count{0};
+    bool reviewed{false};
+    std::uint32_t source_index{0};
+};
+
+struct AudioProductionStreamingChunkEvidenceRow {
+    AudioStreamingChunkDesc chunk;
+    std::uint64_t queued_frame_count{0};
+    bool reviewed{false};
+    std::uint32_t source_index{0};
+};
+
+struct AudioProductionFormatConversionPolicyRow {
+    AssetId clip;
+    AudioDeviceFormat source_format;
+    AudioDeviceFormat device_format;
+    AudioResamplingQuality resampling_quality{AudioResamplingQuality::linear};
+    bool reviewed{false};
+    std::uint32_t source_index{0};
+};
+
+struct AudioProductionDspGraphRow {
+    std::string node_id;
+    AudioProductionDspNodeKind kind{AudioProductionDspNodeKind::gain};
+    std::uint32_t input_count{0};
+    std::uint32_t output_count{0};
+    bool deterministic{false};
+    bool reviewed{false};
+    std::uint32_t source_index{0};
+};
+
+struct AudioProductionDeviceLifecycleRow {
+    std::string backend_id;
+    bool uses_logical_device{false};
+    bool uses_audio_stream{false};
+    bool uses_queueing{false};
+    bool uses_callback{false};
+    bool can_pause_resume{false};
+    bool can_clear{false};
+    bool host_evidence_available{false};
+    bool native_handle_exposed{false};
+    std::uint32_t source_index{0};
+};
+
+struct AudioProductionUnsupportedClaimRow {
+    AudioProductionUnsupportedClaimKind kind{AudioProductionUnsupportedClaimKind::broad_codec_support};
+    std::string claim_id;
+    bool requested{false};
+    std::uint32_t source_index{0};
+};
+
+struct AudioProductionReviewRequest {
+    std::vector<AudioProductionDecodedSourceEvidenceRow> decoded_sources;
+    std::vector<AudioProductionStreamingChunkEvidenceRow> streaming_chunks;
+    std::vector<AudioProductionFormatConversionPolicyRow> format_conversion_policies;
+    std::vector<AudioProductionDspGraphRow> dsp_graph_rows;
+    AudioSpatialListenerDesc listener;
+    std::vector<AudioSpatialVoiceDesc> spatial_voices;
+    std::vector<AudioProductionDeviceLifecycleRow> device_lifecycle_rows;
+    std::vector<AudioProductionUnsupportedClaimRow> unsupported_claim_rows;
+    std::size_t max_voice_budget{0};
+    std::size_t active_voice_count{0};
+    std::size_t max_bus_budget{0};
+    std::size_t active_bus_count{0};
+    std::size_t row_budget{0};
+    bool official_sources_reviewed{false};
+    bool hrtf_host_evidence_available{false};
+    bool request_native_device_handles{false};
+    bool invoked_codec_decode{false};
+    bool invoked_background_streaming{false};
+    bool invoked_middleware{false};
+    bool invoked_hrtf{false};
+    bool invoked_device_callback{false};
+    bool invoked_device_io{false};
+    std::uint64_t seed{0};
+};
+
+struct AudioProductionDiagnostic {
+    AudioProductionDiagnosticCode code{AudioProductionDiagnosticCode::missing_official_source_review};
+    std::string evidence_id;
+    std::string message;
+    std::uint32_t source_index{0};
+};
+
+struct AudioProductionReadinessPlan {
+    AudioProductionReadinessStatus status{AudioProductionReadinessStatus::invalid_request};
+    bool production_audio_ready{false};
+    bool selected_package_evidence_ready{false};
+    bool reviewed{false};
+    std::size_t decoded_source_rows{0};
+    std::size_t streaming_chunk_rows{0};
+    std::size_t format_conversion_policy_rows{0};
+    std::size_t bus_budget_rows{0};
+    std::size_t voice_budget_rows{0};
+    std::size_t dsp_graph_rows{0};
+    std::size_t listener_rows{0};
+    std::size_t spatial_source_rows{0};
+    std::size_t hrtf_host_gate_rows{0};
+    std::size_t device_lifecycle_rows{0};
+    bool device_host_evidence_available{false};
+    bool hrtf_host_evidence_available{false};
+    std::size_t unsupported_claim_rows{0};
+    bool requested_native_device_handles{false};
+    bool invoked_codec_decode{false};
+    bool invoked_background_streaming{false};
+    bool invoked_middleware{false};
+    bool invoked_hrtf{false};
+    bool invoked_device_callback{false};
+    bool invoked_device_io{false};
+    std::vector<AudioProductionDiagnostic> diagnostics;
+    std::uint64_t replay_hash{0};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
 class AudioMixer;
 
 [[nodiscard]] bool is_valid_audio_bus_desc(const AudioBusDesc& bus) noexcept;
@@ -325,6 +493,8 @@ class AudioMixer;
 [[nodiscard]] bool is_valid_audio_device_stream_request(const AudioDeviceStreamRequest& request) noexcept;
 [[nodiscard]] AudioGameplayMixPlan plan_gameplay_audio_mix(const AudioGameplayMixRequest& request);
 [[nodiscard]] AudioDeviceStreamPlan plan_audio_device_stream(AudioDeviceStreamRequest request) noexcept;
+[[nodiscard]] AudioProductionReadinessPlan
+review_audio_production_readiness(const AudioProductionReviewRequest& request);
 [[nodiscard]] AudioDeviceStreamRenderResult
 render_audio_device_stream_interleaved_float(const AudioMixer& mixer, AudioDeviceStreamRequest request,
                                              std::span<const AudioClipSampleData> samples);
