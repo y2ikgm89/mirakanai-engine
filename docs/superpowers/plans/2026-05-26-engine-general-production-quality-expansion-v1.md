@@ -12,7 +12,7 @@
 
 **Plan ID:** `engine-general-production-quality-expansion-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
 ## Context
 
@@ -482,10 +482,10 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 
 - Generate: `engine/agent/manifest.json`
 - Modify tools/static checks and skills/rules/subagents only if durable workflow or validation entrypoints changed.
 
-- [ ] Reconcile every phase with current docs and manifest rows. Do not mark planned or host-gated evidence as ready.
-- [ ] Keep AGENTS/skills/rules/subagents unchanged unless this milestone changes durable workflow, permissions, validation entrypoints, or reusable agent behavior.
-- [ ] Update `tools/check-ai-integration*.ps1`, schemas, and validation recipes only for machine-checkable supported-surface changes.
-- [ ] Run focused agent/static validation:
+- [x] Reconcile every phase with current docs and manifest rows. Do not mark planned or host-gated evidence as ready.
+- [x] Keep AGENTS/skills/rules/subagents unchanged unless this milestone changes durable workflow, permissions, validation entrypoints, or reusable agent behavior.
+- [x] Update `tools/check-ai-integration*.ps1`, schemas, and validation recipes only for machine-checkable supported-surface changes.
+- [x] Run focused agent/static validation:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write
@@ -496,16 +496,30 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1
 git diff --check
 ```
 
-- [ ] Run full validation at each coherent runtime/public-contract slice closeout:
+- [x] Run full validation at each coherent runtime/public-contract slice closeout:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 ```
 
-- [ ] Publish each validated phase through GitHub Flow with a reviewable PR. Do not push directly to `main`, force-push, or merge before hosted checks prove the selected surface.
-- [ ] At final milestone closeout, update `currentActivePlan` to the master plan or the next selected dated plan, update `recommendedNextPlan`, keep `unsupportedProductionGaps` honest, compose the manifest, and record final validation evidence here.
+- [x] Publish each validated phase through GitHub Flow with a reviewable PR. Do not push directly to `main`, force-push, or merge before hosted checks prove the selected surface.
+- [x] At final milestone closeout, update `currentActivePlan` to the master plan or the next selected dated plan, update `recommendedNextPlan`, keep `unsupportedProductionGaps` honest, compose the manifest, and record final validation evidence here.
 
-**Phase Evidence:** Not started.
+**Phase Evidence:** Complete locally; GitHub Flow publication is this closeout PR.
+
+Phase 8 local evidence on 2026-05-27:
+
+- Subagent audit: read-only `planning-auditor` and `agent-surface-auditor` checks found no need for a new plan, identified stale Phase 7 active pointers, and confirmed generated 3D audio proof surfaces were already covered by `tools/check-ai-integration-103-audio-production-proof.ps1`.
+- Closeout reconciliation: docs, plan registry, master-plan chapters, `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`, composed `engine/agent/manifest.json`, and audio production recipe mapping now return `currentActivePlan` to `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`, set `recommendedNextPlan.id = next-production-gap-selection`, keep `unsupportedProductionGaps = []`, and keep broad renderer/UI/importer/physics/navigation/network/audio claims host-gated or unclaimed.
+- Worktree setup evidence: the first full validation attempt failed at configure because the new linked worktree had no `external/vcpkg` junction. The supported fix was `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1`, which reported `external-vcpkg=linked`, `vcpkg-installed=linked`, and `prepare-worktree: ok`; no configure-time package install or manual dependency restore was used.
+- Focused static validation passed:
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`
+  - `git diff --check`
+- Full slice validation passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` completed with all 93 CTest tests passing. Diagnostic-only host gates remained unchanged: Metal tools are missing on Windows, Apple packaging/host evidence is blocked on non-macOS/Xcode, Android is ready except release signing/device smoke configuration, and Apple/Metal readiness remains host-gated.
 
 ## Completion Notes
 
