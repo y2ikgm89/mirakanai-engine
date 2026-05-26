@@ -295,15 +295,15 @@ Phase 3 candidate evidence on 2026-05-26:
 - [x] Add RED tests for oriented box/convex/mesh query review rows, persistent joint asset validation, ragdoll/constraint group diagnostics, controller tuning rows, vehicle policy rows, and deterministic replay signatures.
 - [x] Add RED tests for navmesh asset import/bake review rows, agent dimension gates, polygon corridor rows, string-pulling path rows, dynamic obstacle updates, tiled/region nav references, crowd/local-avoidance budgets, and streaming nav data readiness.
 - [x] Implement first-party value contracts before optional adapters. Native middleware remains opaque and optional.
-- [ ] Add package-visible counters for selected 2D/3D physics/nav production probes with exact body/query/agent/path/crowd budgets.
-- [ ] Run focused validation:
+- [x] Add package-visible counters for selected 2D/3D physics/nav production probes with exact body/query/agent/path/crowd budgets.
+- [x] Run focused validation:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_physics_navigation_production_breadth_tests
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "physics_navigation_production_breadth"
 ```
 
-**Phase Evidence:** Initial review-gate slice in progress.
+**Phase Evidence:** Complete.
 
 Initial Phase 4 evidence on 2026-05-26:
 
@@ -312,8 +312,8 @@ Initial Phase 4 evidence on 2026-05-26:
 - GREEN focused build: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_physics_navigation_production_breadth_tests` passed.
 - GREEN focused test: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "physics_navigation_production_breadth"` passed.
 - Full slice validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with 88/88 tests. Apple/Metal checks remained diagnostic-only host gates on this Windows host.
-- Implemented scope: first-party value-only `review_physics_production_breadth` and `review_navigation_production_breadth` gates with fail-closed diagnostics for missing review, missing official source, missing budgets, missing required features, native handle exposure, source geometry mutation, arbitrary runtime-bake claims, unsupported broad middleware parity, and host-gated optional adapter rows.
-- Remaining Phase 4 work: package-visible 2D/3D counters and any actual optional Jolt/Recast/Detour adapter expansion remain unclaimed until later evidence.
+- Implemented scope: first-party value-only `review_physics_production_breadth` and `review_navigation_production_breadth` gates with fail-closed diagnostics for missing review, missing official source, missing budgets, missing required features, native handle exposure, source geometry mutation, arbitrary runtime-bake claims, unsupported broad middleware parity, and host-gated optional adapter rows, plus selected 2D/3D package counters for advanced controllers, character dynamics, constraints, kinematic motion, simple vehicle rows, navmesh readiness, crowd readiness, and determinism gates.
+- Remaining Phase 4 non-claims: actual optional Jolt/Recast/Detour adapter expansion, middleware parity, ragdolls, broad persistent vehicles, broad navmesh import/bake tooling, and every commercial genre physics/navigation scenario remain unclaimed until later evidence.
 
 ## Phase 5 - Networking Production Execution And Security Gate
 
@@ -321,31 +321,57 @@ Initial Phase 4 evidence on 2026-05-26:
 
 **Files:**
 
-- Modify: `engine/runtime/include/mirakana/runtime/network_transport.hpp`
-- Modify: `engine/runtime/src/network_transport.cpp`
-- Modify: `engine/runtime/include/mirakana/runtime/production_network_replication.hpp`
-- Modify: `engine/runtime/src/production_network_replication.cpp`
-- Modify optional: `engine/runtime/network/enet/`
-- Modify: `tests/unit/runtime_network_transport_adapter_tests.cpp`
+- Create: `engine/runtime/include/mirakana/runtime/network_production_security.hpp`
+- Create: `engine/runtime/src/network_production_security.cpp`
+- Modify: `engine/runtime/CMakeLists.txt`
+- Reuse: `engine/runtime/include/mirakana/runtime/network_transport.hpp`
+- Reuse: `engine/runtime/include/mirakana/runtime/production_network_replication.hpp`
+- Create: `tests/unit/runtime_network_production_security_tests.cpp`
+- Reuse: `tests/unit/runtime_network_transport_adapter_tests.cpp`
 - Modify: `tests/unit/runtime_network_enet_tests.cpp`
-- Modify: `tests/unit/runtime_production_network_replication_tests.cpp`
+- Reuse: `tests/unit/runtime_production_network_replication_tests.cpp`
+- Modify: `CMakeLists.txt`
+- Modify: `games/sample_2d_desktop_runtime_package/main.cpp`
+- Modify: `games/sample_2d_desktop_runtime_package/game.agent.json`
+- Modify: `games/sample_2d_desktop_runtime_package/README.md`
 - Create or modify: `docs/specs/2026-05-26-networking-production-security-threat-model.md`
+- Create or modify: `tools/check-ai-integration-102-network-production-security-gate.ps1`
+- Modify: `tools/validate-installed-desktop-runtime.ps1`
 - Modify: `tools/validate-network-enet.ps1`
 - Modify package samples only after local loopback/security evidence is green.
 
-- [ ] Write the networking threat model before code. Cover attacker capabilities, trust boundaries, packet tampering/replay, authentication gaps, denial of service, NAT/matchmaking exclusions, and save/rollback abuse.
-- [ ] Add RED tests for session lifecycle, connection state, channel policy, reliable/unreliable delivery rows, sequence/replay rejection, snapshot/input-command validation, rollback-window diagnostics, and transport adapter failure modes.
-- [ ] Add RED tests that reject encryption/authentication/matchmaking/NAT/cloud claims until implemented with official docs and host evidence.
-- [ ] Implement first-party execution-safe networking rows and optional ENet loopback host evidence. Keep internet-facing network execution out of default validation unless a host-gated recipe explicitly opts in.
-- [ ] Add package-visible counters for loopback/session/replication execution evidence and host gates.
-- [ ] Run focused validation:
+- [x] Write the networking threat model before code. Cover attacker capabilities, trust boundaries, packet tampering/replay, authentication gaps, denial of service, NAT/matchmaking exclusions, and save/rollback abuse.
+- [x] Add RED tests for session lifecycle, connection state, channel policy, reliable/unreliable delivery rows, sequence/replay rejection, snapshot/input-command validation, rollback-window diagnostics, and transport adapter failure modes.
+- [x] Add RED tests that reject encryption/authentication/matchmaking/NAT/cloud claims until implemented with official docs and host evidence.
+- [x] Implement first-party execution-safe networking rows and optional ENet loopback host evidence. Keep internet-facing network execution out of default validation unless a host-gated recipe explicitly opts in.
+- [x] Add package-visible counters for loopback/session/replication execution evidence and host gates.
+- [x] Run focused first-party validation:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-network-enet.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "runtime_network|production_network_replication"
 ```
 
-**Phase Evidence:** Not started.
+- [ ] Run optional ENet host validation when `network-enet` dependencies can be bootstrapped in an approval-capable session:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-network-enet.ps1
+```
+
+**Phase Evidence:** Complete for the first-party value, package, manifest, and default validation slice. Optional ENet host validation remains dependency-gated in this session.
+
+Initial Phase 5 evidence on 2026-05-26:
+
+- Official practice re-check: ENet documentation was re-read before extending the optional adapter proof; ENet is used only for local loopback host evidence and does not provide encryption/authentication, NAT traversal, matchmaking, or cloud-service readiness.
+- Threat model: `docs/specs/2026-05-26-networking-production-security-threat-model.md` now records attacker capabilities, trust boundaries, packet tampering/replay, authentication gaps, denial of service, NAT/matchmaking exclusions, and save/rollback abuse.
+- RED evidence: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_network_production_security_tests` failed while `mirakana/runtime/network_production_security.hpp` did not exist.
+- GREEN focused evidence: `plan_runtime_network_production_security_gate` now returns `ready`, `host_evidence_required`, or `invalid_request` over already-reviewed foundation, replication, validation, and loopback evidence rows. It rejects unsupported online-service claims, native-handle exposure, and side-effect claims without opening sockets, starting threads, executing rollback, mutating worlds, or touching saves.
+- Package proof: `sample_2d_desktop_runtime_package --require-gameplay-systems` emits `network_production_security_*` counters with reviewed threat-model evidence, host-gated loopback/replication readiness, zero unsupported-online-claim rows, zero external network/thread/save/world side effects, two host-gate diagnostics, and a positive replay hash without claiming broad online readiness.
+- GREEN focused build/test: `tools/cmake.ps1 --build --preset dev --target MK_runtime_network_production_security_tests MK_runtime_network_transport_adapter_tests MK_runtime_networking_foundation_tests MK_runtime_production_network_replication_tests sample_2d_desktop_runtime_package` passed, and `tools/ctest.ps1 --preset dev --output-on-failure -R "runtime_network|production_network_replication|sample_2d_desktop_runtime_package"` passed.
+- Package validation: `tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package` passed after installed validation asserted the new `network_production_security_*` status, evidence rows, host gates, side-effect counters, diagnostics, and positive replay hash.
+- Agent/static validation: `tools/check-ai-integration.ps1`, `tools/check-json-contracts.ps1`, and `tools/check-format.ps1` passed after manifest fragments were composed into `engine/agent/manifest.json`.
+- Full slice validation: `tools/validate.ps1` passed with 92/92 tests. Apple/Metal and mobile Apple paths remained diagnostic-only host gates on this Windows host.
+- Optional ENet host validation blocker: `tools/validate-network-enet.ps1` could not configure because `unofficial-enet` was not installed in the linked worktree vcpkg tree. The official dependency entrypoint `tools/bootstrap-deps.ps1` was attempted and blocked by the current Codex command policy because approvals are unavailable (`AskForApproval` is `Never`). No manual package install or configure-time restore was used.
 
 ## Phase 6 - Audio Production Playback, Streaming, DSP, And Spatialization
 

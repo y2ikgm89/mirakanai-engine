@@ -121,6 +121,7 @@
         "sandbox-world",
         "simulation-management",
         "network-replication",
+        "network-production-security",
         "simulation-orchestration"
       ],
       "packageTargets": [
@@ -187,6 +188,13 @@
           ]
         },
         {
+          "id": "network-production-security",
+          "evidence": "Network production security smoke reports deterministic network_production_security_* fields for a reviewed threat model, session lifecycle, connection state, channel policy, sequence/replay, input, snapshot, and rollback-window evidence rows, host-gated loopback/replication readiness, zero external network/thread/save/world side effects, clean unsupported-online-claim rows, and a positive replay hash without claiming matchmaking, NAT traversal, encryption/authentication, cloud backend, or broad online readiness.",
+          "recipeIds": [
+            "installed-2d-gameplay-systems-smoke"
+          ]
+        },
+        {
           "id": "runtime-menu-hud",
           "evidence": "Runtime menu HUD smoke reports deterministic display, command, dialogue, and input-binding prompt counters.",
           "recipeIds": [
@@ -229,6 +237,10 @@
         "unreviewed-external-assets",
         "arbitrary-shell",
         "broad-commercial-quality",
+        "broad-online-services",
+        "internet-facing-network-execution",
+        "matchmaking-nat-traversal",
+        "network-encryption-authentication",
         "runtime-source-parsing",
         "renderer-rhi-residency",
         "metal-readiness"
@@ -1829,7 +1841,7 @@
     "ui": "mirakana_ui-headless renderer submission plus Runtime UI Workbench package evidence through --require-runtime-ui-workbench and Runtime UI Production Stack selected package evidence through --require-runtime-ui-production-stack",
     "physics": "MK_physics 2D deterministic contact and trigger proof through --require-gameplay-systems",
     "navigation": "MK_navigation grid path planning and agent update proof through --require-gameplay-systems",
-    "ai": "MK_ai behavior authoring, perception-blackboard, and behavior-tree proof plus MK_runtime quest/dialogue progression, inventory items crafting, RPG systems review, construction placement validation, procedural generation, entity scale/culling package evidence, scripting sandbox policy package evidence, networking foundation policy package evidence, simulation orchestration package evidence, MK_tools gameplay authoring review and production authoring workflow package evidence, and MK_runtime_scene placement/procedural-placement intent proof through --require-gameplay-systems, --require-procedural-generation, --require-entity-scale-culling, --require-scripting-sandbox-policy, --require-networking-foundation-policy, --require-simulation-orchestration, --require-gameplay-authoring-review, and --require-production-authoring-workflows"
+    "ai": "MK_ai behavior authoring, perception-blackboard, and behavior-tree proof plus MK_runtime quest/dialogue progression, inventory items crafting, RPG systems review, construction placement validation, procedural generation, entity scale/culling package evidence, scripting sandbox policy package evidence, networking foundation policy package evidence, network production security threat-model/package evidence, simulation orchestration package evidence, MK_tools gameplay authoring review and production authoring workflow package evidence, and MK_runtime_scene placement/procedural-placement intent proof through --require-gameplay-systems, --require-procedural-generation, --require-entity-scale-culling, --require-scripting-sandbox-policy, --require-networking-foundation-policy, --require-simulation-orchestration, --require-gameplay-authoring-review, and --require-production-authoring-workflows"
   },
   "importerRequirements": {
     "sourceFormats": [
