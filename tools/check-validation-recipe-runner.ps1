@@ -173,6 +173,19 @@ function Assert-ArgvHasScriptSuffix {
     }
 }
 
+function Assert-ArgvContainsText {
+    param(
+        [Parameter(Mandatory = $true)][object]$Result,
+        [Parameter(Mandatory = $true)][string]$Expected,
+        [Parameter(Mandatory = $true)][string]$Label
+    )
+
+    $joined = [string]::Join("`n", @($Result.argv | ForEach-Object { [string]$_ }))
+    if (-not $joined.Contains($Expected)) {
+        Write-Error "$Label missing expected text: $Expected"
+    }
+}
+
 function Assert-DryRunRecipe {
     param(
         [Parameter(Mandatory = $true)]
@@ -217,8 +230,14 @@ Assert-DryRunRecipe -Recipe "shader-toolchain" -ExpectedArgv @("-File", "check-s
 Assert-DryRunRecipe -Recipe "network-enet" -ExpectedArgv @("-File", "validate-network-enet.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-scene-gpu-package" -ExpectedArgv @("-File", "tools/package-desktop-runtime.ps1", "-GameTarget", "sample_desktop_runtime_game") | Out-Null
 Assert-DryRunRecipe -Recipe "desktop-runtime-generated-material-shader-scaffold-package" -ExpectedArgv @("-File", "tools/package-desktop-runtime.ps1", "-GameTarget", "sample_generated_desktop_runtime_material_shader_package") | Out-Null
-Assert-DryRunRecipe -Recipe "desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict" -ExpectedArgv @("-File", "tools/package-desktop-runtime.ps1", "-RequireVulkanShaders", "--require-vulkan-renderer", "--require-scene-gpu-bindings", "--require-postprocess") | Out-Null
-Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-vulkan-ui-atlas-metadata-package" -ExpectedArgv @("-File", "tools/package-desktop-runtime.ps1", "-RequireVulkanShaders", "--require-vulkan-renderer", "--require-native-ui-textured-sprite-atlas") | Out-Null
+$materialVulkanDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict" -ExpectedArgv @("-Command")
+foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireVulkanShaders", "-SmokeArgs @(", "--require-vulkan-renderer", "--require-scene-gpu-bindings", "--require-postprocess")) {
+    Assert-ArgvContainsText -Result $materialVulkanDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict"
+}
+$sampleVulkanDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-vulkan-ui-atlas-metadata-package" -ExpectedArgv @("-Command")
+foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireVulkanShaders", "-SmokeArgs @(", "--require-vulkan-renderer", "--require-native-ui-textured-sprite-atlas")) {
+    Assert-ArgvContainsText -Result $sampleVulkanDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-vulkan-ui-atlas-metadata-package"
+}
 Assert-DryRunRecipe -Recipe "dev-windows-editor-game-module-driver-load-tests" -ExpectedArgv @("-File", "tools/run-editor-game-module-driver-load-tests.ps1") | Out-Null
 
 $unknown = Invoke-RunnerJson -Arguments @("-Mode", "DryRun", "-Recipe", "not-a-recipe") -ExpectedExitCode 2

@@ -91,6 +91,8 @@ constexpr std::string_view kRuntimeSceneVulkanVertexShaderPath{"shaders/sample_d
 constexpr std::string_view kRuntimeSceneSkinnedVulkanVertexShaderPath{
     "shaders/sample_desktop_runtime_game_scene_skinned.vs.spv"};
 constexpr std::string_view kRuntimeSceneVulkanFragmentShaderPath{"shaders/sample_desktop_runtime_game_scene.ps.spv"};
+constexpr std::string_view kRuntimeSceneVulkanComputeMappingShaderPath{
+    "shaders/sample_desktop_runtime_game_scene_mapping.cs.spv"};
 constexpr std::string_view kRuntimeShadowReceiverVulkanFragmentShaderPath{
     "shaders/sample_desktop_runtime_game_shadow_receiver.ps.spv"};
 constexpr std::string_view kRuntimeShadowReceiverSkinnedVulkanFragmentShaderPath{
@@ -1704,6 +1706,13 @@ int main(int argc, char** argv) {
                   << ": " << vulkan_native_ui_overlay_bytecode.diagnostic << '\n';
         return 6;
     }
+    const auto vulkan_compute_mapping_blob = load_packaged_single_shader_blob(
+        argc > 0 ? argv[0] : nullptr, kRuntimeSceneVulkanComputeMappingShaderPath, "cs_vulkan_mapping_proof");
+    if (vulkan_compute_mapping_blob.bytecode.empty() && options.require_vulkan_renderer) {
+        std::cout << "sample_desktop_runtime_game vulkan_compute_mapping_shader_diagnostic=missing: "
+                  << kRuntimeSceneVulkanComputeMappingShaderPath << '\n';
+        return 6;
+    }
 
     std::optional<mirakana::SdlDesktopPresentationD3d12SceneRendererDesc> d3d12_scene_renderer;
     const auto& d3d12_scene_bytecode = options.require_directional_shadow ? shadow_receiver_bytecode : shader_bytecode;
@@ -1747,12 +1756,15 @@ int main(int argc, char** argv) {
     const bool vulkan_shadow_ready = !options.require_directional_shadow || vulkan_shadow_bytecode.ready();
     const bool vulkan_native_ui_overlay_ready =
         !options.require_native_ui_overlay || vulkan_native_ui_overlay_bytecode.ready();
+    const bool vulkan_compute_mapping_ready = !vulkan_compute_mapping_blob.bytecode.empty();
     if (vulkan_scene_bytecode.ready() && vulkan_postprocess_bytecode.ready() && vulkan_shadow_ready &&
-        vulkan_native_ui_overlay_ready && runtime_package.has_value() && packaged_scene.has_value()) {
+        vulkan_native_ui_overlay_ready && vulkan_compute_mapping_ready && runtime_package.has_value() &&
+        packaged_scene.has_value()) {
         vulkan_scene_renderer.emplace(mirakana::SdlDesktopPresentationVulkanSceneRendererDesc{
             .vertex_shader = to_presentation_shader_bytecode(vulkan_scene_bytecode.vertex_shader),
             .fragment_shader = to_presentation_shader_bytecode(vulkan_scene_bytecode.fragment_shader),
             .skinned_vertex_shader = to_presentation_shader_bytecode(vulkan_skinned_vertex_blob),
+            .compute_morph_shader = to_presentation_shader_bytecode(vulkan_compute_mapping_blob),
             .skinned_scene_fragment_shader =
                 to_presentation_shader_bytecode(vulkan_skinned_shadow_receiver_fragment_blob),
             .postprocess_vertex_shader = to_presentation_shader_bytecode(vulkan_postprocess_bytecode.vertex_shader),
