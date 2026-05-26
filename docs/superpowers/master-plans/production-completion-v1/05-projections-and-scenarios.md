@@ -92,6 +92,16 @@ Coverage statuses:
 | `host-gated` | Requires backend, platform, SDK, device, or toolchain evidence. |
 | `game-owned` | Belongs in `games/<game_name>/` unless it becomes a reusable engine primitive. |
 
+## Current Recommended Implementation Sequence
+
+The active selection slice is [Engine 1.0 Gap Matrix v1](../../plans/2026-05-26-engine-1-0-gap-matrix-v1.md). It keeps `unsupportedProductionGaps = []` and uses this matrix to choose the next implementation from the canonical rows in [04-developer-owned-engine-capability-backlog.md](04-developer-owned-engine-capability-backlog.md).
+
+1. Finish `engine-1-0-gap-matrix-v1` by syncing manifest pointers, current-truth docs, this matrix, and validation evidence.
+2. Do not select `sprite-collision-hitbox-v1`, `sprite-sorting-layer-v1`, `sprite-9slice-and-tiled-v1`, or `sprite-effects-particles-v1` as new implementation candidates because the canonical backlog already records them as `implemented-1x-foundation`.
+3. Select `renderer-backend-parity-v1` strict Vulkan evidence as the first concrete follow-up candidate on a host with Vulkan runtime, DXC SPIR-V CodeGen, and `spirv-val`.
+4. Keep Apple/Metal evidence as a separate Apple-host-gated candidate; Windows-only validation must not promote Metal readiness.
+5. Keep runtime/background streaming, runtime UI platform adapters, editor productization, and multiplayer execution as later separate plans only if future canonical rows reopen those surfaces with explicit evidence requirements.
+
 ## 2D Coverage Projection
 
 | Capability area | Current boundary | Canonical rows to select when broader support is needed |
@@ -99,11 +109,11 @@ Coverage statuses:
 | 2D scaffold/package | `covered-foundation`: generated 2D package recipes create, validate, and package game-owned files without engine edits. | `ai-game-generation-orchestrator-v1`, `ai-generated-game-quality-rubric-v1` |
 | Sprite atlas, animation, and batching | `covered-foundation`: selected package proof, atlas/image foundations, sprite animation counters, and native sprite execution counters exist. | `sprite-atlas-authoring-v1`, `sprite-batching-renderer-v1`, `sprite-animation-flipbook-v1`, `sprite-sorting-layer-v1`, `sprite-9slice-and-tiled-v1`, `sprite-effects-particles-v1` |
 | Tilemaps and 2D levels | `covered-foundation`: tilemap metadata and package counters exist for the supported generated path. | `engine-scene-gameplay-binding-v1`, `engine-gameplay-interaction-framework-v1`, `world-streaming-and-large-scenes-v1` |
-| 2D collision, hitboxes, and triggers | `post-1x-row`: physics/query foundations exist, but frame-authored hitbox families need a selected row. | `sprite-collision-hitbox-v1`, `physics-collision-query-v1`, `engine-gameplay-interaction-framework-v1` |
+| 2D collision, hitboxes, and triggers | `covered-foundation`: frame-authored hitbox/hurtbox planning, physics query foundations, and gameplay interaction rows exist for selected generated/package paths. | `sprite-collision-hitbox-v1`, `physics-collision-query-v1`, `engine-gameplay-interaction-framework-v1` |
 | HUD, menus, dialogue, and rebinding | `covered-foundation`: runtime UI and input context foundations exist, but polished game menus remain a selected 1.x feature. | `engine-ui-game-menu-hud-v1`, `engine-input-action-contexts-v1`, `engine-quest-dialogue-state-v1` |
 | Audio, feedback, and SFX | `covered-foundation`: gameplay audio mix planning exists without broad codec claims. | `engine-audio-gameplay-mixer-v1`, `sprite-effects-particles-v1` |
 | Save, progression, and reset | `covered-foundation`: session/profile documents plus selected package resume evidence exist; broader simulation persistence, real save UX, cloud/binary saves, and migration execution remain selected rows. | `engine-save-settings-profile-v1`, `simulation-persistence-v1` |
-| Dense 2D arena or projectile games | `post-1x-row`: use archetypes only as evidence probes. | `engine-entity-scale-and-culling-v1`, `sprite-batching-renderer-v1`, `sprite-collision-hitbox-v1`, `gameplay-simulation-orchestration-v1` |
+| Dense 2D arena or projectile games | `covered-foundation`: use archetypes only as evidence probes unless future rows add broader performance or gameplay execution claims. | `engine-entity-scale-and-culling-v1`, `sprite-batching-renderer-v1`, `sprite-collision-hitbox-v1`, `gameplay-simulation-orchestration-v1` |
 
 ## 3D Coverage Projection
 

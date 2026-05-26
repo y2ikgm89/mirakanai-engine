@@ -2255,7 +2255,7 @@ if ($runtimeResourceGap.Count -ne 0) {
 }
 $recommendedText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
 $recommendedPlanId = [string]$productionLoop.recommendedNextPlan.id
-$recommendedPlanUsesLegacyCloseoutContext = $recommendedPlanId -notin @("general-purpose-game-production-v1", "generated-game-studio-v1")
+$recommendedPlanUsesLegacyCloseoutContext = $recommendedPlanId -notin @("general-purpose-game-production-v1", "generated-game-studio-v1", "engine-1-0-gap-matrix-v1")
 if ($productionLoop.currentActivePlan -eq "docs/superpowers/plans/2026-05-23-candidate-backlog-burn-down-v1.md") {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop.currentActivePlan must not point at completed Candidate Backlog Burn-down v1"
 }
@@ -2543,6 +2543,15 @@ if ($recommendedPlanId -eq "general-purpose-game-production-v1") {
     Assert-ContainsText $recommendedText "ai-generated-game-playtest-loop-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
     Assert-ContainsText $recommendedText "ai-validation-remediation-recipes-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
     Assert-ContainsText $recommendedText "unsupportedProductionGaps empty" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
+} elseif ($recommendedPlanId -eq "engine-1-0-gap-matrix-v1") {
+    Assert-ContainsText $recommendedText "Engine 1.0 Gap Matrix v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
+    Assert-ContainsText $recommendedText "Generated Game Studio v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
+    Assert-ContainsText $recommendedText "implemented-1x-foundation" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
+    Assert-ContainsText $recommendedText "renderer-backend-parity-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
+    Assert-ContainsText $recommendedText "strict Vulkan evidence" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
+    Assert-ContainsText $recommendedText "Metal remains Apple-host-gated" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
+    Assert-ContainsText $recommendedText "unsupportedProductionGaps empty" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
+    Assert-ContainsText $recommendedText "broad commercial-engine" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
 } else {
     Assert-ContainsText $recommendedText "Frame Graph v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
     Assert-ContainsText $recommendedText "upload-staging-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"

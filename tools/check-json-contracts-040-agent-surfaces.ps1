@@ -539,7 +539,7 @@ if ($playable3dGap.Count -ne 0) {
     Write-Error "engine manifest aiOperableProductionLoop 3d-playable-vertical-slice gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
 $recommendedText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
-if ([string]$productionLoop.recommendedNextPlan.id -notin @("general-purpose-game-production-v1", "generated-game-studio-v1")) {
+if ([string]$productionLoop.recommendedNextPlan.id -notin @("general-purpose-game-production-v1", "generated-game-studio-v1", "engine-1-0-gap-matrix-v1")) {
     foreach ($needle in @(
         "3d-playable-vertical-slice",
         "generated desktop 3D package proof",
@@ -578,6 +578,19 @@ if ([string]$productionLoop.recommendedNextPlan.id -ne "general-purpose-game-pro
             "unsupportedProductionGaps empty"
         )) {
             Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan generated game studio milestone"
+        }
+    } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "engine-1-0-gap-matrix-v1") {
+        foreach ($needle in @(
+            "Engine 1.0 Gap Matrix v1",
+            "Generated Game Studio v1",
+            "implemented-1x-foundation",
+            "renderer-backend-parity-v1",
+            "strict Vulkan evidence",
+            "Metal remains Apple-host-gated",
+            "unsupportedProductionGaps empty",
+            "broad commercial-engine"
+        )) {
+            Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan engine gap matrix"
         }
     } else {
         foreach ($needle in @(

@@ -1054,6 +1054,19 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     )) {
         Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan generated game studio milestone"
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "engine-1-0-gap-matrix-v1") {
+    foreach ($needle in @(
+        "Engine 1.0 Gap Matrix v1",
+        "Generated Game Studio v1",
+        "implemented-1x-foundation",
+        "renderer-backend-parity-v1",
+        "strict Vulkan evidence",
+        "Metal remains Apple-host-gated",
+        "unsupportedProductionGaps empty",
+        "broad commercial-engine"
+    )) {
+        Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan engine gap matrix"
+    }
 } else {
     foreach ($needle in @(
     "Frame Graph Transient Texture Alias Planning v1",

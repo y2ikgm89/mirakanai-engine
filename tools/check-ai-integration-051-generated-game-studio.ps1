@@ -105,7 +105,7 @@ $generatedGameStudioChecks = @(
         Path = "docs/superpowers/master-plans/production-completion-v1/04-developer-owned-engine-capability-backlog.md"
         Needles = @(
             "generated-game-studio-v1",
-            "selected-production-slice",
+            "completed-production-track",
             "2026-05-26-generated-game-studio-v1.md"
         )
     },
