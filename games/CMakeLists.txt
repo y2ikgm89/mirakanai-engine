@@ -2308,6 +2308,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-postprocess
             --require-postprocess-depth-input
             --require-renderer-quality-gates
+            --require-renderer-quality-matrix
             --require-rendering-vfx-profiling
             --require-playable-3d-slice
             --require-native-ui-overlay

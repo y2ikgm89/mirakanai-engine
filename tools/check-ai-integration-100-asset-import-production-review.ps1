@@ -1,0 +1,159 @@
+#requires -Version 7.0
+#requires -PSEdition Core
+
+# Chapter 10.0 for check-ai-integration.ps1 Asset Import Production Review contracts.
+
+$assetReviewHeaderText = Get-AgentSurfaceText "engine/assets/include/mirakana/assets/asset_import_production_review.hpp"
+$assetReviewSourceText = Get-AgentSurfaceText "engine/assets/src/asset_import_production_review.cpp"
+$assetCMakeText = Get-AgentSurfaceText "engine/assets/CMakeLists.txt"
+$rootCMakeText = Get-AgentSurfaceText "CMakeLists.txt"
+$assetReviewTestsText = Get-AgentSurfaceText "tests/unit/asset_import_production_review_tests.cpp"
+$modulesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/004-modules.json"
+$importerCapabilitiesText = Get-AgentSurfaceText "engine/agent/manifest.fragments/007-importerCapabilities.json"
+$gameCodeGuidanceText = Get-AgentSurfaceText "engine/agent/manifest.fragments/014-gameCodeGuidance.json"
+$sample2dManifestText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/game.agent.json"
+$sample3dManifestText = Get-AgentSurfaceText "games/sample_generated_desktop_runtime_3d_package/game.agent.json"
+$currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
+$roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
+$aiGameDevelopmentText = Get-AgentSurfaceText "docs/ai-game-development.md"
+$generatedValidationText = Get-AgentSurfaceText "docs/specs/generated-game-validation-scenarios.md"
+$planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
+$activePlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-26-engine-general-production-quality-expansion-v1.md"
+$backlogText = Get-AgentSurfaceText "docs/superpowers/master-plans/production-completion-v1/04-developer-owned-engine-capability-backlog.md"
+$projectionText = Get-AgentSurfaceText "docs/superpowers/master-plans/production-completion-v1/05-projections-and-scenarios.md"
+$manifestText = Get-AgentSurfaceText "engine/agent/manifest.json"
+
+foreach ($needle in @(
+        "AssetImportProductionStatus",
+        "AssetImportProductionFeatureKind",
+        "AssetImportProductionProofKind",
+        "AssetImportProductionDiagnosticCode",
+        "AssetImportProductionEvidenceRow",
+        "AssetImportProductionReviewRequest",
+        "AssetImportProductionDiagnostic",
+        "AssetImportProductionReview",
+        "review_asset_import_production_readiness"
+    )) {
+    Assert-ContainsText $assetReviewHeaderText $needle "engine/assets/include/mirakana/assets/asset_import_production_review.hpp"
+}
+
+foreach ($needle in @(
+        "missing_review_evidence",
+        "missing_host_validation_evidence",
+        "missing_source_root_evidence",
+        "missing_importer_id",
+        "missing_extension_evidence",
+        "missing_output_package_row",
+        "missing_license_provenance",
+        "missing_deterministic_hash",
+        "missing_validator_evidence",
+        "missing_dependency_legal_record",
+        "missing_command_review_evidence",
+        "unsupported_arbitrary_importer_plugin",
+        "unsupported_external_download",
+        "unsupported_live_shader_generation",
+        "unsupported_source_mutation_outside_roots",
+        "unsupported_native_handle_claim",
+        "unsupported_unreviewed_compiler_execution",
+        "unsupported_runtime_source_parsing",
+        "unsupported_broad_codec_claim"
+    )) {
+    Assert-ContainsText $assetReviewHeaderText $needle "asset import production review diagnostics"
+}
+
+foreach ($needle in @(
+        "row_is_host_gated",
+        "row_is_ready",
+        "feature_requires_validator",
+        "feature_requires_dependency_legal_record",
+        "feature_requires_command_review",
+        "build_replay_hash",
+        "valid_token_list",
+        "contains_unsafe_token",
+        "request_arbitrary_importer_plugin",
+        "request_external_download",
+        "request_live_shader_generation",
+        "request_source_mutation_outside_roots",
+        "request_native_handle_access",
+        "request_unreviewed_compiler_execution",
+        "request_runtime_source_parsing",
+        "request_broad_codec_claim",
+        "AssetImportProductionStatus::host_evidence_required",
+        "AssetImportProductionStatus::no_rows"
+    )) {
+    Assert-ContainsText $assetReviewSourceText $needle "engine/assets/src/asset_import_production_review.cpp"
+}
+
+foreach ($needle in @(
+        "src/asset_import_production_review.cpp",
+        "asset_import_production_review.hpp",
+        "MK_asset_import_production_review_tests",
+        "tests/unit/asset_import_production_review_tests.cpp"
+    )) {
+    Assert-ContainsText ($assetCMakeText + $rootCMakeText + $modulesFragmentText) $needle "asset import production review build and manifest registration"
+}
+
+foreach ($needle in @(
+        "asset import production review accepts explicit broad source and cook evidence",
+        "asset import production review reports host gated rows without broad readiness",
+        "asset import production review rejects missing manifest and package evidence",
+        "asset import production review rejects unsupported execution and unsafe claims",
+        "asset import production review rejects missing required features duplicate rows and unsafe tokens",
+        "asset import production review reports no rows without broad import claims"
+    )) {
+    Assert-ContainsText $assetReviewTestsText $needle "tests/unit/asset_import_production_review_tests.cpp"
+}
+
+foreach ($needle in @(
+        "broad-reviewed-asset-import-production-review-v1",
+        "implemented-value-contract",
+        "mirakana::review_asset_import_production_readiness",
+        "first-party-source-documents",
+        "png",
+        "gltf",
+        "common-audio",
+        "KTX2/Basis evidence rows may be reviewed when supplied",
+        "Shader rows are reviewed offline compile-request/package-cache evidence only",
+        "arbitrary importer plugin execution",
+        "external asset download",
+        "live shader generation",
+        "runtime source parsing",
+        "broad codec readiness"
+    )) {
+    Assert-ContainsText ($importerCapabilitiesText + $manifestText) $needle "engine agent importer capability production review contract"
+}
+
+foreach ($needle in @(
+        "currentAssetImportProductionReview",
+        "AssetImportProductionReviewRequest",
+        "AssetImportProductionEvidenceRow",
+        "missing review or host validation evidence",
+        "does not execute importers",
+        "does not execute importers, download assets, run shader compilers",
+        'descriptor-only `game.agent.json.importerRequirements.productionImportReview`',
+        "Broad Reviewed Asset Import And Cook Pipeline",
+        "broad-reviewed-asset-import-production-review-v1"
+    )) {
+    Assert-ContainsText ($gameCodeGuidanceText + $currentCapabilitiesText + $roadmapText + $aiGameDevelopmentText + $generatedValidationText + $planRegistryText + $activePlanText + $backlogText + $projectionText) $needle "asset import production review docs"
+}
+
+foreach ($manifestTextForSample in @($sample2dManifestText, $sample3dManifestText)) {
+    foreach ($needle in @(
+            '"productionImportReview"',
+            '"broad-reviewed-asset-import-production-review-v1"',
+            '"reviewApi": "mirakana::review_asset_import_production_readiness"',
+            '"implementedExternalAdaptersRequired": []',
+            '"arbitrary-importer-plugin"',
+            '"external-asset-download"',
+            '"live-shader-generation"',
+            '"runtime-source-parsing"',
+            '"native-handle-access"',
+            '"broad-codec-readiness"'
+        )) {
+        Assert-ContainsText $manifestTextForSample $needle "sample game importer production review descriptor"
+    }
+}
+
+Assert-ContainsText $sample2dManifestText '"first-party-source-documents"' "2D sample production import review descriptor"
+Assert-ContainsText $sample3dManifestText '"gltf"' "3D sample production import review descriptor"
+Assert-ContainsText $sample3dManifestText '"hlsl-offline-compile-request"' "3D sample production import review descriptor"

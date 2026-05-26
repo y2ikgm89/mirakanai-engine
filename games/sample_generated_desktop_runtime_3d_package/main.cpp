@@ -22,6 +22,7 @@
 #include "mirakana/platform/input.hpp"
 #include "mirakana/renderer/production_vfx_profiling.hpp"
 #include "mirakana/renderer/renderer.hpp"
+#include "mirakana/renderer/renderer_quality_matrix.hpp"
 #include "mirakana/runtime/addressable_content_streaming.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
 #include "mirakana/runtime/entity_scale_culling.hpp"
@@ -83,6 +84,7 @@ struct DesktopRuntimeOptions {
     bool require_directional_shadow_filtering{false};
     bool require_shadow_morph_composition{false};
     bool require_renderer_quality_gates{false};
+    bool require_renderer_quality_matrix{false};
     bool require_rendering_vfx_profiling{false};
     bool require_playable_3d_slice{false};
     bool require_visible_3d_production_proof{false};
@@ -900,6 +902,20 @@ rendering_vfx_profiling_status_name(mirakana::RendererProductionVfxProfilingStat
     return "unknown";
 }
 
+[[nodiscard]] const char* renderer_quality_matrix_status_name(mirakana::RendererQualityMatrixStatus status) noexcept {
+    switch (status) {
+    case mirakana::RendererQualityMatrixStatus::ready:
+        return "ready";
+    case mirakana::RendererQualityMatrixStatus::host_evidence_required:
+        return "host_evidence_required";
+    case mirakana::RendererQualityMatrixStatus::no_rows:
+        return "no_rows";
+    case mirakana::RendererQualityMatrixStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
 struct SceneGameplayBindingProbeResult {
     std::size_t source_rows{0U};
     std::size_t binding_rows{0U};
@@ -1084,6 +1100,28 @@ struct RenderingVfxProfilingProbeResult {
     bool metal_host_evidence_ready{false};
     bool requires_metal_host_evidence{false};
     bool has_metal_host_evidence{false};
+    bool invoked_gpu_commands{false};
+    bool invoked_native_capture{false};
+    bool invoked_crash_upload{false};
+    std::size_t diagnostics{0U};
+    bool reviewed{false};
+    bool ready{false};
+};
+
+struct RendererQualityMatrixProbeResult {
+    mirakana::RendererQualityMatrixStatus status{mirakana::RendererQualityMatrixStatus::invalid_request};
+    std::size_t rows{0U};
+    std::size_t ready_rows{0U};
+    std::size_t host_gated_rows{0U};
+    std::size_t host_validated_backends{0U};
+    std::uint64_t replay_hash{0U};
+    bool d3d12_ready{false};
+    bool vulkan_strict_ready{false};
+    bool metal_ready{false};
+    bool requires_metal_host_evidence{false};
+    bool has_metal_host_evidence{false};
+    bool selected_package_evidence_ready{false};
+    bool general_renderer_quality_ready{false};
     bool invoked_gpu_commands{false};
     bool invoked_native_capture{false};
     bool invoked_crash_upload{false};
@@ -2151,6 +2189,167 @@ validate_simulation_management_package_evidence(std::string_view sample_id) {
                    result.requires_metal_host_evidence && result.has_metal_host_evidence &&
                    !result.invoked_gpu_commands && !result.invoked_native_capture && !result.invoked_crash_upload &&
                    result.diagnostics == 0U;
+    return result;
+}
+
+[[nodiscard]] std::string renderer_quality_matrix_feature_id(mirakana::RendererQualityFeatureKind feature) {
+    switch (feature) {
+    case mirakana::RendererQualityFeatureKind::materials:
+        return "materials.lit";
+    case mirakana::RendererQualityFeatureKind::lighting_shadows:
+        return "lighting.directional_shadow";
+    case mirakana::RendererQualityFeatureKind::postprocess:
+        return "postprocess.depth_aware";
+    case mirakana::RendererQualityFeatureKind::sprite_ui:
+        return "sprite_ui.atlas_overlay";
+    case mirakana::RendererQualityFeatureKind::scene_scale:
+        return "scene_scale.visibility_budget";
+    case mirakana::RendererQualityFeatureKind::gpu_memory_residency:
+        return "gpu_memory.residency_budget";
+    case mirakana::RendererQualityFeatureKind::profiling_capture:
+        return "profiling.capture_handoff";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] mirakana::RendererQualityMatrixRow
+make_renderer_quality_matrix_ready_row(mirakana::RendererQualityFeatureKind feature, mirakana::rhi::BackendKind backend,
+                                       std::uint32_t source_index) {
+    const auto is_d3d12 = backend == mirakana::rhi::BackendKind::d3d12;
+    const auto is_vulkan = backend == mirakana::rhi::BackendKind::vulkan;
+    const auto is_metal = backend == mirakana::rhi::BackendKind::metal;
+    const auto feature_id = renderer_quality_matrix_feature_id(feature);
+    return mirakana::RendererQualityMatrixRow{
+        .feature_id = feature_id,
+        .feature = feature,
+        .backend = backend,
+        .proof = mirakana::RendererQualityProofKind::selected_package,
+        .reviewed = true,
+        .backend_local_evidence = true,
+        .d3d12_resource_state_barrier_evidence = is_d3d12,
+        .d3d12_fence_evidence = is_d3d12,
+        .vulkan_synchronization2_evidence = is_vulkan,
+        .vulkan_layout_transition_evidence = is_vulkan,
+        .vulkan_validation_layer_evidence = is_vulkan,
+        .vulkan_spirv_validation_evidence = is_vulkan,
+        .metal_resource_synchronization_evidence = is_metal,
+        .metal_feature_set_evidence = is_metal,
+        .shader_tool_validation_evidence = true,
+        .package_counter_ids = {std::string{"renderer_quality_matrix."} + feature_id},
+        .timing_budget_us = 1000U,
+        .gpu_memory_evidence = true,
+        .backend_parity_evidence = true,
+        .host_validated = true,
+        .host_gate_required = false,
+        .request_native_handle_access = false,
+        .request_capture_execution = false,
+        .request_crash_upload_execution = false,
+        .request_inferred_backend_parity = false,
+        .request_subjective_visual_quality_claim = false,
+        .source_index = source_index,
+    };
+}
+
+[[nodiscard]] mirakana::RendererQualityMatrixRow
+make_renderer_quality_matrix_metal_host_gated_row(mirakana::RendererQualityFeatureKind feature,
+                                                  std::uint32_t source_index) {
+    return mirakana::RendererQualityMatrixRow{
+        .feature_id = renderer_quality_matrix_feature_id(feature),
+        .feature = feature,
+        .backend = mirakana::rhi::BackendKind::metal,
+        .proof = mirakana::RendererQualityProofKind::host_gate,
+        .reviewed = true,
+        .backend_local_evidence = true,
+        .d3d12_resource_state_barrier_evidence = false,
+        .d3d12_fence_evidence = false,
+        .vulkan_synchronization2_evidence = false,
+        .vulkan_layout_transition_evidence = false,
+        .vulkan_validation_layer_evidence = false,
+        .vulkan_spirv_validation_evidence = false,
+        .metal_resource_synchronization_evidence = false,
+        .metal_feature_set_evidence = false,
+        .shader_tool_validation_evidence = false,
+        .package_counter_ids = {},
+        .timing_budget_us = 0U,
+        .gpu_memory_evidence = false,
+        .backend_parity_evidence = false,
+        .host_validated = false,
+        .host_gate_required = true,
+        .request_native_handle_access = false,
+        .request_capture_execution = false,
+        .request_crash_upload_execution = false,
+        .request_inferred_backend_parity = false,
+        .request_subjective_visual_quality_claim = false,
+        .source_index = source_index,
+    };
+}
+
+[[nodiscard]] RendererQualityMatrixProbeResult validate_renderer_quality_matrix_package_evidence() {
+    constexpr mirakana::RendererQualityFeatureKind required_features[] = {
+        mirakana::RendererQualityFeatureKind::materials,
+        mirakana::RendererQualityFeatureKind::lighting_shadows,
+        mirakana::RendererQualityFeatureKind::postprocess,
+        mirakana::RendererQualityFeatureKind::sprite_ui,
+        mirakana::RendererQualityFeatureKind::scene_scale,
+        mirakana::RendererQualityFeatureKind::gpu_memory_residency,
+        mirakana::RendererQualityFeatureKind::profiling_capture,
+    };
+
+    std::vector<mirakana::RendererQualityMatrixRow> rows;
+    rows.reserve(21U);
+    std::uint32_t source_index{1U};
+    for (const auto feature : required_features) {
+        rows.push_back(
+            make_renderer_quality_matrix_ready_row(feature, mirakana::rhi::BackendKind::d3d12, source_index++));
+        rows.push_back(
+            make_renderer_quality_matrix_ready_row(feature, mirakana::rhi::BackendKind::vulkan, source_index++));
+        rows.push_back(make_renderer_quality_matrix_metal_host_gated_row(feature, source_index++));
+    }
+
+    const auto plan = mirakana::plan_renderer_quality_matrix(mirakana::RendererQualityMatrixRequest{
+        .required_backends =
+            {
+                mirakana::rhi::BackendKind::d3d12,
+                mirakana::rhi::BackendKind::vulkan,
+                mirakana::rhi::BackendKind::metal,
+            },
+        .rows = std::move(rows),
+        .row_budget = 64U,
+        .seed = 456U,
+    });
+
+    RendererQualityMatrixProbeResult result;
+    result.status = plan.status;
+    result.rows = plan.row_count;
+    result.ready_rows = plan.ready_row_count;
+    result.host_gated_rows = plan.host_gated_row_count;
+    result.host_validated_backends = plan.host_validated_backend_count;
+    result.replay_hash = plan.replay_hash;
+    result.d3d12_ready = plan.d3d12_quality_matrix_ready;
+    result.vulkan_strict_ready = plan.vulkan_strict_quality_matrix_ready;
+    result.metal_ready = plan.metal_quality_matrix_ready;
+    result.requires_metal_host_evidence = plan.requires_metal_host_evidence;
+    result.has_metal_host_evidence = plan.has_metal_host_evidence;
+    result.selected_package_evidence_ready = plan.selected_package_quality_evidence_ready;
+    result.general_renderer_quality_ready = plan.general_renderer_quality_ready;
+    result.invoked_gpu_commands = plan.invoked_gpu_commands;
+    result.invoked_native_capture = plan.invoked_native_capture;
+    result.invoked_crash_upload = plan.invoked_crash_upload;
+    result.diagnostics = plan.diagnostics.size();
+    result.reviewed = plan.status == mirakana::RendererQualityMatrixStatus::host_evidence_required &&
+                      result.rows == 21U && result.ready_rows == 14U && result.host_gated_rows == 7U &&
+                      result.host_validated_backends == 2U && result.replay_hash != 0U && result.d3d12_ready &&
+                      result.vulkan_strict_ready && !result.metal_ready && result.requires_metal_host_evidence &&
+                      !result.has_metal_host_evidence && result.selected_package_evidence_ready &&
+                      !result.general_renderer_quality_ready && !result.invoked_gpu_commands &&
+                      !result.invoked_native_capture && !result.invoked_crash_upload && result.diagnostics == 0U;
+    result.ready = plan.status == mirakana::RendererQualityMatrixStatus::ready && plan.succeeded() &&
+                   result.rows == 21U && result.ready_rows == 21U && result.host_gated_rows == 0U &&
+                   result.host_validated_backends == 3U && result.replay_hash != 0U && result.d3d12_ready &&
+                   result.vulkan_strict_ready && result.metal_ready && result.requires_metal_host_evidence &&
+                   result.has_metal_host_evidence && result.selected_package_evidence_ready &&
+                   result.general_renderer_quality_ready && !result.invoked_gpu_commands &&
+                   !result.invoked_native_capture && !result.invoked_crash_upload && result.diagnostics == 0U;
     return result;
 }
 
@@ -6327,7 +6526,8 @@ void print_usage() {
                  "[--require-scene-gpu-bindings] [--require-postprocess] [--require-postprocess-depth-input] "
                  "[--require-directional-shadow] [--require-directional-shadow-filtering] "
                  "[--require-shadow-morph-composition] "
-                 "[--require-renderer-quality-gates] [--require-rendering-vfx-profiling] "
+                 "[--require-renderer-quality-gates] [--require-renderer-quality-matrix] "
+                 "[--require-rendering-vfx-profiling] "
                  "[--require-playable-3d-slice] [--require-visible-3d-production-proof] "
                  "[--require-vulkan-visible-3d-production-proof] "
                  "[--require-native-ui-overlay] "
@@ -6388,6 +6588,7 @@ void print_usage() {
             options.require_postprocess = true;
             options.require_postprocess_depth_input = true;
             options.require_renderer_quality_gates = true;
+            options.require_renderer_quality_matrix = true;
             options.require_rendering_vfx_profiling = true;
             continue;
         }
@@ -6419,6 +6620,14 @@ void print_usage() {
         }
         if (arg == "--require-renderer-quality-gates") {
             options.require_renderer_quality_gates = true;
+            continue;
+        }
+        if (arg == "--require-renderer-quality-matrix") {
+            options.require_scene_gpu_bindings = true;
+            options.require_postprocess = true;
+            options.require_postprocess_depth_input = true;
+            options.require_renderer_quality_gates = true;
+            options.require_renderer_quality_matrix = true;
             continue;
         }
         if (arg == "--require-playable-3d-slice") {
@@ -8764,6 +8973,9 @@ int main(int argc, char** argv) {
     const auto rendering_vfx_profiling_probe = options.require_rendering_vfx_profiling
                                                    ? validate_rendering_vfx_profiling_package_evidence()
                                                    : RenderingVfxProfilingProbeResult{};
+    const auto renderer_quality_matrix_probe = options.require_renderer_quality_matrix
+                                                   ? validate_renderer_quality_matrix_package_evidence()
+                                                   : RendererQualityMatrixProbeResult{};
     const auto gameplay_systems_ready =
         gameplay_systems_core_ready &&
         (!options.require_gameplay_systems ||
@@ -8978,7 +9190,34 @@ int main(int argc, char** argv) {
         << (renderer_quality.postprocess_depth_input_ready ? 1 : 0)
         << " renderer_quality_directional_shadow_ready=" << (renderer_quality.directional_shadow_ready ? 1 : 0)
         << " renderer_quality_directional_shadow_filter_ready="
-        << (renderer_quality.directional_shadow_filter_ready ? 1 : 0)
+        << (renderer_quality.directional_shadow_filter_ready ? 1 : 0) << " renderer_quality_matrix_status="
+        << renderer_quality_matrix_status_name(renderer_quality_matrix_probe.status)
+        << " renderer_quality_matrix_reviewed=" << (renderer_quality_matrix_probe.reviewed ? 1 : 0)
+        << " renderer_quality_matrix_ready=" << (renderer_quality_matrix_probe.ready ? 1 : 0)
+        << " renderer_quality_matrix_rows=" << renderer_quality_matrix_probe.rows
+        << " renderer_quality_matrix_ready_rows=" << renderer_quality_matrix_probe.ready_rows
+        << " renderer_quality_matrix_host_gated_rows=" << renderer_quality_matrix_probe.host_gated_rows
+        << " renderer_quality_matrix_host_validated_backends=" << renderer_quality_matrix_probe.host_validated_backends
+        << " renderer_quality_matrix_replay_hash=" << renderer_quality_matrix_probe.replay_hash
+        << " renderer_quality_matrix_d3d12_ready=" << (renderer_quality_matrix_probe.d3d12_ready ? 1 : 0)
+        << " renderer_quality_matrix_vulkan_strict_ready="
+        << (renderer_quality_matrix_probe.vulkan_strict_ready ? 1 : 0)
+        << " renderer_quality_matrix_metal_ready=" << (renderer_quality_matrix_probe.metal_ready ? 1 : 0)
+        << " renderer_quality_matrix_requires_metal_host_evidence="
+        << (renderer_quality_matrix_probe.requires_metal_host_evidence ? 1 : 0)
+        << " renderer_quality_matrix_metal_host_evidence="
+        << (renderer_quality_matrix_probe.has_metal_host_evidence ? 1 : 0)
+        << " renderer_quality_matrix_selected_package_evidence_ready="
+        << (renderer_quality_matrix_probe.selected_package_evidence_ready ? 1 : 0)
+        << " renderer_quality_matrix_general_renderer_quality_ready="
+        << (renderer_quality_matrix_probe.general_renderer_quality_ready ? 1 : 0)
+        << " renderer_quality_matrix_invoked_gpu_commands="
+        << (renderer_quality_matrix_probe.invoked_gpu_commands ? 1 : 0)
+        << " renderer_quality_matrix_invoked_native_capture="
+        << (renderer_quality_matrix_probe.invoked_native_capture ? 1 : 0)
+        << " renderer_quality_matrix_invoked_crash_upload="
+        << (renderer_quality_matrix_probe.invoked_crash_upload ? 1 : 0)
+        << " renderer_quality_matrix_diagnostics=" << renderer_quality_matrix_probe.diagnostics
         << " playable_3d_status=" << playable_3d_slice_status_name(playable_3d.status)
         << " playable_3d_ready=" << (playable_3d.ready ? 1 : 0)
         << " playable_3d_diagnostics=" << playable_3d.diagnostics_count
@@ -9706,6 +9945,34 @@ int main(int argc, char** argv) {
                 << " network_replication_diagnostics=" << network_replication_probe.diagnostics
                 << " network_replication_replay_hash=" << network_replication_probe.replay_hash << '\n';
             return 3;
+        }
+        if (options.require_renderer_quality_matrix &&
+            !(renderer_quality_matrix_probe.reviewed || renderer_quality_matrix_probe.ready)) {
+            std::cout << "sample_generated_desktop_runtime_3d_package required_renderer_quality_matrix_unavailable"
+                      << " renderer_quality_matrix_status="
+                      << renderer_quality_matrix_status_name(renderer_quality_matrix_probe.status)
+                      << " renderer_quality_matrix_reviewed=" << (renderer_quality_matrix_probe.reviewed ? 1 : 0)
+                      << " renderer_quality_matrix_ready=" << (renderer_quality_matrix_probe.ready ? 1 : 0)
+                      << " renderer_quality_matrix_rows=" << renderer_quality_matrix_probe.rows
+                      << " renderer_quality_matrix_ready_rows=" << renderer_quality_matrix_probe.ready_rows
+                      << " renderer_quality_matrix_host_gated_rows=" << renderer_quality_matrix_probe.host_gated_rows
+                      << " renderer_quality_matrix_host_validated_backends="
+                      << renderer_quality_matrix_probe.host_validated_backends
+                      << " renderer_quality_matrix_d3d12_ready=" << (renderer_quality_matrix_probe.d3d12_ready ? 1 : 0)
+                      << " renderer_quality_matrix_vulkan_strict_ready="
+                      << (renderer_quality_matrix_probe.vulkan_strict_ready ? 1 : 0)
+                      << " renderer_quality_matrix_metal_ready=" << (renderer_quality_matrix_probe.metal_ready ? 1 : 0)
+                      << " renderer_quality_matrix_requires_metal_host_evidence="
+                      << (renderer_quality_matrix_probe.requires_metal_host_evidence ? 1 : 0)
+                      << " renderer_quality_matrix_metal_host_evidence="
+                      << (renderer_quality_matrix_probe.has_metal_host_evidence ? 1 : 0)
+                      << " renderer_quality_matrix_selected_package_evidence_ready="
+                      << (renderer_quality_matrix_probe.selected_package_evidence_ready ? 1 : 0)
+                      << " renderer_quality_matrix_general_renderer_quality_ready="
+                      << (renderer_quality_matrix_probe.general_renderer_quality_ready ? 1 : 0)
+                      << " renderer_quality_matrix_diagnostics=" << renderer_quality_matrix_probe.diagnostics
+                      << " renderer_quality_matrix_replay_hash=" << renderer_quality_matrix_probe.replay_hash << '\n';
+            return 20;
         }
         if (options.require_rendering_vfx_profiling &&
             !(rendering_vfx_profiling_probe.reviewed || rendering_vfx_profiling_probe.ready)) {

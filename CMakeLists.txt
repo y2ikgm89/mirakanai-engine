@@ -338,6 +338,15 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_physics_native_adapter_tests)
     add_test(NAME MK_physics_native_adapter_tests COMMAND MK_physics_native_adapter_tests)
 
+    add_executable(MK_physics_navigation_production_breadth_tests
+        tests/unit/physics_navigation_production_breadth_tests.cpp
+    )
+    target_link_libraries(MK_physics_navigation_production_breadth_tests PRIVATE MK_physics MK_navigation)
+    target_include_directories(MK_physics_navigation_production_breadth_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_physics_navigation_production_breadth_tests)
+    add_test(NAME MK_physics_navigation_production_breadth_tests
+        COMMAND MK_physics_navigation_production_breadth_tests)
+
     if(TARGET MK_physics_jolt)
         add_executable(MK_physics_jolt_tests
             tests/unit/physics_jolt_tests.cpp
@@ -614,6 +623,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_assets_tests)
     add_test(NAME MK_assets_tests COMMAND MK_assets_tests)
 
+    add_executable(MK_asset_import_production_review_tests
+        tests/unit/asset_import_production_review_tests.cpp
+    )
+    target_link_libraries(MK_asset_import_production_review_tests PRIVATE MK_assets)
+    target_include_directories(MK_asset_import_production_review_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_asset_import_production_review_tests)
+    add_test(NAME MK_asset_import_production_review_tests COMMAND MK_asset_import_production_review_tests)
+
     add_executable(MK_runtime_rhi_tests
         tests/unit/runtime_rhi_tests.cpp
     )
@@ -710,6 +727,14 @@ if(BUILD_TESTING)
     target_include_directories(MK_renderer_production_vfx_profiling_tests PRIVATE tests)
     MK_apply_common_target_options(MK_renderer_production_vfx_profiling_tests)
     add_test(NAME MK_renderer_production_vfx_profiling_tests COMMAND MK_renderer_production_vfx_profiling_tests)
+
+    add_executable(MK_renderer_quality_matrix_tests
+        tests/unit/renderer_quality_matrix_tests.cpp
+    )
+    target_link_libraries(MK_renderer_quality_matrix_tests PRIVATE MK_renderer)
+    target_include_directories(MK_renderer_quality_matrix_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_renderer_quality_matrix_tests)
+    add_test(NAME MK_renderer_quality_matrix_tests COMMAND MK_renderer_quality_matrix_tests)
 
     add_executable(MK_runtime_host_tests
         tests/unit/runtime_host_tests.cpp
