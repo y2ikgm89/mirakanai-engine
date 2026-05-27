@@ -246,8 +246,10 @@ Publication evidence:
 
 | Command | Result |
 | --- | --- |
-| `git -c safe.directory=G:/workspace/development/GameEngine/.worktrees/runtime-ui-shaping-raster-evidence-gates-v1 add ...` | Blocked: `fatal: Unable to create 'G:/workspace/development/GameEngine/.git/worktrees/runtime-ui-shaping-raster-evidence-gates-v1/index.lock': Permission denied`. |
-| `gh pr view 268 --json number,title,headRefName,headRefOid,baseRefName,state,isDraft,url,statusCheckRollup` | Blocked: GitHub CLI could not read `C:\Users\y2ikg\AppData\Roaming\GitHub CLI\config.yml` because access was denied. |
+| `git status --short --branch`; `git diff --check`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed on 2026-05-27 before publication: branch `codex/runtime-ui-shaping-raster-evidence-gates-v1`, clean whitespace check, `validate: ok`, and 93/93 CTest tests passed. |
+| `git add ...`; `git commit -m "Add runtime UI accessibility publication evidence gates"` | Passed after the stale worktree `index.lock` condition cleared; commit `09a4bbb702d1dcb841904c005b6da07d90a650b4` recorded the accessibility publication evidence gates. |
+| `git push origin codex/runtime-ui-shaping-raster-evidence-gates-v1` | Passed: remote branch advanced from `ae97b790` to `09a4bbb7`. |
+| `gh pr view 268 --json headRefOid,statusCheckRollup,url` | Passed after GitHub CLI config ACL access was restored; PR #268 head resolved to `09a4bbb702d1dcb841904c005b6da07d90a650b4` at <https://github.com/y2ikgm89/mirakanai-engine/pull/268>. Hosted checks were in progress at publication evidence capture time. |
 
 ## Done When
 
