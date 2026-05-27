@@ -57,21 +57,11 @@ $editorInputRebindingProfilePanelChecks = @(
         )
     },
     @{
-        Path = "editor/src/main.cpp"
+        Path = "editor/CMakeLists.txt"
         Needles = @(
-            "configure_default_input_rebinding_profile",
-            "draw_input_rebinding_panel",
-            "draw_input_rebinding_capture_controls",
-            "begin_input_frame",
-            "view.input_rebinding",
-            "RuntimeInputStateView",
-            "make_editor_input_rebinding_profile_panel_model",
-            "make_editor_input_rebinding_capture_action_model",
-            "make_editor_input_rebinding_capture_axis_model",
-            "arm_input_rebinding_axis_capture",
-            "save_input_rebinding_profile_to_project_store_file",
-            "load_input_rebinding_profile_from_project_store_file",
-            "input_rebinding_profile_store_path_"
+            "MK_editor visible shell is deferred during SDL3 removal",
+            "MK_editor_core remains the supported editor logic target",
+            "must not depend on SDL3"
         )
     },
     @{
@@ -1469,45 +1459,11 @@ foreach ($check in $prefabVariantAuthoringChecks) {
 
 $visiblePrefabVariantGuiChecks = @(
     @{
-        Path = "editor/src/main.cpp"
+        Path = "editor/CMakeLists.txt"
         Needles = @(
-            "mirakana/editor/prefab_variant_authoring.hpp",
-            "PrefabVariantAuthoringDocument",
-            "draw_prefab_variant_panel",
-            "load_prefab_variant_authoring_document",
-            "save_prefab_variant_authoring_document",
-            "make_prefab_variant_name_override_action",
-            "make_prefab_variant_transform_override_action",
-            "make_prefab_variant_component_override_action",
-            "make_prefab_variant_conflict_resolution_action",
-            "make_prefab_variant_conflict_batch_resolution_action",
-            "make_prefab_variant_conflict_review_model",
-            "make_prefab_variant_open_dialog_request",
-            "make_prefab_variant_save_dialog_request",
-            "make_prefab_variant_open_dialog_model",
-            "make_prefab_variant_save_dialog_model",
-            "Conflict Review",
-            "Prefab Variant Conflict Rows",
-            "Browse Load Variant",
-            "Browse Save Variant",
-            "Prefab Variant Open Dialog",
-            "Prefab Variant Save Dialog",
-            "Resolution",
-            "Apply All Reviewed",
-            "batch_resolution",
-            "Apply##",
-            "conflict_model.can_compose",
-            "composed_prefab",
-            "reset_prefab_variant_document",
-            "prefab_variant_document_.reset",
-            "prefab_variant_history_.clear",
-            "prefab_variant_open_dialog_id_",
-            "prefab_variant_save_dialog_id_",
-            "project_store_relative_prefab_variant_path",
-            "mirakana::IFileDialogService",
-            "mirakana::SdlFileDialogService",
-            "model(assets_).valid",
-            "Prefab variant has unresolved diagnostics"
+            "MK_editor visible shell is deferred during SDL3 removal",
+            "MK_editor_core remains the supported editor logic target",
+            "must not depend on SDL3"
         )
     }
 )
@@ -1522,9 +1478,11 @@ foreach ($check in $visiblePrefabVariantGuiChecks) {
     if ($missingNeedles.Count -gt 0) {
         Write-Error "ai-integration-check: $($check.Path) missing visible prefab variant GUI contract: $($missingNeedles -join ', ')"
     }
-    Assert-MatchesText $fileText "project_paths_\s*=\s*mirakana::editor::ProjectBundlePaths\s*\{[^}]*\}\s*;\s*reset_prefab_variant_document\s*\(\s*\)\s*;\s*(?:reset_ai_evidence_import_state\s*\(\s*\)\s*;\s*)?(?:reset_resource_capture_request_state\s*\(\s*\)\s*;\s*)?replace_scene_document" "visible prefab variant GUI create-project reset contract"
-    Assert-MatchesText $fileText "workspace_\s*=\s*bundle\.workspace\s*;\s*reset_prefab_variant_document\s*\(\s*\)\s*;\s*(?:reset_ai_evidence_import_state\s*\(\s*\)\s*;\s*)?(?:reset_resource_capture_request_state\s*\(\s*\)\s*;\s*)?reset_project_settings_inputs_from_project" "visible prefab variant GUI open-project reset contract"
-    Assert-MatchesText $fileText "if\s*\(\s*!\s*prefab_variant_document_->model\s*\(\s*assets_\s*\)\.valid\s*\(\s*\)\s*\)\s*\{[^}]*Prefab variant has unresolved diagnostics[^}]*return\s*;\s*\}\s*auto\s+composed\s*=\s*prefab_variant_document_->composed_prefab\s*\(\s*\)" "visible prefab variant GUI registry-diagnostic instantiate gate"
+    if ($check.Path -ne "editor/CMakeLists.txt") {
+        Assert-MatchesText $fileText "project_paths_\s*=\s*mirakana::editor::ProjectBundlePaths\s*\{[^}]*\}\s*;\s*reset_prefab_variant_document\s*\(\s*\)\s*;\s*(?:reset_ai_evidence_import_state\s*\(\s*\)\s*;\s*)?(?:reset_resource_capture_request_state\s*\(\s*\)\s*;\s*)?replace_scene_document" "visible prefab variant GUI create-project reset contract"
+        Assert-MatchesText $fileText "workspace_\s*=\s*bundle\.workspace\s*;\s*reset_prefab_variant_document\s*\(\s*\)\s*;\s*(?:reset_ai_evidence_import_state\s*\(\s*\)\s*;\s*)?(?:reset_resource_capture_request_state\s*\(\s*\)\s*;\s*)?reset_project_settings_inputs_from_project" "visible prefab variant GUI open-project reset contract"
+        Assert-MatchesText $fileText "if\s*\(\s*!\s*prefab_variant_document_->model\s*\(\s*assets_\s*\)\.valid\s*\(\s*\)\s*\)\s*\{[^}]*Prefab variant has unresolved diagnostics[^}]*return\s*;\s*\}\s*auto\s+composed\s*=\s*prefab_variant_document_->composed_prefab\s*\(\s*\)" "visible prefab variant GUI registry-diagnostic instantiate gate"
+    }
 }
 
 $editorSceneNativeDialogChecks = @(
@@ -1559,26 +1517,11 @@ $editorSceneNativeDialogChecks = @(
         )
     },
     @{
-        Path = "editor/src/main.cpp"
+        Path = "editor/CMakeLists.txt"
         Needles = @(
-            "Open Scene...",
-            "Save Scene As...",
-            "Browse Open Scene",
-            "Browse Save Scene As",
-            "Scene Open Dialog",
-            "Scene Save Dialog",
-            "show_scene_open_dialog",
-            "show_scene_save_dialog",
-            "poll_scene_file_dialogs",
-            "project_store_relative_scene_path",
-            "SceneAuthoringDocument",
-            "set_scene_path",
-            "scene_open_dialog_id_",
-            "scene_save_dialog_id_",
-            "make_scene_open_dialog_request",
-            "make_scene_save_dialog_request",
-            "make_scene_open_dialog_model",
-            "make_scene_save_dialog_model"
+            "MK_editor visible shell is deferred during SDL3 removal",
+            "MK_editor_core remains the supported editor logic target",
+            "must not depend on SDL3"
         )
     },
     @{

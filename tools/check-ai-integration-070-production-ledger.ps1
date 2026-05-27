@@ -34,28 +34,11 @@ $editorProjectNativeDialogChecks = @(
         )
     },
     @{
-        Path = "editor/src/main.cpp"
+        Path = "editor/CMakeLists.txt"
         Needles = @(
-            "Open Project...",
-            "Save Project As...",
-            "Project Open Dialog",
-            "Project Save Dialog",
-            "show_project_open_dialog",
-            "show_project_save_dialog",
-            "poll_project_file_dialogs",
-            "project_store_relative_project_path",
-            "workspace_path_for_project_path",
-            "scene_path_for_project_document",
-            "open_project_bundle_from_paths",
-            "save_project_bundle_to_paths",
-            "project_open_dialog_id_",
-            "project_save_dialog_id_",
-            "make_project_open_dialog_request",
-            "make_project_save_dialog_request",
-            "make_project_open_dialog_model",
-            "make_project_save_dialog_model",
-            "mirakana::IFileDialogService",
-            "mirakana::SdlFileDialogService"
+            "MK_editor visible shell is deferred during SDL3 removal",
+            "MK_editor_core remains the supported editor logic target",
+            "must not depend on SDL3"
         )
     },
     @{

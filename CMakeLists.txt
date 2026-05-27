@@ -11,7 +11,7 @@ include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
 option(MK_ENABLE_DESKTOP_RUNTIME "Build desktop game runtime targets" OFF)
-option(MK_ENABLE_DESKTOP_GUI "Build SDL3/Dear ImGui desktop editor targets" OFF)
+option(MK_ENABLE_DESKTOP_GUI "Build the visible desktop editor shell; currently deferred during SDL3 removal" OFF)
 option(MK_ENABLE_SANITIZERS "Enable compiler sanitizer instrumentation where supported" OFF)
 option(MK_ENABLE_CXX_MODULE_SCANNING "Enable CMake C++ module dependency scanning for targets" ON)
 option(MK_ENABLE_IMPORT_STD "Enable CMake-managed import std support when the active toolchain and generator support it" ON)
@@ -32,9 +32,6 @@ if(NOT MK_CXX_STANDARD STREQUAL "23")
 endif()
 
 set(MK_DESKTOP_RUNTIME_ENABLED ${MK_ENABLE_DESKTOP_RUNTIME})
-if(MK_ENABLE_DESKTOP_GUI)
-    set(MK_DESKTOP_RUNTIME_ENABLED ON)
-endif()
 
 if(MSVC)
     if(NOT MK_MSVC_CXX23_STANDARD_OPTION MATCHES "^/std:c\\+\\+23(preview)?$")

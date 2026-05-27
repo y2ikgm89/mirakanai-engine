@@ -32,16 +32,11 @@ $editorPackageRegistrationDraftChecks = @(
         )
     },
     @{
-        Path = "editor/src/main.cpp"
+        Path = "editor/CMakeLists.txt"
         Needles = @(
-            "make_scene_package_registration_draft_rows",
-            "Package Registration Draft",
-            "scene_package_registration_draft_status_label",
-            "make_scene_package_registration_apply_plan",
-            "Apply Package Registration",
-            "apply_package_registration",
-            "current_runtime_package_files",
-            "manifest_runtime_package_files_"
+            "MK_editor visible shell is deferred during SDL3 removal",
+            "MK_editor_core remains the supported editor logic target",
+            "must not depend on SDL3"
         )
     }
 )
@@ -177,13 +172,11 @@ $editorPlayInEditorIsolationChecks = @(
         )
     },
     @{
-        Path = "editor/src/main.cpp"
+        Path = "editor/CMakeLists.txt"
         Needles = @(
-            "play_session_controls_model",
-            "viewport_scene()",
-            "tick_play_session_from_viewport_frame",
-            "source_scene_edits_blocked",
-            "Scene authoring is blocked while Play-In-Editor is active"
+            "MK_editor visible shell is deferred during SDL3 removal",
+            "MK_editor_core remains the supported editor logic target",
+            "must not depend on SDL3"
         )
     },
     @{
@@ -262,13 +255,11 @@ $editorRuntimeHostPlaytestLaunchChecks = @(
         )
     },
     @{
-        Path = "editor/src/main.cpp"
+        Path = "editor/CMakeLists.txt"
         Needles = @(
-            "make_runtime_host_playtest_launch_model",
-            "Execute Runtime Host",
-            "runtime_host_playtest_host_gate_acknowledged_",
-            "mirakana::Win32ProcessRunner",
-            "apply_runtime_host_playtest_result"
+            "MK_editor visible shell is deferred during SDL3 removal",
+            "MK_editor_core remains the supported editor logic target",
+            "must not depend on SDL3"
         )
     },
     @{
@@ -412,14 +403,11 @@ $editorInProcessRuntimeHostReviewChecks = @(
         )
     },
     @{
-        Path = "editor/src/main.cpp"
+        Path = "editor/CMakeLists.txt"
         Needles = @(
-            "make_in_process_runtime_host_model",
-            "make_in_process_runtime_host_desc",
-            "game_module_driver_ != nullptr",
-            "In-Process Runtime Host",
-            "Begin In-Process Runtime Host",
-            "begin_in_process_runtime_host"
+            "MK_editor visible shell is deferred during SDL3 removal",
+            "MK_editor_core remains the supported editor logic target",
+            "must not depend on SDL3"
         )
     },
     @{
@@ -618,25 +606,11 @@ $editorGameModuleDriverLoadChecks = @(
         )
     },
     @{
-        Path = "editor/src/main.cpp"
+        Path = "editor/CMakeLists.txt"
         Needles = @(
-            "Game Module Driver",
-            "Load Game Module Driver",
-            "Reload Game Module Driver",
-            "Unload Game Module Driver",
-            "mirakana::load_dynamic_library",
-            "mirakana::resolve_dynamic_library_symbol",
-            "make_editor_game_module_driver_from_symbol",
-            "make_editor_game_module_driver_contract_metadata_model",
-            "same-engine-build only",
-            "make_editor_game_module_driver_ctest_probe_evidence_model",
-            "make_editor_game_module_driver_reload_transaction_recipe_evidence_model",
-            "dev-windows-editor-game-module-driver-load-tests",
-            "ge.editor.editor_game_module_driver_reload_transaction_recipe_evidence.v1",
-            "MK_editor_game_module_driver_probe",
-            "game_module_driver_library_",
-            "DLL mutation order guidance:",
-            "begin_in_process_runtime_host"
+            "MK_editor visible shell is deferred during SDL3 removal",
+            "MK_editor_core remains the supported editor logic target",
+            "must not depend on SDL3"
         )
     },
     @{
@@ -903,13 +877,11 @@ $editorRuntimeScenePackageValidationExecutionChecks = @(
         )
     },
     @{
-        Path = "editor/src/main.cpp"
+        Path = "editor/CMakeLists.txt"
         Needles = @(
-            "make_runtime_scene_package_validation_execution_model",
-            "Validate Runtime Scene Package",
-            "execute_editor_runtime_scene_package_validation",
-            "runtime_scene_package_validation_result_",
-            "tool_filesystem_"
+            "MK_editor visible shell is deferred during SDL3 removal",
+            "MK_editor_core remains the supported editor logic target",
+            "must not depend on SDL3"
         )
     },
     @{
@@ -1130,43 +1102,11 @@ $editorProfilerTraceExportChecks = @(
         )
     },
     @{
-        Path = "editor/src/main.cpp"
+        Path = "editor/CMakeLists.txt"
         Needles = @(
-            "Profiler Trace Export",
-            "Copy Trace JSON",
-            "Save Trace JSON",
-            "Browse Save Trace JSON",
-            "Trace Path",
-            "Profiler Telemetry Handoff",
-            "Trace JSON Review",
-            "Review Trace JSON",
-            "Trace Import Path",
-            "Import Trace JSON",
-            "Browse Trace JSON",
-            "SdlFileDialogService",
-            "make_editor_profiler_trace_save_dialog_request",
-            "make_editor_profiler_trace_save_dialog_model",
-            "make_editor_profiler_trace_open_dialog_request",
-            "make_editor_profiler_trace_open_dialog_model",
-            "Profiler Trace Open Dialog",
-            "ImGui::SetClipboardText",
-            "save_editor_profiler_trace_json",
-            "import_editor_profiler_trace_json",
-            "make_editor_profiler_trace_import_review_model",
-            "profiler_trace_export_path_",
-            "profiler_trace_export_status_",
-            "profiler_trace_save_dialog_id_",
-            "profiler_trace_save_dialog_",
-            "profiler_trace_import_path_",
-            "profiler_trace_open_dialog_id_",
-            "profiler_trace_open_dialog_",
-            "profiler_trace_file_import_",
-            "profiler_trace_import_payload_",
-            "profiler_trace_import_review_",
-            "Trace JSON copied",
-            "Trace JSON saved",
-            "Trace JSON imported",
-            "Trace JSON review ready"
+            "MK_editor visible shell is deferred during SDL3 removal",
+            "MK_editor_core remains the supported editor logic target",
+            "must not depend on SDL3"
         )
     },
     @{
@@ -1604,7 +1544,7 @@ $editorProfilerTraceExportChecks = @(
             "Review Trace JSON",
             "Import Trace JSON",
             "Browse Trace JSON",
-            "SdlFileDialogService",
+            "future native file-dialog adapter",
             "broader editor native save/open dialogs outside Profiler",
             "arbitrary JSON conversion",
             "first-party exported Trace Event JSON subset"
@@ -1721,14 +1661,11 @@ $editorResourcePanelChecks = @(
         )
     },
     @{
-        Path = "editor/src/main.cpp"
+        Path = "editor/CMakeLists.txt"
         Needles = @(
-            "make_resource_panel_input",
-            "draw_resources_panel",
-            "view.resources",
-            "viewport_device_->memory_diagnostics",
-            "resource_lifetime_registry",
-            "make_editor_resource_panel_model"
+            "MK_editor visible shell is deferred during SDL3 removal",
+            "MK_editor_core remains the supported editor logic target",
+            "must not depend on SDL3"
         )
     },
     @{
@@ -1806,14 +1743,11 @@ $editorResourceCaptureRequestChecks = @(
         )
     },
     @{
-        Path = "editor/src/main.cpp"
+        Path = "editor/CMakeLists.txt"
         Needles = @(
-            "append_resource_capture_requests",
-            "draw_resource_capture_request_rows_table",
-            "resource_acknowledged_capture_request_ids_",
-            "PIX GPU Capture",
-            "D3D12 Debug Layer / GPU Validation",
-            "resource_capture."
+            "MK_editor visible shell is deferred during SDL3 removal",
+            "MK_editor_core remains the supported editor logic target",
+            "must not depend on SDL3"
         )
     },
     @{

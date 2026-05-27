@@ -28,12 +28,12 @@
     {
       "name": "desktop-gui",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1",
-      "purpose": "Build and test optional SDL3, Dear ImGui, editor, and SDL3 audio adapter code."
+      "purpose": "Fail closed with the current visible-editor deferral message. The SDL3/Dear ImGui MK_editor shell is not an active build lane during SDL3 removal; MK_editor_core remains covered by the default validation lane."
     },
     {
       "name": "desktop-game-runtime",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1",
-      "purpose": "Build and test the desktop game runtime lane with Windows-native host evidence first: manifest-linked registered-game metadata with package file path validation, MK_runtime_host tests, MK_runtime_host_win32 public/API tests, Win32 platform tests, WASAPI tests, finite Win32 sample_desktop_runtime_shell smoke execution, DXC-available build-output DXIL shader artifact smoke, DXC SPIR-V CodeGen-available build-output SPIR-V shader artifact smoke, and the remaining SDL3-backed non-shell/generated sample smokes until their later migration phases move them to the native host."
+      "purpose": "Build and test the desktop game runtime lane with Windows-native host evidence first: manifest-linked registered-game metadata with package file path validation, MK_runtime_host tests, MK_runtime_host_win32 public/API tests, Win32 platform tests, WASAPI tests, finite Win32 sample_desktop_runtime_shell smoke execution, DXC-available build-output DXIL shader artifact smoke, DXC SPIR-V CodeGen-available build-output SPIR-V shader artifact smoke, sample_desktop_runtime_game, and committed/generated desktop runtime package smokes through Win32DesktopGameHost / Win32DesktopPresentation."
     },
     {
       "name": "desktop-runtime-release-package",

@@ -78,6 +78,50 @@ foreach ($requiredNeedle in @(
     }
 }
 
+$editorCmakeContent = Get-Content -LiteralPath (Join-Path $root "editor/CMakeLists.txt") -Raw
+foreach ($forbiddenNeedle in @(
+        "find_package(SDL3",
+        "SDL3::SDL3",
+        "MK_platform_sdl3",
+        "imgui::imgui",
+        "add_executable(MK_editor"
+    )) {
+    if ($editorCmakeContent.Contains($forbiddenNeedle)) {
+        Write-Error "visible editor shell is deferred during SDL3 removal and editor/CMakeLists.txt must not retain active SDL3/ImGui shell wiring: $forbiddenNeedle"
+    }
+}
+foreach ($requiredNeedle in @(
+        "MK_editor visible shell is deferred during SDL3 removal",
+        "MK_editor_core"
+    )) {
+    if (-not $editorCmakeContent.Contains($requiredNeedle)) {
+        Write-Error "editor/CMakeLists.txt must document the deferred visible editor shell boundary: $requiredNeedle"
+    }
+}
+
+$rootCmakeContent = Get-Content -LiteralPath (Join-Path $root "CMakeLists.txt") -Raw
+if ($rootCmakeContent.Contains("if(MK_ENABLE_DESKTOP_GUI)`r`n    set(MK_DESKTOP_RUNTIME_ENABLED ON)")) {
+    Write-Error "MK_ENABLE_DESKTOP_GUI must not imply the SDL3 desktop runtime lane while the visible editor shell is deferred"
+}
+
+$buildGuiScript = Get-Content -LiteralPath (Join-Path $root "tools/build-gui.ps1") -Raw
+foreach ($requiredNeedle in @(
+        "visible editor shell is deferred during SDL3 removal",
+        "MK_editor_core"
+    )) {
+    if (-not $buildGuiScript.Contains($requiredNeedle)) {
+        Write-Error "tools/build-gui.ps1 must fail closed with the deferred editor shell message: $requiredNeedle"
+    }
+}
+foreach ($forbiddenNeedle in @(
+        "--preset desktop-gui",
+        "--build --preset desktop-gui"
+    )) {
+    if ($buildGuiScript.Contains($forbiddenNeedle)) {
+        Write-Error "tools/build-gui.ps1 must not configure or build the deferred SDL3/ImGui editor shell: $forbiddenNeedle"
+    }
+}
+
 $sampleDesktopRuntimeShellSource = Get-Content -LiteralPath (Join-Path $root "games/sample_desktop_runtime_shell/main.cpp") -Raw
 foreach ($requiredNeedle in @(
         "mirakana/runtime_host/win32/win32_desktop_game_host.hpp",

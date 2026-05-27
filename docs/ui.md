@@ -46,9 +46,9 @@ Adapters may depend on platform SDKs or audited third-party libraries only after
 
 ## Dear ImGui Role
 
-Dear ImGui remains the optional developer/editor/debug shell for fast iteration, diagnostics, and early tools. It is not the production game UI foundation and must not be required by generated game runtime code.
+Dear ImGui is no longer declared by the active build or vcpkg feature set while the SDL3 removal milestone is in progress. It remains a possible future developer/editor/debug-shell dependency only after a separate dependency and adapter review. It is not the production game UI foundation and must not be required by generated game runtime code.
 
-The current `mirakana_editor` shell may render panels with Dear ImGui while durable panel state lives in `editor/core`. Future high-complexity panels should be modeled through `mirakana_editor_ui` first, then rendered by an adapter.
+The visible `mirakana_editor` shell is deferred during SDL3 removal. Durable panel state remains in `editor/core`; future high-complexity panels should be modeled through `mirakana_editor_ui` first, then rendered by a first-party platform/rendering adapter.
 
 ## Middleware Policy
 
