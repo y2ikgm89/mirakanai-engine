@@ -211,15 +211,28 @@ void validate_renderer_submission_row(std::vector<RuntimeUiProductionDiagnostic>
 
 void validate_ime_row(std::vector<RuntimeUiProductionDiagnostic>& diagnostics,
                       const RuntimeUiProductionEvidenceRow& row) {
-    require_flag(diagnostics, row.ime_begin_update_end, RuntimeUiProductionDiagnosticCode::missing_ime_begin_update_end,
-                 row.id, "runtime UI IME evidence requires begin, update, and end rows");
+    require_flag(diagnostics, row.ime_session_begin_end_rows,
+                 RuntimeUiProductionDiagnosticCode::missing_ime_session_rows, row.id,
+                 "runtime UI IME evidence requires text input session begin and end rows");
+    require_flag(diagnostics, row.ime_composition_update_rows,
+                 RuntimeUiProductionDiagnosticCode::missing_ime_composition_update_rows, row.id,
+                 "runtime UI IME evidence requires composition update rows");
     require_flag(diagnostics, row.ime_candidate_rows, RuntimeUiProductionDiagnosticCode::missing_ime_candidate_rows,
                  row.id, "runtime UI IME evidence requires candidate rows");
-    require_flag(diagnostics, row.ime_text_area_rows, RuntimeUiProductionDiagnosticCode::missing_ime_text_area_rows,
-                 row.id, "runtime UI IME evidence requires text input area and cursor rows");
+    require_flag(diagnostics, row.ime_text_area_cursor_rows,
+                 RuntimeUiProductionDiagnosticCode::missing_ime_text_area_cursor_rows, row.id,
+                 "runtime UI IME evidence requires text input area and cursor rows");
     require_flag(diagnostics, row.ime_committed_text_rows,
                  RuntimeUiProductionDiagnosticCode::missing_ime_committed_text_rows, row.id,
                  "runtime UI IME evidence requires committed text rows");
+    require_flag(diagnostics, row.ime_clipboard_rows, RuntimeUiProductionDiagnosticCode::missing_ime_clipboard_rows,
+                 row.id, "runtime UI IME evidence requires clipboard text command rows");
+    require_flag(diagnostics, row.ime_sdl3_adapter_proof_rows,
+                 RuntimeUiProductionDiagnosticCode::missing_ime_sdl3_adapter_proof_rows, row.id,
+                 "runtime UI IME evidence requires selected SDL3 adapter proof rows");
+    require_flag(diagnostics, row.ime_platform_host_gate_rows,
+                 RuntimeUiProductionDiagnosticCode::missing_ime_platform_host_gate_rows, row.id,
+                 "runtime UI IME evidence requires per-platform host gate rows");
     require_flag(diagnostics, row.platform_adapter_dispatch_boundary,
                  RuntimeUiProductionDiagnosticCode::missing_platform_dispatch_boundary, row.id,
                  "runtime UI IME evidence requires platform adapter dispatch boundary rows");
@@ -230,9 +243,12 @@ void validate_accessibility_row(std::vector<RuntimeUiProductionDiagnostic>& diag
     require_flag(diagnostics, row.accessibility_role_rows,
                  RuntimeUiProductionDiagnosticCode::missing_accessibility_roles, row.id,
                  "runtime UI accessibility evidence requires role rows");
-    require_flag(diagnostics, row.accessibility_label_rows,
-                 RuntimeUiProductionDiagnosticCode::missing_accessibility_labels, row.id,
-                 "runtime UI accessibility evidence requires label rows");
+    require_flag(diagnostics, row.accessibility_name_rows,
+                 RuntimeUiProductionDiagnosticCode::missing_accessibility_names, row.id,
+                 "runtime UI accessibility evidence requires accessible name rows");
+    require_flag(diagnostics, row.accessibility_description_rows,
+                 RuntimeUiProductionDiagnosticCode::missing_accessibility_descriptions, row.id,
+                 "runtime UI accessibility evidence requires description rows");
     require_flag(diagnostics, row.accessibility_state_rows,
                  RuntimeUiProductionDiagnosticCode::missing_accessibility_states, row.id,
                  "runtime UI accessibility evidence requires state rows");
@@ -248,9 +264,18 @@ void validate_accessibility_row(std::vector<RuntimeUiProductionDiagnostic>& diag
     require_flag(diagnostics, row.accessibility_live_region_rows,
                  RuntimeUiProductionDiagnosticCode::missing_accessibility_live_regions, row.id,
                  "runtime UI accessibility evidence requires live-region update rows");
-    require_flag(diagnostics, row.accessibility_os_publication_gate,
-                 RuntimeUiProductionDiagnosticCode::missing_accessibility_os_publication_gate, row.id,
-                 "runtime UI accessibility evidence requires an OS publication host gate");
+    require_flag(diagnostics, row.accessibility_keyboard_pattern_rows,
+                 RuntimeUiProductionDiagnosticCode::missing_accessibility_keyboard_patterns, row.id,
+                 "runtime UI accessibility evidence requires keyboard pattern rows");
+    require_flag(diagnostics, row.accessibility_publication_status_rows,
+                 RuntimeUiProductionDiagnosticCode::missing_accessibility_publication_status, row.id,
+                 "runtime UI accessibility evidence requires publication status rows");
+    require_flag(diagnostics, row.accessibility_uia_host_gate_rows,
+                 RuntimeUiProductionDiagnosticCode::missing_accessibility_uia_host_gate, row.id,
+                 "runtime UI accessibility evidence requires Microsoft UI Automation host gate rows");
+    require_flag(diagnostics, row.accessibility_platform_host_gate_rows,
+                 RuntimeUiProductionDiagnosticCode::missing_accessibility_platform_host_gate, row.id,
+                 "runtime UI accessibility evidence requires per-platform accessibility host gate rows");
 }
 
 void hash_byte(std::uint64_t& hash, std::uint8_t value) noexcept {
@@ -294,19 +319,27 @@ void hash_string(std::uint64_t& hash, std::string_view value) noexcept {
         hash_bool(hash, row.atlas_eviction_diagnostics);
         hash_bool(hash, row.renderer_texture_upload_handoff);
         hash_bool(hash, row.selected_package_counter_evidence);
-        hash_bool(hash, row.ime_begin_update_end);
+        hash_bool(hash, row.ime_session_begin_end_rows);
+        hash_bool(hash, row.ime_composition_update_rows);
         hash_bool(hash, row.ime_candidate_rows);
-        hash_bool(hash, row.ime_text_area_rows);
+        hash_bool(hash, row.ime_text_area_cursor_rows);
         hash_bool(hash, row.ime_committed_text_rows);
+        hash_bool(hash, row.ime_clipboard_rows);
+        hash_bool(hash, row.ime_sdl3_adapter_proof_rows);
+        hash_bool(hash, row.ime_platform_host_gate_rows);
         hash_bool(hash, row.platform_adapter_dispatch_boundary);
         hash_bool(hash, row.accessibility_role_rows);
-        hash_bool(hash, row.accessibility_label_rows);
+        hash_bool(hash, row.accessibility_name_rows);
+        hash_bool(hash, row.accessibility_description_rows);
         hash_bool(hash, row.accessibility_state_rows);
         hash_bool(hash, row.accessibility_focus_rows);
         hash_bool(hash, row.accessibility_action_rows);
         hash_bool(hash, row.accessibility_relationship_rows);
         hash_bool(hash, row.accessibility_live_region_rows);
-        hash_bool(hash, row.accessibility_os_publication_gate);
+        hash_bool(hash, row.accessibility_keyboard_pattern_rows);
+        hash_bool(hash, row.accessibility_publication_status_rows);
+        hash_bool(hash, row.accessibility_uia_host_gate_rows);
+        hash_bool(hash, row.accessibility_platform_host_gate_rows);
         hash_bool(hash, row.requires_optional_dependency_adapter);
         hash_bool(hash, row.dependency_adapter_reviewed);
         hash_bool(hash, row.uses_public_native_handle);

@@ -3245,8 +3245,30 @@ if ($requiresRuntimeUiProductionStack) {
             "runtime_ui_production_stack_production_ready",
             "runtime_ui_production_stack_requires_ime_host_evidence",
             "runtime_ui_production_stack_ime_host_evidence",
+            "runtime_ui_production_stack_ime_session_rows",
+            "runtime_ui_production_stack_ime_composition_rows",
+            "runtime_ui_production_stack_ime_candidate_rows",
+            "runtime_ui_production_stack_ime_text_area_cursor_rows",
+            "runtime_ui_production_stack_ime_committed_text_rows",
+            "runtime_ui_production_stack_ime_clipboard_rows",
+            "runtime_ui_production_stack_ime_sdl3_adapter_proof_rows",
+            "runtime_ui_production_stack_ime_platform_host_gate_rows",
+            "runtime_ui_production_stack_ime_platform_parity_ready",
             "runtime_ui_production_stack_requires_accessibility_host_evidence",
             "runtime_ui_production_stack_accessibility_host_evidence",
+            "runtime_ui_production_stack_accessibility_role_rows",
+            "runtime_ui_production_stack_accessibility_name_rows",
+            "runtime_ui_production_stack_accessibility_description_rows",
+            "runtime_ui_production_stack_accessibility_state_rows",
+            "runtime_ui_production_stack_accessibility_focus_rows",
+            "runtime_ui_production_stack_accessibility_action_rows",
+            "runtime_ui_production_stack_accessibility_relationship_rows",
+            "runtime_ui_production_stack_accessibility_live_region_rows",
+            "runtime_ui_production_stack_accessibility_keyboard_pattern_rows",
+            "runtime_ui_production_stack_accessibility_publication_status_rows",
+            "runtime_ui_production_stack_accessibility_uia_host_gate_rows",
+            "runtime_ui_production_stack_accessibility_platform_host_gate_rows",
+            "runtime_ui_production_stack_accessibility_platform_parity_ready",
             "runtime_ui_production_stack_invoked_text_shaping",
             "runtime_ui_production_stack_invoked_font_rasterization",
             "runtime_ui_production_stack_invoked_ime",
@@ -3272,8 +3294,30 @@ if ($requiresRuntimeUiProductionStack) {
         "runtime_ui_production_stack_production_ready" = "0"
         "runtime_ui_production_stack_requires_ime_host_evidence" = "1"
         "runtime_ui_production_stack_ime_host_evidence" = "0"
+        "runtime_ui_production_stack_ime_session_rows" = "1"
+        "runtime_ui_production_stack_ime_composition_rows" = "1"
+        "runtime_ui_production_stack_ime_candidate_rows" = "1"
+        "runtime_ui_production_stack_ime_text_area_cursor_rows" = "1"
+        "runtime_ui_production_stack_ime_committed_text_rows" = "1"
+        "runtime_ui_production_stack_ime_clipboard_rows" = "1"
+        "runtime_ui_production_stack_ime_sdl3_adapter_proof_rows" = "1"
+        "runtime_ui_production_stack_ime_platform_host_gate_rows" = "1"
+        "runtime_ui_production_stack_ime_platform_parity_ready" = "0"
         "runtime_ui_production_stack_requires_accessibility_host_evidence" = "1"
         "runtime_ui_production_stack_accessibility_host_evidence" = "0"
+        "runtime_ui_production_stack_accessibility_role_rows" = "1"
+        "runtime_ui_production_stack_accessibility_name_rows" = "1"
+        "runtime_ui_production_stack_accessibility_description_rows" = "1"
+        "runtime_ui_production_stack_accessibility_state_rows" = "1"
+        "runtime_ui_production_stack_accessibility_focus_rows" = "1"
+        "runtime_ui_production_stack_accessibility_action_rows" = "1"
+        "runtime_ui_production_stack_accessibility_relationship_rows" = "1"
+        "runtime_ui_production_stack_accessibility_live_region_rows" = "1"
+        "runtime_ui_production_stack_accessibility_keyboard_pattern_rows" = "1"
+        "runtime_ui_production_stack_accessibility_publication_status_rows" = "1"
+        "runtime_ui_production_stack_accessibility_uia_host_gate_rows" = "1"
+        "runtime_ui_production_stack_accessibility_platform_host_gate_rows" = "1"
+        "runtime_ui_production_stack_accessibility_platform_parity_ready" = "0"
         "runtime_ui_production_stack_invoked_text_shaping" = "0"
         "runtime_ui_production_stack_invoked_font_rasterization" = "0"
         "runtime_ui_production_stack_invoked_ime" = "0"

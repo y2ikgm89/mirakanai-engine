@@ -1519,8 +1519,30 @@ struct RuntimeUiProductionStackProbeResult {
     bool production_ready{false};
     bool requires_ime_host_evidence{false};
     bool ime_host_evidence{false};
+    std::size_t ime_session_rows{0U};
+    std::size_t ime_composition_rows{0U};
+    std::size_t ime_candidate_rows{0U};
+    std::size_t ime_text_area_cursor_rows{0U};
+    std::size_t ime_committed_text_rows{0U};
+    std::size_t ime_clipboard_rows{0U};
+    std::size_t ime_sdl3_adapter_proof_rows{0U};
+    std::size_t ime_platform_host_gate_rows{0U};
+    bool ime_platform_parity_ready{false};
     bool requires_accessibility_host_evidence{false};
     bool accessibility_host_evidence{false};
+    std::size_t accessibility_role_rows{0U};
+    std::size_t accessibility_name_rows{0U};
+    std::size_t accessibility_description_rows{0U};
+    std::size_t accessibility_state_rows{0U};
+    std::size_t accessibility_focus_rows{0U};
+    std::size_t accessibility_action_rows{0U};
+    std::size_t accessibility_relationship_rows{0U};
+    std::size_t accessibility_live_region_rows{0U};
+    std::size_t accessibility_keyboard_pattern_rows{0U};
+    std::size_t accessibility_publication_status_rows{0U};
+    std::size_t accessibility_uia_host_gate_rows{0U};
+    std::size_t accessibility_platform_host_gate_rows{0U};
+    bool accessibility_platform_parity_ready{false};
     bool invoked_text_shaping{false};
     bool invoked_font_rasterization{false};
     bool invoked_ime{false};
@@ -2610,10 +2632,14 @@ has_runtime_ui_workbench_accessibility_ref(const std::vector<mirakana::ui::Runti
     row.feature = mirakana::ui::RuntimeUiProductionFeatureKind::ime;
     row.proof = mirakana::ui::RuntimeUiProductionProofKind::host_gate;
     row.host_evidence_required = true;
-    row.ime_begin_update_end = true;
+    row.ime_session_begin_end_rows = true;
+    row.ime_composition_update_rows = true;
     row.ime_candidate_rows = true;
-    row.ime_text_area_rows = true;
+    row.ime_text_area_cursor_rows = true;
     row.ime_committed_text_rows = true;
+    row.ime_clipboard_rows = true;
+    row.ime_sdl3_adapter_proof_rows = true;
+    row.ime_platform_host_gate_rows = true;
     row.platform_adapter_dispatch_boundary = true;
     return row;
 }
@@ -2625,13 +2651,17 @@ has_runtime_ui_workbench_accessibility_ref(const std::vector<mirakana::ui::Runti
     row.proof = mirakana::ui::RuntimeUiProductionProofKind::host_gate;
     row.host_evidence_required = true;
     row.accessibility_role_rows = true;
-    row.accessibility_label_rows = true;
+    row.accessibility_name_rows = true;
+    row.accessibility_description_rows = true;
     row.accessibility_state_rows = true;
     row.accessibility_focus_rows = true;
     row.accessibility_action_rows = true;
     row.accessibility_relationship_rows = true;
     row.accessibility_live_region_rows = true;
-    row.accessibility_os_publication_gate = true;
+    row.accessibility_keyboard_pattern_rows = true;
+    row.accessibility_publication_status_rows = true;
+    row.accessibility_uia_host_gate_rows = true;
+    row.accessibility_platform_host_gate_rows = true;
     return row;
 }
 
@@ -2645,16 +2675,29 @@ has_runtime_ui_workbench_accessibility_ref(const std::vector<mirakana::ui::Runti
     };
 
     const auto plan = mirakana::ui::plan_runtime_ui_production_stack(request);
+    const auto& ime_row = request.rows[4];
+    const auto& accessibility_row = request.rows[5];
+    const auto bool_to_count = [](bool value) -> std::size_t { return value ? 1U : 0U; };
     RuntimeUiProductionStackProbeResult result{
-        .package_evidence_ready = plan.reviewed &&
-                                  plan.status == mirakana::ui::RuntimeUiProductionStackStatus::host_evidence_required &&
-                                  plan.rows.size() == 6U && plan.ready_rows == 4U && plan.host_gated_rows == 2U &&
-                                  plan.dependency_gated_rows == 0U && plan.skipped_rows == 0U &&
-                                  plan.adapter_invoked_rows == 0U && plan.unsupported_rows == 0U &&
-                                  plan.text_stack_contract_ready && plan.selected_package_counter_evidence_ready &&
-                                  !plan.production_runtime_ui_ready && plan.requires_ime_host_evidence &&
-                                  !plan.ime_host_evidence_available && plan.requires_accessibility_host_evidence &&
-                                  !plan.accessibility_host_evidence_available && plan.diagnostics.empty(),
+        .package_evidence_ready =
+            plan.reviewed && plan.status == mirakana::ui::RuntimeUiProductionStackStatus::host_evidence_required &&
+            plan.rows.size() == 6U && plan.ready_rows == 4U && plan.host_gated_rows == 2U &&
+            plan.dependency_gated_rows == 0U && plan.skipped_rows == 0U && plan.adapter_invoked_rows == 0U &&
+            plan.unsupported_rows == 0U && plan.text_stack_contract_ready &&
+            plan.selected_package_counter_evidence_ready && !plan.production_runtime_ui_ready &&
+            plan.requires_ime_host_evidence && !plan.ime_host_evidence_available &&
+            ime_row.ime_session_begin_end_rows && ime_row.ime_composition_update_rows && ime_row.ime_candidate_rows &&
+            ime_row.ime_text_area_cursor_rows && ime_row.ime_committed_text_rows && ime_row.ime_clipboard_rows &&
+            ime_row.ime_sdl3_adapter_proof_rows && ime_row.ime_platform_host_gate_rows &&
+            plan.requires_accessibility_host_evidence && !plan.accessibility_host_evidence_available &&
+            accessibility_row.accessibility_role_rows && accessibility_row.accessibility_name_rows &&
+            accessibility_row.accessibility_description_rows && accessibility_row.accessibility_state_rows &&
+            accessibility_row.accessibility_focus_rows && accessibility_row.accessibility_action_rows &&
+            accessibility_row.accessibility_relationship_rows && accessibility_row.accessibility_live_region_rows &&
+            accessibility_row.accessibility_keyboard_pattern_rows &&
+            accessibility_row.accessibility_publication_status_rows &&
+            accessibility_row.accessibility_uia_host_gate_rows &&
+            accessibility_row.accessibility_platform_host_gate_rows && plan.diagnostics.empty(),
         .reviewed = plan.reviewed,
         .status = plan.status,
         .rows = plan.rows.size(),
@@ -2669,8 +2712,31 @@ has_runtime_ui_workbench_accessibility_ref(const std::vector<mirakana::ui::Runti
         .production_ready = plan.production_runtime_ui_ready,
         .requires_ime_host_evidence = plan.requires_ime_host_evidence,
         .ime_host_evidence = plan.ime_host_evidence_available,
+        .ime_session_rows = bool_to_count(ime_row.ime_session_begin_end_rows),
+        .ime_composition_rows = bool_to_count(ime_row.ime_composition_update_rows),
+        .ime_candidate_rows = bool_to_count(ime_row.ime_candidate_rows),
+        .ime_text_area_cursor_rows = bool_to_count(ime_row.ime_text_area_cursor_rows),
+        .ime_committed_text_rows = bool_to_count(ime_row.ime_committed_text_rows),
+        .ime_clipboard_rows = bool_to_count(ime_row.ime_clipboard_rows),
+        .ime_sdl3_adapter_proof_rows = bool_to_count(ime_row.ime_sdl3_adapter_proof_rows),
+        .ime_platform_host_gate_rows = bool_to_count(ime_row.ime_platform_host_gate_rows),
+        .ime_platform_parity_ready = !plan.requires_ime_host_evidence && plan.ime_host_evidence_available,
         .requires_accessibility_host_evidence = plan.requires_accessibility_host_evidence,
         .accessibility_host_evidence = plan.accessibility_host_evidence_available,
+        .accessibility_role_rows = bool_to_count(accessibility_row.accessibility_role_rows),
+        .accessibility_name_rows = bool_to_count(accessibility_row.accessibility_name_rows),
+        .accessibility_description_rows = bool_to_count(accessibility_row.accessibility_description_rows),
+        .accessibility_state_rows = bool_to_count(accessibility_row.accessibility_state_rows),
+        .accessibility_focus_rows = bool_to_count(accessibility_row.accessibility_focus_rows),
+        .accessibility_action_rows = bool_to_count(accessibility_row.accessibility_action_rows),
+        .accessibility_relationship_rows = bool_to_count(accessibility_row.accessibility_relationship_rows),
+        .accessibility_live_region_rows = bool_to_count(accessibility_row.accessibility_live_region_rows),
+        .accessibility_keyboard_pattern_rows = bool_to_count(accessibility_row.accessibility_keyboard_pattern_rows),
+        .accessibility_publication_status_rows = bool_to_count(accessibility_row.accessibility_publication_status_rows),
+        .accessibility_uia_host_gate_rows = bool_to_count(accessibility_row.accessibility_uia_host_gate_rows),
+        .accessibility_platform_host_gate_rows = bool_to_count(accessibility_row.accessibility_platform_host_gate_rows),
+        .accessibility_platform_parity_ready =
+            !plan.requires_accessibility_host_evidence && plan.accessibility_host_evidence_available,
         .invoked_text_shaping = plan.invoked_text_shaping,
         .invoked_font_rasterization = plan.invoked_font_rasterization,
         .invoked_ime = plan.invoked_ime_adapter,
@@ -2680,10 +2746,21 @@ has_runtime_ui_workbench_accessibility_ref(const std::vector<mirakana::ui::Runti
         .diagnostics = plan.diagnostics.size(),
         .replay_hash = plan.replay_hash,
     };
-    result.package_evidence_ready = result.package_evidence_ready && !result.invoked_text_shaping &&
-                                    !result.invoked_font_rasterization && !result.invoked_ime &&
-                                    !result.invoked_accessibility_bridge && !result.invoked_native_platform &&
-                                    !result.invoked_renderer_upload && result.replay_hash != 0U;
+    result.package_evidence_ready =
+        result.package_evidence_ready && !result.invoked_text_shaping && !result.invoked_font_rasterization &&
+        !result.invoked_ime && !result.invoked_accessibility_bridge && !result.invoked_native_platform &&
+        !result.invoked_renderer_upload && result.ime_session_rows == 1U && result.ime_composition_rows == 1U &&
+        result.ime_candidate_rows == 1U && result.ime_text_area_cursor_rows == 1U &&
+        result.ime_committed_text_rows == 1U && result.ime_clipboard_rows == 1U &&
+        result.ime_sdl3_adapter_proof_rows == 1U && result.ime_platform_host_gate_rows == 1U &&
+        !result.ime_platform_parity_ready && result.accessibility_role_rows == 1U &&
+        result.accessibility_name_rows == 1U && result.accessibility_description_rows == 1U &&
+        result.accessibility_state_rows == 1U && result.accessibility_focus_rows == 1U &&
+        result.accessibility_action_rows == 1U && result.accessibility_relationship_rows == 1U &&
+        result.accessibility_live_region_rows == 1U && result.accessibility_keyboard_pattern_rows == 1U &&
+        result.accessibility_publication_status_rows == 1U && result.accessibility_uia_host_gate_rows == 1U &&
+        result.accessibility_platform_host_gate_rows == 1U && !result.accessibility_platform_parity_ready &&
+        result.replay_hash != 0U;
     return result;
 }
 
@@ -9232,10 +9309,51 @@ int main(int argc, char** argv) {
         << (runtime_ui_production_stack_probe.requires_ime_host_evidence ? 1 : 0)
         << " runtime_ui_production_stack_ime_host_evidence="
         << (runtime_ui_production_stack_probe.ime_host_evidence ? 1 : 0)
+        << " runtime_ui_production_stack_ime_session_rows=" << runtime_ui_production_stack_probe.ime_session_rows
+        << " runtime_ui_production_stack_ime_composition_rows="
+        << runtime_ui_production_stack_probe.ime_composition_rows
+        << " runtime_ui_production_stack_ime_candidate_rows=" << runtime_ui_production_stack_probe.ime_candidate_rows
+        << " runtime_ui_production_stack_ime_text_area_cursor_rows="
+        << runtime_ui_production_stack_probe.ime_text_area_cursor_rows
+        << " runtime_ui_production_stack_ime_committed_text_rows="
+        << runtime_ui_production_stack_probe.ime_committed_text_rows
+        << " runtime_ui_production_stack_ime_clipboard_rows=" << runtime_ui_production_stack_probe.ime_clipboard_rows
+        << " runtime_ui_production_stack_ime_sdl3_adapter_proof_rows="
+        << runtime_ui_production_stack_probe.ime_sdl3_adapter_proof_rows
+        << " runtime_ui_production_stack_ime_platform_host_gate_rows="
+        << runtime_ui_production_stack_probe.ime_platform_host_gate_rows
+        << " runtime_ui_production_stack_ime_platform_parity_ready="
+        << (runtime_ui_production_stack_probe.ime_platform_parity_ready ? 1 : 0)
         << " runtime_ui_production_stack_requires_accessibility_host_evidence="
         << (runtime_ui_production_stack_probe.requires_accessibility_host_evidence ? 1 : 0)
         << " runtime_ui_production_stack_accessibility_host_evidence="
         << (runtime_ui_production_stack_probe.accessibility_host_evidence ? 1 : 0)
+        << " runtime_ui_production_stack_accessibility_role_rows="
+        << runtime_ui_production_stack_probe.accessibility_role_rows
+        << " runtime_ui_production_stack_accessibility_name_rows="
+        << runtime_ui_production_stack_probe.accessibility_name_rows
+        << " runtime_ui_production_stack_accessibility_description_rows="
+        << runtime_ui_production_stack_probe.accessibility_description_rows
+        << " runtime_ui_production_stack_accessibility_state_rows="
+        << runtime_ui_production_stack_probe.accessibility_state_rows
+        << " runtime_ui_production_stack_accessibility_focus_rows="
+        << runtime_ui_production_stack_probe.accessibility_focus_rows
+        << " runtime_ui_production_stack_accessibility_action_rows="
+        << runtime_ui_production_stack_probe.accessibility_action_rows
+        << " runtime_ui_production_stack_accessibility_relationship_rows="
+        << runtime_ui_production_stack_probe.accessibility_relationship_rows
+        << " runtime_ui_production_stack_accessibility_live_region_rows="
+        << runtime_ui_production_stack_probe.accessibility_live_region_rows
+        << " runtime_ui_production_stack_accessibility_keyboard_pattern_rows="
+        << runtime_ui_production_stack_probe.accessibility_keyboard_pattern_rows
+        << " runtime_ui_production_stack_accessibility_publication_status_rows="
+        << runtime_ui_production_stack_probe.accessibility_publication_status_rows
+        << " runtime_ui_production_stack_accessibility_uia_host_gate_rows="
+        << runtime_ui_production_stack_probe.accessibility_uia_host_gate_rows
+        << " runtime_ui_production_stack_accessibility_platform_host_gate_rows="
+        << runtime_ui_production_stack_probe.accessibility_platform_host_gate_rows
+        << " runtime_ui_production_stack_accessibility_platform_parity_ready="
+        << (runtime_ui_production_stack_probe.accessibility_platform_parity_ready ? 1 : 0)
         << " runtime_ui_production_stack_invoked_text_shaping="
         << (runtime_ui_production_stack_probe.invoked_text_shaping ? 1 : 0)
         << " runtime_ui_production_stack_invoked_font_rasterization="
@@ -9921,27 +10039,68 @@ int main(int argc, char** argv) {
     }
 
     if (options.require_runtime_ui_production_stack && !runtime_ui_production_stack_probe.package_evidence_ready) {
-        std::cout << "sample_2d_desktop_runtime_package required_runtime_ui_production_stack_unavailable"
-                  << " runtime_ui_production_stack_status="
-                  << mirakana::ui::runtime_ui_production_stack_status_name(runtime_ui_production_stack_probe.status)
-                  << " runtime_ui_production_stack_reviewed=" << (runtime_ui_production_stack_probe.reviewed ? 1 : 0)
-                  << " runtime_ui_production_stack_rows=" << runtime_ui_production_stack_probe.rows
-                  << " runtime_ui_production_stack_ready_rows=" << runtime_ui_production_stack_probe.ready_rows
-                  << " runtime_ui_production_stack_host_gated_rows="
-                  << runtime_ui_production_stack_probe.host_gated_rows
-                  << " runtime_ui_production_stack_dependency_gated_rows="
-                  << runtime_ui_production_stack_probe.dependency_gated_rows
-                  << " runtime_ui_production_stack_skipped_rows=" << runtime_ui_production_stack_probe.skipped_rows
-                  << " runtime_ui_production_stack_adapter_invoked_rows="
-                  << runtime_ui_production_stack_probe.adapter_invoked_rows
-                  << " runtime_ui_production_stack_unsupported_rows="
-                  << runtime_ui_production_stack_probe.unsupported_rows
-                  << " runtime_ui_production_stack_text_contract_ready="
-                  << (runtime_ui_production_stack_probe.text_contract_ready ? 1 : 0)
-                  << " runtime_ui_production_stack_selected_package_evidence_ready="
-                  << (runtime_ui_production_stack_probe.selected_package_evidence_ready ? 1 : 0)
-                  << " runtime_ui_production_stack_diagnostics=" << runtime_ui_production_stack_probe.diagnostics
-                  << '\n';
+        std::cout
+            << "sample_2d_desktop_runtime_package required_runtime_ui_production_stack_unavailable"
+            << " runtime_ui_production_stack_status="
+            << mirakana::ui::runtime_ui_production_stack_status_name(runtime_ui_production_stack_probe.status)
+            << " runtime_ui_production_stack_reviewed=" << (runtime_ui_production_stack_probe.reviewed ? 1 : 0)
+            << " runtime_ui_production_stack_rows=" << runtime_ui_production_stack_probe.rows
+            << " runtime_ui_production_stack_ready_rows=" << runtime_ui_production_stack_probe.ready_rows
+            << " runtime_ui_production_stack_host_gated_rows=" << runtime_ui_production_stack_probe.host_gated_rows
+            << " runtime_ui_production_stack_dependency_gated_rows="
+            << runtime_ui_production_stack_probe.dependency_gated_rows
+            << " runtime_ui_production_stack_skipped_rows=" << runtime_ui_production_stack_probe.skipped_rows
+            << " runtime_ui_production_stack_adapter_invoked_rows="
+            << runtime_ui_production_stack_probe.adapter_invoked_rows
+            << " runtime_ui_production_stack_unsupported_rows=" << runtime_ui_production_stack_probe.unsupported_rows
+            << " runtime_ui_production_stack_text_contract_ready="
+            << (runtime_ui_production_stack_probe.text_contract_ready ? 1 : 0)
+            << " runtime_ui_production_stack_selected_package_evidence_ready="
+            << (runtime_ui_production_stack_probe.selected_package_evidence_ready ? 1 : 0)
+            << " runtime_ui_production_stack_ime_session_rows=" << runtime_ui_production_stack_probe.ime_session_rows
+            << " runtime_ui_production_stack_ime_composition_rows="
+            << runtime_ui_production_stack_probe.ime_composition_rows
+            << " runtime_ui_production_stack_ime_candidate_rows="
+            << runtime_ui_production_stack_probe.ime_candidate_rows
+            << " runtime_ui_production_stack_ime_text_area_cursor_rows="
+            << runtime_ui_production_stack_probe.ime_text_area_cursor_rows
+            << " runtime_ui_production_stack_ime_committed_text_rows="
+            << runtime_ui_production_stack_probe.ime_committed_text_rows
+            << " runtime_ui_production_stack_ime_clipboard_rows="
+            << runtime_ui_production_stack_probe.ime_clipboard_rows
+            << " runtime_ui_production_stack_ime_sdl3_adapter_proof_rows="
+            << runtime_ui_production_stack_probe.ime_sdl3_adapter_proof_rows
+            << " runtime_ui_production_stack_ime_platform_host_gate_rows="
+            << runtime_ui_production_stack_probe.ime_platform_host_gate_rows
+            << " runtime_ui_production_stack_ime_platform_parity_ready="
+            << (runtime_ui_production_stack_probe.ime_platform_parity_ready ? 1 : 0)
+            << " runtime_ui_production_stack_accessibility_role_rows="
+            << runtime_ui_production_stack_probe.accessibility_role_rows
+            << " runtime_ui_production_stack_accessibility_name_rows="
+            << runtime_ui_production_stack_probe.accessibility_name_rows
+            << " runtime_ui_production_stack_accessibility_description_rows="
+            << runtime_ui_production_stack_probe.accessibility_description_rows
+            << " runtime_ui_production_stack_accessibility_state_rows="
+            << runtime_ui_production_stack_probe.accessibility_state_rows
+            << " runtime_ui_production_stack_accessibility_focus_rows="
+            << runtime_ui_production_stack_probe.accessibility_focus_rows
+            << " runtime_ui_production_stack_accessibility_action_rows="
+            << runtime_ui_production_stack_probe.accessibility_action_rows
+            << " runtime_ui_production_stack_accessibility_relationship_rows="
+            << runtime_ui_production_stack_probe.accessibility_relationship_rows
+            << " runtime_ui_production_stack_accessibility_live_region_rows="
+            << runtime_ui_production_stack_probe.accessibility_live_region_rows
+            << " runtime_ui_production_stack_accessibility_keyboard_pattern_rows="
+            << runtime_ui_production_stack_probe.accessibility_keyboard_pattern_rows
+            << " runtime_ui_production_stack_accessibility_publication_status_rows="
+            << runtime_ui_production_stack_probe.accessibility_publication_status_rows
+            << " runtime_ui_production_stack_accessibility_uia_host_gate_rows="
+            << runtime_ui_production_stack_probe.accessibility_uia_host_gate_rows
+            << " runtime_ui_production_stack_accessibility_platform_host_gate_rows="
+            << runtime_ui_production_stack_probe.accessibility_platform_host_gate_rows
+            << " runtime_ui_production_stack_accessibility_platform_parity_ready="
+            << (runtime_ui_production_stack_probe.accessibility_platform_parity_ready ? 1 : 0)
+            << " runtime_ui_production_stack_diagnostics=" << runtime_ui_production_stack_probe.diagnostics << '\n';
         return 28;
     }
 

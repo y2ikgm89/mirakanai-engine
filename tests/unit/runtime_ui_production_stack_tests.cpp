@@ -87,10 +87,14 @@ using mirakana::ui::RuntimeUiProductionStackRequest;
         .proof = RuntimeUiProductionProofKind::host_gate,
         .host_evidence_required = true,
         .host_evidence_available = false,
-        .ime_begin_update_end = true,
+        .ime_session_begin_end_rows = true,
+        .ime_composition_update_rows = true,
         .ime_candidate_rows = true,
-        .ime_text_area_rows = true,
+        .ime_text_area_cursor_rows = true,
         .ime_committed_text_rows = true,
+        .ime_clipboard_rows = true,
+        .ime_sdl3_adapter_proof_rows = true,
+        .ime_platform_host_gate_rows = true,
         .platform_adapter_dispatch_boundary = true,
     };
 }
@@ -103,13 +107,17 @@ using mirakana::ui::RuntimeUiProductionStackRequest;
         .host_evidence_required = true,
         .host_evidence_available = false,
         .accessibility_role_rows = true,
-        .accessibility_label_rows = true,
+        .accessibility_name_rows = true,
+        .accessibility_description_rows = true,
         .accessibility_state_rows = true,
         .accessibility_focus_rows = true,
         .accessibility_action_rows = true,
         .accessibility_relationship_rows = true,
         .accessibility_live_region_rows = true,
-        .accessibility_os_publication_gate = true,
+        .accessibility_keyboard_pattern_rows = true,
+        .accessibility_publication_status_rows = true,
+        .accessibility_uia_host_gate_rows = true,
+        .accessibility_platform_host_gate_rows = true,
     };
 }
 
@@ -237,19 +245,107 @@ MK_TEST("runtime ui production stack rejects incomplete raster and atlas evidenc
 
 MK_TEST("runtime ui production stack rejects incomplete ime and accessibility evidence") {
     auto request = make_package_request();
+    request.rows[4].ime_session_begin_end_rows = false;
+    request.rows[4].ime_composition_update_rows = false;
     request.rows[4].ime_candidate_rows = false;
+    request.rows[4].ime_text_area_cursor_rows = false;
+    request.rows[4].ime_clipboard_rows = false;
+    request.rows[4].ime_sdl3_adapter_proof_rows = false;
+    request.rows[4].ime_platform_host_gate_rows = false;
     request.rows[4].platform_adapter_dispatch_boundary = false;
+    request.rows[5].accessibility_name_rows = false;
+    request.rows[5].accessibility_description_rows = false;
     request.rows[5].accessibility_relationship_rows = false;
     request.rows[5].accessibility_live_region_rows = false;
+    request.rows[5].accessibility_keyboard_pattern_rows = false;
+    request.rows[5].accessibility_publication_status_rows = false;
+    request.rows[5].accessibility_uia_host_gate_rows = false;
+    request.rows[5].accessibility_platform_host_gate_rows = false;
 
     const auto plan = mirakana::ui::plan_runtime_ui_production_stack(request);
 
     MK_REQUIRE(plan.status == mirakana::ui::RuntimeUiProductionStackStatus::invalid_request);
+    MK_REQUIRE(has_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::missing_ime_session_rows));
+    MK_REQUIRE(
+        has_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::missing_ime_composition_update_rows));
     MK_REQUIRE(has_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::missing_ime_candidate_rows));
+    MK_REQUIRE(has_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::missing_ime_text_area_cursor_rows));
+    MK_REQUIRE(has_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::missing_ime_clipboard_rows));
+    MK_REQUIRE(
+        has_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::missing_ime_sdl3_adapter_proof_rows));
+    MK_REQUIRE(
+        has_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::missing_ime_platform_host_gate_rows));
     MK_REQUIRE(has_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::missing_platform_dispatch_boundary));
     MK_REQUIRE(
         has_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::missing_accessibility_relationships));
     MK_REQUIRE(has_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::missing_accessibility_live_regions));
+    MK_REQUIRE(has_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::missing_accessibility_names));
+    MK_REQUIRE(has_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::missing_accessibility_descriptions));
+    MK_REQUIRE(
+        has_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::missing_accessibility_keyboard_patterns));
+    MK_REQUIRE(
+        has_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::missing_accessibility_publication_status));
+    MK_REQUIRE(
+        has_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::missing_accessibility_uia_host_gate));
+    MK_REQUIRE(
+        has_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::missing_accessibility_platform_host_gate));
+}
+
+MK_TEST("runtime ui production stack keeps selected accessibility proof host gated") {
+    const auto plan = mirakana::ui::plan_runtime_ui_production_stack(make_package_request());
+
+    const auto accessibility_row = std::ranges::find_if(plan.rows, [](const RuntimeUiProductionEvidenceRow& row) {
+        return row.feature == RuntimeUiProductionFeatureKind::accessibility;
+    });
+
+    MK_REQUIRE(accessibility_row != plan.rows.end());
+    MK_REQUIRE(accessibility_row->accessibility_role_rows);
+    MK_REQUIRE(accessibility_row->accessibility_name_rows);
+    MK_REQUIRE(accessibility_row->accessibility_description_rows);
+    MK_REQUIRE(accessibility_row->accessibility_state_rows);
+    MK_REQUIRE(accessibility_row->accessibility_focus_rows);
+    MK_REQUIRE(accessibility_row->accessibility_action_rows);
+    MK_REQUIRE(accessibility_row->accessibility_relationship_rows);
+    MK_REQUIRE(accessibility_row->accessibility_live_region_rows);
+    MK_REQUIRE(accessibility_row->accessibility_keyboard_pattern_rows);
+    MK_REQUIRE(accessibility_row->accessibility_publication_status_rows);
+    MK_REQUIRE(accessibility_row->accessibility_uia_host_gate_rows);
+    MK_REQUIRE(accessibility_row->accessibility_platform_host_gate_rows);
+    MK_REQUIRE(accessibility_row->host_evidence_required);
+    MK_REQUIRE(!accessibility_row->host_evidence_available);
+    MK_REQUIRE(!accessibility_row->claims_broad_platform_ui_parity);
+    MK_REQUIRE(plan.status == mirakana::ui::RuntimeUiProductionStackStatus::host_evidence_required);
+    MK_REQUIRE(plan.requires_accessibility_host_evidence);
+    MK_REQUIRE(!plan.accessibility_host_evidence_available);
+    MK_REQUIRE(!plan.production_runtime_ui_ready);
+    MK_REQUIRE(plan.diagnostics.empty());
+}
+
+MK_TEST("runtime ui production stack keeps selected sdl3 ime proof host gated") {
+    const auto plan = mirakana::ui::plan_runtime_ui_production_stack(make_package_request());
+
+    const auto ime_row = std::ranges::find_if(plan.rows, [](const RuntimeUiProductionEvidenceRow& row) {
+        return row.feature == RuntimeUiProductionFeatureKind::ime;
+    });
+
+    MK_REQUIRE(ime_row != plan.rows.end());
+    MK_REQUIRE(ime_row->ime_session_begin_end_rows);
+    MK_REQUIRE(ime_row->ime_composition_update_rows);
+    MK_REQUIRE(ime_row->ime_candidate_rows);
+    MK_REQUIRE(ime_row->ime_text_area_cursor_rows);
+    MK_REQUIRE(ime_row->ime_committed_text_rows);
+    MK_REQUIRE(ime_row->ime_clipboard_rows);
+    MK_REQUIRE(ime_row->ime_sdl3_adapter_proof_rows);
+    MK_REQUIRE(ime_row->ime_platform_host_gate_rows);
+    MK_REQUIRE(ime_row->platform_adapter_dispatch_boundary);
+    MK_REQUIRE(ime_row->host_evidence_required);
+    MK_REQUIRE(!ime_row->host_evidence_available);
+    MK_REQUIRE(!ime_row->claims_broad_platform_ui_parity);
+    MK_REQUIRE(plan.status == mirakana::ui::RuntimeUiProductionStackStatus::host_evidence_required);
+    MK_REQUIRE(plan.requires_ime_host_evidence);
+    MK_REQUIRE(!plan.ime_host_evidence_available);
+    MK_REQUIRE(!plan.production_runtime_ui_ready);
+    MK_REQUIRE(plan.diagnostics.empty());
 }
 
 MK_TEST("runtime ui production stack rejects duplicate missing and unsafe claim rows") {

@@ -16,6 +16,7 @@ $sample2dReadmeText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_pack
 $gamesCMakeText = Get-AgentSurfaceText "games/CMakeLists.txt"
 $installedValidationText = Get-AgentSurfaceText "tools/validate-installed-desktop-runtime.ps1"
 $phasePlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-26-engine-general-production-quality-expansion-v1.md"
+$runtimeUiTextPlatformPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-27-runtime-ui-text-platform-stack-v1.md"
 $currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
 $uiDocsText = Get-AgentSurfaceText "docs/ui.md"
 $aiGameDevelopmentText = Get-AgentSurfaceText "docs/ai-game-development.md"
@@ -63,8 +64,18 @@ foreach ($needle in @(
         "missing_raster_glyph_bitmaps",
         "missing_raster_pixel_format_rows",
         "missing_atlas_eviction_diagnostics",
-        "missing_ime_text_area_rows",
-        "missing_accessibility_os_publication_gate",
+        "missing_ime_session_rows",
+        "missing_ime_composition_update_rows",
+        "missing_ime_text_area_cursor_rows",
+        "missing_ime_clipboard_rows",
+        "missing_ime_sdl3_adapter_proof_rows",
+        "missing_ime_platform_host_gate_rows",
+        "missing_accessibility_names",
+        "missing_accessibility_descriptions",
+        "missing_accessibility_keyboard_patterns",
+        "missing_accessibility_publication_status",
+        "missing_accessibility_uia_host_gate",
+        "missing_accessibility_platform_host_gate",
         "unsupported_native_handle",
         "unsupported_ui_middleware_api",
         "unsupported_broad_production_claim",
@@ -85,6 +96,10 @@ foreach ($needle in @(
         "RuntimeUiProductionDiagnosticCode::missing_selected_package_counter_evidence",
         "RuntimeUiProductionDiagnosticCode::missing_shaping_direction_script_language",
         "RuntimeUiProductionDiagnosticCode::missing_raster_pixel_format_rows",
+        "RuntimeUiProductionDiagnosticCode::missing_ime_sdl3_adapter_proof_rows",
+        "RuntimeUiProductionDiagnosticCode::missing_ime_platform_host_gate_rows",
+        "RuntimeUiProductionDiagnosticCode::missing_accessibility_uia_host_gate",
+        "RuntimeUiProductionDiagnosticCode::missing_accessibility_platform_host_gate",
         "RuntimeUiProductionDiagnosticCode::missing_platform_dispatch_boundary",
         "RuntimeUiProductionDiagnosticCode::unsupported_native_handle",
         "RuntimeUiProductionDiagnosticCode::side_effect_invocation",
@@ -103,6 +118,8 @@ Assert-ContainsText $runtimeUiTestsText "missing_shaping_direction_script_langua
 Assert-ContainsText $runtimeUiTestsText "missing_raster_pixel_format_rows" "tests/unit/runtime_ui_production_stack_tests.cpp"
 Assert-ContainsText $uiRendererTestsText "ui line breaking adapter contract does not require shaping glyph evidence" "tests/unit/ui_renderer_tests.cpp"
 Assert-ContainsText $runtimeUiTestsText "runtime ui production stack rejects incomplete ime and accessibility evidence" "tests/unit/runtime_ui_production_stack_tests.cpp"
+Assert-ContainsText $runtimeUiTestsText "runtime ui production stack keeps selected sdl3 ime proof host gated" "tests/unit/runtime_ui_production_stack_tests.cpp"
+Assert-ContainsText $runtimeUiTestsText "runtime ui production stack keeps selected accessibility proof host gated" "tests/unit/runtime_ui_production_stack_tests.cpp"
 Assert-ContainsText $runtimeUiTestsText "runtime ui production stack rejects duplicate missing and unsafe claim rows" "tests/unit/runtime_ui_production_stack_tests.cpp"
 
 foreach ($needle in @(
@@ -124,8 +141,30 @@ foreach ($needle in @(
         "runtime_ui_production_stack_production_ready=",
         "runtime_ui_production_stack_requires_ime_host_evidence=",
         "runtime_ui_production_stack_ime_host_evidence=",
+        "runtime_ui_production_stack_ime_session_rows=",
+        "runtime_ui_production_stack_ime_composition_rows=",
+        "runtime_ui_production_stack_ime_candidate_rows=",
+        "runtime_ui_production_stack_ime_text_area_cursor_rows=",
+        "runtime_ui_production_stack_ime_committed_text_rows=",
+        "runtime_ui_production_stack_ime_clipboard_rows=",
+        "runtime_ui_production_stack_ime_sdl3_adapter_proof_rows=",
+        "runtime_ui_production_stack_ime_platform_host_gate_rows=",
+        "runtime_ui_production_stack_ime_platform_parity_ready=",
         "runtime_ui_production_stack_requires_accessibility_host_evidence=",
         "runtime_ui_production_stack_accessibility_host_evidence=",
+        "runtime_ui_production_stack_accessibility_role_rows=",
+        "runtime_ui_production_stack_accessibility_name_rows=",
+        "runtime_ui_production_stack_accessibility_description_rows=",
+        "runtime_ui_production_stack_accessibility_state_rows=",
+        "runtime_ui_production_stack_accessibility_focus_rows=",
+        "runtime_ui_production_stack_accessibility_action_rows=",
+        "runtime_ui_production_stack_accessibility_relationship_rows=",
+        "runtime_ui_production_stack_accessibility_live_region_rows=",
+        "runtime_ui_production_stack_accessibility_keyboard_pattern_rows=",
+        "runtime_ui_production_stack_accessibility_publication_status_rows=",
+        "runtime_ui_production_stack_accessibility_uia_host_gate_rows=",
+        "runtime_ui_production_stack_accessibility_platform_host_gate_rows=",
+        "runtime_ui_production_stack_accessibility_platform_parity_ready=",
         "runtime_ui_production_stack_invoked_text_shaping=",
         "runtime_ui_production_stack_invoked_font_rasterization=",
         "runtime_ui_production_stack_invoked_ime=",
@@ -156,6 +195,10 @@ foreach ($needle in @(
         "runtime_ui_production_stack_ready_rows=4",
         "runtime_ui_production_stack_host_gated_rows=2",
         "runtime_ui_production_stack_production_ready=0",
+        "runtime_ui_production_stack_ime_sdl3_adapter_proof_rows=1",
+        "runtime_ui_production_stack_ime_platform_parity_ready=0",
+        "runtime_ui_production_stack_accessibility_uia_host_gate_rows=1",
+        "runtime_ui_production_stack_accessibility_platform_parity_ready=0",
         "runtime_ui_production_stack_diagnostics=0"
     )) {
     Assert-ContainsText $sample2dReadmeText $needle "games/sample_2d_desktop_runtime_package/README.md"
@@ -177,8 +220,30 @@ foreach ($needle in @(
         "runtime_ui_production_stack_production_ready",
         "runtime_ui_production_stack_requires_ime_host_evidence",
         "runtime_ui_production_stack_ime_host_evidence",
+        "runtime_ui_production_stack_ime_session_rows",
+        "runtime_ui_production_stack_ime_composition_rows",
+        "runtime_ui_production_stack_ime_candidate_rows",
+        "runtime_ui_production_stack_ime_text_area_cursor_rows",
+        "runtime_ui_production_stack_ime_committed_text_rows",
+        "runtime_ui_production_stack_ime_clipboard_rows",
+        "runtime_ui_production_stack_ime_sdl3_adapter_proof_rows",
+        "runtime_ui_production_stack_ime_platform_host_gate_rows",
+        "runtime_ui_production_stack_ime_platform_parity_ready",
         "runtime_ui_production_stack_requires_accessibility_host_evidence",
         "runtime_ui_production_stack_accessibility_host_evidence",
+        "runtime_ui_production_stack_accessibility_role_rows",
+        "runtime_ui_production_stack_accessibility_name_rows",
+        "runtime_ui_production_stack_accessibility_description_rows",
+        "runtime_ui_production_stack_accessibility_state_rows",
+        "runtime_ui_production_stack_accessibility_focus_rows",
+        "runtime_ui_production_stack_accessibility_action_rows",
+        "runtime_ui_production_stack_accessibility_relationship_rows",
+        "runtime_ui_production_stack_accessibility_live_region_rows",
+        "runtime_ui_production_stack_accessibility_keyboard_pattern_rows",
+        "runtime_ui_production_stack_accessibility_publication_status_rows",
+        "runtime_ui_production_stack_accessibility_uia_host_gate_rows",
+        "runtime_ui_production_stack_accessibility_platform_host_gate_rows",
+        "runtime_ui_production_stack_accessibility_platform_parity_ready",
         "runtime_ui_production_stack_invoked_text_shaping",
         "runtime_ui_production_stack_invoked_font_rasterization",
         "runtime_ui_production_stack_invoked_ime",
@@ -193,9 +258,14 @@ foreach ($needle in @(
 Assert-ContainsText $installedValidationText '"runtime_ui_production_stack_status" = "host_evidence_required"' "tools/validate-installed-desktop-runtime.ps1"
 Assert-ContainsText $installedValidationText '"runtime_ui_production_stack_rows" = "6"' "tools/validate-installed-desktop-runtime.ps1"
 Assert-ContainsText $installedValidationText '"runtime_ui_production_stack_production_ready" = "0"' "tools/validate-installed-desktop-runtime.ps1"
+Assert-ContainsText $installedValidationText '"runtime_ui_production_stack_ime_sdl3_adapter_proof_rows" = "1"' "tools/validate-installed-desktop-runtime.ps1"
+Assert-ContainsText $installedValidationText '"runtime_ui_production_stack_ime_platform_parity_ready" = "0"' "tools/validate-installed-desktop-runtime.ps1"
+Assert-ContainsText $installedValidationText '"runtime_ui_production_stack_accessibility_uia_host_gate_rows" = "1"' "tools/validate-installed-desktop-runtime.ps1"
+Assert-ContainsText $installedValidationText '"runtime_ui_production_stack_accessibility_platform_parity_ready" = "0"' "tools/validate-installed-desktop-runtime.ps1"
 
 foreach ($docSurface in @(
         @{ Text = $phasePlanText; Label = "docs/superpowers/plans/2026-05-26-engine-general-production-quality-expansion-v1.md" },
+        @{ Text = $runtimeUiTextPlatformPlanText; Label = "docs/superpowers/plans/2026-05-27-runtime-ui-text-platform-stack-v1.md" },
         @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
         @{ Text = $uiDocsText; Label = "docs/ui.md" },
         @{ Text = $aiGameDevelopmentText; Label = "docs/ai-game-development.md" },
@@ -208,6 +278,7 @@ foreach ($docSurface in @(
 
 foreach ($docSurface in @(
         @{ Text = $phasePlanText; Label = "docs/superpowers/plans/2026-05-26-engine-general-production-quality-expansion-v1.md" },
+        @{ Text = $runtimeUiTextPlatformPlanText; Label = "docs/superpowers/plans/2026-05-27-runtime-ui-text-platform-stack-v1.md" },
         @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
         @{ Text = $uiDocsText; Label = "docs/ui.md" },
         @{ Text = $aiGameDevelopmentText; Label = "docs/ai-game-development.md" },
@@ -222,6 +293,7 @@ foreach ($docSurface in @(
 
 foreach ($docSurface in @(
         @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
+        @{ Text = $runtimeUiTextPlatformPlanText; Label = "docs/superpowers/plans/2026-05-27-runtime-ui-text-platform-stack-v1.md" },
         @{ Text = $aiGameDevelopmentText; Label = "docs/ai-game-development.md" },
         @{ Text = $generatedValidationText; Label = "docs/specs/generated-game-validation-scenarios.md" },
         @{ Text = $workflowsText; Label = "docs/workflows.md" },
@@ -231,12 +303,30 @@ foreach ($docSurface in @(
     Assert-ContainsText $docSurface.Text "runtime_ui_production_stack_status=host_evidence_required" $docSurface.Label
 }
 
+foreach ($docSurface in @(
+        @{ Text = $sample2dReadmeText; Label = "games/sample_2d_desktop_runtime_package/README.md" },
+        @{ Text = $runtimeUiTextPlatformPlanText; Label = "docs/superpowers/plans/2026-05-27-runtime-ui-text-platform-stack-v1.md" },
+        @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
+        @{ Text = $uiDocsText; Label = "docs/ui.md" },
+        @{ Text = $aiGameDevelopmentText; Label = "docs/ai-game-development.md" },
+        @{ Text = $generatedValidationText; Label = "docs/specs/generated-game-validation-scenarios.md" }
+    )) {
+    Assert-ContainsText $docSurface.Text "runtime_ui_production_stack_ime_sdl3_adapter_proof_rows=1" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "runtime_ui_production_stack_ime_platform_parity_ready=0" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "runtime_ui_production_stack_accessibility_uia_host_gate_rows=1" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "runtime_ui_production_stack_accessibility_platform_parity_ready=0" $docSurface.Label
+}
+
 foreach ($needle in @(
         "runtime-ui-production-stack-evidence",
         "RuntimeUiProductionEvidenceRow",
         "plan_runtime_ui_production_stack",
         "shaping direction/script/language",
         "glyph bitmap/metrics/pixel-format",
+        "runtime_ui_production_stack_ime_sdl3_adapter_proof_rows=1",
+        "runtime_ui_production_stack_ime_platform_parity_ready=0",
+        "runtime_ui_production_stack_accessibility_uia_host_gate_rows=1",
+        "runtime_ui_production_stack_accessibility_platform_parity_ready=0",
         "runtime_ui_production_stack_status=host_evidence_required"
     )) {
     Assert-ContainsText $runtimeBackendReadinessFragmentText $needle "engine/agent/manifest.fragments/006-runtimeBackendReadiness.json"
@@ -247,6 +337,10 @@ foreach ($needle in @(
         "--require-runtime-ui-production-stack",
         "shaping direction/script/language",
         "glyph bitmap/metrics/pixel-format",
+        "runtime_ui_production_stack_ime_sdl3_adapter_proof_rows=1",
+        "runtime_ui_production_stack_ime_platform_parity_ready=0",
+        "runtime_ui_production_stack_accessibility_uia_host_gate_rows=1",
+        "runtime_ui_production_stack_accessibility_platform_parity_ready=0",
         "runtime_ui_production_stack_status=host_evidence_required"
     )) {
     Assert-ContainsText $validationRecipesFragmentText $needle "engine/agent/manifest.fragments/009-validationRecipes.json"
@@ -258,6 +352,10 @@ foreach ($needle in @(
         "plan_runtime_ui_production_stack",
         "shaping direction/script/language",
         "glyph bitmap/metrics/pixel-format",
+        "runtime_ui_production_stack_ime_sdl3_adapter_proof_rows=1",
+        "runtime_ui_production_stack_ime_platform_parity_ready=0",
+        "runtime_ui_production_stack_accessibility_uia_host_gate_rows=1",
+        "runtime_ui_production_stack_accessibility_platform_parity_ready=0",
         "runtime_ui_production_stack_status=host_evidence_required"
     )) {
     Assert-ContainsText $gameCodeGuidanceFragmentText $needle "engine/agent/manifest.fragments/014-gameCodeGuidance.json"
@@ -271,6 +369,10 @@ foreach ($needle in @(
         "plan_runtime_ui_production_stack",
         "shaping direction/script/language",
         "glyph bitmap/metrics/pixel-format",
+        "runtime_ui_production_stack_ime_sdl3_adapter_proof_rows=1",
+        "runtime_ui_production_stack_ime_platform_parity_ready=0",
+        "runtime_ui_production_stack_accessibility_uia_host_gate_rows=1",
+        "runtime_ui_production_stack_accessibility_platform_parity_ready=0",
         "runtime_ui_production_stack_status=host_evidence_required"
     )) {
     Assert-ContainsText $manifestText $needle "engine/agent/manifest.json"
