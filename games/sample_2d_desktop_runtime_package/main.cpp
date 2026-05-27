@@ -1498,6 +1498,10 @@ struct RuntimeUiProductionStackProbeResult {
     std::size_t rows{0U};
     std::size_t ready_rows{0U};
     std::size_t host_gated_rows{0U};
+    std::size_t dependency_gated_rows{0U};
+    std::size_t skipped_rows{0U};
+    std::size_t adapter_invoked_rows{0U};
+    std::size_t unsupported_rows{0U};
     bool text_contract_ready{false};
     bool selected_package_evidence_ready{false};
     bool production_ready{false};
@@ -2596,6 +2600,8 @@ has_runtime_ui_workbench_accessibility_ref(const std::vector<mirakana::ui::Runti
         .package_evidence_ready = plan.reviewed &&
                                   plan.status == mirakana::ui::RuntimeUiProductionStackStatus::host_evidence_required &&
                                   plan.rows.size() == 6U && plan.ready_rows == 4U && plan.host_gated_rows == 2U &&
+                                  plan.dependency_gated_rows == 0U && plan.skipped_rows == 0U &&
+                                  plan.adapter_invoked_rows == 0U && plan.unsupported_rows == 0U &&
                                   plan.text_stack_contract_ready && plan.selected_package_counter_evidence_ready &&
                                   !plan.production_runtime_ui_ready && plan.requires_ime_host_evidence &&
                                   !plan.ime_host_evidence_available && plan.requires_accessibility_host_evidence &&
@@ -2605,6 +2611,10 @@ has_runtime_ui_workbench_accessibility_ref(const std::vector<mirakana::ui::Runti
         .rows = plan.rows.size(),
         .ready_rows = plan.ready_rows,
         .host_gated_rows = plan.host_gated_rows,
+        .dependency_gated_rows = plan.dependency_gated_rows,
+        .skipped_rows = plan.skipped_rows,
+        .adapter_invoked_rows = plan.adapter_invoked_rows,
+        .unsupported_rows = plan.unsupported_rows,
         .text_contract_ready = plan.text_stack_contract_ready,
         .selected_package_evidence_ready = plan.selected_package_counter_evidence_ready,
         .production_ready = plan.production_runtime_ui_ready,
@@ -9031,6 +9041,12 @@ int main(int argc, char** argv) {
         << " runtime_ui_production_stack_rows=" << runtime_ui_production_stack_probe.rows
         << " runtime_ui_production_stack_ready_rows=" << runtime_ui_production_stack_probe.ready_rows
         << " runtime_ui_production_stack_host_gated_rows=" << runtime_ui_production_stack_probe.host_gated_rows
+        << " runtime_ui_production_stack_dependency_gated_rows="
+        << runtime_ui_production_stack_probe.dependency_gated_rows
+        << " runtime_ui_production_stack_skipped_rows=" << runtime_ui_production_stack_probe.skipped_rows
+        << " runtime_ui_production_stack_adapter_invoked_rows="
+        << runtime_ui_production_stack_probe.adapter_invoked_rows
+        << " runtime_ui_production_stack_unsupported_rows=" << runtime_ui_production_stack_probe.unsupported_rows
         << " runtime_ui_production_stack_text_contract_ready="
         << (runtime_ui_production_stack_probe.text_contract_ready ? 1 : 0)
         << " runtime_ui_production_stack_selected_package_evidence_ready="
@@ -9680,6 +9696,13 @@ int main(int argc, char** argv) {
                   << " runtime_ui_production_stack_ready_rows=" << runtime_ui_production_stack_probe.ready_rows
                   << " runtime_ui_production_stack_host_gated_rows="
                   << runtime_ui_production_stack_probe.host_gated_rows
+                  << " runtime_ui_production_stack_dependency_gated_rows="
+                  << runtime_ui_production_stack_probe.dependency_gated_rows
+                  << " runtime_ui_production_stack_skipped_rows=" << runtime_ui_production_stack_probe.skipped_rows
+                  << " runtime_ui_production_stack_adapter_invoked_rows="
+                  << runtime_ui_production_stack_probe.adapter_invoked_rows
+                  << " runtime_ui_production_stack_unsupported_rows="
+                  << runtime_ui_production_stack_probe.unsupported_rows
                   << " runtime_ui_production_stack_text_contract_ready="
                   << (runtime_ui_production_stack_probe.text_contract_ready ? 1 : 0)
                   << " runtime_ui_production_stack_selected_package_evidence_ready="

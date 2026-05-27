@@ -54,7 +54,7 @@ Official documentation rechecked for this plan selection:
 | Candidate | Scope | Current evidence | Remaining gap |
 | --- | --- | --- | --- |
 | `runtime-ui-text-stack-audit-v1` | Audit existing UI text/font/IME/accessibility plans, tests, samples, package counters, and non-claims. | Runtime UI Workbench and Runtime UI Production Stack Evidence v1 provide value-only rows and selected package counters. | Need a concise evidence map before adapter implementation so future claims stay fail-closed. |
-| `runtime-ui-shaping-raster-adapter-contracts-v1` | Clean-break shaping/raster adapter contracts plus deterministic package counters. | `plan_text_shaping_request`, `shape_text_run`, `plan_font_rasterization_request`, and `rasterize_font_glyph` validate request/result rows around caller-owned adapters. | Need audited dependency-gated HarfBuzz/FreeType-class adapters or explicit host/dependency-gated rows, glyph cluster/bitmap/atlas evidence, legal records, and package counters. |
+| `runtime-ui-shaping-raster-adapter-contracts-v1` | Clean-break shaping/raster adapter contracts plus deterministic package counters. | `plan_text_shaping_request`, `shape_text_run`, `plan_font_rasterization_request`, and `rasterize_font_glyph` validate request/result rows around caller-owned adapters. `plan_runtime_ui_production_stack` now separates ready, host-gated, dependency-gated, skipped, adapter-invoked, and unsupported rows before any adapter implementation is promoted. | Need audited HarfBuzz/FreeType-class adapters, glyph cluster/bitmap/atlas execution evidence, legal records, and host/dependency validation before production shaping or rasterization readiness can be claimed. |
 | `runtime-ui-ime-platform-parity-contracts-v1` | SDL3 and platform text input/IME publication lanes. | Existing SDL3 text input/session/event translation rows and committed text application keep SDL3 behind platform adapters. | Need package-visible IME host evidence, text input area/candidate evidence, per-platform non-inference diagnostics, and platform parity rows. |
 | `runtime-ui-accessibility-publication-v1` | Accessibility payload publication and platform bridge evidence. | `plan_accessibility_publish` and `publish_accessibility_payload` validate first-party payloads before adapter dispatch. | Need OS bridge host evidence, role/name/state/focus/action/live-region counters, keyboard/focus pattern evidence, and per-platform host gates. |
 | `runtime-ui-renderer-atlas-handoff-v1` | Glyph atlas/image atlas/renderer upload handoff. | UI atlas metadata/tooling and native UI atlas package metadata exist; runtime UI production stack has renderer handoff evidence rows only. | Need package-visible glyph atlas placement, budget/eviction, texture upload handoff, renderer-owned submission counters, and unsupported broad text/image rendering claims. |
@@ -136,12 +136,24 @@ Validation evidence:
 
 ## Task 2 - RED Tests For Runtime UI Production Gate Expansion
 
-- [ ] Add tests that fail until runtime UI production rows distinguish ready, host-gated, dependency-gated, adapter-invoked, skipped, and unsupported statuses.
+- [x] Add tests that fail until runtime UI production rows distinguish ready, host-gated, dependency-gated, adapter-invoked, skipped, and unsupported statuses.
 - [ ] Add tests that reject broad text shaping readiness without glyph ids, clusters, advances/offsets, direction/script/language, fallback, bidi/line-break, and package evidence.
 - [ ] Add tests that reject font rasterization readiness without glyph bitmap, metrics, pixel format, atlas placement, budget/eviction, renderer upload handoff, and package counters.
 - [ ] Add tests that reject native IME or accessibility parity when only SDL3, WAI-ARIA, or Microsoft UI Automation evidence is present.
 - [ ] Add tests that reject public native-handle leakage and middleware/platform token strings in gameplay-facing UI rows.
-- [ ] Run the focused tests and record expected RED failures in this plan.
+- [x] Run the focused tests and record expected RED failures in this plan.
+
+Validation evidence for `runtime-ui-shaping-raster-adapter-contracts-v1`:
+
+| Command | Result |
+| --- | --- |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_ui_production_stack_tests` | RED failed as expected before implementation: missing `RuntimeUiProductionProofKind::skipped`, `RuntimeUiProductionStackStatus::dependency_evidence_required`, and package row counters. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_ui_production_stack_tests; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_ui_production_stack_tests"` | GREEN passed for runtime UI production stack row taxonomy tests. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_ui_production_stack_tests sample_2d_desktop_runtime_package` | Passed; rebuilt the production stack tests plus the package smoke executable exposing dependency-gated/skipped/adapter-invoked/unsupported row counters. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "(MK_runtime_ui_production_stack_tests|MK_runtime_package_candidate_resident_replace_reviewed_evictions_tests|MK_runtime_package_discovery_resident_replace_reviewed_evictions_tests|MK_runtime_package_hot_reload_replacement_intent_review_tests)"` | Passed 4/4; also verified compact CMake target names keep long descriptive CTest names runnable after the MSVC object-path fix. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build.ps1` | Passed after shortening compile-PDB output layout and compacting five long single-source test target names; this resolves the linked-worktree MSVC C1041/C1083 path failures seen during full validation. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`; `git diff --check` | Passed after docs, manifest fragments, CMake guidance, and static guards were updated for the runtime UI counters and MSVC path hygiene. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed with `validate: ok`; 19 static checks, build, generated MSVC C++23 mode check, tidy smoke, and 93/93 CTest tests passed. Metal/Apple diagnostics remain expected host-gated rows on Windows. |
 
 ## Task 3 - Text Shaping And Font Rasterization Adapter Gates
 

@@ -51,6 +51,7 @@ void append_diagnostic(std::vector<RuntimeUiProductionDiagnostic>& diagnostics, 
     case RuntimeUiProductionProofKind::adapter_handoff:
     case RuntimeUiProductionProofKind::selected_package:
     case RuntimeUiProductionProofKind::host_gate:
+    case RuntimeUiProductionProofKind::skipped:
         return true;
     }
     return false;
@@ -95,6 +96,51 @@ void append_diagnostic(std::vector<RuntimeUiProductionDiagnostic>& diagnostics, 
         token_begin = token_end;
     }
     return false;
+}
+
+[[nodiscard]] bool is_adapter_invoked(const RuntimeUiProductionEvidenceRow& row) noexcept {
+    return row.invokes_adapter || row.invokes_native_platform || row.invokes_renderer_upload;
+}
+
+[[nodiscard]] bool is_unsupported_claim(const RuntimeUiProductionEvidenceRow& row) {
+    return row.uses_public_native_handle || has_unsafe_native_reference(row.id) || row.uses_ui_middleware_api ||
+           row.claims_general_production_text_stack || row.claims_broad_platform_ui_parity;
+}
+
+void record_adapter_invocation(RuntimeUiProductionStackPlan& plan, const RuntimeUiProductionEvidenceRow& row) noexcept {
+    if (!is_adapter_invoked(row)) {
+        return;
+    }
+
+    ++plan.adapter_invoked_rows;
+    if (row.invokes_native_platform) {
+        plan.invoked_native_platform = true;
+    }
+    if (row.invokes_renderer_upload) {
+        plan.invoked_renderer_upload = true;
+    }
+    if (!row.invokes_adapter) {
+        return;
+    }
+
+    switch (row.feature) {
+    case RuntimeUiProductionFeatureKind::text_shaping:
+        plan.invoked_text_shaping = true;
+        break;
+    case RuntimeUiProductionFeatureKind::font_rasterization:
+        plan.invoked_font_rasterization = true;
+        break;
+    case RuntimeUiProductionFeatureKind::glyph_atlas:
+    case RuntimeUiProductionFeatureKind::renderer_submission:
+        plan.invoked_renderer_upload = true;
+        break;
+    case RuntimeUiProductionFeatureKind::ime:
+        plan.invoked_ime_adapter = true;
+        break;
+    case RuntimeUiProductionFeatureKind::accessibility:
+        plan.invoked_accessibility_bridge = true;
+        break;
+    }
 }
 
 void require_flag(std::vector<RuntimeUiProductionDiagnostic>& diagnostics, bool value,
@@ -305,6 +351,10 @@ std::string_view runtime_ui_production_stack_status_name(RuntimeUiProductionStac
         return "ready";
     case RuntimeUiProductionStackStatus::host_evidence_required:
         return "host_evidence_required";
+    case RuntimeUiProductionStackStatus::dependency_evidence_required:
+        return "dependency_evidence_required";
+    case RuntimeUiProductionStackStatus::evidence_skipped:
+        return "evidence_skipped";
     case RuntimeUiProductionStackStatus::no_rows:
         return "no_rows";
     case RuntimeUiProductionStackStatus::invalid_request:
@@ -358,6 +408,18 @@ RuntimeUiProductionStackPlan plan_runtime_ui_production_stack(const RuntimeUiPro
         }
 
         seen_features[static_cast<std::size_t>(row.feature)] = true;
+        const bool skipped = row.proof == RuntimeUiProductionProofKind::skipped;
+        const bool dependency_gated = row.requires_optional_dependency_adapter;
+        if (skipped) {
+            ++plan.skipped_rows;
+        }
+        if (dependency_gated) {
+            ++plan.dependency_gated_rows;
+        }
+        if (is_unsupported_claim(row)) {
+            ++plan.unsupported_rows;
+        }
+        record_adapter_invocation(plan, row);
 
         if (row.uses_public_native_handle || has_unsafe_native_reference(row.id)) {
             append_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::unsupported_native_handle, row.id,
@@ -379,6 +441,10 @@ RuntimeUiProductionStackPlan plan_runtime_ui_production_stack(const RuntimeUiPro
         if (row.invokes_adapter || row.invokes_native_platform || row.invokes_renderer_upload) {
             append_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::side_effect_invocation, row.id,
                               "runtime UI production evidence planning must not invoke adapters or host services");
+        }
+
+        if (skipped || dependency_gated) {
+            continue;
         }
 
         switch (row.feature) {
@@ -416,6 +482,9 @@ RuntimeUiProductionStackPlan plan_runtime_ui_production_stack(const RuntimeUiPro
     plan.selected_package_counter_evidence_ready = true;
 
     for (const auto& row : plan.rows) {
+        if (row.proof == RuntimeUiProductionProofKind::skipped || row.requires_optional_dependency_adapter) {
+            continue;
+        }
         if (row.host_evidence_required && !row.host_evidence_available) {
             ++plan.host_gated_rows;
         } else {
@@ -437,9 +506,17 @@ RuntimeUiProductionStackPlan plan_runtime_ui_production_stack(const RuntimeUiPro
     }
 
     plan.production_runtime_ui_ready = plan.text_stack_contract_ready && plan.selected_package_counter_evidence_ready &&
-                                       plan.host_gated_rows == 0U && plan.ready_rows == plan.rows.size();
-    plan.status = plan.production_runtime_ui_ready ? RuntimeUiProductionStackStatus::ready
-                                                   : RuntimeUiProductionStackStatus::host_evidence_required;
+                                       plan.host_gated_rows == 0U && plan.dependency_gated_rows == 0U &&
+                                       plan.skipped_rows == 0U && plan.ready_rows == plan.rows.size();
+    if (plan.production_runtime_ui_ready) {
+        plan.status = RuntimeUiProductionStackStatus::ready;
+    } else if (plan.host_gated_rows > 0U) {
+        plan.status = RuntimeUiProductionStackStatus::host_evidence_required;
+    } else if (plan.dependency_gated_rows > 0U) {
+        plan.status = RuntimeUiProductionStackStatus::dependency_evidence_required;
+    } else {
+        plan.status = RuntimeUiProductionStackStatus::evidence_skipped;
+    }
     return plan;
 }
 

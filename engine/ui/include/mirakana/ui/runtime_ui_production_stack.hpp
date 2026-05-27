@@ -14,6 +14,8 @@ namespace mirakana::ui {
 enum class RuntimeUiProductionStackStatus : std::uint8_t {
     ready,
     host_evidence_required,
+    dependency_evidence_required,
+    evidence_skipped,
     no_rows,
     invalid_request,
 };
@@ -32,6 +34,7 @@ enum class RuntimeUiProductionProofKind : std::uint8_t {
     adapter_handoff,
     selected_package,
     host_gate,
+    skipped,
 };
 
 enum class RuntimeUiProductionDiagnosticCode : std::uint8_t {
@@ -144,6 +147,10 @@ struct RuntimeUiProductionStackPlan {
     std::vector<RuntimeUiProductionDiagnostic> diagnostics;
     std::size_t ready_rows{0U};
     std::size_t host_gated_rows{0U};
+    std::size_t dependency_gated_rows{0U};
+    std::size_t skipped_rows{0U};
+    std::size_t adapter_invoked_rows{0U};
+    std::size_t unsupported_rows{0U};
     bool reviewed{false};
     bool text_stack_contract_ready{false};
     bool selected_package_counter_evidence_ready{false};

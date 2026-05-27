@@ -169,6 +169,36 @@ MK_TEST("runtime ui production stack becomes ready only when host evidence is pr
     MK_REQUIRE(plan.diagnostics.empty());
 }
 
+MK_TEST("runtime ui production stack distinguishes dependency gated and skipped rows") {
+    auto request = make_package_request();
+    for (auto& row : request.rows) {
+        if (row.host_evidence_required) {
+            row.host_evidence_available = true;
+        }
+    }
+    request.rows[0].requires_optional_dependency_adapter = true;
+    request.rows[0].dependency_adapter_reviewed = true;
+    request.rows[0].glyph_clusters = false;
+    request.rows[0].glyph_advances_offsets = false;
+    request.rows[1].proof = RuntimeUiProductionProofKind::skipped;
+    request.rows[1].glyph_bitmap_rows = false;
+    request.rows[1].glyph_metric_rows = false;
+
+    const auto plan = mirakana::ui::plan_runtime_ui_production_stack(request);
+
+    MK_REQUIRE(plan.status == mirakana::ui::RuntimeUiProductionStackStatus::dependency_evidence_required);
+    MK_REQUIRE(!plan.ready());
+    MK_REQUIRE(plan.reviewed);
+    MK_REQUIRE(plan.ready_rows == 4U);
+    MK_REQUIRE(plan.host_gated_rows == 0U);
+    MK_REQUIRE(plan.dependency_gated_rows == 1U);
+    MK_REQUIRE(plan.skipped_rows == 1U);
+    MK_REQUIRE(plan.adapter_invoked_rows == 0U);
+    MK_REQUIRE(plan.unsupported_rows == 0U);
+    MK_REQUIRE(!plan.production_runtime_ui_ready);
+    MK_REQUIRE(plan.diagnostics.empty());
+}
+
 MK_TEST("runtime ui production stack rejects incomplete shaping evidence") {
     auto request = make_package_request();
     request.rows[0].glyph_clusters = false;
@@ -230,6 +260,9 @@ MK_TEST("runtime ui production stack rejects duplicate missing and unsafe claim 
     const auto plan = mirakana::ui::plan_runtime_ui_production_stack(request);
 
     MK_REQUIRE(plan.status == mirakana::ui::RuntimeUiProductionStackStatus::invalid_request);
+    MK_REQUIRE(plan.dependency_gated_rows == 1U);
+    MK_REQUIRE(plan.adapter_invoked_rows == 1U);
+    MK_REQUIRE(plan.unsupported_rows == 4U);
     MK_REQUIRE(has_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::duplicate_row_id));
     MK_REQUIRE(has_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::unsupported_native_handle));
     MK_REQUIRE(has_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::unsupported_broad_production_claim));
