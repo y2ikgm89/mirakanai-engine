@@ -11,8 +11,76 @@ namespace mirakana {
 
 namespace {
 
+constexpr std::uint64_t kAtlasHandoffFnvOffset{14695981039346656037ULL};
+constexpr std::uint64_t kAtlasHandoffFnvPrime{1099511628211ULL};
+
 [[nodiscard]] bool is_positive_ui_rect(ui::Rect rect) noexcept {
     return ui::is_valid_rect(rect) && rect.width > 0.0F && rect.height > 0.0F;
+}
+
+void append_atlas_handoff_diagnostic(std::vector<UiRendererAtlasHandoffDiagnostic>& diagnostics,
+                                     UiRendererAtlasHandoffDiagnosticCode code, std::string message) {
+    diagnostics.push_back(UiRendererAtlasHandoffDiagnostic{
+        .code = code,
+        .message = std::move(message),
+    });
+}
+
+void hash_atlas_handoff_byte(std::uint64_t& hash, std::uint8_t value) noexcept {
+    hash ^= value;
+    hash *= kAtlasHandoffFnvPrime;
+}
+
+void hash_atlas_handoff_bool(std::uint64_t& hash, bool value) noexcept {
+    hash_atlas_handoff_byte(hash, value ? 1U : 0U);
+}
+
+void hash_atlas_handoff_u64(std::uint64_t& hash, std::uint64_t value) noexcept {
+    for (std::size_t shift = 0U; shift < 64U; shift += 8U) {
+        hash_atlas_handoff_byte(hash, static_cast<std::uint8_t>((value >> shift) & 0xffU));
+    }
+}
+
+void hash_atlas_handoff_string(std::uint64_t& hash, std::string_view value) noexcept {
+    for (const unsigned char character : value) {
+        hash_atlas_handoff_byte(hash, character);
+    }
+    hash_atlas_handoff_byte(hash, 0xffU);
+}
+
+[[nodiscard]] std::uint64_t compute_atlas_handoff_replay_hash(const UiRendererAtlasHandoffRequest& request) noexcept {
+    auto hash = kAtlasHandoffFnvOffset;
+    hash_atlas_handoff_string(hash, request.id);
+    hash_atlas_handoff_u64(hash, request.image_atlas_page_count);
+    hash_atlas_handoff_u64(hash, request.image_atlas_binding_count);
+    hash_atlas_handoff_u64(hash, request.glyph_atlas_page_count);
+    hash_atlas_handoff_u64(hash, request.glyph_atlas_binding_count);
+    hash_atlas_handoff_u64(hash, request.submit_result.text_glyphs_available);
+    hash_atlas_handoff_u64(hash, request.submit_result.text_glyphs_resolved);
+    hash_atlas_handoff_u64(hash, request.submit_result.text_glyphs_missing);
+    hash_atlas_handoff_u64(hash, request.submit_result.text_glyph_sprites_submitted);
+    hash_atlas_handoff_u64(hash, request.submit_result.image_placeholders_available);
+    hash_atlas_handoff_u64(hash, request.submit_result.image_resources_resolved);
+    hash_atlas_handoff_u64(hash, request.submit_result.image_resources_missing);
+    hash_atlas_handoff_u64(hash, request.submit_result.image_sprites_submitted);
+    hash_atlas_handoff_u64(hash, request.renderer_sprites_submitted);
+    hash_atlas_handoff_u64(hash, request.max_image_bindings);
+    hash_atlas_handoff_u64(hash, request.max_glyph_bindings);
+    hash_atlas_handoff_bool(hash, request.image_atlas_metadata_built);
+    hash_atlas_handoff_bool(hash, request.glyph_atlas_metadata_built);
+    hash_atlas_handoff_bool(hash, request.atlas_eviction_diagnostics_reviewed);
+    hash_atlas_handoff_bool(hash, request.texture_upload_handoff_reviewed);
+    hash_atlas_handoff_bool(hash, request.renderer_submission_counters_reviewed);
+    hash_atlas_handoff_bool(hash, request.selected_package_counter_evidence);
+    hash_atlas_handoff_bool(hash, request.requested_renderer_texture_upload_api);
+    hash_atlas_handoff_bool(hash, request.requested_public_native_handle);
+    hash_atlas_handoff_bool(hash, request.claims_broad_text_rendering);
+    hash_atlas_handoff_bool(hash, request.claims_broad_image_rendering);
+    hash_atlas_handoff_bool(hash, request.invoked_source_image_decode);
+    hash_atlas_handoff_bool(hash, request.invoked_live_glyph_atlas_generation);
+    hash_atlas_handoff_bool(hash, request.invoked_renderer_upload);
+    hash_atlas_handoff_u64(hash, request.seed);
+    return hash == 0U ? 1U : hash;
 }
 
 } // namespace
@@ -132,6 +200,10 @@ bool UiRendererImagePaletteBuildResult::succeeded() const noexcept {
 
 bool UiRendererGlyphAtlasPaletteBuildResult::succeeded() const noexcept {
     return failures.empty();
+}
+
+bool UiRendererAtlasHandoffPlan::ready() const noexcept {
+    return status == UiRendererAtlasHandoffStatus::ready && selected_package_evidence_ready && diagnostics.empty();
 }
 
 Color resolve_ui_box_color(const ui::RendererBox& box, const UiRenderSubmitDesc& desc) noexcept {
@@ -358,6 +430,150 @@ build_ui_renderer_glyph_atlas_palette_from_runtime_ui_atlas(const runtime::Runti
     }
 
     return result;
+}
+
+UiRendererAtlasHandoffPlan review_ui_renderer_atlas_handoff(const UiRendererAtlasHandoffRequest& request) {
+    UiRendererAtlasHandoffPlan plan;
+    plan.replay_hash = compute_atlas_handoff_replay_hash(request);
+    plan.image_atlas_pages = request.image_atlas_page_count;
+    plan.image_atlas_bindings = request.image_atlas_binding_count;
+    plan.glyph_atlas_pages = request.glyph_atlas_page_count;
+    plan.glyph_atlas_bindings = request.glyph_atlas_binding_count;
+    plan.atlas_placement_rows = request.image_atlas_binding_count + request.glyph_atlas_binding_count;
+    plan.atlas_budget_rows = (request.max_image_bindings > 0U ? 1U : 0U) + (request.max_glyph_bindings > 0U ? 1U : 0U);
+    plan.atlas_eviction_diagnostic_rows = request.atlas_eviction_diagnostics_reviewed ? 1U : 0U;
+    plan.texture_upload_handoff_rows = request.texture_upload_handoff_reviewed ? 1U : 0U;
+    plan.renderer_submission_counter_rows = request.renderer_submission_counters_reviewed ? 1U : 0U;
+    plan.text_glyphs_available = request.submit_result.text_glyphs_available;
+    plan.text_glyphs_resolved = request.submit_result.text_glyphs_resolved;
+    plan.text_glyphs_missing = request.submit_result.text_glyphs_missing;
+    plan.text_glyph_sprites_submitted = request.submit_result.text_glyph_sprites_submitted;
+    plan.image_placeholders_available = request.submit_result.image_placeholders_available;
+    plan.image_resources_resolved = request.submit_result.image_resources_resolved;
+    plan.image_resources_missing = request.submit_result.image_resources_missing;
+    plan.image_sprites_submitted = request.submit_result.image_sprites_submitted;
+    plan.renderer_sprites_submitted = request.renderer_sprites_submitted;
+    plan.requested_renderer_texture_upload_api = request.requested_renderer_texture_upload_api;
+    plan.requested_public_native_handle = request.requested_public_native_handle;
+    plan.invoked_source_image_decode = request.invoked_source_image_decode;
+    plan.invoked_live_glyph_atlas_generation = request.invoked_live_glyph_atlas_generation;
+    plan.invoked_renderer_upload = request.invoked_renderer_upload;
+
+    if (request.id.empty()) {
+        append_atlas_handoff_diagnostic(plan.diagnostics, UiRendererAtlasHandoffDiagnosticCode::missing_request_id,
+                                        "runtime UI renderer atlas handoff evidence requires a request id");
+    }
+    if (!request.image_atlas_metadata_built || request.image_atlas_page_count == 0U ||
+        request.image_atlas_binding_count == 0U) {
+        append_atlas_handoff_diagnostic(
+            plan.diagnostics, UiRendererAtlasHandoffDiagnosticCode::missing_image_atlas_metadata,
+            "runtime UI renderer atlas handoff requires cooked image atlas metadata pages and bindings");
+    }
+    if (!request.glyph_atlas_metadata_built || request.glyph_atlas_page_count == 0U ||
+        request.glyph_atlas_binding_count == 0U) {
+        append_atlas_handoff_diagnostic(
+            plan.diagnostics, UiRendererAtlasHandoffDiagnosticCode::missing_glyph_atlas_metadata,
+            "runtime UI renderer atlas handoff requires cooked glyph atlas metadata pages and bindings");
+    }
+    if (plan.atlas_placement_rows == 0U) {
+        append_atlas_handoff_diagnostic(plan.diagnostics,
+                                        UiRendererAtlasHandoffDiagnosticCode::missing_atlas_placement_rows,
+                                        "runtime UI renderer atlas handoff requires atlas placement rows");
+    }
+    if (plan.atlas_budget_rows != 2U) {
+        append_atlas_handoff_diagnostic(plan.diagnostics,
+                                        UiRendererAtlasHandoffDiagnosticCode::missing_atlas_budget_rows,
+                                        "runtime UI renderer atlas handoff requires image and glyph atlas budgets");
+    }
+    if ((request.max_image_bindings > 0U && request.image_atlas_binding_count > request.max_image_bindings) ||
+        (request.max_glyph_bindings > 0U && request.glyph_atlas_binding_count > request.max_glyph_bindings)) {
+        append_atlas_handoff_diagnostic(plan.diagnostics, UiRendererAtlasHandoffDiagnosticCode::atlas_budget_exceeded,
+                                        "runtime UI renderer atlas handoff bindings exceed reviewed atlas budgets");
+    }
+    if (!request.atlas_eviction_diagnostics_reviewed) {
+        append_atlas_handoff_diagnostic(
+            plan.diagnostics, UiRendererAtlasHandoffDiagnosticCode::missing_atlas_eviction_diagnostics,
+            "runtime UI renderer atlas handoff requires reviewed eviction or no-eviction diagnostics");
+    }
+    if (!request.texture_upload_handoff_reviewed) {
+        append_atlas_handoff_diagnostic(
+            plan.diagnostics, UiRendererAtlasHandoffDiagnosticCode::missing_texture_upload_handoff,
+            "runtime UI renderer atlas handoff requires texture upload handoff evidence rows");
+    }
+    if (!request.renderer_submission_counters_reviewed) {
+        append_atlas_handoff_diagnostic(
+            plan.diagnostics, UiRendererAtlasHandoffDiagnosticCode::missing_renderer_submission_counters,
+            "runtime UI renderer atlas handoff requires renderer-owned submission counters");
+    }
+    if (!request.selected_package_counter_evidence) {
+        append_atlas_handoff_diagnostic(plan.diagnostics,
+                                        UiRendererAtlasHandoffDiagnosticCode::missing_selected_package_counter_evidence,
+                                        "runtime UI renderer atlas handoff requires selected package counter evidence");
+    }
+    if (request.submit_result.text_glyphs_missing > 0U ||
+        request.submit_result.text_glyphs_resolved != request.submit_result.text_glyphs_available) {
+        append_atlas_handoff_diagnostic(plan.diagnostics, UiRendererAtlasHandoffDiagnosticCode::unresolved_text_glyphs,
+                                        "runtime UI renderer atlas handoff requires all planned glyphs to resolve");
+    }
+    if (request.submit_result.image_resources_missing > 0U ||
+        request.submit_result.image_resources_resolved != request.submit_result.image_placeholders_available) {
+        append_atlas_handoff_diagnostic(plan.diagnostics,
+                                        UiRendererAtlasHandoffDiagnosticCode::unresolved_image_resources,
+                                        "runtime UI renderer atlas handoff requires all image placeholders to resolve");
+    }
+    if (request.renderer_sprites_submitted <
+        request.submit_result.text_glyph_sprites_submitted + request.submit_result.image_sprites_submitted) {
+        append_atlas_handoff_diagnostic(
+            plan.diagnostics, UiRendererAtlasHandoffDiagnosticCode::renderer_submission_counter_mismatch,
+            "runtime UI renderer atlas handoff requires renderer sprite counters to include atlas submissions");
+    }
+    if (request.requested_renderer_texture_upload_api) {
+        ++plan.unsupported_claim_rows;
+        append_atlas_handoff_diagnostic(
+            plan.diagnostics, UiRendererAtlasHandoffDiagnosticCode::unsupported_renderer_texture_upload_api,
+            "runtime UI renderer atlas handoff does not expose renderer texture upload APIs to gameplay UI");
+    }
+    if (request.requested_public_native_handle) {
+        ++plan.unsupported_claim_rows;
+        append_atlas_handoff_diagnostic(
+            plan.diagnostics, UiRendererAtlasHandoffDiagnosticCode::unsupported_public_native_handle,
+            "runtime UI renderer atlas handoff does not expose public native, GPU, or RHI handles");
+    }
+    if (request.claims_broad_text_rendering) {
+        ++plan.unsupported_claim_rows;
+        append_atlas_handoff_diagnostic(
+            plan.diagnostics, UiRendererAtlasHandoffDiagnosticCode::unsupported_broad_text_rendering_claim,
+            "runtime UI renderer atlas handoff is not broad production text rendering evidence");
+    }
+    if (request.claims_broad_image_rendering) {
+        ++plan.unsupported_claim_rows;
+        append_atlas_handoff_diagnostic(
+            plan.diagnostics, UiRendererAtlasHandoffDiagnosticCode::unsupported_broad_image_rendering_claim,
+            "runtime UI renderer atlas handoff is not broad production image rendering evidence");
+    }
+    if (request.invoked_source_image_decode) {
+        ++plan.side_effect_rows;
+        append_atlas_handoff_diagnostic(plan.diagnostics, UiRendererAtlasHandoffDiagnosticCode::side_effect_invocation,
+                                        "runtime UI renderer atlas handoff must not invoke source image decoding");
+    }
+    if (request.invoked_live_glyph_atlas_generation) {
+        ++plan.side_effect_rows;
+        append_atlas_handoff_diagnostic(plan.diagnostics, UiRendererAtlasHandoffDiagnosticCode::side_effect_invocation,
+                                        "runtime UI renderer atlas handoff must not generate live glyph atlases");
+    }
+    if (request.invoked_renderer_upload) {
+        ++plan.side_effect_rows;
+        append_atlas_handoff_diagnostic(plan.diagnostics, UiRendererAtlasHandoffDiagnosticCode::side_effect_invocation,
+                                        "runtime UI renderer atlas handoff must not invoke renderer upload APIs");
+    }
+
+    plan.reviewed = request.image_atlas_metadata_built && request.glyph_atlas_metadata_built &&
+                    request.atlas_eviction_diagnostics_reviewed && request.texture_upload_handoff_reviewed &&
+                    request.renderer_submission_counters_reviewed && request.selected_package_counter_evidence;
+    plan.selected_package_evidence_ready = plan.reviewed && plan.diagnostics.empty();
+    plan.status = plan.selected_package_evidence_ready ? UiRendererAtlasHandoffStatus::ready
+                                                       : UiRendererAtlasHandoffStatus::invalid_request;
+    return plan;
 }
 
 UiRenderSubmitResult submit_ui_renderer_submission(IRenderer& renderer, const ui::RendererSubmission& submission,

@@ -1543,6 +1543,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-production-authoring-workflows
             --require-runtime-ui-workbench
             --require-runtime-ui-production-stack
+            --require-runtime-ui-renderer-atlas-handoff
         PACKAGE_SMOKE_ARGS
             --smoke
             --require-config
@@ -1571,6 +1572,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-production-authoring-workflows
             --require-runtime-ui-workbench
             --require-runtime-ui-production-stack
+            --require-runtime-ui-renderer-atlas-handoff
         REQUIRES_D3D12_SHADERS
         PACKAGE_FILES_FROM_MANIFEST
     )

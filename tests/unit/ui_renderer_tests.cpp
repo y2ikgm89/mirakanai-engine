@@ -653,6 +653,156 @@ MK_TEST("ui renderer builds glyph atlas palette from runtime ui atlas package me
     MK_REQUIRE(binding->uv_rect.v1 == 1.0F);
 }
 
+MK_TEST("ui renderer atlas handoff review accepts cooked glyph image atlas submission counters") {
+    const auto image_atlas = mirakana::AssetId::from_name("ui/hud-atlas-metadata");
+    const auto image_texture = mirakana::AssetId::from_name("textures/hud-atlas");
+    const auto glyph_atlas = mirakana::AssetId::from_name("ui/body-glyph-atlas-metadata");
+    const auto glyph_texture = mirakana::AssetId::from_name("textures/body-glyph-atlas");
+    mirakana::runtime::RuntimeAssetPackage package({
+        make_runtime_record(mirakana::runtime::RuntimeAssetHandle{1}, image_atlas, mirakana::AssetKind::ui_atlas,
+                            "runtime/assets/ui/hud-atlas.uiatlas", cooked_ui_atlas_payload(image_atlas, image_texture),
+                            {image_texture}),
+        make_runtime_record(mirakana::runtime::RuntimeAssetHandle{2}, image_texture, mirakana::AssetKind::texture,
+                            "runtime/assets/ui/hud-atlas.texture.geasset", cooked_texture_payload(image_texture)),
+        make_runtime_record(mirakana::runtime::RuntimeAssetHandle{3}, glyph_atlas, mirakana::AssetKind::ui_atlas,
+                            "runtime/assets/ui/body_glyphs.uiatlas",
+                            cooked_ui_glyph_atlas_payload(glyph_atlas, glyph_texture), {glyph_texture}),
+        make_runtime_record(mirakana::runtime::RuntimeAssetHandle{4}, glyph_texture, mirakana::AssetKind::texture,
+                            "runtime/assets/ui/body_glyphs.texture.geasset", cooked_texture_payload(glyph_texture)),
+    });
+
+    const auto image_palette = mirakana::build_ui_renderer_image_palette_from_runtime_ui_atlas(package, image_atlas);
+    const auto glyph_palette =
+        mirakana::build_ui_renderer_glyph_atlas_palette_from_runtime_ui_atlas(package, glyph_atlas);
+    MK_REQUIRE(image_palette.succeeded());
+    MK_REQUIRE(glyph_palette.succeeded());
+
+    mirakana::ui::RendererSubmission submission;
+    mirakana::ui::RendererTextRun text;
+    text.id = mirakana::ui::ElementId{"title"};
+    text.bounds = mirakana::ui::Rect{.x = 4.0F, .y = 4.0F, .width = 32.0F, .height = 16.0F};
+    text.text.label = "AB";
+    text.text.font_family = "ui/body";
+    submission.text_runs.push_back(text);
+
+    mirakana::ui::RendererImagePlaceholder image;
+    image.id = mirakana::ui::ElementId{"icon"};
+    image.bounds = mirakana::ui::Rect{.x = 4.0F, .y = 24.0F, .width = 16.0F, .height = 16.0F};
+    image.image.resource_id = "hud.icon";
+    image.image.asset_uri = "runtime/assets/ui/hud-atlas.texture.geasset";
+    submission.image_placeholders.push_back(image);
+
+    mirakana::UiRenderSubmitDesc desc;
+    desc.image_palette = &image_palette.palette;
+    desc.glyph_atlas = &glyph_palette.palette;
+    desc.text_layout_policy = mirakana::ui::MonospaceTextLayoutPolicy{
+        .glyph_advance = 8.0F, .whitespace_advance = 4.0F, .line_height = 10.0F};
+
+    CaptureRenderer renderer(mirakana::Extent2D{.width = 96, .height = 64});
+    renderer.begin_frame();
+    const auto submit = mirakana::submit_ui_renderer_submission(renderer, submission, desc);
+    renderer.end_frame();
+
+    const auto plan = mirakana::review_ui_renderer_atlas_handoff(mirakana::UiRendererAtlasHandoffRequest{
+        .id = "sample-ui-renderer-atlas-handoff",
+        .image_atlas_page_count = image_palette.atlas_page_assets.size(),
+        .image_atlas_binding_count = image_palette.palette.count(),
+        .glyph_atlas_page_count = glyph_palette.atlas_page_assets.size(),
+        .glyph_atlas_binding_count = glyph_palette.palette.count(),
+        .submit_result = submit,
+        .renderer_sprites_submitted = renderer.stats().sprites_submitted,
+        .max_image_bindings = 4U,
+        .max_glyph_bindings = 8U,
+        .image_atlas_metadata_built = image_palette.succeeded(),
+        .glyph_atlas_metadata_built = glyph_palette.succeeded(),
+        .atlas_eviction_diagnostics_reviewed = true,
+        .texture_upload_handoff_reviewed = true,
+        .renderer_submission_counters_reviewed = true,
+        .selected_package_counter_evidence = true,
+        .requested_renderer_texture_upload_api = false,
+        .requested_public_native_handle = false,
+        .claims_broad_text_rendering = false,
+        .claims_broad_image_rendering = false,
+        .invoked_source_image_decode = false,
+        .invoked_live_glyph_atlas_generation = false,
+        .invoked_renderer_upload = false,
+        .seed = 42U,
+    });
+
+    MK_REQUIRE(plan.status == mirakana::UiRendererAtlasHandoffStatus::ready);
+    MK_REQUIRE(plan.ready());
+    MK_REQUIRE(plan.selected_package_evidence_ready);
+    MK_REQUIRE(plan.reviewed);
+    MK_REQUIRE(plan.image_atlas_pages == 1U);
+    MK_REQUIRE(plan.image_atlas_bindings == 1U);
+    MK_REQUIRE(plan.glyph_atlas_pages == 1U);
+    MK_REQUIRE(plan.glyph_atlas_bindings == 2U);
+    MK_REQUIRE(plan.atlas_placement_rows == 3U);
+    MK_REQUIRE(plan.atlas_budget_rows == 2U);
+    MK_REQUIRE(plan.atlas_eviction_diagnostic_rows == 1U);
+    MK_REQUIRE(plan.texture_upload_handoff_rows == 1U);
+    MK_REQUIRE(plan.renderer_submission_counter_rows == 1U);
+    MK_REQUIRE(plan.text_glyphs_resolved == 2U);
+    MK_REQUIRE(plan.text_glyphs_missing == 0U);
+    MK_REQUIRE(plan.image_resources_resolved == 1U);
+    MK_REQUIRE(plan.image_resources_missing == 0U);
+    MK_REQUIRE(plan.text_glyph_sprites_submitted == 2U);
+    MK_REQUIRE(plan.image_sprites_submitted == 1U);
+    MK_REQUIRE(plan.renderer_sprites_submitted == 3U);
+    MK_REQUIRE(!plan.requested_renderer_texture_upload_api);
+    MK_REQUIRE(!plan.requested_public_native_handle);
+    MK_REQUIRE(!plan.invoked_source_image_decode);
+    MK_REQUIRE(!plan.invoked_live_glyph_atlas_generation);
+    MK_REQUIRE(!plan.invoked_renderer_upload);
+    MK_REQUIRE(plan.diagnostics.empty());
+    MK_REQUIRE(plan.replay_hash != 0U);
+}
+
+MK_TEST("ui renderer atlas handoff review rejects unresolved resources budgets broad claims and side effects") {
+    mirakana::UiRenderSubmitResult submit;
+    submit.text_glyphs_available = 3U;
+    submit.text_glyphs_resolved = 2U;
+    submit.text_glyphs_missing = 1U;
+    submit.text_glyph_sprites_submitted = 2U;
+    submit.image_placeholders_available = 2U;
+    submit.image_resources_resolved = 1U;
+    submit.image_resources_missing = 1U;
+    submit.image_sprites_submitted = 1U;
+
+    const auto plan = mirakana::review_ui_renderer_atlas_handoff(mirakana::UiRendererAtlasHandoffRequest{
+        .id = "bad-ui-renderer-atlas-handoff",
+        .image_atlas_page_count = 1U,
+        .image_atlas_binding_count = 2U,
+        .glyph_atlas_page_count = 1U,
+        .glyph_atlas_binding_count = 3U,
+        .submit_result = submit,
+        .renderer_sprites_submitted = 3U,
+        .max_image_bindings = 1U,
+        .max_glyph_bindings = 2U,
+        .image_atlas_metadata_built = true,
+        .glyph_atlas_metadata_built = true,
+        .atlas_eviction_diagnostics_reviewed = false,
+        .texture_upload_handoff_reviewed = false,
+        .renderer_submission_counters_reviewed = false,
+        .selected_package_counter_evidence = false,
+        .requested_renderer_texture_upload_api = true,
+        .requested_public_native_handle = true,
+        .claims_broad_text_rendering = true,
+        .claims_broad_image_rendering = true,
+        .invoked_source_image_decode = true,
+        .invoked_live_glyph_atlas_generation = true,
+        .invoked_renderer_upload = true,
+    });
+
+    MK_REQUIRE(plan.status == mirakana::UiRendererAtlasHandoffStatus::invalid_request);
+    MK_REQUIRE(!plan.ready());
+    MK_REQUIRE(!plan.selected_package_evidence_ready);
+    MK_REQUIRE(plan.unsupported_claim_rows == 4U);
+    MK_REQUIRE(plan.side_effect_rows == 3U);
+    MK_REQUIRE(plan.diagnostics.size() >= 10U);
+    MK_REQUIRE(plan.replay_hash != 0U);
+}
+
 MK_TEST("ui renderer rejects runtime glyph atlas metadata that references a non texture page") {
     const auto atlas = mirakana::AssetId::from_name("ui/body-glyph-atlas-metadata");
     const auto material = mirakana::AssetId::from_name("materials/not-texture");

@@ -781,6 +781,7 @@ foreach ($packageFile in @(
     "runtime/assets/2d/jump.audio.geasset",
     "runtime/assets/2d/level.tilemap",
     "runtime/assets/2d/player.sprite_animation",
+    "runtime/assets/2d/hud.uiatlas",
     "runtime/assets/2d/playable.scene"
 )) {
     if (@($sample2dDesktopManifest.runtimePackageFiles) -notcontains $packageFile) {
@@ -794,7 +795,8 @@ foreach ($attributeRule in @(
     "*.material text eol=lf",
     "*.scene text eol=lf",
     "*.tilemap text eol=lf",
-    "*.sprite_animation text eol=lf"
+    "*.sprite_animation text eol=lf",
+    "*.uiatlas text eol=lf"
 )) {
     Assert-ContainsText $sample2dDesktopGitAttributes $attributeRule "games/sample_2d_desktop_runtime_package/runtime/.gitattributes"
 }
@@ -821,6 +823,8 @@ foreach ($needle in @(
     "--require-networking-foundation-policy",
     "simulation orchestration package proof",
     "--require-simulation-orchestration",
+    "Runtime UI renderer atlas handoff smoke",
+    "--require-runtime-ui-renderer-atlas-handoff",
     "gameplayRuntimeScheduler",
     "gameplay_runtime_scheduler_ready=1",
     "worldEntityModel",
@@ -833,8 +837,8 @@ foreach ($needle in @(
     "addressableContentStreaming",
     "addressable_content_status=ready",
     "addressable_content_ready=1",
-    "addressable_content_address_rows=5",
-    "addressable_content_dependency_rows=6",
+    "addressable_content_address_rows=6",
+    "addressable_content_dependency_rows=7",
     "addressable_content_load_rows=3",
     "addressable_content_release_rows=1",
     "addressable_content_refcount_rows=4",
@@ -1105,6 +1109,11 @@ foreach ($needle in @(
     "runtime_ui_workbench_image_decoding=",
     "runtime_ui_workbench_native_platform=",
     "runtime_ui_workbench_diagnostics=",
+    "--require-runtime-ui-renderer-atlas-handoff",
+    "runtime_ui_renderer_atlas_handoff_ready=",
+    "runtime_ui_renderer_atlas_handoff_renderer_sprites_submitted=",
+    "runtime_ui_renderer_atlas_handoff_invoked_renderer_upload=",
+    "required_runtime_ui_renderer_atlas_handoff_unavailable",
     "required_gameplay_runtime_scheduler_unavailable",
     "required_world_entity_model_unavailable",
     "required_addressable_content_unavailable",
@@ -1290,7 +1299,10 @@ foreach ($needle in @(
     "runtime_ui_workbench_accessibility_bridge",
     "runtime_ui_workbench_image_decoding",
     "runtime_ui_workbench_native_platform",
-    "runtime_ui_workbench_diagnostics"
+    "runtime_ui_workbench_diagnostics",
+    "runtime_ui_renderer_atlas_handoff_ready",
+    "runtime_ui_renderer_atlas_handoff_renderer_sprites_submitted",
+    "runtime_ui_renderer_atlas_handoff_invoked_renderer_upload"
 )) {
     Assert-ContainsText $sample2dInstalledRuntimeValidationText $needle "tools/validate-installed-desktop-runtime.ps1"
 }
@@ -1308,7 +1320,8 @@ foreach ($needle in @(
     "--require-networking-foundation-policy",
     "--require-simulation-orchestration",
     "--require-production-authoring-workflows",
-    "--require-runtime-ui-workbench"
+    "--require-runtime-ui-workbench",
+    "--require-runtime-ui-renderer-atlas-handoff"
 )) {
     Assert-ContainsText $sample2dDesktopCMakeText $needle "games/CMakeLists.txt"
 }

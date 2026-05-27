@@ -394,7 +394,7 @@ if ($null -eq $sample2dDesktopManifestEntry) {
         "runtime/assets/2d/player.texture.geasset",
         "runtime/assets/2d/player.material",
         "runtime/assets/2d/jump.audio.geasset",
-        "runtime/assets/2d/level.tilemap",
+        "runtime/assets/2d/level.tilemap", "runtime/assets/2d/hud.uiatlas",
         "runtime/assets/2d/playable.scene"
     )) {
         if (@($sample2dDesktopManifest.runtimePackageFiles) -notcontains $packageFile) {
@@ -422,8 +422,8 @@ if ($null -eq $sample2dDesktopManifestEntry) {
         "--require-entity-scale-culling",
         "--require-scripting-sandbox-policy",
         "--require-networking-foundation-policy",
-        "--require-simulation-orchestration",
-        "gameplay systems package proof",
+        "--require-simulation-orchestration", "--require-runtime-ui-renderer-atlas-handoff",
+        "gameplay systems package proof", "Runtime UI renderer atlas handoff smoke",
         "world-region streaming package proof",
         "entity scale/culling package proof",
         "scripting sandbox policy proof",
