@@ -2,7 +2,7 @@
 
 This page is the human-readable summary of the current GameEngine capability contract. The machine-readable source of truth is `engine/agent/manifest.json`; use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1` when an agent needs exact fields, recipe ids, command surfaces, host gates, or validation commands.
 
-Current execution pointer: `first-party-desktop-platform-sdl3-removal-v1` is the active long-running milestone. It does not make SDL3 removed yet; it selects Windows-first native desktop replacement work and requires separate validated phases before SDL3 build, package, generated-game, editor, docs, legal, and agent-contract surfaces can be deleted.
+Current execution pointer: `first-party-desktop-platform-sdl3-removal-v1` is the active long-running milestone. It does not make SDL3 removed yet; it selects Windows-first native desktop replacement work and requires separate validated phases before SDL3 build, package, generated-game, editor, docs, legal, and agent-contract surfaces can be deleted. Current native replacement evidence includes `MK_platform_win32`, `MK_audio_wasapi`, and the Phase 5 `MK_runtime_host_win32` / `MK_runtime_host_win32_presentation` foundation; installed package and generated-game lanes still remain SDL3-backed until later phases migrate them.
 
 ## Ready Foundations
 

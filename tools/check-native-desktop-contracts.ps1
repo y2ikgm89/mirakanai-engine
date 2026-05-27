@@ -42,6 +42,13 @@ $forbiddenPatterns = @(
     }
 )
 
+$runtimeHostWin32ForbiddenPatterns = @(
+    @{
+        Pattern = '\b(?:SurfaceHandle|NativeWindowHandle|SdlNativeWindowHandle|native_window_token|native_window\s*\()'
+        Label = "runtime_host_win32 public API exposing a native window or RHI surface escape hatch"
+    }
+)
+
 function Get-NativeDesktopPublicHeaderRoot {
     $engineRoot = Join-Path $root "engine"
     if (Test-Path $engineRoot) {
@@ -72,6 +79,13 @@ foreach ($file in Get-NativeDesktopPublicHeaderFile) {
         foreach ($entry in $forbiddenPatterns) {
             if ($line -cmatch $entry.Pattern) {
                 $violations.Add("${relativeFile}:${lineNumber}: native desktop contract violation exposes $($entry.Label): $line") | Out-Null
+            }
+        }
+        if ($relativeFile.Replace("\", "/").StartsWith("engine/runtime_host/win32/include/", [System.StringComparison]::Ordinal)) {
+            foreach ($entry in $runtimeHostWin32ForbiddenPatterns) {
+                if ($line -cmatch $entry.Pattern) {
+                    $violations.Add("${relativeFile}:${lineNumber}: native desktop contract violation exposes $($entry.Label): $line") | Out-Null
+                }
             }
         }
     }

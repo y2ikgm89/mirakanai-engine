@@ -18,7 +18,7 @@
 
 **Status:** Active.
 
-Selected long-running milestone by operator direction on 2026-05-27. This plan replaces `reviewed-importers-codecs-shader-generation-v1` as `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` for the SDL3 removal track; the importer/codecs/shader-generation plan is paused and remains reviewable future work. Phases 0-2 are merged; Phase 3 is implemented as a candidate slice.
+Selected long-running milestone by operator direction on 2026-05-27. This plan replaces `reviewed-importers-codecs-shader-generation-v1` as `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` for the SDL3 removal track; the importer/codecs/shader-generation plan is paused and remains reviewable future work. Phases 0-4 are merged; Phase 5 is implemented as a candidate slice.
 
 ## Context
 
@@ -379,19 +379,22 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.
 
 - Create: `engine/runtime_host/win32/CMakeLists.txt`
 - Create: `engine/runtime_host/win32/include/mirakana/runtime_host/win32/win32_desktop_game_host.hpp`
+- Create: `engine/runtime_host/win32/include/mirakana/runtime_host/win32/win32_desktop_event_pump.hpp`
 - Create: `engine/runtime_host/win32/include/mirakana/runtime_host/win32/win32_desktop_presentation.hpp`
 - Create: `engine/runtime_host/win32/src/win32_desktop_game_host.cpp`
+- Create: `engine/runtime_host/win32/src/win32_desktop_event_pump.cpp`
 - Create: `engine/runtime_host/win32/src/win32_desktop_presentation.cpp`
 - Modify: `CMakeLists.txt`
+- Modify: `engine/runtime_host/CMakeLists.txt`
 - Create: `tests/unit/runtime_host_win32_tests.cpp`
 - Create: `tests/unit/runtime_host_win32_public_api_compile.cpp`
 
-- [ ] Re-check DXGI swap chains, D3D12 `CreateSwapChainForHwnd`, resize buffers, tearing/VRR flags, present modes, and window-resize interaction.
-- [ ] Add RED tests for host descriptor validation, lifecycle/run loop rows, `NullRenderer` fallback, D3D12 presentation selection, resize handling, package-visible report rows, and no native handle leakage.
-- [ ] Implement `Win32DesktopGameHost` with the existing `mirakana::GameApp` contract.
-- [ ] Implement a D3D12-first presentation adapter that consumes existing `MK_rhi_d3d12`, `MK_renderer`, and scene/UI renderer evidence without exposing native handles.
-- [ ] Keep Vulkan presentation host-gated until a separate Windows-native Vulkan surface path is explicitly selected.
-- [ ] Run:
+- [x] Re-check DXGI swap chains, D3D12 `CreateSwapChainForHwnd`, resize buffers, tearing/VRR flags, present modes, and window-resize interaction.
+- [x] Add RED tests for host descriptor validation, lifecycle/run loop rows, `NullRenderer` fallback, D3D12 presentation selection, resize handling, package-visible report rows, and no native handle leakage.
+- [x] Implement `Win32DesktopGameHost` with the existing `mirakana::GameApp` contract.
+- [x] Implement a D3D12-first presentation adapter that consumes existing `MK_rhi_d3d12`, `MK_renderer`, and scene/UI renderer evidence without exposing native handles.
+- [x] Keep Vulkan presentation host-gated until a separate Windows-native Vulkan surface path is explicitly selected.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_host_win32_public_api_compile MK_runtime_host_win32_tests
@@ -401,7 +404,25 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.
 
 **Done When:** A Windows native desktop host can run the engine host loop and package-visible presentation reports without SDL3.
 
-**Phase Evidence:** Not started.
+**Phase Evidence:** Phase 5 implemented in isolated worktree `codex/win32-runtime-host-d3d12-v1`.
+
+- Official practice re-check: Context7 selected Microsoft Learn Win32/DXGI/Direct3D documentation. The implementation follows the documented `CreateSwapChainForHwnd` model for HWND swap chains, direct command queue ownership for D3D12, flip-discard swap effect with buffer count greater than one, `DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING` gating, `ResizeBuffers` resize behavior, `DXGI_MWA_NO_ALT_ENTER`, and the requirement that back buffers are in present state before present.
+- RED evidence: after adding `engine/runtime_host/win32/CMakeLists.txt`, `tests/unit/runtime_host_win32_tests.cpp`, `tests/unit/runtime_host_win32_public_api_compile.cpp`, and the Windows-only CMake wiring, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev` failed because `win32_desktop_event_pump.cpp`, `win32_desktop_game_host.cpp`, and `win32_desktop_presentation.cpp` did not exist.
+- Implementation: added Windows-only `MK_runtime_host_win32` and `MK_runtime_host_win32_presentation` targets with `Win32DesktopEventPump`, `Win32DesktopGameHost`, `Win32DesktopPresentation`, and `plan_win32_d3d12_swapchain`. The host owns `Win32Runtime`, `Win32Window`, the event pump, first-party input/pointer/gamepad/lifecycle state, renderer selection, and `DesktopGameRunner` service wiring. The presentation path supports deterministic `NullRenderer` fallback, D3D12 RHI frame renderer creation from host-supplied shader bytecode, resize/present report rows, and explicit Vulkan host-gated status.
+- Boundary policy: new Win32 runtime-host public headers expose only first-party values, `win32::Win32Window*`, renderer stats, RHI stats, and status/report rows. Targeted public API and native desktop checks reject `SurfaceHandle`, `NativeWindowHandle`, `SdlNativeWindowHandle`, `native_window_token`, and native-window helper exposure from `engine/runtime_host/win32/include`.
+- Agent surface drift: updated module, runtime-readiness, validation-recipe, game-guidance, current-capability, and production-loop manifest/docs surfaces for the new Win32 runtime-host foundation while keeping package/generated-game/editor SDL3 migration as later phases.
+- Focused validation:
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_host_win32_tests MK_runtime_host_win32_public_api_compile`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_host_win32_tests|MK_runtime_host_win32_public_api_compile"`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/runtime_host/win32/src/win32_desktop_event_pump.cpp,engine/runtime_host/win32/src/win32_desktop_game_host.cpp,engine/runtime_host/win32/src/win32_desktop_presentation.cpp,tests/unit/runtime_host_win32_tests.cpp,tests/unit/runtime_host_win32_public_api_compile.cpp`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-native-desktop-contracts.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`: pass; 98/98 CTest tests passed, including `MK_runtime_host_win32_tests` and `MK_runtime_host_win32_public_api_compile`.
 
 ## Phase 6 - Desktop Runtime Scripts, Packages, And Installed Validation
 

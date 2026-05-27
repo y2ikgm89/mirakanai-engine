@@ -16,6 +16,7 @@ $publicRoots = @(
     "engine/runtime/network/enet/include",
     "engine/runtime_host/include",
     "engine/runtime_host/sdl3/include",
+    "engine/runtime_host/win32/include",
     "engine/runtime_rhi/include",
     "engine/runtime_scene/include",
     "engine/rhi/include",
@@ -126,6 +127,13 @@ $moduleBoundaryRules = @(
     }
 )
 
+$runtimeHostWin32ForbiddenPatterns = @(
+    @{
+        Pattern = '\b(?:SurfaceHandle|NativeWindowHandle|SdlNativeWindowHandle|native_window_token|native_window\s*\()'
+        Label = "runtime_host_win32 public API exposing a native window or RHI surface escape hatch"
+    }
+)
+
 function Get-PublicApiHeaderFile {
     param(
         [string[]]$RelativeRoots
@@ -164,6 +172,14 @@ foreach ($file in Get-PublicApiHeaderFile -RelativeRoots $publicRoots) {
             if ($line -cmatch $rule.Pattern) {
                 $violations.Add("${relativeFile}:${lineNumber}: public API boundary violation: $($rule.Label): $line") |
                     Out-Null
+            }
+        }
+        if ($relativeFileForMatching.StartsWith("engine/runtime_host/win32/include/", [System.StringComparison]::Ordinal)) {
+            foreach ($entry in $runtimeHostWin32ForbiddenPatterns) {
+                if ($line -cmatch $entry.Pattern) {
+                    $violations.Add("${relativeFile}:${lineNumber}: public API exposes $($entry.Label): $line") |
+                        Out-Null
+                }
             }
         }
     }
