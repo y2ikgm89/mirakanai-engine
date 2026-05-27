@@ -12,7 +12,7 @@
 
 **Plan ID:** `clean-break-broad-production-readiness-master-plan-v1`
 
-**Status:** Selected master plan. Not selected as `currentActivePlan`; the first selected child is `renderer-production-quality-backend-parity-v1`.
+**Status:** Selected master plan. Not selected as `currentActivePlan`; the active child is `runtime-ui-text-platform-stack-v1`.
 
 **Date:** 2026-05-27
 
@@ -83,13 +83,19 @@ Context7 evidence recorded during this selection pass:
 
 ### Child Plan 1 - Renderer Production Quality And Backend Parity v1
 
-**Status:** Selected active child.
+**Status:** Completed.
 
 **Path:** `docs/superpowers/plans/2026-05-27-renderer-production-quality-backend-parity-v1.md`
 
 **Purpose:** Replace selected renderer confidence with backend-local, measurable production quality, parity, profiling, and package evidence gates.
 
+**Closeout:** Completed through PR #261, PR #262, and PR #263. The final checkpoint merged as `97b4b0d8e680b7da723a294ed77555ba9c7c5a8d` with local package/static/full validation and hosted `PR Gate`, `Windows MSVC`, Linux, CodeQL, static analysis, iOS smoke, and macOS Metal CMake evidence. Broad renderer quality, Metal visible parity, and subjective/general performance parity remain host-gated or unclaimed where evidence is absent.
+
 ### Child Plan 2 - Runtime UI Text Platform Stack v1
+
+**Status:** Selected active child.
+
+**Path:** `docs/superpowers/plans/2026-05-27-runtime-ui-text-platform-stack-v1.md`
 
 **Purpose:** Implement real text shaping, font rasterization, IME, accessibility, and platform UI publication lanes behind first-party contracts and optional dependency adapters.
 

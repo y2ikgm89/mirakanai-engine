@@ -12,7 +12,7 @@
 
 **Plan ID:** `renderer-production-quality-backend-parity-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
 Selected child plan of `clean-break-broad-production-readiness-master-plan-v1`.
 
@@ -56,7 +56,16 @@ Before code changes in each task, re-check and record the exact docs touched by 
 | --- | --- | --- | --- |
 | `renderer-quality-status-taxonomy-v1` | `Renderer General Quality Matrix v1` / `plan_renderer_quality_matrix` clean-break `RendererQualityMatrixRowStatus` taxonomy plus package-visible dependency/unsupported counters. | Focused RED build failed before implementation because `RendererQualityMatrixRowStatus`, `dependency_gate_required`, `dependency_gated_row_count`, and `unsupported_row_count` were absent. Focused GREEN passed with `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_quality_matrix_tests` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R renderer_quality_matrix`. Package-visible fields remain `renderer_quality_matrix_status=host_evidence_required`, `renderer_quality_matrix_dependency_gated_rows=0`, `renderer_quality_matrix_unsupported_rows=0`, and `renderer_quality_matrix_general_renderer_quality_ready=0`. | Backend parity policy, broad profiling/residency rows, package promotion, and full slice validation remain open tasks in this plan. |
 | `renderer-backend-local-quality-contracts-v1` | `Backend Renderer Parity v1` clean-break `BackendRendererParityPolicyRequest` / `BackendRendererParityProofRow` / `BackendRendererParityPolicyPlan` / `plan_backend_renderer_parity_policy` proof review for synchronization, shader-validation, memory-residency, profiling, and package-evidence rows. | Official docs checked: D3D12 resource barriers and residency from Microsoft Learn, Vulkan synchronization/validation from Khronos docs through Context7, and Metal capability/resource synchronization gates from Apple docs. Focused RED build failed before implementation because `BackendRendererParityFeatureKind`, `BackendRendererParityProofRow`, `BackendRendererParityPolicyRequest`, `BackendRendererParityPolicyPlan`, `BackendRendererParityPolicyStatus`, and `plan_backend_renderer_parity_policy` were absent. Focused GREEN passed with `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_tests` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_renderer_quality_matrix_tests|MK_renderer_tests"`. | Package-visible promotion and broad profiling/residency rows remain open tasks in this plan; Metal remains Apple-host-gated and broad renderer quality is still unclaimed. |
-| `renderer-profiling-residency-evidence-v1` | Clean-break `DebugProfilingPolicyDesc` / `DebugProfilingRequestDesc` and `GpuMemoryPolicyDesc` / `GpuMemoryRequestDesc` evidence expansion plus sample package counters. | Official docs checked: Microsoft D3D12 residency and Khronos Vulkan memory allocation/synchronization guidance. Focused RED tests first failed because CPU zone / trace handoff / package counter diagnostics and memory budget / residency pressure / package counter diagnostics were absent. Focused GREEN passed with `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_tests MK_runtime_host_sdl3_tests sample_desktop_runtime_game sample_generated_desktop_runtime_3d_package` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_renderer_tests|MK_runtime_host_sdl3_tests"`. Package-visible fields now include `debug_profiling_policy_cpu_profile_zone_evidence_ready=1`, `debug_profiling_policy_trace_capture_handoff_evidence_ready=1`, `debug_profiling_policy_package_counter_evidence_ready=1`, `gpu_memory_policy_memory_budget_evidence_ready=1`, `gpu_memory_policy_residency_pressure_evidence_ready=1`, `gpu_memory_policy_package_counter_evidence_ready=1`, and generated `rendering_vfx_profiling_debug_*` / `rendering_vfx_profiling_memory_*` counters. Package GREEN passed with `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package`. Static/full validation GREEN passed with `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-format.ps1`, `tools/check-text-format.ps1`, `tools/validate.ps1`, and `git diff --check`. | PR publication remains the current closeout gate; Metal remains Apple-host-gated and broad renderer quality is still unclaimed. |
+| `renderer-profiling-residency-evidence-v1` | Clean-break `DebugProfilingPolicyDesc` / `DebugProfilingRequestDesc` and `GpuMemoryPolicyDesc` / `GpuMemoryRequestDesc` evidence expansion plus sample package counters. | Official docs checked: Microsoft D3D12 residency and Khronos Vulkan memory allocation/synchronization guidance. Focused RED tests first failed because CPU zone / trace handoff / package counter diagnostics and memory budget / residency pressure / package counter diagnostics were absent. Focused GREEN passed with `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_tests MK_runtime_host_sdl3_tests sample_desktop_runtime_game sample_generated_desktop_runtime_3d_package` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_renderer_tests|MK_runtime_host_sdl3_tests"`. Package-visible fields now include `debug_profiling_policy_cpu_profile_zone_evidence_ready=1`, `debug_profiling_policy_trace_capture_handoff_evidence_ready=1`, `debug_profiling_policy_package_counter_evidence_ready=1`, `gpu_memory_policy_memory_budget_evidence_ready=1`, `gpu_memory_policy_residency_pressure_evidence_ready=1`, `gpu_memory_policy_package_counter_evidence_ready=1`, and generated `rendering_vfx_profiling_debug_*` / `rendering_vfx_profiling_memory_*` counters. Package GREEN passed with `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package`. Static/full validation GREEN passed with `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-format.ps1`, `tools/check-text-format.ps1`, `tools/validate.ps1`, and `git diff --check`. PR #263 merged as merge commit `97b4b0d8e680b7da723a294ed77555ba9c7c5a8d`; hosted PR checks passed including `PR Gate`, `Windows MSVC`, Linux, CodeQL, static analysis, iOS smoke, and macOS Metal CMake. | Renderer child plan closed with Metal still Apple-host-gated and broad renderer quality still unclaimed. |
+
+## Closeout Evidence
+
+- PR #261 completed `renderer-quality-status-taxonomy-v1`.
+- PR #262 completed `renderer-backend-local-quality-contracts-v1`.
+- PR #263 completed `renderer-profiling-residency-evidence-v1` and merged as `97b4b0d8e680b7da723a294ed77555ba9c7c5a8d`.
+- Local validation for the final renderer checkpoint passed with both selected desktop runtime package commands, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-format.ps1`, `tools/check-text-format.ps1`, `tools/validate.ps1`, and `git diff --check`.
+- Hosted validation for PR #263 passed through `PR Gate`, `Windows MSVC`, Linux, CodeQL, static analysis, iOS smoke, and macOS Metal CMake.
+- Broad renderer quality, Metal visible parity, and subjective/general performance parity remain unclaimed where host/backend evidence is absent.
 
 ## Files
 
@@ -91,9 +100,9 @@ Before code changes in each task, re-check and record the exact docs touched by 
 
 ## Task 1 - Baseline Renderer Evidence Audit
 
-- [ ] Read the current renderer/RHI/package tests and identify which broad production claims are still unsupported.
-- [ ] Add a short evidence table to this plan with current supported rows, missing rows, and host-gated rows.
-- [ ] Run:
+- [x] Read the current renderer/RHI/package tests and identify which broad production claims are still unsupported.
+- [x] Add a short evidence table to this plan with current supported rows, missing rows, and host-gated rows.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1
@@ -105,18 +114,18 @@ Expected: current baseline passes or records exact pre-existing tool/host blocke
 
 ## Task 2 - RED Tests For Production Quality Gate Expansion
 
-- [ ] Add tests that fail until renderer quality rows distinguish production-ready, host-gated, dependency-gated, and unsupported status per backend and feature.
-- [ ] Add tests that reject inferred backend parity when a Vulkan or Metal row is missing backend-local synchronization/shader/validation evidence.
-- [ ] Add tests that reject broad performance profiling readiness without CPU profile rows, GPU timestamp availability rows, budget rows, package counters, and trace/capture handoff rows.
-- [ ] Add tests that reject public native-handle leakage and backend-native token strings in gameplay-facing row notes.
-- [ ] Run the focused tests and record the expected RED failures in this plan.
+- [x] Add tests that fail until renderer quality rows distinguish production-ready, host-gated, dependency-gated, and unsupported status per backend and feature.
+- [x] Add tests that reject inferred backend parity when a Vulkan or Metal row is missing backend-local synchronization/shader/validation evidence.
+- [x] Add tests that reject broad performance profiling readiness without CPU profile rows, GPU timestamp availability rows, budget rows, package counters, and trace/capture handoff rows.
+- [x] Add tests that reject public native-handle leakage and backend-native token strings in gameplay-facing row notes.
+- [x] Run the focused tests and record the expected RED failures in this plan.
 
 ## Task 3 - Backend-Local Renderer Quality Contracts
 
-- [ ] Extend renderer quality value rows with explicit evidence categories: synchronization, shader/tool validation, memory/residency, render-pass/frame-graph behavior, profiling, package evidence, host gate, dependency gate, unsupported claim.
-- [ ] Implement fail-closed diagnostics for missing categories, duplicate feature/backend rows, unsupported broad claims, backend inference, and native handle leakage.
-- [ ] Keep any aggregate changes clean-break and update all designated initializers in tests.
-- [ ] Run focused renderer quality tests and record GREEN evidence.
+- [x] Extend renderer quality value rows with explicit evidence categories: synchronization, shader/tool validation, memory/residency, render-pass/frame-graph behavior, profiling, package evidence, host gate, dependency gate, unsupported claim.
+- [x] Implement fail-closed diagnostics for missing categories, duplicate feature/backend rows, unsupported broad claims, backend inference, and native handle leakage.
+- [x] Keep any aggregate changes clean-break and update all designated initializers in tests.
+- [x] Run focused renderer quality tests and record GREEN evidence.
 
 ## Task 4 - Profiling And Residency Evidence Expansion
 
