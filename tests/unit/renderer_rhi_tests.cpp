@@ -22,6 +22,7 @@
 
 #include <algorithm>
 #include <array>
+#include <iterator>
 #include <limits>
 #include <memory>
 #include <span>
@@ -6442,6 +6443,145 @@ MK_TEST("debug profiling backend evidence requires timestamps on d3d12 and marke
             .selected_backend = mirakana::rhi::BackendKind::vulkan,
             .proof_backend = mirakana::rhi::BackendKind::d3d12,
         }));
+}
+
+namespace {
+
+constexpr mirakana::BackendRendererParityFeatureKind kBackendParityRequiredFeatures[] = {
+    mirakana::BackendRendererParityFeatureKind::synchronization,
+    mirakana::BackendRendererParityFeatureKind::shader_validation,
+    mirakana::BackendRendererParityFeatureKind::memory_residency,
+    mirakana::BackendRendererParityFeatureKind::profiling_capture,
+    mirakana::BackendRendererParityFeatureKind::package_evidence,
+};
+
+[[nodiscard]] mirakana::BackendRendererParityProofRow
+make_backend_parity_ready_proof(mirakana::rhi::BackendKind backend, mirakana::BackendRendererParityFeatureKind feature,
+                                std::uint32_t source_index) {
+    return mirakana::BackendRendererParityProofRow{
+        .proof_id = "backend_parity.proof",
+        .feature = feature,
+        .selected_backend = backend,
+        .proof_backend = backend,
+        .reviewed = true,
+        .host_validated = true,
+        .host_gate_required = false,
+        .request_native_handle_access = false,
+        .package_counter_id = "backend_parity.counter",
+        .source_index = source_index,
+    };
+}
+
+[[nodiscard]] mirakana::BackendRendererParityProofRow
+make_backend_parity_metal_host_gate(mirakana::BackendRendererParityFeatureKind feature, std::uint32_t source_index) {
+    return mirakana::BackendRendererParityProofRow{
+        .proof_id = "backend_parity.metal_host_gate",
+        .feature = feature,
+        .selected_backend = mirakana::rhi::BackendKind::metal,
+        .proof_backend = mirakana::rhi::BackendKind::metal,
+        .reviewed = true,
+        .host_validated = false,
+        .host_gate_required = true,
+        .request_native_handle_access = false,
+        .package_counter_id = {},
+        .source_index = source_index,
+    };
+}
+
+[[nodiscard]] mirakana::BackendRendererParityPolicyRequest
+make_backend_parity_request(bool include_metal_host_evidence) {
+    mirakana::BackendRendererParityPolicyRequest request{
+        .required_backends =
+            {
+                mirakana::rhi::BackendKind::d3d12,
+                mirakana::rhi::BackendKind::vulkan,
+                mirakana::rhi::BackendKind::metal,
+            },
+        .required_features =
+            std::vector<mirakana::BackendRendererParityFeatureKind>{
+                kBackendParityRequiredFeatures,
+                kBackendParityRequiredFeatures + std::size(kBackendParityRequiredFeatures),
+            },
+        .proofs = {},
+        .row_budget = 64U,
+        .seed = 91U,
+    };
+    std::uint32_t source_index{1U};
+    for (const auto feature : kBackendParityRequiredFeatures) {
+        request.proofs.push_back(
+            make_backend_parity_ready_proof(mirakana::rhi::BackendKind::d3d12, feature, source_index++));
+        request.proofs.push_back(
+            make_backend_parity_ready_proof(mirakana::rhi::BackendKind::vulkan, feature, source_index++));
+        request.proofs.push_back(
+            include_metal_host_evidence
+                ? make_backend_parity_ready_proof(mirakana::rhi::BackendKind::metal, feature, source_index++)
+                : make_backend_parity_metal_host_gate(feature, source_index++));
+    }
+    return request;
+}
+
+[[nodiscard]] std::size_t backend_parity_diagnostic_count(const mirakana::BackendRendererParityPolicyPlan& plan,
+                                                          mirakana::BackendRendererParityDiagnosticCode code) {
+    std::size_t count{0U};
+    for (const auto& diagnostic : plan.diagnostics) {
+        if (diagnostic.code == code) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+} // namespace
+
+MK_TEST("backend renderer parity policy keeps Metal host gated and proves D3D12 Vulkan locally") {
+    const auto plan = mirakana::plan_backend_renderer_parity_policy(make_backend_parity_request(false));
+
+    MK_REQUIRE(plan.status == mirakana::BackendRendererParityPolicyStatus::host_evidence_required);
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.diagnostics.empty());
+    MK_REQUIRE(plan.row_count == 15U);
+    MK_REQUIRE(plan.ready_row_count == 10U);
+    MK_REQUIRE(plan.host_gated_row_count == 5U);
+    MK_REQUIRE(plan.host_validated_backend_count == 2U);
+    MK_REQUIRE(plan.d3d12_parity_ready);
+    MK_REQUIRE(plan.vulkan_parity_ready);
+    MK_REQUIRE(!plan.metal_parity_ready);
+    MK_REQUIRE(plan.replay_hash != 0U);
+}
+
+MK_TEST("backend renderer parity policy rejects cross backend transfer missing proof and native handles") {
+    auto request = make_backend_parity_request(true);
+    request.proofs[1].proof_backend = mirakana::rhi::BackendKind::d3d12;
+    request.proofs[2].request_native_handle_access = true;
+    request.proofs.pop_back();
+
+    const auto plan = mirakana::plan_backend_renderer_parity_policy(request);
+
+    MK_REQUIRE(plan.status == mirakana::BackendRendererParityPolicyStatus::invalid_request);
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(backend_parity_diagnostic_count(
+                   plan, mirakana::BackendRendererParityDiagnosticCode::cross_backend_proof_transfer) == 1U);
+    MK_REQUIRE(backend_parity_diagnostic_count(
+                   plan, mirakana::BackendRendererParityDiagnosticCode::unsupported_native_handle_claim) == 1U);
+    MK_REQUIRE(backend_parity_diagnostic_count(
+                   plan, mirakana::BackendRendererParityDiagnosticCode::missing_required_proof) == 1U);
+    MK_REQUIRE(plan.replay_hash == 0U);
+}
+
+MK_TEST("backend renderer parity policy rejects duplicate and unsupported required features") {
+    auto request = make_backend_parity_request(true);
+    request.required_features.push_back(mirakana::BackendRendererParityFeatureKind::synchronization);
+    request.required_features.push_back(static_cast<mirakana::BackendRendererParityFeatureKind>(255U));
+
+    const auto plan = mirakana::plan_backend_renderer_parity_policy(request);
+
+    MK_REQUIRE(plan.status == mirakana::BackendRendererParityPolicyStatus::invalid_request);
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(backend_parity_diagnostic_count(
+                   plan, mirakana::BackendRendererParityDiagnosticCode::duplicate_required_feature) == 1U);
+    MK_REQUIRE(backend_parity_diagnostic_count(
+                   plan, mirakana::BackendRendererParityDiagnosticCode::invalid_required_feature) == 1U);
+    MK_REQUIRE(plan.replay_hash == 0U);
 }
 
 MK_TEST("rhi postprocess frame renderer records morph scene draws") {
