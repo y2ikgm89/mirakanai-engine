@@ -6,27 +6,30 @@
 
 **Architecture:** This is a master coordination plan, not one implementation slice. Each broad domain gets its own child plan, public first-party contract, adapter boundary, tests, package evidence, host gates, docs, manifest rows, dependency/legal records, and final validation before any ready claim is promoted.
 
-**Tech Stack:** C++23, CMake/CTest, PowerShell validation tools, `MK_renderer`, `MK_rhi`, `MK_runtime_rhi`, `MK_scene_renderer`, `MK_ui`, `MK_ui_renderer`, `MK_platform_sdl3`, `MK_assets`, `MK_tools`, `MK_physics`, `MK_navigation`, `MK_audio`, `MK_runtime`, optional vcpkg manifest features, D3D12, Vulkan, Apple Metal, SDL3, HarfBuzz-class shaping, FreeType-class rasterization, ICU-class Unicode services, Khronos glTF/KTX, DXC/SPIR-V tools, Jolt-class physics adapters, Recast/Detour-class navigation adapters, ENet/GameNetworkingSockets-class transport adapters, OpenAL/miniaudio-class audio adapters, and platform accessibility SDKs.
+**Tech Stack:** C++23, CMake/CTest, PowerShell validation tools, `MK_renderer`, `MK_rhi`, `MK_runtime_rhi`, `MK_scene_renderer`, `MK_ui`, `MK_ui_renderer`, `MK_assets`, `MK_tools`, `MK_physics`, `MK_navigation`, `MK_audio`, `MK_runtime`, optional vcpkg manifest features, D3D12, Vulkan, Apple Metal, first-party Windows desktop platform backends, Win32, Raw Input, WASAPI, DXGI, legacy SDL3 replacement evidence until deletion, HarfBuzz-class shaping, FreeType-class rasterization, ICU-class Unicode services, Khronos glTF/KTX, DXC/SPIR-V tools, Jolt-class physics adapters, Recast/Detour-class navigation adapters, ENet/GameNetworkingSockets-class transport adapters, OpenAL/miniaudio-class audio adapters, and platform accessibility SDKs.
 
 ---
 
 **Plan ID:** `clean-break-broad-production-readiness-master-plan-v1`
 
-**Status:** Selected master plan. Not selected as `currentActivePlan`; the active child is `reviewed-importers-codecs-shader-generation-v1`.
+**Status:** Selected master plan. Not selected as `currentActivePlan`; the active milestone is `first-party-desktop-platform-sdl3-removal-v1`.
 
 **Date:** 2026-05-27
 
 ## Master Plan Decision
 
-This work is too broad for one implementation branch. It must be executed through reviewable child plans:
+This work is too broad for one implementation branch. It must be executed through reviewable child plans and milestones:
 
 - Renderer production quality, backend parity, and profiling.
 - Runtime UI text shaping, font rasterization, IME, accessibility, and platform parity.
 - Reviewed importer, codec, source import, and shader generation execution.
+- First-party Windows desktop platform, runtime host, editor, and audio replacement followed by SDL3 deletion.
 - Physics and navigation commercial coverage.
 - Audio production coverage.
 - Networking production coverage.
 - Cross-domain package evidence and closeout.
+
+The reviewed importer/codecs/shader-generation child remains paused while the SDL3 removal milestone is active.
 
 `unsupportedProductionGaps = []` remains the Engine 1.0 ready-surface truth. This plan does not reopen 1.0; it selects post-1.0 / 1.x production breadth.
 
