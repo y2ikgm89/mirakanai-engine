@@ -12,7 +12,7 @@
 
 **Plan ID:** `clean-break-broad-production-readiness-master-plan-v1`
 
-**Status:** Selected master plan. Not selected as `currentActivePlan`; the active child is `runtime-ui-text-platform-stack-v1`.
+**Status:** Selected master plan. Not selected as `currentActivePlan`; the active child is `reviewed-importers-codecs-shader-generation-v1`.
 
 **Date:** 2026-05-27
 
@@ -93,13 +93,19 @@ Context7 evidence recorded during this selection pass:
 
 ### Child Plan 2 - Runtime UI Text Platform Stack v1
 
-**Status:** Selected active child.
+**Status:** Completed.
 
 **Path:** `docs/superpowers/plans/2026-05-27-runtime-ui-text-platform-stack-v1.md`
 
 **Purpose:** Implement real text shaping, font rasterization, IME, accessibility, and platform UI publication lanes behind first-party contracts and optional dependency adapters.
 
+**Closeout:** Completed through PR #264, PR #265, PR #266, PR #267, and PR #268. The final checkpoint merged as `98dbe209bc00a9914f267f2394900d870c572cbc` with local package/static/full validation plus hosted PR Gate, Windows MSVC, Linux, CodeQL, static analysis, iOS smoke, and macOS Metal CMake evidence. Broad runtime UI platform parity, production HarfBuzz/FreeType/ICU dependency adapters, native IME parity, OS accessibility publication, renderer texture upload execution, and broad runtime UI renderer quality remain host/dependency gated or unclaimed.
+
 ### Child Plan 3 - Reviewed Importers Codecs And Shader Generation v1
+
+**Status:** Selected active child.
+
+**Path:** `docs/superpowers/plans/2026-05-27-reviewed-importers-codecs-shader-generation-v1.md`
 
 **Purpose:** Move from value-only import review to selected real importer/codec/shader execution lanes without arbitrary importer, compiler, or source execution.
 

@@ -12,9 +12,11 @@
 
 **Plan ID:** `runtime-ui-text-platform-stack-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
 Selected child plan of `clean-break-broad-production-readiness-master-plan-v1` after `renderer-production-quality-backend-parity-v1` completed through PRs #261, #262, and #263.
+
+**Closeout:** Completed through PR #264, PR #265, PR #266, PR #267, and PR #268. The final checkpoint merged as `98dbe209bc00a9914f267f2394900d870c572cbc` after local package/static/full validation and hosted `PR Gate`, `Windows MSVC`, Linux, CodeQL, static analysis, iOS smoke, and macOS Metal CMake evidence. Broad runtime UI platform parity, production HarfBuzz/FreeType/ICU-class dependency adapters, native IME parity, OS accessibility bridge publication, renderer texture upload execution, and broad runtime UI renderer quality remain host-gated, dependency-gated, or unclaimed where evidence is absent.
 
 **Date:** 2026-05-27
 
