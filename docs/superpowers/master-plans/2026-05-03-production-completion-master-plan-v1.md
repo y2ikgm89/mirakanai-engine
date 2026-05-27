@@ -15,9 +15,9 @@ Use the chapter that matches the current decision. Do not bulk-read every chapte
 
 - 1.0 closeout readiness remains manifest-led: every `unsupportedProductionGaps` row in `engine/agent/manifest.json.aiOperableProductionLoop` must be implemented, host-gated with evidence, or explicitly excluded with evidence before a ready claim; the current composed manifest has no remaining rows.
 - Current execution remains manifest-led. Do not hand-edit `engine/agent/manifest.json`; edit `engine/agent/manifest.fragments/*.json` and run the compose script when manifest state changes.
-- Current active plan: this Production Completion Master Plan v1 index. [Engine General Production Quality Expansion v1](../plans/2026-05-26-engine-general-production-quality-expansion-v1.md) is completed as a post-1.0 milestone that strengthened renderer quality, runtime UI text/font/IME/accessibility, broad reviewed import, physics/navigation, networking, and audio production breadth without reopening Engine 1.0 blockers.
-- Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan.id = next-production-gap-selection` until the next explicit developer-owned slice is selected. Historical zero-gap closeout evidence remains discoverable through the retained plan registry and archive.
-- Current gap cluster: no Engine 1.0 unsupported gap is open; the active post-foundation milestone selects reusable production surfaces without reopening completed foundation rows.
+- Current active plan: [Renderer Production Quality And Backend Parity v1](../plans/2026-05-27-renderer-production-quality-backend-parity-v1.md), the first child of [Clean Break Broad Production Readiness Master Plan v1](2026-05-27-clean-break-broad-production-readiness-master-plan-v1.md). [Engine General Production Quality Expansion v1](../plans/2026-05-26-engine-general-production-quality-expansion-v1.md) remains completed as a post-1.0 milestone that strengthened renderer quality, runtime UI text/font/IME/accessibility, broad reviewed import, physics/navigation, networking, and audio production breadth without reopening Engine 1.0 blockers.
+- Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan.id = renderer-production-quality-backend-parity-v1` selects the first clean-break broad-production child plan. Historical zero-gap closeout evidence remains discoverable through the retained plan registry and archive.
+- Current gap cluster: no Engine 1.0 unsupported gap is open; the active post-foundation child plan selects renderer production quality/backend parity/profiling breadth without claiming broad renderer readiness before backend-local evidence lands.
 
 ## Plan map
 
@@ -27,6 +27,7 @@ Use the chapter that matches the current decision. Do not bulk-read every chapte
 | Canonical Post-1.0 / 1.x Capability Backlog | [04-developer-owned-engine-capability-backlog.md](production-completion-v1/04-developer-owned-engine-capability-backlog.md) |
 | Official practice gates, projections, and gameplay scenarios | [05-projections-and-scenarios.md](production-completion-v1/05-projections-and-scenarios.md) |
 | Historical verdict archive and retained static-check evidence | [99-historical-verdict-archive.md](production-completion-v1/99-historical-verdict-archive.md) |
+| Clean-break broad production sequencing | [Clean Break Broad Production Readiness Master Plan v1](2026-05-27-clean-break-broad-production-readiness-master-plan-v1.md) |
 
 ## Official implementation rule
 
