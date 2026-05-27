@@ -15,6 +15,11 @@ int main() {
     mirakana::Win32DesktopPresentationD3d12SceneRendererDesc scene_renderer;
     scene_renderer.vertex_shader = shader;
     scene_renderer.fragment_shader.entry_point = "ps_main";
+    scene_renderer.compute_morph_vertex_shader.entry_point = "vs_compute_morph";
+    scene_renderer.compute_morph_shader.entry_point = "cs_compute_morph_position";
+    scene_renderer.compute_morph_mesh_bindings.push_back({});
+    scene_renderer.compute_morph_skinned_shader.entry_point = "cs_compute_morph_skinned_position";
+    scene_renderer.compute_morph_skinned_mesh_bindings.push_back({});
     scene_renderer.postprocess_vertex_shader.entry_point = "vs_postprocess";
     scene_renderer.postprocess_fragment_shader.entry_point = "ps_postprocess";
     scene_renderer.enable_postprocess = true;
@@ -39,8 +44,11 @@ int main() {
     report.selected_backend = mirakana::Win32DesktopPresentationBackend::null_renderer;
     report.swapchain_plan = plan;
     report.scene_gpu_status = mirakana::Win32DesktopPresentationSceneGpuBindingStatus::ready;
-    report.scene_gpu_stats.mesh_bindings = 1;
-    report.scene_gpu_stats.material_bindings = 1;
+    auto& stats = report.scene_gpu_stats;
+    stats.mesh_bindings = 1;
+    stats.material_bindings = 1;
+    stats.compute_morph_queue_waits = 1;
+    stats.compute_morph_async_compute_queue_submits = 1;
     report.postprocess_status = mirakana::Win32DesktopPresentationPostprocessStatus::ready;
     report.framegraph_passes = 2;
     report.renderer_stats.framegraph_render_passes_recorded = 2;
@@ -70,6 +78,12 @@ int main() {
                    plan.flip_discard_swap_effect && plan.render_target_output && plan.resize_buffers_supported &&
                    plan.requires_present_state_before_present && !plan.public_native_handles_exposed &&
                    plan.allow_tearing_flag && host_desc.d3d12_renderer == &renderer &&
+                   stats.compute_morph_queue_waits == 1 && stats.compute_morph_async_compute_queue_submits == 1 &&
+                   scene_renderer.compute_morph_vertex_shader.entry_point == "vs_compute_morph" &&
+                   scene_renderer.compute_morph_shader.entry_point == "cs_compute_morph_position" &&
+                   scene_renderer.compute_morph_mesh_bindings.size() == 1 &&
+                   scene_renderer.compute_morph_skinned_shader.entry_point == "cs_compute_morph_skinned_position" &&
+                   scene_renderer.compute_morph_skinned_mesh_bindings.size() == 1 &&
                    host_desc.d3d12_scene_renderer == &scene_renderer && presentation_desc.d3d12_renderer == &renderer &&
                    presentation_desc.d3d12_scene_renderer == &scene_renderer && quality.ready
                ? 0

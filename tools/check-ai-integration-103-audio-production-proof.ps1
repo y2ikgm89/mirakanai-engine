@@ -5,13 +5,10 @@
 
 $audioHeaderText = Get-AgentSurfaceText "engine/audio/include/mirakana/audio/audio_mixer.hpp"
 $audioSourceText = Get-AgentSurfaceText "engine/audio/src/audio_mixer.cpp"
-$sdlAudioHeaderText = Get-AgentSurfaceText "engine/audio/sdl3/include/mirakana/audio/sdl3/sdl_audio_device.hpp"
-$sdlAudioSourceText = Get-AgentSurfaceText "engine/audio/sdl3/src/sdl_audio_device.cpp"
 $wasapiAudioHeaderText = Get-AgentSurfaceText "engine/audio/wasapi/include/mirakana/audio/wasapi/wasapi_audio_device.hpp"
 $wasapiAudioSourceText = Get-AgentSurfaceText "engine/audio/wasapi/src/wasapi_audio_device.cpp"
 $rootCMakeText = Get-AgentSurfaceText "CMakeLists.txt"
 $audioTestText = Get-AgentSurfaceText "tests/unit/audio_production_tests.cpp"
-$sdlAudioTestText = Get-AgentSurfaceText "tests/unit/sdl3_audio_tests.cpp"
 $wasapiAudioTestText = Get-AgentSurfaceText "tests/unit/wasapi_audio_tests.cpp"
 $specText = Get-AgentSurfaceText "docs/specs/2026-05-27-audio-production-playback-streaming-dsp-spatialization.md"
 $sampleMainText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/main.cpp"
@@ -60,13 +57,6 @@ foreach ($needle in @(
 }
 
 foreach ($needle in @(
-        "sdl3_audio_device_lifecycle_evidence",
-        "AudioProductionDeviceLifecycleRow"
-    )) {
-    Assert-ContainsText $sdlAudioHeaderText $needle "engine/audio/sdl3/include/mirakana/audio/sdl3/sdl_audio_device.hpp"
-}
-
-foreach ($needle in @(
         "WasapiAudioRuntime",
         "WasapiAudioDevice",
         "plan_wasapi_audio_runtime",
@@ -76,18 +66,6 @@ foreach ($needle in @(
         "AudioProductionDeviceLifecycleRow"
     )) {
     Assert-ContainsText $wasapiAudioHeaderText $needle "engine/audio/wasapi/include/mirakana/audio/wasapi/wasapi_audio_device.hpp"
-}
-
-foreach ($needle in @(
-        "sdl3_audio_device_lifecycle_evidence",
-        "SDL_OpenAudioDeviceStream",
-        "SDL_PutAudioStreamData",
-        "SDL_GetAudioStreamQueued",
-        "SDL_ResumeAudioStreamDevice",
-        ".uses_callback = false",
-        ".native_handle_exposed = false"
-    )) {
-    Assert-ContainsText $sdlAudioSourceText $needle "engine/audio/sdl3/src/sdl_audio_device.cpp"
 }
 
 foreach ($needle in @(
@@ -115,12 +93,11 @@ foreach ($needle in @(
     Assert-ContainsText $audioTestText $needle "tests/unit/audio_production_tests.cpp"
 }
 
-Assert-ContainsText $sdlAudioTestText "sdl3 audio adapter exposes production stream queue lifecycle evidence" "tests/unit/sdl3_audio_tests.cpp"
 Assert-ContainsText $wasapiAudioTestText "wasapi audio adapter exposes production stream queue lifecycle evidence" "tests/unit/wasapi_audio_tests.cpp"
 
 foreach ($needle in @(
-        "SDL_OpenAudioDeviceStream",
-        "SDL_PutAudioStreamData",
+        "wasapi_audio_device_lifecycle_evidence",
+        "IAudioClient",
         "no OpenAL",
         "host_evidence_required",
         "audio_production_*",
@@ -192,7 +169,6 @@ foreach ($docSurface in @(
 foreach ($needle in @(
         "AudioProductionReviewRequest",
         "review_audio_production_readiness",
-        "sdl3_audio_device_lifecycle_evidence",
         "wasapi_audio_device_lifecycle_evidence"
     )) {
     Assert-ContainsText $modulesFragmentText $needle "engine/agent/manifest.fragments/004-modules.json"

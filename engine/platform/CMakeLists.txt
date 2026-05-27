@@ -39,10 +39,6 @@ if(NOT TARGET mirakana_platform)
     add_library(mirakana_platform ALIAS MK_platform)
 endif()
 
-if(MK_DESKTOP_RUNTIME_ENABLED)
-    add_subdirectory(sdl3)
-endif()
-
 if(WIN32)
     add_subdirectory(win32)
 endif()

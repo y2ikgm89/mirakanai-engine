@@ -227,9 +227,9 @@ void validate_ime_row(std::vector<RuntimeUiProductionDiagnostic>& diagnostics,
                  "runtime UI IME evidence requires committed text rows");
     require_flag(diagnostics, row.ime_clipboard_rows, RuntimeUiProductionDiagnosticCode::missing_ime_clipboard_rows,
                  row.id, "runtime UI IME evidence requires clipboard text command rows");
-    require_flag(diagnostics, row.ime_sdl3_adapter_proof_rows,
-                 RuntimeUiProductionDiagnosticCode::missing_ime_sdl3_adapter_proof_rows, row.id,
-                 "runtime UI IME evidence requires selected SDL3 adapter proof rows");
+    require_flag(diagnostics, row.ime_platform_adapter_proof_rows,
+                 RuntimeUiProductionDiagnosticCode::missing_ime_platform_adapter_proof_rows, row.id,
+                 "runtime UI IME evidence requires selected platform adapter proof rows");
     require_flag(diagnostics, row.ime_platform_host_gate_rows,
                  RuntimeUiProductionDiagnosticCode::missing_ime_platform_host_gate_rows, row.id,
                  "runtime UI IME evidence requires per-platform host gate rows");
@@ -325,7 +325,7 @@ void hash_string(std::uint64_t& hash, std::string_view value) noexcept {
         hash_bool(hash, row.ime_text_area_cursor_rows);
         hash_bool(hash, row.ime_committed_text_rows);
         hash_bool(hash, row.ime_clipboard_rows);
-        hash_bool(hash, row.ime_sdl3_adapter_proof_rows);
+        hash_bool(hash, row.ime_platform_adapter_proof_rows);
         hash_bool(hash, row.ime_platform_host_gate_rows);
         hash_bool(hash, row.platform_adapter_dispatch_boundary);
         hash_bool(hash, row.accessibility_role_rows);

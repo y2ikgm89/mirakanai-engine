@@ -162,6 +162,31 @@ MK_TEST("win32 desktop presentation falls back to null renderer when d3d12 reque
     MK_REQUIRE(!presentation.report().swapchain_plan.public_native_handles_exposed);
 }
 
+MK_TEST("win32 desktop presentation public compute morph rows stay backend neutral") {
+    mirakana::Win32DesktopPresentationVulkanSceneRendererDesc vulkan_desc;
+    vulkan_desc.compute_morph_vertex_shader.entry_point = "vs_compute_morph";
+    vulkan_desc.compute_morph_shader.entry_point = "cs_compute_morph_position";
+    vulkan_desc.compute_morph_mesh_bindings.push_back({});
+    vulkan_desc.compute_morph_skinned_shader.entry_point = "cs_compute_morph_skinned_position";
+    vulkan_desc.compute_morph_skinned_mesh_bindings.push_back({});
+
+    const mirakana::rhi::FenceValue graphics_fence{.value = 7, .queue = mirakana::rhi::QueueKind::graphics};
+    mirakana::Win32DesktopPresentationSceneGpuBindingStats stats;
+    stats.compute_morph_queue_waits = 1;
+    stats.compute_morph_async_compute_queue_submits = 1;
+    stats.compute_morph_async_last_graphics_submitted_fence_value = graphics_fence.value;
+
+    MK_REQUIRE(vulkan_desc.compute_morph_vertex_shader.entry_point == std::string_view{"vs_compute_morph"});
+    MK_REQUIRE(vulkan_desc.compute_morph_shader.entry_point == std::string_view{"cs_compute_morph_position"});
+    MK_REQUIRE(vulkan_desc.compute_morph_mesh_bindings.size() == 1);
+    MK_REQUIRE(vulkan_desc.compute_morph_skinned_shader.entry_point ==
+               std::string_view{"cs_compute_morph_skinned_position"});
+    MK_REQUIRE(vulkan_desc.compute_morph_skinned_mesh_bindings.size() == 1);
+    MK_REQUIRE(stats.compute_morph_queue_waits == 1);
+    MK_REQUIRE(stats.compute_morph_async_compute_queue_submits == 1);
+    MK_REQUIRE(stats.compute_morph_async_last_graphics_submitted_fence_value == graphics_fence.value);
+}
+
 MK_TEST("win32 desktop presentation can create d3d12 rhi frame renderer when shader bytecode is supplied") {
     if (!d3d12_presentation_test_enabled()) {
         return;

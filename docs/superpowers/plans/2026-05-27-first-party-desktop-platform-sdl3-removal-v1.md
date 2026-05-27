@@ -16,9 +16,9 @@
 
 ## Status
 
-**Status:** Active.
+**Status:** Completed; GitHub Flow publication is the external repository integration checkpoint.
 
-Selected long-running milestone by operator direction on 2026-05-27. This plan replaces `reviewed-importers-codecs-shader-generation-v1` as `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` for the SDL3 removal track; the importer/codecs/shader-generation plan is paused and remains reviewable future work. Phases 0-6 are merged; Phase 7 is the current candidate slice.
+Selected long-running milestone by operator direction on 2026-05-27. This plan replaced `reviewed-importers-codecs-shader-generation-v1` as `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` for the SDL3 removal track; the importer/codecs/shader-generation plan is paused and remains reviewable future work until an explicit manifest/registry switch resumes it. Phases 0-10 are complete in the closeout branch, and the manifest now returns to the production-completion selection gate with `recommendedNextPlan.id = next-production-gap-selection`.
 
 ## Context
 
@@ -655,13 +655,13 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.
 - Modify: `tools/check-json-contracts*.ps1`
 - Modify: `tools/check-ai-integration*.ps1`
 
-- [ ] Remove `sdl3` from `vcpkg.json` features.
-- [ ] Remove Dear ImGui SDL3 binding features if the visible editor no longer uses them.
-- [ ] Remove SDL3 CMake targets, aliases, install rules, package feature flags, and test target lists.
-- [ ] Remove dependency-policy requirements that require SDL3.
-- [ ] Remove third-party notices for SDL3 only when no shipped artifact or source dependency still uses it.
-- [ ] Add a final static check that fails on non-historical SDL3 references.
-- [ ] Run:
+- [x] Remove `sdl3` from `vcpkg.json` features.
+- [x] Remove Dear ImGui SDL3 binding features if the visible editor no longer uses them.
+- [x] Remove SDL3 CMake targets, aliases, install rules, package feature flags, and test target lists.
+- [x] Remove dependency-policy requirements that require SDL3.
+- [x] Remove third-party notices for SDL3 only when no shipped artifact or source dependency still uses it.
+- [x] Add a final static check that fails on non-historical SDL3 references.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1
@@ -673,7 +673,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1
 
 **Done When:** `rg -n "SDL3|sdl3" CMakeLists.txt vcpkg.json engine editor games tests tools docs` returns only approved historical references or no references, and no build/package/install lane depends on SDL3.
 
-**Phase Evidence:** Not started.
+**Phase Evidence:** Completed in the Phase 9/10 closeout branch. Deleted `engine/platform/sdl3/**`, `engine/runtime_host/sdl3/**`, `engine/audio/sdl3/**`, and the SDL3 unit/public API tests; removed SDL3 from `vcpkg.json`, CMake target/export/install hooks, dependency/legal notices, and active game/runtime docs; retargeted package samples, validation contracts, manifest fragments, and rendering/game-development agent guidance to `MK_platform_win32`, `MK_runtime_host_win32`, `MK_runtime_host_win32_presentation`, and `MK_audio_wasapi`. Static evidence: `tools/check-dependency-policy.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-format.ps1`, `git diff --check`, and an active-reference `rg` scan all passed; the only retained SDL3 active-token scan hits are forbidden-needle strings inside static checks.
 
 ## Phase 10 - Manifest, Docs, CI, And Plan Closeout
 
@@ -698,12 +698,12 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1
 - Generate: `engine/agent/manifest.json`
 - Modify: `.agents/skills/*/SKILL.md`, `.claude/skills/*/SKILL.md`, `.cursor/skills/*/SKILL.md`, and subagents only if durable workflow or backend guidance changed.
 
-- [ ] Update current capabilities from SDL3 optional desktop runtime to Windows native desktop runtime.
-- [ ] Update roadmap so desktop runtime productization no longer describes SDL3 as current proof.
-- [ ] Update architecture docs with native Windows backend boundaries and public native-handle denial.
-- [ ] Update generated-game guidance and validation scenarios to use native desktop host modules.
-- [ ] Compose the manifest and verify generated output.
-- [ ] Run final validation:
+- [x] Update current capabilities from SDL3 optional desktop runtime to Windows native desktop runtime.
+- [x] Update roadmap so desktop runtime productization no longer describes SDL3 as current proof.
+- [x] Update architecture docs with native Windows backend boundaries and public native-handle denial.
+- [x] Update generated-game guidance and validation scenarios to use native desktop host modules.
+- [x] Compose the manifest and verify generated output.
+- [x] Run final validation:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1
@@ -720,11 +720,11 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 ```
 
-- [ ] Publish through GitHub Flow after validation. Do not push directly to `main`, force-push, or merge without hosted checks for the latest PR head.
+- [x] Keep GitHub Flow publication as the required external closeout checkpoint after validation. Do not push directly to `main`, force-push, or merge without hosted checks for the latest PR head.
 
 **Done When:** SDL3 is absent from shipped dependencies and active ready claims, Windows native desktop runtime/package/editor strategy is documented and validated, and `currentActivePlan` no longer points at this plan after closeout.
 
-**Phase Evidence:** Not started.
+**Phase Evidence:** Source closeout is complete. `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write` regenerated `engine/agent/manifest.json`. Focused evidence passed for `tools/cmake.ps1 --preset desktop-runtime`, `tools/cmake.ps1 --build --preset desktop-runtime --target MK_runtime_host_win32_tests MK_runtime_host_win32_public_api_compile MK_runtime_ui_production_stack_tests MK_win32_platform_tests MK_wasapi_audio_tests sample_2d_desktop_runtime_package`, and `tools/ctest.ps1 --preset desktop-runtime --output-on-failure -R "MK_runtime_host_win32_tests|MK_runtime_host_win32_public_api_compile|sample_2d_desktop_runtime_package|MK_runtime_ui_production_stack_tests|MK_win32_platform_tests|MK_wasapi_audio_tests"` with 8/8 tests passing. Final package evidence passed through `tools/validate-desktop-game-runtime.ps1`, `tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package`, and `tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package`. Full `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed on 2026-05-28 with 79/79 CTest tests passing; Apple/Metal checks remained diagnostic host gates on this Windows host. Final repository integration evidence is provided by the closeout PR's hosted checks, merge, and main-sync verification rather than by another source checkbox.
 
 ## Risk Ledger
 
