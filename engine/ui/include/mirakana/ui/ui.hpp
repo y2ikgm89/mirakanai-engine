@@ -219,9 +219,57 @@ struct TextLayoutRequest {
     float max_width{0.0F};
 };
 
+struct TextShapingSegmentEvidence {
+    std::size_t start_byte{0};
+    std::size_t end_byte{0};
+    TextDirection direction{TextDirection::left_to_right};
+    std::string script_tag;
+    std::string language_tag;
+};
+
+enum class TextBoundaryEvidenceKind : std::uint8_t {
+    grapheme_cluster,
+    word,
+    line_break,
+    bidi_run,
+};
+
+struct TextShapedGlyph {
+    std::uint32_t glyph{0};
+    std::size_t cluster_byte_offset{0};
+    float advance_x{0.0F};
+    float advance_y{0.0F};
+    float offset_x{0.0F};
+    float offset_y{0.0F};
+    std::string font_family;
+};
+
+struct TextBoundaryEvidence {
+    TextBoundaryEvidenceKind kind{TextBoundaryEvidenceKind::grapheme_cluster};
+    std::size_t start_byte{0};
+    std::size_t end_byte{0};
+};
+
+struct TextFontFallbackEvidence {
+    std::size_t cluster_byte_offset{0};
+    std::string requested_font_family;
+    std::string resolved_font_family;
+    bool fallback_used{false};
+};
+
 struct TextLayoutRun {
     std::string text;
     Rect bounds;
+    std::vector<TextShapingSegmentEvidence> segments;
+    std::vector<TextShapedGlyph> glyphs;
+    std::vector<TextBoundaryEvidence> boundaries;
+    std::vector<TextFontFallbackEvidence> fallback_rows;
+};
+
+struct TextLineBreakRun {
+    std::string text;
+    Rect bounds;
+    std::vector<TextBoundaryEvidence> boundaries;
 };
 
 struct MonospaceTextLayoutPolicy {
@@ -241,7 +289,7 @@ class ITextShapingAdapter {
 class ILineBreakingAdapter {
   public:
     virtual ~ILineBreakingAdapter() = default;
-    [[nodiscard]] virtual std::vector<TextLayoutRun> break_lines(const TextLayoutRequest& request) = 0;
+    [[nodiscard]] virtual std::vector<TextLineBreakRun> break_lines(const TextLayoutRequest& request) = 0;
 };
 
 struct FontRasterizationRequest {
@@ -250,9 +298,33 @@ struct FontRasterizationRequest {
     float pixel_size{0.0F};
 };
 
+enum class FontRasterizationPixelFormat : std::uint8_t {
+    unknown,
+    alpha8,
+    rgba8_unorm,
+};
+
+struct GlyphRasterBitmap {
+    std::uint32_t width{0};
+    std::uint32_t height{0};
+    FontRasterizationPixelFormat pixel_format{FontRasterizationPixelFormat::unknown};
+    std::vector<std::byte> pixels;
+};
+
+struct GlyphRasterMetrics {
+    float width{0.0F};
+    float height{0.0F};
+    float bearing_x{0.0F};
+    float bearing_y{0.0F};
+    float advance_x{0.0F};
+    float advance_y{0.0F};
+};
+
 struct GlyphAtlasAllocation {
     std::uint32_t glyph{0};
     Rect atlas_bounds;
+    GlyphRasterBitmap bitmap;
+    GlyphRasterMetrics metrics;
 };
 
 class IFontRasterizerAdapter {
