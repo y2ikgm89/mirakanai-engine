@@ -16,6 +16,11 @@
       "purpose": "Check public headers and backend interop boundaries after public API or handle-boundary changes."
     },
     {
+      "name": "win32-platform",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_win32_platform_tests; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R win32_platform; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1",
+      "purpose": "Build and test the Windows-native platform shell foundation, including Win32 runtime/window/message-pump rows and public API boundary checks."
+    },
+    {
       "name": "desktop-gui",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1",
       "purpose": "Build and test optional SDL3, Dear ImGui, editor, and SDL3 audio adapter code."

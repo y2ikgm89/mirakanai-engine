@@ -162,6 +162,21 @@
       "purpose": "Platform-facing contracts. Currently provides VirtualInput for keyboard-style state, VirtualPointerInput for mouse/touch/pen-style pointer state, VirtualGamepadInput for gamepad buttons and axes, DisplayInfo and WindowDisplayState for monitor/DPI/safe-area metadata plus deterministic monitor selection and window placement policy without native handles, mobile lifecycle/orientation/safe-area/touch/storage/permission contracts for Android and Apple adapters, IClipboard and MemoryClipboard for text clipboard workflows, FileDialogRequest/IFileDialogService/MemoryFileDialogService for asynchronous native-style open/save/folder dialog workflows, CursorMode/ICursor/MemoryCursor for cursor visibility, confinement, and relative-input state, VirtualLifecycle for quit, termination, low-memory, background, and foreground lifecycle events, HeadlessWindow, MemoryFileSystem, RootedFileSystem, file watch backend selection with native backend family reporting, deterministic PollingFileWatcher file event scanning, WindowsFileWatcher backed by Win32 API ReadDirectoryChangesW event scanning behind PIMPL, LinuxFileWatcher backed by inotify event scanning, MacOSFileWatcher backed by FSEvents event scanning, host-unavailable native watcher diagnostics, shell-free ProcessCommand validation, a recording process runner, and a Windows CreateProcessW runner that captures stdout, stderr, exit code, and launch diagnostics without exposing native handles."
     },
     {
+      "name": "MK_platform_win32",
+      "path": "engine/platform/win32",
+      "status": "windows-native-shell-foundation",
+      "dependencies": [
+        "MK_platform"
+      ],
+      "publicHeaders": [
+        "engine/platform/win32/include/mirakana/platform/win32/win32_cursor.hpp",
+        "engine/platform/win32/include/mirakana/platform/win32/win32_event_pump.hpp",
+        "engine/platform/win32/include/mirakana/platform/win32/win32_runtime.hpp",
+        "engine/platform/win32/include/mirakana/platform/win32/win32_window.hpp"
+      ],
+      "purpose": "Windows-native platform adapter foundation for the SDL3 removal track. It registers private Win32 window classes, creates hidden or visible native windows through implementation-only Win32 APIs, pumps copied Win32 message rows into first-party Win32WindowEvent values, maps resize/move/focus/minimize/close/display/DPI rows into MK_platform window and lifecycle state, exposes only first-party values plus opaque integer tokens for diagnostics, and plans cursor modes without exposing HWND, HINSTANCE, HCURSOR, MSG, WPARAM, LPARAM, COM, or SDL3 types in public headers. Keyboard/mouse input, clipboard, file dialogs, production text input, runtime host wiring, D3D12/Vulkan presentation adoption, editor shell migration, and SDL3 deletion remain later phases."
+    },
+    {
       "name": "MK_runtime",
       "path": "engine/runtime",
       "status": "ready-runtime-resource-v2-gameplay-interaction-framework",

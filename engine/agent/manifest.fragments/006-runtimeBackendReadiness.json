@@ -198,6 +198,16 @@
         "notes": "Virtual input, lifecycle, mobile lifecycle/touch/orientation/safe-area/storage/permission contracts, filesystem, process, file watcher selection, and deterministic memory/rooted services are the generated-game baseline."
       },
       {
+        "name": "win32-native",
+        "module": "MK_platform_win32",
+        "status": "validated-window-shell-foundation",
+        "hosts": [
+          "windows"
+        ],
+        "validation": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_win32_platform_tests; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R win32_platform; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1",
+        "notes": "Windows-native runtime, hidden native window creation, resize/move/close handling, display-state query, copied message pump rows, and cursor-mode planning are validated behind first-party MK_platform values. Input, clipboard, file dialog, text input, runtime host adoption, presentation, editor migration, audio, and SDL3 deletion remain later SDL3-removal phases."
+      },
+      {
         "name": "sdl3-desktop",
         "module": "MK_platform_sdl3",
         "status": "validated-optional-desktop-runtime",
