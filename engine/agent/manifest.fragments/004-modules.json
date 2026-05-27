@@ -83,6 +83,19 @@
       "purpose": "Optional SDL3 desktop audio adapter. Currently provides SdlAudioRuntime for SDL_INIT_AUDIO lifetime and SdlAudioDevice for default playback streams through SDL_OpenAudioDeviceStream, pause/resume/clear controls, queued-frame reporting, silence queuing, and interleaved float PCM queuing while keeping SDL stream and device handles private. sdl3_audio_device_lifecycle_evidence records logical-device, audio-stream, queueing, pause/resume, clear, callback-free, host-evidence, and native-handle-free lifecycle rows for AudioProductionReviewRequest without exposing SDL handles."
     },
     {
+      "name": "MK_audio_wasapi",
+      "path": "engine/audio/wasapi",
+      "status": "windows-shared-mode-playback-foundation",
+      "dependencies": [
+        "MK_audio",
+        "Windows SDK WASAPI/Core Audio"
+      ],
+      "publicHeaders": [
+        "engine/audio/wasapi/include/mirakana/audio/wasapi/wasapi_audio_device.hpp"
+      ],
+      "purpose": "Windows WASAPI shared-mode audio adapter. Currently provides WasapiAudioRuntime for COM startup planning/lifetime, WasapiAudioDevice for default eRender/eConsole shared-mode playback through IAudioClient and IAudioRenderClient, queued-frame reporting through GetCurrentPadding, silence submission through AUDCLNT_BUFFERFLAGS_SILENT, interleaved float PCM queueing with float32 or pcm16 device-format handling, pause/resume/clear controls through Stop/Start/Reset, and side-effect-free planning rows for runtime startup, shared-mode stream setup, and endpoint queue writes. wasapi_audio_device_lifecycle_evidence records logical-device, audio-stream, queueing, pause/resume, clear, callback-free, host-evidence, and native-handle-free lifecycle rows for AudioProductionReviewRequest without exposing COM, endpoint, or WASAPI handles. It does not claim exclusive mode, capture, device-selection UI, spatial audio, hotplug parity, or broad latency readiness."
+    },
+    {
       "name": "MK_math",
       "path": "engine/math",
       "status": "implemented",

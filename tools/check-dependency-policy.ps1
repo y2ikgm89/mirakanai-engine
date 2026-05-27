@@ -208,6 +208,8 @@ Assert-TextContains "tools/validate.ps1" "check-native-desktop-contracts.ps1" "v
 Assert-TextContains "engine/agent/manifest.json" "nativeDesktopContractCheck" "engine manifest commands"
 Assert-TextContains "engine/runtime/network/enet/CMakeLists.txt" "winmm" "ENet Windows SDK link closure"
 Assert-TextContains "engine/runtime/network/enet/CMakeLists.txt" "ws2_32" "ENet Windows SDK link closure"
+Assert-TextContains "engine/audio/wasapi/CMakeLists.txt" "ole32" "WASAPI Windows SDK link closure"
+Assert-TextContains "docs/dependencies.md" "WASAPI" "dependency docs"
 Assert-TextContains "engine/rhi/metal/CMakeLists.txt" 'find_library\(MK_APPLE_FOUNDATION_FRAMEWORK Foundation REQUIRED\)' "Metal Apple SDK linkage"
 Assert-TextContains "engine/rhi/metal/CMakeLists.txt" '\$\{MK_APPLE_FOUNDATION_FRAMEWORK\}' "Metal Apple SDK linkage"
 

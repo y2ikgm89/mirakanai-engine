@@ -153,6 +153,7 @@ rg -n "SDL3|sdl3|MK_platform_sdl3|MK_audio_sdl3|MK_runtime_host_sdl3|MK_ENABLE_D
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`: pass.
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`: pass.
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`: pass; 96/96 CTest tests passed, including `MK_wasapi_audio_tests`.
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`: pass.
   - `git diff --check`: pass.
 
@@ -333,15 +334,15 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.
 - Modify: `CMakeLists.txt`
 - Create: `tests/unit/wasapi_audio_tests.cpp`
 - Modify: `tools/check-dependency-policy.ps1`
-- Modify later: `docs/dependencies.md`
-- Modify later: `THIRD_PARTY_NOTICES.md`
+- Modify: `docs/dependencies.md`
+- No change: `THIRD_PARTY_NOTICES.md` because WASAPI is an official Windows SDK surface and no third-party redistributable was added.
 
-- [ ] Re-check WASAPI `IAudioClient`, `IAudioRenderClient`, stream management, COM initialization, shared-mode render stream, device invalidation, and thread-affinity docs.
-- [ ] Add RED tests for audio format negotiation rows, shared-mode stream plan rows, queued-frame/underrun diagnostics, silence submission, pause/resume/clear, and adapter lifecycle.
-- [ ] Add `mirakana_audio_wasapi` and `MK_audio_wasapi` targets for Windows only.
-- [ ] Keep COM interfaces, endpoint IDs, and device pointers private to implementation files.
-- [ ] Implement default playback shared-mode stream first. Do not claim exclusive mode, capture, device selection UI, spatial audio, or broad latency readiness.
-- [ ] Run:
+- [x] Re-check WASAPI `IAudioClient`, `IAudioRenderClient`, stream management, COM initialization, shared-mode render stream, device invalidation, and thread-affinity docs.
+- [x] Add RED tests for audio format negotiation rows, shared-mode stream plan rows, queued-frame/underrun diagnostics, silence submission, pause/resume/clear, and adapter lifecycle.
+- [x] Add `mirakana_audio_wasapi` and `MK_audio_wasapi` targets for Windows only.
+- [x] Keep COM interfaces, endpoint IDs, and device pointers private to implementation files.
+- [x] Implement default playback shared-mode stream first. Do not claim exclusive mode, capture, device selection UI, spatial audio, or broad latency readiness.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_audio_tests MK_wasapi_audio_tests
@@ -351,7 +352,24 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.
 
 **Done When:** Selected audio package/runtime paths can use WASAPI for default playback evidence without SDL3 audio.
 
-**Phase Evidence:** Not started.
+**Phase Evidence:** Phase 4 implemented in isolated worktree `codex/wasapi-audio-foundation-v1`.
+
+- Official practice re-check: Context7 selected Microsoft Learn Win32 API documentation for WASAPI shared-mode render streams. The implementation follows the documented COM-initialized `IMMDeviceEnumerator` default `eRender` / `eConsole` endpoint flow, `IAudioClient::GetMixFormat`, one-time shared-mode `IAudioClient::Initialize`, `IAudioClient::GetBufferSize`, `IAudioClient::GetCurrentPadding`, `IAudioRenderClient::GetBuffer` / `ReleaseBuffer`, `AUDCLNT_BUFFERFLAGS_SILENT`, and `Start` / `Stop` / `Reset` lifecycle controls. COM, endpoint, `WAVEFORMATEX`, and render-client details stay private to implementation files.
+- RED evidence: after adding `tests/unit/wasapi_audio_tests.cpp` and `MK_wasapi_audio_tests`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_wasapi_audio_tests` failed on missing `mirakana/audio/wasapi/wasapi_audio_device.hpp`, proving the new Phase 4 contract did not already exist.
+- Implementation: added Windows-only `engine/audio/wasapi` with `WasapiAudioRuntime`, `WasapiAudioDevice`, `plan_wasapi_audio_runtime`, `plan_wasapi_shared_mode_stream`, `plan_wasapi_render_queue`, and `wasapi_audio_device_lifecycle_evidence`. The adapter can open the default shared-mode render endpoint, report queued frames, queue silence, queue interleaved float PCM into float32 or pcm16 endpoint formats, pause/resume, and clear via WASAPI while public headers expose only first-party values.
+- Boundary and dependency policy: added `mirakana_audio_wasapi` / `MK_audio_wasapi`, installed SDK headers, optional install-lane target closure for `validate-network-enet.ps1` and `validate-physics-jolt.ps1`, public API boundary coverage for `engine/audio/wasapi/include`, and dependency-policy evidence for Windows SDK `ole32`. No third-party dependency or notice was added.
+- Agent surface drift: updated `engine/agent/manifest.fragments/004-modules.json`, `006-runtimeBackendReadiness.json`, `009-validationRecipes.json`, and `014-gameCodeGuidance.json`, then regenerated `engine/agent/manifest.json`. Updated audio production static needles to cover WASAPI.
+- Focused validation:
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_audio_tests MK_wasapi_audio_tests`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "audio|wasapi"`: pass after building existing `MK_sdl3_audio_tests` and `sample_ui_audio_assets` targets matched by that regex.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/audio/wasapi/src/wasapi_audio_device.cpp,tests/unit/wasapi_audio_tests.cpp`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-native-desktop-contracts.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`: pass after `tools/format.ps1`.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`: pass.
 
 ## Phase 5 - `MK_runtime_host_win32` And D3D12 Presentation
 

@@ -15,3 +15,7 @@ MK_apply_common_target_options(MK_audio)
 if(MK_DESKTOP_RUNTIME_ENABLED)
     add_subdirectory(sdl3)
 endif()
+
+if(WIN32)
+    add_subdirectory(wasapi)
+endif()
