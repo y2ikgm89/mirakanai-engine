@@ -187,8 +187,13 @@
     },
     {
       "name": "audio-production",
-      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R \"MK_audio_tests|MK_sdl3_audio_tests\"",
-      "purpose": "Validate Audio Production Playback/Streaming/DSP/Spatialization Evidence v1, including review_audio_production_readiness over decoded source, streaming chunk, conversion, budget, DSP graph, spatial/listener, HRTF host-gate, device lifecycle, unsupported-claim, side-effect, selected-package, production-readiness, diagnostic, and replay-hash rows plus SDL3 callback-free device lifecycle evidence without broad codec, middleware, HRTF execution, background streaming, native-handle, or general production audio quality claims."
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R \"MK_audio_tests|MK_sdl3_audio_tests|MK_wasapi_audio_tests\"",
+      "purpose": "Validate Audio Production Playback/Streaming/DSP/Spatialization Evidence v1, including review_audio_production_readiness over decoded source, streaming chunk, conversion, budget, DSP graph, spatial/listener, HRTF host-gate, device lifecycle, unsupported-claim, side-effect, selected-package, production-readiness, diagnostic, and replay-hash rows plus SDL3 and WASAPI callback-free device lifecycle evidence without broad codec, middleware, HRTF execution, background streaming, native-handle, or general production audio quality claims."
+    },
+    {
+      "name": "wasapi-audio",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_audio_tests MK_wasapi_audio_tests; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R \"MK_audio_tests|MK_wasapi_audio_tests\"",
+      "purpose": "Validate the Windows-native MK_audio_wasapi shared-mode playback foundation, including COM/default-endpoint planning rows, IAudioClient/IAudioRenderClient private adapter contracts, queue-space clamping, silence submission, pause/resume/clear lifecycle evidence, and public-header native-handle isolation without SDL3 audio."
     },
     {
       "name": "desktop-runtime-2d-audio-production-proof",

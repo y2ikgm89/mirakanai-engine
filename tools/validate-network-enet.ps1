@@ -19,6 +19,7 @@ $sdkTargets = @(
     "mirakana_animation",
     "mirakana_assets",
     "MK_audio",
+    "mirakana_audio_wasapi",
     "mirakana_core",
     "mirakana_math",
     "mirakana_navigation",

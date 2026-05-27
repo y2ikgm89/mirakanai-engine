@@ -27,6 +27,7 @@ $publicRoots = @(
     "engine/scene_renderer/include",
     "engine/assets/include",
     "engine/audio/include",
+    "engine/audio/wasapi/include",
     "engine/physics/include",
     "engine/physics/jolt/include",
     "engine/navigation/include",

@@ -7,6 +7,7 @@ Phase 6 selected package evidence is implemented for first-party audio productio
 ## Official Sources Checked
 
 - SDL3 official documentation through Context7 (`/libsdl-org/sdl`) for `SDL_OpenAudioDeviceStream`, `SDL_PutAudioStreamData`, `SDL_GetAudioStreamQueued`, and `SDL_ResumeAudioStreamDevice`: SDL3 audio playback flows through `SDL_AudioStream`, opens a logical playback device, queues PCM data into the stream, and starts paused until resumed. Callback use is optional; queue-style playback can use `SDL_PutAudioStreamData` directly.
+- Microsoft Learn Win32 Core Audio / WASAPI documentation for `IAudioClient`, `IAudioRenderClient`, shared-mode stream initialization, `GetCurrentPadding`, `GetBuffer`, `ReleaseBuffer`, `AUDCLNT_BUFFERFLAGS_SILENT`, and COM initialization: Windows native playback flows through the default `eRender` / `eConsole` endpoint, private `IAudioClient` and `IAudioRenderClient` ownership, explicit queue-space checks, and `Start` / `Stop` / `Reset` lifecycle controls.
 - Existing project dependency policy was checked before this slice: no OpenAL, miniaudio, Steam Audio, codec, or HRTF dependency was selected. Those remain future dependency/legal/host-gated adapter work.
 
 ## Implemented Contract
@@ -14,6 +15,7 @@ Phase 6 selected package evidence is implemented for first-party audio productio
 - `mirakana::AudioProductionReviewRequest` gathers reviewed decoded-source, streaming-chunk, format-conversion, voice/bus budget, DSP graph, listener/spatial source, device lifecycle, unsupported-claim, and side-effect evidence.
 - `mirakana::review_audio_production_readiness` returns `AudioProductionReadinessStatus::ready`, `host_evidence_required`, or `invalid_request`, plus exact row counters, host-gate booleans, diagnostics, side-effect flags, selected-package readiness, production readiness, and replay hash.
 - `mirakana::sdl3_audio_device_lifecycle_evidence` records SDL3 logical-device, audio-stream, queueing, pause/resume, clear, callback-free, and native-handle-free lifecycle evidence without exposing SDL handles.
+- `mirakana::wasapi_audio_device_lifecycle_evidence` records Windows WASAPI logical-device, shared-mode audio-stream, render-client queueing, pause/resume, clear, callback-free, and native-handle-free lifecycle evidence without exposing COM, endpoint, or WASAPI handles.
 - `sample_2d_desktop_runtime_package` and `sample_generated_desktop_runtime_3d_package` emit `audio_production_*` counters for selected package proof. The current package proof intentionally reports `audio_production_status=host_evidence_required`, selected package ready, device/HRTF host evidence missing, side effects zero, diagnostics `2`, and a positive replay hash.
 
 ## Non-Claims

@@ -897,6 +897,14 @@ if(BUILD_TESTING)
         target_include_directories(MK_win32_platform_tests PRIVATE tests)
         MK_apply_common_target_options(MK_win32_platform_tests)
         add_test(NAME MK_win32_platform_tests COMMAND MK_win32_platform_tests)
+
+        add_executable(MK_wasapi_audio_tests
+            tests/unit/wasapi_audio_tests.cpp
+        )
+        target_link_libraries(MK_wasapi_audio_tests PRIVATE MK_audio_wasapi)
+        target_include_directories(MK_wasapi_audio_tests PRIVATE tests)
+        MK_apply_common_target_options(MK_wasapi_audio_tests)
+        add_test(NAME MK_wasapi_audio_tests COMMAND MK_wasapi_audio_tests)
     endif()
 
     if(MK_DESKTOP_RUNTIME_ENABLED)
@@ -987,6 +995,7 @@ MK_set_export_name(MK_tools tools)
 MK_set_export_name(MK_ui ui)
 MK_set_export_name(MK_ui_renderer ui_renderer)
 MK_set_export_name(MK_audio_sdl3 audio_sdl3)
+MK_set_export_name(MK_audio_wasapi audio_wasapi)
 MK_set_export_name(MK_platform_sdl3 platform_sdl3)
 MK_set_export_name(MK_editor_core editor_core)
 
@@ -1026,7 +1035,7 @@ set(MK_RUNTIME_TARGETS
     sample_ui_audio_assets
 )
 
-foreach(optional_target IN ITEMS mirakana_rhi_d3d12 mirakana_audio_sdl3 mirakana_platform_sdl3
+foreach(optional_target IN ITEMS mirakana_rhi_d3d12 mirakana_audio_sdl3 mirakana_audio_wasapi mirakana_platform_sdl3
         mirakana_platform_win32 MK_runtime_host_sdl3 MK_runtime_host_sdl3_presentation MK_editor_core
         mirakana_physics_jolt mirakana_runtime_network_enet)
     if(TARGET ${optional_target})
@@ -1320,6 +1329,10 @@ endif()
 
 if(TARGET MK_audio_sdl3)
     install(DIRECTORY engine/audio/sdl3/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+endif()
+
+if(TARGET MK_audio_wasapi)
+    install(DIRECTORY engine/audio/wasapi/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 endif()
 
 if(TARGET MK_physics_jolt)

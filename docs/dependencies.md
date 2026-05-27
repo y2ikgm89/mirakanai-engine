@@ -16,8 +16,11 @@ Update the baseline only as an explicit dependency-maintenance task: update the 
 
 None are required for the default headless build.
 
-On Windows, the default validation build uses Windows SDK system libraries for the D3D12 backend and tests:
+On Windows, the default validation build uses Windows SDK system libraries for the Win32 platform adapter, WASAPI audio adapter, D3D12 backend, and tests:
 
+- `ole32`
+- `shell32`
+- `user32`
 - `d3d12`
 - `dxgi`
 - `d3dcompiler`
@@ -196,6 +199,7 @@ Validated local package versions:
 
 - vcpkg manifest mode: https://learn.microsoft.com/en-us/vcpkg/concepts/manifest-mode
 - vcpkg CMake integration: https://learn.microsoft.com/en-us/vcpkg/users/buildsystems/cmake-integration
+- Windows Core Audio / WASAPI: https://learn.microsoft.com/en-us/windows/win32/coreaudio/wasapi
 - SDL3: https://github.com/libsdl-org/SDL
 - SDL3 platforms: https://wiki.libsdl.org/SDL3/README-platforms
 - SDL3 audio streams: https://wiki.libsdl.org/SDL3/SDL_OpenAudioDeviceStream

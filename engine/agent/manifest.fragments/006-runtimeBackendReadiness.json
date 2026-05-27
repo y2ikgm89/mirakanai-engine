@@ -69,6 +69,16 @@
         ],
         "validation": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1",
         "notes": "Optional adapter opens SDL3 default playback streams and queues silence or interleaved float PCM while SDL handles remain private. sdl3_audio_device_lifecycle_evidence records callback-free SDL3 logical-device/audio-stream/queueing/pause-resume/clear evidence for audio production review; it is not device hotplug/selection parity, codec execution, HRTF execution, or public SDL/native handle access."
+      },
+      {
+        "name": "wasapi-shared-mode",
+        "module": "MK_audio_wasapi",
+        "status": "validated-windows-native-audio-foundation",
+        "hosts": [
+          "windows"
+        ],
+        "validation": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_audio_tests MK_wasapi_audio_tests; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R \"MK_audio_tests|MK_wasapi_audio_tests\"",
+        "notes": "Windows-native adapter plans COM startup, default render endpoint use, shared-mode IAudioClient stream setup, render-client queue writes, silence packets, pause/resume/clear controls, and callback-free lifecycle evidence while COM and WASAPI handles remain private. It is not exclusive-mode audio, capture, device-selection UI, spatial audio, hotplug parity, broad latency readiness, or cross-platform audio parity."
       }
     ],
     "ui": [
