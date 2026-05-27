@@ -59,16 +59,30 @@ Official documentation rechecked for this plan selection:
 | `runtime-ui-accessibility-publication-v1` | Accessibility payload publication and platform bridge evidence. | `plan_accessibility_publish` and `publish_accessibility_payload` validate first-party payloads before adapter dispatch. | Need OS bridge host evidence, role/name/state/focus/action/live-region counters, keyboard/focus pattern evidence, and per-platform host gates. |
 | `runtime-ui-renderer-atlas-handoff-v1` | Glyph atlas/image atlas/renderer upload handoff. | UI atlas metadata/tooling and native UI atlas package metadata exist; runtime UI production stack has renderer handoff evidence rows only. | Need package-visible glyph atlas placement, budget/eviction, texture upload handoff, renderer-owned submission counters, and unsupported broad text/image rendering claims. |
 
+## Baseline Evidence Map - `runtime-ui-text-stack-audit-v1`
+
+| Category | Supported baseline | Evidence | Must remain unclaimed |
+| --- | --- | --- | --- |
+| Value-only retained UI workbench | Dense menu, inventory, equipment, shop, simulation dashboard, text-input intent, focus, localization identity, and accessibility identity rows with zero renderer/text/font/IME/accessibility/image/native adapter invocation counters. | `RuntimeUiWorkbenchDocument` / `plan_runtime_ui_workbench`; `sample_2d_desktop_runtime_package --require-runtime-ui-workbench`; `docs/current-capabilities.md` and `docs/ai-game-development.md` runtime UI workbench rows. | Rendering, shaping, rasterization, IME sessions, OS accessibility publication, image decoding, native platform work, UI middleware adoption, or broad production UI readiness. |
+| Production stack evidence rows | Six first-party evidence rows for text shaping, font rasterization, glyph atlas, renderer submission, IME, and accessibility. The selected sample reports `host_evidence_required`, four ready rows, two host-gated rows, selected package counters, zero adapter/native/renderer-upload invocation counters, and replay hash evidence. | `RuntimeUiProductionEvidenceRow`, `RuntimeUiProductionStackRequest`, `RuntimeUiProductionStackPlan`, `plan_runtime_ui_production_stack`, `MK_runtime_ui_production_stack_tests`, and `sample_2d_desktop_runtime_package --require-runtime-ui-production-stack`. | Production text shaping, real font loading/rasterization, native IME parity, OS accessibility publication, renderer texture upload execution, UI middleware, or broad platform UI parity. |
+| First-party adapter contracts | `MK_ui` exposes value-based `ITextShapingAdapter`, `IFontRasterizerAdapter`, `IImageDecodingAdapter`, `IImeAdapter`, `IAccessibilityAdapter`, `IPlatformIntegrationAdapter`, and `IClipboardTextAdapter` plus request/result planners that validate before adapter dispatch. | `engine/ui/include/mirakana/ui/ui.hpp`, `engine/ui/src/ui.cpp`, and focused coverage in `MK_ui_renderer_tests`. | Dependency types, OS/native handles, renderer/RHI handles, Dear ImGui/SDL3 types, UI middleware APIs, and game-local bypass systems in gameplay-facing UI APIs. |
+| SDL3 platform adapter proof | SDL3 text input begin/end, text input area, text editing to first-party IME composition, committed text rows, and clipboard command bridges are behind `MK_platform_sdl3` adapters and tests. | `engine/platform/sdl3/src/sdl_ui_platform_integration.cpp`, `engine/platform/sdl3/src/sdl_clipboard.cpp`, and `MK_platform_sdl3_tests` coverage in `tests/unit/sdl3_platform_tests.cpp`. | Win32/TSF, Cocoa, ibus/Fcitx, Android, iOS, candidate UI parity, virtual keyboard behavior, or cross-platform IME parity inferred from SDL3 proof. |
+| Renderer atlas metadata bridge | `UiRendererImagePalette` and `UiRendererGlyphAtlasPalette` can resolve already-cooked `GameEngine.UiAtlas.v1` image/glyph metadata into sprite commands and report missing/resolved glyph counters. | `build_ui_renderer_image_palette_from_runtime_ui_atlas`, `build_ui_renderer_glyph_atlas_palette_from_runtime_ui_atlas`, `make_ui_text_glyph_sprite_command`, `submit_ui_renderer_submission`, and `MK_ui_renderer_tests`. | Runtime font rasterization, live glyph atlas generation, runtime source image decoding, renderer texture upload as a gameplay API, broad atlas allocation/eviction, Metal overlay readiness, or production UI renderer quality. |
+| Dependency-gated tool adapters | Optional host/tool/editor PNG decode and already-rasterized glyph/image packing paths exist for reviewed `asset-importers`/tooling lanes before cooked package consumption. | `docs/ai-game-development.md` runtime UI guidance and `MK_tools` UI atlas package helpers. | Arbitrary importers, broad codec/source import, SVG/vector parsing, runtime source parsing, live shader generation, or generated-game runtime dependency loading. |
+| Durable non-claim surfaces | Docs, manifest fragments, and package manifests already describe runtime UI production stack evidence as selected package evidence only. | `docs/ui.md`, `engine/agent/manifest.fragments/006-runtimeBackendReadiness.json`, `engine/agent/manifest.fragments/009-validationRecipes.json`, and `games/sample_2d_desktop_runtime_package/game.agent.json`. | Treating value-only rows, SDL3 proof, cooked glyph metadata, or generated-package smokes as broad production text/font/IME/accessibility/platform UI parity. |
+
 ## Files
 
 - Modify: `engine/ui/include/mirakana/ui/*.hpp`
 - Modify: `engine/ui/src/*.cpp`
 - Modify: `engine/ui_renderer/include/mirakana/ui_renderer/*.hpp`
 - Modify: `engine/ui_renderer/src/*.cpp`
-- Modify: `engine/platform_sdl3/**`
-- Modify: `engine/runtime_host_sdl3/**`
+- Modify: `engine/platform/sdl3/**`
+- Modify: `engine/runtime_host/sdl3/**`
 - Modify: `engine/tools/**`
 - Modify: `tests/unit/ui*_tests.cpp`
+- Modify: `tests/unit/runtime_ui_*_tests.cpp`
+- Modify: `tests/unit/sdl3_platform_tests.cpp`
 - Modify: `tests/unit/runtime_host_sdl3_tests.cpp`
 - Modify: `games/sample_2d_desktop_runtime_package/main.cpp`
 - Modify: `games/sample_2d_desktop_runtime_package/game.agent.json`
@@ -91,17 +105,34 @@ Official documentation rechecked for this plan selection:
 
 ## Task 1 - Baseline Runtime UI Evidence Audit
 
-- [ ] Read current `MK_ui`, `MK_ui_renderer`, SDL3 host, package sample, and runtime UI tests related to text shaping, font rasterization, IME, accessibility, image decoding, atlas metadata, and platform integration.
-- [ ] Add a short evidence table to this plan with supported rows, host-gated rows, dependency-gated rows, and unsupported broad UI parity claims.
-- [ ] Run:
+- [x] Read current `MK_ui`, `MK_ui_renderer`, SDL3 host, package sample, and runtime UI tests related to text shaping, font rasterization, IME, accessibility, image decoding, atlas metadata, and platform integration.
+- [x] Add a short evidence table to this plan with supported rows, host-gated rows, dependency-gated rows, and unsupported broad UI parity claims.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_ui_tests MK_ui_renderer_tests MK_runtime_host_sdl3_tests sample_2d_desktop_runtime_package
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_ui_tests|MK_ui_renderer_tests|MK_runtime_host_sdl3_tests"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_ui_workbench_tests MK_runtime_ui_production_stack_tests MK_ui_renderer_tests MK_runtime_host_sdl3_tests sample_2d_desktop_runtime_package
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_ui_workbench_tests|MK_runtime_ui_production_stack_tests|MK_ui_renderer_tests|MK_runtime_host_sdl3_tests"
 ```
 
 Expected: current baseline passes or records exact pre-existing tool/host blockers before implementation.
+
+Validation evidence:
+
+| Command | Result |
+| --- | --- |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1` | Passed; linked worktree, vcpkg junction, CMake 3.31.6, MSVC BuildTools, and clang-format 19.1.5 ready. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_ui_workbench_tests MK_runtime_ui_production_stack_tests MK_ui_renderer_tests MK_runtime_host_sdl3_tests sample_2d_desktop_runtime_package` | Initial attempt failed because `out/build/dev` was absent in the fresh worktree; the plan now includes `tools/cmake.ps1 --preset dev` before build. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev` | Passed; `out/build/dev` generated. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_ui_workbench_tests MK_runtime_ui_production_stack_tests MK_ui_renderer_tests MK_runtime_host_sdl3_tests sample_2d_desktop_runtime_package` | Passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_ui_workbench_tests\|MK_runtime_ui_production_stack_tests\|MK_ui_renderer_tests\|MK_runtime_host_sdl3_tests"` | Passed; 4/4 tests passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1` | Passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | Passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | Passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | Passed. |
+| `git diff --check` | Passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1 -StaticOnly -StaticJobs 1 -StaticCheckTimeoutSeconds 120` | Passed with `validate: static ok`; Windows host keeps Metal/Apple gates diagnostic or host-gated. |
 
 ## Task 2 - RED Tests For Runtime UI Production Gate Expansion
 
