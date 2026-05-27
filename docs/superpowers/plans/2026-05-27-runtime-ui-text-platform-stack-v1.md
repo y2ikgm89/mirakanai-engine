@@ -57,7 +57,7 @@ Official documentation rechecked for this plan selection:
 | `runtime-ui-shaping-raster-adapter-contracts-v1` | Clean-break shaping/raster adapter contracts plus deterministic package counters. | `plan_text_shaping_request`, `shape_text_run`, `plan_font_rasterization_request`, and `rasterize_font_glyph` validate request/result rows around caller-owned adapters. `plan_runtime_ui_production_stack` now separates ready, host-gated, dependency-gated, skipped, adapter-invoked, and unsupported rows before any adapter implementation is promoted. | Need audited HarfBuzz/FreeType-class adapters, glyph cluster/bitmap/atlas execution evidence, legal records, and host/dependency validation before production shaping or rasterization readiness can be claimed. |
 | `runtime-ui-ime-platform-parity-contracts-v1` | SDL3 and platform text input/IME publication lanes. | Existing SDL3 text input/session/event translation rows and committed text application keep SDL3 behind platform adapters. | Need package-visible IME host evidence, text input area/candidate evidence, per-platform non-inference diagnostics, and platform parity rows. |
 | `runtime-ui-accessibility-publication-v1` | Accessibility payload publication and platform bridge evidence. | `plan_accessibility_publish` and `publish_accessibility_payload` validate first-party payloads before adapter dispatch. | Need OS bridge host evidence, role/name/state/focus/action/live-region counters, keyboard/focus pattern evidence, and per-platform host gates. |
-| `runtime-ui-renderer-atlas-handoff-v1` | Glyph atlas/image atlas/renderer upload handoff. | UI atlas metadata/tooling and native UI atlas package metadata exist; runtime UI production stack has renderer handoff evidence rows only. | Need package-visible glyph atlas placement, budget/eviction, texture upload handoff, renderer-owned submission counters, and unsupported broad text/image rendering claims. |
+| `runtime-ui-renderer-atlas-handoff-v1` | Glyph atlas/image atlas/renderer upload handoff. | `review_ui_renderer_atlas_handoff` now reviews cooked image/glyph atlas metadata, atlas placement/budget/eviction rows, texture handoff review rows, renderer submission counters, unresolved resource counters, unsupported broad-claim rows, side-effect flags, and replay evidence. `sample_2d_desktop_runtime_package --require-runtime-ui-renderer-atlas-handoff` ships `runtime/assets/2d/hud.uiatlas` and proves one image plus one glyph submission through `MK_ui_renderer`. | Need full docs/manifest/static-check sync, full validation, and PR evidence before the candidate is closed; production text shaping, font rasterization, source image decoding, live glyph atlas generation, renderer upload execution, native handles, and broad UI renderer quality remain unclaimed. |
 
 ## Baseline Evidence Map - `runtime-ui-text-stack-audit-v1`
 
@@ -67,7 +67,7 @@ Official documentation rechecked for this plan selection:
 | Production stack evidence rows | Six first-party evidence rows for text shaping, font rasterization, glyph atlas, renderer submission, IME, and accessibility. The selected sample reports `host_evidence_required`, four ready rows, two host-gated rows, selected package counters, zero adapter/native/renderer-upload invocation counters, and replay hash evidence. | `RuntimeUiProductionEvidenceRow`, `RuntimeUiProductionStackRequest`, `RuntimeUiProductionStackPlan`, `plan_runtime_ui_production_stack`, `MK_runtime_ui_production_stack_tests`, and `sample_2d_desktop_runtime_package --require-runtime-ui-production-stack`. | Production text shaping, real font loading/rasterization, native IME parity, OS accessibility publication, renderer texture upload execution, UI middleware, or broad platform UI parity. |
 | First-party adapter contracts | `MK_ui` exposes value-based `ITextShapingAdapter`, `IFontRasterizerAdapter`, `IImageDecodingAdapter`, `IImeAdapter`, `IAccessibilityAdapter`, `IPlatformIntegrationAdapter`, and `IClipboardTextAdapter` plus request/result planners that validate before adapter dispatch. | `engine/ui/include/mirakana/ui/ui.hpp`, `engine/ui/src/ui.cpp`, and focused coverage in `MK_ui_renderer_tests`. | Dependency types, OS/native handles, renderer/RHI handles, Dear ImGui/SDL3 types, UI middleware APIs, and game-local bypass systems in gameplay-facing UI APIs. |
 | SDL3 platform adapter proof | SDL3 text input begin/end, text input area, text editing to first-party IME composition, committed text rows, and clipboard command bridges are behind `MK_platform_sdl3` adapters and tests. | `engine/platform/sdl3/src/sdl_ui_platform_integration.cpp`, `engine/platform/sdl3/src/sdl_clipboard.cpp`, and `MK_platform_sdl3_tests` coverage in `tests/unit/sdl3_platform_tests.cpp`. | Win32/TSF, Cocoa, ibus/Fcitx, Android, iOS, candidate UI parity, virtual keyboard behavior, or cross-platform IME parity inferred from SDL3 proof. |
-| Renderer atlas metadata bridge | `UiRendererImagePalette` and `UiRendererGlyphAtlasPalette` can resolve already-cooked `GameEngine.UiAtlas.v1` image/glyph metadata into sprite commands and report missing/resolved glyph counters. | `build_ui_renderer_image_palette_from_runtime_ui_atlas`, `build_ui_renderer_glyph_atlas_palette_from_runtime_ui_atlas`, `make_ui_text_glyph_sprite_command`, `submit_ui_renderer_submission`, and `MK_ui_renderer_tests`. | Runtime font rasterization, live glyph atlas generation, runtime source image decoding, renderer texture upload as a gameplay API, broad atlas allocation/eviction, Metal overlay readiness, or production UI renderer quality. |
+| Renderer atlas metadata bridge | `UiRendererImagePalette` and `UiRendererGlyphAtlasPalette` can resolve already-cooked `GameEngine.UiAtlas.v1` image/glyph metadata into sprite commands, and `review_ui_renderer_atlas_handoff` can fail closed over cooked metadata, placement/budget/eviction, texture handoff review, renderer submission counters, unsupported broad claims, and side-effect flags. | `build_ui_renderer_image_palette_from_runtime_ui_atlas`, `build_ui_renderer_glyph_atlas_palette_from_runtime_ui_atlas`, `make_ui_text_glyph_sprite_command`, `submit_ui_renderer_submission`, `review_ui_renderer_atlas_handoff`, `MK_ui_renderer_tests`, and `sample_2d_desktop_runtime_package --require-runtime-ui-renderer-atlas-handoff`. | Runtime font rasterization, live glyph atlas generation, runtime source image decoding, renderer texture upload as a gameplay API, broad atlas allocation/eviction execution, Metal overlay readiness, or production UI renderer quality. |
 | Dependency-gated tool adapters | Optional host/tool/editor PNG decode and already-rasterized glyph/image packing paths exist for reviewed `asset-importers`/tooling lanes before cooked package consumption. | `docs/ai-game-development.md` runtime UI guidance and `MK_tools` UI atlas package helpers. | Arbitrary importers, broad codec/source import, SVG/vector parsing, runtime source parsing, live shader generation, or generated-game runtime dependency loading. |
 | Durable non-claim surfaces | Docs, manifest fragments, and package manifests already describe runtime UI production stack evidence as selected package evidence only. | `docs/ui.md`, `engine/agent/manifest.fragments/006-runtimeBackendReadiness.json`, `engine/agent/manifest.fragments/009-validationRecipes.json`, and `games/sample_2d_desktop_runtime_package/game.agent.json`. | Treating value-only rows, SDL3 proof, cooked glyph metadata, or generated-package smokes as broad production text/font/IME/accessibility/platform UI parity. |
 
@@ -178,10 +178,10 @@ Validation evidence for `runtime-ui-shaping-raster-adapter-contracts-v1`:
 
 ## Task 6 - Renderer Atlas Handoff, Docs, Manifest, Static Checks, And Closeout
 
-- [ ] Connect implemented glyph/image atlas evidence to renderer-owned upload/submission handoff counters without moving renderer/RHI handles into `MK_ui`.
-- [ ] Update generated-game guidance, current capabilities, roadmap, backlog/projection chapters, manifest fragments, schemas/static checks, dependency/legal records, and plan registry.
-- [ ] Compose the manifest.
-- [ ] Run:
+- [x] Connect implemented glyph/image atlas evidence to renderer-owned upload/submission handoff counters without moving renderer/RHI handles into `MK_ui`.
+- [x] Update generated-game guidance, current capabilities, roadmap, manifest fragments, schemas/static checks, and selected package manifest/docs for the renderer atlas handoff candidate.
+- [x] Compose the manifest.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write
@@ -195,6 +195,20 @@ git diff --check
 ```
 
 Expected: all checks pass, or exact host/dependency blockers are recorded.
+
+Validation evidence for `runtime-ui-renderer-atlas-handoff-v1`:
+
+| Command | Result |
+| --- | --- |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_ui_renderer_tests sample_2d_desktop_runtime_package` | Passed; rebuilt `MK_ui_renderer` tests and the selected 2D package smoke executable after formatting. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_ui_renderer_tests\|sample_2d_desktop_runtime_package"` | Passed 4/4: `MK_ui_renderer_tests`, package smoke, shader artifacts smoke, and Vulkan shader artifacts smoke. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write` | Passed; regenerated `engine/agent/manifest.json` from fragments. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | Passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | Passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | Passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` | Passed. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1`; `git diff --check` | Passed after `tools/format.ps1` normalized the public UI renderer header. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed with `validate: ok`; 19 static checks, build, generated MSVC C++23 mode check, tidy smoke, and 93/93 CTest tests passed. Metal/Apple rows remain diagnostic-only or host-gated on Windows. |
 
 ## Done When
 

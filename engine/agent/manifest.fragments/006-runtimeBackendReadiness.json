@@ -97,6 +97,18 @@
         "notes": "Runtime UI Production Stack Evidence v1 adds RuntimeUiProductionEvidenceRow, RuntimeUiProductionStackRequest, RuntimeUiProductionStackPlan, and plan_runtime_ui_production_stack for side-effect-free text shaping, font rasterization, glyph atlas, renderer handoff, IME, and accessibility evidence rows. The plan distinguishes ready, host-gated, dependency-gated, skipped, adapter-invoked, and unsupported rows so missing dependency evidence, skipped evidence, adapter side effects, and broad unsupported claims cannot be promoted to production readiness. sample_2d_desktop_runtime_package --require-runtime-ui-production-stack validates runtime_ui_production_stack_status=host_evidence_required, six rows, four ready rows, two host-gated rows, zero dependency-gated/skipped/adapter-invoked/unsupported rows, selected package evidence, zero adapter/native/renderer-upload invocation counters, and a positive replay hash. It is selected package evidence only, not production text shaping, real font loading/rasterization, native IME parity, OS accessibility publication, renderer texture upload execution, UI middleware adoption, or broad platform UI parity."
       },
       {
+        "name": "runtime-ui-renderer-atlas-handoff",
+        "module": "MK_ui_renderer",
+        "status": "validated-selected-package-evidence",
+        "hosts": [
+          "windows",
+          "linux",
+          "macos"
+        ],
+        "validation": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package",
+        "notes": "Runtime UI Renderer Atlas Handoff v1 adds UiRendererAtlasHandoffRequest, UiRendererAtlasHandoffPlan, and review_ui_renderer_atlas_handoff for side-effect-free review of cooked image/glyph atlas metadata, atlas placement and budget rows, eviction diagnostics, texture-upload handoff review, renderer submission counters, selected package evidence, unsupported broad claims, side-effect flags, and replay hashes. sample_2d_desktop_runtime_package --require-runtime-ui-renderer-atlas-handoff validates runtime/assets/2d/hud.uiatlas, one image atlas page/binding, one glyph atlas page/binding, two placement rows, two budget rows, one texture handoff row, one renderer counter row, two renderer sprites submitted, zero unresolved resources, zero unsupported claims, zero side effects, and a positive replay hash. It is selected package evidence only, not renderer texture upload execution, runtime source image decoding, live glyph atlas generation, real font loading/rasterization, text shaping, native/RHI handle exposure, or broad runtime UI renderer quality."
+      },
+      {
         "name": "native-gpu-runtime-ui-overlay",
         "module": "MK_ui_renderer",
         "status": "host-gated-desktop-overlay-proof",

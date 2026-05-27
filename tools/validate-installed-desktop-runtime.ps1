@@ -237,6 +237,7 @@ $requiresGameplayAuthoringReview = @($SmokeArgs) -contains "--require-gameplay-a
 $requiresProductionAuthoringWorkflows = @($SmokeArgs) -contains "--require-production-authoring-workflows"
 $requiresRuntimeUiWorkbench = @($SmokeArgs) -contains "--require-runtime-ui-workbench"
 $requiresRuntimeUiProductionStack = @($SmokeArgs) -contains "--require-runtime-ui-production-stack"
+$requiresRuntimeUiRendererAtlasHandoff = @($SmokeArgs) -contains "--require-runtime-ui-renderer-atlas-handoff"
 $requiresPackageStreamingSafePoint = @($SmokeArgs) -contains "--require-package-streaming-safe-point"
 $requiresSceneCollisionPackage = @($SmokeArgs) -contains "--require-scene-collision-package"
 $requiresAudioProduction = @($SmokeArgs) -contains "--require-audio-production"
@@ -3060,8 +3061,8 @@ if ($requiresSimulationOrchestration) {
     $expectedAddressableContentFields = @{
         "addressable_content_status" = "ready"
         "addressable_content_ready" = "1"
-        "addressable_content_address_rows" = "5"
-        "addressable_content_dependency_rows" = "6"
+        "addressable_content_address_rows" = "6"
+        "addressable_content_dependency_rows" = "7"
         "addressable_content_load_rows" = "3"
         "addressable_content_release_rows" = "1"
         "addressable_content_refcount_rows" = "4"
@@ -3289,6 +3290,86 @@ if ($requiresRuntimeUiProductionStack) {
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bruntime_ui_production_stack_replay_hash=[1-9]\d*\b") {
         Write-Error "Installed desktop runtime smoke status line did not prove positive runtime UI production stack replay hash."
+    }
+}
+if ($requiresRuntimeUiRendererAtlasHandoff) {
+    foreach ($field in @(
+            "runtime_ui_renderer_atlas_handoff_status",
+            "runtime_ui_renderer_atlas_handoff_ready",
+            "runtime_ui_renderer_atlas_handoff_selected_package_evidence_ready",
+            "runtime_ui_renderer_atlas_handoff_reviewed",
+            "runtime_ui_renderer_atlas_handoff_image_atlas_pages",
+            "runtime_ui_renderer_atlas_handoff_image_atlas_bindings",
+            "runtime_ui_renderer_atlas_handoff_glyph_atlas_pages",
+            "runtime_ui_renderer_atlas_handoff_glyph_atlas_bindings",
+            "runtime_ui_renderer_atlas_handoff_atlas_placement_rows",
+            "runtime_ui_renderer_atlas_handoff_atlas_budget_rows",
+            "runtime_ui_renderer_atlas_handoff_atlas_eviction_diagnostic_rows",
+            "runtime_ui_renderer_atlas_handoff_texture_upload_handoff_rows",
+            "runtime_ui_renderer_atlas_handoff_renderer_submission_counter_rows",
+            "runtime_ui_renderer_atlas_handoff_text_glyphs_available",
+            "runtime_ui_renderer_atlas_handoff_text_glyphs_resolved",
+            "runtime_ui_renderer_atlas_handoff_text_glyphs_missing",
+            "runtime_ui_renderer_atlas_handoff_text_glyph_sprites_submitted",
+            "runtime_ui_renderer_atlas_handoff_image_placeholders_available",
+            "runtime_ui_renderer_atlas_handoff_image_resources_resolved",
+            "runtime_ui_renderer_atlas_handoff_image_resources_missing",
+            "runtime_ui_renderer_atlas_handoff_image_sprites_submitted",
+            "runtime_ui_renderer_atlas_handoff_renderer_sprites_submitted",
+            "runtime_ui_renderer_atlas_handoff_unsupported_claim_rows",
+            "runtime_ui_renderer_atlas_handoff_side_effect_rows",
+            "runtime_ui_renderer_atlas_handoff_requested_renderer_texture_upload_api",
+            "runtime_ui_renderer_atlas_handoff_requested_public_native_handle",
+            "runtime_ui_renderer_atlas_handoff_invoked_source_image_decode",
+            "runtime_ui_renderer_atlas_handoff_invoked_live_glyph_atlas_generation",
+            "runtime_ui_renderer_atlas_handoff_invoked_renderer_upload",
+            "runtime_ui_renderer_atlas_handoff_diagnostics",
+            "runtime_ui_renderer_atlas_handoff_replay_hash"
+        )) {
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
+            Write-Error "Installed desktop runtime smoke status line did not include runtime UI renderer atlas handoff field: $field"
+        }
+    }
+    $expectedRuntimeUiRendererAtlasHandoffFields = @{
+        "runtime_ui_renderer_atlas_handoff_status" = "ready"
+        "runtime_ui_renderer_atlas_handoff_ready" = "1"
+        "runtime_ui_renderer_atlas_handoff_selected_package_evidence_ready" = "1"
+        "runtime_ui_renderer_atlas_handoff_reviewed" = "1"
+        "runtime_ui_renderer_atlas_handoff_image_atlas_pages" = "1"
+        "runtime_ui_renderer_atlas_handoff_image_atlas_bindings" = "1"
+        "runtime_ui_renderer_atlas_handoff_glyph_atlas_pages" = "1"
+        "runtime_ui_renderer_atlas_handoff_glyph_atlas_bindings" = "1"
+        "runtime_ui_renderer_atlas_handoff_atlas_placement_rows" = "2"
+        "runtime_ui_renderer_atlas_handoff_atlas_budget_rows" = "2"
+        "runtime_ui_renderer_atlas_handoff_atlas_eviction_diagnostic_rows" = "1"
+        "runtime_ui_renderer_atlas_handoff_texture_upload_handoff_rows" = "1"
+        "runtime_ui_renderer_atlas_handoff_renderer_submission_counter_rows" = "1"
+        "runtime_ui_renderer_atlas_handoff_text_glyphs_available" = "1"
+        "runtime_ui_renderer_atlas_handoff_text_glyphs_resolved" = "1"
+        "runtime_ui_renderer_atlas_handoff_text_glyphs_missing" = "0"
+        "runtime_ui_renderer_atlas_handoff_text_glyph_sprites_submitted" = "1"
+        "runtime_ui_renderer_atlas_handoff_image_placeholders_available" = "1"
+        "runtime_ui_renderer_atlas_handoff_image_resources_resolved" = "1"
+        "runtime_ui_renderer_atlas_handoff_image_resources_missing" = "0"
+        "runtime_ui_renderer_atlas_handoff_image_sprites_submitted" = "1"
+        "runtime_ui_renderer_atlas_handoff_renderer_sprites_submitted" = "2"
+        "runtime_ui_renderer_atlas_handoff_unsupported_claim_rows" = "0"
+        "runtime_ui_renderer_atlas_handoff_side_effect_rows" = "0"
+        "runtime_ui_renderer_atlas_handoff_requested_renderer_texture_upload_api" = "0"
+        "runtime_ui_renderer_atlas_handoff_requested_public_native_handle" = "0"
+        "runtime_ui_renderer_atlas_handoff_invoked_source_image_decode" = "0"
+        "runtime_ui_renderer_atlas_handoff_invoked_live_glyph_atlas_generation" = "0"
+        "runtime_ui_renderer_atlas_handoff_invoked_renderer_upload" = "0"
+        "runtime_ui_renderer_atlas_handoff_diagnostics" = "0"
+    }
+    foreach ($field in $expectedRuntimeUiRendererAtlasHandoffFields.Keys) {
+        $expectedValue = $expectedRuntimeUiRendererAtlasHandoffFields[$field]
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove runtime UI renderer atlas handoff field $field=$expectedValue."
+        }
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bruntime_ui_renderer_atlas_handoff_replay_hash=[1-9]\d*\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove positive runtime UI renderer atlas handoff replay hash."
     }
 }
 if ($requiresPackageUploadStaging) {

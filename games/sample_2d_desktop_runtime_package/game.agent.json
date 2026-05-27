@@ -102,6 +102,12 @@
           "delivery": "runtime-package-file"
         },
         {
+          "id": "hud-ui-atlas",
+          "kind": "ui-atlas",
+          "purpose": "Cooked UI atlas metadata proves image and glyph atlas palette handoff counters before renderer submission.",
+          "delivery": "runtime-package-file"
+        },
+        {
           "id": "jump-audio",
           "kind": "audio",
           "purpose": "Cooked audio cue proves device-independent audio feedback.",
@@ -136,6 +142,7 @@
         "installed-2d-gameplay-systems-smoke",
         "installed-2d-runtime-ui-workbench-smoke",
         "installed-2d-runtime-ui-production-stack-smoke",
+        "installed-2d-runtime-ui-renderer-atlas-handoff-smoke",
         "installed-2d-runtime-menu-hud-smoke",
         "installed-2d-audio-gameplay-mixer-smoke",
         "installed-2d-audio-production-smoke",
@@ -215,6 +222,13 @@
           "evidence": "Runtime UI production stack smoke reports side-effect-free text/font/IME/accessibility evidence rows, selected package counters, host gates, zero dependency-gated/skipped/adapter-invoked/unsupported rows, and a positive replay hash without claiming broad production UI readiness.",
           "recipeIds": [
             "installed-2d-runtime-ui-production-stack-smoke"
+          ]
+        },
+        {
+          "id": "runtime-ui-renderer-atlas-handoff",
+          "evidence": "Runtime UI renderer atlas handoff smoke loads cooked GameEngine.UiAtlas.v1 metadata from runtimePackageFiles, builds image and glyph palettes, submits one glyph and one image through MK_ui_renderer, then reports selected package counters without source image decoding, live glyph atlas generation, renderer upload APIs, native handles, or broad UI rendering claims.",
+          "recipeIds": [
+            "installed-2d-runtime-ui-renderer-atlas-handoff-smoke"
           ]
         },
         {
@@ -385,6 +399,13 @@
           "generatedBy": "tools/new-game.ps1",
           "reviewedCommandSurfaceId": "create-game-recipe",
           "updatePolicy": "Regenerate or update only through reviewed game-local dry-run/apply surfaces; preserve reviewed aiWorkflow descriptors."
+        },
+        {
+          "id": "runtime-assets-2d-hud-uiatlas",
+          "path": "games/sample_2d_desktop_runtime_package/runtime/assets/2d/hud.uiatlas",
+          "generatedBy": "tools/register-runtime-package-files.ps1",
+          "reviewedCommandSurfaceId": "register-runtime-package-files",
+          "updatePolicy": "Update only through reviewed game-local runtime package registration or UI atlas package surfaces; preserve reviewed aiWorkflow descriptors."
         },
         {
           "id": "runtime-assets-2d-playable-scene",
@@ -1623,8 +1644,8 @@
             "world_entity_model_diagnostics=0",
             "addressable_content_status=ready",
             "addressable_content_ready=1",
-            "addressable_content_address_rows=5",
-            "addressable_content_dependency_rows=6",
+            "addressable_content_address_rows=6",
+            "addressable_content_dependency_rows=7",
             "addressable_content_load_rows=3",
             "addressable_content_release_rows=1",
             "addressable_content_refcount_rows=4",
@@ -1736,8 +1757,8 @@
             "world_entity_model_diagnostics=0",
             "addressable_content_status=ready",
             "addressable_content_ready=1",
-            "addressable_content_address_rows=5",
-            "addressable_content_dependency_rows=6",
+            "addressable_content_address_rows=6",
+            "addressable_content_dependency_rows=7",
             "addressable_content_load_rows=3",
             "addressable_content_release_rows=1",
             "addressable_content_refcount_rows=4",
@@ -1850,7 +1871,7 @@
     "platform": "sdl3-desktop-host-gated",
     "graphics": "NullRenderer fallback plus host-gated D3D12 package window smoke, native 2D sprite package proof with atlas-backed scene sprite plan counters, selected world/UI/effects sprite batch budget profile counters, and renderer-owned native sprite batch execution counters, and Vulkan package window smoke through packaged shader artifacts. Sprite atlas source authoring remains a reviewed tooling/source contract only; runtime image decoding, renderer/RHI residency from source images, public native or RHI handle access, broad production sprite batching readiness beyond selected plan/budget/native-execution evidence, and general production renderer quality remain unsupported.",
     "audio": "device-independent cooked audio payload mixed through mirakana_audio with host-gated audio_production_* review evidence",
-    "ui": "mirakana_ui-headless renderer submission plus Runtime UI Workbench package evidence through --require-runtime-ui-workbench and Runtime UI Production Stack selected package evidence through --require-runtime-ui-production-stack",
+    "ui": "mirakana_ui-headless renderer submission plus Runtime UI Workbench package evidence through --require-runtime-ui-workbench, Runtime UI Production Stack selected package evidence through --require-runtime-ui-production-stack, and cooked UI atlas renderer handoff counters through --require-runtime-ui-renderer-atlas-handoff",
     "physics": "MK_physics 2D deterministic contact and trigger proof through --require-gameplay-systems",
     "navigation": "MK_navigation grid path planning and agent update proof through --require-gameplay-systems",
     "ai": "MK_ai behavior authoring, perception-blackboard, and behavior-tree proof plus MK_runtime quest/dialogue progression, inventory items crafting, RPG systems review, construction placement validation, procedural generation, entity scale/culling package evidence, scripting sandbox policy package evidence, networking foundation policy package evidence, network production security threat-model/package evidence, simulation orchestration package evidence, MK_tools gameplay authoring review and production authoring workflow package evidence, and MK_runtime_scene placement/procedural-placement intent proof through --require-gameplay-systems, --require-procedural-generation, --require-entity-scale-culling, --require-scripting-sandbox-policy, --require-networking-foundation-policy, --require-simulation-orchestration, --require-gameplay-authoring-review, and --require-production-authoring-workflows"
@@ -1893,6 +1914,7 @@
     "runtime/assets/2d/jump.audio.geasset",
     "runtime/assets/2d/level.tilemap",
     "runtime/assets/2d/player.sprite_animation",
+    "runtime/assets/2d/hud.uiatlas",
     "runtime/assets/2d/playable.scene"
   ],
   "spriteAtlasSourceAuthoringTargets": [
@@ -2127,12 +2149,16 @@
       "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-runtime-ui-production-stack"
     },
     {
+      "name": "installed-2d-runtime-ui-renderer-atlas-handoff-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-runtime-ui-production-stack --require-runtime-ui-renderer-atlas-handoff"
+    },
+    {
       "name": "installed-d3d12-window-smoke",
       "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-d3d12-shaders --video-driver windows --require-d3d12-renderer"
     },
     {
       "name": "installed-native-2d-sprite-smoke",
-      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-d3d12-shaders --video-driver windows --require-d3d12-renderer --require-native-2d-sprites --require-sprite-animation --require-sprite-9slice-tiled --require-sprite-effects-particles --require-tilemap-runtime-ux --require-gameplay-systems --require-procedural-generation --require-world-region-streaming --require-entity-scale-culling --require-scripting-sandbox-policy --require-networking-foundation-policy --require-simulation-orchestration --require-gameplay-authoring-review --require-production-authoring-workflows --require-runtime-ui-workbench --require-runtime-ui-production-stack --require-runtime-profile-resume --require-runtime-menu-hud"
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-d3d12-shaders --video-driver windows --require-d3d12-renderer --require-native-2d-sprites --require-sprite-animation --require-sprite-9slice-tiled --require-sprite-effects-particles --require-tilemap-runtime-ux --require-gameplay-systems --require-procedural-generation --require-world-region-streaming --require-entity-scale-culling --require-scripting-sandbox-policy --require-networking-foundation-policy --require-simulation-orchestration --require-gameplay-authoring-review --require-production-authoring-workflows --require-runtime-ui-workbench --require-runtime-ui-production-stack --require-runtime-ui-renderer-atlas-handoff --require-runtime-profile-resume --require-runtime-menu-hud"
     },
     {
       "name": "installed-vulkan-window-smoke",
