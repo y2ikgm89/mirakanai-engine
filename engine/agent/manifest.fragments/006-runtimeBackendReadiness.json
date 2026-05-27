@@ -200,12 +200,12 @@
       {
         "name": "win32-native",
         "module": "MK_platform_win32",
-        "status": "validated-window-shell-foundation",
+        "status": "validated-input-clipboard-dialog-text-foundation",
         "hosts": [
           "windows"
         ],
-        "validation": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_win32_platform_tests; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R win32_platform; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1",
-        "notes": "Windows-native runtime, hidden native window creation, resize/move/close handling, display-state query, copied message pump rows, and cursor-mode planning are validated behind first-party MK_platform values. Input, clipboard, file dialog, text input, runtime host adoption, presentation, editor migration, audio, and SDL3 deletion remain later SDL3-removal phases."
+        "validation": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_win32_platform_tests MK_runtime_ui_workbench_tests MK_runtime_ui_production_stack_tests; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R \"win32_platform|runtime_ui\"; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1",
+        "notes": "Windows-native runtime, hidden native window creation, resize/move/close handling, display-state query, copied message pump rows, cursor-mode planning, keyboard/mouse/modifier translation into first-party input rows, keyboard/mouse-scoped Raw Input registration planning, CF_UNICODETEXT clipboard adapters, Common Item Dialog file open/save/folder service rows, and minimal UTF-16 committed text plus text-edit/clipboard shortcut rows are validated behind first-party MK_platform and MK_ui values. Controller execution, full TSF composition/candidate UI, runtime host adoption, presentation, editor migration, audio, and SDL3 deletion remain later SDL3-removal phases."
       },
       {
         "name": "sdl3-desktop",
