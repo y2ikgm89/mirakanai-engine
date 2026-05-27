@@ -1093,6 +1093,10 @@ rendering_vfx_profiling_status_name(mirakana::RendererProductionVfxProfilingStat
         return "ready";
     case mirakana::RendererQualityMatrixStatus::host_evidence_required:
         return "host_evidence_required";
+    case mirakana::RendererQualityMatrixStatus::dependency_evidence_required:
+        return "dependency_evidence_required";
+    case mirakana::RendererQualityMatrixStatus::unsupported:
+        return "unsupported";
     case mirakana::RendererQualityMatrixStatus::no_rows:
         return "no_rows";
     case mirakana::RendererQualityMatrixStatus::invalid_request:
@@ -1298,6 +1302,8 @@ struct RendererQualityMatrixProbeResult {
     std::size_t rows{0U};
     std::size_t ready_rows{0U};
     std::size_t host_gated_rows{0U};
+    std::size_t dependency_gated_rows{0U};
+    std::size_t unsupported_rows{0U};
     std::size_t host_validated_backends{0U};
     std::uint64_t replay_hash{0U};
     bool d3d12_ready{false};
@@ -2409,6 +2415,7 @@ make_renderer_quality_matrix_ready_row(mirakana::RendererQualityFeatureKind feat
         .feature = feature,
         .backend = backend,
         .proof = mirakana::RendererQualityProofKind::selected_package,
+        .status = mirakana::RendererQualityMatrixRowStatus::ready,
         .reviewed = true,
         .backend_local_evidence = true,
         .d3d12_resource_state_barrier_evidence = is_d3d12,
@@ -2426,6 +2433,7 @@ make_renderer_quality_matrix_ready_row(mirakana::RendererQualityFeatureKind feat
         .backend_parity_evidence = true,
         .host_validated = true,
         .host_gate_required = false,
+        .dependency_gate_required = false,
         .request_native_handle_access = false,
         .request_capture_execution = false,
         .request_crash_upload_execution = false,
@@ -2443,6 +2451,7 @@ make_renderer_quality_matrix_metal_host_gated_row(mirakana::RendererQualityFeatu
         .feature = feature,
         .backend = mirakana::rhi::BackendKind::metal,
         .proof = mirakana::RendererQualityProofKind::host_gate,
+        .status = mirakana::RendererQualityMatrixRowStatus::host_gated,
         .reviewed = true,
         .backend_local_evidence = true,
         .d3d12_resource_state_barrier_evidence = false,
@@ -2460,6 +2469,7 @@ make_renderer_quality_matrix_metal_host_gated_row(mirakana::RendererQualityFeatu
         .backend_parity_evidence = false,
         .host_validated = false,
         .host_gate_required = true,
+        .dependency_gate_required = false,
         .request_native_handle_access = false,
         .request_capture_execution = false,
         .request_crash_upload_execution = false,
@@ -2508,6 +2518,8 @@ make_renderer_quality_matrix_metal_host_gated_row(mirakana::RendererQualityFeatu
     result.rows = plan.row_count;
     result.ready_rows = plan.ready_row_count;
     result.host_gated_rows = plan.host_gated_row_count;
+    result.dependency_gated_rows = plan.dependency_gated_row_count;
+    result.unsupported_rows = plan.unsupported_row_count;
     result.host_validated_backends = plan.host_validated_backend_count;
     result.replay_hash = plan.replay_hash;
     result.d3d12_ready = plan.d3d12_quality_matrix_ready;
@@ -2523,6 +2535,7 @@ make_renderer_quality_matrix_metal_host_gated_row(mirakana::RendererQualityFeatu
     result.diagnostics = plan.diagnostics.size();
     result.reviewed = plan.status == mirakana::RendererQualityMatrixStatus::host_evidence_required &&
                       result.rows == 21U && result.ready_rows == 14U && result.host_gated_rows == 7U &&
+                      result.dependency_gated_rows == 0U && result.unsupported_rows == 0U &&
                       result.host_validated_backends == 2U && result.replay_hash != 0U && result.d3d12_ready &&
                       result.vulkan_strict_ready && !result.metal_ready && result.requires_metal_host_evidence &&
                       !result.has_metal_host_evidence && result.selected_package_evidence_ready &&
@@ -2530,6 +2543,7 @@ make_renderer_quality_matrix_metal_host_gated_row(mirakana::RendererQualityFeatu
                       !result.invoked_native_capture && !result.invoked_crash_upload && result.diagnostics == 0U;
     result.ready = plan.status == mirakana::RendererQualityMatrixStatus::ready && plan.succeeded() &&
                    result.rows == 21U && result.ready_rows == 21U && result.host_gated_rows == 0U &&
+                   result.dependency_gated_rows == 0U && result.unsupported_rows == 0U &&
                    result.host_validated_backends == 3U && result.replay_hash != 0U && result.d3d12_ready &&
                    result.vulkan_strict_ready && result.metal_ready && result.requires_metal_host_evidence &&
                    result.has_metal_host_evidence && result.selected_package_evidence_ready &&
@@ -9396,6 +9410,8 @@ int main(int argc, char** argv) {
         << " renderer_quality_matrix_rows=" << renderer_quality_matrix_probe.rows
         << " renderer_quality_matrix_ready_rows=" << renderer_quality_matrix_probe.ready_rows
         << " renderer_quality_matrix_host_gated_rows=" << renderer_quality_matrix_probe.host_gated_rows
+        << " renderer_quality_matrix_dependency_gated_rows=" << renderer_quality_matrix_probe.dependency_gated_rows
+        << " renderer_quality_matrix_unsupported_rows=" << renderer_quality_matrix_probe.unsupported_rows
         << " renderer_quality_matrix_host_validated_backends=" << renderer_quality_matrix_probe.host_validated_backends
         << " renderer_quality_matrix_replay_hash=" << renderer_quality_matrix_probe.replay_hash
         << " renderer_quality_matrix_d3d12_ready=" << (renderer_quality_matrix_probe.d3d12_ready ? 1 : 0)
@@ -10221,6 +10237,9 @@ int main(int argc, char** argv) {
                       << " renderer_quality_matrix_rows=" << renderer_quality_matrix_probe.rows
                       << " renderer_quality_matrix_ready_rows=" << renderer_quality_matrix_probe.ready_rows
                       << " renderer_quality_matrix_host_gated_rows=" << renderer_quality_matrix_probe.host_gated_rows
+                      << " renderer_quality_matrix_dependency_gated_rows="
+                      << renderer_quality_matrix_probe.dependency_gated_rows
+                      << " renderer_quality_matrix_unsupported_rows=" << renderer_quality_matrix_probe.unsupported_rows
                       << " renderer_quality_matrix_host_validated_backends="
                       << renderer_quality_matrix_probe.host_validated_backends
                       << " renderer_quality_matrix_d3d12_ready=" << (renderer_quality_matrix_probe.d3d12_ready ? 1 : 0)

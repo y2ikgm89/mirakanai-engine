@@ -3652,6 +3652,8 @@ if ($requiresRendererQualityMatrix) {
         "renderer_quality_matrix_rows" = "21"
         "renderer_quality_matrix_ready_rows" = "14"
         "renderer_quality_matrix_host_gated_rows" = "7"
+        "renderer_quality_matrix_dependency_gated_rows" = "0"
+        "renderer_quality_matrix_unsupported_rows" = "0"
         "renderer_quality_matrix_host_validated_backends" = "2"
         "renderer_quality_matrix_d3d12_ready" = "1"
         "renderer_quality_matrix_vulkan_strict_ready" = "1"
