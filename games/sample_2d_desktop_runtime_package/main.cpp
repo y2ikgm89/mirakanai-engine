@@ -36,9 +36,9 @@
 #include "mirakana/runtime/sprite_effect_particles.hpp"
 #include "mirakana/runtime/world_entity_model.hpp"
 #include "mirakana/runtime/world_region_streaming.hpp"
-#include "mirakana/runtime_host/sdl3/sdl_desktop_game_host.hpp"
-#include "mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp"
 #include "mirakana/runtime_host/shader_bytecode.hpp"
+#include "mirakana/runtime_host/win32/win32_desktop_game_host.hpp"
+#include "mirakana/runtime_host/win32/win32_desktop_presentation.hpp"
 #include "mirakana/runtime_scene/runtime_scene.hpp"
 #include "mirakana/scene/playable_2d.hpp"
 #include "mirakana/scene/render_packet.hpp"
@@ -103,7 +103,6 @@ struct DesktopRuntimeOptions {
     bool require_runtime_ui_renderer_atlas_handoff{false};
     bool require_audio_gameplay_mixer{false};
     std::uint32_t max_frames{0};
-    std::string video_driver_hint;
     std::string required_config_path;
     std::string required_scene_package_path;
 };
@@ -7782,7 +7781,7 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
 }
 
 void print_usage() {
-    std::cout << "sample_2d_desktop_runtime_package [--smoke] [--max-frames N] [--video-driver NAME] "
+    std::cout << "sample_2d_desktop_runtime_package [--smoke] [--max-frames N] "
                  "[--require-config PATH] --require-scene-package PATH "
                  "[--require-d3d12-shaders] [--require-d3d12-renderer] "
                  "[--require-vulkan-shaders] [--require-vulkan-renderer] [--require-native-2d-sprites] "
@@ -7925,15 +7924,6 @@ void print_usage() {
             ++index;
             continue;
         }
-        if (arg == "--video-driver") {
-            if (index + 1 >= argc) {
-                std::cerr << "--video-driver requires a driver name\n";
-                return false;
-            }
-            options.video_driver_hint = argv[index + 1];
-            ++index;
-            continue;
-        }
         if (arg == "--require-config") {
             if (index + 1 >= argc) {
                 std::cerr << "--require-config requires a relative path\n";
@@ -7960,9 +7950,6 @@ void print_usage() {
     if (options.smoke) {
         if (options.max_frames == 0) {
             options.max_frames = 3;
-        }
-        if (options.video_driver_hint.empty()) {
-            options.video_driver_hint = "dummy";
         }
         options.throttle = false;
     }
@@ -8029,9 +8016,9 @@ load_packaged_vulkan_native_sprite_overlay_shaders(const char* executable_path) 
     });
 }
 
-[[nodiscard]] mirakana::SdlDesktopPresentationShaderBytecode
+[[nodiscard]] mirakana::Win32DesktopPresentationShaderBytecode
 to_presentation_shader_bytecode(const mirakana::DesktopShaderBytecodeBlob& bytecode) noexcept {
-    return mirakana::SdlDesktopPresentationShaderBytecode{
+    return mirakana::Win32DesktopPresentationShaderBytecode{
         .entry_point = bytecode.entry_point,
         .bytecode = std::span<const std::uint8_t>{bytecode.bytecode.data(), bytecode.bytecode.size()},
     };
@@ -8440,27 +8427,27 @@ load_required_2d_package(const char* executable_path, std::string_view package_p
     return "unknown";
 }
 
-void print_presentation_report(std::string_view prefix, const mirakana::SdlDesktopGameHost& host) {
+void print_presentation_report(std::string_view prefix, const mirakana::Win32DesktopGameHost& host) {
     const auto report = host.presentation_report();
     std::cout << prefix << " presentation_report=requested="
-              << mirakana::sdl_desktop_presentation_backend_name(report.requested_backend)
-              << " selected=" << mirakana::sdl_desktop_presentation_backend_name(report.selected_backend)
-              << " fallback=" << mirakana::sdl_desktop_presentation_fallback_reason_name(report.fallback_reason)
+              << mirakana::win32_desktop_presentation_backend_name(report.requested_backend)
+              << " selected=" << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
+              << " fallback=" << mirakana::win32_desktop_presentation_fallback_reason_name(report.fallback_reason)
               << " used_null_fallback=" << (report.used_null_fallback ? 1 : 0)
               << " diagnostics=" << report.diagnostics_count << " backend_reports=" << report.backend_reports_count
               << " scene_gpu_status="
-              << mirakana::sdl_desktop_presentation_scene_gpu_binding_status_name(report.scene_gpu_status)
+              << mirakana::win32_desktop_presentation_scene_gpu_binding_status_name(report.scene_gpu_status)
               << " native_2d_sprites_status="
-              << mirakana::sdl_desktop_presentation_native_ui_overlay_status_name(report.native_ui_overlay_status)
+              << mirakana::win32_desktop_presentation_native_ui_overlay_status_name(report.native_ui_overlay_status)
               << " native_2d_sprites_ready=" << (report.native_ui_overlay_ready ? 1 : 0)
               << " native_2d_texture_atlas_ready=" << (report.native_ui_texture_overlay_atlas_ready ? 1 : 0)
               << " renderer_frames_finished=" << report.renderer_stats.frames_finished << '\n';
     for (const auto& backend_report : host.presentation_backend_reports()) {
         std::cout << prefix << " presentation_backend_report="
-                  << mirakana::sdl_desktop_presentation_backend_name(backend_report.backend) << ":"
-                  << mirakana::sdl_desktop_presentation_backend_report_status_name(backend_report.status) << ":"
-                  << mirakana::sdl_desktop_presentation_fallback_reason_name(backend_report.fallback_reason) << ": "
-                  << backend_report.message << '\n';
+                  << mirakana::win32_desktop_presentation_backend_name(backend_report.backend) << ":"
+                  << mirakana::win32_desktop_presentation_backend_report_status_name(backend_report.status) << ":"
+                  << mirakana::win32_desktop_presentation_fallback_reason_name(backend_report.fallback_reason) << ": "
+                  << backend_report.diagnostic << '\n';
     }
 }
 
@@ -8583,19 +8570,19 @@ int main(int argc, char** argv) {
         return 9;
     }
 
-    std::optional<mirakana::SdlDesktopPresentationD3d12RendererDesc> d3d12_renderer;
+    std::optional<mirakana::Win32DesktopPresentationD3d12RendererDesc> d3d12_renderer;
     if (shader_bytecode.ready()) {
-        d3d12_renderer.emplace(mirakana::SdlDesktopPresentationD3d12RendererDesc{
+        d3d12_renderer.emplace(mirakana::Win32DesktopPresentationD3d12RendererDesc{
             .vertex_shader = to_presentation_shader_bytecode(shader_bytecode.vertex_shader),
             .fragment_shader = to_presentation_shader_bytecode(shader_bytecode.fragment_shader),
             .native_sprite_overlay_vertex_shader =
                 native_sprite_overlay_shader_bytecode.ready()
                     ? to_presentation_shader_bytecode(native_sprite_overlay_shader_bytecode.vertex_shader)
-                    : mirakana::SdlDesktopPresentationShaderBytecode{},
+                    : mirakana::Win32DesktopPresentationShaderBytecode{},
             .native_sprite_overlay_fragment_shader =
                 native_sprite_overlay_shader_bytecode.ready()
                     ? to_presentation_shader_bytecode(native_sprite_overlay_shader_bytecode.fragment_shader)
-                    : mirakana::SdlDesktopPresentationShaderBytecode{},
+                    : mirakana::Win32DesktopPresentationShaderBytecode{},
             .native_sprite_overlay_package = runtime_package.has_value() ? &*runtime_package : nullptr,
             .native_sprite_overlay_atlas_asset = packaged_sprite_texture_asset_id(),
             .enable_native_sprite_overlay = options.require_native_2d_sprites && !options.require_vulkan_renderer,
@@ -8604,19 +8591,19 @@ int main(int argc, char** argv) {
         });
     }
 
-    std::optional<mirakana::SdlDesktopPresentationVulkanRendererDesc> vulkan_renderer;
+    std::optional<mirakana::Win32DesktopPresentationVulkanRendererDesc> vulkan_renderer;
     if (vulkan_shader_bytecode.ready()) {
-        vulkan_renderer.emplace(mirakana::SdlDesktopPresentationVulkanRendererDesc{
+        vulkan_renderer.emplace(mirakana::Win32DesktopPresentationVulkanRendererDesc{
             .vertex_shader = to_presentation_shader_bytecode(vulkan_shader_bytecode.vertex_shader),
             .fragment_shader = to_presentation_shader_bytecode(vulkan_shader_bytecode.fragment_shader),
             .native_sprite_overlay_vertex_shader =
                 vulkan_native_sprite_overlay_shader_bytecode.ready()
                     ? to_presentation_shader_bytecode(vulkan_native_sprite_overlay_shader_bytecode.vertex_shader)
-                    : mirakana::SdlDesktopPresentationShaderBytecode{},
+                    : mirakana::Win32DesktopPresentationShaderBytecode{},
             .native_sprite_overlay_fragment_shader =
                 vulkan_native_sprite_overlay_shader_bytecode.ready()
                     ? to_presentation_shader_bytecode(vulkan_native_sprite_overlay_shader_bytecode.fragment_shader)
-                    : mirakana::SdlDesktopPresentationShaderBytecode{},
+                    : mirakana::Win32DesktopPresentationShaderBytecode{},
             .native_sprite_overlay_package = runtime_package.has_value() ? &*runtime_package : nullptr,
             .native_sprite_overlay_atlas_asset = packaged_sprite_texture_asset_id(),
             .enable_native_sprite_overlay = options.require_native_2d_sprites && options.require_vulkan_renderer,
@@ -8625,10 +8612,9 @@ int main(int argc, char** argv) {
         });
     }
 
-    mirakana::SdlDesktopGameHostDesc host_desc{
+    mirakana::Win32DesktopGameHostDesc host_desc{
         .title = "Sample 2D Desktop Runtime Package",
         .extent = mirakana::WindowExtent{.width = 960, .height = 540},
-        .video_driver_hint = options.video_driver_hint,
         .prefer_vulkan = options.require_vulkan_renderer,
     };
     if (d3d12_renderer.has_value()) {
@@ -8638,27 +8624,27 @@ int main(int argc, char** argv) {
         host_desc.vulkan_renderer = &*vulkan_renderer;
     }
 
-    mirakana::SdlDesktopGameHost host(host_desc);
+    mirakana::Win32DesktopGameHost host(host_desc);
     if (options.require_d3d12_renderer &&
-        host.presentation_backend() != mirakana::SdlDesktopPresentationBackend::d3d12) {
+        host.presentation_backend() != mirakana::Win32DesktopPresentationBackend::d3d12) {
         std::cout << "sample_2d_desktop_runtime_package required_d3d12_renderer_unavailable renderer="
                   << host.presentation_backend_name() << '\n';
         print_presentation_report("sample_2d_desktop_runtime_package", host);
         for (const auto& diagnostic : host.presentation_diagnostics()) {
             std::cout << "sample_2d_desktop_runtime_package presentation_diagnostic="
-                      << mirakana::sdl_desktop_presentation_fallback_reason_name(diagnostic.reason) << ": "
+                      << mirakana::win32_desktop_presentation_fallback_reason_name(diagnostic.reason) << ": "
                       << diagnostic.message << '\n';
         }
         return 6;
     }
     if (options.require_vulkan_renderer &&
-        host.presentation_backend() != mirakana::SdlDesktopPresentationBackend::vulkan) {
+        host.presentation_backend() != mirakana::Win32DesktopPresentationBackend::vulkan) {
         std::cout << "sample_2d_desktop_runtime_package required_vulkan_renderer_unavailable renderer="
                   << host.presentation_backend_name() << '\n';
         print_presentation_report("sample_2d_desktop_runtime_package", host);
         for (const auto& diagnostic : host.presentation_diagnostics()) {
             std::cout << "sample_2d_desktop_runtime_package presentation_diagnostic="
-                      << mirakana::sdl_desktop_presentation_fallback_reason_name(diagnostic.reason) << ": "
+                      << mirakana::win32_desktop_presentation_fallback_reason_name(diagnostic.reason) << ": "
                       << diagnostic.message << '\n';
         }
         return 8;
@@ -8680,17 +8666,18 @@ int main(int argc, char** argv) {
     const auto package_records = runtime_package.has_value() ? runtime_package->records().size() : 0U;
     std::cout
         << "sample_2d_desktop_runtime_package status=" << status_name(result.status)
-        << " renderer=" << mirakana::sdl_desktop_presentation_backend_name(report.selected_backend)
-        << " presentation_requested=" << mirakana::sdl_desktop_presentation_backend_name(report.requested_backend)
-        << " presentation_selected=" << mirakana::sdl_desktop_presentation_backend_name(report.selected_backend)
-        << " presentation_fallback=" << mirakana::sdl_desktop_presentation_fallback_reason_name(report.fallback_reason)
+        << " renderer=" << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
+        << " presentation_requested=" << mirakana::win32_desktop_presentation_backend_name(report.requested_backend)
+        << " presentation_selected=" << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
+        << " presentation_fallback="
+        << mirakana::win32_desktop_presentation_fallback_reason_name(report.fallback_reason)
         << " presentation_used_null_fallback=" << (report.used_null_fallback ? 1 : 0)
         << " presentation_backend_reports=" << report.backend_reports_count
         << " presentation_diagnostics=" << report.diagnostics_count << " scene_gpu_status="
-        << mirakana::sdl_desktop_presentation_scene_gpu_binding_status_name(report.scene_gpu_status)
+        << mirakana::win32_desktop_presentation_scene_gpu_binding_status_name(report.scene_gpu_status)
         << " native_2d_sprites_requested=" << (report.native_ui_overlay_requested ? 1 : 0)
         << " native_2d_sprites_status="
-        << mirakana::sdl_desktop_presentation_native_ui_overlay_status_name(report.native_ui_overlay_status)
+        << mirakana::win32_desktop_presentation_native_ui_overlay_status_name(report.native_ui_overlay_status)
         << " native_2d_sprites_ready=" << (report.native_ui_overlay_ready ? 1 : 0)
         << " native_2d_sprites_submitted=" << report.native_ui_overlay_sprites_submitted
         << " native_2d_textured_sprites_submitted=" << report.native_ui_texture_overlay_sprites_submitted
@@ -9474,7 +9461,7 @@ int main(int argc, char** argv) {
     print_presentation_report("sample_2d_desktop_runtime_package", host);
     for (const auto& diagnostic : host.presentation_diagnostics()) {
         std::cout << "sample_2d_desktop_runtime_package presentation_diagnostic="
-                  << mirakana::sdl_desktop_presentation_fallback_reason_name(diagnostic.reason) << ": "
+                  << mirakana::win32_desktop_presentation_fallback_reason_name(diagnostic.reason) << ": "
                   << diagnostic.message << '\n';
     }
 
@@ -9489,7 +9476,7 @@ int main(int argc, char** argv) {
          report.renderer_stats.native_sprite_batch_texture_binds == 0)) {
         std::cout << "sample_2d_desktop_runtime_package required_native_2d_sprites_unavailable renderer="
                   << host.presentation_backend_name() << " native_2d_sprites_status="
-                  << mirakana::sdl_desktop_presentation_native_ui_overlay_status_name(report.native_ui_overlay_status)
+                  << mirakana::win32_desktop_presentation_native_ui_overlay_status_name(report.native_ui_overlay_status)
                   << " native_2d_sprites_ready=" << (report.native_ui_overlay_ready ? 1 : 0)
                   << " native_2d_textured_sprites_submitted=" << report.native_ui_texture_overlay_sprites_submitted
                   << " native_2d_texture_binds=" << report.native_ui_texture_overlay_texture_binds

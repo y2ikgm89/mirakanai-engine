@@ -371,7 +371,7 @@ try {
     if ($desktop2dManifest.aiWorkflow.generatedGameQualityRubric.capabilityId -ne "ai-generated-game-quality-rubric-v1") { Write-Error "Desktop runtime 2D package scaffold manifest must carry ai-generated-game-quality-rubric-v1" }
     $desktop2dQualityRubricText = $desktop2dManifest.aiWorkflow.generatedGameQualityRubric | ConvertTo-Json -Depth 40
     foreach ($qualityNeedle in @("objective-quality-gate", "deterministic-package-smoke-quality-gate", "headless-quality-report", "commercial-quality")) { Assert-ContainsText $desktop2dQualityRubricText $qualityNeedle "Desktop runtime 2D package scaffold generated-game quality rubric" }
-    foreach ($module in @("MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_renderer", "MK_ai", "MK_navigation", "MK_physics")) {
+    foreach ($module in @("MK_platform_win32", "MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_renderer", "MK_ai", "MK_navigation", "MK_physics")) {
         if (@($desktop2dManifest.engineModules) -notcontains $module) {
             Write-Error "Desktop runtime 2D package scaffold manifest missing engine module: $module"
         }
@@ -1208,7 +1208,7 @@ try {
     if ($desktop3dManifest.aiWorkflow.generatedGameQualityRubric.capabilityId -ne "ai-generated-game-quality-rubric-v1") { Write-Error "Desktop runtime 3D package scaffold manifest must carry ai-generated-game-quality-rubric-v1" }
     $desktop3dQualityRubricText = $desktop3dManifest.aiWorkflow.generatedGameQualityRubric | ConvertTo-Json -Depth 40
     foreach ($qualityNeedle in @("feedback-quality-gate", "budget-evidence-quality-gate", "package-quality-report", "broad-production-readiness")) { Assert-ContainsText $desktop3dQualityRubricText $qualityNeedle "Desktop runtime 3D package scaffold generated-game quality rubric" }
-    foreach ($module in @("MK_ai", "MK_animation", "MK_audio", "MK_navigation", "MK_physics", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
+    foreach ($module in @("MK_ai", "MK_animation", "MK_audio", "MK_navigation", "MK_physics", "MK_platform_win32", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
         if (@($desktop3dManifest.engineModules) -notcontains $module) {
             Write-Error "Desktop runtime 3D package scaffold manifest missing engine module: $module"
         }
@@ -1478,7 +1478,7 @@ try {
     Assert-ContainsText $desktop3dMain "load_packaged_d3d12_native_ui_overlay_shaders" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "enable_native_ui_overlay" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "enable_native_ui_overlay_textures" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "evaluate_sdl_desktop_presentation_quality_gate" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "evaluate_win32_desktop_presentation_quality_gate" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "renderer_quality_status=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "renderer_quality_ready=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "renderer_quality_diagnostics=" "Desktop 3D scaffold main.cpp"
@@ -1504,7 +1504,7 @@ try {
     Assert-ContainsText $desktop3dMain "load_packaged_d3d12_shifted_shadow_receiver_scene_shaders" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "load_packaged_vulkan_shifted_shadow_receiver_scene_shaders" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "shifted_shadow_receiver_shader_diagnostic" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "skinned_scene_fragment_shader = mirakana::SdlDesktopPresentationShaderBytecode" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "skinned_scene_fragment_shader = mirakana::Win32DesktopPresentationShaderBytecode" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "enable_directional_shadow_smoke" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "directional_shadow_status=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "directional_shadow_ready=" "Desktop 3D scaffold main.cpp"
@@ -1580,13 +1580,13 @@ try {
     Assert-ContainsText $desktop3dMain "vulkan_compute_morph_tangent_frame_shader_diagnostic" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "vulkan_compute_morph_skinned_shader_diagnostic" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "Vulkan compute morph package smoke does not support async telemetry requirements" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "morph_vertex_shader = mirakana::SdlDesktopPresentationShaderBytecode" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "compute_morph_vertex_shader = mirakana::SdlDesktopPresentationShaderBytecode" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "compute_morph_shader = mirakana::SdlDesktopPresentationShaderBytecode" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "compute_morph_skinned_shader = mirakana::SdlDesktopPresentationShaderBytecode" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "morph_vertex_shader = mirakana::Win32DesktopPresentationShaderBytecode" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "compute_morph_vertex_shader = mirakana::Win32DesktopPresentationShaderBytecode" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "compute_morph_shader = mirakana::Win32DesktopPresentationShaderBytecode" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "compute_morph_skinned_shader = mirakana::Win32DesktopPresentationShaderBytecode" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "d3d12_scene_renderer->morph_mesh_assets = {packaged_morph_mesh_asset_id()}" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_mesh_asset_id()" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_skinned_mesh_asset_id()" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "Win32DesktopPresentationSceneMorphMeshBinding{.mesh = packaged_mesh_asset_id()" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "Win32DesktopPresentationSceneMorphMeshBinding{.mesh = packaged_skinned_mesh_asset_id()" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "compute_morph_mesh_bindings" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "compute_morph_skinned_mesh_bindings" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "--require-compute-morph" "Desktop 3D scaffold main.cpp"
@@ -2034,7 +2034,7 @@ foreach ($needle in @(
     "package_upload_staging_resource_updates_ready=",
     "package_upload_staging_resource_update_graphics_queue_waits_recorded=",
     "--require-renderer-quality-gates",
-    "evaluate_sdl_desktop_presentation_quality_gate",
+    "evaluate_win32_desktop_presentation_quality_gate",
     "renderer_quality_status=",
     "renderer_quality_ready=",
     "renderer_quality_diagnostics=",
@@ -2060,7 +2060,7 @@ foreach ($needle in @(
     "load_packaged_d3d12_shifted_shadow_receiver_scene_shaders",
     "load_packaged_vulkan_shifted_shadow_receiver_scene_shaders",
     "shifted_shadow_receiver_shader_diagnostic",
-    "skinned_scene_fragment_shader = mirakana::SdlDesktopPresentationShaderBytecode",
+    "skinned_scene_fragment_shader = mirakana::Win32DesktopPresentationShaderBytecode",
     "enable_directional_shadow_smoke",
     "directional_shadow_status=",
     "directional_shadow_ready=",

@@ -18,7 +18,7 @@
 
 **Status:** Active.
 
-Selected long-running milestone by operator direction on 2026-05-27. This plan replaces `reviewed-importers-codecs-shader-generation-v1` as `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` for the SDL3 removal track; the importer/codecs/shader-generation plan is paused and remains reviewable future work. Phases 0-4 are merged; Phase 5 is implemented as a candidate slice.
+Selected long-running milestone by operator direction on 2026-05-27. This plan replaces `reviewed-importers-codecs-shader-generation-v1` as `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` for the SDL3 removal track; the importer/codecs/shader-generation plan is paused and remains reviewable future work. Phases 0-6 are merged; Phase 7 is the current candidate slice.
 
 ## Context
 
@@ -489,20 +489,53 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1
 
 - Modify: `tools/new-game-templates.ps1`
 - Modify: `tools/new-game.ps1` only if template ids or validation descriptors change.
+- Modify: `games/CMakeLists.txt`
 - Modify: `games/sample_2d_desktop_runtime_package/main.cpp`
 - Modify: `games/sample_2d_desktop_runtime_package/game.agent.json`
+- Modify: `games/sample_2d_desktop_runtime_package/README.md`
+- Modify: `games/sample_desktop_runtime_game/main.cpp`
+- Modify: `games/sample_desktop_runtime_game/game.agent.json`
+- Modify: `games/sample_desktop_runtime_game/README.md`
 - Modify: `games/sample_generated_desktop_runtime_3d_package/main.cpp`
 - Modify: `games/sample_generated_desktop_runtime_3d_package/game.agent.json`
+- Modify: `games/sample_generated_desktop_runtime_3d_package/README.md`
+- Modify: `games/sample_generated_desktop_runtime_package/main.cpp`
+- Modify: `games/sample_generated_desktop_runtime_package/game.agent.json`
+- Modify: `games/sample_generated_desktop_runtime_package/README.md`
+- Modify: `games/sample_generated_desktop_runtime_cooked_scene_package/main.cpp`
+- Modify: `games/sample_generated_desktop_runtime_cooked_scene_package/game.agent.json`
+- Modify: `games/sample_generated_desktop_runtime_cooked_scene_package/README.md`
+- Modify: `games/sample_generated_desktop_runtime_material_shader_package/main.cpp`
+- Modify: `games/sample_generated_desktop_runtime_material_shader_package/game.agent.json`
+- Modify: `games/sample_generated_desktop_runtime_material_shader_package/README.md`
 - Modify: additional sample `game.agent.json` files that declare `MK_platform_sdl3`, `MK_runtime_host_sdl3`, or `sdl3-desktop`.
+- Modify: `engine/runtime_host/win32/include/mirakana/runtime_host/win32/win32_desktop_game_host.hpp`
+- Modify: `engine/runtime_host/win32/include/mirakana/runtime_host/win32/win32_desktop_presentation.hpp`
+- Modify: `engine/runtime_host/win32/src/win32_desktop_game_host.cpp`
+- Modify: `engine/runtime_host/win32/src/win32_desktop_presentation.cpp`
+- Add: `engine/runtime_host/win32/src/scene_gpu_binding_injecting_renderer.hpp`
+- Modify: `tests/unit/runtime_host_win32_public_api_compile.cpp`
+- Modify: `tools/check-json-contracts-020-game-contracts.ps1`
+- Modify: `tools/check-json-contracts-030-tooling-contracts.ps1`
+- Modify: `tools/check-json-contracts-050-generated-games.ps1`
+- Modify: `tools/check-ai-integration-020-engine-manifest.ps1`
+- Modify: `tools/check-ai-integration-030-runtime-rendering.ps1`
+- Modify: `tools/check-ai-integration-070-production-ledger.ps1`
+- Modify: `tools/check-ai-integration-080-scaffold-smokes.ps1`
 - Modify: `docs/specs/generated-game-validation-scenarios.md`
+- Modify: `docs/specs/game-template.md`
 - Modify: `docs/ai-game-development.md`
+- Modify: `docs/current-capabilities.md`
+- Modify: `docs/superpowers/plans/README.md`
+- Modify: `engine/agent/manifest.fragments/*.json` and composed `engine/agent/manifest.json`
+- Modify: game-development agent skills and references for Codex and Claude
 
-- [ ] Add RED static checks for generated template descriptors that still reference SDL3 after migration.
-- [ ] Replace `mirakana/runtime_host/sdl3/...` includes with Windows native host includes.
-- [ ] Rename backend readiness strings from `sdl3-desktop` / `sdl3-desktop-host-gated` to explicit Windows native names.
-- [ ] Keep package-visible counters stable where behavior is equivalent; rename only counters that explicitly contain `sdl3`.
-- [ ] Regenerate or update sample manifests so modules list `MK_platform_win32`, `MK_runtime_host_win32`, `MK_runtime_host_win32_presentation`, and `MK_audio_wasapi` only when their phase evidence exists.
-- [ ] Run:
+- [x] Add RED static checks for generated template descriptors that still reference SDL3 after migration.
+- [x] Replace `mirakana/runtime_host/sdl3/...` includes with Windows native host includes.
+- [x] Rename backend readiness strings from `sdl3-desktop` / `sdl3-desktop-host-gated` to explicit Windows native names.
+- [x] Keep package-visible counters stable where behavior is equivalent; rename only counters that explicitly contain `sdl3`.
+- [x] Regenerate or update sample manifests so modules list `MK_platform_win32`, `MK_runtime_host_win32`, `MK_runtime_host_win32_presentation`, and `MK_audio_wasapi` only when their phase evidence exists.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/new-game.ps1 -Name native_desktop_smoke -Template DesktopRuntimePackage
@@ -513,7 +546,23 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
 
 **Done When:** Generated and committed desktop game lanes target Windows native host modules without SDL3 strings in ready claims.
 
-**Phase Evidence:** Not started.
+**Phase Evidence:**
+
+- RED evidence: after adding static checks in `tools/check-json-contracts-030-tooling-contracts.ps1`, `tools/check-json-contracts-050-generated-games.ps1`, and `tools/check-ai-integration-080-scaffold-smokes.ps1`, the repository still contained SDL3-backed generated template and sample package expectations, which failed the new Win32-only checks until migration.
+- Implementation: `tools/new-game-templates.ps1`, generated desktop runtime package samples, `sample_desktop_runtime_game`, game manifests, package sample CMake registrations, static checks, manifest fragments, current capability docs, game-template specs, and game-development agent skills now use `MK_platform_win32`, `MK_runtime_host_win32`, `MK_runtime_host_win32_presentation`, and `MK_audio_wasapi` for generated and committed desktop runtime game lanes. `--video-driver`, `video_driver_hint`, `sdl3-desktop`, and `mirakana/runtime_host/sdl3` assumptions were removed from these active lanes.
+- Win32 parity extension: `MK_runtime_host_win32_presentation` now exposes the package-visible scene GPU binding, postprocess, directional shadow, native UI overlay, texture atlas overlay, quality gate, GPU memory, and debug profiling reports needed by the generated package proofs, with first-party Win32/D3D12/Vulkan status rows.
+- Focused validation:
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_host_win32_public_api_compile MK_runtime_host_win32_tests sample_desktop_runtime_game sample_2d_desktop_runtime_package sample_generated_desktop_runtime_package sample_generated_desktop_runtime_cooked_scene_package sample_generated_desktop_runtime_material_shader_package sample_generated_desktop_runtime_3d_package`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "sample_desktop_runtime_game|sample_2d_desktop_runtime_package|sample_generated_desktop_runtime_package|sample_generated_desktop_runtime_cooked_scene_package|sample_generated_desktop_runtime_material_shader_package|sample_generated_desktop_runtime_3d_package|runtime_host_win32"`: pass; 12/12 tests passed.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1`: pass; 18/18 tests passed, including the Win32 host, WASAPI, runtime shell, non-shell sample, 2D package, generated package, cooked-scene package, material-shader package, and 3D package smokes.
+- Full slice validation:
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`: pass.
+  - `git diff --check`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`: pass; 98/98 CTest tests passed.
 
 ## Phase 8 - Visible Editor Migration Or Deferral
 
