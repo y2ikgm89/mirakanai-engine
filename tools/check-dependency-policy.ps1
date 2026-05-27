@@ -97,28 +97,22 @@ if ($desktopRuntimeDependencyNames -contains "imgui") {
 }
 
 $dependencyNames = @()
-$imguiFeatures = @()
 foreach ($dependency in $desktopGui.dependencies) {
     if ($dependency -is [string]) {
         $dependencyNames += $dependency
     } else {
         $dependencyNames += $dependency.name
-        if ($dependency.name -eq "imgui") {
-            $imguiFeatures = @($dependency.features)
-        }
     }
 }
 
 foreach ($dependencyName in @("sdl3", "imgui")) {
-    if ($dependencyNames -notcontains $dependencyName) {
-        Write-Error "desktop-gui feature must declare dependency: $dependencyName"
+    if ($dependencyNames -contains $dependencyName) {
+        Write-Error "desktop-gui feature is deferred during SDL3 removal and must not declare dependency: $dependencyName"
     }
 }
 
-foreach ($feature in @("docking-experimental", "sdl3-binding", "sdl3-renderer-binding")) {
-    if ($imguiFeatures -notcontains $feature) {
-        Write-Error "desktop-gui imgui dependency must enable feature: $feature"
-    }
+if ($dependencyNames.Count -ne 0) {
+    Write-Error "desktop-gui feature is deferred during SDL3 removal and must not declare package dependencies"
 }
 
 $assetImporterDependencyNames = @()
@@ -179,7 +173,9 @@ if ($enetDefaultFeatures -ne $false) {
 }
 
 Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| SDL3 \|" "third-party notices"
-Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| Dear ImGui \|" "third-party notices"
+if ((Get-Content -LiteralPath (Join-Path $root "THIRD_PARTY_NOTICES.md") -Raw) -match "\| Dear ImGui \|") {
+    Write-Error "third-party notices must not list Dear ImGui while the visible editor shell is deferred and no package dependency declares it"
+}
 Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| Jolt Physics \|" "third-party notices"
 Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| ENet \|" "third-party notices"
 Assert-TextContains "docs/dependencies.md" "builtin-baseline" "dependency docs"

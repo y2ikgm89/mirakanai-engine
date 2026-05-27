@@ -958,7 +958,6 @@ $editorInputRebindingHeader = Get-AgentSurfaceText "editor/core/include/mirakana
 $editorInputRebindingSource = Get-AgentSurfaceText "editor/core/src/input_rebinding.cpp"
 $editorWorkspaceHeader = Get-AgentSurfaceText "editor/core/include/mirakana/editor/workspace.hpp"
 $editorWorkspaceSource = Get-AgentSurfaceText "editor/core/src/workspace.cpp"
-$editorMainSource = Get-AgentSurfaceText "editor/src/main.cpp"
 $editorCoreTests = Get-AgentSurfaceText "tests/unit/editor_core_tests.cpp"
 foreach ($needle in @(
     "EditorTilemapPackageDiagnosticsModel",
@@ -1021,9 +1020,7 @@ foreach ($needle in @(
 Assert-ContainsText $editorWorkspaceHeader "input_rebinding" "editor workspace input rebinding panel header"
 Assert-ContainsText $editorWorkspaceSource 'PanelToken{.id = PanelId::input_rebinding, .token = "input_rebinding"}' "editor workspace input rebinding panel source"
 Assert-ContainsText $editorWorkspaceSource "PanelState{.id = PanelId::input_rebinding, .visible = false}" "editor workspace input rebinding panel source"
-Assert-ContainsText $editorMainSource "draw_input_rebinding_panel" "MK_editor input rebinding panel source"
-Assert-ContainsText $editorMainSource "view.input_rebinding" "MK_editor input rebinding panel source"
-Assert-ContainsText $editorMainSource "make_editor_input_rebinding_profile_panel_model" "MK_editor input rebinding panel source"
+Assert-ContainsText (Get-AgentSurfaceText "editor/CMakeLists.txt") "MK_editor visible shell is deferred during SDL3 removal" "deferred MK_editor shell source"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorInputRebindingProfiles) "EditorInputRebindingProfilePanelModel" "editor input rebinding profile guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorInputRebindingProfiles) "make_editor_input_rebinding_profile_panel_model" "editor input rebinding profile guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorInputRebindingProfiles) "make_input_rebinding_profile_panel_ui_model" "editor input rebinding profile guidance"
@@ -1059,18 +1056,8 @@ foreach ($needle in @(
 )) {
     Assert-ContainsText $editorCoreTests $needle "editor input rebinding capture panel tests"
 }
-foreach ($needle in @(
-    "begin_input_frame",
-    "draw_input_rebinding_capture_controls",
-    "RuntimeInputStateView",
-    "make_editor_input_rebinding_capture_action_model",
-    "make_editor_input_rebinding_capture_axis_model",
-    "arm_input_rebinding_axis_capture",
-    "keyboard_input()",
-    "pointer_input()",
-    "gamepad_input()"
-)) {
-    Assert-ContainsText $editorMainSource $needle "MK_editor input rebinding capture panel source"
+if (Test-Path -LiteralPath (Join-Path $root "editor/src/main.cpp")) {
+    Write-Error "ai-integration-check: editor/src/main.cpp must not remain as an active SDL3/Dear ImGui shell while MK_editor is deferred"
 }
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorInputRebindingProfiles) "in-memory profile" "editor input rebinding capture guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorInputRebindingProfiles) "axis capture" "editor input rebinding capture guidance"

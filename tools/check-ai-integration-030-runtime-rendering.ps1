@@ -492,7 +492,7 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorProfilerTra
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorProfilerTraceExport) "Trace Import Path" "editor profiler trace file import guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorProfilerTraceExport) "Import Trace JSON" "editor profiler trace file import guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorProfilerTraceExport) "Browse Trace JSON" "editor profiler native trace open dialog guidance"
-Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorProfilerTraceExport) "SdlFileDialogService" "editor profiler native trace open dialog guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorProfilerTraceExport) "future native file-dialog adapter" "editor profiler native trace open dialog guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorProfilerTraceExport) "broader editor native save/open dialogs outside Profiler" "editor profiler native trace dialog guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorProfilerTraceExport) "arbitrary JSON conversion" "editor profiler trace import guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorProfilerTraceExport) "first-party exported Trace Event JSON subset" "editor profiler trace import reconstruction guidance"
@@ -589,7 +589,7 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorPrefabVaria
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorPrefabVariantFileDialogs) "prefab_variant_file_dialog.save" "editor prefab variant native dialog guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorPrefabVariantFileDialogs) "Browse Load Variant" "editor prefab variant native dialog guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorPrefabVariantFileDialogs) "Browse Save Variant" "editor prefab variant native dialog guidance"
-Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorPrefabVariantFileDialogs) "SdlFileDialogService" "editor prefab variant native dialog guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorPrefabVariantFileDialogs) "future native file-dialog adapter" "editor prefab variant native dialog guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorPrefabVariantFileDialogs) ".prefabvariant" "editor prefab variant native dialog guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorPrefabVariantFileDialogs) "first non-Profiler native document dialog" "editor prefab variant native dialog guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorPrefabVariantFileDialogs) "Broader editor native save/open dialogs outside Profiler, Scene, and Prefab Variant" "editor prefab variant native dialog guidance"
@@ -609,7 +609,7 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorSceneFileDi
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorSceneFileDialogs) "Save Scene As..." "editor scene native dialog guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorSceneFileDialogs) "Browse Open Scene" "editor scene native dialog guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorSceneFileDialogs) "Browse Save Scene As" "editor scene native dialog guidance"
-Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorSceneFileDialogs) "SdlFileDialogService" "editor scene native dialog guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorSceneFileDialogs) "future native file-dialog adapter" "editor scene native dialog guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorSceneFileDialogs) ".scene" "editor scene native dialog guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorSceneFileDialogs) "Broader editor native save/open dialogs outside Profiler, Scene, and Prefab Variant" "editor scene native dialog guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorSceneFileDialogs) "native handles" "editor scene native dialog guidance"
@@ -626,7 +626,7 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorProjectFile
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorProjectFileDialogs) "project_file_dialog.save" "editor project native dialog guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorProjectFileDialogs) "Open Project..." "editor project native dialog guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorProjectFileDialogs) "Save Project As..." "editor project native dialog guidance"
-Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorProjectFileDialogs) "SdlFileDialogService" "editor project native dialog guidance"
+Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorProjectFileDialogs) "future native file-dialog adapter" "editor project native dialog guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorProjectFileDialogs) ".geproject" "editor project native dialog guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorProjectFileDialogs) "load_project_bundle" "editor project native dialog guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorProjectFileDialogs) "save_project_bundle" "editor project native dialog guidance"
@@ -2567,34 +2567,14 @@ foreach ($field in @(
 
 foreach ($requiredAgentPath in @("games/CMakeLists.txt", "docs/README.md", "docs/current-capabilities.md", "docs/roadmap.md", "docs/workflows.md", "games/sample_headless/game.agent.json", "docs/ai-game-development.md", "docs/superpowers/plans/README.md", "docs/specs/README.md", "docs/specs/game-template.md", "docs/specs/generated-game-validation-scenarios.md", "docs/specs/game-prompt-pack.md")) { Resolve-RequiredAgentPath $requiredAgentPath | Out-Null }
 
-$editorShell = Get-AgentSurfaceText "editor/src/main.cpp"
-$editorSceneAuthoringNeedles = @(
-    '#include "mirakana/editor/scene_authoring.hpp"',
-    "mirakana::editor::SceneAuthoringDocument",
-    "make_scene_authoring_create_node_action",
-    "make_scene_authoring_delete_node_action",
-    "make_scene_authoring_duplicate_subtree_action",
-    "make_scene_authoring_transform_edit_action",
-    "make_scene_authoring_component_edit_action",
-    "build_prefab_from_selected_node",
-    "save_prefab_authoring_document",
-    "load_prefab_authoring_document",
-    "refresh_selected_prefab_instance",
-    "refresh_batch_prefab_instances_review",
-    "Refresh Prefab Instance",
-    "Review batch prefab refresh",
-    "Clear batch selection",
-    "Keep Local Children",
-    "Keep Stale Source Nodes",
-    "Keep Nested Prefab Instances",
-    "Apply Reviewed Prefab Refresh",
-    "make_scene_prefab_instance_refresh_action",
-    "make_scene_prefab_instance_refresh_batch_action",
-    "validate_scene_authoring_references",
-    "make_scene_package_candidate_rows",
-    "current_prefab_path",
-    "current_cooked_scene_path",
-    "current_package_index_path"
-)
-$missingEditorSceneAuthoringNeedles = @($editorSceneAuthoringNeedles | Where-Object { -not $editorShell.Contains($_) })
-if ($missingEditorSceneAuthoringNeedles.Count -gt 0) { Write-Error "ai-integration-check: editor shell missing SceneAuthoringDocument wiring: $($missingEditorSceneAuthoringNeedles -join ', ')" }
+$editorCmake = Get-AgentSurfaceText "editor/CMakeLists.txt"
+foreach ($deferredEditorNeedle in @(
+    "MK_editor visible shell is deferred during SDL3 removal",
+    "MK_editor_core remains the supported editor logic target",
+    "must not depend on SDL3"
+)) {
+    Assert-ContainsText $editorCmake $deferredEditorNeedle "deferred visible editor shell contract"
+}
+if (Test-Path -LiteralPath (Join-Path $root "editor/src/main.cpp")) {
+    Write-Error "ai-integration-check: editor/src/main.cpp must not remain as an active SDL3/Dear ImGui shell while MK_editor is deferred"
+}

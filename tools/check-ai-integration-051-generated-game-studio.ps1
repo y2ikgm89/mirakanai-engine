@@ -32,12 +32,11 @@ $generatedGameStudioChecks = @(
         )
     },
     @{
-        Path = "editor/src/main.cpp"
+        Path = "editor/CMakeLists.txt"
         Needles = @(
-            "make_generated_game_studio_design_specs",
-            "make_editor_ai_generated_game_studio_v1_model",
-            "draw_generated_game_studio_loop_table",
-            "Generated Game Studio"
+            "MK_editor visible shell is deferred during SDL3 removal",
+            "MK_editor_core remains the supported editor logic target",
+            "must not depend on SDL3"
         )
     },
     @{

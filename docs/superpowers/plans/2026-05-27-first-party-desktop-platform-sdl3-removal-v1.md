@@ -572,20 +572,32 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
 
 - Modify: `editor/src/**`
 - Modify: `editor/CMakeLists.txt` or relevant root `CMakeLists.txt` sections.
+- Modify: `CMakePresets.json`
 - Modify: `tools/build-gui.ps1`
 - Modify: `tools/evaluate-cpp23.ps1`
-- Modify: `tests/unit/editor_*` where visible-shell assumptions are checked.
+- Modify: `tools/check-ci-matrix.ps1`
+- Modify: `tools/check-dependency-policy.ps1`
+- Modify: `tools/check-json-contracts-030-tooling-contracts.ps1`
+- Modify: `tools/check-ai-integration-030-runtime-rendering.ps1`
+- Modify: `tools/check-ai-integration-080-scaffold-smokes.ps1`
 - Modify: `vcpkg.json`
-- Modify: `docs/editor.md`
+- Modify: `THIRD_PARTY_NOTICES.md`
+- Modify: `docs/dependencies.md`
+- Modify: `docs/legal-and-licensing.md`
+- Modify: `docs/ui.md`
+- Modify: `docs/workflows.md`
 - Modify: `docs/current-capabilities.md`
+- Modify: `docs/roadmap.md`
+- Modify: `docs/superpowers/plans/README.md`
+- Modify: `engine/agent/manifest.fragments/*.json` and composed `engine/agent/manifest.json`
 
-- [ ] Choose one editor strategy:
+- [x] Choose one editor strategy:
   - `native_editor_shell_now`: migrate `MK_editor` to Win32 + Dear ImGui + D3D12 backend in this milestone.
-  - `editor_shell_deferred`: keep `MK_editor_core` ready, temporarily remove or host-gate the visible editor shell until native shell lands.
-- [ ] If migrating now, re-check Dear ImGui Win32/D3D12 backend docs and license/package implications.
-- [ ] Add RED build or static checks that fail if `MK_editor` links SDL3.
-- [ ] Replace SDL3 window/event/file-dialog/clipboard integration with `MK_platform_win32` adapters.
-- [ ] Keep editor core independent from native handles.
+  - `editor_shell_deferred`: keep `MK_editor_core` ready, temporarily remove or host-gate the visible editor shell until native shell lands. **Selected for Phase 8.**
+- [x] If migrating now, re-check Dear ImGui Win32/D3D12 backend docs and license/package implications.
+- [x] Add RED build or static checks that fail if `MK_editor` links SDL3.
+- [x] Replace SDL3 window/event/file-dialog/clipboard integration with explicit visible-shell deferral and future first-party Win32/D3D12 adapter requirements.
+- [x] Keep editor core independent from native handles.
 - [ ] Run the selected lane:
 
 ```powershell
@@ -596,7 +608,29 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.
 
 **Done When:** The visible editor either builds without SDL3 through native Windows adapters or is explicitly host-gated/deferred without leaving SDL3 as a required dependency.
 
-**Phase Evidence:** Not started.
+**Phase Evidence:**
+
+- Strategy: selected `editor_shell_deferred` for this phase. Context7 confirmed the native Dear ImGui path would use `imgui_impl_win32` plus `imgui_impl_dx12` with app-owned D3D12 device, command queue, descriptor heap, descriptor allocation callbacks, Win32 message dispatch through `ImGui_ImplWin32_WndProcHandler`, per-frame `ImGui_ImplDX12_NewFrame` / `ImGui_ImplWin32_NewFrame`, and `ImGui_ImplDX12_RenderDrawData`; that is a real native shell implementation and is intentionally left to a future focused editor shell plan instead of carrying a half-migrated SDL3 adapter.
+- RED evidence: after adding static checks in `tools/check-dependency-policy.ps1` and `tools/check-json-contracts-030-tooling-contracts.ps1`, `tools/check-dependency-policy.ps1` failed because `desktop-gui` still declared `sdl3`, and `tools/check-json-contracts.ps1` failed because `editor/CMakeLists.txt` still retained `find_package(SDL3)`.
+- Implementation: removed the SDL3/Dear ImGui `MK_editor` shell sources from active tracked code, kept `MK_editor_core` as the supported editor logic target, made `MK_ENABLE_DESKTOP_GUI=ON`, `tools/build-gui.ps1`, and `tools/evaluate-cpp23.ps1 -Gui` fail closed with explicit deferral messages, stopped `MK_ENABLE_DESKTOP_GUI` from implying the SDL3 desktop runtime lane, removed `desktop-gui` package dependencies, removed Dear ImGui notices, and updated docs/static checks/agent surfaces to describe the deferred visible shell.
+- Validation:
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format-text.ps1`: pass; normalized 0 files.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`: pass.
+  - `git diff --check`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1`: expected fail-closed; nonzero exit with the visible editor shell deferral message.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev`: pass with `MK_ENABLE_DESKTOP_GUI=OFF`.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests MK_editor_game_module_driver_load_tests`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_editor_core_tests|MK_editor_game_module_driver_load_tests"`: pass; 2/2 tests passed.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-vcpkg-environment.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1`: blocked by session command policy because dependency bootstrap requires an approval-capable session; no approval was available in this Codex run. Static dependency policy checks and full validation below still passed without introducing SDL3/Dear ImGui desktop-gui dependencies.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`: pass; 79/79 CTest tests passed. Diagnostic-only Apple/Metal host blockers remained non-fatal.
 
 ## Phase 9 - SDL3 Dependency And Source Removal
 

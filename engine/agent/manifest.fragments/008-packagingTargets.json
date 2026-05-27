@@ -10,9 +10,9 @@
     {
       "name": "desktop-gui",
       "platform": "desktop",
-      "status": "validated-optional",
+      "status": "deferred-fail-closed",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1",
-      "notes": "Builds the optional SDL3, Dear ImGui, editor, and SDL3 audio adapter lane."
+      "notes": "Fails closed with the visible editor shell deferral message during SDL3 removal. MK_editor_core remains covered by the default validation lane; a future native visible shell must add fresh dependency, legal, and validation records."
     },
     {
       "name": "desktop-game-runtime",

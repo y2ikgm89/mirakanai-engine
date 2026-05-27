@@ -10,7 +10,7 @@ Dependencies are introduced only through official source repositories or officia
 3909e67a639d426ea939d9bff77bfe1d10443476
 ```
 
-Update the baseline only as an explicit dependency-maintenance task: update the official `external/vcpkg` checkout, verify the selected port versions and licenses, update this document and `THIRD_PARTY_NOTICES.md`, then run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1`.
+Update the baseline only as an explicit dependency-maintenance task: update the official `external/vcpkg` checkout, verify the selected port versions and licenses, update this document and `THIRD_PARTY_NOTICES.md`, then run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`.
 
 ## Current Runtime Dependencies
 
@@ -43,13 +43,13 @@ GitHub Actions restores the gitignored `external/vcpkg` tool checkout before cal
 
 On restricted sandboxed hosts, `bootstrap-deps` can still require an unrestricted run because it is the step that intentionally launches vcpkg, downloads archives, extracts helper tools, and builds dependency ports. After it succeeds, normal configure/build/package lanes should not invoke vcpkg.
 
-Build the desktop GUI/editor targets with:
+The visible desktop GUI/editor shell is deferred during SDL3 removal. The wrapper below is retained as a fail-closed entrypoint for stale automation:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1
 ```
 
-`build-gui` configures, builds, and runs the `desktop-gui` CTest preset.
+`build-gui` currently exits with the deferral message instead of configuring or building `desktop-gui`. `MK_editor_core` remains covered by the default validation lane.
 
 Validate or package the editor-independent desktop game runtime shell with:
 
@@ -58,7 +58,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtim
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1
 ```
 
-`desktop-game-runtime` uses the `desktop-runtime` preset and the bootstrapped `desktop-runtime` vcpkg feature so it does not require Dear ImGui. `package-desktop-runtime` uses the `desktop-runtime-release` preset, cleans its desktop runtime install prefix, installs the selected registered desktop runtime game executable, validates the installed executable, rejects `SDL3.dll` in the install tree or CPack ZIP, and then creates a CPack ZIP. Registered desktop runtime game targets generate `desktop-runtime-games.json` metadata for their `games/<game_name>/game.agent.json` manifest path, required source-tree smoke args, installed package smoke args, selected package target, target-specific shader-artifact paths, shader-artifact requirements, and runtime package files. Package files should be authored once in `game.agent.json.runtimePackageFiles` and registered through `PACKAGE_FILES_FROM_MANIFEST`; literal CMake `PACKAGE_FILES` remains valid only when it intentionally mirrors the manifest. Static schema checks and focused/package validation confirm that `desktop-runtime-release` manifest claims match CMake registration, `GAME_MANIFEST`, safe `runtimePackageFiles`, and package recipes. The default package target remains `sample_desktop_runtime_shell`, uses the Windows-native `Win32DesktopGameHost`, and requires generated DXIL plus SPIR-V shader artifacts through metadata while validating D3D12 presentation on the installed smoke. `sample_desktop_runtime_game` can be selected with `-GameTarget` and still validates bundled config, cooked scene package files, target-specific scene DXIL artifacts, and host-owned D3D12 scene GPU binding by default until the remaining non-shell sample/game-template migration phases move it off SDL3. The same selected game target can validate target-specific scene SPIR-V artifacts and host-owned Vulkan scene GPU binding with `-RequireVulkanShaders` plus explicit Vulkan smoke args on a ready Windows/Vulkan host.
+`desktop-game-runtime` uses the `desktop-runtime` preset and the bootstrapped `desktop-runtime` vcpkg feature so it does not require Dear ImGui. `package-desktop-runtime` uses the `desktop-runtime-release` preset, cleans its desktop runtime install prefix, installs the selected registered desktop runtime game executable, validates the installed executable, rejects `SDL3.dll` in the install tree or CPack ZIP, and then creates a CPack ZIP. Registered desktop runtime game targets generate `desktop-runtime-games.json` metadata for their `games/<game_name>/game.agent.json` manifest path, required source-tree smoke args, installed package smoke args, selected package target, target-specific shader-artifact paths, shader-artifact requirements, and runtime package files. Package files should be authored once in `game.agent.json.runtimePackageFiles` and registered through `PACKAGE_FILES_FROM_MANIFEST`; literal CMake `PACKAGE_FILES` remains valid only when it intentionally mirrors the manifest. Static schema checks and focused/package validation confirm that `desktop-runtime-release` manifest claims match CMake registration, `GAME_MANIFEST`, safe `runtimePackageFiles`, and package recipes. The default package target remains `sample_desktop_runtime_shell`, uses the Windows-native `Win32DesktopGameHost`, and requires generated DXIL plus SPIR-V shader artifacts through metadata while validating D3D12 presentation on the installed smoke. `sample_desktop_runtime_game`, committed generated desktop runtime package samples, and generated desktop runtime templates are now Win32-backed through `Win32DesktopGameHost` / `Win32DesktopPresentation`; SDL3 remains only in legacy adapter source pending the final SDL3 deletion phase. The same selected game target can validate target-specific scene SPIR-V artifacts and host-owned Vulkan scene GPU binding with `-RequireVulkanShaders` plus explicit Vulkan smoke args on a ready Windows/Vulkan host.
 
 ## Windows Host Diagnostics Tooling
 
@@ -79,14 +79,11 @@ Apply ADK servicing patches only when they match installed ADK features. Do not 
 
 This feature builds SDL3-backed platform, audio, and desktop runtime host adapters plus registered desktop runtime game samples when `MK_ENABLE_DESKTOP_RUNTIME=ON`. It is intentionally separate from `desktop-gui` so windowed games can be validated and packaged without Dear ImGui or `MK_editor`.
 
-`desktop-gui` in `vcpkg.json` declares:
+`desktop-gui` in `vcpkg.json` is currently a deferred empty feature during the SDL3 removal milestone. It declares no package dependencies, does not install Dear ImGui, and does not enable the desktop runtime lane.
 
-- `sdl3`
-- `imgui` with `docking-experimental`, `sdl3-binding`, and `sdl3-renderer-binding`
+The previous SDL3 + Dear ImGui visible editor shell was removed from active build lanes before final SDL3 deletion. `MK_editor_core` remains the supported editor logic target. A future visible editor shell must select audited dependencies explicitly, use first-party Win32/D3D12 adapters on Windows, and must not reintroduce SDL3.
 
-This feature builds the optional SDL3 + Dear ImGui editor shell. `MK_ENABLE_DESKTOP_GUI=ON` also enables the desktop runtime targets, but Dear ImGui remains scoped to the editor/debug shell.
-
-Dear ImGui is scoped to the optional developer/editor shell and debug tooling. It is not the production game/runtime UI foundation. Production runtime UI work should first define first-party `MK_ui` contracts.
+Dear ImGui remains a possible future developer/editor/debug-shell dependency, but it is not currently declared or distributed. It is not the production game/runtime UI foundation. Production runtime UI work should first define first-party `MK_ui` contracts.
 
 ### Editor native module boundary (not a vcpkg dependency)
 
@@ -177,8 +174,7 @@ Validated local package versions:
 
 | Package | Version | Use |
 | --- | --- | --- |
-| SDL3 | 3.4.4 | Desktop window/event loop for optional desktop runtime games, the editor, and optional desktop audio output through `MK_audio_sdl3` |
-| Dear ImGui | 1.92.7 | Docking editor UI, SDL3 backend, SDL renderer backend |
+| SDL3 | 3.4.4 | Temporary optional SDL3 adapter source for `MK_platform_sdl3` and `MK_audio_sdl3` until final SDL3 source removal |
 | libspng | vcpkg baseline selected | Optional `MK_tools` PNG source importer |
 | fastgltf | vcpkg baseline selected | Optional `MK_tools` glTF 2.0 source importer |
 | miniaudio | vcpkg baseline selected | Optional `MK_tools` WAV/MP3/FLAC source importer |
@@ -203,8 +199,6 @@ Validated local package versions:
 - SDL3: https://github.com/libsdl-org/SDL
 - SDL3 platforms: https://wiki.libsdl.org/SDL3/README-platforms
 - SDL3 audio streams: https://wiki.libsdl.org/SDL3/SDL_OpenAudioDeviceStream
-- Dear ImGui: https://github.com/ocornut/imgui
-- Dear ImGui getting started: https://github.com/ocornut/imgui/wiki/Getting-Started
 - libspng: https://libspng.org/
 - fastgltf: https://github.com/spnda/fastgltf
 - miniaudio: https://miniaud.io/
@@ -238,7 +232,6 @@ Validated local package versions:
 ## License Notes
 
 - SDL3 is recorded by vcpkg as `Zlib AND MIT AND Apache-2.0`.
-- Dear ImGui uses the MIT license.
 - libspng is BSD-2-Clause.
 - fastgltf is MIT and currently pulls `simdjson` through vcpkg.
 - miniaudio is public domain or MIT No Attribution.
