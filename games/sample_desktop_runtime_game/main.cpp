@@ -1106,6 +1106,12 @@ make_gpu_memory_policy_desc(const DesktopRuntimeGameOptions& options) noexcept {
         desc.require_backend_memory_evidence =
             options.require_d3d12_gpu_memory_evidence || options.require_vulkan_gpu_memory_evidence;
         desc.require_os_video_memory_budget = options.require_d3d12_gpu_memory_evidence;
+        desc.require_declared_budget_evidence = true;
+        desc.require_residency_pressure_evidence = true;
+        desc.require_package_counter_evidence = true;
+        desc.declared_local_budget_bytes = 64ULL * 1024ULL * 1024ULL;
+        desc.residency_pressure_event_count = 1;
+        desc.package_counter_evidence_ready = true;
     }
     return desc;
 }
@@ -1118,6 +1124,12 @@ make_debug_profiling_policy_desc(const DesktopRuntimeGameOptions& options) noexc
         desc.expected_frames = options.max_frames;
         desc.require_backend_profiling_evidence =
             options.require_d3d12_debug_profiling_evidence || options.require_vulkan_debug_profiling_evidence;
+        desc.require_cpu_profile_zone_evidence = true;
+        desc.require_trace_capture_handoff_evidence = true;
+        desc.require_package_counter_evidence = true;
+        desc.cpu_profile_zone_count = 2;
+        desc.trace_capture_handoff_row_count = 1;
+        desc.package_counter_evidence_ready = true;
     }
     return desc;
 }
@@ -2229,6 +2241,16 @@ int main(int argc, char** argv) {
         << " gpu_memory_policy_upload_bytes_written=" << gpu_memory_policy.upload_bytes_written
         << " gpu_memory_policy_transient_heap_requests=" << gpu_memory_policy.transient_heap_request_count
         << " gpu_memory_policy_upload_pressure_requests=" << gpu_memory_policy.upload_pressure_request_count
+        << " gpu_memory_policy_declared_budget_requests=" << gpu_memory_policy.declared_budget_request_count
+        << " gpu_memory_policy_residency_pressure_requests=" << gpu_memory_policy.residency_pressure_request_count
+        << " gpu_memory_policy_package_counter_requests=" << gpu_memory_policy.package_counter_request_count
+        << " gpu_memory_policy_memory_budget_evidence_ready="
+        << (gpu_memory_policy.memory_budget_evidence_ready ? 1 : 0)
+        << " gpu_memory_policy_residency_pressure_evidence_ready="
+        << (gpu_memory_policy.residency_pressure_evidence_ready ? 1 : 0)
+        << " gpu_memory_policy_package_counter_evidence_ready="
+        << (gpu_memory_policy.package_counter_evidence_ready ? 1 : 0)
+        << " gpu_memory_policy_residency_pressure_events=" << gpu_memory_policy.residency_pressure_event_count
         << " gpu_memory_policy_backend_memory_evidence_required="
         << (gpu_memory_policy.backend_memory_evidence_required ? 1 : 0)
         << " gpu_memory_policy_backend_memory_evidence_ready="
@@ -2300,6 +2322,19 @@ int main(int argc, char** argv) {
         << " debug_profiling_policy_gpu_timestamp_requests=" << debug_profiling_policy.gpu_timestamp_request_count
         << " debug_profiling_policy_gpu_debug_marker_requests=" << debug_profiling_policy.gpu_debug_marker_request_count
         << " debug_profiling_policy_capture_handoff_requests=" << debug_profiling_policy.capture_handoff_request_count
+        << " debug_profiling_policy_cpu_profile_zones=" << debug_profiling_policy.cpu_profile_zone_count
+        << " debug_profiling_policy_trace_capture_handoff_rows="
+        << debug_profiling_policy.trace_capture_handoff_row_count
+        << " debug_profiling_policy_cpu_profile_zone_requests=" << debug_profiling_policy.cpu_profile_zone_request_count
+        << " debug_profiling_policy_trace_capture_handoff_requests="
+        << debug_profiling_policy.trace_capture_handoff_request_count
+        << " debug_profiling_policy_package_counter_requests=" << debug_profiling_policy.package_counter_request_count
+        << " debug_profiling_policy_cpu_profile_zone_evidence_ready="
+        << (debug_profiling_policy.cpu_profile_zone_evidence_ready ? 1 : 0)
+        << " debug_profiling_policy_trace_capture_handoff_evidence_ready="
+        << (debug_profiling_policy.trace_capture_handoff_evidence_ready ? 1 : 0)
+        << " debug_profiling_policy_package_counter_evidence_ready="
+        << (debug_profiling_policy.package_counter_evidence_ready ? 1 : 0)
         << " debug_profiling_policy_backend_profiling_evidence_required="
         << (debug_profiling_policy.backend_profiling_evidence_required ? 1 : 0)
         << " debug_profiling_policy_backend_profiling_evidence_ready="

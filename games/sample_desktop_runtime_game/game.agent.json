@@ -141,6 +141,22 @@
             "installed-d3d12-scene-gpu-smoke",
             "installed-vulkan-scene-gpu-smoke"
           ]
+        },
+        {
+          "id": "gpu-memory-policy-evidence",
+          "evidence": "GPU memory policy smoke reports gpu_memory_policy_status=ready, gpu_memory_policy_ready=1, gpu_memory_policy_diagnostics=0, positive gpu_memory_policy_declared_budget_requests, positive gpu_memory_policy_residency_pressure_requests, positive gpu_memory_policy_package_counter_requests, positive gpu_memory_policy_residency_pressure_events, gpu_memory_policy_memory_budget_evidence_ready=1, gpu_memory_policy_residency_pressure_evidence_ready=1, and gpu_memory_policy_package_counter_evidence_ready=1.",
+          "recipeIds": [
+            "installed-d3d12-scene-gpu-smoke",
+            "installed-vulkan-scene-gpu-smoke"
+          ]
+        },
+        {
+          "id": "debug-profiling-policy-evidence",
+          "evidence": "Debug profiling policy smoke reports debug_profiling_policy_status=ready, debug_profiling_policy_ready=1, debug_profiling_policy_diagnostics=0, positive debug_profiling_policy_cpu_profile_zones, positive debug_profiling_policy_trace_capture_handoff_rows, positive debug_profiling_policy_cpu_profile_zone_requests, positive debug_profiling_policy_trace_capture_handoff_requests, positive debug_profiling_policy_package_counter_requests, debug_profiling_policy_cpu_profile_zone_evidence_ready=1, debug_profiling_policy_trace_capture_handoff_evidence_ready=1, and debug_profiling_policy_package_counter_evidence_ready=1.",
+          "recipeIds": [
+            "installed-d3d12-scene-gpu-smoke",
+            "installed-vulkan-scene-gpu-smoke"
+          ]
         }
       ],
       "unsupportedClaims": [
