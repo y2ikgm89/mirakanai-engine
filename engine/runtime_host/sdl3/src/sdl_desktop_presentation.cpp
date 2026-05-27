@@ -3495,7 +3495,9 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
 
 [[nodiscard]] bool gpu_memory_policy_requested(const SdlDesktopPresentationGpuMemoryPolicyDesc& desc) noexcept {
     return desc.require_scene_gpu_bindings || desc.require_backend_memory_evidence ||
-           desc.require_os_video_memory_budget || desc.declared_local_budget_bytes > 0;
+           desc.require_os_video_memory_budget || desc.require_declared_budget_evidence ||
+           desc.require_residency_pressure_evidence || desc.require_package_counter_evidence ||
+           desc.declared_local_budget_bytes > 0;
 }
 
 [[nodiscard]] rhi::BackendKind postprocess_policy_backend(SdlDesktopPresentationBackend backend) noexcept {
@@ -3512,7 +3514,9 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
 
 [[nodiscard]] bool
 debug_profiling_policy_requested(const SdlDesktopPresentationDebugProfilingPolicyDesc& desc) noexcept {
-    return desc.require_scene_gpu_bindings || desc.require_backend_profiling_evidence;
+    return desc.require_scene_gpu_bindings || desc.require_backend_profiling_evidence ||
+           desc.require_cpu_profile_zone_evidence || desc.require_trace_capture_handoff_evidence ||
+           desc.require_package_counter_evidence;
 }
 
 [[nodiscard]] bool debug_profiling_policy_backend_evidence_ready(const SdlDesktopPresentationReport& report,
@@ -5129,6 +5133,10 @@ evaluate_sdl_desktop_presentation_gpu_memory_policy(const SdlDesktopPresentation
 
     const auto& memory = report.rhi_memory_diagnostics;
     const auto upload_bytes = gpu_memory_policy_upload_bytes(report);
+    const auto residency_pressure_events =
+        desc.residency_pressure_event_count > 0
+            ? desc.residency_pressure_event_count
+            : static_cast<std::uint64_t>(gpu_memory_policy_transient_pressure_ready(report) ? 1U : 0U);
 
     std::array<GpuMemoryRequestDesc, 3> requests{};
     std::size_t request_count = 0;
@@ -5136,7 +5144,14 @@ evaluate_sdl_desktop_presentation_gpu_memory_policy(const SdlDesktopPresentation
         requests[request_count++] = GpuMemoryRequestDesc{
             .residency = GpuMemoryResidencyClass::committed,
             .requested_bytes = memory.committed_resources_byte_estimate,
+            .transient_heap = GpuMemoryTransientHeapPolicy::none,
+            .upload_pressure = GpuMemoryUploadPressureKind::none,
             .scene_resources_available = result.scene_resources_ready,
+            .request_background_streaming = false,
+            .request_automatic_eviction = false,
+            .require_declared_budget_evidence = desc.require_declared_budget_evidence,
+            .require_residency_pressure_evidence = desc.require_residency_pressure_evidence,
+            .require_package_counter_evidence = desc.require_package_counter_evidence,
             .source_index = 0,
         };
     }
@@ -5150,7 +5165,13 @@ evaluate_sdl_desktop_presentation_gpu_memory_policy(const SdlDesktopPresentation
             .transient_heap = report.rhi_transient_placed_allocations > 0
                                   ? GpuMemoryTransientHeapPolicy::alias_group_heap
                                   : GpuMemoryTransientHeapPolicy::per_resource_heap,
+            .upload_pressure = GpuMemoryUploadPressureKind::none,
             .scene_resources_available = result.scene_resources_ready,
+            .request_background_streaming = false,
+            .request_automatic_eviction = false,
+            .require_declared_budget_evidence = desc.require_declared_budget_evidence,
+            .require_residency_pressure_evidence = desc.require_residency_pressure_evidence,
+            .require_package_counter_evidence = desc.require_package_counter_evidence,
             .source_index = 1,
         };
     }
@@ -5158,8 +5179,14 @@ evaluate_sdl_desktop_presentation_gpu_memory_policy(const SdlDesktopPresentation
         requests[request_count++] = GpuMemoryRequestDesc{
             .residency = GpuMemoryResidencyClass::placed,
             .requested_bytes = upload_bytes,
+            .transient_heap = GpuMemoryTransientHeapPolicy::none,
             .upload_pressure = GpuMemoryUploadPressureKind::ring_buffer,
             .scene_resources_available = result.scene_resources_ready,
+            .request_background_streaming = false,
+            .request_automatic_eviction = false,
+            .require_declared_budget_evidence = desc.require_declared_budget_evidence,
+            .require_residency_pressure_evidence = desc.require_residency_pressure_evidence,
+            .require_package_counter_evidence = desc.require_package_counter_evidence,
             .source_index = 2,
         };
     }
@@ -5167,6 +5194,7 @@ evaluate_sdl_desktop_presentation_gpu_memory_policy(const SdlDesktopPresentation
     const auto plan = plan_gpu_memory_policy(GpuMemoryPolicyDesc{
         .requests = std::span<const GpuMemoryRequestDesc>{requests.data(), request_count},
         .declared_local_budget_bytes = desc.declared_local_budget_bytes,
+        .declared_non_local_budget_bytes = 0,
         .os_video_memory_budget_available = memory.os_video_memory_budget_available,
         .os_local_budget_bytes = memory.local_video_memory_budget_bytes,
         .os_local_usage_bytes = memory.local_video_memory_usage_bytes,
@@ -5178,16 +5206,21 @@ evaluate_sdl_desktop_presentation_gpu_memory_policy(const SdlDesktopPresentation
         .transient_placed_allocations = report.rhi_transient_placed_allocations,
         .transient_placed_resources_alive = report.rhi_transient_placed_resources_alive,
         .upload_bytes_written = upload_bytes,
+        .residency_pressure_event_count = residency_pressure_events,
         .backend = postprocess_policy_backend(report.selected_backend),
         .require_backend_memory_evidence = desc.require_backend_memory_evidence,
         .backend_memory_evidence_ready =
             gpu_memory_policy_backend_memory_evidence_ready(report, desc.require_backend_memory_evidence),
         .require_os_video_memory_budget =
             desc.require_os_video_memory_budget && memory.os_video_memory_budget_available,
+        .package_counter_evidence_ready = desc.package_counter_evidence_ready,
     });
 
     result.backend_memory_evidence_ready = plan.backend_memory_evidence_ready;
     result.os_video_memory_budget_available = plan.os_video_memory_budget_available;
+    result.memory_budget_evidence_ready = plan.memory_budget_evidence_ready;
+    result.residency_pressure_evidence_ready = plan.residency_pressure_evidence_ready;
+    result.package_counter_evidence_ready = plan.package_counter_evidence_ready;
     result.diagnostics_count = static_cast<std::uint32_t>(plan.diagnostics.size());
     if (!result.frames_current) {
         ++result.diagnostics_count;
@@ -5202,8 +5235,12 @@ evaluate_sdl_desktop_presentation_gpu_memory_policy(const SdlDesktopPresentation
     result.transient_placed_allocations = plan.transient_placed_allocations;
     result.transient_placed_resources_alive = plan.transient_placed_resources_alive;
     result.upload_bytes_written = plan.upload_bytes_written;
+    result.residency_pressure_event_count = plan.residency_pressure_event_count;
     result.transient_heap_request_count = plan.transient_heap_request_count;
     result.upload_pressure_request_count = plan.upload_pressure_request_count;
+    result.declared_budget_request_count = plan.declared_budget_request_count;
+    result.residency_pressure_request_count = plan.residency_pressure_request_count;
+    result.package_counter_request_count = plan.package_counter_request_count;
     result.ready = result.diagnostics_count == 0;
     result.status = result.ready ? SdlDesktopPresentationGpuMemoryPolicyStatus::ready
                                  : SdlDesktopPresentationGpuMemoryPolicyStatus::blocked;
@@ -5316,6 +5353,8 @@ evaluate_sdl_desktop_presentation_debug_profiling_policy(const SdlDesktopPresent
     result.gpu_debug_scopes_begun = report.rhi_gpu_debug_scopes_begun;
     result.gpu_debug_scopes_ended = report.rhi_gpu_debug_scopes_ended;
     result.gpu_debug_markers_inserted = report.rhi_gpu_debug_markers_inserted;
+    result.cpu_profile_zone_count = desc.cpu_profile_zone_count;
+    result.trace_capture_handoff_row_count = desc.trace_capture_handoff_row_count;
     result.framegraph_barrier_steps_executed = report.renderer_stats.framegraph_barrier_steps_executed;
     result.framegraph_render_passes_recorded = report.renderer_stats.framegraph_render_passes_recorded;
 
@@ -5330,22 +5369,44 @@ evaluate_sdl_desktop_presentation_debug_profiling_policy(const SdlDesktopPresent
             .require_gpu_timestamps = true,
             .require_gpu_debug_markers = true,
             .require_capture_handoff_evidence = true,
+            .require_cpu_profile_zone_evidence = desc.require_cpu_profile_zone_evidence,
+            .require_trace_capture_handoff_evidence = desc.require_trace_capture_handoff_evidence,
+            .require_package_counter_evidence = desc.require_package_counter_evidence,
             .scene_frame_resources_available = result.scene_resources_ready,
+            .request_automatic_capture_execution = false,
+            .request_production_flame_graph = false,
+            .request_crash_telemetry_export = false,
             .source_index = 0,
         };
     } else if (desc.require_backend_profiling_evidence &&
                report.selected_backend == SdlDesktopPresentationBackend::vulkan) {
         requests[request_count++] = DebugProfilingRequestDesc{
             .capture_kind = DebugProfilingCaptureKind::vulkan_debug_utils,
+            .require_gpu_timestamps = false,
             .require_gpu_debug_markers = true,
             .require_capture_handoff_evidence = true,
+            .require_cpu_profile_zone_evidence = desc.require_cpu_profile_zone_evidence,
+            .require_trace_capture_handoff_evidence = desc.require_trace_capture_handoff_evidence,
+            .require_package_counter_evidence = desc.require_package_counter_evidence,
             .scene_frame_resources_available = result.scene_resources_ready,
+            .request_automatic_capture_execution = false,
+            .request_production_flame_graph = false,
+            .request_crash_telemetry_export = false,
             .source_index = 0,
         };
     } else if (result.scene_resources_ready) {
         requests[request_count++] = DebugProfilingRequestDesc{
             .capture_kind = DebugProfilingCaptureKind::none,
+            .require_gpu_timestamps = false,
+            .require_gpu_debug_markers = false,
+            .require_capture_handoff_evidence = false,
+            .require_cpu_profile_zone_evidence = desc.require_cpu_profile_zone_evidence,
+            .require_trace_capture_handoff_evidence = desc.require_trace_capture_handoff_evidence,
+            .require_package_counter_evidence = desc.require_package_counter_evidence,
             .scene_frame_resources_available = true,
+            .request_automatic_capture_execution = false,
+            .request_production_flame_graph = false,
+            .request_crash_telemetry_export = false,
             .source_index = 0,
         };
     }
@@ -5358,11 +5419,14 @@ evaluate_sdl_desktop_presentation_debug_profiling_policy(const SdlDesktopPresent
         .gpu_debug_scopes_begun = report.rhi_gpu_debug_scopes_begun,
         .gpu_debug_scopes_ended = report.rhi_gpu_debug_scopes_ended,
         .gpu_debug_markers_inserted = report.rhi_gpu_debug_markers_inserted,
+        .cpu_profile_zone_count = desc.cpu_profile_zone_count,
+        .trace_capture_handoff_row_count = desc.trace_capture_handoff_row_count,
         .framegraph_barrier_steps_executed = report.renderer_stats.framegraph_barrier_steps_executed,
         .framegraph_render_passes_recorded = report.renderer_stats.framegraph_render_passes_recorded,
         .backend = postprocess_policy_backend(report.selected_backend),
         .require_backend_profiling_evidence = desc.require_backend_profiling_evidence,
         .backend_profiling_evidence_ready = backend_evidence_ready,
+        .package_counter_evidence_ready = desc.package_counter_evidence_ready,
     });
 
     result.backend_profiling_evidence_ready = backend_evidence_ready;
@@ -5374,6 +5438,12 @@ evaluate_sdl_desktop_presentation_debug_profiling_policy(const SdlDesktopPresent
     result.gpu_timestamp_request_count = plan.gpu_timestamp_request_count;
     result.gpu_debug_marker_request_count = plan.gpu_debug_marker_request_count;
     result.capture_handoff_request_count = plan.capture_handoff_request_count;
+    result.cpu_profile_zone_request_count = plan.cpu_profile_zone_request_count;
+    result.trace_capture_handoff_request_count = plan.trace_capture_handoff_request_count;
+    result.package_counter_request_count = plan.package_counter_request_count;
+    result.cpu_profile_zone_evidence_ready = plan.cpu_profile_zone_evidence_ready;
+    result.trace_capture_handoff_evidence_ready = plan.trace_capture_handoff_evidence_ready;
+    result.package_counter_evidence_ready = plan.package_counter_evidence_ready;
     result.ready = result.diagnostics_count == 0;
     result.status = result.ready ? SdlDesktopPresentationDebugProfilingPolicyStatus::ready
                                  : SdlDesktopPresentationDebugProfilingPolicyStatus::blocked;

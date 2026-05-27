@@ -6225,36 +6225,60 @@ MK_TEST("gpu memory policy plans budgets residency transient heap and fail-close
     const std::array requests{
         mirakana::GpuMemoryRequestDesc{.residency = mirakana::GpuMemoryResidencyClass::committed,
                                        .requested_bytes = 64ULL * 1024ULL * 1024ULL,
+                                       .transient_heap = mirakana::GpuMemoryTransientHeapPolicy::none,
+                                       .upload_pressure = mirakana::GpuMemoryUploadPressureKind::none,
                                        .scene_resources_available = true,
+                                       .request_background_streaming = false,
+                                       .request_automatic_eviction = false,
+                                       .require_declared_budget_evidence = false,
+                                       .require_residency_pressure_evidence = false,
+                                       .require_package_counter_evidence = false,
                                        .source_index = 1},
         mirakana::GpuMemoryRequestDesc{.residency = mirakana::GpuMemoryResidencyClass::transient,
                                        .requested_bytes = 16ULL * 1024ULL * 1024ULL,
                                        .transient_heap = mirakana::GpuMemoryTransientHeapPolicy::alias_group_heap,
+                                       .upload_pressure = mirakana::GpuMemoryUploadPressureKind::none,
                                        .scene_resources_available = true,
+                                       .request_background_streaming = false,
+                                       .request_automatic_eviction = false,
+                                       .require_declared_budget_evidence = false,
+                                       .require_residency_pressure_evidence = false,
+                                       .require_package_counter_evidence = false,
                                        .source_index = 2},
         mirakana::GpuMemoryRequestDesc{.residency = mirakana::GpuMemoryResidencyClass::placed,
                                        .requested_bytes = 0,
+                                       .transient_heap = mirakana::GpuMemoryTransientHeapPolicy::none,
                                        .upload_pressure = mirakana::GpuMemoryUploadPressureKind::ring_buffer,
                                        .scene_resources_available = true,
+                                       .request_background_streaming = false,
+                                       .request_automatic_eviction = false,
+                                       .require_declared_budget_evidence = false,
+                                       .require_residency_pressure_evidence = false,
+                                       .require_package_counter_evidence = false,
                                        .source_index = 3},
     };
 
     const auto plan = mirakana::plan_gpu_memory_policy(mirakana::GpuMemoryPolicyDesc{
         .requests = requests,
         .declared_local_budget_bytes = 128ULL * 1024ULL * 1024ULL,
+        .declared_non_local_budget_bytes = 0,
         .os_video_memory_budget_available = true,
         .os_local_budget_bytes = 8ULL * 1024ULL * 1024ULL * 1024ULL,
         .os_local_usage_bytes = 256ULL * 1024ULL * 1024ULL,
+        .os_non_local_budget_bytes = 0,
+        .os_non_local_usage_bytes = 0,
         .committed_byte_estimate_available = true,
         .committed_byte_estimate = 80ULL * 1024ULL * 1024ULL,
         .transient_heap_allocations = 2,
         .transient_placed_allocations = 1,
         .transient_placed_resources_alive = 1,
         .upload_bytes_written = 4ULL * 1024ULL * 1024ULL,
+        .residency_pressure_event_count = 0,
         .backend = mirakana::rhi::BackendKind::d3d12,
         .require_backend_memory_evidence = true,
         .backend_memory_evidence_ready = true,
         .require_os_video_memory_budget = true,
+        .package_counter_evidence_ready = false,
     });
 
     MK_REQUIRE(plan.succeeded());
@@ -6275,15 +6299,32 @@ MK_TEST("gpu memory policy plans budgets residency transient heap and fail-close
                                        .scene_resources_available = false,
                                        .request_background_streaming = true,
                                        .request_automatic_eviction = true,
+                                       .require_declared_budget_evidence = false,
+                                       .require_residency_pressure_evidence = false,
+                                       .require_package_counter_evidence = false,
                                        .source_index = 9},
     };
     const auto invalid = mirakana::plan_gpu_memory_policy(mirakana::GpuMemoryPolicyDesc{
         .requests = invalid_requests,
         .declared_local_budget_bytes = 1,
+        .declared_non_local_budget_bytes = 0,
+        .os_video_memory_budget_available = false,
+        .os_local_budget_bytes = 0,
+        .os_local_usage_bytes = 0,
+        .os_non_local_budget_bytes = 0,
+        .os_non_local_usage_bytes = 0,
+        .committed_byte_estimate_available = false,
+        .committed_byte_estimate = 0,
+        .transient_heap_allocations = 0,
+        .transient_placed_allocations = 0,
+        .transient_placed_resources_alive = 0,
+        .upload_bytes_written = 0,
+        .residency_pressure_event_count = 0,
         .backend = mirakana::rhi::BackendKind::vulkan,
         .require_backend_memory_evidence = true,
         .backend_memory_evidence_ready = false,
         .require_os_video_memory_budget = true,
+        .package_counter_evidence_ready = false,
     });
 
     MK_REQUIRE(!invalid.succeeded());
@@ -6309,7 +6350,13 @@ MK_TEST("debug profiling policy plans capture handoff timestamps markers and fai
                                             .require_gpu_timestamps = true,
                                             .require_gpu_debug_markers = true,
                                             .require_capture_handoff_evidence = true,
+                                            .require_cpu_profile_zone_evidence = false,
+                                            .require_trace_capture_handoff_evidence = false,
+                                            .require_package_counter_evidence = false,
                                             .scene_frame_resources_available = true,
+                                            .request_automatic_capture_execution = false,
+                                            .request_production_flame_graph = false,
+                                            .request_crash_telemetry_export = false,
                                             .source_index = 0},
     };
 
@@ -6321,11 +6368,14 @@ MK_TEST("debug profiling policy plans capture handoff timestamps markers and fai
         .gpu_debug_scopes_begun = 2,
         .gpu_debug_scopes_ended = 2,
         .gpu_debug_markers_inserted = 2,
+        .cpu_profile_zone_count = 0,
+        .trace_capture_handoff_row_count = 0,
         .framegraph_barrier_steps_executed = 12,
         .framegraph_render_passes_recorded = 6,
         .backend = mirakana::rhi::BackendKind::d3d12,
         .require_backend_profiling_evidence = true,
         .backend_profiling_evidence_ready = true,
+        .package_counter_evidence_ready = false,
     });
 
     MK_REQUIRE(plan.succeeded());
@@ -6342,6 +6392,10 @@ MK_TEST("debug profiling policy plans capture handoff timestamps markers and fai
         mirakana::DebugProfilingRequestDesc{.capture_kind = mirakana::DebugProfilingCaptureKind::pix_gpu_handoff,
                                             .require_gpu_timestamps = true,
                                             .require_gpu_debug_markers = true,
+                                            .require_capture_handoff_evidence = false,
+                                            .require_cpu_profile_zone_evidence = false,
+                                            .require_trace_capture_handoff_evidence = false,
+                                            .require_package_counter_evidence = false,
                                             .scene_frame_resources_available = false,
                                             .request_automatic_capture_execution = true,
                                             .request_production_flame_graph = true,
@@ -6350,9 +6404,20 @@ MK_TEST("debug profiling policy plans capture handoff timestamps markers and fai
     };
     const auto invalid = mirakana::plan_debug_profiling_policy(mirakana::DebugProfilingPolicyDesc{
         .requests = invalid_requests,
+        .expected_frames = 0,
+        .frames_finished = 0,
+        .gpu_timestamp_ticks_per_second = 0,
+        .gpu_debug_scopes_begun = 0,
+        .gpu_debug_scopes_ended = 0,
+        .gpu_debug_markers_inserted = 0,
+        .cpu_profile_zone_count = 0,
+        .trace_capture_handoff_row_count = 0,
+        .framegraph_barrier_steps_executed = 0,
+        .framegraph_render_passes_recorded = 0,
         .backend = mirakana::rhi::BackendKind::vulkan,
         .require_backend_profiling_evidence = true,
         .backend_profiling_evidence_ready = false,
+        .package_counter_evidence_ready = false,
     });
 
     MK_REQUIRE(!invalid.succeeded());
@@ -6368,6 +6433,161 @@ MK_TEST("debug profiling policy plans capture handoff timestamps markers and fai
         invalid, mirakana::DebugProfilingDiagnosticCode::missing_backend_profiling_evidence));
     MK_REQUIRE(mirakana::has_debug_profiling_policy_diagnostic(
         invalid, mirakana::DebugProfilingDiagnosticCode::missing_frame_diagnostic_evidence));
+}
+
+MK_TEST("debug profiling policy requires CPU zones trace capture handoff and package counter evidence") {
+    const std::array requests{
+        mirakana::DebugProfilingRequestDesc{.capture_kind = mirakana::DebugProfilingCaptureKind::pix_gpu_handoff,
+                                            .require_gpu_timestamps = true,
+                                            .require_gpu_debug_markers = true,
+                                            .require_capture_handoff_evidence = true,
+                                            .require_cpu_profile_zone_evidence = true,
+                                            .require_trace_capture_handoff_evidence = true,
+                                            .require_package_counter_evidence = true,
+                                            .scene_frame_resources_available = true,
+                                            .request_automatic_capture_execution = false,
+                                            .request_production_flame_graph = false,
+                                            .request_crash_telemetry_export = false,
+                                            .source_index = 11},
+    };
+
+    const auto plan = mirakana::plan_debug_profiling_policy(mirakana::DebugProfilingPolicyDesc{
+        .requests = requests,
+        .expected_frames = 3,
+        .frames_finished = 3,
+        .gpu_timestamp_ticks_per_second = 10'000'000,
+        .gpu_debug_scopes_begun = 3,
+        .gpu_debug_scopes_ended = 3,
+        .gpu_debug_markers_inserted = 3,
+        .cpu_profile_zone_count = 4,
+        .trace_capture_handoff_row_count = 1,
+        .framegraph_barrier_steps_executed = 12,
+        .framegraph_render_passes_recorded = 6,
+        .backend = mirakana::rhi::BackendKind::d3d12,
+        .require_backend_profiling_evidence = true,
+        .backend_profiling_evidence_ready = true,
+        .package_counter_evidence_ready = true,
+    });
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.cpu_profile_zone_count == 4);
+    MK_REQUIRE(plan.trace_capture_handoff_row_count == 1);
+    MK_REQUIRE(plan.cpu_profile_zone_request_count == 1);
+    MK_REQUIRE(plan.trace_capture_handoff_request_count == 1);
+    MK_REQUIRE(plan.package_counter_request_count == 1);
+    MK_REQUIRE(plan.cpu_profile_zone_evidence_ready);
+    MK_REQUIRE(plan.trace_capture_handoff_evidence_ready);
+    MK_REQUIRE(plan.package_counter_evidence_ready);
+    MK_REQUIRE(plan.request_rows[0].cpu_profile_zone_evidence_ready);
+    MK_REQUIRE(plan.request_rows[0].trace_capture_handoff_evidence_ready);
+    MK_REQUIRE(plan.request_rows[0].package_counter_evidence_ready);
+
+    const auto missing = mirakana::plan_debug_profiling_policy(mirakana::DebugProfilingPolicyDesc{
+        .requests = requests,
+        .expected_frames = 3,
+        .frames_finished = 3,
+        .gpu_timestamp_ticks_per_second = 10'000'000,
+        .gpu_debug_scopes_begun = 3,
+        .gpu_debug_scopes_ended = 3,
+        .gpu_debug_markers_inserted = 3,
+        .cpu_profile_zone_count = 0,
+        .trace_capture_handoff_row_count = 0,
+        .framegraph_barrier_steps_executed = 12,
+        .framegraph_render_passes_recorded = 6,
+        .backend = mirakana::rhi::BackendKind::d3d12,
+        .require_backend_profiling_evidence = true,
+        .backend_profiling_evidence_ready = true,
+        .package_counter_evidence_ready = false,
+    });
+
+    MK_REQUIRE(!missing.succeeded());
+    MK_REQUIRE(mirakana::has_debug_profiling_policy_diagnostic(
+        missing, mirakana::DebugProfilingDiagnosticCode::missing_cpu_profile_zone_evidence));
+    MK_REQUIRE(mirakana::has_debug_profiling_policy_diagnostic(
+        missing, mirakana::DebugProfilingDiagnosticCode::missing_trace_capture_handoff_evidence));
+    MK_REQUIRE(mirakana::has_debug_profiling_policy_diagnostic(
+        missing, mirakana::DebugProfilingDiagnosticCode::missing_package_counter_evidence));
+}
+
+MK_TEST("gpu memory policy requires declared budget residency pressure and package counter evidence") {
+    const std::array requests{
+        mirakana::GpuMemoryRequestDesc{.residency = mirakana::GpuMemoryResidencyClass::placed,
+                                       .requested_bytes = 32ULL * 1024ULL * 1024ULL,
+                                       .transient_heap = mirakana::GpuMemoryTransientHeapPolicy::none,
+                                       .upload_pressure = mirakana::GpuMemoryUploadPressureKind::ring_buffer,
+                                       .scene_resources_available = true,
+                                       .request_background_streaming = false,
+                                       .request_automatic_eviction = false,
+                                       .require_declared_budget_evidence = true,
+                                       .require_residency_pressure_evidence = true,
+                                       .require_package_counter_evidence = true,
+                                       .source_index = 12},
+    };
+
+    const auto plan = mirakana::plan_gpu_memory_policy(mirakana::GpuMemoryPolicyDesc{
+        .requests = requests,
+        .declared_local_budget_bytes = 128ULL * 1024ULL * 1024ULL,
+        .declared_non_local_budget_bytes = 0,
+        .os_video_memory_budget_available = true,
+        .os_local_budget_bytes = 256ULL * 1024ULL * 1024ULL,
+        .os_local_usage_bytes = 64ULL * 1024ULL * 1024ULL,
+        .os_non_local_budget_bytes = 0,
+        .os_non_local_usage_bytes = 0,
+        .committed_byte_estimate_available = true,
+        .committed_byte_estimate = 32ULL * 1024ULL * 1024ULL,
+        .transient_heap_allocations = 1,
+        .transient_placed_allocations = 1,
+        .transient_placed_resources_alive = 1,
+        .upload_bytes_written = 4ULL * 1024ULL * 1024ULL,
+        .residency_pressure_event_count = 2,
+        .backend = mirakana::rhi::BackendKind::d3d12,
+        .require_backend_memory_evidence = true,
+        .backend_memory_evidence_ready = true,
+        .require_os_video_memory_budget = true,
+        .package_counter_evidence_ready = true,
+    });
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.declared_budget_request_count == 1);
+    MK_REQUIRE(plan.residency_pressure_request_count == 1);
+    MK_REQUIRE(plan.package_counter_request_count == 1);
+    MK_REQUIRE(plan.memory_budget_evidence_ready);
+    MK_REQUIRE(plan.residency_pressure_evidence_ready);
+    MK_REQUIRE(plan.package_counter_evidence_ready);
+    MK_REQUIRE(plan.request_rows[0].declared_budget_evidence_ready);
+    MK_REQUIRE(plan.request_rows[0].residency_pressure_evidence_ready);
+    MK_REQUIRE(plan.request_rows[0].package_counter_evidence_ready);
+
+    const auto missing = mirakana::plan_gpu_memory_policy(mirakana::GpuMemoryPolicyDesc{
+        .requests = requests,
+        .declared_local_budget_bytes = 0,
+        .declared_non_local_budget_bytes = 0,
+        .os_video_memory_budget_available = false,
+        .os_local_budget_bytes = 0,
+        .os_local_usage_bytes = 0,
+        .os_non_local_budget_bytes = 0,
+        .os_non_local_usage_bytes = 0,
+        .committed_byte_estimate_available = true,
+        .committed_byte_estimate = 32ULL * 1024ULL * 1024ULL,
+        .transient_heap_allocations = 0,
+        .transient_placed_allocations = 0,
+        .transient_placed_resources_alive = 0,
+        .upload_bytes_written = 4ULL * 1024ULL * 1024ULL,
+        .residency_pressure_event_count = 0,
+        .backend = mirakana::rhi::BackendKind::d3d12,
+        .require_backend_memory_evidence = true,
+        .backend_memory_evidence_ready = true,
+        .require_os_video_memory_budget = false,
+        .package_counter_evidence_ready = false,
+    });
+
+    MK_REQUIRE(!missing.succeeded());
+    MK_REQUIRE(mirakana::has_gpu_memory_policy_diagnostic(
+        missing, mirakana::GpuMemoryDiagnosticCode::missing_declared_budget_evidence));
+    MK_REQUIRE(mirakana::has_gpu_memory_policy_diagnostic(
+        missing, mirakana::GpuMemoryDiagnosticCode::missing_residency_pressure_evidence));
+    MK_REQUIRE(mirakana::has_gpu_memory_policy_diagnostic(
+        missing, mirakana::GpuMemoryDiagnosticCode::missing_package_counter_evidence));
 }
 
 MK_TEST("gpu memory backend evidence requires os budget on d3d12 and framegraph pressure on vulkan") {

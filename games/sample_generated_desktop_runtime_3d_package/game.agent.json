@@ -229,7 +229,7 @@
         },
         {
           "id": "rendering-vfx-profiling",
-          "evidence": "Rendering VFX profiling smoke reports rendering_vfx_profiling_status=host_evidence_required, rendering_vfx_profiling_reviewed=1, rendering_vfx_profiling_ready=0, three rows each for feature, GPU particle budget, postprocess, backend timing, backend evidence, and crash telemetry handoff, D3D12 and strict Vulkan host evidence ready, Metal host evidence absent, zero GPU command/native capture/crash upload side-effect counters, positive replay-hash, and rendering_vfx_profiling_diagnostics=0.",
+          "evidence": "Rendering VFX profiling smoke reports rendering_vfx_profiling_status=host_evidence_required, rendering_vfx_profiling_reviewed=1, rendering_vfx_profiling_ready=0, three rows each for feature, GPU particle budget, postprocess, backend timing, backend evidence, and crash telemetry handoff, D3D12 and strict Vulkan host evidence ready, Metal host evidence absent, zero GPU command/native capture/crash upload side-effect counters, positive replay-hash, selected debug CPU profile zone / trace handoff / package counter evidence, selected memory budget / residency pressure / package counter evidence, and rendering_vfx_profiling_diagnostics=0.",
           "recipeIds": [
             "installed-d3d12-3d-package-smoke"
           ]

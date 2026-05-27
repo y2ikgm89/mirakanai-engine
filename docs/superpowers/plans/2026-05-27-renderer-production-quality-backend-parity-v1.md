@@ -56,6 +56,7 @@ Before code changes in each task, re-check and record the exact docs touched by 
 | --- | --- | --- | --- |
 | `renderer-quality-status-taxonomy-v1` | `Renderer General Quality Matrix v1` / `plan_renderer_quality_matrix` clean-break `RendererQualityMatrixRowStatus` taxonomy plus package-visible dependency/unsupported counters. | Focused RED build failed before implementation because `RendererQualityMatrixRowStatus`, `dependency_gate_required`, `dependency_gated_row_count`, and `unsupported_row_count` were absent. Focused GREEN passed with `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_quality_matrix_tests` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R renderer_quality_matrix`. Package-visible fields remain `renderer_quality_matrix_status=host_evidence_required`, `renderer_quality_matrix_dependency_gated_rows=0`, `renderer_quality_matrix_unsupported_rows=0`, and `renderer_quality_matrix_general_renderer_quality_ready=0`. | Backend parity policy, broad profiling/residency rows, package promotion, and full slice validation remain open tasks in this plan. |
 | `renderer-backend-local-quality-contracts-v1` | `Backend Renderer Parity v1` clean-break `BackendRendererParityPolicyRequest` / `BackendRendererParityProofRow` / `BackendRendererParityPolicyPlan` / `plan_backend_renderer_parity_policy` proof review for synchronization, shader-validation, memory-residency, profiling, and package-evidence rows. | Official docs checked: D3D12 resource barriers and residency from Microsoft Learn, Vulkan synchronization/validation from Khronos docs through Context7, and Metal capability/resource synchronization gates from Apple docs. Focused RED build failed before implementation because `BackendRendererParityFeatureKind`, `BackendRendererParityProofRow`, `BackendRendererParityPolicyRequest`, `BackendRendererParityPolicyPlan`, `BackendRendererParityPolicyStatus`, and `plan_backend_renderer_parity_policy` were absent. Focused GREEN passed with `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_tests` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_renderer_quality_matrix_tests|MK_renderer_tests"`. | Package-visible promotion and broad profiling/residency rows remain open tasks in this plan; Metal remains Apple-host-gated and broad renderer quality is still unclaimed. |
+| `renderer-profiling-residency-evidence-v1` | Clean-break `DebugProfilingPolicyDesc` / `DebugProfilingRequestDesc` and `GpuMemoryPolicyDesc` / `GpuMemoryRequestDesc` evidence expansion plus sample package counters. | Official docs checked: Microsoft D3D12 residency and Khronos Vulkan memory allocation/synchronization guidance. Focused RED tests first failed because CPU zone / trace handoff / package counter diagnostics and memory budget / residency pressure / package counter diagnostics were absent. Focused GREEN passed with `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_tests MK_runtime_host_sdl3_tests sample_desktop_runtime_game sample_generated_desktop_runtime_3d_package` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_renderer_tests|MK_runtime_host_sdl3_tests"`. Package-visible fields now include `debug_profiling_policy_cpu_profile_zone_evidence_ready=1`, `debug_profiling_policy_trace_capture_handoff_evidence_ready=1`, `debug_profiling_policy_package_counter_evidence_ready=1`, `gpu_memory_policy_memory_budget_evidence_ready=1`, `gpu_memory_policy_residency_pressure_evidence_ready=1`, `gpu_memory_policy_package_counter_evidence_ready=1`, and generated `rendering_vfx_profiling_debug_*` / `rendering_vfx_profiling_memory_*` counters. Package GREEN passed with `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package`. Static/full validation GREEN passed with `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-format.ps1`, `tools/check-text-format.ps1`, `tools/validate.ps1`, and `git diff --check`. | PR publication remains the current closeout gate; Metal remains Apple-host-gated and broad renderer quality is still unclaimed. |
 
 ## Files
 
@@ -119,23 +120,23 @@ Expected: current baseline passes or records exact pre-existing tool/host blocke
 
 ## Task 4 - Profiling And Residency Evidence Expansion
 
-- [ ] Extend debug profiling and GPU memory policy rows so broad profiling requires CPU zones, GPU timestamp capability, memory budget, residency pressure, package counter, and trace/capture handoff evidence.
-- [ ] Keep actual PIX/RenderDoc/Xcode capture execution host/operator-gated; the engine may publish request/review rows only.
-- [ ] Add package-visible counters to selected desktop runtime samples without a single broad `renderer_ready` flag.
-- [ ] Run focused profiling, memory, and package tests.
+- [x] Extend debug profiling and GPU memory policy rows so broad profiling requires CPU zones, GPU timestamp capability, memory budget, residency pressure, package counter, and trace/capture handoff evidence.
+- [x] Keep actual PIX/RenderDoc/Xcode capture execution host/operator-gated; the engine may publish request/review rows only.
+- [x] Add package-visible counters to selected desktop runtime samples without a single broad `renderer_ready` flag.
+- [x] Run focused profiling, memory, and package tests.
 
 ## Task 5 - Package And Validation Recipe Promotion
 
-- [ ] Update generated 3D package smoke and installed validation to require exact renderer production quality fields.
-- [ ] Update validation recipes and manifest rows only for evidence implemented in Tasks 2-4.
-- [ ] Keep Metal Apple-host-gated and keep strict Vulkan validation/toolchain-gated where local host evidence is absent.
-- [ ] Run package and installed validation.
+- [x] Update generated 3D package smoke and installed validation to require exact renderer production quality fields.
+- [x] Update validation recipes and manifest rows only for evidence implemented in Tasks 2-4.
+- [x] Keep Metal Apple-host-gated and keep strict Vulkan validation/toolchain-gated where local host evidence is absent.
+- [x] Run package and installed validation.
 
 ## Task 6 - Docs, Manifest, Static Checks, And Closeout
 
-- [ ] Update current capabilities, roadmap, plan registry, backlog, projection chapter, manifest fragments, schema/static checks if literals changed, and generated-game guidance.
-- [ ] Compose the manifest.
-- [ ] Run:
+- [x] Update current capabilities, roadmap, plan registry, backlog, projection chapter, manifest fragments, schema/static checks if literals changed, and generated-game guidance.
+- [x] Compose the manifest.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write

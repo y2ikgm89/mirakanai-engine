@@ -108,6 +108,17 @@ void add_diagnostic(GpuMemoryPolicyPlan& plan, GpuMemoryDiagnosticCode code, std
     return 0;
 }
 
+[[nodiscard]] bool memory_budget_evidence_ready(const GpuMemoryPolicyDesc& desc) noexcept {
+    return desc.declared_local_budget_bytes > 0 || desc.declared_non_local_budget_bytes > 0;
+}
+
+[[nodiscard]] bool residency_pressure_evidence_ready(const GpuMemoryPolicyDesc& desc) noexcept {
+    const auto os_usage_ready = desc.os_video_memory_budget_available &&
+                                ((desc.os_local_budget_bytes > 0 && desc.os_local_usage_bytes > 0) ||
+                                 (desc.os_non_local_budget_bytes > 0 && desc.os_non_local_usage_bytes > 0));
+    return desc.residency_pressure_event_count > 0 || os_usage_ready || desc.transient_placed_resources_alive > 0;
+}
+
 } // namespace
 
 GpuMemoryPolicyPlan plan_gpu_memory_policy(const GpuMemoryPolicyDesc& desc) {
@@ -125,8 +136,12 @@ GpuMemoryPolicyPlan plan_gpu_memory_policy(const GpuMemoryPolicyDesc& desc) {
     plan.transient_placed_allocations = desc.transient_placed_allocations;
     plan.transient_placed_resources_alive = desc.transient_placed_resources_alive;
     plan.upload_bytes_written = desc.upload_bytes_written;
+    plan.residency_pressure_event_count = desc.residency_pressure_event_count;
     plan.backend = desc.backend;
     plan.backend_memory_evidence_ready = desc.backend_memory_evidence_ready;
+    plan.memory_budget_evidence_ready = memory_budget_evidence_ready(desc);
+    plan.residency_pressure_evidence_ready = residency_pressure_evidence_ready(desc);
+    plan.package_counter_evidence_ready = desc.package_counter_evidence_ready;
 
     if (desc.requests.empty()) {
         add_diagnostic(plan, GpuMemoryDiagnosticCode::no_memory_requests, 0, 0,
@@ -188,6 +203,28 @@ GpuMemoryPolicyPlan plan_gpu_memory_policy(const GpuMemoryPolicyDesc& desc) {
         const bool uses_transient_heap =
             request.transient_heap != GpuMemoryTransientHeapPolicy::none && transient_heap_required(request.residency);
         const bool uses_upload_pressure = request.upload_pressure != GpuMemoryUploadPressureKind::none;
+        if (request.require_declared_budget_evidence) {
+            ++plan.declared_budget_request_count;
+            if (!plan.memory_budget_evidence_ready) {
+                add_diagnostic(plan, GpuMemoryDiagnosticCode::missing_declared_budget_evidence, index, source_index,
+                               "gpu memory policy requires declared local or non-local memory budget evidence");
+            }
+        }
+        if (request.require_residency_pressure_evidence) {
+            ++plan.residency_pressure_request_count;
+            if (!plan.residency_pressure_evidence_ready) {
+                add_diagnostic(plan, GpuMemoryDiagnosticCode::missing_residency_pressure_evidence, index, source_index,
+                               "gpu memory policy requires residency pressure event, OS usage, or live placed "
+                               "resource evidence");
+            }
+        }
+        if (request.require_package_counter_evidence) {
+            ++plan.package_counter_request_count;
+            if (!plan.package_counter_evidence_ready) {
+                add_diagnostic(plan, GpuMemoryDiagnosticCode::missing_package_counter_evidence, index, source_index,
+                               "gpu memory policy requires package-visible renderer memory counters");
+            }
+        }
 
         plan.request_rows.push_back(GpuMemoryRequestRow{
             .residency = request.residency,
@@ -197,6 +234,12 @@ GpuMemoryPolicyPlan plan_gpu_memory_policy(const GpuMemoryPolicyDesc& desc) {
             .upload_pressure = request.upload_pressure,
             .uses_transient_heap = uses_transient_heap,
             .uses_upload_pressure = uses_upload_pressure,
+            .requires_declared_budget_evidence = request.require_declared_budget_evidence,
+            .requires_residency_pressure_evidence = request.require_residency_pressure_evidence,
+            .requires_package_counter_evidence = request.require_package_counter_evidence,
+            .declared_budget_evidence_ready = plan.memory_budget_evidence_ready,
+            .residency_pressure_evidence_ready = plan.residency_pressure_evidence_ready,
+            .package_counter_evidence_ready = plan.package_counter_evidence_ready,
             .source_index = source_index,
         });
 

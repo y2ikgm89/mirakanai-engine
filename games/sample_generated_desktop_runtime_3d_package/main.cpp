@@ -20,6 +20,8 @@
 #include "mirakana/physics/physics3d.hpp"
 #include "mirakana/platform/filesystem.hpp"
 #include "mirakana/platform/input.hpp"
+#include "mirakana/renderer/debug_profiling_policy.hpp"
+#include "mirakana/renderer/gpu_memory_policy.hpp"
 #include "mirakana/renderer/production_vfx_profiling.hpp"
 #include "mirakana/renderer/renderer.hpp"
 #include "mirakana/renderer/renderer_quality_matrix.hpp"
@@ -1292,6 +1294,25 @@ struct RenderingVfxProfilingProbeResult {
     bool invoked_gpu_commands{false};
     bool invoked_native_capture{false};
     bool invoked_crash_upload{false};
+    bool debug_policy_ready{false};
+    bool debug_cpu_profile_zone_evidence_ready{false};
+    bool debug_trace_capture_handoff_evidence_ready{false};
+    bool debug_package_counter_evidence_ready{false};
+    bool memory_policy_ready{false};
+    bool memory_budget_evidence_ready{false};
+    bool memory_residency_pressure_evidence_ready{false};
+    bool memory_package_counter_evidence_ready{false};
+    std::uint64_t debug_gpu_timestamp_ticks_per_second{0U};
+    std::uint64_t debug_cpu_profile_zones{0U};
+    std::uint64_t debug_trace_capture_handoff_rows{0U};
+    std::uint64_t memory_requested_bytes{0U};
+    std::uint64_t memory_residency_pressure_events{0U};
+    std::uint32_t debug_cpu_profile_zone_requests{0U};
+    std::uint32_t debug_trace_capture_handoff_requests{0U};
+    std::uint32_t debug_package_counter_requests{0U};
+    std::uint32_t memory_declared_budget_requests{0U};
+    std::uint32_t memory_residency_pressure_requests{0U};
+    std::uint32_t memory_package_counter_requests{0U};
     std::size_t diagnostics{0U};
     bool reviewed{false};
     bool ready{false};
@@ -2338,6 +2359,78 @@ validate_simulation_management_package_evidence(std::string_view sample_id) {
                     .seed = 123U,
                 });
 
+    const std::vector<mirakana::DebugProfilingRequestDesc> debug_policy_requests{
+        mirakana::DebugProfilingRequestDesc{
+            .capture_kind = mirakana::DebugProfilingCaptureKind::pix_gpu_handoff,
+            .require_gpu_timestamps = true,
+            .require_gpu_debug_markers = true,
+            .require_capture_handoff_evidence = true,
+            .require_cpu_profile_zone_evidence = true,
+            .require_trace_capture_handoff_evidence = true,
+            .require_package_counter_evidence = true,
+            .scene_frame_resources_available = true,
+            .request_automatic_capture_execution = false,
+            .request_production_flame_graph = false,
+            .request_crash_telemetry_export = false,
+            .source_index = 16U,
+        },
+    };
+    const auto debug_policy = mirakana::plan_debug_profiling_policy(mirakana::DebugProfilingPolicyDesc{
+        .requests = debug_policy_requests,
+        .expected_frames = 2U,
+        .frames_finished = 2U,
+        .gpu_timestamp_ticks_per_second = 1000000000ULL,
+        .gpu_debug_scopes_begun = 2U,
+        .gpu_debug_scopes_ended = 2U,
+        .gpu_debug_markers_inserted = 2U,
+        .cpu_profile_zone_count = 2U,
+        .trace_capture_handoff_row_count = 1U,
+        .framegraph_barrier_steps_executed = 4U,
+        .framegraph_render_passes_recorded = 2U,
+        .backend = Backend::d3d12,
+        .require_backend_profiling_evidence = true,
+        .backend_profiling_evidence_ready = true,
+        .package_counter_evidence_ready = true,
+    });
+
+    const std::vector<mirakana::GpuMemoryRequestDesc> memory_policy_requests{
+        mirakana::GpuMemoryRequestDesc{
+            .residency = mirakana::GpuMemoryResidencyClass::placed,
+            .requested_bytes = 32ULL * 1024ULL * 1024ULL,
+            .transient_heap = mirakana::GpuMemoryTransientHeapPolicy::alias_group_heap,
+            .upload_pressure = mirakana::GpuMemoryUploadPressureKind::ring_buffer,
+            .scene_resources_available = true,
+            .request_background_streaming = false,
+            .request_automatic_eviction = false,
+            .require_declared_budget_evidence = true,
+            .require_residency_pressure_evidence = true,
+            .require_package_counter_evidence = true,
+            .source_index = 17U,
+        },
+    };
+    const auto memory_policy = mirakana::plan_gpu_memory_policy(mirakana::GpuMemoryPolicyDesc{
+        .requests = memory_policy_requests,
+        .declared_local_budget_bytes = 128ULL * 1024ULL * 1024ULL,
+        .declared_non_local_budget_bytes = 0U,
+        .os_video_memory_budget_available = true,
+        .os_local_budget_bytes = 256ULL * 1024ULL * 1024ULL,
+        .os_local_usage_bytes = 64ULL * 1024ULL * 1024ULL,
+        .os_non_local_budget_bytes = 0U,
+        .os_non_local_usage_bytes = 0U,
+        .committed_byte_estimate_available = true,
+        .committed_byte_estimate = 32ULL * 1024ULL * 1024ULL,
+        .transient_heap_allocations = 1U,
+        .transient_placed_allocations = 1U,
+        .transient_placed_resources_alive = 1U,
+        .upload_bytes_written = 4ULL * 1024ULL * 1024ULL,
+        .residency_pressure_event_count = 2U,
+        .backend = Backend::d3d12,
+        .require_backend_memory_evidence = true,
+        .backend_memory_evidence_ready = true,
+        .require_os_video_memory_budget = true,
+        .package_counter_evidence_ready = true,
+    });
+
     RenderingVfxProfilingProbeResult result;
     result.status = plan.status;
     result.feature_rows = plan.feature_row_count;
@@ -2359,17 +2452,40 @@ validate_simulation_management_package_evidence(std::string_view sample_id) {
     result.invoked_gpu_commands = plan.invoked_gpu_commands;
     result.invoked_native_capture = plan.invoked_native_capture;
     result.invoked_crash_upload = plan.invoked_crash_upload;
+    result.debug_policy_ready = debug_policy.succeeded();
+    result.debug_cpu_profile_zone_evidence_ready = debug_policy.cpu_profile_zone_evidence_ready;
+    result.debug_trace_capture_handoff_evidence_ready = debug_policy.trace_capture_handoff_evidence_ready;
+    result.debug_package_counter_evidence_ready = debug_policy.package_counter_evidence_ready;
+    result.memory_policy_ready = memory_policy.succeeded();
+    result.memory_budget_evidence_ready = memory_policy.memory_budget_evidence_ready;
+    result.memory_residency_pressure_evidence_ready = memory_policy.residency_pressure_evidence_ready;
+    result.memory_package_counter_evidence_ready = memory_policy.package_counter_evidence_ready;
+    result.debug_gpu_timestamp_ticks_per_second = debug_policy.gpu_timestamp_ticks_per_second;
+    result.debug_cpu_profile_zones = debug_policy.cpu_profile_zone_count;
+    result.debug_trace_capture_handoff_rows = debug_policy.trace_capture_handoff_row_count;
+    result.memory_requested_bytes = memory_policy.total_requested_bytes;
+    result.memory_residency_pressure_events = memory_policy.residency_pressure_event_count;
+    result.debug_cpu_profile_zone_requests = debug_policy.cpu_profile_zone_request_count;
+    result.debug_trace_capture_handoff_requests = debug_policy.trace_capture_handoff_request_count;
+    result.debug_package_counter_requests = debug_policy.package_counter_request_count;
+    result.memory_declared_budget_requests = memory_policy.declared_budget_request_count;
+    result.memory_residency_pressure_requests = memory_policy.residency_pressure_request_count;
+    result.memory_package_counter_requests = memory_policy.package_counter_request_count;
     result.diagnostics = plan.diagnostics.size();
-    result.reviewed = plan.status == Status::host_evidence_required && result.feature_rows == 3U &&
-                      result.gpu_particle_budget_rows == 3U && result.postprocess_rows == 3U &&
-                      result.backend_timing_rows == 3U && result.backend_evidence_rows == 3U &&
-                      result.backend_evidence_ready == 2U && result.backend_evidence_host_gated == 1U &&
-                      result.crash_telemetry_handoff_rows == 3U && result.host_validated_backends == 2U &&
-                      result.rejected_unsafe_rows == 0U && result.replay_hash != 0U &&
-                      result.d3d12_host_evidence_ready && result.vulkan_strict_host_evidence_ready &&
-                      !result.metal_host_evidence_ready && result.requires_metal_host_evidence &&
-                      !result.has_metal_host_evidence && !result.invoked_gpu_commands &&
-                      !result.invoked_native_capture && !result.invoked_crash_upload && result.diagnostics == 0U;
+    result.reviewed =
+        plan.status == Status::host_evidence_required && result.feature_rows == 3U &&
+        result.gpu_particle_budget_rows == 3U && result.postprocess_rows == 3U && result.backend_timing_rows == 3U &&
+        result.backend_evidence_rows == 3U && result.backend_evidence_ready == 2U &&
+        result.backend_evidence_host_gated == 1U && result.crash_telemetry_handoff_rows == 3U &&
+        result.host_validated_backends == 2U && result.rejected_unsafe_rows == 0U && result.replay_hash != 0U &&
+        result.d3d12_host_evidence_ready && result.vulkan_strict_host_evidence_ready &&
+        !result.metal_host_evidence_ready && result.requires_metal_host_evidence && !result.has_metal_host_evidence &&
+        !result.invoked_gpu_commands && !result.invoked_native_capture && !result.invoked_crash_upload &&
+        result.debug_policy_ready && result.debug_cpu_profile_zone_evidence_ready &&
+        result.debug_trace_capture_handoff_evidence_ready && result.debug_package_counter_evidence_ready &&
+        result.memory_policy_ready && result.memory_budget_evidence_ready &&
+        result.memory_residency_pressure_evidence_ready && result.memory_package_counter_evidence_ready &&
+        result.diagnostics == 0U;
     result.ready = plan.status == Status::ready && plan.succeeded() && result.feature_rows == 3U &&
                    result.gpu_particle_budget_rows == 3U && result.postprocess_rows == 3U &&
                    result.backend_timing_rows == 3U && result.backend_evidence_rows == 3U &&
@@ -2379,7 +2495,7 @@ validate_simulation_management_package_evidence(std::string_view sample_id) {
                    result.vulkan_strict_host_evidence_ready && result.metal_host_evidence_ready &&
                    result.requires_metal_host_evidence && result.has_metal_host_evidence &&
                    !result.invoked_gpu_commands && !result.invoked_native_capture && !result.invoked_crash_upload &&
-                   result.diagnostics == 0U;
+                   result.debug_policy_ready && result.memory_policy_ready && result.diagnostics == 0U;
     return result;
 }
 
@@ -9660,6 +9776,41 @@ int main(int argc, char** argv) {
         << (rendering_vfx_profiling_probe.invoked_native_capture ? 1 : 0)
         << " rendering_vfx_profiling_invoked_crash_upload="
         << (rendering_vfx_profiling_probe.invoked_crash_upload ? 1 : 0)
+        << " rendering_vfx_profiling_debug_policy_ready=" << (rendering_vfx_profiling_probe.debug_policy_ready ? 1 : 0)
+        << " rendering_vfx_profiling_debug_gpu_timestamp_ticks_per_second="
+        << rendering_vfx_profiling_probe.debug_gpu_timestamp_ticks_per_second
+        << " rendering_vfx_profiling_debug_cpu_profile_zones=" << rendering_vfx_profiling_probe.debug_cpu_profile_zones
+        << " rendering_vfx_profiling_debug_trace_capture_handoff_rows="
+        << rendering_vfx_profiling_probe.debug_trace_capture_handoff_rows
+        << " rendering_vfx_profiling_debug_cpu_profile_zone_requests="
+        << rendering_vfx_profiling_probe.debug_cpu_profile_zone_requests
+        << " rendering_vfx_profiling_debug_trace_capture_handoff_requests="
+        << rendering_vfx_profiling_probe.debug_trace_capture_handoff_requests
+        << " rendering_vfx_profiling_debug_package_counter_requests="
+        << rendering_vfx_profiling_probe.debug_package_counter_requests
+        << " rendering_vfx_profiling_debug_cpu_profile_zone_evidence_ready="
+        << (rendering_vfx_profiling_probe.debug_cpu_profile_zone_evidence_ready ? 1 : 0)
+        << " rendering_vfx_profiling_debug_trace_capture_handoff_evidence_ready="
+        << (rendering_vfx_profiling_probe.debug_trace_capture_handoff_evidence_ready ? 1 : 0)
+        << " rendering_vfx_profiling_debug_package_counter_evidence_ready="
+        << (rendering_vfx_profiling_probe.debug_package_counter_evidence_ready ? 1 : 0)
+        << " rendering_vfx_profiling_memory_policy_ready="
+        << (rendering_vfx_profiling_probe.memory_policy_ready ? 1 : 0)
+        << " rendering_vfx_profiling_memory_requested_bytes=" << rendering_vfx_profiling_probe.memory_requested_bytes
+        << " rendering_vfx_profiling_memory_residency_pressure_events="
+        << rendering_vfx_profiling_probe.memory_residency_pressure_events
+        << " rendering_vfx_profiling_memory_declared_budget_requests="
+        << rendering_vfx_profiling_probe.memory_declared_budget_requests
+        << " rendering_vfx_profiling_memory_residency_pressure_requests="
+        << rendering_vfx_profiling_probe.memory_residency_pressure_requests
+        << " rendering_vfx_profiling_memory_package_counter_requests="
+        << rendering_vfx_profiling_probe.memory_package_counter_requests
+        << " rendering_vfx_profiling_memory_budget_evidence_ready="
+        << (rendering_vfx_profiling_probe.memory_budget_evidence_ready ? 1 : 0)
+        << " rendering_vfx_profiling_memory_residency_pressure_evidence_ready="
+        << (rendering_vfx_profiling_probe.memory_residency_pressure_evidence_ready ? 1 : 0)
+        << " rendering_vfx_profiling_memory_package_counter_evidence_ready="
+        << (rendering_vfx_profiling_probe.memory_package_counter_evidence_ready ? 1 : 0)
         << " rendering_vfx_profiling_diagnostics=" << rendering_vfx_profiling_probe.diagnostics
         << " gameplay_systems_ticks=" << game.gameplay_systems_ticks()
         << " gameplay_systems_physics_ticks=" << game.gameplay_systems_physics_ticks()

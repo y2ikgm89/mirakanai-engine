@@ -932,6 +932,12 @@ MK_TEST("sdl desktop presentation gpu memory policy exposes package-visible budg
     desc.require_backend_memory_evidence = true;
     desc.backend_memory_evidence_ready = true;
     desc.require_os_video_memory_budget = true;
+    desc.require_declared_budget_evidence = true;
+    desc.require_residency_pressure_evidence = true;
+    desc.require_package_counter_evidence = true;
+    desc.declared_local_budget_bytes = 64ULL * 1024ULL * 1024ULL;
+    desc.residency_pressure_event_count = 1;
+    desc.package_counter_evidence_ready = true;
 
     const auto policy = mirakana::evaluate_sdl_desktop_presentation_gpu_memory_policy(report, desc);
 
@@ -944,6 +950,12 @@ MK_TEST("sdl desktop presentation gpu memory policy exposes package-visible budg
     MK_REQUIRE(policy.upload_bytes_written > 0);
     MK_REQUIRE(policy.backend_memory_evidence_ready);
     MK_REQUIRE(policy.os_video_memory_budget_available);
+    MK_REQUIRE(policy.declared_budget_request_count >= 1);
+    MK_REQUIRE(policy.residency_pressure_request_count >= 1);
+    MK_REQUIRE(policy.package_counter_request_count >= 1);
+    MK_REQUIRE(policy.memory_budget_evidence_ready);
+    MK_REQUIRE(policy.residency_pressure_evidence_ready);
+    MK_REQUIRE(policy.package_counter_evidence_ready);
 }
 
 MK_TEST("sdl desktop presentation d3d12 gpu memory execution report requires budget and transient counters") {
@@ -983,6 +995,12 @@ MK_TEST("sdl desktop presentation debug profiling policy exposes package-visible
     desc.require_scene_gpu_bindings = true;
     desc.expected_frames = 2;
     desc.require_backend_profiling_evidence = true;
+    desc.require_cpu_profile_zone_evidence = true;
+    desc.require_trace_capture_handoff_evidence = true;
+    desc.require_package_counter_evidence = true;
+    desc.cpu_profile_zone_count = 2;
+    desc.trace_capture_handoff_row_count = 1;
+    desc.package_counter_evidence_ready = true;
 
     const auto policy = mirakana::evaluate_sdl_desktop_presentation_debug_profiling_policy(report, desc);
 
@@ -994,6 +1012,12 @@ MK_TEST("sdl desktop presentation debug profiling policy exposes package-visible
     MK_REQUIRE(policy.gpu_timestamp_ticks_per_second > 0);
     MK_REQUIRE(policy.gpu_debug_markers_inserted > 0);
     MK_REQUIRE(policy.backend_profiling_evidence_ready);
+    MK_REQUIRE(policy.cpu_profile_zone_request_count >= 1);
+    MK_REQUIRE(policy.trace_capture_handoff_request_count >= 1);
+    MK_REQUIRE(policy.package_counter_request_count >= 1);
+    MK_REQUIRE(policy.cpu_profile_zone_evidence_ready);
+    MK_REQUIRE(policy.trace_capture_handoff_evidence_ready);
+    MK_REQUIRE(policy.package_counter_evidence_ready);
 }
 
 MK_TEST(
