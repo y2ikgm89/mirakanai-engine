@@ -21,6 +21,11 @@
       "purpose": "Build and test the Windows-native platform foundation, including Win32 runtime/window/message-pump/cursor rows, keyboard/mouse input rows, clipboard/file-dialog/text-input rows, runtime UI contract interaction, and public API boundary checks."
     },
     {
+      "name": "win32-runtime-host",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_host_win32_tests MK_runtime_host_win32_public_api_compile; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R \"MK_runtime_host_win32_tests|MK_runtime_host_win32_public_api_compile\"; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-native-desktop-contracts.ps1",
+      "purpose": "Build and test the Windows-native runtime host and D3D12 presentation foundation, including Win32DesktopGameHost, Win32DesktopEventPump, deterministic NullRenderer fallback, D3D12 swapchain planning, host-supplied shader-bytecode renderer creation, resize/present report rows, and public native-handle isolation."
+    },
+    {
       "name": "desktop-gui",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1",
       "purpose": "Build and test optional SDL3, Dear ImGui, editor, and SDL3 audio adapter code."
