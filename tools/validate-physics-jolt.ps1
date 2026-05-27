@@ -31,6 +31,7 @@ $sdkTargets = @(
     "mirakana_runtime_rhi",
     "mirakana_runtime_scene",
     "mirakana_runtime_scene_rhi",
+    "mirakana_platform_win32",
     "MK_rhi_metal",
     "mirakana_rhi_vulkan",
     "mirakana_scene",

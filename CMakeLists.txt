@@ -889,6 +889,16 @@ if(BUILD_TESTING)
         add_test(NAME MK_platform_native_file_watcher_tests COMMAND MK_platform_native_file_watcher_tests)
     endif()
 
+    if(WIN32)
+        add_executable(MK_win32_platform_tests
+            tests/unit/win32_platform_tests.cpp
+        )
+        target_link_libraries(MK_win32_platform_tests PRIVATE MK_platform_win32)
+        target_include_directories(MK_win32_platform_tests PRIVATE tests)
+        MK_apply_common_target_options(MK_win32_platform_tests)
+        add_test(NAME MK_win32_platform_tests COMMAND MK_win32_platform_tests)
+    endif()
+
     if(MK_DESKTOP_RUNTIME_ENABLED)
         find_package(SDL3 CONFIG REQUIRED)
 
@@ -958,6 +968,7 @@ MK_set_export_name(MK_runtime_network_enet runtime_network_enet)
 MK_set_export_name(MK_physics physics)
 MK_set_export_name(MK_physics_jolt physics_jolt)
 MK_set_export_name(MK_platform platform)
+MK_set_export_name(MK_platform_win32 platform_win32)
 MK_set_export_name(MK_renderer renderer)
 MK_set_export_name(MK_rhi rhi)
 MK_set_export_name(MK_runtime runtime)
@@ -1015,8 +1026,9 @@ set(MK_RUNTIME_TARGETS
     sample_ui_audio_assets
 )
 
-foreach(optional_target IN ITEMS mirakana_rhi_d3d12 mirakana_audio_sdl3 mirakana_platform_sdl3 MK_runtime_host_sdl3
-        MK_runtime_host_sdl3_presentation MK_editor_core mirakana_physics_jolt mirakana_runtime_network_enet)
+foreach(optional_target IN ITEMS mirakana_rhi_d3d12 mirakana_audio_sdl3 mirakana_platform_sdl3
+        mirakana_platform_win32 MK_runtime_host_sdl3 MK_runtime_host_sdl3_presentation MK_editor_core
+        mirakana_physics_jolt mirakana_runtime_network_enet)
     if(TARGET ${optional_target})
         list(APPEND MK_LIBRARY_TARGETS ${optional_target})
     endif()
@@ -1296,6 +1308,10 @@ install(DIRECTORY
 
 if(TARGET MK_platform_sdl3)
     install(DIRECTORY engine/platform/sdl3/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+endif()
+
+if(TARGET MK_platform_win32)
+    install(DIRECTORY engine/platform/win32/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 endif()
 
 if(TARGET MK_runtime_host_sdl3)
