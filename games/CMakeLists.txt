@@ -1491,6 +1491,8 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             sample_desktop_runtime_game/main.cpp
         GAME_MANIFEST
             games/sample_desktop_runtime_game/game.agent.json
+        HOST_BACKEND
+            win32
         SMOKE_ARGS
             --smoke
         PACKAGE_SMOKE_ARGS
@@ -1500,8 +1502,6 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-scene-package
             runtime/sample_desktop_runtime_game.geindex
             --require-d3d12-scene-shaders
-            --video-driver
-            windows
             --require-d3d12-renderer
             --require-scene-gpu-bindings
             --require-postprocess
@@ -1545,6 +1545,8 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             sample_2d_desktop_runtime_package/main.cpp
         GAME_MANIFEST
             games/sample_2d_desktop_runtime_package/game.agent.json
+        HOST_BACKEND
+            win32
         SMOKE_ARGS
             --smoke
             --require-config
@@ -1576,8 +1578,6 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-scene-package
             runtime/sample_2d_desktop_runtime_package.geindex
             --require-d3d12-shaders
-            --video-driver
-            windows
             --require-d3d12-renderer
             --require-native-2d-sprites
             --require-sprite-animation
@@ -2208,6 +2208,8 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             sample_generated_desktop_runtime_package/main.cpp
         GAME_MANIFEST
             games/sample_generated_desktop_runtime_package/game.agent.json
+        HOST_BACKEND
+            win32
         SMOKE_ARGS
             --smoke
             --require-config
@@ -2226,6 +2228,8 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             sample_generated_desktop_runtime_cooked_scene_package/main.cpp
         GAME_MANIFEST
             games/sample_generated_desktop_runtime_cooked_scene_package/game.agent.json
+        HOST_BACKEND
+            win32
         SMOKE_ARGS
             --smoke
             --require-config
@@ -2254,6 +2258,8 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             sample_generated_desktop_runtime_material_shader_package/main.cpp
         GAME_MANIFEST
             games/sample_generated_desktop_runtime_material_shader_package/game.agent.json
+        HOST_BACKEND
+            win32
         SMOKE_ARGS
             --smoke
             --require-config
@@ -2267,8 +2273,6 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-scene-package
             runtime/sample_generated_desktop_runtime_material_shader_package.geindex
             --require-d3d12-scene-shaders
-            --video-driver
-            windows
             --require-d3d12-renderer
             --require-scene-gpu-bindings
             --require-postprocess
@@ -2298,6 +2302,8 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             sample_generated_desktop_runtime_3d_package/main.cpp
         GAME_MANIFEST
             games/sample_generated_desktop_runtime_3d_package/game.agent.json
+        HOST_BACKEND
+            win32
         SMOKE_ARGS
             --smoke
             --require-config
@@ -2328,8 +2334,6 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-package-streaming-safe-point
             --require-gameplay-systems
             --require-d3d12-scene-shaders
-            --video-driver
-            windows
             --require-d3d12-renderer
             --require-scene-gpu-bindings
             --require-postprocess

@@ -532,7 +532,7 @@ $desktop2dRecipe = @($productionLoop.recipes | Where-Object { $_.id -eq "2d-desk
 if ($desktop2dRecipe.Count -ne 1) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop must expose exactly one 2d-desktop-runtime-package recipe"
 } else {
-    foreach ($module in @("MK_core", "MK_platform", "MK_platform_sdl3", "MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_ai", "MK_navigation", "MK_physics", "MK_renderer")) {
+    foreach ($module in @("MK_core", "MK_platform", "MK_platform_win32", "MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_ai", "MK_navigation", "MK_physics", "MK_renderer")) {
         if (@($desktop2dRecipe[0].requiredModules) -notcontains $module) {
             Write-Error "engine/agent/manifest.json 2d-desktop-runtime-package recipe missing required module: $module"
         }
@@ -568,7 +568,7 @@ $desktop3dRecipe = @($productionLoop.recipes | Where-Object { $_.id -eq "3d-play
 if ($desktop3dRecipe.Count -ne 1) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop must expose exactly one 3d-playable-desktop-package recipe"
 } else {
-    foreach ($module in @("MK_animation", "MK_core", "MK_math", "MK_platform", "MK_platform_sdl3", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
+    foreach ($module in @("MK_animation", "MK_core", "MK_math", "MK_platform", "MK_platform_win32", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
         if (@($desktop3dRecipe[0].requiredModules) -notcontains $module) {
             Write-Error "engine/agent/manifest.json 3d-playable-desktop-package recipe missing required module: $module"
         }
@@ -613,7 +613,7 @@ $nativeOverlayRecipe = @($productionLoop.recipes | Where-Object { $_.id -eq "nat
 if ($nativeOverlayRecipe.Count -ne 1) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop must expose exactly one native-gpu-runtime-ui-overlay recipe"
 } else {
-    foreach ($module in @("MK_core", "MK_math", "MK_platform", "MK_platform_sdl3", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
+    foreach ($module in @("MK_core", "MK_math", "MK_platform", "MK_platform_win32", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
         if (@($nativeOverlayRecipe[0].requiredModules) -notcontains $module) {
             Write-Error "engine/agent/manifest.json native-gpu-runtime-ui-overlay recipe missing required module: $module"
         }
@@ -633,7 +633,7 @@ $texturedUiRecipe = @($productionLoop.recipes | Where-Object { $_.id -eq "native
 if ($texturedUiRecipe.Count -ne 1) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop must expose exactly one native-ui-textured-sprite-atlas recipe"
 } else {
-    foreach ($module in @("MK_core", "MK_math", "MK_platform", "MK_platform_sdl3", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
+    foreach ($module in @("MK_core", "MK_math", "MK_platform", "MK_platform_win32", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
         if (@($texturedUiRecipe[0].requiredModules) -notcontains $module) {
             Write-Error "engine/agent/manifest.json native-ui-textured-sprite-atlas recipe missing required module: $module"
         }
@@ -653,7 +653,7 @@ $textGlyphUiRecipe = @($productionLoop.recipes | Where-Object { $_.id -eq "nativ
 if ($textGlyphUiRecipe.Count -ne 1) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop must expose exactly one native-ui-text-glyph-atlas recipe"
 } else {
-    foreach ($module in @("MK_core", "MK_math", "MK_platform", "MK_platform_sdl3", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
+    foreach ($module in @("MK_core", "MK_math", "MK_platform", "MK_platform_win32", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
         if (@($textGlyphUiRecipe[0].requiredModules) -notcontains $module) {
             Write-Error "engine/agent/manifest.json native-ui-text-glyph-atlas recipe missing required module: $module"
         }
@@ -673,7 +673,7 @@ $uiAtlasMetadataRecipe = @($productionLoop.recipes | Where-Object { $_.id -eq "n
 if ($uiAtlasMetadataRecipe.Count -ne 1) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop must expose exactly one native-ui-atlas-package-metadata recipe"
 } else {
-    foreach ($module in @("MK_core", "MK_math", "MK_platform", "MK_platform_sdl3", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
+    foreach ($module in @("MK_core", "MK_math", "MK_platform", "MK_platform_win32", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
         if (@($uiAtlasMetadataRecipe[0].requiredModules) -notcontains $module) {
             Write-Error "engine/agent/manifest.json native-ui-atlas-package-metadata recipe missing required module: $module"
         }

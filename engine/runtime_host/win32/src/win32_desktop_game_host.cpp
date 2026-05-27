@@ -16,12 +16,16 @@ namespace {
         .window = &window,
         .extent = Extent2D{.width = desc.extent.width, .height = desc.extent.height},
         .prefer_d3d12 = desc.prefer_d3d12,
+        .prefer_vulkan = desc.prefer_vulkan,
         .allow_null_fallback = desc.allow_null_fallback,
         .prefer_warp = desc.prefer_warp,
         .enable_debug_layer = desc.enable_debug_layer,
         .vsync = desc.vsync,
         .request_tearing = desc.request_tearing,
         .d3d12_renderer = desc.d3d12_renderer,
+        .vulkan_renderer = desc.vulkan_renderer,
+        .d3d12_scene_renderer = desc.d3d12_scene_renderer,
+        .vulkan_scene_renderer = desc.vulkan_scene_renderer,
     };
 }
 
@@ -106,6 +110,76 @@ Win32DesktopGameHost::presentation_backend_reports() const noexcept {
 
 std::span<const Win32DesktopPresentationDiagnostic> Win32DesktopGameHost::presentation_diagnostics() const noexcept {
     return impl_->presentation.diagnostics();
+}
+
+Win32DesktopPresentationSceneGpuBindingStatus Win32DesktopGameHost::scene_gpu_binding_status() const noexcept {
+    return impl_->presentation.scene_gpu_binding_status();
+}
+
+bool Win32DesktopGameHost::scene_gpu_bindings_ready() const noexcept {
+    return impl_->presentation.scene_gpu_bindings_ready();
+}
+
+Win32DesktopPresentationSceneGpuBindingStats Win32DesktopGameHost::scene_gpu_binding_stats() const noexcept {
+    return impl_->presentation.scene_gpu_binding_stats();
+}
+
+std::span<const Win32DesktopPresentationSceneGpuBindingDiagnostic>
+Win32DesktopGameHost::scene_gpu_binding_diagnostics() const noexcept {
+    return impl_->presentation.scene_gpu_binding_diagnostics();
+}
+
+Win32DesktopPresentationPostprocessStatus Win32DesktopGameHost::postprocess_status() const noexcept {
+    return impl_->presentation.postprocess_status();
+}
+
+bool Win32DesktopGameHost::postprocess_ready() const noexcept {
+    return impl_->presentation.postprocess_ready();
+}
+
+std::span<const Win32DesktopPresentationPostprocessDiagnostic>
+Win32DesktopGameHost::postprocess_diagnostics() const noexcept {
+    return impl_->presentation.postprocess_diagnostics();
+}
+
+Win32DesktopPresentationDirectionalShadowStatus Win32DesktopGameHost::directional_shadow_status() const noexcept {
+    return impl_->presentation.directional_shadow_status();
+}
+
+bool Win32DesktopGameHost::directional_shadow_ready() const noexcept {
+    return impl_->presentation.directional_shadow_ready();
+}
+
+std::span<const Win32DesktopPresentationDirectionalShadowDiagnostic>
+Win32DesktopGameHost::directional_shadow_diagnostics() const noexcept {
+    return impl_->presentation.directional_shadow_diagnostics();
+}
+
+Win32DesktopPresentationNativeUiOverlayStatus Win32DesktopGameHost::native_ui_overlay_status() const noexcept {
+    return impl_->presentation.native_ui_overlay_status();
+}
+
+bool Win32DesktopGameHost::native_ui_overlay_ready() const noexcept {
+    return impl_->presentation.native_ui_overlay_ready();
+}
+
+std::span<const Win32DesktopPresentationNativeUiOverlayDiagnostic>
+Win32DesktopGameHost::native_ui_overlay_diagnostics() const noexcept {
+    return impl_->presentation.native_ui_overlay_diagnostics();
+}
+
+Win32DesktopPresentationNativeUiTextureOverlayStatus
+Win32DesktopGameHost::native_ui_texture_overlay_status() const noexcept {
+    return impl_->presentation.native_ui_texture_overlay_status();
+}
+
+bool Win32DesktopGameHost::native_ui_texture_overlay_atlas_ready() const noexcept {
+    return impl_->presentation.native_ui_texture_overlay_atlas_ready();
+}
+
+std::span<const Win32DesktopPresentationNativeUiTextureOverlayDiagnostic>
+Win32DesktopGameHost::native_ui_texture_overlay_diagnostics() const noexcept {
+    return impl_->presentation.native_ui_texture_overlay_diagnostics();
 }
 
 Win32DesktopPresentation& Win32DesktopGameHost::presentation() noexcept {
