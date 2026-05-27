@@ -18,7 +18,7 @@
 
 **Status:** Active.
 
-Selected long-running milestone by operator direction on 2026-05-27. This plan replaces `reviewed-importers-codecs-shader-generation-v1` as `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` for the SDL3 removal track; the importer/codecs/shader-generation plan is paused and remains reviewable future work.
+Selected long-running milestone by operator direction on 2026-05-27. This plan replaces `reviewed-importers-codecs-shader-generation-v1` as `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` for the SDL3 removal track; the importer/codecs/shader-generation plan is paused and remains reviewable future work. Phases 0-2 are merged; Phase 3 is implemented as a candidate slice.
 
 ## Context
 
@@ -208,6 +208,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`: pass.
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`: pass.
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`: pass; 95/95 CTest tests passed, including `MK_win32_platform_tests`, `MK_runtime_ui_workbench_tests`, and `MK_runtime_ui_production_stack_tests`.
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`: pass; 95/95 CTest tests passed, including `MK_win32_platform_tests`.
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`: pass; 94/94 CTest tests passed, including `MK_native_desktop_contract_public_api_compile`.
 
@@ -277,30 +278,48 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.
 - Create: `engine/platform/win32/src/win32_clipboard.cpp`
 - Create: `engine/platform/win32/src/win32_file_dialog.cpp`
 - Create: `engine/platform/win32/src/win32_text_input.cpp`
+- Create: `engine/platform/win32/src/win32_utf.cpp`
+- Create: `engine/platform/win32/src/win32_utf.hpp`
 - Modify: `tests/unit/win32_platform_tests.cpp`
 - Modify: `tests/unit/runtime_ui_*` only where SDL3-specific event tests are replaced by backend-neutral or Win32-specific tests.
 
-- [ ] Re-check Raw Input, XInput/GameInput candidate docs, Common Item Dialog, clipboard, IMM/TSF, and Unicode/UTF-16 conversion docs.
-- [ ] Add RED tests for keyboard/mouse translation into `VirtualInput`, pointer rows, modifier rows, clipboard read/write plans, file dialog request/result rows, and committed text input rows.
-- [ ] Decide controller policy for the first native release:
+- [x] Re-check Raw Input, XInput/GameInput candidate docs, Common Item Dialog, clipboard, IMM/TSF, and Unicode/UTF-16 conversion docs.
+- [x] Add RED tests for keyboard/mouse translation into `VirtualInput`, pointer rows, modifier rows, clipboard read/write plans, file dialog request/result rows, and committed text input rows.
+- [x] Decide controller policy for the first native release:
   - `keyboard_mouse_ready`
   - `xinput_scoped_ready`
   - `gameinput_host_gated`
   - `broad_controller_compatibility_unsupported`
-- [ ] Implement keyboard/mouse first; implement controller only to the selected scoped policy.
-- [ ] Implement clipboard and Common Item Dialog adapters with project-relative path conversion kept outside native handle ownership.
-- [ ] Implement minimal text input evidence: begin/end session rows plus committed text rows. Full TSF composition/candidate UI remains future unless separately selected.
-- [ ] Run:
+- [x] Implement keyboard/mouse first; implement controller only to the selected scoped policy.
+- [x] Implement clipboard and Common Item Dialog adapters with project-relative path conversion kept outside native handle ownership.
+- [x] Implement minimal text input evidence: begin/end session rows plus committed text rows. Full TSF composition/candidate UI remains future unless separately selected.
+- [x] Run:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_win32_platform_tests MK_runtime_ui_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_win32_platform_tests MK_runtime_ui_workbench_tests MK_runtime_ui_production_stack_tests
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "win32_platform|runtime_ui"
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1
 ```
 
 **Done When:** Runtime/game/editor-core code can consume Windows-native copied input, clipboard, file-dialog, and minimal text rows through first-party contracts with no SDL3 dependency.
 
-**Phase Evidence:** Not started.
+**Phase Evidence:** Phase 3 implemented in isolated worktree `codex/win32-input-shell-v1`.
+
+- Official practice re-check: Context7 selected Microsoft Learn Win32 API documentation for Raw Input, clipboard, and Common Item Dialog. The implementation follows the documented Raw Input keyboard/mouse scope (`GetRawInputData`, RAWINPUT/RAWKEYBOARD/RAWMOUSE rows), Win32 keyboard/mouse message rows, `CF_UNICODETEXT` clipboard ownership through `OpenClipboard` / `EmptyClipboard` / `SetClipboardData` with movable global memory, Common Item Dialog COM launch through `IFileOpenDialog` / `IFileSaveDialog`, and UTF-16 committed text conversion. Microsoft Learn TSF/IMM references confirm full TSF composition/candidate UI is a COM/IME integration surface and remains deferred beyond this minimal committed-text phase.
+- RED evidence: after extending `tests/unit/win32_platform_tests.cpp`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_win32_platform_tests` failed on missing `mirakana/platform/win32/win32_clipboard.hpp`, proving the new Phase 3 headers/contract rows did not already exist.
+- Controller policy: Phase 3 selects `keyboard_mouse_ready`; XInput/GameInput and broad controller compatibility remain later scoped/host-gated work.
+- Implementation: added Win32 copied input translation and application into `VirtualInput`/`VirtualPointerInput`, keyboard/mouse-scoped Raw Input registration plans, `Win32Clipboard` and `Win32ClipboardTextAdapter` behind `CF_UNICODETEXT`, `Win32FileDialogService` backed by Common Item Dialog rows, minimal `Win32PlatformIntegrationAdapter` begin/end session rows, UTF-16 committed text conversion, text-edit command mapping, and Ctrl/GUI + C/X/V clipboard command mapping. Public headers expose only first-party values and opaque integer tokens; Win32 SDK, COM, and SDL3 types stay in `.cpp` files.
+- Agent surface drift: updated `engine/agent/manifest.fragments/004-modules.json`, `006-runtimeBackendReadiness.json`, and `009-validationRecipes.json`, then regenerated `engine/agent/manifest.json`.
+- Focused validation:
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_win32_platform_tests MK_runtime_ui_workbench_tests MK_runtime_ui_production_stack_tests`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "win32_platform|runtime_ui"`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_native_desktop_contract_public_api_compile`: pass after the first long compile was allowed to finish and a no-op rerun returned success.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/platform/win32/src/win32_clipboard.cpp,engine/platform/win32/src/win32_file_dialog.cpp,engine/platform/win32/src/win32_input.cpp,engine/platform/win32/src/win32_text_input.cpp,engine/platform/win32/src/win32_utf.cpp,tests/unit/win32_platform_tests.cpp`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-native-desktop-contracts.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`: pass.
 
 ## Phase 4 - `MK_audio_wasapi` Shared-Mode Playback
 

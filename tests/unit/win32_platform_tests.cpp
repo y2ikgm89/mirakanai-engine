@@ -3,9 +3,13 @@
 
 #include "test_framework.hpp"
 
+#include "mirakana/platform/win32/win32_clipboard.hpp"
 #include "mirakana/platform/win32/win32_cursor.hpp"
 #include "mirakana/platform/win32/win32_event_pump.hpp"
+#include "mirakana/platform/win32/win32_file_dialog.hpp"
+#include "mirakana/platform/win32/win32_input.hpp"
 #include "mirakana/platform/win32/win32_runtime.hpp"
+#include "mirakana/platform/win32/win32_text_input.hpp"
 #include "mirakana/platform/win32/win32_window.hpp"
 
 #if defined(_WIN32)
@@ -225,6 +229,141 @@ MK_TEST("win32 cursor mode plan keeps native calls behind first party rows") {
     MK_REQUIRE(relative.clip_to_window);
     MK_REQUIRE(relative.capture_mouse);
     MK_REQUIRE(relative.request_raw_relative_motion);
+}
+
+MK_TEST("win32 input rows translate keyboard mouse and modifiers into first party state") {
+    mirakana::VirtualInput input;
+    mirakana::VirtualPointerInput pointer_input;
+
+    const auto key_down = mirakana::win32::translate_win32_input_message(mirakana::win32::Win32CopiedInputMessage{
+        .message = mirakana::win32::Win32InputMessageId::key_down,
+        .virtual_key = mirakana::win32::win32_vk_left,
+        .repeated = false,
+        .modifiers = mirakana::win32::Win32ModifierState{.control = true},
+        .window_token = 11,
+    });
+    MK_REQUIRE(key_down.kind == mirakana::win32::Win32InputEventKind::key_pressed);
+    MK_REQUIRE(key_down.key == mirakana::Key::left);
+    MK_REQUIRE(key_down.modifiers.control);
+    MK_REQUIRE(key_down.window_token == 11);
+
+    mirakana::win32::apply_win32_input_event(key_down, &input, nullptr);
+    MK_REQUIRE(input.key_pressed(mirakana::Key::left));
+
+    const auto repeated = mirakana::win32::translate_win32_input_message(mirakana::win32::Win32CopiedInputMessage{
+        .message = mirakana::win32::Win32InputMessageId::key_down,
+        .virtual_key = mirakana::win32::win32_vk_space,
+        .repeated = true,
+    });
+    mirakana::win32::apply_win32_input_event(repeated, &input, nullptr);
+    MK_REQUIRE(!input.key_pressed(mirakana::Key::space));
+
+    const auto pointer_down = mirakana::win32::translate_win32_input_message(mirakana::win32::Win32CopiedInputMessage{
+        .message = mirakana::win32::Win32InputMessageId::left_button_down,
+        .low_word = 32,
+        .high_word = 48,
+    });
+    MK_REQUIRE(pointer_down.kind == mirakana::win32::Win32InputEventKind::pointer_pressed);
+    MK_REQUIRE(pointer_down.pointer.id == mirakana::primary_pointer_id);
+    MK_REQUIRE(pointer_down.pointer.kind == mirakana::PointerKind::mouse);
+
+    mirakana::win32::apply_win32_input_event(pointer_down, nullptr, &pointer_input);
+    MK_REQUIRE(pointer_input.pointer_pressed(mirakana::primary_pointer_id));
+    MK_REQUIRE(pointer_input.pointer_position(mirakana::primary_pointer_id).x == 32.0F);
+    MK_REQUIRE(pointer_input.pointer_position(mirakana::primary_pointer_id).y == 48.0F);
+}
+
+MK_TEST("win32 raw input registration plan remains keyboard mouse scoped") {
+    const auto plan = mirakana::win32::plan_win32_raw_input_registration(mirakana::win32::Win32RawInputRequest{
+        .keyboard = true,
+        .mouse = true,
+        .relative_mouse = true,
+    });
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.register_keyboard);
+    MK_REQUIRE(plan.register_mouse);
+    MK_REQUIRE(plan.capture_relative_mouse);
+    MK_REQUIRE(!plan.register_hid_controllers);
+}
+
+MK_TEST("win32 clipboard text plans unicode clipboard rows") {
+    const auto write = mirakana::win32::plan_win32_clipboard_write("hello clipboard");
+    MK_REQUIRE(write.succeeded());
+    MK_REQUIRE(write.open_clipboard);
+    MK_REQUIRE(write.empty_clipboard);
+    MK_REQUIRE(write.set_unicode_text);
+    MK_REQUIRE(write.utf16_text.size() == 15);
+
+    const auto clear = mirakana::win32::plan_win32_clipboard_write("");
+    MK_REQUIRE(clear.succeeded());
+    MK_REQUIRE(clear.empty_clipboard);
+    MK_REQUIRE(!clear.set_unicode_text);
+
+    const auto read = mirakana::win32::plan_win32_clipboard_read();
+    MK_REQUIRE(read.open_clipboard);
+    MK_REQUIRE(read.request_unicode_text);
+}
+
+MK_TEST("win32 file dialog request plan converts filters and options") {
+    const auto plan = mirakana::win32::plan_win32_file_dialog_request(mirakana::FileDialogRequest{
+        .kind = mirakana::FileDialogKind::open_file,
+        .title = "Open Asset",
+        .filters = {mirakana::FileDialogFilter{.name = "Images", .pattern = "png;jpg"}},
+        .default_location = "assets",
+        .allow_many = true,
+    });
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.use_open_dialog);
+    MK_REQUIRE(!plan.use_save_dialog);
+    MK_REQUIRE(plan.force_filesystem);
+    MK_REQUIRE(plan.allow_many);
+    MK_REQUIRE(plan.filters.size() == 1);
+    MK_REQUIRE(plan.filters[0].display_name == "Images");
+    MK_REQUIRE(plan.filters[0].spec == "*.png;*.jpg");
+}
+
+MK_TEST("win32 text input rows produce committed UTF-8 and session plans") {
+    const mirakana::ui::ElementId target{.value = "win32-text-target"};
+    const auto committed = mirakana::win32::win32_committed_text_from_message(
+        target, mirakana::win32::Win32CopiedTextInputMessage{
+                    .message = mirakana::win32::Win32TextInputMessageId::char_input,
+                    .utf16_text = std::u16string{static_cast<char16_t>(0xD83D), static_cast<char16_t>(0xDE00)},
+                });
+
+    MK_REQUIRE(committed.has_value());
+    MK_REQUIRE(committed->target.value == target.value);
+    MK_REQUIRE(committed->text == "\xF0\x9F\x98\x80");
+
+    const auto begin = mirakana::win32::plan_win32_text_input_begin(mirakana::ui::PlatformTextInputRequest{
+        .target = target,
+        .text_bounds = mirakana::ui::Rect{.x = 1.0F, .y = 2.0F, .width = 120.0F, .height = 24.0F},
+    });
+    MK_REQUIRE(begin.succeeded());
+    MK_REQUIRE(begin.start_session);
+    MK_REQUIRE(begin.update_composition_window);
+
+    const auto end = mirakana::win32::plan_win32_text_input_end(target);
+    MK_REQUIRE(end.succeeded());
+    MK_REQUIRE(end.end_session);
+
+    const auto edit_command = mirakana::win32::win32_text_edit_command_from_input_event(
+        target, mirakana::win32::Win32InputEvent{
+                    .kind = mirakana::win32::Win32InputEventKind::key_pressed,
+                    .key = mirakana::Key::left,
+                });
+    MK_REQUIRE(edit_command.has_value());
+    MK_REQUIRE(edit_command->kind == mirakana::ui::TextEditCommandKind::move_cursor_backward);
+
+    const auto clipboard_command = mirakana::win32::win32_text_edit_clipboard_command_from_input_event(
+        target, mirakana::win32::Win32InputEvent{
+                    .kind = mirakana::win32::Win32InputEventKind::key_pressed,
+                    .virtual_key = mirakana::win32::win32_vk_v,
+                    .modifiers = mirakana::win32::Win32ModifierState{.control = true},
+                });
+    MK_REQUIRE(clipboard_command.has_value());
+    MK_REQUIRE(clipboard_command->kind == mirakana::ui::TextEditClipboardCommandKind::paste_text);
 }
 
 #endif
