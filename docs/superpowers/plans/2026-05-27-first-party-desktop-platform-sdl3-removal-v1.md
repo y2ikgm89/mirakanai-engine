@@ -249,6 +249,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.
 - Official practice re-check: Context7 selected Microsoft Learn Win32 API documentation. The implementation follows the documented `RegisterClassExW`/`CreateWindowExW` window-class pattern, `PeekMessageW` message-loop polling, Win32 cursor resource loading, DPI awareness context setup, and monitor/client display-state queries while keeping native Win32 types in `.cpp` files.
 - RED evidence: after adding `tests/unit/win32_platform_tests.cpp` and `MK_win32_platform_tests`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_win32_platform_tests` failed because `Win32Runtime`, `Win32Window`, `Win32EventPump`, `native_window_token`, `display_state`, and `post_close_request` were not implemented.
 - Implementation: added Windows-only `engine/platform/win32` with `Win32Runtime`, `Win32Window`, `Win32EventPump`, `Win32WindowModel`, and cursor-mode planning. `MK_platform_win32` is exported and installed as an optional Windows SDK target while current SDL3 runtime/editor/audio paths remain unchanged.
+- Hosted install-lane fix: Windows optional install presets also need `mirakana_platform_win32` built before `cmake --install`, so `tools/validate-network-enet.ps1` and `tools/validate-physics-jolt.ps1` include it in their SDK target lists.
 - Agent surface drift: added `MK_platform_win32` to `engine/agent/manifest.fragments/004-modules.json`, `win32-native` platform readiness to `006-runtimeBackendReadiness.json`, and `win32-platform` validation recipe to `009-validationRecipes.json`, then regenerated `engine/agent/manifest.json`.
 - Focused validation:
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_win32_platform_tests`: pass.
@@ -259,6 +260,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`: pass.
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`: pass.
   - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`: pass; 95/95 CTest tests passed, including `MK_win32_platform_tests`.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-network-enet.ps1`: locally blocked before configure because the `network-enet` vcpkg feature is not installed and `tools/bootstrap-deps.ps1` is session-policy blocked; hosted Windows MSVC is the proof lane for this optional preset.
 
 ## Phase 3 - Win32 Input, Clipboard, File Dialog, And Text Input Foundation
 
