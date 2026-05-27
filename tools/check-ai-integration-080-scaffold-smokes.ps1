@@ -2454,7 +2454,7 @@ try {
             target = "package_apply_game"
             aiWorkflow = @{ validate = "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1" }
             gameplayContract = @{ appType = "mirakana::GameApp" }
-            backendReadiness = @{ platform = "sdl3-desktop" }
+            backendReadiness = @{ platform = "win32-desktop" }
             importerRequirements = @{ sourceFormats = @() }
             packagingTargets = @("desktop-game-runtime", "desktop-runtime-release")
             runtimePackageFiles = @("runtime/package_apply_game.config")
@@ -2502,7 +2502,7 @@ try {
             target = "package_apply_missing_property"
             aiWorkflow = @{ validate = "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1" }
             gameplayContract = @{ appType = "mirakana::GameApp" }
-            backendReadiness = @{ platform = "sdl3-desktop" }
+            backendReadiness = @{ platform = "win32-desktop" }
             importerRequirements = @{ sourceFormats = @() }
             packagingTargets = @("desktop-game-runtime", "desktop-runtime-release")
             validationRecipes = @(@{ name = "desktop-runtime-release"; command = "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1" })

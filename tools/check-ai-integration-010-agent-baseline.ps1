@@ -902,8 +902,8 @@ Assert-ContainsText $roadmapContent "generated 3D morph GPU palette smoke" "docs
 Assert-ContainsText $productionCompletionMasterPlanContent "generated-3d-morph-gpu-palette-smoke-v1" "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
 Assert-ContainsText $historicalPlanEvidenceText "2026-05-05-generated-3d-morph-gpu-palette-smoke-v1.md" "docs/superpowers/plans/README.md"
 Assert-ContainsText $manifestRaw "desktopRuntime3dMorphGpuPaletteSmoke" "engine/agent/manifest.json"
-Assert-ContainsText (Get-AgentSurfaceText "engine/runtime_host/sdl3/include/mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp") "morph_mesh_assets" "MK_runtime_host_sdl3 public header"
-Assert-ContainsText (Get-AgentSurfaceText "engine/runtime_host/sdl3/include/mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp") "uploaded_morph_bytes" "MK_runtime_host_sdl3 public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/runtime_host/win32/include/mirakana/runtime_host/win32/win32_desktop_presentation.hpp") "morph_mesh_assets" "MK_runtime_host_win32 public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/runtime_host/win32/include/mirakana/runtime_host/win32/win32_desktop_presentation.hpp") "uploaded_morph_bytes" "MK_runtime_host_win32 public header"
 Assert-ContainsText $currentCapabilitiesContent "Generated 3D Morph NORMAL/TANGENT Package Smoke v1" "docs/current-capabilities.md"
 Assert-ContainsText $aiGameDevelopmentContent "POSITION/NORMAL/TANGENT morph delta buffers" "docs/ai-game-development.md"
 Assert-ContainsText $roadmapContent "generated 3D NORMAL/TANGENT morph package smoke" "docs/roadmap.md"
@@ -1565,6 +1565,18 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     )) {
         Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan engine gap matrix"
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "next-production-gap-selection") {
+    foreach ($needle in @(
+        "First-Party Desktop Platform And SDL3 Removal v1",
+        "MK_platform_win32",
+        "MK_runtime_host_win32",
+        "MK_runtime_host_win32_presentation",
+        "MK_audio_wasapi",
+        "unsupportedProductionGaps = []",
+        "selection gate"
+    )) {
+        Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan selection gate closeout"
+    }
 } else {
     foreach ($needle in @(
     "Frame Graph Transient Texture Alias Planning v1",
@@ -1696,11 +1708,11 @@ $runtimeSceneRhiHeaderText = Get-AgentSurfaceText "engine/runtime_scene_rhi/incl
 $runtimeSceneRhiSourceText = Get-AgentSurfaceText "engine/runtime_scene_rhi/src/runtime_scene_rhi.cpp"
 $rendererHeaderText = Get-AgentSurfaceText "engine/renderer/include/mirakana/renderer/renderer.hpp"
 $rendererSourceText = Get-AgentSurfaceText "engine/renderer/src/rhi_frame_renderer.cpp"
-$runtimeHostSdl3HeaderText = Get-AgentSurfaceText "engine/runtime_host/sdl3/include/mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp"
-$runtimeHostSdl3SourceText = Get-AgentSurfaceText "engine/runtime_host/sdl3/src/sdl_desktop_presentation.cpp"
-$runtimeHostSdl3SceneGpuInjectingRendererText = Get-AgentSurfaceText "engine/runtime_host/sdl3/src/scene_gpu_binding_injecting_renderer.hpp"
-$runtimeHostSdl3TestsText = Get-AgentSurfaceText "tests/unit/runtime_host_sdl3_tests.cpp"
-$runtimeHostSdl3PublicApiText = Get-AgentSurfaceText "tests/unit/runtime_host_sdl3_public_api_compile.cpp"
+$runtimeHostWin32HeaderText = Get-AgentSurfaceText "engine/runtime_host/win32/include/mirakana/runtime_host/win32/win32_desktop_presentation.hpp"
+$runtimeHostWin32SourceText = Get-AgentSurfaceText "engine/runtime_host/win32/src/win32_desktop_presentation.cpp"
+$runtimeHostWin32SceneGpuInjectingRendererText = Get-AgentSurfaceText "engine/runtime_host/win32/src/scene_gpu_binding_injecting_renderer.hpp"
+$runtimeHostWin32TestsText = Get-AgentSurfaceText "tests/unit/runtime_host_win32_tests.cpp"
+$runtimeHostWin32PublicApiText = Get-AgentSurfaceText "tests/unit/runtime_host_win32_public_api_compile.cpp"
 $newGameToolText = Get-AgentSurfaceText "tools/new-game.ps1"
 $newGameHelpersText = Get-AgentSurfaceText "tools/new-game-helpers.ps1"
 $newGameTemplatesText = Get-AgentSurfaceText "tools/new-game-templates.ps1"
@@ -2139,13 +2151,13 @@ Assert-ContainsText $runtimeComputeMorphNormalTangentOutputVulkanPlanText "Do no
 Assert-ContainsText $generatedComputeMorphPackageVulkanPlanText "Generated 3D Compute Morph Package Smoke Vulkan v1" "Generated 3D compute morph package smoke Vulkan plan"
 Assert-ContainsText $generatedComputeMorphPackageVulkanPlanText "**Status:** Completed" "Generated 3D compute morph package smoke Vulkan plan"
 Assert-ContainsText $generatedComputeMorphPackageVulkanPlanText "DesktopRuntime3DPackage" "Generated 3D compute morph package smoke Vulkan plan"
-Assert-ContainsText $generatedComputeMorphPackageVulkanPlanText "SdlDesktopPresentationVulkanSceneRendererDesc" "Generated 3D compute morph package smoke Vulkan plan"
+Assert-ContainsText $generatedComputeMorphPackageVulkanPlanText "Win32DesktopPresentationVulkanSceneRendererDesc" "Generated 3D compute morph package smoke Vulkan plan"
 Assert-ContainsText $generatedComputeMorphPackageVulkanPlanText "--require-compute-morph" "Generated 3D compute morph package smoke Vulkan plan"
 Assert-ContainsText $generatedComputeMorphPackageVulkanPlanText "Do not claim Vulkan NORMAL/TANGENT package smoke" "Generated 3D compute morph package smoke Vulkan plan"
 Assert-ContainsText $generatedComputeMorphSkinPackageVulkanPlanText "Generated 3D Compute Morph Skin Package Smoke Vulkan v1" "Generated 3D compute morph skin package smoke Vulkan plan"
 Assert-ContainsText $generatedComputeMorphSkinPackageVulkanPlanText "**Status:** Completed" "Generated 3D compute morph skin package smoke Vulkan plan"
 Assert-ContainsText $generatedComputeMorphSkinPackageVulkanPlanText "DesktopRuntime3DPackage" "Generated 3D compute morph skin package smoke Vulkan plan"
-Assert-ContainsText $generatedComputeMorphSkinPackageVulkanPlanText "SdlDesktopPresentationVulkanSceneRendererDesc::compute_morph_skinned_shader" "Generated 3D compute morph skin package smoke Vulkan plan"
+Assert-ContainsText $generatedComputeMorphSkinPackageVulkanPlanText "Win32DesktopPresentationVulkanSceneRendererDesc::compute_morph_skinned_shader" "Generated 3D compute morph skin package smoke Vulkan plan"
 Assert-ContainsText $generatedComputeMorphSkinPackageVulkanPlanText "compute_morph_skinned_mesh_bindings" "Generated 3D compute morph skin package smoke Vulkan plan"
 Assert-ContainsText $generatedComputeMorphSkinPackageVulkanPlanText "without exposing Vulkan/native handles" "Generated 3D compute morph skin package smoke Vulkan plan"
 Assert-ContainsText $nativeSpriteBatchingExecutionPlanText "2D Native Sprite Batching Execution v1" "2D native sprite batching execution plan"

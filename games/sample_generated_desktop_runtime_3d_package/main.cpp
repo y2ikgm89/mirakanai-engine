@@ -869,7 +869,7 @@ validate_audio_production_package_evidence(const mirakana::AudioClipSampleData& 
         .device_lifecycle_rows =
             {
                 mirakana::AudioProductionDeviceLifecycleRow{
-                    .backend_id = "sdl3",
+                    .backend_id = "wasapi",
                     .uses_logical_device = true,
                     .uses_audio_stream = true,
                     .uses_queueing = true,

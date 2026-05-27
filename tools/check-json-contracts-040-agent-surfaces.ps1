@@ -542,7 +542,7 @@ if ($playable3dGap.Count -ne 0) {
     Write-Error "engine manifest aiOperableProductionLoop 3d-playable-vertical-slice gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
 $recommendedText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
-if ([string]$productionLoop.recommendedNextPlan.id -notin @("general-purpose-game-production-v1", "generated-game-studio-v1", "engine-1-0-gap-matrix-v1")) {
+if ([string]$productionLoop.recommendedNextPlan.id -notin @("general-purpose-game-production-v1", "generated-game-studio-v1", "engine-1-0-gap-matrix-v1", "next-production-gap-selection")) {
     foreach ($needle in @(
         "3d-playable-vertical-slice",
         "generated desktop 3D package proof",
@@ -594,6 +594,17 @@ if ([string]$productionLoop.recommendedNextPlan.id -ne "general-purpose-game-pro
             "broad commercial-engine"
         )) {
             Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan engine gap matrix"
+        }
+    } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "next-production-gap-selection") {
+        foreach ($needle in @(
+            "First-Party Desktop Platform And SDL3 Removal v1",
+            "MK_platform_win32",
+            "MK_runtime_host_win32_presentation",
+            "MK_audio_wasapi",
+            "unsupportedProductionGaps = []",
+            "selection gate"
+        )) {
+            Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan selection gate"
         }
     } else {
         foreach ($needle in @(

@@ -88,12 +88,14 @@ foreach ($dependency in $desktopRuntime.dependencies) {
     }
 }
 
-if ($desktopRuntimeDependencyNames -notcontains "sdl3") {
-    Write-Error "desktop-runtime feature must declare dependency: sdl3"
+foreach ($dependencyName in @("sdl3", "imgui")) {
+    if ($desktopRuntimeDependencyNames -contains $dependencyName) {
+        Write-Error "desktop-runtime feature uses the first-party Windows native lane and must not declare dependency: $dependencyName"
+    }
 }
 
-if ($desktopRuntimeDependencyNames -contains "imgui") {
-    Write-Error "desktop-runtime feature must not depend on Dear ImGui"
+if ($desktopRuntimeDependencyNames.Count -ne 0) {
+    Write-Error "desktop-runtime feature uses host SDKs and must not declare vcpkg package dependencies"
 }
 
 $dependencyNames = @()
@@ -172,7 +174,9 @@ if ($enetDefaultFeatures -ne $false) {
     Write-Error "network-enet enet dependency must set default-features to false"
 }
 
-Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| SDL3 \|" "third-party notices"
+if ((Get-Content -LiteralPath (Join-Path $root "THIRD_PARTY_NOTICES.md") -Raw) -match "\| SDL3 \|") {
+    Write-Error "third-party notices must not list SDL3 after final SDL3 source and dependency removal"
+}
 if ((Get-Content -LiteralPath (Join-Path $root "THIRD_PARTY_NOTICES.md") -Raw) -match "\| Dear ImGui \|") {
     Write-Error "third-party notices must not list Dear ImGui while the visible editor shell is deferred and no package dependency declares it"
 }

@@ -930,44 +930,6 @@ if(BUILD_TESTING)
         endif()
     endif()
 
-    if(MK_DESKTOP_RUNTIME_ENABLED)
-        find_package(SDL3 CONFIG REQUIRED)
-
-        add_executable(MK_sdl3_platform_tests
-            tests/unit/sdl3_platform_tests.cpp
-        )
-        target_link_libraries(MK_sdl3_platform_tests PRIVATE MK_platform MK_platform_sdl3 SDL3::SDL3)
-        target_include_directories(MK_sdl3_platform_tests PRIVATE tests)
-        MK_apply_common_target_options(MK_sdl3_platform_tests)
-        add_test(NAME MK_sdl3_platform_tests COMMAND MK_sdl3_platform_tests)
-
-        add_executable(MK_sdl3_audio_tests
-            tests/unit/sdl3_audio_tests.cpp
-        )
-        target_link_libraries(MK_sdl3_audio_tests PRIVATE MK_audio_sdl3)
-        target_include_directories(MK_sdl3_audio_tests PRIVATE tests)
-        MK_apply_common_target_options(MK_sdl3_audio_tests)
-        add_test(NAME MK_sdl3_audio_tests COMMAND MK_sdl3_audio_tests)
-
-        add_executable(MK_runtime_host_sdl3_tests
-            tests/unit/runtime_host_sdl3_tests.cpp
-        )
-        target_link_libraries(MK_runtime_host_sdl3_tests PRIVATE MK_runtime_host_sdl3 MK_runtime_host_sdl3_presentation MK_core MK_platform_sdl3 MK_renderer MK_runtime MK_runtime_scene_rhi MK_scene SDL3::SDL3)
-        if(WIN32)
-            target_link_libraries(MK_runtime_host_sdl3_tests PRIVATE d3dcompiler)
-        endif()
-        target_include_directories(MK_runtime_host_sdl3_tests PRIVATE tests engine/runtime_host/sdl3/src)
-        MK_apply_common_target_options(MK_runtime_host_sdl3_tests)
-        add_test(NAME MK_runtime_host_sdl3_tests COMMAND MK_runtime_host_sdl3_tests)
-
-        add_executable(MK_runtime_host_sdl3_public_api_compile
-            tests/unit/runtime_host_sdl3_public_api_compile.cpp
-        )
-        target_link_libraries(MK_runtime_host_sdl3_public_api_compile PRIVATE MK_runtime_host_sdl3_presentation)
-        MK_apply_common_target_options(MK_runtime_host_sdl3_public_api_compile)
-        add_test(NAME MK_runtime_host_sdl3_public_api_compile COMMAND MK_runtime_host_sdl3_public_api_compile)
-    endif()
-
     get_property(MK_CURRENT_DIRECTORY_TARGETS DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
     foreach(MK_CURRENT_DIRECTORY_TARGET IN LISTS MK_CURRENT_DIRECTORY_TARGETS)
         if(MK_CURRENT_DIRECTORY_TARGET MATCHES "^MK_.*(_tests|_probe|_public_api_compile)$")
@@ -1004,8 +966,6 @@ MK_set_export_name(MK_renderer renderer)
 MK_set_export_name(MK_rhi rhi)
 MK_set_export_name(MK_runtime runtime)
 MK_set_export_name(MK_runtime_host runtime_host)
-MK_set_export_name(MK_runtime_host_sdl3 runtime_host_sdl3)
-MK_set_export_name(MK_runtime_host_sdl3_presentation runtime_host_sdl3_presentation)
 MK_set_export_name(MK_runtime_host_win32 runtime_host_win32)
 MK_set_export_name(MK_runtime_host_win32_presentation runtime_host_win32_presentation)
 MK_set_export_name(MK_runtime_rhi runtime_rhi)
@@ -1019,9 +979,7 @@ MK_set_export_name(MK_scene_renderer scene_renderer)
 MK_set_export_name(MK_tools tools)
 MK_set_export_name(MK_ui ui)
 MK_set_export_name(MK_ui_renderer ui_renderer)
-MK_set_export_name(MK_audio_sdl3 audio_sdl3)
 MK_set_export_name(MK_audio_wasapi audio_wasapi)
-MK_set_export_name(MK_platform_sdl3 platform_sdl3)
 MK_set_export_name(MK_editor_core editor_core)
 
 set(MK_LIBRARY_TARGETS
@@ -1060,9 +1018,9 @@ set(MK_RUNTIME_TARGETS
     sample_ui_audio_assets
 )
 
-foreach(optional_target IN ITEMS mirakana_rhi_d3d12 mirakana_audio_sdl3 mirakana_audio_wasapi mirakana_platform_sdl3
-        mirakana_platform_win32 MK_runtime_host_sdl3 MK_runtime_host_sdl3_presentation MK_runtime_host_win32
-        MK_runtime_host_win32_presentation MK_editor_core mirakana_physics_jolt mirakana_runtime_network_enet)
+foreach(optional_target IN ITEMS mirakana_rhi_d3d12 mirakana_audio_wasapi mirakana_platform_win32
+        MK_runtime_host_win32 MK_runtime_host_win32_presentation MK_editor_core mirakana_physics_jolt
+        mirakana_runtime_network_enet)
     if(TARGET ${optional_target})
         list(APPEND MK_LIBRARY_TARGETS ${optional_target})
     endif()
@@ -1267,11 +1225,6 @@ install(EXPORT MirakanaiTargets
     DESTINATION ${MK_CMAKE_PACKAGE_DIR}
 )
 
-set(MK_PACKAGE_HAS_SDL3 OFF)
-if(TARGET MK_platform_sdl3 OR TARGET MK_audio_sdl3 OR TARGET MK_runtime_host_sdl3_presentation)
-    set(MK_PACKAGE_HAS_SDL3 ON)
-endif()
-
 set(MK_PACKAGE_HAS_ASSET_IMPORTERS OFF)
 if(MK_ENABLE_ASSET_IMPORTERS)
     set(MK_PACKAGE_HAS_ASSET_IMPORTERS ON)
@@ -1341,24 +1294,12 @@ install(DIRECTORY
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
-if(TARGET MK_platform_sdl3)
-    install(DIRECTORY engine/platform/sdl3/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-endif()
-
 if(TARGET MK_platform_win32)
     install(DIRECTORY engine/platform/win32/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 endif()
 
-if(TARGET MK_runtime_host_sdl3)
-    install(DIRECTORY engine/runtime_host/sdl3/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-endif()
-
 if(TARGET MK_runtime_host_win32)
     install(DIRECTORY engine/runtime_host/win32/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-endif()
-
-if(TARGET MK_audio_sdl3)
-    install(DIRECTORY engine/audio/sdl3/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 endif()
 
 if(TARGET MK_audio_wasapi)

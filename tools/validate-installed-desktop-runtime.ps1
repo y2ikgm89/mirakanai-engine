@@ -3249,7 +3249,7 @@ if ($requiresRuntimeUiProductionStack) {
             "runtime_ui_production_stack_ime_text_area_cursor_rows",
             "runtime_ui_production_stack_ime_committed_text_rows",
             "runtime_ui_production_stack_ime_clipboard_rows",
-            "runtime_ui_production_stack_ime_sdl3_adapter_proof_rows",
+            "runtime_ui_production_stack_ime_platform_adapter_proof_rows",
             "runtime_ui_production_stack_ime_platform_host_gate_rows",
             "runtime_ui_production_stack_ime_platform_parity_ready",
             "runtime_ui_production_stack_requires_accessibility_host_evidence",
@@ -3298,7 +3298,7 @@ if ($requiresRuntimeUiProductionStack) {
         "runtime_ui_production_stack_ime_text_area_cursor_rows" = "1"
         "runtime_ui_production_stack_ime_committed_text_rows" = "1"
         "runtime_ui_production_stack_ime_clipboard_rows" = "1"
-        "runtime_ui_production_stack_ime_sdl3_adapter_proof_rows" = "1"
+        "runtime_ui_production_stack_ime_platform_adapter_proof_rows" = "1"
         "runtime_ui_production_stack_ime_platform_host_gate_rows" = "1"
         "runtime_ui_production_stack_ime_platform_parity_ready" = "0"
         "runtime_ui_production_stack_requires_accessibility_host_evidence" = "1"

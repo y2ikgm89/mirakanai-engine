@@ -72,7 +72,7 @@ enum class RuntimeUiProductionDiagnosticCode : std::uint8_t {
     missing_ime_text_area_cursor_rows,
     missing_ime_committed_text_rows,
     missing_ime_clipboard_rows,
-    missing_ime_sdl3_adapter_proof_rows,
+    missing_ime_platform_adapter_proof_rows,
     missing_ime_platform_host_gate_rows,
     missing_platform_dispatch_boundary,
     missing_accessibility_roles,
@@ -123,7 +123,7 @@ struct RuntimeUiProductionEvidenceRow {
     bool ime_text_area_cursor_rows{false};
     bool ime_committed_text_rows{false};
     bool ime_clipboard_rows{false};
-    bool ime_sdl3_adapter_proof_rows{false};
+    bool ime_platform_adapter_proof_rows{false};
     bool ime_platform_host_gate_rows{false};
     bool platform_adapter_dispatch_boundary{false};
     bool accessibility_role_rows{false};

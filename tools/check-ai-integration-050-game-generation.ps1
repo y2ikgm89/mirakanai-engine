@@ -56,7 +56,7 @@ $engineCapabilityHandoffChecks = @(
         Needles = @(
             "AI Engine Capability Handoff v1",
             "EngineCapabilityHandoffReviewRequest",
-            "native handles, SDL3, Dear ImGui, renderer/RHI, backend"
+            "native handles, third-party windowing, Dear ImGui, renderer/RHI, backend"
         )
     },
     @{

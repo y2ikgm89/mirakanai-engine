@@ -2,11 +2,10 @@
 
 No third-party source code, binary libraries, fonts, images, audio, models, shaders, or other distributable assets are included in the default headless build.
 
-Optional asset-importer, desktop-runtime, native physics adapter, and network adapter dependencies are declared in `vcpkg.json`, installed through vcpkg manifest mode, and excluded from source control. The `desktop-gui` feature is currently an empty deferred placeholder during SDL3 removal and declares no package dependencies. Optional dependencies are used only by explicit optional build lanes such as `tools/build-asset-importers.ps1`, desktop runtime validation/package scripts, `tools/validate-physics-jolt.ps1`, and `tools/validate-network-enet.ps1`.
+Optional asset-importer, native physics adapter, and network adapter dependencies are declared in `vcpkg.json`, installed through vcpkg manifest mode, and excluded from source control. The `desktop-runtime` and `desktop-gui` features currently use first-party or host SDK paths and declare no package dependencies. Optional dependencies are used only by explicit optional build lanes such as `tools/build-asset-importers.ps1`, `tools/validate-physics-jolt.ps1`, and `tools/validate-network-enet.ps1`.
 
 | Name | Source | Retrieved | Version | Copyright holder | License | Modified | Distribution target |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| SDL3 | https://github.com/libsdl-org/SDL | 2026-04-26 | 3.4.4 via vcpkg baseline `3909e67a639d426ea939d9bff77bfe1d10443476` | SDL authors and contributors | Zlib AND MIT AND Apache-2.0 as reported by vcpkg | No first-party modifications | Temporary optional `mirakana_platform_sdl3` and `mirakana_audio_sdl3` binary build output until final SDL3 source removal |
 | libspng | https://github.com/randy408/libspng | 2026-04-27 | 0.7.4 via vcpkg baseline `3909e67a639d426ea939d9bff77bfe1d10443476` | libspng contributors | BSD-2-Clause | No first-party modifications | Optional `asset-importers` `mirakana_tools` adapter build output |
 | zlib | https://www.zlib.net/ | 2026-04-27 | 1.3.2 via vcpkg baseline `3909e67a639d426ea939d9bff77bfe1d10443476` | Jean-loup Gailly and Mark Adler | Zlib | No first-party modifications | Optional `asset-importers` `mirakana_tools` adapter build output through libspng |
 | fastgltf | https://github.com/spnda/fastgltf | 2026-04-27 | 0.9.0 via vcpkg baseline `3909e67a639d426ea939d9bff77bfe1d10443476` | fastgltf contributors | MIT | No first-party modifications | Optional `asset-importers` `mirakana_tools` adapter build output |
