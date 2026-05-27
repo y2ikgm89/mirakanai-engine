@@ -15,6 +15,8 @@ namespace mirakana {
 enum class RendererQualityMatrixStatus : std::uint8_t {
     ready = 0,
     host_evidence_required,
+    dependency_evidence_required,
+    unsupported,
     no_rows,
     invalid_request,
 };
@@ -35,6 +37,13 @@ enum class RendererQualityProofKind : std::uint8_t {
     tool_validation,
     reviewed_handoff,
     host_gate,
+};
+
+enum class RendererQualityMatrixRowStatus : std::uint8_t {
+    ready = 0,
+    host_gated,
+    dependency_gated,
+    unsupported,
 };
 
 enum class RendererQualityMatrixDiagnosticCode : std::uint8_t {
@@ -67,6 +76,7 @@ struct RendererQualityMatrixRow {
     RendererQualityFeatureKind feature{RendererQualityFeatureKind::materials};
     rhi::BackendKind backend{rhi::BackendKind::null};
     RendererQualityProofKind proof{RendererQualityProofKind::selected_package};
+    RendererQualityMatrixRowStatus status{RendererQualityMatrixRowStatus::ready};
     bool reviewed{false};
     bool backend_local_evidence{false};
     bool d3d12_resource_state_barrier_evidence{false};
@@ -84,6 +94,7 @@ struct RendererQualityMatrixRow {
     bool backend_parity_evidence{false};
     bool host_validated{false};
     bool host_gate_required{false};
+    bool dependency_gate_required{false};
     bool request_native_handle_access{false};
     bool request_capture_execution{false};
     bool request_crash_upload_execution{false};
@@ -116,6 +127,8 @@ struct RendererQualityMatrixPlan {
     std::size_t row_count{0U};
     std::size_t ready_row_count{0U};
     std::size_t host_gated_row_count{0U};
+    std::size_t dependency_gated_row_count{0U};
+    std::size_t unsupported_row_count{0U};
     std::size_t host_validated_backend_count{0U};
     std::uint64_t replay_hash{0U};
     bool d3d12_quality_matrix_ready{false};

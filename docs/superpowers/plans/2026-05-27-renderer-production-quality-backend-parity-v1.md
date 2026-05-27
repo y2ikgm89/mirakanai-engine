@@ -50,6 +50,12 @@ Before code changes in each task, re-check and record the exact docs touched by 
 - Renderer package counters must distinguish ready, host-gated, dependency-gated, and unsupported rows.
 - Any public aggregate changes must update designated initializers in tests in declaration order.
 
+## Candidate Evidence
+
+| Candidate | Scope | Current evidence | Remaining gap |
+| --- | --- | --- | --- |
+| `renderer-quality-status-taxonomy-v1` | `Renderer General Quality Matrix v1` / `plan_renderer_quality_matrix` clean-break `RendererQualityMatrixRowStatus` taxonomy plus package-visible dependency/unsupported counters. | Focused RED build failed before implementation because `RendererQualityMatrixRowStatus`, `dependency_gate_required`, `dependency_gated_row_count`, and `unsupported_row_count` were absent. Focused GREEN passed with `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_quality_matrix_tests` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R renderer_quality_matrix`. Package-visible fields remain `renderer_quality_matrix_status=host_evidence_required`, `renderer_quality_matrix_dependency_gated_rows=0`, `renderer_quality_matrix_unsupported_rows=0`, and `renderer_quality_matrix_general_renderer_quality_ready=0`. | Backend parity policy, broad profiling/residency rows, package promotion, and full slice validation remain open tasks in this plan. |
+
 ## Files
 
 - Modify: `engine/renderer/include/mirakana/renderer/renderer_quality_matrix.hpp`
