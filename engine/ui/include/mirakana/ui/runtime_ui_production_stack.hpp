@@ -52,12 +52,14 @@ enum class RuntimeUiProductionDiagnosticCode : std::uint8_t {
     missing_accessibility_row,
     missing_request_validation,
     missing_shaping_segments,
+    missing_shaping_direction_script_language,
     missing_shaping_glyph_clusters,
     missing_shaping_advances_offsets,
     missing_shaping_fallback_rows,
     missing_shaping_bidi_boundaries,
     missing_shaping_line_breaks,
     missing_raster_glyph_bitmaps,
+    missing_raster_pixel_format_rows,
     missing_raster_glyph_metrics,
     missing_atlas_placement_rows,
     missing_atlas_budget_rows,
@@ -93,12 +95,14 @@ struct RuntimeUiProductionEvidenceRow {
     bool host_evidence_available{false};
     bool request_validation{false};
     bool shaping_segments{false};
+    bool shaping_direction_script_language{false};
     bool glyph_clusters{false};
     bool glyph_advances_offsets{false};
     bool fallback_font_rows{false};
     bool bidi_boundaries{false};
     bool line_break_boundaries{false};
     bool glyph_bitmap_rows{false};
+    bool glyph_pixel_format_rows{false};
     bool glyph_metric_rows{false};
     bool atlas_placement_rows{false};
     bool atlas_budget_rows{false};

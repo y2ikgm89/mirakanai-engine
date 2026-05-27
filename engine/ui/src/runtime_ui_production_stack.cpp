@@ -156,6 +156,9 @@ void validate_text_shaping_row(std::vector<RuntimeUiProductionDiagnostic>& diagn
                  row.id, "runtime UI text shaping evidence requires strict request validation");
     require_flag(diagnostics, row.shaping_segments, RuntimeUiProductionDiagnosticCode::missing_shaping_segments, row.id,
                  "runtime UI text shaping evidence requires shaping segment rows");
+    require_flag(diagnostics, row.shaping_direction_script_language,
+                 RuntimeUiProductionDiagnosticCode::missing_shaping_direction_script_language, row.id,
+                 "runtime UI text shaping evidence requires resolved direction, script, and language rows");
     require_flag(diagnostics, row.glyph_clusters, RuntimeUiProductionDiagnosticCode::missing_shaping_glyph_clusters,
                  row.id, "runtime UI text shaping evidence requires glyph cluster rows");
     require_flag(diagnostics, row.glyph_advances_offsets,
@@ -175,6 +178,9 @@ void validate_font_rasterization_row(std::vector<RuntimeUiProductionDiagnostic>&
                  row.id, "runtime UI font rasterization evidence requires strict request validation");
     require_flag(diagnostics, row.glyph_bitmap_rows, RuntimeUiProductionDiagnosticCode::missing_raster_glyph_bitmaps,
                  row.id, "runtime UI font rasterization evidence requires glyph bitmap rows");
+    require_flag(diagnostics, row.glyph_pixel_format_rows,
+                 RuntimeUiProductionDiagnosticCode::missing_raster_pixel_format_rows, row.id,
+                 "runtime UI font rasterization evidence requires glyph pixel-format rows");
     require_flag(diagnostics, row.glyph_metric_rows, RuntimeUiProductionDiagnosticCode::missing_raster_glyph_metrics,
                  row.id, "runtime UI font rasterization evidence requires glyph metric rows");
 }
@@ -274,12 +280,14 @@ void hash_string(std::uint64_t& hash, std::string_view value) noexcept {
         hash_bool(hash, row.host_evidence_available);
         hash_bool(hash, row.request_validation);
         hash_bool(hash, row.shaping_segments);
+        hash_bool(hash, row.shaping_direction_script_language);
         hash_bool(hash, row.glyph_clusters);
         hash_bool(hash, row.glyph_advances_offsets);
         hash_bool(hash, row.fallback_font_rows);
         hash_bool(hash, row.bidi_boundaries);
         hash_bool(hash, row.line_break_boundaries);
         hash_bool(hash, row.glyph_bitmap_rows);
+        hash_bool(hash, row.glyph_pixel_format_rows);
         hash_bool(hash, row.glyph_metric_rows);
         hash_bool(hash, row.atlas_placement_rows);
         hash_bool(hash, row.atlas_budget_rows);

@@ -31,6 +31,7 @@ using mirakana::ui::RuntimeUiProductionStackRequest;
         .host_evidence_available = false,
         .request_validation = true,
         .shaping_segments = true,
+        .shaping_direction_script_language = true,
         .glyph_clusters = true,
         .glyph_advances_offsets = true,
         .fallback_font_rows = true,
@@ -48,6 +49,7 @@ using mirakana::ui::RuntimeUiProductionStackRequest;
         .host_evidence_available = false,
         .request_validation = true,
         .glyph_bitmap_rows = true,
+        .glyph_pixel_format_rows = true,
         .glyph_metric_rows = true,
     };
 }
@@ -202,6 +204,7 @@ MK_TEST("runtime ui production stack distinguishes dependency gated and skipped 
 MK_TEST("runtime ui production stack rejects incomplete shaping evidence") {
     auto request = make_package_request();
     request.rows[0].glyph_clusters = false;
+    request.rows[0].shaping_direction_script_language = false;
     request.rows[0].fallback_font_rows = false;
     request.rows[0].line_break_boundaries = false;
 
@@ -209,6 +212,8 @@ MK_TEST("runtime ui production stack rejects incomplete shaping evidence") {
 
     MK_REQUIRE(plan.status == mirakana::ui::RuntimeUiProductionStackStatus::invalid_request);
     MK_REQUIRE(!plan.ready());
+    MK_REQUIRE(
+        has_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::missing_shaping_direction_script_language));
     MK_REQUIRE(has_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::missing_shaping_glyph_clusters));
     MK_REQUIRE(has_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::missing_shaping_fallback_rows));
     MK_REQUIRE(has_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::missing_shaping_line_breaks));
@@ -217,6 +222,7 @@ MK_TEST("runtime ui production stack rejects incomplete shaping evidence") {
 MK_TEST("runtime ui production stack rejects incomplete raster and atlas evidence") {
     auto request = make_package_request();
     request.rows[1].glyph_bitmap_rows = false;
+    request.rows[1].glyph_pixel_format_rows = false;
     request.rows[2].atlas_budget_rows = false;
     request.rows[2].renderer_texture_upload_handoff = false;
 
@@ -224,6 +230,7 @@ MK_TEST("runtime ui production stack rejects incomplete raster and atlas evidenc
 
     MK_REQUIRE(plan.status == mirakana::ui::RuntimeUiProductionStackStatus::invalid_request);
     MK_REQUIRE(has_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::missing_raster_glyph_bitmaps));
+    MK_REQUIRE(has_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::missing_raster_pixel_format_rows));
     MK_REQUIRE(has_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::missing_atlas_budget_rows));
     MK_REQUIRE(has_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::missing_renderer_upload_handoff));
 }

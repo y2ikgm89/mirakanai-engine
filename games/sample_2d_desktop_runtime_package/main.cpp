@@ -2561,6 +2561,7 @@ has_runtime_ui_workbench_accessibility_ref(const std::vector<mirakana::ui::Runti
     row.proof = mirakana::ui::RuntimeUiProductionProofKind::first_party_contract;
     row.request_validation = true;
     row.shaping_segments = true;
+    row.shaping_direction_script_language = true;
     row.glyph_clusters = true;
     row.glyph_advances_offsets = true;
     row.fallback_font_rows = true;
@@ -2576,6 +2577,7 @@ has_runtime_ui_workbench_accessibility_ref(const std::vector<mirakana::ui::Runti
     row.proof = mirakana::ui::RuntimeUiProductionProofKind::adapter_handoff;
     row.request_validation = true;
     row.glyph_bitmap_rows = true;
+    row.glyph_pixel_format_rows = true;
     row.glyph_metric_rows = true;
     return row;
 }

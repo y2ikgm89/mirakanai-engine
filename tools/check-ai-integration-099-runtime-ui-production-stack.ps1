@@ -3,11 +3,13 @@
 
 # Chapter 9.9 for check-ai-integration.ps1 Runtime UI Production Stack Evidence contracts.
 
+$runtimeUiPublicHeaderText = Get-AgentSurfaceText "engine/ui/include/mirakana/ui/ui.hpp"
 $runtimeUiHeaderText = Get-AgentSurfaceText "engine/ui/include/mirakana/ui/runtime_ui_production_stack.hpp"
 $runtimeUiSourceText = Get-AgentSurfaceText "engine/ui/src/runtime_ui_production_stack.cpp"
 $runtimeUiCMakeText = Get-AgentSurfaceText "engine/ui/CMakeLists.txt"
 $rootCMakeText = Get-AgentSurfaceText "CMakeLists.txt"
 $runtimeUiTestsText = Get-AgentSurfaceText "tests/unit/runtime_ui_production_stack_tests.cpp"
+$uiRendererTestsText = Get-AgentSurfaceText "tests/unit/ui_renderer_tests.cpp"
 $sample2dMainText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/main.cpp"
 $sample2dManifestText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/game.agent.json"
 $sample2dReadmeText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/README.md"
@@ -43,8 +45,23 @@ foreach ($needle in @(
 }
 
 foreach ($needle in @(
+        "TextShapingSegmentEvidence",
+        "TextShapedGlyph",
+        "TextBoundaryEvidence",
+        "TextFontFallbackEvidence",
+        "TextLineBreakRun",
+        "FontRasterizationPixelFormat",
+        "GlyphRasterBitmap",
+        "GlyphRasterMetrics"
+    )) {
+    Assert-ContainsText $runtimeUiPublicHeaderText $needle "engine/ui/include/mirakana/ui/ui.hpp"
+}
+
+foreach ($needle in @(
         "missing_shaping_glyph_clusters",
+        "missing_shaping_direction_script_language",
         "missing_raster_glyph_bitmaps",
+        "missing_raster_pixel_format_rows",
         "missing_atlas_eviction_diagnostics",
         "missing_ime_text_area_rows",
         "missing_accessibility_os_publication_gate",
@@ -66,6 +83,8 @@ foreach ($needle in @(
 foreach ($needle in @(
         "RuntimeUiProductionStackStatus::host_evidence_required",
         "RuntimeUiProductionDiagnosticCode::missing_selected_package_counter_evidence",
+        "RuntimeUiProductionDiagnosticCode::missing_shaping_direction_script_language",
+        "RuntimeUiProductionDiagnosticCode::missing_raster_pixel_format_rows",
         "RuntimeUiProductionDiagnosticCode::missing_platform_dispatch_boundary",
         "RuntimeUiProductionDiagnosticCode::unsupported_native_handle",
         "RuntimeUiProductionDiagnosticCode::side_effect_invocation",
@@ -80,12 +99,17 @@ Assert-ContainsText $runtimeUiCMakeText "src/runtime_ui_production_stack.cpp" "e
 Assert-ContainsText $rootCMakeText "MK_runtime_ui_production_stack_tests" "CMakeLists.txt"
 Assert-ContainsText $runtimeUiTestsText "runtime ui production stack reports host gated selected package evidence" "tests/unit/runtime_ui_production_stack_tests.cpp"
 Assert-ContainsText $runtimeUiTestsText "runtime ui production stack becomes ready only when host evidence is present" "tests/unit/runtime_ui_production_stack_tests.cpp"
+Assert-ContainsText $runtimeUiTestsText "missing_shaping_direction_script_language" "tests/unit/runtime_ui_production_stack_tests.cpp"
+Assert-ContainsText $runtimeUiTestsText "missing_raster_pixel_format_rows" "tests/unit/runtime_ui_production_stack_tests.cpp"
+Assert-ContainsText $uiRendererTestsText "ui line breaking adapter contract does not require shaping glyph evidence" "tests/unit/ui_renderer_tests.cpp"
 Assert-ContainsText $runtimeUiTestsText "runtime ui production stack rejects incomplete ime and accessibility evidence" "tests/unit/runtime_ui_production_stack_tests.cpp"
 Assert-ContainsText $runtimeUiTestsText "runtime ui production stack rejects duplicate missing and unsafe claim rows" "tests/unit/runtime_ui_production_stack_tests.cpp"
 
 foreach ($needle in @(
         "mirakana/ui/runtime_ui_production_stack.hpp",
         "--require-runtime-ui-production-stack",
+        "shaping_direction_script_language",
+        "glyph_pixel_format_rows",
         "RuntimeUiProductionStackProbeResult",
         "validate_runtime_ui_production_stack_package_evidence",
         "plan_runtime_ui_production_stack",
@@ -211,6 +235,8 @@ foreach ($needle in @(
         "runtime-ui-production-stack-evidence",
         "RuntimeUiProductionEvidenceRow",
         "plan_runtime_ui_production_stack",
+        "shaping direction/script/language",
+        "glyph bitmap/metrics/pixel-format",
         "runtime_ui_production_stack_status=host_evidence_required"
     )) {
     Assert-ContainsText $runtimeBackendReadinessFragmentText $needle "engine/agent/manifest.fragments/006-runtimeBackendReadiness.json"
@@ -219,6 +245,8 @@ foreach ($needle in @(
 foreach ($needle in @(
         "desktop-runtime-2d-runtime-ui-production-stack-proof",
         "--require-runtime-ui-production-stack",
+        "shaping direction/script/language",
+        "glyph bitmap/metrics/pixel-format",
         "runtime_ui_production_stack_status=host_evidence_required"
     )) {
     Assert-ContainsText $validationRecipesFragmentText $needle "engine/agent/manifest.fragments/009-validationRecipes.json"
@@ -228,6 +256,8 @@ foreach ($needle in @(
         "currentRuntimeUiProductionStack",
         "RuntimeUiProductionStackRequest",
         "plan_runtime_ui_production_stack",
+        "shaping direction/script/language",
+        "glyph bitmap/metrics/pixel-format",
         "runtime_ui_production_stack_status=host_evidence_required"
     )) {
     Assert-ContainsText $gameCodeGuidanceFragmentText $needle "engine/agent/manifest.fragments/014-gameCodeGuidance.json"
@@ -239,6 +269,8 @@ foreach ($needle in @(
         "currentRuntimeUiProductionStack",
         "RuntimeUiProductionStackPlan",
         "plan_runtime_ui_production_stack",
+        "shaping direction/script/language",
+        "glyph bitmap/metrics/pixel-format",
         "runtime_ui_production_stack_status=host_evidence_required"
     )) {
     Assert-ContainsText $manifestText $needle "engine/agent/manifest.json"

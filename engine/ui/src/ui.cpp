@@ -181,6 +181,9 @@ void append_runtime_gameplay_debug_overlay_diagnostic(std::vector<RuntimeGamepla
     return value.find('\n') == std::string_view::npos;
 }
 
+[[nodiscard]] bool is_strict_utf8(std::string_view text) noexcept;
+[[nodiscard]] bool is_utf8_scalar_boundary(std::string_view text, std::size_t offset) noexcept;
+
 [[nodiscard]] std::string text_payload_value(const TextContent& text) {
     return text.label;
 }
@@ -194,6 +197,18 @@ void append_runtime_gameplay_debug_overlay_diagnostic(std::vector<RuntimeGamepla
     case ImageDecodePixelFormat::rgba8_unorm:
         return 4U;
     case ImageDecodePixelFormat::unknown:
+        return std::nullopt;
+    }
+    return std::nullopt;
+}
+
+[[nodiscard]] std::optional<std::size_t> glyph_pixel_stride(FontRasterizationPixelFormat format) noexcept {
+    switch (format) {
+    case FontRasterizationPixelFormat::alpha8:
+        return 1U;
+    case FontRasterizationPixelFormat::rgba8_unorm:
+        return 4U;
+    case FontRasterizationPixelFormat::unknown:
         return std::nullopt;
     }
     return std::nullopt;
@@ -222,16 +237,127 @@ void append_runtime_gameplay_debug_overlay_diagnostic(std::vector<RuntimeGamepla
     return image.pixels.size() == pixel_count * *stride;
 }
 
+[[nodiscard]] bool is_valid_text_boundary_kind(TextBoundaryEvidenceKind kind) noexcept {
+    switch (kind) {
+    case TextBoundaryEvidenceKind::grapheme_cluster:
+    case TextBoundaryEvidenceKind::word:
+    case TextBoundaryEvidenceKind::line_break:
+    case TextBoundaryEvidenceKind::bidi_run:
+        return true;
+    }
+    return false;
+}
+
+[[nodiscard]] bool is_resolved_text_direction(TextDirection direction) noexcept {
+    switch (direction) {
+    case TextDirection::left_to_right:
+    case TextDirection::right_to_left:
+        return true;
+    case TextDirection::automatic:
+        return false;
+    }
+    return false;
+}
+
+[[nodiscard]] bool is_valid_text_shaping_segment(const TextShapingSegmentEvidence& segment,
+                                                 std::string_view text) noexcept {
+    const auto text_size = text.size();
+    return segment.start_byte < segment.end_byte && segment.end_byte <= text_size &&
+           is_utf8_scalar_boundary(text, segment.start_byte) && is_utf8_scalar_boundary(text, segment.end_byte) &&
+           is_resolved_text_direction(segment.direction) && !segment.script_tag.empty() &&
+           !segment.language_tag.empty() && is_valid_adapter_string(segment.script_tag) &&
+           is_valid_adapter_string(segment.language_tag);
+}
+
+[[nodiscard]] bool text_shaping_segments_partition_text(const std::vector<TextShapingSegmentEvidence>& segments,
+                                                        std::string_view text) noexcept {
+    std::size_t next_byte = 0U;
+    for (const auto& segment : segments) {
+        if (!is_valid_text_shaping_segment(segment, text) || segment.start_byte != next_byte) {
+            return false;
+        }
+        next_byte = segment.end_byte;
+    }
+    return next_byte == text.size();
+}
+
+[[nodiscard]] bool cluster_is_inside_segment(std::size_t cluster_byte_offset,
+                                             const std::vector<TextShapingSegmentEvidence>& segments) noexcept {
+    return std::ranges::any_of(segments, [cluster_byte_offset](const TextShapingSegmentEvidence& segment) {
+        return segment.start_byte <= cluster_byte_offset && cluster_byte_offset < segment.end_byte;
+    });
+}
+
+[[nodiscard]] bool is_valid_text_boundary(const TextBoundaryEvidence& boundary, std::string_view text) noexcept {
+    const auto text_size = text.size();
+    return is_valid_text_boundary_kind(boundary.kind) && boundary.start_byte < boundary.end_byte &&
+           boundary.end_byte <= text_size && is_utf8_scalar_boundary(text, boundary.start_byte) &&
+           is_utf8_scalar_boundary(text, boundary.end_byte);
+}
+
+[[nodiscard]] bool is_valid_text_shaped_glyph(const TextShapedGlyph& glyph, std::string_view text,
+                                              const std::vector<TextShapingSegmentEvidence>& segments) noexcept {
+    const auto text_size = text.size();
+    return glyph.glyph != 0U && glyph.cluster_byte_offset < text_size &&
+           is_utf8_scalar_boundary(text, glyph.cluster_byte_offset) &&
+           cluster_is_inside_segment(glyph.cluster_byte_offset, segments) && std::isfinite(glyph.advance_x) &&
+           std::isfinite(glyph.advance_y) && std::isfinite(glyph.offset_x) && std::isfinite(glyph.offset_y) &&
+           glyph.advance_x >= 0.0F && glyph.advance_y >= 0.0F && !glyph.font_family.empty() &&
+           is_valid_adapter_string(glyph.font_family);
+}
+
+[[nodiscard]] bool is_valid_text_fallback_row(const TextFontFallbackEvidence& fallback, std::string_view text,
+                                              const std::vector<TextShapingSegmentEvidence>& segments) noexcept {
+    const auto text_size = text.size();
+    return fallback.cluster_byte_offset < text_size && !fallback.requested_font_family.empty() &&
+           is_utf8_scalar_boundary(text, fallback.cluster_byte_offset) &&
+           cluster_is_inside_segment(fallback.cluster_byte_offset, segments) &&
+           !fallback.resolved_font_family.empty() && is_valid_adapter_string(fallback.requested_font_family) &&
+           is_valid_adapter_string(fallback.resolved_font_family);
+}
+
 [[nodiscard]] bool is_valid_text_shaping_result(std::string_view request_text, const std::vector<TextLayoutRun>& runs) {
-    if (runs.empty()) {
+    if (runs.empty() || !is_strict_utf8(request_text)) {
         return false;
     }
 
     std::string shaped_text;
     shaped_text.reserve(request_text.size());
     for (const auto& run : runs) {
-        if (run.text.empty() || !is_valid_adapter_string(run.text) || !is_positive_rect(run.bounds)) {
+        if (run.text.empty() || !is_valid_adapter_string(run.text) || !is_strict_utf8(run.text) ||
+            !is_positive_rect(run.bounds)) {
             return false;
+        }
+        if (run.segments.empty() || run.glyphs.empty() || run.boundaries.empty() || run.fallback_rows.empty()) {
+            return false;
+        }
+        if (!text_shaping_segments_partition_text(run.segments, run.text)) {
+            return false;
+        }
+        for (const auto& glyph : run.glyphs) {
+            if (!is_valid_text_shaped_glyph(glyph, run.text, run.segments)) {
+                return false;
+            }
+        }
+        bool has_grapheme_boundary = false;
+        bool has_line_break_boundary = false;
+        bool has_bidi_boundary = false;
+        for (const auto& boundary : run.boundaries) {
+            if (!is_valid_text_boundary(boundary, run.text)) {
+                return false;
+            }
+            has_grapheme_boundary =
+                has_grapheme_boundary || boundary.kind == TextBoundaryEvidenceKind::grapheme_cluster;
+            has_line_break_boundary = has_line_break_boundary || boundary.kind == TextBoundaryEvidenceKind::line_break;
+            has_bidi_boundary = has_bidi_boundary || boundary.kind == TextBoundaryEvidenceKind::bidi_run;
+        }
+        if (!has_grapheme_boundary || !has_line_break_boundary || !has_bidi_boundary) {
+            return false;
+        }
+        for (const auto& fallback : run.fallback_rows) {
+            if (!is_valid_text_fallback_row(fallback, run.text, run.segments)) {
+                return false;
+            }
         }
         if (run.text.size() > std::numeric_limits<std::size_t>::max() - shaped_text.size()) {
             return false;
@@ -240,6 +366,45 @@ void append_runtime_gameplay_debug_overlay_diagnostic(std::vector<RuntimeGamepla
     }
 
     return shaped_text == request_text;
+}
+
+[[nodiscard]] bool is_valid_glyph_raster_bitmap(const GlyphRasterBitmap& bitmap) noexcept {
+    const auto stride = glyph_pixel_stride(bitmap.pixel_format);
+    if (!stride.has_value()) {
+        return false;
+    }
+    if ((bitmap.width == 0U) != (bitmap.height == 0U)) {
+        return false;
+    }
+
+    const auto width = static_cast<std::size_t>(bitmap.width);
+    const auto height = static_cast<std::size_t>(bitmap.height);
+    const auto max_size = std::numeric_limits<std::size_t>::max();
+    if (height != 0U && width > max_size / height) {
+        return false;
+    }
+    const auto pixel_count = width * height;
+    if (*stride != 0U && pixel_count > max_size / *stride) {
+        return false;
+    }
+    return bitmap.pixels.size() == pixel_count * *stride;
+}
+
+[[nodiscard]] bool is_valid_glyph_raster_metrics(const GlyphRasterMetrics& metrics,
+                                                 const GlyphRasterBitmap& bitmap) noexcept {
+    const auto bitmap_has_pixels = bitmap.width > 0U && bitmap.height > 0U;
+    return std::isfinite(metrics.width) && std::isfinite(metrics.height) && std::isfinite(metrics.bearing_x) &&
+           std::isfinite(metrics.bearing_y) && std::isfinite(metrics.advance_x) && std::isfinite(metrics.advance_y) &&
+           metrics.width >= 0.0F && metrics.height >= 0.0F && metrics.advance_x >= 0.0F && metrics.advance_y >= 0.0F &&
+           (!bitmap_has_pixels || (metrics.width > 0.0F && metrics.height > 0.0F));
+}
+
+[[nodiscard]] bool is_valid_glyph_atlas_bounds(const GlyphAtlasAllocation& allocation) noexcept {
+    if (allocation.bitmap.width == 0U && allocation.bitmap.height == 0U) {
+        return is_valid_rect(allocation.atlas_bounds) && allocation.atlas_bounds.width == 0.0F &&
+               allocation.atlas_bounds.height == 0.0F;
+    }
+    return is_positive_rect(allocation.atlas_bounds);
 }
 
 [[nodiscard]] bool has_diagnostic(const std::vector<AdapterPayloadDiagnostic>& diagnostics, const ElementId& id,
@@ -1409,11 +1574,12 @@ TextShapingRequestPlan plan_text_shaping_request(const TextLayoutRequest& reques
     TextShapingRequestPlan plan;
     plan.request = request;
 
-    if (plan.request.text.empty() || !is_valid_adapter_string(plan.request.text)) {
+    if (plan.request.text.empty() || !is_valid_adapter_string(plan.request.text) ||
+        !is_strict_utf8(plan.request.text)) {
         plan.diagnostics.push_back(AdapterPayloadDiagnostic{
             .id = ElementId{"text.shaping"},
             .code = AdapterPayloadDiagnosticCode::invalid_text_shaping_text,
-            .message = "text shaping request text must be non-empty and adapter-safe",
+            .message = "text shaping request text must be non-empty, strict UTF-8, and adapter-safe",
         });
     }
     if (plan.request.font_family.empty() || !is_valid_adapter_string(plan.request.font_family)) {
@@ -1509,11 +1675,11 @@ FontRasterizationRequestPlan plan_font_rasterization_request(const FontRasteriza
     FontRasterizationRequestPlan plan;
     plan.request = request;
 
-    if (plan.request.font_family.empty()) {
+    if (plan.request.font_family.empty() || !is_valid_adapter_string(plan.request.font_family)) {
         plan.diagnostics.push_back(AdapterPayloadDiagnostic{
             .id = ElementId{"font.rasterization"},
             .code = AdapterPayloadDiagnosticCode::invalid_font_family,
-            .message = "font rasterization request font family must not be empty",
+            .message = "font rasterization request font family must be non-empty and adapter-safe",
         });
     }
     if (plan.request.glyph == 0U) {
@@ -1544,11 +1710,13 @@ FontRasterizationResult rasterize_font_glyph(IFontRasterizerAdapter& adapter, co
 
     result.allocation = adapter.rasterize_glyph(plan.request);
     result.rasterized = true;
-    if (result.allocation->glyph != plan.request.glyph || !is_positive_rect(result.allocation->atlas_bounds)) {
+    if (result.allocation->glyph != plan.request.glyph || !is_valid_glyph_atlas_bounds(*result.allocation) ||
+        !is_valid_glyph_raster_bitmap(result.allocation->bitmap) ||
+        !is_valid_glyph_raster_metrics(result.allocation->metrics, result.allocation->bitmap)) {
         result.diagnostics.push_back(AdapterPayloadDiagnostic{
             .id = ElementId{"font.rasterization"},
             .code = AdapterPayloadDiagnosticCode::invalid_font_allocation,
-            .message = "font rasterization adapter returned an invalid glyph atlas allocation",
+            .message = "font rasterization adapter returned invalid glyph bitmap, metrics, or atlas allocation",
         });
     }
     return result;
