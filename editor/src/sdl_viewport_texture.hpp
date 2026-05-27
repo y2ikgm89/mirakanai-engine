@@ -30,7 +30,6 @@ namespace mirakana::editor {
 
 enum class ViewportDisplayTexturePath : std::uint8_t { cpu_readback = 0, d3d12_shared_texture };
 
-/// SDL3 texture bridge for viewport / material GPU preview display (Dear ImGui shell only).
 class SdlViewportTexture {
   public:
     SdlViewportTexture(SDL_Renderer* renderer, mirakana::Extent2D extent);
@@ -50,9 +49,6 @@ class SdlViewportTexture {
     }
 
     [[nodiscard]] const char* display_path_label() const noexcept;
-
-    /// Stable token for `EditorMaterialGpuPreviewExecutionSnapshot` / retained
-    /// `material_asset_preview.gpu.execution` rows (matches editor_core_tests contract vocabulary).
     [[nodiscard]] const char* display_path_contract_id() const noexcept;
 
     [[nodiscard]] const char* diagnostic() const noexcept {

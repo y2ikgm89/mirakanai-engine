@@ -1,16 +1,19 @@
 // SPDX-FileCopyrightText: 2026 GameEngine contributors
 // SPDX-License-Identifier: LicenseRef-Proprietary
 
-#include "mirakana/editor/sdl_viewport_texture.hpp"
+#include "sdl_viewport_texture.hpp"
 
 #include <SDL3/SDL.h>
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 
 #if defined(MK_EDITOR_ENABLE_D3D12)
 #include "mirakana/rhi/d3d12/d3d12_backend.hpp"
 
 #include <bit>
+#include <d3d12.h>
+#include <wrl/client.h>
 #endif
 #include <optional>
 #include <stdexcept>
@@ -109,7 +112,7 @@ bool SdlViewportTexture::update_from_d3d12_shared_texture(mirakana::rhi::IRhiDev
         return false;
     }
 
-    ID3D12Device* sdl_device = renderer_d3d12_device();
+    auto* sdl_device = renderer_d3d12_device();
     if (sdl_device == nullptr) {
         diagnostic_ = "SDL renderer is not using the D3D12 backend";
         return false;

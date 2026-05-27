@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 GameEngine contributors
 // SPDX-License-Identifier: LicenseRef-Proprietary
 
-#include "mirakana/editor/material_preview_gpu_cache.hpp"
+#include "material_preview_gpu_cache.hpp"
 
 #include "mirakana/assets/material.hpp"
 #include "mirakana/scene_renderer/scene_renderer.hpp"

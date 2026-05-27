@@ -3,12 +3,13 @@
 
 #pragma once
 
+#include "sdl_viewport_texture.hpp"
+
 #include "mirakana/assets/asset_registry.hpp"
 #include "mirakana/assets/shader_metadata.hpp"
 #include "mirakana/assets/shader_pipeline.hpp"
 #include "mirakana/editor/asset_pipeline.hpp"
 #include "mirakana/editor/material_asset_preview_panel.hpp"
-#include "mirakana/editor/sdl_viewport_texture.hpp"
 #include "mirakana/platform/filesystem.hpp"
 #include "mirakana/renderer/rhi_viewport_surface.hpp"
 #include "mirakana/rhi/rhi.hpp"
@@ -39,7 +40,6 @@ struct MaterialPreviewGpuRenderDeps {
     std::function<void(mirakana::RhiViewportSurface&, SdlViewportTexture&)> sync_display_texture;
 };
 
-/// GPU-resident material preview cache for the Dear ImGui editor shell (`MK_editor`).
 class MaterialPreviewGpuCache {
   public:
     [[nodiscard]] bool ready() const noexcept;
@@ -66,8 +66,6 @@ class MaterialPreviewGpuCache {
     std::unique_ptr<mirakana::RhiViewportSurface> surface_;
     std::unique_ptr<SdlViewportTexture> display_texture_;
     std::vector<mirakana::runtime_rhi::RuntimeTextureUploadResult> texture_uploads_;
-    /// Caller-owned scene PBR uniform passed into `create_runtime_material_gpu_binding` as
-    /// `shared_scene_pbr_frame_uniform`.
     mirakana::rhi::BufferHandle scene_pbr_frame_uniform_{};
     mirakana::runtime_rhi::RuntimeMaterialGpuBinding material_binding_{};
     mirakana::rhi::PipelineLayoutHandle pipeline_layout_{};
