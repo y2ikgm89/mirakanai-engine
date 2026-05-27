@@ -439,11 +439,15 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.
 - Modify: `tools/check-ci-matrix.ps1`
 - Modify: `CMakeLists.txt`
 - Modify: `CMakePresets.json` only if preset names or feature gates change.
+- Modify: `games/CMakeLists.txt`
+- Modify: `games/sample_desktop_runtime_shell/main.cpp`
+- Modify: `games/sample_desktop_runtime_shell/game.agent.json`
+- Modify: `games/sample_desktop_runtime_shell/README.md`
 
-- [ ] Rename or reinterpret the desktop runtime lane so it no longer implies SDL3.
-- [ ] Replace `SDL3.dll` installed-package assertions with native Windows runtime artifact assertions.
-- [ ] Update CTest patterns from `sdl3` tests to `win32` / `wasapi` / `runtime_host_win32` tests.
-- [ ] Ensure release package artifact validation checks that no SDL3 runtime DLL ships.
+- [x] Rename or reinterpret the desktop runtime lane so it no longer implies SDL3.
+- [x] Replace `SDL3.dll` installed-package assertions with native Windows runtime artifact assertions.
+- [x] Update CTest patterns from `sdl3` tests to `win32` / `wasapi` / `runtime_host_win32` tests.
+- [x] Ensure release package artifact validation checks that no SDL3 runtime DLL ships.
 - [ ] Run:
 
 ```powershell
@@ -455,7 +459,27 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1
 
 **Done When:** Desktop runtime validation and installed package validation prove the Windows native host path and no longer require SDL3.
 
-**Phase Evidence:** Not started.
+**Phase Evidence:** Candidate locally validated.
+
+- RED evidence: after adding static checks to `tools/check-json-contracts-030-tooling-contracts.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` failed because `tools/validate-desktop-game-runtime.ps1` still lacked `MK_runtime_host_win32_public_api_compile` and still used SDL3 test targets.
+- Implementation: `tools/validate-desktop-game-runtime.ps1` and `tools/package-desktop-runtime.ps1` now select `MK_runtime_host_win32_*`, `MK_win32_platform_tests`, and `MK_wasapi_audio_tests` instead of SDL3 tests. `tools/validate-installed-desktop-runtime.ps1`, `tools/installed-sdk-validation.ps1`, and `tools/release-package-artifacts.ps1` reject `SDL3.dll` in installed or archived runtime artifacts. `sample_desktop_runtime_shell` now uses `Win32DesktopGameHost` / `Win32DesktopPresentation` with D3D12 installed smoke evidence while retaining Vulkan SPIR-V artifact validation only.
+- Validation:
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset desktop-runtime`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset desktop-runtime --target sample_desktop_runtime_shell MK_runtime_host_win32_tests MK_runtime_host_win32_public_api_compile MK_win32_platform_tests MK_wasapi_audio_tests`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset desktop-runtime --output-on-failure -R "MK_runtime_host_tests|MK_runtime_host_win32_public_api_compile|MK_runtime_host_win32_tests|MK_win32_platform_tests|MK_wasapi_audio_tests|sample_desktop_runtime_shell(_shader_artifacts|_vulkan_shader_artifacts)?_smoke"`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1`: pass; 18/18 selected desktop-runtime tests passed.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1`: pass; installed `sample_desktop_runtime_shell` reported `renderer=d3d12`, `presentation_selected=d3d12`, and `desktop-runtime-package: ok`.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-installed-desktop-runtime.ps1`: pass; installed `sample_desktop_runtime_shell` reported `renderer=d3d12` and `installed-desktop-runtime-validation: ok`.
+  - `Get-ChildItem -LiteralPath 'out/install/desktop-runtime-release/bin' -Filter 'SDL3.dll' -File`: pass; no `SDL3.dll` was present.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files games/sample_desktop_runtime_shell/main.cpp`: pass.
+  - `git diff --check`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`: pass; 98/98 CTest tests passed, including `MK_runtime_host_win32_tests`, `MK_runtime_host_win32_public_api_compile`, `MK_win32_platform_tests`, `MK_wasapi_audio_tests`, and the Win32-backed `sample_desktop_runtime_shell_*_smoke` tests.
 
 ## Phase 7 - Generated Game Templates And Sample Migration
 

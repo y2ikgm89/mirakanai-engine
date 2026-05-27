@@ -60,6 +60,20 @@ function Assert-InstalledSdkSampleManifest {
     }
 }
 
+function Assert-InstalledSdkNoForbiddenRuntimeArtifacts {
+    param([Parameter(Mandatory = $true)][string]$InstallPrefix)
+
+    $binDir = Join-Path $InstallPrefix "bin"
+    if (-not (Test-Path -LiteralPath $binDir -PathType Container)) {
+        return
+    }
+
+    $sdlDll = Join-Path $binDir "SDL3.dll"
+    if (Test-Path -LiteralPath $sdlDll -PathType Leaf) {
+        Write-Error "Installed Mirakanai SDK must not ship SDL3 runtime DLL: $sdlDll"
+    }
+}
+
 function Assert-InstalledSdkMetadata {
     param([Parameter(Mandatory = $true)][string]$InstallPrefix)
 
@@ -112,4 +126,6 @@ function Assert-InstalledSdkMetadata {
     Assert-InstalledSdkNonEmptyFile `
         -Path (Join-Path $shareDir "LICENSES/LicenseRef-Proprietary.txt") `
         -Description "Installed Mirakanai proprietary license" | Out-Null
+
+    Assert-InstalledSdkNoForbiddenRuntimeArtifacts -InstallPrefix $installPrefixPath
 }

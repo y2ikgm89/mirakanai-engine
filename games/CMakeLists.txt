@@ -32,7 +32,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
     find_package(SDL3 CONFIG REQUIRED)
 
     function(MK_add_desktop_runtime_game target_name)
-        cmake_parse_arguments(MK_DESKTOP_GAME "REQUIRES_D3D12_SHADERS;REQUIRES_VULKAN_SHADERS;PACKAGE_FILES_FROM_MANIFEST" "GAME_MANIFEST" "SOURCES;SMOKE_ARGS;PACKAGE_SMOKE_ARGS;PACKAGE_FILES" ${ARGN})
+        cmake_parse_arguments(MK_DESKTOP_GAME "REQUIRES_D3D12_SHADERS;REQUIRES_VULKAN_SHADERS;PACKAGE_FILES_FROM_MANIFEST" "GAME_MANIFEST;HOST_BACKEND" "SOURCES;SMOKE_ARGS;PACKAGE_SMOKE_ARGS;PACKAGE_FILES" ${ARGN})
         if(MK_DESKTOP_GAME_UNPARSED_ARGUMENTS)
             message(FATAL_ERROR "MK_add_desktop_runtime_game received unknown arguments for ${target_name}: ${MK_DESKTOP_GAME_UNPARSED_ARGUMENTS}")
         endif()
@@ -56,6 +56,15 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
         endif()
         if(NOT MK_DESKTOP_GAME_PACKAGE_SMOKE_ARGS)
             set(MK_DESKTOP_GAME_PACKAGE_SMOKE_ARGS ${MK_DESKTOP_GAME_SMOKE_ARGS})
+        endif()
+        if(NOT MK_DESKTOP_GAME_HOST_BACKEND)
+            set(MK_DESKTOP_GAME_HOST_BACKEND "sdl3")
+        endif()
+        if(NOT MK_DESKTOP_GAME_HOST_BACKEND MATCHES "^(sdl3|win32)$")
+            message(FATAL_ERROR "MK_add_desktop_runtime_game HOST_BACKEND must be sdl3 or win32 for ${target_name}: ${MK_DESKTOP_GAME_HOST_BACKEND}")
+        endif()
+        if(MK_DESKTOP_GAME_HOST_BACKEND STREQUAL "win32" AND NOT WIN32)
+            message(FATAL_ERROR "MK_add_desktop_runtime_game HOST_BACKEND win32 is only supported on Windows for ${target_name}")
         endif()
         get_filename_component(MK_DESKTOP_GAME_DIRECTORY "${MK_DESKTOP_GAME_GAME_MANIFEST}" DIRECTORY)
         file(REAL_PATH "${MK_DESKTOP_GAME_DIRECTORY}" MK_DESKTOP_GAME_DIRECTORY_REAL BASE_DIRECTORY "${CMAKE_SOURCE_DIR}")
@@ -185,13 +194,25 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                 MK_core
                 MK_math
                 MK_platform
-                MK_platform_sdl3
                 MK_renderer
                 MK_runtime_host
-                MK_runtime_host_sdl3
-                MK_runtime_host_sdl3_presentation
-                SDL3::SDL3
         )
+        if(MK_DESKTOP_GAME_HOST_BACKEND STREQUAL "win32")
+            target_link_libraries(${target_name}
+                PRIVATE
+                    MK_platform_win32
+                    MK_runtime_host_win32
+                    MK_runtime_host_win32_presentation
+            )
+        else()
+            target_link_libraries(${target_name}
+                PRIVATE
+                    MK_platform_sdl3
+                    MK_runtime_host_sdl3
+                    MK_runtime_host_sdl3_presentation
+                    SDL3::SDL3
+            )
+        endif()
 
         MK_apply_common_target_options(${target_name})
         MK_disable_module_scanning_for_non_module_executable(${target_name})
@@ -215,11 +236,20 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
         list(APPEND MK_DESKTOP_RUNTIME_GAME_TARGETS ${target_name})
         set_property(GLOBAL PROPERTY MK_DESKTOP_RUNTIME_GAMES "${MK_DESKTOP_RUNTIME_GAME_TARGETS}")
 
-        add_custom_command(TARGET ${target_name} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                $<TARGET_FILE:SDL3::SDL3>
-                $<TARGET_FILE_DIR:${target_name}>
-        )
+        if(MK_DESKTOP_GAME_HOST_BACKEND STREQUAL "sdl3")
+            add_custom_command(TARGET ${target_name} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    $<TARGET_FILE:SDL3::SDL3>
+                    $<TARGET_FILE_DIR:${target_name}>
+            )
+
+            if(WIN32 AND "${MK_DESKTOP_RUNTIME_PACKAGE_GAME_TARGET}" STREQUAL "${target_name}")
+                install(FILES
+                    $<TARGET_FILE:SDL3::SDL3>
+                    DESTINATION ${CMAKE_INSTALL_BINDIR}
+                )
+            endif()
+        endif()
 
         if(BUILD_TESTING)
             add_test(NAME ${target_name}_smoke COMMAND ${target_name} ${MK_DESKTOP_GAME_SMOKE_ARGS})
@@ -264,18 +294,13 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
         endif()
     endfunction()
 
-    if(WIN32)
-        install(FILES
-            $<TARGET_FILE:SDL3::SDL3>
-            DESTINATION ${CMAKE_INSTALL_BINDIR}
-        )
-    endif()
-
     MK_add_desktop_runtime_game(sample_desktop_runtime_shell
         SOURCES
             sample_desktop_runtime_shell/main.cpp
         GAME_MANIFEST
             games/sample_desktop_runtime_shell/game.agent.json
+        HOST_BACKEND
+            win32
         SMOKE_ARGS
             --smoke
         PACKAGE_SMOKE_ARGS
