@@ -212,7 +212,7 @@
         },
         {
           "id": "runtime-ui-production-stack",
-          "evidence": "Runtime UI production stack smoke reports side-effect-free text/font/IME/accessibility evidence rows, selected package counters, host gates, zero adapter invocation, and a positive replay hash without claiming broad production UI readiness.",
+          "evidence": "Runtime UI production stack smoke reports side-effect-free text/font/IME/accessibility evidence rows, selected package counters, host gates, zero dependency-gated/skipped/adapter-invoked/unsupported rows, and a positive replay hash without claiming broad production UI readiness.",
           "recipeIds": [
             "installed-2d-runtime-ui-production-stack-smoke"
           ]

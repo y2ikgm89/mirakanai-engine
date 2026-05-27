@@ -108,7 +108,7 @@ function(MK_apply_common_target_options target_name)
         target_compile_options(${target_name} PRIVATE /W4 /permissive- /EHsc ${MK_MSVC_MULTIPROCESSOR_COMPILE_OPTION} /Zf)
         set_target_properties(${target_name} PROPERTIES
             COMPILE_PDB_NAME ${target_name}
-            COMPILE_PDB_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/pdb/${target_name}"
+            COMPILE_PDB_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/pdb"
         )
         get_target_property(MK_TARGET_TYPE ${target_name} TYPE)
         if(MK_TARGET_TYPE STREQUAL "EXECUTABLE" OR
@@ -519,13 +519,13 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_runtime_package_candidate_resident_mount_tests)
     add_test(NAME MK_runtime_package_candidate_resident_mount_tests COMMAND MK_runtime_package_candidate_resident_mount_tests)
 
-    add_executable(MK_runtime_package_candidate_resident_mount_reviewed_evictions_tests
+    add_executable(MK_rt_pkg_cand_res_mnt_review_evict_tests
         tests/unit/runtime_package_candidate_resident_mount_reviewed_evictions_tests.cpp
     )
-    target_link_libraries(MK_runtime_package_candidate_resident_mount_reviewed_evictions_tests PRIVATE MK_runtime)
-    target_include_directories(MK_runtime_package_candidate_resident_mount_reviewed_evictions_tests PRIVATE tests)
-    MK_apply_common_target_options(MK_runtime_package_candidate_resident_mount_reviewed_evictions_tests)
-    add_test(NAME MK_runtime_package_candidate_resident_mount_reviewed_evictions_tests COMMAND MK_runtime_package_candidate_resident_mount_reviewed_evictions_tests)
+    target_link_libraries(MK_rt_pkg_cand_res_mnt_review_evict_tests PRIVATE MK_runtime)
+    target_include_directories(MK_rt_pkg_cand_res_mnt_review_evict_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_rt_pkg_cand_res_mnt_review_evict_tests)
+    add_test(NAME MK_runtime_package_candidate_resident_mount_reviewed_evictions_tests COMMAND MK_rt_pkg_cand_res_mnt_review_evict_tests)
 
     add_executable(MK_runtime_package_candidate_resident_replace_tests
         tests/unit/runtime_package_candidate_resident_replace_tests.cpp
@@ -535,13 +535,13 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_runtime_package_candidate_resident_replace_tests)
     add_test(NAME MK_runtime_package_candidate_resident_replace_tests COMMAND MK_runtime_package_candidate_resident_replace_tests)
 
-    add_executable(MK_runtime_package_candidate_resident_replace_reviewed_evictions_tests
+    add_executable(MK_rt_pkg_cand_res_repl_review_evict_tests
         tests/unit/runtime_package_candidate_resident_replace_reviewed_evictions_tests.cpp
     )
-    target_link_libraries(MK_runtime_package_candidate_resident_replace_reviewed_evictions_tests PRIVATE MK_runtime)
-    target_include_directories(MK_runtime_package_candidate_resident_replace_reviewed_evictions_tests PRIVATE tests)
-    MK_apply_common_target_options(MK_runtime_package_candidate_resident_replace_reviewed_evictions_tests)
-    add_test(NAME MK_runtime_package_candidate_resident_replace_reviewed_evictions_tests COMMAND MK_runtime_package_candidate_resident_replace_reviewed_evictions_tests)
+    target_link_libraries(MK_rt_pkg_cand_res_repl_review_evict_tests PRIVATE MK_runtime)
+    target_include_directories(MK_rt_pkg_cand_res_repl_review_evict_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_rt_pkg_cand_res_repl_review_evict_tests)
+    add_test(NAME MK_runtime_package_candidate_resident_replace_reviewed_evictions_tests COMMAND MK_rt_pkg_cand_res_repl_review_evict_tests)
 
     add_executable(MK_runtime_package_discovery_resident_commit_tests
         tests/unit/runtime_package_discovery_resident_commit_tests.cpp
@@ -551,21 +551,21 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_runtime_package_discovery_resident_commit_tests)
     add_test(NAME MK_runtime_package_discovery_resident_commit_tests COMMAND MK_runtime_package_discovery_resident_commit_tests)
 
-    add_executable(MK_runtime_package_discovery_resident_mount_reviewed_evictions_tests
+    add_executable(MK_rt_pkg_disc_res_mnt_review_evict_tests
         tests/unit/runtime_package_discovery_resident_mount_reviewed_evictions_tests.cpp
     )
-    target_link_libraries(MK_runtime_package_discovery_resident_mount_reviewed_evictions_tests PRIVATE MK_runtime)
-    target_include_directories(MK_runtime_package_discovery_resident_mount_reviewed_evictions_tests PRIVATE tests)
-    MK_apply_common_target_options(MK_runtime_package_discovery_resident_mount_reviewed_evictions_tests)
-    add_test(NAME MK_runtime_package_discovery_resident_mount_reviewed_evictions_tests COMMAND MK_runtime_package_discovery_resident_mount_reviewed_evictions_tests)
+    target_link_libraries(MK_rt_pkg_disc_res_mnt_review_evict_tests PRIVATE MK_runtime)
+    target_include_directories(MK_rt_pkg_disc_res_mnt_review_evict_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_rt_pkg_disc_res_mnt_review_evict_tests)
+    add_test(NAME MK_runtime_package_discovery_resident_mount_reviewed_evictions_tests COMMAND MK_rt_pkg_disc_res_mnt_review_evict_tests)
 
-    add_executable(MK_runtime_package_discovery_resident_replace_reviewed_evictions_tests
+    add_executable(MK_rt_pkg_disc_res_repl_review_evict_tests
         tests/unit/runtime_package_discovery_resident_replace_reviewed_evictions_tests.cpp
     )
-    target_link_libraries(MK_runtime_package_discovery_resident_replace_reviewed_evictions_tests PRIVATE MK_runtime)
-    target_include_directories(MK_runtime_package_discovery_resident_replace_reviewed_evictions_tests PRIVATE tests)
-    MK_apply_common_target_options(MK_runtime_package_discovery_resident_replace_reviewed_evictions_tests)
-    add_test(NAME MK_runtime_package_discovery_resident_replace_reviewed_evictions_tests COMMAND MK_runtime_package_discovery_resident_replace_reviewed_evictions_tests)
+    target_link_libraries(MK_rt_pkg_disc_res_repl_review_evict_tests PRIVATE MK_runtime)
+    target_include_directories(MK_rt_pkg_disc_res_repl_review_evict_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_rt_pkg_disc_res_repl_review_evict_tests)
+    add_test(NAME MK_runtime_package_discovery_resident_replace_reviewed_evictions_tests COMMAND MK_rt_pkg_disc_res_repl_review_evict_tests)
 
     add_executable(MK_runtime_package_hot_reload_candidate_review_tests
         tests/unit/runtime_package_hot_reload_candidate_review_tests.cpp
@@ -575,13 +575,13 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_runtime_package_hot_reload_candidate_review_tests)
     add_test(NAME MK_runtime_package_hot_reload_candidate_review_tests COMMAND MK_runtime_package_hot_reload_candidate_review_tests)
 
-    add_executable(MK_runtime_package_hot_reload_replacement_intent_review_tests
+    add_executable(MK_rt_pkg_hot_reload_repl_intent_review_tests
         tests/unit/runtime_package_hot_reload_replacement_intent_review_tests.cpp
     )
-    target_link_libraries(MK_runtime_package_hot_reload_replacement_intent_review_tests PRIVATE MK_runtime)
-    target_include_directories(MK_runtime_package_hot_reload_replacement_intent_review_tests PRIVATE tests)
-    MK_apply_common_target_options(MK_runtime_package_hot_reload_replacement_intent_review_tests)
-    add_test(NAME MK_runtime_package_hot_reload_replacement_intent_review_tests COMMAND MK_runtime_package_hot_reload_replacement_intent_review_tests)
+    target_link_libraries(MK_rt_pkg_hot_reload_repl_intent_review_tests PRIVATE MK_runtime)
+    target_include_directories(MK_rt_pkg_hot_reload_repl_intent_review_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_rt_pkg_hot_reload_repl_intent_review_tests)
+    add_test(NAME MK_runtime_package_hot_reload_replacement_intent_review_tests COMMAND MK_rt_pkg_hot_reload_repl_intent_review_tests)
 
     add_executable(MK_runtime_package_hot_reload_recook_change_review_tests
         tests/unit/runtime_package_hot_reload_recook_change_review_tests.cpp

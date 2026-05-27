@@ -87,9 +87,9 @@
 - Use project C++ modules through CMake `FILE_SET CXX_MODULES`; keep public installed headers available until module export/install support is intentionally designed.
 - Use `import std;` only where the active CMake generator/toolchain reports support; keep it gated by the central CMake policy.
 - Do not add C++20 compatibility shims or lower the engine standard without a new architecture decision.
-- `MK_apply_common_target_options` uses MSVC `/MP2`+`/Zf`, `COMPILE_PDB_OUTPUT_DIRECTORY`, `/INCREMENTAL:NO`; wrappers serialize builds and clear stale MSVC `.tlog` roots.
+- MSVC: `MK_apply_common_target_options` owns `/MP2`+`/Zf`, short target-named `COMPILE_PDB_OUTPUT_DIRECTORY`, `/INCREMENTAL:NO`, and compact CMake target names for long one-source tests; wrappers serialize builds and clear stale MSVC `.tlog` roots.
 - Follow `docs/cpp-style.md` for naming, source layout, public include paths, CMake target naming, and installable package targets.
-- When changing **aggregate** types used from many tests, update every **designated** braced initializer in the same task so **all members appear in declaration order**, including empty **`std::function`** members (`{}`); see **`docs/cpp-style.md`** (**Unit tests** → **Aggregate literals**) and clang `-Wmissing-field-initializers`.
+- For test aggregates, keep designated initializers in declaration order and include empty `std::function` members (`{}`); see `docs/cpp-style.md`.
 - Prefer RAII and value types.
 - Use `std::unique_ptr` / `std::make_unique` for ownership; raw pointers are non-owning.
 - Avoid global mutable state.

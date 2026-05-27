@@ -269,11 +269,14 @@ Assert-ContainsText $buildingContent "tools/cmake.ps1 --preset dev" "docs/buildi
 Assert-ContainsText $buildingContent "tools/ctest.ps1 --preset dev --output-on-failure" "docs/building.md"
 Assert-ContainsText $agentsContent "/INCREMENTAL:NO" "AGENTS.md"
 Assert-ContainsText $agentsContent "COMPILE_PDB_OUTPUT_DIRECTORY" "AGENTS.md"
+Assert-ContainsText $agentsContent "compact CMake target names" "AGENTS.md"
 Assert-ContainsText $agentsContent "/MP2" "AGENTS.md"
 Assert-ContainsText $agentsContent "/Zf" "AGENTS.md"
 Assert-ContainsText $agentsContent 'stale MSVC `.tlog` roots' "AGENTS.md"
 Assert-ContainsText $buildingContent "/INCREMENTAL:NO" "docs/building.md"
 Assert-ContainsText $buildingContent "COMPILE_PDB_OUTPUT_DIRECTORY" "docs/building.md"
+Assert-ContainsText $buildingContent "compact" "docs/building.md MSVC object path guidance"
+Assert-ContainsText $buildingContent "CTest name" "docs/building.md MSVC object path guidance"
 Assert-ContainsText $buildingContent "/MP2" "docs/building.md"
 Assert-ContainsText $buildingContent "/Zf" "docs/building.md"
 Assert-ContainsText $buildingContent "MSB8028" "docs/building.md"
@@ -283,6 +286,16 @@ Assert-ContainsText $cmakeListsContent '/MP${MK_MSVC_MULTIPROCESSOR_COMPILE_PROC
 Assert-ContainsText $cmakeListsContent '/Zf' "CMakeLists.txt"
 Assert-ContainsText $cmakeListsContent 'COMPILE_PDB_NAME ${target_name}' "CMakeLists.txt"
 Assert-ContainsText $cmakeListsContent 'COMPILE_PDB_OUTPUT_DIRECTORY' "CMakeLists.txt"
+Assert-ContainsText $cmakeListsContent 'COMPILE_PDB_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/pdb"' "CMakeLists.txt"
+foreach ($compactTestTarget in @(
+    "MK_rt_pkg_cand_res_mnt_review_evict_tests",
+    "MK_rt_pkg_cand_res_repl_review_evict_tests",
+    "MK_rt_pkg_disc_res_mnt_review_evict_tests",
+    "MK_rt_pkg_disc_res_repl_review_evict_tests",
+    "MK_rt_pkg_hot_reload_repl_intent_review_tests"
+)) {
+    Assert-ContainsText $cmakeListsContent $compactTestTarget "CMakeLists.txt compact MSVC test target names"
+}
 Assert-ContainsText $cmakeListsContent 'get_target_property(MK_TARGET_TYPE ${target_name} TYPE)' "CMakeLists.txt"
 Assert-ContainsText $cmakeListsContent 'MK_TARGET_TYPE STREQUAL "EXECUTABLE"' "CMakeLists.txt"
 Assert-ContainsText $cmakeListsContent 'MK_TARGET_TYPE STREQUAL "SHARED_LIBRARY"' "CMakeLists.txt"
@@ -299,6 +312,7 @@ foreach ($cmakeSkillPath in @(
 )) {
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "/INCREMENTAL:NO" $cmakeSkillPath
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "COMPILE_PDB_OUTPUT_DIRECTORY" $cmakeSkillPath
+    Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "compact CMake target names" $cmakeSkillPath
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "/MP2" $cmakeSkillPath
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "/Zf" $cmakeSkillPath
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "-ShardCount" $cmakeSkillPath
@@ -318,6 +332,7 @@ foreach ($buildFixerPath in @(".codex/agents/build-fixer.toml", ".claude/agents/
     Assert-ContainsText $buildFixerAgentText "CMakeCache.txt" $buildFixerPath
     Assert-ContainsText $buildFixerAgentText "C1041" $buildFixerPath
     Assert-ContainsText $buildFixerAgentText "COMPILE_PDB_OUTPUT_DIRECTORY" $buildFixerPath
+    Assert-ContainsText $buildFixerAgentText 'source-basename `.obj` path' $buildFixerPath
     Assert-ContainsText $buildFixerAgentText "/MP2" $buildFixerPath
     Assert-ContainsText $buildFixerAgentText "/Zf" $buildFixerPath
     Assert-ContainsText $buildFixerAgentText 'global `/FS`' $buildFixerPath
@@ -329,6 +344,7 @@ foreach ($buildFixerPath in @(".codex/agents/build-fixer.toml", ".claude/agents/
 }
 $cursorCmakeRuleText = Get-AgentSurfaceText ".cursor/rules/mirakana-cmake-vcpkg.mdc"
 Assert-ContainsText $cursorCmakeRuleText "COMPILE_PDB_OUTPUT_DIRECTORY" ".cursor/rules/mirakana-cmake-vcpkg.mdc"
+Assert-ContainsText $cursorCmakeRuleText "compact CMake target names" ".cursor/rules/mirakana-cmake-vcpkg.mdc"
 Assert-ContainsText $cursorCmakeRuleText "/MP2" ".cursor/rules/mirakana-cmake-vcpkg.mdc"
 Assert-ContainsText $cursorCmakeRuleText "/Zf" ".cursor/rules/mirakana-cmake-vcpkg.mdc"
 Assert-ContainsText $cursorCmakeRuleText 'global `/FS`' ".cursor/rules/mirakana-cmake-vcpkg.mdc"
@@ -338,6 +354,7 @@ Assert-ContainsText $manifestRaw "msvcCompileThroughput" "engine/agent/manifest.
 Assert-ContainsText $manifestRaw "/MP2" "engine/agent/manifest.json"
 Assert-ContainsText $manifestRaw "/Zf" "engine/agent/manifest.json"
 Assert-ContainsText $manifestRaw "msvcCompilePdbIsolation" "engine/agent/manifest.json"
+Assert-ContainsText $manifestRaw "msvcObjectPathHygiene" "engine/agent/manifest.json"
 Assert-ContainsText $manifestRaw ".lastbuildstate" "engine/agent/manifest.json"
 Assert-ContainsText (Get-AgentSurfaceText "tools/common.ps1") 'ToolId "cmake-build"' "tools/common.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/common.ps1") 'Test-CMakeBuildCommand' "tools/common.ps1"
