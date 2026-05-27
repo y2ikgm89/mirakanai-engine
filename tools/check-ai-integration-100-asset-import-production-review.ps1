@@ -25,11 +25,13 @@ $manifestText = Get-AgentSurfaceText "engine/agent/manifest.json"
 
 foreach ($needle in @(
         "AssetImportProductionStatus",
+        "AssetImportProductionExecutionReadiness",
         "AssetImportProductionFeatureKind",
         "AssetImportProductionProofKind",
         "AssetImportProductionDiagnosticCode",
         "AssetImportProductionEvidenceRow",
         "AssetImportProductionReviewRequest",
+        "AssetImportProductionExecutionReadinessRow",
         "AssetImportProductionDiagnostic",
         "AssetImportProductionReview",
         "review_asset_import_production_readiness"
@@ -49,10 +51,12 @@ foreach ($needle in @(
         "missing_validator_evidence",
         "missing_dependency_legal_record",
         "missing_command_review_evidence",
+        "dependency_evidence_required",
         "unsupported_arbitrary_importer_plugin",
         "unsupported_external_download",
         "unsupported_live_shader_generation",
         "unsupported_source_mutation_outside_roots",
+        "unsupported_package_mutation",
         "unsupported_native_handle_claim",
         "unsupported_unreviewed_compiler_execution",
         "unsupported_runtime_source_parsing",
@@ -63,6 +67,8 @@ foreach ($needle in @(
 
 foreach ($needle in @(
         "row_is_host_gated",
+        "row_is_dependency_gated",
+        "execution_readiness_for_row",
         "row_is_ready",
         "feature_requires_validator",
         "feature_requires_dependency_legal_record",
@@ -74,11 +80,13 @@ foreach ($needle in @(
         "request_external_download",
         "request_live_shader_generation",
         "request_source_mutation_outside_roots",
+        "request_package_mutation",
         "request_native_handle_access",
         "request_unreviewed_compiler_execution",
         "request_runtime_source_parsing",
         "request_broad_codec_claim",
         "AssetImportProductionStatus::host_evidence_required",
+        "AssetImportProductionStatus::dependency_evidence_required",
         "AssetImportProductionStatus::no_rows"
     )) {
     Assert-ContainsText $assetReviewSourceText $needle "engine/assets/src/asset_import_production_review.cpp"
@@ -96,8 +104,10 @@ foreach ($needle in @(
 foreach ($needle in @(
         "asset import production review accepts explicit broad source and cook evidence",
         "asset import production review reports host gated rows without broad readiness",
+        "asset import production review reports dependency gated execution matrix without broad readiness",
         "asset import production review rejects missing manifest and package evidence",
         "asset import production review rejects unsupported execution and unsafe claims",
+        "asset import production review distinguishes package mutation from unsupported importer execution",
         "asset import production review rejects missing required features duplicate rows and unsafe tokens",
         "asset import production review reports no rows without broad import claims"
     )) {
@@ -114,9 +124,13 @@ foreach ($needle in @(
         "common-audio",
         "KTX2/Basis evidence rows may be reviewed when supplied",
         "Shader rows are reviewed offline compile-request/package-cache evidence only",
+        "executionReadinessRows",
+        "dependency_evidence_required",
+        "package_mutation_request_count",
         "arbitrary importer plugin execution",
         "external asset download",
         "live shader generation",
+        "package mutation from importer review rows",
         "runtime source parsing",
         "broad codec readiness"
     )) {

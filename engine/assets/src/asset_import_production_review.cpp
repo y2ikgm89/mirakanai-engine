@@ -106,8 +106,37 @@ void append_diagnostic(std::vector<AssetImportProductionDiagnostic>& diagnostics
     return row.host_gate_required && !row.host_validated;
 }
 
-[[nodiscard]] bool row_is_ready(const AssetImportProductionEvidenceRow& row) noexcept {
+[[nodiscard]] bool row_is_dependency_gated(const AssetImportProductionEvidenceRow& row) noexcept {
+    return row.dependency_gate_required && feature_requires_dependency_legal_record(row.feature) &&
+           !row.dependency_legal_evidence;
+}
+
+[[nodiscard]] bool row_has_unsupported_claim(const AssetImportProductionEvidenceRow& row) noexcept {
+    return row.request_arbitrary_importer_plugin || row.request_external_download ||
+           row.request_live_shader_generation || row.request_source_mutation_outside_roots ||
+           row.request_native_handle_access || row.request_unreviewed_compiler_execution ||
+           row.request_runtime_source_parsing || row.request_broad_codec_claim;
+}
+
+[[nodiscard]] AssetImportProductionExecutionReadiness
+execution_readiness_for_row(const AssetImportProductionEvidenceRow& row) noexcept {
+    if (row.request_package_mutation) {
+        return AssetImportProductionExecutionReadiness::package_mutation_required;
+    }
+    if (row_has_unsupported_claim(row)) {
+        return AssetImportProductionExecutionReadiness::unsupported_claim;
+    }
+    if (row_is_dependency_gated(row)) {
+        return AssetImportProductionExecutionReadiness::dependency_evidence_required;
+    }
     if (row_is_host_gated(row)) {
+        return AssetImportProductionExecutionReadiness::host_evidence_required;
+    }
+    return AssetImportProductionExecutionReadiness::reviewed_execution;
+}
+
+[[nodiscard]] bool row_is_ready(const AssetImportProductionEvidenceRow& row) noexcept {
+    if (execution_readiness_for_row(row) != AssetImportProductionExecutionReadiness::reviewed_execution) {
         return false;
     }
     return row.reviewed && row.host_validated && row.source_root_evidence && row.importer_declared &&
@@ -133,28 +162,58 @@ void append_diagnostic(std::vector<AssetImportProductionDiagnostic>& diagnostics
     return hash_byte(hash, value ? 1U : 0U);
 }
 
+[[nodiscard]] std::uint64_t hash_u32(std::uint64_t hash, std::uint32_t value) noexcept {
+    for (std::uint32_t shift = 0U; shift < 32U; shift += 8U) {
+        hash = hash_byte(hash, static_cast<std::uint8_t>((value >> shift) & 0xFFU));
+    }
+    return hash;
+}
+
+[[nodiscard]] std::uint64_t hash_string_list(std::uint64_t hash, const std::vector<std::string>& values) noexcept {
+    hash = hash_u32(hash, static_cast<std::uint32_t>(values.size()));
+    for (const auto& value : values) {
+        hash = hash_string(hash, value);
+    }
+    return hash;
+}
+
 [[nodiscard]] std::uint64_t hash_row(std::uint64_t hash, const AssetImportProductionEvidenceRow& row) noexcept {
     hash = hash_byte(hash, static_cast<std::uint8_t>(row.feature));
     hash = hash_byte(hash, static_cast<std::uint8_t>(row.proof));
     hash = hash_string(hash, row.capability_id);
     hash = hash_string(hash, row.importer_id);
     hash = hash_string(hash, row.source_root);
-    for (const auto& extension : row.declared_extensions) {
-        hash = hash_string(hash, extension);
-    }
-    for (const auto& output : row.output_package_rows) {
-        hash = hash_string(hash, output);
-    }
-    for (const auto& validator : row.validator_ids) {
-        hash = hash_string(hash, validator);
-    }
-    for (const auto& command : row.reviewed_command_ids) {
-        hash = hash_string(hash, command);
-    }
+    hash = hash_string_list(hash, row.declared_extensions);
+    hash = hash_string_list(hash, row.output_package_rows);
+    hash = hash_string_list(hash, row.validator_ids);
+    hash = hash_string_list(hash, row.reviewed_command_ids);
+    hash = hash_string_list(hash, row.dependency_ids);
+    hash = hash_string_list(hash, row.license_ids);
+    hash = hash_string_list(hash, row.provenance_ids);
     hash = hash_string(hash, row.deterministic_content_hash);
     hash = hash_bool(hash, row.reviewed);
+    hash = hash_bool(hash, row.source_root_evidence);
+    hash = hash_bool(hash, row.importer_declared);
+    hash = hash_bool(hash, row.extension_evidence);
+    hash = hash_bool(hash, row.package_handoff_evidence);
+    hash = hash_bool(hash, row.license_provenance_evidence);
+    hash = hash_bool(hash, row.deterministic_hash_evidence);
+    hash = hash_bool(hash, row.validator_evidence);
+    hash = hash_bool(hash, row.dependency_legal_evidence);
+    hash = hash_bool(hash, row.dependency_gate_required);
+    hash = hash_bool(hash, row.command_review_evidence);
     hash = hash_bool(hash, row.host_validated);
     hash = hash_bool(hash, row.host_gate_required);
+    hash = hash_bool(hash, row.request_arbitrary_importer_plugin);
+    hash = hash_bool(hash, row.request_external_download);
+    hash = hash_bool(hash, row.request_live_shader_generation);
+    hash = hash_bool(hash, row.request_source_mutation_outside_roots);
+    hash = hash_bool(hash, row.request_package_mutation);
+    hash = hash_bool(hash, row.request_native_handle_access);
+    hash = hash_bool(hash, row.request_unreviewed_compiler_execution);
+    hash = hash_bool(hash, row.request_runtime_source_parsing);
+    hash = hash_bool(hash, row.request_broad_codec_claim);
+    hash = hash_u32(hash, row.source_index);
     return hash;
 }
 
@@ -251,6 +310,23 @@ review_asset_import_production_readiness(const AssetImportProductionReviewReques
 
     for (std::size_t index = 0; index < request.rows.size(); ++index) {
         const auto& row = request.rows[index];
+        const auto row_readiness = execution_readiness_for_row(row);
+        review.execution_readiness.push_back(AssetImportProductionExecutionReadinessRow{
+            .feature = row.feature,
+            .readiness = row_readiness,
+            .capability_id = row.capability_id,
+            .source_index = row.source_index,
+        });
+        if (row_readiness == AssetImportProductionExecutionReadiness::host_evidence_required) {
+            ++review.host_gated_row_count;
+        } else if (row_readiness == AssetImportProductionExecutionReadiness::dependency_evidence_required) {
+            ++review.dependency_gated_row_count;
+        } else if (row_readiness == AssetImportProductionExecutionReadiness::package_mutation_required) {
+            ++review.package_mutation_request_count;
+        } else if (row_readiness == AssetImportProductionExecutionReadiness::unsupported_claim) {
+            ++review.unsupported_claim_row_count;
+        }
+
         if (!row_base_is_valid(row)) {
             append_diagnostic(review.diagnostics, AssetImportProductionDiagnosticCode::invalid_evidence_row, row,
                               "asset import production evidence row is invalid");
@@ -282,6 +358,10 @@ review_asset_import_production_readiness(const AssetImportProductionReviewReques
             append_diagnostic(review.diagnostics,
                               AssetImportProductionDiagnosticCode::unsupported_source_mutation_outside_roots, row,
                               "source mutation outside reviewed roots is unsupported");
+        }
+        if (row.request_package_mutation) {
+            append_diagnostic(review.diagnostics, AssetImportProductionDiagnosticCode::unsupported_package_mutation,
+                              row, "package mutation from importer review rows is unsupported");
         }
         if (row.request_native_handle_access) {
             append_diagnostic(review.diagnostics, AssetImportProductionDiagnosticCode::unsupported_native_handle_claim,
@@ -341,7 +421,7 @@ review_asset_import_production_readiness(const AssetImportProductionReviewReques
             append_diagnostic(review.diagnostics, AssetImportProductionDiagnosticCode::missing_validator_evidence, row,
                               "validator evidence is missing");
         }
-        if (feature_requires_dependency_legal_record(row.feature) &&
+        if (feature_requires_dependency_legal_record(row.feature) && !row_is_dependency_gated(row) &&
             (!row.dependency_legal_evidence || row.dependency_ids.empty())) {
             append_diagnostic(review.diagnostics, AssetImportProductionDiagnosticCode::missing_dependency_legal_record,
                               row, "dependency and legal evidence is missing");
@@ -362,9 +442,6 @@ review_asset_import_production_readiness(const AssetImportProductionReviewReques
     for (const auto& row : review.rows) {
         if (row_is_ready(row)) {
             ++review.ready_row_count;
-        }
-        if (row_is_host_gated(row)) {
-            ++review.host_gated_row_count;
         }
         if (row.reviewed && row.importer_declared) {
             ++review.reviewed_importer_count;
@@ -398,8 +475,13 @@ review_asset_import_production_readiness(const AssetImportProductionReviewReques
                                       review.shader_offline_compile_review_ready && review.package_cook_outputs_ready &&
                                       review.dependency_legal_records_ready && review.deterministic_cook_ready;
     review.replay_hash = build_replay_hash(request);
-    review.status = review.host_gated_row_count > 0U ? AssetImportProductionStatus::host_evidence_required
-                                                     : AssetImportProductionStatus::ready;
+    if (review.host_gated_row_count > 0U) {
+        review.status = AssetImportProductionStatus::host_evidence_required;
+    } else if (review.dependency_gated_row_count > 0U) {
+        review.status = AssetImportProductionStatus::dependency_evidence_required;
+    } else {
+        review.status = AssetImportProductionStatus::ready;
+    }
     return review;
 }
 

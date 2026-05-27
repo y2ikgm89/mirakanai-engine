@@ -13,8 +13,17 @@ namespace mirakana {
 enum class AssetImportProductionStatus : std::uint8_t {
     ready = 0,
     host_evidence_required,
+    dependency_evidence_required,
     no_rows,
     invalid_request,
+};
+
+enum class AssetImportProductionExecutionReadiness : std::uint8_t {
+    reviewed_execution = 0,
+    dependency_evidence_required,
+    host_evidence_required,
+    package_mutation_required,
+    unsupported_claim,
 };
 
 enum class AssetImportProductionFeatureKind : std::uint8_t {
@@ -60,6 +69,7 @@ enum class AssetImportProductionDiagnosticCode : std::uint8_t {
     unsupported_external_download,
     unsupported_live_shader_generation,
     unsupported_source_mutation_outside_roots,
+    unsupported_package_mutation,
     unsupported_native_handle_claim,
     unsupported_unreviewed_compiler_execution,
     unsupported_runtime_source_parsing,
@@ -90,6 +100,7 @@ struct AssetImportProductionEvidenceRow {
     bool deterministic_hash_evidence{false};
     bool validator_evidence{false};
     bool dependency_legal_evidence{false};
+    bool dependency_gate_required{false};
     bool command_review_evidence{false};
     bool host_validated{false};
     bool host_gate_required{false};
@@ -97,6 +108,7 @@ struct AssetImportProductionEvidenceRow {
     bool request_external_download{false};
     bool request_live_shader_generation{false};
     bool request_source_mutation_outside_roots{false};
+    bool request_package_mutation{false};
     bool request_native_handle_access{false};
     bool request_unreviewed_compiler_execution{false};
     bool request_runtime_source_parsing{false};
@@ -109,6 +121,13 @@ struct AssetImportProductionReviewRequest {
     std::vector<AssetImportProductionEvidenceRow> rows;
     std::size_t row_budget{512U};
     std::uint64_t seed{0U};
+};
+
+struct AssetImportProductionExecutionReadinessRow {
+    AssetImportProductionFeatureKind feature{AssetImportProductionFeatureKind::source_root_policy};
+    AssetImportProductionExecutionReadiness readiness{AssetImportProductionExecutionReadiness::reviewed_execution};
+    std::string capability_id;
+    std::uint32_t source_index{0U};
 };
 
 struct AssetImportProductionDiagnostic {
@@ -124,9 +143,13 @@ struct AssetImportProductionReview {
     std::vector<AssetImportProductionDiagnostic> diagnostics;
     std::vector<AssetImportProductionFeatureKind> required_features;
     std::vector<AssetImportProductionEvidenceRow> rows;
+    std::vector<AssetImportProductionExecutionReadinessRow> execution_readiness;
     std::size_t row_count{0U};
     std::size_t ready_row_count{0U};
     std::size_t host_gated_row_count{0U};
+    std::size_t dependency_gated_row_count{0U};
+    std::size_t package_mutation_request_count{0U};
+    std::size_t unsupported_claim_row_count{0U};
     std::size_t reviewed_importer_count{0U};
     std::size_t supported_source_format_count{0U};
     std::uint64_t replay_hash{0U};

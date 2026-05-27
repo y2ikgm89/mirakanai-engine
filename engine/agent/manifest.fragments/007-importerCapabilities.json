@@ -62,11 +62,26 @@
         "KTX2/Basis evidence rows may be reviewed when supplied, but no first-party KTX importer adapter is implemented by this row.",
         "Shader rows are reviewed offline compile-request/package-cache evidence only, not compiler execution."
       ],
+      "executionReadinessRows": [
+        "reviewed_execution",
+        "dependency_evidence_required",
+        "host_evidence_required",
+        "package_mutation_required",
+        "unsupported_claim"
+      ],
+      "readinessCounters": [
+        "ready_row_count",
+        "host_gated_row_count",
+        "dependency_gated_row_count",
+        "package_mutation_request_count",
+        "unsupported_claim_row_count"
+      ],
       "unsupportedClaims": [
         "arbitrary importer plugin execution",
         "external asset download",
         "live shader generation",
         "source mutation outside reviewed roots",
+        "package mutation from importer review rows",
         "runtime source parsing",
         "native handle exposure",
         "broad codec readiness"

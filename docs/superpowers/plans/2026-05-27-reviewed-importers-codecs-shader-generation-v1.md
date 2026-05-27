@@ -103,9 +103,9 @@ Official documentation rechecked for this plan selection:
 
 ## Task 1 - Baseline Import/Codec/Shader Execution Audit
 
-- [ ] Read current `MK_assets`, `MK_tools`, optional importer adapter, shader toolchain, sample package, dependency, and legal records for import/codec/shader execution.
-- [ ] Add an evidence table to this plan for ready rows, dependency-gated rows, host-gated rows, and unsupported broad claims.
-- [ ] Run:
+- [x] Read current `MK_assets`, `MK_tools`, optional importer adapter, shader toolchain, sample package, dependency, and legal records for import/codec/shader execution.
+- [x] Add an evidence table to this plan for ready rows, dependency-gated rows, host-gated rows, and unsupported broad claims.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1
@@ -116,17 +116,39 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1
 
 Expected: dependency/toolchain gates either pass or record exact host/tool blockers before implementation.
 
+Task 1 baseline evidence:
+
+| Surface | Evidence row | Result | Boundary |
+| --- | --- | --- | --- |
+| `MK_assets` production review | Ready rows | `AssetImportProductionExecutionReadiness::reviewed_execution`, `ready_row_count`, and `broad_asset_import_ready` require declared source roots, importer ids, package rows, license/provenance/hash rows, validator/dependency/legal rows, reviewed command rows, and host validation. | Value-only review; no importer execution, shader compiler execution, package mutation, or runtime source parsing. |
+| `MK_assets` production review | Dependency-gated rows | `AssetImportProductionStatus::dependency_evidence_required`, `dependency_gated_row_count`, and execution-readiness rows now distinguish missing dependency/legal evidence from invalid broad readiness without adding diagnostics when the row explicitly declares a dependency gate. | KTX2/Basis and other optional dependency lanes stay non-ready until selected dependency/legal evidence exists. |
+| `MK_assets` production review | Host-gated rows | Existing host-gated rows remain `AssetImportProductionStatus::host_evidence_required` with `host_gated_row_count` and no broad readiness. | Windows evidence does not promote Apple/Metal or unavailable host/toolchain rows. |
+| `MK_assets` production review | Package mutation rows | `request_package_mutation`, `unsupported_package_mutation`, `package_mutation_request_count`, and `package_mutation_required` readiness reject package mutation from importer review rows separately from broad unsupported importer claims. | Generated games and editor rows do not mutate packages through this review API. |
+| `MK_assets` production review | Unsupported broad claims | Arbitrary importer plugin, external download, live shader generation, source mutation outside roots, native handle, unreviewed compiler execution, runtime source parsing, and broad codec requests remain `unsupported_claim` rows with diagnostics. | Broad importer/codec/shader claims stay fail-closed until a later reviewed execution lane implements them. |
+| Host/toolchain | `tools/check-toolchain.ps1` | Passed. | Local Windows toolchain was available for this slice. |
+| Dependency policy | `tools/check-dependency-policy.ps1` | Passed. | No dependency manifest/legal change in this baseline slice. |
+| Shader toolchain | `tools/check-shader-toolchain.ps1` | Exited 0 as diagnostic-only: D3D12 DXIL and Vulkan SPIR-V tools ready, Metal library tools missing. | Metal remains host/toolchain-gated. |
+| Optional importer lane | `tools/build-asset-importers.ps1` | Passed; installed consumer validation reported `installed-sdk-validation: ok`. | Optional libspng/fastgltf/miniaudio lane builds without making broad importer execution ready. |
+
 ## Task 2 - RED Tests For Reviewed Execution Promotion
 
-- [ ] Add tests that fail until import production rows distinguish value-only review, reviewed execution, dependency-gated execution, host-gated execution, package handoff, and unsupported arbitrary importer claims.
+- [x] Add tests that fail until import production rows distinguish value-only review, reviewed execution, dependency-gated execution, host-gated execution, package handoff, and unsupported arbitrary importer claims.
 - [ ] Add tests that reject KTX2/Basis, broad image/audio codec, glTF scene import, or shader compiler readiness without dependency/legal records, source-root validation, deterministic hashes, package rows, and host/toolchain validation.
 - [ ] Add tests that reject parser/compiler/native handle leakage in public gameplay/runtime rows.
-- [ ] Run focused tests and record expected RED failures in this plan.
+- [x] Run focused tests and record expected RED failures in this plan.
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_import_production_review_tests MK_tools_tests
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_asset_import_production_review_tests|MK_tools_tests"
 ```
+
+Task 2 baseline RED/GREEN evidence:
+
+| Step | Command | Result |
+| --- | --- | --- |
+| RED | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_import_production_review_tests` | Failed as expected before implementation on missing `AssetImportProductionExecutionReadiness`, dependency-gate fields/counters, package-mutation fields/counters, and `unsupported_package_mutation`. |
+| GREEN build | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_import_production_review_tests` | Passed after the baseline execution-readiness matrix implementation. |
+| GREEN test | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_asset_import_production_review_tests` | Passed: 1/1 test, 0 failures. |
 
 ## Task 3 - KTX2/Basis Texture Review Lane
 

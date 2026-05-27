@@ -115,6 +115,7 @@ constexpr AssetImportProductionFeatureKind kRequiredFeatures[] = {
         .deterministic_hash_evidence = true,
         .validator_evidence = is_gltf || is_ktx || is_shader,
         .dependency_legal_evidence = uses_dependency_adapter,
+        .dependency_gate_required = false,
         .command_review_evidence = is_shader,
         .host_validated = true,
         .host_gate_required = false,
@@ -122,6 +123,7 @@ constexpr AssetImportProductionFeatureKind kRequiredFeatures[] = {
         .request_external_download = false,
         .request_live_shader_generation = false,
         .request_source_mutation_outside_roots = false,
+        .request_package_mutation = false,
         .request_native_handle_access = false,
         .request_unreviewed_compiler_execution = false,
         .request_runtime_source_parsing = false,
@@ -168,8 +170,15 @@ MK_TEST("asset import production review accepts explicit broad source and cook e
     MK_REQUIRE(review.row_count == std::size(kRequiredFeatures));
     MK_REQUIRE(review.ready_row_count == std::size(kRequiredFeatures));
     MK_REQUIRE(review.host_gated_row_count == 0U);
+    MK_REQUIRE(review.dependency_gated_row_count == 0U);
+    MK_REQUIRE(review.package_mutation_request_count == 0U);
+    MK_REQUIRE(review.unsupported_claim_row_count == 0U);
     MK_REQUIRE(review.reviewed_importer_count == std::size(kRequiredFeatures));
     MK_REQUIRE(review.supported_source_format_count == 13U);
+    MK_REQUIRE(review.execution_readiness.size() == std::size(kRequiredFeatures));
+    for (const auto& readiness_row : review.execution_readiness) {
+        MK_REQUIRE(readiness_row.readiness == mirakana::AssetImportProductionExecutionReadiness::reviewed_execution);
+    }
     MK_REQUIRE(review.reviewed_source_roots_ready);
     MK_REQUIRE(review.gltf_ktx_import_review_ready);
     MK_REQUIRE(review.image_audio_import_review_ready);
@@ -199,9 +208,37 @@ MK_TEST("asset import production review reports host gated rows without broad re
     MK_REQUIRE(review.diagnostics.empty());
     MK_REQUIRE(review.ready_row_count == std::size(kRequiredFeatures) - 1U);
     MK_REQUIRE(review.host_gated_row_count == 1U);
+    MK_REQUIRE(review.execution_readiness[3].feature == AssetImportProductionFeatureKind::ktx_texture);
+    MK_REQUIRE(review.execution_readiness[3].readiness ==
+               mirakana::AssetImportProductionExecutionReadiness::host_evidence_required);
     MK_REQUIRE(!review.gltf_ktx_import_review_ready);
     MK_REQUIRE(!review.broad_asset_import_ready);
     MK_REQUIRE(review.replay_hash != 0U);
+}
+
+MK_TEST("asset import production review reports dependency gated execution matrix without broad readiness") {
+    auto request = make_request();
+    request.rows[4].dependency_legal_evidence = false;
+    request.rows[4].dependency_gate_required = true;
+
+    const auto review = mirakana::review_asset_import_production_readiness(request);
+    const auto ready_review = mirakana::review_asset_import_production_readiness(make_request());
+
+    MK_REQUIRE(review.status == AssetImportProductionStatus::dependency_evidence_required);
+    MK_REQUIRE(!review.succeeded());
+    MK_REQUIRE(review.diagnostics.empty());
+    MK_REQUIRE(review.ready_row_count == std::size(kRequiredFeatures) - 1U);
+    MK_REQUIRE(review.dependency_gated_row_count == 1U);
+    MK_REQUIRE(review.host_gated_row_count == 0U);
+    MK_REQUIRE(!review.image_audio_import_review_ready);
+    MK_REQUIRE(!review.dependency_legal_records_ready);
+    MK_REQUIRE(!review.broad_asset_import_ready);
+    MK_REQUIRE(review.execution_readiness.size() == std::size(kRequiredFeatures));
+    MK_REQUIRE(review.execution_readiness[4].feature == AssetImportProductionFeatureKind::source_image);
+    MK_REQUIRE(review.execution_readiness[4].readiness ==
+               mirakana::AssetImportProductionExecutionReadiness::dependency_evidence_required);
+    MK_REQUIRE(review.replay_hash != 0U);
+    MK_REQUIRE(review.replay_hash != ready_review.replay_hash);
 }
 
 MK_TEST("asset import production review rejects missing manifest and package evidence") {
@@ -262,9 +299,36 @@ MK_TEST("asset import production review rejects unsupported execution and unsafe
     MK_REQUIRE(diagnostic_count(review, AssetImportProductionDiagnosticCode::unsupported_broad_codec_claim) == 1U);
     MK_REQUIRE(diagnostic_count(review, AssetImportProductionDiagnosticCode::missing_command_review_evidence) == 1U);
     MK_REQUIRE(diagnostic_count(review, AssetImportProductionDiagnosticCode::missing_validator_evidence) == 1U);
+    MK_REQUIRE(review.unsupported_claim_row_count == 1U);
+    MK_REQUIRE(review.package_mutation_request_count == 0U);
+    MK_REQUIRE(review.execution_readiness[7].readiness ==
+               mirakana::AssetImportProductionExecutionReadiness::unsupported_claim);
     MK_REQUIRE(!review.invoked_importer_plugin);
     MK_REQUIRE(!review.invoked_external_download);
     MK_REQUIRE(!review.invoked_shader_compiler);
+    MK_REQUIRE(!review.invoked_source_mutation);
+}
+
+MK_TEST("asset import production review distinguishes package mutation from unsupported importer execution") {
+    auto request = make_request();
+    request.rows[2].request_arbitrary_importer_plugin = true;
+    request.rows[8].request_package_mutation = true;
+
+    const auto review = mirakana::review_asset_import_production_readiness(request);
+
+    MK_REQUIRE(review.status == AssetImportProductionStatus::invalid_request);
+    MK_REQUIRE(diagnostic_count(review, AssetImportProductionDiagnosticCode::unsupported_arbitrary_importer_plugin) ==
+               1U);
+    MK_REQUIRE(diagnostic_count(review, AssetImportProductionDiagnosticCode::unsupported_package_mutation) == 1U);
+    MK_REQUIRE(review.unsupported_claim_row_count == 1U);
+    MK_REQUIRE(review.package_mutation_request_count == 1U);
+    MK_REQUIRE(review.execution_readiness.size() == std::size(kRequiredFeatures));
+    MK_REQUIRE(review.execution_readiness[2].readiness ==
+               mirakana::AssetImportProductionExecutionReadiness::unsupported_claim);
+    MK_REQUIRE(review.execution_readiness[8].feature == AssetImportProductionFeatureKind::package_cook_output);
+    MK_REQUIRE(review.execution_readiness[8].readiness ==
+               mirakana::AssetImportProductionExecutionReadiness::package_mutation_required);
+    MK_REQUIRE(!review.invoked_importer_plugin);
     MK_REQUIRE(!review.invoked_source_mutation);
 }
 
