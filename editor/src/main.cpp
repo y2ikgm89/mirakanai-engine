@@ -52,7 +52,7 @@
 #endif
 #include <windows.h>
 #endif
-#include "mirakana/editor/material_preview_gpu_cache.hpp"
+#include "material_preview_gpu_cache.hpp"
 #include "mirakana/platform/window.hpp"
 #include "mirakana/renderer/rhi_viewport_surface.hpp"
 #include "mirakana/rhi/rhi.hpp"

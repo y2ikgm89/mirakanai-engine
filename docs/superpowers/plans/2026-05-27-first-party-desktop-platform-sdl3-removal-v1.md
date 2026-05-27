@@ -166,25 +166,49 @@ rg -n "SDL3|sdl3|MK_platform_sdl3|MK_audio_sdl3|MK_runtime_host_sdl3|MK_ENABLE_D
 - Modify: `tools/check-dependency-policy.ps1`
 - Create or modify: `tools/check-native-desktop-contracts.ps1`
 - Modify: `tools/validate.ps1`
-- Create: `tests/unit/native_desktop_contract_tests.cpp`
+- Create: `tests/unit/native_desktop_contract_public_api_compile.cpp`
 - Modify: `CMakeLists.txt`
 
-- [ ] Add static checks that reject Windows native types from public gameplay-facing headers outside backend-private implementation paths.
-- [ ] Add static checks that reject `SDL3/` includes in all public headers and, after Phase 9, reject `SDL3/` includes repository-wide except historical docs.
-- [ ] Add unit tests for backend-neutral window, input, clipboard, text-session, and audio-device descriptor rows if existing `MK_platform` / `MK_audio` contracts do not already cover the exact guarantees.
-- [ ] Wire the new contract check into `tools/validate.ps1` only after it is stable and scoped enough to avoid false positives.
-- [ ] Run:
+- [x] Add static checks that reject Windows native types from public gameplay-facing headers outside backend-private implementation paths.
+- [x] Add static checks that reject `SDL3/` includes in all public headers and, after Phase 9, reject `SDL3/` includes repository-wide except historical docs.
+- [x] Add a compile-only public header contract target for backend-neutral window, input, clipboard, file, process, audio, runtime-host, UI, renderer, and editor-core rows; keep existing focused unit tests as the behavioral contract source.
+- [x] Wire the new contract check into `tools/validate.ps1` only after it is stable and scoped enough to avoid false positives.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-native-desktop-contracts.ps1
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_native_desktop_contract_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_native_desktop_contract_public_api_compile
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "native_desktop_contract"
 ```
 
 **Done When:** Public API leakage guards exist before Win32/WASAPI implementation starts, and failures point to exact files to fix.
 
-**Phase Evidence:** Not started.
+**Phase Evidence:** Phase 1 implemented in isolated worktree `codex/native-desktop-contract-guards-v1`, with Phase 0 PR #271 merged before Phase 1 publication.
+
+- Official source refresh:
+  - Microsoft Learn Win32 desktop application guidance confirms `HWND`/`HINSTANCE` and Win32 message-loop types are native desktop implementation details.
+  - Microsoft Learn WASAPI `IAudioClient` / `IAudioRenderClient` docs confirm `audioclient.h` COM interfaces are native endpoint stream details.
+  - Microsoft Learn XInput docs confirm `XINPUT_STATE` / `XINPUT_GAMEPAD` are native controller API rows.
+  - Context7 `/kitware/cmake` refresh confirmed the target-based `add_executable` plus `add_test(NAME ... COMMAND ...)` CTest pattern used by the repository.
+- Added `tools/check-native-desktop-contracts.ps1`, scanning engine, editor-core, and visible-editor public include roots and failing on public exposure of native Win32, D3D12/DXGI, WASAPI/Core Audio, XInput/GameInput, COM, or SDL3 C API/header symbols.
+- Extended `tools/check-public-api-boundaries.ps1` so the existing public API boundary guard also rejects WASAPI/Core Audio and Windows controller native symbols.
+- Added dependency-policy assertions that keep the native desktop guard present, validate-integrated, and explicitly covering `IAudioClient`, `XINPUT_STATE`, `IUnknown`, `SDL3/`, and `editor/include`.
+- Added `nativeDesktopContractCheck` to the composed engine agent manifest command surface.
+- Added `MK_native_desktop_contract_public_api_compile` for the Phase-specific guarantee that engine and editor native desktop public headers compile from a consumer TU through first-party opaque/value contracts without linking SDL3 or exposing native desktop SDK types.
+- Removed the visible editor shell texture bridge from `editor/include` and kept SDL3, Dear ImGui, and D3D12 display-texture details in `editor/src` private headers.
+- Wired `tools/check-native-desktop-contracts.ps1` into `tools/validate.ps1` static tasks.
+- Focused validation:
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-native-desktop-contracts.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_native_desktop_contract_public_api_compile`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "native_desktop_contract"`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`: pass.
+  - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`: pass; 94/94 CTest tests passed, including `MK_native_desktop_contract_public_api_compile`.
 
 ## Phase 2 - `MK_platform_win32` Window, Lifecycle, Display, And Cursor
 

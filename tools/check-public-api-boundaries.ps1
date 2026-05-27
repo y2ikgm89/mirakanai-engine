@@ -32,13 +32,14 @@ $publicRoots = @(
     "engine/navigation/include",
     "engine/animation/include",
     "engine/tools/include",
-    "editor/core/include"
+    "editor/core/include",
+    "editor/include"
 )
 
 $forbiddenPatterns = @(
     @{
-        Pattern = '#\s*include\s*[<"](?:windows|d3d12|dxgi|dxgi1_\d+|wrl/client)\.h[>"]'
-        Label = "native Windows/D3D12/DXGI header include"
+        Pattern = '#\s*include\s*[<"](?:Windows|windows|windef|winuser|handleapi|unknwn|objidl|combaseapi|guiddef|propidl|propvarutil|audioclient|audiopolicy|mmdeviceapi|endpointvolume|xinput|gameinput|d3d12|dxgi|dxgi1_\d+|wrl/client)\.h[>"]'
+        Label = "native Windows, COM, WASAPI, controller, D3D12, or DXGI header include"
     },
     @{
         Pattern = '\b(?:ID3D12\w*|IDXGI\w*|D3D12_[A-Z0-9_]+|DXGI_[A-Z0-9_]+|D3D_ROOT_SIGNATURE_VERSION)\b'
@@ -49,8 +50,16 @@ $forbiddenPatterns = @(
         Label = "native Win32 handle or message type"
     },
     @{
-        Pattern = '\b(?:Microsoft::WRL|ComPtr)\b'
-        Label = "COM smart pointer type"
+        Pattern = '\b(?:IAudioClient|IAudioRenderClient|IAudioClock|IMMDevice[A-Za-z0-9_]*|WAVEFORMATEX|REFERENCE_TIME)\b'
+        Label = "native WASAPI or Core Audio symbol"
+    },
+    @{
+        Pattern = '\b(?:XINPUT_STATE|XINPUT_GAMEPAD|XINPUT_KEYSTROKE|GameInput[A-Za-z0-9_]*|IGameInput[A-Za-z0-9_]*)\b'
+        Label = "native Windows controller symbol"
+    },
+    @{
+        Pattern = '\b(?:IUnknown|HRESULT|GUID|REFGUID|REFIID|IID|CLSID|PROPVARIANT|CoTaskMem[A-Za-z0-9_]*|Microsoft::WRL|ComPtr)\b'
+        Label = "native COM type or smart pointer"
     },
     @{
         Pattern = '#\s*include\s*[<"]SDL3/'

@@ -258,6 +258,24 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_runtime_tests)
     add_test(NAME MK_runtime_tests COMMAND MK_runtime_tests)
 
+    add_executable(MK_native_desktop_contract_public_api_compile
+        tests/unit/native_desktop_contract_public_api_compile.cpp
+    )
+    target_link_libraries(MK_native_desktop_contract_public_api_compile PRIVATE
+        MK_audio
+        MK_editor_core
+        MK_platform
+        MK_renderer
+        MK_runtime_host
+        MK_runtime_rhi
+        MK_ui
+    )
+    target_include_directories(MK_native_desktop_contract_public_api_compile PRIVATE
+        tests
+    )
+    MK_apply_common_target_options(MK_native_desktop_contract_public_api_compile)
+    add_test(NAME MK_native_desktop_contract_public_api_compile COMMAND MK_native_desktop_contract_public_api_compile)
+
     add_executable(MK_runtime_quest_dialogue_tests
         tests/unit/runtime_quest_dialogue_tests.cpp
     )
