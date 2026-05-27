@@ -12,9 +12,9 @@
 
 **Plan ID:** `reviewed-importers-codecs-shader-generation-v1`
 
-**Status:** Active.
+**Status:** Paused.
 
-Selected child plan of `clean-break-broad-production-readiness-master-plan-v1` after `runtime-ui-text-platform-stack-v1` completed through PR #264, PR #265, PR #266, PR #267, and PR #268.
+Selected child plan of `clean-break-broad-production-readiness-master-plan-v1` after `runtime-ui-text-platform-stack-v1` completed through PR #264, PR #265, PR #266, PR #267, and PR #268. Paused on 2026-05-27 when operator direction selected `first-party-desktop-platform-sdl3-removal-v1` as the active milestone. Resume only after the manifest, registry, and master plan pointers intentionally select it again.
 
 **Date:** 2026-05-27
 
