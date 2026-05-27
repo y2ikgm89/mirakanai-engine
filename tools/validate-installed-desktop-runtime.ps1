@@ -105,6 +105,10 @@ if (-not (Test-Path -LiteralPath $runtimeExecutable -PathType Leaf)) {
     Write-Error "Installed desktop runtime game was not found: $runtimeExecutable"
 }
 
+if (Test-Path -LiteralPath $sdlDll -PathType Leaf) {
+    Write-Error "Installed desktop runtime package must not ship SDL3 runtime DLL: $sdlDll"
+}
+
 if ($requireD3d12ShaderArtifacts) {
     $shaderArtifacts = @()
     if ($null -ne $gameMetadata -and $gameMetadata.PSObject.Properties.Name.Contains("d3d12ShaderArtifacts")) {
@@ -154,12 +158,6 @@ if ($requireVulkanShaderArtifacts) {
         if ((Get-Item -LiteralPath $shaderPath).Length -le 0) {
             Write-Error "Installed desktop runtime Vulkan shader artifact is empty: $shaderPath"
         }
-    }
-}
-
-if ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)) {
-    if (-not (Test-Path -LiteralPath $sdlDll -PathType Leaf)) {
-        Write-Error "Installed SDL3 runtime DLL was not found: $sdlDll"
     }
 }
 

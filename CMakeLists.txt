@@ -10,7 +10,7 @@ include(CTest)
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
-option(MK_ENABLE_DESKTOP_RUNTIME "Build SDL3 desktop game runtime targets" OFF)
+option(MK_ENABLE_DESKTOP_RUNTIME "Build desktop game runtime targets" OFF)
 option(MK_ENABLE_DESKTOP_GUI "Build SDL3/Dear ImGui desktop editor targets" OFF)
 option(MK_ENABLE_SANITIZERS "Enable compiler sanitizer instrumentation where supported" OFF)
 option(MK_ENABLE_CXX_MODULE_SCANNING "Enable CMake C++ module dependency scanning for targets" ON)
@@ -1238,10 +1238,10 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
     )
     foreach(MK_DESKTOP_RUNTIME_PACKAGE_TEST_TARGET IN ITEMS
         MK_runtime_host_tests
-        MK_runtime_host_sdl3_tests
+        MK_runtime_host_win32_public_api_compile
         MK_runtime_host_win32_tests
-        MK_sdl3_platform_tests
-        MK_sdl3_audio_tests
+        MK_win32_platform_tests
+        MK_wasapi_audio_tests
     )
         if(TARGET ${MK_DESKTOP_RUNTIME_PACKAGE_TEST_TARGET})
             add_dependencies(MK_desktop_runtime_package_build ${MK_DESKTOP_RUNTIME_PACKAGE_TEST_TARGET})

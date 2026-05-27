@@ -459,7 +459,7 @@
         "engine/runtime_host/win32/include/mirakana/runtime_host/win32/win32_desktop_event_pump.hpp",
         "engine/runtime_host/win32/include/mirakana/runtime_host/win32/win32_desktop_game_host.hpp"
       ],
-      "purpose": "Windows-native desktop game runtime host foundation for the SDL3 removal track. Provides Win32DesktopEventPump and Win32DesktopGameHost so a host can own Win32Runtime, Win32Window, copied Win32 event pumping, first-party virtual input, pointer, gamepad, lifecycle, optional renderer access, and DesktopGameRunner wiring for mirakana::GameApp without exposing SDL3, native OS handles, GPU handles, RHI backend handles, Dear ImGui, or editor APIs to gameplay code. Package and generated-game lanes still remain on the SDL3 host until later migration phases validate equivalent installed-package evidence."
+      "purpose": "Windows-native desktop game runtime host foundation for the SDL3 removal track. Provides Win32DesktopEventPump and Win32DesktopGameHost so a host can own Win32Runtime, Win32Window, copied Win32 event pumping, first-party virtual input, pointer, gamepad, lifecycle, optional renderer access, and DesktopGameRunner wiring for mirakana::GameApp without exposing SDL3, native OS handles, GPU handles, RHI backend handles, Dear ImGui, or editor APIs to gameplay code. The default sample_desktop_runtime_shell package lane now uses this host with D3D12 installed validation and SDL3.dll artifact rejection; generated-game, non-shell sample, and editor lanes still remain on SDL3 until later migration phases validate equivalent evidence."
     },
     {
       "name": "MK_runtime_host_win32_presentation",

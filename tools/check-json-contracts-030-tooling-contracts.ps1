@@ -3,6 +3,99 @@
 
 # Chapter 3 for check-json-contracts.ps1 static contracts.
 
+$validateDesktopRuntimeScript = Get-Content -LiteralPath (Join-Path $root "tools/validate-desktop-game-runtime.ps1") -Raw
+foreach ($requiredNeedle in @(
+        "MK_runtime_host_win32_public_api_compile",
+        "MK_runtime_host_win32_tests",
+        "MK_win32_platform_tests",
+        "MK_wasapi_audio_tests"
+    )) {
+    if (-not $validateDesktopRuntimeScript.Contains($requiredNeedle)) {
+        Write-Error "desktop runtime validation must target Windows native host evidence: $requiredNeedle"
+    }
+}
+foreach ($forbiddenNeedle in @(
+        "MK_runtime_host_sdl3_public_api_compile",
+        "MK_runtime_host_sdl3_tests",
+        "MK_sdl3_platform_tests",
+        "MK_sdl3_audio_tests"
+    )) {
+    if ($validateDesktopRuntimeScript.Contains($forbiddenNeedle)) {
+        Write-Error "desktop runtime validation must not require SDL3 test target: $forbiddenNeedle"
+    }
+}
+
+$packageDesktopRuntimeScript = Get-Content -LiteralPath (Join-Path $root "tools/package-desktop-runtime.ps1") -Raw
+foreach ($requiredNeedle in @(
+        "MK_runtime_host_tests",
+        "MK_runtime_host_win32_tests",
+        "MK_win32_platform_tests",
+        "MK_wasapi_audio_tests"
+    )) {
+    if (-not $packageDesktopRuntimeScript.Contains($requiredNeedle)) {
+        Write-Error "desktop runtime package validation must include Windows native host CTest pattern: $requiredNeedle"
+    }
+}
+foreach ($forbiddenNeedle in @(
+        "mirakana_runtime_host_sdl3_tests",
+        "mirakana_sdl3_platform_tests",
+        "mirakana_sdl3_audio_tests",
+        "MK_runtime_host_sdl3_tests",
+        "MK_sdl3_platform_tests",
+        "MK_sdl3_audio_tests"
+    )) {
+    if ($packageDesktopRuntimeScript.Contains($forbiddenNeedle)) {
+        Write-Error "desktop runtime package validation must not require SDL3 CTest pattern: $forbiddenNeedle"
+    }
+}
+
+$validateInstalledDesktopRuntimeScript =
+    Get-Content -LiteralPath (Join-Path $root "tools/validate-installed-desktop-runtime.ps1") -Raw
+foreach ($requiredNeedle in @(
+        "Installed desktop runtime package must not ship SDL3 runtime DLL",
+        "SDL3.dll"
+    )) {
+    if (-not $validateInstalledDesktopRuntimeScript.Contains($requiredNeedle)) {
+        Write-Error "installed desktop runtime validation must reject SDL3 runtime DLL artifacts: $requiredNeedle"
+    }
+}
+if ($validateInstalledDesktopRuntimeScript.Contains("Installed SDL3 runtime DLL was not found")) {
+    Write-Error "installed desktop runtime validation must not require SDL3.dll"
+}
+
+$installedSdkValidationScript = Get-Content -LiteralPath (Join-Path $root "tools/installed-sdk-validation.ps1") -Raw
+if (-not $installedSdkValidationScript.Contains("Installed Mirakanai SDK must not ship SDL3 runtime DLL")) {
+    Write-Error "installed SDK validation must reject SDL3 runtime DLL artifacts"
+}
+
+$releasePackageArtifactsScript = Get-Content -LiteralPath (Join-Path $root "tools/release-package-artifacts.ps1") -Raw
+foreach ($requiredNeedle in @(
+        "Assert-ReleasePackageHasNoForbiddenRuntimeDlls",
+        "SDL3.dll"
+    )) {
+    if (-not $releasePackageArtifactsScript.Contains($requiredNeedle)) {
+        Write-Error "release package artifact validation must reject SDL3 runtime DLL artifacts: $requiredNeedle"
+    }
+}
+
+$sampleDesktopRuntimeShellSource = Get-Content -LiteralPath (Join-Path $root "games/sample_desktop_runtime_shell/main.cpp") -Raw
+foreach ($requiredNeedle in @(
+        "mirakana/runtime_host/win32/win32_desktop_game_host.hpp",
+        "mirakana::Win32DesktopGameHost"
+    )) {
+    if (-not $sampleDesktopRuntimeShellSource.Contains($requiredNeedle)) {
+        Write-Error "sample_desktop_runtime_shell must exercise the Windows native runtime host: $requiredNeedle"
+    }
+}
+foreach ($forbiddenNeedle in @(
+        "SdlDesktopGameHost",
+        "mirakana/runtime_host/sdl3"
+    )) {
+    if ($sampleDesktopRuntimeShellSource.Contains($forbiddenNeedle)) {
+        Write-Error "sample_desktop_runtime_shell must not use SDL3 runtime host surface: $forbiddenNeedle"
+    }
+}
+
 foreach ($commandId in $scenePrefabAuthoringCommandIds) {
     $scenePrefabCommand = @($productionLoop.commandSurfaces | Where-Object { $_.id -eq $commandId })
     if ($scenePrefabCommand.Count -ne 1 -or $scenePrefabCommand[0].status -ne "ready") {

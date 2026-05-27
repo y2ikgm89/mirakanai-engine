@@ -257,6 +257,13 @@ if ($cpp23CpackCallIndex -lt 0 -or $cpp23ArtifactAssertIndex -lt 0 -or $cpp23Art
     Write-Error "ci-matrix-check: tools/evaluate-cpp23.ps1 must run Assert-ReleasePackageArtifacts after CPack for the C++23 release lane"
 }
 
+$releasePackageArtifactsScript = Read-RequiredText "tools/release-package-artifacts.ps1"
+Assert-ContainsAll $releasePackageArtifactsScript @(
+    "Assert-ReleasePackageHasNoForbiddenRuntimeDlls",
+    "SDL3.dll",
+    "Release package archive must not ship SDL3.dll"
+) "tools/release-package-artifacts.ps1 forbidden runtime DLL guard"
+
 Assert-ValidationTierSelection `
     -Label "docs-only PR" `
     -ChangedPath @("docs/testing.md", "AGENTS.md", ".agents/skills/gameengine-agent-integration/SKILL.md") `
