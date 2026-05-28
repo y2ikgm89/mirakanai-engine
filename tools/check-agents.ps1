@@ -402,6 +402,7 @@ if (Test-Path $claudeSettingsPath) {
             "Bash(git reset:*)",
             "Bash(git restore:*)",
             "Bash(git clean:*)",
+            "Bash(git clone:*)",
             "Bash(git worktree remove:*)",
             "Bash(git push --force:*)",
             "Bash(git push --force-with-lease:*)",
@@ -474,6 +475,7 @@ $claudeToCodexSkillMap = @{
     "gameengine-editor"             = "editor-change"
     "gameengine-feature"            = "gameengine-feature"
     "gameengine-game-development"   = "gameengine-game-development"
+    "gameengine-git-publication-preflight" = "gameengine-git-publication-preflight"
     "gameengine-license-audit"      = "license-audit"
     "gameengine-rendering"          = "rendering-change"
 }

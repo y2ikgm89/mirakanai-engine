@@ -145,7 +145,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1 -PullRequest <pr> -RequireClean
 ```
 
-The wrapper prints `publication-preflight: ok` only after it confirms the current branch, `git status --short --branch`, `git rev-parse --path-format=absolute --git-path index.lock`, linked-worktree Git admin writability, `git update-index -q --refresh`, `git ls-remote --heads origin <branch>`, `Test-NetConnection` to GitHub, GitHub CLI config readability, `gh auth status`, and optional `gh pr view <pr> --json headRefOid,statusCheckRollup,url`. If it prints `publication-preflight: blocked`, switch session mode or host context instead of changing repository permissions ad hoc or bypassing GitHub Flow.
+The wrapper prints `publication-preflight: ok` only after it confirms the current branch, `git status --short --branch`, `git rev-parse --path-format=absolute --git-path index.lock`, linked-worktree Git admin writability, `git update-index -q --refresh`, `git ls-remote --heads origin <branch>`, `Test-NetConnection` to GitHub, GitHub CLI config readability, `gh auth status`, and optional `gh pr view <pr> --json headRefOid,statusCheckRollup,url`. If it prints `publication-preflight: blocked`, switch session mode or host context instead of changing repository permissions ad hoc, creating a publication temp clone, or bypassing GitHub Flow.
 
 Checkpoint guidance:
 

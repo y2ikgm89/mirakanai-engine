@@ -24,6 +24,9 @@ $legalPath = Resolve-RequiredAgentPath "docs/legal-and-licensing.md"
 $planRegistryPath = Resolve-RequiredAgentPath "docs/superpowers/plans/README.md"
 $productionCompletionMasterPlanPath = Resolve-RequiredAgentPath "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
 $publicationPreflightToolPath = Resolve-RequiredAgentPath "tools/check-publication-preflight.ps1"
+$codexPublicationPreflightSkillPath = Resolve-RequiredAgentPath ".agents/skills/gameengine-git-publication-preflight/SKILL.md"
+$claudePublicationPreflightSkillPath = Resolve-RequiredAgentPath ".claude/skills/gameengine-git-publication-preflight/SKILL.md"
+$cursorPublicationPreflightSkillPath = Resolve-RequiredAgentPath ".cursor/skills/gameengine-git-publication-preflight/SKILL.md"
 $removeMergedWorktreeToolPath = Resolve-RequiredAgentPath "tools/remove-merged-worktree.ps1"
 foreach ($textFormatToolPath in @("tools/check-text-format.ps1", "tools/check-text-format-contract.ps1", "tools/format-text.ps1", "tools/text-format-core.ps1")) {
     Resolve-RequiredAgentPath $textFormatToolPath | Out-Null
@@ -91,6 +94,7 @@ Assert-ContainsText $agentsContent "GitHub Desktop" "AGENTS.md"
 Assert-ContainsText $agentsContent "official GitHub Flow" "AGENTS.md"
 Assert-ContainsText $agentsContent 'Before staging/push/PR/merge, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1' "AGENTS.md"
 Assert-ContainsText $agentsContent "tools/check-publication-preflight.ps1" "AGENTS.md"
+Assert-ContainsText $agentsContent "PR head SHA" "AGENTS.md"
 
 $publicationPreflightToolContent = Get-Content -LiteralPath $publicationPreflightToolPath -Raw
 foreach ($needle in @(
@@ -105,6 +109,30 @@ foreach ($needle in @(
         "PublicationPreflightStatus"
     )) {
     Assert-ContainsText $publicationPreflightToolContent $needle "tools/check-publication-preflight.ps1"
+}
+
+$publicationPreflightDetailedSkillSurfaces = @(
+    @{ Path = $codexPublicationPreflightSkillPath; Label = ".agents/skills/gameengine-git-publication-preflight/SKILL.md" },
+    @{ Path = $claudePublicationPreflightSkillPath; Label = ".claude/skills/gameengine-git-publication-preflight/SKILL.md" }
+)
+foreach ($publicationPreflightSkillSurface in $publicationPreflightDetailedSkillSurfaces) {
+    $publicationPreflightSkillText = Get-Content -LiteralPath $publicationPreflightSkillSurface.Path -Raw
+    foreach ($needle in @(
+            "tools/check-publication-preflight.ps1",
+            "whoami",
+            "git update-index -q --refresh",
+            "Test-NetConnection github.com -Port 443",
+            "gh auth status",
+            "gh pr view <pr> --json headRefOid,statusCheckRollup,url",
+            "publication-preflight: blocked",
+            "publication temp clone"
+        )) {
+        Assert-ContainsText $publicationPreflightSkillText $needle $publicationPreflightSkillSurface.Label
+    }
+}
+$cursorPublicationPreflightSkillText = Get-Content -LiteralPath $cursorPublicationPreflightSkillPath -Raw
+foreach ($needle in @("tools/check-publication-preflight.ps1", "publication-preflight: blocked", "publication temp clone")) {
+    Assert-ContainsText $cursorPublicationPreflightSkillText $needle ".cursor/skills/gameengine-git-publication-preflight/SKILL.md"
 }
 
 $removeMergedWorktreeToolContent = Get-Content -LiteralPath $removeMergedWorktreeToolPath -Raw
@@ -135,7 +163,7 @@ Assert-ContainsText $agentsContent "checkpoint-based, not commit-count-based" "A
 foreach ($gitCadenceNeedle in @("purpose/checkpoint-based", "commit validated phases", "push validated checkpoints", "one PR per focused capability/gap-cluster/milestone", "split unrelated work")) {
     Assert-ContainsText $agentsContent $gitCadenceNeedle "AGENTS.md"
 }
-Assert-ContainsText $agentsContent "remote state" "AGENTS.md"
+Assert-ContainsText $agentsContent "network" "AGENTS.md"
 Assert-ContainsText $agentsContent "open draft PR" "AGENTS.md"
 Assert-ContainsText $agentsContent "before final report" "AGENTS.md"
 Assert-ContainsText $agentsContent "codex-<topic>" "AGENTS.md"
@@ -191,6 +219,7 @@ Assert-ContainsText $workflowsContent "tools/check-publication-preflight.ps1" "d
 Assert-ContainsText $workflowsContent "git rev-parse --path-format=absolute --git-path index.lock" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "git update-index -q --refresh" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "publication-preflight: blocked" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "publication temp clone" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "gh auth status" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "do not bypass GitHub Flow by hand-writing GitHub REST/MCP blobs" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "do not report a task complete while task-owned changes only exist locally after validation" "docs/workflows.md"
@@ -611,11 +640,15 @@ foreach ($agentSkillSurface in @(
 $codexRulesText = Get-AgentSurfaceText ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRulesText '"tools/check-publication-preflight.ps1"' ".codex/rules/gameengine.rules"
 Assert-ContainsText $codexRulesText "linked-worktree index.lock ACL" ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRulesText 'pattern = ["git", "clone"]' ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRulesText "Publication temp clones bypass the repository preflight path" ".codex/rules/gameengine.rules"
 $claudeRulesText = Get-AgentSurfaceText ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $claudeRulesText "tools/check-publication-preflight.ps1" ".claude/rules/ai-agent-integration.md"
 Assert-ContainsText $claudeRulesText "publication-preflight: blocked" ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $claudeRulesText "Publication temp clones" ".claude/rules/ai-agent-integration.md"
 $claudeSettingsText = Get-AgentSurfaceText ".claude/settings.json"
 Assert-ContainsText $claudeSettingsText "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1:*)" ".claude/settings.json"
+Assert-ContainsText $claudeSettingsText "Bash(git clone:*)" ".claude/settings.json"
 Assert-ContainsText $cursorAgentIntegrationSkillText "Hosted PR failure hardening" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "Use lightweight static validation for docs/agent/rules/subagent-only PRs" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "HeaderFilterRegex" ".cursor/skills/gameengine-agent-integration/SKILL.md"
