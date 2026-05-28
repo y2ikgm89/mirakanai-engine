@@ -111,6 +111,12 @@
           "delivery": "reviewed-source-authoring"
         },
         {
+          "id": "ktx2-basis-texture-review",
+          "kind": "texture",
+          "purpose": "Selected KTX2/Basis texture review package smoke evidence for dependency/legal records, container validation policy, supercompression policy, transcode target policy, GPU target compatibility, source provenance, package output, and host tool gates without runtime transcoding or GPU upload.",
+          "delivery": "reviewed-package-evidence"
+        },
+        {
           "id": "packaged-mesh",
           "kind": "mesh",
           "purpose": "First-party mesh source and cooked mesh payload for scene draw evidence.",
@@ -193,6 +199,13 @@
           ]
         },
         {
+          "id": "ktx2-basis-texture-review",
+          "evidence": "The selected KTX2/Basis texture review package smoke reports ktx_basis_texture_review_status=host_evidence_required, ktx_basis_texture_review_ready=1, seven review rows, six ready rows, one host-gated offline tool row, zero dependency-gated rows, zero unsupported-claim rows, selected package evidence ready, KTX/Basis review ready, broad texture codec readiness not claimed, zero runtime transcoding, zero GPU upload, zero compression tool invocation, zero diagnostics, and a positive replay hash.",
+          "recipeIds": [
+            "installed-d3d12-3d-package-smoke"
+          ]
+        },
+        {
           "id": "rpg-systems",
           "evidence": "RPG systems smoke reports deterministic stat, progression, skill, equipment, combat-loop intent, reward, save-validation, replay-hash, and zero side-effect counters.",
           "recipeIds": [
@@ -272,6 +285,10 @@
         "broad-commercial-quality",
         "runtime-source-parsing",
         "renderer-rhi-residency",
+        "runtime-ktx2-basis-transcoding",
+        "ktx2-basis-gpu-upload",
+        "ktx2-basis-compression-execution",
+        "broad-texture-codec-readiness",
         "metal-readiness"
       ]
     },
@@ -2021,6 +2038,7 @@
       "reviewedAdapters": [
         "first-party-source-documents",
         "gltf",
+        "ktx2-basis-review",
         "material-source",
         "hlsl-offline-compile-request"
       ],
@@ -2031,6 +2049,9 @@
         "live-shader-generation",
         "runtime-source-parsing",
         "native-handle-access",
+        "runtime-ktx2-basis-transcoding",
+        "ktx2-basis-gpu-upload",
+        "ktx2-basis-compression-execution",
         "broad-codec-readiness"
       ]
     }
@@ -2272,7 +2293,7 @@
     },
     {
       "name": "installed-d3d12-3d-package-smoke",
-      "command": "out\\install\\desktop-runtime-release\\bin\\sample_generated_desktop_runtime_3d_package.exe --smoke --require-config runtime/sample_generated_desktop_runtime_3d_package.config --require-scene-package runtime/sample_generated_desktop_runtime_3d_package.geindex --require-primary-camera-controller --require-transform-animation --require-morph-package --require-compute-morph --require-compute-morph-normal-tangent --require-compute-morph-skin --require-compute-morph-async-telemetry --require-quaternion-animation --require-package-streaming-safe-point --require-gameplay-systems --require-d3d12-scene-shaders --require-d3d12-renderer --require-scene-gpu-bindings --require-postprocess --require-postprocess-depth-input --require-renderer-quality-gates --require-renderer-quality-matrix --require-rendering-vfx-profiling --require-playable-3d-slice --require-native-ui-overlay --require-visible-3d-production-proof --require-scene-collision-package --require-native-ui-textured-sprite-atlas --require-package-upload-staging"
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_generated_desktop_runtime_3d_package.exe --smoke --require-config runtime/sample_generated_desktop_runtime_3d_package.config --require-scene-package runtime/sample_generated_desktop_runtime_3d_package.geindex --require-primary-camera-controller --require-transform-animation --require-morph-package --require-compute-morph --require-compute-morph-normal-tangent --require-compute-morph-skin --require-compute-morph-async-telemetry --require-quaternion-animation --require-package-streaming-safe-point --require-gameplay-systems --require-d3d12-scene-shaders --require-d3d12-renderer --require-scene-gpu-bindings --require-postprocess --require-postprocess-depth-input --require-renderer-quality-gates --require-renderer-quality-matrix --require-rendering-vfx-profiling --require-playable-3d-slice --require-native-ui-overlay --require-visible-3d-production-proof --require-scene-collision-package --require-native-ui-textured-sprite-atlas --require-package-upload-staging --require-ktx2-basis-texture-review"
     },
     {
       "name": "installed-3d-runtime-menu-hud-smoke",

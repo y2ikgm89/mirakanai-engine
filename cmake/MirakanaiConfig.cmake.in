@@ -17,6 +17,7 @@ set(Mirakanai_HAS_ASSET_IMPORTERS @MK_PACKAGE_HAS_ASSET_IMPORTERS@)
 if(Mirakanai_HAS_ASSET_IMPORTERS)
     find_dependency(SPNG CONFIG)
     find_dependency(fastgltf CONFIG)
+    find_dependency(Ktx CONFIG)
 endif()
 
 set(Mirakanai_HAS_PHYSICS_JOLT @MK_PACKAGE_HAS_PHYSICS_JOLT@)

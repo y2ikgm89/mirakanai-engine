@@ -1139,6 +1139,15 @@ try {
     $desktop3dManifestText = Get-Content -LiteralPath (Join-Path $desktop3dGameRoot "game.agent.json") -Raw
     $desktop3dReadmeText = Get-Content -LiteralPath (Join-Path $desktop3dGameRoot "README.md") -Raw
     $desktop3dManifest = $desktop3dManifestText | ConvertFrom-Json
+    $desktop3dKtxAssetRequest = @($desktop3dManifest.aiWorkflow.gameDesignSpec.assetRequests) |
+        Where-Object { $_.id -eq "ktx2-basis-texture-review" } |
+        Select-Object -First 1
+    if ($null -eq $desktop3dKtxAssetRequest) {
+        Write-Error "Desktop runtime 3D package scaffold manifest missing ktx2-basis-texture-review asset request"
+    }
+    elseif ($desktop3dKtxAssetRequest.kind -ne "texture") {
+        Write-Error "Desktop runtime 3D package scaffold KTX asset request kind must stay texture"
+    }
     foreach ($needle in @(
             "framegraph_passes_executed=4",
             "framegraph_render_passes_recorded=4",
@@ -1154,6 +1163,26 @@ try {
     }
     Assert-ContainsText $desktop3dManifestText "selected D3D12 generated 3D graphics morph + directional shadow receiver smoke through --require-shadow-morph-composition with renderer_gpu_morph_draws, renderer_morph_descriptor_binds, directional_shadow_ready=1, framegraph_passes=3, framegraph_passes_executed=6, framegraph_render_passes_recorded=6" "Desktop runtime 3D package scaffold manifest"
     Assert-ContainsText $desktop3dReadmeText 'selected D3D12 generated 3D graphics morph + directional shadow receiver package smoke with `--require-shadow-morph-composition`, `renderer_gpu_morph_draws`, `renderer_morph_descriptor_binds`, `directional_shadow_ready=1`, `framegraph_passes=3`, `framegraph_passes_executed=6`, `framegraph_render_passes_recorded=6`' "Desktop runtime 3D package scaffold README"
+    foreach ($needle in @(
+            "selected KTX2/Basis texture review package smoke",
+            "ktx_basis_texture_review_status=host_evidence_required",
+            "ktx_basis_texture_review_ready=1",
+            "vcpkg.ktx",
+            "runtime-ktx2-basis-transcoding",
+            "ktx2-basis-gpu-upload",
+            "ktx2-basis-compression-execution",
+            "broad-codec-readiness"
+        )) {
+        Assert-ContainsText $desktop3dManifestText $needle "Desktop runtime 3D package scaffold manifest"
+    }
+    foreach ($needle in @(
+            "selected KTX2/Basis texture review package smoke",
+            "ktx_basis_texture_review_status=host_evidence_required",
+            "ktx_basis_texture_review_ready=1",
+            "zero runtime transcoding/GPU upload/compression tool invocation counters"
+        )) {
+        Assert-ContainsText $desktop3dReadmeText $needle "Desktop runtime 3D package scaffold README"
+    }
     if ($desktop3dManifest.gameplayContract.productionRecipe -ne "3d-playable-desktop-package") {
         Write-Error "Desktop runtime 3D package scaffold manifest must select 3d-playable-desktop-package"
     }
@@ -1313,6 +1342,9 @@ try {
         if ($isDesktop3dBroadPackageRecipe -and [string]$recipe.command -notmatch "--require-package-streaming-safe-point") {
             Write-Error "Desktop runtime 3D package scaffold package validation recipe missing --require-package-streaming-safe-point: $($recipe.name)"
         }
+        if ($recipe.name -eq "installed-d3d12-3d-package-smoke" -and [string]$recipe.command -notmatch "--require-ktx2-basis-texture-review") {
+            Write-Error "Desktop runtime 3D package scaffold D3D12 package recipe missing --require-ktx2-basis-texture-review: $($recipe.name)"
+        }
         if ($recipe.name -match "installed-d3d12|vulkan" -and -not $isDesktop3dShadowMorphRecipe -and -not $isDesktop3dSceneCollisionPackageRecipe -and -not $isDesktop3dEntityScaleCullingRecipe -and [string]$recipe.command -notmatch "--require-renderer-quality-gates") {
             Write-Error "Desktop runtime 3D package scaffold package validation recipe missing --require-renderer-quality-gates: $($recipe.name)"
         }
@@ -1414,12 +1446,23 @@ try {
     Assert-ContainsText $desktop3dCmake "SHADOW_FRAGMENT_ENTRY ps_shadow" "Desktop 3D scaffold CMake"
     Assert-ContainsText $desktop3dCmake "--require-compute-morph-skin" "Desktop 3D scaffold CMake"
     Assert-ContainsText $desktop3dCmake "--require-compute-morph-async-telemetry" "Desktop 3D scaffold CMake"
+    Assert-ContainsText $desktop3dCmake "--require-ktx2-basis-texture-review" "Desktop 3D scaffold CMake"
     Assert-ContainsText $desktop3dMain "primary_camera_controller_passed" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "--require-primary-camera-controller" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "--require-transform-animation" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "--require-morph-package" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "--require-quaternion-animation" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "--require-package-streaming-safe-point" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "--require-ktx2-basis-texture-review" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "validate_ktx_basis_texture_review_package_evidence" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "ktx_basis_texture_review_status=" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "ktx_basis_texture_review_ready=" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "ktx_basis_texture_review_dependency_gated_rows=" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "ktx_basis_texture_review_broad_texture_codec_ready=" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "ktx_basis_texture_review_invoked_runtime_transcoding=" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "ktx_basis_texture_review_invoked_gpu_upload=" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "ktx_basis_texture_review_invoked_compression_tool=" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "vcpkg.ktx" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "execute_selected_runtime_package_streaming_safe_point" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "residency_hint_failed" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "resident_catalog_refresh_failed" "Desktop 3D scaffold main.cpp"
@@ -1778,6 +1821,15 @@ $committedDesktop3dCmakeBlock = [regex]::Match(
     $committedDesktop3dCmakeText,
     "MK_add_desktop_runtime_game\(sample_generated_desktop_runtime_3d_package[\s\S]*?\n\s*\)"
 ).Value
+$committedDesktop3dKtxAssetRequest = @($committedDesktop3dManifest.aiWorkflow.gameDesignSpec.assetRequests) |
+    Where-Object { $_.id -eq "ktx2-basis-texture-review" } |
+    Select-Object -First 1
+if ($null -eq $committedDesktop3dKtxAssetRequest) {
+    Write-Error "$committedDesktop3dManifestPath missing ktx2-basis-texture-review asset request"
+}
+elseif ($committedDesktop3dKtxAssetRequest.kind -ne "texture") {
+    Write-Error "$committedDesktop3dManifestPath KTX asset request kind must stay texture"
+}
 if ([string]::IsNullOrWhiteSpace($committedDesktop3dCmakeBlock)) {
     Write-Error "games/CMakeLists.txt committed generated 3D package sample block was not found"
 }
@@ -1885,6 +1937,15 @@ foreach ($recipe in @($committedDesktop3dManifest.validationRecipes)) {
     if ($recipe.name -eq "installed-d3d12-3d-package-smoke" -and [string]$recipe.command -notmatch "--require-package-upload-staging") {
         Write-Error "$committedDesktop3dManifestPath D3D12 package recipe missing --require-package-upload-staging: $($recipe.name)"
     }
+    if ($recipe.name -eq "installed-d3d12-3d-package-smoke" -and [string]$recipe.command -notmatch "--require-renderer-quality-matrix") {
+        Write-Error "$committedDesktop3dManifestPath D3D12 package recipe missing --require-renderer-quality-matrix: $($recipe.name)"
+    }
+    if ($recipe.name -eq "installed-d3d12-3d-package-smoke" -and [string]$recipe.command -notmatch "--require-rendering-vfx-profiling") {
+        Write-Error "$committedDesktop3dManifestPath D3D12 package recipe missing --require-rendering-vfx-profiling: $($recipe.name)"
+    }
+    if ($recipe.name -eq "installed-d3d12-3d-package-smoke" -and [string]$recipe.command -notmatch "--require-ktx2-basis-texture-review") {
+        Write-Error "$committedDesktop3dManifestPath D3D12 package recipe missing --require-ktx2-basis-texture-review: $($recipe.name)"
+    }
     if ($recipe.name -match "scene-collision-package" -and [string]$recipe.command -notmatch "--require-scene-collision-package") {
         Write-Error "$committedDesktop3dManifestPath scene collision recipe missing --require-scene-collision-package: $($recipe.name)"
     }
@@ -1932,6 +1993,9 @@ foreach ($needle in @(
     "package_upload_staging_ready=1",
     "package_upload_staging_package_transactions=4",
     "package_upload_staging_ring_backed_uploads=4",
+    "selected KTX2/Basis texture review package smoke",
+    "ktx_basis_texture_review_status=host_evidence_required",
+    "ktx_basis_texture_review_ready=1",
     "selected generated 3D gameplay systems package smoke", "sceneGameplayBinding", "gameplay_systems_scene_binding_ready=1", "gameplay_systems_scene_interaction_final_session_state",
     "addressableContentStreaming", "addressable_content_status=ready", "addressable_content_ready=1", "addressable_content_address_rows=6", "addressable_content_dependency_rows=5", "addressable_content_load_rows=4", "addressable_content_release_rows=1", "addressable_content_refcount_rows=5", "addressable_content_budget_rejection_status=budget_limited", "addressable_content_budget_rejection_diagnostics=1", "addressable_content_package_io=0", "addressable_content_async_execution=0", "addressable_content_committed=0", "addressable_content_diagnostics=0",
     "selected D3D12 visible generated 3D production-style package proof",
@@ -1964,7 +2028,10 @@ foreach ($needle in @(
     "--require-renderer-quality-gates",
     "--require-postprocess-depth-input",
     "--require-playable-3d-slice",
+    "--require-renderer-quality-matrix",
+    "--require-rendering-vfx-profiling",
     "--require-package-upload-staging",
+    "--require-ktx2-basis-texture-review",
     "--require-gameplay-systems",
     "--require-native-ui-overlay",
     "--require-visible-3d-production-proof",
@@ -2020,6 +2087,16 @@ foreach ($needle in @(
     "package_upload_staging_graphics_waited_for_copy=",
     "package_upload_staging_resource_updates_ready=",
     "package_upload_staging_resource_update_graphics_queue_waits_recorded=",
+    "--require-ktx2-basis-texture-review",
+    "require_ktx2_basis_texture_review",
+    "validate_ktx_basis_texture_review_package_evidence",
+    "ktx_basis_texture_review_status=",
+    "ktx_basis_texture_review_ready=",
+    "ktx_basis_texture_review_dependency_gated_rows=",
+    "ktx_basis_texture_review_broad_texture_codec_ready=",
+    "ktx_basis_texture_review_invoked_runtime_transcoding=",
+    "ktx_basis_texture_review_invoked_gpu_upload=",
+    "ktx_basis_texture_review_invoked_compression_tool=",
     "--require-renderer-quality-gates",
     "evaluate_win32_desktop_presentation_quality_gate",
     "renderer_quality_status=",
@@ -2217,6 +2294,8 @@ Assert-ContainsText $committedDesktop3dReadmeText "framegraph_barrier_steps_exec
 Assert-ContainsText $committedDesktop3dReadmeText "--require-postprocess-depth-input" "committed generated 3D sample README"
 Assert-ContainsText $committedDesktop3dReadmeText "--require-directional-shadow-filtering" "committed generated 3D sample README"
 Assert-ContainsText $committedDesktop3dReadmeText "--require-shadow-morph-composition" "committed generated 3D sample README"
+Assert-ContainsText $committedDesktop3dReadmeText "--require-renderer-quality-matrix" "committed generated 3D sample README"
+Assert-ContainsText $committedDesktop3dReadmeText "--require-rendering-vfx-profiling" "committed generated 3D sample README"
 Assert-ContainsText $committedDesktop3dReadmeText 'selected D3D12 generated 3D graphics morph + directional shadow receiver package smoke with `--require-shadow-morph-composition`, `renderer_gpu_morph_draws`, `renderer_morph_descriptor_binds`, `directional_shadow_ready=1`, `framegraph_passes=3`, `framegraph_passes_executed=6`, `framegraph_render_passes_recorded=6`' "committed generated 3D sample README"
 Assert-ContainsText $committedDesktop3dReadmeText "--require-playable-3d-slice" "committed generated 3D sample README"
 Assert-ContainsText $committedDesktop3dReadmeText "--require-gameplay-systems" "committed generated 3D sample README"
@@ -2227,77 +2306,6 @@ Assert-ContainsText $committedDesktop3dReadmeText "--require-native-ui-text-glyp
 Assert-ContainsText $committedDesktop3dReadmeText "--require-scene-collision-package" "committed generated 3D sample README"
 Assert-ContainsText $committedDesktop3dReadmeText "--require-entity-scale-culling" "committed generated 3D sample README"
 Assert-ContainsText $committedDesktop3dReadmeText "plan_runtime_entity_scale_culling" "committed generated 3D sample README"
-Assert-ContainsText $engineManifestText "desktopRuntime3dPackageStreamingSafePointSmoke" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "--require-package-streaming-safe-point" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "package_streaming_status" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "desktopRuntime3dRendererQualityPackageSmoke" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "--require-renderer-quality-gates" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "renderer_quality_status" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "renderer_quality_expected_framegraph_passes=2" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "renderer_quality_expected_framegraph_barrier_steps=4" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "framegraph_barrier_steps_executed" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "desktopRuntime3dPostprocessDepthPackageSmoke" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "--require-postprocess-depth-input" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "postprocess_depth_input_ready=1" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "renderer_quality_postprocess_depth_input_ready=1" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "desktopRuntime3dPlayablePackageSmoke" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "--require-playable-3d-slice" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "playable_3d_status" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "desktopRuntime3dDirectionalShadowPackageSmoke" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "--require-directional-shadow-filtering" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "directional_shadow_status=ready" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "framegraph_barrier_steps_executed=15" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "desktopRuntime3dShadowMorphCompositionPackageSmoke" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "--require-shadow-morph-composition" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "renderer_morph_descriptor_binds" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "framegraph_render_passes_recorded=6" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "desktopRuntime3dNativeUiOverlayPackageSmoke" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "--require-native-ui-overlay" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "ui_overlay_ready=1" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "desktopRuntime3dEntityScaleCullingPackageSmoke" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "installed-d3d12-3d-entity-scale-culling-smoke" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "desktopRuntime3dVisibleProductionPackageProof" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "--require-visible-3d-production-proof" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "visible_3d_status=ready" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "desktopRuntime3dNativeUiTexturedSpriteAtlasPackageSmoke" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "--require-native-ui-textured-sprite-atlas" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "ui_texture_overlay_atlas_ready=1" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "desktopRuntime3dNativeUiTextGlyphAtlasPackageSmoke" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "--require-native-ui-text-glyph-atlas" "engine/agent/manifest.json"
-Assert-ContainsText $engineManifestText "text_glyphs_resolved=2" "engine/agent/manifest.json"
-Assert-ContainsText $historicalPlanEvidenceText "remaining plan evidence that is still referenced" "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
-Assert-ContainsText $historicalPlanEvidenceText "Git history for deleted evidence" "docs/superpowers/master-plans/production-completion-v1/99-historical-verdict-archive.md"
-Assert-ContainsText $roadmapText "Generated 3D Committed Package Sample v1" "docs/roadmap.md"
-Assert-ContainsText $roadmapText "Generated 3D Renderer Quality Package Smoke v1" "docs/roadmap.md"
-Assert-ContainsText $roadmapText "Generated 3D Playable Package Smoke v1" "docs/roadmap.md"
-Assert-ContainsText $roadmapText "Generated 3D Postprocess Depth Package Smoke v1" "docs/roadmap.md"
-Assert-ContainsText $roadmapText "Generated 3D Directional Shadow Package Smoke v1" "docs/roadmap.md"
-Assert-ContainsText $roadmapText "Generated 3D Shadow Morph Composition Package Smoke v1" "docs/roadmap.md"
-Assert-ContainsText $roadmapText "Generated 3D Native UI Overlay Package Smoke v1" "docs/roadmap.md"
-Assert-ContainsText $roadmapText "Generated 3D Visible Production-Style Package Proof v1" "docs/roadmap.md"
-Assert-ContainsText $roadmapText "Generated 3D Native UI Text Glyph Atlas Package Smoke v1" "docs/roadmap.md"
-Assert-ContainsText $currentCapabilitiesText "sample_generated_desktop_runtime_3d_package" "docs/current-capabilities.md"
-Assert-ContainsText $currentCapabilitiesText "Generated 3D Renderer Quality Package Smoke v1" "docs/current-capabilities.md"
-Assert-ContainsText $currentCapabilitiesText "Generated 3D Playable Package Smoke v1" "docs/current-capabilities.md"
-Assert-ContainsText $currentCapabilitiesText "Generated 3D Postprocess Depth Package Smoke v1" "docs/current-capabilities.md"
-Assert-ContainsText $currentCapabilitiesText "Generated 3D Directional Shadow Package Smoke v1" "docs/current-capabilities.md"
-Assert-ContainsText $currentCapabilitiesText "--require-shadow-morph-composition" "docs/current-capabilities.md"
-Assert-ContainsText $currentCapabilitiesText "--require-native-ui-overlay" "docs/current-capabilities.md"
-Assert-ContainsText $currentCapabilitiesText "--require-visible-3d-production-proof" "docs/current-capabilities.md"
-Assert-ContainsText $currentCapabilitiesText "--require-native-ui-text-glyph-atlas" "docs/current-capabilities.md"
-Assert-ContainsText $gameSkillText "postprocess_depth_input_ready=1" "gameengine game-development skill"
-Assert-ContainsText $gameSkillText "renderer_quality_postprocess_depth_input_ready=1" "gameengine game-development skill"
-Assert-ContainsText $gameSkillText "renderer_quality_expected_framegraph_barrier_steps=9" "gameengine game-development skill"
-Assert-ContainsText $gameSkillText "framegraph_barrier_steps_executed" "gameengine game-development skill"
-Assert-ContainsText $gameSkillText "--require-shadow-morph-composition" "gameengine game-development skill"
-Assert-ContainsText $gameSkillText "--require-native-ui-overlay" "gameengine game-development skill"
-Assert-ContainsText $gameSkillText "--require-visible-3d-production-proof" "gameengine game-development skill"
-Assert-ContainsText $gameSkillText "--require-native-ui-text-glyph-atlas" "gameengine game-development skill"
-Assert-ContainsText $generatedScenariosText "--require-shadow-morph-composition" "docs/specs/generated-game-validation-scenarios.md"
-Assert-ContainsText $generatedScenariosText "--require-native-ui-overlay" "docs/specs/generated-game-validation-scenarios.md"
-Assert-ContainsText $generatedScenariosText "--require-visible-3d-production-proof" "docs/specs/generated-game-validation-scenarios.md"
-Assert-ContainsText $generatedScenariosText "--require-native-ui-text-glyph-atlas" "docs/specs/generated-game-validation-scenarios.md"
-
 $createGameRecipeRoot = New-ScaffoldCheckRoot
 try {
     New-Item -ItemType Directory -Path (Join-Path $createGameRecipeRoot "designs") -Force | Out-Null

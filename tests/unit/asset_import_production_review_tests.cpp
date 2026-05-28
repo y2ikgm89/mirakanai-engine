@@ -17,6 +17,9 @@ using mirakana::AssetImportProductionDiagnosticCode;
 using mirakana::AssetImportProductionFeatureKind;
 using mirakana::AssetImportProductionProofKind;
 using mirakana::AssetImportProductionStatus;
+using mirakana::KtxBasisTextureReviewDiagnosticCode;
+using mirakana::KtxBasisTextureReviewFeature;
+using mirakana::KtxBasisTextureReviewStatus;
 
 constexpr AssetImportProductionFeatureKind kRequiredFeatures[] = {
     AssetImportProductionFeatureKind::source_root_policy,
@@ -28,6 +31,13 @@ constexpr AssetImportProductionFeatureKind kRequiredFeatures[] = {
     AssetImportProductionFeatureKind::material_source,
     AssetImportProductionFeatureKind::shader_offline_compile_request,
     AssetImportProductionFeatureKind::package_cook_output,
+};
+
+constexpr KtxBasisTextureReviewFeature kKtxRequiredFeatures[] = {
+    KtxBasisTextureReviewFeature::container_validation,    KtxBasisTextureReviewFeature::supercompression_policy,
+    KtxBasisTextureReviewFeature::transcode_target_policy, KtxBasisTextureReviewFeature::gpu_target_compatibility,
+    KtxBasisTextureReviewFeature::source_provenance,       KtxBasisTextureReviewFeature::package_output,
+    KtxBasisTextureReviewFeature::host_tool_gate,
 };
 
 [[nodiscard]] std::string capability_id(AssetImportProductionFeatureKind feature) {
@@ -102,7 +112,7 @@ constexpr AssetImportProductionFeatureKind kRequiredFeatures[] = {
                                            : std::vector<std::string>{"first-party-schema"}),
         .reviewed_command_ids =
             is_shader ? std::vector<std::string>{"dxc-offline-plan", "spirv-val-plan"} : std::vector<std::string>{},
-        .dependency_ids = is_ktx                    ? std::vector<std::string>{"vcpkg.ktx-software"}
+        .dependency_ids = is_ktx                    ? std::vector<std::string>{"vcpkg.ktx"}
                           : is_shader               ? std::vector<std::string>{"toolchain.dxc", "toolchain.spirv-tools"}
                           : uses_dependency_adapter ? std::vector<std::string>{"vcpkg.asset-importers"}
                                                     : std::vector<std::string>{},
@@ -132,6 +142,70 @@ constexpr AssetImportProductionFeatureKind kRequiredFeatures[] = {
         .request_runtime_source_parsing = false,
         .request_broad_codec_claim = false,
         .source_index = source_index,
+    };
+}
+
+[[nodiscard]] mirakana::KtxBasisTextureReviewRow make_ktx_row(KtxBasisTextureReviewFeature feature,
+                                                              std::uint32_t source_index) {
+    const auto has_ktx_dependency = feature != KtxBasisTextureReviewFeature::host_tool_gate;
+    const auto is_host_tool_gate = feature == KtxBasisTextureReviewFeature::host_tool_gate;
+
+    return mirakana::KtxBasisTextureReviewRow{
+        .row_id = std::string{"ktx2-basis."} + std::to_string(source_index),
+        .feature = feature,
+        .container_validator_ids = feature == KtxBasisTextureReviewFeature::container_validation
+                                       ? std::vector<std::string>{"ktx2check-review"}
+                                       : std::vector<std::string>{},
+        .supercompression_scheme =
+            feature == KtxBasisTextureReviewFeature::supercompression_policy ? "basis-uastc" : "",
+        .transcode_policy =
+            feature == KtxBasisTextureReviewFeature::transcode_target_policy ? "offline-reviewed-target" : "",
+        .transcode_target = feature == KtxBasisTextureReviewFeature::transcode_target_policy ? "bc7-rgba" : "",
+        .gpu_target = feature == KtxBasisTextureReviewFeature::gpu_target_compatibility ? "d3d12-bc7-rgba" : "",
+        .source_provenance_ids = feature == KtxBasisTextureReviewFeature::source_provenance
+                                     ? std::vector<std::string>{"provenance.ktx2-basis-source"}
+                                     : std::vector<std::string>{},
+        .package_output_rows = feature == KtxBasisTextureReviewFeature::package_output
+                                   ? std::vector<std::string>{"runtime/assets/3d/ktx2_basis_texture.geasset"}
+                                   : std::vector<std::string>{},
+        .dependency_ids = has_ktx_dependency ? std::vector<std::string>{"vcpkg.ktx"} : std::vector<std::string>{},
+        .license_ids = has_ktx_dependency || feature == KtxBasisTextureReviewFeature::source_provenance
+                           ? std::vector<std::string>{"LicenseRef-KTX-Software"}
+                           : std::vector<std::string>{},
+        .deterministic_content_hash = std::string{"sha256:ktx2-basis-row-"} + std::to_string(source_index),
+        .reviewed = true,
+        .container_validation_evidence = feature == KtxBasisTextureReviewFeature::container_validation,
+        .supercompression_policy_evidence = feature == KtxBasisTextureReviewFeature::supercompression_policy,
+        .transcode_target_evidence = feature == KtxBasisTextureReviewFeature::transcode_target_policy,
+        .gpu_target_compatibility_evidence = feature == KtxBasisTextureReviewFeature::gpu_target_compatibility,
+        .source_provenance_evidence = feature == KtxBasisTextureReviewFeature::source_provenance,
+        .package_output_evidence = feature == KtxBasisTextureReviewFeature::package_output,
+        .dependency_legal_evidence = has_ktx_dependency,
+        .dependency_gate_required = false,
+        .host_tool_validated = false,
+        .host_tool_gate_required = is_host_tool_gate,
+        .request_runtime_transcoding = false,
+        .request_gpu_upload = false,
+        .request_compression_execution = false,
+        .request_native_handle_access = false,
+        .request_broad_texture_codec_claim = false,
+        .source_index = source_index,
+    };
+}
+
+[[nodiscard]] mirakana::KtxBasisTextureReviewRequest make_ktx_request() {
+    std::vector<mirakana::KtxBasisTextureReviewRow> rows;
+    rows.reserve(std::size(kKtxRequiredFeatures));
+    std::uint32_t source_index{1U};
+    for (const auto feature : kKtxRequiredFeatures) {
+        rows.push_back(make_ktx_row(feature, source_index++));
+    }
+
+    return mirakana::KtxBasisTextureReviewRequest{
+        .required_features = {std::begin(kKtxRequiredFeatures), std::end(kKtxRequiredFeatures)},
+        .rows = std::move(rows),
+        .row_budget = 16U,
+        .seed = 379U,
     };
 }
 
@@ -171,6 +245,17 @@ constexpr AssetImportProductionFeatureKind kRequiredFeatures[] = {
         }
     }
     return false;
+}
+
+[[nodiscard]] std::size_t ktx_diagnostic_count(const mirakana::KtxBasisTextureReview& review,
+                                               KtxBasisTextureReviewDiagnosticCode code) {
+    std::size_t count{0U};
+    for (const auto& diagnostic : review.diagnostics) {
+        if (diagnostic.code == code) {
+            ++count;
+        }
+    }
+    return count;
 }
 
 } // namespace
@@ -257,7 +342,7 @@ MK_TEST("asset import production review reports dependency gated execution matri
 
 MK_TEST("asset import production review rejects ktx2 basis readiness without selected dependency evidence") {
     auto request = make_request();
-    request.rows[3].dependency_ids = {"vcpkg.ktx-software", "custom-wrapper"};
+    request.rows[3].dependency_ids = {"vcpkg.ktx", "custom-wrapper"};
     request.rows[3].license_ids = {"LicenseRef-Proprietary"};
     request.rows[3].provenance_ids = {"provenance.generic-texture-import"};
 
@@ -268,6 +353,92 @@ MK_TEST("asset import production review rejects ktx2 basis readiness without sel
                                           AssetImportProductionFeatureKind::ktx_texture));
     MK_REQUIRE(!review.gltf_ktx_import_review_ready);
     MK_REQUIRE(!review.broad_asset_import_ready);
+}
+
+MK_TEST("ktx2 basis texture review accepts selected dependency and host gated offline tool policy") {
+    const auto review = mirakana::review_ktx_basis_texture_readiness(make_ktx_request());
+
+    MK_REQUIRE(review.status == KtxBasisTextureReviewStatus::host_evidence_required);
+    MK_REQUIRE(!review.succeeded());
+    MK_REQUIRE(review.diagnostics.empty());
+    MK_REQUIRE(review.row_count == std::size(kKtxRequiredFeatures));
+    MK_REQUIRE(review.ready_row_count == std::size(kKtxRequiredFeatures) - 1U);
+    MK_REQUIRE(review.host_gated_row_count == 1U);
+    MK_REQUIRE(review.dependency_gated_row_count == 0U);
+    MK_REQUIRE(review.unsupported_claim_row_count == 0U);
+    MK_REQUIRE(review.container_validation_rows == 1U);
+    MK_REQUIRE(review.supercompression_policy_rows == 1U);
+    MK_REQUIRE(review.transcode_target_policy_rows == 1U);
+    MK_REQUIRE(review.gpu_target_compatibility_rows == 1U);
+    MK_REQUIRE(review.source_provenance_rows == 1U);
+    MK_REQUIRE(review.package_output_rows == 1U);
+    MK_REQUIRE(review.host_tool_gate_rows == 1U);
+    MK_REQUIRE(review.container_validation_ready);
+    MK_REQUIRE(review.supercompression_policy_ready);
+    MK_REQUIRE(review.transcode_target_policy_ready);
+    MK_REQUIRE(review.gpu_target_compatibility_ready);
+    MK_REQUIRE(review.source_provenance_ready);
+    MK_REQUIRE(review.package_output_ready);
+    MK_REQUIRE(review.dependency_legal_records_ready);
+    MK_REQUIRE(review.selected_package_evidence_ready);
+    MK_REQUIRE(review.ktx_basis_review_ready);
+    MK_REQUIRE(!review.broad_texture_codec_ready);
+    MK_REQUIRE(!review.invoked_runtime_transcoding);
+    MK_REQUIRE(!review.invoked_gpu_upload);
+    MK_REQUIRE(!review.invoked_compression_tool);
+    MK_REQUIRE(review.replay_hash != 0U);
+}
+
+MK_TEST("ktx2 basis texture review reports dependency gated selected package evidence") {
+    auto request = make_ktx_request();
+    request.rows[0].dependency_legal_evidence = false;
+    request.rows[0].dependency_gate_required = true;
+    request.rows[6].host_tool_validated = true;
+    request.rows[6].host_tool_gate_required = false;
+
+    const auto review = mirakana::review_ktx_basis_texture_readiness(request);
+
+    MK_REQUIRE(review.status == KtxBasisTextureReviewStatus::dependency_evidence_required);
+    MK_REQUIRE(!review.succeeded());
+    MK_REQUIRE(review.diagnostics.empty());
+    MK_REQUIRE(review.ready_row_count == std::size(kKtxRequiredFeatures) - 1U);
+    MK_REQUIRE(review.host_gated_row_count == 0U);
+    MK_REQUIRE(review.dependency_gated_row_count == 1U);
+    MK_REQUIRE(!review.container_validation_ready);
+    MK_REQUIRE(!review.dependency_legal_records_ready);
+    MK_REQUIRE(!review.selected_package_evidence_ready);
+    MK_REQUIRE(!review.ktx_basis_review_ready);
+    MK_REQUIRE(!review.broad_texture_codec_ready);
+    MK_REQUIRE(review.replay_hash != 0U);
+}
+
+MK_TEST("ktx2 basis texture review rejects runtime transcode upload and missing target policy") {
+    auto request = make_ktx_request();
+    request.rows[2].transcode_target.clear();
+    request.rows[2].transcode_target_evidence = false;
+    request.rows[2].request_runtime_transcoding = true;
+    request.rows[2].request_gpu_upload = true;
+    request.rows[2].request_compression_execution = true;
+    request.rows[2].request_native_handle_access = true;
+    request.rows[2].request_broad_texture_codec_claim = true;
+
+    const auto review = mirakana::review_ktx_basis_texture_readiness(request);
+
+    MK_REQUIRE(review.status == KtxBasisTextureReviewStatus::invalid_request);
+    MK_REQUIRE(ktx_diagnostic_count(review, KtxBasisTextureReviewDiagnosticCode::missing_transcode_target) == 1U);
+    MK_REQUIRE(ktx_diagnostic_count(review, KtxBasisTextureReviewDiagnosticCode::unsupported_runtime_transcoding) ==
+               1U);
+    MK_REQUIRE(ktx_diagnostic_count(review, KtxBasisTextureReviewDiagnosticCode::unsupported_gpu_upload) == 1U);
+    MK_REQUIRE(ktx_diagnostic_count(review, KtxBasisTextureReviewDiagnosticCode::unsupported_compression_execution) ==
+               1U);
+    MK_REQUIRE(ktx_diagnostic_count(review, KtxBasisTextureReviewDiagnosticCode::unsupported_native_handle_claim) ==
+               1U);
+    MK_REQUIRE(
+        ktx_diagnostic_count(review, KtxBasisTextureReviewDiagnosticCode::unsupported_broad_texture_codec_claim) == 1U);
+    MK_REQUIRE(!review.selected_package_evidence_ready);
+    MK_REQUIRE(!review.ktx_basis_review_ready);
+    MK_REQUIRE(!review.broad_texture_codec_ready);
+    MK_REQUIRE(review.replay_hash == 0U);
 }
 
 MK_TEST("asset import production review rejects gltf scene import without package hash and source root evidence") {

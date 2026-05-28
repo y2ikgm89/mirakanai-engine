@@ -57,7 +57,7 @@ Official documentation rechecked for this plan selection:
 | Candidate | Scope | Current evidence | Remaining gap |
 | --- | --- | --- | --- |
 | `reviewed-importer-execution-baseline-v1` | Audit current optional importer/tooling surfaces and fail-closed broad claims. | `asset-importers` feature, libspng/fastgltf/miniaudio notices, source registration, package update helpers, and value-only production review gate exist. | Need an execution-readiness matrix that distinguishes reviewed execution, host-gated execution, dependency-gated execution, package mutation, and unsupported arbitrary importer claims. |
-| `ktx2-basis-texture-review-v1` | Reviewed KTX2/Basis texture import and offline transcode planning. | Current asset review can record host-gated KTX2/Basis evidence but no KTX dependency or adapter is selected. | Need dependency/legal decision, schema/diagnostics, package handoff rows, explicit transcode target policy, and package counters before any KTX2/Basis claim is ready. |
+| `ktx2-basis-texture-review-v1` | Reviewed KTX2/Basis texture import and offline transcode planning. | KTX Software is selected through optional dependency/legal records, `review_asset_import_production_readiness` can review exact KTX2/Basis package evidence rows, and selected generated 3D package counters prove reviewed KTX/Basis readiness while keeping offline tool execution host-gated. | Commit/push/PR publication remains before moving to the next candidate; runtime transcoding, GPU upload, compression tool execution, and broad texture codec readiness remain unclaimed. |
 | `gltf-scene-import-execution-v1` | Promote selected fastgltf-backed mesh/material/animation import helpers into reviewed package handoff lanes. | Existing glTF helper tests cover multiple mesh/skin/animation/morph import rows and cooked package artifacts. | Need production promotion rows, source-root restrictions, deterministic hash/provenance rows, package handoff counters, and generated-game guidance without parser type leakage. |
 | `source-image-audio-codec-execution-v1` | Promote selected libspng/miniaudio decode lanes into reviewed package source/cooked handoff. | PNG and audio source adapters exist behind `asset-importers`; runtime consumes cooked assets. | Need package-visible execution evidence, codec diagnostics, sample/channel/pixel format rows, dependency/legal confirmation, and explicit denial of broad codec readiness. |
 | `reviewed-shader-generation-execution-v1` | Move shader compile-request planning toward reviewed offline compiler execution and cache artifacts. | `build_shader_pipeline_cache_plan`, compile request rows, D3D12/Vulkan package shader artifact smokes, and `spirv-val` toolchain checks exist. | Need exact reviewed command rows, DXC/SPIR-V validation evidence, no live runtime generation, package cache metadata, and host-gated Metal non-claims. |
@@ -155,11 +155,28 @@ Task 2 baseline RED/GREEN evidence:
 
 ## Task 3 - KTX2/Basis Texture Review Lane
 
-- [ ] Decide whether to select KTX Software as an optional dependency. If selected, update `vcpkg.json`, bootstrap, dependency docs, legal notices, CMake config, and dependency checks in the same commit.
-- [ ] Add first-party KTX2/Basis review rows for container validation, supercompression/transcode policy, GPU target compatibility, source provenance, package output rows, and host/tool gates.
-- [ ] Keep compression/transcoding as offline reviewed cook planning unless a later slice implements exact tool execution with host evidence.
-- [ ] Add selected package counters only for implemented rows; unsupported broad texture codec readiness remains explicit.
-- [ ] Run focused dependency, asset review, tools, package, and static checks.
+- [x] Decide whether to select KTX Software as an optional dependency. If selected, update `vcpkg.json`, bootstrap, dependency docs, legal notices, CMake config, and dependency checks in the same commit.
+- [x] Add first-party KTX2/Basis review rows for container validation, supercompression/transcode policy, GPU target compatibility, source provenance, package output rows, and host/tool gates.
+- [x] Keep compression/transcoding as offline reviewed cook planning unless a later slice implements exact tool execution with host evidence.
+- [x] Add selected package counters only for implemented rows; unsupported broad texture codec readiness remains explicit.
+- [x] Run focused dependency, asset review, tools, package, and static checks.
+
+Task 3 KTX2/Basis closeout evidence:
+
+| Step | Command | Result |
+| --- | --- | --- |
+| Official practice check | Context7 `/khronosgroup/ktx-software` | Rechecked KTX Software guidance: Basis-compressed KTX2 needs explicit transcode-target policy before GPU upload. This slice keeps runtime transcoding, GPU upload, and compression tool invocation at zero. |
+| Manifest compose | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write` | Passed; composed `engine/agent/manifest.json` includes `currentKtxBasisTextureReviewPackageSmoke`. |
+| Focused build | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_import_production_review_tests` | Passed. |
+| Focused test | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_asset_import_production_review_tests` | Passed: 1/1 test. |
+| Dependency policy | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1` | Passed: `dependency-policy-check: ok`. |
+| Optional importer lane | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1` | Passed with `installed-sdk-validation: ok`; third-party miniaudio warning remained non-fatal. |
+| Package smoke | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package` | Passed with `installed-desktop-runtime-validation: ok` and `desktop-runtime-package: ok`; KTX2/Basis package counters report reviewed package evidence only. |
+| JSON/static contracts | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | Passed after moving committed 3D package evidence checks into `tools/check-ai-integration-081-committed-3d-package-evidence.ps1` to keep line budgets. |
+| Agent integration | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | Passed after verifying generated and committed 3D package KTX asset requests under `aiWorkflow.gameDesignSpec.assetRequests`. |
+| Format checks | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1` | Passed after `tools/format.ps1` normalized C++ formatting. |
+| Diff whitespace | `git diff --check` | Passed. |
+| Full validation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed with `validate: ok`; 79/79 CTest tests passed. Diagnostic-only host gates remained expected for Metal/Apple tooling on this Windows host. |
 
 ## Task 4 - glTF Scene Import Execution Lane
 

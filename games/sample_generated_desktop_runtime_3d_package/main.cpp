@@ -6,6 +6,7 @@
 #include "mirakana/animation/skeleton.hpp"
 #include "mirakana/animation/state_machine.hpp"
 #include "mirakana/assets/asset_identity.hpp"
+#include "mirakana/assets/asset_import_production_review.hpp"
 #include "mirakana/assets/asset_registry.hpp"
 #include "mirakana/assets/asset_source_format.hpp"
 #include "mirakana/audio/audio_mixer.hpp"
@@ -104,6 +105,7 @@ struct DesktopRuntimeOptions {
     bool require_quaternion_animation{false};
     bool require_package_streaming_safe_point{false};
     bool require_package_upload_staging{false};
+    bool require_ktx2_basis_texture_review{false};
     bool require_gameplay_systems{false};
     bool require_scene_collision_package{false};
     bool require_entity_scale_culling{false};
@@ -631,6 +633,22 @@ enum class GameplaySystemsStatus : std::uint8_t {
     return "unknown";
 }
 
+[[nodiscard]] const char* ktx_basis_texture_review_status_name(mirakana::KtxBasisTextureReviewStatus status) noexcept {
+    switch (status) {
+    case mirakana::KtxBasisTextureReviewStatus::ready:
+        return "ready";
+    case mirakana::KtxBasisTextureReviewStatus::host_evidence_required:
+        return "host_evidence_required";
+    case mirakana::KtxBasisTextureReviewStatus::dependency_evidence_required:
+        return "dependency_evidence_required";
+    case mirakana::KtxBasisTextureReviewStatus::no_rows:
+        return "no_rows";
+    case mirakana::KtxBasisTextureReviewStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
 struct AudioGameplayMixerProbeResult {
     bool ready{false};
     std::size_t diagnostics{0U};
@@ -676,6 +694,33 @@ struct AudioProductionProbeResult {
     std::size_t diagnostics{0U};
     std::uint64_t replay_hash{0U};
     bool package_evidence_ready{false};
+};
+
+struct KtxBasisTextureReviewProbeResult {
+    mirakana::KtxBasisTextureReviewStatus status{mirakana::KtxBasisTextureReviewStatus::invalid_request};
+    bool reviewed{false};
+    bool ready{false};
+    std::size_t rows{0U};
+    std::size_t ready_rows{0U};
+    std::size_t host_gated_rows{0U};
+    std::size_t dependency_gated_rows{0U};
+    std::size_t unsupported_claim_rows{0U};
+    std::size_t container_validation_rows{0U};
+    std::size_t supercompression_policy_rows{0U};
+    std::size_t transcode_target_policy_rows{0U};
+    std::size_t gpu_target_compatibility_rows{0U};
+    std::size_t source_provenance_rows{0U};
+    std::size_t package_output_rows{0U};
+    std::size_t host_tool_gate_rows{0U};
+    bool dependency_legal_records_ready{false};
+    bool selected_package_evidence_ready{false};
+    bool ktx_basis_review_ready{false};
+    bool broad_texture_codec_ready{false};
+    bool invoked_runtime_transcoding{false};
+    bool invoked_gpu_upload{false};
+    bool invoked_compression_tool{false};
+    std::size_t diagnostics{0U};
+    std::uint64_t replay_hash{0U};
 };
 
 [[nodiscard]] AudioGameplayMixerProbeResult
@@ -937,6 +982,120 @@ validate_audio_production_package_evidence(const mirakana::AudioClipSampleData& 
         !result.invoked_device_callback && !result.invoked_device_io && result.diagnostics == 2U &&
         result.replay_hash != 0U;
     return result;
+}
+
+[[nodiscard]] mirakana::KtxBasisTextureReviewRow
+make_ktx_basis_texture_review_row(mirakana::KtxBasisTextureReviewFeature feature, std::uint32_t source_index) {
+    const auto has_ktx_dependency = feature != mirakana::KtxBasisTextureReviewFeature::host_tool_gate;
+    const auto is_host_tool_gate = feature == mirakana::KtxBasisTextureReviewFeature::host_tool_gate;
+
+    return mirakana::KtxBasisTextureReviewRow{
+        .row_id = std::string{"ktx2-basis."} + std::to_string(source_index),
+        .feature = feature,
+        .container_validator_ids = feature == mirakana::KtxBasisTextureReviewFeature::container_validation
+                                       ? std::vector<std::string>{"ktx2check-review"}
+                                       : std::vector<std::string>{},
+        .supercompression_scheme =
+            feature == mirakana::KtxBasisTextureReviewFeature::supercompression_policy ? "basis-uastc" : "",
+        .transcode_policy =
+            feature == mirakana::KtxBasisTextureReviewFeature::transcode_target_policy ? "offline-reviewed-target" : "",
+        .transcode_target =
+            feature == mirakana::KtxBasisTextureReviewFeature::transcode_target_policy ? "bc7-rgba" : "",
+        .gpu_target =
+            feature == mirakana::KtxBasisTextureReviewFeature::gpu_target_compatibility ? "d3d12-bc7-rgba" : "",
+        .source_provenance_ids = feature == mirakana::KtxBasisTextureReviewFeature::source_provenance
+                                     ? std::vector<std::string>{"provenance.ktx2-basis-source"}
+                                     : std::vector<std::string>{},
+        .package_output_rows = feature == mirakana::KtxBasisTextureReviewFeature::package_output
+                                   ? std::vector<std::string>{"runtime/assets/3d/ktx2_basis_texture.geasset"}
+                                   : std::vector<std::string>{},
+        .dependency_ids = has_ktx_dependency ? std::vector<std::string>{"vcpkg.ktx"} : std::vector<std::string>{},
+        .license_ids = has_ktx_dependency || feature == mirakana::KtxBasisTextureReviewFeature::source_provenance
+                           ? std::vector<std::string>{"LicenseRef-KTX-Software"}
+                           : std::vector<std::string>{},
+        .deterministic_content_hash = std::string{"sha256:ktx2-basis-row-"} + std::to_string(source_index),
+        .reviewed = true,
+        .container_validation_evidence = feature == mirakana::KtxBasisTextureReviewFeature::container_validation,
+        .supercompression_policy_evidence = feature == mirakana::KtxBasisTextureReviewFeature::supercompression_policy,
+        .transcode_target_evidence = feature == mirakana::KtxBasisTextureReviewFeature::transcode_target_policy,
+        .gpu_target_compatibility_evidence =
+            feature == mirakana::KtxBasisTextureReviewFeature::gpu_target_compatibility,
+        .source_provenance_evidence = feature == mirakana::KtxBasisTextureReviewFeature::source_provenance,
+        .package_output_evidence = feature == mirakana::KtxBasisTextureReviewFeature::package_output,
+        .dependency_legal_evidence = has_ktx_dependency,
+        .dependency_gate_required = false,
+        .host_tool_validated = false,
+        .host_tool_gate_required = is_host_tool_gate,
+        .request_runtime_transcoding = false,
+        .request_gpu_upload = false,
+        .request_compression_execution = false,
+        .request_native_handle_access = false,
+        .request_broad_texture_codec_claim = false,
+        .source_index = source_index,
+    };
+}
+
+[[nodiscard]] KtxBasisTextureReviewProbeResult validate_ktx_basis_texture_review_package_evidence() {
+    const mirakana::KtxBasisTextureReviewFeature required_features[] = {
+        mirakana::KtxBasisTextureReviewFeature::container_validation,
+        mirakana::KtxBasisTextureReviewFeature::supercompression_policy,
+        mirakana::KtxBasisTextureReviewFeature::transcode_target_policy,
+        mirakana::KtxBasisTextureReviewFeature::gpu_target_compatibility,
+        mirakana::KtxBasisTextureReviewFeature::source_provenance,
+        mirakana::KtxBasisTextureReviewFeature::package_output,
+        mirakana::KtxBasisTextureReviewFeature::host_tool_gate,
+    };
+
+    std::vector<mirakana::KtxBasisTextureReviewRow> rows;
+    rows.reserve(7U);
+    std::uint32_t source_index{1U};
+    for (const auto feature : required_features) {
+        rows.push_back(make_ktx_basis_texture_review_row(feature, source_index++));
+    }
+
+    const auto review = mirakana::review_ktx_basis_texture_readiness(mirakana::KtxBasisTextureReviewRequest{
+        .required_features =
+            {
+                mirakana::KtxBasisTextureReviewFeature::container_validation,
+                mirakana::KtxBasisTextureReviewFeature::supercompression_policy,
+                mirakana::KtxBasisTextureReviewFeature::transcode_target_policy,
+                mirakana::KtxBasisTextureReviewFeature::gpu_target_compatibility,
+                mirakana::KtxBasisTextureReviewFeature::source_provenance,
+                mirakana::KtxBasisTextureReviewFeature::package_output,
+                mirakana::KtxBasisTextureReviewFeature::host_tool_gate,
+            },
+        .rows = std::move(rows),
+        .row_budget = 16U,
+        .seed = 379U,
+    });
+
+    return KtxBasisTextureReviewProbeResult{
+        .status = review.status,
+        .reviewed = review.status != mirakana::KtxBasisTextureReviewStatus::no_rows &&
+                    review.status != mirakana::KtxBasisTextureReviewStatus::invalid_request,
+        .ready = review.selected_package_evidence_ready,
+        .rows = review.row_count,
+        .ready_rows = review.ready_row_count,
+        .host_gated_rows = review.host_gated_row_count,
+        .dependency_gated_rows = review.dependency_gated_row_count,
+        .unsupported_claim_rows = review.unsupported_claim_row_count,
+        .container_validation_rows = review.container_validation_rows,
+        .supercompression_policy_rows = review.supercompression_policy_rows,
+        .transcode_target_policy_rows = review.transcode_target_policy_rows,
+        .gpu_target_compatibility_rows = review.gpu_target_compatibility_rows,
+        .source_provenance_rows = review.source_provenance_rows,
+        .package_output_rows = review.package_output_rows,
+        .host_tool_gate_rows = review.host_tool_gate_rows,
+        .dependency_legal_records_ready = review.dependency_legal_records_ready,
+        .selected_package_evidence_ready = review.selected_package_evidence_ready,
+        .ktx_basis_review_ready = review.ktx_basis_review_ready,
+        .broad_texture_codec_ready = review.broad_texture_codec_ready,
+        .invoked_runtime_transcoding = review.invoked_runtime_transcoding,
+        .invoked_gpu_upload = review.invoked_gpu_upload,
+        .invoked_compression_tool = review.invoked_compression_tool,
+        .diagnostics = review.diagnostics.size(),
+        .replay_hash = review.replay_hash,
+    };
 }
 
 [[nodiscard]] std::string_view
@@ -6852,6 +7011,7 @@ void print_usage() {
                  "[--require-compute-morph-skin] [--require-compute-morph-async-telemetry] "
                  "[--require-quaternion-animation] [--require-package-streaming-safe-point] "
                  "[--require-package-upload-staging] "
+                 "[--require-ktx2-basis-texture-review] "
                  "[--require-gameplay-systems] [--require-scene-collision-package] "
                  "[--require-entity-scale-culling] [--require-runtime-profile-resume] "
                  "[--require-runtime-menu-hud] [--require-audio-gameplay-mixer] "
@@ -7081,6 +7241,10 @@ void print_usage() {
         }
         if (arg == "--require-package-upload-staging") {
             options.require_package_upload_staging = true;
+            continue;
+        }
+        if (arg == "--require-ktx2-basis-texture-review") {
+            options.require_ktx2_basis_texture_review = true;
             continue;
         }
         if (arg == "--require-gameplay-systems") {
@@ -9320,6 +9484,9 @@ int main(int argc, char** argv) {
     const auto package_upload_staging = options.require_package_upload_staging
                                             ? run_package_upload_staging_evidence(host.presentation())
                                             : mirakana::runtime_rhi::RuntimePackageUploadStagingEvidence{};
+    const auto ktx_basis_texture_review_probe = options.require_ktx2_basis_texture_review
+                                                    ? validate_ktx_basis_texture_review_package_evidence()
+                                                    : KtxBasisTextureReviewProbeResult{};
 
     const auto& audio_gameplay_mixer = game.gameplay_systems_audio_gameplay_mixer_probe();
     std::cout
@@ -9465,7 +9632,42 @@ int main(int argc, char** argv) {
         << " package_upload_staging_queue_waits=" << package_upload_staging.queue_waits
         << " package_upload_staging_fence_waits=" << package_upload_staging.fence_waits
         << " package_upload_staging_graphics_waited_for_copy="
-        << (package_upload_staging.graphics_waited_for_copy ? 1 : 0)
+        << (package_upload_staging.graphics_waited_for_copy ? 1 : 0) << " ktx_basis_texture_review_status="
+        << ktx_basis_texture_review_status_name(ktx_basis_texture_review_probe.status)
+        << " ktx_basis_texture_review_reviewed=" << (ktx_basis_texture_review_probe.reviewed ? 1 : 0)
+        << " ktx_basis_texture_review_ready=" << (ktx_basis_texture_review_probe.ready ? 1 : 0)
+        << " ktx_basis_texture_review_rows=" << ktx_basis_texture_review_probe.rows
+        << " ktx_basis_texture_review_ready_rows=" << ktx_basis_texture_review_probe.ready_rows
+        << " ktx_basis_texture_review_host_gated_rows=" << ktx_basis_texture_review_probe.host_gated_rows
+        << " ktx_basis_texture_review_dependency_gated_rows=" << ktx_basis_texture_review_probe.dependency_gated_rows
+        << " ktx_basis_texture_review_unsupported_claim_rows=" << ktx_basis_texture_review_probe.unsupported_claim_rows
+        << " ktx_basis_texture_review_container_validation_rows="
+        << ktx_basis_texture_review_probe.container_validation_rows
+        << " ktx_basis_texture_review_supercompression_policy_rows="
+        << ktx_basis_texture_review_probe.supercompression_policy_rows
+        << " ktx_basis_texture_review_transcode_target_policy_rows="
+        << ktx_basis_texture_review_probe.transcode_target_policy_rows
+        << " ktx_basis_texture_review_gpu_target_compatibility_rows="
+        << ktx_basis_texture_review_probe.gpu_target_compatibility_rows
+        << " ktx_basis_texture_review_source_provenance_rows=" << ktx_basis_texture_review_probe.source_provenance_rows
+        << " ktx_basis_texture_review_package_output_rows=" << ktx_basis_texture_review_probe.package_output_rows
+        << " ktx_basis_texture_review_host_tool_gate_rows=" << ktx_basis_texture_review_probe.host_tool_gate_rows
+        << " ktx_basis_texture_review_dependency_legal_records_ready="
+        << (ktx_basis_texture_review_probe.dependency_legal_records_ready ? 1 : 0)
+        << " ktx_basis_texture_review_selected_package_evidence_ready="
+        << (ktx_basis_texture_review_probe.selected_package_evidence_ready ? 1 : 0)
+        << " ktx_basis_texture_review_ktx_basis_review_ready="
+        << (ktx_basis_texture_review_probe.ktx_basis_review_ready ? 1 : 0)
+        << " ktx_basis_texture_review_broad_texture_codec_ready="
+        << (ktx_basis_texture_review_probe.broad_texture_codec_ready ? 1 : 0)
+        << " ktx_basis_texture_review_invoked_runtime_transcoding="
+        << (ktx_basis_texture_review_probe.invoked_runtime_transcoding ? 1 : 0)
+        << " ktx_basis_texture_review_invoked_gpu_upload="
+        << (ktx_basis_texture_review_probe.invoked_gpu_upload ? 1 : 0)
+        << " ktx_basis_texture_review_invoked_compression_tool="
+        << (ktx_basis_texture_review_probe.invoked_compression_tool ? 1 : 0)
+        << " ktx_basis_texture_review_diagnostics=" << ktx_basis_texture_review_probe.diagnostics
+        << " ktx_basis_texture_review_replay_hash=" << ktx_basis_texture_review_probe.replay_hash
         << " collision_package_status=" << collision_package_status_name(collision_package.status)
         << " collision_package_ready=" << (collision_package.ready ? 1 : 0)
         << " collision_package_diagnostics=" << collision_package.diagnostics_count
@@ -10166,6 +10368,31 @@ int main(int argc, char** argv) {
         }
         if (options.require_package_upload_staging && !package_upload_staging.ready) {
             return 3;
+        }
+        if (options.require_ktx2_basis_texture_review &&
+            (!ktx_basis_texture_review_probe.reviewed || !ktx_basis_texture_review_probe.ready ||
+             ktx_basis_texture_review_probe.diagnostics != 0U ||
+             ktx_basis_texture_review_probe.dependency_gated_rows != 0U ||
+             ktx_basis_texture_review_probe.unsupported_claim_rows != 0U ||
+             ktx_basis_texture_review_probe.broad_texture_codec_ready ||
+             ktx_basis_texture_review_probe.invoked_runtime_transcoding ||
+             ktx_basis_texture_review_probe.invoked_gpu_upload ||
+             ktx_basis_texture_review_probe.invoked_compression_tool)) {
+            std::cout << "sample_generated_desktop_runtime_3d_package required_ktx_basis_texture_review_unavailable"
+                      << " ktx_basis_texture_review_status="
+                      << ktx_basis_texture_review_status_name(ktx_basis_texture_review_probe.status)
+                      << " ktx_basis_texture_review_reviewed=" << (ktx_basis_texture_review_probe.reviewed ? 1 : 0)
+                      << " ktx_basis_texture_review_ready=" << (ktx_basis_texture_review_probe.ready ? 1 : 0)
+                      << " ktx_basis_texture_review_rows=" << ktx_basis_texture_review_probe.rows
+                      << " ktx_basis_texture_review_ready_rows=" << ktx_basis_texture_review_probe.ready_rows
+                      << " ktx_basis_texture_review_host_gated_rows=" << ktx_basis_texture_review_probe.host_gated_rows
+                      << " ktx_basis_texture_review_dependency_gated_rows="
+                      << ktx_basis_texture_review_probe.dependency_gated_rows
+                      << " ktx_basis_texture_review_unsupported_claim_rows="
+                      << ktx_basis_texture_review_probe.unsupported_claim_rows
+                      << " ktx_basis_texture_review_diagnostics=" << ktx_basis_texture_review_probe.diagnostics
+                      << " ktx_basis_texture_review_replay_hash=" << ktx_basis_texture_review_probe.replay_hash << '\n';
+            return 23;
         }
         if (options.require_renderer_quality_gates && !renderer_quality.ready) {
             return 3;

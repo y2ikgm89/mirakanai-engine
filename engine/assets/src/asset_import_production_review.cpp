@@ -198,7 +198,7 @@ void append_diagnostic(std::vector<AssetImportProductionDiagnostic>& diagnostics
         return row_has_exact_dependency_ids(row, {"vcpkg.asset-importers"});
     }
     if (row.feature == AssetImportProductionFeatureKind::ktx_texture) {
-        return row_has_exact_dependency_ids(row, {"vcpkg.ktx-software"});
+        return row_has_exact_dependency_ids(row, {"vcpkg.ktx"});
     }
     if (row.feature == AssetImportProductionFeatureKind::shader_offline_compile_request) {
         return row_has_exact_dependency_ids(row, {"toolchain.dxc", "toolchain.spirv-tools"});
@@ -347,10 +347,174 @@ execution_readiness_for_row(const AssetImportProductionEvidenceRow& row) noexcep
     return unique_extensions.size();
 }
 
+constexpr std::array<KtxBasisTextureReviewFeature, 7U> ktx_required_feature_set = {
+    KtxBasisTextureReviewFeature::container_validation,    KtxBasisTextureReviewFeature::supercompression_policy,
+    KtxBasisTextureReviewFeature::transcode_target_policy, KtxBasisTextureReviewFeature::gpu_target_compatibility,
+    KtxBasisTextureReviewFeature::source_provenance,       KtxBasisTextureReviewFeature::package_output,
+    KtxBasisTextureReviewFeature::host_tool_gate,
+};
+
+[[nodiscard]] bool ktx_valid_feature(KtxBasisTextureReviewFeature feature) noexcept {
+    return std::ranges::find(ktx_required_feature_set, feature) != ktx_required_feature_set.end();
+}
+
+[[nodiscard]] bool valid_optional_token(std::string_view value) noexcept {
+    return value.empty() || (valid_token(value) && !contains_unsafe_token(value));
+}
+
+[[nodiscard]] bool ktx_feature_requires_dependency_legal_record(KtxBasisTextureReviewFeature feature) noexcept {
+    return feature != KtxBasisTextureReviewFeature::host_tool_gate;
+}
+
+[[nodiscard]] bool ktx_row_is_host_gated(const KtxBasisTextureReviewRow& row) noexcept {
+    return row.host_tool_gate_required && !row.host_tool_validated;
+}
+
+[[nodiscard]] bool ktx_row_is_dependency_gated(const KtxBasisTextureReviewRow& row) noexcept {
+    return row.dependency_gate_required && ktx_feature_requires_dependency_legal_record(row.feature) &&
+           !row.dependency_legal_evidence;
+}
+
+[[nodiscard]] bool ktx_row_has_exact_dependency_id(const KtxBasisTextureReviewRow& row,
+                                                   std::string_view expected_id) noexcept {
+    return row.dependency_ids.size() == 1U && std::string_view{row.dependency_ids.front()} == expected_id;
+}
+
+[[nodiscard]] bool ktx_row_has_required_dependency_evidence(const KtxBasisTextureReviewRow& row) noexcept {
+    return !ktx_feature_requires_dependency_legal_record(row.feature) ||
+           (row.dependency_legal_evidence && ktx_row_has_exact_dependency_id(row, "vcpkg.ktx"));
+}
+
+[[nodiscard]] bool ktx_row_has_unsupported_claim(const KtxBasisTextureReviewRow& row) noexcept {
+    return row.request_runtime_transcoding || row.request_gpu_upload || row.request_compression_execution ||
+           row.request_native_handle_access || row.request_broad_texture_codec_claim;
+}
+
+[[nodiscard]] bool ktx_row_base_is_valid(const KtxBasisTextureReviewRow& row) noexcept {
+    return ktx_valid_feature(row.feature) && valid_token(row.row_id) && !contains_unsafe_token(row.row_id) &&
+           valid_optional_token(row.supercompression_scheme) && valid_optional_token(row.transcode_policy) &&
+           valid_optional_token(row.transcode_target) && valid_optional_token(row.gpu_target) &&
+           valid_optional_token(row.deterministic_content_hash) && valid_token_list(row.container_validator_ids) &&
+           valid_token_list(row.source_provenance_ids) && valid_token_list(row.package_output_rows) &&
+           valid_token_list(row.dependency_ids) && valid_token_list(row.license_ids);
+}
+
+void append_ktx_diagnostic(std::vector<KtxBasisTextureReviewDiagnostic>& diagnostics,
+                           KtxBasisTextureReviewDiagnosticCode code, const KtxBasisTextureReviewRow& row,
+                           std::string message) {
+    diagnostics.push_back(KtxBasisTextureReviewDiagnostic{
+        .code = code,
+        .feature = row.feature,
+        .row_id = row.row_id,
+        .message = std::move(message),
+        .source_index = row.source_index,
+    });
+}
+
+void append_ktx_diagnostic(std::vector<KtxBasisTextureReviewDiagnostic>& diagnostics,
+                           KtxBasisTextureReviewDiagnosticCode code, KtxBasisTextureReviewFeature feature,
+                           std::string message) {
+    diagnostics.push_back(KtxBasisTextureReviewDiagnostic{
+        .code = code,
+        .feature = feature,
+        .row_id = {},
+        .message = std::move(message),
+        .source_index = 0U,
+    });
+}
+
+[[nodiscard]] bool ktx_row_is_ready(const KtxBasisTextureReviewRow& row) noexcept {
+    if (ktx_row_has_unsupported_claim(row) || ktx_row_is_dependency_gated(row) || ktx_row_is_host_gated(row) ||
+        !row.reviewed || !ktx_row_has_required_dependency_evidence(row)) {
+        return false;
+    }
+
+    switch (row.feature) {
+    case KtxBasisTextureReviewFeature::container_validation:
+        return row.container_validation_evidence && !row.container_validator_ids.empty();
+    case KtxBasisTextureReviewFeature::supercompression_policy:
+        return row.supercompression_policy_evidence && valid_token(row.supercompression_scheme) &&
+               !contains_unsafe_token(row.supercompression_scheme);
+    case KtxBasisTextureReviewFeature::transcode_target_policy:
+        return row.transcode_target_evidence && valid_token(row.transcode_policy) &&
+               !contains_unsafe_token(row.transcode_policy) && valid_token(row.transcode_target) &&
+               !contains_unsafe_token(row.transcode_target);
+    case KtxBasisTextureReviewFeature::gpu_target_compatibility:
+        return row.gpu_target_compatibility_evidence && valid_token(row.gpu_target) &&
+               !contains_unsafe_token(row.gpu_target);
+    case KtxBasisTextureReviewFeature::source_provenance:
+        return row.source_provenance_evidence && !row.source_provenance_ids.empty() && !row.license_ids.empty() &&
+               valid_token(row.deterministic_content_hash) && !contains_unsafe_token(row.deterministic_content_hash);
+    case KtxBasisTextureReviewFeature::package_output:
+        return row.package_output_evidence && !row.package_output_rows.empty() &&
+               valid_token(row.deterministic_content_hash) && !contains_unsafe_token(row.deterministic_content_hash);
+    case KtxBasisTextureReviewFeature::host_tool_gate:
+        return row.host_tool_validated && !row.host_tool_gate_required;
+    }
+    return false;
+}
+
+[[nodiscard]] std::uint64_t hash_ktx_row(std::uint64_t hash, const KtxBasisTextureReviewRow& row) noexcept {
+    hash = hash_byte(hash, static_cast<std::uint8_t>(row.feature));
+    hash = hash_string(hash, row.row_id);
+    hash = hash_string_list(hash, row.container_validator_ids);
+    hash = hash_string(hash, row.supercompression_scheme);
+    hash = hash_string(hash, row.transcode_policy);
+    hash = hash_string(hash, row.transcode_target);
+    hash = hash_string(hash, row.gpu_target);
+    hash = hash_string_list(hash, row.source_provenance_ids);
+    hash = hash_string_list(hash, row.package_output_rows);
+    hash = hash_string_list(hash, row.dependency_ids);
+    hash = hash_string_list(hash, row.license_ids);
+    hash = hash_string(hash, row.deterministic_content_hash);
+    hash = hash_bool(hash, row.reviewed);
+    hash = hash_bool(hash, row.container_validation_evidence);
+    hash = hash_bool(hash, row.supercompression_policy_evidence);
+    hash = hash_bool(hash, row.transcode_target_evidence);
+    hash = hash_bool(hash, row.gpu_target_compatibility_evidence);
+    hash = hash_bool(hash, row.source_provenance_evidence);
+    hash = hash_bool(hash, row.package_output_evidence);
+    hash = hash_bool(hash, row.dependency_legal_evidence);
+    hash = hash_bool(hash, row.dependency_gate_required);
+    hash = hash_bool(hash, row.host_tool_validated);
+    hash = hash_bool(hash, row.host_tool_gate_required);
+    hash = hash_bool(hash, row.request_runtime_transcoding);
+    hash = hash_bool(hash, row.request_gpu_upload);
+    hash = hash_bool(hash, row.request_compression_execution);
+    hash = hash_bool(hash, row.request_native_handle_access);
+    hash = hash_bool(hash, row.request_broad_texture_codec_claim);
+    hash = hash_u32(hash, row.source_index);
+    return hash;
+}
+
+[[nodiscard]] std::uint64_t build_ktx_replay_hash(const KtxBasisTextureReviewRequest& request) noexcept {
+    auto hash = fnv_offset;
+    hash ^= request.seed;
+    hash *= fnv_prime;
+    for (const auto feature : request.required_features) {
+        hash = hash_byte(hash, static_cast<std::uint8_t>(feature));
+    }
+    for (const auto& row : request.rows) {
+        hash = hash_ktx_row(hash, row);
+    }
+    return hash == 0U ? fnv_offset : hash;
+}
+
+[[nodiscard]] bool has_ready_ktx_feature(const std::vector<KtxBasisTextureReviewRow>& rows,
+                                         KtxBasisTextureReviewFeature feature) noexcept {
+    return std::ranges::any_of(rows, [feature](const KtxBasisTextureReviewRow& row) {
+        return row.feature == feature && ktx_row_is_ready(row);
+    });
+}
+
 } // namespace
 
 bool AssetImportProductionReview::succeeded() const noexcept {
     return status == AssetImportProductionStatus::ready || status == AssetImportProductionStatus::no_rows;
+}
+
+bool KtxBasisTextureReview::succeeded() const noexcept {
+    return status == KtxBasisTextureReviewStatus::ready || status == KtxBasisTextureReviewStatus::no_rows;
 }
 
 AssetImportProductionReview
@@ -569,6 +733,235 @@ review_asset_import_production_readiness(const AssetImportProductionReviewReques
         review.status = AssetImportProductionStatus::dependency_evidence_required;
     } else {
         review.status = AssetImportProductionStatus::ready;
+    }
+    return review;
+}
+
+KtxBasisTextureReview review_ktx_basis_texture_readiness(const KtxBasisTextureReviewRequest& request) {
+    KtxBasisTextureReview review;
+    review.required_features = request.required_features;
+    review.row_count = request.rows.size();
+
+    if (request.rows.empty() && request.required_features.empty()) {
+        review.status = KtxBasisTextureReviewStatus::no_rows;
+        return review;
+    }
+
+    if (request.rows.size() > request.row_budget) {
+        append_ktx_diagnostic(review.diagnostics, KtxBasisTextureReviewDiagnosticCode::row_budget_exceeded,
+                              KtxBasisTextureReviewFeature::container_validation,
+                              "KTX2/Basis texture review row budget is exceeded");
+    }
+
+    for (std::size_t index = 0; index < request.required_features.size(); ++index) {
+        const auto feature = request.required_features[index];
+        if (!ktx_valid_feature(feature)) {
+            append_ktx_diagnostic(review.diagnostics, KtxBasisTextureReviewDiagnosticCode::invalid_required_feature,
+                                  feature, "required KTX2/Basis review feature is invalid");
+            continue;
+        }
+        for (std::size_t other = index + 1U; other < request.required_features.size(); ++other) {
+            if (feature == request.required_features[other]) {
+                append_ktx_diagnostic(review.diagnostics,
+                                      KtxBasisTextureReviewDiagnosticCode::duplicate_required_feature, feature,
+                                      "required KTX2/Basis review feature is duplicated");
+                break;
+            }
+        }
+    }
+
+    for (const auto feature : request.required_features) {
+        if (ktx_valid_feature(feature) &&
+            std::ranges::none_of(request.rows,
+                                 [feature](const KtxBasisTextureReviewRow& row) { return row.feature == feature; })) {
+            append_ktx_diagnostic(review.diagnostics, KtxBasisTextureReviewDiagnosticCode::missing_required_feature_row,
+                                  feature, "required KTX2/Basis review feature row is missing");
+        }
+    }
+
+    for (std::size_t index = 0; index < request.rows.size(); ++index) {
+        const auto& row = request.rows[index];
+        if (ktx_row_is_host_gated(row)) {
+            ++review.host_gated_row_count;
+        } else if (ktx_row_is_dependency_gated(row)) {
+            ++review.dependency_gated_row_count;
+        } else if (ktx_row_has_unsupported_claim(row)) {
+            ++review.unsupported_claim_row_count;
+        }
+
+        switch (row.feature) {
+        case KtxBasisTextureReviewFeature::container_validation:
+            ++review.container_validation_rows;
+            break;
+        case KtxBasisTextureReviewFeature::supercompression_policy:
+            ++review.supercompression_policy_rows;
+            break;
+        case KtxBasisTextureReviewFeature::transcode_target_policy:
+            ++review.transcode_target_policy_rows;
+            break;
+        case KtxBasisTextureReviewFeature::gpu_target_compatibility:
+            ++review.gpu_target_compatibility_rows;
+            break;
+        case KtxBasisTextureReviewFeature::source_provenance:
+            ++review.source_provenance_rows;
+            break;
+        case KtxBasisTextureReviewFeature::package_output:
+            ++review.package_output_rows;
+            break;
+        case KtxBasisTextureReviewFeature::host_tool_gate:
+            ++review.host_tool_gate_rows;
+            break;
+        }
+
+        if (!ktx_row_base_is_valid(row)) {
+            append_ktx_diagnostic(review.diagnostics, KtxBasisTextureReviewDiagnosticCode::invalid_row, row,
+                                  "KTX2/Basis texture review row is invalid");
+        }
+        for (std::size_t other = index + 1U; other < request.rows.size(); ++other) {
+            const auto& other_row = request.rows[other];
+            if (row.feature == other_row.feature) {
+                append_ktx_diagnostic(review.diagnostics, KtxBasisTextureReviewDiagnosticCode::duplicate_feature_row,
+                                      row, "KTX2/Basis texture review row is duplicated");
+                break;
+            }
+        }
+
+        if (row.request_runtime_transcoding) {
+            append_ktx_diagnostic(review.diagnostics,
+                                  KtxBasisTextureReviewDiagnosticCode::unsupported_runtime_transcoding, row,
+                                  "runtime KTX2/Basis transcoding is unsupported in the reviewed cook lane");
+        }
+        if (row.request_gpu_upload) {
+            append_ktx_diagnostic(review.diagnostics, KtxBasisTextureReviewDiagnosticCode::unsupported_gpu_upload, row,
+                                  "KTX2/Basis GPU upload is unsupported in the reviewed cook lane");
+        }
+        if (row.request_compression_execution) {
+            append_ktx_diagnostic(review.diagnostics,
+                                  KtxBasisTextureReviewDiagnosticCode::unsupported_compression_execution, row,
+                                  "KTX2/Basis compression tool execution requires a separate host-evidence lane");
+        }
+        if (row.request_native_handle_access) {
+            append_ktx_diagnostic(review.diagnostics,
+                                  KtxBasisTextureReviewDiagnosticCode::unsupported_native_handle_claim, row,
+                                  "native texture handles are unsupported in KTX2/Basis review rows");
+        }
+        if (row.request_broad_texture_codec_claim) {
+            append_ktx_diagnostic(review.diagnostics,
+                                  KtxBasisTextureReviewDiagnosticCode::unsupported_broad_texture_codec_claim, row,
+                                  "broad texture codec readiness requires explicit reviewed evidence");
+        }
+
+        if (!row.reviewed) {
+            append_ktx_diagnostic(review.diagnostics, KtxBasisTextureReviewDiagnosticCode::invalid_row, row,
+                                  "KTX2/Basis texture review evidence is missing");
+        }
+
+        if (ktx_row_is_host_gated(row)) {
+            continue;
+        }
+
+        if (ktx_feature_requires_dependency_legal_record(row.feature) && !ktx_row_is_dependency_gated(row) &&
+            !ktx_row_has_required_dependency_evidence(row)) {
+            append_ktx_diagnostic(review.diagnostics,
+                                  KtxBasisTextureReviewDiagnosticCode::missing_dependency_legal_record, row,
+                                  "KTX2/Basis dependency and legal evidence is missing");
+        }
+
+        switch (row.feature) {
+        case KtxBasisTextureReviewFeature::container_validation:
+            if (!row.container_validation_evidence || row.container_validator_ids.empty()) {
+                append_ktx_diagnostic(review.diagnostics,
+                                      KtxBasisTextureReviewDiagnosticCode::missing_container_validation, row,
+                                      "KTX2 container validation evidence is missing");
+            }
+            break;
+        case KtxBasisTextureReviewFeature::supercompression_policy:
+            if (!row.supercompression_policy_evidence || row.supercompression_scheme.empty()) {
+                append_ktx_diagnostic(review.diagnostics,
+                                      KtxBasisTextureReviewDiagnosticCode::missing_supercompression_policy, row,
+                                      "Basis supercompression policy evidence is missing");
+            }
+            break;
+        case KtxBasisTextureReviewFeature::transcode_target_policy:
+            if (!row.transcode_target_evidence || row.transcode_policy.empty() || row.transcode_target.empty()) {
+                append_ktx_diagnostic(review.diagnostics, KtxBasisTextureReviewDiagnosticCode::missing_transcode_target,
+                                      row, "KTX2/Basis transcode target policy evidence is missing");
+            }
+            break;
+        case KtxBasisTextureReviewFeature::gpu_target_compatibility:
+            if (!row.gpu_target_compatibility_evidence || row.gpu_target.empty()) {
+                append_ktx_diagnostic(review.diagnostics,
+                                      KtxBasisTextureReviewDiagnosticCode::missing_gpu_target_compatibility, row,
+                                      "GPU target compatibility evidence is missing");
+            }
+            break;
+        case KtxBasisTextureReviewFeature::source_provenance:
+            if (!row.source_provenance_evidence || row.source_provenance_ids.empty() || row.license_ids.empty() ||
+                row.deterministic_content_hash.empty()) {
+                append_ktx_diagnostic(review.diagnostics,
+                                      KtxBasisTextureReviewDiagnosticCode::missing_source_provenance, row,
+                                      "KTX2/Basis source provenance evidence is missing");
+            }
+            break;
+        case KtxBasisTextureReviewFeature::package_output:
+            if (!row.package_output_evidence || row.package_output_rows.empty() ||
+                row.deterministic_content_hash.empty()) {
+                append_ktx_diagnostic(review.diagnostics, KtxBasisTextureReviewDiagnosticCode::missing_package_output,
+                                      row, "KTX2/Basis package output evidence is missing");
+            }
+            break;
+        case KtxBasisTextureReviewFeature::host_tool_gate:
+            if (!row.host_tool_validated && !row.host_tool_gate_required) {
+                append_ktx_diagnostic(review.diagnostics,
+                                      KtxBasisTextureReviewDiagnosticCode::missing_host_tool_evidence, row,
+                                      "KTX2/Basis host tool evidence is missing");
+            }
+            break;
+        }
+    }
+
+    if (!review.diagnostics.empty()) {
+        review.status = KtxBasisTextureReviewStatus::invalid_request;
+        return review;
+    }
+
+    review.rows = request.rows;
+    for (const auto& row : review.rows) {
+        if (ktx_row_is_ready(row)) {
+            ++review.ready_row_count;
+        }
+    }
+
+    review.container_validation_ready =
+        has_ready_ktx_feature(review.rows, KtxBasisTextureReviewFeature::container_validation);
+    review.supercompression_policy_ready =
+        has_ready_ktx_feature(review.rows, KtxBasisTextureReviewFeature::supercompression_policy);
+    review.transcode_target_policy_ready =
+        has_ready_ktx_feature(review.rows, KtxBasisTextureReviewFeature::transcode_target_policy);
+    review.gpu_target_compatibility_ready =
+        has_ready_ktx_feature(review.rows, KtxBasisTextureReviewFeature::gpu_target_compatibility);
+    review.source_provenance_ready =
+        has_ready_ktx_feature(review.rows, KtxBasisTextureReviewFeature::source_provenance);
+    review.package_output_ready = has_ready_ktx_feature(review.rows, KtxBasisTextureReviewFeature::package_output);
+    review.dependency_legal_records_ready = std::ranges::all_of(review.rows, [](const auto& row) {
+        return ktx_row_is_host_gated(row) || !ktx_feature_requires_dependency_legal_record(row.feature) ||
+               ktx_row_has_required_dependency_evidence(row);
+    });
+    review.selected_package_evidence_ready =
+        review.container_validation_ready && review.supercompression_policy_ready &&
+        review.transcode_target_policy_ready && review.gpu_target_compatibility_ready &&
+        review.source_provenance_ready && review.package_output_ready && review.dependency_legal_records_ready &&
+        review.unsupported_claim_row_count == 0U && review.dependency_gated_row_count == 0U;
+    review.ktx_basis_review_ready = review.selected_package_evidence_ready;
+    review.broad_texture_codec_ready = false;
+    review.replay_hash = build_ktx_replay_hash(request);
+
+    if (review.host_gated_row_count > 0U) {
+        review.status = KtxBasisTextureReviewStatus::host_evidence_required;
+    } else if (review.dependency_gated_row_count > 0U) {
+        review.status = KtxBasisTextureReviewStatus::dependency_evidence_required;
+    } else {
+        review.status = KtxBasisTextureReviewStatus::ready;
     }
     return review;
 }

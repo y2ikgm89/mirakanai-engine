@@ -8,10 +8,11 @@
   "dependencies": [],
   "features": {
     "asset-importers": {
-      "description": "Optional production asset importer dependencies for PNG, glTF, and common audio source decoding.",
+      "description": "Optional production asset importer dependencies for PNG, glTF, KTX2/Basis texture review, and common audio source decoding.",
       "dependencies": [
         "libspng",
         "fastgltf",
+        "ktx",
         "miniaudio"
       ]
     },
