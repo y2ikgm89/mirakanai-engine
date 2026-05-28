@@ -86,6 +86,7 @@ constexpr AssetImportProductionFeatureKind kRequiredFeatures[] = {
     const auto uses_dependency_adapter = is_gltf || is_ktx ||
                                          feature == AssetImportProductionFeatureKind::source_image ||
                                          feature == AssetImportProductionFeatureKind::source_audio;
+    const auto requires_dependency_evidence = uses_dependency_adapter || is_shader;
 
     return mirakana::AssetImportProductionEvidenceRow{
         .capability_id = capability_id(feature),
@@ -101,8 +102,10 @@ constexpr AssetImportProductionFeatureKind kRequiredFeatures[] = {
                                            : std::vector<std::string>{"first-party-schema"}),
         .reviewed_command_ids =
             is_shader ? std::vector<std::string>{"dxc-offline-plan", "spirv-val-plan"} : std::vector<std::string>{},
-        .dependency_ids =
-            uses_dependency_adapter ? std::vector<std::string>{"vcpkg.asset-importers"} : std::vector<std::string>{},
+        .dependency_ids = is_ktx                    ? std::vector<std::string>{"vcpkg.ktx-software"}
+                          : is_shader               ? std::vector<std::string>{"toolchain.dxc", "toolchain.spirv-tools"}
+                          : uses_dependency_adapter ? std::vector<std::string>{"vcpkg.asset-importers"}
+                                                    : std::vector<std::string>{},
         .license_ids = {"LicenseRef-Proprietary", "third-party-notice-reviewed"},
         .provenance_ids = {std::string{"provenance."} + capability_id(feature)},
         .deterministic_content_hash = std::string{"sha256:"} + capability_id(feature),
@@ -114,7 +117,7 @@ constexpr AssetImportProductionFeatureKind kRequiredFeatures[] = {
         .license_provenance_evidence = true,
         .deterministic_hash_evidence = true,
         .validator_evidence = is_gltf || is_ktx || is_shader,
-        .dependency_legal_evidence = uses_dependency_adapter,
+        .dependency_legal_evidence = requires_dependency_evidence,
         .dependency_gate_required = false,
         .command_review_evidence = is_shader,
         .host_validated = true,
@@ -157,6 +160,17 @@ constexpr AssetImportProductionFeatureKind kRequiredFeatures[] = {
         }
     }
     return count;
+}
+
+[[nodiscard]] bool has_diagnostic_for_feature(const mirakana::AssetImportProductionReview& review,
+                                              AssetImportProductionDiagnosticCode code,
+                                              AssetImportProductionFeatureKind feature) {
+    for (const auto& diagnostic : review.diagnostics) {
+        if (diagnostic.code == code && diagnostic.feature == feature) {
+            return true;
+        }
+    }
+    return false;
 }
 
 } // namespace
@@ -239,6 +253,101 @@ MK_TEST("asset import production review reports dependency gated execution matri
                mirakana::AssetImportProductionExecutionReadiness::dependency_evidence_required);
     MK_REQUIRE(review.replay_hash != 0U);
     MK_REQUIRE(review.replay_hash != ready_review.replay_hash);
+}
+
+MK_TEST("asset import production review rejects ktx2 basis readiness without selected dependency evidence") {
+    auto request = make_request();
+    request.rows[3].dependency_ids = {"vcpkg.ktx-software", "custom-wrapper"};
+    request.rows[3].license_ids = {"LicenseRef-Proprietary"};
+    request.rows[3].provenance_ids = {"provenance.generic-texture-import"};
+
+    const auto review = mirakana::review_asset_import_production_readiness(request);
+
+    MK_REQUIRE(review.status == AssetImportProductionStatus::invalid_request);
+    MK_REQUIRE(has_diagnostic_for_feature(review, AssetImportProductionDiagnosticCode::missing_dependency_legal_record,
+                                          AssetImportProductionFeatureKind::ktx_texture));
+    MK_REQUIRE(!review.gltf_ktx_import_review_ready);
+    MK_REQUIRE(!review.broad_asset_import_ready);
+}
+
+MK_TEST("asset import production review rejects gltf scene import without package hash and source root evidence") {
+    auto request = make_request();
+    request.rows[1].source_root_evidence = false;
+    request.rows[1].output_package_rows.clear();
+    request.rows[1].deterministic_hash_evidence = false;
+
+    const auto review = mirakana::review_asset_import_production_readiness(request);
+
+    MK_REQUIRE(review.status == AssetImportProductionStatus::invalid_request);
+    MK_REQUIRE(has_diagnostic_for_feature(review, AssetImportProductionDiagnosticCode::missing_source_root_evidence,
+                                          AssetImportProductionFeatureKind::gltf_geometry));
+    MK_REQUIRE(has_diagnostic_for_feature(review, AssetImportProductionDiagnosticCode::missing_output_package_row,
+                                          AssetImportProductionFeatureKind::gltf_geometry));
+    MK_REQUIRE(has_diagnostic_for_feature(review, AssetImportProductionDiagnosticCode::missing_deterministic_hash,
+                                          AssetImportProductionFeatureKind::gltf_geometry));
+    MK_REQUIRE(!review.gltf_ktx_import_review_ready);
+    MK_REQUIRE(!review.broad_asset_import_ready);
+}
+
+MK_TEST("asset import production review rejects broad source image and audio codec extension claims") {
+    auto request = make_request();
+    request.rows[4].declared_extensions = {".png", ".jpg", ".webp"};
+    request.rows[5].declared_extensions = {".wav", ".flac", ".mp3", ".ogg"};
+
+    const auto review = mirakana::review_asset_import_production_readiness(request);
+
+    MK_REQUIRE(review.status == AssetImportProductionStatus::invalid_request);
+    MK_REQUIRE(has_diagnostic_for_feature(review, AssetImportProductionDiagnosticCode::unsupported_broad_codec_claim,
+                                          AssetImportProductionFeatureKind::source_image));
+    MK_REQUIRE(has_diagnostic_for_feature(review, AssetImportProductionDiagnosticCode::unsupported_broad_codec_claim,
+                                          AssetImportProductionFeatureKind::source_audio));
+    MK_REQUIRE(!review.image_audio_import_review_ready);
+    MK_REQUIRE(!review.broad_asset_import_ready);
+}
+
+MK_TEST("asset import production review requires shader toolchain dependency and legal evidence") {
+    auto request = make_request();
+    request.rows[7].dependency_ids = {"toolchain.dxc", "toolchain.spirv-tools", "extra-tool"};
+
+    const auto review = mirakana::review_asset_import_production_readiness(request);
+
+    MK_REQUIRE(review.status == AssetImportProductionStatus::invalid_request);
+    MK_REQUIRE(has_diagnostic_for_feature(review, AssetImportProductionDiagnosticCode::missing_dependency_legal_record,
+                                          AssetImportProductionFeatureKind::shader_offline_compile_request));
+    MK_REQUIRE(!review.shader_offline_compile_review_ready);
+    MK_REQUIRE(!review.broad_asset_import_ready);
+}
+
+MK_TEST("asset import production review keeps shader compiler rows host gated without host validation") {
+    auto request = make_request();
+    request.rows[7].host_validated = false;
+    request.rows[7].host_gate_required = true;
+    request.rows[7].command_review_evidence = false;
+
+    const auto review = mirakana::review_asset_import_production_readiness(request);
+
+    MK_REQUIRE(review.status == AssetImportProductionStatus::host_evidence_required);
+    MK_REQUIRE(review.diagnostics.empty());
+    MK_REQUIRE(review.host_gated_row_count == 1U);
+    MK_REQUIRE(review.execution_readiness[7].feature ==
+               AssetImportProductionFeatureKind::shader_offline_compile_request);
+    MK_REQUIRE(review.execution_readiness[7].readiness ==
+               mirakana::AssetImportProductionExecutionReadiness::host_evidence_required);
+    MK_REQUIRE(!review.shader_offline_compile_review_ready);
+    MK_REQUIRE(!review.broad_asset_import_ready);
+}
+
+MK_TEST("asset import production review rejects parser compiler and native handle leakage tokens") {
+    auto request = make_request();
+    request.rows[1].source_root = "source/assets/FastGltf::Parser";
+    request.rows[7].reviewed_command_ids = {"idxccompiler3"};
+    request.rows[8].output_package_rows = {"runtime/Native_Handle_package.geasset"};
+
+    const auto review = mirakana::review_asset_import_production_readiness(request);
+
+    MK_REQUIRE(review.status == AssetImportProductionStatus::invalid_request);
+    MK_REQUIRE(diagnostic_count(review, AssetImportProductionDiagnosticCode::invalid_evidence_row) == 3U);
+    MK_REQUIRE(review.replay_hash == 0U);
 }
 
 MK_TEST("asset import production review rejects missing manifest and package evidence") {

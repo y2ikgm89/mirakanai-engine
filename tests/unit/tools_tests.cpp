@@ -4841,6 +4841,42 @@ MK_TEST("production authoring workflow review fails closed on shared mutation sh
     MK_REQUIRE(!result.invoked_command_execution);
 }
 
+MK_TEST("production authoring workflow review rejects parser compiler and native handle leakage claims") {
+    mirakana::ProductionAuthoringWorkflowRequest request;
+    request.supported_capability_ids = {"scene-placement-v1"};
+    request.validation_recipe_ids = {"desktop-2d-package"};
+    request.package_evidence_ids = {"sample_2d_desktop_runtime_package"};
+    request.reviewed_surface_ids = {"scene-prefab-authoring"};
+    request.workflow_rows.push_back(mirakana::ProductionAuthoringWorkflowRow{
+        .workflow_id = "public_row_leakage",
+        .kind = mirakana::ProductionAuthoringWorkflowKind::scene_placement,
+        .target_path = "games/sample_2d_desktop_runtime_package/source/scenes/playable.scene",
+        .required_capability_ids = {"scene-placement-v1"},
+        .validation_recipe_ids = {"desktop-2d-package"},
+        .package_evidence_ids = {"sample_2d_desktop_runtime_package"},
+        .reviewed_surface_ids = {"scene-prefab-authoring"},
+        .claimed_scope_ids = {"fastgltf parser type", "IDxcCompiler3 compiler handle", "native handle"},
+        .requests_shared_surface_mutation = false,
+        .requests_arbitrary_shell = false,
+        .requests_cooked_package_mutation = false,
+        .source_index = 10,
+    });
+
+    const auto result = mirakana::review_production_authoring_workflow(request);
+
+    const auto diagnostic_count = [&result](std::string_view code) {
+        return static_cast<std::size_t>(std::ranges::count_if(
+            result.diagnostics, [code](const auto& diagnostic) { return diagnostic.code == code; }));
+    };
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.accepted_rows.empty());
+    MK_REQUIRE(result.mutation_ledger_rows.empty());
+    MK_REQUIRE(diagnostic_count("native_backend_term") == 3U);
+    MK_REQUIRE(!result.invoked_file_mutation);
+    MK_REQUIRE(!result.invoked_package_io);
+    MK_REQUIRE(!result.invoked_command_execution);
+}
+
 MK_TEST("production authoring workflow review fails closed on incomplete duplicate and unsupported references") {
     mirakana::ProductionAuthoringWorkflowRequest request;
     request.supported_capability_ids = {"scene-placement-v1"};
