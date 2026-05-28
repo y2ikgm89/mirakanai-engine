@@ -6,8 +6,8 @@
 #include "mirakana/platform/filesystem.hpp"
 #include "mirakana/platform/input.hpp"
 #include "mirakana/renderer/renderer.hpp"
-#include "mirakana/runtime_host/sdl3/sdl_desktop_game_host.hpp"
-#include "mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp"
+#include "mirakana/runtime_host/win32/win32_desktop_game_host.hpp"
+#include "mirakana/runtime_host/win32/win32_desktop_presentation.hpp"
 
 #include <charconv>
 #include <chrono>
@@ -201,23 +201,23 @@ void print_usage() {
     return "unknown";
 }
 
-void print_presentation_report(std::string_view prefix, const mirakana::SdlDesktopGameHost& host) {
+void print_presentation_report(std::string_view prefix, const mirakana::Win32DesktopGameHost& host) {
     const auto report = host.presentation_report();
     std::cout << prefix << " presentation_report=requested="
-              << mirakana::sdl_desktop_presentation_backend_name(report.requested_backend)
-              << " selected=" << mirakana::sdl_desktop_presentation_backend_name(report.selected_backend)
-              << " fallback=" << mirakana::sdl_desktop_presentation_fallback_reason_name(report.fallback_reason)
+              << mirakana::win32_desktop_presentation_backend_name(report.requested_backend)
+              << " selected=" << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
+              << " fallback=" << mirakana::win32_desktop_presentation_fallback_reason_name(report.fallback_reason)
               << " used_null_fallback=" << (report.used_null_fallback ? 1 : 0)
               << " diagnostics=" << report.diagnostics_count << " backend_reports=" << report.backend_reports_count
-              << " scene_gpu_status="
-              << mirakana::sdl_desktop_presentation_scene_gpu_binding_status_name(report.scene_gpu_status)
+              << " present_status=" << mirakana::win32_desktop_presentation_present_status_name(report.present_status)
+              << " resize_status=" << mirakana::win32_desktop_presentation_resize_status_name(report.resize_status)
               << " renderer_frames_finished=" << report.renderer_stats.frames_finished << '\n';
     for (const auto& backend_report : host.presentation_backend_reports()) {
         std::cout << prefix << " presentation_backend_report="
-                  << mirakana::sdl_desktop_presentation_backend_name(backend_report.backend) << ":"
-                  << mirakana::sdl_desktop_presentation_backend_report_status_name(backend_report.status) << ":"
-                  << mirakana::sdl_desktop_presentation_fallback_reason_name(backend_report.fallback_reason) << ": "
-                  << backend_report.message << '\n';
+                  << mirakana::win32_desktop_presentation_backend_name(backend_report.backend) << ":"
+                  << mirakana::win32_desktop_presentation_backend_report_status_name(backend_report.status) << ":"
+                  << mirakana::win32_desktop_presentation_fallback_reason_name(backend_report.fallback_reason) << ": "
+                  << backend_report.diagnostic << '\n';
     }
 }
 
@@ -237,10 +237,10 @@ int main(int argc, char** argv) {
         return 4;
     }
 
-    mirakana::SdlDesktopGameHost host(mirakana::SdlDesktopGameHostDesc{
+    mirakana::Win32DesktopGameHost host(mirakana::Win32DesktopGameHostDesc{
         .title = "sample-generated-desktop-runtime-package",
         .extent = mirakana::WindowExtent{.width = 960, .height = 540},
-        .video_driver_hint = options.video_driver_hint,
+        .prefer_d3d12 = false,
     });
 
     sample_generated_desktop_runtime_package_Game game(host.input(), host.renderer(), options.throttle);
@@ -248,20 +248,23 @@ int main(int argc, char** argv) {
     const auto report = host.presentation_report();
 
     std::cout << "sample_generated_desktop_runtime_package status=" << status_name(result.status)
-              << " renderer=" << mirakana::sdl_desktop_presentation_backend_name(report.selected_backend)
-              << " presentation_requested=" << mirakana::sdl_desktop_presentation_backend_name(report.requested_backend)
-              << " presentation_selected=" << mirakana::sdl_desktop_presentation_backend_name(report.selected_backend)
+              << " renderer=" << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
+              << " presentation_requested="
+              << mirakana::win32_desktop_presentation_backend_name(report.requested_backend)
+              << " presentation_selected=" << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
               << " presentation_fallback="
-              << mirakana::sdl_desktop_presentation_fallback_reason_name(report.fallback_reason)
+              << mirakana::win32_desktop_presentation_fallback_reason_name(report.fallback_reason)
               << " presentation_used_null_fallback=" << (report.used_null_fallback ? 1 : 0)
               << " presentation_backend_reports=" << report.backend_reports_count
-              << " presentation_diagnostics=" << report.diagnostics_count << " scene_gpu_status="
-              << mirakana::sdl_desktop_presentation_scene_gpu_binding_status_name(report.scene_gpu_status)
+              << " presentation_diagnostics=" << report.diagnostics_count << " presentation_present_status="
+              << mirakana::win32_desktop_presentation_present_status_name(report.present_status)
+              << " presentation_resize_status="
+              << mirakana::win32_desktop_presentation_resize_status_name(report.resize_status)
               << " frames=" << result.frames_run << " game_frames=" << game.frames() << '\n';
     print_presentation_report("sample_generated_desktop_runtime_package", host);
     for (const auto& diagnostic : host.presentation_diagnostics()) {
         std::cout << "sample_generated_desktop_runtime_package presentation_diagnostic="
-                  << mirakana::sdl_desktop_presentation_fallback_reason_name(diagnostic.reason) << ": "
+                  << mirakana::win32_desktop_presentation_fallback_reason_name(diagnostic.reason) << ": "
                   << diagnostic.message << '\n';
     }
 

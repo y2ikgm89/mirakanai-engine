@@ -226,6 +226,7 @@ function Get-DesktopRuntimeGameRegistrations {
         $body = [string]$registrationMatch.Groups["body"].Value
         $tokens = @([System.Text.RegularExpressions.Regex]::Matches($body, "[^\s\)]+") | ForEach-Object { $_.Value })
         $gameManifest = ""
+        $hostBackend = "sdl3"
         $packageFiles = @()
         $packageFilesFromManifest = $tokens -contains "PACKAGE_FILES_FROM_MANIFEST"
         for ($index = 0; $index -lt $tokens.Count; ++$index) {
@@ -235,12 +236,18 @@ function Get-DesktopRuntimeGameRegistrations {
             }
         }
         for ($index = 0; $index -lt $tokens.Count; ++$index) {
+            if ($tokens[$index] -eq "HOST_BACKEND" -and $index + 1 -lt $tokens.Count) {
+                $hostBackend = $tokens[$index + 1]
+                break
+            }
+        }
+        for ($index = 0; $index -lt $tokens.Count; ++$index) {
             if ($tokens[$index] -ne "PACKAGE_FILES") {
                 continue
             }
 
             for ($fileIndex = $index + 1; $fileIndex -lt $tokens.Count; ++$fileIndex) {
-                if (@("SOURCES", "GAME_MANIFEST", "SMOKE_ARGS", "PACKAGE_SMOKE_ARGS", "PACKAGE_FILES", "PACKAGE_FILES_FROM_MANIFEST", "REQUIRES_D3D12_SHADERS", "REQUIRES_VULKAN_SHADERS") -contains $tokens[$fileIndex]) {
+                if (@("SOURCES", "GAME_MANIFEST", "HOST_BACKEND", "SMOKE_ARGS", "PACKAGE_SMOKE_ARGS", "PACKAGE_FILES", "PACKAGE_FILES_FROM_MANIFEST", "REQUIRES_D3D12_SHADERS", "REQUIRES_VULKAN_SHADERS") -contains $tokens[$fileIndex]) {
                     break
                 }
                 $packageFiles += $tokens[$fileIndex]
@@ -255,6 +262,7 @@ function Get-DesktopRuntimeGameRegistrations {
         $registrations[$target] = [pscustomobject]@{
             target = $target
             gameManifest = $gameManifest
+            hostBackend = $hostBackend
             hasSmokeArgs = $tokens -contains "SMOKE_ARGS"
             hasPackageSmokeArgs = $tokens -contains "PACKAGE_SMOKE_ARGS"
             packageFiles = @($packageFiles)

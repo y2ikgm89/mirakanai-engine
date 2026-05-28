@@ -961,3 +961,51 @@ $scenePrefabAuthoringCommandIds = @(
     "instantiate-prefab",
     "refresh-prefab-instance"
 )
+
+$configPackageManifestPath = "games/sample_generated_desktop_runtime_package/game.agent.json"
+$configPackageEntry = Get-GameAgentManifest $configPackageManifestPath
+if ($null -eq $configPackageEntry) {
+    Write-Error "desktop-runtime-config-package recipe must have a sample game manifest: $configPackageManifestPath"
+} else {
+    $configPackage = $configPackageEntry.Game
+    foreach ($module in @("MK_platform_win32", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation")) {
+        if (@($configPackage.engineModules) -notcontains $module) {
+            Write-Error "$configPackageManifestPath engineModules missing Win32 config package module: $module"
+        }
+    }
+    foreach ($module in @("MK_platform_sdl3", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation")) {
+        if (@($configPackage.engineModules) -contains $module) {
+            Write-Error "$configPackageManifestPath engineModules must not keep SDL3 config package module: $module"
+        }
+    }
+    if ($configPackage.gameplayContract.runner -ne "mirakana::Win32DesktopGameHost") {
+        Write-Error "$configPackageManifestPath gameplayContract.runner must be mirakana::Win32DesktopGameHost"
+    }
+    if ($configPackage.gameplayContract.currentRuntime -ne "desktop-windowed-win32-host-with-null-renderer-packaged-config-smoke") {
+        Write-Error "$configPackageManifestPath gameplayContract.currentRuntime must describe the Win32 config smoke"
+    }
+    if ($configPackage.backendReadiness.platform -ne "win32-desktop") {
+        Write-Error "$configPackageManifestPath backendReadiness.platform must be win32-desktop"
+    }
+    $configPackageRegistration = (Get-DesktopRuntimeGameRegistrations)[$configPackage.target]
+    if ($null -eq $configPackageRegistration -or $configPackageRegistration.hostBackend -ne "win32") {
+        Write-Error "$configPackageManifestPath target must declare HOST_BACKEND win32 in games/CMakeLists.txt"
+    }
+}
+$configPackageMainText = Get-Content -LiteralPath (Join-Path $root "games/sample_generated_desktop_runtime_package/main.cpp") -Raw
+$newGameTemplatesText = Get-Content -LiteralPath (Join-Path $root "tools/new-game-templates.ps1") -Raw
+$desktopRuntimeMainTemplateText = [regex]::Match(
+    $newGameTemplatesText,
+    "(?ms)^function New-DesktopRuntimeMainCpp \{.*?^function New-DesktopRuntimeCookedSceneMainCpp \{"
+).Value
+foreach ($needle in @("runtime_host/sdl3", "SdlDesktop")) {
+    Assert-DoesNotContainText $configPackageMainText $needle "games/sample_generated_desktop_runtime_package/main.cpp"
+    Assert-DoesNotContainText $desktopRuntimeMainTemplateText $needle "tools/new-game-templates.ps1 New-DesktopRuntimeMainCpp"
+}
+foreach ($needle in @("mirakana/runtime_host/win32/win32_desktop_game_host.hpp", "mirakana::Win32DesktopGameHost", "win32_desktop_presentation_backend_name")) {
+    Assert-ContainsText $configPackageMainText $needle "games/sample_generated_desktop_runtime_package/main.cpp"
+    Assert-ContainsText $desktopRuntimeMainTemplateText $needle "tools/new-game-templates.ps1 New-DesktopRuntimeMainCpp"
+}
+foreach ($needle in @("HOST_BACKEND", "win32", "MK_platform_win32", "MK_runtime_host_win32", "win32-desktop", "Win32DesktopGameHost")) {
+    Assert-ContainsText $newGameTemplatesText $needle "tools/new-game-templates.ps1 DesktopRuntimePackage Win32 scaffold"
+}

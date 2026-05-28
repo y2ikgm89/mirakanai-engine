@@ -150,6 +150,52 @@ void print_presentation_report(std::string_view prefix, const mirakana::SdlDeskt
 '@
 }
 
+function Get-Win32DesktopRuntimeHostCommonCpp {
+    $sdlPresentationReportCpp = @'
+void print_presentation_report(std::string_view prefix, const mirakana::SdlDesktopGameHost& host) {
+    const auto report = host.presentation_report();
+    std::cout << prefix << " presentation_report=requested="
+              << mirakana::sdl_desktop_presentation_backend_name(report.requested_backend)
+              << " selected=" << mirakana::sdl_desktop_presentation_backend_name(report.selected_backend)
+              << " fallback=" << mirakana::sdl_desktop_presentation_fallback_reason_name(report.fallback_reason)
+              << " used_null_fallback=" << (report.used_null_fallback ? 1 : 0)
+              << " diagnostics=" << report.diagnostics_count << " backend_reports=" << report.backend_reports_count
+              << " scene_gpu_status="
+              << mirakana::sdl_desktop_presentation_scene_gpu_binding_status_name(report.scene_gpu_status)
+              << " renderer_frames_finished=" << report.renderer_stats.frames_finished << '\n';
+    for (const auto& backend_report : host.presentation_backend_reports()) {
+        std::cout << prefix << " presentation_backend_report="
+                  << mirakana::sdl_desktop_presentation_backend_name(backend_report.backend) << ":"
+                  << mirakana::sdl_desktop_presentation_backend_report_status_name(backend_report.status) << ":"
+                  << mirakana::sdl_desktop_presentation_fallback_reason_name(backend_report.fallback_reason) << ": "
+                  << backend_report.message << '\n';
+    }
+}
+'@
+    $win32PresentationReportCpp = @'
+void print_presentation_report(std::string_view prefix, const mirakana::Win32DesktopGameHost& host) {
+    const auto report = host.presentation_report();
+    std::cout << prefix << " presentation_report=requested="
+              << mirakana::win32_desktop_presentation_backend_name(report.requested_backend)
+              << " selected=" << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
+              << " fallback=" << mirakana::win32_desktop_presentation_fallback_reason_name(report.fallback_reason)
+              << " used_null_fallback=" << (report.used_null_fallback ? 1 : 0)
+              << " diagnostics=" << report.diagnostics_count << " backend_reports=" << report.backend_reports_count
+              << " present_status=" << mirakana::win32_desktop_presentation_present_status_name(report.present_status)
+              << " resize_status=" << mirakana::win32_desktop_presentation_resize_status_name(report.resize_status)
+              << " renderer_frames_finished=" << report.renderer_stats.frames_finished << '\n';
+    for (const auto& backend_report : host.presentation_backend_reports()) {
+        std::cout << prefix << " presentation_backend_report="
+                  << mirakana::win32_desktop_presentation_backend_name(backend_report.backend) << ":"
+                  << mirakana::win32_desktop_presentation_backend_report_status_name(backend_report.status) << ":"
+                  << mirakana::win32_desktop_presentation_fallback_reason_name(backend_report.fallback_reason) << ": "
+                  << backend_report.diagnostic << '\n';
+    }
+}
+'@
+    return (Get-DesktopRuntimeHostCommonCpp).Replace($sdlPresentationReportCpp, $win32PresentationReportCpp)
+}
+
 function Get-DesktopRuntimeHostArgsCpp {
     param(
         [string]$TargetName,
@@ -245,7 +291,7 @@ function New-DesktopRuntimeMainCpp {
     )
 
     $escapedTitle = ConvertTo-CppStringLiteralContent -Text $Title
-    $desktopRuntimeHostCommonCpp = Get-DesktopRuntimeHostCommonCpp
+    $desktopRuntimeHostCommonCpp = Get-Win32DesktopRuntimeHostCommonCpp
     $desktopRuntimeHostUsageSegments = @'
                  "[--require-config PATH]\n";
 '@
@@ -261,8 +307,8 @@ function New-DesktopRuntimeMainCpp {
 #include "mirakana/platform/filesystem.hpp"
 #include "mirakana/platform/input.hpp"
 #include "mirakana/renderer/renderer.hpp"
-#include "mirakana/runtime_host/sdl3/sdl_desktop_game_host.hpp"
-#include "mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp"
+#include "mirakana/runtime_host/win32/win32_desktop_game_host.hpp"
+#include "mirakana/runtime_host/win32/win32_desktop_presentation.hpp"
 
 #include <charconv>
 #include <chrono>
@@ -345,10 +391,10 @@ int main(int argc, char** argv) {
         return 4;
     }
 
-    mirakana::SdlDesktopGameHost host(mirakana::SdlDesktopGameHostDesc{
+    mirakana::Win32DesktopGameHost host(mirakana::Win32DesktopGameHostDesc{
         .title = "$escapedTitle",
         .extent = mirakana::WindowExtent{960, 540},
-        .video_driver_hint = options.video_driver_hint,
+        .prefer_d3d12 = false,
     });
 
     ${TargetName}_Game game(host.input(), host.renderer(), options.throttle);
@@ -356,19 +402,21 @@ int main(int argc, char** argv) {
     const auto report = host.presentation_report();
 
     std::cout << "$TargetName status=" << status_name(result.status)
-              << " renderer=" << mirakana::sdl_desktop_presentation_backend_name(report.selected_backend)
-              << " presentation_requested=" << mirakana::sdl_desktop_presentation_backend_name(report.requested_backend)
-              << " presentation_selected=" << mirakana::sdl_desktop_presentation_backend_name(report.selected_backend)
-              << " presentation_fallback=" << mirakana::sdl_desktop_presentation_fallback_reason_name(report.fallback_reason)
+              << " renderer=" << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
+              << " presentation_requested=" << mirakana::win32_desktop_presentation_backend_name(report.requested_backend)
+              << " presentation_selected=" << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
+              << " presentation_fallback=" << mirakana::win32_desktop_presentation_fallback_reason_name(report.fallback_reason)
               << " presentation_used_null_fallback=" << (report.used_null_fallback ? 1 : 0)
               << " presentation_backend_reports=" << report.backend_reports_count
-              << " presentation_diagnostics=" << report.diagnostics_count << " scene_gpu_status="
-              << mirakana::sdl_desktop_presentation_scene_gpu_binding_status_name(report.scene_gpu_status)
+              << " presentation_diagnostics=" << report.diagnostics_count << " presentation_present_status="
+              << mirakana::win32_desktop_presentation_present_status_name(report.present_status)
+              << " presentation_resize_status="
+              << mirakana::win32_desktop_presentation_resize_status_name(report.resize_status)
               << " frames=" << result.frames_run << " game_frames=" << game.frames() << '\n';
     print_presentation_report("$TargetName", host);
     for (const auto& diagnostic : host.presentation_diagnostics()) {
         std::cout << "$TargetName presentation_diagnostic="
-                  << mirakana::sdl_desktop_presentation_fallback_reason_name(diagnostic.reason) << ": " << diagnostic.message
+                  << mirakana::win32_desktop_presentation_fallback_reason_name(diagnostic.reason) << ": " << diagnostic.message
                   << '\n';
     }
 
@@ -5185,8 +5233,8 @@ Describe the desktop runtime game goal here before expanding gameplay.
 This game uses the optional desktop runtime package lane:
 
 - `mirakana::GameApp`
-- `mirakana::SdlDesktopGameHost`
-- `mirakana::IRenderer` with deterministic NullRenderer fallback unless host-owned shader artifacts are added later
+- `mirakana::Win32DesktopGameHost`
+- `mirakana::IRenderer` with deterministic native NullRenderer unless host-owned D3D12 shader artifacts are added later
 - `game.agent.json.runtimePackageFiles` plus `PACKAGE_FILES_FROM_MANIFEST`
 
 ## Validate
@@ -6298,11 +6346,11 @@ function New-DesktopRuntimeManifest {
             "MK_core",
             "MK_math",
             "MK_platform",
-            "MK_platform_sdl3",
+            "MK_platform_win32",
             "MK_renderer",
             "MK_runtime_host",
-            "MK_runtime_host_sdl3",
-            "MK_runtime_host_sdl3_presentation"
+            "MK_runtime_host_win32",
+            "MK_runtime_host_win32_presentation"
         )
         aiWorkflow = [ordered]@{
             spec = "games/$GameName/README.md"
@@ -6311,12 +6359,12 @@ function New-DesktopRuntimeManifest {
         }
         gameplayContract = [ordered]@{
             appType = "mirakana::GameApp"
-            runner = "mirakana::SdlDesktopGameHost"
-            currentRuntime = "desktop-windowed-sdl3-host-with-null-fallback-packaged-config-smoke"
+            runner = "mirakana::Win32DesktopGameHost"
+            currentRuntime = "desktop-windowed-win32-host-with-null-renderer-packaged-config-smoke"
         }
         backendReadiness = [ordered]@{
-            platform = "sdl3-desktop"
-            graphics = "null-fallback; generated scaffold does not create D3D12/Vulkan shader artifacts"
+            platform = "win32-desktop"
+            graphics = "native-null-renderer; generated scaffold does not create D3D12/Vulkan shader artifacts"
             audio = "device-independent"
             ui = "MK_ui-headless"
             physics = "not-required"
@@ -7566,6 +7614,8 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             $GameName/main.cpp
         GAME_MANIFEST
             games/$GameName/game.agent.json
+        HOST_BACKEND
+            win32
         SMOKE_ARGS
             --smoke
             --require-config

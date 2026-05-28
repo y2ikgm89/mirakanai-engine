@@ -236,7 +236,7 @@ Run:
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/new-game.ps1 -Name my_game
 ```
 
-This creates the default headless scaffold. For a package-ready SDL3 desktop runtime game with manifest-derived bundled files, run:
+This creates the default headless scaffold. For a package-ready Win32 desktop runtime game with manifest-derived bundled files, run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/new-game.ps1 -Name my_game -Template DesktopRuntimePackage

@@ -497,6 +497,11 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1
 - Modify: `docs/specs/generated-game-validation-scenarios.md`
 - Modify: `docs/ai-game-development.md`
 
+**2026-05-28 progress note:** Start Phase 7 with the config-only `DesktopRuntimePackage` scaffold and committed
+`sample_generated_desktop_runtime_package`: move it to `Win32DesktopGameHost`, `HOST_BACKEND win32`, Win32 host modules,
+and `win32-desktop` readiness. Keep cooked-scene/material/2D/3D desktop package samples pending until Win32 presentation
+parity covers their current SDL3-only scene GPU, postprocess, native overlay, Vulkan, and renderer-quality evidence rows.
+
 - [ ] Add RED static checks for generated template descriptors that still reference SDL3 after migration.
 - [ ] Replace `mirakana/runtime_host/sdl3/...` includes with Windows native host includes.
 - [ ] Rename backend readiness strings from `sdl3-desktop` / `sdl3-desktop-host-gated` to explicit Windows native names.
