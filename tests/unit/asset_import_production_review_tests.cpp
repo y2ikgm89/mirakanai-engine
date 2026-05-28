@@ -17,6 +17,9 @@ using mirakana::AssetImportProductionDiagnosticCode;
 using mirakana::AssetImportProductionFeatureKind;
 using mirakana::AssetImportProductionProofKind;
 using mirakana::AssetImportProductionStatus;
+using mirakana::GltfSceneImportReviewDiagnosticCode;
+using mirakana::GltfSceneImportReviewFeature;
+using mirakana::GltfSceneImportReviewStatus;
 using mirakana::KtxBasisTextureReviewDiagnosticCode;
 using mirakana::KtxBasisTextureReviewFeature;
 using mirakana::KtxBasisTextureReviewStatus;
@@ -38,6 +41,13 @@ constexpr KtxBasisTextureReviewFeature kKtxRequiredFeatures[] = {
     KtxBasisTextureReviewFeature::transcode_target_policy, KtxBasisTextureReviewFeature::gpu_target_compatibility,
     KtxBasisTextureReviewFeature::source_provenance,       KtxBasisTextureReviewFeature::package_output,
     KtxBasisTextureReviewFeature::host_tool_gate,
+};
+
+constexpr GltfSceneImportReviewFeature kGltfRequiredFeatures[] = {
+    GltfSceneImportReviewFeature::source_root_policy, GltfSceneImportReviewFeature::parser_validation,
+    GltfSceneImportReviewFeature::geometry_payload,   GltfSceneImportReviewFeature::material_payload,
+    GltfSceneImportReviewFeature::animation_payload,  GltfSceneImportReviewFeature::external_resource_policy,
+    GltfSceneImportReviewFeature::source_provenance,  GltfSceneImportReviewFeature::package_output,
 };
 
 [[nodiscard]] std::string capability_id(AssetImportProductionFeatureKind feature) {
@@ -209,6 +219,66 @@ constexpr KtxBasisTextureReviewFeature kKtxRequiredFeatures[] = {
     };
 }
 
+[[nodiscard]] mirakana::GltfSceneImportReviewRow make_gltf_row(GltfSceneImportReviewFeature feature,
+                                                               std::uint32_t source_index) {
+    return mirakana::GltfSceneImportReviewRow{
+        .row_id = std::string{"gltf-scene-import."} + std::to_string(source_index),
+        .feature = feature,
+        .source_root = "source/assets/3d",
+        .importer_id = "reviewed.gltf-scene-import",
+        .declared_extensions = {".gltf", ".glb"},
+        .validator_ids = feature == GltfSceneImportReviewFeature::parser_validation
+                             ? std::vector<std::string>{"gltf-validator"}
+                             : std::vector<std::string>{},
+        .dependency_ids = {"vcpkg.asset-importers"},
+        .license_ids = {"third-party-notice.asset-importers", "LicenseRef-Proprietary"},
+        .provenance_ids = feature == GltfSceneImportReviewFeature::source_provenance
+                              ? std::vector<std::string>{"provenance.gltf-scene-import-source"}
+                              : std::vector<std::string>{},
+        .package_output_rows = feature == GltfSceneImportReviewFeature::package_output
+                                   ? std::vector<std::string>{"runtime/assets/3d/gltf_scene_import.geasset"}
+                                   : std::vector<std::string>{},
+        .deterministic_content_hash = std::string{"sha256:gltf-scene-import-row-"} + std::to_string(source_index),
+        .external_resource_policy =
+            feature == GltfSceneImportReviewFeature::external_resource_policy ? "local-file-or-glb-buffer-only" : "",
+        .reviewed = true,
+        .source_root_evidence = feature == GltfSceneImportReviewFeature::source_root_policy,
+        .parser_validation_evidence = feature == GltfSceneImportReviewFeature::parser_validation,
+        .geometry_payload_evidence = feature == GltfSceneImportReviewFeature::geometry_payload,
+        .material_payload_evidence = feature == GltfSceneImportReviewFeature::material_payload,
+        .animation_payload_evidence = feature == GltfSceneImportReviewFeature::animation_payload,
+        .external_resource_policy_evidence = feature == GltfSceneImportReviewFeature::external_resource_policy,
+        .source_provenance_evidence = feature == GltfSceneImportReviewFeature::source_provenance,
+        .package_output_evidence = feature == GltfSceneImportReviewFeature::package_output,
+        .dependency_legal_evidence = true,
+        .dependency_gate_required = false,
+        .request_arbitrary_extension = false,
+        .request_external_network_fetch = false,
+        .request_runtime_source_parsing = false,
+        .request_parser_type_access = false,
+        .request_native_handle_access = false,
+        .request_broad_scene_import_claim = false,
+        .request_package_mutation = false,
+        .source_index = source_index,
+    };
+}
+
+[[nodiscard]] mirakana::GltfSceneImportReviewRequest make_gltf_request() {
+    std::vector<mirakana::GltfSceneImportReviewRow> rows;
+    rows.reserve(std::size(kGltfRequiredFeatures));
+    std::uint32_t source_index{1U};
+    for (const auto feature : kGltfRequiredFeatures) {
+        rows.push_back(make_gltf_row(feature, source_index++));
+    }
+
+    return mirakana::GltfSceneImportReviewRequest{
+        .required_features = {std::begin(kGltfRequiredFeatures), std::end(kGltfRequiredFeatures)},
+        .rows = std::move(rows),
+        .row_budget = 16U,
+        .seed = 571U,
+    };
+}
+
 [[nodiscard]] mirakana::AssetImportProductionReviewRequest make_request() {
     std::vector<mirakana::AssetImportProductionEvidenceRow> rows;
     rows.reserve(std::size(kRequiredFeatures));
@@ -249,6 +319,17 @@ constexpr KtxBasisTextureReviewFeature kKtxRequiredFeatures[] = {
 
 [[nodiscard]] std::size_t ktx_diagnostic_count(const mirakana::KtxBasisTextureReview& review,
                                                KtxBasisTextureReviewDiagnosticCode code) {
+    std::size_t count{0U};
+    for (const auto& diagnostic : review.diagnostics) {
+        if (diagnostic.code == code) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+[[nodiscard]] std::size_t gltf_diagnostic_count(const mirakana::GltfSceneImportReview& review,
+                                                GltfSceneImportReviewDiagnosticCode code) {
     std::size_t count{0U};
     for (const auto& diagnostic : review.diagnostics) {
         if (diagnostic.code == code) {
@@ -410,6 +491,121 @@ MK_TEST("ktx2 basis texture review reports dependency gated selected package evi
     MK_REQUIRE(!review.ktx_basis_review_ready);
     MK_REQUIRE(!review.broad_texture_codec_ready);
     MK_REQUIRE(review.replay_hash != 0U);
+}
+
+MK_TEST("gltf scene import review accepts selected fastgltf package handoff evidence") {
+    const auto review = mirakana::review_gltf_scene_import_readiness(make_gltf_request());
+
+    MK_REQUIRE(review.status == GltfSceneImportReviewStatus::ready);
+    MK_REQUIRE(review.succeeded());
+    MK_REQUIRE(review.diagnostics.empty());
+    MK_REQUIRE(review.row_count == std::size(kGltfRequiredFeatures));
+    MK_REQUIRE(review.ready_row_count == std::size(kGltfRequiredFeatures));
+    MK_REQUIRE(review.dependency_gated_row_count == 0U);
+    MK_REQUIRE(review.unsupported_claim_row_count == 0U);
+    MK_REQUIRE(review.source_root_rows == 1U);
+    MK_REQUIRE(review.parser_validation_rows == 1U);
+    MK_REQUIRE(review.geometry_payload_rows == 1U);
+    MK_REQUIRE(review.material_payload_rows == 1U);
+    MK_REQUIRE(review.animation_payload_rows == 1U);
+    MK_REQUIRE(review.external_resource_policy_rows == 1U);
+    MK_REQUIRE(review.source_provenance_rows == 1U);
+    MK_REQUIRE(review.package_output_rows == 1U);
+    MK_REQUIRE(review.source_root_ready);
+    MK_REQUIRE(review.parser_validation_ready);
+    MK_REQUIRE(review.geometry_payload_ready);
+    MK_REQUIRE(review.material_payload_ready);
+    MK_REQUIRE(review.animation_payload_ready);
+    MK_REQUIRE(review.external_resource_policy_ready);
+    MK_REQUIRE(review.source_provenance_ready);
+    MK_REQUIRE(review.package_output_ready);
+    MK_REQUIRE(review.dependency_legal_records_ready);
+    MK_REQUIRE(review.selected_package_evidence_ready);
+    MK_REQUIRE(review.gltf_scene_import_ready);
+    MK_REQUIRE(!review.broad_scene_import_ready);
+    MK_REQUIRE(!review.invoked_external_network_fetch);
+    MK_REQUIRE(!review.invoked_runtime_source_parsing);
+    MK_REQUIRE(!review.leaked_parser_type);
+    MK_REQUIRE(!review.exposed_native_handle);
+    MK_REQUIRE(!review.mutated_packages);
+    MK_REQUIRE(review.replay_hash != 0U);
+}
+
+MK_TEST("gltf scene import review reports dependency gated selected package evidence") {
+    auto request = make_gltf_request();
+    request.rows[1].dependency_legal_evidence = false;
+    request.rows[1].dependency_gate_required = true;
+
+    const auto review = mirakana::review_gltf_scene_import_readiness(request);
+
+    MK_REQUIRE(review.status == GltfSceneImportReviewStatus::dependency_evidence_required);
+    MK_REQUIRE(!review.succeeded());
+    MK_REQUIRE(review.diagnostics.empty());
+    MK_REQUIRE(review.ready_row_count == std::size(kGltfRequiredFeatures) - 1U);
+    MK_REQUIRE(review.dependency_gated_row_count == 1U);
+    MK_REQUIRE(review.unsupported_claim_row_count == 0U);
+    MK_REQUIRE(!review.parser_validation_ready);
+    MK_REQUIRE(!review.dependency_legal_records_ready);
+    MK_REQUIRE(!review.selected_package_evidence_ready);
+    MK_REQUIRE(!review.gltf_scene_import_ready);
+    MK_REQUIRE(!review.broad_scene_import_ready);
+    MK_REQUIRE(review.replay_hash != 0U);
+}
+
+MK_TEST("gltf scene import review rejects unsupported broad scene import claims and missing evidence") {
+    auto request = make_gltf_request();
+    request.rows[0].source_root.clear();
+    request.rows[0].source_root_evidence = false;
+    request.rows[1].validator_ids.clear();
+    request.rows[1].parser_validation_evidence = false;
+    request.rows[1].request_parser_type_access = true;
+    request.rows[2].geometry_payload_evidence = false;
+    request.rows[2].declared_extensions = {".gltf", ".glb", ".vrm"};
+    request.rows[2].request_arbitrary_extension = true;
+    request.rows[3].material_payload_evidence = false;
+    request.rows[3].request_native_handle_access = true;
+    request.rows[4].animation_payload_evidence = false;
+    request.rows[4].request_runtime_source_parsing = true;
+    request.rows[5].external_resource_policy.clear();
+    request.rows[5].external_resource_policy_evidence = false;
+    request.rows[5].request_external_network_fetch = true;
+    request.rows[6].provenance_ids.clear();
+    request.rows[6].source_provenance_evidence = false;
+    request.rows[6].request_broad_scene_import_claim = true;
+    request.rows[7].package_output_rows.clear();
+    request.rows[7].package_output_evidence = false;
+    request.rows[7].request_package_mutation = true;
+
+    const auto review = mirakana::review_gltf_scene_import_readiness(request);
+
+    MK_REQUIRE(review.status == GltfSceneImportReviewStatus::invalid_request);
+    MK_REQUIRE(!review.succeeded());
+    MK_REQUIRE(gltf_diagnostic_count(review, GltfSceneImportReviewDiagnosticCode::missing_source_root) == 1U);
+    MK_REQUIRE(gltf_diagnostic_count(review, GltfSceneImportReviewDiagnosticCode::missing_parser_validation) == 1U);
+    MK_REQUIRE(gltf_diagnostic_count(review, GltfSceneImportReviewDiagnosticCode::missing_geometry_payload) == 1U);
+    MK_REQUIRE(gltf_diagnostic_count(review, GltfSceneImportReviewDiagnosticCode::missing_material_payload) == 1U);
+    MK_REQUIRE(gltf_diagnostic_count(review, GltfSceneImportReviewDiagnosticCode::missing_animation_payload) == 1U);
+    MK_REQUIRE(gltf_diagnostic_count(review, GltfSceneImportReviewDiagnosticCode::missing_external_resource_policy) ==
+               1U);
+    MK_REQUIRE(gltf_diagnostic_count(review, GltfSceneImportReviewDiagnosticCode::missing_source_provenance) == 1U);
+    MK_REQUIRE(gltf_diagnostic_count(review, GltfSceneImportReviewDiagnosticCode::missing_package_output) == 1U);
+    MK_REQUIRE(gltf_diagnostic_count(review, GltfSceneImportReviewDiagnosticCode::unsupported_arbitrary_extension) ==
+               1U);
+    MK_REQUIRE(gltf_diagnostic_count(review, GltfSceneImportReviewDiagnosticCode::unsupported_external_network_fetch) ==
+               1U);
+    MK_REQUIRE(gltf_diagnostic_count(review, GltfSceneImportReviewDiagnosticCode::unsupported_runtime_source_parsing) ==
+               1U);
+    MK_REQUIRE(gltf_diagnostic_count(review, GltfSceneImportReviewDiagnosticCode::unsupported_parser_type_leakage) ==
+               1U);
+    MK_REQUIRE(gltf_diagnostic_count(review, GltfSceneImportReviewDiagnosticCode::unsupported_native_handle_claim) ==
+               1U);
+    MK_REQUIRE(
+        gltf_diagnostic_count(review, GltfSceneImportReviewDiagnosticCode::unsupported_broad_scene_import_claim) == 1U);
+    MK_REQUIRE(gltf_diagnostic_count(review, GltfSceneImportReviewDiagnosticCode::unsupported_package_mutation) == 1U);
+    MK_REQUIRE(!review.selected_package_evidence_ready);
+    MK_REQUIRE(!review.gltf_scene_import_ready);
+    MK_REQUIRE(!review.broad_scene_import_ready);
+    MK_REQUIRE(review.replay_hash == 0U);
 }
 
 MK_TEST("ktx2 basis texture review rejects runtime transcode upload and missing target policy") {

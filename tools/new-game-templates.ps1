@@ -1258,7 +1258,7 @@ constexpr std::string_view kRuntimeShadowVulkanVertexShaderPath{"shaders/${Targe
 constexpr std::string_view kRuntimeShadowVulkanFragmentShaderPath{"shaders/${TargetName}_shadow.ps.spv"};
 "@)
     $text = $text -replace 'bool require_postprocess\{false\};\r?\n',
-        "bool require_postprocess{false};`n    bool require_postprocess_depth_input{false};`n    bool require_directional_shadow{false};`n    bool require_directional_shadow_filtering{false};`n    bool require_shadow_morph_composition{false};`n    bool require_renderer_quality_gates{false};`n    bool require_playable_3d_slice{false};`n    bool require_primary_camera_controller{false};`n    bool require_transform_animation{false};`n    bool require_morph_package{false};`n    bool require_compute_morph{false};`n    bool require_compute_morph_normal_tangent{false};`n    bool require_compute_morph_skin{false};`n    bool require_compute_morph_async_telemetry{false};`n    bool require_quaternion_animation{false};`n    bool require_package_streaming_safe_point{false};`n    bool require_ktx2_basis_texture_review{false};`n"
+        "bool require_postprocess{false};`n    bool require_postprocess_depth_input{false};`n    bool require_directional_shadow{false};`n    bool require_directional_shadow_filtering{false};`n    bool require_shadow_morph_composition{false};`n    bool require_renderer_quality_gates{false};`n    bool require_playable_3d_slice{false};`n    bool require_primary_camera_controller{false};`n    bool require_transform_animation{false};`n    bool require_morph_package{false};`n    bool require_compute_morph{false};`n    bool require_compute_morph_normal_tangent{false};`n    bool require_compute_morph_skin{false};`n    bool require_compute_morph_async_telemetry{false};`n    bool require_quaternion_animation{false};`n    bool require_package_streaming_safe_point{false};`n    bool require_ktx2_basis_texture_review{false};`n    bool require_gltf_scene_import_review{false};`n"
     $text = $text.Replace(
         "constexpr std::uint32_t kRuntimeSceneTangentSpaceStrideBytes{48};",
         "constexpr std::uint32_t kRuntimeSceneTangentSpaceStrideBytes{48};`nconstexpr std::uint64_t kPackageStreamingResidentBudgetBytes{67108864};")
@@ -1344,6 +1344,20 @@ constexpr std::string_view kRuntimeShadowVulkanFragmentShaderPath{"shaders/${Tar
     return "unknown";
 }
 
+[[nodiscard]] const char* gltf_scene_import_review_status_name(mirakana::GltfSceneImportReviewStatus status) noexcept {
+    switch (status) {
+    case mirakana::GltfSceneImportReviewStatus::ready:
+        return "ready";
+    case mirakana::GltfSceneImportReviewStatus::dependency_evidence_required:
+        return "dependency_evidence_required";
+    case mirakana::GltfSceneImportReviewStatus::no_rows:
+        return "no_rows";
+    case mirakana::GltfSceneImportReviewStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
 struct KtxBasisTextureReviewProbeResult {
     mirakana::KtxBasisTextureReviewStatus status{mirakana::KtxBasisTextureReviewStatus::invalid_request};
     bool reviewed{false};
@@ -1367,6 +1381,35 @@ struct KtxBasisTextureReviewProbeResult {
     bool invoked_runtime_transcoding{false};
     bool invoked_gpu_upload{false};
     bool invoked_compression_tool{false};
+    std::size_t diagnostics{0U};
+    std::uint64_t replay_hash{0U};
+};
+
+struct GltfSceneImportReviewProbeResult {
+    mirakana::GltfSceneImportReviewStatus status{mirakana::GltfSceneImportReviewStatus::invalid_request};
+    bool reviewed{false};
+    bool ready{false};
+    std::size_t rows{0U};
+    std::size_t ready_rows{0U};
+    std::size_t dependency_gated_rows{0U};
+    std::size_t unsupported_claim_rows{0U};
+    std::size_t source_root_rows{0U};
+    std::size_t parser_validation_rows{0U};
+    std::size_t geometry_payload_rows{0U};
+    std::size_t material_payload_rows{0U};
+    std::size_t animation_payload_rows{0U};
+    std::size_t external_resource_policy_rows{0U};
+    std::size_t source_provenance_rows{0U};
+    std::size_t package_output_rows{0U};
+    bool dependency_legal_records_ready{false};
+    bool selected_package_evidence_ready{false};
+    bool gltf_scene_import_ready{false};
+    bool broad_scene_import_ready{false};
+    bool invoked_external_network_fetch{false};
+    bool invoked_runtime_source_parsing{false};
+    bool leaked_parser_type{false};
+    bool exposed_native_handle{false};
+    bool mutated_packages{false};
     std::size_t diagnostics{0U};
     std::uint64_t replay_hash{0U};
 };
@@ -1480,6 +1523,119 @@ make_ktx_basis_texture_review_row(mirakana::KtxBasisTextureReviewFeature feature
         .invoked_runtime_transcoding = review.invoked_runtime_transcoding,
         .invoked_gpu_upload = review.invoked_gpu_upload,
         .invoked_compression_tool = review.invoked_compression_tool,
+        .diagnostics = review.diagnostics.size(),
+        .replay_hash = review.replay_hash,
+    };
+}
+
+[[nodiscard]] mirakana::GltfSceneImportReviewRow
+make_gltf_scene_import_review_row(mirakana::GltfSceneImportReviewFeature feature, std::uint32_t source_index) {
+    return mirakana::GltfSceneImportReviewRow{
+        .row_id = std::string{"gltf-scene-import."} + std::to_string(source_index),
+        .feature = feature,
+        .source_root = "source/assets/3d",
+        .importer_id = "reviewed.gltf-scene-import",
+        .declared_extensions = {".gltf", ".glb"},
+        .validator_ids = feature == mirakana::GltfSceneImportReviewFeature::parser_validation
+                             ? std::vector<std::string>{"gltf-validator"}
+                             : std::vector<std::string>{},
+        .dependency_ids = {"vcpkg.asset-importers"},
+        .license_ids = {"third-party-notice.asset-importers", "LicenseRef-Proprietary"},
+        .provenance_ids = feature == mirakana::GltfSceneImportReviewFeature::source_provenance
+                              ? std::vector<std::string>{"provenance.gltf-scene-import-source"}
+                              : std::vector<std::string>{},
+        .package_output_rows = feature == mirakana::GltfSceneImportReviewFeature::package_output
+                                   ? std::vector<std::string>{"runtime/assets/3d/gltf_scene_import.geasset"}
+                                   : std::vector<std::string>{},
+        .deterministic_content_hash = std::string{"sha256:gltf-scene-import-row-"} + std::to_string(source_index),
+        .external_resource_policy = feature == mirakana::GltfSceneImportReviewFeature::external_resource_policy
+                                        ? "local-file-or-glb-buffer-only"
+                                        : "",
+        .reviewed = true,
+        .source_root_evidence = feature == mirakana::GltfSceneImportReviewFeature::source_root_policy,
+        .parser_validation_evidence = feature == mirakana::GltfSceneImportReviewFeature::parser_validation,
+        .geometry_payload_evidence = feature == mirakana::GltfSceneImportReviewFeature::geometry_payload,
+        .material_payload_evidence = feature == mirakana::GltfSceneImportReviewFeature::material_payload,
+        .animation_payload_evidence = feature == mirakana::GltfSceneImportReviewFeature::animation_payload,
+        .external_resource_policy_evidence =
+            feature == mirakana::GltfSceneImportReviewFeature::external_resource_policy,
+        .source_provenance_evidence = feature == mirakana::GltfSceneImportReviewFeature::source_provenance,
+        .package_output_evidence = feature == mirakana::GltfSceneImportReviewFeature::package_output,
+        .dependency_legal_evidence = true,
+        .dependency_gate_required = false,
+        .request_arbitrary_extension = false,
+        .request_external_network_fetch = false,
+        .request_runtime_source_parsing = false,
+        .request_parser_type_access = false,
+        .request_native_handle_access = false,
+        .request_broad_scene_import_claim = false,
+        .request_package_mutation = false,
+        .source_index = source_index,
+    };
+}
+
+[[nodiscard]] GltfSceneImportReviewProbeResult validate_gltf_scene_import_review_package_evidence() {
+    const mirakana::GltfSceneImportReviewFeature required_features[] = {
+        mirakana::GltfSceneImportReviewFeature::source_root_policy,
+        mirakana::GltfSceneImportReviewFeature::parser_validation,
+        mirakana::GltfSceneImportReviewFeature::geometry_payload,
+        mirakana::GltfSceneImportReviewFeature::material_payload,
+        mirakana::GltfSceneImportReviewFeature::animation_payload,
+        mirakana::GltfSceneImportReviewFeature::external_resource_policy,
+        mirakana::GltfSceneImportReviewFeature::source_provenance,
+        mirakana::GltfSceneImportReviewFeature::package_output,
+    };
+
+    std::vector<mirakana::GltfSceneImportReviewRow> rows;
+    rows.reserve(8U);
+    std::uint32_t source_index{1U};
+    for (const auto feature : required_features) {
+        rows.push_back(make_gltf_scene_import_review_row(feature, source_index++));
+    }
+
+    const auto review = mirakana::review_gltf_scene_import_readiness(mirakana::GltfSceneImportReviewRequest{
+        .required_features =
+            {
+                mirakana::GltfSceneImportReviewFeature::source_root_policy,
+                mirakana::GltfSceneImportReviewFeature::parser_validation,
+                mirakana::GltfSceneImportReviewFeature::geometry_payload,
+                mirakana::GltfSceneImportReviewFeature::material_payload,
+                mirakana::GltfSceneImportReviewFeature::animation_payload,
+                mirakana::GltfSceneImportReviewFeature::external_resource_policy,
+                mirakana::GltfSceneImportReviewFeature::source_provenance,
+                mirakana::GltfSceneImportReviewFeature::package_output,
+            },
+        .rows = std::move(rows),
+        .row_budget = 16U,
+        .seed = 571U,
+    });
+
+    return GltfSceneImportReviewProbeResult{
+        .status = review.status,
+        .reviewed = review.status != mirakana::GltfSceneImportReviewStatus::no_rows &&
+                    review.status != mirakana::GltfSceneImportReviewStatus::invalid_request,
+        .ready = review.selected_package_evidence_ready,
+        .rows = review.row_count,
+        .ready_rows = review.ready_row_count,
+        .dependency_gated_rows = review.dependency_gated_row_count,
+        .unsupported_claim_rows = review.unsupported_claim_row_count,
+        .source_root_rows = review.source_root_rows,
+        .parser_validation_rows = review.parser_validation_rows,
+        .geometry_payload_rows = review.geometry_payload_rows,
+        .material_payload_rows = review.material_payload_rows,
+        .animation_payload_rows = review.animation_payload_rows,
+        .external_resource_policy_rows = review.external_resource_policy_rows,
+        .source_provenance_rows = review.source_provenance_rows,
+        .package_output_rows = review.package_output_rows,
+        .dependency_legal_records_ready = review.dependency_legal_records_ready,
+        .selected_package_evidence_ready = review.selected_package_evidence_ready,
+        .gltf_scene_import_ready = review.gltf_scene_import_ready,
+        .broad_scene_import_ready = review.broad_scene_import_ready,
+        .invoked_external_network_fetch = review.invoked_external_network_fetch,
+        .invoked_runtime_source_parsing = review.invoked_runtime_source_parsing,
+        .leaked_parser_type = review.leaked_parser_type,
+        .exposed_native_handle = review.exposed_native_handle,
+        .mutated_packages = review.mutated_packages,
         .diagnostics = review.diagnostics.size(),
         .replay_hash = review.replay_hash,
     };
@@ -1913,7 +2069,7 @@ constexpr std::uint32_t kRuntimeSceneSkinnedJointWeightsOffsetBytes{56};
     std::optional<mirakana::AnimationFloatClipSourceDocument> morph_animation_clip_;
     std::vector<mirakana::AnimationJointTrack3dDesc> quaternion_animation_tracks_;
 "@)
-    $text = $text.Replace("[--require-scene-gpu-bindings] [--require-postprocess]\n", "[--require-scene-gpu-bindings] [--require-postprocess] [--require-postprocess-depth-input] [--require-directional-shadow] [--require-directional-shadow-filtering] [--require-shadow-morph-composition] [--require-renderer-quality-gates] [--require-playable-3d-slice] [--require-primary-camera-controller] [--require-transform-animation] [--require-morph-package] [--require-compute-morph] [--require-compute-morph-skin] [--require-compute-morph-async-telemetry] [--require-quaternion-animation] [--require-package-streaming-safe-point] [--require-ktx2-basis-texture-review]\n")
+    $text = $text.Replace("[--require-scene-gpu-bindings] [--require-postprocess]\n", "[--require-scene-gpu-bindings] [--require-postprocess] [--require-postprocess-depth-input] [--require-directional-shadow] [--require-directional-shadow-filtering] [--require-shadow-morph-composition] [--require-renderer-quality-gates] [--require-playable-3d-slice] [--require-primary-camera-controller] [--require-transform-animation] [--require-morph-package] [--require-compute-morph] [--require-compute-morph-skin] [--require-compute-morph-async-telemetry] [--require-quaternion-animation] [--require-package-streaming-safe-point] [--require-ktx2-basis-texture-review] [--require-gltf-scene-import-review]\n")
     $text = $text.Replace(@"
     if (options.require_d3d12_renderer && options.require_vulkan_renderer) {
         std::cerr << "--require-d3d12-renderer and --require-vulkan-renderer are mutually exclusive\n";
@@ -2562,6 +2718,10 @@ load_packaged_vulkan_shifted_shadow_receiver_scene_shaders(const char* executabl
         }
         if (arg == "--require-ktx2-basis-texture-review") {
             options.require_ktx2_basis_texture_review = true;
+            continue;
+        }
+        if (arg == "--require-gltf-scene-import-review") {
+            options.require_gltf_scene_import_review = true;
             continue;
         }
 "@)
@@ -3260,7 +3420,7 @@ void print_package_failures(const std::vector<mirakana::runtime::RuntimeAssetPac
 "@)
     $text = $text.Replace(
         "    const auto scene_gpu_stats = report.scene_gpu_stats;`n",
-        "    const auto scene_gpu_stats = report.scene_gpu_stats;`n    const auto renderer_quality =`n        mirakana::evaluate_win32_desktop_presentation_quality_gate(report, make_renderer_quality_gate_desc(options));`n    const auto playable_3d = evaluate_playable_3d_slice(`n        options, result, game, package_streaming_result, runtime_package ? runtime_package->records().size() : 0U,`n        report, renderer_quality);`n    const auto ktx_basis_texture_review_probe = options.require_ktx2_basis_texture_review`n                                                    ? validate_ktx_basis_texture_review_package_evidence()`n                                                    : KtxBasisTextureReviewProbeResult{};`n")
+        "    const auto scene_gpu_stats = report.scene_gpu_stats;`n    const auto renderer_quality =`n        mirakana::evaluate_win32_desktop_presentation_quality_gate(report, make_renderer_quality_gate_desc(options));`n    const auto playable_3d = evaluate_playable_3d_slice(`n        options, result, game, package_streaming_result, runtime_package ? runtime_package->records().size() : 0U,`n        report, renderer_quality);`n    const auto ktx_basis_texture_review_probe = options.require_ktx2_basis_texture_review`n                                                    ? validate_ktx_basis_texture_review_package_evidence()`n                                                    : KtxBasisTextureReviewProbeResult{};`n    const auto gltf_scene_import_review_probe = options.require_gltf_scene_import_review`n                                                    ? validate_gltf_scene_import_review_package_evidence()`n                                                    : GltfSceneImportReviewProbeResult{};`n")
     $text = $text.Replace(@"
               << " framegraph_passes=" << report.framegraph_passes
               << " frames=" << result.frames_run
@@ -3363,6 +3523,50 @@ void print_package_failures(const std::vector<mirakana::runtime::RuntimeAssetPac
               << (ktx_basis_texture_review_probe.invoked_compression_tool ? 1 : 0)
               << " ktx_basis_texture_review_diagnostics=" << ktx_basis_texture_review_probe.diagnostics
               << " ktx_basis_texture_review_replay_hash=" << ktx_basis_texture_review_probe.replay_hash
+              << " gltf_scene_import_review_status="
+              << gltf_scene_import_review_status_name(gltf_scene_import_review_probe.status)
+              << " gltf_scene_import_review_reviewed=" << (gltf_scene_import_review_probe.reviewed ? 1 : 0)
+              << " gltf_scene_import_review_ready=" << (gltf_scene_import_review_probe.ready ? 1 : 0)
+              << " gltf_scene_import_review_rows=" << gltf_scene_import_review_probe.rows
+              << " gltf_scene_import_review_ready_rows=" << gltf_scene_import_review_probe.ready_rows
+              << " gltf_scene_import_review_dependency_gated_rows="
+              << gltf_scene_import_review_probe.dependency_gated_rows
+              << " gltf_scene_import_review_unsupported_claim_rows="
+              << gltf_scene_import_review_probe.unsupported_claim_rows
+              << " gltf_scene_import_review_source_root_rows=" << gltf_scene_import_review_probe.source_root_rows
+              << " gltf_scene_import_review_parser_validation_rows="
+              << gltf_scene_import_review_probe.parser_validation_rows
+              << " gltf_scene_import_review_geometry_payload_rows="
+              << gltf_scene_import_review_probe.geometry_payload_rows
+              << " gltf_scene_import_review_material_payload_rows="
+              << gltf_scene_import_review_probe.material_payload_rows
+              << " gltf_scene_import_review_animation_payload_rows="
+              << gltf_scene_import_review_probe.animation_payload_rows
+              << " gltf_scene_import_review_external_resource_policy_rows="
+              << gltf_scene_import_review_probe.external_resource_policy_rows
+              << " gltf_scene_import_review_source_provenance_rows="
+              << gltf_scene_import_review_probe.source_provenance_rows
+              << " gltf_scene_import_review_package_output_rows=" << gltf_scene_import_review_probe.package_output_rows
+              << " gltf_scene_import_review_dependency_legal_records_ready="
+              << (gltf_scene_import_review_probe.dependency_legal_records_ready ? 1 : 0)
+              << " gltf_scene_import_review_selected_package_evidence_ready="
+              << (gltf_scene_import_review_probe.selected_package_evidence_ready ? 1 : 0)
+              << " gltf_scene_import_review_gltf_scene_import_ready="
+              << (gltf_scene_import_review_probe.gltf_scene_import_ready ? 1 : 0)
+              << " gltf_scene_import_review_broad_scene_import_ready="
+              << (gltf_scene_import_review_probe.broad_scene_import_ready ? 1 : 0)
+              << " gltf_scene_import_review_invoked_external_network_fetch="
+              << (gltf_scene_import_review_probe.invoked_external_network_fetch ? 1 : 0)
+              << " gltf_scene_import_review_invoked_runtime_source_parsing="
+              << (gltf_scene_import_review_probe.invoked_runtime_source_parsing ? 1 : 0)
+              << " gltf_scene_import_review_leaked_parser_type="
+              << (gltf_scene_import_review_probe.leaked_parser_type ? 1 : 0)
+              << " gltf_scene_import_review_exposed_native_handle="
+              << (gltf_scene_import_review_probe.exposed_native_handle ? 1 : 0)
+              << " gltf_scene_import_review_mutated_packages="
+              << (gltf_scene_import_review_probe.mutated_packages ? 1 : 0)
+              << " gltf_scene_import_review_diagnostics=" << gltf_scene_import_review_probe.diagnostics
+              << " gltf_scene_import_review_replay_hash=" << gltf_scene_import_review_probe.replay_hash
               << " frames=" << result.frames_run
 "@)
     $text = $text.Replace(@"
@@ -3385,6 +3589,18 @@ void print_package_failures(const std::vector<mirakana::runtime::RuntimeAssetPac
              package_streaming_result.resident_resource_kind_count != 8 ||
              package_streaming_result.resident_package_count != 1 || package_streaming_result.diagnostics.size() != 0)) {
             return 3;
+        }
+        if (options.require_gltf_scene_import_review &&
+            (!gltf_scene_import_review_probe.reviewed || !gltf_scene_import_review_probe.ready ||
+             gltf_scene_import_review_probe.diagnostics != 0U ||
+             gltf_scene_import_review_probe.dependency_gated_rows != 0U ||
+             gltf_scene_import_review_probe.unsupported_claim_rows != 0U ||
+             gltf_scene_import_review_probe.broad_scene_import_ready ||
+             gltf_scene_import_review_probe.invoked_external_network_fetch ||
+             gltf_scene_import_review_probe.invoked_runtime_source_parsing ||
+             gltf_scene_import_review_probe.leaked_parser_type || gltf_scene_import_review_probe.exposed_native_handle ||
+             gltf_scene_import_review_probe.mutated_packages)) {
+            return 24;
         }
         if (options.require_renderer_quality_gates && !renderer_quality.ready) {
             return 3;
@@ -5522,6 +5738,7 @@ This `DesktopRuntime3DPackage` game uses the optional desktop runtime package la
 - cooked quaternion local-pose animation consumed through first-party `MK_animation` sampling counters
 - selected host-gated package streaming safe-point smoke over the packaged scene validation target
 - selected KTX2/Basis texture review package smoke with `--require-ktx2-basis-texture-review`, `ktx_basis_texture_review_status=host_evidence_required`, `ktx_basis_texture_review_ready=1`, seven review rows, six ready rows, one host-gated offline tool row, zero dependency-gated rows, zero unsupported-claim rows, selected package evidence ready, zero runtime transcoding/GPU upload/compression tool invocation counters, and a positive `ktx_basis_texture_review_replay_hash`
+- selected glTF scene import review package smoke with `--require-gltf-scene-import-review`, `gltf_scene_import_review_status=ready`, `gltf_scene_import_review_ready=1`, eight review rows, eight ready rows, zero dependency-gated rows, zero unsupported-claim rows, selected package evidence ready, zero external network/runtime source parsing/parser type/native handle/package mutation counters, no broad scene import claim, and a positive `gltf_scene_import_review_replay_hash`
 - selected generated 3D renderer quality smoke over scene GPU, depth-aware postprocess, framegraph_passes=2, framegraph_passes_executed=4, framegraph_render_passes_recorded=4, framegraph_barrier_steps_executed=9, renderer_quality_expected_framegraph_render_passes=4, and renderer_quality_expected_framegraph_barrier_steps=9
 - selected generated 3D postprocess depth-input smoke with postprocess_depth_input_ready=1 and renderer_quality_postprocess_depth_input_ready=1
 - selected generated 3D playable package smoke through `--require-playable-3d-slice`
@@ -5554,7 +5771,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 
 The installed D3D12 package smoke uses:
 
 ```powershell
-out\install\desktop-runtime-release\bin\__TARGET_NAME__.exe --smoke --require-config runtime/__GAME_NAME__.config --require-scene-package runtime/__GAME_NAME__.geindex --require-primary-camera-controller --require-transform-animation --require-morph-package --require-compute-morph --require-compute-morph-normal-tangent --require-compute-morph-skin --require-compute-morph-async-telemetry --require-quaternion-animation --require-package-streaming-safe-point --require-gameplay-systems --require-d3d12-scene-shaders --require-d3d12-renderer --require-scene-gpu-bindings --require-postprocess --require-postprocess-depth-input --require-renderer-quality-gates --require-playable-3d-slice --require-ktx2-basis-texture-review
+out\install\desktop-runtime-release\bin\__TARGET_NAME__.exe --smoke --require-config runtime/__GAME_NAME__.config --require-scene-package runtime/__GAME_NAME__.geindex --require-primary-camera-controller --require-transform-animation --require-morph-package --require-compute-morph --require-compute-morph-normal-tangent --require-compute-morph-skin --require-compute-morph-async-telemetry --require-quaternion-animation --require-package-streaming-safe-point --require-gameplay-systems --require-d3d12-scene-shaders --require-d3d12-renderer --require-scene-gpu-bindings --require-postprocess --require-postprocess-depth-input --require-renderer-quality-gates --require-playable-3d-slice --require-ktx2-basis-texture-review --require-gltf-scene-import-review
 ```
 
 The selected D3D12 directional shadow package smoke uses:
@@ -6830,6 +7047,12 @@ function New-DesktopRuntime3DGameDesignSpec {
                 kind = "texture"
                 purpose = "Selected KTX2/Basis package evidence rows for container validation, supercompression policy, transcode target policy, GPU target compatibility, source provenance, package output, and host tool gates without runtime transcoding or GPU upload."
                 delivery = "reviewed-package-evidence"
+            },
+            [ordered]@{
+                id = "gltf-scene-import-review"
+                kind = "mesh"
+                purpose = "Selected glTF scene import review package smoke evidence for source-root policy, parser validation, geometry/material/animation payload evidence, external resource policy, source provenance, package output, and dependency/legal records without runtime source parsing, parser type leakage, native handles, package mutation, or broad scene import readiness."
+                delivery = "reviewed-package-evidence"
             }
         )
         systems = @("win32-desktop-host", "scene-rendering", "renderer-quality", "runtime-ui", "physics-3d", "navigation-navmesh", "behavior-ai", "animation", "package-streaming")
@@ -6855,9 +7078,14 @@ function New-DesktopRuntime3DGameDesignSpec {
                 id = "ktx2-basis-texture-review"
                 evidence = "Installed package validation reports KTX2/Basis review rows, selected package evidence, exact vcpkg.ktx dependency/legal records, zero dependency-gated or unsupported rows, and zero runtime transcoding/GPU upload/compression execution."
                 recipeIds = @("installed-d3d12-3d-package-smoke")
+            },
+            [ordered]@{
+                id = "gltf-scene-import-review"
+                evidence = "Installed package validation reports glTF scene import review rows, dependency/legal records, selected package evidence, zero dependency-gated or unsupported rows, zero external network/runtime source parsing/parser type/native handle/package mutation counters, no broad scene import claim, and a positive replay hash."
+                recipeIds = @("installed-d3d12-3d-package-smoke")
             }
         )
-        unsupportedClaims = @("engine-internal-edits", "native-handles", "middleware-contracts", "unreviewed-external-assets", "arbitrary-shell", "broad-commercial-quality", "runtime-source-parsing", "renderer-rhi-residency", "metal-readiness", "runtime-ktx2-basis-transcoding", "ktx2-basis-gpu-upload", "ktx2-basis-compression-execution", "broad-texture-codec-readiness")
+        unsupportedClaims = @("engine-internal-edits", "native-handles", "middleware-contracts", "unreviewed-external-assets", "arbitrary-shell", "broad-commercial-quality", "runtime-source-parsing", "renderer-rhi-residency", "metal-readiness", "runtime-ktx2-basis-transcoding", "ktx2-basis-gpu-upload", "ktx2-basis-compression-execution", "broad-texture-codec-readiness", "gltf-external-network-fetch", "gltf-runtime-source-parsing", "gltf-parser-type-leakage", "gltf-native-handle-access", "gltf-package-mutation", "broad-gltf-scene-import-readiness")
     }
 }
 
@@ -7304,7 +7532,7 @@ function New-DesktopRuntime3DManifest {
             scene = "GameEngine.Scene.v1 loaded from a cooked package with static mesh, primary perspective camera, and directional light metadata"
             sceneRenderer = "mirakana::submit_scene_render_packet with material instance intent through first-party scene/material contracts"
             renderer = "mirakana::IRenderer from the desktop host with deterministic NullRenderer fallback and host-gated scene GPU binding when selected"
-        currentRuntime = "generated host-gated Win32 desktop runtime package proof for 3D gameplay with camera/controller movement, transform/quaternion animation, morph and compute morph package smokes, selected host-gated package streaming safe-point smoke, selected KTX2/Basis texture review package smoke through --require-ktx2-basis-texture-review with ktx_basis_texture_review_status=host_evidence_required, ktx_basis_texture_review_ready=1, seven review rows, six ready rows, one host-gated offline tool row, zero dependency-gated rows, zero unsupported-claim rows, selected package evidence ready, KTX/Basis review ready, broad texture codec readiness not claimed, zero runtime transcoding, zero GPU upload, zero compression tool invocation, zero diagnostics, and a positive replay hash, selected generated 3D renderer quality smoke over scene GPU + depth-aware postprocess with framegraph_passes=2, framegraph_passes_executed=4, framegraph_render_passes_recorded=4, framegraph_barrier_steps_executed=9, renderer_quality_expected_framegraph_render_passes=4, and renderer_quality_expected_framegraph_barrier_steps=9 counters, selected generated 3D postprocess depth-input smoke through postprocess_depth_input_ready=1 and renderer_quality_postprocess_depth_input_ready=1, selected generated 3D playable package smoke through playable_3d_* counters, selected generated 3D directional shadow package smoke through directional_shadow_* counters with fixed_pcf_3x3 filtering, framegraph_passes=3, framegraph_passes_executed=6, framegraph_render_passes_recorded=6, and framegraph_barrier_steps_executed=15, selected D3D12 generated 3D graphics morph + directional shadow receiver smoke through --require-shadow-morph-composition with renderer_gpu_morph_draws, renderer_morph_descriptor_binds, directional_shadow_ready=1, framegraph_passes=3, framegraph_passes_executed=6, framegraph_render_passes_recorded=6, and framegraph_barrier_steps_executed=15, selected generated 3D gameplay systems package smoke through gameplay_systems_* counters over deterministic public physics, navmesh dynamic obstacles, navmesh/crowd readiness value rows, local avoidance, navigation, AI, audio, animation, and lifecycle APIs, including gameplay_systems_navigation_navmesh_dynamic_obstacles=1, gameplay_systems_navigation_navmesh_readiness_status=ready, gameplay_systems_navigation_navmesh_readiness_diagnostics=0, gameplay_systems_navigation_navmesh_scene_refs=3, gameplay_systems_navigation_navmesh_visited_polygons=3, gameplay_systems_navigation_crowd_source_order_ready=1, gameplay_systems_navigation_crowd_applied_neighbors=2, gameplay_systems_navigation_crowd_readiness_status=ready, gameplay_systems_navigation_crowd_readiness_diagnostics=0, gameplay_systems_navigation_crowd_readiness_source_order_ready=1, gameplay_systems_navigation_crowd_readiness_applied_neighbors=2, gameplay_systems_navigation_crowd_readiness_dynamic_obstacles=2, gameplay_systems_local_avoidance_applied_neighbors, gameplay_systems_physics_policy_dynamic_pushes=1, gameplay_systems_advanced_controller_status=moved, gameplay_systems_advanced_controller_platform_applied=1, gameplay_systems_advanced_controller_constraint_rows=1, gameplay_systems_advanced_controller_replay_changed=1, gameplay_systems_character_dynamics_status=ready, gameplay_systems_character_dynamics_step_ups=1, gameplay_systems_character_dynamics_walkable_slope_rows=1, gameplay_systems_character_dynamics_ground_probes=1, gameplay_systems_character_dynamics_replay_changed=1, gameplay_systems_physics_constraints_status=solved, gameplay_systems_physics_constraints_diagnostic=none, gameplay_systems_physics_constraints_rows=2, gameplay_systems_physics_constraints_fixed_rows=1, gameplay_systems_physics_constraints_linear_axis_rows=1, gameplay_systems_physics_constraints_axis_limit_clamped=1, gameplay_systems_vehicle_status=grounded, gameplay_systems_vehicle_diagnostic=none, gameplay_systems_vehicle_wheel_rows=4, gameplay_systems_vehicle_grounded_wheels=4, and gameplay_systems_vehicle_wheel_probe_hits=4, selected generated 3D scene collision package smoke through --require-scene-collision-package, collision_package_status=ready, collision_package_bodies=3, collision_package_trigger_overlaps=1, collision_query_readiness_status=ready, collision_query_readiness_diagnostic=none, collision_query_readiness_diagnostics=0, and gameplay_systems_collision_package_ready=1, selected D3D12 visible generated 3D production-style package proof through --require-visible-3d-production-proof and visible_3d_* counters, selected D3D12 generated 3D native UI overlay HUD box package smoke through --require-native-ui-overlay, hud_boxes=2, ui_overlay_ready=1, ui_overlay_sprites_submitted=2, and ui_overlay_draws=2, selected D3D12 generated 3D cooked UI atlas image sprite package smoke through --require-native-ui-textured-sprite-atlas, hud_images=2, ui_atlas_metadata_status=ready, ui_texture_overlay_atlas_ready=1, ui_texture_overlay_sprites_submitted=2, ui_texture_overlay_texture_binds=2, and ui_texture_overlay_draws=2, and selected D3D12 generated 3D cooked UI atlas text glyph package smoke through --require-native-ui-text-glyph-atlas, hud_text_glyphs=2, text_glyphs_resolved=2, text_glyphs_missing=0, ui_atlas_metadata_glyphs=1, ui_texture_overlay_sprites_submitted=2, ui_texture_overlay_texture_binds=2, and ui_texture_overlay_draws=2; runtime source asset parsing remains unsupported; broad dependency cooking remains unsupported; KTX2/Basis runtime transcoding, KTX GPU upload, compression tool execution, and broad texture codec readiness remain unsupported; broad async/background package streaming remains unsupported; scene/physics perception integration remains unsupported; navmesh asset import and persistent/full crowd simulation beyond value-only batch planning, animation-aware steering, and networked crowd determinism remain unsupported; middleware remains unsupported; production physics middleware/native backend readiness, dynamic-vs-dynamic TOI, rotational CCD, rotational rigid-body constraints, 2D CCD, persistent joint assets, broad vehicle dynamics, and persistent vehicle simulation remain unsupported; production text shaping, font rasterization, glyph atlas generation, runtime source image decoding, source image atlas packing, material graph, and live shader generation remain unsupported; broad directional shadow production quality, morph-deformed shadow-caster silhouettes, compute morph + shadow composition, and broad shadow+morph composition remain unsupported for this generated sample; public native or RHI handle access remains unsupported; Vulkan/Metal parity for the visible proof remains unsupported; Metal readiness remains unsupported; broad generated 3D production readiness remains unsupported"
+        currentRuntime = "generated host-gated Win32 desktop runtime package proof for 3D gameplay with camera/controller movement, transform/quaternion animation, morph and compute morph package smokes, selected host-gated package streaming safe-point smoke, selected KTX2/Basis texture review package smoke through --require-ktx2-basis-texture-review with ktx_basis_texture_review_status=host_evidence_required, ktx_basis_texture_review_ready=1, seven review rows, six ready rows, one host-gated offline tool row, zero dependency-gated rows, zero unsupported-claim rows, selected package evidence ready, KTX/Basis review ready, broad texture codec readiness not claimed, zero runtime transcoding, zero GPU upload, zero compression tool invocation, zero diagnostics, and a positive replay hash, selected glTF scene import review package smoke through --require-gltf-scene-import-review with gltf_scene_import_review_status=ready, gltf_scene_import_review_ready=1, eight review rows, eight ready rows, zero dependency-gated rows, zero unsupported-claim rows, dependency/legal records ready, selected package evidence ready, broad scene import readiness not claimed, zero external network fetch, runtime source parsing, parser type leakage, native handle exposure, package mutation, zero diagnostics, and a positive replay hash, selected generated 3D renderer quality smoke over scene GPU + depth-aware postprocess with framegraph_passes=2, framegraph_passes_executed=4, framegraph_render_passes_recorded=4, framegraph_barrier_steps_executed=9, renderer_quality_expected_framegraph_render_passes=4, and renderer_quality_expected_framegraph_barrier_steps=9 counters, selected generated 3D postprocess depth-input smoke through postprocess_depth_input_ready=1 and renderer_quality_postprocess_depth_input_ready=1, selected generated 3D playable package smoke through playable_3d_* counters, selected generated 3D directional shadow package smoke through directional_shadow_* counters with fixed_pcf_3x3 filtering, framegraph_passes=3, framegraph_passes_executed=6, framegraph_render_passes_recorded=6, and framegraph_barrier_steps_executed=15, selected D3D12 generated 3D graphics morph + directional shadow receiver smoke through --require-shadow-morph-composition with renderer_gpu_morph_draws, renderer_morph_descriptor_binds, directional_shadow_ready=1, framegraph_passes=3, framegraph_passes_executed=6, framegraph_render_passes_recorded=6, and framegraph_barrier_steps_executed=15, selected generated 3D gameplay systems package smoke through gameplay_systems_* counters over deterministic public physics, navmesh dynamic obstacles, navmesh/crowd readiness value rows, local avoidance, navigation, AI, audio, animation, and lifecycle APIs, including gameplay_systems_navigation_navmesh_dynamic_obstacles=1, gameplay_systems_navigation_navmesh_readiness_status=ready, gameplay_systems_navigation_navmesh_readiness_diagnostics=0, gameplay_systems_navigation_navmesh_scene_refs=3, gameplay_systems_navigation_navmesh_visited_polygons=3, gameplay_systems_navigation_crowd_source_order_ready=1, gameplay_systems_navigation_crowd_applied_neighbors=2, gameplay_systems_navigation_crowd_readiness_status=ready, gameplay_systems_navigation_crowd_readiness_diagnostics=0, gameplay_systems_navigation_crowd_readiness_source_order_ready=1, gameplay_systems_navigation_crowd_readiness_applied_neighbors=2, gameplay_systems_navigation_crowd_readiness_dynamic_obstacles=2, gameplay_systems_local_avoidance_applied_neighbors, gameplay_systems_physics_policy_dynamic_pushes=1, gameplay_systems_advanced_controller_status=moved, gameplay_systems_advanced_controller_platform_applied=1, gameplay_systems_advanced_controller_constraint_rows=1, gameplay_systems_advanced_controller_replay_changed=1, gameplay_systems_character_dynamics_status=ready, gameplay_systems_character_dynamics_step_ups=1, gameplay_systems_character_dynamics_walkable_slope_rows=1, gameplay_systems_character_dynamics_ground_probes=1, gameplay_systems_character_dynamics_replay_changed=1, gameplay_systems_physics_constraints_status=solved, gameplay_systems_physics_constraints_diagnostic=none, gameplay_systems_physics_constraints_rows=2, gameplay_systems_physics_constraints_fixed_rows=1, gameplay_systems_physics_constraints_linear_axis_rows=1, gameplay_systems_physics_constraints_axis_limit_clamped=1, gameplay_systems_vehicle_status=grounded, gameplay_systems_vehicle_diagnostic=none, gameplay_systems_vehicle_wheel_rows=4, gameplay_systems_vehicle_grounded_wheels=4, and gameplay_systems_vehicle_wheel_probe_hits=4, selected generated 3D scene collision package smoke through --require-scene-collision-package, collision_package_status=ready, collision_package_bodies=3, collision_package_trigger_overlaps=1, collision_query_readiness_status=ready, collision_query_readiness_diagnostic=none, collision_query_readiness_diagnostics=0, and gameplay_systems_collision_package_ready=1, selected D3D12 visible generated 3D production-style package proof through --require-visible-3d-production-proof and visible_3d_* counters, selected D3D12 generated 3D native UI overlay HUD box package smoke through --require-native-ui-overlay, hud_boxes=2, ui_overlay_ready=1, ui_overlay_sprites_submitted=2, and ui_overlay_draws=2, selected D3D12 generated 3D cooked UI atlas image sprite package smoke through --require-native-ui-textured-sprite-atlas, hud_images=2, ui_atlas_metadata_status=ready, ui_texture_overlay_atlas_ready=1, ui_texture_overlay_sprites_submitted=2, ui_texture_overlay_texture_binds=2, and ui_texture_overlay_draws=2, and selected D3D12 generated 3D cooked UI atlas text glyph package smoke through --require-native-ui-text-glyph-atlas, hud_text_glyphs=2, text_glyphs_resolved=2, text_glyphs_missing=0, ui_atlas_metadata_glyphs=1, ui_texture_overlay_sprites_submitted=2, ui_texture_overlay_texture_binds=2, and ui_texture_overlay_draws=2; runtime source asset parsing remains unsupported; glTF external network fetches, parser type leakage, native handle exposure, package mutation, and broad glTF scene import readiness remain unsupported; broad dependency cooking remains unsupported; KTX2/Basis runtime transcoding, KTX GPU upload, compression tool execution, and broad texture codec readiness remain unsupported; broad async/background package streaming remains unsupported; scene/physics perception integration remains unsupported; navmesh asset import and persistent/full crowd simulation beyond value-only batch planning, animation-aware steering, and networked crowd determinism remain unsupported; middleware remains unsupported; production physics middleware/native backend readiness, dynamic-vs-dynamic TOI, rotational CCD, rotational rigid-body constraints, 2D CCD, persistent joint assets, broad vehicle dynamics, and persistent vehicle simulation remain unsupported; production text shaping, font rasterization, glyph atlas generation, runtime source image decoding, source image atlas packing, material graph, and live shader generation remain unsupported; broad directional shadow production quality, morph-deformed shadow-caster silhouettes, compute morph + shadow composition, and broad shadow+morph composition remain unsupported for this generated sample; public native or RHI handle access remains unsupported; Vulkan/Metal parity for the visible proof remains unsupported; Metal readiness remains unsupported; broad generated 3D production readiness remains unsupported"
         }
         backendReadiness = [ordered]@{
             platform = "win32-desktop-host-gated"
@@ -7338,6 +7566,7 @@ function New-DesktopRuntime3DManifest {
                     "first-party-source-documents",
                     "gltf",
                     "ktx2-basis-review",
+                    "gltf-scene-import-review",
                     "material-source",
                     "hlsl-offline-compile-request"
                 )
@@ -7351,6 +7580,12 @@ function New-DesktopRuntime3DManifest {
                     "runtime-ktx2-basis-transcoding",
                     "ktx2-basis-gpu-upload",
                     "ktx2-basis-compression-execution",
+                    "gltf-external-network-fetch",
+                    "gltf-runtime-source-parsing",
+                    "gltf-parser-type-leakage",
+                    "gltf-native-handle-access",
+                    "gltf-package-mutation",
+                    "broad-gltf-scene-import-readiness",
                     "broad-codec-readiness"
                 )
             }
@@ -7561,7 +7796,7 @@ function New-DesktopRuntime3DManifest {
             },
             [ordered]@{
                 name = "installed-d3d12-3d-package-smoke"
-                command = "out\install\desktop-runtime-release\bin\$TargetName.exe --smoke --require-config runtime/$GameName.config --require-scene-package runtime/$GameName.geindex --require-primary-camera-controller --require-transform-animation --require-morph-package --require-compute-morph --require-compute-morph-normal-tangent --require-compute-morph-skin --require-compute-morph-async-telemetry --require-quaternion-animation --require-package-streaming-safe-point --require-gameplay-systems --require-d3d12-scene-shaders --require-d3d12-renderer --require-scene-gpu-bindings --require-postprocess --require-postprocess-depth-input --require-renderer-quality-gates --require-playable-3d-slice --require-ktx2-basis-texture-review"
+                command = "out\install\desktop-runtime-release\bin\$TargetName.exe --smoke --require-config runtime/$GameName.config --require-scene-package runtime/$GameName.geindex --require-primary-camera-controller --require-transform-animation --require-morph-package --require-compute-morph --require-compute-morph-normal-tangent --require-compute-morph-skin --require-compute-morph-async-telemetry --require-quaternion-animation --require-package-streaming-safe-point --require-gameplay-systems --require-d3d12-scene-shaders --require-d3d12-renderer --require-scene-gpu-bindings --require-postprocess --require-postprocess-depth-input --require-renderer-quality-gates --require-playable-3d-slice --require-ktx2-basis-texture-review --require-gltf-scene-import-review"
             },
             [ordered]@{
                 name = "installed-d3d12-3d-native-ui-overlay-smoke"
@@ -7962,6 +8197,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-visible-3d-production-proof
             --require-native-ui-textured-sprite-atlas
             --require-ktx2-basis-texture-review
+            --require-gltf-scene-import-review
             --require-scene-collision-package
         REQUIRES_D3D12_SHADERS
         PACKAGE_FILES_FROM_MANIFEST

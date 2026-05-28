@@ -117,6 +117,12 @@
           "delivery": "reviewed-package-evidence"
         },
         {
+          "id": "gltf-scene-import-review",
+          "kind": "mesh",
+          "purpose": "Selected glTF scene import review package smoke evidence for source-root policy, parser validation, geometry/material/animation payload evidence, external resource policy, source provenance, package output, and dependency/legal records without runtime source parsing, parser type leakage, native handles, package mutation, or broad scene import readiness.",
+          "delivery": "reviewed-package-evidence"
+        },
+        {
           "id": "packaged-mesh",
           "kind": "mesh",
           "purpose": "First-party mesh source and cooked mesh payload for scene draw evidence.",
@@ -206,6 +212,13 @@
           ]
         },
         {
+          "id": "gltf-scene-import-review",
+          "evidence": "The selected glTF scene import review package smoke reports gltf_scene_import_review_status=ready, gltf_scene_import_review_ready=1, eight review rows, eight ready rows, zero dependency-gated rows, zero unsupported-claim rows, dependency/legal records ready, selected package evidence ready, glTF scene import review ready, broad scene import readiness not claimed, zero external network fetch, runtime source parsing, parser type leakage, native handle exposure, package mutation, zero diagnostics, and a positive replay hash.",
+          "recipeIds": [
+            "installed-d3d12-3d-package-smoke"
+          ]
+        },
+        {
           "id": "rpg-systems",
           "evidence": "RPG systems smoke reports deterministic stat, progression, skill, equipment, combat-loop intent, reward, save-validation, replay-hash, and zero side-effect counters.",
           "recipeIds": [
@@ -289,6 +302,12 @@
         "ktx2-basis-gpu-upload",
         "ktx2-basis-compression-execution",
         "broad-texture-codec-readiness",
+        "gltf-external-network-fetch",
+        "gltf-runtime-source-parsing",
+        "gltf-parser-type-leakage",
+        "gltf-native-handle-access",
+        "gltf-package-mutation",
+        "broad-gltf-scene-import-readiness",
         "metal-readiness"
       ]
     },
@@ -2039,6 +2058,7 @@
         "first-party-source-documents",
         "gltf",
         "ktx2-basis-review",
+        "gltf-scene-import-review",
         "material-source",
         "hlsl-offline-compile-request"
       ],
@@ -2052,6 +2072,12 @@
         "runtime-ktx2-basis-transcoding",
         "ktx2-basis-gpu-upload",
         "ktx2-basis-compression-execution",
+        "gltf-external-network-fetch",
+        "gltf-runtime-source-parsing",
+        "gltf-parser-type-leakage",
+        "gltf-native-handle-access",
+        "gltf-package-mutation",
+        "broad-gltf-scene-import-readiness",
         "broad-codec-readiness"
       ]
     }
@@ -2293,7 +2319,7 @@
     },
     {
       "name": "installed-d3d12-3d-package-smoke",
-      "command": "out\\install\\desktop-runtime-release\\bin\\sample_generated_desktop_runtime_3d_package.exe --smoke --require-config runtime/sample_generated_desktop_runtime_3d_package.config --require-scene-package runtime/sample_generated_desktop_runtime_3d_package.geindex --require-primary-camera-controller --require-transform-animation --require-morph-package --require-compute-morph --require-compute-morph-normal-tangent --require-compute-morph-skin --require-compute-morph-async-telemetry --require-quaternion-animation --require-package-streaming-safe-point --require-gameplay-systems --require-d3d12-scene-shaders --require-d3d12-renderer --require-scene-gpu-bindings --require-postprocess --require-postprocess-depth-input --require-renderer-quality-gates --require-renderer-quality-matrix --require-rendering-vfx-profiling --require-playable-3d-slice --require-native-ui-overlay --require-visible-3d-production-proof --require-scene-collision-package --require-native-ui-textured-sprite-atlas --require-package-upload-staging --require-ktx2-basis-texture-review"
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_generated_desktop_runtime_3d_package.exe --smoke --require-config runtime/sample_generated_desktop_runtime_3d_package.config --require-scene-package runtime/sample_generated_desktop_runtime_3d_package.geindex --require-primary-camera-controller --require-transform-animation --require-morph-package --require-compute-morph --require-compute-morph-normal-tangent --require-compute-morph-skin --require-compute-morph-async-telemetry --require-quaternion-animation --require-package-streaming-safe-point --require-gameplay-systems --require-d3d12-scene-shaders --require-d3d12-renderer --require-scene-gpu-bindings --require-postprocess --require-postprocess-depth-input --require-renderer-quality-gates --require-renderer-quality-matrix --require-rendering-vfx-profiling --require-playable-3d-slice --require-native-ui-overlay --require-visible-3d-production-proof --require-scene-collision-package --require-native-ui-textured-sprite-atlas --require-package-upload-staging --require-ktx2-basis-texture-review --require-gltf-scene-import-review"
     },
     {
       "name": "installed-3d-runtime-menu-hud-smoke",
