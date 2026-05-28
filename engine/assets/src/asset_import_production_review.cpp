@@ -44,7 +44,8 @@ constexpr std::uint64_t fnv_prime = 1099511628211ULL;
            feature == AssetImportProductionFeatureKind::gltf_animation ||
            feature == AssetImportProductionFeatureKind::ktx_texture ||
            feature == AssetImportProductionFeatureKind::source_image ||
-           feature == AssetImportProductionFeatureKind::source_audio;
+           feature == AssetImportProductionFeatureKind::source_audio ||
+           feature == AssetImportProductionFeatureKind::shader_offline_compile_request;
 }
 
 [[nodiscard]] bool feature_requires_command_review(AssetImportProductionFeatureKind feature) noexcept {
@@ -56,11 +57,40 @@ constexpr std::uint64_t fnv_prime = 1099511628211ULL;
            value.find('\0') == std::string_view::npos;
 }
 
+[[nodiscard]] char ascii_lower(char value) noexcept {
+    if (value >= 'A' && value <= 'Z') {
+        return static_cast<char>(value + ('a' - 'A'));
+    }
+    return value;
+}
+
+[[nodiscard]] bool contains_ascii_case_insensitive(std::string_view value, std::string_view token) noexcept {
+    if (token.empty() || token.size() > value.size()) {
+        return false;
+    }
+    for (std::size_t offset = 0; offset <= value.size() - token.size(); ++offset) {
+        bool matched{true};
+        for (std::size_t token_index = 0; token_index < token.size(); ++token_index) {
+            if (ascii_lower(value[offset + token_index]) != ascii_lower(token[token_index])) {
+                matched = false;
+                break;
+            }
+        }
+        if (matched) {
+            return true;
+        }
+    }
+    return false;
+}
+
 [[nodiscard]] bool contains_unsafe_token(std::string_view value) noexcept {
     constexpr std::string_view unsafe_tokens[] = {
-        "ID3D12", "D3D12_", "Vk",     "vk",          "MTL",     "SDL_",         "ImGui",        "native_handle",
-        "HWND",   "HANDLE", "dlopen", "LoadLibrary", "system(", "ShellExecute", "CreateProcess"};
-    return std::ranges::any_of(unsafe_tokens, [value](std::string_view token) { return value.contains(token); });
+        "ID3D12",        "D3D12_",    "Vk",     "vk",         "MTL",         "SDL_",    "ImGui",
+        "native_handle", "HWND",      "HANDLE", "dlopen",     "LoadLibrary", "system(", "ShellExecute",
+        "CreateProcess", "fastgltf",  "cgltf",  "ktxTexture", "KtxTexture",  "IDxc",    "DxcCompiler",
+        "spng_",         "ma_decoder"};
+    return std::ranges::any_of(
+        unsafe_tokens, [value](std::string_view token) { return contains_ascii_case_insensitive(value, token); });
 }
 
 [[nodiscard]] bool valid_token_list(const std::vector<std::string>& values) noexcept {
@@ -111,11 +141,69 @@ void append_diagnostic(std::vector<AssetImportProductionDiagnostic>& diagnostics
            !row.dependency_legal_evidence;
 }
 
+[[nodiscard]] bool has_exact_dependency_id(const std::vector<std::string>& values,
+                                           std::string_view expected_id) noexcept {
+    return std::ranges::any_of(
+        values, [expected_id](const std::string& value) { return std::string_view{value} == expected_id; });
+}
+
+[[nodiscard]] bool row_has_exact_dependency_ids(const AssetImportProductionEvidenceRow& row,
+                                                std::initializer_list<std::string_view> expected_ids) noexcept {
+    if (row.dependency_ids.size() != expected_ids.size()) {
+        return false;
+    }
+    return std::ranges::all_of(expected_ids, [&row](std::string_view expected_id) {
+        return has_exact_dependency_id(row.dependency_ids, expected_id);
+    });
+}
+
+[[nodiscard]] bool all_extensions_are_selected(const AssetImportProductionEvidenceRow& row,
+                                               std::initializer_list<std::string_view> selected_extensions) noexcept {
+    return std::ranges::all_of(row.declared_extensions, [selected_extensions](const std::string& extension) {
+        return std::ranges::find(selected_extensions, std::string_view{extension}) != selected_extensions.end();
+    });
+}
+
+[[nodiscard]] bool row_requests_broad_codec_claim(const AssetImportProductionEvidenceRow& row) noexcept {
+    if (row.request_broad_codec_claim) {
+        return true;
+    }
+    if (row.feature == AssetImportProductionFeatureKind::source_image) {
+        return !all_extensions_are_selected(row, {".png"});
+    }
+    if (row.feature == AssetImportProductionFeatureKind::source_audio) {
+        return !all_extensions_are_selected(row, {".wav", ".flac", ".mp3"});
+    }
+    return false;
+}
+
 [[nodiscard]] bool row_has_unsupported_claim(const AssetImportProductionEvidenceRow& row) noexcept {
     return row.request_arbitrary_importer_plugin || row.request_external_download ||
            row.request_live_shader_generation || row.request_source_mutation_outside_roots ||
            row.request_native_handle_access || row.request_unreviewed_compiler_execution ||
-           row.request_runtime_source_parsing || row.request_broad_codec_claim;
+           row.request_runtime_source_parsing || row_requests_broad_codec_claim(row);
+}
+
+[[nodiscard]] bool row_has_required_dependency_evidence(const AssetImportProductionEvidenceRow& row) noexcept {
+    if (!feature_requires_dependency_legal_record(row.feature)) {
+        return true;
+    }
+    if (!row.dependency_legal_evidence || row.dependency_ids.empty()) {
+        return false;
+    }
+    if (row.feature == AssetImportProductionFeatureKind::gltf_geometry ||
+        row.feature == AssetImportProductionFeatureKind::gltf_animation ||
+        row.feature == AssetImportProductionFeatureKind::source_image ||
+        row.feature == AssetImportProductionFeatureKind::source_audio) {
+        return row_has_exact_dependency_ids(row, {"vcpkg.asset-importers"});
+    }
+    if (row.feature == AssetImportProductionFeatureKind::ktx_texture) {
+        return row_has_exact_dependency_ids(row, {"vcpkg.ktx-software"});
+    }
+    if (row.feature == AssetImportProductionFeatureKind::shader_offline_compile_request) {
+        return row_has_exact_dependency_ids(row, {"toolchain.dxc", "toolchain.spirv-tools"});
+    }
+    return true;
 }
 
 [[nodiscard]] AssetImportProductionExecutionReadiness
@@ -142,7 +230,7 @@ execution_readiness_for_row(const AssetImportProductionEvidenceRow& row) noexcep
     return row.reviewed && row.host_validated && row.source_root_evidence && row.importer_declared &&
            row.extension_evidence && row.package_handoff_evidence && row.license_provenance_evidence &&
            row.deterministic_hash_evidence && (!feature_requires_validator(row.feature) || row.validator_evidence) &&
-           (!feature_requires_dependency_legal_record(row.feature) || row.dependency_legal_evidence) &&
+           row_has_required_dependency_evidence(row) &&
            (!feature_requires_command_review(row.feature) || row.command_review_evidence);
 }
 
@@ -377,7 +465,7 @@ review_asset_import_production_readiness(const AssetImportProductionReviewReques
                               AssetImportProductionDiagnosticCode::unsupported_runtime_source_parsing, row,
                               "runtime source parsing is unsupported");
         }
-        if (row.request_broad_codec_claim) {
+        if (row_requests_broad_codec_claim(row)) {
             append_diagnostic(review.diagnostics, AssetImportProductionDiagnosticCode::unsupported_broad_codec_claim,
                               row, "broad codec support claims require explicit reviewed rows");
         }
@@ -422,7 +510,7 @@ review_asset_import_production_readiness(const AssetImportProductionReviewReques
                               "validator evidence is missing");
         }
         if (feature_requires_dependency_legal_record(row.feature) && !row_is_dependency_gated(row) &&
-            (!row.dependency_legal_evidence || row.dependency_ids.empty())) {
+            !row_has_required_dependency_evidence(row)) {
             append_diagnostic(review.diagnostics, AssetImportProductionDiagnosticCode::missing_dependency_legal_record,
                               row, "dependency and legal evidence is missing");
         }
@@ -465,7 +553,7 @@ review_asset_import_production_readiness(const AssetImportProductionReviewReques
         has_ready_feature(review.rows, AssetImportProductionFeatureKind::package_cook_output);
     review.dependency_legal_records_ready = std::ranges::all_of(review.rows, [](const auto& row) {
         return row_is_host_gated(row) || !feature_requires_dependency_legal_record(row.feature) ||
-               row.dependency_legal_evidence;
+               row_has_required_dependency_evidence(row);
     });
     review.deterministic_cook_ready = std::ranges::all_of(
         review.rows, [](const auto& row) { return row_is_host_gated(row) || row.deterministic_hash_evidence; });

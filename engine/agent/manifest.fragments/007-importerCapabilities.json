@@ -59,8 +59,8 @@
         "common-audio"
       ],
       "reviewOnlyRows": [
-        "KTX2/Basis evidence rows may be reviewed when supplied, but no first-party KTX importer adapter is implemented by this row.",
-        "Shader rows are reviewed offline compile-request/package-cache evidence only, not compiler execution."
+        "KTX2/Basis evidence rows may be reviewed when supplied, but no first-party KTX importer adapter is implemented by this row and KTX rows require exact vcpkg.ktx-software dependency/legal evidence before readiness.",
+        "Shader rows are reviewed offline compile-request/package-cache evidence only, not compiler execution, and shader rows require exact toolchain.dxc plus toolchain.spirv-tools dependency/legal evidence before readiness."
       ],
       "executionReadinessRows": [
         "reviewed_execution",
@@ -84,6 +84,7 @@
         "package mutation from importer review rows",
         "runtime source parsing",
         "native handle exposure",
+        "parser/compiler adapter type leakage",
         "broad codec readiness"
       ]
     }

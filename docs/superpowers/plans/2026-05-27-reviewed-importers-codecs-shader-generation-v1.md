@@ -133,8 +133,8 @@ Task 1 baseline evidence:
 ## Task 2 - RED Tests For Reviewed Execution Promotion
 
 - [x] Add tests that fail until import production rows distinguish value-only review, reviewed execution, dependency-gated execution, host-gated execution, package handoff, and unsupported arbitrary importer claims.
-- [ ] Add tests that reject KTX2/Basis, broad image/audio codec, glTF scene import, or shader compiler readiness without dependency/legal records, source-root validation, deterministic hashes, package rows, and host/toolchain validation.
-- [ ] Add tests that reject parser/compiler/native handle leakage in public gameplay/runtime rows.
+- [x] Add tests that reject KTX2/Basis, broad image/audio codec, glTF scene import, or shader compiler readiness without dependency/legal records, source-root validation, deterministic hashes, package rows, and host/toolchain validation.
+- [x] Add tests that reject parser/compiler/native handle leakage in public gameplay/runtime rows.
 - [x] Run focused tests and record expected RED failures in this plan.
 
 ```powershell
@@ -149,6 +149,9 @@ Task 2 baseline RED/GREEN evidence:
 | RED | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_import_production_review_tests` | Failed as expected before implementation on missing `AssetImportProductionExecutionReadiness`, dependency-gate fields/counters, package-mutation fields/counters, and `unsupported_package_mutation`. |
 | GREEN build | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_import_production_review_tests` | Passed after the baseline execution-readiness matrix implementation. |
 | GREEN test | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_asset_import_production_review_tests` | Passed: 1/1 test, 0 failures. |
+| RED | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_import_production_review_tests; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_asset_import_production_review_tests` | Failed as expected after adding exact KTX2/Basis dependency-id, glTF package/hash/source-root evidence, broad source image/audio codec extension, shader toolchain dependency/legal and host-gate, and parser/compiler/native token leakage tests. |
+| RED | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_tools_tests; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_tools_tests` | Failed as expected after adding the production authoring workflow public-row leakage test for fastgltf parser, DXC compiler, and native-handle scope claims. |
+| GREEN build/test | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_import_production_review_tests MK_tools_tests; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_asset_import_production_review_tests|MK_tools_tests"` | Passed: 2/2 tests. |
 
 ## Task 3 - KTX2/Basis Texture Review Lane
 

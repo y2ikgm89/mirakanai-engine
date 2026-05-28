@@ -68,8 +68,12 @@ void add_diagnostic(ProductionAuthoringWorkflowReviewResult& result, std::string
 [[nodiscard]] bool contains_native_backend_term(std::string_view value) {
     const auto lowered = to_ascii_lowercase(value);
     constexpr std::string_view terms[] = {
-        "native handle", "native window", "sdl",    "sdl3",   "dear imgui", "imgui", "renderer/rhi",
-        "rhi",           "d3d12",         "id3d12", "vulkan", "vk",         "metal", "middleware",
+        "native handle",   "native window", "sdl",          "sdl3",
+        "dear imgui",      "imgui",         "renderer/rhi", "rhi",
+        "d3d12",           "id3d12",        "vulkan",       "vk",
+        "metal",           "middleware",    "fastgltf",     "cgltf",
+        "parser type",     "parser handle", "idxc",         "dxccompiler",
+        "compiler handle", "ktxtexture",    "spng",         "ma_decoder",
     };
     return std::ranges::any_of(terms,
                                [&lowered](std::string_view term) { return lowered.find(term) != std::string::npos; });
