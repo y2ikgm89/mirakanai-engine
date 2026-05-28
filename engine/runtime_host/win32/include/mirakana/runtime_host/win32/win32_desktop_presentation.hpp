@@ -17,6 +17,12 @@
 
 namespace mirakana {
 
+namespace runtime {
+class RuntimeAssetPackage;
+}
+
+struct SceneRenderPacket;
+
 enum class Win32DesktopPresentationBackend : std::uint8_t {
     null_renderer = 0,
     d3d12,
@@ -49,6 +55,33 @@ enum class Win32DesktopPresentationResizeStatus : std::uint8_t {
     ready,
     failed,
     recreate_required,
+};
+
+enum class Win32DesktopPresentationSceneGpuBindingStatus : std::uint8_t {
+    not_requested = 0,
+    unavailable,
+    invalid_request,
+    failed,
+    ready,
+};
+
+struct Win32DesktopPresentationSceneGpuBindingDiagnostic {
+    Win32DesktopPresentationSceneGpuBindingStatus status{Win32DesktopPresentationSceneGpuBindingStatus::not_requested};
+    std::string message;
+};
+
+struct Win32DesktopPresentationSceneGpuBindingStats {
+    std::size_t mesh_bindings{0};
+    std::size_t material_bindings{0};
+    std::size_t mesh_uploads{0};
+    std::size_t texture_uploads{0};
+    std::size_t material_uploads{0};
+    std::size_t material_pipeline_layouts{0};
+    std::uint64_t uploaded_texture_bytes{0};
+    std::uint64_t uploaded_mesh_bytes{0};
+    std::uint64_t uploaded_material_factor_bytes{0};
+    std::size_t mesh_bindings_resolved{0};
+    std::size_t material_bindings_resolved{0};
 };
 
 struct Win32D3d12SwapChainPlanDesc {
@@ -93,6 +126,16 @@ struct Win32DesktopPresentationD3d12RendererDesc {
     std::vector<rhi::VertexAttributeDesc> vertex_attributes;
 };
 
+struct Win32DesktopPresentationD3d12SceneRendererDesc {
+    Win32DesktopPresentationShaderBytecode vertex_shader;
+    Win32DesktopPresentationShaderBytecode fragment_shader;
+    const runtime::RuntimeAssetPackage* package{nullptr};
+    const SceneRenderPacket* packet{nullptr};
+    rhi::PrimitiveTopology topology{rhi::PrimitiveTopology::triangle_list};
+    std::vector<rhi::VertexBufferLayoutDesc> vertex_buffers;
+    std::vector<rhi::VertexAttributeDesc> vertex_attributes;
+};
+
 struct Win32DesktopPresentationBackendReport {
     Win32DesktopPresentationBackend backend{Win32DesktopPresentationBackend::null_renderer};
     Win32DesktopPresentationBackendReportStatus status{Win32DesktopPresentationBackendReportStatus::not_requested};
@@ -117,11 +160,15 @@ struct Win32DesktopPresentationReport {
     bool d3d12_tearing_active{false};
     Win32DesktopPresentationPresentStatus present_status{Win32DesktopPresentationPresentStatus::not_requested};
     Win32DesktopPresentationResizeStatus resize_status{Win32DesktopPresentationResizeStatus::not_requested};
+    Win32DesktopPresentationSceneGpuBindingStatus scene_gpu_status{
+        Win32DesktopPresentationSceneGpuBindingStatus::not_requested};
+    Win32DesktopPresentationSceneGpuBindingStats scene_gpu_stats;
     RendererStats renderer_stats;
     rhi::RhiStats rhi_stats;
     Extent2D backbuffer_extent;
     std::size_t diagnostics_count{0};
     std::size_t backend_reports_count{0};
+    std::size_t scene_gpu_diagnostics_count{0};
 };
 
 struct Win32DesktopPresentationDesc {
@@ -134,6 +181,7 @@ struct Win32DesktopPresentationDesc {
     bool vsync{true};
     bool request_tearing{false};
     const Win32DesktopPresentationD3d12RendererDesc* d3d12_renderer{nullptr};
+    const Win32DesktopPresentationD3d12SceneRendererDesc* d3d12_scene_renderer{nullptr};
 };
 
 [[nodiscard]] Win32D3d12SwapChainPlan plan_win32_d3d12_swapchain(const Win32D3d12SwapChainPlanDesc& desc);
@@ -147,6 +195,8 @@ win32_desktop_presentation_backend_report_status_name(Win32DesktopPresentationBa
 win32_desktop_presentation_present_status_name(Win32DesktopPresentationPresentStatus status) noexcept;
 [[nodiscard]] std::string_view
 win32_desktop_presentation_resize_status_name(Win32DesktopPresentationResizeStatus status) noexcept;
+[[nodiscard]] std::string_view
+win32_desktop_presentation_scene_gpu_binding_status_name(Win32DesktopPresentationSceneGpuBindingStatus status) noexcept;
 
 class Win32DesktopPresentation final {
   public:
@@ -165,6 +215,11 @@ class Win32DesktopPresentation final {
     [[nodiscard]] Win32DesktopPresentationReport report() const;
     [[nodiscard]] const std::vector<Win32DesktopPresentationBackendReport>& backend_reports() const noexcept;
     [[nodiscard]] const std::vector<Win32DesktopPresentationDiagnostic>& diagnostics() const noexcept;
+    [[nodiscard]] Win32DesktopPresentationSceneGpuBindingStatus scene_gpu_binding_status() const noexcept;
+    [[nodiscard]] bool scene_gpu_bindings_ready() const noexcept;
+    [[nodiscard]] Win32DesktopPresentationSceneGpuBindingStats scene_gpu_binding_stats() const noexcept;
+    [[nodiscard]] std::span<const Win32DesktopPresentationSceneGpuBindingDiagnostic>
+    scene_gpu_binding_diagnostics() const noexcept;
 
   private:
     struct Impl;

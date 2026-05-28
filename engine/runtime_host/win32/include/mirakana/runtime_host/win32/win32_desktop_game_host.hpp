@@ -31,6 +31,7 @@ struct Win32DesktopGameHostDesc {
     bool vsync{true};
     bool request_tearing{false};
     const Win32DesktopPresentationD3d12RendererDesc* d3d12_renderer{nullptr};
+    const Win32DesktopPresentationD3d12SceneRendererDesc* d3d12_scene_renderer{nullptr};
     ILogger* logger{nullptr};
     Registry* registry{nullptr};
     std::size_t default_log_capacity{256};

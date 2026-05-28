@@ -505,7 +505,10 @@ same clean-break path to the cooked-scene `DesktopRuntimeCookedScenePackage` sca
 metadata/config/package load, renderer-neutral scene submission counters, and native `NullRenderer` fallback without shader,
 scene GPU binding, postprocess, Vulkan, native overlay, or renderer-quality claims. Keep material/2D/3D desktop package
 samples and the non-shell desktop runtime sample pending until Win32 presentation parity covers their current SDL3-only scene
-GPU, postprocess, native overlay, Vulkan, and renderer-quality evidence rows.
+GPU, postprocess, native overlay, Vulkan, and renderer-quality evidence rows. Candidate 7C starts that Win32 presentation
+parity by adding a host-owned D3D12 static scene GPU binding request/report surface for cooked static mesh/material rows, but
+it intentionally does not migrate material/2D/3D package samples or claim postprocess, Vulkan, native overlay, skinned/morph,
+or renderer-quality readiness.
 
 - [x] Add static checks for migrated config-only and cooked-scene template descriptors that still reference SDL3 after migration.
 - [x] Replace `mirakana/runtime_host/sdl3/...` includes with Windows native host includes in migrated config-only and cooked-scene samples/templates.
@@ -530,13 +533,15 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 **Done When:** Generated and committed desktop game lanes target Windows native host modules without SDL3 strings in ready claims.
 
 **Phase Evidence:** Candidate 7A committed as `e4c54203` on `codex/generated-game-win32-host-migration-v1`. Candidate 7B
-locally validates `DesktopRuntimeCookedScenePackage` and `sample_generated_desktop_runtime_cooked_scene_package` on the
-same branch with `git diff --check`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`,
-`tools/check-format.ps1`, `tools/check-text-format.ps1`, `tools/cmake.ps1 --preset desktop-runtime`,
+committed as `974164ef09be45e68d76e96782c59c2178146de1` on the same branch after validating
+`DesktopRuntimeCookedScenePackage` and `sample_generated_desktop_runtime_cooked_scene_package` with `git diff --check`,
+`tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-format.ps1`,
+`tools/check-text-format.ps1`, `tools/cmake.ps1 --preset desktop-runtime`,
 `tools/cmake.ps1 --build --preset desktop-runtime --target sample_generated_desktop_runtime_cooked_scene_package`,
 `tools/ctest.ps1 --preset desktop-runtime --output-on-failure -R "sample_generated_desktop_runtime_cooked_scene_package"`,
 `tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_cooked_scene_package`, and
-`tools/validate.ps1` (`validate: ok`, 98/98 tests passed). Candidate 7B commit/publication is pending.
+`tools/validate.ps1` (`validate: ok`, 98/98 tests passed). Candidate 7B publication is blocked locally by GitHub network
+or GitHub CLI config access. Candidate 7C is in progress for the Win32 D3D12 static scene GPU binding foundation.
 
 ## Phase 8 - Visible Editor Migration Or Deferral
 

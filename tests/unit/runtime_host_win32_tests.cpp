@@ -162,6 +162,40 @@ MK_TEST("win32 desktop presentation falls back to null renderer when d3d12 reque
     MK_REQUIRE(!presentation.report().swapchain_plan.public_native_handles_exposed);
 }
 
+MK_TEST("win32 desktop presentation reports invalid scene gpu request before native renderer creation") {
+    mirakana::win32::Win32Runtime runtime(mirakana::win32::Win32RuntimeDesc{
+        .window_class_name = "MIRAIKANAI Win32 Scene GPU Invalid Request",
+        .dpi_aware = true,
+    });
+    mirakana::win32::Win32Window window(runtime, mirakana::WindowDesc{
+                                                     .title = "Win32 Scene GPU Invalid Request",
+                                                     .extent = mirakana::WindowExtent{.width = 320, .height = 180},
+                                                 });
+    mirakana::Win32DesktopPresentationD3d12SceneRendererDesc scene_renderer;
+    mirakana::Win32DesktopPresentation presentation(mirakana::Win32DesktopPresentationDesc{
+        .window = &window,
+        .extent = mirakana::Extent2D{.width = 320, .height = 180},
+        .prefer_d3d12 = true,
+        .allow_null_fallback = true,
+        .d3d12_scene_renderer = &scene_renderer,
+    });
+
+    MK_REQUIRE(presentation.backend() == mirakana::Win32DesktopPresentationBackend::null_renderer);
+    MK_REQUIRE(presentation.report().requested_backend == mirakana::Win32DesktopPresentationBackend::d3d12);
+    MK_REQUIRE(presentation.report().selected_backend == mirakana::Win32DesktopPresentationBackend::null_renderer);
+    MK_REQUIRE(presentation.report().fallback_reason ==
+               mirakana::Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable);
+    MK_REQUIRE(presentation.scene_gpu_binding_status() ==
+               mirakana::Win32DesktopPresentationSceneGpuBindingStatus::invalid_request);
+    MK_REQUIRE(!presentation.scene_gpu_bindings_ready());
+    MK_REQUIRE(presentation.report().scene_gpu_status ==
+               mirakana::Win32DesktopPresentationSceneGpuBindingStatus::invalid_request);
+    MK_REQUIRE(presentation.report().scene_gpu_diagnostics_count == 1);
+    MK_REQUIRE(!presentation.scene_gpu_binding_diagnostics().empty());
+    MK_REQUIRE(mirakana::win32_desktop_presentation_scene_gpu_binding_status_name(
+                   presentation.scene_gpu_binding_diagnostics().front().status) == std::string_view{"invalid_request"});
+}
+
 MK_TEST("win32 desktop presentation can create d3d12 rhi frame renderer when shader bytecode is supplied") {
     if (!d3d12_presentation_test_enabled()) {
         return;

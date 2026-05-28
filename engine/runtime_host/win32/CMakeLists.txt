@@ -33,6 +33,8 @@ target_link_libraries(MK_runtime_host_win32_presentation
         MK_platform_win32
         MK_renderer
         MK_rhi
+    PRIVATE
+        MK_runtime_scene_rhi
 )
 
 if(WIN32 AND TARGET MK_rhi_d3d12)

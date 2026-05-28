@@ -22,6 +22,7 @@ namespace {
         .vsync = desc.vsync,
         .request_tearing = desc.request_tearing,
         .d3d12_renderer = desc.d3d12_renderer,
+        .d3d12_scene_renderer = desc.d3d12_scene_renderer,
     };
 }
 
