@@ -58,6 +58,21 @@ prefix_rule(
 )
 
 prefix_rule(
+    pattern = ["git", "clone"],
+    decision = "prompt",
+    justification = "Publication temp clones bypass the repository preflight path and can hide user/auth/ACL mismatches; use tools/check-publication-preflight.ps1 in the task worktree before publishing.",
+    match = [
+        "git clone https://github.com/y2ikgm89/mirakanai-engine.git out/publication-clone/example",
+        "git clone . out/publication-clone/example",
+    ],
+    not_match = [
+        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1",
+        "git status --short --branch",
+        "git ls-remote --heads origin codex/example",
+    ],
+)
+
+prefix_rule(
     pattern = ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools/remove-merged-worktree.ps1"],
     decision = "allow",
     justification = "Guarded post-merge cleanup is allowed because the repository script fetches/prunes, fast-forwards a clean base checkout, verifies standard roots from Git worktree porcelain records, clean status, and branch ancestry, and unlinks worktree-local dependency reparse points before invoking Git worktree removal.",
