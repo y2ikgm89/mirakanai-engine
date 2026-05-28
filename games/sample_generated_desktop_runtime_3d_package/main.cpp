@@ -106,6 +106,7 @@ struct DesktopRuntimeOptions {
     bool require_package_streaming_safe_point{false};
     bool require_package_upload_staging{false};
     bool require_ktx2_basis_texture_review{false};
+    bool require_gltf_scene_import_review{false};
     bool require_gameplay_systems{false};
     bool require_scene_collision_package{false};
     bool require_entity_scale_culling{false};
@@ -649,6 +650,20 @@ enum class GameplaySystemsStatus : std::uint8_t {
     return "unknown";
 }
 
+[[nodiscard]] const char* gltf_scene_import_review_status_name(mirakana::GltfSceneImportReviewStatus status) noexcept {
+    switch (status) {
+    case mirakana::GltfSceneImportReviewStatus::ready:
+        return "ready";
+    case mirakana::GltfSceneImportReviewStatus::dependency_evidence_required:
+        return "dependency_evidence_required";
+    case mirakana::GltfSceneImportReviewStatus::no_rows:
+        return "no_rows";
+    case mirakana::GltfSceneImportReviewStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
 struct AudioGameplayMixerProbeResult {
     bool ready{false};
     std::size_t diagnostics{0U};
@@ -719,6 +734,35 @@ struct KtxBasisTextureReviewProbeResult {
     bool invoked_runtime_transcoding{false};
     bool invoked_gpu_upload{false};
     bool invoked_compression_tool{false};
+    std::size_t diagnostics{0U};
+    std::uint64_t replay_hash{0U};
+};
+
+struct GltfSceneImportReviewProbeResult {
+    mirakana::GltfSceneImportReviewStatus status{mirakana::GltfSceneImportReviewStatus::invalid_request};
+    bool reviewed{false};
+    bool ready{false};
+    std::size_t rows{0U};
+    std::size_t ready_rows{0U};
+    std::size_t dependency_gated_rows{0U};
+    std::size_t unsupported_claim_rows{0U};
+    std::size_t source_root_rows{0U};
+    std::size_t parser_validation_rows{0U};
+    std::size_t geometry_payload_rows{0U};
+    std::size_t material_payload_rows{0U};
+    std::size_t animation_payload_rows{0U};
+    std::size_t external_resource_policy_rows{0U};
+    std::size_t source_provenance_rows{0U};
+    std::size_t package_output_rows{0U};
+    bool dependency_legal_records_ready{false};
+    bool selected_package_evidence_ready{false};
+    bool gltf_scene_import_ready{false};
+    bool broad_scene_import_ready{false};
+    bool invoked_external_network_fetch{false};
+    bool invoked_runtime_source_parsing{false};
+    bool leaked_parser_type{false};
+    bool exposed_native_handle{false};
+    bool mutated_packages{false};
     std::size_t diagnostics{0U};
     std::uint64_t replay_hash{0U};
 };
@@ -1093,6 +1137,119 @@ make_ktx_basis_texture_review_row(mirakana::KtxBasisTextureReviewFeature feature
         .invoked_runtime_transcoding = review.invoked_runtime_transcoding,
         .invoked_gpu_upload = review.invoked_gpu_upload,
         .invoked_compression_tool = review.invoked_compression_tool,
+        .diagnostics = review.diagnostics.size(),
+        .replay_hash = review.replay_hash,
+    };
+}
+
+[[nodiscard]] mirakana::GltfSceneImportReviewRow
+make_gltf_scene_import_review_row(mirakana::GltfSceneImportReviewFeature feature, std::uint32_t source_index) {
+    return mirakana::GltfSceneImportReviewRow{
+        .row_id = std::string{"gltf-scene-import."} + std::to_string(source_index),
+        .feature = feature,
+        .source_root = "source/assets/3d",
+        .importer_id = "reviewed.gltf-scene-import",
+        .declared_extensions = {".gltf", ".glb"},
+        .validator_ids = feature == mirakana::GltfSceneImportReviewFeature::parser_validation
+                             ? std::vector<std::string>{"gltf-validator"}
+                             : std::vector<std::string>{},
+        .dependency_ids = {"vcpkg.asset-importers"},
+        .license_ids = {"third-party-notice.asset-importers", "LicenseRef-Proprietary"},
+        .provenance_ids = feature == mirakana::GltfSceneImportReviewFeature::source_provenance
+                              ? std::vector<std::string>{"provenance.gltf-scene-import-source"}
+                              : std::vector<std::string>{},
+        .package_output_rows = feature == mirakana::GltfSceneImportReviewFeature::package_output
+                                   ? std::vector<std::string>{"runtime/assets/3d/gltf_scene_import.geasset"}
+                                   : std::vector<std::string>{},
+        .deterministic_content_hash = std::string{"sha256:gltf-scene-import-row-"} + std::to_string(source_index),
+        .external_resource_policy = feature == mirakana::GltfSceneImportReviewFeature::external_resource_policy
+                                        ? "local-file-or-glb-buffer-only"
+                                        : "",
+        .reviewed = true,
+        .source_root_evidence = feature == mirakana::GltfSceneImportReviewFeature::source_root_policy,
+        .parser_validation_evidence = feature == mirakana::GltfSceneImportReviewFeature::parser_validation,
+        .geometry_payload_evidence = feature == mirakana::GltfSceneImportReviewFeature::geometry_payload,
+        .material_payload_evidence = feature == mirakana::GltfSceneImportReviewFeature::material_payload,
+        .animation_payload_evidence = feature == mirakana::GltfSceneImportReviewFeature::animation_payload,
+        .external_resource_policy_evidence =
+            feature == mirakana::GltfSceneImportReviewFeature::external_resource_policy,
+        .source_provenance_evidence = feature == mirakana::GltfSceneImportReviewFeature::source_provenance,
+        .package_output_evidence = feature == mirakana::GltfSceneImportReviewFeature::package_output,
+        .dependency_legal_evidence = true,
+        .dependency_gate_required = false,
+        .request_arbitrary_extension = false,
+        .request_external_network_fetch = false,
+        .request_runtime_source_parsing = false,
+        .request_parser_type_access = false,
+        .request_native_handle_access = false,
+        .request_broad_scene_import_claim = false,
+        .request_package_mutation = false,
+        .source_index = source_index,
+    };
+}
+
+[[nodiscard]] GltfSceneImportReviewProbeResult validate_gltf_scene_import_review_package_evidence() {
+    const mirakana::GltfSceneImportReviewFeature required_features[] = {
+        mirakana::GltfSceneImportReviewFeature::source_root_policy,
+        mirakana::GltfSceneImportReviewFeature::parser_validation,
+        mirakana::GltfSceneImportReviewFeature::geometry_payload,
+        mirakana::GltfSceneImportReviewFeature::material_payload,
+        mirakana::GltfSceneImportReviewFeature::animation_payload,
+        mirakana::GltfSceneImportReviewFeature::external_resource_policy,
+        mirakana::GltfSceneImportReviewFeature::source_provenance,
+        mirakana::GltfSceneImportReviewFeature::package_output,
+    };
+
+    std::vector<mirakana::GltfSceneImportReviewRow> rows;
+    rows.reserve(8U);
+    std::uint32_t source_index{1U};
+    for (const auto feature : required_features) {
+        rows.push_back(make_gltf_scene_import_review_row(feature, source_index++));
+    }
+
+    const auto review = mirakana::review_gltf_scene_import_readiness(mirakana::GltfSceneImportReviewRequest{
+        .required_features =
+            {
+                mirakana::GltfSceneImportReviewFeature::source_root_policy,
+                mirakana::GltfSceneImportReviewFeature::parser_validation,
+                mirakana::GltfSceneImportReviewFeature::geometry_payload,
+                mirakana::GltfSceneImportReviewFeature::material_payload,
+                mirakana::GltfSceneImportReviewFeature::animation_payload,
+                mirakana::GltfSceneImportReviewFeature::external_resource_policy,
+                mirakana::GltfSceneImportReviewFeature::source_provenance,
+                mirakana::GltfSceneImportReviewFeature::package_output,
+            },
+        .rows = std::move(rows),
+        .row_budget = 16U,
+        .seed = 571U,
+    });
+
+    return GltfSceneImportReviewProbeResult{
+        .status = review.status,
+        .reviewed = review.status != mirakana::GltfSceneImportReviewStatus::no_rows &&
+                    review.status != mirakana::GltfSceneImportReviewStatus::invalid_request,
+        .ready = review.selected_package_evidence_ready,
+        .rows = review.row_count,
+        .ready_rows = review.ready_row_count,
+        .dependency_gated_rows = review.dependency_gated_row_count,
+        .unsupported_claim_rows = review.unsupported_claim_row_count,
+        .source_root_rows = review.source_root_rows,
+        .parser_validation_rows = review.parser_validation_rows,
+        .geometry_payload_rows = review.geometry_payload_rows,
+        .material_payload_rows = review.material_payload_rows,
+        .animation_payload_rows = review.animation_payload_rows,
+        .external_resource_policy_rows = review.external_resource_policy_rows,
+        .source_provenance_rows = review.source_provenance_rows,
+        .package_output_rows = review.package_output_rows,
+        .dependency_legal_records_ready = review.dependency_legal_records_ready,
+        .selected_package_evidence_ready = review.selected_package_evidence_ready,
+        .gltf_scene_import_ready = review.gltf_scene_import_ready,
+        .broad_scene_import_ready = review.broad_scene_import_ready,
+        .invoked_external_network_fetch = review.invoked_external_network_fetch,
+        .invoked_runtime_source_parsing = review.invoked_runtime_source_parsing,
+        .leaked_parser_type = review.leaked_parser_type,
+        .exposed_native_handle = review.exposed_native_handle,
+        .mutated_packages = review.mutated_packages,
         .diagnostics = review.diagnostics.size(),
         .replay_hash = review.replay_hash,
     };
@@ -7012,6 +7169,7 @@ void print_usage() {
                  "[--require-quaternion-animation] [--require-package-streaming-safe-point] "
                  "[--require-package-upload-staging] "
                  "[--require-ktx2-basis-texture-review] "
+                 "[--require-gltf-scene-import-review] "
                  "[--require-gameplay-systems] [--require-scene-collision-package] "
                  "[--require-entity-scale-culling] [--require-runtime-profile-resume] "
                  "[--require-runtime-menu-hud] [--require-audio-gameplay-mixer] "
@@ -7245,6 +7403,10 @@ void print_usage() {
         }
         if (arg == "--require-ktx2-basis-texture-review") {
             options.require_ktx2_basis_texture_review = true;
+            continue;
+        }
+        if (arg == "--require-gltf-scene-import-review") {
+            options.require_gltf_scene_import_review = true;
             continue;
         }
         if (arg == "--require-gameplay-systems") {
@@ -9487,6 +9649,9 @@ int main(int argc, char** argv) {
     const auto ktx_basis_texture_review_probe = options.require_ktx2_basis_texture_review
                                                     ? validate_ktx_basis_texture_review_package_evidence()
                                                     : KtxBasisTextureReviewProbeResult{};
+    const auto gltf_scene_import_review_probe = options.require_gltf_scene_import_review
+                                                    ? validate_gltf_scene_import_review_package_evidence()
+                                                    : GltfSceneImportReviewProbeResult{};
 
     const auto& audio_gameplay_mixer = game.gameplay_systems_audio_gameplay_mixer_probe();
     std::cout
@@ -9668,6 +9833,42 @@ int main(int argc, char** argv) {
         << (ktx_basis_texture_review_probe.invoked_compression_tool ? 1 : 0)
         << " ktx_basis_texture_review_diagnostics=" << ktx_basis_texture_review_probe.diagnostics
         << " ktx_basis_texture_review_replay_hash=" << ktx_basis_texture_review_probe.replay_hash
+        << " gltf_scene_import_review_status="
+        << gltf_scene_import_review_status_name(gltf_scene_import_review_probe.status)
+        << " gltf_scene_import_review_reviewed=" << (gltf_scene_import_review_probe.reviewed ? 1 : 0)
+        << " gltf_scene_import_review_ready=" << (gltf_scene_import_review_probe.ready ? 1 : 0)
+        << " gltf_scene_import_review_rows=" << gltf_scene_import_review_probe.rows
+        << " gltf_scene_import_review_ready_rows=" << gltf_scene_import_review_probe.ready_rows
+        << " gltf_scene_import_review_dependency_gated_rows=" << gltf_scene_import_review_probe.dependency_gated_rows
+        << " gltf_scene_import_review_unsupported_claim_rows=" << gltf_scene_import_review_probe.unsupported_claim_rows
+        << " gltf_scene_import_review_source_root_rows=" << gltf_scene_import_review_probe.source_root_rows
+        << " gltf_scene_import_review_parser_validation_rows=" << gltf_scene_import_review_probe.parser_validation_rows
+        << " gltf_scene_import_review_geometry_payload_rows=" << gltf_scene_import_review_probe.geometry_payload_rows
+        << " gltf_scene_import_review_material_payload_rows=" << gltf_scene_import_review_probe.material_payload_rows
+        << " gltf_scene_import_review_animation_payload_rows=" << gltf_scene_import_review_probe.animation_payload_rows
+        << " gltf_scene_import_review_external_resource_policy_rows="
+        << gltf_scene_import_review_probe.external_resource_policy_rows
+        << " gltf_scene_import_review_source_provenance_rows=" << gltf_scene_import_review_probe.source_provenance_rows
+        << " gltf_scene_import_review_package_output_rows=" << gltf_scene_import_review_probe.package_output_rows
+        << " gltf_scene_import_review_dependency_legal_records_ready="
+        << (gltf_scene_import_review_probe.dependency_legal_records_ready ? 1 : 0)
+        << " gltf_scene_import_review_selected_package_evidence_ready="
+        << (gltf_scene_import_review_probe.selected_package_evidence_ready ? 1 : 0)
+        << " gltf_scene_import_review_gltf_scene_import_ready="
+        << (gltf_scene_import_review_probe.gltf_scene_import_ready ? 1 : 0)
+        << " gltf_scene_import_review_broad_scene_import_ready="
+        << (gltf_scene_import_review_probe.broad_scene_import_ready ? 1 : 0)
+        << " gltf_scene_import_review_invoked_external_network_fetch="
+        << (gltf_scene_import_review_probe.invoked_external_network_fetch ? 1 : 0)
+        << " gltf_scene_import_review_invoked_runtime_source_parsing="
+        << (gltf_scene_import_review_probe.invoked_runtime_source_parsing ? 1 : 0)
+        << " gltf_scene_import_review_leaked_parser_type="
+        << (gltf_scene_import_review_probe.leaked_parser_type ? 1 : 0)
+        << " gltf_scene_import_review_exposed_native_handle="
+        << (gltf_scene_import_review_probe.exposed_native_handle ? 1 : 0)
+        << " gltf_scene_import_review_mutated_packages=" << (gltf_scene_import_review_probe.mutated_packages ? 1 : 0)
+        << " gltf_scene_import_review_diagnostics=" << gltf_scene_import_review_probe.diagnostics
+        << " gltf_scene_import_review_replay_hash=" << gltf_scene_import_review_probe.replay_hash
         << " collision_package_status=" << collision_package_status_name(collision_package.status)
         << " collision_package_ready=" << (collision_package.ready ? 1 : 0)
         << " collision_package_diagnostics=" << collision_package.diagnostics_count
@@ -10393,6 +10594,31 @@ int main(int argc, char** argv) {
                       << " ktx_basis_texture_review_diagnostics=" << ktx_basis_texture_review_probe.diagnostics
                       << " ktx_basis_texture_review_replay_hash=" << ktx_basis_texture_review_probe.replay_hash << '\n';
             return 23;
+        }
+        if (options.require_gltf_scene_import_review &&
+            (!gltf_scene_import_review_probe.reviewed || !gltf_scene_import_review_probe.ready ||
+             gltf_scene_import_review_probe.diagnostics != 0U ||
+             gltf_scene_import_review_probe.dependency_gated_rows != 0U ||
+             gltf_scene_import_review_probe.unsupported_claim_rows != 0U ||
+             gltf_scene_import_review_probe.broad_scene_import_ready ||
+             gltf_scene_import_review_probe.invoked_external_network_fetch ||
+             gltf_scene_import_review_probe.invoked_runtime_source_parsing ||
+             gltf_scene_import_review_probe.leaked_parser_type ||
+             gltf_scene_import_review_probe.exposed_native_handle || gltf_scene_import_review_probe.mutated_packages)) {
+            std::cout << "sample_generated_desktop_runtime_3d_package required_gltf_scene_import_review_unavailable"
+                      << " gltf_scene_import_review_status="
+                      << gltf_scene_import_review_status_name(gltf_scene_import_review_probe.status)
+                      << " gltf_scene_import_review_reviewed=" << (gltf_scene_import_review_probe.reviewed ? 1 : 0)
+                      << " gltf_scene_import_review_ready=" << (gltf_scene_import_review_probe.ready ? 1 : 0)
+                      << " gltf_scene_import_review_rows=" << gltf_scene_import_review_probe.rows
+                      << " gltf_scene_import_review_ready_rows=" << gltf_scene_import_review_probe.ready_rows
+                      << " gltf_scene_import_review_dependency_gated_rows="
+                      << gltf_scene_import_review_probe.dependency_gated_rows
+                      << " gltf_scene_import_review_unsupported_claim_rows="
+                      << gltf_scene_import_review_probe.unsupported_claim_rows
+                      << " gltf_scene_import_review_diagnostics=" << gltf_scene_import_review_probe.diagnostics
+                      << " gltf_scene_import_review_replay_hash=" << gltf_scene_import_review_probe.replay_hash << '\n';
+            return 24;
         }
         if (options.require_renderer_quality_gates && !renderer_quality.ready) {
             return 3;

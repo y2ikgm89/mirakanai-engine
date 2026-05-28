@@ -16,6 +16,16 @@ foreach ($needle in @(
         "zero GPU upload",
         "zero compression tool invocation",
         "broad texture codec readiness not claimed",
+        "currentGltfSceneImportReviewPackageSmoke",
+        "--require-gltf-scene-import-review",
+        "gltf_scene_import_review_status=ready",
+        "gltf_scene_import_review_ready=1",
+        "gltf_scene_import_review_replay_hash",
+        "vcpkg.asset-importers",
+        "zero external network fetch",
+        "zero runtime source parsing",
+        "zero parser type leakage",
+        "broad scene import readiness not claimed",
         "desktopRuntime3dRendererQualityPackageSmoke",
         "--require-renderer-quality-gates",
         "renderer_quality_status",
@@ -68,7 +78,8 @@ foreach ($needle in @(
         "Generated 3D Shadow Morph Composition Package Smoke v1",
         "Generated 3D Native UI Overlay Package Smoke v1",
         "Generated 3D Visible Production-Style Package Proof v1",
-        "Generated 3D Native UI Text Glyph Atlas Package Smoke v1"
+        "Generated 3D Native UI Text Glyph Atlas Package Smoke v1",
+        "Generated 3D glTF Scene Import Review Package Smoke v1"
     )) {
     Assert-ContainsText $roadmapText $needle "docs/roadmap.md"
 }
@@ -79,6 +90,7 @@ foreach ($needle in @(
         "Generated 3D Playable Package Smoke v1",
         "Generated 3D Postprocess Depth Package Smoke v1",
         "Generated 3D Directional Shadow Package Smoke v1",
+        "Generated 3D glTF Scene Import Review Package Smoke v1",
         "--require-shadow-morph-composition",
         "--require-native-ui-overlay",
         "--require-visible-3d-production-proof",

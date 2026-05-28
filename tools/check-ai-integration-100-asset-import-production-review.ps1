@@ -42,7 +42,15 @@ foreach ($needle in @(
         "KtxBasisTextureReviewRequest",
         "KtxBasisTextureReviewDiagnostic",
         "KtxBasisTextureReview",
-        "review_ktx_basis_texture_readiness"
+        "review_ktx_basis_texture_readiness",
+        "GltfSceneImportReviewStatus",
+        "GltfSceneImportReviewFeature",
+        "GltfSceneImportReviewDiagnosticCode",
+        "GltfSceneImportReviewRow",
+        "GltfSceneImportReviewRequest",
+        "GltfSceneImportReviewDiagnostic",
+        "GltfSceneImportReview",
+        "review_gltf_scene_import_readiness"
     )) {
     Assert-ContainsText $assetReviewHeaderText $needle "engine/assets/include/mirakana/assets/asset_import_production_review.hpp"
 }
@@ -72,7 +80,18 @@ foreach ($needle in @(
         "unsupported_runtime_transcoding",
         "unsupported_gpu_upload",
         "unsupported_compression_execution",
-        "unsupported_broad_texture_codec_claim"
+        "unsupported_broad_texture_codec_claim",
+        "missing_source_root",
+        "missing_parser_validation",
+        "missing_geometry_payload",
+        "missing_material_payload",
+        "missing_animation_payload",
+        "missing_external_resource_policy",
+        "missing_source_provenance",
+        "missing_package_output",
+        "unsupported_external_network_fetch",
+        "unsupported_parser_type_leakage",
+        "unsupported_broad_scene_import_claim"
     )) {
     Assert-ContainsText $assetReviewHeaderText $needle "asset import production review diagnostics"
 }
@@ -93,12 +112,19 @@ foreach ($needle in @(
         "review_ktx_basis_texture_readiness",
         "ktx_basis_review_ready",
         "broad_texture_codec_ready",
+        "gltf_row_has_required_dependency_evidence",
+        "gltf_row_has_unsupported_claim",
+        "review_gltf_scene_import_readiness",
+        "gltf_scene_import_ready",
+        "broad_scene_import_ready",
         "contains_ascii_case_insensitive",
         "vcpkg.ktx",
+        "vcpkg.asset-importers",
         "toolchain.dxc",
         "toolchain.spirv-tools",
         "all_extensions_are_selected",
         "build_replay_hash",
+        "build_gltf_replay_hash",
         "valid_token_list",
         "contains_unsafe_token",
         "fastgltf",
@@ -112,9 +138,14 @@ foreach ($needle in @(
         "request_unreviewed_compiler_execution",
         "request_runtime_source_parsing",
         "request_broad_codec_claim",
+        "request_external_network_fetch",
+        "request_parser_type_access",
+        "request_broad_scene_import_claim",
         "AssetImportProductionStatus::host_evidence_required",
         "AssetImportProductionStatus::dependency_evidence_required",
-        "AssetImportProductionStatus::no_rows"
+        "AssetImportProductionStatus::no_rows",
+        "GltfSceneImportReviewStatus::dependency_evidence_required",
+        "GltfSceneImportReviewStatus::ready"
     )) {
     Assert-ContainsText $assetReviewSourceText $needle "engine/assets/src/asset_import_production_review.cpp"
 }
@@ -146,7 +177,10 @@ foreach ($needle in @(
         "asset import production review reports no rows without broad import claims",
         "ktx2 basis texture review accepts selected dependency and host gated offline tool policy",
         "ktx2 basis texture review reports dependency gated selected package evidence",
-        "ktx2 basis texture review rejects runtime transcode upload and missing target policy"
+        "ktx2 basis texture review rejects runtime transcode upload and missing target policy",
+        "gltf scene import review accepts selected fastgltf package handoff evidence",
+        "gltf scene import review reports dependency gated selected package evidence",
+        "gltf scene import review rejects unsupported broad scene import claims and missing evidence"
     )) {
     Assert-ContainsText $assetReviewTestsText $needle "tests/unit/asset_import_production_review_tests.cpp"
 }
@@ -161,6 +195,10 @@ foreach ($needle in @(
         "common-audio",
         "KTX2/Basis evidence rows may be reviewed when supplied",
         "exact vcpkg.ktx dependency/legal evidence",
+        "Selected glTF scene import review rows may be reviewed when supplied",
+        "exact vcpkg.asset-importers dependency/legal evidence",
+        "gltf_scene_import_review",
+        "review_gltf_scene_import_readiness",
         "Shader rows are reviewed offline compile-request/package-cache evidence only",
         "exact toolchain.dxc plus toolchain.spirv-tools dependency/legal evidence",
         "parser/compiler adapter type leakage",
@@ -172,7 +210,13 @@ foreach ($needle in @(
         "live shader generation",
         "package mutation from importer review rows",
         "runtime source parsing",
-        "broad codec readiness"
+        "broad codec readiness",
+        "glTF external network fetch",
+        "glTF runtime source parsing",
+        "glTF parser type leakage",
+        "glTF native handle exposure",
+        "glTF package mutation",
+        "broad glTF scene import readiness"
     )) {
     Assert-ContainsText ($importerCapabilitiesText + $manifestText) $needle "engine agent importer capability production review contract"
 }
@@ -180,16 +224,27 @@ foreach ($needle in @(
 foreach ($needle in @(
         "currentAssetImportProductionReview",
         "currentKtxBasisTextureReviewPackageSmoke",
+        "currentGltfSceneImportReviewPackageSmoke",
         "AssetImportProductionReviewRequest",
         "AssetImportProductionEvidenceRow",
         "selected extensions",
         'exact `vcpkg.ktx` dependency evidence',
+        'exact `vcpkg.asset-importers` dependency/legal records',
         "--require-ktx2-basis-texture-review",
         "ktx_basis_texture_review_status=host_evidence_required",
+        "--require-gltf-scene-import-review",
+        "gltf_scene_import_review_status=ready",
+        "gltf_scene_import_review_ready=1",
         "zero runtime transcoding",
         "zero GPU upload",
         "zero compression tool invocation",
         "broad texture codec readiness not claimed",
+        "zero external network fetch",
+        "zero runtime source parsing",
+        "zero parser type leakage",
+        "broad scene import readiness not claimed",
+        "does not parse glTF/source assets at runtime",
+        "Generated 3D glTF Scene Import Review Package Smoke v1",
         'exact `toolchain.dxc` plus `toolchain.spirv-tools` dependency evidence',
         "parser/compiler/native",
         "missing review or host validation evidence",
@@ -222,6 +277,10 @@ foreach ($manifestTextForSample in @($sample2dManifestText, $sample3dManifestTex
 Assert-ContainsText $sample2dManifestText '"first-party-source-documents"' "2D sample production import review descriptor"
 Assert-ContainsText $sample3dManifestText '"gltf"' "3D sample production import review descriptor"
 Assert-ContainsText $sample3dManifestText '"ktx2-basis-review"' "3D sample production import review descriptor"
+Assert-ContainsText $sample3dManifestText '"gltf-scene-import-review"' "3D sample production import review descriptor"
+Assert-ContainsText $sample3dManifestText '"gltf-external-network-fetch"' "3D sample production import review descriptor"
+Assert-ContainsText $sample3dManifestText '"gltf-runtime-source-parsing"' "3D sample production import review descriptor"
+Assert-ContainsText $sample3dManifestText '"broad-gltf-scene-import-readiness"' "3D sample production import review descriptor"
 Assert-ContainsText $sample3dManifestText '"hlsl-offline-compile-request"' "3D sample production import review descriptor"
 Assert-ContainsText $sample3dManifestText '"runtime-ktx2-basis-transcoding"' "3D sample production import review descriptor"
 Assert-ContainsText $sample3dManifestText '"ktx2-basis-gpu-upload"' "3D sample production import review descriptor"

@@ -1171,7 +1171,9 @@ try {
             "runtime-ktx2-basis-transcoding",
             "ktx2-basis-gpu-upload",
             "ktx2-basis-compression-execution",
-            "broad-codec-readiness"
+            "broad-codec-readiness", "selected glTF scene import review package smoke",
+            "gltf_scene_import_review_status=ready", "gltf_scene_import_review_ready=1",
+            "gltf-external-network-fetch", "gltf-runtime-source-parsing", "gltf-parser-type-leakage", "broad-gltf-scene-import-readiness"
         )) {
         Assert-ContainsText $desktop3dManifestText $needle "Desktop runtime 3D package scaffold manifest"
     }
@@ -1179,7 +1181,9 @@ try {
             "selected KTX2/Basis texture review package smoke",
             "ktx_basis_texture_review_status=host_evidence_required",
             "ktx_basis_texture_review_ready=1",
-            "zero runtime transcoding/GPU upload/compression tool invocation counters"
+            "zero runtime transcoding/GPU upload/compression tool invocation counters", "selected glTF scene import review package smoke",
+            "gltf_scene_import_review_status=ready", "gltf_scene_import_review_ready=1",
+            "zero external network/runtime source parsing/parser type/native handle/package mutation counters"
         )) {
         Assert-ContainsText $desktop3dReadmeText $needle "Desktop runtime 3D package scaffold README"
     }
@@ -1463,6 +1467,7 @@ try {
     Assert-ContainsText $desktop3dMain "ktx_basis_texture_review_invoked_gpu_upload=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "ktx_basis_texture_review_invoked_compression_tool=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "vcpkg.ktx" "Desktop 3D scaffold main.cpp"
+    foreach ($needle in @("--require-gltf-scene-import-review", "validate_gltf_scene_import_review_package_evidence", "gltf_scene_import_review_status=", "gltf_scene_import_review_ready=", "gltf_scene_import_review_dependency_gated_rows=", "gltf_scene_import_review_broad_scene_import_ready=", "gltf_scene_import_review_invoked_external_network_fetch=", "gltf_scene_import_review_invoked_runtime_source_parsing=", "gltf_scene_import_review_leaked_parser_type=", "gltf_scene_import_review_mutated_packages=", "vcpkg.asset-importers")) { Assert-ContainsText $desktop3dMain $needle "Desktop 3D scaffold main.cpp" }
     Assert-ContainsText $desktop3dMain "execute_selected_runtime_package_streaming_safe_point" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "residency_hint_failed" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "resident_catalog_refresh_failed" "Desktop 3D scaffold main.cpp"

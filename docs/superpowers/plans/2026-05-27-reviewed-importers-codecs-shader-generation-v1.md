@@ -180,10 +180,24 @@ Task 3 KTX2/Basis closeout evidence:
 
 ## Task 4 - glTF Scene Import Execution Lane
 
-- [ ] Promote selected fastgltf-backed mesh/material/animation import helpers through reviewed source-root, hash/provenance, package handoff, and validator evidence rows.
-- [ ] Reject arbitrary glTF extensions, external network fetches, runtime source parsing, parser type leakage, native handles, and broad scene import readiness without explicit rows.
-- [ ] Add generated 3D package counters only for implemented import rows.
-- [ ] Run focused `MK_tools_tests`, selected generated 3D package smokes, package validation, and agent/static checks.
+- [x] Promote selected fastgltf-backed mesh/material/animation import helpers through reviewed source-root, hash/provenance, package handoff, and validator evidence rows.
+- [x] Reject arbitrary glTF extensions, external network fetches, runtime source parsing, parser type leakage, native handles, and broad scene import readiness without explicit rows.
+- [x] Add generated 3D package counters only for implemented import rows.
+- [x] Run focused `MK_tools_tests`, selected generated 3D package smokes, package validation, and agent/static checks.
+
+Task 4 glTF scene import closeout evidence:
+
+| Gate | Command | Result |
+| --- | --- | --- |
+| Public API boundary | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` | Passed with `public-api-boundary-check: ok`; the review API stays value-only and does not expose fastgltf/native handles. |
+| Focused build | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_import_production_review_tests` | Passed; `MK_asset_import_production_review_tests.exe` rebuilt. |
+| Focused CTest | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_asset_import_production_review_tests` | Passed; 1/1 test passed. |
+| 3D package smoke | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package` | Passed with `installed-desktop-runtime-validation: ok` and `desktop-runtime-package: ok`; package metadata now includes `--require-gltf-scene-import-review`. |
+| Agent/schema integration | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | Passed with `json-contract-check: ok`, `ai-integration-check: ok`, and `agent-config-check: ok`. |
+| Formatting/text | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1`; `git diff --check` | Passed after applying repository formatting. |
+| Full validation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed with `validate: ok`; 79/79 CTest tests passed. Diagnostic-only host gates remained expected for Metal/Apple tooling on this Windows host. |
+
+Task 5 has not started; commit/push/PR publication remains the next action after this Task 4 stop point.
 
 ## Task 5 - Source Image And Audio Codec Execution Lane
 

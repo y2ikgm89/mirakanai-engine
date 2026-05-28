@@ -118,6 +118,50 @@ enum class KtxBasisTextureReviewDiagnosticCode : std::uint8_t {
     row_budget_exceeded,
 };
 
+enum class GltfSceneImportReviewStatus : std::uint8_t {
+    ready = 0,
+    dependency_evidence_required,
+    no_rows,
+    invalid_request,
+};
+
+enum class GltfSceneImportReviewFeature : std::uint8_t {
+    source_root_policy = 0,
+    parser_validation,
+    geometry_payload,
+    material_payload,
+    animation_payload,
+    external_resource_policy,
+    source_provenance,
+    package_output,
+};
+
+enum class GltfSceneImportReviewDiagnosticCode : std::uint8_t {
+    none = 0,
+    invalid_required_feature,
+    duplicate_required_feature,
+    missing_required_feature_row,
+    duplicate_feature_row,
+    invalid_row,
+    missing_source_root,
+    missing_parser_validation,
+    missing_geometry_payload,
+    missing_material_payload,
+    missing_animation_payload,
+    missing_external_resource_policy,
+    missing_source_provenance,
+    missing_package_output,
+    missing_dependency_legal_record,
+    unsupported_arbitrary_extension,
+    unsupported_external_network_fetch,
+    unsupported_runtime_source_parsing,
+    unsupported_parser_type_leakage,
+    unsupported_native_handle_claim,
+    unsupported_broad_scene_import_claim,
+    unsupported_package_mutation,
+    row_budget_exceeded,
+};
+
 struct AssetImportProductionEvidenceRow {
     std::string capability_id;
     AssetImportProductionFeatureKind feature{AssetImportProductionFeatureKind::source_root_policy};
@@ -292,6 +336,94 @@ struct KtxBasisTextureReview {
     [[nodiscard]] bool succeeded() const noexcept;
 };
 
+struct GltfSceneImportReviewRow {
+    std::string row_id;
+    GltfSceneImportReviewFeature feature{GltfSceneImportReviewFeature::source_root_policy};
+    std::string source_root;
+    std::string importer_id;
+    std::vector<std::string> declared_extensions;
+    std::vector<std::string> validator_ids;
+    std::vector<std::string> dependency_ids;
+    std::vector<std::string> license_ids;
+    std::vector<std::string> provenance_ids;
+    std::vector<std::string> package_output_rows;
+    std::string deterministic_content_hash;
+    std::string external_resource_policy;
+    bool reviewed{false};
+    bool source_root_evidence{false};
+    bool parser_validation_evidence{false};
+    bool geometry_payload_evidence{false};
+    bool material_payload_evidence{false};
+    bool animation_payload_evidence{false};
+    bool external_resource_policy_evidence{false};
+    bool source_provenance_evidence{false};
+    bool package_output_evidence{false};
+    bool dependency_legal_evidence{false};
+    bool dependency_gate_required{false};
+    bool request_arbitrary_extension{false};
+    bool request_external_network_fetch{false};
+    bool request_runtime_source_parsing{false};
+    bool request_parser_type_access{false};
+    bool request_native_handle_access{false};
+    bool request_broad_scene_import_claim{false};
+    bool request_package_mutation{false};
+    std::uint32_t source_index{0U};
+};
+
+struct GltfSceneImportReviewRequest {
+    std::vector<GltfSceneImportReviewFeature> required_features;
+    std::vector<GltfSceneImportReviewRow> rows;
+    std::size_t row_budget{64U};
+    std::uint64_t seed{0U};
+};
+
+struct GltfSceneImportReviewDiagnostic {
+    GltfSceneImportReviewDiagnosticCode code{GltfSceneImportReviewDiagnosticCode::none};
+    GltfSceneImportReviewFeature feature{GltfSceneImportReviewFeature::source_root_policy};
+    std::string row_id;
+    std::string message;
+    std::uint32_t source_index{0U};
+};
+
+struct GltfSceneImportReview {
+    GltfSceneImportReviewStatus status{GltfSceneImportReviewStatus::invalid_request};
+    std::vector<GltfSceneImportReviewDiagnostic> diagnostics;
+    std::vector<GltfSceneImportReviewFeature> required_features;
+    std::vector<GltfSceneImportReviewRow> rows;
+    std::size_t row_count{0U};
+    std::size_t ready_row_count{0U};
+    std::size_t dependency_gated_row_count{0U};
+    std::size_t unsupported_claim_row_count{0U};
+    std::size_t source_root_rows{0U};
+    std::size_t parser_validation_rows{0U};
+    std::size_t geometry_payload_rows{0U};
+    std::size_t material_payload_rows{0U};
+    std::size_t animation_payload_rows{0U};
+    std::size_t external_resource_policy_rows{0U};
+    std::size_t source_provenance_rows{0U};
+    std::size_t package_output_rows{0U};
+    std::uint64_t replay_hash{0U};
+    bool source_root_ready{false};
+    bool parser_validation_ready{false};
+    bool geometry_payload_ready{false};
+    bool material_payload_ready{false};
+    bool animation_payload_ready{false};
+    bool external_resource_policy_ready{false};
+    bool source_provenance_ready{false};
+    bool package_output_ready{false};
+    bool dependency_legal_records_ready{false};
+    bool selected_package_evidence_ready{false};
+    bool gltf_scene_import_ready{false};
+    bool broad_scene_import_ready{false};
+    bool invoked_external_network_fetch{false};
+    bool invoked_runtime_source_parsing{false};
+    bool leaked_parser_type{false};
+    bool exposed_native_handle{false};
+    bool mutated_packages{false};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
 /// Reviews broad source-import and cook evidence without executing importer plugins, downloading assets,
 /// running shader compilers, mutating sources, parsing runtime source data, or exposing native/middleware handles.
 [[nodiscard]] AssetImportProductionReview
@@ -300,5 +432,9 @@ review_asset_import_production_readiness(const AssetImportProductionReviewReques
 /// Reviews KTX2/Basis texture import and offline transcode planning evidence without loading KTX files,
 /// transcoding textures, uploading GPU resources, running compression tools, or exposing native handles.
 [[nodiscard]] KtxBasisTextureReview review_ktx_basis_texture_readiness(const KtxBasisTextureReviewRequest& request);
+
+/// Reviews selected glTF scene import evidence without parsing runtime source data, fetching network resources,
+/// exposing fastgltf/native handles, mutating packages, or claiming broad scene import readiness.
+[[nodiscard]] GltfSceneImportReview review_gltf_scene_import_readiness(const GltfSceneImportReviewRequest& request);
 
 } // namespace mirakana

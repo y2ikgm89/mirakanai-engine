@@ -41,10 +41,15 @@
       "status": "implemented-value-contract",
       "ownerModule": "MK_assets",
       "publicApi": "mirakana::review_asset_import_production_readiness",
+      "selectedPackageReviewApis": [
+        "mirakana::review_ktx_basis_texture_readiness",
+        "mirakana::review_gltf_scene_import_readiness"
+      ],
       "requiredFeatureRows": [
         "source_root_policy",
         "gltf_geometry",
         "gltf_animation",
+        "gltf_scene_import_review",
         "ktx_texture",
         "source_image",
         "source_audio",
@@ -56,10 +61,12 @@
         "first-party-source-documents",
         "png",
         "gltf",
+        "gltf-scene-import-review",
         "common-audio"
       ],
       "reviewOnlyRows": [
         "KTX2/Basis evidence rows may be reviewed when supplied, but no first-party KTX importer adapter is implemented by this row and KTX rows require exact vcpkg.ktx dependency/legal evidence before readiness.",
+        "Selected glTF scene import review rows may be reviewed when supplied with exact vcpkg.asset-importers dependency/legal evidence, source-root policy, parser validation, geometry/material/animation payload evidence, external resource policy, source provenance, and package output rows, but broad scene import readiness, runtime source parsing, external network fetches, parser type leakage, native handle exposure, and package mutation remain unsupported.",
         "Shader rows are reviewed offline compile-request/package-cache evidence only, not compiler execution, and shader rows require exact toolchain.dxc plus toolchain.spirv-tools dependency/legal evidence before readiness."
       ],
       "executionReadinessRows": [
@@ -85,6 +92,12 @@
         "runtime source parsing",
         "native handle exposure",
         "parser/compiler adapter type leakage",
+        "glTF external network fetch",
+        "glTF runtime source parsing",
+        "glTF parser type leakage",
+        "glTF native handle exposure",
+        "glTF package mutation",
+        "broad glTF scene import readiness",
         "broad codec readiness"
       ]
     }

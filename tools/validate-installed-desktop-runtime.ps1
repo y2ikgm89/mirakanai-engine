@@ -221,6 +221,7 @@ $requiresFrameGraphMultiQueueEvidence = @($SmokeArgs) -contains "--require-frame
 $requiresVulkanFrameGraphMultiQueueEvidence = @($SmokeArgs) -contains "--require-vulkan-framegraph-multiqueue-evidence"
 $requiresPackageUploadStaging = @($SmokeArgs) -contains "--require-package-upload-staging"
 $requiresKtx2BasisTextureReview = @($SmokeArgs) -contains "--require-ktx2-basis-texture-review"
+$requiresGltfSceneImportReview = @($SmokeArgs) -contains "--require-gltf-scene-import-review"
 $requiresNative2dSprites = @($SmokeArgs) -contains "--require-native-2d-sprites"
 $requiresSpriteAnimation = @($SmokeArgs) -contains "--require-sprite-animation"
 $requiresTilemapRuntimeUx = @($SmokeArgs) -contains "--require-tilemap-runtime-ux"
@@ -3489,6 +3490,44 @@ if ($requiresKtx2BasisTextureReview) {
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bktx_basis_texture_review_replay_hash=[1-9]\d*\b") {
         Write-Error "Installed desktop runtime smoke status line did not prove positive KTX2/Basis texture review replay hash."
+    }
+}
+if ($requiresGltfSceneImportReview) {
+    $expectedGltfSceneImportReviewFields = @{
+        "gltf_scene_import_review_status" = "ready"
+        "gltf_scene_import_review_reviewed" = "1"
+        "gltf_scene_import_review_ready" = "1"
+        "gltf_scene_import_review_rows" = "8"
+        "gltf_scene_import_review_ready_rows" = "8"
+        "gltf_scene_import_review_dependency_gated_rows" = "0"
+        "gltf_scene_import_review_unsupported_claim_rows" = "0"
+        "gltf_scene_import_review_source_root_rows" = "1"
+        "gltf_scene_import_review_parser_validation_rows" = "1"
+        "gltf_scene_import_review_geometry_payload_rows" = "1"
+        "gltf_scene_import_review_material_payload_rows" = "1"
+        "gltf_scene_import_review_animation_payload_rows" = "1"
+        "gltf_scene_import_review_external_resource_policy_rows" = "1"
+        "gltf_scene_import_review_source_provenance_rows" = "1"
+        "gltf_scene_import_review_package_output_rows" = "1"
+        "gltf_scene_import_review_dependency_legal_records_ready" = "1"
+        "gltf_scene_import_review_selected_package_evidence_ready" = "1"
+        "gltf_scene_import_review_gltf_scene_import_ready" = "1"
+        "gltf_scene_import_review_broad_scene_import_ready" = "0"
+        "gltf_scene_import_review_invoked_external_network_fetch" = "0"
+        "gltf_scene_import_review_invoked_runtime_source_parsing" = "0"
+        "gltf_scene_import_review_leaked_parser_type" = "0"
+        "gltf_scene_import_review_exposed_native_handle" = "0"
+        "gltf_scene_import_review_mutated_packages" = "0"
+        "gltf_scene_import_review_diagnostics" = "0"
+    }
+    foreach ($field in $expectedGltfSceneImportReviewFields.Keys) {
+        $expectedValue = [regex]::Escape($expectedGltfSceneImportReviewFields[$field])
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove glTF scene import review field: $field=$($expectedGltfSceneImportReviewFields[$field])"
+        }
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgltf_scene_import_review_replay_hash=[1-9]\d*\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove positive glTF scene import review replay hash."
     }
 }
 if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=ready") {
