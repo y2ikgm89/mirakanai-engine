@@ -15,9 +15,9 @@ Use the chapter that matches the current decision. Do not bulk-read every chapte
 
 - 1.0 closeout readiness remains manifest-led: every `unsupportedProductionGaps` row in `engine/agent/manifest.json.aiOperableProductionLoop` must be implemented, host-gated with evidence, or explicitly excluded with evidence before a ready claim; the current composed manifest has no remaining rows.
 - Current execution remains manifest-led. Do not hand-edit `engine/agent/manifest.json`; edit `engine/agent/manifest.fragments/*.json` and run the compose script when manifest state changes.
-- Current active plan: no child plan is selected. `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` points back to this production-completion master plan after [First-Party Desktop Platform And SDL3 Removal v1](../plans/2026-05-27-first-party-desktop-platform-sdl3-removal-v1.md) closed the Windows-first native desktop backend and SDL3 deletion milestone. [Reviewed Importers Codecs And Shader Generation v1](../plans/2026-05-27-reviewed-importers-codecs-shader-generation-v1.md) is paused and must be resumed only through an explicit manifest/registry switch.
+- Current active plan: no child plan is selected. `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` points back to this production-completion master plan after [First-Party Desktop Platform And SDL3 Removal v1](../plans/2026-05-27-first-party-desktop-platform-sdl3-removal-v1.md) closed the Windows-first native desktop backend and SDL3 removal milestone. [Reviewed Importers Codecs And Shader Generation v1](../plans/2026-05-27-reviewed-importers-codecs-shader-generation-v1.md) is paused and must be resumed only through an explicit manifest/registry switch.
 - Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan.id = next-production-gap-selection` marks the next production-gap selection gate. Historical zero-gap closeout evidence remains discoverable through the retained plan registry and archive.
-- Current gap cluster: no Engine 1.0 unsupported gap is open; the active post-foundation milestone replaces SDL3 desktop runtime/editor/audio surfaces with first-party Windows backends, then removes SDL3 from build, package, generated-game, docs, legal, and agent contract surfaces without claiming macOS/Linux desktop parity from Windows evidence.
+- Current gap cluster: no Engine 1.0 unsupported gap is open; the SDL3 removal milestone has closed with first-party Windows desktop runtime/editor/audio replacements, SDL3 removal from build, package, generated-game, docs, legal, and agent contract surfaces, and no macOS/Linux desktop parity claim from Windows evidence.
 
 ## Plan map
 
@@ -31,7 +31,7 @@ Use the chapter that matches the current decision. Do not bulk-read every chapte
 
 ## Official implementation rule
 
-Prefer official documentation and SDK guidance first: CMake, vcpkg, SDL3, Direct3D 12, Vulkan, Metal, Android GameActivity, OpenAI Codex docs, Anthropic Claude Code docs, and vendor engine references where explicitly cited in the chapter.
+Prefer official documentation and SDK guidance first: CMake, vcpkg, Direct3D 12, Vulkan, Metal, Android GameActivity, platform SDKs, OpenAI Codex docs, Anthropic Claude Code docs, and vendor engine references where explicitly cited in the chapter.
 
 This is a greenfield engine. Use clean breaking changes when they remove duplicated contracts, stale compatibility layers, or ambiguous API ownership.
 

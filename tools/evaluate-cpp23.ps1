@@ -43,7 +43,7 @@ if ($Release) {
 }
 
 if ($Gui) {
-    Write-Error "The C++23 GUI lane is deferred during SDL3 removal. MK_editor_core remains covered by the default Debug lane; a future visible editor shell must use first-party Win32/D3D12 adapters and must not depend on SDL3."
+    Write-Error "The C++23 GUI lane is deferred after SDL3 removal. MK_editor_core remains covered by the default Debug lane; a future visible editor shell must use first-party Win32/D3D12 adapters and must not depend on SDL3."
 }
 
 Write-Host "cpp23-verification: ok"

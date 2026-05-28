@@ -6,7 +6,7 @@ alwaysApply: false
 
 # Deferred Editor Shell (Cursor Rule)
 
-- The visible `MK_editor` shell is deferred during SDL3 removal; do not recreate the removed SDL3/Dear ImGui shell files without a focused native Win32/D3D12 plan.
+- The visible `MK_editor` shell is deferred after SDL3 removal; do not recreate the removed SDL3/Dear ImGui shell files without a focused native Win32/D3D12 plan.
 - Keep `MK_editor_core` GUI-independent and covered by the default validation lane.
 - `tools/build-gui.ps1`, `tools/evaluate-cpp23.ps1 -Gui`, and `MK_ENABLE_DESKTOP_GUI=ON` should fail closed until a first-party visible shell lands.
 - Future shell caches and native handles must stay behind explicit private adapter APIs; do not add public mutable cache fields without an architecture decision.

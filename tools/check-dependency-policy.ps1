@@ -109,12 +109,12 @@ foreach ($dependency in $desktopGui.dependencies) {
 
 foreach ($dependencyName in @("sdl3", "imgui")) {
     if ($dependencyNames -contains $dependencyName) {
-        Write-Error "desktop-gui feature is deferred during SDL3 removal and must not declare dependency: $dependencyName"
+        Write-Error "desktop-gui feature is deferred after SDL3 removal and must not declare dependency: $dependencyName"
     }
 }
 
 if ($dependencyNames.Count -ne 0) {
-    Write-Error "desktop-gui feature is deferred during SDL3 removal and must not declare package dependencies"
+    Write-Error "desktop-gui feature is deferred after SDL3 removal and must not declare package dependencies"
 }
 
 $assetImporterDependencyNames = @()

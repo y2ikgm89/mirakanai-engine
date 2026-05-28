@@ -1020,7 +1020,7 @@ foreach ($needle in @(
 Assert-ContainsText $editorWorkspaceHeader "input_rebinding" "editor workspace input rebinding panel header"
 Assert-ContainsText $editorWorkspaceSource 'PanelToken{.id = PanelId::input_rebinding, .token = "input_rebinding"}' "editor workspace input rebinding panel source"
 Assert-ContainsText $editorWorkspaceSource "PanelState{.id = PanelId::input_rebinding, .visible = false}" "editor workspace input rebinding panel source"
-Assert-ContainsText (Get-AgentSurfaceText "editor/CMakeLists.txt") "MK_editor visible shell is deferred during SDL3 removal" "deferred MK_editor shell source"
+Assert-ContainsText (Get-AgentSurfaceText "editor/CMakeLists.txt") "MK_editor visible shell is deferred after SDL3 removal" "deferred MK_editor shell source"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorInputRebindingProfiles) "EditorInputRebindingProfilePanelModel" "editor input rebinding profile guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorInputRebindingProfiles) "make_editor_input_rebinding_profile_panel_model" "editor input rebinding profile guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorInputRebindingProfiles) "make_input_rebinding_profile_panel_ui_model" "editor input rebinding profile guidance"

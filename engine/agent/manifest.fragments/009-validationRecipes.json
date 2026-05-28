@@ -28,7 +28,7 @@
     {
       "name": "desktop-gui",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1",
-      "purpose": "Fail closed with the current visible-editor deferral message. The SDL3/Dear ImGui MK_editor shell is not an active build lane during SDL3 removal; MK_editor_core remains covered by the default validation lane."
+      "purpose": "Fail closed with the current visible-editor deferral message. The removed SDL3/Dear ImGui MK_editor shell is not an active build lane after SDL3 removal; MK_editor_core remains covered by the default validation lane."
     },
     {
       "name": "desktop-game-runtime",

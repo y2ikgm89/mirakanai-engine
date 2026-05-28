@@ -680,7 +680,7 @@ $editorResourceCaptureExecutionChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "MK_editor visible shell is deferred during SDL3 removal",
+            "MK_editor visible shell is deferred after SDL3 removal",
             "MK_editor_core remains the supported editor logic target",
             "must not depend on SDL3"
         )
@@ -844,7 +844,7 @@ $editorAiCommandPanelChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "MK_editor visible shell is deferred during SDL3 removal",
+            "MK_editor visible shell is deferred after SDL3 removal",
             "MK_editor_core remains the supported editor logic target",
             "must not depend on SDL3"
         )
@@ -994,7 +994,7 @@ $editorAiEvidenceImportReviewChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "MK_editor visible shell is deferred during SDL3 removal",
+            "MK_editor visible shell is deferred after SDL3 removal",
             "MK_editor_core remains the supported editor logic target",
             "must not depend on SDL3"
         )
@@ -1162,7 +1162,7 @@ $editorAiReviewedValidationExecutionChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "MK_editor visible shell is deferred during SDL3 removal",
+            "MK_editor visible shell is deferred after SDL3 removal",
             "MK_editor_core remains the supported editor logic target",
             "must not depend on SDL3"
         )
@@ -1342,7 +1342,7 @@ $editorAiReviewedValidationBatchExecutionChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "MK_editor visible shell is deferred during SDL3 removal",
+            "MK_editor visible shell is deferred after SDL3 removal",
             "MK_editor_core remains the supported editor logic target",
             "must not depend on SDL3"
         )
@@ -1522,7 +1522,7 @@ $editorContentBrowserImportPanelChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "MK_editor visible shell is deferred during SDL3 removal",
+            "MK_editor visible shell is deferred after SDL3 removal",
             "MK_editor_core remains the supported editor logic target",
             "must not depend on SDL3"
         )
@@ -1673,7 +1673,7 @@ $editorContentBrowserImportPanelChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "MK_editor visible shell is deferred during SDL3 removal",
+            "MK_editor visible shell is deferred after SDL3 removal",
             "MK_editor_core remains the supported editor logic target",
             "must not depend on SDL3"
         )
@@ -1734,7 +1734,7 @@ $editorContentBrowserImportNativeDialogChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "MK_editor visible shell is deferred during SDL3 removal",
+            "MK_editor visible shell is deferred after SDL3 removal",
             "MK_editor_core remains the supported editor logic target",
             "must not depend on SDL3"
         )
@@ -1874,7 +1874,7 @@ $editorContentBrowserImportExternalCopyReviewChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "MK_editor visible shell is deferred during SDL3 removal",
+            "MK_editor visible shell is deferred after SDL3 removal",
             "MK_editor_core remains the supported editor logic target",
             "must not depend on SDL3"
         )
@@ -2056,7 +2056,7 @@ $editorContentBrowserImportCodecAdapterCompletedPlanChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "MK_editor visible shell is deferred during SDL3 removal",
+            "MK_editor visible shell is deferred after SDL3 removal",
             "MK_editor_core remains the supported editor logic target",
             "must not depend on SDL3"
         )
@@ -2372,7 +2372,7 @@ $editorMaterialAssetPreviewPanelChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "MK_editor visible shell is deferred during SDL3 removal",
+            "MK_editor visible shell is deferred after SDL3 removal",
             "MK_editor_core remains the supported editor logic target",
             "must not depend on SDL3"
         )

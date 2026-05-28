@@ -137,7 +137,7 @@ if ([string]::IsNullOrWhiteSpace(`$pathValue) -or
     Assert-ContainsText $bootstrapContent "Get-VcpkgRoot" "bootstrap-deps.ps1 vcpkg root resolution"
     Assert-ContainsText $bootstrapContent "Get-VcpkgExecutablePath" "bootstrap-deps.ps1 vcpkg executable resolution"
     $buildGuiContent = Get-Content -LiteralPath (Join-Path $PSScriptRoot "build-gui.ps1") -Raw
-    Assert-ContainsText $buildGuiContent "visible editor shell is deferred during SDL3 removal" "build-gui.ps1 fail-closed editor shell deferral"
+    Assert-ContainsText $buildGuiContent "visible editor shell is deferred after SDL3 removal" "build-gui.ps1 fail-closed editor shell deferral"
     Assert-ContainsText $buildGuiContent "MK_editor_core" "build-gui.ps1 fail-closed editor core guidance"
     foreach ($script in @(
             "validate-desktop-game-runtime.ps1",

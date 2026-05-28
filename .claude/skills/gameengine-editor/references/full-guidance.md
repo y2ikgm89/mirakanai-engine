@@ -7,7 +7,7 @@ This file is detailed reference material for the `.claude/skills/gameengine-edit
 ## Boundary Rules
 
 - Keep `editor/core` GUI-independent and buildable in the default preset.
-- Keep SDL3, Dear ImGui, OS windows, and native UI handles out of `editor/core`; the visible GUI target is currently deferred during SDL3 removal.
+- Keep removed SDL3 adapters, Dear ImGui, OS windows, and native UI handles out of `editor/core`; the visible GUI target is currently deferred after SDL3 removal.
 - Route persistent editor behavior through `mirakana_editor_core` models before wiring panels.
 - Store project-wide editor tool configuration in `ProjectDocument`/`ProjectShaderToolSettings` and edit it through `ProjectSettingsDraft` before using it from `mirakana_editor`.
 - Store editor viewport backend preference with `mirakana::editor::EditorRenderBackend` in `ProjectDocument`; resolve availability through `mirakana::editor::choose_editor_render_backend` before using it from GUI code.
