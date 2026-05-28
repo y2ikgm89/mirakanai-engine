@@ -89,11 +89,12 @@ Optional **same-build** loading of an editor game module driver uses the Windows
 
 - `libspng` for PNG decoding
 - `fastgltf` for glTF 2.0 parsing
+- `ktx` / KTX Software for KTX2/Basis texture container review and offline transcode-target planning
 - `miniaudio` for WAV/MP3/FLAC audio decoding
 
-This feature is linked only when `MK_ENABLE_ASSET_IMPORTERS=ON` through the `asset-importers` CMake preset. `MK_tools` owns the optional adapters and converts source files into first-party source documents before cooked artifacts are written. Audited PNG bytes decode to RGBA8 `TextureSourceDocument` through `mirakana::decode_audited_png_rgba8` (`mirakana/tools/source_image_decode.hpp`), shared with `PngTextureExternalAssetImporter` and the optional `PngImageDecodingAdapter` bridge for `mirakana::ui::IImageDecodingAdapter`. The dependency-free packed UI atlas bridge (`author_packed_ui_atlas_from_decoded_images`, `plan_packed_ui_atlas_package_update`) consumes already validated `ImageDecodeResult` rows and emits first-party `GameEngine.CookedTexture.v1` plus `GameEngine.UiAtlas.v1` package artifacts without adding a new dependency. The dependency-free glyph atlas bridge (`author_packed_ui_glyph_atlas_from_rasterized_glyphs`, `plan_packed_ui_glyph_atlas_package_update`, `UiAtlasMetadataGlyph`, `RuntimeUiAtlasGlyph`) consumes already-rasterized RGBA8 glyph pixels and emits first-party cooked glyph atlas package metadata without adding a font, shaping, rasterization, platform SDK, or renderer upload dependency. Runtime/game code must consume cooked assets and must not parse external source formats directly.
+This feature is linked only when `MK_ENABLE_ASSET_IMPORTERS=ON` through the `asset-importers` CMake preset. `MK_tools` owns the optional adapters and converts source files into first-party source documents before cooked artifacts are written. Audited PNG bytes decode to RGBA8 `TextureSourceDocument` through `mirakana::decode_audited_png_rgba8` (`mirakana/tools/source_image_decode.hpp`), shared with `PngTextureExternalAssetImporter` and the optional `PngImageDecodingAdapter` bridge for `mirakana::ui::IImageDecodingAdapter`. KTX Software is selected only as an optional dependency/legal record for reviewed KTX2/Basis container validation and offline transcode-target planning evidence; the current KTX2/Basis package smoke does not load KTX files, run Basis transcoding/compression tools, upload GPU textures, or expose KTX/native handles. The dependency-free packed UI atlas bridge (`author_packed_ui_atlas_from_decoded_images`, `plan_packed_ui_atlas_package_update`) consumes already validated `ImageDecodeResult` rows and emits first-party `GameEngine.CookedTexture.v1` plus `GameEngine.UiAtlas.v1` package artifacts without adding a new dependency. The dependency-free glyph atlas bridge (`author_packed_ui_glyph_atlas_from_rasterized_glyphs`, `plan_packed_ui_glyph_atlas_package_update`, `UiAtlasMetadataGlyph`, `RuntimeUiAtlasGlyph`) consumes already-rasterized RGBA8 glyph pixels and emits first-party cooked glyph atlas package metadata without adding a font, shaping, rasterization, platform SDK, or renderer upload dependency. Runtime/game code must consume cooked assets and must not parse external source formats directly.
 
-Installed SDKs built with `MK_ENABLE_ASSET_IMPORTERS=ON` advertise `Mirakanai_HAS_ASSET_IMPORTERS` in `MirakanaiConfig.cmake` and resolve `SPNG` and `fastgltf` before loading exported Mirakanai targets. `miniaudio` remains a private header-only implementation dependency of the optional adapter build.
+Installed SDKs built with `MK_ENABLE_ASSET_IMPORTERS=ON` advertise `Mirakanai_HAS_ASSET_IMPORTERS` in `MirakanaiConfig.cmake` and resolve `SPNG`, `fastgltf`, and `Ktx` before loading exported Mirakanai targets. `miniaudio` remains a private header-only implementation dependency of the optional adapter build.
 
 Validate the optional importer lane with:
 
@@ -172,6 +173,10 @@ Validated local package versions:
 | --- | --- | --- |
 | libspng | vcpkg baseline selected | Optional `MK_tools` PNG source importer |
 | fastgltf | vcpkg baseline selected | Optional `MK_tools` glTF 2.0 source importer |
+| KTX Software | 4.4.2 | Optional `MK_tools` KTX2/Basis texture review dependency/legal evidence |
+| Zstandard | 1.5.7 | Optional `MK_tools` build output through KTX Software |
+| OpenGL Registry | 2026-01-26 | Optional `MK_tools` build output through KTX Software |
+| EGL Registry | 2025-05-27 | Optional `MK_tools` build output through KTX Software |
 | miniaudio | vcpkg baseline selected | Optional `MK_tools` WAV/MP3/FLAC source importer |
 | Jolt Physics | 5.5.0 | Optional `MK_physics_jolt` native physics middleware adapter |
 | ENet | 1.3.18 | Optional `MK_runtime_network_enet` loopback network transport adapter |
@@ -193,6 +198,7 @@ Validated local package versions:
 - Windows Core Audio / WASAPI: https://learn.microsoft.com/en-us/windows/win32/coreaudio/wasapi
 - libspng: https://libspng.org/
 - fastgltf: https://github.com/spnda/fastgltf
+- KTX Software: https://github.com/KhronosGroup/KTX-Software
 - miniaudio: https://miniaud.io/
 - Jolt Physics: https://github.com/jrouwe/JoltPhysics
 - Jolt Physics documentation: https://jrouwe.github.io/JoltPhysics/
@@ -225,6 +231,9 @@ Validated local package versions:
 
 - libspng is BSD-2-Clause.
 - fastgltf is MIT and currently pulls `simdjson` through vcpkg.
+- KTX Software is primarily Apache-2.0 for repository-unique files and ships an upstream `LICENSES/*` bundle including a non-open Ericsson `LicenseRef-ETCSLA` special case recorded by its copyright file; it is kept behind the optional `asset-importers` lane.
+- Zstandard is BSD-3-Clause OR GPL-2.0-only and is pulled through KTX Software.
+- Khronos OpenGL/EGL registry files use per-file license comments and are pulled through KTX Software.
 - miniaudio is public domain or MIT No Attribution.
 - Jolt Physics is MIT licensed and isolated to the optional `physics-jolt` adapter lane.
 - ENet is MIT licensed and isolated to the optional `network-enet` adapter lane.

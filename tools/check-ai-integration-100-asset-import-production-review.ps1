@@ -34,7 +34,15 @@ foreach ($needle in @(
         "AssetImportProductionExecutionReadinessRow",
         "AssetImportProductionDiagnostic",
         "AssetImportProductionReview",
-        "review_asset_import_production_readiness"
+        "review_asset_import_production_readiness",
+        "KtxBasisTextureReviewStatus",
+        "KtxBasisTextureReviewFeature",
+        "KtxBasisTextureReviewDiagnosticCode",
+        "KtxBasisTextureReviewRow",
+        "KtxBasisTextureReviewRequest",
+        "KtxBasisTextureReviewDiagnostic",
+        "KtxBasisTextureReview",
+        "review_ktx_basis_texture_readiness"
     )) {
     Assert-ContainsText $assetReviewHeaderText $needle "engine/assets/include/mirakana/assets/asset_import_production_review.hpp"
 }
@@ -60,7 +68,11 @@ foreach ($needle in @(
         "unsupported_native_handle_claim",
         "unsupported_unreviewed_compiler_execution",
         "unsupported_runtime_source_parsing",
-        "unsupported_broad_codec_claim"
+        "unsupported_broad_codec_claim",
+        "unsupported_runtime_transcoding",
+        "unsupported_gpu_upload",
+        "unsupported_compression_execution",
+        "unsupported_broad_texture_codec_claim"
     )) {
     Assert-ContainsText $assetReviewHeaderText $needle "asset import production review diagnostics"
 }
@@ -77,8 +89,12 @@ foreach ($needle in @(
         "row_has_required_dependency_evidence",
         "has_exact_dependency_id",
         "row_has_exact_dependency_ids",
+        "ktx_row_has_required_dependency_evidence",
+        "review_ktx_basis_texture_readiness",
+        "ktx_basis_review_ready",
+        "broad_texture_codec_ready",
         "contains_ascii_case_insensitive",
-        "vcpkg.ktx-software",
+        "vcpkg.ktx",
         "toolchain.dxc",
         "toolchain.spirv-tools",
         "all_extensions_are_selected",
@@ -102,6 +118,7 @@ foreach ($needle in @(
     )) {
     Assert-ContainsText $assetReviewSourceText $needle "engine/assets/src/asset_import_production_review.cpp"
 }
+Assert-DoesNotContainText $assetReviewSourceText "vcpkg.ktx-software" "engine/assets/src/asset_import_production_review.cpp"
 
 foreach ($needle in @(
         "src/asset_import_production_review.cpp",
@@ -126,7 +143,10 @@ foreach ($needle in @(
         "asset import production review rejects unsupported execution and unsafe claims",
         "asset import production review distinguishes package mutation from unsupported importer execution",
         "asset import production review rejects missing required features duplicate rows and unsafe tokens",
-        "asset import production review reports no rows without broad import claims"
+        "asset import production review reports no rows without broad import claims",
+        "ktx2 basis texture review accepts selected dependency and host gated offline tool policy",
+        "ktx2 basis texture review reports dependency gated selected package evidence",
+        "ktx2 basis texture review rejects runtime transcode upload and missing target policy"
     )) {
     Assert-ContainsText $assetReviewTestsText $needle "tests/unit/asset_import_production_review_tests.cpp"
 }
@@ -140,7 +160,7 @@ foreach ($needle in @(
         "gltf",
         "common-audio",
         "KTX2/Basis evidence rows may be reviewed when supplied",
-        "exact vcpkg.ktx-software dependency/legal evidence",
+        "exact vcpkg.ktx dependency/legal evidence",
         "Shader rows are reviewed offline compile-request/package-cache evidence only",
         "exact toolchain.dxc plus toolchain.spirv-tools dependency/legal evidence",
         "parser/compiler adapter type leakage",
@@ -159,10 +179,17 @@ foreach ($needle in @(
 
 foreach ($needle in @(
         "currentAssetImportProductionReview",
+        "currentKtxBasisTextureReviewPackageSmoke",
         "AssetImportProductionReviewRequest",
         "AssetImportProductionEvidenceRow",
         "selected extensions",
-        'exact `vcpkg.ktx-software` dependency evidence',
+        'exact `vcpkg.ktx` dependency evidence',
+        "--require-ktx2-basis-texture-review",
+        "ktx_basis_texture_review_status=host_evidence_required",
+        "zero runtime transcoding",
+        "zero GPU upload",
+        "zero compression tool invocation",
+        "broad texture codec readiness not claimed",
         'exact `toolchain.dxc` plus `toolchain.spirv-tools` dependency evidence',
         "parser/compiler/native",
         "missing review or host validation evidence",
@@ -194,4 +221,8 @@ foreach ($manifestTextForSample in @($sample2dManifestText, $sample3dManifestTex
 
 Assert-ContainsText $sample2dManifestText '"first-party-source-documents"' "2D sample production import review descriptor"
 Assert-ContainsText $sample3dManifestText '"gltf"' "3D sample production import review descriptor"
+Assert-ContainsText $sample3dManifestText '"ktx2-basis-review"' "3D sample production import review descriptor"
 Assert-ContainsText $sample3dManifestText '"hlsl-offline-compile-request"' "3D sample production import review descriptor"
+Assert-ContainsText $sample3dManifestText '"runtime-ktx2-basis-transcoding"' "3D sample production import review descriptor"
+Assert-ContainsText $sample3dManifestText '"ktx2-basis-gpu-upload"' "3D sample production import review descriptor"
+Assert-ContainsText $sample3dManifestText '"ktx2-basis-compression-execution"' "3D sample production import review descriptor"

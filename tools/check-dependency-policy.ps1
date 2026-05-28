@@ -126,7 +126,7 @@ foreach ($dependency in $assetImporters.dependencies) {
     }
 }
 
-foreach ($dependencyName in @("libspng", "fastgltf", "miniaudio")) {
+foreach ($dependencyName in @("libspng", "fastgltf", "ktx", "miniaudio")) {
     if ($assetImporterDependencyNames -notcontains $dependencyName) {
         Write-Error "asset-importers feature must declare dependency: $dependencyName"
     }
@@ -182,13 +182,16 @@ if ((Get-Content -LiteralPath (Join-Path $root "THIRD_PARTY_NOTICES.md") -Raw) -
 }
 Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| Jolt Physics \|" "third-party notices"
 Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| ENet \|" "third-party notices"
+Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| KTX Software \|" "third-party notices"
 Assert-TextContains "docs/dependencies.md" "builtin-baseline" "dependency docs"
 Assert-TextContains "docs/dependencies.md" "Foundation" "dependency docs"
 Assert-TextContains "docs/dependencies.md" "physics-jolt" "dependency docs"
 Assert-TextContains "docs/dependencies.md" "network-enet" "dependency docs"
+Assert-TextContains "docs/dependencies.md" "KTX Software" "dependency docs"
 Assert-TextContains "docs/legal-and-licensing.md" "Foundation" "legal dependency docs"
 Assert-TextContains "docs/legal-and-licensing.md" "Jolt Physics" "legal dependency docs"
 Assert-TextContains "docs/legal-and-licensing.md" "ENet" "legal dependency docs"
+Assert-TextContains "docs/legal-and-licensing.md" "KTX Software" "legal dependency docs"
 Assert-TextContains "CMakePresets.json" "desktop-runtime" "CMake presets"
 Assert-TextContains "CMakePresets.json" "asset-importers" "CMake presets"
 Assert-TextContains "CMakePresets.json" "physics-jolt" "CMake presets"
@@ -242,6 +245,7 @@ Assert-TextContains "engine/agent/manifest.json" "validateNetworkEnet" "engine m
 Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "Mirakanai_HAS_ASSET_IMPORTERS" "Mirakanai package config"
 Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "find_dependency\(SPNG CONFIG\)" "Mirakanai package config"
 Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "find_dependency\(fastgltf CONFIG\)" "Mirakanai package config"
+Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "find_dependency\(Ktx CONFIG\)" "Mirakanai package config"
 Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "Mirakanai_HAS_PHYSICS_JOLT" "Mirakanai package config"
 Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "find_dependency\(Jolt CONFIG\)" "Mirakanai package config"
 Assert-TextContains "cmake/MirakanaiConfig.cmake.in" "Mirakanai_HAS_NETWORK_ENET" "Mirakanai package config"

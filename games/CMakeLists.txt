@@ -2320,6 +2320,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-scene-collision-package
             --require-native-ui-textured-sprite-atlas
             --require-package-upload-staging
+            --require-ktx2-basis-texture-review
         REQUIRES_D3D12_SHADERS
         PACKAGE_FILES_FROM_MANIFEST
     )

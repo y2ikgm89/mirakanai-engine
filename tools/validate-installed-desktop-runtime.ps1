@@ -220,6 +220,7 @@ if ($requiresRenderingVfxProfiling) {
 $requiresFrameGraphMultiQueueEvidence = @($SmokeArgs) -contains "--require-framegraph-multiqueue-evidence"
 $requiresVulkanFrameGraphMultiQueueEvidence = @($SmokeArgs) -contains "--require-vulkan-framegraph-multiqueue-evidence"
 $requiresPackageUploadStaging = @($SmokeArgs) -contains "--require-package-upload-staging"
+$requiresKtx2BasisTextureReview = @($SmokeArgs) -contains "--require-ktx2-basis-texture-review"
 $requiresNative2dSprites = @($SmokeArgs) -contains "--require-native-2d-sprites"
 $requiresSpriteAnimation = @($SmokeArgs) -contains "--require-sprite-animation"
 $requiresTilemapRuntimeUx = @($SmokeArgs) -contains "--require-tilemap-runtime-ux"
@@ -3452,6 +3453,42 @@ if ($requiresPackageUploadStaging) {
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bpackage_upload_staging_uploaded_bytes=[1-9]\d*\b") {
         Write-Error "Installed desktop runtime smoke status line did not prove positive package upload staging bytes."
+    }
+}
+if ($requiresKtx2BasisTextureReview) {
+    $expectedKtx2BasisTextureReviewFields = @{
+        "ktx_basis_texture_review_status" = "host_evidence_required"
+        "ktx_basis_texture_review_reviewed" = "1"
+        "ktx_basis_texture_review_ready" = "1"
+        "ktx_basis_texture_review_rows" = "7"
+        "ktx_basis_texture_review_ready_rows" = "6"
+        "ktx_basis_texture_review_host_gated_rows" = "1"
+        "ktx_basis_texture_review_dependency_gated_rows" = "0"
+        "ktx_basis_texture_review_unsupported_claim_rows" = "0"
+        "ktx_basis_texture_review_container_validation_rows" = "1"
+        "ktx_basis_texture_review_supercompression_policy_rows" = "1"
+        "ktx_basis_texture_review_transcode_target_policy_rows" = "1"
+        "ktx_basis_texture_review_gpu_target_compatibility_rows" = "1"
+        "ktx_basis_texture_review_source_provenance_rows" = "1"
+        "ktx_basis_texture_review_package_output_rows" = "1"
+        "ktx_basis_texture_review_host_tool_gate_rows" = "1"
+        "ktx_basis_texture_review_dependency_legal_records_ready" = "1"
+        "ktx_basis_texture_review_selected_package_evidence_ready" = "1"
+        "ktx_basis_texture_review_ktx_basis_review_ready" = "1"
+        "ktx_basis_texture_review_broad_texture_codec_ready" = "0"
+        "ktx_basis_texture_review_invoked_runtime_transcoding" = "0"
+        "ktx_basis_texture_review_invoked_gpu_upload" = "0"
+        "ktx_basis_texture_review_invoked_compression_tool" = "0"
+        "ktx_basis_texture_review_diagnostics" = "0"
+    }
+    foreach ($field in $expectedKtx2BasisTextureReviewFields.Keys) {
+        $expectedValue = [regex]::Escape($expectedKtx2BasisTextureReviewFields[$field])
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove KTX2/Basis texture review field: $field=$($expectedKtx2BasisTextureReviewFields[$field])"
+        }
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bktx_basis_texture_review_replay_hash=[1-9]\d*\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove positive KTX2/Basis texture review replay hash."
     }
 }
 if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=ready") {

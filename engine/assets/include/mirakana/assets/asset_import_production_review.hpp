@@ -77,6 +77,47 @@ enum class AssetImportProductionDiagnosticCode : std::uint8_t {
     row_budget_exceeded,
 };
 
+enum class KtxBasisTextureReviewStatus : std::uint8_t {
+    ready = 0,
+    host_evidence_required,
+    dependency_evidence_required,
+    no_rows,
+    invalid_request,
+};
+
+enum class KtxBasisTextureReviewFeature : std::uint8_t {
+    container_validation = 0,
+    supercompression_policy,
+    transcode_target_policy,
+    gpu_target_compatibility,
+    source_provenance,
+    package_output,
+    host_tool_gate,
+};
+
+enum class KtxBasisTextureReviewDiagnosticCode : std::uint8_t {
+    none = 0,
+    invalid_required_feature,
+    duplicate_required_feature,
+    missing_required_feature_row,
+    duplicate_feature_row,
+    invalid_row,
+    missing_container_validation,
+    missing_supercompression_policy,
+    missing_transcode_target,
+    missing_gpu_target_compatibility,
+    missing_source_provenance,
+    missing_package_output,
+    missing_dependency_legal_record,
+    missing_host_tool_evidence,
+    unsupported_runtime_transcoding,
+    unsupported_gpu_upload,
+    unsupported_compression_execution,
+    unsupported_native_handle_claim,
+    unsupported_broad_texture_codec_claim,
+    row_budget_exceeded,
+};
+
 struct AssetImportProductionEvidenceRow {
     std::string capability_id;
     AssetImportProductionFeatureKind feature{AssetImportProductionFeatureKind::source_root_policy};
@@ -169,9 +210,95 @@ struct AssetImportProductionReview {
     [[nodiscard]] bool succeeded() const noexcept;
 };
 
+struct KtxBasisTextureReviewRow {
+    std::string row_id;
+    KtxBasisTextureReviewFeature feature{KtxBasisTextureReviewFeature::container_validation};
+    std::vector<std::string> container_validator_ids;
+    std::string supercompression_scheme;
+    std::string transcode_policy;
+    std::string transcode_target;
+    std::string gpu_target;
+    std::vector<std::string> source_provenance_ids;
+    std::vector<std::string> package_output_rows;
+    std::vector<std::string> dependency_ids;
+    std::vector<std::string> license_ids;
+    std::string deterministic_content_hash;
+    bool reviewed{false};
+    bool container_validation_evidence{false};
+    bool supercompression_policy_evidence{false};
+    bool transcode_target_evidence{false};
+    bool gpu_target_compatibility_evidence{false};
+    bool source_provenance_evidence{false};
+    bool package_output_evidence{false};
+    bool dependency_legal_evidence{false};
+    bool dependency_gate_required{false};
+    bool host_tool_validated{false};
+    bool host_tool_gate_required{false};
+    bool request_runtime_transcoding{false};
+    bool request_gpu_upload{false};
+    bool request_compression_execution{false};
+    bool request_native_handle_access{false};
+    bool request_broad_texture_codec_claim{false};
+    std::uint32_t source_index{0U};
+};
+
+struct KtxBasisTextureReviewRequest {
+    std::vector<KtxBasisTextureReviewFeature> required_features;
+    std::vector<KtxBasisTextureReviewRow> rows;
+    std::size_t row_budget{64U};
+    std::uint64_t seed{0U};
+};
+
+struct KtxBasisTextureReviewDiagnostic {
+    KtxBasisTextureReviewDiagnosticCode code{KtxBasisTextureReviewDiagnosticCode::none};
+    KtxBasisTextureReviewFeature feature{KtxBasisTextureReviewFeature::container_validation};
+    std::string row_id;
+    std::string message;
+    std::uint32_t source_index{0U};
+};
+
+struct KtxBasisTextureReview {
+    KtxBasisTextureReviewStatus status{KtxBasisTextureReviewStatus::invalid_request};
+    std::vector<KtxBasisTextureReviewDiagnostic> diagnostics;
+    std::vector<KtxBasisTextureReviewFeature> required_features;
+    std::vector<KtxBasisTextureReviewRow> rows;
+    std::size_t row_count{0U};
+    std::size_t ready_row_count{0U};
+    std::size_t host_gated_row_count{0U};
+    std::size_t dependency_gated_row_count{0U};
+    std::size_t unsupported_claim_row_count{0U};
+    std::size_t container_validation_rows{0U};
+    std::size_t supercompression_policy_rows{0U};
+    std::size_t transcode_target_policy_rows{0U};
+    std::size_t gpu_target_compatibility_rows{0U};
+    std::size_t source_provenance_rows{0U};
+    std::size_t package_output_rows{0U};
+    std::size_t host_tool_gate_rows{0U};
+    std::uint64_t replay_hash{0U};
+    bool container_validation_ready{false};
+    bool supercompression_policy_ready{false};
+    bool transcode_target_policy_ready{false};
+    bool gpu_target_compatibility_ready{false};
+    bool source_provenance_ready{false};
+    bool package_output_ready{false};
+    bool dependency_legal_records_ready{false};
+    bool selected_package_evidence_ready{false};
+    bool ktx_basis_review_ready{false};
+    bool broad_texture_codec_ready{false};
+    bool invoked_runtime_transcoding{false};
+    bool invoked_gpu_upload{false};
+    bool invoked_compression_tool{false};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
 /// Reviews broad source-import and cook evidence without executing importer plugins, downloading assets,
 /// running shader compilers, mutating sources, parsing runtime source data, or exposing native/middleware handles.
 [[nodiscard]] AssetImportProductionReview
 review_asset_import_production_readiness(const AssetImportProductionReviewRequest& request);
+
+/// Reviews KTX2/Basis texture import and offline transcode planning evidence without loading KTX files,
+/// transcoding textures, uploading GPU resources, running compression tools, or exposing native handles.
+[[nodiscard]] KtxBasisTextureReview review_ktx_basis_texture_readiness(const KtxBasisTextureReviewRequest& request);
 
 } // namespace mirakana
