@@ -763,7 +763,7 @@ if ($sample2dDesktopManifest.target -ne "sample_2d_desktop_runtime_package") {
 if ($sample2dDesktopManifest.gameplayContract.productionRecipe -ne "2d-desktop-runtime-package") {
     Write-Error "$sample2dDesktopManifestPath gameplayContract.productionRecipe must be 2d-desktop-runtime-package"
 }
-foreach ($module in @("MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_renderer")) {
+foreach ($module in @("MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_renderer")) {
     if (@($sample2dDesktopManifest.engineModules) -notcontains $module) {
         Write-Error "$sample2dDesktopManifestPath engineModules missing $module"
     }
@@ -802,14 +802,14 @@ foreach ($attributeRule in @(
 }
 $sample2dDesktopManifestText = $sample2dDesktopManifestEntry.Text
 foreach ($needle in @(
-    "native 2D sprite package proof",
-    "installed-native-2d-sprite-smoke",
+    "D3D12 package window smoke",
+    "installed-d3d12-window-smoke",
     "installed-2d-sprite-animation-smoke",
     "installed-2d-tilemap-runtime-ux-smoke",
     "installed-2d-entity-scale-culling-smoke",
     "installed-2d-scripting-sandbox-policy-smoke",
     "installed-2d-networking-foundation-policy-smoke",
-    "--require-native-2d-sprites",
+    "--require-d3d12-renderer",
     "--require-sprite-animation",
     "--require-tilemap-runtime-ux",
     "sprite_animation_frames_sampled",
@@ -941,10 +941,6 @@ foreach ($needle in @(
     "sample_and_apply_runtime_scene_render_sprite_animation",
     "advance_runtime_sprite_flipbook",
     "advance_runtime_sprite_flipbook_playback",
-    "sample_2d_desktop_runtime_package_native_sprite_overlay.vs.dxil",
-    "sample_2d_desktop_runtime_package_native_sprite_overlay.ps.dxil",
-    "sample_2d_desktop_runtime_package_native_sprite_overlay.vs.spv",
-    "sample_2d_desktop_runtime_package_native_sprite_overlay.ps.spv",
     "native_2d_sprites_status",
     "native_2d_textured_sprites_submitted",
     "native_2d_texture_binds",
@@ -1312,7 +1308,6 @@ foreach ($needle in @(
     "sample_2d_desktop_runtime_package_native_sprite_overlay.ps.dxil",
     "sample_2d_desktop_runtime_package_native_sprite_overlay.vs.spv",
     "sample_2d_desktop_runtime_package_native_sprite_overlay.ps.spv",
-    "--require-native-2d-sprites",
     "--require-sprite-animation",
     "--require-tilemap-runtime-ux",
     "--require-entity-scale-culling",

@@ -370,7 +370,7 @@ try {
     if ($desktop2dManifest.aiWorkflow.generatedGameQualityRubric.capabilityId -ne "ai-generated-game-quality-rubric-v1") { Write-Error "Desktop runtime 2D package scaffold manifest must carry ai-generated-game-quality-rubric-v1" }
     $desktop2dQualityRubricText = $desktop2dManifest.aiWorkflow.generatedGameQualityRubric | ConvertTo-Json -Depth 40
     foreach ($qualityNeedle in @("objective-quality-gate", "deterministic-package-smoke-quality-gate", "headless-quality-report", "commercial-quality")) { Assert-ContainsText $desktop2dQualityRubricText $qualityNeedle "Desktop runtime 2D package scaffold generated-game quality rubric" }
-    foreach ($module in @("MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_renderer", "MK_ai", "MK_navigation", "MK_physics")) {
+    foreach ($module in @("MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_renderer", "MK_ai", "MK_navigation", "MK_physics")) {
         if (@($desktop2dManifest.engineModules) -notcontains $module) {
             Write-Error "Desktop runtime 2D package scaffold manifest missing engine module: $module"
         }
@@ -418,7 +418,7 @@ try {
         "runtime/assets/2d/player.texture.geasset" `
         "desktop-2d-package-game/textures/player" `
         "runtime/desktop_2d_package_game.geindex"
-    foreach ($recipe in @("desktop-game-runtime", "desktop-runtime-release-target", "installed-2d-package-smoke", "installed-2d-sprite-animation-smoke", "installed-2d-tilemap-runtime-ux-smoke", "installed-2d-gameplay-systems-smoke", "installed-2d-entity-scale-culling-smoke", "installed-native-2d-sprite-smoke")) {
+    foreach ($recipe in @("desktop-game-runtime", "desktop-runtime-release-target", "installed-2d-package-smoke", "installed-2d-sprite-animation-smoke", "installed-2d-tilemap-runtime-ux-smoke", "installed-2d-gameplay-systems-smoke", "installed-2d-entity-scale-culling-smoke", "installed-d3d12-window-smoke")) {
         if (@($desktop2dManifest.validationRecipes | ForEach-Object { $_.name }) -notcontains $recipe) {
             Write-Error "Desktop runtime 2D package scaffold manifest validationRecipes missing $recipe"
         }
@@ -448,7 +448,9 @@ try {
     Assert-ContainsText $desktop2dCmake "PACKAGE_FILES_FROM_MANIFEST" "Desktop 2D scaffold CMake"
     Assert-ContainsText $desktop2dCmake "--require-scene-package" "Desktop 2D scaffold CMake"
     Assert-ContainsText $desktop2dCmake "--require-d3d12-shaders" "Desktop 2D scaffold CMake"
-    Assert-ContainsText $desktop2dCmake "--require-native-2d-sprites" "Desktop 2D scaffold CMake"
+    Assert-ContainsText $desktop2dCmake "--require-d3d12-renderer" "Desktop 2D scaffold CMake"
+    Assert-ContainsText $desktop2dCmake "HOST_BACKEND" "Desktop 2D scaffold CMake"
+    Assert-ContainsText $desktop2dCmake "win32" "Desktop 2D scaffold CMake"
     Assert-ContainsText $desktop2dCmake "--require-sprite-animation" "Desktop 2D scaffold CMake"
     Assert-ContainsText $desktop2dCmake "--require-tilemap-runtime-ux" "Desktop 2D scaffold CMake"
     Assert-ContainsText $desktop2dCmake "--require-gameplay-systems" "Desktop 2D scaffold CMake"
@@ -508,7 +510,7 @@ try {
     Assert-ContainsText $desktop2dMain "networking_foundation_status=" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "networking_foundation_rejected_unsafe_transport_rows=" "Desktop 2D scaffold main.cpp"
     Assert-ContainsText $desktop2dMain "networking_foundation_security_diagnostics=" "Desktop 2D scaffold main.cpp"
-    Assert-ContainsText $desktop2dReadme "--require-native-2d-sprites" "Desktop 2D scaffold README"
+    Assert-ContainsText $desktop2dReadme "--require-d3d12-renderer" "Desktop 2D scaffold README"
     Assert-ContainsText $desktop2dReadme "--require-sprite-animation" "Desktop 2D scaffold README"
     Assert-ContainsText $desktop2dReadme "advance_runtime_sprite_flipbook" "Desktop 2D scaffold README"
     Assert-ContainsText $desktop2dReadme "sprite_flipbook_frames_sampled" "Desktop 2D scaffold README"

@@ -1545,6 +1545,8 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             sample_2d_desktop_runtime_package/main.cpp
         GAME_MANIFEST
             games/sample_2d_desktop_runtime_package/game.agent.json
+        HOST_BACKEND
+            win32
         SMOKE_ARGS
             --smoke
             --require-config
@@ -1579,7 +1581,6 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --video-driver
             windows
             --require-d3d12-renderer
-            --require-native-2d-sprites
             --require-sprite-animation
             --require-sprite-sorting-layer
             --require-sprite-9slice-tiled

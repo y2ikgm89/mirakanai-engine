@@ -533,7 +533,7 @@ $desktop2dRecipe = @($productionLoop.recipes | Where-Object { $_.id -eq "2d-desk
 if ($desktop2dRecipe.Count -ne 1) {
     Write-Error "engine manifest aiOperableProductionLoop must expose exactly one 2d-desktop-runtime-package recipe"
 } else {
-    foreach ($module in @("MK_core", "MK_platform", "MK_platform_sdl3", "MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_renderer")) {
+    foreach ($module in @("MK_core", "MK_platform", "MK_platform_win32", "MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_renderer")) {
         if (@($desktop2dRecipe[0].requiredModules) -notcontains $module) {
             Write-Error "engine manifest 2d-desktop-runtime-package recipe missing required module: $module"
         }
@@ -552,7 +552,7 @@ if ($desktop2dRecipe.Count -ne 1) {
             Write-Error "engine manifest 2d-desktop-runtime-package recipe must allow $target"
         }
     }
-    foreach ($validationRecipe in @("desktop-game-runtime", "desktop-runtime-2d-package-proof", "desktop-runtime-2d-vulkan-window-package", "shader-toolchain")) {
+    foreach ($validationRecipe in @("desktop-game-runtime", "desktop-runtime-2d-package-proof", "desktop-runtime-2d-vulkan-shader-artifact-package", "shader-toolchain")) {
         if (@($desktop2dRecipe[0].validationRecipes) -notcontains $validationRecipe) {
             Write-Error "engine manifest 2d-desktop-runtime-package recipe must include $validationRecipe validation"
         }

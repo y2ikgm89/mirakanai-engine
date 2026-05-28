@@ -2201,17 +2201,17 @@
       {
         "id": "2d-desktop-runtime-package",
         "status": "host-gated",
-        "summary": "Host-gated SDL3 desktop runtime package proof for 2D gameplay using cooked first-party texture, material, audio, Scene.v1, and UI atlas payloads plus reviewed sprite atlas source authoring descriptors, reusable SdlDesktopGameHost, deterministic NullRenderer fallback, selected generated 2D gameplay systems composition smoke, runtime UI renderer atlas handoff counters, packaged D3D12 DXIL window smoke, native 2D sprite package proof for committed and generated 2D package targets, and strict Vulkan SPIR-V window smoke.",
+        "summary": "Host-gated Win32 desktop runtime package proof for 2D gameplay using cooked first-party texture, material, audio, Scene.v1, and UI atlas payloads plus reviewed sprite atlas source authoring descriptors, reusable Win32DesktopGameHost, deterministic NullRenderer fallback, selected generated 2D gameplay systems composition smoke, runtime UI renderer atlas handoff counters, and packaged Win32 D3D12 DXIL window smoke while native 2D sprite overlay and Vulkan renderer execution remain unsupported for this host surface.",
         "requiredModules": [
           "MK_core",
           "MK_math",
           "MK_platform",
-          "MK_platform_sdl3",
+          "MK_platform_win32",
           "MK_runtime",
           "MK_runtime_scene",
           "MK_runtime_host",
-          "MK_runtime_host_sdl3",
-          "MK_runtime_host_sdl3_presentation",
+          "MK_runtime_host_win32",
+          "MK_runtime_host_win32_presentation",
           "MK_scene",
           "MK_scene_renderer",
           "MK_ui",
@@ -2240,15 +2240,15 @@
         },
         "cookedRuntimeAssumptions": "runtimePackageFiles contains config, .geindex, and cooked texture/material/audio/scene/ui_atlas payloads. DesktopRuntime2DPackage and sample_2d_desktop_runtime_package declare spriteAtlasSourceAuthoringTargets over reviewed RGBA8 frame rows, selected page policy, pivot, slice-border metadata, source/assets/package.geassets, and source/sprites/player_atlas.texture_source while keeping source authoring files outside runtimePackageFiles. sample_2d_desktop_runtime_package also ships runtime/assets/2d/hud.uiatlas so --require-runtime-ui-renderer-atlas-handoff can build image and glyph palettes from cooked GameEngine.UiAtlas.v1 metadata, submit one image and one glyph through MK_ui_renderer, and report placement, budget, texture handoff, renderer counter, unsupported-claim, side-effect, and replay evidence without source image decoding, live glyph atlas generation, renderer upload execution, font loading/rasterization, or text shaping. Gameplay consumes cooked package records through MK_runtime/MK_runtime_scene plus public scene, UI, audio, renderer, MK_physics, MK_navigation, and MK_ai helpers. The selected --require-gameplay-systems smoke reports deterministic gameplay_systems_* counters for physics contacts/triggers, navigation route and agent ticks, perception, blackboard, behavior tree execution, scene gameplay binding readiness through gameplay_systems_scene_binding_* fields, and scene gameplay interaction rows through gameplay_systems_scene_interaction_* fields; selected --require-runtime-profile-resume package smokes report runtime_profile_resume_* save-slot/progression/package-resume evidence.",
         "rendererBackendAssumptions": {
-          "graphics": "SdlDesktopGameHost with NullRenderer fallback, packaged D3D12 DXIL window smoke, native 2D sprite package proof for committed and generated 2D package targets, strict Vulkan SPIR-V window smoke, and host-owned native presentation probing",
-          "nativeWindow": "host-gated through SDL3 runtime host adapters",
-          "visibleGpuOutput": "host-gated package window smoke, selected world/UI/effects sprite batch budget profile counters, and native 2D sprite batch execution counters only; runtime image decoding, renderer/RHI source-image residency, broad production sprite batching readiness beyond selected plan/budget/native-execution evidence, production atlas packing, Metal, and general production renderer quality remain follow-up"
+          "graphics": "Win32DesktopGameHost with NullRenderer fallback, packaged D3D12 DXIL window smoke, and host-owned Win32 presentation probing; native 2D sprite overlay and Vulkan renderer execution are not claimed by this host surface",
+          "nativeWindow": "host-gated through Win32 runtime host adapters",
+          "visibleGpuOutput": "host-gated package window smoke and selected world/UI/effects sprite batch budget profile counters only; native 2D sprite overlay execution, Vulkan renderer execution, runtime image decoding, renderer/RHI source-image residency, broad production sprite batching readiness beyond selected plan/budget evidence, production atlas packing, Metal, and general production renderer quality remain follow-up"
         },
         "validationRecipes": [
           "desktop-game-runtime",
           "desktop-runtime-2d-package-proof",
           "desktop-runtime-2d-runtime-ui-renderer-atlas-handoff-proof",
-          "desktop-runtime-2d-vulkan-window-package",
+          "desktop-runtime-2d-vulkan-shader-artifact-package",
           "shader-toolchain"
         ],
         "unsupportedClaims": [
@@ -2263,7 +2263,7 @@
           "Metal readiness",
           "general production renderer quality"
         ],
-        "followUpCapability": "Use this recipe only after the selected desktop runtime/package validation passes on the host. Texture atlas cooking, tilemaps, runtime image/font/audio decode adapters, broad production sprite batching readiness beyond selected plan/budget/native-execution evidence, Metal presentation, and GPU-backed 2D renderer quality are future slices."
+        "followUpCapability": "Use this recipe only after the selected desktop runtime/package validation passes on the host. Native 2D sprite overlay execution, Vulkan renderer execution, texture atlas cooking, tilemaps, runtime image/font/audio decode adapters, broad production sprite batching readiness beyond selected plan/budget evidence, Metal presentation, and GPU-backed 2D renderer quality are future slices."
       },
       {
         "id": "3d-playable-desktop-package",
@@ -5154,7 +5154,7 @@
           "desktop-game-runtime",
           "desktop-runtime-2d-package-proof",
           "desktop-runtime-2d-runtime-ui-renderer-atlas-handoff-proof",
-          "desktop-runtime-2d-vulkan-window-package",
+          "desktop-runtime-2d-vulkan-shader-artifact-package",
           "shader-toolchain"
         ]
       },

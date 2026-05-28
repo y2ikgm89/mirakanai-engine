@@ -5721,7 +5721,7 @@ Describe the packaged 2D game goal here before expanding gameplay.
 This game uses the optional desktop runtime package lane with a first-party cooked 2D scene package:
 
 - `mirakana::GameApp`
-- `mirakana::SdlDesktopGameHost`
+- `mirakana::Win32DesktopGameHost`
 - `mirakana::runtime::RuntimeInputActionMap`
 - `mirakana::runtime::load_runtime_asset_package`
 - `mirakana::runtime::runtime_sprite_animation_payload`
@@ -5734,7 +5734,7 @@ This game uses the optional desktop runtime package lane with a first-party cook
 - `mirakana::submit_scene_render_packet`
 - `mirakana::ui::UiDocument` plus `mirakana::submit_ui_renderer_submission`
 - `mirakana::AudioMixer` over a cooked audio payload
-- host-gated native RHI 2D sprite overlay package smoke with generated shader artifacts
+- host-gated Win32 D3D12 package window smoke with generated shader artifacts
 - deterministic `NullRenderer` fallback
 - `game.agent.json.runtimePackageFiles`
 - `game.agent.json.atlasTilemapAuthoringTargets` for deterministic package data only
@@ -5742,7 +5742,7 @@ This game uses the optional desktop runtime package lane with a first-party cook
 - `game.agent.json.packageStreamingResidencyTargets` as host-gated safe-point package streaming intent
 - `PACKAGE_FILES_FROM_MANIFEST`
 
-The generated package proves cooked sprite/material/audio/scene loading, atlas-backed repeated scene sprite planning counters through `sprite_batch_plan_atlas_backed_batches`, `sprite_batch_plan_repeated_atlas_batches`, and `sprite_batch_plan_repeated_atlas_sprites`, first-party cooked sprite animation frame sampling and application, deterministic flipbook ticks with package-visible `sprite_flipbook_frames_sampled` / `sprite_flipbook_frames_applied` counters through `--require-sprite-animation`, deterministic data-only tilemap metadata with visible-cell runtime sampling counters through `--require-tilemap-runtime-ux`, a deterministic 2D gameplay systems package proof through `--require-gameplay-systems` including behavior-authoring readiness status, diagnostics, trace, action binding, and blackboard-condition counters, deterministic entity scale/culling rows through `--require-entity-scale-culling`, 2D scene validation, HUD submission, audio cue intent, package smoke validation, and a host-gated D3D12 native 2D sprite overlay smoke through `--require-native-2d-sprites`. It does not claim production atlas packing, full tilemap editor UX, runtime image decoding, production sprite batching, package streaming execution, broad entity scale execution/performance/GPU culling, visual scripting, arbitrary AI code execution, ML inference, networked AI replication, Metal readiness, public native/RHI handles, or general renderer quality.
+The generated package proves cooked sprite/material/audio/scene loading, atlas-backed repeated scene sprite planning counters through `sprite_batch_plan_atlas_backed_batches`, `sprite_batch_plan_repeated_atlas_batches`, and `sprite_batch_plan_repeated_atlas_sprites`, first-party cooked sprite animation frame sampling and application, deterministic flipbook ticks with package-visible `sprite_flipbook_frames_sampled` / `sprite_flipbook_frames_applied` counters through `--require-sprite-animation`, deterministic data-only tilemap metadata with visible-cell runtime sampling counters through `--require-tilemap-runtime-ux`, a deterministic 2D gameplay systems package proof through `--require-gameplay-systems` including behavior-authoring readiness status, diagnostics, trace, action binding, and blackboard-condition counters, deterministic entity scale/culling rows through `--require-entity-scale-culling`, 2D scene validation, HUD submission, audio cue intent, package smoke validation, and a host-gated Win32 D3D12 window smoke through `--require-d3d12-renderer`. It does not claim native 2D sprite overlay execution, Vulkan renderer execution, production atlas packing, full tilemap editor UX, runtime image decoding, production sprite batching, package streaming execution, broad entity scale execution/performance/GPU culling, visual scripting, arbitrary AI code execution, ML inference, networked AI replication, Metal readiness, public native/RHI handles, or general renderer quality.
 
 ## Validate
 
@@ -5754,7 +5754,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 
 The installed package smoke uses:
 
 ```powershell
-out\install\desktop-runtime-release\bin\__TARGET_NAME__.exe --smoke --require-config runtime/__GAME_NAME__.config --require-scene-package runtime/__GAME_NAME__.geindex --require-d3d12-shaders --video-driver windows --require-d3d12-renderer --require-native-2d-sprites --require-sprite-animation --require-tilemap-runtime-ux --require-gameplay-systems --require-entity-scale-culling
+out\install\desktop-runtime-release\bin\__TARGET_NAME__.exe --smoke --require-config runtime/__GAME_NAME__.config --require-scene-package runtime/__GAME_NAME__.geindex --require-d3d12-shaders --video-driver windows --require-d3d12-renderer --require-sprite-animation --require-tilemap-runtime-ux --require-gameplay-systems --require-entity-scale-culling
 ```
 '@
     return $template.Replace("__TITLE__", $Title).Replace("__TARGET_NAME__", $TargetName).Replace("__GAME_NAME__", $GameName)
@@ -6932,8 +6932,8 @@ function New-DesktopRuntime2DGameDesignSpec {
         coreLoop = [ordered]@{
             objective = "Move the cooked player sprite through the packaged scene while package-visible systems report deterministic gameplay counters."
             playerActions = @("move-left-right", "jump", "trigger-audio-cue", "restart-smoke")
-            feedback = "Sprite animation, HUD submission, audio cue, physics contacts, navigation, AI, and native sprite counters are emitted by selected package recipes."
-            winState = "Installed package recipes report clean 2D package, gameplay systems, and native sprite evidence."
+            feedback = "Sprite animation, HUD submission, audio cue, physics contacts, navigation, AI, and Win32 D3D12 window counters are emitted by selected package recipes."
+            winState = "Installed package recipes report clean 2D package, gameplay systems, and Win32 D3D12 window evidence."
             failState = "Missing package files, invalid scene references, or unsupported broad claims fail schema/static/package validation."
             restart = "Rerun the package smoke from the manifest-derived runtime package files without mutating cooked payloads."
         }
@@ -6977,9 +6977,9 @@ function New-DesktopRuntime2DGameDesignSpec {
                 delivery = "runtime-package-file"
             }
         )
-        systems = @("sdl3-desktop-host", "scene-rendering", "runtime-ui", "audio-mix", "physics-2d", "navigation-grid", "behavior-ai")
+        systems = @("win32-desktop-host", "scene-rendering", "runtime-ui", "audio-mix", "physics-2d", "navigation-grid", "behavior-ai")
         packageTargets = @("desktop-game-runtime", "desktop-runtime-release")
-        validationRecipeIds = @("desktop-game-runtime", "desktop-runtime-release-target", "installed-2d-package-smoke", "installed-2d-gameplay-systems-smoke", "installed-native-2d-sprite-smoke")
+        validationRecipeIds = @("desktop-game-runtime", "desktop-runtime-release-target", "installed-2d-package-smoke", "installed-2d-gameplay-systems-smoke", "installed-d3d12-window-smoke")
         qualityGates = @(
             [ordered]@{
                 id = "package-loads"
@@ -6988,8 +6988,8 @@ function New-DesktopRuntime2DGameDesignSpec {
             },
             [ordered]@{
                 id = "playable-feedback"
-                evidence = "Gameplay systems, native sprite, UI, audio, physics, navigation, and AI counters are selected package evidence."
-                recipeIds = @("installed-2d-gameplay-systems-smoke", "installed-native-2d-sprite-smoke")
+                evidence = "Gameplay systems, Win32 D3D12 window, UI, audio, physics, navigation, and AI counters are selected package evidence."
+                recipeIds = @("installed-2d-gameplay-systems-smoke", "installed-d3d12-window-smoke")
             }
         )
         unsupportedClaims = @("engine-internal-edits", "native-handles", "middleware-contracts", "unreviewed-external-assets", "arbitrary-shell", "broad-commercial-quality", "runtime-source-parsing", "renderer-rhi-residency", "metal-readiness")
@@ -7140,13 +7140,13 @@ function New-DesktopRuntime2DManifest {
             "MK_core",
             "MK_math",
             "MK_platform",
-            "MK_platform_sdl3",
+            "MK_platform_win32",
             "MK_renderer",
             "MK_runtime",
             "MK_runtime_scene",
             "MK_runtime_host",
-            "MK_runtime_host_sdl3",
-            "MK_runtime_host_sdl3_presentation",
+            "MK_runtime_host_win32",
+            "MK_runtime_host_win32_presentation",
             "MK_scene",
             "MK_scene_renderer",
             "MK_ui",
@@ -7186,7 +7186,7 @@ function New-DesktopRuntime2DManifest {
                     "installed-2d-tilemap-runtime-ux-smoke",
                     "installed-2d-gameplay-systems-smoke",
                     "installed-2d-entity-scale-culling-smoke",
-                    "installed-native-2d-sprite-smoke"
+                    "installed-d3d12-window-smoke"
                 )
             placeholderAssetPipeline = New-AiPlaceholderAssetPipeline `
                 -GameName $GameName `
@@ -7199,7 +7199,7 @@ function New-DesktopRuntime2DManifest {
                     "installed-2d-tilemap-runtime-ux-smoke",
                     "installed-2d-gameplay-systems-smoke",
                     "installed-2d-entity-scale-culling-smoke",
-                    "installed-native-2d-sprite-smoke"
+                    "installed-d3d12-window-smoke"
                 )
             generatedGamePlaytestLoop = New-AiGeneratedGamePlaytestLoop `
                 -GameName $GameName `
@@ -7212,7 +7212,7 @@ function New-DesktopRuntime2DManifest {
                     "installed-2d-tilemap-runtime-ux-smoke",
                     "installed-2d-gameplay-systems-smoke",
                     "installed-2d-entity-scale-culling-smoke",
-                    "installed-native-2d-sprite-smoke"
+                    "installed-d3d12-window-smoke"
                 )
             validationRemediationRecipes = New-AiValidationRemediationRecipes `
                 -GameName $GameName `
@@ -7224,7 +7224,7 @@ function New-DesktopRuntime2DManifest {
                     "installed-2d-tilemap-runtime-ux-smoke",
                     "installed-2d-gameplay-systems-smoke",
                     "installed-2d-entity-scale-culling-smoke",
-                    "installed-native-2d-sprite-smoke"
+                    "installed-d3d12-window-smoke"
                 )
             generatedGameQualityRubric = New-AiGeneratedGameQualityRubric `
                 -GameName $GameName `
@@ -7237,13 +7237,13 @@ function New-DesktopRuntime2DManifest {
                     "installed-2d-tilemap-runtime-ux-smoke",
                     "installed-2d-gameplay-systems-smoke",
                     "installed-2d-entity-scale-culling-smoke",
-                    "installed-native-2d-sprite-smoke"
+                    "installed-d3d12-window-smoke"
                 )
         }
         gameplayContract = [ordered]@{
             productionRecipe = "2d-desktop-runtime-package"
             appType = "mirakana::GameApp"
-            runner = "mirakana::SdlDesktopGameHost"
+            runner = "mirakana::Win32DesktopGameHost"
             input = "mirakana::runtime::RuntimeInputActionMap over mirakana::VirtualInput"
             scene = "GameEngine.Scene.v1 loaded from a cooked package and validated by mirakana::validate_playable_2d_scene"
             sceneRenderer = "mirakana::submit_scene_render_packet"
@@ -7252,12 +7252,12 @@ function New-DesktopRuntime2DManifest {
             physics = "mirakana::PhysicsWorld2D deterministic contact and trigger counters"
             navigation = "mirakana::plan_navigation_grid_agent_path plus mirakana::update_navigation_agent"
             ai = "mirakana::build_ai_perception_snapshot_2d, mirakana::write_ai_perception_blackboard, mirakana::evaluate_ai_perception_readiness_2d, and mirakana::evaluate_behavior_tree"
-            renderer = "mirakana::IRenderer from the desktop host with deterministic NullRenderer fallback or host-owned RHI-backed native 2D sprite overlay when packaged shader artifacts are present"
-            currentRuntime = "generated host-gated SDL3 desktop runtime package proof for 2D gameplay. D3D12 package smoke uses generated shader artifacts and --require-native-2d-sprites so cooked scene sprite texture/material identity, atlas-backed scene sprite planning counters including sprite_batch_plan_atlas_backed_batches, sprite_batch_plan_repeated_atlas_batches, and sprite_batch_plan_repeated_atlas_sprites, and HUD submission flow through the host-owned native RHI sprite overlay path with native_2d_sprite_batches_executed counters. The sprite atlas source authoring target records reviewed RGBA8 frame rows plus selected page policy, pivot, and slice-border metadata for plan_sprite_atlas_source_authoring, emits GameEngine.TextureSource.v1 plus GameEngine.SourceAssetRegistry.v1 authoring files, and keeps those source files outside runtimePackageFiles before cooked runtime consumption. The sprite animation package proof uses a first-party cooked sprite_animation payload and --require-sprite-animation so deterministic flipbook ticks through advance_runtime_sprite_flipbook emit sprite_flipbook_frames_sampled and sprite_flipbook_frames_applied counters before sprite frame application emits sprite_animation_frames_sampled and sprite_animation_frames_applied counters. The tilemap runtime UX proof uses first-party GameEngine.Tilemap.v1 metadata and --require-tilemap-runtime-ux so visible tile cells emit tilemap_cells_sampled and tilemap_diagnostics counters without claiming runtime image decoding, production atlas packing, or full tilemap editor UX. The gameplay systems package proof uses --require-gameplay-systems so 2D PhysicsWorld contacts/triggers, NavigationGrid path/agent movement, AI perception blackboard, perception readiness through evaluate_ai_perception_readiness_2d, behavior authoring readiness through evaluate_behavior_authoring_readiness, and behavior tree counters emit gameplay_systems_* fields including gameplay_systems_perception_readiness_status, gameplay_systems_perception_readiness_diagnostics, gameplay_systems_perception_stable_primary_target_ready, gameplay_systems_perception_blackboard_projection_ready, gameplay_systems_behavior_authoring_readiness_status, gameplay_systems_behavior_authoring_readiness_diagnostics, gameplay_systems_behavior_authoring_deterministic_trace_ready, gameplay_systems_behavior_authoring_action_bindings, and gameplay_systems_behavior_authoring_blackboard_conditions. The world streaming and large-scene package proof uses --require-world-region-streaming so plan_runtime_world_region_streaming, execute_runtime_world_region_streaming_safe_point, and evaluate_runtime_world_streaming_large_scene_readiness emit world_region_streaming_* counters including load/keep/unload rows, reviewed package adoption, missing-region diagnostics, world_region_streaming_large_scene_readiness_status, and world_region_streaming_navigation_path_cache_ready. The entity scale/culling package proof uses --require-entity-scale-culling so plan_runtime_entity_scale_culling emits entity_scale_culling_* counters for planned rows, visible/culled rows, LOD rows, update buckets, projected draw/update costs, budget-protected rows, clean diagnostics, and budget diagnostic evidence. public native or RHI handle access remains unsupported, broad production sprite batching readiness remains unsupported, broad/background world streaming, open-world parity, platform async job systems, broad entity scale execution/performance/GPU culling, visual scripting, arbitrary AI code execution, ML inference, networked AI replication, and general production renderer quality remain unsupported."
+            renderer = "mirakana::IRenderer from the Win32 desktop host with deterministic NullRenderer fallback or host-owned D3D12 presentation when packaged shader artifacts are present"
+            currentRuntime = "generated host-gated Win32 desktop runtime package proof for 2D gameplay. D3D12 package smoke uses generated shader artifacts and --require-d3d12-renderer for host-owned window presentation; native 2D sprite overlay proof is not claimed on the Win32 host surface in this phase, while cooked scene sprite texture/material identity, atlas-backed scene sprite planning counters including sprite_batch_plan_atlas_backed_batches, sprite_batch_plan_repeated_atlas_batches, and sprite_batch_plan_repeated_atlas_sprites, and HUD submission remain package-side evidence. The sprite atlas source authoring target records reviewed RGBA8 frame rows plus selected page policy, pivot, and slice-border metadata for plan_sprite_atlas_source_authoring, emits GameEngine.TextureSource.v1 plus GameEngine.SourceAssetRegistry.v1 authoring files, and keeps those source files outside runtimePackageFiles before cooked runtime consumption. The sprite animation package proof uses a first-party cooked sprite_animation payload and --require-sprite-animation so deterministic flipbook ticks through advance_runtime_sprite_flipbook emit sprite_flipbook_frames_sampled and sprite_flipbook_frames_applied counters before sprite frame application emits sprite_animation_frames_sampled and sprite_animation_frames_applied counters. The tilemap runtime UX proof uses first-party GameEngine.Tilemap.v1 metadata and --require-tilemap-runtime-ux so visible tile cells emit tilemap_cells_sampled and tilemap_diagnostics counters without claiming runtime image decoding, production atlas packing, or full tilemap editor UX. The gameplay systems package proof uses --require-gameplay-systems so 2D PhysicsWorld contacts/triggers, NavigationGrid path/agent movement, AI perception blackboard, perception readiness through evaluate_ai_perception_readiness_2d, behavior authoring readiness through evaluate_behavior_authoring_readiness, and behavior tree counters emit gameplay_systems_* fields including gameplay_systems_perception_readiness_status, gameplay_systems_perception_readiness_diagnostics, gameplay_systems_perception_stable_primary_target_ready, gameplay_systems_perception_blackboard_projection_ready, gameplay_systems_behavior_authoring_readiness_status, gameplay_systems_behavior_authoring_readiness_diagnostics, gameplay_systems_behavior_authoring_deterministic_trace_ready, gameplay_systems_behavior_authoring_action_bindings, and gameplay_systems_behavior_authoring_blackboard_conditions. The world streaming and large-scene package proof uses --require-world-region-streaming so plan_runtime_world_region_streaming, execute_runtime_world_region_streaming_safe_point, and evaluate_runtime_world_streaming_large_scene_readiness emit world_region_streaming_* counters including load/keep/unload rows, reviewed package adoption, missing-region diagnostics, world_region_streaming_large_scene_readiness_status, and world_region_streaming_navigation_path_cache_ready. The entity scale/culling package proof uses --require-entity-scale-culling so plan_runtime_entity_scale_culling emits entity_scale_culling_* counters for planned rows, visible/culled rows, LOD rows, update buckets, projected draw/update costs, budget-protected rows, clean diagnostics, and budget diagnostic evidence. public native or RHI handle access remains unsupported, native 2D sprite overlay execution remains unsupported, Vulkan renderer execution remains unsupported, broad production sprite batching readiness remains unsupported, broad/background world streaming, open-world parity, platform async job systems, broad entity scale execution/performance/GPU culling, visual scripting, arbitrary AI code execution, ML inference, networked AI replication, and general production renderer quality remain unsupported."
         }
         backendReadiness = [ordered]@{
-            platform = "sdl3-desktop-host-gated"
-            graphics = "NullRenderer fallback plus host-gated D3D12 native 2D sprite batch execution counters and atlas-backed scene sprite plan counters through generated shader artifacts. Sprite atlas source authoring remains a reviewed tooling/source contract only; runtime image decoding, renderer/RHI residency from source images, public native or RHI handle access, broad production sprite batching readiness, and general production renderer quality remain unsupported."
+            platform = "win32-desktop-host-gated"
+            graphics = "NullRenderer fallback plus host-gated Win32 D3D12 package window smoke through generated shader artifacts. Native 2D sprite overlay and Vulkan renderer execution remain unsupported on this Win32 host surface; sprite atlas source authoring remains a reviewed tooling/source contract only, and runtime image decoding, renderer/RHI residency from source images, public native or RHI handle access, broad production sprite batching readiness, and general production renderer quality remain unsupported."
             audio = "device-independent cooked audio payload mixed through MK_audio"
             ui = "MK_ui-headless renderer submission"
             physics = "MK_physics 2D deterministic contact and trigger proof through --require-gameplay-systems"
@@ -7329,7 +7329,7 @@ function New-DesktopRuntime2DManifest {
                         }
                     }
                 )
-                preflightRecipeIds = @("desktop-game-runtime", "desktop-runtime-release-target", "installed-2d-package-smoke", "installed-2d-sprite-animation-smoke", "installed-2d-tilemap-runtime-ux-smoke", "installed-2d-gameplay-systems-smoke", "installed-2d-entity-scale-culling-smoke", "installed-native-2d-sprite-smoke")
+                preflightRecipeIds = @("desktop-game-runtime", "desktop-runtime-release-target", "installed-2d-package-smoke", "installed-2d-sprite-animation-smoke", "installed-2d-tilemap-runtime-ux-smoke", "installed-2d-gameplay-systems-smoke", "installed-2d-entity-scale-culling-smoke", "installed-d3d12-window-smoke")
             }
         )
         atlasTilemapAuthoringTargets = @(
@@ -7344,7 +7344,7 @@ function New-DesktopRuntime2DManifest {
                 sourceDecoding = "unsupported"
                 atlasPacking = "unsupported"
                 nativeGpuSpriteBatching = "unsupported"
-                preflightRecipeIds = @("desktop-game-runtime", "desktop-runtime-release-target", "installed-2d-package-smoke", "installed-2d-sprite-animation-smoke", "installed-2d-tilemap-runtime-ux-smoke", "installed-2d-gameplay-systems-smoke", "installed-2d-entity-scale-culling-smoke", "installed-native-2d-sprite-smoke")
+                preflightRecipeIds = @("desktop-game-runtime", "desktop-runtime-release-target", "installed-2d-package-smoke", "installed-2d-sprite-animation-smoke", "installed-2d-tilemap-runtime-ux-smoke", "installed-2d-gameplay-systems-smoke", "installed-2d-entity-scale-culling-smoke", "installed-d3d12-window-smoke")
             }
         )
         runtimeSceneValidationTargets = @(
@@ -7367,7 +7367,7 @@ function New-DesktopRuntime2DManifest {
                 maxResidentPackages = 1
                 preloadAssetKeys = @("$assetKeyPrefix/scenes/packaged-2d-scene", "$assetKeyPrefix/tilemaps/level", "$assetKeyPrefix/animations/player-sprite-animation")
                 residentResourceKinds = @("texture", "material", "scene", "audio", "tilemap", "sprite_animation")
-                preflightRecipeIds = @("desktop-game-runtime", "desktop-runtime-release-target", "installed-2d-package-smoke", "installed-2d-sprite-animation-smoke", "installed-2d-tilemap-runtime-ux-smoke", "installed-2d-gameplay-systems-smoke", "installed-2d-entity-scale-culling-smoke", "installed-native-2d-sprite-smoke")
+                preflightRecipeIds = @("desktop-game-runtime", "desktop-runtime-release-target", "installed-2d-package-smoke", "installed-2d-sprite-animation-smoke", "installed-2d-tilemap-runtime-ux-smoke", "installed-2d-gameplay-systems-smoke", "installed-2d-entity-scale-culling-smoke", "installed-d3d12-window-smoke")
             }
         )
         validationRecipes = @(
@@ -7400,8 +7400,8 @@ function New-DesktopRuntime2DManifest {
                 command = "out\install\desktop-runtime-release\bin\$TargetName.exe --smoke --require-config runtime/$GameName.config --require-scene-package runtime/$GameName.geindex --require-entity-scale-culling"
             },
             [ordered]@{
-                name = "installed-native-2d-sprite-smoke"
-                command = "out\install\desktop-runtime-release\bin\$TargetName.exe --smoke --require-config runtime/$GameName.config --require-scene-package runtime/$GameName.geindex --require-d3d12-shaders --video-driver windows --require-d3d12-renderer --require-native-2d-sprites --require-sprite-animation --require-tilemap-runtime-ux --require-gameplay-systems --require-entity-scale-culling"
+                name = "installed-d3d12-window-smoke"
+                command = "out\install\desktop-runtime-release\bin\$TargetName.exe --smoke --require-config runtime/$GameName.config --require-scene-package runtime/$GameName.geindex --require-d3d12-shaders --video-driver windows --require-d3d12-renderer --require-sprite-animation --require-tilemap-runtime-ux --require-gameplay-systems --require-entity-scale-culling"
             }
         )
     }
@@ -8091,6 +8091,8 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             $GameName/main.cpp
         GAME_MANIFEST
             games/$GameName/game.agent.json
+        HOST_BACKEND
+            win32
         SMOKE_ARGS
             --smoke
             --require-config
@@ -8111,7 +8113,6 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --video-driver
             windows
             --require-d3d12-renderer
-            --require-native-2d-sprites
             --require-sprite-animation
             --require-tilemap-runtime-ux
             --require-gameplay-systems

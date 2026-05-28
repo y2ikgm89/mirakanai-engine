@@ -378,7 +378,7 @@ if ($null -eq $sample2dDesktopManifestEntry) {
     if ($sample2dDesktopManifest.gameplayContract.productionRecipe -ne "2d-desktop-runtime-package") {
         Write-Error "$sample2dDesktopManifestPath gameplayContract.productionRecipe must be 2d-desktop-runtime-package"
     }
-    foreach ($module in @("MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_renderer", "MK_ai", "MK_navigation", "MK_physics")) {
+    foreach ($module in @("MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_renderer", "MK_ai", "MK_navigation", "MK_physics")) {
         if (@($sample2dDesktopManifest.engineModules) -notcontains $module) {
             Write-Error "$sample2dDesktopManifestPath engineModules missing $module"
         }
@@ -407,16 +407,13 @@ if ($null -eq $sample2dDesktopManifestEntry) {
     $sample2dManifestText = $sample2dDesktopManifestEntry.Text
     foreach ($needle in @(
         "D3D12 package window smoke",
-        "Vulkan package window smoke",
-        "native 2D sprite package proof",
+        "Vulkan renderer smoke remains unsupported",
+        "native 2D sprite overlay proof is not claimed",
         "installed-d3d12-window-smoke",
-        "installed-vulkan-window-smoke",
-        "installed-native-2d-sprite-smoke",
+        "installed-vulkan-shader-artifact-smoke",
         "--require-d3d12-shaders",
         "--require-d3d12-renderer",
         "--require-vulkan-shaders",
-        "--require-vulkan-renderer",
-        "--require-native-2d-sprites",
         "--require-gameplay-systems",
         "--require-world-region-streaming",
         "--require-entity-scale-culling",
@@ -476,10 +473,6 @@ if ($null -eq $sample2dDesktopManifestEntry) {
         "sample_2d_desktop_runtime_package_sprite.ps.dxil",
         "sample_2d_desktop_runtime_package_sprite.vs.spv",
         "sample_2d_desktop_runtime_package_sprite.ps.spv",
-        "sample_2d_desktop_runtime_package_native_sprite_overlay.vs.dxil",
-        "sample_2d_desktop_runtime_package_native_sprite_overlay.ps.dxil",
-        "sample_2d_desktop_runtime_package_native_sprite_overlay.vs.spv",
-        "sample_2d_desktop_runtime_package_native_sprite_overlay.ps.spv",
         "native_2d_sprites_status",
         "native_2d_textured_sprites_submitted",
         "native_2d_texture_binds",
@@ -580,7 +573,6 @@ if ($null -eq $sample2dDesktopManifestEntry) {
         "sample_2d_desktop_runtime_package_native_sprite_overlay.ps.dxil",
         "sample_2d_desktop_runtime_package_native_sprite_overlay.vs.spv",
         "sample_2d_desktop_runtime_package_native_sprite_overlay.ps.spv",
-        "--require-native-2d-sprites",
         "--require-gameplay-systems",
         "--require-world-region-streaming",
         "--require-entity-scale-culling",
@@ -698,9 +690,10 @@ if ($null -eq $sample2dDesktopManifestEntry) {
         (Get-Content -LiteralPath (Join-Path $root "tools/new-game-templates.ps1") -Raw)
     foreach ($needle in @(
         "shaders/runtime_2d_sprite.hlsl",
-        "installed-native-2d-sprite-smoke",
+        "installed-d3d12-window-smoke",
         "installed-2d-entity-scale-culling-smoke",
-        "--require-native-2d-sprites",
+        "HOST_BACKEND",
+        "win32",
         "--require-entity-scale-culling",
         "MK_configure_desktop_runtime_2d_sprite_shader_artifacts"
     )) {
