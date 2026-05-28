@@ -146,6 +146,7 @@
         "installed-2d-runtime-menu-hud-smoke",
         "installed-2d-audio-gameplay-mixer-smoke",
         "installed-2d-audio-production-smoke",
+        "installed-2d-source-image-audio-codec-review-smoke",
         "installed-2d-simulation-orchestration-smoke",
         "installed-2d-sprite-effects-particles-smoke",
         "installed-native-2d-sprite-smoke"
@@ -246,6 +247,13 @@
           ]
         },
         {
+          "id": "source-image-audio-codec-review",
+          "evidence": "Source image/audio codec review smoke reports source_image_audio_codec_review_status=ready, six reviewed rows, exact vcpkg.libspng and vcpkg.miniaudio dependency/legal records, PNG RGBA8 pixel format evidence, audio sample-format evidence, selected package evidence, zero unsupported claims, zero SVG/background/HRTF/runtime-source/native/package side effects, and a positive replay hash without broad image or audio codec readiness.",
+          "recipeIds": [
+            "installed-2d-source-image-audio-codec-review-smoke"
+          ]
+        },
+        {
           "id": "deterministic-loop",
           "evidence": "Simulation orchestration smoke reports fixed-step command playback and clean diagnostics without running broad game rules.",
           "recipeIds": [
@@ -264,7 +272,10 @@
         "internet-facing-network-execution",
         "matchmaking-nat-traversal",
         "network-encryption-authentication",
+        "svg-vector-codec",
+        "broad-image-codec-readiness",
         "broad-audio-codec-support",
+        "background-decode-streaming",
         "audio-middleware-parity",
         "hrtf-execution-parity",
         "runtime-source-parsing",
@@ -1880,6 +1891,8 @@
     "sourceFormats": [
       "GameEngine.TextureSource.v1",
       "GameEngine.SourceAssetRegistry.v1",
+      "png",
+      "common-audio",
       "first-party-cooked-fixture"
     ],
     "cookedOnlyRuntime": true,
@@ -1889,7 +1902,9 @@
       "status": "descriptor-only",
       "reviewApi": "mirakana::review_asset_import_production_readiness",
       "reviewedAdapters": [
-        "first-party-source-documents"
+        "first-party-source-documents",
+        "selected-libspng-png-rgba8",
+        "selected-miniaudio-source-audio-pcm"
       ],
       "implementedExternalAdaptersRequired": [],
       "unsupportedClaims": [
@@ -1898,6 +1913,11 @@
         "live-shader-generation",
         "runtime-source-parsing",
         "native-handle-access",
+        "svg-vector-codec",
+        "broad-image-codec-readiness",
+        "broad-audio-codec-readiness",
+        "background-decode-streaming",
+        "hrtf-middleware",
         "broad-codec-readiness"
       ]
     }
@@ -2111,6 +2131,10 @@
     {
       "name": "installed-2d-audio-production-smoke",
       "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex"
+    },
+    {
+      "name": "installed-2d-source-image-audio-codec-review-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-source-image-audio-codec-review"
     },
     {
       "name": "installed-2d-world-region-streaming-smoke",
