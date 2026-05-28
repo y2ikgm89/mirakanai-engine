@@ -4,6 +4,8 @@ This page is the human-readable summary of the current GameEngine capability con
 
 Current execution pointer: `first-party-desktop-platform-sdl3-removal-v1` is the active long-running milestone. Current native replacement evidence includes `MK_platform_win32`, `MK_audio_wasapi`, `MK_runtime_host_win32` / `MK_runtime_host_win32_presentation`, the default `sample_desktop_runtime_shell` installed package lane running through `Win32DesktopGameHost` with `SDL3.dll` rejected from installed and CPack artifacts, the config-only `DesktopRuntimePackage` scaffold plus committed `sample_generated_desktop_runtime_package` using `HOST_BACKEND win32`, and the `DesktopRuntimeCookedScenePackage` scaffold plus committed `sample_generated_desktop_runtime_cooked_scene_package` using `Win32DesktopGameHost` with native `NullRenderer` package-load/scene-submit evidence. The SDL3 source adapters, SDL3 tests, `sample_desktop_runtime_game`, and committed `sample_generated_desktop_runtime_3d_package` are retired from active package targets in the Phase 9 deletion slice; their deeper scene GPU, postprocess, Vulkan, native overlay, and renderer-quality claims are retained only as historical evidence until a scoped Win32 presentation lane reintroduces equivalent proof.
 
+Read any lower `sample_desktop_runtime_game` or `sample_generated_desktop_runtime_3d_package` package-smoke wording as retained historical evidence unless it explicitly says a scoped Win32 replacement lane is current. Current package lanes are the Win32 shell, config-only, cooked-scene, material/shader, and 2D desktop runtime package targets listed in the manifest.
+
 ## Ready Foundations
 
 - C++23 engine module baseline with explicit ownership boundaries and public `mirakana::` APIs.
