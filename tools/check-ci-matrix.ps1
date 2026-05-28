@@ -246,7 +246,7 @@ Assert-ContainsAll $cpp23EvaluationScript @(
     "cpp23-release-preset-eval",
     "Invoke-CheckedCommand `$tools.CMake --build --preset cpp23-release-eval --parallel `$effectiveJobs",
     "Invoke-CheckedCommand `$tools.CTest --preset cpp23-release-eval --output-on-failure --timeout 300 --parallel `$effectiveJobs",
-    "The C++23 GUI lane is deferred during SDL3 removal",
+    "The C++23 GUI lane is deferred after SDL3 removal",
     "first-party Win32/D3D12 adapters and must not depend on SDL3"
 ) "tools/evaluate-cpp23.ps1 release artifact validation"
 Assert-DoesNotContainText $cpp23EvaluationScript "Resolve-Cpp23EvaluationJobCount" "tools/evaluate-cpp23.ps1 shared parallel job helper"

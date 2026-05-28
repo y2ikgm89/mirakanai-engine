@@ -2573,7 +2573,7 @@ if ($recommendedPlanUsesLegacyCloseoutContext) {
             "explicit host-gated exclusion of Vulkan/Metal material-preview display parity",
             "production-ui-importer-platform-adapters",
             "reviewed runtime UI adapter contracts",
-            "selected SDL3 text/clipboard bridges",
+            "selected first-party platform text-input/event/clipboard bridge evidence",
             "reviewed PNG/UI atlas/glyph atlas package bridges",
             "explicit future/dependency-gated exclusions for broad low-level UI, codec, importer, platform SDK",
             "full-repository-quality-gate"

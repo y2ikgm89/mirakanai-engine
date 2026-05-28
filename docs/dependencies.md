@@ -43,7 +43,7 @@ GitHub Actions restores the gitignored `external/vcpkg` tool checkout before cal
 
 On restricted sandboxed hosts, `bootstrap-deps` can still require an unrestricted run because it is the step that intentionally launches vcpkg, downloads archives, extracts helper tools, and builds dependency ports. After it succeeds, normal configure/build/package lanes should not invoke vcpkg.
 
-The visible desktop GUI/editor shell is deferred during SDL3 removal. The wrapper below is retained as a fail-closed entrypoint for stale automation:
+The visible desktop GUI/editor shell is deferred after SDL3 removal. The wrapper below is retained as a fail-closed entrypoint for stale automation:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1

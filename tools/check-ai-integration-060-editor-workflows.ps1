@@ -59,7 +59,7 @@ $editorInputRebindingProfilePanelChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "MK_editor visible shell is deferred during SDL3 removal",
+            "MK_editor visible shell is deferred after SDL3 removal",
             "MK_editor_core remains the supported editor logic target",
             "must not depend on SDL3"
         )
@@ -1461,7 +1461,7 @@ $visiblePrefabVariantGuiChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "MK_editor visible shell is deferred during SDL3 removal",
+            "MK_editor visible shell is deferred after SDL3 removal",
             "MK_editor_core remains the supported editor logic target",
             "must not depend on SDL3"
         )
@@ -1519,7 +1519,7 @@ $editorSceneNativeDialogChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "MK_editor visible shell is deferred during SDL3 removal",
+            "MK_editor visible shell is deferred after SDL3 removal",
             "MK_editor_core remains the supported editor logic target",
             "must not depend on SDL3"
         )

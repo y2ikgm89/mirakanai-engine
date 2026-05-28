@@ -49,6 +49,6 @@ if(NOT MK_ENABLE_DESKTOP_GUI)
 endif()
 
 message(FATAL_ERROR
-    "MK_editor visible shell is deferred during SDL3 removal. "
+    "MK_editor visible shell is deferred after SDL3 removal. "
     "MK_editor_core remains the supported editor logic target; a future visible shell must use first-party Win32/D3D12 adapters and must not depend on SDL3."
 )

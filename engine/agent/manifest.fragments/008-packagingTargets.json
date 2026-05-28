@@ -12,7 +12,7 @@
       "platform": "desktop",
       "status": "deferred-fail-closed",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1",
-      "notes": "Fails closed with the visible editor shell deferral message during SDL3 removal. MK_editor_core remains covered by the default validation lane; a future native visible shell must add fresh dependency, legal, and validation records."
+      "notes": "Fails closed with the visible editor shell deferral message after SDL3 removal. MK_editor_core remains covered by the default validation lane; a future native visible shell must add fresh dependency, legal, and validation records."
     },
     {
       "name": "desktop-game-runtime",
