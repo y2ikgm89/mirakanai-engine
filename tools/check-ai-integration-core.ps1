@@ -296,6 +296,30 @@ function Assert-Sdl3RemovalActiveSurfaceContracts {
         Assert-TextDoesNotContainAny (Get-MarkdownSectionText $roadmapText $sectionName) $retiredSurfaceTokens "$roadmapPath::$sectionName"
     }
 
+    $releasePath = "docs/release.md"
+    $releaseText = Get-Content -LiteralPath (Resolve-RequiredAgentPath $releasePath) -Raw
+    Assert-ContainsText $releaseText "Windows-native desktop runtime game path" $releasePath
+    Assert-ContainsText $releaseText "GameTarget sample_2d_desktop_runtime_package" $releasePath
+    Assert-ContainsText $releaseText 'rejects `SDL3.dll`' $releasePath
+    Assert-TextDoesNotContainAny $releaseText @(
+        "editor-independent SDL3 desktop runtime game path",
+        "`bin/SDL3.dll` on Windows",
+        "GameTarget sample_desktop_runtime_game",
+        "sample_desktop_runtime_game_scene",
+        "bin/runtime/sample_desktop_runtime_game.config"
+    ) $releasePath
+
+    $editorPath = "docs/editor.md"
+    $editorText = Get-Content -LiteralPath (Resolve-RequiredAgentPath $editorPath) -Raw
+    foreach ($needle in @(
+            'The current supported editor lane is `MK_editor_core`',
+            'visible shell behavior is deferred until a first-party native desktop adapter replaces the deleted SDL3 shell',
+            'A future native shell must replace these SDL/Dear ImGui details instead of restoring them',
+            'That path is not a current build lane after SDL3 deletion'
+        )) {
+        Assert-ContainsText $editorText $needle $editorPath
+    }
+
     $runtimeReadinessPath = "engine/agent/manifest.fragments/006-runtimeBackendReadiness.json"
     $runtimeReadinessText = Get-Content -LiteralPath (Resolve-RequiredAgentPath $runtimeReadinessPath) -Raw
     Assert-TextDoesNotContainAny $runtimeReadinessText @(
