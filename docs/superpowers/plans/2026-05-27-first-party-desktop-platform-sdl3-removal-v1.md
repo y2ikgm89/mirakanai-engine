@@ -600,13 +600,13 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.
 - Modify: `tools/check-json-contracts*.ps1`
 - Modify: `tools/check-ai-integration*.ps1`
 
-- [ ] Remove `sdl3` from `vcpkg.json` features.
-- [ ] Remove Dear ImGui SDL3 binding features if the visible editor no longer uses them.
-- [ ] Remove SDL3 CMake targets, aliases, install rules, package feature flags, and test target lists.
-- [ ] Remove dependency-policy requirements that require SDL3.
-- [ ] Remove third-party notices for SDL3 only when no shipped artifact or source dependency still uses it.
-- [ ] Add a final static check that fails on non-historical SDL3 references.
-- [ ] Run:
+- [x] Remove `sdl3` from `vcpkg.json` features.
+- [x] Remove Dear ImGui SDL3 binding features if the visible editor no longer uses them.
+- [x] Remove SDL3 CMake targets, aliases, install rules, package feature flags, and test target lists.
+- [x] Remove dependency-policy requirements that require SDL3.
+- [x] Remove third-party notices for SDL3 only when no shipped artifact or source dependency still uses it.
+- [x] Add a final static check that fails on non-historical SDL3 references.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1
@@ -618,11 +618,13 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1
 
 **Done When:** `rg -n "SDL3|sdl3" CMakeLists.txt vcpkg.json engine editor games tests tools docs` returns only approved historical references or no references, and no build/package/install lane depends on SDL3.
 
-**2026-05-28 progress note:** Started Phase 9 execution without deleting legacy source yet: the active desktop-runtime feature no longer declares `sdl3`, the platform/audio/runtime_host SDL3 subdirectories are no longer added by CMake, SDL3 test targets are no longer registered, `MK_add_desktop_runtime_game` accepts only `HOST_BACKEND win32`, and `sample_desktop_runtime_game` / `sample_generated_desktop_runtime_3d_package` are no longer registered package targets while their SDL3-only assumptions are ported or removed.
+**2026-05-28 progress note:** Completed the Phase 9 deletion checkpoint: the active desktop-runtime and desktop-gui features no longer declare `sdl3` or Dear ImGui SDL3 bindings, the platform/audio/runtime_host SDL3 source adapters and SDL3 test targets are deleted, root/package CMake SDL3 hooks are removed, `MK_add_desktop_runtime_game` accepts only `HOST_BACKEND win32`, and `sample_desktop_runtime_game` / `sample_generated_desktop_runtime_3d_package` are removed from active package targets. Their deeper scene GPU, postprocess, Vulkan, native UI overlay, and renderer-quality evidence remains historical until a scoped Win32 advanced package lane is selected.
 
 **Phase Evidence:** In progress. `tools/check-dependency-policy.ps1`, `git diff --check`, and `tools/cmake.ps1 --preset desktop-runtime` passed after the first Phase 9 execution cut; generated metadata currently registers `sample_desktop_runtime_shell`, `sample_2d_desktop_runtime_package`, `sample_generated_desktop_runtime_package`, `sample_generated_desktop_runtime_cooked_scene_package`, and `sample_generated_desktop_runtime_material_shader_package`. `tools/check-text-format.ps1`, `tools/validate-desktop-game-runtime.ps1` (15/15 selected tests passed), `tools/check-json-contracts.ps1`, `tools/check-format.ps1`, `tools/check-ai-integration.ps1`, `tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package`, and `tools/validate.ps1` (79/79 CTest tests passed, `validate: ok`) also passed for this checkpoint.
 
 Second Phase 9 checkpoint removed dormant root CMake and installed package-config SDL3 hooks: `find_package(SDL3)`, `MK_PACKAGE_HAS_SDL3`, SDL3 optional export target names, SDL3 install include paths, `Mirakanai_HAS_SDL3`, and `find_dependency(SDL3 CONFIG)` are no longer present on active package surfaces. `docs/building.md`, packaging/validation manifest fragments, composed `engine/agent/manifest.json`, and dependency-policy / AI-integration static guards were updated so active ready claims describe the Windows-native runtime package lane and reject root package config SDL3 drift. Validation for this checkpoint passed with `git diff --check`, `tools/check-text-format.ps1`, `tools/check-dependency-policy.ps1`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-format.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/cmake.ps1 --preset desktop-runtime`, `tools/validate-desktop-game-runtime.ps1` (15/15 selected tests passed), `tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package`, and `tools/validate.ps1` (79/79 CTest tests passed, `validate: ok`).
+
+Final Phase 9 deletion evidence: `tools/validate.ps1` passed with `validate: ok` and 79/79 CTest tests after source deletion and docs/manifest/static guard reconciliation. `tools/validate-desktop-game-runtime.ps1` passed with 15/15 selected tests, and `tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package` passed with 7/7 package-smoke tests plus installed runtime validation.
 
 ## Phase 10 - Manifest, Docs, CI, And Plan Closeout
 
@@ -663,9 +665,9 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 ```
 
@@ -673,7 +675,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 
 **Done When:** SDL3 is absent from shipped dependencies and active ready claims, Windows native desktop runtime/package/editor strategy is documented and validated, and `currentActivePlan` no longer points at this plan after closeout.
 
-**Phase Evidence:** Not started.
+**Phase Evidence:** In progress. Current active ready claims now describe the Windows-native desktop runtime package path, deleted SDL3 package lanes are historical/deferred rather than current validation targets, and the latest local validation evidence is recorded in Phase 9.
 
 ## Risk Ledger
 
@@ -692,7 +694,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 - `vcpkg.json` no longer contains `sdl3`.
 - No CMake target, test, generated-game template, package script, installed validation script, current capability claim, or manifest ready row depends on SDL3.
 - Windows native desktop runtime validates source-tree and installed package lanes.
-- Sample 2D and generated 3D desktop runtime package proofs run through native host modules.
+- Sample 2D plus surviving generated config/cooked/material desktop runtime package proofs run through native host modules; the deleted generated 3D desktop runtime package proof remains historical until a scoped Win32 advanced package lane is selected.
 - The visible editor either builds through native Windows adapters or is explicitly deferred/host-gated without retaining SDL3 as a dependency.
 - `tools/check-dependency-policy.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-format.ps1`, `tools/validate-desktop-game-runtime.ps1`, package lanes, and `tools/validate.ps1` pass or record concrete host/tool blockers.
 - Legal/dependency records remove SDL3 only after no source or artifact uses it.

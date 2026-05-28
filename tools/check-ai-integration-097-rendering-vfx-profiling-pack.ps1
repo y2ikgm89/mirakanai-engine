@@ -22,6 +22,7 @@ $backlogText = Get-AgentSurfaceText "docs/superpowers/master-plans/production-co
 $projectionText = Get-AgentSurfaceText "docs/superpowers/master-plans/production-completion-v1/05-projections-and-scenarios.md"
 $modulesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/004-modules.json"
 $manifestText = Get-AgentSurfaceText "engine/agent/manifest.json"
+$retiredGenerated3dPackageProof = Test-RetiredSdl3DesktopRuntimeSamplePath "games/sample_generated_desktop_runtime_3d_package/main.cpp"
 
 foreach ($needle in @(
         "RendererProductionVfxFeatureRow",
@@ -73,6 +74,7 @@ Assert-ContainsText $rendererTestsText "production renderer VFX profiling reject
 Assert-ContainsText $rendererTestsText "production renderer VFX profiling rejects unsafe rows and broad claims" "tests/unit/renderer_production_vfx_profiling_tests.cpp"
 Assert-ContainsText $rendererTestsText "production renderer VFX profiling reports no rows without backend claims" "tests/unit/renderer_production_vfx_profiling_tests.cpp"
 
+if (-not $retiredGenerated3dPackageProof) {
 foreach ($needle in @(
         "mirakana/renderer/production_vfx_profiling.hpp",
         "plan_renderer_production_vfx_profiling",
@@ -177,6 +179,7 @@ Assert-ContainsText $installedValidationText '"rendering_vfx_profiling_debug_pol
 Assert-ContainsText $installedValidationText '"rendering_vfx_profiling_memory_policy_ready" = "1"' "tools/validate-installed-desktop-runtime.ps1"
 Assert-ContainsText $installedValidationText '"rendering_vfx_profiling_debug_cpu_profile_zone_evidence_ready" = "1"' "tools/validate-installed-desktop-runtime.ps1"
 Assert-ContainsText $installedValidationText '"rendering_vfx_profiling_memory_residency_pressure_evidence_ready" = "1"' "tools/validate-installed-desktop-runtime.ps1"
+}
 
 foreach ($docSurface in @(
         @{ Text = $planText; Label = "docs/superpowers/plans/2026-05-25-general-purpose-game-production-v1.md" },

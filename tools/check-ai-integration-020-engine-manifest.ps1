@@ -161,61 +161,20 @@ Assert-ContainsText $vulkanComputeMorphRendererShaderText "[[vk::location(0)]]" 
 Assert-ContainsText $vulkanComputeMorphTangentFrameShaderText "RWByteAddressBuffer output_normals" "tests/shaders/vulkan_compute_morph_tangent_frame.hlsl"
 Assert-ContainsText $vulkanComputeMorphTangentFrameShaderText "RWByteAddressBuffer output_tangents" "tests/shaders/vulkan_compute_morph_tangent_frame.hlsl"
 Assert-ContainsText $vulkanComputeMorphTangentFrameShaderText "[[vk::binding(7, 0)]]" "tests/shaders/vulkan_compute_morph_tangent_frame.hlsl"
-Assert-ContainsText $runtimeHostSdl3HeaderText "SdlDesktopPresentationVulkanSceneRendererDesc" "engine/runtime_host/sdl3/include/mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp"
-Assert-ContainsText $runtimeHostSdl3HeaderText "compute_morph_vertex_shader" "engine/runtime_host/sdl3/include/mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp"
-Assert-ContainsText $runtimeHostSdl3HeaderText "compute_morph_shader" "engine/runtime_host/sdl3/include/mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp"
-Assert-ContainsText $runtimeHostSdl3HeaderText "compute_morph_mesh_bindings" "engine/runtime_host/sdl3/include/mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp"
-Assert-ContainsText $runtimeHostSdl3HeaderText "compute_morph_skinned_shader" "engine/runtime_host/sdl3/include/mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp"
-Assert-ContainsText $runtimeHostSdl3HeaderText "compute_morph_skinned_mesh_bindings" "engine/runtime_host/sdl3/include/mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp"
-Assert-ContainsText $runtimeHostSdl3HeaderText "compute_morph_queue_waits" "engine/runtime_host/sdl3/include/mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp"
-Assert-ContainsText $runtimeHostSdl3HeaderText "compute_morph_async_compute_queue_submits" "engine/runtime_host/sdl3/include/mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp"
-Assert-ContainsText $runtimeHostSdl3HeaderText "compute_morph_async_last_graphics_submitted_fence_value" "engine/runtime_host/sdl3/include/mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp"
-Assert-ContainsText $runtimeHostSdl3SourceText "Vulkan scene compute morph vertex SPIR-V validation failed" "engine/runtime_host/sdl3/src/sdl_desktop_presentation.cpp"
-Assert-ContainsText $runtimeHostSdl3SourceText "Vulkan scene compute morph compute SPIR-V validation failed" "engine/runtime_host/sdl3/src/sdl_desktop_presentation.cpp"
-Assert-ContainsText $runtimeHostSdl3SourceText "Vulkan scene compute mapping SPIR-V validation failed" "engine/runtime_host/sdl3/src/sdl_desktop_presentation.cpp"
-Assert-ContainsText $runtimeHostSdl3SourceText "build_scene_compute_morph_bindings(" "engine/runtime_host/sdl3/src/sdl_desktop_presentation.cpp"
-Assert-ContainsText $runtimeHostSdl3SourceText '"Vulkan"' "engine/runtime_host/sdl3/src/sdl_desktop_presentation.cpp"
-Assert-ContainsText $runtimeHostSdl3SourceText "device.wait_for_queue(rhi::QueueKind::graphics, fence)" "engine/runtime_host/sdl3/src/sdl_desktop_presentation.cpp"
-Assert-ContainsText $runtimeHostSdl3SourceText "++result.queue_waits" "engine/runtime_host/sdl3/src/sdl_desktop_presentation.cpp"
-Assert-ContainsText $runtimeHostSdl3SourceText "compute_morph_bindings.queue_waits" "engine/runtime_host/sdl3/src/sdl_desktop_presentation.cpp"
-Assert-ContainsText $runtimeHostSdl3SourceText "dispatch_scene_compute_morph_skinned_bindings" "engine/runtime_host/sdl3/src/sdl_desktop_presentation.cpp"
-Assert-ContainsText $runtimeHostSdl3SceneGpuInjectingRendererText "compute_morph_async_last_graphics_submitted_fence_value" "engine/runtime_host/sdl3/src/scene_gpu_binding_injecting_renderer.hpp"
-Assert-ContainsText $runtimeHostSdl3SceneGpuInjectingRendererText "rhi_stats.last_graphics_submitted_fence_value" "engine/runtime_host/sdl3/src/scene_gpu_binding_injecting_renderer.hpp"
-Assert-ContainsText $runtimeHostSdl3TestsText "stats.compute_morph_queue_waits == 1" "tests/unit/runtime_host_sdl3_tests.cpp"
-Assert-ContainsText $runtimeHostSdl3TestsText "vulkan_desc.compute_morph_vertex_shader" "tests/unit/runtime_host_sdl3_tests.cpp"
-Assert-ContainsText $runtimeHostSdl3TestsText "vulkan_desc.compute_morph_shader" "tests/unit/runtime_host_sdl3_tests.cpp"
-Assert-ContainsText $runtimeHostSdl3TestsText "vulkan_desc.compute_morph_mesh_bindings" "tests/unit/runtime_host_sdl3_tests.cpp"
-Assert-ContainsText $runtimeHostSdl3TestsText "vulkan_desc.compute_morph_skinned_shader" "tests/unit/runtime_host_sdl3_tests.cpp"
-Assert-ContainsText $runtimeHostSdl3TestsText "vulkan_desc.compute_morph_skinned_mesh_bindings" "tests/unit/runtime_host_sdl3_tests.cpp"
-Assert-ContainsText $runtimeHostSdl3TestsText "stats.compute_morph_async_compute_queue_submits == 1" "tests/unit/runtime_host_sdl3_tests.cpp"
-Assert-ContainsText $runtimeHostSdl3TestsText "stats.compute_morph_async_last_graphics_submitted_fence_value == graphics_fence.value" "tests/unit/runtime_host_sdl3_tests.cpp"
-Assert-ContainsText $runtimeHostSdl3PublicApiText "stats.compute_morph_queue_waits == 1" "tests/unit/runtime_host_sdl3_public_api_compile.cpp"
-Assert-ContainsText $runtimeHostSdl3PublicApiText "stats.compute_morph_async_compute_queue_submits == 1" "tests/unit/runtime_host_sdl3_public_api_compile.cpp"
-Assert-ContainsText $runtimeHostSdl3PublicApiText "scene_renderer.compute_morph_vertex_shader.entry_point" "tests/unit/runtime_host_sdl3_public_api_compile.cpp"
-Assert-ContainsText $runtimeHostSdl3PublicApiText "scene_renderer.compute_morph_shader.entry_point" "tests/unit/runtime_host_sdl3_public_api_compile.cpp"
-Assert-ContainsText $runtimeHostSdl3PublicApiText "scene_renderer.compute_morph_mesh_bindings.push_back" "tests/unit/runtime_host_sdl3_public_api_compile.cpp"
-Assert-ContainsText $runtimeHostSdl3PublicApiText "scene_renderer.compute_morph_skinned_shader.entry_point" "tests/unit/runtime_host_sdl3_public_api_compile.cpp"
-Assert-ContainsText $runtimeHostSdl3PublicApiText "scene_renderer.compute_morph_skinned_mesh_bindings.push_back" "tests/unit/runtime_host_sdl3_public_api_compile.cpp"
-Assert-ContainsText $newGameToolText "scene_gpu_compute_morph_queue_waits" "tools/new-game.ps1"
-Assert-ContainsText $newGameToolText "kRuntimeSceneVulkanComputeMorphVertexShaderPath" "tools/new-game.ps1"
-Assert-ContainsText $newGameToolText "kRuntimeSceneVulkanComputeMorphShaderPath" "tools/new-game.ps1"
-Assert-ContainsText $newGameToolText "load_packaged_vulkan_scene_compute_morph_shaders" "tools/new-game.ps1"
-Assert-ContainsText $newGameToolText "vulkan_compute_morph_shader_diagnostic" "tools/new-game.ps1"
-Assert-ContainsText $newGameToolText "Vulkan POSITION/NORMAL/TANGENT compute morph package smoke through explicit SPIR-V artifacts" "tools/new-game.ps1"
-Assert-ContainsText $newGameToolText "kRuntimeSceneVulkanComputeMorphSkinnedVertexShaderPath" "tools/new-game.ps1"
-Assert-ContainsText $newGameToolText "kRuntimeSceneVulkanComputeMorphSkinnedShaderPath" "tools/new-game.ps1"
-Assert-ContainsText $newGameToolText "load_packaged_vulkan_scene_compute_morph_skinned_shaders" "tools/new-game.ps1"
-Assert-ContainsText $newGameToolText "vulkan_compute_morph_skinned_shader_diagnostic" "tools/new-game.ps1"
-Assert-ContainsText $newGameToolText "Vulkan skin+compute package smoke counters through explicit SPIR-V artifacts" "tools/new-game.ps1"
-Assert-ContainsText $newGameToolText "Vulkan compute morph package smoke does not support async telemetry requirements; use" "tools/new-game.ps1"
-Assert-ContainsText $newGameToolText "scene_compute_morph.vs.spv" "tools/new-game.ps1"
-Assert-ContainsText $newGameToolText "scene_compute_morph.cs.spv" "tools/new-game.ps1"
-Assert-ContainsText $newGameToolText "scene_compute_morph_skinned.vs.spv" "tools/new-game.ps1"
-Assert-ContainsText $newGameToolText "scene_compute_morph_skinned.cs.spv" "tools/new-game.ps1"
-Assert-ContainsText $newGameToolText "scene_gpu_stats.compute_morph_queue_waits < 1" "tools/new-game.ps1"
-Assert-ContainsText $newGameToolText "--require-compute-morph-async-telemetry" "tools/new-game.ps1"
-Assert-ContainsText $newGameToolText "scene_gpu_compute_morph_async_compute_queue_submits" "tools/new-game.ps1"
-Assert-ContainsText $newGameToolText "scene_gpu_stats.compute_morph_async_compute_queue_submits < 1" "tools/new-game.ps1"
+foreach ($retiredGenerated3dNeedle in @(
+        "scene_gpu_compute_morph_queue_waits",
+        "load_packaged_vulkan_scene_compute_morph_shaders",
+        "vulkan_compute_morph_shader_diagnostic",
+        "load_packaged_vulkan_scene_compute_morph_skinned_shaders",
+        "vulkan_compute_morph_skinned_shader_diagnostic",
+        "Vulkan compute morph package smoke does not support async telemetry requirements; use",
+        "scene_gpu_stats.compute_morph_queue_waits < 1",
+        "--require-compute-morph-async-telemetry",
+        "scene_gpu_compute_morph_async_compute_queue_submits",
+        "scene_gpu_stats.compute_morph_async_compute_queue_submits < 1"
+    )) {
+    Assert-DoesNotContainText $newGameToolText $retiredGenerated3dNeedle "tools/new-game.ps1 retired generated 3D SDL3 compute-morph package smoke"
+}
 Assert-ContainsText $runtimeRhiHeaderText "struct RuntimeMorphMeshComputeBinding" "engine/runtime_rhi/include/mirakana/runtime_rhi/runtime_upload.hpp"
 Assert-ContainsText $runtimeRhiHeaderText "create_runtime_morph_mesh_compute_binding" "engine/runtime_rhi/include/mirakana/runtime_rhi/runtime_upload.hpp"
 Assert-ContainsText $runtimeRhiHeaderText "make_runtime_compute_morph_output_mesh_gpu_binding" "engine/runtime_rhi/include/mirakana/runtime_rhi/runtime_upload.hpp"
@@ -489,10 +448,16 @@ foreach ($recipeId in @("future-3d-playable-vertical-slice")) {
         Write-Error "engine/agent/manifest.json aiOperableProductionLoop recipe '$recipeId' must remain planned"
     }
 }
-foreach ($recipeId in @("desktop-runtime-config-package", "desktop-runtime-cooked-scene-package", "desktop-runtime-material-shader-package", "2d-desktop-runtime-package", "3d-playable-desktop-package", "native-gpu-runtime-ui-overlay", "native-ui-textured-sprite-atlas", "native-ui-text-glyph-atlas", "native-ui-atlas-package-metadata")) {
+foreach ($recipeId in @("desktop-runtime-config-package", "desktop-runtime-cooked-scene-package", "desktop-runtime-material-shader-package", "2d-desktop-runtime-package")) {
     $desktopRecipe = @($productionLoop.recipes | Where-Object { $_.id -eq $recipeId })
     if ($desktopRecipe.Count -ne 1 -or $desktopRecipe[0].status -ne "host-gated") {
         Write-Error "engine/agent/manifest.json aiOperableProductionLoop recipe '$recipeId' must remain host-gated"
+    }
+}
+foreach ($recipeId in @("3d-playable-desktop-package", "native-gpu-runtime-ui-overlay", "native-ui-textured-sprite-atlas", "native-ui-text-glyph-atlas", "native-ui-atlas-package-metadata")) {
+    $blockedRecipe = @($productionLoop.recipes | Where-Object { $_.id -eq $recipeId })
+    if ($blockedRecipe.Count -ne 1 -or $blockedRecipe[0].status -ne "blocked") {
+        Write-Error "engine/agent/manifest.json aiOperableProductionLoop recipe '$recipeId' must remain blocked until a Win32 package proof is reintroduced"
     }
 }
 foreach ($recipeId in @("headless-gameplay", "ai-navigation-headless", "runtime-ui-headless", "2d-playable-source-tree")) {
@@ -568,7 +533,11 @@ $desktop3dRecipe = @($productionLoop.recipes | Where-Object { $_.id -eq "3d-play
 if ($desktop3dRecipe.Count -ne 1) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop must expose exactly one 3d-playable-desktop-package recipe"
 } else {
-    foreach ($module in @("MK_animation", "MK_core", "MK_math", "MK_platform", "MK_platform_sdl3", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
+    if ($desktop3dRecipe[0].status -eq "blocked") {
+        Assert-ContainsText ([string]$desktop3dRecipe[0].summary) "Retired with the deleted SDL3 package lane" "3d-playable-desktop-package summary"
+    }
+    else {
+    foreach ($module in @("MK_animation", "MK_core", "MK_math", "MK_platform", "MK_platform_win32", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
         if (@($desktop3dRecipe[0].requiredModules) -notcontains $module) {
             Write-Error "engine/agent/manifest.json 3d-playable-desktop-package recipe missing required module: $module"
         }
@@ -608,12 +577,17 @@ if ($desktop3dRecipe.Count -ne 1) {
     if (((@($desktop3dRecipe[0].unsupportedClaims) -join " ").Contains("native GPU HUD or sprite overlay output"))) {
         Write-Error "engine/agent/manifest.json 3d-playable-desktop-package recipe must not keep stale native GPU HUD or sprite overlay unsupported claim after the focused overlay recipe is added"
     }
+    }
 }
 $nativeOverlayRecipe = @($productionLoop.recipes | Where-Object { $_.id -eq "native-gpu-runtime-ui-overlay" })
 if ($nativeOverlayRecipe.Count -ne 1) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop must expose exactly one native-gpu-runtime-ui-overlay recipe"
 } else {
-    foreach ($module in @("MK_core", "MK_math", "MK_platform", "MK_platform_sdl3", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
+    if ($nativeOverlayRecipe[0].status -eq "blocked") {
+        Assert-ContainsText ([string]$nativeOverlayRecipe[0].summary) "Retired with the deleted SDL3 package lane" "native-gpu-runtime-ui-overlay summary"
+    }
+    else {
+    foreach ($module in @("MK_core", "MK_math", "MK_platform", "MK_platform_win32", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
         if (@($nativeOverlayRecipe[0].requiredModules) -notcontains $module) {
             Write-Error "engine/agent/manifest.json native-gpu-runtime-ui-overlay recipe missing required module: $module"
         }
@@ -628,12 +602,17 @@ if ($nativeOverlayRecipe.Count -ne 1) {
             Write-Error "engine/agent/manifest.json native-gpu-runtime-ui-overlay recipe must keep unsupported claim explicit: $claim"
         }
     }
+    }
 }
 $texturedUiRecipe = @($productionLoop.recipes | Where-Object { $_.id -eq "native-ui-textured-sprite-atlas" })
 if ($texturedUiRecipe.Count -ne 1) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop must expose exactly one native-ui-textured-sprite-atlas recipe"
 } else {
-    foreach ($module in @("MK_core", "MK_math", "MK_platform", "MK_platform_sdl3", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
+    if ($texturedUiRecipe[0].status -eq "blocked") {
+        Assert-ContainsText ([string]$texturedUiRecipe[0].summary) "Retired with the deleted SDL3 package lane" "native-ui-textured-sprite-atlas summary"
+    }
+    else {
+    foreach ($module in @("MK_core", "MK_math", "MK_platform", "MK_platform_win32", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
         if (@($texturedUiRecipe[0].requiredModules) -notcontains $module) {
             Write-Error "engine/agent/manifest.json native-ui-textured-sprite-atlas recipe missing required module: $module"
         }
@@ -648,12 +627,17 @@ if ($texturedUiRecipe.Count -ne 1) {
             Write-Error "engine/agent/manifest.json native-ui-textured-sprite-atlas recipe must keep unsupported claim explicit: $claim"
         }
     }
+    }
 }
 $textGlyphUiRecipe = @($productionLoop.recipes | Where-Object { $_.id -eq "native-ui-text-glyph-atlas" })
 if ($textGlyphUiRecipe.Count -ne 1) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop must expose exactly one native-ui-text-glyph-atlas recipe"
 } else {
-    foreach ($module in @("MK_core", "MK_math", "MK_platform", "MK_platform_sdl3", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
+    if ($textGlyphUiRecipe[0].status -eq "blocked") {
+        Assert-ContainsText ([string]$textGlyphUiRecipe[0].summary) "Retired with the deleted SDL3 package lane" "native-ui-text-glyph-atlas summary"
+    }
+    else {
+    foreach ($module in @("MK_core", "MK_math", "MK_platform", "MK_platform_win32", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
         if (@($textGlyphUiRecipe[0].requiredModules) -notcontains $module) {
             Write-Error "engine/agent/manifest.json native-ui-text-glyph-atlas recipe missing required module: $module"
         }
@@ -668,12 +652,17 @@ if ($textGlyphUiRecipe.Count -ne 1) {
             Write-Error "engine/agent/manifest.json native-ui-text-glyph-atlas recipe must keep unsupported claim explicit: $claim"
         }
     }
+    }
 }
 $uiAtlasMetadataRecipe = @($productionLoop.recipes | Where-Object { $_.id -eq "native-ui-atlas-package-metadata" })
 if ($uiAtlasMetadataRecipe.Count -ne 1) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop must expose exactly one native-ui-atlas-package-metadata recipe"
 } else {
-    foreach ($module in @("MK_core", "MK_math", "MK_platform", "MK_platform_sdl3", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
+    if ($uiAtlasMetadataRecipe[0].status -eq "blocked") {
+        Assert-ContainsText ([string]$uiAtlasMetadataRecipe[0].summary) "Retired with the deleted SDL3 package lane" "native-ui-atlas-package-metadata summary"
+    }
+    else {
+    foreach ($module in @("MK_core", "MK_math", "MK_platform", "MK_platform_win32", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
         if (@($uiAtlasMetadataRecipe[0].requiredModules) -notcontains $module) {
             Write-Error "engine/agent/manifest.json native-ui-atlas-package-metadata recipe missing required module: $module"
         }
@@ -687,6 +676,7 @@ if ($uiAtlasMetadataRecipe.Count -ne 1) {
         if (-not ((@($uiAtlasMetadataRecipe[0].unsupportedClaims) -join " ").Contains($claim))) {
             Write-Error "engine/agent/manifest.json native-ui-atlas-package-metadata recipe must keep unsupported claim explicit: $claim"
         }
+    }
     }
 }
 
@@ -1484,17 +1474,15 @@ if ($validationRunnerCommand.Count -ne 1 -or $validationRunnerCommand[0].status 
             "public-api-boundary",
             "shader-toolchain",
             "desktop-game-runtime",
-            "desktop-runtime-sample-game-scene-gpu-package",
             "desktop-runtime-generated-material-shader-scaffold-package",
             "desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict",
-            "desktop-runtime-sample-game-vulkan-ui-atlas-metadata-package",
             "dev-windows-editor-game-module-driver-load-tests"
         )) {
         if (@($validationRunnerCommand[0].validationRecipes) -notcontains $recipe) {
             Write-Error "engine/agent/manifest.json run-validation-recipe validationRecipes missing allowlisted recipe: $recipe"
         }
     }
-    if (@($validationRunnerCommand[0].validationRecipes).Count -ne 10) {
+    if (@($validationRunnerCommand[0].validationRecipes).Count -ne 8) {
         Write-Error "engine/agent/manifest.json run-validation-recipe validationRecipes must be exactly the reviewed allowlist"
     }
     if (@($validationRunnerCommand[0].requestModes | Where-Object { $_.id -eq "apply" -and $_.status -eq "ready" }).Count -gt 0) {
@@ -2108,14 +2096,16 @@ foreach ($sampleManifestSurface in @(
     Assert-ContainsText $sampleManifestSurface.Text "--require-audio-gameplay-mixer" $sampleManifestSurface.Label
     Assert-ContainsText $sampleManifestSurface.Text "audio_gameplay_mixer_ready" $sampleManifestSurface.Label
 }
-Assert-ContainsText $sample3DPackageManifestText "runtime/assets/3d/gameplay_systems.audio.geasset" "games/sample_generated_desktop_runtime_3d_package/game.agent.json"
-Assert-ContainsText $sample3DPackageManifestText "cooked package audio payload" "games/sample_generated_desktop_runtime_3d_package/game.agent.json"
-if (-not [regex]::Match($sample3DPackageManifestText, '(?s)"residentResourceKinds"\s*:\s*\[[^\]]*"audio"').Success) {
-    Write-Error "games/sample_generated_desktop_runtime_3d_package/game.agent.json residentResourceKinds must include audio for package streaming smokes"
+if (-not (Test-RetiredSdl3DesktopRuntimeSamplePath "games/sample_generated_desktop_runtime_3d_package/game.agent.json")) {
+    Assert-ContainsText $sample3DPackageManifestText "runtime/assets/3d/gameplay_systems.audio.geasset" "games/sample_generated_desktop_runtime_3d_package/game.agent.json"
+    Assert-ContainsText $sample3DPackageManifestText "cooked package audio payload" "games/sample_generated_desktop_runtime_3d_package/game.agent.json"
+    if (-not [regex]::Match($sample3DPackageManifestText, '(?s)"residentResourceKinds"\s*:\s*\[[^\]]*"audio"').Success) {
+        Write-Error "games/sample_generated_desktop_runtime_3d_package/game.agent.json residentResourceKinds must include audio for package streaming smokes"
+    }
+    Assert-ContainsText $sample3DPackageText "mirakana::AssetKind::audio" "games/sample_generated_desktop_runtime_3d_package/main.cpp package streaming resident kinds"
+    Assert-ContainsText (Get-AgentSurfaceText "games/sample_generated_desktop_runtime_3d_package/runtime/sample_generated_desktop_runtime_3d_package.geindex") "runtime/assets/3d/gameplay_systems.audio.geasset" "games/sample_generated_desktop_runtime_3d_package/runtime/sample_generated_desktop_runtime_3d_package.geindex"
+    Assert-ContainsText (Get-AgentSurfaceText "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/gameplay_systems.audio.geasset") "GameEngine.CookedAudio.v1" "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/gameplay_systems.audio.geasset"
 }
-Assert-ContainsText $sample3DPackageText "mirakana::AssetKind::audio" "games/sample_generated_desktop_runtime_3d_package/main.cpp package streaming resident kinds"
-Assert-ContainsText (Get-AgentSurfaceText "games/sample_generated_desktop_runtime_3d_package/runtime/sample_generated_desktop_runtime_3d_package.geindex") "runtime/assets/3d/gameplay_systems.audio.geasset" "games/sample_generated_desktop_runtime_3d_package/runtime/sample_generated_desktop_runtime_3d_package.geindex"
-Assert-ContainsText (Get-AgentSurfaceText "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/gameplay_systems.audio.geasset") "GameEngine.CookedAudio.v1" "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/gameplay_systems.audio.geasset"
 foreach ($docSurface in @(
         @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
         @{ Text = $roadmapText; Label = "docs/roadmap.md" },
@@ -2566,7 +2556,7 @@ if ($recommendedPlanUsesLegacyCloseoutContext) {
             "explicit host-gated exclusion of Vulkan/Metal material-preview display parity",
             "production-ui-importer-platform-adapters",
             "reviewed runtime UI adapter contracts",
-            "selected SDL3 text/clipboard bridges",
+            "selected Win32 text/clipboard bridges",
             "reviewed PNG/UI atlas/glyph atlas package bridges",
             "explicit future/dependency-gated exclusions for broad low-level UI, codec, importer, platform SDK",
             "full-repository-quality-gate"

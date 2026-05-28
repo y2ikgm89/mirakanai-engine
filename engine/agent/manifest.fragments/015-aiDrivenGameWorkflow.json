@@ -28,7 +28,6 @@
     "aiNavigationSample": "games/sample_ai_navigation",
     "uiAudioAssetsSample": "games/sample_ui_audio_assets",
     "desktopRuntimeShellSample": "games/sample_desktop_runtime_shell",
-    "desktopRuntimeGameSample": "games/sample_desktop_runtime_game",
     "generatedDesktopRuntimePackageSample": "games/sample_generated_desktop_runtime_package",
     "generatedDesktopRuntimeCookedScenePackageSample": "games/sample_generated_desktop_runtime_cooked_scene_package",
     "generatedDesktopRuntimeMaterialShaderPackageSample": "games/sample_generated_desktop_runtime_material_shader_package",

@@ -226,7 +226,7 @@ function Get-DesktopRuntimeGameRegistrations {
         $body = [string]$registrationMatch.Groups["body"].Value
         $tokens = @([System.Text.RegularExpressions.Regex]::Matches($body, "[^\s\)]+") | ForEach-Object { $_.Value })
         $gameManifest = ""
-        $hostBackend = "sdl3"
+        $hostBackend = "win32"
         $packageFiles = @()
         $packageFilesFromManifest = $tokens -contains "PACKAGE_FILES_FROM_MANIFEST"
         for ($index = 0; $index -lt $tokens.Count; ++$index) {
@@ -1309,22 +1309,8 @@ function Assert-PrefabScenePackageAuthoringTargets($game, [string]$relativePath,
             }
         }
         $gpuSkinningValue = [string]$target.gpuSkinning
-        if ($gpuSkinningValue -eq "unsupported") {
-            # Generated 3D package manifests stay descriptor-only unless a committed sample
-            # has a host-gated smoke that proves a narrower GPU skinning path.
-        } elseif ($relativePath -eq "games/sample_desktop_runtime_game/game.agent.json") {
-            $hasSkinnedMeshRuntimeFile = @($packageFiles | Where-Object { ([string]$_).EndsWith(".skinned_mesh") }).Count -gt 0
-            $graphicsReadiness = [string]$game.backendReadiness.graphics
-            if (-not $hasSkinnedMeshRuntimeFile -or
-                -not $gpuSkinningValue.Contains("host-gated D3D12 package smoke") -or
-                -not $gpuSkinningValue.Contains("GameEngine.CookedSkinnedMesh.v1") -or
-                -not $gpuSkinningValue.Contains("gpu_skinning_draws") -or
-                -not $graphicsReadiness.Contains("--require-gpu-skinning") -or
-                -not $graphicsReadiness.Contains("renderer_gpu_skinning_draws")) {
-                Write-Error "$relativePath prefabScenePackageAuthoringTargets gpuSkinning may only be host-gated after declaring a cooked skinned mesh package file and D3D12 --require-gpu-skinning smoke counters"
-            }
-        } else {
-            Write-Error "$relativePath prefabScenePackageAuthoringTargets gpuSkinning must remain unsupported outside the committed host-gated sample proof"
+        if ($gpuSkinningValue -ne "unsupported") {
+            Write-Error "$relativePath prefabScenePackageAuthoringTargets gpuSkinning must remain unsupported until a Win32-hosted committed sample proof lands"
         }
         if ([string]$target.metalReadiness -ne "host-gated") {
             Write-Error "$relativePath prefabScenePackageAuthoringTargets metalReadiness must remain host-gated"

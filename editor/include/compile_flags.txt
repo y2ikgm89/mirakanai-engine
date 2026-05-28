@@ -18,7 +18,6 @@
 -I../../engine/tools/include
 -I../../engine/runtime_scene/include
 -I../../engine/ui/include
--I../../engine/platform/sdl3/include
 -I../../engine/renderer/include
 -I../../engine/rhi/include
 -I../../engine/runtime_rhi/include

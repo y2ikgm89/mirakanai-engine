@@ -1517,7 +1517,7 @@ struct RuntimeUiProductionStackProbeResult {
     std::size_t ime_text_area_cursor_rows{0U};
     std::size_t ime_committed_text_rows{0U};
     std::size_t ime_clipboard_rows{0U};
-    std::size_t ime_sdl3_adapter_proof_rows{0U};
+    std::size_t ime_win32_adapter_proof_rows{0U};
     std::size_t ime_platform_host_gate_rows{0U};
     bool ime_platform_parity_ready{false};
     bool requires_accessibility_host_evidence{false};
@@ -2630,7 +2630,7 @@ has_runtime_ui_workbench_accessibility_ref(const std::vector<mirakana::ui::Runti
     row.ime_text_area_cursor_rows = true;
     row.ime_committed_text_rows = true;
     row.ime_clipboard_rows = true;
-    row.ime_sdl3_adapter_proof_rows = true;
+    row.ime_win32_adapter_proof_rows = true;
     row.ime_platform_host_gate_rows = true;
     row.platform_adapter_dispatch_boundary = true;
     return row;
@@ -2680,7 +2680,7 @@ has_runtime_ui_workbench_accessibility_ref(const std::vector<mirakana::ui::Runti
             plan.requires_ime_host_evidence && !plan.ime_host_evidence_available &&
             ime_row.ime_session_begin_end_rows && ime_row.ime_composition_update_rows && ime_row.ime_candidate_rows &&
             ime_row.ime_text_area_cursor_rows && ime_row.ime_committed_text_rows && ime_row.ime_clipboard_rows &&
-            ime_row.ime_sdl3_adapter_proof_rows && ime_row.ime_platform_host_gate_rows &&
+            ime_row.ime_win32_adapter_proof_rows && ime_row.ime_platform_host_gate_rows &&
             plan.requires_accessibility_host_evidence && !plan.accessibility_host_evidence_available &&
             accessibility_row.accessibility_role_rows && accessibility_row.accessibility_name_rows &&
             accessibility_row.accessibility_description_rows && accessibility_row.accessibility_state_rows &&
@@ -2710,7 +2710,7 @@ has_runtime_ui_workbench_accessibility_ref(const std::vector<mirakana::ui::Runti
         .ime_text_area_cursor_rows = bool_to_count(ime_row.ime_text_area_cursor_rows),
         .ime_committed_text_rows = bool_to_count(ime_row.ime_committed_text_rows),
         .ime_clipboard_rows = bool_to_count(ime_row.ime_clipboard_rows),
-        .ime_sdl3_adapter_proof_rows = bool_to_count(ime_row.ime_sdl3_adapter_proof_rows),
+        .ime_win32_adapter_proof_rows = bool_to_count(ime_row.ime_win32_adapter_proof_rows),
         .ime_platform_host_gate_rows = bool_to_count(ime_row.ime_platform_host_gate_rows),
         .ime_platform_parity_ready = !plan.requires_ime_host_evidence && plan.ime_host_evidence_available,
         .requires_accessibility_host_evidence = plan.requires_accessibility_host_evidence,
@@ -2744,7 +2744,7 @@ has_runtime_ui_workbench_accessibility_ref(const std::vector<mirakana::ui::Runti
         !result.invoked_renderer_upload && result.ime_session_rows == 1U && result.ime_composition_rows == 1U &&
         result.ime_candidate_rows == 1U && result.ime_text_area_cursor_rows == 1U &&
         result.ime_committed_text_rows == 1U && result.ime_clipboard_rows == 1U &&
-        result.ime_sdl3_adapter_proof_rows == 1U && result.ime_platform_host_gate_rows == 1U &&
+        result.ime_win32_adapter_proof_rows == 1U && result.ime_platform_host_gate_rows == 1U &&
         !result.ime_platform_parity_ready && result.accessibility_role_rows == 1U &&
         result.accessibility_name_rows == 1U && result.accessibility_description_rows == 1U &&
         result.accessibility_state_rows == 1U && result.accessibility_focus_rows == 1U &&
@@ -3057,7 +3057,7 @@ validate_audio_production_package_evidence(const mirakana::AudioClipSampleData& 
         .device_lifecycle_rows =
             {
                 mirakana::AudioProductionDeviceLifecycleRow{
-                    .backend_id = "sdl3",
+                    .backend_id = "wasapi",
                     .uses_logical_device = true,
                     .uses_audio_stream = true,
                     .uses_queueing = true,
@@ -9226,8 +9226,8 @@ int main(int argc, char** argv) {
         << " runtime_ui_production_stack_ime_committed_text_rows="
         << runtime_ui_production_stack_probe.ime_committed_text_rows
         << " runtime_ui_production_stack_ime_clipboard_rows=" << runtime_ui_production_stack_probe.ime_clipboard_rows
-        << " runtime_ui_production_stack_ime_sdl3_adapter_proof_rows="
-        << runtime_ui_production_stack_probe.ime_sdl3_adapter_proof_rows
+        << " runtime_ui_production_stack_ime_win32_adapter_proof_rows="
+        << runtime_ui_production_stack_probe.ime_win32_adapter_proof_rows
         << " runtime_ui_production_stack_ime_platform_host_gate_rows="
         << runtime_ui_production_stack_probe.ime_platform_host_gate_rows
         << " runtime_ui_production_stack_ime_platform_parity_ready="
@@ -9956,8 +9956,8 @@ int main(int argc, char** argv) {
             << runtime_ui_production_stack_probe.ime_committed_text_rows
             << " runtime_ui_production_stack_ime_clipboard_rows="
             << runtime_ui_production_stack_probe.ime_clipboard_rows
-            << " runtime_ui_production_stack_ime_sdl3_adapter_proof_rows="
-            << runtime_ui_production_stack_probe.ime_sdl3_adapter_proof_rows
+            << " runtime_ui_production_stack_ime_win32_adapter_proof_rows="
+            << runtime_ui_production_stack_probe.ime_win32_adapter_proof_rows
             << " runtime_ui_production_stack_ime_platform_host_gate_rows="
             << runtime_ui_production_stack_probe.ime_platform_host_gate_rows
             << " runtime_ui_production_stack_ime_platform_parity_ready="

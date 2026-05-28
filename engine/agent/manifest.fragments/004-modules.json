@@ -70,19 +70,6 @@
       "purpose": "Device-independent audio foundations. Currently provides an AudioMixer that validates audio buses, voices, spatial listener/source descriptors, clip metadata, device render requests, resampling quality, and interleaved float clip sample data; tracks logical clip asset ids; produces deterministic mix commands; builds spatial voice/listener metadata for distance attenuation and stereo pan; plans sample-frame voice scheduling; records streaming buffer availability, device format conversion intent, and underrun diagnostics; exposes AudioGameplayMixRequest, AudioGameplayMixPlan, and plan_gameplay_audio_mix so generated games can fail closed while converting game-owned cue, bus, fade, pause, loop, trigger, and optional spatial metadata rows into mixer-ready bus and voice commands; provides AudioStreamingQueue for decoded chunk append/consume/starvation state without codecs; renders deterministic interleaved float PCM buffers with gain, selectable nearest/linear resampling, channel conversion, and clamping; exposes AudioDeviceStreamRequest, AudioDeviceStreamPlan, plan_audio_device_stream, and render_audio_device_stream_interleaved_float so host adapters can fill output queues from AudioMixer PCM using bounded render chunks; adds AudioProductionReviewRequest, AudioProductionReadinessPlan, AudioProductionDecodedSourceEvidenceRow, AudioProductionStreamingChunkEvidenceRow, AudioProductionFormatConversionPolicyRow, AudioProductionDspGraphRow, AudioProductionDeviceLifecycleRow, AudioProductionUnsupportedClaimRow, and review_audio_production_readiness for side-effect-free reviewed decoded source, streaming chunk, conversion, bus/voice budget, DSP graph, spatial/listener, HRTF host gate, device lifecycle, unsupported claim, diagnostics, selected-package readiness, production-readiness, and replay-hash evidence; rejects broad codec support, audio middleware parity, native device handle exposure, background streaming execution, HRTF execution, device callback/IO, subjective mix-quality, incomplete rows, and budget overflow; and does not open OS audio devices."
     },
     {
-      "name": "MK_audio_sdl3",
-      "path": "engine/audio/sdl3",
-      "status": "optional-desktop-audio",
-      "dependencies": [
-        "MK_audio",
-        "SDL3"
-      ],
-      "publicHeaders": [
-        "engine/audio/sdl3/include/mirakana/audio/sdl3/sdl_audio_device.hpp"
-      ],
-      "purpose": "Optional SDL3 desktop audio adapter. Currently provides SdlAudioRuntime for SDL_INIT_AUDIO lifetime and SdlAudioDevice for default playback streams through SDL_OpenAudioDeviceStream, pause/resume/clear controls, queued-frame reporting, silence queuing, and interleaved float PCM queuing while keeping SDL stream and device handles private. sdl3_audio_device_lifecycle_evidence records logical-device, audio-stream, queueing, pause/resume, clear, callback-free, host-evidence, and native-handle-free lifecycle rows for AudioProductionReviewRequest without exposing SDL handles."
-    },
-    {
       "name": "MK_audio_wasapi",
       "path": "engine/audio/wasapi",
       "status": "windows-shared-mode-playback-foundation",
@@ -381,25 +368,6 @@
       "purpose": "Standard-library-only deterministic navigation foundation for generated games and gameplay tests. Currently provides NavigationGrid, NavigationGridCoord, NavigationPathRequest, NavigationPathResult, NavigationPathStatus, and find_navigation_path for bounds-checked cardinal grid A* pathfinding with walkability, positive traversal costs, stable tie-breaking, invalid/blocked endpoint diagnostics, no-path reporting, total path cost, and visited-node counts. Path Following / Steering Foundation v0 adds NavigationPoint2, NavigationPointPathBuildResult, build_navigation_point_path_result, build_navigation_point_path, NavigationPathFollowRequest, advance_navigation_path_following, NavigationArriveSteeringRequest, and calculate_navigation_arrive_steering for grid-path-to-point conversion, explicit path-follow cursor advancement, max-step/arrival-radius movement, remaining-distance reporting, and single-agent arrive steering. Navigation Agent Controller Foundation v0 adds NavigationAgentConfig, NavigationAgentState, NavigationAgentUpdateRequest, NavigationAgentUpdateResult, make_navigation_agent_state, replace_navigation_agent_path, cancel_navigation_agent_move, and update_navigation_agent for value-type idle/moving/reached/cancelled/invalid movement state, speed/delta clamping, final-destination slowing, path replacement, and desired velocity from actual path movement. Grid Dynamic Obstacle Replan v0 adds NavigationGridPathValidationRequest, NavigationGridPathValidationResult, NavigationGridPathValidationStatus, validate_navigation_grid_path, NavigationGridReplanRequest, NavigationGridReplanResult, NavigationGridReplanStatus, and replan_navigation_grid_path for validating remaining cardinal-grid paths against the current grid, reporting empty/start/goal/out-of-bounds/blocked/non-cardinal/unsupported-adjacency/cost-overflow diagnostics, reusing valid remaining paths, and recalculating deterministic replacement paths around newly blocked cells through find_navigation_path. Navigation Agent Local Avoidance v0 adds NavigationLocalAvoidanceRequest, NavigationLocalAvoidanceResult, NavigationLocalAvoidanceDiagnostic, and calculate_navigation_local_avoidance for finite-input single-agent velocity adjustment against explicit neighbor rows, duplicate-neighbor and calculation-overflow diagnostics, deterministic neighbor ordering, closest-approach prediction over the requested time window, overlap/future-collision separation, and max-speed clamping. Navigation Grid Path Smoothing v0 adds NavigationGridPathSmoothingRequest, NavigationGridPathSmoothingResult, NavigationGridPathSmoothingStatus, and smooth_navigation_grid_path for reducing validated cardinal grid paths through deterministic walkable line-of-sight while preserving start and goal waypoints. Navigation Production Path v1 adds NavigationGridAgentPathRequest, NavigationGridAgentPathPlan, NavigationGridAgentPathStatus, NavigationGridAgentPathDiagnostic, and plan_navigation_grid_agent_path to compose validated grid pathfinding, optional smoothing, point-path mapping, and NavigationAgentState creation for generated-game route setup. Navigation Navmesh Production Path v1 adds NavigationNavmeshPolygon, NavigationNavmeshPortal, NavigationNavmeshDynamicObstacle, NavigationNavmeshPathRequest, NavigationNavmeshPathResult, NavigationNavmeshPathStatus, NavigationNavmeshPathDiagnostic, and plan_navigation_navmesh_path for scene-ref polygon graph routing with dynamic obstacle blocking, deterministic diagnostics, point paths, visited counts, and cost evidence. Navigation Navmesh Crowd Query v1 adds NavigationCrowdAgentDesc, NavigationCrowdPlanRequest, NavigationCrowdAgentPlanRow, NavigationCrowdPlanResult, NavigationCrowdPlanStatus, NavigationCrowdPlanDiagnostic, and plan_navigation_navmesh_crowd for value-only deterministic crowd rows over navmesh routes, dynamic-obstacle participation, local-avoidance aggregation, max-agent budget rejection, duplicate/invalid-agent diagnostics, and stable replay counters. Navigation Hierarchical World v1 adds NavigationHierarchicalWorldRegion, NavigationHierarchicalWorldPortalEndpoint, NavigationHierarchicalWorldPortal, NavigationHierarchicalWorldPathRequest, NavigationHierarchicalWorldPathResult, NavigationHierarchicalWorldPortalPathRow, NavigationHierarchicalWorldPathStatus, NavigationHierarchicalWorldPathDiagnostic, and plan_navigation_hierarchical_world_path for value-only region graph routing over world-region refs, nav-data refs, portal ids, endpoint scene refs, deterministic region/portal paths, visited counts, and fail-closed malformed ref diagnostics. navmesh asset import, spline/funnel smoothing, persistent/full crowd simulation beyond value-only batch planning, RVO/ORCA, scene/physics integration, editor visualization, middleware, automatic nav baking, package streaming execution, and background navigation jobs remain future gameplay-system slices."
     },
     {
-      "name": "MK_platform_sdl3",
-      "path": "engine/platform/sdl3",
-      "status": "optional-desktop-runtime",
-      "dependencies": [
-        "MK_platform",
-        "MK_ui",
-        "SDL3"
-      ],
-      "publicHeaders": [
-        "engine/platform/sdl3/include/mirakana/platform/sdl3/sdl_clipboard.hpp",
-        "engine/platform/sdl3/include/mirakana/platform/sdl3/sdl_cursor.hpp",
-        "engine/platform/sdl3/include/mirakana/platform/sdl3/sdl_file_dialog.hpp",
-        "engine/platform/sdl3/include/mirakana/platform/sdl3/sdl_input.hpp",
-        "engine/platform/sdl3/include/mirakana/platform/sdl3/sdl_ui_platform_integration.hpp",
-        "engine/platform/sdl3/include/mirakana/platform/sdl3/sdl_window.hpp"
-      ],
-      "purpose": "Optional SDL3 platform backend with RAII runtime/window wrappers, SDL display enumeration and first-party monitor selection mapped into DisplayInfo, SDL window position/size movement mapped through WindowPlacement, SDL window display scale, pixel density, and safe-area mapping into WindowDisplayState, SDL text clipboard mapping into IClipboard and SdlClipboardTextAdapter mapping SdlClipboard through MK_ui IClipboardTextAdapter, SDL asynchronous native file dialogs mapped into IFileDialogService, SDL cursor visibility/grab/relative mode mapping into ICursor, SdlPlatformIntegrationAdapter mapping validated MK_ui PlatformTextInputRequest begin/end rows to SDL_SetTextInputArea plus SDL_StartTextInput/SDL_StopTextInput for caller-owned SdlWindow instances, SDL text input, text editing, and text editing candidate events copied into first-party SdlWindowEvent committed-text, composition-text/range, candidate-string, selected-candidate, candidate-list-orientation, SDL keycode, and key-modifier rows without retaining SDL-owned text or candidate pointers, selected SDL3 Ctrl/GUI \u002B C/X/V key-down rows mapped through sdl3_text_edit_clipboard_command_from_window_event / apply_sdl3_text_edit_clipboard_command_event into MK_ui TextEditClipboardCommand application through IClipboardTextAdapter, SDL app lifecycle events mapped into VirtualLifecycle, SDL key mapping into VirtualInput, SDL mouse/touch mapping into VirtualPointerInput, and SDL gamepad button/axis/device mapping into VirtualGamepadInput without exposing SDL_Window through MK_ui."
-    },
-    {
       "name": "MK_runtime_host",
       "path": "engine/runtime_host",
       "status": "implemented-desktop-host-contract",
@@ -413,39 +381,6 @@
         "engine/runtime_host/include/mirakana/runtime_host/shader_bytecode.hpp"
       ],
       "purpose": "Editor-independent desktop game host contract. Currently provides DesktopGameRunner, DesktopRunConfig, DesktopRunResult, DesktopHostServices, and IDesktopEventPump so games can keep implementing mirakana::GameApp while a host drives IWindow lifecycle, VirtualInput, VirtualPointerInput, VirtualGamepadInput, VirtualLifecycle, optional renderer resize including swapchain-backed RhiFrameRenderer resize through IRenderer, optional DiagnosticsRecorder/IProfileClock frame instrumentation, backend-neutral renderer counter capture from IRenderer::stats(), and app update/stop status without exposing SDL, OS, RHI, or graphics API handles to game code. It also provides load_desktop_shader_bytecode_pair for host-independent packaged shader bytecode loading through IFileSystem with owned byte vectors, entry points, stable statuses, and diagnostics."
-    },
-    {
-      "name": "MK_runtime_host_sdl3",
-      "path": "engine/runtime_host/sdl3",
-      "status": "optional-desktop-game-runtime",
-      "dependencies": [
-        "MK_runtime_host",
-        "MK_platform_sdl3",
-        "SDL3"
-      ],
-      "publicHeaders": [
-        "engine/runtime_host/sdl3/include/mirakana/runtime_host/sdl3/sdl_desktop_event_pump.hpp"
-      ],
-      "purpose": "Optional SDL3 desktop game runtime host adapter. Currently provides SdlDesktopEventPump, which owns the SDL_PollEvent loop in the adapter implementation and forwards translated SDL events through SdlWindow::handle_event into first-party virtual input, pointer, gamepad, lifecycle, and window contracts. Game code includes engine headers only and does not include SDL3 headers or native handles."
-    },
-    {
-      "name": "MK_runtime_host_sdl3_presentation",
-      "path": "engine/runtime_host/sdl3",
-      "status": "optional-desktop-game-presentation-adapter",
-      "dependencies": [
-        "MK_runtime_host_sdl3",
-        "MK_platform_sdl3",
-        "MK_renderer",
-        "MK_rhi",
-        "MK_rhi_d3d12",
-        "MK_rhi_vulkan",
-        "SDL3"
-      ],
-      "publicHeaders": [
-        "engine/runtime_host/sdl3/include/mirakana/runtime_host/sdl3/sdl_desktop_game_host.hpp",
-        "engine/runtime_host/sdl3/include/mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp"
-      ],
-      "purpose": "Optional SDL3 desktop game presentation and reusable game-host adapter. Provides SdlDesktopGameHost, which owns SDL runtime/window setup, event pumping, SdlDesktopPresentation renderer selection, virtual input/pointer/gamepad/lifecycle state, and DesktopGameRunner service wiring for games that select the desktop-game-runtime lane without exposing SDL headers, native OS handles, GPU handles, RHI backend handles, Dear ImGui, or editor APIs to gameplay code. Provides SdlDesktopPresentation, which keeps SDL3 native window-property probing, D3D12/Vulkan-ready first-party surface candidate creation, host-supplied precompiled D3D12 DXIL and Vulkan SPIR-V shader bytecode renderer creation, host-owned D3D12/Vulkan scene GPU binding injection with Vulkan scene mapping compute SPIR-V proof validation and request vertex input validated against referenced cooked mesh layouts, host-owned D3D12/Vulkan Frame Graph/Postprocess v0 renderer creation from target-specific postprocess shader artifacts plus optional scene-depth input, host-owned Package-Visible Directional Shadow Filtering v0 creation from target-specific shadow receiver/shadow shader artifacts with fixed sampled-depth 3x3 PCF metadata, renderer selection diagnostics, postprocess diagnostics, postprocess_depth_input_requested/postprocess_depth_input_ready report fields, package-visible postprocess policy reporting through SdlDesktopPresentationPostprocessPolicyReport and evaluate_sdl_desktop_presentation_postprocess_policy including postprocess_policy_* readiness, diagnostic, effect, pass, resource, and backend shader-evidence fields, package-visible scene-scale policy reporting through SdlDesktopPresentationSceneScalePolicyReport and evaluate_sdl_desktop_presentation_scene_scale_policy including scene_scale_policy_* readiness, diagnostic, draw-group, draw-call, visible/culled instance, LOD/culling, and host-gated backend instancing-evidence fields, selected D3D12 postprocess execution reporting through SdlDesktopPresentationD3d12PostprocessExecutionReport and evaluate_sdl_desktop_presentation_d3d12_postprocess_execution including postprocess_d3d12_execution_* selected-backend, shader-evidence, and pass-count fields, directional_shadow_status/directional_shadow_requested/directional_shadow_ready/directional_shadow_filter_mode/directional_shadow_filter_tap_count/directional_shadow_filter_radius_texels report fields, package-visible renderer quality gate reporting through evaluate_sdl_desktop_presentation_quality_gate including renderer_quality_* render-pass-envelope and barrier-step fields, selected sample_desktop_runtime_game Frame Graph multi-queue package evidence fields through framegraph_multiqueue_* output, and NullRenderer fallback policy in host code while exposing only first-party mirakana:: diagnostics, RHI value-type descriptors, SdlDesktopPresentationReport status fields, SdlDesktopPresentationPostprocessPolicyReport summary fields, SdlDesktopPresentationSceneScalePolicyReport summary fields, SdlDesktopPresentationD3d12PostprocessExecutionReport summary fields, SdlDesktopPresentationQualityGateReport summary fields, and IRenderer access to the host."
     },
     {
       "name": "MK_runtime_host_win32",

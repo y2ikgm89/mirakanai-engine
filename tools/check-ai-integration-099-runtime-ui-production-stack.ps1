@@ -68,7 +68,7 @@ foreach ($needle in @(
         "missing_ime_composition_update_rows",
         "missing_ime_text_area_cursor_rows",
         "missing_ime_clipboard_rows",
-        "missing_ime_sdl3_adapter_proof_rows",
+        "missing_ime_win32_adapter_proof_rows",
         "missing_ime_platform_host_gate_rows",
         "missing_accessibility_names",
         "missing_accessibility_descriptions",
@@ -96,7 +96,7 @@ foreach ($needle in @(
         "RuntimeUiProductionDiagnosticCode::missing_selected_package_counter_evidence",
         "RuntimeUiProductionDiagnosticCode::missing_shaping_direction_script_language",
         "RuntimeUiProductionDiagnosticCode::missing_raster_pixel_format_rows",
-        "RuntimeUiProductionDiagnosticCode::missing_ime_sdl3_adapter_proof_rows",
+        "RuntimeUiProductionDiagnosticCode::missing_ime_win32_adapter_proof_rows",
         "RuntimeUiProductionDiagnosticCode::missing_ime_platform_host_gate_rows",
         "RuntimeUiProductionDiagnosticCode::missing_accessibility_uia_host_gate",
         "RuntimeUiProductionDiagnosticCode::missing_accessibility_platform_host_gate",
@@ -118,7 +118,7 @@ Assert-ContainsText $runtimeUiTestsText "missing_shaping_direction_script_langua
 Assert-ContainsText $runtimeUiTestsText "missing_raster_pixel_format_rows" "tests/unit/runtime_ui_production_stack_tests.cpp"
 Assert-ContainsText $uiRendererTestsText "ui line breaking adapter contract does not require shaping glyph evidence" "tests/unit/ui_renderer_tests.cpp"
 Assert-ContainsText $runtimeUiTestsText "runtime ui production stack rejects incomplete ime and accessibility evidence" "tests/unit/runtime_ui_production_stack_tests.cpp"
-Assert-ContainsText $runtimeUiTestsText "runtime ui production stack keeps selected sdl3 ime proof host gated" "tests/unit/runtime_ui_production_stack_tests.cpp"
+Assert-ContainsText $runtimeUiTestsText "runtime ui production stack keeps selected win32 ime proof host gated" "tests/unit/runtime_ui_production_stack_tests.cpp"
 Assert-ContainsText $runtimeUiTestsText "runtime ui production stack keeps selected accessibility proof host gated" "tests/unit/runtime_ui_production_stack_tests.cpp"
 Assert-ContainsText $runtimeUiTestsText "runtime ui production stack rejects duplicate missing and unsafe claim rows" "tests/unit/runtime_ui_production_stack_tests.cpp"
 
@@ -147,7 +147,7 @@ foreach ($needle in @(
         "runtime_ui_production_stack_ime_text_area_cursor_rows=",
         "runtime_ui_production_stack_ime_committed_text_rows=",
         "runtime_ui_production_stack_ime_clipboard_rows=",
-        "runtime_ui_production_stack_ime_sdl3_adapter_proof_rows=",
+        "runtime_ui_production_stack_ime_win32_adapter_proof_rows=",
         "runtime_ui_production_stack_ime_platform_host_gate_rows=",
         "runtime_ui_production_stack_ime_platform_parity_ready=",
         "runtime_ui_production_stack_requires_accessibility_host_evidence=",
@@ -195,7 +195,7 @@ foreach ($needle in @(
         "runtime_ui_production_stack_ready_rows=4",
         "runtime_ui_production_stack_host_gated_rows=2",
         "runtime_ui_production_stack_production_ready=0",
-        "runtime_ui_production_stack_ime_sdl3_adapter_proof_rows=1",
+        "runtime_ui_production_stack_ime_win32_adapter_proof_rows=1",
         "runtime_ui_production_stack_ime_platform_parity_ready=0",
         "runtime_ui_production_stack_accessibility_uia_host_gate_rows=1",
         "runtime_ui_production_stack_accessibility_platform_parity_ready=0",
@@ -226,7 +226,7 @@ foreach ($needle in @(
         "runtime_ui_production_stack_ime_text_area_cursor_rows",
         "runtime_ui_production_stack_ime_committed_text_rows",
         "runtime_ui_production_stack_ime_clipboard_rows",
-        "runtime_ui_production_stack_ime_sdl3_adapter_proof_rows",
+        "runtime_ui_production_stack_ime_win32_adapter_proof_rows",
         "runtime_ui_production_stack_ime_platform_host_gate_rows",
         "runtime_ui_production_stack_ime_platform_parity_ready",
         "runtime_ui_production_stack_requires_accessibility_host_evidence",
@@ -258,7 +258,7 @@ foreach ($needle in @(
 Assert-ContainsText $installedValidationText '"runtime_ui_production_stack_status" = "host_evidence_required"' "tools/validate-installed-desktop-runtime.ps1"
 Assert-ContainsText $installedValidationText '"runtime_ui_production_stack_rows" = "6"' "tools/validate-installed-desktop-runtime.ps1"
 Assert-ContainsText $installedValidationText '"runtime_ui_production_stack_production_ready" = "0"' "tools/validate-installed-desktop-runtime.ps1"
-Assert-ContainsText $installedValidationText '"runtime_ui_production_stack_ime_sdl3_adapter_proof_rows" = "1"' "tools/validate-installed-desktop-runtime.ps1"
+Assert-ContainsText $installedValidationText '"runtime_ui_production_stack_ime_win32_adapter_proof_rows" = "1"' "tools/validate-installed-desktop-runtime.ps1"
 Assert-ContainsText $installedValidationText '"runtime_ui_production_stack_ime_platform_parity_ready" = "0"' "tools/validate-installed-desktop-runtime.ps1"
 Assert-ContainsText $installedValidationText '"runtime_ui_production_stack_accessibility_uia_host_gate_rows" = "1"' "tools/validate-installed-desktop-runtime.ps1"
 Assert-ContainsText $installedValidationText '"runtime_ui_production_stack_accessibility_platform_parity_ready" = "0"' "tools/validate-installed-desktop-runtime.ps1"
@@ -311,7 +311,7 @@ foreach ($docSurface in @(
         @{ Text = $aiGameDevelopmentText; Label = "docs/ai-game-development.md" },
         @{ Text = $generatedValidationText; Label = "docs/specs/generated-game-validation-scenarios.md" }
     )) {
-    Assert-ContainsText $docSurface.Text "runtime_ui_production_stack_ime_sdl3_adapter_proof_rows=1" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "runtime_ui_production_stack_ime_win32_adapter_proof_rows=1" $docSurface.Label
     Assert-ContainsText $docSurface.Text "runtime_ui_production_stack_ime_platform_parity_ready=0" $docSurface.Label
     Assert-ContainsText $docSurface.Text "runtime_ui_production_stack_accessibility_uia_host_gate_rows=1" $docSurface.Label
     Assert-ContainsText $docSurface.Text "runtime_ui_production_stack_accessibility_platform_parity_ready=0" $docSurface.Label
@@ -323,7 +323,7 @@ foreach ($needle in @(
         "plan_runtime_ui_production_stack",
         "shaping direction/script/language",
         "glyph bitmap/metrics/pixel-format",
-        "runtime_ui_production_stack_ime_sdl3_adapter_proof_rows=1",
+        "runtime_ui_production_stack_ime_win32_adapter_proof_rows=1",
         "runtime_ui_production_stack_ime_platform_parity_ready=0",
         "runtime_ui_production_stack_accessibility_uia_host_gate_rows=1",
         "runtime_ui_production_stack_accessibility_platform_parity_ready=0",
@@ -337,7 +337,7 @@ foreach ($needle in @(
         "--require-runtime-ui-production-stack",
         "shaping direction/script/language",
         "glyph bitmap/metrics/pixel-format",
-        "runtime_ui_production_stack_ime_sdl3_adapter_proof_rows=1",
+        "runtime_ui_production_stack_ime_win32_adapter_proof_rows=1",
         "runtime_ui_production_stack_ime_platform_parity_ready=0",
         "runtime_ui_production_stack_accessibility_uia_host_gate_rows=1",
         "runtime_ui_production_stack_accessibility_platform_parity_ready=0",
@@ -352,7 +352,7 @@ foreach ($needle in @(
         "plan_runtime_ui_production_stack",
         "shaping direction/script/language",
         "glyph bitmap/metrics/pixel-format",
-        "runtime_ui_production_stack_ime_sdl3_adapter_proof_rows=1",
+        "runtime_ui_production_stack_ime_win32_adapter_proof_rows=1",
         "runtime_ui_production_stack_ime_platform_parity_ready=0",
         "runtime_ui_production_stack_accessibility_uia_host_gate_rows=1",
         "runtime_ui_production_stack_accessibility_platform_parity_ready=0",
@@ -369,7 +369,7 @@ foreach ($needle in @(
         "plan_runtime_ui_production_stack",
         "shaping direction/script/language",
         "glyph bitmap/metrics/pixel-format",
-        "runtime_ui_production_stack_ime_sdl3_adapter_proof_rows=1",
+        "runtime_ui_production_stack_ime_win32_adapter_proof_rows=1",
         "runtime_ui_production_stack_ime_platform_parity_ready=0",
         "runtime_ui_production_stack_accessibility_uia_host_gate_rows=1",
         "runtime_ui_production_stack_accessibility_platform_parity_ready=0",

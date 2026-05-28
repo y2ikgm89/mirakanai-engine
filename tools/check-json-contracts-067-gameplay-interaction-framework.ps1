@@ -53,4 +53,3 @@ function Assert-JsonGameplayInteractionQualityRubric {
 }
 
 Assert-JsonGameplayInteractionQualityRubric "games/sample_2d_desktop_runtime_package/game.agent.json"
-Assert-JsonGameplayInteractionQualityRubric "games/sample_generated_desktop_runtime_3d_package/game.agent.json"

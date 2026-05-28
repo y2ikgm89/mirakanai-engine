@@ -1036,10 +1036,6 @@ if(TARGET sample_desktop_runtime_shell)
     list(APPEND MK_RUNTIME_TARGETS sample_desktop_runtime_shell)
 endif()
 
-if(TARGET sample_desktop_runtime_game)
-    list(APPEND MK_RUNTIME_TARGETS sample_desktop_runtime_game)
-endif()
-
 function(MK_json_escape output_variable value)
     string(REPLACE "\\" "\\\\" escaped_value "${value}")
     string(REPLACE "\"" "\\\"" escaped_value "${escaped_value}")

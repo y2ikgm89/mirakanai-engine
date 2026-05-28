@@ -1335,6 +1335,7 @@ Assert-AtlasTilemapAuthoringTarget `
     "runtime/assets/2d/player.texture.geasset"
 
 $sample3dManifestPath = "games/sample_desktop_runtime_game/game.agent.json"
+if (-not (Test-RetiredSdl3DesktopRuntimeSamplePath $sample3dManifestPath)) {
 $sample3dManifestEntry = Get-AgentGameManifest $sample3dManifestPath
 $sample3dManifest = $sample3dManifestEntry.Game
 if ($sample3dManifest.target -ne "sample_desktop_runtime_game") {
@@ -1343,7 +1344,7 @@ if ($sample3dManifest.target -ne "sample_desktop_runtime_game") {
 if ($sample3dManifest.gameplayContract.productionRecipe -ne "3d-playable-desktop-package") {
     Write-Error "$sample3dManifestPath gameplayContract.productionRecipe must be 3d-playable-desktop-package"
 }
-foreach ($module in @("MK_animation", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
+foreach ($module in @("MK_animation", "MK_platform", "MK_platform_win32", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
     if (@($sample3dManifest.engineModules) -notcontains $module) {
         Write-Error "$sample3dManifestPath engineModules missing $module"
     }
@@ -1489,6 +1490,7 @@ foreach ($needle in @(
     "hud_boxes_submitted_"
 )) {
     Assert-ContainsText $sample3dMainText $needle "games/sample_desktop_runtime_game/main.cpp"
+}
 }
 $sceneRendererHeaderText = Get-AgentSurfaceText "engine/scene_renderer/include/mirakana/scene_renderer/scene_renderer.hpp"
 foreach ($needle in @(

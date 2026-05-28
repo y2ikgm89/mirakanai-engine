@@ -490,10 +490,16 @@ foreach ($recipeId in @("future-3d-playable-vertical-slice")) {
         Write-Error "engine manifest aiOperableProductionLoop recipe '$recipeId' must remain planned"
     }
 }
-foreach ($recipeId in @("desktop-runtime-config-package", "desktop-runtime-cooked-scene-package", "desktop-runtime-material-shader-package", "2d-desktop-runtime-package", "3d-playable-desktop-package", "native-gpu-runtime-ui-overlay", "native-ui-textured-sprite-atlas", "native-ui-atlas-package-metadata")) {
+foreach ($recipeId in @("desktop-runtime-config-package", "desktop-runtime-cooked-scene-package", "desktop-runtime-material-shader-package", "2d-desktop-runtime-package")) {
     $desktopRecipe = @($productionLoop.recipes | Where-Object { $_.id -eq $recipeId })
     if ($desktopRecipe.Count -ne 1 -or $desktopRecipe[0].status -ne "host-gated") {
         Write-Error "engine manifest aiOperableProductionLoop recipe '$recipeId' must remain host-gated"
+    }
+}
+foreach ($recipeId in @("3d-playable-desktop-package", "native-gpu-runtime-ui-overlay", "native-ui-textured-sprite-atlas", "native-ui-atlas-package-metadata")) {
+    $blockedRecipe = @($productionLoop.recipes | Where-Object { $_.id -eq $recipeId })
+    if ($blockedRecipe.Count -ne 1 -or $blockedRecipe[0].status -ne "blocked") {
+        Write-Error "engine manifest aiOperableProductionLoop recipe '$recipeId' must remain blocked until a Win32 package proof is reintroduced"
     }
 }
 foreach ($recipeId in @("headless-gameplay", "ai-navigation-headless", "runtime-ui-headless", "2d-playable-source-tree")) {
@@ -567,7 +573,11 @@ $desktop3dRecipe = @($productionLoop.recipes | Where-Object { $_.id -eq "3d-play
 if ($desktop3dRecipe.Count -ne 1) {
     Write-Error "engine manifest aiOperableProductionLoop must expose exactly one 3d-playable-desktop-package recipe"
 } else {
-    foreach ($module in @("MK_core", "MK_math", "MK_platform", "MK_platform_sdl3", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
+    if ($desktop3dRecipe[0].status -eq "blocked") {
+        Assert-ContainsText ([string]$desktop3dRecipe[0].summary) "Retired with the deleted SDL3 package lane" "engine manifest 3d-playable-desktop-package summary"
+    }
+    else {
+    foreach ($module in @("MK_core", "MK_math", "MK_platform", "MK_platform_win32", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
         if (@($desktop3dRecipe[0].requiredModules) -notcontains $module) {
             Write-Error "engine manifest 3d-playable-desktop-package recipe missing required module: $module"
         }
@@ -598,12 +608,17 @@ if ($desktop3dRecipe.Count -ne 1) {
     if (((@($desktop3dRecipe[0].unsupportedClaims) -join " ").Contains("native GPU HUD or sprite overlay output"))) {
         Write-Error "engine manifest 3d-playable-desktop-package recipe must not keep stale native GPU HUD or sprite overlay unsupported claim after the focused overlay recipe is added"
     }
+    }
 }
 $nativeOverlayRecipe = @($productionLoop.recipes | Where-Object { $_.id -eq "native-gpu-runtime-ui-overlay" })
 if ($nativeOverlayRecipe.Count -ne 1) {
     Write-Error "engine manifest aiOperableProductionLoop must expose exactly one native-gpu-runtime-ui-overlay recipe"
 } else {
-    foreach ($module in @("MK_core", "MK_math", "MK_platform", "MK_platform_sdl3", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
+    if ($nativeOverlayRecipe[0].status -eq "blocked") {
+        Assert-ContainsText ([string]$nativeOverlayRecipe[0].summary) "Retired with the deleted SDL3 package lane" "engine manifest native-gpu-runtime-ui-overlay summary"
+    }
+    else {
+    foreach ($module in @("MK_core", "MK_math", "MK_platform", "MK_platform_win32", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
         if (@($nativeOverlayRecipe[0].requiredModules) -notcontains $module) {
             Write-Error "engine manifest native-gpu-runtime-ui-overlay recipe missing required module: $module"
         }
@@ -618,12 +633,17 @@ if ($nativeOverlayRecipe.Count -ne 1) {
             Write-Error "engine manifest native-gpu-runtime-ui-overlay recipe must keep unsupported claim explicit: $claim"
         }
     }
+    }
 }
 $texturedUiRecipe = @($productionLoop.recipes | Where-Object { $_.id -eq "native-ui-textured-sprite-atlas" })
 if ($texturedUiRecipe.Count -ne 1) {
     Write-Error "engine manifest aiOperableProductionLoop must expose exactly one native-ui-textured-sprite-atlas recipe"
 } else {
-    foreach ($module in @("MK_core", "MK_math", "MK_platform", "MK_platform_sdl3", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
+    if ($texturedUiRecipe[0].status -eq "blocked") {
+        Assert-ContainsText ([string]$texturedUiRecipe[0].summary) "Retired with the deleted SDL3 package lane" "engine manifest native-ui-textured-sprite-atlas summary"
+    }
+    else {
+    foreach ($module in @("MK_core", "MK_math", "MK_platform", "MK_platform_win32", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
         if (@($texturedUiRecipe[0].requiredModules) -notcontains $module) {
             Write-Error "engine manifest native-ui-textured-sprite-atlas recipe missing required module: $module"
         }
@@ -638,12 +658,17 @@ if ($texturedUiRecipe.Count -ne 1) {
             Write-Error "engine manifest native-ui-textured-sprite-atlas recipe must keep unsupported claim explicit: $claim"
         }
     }
+    }
 }
 $uiAtlasMetadataRecipe = @($productionLoop.recipes | Where-Object { $_.id -eq "native-ui-atlas-package-metadata" })
 if ($uiAtlasMetadataRecipe.Count -ne 1) {
     Write-Error "engine manifest aiOperableProductionLoop must expose exactly one native-ui-atlas-package-metadata recipe"
 } else {
-    foreach ($module in @("MK_core", "MK_math", "MK_platform", "MK_platform_sdl3", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
+    if ($uiAtlasMetadataRecipe[0].status -eq "blocked") {
+        Assert-ContainsText ([string]$uiAtlasMetadataRecipe[0].summary) "Retired with the deleted SDL3 package lane" "engine manifest native-ui-atlas-package-metadata summary"
+    }
+    else {
+    foreach ($module in @("MK_core", "MK_math", "MK_platform", "MK_platform_win32", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
         if (@($uiAtlasMetadataRecipe[0].requiredModules) -notcontains $module) {
             Write-Error "engine manifest native-ui-atlas-package-metadata recipe missing required module: $module"
         }
@@ -657,6 +682,7 @@ if ($uiAtlasMetadataRecipe.Count -ne 1) {
         if (-not ((@($uiAtlasMetadataRecipe[0].unsupportedClaims) -join " ").Contains($claim))) {
             Write-Error "engine manifest native-ui-atlas-package-metadata recipe must keep unsupported claim explicit: $claim"
         }
+    }
     }
 }
 

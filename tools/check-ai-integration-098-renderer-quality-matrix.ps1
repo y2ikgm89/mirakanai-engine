@@ -171,7 +171,13 @@ foreach ($needle in @(
     Assert-ContainsText $sample3dReadmeText $needle "games/sample_generated_desktop_runtime_3d_package/README.md"
 }
 
-Assert-ContainsText $gamesCMakeText "--require-renderer-quality-matrix" "games/CMakeLists.txt"
+$sample3dRootPath = Join-Path $root "games/sample_generated_desktop_runtime_3d_package"
+if (Test-Path -LiteralPath $sample3dRootPath) {
+    Assert-ContainsText $gamesCMakeText "--require-renderer-quality-matrix" "games/CMakeLists.txt"
+}
+else {
+    Assert-DoesNotContainText $gamesCMakeText "--require-renderer-quality-matrix" "games/CMakeLists.txt retired generated 3D sample"
+}
 
 foreach ($needle in @(
         "requiresRendererQualityMatrix",

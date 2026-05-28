@@ -1148,20 +1148,25 @@ try {
     $desktop3dReadmeText = Get-Content -LiteralPath (Join-Path $desktop3dGameRoot "README.md") -Raw
     $desktop3dManifest = $desktop3dManifestText | ConvertFrom-Json
     foreach ($needle in @(
-            "framegraph_passes_executed=4",
-            "framegraph_render_passes_recorded=4",
-            "framegraph_barrier_steps_executed=9",
-            "renderer_quality_expected_framegraph_render_passes=4",
-            "renderer_quality_expected_framegraph_barrier_steps=9",
-            "framegraph_passes_executed=6",
-            "framegraph_render_passes_recorded=6",
-            "framegraph_barrier_steps_executed=15"
+            "Win32DesktopGameHost",
+            "Win32 D3D12 package scene GPU proof",
+            "postprocess and Vulkan renderer execution are unsupported",
+            "broad generated 3D production readiness"
         )) {
         Assert-ContainsText $desktop3dManifestText $needle "Desktop runtime 3D package scaffold manifest"
+    }
+    foreach ($needle in @(
+            "Win32DesktopGameHost",
+            "selected Win32 D3D12 scene GPU binding counters",
+            "broad generated 3D production readiness"
+        )) {
         Assert-ContainsText $desktop3dReadmeText $needle "Desktop runtime 3D package scaffold README"
     }
-    Assert-ContainsText $desktop3dManifestText "selected D3D12 generated 3D graphics morph + directional shadow receiver smoke through --require-shadow-morph-composition with renderer_gpu_morph_draws, renderer_morph_descriptor_binds, directional_shadow_ready=1, framegraph_passes=3, framegraph_passes_executed=6, framegraph_render_passes_recorded=6" "Desktop runtime 3D package scaffold manifest"
-    Assert-ContainsText $desktop3dReadmeText 'selected D3D12 generated 3D graphics morph + directional shadow receiver package smoke with `--require-shadow-morph-composition`, `renderer_gpu_morph_draws`, `renderer_morph_descriptor_binds`, `directional_shadow_ready=1`, `framegraph_passes=3`, `framegraph_passes_executed=6`, `framegraph_render_passes_recorded=6`' "Desktop runtime 3D package scaffold README"
+    foreach ($staleNeedle in @("SdlDesktopGameHost", "sdl3-desktop-host-gated", "--require-native-ui-overlay", "--require-visible-3d-production-proof", "--require-shadow-morph-composition", "--require-directional-shadow")) {
+        if ($desktop3dManifestText.Contains($staleNeedle) -or $desktop3dReadmeText.Contains($staleNeedle)) {
+            Write-Error "Desktop runtime 3D package scaffold manifest/README must not contain retired SDL3 3D ready claim: $staleNeedle"
+        }
+    }
     if ($desktop3dManifest.gameplayContract.productionRecipe -ne "3d-playable-desktop-package") {
         Write-Error "Desktop runtime 3D package scaffold manifest must select 3d-playable-desktop-package"
     }
@@ -1203,9 +1208,14 @@ try {
     if ($desktop3dManifest.aiWorkflow.generatedGameQualityRubric.capabilityId -ne "ai-generated-game-quality-rubric-v1") { Write-Error "Desktop runtime 3D package scaffold manifest must carry ai-generated-game-quality-rubric-v1" }
     $desktop3dQualityRubricText = $desktop3dManifest.aiWorkflow.generatedGameQualityRubric | ConvertTo-Json -Depth 40
     foreach ($qualityNeedle in @("feedback-quality-gate", "budget-evidence-quality-gate", "package-quality-report", "broad-production-readiness")) { Assert-ContainsText $desktop3dQualityRubricText $qualityNeedle "Desktop runtime 3D package scaffold generated-game quality rubric" }
-    foreach ($module in @("MK_ai", "MK_animation", "MK_audio", "MK_navigation", "MK_physics", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
+    foreach ($module in @("MK_ai", "MK_animation", "MK_audio", "MK_navigation", "MK_physics", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
         if (@($desktop3dManifest.engineModules) -notcontains $module) {
             Write-Error "Desktop runtime 3D package scaffold manifest missing engine module: $module"
+        }
+    }
+    foreach ($retiredModule in @("MK_platform_sdl3", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation")) {
+        if (@($desktop3dManifest.engineModules) -contains $retiredModule) {
+            Write-Error "Desktop runtime 3D package scaffold manifest must not include retired module: $retiredModule"
         }
     }
     foreach ($target in @("desktop-game-runtime", "desktop-runtime-release")) {
@@ -1286,80 +1296,45 @@ try {
         @("desktop-3d-package-game/materials/lit") `
         "registered_source_registry_closure" `
         "registry_closure"
-    foreach ($recipe in @("desktop-game-runtime", "desktop-runtime-release-target", "installed-d3d12-3d-package-smoke", "installed-d3d12-3d-directional-shadow-smoke", "installed-d3d12-3d-shadow-morph-composition-smoke", "installed-d3d12-3d-native-ui-overlay-smoke", "installed-d3d12-3d-visible-production-proof-smoke", "installed-d3d12-3d-native-ui-textured-sprite-atlas-smoke", "installed-d3d12-3d-native-ui-text-glyph-atlas-smoke", "installed-d3d12-3d-entity-scale-culling-smoke", "installed-d3d12-3d-scene-collision-package-smoke", "desktop-runtime-release-target-vulkan-toolchain-gated", "desktop-runtime-release-target-vulkan-directional-shadow-toolchain-gated")) {
+    foreach ($recipe in @("desktop-game-runtime", "desktop-runtime-release-target", "installed-d3d12-3d-package-smoke")) {
         if (@($desktop3dManifest.validationRecipes | ForEach-Object { $_.name }) -notcontains $recipe) {
             Write-Error "Desktop runtime 3D package scaffold manifest validationRecipes missing $recipe"
         }
     }
     foreach ($recipe in @($desktop3dManifest.validationRecipes)) {
-        $isDesktop3dShadowRecipe = [string]$recipe.command -match "--require-directional-shadow"
-        $isDesktop3dShadowMorphRecipe = [string]$recipe.command -match "--require-shadow-morph-composition"
-        $isDesktop3dSceneCollisionPackageRecipe = [string]$recipe.command -match "--require-scene-collision-package"
-        $isDesktop3dEntityScaleCullingRecipe = [string]$recipe.command -match "--require-entity-scale-culling"
-        $isDesktop3dBroadPackageRecipe = $recipe.name -match "installed-d3d12|vulkan" -and -not $isDesktop3dShadowRecipe -and -not $isDesktop3dShadowMorphRecipe -and -not $isDesktop3dSceneCollisionPackageRecipe -and -not $isDesktop3dEntityScaleCullingRecipe
-        if ($isDesktop3dBroadPackageRecipe -and [string]$recipe.command -notmatch "--require-morph-package") {
-            Write-Error "Desktop runtime 3D package scaffold package validation recipe missing --require-morph-package: $($recipe.name)"
-        }
-        if ($isDesktop3dBroadPackageRecipe -and [string]$recipe.command -notmatch "--require-quaternion-animation") {
-            Write-Error "Desktop runtime 3D package scaffold package validation recipe missing --require-quaternion-animation: $($recipe.name)"
-        }
-        if ($recipe.name -match "installed-d3d12" -and $isDesktop3dBroadPackageRecipe -and [string]$recipe.command -notmatch "--require-compute-morph") {
-            Write-Error "Desktop runtime 3D package scaffold D3D12 package validation recipe missing --require-compute-morph: $($recipe.name)"
-        }
-        if ($recipe.name -match "vulkan" -and $isDesktop3dBroadPackageRecipe -and [string]$recipe.command -notmatch "--require-compute-morph") {
-            Write-Error "Desktop runtime 3D package scaffold Vulkan package validation recipe missing --require-compute-morph: $($recipe.name)"
-        }
-        if ($recipe.name -match "vulkan" -and $isDesktop3dBroadPackageRecipe -and [string]$recipe.command -notmatch "--require-compute-morph-normal-tangent") {
-            Write-Error "Desktop runtime 3D package scaffold Vulkan package validation recipe missing --require-compute-morph-normal-tangent: $($recipe.name)"
-        }
-        if ($recipe.name -match "installed-d3d12" -and $isDesktop3dBroadPackageRecipe -and [string]$recipe.command -notmatch "--require-compute-morph-skin") {
-            Write-Error "Desktop runtime 3D package scaffold D3D12 package validation recipe missing --require-compute-morph-skin: $($recipe.name)"
-        }
-        if ($recipe.name -match "installed-d3d12" -and $isDesktop3dBroadPackageRecipe -and [string]$recipe.command -notmatch "--require-compute-morph-async-telemetry") {
-            Write-Error "Desktop runtime 3D package scaffold D3D12 package validation recipe missing --require-compute-morph-async-telemetry: $($recipe.name)"
-        }
-        if ($isDesktop3dBroadPackageRecipe -and [string]$recipe.command -notmatch "--require-package-streaming-safe-point") {
-            Write-Error "Desktop runtime 3D package scaffold package validation recipe missing --require-package-streaming-safe-point: $($recipe.name)"
-        }
-        if ($recipe.name -match "installed-d3d12|vulkan" -and -not $isDesktop3dShadowMorphRecipe -and -not $isDesktop3dSceneCollisionPackageRecipe -and -not $isDesktop3dEntityScaleCullingRecipe -and [string]$recipe.command -notmatch "--require-renderer-quality-gates") {
-            Write-Error "Desktop runtime 3D package scaffold package validation recipe missing --require-renderer-quality-gates: $($recipe.name)"
-        }
-        if ($recipe.name -match "installed-d3d12|vulkan" -and -not $isDesktop3dShadowMorphRecipe -and -not $isDesktop3dSceneCollisionPackageRecipe -and -not $isDesktop3dEntityScaleCullingRecipe -and [string]$recipe.command -notmatch "--require-postprocess-depth-input") {
-            Write-Error "Desktop runtime 3D package scaffold package validation recipe missing --require-postprocess-depth-input: $($recipe.name)"
-        }
-        if ($isDesktop3dBroadPackageRecipe -and [string]$recipe.command -notmatch "--require-playable-3d-slice") {
-            Write-Error "Desktop runtime 3D package scaffold package validation recipe missing --require-playable-3d-slice: $($recipe.name)"
-        }
-        if ($recipe.name -match "scene-collision-package" -and [string]$recipe.command -notmatch "--require-scene-collision-package") {
-            Write-Error "Desktop runtime 3D package scaffold scene collision recipe missing --require-scene-collision-package: $($recipe.name)"
-        }
-        if ($isDesktop3dSceneCollisionPackageRecipe -and [string]$recipe.command -notmatch "--require-scene-package") {
-            Write-Error "Desktop runtime 3D package scaffold scene collision recipe missing --require-scene-package: $($recipe.name)"
-        }
-        if ($recipe.name -match "directional-shadow" -and [string]$recipe.command -notmatch "--require-directional-shadow-filtering") {
-            Write-Error "Desktop runtime 3D package scaffold directional shadow recipe missing --require-directional-shadow-filtering: $($recipe.name)"
-        }
-        if ($recipe.name -match "shadow-morph" -and [string]$recipe.command -notmatch "--require-shadow-morph-composition") {
-            Write-Error "Desktop runtime 3D package scaffold shadow-morph recipe missing --require-shadow-morph-composition: $($recipe.name)"
-        }
-        if ($recipe.name -match "native-ui-overlay" -and [string]$recipe.command -notmatch "--require-native-ui-overlay") {
-            Write-Error "Desktop runtime 3D package scaffold native UI overlay recipe missing --require-native-ui-overlay: $($recipe.name)"
-        }
-        if ($recipe.name -match "visible-production-proof") {
-            if ($recipe.name -match "vulkan") {
-                if ([string]$recipe.command -notmatch "--require-vulkan-visible-3d-production-proof") {
-                    Write-Error "Desktop runtime 3D package scaffold Vulkan visible production proof recipe missing --require-vulkan-visible-3d-production-proof: $($recipe.name)"
+        if ($recipe.name -eq "installed-d3d12-3d-package-smoke") {
+            foreach ($requiredArg in @("--require-config", "--require-scene-package", "--require-d3d12-scene-shaders", "--require-d3d12-renderer", "--require-scene-gpu-bindings")) {
+                if ([string]$recipe.command -notmatch [regex]::Escape($requiredArg)) {
+                    Write-Error "Desktop runtime 3D package scaffold package validation recipe missing ${requiredArg}: $($recipe.name)"
                 }
             }
-            elseif ([string]$recipe.command -notmatch "--require-visible-3d-production-proof") {
-                Write-Error "Desktop runtime 3D package scaffold visible production proof recipe missing --require-visible-3d-production-proof: $($recipe.name)"
+        }
+        foreach ($retiredArg in @(
+                "--require-morph-package",
+                "--require-quaternion-animation",
+                "--require-compute-morph",
+                "--require-compute-morph-normal-tangent",
+                "--require-compute-morph-skin",
+                "--require-compute-morph-async-telemetry",
+                "--require-package-streaming-safe-point",
+                "--require-gameplay-systems",
+                "--require-postprocess",
+                "--require-postprocess-depth-input",
+                "--require-renderer-quality-gates",
+                "--require-playable-3d-slice",
+                "--require-native-ui-overlay",
+                "--require-visible-3d-production-proof",
+                "--require-native-ui-textured-sprite-atlas",
+                "--require-native-ui-text-glyph-atlas",
+                "--require-directional-shadow",
+                "--require-directional-shadow-filtering",
+                "--require-shadow-morph-composition",
+                "--require-scene-collision-package",
+                "--require-vulkan-renderer"
+            )) {
+            if ([string]$recipe.command -match [regex]::Escape($retiredArg)) {
+                Write-Error "Desktop runtime 3D package scaffold recipe must not include retired unsupported Win32 3D smoke arg ${retiredArg}: $($recipe.name)"
             }
-        }
-        if ($recipe.name -match "native-ui-textured-sprite-atlas" -and [string]$recipe.command -notmatch "--require-native-ui-textured-sprite-atlas") {
-            Write-Error "Desktop runtime 3D package scaffold textured UI atlas recipe missing --require-native-ui-textured-sprite-atlas: $($recipe.name)"
-        }
-        if ($recipe.name -match "native-ui-text-glyph-atlas" -and [string]$recipe.command -notmatch "--require-native-ui-text-glyph-atlas") {
-            Write-Error "Desktop runtime 3D package scaffold text glyph UI atlas recipe missing --require-native-ui-text-glyph-atlas: $($recipe.name)"
         }
     }
 
@@ -1390,19 +1365,12 @@ try {
     $desktop3dUiOverlayHlsl = Get-Content -LiteralPath (Join-Path $desktop3dGameRoot "shaders/runtime_ui_overlay.hlsl") -Raw
     Assert-ContainsText $desktop3dCmake "MK_add_desktop_runtime_game(desktop_3d_package_game" "Desktop 3D scaffold CMake"
     Assert-ContainsText $desktop3dCmake "PACKAGE_FILES_FROM_MANIFEST" "Desktop 3D scaffold CMake"
+    Assert-ContainsText $desktop3dCmake "HOST_BACKEND" "Desktop 3D scaffold CMake"
+    Assert-ContainsText $desktop3dCmake "win32" "Desktop 3D scaffold CMake"
     Assert-ContainsText $desktop3dCmake "--require-scene-package" "Desktop 3D scaffold CMake"
-    Assert-ContainsText $desktop3dCmake "--require-primary-camera-controller" "Desktop 3D scaffold CMake"
-    Assert-ContainsText $desktop3dCmake "--require-transform-animation" "Desktop 3D scaffold CMake"
-    Assert-ContainsText $desktop3dCmake "--require-morph-package" "Desktop 3D scaffold CMake"
-    Assert-ContainsText $desktop3dCmake "--require-quaternion-animation" "Desktop 3D scaffold CMake"
-    Assert-ContainsText $desktop3dCmake "--require-package-streaming-safe-point" "Desktop 3D scaffold CMake"
-    Assert-ContainsText $desktop3dCmake "--require-renderer-quality-gates" "Desktop 3D scaffold CMake"
-    Assert-ContainsText $desktop3dCmake "--require-postprocess-depth-input" "Desktop 3D scaffold CMake"
-    Assert-ContainsText $desktop3dCmake "--require-playable-3d-slice" "Desktop 3D scaffold CMake"
-    Assert-ContainsText $desktop3dCmake "--require-native-ui-overlay" "Desktop 3D scaffold CMake"
-    Assert-ContainsText $desktop3dCmake "--require-visible-3d-production-proof" "Desktop 3D scaffold CMake"
-    Assert-ContainsText $desktop3dCmake "--require-native-ui-textured-sprite-atlas" "Desktop 3D scaffold CMake"
-    Assert-ContainsText $desktop3dCmake "--require-scene-collision-package" "Desktop 3D scaffold CMake"
+    Assert-ContainsText $desktop3dCmake "--require-d3d12-scene-shaders" "Desktop 3D scaffold CMake"
+    Assert-ContainsText $desktop3dCmake "--require-d3d12-renderer" "Desktop 3D scaffold CMake"
+    Assert-ContainsText $desktop3dCmake "--require-scene-gpu-bindings" "Desktop 3D scaffold CMake"
     Assert-ContainsText $desktop3dCmake "MK_animation" "Desktop 3D scaffold CMake"
     Assert-ContainsText $desktop3dCmake "MK_ui" "Desktop 3D scaffold CMake"
     Assert-ContainsText $desktop3dCmake "MK_ui_renderer" "Desktop 3D scaffold CMake"
@@ -1420,229 +1388,94 @@ try {
     Assert-ContainsText $desktop3dCmake "SHADOW_RECEIVER_ENTRY ps_shadow_receiver" "Desktop 3D scaffold CMake"
     Assert-ContainsText $desktop3dCmake "SHADOW_VERTEX_ENTRY vs_shadow" "Desktop 3D scaffold CMake"
     Assert-ContainsText $desktop3dCmake "SHADOW_FRAGMENT_ENTRY ps_shadow" "Desktop 3D scaffold CMake"
-    Assert-ContainsText $desktop3dCmake "--require-compute-morph-skin" "Desktop 3D scaffold CMake"
-    Assert-ContainsText $desktop3dCmake "--require-compute-morph-async-telemetry" "Desktop 3D scaffold CMake"
-    Assert-ContainsText $desktop3dMain "primary_camera_controller_passed" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "--require-primary-camera-controller" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "--require-transform-animation" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "--require-morph-package" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "--require-quaternion-animation" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "--require-package-streaming-safe-point" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "execute_selected_runtime_package_streaming_safe_point" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "residency_hint_failed" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "resident_catalog_refresh_failed" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "resident_eviction_plan_failed" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "required_preload_assets = {packaged_scene_asset_id()}" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "resident_resource_kinds" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "max_resident_packages = 1" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "package_streaming_status=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "package_streaming_ready=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "package_streaming_resident_bytes=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "package_streaming_committed_records=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "package_streaming_required_preload_assets=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "package_streaming_resident_resource_kinds=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "package_streaming_resident_packages=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "package_streaming_diagnostics=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "--require-renderer-quality-gates" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "--require-native-ui-overlay" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "--require-visible-3d-production-proof" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "--require-native-ui-textured-sprite-atlas" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "--require-native-ui-text-glyph-atlas" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "--require-scene-collision-package" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "mirakana/runtime/physics_collision_runtime.hpp" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "packaged_collision_scene_asset_id" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "runtime_physics_collision_scene_3d_payload" "Desktop 3D scaffold main.cpp"
-    foreach ($needle in @("collision_package_status=", "collision_package_bodies=", "collision_package_trigger_overlaps=", "collision_query_readiness_status=", "collision_query_readiness_diagnostic=", "collision_query_readiness_diagnostics=")) { Assert-ContainsText $desktop3dMain $needle "Desktop 3D scaffold main.cpp" }
-    Assert-ContainsText $desktop3dMain "gameplay_systems_collision_package_ready=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "mirakana/ui/ui.hpp" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "mirakana/ui_renderer/ui_renderer.hpp" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "build_ui_renderer_image_palette_from_runtime_ui_atlas" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "build_ui_renderer_glyph_atlas_palette_from_runtime_ui_atlas" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "hud_boxes=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "hud_images=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "hud_text_glyphs=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "text_glyphs_resolved=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "ui_atlas_metadata_status=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "ui_atlas_metadata_glyphs=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "ui_texture_overlay_status=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "ui_overlay_requested=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "visible_3d_status=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "visible_3d_presented_frames=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "visible_3d_d3d12_selected=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "visible_3d_vulkan_selected=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "load_packaged_d3d12_native_ui_overlay_shaders" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "enable_native_ui_overlay" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "enable_native_ui_overlay_textures" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "evaluate_sdl_desktop_presentation_quality_gate" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "renderer_quality_status=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "renderer_quality_ready=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "renderer_quality_diagnostics=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "renderer_quality_expected_framegraph_passes=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "renderer_quality_expected_framegraph_render_passes=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "renderer_quality_expected_framegraph_barrier_steps=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "renderer_quality_framegraph_passes_ok=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "renderer_quality_framegraph_render_passes_ok=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "renderer_quality_framegraph_barrier_steps_ok=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "renderer_quality_framegraph_execution_budget_ok=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "renderer_quality_scene_gpu_ready=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "renderer_quality_postprocess_ready=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "--require-postprocess-depth-input" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "require_postprocess_depth_input" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "enable_postprocess_depth_input" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "postprocess_depth_input_ready=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "renderer_quality_postprocess_depth_input_ready=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "--require-directional-shadow" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "--require-directional-shadow-filtering" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "--require-shadow-morph-composition" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "require_shadow_morph_composition" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "require_graphics_morph_scene" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "load_packaged_d3d12_shifted_shadow_receiver_scene_shaders" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "load_packaged_vulkan_shifted_shadow_receiver_scene_shaders" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "shifted_shadow_receiver_shader_diagnostic" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "skinned_scene_fragment_shader = mirakana::SdlDesktopPresentationShaderBytecode" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "enable_directional_shadow_smoke" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "directional_shadow_status=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "directional_shadow_ready=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "directional_shadow_filter_mode=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "framegraph_passes_executed=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "framegraph_render_passes_recorded=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "framegraph_barrier_steps_executed=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "renderer_quality_directional_shadow_ready=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "renderer_quality_directional_shadow_filter_ready=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "--require-playable-3d-slice" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "playable_3d_status=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "playable_3d_ready=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "playable_3d_scene_mesh_plan_ready=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "playable_3d_renderer_quality_ready=" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "packaged_animation_bindings" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "packaged_mesh_asset_id" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "packaged_skinned_mesh_asset_id" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "packaged_morph_mesh_asset_id" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "packaged_morph_animation_asset_id" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "runtime_morph_mesh_cpu_payload" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "runtime_animation_float_clip_payload" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "runtime_animation_quaternion_clip_payload" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "make_animation_joint_tracks_3d_from_f32_bytes" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "sample_animation_local_pose_3d" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "sample_and_apply_runtime_scene_render_animation_pose_3d" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "sample_and_apply_runtime_scene_render_animation_float_clip" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "sample_runtime_morph_mesh_cpu_animation_float_clip" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "transform_animation_passed" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "transform_animation_ticks" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "transform_animation_samples" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "transform_animation_applied" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "final_mesh_x" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "morph_package_passed" "Desktop 3D scaffold main.cpp"
+    foreach ($retiredNeedle in @(
+            "--require-primary-camera-controller",
+            "--require-transform-animation",
+            "--require-morph-package",
+            "--require-quaternion-animation",
+            "--require-package-streaming-safe-point",
+            "--require-renderer-quality-gates",
+            "--require-postprocess-depth-input",
+            "--require-playable-3d-slice",
+            "--require-native-ui-overlay",
+            "--require-visible-3d-production-proof",
+            "--require-native-ui-textured-sprite-atlas",
+            "--require-scene-collision-package",
+            "--require-compute-morph",
+            "--require-compute-morph-skin",
+            "--require-compute-morph-async-telemetry"
+        )) {
+        Assert-DoesNotContainText $desktop3dCmake $retiredNeedle "Desktop 3D scaffold CMake"
+    }
+    foreach ($needle in @(
+            "mirakana/runtime_host/win32/win32_desktop_game_host.hpp",
+            "mirakana/runtime_host/win32/win32_desktop_presentation.hpp",
+            "GameEngine.GeneratedDesktopRuntime3DPackage.Config.v1",
+            "Win32DesktopGameHost",
+            "Win32DesktopPresentationD3d12SceneRendererDesc",
+            "Win32DesktopPresentationShaderBytecode",
+            "mirakana::runtime::load_runtime_asset_package",
+            "mirakana::instantiate_runtime_scene_render_data",
+            "mirakana::submit_scene_render_packet",
+            "--require-d3d12-scene-shaders",
+            "--require-vulkan-scene-shaders",
+            "--require-d3d12-renderer",
+            "--require-vulkan-renderer",
+            "--require-scene-gpu-bindings",
+            "required_scene_gpu_bindings_unavailable",
+            "required_postprocess_unavailable",
+            "required_vulkan_renderer_unavailable",
+            "postprocess_status=unsupported",
+            "postprocess_policy_framegraph_passes=0",
+            "framegraph_passes=0",
+            "scene_gpu_status=",
+            "scene_gpu_mesh_bindings=",
+            "scene_gpu_material_bindings=",
+            "scene_gpu_mesh_uploads=",
+            "scene_gpu_texture_uploads="
+        )) {
+        Assert-ContainsText $desktop3dMain $needle "Desktop 3D scaffold main.cpp"
+    }
+    foreach ($retiredNeedle in @(
+            "runtime_host/sdl3",
+            "SdlDesktop",
+            "evaluate_sdl_desktop_presentation_quality_gate",
+            "--require-primary-camera-controller",
+            "--require-transform-animation",
+            "--require-morph-package",
+            "--require-quaternion-animation",
+            "--require-package-streaming-safe-point",
+            "--require-renderer-quality-gates",
+            "--require-postprocess-depth-input",
+            "--require-playable-3d-slice",
+            "--require-native-ui-overlay",
+            "--require-visible-3d-production-proof",
+            "--require-native-ui-textured-sprite-atlas",
+            "--require-native-ui-text-glyph-atlas",
+            "--require-scene-collision-package",
+            "--require-directional-shadow",
+            "--require-directional-shadow-filtering",
+            "--require-shadow-morph-composition",
+            "--require-compute-morph",
+            "--require-compute-morph-normal-tangent",
+            "--require-compute-morph-skin",
+            "--require-compute-morph-async-telemetry",
+            "load_packaged_d3d12_native_ui_overlay_shaders",
+            "load_packaged_d3d12_shifted_shadow_receiver_scene_shaders",
+            "SdlDesktopPresentationShaderBytecode",
+            "SdlDesktopPresentationSceneMorphMeshBinding",
+            "scene_gpu_compute_morph"
+        )) {
+        Assert-DoesNotContainText $desktop3dMain $retiredNeedle "Desktop 3D scaffold main.cpp"
+    }
     Assert-ContainsText $desktop3dPostprocessHlsl "scene_depth_texture" "Desktop 3D scaffold postprocess shader"
     Assert-ContainsText $desktop3dPostprocessHlsl "scene_depth_sampler" "Desktop 3D scaffold postprocess shader"
     Assert-ContainsText $desktop3dSceneHlsl "ps_shadow_receiver" "Desktop 3D scaffold scene shader"
     Assert-ContainsText $desktop3dSceneHlsl "ShadowReceiverConstants" "Desktop 3D scaffold scene shader"
-    Assert-ContainsText $desktop3dSceneHlsl "MK_SAMPLE_SHIFTED_SCENE_SHADOW_RECEIVER_PS" "Desktop 3D scaffold scene shader"
-    Assert-ContainsText $desktop3dSceneHlsl "shadow_depth_texture : register(t0, space2)" "Desktop 3D scaffold scene shader"
-    Assert-ContainsText $desktop3dSceneHlsl "ShadowReceiverConstants : register(b2, space2)" "Desktop 3D scaffold scene shader"
     Assert-ContainsText $desktop3dShadowHlsl "vs_shadow" "Desktop 3D scaffold shadow shader"
     Assert-ContainsText $desktop3dShadowHlsl "ps_shadow" "Desktop 3D scaffold shadow shader"
     Assert-DoesNotContainText $desktop3dShadowHlsl "BLENDINDICES" "Desktop 3D scaffold shadow shader"
     Assert-DoesNotContainText $desktop3dShadowHlsl "BLENDWEIGHT" "Desktop 3D scaffold shadow shader"
-    Assert-ContainsText $desktop3dMain "morph_package_samples" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "morph_package_weights" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "morph_package_vertices" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "morph_first_position_x" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "quaternion_animation_passed" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "quaternion_animation_ticks" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "quaternion_animation_tracks" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "quaternion_animation_failures" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "quaternion_animation_scene_applied" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "quaternion_animation_scene_rotation_z" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "load_packaged_d3d12_scene_morph_shaders" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "load_packaged_d3d12_scene_compute_morph_shaders" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "load_packaged_d3d12_scene_compute_morph_skinned_shaders" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "load_packaged_vulkan_scene_morph_shaders" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "load_packaged_vulkan_scene_compute_morph_shaders" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "kRuntimeSceneMorphVertexShaderPath" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "kRuntimeSceneComputeMorphVertexShaderPath" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "kRuntimeSceneComputeMorphShaderPath" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "kRuntimeSceneComputeMorphSkinnedVertexShaderPath" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "kRuntimeSceneComputeMorphSkinnedShaderPath" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "kRuntimeSceneVulkanMorphVertexShaderPath" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "kRuntimeSceneVulkanComputeMorphVertexShaderPath" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "kRuntimeSceneVulkanComputeMorphShaderPath" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "kRuntimeSceneVulkanComputeMorphTangentFrameVertexShaderPath" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "kRuntimeSceneVulkanComputeMorphTangentFrameShaderPath" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "kRuntimeSceneVulkanComputeMorphSkinnedVertexShaderPath" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "kRuntimeSceneVulkanComputeMorphSkinnedShaderPath" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "vulkan_compute_morph_shader_diagnostic" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "vulkan_compute_morph_tangent_frame_shader_diagnostic" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "vulkan_compute_morph_skinned_shader_diagnostic" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "Vulkan compute morph package smoke does not support async telemetry requirements" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "morph_vertex_shader = mirakana::SdlDesktopPresentationShaderBytecode" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "compute_morph_vertex_shader = mirakana::SdlDesktopPresentationShaderBytecode" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "compute_morph_shader = mirakana::SdlDesktopPresentationShaderBytecode" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "compute_morph_skinned_shader = mirakana::SdlDesktopPresentationShaderBytecode" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "d3d12_scene_renderer->morph_mesh_assets = {packaged_morph_mesh_asset_id()}" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_mesh_asset_id()" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_skinned_mesh_asset_id()" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "compute_morph_mesh_bindings" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "compute_morph_skinned_mesh_bindings" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "--require-compute-morph" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "--require-compute-morph-normal-tangent" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "--require-compute-morph-skin" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "--require-compute-morph-async-telemetry" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "require_compute_morph_async_telemetry" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "require_compute_morph_skin" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "activate_compute_morph_skinned_scene" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "runtime_compute_morph_skinned_scene_vertex_buffers" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "runtime_compute_morph_skinned_scene_vertex_attributes" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "require_compute_morph_normal_tangent" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "enable_compute_morph_tangent_frame_output" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "load_packaged_d3d12_scene_compute_morph_tangent_frame_shaders" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "load_packaged_vulkan_scene_compute_morph_tangent_frame_shaders" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "kRuntimeSceneComputeMorphTangentFrameVertexShaderPath" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "kRuntimeSceneComputeMorphTangentFrameShaderPath" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_gpu_morph_mesh_bindings" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_gpu_morph_mesh_uploads" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_gpu_morph_mesh_resolved" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_gpu_uploaded_morph_bytes" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "renderer_gpu_morph_draws" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "renderer_morph_descriptor_binds" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_gpu_compute_morph_mesh_bindings" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_gpu_compute_morph_dispatches" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_gpu_compute_morph_queue_waits" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_gpu_compute_morph_async_compute_queue_submits" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_gpu_compute_morph_async_graphics_queue_waits" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_gpu_compute_morph_async_graphics_queue_submits" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_gpu_compute_morph_async_last_compute_fence" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_gpu_compute_morph_async_last_graphics_wait_fence" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_gpu_compute_morph_async_last_graphics_submit_fence" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_gpu_compute_morph_mesh_resolved" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_gpu_compute_morph_draws" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_gpu_compute_morph_tangent_frame_output" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_gpu_compute_morph_skinned_mesh_bindings" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_gpu_compute_morph_skinned_dispatches" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_gpu_compute_morph_skinned_queue_waits" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_gpu_compute_morph_skinned_mesh_resolved" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_gpu_compute_morph_skinned_draws" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_gpu_compute_morph_output_position_bytes" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_gpu_stats.morph_mesh_uploads < 1" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_gpu_stats.morph_mesh_bindings_resolved" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_gpu_stats.uploaded_morph_bytes == 0" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_gpu_stats.compute_morph_queue_waits < 1" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_gpu_stats.compute_morph_async_compute_queue_submits < 1" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_gpu_stats.compute_morph_async_last_graphics_submitted_fence_value == 0" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_gpu_stats.compute_morph_skinned_mesh_bindings < 1" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_gpu_stats.compute_morph_skinned_mesh_bindings_resolved" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_gpu_stats.compute_morph_output_position_bytes == 0" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "report.renderer_stats.gpu_morph_draws" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "report.renderer_stats.morph_descriptor_binds" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "report.renderer_stats.gpu_skinning_draws" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "report.renderer_stats.skinned_palette_descriptor_binds" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "camera_controller_ticks" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "plan_scene_mesh_draws" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_mesh_plan_meshes" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_mesh_plan_draws" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_mesh_plan_unique_meshes" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_mesh_plan_unique_materials" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "scene_mesh_plan_diagnostics" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dScene "node.1.mesh_renderer.visible=true" "Desktop 3D scaffold scene"
     Assert-ContainsText $desktop3dScene "node.2.light.type=directional" "Desktop 3D scaffold scene"
     Assert-ContainsText $desktop3dScene "node.2.light.casts_shadows=true" "Desktop 3D scaffold scene"
@@ -1752,43 +1585,45 @@ try {
     Remove-ScaffoldCheckRoot $desktop3dScaffoldRoot
 }
 
-$null = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package"
-$committedDesktop3dManifestPath = "games/sample_generated_desktop_runtime_3d_package/game.agent.json"
-$committedDesktop3dManifestFullPath = Resolve-RequiredAgentPath $committedDesktop3dManifestPath
-$committedDesktop3dMainPath = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package/main.cpp"
-$committedDesktop3dReadmePath = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package/README.md"
-$committedDesktop3dIndexPath = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package/runtime/sample_generated_desktop_runtime_3d_package.geindex"
-$committedDesktop3dScenePath = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/packaged_scene.scene"
-$committedDesktop3dSceneShaderPath = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package/shaders/runtime_scene.hlsl"
-$committedDesktop3dPostprocessShaderPath = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package/shaders/runtime_postprocess.hlsl"
-$committedDesktop3dShadowShaderPath = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package/shaders/runtime_shadow.hlsl"
-$committedDesktop3dUiOverlayShaderPath = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package/shaders/runtime_ui_overlay.hlsl"
-$committedDesktop3dUiAtlasPath = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/hud.uiatlas"
-$committedDesktop3dUiTextGlyphAtlasPath = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/hud_text.uiatlas"
-$committedDesktop3dCollisionPath = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/collision.collision3d"
-$committedDesktop3dManifest = Get-Content -LiteralPath $committedDesktop3dManifestFullPath -Raw | ConvertFrom-Json
-$committedDesktop3dManifestText = Get-Content -LiteralPath $committedDesktop3dManifestFullPath -Raw
-$committedDesktop3dMainText = Get-Content -LiteralPath $committedDesktop3dMainPath -Raw
-$committedDesktop3dReadmeText = Get-Content -LiteralPath $committedDesktop3dReadmePath -Raw
-$committedDesktop3dIndexText = Get-Content -LiteralPath $committedDesktop3dIndexPath -Raw
-$committedDesktop3dSceneText = Get-Content -LiteralPath $committedDesktop3dScenePath -Raw
-$committedDesktop3dSceneShaderText = Get-Content -LiteralPath $committedDesktop3dSceneShaderPath -Raw
-$committedDesktop3dPostprocessShaderText = Get-Content -LiteralPath $committedDesktop3dPostprocessShaderPath -Raw
-$committedDesktop3dShadowShaderText = Get-Content -LiteralPath $committedDesktop3dShadowShaderPath -Raw
-$committedDesktop3dUiOverlayShaderText = Get-Content -LiteralPath $committedDesktop3dUiOverlayShaderPath -Raw
-$committedDesktop3dUiAtlasText = Get-Content -LiteralPath $committedDesktop3dUiAtlasPath -Raw
-$committedDesktop3dUiTextGlyphAtlasText = Get-Content -LiteralPath $committedDesktop3dUiTextGlyphAtlasPath -Raw
-$committedDesktop3dCollisionText = Get-Content -LiteralPath $committedDesktop3dCollisionPath -Raw
-$committedDesktop3dCmakeText = Get-AgentSurfaceText "games/CMakeLists.txt"
-Assert-ContainsText $committedDesktop3dCmakeText "-DMK_SAMPLE_SKINNED_SCENE_SHADOW_RECEIVER_PS=1" "games/CMakeLists.txt committed sample desktop runtime game shader helper"
-Assert-DoesNotContainText $committedDesktop3dCmakeText "-DGE_SAMPLE_SKINNED_SCENE_SHADOW_RECEIVER_PS=1" "games/CMakeLists.txt committed sample desktop runtime game shader helper"
-$committedDesktop3dCmakeBlock = [regex]::Match(
-    $committedDesktop3dCmakeText,
-    "MK_add_desktop_runtime_game\(sample_generated_desktop_runtime_3d_package[\s\S]*?\n\s*\)"
-).Value
-if ([string]::IsNullOrWhiteSpace($committedDesktop3dCmakeBlock)) {
-    Write-Error "games/CMakeLists.txt committed generated 3D package sample block was not found"
-}
+$committedDesktop3dRootPath = Join-Path $root "games/sample_generated_desktop_runtime_3d_package"
+if (Test-Path -LiteralPath $committedDesktop3dRootPath) {
+    $null = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package"
+    $committedDesktop3dManifestPath = "games/sample_generated_desktop_runtime_3d_package/game.agent.json"
+    $committedDesktop3dManifestFullPath = Resolve-RequiredAgentPath $committedDesktop3dManifestPath
+    $committedDesktop3dMainPath = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package/main.cpp"
+    $committedDesktop3dReadmePath = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package/README.md"
+    $committedDesktop3dIndexPath = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package/runtime/sample_generated_desktop_runtime_3d_package.geindex"
+    $committedDesktop3dScenePath = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/packaged_scene.scene"
+    $committedDesktop3dSceneShaderPath = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package/shaders/runtime_scene.hlsl"
+    $committedDesktop3dPostprocessShaderPath = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package/shaders/runtime_postprocess.hlsl"
+    $committedDesktop3dShadowShaderPath = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package/shaders/runtime_shadow.hlsl"
+    $committedDesktop3dUiOverlayShaderPath = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package/shaders/runtime_ui_overlay.hlsl"
+    $committedDesktop3dUiAtlasPath = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/hud.uiatlas"
+    $committedDesktop3dUiTextGlyphAtlasPath = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/hud_text.uiatlas"
+    $committedDesktop3dCollisionPath = Resolve-RequiredAgentPath "games/sample_generated_desktop_runtime_3d_package/runtime/assets/3d/collision.collision3d"
+    $committedDesktop3dManifest = Get-Content -LiteralPath $committedDesktop3dManifestFullPath -Raw | ConvertFrom-Json
+    $committedDesktop3dManifestText = Get-Content -LiteralPath $committedDesktop3dManifestFullPath -Raw
+    $committedDesktop3dMainText = Get-Content -LiteralPath $committedDesktop3dMainPath -Raw
+    $committedDesktop3dReadmeText = Get-Content -LiteralPath $committedDesktop3dReadmePath -Raw
+    $committedDesktop3dIndexText = Get-Content -LiteralPath $committedDesktop3dIndexPath -Raw
+    $committedDesktop3dSceneText = Get-Content -LiteralPath $committedDesktop3dScenePath -Raw
+    $committedDesktop3dSceneShaderText = Get-Content -LiteralPath $committedDesktop3dSceneShaderPath -Raw
+    $committedDesktop3dPostprocessShaderText = Get-Content -LiteralPath $committedDesktop3dPostprocessShaderPath -Raw
+    $committedDesktop3dShadowShaderText = Get-Content -LiteralPath $committedDesktop3dShadowShaderPath -Raw
+    $committedDesktop3dUiOverlayShaderText = Get-Content -LiteralPath $committedDesktop3dUiOverlayShaderPath -Raw
+    $committedDesktop3dUiAtlasText = Get-Content -LiteralPath $committedDesktop3dUiAtlasPath -Raw
+    $committedDesktop3dUiTextGlyphAtlasText = Get-Content -LiteralPath $committedDesktop3dUiTextGlyphAtlasPath -Raw
+    $committedDesktop3dCollisionText = Get-Content -LiteralPath $committedDesktop3dCollisionPath -Raw
+    $committedDesktop3dCmakeText = Get-AgentSurfaceText "games/CMakeLists.txt"
+    Assert-ContainsText $committedDesktop3dCmakeText "-DMK_SAMPLE_SKINNED_SCENE_SHADOW_RECEIVER_PS=1" "games/CMakeLists.txt committed sample desktop runtime game shader helper"
+    Assert-DoesNotContainText $committedDesktop3dCmakeText "-DGE_SAMPLE_SKINNED_SCENE_SHADOW_RECEIVER_PS=1" "games/CMakeLists.txt committed sample desktop runtime game shader helper"
+    $committedDesktop3dCmakeBlock = [regex]::Match(
+        $committedDesktop3dCmakeText,
+        "MK_add_desktop_runtime_game\(sample_generated_desktop_runtime_3d_package[\s\S]*?\n\s*\)"
+    ).Value
+    if ([string]::IsNullOrWhiteSpace($committedDesktop3dCmakeBlock)) {
+        Write-Error "games/CMakeLists.txt committed generated 3D package sample block was not found"
+    }
 
 if ($committedDesktop3dManifest.gameplayContract.productionRecipe -ne "3d-playable-desktop-package") {
     Write-Error "$committedDesktop3dManifestPath must select 3d-playable-desktop-package"
@@ -2235,6 +2070,9 @@ Assert-ContainsText $committedDesktop3dReadmeText "--require-native-ui-text-glyp
 Assert-ContainsText $committedDesktop3dReadmeText "--require-scene-collision-package" "committed generated 3D sample README"
 Assert-ContainsText $committedDesktop3dReadmeText "--require-entity-scale-culling" "committed generated 3D sample README"
 Assert-ContainsText $committedDesktop3dReadmeText "plan_runtime_entity_scale_culling" "committed generated 3D sample README"
+}
+$retiredGenerated3dPackageProof = Test-RetiredSdl3DesktopRuntimeSamplePath "games/sample_generated_desktop_runtime_3d_package/main.cpp"
+if (-not $retiredGenerated3dPackageProof) {
 Assert-ContainsText $engineManifestText "desktopRuntime3dPackageStreamingSafePointSmoke" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "--require-package-streaming-safe-point" "engine/agent/manifest.json"
 Assert-ContainsText $engineManifestText "package_streaming_status" "engine/agent/manifest.json"
@@ -2302,6 +2140,7 @@ Assert-ContainsText $gameSkillText "--require-native-ui-overlay" "gameengine gam
 Assert-ContainsText $gameSkillText "--require-visible-3d-production-proof" "gameengine game-development skill"
 Assert-ContainsText $gameSkillText "--require-native-ui-text-glyph-atlas" "gameengine game-development skill"
 Assert-ContainsText $generatedScenariosText "--require-shadow-morph-composition" "docs/specs/generated-game-validation-scenarios.md"
+}
 Assert-ContainsText $generatedScenariosText "--require-native-ui-overlay" "docs/specs/generated-game-validation-scenarios.md"
 Assert-ContainsText $generatedScenariosText "--require-visible-3d-production-proof" "docs/specs/generated-game-validation-scenarios.md"
 Assert-ContainsText $generatedScenariosText "--require-native-ui-text-glyph-atlas" "docs/specs/generated-game-validation-scenarios.md"

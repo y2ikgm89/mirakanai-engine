@@ -1604,7 +1604,7 @@ $editorProfilerTraceExportChecks = @(
             "Review Trace JSON",
             "Import Trace JSON",
             "Browse Trace JSON",
-            "SdlFileDialogService",
+            "retired file-dialog bridge",
             "broader editor native save/open dialogs outside Profiler",
             "arbitrary JSON conversion",
             "first-party exported Trace Event JSON subset"

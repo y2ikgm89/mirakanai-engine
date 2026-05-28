@@ -70,7 +70,7 @@ namespace {
 
 [[nodiscard]] mirakana::AudioProductionDeviceLifecycleRow device_lifecycle(bool host_evidence) {
     return mirakana::AudioProductionDeviceLifecycleRow{
-        .backend_id = "sdl3",
+        .backend_id = "wasapi",
         .uses_logical_device = true,
         .uses_audio_stream = true,
         .uses_queueing = true,
@@ -126,6 +126,13 @@ namespace {
 }
 
 } // namespace
+
+MK_TEST("audio production device lifecycle uses wasapi backend evidence") {
+    const auto row = device_lifecycle(false);
+
+    MK_REQUIRE(row.backend_id == "wasapi");
+    MK_REQUIRE(!row.host_evidence_available);
+}
 
 MK_TEST("audio production readiness accepts decoded streaming dsp spatial and device evidence") {
     const auto plan = mirakana::review_audio_production_readiness(make_request(true));

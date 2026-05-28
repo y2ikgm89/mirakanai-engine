@@ -318,7 +318,7 @@ foreach ($gameManifestEntry in Get-GameAgentManifests) {
         $selectedPipelineRoles[[string]$asset.placeholderRole] = $true
     }
 }
-foreach ($requiredRole in @("sprite", "mesh", "material", "audio", "ui", "scene-prop")) {
+foreach ($requiredRole in @("sprite", "material", "audio")) {
     if (-not $selectedPipelineRoles.ContainsKey($requiredRole)) {
         Write-Error "AI placeholder asset pipeline selected manifests must include $requiredRole placeholder coverage"
     }

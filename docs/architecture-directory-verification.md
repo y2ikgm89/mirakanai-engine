@@ -20,7 +20,7 @@ This document records a structured assessment of the repository’s top-level la
 | --- | --- | --- |
 | Runtime modules | `engine/<module>/` (`core`, `math`, `scene`, `renderer`, `rhi`, …) | Feature libraries; `include/mirakana/...` + `src/` |
 | GPU backends | `engine/rhi/<backend>/` | Isolated RHI implementations |
-| Platform | `engine/platform/` (+ optional `sdl3`) | OS APIs behind contracts |
+| Platform | `engine/platform/` (+ optional `win32`) | OS APIs behind contracts |
 | Bridge layers | `runtime_rhi`, `runtime_scene`, `runtime_scene_rhi`, `runtime_host`, … | Prevent dependency inversion; see [architecture.md](architecture.md) |
 | Editor | `editor/core/` (GUI-independent), `editor/src/` (Dear ImGui shell) | Testable core vs. shell |
 | Games | `games/` | Products and samples |

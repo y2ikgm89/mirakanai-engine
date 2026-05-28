@@ -93,7 +93,7 @@ using mirakana::ui::RuntimeUiProductionStackRequest;
         .ime_text_area_cursor_rows = true,
         .ime_committed_text_rows = true,
         .ime_clipboard_rows = true,
-        .ime_sdl3_adapter_proof_rows = true,
+        .ime_win32_adapter_proof_rows = true,
         .ime_platform_host_gate_rows = true,
         .platform_adapter_dispatch_boundary = true,
     };
@@ -250,7 +250,7 @@ MK_TEST("runtime ui production stack rejects incomplete ime and accessibility ev
     request.rows[4].ime_candidate_rows = false;
     request.rows[4].ime_text_area_cursor_rows = false;
     request.rows[4].ime_clipboard_rows = false;
-    request.rows[4].ime_sdl3_adapter_proof_rows = false;
+    request.rows[4].ime_win32_adapter_proof_rows = false;
     request.rows[4].ime_platform_host_gate_rows = false;
     request.rows[4].platform_adapter_dispatch_boundary = false;
     request.rows[5].accessibility_name_rows = false;
@@ -272,7 +272,7 @@ MK_TEST("runtime ui production stack rejects incomplete ime and accessibility ev
     MK_REQUIRE(has_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::missing_ime_text_area_cursor_rows));
     MK_REQUIRE(has_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::missing_ime_clipboard_rows));
     MK_REQUIRE(
-        has_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::missing_ime_sdl3_adapter_proof_rows));
+        has_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::missing_ime_win32_adapter_proof_rows));
     MK_REQUIRE(
         has_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::missing_ime_platform_host_gate_rows));
     MK_REQUIRE(has_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::missing_platform_dispatch_boundary));
@@ -321,7 +321,7 @@ MK_TEST("runtime ui production stack keeps selected accessibility proof host gat
     MK_REQUIRE(plan.diagnostics.empty());
 }
 
-MK_TEST("runtime ui production stack keeps selected sdl3 ime proof host gated") {
+MK_TEST("runtime ui production stack keeps selected win32 ime proof host gated") {
     const auto plan = mirakana::ui::plan_runtime_ui_production_stack(make_package_request());
 
     const auto ime_row = std::ranges::find_if(plan.rows, [](const RuntimeUiProductionEvidenceRow& row) {
@@ -335,7 +335,7 @@ MK_TEST("runtime ui production stack keeps selected sdl3 ime proof host gated") 
     MK_REQUIRE(ime_row->ime_text_area_cursor_rows);
     MK_REQUIRE(ime_row->ime_committed_text_rows);
     MK_REQUIRE(ime_row->ime_clipboard_rows);
-    MK_REQUIRE(ime_row->ime_sdl3_adapter_proof_rows);
+    MK_REQUIRE(ime_row->ime_win32_adapter_proof_rows);
     MK_REQUIRE(ime_row->ime_platform_host_gate_rows);
     MK_REQUIRE(ime_row->platform_adapter_dispatch_boundary);
     MK_REQUIRE(ime_row->host_evidence_required);

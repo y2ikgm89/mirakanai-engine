@@ -77,7 +77,7 @@ Apply ADK servicing patches only when they match installed ADK features. Do not 
 
 `desktop-gui` in `vcpkg.json` is deferred and declares no dependencies while the visible editor shell is being moved away from SDL3. `MK_ENABLE_DESKTOP_GUI=ON` fails fast until a first-party native desktop editor backend lands.
 
-Dear ImGui remains historical optional developer/editor shell context. It is not the production game/runtime UI foundation. Production runtime UI work should first define first-party `MK_ui` contracts.
+Dear ImGui remains historical optional developer/editor shell context. It is not a current package dependency or the production game/runtime UI foundation. Production runtime UI work should first define first-party `MK_ui` contracts.
 
 ### Editor native module boundary (not a vcpkg dependency)
 
@@ -168,8 +168,6 @@ Validated local package versions:
 
 | Package | Version | Use |
 | --- | --- | --- |
-| SDL3 | 3.4.4 | Legacy migration source context only; no current vcpkg feature installs it while Phase 9 deletes the SDL3 modules |
-| Dear ImGui | 1.92.7 | Historical deferred editor shell dependency; no current vcpkg feature installs it |
 | libspng | vcpkg baseline selected | Optional `MK_tools` PNG source importer |
 | fastgltf | vcpkg baseline selected | Optional `MK_tools` glTF 2.0 source importer |
 | miniaudio | vcpkg baseline selected | Optional `MK_tools` WAV/MP3/FLAC source importer |
@@ -191,11 +189,6 @@ Validated local package versions:
 - vcpkg manifest mode: https://learn.microsoft.com/en-us/vcpkg/concepts/manifest-mode
 - vcpkg CMake integration: https://learn.microsoft.com/en-us/vcpkg/users/buildsystems/cmake-integration
 - Windows Core Audio / WASAPI: https://learn.microsoft.com/en-us/windows/win32/coreaudio/wasapi
-- SDL3: https://github.com/libsdl-org/SDL
-- SDL3 platforms: https://wiki.libsdl.org/SDL3/README-platforms
-- SDL3 audio streams: https://wiki.libsdl.org/SDL3/SDL_OpenAudioDeviceStream
-- Dear ImGui: https://github.com/ocornut/imgui
-- Dear ImGui getting started: https://github.com/ocornut/imgui/wiki/Getting-Started
 - libspng: https://libspng.org/
 - fastgltf: https://github.com/spnda/fastgltf
 - miniaudio: https://miniaud.io/
@@ -228,7 +221,6 @@ Validated local package versions:
 
 ## License Notes
 
-- SDL3 is recorded by vcpkg as `Zlib AND MIT AND Apache-2.0`.
 - Dear ImGui uses the MIT license.
 - libspng is BSD-2-Clause.
 - fastgltf is MIT and currently pulls `simdjson` through vcpkg.

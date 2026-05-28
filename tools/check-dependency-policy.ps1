@@ -114,6 +114,8 @@ if ($desktopGui.dependencies.Count -ne 0) {
 Assert-TextNotContains "CMakeLists.txt" "find_package\(SDL3" "root build graph"
 Assert-TextNotContains "CMakeLists.txt" "MK_PACKAGE_HAS_SDL3" "installed package config"
 Assert-TextNotContains "cmake/MirakanaiConfig.cmake.in" "SDL3" "installed package config"
+Assert-TextNotContains "THIRD_PARTY_NOTICES.md" "\| SDL3 \|" "third-party notices"
+Assert-TextNotContains "THIRD_PARTY_NOTICES.md" "\| Dear ImGui \|" "third-party notices"
 
 $assetImporterDependencyNames = @()
 foreach ($dependency in $assetImporters.dependencies) {
@@ -172,8 +174,6 @@ if ($enetDefaultFeatures -ne $false) {
     Write-Error "network-enet enet dependency must set default-features to false"
 }
 
-Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| SDL3 \|" "third-party notices"
-Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| Dear ImGui \|" "third-party notices"
 Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| Jolt Physics \|" "third-party notices"
 Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| ENet \|" "third-party notices"
 Assert-TextContains "docs/dependencies.md" "builtin-baseline" "dependency docs"
