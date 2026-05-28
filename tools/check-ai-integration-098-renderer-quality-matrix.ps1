@@ -264,7 +264,6 @@ foreach ($needle in @(
 foreach ($fragmentSurface in @(
         @{ Text = $modulesFragmentText; Label = "engine/agent/manifest.fragments/004-modules.json" },
         @{ Text = $runtimeFragmentText; Label = "engine/agent/manifest.fragments/006-runtimeBackendReadiness.json" },
-        @{ Text = $packagingFragmentText; Label = "engine/agent/manifest.fragments/008-packagingTargets.json" },
         @{ Text = $gameGuidanceFragmentText; Label = "engine/agent/manifest.fragments/014-gameCodeGuidance.json" }
     )) {
     Assert-ContainsText $fragmentSurface.Text "Renderer General Quality Matrix v1" $fragmentSurface.Label

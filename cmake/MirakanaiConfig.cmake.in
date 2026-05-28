@@ -13,11 +13,6 @@ set_and_check(Mirakanai_DOC_DIR "@PACKAGE_CMAKE_INSTALL_DOCDIR@")
 set_and_check(Mirakanai_AGENT_MANIFEST "${Mirakanai_SHARE_DIR}/manifest.json")
 set_and_check(Mirakanai_THIRD_PARTY_NOTICES "${Mirakanai_SHARE_DIR}/THIRD_PARTY_NOTICES.md")
 
-set(Mirakanai_HAS_SDL3 @MK_PACKAGE_HAS_SDL3@)
-if(Mirakanai_HAS_SDL3)
-    find_dependency(SDL3 CONFIG)
-endif()
-
 set(Mirakanai_HAS_ASSET_IMPORTERS @MK_PACKAGE_HAS_ASSET_IMPORTERS@)
 if(Mirakanai_HAS_ASSET_IMPORTERS)
     find_dependency(SPNG CONFIG)

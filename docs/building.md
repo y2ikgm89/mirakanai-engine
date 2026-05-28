@@ -69,7 +69,7 @@ add_executable(my_game main.cpp)
 target_link_libraries(my_game PRIVATE mirakana::core mirakana::runtime)
 ```
 
-`MirakanaiConfig.cmake` calls `find_dependency` for SDL3 and optional importer dependencies according to what was enabled when the package was built. See `cmake/MirakanaiConfig.cmake.in`.
+`MirakanaiConfig.cmake` calls `find_dependency` only for optional package-manager dependencies that remain exported by the installed SDK, such as importer, physics, or networking adapters. The first-party Windows desktop runtime path does not add an SDL3 package dependency. See `cmake/MirakanaiConfig.cmake.in`.
 
 ## Minimal Exported Target Set
 
@@ -79,7 +79,7 @@ Always-present core examples:
 
 `MK_ai`, `MK_animation`, `MK_assets`, `MK_audio`, `MK_core`, `MK_math`, `MK_navigation`, `MK_physics`, `MK_platform`, `MK_renderer`, `MK_rhi`, `MK_runtime`, `MK_runtime_host`, `MK_runtime_rhi`, `MK_runtime_scene`, `MK_runtime_scene_rhi`, `MK_rhi_metal`, `MK_rhi_vulkan`, `MK_scene`, `MK_scene_renderer`, `MK_tools`, `MK_ui`, `MK_ui_renderer`
 
-Generated optional targets are added to `MK_LIBRARY_TARGETS` only when the `TARGET` exists, such as `MK_rhi_d3d12`, `MK_platform_sdl3`, or `MK_editor_core`. `EXPORT_NAME` shortens the public package names so consumers reference targets such as `mirakana::core`. Runtime executables are installed outside the export set with `RUNTIME` and Apple `BUNDLE` destinations.
+Generated optional targets are added to `MK_LIBRARY_TARGETS` only when the `TARGET` exists, such as `MK_rhi_d3d12`, `MK_platform_win32`, `MK_audio_wasapi`, or `MK_editor_core`. `EXPORT_NAME` shortens the public package names so consumers reference targets such as `mirakana::core`. Runtime executables are installed outside the export set with `RUNTIME` and Apple `BUNDLE` destinations.
 
 ## C++ Modules And `import std`
 

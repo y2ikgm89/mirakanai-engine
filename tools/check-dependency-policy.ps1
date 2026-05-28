@@ -24,6 +24,17 @@ function Assert-TextContains([string]$relativePath, [string]$pattern, [string]$l
     }
 }
 
+function Assert-TextNotContains([string]$relativePath, [string]$pattern, [string]$label) {
+    $path = Join-Path $root $relativePath
+    if (-not (Test-Path $path)) {
+        Write-Error "Missing file for dependency policy check: $relativePath"
+    }
+    $content = Get-Content -LiteralPath $path -Raw
+    if ($content -match $pattern) {
+        Write-Error "$label contains forbidden text pattern: $pattern"
+    }
+}
+
 function Assert-CacheVariableEquals($preset, [string]$variable, [string]$expected) {
     $cacheVariables = Get-JsonPropertyValue -Object $preset -Property "cacheVariables"
     if (-not (Test-JsonProperty -Object $cacheVariables -Property $variable)) {
@@ -99,6 +110,10 @@ if ($desktopRuntimeDependencyNames -contains "imgui") {
 if ($desktopGui.dependencies.Count -ne 0) {
     Write-Error "desktop-gui feature is deferred and must not declare SDL3 or Dear ImGui dependencies"
 }
+
+Assert-TextNotContains "CMakeLists.txt" "find_package\(SDL3" "root build graph"
+Assert-TextNotContains "CMakeLists.txt" "MK_PACKAGE_HAS_SDL3" "installed package config"
+Assert-TextNotContains "cmake/MirakanaiConfig.cmake.in" "SDL3" "installed package config"
 
 $assetImporterDependencyNames = @()
 foreach ($dependency in $assetImporters.dependencies) {

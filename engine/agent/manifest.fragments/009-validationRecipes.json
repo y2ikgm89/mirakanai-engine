@@ -28,12 +28,12 @@
     {
       "name": "desktop-gui",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1",
-      "purpose": "Build and test optional SDL3, Dear ImGui, editor, and SDL3 audio adapter code."
+      "purpose": "Build and test the deferred editor-core verification lane while the visible editor shell waits for a first-party native desktop host; this recipe does not enable SDL3 or Dear ImGui."
     },
     {
       "name": "desktop-game-runtime",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1",
-      "purpose": "Build and test the desktop game runtime lane with Windows-native host evidence first: manifest-linked registered-game metadata with package file path validation, MK_runtime_host tests, MK_runtime_host_win32 public/API tests, Win32 platform tests, WASAPI tests, finite Win32 sample_desktop_runtime_shell smoke execution, DXC-available build-output DXIL shader artifact smoke, DXC SPIR-V CodeGen-available build-output SPIR-V shader artifact smoke, Win32-backed config-only and cooked-scene generated scaffold smokes, and the remaining SDL3-backed material/2D/3D/non-shell sample smokes until their later migration phases move them to the native host."
+      "purpose": "Build and test the desktop game runtime lane with Windows-native host evidence: manifest-linked registered-game metadata with package file path validation, MK_runtime_host tests, MK_runtime_host_win32 public/API tests, Win32 platform tests, WASAPI tests, finite Win32 sample_desktop_runtime_shell smoke execution, DXC-available build-output DXIL shader artifact smoke, DXC SPIR-V CodeGen-available build-output SPIR-V shader artifact smoke, Win32-backed config-only and cooked-scene generated scaffold smokes, sample_2d_desktop_runtime_package smokes, and sample_generated_desktop_runtime_material_shader_package shader-artifact smokes."
     },
     {
       "name": "desktop-runtime-release-package",
@@ -192,8 +192,8 @@
     },
     {
       "name": "audio-production",
-      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R \"MK_audio_tests|MK_sdl3_audio_tests|MK_wasapi_audio_tests\"",
-      "purpose": "Validate Audio Production Playback/Streaming/DSP/Spatialization Evidence v1, including review_audio_production_readiness over decoded source, streaming chunk, conversion, budget, DSP graph, spatial/listener, HRTF host-gate, device lifecycle, unsupported-claim, side-effect, selected-package, production-readiness, diagnostic, and replay-hash rows plus SDL3 and WASAPI callback-free device lifecycle evidence without broad codec, middleware, HRTF execution, background streaming, native-handle, or general production audio quality claims."
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R \"MK_audio_tests|MK_wasapi_audio_tests\"",
+      "purpose": "Validate Audio Production Playback/Streaming/DSP/Spatialization Evidence v1, including review_audio_production_readiness over decoded source, streaming chunk, conversion, budget, DSP graph, spatial/listener, HRTF host-gate, device lifecycle, unsupported-claim, side-effect, selected-package, production-readiness, diagnostic, and replay-hash rows plus WASAPI callback-free device lifecycle evidence without broad codec, middleware, HRTF execution, background streaming, native-handle, or general production audio quality claims."
     },
     {
       "name": "wasapi-audio",
@@ -203,7 +203,7 @@
     {
       "name": "desktop-runtime-2d-audio-production-proof",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools\\package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package",
-      "purpose": "Build the selected 2D desktop runtime package proof and validate audio_production_* counters for reviewed decoded source, streaming chunk, conversion, DSP, spatial/listener, HRTF host gate, SDL3 device lifecycle, unsupported-claim, side-effect, diagnostic, and replay-hash evidence. Installed validation expects audio_production_status=host_evidence_required, selected package evidence ready, device and HRTF host evidence unavailable, zero codec/background/middleware/HRTF/device-callback/device-IO side effects, two host-gate diagnostics, and a positive replay hash without claiming broad codec support, middleware parity, HRTF execution parity, background streaming execution, native handles, or general production audio quality."
+      "purpose": "Build the selected 2D desktop runtime package proof and validate audio_production_* counters for reviewed decoded source, streaming chunk, conversion, DSP, spatial/listener, HRTF host gate, device lifecycle, unsupported-claim, side-effect, diagnostic, and replay-hash evidence. Installed validation expects audio_production_status=host_evidence_required, selected package evidence ready, device and HRTF host evidence unavailable, zero codec/background/middleware/HRTF/device-callback/device-IO side effects, two host-gate diagnostics, and a positive replay hash without claiming broad codec support, middleware parity, HRTF execution parity, background streaming execution, native handles, or general production audio quality."
     },
     {
       "name": "desktop-runtime-3d-audio-production-proof",
