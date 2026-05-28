@@ -24,30 +24,15 @@
         "MK_CXX_STANDARD": "23",
         "MK_ENABLE_CXX_MODULE_SCANNING": "ON",
         "MK_ENABLE_IMPORT_STD": "ON",
+        "MK_ENABLE_DESKTOP_GUI": "OFF",
         "MK_MSVC_CXX23_STANDARD_OPTION": "/std:c++23preview"
-      }
-    },
-    {
-      "name": "dev-windows-gui",
-      "hidden": true,
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Windows"
-      },
-      "cacheVariables": {
-        "MK_ENABLE_DESKTOP_GUI": "ON",
-        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/external/vcpkg/scripts/buildsystems/vcpkg.cmake",
-        "VCPKG_TARGET_TRIPLET": "x64-windows",
-        "VCPKG_MANIFEST_INSTALL": "OFF",
-        "VCPKG_INSTALLED_DIR": "${sourceDir}/vcpkg_installed"
       }
     },
     {
       "name": "dev",
       "displayName": "Developer build",
       "binaryDir": "${sourceDir}/out/build/dev",
-      "inherits": ["normalized-configure-environment", "dev-core", "dev-windows-gui"],
+      "inherits": ["normalized-configure-environment", "dev-core"],
       "cacheVariables": {
         "MK_CXX_STANDARD": "23",
         "MK_ENABLE_CXX_MODULE_SCANNING": "ON",

@@ -558,7 +558,7 @@ or GitHub CLI config access. Candidate 7C is in progress for the Win32 D3D12 sta
 - Modify: `docs/editor.md`
 - Modify: `docs/current-capabilities.md`
 
-- [ ] Choose one editor strategy:
+- [x] Choose one editor strategy:
   - `native_editor_shell_now`: migrate `MK_editor` to Win32 + Dear ImGui + D3D12 backend in this milestone.
   - `editor_shell_deferred`: keep `MK_editor_core` ready, temporarily remove or host-gate the visible editor shell until native shell lands.
 - [ ] If migrating now, re-check Dear ImGui Win32/D3D12 backend docs and license/package implications.
@@ -575,7 +575,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.
 
 **Done When:** The visible editor either builds without SDL3 through native Windows adapters or is explicitly host-gated/deferred without leaving SDL3 as a required dependency.
 
-**Phase Evidence:** Not started.
+**Phase Evidence:** Started with `editor_shell_deferred`: `dev` no longer inherits the Windows GUI preset, and `dev-core` pins `MK_ENABLE_DESKTOP_GUI=OFF` so default validation keeps building `MK_editor_core` without configuring SDL3/Dear ImGui. Evidence: `tools/cmake.ps1 --preset dev` reported `MK_ENABLE_DESKTOP_GUI="OFF"` and wrote `MK_ENABLE_DESKTOP_GUI:BOOL=OFF`; `tools/check-json-contracts.ps1`, `git diff --check`, `tools/check-cpp-standard-policy.ps1`, `tools/check-dependency-policy.ps1`, `tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests`, `tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_core_tests`, and `tools/validate.ps1` passed.
 
 ## Phase 9 - SDL3 Dependency And Source Removal
 
