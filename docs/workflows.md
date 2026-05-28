@@ -141,13 +141,11 @@ Publication-capable Codex sessions: before promising commit/push/PR/merge, confi
 Recommended preflight before staging or publishing from a Codex-controlled worktree:
 
 ```powershell
-git status --short --branch
-git rev-parse --path-format=absolute --git-path index.lock
-git ls-remote --heads origin <branch>
-gh auth status
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1 -PullRequest <pr> -RequireClean
 ```
 
-For linked worktrees, also verify the `git rev-parse --git-path index.lock` parent directory is writable by the current process before `git add`; if it is not, switch session mode or host context instead of changing repository permissions ad hoc.
+The wrapper prints `publication-preflight: ok` only after it confirms the current branch, `git status --short --branch`, `git rev-parse --path-format=absolute --git-path index.lock`, linked-worktree Git admin writability, `git update-index -q --refresh`, `git ls-remote --heads origin <branch>`, `Test-NetConnection` to GitHub, GitHub CLI config readability, `gh auth status`, and optional `gh pr view <pr> --json headRefOid,statusCheckRollup,url`. If it prints `publication-preflight: blocked`, switch session mode or host context instead of changing repository permissions ad hoc or bypassing GitHub Flow.
 
 Checkpoint guidance:
 

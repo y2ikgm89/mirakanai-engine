@@ -23,6 +23,7 @@ $dependenciesPath = Resolve-RequiredAgentPath "docs/dependencies.md"
 $legalPath = Resolve-RequiredAgentPath "docs/legal-and-licensing.md"
 $planRegistryPath = Resolve-RequiredAgentPath "docs/superpowers/plans/README.md"
 $productionCompletionMasterPlanPath = Resolve-RequiredAgentPath "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
+$publicationPreflightToolPath = Resolve-RequiredAgentPath "tools/check-publication-preflight.ps1"
 $removeMergedWorktreeToolPath = Resolve-RequiredAgentPath "tools/remove-merged-worktree.ps1"
 foreach ($textFormatToolPath in @("tools/check-text-format.ps1", "tools/check-text-format-contract.ps1", "tools/format-text.ps1", "tools/text-format-core.ps1")) {
     Resolve-RequiredAgentPath $textFormatToolPath | Out-Null
@@ -88,7 +89,23 @@ Assert-ContainsText $agentsContent "validated commit checkpoints" "AGENTS.md"
 Assert-ContainsText $agentsContent "policy reload" "AGENTS.md"
 Assert-ContainsText $agentsContent "GitHub Desktop" "AGENTS.md"
 Assert-ContainsText $agentsContent "official GitHub Flow" "AGENTS.md"
-Assert-ContainsText $agentsContent 'Before push/PR, preflight Git admin write, remote state, `origin`, and `gh auth`' "AGENTS.md"
+Assert-ContainsText $agentsContent 'Before staging/push/PR/merge, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1' "AGENTS.md"
+Assert-ContainsText $agentsContent "tools/check-publication-preflight.ps1" "AGENTS.md"
+
+$publicationPreflightToolContent = Get-Content -LiteralPath $publicationPreflightToolPath -Raw
+foreach ($needle in @(
+        "Test-PublicationPreflight",
+        "git update-index -q --refresh",
+        "git rev-parse --path-format=absolute --git-path index.lock",
+        "Test-NetConnection",
+        "gh auth status",
+        "gh pr view",
+        "publication-preflight: ok",
+        "publication-preflight: blocked",
+        "PublicationPreflightStatus"
+    )) {
+    Assert-ContainsText $publicationPreflightToolContent $needle "tools/check-publication-preflight.ps1"
+}
 
 $removeMergedWorktreeToolContent = Get-Content -LiteralPath $removeMergedWorktreeToolPath -Raw
 Assert-ContainsText $removeMergedWorktreeToolContent "ConvertTo-ExtendedLengthPath" "tools/remove-merged-worktree.ps1"
@@ -170,7 +187,10 @@ Assert-ContainsText $workflowsContent "AGENTS.override.md" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "Commit, Push, And Pull Request Workflow" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "Treat publishing as a slice-closing gate" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "Publication-capable Codex sessions" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "tools/check-publication-preflight.ps1" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "git rev-parse --path-format=absolute --git-path index.lock" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "git update-index -q --refresh" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "publication-preflight: blocked" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "gh auth status" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "do not bypass GitHub Flow by hand-writing GitHub REST/MCP blobs" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "do not report a task complete while task-owned changes only exist locally after validation" "docs/workflows.md"
@@ -540,6 +560,8 @@ $cursorBaselineSkillText = Get-AgentSurfaceText ".cursor/skills/gameengine-curso
 Assert-ContainsText $cursorBaselineSkillText "Cursor global instructions" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "workspace override" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "official GitHub Flow" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
+Assert-ContainsText $cursorBaselineSkillText "tools/check-publication-preflight.ps1" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
+Assert-ContainsText $cursorBaselineSkillText "publication-preflight: blocked" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 foreach ($cursorBaselineCadenceNeedle in @("purpose/checkpoint-based", "push validated checkpoints", "one PR per focused capability/gap-cluster/milestone", "avoid PRs per commit/checklist item")) {
     Assert-ContainsText $cursorBaselineSkillText $cursorBaselineCadenceNeedle ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 }
@@ -557,6 +579,8 @@ Assert-ContainsText $cursorAgentIntegrationSkillText "mergeStateStatus" ".cursor
 Assert-ContainsText $cursorAgentIntegrationSkillText "--match-head-commit <headRefOid>" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText 'stale `headRefOid` invalidates the merge decision' ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "official GitHub Flow" ".cursor/skills/gameengine-agent-integration/SKILL.md"
+Assert-ContainsText $cursorAgentIntegrationSkillText "tools/check-publication-preflight.ps1" ".cursor/skills/gameengine-agent-integration/SKILL.md"
+Assert-ContainsText $cursorAgentIntegrationSkillText "publication-preflight: blocked" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 foreach ($cursorAgentCadenceNeedle in @("purpose/checkpoint-based", "push validated topic-branch checkpoints", "one PR per focused capability/gap-cluster/milestone", "avoid PRs per commit/checklist item")) {
     Assert-ContainsText $cursorAgentIntegrationSkillText $cursorAgentCadenceNeedle ".cursor/skills/gameengine-agent-integration/SKILL.md"
 }
@@ -571,6 +595,27 @@ Assert-ContainsText $cursorAgentIntegrationSkillText "PowerShell parse checks" "
 Assert-ContainsText $cursorAgentIntegrationSkillText "single-quoted PowerShell strings" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "selected hosted checks to complete" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText '`PR Gate` to report `SUCCESS`' ".cursor/skills/gameengine-agent-integration/SKILL.md"
+
+$codexAgentIntegrationSkillText = Get-AgentSurfaceText ".agents/skills/gameengine-agent-integration/SKILL.md"
+$claudeAgentIntegrationSkillText = Get-AgentSurfaceText ".claude/skills/gameengine-agent-integration/SKILL.md"
+foreach ($agentSkillSurface in @(
+        @{ Text = $codexAgentIntegrationSkillText; Label = ".agents/skills/gameengine-agent-integration/SKILL.md" },
+        @{ Text = $claudeAgentIntegrationSkillText; Label = ".claude/skills/gameengine-agent-integration/SKILL.md" },
+        @{ Text = $cursorAgentIntegrationSkillText; Label = ".cursor/skills/gameengine-agent-integration/SKILL.md" }
+    )) {
+    Assert-ContainsText $agentSkillSurface.Text "tools/check-publication-preflight.ps1" $agentSkillSurface.Label
+    Assert-ContainsText $agentSkillSurface.Text "publication-preflight: blocked" $agentSkillSurface.Label
+    Assert-ContainsText $agentSkillSurface.Text "before staging/push/PR/merge" $agentSkillSurface.Label
+}
+
+$codexRulesText = Get-AgentSurfaceText ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRulesText '"tools/check-publication-preflight.ps1"' ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRulesText "linked-worktree index.lock ACL" ".codex/rules/gameengine.rules"
+$claudeRulesText = Get-AgentSurfaceText ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $claudeRulesText "tools/check-publication-preflight.ps1" ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $claudeRulesText "publication-preflight: blocked" ".claude/rules/ai-agent-integration.md"
+$claudeSettingsText = Get-AgentSurfaceText ".claude/settings.json"
+Assert-ContainsText $claudeSettingsText "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1:*)" ".claude/settings.json"
 Assert-ContainsText $cursorAgentIntegrationSkillText "Hosted PR failure hardening" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "Use lightweight static validation for docs/agent/rules/subagent-only PRs" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "HeaderFilterRegex" ".cursor/skills/gameengine-agent-integration/SKILL.md"
