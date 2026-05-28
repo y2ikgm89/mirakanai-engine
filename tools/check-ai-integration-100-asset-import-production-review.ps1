@@ -50,7 +50,15 @@ foreach ($needle in @(
         "GltfSceneImportReviewRequest",
         "GltfSceneImportReviewDiagnostic",
         "GltfSceneImportReview",
-        "review_gltf_scene_import_readiness"
+        "review_gltf_scene_import_readiness",
+        "SourceImageAudioCodecReviewStatus",
+        "SourceImageAudioCodecReviewFeature",
+        "SourceImageAudioCodecReviewDiagnosticCode",
+        "SourceImageAudioCodecReviewRow",
+        "SourceImageAudioCodecReviewRequest",
+        "SourceImageAudioCodecReviewDiagnostic",
+        "SourceImageAudioCodecReview",
+        "review_source_image_audio_codec_readiness"
     )) {
     Assert-ContainsText $assetReviewHeaderText $needle "engine/assets/include/mirakana/assets/asset_import_production_review.hpp"
 }
@@ -91,7 +99,14 @@ foreach ($needle in @(
         "missing_package_output",
         "unsupported_external_network_fetch",
         "unsupported_parser_type_leakage",
-        "unsupported_broad_scene_import_claim"
+        "unsupported_broad_scene_import_claim",
+        "missing_pixel_format_diagnostics",
+        "missing_sample_format_diagnostics",
+        "unsupported_svg_vector_codec",
+        "unsupported_broad_image_codec",
+        "unsupported_broad_audio_codec",
+        "unsupported_background_decode_streaming",
+        "unsupported_hrtf_middleware"
     )) {
     Assert-ContainsText $assetReviewHeaderText $needle "asset import production review diagnostics"
 }
@@ -117,9 +132,17 @@ foreach ($needle in @(
         "review_gltf_scene_import_readiness",
         "gltf_scene_import_ready",
         "broad_scene_import_ready",
+        "source_codec_row_has_required_dependency_evidence",
+        "source_codec_row_has_unsupported_claim",
+        "review_source_image_audio_codec_readiness",
+        "source_image_audio_codec_ready",
+        "broad_image_codec_ready",
+        "broad_audio_codec_ready",
         "contains_ascii_case_insensitive",
         "vcpkg.ktx",
         "vcpkg.asset-importers",
+        "vcpkg.libspng",
+        "vcpkg.miniaudio",
         "toolchain.dxc",
         "toolchain.spirv-tools",
         "all_extensions_are_selected",
@@ -141,11 +164,18 @@ foreach ($needle in @(
         "request_external_network_fetch",
         "request_parser_type_access",
         "request_broad_scene_import_claim",
+        "request_svg_vector_codec",
+        "request_broad_image_codec",
+        "request_broad_audio_codec",
+        "request_background_decode_streaming",
+        "request_hrtf_middleware",
         "AssetImportProductionStatus::host_evidence_required",
         "AssetImportProductionStatus::dependency_evidence_required",
         "AssetImportProductionStatus::no_rows",
         "GltfSceneImportReviewStatus::dependency_evidence_required",
-        "GltfSceneImportReviewStatus::ready"
+        "GltfSceneImportReviewStatus::ready",
+        "SourceImageAudioCodecReviewStatus::dependency_evidence_required",
+        "SourceImageAudioCodecReviewStatus::ready"
     )) {
     Assert-ContainsText $assetReviewSourceText $needle "engine/assets/src/asset_import_production_review.cpp"
 }
@@ -180,7 +210,10 @@ foreach ($needle in @(
         "ktx2 basis texture review rejects runtime transcode upload and missing target policy",
         "gltf scene import review accepts selected fastgltf package handoff evidence",
         "gltf scene import review reports dependency gated selected package evidence",
-        "gltf scene import review rejects unsupported broad scene import claims and missing evidence"
+        "gltf scene import review rejects unsupported broad scene import claims and missing evidence",
+        "source image audio codec review accepts selected libspng and miniaudio package evidence",
+        "source image audio codec review reports dependency gated selected codec evidence",
+        "source image audio codec review rejects broad codec claims and missing format evidence"
     )) {
     Assert-ContainsText $assetReviewTestsText $needle "tests/unit/asset_import_production_review_tests.cpp"
 }
@@ -199,6 +232,13 @@ foreach ($needle in @(
         "exact vcpkg.asset-importers dependency/legal evidence",
         "gltf_scene_import_review",
         "review_gltf_scene_import_readiness",
+        "mirakana::review_source_image_audio_codec_readiness",
+        "selected-libspng-png-rgba8",
+        "selected-miniaudio-source-audio-pcm",
+        "exact vcpkg.libspng and vcpkg.miniaudio dependency/legal evidence",
+        "SVG/vector decoding",
+        "background decode streaming",
+        "HRTF/middleware execution",
         "Shader rows are reviewed offline compile-request/package-cache evidence only",
         "exact toolchain.dxc plus toolchain.spirv-tools dependency/legal evidence",
         "parser/compiler adapter type leakage",
@@ -225,6 +265,7 @@ foreach ($needle in @(
         "currentAssetImportProductionReview",
         "currentKtxBasisTextureReviewPackageSmoke",
         "currentGltfSceneImportReviewPackageSmoke",
+        "currentSourceImageAudioCodecReviewPackageSmoke",
         "AssetImportProductionReviewRequest",
         "AssetImportProductionEvidenceRow",
         "selected extensions",
@@ -235,6 +276,11 @@ foreach ($needle in @(
         "--require-gltf-scene-import-review",
         "gltf_scene_import_review_status=ready",
         "gltf_scene_import_review_ready=1",
+        "--require-source-image-audio-codec-review",
+        "source_image_audio_codec_review_status=ready",
+        "source_image_audio_codec_review_ready=1",
+        "source_image_audio_codec_review_replay_hash",
+        "Generated 2D/3D Source Image Audio Codec Review Package Smoke v1",
         "zero runtime transcoding",
         "zero GPU upload",
         "zero compression tool invocation",
@@ -243,6 +289,11 @@ foreach ($needle in @(
         "zero runtime source parsing",
         "zero parser type leakage",
         "broad scene import readiness not claimed",
+        "broad image codec readiness not claimed",
+        "broad audio codec readiness not claimed",
+        "zero SVG/vector decode",
+        "zero background decode streaming",
+        "zero HRTF/middleware",
         "does not parse glTF/source assets at runtime",
         "Generated 3D glTF Scene Import Review Package Smoke v1",
         'exact `toolchain.dxc` plus `toolchain.spirv-tools` dependency evidence',
@@ -268,6 +319,11 @@ foreach ($manifestTextForSample in @($sample2dManifestText, $sample3dManifestTex
             '"live-shader-generation"',
             '"runtime-source-parsing"',
             '"native-handle-access"',
+            '"svg-vector-codec"',
+            '"broad-image-codec-readiness"',
+            '"broad-audio-codec-readiness"',
+            '"background-decode-streaming"',
+            '"hrtf-middleware"',
             '"broad-codec-readiness"'
         )) {
         Assert-ContainsText $manifestTextForSample $needle "sample game importer production review descriptor"
@@ -275,9 +331,15 @@ foreach ($manifestTextForSample in @($sample2dManifestText, $sample3dManifestTex
 }
 
 Assert-ContainsText $sample2dManifestText '"first-party-source-documents"' "2D sample production import review descriptor"
+Assert-ContainsText $sample2dManifestText '"selected-libspng-png-rgba8"' "2D sample production import review descriptor"
+Assert-ContainsText $sample2dManifestText '"selected-miniaudio-source-audio-pcm"' "2D sample production import review descriptor"
+Assert-ContainsText $sample2dManifestText '"installed-2d-source-image-audio-codec-review-smoke"' "2D sample production import review descriptor"
 Assert-ContainsText $sample3dManifestText '"gltf"' "3D sample production import review descriptor"
 Assert-ContainsText $sample3dManifestText '"ktx2-basis-review"' "3D sample production import review descriptor"
 Assert-ContainsText $sample3dManifestText '"gltf-scene-import-review"' "3D sample production import review descriptor"
+Assert-ContainsText $sample3dManifestText '"selected-libspng-png-rgba8"' "3D sample production import review descriptor"
+Assert-ContainsText $sample3dManifestText '"selected-miniaudio-source-audio-pcm"' "3D sample production import review descriptor"
+Assert-ContainsText $sample3dManifestText '"installed-generated-3d-source-image-audio-codec-review-smoke"' "3D sample production import review descriptor"
 Assert-ContainsText $sample3dManifestText '"gltf-external-network-fetch"' "3D sample production import review descriptor"
 Assert-ContainsText $sample3dManifestText '"gltf-runtime-source-parsing"' "3D sample production import review descriptor"
 Assert-ContainsText $sample3dManifestText '"broad-gltf-scene-import-readiness"' "3D sample production import review descriptor"

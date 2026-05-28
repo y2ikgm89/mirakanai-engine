@@ -23,6 +23,9 @@ using mirakana::GltfSceneImportReviewStatus;
 using mirakana::KtxBasisTextureReviewDiagnosticCode;
 using mirakana::KtxBasisTextureReviewFeature;
 using mirakana::KtxBasisTextureReviewStatus;
+using mirakana::SourceImageAudioCodecReviewDiagnosticCode;
+using mirakana::SourceImageAudioCodecReviewFeature;
+using mirakana::SourceImageAudioCodecReviewStatus;
 
 constexpr AssetImportProductionFeatureKind kRequiredFeatures[] = {
     AssetImportProductionFeatureKind::source_root_policy,
@@ -48,6 +51,12 @@ constexpr GltfSceneImportReviewFeature kGltfRequiredFeatures[] = {
     GltfSceneImportReviewFeature::geometry_payload,   GltfSceneImportReviewFeature::material_payload,
     GltfSceneImportReviewFeature::animation_payload,  GltfSceneImportReviewFeature::external_resource_policy,
     GltfSceneImportReviewFeature::source_provenance,  GltfSceneImportReviewFeature::package_output,
+};
+
+constexpr SourceImageAudioCodecReviewFeature kSourceCodecRequiredFeatures[] = {
+    SourceImageAudioCodecReviewFeature::png_decode_adapter,   SourceImageAudioCodecReviewFeature::png_pixel_format,
+    SourceImageAudioCodecReviewFeature::audio_decode_adapter, SourceImageAudioCodecReviewFeature::audio_sample_format,
+    SourceImageAudioCodecReviewFeature::source_provenance,    SourceImageAudioCodecReviewFeature::package_output,
 };
 
 [[nodiscard]] std::string capability_id(AssetImportProductionFeatureKind feature) {
@@ -279,6 +288,89 @@ constexpr GltfSceneImportReviewFeature kGltfRequiredFeatures[] = {
     };
 }
 
+[[nodiscard]] mirakana::SourceImageAudioCodecReviewRow make_source_codec_row(SourceImageAudioCodecReviewFeature feature,
+                                                                             std::uint32_t source_index) {
+    const auto is_png = feature == SourceImageAudioCodecReviewFeature::png_decode_adapter ||
+                        feature == SourceImageAudioCodecReviewFeature::png_pixel_format;
+    const auto is_audio = feature == SourceImageAudioCodecReviewFeature::audio_decode_adapter ||
+                          feature == SourceImageAudioCodecReviewFeature::audio_sample_format;
+    const auto has_both_dependencies = feature == SourceImageAudioCodecReviewFeature::source_provenance ||
+                                       feature == SourceImageAudioCodecReviewFeature::package_output;
+
+    return mirakana::SourceImageAudioCodecReviewRow{
+        .row_id = std::string{"source-codec."} + std::to_string(source_index),
+        .feature = feature,
+        .source_root = "source/assets",
+        .importer_id = is_png     ? "reviewed.libspng-png-rgba8"
+                       : is_audio ? "reviewed.miniaudio-common-audio-pcm"
+                                  : "reviewed.source-image-audio-codec-package",
+        .declared_extensions = is_png                  ? std::vector<std::string>{".png"}
+                               : is_audio              ? std::vector<std::string>{".wav", ".flac", ".mp3"}
+                               : has_both_dependencies ? std::vector<std::string>{".png", ".wav", ".flac", ".mp3"}
+                                                       : std::vector<std::string>{},
+        .dependency_ids = is_png                  ? std::vector<std::string>{"vcpkg.libspng"}
+                          : is_audio              ? std::vector<std::string>{"vcpkg.miniaudio"}
+                          : has_both_dependencies ? std::vector<std::string>{"vcpkg.libspng", "vcpkg.miniaudio"}
+                                                  : std::vector<std::string>{},
+        .license_ids = is_png     ? std::vector<std::string>{"BSD-2-Clause.libspng"}
+                       : is_audio ? std::vector<std::string>{"MIT-0-or-Unlicense.miniaudio"}
+                       : has_both_dependencies
+                           ? std::vector<std::string>{"BSD-2-Clause.libspng", "MIT-0-or-Unlicense.miniaudio"}
+                           : std::vector<std::string>{},
+        .provenance_ids = feature == SourceImageAudioCodecReviewFeature::source_provenance
+                              ? std::vector<std::string>{"provenance.source-codec-decode"}
+                              : std::vector<std::string>{},
+        .package_output_rows = feature == SourceImageAudioCodecReviewFeature::package_output
+                                   ? std::vector<std::string>{"runtime/assets/2d/source_codec_texture.geasset",
+                                                              "runtime/assets/common/source_codec_audio.geasset"}
+                                   : std::vector<std::string>{},
+        .deterministic_content_hash = std::string{"sha256:source-codec-row-"} + std::to_string(source_index),
+        .image_pixel_format = is_png ? "rgba8_unorm" : "",
+        .image_width = is_png ? 1U : 0U,
+        .image_height = is_png ? 1U : 0U,
+        .audio_sample_format = is_audio ? "float32" : "",
+        .audio_channels = is_audio ? 2U : 0U,
+        .audio_sample_rate = is_audio ? 44100U : 0U,
+        .audio_frame_count = is_audio ? 1U : 0U,
+        .reviewed = true,
+        .source_root_evidence = true,
+        .decode_adapter_evidence = feature == SourceImageAudioCodecReviewFeature::png_decode_adapter ||
+                                   feature == SourceImageAudioCodecReviewFeature::audio_decode_adapter,
+        .pixel_format_evidence = feature == SourceImageAudioCodecReviewFeature::png_pixel_format,
+        .sample_format_evidence = feature == SourceImageAudioCodecReviewFeature::audio_sample_format,
+        .source_provenance_evidence = feature == SourceImageAudioCodecReviewFeature::source_provenance,
+        .package_output_evidence = feature == SourceImageAudioCodecReviewFeature::package_output,
+        .deterministic_hash_evidence = true,
+        .dependency_legal_evidence = true,
+        .dependency_gate_required = false,
+        .request_svg_vector_codec = false,
+        .request_broad_image_codec = false,
+        .request_broad_audio_codec = false,
+        .request_background_decode_streaming = false,
+        .request_hrtf_middleware = false,
+        .request_runtime_source_parsing = false,
+        .request_native_handle_access = false,
+        .request_package_mutation = false,
+        .source_index = source_index,
+    };
+}
+
+[[nodiscard]] mirakana::SourceImageAudioCodecReviewRequest make_source_codec_request() {
+    std::vector<mirakana::SourceImageAudioCodecReviewRow> rows;
+    rows.reserve(std::size(kSourceCodecRequiredFeatures));
+    std::uint32_t source_index{1U};
+    for (const auto feature : kSourceCodecRequiredFeatures) {
+        rows.push_back(make_source_codec_row(feature, source_index++));
+    }
+
+    return mirakana::SourceImageAudioCodecReviewRequest{
+        .required_features = {std::begin(kSourceCodecRequiredFeatures), std::end(kSourceCodecRequiredFeatures)},
+        .rows = std::move(rows),
+        .row_budget = 16U,
+        .seed = 613U,
+    };
+}
+
 [[nodiscard]] mirakana::AssetImportProductionReviewRequest make_request() {
     std::vector<mirakana::AssetImportProductionEvidenceRow> rows;
     rows.reserve(std::size(kRequiredFeatures));
@@ -330,6 +422,17 @@ constexpr GltfSceneImportReviewFeature kGltfRequiredFeatures[] = {
 
 [[nodiscard]] std::size_t gltf_diagnostic_count(const mirakana::GltfSceneImportReview& review,
                                                 GltfSceneImportReviewDiagnosticCode code) {
+    std::size_t count{0U};
+    for (const auto& diagnostic : review.diagnostics) {
+        if (diagnostic.code == code) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+[[nodiscard]] std::size_t source_codec_diagnostic_count(const mirakana::SourceImageAudioCodecReview& review,
+                                                        SourceImageAudioCodecReviewDiagnosticCode code) {
     std::size_t count{0U};
     for (const auto& diagnostic : review.diagnostics) {
         if (diagnostic.code == code) {
@@ -529,6 +632,119 @@ MK_TEST("gltf scene import review accepts selected fastgltf package handoff evid
     MK_REQUIRE(!review.exposed_native_handle);
     MK_REQUIRE(!review.mutated_packages);
     MK_REQUIRE(review.replay_hash != 0U);
+}
+
+MK_TEST("source image audio codec review accepts selected libspng and miniaudio package evidence") {
+    const auto review = mirakana::review_source_image_audio_codec_readiness(make_source_codec_request());
+
+    MK_REQUIRE(review.status == SourceImageAudioCodecReviewStatus::ready);
+    MK_REQUIRE(review.succeeded());
+    MK_REQUIRE(review.diagnostics.empty());
+    MK_REQUIRE(review.row_count == std::size(kSourceCodecRequiredFeatures));
+    MK_REQUIRE(review.ready_row_count == std::size(kSourceCodecRequiredFeatures));
+    MK_REQUIRE(review.dependency_gated_row_count == 0U);
+    MK_REQUIRE(review.unsupported_claim_row_count == 0U);
+    MK_REQUIRE(review.png_decode_rows == 1U);
+    MK_REQUIRE(review.png_pixel_format_rows == 1U);
+    MK_REQUIRE(review.audio_decode_rows == 1U);
+    MK_REQUIRE(review.audio_sample_format_rows == 1U);
+    MK_REQUIRE(review.source_provenance_rows == 1U);
+    MK_REQUIRE(review.package_output_rows == 1U);
+    MK_REQUIRE(review.png_decode_ready);
+    MK_REQUIRE(review.png_rgba8_pixel_format_ready);
+    MK_REQUIRE(review.audio_decode_ready);
+    MK_REQUIRE(review.audio_sample_format_ready);
+    MK_REQUIRE(review.source_provenance_ready);
+    MK_REQUIRE(review.package_output_ready);
+    MK_REQUIRE(review.dependency_legal_records_ready);
+    MK_REQUIRE(review.selected_package_evidence_ready);
+    MK_REQUIRE(review.source_image_audio_codec_ready);
+    MK_REQUIRE(!review.broad_image_codec_ready);
+    MK_REQUIRE(!review.broad_audio_codec_ready);
+    MK_REQUIRE(!review.invoked_svg_vector_decode);
+    MK_REQUIRE(!review.invoked_background_decode_streaming);
+    MK_REQUIRE(!review.invoked_hrtf_middleware);
+    MK_REQUIRE(!review.invoked_runtime_source_parsing);
+    MK_REQUIRE(!review.exposed_native_handle);
+    MK_REQUIRE(!review.mutated_packages);
+    MK_REQUIRE(review.replay_hash != 0U);
+}
+
+MK_TEST("source image audio codec review reports dependency gated selected codec evidence") {
+    auto request = make_source_codec_request();
+    request.rows[2].dependency_legal_evidence = false;
+    request.rows[2].dependency_gate_required = true;
+
+    const auto review = mirakana::review_source_image_audio_codec_readiness(request);
+
+    MK_REQUIRE(review.status == SourceImageAudioCodecReviewStatus::dependency_evidence_required);
+    MK_REQUIRE(!review.succeeded());
+    MK_REQUIRE(review.diagnostics.empty());
+    MK_REQUIRE(review.ready_row_count == std::size(kSourceCodecRequiredFeatures) - 1U);
+    MK_REQUIRE(review.dependency_gated_row_count == 1U);
+    MK_REQUIRE(review.unsupported_claim_row_count == 0U);
+    MK_REQUIRE(!review.audio_decode_ready);
+    MK_REQUIRE(!review.dependency_legal_records_ready);
+    MK_REQUIRE(!review.selected_package_evidence_ready);
+    MK_REQUIRE(!review.source_image_audio_codec_ready);
+    MK_REQUIRE(!review.broad_audio_codec_ready);
+    MK_REQUIRE(review.replay_hash != 0U);
+}
+
+MK_TEST("source image audio codec review rejects broad codec claims and missing format evidence") {
+    auto request = make_source_codec_request();
+    request.rows[0].declared_extensions = {".png", ".svg"};
+    request.rows[0].request_svg_vector_codec = true;
+    request.rows[1].image_pixel_format = "bgra8_unorm";
+    request.rows[1].pixel_format_evidence = false;
+    request.rows[1].request_broad_image_codec = true;
+    request.rows[2].declared_extensions = {".wav", ".flac", ".mp3", ".ogg"};
+    request.rows[2].request_broad_audio_codec = true;
+    request.rows[3].audio_sample_format = "adpcm";
+    request.rows[3].sample_format_evidence = false;
+    request.rows[3].request_background_decode_streaming = true;
+    request.rows[3].request_hrtf_middleware = true;
+    request.rows[4].provenance_ids.clear();
+    request.rows[4].source_provenance_evidence = false;
+    request.rows[4].request_runtime_source_parsing = true;
+    request.rows[5].package_output_rows.clear();
+    request.rows[5].package_output_evidence = false;
+    request.rows[5].request_native_handle_access = true;
+    request.rows[5].request_package_mutation = true;
+
+    const auto review = mirakana::review_source_image_audio_codec_readiness(request);
+
+    MK_REQUIRE(review.status == SourceImageAudioCodecReviewStatus::invalid_request);
+    MK_REQUIRE(!review.succeeded());
+    MK_REQUIRE(source_codec_diagnostic_count(
+                   review, SourceImageAudioCodecReviewDiagnosticCode::missing_pixel_format_diagnostics) == 1U);
+    MK_REQUIRE(source_codec_diagnostic_count(
+                   review, SourceImageAudioCodecReviewDiagnosticCode::missing_sample_format_diagnostics) == 1U);
+    MK_REQUIRE(source_codec_diagnostic_count(
+                   review, SourceImageAudioCodecReviewDiagnosticCode::missing_source_provenance) == 1U);
+    MK_REQUIRE(
+        source_codec_diagnostic_count(review, SourceImageAudioCodecReviewDiagnosticCode::missing_package_output) == 1U);
+    MK_REQUIRE(source_codec_diagnostic_count(
+                   review, SourceImageAudioCodecReviewDiagnosticCode::unsupported_svg_vector_codec) == 1U);
+    MK_REQUIRE(source_codec_diagnostic_count(
+                   review, SourceImageAudioCodecReviewDiagnosticCode::unsupported_broad_image_codec) == 1U);
+    MK_REQUIRE(source_codec_diagnostic_count(
+                   review, SourceImageAudioCodecReviewDiagnosticCode::unsupported_broad_audio_codec) == 1U);
+    MK_REQUIRE(source_codec_diagnostic_count(
+                   review, SourceImageAudioCodecReviewDiagnosticCode::unsupported_background_decode_streaming) == 1U);
+    MK_REQUIRE(source_codec_diagnostic_count(
+                   review, SourceImageAudioCodecReviewDiagnosticCode::unsupported_hrtf_middleware) == 1U);
+    MK_REQUIRE(source_codec_diagnostic_count(
+                   review, SourceImageAudioCodecReviewDiagnosticCode::unsupported_runtime_source_parsing) == 1U);
+    MK_REQUIRE(source_codec_diagnostic_count(
+                   review, SourceImageAudioCodecReviewDiagnosticCode::unsupported_native_handle_claim) == 1U);
+    MK_REQUIRE(source_codec_diagnostic_count(
+                   review, SourceImageAudioCodecReviewDiagnosticCode::unsupported_package_mutation) == 1U);
+    MK_REQUIRE(!review.selected_package_evidence_ready);
+    MK_REQUIRE(!review.source_image_audio_codec_ready);
+    MK_REQUIRE(!review.broad_image_codec_ready);
+    MK_REQUIRE(!review.broad_audio_codec_ready);
+    MK_REQUIRE(review.replay_hash == 0U);
 }
 
 MK_TEST("gltf scene import review reports dependency gated selected package evidence") {

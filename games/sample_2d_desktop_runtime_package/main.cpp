@@ -4,6 +4,7 @@
 #include "mirakana/ai/behavior_tree.hpp"
 #include "mirakana/ai/perception.hpp"
 #include "mirakana/assets/asset_identity.hpp"
+#include "mirakana/assets/asset_import_production_review.hpp"
 #include "mirakana/audio/audio_mixer.hpp"
 #include "mirakana/core/application.hpp"
 #include "mirakana/navigation/navigation_agent.hpp"
@@ -102,6 +103,7 @@ struct DesktopRuntimeOptions {
     bool require_runtime_ui_production_stack{false};
     bool require_runtime_ui_renderer_atlas_handoff{false};
     bool require_audio_gameplay_mixer{false};
+    bool require_source_image_audio_codec_review{false};
     std::uint32_t max_frames{0};
     std::string required_config_path;
     std::string required_scene_package_path;
@@ -1011,6 +1013,21 @@ network_production_security_status_name(mirakana::runtime::RuntimeNetworkProduct
 }
 
 [[nodiscard]] const char*
+source_image_audio_codec_review_status_name(mirakana::SourceImageAudioCodecReviewStatus status) noexcept {
+    switch (status) {
+    case mirakana::SourceImageAudioCodecReviewStatus::ready:
+        return "ready";
+    case mirakana::SourceImageAudioCodecReviewStatus::dependency_evidence_required:
+        return "dependency_evidence_required";
+    case mirakana::SourceImageAudioCodecReviewStatus::no_rows:
+        return "no_rows";
+    case mirakana::SourceImageAudioCodecReviewStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] const char*
 simulation_orchestration_status_name(mirakana::runtime::RuntimeSimulationOrchestrationPlanStatus status) noexcept {
     switch (status) {
     case mirakana::runtime::RuntimeSimulationOrchestrationPlanStatus::planned:
@@ -1631,6 +1648,35 @@ struct AudioProductionProbeResult {
     std::size_t diagnostics{0U};
     std::uint64_t replay_hash{0U};
     bool package_evidence_ready{false};
+};
+
+struct SourceImageAudioCodecReviewProbeResult {
+    mirakana::SourceImageAudioCodecReviewStatus status{mirakana::SourceImageAudioCodecReviewStatus::invalid_request};
+    bool reviewed{false};
+    bool ready{false};
+    std::size_t rows{0U};
+    std::size_t ready_rows{0U};
+    std::size_t dependency_gated_rows{0U};
+    std::size_t unsupported_claim_rows{0U};
+    std::size_t png_decode_rows{0U};
+    std::size_t png_pixel_format_rows{0U};
+    std::size_t audio_decode_rows{0U};
+    std::size_t audio_sample_format_rows{0U};
+    std::size_t source_provenance_rows{0U};
+    std::size_t package_output_rows{0U};
+    bool dependency_legal_records_ready{false};
+    bool selected_package_evidence_ready{false};
+    bool source_image_audio_codec_ready{false};
+    bool broad_image_codec_ready{false};
+    bool broad_audio_codec_ready{false};
+    bool invoked_svg_vector_decode{false};
+    bool invoked_background_decode_streaming{false};
+    bool invoked_hrtf_middleware{false};
+    bool invoked_runtime_source_parsing{false};
+    bool exposed_native_handle{false};
+    bool mutated_packages{false};
+    std::size_t diagnostics{0U};
+    std::uint64_t replay_hash{0U};
 };
 
 struct Gameplay2DConstructionPlacementProbeResult {
@@ -3132,6 +3178,139 @@ validate_audio_production_package_evidence(const mirakana::AudioClipSampleData& 
         !result.invoked_device_callback && !result.invoked_device_io && result.diagnostics == 2U &&
         result.replay_hash != 0U;
     return result;
+}
+
+[[nodiscard]] mirakana::SourceImageAudioCodecReviewRow
+make_source_image_audio_codec_review_row(mirakana::SourceImageAudioCodecReviewFeature feature,
+                                         std::uint32_t source_index) {
+    const auto is_png = feature == mirakana::SourceImageAudioCodecReviewFeature::png_decode_adapter ||
+                        feature == mirakana::SourceImageAudioCodecReviewFeature::png_pixel_format;
+    const auto is_audio = feature == mirakana::SourceImageAudioCodecReviewFeature::audio_decode_adapter ||
+                          feature == mirakana::SourceImageAudioCodecReviewFeature::audio_sample_format;
+    const auto has_both_dependencies = feature == mirakana::SourceImageAudioCodecReviewFeature::source_provenance ||
+                                       feature == mirakana::SourceImageAudioCodecReviewFeature::package_output;
+
+    return mirakana::SourceImageAudioCodecReviewRow{
+        .row_id = std::string{"source-image-audio-codec."} + std::to_string(source_index),
+        .feature = feature,
+        .source_root = "source/assets/2d",
+        .importer_id = is_png     ? "reviewed.libspng-png-rgba8"
+                       : is_audio ? "reviewed.miniaudio-common-audio-pcm"
+                                  : "reviewed.source-image-audio-codec-package",
+        .declared_extensions = is_png                  ? std::vector<std::string>{".png"}
+                               : is_audio              ? std::vector<std::string>{".wav", ".flac", ".mp3"}
+                               : has_both_dependencies ? std::vector<std::string>{".png", ".wav", ".flac", ".mp3"}
+                                                       : std::vector<std::string>{},
+        .dependency_ids = is_png                  ? std::vector<std::string>{"vcpkg.libspng"}
+                          : is_audio              ? std::vector<std::string>{"vcpkg.miniaudio"}
+                          : has_both_dependencies ? std::vector<std::string>{"vcpkg.libspng", "vcpkg.miniaudio"}
+                                                  : std::vector<std::string>{},
+        .license_ids = is_png     ? std::vector<std::string>{"BSD-2-Clause.libspng"}
+                       : is_audio ? std::vector<std::string>{"MIT-0-or-Unlicense.miniaudio"}
+                       : has_both_dependencies
+                           ? std::vector<std::string>{"BSD-2-Clause.libspng", "MIT-0-or-Unlicense.miniaudio"}
+                           : std::vector<std::string>{},
+        .provenance_ids = feature == mirakana::SourceImageAudioCodecReviewFeature::source_provenance
+                              ? std::vector<std::string>{"provenance.source-image-audio-codec-source"}
+                              : std::vector<std::string>{},
+        .package_output_rows = feature == mirakana::SourceImageAudioCodecReviewFeature::package_output
+                                   ? std::vector<std::string>{"runtime/assets/2d/player.texture.geasset",
+                                                              "runtime/assets/2d/jump.audio.geasset"}
+                                   : std::vector<std::string>{},
+        .deterministic_content_hash =
+            std::string{"sha256:source-image-audio-codec-row-"} + std::to_string(source_index),
+        .image_pixel_format = is_png ? "rgba8_unorm" : "",
+        .image_width = is_png ? 1U : 0U,
+        .image_height = is_png ? 1U : 0U,
+        .audio_sample_format = is_audio ? "float32" : "",
+        .audio_channels = is_audio ? 2U : 0U,
+        .audio_sample_rate = is_audio ? 44100U : 0U,
+        .audio_frame_count = is_audio ? 1U : 0U,
+        .reviewed = true,
+        .source_root_evidence = true,
+        .decode_adapter_evidence = feature == mirakana::SourceImageAudioCodecReviewFeature::png_decode_adapter ||
+                                   feature == mirakana::SourceImageAudioCodecReviewFeature::audio_decode_adapter,
+        .pixel_format_evidence = feature == mirakana::SourceImageAudioCodecReviewFeature::png_pixel_format,
+        .sample_format_evidence = feature == mirakana::SourceImageAudioCodecReviewFeature::audio_sample_format,
+        .source_provenance_evidence = feature == mirakana::SourceImageAudioCodecReviewFeature::source_provenance,
+        .package_output_evidence = feature == mirakana::SourceImageAudioCodecReviewFeature::package_output,
+        .deterministic_hash_evidence = true,
+        .dependency_legal_evidence = true,
+        .dependency_gate_required = false,
+        .request_svg_vector_codec = false,
+        .request_broad_image_codec = false,
+        .request_broad_audio_codec = false,
+        .request_background_decode_streaming = false,
+        .request_hrtf_middleware = false,
+        .request_runtime_source_parsing = false,
+        .request_native_handle_access = false,
+        .request_package_mutation = false,
+        .source_index = source_index,
+    };
+}
+
+[[nodiscard]] SourceImageAudioCodecReviewProbeResult validate_source_image_audio_codec_review_package_evidence() {
+    const mirakana::SourceImageAudioCodecReviewFeature required_features[] = {
+        mirakana::SourceImageAudioCodecReviewFeature::png_decode_adapter,
+        mirakana::SourceImageAudioCodecReviewFeature::png_pixel_format,
+        mirakana::SourceImageAudioCodecReviewFeature::audio_decode_adapter,
+        mirakana::SourceImageAudioCodecReviewFeature::audio_sample_format,
+        mirakana::SourceImageAudioCodecReviewFeature::source_provenance,
+        mirakana::SourceImageAudioCodecReviewFeature::package_output,
+    };
+
+    std::vector<mirakana::SourceImageAudioCodecReviewRow> rows;
+    rows.reserve(6U);
+    std::uint32_t source_index{1U};
+    for (const auto feature : required_features) {
+        rows.push_back(make_source_image_audio_codec_review_row(feature, source_index++));
+    }
+
+    const auto review =
+        mirakana::review_source_image_audio_codec_readiness(mirakana::SourceImageAudioCodecReviewRequest{
+            .required_features =
+                {
+                    mirakana::SourceImageAudioCodecReviewFeature::png_decode_adapter,
+                    mirakana::SourceImageAudioCodecReviewFeature::png_pixel_format,
+                    mirakana::SourceImageAudioCodecReviewFeature::audio_decode_adapter,
+                    mirakana::SourceImageAudioCodecReviewFeature::audio_sample_format,
+                    mirakana::SourceImageAudioCodecReviewFeature::source_provenance,
+                    mirakana::SourceImageAudioCodecReviewFeature::package_output,
+                },
+            .rows = std::move(rows),
+            .row_budget = 16U,
+            .seed = 613U,
+        });
+
+    return SourceImageAudioCodecReviewProbeResult{
+        .status = review.status,
+        .reviewed = review.status != mirakana::SourceImageAudioCodecReviewStatus::no_rows &&
+                    review.status != mirakana::SourceImageAudioCodecReviewStatus::invalid_request,
+        .ready = review.selected_package_evidence_ready,
+        .rows = review.row_count,
+        .ready_rows = review.ready_row_count,
+        .dependency_gated_rows = review.dependency_gated_row_count,
+        .unsupported_claim_rows = review.unsupported_claim_row_count,
+        .png_decode_rows = review.png_decode_rows,
+        .png_pixel_format_rows = review.png_pixel_format_rows,
+        .audio_decode_rows = review.audio_decode_rows,
+        .audio_sample_format_rows = review.audio_sample_format_rows,
+        .source_provenance_rows = review.source_provenance_rows,
+        .package_output_rows = review.package_output_rows,
+        .dependency_legal_records_ready = review.dependency_legal_records_ready,
+        .selected_package_evidence_ready = review.selected_package_evidence_ready,
+        .source_image_audio_codec_ready = review.source_image_audio_codec_ready,
+        .broad_image_codec_ready = review.broad_image_codec_ready,
+        .broad_audio_codec_ready = review.broad_audio_codec_ready,
+        .invoked_svg_vector_decode = review.invoked_svg_vector_decode,
+        .invoked_background_decode_streaming = review.invoked_background_decode_streaming,
+        .invoked_hrtf_middleware = review.invoked_hrtf_middleware,
+        .invoked_runtime_source_parsing = review.invoked_runtime_source_parsing,
+        .exposed_native_handle = review.exposed_native_handle,
+        .mutated_packages = review.mutated_packages,
+        .diagnostics = review.diagnostics.size(),
+        .replay_hash = review.replay_hash,
+    };
 }
 
 [[nodiscard]] Gameplay2DConstructionPlacementProbeResult validate_gameplay_2d_construction_placement() {
@@ -7795,7 +7974,8 @@ void print_usage() {
                  "[--require-gameplay-authoring-review] [--require-production-authoring-workflows] "
                  "[--require-runtime-profile-resume] [--require-runtime-menu-hud] "
                  "[--require-runtime-ui-workbench] [--require-runtime-ui-production-stack] "
-                 "[--require-runtime-ui-renderer-atlas-handoff] [--require-audio-gameplay-mixer]\n";
+                 "[--require-runtime-ui-renderer-atlas-handoff] [--require-audio-gameplay-mixer] "
+                 "[--require-source-image-audio-codec-review]\n";
 }
 
 [[nodiscard]] bool parse_args(int argc, char** argv, DesktopRuntimeOptions& options) {
@@ -7914,6 +8094,10 @@ void print_usage() {
         }
         if (arg == "--require-audio-gameplay-mixer") {
             options.require_audio_gameplay_mixer = true;
+            continue;
+        }
+        if (arg == "--require-source-image-audio-codec-review") {
+            options.require_source_image_audio_codec_review = true;
             continue;
         }
         if (arg == "--max-frames") {
@@ -8532,6 +8716,9 @@ int main(int argc, char** argv) {
     const auto audio_production_probe = audio_samples.has_value()
                                             ? validate_audio_production_package_evidence(*audio_samples)
                                             : AudioProductionProbeResult{};
+    const auto source_image_audio_codec_review_probe = options.require_source_image_audio_codec_review
+                                                           ? validate_source_image_audio_codec_review_package_evidence()
+                                                           : SourceImageAudioCodecReviewProbeResult{};
 
     auto shader_bytecode = load_packaged_d3d12_shaders(argc > 0 ? argv[0] : nullptr);
     if (!shader_bytecode.ready()) {
@@ -9440,6 +9627,51 @@ int main(int argc, char** argv) {
         << " audio_production_invoked_device_io=" << (audio_production_probe.invoked_device_io ? 1 : 0)
         << " audio_production_diagnostics=" << audio_production_probe.diagnostics
         << " audio_production_replay_hash=" << audio_production_probe.replay_hash
+        << " source_image_audio_codec_review_status="
+        << source_image_audio_codec_review_status_name(source_image_audio_codec_review_probe.status)
+        << " source_image_audio_codec_review_reviewed=" << (source_image_audio_codec_review_probe.reviewed ? 1 : 0)
+        << " source_image_audio_codec_review_ready=" << (source_image_audio_codec_review_probe.ready ? 1 : 0)
+        << " source_image_audio_codec_review_rows=" << source_image_audio_codec_review_probe.rows
+        << " source_image_audio_codec_review_ready_rows=" << source_image_audio_codec_review_probe.ready_rows
+        << " source_image_audio_codec_review_dependency_gated_rows="
+        << source_image_audio_codec_review_probe.dependency_gated_rows
+        << " source_image_audio_codec_review_unsupported_claim_rows="
+        << source_image_audio_codec_review_probe.unsupported_claim_rows
+        << " source_image_audio_codec_review_png_decode_rows=" << source_image_audio_codec_review_probe.png_decode_rows
+        << " source_image_audio_codec_review_png_pixel_format_rows="
+        << source_image_audio_codec_review_probe.png_pixel_format_rows
+        << " source_image_audio_codec_review_audio_decode_rows="
+        << source_image_audio_codec_review_probe.audio_decode_rows
+        << " source_image_audio_codec_review_audio_sample_format_rows="
+        << source_image_audio_codec_review_probe.audio_sample_format_rows
+        << " source_image_audio_codec_review_source_provenance_rows="
+        << source_image_audio_codec_review_probe.source_provenance_rows
+        << " source_image_audio_codec_review_package_output_rows="
+        << source_image_audio_codec_review_probe.package_output_rows
+        << " source_image_audio_codec_review_dependency_legal_records_ready="
+        << (source_image_audio_codec_review_probe.dependency_legal_records_ready ? 1 : 0)
+        << " source_image_audio_codec_review_selected_package_evidence_ready="
+        << (source_image_audio_codec_review_probe.selected_package_evidence_ready ? 1 : 0)
+        << " source_image_audio_codec_review_source_image_audio_codec_ready="
+        << (source_image_audio_codec_review_probe.source_image_audio_codec_ready ? 1 : 0)
+        << " source_image_audio_codec_review_broad_image_codec_ready="
+        << (source_image_audio_codec_review_probe.broad_image_codec_ready ? 1 : 0)
+        << " source_image_audio_codec_review_broad_audio_codec_ready="
+        << (source_image_audio_codec_review_probe.broad_audio_codec_ready ? 1 : 0)
+        << " source_image_audio_codec_review_invoked_svg_vector_decode="
+        << (source_image_audio_codec_review_probe.invoked_svg_vector_decode ? 1 : 0)
+        << " source_image_audio_codec_review_invoked_background_decode_streaming="
+        << (source_image_audio_codec_review_probe.invoked_background_decode_streaming ? 1 : 0)
+        << " source_image_audio_codec_review_invoked_hrtf_middleware="
+        << (source_image_audio_codec_review_probe.invoked_hrtf_middleware ? 1 : 0)
+        << " source_image_audio_codec_review_invoked_runtime_source_parsing="
+        << (source_image_audio_codec_review_probe.invoked_runtime_source_parsing ? 1 : 0)
+        << " source_image_audio_codec_review_exposed_native_handle="
+        << (source_image_audio_codec_review_probe.exposed_native_handle ? 1 : 0)
+        << " source_image_audio_codec_review_mutated_packages="
+        << (source_image_audio_codec_review_probe.mutated_packages ? 1 : 0)
+        << " source_image_audio_codec_review_diagnostics=" << source_image_audio_codec_review_probe.diagnostics
+        << " source_image_audio_codec_review_replay_hash=" << source_image_audio_codec_review_probe.replay_hash
         << " hud_boxes=" << game.hud_boxes_submitted() << " audio_commands=" << game.audio_commands()
         << " audio_underruns=" << game.audio_underruns()
         << " audio_gameplay_mixer_ready=" << (audio_gameplay_mixer.ready ? 1 : 0)
@@ -10108,6 +10340,38 @@ int main(int argc, char** argv) {
                   << " runtime_ui_renderer_atlas_handoff_diagnostics="
                   << runtime_ui_renderer_atlas_handoff_probe.diagnostics << '\n';
         return 29;
+    }
+
+    if (options.require_source_image_audio_codec_review &&
+        (!source_image_audio_codec_review_probe.reviewed || !source_image_audio_codec_review_probe.ready ||
+         source_image_audio_codec_review_probe.diagnostics != 0U ||
+         source_image_audio_codec_review_probe.dependency_gated_rows != 0U ||
+         source_image_audio_codec_review_probe.unsupported_claim_rows != 0U ||
+         source_image_audio_codec_review_probe.broad_image_codec_ready ||
+         source_image_audio_codec_review_probe.broad_audio_codec_ready ||
+         source_image_audio_codec_review_probe.invoked_svg_vector_decode ||
+         source_image_audio_codec_review_probe.invoked_background_decode_streaming ||
+         source_image_audio_codec_review_probe.invoked_hrtf_middleware ||
+         source_image_audio_codec_review_probe.invoked_runtime_source_parsing ||
+         source_image_audio_codec_review_probe.exposed_native_handle ||
+         source_image_audio_codec_review_probe.mutated_packages)) {
+        std::cout << "sample_2d_desktop_runtime_package required_source_image_audio_codec_review_unavailable"
+                  << " source_image_audio_codec_review_status="
+                  << source_image_audio_codec_review_status_name(source_image_audio_codec_review_probe.status)
+                  << " source_image_audio_codec_review_reviewed="
+                  << (source_image_audio_codec_review_probe.reviewed ? 1 : 0)
+                  << " source_image_audio_codec_review_ready=" << (source_image_audio_codec_review_probe.ready ? 1 : 0)
+                  << " source_image_audio_codec_review_rows=" << source_image_audio_codec_review_probe.rows
+                  << " source_image_audio_codec_review_ready_rows=" << source_image_audio_codec_review_probe.ready_rows
+                  << " source_image_audio_codec_review_dependency_gated_rows="
+                  << source_image_audio_codec_review_probe.dependency_gated_rows
+                  << " source_image_audio_codec_review_unsupported_claim_rows="
+                  << source_image_audio_codec_review_probe.unsupported_claim_rows
+                  << " source_image_audio_codec_review_diagnostics="
+                  << source_image_audio_codec_review_probe.diagnostics
+                  << " source_image_audio_codec_review_replay_hash="
+                  << source_image_audio_codec_review_probe.replay_hash << '\n';
+        return 30;
     }
 
     if (options.smoke &&

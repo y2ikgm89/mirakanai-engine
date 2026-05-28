@@ -197,14 +197,30 @@ Task 4 glTF scene import closeout evidence:
 | Formatting/text | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1`; `git diff --check` | Passed after applying repository formatting. |
 | Full validation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed with `validate: ok`; 79/79 CTest tests passed. Diagnostic-only host gates remained expected for Metal/Apple tooling on this Windows host. |
 
-Task 5 has not started; commit/push/PR publication remains the next action after this Task 4 stop point.
+Task 5 completed source image/audio codec review evidence while leaving Task 6 shader generation work unstarted.
 
 ## Task 5 - Source Image And Audio Codec Execution Lane
 
-- [ ] Promote selected libspng PNG decode and miniaudio source decode rows through reviewed package handoff, pixel/sample format diagnostics, deterministic hashes, and dependency/legal evidence.
-- [ ] Keep SVG/vector, broad image codec, broad audio codec, background decode streaming, HRTF/middleware, and runtime source parsing unready unless separately implemented.
-- [ ] Add selected 2D/3D package counters for implemented decode/cook rows.
-- [ ] Run focused importer, audio, package, dependency, and static checks.
+- [x] Promote selected libspng PNG decode and miniaudio source decode rows through reviewed package handoff, pixel/sample format diagnostics, deterministic hashes, and dependency/legal evidence.
+- [x] Keep SVG/vector, broad image codec, broad audio codec, background decode streaming, HRTF/middleware, and runtime source parsing unready unless separately implemented.
+- [x] Add selected 2D/3D package counters for implemented decode/cook rows.
+- [x] Run focused importer, audio, package, dependency, and static checks.
+
+### Task 5 Validation Evidence
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Focused asset review tests | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_asset_import_production_review_tests; pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_asset_import_production_review_tests` | Passed; 1/1 focused CTest passed. |
+| 2D package source codec smoke | `pwsh -NoProfile -ExecutionPolicy Bypass -Command '& { $smokeArgs = @("--smoke", "--require-config", "runtime/sample_2d_desktop_runtime_package.config", "--require-scene-package", "runtime/sample_2d_desktop_runtime_package.geindex", "--require-source-image-audio-codec-review"); & .\tools\package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package -SmokeArgs $smokeArgs }'` | Passed; installed validation reported `desktop-runtime-package: ok (sample_2d_desktop_runtime_package)` and `source_image_audio_codec_review_status=ready`. |
+| 3D package source codec smoke | `pwsh -NoProfile -ExecutionPolicy Bypass -Command '& { $smokeArgs = @("--smoke", "--require-config", "runtime/sample_generated_desktop_runtime_3d_package.config", "--require-scene-package", "runtime/sample_generated_desktop_runtime_3d_package.geindex", "--require-source-image-audio-codec-review"); & .\tools\package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_3d_package -SmokeArgs $smokeArgs }'` | Passed; installed validation reported `desktop-runtime-package: ok (sample_generated_desktop_runtime_3d_package)` and `source_image_audio_codec_review_status=ready`. |
+| Manifest compose | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write` | Passed; composed `engine/agent/manifest.json` includes `currentSourceImageAudioCodecReviewPackageSmoke`. |
+| JSON contracts | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | Passed; `json-contract-check: ok`. |
+| Public API boundary | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` | Passed; `public-api-boundary-check: ok`. |
+| Dependency policy | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1` | Passed; `dependency-policy-check: ok`. |
+| Agent integration | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | Passed; `ai-integration-check: ok`. |
+| Agent config | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | Passed; `agent-config-check: ok`. |
+| Format/text/diff | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1`; `git diff --check` | Passed after `tools/format.ps1`; no whitespace errors. |
+| Full validation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed; command exited 0 on this host. |
 
 ## Task 6 - Reviewed Shader Generation And Cache Execution Lane
 

@@ -664,6 +664,243 @@ void append_gltf_diagnostic(std::vector<GltfSceneImportReviewDiagnostic>& diagno
     });
 }
 
+constexpr std::array<SourceImageAudioCodecReviewFeature, 6U> source_codec_required_feature_set = {
+    SourceImageAudioCodecReviewFeature::png_decode_adapter,   SourceImageAudioCodecReviewFeature::png_pixel_format,
+    SourceImageAudioCodecReviewFeature::audio_decode_adapter, SourceImageAudioCodecReviewFeature::audio_sample_format,
+    SourceImageAudioCodecReviewFeature::source_provenance,    SourceImageAudioCodecReviewFeature::package_output,
+};
+
+[[nodiscard]] bool source_codec_valid_feature(SourceImageAudioCodecReviewFeature feature) noexcept {
+    return std::ranges::find(source_codec_required_feature_set, feature) != source_codec_required_feature_set.end();
+}
+
+[[nodiscard]] bool source_codec_feature_is_png(SourceImageAudioCodecReviewFeature feature) noexcept {
+    return feature == SourceImageAudioCodecReviewFeature::png_decode_adapter ||
+           feature == SourceImageAudioCodecReviewFeature::png_pixel_format;
+}
+
+[[nodiscard]] bool source_codec_feature_is_audio(SourceImageAudioCodecReviewFeature feature) noexcept {
+    return feature == SourceImageAudioCodecReviewFeature::audio_decode_adapter ||
+           feature == SourceImageAudioCodecReviewFeature::audio_sample_format;
+}
+
+[[nodiscard]] bool source_codec_feature_uses_both_dependencies(SourceImageAudioCodecReviewFeature feature) noexcept {
+    return feature == SourceImageAudioCodecReviewFeature::source_provenance ||
+           feature == SourceImageAudioCodecReviewFeature::package_output;
+}
+
+[[nodiscard]] bool source_codec_row_is_dependency_gated(const SourceImageAudioCodecReviewRow& row) noexcept {
+    return row.dependency_gate_required && !row.dependency_legal_evidence;
+}
+
+[[nodiscard]] bool
+source_codec_row_has_exact_dependency_ids(const SourceImageAudioCodecReviewRow& row,
+                                          std::initializer_list<std::string_view> expected_ids) noexcept {
+    if (row.dependency_ids.size() != expected_ids.size()) {
+        return false;
+    }
+    return std::ranges::all_of(expected_ids, [&row](std::string_view expected_id) {
+        return has_exact_dependency_id(row.dependency_ids, expected_id);
+    });
+}
+
+[[nodiscard]] bool
+source_codec_row_has_required_dependency_evidence(const SourceImageAudioCodecReviewRow& row) noexcept {
+    if (!row.dependency_legal_evidence || row.license_ids.empty()) {
+        return false;
+    }
+    if (source_codec_feature_is_png(row.feature)) {
+        return source_codec_row_has_exact_dependency_ids(row, {"vcpkg.libspng"});
+    }
+    if (source_codec_feature_is_audio(row.feature)) {
+        return source_codec_row_has_exact_dependency_ids(row, {"vcpkg.miniaudio"});
+    }
+    if (source_codec_feature_uses_both_dependencies(row.feature)) {
+        return source_codec_row_has_exact_dependency_ids(row, {"vcpkg.libspng", "vcpkg.miniaudio"});
+    }
+    return false;
+}
+
+[[nodiscard]] bool
+source_codec_row_extensions_are_selected(const SourceImageAudioCodecReviewRow& row,
+                                         std::initializer_list<std::string_view> selected_extensions) noexcept {
+    return !row.declared_extensions.empty() &&
+           std::ranges::all_of(row.declared_extensions, [selected_extensions](const std::string& extension) {
+               return std::ranges::find(selected_extensions, std::string_view{extension}) != selected_extensions.end();
+           });
+}
+
+[[nodiscard]] bool source_codec_row_requests_svg_vector(const SourceImageAudioCodecReviewRow& row) noexcept {
+    if (row.request_svg_vector_codec) {
+        return true;
+    }
+    return std::ranges::any_of(row.declared_extensions,
+                               [](const std::string& extension) { return std::string_view{extension} == ".svg"; });
+}
+
+[[nodiscard]] bool source_codec_row_requests_broad_image_codec(const SourceImageAudioCodecReviewRow& row) noexcept {
+    if (row.request_broad_image_codec) {
+        return true;
+    }
+    return source_codec_feature_is_png(row.feature) &&
+           std::ranges::any_of(row.declared_extensions, [](const std::string& extension) {
+               return std::string_view{extension} != ".png" && std::string_view{extension} != ".svg";
+           });
+}
+
+[[nodiscard]] bool source_codec_row_requests_broad_audio_codec(const SourceImageAudioCodecReviewRow& row) noexcept {
+    if (row.request_broad_audio_codec) {
+        return true;
+    }
+    return source_codec_feature_is_audio(row.feature) &&
+           !source_codec_row_extensions_are_selected(row, {".wav", ".flac", ".mp3"});
+}
+
+[[nodiscard]] bool source_codec_row_has_unsupported_claim(const SourceImageAudioCodecReviewRow& row) noexcept {
+    return source_codec_row_requests_svg_vector(row) || source_codec_row_requests_broad_image_codec(row) ||
+           source_codec_row_requests_broad_audio_codec(row) || row.request_background_decode_streaming ||
+           row.request_hrtf_middleware || row.request_runtime_source_parsing || row.request_native_handle_access ||
+           row.request_package_mutation;
+}
+
+[[nodiscard]] bool source_codec_row_base_is_valid(const SourceImageAudioCodecReviewRow& row) noexcept {
+    return source_codec_valid_feature(row.feature) && valid_token(row.row_id) && !contains_unsafe_token(row.row_id) &&
+           valid_token(row.source_root) && !contains_unsafe_token(row.source_root) && valid_token(row.importer_id) &&
+           !contains_unsafe_token(row.importer_id) && valid_token_list(row.declared_extensions) &&
+           valid_token_list(row.dependency_ids) && valid_token_list(row.license_ids) &&
+           valid_token_list(row.provenance_ids) && valid_token_list(row.package_output_rows) &&
+           valid_token(row.deterministic_content_hash) && !contains_unsafe_token(row.deterministic_content_hash) &&
+           valid_optional_token(row.image_pixel_format) && valid_optional_token(row.audio_sample_format);
+}
+
+void append_source_codec_diagnostic(std::vector<SourceImageAudioCodecReviewDiagnostic>& diagnostics,
+                                    SourceImageAudioCodecReviewDiagnosticCode code,
+                                    const SourceImageAudioCodecReviewRow& row, std::string message) {
+    diagnostics.push_back(SourceImageAudioCodecReviewDiagnostic{
+        .code = code,
+        .feature = row.feature,
+        .row_id = row.row_id,
+        .message = std::move(message),
+        .source_index = row.source_index,
+    });
+}
+
+void append_source_codec_diagnostic(std::vector<SourceImageAudioCodecReviewDiagnostic>& diagnostics,
+                                    SourceImageAudioCodecReviewDiagnosticCode code,
+                                    SourceImageAudioCodecReviewFeature feature, std::string message) {
+    diagnostics.push_back(SourceImageAudioCodecReviewDiagnostic{
+        .code = code,
+        .feature = feature,
+        .row_id = {},
+        .message = std::move(message),
+        .source_index = 0U,
+    });
+}
+
+[[nodiscard]] bool source_codec_row_has_selected_png_source(const SourceImageAudioCodecReviewRow& row) noexcept {
+    return row.source_root_evidence && source_codec_row_extensions_are_selected(row, {".png"}) &&
+           valid_token(row.source_root) && valid_token(row.importer_id);
+}
+
+[[nodiscard]] bool source_codec_row_has_selected_audio_source(const SourceImageAudioCodecReviewRow& row) noexcept {
+    return row.source_root_evidence && source_codec_row_extensions_are_selected(row, {".wav", ".flac", ".mp3"}) &&
+           valid_token(row.source_root) && valid_token(row.importer_id);
+}
+
+[[nodiscard]] bool source_codec_row_has_hash(const SourceImageAudioCodecReviewRow& row) noexcept {
+    return row.deterministic_hash_evidence && valid_token(row.deterministic_content_hash) &&
+           !contains_unsafe_token(row.deterministic_content_hash);
+}
+
+[[nodiscard]] bool source_codec_row_is_ready(const SourceImageAudioCodecReviewRow& row) noexcept {
+    if (source_codec_row_has_unsupported_claim(row) || source_codec_row_is_dependency_gated(row) || !row.reviewed ||
+        !source_codec_row_has_required_dependency_evidence(row) || !source_codec_row_has_hash(row)) {
+        return false;
+    }
+
+    switch (row.feature) {
+    case SourceImageAudioCodecReviewFeature::png_decode_adapter:
+        return source_codec_row_has_selected_png_source(row) && row.decode_adapter_evidence;
+    case SourceImageAudioCodecReviewFeature::png_pixel_format:
+        return source_codec_row_has_selected_png_source(row) && row.pixel_format_evidence &&
+               std::string_view{row.image_pixel_format} == "rgba8_unorm" && row.image_width > 0U &&
+               row.image_height > 0U;
+    case SourceImageAudioCodecReviewFeature::audio_decode_adapter:
+        return source_codec_row_has_selected_audio_source(row) && row.decode_adapter_evidence;
+    case SourceImageAudioCodecReviewFeature::audio_sample_format:
+        return source_codec_row_has_selected_audio_source(row) && row.sample_format_evidence &&
+               std::string_view{row.audio_sample_format} == "float32" && row.audio_channels > 0U &&
+               row.audio_sample_rate > 0U && row.audio_frame_count > 0U;
+    case SourceImageAudioCodecReviewFeature::source_provenance:
+        return row.source_root_evidence && row.source_provenance_evidence && !row.provenance_ids.empty() &&
+               !row.license_ids.empty();
+    case SourceImageAudioCodecReviewFeature::package_output:
+        return row.package_output_evidence && !row.package_output_rows.empty();
+    }
+    return false;
+}
+
+[[nodiscard]] std::uint64_t hash_source_codec_row(std::uint64_t hash,
+                                                  const SourceImageAudioCodecReviewRow& row) noexcept {
+    hash = hash_byte(hash, static_cast<std::uint8_t>(row.feature));
+    hash = hash_string(hash, row.row_id);
+    hash = hash_string(hash, row.source_root);
+    hash = hash_string(hash, row.importer_id);
+    hash = hash_string_list(hash, row.declared_extensions);
+    hash = hash_string_list(hash, row.dependency_ids);
+    hash = hash_string_list(hash, row.license_ids);
+    hash = hash_string_list(hash, row.provenance_ids);
+    hash = hash_string_list(hash, row.package_output_rows);
+    hash = hash_string(hash, row.deterministic_content_hash);
+    hash = hash_string(hash, row.image_pixel_format);
+    hash = hash_u32(hash, row.image_width);
+    hash = hash_u32(hash, row.image_height);
+    hash = hash_string(hash, row.audio_sample_format);
+    hash = hash_u32(hash, row.audio_channels);
+    hash = hash_u32(hash, row.audio_sample_rate);
+    hash = hash_u32(hash, row.audio_frame_count);
+    hash = hash_bool(hash, row.reviewed);
+    hash = hash_bool(hash, row.source_root_evidence);
+    hash = hash_bool(hash, row.decode_adapter_evidence);
+    hash = hash_bool(hash, row.pixel_format_evidence);
+    hash = hash_bool(hash, row.sample_format_evidence);
+    hash = hash_bool(hash, row.source_provenance_evidence);
+    hash = hash_bool(hash, row.package_output_evidence);
+    hash = hash_bool(hash, row.deterministic_hash_evidence);
+    hash = hash_bool(hash, row.dependency_legal_evidence);
+    hash = hash_bool(hash, row.dependency_gate_required);
+    hash = hash_bool(hash, row.request_svg_vector_codec);
+    hash = hash_bool(hash, row.request_broad_image_codec);
+    hash = hash_bool(hash, row.request_broad_audio_codec);
+    hash = hash_bool(hash, row.request_background_decode_streaming);
+    hash = hash_bool(hash, row.request_hrtf_middleware);
+    hash = hash_bool(hash, row.request_runtime_source_parsing);
+    hash = hash_bool(hash, row.request_native_handle_access);
+    hash = hash_bool(hash, row.request_package_mutation);
+    hash = hash_u32(hash, row.source_index);
+    return hash;
+}
+
+[[nodiscard]] std::uint64_t build_source_codec_replay_hash(const SourceImageAudioCodecReviewRequest& request) noexcept {
+    auto hash = fnv_offset;
+    hash ^= request.seed;
+    hash *= fnv_prime;
+    for (const auto feature : request.required_features) {
+        hash = hash_byte(hash, static_cast<std::uint8_t>(feature));
+    }
+    for (const auto& row : request.rows) {
+        hash = hash_source_codec_row(hash, row);
+    }
+    return hash == 0U ? fnv_offset : hash;
+}
+
+[[nodiscard]] bool has_ready_source_codec_feature(const std::vector<SourceImageAudioCodecReviewRow>& rows,
+                                                  SourceImageAudioCodecReviewFeature feature) noexcept {
+    return std::ranges::any_of(rows, [feature](const SourceImageAudioCodecReviewRow& row) {
+        return row.feature == feature && source_codec_row_is_ready(row);
+    });
+}
+
 } // namespace
 
 bool AssetImportProductionReview::succeeded() const noexcept {
@@ -676,6 +913,10 @@ bool KtxBasisTextureReview::succeeded() const noexcept {
 
 bool GltfSceneImportReview::succeeded() const noexcept {
     return status == GltfSceneImportReviewStatus::ready || status == GltfSceneImportReviewStatus::no_rows;
+}
+
+bool SourceImageAudioCodecReview::succeeded() const noexcept {
+    return status == SourceImageAudioCodecReviewStatus::ready || status == SourceImageAudioCodecReviewStatus::no_rows;
 }
 
 AssetImportProductionReview
@@ -1364,6 +1605,244 @@ GltfSceneImportReview review_gltf_scene_import_readiness(const GltfSceneImportRe
         review.status = GltfSceneImportReviewStatus::dependency_evidence_required;
     } else {
         review.status = GltfSceneImportReviewStatus::ready;
+    }
+    return review;
+}
+
+SourceImageAudioCodecReview
+review_source_image_audio_codec_readiness(const SourceImageAudioCodecReviewRequest& request) {
+    SourceImageAudioCodecReview review;
+    review.required_features = request.required_features;
+    review.row_count = request.rows.size();
+
+    if (request.rows.empty() && request.required_features.empty()) {
+        review.status = SourceImageAudioCodecReviewStatus::no_rows;
+        return review;
+    }
+
+    if (request.rows.size() > request.row_budget) {
+        append_source_codec_diagnostic(review.diagnostics,
+                                       SourceImageAudioCodecReviewDiagnosticCode::row_budget_exceeded,
+                                       SourceImageAudioCodecReviewFeature::png_decode_adapter,
+                                       "source image/audio codec review row budget is exceeded");
+    }
+
+    for (std::size_t index = 0; index < request.required_features.size(); ++index) {
+        const auto feature = request.required_features[index];
+        if (!source_codec_valid_feature(feature)) {
+            append_source_codec_diagnostic(review.diagnostics,
+                                           SourceImageAudioCodecReviewDiagnosticCode::invalid_required_feature, feature,
+                                           "required source image/audio codec review feature is invalid");
+            continue;
+        }
+        for (std::size_t other = index + 1U; other < request.required_features.size(); ++other) {
+            if (feature == request.required_features[other]) {
+                append_source_codec_diagnostic(
+                    review.diagnostics, SourceImageAudioCodecReviewDiagnosticCode::duplicate_required_feature, feature,
+                    "required source image/audio codec review feature is duplicated");
+                break;
+            }
+        }
+    }
+
+    for (const auto feature : request.required_features) {
+        if (source_codec_valid_feature(feature) &&
+            std::ranges::none_of(request.rows, [feature](const SourceImageAudioCodecReviewRow& row) {
+                return row.feature == feature;
+            })) {
+            append_source_codec_diagnostic(review.diagnostics,
+                                           SourceImageAudioCodecReviewDiagnosticCode::missing_required_feature_row,
+                                           feature, "required source image/audio codec review feature row is missing");
+        }
+    }
+
+    for (std::size_t index = 0; index < request.rows.size(); ++index) {
+        const auto& row = request.rows[index];
+        if (source_codec_row_is_dependency_gated(row)) {
+            ++review.dependency_gated_row_count;
+        } else if (source_codec_row_has_unsupported_claim(row)) {
+            ++review.unsupported_claim_row_count;
+        }
+
+        switch (row.feature) {
+        case SourceImageAudioCodecReviewFeature::png_decode_adapter:
+            ++review.png_decode_rows;
+            break;
+        case SourceImageAudioCodecReviewFeature::png_pixel_format:
+            ++review.png_pixel_format_rows;
+            break;
+        case SourceImageAudioCodecReviewFeature::audio_decode_adapter:
+            ++review.audio_decode_rows;
+            break;
+        case SourceImageAudioCodecReviewFeature::audio_sample_format:
+            ++review.audio_sample_format_rows;
+            break;
+        case SourceImageAudioCodecReviewFeature::source_provenance:
+            ++review.source_provenance_rows;
+            break;
+        case SourceImageAudioCodecReviewFeature::package_output:
+            ++review.package_output_rows;
+            break;
+        }
+
+        if (!source_codec_row_base_is_valid(row)) {
+            append_source_codec_diagnostic(review.diagnostics, SourceImageAudioCodecReviewDiagnosticCode::invalid_row,
+                                           row, "source image/audio codec review row is invalid");
+        }
+        for (std::size_t other = index + 1U; other < request.rows.size(); ++other) {
+            const auto& other_row = request.rows[other];
+            if (row.feature == other_row.feature) {
+                append_source_codec_diagnostic(review.diagnostics,
+                                               SourceImageAudioCodecReviewDiagnosticCode::duplicate_feature_row, row,
+                                               "source image/audio codec review row is duplicated");
+                break;
+            }
+        }
+
+        if (source_codec_row_requests_svg_vector(row)) {
+            append_source_codec_diagnostic(
+                review.diagnostics, SourceImageAudioCodecReviewDiagnosticCode::unsupported_svg_vector_codec, row,
+                "SVG/vector source decoding is unsupported in source image/audio codec review rows");
+        }
+        if (source_codec_row_requests_broad_image_codec(row)) {
+            append_source_codec_diagnostic(review.diagnostics,
+                                           SourceImageAudioCodecReviewDiagnosticCode::unsupported_broad_image_codec,
+                                           row, "broad image codec readiness requires a separate reviewed lane");
+        }
+        if (source_codec_row_requests_broad_audio_codec(row)) {
+            append_source_codec_diagnostic(review.diagnostics,
+                                           SourceImageAudioCodecReviewDiagnosticCode::unsupported_broad_audio_codec,
+                                           row, "broad audio codec readiness requires a separate reviewed lane");
+        }
+        if (row.request_background_decode_streaming) {
+            append_source_codec_diagnostic(
+                review.diagnostics, SourceImageAudioCodecReviewDiagnosticCode::unsupported_background_decode_streaming,
+                row, "background decode streaming is unsupported in source image/audio codec review rows");
+        }
+        if (row.request_hrtf_middleware) {
+            append_source_codec_diagnostic(review.diagnostics,
+                                           SourceImageAudioCodecReviewDiagnosticCode::unsupported_hrtf_middleware, row,
+                                           "HRTF or audio middleware execution requires a separate reviewed lane");
+        }
+        if (row.request_runtime_source_parsing) {
+            append_source_codec_diagnostic(
+                review.diagnostics, SourceImageAudioCodecReviewDiagnosticCode::unsupported_runtime_source_parsing, row,
+                "runtime source parsing is unsupported for source image/audio codec review rows");
+        }
+        if (row.request_native_handle_access) {
+            append_source_codec_diagnostic(
+                review.diagnostics, SourceImageAudioCodecReviewDiagnosticCode::unsupported_native_handle_claim, row,
+                "native handle access is unsupported in source image/audio codec review rows");
+        }
+        if (row.request_package_mutation) {
+            append_source_codec_diagnostic(review.diagnostics,
+                                           SourceImageAudioCodecReviewDiagnosticCode::unsupported_package_mutation, row,
+                                           "package mutation is unsupported in source image/audio codec review rows");
+        }
+
+        if (!row.reviewed) {
+            append_source_codec_diagnostic(review.diagnostics, SourceImageAudioCodecReviewDiagnosticCode::invalid_row,
+                                           row, "source image/audio codec review evidence is missing");
+        }
+
+        if (!source_codec_row_is_dependency_gated(row) && !source_codec_row_has_required_dependency_evidence(row)) {
+            append_source_codec_diagnostic(review.diagnostics,
+                                           SourceImageAudioCodecReviewDiagnosticCode::missing_dependency_legal_record,
+                                           row, "source image/audio codec dependency and legal evidence is missing");
+        }
+
+        switch (row.feature) {
+        case SourceImageAudioCodecReviewFeature::png_decode_adapter:
+            if (!source_codec_row_has_selected_png_source(row) || !row.decode_adapter_evidence) {
+                append_source_codec_diagnostic(review.diagnostics,
+                                               SourceImageAudioCodecReviewDiagnosticCode::missing_decode_adapter, row,
+                                               "selected PNG decode adapter evidence is missing");
+            }
+            break;
+        case SourceImageAudioCodecReviewFeature::png_pixel_format:
+            if (!source_codec_row_has_selected_png_source(row) || !row.pixel_format_evidence ||
+                std::string_view{row.image_pixel_format} != "rgba8_unorm" || row.image_width == 0U ||
+                row.image_height == 0U) {
+                append_source_codec_diagnostic(
+                    review.diagnostics, SourceImageAudioCodecReviewDiagnosticCode::missing_pixel_format_diagnostics,
+                    row, "selected PNG RGBA8 pixel-format evidence is missing");
+            }
+            break;
+        case SourceImageAudioCodecReviewFeature::audio_decode_adapter:
+            if (!source_codec_row_has_selected_audio_source(row) || !row.decode_adapter_evidence) {
+                append_source_codec_diagnostic(review.diagnostics,
+                                               SourceImageAudioCodecReviewDiagnosticCode::missing_decode_adapter, row,
+                                               "selected audio decode adapter evidence is missing");
+            }
+            break;
+        case SourceImageAudioCodecReviewFeature::audio_sample_format:
+            if (!source_codec_row_has_selected_audio_source(row) || !row.sample_format_evidence ||
+                std::string_view{row.audio_sample_format} != "float32" || row.audio_channels == 0U ||
+                row.audio_sample_rate == 0U || row.audio_frame_count == 0U) {
+                append_source_codec_diagnostic(
+                    review.diagnostics, SourceImageAudioCodecReviewDiagnosticCode::missing_sample_format_diagnostics,
+                    row, "selected audio float32 sample-format evidence is missing");
+            }
+            break;
+        case SourceImageAudioCodecReviewFeature::source_provenance:
+            if (!row.source_root_evidence || !row.source_provenance_evidence || row.provenance_ids.empty() ||
+                row.license_ids.empty() || !source_codec_row_has_hash(row)) {
+                append_source_codec_diagnostic(review.diagnostics,
+                                               SourceImageAudioCodecReviewDiagnosticCode::missing_source_provenance,
+                                               row, "source image/audio codec source provenance evidence is missing");
+            }
+            break;
+        case SourceImageAudioCodecReviewFeature::package_output:
+            if (!row.package_output_evidence || row.package_output_rows.empty() || !source_codec_row_has_hash(row)) {
+                append_source_codec_diagnostic(review.diagnostics,
+                                               SourceImageAudioCodecReviewDiagnosticCode::missing_package_output, row,
+                                               "source image/audio codec package output evidence is missing");
+            }
+            break;
+        }
+    }
+
+    if (!review.diagnostics.empty()) {
+        review.status = SourceImageAudioCodecReviewStatus::invalid_request;
+        return review;
+    }
+
+    review.rows = request.rows;
+    for (const auto& row : review.rows) {
+        if (source_codec_row_is_ready(row)) {
+            ++review.ready_row_count;
+        }
+    }
+
+    review.png_decode_ready =
+        has_ready_source_codec_feature(review.rows, SourceImageAudioCodecReviewFeature::png_decode_adapter);
+    review.png_rgba8_pixel_format_ready =
+        has_ready_source_codec_feature(review.rows, SourceImageAudioCodecReviewFeature::png_pixel_format);
+    review.audio_decode_ready =
+        has_ready_source_codec_feature(review.rows, SourceImageAudioCodecReviewFeature::audio_decode_adapter);
+    review.audio_sample_format_ready =
+        has_ready_source_codec_feature(review.rows, SourceImageAudioCodecReviewFeature::audio_sample_format);
+    review.source_provenance_ready =
+        has_ready_source_codec_feature(review.rows, SourceImageAudioCodecReviewFeature::source_provenance);
+    review.package_output_ready =
+        has_ready_source_codec_feature(review.rows, SourceImageAudioCodecReviewFeature::package_output);
+    review.dependency_legal_records_ready = std::ranges::all_of(review.rows, [](const auto& row) {
+        return !source_codec_row_is_dependency_gated(row) && source_codec_row_has_required_dependency_evidence(row);
+    });
+    review.selected_package_evidence_ready =
+        review.png_decode_ready && review.png_rgba8_pixel_format_ready && review.audio_decode_ready &&
+        review.audio_sample_format_ready && review.source_provenance_ready && review.package_output_ready &&
+        review.dependency_legal_records_ready && review.unsupported_claim_row_count == 0U &&
+        review.dependency_gated_row_count == 0U;
+    review.source_image_audio_codec_ready = review.selected_package_evidence_ready;
+    review.broad_image_codec_ready = false;
+    review.broad_audio_codec_ready = false;
+    review.replay_hash = build_source_codec_replay_hash(request);
+
+    if (review.dependency_gated_row_count > 0U) {
+        review.status = SourceImageAudioCodecReviewStatus::dependency_evidence_required;
+    } else {
+        review.status = SourceImageAudioCodecReviewStatus::ready;
     }
     return review;
 }

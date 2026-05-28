@@ -162,6 +162,47 @@ enum class GltfSceneImportReviewDiagnosticCode : std::uint8_t {
     row_budget_exceeded,
 };
 
+enum class SourceImageAudioCodecReviewStatus : std::uint8_t {
+    ready = 0,
+    dependency_evidence_required,
+    no_rows,
+    invalid_request,
+};
+
+enum class SourceImageAudioCodecReviewFeature : std::uint8_t {
+    png_decode_adapter = 0,
+    png_pixel_format,
+    audio_decode_adapter,
+    audio_sample_format,
+    source_provenance,
+    package_output,
+};
+
+enum class SourceImageAudioCodecReviewDiagnosticCode : std::uint8_t {
+    none = 0,
+    invalid_required_feature,
+    duplicate_required_feature,
+    missing_required_feature_row,
+    duplicate_feature_row,
+    invalid_row,
+    missing_source_root,
+    missing_decode_adapter,
+    missing_pixel_format_diagnostics,
+    missing_sample_format_diagnostics,
+    missing_source_provenance,
+    missing_package_output,
+    missing_dependency_legal_record,
+    unsupported_svg_vector_codec,
+    unsupported_broad_image_codec,
+    unsupported_broad_audio_codec,
+    unsupported_background_decode_streaming,
+    unsupported_hrtf_middleware,
+    unsupported_runtime_source_parsing,
+    unsupported_native_handle_claim,
+    unsupported_package_mutation,
+    row_budget_exceeded,
+};
+
 struct AssetImportProductionEvidenceRow {
     std::string capability_id;
     AssetImportProductionFeatureKind feature{AssetImportProductionFeatureKind::source_root_policy};
@@ -336,6 +377,97 @@ struct KtxBasisTextureReview {
     [[nodiscard]] bool succeeded() const noexcept;
 };
 
+struct SourceImageAudioCodecReviewRow {
+    std::string row_id;
+    SourceImageAudioCodecReviewFeature feature{SourceImageAudioCodecReviewFeature::png_decode_adapter};
+    std::string source_root;
+    std::string importer_id;
+    std::vector<std::string> declared_extensions;
+    std::vector<std::string> dependency_ids;
+    std::vector<std::string> license_ids;
+    std::vector<std::string> provenance_ids;
+    std::vector<std::string> package_output_rows;
+    std::string deterministic_content_hash;
+    std::string image_pixel_format;
+    std::uint32_t image_width{0U};
+    std::uint32_t image_height{0U};
+    std::string audio_sample_format;
+    std::uint32_t audio_channels{0U};
+    std::uint32_t audio_sample_rate{0U};
+    std::uint32_t audio_frame_count{0U};
+    bool reviewed{false};
+    bool source_root_evidence{false};
+    bool decode_adapter_evidence{false};
+    bool pixel_format_evidence{false};
+    bool sample_format_evidence{false};
+    bool source_provenance_evidence{false};
+    bool package_output_evidence{false};
+    bool deterministic_hash_evidence{false};
+    bool dependency_legal_evidence{false};
+    bool dependency_gate_required{false};
+    bool request_svg_vector_codec{false};
+    bool request_broad_image_codec{false};
+    bool request_broad_audio_codec{false};
+    bool request_background_decode_streaming{false};
+    bool request_hrtf_middleware{false};
+    bool request_runtime_source_parsing{false};
+    bool request_native_handle_access{false};
+    bool request_package_mutation{false};
+    std::uint32_t source_index{0U};
+};
+
+struct SourceImageAudioCodecReviewRequest {
+    std::vector<SourceImageAudioCodecReviewFeature> required_features;
+    std::vector<SourceImageAudioCodecReviewRow> rows;
+    std::size_t row_budget{64U};
+    std::uint64_t seed{0U};
+};
+
+struct SourceImageAudioCodecReviewDiagnostic {
+    SourceImageAudioCodecReviewDiagnosticCode code{SourceImageAudioCodecReviewDiagnosticCode::none};
+    SourceImageAudioCodecReviewFeature feature{SourceImageAudioCodecReviewFeature::png_decode_adapter};
+    std::string row_id;
+    std::string message;
+    std::uint32_t source_index{0U};
+};
+
+struct SourceImageAudioCodecReview {
+    SourceImageAudioCodecReviewStatus status{SourceImageAudioCodecReviewStatus::invalid_request};
+    std::vector<SourceImageAudioCodecReviewDiagnostic> diagnostics;
+    std::vector<SourceImageAudioCodecReviewFeature> required_features;
+    std::vector<SourceImageAudioCodecReviewRow> rows;
+    std::size_t row_count{0U};
+    std::size_t ready_row_count{0U};
+    std::size_t dependency_gated_row_count{0U};
+    std::size_t unsupported_claim_row_count{0U};
+    std::size_t png_decode_rows{0U};
+    std::size_t png_pixel_format_rows{0U};
+    std::size_t audio_decode_rows{0U};
+    std::size_t audio_sample_format_rows{0U};
+    std::size_t source_provenance_rows{0U};
+    std::size_t package_output_rows{0U};
+    std::uint64_t replay_hash{0U};
+    bool png_decode_ready{false};
+    bool png_rgba8_pixel_format_ready{false};
+    bool audio_decode_ready{false};
+    bool audio_sample_format_ready{false};
+    bool source_provenance_ready{false};
+    bool package_output_ready{false};
+    bool dependency_legal_records_ready{false};
+    bool selected_package_evidence_ready{false};
+    bool source_image_audio_codec_ready{false};
+    bool broad_image_codec_ready{false};
+    bool broad_audio_codec_ready{false};
+    bool invoked_svg_vector_decode{false};
+    bool invoked_background_decode_streaming{false};
+    bool invoked_hrtf_middleware{false};
+    bool invoked_runtime_source_parsing{false};
+    bool exposed_native_handle{false};
+    bool mutated_packages{false};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
 struct GltfSceneImportReviewRow {
     std::string row_id;
     GltfSceneImportReviewFeature feature{GltfSceneImportReviewFeature::source_root_policy};
@@ -436,5 +568,10 @@ review_asset_import_production_readiness(const AssetImportProductionReviewReques
 /// Reviews selected glTF scene import evidence without parsing runtime source data, fetching network resources,
 /// exposing fastgltf/native handles, mutating packages, or claiming broad scene import readiness.
 [[nodiscard]] GltfSceneImportReview review_gltf_scene_import_readiness(const GltfSceneImportReviewRequest& request);
+
+/// Reviews selected PNG and source-audio codec evidence without decoding source files, streaming in the
+/// background, invoking HRTF/middleware, parsing runtime source data, mutating packages, or exposing native handles.
+[[nodiscard]] SourceImageAudioCodecReview
+review_source_image_audio_codec_readiness(const SourceImageAudioCodecReviewRequest& request);
 
 } // namespace mirakana

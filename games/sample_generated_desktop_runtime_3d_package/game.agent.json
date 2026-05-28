@@ -182,6 +182,7 @@
         "installed-3d-runtime-menu-hud-smoke",
         "installed-3d-audio-gameplay-mixer-smoke",
         "installed-3d-audio-production-smoke",
+        "installed-generated-3d-source-image-audio-codec-review-smoke",
         "installed-d3d12-3d-scene-collision-package-smoke",
         "installed-d3d12-3d-native-ui-overlay-smoke",
         "installed-d3d12-3d-directional-shadow-smoke"
@@ -282,6 +283,13 @@
           ]
         },
         {
+          "id": "source-image-audio-codec-review",
+          "evidence": "Source image/audio codec review smoke reports source_image_audio_codec_review_status=ready, six reviewed rows, exact vcpkg.libspng and vcpkg.miniaudio dependency/legal records, PNG RGBA8 pixel format evidence, audio sample-format evidence, selected package evidence, zero unsupported claims, zero SVG/background/HRTF/runtime-source/native/package side effects, and a positive replay hash without broad image or audio codec readiness.",
+          "recipeIds": [
+            "installed-generated-3d-source-image-audio-codec-review-smoke"
+          ]
+        },
+        {
           "id": "collision-gameplay",
           "evidence": "Scene collision package smoke reports ready collision package and deterministic query counters.",
           "recipeIds": [
@@ -296,6 +304,11 @@
         "unreviewed-external-assets",
         "arbitrary-shell",
         "broad-commercial-quality",
+        "svg-vector-codec",
+        "broad-image-codec-readiness",
+        "broad-audio-codec-readiness",
+        "background-decode-streaming",
+        "hrtf-middleware",
         "runtime-source-parsing",
         "renderer-rhi-residency",
         "runtime-ktx2-basis-transcoding",
@@ -2046,6 +2059,8 @@
       "GameEngine.Prefab.v2",
       "first-party-material-source",
       "hlsl-source",
+      "png",
+      "common-audio",
       "first-party-cooked-fixture"
     ],
     "cookedOnlyRuntime": true,
@@ -2060,7 +2075,9 @@
         "ktx2-basis-review",
         "gltf-scene-import-review",
         "material-source",
-        "hlsl-offline-compile-request"
+        "hlsl-offline-compile-request",
+        "selected-libspng-png-rgba8",
+        "selected-miniaudio-source-audio-pcm"
       ],
       "implementedExternalAdaptersRequired": [],
       "unsupportedClaims": [
@@ -2078,6 +2095,11 @@
         "gltf-native-handle-access",
         "gltf-package-mutation",
         "broad-gltf-scene-import-readiness",
+        "svg-vector-codec",
+        "broad-image-codec-readiness",
+        "broad-audio-codec-readiness",
+        "background-decode-streaming",
+        "hrtf-middleware",
         "broad-codec-readiness"
       ]
     }
@@ -2332,6 +2354,10 @@
     {
       "name": "installed-3d-audio-production-smoke",
       "command": "out\\install\\desktop-runtime-release\\bin\\sample_generated_desktop_runtime_3d_package.exe --smoke --require-config runtime/sample_generated_desktop_runtime_3d_package.config --require-scene-package runtime/sample_generated_desktop_runtime_3d_package.geindex --require-audio-production"
+    },
+    {
+      "name": "installed-generated-3d-source-image-audio-codec-review-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_generated_desktop_runtime_3d_package.exe --smoke --require-config runtime/sample_generated_desktop_runtime_3d_package.config --require-scene-package runtime/sample_generated_desktop_runtime_3d_package.geindex --require-source-image-audio-codec-review"
     },
     {
       "name": "installed-d3d12-3d-native-ui-overlay-smoke",
