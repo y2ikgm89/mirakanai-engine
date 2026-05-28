@@ -28,7 +28,7 @@
       }
     },
     {
-      "name": "dev-windows-gui",
+      "name": "dev-windows-vcpkg",
       "hidden": true,
       "condition": {
         "type": "equals",
@@ -36,7 +36,7 @@
         "rhs": "Windows"
       },
       "cacheVariables": {
-        "MK_ENABLE_DESKTOP_GUI": "ON",
+        "MK_ENABLE_DESKTOP_GUI": "OFF",
         "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/external/vcpkg/scripts/buildsystems/vcpkg.cmake",
         "VCPKG_TARGET_TRIPLET": "x64-windows",
         "VCPKG_MANIFEST_INSTALL": "OFF",
@@ -47,7 +47,7 @@
       "name": "dev",
       "displayName": "Developer build",
       "binaryDir": "${sourceDir}/out/build/dev",
-      "inherits": ["normalized-configure-environment", "dev-core", "dev-windows-gui"],
+      "inherits": ["normalized-configure-environment", "dev-core", "dev-windows-vcpkg"],
       "cacheVariables": {
         "MK_CXX_STANDARD": "23",
         "MK_ENABLE_CXX_MODULE_SCANNING": "ON",
@@ -105,7 +105,7 @@
     },
     {
       "name": "desktop-gui",
-      "displayName": "Desktop GUI build",
+      "displayName": "Deferred desktop GUI build",
       "binaryDir": "${sourceDir}/out/build/desktop-gui",
       "inherits": "normalized-configure-environment",
       "cacheVariables": {
@@ -181,7 +181,7 @@
     },
     {
       "name": "cpp23-desktop-gui-eval",
-      "displayName": "C++23 desktop GUI verification build",
+      "displayName": "Deferred C++23 desktop GUI verification build",
       "binaryDir": "${sourceDir}/out/build/cpp23-desktop-gui-eval",
       "inherits": "normalized-configure-environment",
       "cacheVariables": {

@@ -6,27 +6,30 @@
 
 **Architecture:** This is a master coordination plan, not one implementation slice. Each broad domain gets its own child plan, public first-party contract, adapter boundary, tests, package evidence, host gates, docs, manifest rows, dependency/legal records, and final validation before any ready claim is promoted.
 
-**Tech Stack:** C++23, CMake/CTest, PowerShell validation tools, `MK_renderer`, `MK_rhi`, `MK_runtime_rhi`, `MK_scene_renderer`, `MK_ui`, `MK_ui_renderer`, `MK_platform_sdl3`, `MK_assets`, `MK_tools`, `MK_physics`, `MK_navigation`, `MK_audio`, `MK_runtime`, optional vcpkg manifest features, D3D12, Vulkan, Apple Metal, SDL3, HarfBuzz-class shaping, FreeType-class rasterization, ICU-class Unicode services, Khronos glTF/KTX, DXC/SPIR-V tools, Jolt-class physics adapters, Recast/Detour-class navigation adapters, ENet/GameNetworkingSockets-class transport adapters, OpenAL/miniaudio-class audio adapters, and platform accessibility SDKs.
+**Tech Stack:** C++23, CMake/CTest, PowerShell validation tools, `MK_renderer`, `MK_rhi`, `MK_runtime_rhi`, `MK_scene_renderer`, `MK_ui`, `MK_ui_renderer`, `MK_assets`, `MK_tools`, `MK_physics`, `MK_navigation`, `MK_audio`, `MK_runtime`, optional vcpkg manifest features, D3D12, Vulkan, Apple Metal, first-party Windows desktop platform backends, Win32, Raw Input, WASAPI, DXGI, HarfBuzz-class shaping, FreeType-class rasterization, ICU-class Unicode services, Khronos glTF/KTX, DXC/SPIR-V tools, Jolt-class physics adapters, Recast/Detour-class navigation adapters, ENet/GameNetworkingSockets-class transport adapters, OpenAL/miniaudio-class audio adapters, and platform accessibility SDKs.
 
 ---
 
 **Plan ID:** `clean-break-broad-production-readiness-master-plan-v1`
 
-**Status:** Selected master plan. Not selected as `currentActivePlan`; the active child is `reviewed-importers-codecs-shader-generation-v1`.
+**Status:** Selected master plan. Not selected as `currentActivePlan`; the SDL3 removal milestone is completed and the manifest currently points back to the production-completion selection gate.
 
 **Date:** 2026-05-27
 
 ## Master Plan Decision
 
-This work is too broad for one implementation branch. It must be executed through reviewable child plans:
+This work is too broad for one implementation branch. It must be executed through reviewable child plans and milestones:
 
 - Renderer production quality, backend parity, and profiling.
 - Runtime UI text shaping, font rasterization, IME, accessibility, and platform parity.
 - Reviewed importer, codec, source import, and shader generation execution.
+- First-party Windows desktop platform, runtime host, editor, and audio replacement after SDL3 removal.
 - Physics and navigation commercial coverage.
 - Audio production coverage.
 - Networking production coverage.
 - Cross-domain package evidence and closeout.
+
+The reviewed importer/codecs/shader-generation child remains paused after the SDL3 removal milestone and can resume only through an explicit manifest/registry switch.
 
 `unsupportedProductionGaps = []` remains the Engine 1.0 ready-surface truth. This plan does not reopen 1.0; it selects post-1.0 / 1.x production breadth.
 
@@ -34,7 +37,7 @@ This work is too broad for one implementation branch. It must be executed throug
 
 - No backward-compatibility shims, deprecated aliases, duplicate public APIs, or transitional adapters unless a future release policy explicitly requires them.
 - When a public aggregate, enum, function, manifest literal, package counter, JSON schema, or validation command changes, update every caller, designated initializer, test, sample, doc, manifest fragment, and static check in the same child plan.
-- Gameplay-facing APIs stay first-party and value-based. D3D12, Vulkan, Metal, SDL3, HarfBuzz, FreeType, ICU, Jolt, Recast/Detour, ENet, GameNetworkingSockets, OpenAL, miniaudio, codec libraries, platform accessibility objects, and native OS handles stay behind private adapter boundaries.
+- Gameplay-facing APIs stay first-party and value-based. D3D12, Vulkan, Metal, removed SDL3 APIs, HarfBuzz, FreeType, ICU, Jolt, Recast/Detour, ENet, GameNetworkingSockets, OpenAL, miniaudio, codec libraries, platform accessibility objects, and native OS handles stay behind private adapter boundaries.
 - Optional dependencies enter only through vcpkg manifest features plus `tools/bootstrap-deps.ps1`. Each dependency child plan updates `vcpkg.json`, `docs/dependencies.md`, `docs/legal-and-licensing.md`, `THIRD_PARTY_NOTICES.md`, validation wrappers, and manifest feature rows.
 - Official SDK and dependency documentation must be rechecked at the start of each child plan. Record exact URLs or Context7 library IDs in that child plan evidence.
 - Broad readiness is fail-closed by default. Package counters distinguish ready rows, host-gated rows, dependency-gated rows, skipped rows, and unsupported claims.
@@ -50,7 +53,6 @@ Re-check exact docs during child-plan execution:
 - Vulkan validation layers: <https://docs.vulkan.org/guide/latest/validation_overview.html>
 - Apple Metal resource synchronization: <https://developer.apple.com/documentation/metal/resource-synchronization>
 - Apple Metal capabilities: <https://developer.apple.com/metal/capabilities/>
-- SDL3 documentation: <https://wiki.libsdl.org/SDL3/>
 - HarfBuzz documentation: <https://harfbuzz.github.io/>
 - FreeType glyph conventions: <https://freetype.org/freetype2/docs/glyphs/index.html>
 - ICU user guide: <https://unicode-org.github.io/icu/userguide/>
@@ -69,7 +71,7 @@ Re-check exact docs during child-plan execution:
 
 Context7 evidence recorded during this selection pass:
 
-- `/libsdl-org/sdlwiki`: SDL3 text input must be explicitly started with `SDL_StartTextInput`, paired with `SDL_StopTextInput`, can emit `SDL_EVENT_TEXT_INPUT` and `SDL_EVENT_TEXT_EDITING`, and `SDL_SetTextInputArea` is main-thread text-input-area/cursor placement evidence for IME UI. Clipboard APIs move UTF-8 text through `SDL_SetClipboardText` / `SDL_GetClipboardText`. These APIs remain platform/runtime-host adapter concerns, not `MK_ui` contracts.
+- `/libsdl-org/sdlwiki`: Historical selection-pass evidence only. The retired text-input/clipboard adapter proof was used before the SDL3 removal closeout and must not be treated as current implementation guidance or a reason to reintroduce SDL3 APIs.
 
 ## Child Plan Sequence
 
@@ -103,7 +105,7 @@ Context7 evidence recorded during this selection pass:
 
 ### Child Plan 3 - Reviewed Importers Codecs And Shader Generation v1
 
-**Status:** Selected active child.
+**Status:** Paused child; resume only through an explicit manifest/registry switch.
 
 **Path:** `docs/superpowers/plans/2026-05-27-reviewed-importers-codecs-shader-generation-v1.md`
 

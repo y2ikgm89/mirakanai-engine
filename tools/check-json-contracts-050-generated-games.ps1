@@ -378,7 +378,7 @@ if ($null -eq $sample2dDesktopManifestEntry) {
     if ($sample2dDesktopManifest.gameplayContract.productionRecipe -ne "2d-desktop-runtime-package") {
         Write-Error "$sample2dDesktopManifestPath gameplayContract.productionRecipe must be 2d-desktop-runtime-package"
     }
-    foreach ($module in @("MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_renderer", "MK_ai", "MK_navigation", "MK_physics")) {
+    foreach ($module in @("MK_platform_win32", "MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_renderer", "MK_ai", "MK_navigation", "MK_physics")) {
         if (@($sample2dDesktopManifest.engineModules) -notcontains $module) {
             Write-Error "$sample2dDesktopManifestPath engineModules missing $module"
         }
@@ -1105,7 +1105,7 @@ if ($null -eq $sample3dManifestEntry) {
     if ($sample3dManifest.gameplayContract.productionRecipe -ne "3d-playable-desktop-package") {
         Write-Error "$sample3dManifestPath gameplayContract.productionRecipe must be 3d-playable-desktop-package"
     }
-    foreach ($module in @("MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
+    foreach ($module in @("MK_platform_win32", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
         if (@($sample3dManifest.engineModules) -notcontains $module) {
             Write-Error "$sample3dManifestPath engineModules missing $module"
         }
@@ -1462,7 +1462,7 @@ if ($null -eq $generated3dPackageManifestEntry) {
         "require_graphics_morph_scene",
         "load_packaged_d3d12_shifted_shadow_receiver_scene_shaders",
         "load_packaged_vulkan_shifted_shadow_receiver_scene_shaders",
-        "skinned_scene_fragment_shader = mirakana::SdlDesktopPresentationShaderBytecode",
+        "skinned_scene_fragment_shader = mirakana::Win32DesktopPresentationShaderBytecode",
         "--require-gameplay-systems", "require_gameplay_systems",
         "gameplay_systems_status=",
         "gameplay_systems_ready=",

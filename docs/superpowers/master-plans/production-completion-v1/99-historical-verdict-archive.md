@@ -335,8 +335,8 @@ workspace `ai_commands` panel state
 - `RuntimeTextureUploadOptions::upload_ring`
 - `RuntimeUiAtlasGlyph`
 - `SceneSkinnedGpuBindingPalette`
-- `SdlDesktopPresentationVulkanSceneRendererDesc`
-- `SdlDesktopPresentationVulkanSceneRendererDesc::compute_morph_skinned_shader`
+- `Win32DesktopPresentationVulkanSceneRendererDesc`
+- `Win32DesktopPresentationVulkanSceneRendererDesc::compute_morph_skinned_shader`
 - `SetComputeRootDescriptorTable`
 - `SpriteAtlasSourceAuthoringDesc`
 - `Stable Directional Light-Space Policy v0`
@@ -1764,7 +1764,7 @@ The static guards use this section as the single historical sink for retired dat
 - Do not claim Vulkan NORMAL/TANGENT package smoke
 - Generated 3D Compute Morph Package Smoke Vulkan v1
 - Generated 3D Compute Morph Skin Package Smoke Vulkan v1 Implementation Plan (2026-05-07)
-- SdlDesktopPresentationVulkanSceneRendererDesc
+- Win32DesktopPresentationVulkanSceneRendererDesc
 
 ### 2026-05-07-runtime-ui-accessibility-publish-plan-v1.md
 - **Status:** Completed
@@ -4236,7 +4236,7 @@ Inventory notes:
 
 - `mirakana_runtime_rhi` already uploads cooked texture bytes, mesh vertex/index bytes, and material factor uniform bytes through an `IRhiDevice` while preserving owner-device provenance.
 - `mirakana_runtime_scene_rhi::build_runtime_scene_gpu_binding_palette` is the narrow bridge from `RuntimeAssetPackage` plus `SceneRenderPacket` into retained mesh uploads, texture uploads, material descriptor bindings, and scene-shared material pipeline layouts.
-- `mirakana_runtime_host_sdl3_presentation` is the host-owned execution point: it validates requested vertex input against cooked mesh payload layout, privately creates the D3D12/Vulkan `IRhiDevice`, builds scene GPU bindings, creates the graphics pipeline from the palette material pipeline layout, and wraps the renderer in `SceneGpuBindingInjectingRenderer`.
+- `mirakana_runtime_host_win32_presentation` is the host-owned execution point: it validates requested vertex input against cooked mesh payload layout, privately creates the D3D12/Vulkan `IRhiDevice`, builds scene GPU bindings, creates the graphics pipeline from the palette material pipeline layout, and wraps the renderer in `SceneGpuBindingInjectingRenderer`.
 - Existing package smokes already distinguish cooked package/scene validation from host-gated scene GPU execution through `--require-scene-package`, `--require-scene-gpu-bindings`, backend selection, and `scene_gpu_status`, but they did not report texture upload counts or uploaded byte totals.
 - Non-goals for this slice: public native handles, public `IRhiDevice` access, package streaming, broad residency budgets, async upload rings, material/shader graphs, live shader generation, Metal readiness, editor resource panels, or general production renderer quality.
 
@@ -4255,7 +4255,7 @@ Inventory notes:
 Implementation notes:
 
 - Added `mirakana::runtime_scene_rhi::execute_runtime_scene_gpu_upload` and `RuntimeSceneGpuUploadExecutionReport` as a backend-neutral host-owned report over the existing cooked texture/mesh/material upload path.
-- `SdlDesktopPresentationSceneGpuBindingStats` now carries first-party upload counts and uploaded byte totals only; it does not expose `IRhiDevice`, native handles, descriptor handles, swapchain frames, GPU timestamps, or `SceneGpuBindingPalette`.
+- `Win32DesktopPresentationSceneGpuBindingStats` now carries first-party upload counts and uploaded byte totals only; it does not expose `IRhiDevice`, native handles, descriptor handles, swapchain frames, GPU timestamps, or `SceneGpuBindingPalette`.
 - `SceneGpuBindingInjectingRenderer` derives upload counters from the retained scene GPU binding result while continuing to inject mesh/material GPU bindings internally.
 - Selected desktop runtime game status lines now print `scene_gpu_mesh_uploads`, `scene_gpu_texture_uploads`, `scene_gpu_material_uploads`, `scene_gpu_uploaded_texture_bytes`, `scene_gpu_uploaded_mesh_bytes`, and `scene_gpu_uploaded_material_factor_bytes`.
 - Sample game sources no longer include `mirakana/runtime_rhi/runtime_upload.hpp` just to obtain the lit mesh stride; game code keeps the vertex-input stride as local package/shader contract data.

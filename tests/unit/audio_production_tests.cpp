@@ -70,7 +70,7 @@ namespace {
 
 [[nodiscard]] mirakana::AudioProductionDeviceLifecycleRow device_lifecycle(bool host_evidence) {
     return mirakana::AudioProductionDeviceLifecycleRow{
-        .backend_id = "sdl3",
+        .backend_id = "wasapi",
         .uses_logical_device = true,
         .uses_audio_stream = true,
         .uses_queueing = true,

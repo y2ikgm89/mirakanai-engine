@@ -29,10 +29,8 @@ MK_add_game(sample_2d_playable_foundation
 )
 
 if(MK_DESKTOP_RUNTIME_ENABLED)
-    find_package(SDL3 CONFIG REQUIRED)
-
     function(MK_add_desktop_runtime_game target_name)
-        cmake_parse_arguments(MK_DESKTOP_GAME "REQUIRES_D3D12_SHADERS;REQUIRES_VULKAN_SHADERS;PACKAGE_FILES_FROM_MANIFEST" "GAME_MANIFEST" "SOURCES;SMOKE_ARGS;PACKAGE_SMOKE_ARGS;PACKAGE_FILES" ${ARGN})
+        cmake_parse_arguments(MK_DESKTOP_GAME "REQUIRES_D3D12_SHADERS;REQUIRES_VULKAN_SHADERS;PACKAGE_FILES_FROM_MANIFEST" "GAME_MANIFEST;HOST_BACKEND" "SOURCES;SMOKE_ARGS;PACKAGE_SMOKE_ARGS;PACKAGE_FILES" ${ARGN})
         if(MK_DESKTOP_GAME_UNPARSED_ARGUMENTS)
             message(FATAL_ERROR "MK_add_desktop_runtime_game received unknown arguments for ${target_name}: ${MK_DESKTOP_GAME_UNPARSED_ARGUMENTS}")
         endif()
@@ -56,6 +54,15 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
         endif()
         if(NOT MK_DESKTOP_GAME_PACKAGE_SMOKE_ARGS)
             set(MK_DESKTOP_GAME_PACKAGE_SMOKE_ARGS ${MK_DESKTOP_GAME_SMOKE_ARGS})
+        endif()
+        if(NOT MK_DESKTOP_GAME_HOST_BACKEND)
+            set(MK_DESKTOP_GAME_HOST_BACKEND "win32")
+        endif()
+        if(NOT MK_DESKTOP_GAME_HOST_BACKEND STREQUAL "win32")
+            message(FATAL_ERROR "MK_add_desktop_runtime_game HOST_BACKEND must be win32 for ${target_name}: ${MK_DESKTOP_GAME_HOST_BACKEND}")
+        endif()
+        if(NOT WIN32)
+            message(FATAL_ERROR "MK_add_desktop_runtime_game HOST_BACKEND win32 is only supported on Windows for ${target_name}")
         endif()
         get_filename_component(MK_DESKTOP_GAME_DIRECTORY "${MK_DESKTOP_GAME_GAME_MANIFEST}" DIRECTORY)
         file(REAL_PATH "${MK_DESKTOP_GAME_DIRECTORY}" MK_DESKTOP_GAME_DIRECTORY_REAL BASE_DIRECTORY "${CMAKE_SOURCE_DIR}")
@@ -185,12 +192,14 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                 MK_core
                 MK_math
                 MK_platform
-                MK_platform_sdl3
                 MK_renderer
                 MK_runtime_host
-                MK_runtime_host_sdl3
-                MK_runtime_host_sdl3_presentation
-                SDL3::SDL3
+        )
+        target_link_libraries(${target_name}
+            PRIVATE
+                MK_platform_win32
+                MK_runtime_host_win32
+                MK_runtime_host_win32_presentation
         )
 
         MK_apply_common_target_options(${target_name})
@@ -214,12 +223,6 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
         get_property(MK_DESKTOP_RUNTIME_GAME_TARGETS GLOBAL PROPERTY MK_DESKTOP_RUNTIME_GAMES)
         list(APPEND MK_DESKTOP_RUNTIME_GAME_TARGETS ${target_name})
         set_property(GLOBAL PROPERTY MK_DESKTOP_RUNTIME_GAMES "${MK_DESKTOP_RUNTIME_GAME_TARGETS}")
-
-        add_custom_command(TARGET ${target_name} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                $<TARGET_FILE:SDL3::SDL3>
-                $<TARGET_FILE_DIR:${target_name}>
-        )
 
         if(BUILD_TESTING)
             add_test(NAME ${target_name}_smoke COMMAND ${target_name} ${MK_DESKTOP_GAME_SMOKE_ARGS})
@@ -264,18 +267,13 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
         endif()
     endfunction()
 
-    if(WIN32)
-        install(FILES
-            $<TARGET_FILE:SDL3::SDL3>
-            DESTINATION ${CMAKE_INSTALL_BINDIR}
-        )
-    endif()
-
     MK_add_desktop_runtime_game(sample_desktop_runtime_shell
         SOURCES
             sample_desktop_runtime_shell/main.cpp
         GAME_MANIFEST
             games/sample_desktop_runtime_shell/game.agent.json
+        HOST_BACKEND
+            win32
         SMOKE_ARGS
             --smoke
         PACKAGE_SMOKE_ARGS
@@ -1466,6 +1464,8 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             sample_desktop_runtime_game/main.cpp
         GAME_MANIFEST
             games/sample_desktop_runtime_game/game.agent.json
+        HOST_BACKEND
+            win32
         SMOKE_ARGS
             --smoke
         PACKAGE_SMOKE_ARGS
@@ -1475,8 +1475,6 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-scene-package
             runtime/sample_desktop_runtime_game.geindex
             --require-d3d12-scene-shaders
-            --video-driver
-            windows
             --require-d3d12-renderer
             --require-scene-gpu-bindings
             --require-postprocess
@@ -1520,6 +1518,8 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             sample_2d_desktop_runtime_package/main.cpp
         GAME_MANIFEST
             games/sample_2d_desktop_runtime_package/game.agent.json
+        HOST_BACKEND
+            win32
         SMOKE_ARGS
             --smoke
             --require-config
@@ -1551,8 +1551,6 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-scene-package
             runtime/sample_2d_desktop_runtime_package.geindex
             --require-d3d12-shaders
-            --video-driver
-            windows
             --require-d3d12-renderer
             --require-native-2d-sprites
             --require-sprite-animation
@@ -2183,6 +2181,8 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             sample_generated_desktop_runtime_package/main.cpp
         GAME_MANIFEST
             games/sample_generated_desktop_runtime_package/game.agent.json
+        HOST_BACKEND
+            win32
         SMOKE_ARGS
             --smoke
             --require-config
@@ -2201,6 +2201,8 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             sample_generated_desktop_runtime_cooked_scene_package/main.cpp
         GAME_MANIFEST
             games/sample_generated_desktop_runtime_cooked_scene_package/game.agent.json
+        HOST_BACKEND
+            win32
         SMOKE_ARGS
             --smoke
             --require-config
@@ -2229,6 +2231,8 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             sample_generated_desktop_runtime_material_shader_package/main.cpp
         GAME_MANIFEST
             games/sample_generated_desktop_runtime_material_shader_package/game.agent.json
+        HOST_BACKEND
+            win32
         SMOKE_ARGS
             --smoke
             --require-config
@@ -2242,8 +2246,6 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-scene-package
             runtime/sample_generated_desktop_runtime_material_shader_package.geindex
             --require-d3d12-scene-shaders
-            --video-driver
-            windows
             --require-d3d12-renderer
             --require-scene-gpu-bindings
             --require-postprocess
@@ -2273,6 +2275,8 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             sample_generated_desktop_runtime_3d_package/main.cpp
         GAME_MANIFEST
             games/sample_generated_desktop_runtime_3d_package/game.agent.json
+        HOST_BACKEND
+            win32
         SMOKE_ARGS
             --smoke
             --require-config
@@ -2303,8 +2307,6 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-package-streaming-safe-point
             --require-gameplay-systems
             --require-d3d12-scene-shaders
-            --video-driver
-            windows
             --require-d3d12-renderer
             --require-scene-gpu-bindings
             --require-postprocess

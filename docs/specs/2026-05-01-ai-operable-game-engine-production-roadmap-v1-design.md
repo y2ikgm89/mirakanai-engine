@@ -44,7 +44,7 @@ Current strengths:
 - `engine/agent/manifest.json` and `tools/agent-context.ps1` give AI agents a real machine-readable starting point.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/new-game.ps1` can scaffold headless games and multiple desktop-runtime package variants.
 - Desktop runtime packaging, selected target metadata, D3D12 package proof, and strict host-gated Vulkan package proof are concrete.
-- `mirakana_runtime`, `mirakana_runtime_scene`, `mirakana_runtime_rhi`, `mirakana_runtime_scene_rhi`, `mirakana_scene_renderer`, and `mirakana_runtime_host_sdl3_presentation` form a usable cooked-package-to-renderer path.
+- `mirakana_runtime`, `mirakana_runtime_scene`, `mirakana_runtime_rhi`, `mirakana_runtime_scene_rhi`, `mirakana_scene_renderer`, and `mirakana_runtime_host_win32_presentation` form a usable cooked-package-to-renderer path.
 - Editor-core has GUI-independent models for scene, prefab, material, and package authoring.
 - Deterministic headless foundations exist for input, physics, navigation, behavior trees, animation, audio, runtime UI contracts, and diagnostics.
 

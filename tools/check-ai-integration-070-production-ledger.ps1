@@ -34,28 +34,11 @@ $editorProjectNativeDialogChecks = @(
         )
     },
     @{
-        Path = "editor/src/main.cpp"
+        Path = "editor/CMakeLists.txt"
         Needles = @(
-            "Open Project...",
-            "Save Project As...",
-            "Project Open Dialog",
-            "Project Save Dialog",
-            "show_project_open_dialog",
-            "show_project_save_dialog",
-            "poll_project_file_dialogs",
-            "project_store_relative_project_path",
-            "workspace_path_for_project_path",
-            "scene_path_for_project_document",
-            "open_project_bundle_from_paths",
-            "save_project_bundle_to_paths",
-            "project_open_dialog_id_",
-            "project_save_dialog_id_",
-            "make_project_open_dialog_request",
-            "make_project_save_dialog_request",
-            "make_project_open_dialog_model",
-            "make_project_save_dialog_model",
-            "mirakana::IFileDialogService",
-            "mirakana::SdlFileDialogService"
+            "MK_editor visible shell is deferred after SDL3 removal",
+            "MK_editor_core remains the supported editor logic target",
+            "must not depend on SDL3"
         )
     },
     @{
@@ -763,7 +746,7 @@ if ($sample2dDesktopManifest.target -ne "sample_2d_desktop_runtime_package") {
 if ($sample2dDesktopManifest.gameplayContract.productionRecipe -ne "2d-desktop-runtime-package") {
     Write-Error "$sample2dDesktopManifestPath gameplayContract.productionRecipe must be 2d-desktop-runtime-package"
 }
-foreach ($module in @("MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_renderer")) {
+    foreach ($module in @("MK_platform_win32", "MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_renderer")) {
     if (@($sample2dDesktopManifest.engineModules) -notcontains $module) {
         Write-Error "$sample2dDesktopManifestPath engineModules missing $module"
     }
@@ -1348,7 +1331,7 @@ if ($sample3dManifest.target -ne "sample_desktop_runtime_game") {
 if ($sample3dManifest.gameplayContract.productionRecipe -ne "3d-playable-desktop-package") {
     Write-Error "$sample3dManifestPath gameplayContract.productionRecipe must be 3d-playable-desktop-package"
 }
-foreach ($module in @("MK_animation", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
+foreach ($module in @("MK_animation", "MK_platform_win32", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
     if (@($sample3dManifest.engineModules) -notcontains $module) {
         Write-Error "$sample3dManifestPath engineModules missing $module"
     }
@@ -1606,7 +1589,7 @@ foreach ($packageStreamingSmokeGuidance in @(
     Assert-ContainsText $packageStreamingSmokeGuidanceText "package_streaming_status" $packageStreamingSmokeGuidance
     Assert-ContainsText $packageStreamingSmokeGuidanceText "broad async/background streaming" $packageStreamingSmokeGuidance
     Assert-ContainsText $packageStreamingSmokeGuidanceText "--require-renderer-quality-gates" $packageStreamingSmokeGuidance
-    Assert-ContainsText $packageStreamingSmokeGuidanceText "evaluate_sdl_desktop_presentation_quality_gate" $packageStreamingSmokeGuidance
+    Assert-ContainsText $packageStreamingSmokeGuidanceText "evaluate_win32_desktop_presentation_quality_gate" $packageStreamingSmokeGuidance
     Assert-ContainsText $packageStreamingSmokeGuidanceText "renderer_quality_expected_framegraph_passes=2" $packageStreamingSmokeGuidance
     Assert-ContainsText $packageStreamingSmokeGuidanceText "renderer_quality_expected_framegraph_barrier_steps=4" $packageStreamingSmokeGuidance
     Assert-ContainsText $packageStreamingSmokeGuidanceText "depth-input postprocess" $packageStreamingSmokeGuidance

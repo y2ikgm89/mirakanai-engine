@@ -246,8 +246,8 @@ Assert-ContainsAll $cpp23EvaluationScript @(
     "cpp23-release-preset-eval",
     "Invoke-CheckedCommand `$tools.CMake --build --preset cpp23-release-eval --parallel `$effectiveJobs",
     "Invoke-CheckedCommand `$tools.CTest --preset cpp23-release-eval --output-on-failure --timeout 300 --parallel `$effectiveJobs",
-    "Invoke-CheckedCommand `$tools.CMake --build --preset cpp23-desktop-gui-eval --parallel `$effectiveJobs",
-    "Invoke-CheckedCommand `$tools.CTest --preset cpp23-desktop-gui-eval --output-on-failure --timeout 300 --parallel `$effectiveJobs"
+    "The C++23 GUI lane is deferred after SDL3 removal",
+    "first-party Win32/D3D12 adapters and must not depend on SDL3"
 ) "tools/evaluate-cpp23.ps1 release artifact validation"
 Assert-DoesNotContainText $cpp23EvaluationScript "Resolve-Cpp23EvaluationJobCount" "tools/evaluate-cpp23.ps1 shared parallel job helper"
 Assert-DoesNotContainText $cpp23EvaluationScript "[Environment]::ProcessorCount" "tools/evaluate-cpp23.ps1 shared parallel job helper"
@@ -256,6 +256,13 @@ $cpp23ArtifactAssertIndex = $cpp23EvaluationScript.IndexOf('Assert-ReleasePackag
 if ($cpp23CpackCallIndex -lt 0 -or $cpp23ArtifactAssertIndex -lt 0 -or $cpp23ArtifactAssertIndex -lt $cpp23CpackCallIndex) {
     Write-Error "ci-matrix-check: tools/evaluate-cpp23.ps1 must run Assert-ReleasePackageArtifacts after CPack for the C++23 release lane"
 }
+
+$releasePackageArtifactsScript = Read-RequiredText "tools/release-package-artifacts.ps1"
+Assert-ContainsAll $releasePackageArtifactsScript @(
+    "Assert-ReleasePackageHasNoForbiddenRuntimeDlls",
+    "SDL3.dll",
+    "Release package archive must not ship SDL3.dll"
+) "tools/release-package-artifacts.ps1 forbidden runtime DLL guard"
 
 Assert-ValidationTierSelection `
     -Label "docs-only PR" `

@@ -88,37 +88,33 @@ foreach ($dependency in $desktopRuntime.dependencies) {
     }
 }
 
-if ($desktopRuntimeDependencyNames -notcontains "sdl3") {
-    Write-Error "desktop-runtime feature must declare dependency: sdl3"
+foreach ($dependencyName in @("sdl3", "imgui")) {
+    if ($desktopRuntimeDependencyNames -contains $dependencyName) {
+        Write-Error "desktop-runtime feature uses the first-party Windows native lane and must not declare dependency: $dependencyName"
+    }
 }
 
-if ($desktopRuntimeDependencyNames -contains "imgui") {
-    Write-Error "desktop-runtime feature must not depend on Dear ImGui"
+if ($desktopRuntimeDependencyNames.Count -ne 0) {
+    Write-Error "desktop-runtime feature uses host SDKs and must not declare vcpkg package dependencies"
 }
 
 $dependencyNames = @()
-$imguiFeatures = @()
 foreach ($dependency in $desktopGui.dependencies) {
     if ($dependency -is [string]) {
         $dependencyNames += $dependency
     } else {
         $dependencyNames += $dependency.name
-        if ($dependency.name -eq "imgui") {
-            $imguiFeatures = @($dependency.features)
-        }
     }
 }
 
 foreach ($dependencyName in @("sdl3", "imgui")) {
-    if ($dependencyNames -notcontains $dependencyName) {
-        Write-Error "desktop-gui feature must declare dependency: $dependencyName"
+    if ($dependencyNames -contains $dependencyName) {
+        Write-Error "desktop-gui feature is deferred after SDL3 removal and must not declare dependency: $dependencyName"
     }
 }
 
-foreach ($feature in @("docking-experimental", "sdl3-binding", "sdl3-renderer-binding")) {
-    if ($imguiFeatures -notcontains $feature) {
-        Write-Error "desktop-gui imgui dependency must enable feature: $feature"
-    }
+if ($dependencyNames.Count -ne 0) {
+    Write-Error "desktop-gui feature is deferred after SDL3 removal and must not declare package dependencies"
 }
 
 $assetImporterDependencyNames = @()
@@ -178,8 +174,12 @@ if ($enetDefaultFeatures -ne $false) {
     Write-Error "network-enet enet dependency must set default-features to false"
 }
 
-Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| SDL3 \|" "third-party notices"
-Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| Dear ImGui \|" "third-party notices"
+if ((Get-Content -LiteralPath (Join-Path $root "THIRD_PARTY_NOTICES.md") -Raw) -match "\| SDL3 \|") {
+    Write-Error "third-party notices must not list SDL3 after final SDL3 source and dependency removal"
+}
+if ((Get-Content -LiteralPath (Join-Path $root "THIRD_PARTY_NOTICES.md") -Raw) -match "\| Dear ImGui \|") {
+    Write-Error "third-party notices must not list Dear ImGui while the visible editor shell is deferred and no package dependency declares it"
+}
 Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| Jolt Physics \|" "third-party notices"
 Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| ENet \|" "third-party notices"
 Assert-TextContains "docs/dependencies.md" "builtin-baseline" "dependency docs"
@@ -199,8 +199,17 @@ Assert-TextContains "tools/validate-network-enet.ps1" "network-enet" "ENet valid
 Assert-TextContains "tools/validate-network-enet.ps1" "validate-installed-sdk.ps1" "ENet validation wrapper"
 Assert-TextContains "tools/validate-network-enet.ps1" "mirakana_rhi_d3d12" "ENet validation wrapper install target closure"
 Assert-TextContains "tools/validate-network-enet.ps1" "MK_editor_core" "ENet validation wrapper install target closure"
+Assert-TextContains "tools/check-native-desktop-contracts.ps1" "IAudioClient" "native desktop public API guard"
+Assert-TextContains "tools/check-native-desktop-contracts.ps1" "XINPUT_STATE" "native desktop public API guard"
+Assert-TextContains "tools/check-native-desktop-contracts.ps1" "SDL3/" "native desktop public API guard"
+Assert-TextContains "tools/check-native-desktop-contracts.ps1" "IUnknown" "native desktop public API guard"
+Assert-TextContains "tools/check-native-desktop-contracts.ps1" "editor/include" "native desktop public API guard"
+Assert-TextContains "tools/validate.ps1" "check-native-desktop-contracts.ps1" "validation static tasks"
+Assert-TextContains "engine/agent/manifest.json" "nativeDesktopContractCheck" "engine manifest commands"
 Assert-TextContains "engine/runtime/network/enet/CMakeLists.txt" "winmm" "ENet Windows SDK link closure"
 Assert-TextContains "engine/runtime/network/enet/CMakeLists.txt" "ws2_32" "ENet Windows SDK link closure"
+Assert-TextContains "engine/audio/wasapi/CMakeLists.txt" "ole32" "WASAPI Windows SDK link closure"
+Assert-TextContains "docs/dependencies.md" "WASAPI" "dependency docs"
 Assert-TextContains "engine/rhi/metal/CMakeLists.txt" 'find_library\(MK_APPLE_FOUNDATION_FRAMEWORK Foundation REQUIRED\)' "Metal Apple SDK linkage"
 Assert-TextContains "engine/rhi/metal/CMakeLists.txt" '\$\{MK_APPLE_FOUNDATION_FRAMEWORK\}' "Metal Apple SDK linkage"
 

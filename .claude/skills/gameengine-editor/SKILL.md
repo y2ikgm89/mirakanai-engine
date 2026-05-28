@@ -1,6 +1,6 @@
 ---
 name: gameengine-editor
-description: Guides editor/core, Dear ImGui shell, project IO, asset UI, viewport tools, and editor tests. Use when editing files under editor/ or editor-related tests.
+description: Guides editor/core, deferred visible editor shell boundaries, project IO, asset UI, viewport tools, and editor tests. Use when editing files under editor/ or editor-related tests.
 paths:
   - "editor/**"
 ---
@@ -9,7 +9,7 @@ paths:
 
 ## Scope
 
-Use this skill for editor/core models, Dear ImGui shell wiring, project IO, asset UI, viewport tools, and editor tests.
+Use this skill for editor/core models, deferred visible editor shell boundaries, project IO, asset UI, viewport tools, and editor tests.
 
 ## Context Budget Rules
 
@@ -21,7 +21,7 @@ Use this skill for editor/core models, Dear ImGui shell wiring, project IO, asse
 ## Required Discipline
 
 - Keep `editor/core` GUI-independent and route persistent behavior through editor-core models before shell wiring.
-- Read `references/full-guidance.md` only when detailed retained row ids, panel contracts, ImGui style rules, or detailed validation lanes are needed.
+- Read `references/full-guidance.md` only when detailed retained row ids, panel contracts, visible-shell boundary rules, or detailed validation lanes are needed.
 - Prefer focused `MK_editor_core_tests` or `check-tidy.ps1 -Files` loops while iterating, then `tools/validate.ps1` at the slice gate.
 - When adding retained UI ids or CMake target literals enforced by `check-ai-integration.ps1`, update Needles and Codex/Claude skill twins together.
 - Generated Game Studio v1 uses `EditorAiGeneratedGameStudioV1Model`, `make_editor_ai_generated_game_studio_v1_model`, `make_editor_ai_generated_game_studio_v1_ui_model`, and retained `generated_game_studio` rows over existing AI playtest/operator workflow models; keep it read-only, GUI-independent in `editor/core`, and free of validation execution, manifest mutation, engine-internal edits, native handles, renderer/RHI residency, Metal readiness, or broad editor productization.

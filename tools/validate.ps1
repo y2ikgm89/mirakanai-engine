@@ -501,6 +501,7 @@ $staticTasks = @(
     Get-ValidateTask -ScriptFileName "check-shader-toolchain.ps1"
     Get-ValidateTask -ScriptFileName "check-mobile-packaging.ps1"
     Get-ValidateTask -ScriptFileName "check-apple-host-evidence.ps1"
+    Get-ValidateTask -ScriptFileName "check-native-desktop-contracts.ps1"
     Get-ValidateTask -ScriptFileName "check-public-api-boundaries.ps1"
 )
 

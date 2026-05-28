@@ -308,7 +308,7 @@ These rules follow the Git documentation for `.gitignore`, `$GIT_DIR/info/exclud
 
 - The required language baseline is C++23.
 - Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-cpp-standard-policy.ps1` after changing CMake standard policy, manifests, schemas, or AI guidance.
-- Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/evaluate-cpp23.ps1 -Release` for release packaging and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/evaluate-cpp23.ps1 -Gui` for the optional SDL3/Dear ImGui editor path. Use `-Debug -Release -Gui` only when all C++23 lanes need one local confidence pass. The script uses automatic CMake/CTest parallelism by default; pass `-Jobs <N>` only to throttle a constrained host.
+- Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/evaluate-cpp23.ps1 -Release` for release packaging. `-Gui` is currently fail-closed because the visible editor shell is deferred after SDL3 removal; `MK_editor_core` remains covered by the default Debug lane. The script uses automatic CMake/CTest parallelism by default; pass `-Jobs <N>` only to throttle a constrained host.
 - Add C++ modules through CMake `FILE_SET CXX_MODULES`; do not bypass CMake module scanning.
 - Keep CMake module scanning off for non-module test/probe/sample/game executables; engine/library targets keep the preset-level module scan policy.
 - Use `import std;` only when CMake reports C++23 standard-library module support for the active generator/toolchain.

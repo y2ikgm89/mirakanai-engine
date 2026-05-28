@@ -121,6 +121,30 @@ function Assert-ReleasePackageZipEntries {
     }
 }
 
+function Assert-ReleasePackageHasNoForbiddenRuntimeDlls {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ZipPath
+    )
+
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+
+    $archive = [System.IO.Compression.ZipFile]::OpenRead($ZipPath)
+    try {
+        foreach ($candidate in $archive.Entries) {
+            $candidateName = $candidate.FullName.Replace("\", "/").TrimStart("/")
+            if ($candidateName.EndsWith("/bin/SDL3.dll", [System.StringComparison]::OrdinalIgnoreCase) -or
+                $candidateName.Equals("bin/SDL3.dll", [System.StringComparison]::OrdinalIgnoreCase) -or
+                [System.IO.Path]::GetFileName($candidateName).Equals("SDL3.dll", [System.StringComparison]::OrdinalIgnoreCase)) {
+                throw "Release package archive must not ship SDL3.dll: $candidateName"
+            }
+        }
+    }
+    finally {
+        $archive.Dispose()
+    }
+}
+
 function Assert-ReleasePackageArtifacts {
     param(
         [Parameter(Mandatory = $true)]
@@ -159,6 +183,7 @@ function Assert-ReleasePackageArtifacts {
 
     Assert-ReleaseArtifactFile -Path $zipPath -Description "ZIP artifact"
     Assert-ReleaseArtifactFile -Path $checksumPath -Description "checksum sidecar"
+    Assert-ReleasePackageHasNoForbiddenRuntimeDlls -ZipPath $zipPath
 
     $expectedHash = Get-ReleasePackageChecksumSidecar -ChecksumPath $checksumPath -ExpectedFileName $zipName
     $actualHash = (Get-FileHash -LiteralPath $zipPath -Algorithm SHA256).Hash.ToLowerInvariant()

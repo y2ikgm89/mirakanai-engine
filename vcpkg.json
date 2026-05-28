@@ -16,10 +16,8 @@
       ]
     },
     "desktop-runtime": {
-      "description": "Optional desktop game runtime dependencies for SDL3 window, input, presentation, and audio adapters.",
-      "dependencies": [
-        "sdl3"
-      ]
+      "description": "Optional Windows native desktop game runtime lane. Win32, WASAPI, DXGI, and D3D12 integration uses the host SDK and declares no vcpkg package dependency.",
+      "dependencies": []
     },
     "physics-jolt": {
       "description": "Optional native 3D physics middleware adapter dependency for Jolt Physics.",
@@ -40,18 +38,8 @@
       ]
     },
     "desktop-gui": {
-      "description": "Desktop window/editor dependencies for SDL3 and Dear ImGui integration.",
-      "dependencies": [
-        "sdl3",
-        {
-          "name": "imgui",
-          "features": [
-            "docking-experimental",
-            "sdl3-binding",
-            "sdl3-renderer-binding"
-          ]
-        }
-      ]
+      "description": "Deferred desktop editor shell feature. The SDL3/Dear ImGui shell has been removed from active build lanes; future Win32/D3D12 editor work must add audited dependencies explicitly.",
+      "dependencies": []
     }
   }
 }

@@ -3,6 +3,250 @@
 
 # Chapter 3 for check-json-contracts.ps1 static contracts.
 
+$validateDesktopRuntimeScript = Get-Content -LiteralPath (Join-Path $root "tools/validate-desktop-game-runtime.ps1") -Raw
+foreach ($requiredNeedle in @(
+        "MK_runtime_host_win32_public_api_compile",
+        "MK_runtime_host_win32_tests",
+        "MK_win32_platform_tests",
+        "MK_wasapi_audio_tests"
+    )) {
+    if (-not $validateDesktopRuntimeScript.Contains($requiredNeedle)) {
+        Write-Error "desktop runtime validation must target Windows native host evidence: $requiredNeedle"
+    }
+}
+foreach ($forbiddenNeedle in @(
+        "MK_runtime_host_sdl3_public_api_compile",
+        "MK_runtime_host_sdl3_tests",
+        "MK_sdl3_platform_tests",
+        "MK_sdl3_audio_tests"
+    )) {
+    if ($validateDesktopRuntimeScript.Contains($forbiddenNeedle)) {
+        Write-Error "desktop runtime validation must not require SDL3 test target: $forbiddenNeedle"
+    }
+}
+
+$packageDesktopRuntimeScript = Get-Content -LiteralPath (Join-Path $root "tools/package-desktop-runtime.ps1") -Raw
+foreach ($requiredNeedle in @(
+        "MK_runtime_host_tests",
+        "MK_runtime_host_win32_tests",
+        "MK_win32_platform_tests",
+        "MK_wasapi_audio_tests"
+    )) {
+    if (-not $packageDesktopRuntimeScript.Contains($requiredNeedle)) {
+        Write-Error "desktop runtime package validation must include Windows native host CTest pattern: $requiredNeedle"
+    }
+}
+foreach ($forbiddenNeedle in @(
+        "mirakana_runtime_host_sdl3_tests",
+        "mirakana_sdl3_platform_tests",
+        "mirakana_sdl3_audio_tests",
+        "MK_runtime_host_sdl3_tests",
+        "MK_sdl3_platform_tests",
+        "MK_sdl3_audio_tests"
+    )) {
+    if ($packageDesktopRuntimeScript.Contains($forbiddenNeedle)) {
+        Write-Error "desktop runtime package validation must not require SDL3 CTest pattern: $forbiddenNeedle"
+    }
+}
+
+$validateInstalledDesktopRuntimeScript =
+    Get-Content -LiteralPath (Join-Path $root "tools/validate-installed-desktop-runtime.ps1") -Raw
+foreach ($requiredNeedle in @(
+        "Installed desktop runtime package must not ship SDL3 runtime DLL",
+        "SDL3.dll"
+    )) {
+    if (-not $validateInstalledDesktopRuntimeScript.Contains($requiredNeedle)) {
+        Write-Error "installed desktop runtime validation must reject SDL3 runtime DLL artifacts: $requiredNeedle"
+    }
+}
+if ($validateInstalledDesktopRuntimeScript.Contains("Installed SDL3 runtime DLL was not found")) {
+    Write-Error "installed desktop runtime validation must not require SDL3.dll"
+}
+
+$installedSdkValidationScript = Get-Content -LiteralPath (Join-Path $root "tools/installed-sdk-validation.ps1") -Raw
+if (-not $installedSdkValidationScript.Contains("Installed Mirakanai SDK must not ship SDL3 runtime DLL")) {
+    Write-Error "installed SDK validation must reject SDL3 runtime DLL artifacts"
+}
+
+$releasePackageArtifactsScript = Get-Content -LiteralPath (Join-Path $root "tools/release-package-artifacts.ps1") -Raw
+foreach ($requiredNeedle in @(
+        "Assert-ReleasePackageHasNoForbiddenRuntimeDlls",
+        "SDL3.dll"
+    )) {
+    if (-not $releasePackageArtifactsScript.Contains($requiredNeedle)) {
+        Write-Error "release package artifact validation must reject SDL3 runtime DLL artifacts: $requiredNeedle"
+    }
+}
+
+$editorCmakeContent = Get-Content -LiteralPath (Join-Path $root "editor/CMakeLists.txt") -Raw
+foreach ($forbiddenNeedle in @(
+        "find_package(SDL3",
+        "SDL3::SDL3",
+        "MK_platform_sdl3",
+        "imgui::imgui",
+        "add_executable(MK_editor"
+    )) {
+    if ($editorCmakeContent.Contains($forbiddenNeedle)) {
+        Write-Error "visible editor shell is deferred after SDL3 removal and editor/CMakeLists.txt must not retain active SDL3/ImGui shell wiring: $forbiddenNeedle"
+    }
+}
+foreach ($requiredNeedle in @(
+        "MK_editor visible shell is deferred after SDL3 removal",
+        "MK_editor_core"
+    )) {
+    if (-not $editorCmakeContent.Contains($requiredNeedle)) {
+        Write-Error "editor/CMakeLists.txt must document the deferred visible editor shell boundary: $requiredNeedle"
+    }
+}
+
+$rootCmakeContent = Get-Content -LiteralPath (Join-Path $root "CMakeLists.txt") -Raw
+if ($rootCmakeContent.Contains("if(MK_ENABLE_DESKTOP_GUI)`r`n    set(MK_DESKTOP_RUNTIME_ENABLED ON)")) {
+    Write-Error "MK_ENABLE_DESKTOP_GUI must not imply the removed SDL3 desktop runtime lane while the visible editor shell is deferred"
+}
+
+$buildGuiScript = Get-Content -LiteralPath (Join-Path $root "tools/build-gui.ps1") -Raw
+foreach ($requiredNeedle in @(
+        "visible editor shell is deferred after SDL3 removal",
+        "MK_editor_core"
+    )) {
+    if (-not $buildGuiScript.Contains($requiredNeedle)) {
+        Write-Error "tools/build-gui.ps1 must fail closed with the deferred editor shell message: $requiredNeedle"
+    }
+}
+foreach ($forbiddenNeedle in @(
+        "--preset desktop-gui",
+        "--build --preset desktop-gui"
+    )) {
+    if ($buildGuiScript.Contains($forbiddenNeedle)) {
+        Write-Error "tools/build-gui.ps1 must not configure or build the deferred SDL3/ImGui editor shell: $forbiddenNeedle"
+    }
+}
+
+$sampleDesktopRuntimeShellSource = Get-Content -LiteralPath (Join-Path $root "games/sample_desktop_runtime_shell/main.cpp") -Raw
+foreach ($requiredNeedle in @(
+        "mirakana/runtime_host/win32/win32_desktop_game_host.hpp",
+        "mirakana::Win32DesktopGameHost"
+    )) {
+    if (-not $sampleDesktopRuntimeShellSource.Contains($requiredNeedle)) {
+        Write-Error "sample_desktop_runtime_shell must exercise the Windows native runtime host: $requiredNeedle"
+    }
+}
+foreach ($forbiddenNeedle in @(
+        "SdlDesktopGameHost",
+        "mirakana/runtime_host/sdl3"
+    )) {
+    if ($sampleDesktopRuntimeShellSource.Contains($forbiddenNeedle)) {
+        Write-Error "sample_desktop_runtime_shell must not use SDL3 runtime host surface: $forbiddenNeedle"
+    }
+}
+
+$newGameTemplatesScript = Get-Content -LiteralPath (Join-Path $root "tools/new-game-templates.ps1") -Raw
+foreach ($requiredNeedle in @(
+        "mirakana/runtime_host/win32/win32_desktop_game_host.hpp",
+        "mirakana::Win32DesktopGameHost",
+        "MK_platform_win32",
+        "MK_runtime_host_win32",
+        "MK_runtime_host_win32_presentation",
+        "win32-desktop"
+    )) {
+    if (-not $newGameTemplatesScript.Contains($requiredNeedle)) {
+        Write-Error "generated desktop game templates must target Windows native host evidence: $requiredNeedle"
+    }
+}
+foreach ($forbiddenNeedle in @(
+        "mirakana/runtime_host/sdl3",
+        "mirakana::SdlDesktopGameHost",
+        "mirakana::SdlDesktopPresentation",
+        "SdlDesktopPresentation",
+        "sdl_desktop_",
+        "sdl3-desktop",
+        "--video-driver",
+        "MK_platform_sdl3",
+        "MK_runtime_host_sdl3"
+    )) {
+    if ($newGameTemplatesScript.Contains($forbiddenNeedle)) {
+        Write-Error "generated desktop game templates must not use SDL3 host surface: $forbiddenNeedle"
+    }
+}
+
+$gamesCmakeContent = Get-Content -LiteralPath (Join-Path $root "games/CMakeLists.txt") -Raw
+$generatedDesktopPackageSamples = @(
+    "sample_generated_desktop_runtime_package",
+    "sample_generated_desktop_runtime_cooked_scene_package",
+    "sample_generated_desktop_runtime_material_shader_package",
+    "sample_2d_desktop_runtime_package",
+    "sample_generated_desktop_runtime_3d_package"
+)
+foreach ($sampleGame in $generatedDesktopPackageSamples) {
+    $escapedSampleGame = [regex]::Escape($sampleGame)
+    $targetBlockMatch =
+        [regex]::Match($gamesCmakeContent, "(?s)MK_add_desktop_runtime_game\($escapedSampleGame.*?PACKAGE_FILES_FROM_MANIFEST\s*\)")
+    if (-not $targetBlockMatch.Success) {
+        Write-Error "games/CMakeLists.txt must register generated desktop package target: $sampleGame"
+    } else {
+        $targetBlock = $targetBlockMatch.Value
+        foreach ($requiredNeedle in @(
+                "HOST_BACKEND",
+                "win32"
+            )) {
+            if (-not $targetBlock.Contains($requiredNeedle)) {
+                Write-Error "$sampleGame CMake registration must select Windows native host backend: $requiredNeedle"
+            }
+        }
+        if ($targetBlock.Contains("--video-driver")) {
+            Write-Error "$sampleGame CMake registration must not pass SDL3 video driver hints"
+        }
+    }
+}
+
+foreach ($sampleGame in $generatedDesktopPackageSamples) {
+    $sampleGameSource = Get-Content -LiteralPath (Join-Path $root "games/$sampleGame/main.cpp") -Raw
+    foreach ($requiredNeedle in @(
+            "mirakana/runtime_host/win32/win32_desktop_game_host.hpp",
+            "mirakana::Win32DesktopGameHost"
+        )) {
+        if (-not $sampleGameSource.Contains($requiredNeedle)) {
+            Write-Error "$sampleGame must exercise the Windows native runtime host: $requiredNeedle"
+        }
+    }
+    foreach ($forbiddenNeedle in @(
+            "mirakana/runtime_host/sdl3",
+            "SdlDesktopGameHost",
+            "SdlDesktopPresentation",
+            "sdl_desktop_",
+            "--video-driver"
+        )) {
+        if ($sampleGameSource.Contains($forbiddenNeedle)) {
+            Write-Error "$sampleGame must not use SDL3 runtime host surface: $forbiddenNeedle"
+        }
+    }
+
+    $sampleGameManifestPath = Join-Path $root "games/$sampleGame/game.agent.json"
+    $sampleGameManifestText = Get-Content -LiteralPath $sampleGameManifestPath -Raw
+    $sampleGameManifest = $sampleGameManifestText | ConvertFrom-Json
+    foreach ($requiredModule in @(
+            "MK_platform_win32",
+            "MK_runtime_host_win32",
+            "MK_runtime_host_win32_presentation"
+        )) {
+        if (@($sampleGameManifest.engineModules) -notcontains $requiredModule) {
+            Write-Error "$sampleGame manifest must declare Windows native host module: $requiredModule"
+        }
+    }
+    foreach ($forbiddenNeedle in @(
+            "MK_platform_sdl3",
+            "MK_runtime_host_sdl3",
+            "MK_runtime_host_sdl3_presentation",
+            "sdl3-desktop",
+            "sdl3-desktop-host",
+            "--video-driver"
+        )) {
+        if ($sampleGameManifestText.Contains($forbiddenNeedle)) {
+            Write-Error "$sampleGame manifest must not retain SDL3 desktop host readiness text: $forbiddenNeedle"
+        }
+    }
+}
+
 foreach ($commandId in $scenePrefabAuthoringCommandIds) {
     $scenePrefabCommand = @($productionLoop.commandSurfaces | Where-Object { $_.id -eq $commandId })
     if ($scenePrefabCommand.Count -ne 1 -or $scenePrefabCommand[0].status -ne "ready") {
@@ -1066,6 +1310,20 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
         "broad commercial-engine"
     )) {
         Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan engine gap matrix"
+    }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "next-production-gap-selection") {
+    foreach ($needle in @(
+    "First-Party Desktop Platform And SDL3 Removal v1",
+    "MK_platform_win32",
+    "MK_runtime_host_win32",
+    "MK_runtime_host_win32_presentation",
+    "MK_audio_wasapi",
+    "unsupportedProductionGaps = []",
+    "selection gate"
+    )) {
+        if (-not $recommendedText.Contains($needle)) {
+            Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe SDL3 removal closeout and selection gate: $needle"
+        }
     }
 } else {
     foreach ($needle in @(

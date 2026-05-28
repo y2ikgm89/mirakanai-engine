@@ -39,9 +39,9 @@
 #include "mirakana/runtime/resource_runtime.hpp"
 #include "mirakana/runtime/session_services.hpp"
 #include "mirakana/runtime/world_entity_model.hpp"
-#include "mirakana/runtime_host/sdl3/sdl_desktop_game_host.hpp"
-#include "mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp"
 #include "mirakana/runtime_host/shader_bytecode.hpp"
+#include "mirakana/runtime_host/win32/win32_desktop_game_host.hpp"
+#include "mirakana/runtime_host/win32/win32_desktop_presentation.hpp"
 #include "mirakana/runtime_rhi/package_streaming_frame_graph.hpp"
 #include "mirakana/runtime_rhi/runtime_upload.hpp"
 #include "mirakana/runtime_scene/runtime_scene.hpp"
@@ -112,7 +112,6 @@ struct DesktopRuntimeOptions {
     bool require_audio_gameplay_mixer{false};
     bool require_audio_production{false};
     std::uint32_t max_frames{0};
-    std::string video_driver_hint;
     std::string required_config_path;
     std::string required_scene_package_path;
 };
@@ -275,7 +274,7 @@ package_streaming_status_name(mirakana::runtime::RuntimePackageStreamingExecutio
 }
 
 [[nodiscard]] mirakana::runtime_rhi::RuntimePackageUploadStagingEvidence
-run_package_upload_staging_evidence(mirakana::SdlDesktopPresentation& presentation) {
+run_package_upload_staging_evidence(mirakana::Win32DesktopPresentation& presentation) {
     if (auto* device = presentation.scene_pbr_frame_rhi_device(); device != nullptr) {
         return mirakana::runtime_rhi::execute_runtime_package_upload_staging_evidence(*device);
     }
@@ -870,7 +869,7 @@ validate_audio_production_package_evidence(const mirakana::AudioClipSampleData& 
         .device_lifecycle_rows =
             {
                 mirakana::AudioProductionDeviceLifecycleRow{
-                    .backend_id = "sdl3",
+                    .backend_id = "wasapi",
                     .uses_logical_device = true,
                     .uses_audio_stream = true,
                     .uses_queueing = true,
@@ -6835,7 +6834,7 @@ class GeneratedDesktopRuntime3DPackageGame final : public mirakana::GameApp {
 }
 
 void print_usage() {
-    std::cout << "sample_generated_desktop_runtime_3d_package [--smoke] [--max-frames N] [--video-driver NAME] "
+    std::cout << "sample_generated_desktop_runtime_3d_package [--smoke] [--max-frames N] "
                  "[--require-config PATH] [--require-scene-package PATH] [--require-d3d12-scene-shaders] "
                  "[--require-vulkan-scene-shaders] [--require-d3d12-renderer] [--require-vulkan-renderer] "
                  "[--require-scene-gpu-bindings] [--require-postprocess] [--require-postprocess-depth-input] "
@@ -7122,15 +7121,6 @@ void print_usage() {
             ++index;
             continue;
         }
-        if (arg == "--video-driver") {
-            if (index + 1 >= argc) {
-                std::cerr << "--video-driver requires a driver name\n";
-                return false;
-            }
-            options.video_driver_hint = argv[index + 1];
-            ++index;
-            continue;
-        }
         if (arg == "--require-config") {
             if (index + 1 >= argc) {
                 std::cerr << "--require-config requires a relative path\n";
@@ -7182,17 +7172,14 @@ void print_usage() {
         if (options.max_frames == 0) {
             options.max_frames = 2;
         }
-        if (options.video_driver_hint.empty()) {
-            options.video_driver_hint = "dummy";
-        }
         options.throttle = false;
     }
     return true;
 }
 
-[[nodiscard]] mirakana::SdlDesktopPresentationQualityGateDesc
+[[nodiscard]] mirakana::Win32DesktopPresentationQualityGateDesc
 make_renderer_quality_gate_desc(const DesktopRuntimeOptions& options) noexcept {
-    mirakana::SdlDesktopPresentationQualityGateDesc desc;
+    mirakana::Win32DesktopPresentationQualityGateDesc desc;
     if (options.require_renderer_quality_gates) {
         desc.require_scene_gpu_bindings = true;
         desc.require_postprocess = true;
@@ -7817,7 +7804,7 @@ void print_collision_package_diagnostics(const CollisionPackageReport& report) {
            game.scene_mesh_plan_succeeded() && game.scene_mesh_plan_diagnostics() == 0;
 }
 
-[[nodiscard]] bool scene_gpu_ready(const mirakana::SdlDesktopPresentationReport& report,
+[[nodiscard]] bool scene_gpu_ready(const mirakana::Win32DesktopPresentationReport& report,
                                    std::uint32_t expected_frames) noexcept {
     const auto& stats = report.scene_gpu_stats;
     return (stats.mesh_bindings > 0 || stats.skinned_mesh_bindings > 0) && stats.material_bindings > 0 &&
@@ -7836,12 +7823,12 @@ void print_collision_package_diagnostics(const CollisionPackageReport& report) {
     return postprocess_depth_input_requested ? (frame_count == 0 ? 0 : 1 + (frame_count * 4)) : frame_count * 2;
 }
 
-[[nodiscard]] bool postprocess_ready(const mirakana::SdlDesktopPresentationReport& report,
+[[nodiscard]] bool postprocess_ready(const mirakana::Win32DesktopPresentationReport& report,
                                      std::uint32_t expected_frames) noexcept {
     const auto expected_framegraph_passes = report.directional_shadow_requested ? 3U : 2U;
     const auto expected_framegraph_barrier_step_count = expected_framegraph_barrier_steps(
         report.directional_shadow_requested, report.postprocess_depth_input_requested, expected_frames);
-    return report.postprocess_status == mirakana::SdlDesktopPresentationPostprocessStatus::ready &&
+    return report.postprocess_status == mirakana::Win32DesktopPresentationPostprocessStatus::ready &&
            report.framegraph_passes == expected_framegraph_passes &&
            report.renderer_stats.framegraph_passes_executed ==
                static_cast<std::uint64_t>(expected_frames) * expected_framegraph_passes &&
@@ -7851,7 +7838,7 @@ void print_collision_package_diagnostics(const CollisionPackageReport& report) {
            report.renderer_stats.postprocess_passes_executed == static_cast<std::uint64_t>(expected_frames);
 }
 
-[[nodiscard]] bool compute_morph_ready(const mirakana::SdlDesktopPresentationReport& report,
+[[nodiscard]] bool compute_morph_ready(const mirakana::Win32DesktopPresentationReport& report,
                                        const DesktopRuntimeOptions& options) noexcept {
     const auto& stats = report.scene_gpu_stats;
     if (!options.require_compute_morph || options.require_compute_morph_skin) {
@@ -7864,7 +7851,7 @@ void print_collision_package_diagnostics(const CollisionPackageReport& report) {
            report.renderer_stats.gpu_morph_draws == 0 && report.renderer_stats.morph_descriptor_binds == 0;
 }
 
-[[nodiscard]] bool compute_morph_skin_ready(const mirakana::SdlDesktopPresentationReport& report,
+[[nodiscard]] bool compute_morph_skin_ready(const mirakana::Win32DesktopPresentationReport& report,
                                             const DesktopRuntimeOptions& options) noexcept {
     const auto& stats = report.scene_gpu_stats;
     if (!options.require_compute_morph_skin) {
@@ -7879,7 +7866,8 @@ void print_collision_package_diagnostics(const CollisionPackageReport& report) {
            report.renderer_stats.skinned_palette_descriptor_binds == static_cast<std::uint64_t>(options.max_frames);
 }
 
-[[nodiscard]] bool compute_morph_async_telemetry_ready(const mirakana::SdlDesktopPresentationReport& report) noexcept {
+[[nodiscard]] bool
+compute_morph_async_telemetry_ready(const mirakana::Win32DesktopPresentationReport& report) noexcept {
     const auto& stats = report.scene_gpu_stats;
     return stats.compute_morph_async_compute_queue_submits > 0 && stats.compute_morph_async_graphics_queue_waits > 0 &&
            stats.compute_morph_async_graphics_queue_submits > 0 &&
@@ -7894,8 +7882,8 @@ evaluate_playable_3d_slice(const DesktopRuntimeOptions& options, const mirakana:
                            const GeneratedDesktopRuntime3DPackageGame& game,
                            const mirakana::runtime::RuntimePackageStreamingExecutionResult& package_streaming_result,
                            std::size_t expected_package_records,
-                           const mirakana::SdlDesktopPresentationReport& presentation_report,
-                           const mirakana::SdlDesktopPresentationQualityGateReport& renderer_quality) noexcept {
+                           const mirakana::Win32DesktopPresentationReport& presentation_report,
+                           const mirakana::Win32DesktopPresentationQualityGateReport& renderer_quality) noexcept {
     Playable3dSliceReport report;
     report.expected_frames = options.max_frames;
     report.frames_ok =
@@ -7956,14 +7944,14 @@ evaluate_playable_3d_slice(const DesktopRuntimeOptions& options, const mirakana:
 
 [[nodiscard]] Visible3dProductionProofReport
 evaluate_visible_3d_production_proof(const DesktopRuntimeOptions& options, const mirakana::DesktopRunResult& result,
-                                     const mirakana::SdlDesktopPresentationReport& presentation_report,
-                                     const mirakana::SdlDesktopPresentationQualityGateReport& renderer_quality,
+                                     const mirakana::Win32DesktopPresentationReport& presentation_report,
+                                     const mirakana::Win32DesktopPresentationQualityGateReport& renderer_quality,
                                      const Playable3dSliceReport& playable_3d, bool gameplay_systems_ready) noexcept {
     Visible3dProductionProofReport report;
     report.expected_frames = options.max_frames;
     report.presented_frames = presentation_report.renderer_stats.frames_finished;
-    report.d3d12_selected = presentation_report.selected_backend == mirakana::SdlDesktopPresentationBackend::d3d12;
-    report.vulkan_selected = presentation_report.selected_backend == mirakana::SdlDesktopPresentationBackend::vulkan;
+    report.d3d12_selected = presentation_report.selected_backend == mirakana::Win32DesktopPresentationBackend::d3d12;
+    report.vulkan_selected = presentation_report.selected_backend == mirakana::Win32DesktopPresentationBackend::vulkan;
     report.null_fallback_used = presentation_report.used_null_fallback;
     report.scene_gpu_ready = scene_gpu_ready(presentation_report, options.max_frames);
     report.postprocess_ready = postprocess_ready(presentation_report, options.max_frames);
@@ -7971,7 +7959,8 @@ evaluate_visible_3d_production_proof(const DesktopRuntimeOptions& options, const
     report.playable_ready = playable_3d.ready && playable_3d.diagnostics_count == 0;
     report.ui_overlay_ready =
         presentation_report.native_ui_overlay_requested && presentation_report.native_ui_overlay_ready &&
-        presentation_report.native_ui_overlay_status == mirakana::SdlDesktopPresentationNativeUiOverlayStatus::ready &&
+        presentation_report.native_ui_overlay_status ==
+            mirakana::Win32DesktopPresentationNativeUiOverlayStatus::ready &&
         presentation_report.native_ui_overlay_sprites_submitted >= static_cast<std::uint64_t>(options.max_frames) &&
         presentation_report.native_ui_overlay_draws == static_cast<std::uint64_t>(options.max_frames);
 
@@ -8512,9 +8501,9 @@ load_packaged_vulkan_native_ui_overlay_shaders(const char* executable_path) {
     });
 }
 
-[[nodiscard]] mirakana::SdlDesktopPresentationShaderBytecode
+[[nodiscard]] mirakana::Win32DesktopPresentationShaderBytecode
 to_presentation_shader_bytecode(const mirakana::DesktopShaderBytecodeBlob& bytecode) noexcept {
-    return mirakana::SdlDesktopPresentationShaderBytecode{
+    return mirakana::Win32DesktopPresentationShaderBytecode{
         .entry_point = bytecode.entry_point,
         .bytecode = std::span<const std::uint8_t>{bytecode.bytecode.data(), bytecode.bytecode.size()},
     };
@@ -8534,23 +8523,23 @@ to_presentation_shader_bytecode(const mirakana::DesktopShaderBytecodeBlob& bytec
     return "unknown";
 }
 
-void print_presentation_report(std::string_view prefix, const mirakana::SdlDesktopGameHost& host) {
+void print_presentation_report(std::string_view prefix, const mirakana::Win32DesktopGameHost& host) {
     const auto report = host.presentation_report();
     std::cout << prefix << " presentation_report=requested="
-              << mirakana::sdl_desktop_presentation_backend_name(report.requested_backend)
-              << " selected=" << mirakana::sdl_desktop_presentation_backend_name(report.selected_backend)
-              << " fallback=" << mirakana::sdl_desktop_presentation_fallback_reason_name(report.fallback_reason)
+              << mirakana::win32_desktop_presentation_backend_name(report.requested_backend)
+              << " selected=" << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
+              << " fallback=" << mirakana::win32_desktop_presentation_fallback_reason_name(report.fallback_reason)
               << " used_null_fallback=" << (report.used_null_fallback ? 1 : 0)
               << " diagnostics=" << report.diagnostics_count << " backend_reports=" << report.backend_reports_count
               << " scene_gpu_status="
-              << mirakana::sdl_desktop_presentation_scene_gpu_binding_status_name(report.scene_gpu_status)
+              << mirakana::win32_desktop_presentation_scene_gpu_binding_status_name(report.scene_gpu_status)
               << " renderer_frames_finished=" << report.renderer_stats.frames_finished << '\n';
     for (const auto& backend_report : host.presentation_backend_reports()) {
         std::cout << prefix << " presentation_backend_report="
-                  << mirakana::sdl_desktop_presentation_backend_name(backend_report.backend) << ":"
-                  << mirakana::sdl_desktop_presentation_backend_report_status_name(backend_report.status) << ":"
-                  << mirakana::sdl_desktop_presentation_fallback_reason_name(backend_report.fallback_reason) << ": "
-                  << backend_report.message << '\n';
+                  << mirakana::win32_desktop_presentation_backend_name(backend_report.backend) << ":"
+                  << mirakana::win32_desktop_presentation_backend_report_status_name(backend_report.status) << ":"
+                  << mirakana::win32_desktop_presentation_fallback_reason_name(backend_report.fallback_reason) << ": "
+                  << backend_report.diagnostic << '\n';
     }
 }
 
@@ -8868,7 +8857,7 @@ int main(int argc, char** argv) {
         return 6;
     }
 
-    std::optional<mirakana::SdlDesktopPresentationD3d12SceneRendererDesc> d3d12_scene_renderer;
+    std::optional<mirakana::Win32DesktopPresentationD3d12SceneRendererDesc> d3d12_scene_renderer;
     const auto& d3d12_scene_bytecode =
         options.require_directional_shadow ? d3d12_shadow_receiver_bytecode : d3d12_shader_bytecode;
     const bool require_graphics_morph_scene =
@@ -8883,27 +8872,27 @@ int main(int argc, char** argv) {
         (!options.require_compute_morph_skin || d3d12_compute_morph_skinned_shader_bytecode.ready()) &&
         d3d12_native_ui_overlay_ready && d3d12_postprocess_bytecode.ready() && runtime_package.has_value() &&
         packaged_scene.has_value()) {
-        d3d12_scene_renderer.emplace(mirakana::SdlDesktopPresentationD3d12SceneRendererDesc{
+        d3d12_scene_renderer.emplace(mirakana::Win32DesktopPresentationD3d12SceneRendererDesc{
             .vertex_shader =
-                mirakana::SdlDesktopPresentationShaderBytecode{
+                mirakana::Win32DesktopPresentationShaderBytecode{
                     .entry_point = d3d12_scene_bytecode.vertex_shader.entry_point,
                     .bytecode = std::span<const std::uint8_t>{d3d12_scene_bytecode.vertex_shader.bytecode.data(),
                                                               d3d12_scene_bytecode.vertex_shader.bytecode.size()},
                 },
             .fragment_shader =
-                mirakana::SdlDesktopPresentationShaderBytecode{
+                mirakana::Win32DesktopPresentationShaderBytecode{
                     .entry_point = d3d12_scene_bytecode.fragment_shader.entry_point,
                     .bytecode = std::span<const std::uint8_t>{d3d12_scene_bytecode.fragment_shader.bytecode.data(),
                                                               d3d12_scene_bytecode.fragment_shader.bytecode.size()},
                 },
             .postprocess_vertex_shader =
-                mirakana::SdlDesktopPresentationShaderBytecode{
+                mirakana::Win32DesktopPresentationShaderBytecode{
                     .entry_point = d3d12_postprocess_bytecode.vertex_shader.entry_point,
                     .bytecode = std::span<const std::uint8_t>{d3d12_postprocess_bytecode.vertex_shader.bytecode.data(),
                                                               d3d12_postprocess_bytecode.vertex_shader.bytecode.size()},
                 },
             .postprocess_fragment_shader =
-                mirakana::SdlDesktopPresentationShaderBytecode{
+                mirakana::Win32DesktopPresentationShaderBytecode{
                     .entry_point = d3d12_postprocess_bytecode.fragment_shader.entry_point,
                     .bytecode =
                         std::span<const std::uint8_t>{d3d12_postprocess_bytecode.fragment_shader.bytecode.data(),
@@ -8925,14 +8914,14 @@ int main(int argc, char** argv) {
             .enable_native_ui_overlay_textures = requires_native_ui_texture_overlay,
         });
         if (options.require_compute_morph_skin) {
-            d3d12_scene_renderer->skinned_vertex_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+            d3d12_scene_renderer->skinned_vertex_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                 .entry_point = d3d12_compute_morph_skinned_shader_bytecode.vertex_shader.entry_point,
                 .bytecode =
                     std::span<const std::uint8_t>{
                         d3d12_compute_morph_skinned_shader_bytecode.vertex_shader.bytecode.data(),
                         d3d12_compute_morph_skinned_shader_bytecode.vertex_shader.bytecode.size()},
             };
-            d3d12_scene_renderer->compute_morph_skinned_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+            d3d12_scene_renderer->compute_morph_skinned_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                 .entry_point = d3d12_compute_morph_skinned_shader_bytecode.fragment_shader.entry_point,
                 .bytecode =
                     std::span<const std::uint8_t>{
@@ -8942,20 +8931,20 @@ int main(int argc, char** argv) {
             d3d12_scene_renderer->skinned_vertex_buffers = runtime_compute_morph_skinned_scene_vertex_buffers();
             d3d12_scene_renderer->skinned_vertex_attributes = runtime_compute_morph_skinned_scene_vertex_attributes();
             d3d12_scene_renderer->compute_morph_skinned_mesh_bindings = {
-                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_skinned_mesh_asset_id(),
-                                                                      .morph_mesh = packaged_morph_mesh_asset_id()},
+                mirakana::Win32DesktopPresentationSceneMorphMeshBinding{.mesh = packaged_skinned_mesh_asset_id(),
+                                                                        .morph_mesh = packaged_morph_mesh_asset_id()},
             };
         } else if (options.require_compute_morph) {
             const auto& selected_compute_morph_shader_bytecode = options.require_compute_morph_normal_tangent
                                                                      ? d3d12_compute_morph_tangent_frame_shader_bytecode
                                                                      : d3d12_compute_morph_shader_bytecode;
-            d3d12_scene_renderer->compute_morph_vertex_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+            d3d12_scene_renderer->compute_morph_vertex_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                 .entry_point = selected_compute_morph_shader_bytecode.vertex_shader.entry_point,
                 .bytecode =
                     std::span<const std::uint8_t>{selected_compute_morph_shader_bytecode.vertex_shader.bytecode.data(),
                                                   selected_compute_morph_shader_bytecode.vertex_shader.bytecode.size()},
             };
-            d3d12_scene_renderer->compute_morph_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+            d3d12_scene_renderer->compute_morph_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                 .entry_point = selected_compute_morph_shader_bytecode.fragment_shader.entry_point,
                 .bytecode =
                     std::span<const std::uint8_t>{
@@ -8965,24 +8954,24 @@ int main(int argc, char** argv) {
             d3d12_scene_renderer->enable_compute_morph_tangent_frame_output =
                 options.require_compute_morph_normal_tangent;
             d3d12_scene_renderer->compute_morph_mesh_bindings = {
-                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_mesh_asset_id(),
-                                                                      .morph_mesh = packaged_morph_mesh_asset_id()},
+                mirakana::Win32DesktopPresentationSceneMorphMeshBinding{.mesh = packaged_mesh_asset_id(),
+                                                                        .morph_mesh = packaged_morph_mesh_asset_id()},
             };
         } else if (options.require_morph_package) {
-            d3d12_scene_renderer->morph_vertex_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+            d3d12_scene_renderer->morph_vertex_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                 .entry_point = d3d12_morph_shader_bytecode.vertex_shader.entry_point,
                 .bytecode = std::span<const std::uint8_t>{d3d12_morph_shader_bytecode.vertex_shader.bytecode.data(),
                                                           d3d12_morph_shader_bytecode.vertex_shader.bytecode.size()},
             };
             d3d12_scene_renderer->morph_mesh_assets = {packaged_morph_mesh_asset_id()};
             d3d12_scene_renderer->morph_mesh_bindings = {
-                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_mesh_asset_id(),
-                                                                      .morph_mesh = packaged_morph_mesh_asset_id()},
+                mirakana::Win32DesktopPresentationSceneMorphMeshBinding{.mesh = packaged_mesh_asset_id(),
+                                                                        .morph_mesh = packaged_morph_mesh_asset_id()},
             };
         }
         if (options.require_directional_shadow) {
             if (require_graphics_morph_scene) {
-                d3d12_scene_renderer->skinned_scene_fragment_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+                d3d12_scene_renderer->skinned_scene_fragment_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                     .entry_point = d3d12_shifted_shadow_receiver_bytecode.fragment_shader.entry_point,
                     .bytecode =
                         std::span<const std::uint8_t>{
@@ -8990,12 +8979,12 @@ int main(int argc, char** argv) {
                             d3d12_shifted_shadow_receiver_bytecode.fragment_shader.bytecode.size()},
                 };
             }
-            d3d12_scene_renderer->shadow_vertex_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+            d3d12_scene_renderer->shadow_vertex_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                 .entry_point = d3d12_shadow_bytecode.vertex_shader.entry_point,
                 .bytecode = std::span<const std::uint8_t>{d3d12_shadow_bytecode.vertex_shader.bytecode.data(),
                                                           d3d12_shadow_bytecode.vertex_shader.bytecode.size()},
             };
-            d3d12_scene_renderer->shadow_fragment_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+            d3d12_scene_renderer->shadow_fragment_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                 .entry_point = d3d12_shadow_bytecode.fragment_shader.entry_point,
                 .bytecode = std::span<const std::uint8_t>{d3d12_shadow_bytecode.fragment_shader.bytecode.data(),
                                                           d3d12_shadow_bytecode.fragment_shader.bytecode.size()},
@@ -9003,7 +8992,7 @@ int main(int argc, char** argv) {
         }
     }
 
-    std::optional<mirakana::SdlDesktopPresentationVulkanSceneRendererDesc> vulkan_scene_renderer;
+    std::optional<mirakana::Win32DesktopPresentationVulkanSceneRendererDesc> vulkan_scene_renderer;
     const auto& vulkan_scene_bytecode =
         options.require_directional_shadow ? vulkan_shadow_receiver_bytecode : vulkan_shader_bytecode;
     const bool vulkan_morph_ready = !require_graphics_morph_scene || vulkan_morph_shader_bytecode.ready();
@@ -9018,28 +9007,28 @@ int main(int argc, char** argv) {
         (!options.require_directional_shadow || vulkan_compute_morph_shader_bytecode.ready()) &&
         vulkan_native_ui_overlay_ready && vulkan_postprocess_bytecode.ready() && runtime_package.has_value() &&
         packaged_scene.has_value()) {
-        vulkan_scene_renderer.emplace(mirakana::SdlDesktopPresentationVulkanSceneRendererDesc{
+        vulkan_scene_renderer.emplace(mirakana::Win32DesktopPresentationVulkanSceneRendererDesc{
             .vertex_shader =
-                mirakana::SdlDesktopPresentationShaderBytecode{
+                mirakana::Win32DesktopPresentationShaderBytecode{
                     .entry_point = vulkan_scene_bytecode.vertex_shader.entry_point,
                     .bytecode = std::span<const std::uint8_t>{vulkan_scene_bytecode.vertex_shader.bytecode.data(),
                                                               vulkan_scene_bytecode.vertex_shader.bytecode.size()},
                 },
             .fragment_shader =
-                mirakana::SdlDesktopPresentationShaderBytecode{
+                mirakana::Win32DesktopPresentationShaderBytecode{
                     .entry_point = vulkan_scene_bytecode.fragment_shader.entry_point,
                     .bytecode = std::span<const std::uint8_t>{vulkan_scene_bytecode.fragment_shader.bytecode.data(),
                                                               vulkan_scene_bytecode.fragment_shader.bytecode.size()},
                 },
             .postprocess_vertex_shader =
-                mirakana::SdlDesktopPresentationShaderBytecode{
+                mirakana::Win32DesktopPresentationShaderBytecode{
                     .entry_point = vulkan_postprocess_bytecode.vertex_shader.entry_point,
                     .bytecode =
                         std::span<const std::uint8_t>{vulkan_postprocess_bytecode.vertex_shader.bytecode.data(),
                                                       vulkan_postprocess_bytecode.vertex_shader.bytecode.size()},
                 },
             .postprocess_fragment_shader =
-                mirakana::SdlDesktopPresentationShaderBytecode{
+                mirakana::Win32DesktopPresentationShaderBytecode{
                     .entry_point = vulkan_postprocess_bytecode.fragment_shader.entry_point,
                     .bytecode =
                         std::span<const std::uint8_t>{vulkan_postprocess_bytecode.fragment_shader.bytecode.data(),
@@ -9061,14 +9050,14 @@ int main(int argc, char** argv) {
             .enable_native_ui_overlay_textures = requires_native_ui_texture_overlay,
         });
         if (options.require_compute_morph_skin) {
-            vulkan_scene_renderer->skinned_vertex_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+            vulkan_scene_renderer->skinned_vertex_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                 .entry_point = vulkan_compute_morph_skinned_shader_bytecode.vertex_shader.entry_point,
                 .bytecode =
                     std::span<const std::uint8_t>{
                         vulkan_compute_morph_skinned_shader_bytecode.vertex_shader.bytecode.data(),
                         vulkan_compute_morph_skinned_shader_bytecode.vertex_shader.bytecode.size()},
             };
-            vulkan_scene_renderer->compute_morph_skinned_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+            vulkan_scene_renderer->compute_morph_skinned_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                 .entry_point = vulkan_compute_morph_skinned_shader_bytecode.fragment_shader.entry_point,
                 .bytecode =
                     std::span<const std::uint8_t>{
@@ -9078,20 +9067,20 @@ int main(int argc, char** argv) {
             vulkan_scene_renderer->skinned_vertex_buffers = runtime_compute_morph_skinned_scene_vertex_buffers();
             vulkan_scene_renderer->skinned_vertex_attributes = runtime_compute_morph_skinned_scene_vertex_attributes();
             vulkan_scene_renderer->compute_morph_skinned_mesh_bindings = {
-                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_skinned_mesh_asset_id(),
-                                                                      .morph_mesh = packaged_morph_mesh_asset_id()},
+                mirakana::Win32DesktopPresentationSceneMorphMeshBinding{.mesh = packaged_skinned_mesh_asset_id(),
+                                                                        .morph_mesh = packaged_morph_mesh_asset_id()},
             };
         } else if (options.require_compute_morph) {
             const auto& selected_compute_morph_shader_bytecode =
                 options.require_compute_morph_normal_tangent ? vulkan_compute_morph_tangent_frame_shader_bytecode
                                                              : vulkan_compute_morph_shader_bytecode;
-            vulkan_scene_renderer->compute_morph_vertex_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+            vulkan_scene_renderer->compute_morph_vertex_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                 .entry_point = selected_compute_morph_shader_bytecode.vertex_shader.entry_point,
                 .bytecode =
                     std::span<const std::uint8_t>{selected_compute_morph_shader_bytecode.vertex_shader.bytecode.data(),
                                                   selected_compute_morph_shader_bytecode.vertex_shader.bytecode.size()},
             };
-            vulkan_scene_renderer->compute_morph_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+            vulkan_scene_renderer->compute_morph_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                 .entry_point = selected_compute_morph_shader_bytecode.fragment_shader.entry_point,
                 .bytecode =
                     std::span<const std::uint8_t>{
@@ -9101,24 +9090,24 @@ int main(int argc, char** argv) {
             vulkan_scene_renderer->enable_compute_morph_tangent_frame_output =
                 options.require_compute_morph_normal_tangent;
             vulkan_scene_renderer->compute_morph_mesh_bindings = {
-                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_mesh_asset_id(),
-                                                                      .morph_mesh = packaged_morph_mesh_asset_id()},
+                mirakana::Win32DesktopPresentationSceneMorphMeshBinding{.mesh = packaged_mesh_asset_id(),
+                                                                        .morph_mesh = packaged_morph_mesh_asset_id()},
             };
         } else if (options.require_morph_package) {
-            vulkan_scene_renderer->morph_vertex_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+            vulkan_scene_renderer->morph_vertex_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                 .entry_point = vulkan_morph_shader_bytecode.vertex_shader.entry_point,
                 .bytecode = std::span<const std::uint8_t>{vulkan_morph_shader_bytecode.vertex_shader.bytecode.data(),
                                                           vulkan_morph_shader_bytecode.vertex_shader.bytecode.size()},
             };
             vulkan_scene_renderer->morph_mesh_assets = {packaged_morph_mesh_asset_id()};
             vulkan_scene_renderer->morph_mesh_bindings = {
-                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_mesh_asset_id(),
-                                                                      .morph_mesh = packaged_morph_mesh_asset_id()},
+                mirakana::Win32DesktopPresentationSceneMorphMeshBinding{.mesh = packaged_mesh_asset_id(),
+                                                                        .morph_mesh = packaged_morph_mesh_asset_id()},
             };
         }
         if (options.require_directional_shadow) {
             if (require_graphics_morph_scene) {
-                vulkan_scene_renderer->skinned_scene_fragment_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+                vulkan_scene_renderer->skinned_scene_fragment_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                     .entry_point = vulkan_shifted_shadow_receiver_bytecode.fragment_shader.entry_point,
                     .bytecode =
                         std::span<const std::uint8_t>{
@@ -9126,18 +9115,18 @@ int main(int argc, char** argv) {
                             vulkan_shifted_shadow_receiver_bytecode.fragment_shader.bytecode.size()},
                 };
             }
-            vulkan_scene_renderer->compute_morph_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+            vulkan_scene_renderer->compute_morph_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                 .entry_point = vulkan_compute_morph_shader_bytecode.fragment_shader.entry_point,
                 .bytecode =
                     std::span<const std::uint8_t>{vulkan_compute_morph_shader_bytecode.fragment_shader.bytecode.data(),
                                                   vulkan_compute_morph_shader_bytecode.fragment_shader.bytecode.size()},
             };
-            vulkan_scene_renderer->shadow_vertex_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+            vulkan_scene_renderer->shadow_vertex_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                 .entry_point = vulkan_shadow_bytecode.vertex_shader.entry_point,
                 .bytecode = std::span<const std::uint8_t>{vulkan_shadow_bytecode.vertex_shader.bytecode.data(),
                                                           vulkan_shadow_bytecode.vertex_shader.bytecode.size()},
             };
-            vulkan_scene_renderer->shadow_fragment_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+            vulkan_scene_renderer->shadow_fragment_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                 .entry_point = vulkan_shadow_bytecode.fragment_shader.entry_point,
                 .bytecode = std::span<const std::uint8_t>{vulkan_shadow_bytecode.fragment_shader.bytecode.data(),
                                                           vulkan_shadow_bytecode.fragment_shader.bytecode.size()},
@@ -9145,10 +9134,9 @@ int main(int argc, char** argv) {
         }
     }
 
-    mirakana::SdlDesktopGameHostDesc host_desc{
+    mirakana::Win32DesktopGameHostDesc host_desc{
         .title = "sample-generated-desktop-runtime-3d-package",
         .extent = mirakana::WindowExtent{.width = 960, .height = 540},
-        .video_driver_hint = options.video_driver_hint,
         .prefer_vulkan = options.require_vulkan_renderer,
     };
     if (d3d12_scene_renderer.has_value()) {
@@ -9158,16 +9146,16 @@ int main(int argc, char** argv) {
         host_desc.vulkan_scene_renderer = &*vulkan_scene_renderer;
     }
 
-    mirakana::SdlDesktopGameHost host(host_desc);
+    mirakana::Win32DesktopGameHost host(host_desc);
     if (options.require_d3d12_renderer &&
-        host.presentation_backend() != mirakana::SdlDesktopPresentationBackend::d3d12) {
+        host.presentation_backend() != mirakana::Win32DesktopPresentationBackend::d3d12) {
         std::cout << "sample_generated_desktop_runtime_3d_package required_d3d12_renderer_unavailable renderer="
                   << host.presentation_backend_name() << '\n';
         print_presentation_report("sample_generated_desktop_runtime_3d_package", host);
         return 5;
     }
     if (options.require_vulkan_renderer &&
-        host.presentation_backend() != mirakana::SdlDesktopPresentationBackend::vulkan) {
+        host.presentation_backend() != mirakana::Win32DesktopPresentationBackend::vulkan) {
         std::cout << "sample_generated_desktop_runtime_3d_package required_vulkan_renderer_unavailable renderer="
                   << host.presentation_backend_name() << '\n';
         print_presentation_report("sample_generated_desktop_runtime_3d_package", host);
@@ -9175,15 +9163,15 @@ int main(int argc, char** argv) {
     }
     if (options.require_scene_gpu_bindings && !host.scene_gpu_bindings_ready()) {
         std::cout << "sample_generated_desktop_runtime_3d_package required_scene_gpu_bindings_unavailable status="
-                  << mirakana::sdl_desktop_presentation_scene_gpu_binding_status_name(host.scene_gpu_binding_status())
+                  << mirakana::win32_desktop_presentation_scene_gpu_binding_status_name(host.scene_gpu_binding_status())
                   << '\n';
         print_presentation_report("sample_generated_desktop_runtime_3d_package", host);
         return 5;
     }
     if (options.require_postprocess &&
-        host.presentation_report().postprocess_status != mirakana::SdlDesktopPresentationPostprocessStatus::ready) {
+        host.presentation_report().postprocess_status != mirakana::Win32DesktopPresentationPostprocessStatus::ready) {
         std::cout << "sample_generated_desktop_runtime_3d_package required_postprocess_unavailable status="
-                  << mirakana::sdl_desktop_presentation_postprocess_status_name(
+                  << mirakana::win32_desktop_presentation_postprocess_status_name(
                          host.presentation_report().postprocess_status)
                   << '\n';
         print_presentation_report("sample_generated_desktop_runtime_3d_package", host);
@@ -9196,13 +9184,13 @@ int main(int argc, char** argv) {
     }
     if (options.require_native_ui_overlay && !host.presentation_report().native_ui_overlay_ready) {
         std::cout << "sample_generated_desktop_runtime_3d_package required_native_ui_overlay_unavailable status="
-                  << mirakana::sdl_desktop_presentation_native_ui_overlay_status_name(
+                  << mirakana::win32_desktop_presentation_native_ui_overlay_status_name(
                          host.presentation_report().native_ui_overlay_status)
                   << '\n';
         print_presentation_report("sample_generated_desktop_runtime_3d_package", host);
         for (const auto& diagnostic : host.native_ui_overlay_diagnostics()) {
             std::cout << "sample_generated_desktop_runtime_3d_package native_ui_overlay_diagnostic="
-                      << mirakana::sdl_desktop_presentation_native_ui_overlay_status_name(diagnostic.status) << ": "
+                      << mirakana::win32_desktop_presentation_native_ui_overlay_status_name(diagnostic.status) << ": "
                       << diagnostic.message << '\n';
         }
         return 10;
@@ -9210,18 +9198,19 @@ int main(int argc, char** argv) {
     if (requires_native_ui_texture_overlay) {
         const auto texture_overlay_report = host.presentation_report();
         if (texture_overlay_report.native_ui_texture_overlay_status !=
-                mirakana::SdlDesktopPresentationNativeUiTextureOverlayStatus::ready ||
+                mirakana::Win32DesktopPresentationNativeUiTextureOverlayStatus::ready ||
             !texture_overlay_report.native_ui_texture_overlay_atlas_ready) {
             std::cout << "sample_generated_desktop_runtime_3d_package required_native_ui_texture_overlay_unavailable "
                          "status="
-                      << mirakana::sdl_desktop_presentation_native_ui_texture_overlay_status_name(
+                      << mirakana::win32_desktop_presentation_native_ui_texture_overlay_status_name(
                              texture_overlay_report.native_ui_texture_overlay_status)
                       << " atlas_ready=" << (texture_overlay_report.native_ui_texture_overlay_atlas_ready ? 1 : 0)
                       << '\n';
             print_presentation_report("sample_generated_desktop_runtime_3d_package", host);
             for (const auto& diagnostic : host.native_ui_texture_overlay_diagnostics()) {
                 std::cout << "sample_generated_desktop_runtime_3d_package native_ui_texture_overlay_diagnostic="
-                          << mirakana::sdl_desktop_presentation_native_ui_texture_overlay_status_name(diagnostic.status)
+                          << mirakana::win32_desktop_presentation_native_ui_texture_overlay_status_name(
+                                 diagnostic.status)
                           << ": " << diagnostic.message << '\n';
             }
             return 11;
@@ -9229,13 +9218,13 @@ int main(int argc, char** argv) {
     }
     if (options.require_directional_shadow && !host.presentation_report().directional_shadow_ready) {
         std::cout << "sample_generated_desktop_runtime_3d_package required_directional_shadow_unavailable status="
-                  << mirakana::sdl_desktop_presentation_directional_shadow_status_name(
+                  << mirakana::win32_desktop_presentation_directional_shadow_status_name(
                          host.presentation_report().directional_shadow_status)
                   << '\n';
         print_presentation_report("sample_generated_desktop_runtime_3d_package", host);
         for (const auto& diagnostic : host.directional_shadow_diagnostics()) {
             std::cout << "sample_generated_desktop_runtime_3d_package directional_shadow_diagnostic="
-                      << mirakana::sdl_desktop_presentation_directional_shadow_status_name(diagnostic.status) << ": "
+                      << mirakana::win32_desktop_presentation_directional_shadow_status_name(diagnostic.status) << ": "
                       << diagnostic.message << '\n';
         }
         return 9;
@@ -9243,11 +9232,11 @@ int main(int argc, char** argv) {
     if (options.require_directional_shadow_filtering) {
         const auto report = host.presentation_report();
         if (report.directional_shadow_filter_mode !=
-                mirakana::SdlDesktopPresentationDirectionalShadowFilterMode::fixed_pcf_3x3 ||
+                mirakana::Win32DesktopPresentationDirectionalShadowFilterMode::fixed_pcf_3x3 ||
             report.directional_shadow_filter_tap_count != 9 || report.directional_shadow_filter_radius_texels != 1.0F) {
             std::cout << "sample_generated_desktop_runtime_3d_package "
                          "required_directional_shadow_filtering_unavailable mode="
-                      << mirakana::sdl_desktop_presentation_directional_shadow_filter_mode_name(
+                      << mirakana::win32_desktop_presentation_directional_shadow_filter_mode_name(
                              report.directional_shadow_filter_mode)
                       << " taps=" << report.directional_shadow_filter_tap_count
                       << " radius_texels=" << report.directional_shadow_filter_radius_texels << '\n';
@@ -9269,9 +9258,9 @@ int main(int argc, char** argv) {
     const auto result = host.run(game, mirakana::DesktopRunConfig{.max_frames = options.max_frames});
     const auto report = host.presentation_report();
     const auto scene_gpu_stats = report.scene_gpu_stats;
-    const auto postprocess_policy = mirakana::evaluate_sdl_desktop_presentation_postprocess_policy(report);
+    const auto postprocess_policy = mirakana::evaluate_win32_desktop_presentation_postprocess_policy(report);
     const auto renderer_quality =
-        mirakana::evaluate_sdl_desktop_presentation_quality_gate(report, make_renderer_quality_gate_desc(options));
+        mirakana::evaluate_win32_desktop_presentation_quality_gate(report, make_renderer_quality_gate_desc(options));
     const auto playable_3d =
         evaluate_playable_3d_slice(options, result, game, package_streaming_result,
                                    runtime_package ? runtime_package->records().size() : 0U, report, renderer_quality);
@@ -9335,14 +9324,15 @@ int main(int argc, char** argv) {
     const auto& audio_gameplay_mixer = game.gameplay_systems_audio_gameplay_mixer_probe();
     std::cout
         << "sample_generated_desktop_runtime_3d_package status=" << status_name(result.status)
-        << " renderer=" << mirakana::sdl_desktop_presentation_backend_name(report.selected_backend)
-        << " presentation_requested=" << mirakana::sdl_desktop_presentation_backend_name(report.requested_backend)
-        << " presentation_selected=" << mirakana::sdl_desktop_presentation_backend_name(report.selected_backend)
-        << " presentation_fallback=" << mirakana::sdl_desktop_presentation_fallback_reason_name(report.fallback_reason)
+        << " renderer=" << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
+        << " presentation_requested=" << mirakana::win32_desktop_presentation_backend_name(report.requested_backend)
+        << " presentation_selected=" << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
+        << " presentation_fallback="
+        << mirakana::win32_desktop_presentation_fallback_reason_name(report.fallback_reason)
         << " presentation_used_null_fallback=" << (report.used_null_fallback ? 1 : 0)
         << " presentation_backend_reports=" << report.backend_reports_count
         << " presentation_diagnostics=" << report.diagnostics_count << " scene_gpu_status="
-        << mirakana::sdl_desktop_presentation_scene_gpu_binding_status_name(report.scene_gpu_status)
+        << mirakana::win32_desktop_presentation_scene_gpu_binding_status_name(report.scene_gpu_status)
         << " scene_gpu_mesh_bindings=" << scene_gpu_stats.mesh_bindings
         << " scene_gpu_skinned_mesh_bindings=" << scene_gpu_stats.skinned_mesh_bindings
         << " scene_gpu_material_bindings=" << scene_gpu_stats.material_bindings
@@ -9391,10 +9381,10 @@ int main(int argc, char** argv) {
         << " scene_gpu_mesh_resolved=" << scene_gpu_stats.mesh_bindings_resolved
         << " scene_gpu_skinned_mesh_resolved=" << scene_gpu_stats.skinned_mesh_bindings_resolved
         << " scene_gpu_material_resolved=" << scene_gpu_stats.material_bindings_resolved << " postprocess_status="
-        << mirakana::sdl_desktop_presentation_postprocess_status_name(report.postprocess_status)
+        << mirakana::win32_desktop_presentation_postprocess_status_name(report.postprocess_status)
         << " postprocess_depth_input_ready=" << (report.postprocess_depth_input_ready ? 1 : 0)
         << " postprocess_policy_status="
-        << mirakana::sdl_desktop_presentation_postprocess_policy_status_name(postprocess_policy.status)
+        << mirakana::win32_desktop_presentation_postprocess_policy_status_name(postprocess_policy.status)
         << " postprocess_policy_ready=" << (postprocess_policy.ready ? 1 : 0)
         << " postprocess_policy_diagnostics=" << postprocess_policy.diagnostics_count
         << " postprocess_policy_effects=" << postprocess_policy.effect_count
@@ -9406,15 +9396,16 @@ int main(int argc, char** argv) {
         << " postprocess_policy_color_grading_effect=" << (postprocess_policy.color_grading_effect ? 1 : 0)
         << " postprocess_policy_backend_shader_evidence_ready="
         << (postprocess_policy.backend_shader_evidence_ready ? 1 : 0) << " directional_shadow_status="
-        << mirakana::sdl_desktop_presentation_directional_shadow_status_name(report.directional_shadow_status)
+        << mirakana::win32_desktop_presentation_directional_shadow_status_name(report.directional_shadow_status)
         << " directional_shadow_requested=" << (report.directional_shadow_requested ? 1 : 0)
         << " directional_shadow_ready=" << (report.directional_shadow_ready ? 1 : 0)
         << " directional_shadow_filter_mode="
-        << mirakana::sdl_desktop_presentation_directional_shadow_filter_mode_name(report.directional_shadow_filter_mode)
+        << mirakana::win32_desktop_presentation_directional_shadow_filter_mode_name(
+               report.directional_shadow_filter_mode)
         << " directional_shadow_filter_taps=" << report.directional_shadow_filter_tap_count
         << " directional_shadow_filter_radius_texels=" << report.directional_shadow_filter_radius_texels
         << " ui_overlay_requested=" << (report.native_ui_overlay_requested ? 1 : 0) << " ui_overlay_status="
-        << mirakana::sdl_desktop_presentation_native_ui_overlay_status_name(report.native_ui_overlay_status)
+        << mirakana::win32_desktop_presentation_native_ui_overlay_status_name(report.native_ui_overlay_status)
         << " ui_overlay_ready=" << (report.native_ui_overlay_ready ? 1 : 0)
         << " ui_overlay_sprites_submitted=" << report.native_ui_overlay_sprites_submitted
         << " ui_overlay_draws=" << report.native_ui_overlay_draws
@@ -9425,7 +9416,7 @@ int main(int argc, char** argv) {
         << " ui_atlas_metadata_glyphs=" << ui_atlas_metadata_glyphs
         << " ui_texture_overlay_requested=" << (report.native_ui_texture_overlay_requested ? 1 : 0)
         << " ui_texture_overlay_status="
-        << mirakana::sdl_desktop_presentation_native_ui_texture_overlay_status_name(
+        << mirakana::win32_desktop_presentation_native_ui_texture_overlay_status_name(
                report.native_ui_texture_overlay_status)
         << " ui_texture_overlay_atlas_ready=" << (report.native_ui_texture_overlay_atlas_ready ? 1 : 0)
         << " ui_texture_overlay_sprites_submitted=" << report.native_ui_texture_overlay_sprites_submitted
@@ -9500,7 +9491,7 @@ int main(int argc, char** argv) {
         << " framegraph_render_passes_recorded=" << report.renderer_stats.framegraph_render_passes_recorded
         << " framegraph_barrier_steps_executed=" << report.renderer_stats.framegraph_barrier_steps_executed
         << " renderer_quality_status="
-        << mirakana::sdl_desktop_presentation_quality_gate_status_name(renderer_quality.status)
+        << mirakana::win32_desktop_presentation_quality_gate_status_name(renderer_quality.status)
         << " renderer_quality_ready=" << (renderer_quality.ready ? 1 : 0)
         << " renderer_quality_diagnostics=" << renderer_quality.diagnostics_count
         << " renderer_quality_expected_framegraph_passes=" << renderer_quality.expected_framegraph_passes
@@ -10116,18 +10107,18 @@ int main(int argc, char** argv) {
     print_presentation_report("sample_generated_desktop_runtime_3d_package", host);
     for (const auto& diagnostic : host.presentation_diagnostics()) {
         std::cout << "sample_generated_desktop_runtime_3d_package presentation_diagnostic="
-                  << mirakana::sdl_desktop_presentation_fallback_reason_name(diagnostic.reason) << ": "
+                  << mirakana::win32_desktop_presentation_fallback_reason_name(diagnostic.reason) << ": "
                   << diagnostic.message << '\n';
     }
     for (const auto& diagnostic : host.native_ui_overlay_diagnostics()) {
         std::cout << "sample_generated_desktop_runtime_3d_package native_ui_overlay_diagnostic="
-                  << mirakana::sdl_desktop_presentation_native_ui_overlay_status_name(diagnostic.status) << ": "
+                  << mirakana::win32_desktop_presentation_native_ui_overlay_status_name(diagnostic.status) << ": "
                   << diagnostic.message << '\n';
     }
     for (const auto& diagnostic : host.native_ui_texture_overlay_diagnostics()) {
         std::cout << "sample_generated_desktop_runtime_3d_package native_ui_texture_overlay_diagnostic="
-                  << mirakana::sdl_desktop_presentation_native_ui_texture_overlay_status_name(diagnostic.status) << ": "
-                  << diagnostic.message << '\n';
+                  << mirakana::win32_desktop_presentation_native_ui_texture_overlay_status_name(diagnostic.status)
+                  << ": " << diagnostic.message << '\n';
     }
     print_package_streaming_diagnostics(package_streaming_result);
     for (const auto& diagnostic : package_upload_staging.diagnostics) {
@@ -10505,7 +10496,7 @@ int main(int argc, char** argv) {
             static_cast<std::uint64_t>(options.max_frames) + expected_texture_overlay_sprites;
         if (options.require_native_ui_overlay &&
             (!game.hud_passed(options.max_frames) ||
-             report.native_ui_overlay_status != mirakana::SdlDesktopPresentationNativeUiOverlayStatus::ready ||
+             report.native_ui_overlay_status != mirakana::Win32DesktopPresentationNativeUiOverlayStatus::ready ||
              !report.native_ui_overlay_requested || !report.native_ui_overlay_ready ||
              report.native_ui_overlay_sprites_submitted != expected_ui_overlay_sprites ||
              report.native_ui_overlay_draws != static_cast<std::uint64_t>(options.max_frames))) {
@@ -10528,7 +10519,7 @@ int main(int argc, char** argv) {
         if (requires_native_ui_texture_overlay &&
             (expected_texture_overlay_sprites == 0 ||
              report.native_ui_texture_overlay_status !=
-                 mirakana::SdlDesktopPresentationNativeUiTextureOverlayStatus::ready ||
+                 mirakana::Win32DesktopPresentationNativeUiTextureOverlayStatus::ready ||
              !report.native_ui_texture_overlay_requested || !report.native_ui_texture_overlay_atlas_ready ||
              report.native_ui_texture_overlay_sprites_submitted != expected_texture_overlay_sprites ||
              report.native_ui_texture_overlay_texture_binds != expected_texture_overlay_sprites ||
@@ -10541,7 +10532,7 @@ int main(int argc, char** argv) {
         const auto expected_framegraph_barrier_step_count = expected_framegraph_barrier_steps(
             options.require_directional_shadow, options.require_postprocess_depth_input, options.max_frames);
         if (options.require_postprocess &&
-            (report.postprocess_status != mirakana::SdlDesktopPresentationPostprocessStatus::ready ||
+            (report.postprocess_status != mirakana::Win32DesktopPresentationPostprocessStatus::ready ||
              !postprocess_policy.ready || postprocess_policy.diagnostics_count != 0 ||
              postprocess_policy.effect_count != 1 || postprocess_policy.postprocess_pass_count != 1 ||
              postprocess_policy.framegraph_pass_count != 2 || postprocess_policy.framegraph_barrier_step_budget != 2 ||
@@ -10560,13 +10551,13 @@ int main(int argc, char** argv) {
             return 3;
         }
         if (options.require_directional_shadow &&
-            (report.directional_shadow_status != mirakana::SdlDesktopPresentationDirectionalShadowStatus::ready ||
+            (report.directional_shadow_status != mirakana::Win32DesktopPresentationDirectionalShadowStatus::ready ||
              !report.directional_shadow_requested || !report.directional_shadow_ready)) {
             return 3;
         }
         if (options.require_directional_shadow_filtering &&
             (report.directional_shadow_filter_mode !=
-                 mirakana::SdlDesktopPresentationDirectionalShadowFilterMode::fixed_pcf_3x3 ||
+                 mirakana::Win32DesktopPresentationDirectionalShadowFilterMode::fixed_pcf_3x3 ||
              report.directional_shadow_filter_tap_count != 9 ||
              report.directional_shadow_filter_radius_texels != 1.0F)) {
             return 3;

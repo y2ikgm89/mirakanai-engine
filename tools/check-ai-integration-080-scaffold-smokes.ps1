@@ -371,7 +371,7 @@ try {
     if ($desktop2dManifest.aiWorkflow.generatedGameQualityRubric.capabilityId -ne "ai-generated-game-quality-rubric-v1") { Write-Error "Desktop runtime 2D package scaffold manifest must carry ai-generated-game-quality-rubric-v1" }
     $desktop2dQualityRubricText = $desktop2dManifest.aiWorkflow.generatedGameQualityRubric | ConvertTo-Json -Depth 40
     foreach ($qualityNeedle in @("objective-quality-gate", "deterministic-package-smoke-quality-gate", "headless-quality-report", "commercial-quality")) { Assert-ContainsText $desktop2dQualityRubricText $qualityNeedle "Desktop runtime 2D package scaffold generated-game quality rubric" }
-    foreach ($module in @("MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_renderer", "MK_ai", "MK_navigation", "MK_physics")) {
+    foreach ($module in @("MK_platform_win32", "MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_renderer", "MK_ai", "MK_navigation", "MK_physics")) {
         if (@($desktop2dManifest.engineModules) -notcontains $module) {
             Write-Error "Desktop runtime 2D package scaffold manifest missing engine module: $module"
         }
@@ -958,7 +958,6 @@ $editorInputRebindingHeader = Get-AgentSurfaceText "editor/core/include/mirakana
 $editorInputRebindingSource = Get-AgentSurfaceText "editor/core/src/input_rebinding.cpp"
 $editorWorkspaceHeader = Get-AgentSurfaceText "editor/core/include/mirakana/editor/workspace.hpp"
 $editorWorkspaceSource = Get-AgentSurfaceText "editor/core/src/workspace.cpp"
-$editorMainSource = Get-AgentSurfaceText "editor/src/main.cpp"
 $editorCoreTests = Get-AgentSurfaceText "tests/unit/editor_core_tests.cpp"
 foreach ($needle in @(
     "EditorTilemapPackageDiagnosticsModel",
@@ -1021,9 +1020,7 @@ foreach ($needle in @(
 Assert-ContainsText $editorWorkspaceHeader "input_rebinding" "editor workspace input rebinding panel header"
 Assert-ContainsText $editorWorkspaceSource 'PanelToken{.id = PanelId::input_rebinding, .token = "input_rebinding"}' "editor workspace input rebinding panel source"
 Assert-ContainsText $editorWorkspaceSource "PanelState{.id = PanelId::input_rebinding, .visible = false}" "editor workspace input rebinding panel source"
-Assert-ContainsText $editorMainSource "draw_input_rebinding_panel" "MK_editor input rebinding panel source"
-Assert-ContainsText $editorMainSource "view.input_rebinding" "MK_editor input rebinding panel source"
-Assert-ContainsText $editorMainSource "make_editor_input_rebinding_profile_panel_model" "MK_editor input rebinding panel source"
+Assert-ContainsText (Get-AgentSurfaceText "editor/CMakeLists.txt") "MK_editor visible shell is deferred after SDL3 removal" "deferred MK_editor shell source"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorInputRebindingProfiles) "EditorInputRebindingProfilePanelModel" "editor input rebinding profile guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorInputRebindingProfiles) "make_editor_input_rebinding_profile_panel_model" "editor input rebinding profile guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorInputRebindingProfiles) "make_input_rebinding_profile_panel_ui_model" "editor input rebinding profile guidance"
@@ -1059,18 +1056,8 @@ foreach ($needle in @(
 )) {
     Assert-ContainsText $editorCoreTests $needle "editor input rebinding capture panel tests"
 }
-foreach ($needle in @(
-    "begin_input_frame",
-    "draw_input_rebinding_capture_controls",
-    "RuntimeInputStateView",
-    "make_editor_input_rebinding_capture_action_model",
-    "make_editor_input_rebinding_capture_axis_model",
-    "arm_input_rebinding_axis_capture",
-    "keyboard_input()",
-    "pointer_input()",
-    "gamepad_input()"
-)) {
-    Assert-ContainsText $editorMainSource $needle "MK_editor input rebinding capture panel source"
+if (Test-Path -LiteralPath (Join-Path $root "editor/src/main.cpp")) {
+    Write-Error "ai-integration-check: editor/src/main.cpp must not remain as an active SDL3/Dear ImGui shell while MK_editor is deferred"
 }
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorInputRebindingProfiles) "in-memory profile" "editor input rebinding capture guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorInputRebindingProfiles) "axis capture" "editor input rebinding capture guidance"
@@ -1208,7 +1195,7 @@ try {
     if ($desktop3dManifest.aiWorkflow.generatedGameQualityRubric.capabilityId -ne "ai-generated-game-quality-rubric-v1") { Write-Error "Desktop runtime 3D package scaffold manifest must carry ai-generated-game-quality-rubric-v1" }
     $desktop3dQualityRubricText = $desktop3dManifest.aiWorkflow.generatedGameQualityRubric | ConvertTo-Json -Depth 40
     foreach ($qualityNeedle in @("feedback-quality-gate", "budget-evidence-quality-gate", "package-quality-report", "broad-production-readiness")) { Assert-ContainsText $desktop3dQualityRubricText $qualityNeedle "Desktop runtime 3D package scaffold generated-game quality rubric" }
-    foreach ($module in @("MK_ai", "MK_animation", "MK_audio", "MK_navigation", "MK_physics", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
+    foreach ($module in @("MK_ai", "MK_animation", "MK_audio", "MK_navigation", "MK_physics", "MK_platform_win32", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
         if (@($desktop3dManifest.engineModules) -notcontains $module) {
             Write-Error "Desktop runtime 3D package scaffold manifest missing engine module: $module"
         }
@@ -1478,7 +1465,7 @@ try {
     Assert-ContainsText $desktop3dMain "load_packaged_d3d12_native_ui_overlay_shaders" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "enable_native_ui_overlay" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "enable_native_ui_overlay_textures" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "evaluate_sdl_desktop_presentation_quality_gate" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "evaluate_win32_desktop_presentation_quality_gate" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "renderer_quality_status=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "renderer_quality_ready=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "renderer_quality_diagnostics=" "Desktop 3D scaffold main.cpp"
@@ -1504,7 +1491,7 @@ try {
     Assert-ContainsText $desktop3dMain "load_packaged_d3d12_shifted_shadow_receiver_scene_shaders" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "load_packaged_vulkan_shifted_shadow_receiver_scene_shaders" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "shifted_shadow_receiver_shader_diagnostic" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "skinned_scene_fragment_shader = mirakana::SdlDesktopPresentationShaderBytecode" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "skinned_scene_fragment_shader = mirakana::Win32DesktopPresentationShaderBytecode" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "enable_directional_shadow_smoke" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "directional_shadow_status=" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "directional_shadow_ready=" "Desktop 3D scaffold main.cpp"
@@ -1580,13 +1567,13 @@ try {
     Assert-ContainsText $desktop3dMain "vulkan_compute_morph_tangent_frame_shader_diagnostic" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "vulkan_compute_morph_skinned_shader_diagnostic" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "Vulkan compute morph package smoke does not support async telemetry requirements" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "morph_vertex_shader = mirakana::SdlDesktopPresentationShaderBytecode" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "compute_morph_vertex_shader = mirakana::SdlDesktopPresentationShaderBytecode" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "compute_morph_shader = mirakana::SdlDesktopPresentationShaderBytecode" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "compute_morph_skinned_shader = mirakana::SdlDesktopPresentationShaderBytecode" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "morph_vertex_shader = mirakana::Win32DesktopPresentationShaderBytecode" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "compute_morph_vertex_shader = mirakana::Win32DesktopPresentationShaderBytecode" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "compute_morph_shader = mirakana::Win32DesktopPresentationShaderBytecode" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "compute_morph_skinned_shader = mirakana::Win32DesktopPresentationShaderBytecode" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "d3d12_scene_renderer->morph_mesh_assets = {packaged_morph_mesh_asset_id()}" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_mesh_asset_id()" "Desktop 3D scaffold main.cpp"
-    Assert-ContainsText $desktop3dMain "SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_skinned_mesh_asset_id()" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "Win32DesktopPresentationSceneMorphMeshBinding{.mesh = packaged_mesh_asset_id()" "Desktop 3D scaffold main.cpp"
+    Assert-ContainsText $desktop3dMain "Win32DesktopPresentationSceneMorphMeshBinding{.mesh = packaged_skinned_mesh_asset_id()" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "compute_morph_mesh_bindings" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "compute_morph_skinned_mesh_bindings" "Desktop 3D scaffold main.cpp"
     Assert-ContainsText $desktop3dMain "--require-compute-morph" "Desktop 3D scaffold main.cpp"
@@ -2034,7 +2021,7 @@ foreach ($needle in @(
     "package_upload_staging_resource_updates_ready=",
     "package_upload_staging_resource_update_graphics_queue_waits_recorded=",
     "--require-renderer-quality-gates",
-    "evaluate_sdl_desktop_presentation_quality_gate",
+    "evaluate_win32_desktop_presentation_quality_gate",
     "renderer_quality_status=",
     "renderer_quality_ready=",
     "renderer_quality_diagnostics=",
@@ -2060,7 +2047,7 @@ foreach ($needle in @(
     "load_packaged_d3d12_shifted_shadow_receiver_scene_shaders",
     "load_packaged_vulkan_shifted_shadow_receiver_scene_shaders",
     "shifted_shadow_receiver_shader_diagnostic",
-    "skinned_scene_fragment_shader = mirakana::SdlDesktopPresentationShaderBytecode",
+    "skinned_scene_fragment_shader = mirakana::Win32DesktopPresentationShaderBytecode",
     "enable_directional_shadow_smoke",
     "directional_shadow_status=",
     "directional_shadow_ready=",
@@ -2467,7 +2454,7 @@ try {
             target = "package_apply_game"
             aiWorkflow = @{ validate = "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1" }
             gameplayContract = @{ appType = "mirakana::GameApp" }
-            backendReadiness = @{ platform = "sdl3-desktop" }
+            backendReadiness = @{ platform = "win32-desktop" }
             importerRequirements = @{ sourceFormats = @() }
             packagingTargets = @("desktop-game-runtime", "desktop-runtime-release")
             runtimePackageFiles = @("runtime/package_apply_game.config")
@@ -2515,7 +2502,7 @@ try {
             target = "package_apply_missing_property"
             aiWorkflow = @{ validate = "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1" }
             gameplayContract = @{ appType = "mirakana::GameApp" }
-            backendReadiness = @{ platform = "sdl3-desktop" }
+            backendReadiness = @{ platform = "win32-desktop" }
             importerRequirements = @{ sourceFormats = @() }
             packagingTargets = @("desktop-game-runtime", "desktop-runtime-release")
             validationRecipes = @(@{ name = "desktop-runtime-release"; command = "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1" })

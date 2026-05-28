@@ -40,8 +40,8 @@ The closed MVP foundation establishes:
 - Android/iOS package templates with explicit local SDK/toolchain blocker diagnostics through `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-mobile-packaging.ps1`
 - Codex/AI workflow guidance
 - license and provenance rules
-- vcpkg manifest dependency policy with an official registry `builtin-baseline` for reproducible optional GUI dependencies
-- optional SDL3 + Dear ImGui desktop editor shell
+- vcpkg manifest dependency policy with an official registry `builtin-baseline` for reproducible optional dependencies
+- Windows-native optional desktop runtime packaging through first-party Win32/WASAPI/D3D12 adapters
 - GUI-independent editor project document with shader tool settings, project settings draft validation, project creation wizard, project/workspace migration, project bundle IO, workspace serialization, content browser state, asset import queue state with tool execution result mapping and imported asset record registration helpers, asset hot reload event state, shader compile queue/status/execution result state, viewport shader artifact readiness state, viewport state, viewport run controls, viewport tool state, scene transform drafts, scene component drafts, viewport transform edit application, command registry, command palette model, dirty tracking, and undo/redo history
 - deterministic scene serialization and render packet extraction for editor/runtime scene exchange, including camera, light, mesh renderer, and sprite renderer components
 
@@ -81,14 +81,13 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1
 
 ## Optional Desktop Editor
 
-The default build remains third-party-free. To build the optional desktop editor shell, bootstrap GUI dependencies through vcpkg and build the GUI preset:
+The default build remains third-party-free. The visible desktop editor shell is deferred; the supported editor logic target is `MK_editor_core`, covered by the default validation lane. The retained GUI wrapper fails closed for stale automation:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1
 ```
 
-This builds and tests `MK_platform_sdl3` plus `MK_editor`, an SDL3 + Dear ImGui docking editor shell with SDL display/DPI/safe-area reporting, first-party monitor selection and window placement policy, SDL text clipboard access, SDL asynchronous native file dialog access, SDL cursor visibility/grab/relative mode control, SDL application lifecycle event mapping, SDL keyboard/mouse/touch/gamepad input mapping, project creation, filterable Assets, import queue, `Import Assets` execution through the first-party texture/mesh/audio/material asset import tool with successful imports reflected back into the Content Browser, hot reload status, shader compile status and a `Compile Shader` action wired through editable project shader tool settings and the reviewed process runner path, shader tool discovery, editable viewport render backend preference, an RHI-backed scene Viewport submitted through `build_scene_render_packet` and `MK_scene_renderer`, copied through `RhiViewportReadbackFrame` into an SDL display texture for `ImGui::Image`, Viewport toolbar, transform and camera/light/mesh/sprite component controls, Play/Pause/Stop controls, Scene, Inspector, Console, Profiler, Project Settings, command palette, scene edit, and undo/redo surfaces.
+A future visible editor shell must add explicit audited dependencies and use first-party Win32/D3D12 adapters on Windows.
 
 ## AI Agent Context
 
