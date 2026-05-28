@@ -40,18 +40,8 @@
       ]
     },
     "desktop-gui": {
-      "description": "Desktop window/editor dependencies for SDL3 and Dear ImGui integration.",
-      "dependencies": [
-        "sdl3",
-        {
-          "name": "imgui",
-          "features": [
-            "docking-experimental",
-            "sdl3-binding",
-            "sdl3-renderer-binding"
-          ]
-        }
-      ]
+      "description": "Deferred desktop editor shell feature; native Win32 editor dependencies will be declared when the shell is implemented.",
+      "dependencies": []
     }
   }
 }

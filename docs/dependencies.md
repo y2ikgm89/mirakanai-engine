@@ -27,7 +27,7 @@ On Windows, the default validation build uses Windows SDK system libraries for t
 
 These are official platform SDK libraries and are not bundled in the repository.
 
-The optional desktop runtime, desktop GUI/editor, asset importer, native physics middleware adapter, and network transport adapter builds use vcpkg manifest features so SDL3, GUI, importer, Jolt, and ENet dependencies remain isolated from the default build and from system-wide package locations.
+The optional desktop runtime, deferred desktop GUI/editor, asset importer, native physics middleware adapter, and network transport adapter builds use vcpkg manifest features so SDL3 runtime, future GUI, importer, Jolt, and ENet dependencies remain isolated from the default build and from system-wide package locations.
 
 Run the optional vcpkg dependency bootstrap with:
 
@@ -43,13 +43,13 @@ GitHub Actions restores the gitignored `external/vcpkg` tool checkout before cal
 
 On restricted sandboxed hosts, `bootstrap-deps` can still require an unrestricted run because it is the step that intentionally launches vcpkg, downloads archives, extracts helper tools, and builds dependency ports. After it succeeds, normal configure/build/package lanes should not invoke vcpkg.
 
-Build the desktop GUI/editor targets with:
+Verify the deferred desktop GUI/editor lane with:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1
 ```
 
-`build-gui` configures, builds, and runs the `desktop-gui` CTest preset.
+`build-gui` configures, builds, and runs the `desktop-gui` CTest preset with `MK_ENABLE_DESKTOP_GUI=OFF`. The visible editor shell is deferred until it has a first-party native desktop backend; this lane currently keeps editor-core coverage alive without SDL3 or Dear ImGui dependencies.
 
 Validate or package the editor-independent desktop game runtime shell with:
 
@@ -79,14 +79,9 @@ Apply ADK servicing patches only when they match installed ADK features. Do not 
 
 This feature builds SDL3-backed platform, audio, and desktop runtime host adapters plus registered desktop runtime game samples when `MK_ENABLE_DESKTOP_RUNTIME=ON`. It is intentionally separate from `desktop-gui` so windowed games can be validated and packaged without Dear ImGui or `MK_editor`.
 
-`desktop-gui` in `vcpkg.json` declares:
+`desktop-gui` in `vcpkg.json` is deferred and declares no dependencies while the visible editor shell is being moved away from SDL3. `MK_ENABLE_DESKTOP_GUI=ON` fails fast until a first-party native desktop editor backend lands.
 
-- `sdl3`
-- `imgui` with `docking-experimental`, `sdl3-binding`, and `sdl3-renderer-binding`
-
-This feature builds the optional SDL3 + Dear ImGui editor shell. `MK_ENABLE_DESKTOP_GUI=ON` also enables the desktop runtime targets, but Dear ImGui remains scoped to the editor/debug shell.
-
-Dear ImGui is scoped to the optional developer/editor shell and debug tooling. It is not the production game/runtime UI foundation. Production runtime UI work should first define first-party `MK_ui` contracts.
+Dear ImGui remains historical optional developer/editor shell context. It is not the production game/runtime UI foundation. Production runtime UI work should first define first-party `MK_ui` contracts.
 
 ### Editor native module boundary (not a vcpkg dependency)
 
@@ -177,8 +172,8 @@ Validated local package versions:
 
 | Package | Version | Use |
 | --- | --- | --- |
-| SDL3 | 3.4.4 | Desktop window/event loop for optional desktop runtime games, the editor, and optional desktop audio output through `MK_audio_sdl3` |
-| Dear ImGui | 1.92.7 | Docking editor UI, SDL3 backend, SDL renderer backend |
+| SDL3 | 3.4.4 | Remaining migration source dependency for optional desktop runtime game/audio adapters until Phase 9 removes the SDL3 modules |
+| Dear ImGui | 1.92.7 | Historical deferred editor shell dependency; no current vcpkg feature installs it |
 | libspng | vcpkg baseline selected | Optional `MK_tools` PNG source importer |
 | fastgltf | vcpkg baseline selected | Optional `MK_tools` glTF 2.0 source importer |
 | miniaudio | vcpkg baseline selected | Optional `MK_tools` WAV/MP3/FLAC source importer |

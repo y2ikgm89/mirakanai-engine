@@ -11,7 +11,7 @@ include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
 option(MK_ENABLE_DESKTOP_RUNTIME "Build desktop game runtime targets" OFF)
-option(MK_ENABLE_DESKTOP_GUI "Build SDL3/Dear ImGui desktop editor targets" OFF)
+option(MK_ENABLE_DESKTOP_GUI "Build the native desktop editor shell when that shell is available" OFF)
 option(MK_ENABLE_SANITIZERS "Enable compiler sanitizer instrumentation where supported" OFF)
 option(MK_ENABLE_CXX_MODULE_SCANNING "Enable CMake C++ module dependency scanning for targets" ON)
 option(MK_ENABLE_IMPORT_STD "Enable CMake-managed import std support when the active toolchain and generator support it" ON)
@@ -33,7 +33,7 @@ endif()
 
 set(MK_DESKTOP_RUNTIME_ENABLED ${MK_ENABLE_DESKTOP_RUNTIME})
 if(MK_ENABLE_DESKTOP_GUI)
-    set(MK_DESKTOP_RUNTIME_ENABLED ON)
+    message(FATAL_ERROR "MK_ENABLE_DESKTOP_GUI is deferred until the editor shell has a first-party native desktop backend.")
 endif()
 
 if(MSVC)

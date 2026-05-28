@@ -562,7 +562,7 @@ or GitHub CLI config access. Candidate 7C is in progress for the Win32 D3D12 sta
   - `native_editor_shell_now`: migrate `MK_editor` to Win32 + Dear ImGui + D3D12 backend in this milestone.
   - `editor_shell_deferred`: keep `MK_editor_core` ready, temporarily remove or host-gate the visible editor shell until native shell lands.
 - [ ] If migrating now, re-check Dear ImGui Win32/D3D12 backend docs and license/package implications.
-- [ ] Add RED build or static checks that fail if `MK_editor` links SDL3.
+- [x] Add RED build or static checks that fail if `MK_editor` links SDL3.
 - [ ] Replace SDL3 window/event/file-dialog/clipboard integration with `MK_platform_win32` adapters.
 - [ ] Keep editor core independent from native handles.
 - [ ] Run the selected lane:
@@ -575,7 +575,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.
 
 **Done When:** The visible editor either builds without SDL3 through native Windows adapters or is explicitly host-gated/deferred without leaving SDL3 as a required dependency.
 
-**Phase Evidence:** Started with `editor_shell_deferred`: `dev` no longer inherits the Windows GUI preset, and `dev-core` pins `MK_ENABLE_DESKTOP_GUI=OFF` so default validation keeps building `MK_editor_core` without configuring SDL3/Dear ImGui. Evidence: `tools/cmake.ps1 --preset dev` reported `MK_ENABLE_DESKTOP_GUI="OFF"` and wrote `MK_ENABLE_DESKTOP_GUI:BOOL=OFF`; `tools/check-json-contracts.ps1`, `git diff --check`, `tools/check-cpp-standard-policy.ps1`, `tools/check-dependency-policy.ps1`, `tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests`, `tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_core_tests`, and `tools/validate.ps1` passed.
+**Phase Evidence:** Started with `editor_shell_deferred`: `dev` no longer inherits the Windows GUI preset, and `dev-core` pins `MK_ENABLE_DESKTOP_GUI=OFF` so default validation keeps building `MK_editor_core` without configuring SDL3/Dear ImGui. Evidence: `tools/cmake.ps1 --preset dev` reported `MK_ENABLE_DESKTOP_GUI="OFF"` and wrote `MK_ENABLE_DESKTOP_GUI:BOOL=OFF`; `tools/check-json-contracts.ps1`, `git diff --check`, `tools/check-cpp-standard-policy.ps1`, `tools/check-dependency-policy.ps1`, `tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests`, `tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_core_tests`, and `tools/validate.ps1` passed. Follow-up editor-deferred evidence removes SDL3/Dear ImGui dependencies from the `desktop-gui` vcpkg feature, makes `MK_ENABLE_DESKTOP_GUI=ON` fail fast until a native shell lands, and keeps `build-gui.ps1` as an editor-core/deferred-lane verifier with `MK_ENABLE_DESKTOP_GUI=OFF`.
 
 ## Phase 9 - SDL3 Dependency And Source Removal
 

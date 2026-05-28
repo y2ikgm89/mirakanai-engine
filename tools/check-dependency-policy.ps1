@@ -96,29 +96,8 @@ if ($desktopRuntimeDependencyNames -contains "imgui") {
     Write-Error "desktop-runtime feature must not depend on Dear ImGui"
 }
 
-$dependencyNames = @()
-$imguiFeatures = @()
-foreach ($dependency in $desktopGui.dependencies) {
-    if ($dependency -is [string]) {
-        $dependencyNames += $dependency
-    } else {
-        $dependencyNames += $dependency.name
-        if ($dependency.name -eq "imgui") {
-            $imguiFeatures = @($dependency.features)
-        }
-    }
-}
-
-foreach ($dependencyName in @("sdl3", "imgui")) {
-    if ($dependencyNames -notcontains $dependencyName) {
-        Write-Error "desktop-gui feature must declare dependency: $dependencyName"
-    }
-}
-
-foreach ($feature in @("docking-experimental", "sdl3-binding", "sdl3-renderer-binding")) {
-    if ($imguiFeatures -notcontains $feature) {
-        Write-Error "desktop-gui imgui dependency must enable feature: $feature"
-    }
+if ($desktopGui.dependencies.Count -ne 0) {
+    Write-Error "desktop-gui feature is deferred and must not declare SDL3 or Dear ImGui dependencies"
 }
 
 $assetImporterDependencyNames = @()
