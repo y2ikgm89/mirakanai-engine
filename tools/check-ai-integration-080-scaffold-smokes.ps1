@@ -193,6 +193,12 @@ try {
         $materialShaderManifest.packagingTargets -notcontains "desktop-runtime-release") {
         Write-Error "Desktop runtime material/shader package scaffold manifest must declare desktop package targets"
     }
+    if ($materialShaderManifest.gameplayContract.runner -ne "mirakana::Win32DesktopGameHost") {
+        Write-Error "Desktop runtime material/shader package scaffold manifest must use Win32DesktopGameHost"
+    }
+    if (($materialShaderManifest.engineModules -notcontains "MK_runtime_host_win32") -or ($materialShaderManifest.engineModules -notcontains "MK_runtime_host_win32_presentation") -or ($materialShaderManifest.engineModules -contains "MK_runtime_host_sdl3") -or ($materialShaderManifest.engineModules -contains "MK_runtime_host_sdl3_presentation")) {
+        Write-Error "Desktop runtime material/shader package scaffold manifest must use Win32 runtime host modules only"
+    }
     foreach ($relativePath in $expectedMaterialShaderRuntimeFiles) {
         if ($materialShaderManifest.runtimePackageFiles -notcontains $relativePath) {
             Write-Error "Desktop runtime material/shader package scaffold manifest must include $relativePath in runtimePackageFiles"
@@ -227,6 +233,8 @@ try {
     $materialShaderMain = Get-Content -LiteralPath (Join-Path $materialShaderGameRoot "main.cpp") -Raw
     Assert-ContainsText $materialShaderCmake "MK_add_desktop_runtime_game(desktop_material_shader_game" "Desktop material/shader scaffold CMake"
     Assert-ContainsText $materialShaderCmake "PACKAGE_FILES_FROM_MANIFEST" "Desktop material/shader scaffold CMake"
+    Assert-ContainsText $materialShaderCmake "HOST_BACKEND" "Desktop material/shader scaffold CMake"
+    Assert-ContainsText $materialShaderCmake "win32" "Desktop material/shader scaffold CMake"
     Assert-ContainsText $materialShaderCmake "REQUIRES_D3D12_SHADERS" "Desktop material/shader scaffold CMake"
     Assert-ContainsText $materialShaderCmake "MK_configure_desktop_runtime_scene_shader_artifacts" "Desktop material/shader scaffold CMake"
     Assert-ContainsText $materialShaderCmake "runtime_scene.hlsl" "Desktop material/shader scaffold CMake"
@@ -274,9 +282,10 @@ try {
     Assert-ContainsText $repositoryGamesCmake "--require-sprite-collision-hitbox" "games/CMakeLists.txt sample_2d_desktop_runtime_package smoke args"
     Assert-ContainsText $repositoryGamesCmake "--require-sprite-effects-particles" "games/CMakeLists.txt sample_2d_desktop_runtime_package smoke args"
     Assert-ContainsText ($materialShaderManifest.validationRecipes | ConvertTo-Json -Depth 12) "--require-vulkan-scene-shaders" "Desktop material/shader scaffold manifest validation recipes"
-    foreach ($needle in @("load_runtime_asset_package", "plan_modern_material_variants", "modern_material_variants=", "modern_material_shader_evidence_ready=", "modern_material_d3d12_shader_evidence_ready=", "modern_material_vulkan_shader_evidence_ready=", "modern_material_selected_shader_evidence_ready=", "postprocess_policy_status=", "material_graph_authoring_targets=", "material_graph_compile_requests=", "--require-material-graph-authoring")) {
+    foreach ($needle in @("Win32DesktopGameHost", "Win32DesktopPresentationD3d12SceneRendererDesc", "win32_desktop_presentation_backend_name", "load_runtime_asset_package", "plan_modern_material_variants", "modern_material_variants=", "modern_material_shader_evidence_ready=", "modern_material_d3d12_shader_evidence_ready=", "modern_material_vulkan_shader_evidence_ready=", "modern_material_selected_shader_evidence_ready=", "postprocess_status=unsupported", "postprocess_policy_status=unsupported", "framegraph_passes=0", "material_graph_authoring_targets=", "material_graph_compile_requests=", "--require-material-graph-authoring")) {
         Assert-ContainsText $materialShaderMain $needle "Desktop material/shader scaffold main.cpp"
     }
+    foreach ($forbiddenNeedle in @("runtime_host/sdl3", "SdlDesktopGameHost", "SdlDesktopPresentation")) { if ($materialShaderMain.Contains($forbiddenNeedle)) { Write-Error "Desktop runtime material/shader package scaffold main.cpp must not contain $forbiddenNeedle" } }
     $validateInstalledRuntimeScript = Get-AgentSurfaceText "tools/validate-installed-desktop-runtime.ps1"
     Assert-ContainsText $validateInstalledRuntimeScript '$expectedVulkanMaterialShaderEvidence = if ($requireVulkanShaderArtifacts) { 1 } else { 0 }' "Installed desktop runtime validation"
 } finally {
@@ -285,25 +294,10 @@ try {
 
 $committedMaterialShaderMain =
     Get-AgentSurfaceText "games/sample_generated_desktop_runtime_material_shader_package/main.cpp"
-foreach ($needle in @(
-    "kRuntimeSceneTangentSpaceStrideBytes{48}",
-    "VertexSemantic::tangent",
-    "plan_modern_material_variants",
-    "modern_material_variants=",
-    "modern_material_shader_evidence_ready=",
-    "modern_material_d3d12_shader_evidence_ready=",
-    "modern_material_vulkan_shader_evidence_ready=",
-    "modern_material_selected_shader_evidence_ready=",
-    "material_graph_authoring_targets=",
-    "material_graph_shader_exports=",
-    "material_graph_compile_requests=",
-    "--require-material-graph-authoring",
-    "postprocess_policy_status=",
-    "framegraph_barrier_steps_executed !=",
-    "static_cast<std::uint64_t>(options.max_frames) * 2U"
-)) {
+foreach ($needle in @("kRuntimeSceneTangentSpaceStrideBytes{48}", "VertexSemantic::tangent", "plan_modern_material_variants", "modern_material_variants=", "modern_material_shader_evidence_ready=", "modern_material_d3d12_shader_evidence_ready=", "modern_material_vulkan_shader_evidence_ready=", "modern_material_selected_shader_evidence_ready=", "material_graph_authoring_targets=", "material_graph_shader_exports=", "material_graph_compile_requests=", "--require-material-graph-authoring", "Win32DesktopGameHost", "Win32DesktopPresentationD3d12SceneRendererDesc", "win32_desktop_presentation_backend_name", "postprocess_status=unsupported", "postprocess_policy_status=unsupported", "framegraph_passes=0", "framegraph_barrier_steps_executed=", "required_postprocess_unavailable", "required_vulkan_renderer_unavailable")) {
     Assert-ContainsText $committedMaterialShaderMain $needle "committed material/shader desktop runtime sample"
 }
+foreach ($forbiddenNeedle in @("runtime_host/sdl3", "SdlDesktopGameHost", "SdlDesktopPresentation")) { if ($committedMaterialShaderMain.Contains($forbiddenNeedle)) { Write-Error "committed material/shader desktop runtime sample must not contain $forbiddenNeedle" } }
 if ($committedMaterialShaderMain.Contains("kRuntimeScenePositionNormalUvStrideBytes")) {
     Write-Error "committed material/shader desktop runtime sample must use tangent-space vertex layout"
 }

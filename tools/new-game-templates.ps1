@@ -1664,6 +1664,200 @@ int main(int argc, char** argv) {
         Replace("__ESCAPED_SCENE_ASSET_NAME__", $escapedSceneAssetName)
 }
 
+function New-Win32DesktopRuntimeMaterialShaderMainCpp {
+    param(
+        [string]$GameName,
+        [string]$TargetName,
+        [string]$Title,
+        [string]$SceneAssetName
+    )
+
+    $text = New-DesktopRuntimeCookedSceneMainCpp `
+        -GameName $GameName `
+        -TargetName $TargetName `
+        -Title $Title `
+        -SceneAssetName $SceneAssetName `
+        -IncludeMaterialGraphAuthoringEvidence
+
+    $text = $text.Replace(
+        '#include "mirakana/runtime_host/sdl3/sdl_desktop_game_host.hpp"',
+        '#include "mirakana/runtime_host/win32/win32_desktop_game_host.hpp"')
+    $text = $text.Replace(
+        '#include "mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp"',
+        '#include "mirakana/runtime_host/win32/win32_desktop_presentation.hpp"')
+    $text = $text.Replace(
+        '[[nodiscard]] bool selected_modern_material_shader_evidence_ready(mirakana::SdlDesktopPresentationBackend backend,
+                                                                  bool d3d12_ready,
+                                                                  bool vulkan_ready) noexcept {
+    switch (backend) {
+    case mirakana::SdlDesktopPresentationBackend::d3d12:
+        return d3d12_ready;
+    case mirakana::SdlDesktopPresentationBackend::vulkan:
+        return vulkan_ready;
+    case mirakana::SdlDesktopPresentationBackend::null_renderer:
+        break;
+    }
+    return false;
+}',
+        '[[nodiscard]] bool selected_modern_material_shader_evidence_ready(mirakana::Win32DesktopPresentationBackend backend,
+                                                                  bool d3d12_ready, bool vulkan_ready) noexcept {
+    (void)vulkan_ready;
+    switch (backend) {
+    case mirakana::Win32DesktopPresentationBackend::d3d12:
+        return d3d12_ready;
+    case mirakana::Win32DesktopPresentationBackend::null_renderer:
+        break;
+    }
+    return false;
+}')
+
+    $text = [regex]::Replace(
+        $text,
+        '(?s)\r?\n    auto d3d12_postprocess_bytecode = load_packaged_d3d12_postprocess_shaders\(argc > 0 \? argv\[0\] : nullptr\);.*?(?=\r?\n    auto vulkan_shader_bytecode)',
+        '')
+    $text = [regex]::Replace(
+        $text,
+        '(?s)\r?\n    auto vulkan_postprocess_bytecode = load_packaged_vulkan_postprocess_shaders\(argc > 0 \? argv\[0\] : nullptr\);.*?(?=\r?\n\r?\n    std::optional<mirakana::SdlDesktopPresentationD3d12SceneRendererDesc>)',
+        '')
+    $text = $text.Replace(
+        'if (d3d12_shader_bytecode.ready() && d3d12_postprocess_bytecode.ready() && runtime_package.has_value() &&
+        packaged_scene.has_value())',
+        'if (d3d12_shader_bytecode.ready() && runtime_package.has_value() && packaged_scene.has_value())')
+    foreach ($fieldName in @("postprocess_vertex_shader", "postprocess_fragment_shader")) {
+        $text = [regex]::Replace(
+            $text,
+            "(?s)\r?\n            \.$fieldName = mirakana::SdlDesktopPresentationShaderBytecode\{.*?\r?\n            \},",
+            '')
+    }
+    $text = [regex]::Replace($text, '\r?\n            \.enable_postprocess = true,', '')
+    $text = [regex]::Replace(
+        $text,
+        '(?s)\r?\n    std::optional<mirakana::SdlDesktopPresentationVulkanSceneRendererDesc> vulkan_scene_renderer;.*?(?=\r?\n\r?\n    mirakana::SdlDesktopGameHostDesc host_desc\{)',
+        '')
+    $text = [regex]::Replace(
+        $text,
+        '(?s)\r?\n    if \(vulkan_scene_renderer\.has_value\(\)\) \{\r?\n        host_desc\.vulkan_scene_renderer = &\*vulkan_scene_renderer;\r?\n    \}',
+        '')
+    $text = [regex]::Replace(
+        $text,
+        '\r?\n        \.video_driver_hint = options\.video_driver_hint,\r?\n        \.prefer_vulkan = options\.require_vulkan_renderer,',
+        "`r`n        .prefer_d3d12 = true,")
+    $text = [regex]::Replace(
+        $text,
+        "(?s)\r?\n    if \(options\.require_vulkan_renderer && host\.presentation_backend\(\) != mirakana::SdlDesktopPresentationBackend::vulkan\) \{.*?\r?\n    \}",
+        @"
+    if (options.require_vulkan_renderer) {
+        std::cout << "$TargetName required_vulkan_renderer_unavailable renderer=" << host.presentation_backend_name()
+                  << '\n';
+        print_presentation_report("$TargetName", host);
+        return 7;
+    }
+"@)
+    $text = [regex]::Replace(
+        $text,
+        "(?s)\r?\n    if \(options\.require_postprocess &&\s*host\.presentation_report\(\)\.postprocess_status != mirakana::SdlDesktopPresentationPostprocessStatus::ready\) \{.*?\r?\n    \}",
+        @"
+    if (options.require_postprocess) {
+        std::cout << "$TargetName required_postprocess_unavailable status=unsupported\n";
+        print_presentation_report("$TargetName", host);
+        return 8;
+    }
+"@)
+    $text = [regex]::Replace(
+        $text,
+        '\r?\n    const auto postprocess_policy = mirakana::evaluate_sdl_desktop_presentation_postprocess_policy\(report\);',
+        '')
+    $text = [regex]::Replace(
+        $text,
+        '\r?\n              << " scene_gpu_skinned_mesh_bindings=" << scene_gpu_stats\.skinned_mesh_bindings',
+        '')
+    $text = [regex]::Replace(
+        $text,
+        '\r?\n              << " scene_gpu_skinned_mesh_uploads=" << scene_gpu_stats\.skinned_mesh_uploads',
+        '')
+    $text = [regex]::Replace(
+        $text,
+        '\r?\n              << " scene_gpu_skinned_mesh_resolved=" << scene_gpu_stats\.skinned_mesh_bindings_resolved',
+        '')
+    $text = [regex]::Replace(
+        $text,
+        '(?s)\r?\n              << " postprocess_status="\r?\n              << mirakana::sdl_desktop_presentation_postprocess_status_name\(report\.postprocess_status\).*?(?=\r?\n              << " framegraph_passes=" << report\.framegraph_passes)',
+        @'
+              << " postprocess_status=unsupported"
+              << " postprocess_depth_input_requested=0"
+              << " postprocess_depth_input_ready=0"
+              << " postprocess_policy_status=unsupported"
+              << " postprocess_policy_ready=0"
+              << " postprocess_policy_diagnostics=1"
+              << " postprocess_policy_effects=0"
+              << " postprocess_policy_postprocess_passes=0"
+              << " postprocess_policy_framegraph_passes=0"
+              << " postprocess_policy_framegraph_barrier_step_budget=0"
+              << " postprocess_policy_scene_color_required=0"
+              << " postprocess_policy_scene_depth_required=0"
+              << " postprocess_policy_color_grading_effect=0"
+              << " postprocess_policy_backend_shader_evidence_ready=0"
+'@)
+    $text = $text.Replace(
+        '              << " framegraph_passes=" << report.framegraph_passes',
+        '              << " framegraph_passes=0"')
+    $text = [regex]::Replace(
+        $text,
+        '(?s)\r?\n        if \(options\.require_postprocess &&\r?\n            \(report\.postprocess_status != mirakana::SdlDesktopPresentationPostprocessStatus::ready.*?\r?\n        \}',
+        '')
+
+    $text = $text.Replace('mirakana::SdlDesktopPresentationD3d12SceneRendererDesc', 'mirakana::Win32DesktopPresentationD3d12SceneRendererDesc')
+    $text = $text.Replace('mirakana::SdlDesktopPresentationShaderBytecode', 'mirakana::Win32DesktopPresentationShaderBytecode')
+    $text = $text.Replace('mirakana::SdlDesktopGameHostDesc', 'mirakana::Win32DesktopGameHostDesc')
+    $text = $text.Replace('mirakana::SdlDesktopGameHost', 'mirakana::Win32DesktopGameHost')
+    $text = $text.Replace('mirakana::SdlDesktopPresentationBackend', 'mirakana::Win32DesktopPresentationBackend')
+    $text = $text.Replace('mirakana::sdl_desktop_presentation_backend_name', 'mirakana::win32_desktop_presentation_backend_name')
+    $text = $text.Replace('mirakana::sdl_desktop_presentation_backend_report_status_name', 'mirakana::win32_desktop_presentation_backend_report_status_name')
+    $text = $text.Replace('mirakana::sdl_desktop_presentation_fallback_reason_name', 'mirakana::win32_desktop_presentation_fallback_reason_name')
+    $text = $text.Replace('mirakana::sdl_desktop_presentation_scene_gpu_binding_status_name', 'mirakana::win32_desktop_presentation_scene_gpu_binding_status_name')
+    $text = $text.Replace('backend_report.message', 'backend_report.diagnostic')
+    $text = $text.Replace('!host.scene_gpu_bindings_ready()', 'host.presentation_report().scene_gpu_status != mirakana::Win32DesktopPresentationSceneGpuBindingStatus::ready')
+    $text = $text.Replace('host.scene_gpu_binding_status()', 'host.presentation_report().scene_gpu_status')
+
+    $text = $text.Replace(
+        '              << " renderer_frames_finished=" << report.renderer_stats.frames_finished << ''\n'';',
+        '              << " present_status=" << mirakana::win32_desktop_presentation_present_status_name(report.present_status)
+              << " resize_status=" << mirakana::win32_desktop_presentation_resize_status_name(report.resize_status)
+              << " renderer_frames_finished=" << report.renderer_stats.frames_finished << ''\n'';')
+    $text = $text.Replace(
+        '              << " scene_gpu_status="
+              << mirakana::win32_desktop_presentation_scene_gpu_binding_status_name(report.scene_gpu_status)',
+        '              << " scene_gpu_status="
+              << mirakana::win32_desktop_presentation_scene_gpu_binding_status_name(report.scene_gpu_status)
+              << " presentation_present_status="
+              << mirakana::win32_desktop_presentation_present_status_name(report.present_status)
+              << " presentation_resize_status=" << mirakana::win32_desktop_presentation_resize_status_name(report.resize_status)')
+    $text = $text.Replace(
+        '              << " presentation_diagnostics=" << report.diagnostics_count << " scene_gpu_status="
+              << mirakana::win32_desktop_presentation_scene_gpu_binding_status_name(report.scene_gpu_status)
+              << " scene_gpu_mesh_bindings="',
+        '              << " presentation_diagnostics=" << report.diagnostics_count << " scene_gpu_status="
+              << mirakana::win32_desktop_presentation_scene_gpu_binding_status_name(report.scene_gpu_status)
+              << " presentation_present_status="
+              << mirakana::win32_desktop_presentation_present_status_name(report.present_status)
+              << " presentation_resize_status=" << mirakana::win32_desktop_presentation_resize_status_name(report.resize_status)
+              << " scene_gpu_mesh_bindings="')
+    $text = $text.Replace("    }    if (options.require_vulkan_renderer)", "    }`r`n    if (options.require_vulkan_renderer)")
+    $text = $text.Replace("    }    if (options.require_postprocess)", "    }`r`n    if (options.require_postprocess)")
+    $text = [regex]::Replace(
+        $text,
+        '(scene_gpu_stats\.material_bindings_resolved)\s+<< " postprocess_status',
+        "`$1`r`n              << `" postprocess_status")
+    $text = $text.Replace('        }        if (arg == "--require-material-graph-authoring")',
+        "        }`r`n        if (arg == `"--require-material-graph-authoring`")")
+    $text = [regex]::Replace(
+        $text,
+        '(?s)\r?\n              << " presentation_present_status="\r?\n              << mirakana::win32_desktop_presentation_present_status_name\(report\.present_status\)\r?\n              << " presentation_resize_status=" << mirakana::win32_desktop_presentation_resize_status_name\(report\.resize_status\)(?=\r?\n              << " present_status=")',
+        '')
+
+    return $text
+}
+
 function New-DesktopRuntime3DMainCpp {
     param(
         [string]$GameName,
@@ -5779,7 +5973,7 @@ Describe the packaged 3D game goal here before expanding gameplay.
 This `DesktopRuntime3DPackage` game uses the optional desktop runtime package lane with a first-party cooked 3D scene package:
 
 - `mirakana::GameApp`
-- `mirakana::SdlDesktopGameHost`
+- `mirakana::Win32DesktopGameHost`
 - `mirakana::runtime::load_runtime_asset_package`
 - `mirakana::instantiate_runtime_scene_render_data`
 - `mirakana::sample_and_apply_runtime_scene_render_animation_float_clip`
@@ -7852,9 +8046,9 @@ function New-DesktopRuntimeMaterialShaderManifest {
     $manifestName = $GameName.Replace("_", "-")
     $manifest = New-DesktopRuntimeCookedSceneManifest -GameName $GameName -DisplayTitle $DisplayTitle -TargetName $TargetName
     $manifest.gameplayContract.currentRuntime =
-        "desktop-windowed-sdl3-host-with-host-built-d3d12-vulkan-shader-artifacts-and-null-fallback"
+        "desktop-windowed-win32-host-with-host-built-d3d12-shader-artifacts-scene-gpu-binding-vulkan-artifact-validation-and-null-fallback"
     $manifest.backendReadiness.graphics =
-        "host-built D3D12 DXIL shader artifacts; Vulkan SPIR-V artifacts are toolchain-gated; NullRenderer fallback remains available"
+        "Win32 D3D12 package scene GPU proof with host-built D3D12 DXIL shader artifacts; Vulkan SPIR-V artifacts remain toolchain validation inputs only, postprocess and Vulkan renderer execution are unsupported on this Win32 package path, and NullRenderer fallback remains available"
     $manifest.importerRequirements.sourceFormats = @(
         "first-party-material-source",
         "first-party-material-graph-source",
@@ -7909,12 +8103,12 @@ function New-DesktopRuntimeMaterialShaderManifest {
             command = "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget $TargetName"
         },
         [ordered]@{
-            name = "installed-d3d12-scene-gpu-postprocess-smoke"
-            command = "out\install\desktop-runtime-release\bin\$TargetName.exe --smoke --require-config runtime/$GameName.config --require-scene-package runtime/$GameName.geindex --require-d3d12-scene-shaders --video-driver windows --require-d3d12-renderer --require-scene-gpu-bindings --require-postprocess --require-material-graph-authoring"
+            name = "installed-d3d12-scene-gpu-material-smoke"
+            command = "out\install\desktop-runtime-release\bin\$TargetName.exe --smoke --require-config runtime/$GameName.config --require-scene-package runtime/$GameName.geindex --require-d3d12-scene-shaders --video-driver windows --require-d3d12-renderer --require-scene-gpu-bindings --require-material-graph-authoring"
         },
         [ordered]@{
             name = "desktop-runtime-release-target-vulkan-toolchain-gated"
-            command = "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget $TargetName -RequireVulkanShaders -SmokeArgs @('--smoke', '--require-config', 'runtime/$GameName.config', '--require-scene-package', 'runtime/$GameName.geindex', '--require-vulkan-scene-shaders', '--video-driver', 'windows', '--require-vulkan-renderer', '--require-scene-gpu-bindings', '--require-postprocess', '--require-material-graph-authoring')"
+            command = "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget $TargetName -RequireVulkanShaders -SmokeArgs @('--smoke', '--require-config', 'runtime/$GameName.config', '--require-scene-package', 'runtime/$GameName.geindex', '--require-vulkan-scene-shaders', '--video-driver', 'windows', '--require-material-graph-authoring')"
         }
     )
     $manifest.packageStreamingResidencyTargets = @(
@@ -7928,7 +8122,7 @@ function New-DesktopRuntimeMaterialShaderManifest {
             maxResidentPackages = 1
             preloadAssetKeys = @("$manifestName/scenes/packaged-scene")
             residentResourceKinds = @("texture", "mesh", "material", "scene")
-            preflightRecipeIds = @("desktop-game-runtime", "desktop-runtime-release-target", "installed-d3d12-scene-gpu-postprocess-smoke")
+            preflightRecipeIds = @("desktop-game-runtime", "desktop-runtime-release-target", "installed-d3d12-scene-gpu-material-smoke")
         }
     )
     return $manifest
@@ -7953,16 +8147,16 @@ Describe the desktop runtime game goal here before expanding gameplay.
 This game uses the optional desktop runtime package lane with first-party material/shader authoring inputs and a cooked scene package:
 
 - `mirakana::GameApp`
-- `mirakana::SdlDesktopGameHost`
+- `mirakana::Win32DesktopGameHost`
 - `mirakana::RootedFileSystem`
 - `mirakana::runtime::load_runtime_asset_package`
 - `mirakana::instantiate_runtime_scene_render_data`
 - `mirakana::submit_scene_render_packet`
 - `source/materials/lit.material` as the authoring material mirror for the cooked runtime material
 - `source/materials/lit.materialgraph`, `source/materials/lit.shader_export`, and `shaders/material_graph_lit.hlsl` as reviewed material graph production-authoring inputs
-- `shaders/runtime_scene.hlsl` and `shaders/runtime_postprocess.hlsl` as host-built shader inputs
+- `shaders/runtime_scene.hlsl` and `shaders/runtime_postprocess.hlsl` as host-built shader inputs; the current Win32 package smoke uses the scene shader path while postprocess execution remains unsupported on this host path
 - D3D12 DXIL artifacts installed by the selected desktop runtime package target
-- Vulkan SPIR-V artifacts only when DXC SPIR-V CodeGen and `spirv-val` are available and requested
+- Vulkan SPIR-V artifacts only when DXC SPIR-V CodeGen and `spirv-val` are available and requested; they are shader-artifact evidence only until non-SDL Vulkan presentation is designed
 - deterministic `NullRenderer` fallback when native presentation gates are unavailable
 - `game.agent.json.runtimePackageFiles` plus `PACKAGE_FILES_FROM_MANIFEST`
 - `game.agent.json.materialShaderAuthoringTargets` for the source material, material graph, shader export descriptor, reviewed HLSL input, cooked runtime material, fixed HLSL inputs, selected compile-request targets, and selected shader artifact paths
@@ -7980,13 +8174,13 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 
 The installed D3D12 package smoke uses:
 
 ```powershell
-out\install\desktop-runtime-release\bin\__TARGET_NAME__.exe --smoke --require-config runtime/__GAME_NAME__.config --require-scene-package runtime/__GAME_NAME__.geindex --require-d3d12-scene-shaders --video-driver windows --require-d3d12-renderer --require-scene-gpu-bindings --require-postprocess --require-material-graph-authoring
+out\install\desktop-runtime-release\bin\__TARGET_NAME__.exe --smoke --require-config runtime/__GAME_NAME__.config --require-scene-package runtime/__GAME_NAME__.geindex --require-d3d12-scene-shaders --video-driver windows --require-d3d12-renderer --require-scene-gpu-bindings --require-material-graph-authoring
 ```
 
 The Vulkan package lane is toolchain-gated:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget __TARGET_NAME__ -RequireVulkanShaders -SmokeArgs @('--smoke', '--require-config', 'runtime/__GAME_NAME__.config', '--require-scene-package', 'runtime/__GAME_NAME__.geindex', '--require-vulkan-scene-shaders', '--video-driver', 'windows', '--require-vulkan-renderer', '--require-scene-gpu-bindings', '--require-postprocess', '--require-material-graph-authoring')
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget __TARGET_NAME__ -RequireVulkanShaders -SmokeArgs @('--smoke', '--require-config', 'runtime/__GAME_NAME__.config', '--require-scene-package', 'runtime/__GAME_NAME__.geindex', '--require-vulkan-scene-shaders', '--video-driver', 'windows', '--require-material-graph-authoring')
 ```
 '@
     return $template.Replace("__TITLE__", $Title).Replace("__TARGET_NAME__", $TargetName).Replace("__GAME_NAME__", $GameName)
@@ -8055,10 +8249,6 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             win32
         SMOKE_ARGS
             --smoke
-            --require-config
-            runtime/$GameName.config
-            --require-scene-package
-            runtime/$GameName.geindex
         PACKAGE_SMOKE_ARGS
             --smoke
             --require-config
@@ -8155,6 +8345,8 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             $GameName/main.cpp
         GAME_MANIFEST
             games/$GameName/game.agent.json
+        HOST_BACKEND
+            win32
         SMOKE_ARGS
             --smoke
             --require-config
@@ -8252,12 +8444,10 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             $GameName/main.cpp
         GAME_MANIFEST
             games/$GameName/game.agent.json
+        HOST_BACKEND
+            win32
         SMOKE_ARGS
             --smoke
-            --require-config
-            runtime/$GameName.config
-            --require-scene-package
-            runtime/$GameName.geindex
         PACKAGE_SMOKE_ARGS
             --smoke
             --require-config
@@ -8269,7 +8459,6 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             windows
             --require-d3d12-renderer
             --require-scene-gpu-bindings
-            --require-postprocess
             --require-material-graph-authoring
         REQUIRES_D3D12_SHADERS
         PACKAGE_FILES_FROM_MANIFEST

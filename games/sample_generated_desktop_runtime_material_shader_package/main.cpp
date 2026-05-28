@@ -10,9 +10,9 @@
 #include "mirakana/platform/input.hpp"
 #include "mirakana/renderer/renderer.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
-#include "mirakana/runtime_host/sdl3/sdl_desktop_game_host.hpp"
-#include "mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp"
 #include "mirakana/runtime_host/shader_bytecode.hpp"
+#include "mirakana/runtime_host/win32/win32_desktop_game_host.hpp"
+#include "mirakana/runtime_host/win32/win32_desktop_presentation.hpp"
 #include "mirakana/scene_renderer/scene_renderer.hpp"
 
 #include <charconv>
@@ -216,14 +216,13 @@ build_modern_material_package_evidence(const std::optional<mirakana::runtime::Ru
     return evidence;
 }
 
-[[nodiscard]] bool selected_modern_material_shader_evidence_ready(mirakana::SdlDesktopPresentationBackend backend,
+[[nodiscard]] bool selected_modern_material_shader_evidence_ready(mirakana::Win32DesktopPresentationBackend backend,
                                                                   bool d3d12_ready, bool vulkan_ready) noexcept {
+    (void)vulkan_ready;
     switch (backend) {
-    case mirakana::SdlDesktopPresentationBackend::d3d12:
+    case mirakana::Win32DesktopPresentationBackend::d3d12:
         return d3d12_ready;
-    case mirakana::SdlDesktopPresentationBackend::vulkan:
-        return vulkan_ready;
-    case mirakana::SdlDesktopPresentationBackend::null_renderer:
+    case mirakana::Win32DesktopPresentationBackend::null_renderer:
         break;
     }
     return false;
@@ -590,23 +589,25 @@ load_packaged_vulkan_postprocess_shaders(const char* executable_path) {
     return "unknown";
 }
 
-void print_presentation_report(std::string_view prefix, const mirakana::SdlDesktopGameHost& host) {
+void print_presentation_report(std::string_view prefix, const mirakana::Win32DesktopGameHost& host) {
     const auto report = host.presentation_report();
     std::cout << prefix << " presentation_report=requested="
-              << mirakana::sdl_desktop_presentation_backend_name(report.requested_backend)
-              << " selected=" << mirakana::sdl_desktop_presentation_backend_name(report.selected_backend)
-              << " fallback=" << mirakana::sdl_desktop_presentation_fallback_reason_name(report.fallback_reason)
+              << mirakana::win32_desktop_presentation_backend_name(report.requested_backend)
+              << " selected=" << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
+              << " fallback=" << mirakana::win32_desktop_presentation_fallback_reason_name(report.fallback_reason)
               << " used_null_fallback=" << (report.used_null_fallback ? 1 : 0)
               << " diagnostics=" << report.diagnostics_count << " backend_reports=" << report.backend_reports_count
               << " scene_gpu_status="
-              << mirakana::sdl_desktop_presentation_scene_gpu_binding_status_name(report.scene_gpu_status)
+              << mirakana::win32_desktop_presentation_scene_gpu_binding_status_name(report.scene_gpu_status)
+              << " present_status=" << mirakana::win32_desktop_presentation_present_status_name(report.present_status)
+              << " resize_status=" << mirakana::win32_desktop_presentation_resize_status_name(report.resize_status)
               << " renderer_frames_finished=" << report.renderer_stats.frames_finished << '\n';
     for (const auto& backend_report : host.presentation_backend_reports()) {
         std::cout << prefix << " presentation_backend_report="
-                  << mirakana::sdl_desktop_presentation_backend_name(backend_report.backend) << ":"
-                  << mirakana::sdl_desktop_presentation_backend_report_status_name(backend_report.status) << ":"
-                  << mirakana::sdl_desktop_presentation_fallback_reason_name(backend_report.fallback_reason) << ": "
-                  << backend_report.message << '\n';
+                  << mirakana::win32_desktop_presentation_backend_name(backend_report.backend) << ":"
+                  << mirakana::win32_desktop_presentation_backend_report_status_name(backend_report.status) << ":"
+                  << mirakana::win32_desktop_presentation_fallback_reason_name(backend_report.fallback_reason) << ": "
+                  << backend_report.diagnostic << '\n';
     }
 }
 
@@ -644,14 +645,6 @@ int main(int argc, char** argv) {
                   << d3d12_shader_bytecode.diagnostic << '\n';
         return 4;
     }
-    auto d3d12_postprocess_bytecode = load_packaged_d3d12_postprocess_shaders(argc > 0 ? argv[0] : nullptr);
-    if (!d3d12_postprocess_bytecode.ready() && options.require_postprocess && !options.require_vulkan_renderer) {
-        std::cout << "sample_generated_desktop_runtime_material_shader_package postprocess_shader_diagnostic="
-                  << mirakana::desktop_shader_bytecode_load_status_name(d3d12_postprocess_bytecode.status) << ": "
-                  << d3d12_postprocess_bytecode.diagnostic << '\n';
-        return 4;
-    }
-
     auto vulkan_shader_bytecode = load_packaged_vulkan_scene_shaders(argc > 0 ? argv[0] : nullptr);
     if (!vulkan_shader_bytecode.ready() && options.require_vulkan_scene_shaders) {
         std::cout << "sample_generated_desktop_runtime_material_shader_package vulkan_shader_diagnostic="
@@ -659,133 +652,67 @@ int main(int argc, char** argv) {
                   << vulkan_shader_bytecode.diagnostic << '\n';
         return 6;
     }
-    auto vulkan_postprocess_bytecode = load_packaged_vulkan_postprocess_shaders(argc > 0 ? argv[0] : nullptr);
-    if (!vulkan_postprocess_bytecode.ready() && options.require_postprocess && options.require_vulkan_renderer) {
-        std::cout << "sample_generated_desktop_runtime_material_shader_package vulkan_postprocess_shader_diagnostic="
-                  << mirakana::desktop_shader_bytecode_load_status_name(vulkan_postprocess_bytecode.status) << ": "
-                  << vulkan_postprocess_bytecode.diagnostic << '\n';
-        return 6;
-    }
 
-    std::optional<mirakana::SdlDesktopPresentationD3d12SceneRendererDesc> d3d12_scene_renderer;
-    if (d3d12_shader_bytecode.ready() && d3d12_postprocess_bytecode.ready() && runtime_package.has_value() &&
-        packaged_scene.has_value()) {
-        d3d12_scene_renderer.emplace(mirakana::SdlDesktopPresentationD3d12SceneRendererDesc{
+    std::optional<mirakana::Win32DesktopPresentationD3d12SceneRendererDesc> d3d12_scene_renderer;
+    if (d3d12_shader_bytecode.ready() && runtime_package.has_value() && packaged_scene.has_value()) {
+        d3d12_scene_renderer.emplace(mirakana::Win32DesktopPresentationD3d12SceneRendererDesc{
             .vertex_shader =
-                mirakana::SdlDesktopPresentationShaderBytecode{
+                mirakana::Win32DesktopPresentationShaderBytecode{
                     .entry_point = d3d12_shader_bytecode.vertex_shader.entry_point,
                     .bytecode = std::span<const std::uint8_t>{d3d12_shader_bytecode.vertex_shader.bytecode.data(),
                                                               d3d12_shader_bytecode.vertex_shader.bytecode.size()},
                 },
             .fragment_shader =
-                mirakana::SdlDesktopPresentationShaderBytecode{
+                mirakana::Win32DesktopPresentationShaderBytecode{
                     .entry_point = d3d12_shader_bytecode.fragment_shader.entry_point,
                     .bytecode = std::span<const std::uint8_t>{d3d12_shader_bytecode.fragment_shader.bytecode.data(),
                                                               d3d12_shader_bytecode.fragment_shader.bytecode.size()},
                 },
-            .postprocess_vertex_shader =
-                mirakana::SdlDesktopPresentationShaderBytecode{
-                    .entry_point = d3d12_postprocess_bytecode.vertex_shader.entry_point,
-                    .bytecode = std::span<const std::uint8_t>{d3d12_postprocess_bytecode.vertex_shader.bytecode.data(),
-                                                              d3d12_postprocess_bytecode.vertex_shader.bytecode.size()},
-                },
-            .postprocess_fragment_shader =
-                mirakana::SdlDesktopPresentationShaderBytecode{
-                    .entry_point = d3d12_postprocess_bytecode.fragment_shader.entry_point,
-                    .bytecode =
-                        std::span<const std::uint8_t>{d3d12_postprocess_bytecode.fragment_shader.bytecode.data(),
-                                                      d3d12_postprocess_bytecode.fragment_shader.bytecode.size()},
-                },
             .package = &*runtime_package,
             .packet = &packaged_scene->render_packet,
             .vertex_buffers = runtime_scene_vertex_buffers(),
             .vertex_attributes = runtime_scene_vertex_attributes(),
-            .enable_postprocess = true,
         });
     }
 
-    std::optional<mirakana::SdlDesktopPresentationVulkanSceneRendererDesc> vulkan_scene_renderer;
-    if (vulkan_shader_bytecode.ready() && vulkan_postprocess_bytecode.ready() && runtime_package.has_value() &&
-        packaged_scene.has_value()) {
-        vulkan_scene_renderer.emplace(mirakana::SdlDesktopPresentationVulkanSceneRendererDesc{
-            .vertex_shader =
-                mirakana::SdlDesktopPresentationShaderBytecode{
-                    .entry_point = vulkan_shader_bytecode.vertex_shader.entry_point,
-                    .bytecode = std::span<const std::uint8_t>{vulkan_shader_bytecode.vertex_shader.bytecode.data(),
-                                                              vulkan_shader_bytecode.vertex_shader.bytecode.size()},
-                },
-            .fragment_shader =
-                mirakana::SdlDesktopPresentationShaderBytecode{
-                    .entry_point = vulkan_shader_bytecode.fragment_shader.entry_point,
-                    .bytecode = std::span<const std::uint8_t>{vulkan_shader_bytecode.fragment_shader.bytecode.data(),
-                                                              vulkan_shader_bytecode.fragment_shader.bytecode.size()},
-                },
-            .postprocess_vertex_shader =
-                mirakana::SdlDesktopPresentationShaderBytecode{
-                    .entry_point = vulkan_postprocess_bytecode.vertex_shader.entry_point,
-                    .bytecode =
-                        std::span<const std::uint8_t>{vulkan_postprocess_bytecode.vertex_shader.bytecode.data(),
-                                                      vulkan_postprocess_bytecode.vertex_shader.bytecode.size()},
-                },
-            .postprocess_fragment_shader =
-                mirakana::SdlDesktopPresentationShaderBytecode{
-                    .entry_point = vulkan_postprocess_bytecode.fragment_shader.entry_point,
-                    .bytecode =
-                        std::span<const std::uint8_t>{vulkan_postprocess_bytecode.fragment_shader.bytecode.data(),
-                                                      vulkan_postprocess_bytecode.fragment_shader.bytecode.size()},
-                },
-            .package = &*runtime_package,
-            .packet = &packaged_scene->render_packet,
-            .vertex_buffers = runtime_scene_vertex_buffers(),
-            .vertex_attributes = runtime_scene_vertex_attributes(),
-            .enable_postprocess = true,
-        });
-    }
-
-    mirakana::SdlDesktopGameHostDesc host_desc{
+    mirakana::Win32DesktopGameHostDesc host_desc{
         .title = "sample-generated-desktop-runtime-material-shader-package",
         .extent = mirakana::WindowExtent{.width = 960, .height = 540},
-        .video_driver_hint = options.video_driver_hint,
-        .prefer_vulkan = options.require_vulkan_renderer,
+        .prefer_d3d12 = true,
     };
     if (d3d12_scene_renderer.has_value()) {
         host_desc.d3d12_scene_renderer = &*d3d12_scene_renderer;
     }
-    if (vulkan_scene_renderer.has_value()) {
-        host_desc.vulkan_scene_renderer = &*vulkan_scene_renderer;
-    }
 
-    mirakana::SdlDesktopGameHost host(host_desc);
+    mirakana::Win32DesktopGameHost host(host_desc);
     if (options.require_d3d12_renderer &&
-        host.presentation_backend() != mirakana::SdlDesktopPresentationBackend::d3d12) {
+        host.presentation_backend() != mirakana::Win32DesktopPresentationBackend::d3d12) {
         std::cout
             << "sample_generated_desktop_runtime_material_shader_package required_d3d12_renderer_unavailable renderer="
             << host.presentation_backend_name() << '\n';
         print_presentation_report("sample_generated_desktop_runtime_material_shader_package", host);
         return 5;
     }
-    if (options.require_vulkan_renderer &&
-        host.presentation_backend() != mirakana::SdlDesktopPresentationBackend::vulkan) {
+    if (options.require_vulkan_renderer) {
         std::cout
             << "sample_generated_desktop_runtime_material_shader_package required_vulkan_renderer_unavailable renderer="
             << host.presentation_backend_name() << '\n';
         print_presentation_report("sample_generated_desktop_runtime_material_shader_package", host);
         return 7;
     }
-    if (options.require_scene_gpu_bindings && !host.scene_gpu_bindings_ready()) {
+    if (options.require_scene_gpu_bindings &&
+        host.presentation_report().scene_gpu_status != mirakana::Win32DesktopPresentationSceneGpuBindingStatus::ready) {
         std::cout << "sample_generated_desktop_runtime_material_shader_package required_scene_gpu_bindings_unavailable "
                      "status="
-                  << mirakana::sdl_desktop_presentation_scene_gpu_binding_status_name(host.scene_gpu_binding_status())
+                  << mirakana::win32_desktop_presentation_scene_gpu_binding_status_name(
+                         host.presentation_report().scene_gpu_status)
                   << '\n';
         print_presentation_report("sample_generated_desktop_runtime_material_shader_package", host);
         return 5;
     }
-    if (options.require_postprocess &&
-        host.presentation_report().postprocess_status != mirakana::SdlDesktopPresentationPostprocessStatus::ready) {
+    if (options.require_postprocess) {
         std::cout << "sample_generated_desktop_runtime_material_shader_package required_postprocess_unavailable status="
-                  << mirakana::sdl_desktop_presentation_postprocess_status_name(
-                         host.presentation_report().postprocess_status)
-                  << '\n';
+                  << "unsupported\n";
         print_presentation_report("sample_generated_desktop_runtime_material_shader_package", host);
         return 8;
     }
@@ -794,7 +721,6 @@ int main(int argc, char** argv) {
                                                 std::move(packaged_scene));
     const auto result = host.run(game, mirakana::DesktopRunConfig{.max_frames = options.max_frames});
     const auto report = host.presentation_report();
-    const auto postprocess_policy = mirakana::evaluate_sdl_desktop_presentation_postprocess_policy(report);
     const auto scene_gpu_stats = report.scene_gpu_stats;
     const bool d3d12_material_shader_evidence_ready = d3d12_shader_bytecode.ready();
     const bool vulkan_material_shader_evidence_ready = vulkan_shader_bytecode.ready();
@@ -810,14 +736,19 @@ int main(int argc, char** argv) {
 
     std::cout
         << "sample_generated_desktop_runtime_material_shader_package status=" << status_name(result.status)
-        << " renderer=" << mirakana::sdl_desktop_presentation_backend_name(report.selected_backend)
-        << " presentation_requested=" << mirakana::sdl_desktop_presentation_backend_name(report.requested_backend)
-        << " presentation_selected=" << mirakana::sdl_desktop_presentation_backend_name(report.selected_backend)
-        << " presentation_fallback=" << mirakana::sdl_desktop_presentation_fallback_reason_name(report.fallback_reason)
+        << " renderer=" << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
+        << " presentation_requested=" << mirakana::win32_desktop_presentation_backend_name(report.requested_backend)
+        << " presentation_selected=" << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
+        << " presentation_fallback="
+        << mirakana::win32_desktop_presentation_fallback_reason_name(report.fallback_reason)
         << " presentation_used_null_fallback=" << (report.used_null_fallback ? 1 : 0)
         << " presentation_backend_reports=" << report.backend_reports_count
         << " presentation_diagnostics=" << report.diagnostics_count << " scene_gpu_status="
-        << mirakana::sdl_desktop_presentation_scene_gpu_binding_status_name(report.scene_gpu_status)
+        << mirakana::win32_desktop_presentation_scene_gpu_binding_status_name(report.scene_gpu_status)
+        << " presentation_present_status="
+        << mirakana::win32_desktop_presentation_present_status_name(report.present_status)
+        << " presentation_resize_status="
+        << mirakana::win32_desktop_presentation_resize_status_name(report.resize_status)
         << " scene_gpu_mesh_bindings=" << scene_gpu_stats.mesh_bindings
         << " scene_gpu_material_bindings=" << scene_gpu_stats.material_bindings
         << " scene_gpu_mesh_uploads=" << scene_gpu_stats.mesh_uploads
@@ -828,24 +759,22 @@ int main(int argc, char** argv) {
         << " scene_gpu_uploaded_mesh_bytes=" << scene_gpu_stats.uploaded_mesh_bytes
         << " scene_gpu_uploaded_material_factor_bytes=" << scene_gpu_stats.uploaded_material_factor_bytes
         << " scene_gpu_mesh_resolved=" << scene_gpu_stats.mesh_bindings_resolved
-        << " scene_gpu_material_resolved=" << scene_gpu_stats.material_bindings_resolved << " postprocess_status="
-        << mirakana::sdl_desktop_presentation_postprocess_status_name(report.postprocess_status)
-        << " postprocess_depth_input_requested=" << (report.postprocess_depth_input_requested ? 1 : 0)
-        << " postprocess_depth_input_ready=" << (report.postprocess_depth_input_ready ? 1 : 0)
-        << " postprocess_policy_status="
-        << mirakana::sdl_desktop_presentation_postprocess_policy_status_name(postprocess_policy.status)
-        << " postprocess_policy_ready=" << (postprocess_policy.ready ? 1 : 0)
-        << " postprocess_policy_diagnostics=" << postprocess_policy.diagnostics_count
-        << " postprocess_policy_effects=" << postprocess_policy.effect_count
-        << " postprocess_policy_postprocess_passes=" << postprocess_policy.postprocess_pass_count
-        << " postprocess_policy_framegraph_passes=" << postprocess_policy.framegraph_pass_count
-        << " postprocess_policy_framegraph_barrier_step_budget=" << postprocess_policy.framegraph_barrier_step_budget
-        << " postprocess_policy_scene_color_required=" << (postprocess_policy.scene_color_required ? 1 : 0)
-        << " postprocess_policy_scene_depth_required=" << (postprocess_policy.scene_depth_required ? 1 : 0)
-        << " postprocess_policy_color_grading_effect=" << (postprocess_policy.color_grading_effect ? 1 : 0)
-        << " postprocess_policy_backend_shader_evidence_ready="
-        << (postprocess_policy.backend_shader_evidence_ready ? 1 : 0)
-        << " framegraph_passes=" << report.framegraph_passes
+        << " scene_gpu_material_resolved=" << scene_gpu_stats.material_bindings_resolved
+        << " postprocess_status=unsupported"
+        << " postprocess_depth_input_requested=0"
+        << " postprocess_depth_input_ready=0"
+        << " postprocess_policy_status=unsupported"
+        << " postprocess_policy_ready=0"
+        << " postprocess_policy_diagnostics=1"
+        << " postprocess_policy_effects=0"
+        << " postprocess_policy_postprocess_passes=0"
+        << " postprocess_policy_framegraph_passes=0"
+        << " postprocess_policy_framegraph_barrier_step_budget=0"
+        << " postprocess_policy_scene_color_required=0"
+        << " postprocess_policy_scene_depth_required=0"
+        << " postprocess_policy_color_grading_effect=0"
+        << " postprocess_policy_backend_shader_evidence_ready=0"
+        << " framegraph_passes=0"
         << " framegraph_passes_executed=" << report.renderer_stats.framegraph_passes_executed
         << " framegraph_render_passes_recorded=" << report.renderer_stats.framegraph_render_passes_recorded
         << " framegraph_barrier_steps_executed=" << report.renderer_stats.framegraph_barrier_steps_executed
@@ -875,7 +804,7 @@ int main(int argc, char** argv) {
     print_presentation_report("sample_generated_desktop_runtime_material_shader_package", host);
     for (const auto& diagnostic : host.presentation_diagnostics()) {
         std::cout << "sample_generated_desktop_runtime_material_shader_package presentation_diagnostic="
-                  << mirakana::sdl_desktop_presentation_fallback_reason_name(diagnostic.reason) << ": "
+                  << mirakana::win32_desktop_presentation_fallback_reason_name(diagnostic.reason) << ": "
                   << diagnostic.message << '\n';
     }
 
@@ -893,22 +822,6 @@ int main(int argc, char** argv) {
             (scene_gpu_stats.mesh_bindings == 0 || scene_gpu_stats.material_bindings == 0 ||
              scene_gpu_stats.mesh_bindings_resolved != static_cast<std::size_t>(options.max_frames) ||
              scene_gpu_stats.material_bindings_resolved != static_cast<std::size_t>(options.max_frames))) {
-            return 3;
-        }
-        if (options.require_postprocess &&
-            (report.postprocess_status != mirakana::SdlDesktopPresentationPostprocessStatus::ready ||
-             !postprocess_policy.ready || postprocess_policy.diagnostics_count != 0 ||
-             postprocess_policy.effect_count != 1 || postprocess_policy.postprocess_pass_count != 1 ||
-             postprocess_policy.framegraph_pass_count != 2 || postprocess_policy.framegraph_barrier_step_budget != 2 ||
-             !postprocess_policy.scene_color_required || postprocess_policy.scene_depth_required ||
-             !postprocess_policy.color_grading_effect || !postprocess_policy.backend_shader_evidence_ready ||
-             report.framegraph_passes != 2 ||
-             report.renderer_stats.framegraph_passes_executed != static_cast<std::uint64_t>(options.max_frames) * 2U ||
-             report.renderer_stats.framegraph_render_passes_recorded !=
-                 static_cast<std::uint64_t>(options.max_frames) * 2U ||
-             report.renderer_stats.framegraph_barrier_steps_executed !=
-                 static_cast<std::uint64_t>(options.max_frames) * 2U ||
-             report.renderer_stats.postprocess_passes_executed != static_cast<std::uint64_t>(options.max_frames))) {
             return 3;
         }
         if (options.require_material_graph_authoring &&

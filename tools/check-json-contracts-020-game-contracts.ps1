@@ -1044,7 +1044,7 @@ if ($null -eq $cookedPackageEntry) {
 $cookedPackageMainText = Get-Content -LiteralPath (Join-Path $root "games/sample_generated_desktop_runtime_cooked_scene_package/main.cpp") -Raw
 $win32CookedSceneMainTemplateText = [regex]::Match(
     $newGameTemplatesText,
-    "(?ms)^function New-Win32DesktopRuntimeCookedSceneMainCpp \{.*?^function New-DesktopRuntime3DMainCpp \{"
+    "(?ms)^function New-Win32DesktopRuntimeCookedSceneMainCpp \{.*?^function New-Win32DesktopRuntimeMaterialShaderMainCpp \{"
 ).Value
 $cookedSceneManifestTemplateText = [regex]::Match(
     $newGameTemplatesText,

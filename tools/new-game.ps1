@@ -306,12 +306,11 @@ scenePackage=runtime/$Name.geindex
     New-Item -ItemType Directory -Path (Join-Path $gameDir "source/materials") -Force | Out-Null
     New-Item -ItemType Directory -Path (Join-Path $gameDir "shaders") -Force | Out-Null
     $materialShaderPackage = New-DesktopRuntimeMaterialShaderPackageFiles -GameName $Name -DisplayTitle $DisplayName
-    $mainCpp = New-DesktopRuntimeCookedSceneMainCpp `
+    $mainCpp = New-Win32DesktopRuntimeMaterialShaderMainCpp `
         -GameName $Name `
         -TargetName $targetName `
         -Title $DisplayName `
-        -SceneAssetName $materialShaderPackage.SceneAssetName `
-        -IncludeMaterialGraphAuthoringEvidence
+        -SceneAssetName $materialShaderPackage.SceneAssetName
     $readme = New-DesktopRuntimeMaterialShaderReadme -Title $DisplayName -TargetName $targetName -GameName $Name
     $manifest = New-DesktopRuntimeMaterialShaderManifest -GameName $Name -DisplayTitle $DisplayName -TargetName $targetName
     $registration = New-DesktopRuntimeMaterialShaderRegistration -GameName $Name -TargetName $targetName

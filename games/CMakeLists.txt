@@ -2259,12 +2259,10 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             sample_generated_desktop_runtime_material_shader_package/main.cpp
         GAME_MANIFEST
             games/sample_generated_desktop_runtime_material_shader_package/game.agent.json
+        HOST_BACKEND
+            win32
         SMOKE_ARGS
             --smoke
-            --require-config
-            runtime/sample_generated_desktop_runtime_material_shader_package.config
-            --require-scene-package
-            runtime/sample_generated_desktop_runtime_material_shader_package.geindex
         PACKAGE_SMOKE_ARGS
             --smoke
             --require-config
@@ -2276,7 +2274,6 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             windows
             --require-d3d12-renderer
             --require-scene-gpu-bindings
-            --require-postprocess
             --require-material-graph-authoring
         REQUIRES_D3D12_SHADERS
         PACKAGE_FILES_FROM_MANIFEST

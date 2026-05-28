@@ -9,13 +9,13 @@
     "MK_core",
     "MK_math",
     "MK_platform",
-    "MK_platform_sdl3",
+    "MK_platform_win32",
     "MK_renderer",
     "MK_runtime",
     "MK_runtime_rhi",
     "MK_runtime_host",
-    "MK_runtime_host_sdl3",
-    "MK_runtime_host_sdl3_presentation",
+    "MK_runtime_host_win32",
+    "MK_runtime_host_win32_presentation",
     "MK_scene",
     "MK_scene_renderer"
   ],
@@ -29,12 +29,12 @@
   },
   "gameplayContract": {
     "appType": "mirakana::GameApp",
-    "runner": "mirakana::SdlDesktopGameHost",
-    "currentRuntime": "desktop-windowed-sdl3-host-with-host-built-d3d12-vulkan-shader-artifacts-and-null-fallback"
+    "runner": "mirakana::Win32DesktopGameHost",
+    "currentRuntime": "desktop-windowed-win32-host-with-host-built-d3d12-shader-artifacts-scene-gpu-binding-vulkan-artifact-validation-and-null-fallback"
   },
   "backendReadiness": {
-    "platform": "sdl3-desktop",
-    "graphics": "host-built D3D12 DXIL shader artifacts; Vulkan SPIR-V artifacts are toolchain-gated; NullRenderer fallback remains available",
+    "platform": "win32-desktop",
+    "graphics": "Win32 D3D12 package scene GPU proof with host-built D3D12 DXIL shader artifacts; Vulkan SPIR-V artifacts remain toolchain validation inputs only, postprocess and Vulkan renderer execution are unsupported on this Win32 package path, and NullRenderer fallback remains available",
     "audio": "device-independent",
     "ui": "mirakana_ui-headless",
     "physics": "not-required"
@@ -92,7 +92,7 @@
       "preflightRecipeIds": [
         "desktop-game-runtime",
         "desktop-runtime-release-target",
-        "installed-d3d12-scene-gpu-postprocess-smoke"
+        "installed-d3d12-scene-gpu-material-smoke"
       ]
     }
   ],
@@ -146,12 +146,12 @@
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_material_shader_package"
     },
     {
-      "name": "installed-d3d12-scene-gpu-postprocess-smoke",
-      "command": "out\\install\\desktop-runtime-release\\bin\\sample_generated_desktop_runtime_material_shader_package.exe --smoke --require-config runtime/sample_generated_desktop_runtime_material_shader_package.config --require-scene-package runtime/sample_generated_desktop_runtime_material_shader_package.geindex --require-d3d12-scene-shaders --video-driver windows --require-d3d12-renderer --require-scene-gpu-bindings --require-postprocess --require-material-graph-authoring"
+      "name": "installed-d3d12-scene-gpu-material-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_generated_desktop_runtime_material_shader_package.exe --smoke --require-config runtime/sample_generated_desktop_runtime_material_shader_package.config --require-scene-package runtime/sample_generated_desktop_runtime_material_shader_package.geindex --require-d3d12-scene-shaders --video-driver windows --require-d3d12-renderer --require-scene-gpu-bindings --require-material-graph-authoring"
     },
     {
       "name": "desktop-runtime-release-target-vulkan-toolchain-gated",
-      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_material_shader_package -RequireVulkanShaders -SmokeArgs @('--smoke', '--require-config', 'runtime/sample_generated_desktop_runtime_material_shader_package.config', '--require-scene-package', 'runtime/sample_generated_desktop_runtime_material_shader_package.geindex', '--require-vulkan-scene-shaders', '--video-driver', 'windows', '--require-vulkan-renderer', '--require-scene-gpu-bindings', '--require-postprocess', '--require-material-graph-authoring')"
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_material_shader_package -RequireVulkanShaders -SmokeArgs @('--smoke', '--require-config', 'runtime/sample_generated_desktop_runtime_material_shader_package.config', '--require-scene-package', 'runtime/sample_generated_desktop_runtime_material_shader_package.geindex', '--require-vulkan-scene-shaders', '--video-driver', 'windows', '--require-material-graph-authoring')"
     }
   ]
 }

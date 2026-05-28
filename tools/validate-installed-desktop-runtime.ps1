@@ -3489,10 +3489,10 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
             }
         }
     }
-    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bpostprocess_status=ready") {
-        Write-Error "Installed desktop runtime smoke status line did not prove ready postprocess_status for a ready scene GPU path."
-    }
     if ($requiresPostprocess) {
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bpostprocess_status=ready") {
+            Write-Error "Installed desktop runtime smoke status line did not prove ready postprocess_status for a postprocess-required scene GPU path."
+        }
         $expectedPostprocessPolicySceneDepthRequired = if ($requiresPostprocessDepthInput) { "1" } else { "0" }
         $expectedPostprocessPolicyFields = @{
             "postprocess_policy_status" = "ready"
@@ -3548,23 +3548,25 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
             }
         }
     }
-    $expectedFramegraphPasses = if ($requiresDirectionalShadow) { 3 } else { 2 }
-    $expectedFramegraphPassExecutions = $expectedSmokeFrames * $expectedFramegraphPasses
-    $expectedFramegraphBarrierExecutions = Get-ExpectedInstalledFramegraphBarrierExecutions `
-        -ExpectedFrames $expectedSmokeFrames `
-        -RequiresDirectionalShadow $requiresDirectionalShadow `
-        -RequiresPostprocessDepthInput $requiresPostprocessDepthInput
-    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bframegraph_passes=$expectedFramegraphPasses\b") {
-        Write-Error "Installed desktop runtime smoke status line did not prove the frame graph pass count."
-    }
-    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bframegraph_passes_executed=$expectedFramegraphPassExecutions\b") {
-        Write-Error "Installed desktop runtime smoke status line did not prove frame graph pass execution count."
-    }
-    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bframegraph_render_passes_recorded=$expectedFramegraphPassExecutions\b") {
-        Write-Error "Installed desktop runtime smoke status line did not prove frame graph render-pass envelope count."
-    }
-    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bframegraph_barrier_steps_executed=$expectedFramegraphBarrierExecutions\b") {
-        Write-Error "Installed desktop runtime smoke status line did not prove frame graph barrier-step execution count."
+    if ($requiresPostprocess -or $requiresDirectionalShadow -or $requiresFrameGraphMultiQueueEvidence -or $requiresVulkanFrameGraphMultiQueueEvidence) {
+        $expectedFramegraphPasses = if ($requiresDirectionalShadow) { 3 } else { 2 }
+        $expectedFramegraphPassExecutions = $expectedSmokeFrames * $expectedFramegraphPasses
+        $expectedFramegraphBarrierExecutions = Get-ExpectedInstalledFramegraphBarrierExecutions `
+            -ExpectedFrames $expectedSmokeFrames `
+            -RequiresDirectionalShadow $requiresDirectionalShadow `
+            -RequiresPostprocessDepthInput $requiresPostprocessDepthInput
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bframegraph_passes=$expectedFramegraphPasses\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove the frame graph pass count."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bframegraph_passes_executed=$expectedFramegraphPassExecutions\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove frame graph pass execution count."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bframegraph_render_passes_recorded=$expectedFramegraphPassExecutions\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove frame graph render-pass envelope count."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bframegraph_barrier_steps_executed=$expectedFramegraphBarrierExecutions\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove frame graph barrier-step execution count."
+        }
     }
     if ($requiresPostprocessDepthInput -and
         $smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bpostprocess_depth_input_ready=1\b") {
