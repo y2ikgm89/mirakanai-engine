@@ -12,7 +12,7 @@
 
 **Plan ID:** `clean-break-broad-production-readiness-master-plan-v1`
 
-**Status:** Selected master plan. Not selected as `currentActivePlan`; the SDL3 removal milestone is completed and the manifest currently points back to the production-completion selection gate.
+**Status:** Selected master plan. The active child is `reviewed-importers-codecs-shader-generation-v1` after the SDL3 removal milestone completed and the production-completion selection gate was reconciled.
 
 **Date:** 2026-05-27
 
@@ -29,7 +29,7 @@ This work is too broad for one implementation branch. It must be executed throug
 - Networking production coverage.
 - Cross-domain package evidence and closeout.
 
-The reviewed importer/codecs/shader-generation child remains paused after the SDL3 removal milestone and can resume only through an explicit manifest/registry switch.
+The reviewed importer/codecs/shader-generation child is selected again through an explicit manifest/registry switch after the SDL3 removal milestone and backlog selection-gate reconciliation.
 
 `unsupportedProductionGaps = []` remains the Engine 1.0 ready-surface truth. This plan does not reopen 1.0; it selects post-1.0 / 1.x production breadth.
 
@@ -105,7 +105,7 @@ Context7 evidence recorded during this selection pass:
 
 ### Child Plan 3 - Reviewed Importers Codecs And Shader Generation v1
 
-**Status:** Paused child; resume only through an explicit manifest/registry switch.
+**Status:** Active child.
 
 **Path:** `docs/superpowers/plans/2026-05-27-reviewed-importers-codecs-shader-generation-v1.md`
 
