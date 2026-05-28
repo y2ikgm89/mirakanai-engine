@@ -72,6 +72,21 @@ prefix_rule(
 )
 
 prefix_rule(
+    pattern = ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools/check-publication-preflight.ps1"],
+    decision = "allow",
+    justification = "Guarded GitHub Flow publication preflight is allowed because the repository script verifies the current user, linked-worktree index.lock ACL, Git index refresh, remote reachability, GitHub CLI auth/config readability, and optional PR view before publishing.",
+    match = [
+        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1",
+        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1 -PullRequest 268 -RequireClean",
+    ],
+    not_match = [
+        "git push -u origin codex/example",
+        "gh pr create --base main --head codex/example --title \"Implement focused slice\" --body \"Validation: validate.ps1 passed\"",
+        "Remove-Item -LiteralPath .worktrees/codex/example -Recurse -Force",
+    ],
+)
+
+prefix_rule(
     pattern = ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools/ready-task-pr.ps1"],
     decision = "allow",
     justification = "Guarded PR ready conversion is allowed because the repository script verifies a clean task-owned branch, current local and remote head, open draft PR state, expected base, clean merge state, no requested changes, no failed or pending checks, and PR Gate success before invoking gh pr ready.",
