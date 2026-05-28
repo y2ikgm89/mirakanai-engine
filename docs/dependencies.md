@@ -27,7 +27,7 @@ On Windows, the default validation build uses Windows SDK system libraries for t
 
 These are official platform SDK libraries and are not bundled in the repository.
 
-The optional desktop runtime, deferred desktop GUI/editor, asset importer, native physics middleware adapter, and network transport adapter builds use vcpkg manifest features so SDL3 runtime, future GUI, importer, Jolt, and ENet dependencies remain isolated from the default build and from system-wide package locations.
+The optional desktop runtime, deferred desktop GUI/editor, asset importer, native physics middleware adapter, and network transport adapter builds use vcpkg manifest features so future GUI, importer, Jolt, and ENet dependencies remain isolated from the default build and from system-wide package locations. The active Win32 desktop runtime feature currently declares no vcpkg packages.
 
 Run the optional vcpkg dependency bootstrap with:
 
@@ -58,7 +58,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtim
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1
 ```
 
-`desktop-game-runtime` uses the `desktop-runtime` preset and the bootstrapped `desktop-runtime` vcpkg feature so it does not require Dear ImGui. `package-desktop-runtime` uses the `desktop-runtime-release` preset, cleans its desktop runtime install prefix, installs the selected registered desktop runtime game executable, validates the installed executable, rejects `SDL3.dll` in the install tree or CPack ZIP, and then creates a CPack ZIP. Registered desktop runtime game targets generate `desktop-runtime-games.json` metadata for their `games/<game_name>/game.agent.json` manifest path, required source-tree smoke args, installed package smoke args, selected package target, target-specific shader-artifact paths, shader-artifact requirements, and runtime package files. Package files should be authored once in `game.agent.json.runtimePackageFiles` and registered through `PACKAGE_FILES_FROM_MANIFEST`; literal CMake `PACKAGE_FILES` remains valid only when it intentionally mirrors the manifest. Static schema checks and focused/package validation confirm that `desktop-runtime-release` manifest claims match CMake registration, `GAME_MANIFEST`, safe `runtimePackageFiles`, and package recipes. The default package target remains `sample_desktop_runtime_shell`, uses the Windows-native `Win32DesktopGameHost`, and requires generated DXIL plus SPIR-V shader artifacts through metadata while validating D3D12 presentation on the installed smoke. `sample_desktop_runtime_game` can be selected with `-GameTarget` and still validates bundled config, cooked scene package files, target-specific scene DXIL artifacts, and host-owned D3D12 scene GPU binding by default until the remaining non-shell sample/game-template migration phases move it off SDL3. The same selected game target can validate target-specific scene SPIR-V artifacts and host-owned Vulkan scene GPU binding with `-RequireVulkanShaders` plus explicit Vulkan smoke args on a ready Windows/Vulkan host.
+`desktop-game-runtime` uses the `desktop-runtime` preset and an empty bootstrapped `desktop-runtime` vcpkg feature, so it does not require SDL3 or Dear ImGui packages. `package-desktop-runtime` uses the `desktop-runtime-release` preset, cleans its desktop runtime install prefix, installs the selected registered desktop runtime game executable, validates the installed executable, rejects `SDL3.dll` in the install tree or CPack ZIP, and then creates a CPack ZIP. Registered desktop runtime game targets generate `desktop-runtime-games.json` metadata for their `games/<game_name>/game.agent.json` manifest path, required source-tree smoke args, installed package smoke args, selected package target, target-specific shader-artifact paths, shader-artifact requirements, and runtime package files. Package files should be authored once in `game.agent.json.runtimePackageFiles` and registered through `PACKAGE_FILES_FROM_MANIFEST`; literal CMake `PACKAGE_FILES` remains valid only when it intentionally mirrors the manifest. Static schema checks and focused/package validation confirm that `desktop-runtime-release` manifest claims match CMake registration, `GAME_MANIFEST`, safe `runtimePackageFiles`, and package recipes. The default package target remains `sample_desktop_runtime_shell`, uses the Windows-native `Win32DesktopGameHost`, and requires generated DXIL plus SPIR-V shader artifacts through metadata while validating D3D12 presentation on the installed smoke. `sample_desktop_runtime_game` and `sample_generated_desktop_runtime_3d_package` are no longer registered package targets while their remaining SDL3 presentation assumptions are ported or deleted.
 
 ## Windows Host Diagnostics Tooling
 
@@ -73,11 +73,7 @@ Apply ADK servicing patches only when they match installed ADK features. Do not 
 
 ## Optional Features
 
-`desktop-runtime` in `vcpkg.json` declares:
-
-- `sdl3`
-
-This feature builds SDL3-backed platform, audio, and desktop runtime host adapters plus registered desktop runtime game samples when `MK_ENABLE_DESKTOP_RUNTIME=ON`. It is intentionally separate from `desktop-gui` so windowed games can be validated and packaged without Dear ImGui or `MK_editor`.
+`desktop-runtime` in `vcpkg.json` currently declares no dependencies. It gates the active Win32 desktop runtime presets without asking vcpkg to install SDL3, Dear ImGui, or other packages.
 
 `desktop-gui` in `vcpkg.json` is deferred and declares no dependencies while the visible editor shell is being moved away from SDL3. `MK_ENABLE_DESKTOP_GUI=ON` fails fast until a first-party native desktop editor backend lands.
 
@@ -172,7 +168,7 @@ Validated local package versions:
 
 | Package | Version | Use |
 | --- | --- | --- |
-| SDL3 | 3.4.4 | Remaining migration source dependency for optional desktop runtime game/audio adapters until Phase 9 removes the SDL3 modules |
+| SDL3 | 3.4.4 | Legacy migration source context only; no current vcpkg feature installs it while Phase 9 deletes the SDL3 modules |
 | Dear ImGui | 1.92.7 | Historical deferred editor shell dependency; no current vcpkg feature installs it |
 | libspng | vcpkg baseline selected | Optional `MK_tools` PNG source importer |
 | fastgltf | vcpkg baseline selected | Optional `MK_tools` glTF 2.0 source importer |
@@ -188,7 +184,7 @@ Validated local package versions:
 | vcpkg-cmake | 2024-04-23 | vcpkg CMake helper |
 | vcpkg-cmake-config | 2024-05-23 | vcpkg CMake config helper |
 
-`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` includes `tools/check-dependency-policy.ps1`, which verifies that the default build has no third-party dependencies, optional `desktop-runtime`, `desktop-gui`, `asset-importers`, `physics-jolt`, and `network-enet` features keep their dependency shapes, `builtin-baseline` is present, notices exist, optional CMake presets disable configure-time vcpkg manifest install and use the root install tree, `bootstrap-deps` installs all optional feature dependency sets, and `tools/validate-physics-jolt.ps1` / `tools/validate-network-enet.ps1` remain the dedicated optional adapter build/test/install wrappers.
+`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` includes `tools/check-dependency-policy.ps1`, which verifies that the default build has no third-party dependencies, the optional `desktop-runtime` and `desktop-gui` features remain empty while their native replacements are active/deferred, `asset-importers`, `physics-jolt`, and `network-enet` keep their dependency shapes, `builtin-baseline` is present, notices exist, optional CMake presets disable configure-time vcpkg manifest install and use the root install tree, `bootstrap-deps` installs all optional feature dependency sets, and `tools/validate-physics-jolt.ps1` / `tools/validate-network-enet.ps1` remain the dedicated optional adapter build/test/install wrappers.
 
 ## Official References
 

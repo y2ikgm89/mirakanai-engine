@@ -618,7 +618,9 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1
 
 **Done When:** `rg -n "SDL3|sdl3" CMakeLists.txt vcpkg.json engine editor games tests tools docs` returns only approved historical references or no references, and no build/package/install lane depends on SDL3.
 
-**Phase Evidence:** Not started.
+**2026-05-28 progress note:** Started Phase 9 execution without deleting legacy source yet: the active desktop-runtime feature no longer declares `sdl3`, the platform/audio/runtime_host SDL3 subdirectories are no longer added by CMake, SDL3 test targets are no longer registered, `MK_add_desktop_runtime_game` accepts only `HOST_BACKEND win32`, and `sample_desktop_runtime_game` / `sample_generated_desktop_runtime_3d_package` are no longer registered package targets while their SDL3-only assumptions are ported or removed.
+
+**Phase Evidence:** In progress. `tools/check-dependency-policy.ps1`, `git diff --check`, and `tools/cmake.ps1 --preset desktop-runtime` passed after the first Phase 9 execution cut; generated metadata currently registers `sample_desktop_runtime_shell`, `sample_2d_desktop_runtime_package`, `sample_generated_desktop_runtime_package`, `sample_generated_desktop_runtime_cooked_scene_package`, and `sample_generated_desktop_runtime_material_shader_package`. `tools/check-text-format.ps1`, `tools/validate-desktop-game-runtime.ps1` (15/15 selected tests passed), `tools/check-json-contracts.ps1`, `tools/check-format.ps1`, `tools/check-ai-integration.ps1`, `tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package`, and `tools/validate.ps1` (79/79 CTest tests passed, `validate: ok`) also passed for this checkpoint.
 
 ## Phase 10 - Manifest, Docs, CI, And Plan Closeout
 

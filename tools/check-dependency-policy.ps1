@@ -88,8 +88,8 @@ foreach ($dependency in $desktopRuntime.dependencies) {
     }
 }
 
-if ($desktopRuntimeDependencyNames -notcontains "sdl3") {
-    Write-Error "desktop-runtime feature must declare dependency: sdl3"
+if ($desktopRuntimeDependencyNames.Count -ne 0) {
+    Write-Error "desktop-runtime feature must not declare third-party dependencies while the active desktop runtime is Win32-only"
 }
 
 if ($desktopRuntimeDependencyNames -contains "imgui") {

@@ -933,7 +933,7 @@ if(BUILD_TESTING)
         endif()
     endif()
 
-    if(MK_DESKTOP_RUNTIME_ENABLED)
+    if(FALSE)
         find_package(SDL3 CONFIG REQUIRED)
 
         add_executable(MK_sdl3_platform_tests

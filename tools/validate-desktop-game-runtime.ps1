@@ -38,7 +38,6 @@ foreach ($game in $registeredGames) {
 }
 foreach ($requiredTarget in @(
     "sample_desktop_runtime_shell",
-    "sample_desktop_runtime_game",
     "sample_2d_desktop_runtime_package",
     "sample_generated_desktop_runtime_package",
     "sample_generated_desktop_runtime_cooked_scene_package",

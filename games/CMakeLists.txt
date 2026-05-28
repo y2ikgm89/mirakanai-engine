@@ -29,7 +29,7 @@ MK_add_game(sample_2d_playable_foundation
 )
 
 if(MK_DESKTOP_RUNTIME_ENABLED)
-    find_package(SDL3 CONFIG REQUIRED)
+    set(MK_LEGACY_SDL3_DESKTOP_RUNTIME_SAMPLES OFF)
 
     function(MK_add_desktop_runtime_game target_name)
         cmake_parse_arguments(MK_DESKTOP_GAME "REQUIRES_D3D12_SHADERS;REQUIRES_VULKAN_SHADERS;PACKAGE_FILES_FROM_MANIFEST" "GAME_MANIFEST;HOST_BACKEND" "SOURCES;SMOKE_ARGS;PACKAGE_SMOKE_ARGS;PACKAGE_FILES" ${ARGN})
@@ -58,10 +58,10 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             set(MK_DESKTOP_GAME_PACKAGE_SMOKE_ARGS ${MK_DESKTOP_GAME_SMOKE_ARGS})
         endif()
         if(NOT MK_DESKTOP_GAME_HOST_BACKEND)
-            set(MK_DESKTOP_GAME_HOST_BACKEND "sdl3")
+            set(MK_DESKTOP_GAME_HOST_BACKEND "win32")
         endif()
-        if(NOT MK_DESKTOP_GAME_HOST_BACKEND MATCHES "^(sdl3|win32)$")
-            message(FATAL_ERROR "MK_add_desktop_runtime_game HOST_BACKEND must be sdl3 or win32 for ${target_name}: ${MK_DESKTOP_GAME_HOST_BACKEND}")
+        if(NOT MK_DESKTOP_GAME_HOST_BACKEND STREQUAL "win32")
+            message(FATAL_ERROR "MK_add_desktop_runtime_game HOST_BACKEND must be win32 for ${target_name}: ${MK_DESKTOP_GAME_HOST_BACKEND}")
         endif()
         if(MK_DESKTOP_GAME_HOST_BACKEND STREQUAL "win32" AND NOT WIN32)
             message(FATAL_ERROR "MK_add_desktop_runtime_game HOST_BACKEND win32 is only supported on Windows for ${target_name}")
@@ -197,22 +197,12 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                 MK_renderer
                 MK_runtime_host
         )
-        if(MK_DESKTOP_GAME_HOST_BACKEND STREQUAL "win32")
-            target_link_libraries(${target_name}
-                PRIVATE
-                    MK_platform_win32
-                    MK_runtime_host_win32
-                    MK_runtime_host_win32_presentation
-            )
-        else()
-            target_link_libraries(${target_name}
-                PRIVATE
-                    MK_platform_sdl3
-                    MK_runtime_host_sdl3
-                    MK_runtime_host_sdl3_presentation
-                    SDL3::SDL3
-            )
-        endif()
+        target_link_libraries(${target_name}
+            PRIVATE
+                MK_platform_win32
+                MK_runtime_host_win32
+                MK_runtime_host_win32_presentation
+        )
 
         MK_apply_common_target_options(${target_name})
         MK_disable_module_scanning_for_non_module_executable(${target_name})
@@ -235,21 +225,6 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
         get_property(MK_DESKTOP_RUNTIME_GAME_TARGETS GLOBAL PROPERTY MK_DESKTOP_RUNTIME_GAMES)
         list(APPEND MK_DESKTOP_RUNTIME_GAME_TARGETS ${target_name})
         set_property(GLOBAL PROPERTY MK_DESKTOP_RUNTIME_GAMES "${MK_DESKTOP_RUNTIME_GAME_TARGETS}")
-
-        if(MK_DESKTOP_GAME_HOST_BACKEND STREQUAL "sdl3")
-            add_custom_command(TARGET ${target_name} POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                    $<TARGET_FILE:SDL3::SDL3>
-                    $<TARGET_FILE_DIR:${target_name}>
-            )
-
-            if(WIN32 AND "${MK_DESKTOP_RUNTIME_PACKAGE_GAME_TARGET}" STREQUAL "${target_name}")
-                install(FILES
-                    $<TARGET_FILE:SDL3::SDL3>
-                    DESTINATION ${CMAKE_INSTALL_BINDIR}
-                )
-            endif()
-        endif()
 
         if(BUILD_TESTING)
             add_test(NAME ${target_name}_smoke COMMAND ${target_name} ${MK_DESKTOP_GAME_SMOKE_ARGS})
@@ -1486,7 +1461,8 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
         endif()
     endif()
 
-    MK_add_desktop_runtime_game(sample_desktop_runtime_game
+    if(MK_LEGACY_SDL3_DESKTOP_RUNTIME_SAMPLES)
+        MK_add_desktop_runtime_game(sample_desktop_runtime_game
         SOURCES
             sample_desktop_runtime_game/main.cpp
         GAME_MANIFEST
@@ -1528,17 +1504,18 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
         REQUIRES_D3D12_SHADERS
         PACKAGE_FILES_FROM_MANIFEST
     )
-    target_link_libraries(sample_desktop_runtime_game
-        PRIVATE
-            MK_animation
-            MK_runtime
-            MK_runtime_rhi
-            MK_runtime_scene
-            MK_scene
-            MK_scene_renderer
-            MK_ui
-            MK_ui_renderer
-    )
+        target_link_libraries(sample_desktop_runtime_game
+            PRIVATE
+                MK_animation
+                MK_runtime
+                MK_runtime_rhi
+                MK_runtime_scene
+                MK_scene
+                MK_scene_renderer
+                MK_ui
+                MK_ui_renderer
+        )
+    endif()
 
     MK_add_desktop_runtime_game(sample_2d_desktop_runtime_package
         SOURCES
@@ -1829,6 +1806,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             endif()
         endif()
     endif()
+    if(TARGET sample_desktop_runtime_game)
     set_property(TARGET sample_desktop_runtime_game PROPERTY MK_DESKTOP_RUNTIME_D3D12_SHADER_ARTIFACTS
         "shaders/sample_desktop_runtime_game_scene.vs.dxil;shaders/sample_desktop_runtime_game_scene_skinned.vs.dxil;shaders/sample_desktop_runtime_game_scene.ps.dxil;shaders/sample_desktop_runtime_game_shadow_receiver.ps.dxil;shaders/sample_desktop_runtime_game_shadow_receiver_skinned.ps.dxil;shaders/sample_desktop_runtime_game_postprocess.vs.dxil;shaders/sample_desktop_runtime_game_postprocess.ps.dxil;shaders/sample_desktop_runtime_game_shadow.vs.dxil;shaders/sample_desktop_runtime_game_shadow.ps.dxil;shaders/sample_desktop_runtime_game_ui_overlay.vs.dxil;shaders/sample_desktop_runtime_game_ui_overlay.ps.dxil"
     )
@@ -2201,6 +2179,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             endif()
         endif()
     endif()
+    endif()
 endif()
 
 if(MK_DESKTOP_RUNTIME_ENABLED)
@@ -2294,7 +2273,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
     # Vulkan strict package smoke can use --require-vulkan-scene-shaders with -RequireVulkanShaders.
 endif()
 
-if(MK_DESKTOP_RUNTIME_ENABLED)
+if(MK_DESKTOP_RUNTIME_ENABLED AND MK_LEGACY_SDL3_DESKTOP_RUNTIME_SAMPLES)
     MK_add_desktop_runtime_game(sample_generated_desktop_runtime_3d_package
         SOURCES
             sample_generated_desktop_runtime_3d_package/main.cpp

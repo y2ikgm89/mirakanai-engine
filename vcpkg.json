@@ -16,10 +16,8 @@
       ]
     },
     "desktop-runtime": {
-      "description": "Optional desktop game runtime dependencies for SDL3 window, input, presentation, and audio adapters.",
-      "dependencies": [
-        "sdl3"
-      ]
+      "description": "Optional desktop game runtime feature gate; the active Win32 desktop runtime uses Windows SDK libraries and no vcpkg packages.",
+      "dependencies": []
     },
     "physics-jolt": {
       "description": "Optional native 3D physics middleware adapter dependency for Jolt Physics.",
