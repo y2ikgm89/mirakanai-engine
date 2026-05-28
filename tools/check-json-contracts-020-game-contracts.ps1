@@ -1009,3 +1009,67 @@ foreach ($needle in @("mirakana/runtime_host/win32/win32_desktop_game_host.hpp",
 foreach ($needle in @("HOST_BACKEND", "win32", "MK_platform_win32", "MK_runtime_host_win32", "win32-desktop", "Win32DesktopGameHost")) {
     Assert-ContainsText $newGameTemplatesText $needle "tools/new-game-templates.ps1 DesktopRuntimePackage Win32 scaffold"
 }
+
+$cookedPackageManifestPath = "games/sample_generated_desktop_runtime_cooked_scene_package/game.agent.json"
+$cookedPackageEntry = Get-GameAgentManifest $cookedPackageManifestPath
+if ($null -eq $cookedPackageEntry) {
+    Write-Error "desktop-runtime-cooked-scene-package recipe must have a sample game manifest: $cookedPackageManifestPath"
+} else {
+    $cookedPackage = $cookedPackageEntry.Game
+    foreach ($module in @("MK_platform_win32", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation")) {
+        if (@($cookedPackage.engineModules) -notcontains $module) {
+            Write-Error "$cookedPackageManifestPath engineModules missing Win32 cooked-scene package module: $module"
+        }
+    }
+    foreach ($module in @("MK_platform_sdl3", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_runtime_rhi")) {
+        if (@($cookedPackage.engineModules) -contains $module) {
+            Write-Error "$cookedPackageManifestPath engineModules must not keep removed cooked-scene package module: $module"
+        }
+    }
+    if ($cookedPackage.gameplayContract.runner -ne "mirakana::Win32DesktopGameHost") {
+        Write-Error "$cookedPackageManifestPath gameplayContract.runner must be mirakana::Win32DesktopGameHost"
+    }
+    if ($cookedPackage.gameplayContract.currentRuntime -ne "desktop-windowed-win32-host-with-null-renderer-packaged-config-cooked-scene-smoke") {
+        Write-Error "$cookedPackageManifestPath gameplayContract.currentRuntime must describe the Win32 cooked-scene smoke"
+    }
+    if ($cookedPackage.backendReadiness.platform -ne "win32-desktop") {
+        Write-Error "$cookedPackageManifestPath backendReadiness.platform must be win32-desktop"
+    }
+    Assert-ContainsText $cookedPackage.backendReadiness.graphics "native-null-renderer" "$cookedPackageManifestPath backendReadiness.graphics"
+    $cookedPackageRegistration = (Get-DesktopRuntimeGameRegistrations)[$cookedPackage.target]
+    if ($null -eq $cookedPackageRegistration -or $cookedPackageRegistration.hostBackend -ne "win32") {
+        Write-Error "$cookedPackageManifestPath target must declare HOST_BACKEND win32 in games/CMakeLists.txt"
+    }
+}
+$cookedPackageMainText = Get-Content -LiteralPath (Join-Path $root "games/sample_generated_desktop_runtime_cooked_scene_package/main.cpp") -Raw
+$win32CookedSceneMainTemplateText = [regex]::Match(
+    $newGameTemplatesText,
+    "(?ms)^function New-Win32DesktopRuntimeCookedSceneMainCpp \{.*?^function New-DesktopRuntime3DMainCpp \{"
+).Value
+$cookedSceneManifestTemplateText = [regex]::Match(
+    $newGameTemplatesText,
+    "(?ms)^function New-DesktopRuntimeCookedSceneManifest \{.*?^function New-DesktopRuntime2DGameDesignSpec \{"
+).Value
+$cookedSceneRegistrationTemplateText = [regex]::Match(
+    $newGameTemplatesText,
+    "(?ms)^function New-DesktopRuntimeCookedSceneRegistration \{.*?^function New-DesktopRuntime2DRegistration \{"
+).Value
+foreach ($needle in @("runtime_host/sdl3", "SdlDesktop", "MK_platform_sdl3", "MK_runtime_host_sdl3", "sdl3-desktop")) {
+    Assert-DoesNotContainText $cookedPackageMainText $needle "games/sample_generated_desktop_runtime_cooked_scene_package/main.cpp"
+    Assert-DoesNotContainText $win32CookedSceneMainTemplateText $needle "tools/new-game-templates.ps1 New-Win32DesktopRuntimeCookedSceneMainCpp"
+    Assert-DoesNotContainText $cookedSceneManifestTemplateText $needle "tools/new-game-templates.ps1 New-DesktopRuntimeCookedSceneManifest"
+}
+foreach ($needle in @("require-d3d12", "require-vulkan", "require-scene-gpu", "require-postprocess", "scene_gpu", "postprocess", "framegraph")) {
+    Assert-DoesNotContainText $cookedPackageMainText $needle "games/sample_generated_desktop_runtime_cooked_scene_package/main.cpp"
+    Assert-DoesNotContainText $win32CookedSceneMainTemplateText $needle "tools/new-game-templates.ps1 New-Win32DesktopRuntimeCookedSceneMainCpp"
+}
+foreach ($needle in @("mirakana/runtime_host/win32/win32_desktop_game_host.hpp", "mirakana::Win32DesktopGameHost", "win32_desktop_presentation_backend_name", "submit_scene_render_packet")) {
+    Assert-ContainsText $cookedPackageMainText $needle "games/sample_generated_desktop_runtime_cooked_scene_package/main.cpp"
+    Assert-ContainsText $win32CookedSceneMainTemplateText $needle "tools/new-game-templates.ps1 New-Win32DesktopRuntimeCookedSceneMainCpp"
+}
+foreach ($needle in @("win32", "MK_platform_win32", "MK_runtime_host_win32", "win32-desktop", "Win32DesktopGameHost", "native-null-renderer")) {
+    Assert-ContainsText $cookedSceneManifestTemplateText $needle "tools/new-game-templates.ps1 DesktopRuntimeCookedScenePackage Win32 manifest"
+}
+Assert-ContainsText $cookedSceneRegistrationTemplateText "HOST_BACKEND" "tools/new-game-templates.ps1 DesktopRuntimeCookedScenePackage registration"
+Assert-ContainsText $cookedSceneRegistrationTemplateText "win32" "tools/new-game-templates.ps1 DesktopRuntimeCookedScenePackage registration"
+Assert-DoesNotContainText $cookedSceneRegistrationTemplateText "--require-sprite-animation" "tools/new-game-templates.ps1 DesktopRuntimeCookedScenePackage registration"

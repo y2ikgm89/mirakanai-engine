@@ -497,28 +497,46 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1
 - Modify: `docs/specs/generated-game-validation-scenarios.md`
 - Modify: `docs/ai-game-development.md`
 
-**2026-05-28 progress note:** Start Phase 7 with the config-only `DesktopRuntimePackage` scaffold and committed
-`sample_generated_desktop_runtime_package`: move it to `Win32DesktopGameHost`, `HOST_BACKEND win32`, Win32 host modules,
-and `win32-desktop` readiness. Keep cooked-scene/material/2D/3D desktop package samples pending until Win32 presentation
-parity covers their current SDL3-only scene GPU, postprocess, native overlay, Vulkan, and renderer-quality evidence rows.
+**2026-05-28 progress note:** Execute Phase 7 as reviewable generated-game candidates. Candidate 7A migrated the
+config-only `DesktopRuntimePackage` scaffold and committed `sample_generated_desktop_runtime_package` to
+`Win32DesktopGameHost`, `HOST_BACKEND win32`, Win32 host modules, and `win32-desktop` readiness. Candidate 7B extends the
+same clean-break path to the cooked-scene `DesktopRuntimeCookedScenePackage` scaffold and committed
+`sample_generated_desktop_runtime_cooked_scene_package`, but intentionally limits the proof to Win32 host startup,
+metadata/config/package load, renderer-neutral scene submission counters, and native `NullRenderer` fallback without shader,
+scene GPU binding, postprocess, Vulkan, native overlay, or renderer-quality claims. Keep material/2D/3D desktop package
+samples and the non-shell desktop runtime sample pending until Win32 presentation parity covers their current SDL3-only scene
+GPU, postprocess, native overlay, Vulkan, and renderer-quality evidence rows.
 
-- [ ] Add RED static checks for generated template descriptors that still reference SDL3 after migration.
-- [ ] Replace `mirakana/runtime_host/sdl3/...` includes with Windows native host includes.
-- [ ] Rename backend readiness strings from `sdl3-desktop` / `sdl3-desktop-host-gated` to explicit Windows native names.
-- [ ] Keep package-visible counters stable where behavior is equivalent; rename only counters that explicitly contain `sdl3`.
-- [ ] Regenerate or update sample manifests so modules list `MK_platform_win32`, `MK_runtime_host_win32`, `MK_runtime_host_win32_presentation`, and `MK_audio_wasapi` only when their phase evidence exists.
+- [x] Add static checks for migrated config-only and cooked-scene template descriptors that still reference SDL3 after migration.
+- [x] Replace `mirakana/runtime_host/sdl3/...` includes with Windows native host includes in migrated config-only and cooked-scene samples/templates.
+- [x] Rename migrated config-only and cooked-scene backend readiness strings from `sdl3-desktop` / `sdl3-desktop-host-gated` to explicit Windows native names.
+- [x] Keep package-visible counters stable where behavior is equivalent; rename only counters that explicitly contain `sdl3`.
+- [x] Regenerate or update migrated config-only and cooked-scene sample manifests so modules list Win32 host modules only when their phase evidence exists.
+- [ ] Migrate material/2D/3D generated desktop package samples and the non-shell desktop runtime sample after Win32 presentation parity lands.
 - [ ] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/new-game.ps1 -Name native_desktop_smoke -Template DesktopRuntimePackage
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target sample_2d_desktop_runtime_package sample_generated_desktop_runtime_3d_package
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "sample_2d_desktop_runtime_package|sample_generated_desktop_runtime_3d_package"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/new-game.ps1 -Name native_cooked_scene_smoke -Template DesktopRuntimeCookedScenePackage
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset desktop-runtime
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset desktop-runtime --target sample_generated_desktop_runtime_cooked_scene_package
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset desktop-runtime --output-on-failure -R "sample_generated_desktop_runtime_cooked_scene_package"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_cooked_scene_package
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 ```
 
 **Done When:** Generated and committed desktop game lanes target Windows native host modules without SDL3 strings in ready claims.
 
-**Phase Evidence:** Not started.
+**Phase Evidence:** Candidate 7A committed as `e4c54203` on `codex/generated-game-win32-host-migration-v1`. Candidate 7B
+locally validates `DesktopRuntimeCookedScenePackage` and `sample_generated_desktop_runtime_cooked_scene_package` on the
+same branch with `git diff --check`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`,
+`tools/check-format.ps1`, `tools/check-text-format.ps1`, `tools/cmake.ps1 --preset desktop-runtime`,
+`tools/cmake.ps1 --build --preset desktop-runtime --target sample_generated_desktop_runtime_cooked_scene_package`,
+`tools/ctest.ps1 --preset desktop-runtime --output-on-failure -R "sample_generated_desktop_runtime_cooked_scene_package"`,
+`tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_cooked_scene_package`, and
+`tools/validate.ps1` (`validate: ok`, 98/98 tests passed). Candidate 7B commit/publication is pending.
 
 ## Phase 8 - Visible Editor Migration Or Deferral
 

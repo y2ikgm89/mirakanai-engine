@@ -73,14 +73,9 @@ $cookedSceneScaffoldRoot = New-ScaffoldCheckRoot
 try {
     & (Join-Path $PSScriptRoot "new-game.ps1") -Name "desktop_cooked_scene_game" -RepositoryRoot $cookedSceneScaffoldRoot -Template DesktopRuntimeCookedScenePackage | Out-Null
     $cookedSceneGameRoot = Join-Path $cookedSceneScaffoldRoot "games/desktop_cooked_scene_game"
-    $expectedCookedPackageFiles = @(
-        "runtime/desktop_cooked_scene_game.config",
-        "runtime/desktop_cooked_scene_game.geindex",
-        "runtime/assets/generated/base_color.texture.geasset",
-        "runtime/assets/generated/triangle.mesh",
-        "runtime/assets/generated/lit.material",
-        "runtime/assets/generated/packaged_scene.scene"
-    )
+    $expectedCookedPackageFiles = @("runtime/desktop_cooked_scene_game.config", "runtime/desktop_cooked_scene_game.geindex",
+        "runtime/assets/generated/base_color.texture.geasset", "runtime/assets/generated/triangle.mesh",
+        "runtime/assets/generated/lit.material", "runtime/assets/generated/packaged_scene.scene")
     foreach ($relativePath in @("main.cpp", "README.md", "game.agent.json", "runtime/.gitattributes") + $expectedCookedPackageFiles) {
         $path = Join-Path $cookedSceneGameRoot $relativePath
         if (-not (Test-Path -LiteralPath $path)) {
@@ -93,6 +88,15 @@ try {
         $cookedSceneManifest.packagingTargets -notcontains "desktop-runtime-release") {
         Write-Error "Desktop runtime cooked scene package scaffold manifest must declare desktop package targets"
     }
+    foreach ($module in @("MK_platform_win32", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation")) {
+        if (@($cookedSceneManifest.engineModules) -notcontains $module) { Write-Error "Desktop runtime cooked scene package scaffold manifest missing Win32 engine module: $module" }
+    }
+    foreach ($module in @("MK_platform_sdl3", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_runtime_rhi")) {
+        if (@($cookedSceneManifest.engineModules) -contains $module) { Write-Error "Desktop runtime cooked scene package scaffold manifest must not keep removed cooked-scene module: $module" }
+    }
+    if ($cookedSceneManifest.gameplayContract.runner -ne "mirakana::Win32DesktopGameHost") { Write-Error "Desktop runtime cooked scene package scaffold manifest must use Win32DesktopGameHost" }
+    if ($cookedSceneManifest.backendReadiness.platform -ne "win32-desktop") { Write-Error "Desktop runtime cooked scene package scaffold manifest platform must be win32-desktop" }
+    Assert-ContainsText $cookedSceneManifest.backendReadiness.graphics "native-null-renderer" "Desktop runtime cooked scene package scaffold manifest graphics readiness"
     foreach ($relativePath in $expectedCookedPackageFiles) {
         if ($cookedSceneManifest.runtimePackageFiles -notcontains $relativePath) {
             Write-Error "Desktop runtime cooked scene package scaffold manifest must include $relativePath in runtimePackageFiles"
@@ -115,16 +119,16 @@ try {
     $cookedSceneMain = Get-Content -LiteralPath (Join-Path $cookedSceneGameRoot "main.cpp") -Raw
     $cookedSceneGitAttributes = Get-Content -LiteralPath (Join-Path $cookedSceneGameRoot "runtime/.gitattributes") -Raw
     $cookedSceneIndex = Get-Content -LiteralPath (Join-Path $cookedSceneGameRoot "runtime/desktop_cooked_scene_game.geindex") -Raw
-    Assert-ContainsText $cookedSceneCmake "MK_add_desktop_runtime_game(desktop_cooked_scene_game" "Desktop cooked scene scaffold CMake"
-    Assert-ContainsText $cookedSceneCmake "PACKAGE_FILES_FROM_MANIFEST" "Desktop cooked scene scaffold CMake"
-    Assert-ContainsText $cookedSceneCmake "--require-scene-package" "Desktop cooked scene scaffold CMake"
-    Assert-ContainsText $cookedSceneCmake "target_link_libraries(desktop_cooked_scene_game" "Desktop cooked scene scaffold CMake"
-    Assert-ContainsText $cookedSceneCmake "MK_runtime" "Desktop cooked scene scaffold CMake"
-    Assert-ContainsText $cookedSceneCmake "MK_scene_renderer" "Desktop cooked scene scaffold CMake"
-    Assert-ContainsText $cookedSceneMain "load_runtime_asset_package" "Desktop cooked scene scaffold main.cpp"
-    Assert-ContainsText $cookedSceneMain "instantiate_runtime_scene_render_data" "Desktop cooked scene scaffold main.cpp"
-    Assert-ContainsText $cookedSceneMain "submit_scene_render_packet" "Desktop cooked scene scaffold main.cpp"
-    Assert-ContainsText $cookedSceneMain "packaged_scene_asset_id" "Desktop cooked scene scaffold main.cpp"
+    foreach ($needle in @("MK_add_desktop_runtime_game(desktop_cooked_scene_game", "PACKAGE_FILES_FROM_MANIFEST", "HOST_BACKEND", "win32", "--require-scene-package", "target_link_libraries(desktop_cooked_scene_game", "MK_runtime", "MK_scene_renderer")) {
+        Assert-ContainsText $cookedSceneCmake $needle "Desktop cooked scene scaffold CMake"
+    }
+    Assert-DoesNotContainText $cookedSceneCmake "--require-sprite-animation" "Desktop cooked scene scaffold CMake"
+    foreach ($needle in @("mirakana/runtime_host/win32/win32_desktop_game_host.hpp", "Win32DesktopGameHost", "win32_desktop_presentation_backend_name", "load_runtime_asset_package", "instantiate_runtime_scene_render_data", "submit_scene_render_packet", "packaged_scene_asset_id")) {
+        Assert-ContainsText $cookedSceneMain $needle "Desktop cooked scene scaffold main.cpp"
+    }
+    foreach ($forbiddenCookedSceneMainNeedle in @("runtime_host/sdl3", "SdlDesktop", "require-d3d12", "require-vulkan", "require-scene-gpu", "require-postprocess", "scene_gpu", "framegraph")) {
+        Assert-DoesNotContainText $cookedSceneMain $forbiddenCookedSceneMainNeedle "Desktop cooked scene scaffold main.cpp"
+    }
     foreach ($attributeRule in @(
         "*.geindex text eol=lf",
         "*.geasset text eol=lf",
@@ -134,24 +138,19 @@ try {
     )) {
         Assert-ContainsText $cookedSceneGitAttributes $attributeRule "Desktop cooked scene scaffold runtime/.gitattributes"
     }
-    foreach ($relativePath in @(
-        "runtime/desktop_cooked_scene_game.geindex",
-        "runtime/assets/generated/base_color.texture.geasset",
-        "runtime/assets/generated/triangle.mesh",
-        "runtime/assets/generated/lit.material",
-        "runtime/assets/generated/packaged_scene.scene"
-    )) {
+    foreach ($relativePath in @("runtime/desktop_cooked_scene_game.geindex", "runtime/assets/generated/base_color.texture.geasset",
+        "runtime/assets/generated/triangle.mesh", "runtime/assets/generated/lit.material",
+        "runtime/assets/generated/packaged_scene.scene")) {
         $bytes = [System.IO.File]::ReadAllBytes((Join-Path $cookedSceneGameRoot $relativePath))
         if ($bytes -contains [byte]13) {
             Write-Error "Desktop runtime cooked scene package scaffold wrote CR bytes into hash-sensitive file: $relativePath"
         }
     }
-    Assert-ContainsText $cookedSceneIndex "dependency.0.kind=material_texture" "Desktop cooked scene scaffold geindex"
-    Assert-ContainsText $cookedSceneIndex "dependency.0.path=runtime/assets/generated/base_color.texture.geasset" "Desktop cooked scene scaffold geindex"
-    Assert-ContainsText $cookedSceneIndex "dependency.1.kind=scene_material" "Desktop cooked scene scaffold geindex"
-    Assert-ContainsText $cookedSceneIndex "dependency.1.path=runtime/assets/generated/lit.material" "Desktop cooked scene scaffold geindex"
-    Assert-ContainsText $cookedSceneIndex "dependency.2.kind=scene_mesh" "Desktop cooked scene scaffold geindex"
-    Assert-ContainsText $cookedSceneIndex "dependency.2.path=runtime/assets/generated/triangle.mesh" "Desktop cooked scene scaffold geindex"
+    foreach ($needle in @("dependency.0.kind=material_texture", "dependency.0.path=runtime/assets/generated/base_color.texture.geasset",
+        "dependency.1.kind=scene_material", "dependency.1.path=runtime/assets/generated/lit.material",
+        "dependency.2.kind=scene_mesh", "dependency.2.path=runtime/assets/generated/triangle.mesh")) {
+        Assert-ContainsText $cookedSceneIndex $needle "Desktop cooked scene scaffold geindex"
+    }
     if ($cookedSceneIndex.Contains("kind=source_file")) {
         Write-Error "Desktop runtime cooked scene package scaffold geindex must not use source_file dependency edges for runtime scene fixtures"
     }

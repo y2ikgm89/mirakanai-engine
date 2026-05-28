@@ -33,7 +33,7 @@
     {
       "name": "desktop-game-runtime",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1",
-      "purpose": "Build and test the desktop game runtime lane with Windows-native host evidence first: manifest-linked registered-game metadata with package file path validation, MK_runtime_host tests, MK_runtime_host_win32 public/API tests, Win32 platform tests, WASAPI tests, finite Win32 sample_desktop_runtime_shell smoke execution, DXC-available build-output DXIL shader artifact smoke, DXC SPIR-V CodeGen-available build-output SPIR-V shader artifact smoke, and the remaining SDL3-backed non-shell/generated sample smokes until their later migration phases move them to the native host."
+      "purpose": "Build and test the desktop game runtime lane with Windows-native host evidence first: manifest-linked registered-game metadata with package file path validation, MK_runtime_host tests, MK_runtime_host_win32 public/API tests, Win32 platform tests, WASAPI tests, finite Win32 sample_desktop_runtime_shell smoke execution, DXC-available build-output DXIL shader artifact smoke, DXC SPIR-V CodeGen-available build-output SPIR-V shader artifact smoke, Win32-backed config-only and cooked-scene generated scaffold smokes, and the remaining SDL3-backed material/2D/3D/non-shell sample smokes until their later migration phases move them to the native host."
     },
     {
       "name": "desktop-runtime-release-package",
@@ -53,7 +53,7 @@
     {
       "name": "desktop-runtime-generated-cooked-scene-scaffold-package",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools\\package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_cooked_scene_package",
-      "purpose": "Build the selected generated desktop runtime cooked-scene package scaffold lane and validate installed sample_generated_desktop_runtime_cooked_scene_package with manifest-derived config, .geindex, first-party cooked texture/mesh/material/scene files, metadata-selected --require-config plus --require-scene-package smoke args, runtime package loading, renderer-neutral scene submission counters, and deterministic NullRenderer fallback without D3D12/Vulkan shader artifacts or scene GPU binding claims."
+      "purpose": "Build the selected Win32 generated desktop runtime cooked-scene package scaffold lane and validate installed sample_generated_desktop_runtime_cooked_scene_package with Win32DesktopGameHost, manifest-derived config, .geindex, first-party cooked texture/mesh/material/scene files, metadata-selected --require-config plus --require-scene-package smoke args, runtime package loading, renderer-neutral scene submission counters, and native NullRenderer fallback without D3D12/Vulkan shader artifacts or scene GPU binding claims."
     },
     {
       "name": "desktop-runtime-2d-package-proof",

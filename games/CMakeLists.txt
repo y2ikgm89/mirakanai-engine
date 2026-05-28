@@ -2228,6 +2228,8 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             sample_generated_desktop_runtime_cooked_scene_package/main.cpp
         GAME_MANIFEST
             games/sample_generated_desktop_runtime_cooked_scene_package/game.agent.json
+        HOST_BACKEND
+            win32
         SMOKE_ARGS
             --smoke
             --require-config

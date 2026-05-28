@@ -9,13 +9,12 @@
     "MK_core",
     "MK_math",
     "MK_platform",
-    "MK_platform_sdl3",
+    "MK_platform_win32",
     "MK_renderer",
     "MK_runtime",
-    "MK_runtime_rhi",
     "MK_runtime_host",
-    "MK_runtime_host_sdl3",
-    "MK_runtime_host_sdl3_presentation",
+    "MK_runtime_host_win32",
+    "MK_runtime_host_win32_presentation",
     "MK_scene",
     "MK_scene_renderer"
   ],
@@ -29,12 +28,12 @@
   },
   "gameplayContract": {
     "appType": "mirakana::GameApp",
-    "runner": "mirakana::SdlDesktopGameHost",
-    "currentRuntime": "desktop-windowed-sdl3-host-with-null-fallback-packaged-config-cooked-scene-smoke"
+    "runner": "mirakana::Win32DesktopGameHost",
+    "currentRuntime": "desktop-windowed-win32-host-with-null-renderer-packaged-config-cooked-scene-smoke"
   },
   "backendReadiness": {
-    "platform": "sdl3-desktop",
-    "graphics": "null-fallback; generated scaffold does not create D3D12/Vulkan/Metal shader artifacts or scene GPU bindings",
+    "platform": "win32-desktop",
+    "graphics": "native-null-renderer; generated scaffold does not create D3D12/Vulkan/Metal shader artifacts or scene GPU bindings",
     "audio": "device-independent",
     "ui": "mirakana_ui-headless",
     "physics": "not-required"

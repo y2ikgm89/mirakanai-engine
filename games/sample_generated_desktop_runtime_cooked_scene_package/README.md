@@ -9,15 +9,15 @@ Describe the desktop runtime game goal here before expanding gameplay.
 This game uses the optional desktop runtime package lane with a first-party cooked scene package:
 
 - `mirakana::GameApp`
-- `mirakana::SdlDesktopGameHost`
+- `mirakana::Win32DesktopGameHost`
 - `mirakana::RootedFileSystem`
 - `mirakana::runtime::load_runtime_asset_package`
 - `mirakana::instantiate_runtime_scene_render_data`
 - `mirakana::submit_scene_render_packet`
-- deterministic `NullRenderer` fallback unless host-owned shader artifacts are added later
+- deterministic native `NullRenderer` fallback unless host-owned D3D12 shader artifacts are added later
 - `game.agent.json.runtimePackageFiles` plus `PACKAGE_FILES_FROM_MANIFEST`
 
-The generated package proves config and cooked scene loading only. It does not generate D3D12/Vulkan/Metal shader artifacts or claim scene GPU binding.
+The generated package proves Win32 host startup, config loading, cooked scene loading, renderer-neutral scene submission counters, and deterministic NullRenderer fallback only. It does not generate D3D12/Vulkan/Metal shader artifacts or claim scene GPU binding.
 
 ## Validate
 

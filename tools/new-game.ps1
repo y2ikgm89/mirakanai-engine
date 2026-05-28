@@ -164,7 +164,7 @@ renderer=null-fallback
 } elseif ($Template -eq "DesktopRuntimeCookedScenePackage") {
     New-Item -ItemType Directory -Path (Join-Path $runtimeDir "assets/generated") -Force | Out-Null
     $cookedScenePackage = New-DesktopRuntimeCookedScenePackageFiles -GameName $Name -DisplayTitle $DisplayName
-    $mainCpp = New-DesktopRuntimeCookedSceneMainCpp -GameName $Name -TargetName $targetName -Title $DisplayName -SceneAssetName $cookedScenePackage.SceneAssetName
+    $mainCpp = New-Win32DesktopRuntimeCookedSceneMainCpp -GameName $Name -TargetName $targetName -Title $DisplayName -SceneAssetName $cookedScenePackage.SceneAssetName
     $readme = New-DesktopRuntimeCookedSceneReadme -Title $DisplayName -TargetName $targetName -GameName $Name
     $manifest = New-DesktopRuntimeCookedSceneManifest -GameName $Name -DisplayTitle $DisplayName -TargetName $targetName
     $registration = New-DesktopRuntimeCookedSceneRegistration -GameName $Name -TargetName $targetName
