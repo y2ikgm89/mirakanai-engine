@@ -6896,6 +6896,7 @@ make_backend_parity_ready_proof(mirakana::rhi::BackendKind backend, mirakana::Ba
         .reviewed = true,
         .host_validated = true,
         .host_gate_required = false,
+        .host_validation_recipe_id = backend == mirakana::rhi::BackendKind::metal ? "ios-simulator-smoke" : "",
         .request_native_handle_access = false,
         .package_counter_id = "backend_parity.counter",
         .source_index = source_index,
@@ -6912,6 +6913,7 @@ make_backend_parity_metal_host_gate(mirakana::BackendRendererParityFeatureKind f
         .reviewed = true,
         .host_validated = false,
         .host_gate_required = true,
+        .host_validation_recipe_id = "ios-simulator-smoke",
         .request_native_handle_access = false,
         .package_counter_id = {},
         .source_index = source_index,
@@ -6995,6 +6997,19 @@ MK_TEST("backend renderer parity policy rejects cross backend transfer missing p
                    plan, mirakana::BackendRendererParityDiagnosticCode::unsupported_native_handle_claim) == 1U);
     MK_REQUIRE(backend_parity_diagnostic_count(
                    plan, mirakana::BackendRendererParityDiagnosticCode::missing_required_proof) == 1U);
+    MK_REQUIRE(plan.replay_hash == 0U);
+}
+
+MK_TEST("backend renderer parity policy requires host validation recipe for Metal host gates") {
+    auto request = make_backend_parity_request(false);
+    request.proofs[2].host_validation_recipe_id.clear();
+
+    const auto plan = mirakana::plan_backend_renderer_parity_policy(request);
+
+    MK_REQUIRE(plan.status == mirakana::BackendRendererParityPolicyStatus::invalid_request);
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(backend_parity_diagnostic_count(
+                   plan, mirakana::BackendRendererParityDiagnosticCode::missing_host_validation_recipe) == 1U);
     MK_REQUIRE(plan.replay_hash == 0U);
 }
 
