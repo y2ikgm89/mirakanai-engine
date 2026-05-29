@@ -27,9 +27,9 @@ paths:
 
 ## Boundaries
 
-- Keep `engine/core` standard-library-only and independent from platform, renderer, asset format, editor, SDL3, Dear ImGui, and native handles.
+- Keep `engine/core` standard-library-only and independent from platform, renderer, asset format, editor, removed SDL3 adapters, Dear ImGui, and native handles.
 - Keep platform work behind `engine/platform` interfaces and graphics API work behind renderer/RHI interfaces.
-- Keep runtime game UI on public `mirakana::ui` contracts, not editor, SDL3, Dear ImGui, or middleware APIs.
+- Keep runtime game UI on public `mirakana::ui` contracts, not editor, removed SDL3 adapters, Dear ImGui, or middleware APIs.
 - Use official documentation through Context7 for library, SDK, build-system, and toolchain questions before relying on memory.
 - Prefer clean breaking greenfield implementation over compatibility shims, duplicate APIs, or migration layers unless a future release policy explicitly requires compatibility.
 

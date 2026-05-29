@@ -56,7 +56,7 @@ $engineCapabilityHandoffChecks = @(
         Needles = @(
             "AI Engine Capability Handoff v1",
             "EngineCapabilityHandoffReviewRequest",
-            "native handles, SDL3, Dear ImGui, renderer/RHI, backend"
+            "native handles, third-party windowing, Dear ImGui, renderer/RHI, backend"
         )
     },
     @{
@@ -678,14 +678,11 @@ $editorResourceCaptureExecutionChecks = @(
         )
     },
     @{
-        Path = "editor/src/main.cpp"
+        Path = "editor/CMakeLists.txt"
         Needles = @(
-            "append_resource_capture_execution_snapshots",
-            "draw_resource_capture_execution_rows_table",
-            "Resource Capture Execution Evidence",
-            "execute_pix_host_helper_reviewed",
-            "waiting for external host PIX capture evidence",
-            "waiting for external host debug-layer/GPU-validation evidence"
+            "MK_editor visible shell is deferred after SDL3 removal",
+            "MK_editor_core remains the supported editor logic target",
+            "must not depend on SDL3"
         )
     },
     @{
@@ -845,14 +842,11 @@ $editorAiCommandPanelChecks = @(
         )
     },
     @{
-        Path = "editor/src/main.cpp"
+        Path = "editor/CMakeLists.txt"
         Needles = @(
-            "make_ai_command_panel_context",
-            "make_reviewed_validation_recipe_dry_run_rows",
-            "draw_ai_commands_panel",
-            "view.ai_commands",
-            "draw_ai_command_rows_table",
-            "make_editor_ai_command_panel_model"
+            "MK_editor visible shell is deferred after SDL3 removal",
+            "MK_editor_core remains the supported editor logic target",
+            "must not depend on SDL3"
         )
     },
     @{
@@ -998,15 +992,11 @@ $editorAiEvidenceImportReviewChecks = @(
         )
     },
     @{
-        Path = "editor/src/main.cpp"
+        Path = "editor/CMakeLists.txt"
         Needles = @(
-            "make_ai_evidence_import_model",
-            "draw_ai_evidence_import_review_table",
-            "ai_evidence_import_text_",
-            "ai_playtest_evidence_rows_",
-            "Import Evidence",
-            "Clear Imported Evidence",
-            "reset_ai_evidence_import_state"
+            "MK_editor visible shell is deferred after SDL3 removal",
+            "MK_editor_core remains the supported editor logic target",
+            "must not depend on SDL3"
         )
     },
     @{
@@ -1170,17 +1160,11 @@ $editorAiReviewedValidationExecutionChecks = @(
         )
     },
     @{
-        Path = "editor/src/main.cpp"
+        Path = "editor/CMakeLists.txt"
         Needles = @(
-            "make_ai_reviewed_execution_plan",
-            "execute_ai_reviewed_validation_recipe",
-            "mirakana::Win32ProcessRunner",
-            "apply_ai_validation_process_result",
-            "AI Reviewed Validation Execution",
-            "ai_playtest_evidence_rows_",
-            "ai_acknowledged_host_gate_recipe_ids_",
-            "set_ai_host_gate_acknowledged",
-            'ImGui::Checkbox("Host gate"'
+            "MK_editor visible shell is deferred after SDL3 removal",
+            "MK_editor_core remains the supported editor logic target",
+            "must not depend on SDL3"
         )
     },
     @{
@@ -1356,14 +1340,11 @@ $editorAiReviewedValidationBatchExecutionChecks = @(
         )
     },
     @{
-        Path = "editor/src/main.cpp"
+        Path = "editor/CMakeLists.txt"
         Needles = @(
-            "make_ai_reviewed_execution_batch",
-            "execute_ai_reviewed_validation_batch",
-            "ai_acknowledged_host_gate_recipe_ids_",
-            "AI validation batch has no executable reviewed rows",
-            "Batch: ready",
-            "Execute Ready"
+            "MK_editor visible shell is deferred after SDL3 removal",
+            "MK_editor_core remains the supported editor logic target",
+            "must not depend on SDL3"
         )
     },
     @{
@@ -1539,12 +1520,11 @@ $editorContentBrowserImportPanelChecks = @(
         )
     },
     @{
-        Path = "editor/src/main.cpp"
+        Path = "editor/CMakeLists.txt"
         Needles = @(
-            "make_editor_content_browser_import_panel_model",
-            "asset_panel_model.pipeline",
-            "asset_panel_model.import_queue",
-            "Hot Reload Summary"
+            "MK_editor visible shell is deferred after SDL3 removal",
+            "MK_editor_core remains the supported editor logic target",
+            "must not depend on SDL3"
         )
     },
     @{
@@ -1632,7 +1612,7 @@ $editorContentBrowserImportPanelChecks = @(
         Path = "docs/roadmap.md"
         Needles = @(
             "Editor Source Registry Visible Content Browser v1",
-            "visible `MK_editor` source registry loading is complete",
+            "retained source registry loading rows are complete",
             "Editor Content Browser Import Diagnostics v1",
             "Editor Content Browser Source Registry Population v1",
             "EditorContentBrowserImportPanelModel",
@@ -1691,13 +1671,11 @@ $editorContentBrowserImportPanelChecks = @(
         )
     },
     @{
-        Path = "editor/src/main.cpp"
+        Path = "editor/CMakeLists.txt"
         Needles = @(
-            "Reload Source Registry",
-            "refresh_content_browser_from_project_source_registry",
-            "content_browser_source_registry_loaded_",
-            "Source Registry Diagnostics",
-            "Asset Key"
+            "MK_editor visible shell is deferred after SDL3 removal",
+            "MK_editor_core remains the supported editor logic target",
+            "must not depend on SDL3"
         )
     },
     @{
@@ -1754,13 +1732,11 @@ $editorContentBrowserImportNativeDialogChecks = @(
         )
     },
     @{
-        Path = "editor/src/main.cpp"
+        Path = "editor/CMakeLists.txt"
         Needles = @(
-            "Browse Import Sources",
-            "asset_import_open_dialog_",
-            "project_store_relative_asset_import_source_path",
-            "rebuild_asset_import_plan_from_sources",
-            "make_content_browser_import_open_dialog_request"
+            "MK_editor visible shell is deferred after SDL3 removal",
+            "MK_editor_core remains the supported editor logic target",
+            "must not depend on SDL3"
         )
     },
     @{
@@ -1896,13 +1872,11 @@ $editorContentBrowserImportExternalCopyReviewChecks = @(
         )
     },
     @{
-        Path = "editor/src/main.cpp"
+        Path = "editor/CMakeLists.txt"
         Needles = @(
-            "Copy External Sources",
-            "asset_import_external_copy_",
-            "asset_import_external_copy_target_path",
-            "copy_asset_import_external_sources",
-            "imported_sources"
+            "MK_editor visible shell is deferred after SDL3 removal",
+            "MK_editor_core remains the supported editor logic target",
+            "must not depend on SDL3"
         )
     },
     @{
@@ -2080,17 +2054,11 @@ $editorContentBrowserImportCodecAdapterCompletedPlanChecks = @(
         )
     },
     @{
-        Path = "editor/src/main.cpp"
+        Path = "editor/CMakeLists.txt"
         Needles = @(
-            "ExternalAssetImportAdapters",
-            ".png",
-            ".gltf",
-            ".glb",
-            ".wav",
-            ".mp3",
-            ".flac",
-            "execute_asset_import_plan(tool_filesystem_, asset_import_plan_, adapters.options())",
-            "execute_asset_import_plan(tool_filesystem_, recook_plan, adapters.options())"
+            "MK_editor visible shell is deferred after SDL3 removal",
+            "MK_editor_core remains the supported editor logic target",
+            "must not depend on SDL3"
         )
     },
     @{
@@ -2402,18 +2370,11 @@ $editorMaterialAssetPreviewPanelChecks = @(
         )
     },
     @{
-        Path = "editor/src/main.cpp"
+        Path = "editor/CMakeLists.txt"
         Needles = @(
-            "make_editor_material_asset_preview_panel_model",
-            "material_preview_panel_model",
-            "texture_payload_rows",
-            "shader_rows",
-            "ensure_material_preview_gpu_cache",
-            "refresh_material_gpu_preview_execution",
-            "make_material_gpu_preview_execution_snapshot",
-            "apply_editor_material_gpu_preview_execution_snapshot",
-            "gpu_execution_vulkan_visible_refresh",
-            "gpu_execution_metal_visible_refresh"
+            "MK_editor visible shell is deferred after SDL3 removal",
+            "MK_editor_core remains the supported editor logic target",
+            "must not depend on SDL3"
         )
     },
     @{

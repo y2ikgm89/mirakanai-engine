@@ -6,27 +6,30 @@
 
 **Architecture:** This is a master coordination plan, not one implementation slice. Each broad domain gets its own child plan, public first-party contract, adapter boundary, tests, package evidence, host gates, docs, manifest rows, dependency/legal records, and final validation before any ready claim is promoted.
 
-**Tech Stack:** C++23, CMake/CTest, PowerShell validation tools, `MK_renderer`, `MK_rhi`, `MK_runtime_rhi`, `MK_scene_renderer`, `MK_ui`, `MK_ui_renderer`, first-party native desktop platform adapters, `MK_assets`, `MK_tools`, `MK_physics`, `MK_navigation`, `MK_audio`, `MK_runtime`, optional vcpkg manifest features, D3D12, Vulkan, Apple Metal, Win32/DXGI/WASAPI first-party Windows lanes, HarfBuzz-class shaping, FreeType-class rasterization, ICU-class Unicode services, Khronos glTF/KTX, DXC/SPIR-V tools, Jolt-class physics adapters, Recast/Detour-class navigation adapters, ENet/GameNetworkingSockets-class transport adapters, OpenAL/miniaudio-class audio adapters, and platform accessibility SDKs. Legacy desktop middleware dependencies are removal targets, not future implementation dependencies.
+**Tech Stack:** C++23, CMake/CTest, PowerShell validation tools, `MK_renderer`, `MK_rhi`, `MK_runtime_rhi`, `MK_scene_renderer`, `MK_ui`, `MK_ui_renderer`, `MK_assets`, `MK_tools`, `MK_physics`, `MK_navigation`, `MK_audio`, `MK_runtime`, optional vcpkg manifest features, D3D12, Vulkan, Apple Metal, first-party Windows desktop platform backends, Win32, Raw Input, WASAPI, DXGI, HarfBuzz-class shaping, FreeType-class rasterization, ICU-class Unicode services, Khronos glTF/KTX, DXC/SPIR-V tools, Jolt-class physics adapters, Recast/Detour-class navigation adapters, ENet/GameNetworkingSockets-class transport adapters, OpenAL/miniaudio-class audio adapters, and platform accessibility SDKs.
 
 ---
 
 **Plan ID:** `clean-break-broad-production-readiness-master-plan-v1`
 
-**Status:** Selected master plan. Not selected as `currentActivePlan`; the first selected child is `renderer-production-quality-backend-parity-v1`.
+**Status:** Completed coordination plan through `reviewed-importers-codecs-shader-generation-v1`. The manifest now returns to the production-completion selection gate for any future child selection.
 
 **Date:** 2026-05-27
 
 ## Master Plan Decision
 
-This work is too broad for one implementation branch. It must be executed through reviewable child plans:
+This work is too broad for one implementation branch. It must be executed through reviewable child plans and milestones:
 
 - Renderer production quality, backend parity, and profiling.
 - Runtime UI text shaping, font rasterization, IME, accessibility, and platform parity.
 - Reviewed importer, codec, source import, and shader generation execution.
+- First-party Windows desktop platform, runtime host, editor, and audio replacement after SDL3 removal.
 - Physics and navigation commercial coverage.
 - Audio production coverage.
 - Networking production coverage.
 - Cross-domain package evidence and closeout.
+
+The reviewed importer/codecs/shader-generation child was selected again through an explicit manifest/registry switch after the SDL3 removal milestone and backlog selection-gate reconciliation, then completed selected importer/codec/shader-generation evidence before the manifest returned to the production-completion selection gate.
 
 `unsupportedProductionGaps = []` remains the Engine 1.0 ready-surface truth. This plan does not reopen 1.0; it selects post-1.0 / 1.x production breadth.
 
@@ -34,8 +37,7 @@ This work is too broad for one implementation branch. It must be executed throug
 
 - No backward-compatibility shims, deprecated aliases, duplicate public APIs, or transitional adapters unless a future release policy explicitly requires them.
 - When a public aggregate, enum, function, manifest literal, package counter, JSON schema, or validation command changes, update every caller, designated initializer, test, sample, doc, manifest fragment, and static check in the same child plan.
-- Gameplay-facing APIs stay first-party and value-based. D3D12, Vulkan, Metal, Win32/DXGI/WASAPI objects, HarfBuzz, FreeType, ICU, Jolt, Recast/Detour, ENet, GameNetworkingSockets, OpenAL, miniaudio, codec libraries, platform accessibility objects, and native OS handles stay behind private adapter boundaries.
-- Do not add new SDL3 code, dependencies, package recipes, or validation lanes. Existing SDL3 surfaces are legacy replacement/removal work and must be deleted after first-party native replacements are proven.
+- Gameplay-facing APIs stay first-party and value-based. D3D12, Vulkan, Metal, removed SDL3 APIs, HarfBuzz, FreeType, ICU, Jolt, Recast/Detour, ENet, GameNetworkingSockets, OpenAL, miniaudio, codec libraries, platform accessibility objects, and native OS handles stay behind private adapter boundaries.
 - Optional dependencies enter only through vcpkg manifest features plus `tools/bootstrap-deps.ps1`. Each dependency child plan updates `vcpkg.json`, `docs/dependencies.md`, `docs/legal-and-licensing.md`, `THIRD_PARTY_NOTICES.md`, validation wrappers, and manifest feature rows.
 - Official SDK and dependency documentation must be rechecked at the start of each child plan. Record exact URLs or Context7 library IDs in that child plan evidence.
 - Broad readiness is fail-closed by default. Package counters distinguish ready rows, host-gated rows, dependency-gated rows, skipped rows, and unsupported claims.
@@ -51,8 +53,6 @@ Re-check exact docs during child-plan execution:
 - Vulkan validation layers: <https://docs.vulkan.org/guide/latest/validation_overview.html>
 - Apple Metal resource synchronization: <https://developer.apple.com/documentation/metal/resource-synchronization>
 - Apple Metal capabilities: <https://developer.apple.com/metal/capabilities/>
-- Win32 windowing and messages: <https://learn.microsoft.com/en-us/windows/win32/learnwin32/creating-a-window> and <https://learn.microsoft.com/en-us/windows/win32/winmsg/about-messages-and-message-queues>
-- WASAPI stream management: <https://learn.microsoft.com/en-us/windows/win32/coreaudio/stream-management>
 - HarfBuzz documentation: <https://harfbuzz.github.io/>
 - FreeType glyph conventions: <https://freetype.org/freetype2/docs/glyphs/index.html>
 - ICU user guide: <https://unicode-org.github.io/icu/userguide/>
@@ -71,7 +71,7 @@ Re-check exact docs during child-plan execution:
 
 Context7 evidence recorded during this selection pass:
 
-- 2026-05-29 update: SDL3 is explicitly removed from future planning. Future desktop work must use first-party native platform lanes, with Windows starting from official Win32 message/window, DXGI presentation, and WASAPI documentation. Retain old SDL3 references only as deletion inventory until their replacement/removal candidate closes.
+- `/libsdl-org/sdlwiki`: Historical selection-pass evidence only. The retired text-input/clipboard adapter proof was used before the SDL3 removal closeout and must not be treated as current implementation guidance or a reason to reintroduce SDL3 APIs.
 
 ## Child Plan Sequence
 
@@ -85,19 +85,33 @@ Context7 evidence recorded during this selection pass:
 
 ### Child Plan 1 - Renderer Production Quality And Backend Parity v1
 
-**Status:** Selected active child.
+**Status:** Completed.
 
 **Path:** `docs/superpowers/plans/2026-05-27-renderer-production-quality-backend-parity-v1.md`
 
 **Purpose:** Replace selected renderer confidence with backend-local, measurable production quality, parity, profiling, and package evidence gates.
 
-### Child Plan 2 - First-Party Desktop Platform And Runtime UI Text Stack v1
+**Closeout:** Completed through PR #261, PR #262, and PR #263. The final checkpoint merged as `97b4b0d8e680b7da723a294ed77555ba9c7c5a8d` with local package/static/full validation and hosted `PR Gate`, `Windows MSVC`, Linux, CodeQL, static analysis, iOS smoke, and macOS Metal CMake evidence. Broad renderer quality, Metal visible parity, and subjective/general performance parity remain host-gated or unclaimed where evidence is absent.
 
-**Purpose:** Replace remaining SDL3 desktop/runtime-host assumptions with first-party native desktop platform lanes, then implement real text shaping, font rasterization, IME, accessibility, and platform UI publication behind first-party contracts and optional dependency adapters.
+### Child Plan 2 - Runtime UI Text Platform Stack v1
+
+**Status:** Completed.
+
+**Path:** `docs/superpowers/plans/2026-05-27-runtime-ui-text-platform-stack-v1.md`
+
+**Purpose:** Implement real text shaping, font rasterization, IME, accessibility, and platform UI publication lanes behind first-party contracts and optional dependency adapters.
+
+**Closeout:** Completed through PR #264, PR #265, PR #266, PR #267, and PR #268. The final checkpoint merged as `98dbe209bc00a9914f267f2394900d870c572cbc` with local package/static/full validation plus hosted PR Gate, Windows MSVC, Linux, CodeQL, static analysis, iOS smoke, and macOS Metal CMake evidence. Broad runtime UI platform parity, production HarfBuzz/FreeType/ICU dependency adapters, native IME parity, OS accessibility publication, renderer texture upload execution, and broad runtime UI renderer quality remain host/dependency gated or unclaimed.
 
 ### Child Plan 3 - Reviewed Importers Codecs And Shader Generation v1
 
-**Purpose:** Move from value-only import review to selected real importer/codec/shader execution lanes without arbitrary importer, compiler, or source execution.
+**Status:** Completed.
+
+**Path:** `docs/superpowers/plans/2026-05-27-reviewed-importers-codecs-shader-generation-v1.md`
+
+**Purpose:** Move from value-only import review to selected importer/codec/shader evidence lanes without arbitrary importer, compiler, or source execution.
+
+**Closeout:** Completed selected KTX2/Basis texture review, glTF scene import review, source image/audio codec review, and reviewed shader generation/cache execution evidence. The closeout adds exact DXC D3D12 DXIL, DXC Vulkan SPIR-V, and `spirv-val --target-env vulkan1.3` review rows plus package-visible `shader_generation_cache_*` counters while keeping live shader generation, runtime compiler execution, native cache handles, renderer/RHI residency, package streaming, Metal library generation, and broad import/codec/shader readiness fail-closed.
 
 ### Child Plan 4 - Physics And Navigation Commercial Coverage v1
 

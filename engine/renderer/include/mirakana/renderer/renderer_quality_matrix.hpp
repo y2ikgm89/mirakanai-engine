@@ -37,27 +37,13 @@ enum class RendererQualityProofKind : std::uint8_t {
     tool_validation,
     reviewed_handoff,
     host_gate,
-    dependency_gate,
-    unsupported_claim,
 };
 
-enum class RendererQualityRowStatus : std::uint8_t {
+enum class RendererQualityMatrixRowStatus : std::uint8_t {
     ready = 0,
     host_gated,
     dependency_gated,
     unsupported,
-};
-
-enum class RendererQualityEvidenceCategory : std::uint8_t {
-    synchronization = 0,
-    shader_tool_validation,
-    memory_residency,
-    render_pass_frame_graph,
-    profiling,
-    package_evidence,
-    host_gate,
-    dependency_gate,
-    unsupported_claim,
 };
 
 enum class RendererQualityMatrixDiagnosticCode : std::uint8_t {
@@ -90,11 +76,7 @@ struct RendererQualityMatrixRow {
     RendererQualityFeatureKind feature{RendererQualityFeatureKind::materials};
     rhi::BackendKind backend{rhi::BackendKind::null};
     RendererQualityProofKind proof{RendererQualityProofKind::selected_package};
-    RendererQualityRowStatus status{RendererQualityRowStatus::ready};
-    std::vector<RendererQualityEvidenceCategory> evidence_categories;
-    std::string dependency_gate_id;
-    std::string unsupported_claim_id;
-    std::string notes;
+    RendererQualityMatrixRowStatus status{RendererQualityMatrixRowStatus::ready};
     bool reviewed{false};
     bool backend_local_evidence{false};
     bool d3d12_resource_state_barrier_evidence{false};
@@ -112,6 +94,7 @@ struct RendererQualityMatrixRow {
     bool backend_parity_evidence{false};
     bool host_validated{false};
     bool host_gate_required{false};
+    bool dependency_gate_required{false};
     bool request_native_handle_access{false};
     bool request_capture_execution{false};
     bool request_crash_upload_execution{false};

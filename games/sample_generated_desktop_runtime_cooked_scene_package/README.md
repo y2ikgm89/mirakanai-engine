@@ -9,7 +9,7 @@ Describe the desktop runtime game goal here before expanding gameplay.
 This game uses the optional desktop runtime package lane with a first-party cooked scene package:
 
 - `mirakana::GameApp`
-- `mirakana::SdlDesktopGameHost`
+- `mirakana::Win32DesktopGameHost`
 - `mirakana::RootedFileSystem`
 - `mirakana::runtime::load_runtime_asset_package`
 - `mirakana::instantiate_runtime_scene_render_data`

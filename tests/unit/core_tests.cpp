@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <fstream>
 #include <limits>
 
 #include "mirakana/animation/chain_ik.hpp"
@@ -2408,6 +2409,40 @@ MK_TEST("rooted filesystem stores reads and lists text files under a root") {
 
     std::filesystem::remove_all(root);
 }
+
+MK_TEST("rooted filesystem resolves portable slash paths to native filesystem entries") {
+    const auto root = std::filesystem::current_path() / "ge-rooted-filesystem-portable-path-test";
+    std::filesystem::remove_all(root);
+    std::filesystem::create_directories(root / "assets" / "generated");
+    {
+        std::ofstream output(root / "assets" / "generated" / "runtime.config", std::ios::binary);
+        output << "format=portable-path-test\n";
+    }
+
+    mirakana::RootedFileSystem fs(root);
+
+    MK_REQUIRE(fs.exists("assets/generated/runtime.config"));
+    MK_REQUIRE(fs.read_text("assets/generated/runtime.config") == "format=portable-path-test\n");
+
+    std::filesystem::remove_all(root);
+}
+
+#if defined(_WIN32)
+MK_TEST("rooted filesystem supports long absolute Windows paths") {
+    const auto base = std::filesystem::current_path() / "ge-rooted-filesystem-long-path-test";
+    const auto root = base / std::string(96, 'a') / std::string(96, 'b');
+    const auto base_for_windows_api = std::filesystem::path{std::wstring{L"\\\\?\\"} + base.wstring()};
+    std::filesystem::remove_all(base_for_windows_api);
+
+    mirakana::RootedFileSystem fs(root);
+    fs.write_text("runtime/config.txt", "ok");
+
+    MK_REQUIRE(fs.exists("runtime/config.txt"));
+    MK_REQUIRE(fs.read_text("runtime/config.txt") == "ok");
+
+    std::filesystem::remove_all(base_for_windows_api);
+}
+#endif
 
 MK_TEST("rooted filesystem removes files and empty directories under a root") {
     const auto root = std::filesystem::current_path() / "ge-rooted-filesystem-remove-test";

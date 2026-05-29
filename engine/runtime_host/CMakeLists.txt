@@ -18,6 +18,6 @@ target_link_libraries(MK_runtime_host
 
 MK_apply_common_target_options(MK_runtime_host)
 
-if(MK_DESKTOP_RUNTIME_ENABLED)
-    add_subdirectory(sdl3)
+if(WIN32 AND MK_DESKTOP_RUNTIME_ENABLED)
+    add_subdirectory(win32)
 endif()

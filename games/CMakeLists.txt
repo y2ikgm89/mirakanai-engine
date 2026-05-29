@@ -29,10 +29,8 @@ MK_add_game(sample_2d_playable_foundation
 )
 
 if(MK_DESKTOP_RUNTIME_ENABLED)
-    find_package(SDL3 CONFIG REQUIRED)
-
     function(MK_add_desktop_runtime_game target_name)
-        cmake_parse_arguments(MK_DESKTOP_GAME "REQUIRES_D3D12_SHADERS;REQUIRES_VULKAN_SHADERS;PACKAGE_FILES_FROM_MANIFEST" "GAME_MANIFEST" "SOURCES;SMOKE_ARGS;PACKAGE_SMOKE_ARGS;PACKAGE_FILES" ${ARGN})
+        cmake_parse_arguments(MK_DESKTOP_GAME "REQUIRES_D3D12_SHADERS;REQUIRES_VULKAN_SHADERS;PACKAGE_FILES_FROM_MANIFEST" "GAME_MANIFEST;HOST_BACKEND" "SOURCES;SMOKE_ARGS;PACKAGE_SMOKE_ARGS;PACKAGE_FILES" ${ARGN})
         if(MK_DESKTOP_GAME_UNPARSED_ARGUMENTS)
             message(FATAL_ERROR "MK_add_desktop_runtime_game received unknown arguments for ${target_name}: ${MK_DESKTOP_GAME_UNPARSED_ARGUMENTS}")
         endif()
@@ -56,6 +54,15 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
         endif()
         if(NOT MK_DESKTOP_GAME_PACKAGE_SMOKE_ARGS)
             set(MK_DESKTOP_GAME_PACKAGE_SMOKE_ARGS ${MK_DESKTOP_GAME_SMOKE_ARGS})
+        endif()
+        if(NOT MK_DESKTOP_GAME_HOST_BACKEND)
+            set(MK_DESKTOP_GAME_HOST_BACKEND "win32")
+        endif()
+        if(NOT MK_DESKTOP_GAME_HOST_BACKEND STREQUAL "win32")
+            message(FATAL_ERROR "MK_add_desktop_runtime_game HOST_BACKEND must be win32 for ${target_name}: ${MK_DESKTOP_GAME_HOST_BACKEND}")
+        endif()
+        if(NOT WIN32)
+            message(FATAL_ERROR "MK_add_desktop_runtime_game HOST_BACKEND win32 is only supported on Windows for ${target_name}")
         endif()
         get_filename_component(MK_DESKTOP_GAME_DIRECTORY "${MK_DESKTOP_GAME_GAME_MANIFEST}" DIRECTORY)
         file(REAL_PATH "${MK_DESKTOP_GAME_DIRECTORY}" MK_DESKTOP_GAME_DIRECTORY_REAL BASE_DIRECTORY "${CMAKE_SOURCE_DIR}")
@@ -185,12 +192,14 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                 MK_core
                 MK_math
                 MK_platform
-                MK_platform_sdl3
                 MK_renderer
                 MK_runtime_host
-                MK_runtime_host_sdl3
-                MK_runtime_host_sdl3_presentation
-                SDL3::SDL3
+        )
+        target_link_libraries(${target_name}
+            PRIVATE
+                MK_platform_win32
+                MK_runtime_host_win32
+                MK_runtime_host_win32_presentation
         )
 
         MK_apply_common_target_options(${target_name})
@@ -215,14 +224,11 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
         list(APPEND MK_DESKTOP_RUNTIME_GAME_TARGETS ${target_name})
         set_property(GLOBAL PROPERTY MK_DESKTOP_RUNTIME_GAMES "${MK_DESKTOP_RUNTIME_GAME_TARGETS}")
 
-        add_custom_command(TARGET ${target_name} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                $<TARGET_FILE:SDL3::SDL3>
-                $<TARGET_FILE_DIR:${target_name}>
-        )
-
         if(BUILD_TESTING)
             add_test(NAME ${target_name}_smoke COMMAND ${target_name} ${MK_DESKTOP_GAME_SMOKE_ARGS})
+            set_tests_properties(${target_name}_smoke PROPERTIES
+                WORKING_DIRECTORY "$<TARGET_FILE_DIR:${target_name}>"
+            )
         endif()
 
         if(MK_DESKTOP_GAME_PACKAGE_FILES_NORMALIZED)
@@ -264,18 +270,13 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
         endif()
     endfunction()
 
-    if(WIN32)
-        install(FILES
-            $<TARGET_FILE:SDL3::SDL3>
-            DESTINATION ${CMAKE_INSTALL_BINDIR}
-        )
-    endif()
-
     MK_add_desktop_runtime_game(sample_desktop_runtime_shell
         SOURCES
             sample_desktop_runtime_shell/main.cpp
         GAME_MANIFEST
             games/sample_desktop_runtime_shell/game.agent.json
+        HOST_BACKEND
+            win32
         SMOKE_ARGS
             --smoke
         PACKAGE_SMOKE_ARGS
@@ -755,6 +756,9 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                         ${MK_SCENE_SHADER_SOURCE_SMOKE_ARGS}
                         --require-d3d12-scene-shaders
                 )
+                set_tests_properties(${MK_SCENE_SHADER_TARGET}_shader_artifacts_smoke PROPERTIES
+                    WORKING_DIRECTORY "$<TARGET_FILE_DIR:${MK_SCENE_SHADER_TARGET}>"
+                )
             endif()
 
             if(MK_SAMPLE_DESKTOP_RUNTIME_DXC_SUPPORTS_SPIRV)
@@ -901,61 +905,78 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                 if(MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE)
                     set(MK_SCENE_SHADER_VULKAN_VALIDATION_COMMANDS
                         COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                            --target-env vulkan1.3
                             "${MK_SCENE_SHADER_VULKAN_VERTEX_SHADER_OUTPUT}"
                         COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                            --target-env vulkan1.3
                             "${MK_SCENE_SHADER_VULKAN_FRAGMENT_SHADER_OUTPUT}"
                         COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                            --target-env vulkan1.3
                             "${MK_SCENE_SHADER_VULKAN_POSTPROCESS_VERTEX_SHADER_OUTPUT}"
                         COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                            --target-env vulkan1.3
                             "${MK_SCENE_SHADER_VULKAN_POSTPROCESS_FRAGMENT_SHADER_OUTPUT}"
                     )
                     if(MK_SCENE_SHADER_HAS_UI_OVERLAY_ARTIFACTS)
                         list(APPEND MK_SCENE_SHADER_VULKAN_VALIDATION_COMMANDS
                             COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                                --target-env vulkan1.3
                                 "${MK_SCENE_SHADER_VULKAN_UI_OVERLAY_VERTEX_SHADER_OUTPUT}"
                             COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                                --target-env vulkan1.3
                                 "${MK_SCENE_SHADER_VULKAN_UI_OVERLAY_FRAGMENT_SHADER_OUTPUT}"
                         )
                     endif()
                     if(MK_SCENE_SHADER_HAS_SHADOW_ARTIFACTS)
                         list(APPEND MK_SCENE_SHADER_VULKAN_VALIDATION_COMMANDS
                             COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                                --target-env vulkan1.3
                                 "${MK_SCENE_SHADER_VULKAN_SHADOW_RECEIVER_FRAGMENT_SHADER_OUTPUT}"
                             COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                                --target-env vulkan1.3
                                 "${MK_SCENE_SHADER_VULKAN_SHIFTED_SHADOW_RECEIVER_FRAGMENT_SHADER_OUTPUT}"
                             COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                                --target-env vulkan1.3
                                 "${MK_SCENE_SHADER_VULKAN_SHADOW_VERTEX_SHADER_OUTPUT}"
                             COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                                --target-env vulkan1.3
                                 "${MK_SCENE_SHADER_VULKAN_SHADOW_FRAGMENT_SHADER_OUTPUT}"
                         )
                     endif()
                     if(MK_SCENE_SHADER_MORPH_VERTEX_ENTRY)
                         list(APPEND MK_SCENE_SHADER_VULKAN_VALIDATION_COMMANDS
                             COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                                --target-env vulkan1.3
                                 "${MK_SCENE_SHADER_VULKAN_MORPH_VERTEX_SHADER_OUTPUT}"
                         )
                     endif()
                     if(MK_SCENE_SHADER_COMPUTE_MORPH_ENTRY)
                         list(APPEND MK_SCENE_SHADER_VULKAN_VALIDATION_COMMANDS
                             COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                                --target-env vulkan1.3
                                 "${MK_SCENE_SHADER_VULKAN_COMPUTE_MORPH_VERTEX_SHADER_OUTPUT}"
                             COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                                --target-env vulkan1.3
                                 "${MK_SCENE_SHADER_VULKAN_COMPUTE_MORPH_SHADER_OUTPUT}"
                         )
                     endif()
                     if(MK_SCENE_SHADER_COMPUTE_MORPH_TANGENT_ENTRY)
                         list(APPEND MK_SCENE_SHADER_VULKAN_VALIDATION_COMMANDS
                             COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                                --target-env vulkan1.3
                                 "${MK_SCENE_SHADER_VULKAN_COMPUTE_MORPH_TANGENT_VERTEX_SHADER_OUTPUT}"
                             COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                                --target-env vulkan1.3
                                 "${MK_SCENE_SHADER_VULKAN_COMPUTE_MORPH_TANGENT_SHADER_OUTPUT}"
                         )
                     endif()
                     if(MK_SCENE_SHADER_COMPUTE_MORPH_SKINNED_ENTRY)
                         list(APPEND MK_SCENE_SHADER_VULKAN_VALIDATION_COMMANDS
                             COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                                --target-env vulkan1.3
                                 "${MK_SCENE_SHADER_VULKAN_COMPUTE_MORPH_SKINNED_VERTEX_SHADER_OUTPUT}"
                             COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                                --target-env vulkan1.3
                                 "${MK_SCENE_SHADER_VULKAN_COMPUTE_MORPH_SKINNED_SHADER_OUTPUT}"
                         )
                     endif()
@@ -1133,6 +1154,9 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                         ${MK_SPRITE_SHADER_SOURCE_SMOKE_ARGS}
                         --require-d3d12-shaders
                 )
+                set_tests_properties(${MK_SPRITE_SHADER_TARGET}_shader_artifacts_smoke PROPERTIES
+                    WORKING_DIRECTORY "$<TARGET_FILE_DIR:${MK_SPRITE_SHADER_TARGET}>"
+                )
             endif()
 
             if(MK_SAMPLE_DESKTOP_RUNTIME_DXC_SUPPORTS_SPIRV)
@@ -1195,6 +1219,9 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                         COMMAND ${MK_SPRITE_SHADER_TARGET}
                             ${MK_SPRITE_SHADER_SOURCE_SMOKE_ARGS}
                             --require-vulkan-shaders
+                    )
+                    set_tests_properties(${MK_SPRITE_SHADER_TARGET}_vulkan_shader_artifacts_smoke PROPERTIES
+                        WORKING_DIRECTORY "$<TARGET_FILE_DIR:${MK_SPRITE_SHADER_TARGET}>"
                     )
                 endif()
             endif()
@@ -1447,10 +1474,16 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                     NAME sample_desktop_runtime_shell_shader_artifacts_smoke
                     COMMAND sample_desktop_runtime_shell --smoke --require-d3d12-shaders
                 )
+                set_tests_properties(sample_desktop_runtime_shell_shader_artifacts_smoke PROPERTIES
+                    WORKING_DIRECTORY "$<TARGET_FILE_DIR:sample_desktop_runtime_shell>"
+                )
                 if(TARGET sample_desktop_runtime_shell_vulkan_shaders)
                     add_test(
                         NAME sample_desktop_runtime_shell_vulkan_shader_artifacts_smoke
                         COMMAND sample_desktop_runtime_shell --smoke --require-vulkan-shaders
+                    )
+                    set_tests_properties(sample_desktop_runtime_shell_vulkan_shader_artifacts_smoke PROPERTIES
+                        WORKING_DIRECTORY "$<TARGET_FILE_DIR:sample_desktop_runtime_shell>"
                     )
                 endif()
             endif()
@@ -1466,6 +1499,8 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             sample_desktop_runtime_game/main.cpp
         GAME_MANIFEST
             games/sample_desktop_runtime_game/game.agent.json
+        HOST_BACKEND
+            win32
         SMOKE_ARGS
             --smoke
         PACKAGE_SMOKE_ARGS
@@ -1475,8 +1510,6 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-scene-package
             runtime/sample_desktop_runtime_game.geindex
             --require-d3d12-scene-shaders
-            --video-driver
-            windows
             --require-d3d12-renderer
             --require-scene-gpu-bindings
             --require-postprocess
@@ -1520,6 +1553,8 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             sample_2d_desktop_runtime_package/main.cpp
         GAME_MANIFEST
             games/sample_2d_desktop_runtime_package/game.agent.json
+        HOST_BACKEND
+            win32
         SMOKE_ARGS
             --smoke
             --require-config
@@ -1543,6 +1578,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-production-authoring-workflows
             --require-runtime-ui-workbench
             --require-runtime-ui-production-stack
+            --require-runtime-ui-renderer-atlas-handoff
         PACKAGE_SMOKE_ARGS
             --smoke
             --require-config
@@ -1550,8 +1586,6 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-scene-package
             runtime/sample_2d_desktop_runtime_package.geindex
             --require-d3d12-shaders
-            --video-driver
-            windows
             --require-d3d12-renderer
             --require-native-2d-sprites
             --require-sprite-animation
@@ -1571,6 +1605,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-production-authoring-workflows
             --require-runtime-ui-workbench
             --require-runtime-ui-production-stack
+            --require-runtime-ui-renderer-atlas-handoff
         REQUIRES_D3D12_SHADERS
         PACKAGE_FILES_FROM_MANIFEST
     )
@@ -1709,6 +1744,9 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                         ${MK_SAMPLE_2D_DESKTOP_RUNTIME_SOURCE_SMOKE_ARGS}
                         --require-d3d12-shaders
                 )
+                set_tests_properties(sample_2d_desktop_runtime_package_shader_artifacts_smoke PROPERTIES
+                    WORKING_DIRECTORY "$<TARGET_FILE_DIR:sample_2d_desktop_runtime_package>"
+                )
             endif()
 
             if(MK_SAMPLE_DESKTOP_RUNTIME_DXC_SUPPORTS_SPIRV)
@@ -1771,6 +1809,9 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                         COMMAND sample_2d_desktop_runtime_package
                             ${MK_SAMPLE_2D_DESKTOP_RUNTIME_SOURCE_SMOKE_ARGS}
                             --require-vulkan-shaders
+                    )
+                    set_tests_properties(sample_2d_desktop_runtime_package_vulkan_shader_artifacts_smoke PROPERTIES
+                        WORKING_DIRECTORY "$<TARGET_FILE_DIR:sample_2d_desktop_runtime_package>"
                     )
                 endif()
             endif()
@@ -2181,6 +2222,8 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             sample_generated_desktop_runtime_package/main.cpp
         GAME_MANIFEST
             games/sample_generated_desktop_runtime_package/game.agent.json
+        HOST_BACKEND
+            win32
         SMOKE_ARGS
             --smoke
             --require-config
@@ -2199,6 +2242,8 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             sample_generated_desktop_runtime_cooked_scene_package/main.cpp
         GAME_MANIFEST
             games/sample_generated_desktop_runtime_cooked_scene_package/game.agent.json
+        HOST_BACKEND
+            win32
         SMOKE_ARGS
             --smoke
             --require-config
@@ -2227,6 +2272,8 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             sample_generated_desktop_runtime_material_shader_package/main.cpp
         GAME_MANIFEST
             games/sample_generated_desktop_runtime_material_shader_package/game.agent.json
+        HOST_BACKEND
+            win32
         SMOKE_ARGS
             --smoke
             --require-config
@@ -2240,8 +2287,6 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-scene-package
             runtime/sample_generated_desktop_runtime_material_shader_package.geindex
             --require-d3d12-scene-shaders
-            --video-driver
-            windows
             --require-d3d12-renderer
             --require-scene-gpu-bindings
             --require-postprocess
@@ -2271,6 +2316,8 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             sample_generated_desktop_runtime_3d_package/main.cpp
         GAME_MANIFEST
             games/sample_generated_desktop_runtime_3d_package/game.agent.json
+        HOST_BACKEND
+            win32
         SMOKE_ARGS
             --smoke
             --require-config
@@ -2301,8 +2348,6 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-package-streaming-safe-point
             --require-gameplay-systems
             --require-d3d12-scene-shaders
-            --video-driver
-            windows
             --require-d3d12-renderer
             --require-scene-gpu-bindings
             --require-postprocess
@@ -2316,6 +2361,8 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-scene-collision-package
             --require-native-ui-textured-sprite-atlas
             --require-package-upload-staging
+            --require-ktx2-basis-texture-review
+            --require-gltf-scene-import-review
         REQUIRES_D3D12_SHADERS
         PACKAGE_FILES_FROM_MANIFEST
     )

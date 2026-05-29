@@ -15,9 +15,9 @@ Use the chapter that matches the current decision. Do not bulk-read every chapte
 
 - 1.0 closeout readiness remains manifest-led: every `unsupportedProductionGaps` row in `engine/agent/manifest.json.aiOperableProductionLoop` must be implemented, host-gated with evidence, or explicitly excluded with evidence before a ready claim; the current composed manifest has no remaining rows.
 - Current execution remains manifest-led. Do not hand-edit `engine/agent/manifest.json`; edit `engine/agent/manifest.fragments/*.json` and run the compose script when manifest state changes.
-- Current active plan: [Renderer Production Quality And Backend Parity v1](../plans/2026-05-27-renderer-production-quality-backend-parity-v1.md), the first child of [Clean Break Broad Production Readiness Master Plan v1](2026-05-27-clean-break-broad-production-readiness-master-plan-v1.md). [Engine General Production Quality Expansion v1](../plans/2026-05-26-engine-general-production-quality-expansion-v1.md) remains completed as a post-1.0 milestone that strengthened renderer quality, runtime UI text/font/IME/accessibility, broad reviewed import, physics/navigation, networking, and audio production breadth without reopening Engine 1.0 blockers.
-- Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan.id = renderer-production-quality-backend-parity-v1` selects the first clean-break broad-production child plan. Historical zero-gap closeout evidence remains discoverable through the retained plan registry and archive.
-- Current gap cluster: no Engine 1.0 unsupported gap is open; the active post-foundation child plan selects renderer production quality/backend parity/profiling breadth without claiming broad renderer readiness before backend-local evidence lands.
+- Current active plan: no child plan is selected. `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` points back to this master index after [Reviewed Importers Codecs And Shader Generation v1](../plans/2026-05-27-reviewed-importers-codecs-shader-generation-v1.md) completed selected importer/codec/shader-generation evidence.
+- Current manifest state: `unsupportedProductionGaps = []`; `recommendedNextPlan.id = next-production-gap-selection` marks the selection gate. Historical zero-gap closeout evidence remains discoverable through the retained plan registry and archive.
+- Current gap cluster: no Engine 1.0 unsupported gap is open; the SDL3 removal milestone has closed with first-party Windows desktop runtime/editor/audio replacements, SDL3 removal from build, package, generated-game, docs, legal, and agent contract surfaces, and no macOS/Linux desktop parity claim from Windows evidence. The reviewed importer/codecs/shader-generation child also closed selected KTX2/Basis, glTF scene import, source image/audio codec, and shader generation/cache review rows while keeping broad import/codec/shader/runtime compiler/renderer residency/Metal claims fail-closed.
 
 ## Plan map
 
@@ -31,7 +31,7 @@ Use the chapter that matches the current decision. Do not bulk-read every chapte
 
 ## Official implementation rule
 
-Prefer official documentation and SDK guidance first: CMake, vcpkg, SDL3, Direct3D 12, Vulkan, Metal, Android GameActivity, OpenAI Codex docs, Anthropic Claude Code docs, and vendor engine references where explicitly cited in the chapter.
+Prefer official documentation and SDK guidance first: CMake, vcpkg, Direct3D 12, Vulkan, Metal, Android GameActivity, platform SDKs, OpenAI Codex docs, Anthropic Claude Code docs, and vendor engine references where explicitly cited in the chapter.
 
 This is a greenfield engine. Use clean breaking changes when they remove duplicated contracts, stale compatibility layers, or ambiguous API ownership.
 

@@ -214,6 +214,7 @@ function Invoke-MobilePackagingProbe {
     $startInfo = [System.Diagnostics.ProcessStartInfo]::new()
     $startInfo.FileName = $FilePath
     $startInfo.UseShellExecute = $false
+    $startInfo.RedirectStandardInput = $true
     $startInfo.RedirectStandardOutput = $true
     $startInfo.RedirectStandardError = $true
     $startInfo.CreateNoWindow = $true
@@ -229,6 +230,7 @@ function Invoke-MobilePackagingProbe {
 
     try {
         $null = $childProcess.Start()
+        $childProcess.StandardInput.Close()
         $standardOutputTask = $childProcess.StandardOutput.ReadToEndAsync()
         $standardErrorTask = $childProcess.StandardError.ReadToEndAsync()
         $timedOut = -not $childProcess.WaitForExit($timeoutMilliseconds)

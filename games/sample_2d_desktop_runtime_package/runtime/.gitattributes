@@ -6,3 +6,4 @@
 *.scene text eol=lf
 *.tilemap text eol=lf
 *.sprite_animation text eol=lf
+*.uiatlas text eol=lf

@@ -137,14 +137,50 @@ class CapturingFontRasterizerAdapter final : public mirakana::ui::IFontRasterize
     rasterize_glyph(const mirakana::ui::FontRasterizationRequest& request) override {
         published_request = request;
         ++publish_calls;
+        const auto atlas_bounds =
+            use_custom_atlas_bounds
+                ? custom_atlas_bounds
+                : mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = request.pixel_size, .height = request.pixel_size};
+        const auto resolved_metrics_width = metrics_width >= 0.0F ? metrics_width : request.pixel_size;
+        const auto resolved_metrics_height = metrics_height >= 0.0F ? metrics_height : request.pixel_size;
+        const auto resolved_metrics_bearing_y = metrics_bearing_y >= 0.0F ? metrics_bearing_y : request.pixel_size;
+        const auto resolved_metrics_advance_x = metrics_advance_x >= 0.0F ? metrics_advance_x : request.pixel_size;
         return mirakana::ui::GlyphAtlasAllocation{
             .glyph = request.glyph,
-            .atlas_bounds =
-                mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = request.pixel_size, .height = request.pixel_size},
+            .atlas_bounds = atlas_bounds,
+            .bitmap = include_bitmap_and_metrics ? mirakana::ui::GlyphRasterBitmap{
+                                                        .width = bitmap_width,
+                                                        .height = bitmap_height,
+                                                        .pixel_format = pixel_format,
+                                                        .pixels = std::vector<std::byte>(pixel_count, std::byte{0xffU}),
+                                                    }
+                                                  : mirakana::ui::GlyphRasterBitmap{},
+            .metrics = include_bitmap_and_metrics
+                           ? mirakana::ui::GlyphRasterMetrics{
+                                 .width = resolved_metrics_width,
+                                 .height = resolved_metrics_height,
+                                 .bearing_x = 0.0F,
+                                 .bearing_y = resolved_metrics_bearing_y,
+                                 .advance_x = resolved_metrics_advance_x,
+                                 .advance_y = metrics_advance_y,
+                             }
+                           : mirakana::ui::GlyphRasterMetrics{},
         };
     }
 
     mirakana::ui::FontRasterizationRequest published_request;
+    bool include_bitmap_and_metrics{true};
+    bool use_custom_atlas_bounds{false};
+    mirakana::ui::Rect custom_atlas_bounds;
+    std::uint32_t bitmap_width{2};
+    std::uint32_t bitmap_height{2};
+    mirakana::ui::FontRasterizationPixelFormat pixel_format{mirakana::ui::FontRasterizationPixelFormat::alpha8};
+    std::size_t pixel_count{4U};
+    float metrics_width{-1.0F};
+    float metrics_height{-1.0F};
+    float metrics_bearing_y{-1.0F};
+    float metrics_advance_x{-1.0F};
+    float metrics_advance_y{0.0F};
     std::size_t publish_calls{0};
 };
 
@@ -157,6 +193,8 @@ class InvalidFontRasterizerAdapter final : public mirakana::ui::IFontRasterizerA
         return mirakana::ui::GlyphAtlasAllocation{
             .glyph = 0,
             .atlas_bounds = mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 0.0F, .height = 0.0F},
+            .bitmap = {},
+            .metrics = {},
         };
     }
 
@@ -192,8 +230,88 @@ class CapturingTextShapingAdapter final : public mirakana::ui::ITextShapingAdapt
     std::size_t publish_calls{0};
 };
 
+class CapturingLineBreakingAdapter final : public mirakana::ui::ILineBreakingAdapter {
+  public:
+    [[nodiscard]] std::vector<mirakana::ui::TextLineBreakRun>
+    break_lines(const mirakana::ui::TextLayoutRequest& request) override {
+        published_request = request;
+        ++publish_calls;
+        return response;
+    }
+
+    std::vector<mirakana::ui::TextLineBreakRun> response;
+    mirakana::ui::TextLayoutRequest published_request;
+    std::size_t publish_calls{0};
+};
+
+template <typename Run>
+concept HasShapingGlyphRows = requires(Run run) { run.glyphs; };
+
+static_assert(HasShapingGlyphRows<mirakana::ui::TextLayoutRun>);
+static_assert(!HasShapingGlyphRows<mirakana::ui::TextLineBreakRun>);
+
 [[nodiscard]] std::vector<std::byte> byte_payload(std::size_t count, unsigned char value = 0xffU) {
     return std::vector<std::byte>(count, static_cast<std::byte>(value));
+}
+
+[[nodiscard]] std::vector<mirakana::ui::TextShapingSegmentEvidence> make_latin_text_segments(std::size_t text_size) {
+    return {
+        mirakana::ui::TextShapingSegmentEvidence{
+            .start_byte = 0U,
+            .end_byte = text_size,
+            .direction = mirakana::ui::TextDirection::left_to_right,
+            .script_tag = "Latn",
+            .language_tag = "en",
+        },
+    };
+}
+
+[[nodiscard]] mirakana::ui::TextLayoutRun make_shaped_text_run(std::string text, mirakana::ui::Rect bounds) {
+    const auto text_size = text.size();
+    return mirakana::ui::TextLayoutRun{
+        .text = std::move(text),
+        .bounds = bounds,
+        .segments = make_latin_text_segments(text_size),
+        .glyphs =
+            {
+                mirakana::ui::TextShapedGlyph{
+                    .glyph = 65,
+                    .cluster_byte_offset = 0U,
+                    .advance_x = 16.0F,
+                    .advance_y = 0.0F,
+                    .offset_x = 0.0F,
+                    .offset_y = 0.0F,
+                    .font_family = "Inter",
+                },
+            },
+        .boundaries =
+            {
+                mirakana::ui::TextBoundaryEvidence{
+                    .kind = mirakana::ui::TextBoundaryEvidenceKind::grapheme_cluster,
+                    .start_byte = 0U,
+                    .end_byte = text_size,
+                },
+                mirakana::ui::TextBoundaryEvidence{
+                    .kind = mirakana::ui::TextBoundaryEvidenceKind::line_break,
+                    .start_byte = 0U,
+                    .end_byte = text_size,
+                },
+                mirakana::ui::TextBoundaryEvidence{
+                    .kind = mirakana::ui::TextBoundaryEvidenceKind::bidi_run,
+                    .start_byte = 0U,
+                    .end_byte = text_size,
+                },
+            },
+        .fallback_rows =
+            {
+                mirakana::ui::TextFontFallbackEvidence{
+                    .cluster_byte_offset = 0U,
+                    .requested_font_family = "Inter",
+                    .resolved_font_family = "Inter",
+                    .fallback_used = false,
+                },
+            },
+    };
 }
 
 [[nodiscard]] mirakana::runtime::RuntimeAssetRecord
@@ -651,6 +769,156 @@ MK_TEST("ui renderer builds glyph atlas palette from runtime ui atlas package me
     MK_REQUIRE(binding->uv_rect.v0 == 0.0F);
     MK_REQUIRE(binding->uv_rect.u1 == 0.5F);
     MK_REQUIRE(binding->uv_rect.v1 == 1.0F);
+}
+
+MK_TEST("ui renderer atlas handoff review accepts cooked glyph image atlas submission counters") {
+    const auto image_atlas = mirakana::AssetId::from_name("ui/hud-atlas-metadata");
+    const auto image_texture = mirakana::AssetId::from_name("textures/hud-atlas");
+    const auto glyph_atlas = mirakana::AssetId::from_name("ui/body-glyph-atlas-metadata");
+    const auto glyph_texture = mirakana::AssetId::from_name("textures/body-glyph-atlas");
+    mirakana::runtime::RuntimeAssetPackage package({
+        make_runtime_record(mirakana::runtime::RuntimeAssetHandle{1}, image_atlas, mirakana::AssetKind::ui_atlas,
+                            "runtime/assets/ui/hud-atlas.uiatlas", cooked_ui_atlas_payload(image_atlas, image_texture),
+                            {image_texture}),
+        make_runtime_record(mirakana::runtime::RuntimeAssetHandle{2}, image_texture, mirakana::AssetKind::texture,
+                            "runtime/assets/ui/hud-atlas.texture.geasset", cooked_texture_payload(image_texture)),
+        make_runtime_record(mirakana::runtime::RuntimeAssetHandle{3}, glyph_atlas, mirakana::AssetKind::ui_atlas,
+                            "runtime/assets/ui/body_glyphs.uiatlas",
+                            cooked_ui_glyph_atlas_payload(glyph_atlas, glyph_texture), {glyph_texture}),
+        make_runtime_record(mirakana::runtime::RuntimeAssetHandle{4}, glyph_texture, mirakana::AssetKind::texture,
+                            "runtime/assets/ui/body_glyphs.texture.geasset", cooked_texture_payload(glyph_texture)),
+    });
+
+    const auto image_palette = mirakana::build_ui_renderer_image_palette_from_runtime_ui_atlas(package, image_atlas);
+    const auto glyph_palette =
+        mirakana::build_ui_renderer_glyph_atlas_palette_from_runtime_ui_atlas(package, glyph_atlas);
+    MK_REQUIRE(image_palette.succeeded());
+    MK_REQUIRE(glyph_palette.succeeded());
+
+    mirakana::ui::RendererSubmission submission;
+    mirakana::ui::RendererTextRun text;
+    text.id = mirakana::ui::ElementId{"title"};
+    text.bounds = mirakana::ui::Rect{.x = 4.0F, .y = 4.0F, .width = 32.0F, .height = 16.0F};
+    text.text.label = "AB";
+    text.text.font_family = "ui/body";
+    submission.text_runs.push_back(text);
+
+    mirakana::ui::RendererImagePlaceholder image;
+    image.id = mirakana::ui::ElementId{"icon"};
+    image.bounds = mirakana::ui::Rect{.x = 4.0F, .y = 24.0F, .width = 16.0F, .height = 16.0F};
+    image.image.resource_id = "hud.icon";
+    image.image.asset_uri = "runtime/assets/ui/hud-atlas.texture.geasset";
+    submission.image_placeholders.push_back(image);
+
+    mirakana::UiRenderSubmitDesc desc;
+    desc.image_palette = &image_palette.palette;
+    desc.glyph_atlas = &glyph_palette.palette;
+    desc.text_layout_policy = mirakana::ui::MonospaceTextLayoutPolicy{
+        .glyph_advance = 8.0F, .whitespace_advance = 4.0F, .line_height = 10.0F};
+
+    CaptureRenderer renderer(mirakana::Extent2D{.width = 96, .height = 64});
+    renderer.begin_frame();
+    const auto submit = mirakana::submit_ui_renderer_submission(renderer, submission, desc);
+    renderer.end_frame();
+
+    const auto plan = mirakana::review_ui_renderer_atlas_handoff(mirakana::UiRendererAtlasHandoffRequest{
+        .id = "sample-ui-renderer-atlas-handoff",
+        .image_atlas_page_count = image_palette.atlas_page_assets.size(),
+        .image_atlas_binding_count = image_palette.palette.count(),
+        .glyph_atlas_page_count = glyph_palette.atlas_page_assets.size(),
+        .glyph_atlas_binding_count = glyph_palette.palette.count(),
+        .submit_result = submit,
+        .renderer_sprites_submitted = renderer.stats().sprites_submitted,
+        .max_image_bindings = 4U,
+        .max_glyph_bindings = 8U,
+        .image_atlas_metadata_built = image_palette.succeeded(),
+        .glyph_atlas_metadata_built = glyph_palette.succeeded(),
+        .atlas_eviction_diagnostics_reviewed = true,
+        .texture_upload_handoff_reviewed = true,
+        .renderer_submission_counters_reviewed = true,
+        .selected_package_counter_evidence = true,
+        .requested_renderer_texture_upload_api = false,
+        .requested_public_native_handle = false,
+        .claims_broad_text_rendering = false,
+        .claims_broad_image_rendering = false,
+        .invoked_source_image_decode = false,
+        .invoked_live_glyph_atlas_generation = false,
+        .invoked_renderer_upload = false,
+        .seed = 42U,
+    });
+
+    MK_REQUIRE(plan.status == mirakana::UiRendererAtlasHandoffStatus::ready);
+    MK_REQUIRE(plan.ready());
+    MK_REQUIRE(plan.selected_package_evidence_ready);
+    MK_REQUIRE(plan.reviewed);
+    MK_REQUIRE(plan.image_atlas_pages == 1U);
+    MK_REQUIRE(plan.image_atlas_bindings == 1U);
+    MK_REQUIRE(plan.glyph_atlas_pages == 1U);
+    MK_REQUIRE(plan.glyph_atlas_bindings == 2U);
+    MK_REQUIRE(plan.atlas_placement_rows == 3U);
+    MK_REQUIRE(plan.atlas_budget_rows == 2U);
+    MK_REQUIRE(plan.atlas_eviction_diagnostic_rows == 1U);
+    MK_REQUIRE(plan.texture_upload_handoff_rows == 1U);
+    MK_REQUIRE(plan.renderer_submission_counter_rows == 1U);
+    MK_REQUIRE(plan.text_glyphs_resolved == 2U);
+    MK_REQUIRE(plan.text_glyphs_missing == 0U);
+    MK_REQUIRE(plan.image_resources_resolved == 1U);
+    MK_REQUIRE(plan.image_resources_missing == 0U);
+    MK_REQUIRE(plan.text_glyph_sprites_submitted == 2U);
+    MK_REQUIRE(plan.image_sprites_submitted == 1U);
+    MK_REQUIRE(plan.renderer_sprites_submitted == 3U);
+    MK_REQUIRE(!plan.requested_renderer_texture_upload_api);
+    MK_REQUIRE(!plan.requested_public_native_handle);
+    MK_REQUIRE(!plan.invoked_source_image_decode);
+    MK_REQUIRE(!plan.invoked_live_glyph_atlas_generation);
+    MK_REQUIRE(!plan.invoked_renderer_upload);
+    MK_REQUIRE(plan.diagnostics.empty());
+    MK_REQUIRE(plan.replay_hash != 0U);
+}
+
+MK_TEST("ui renderer atlas handoff review rejects unresolved resources budgets broad claims and side effects") {
+    mirakana::UiRenderSubmitResult submit;
+    submit.text_glyphs_available = 3U;
+    submit.text_glyphs_resolved = 2U;
+    submit.text_glyphs_missing = 1U;
+    submit.text_glyph_sprites_submitted = 2U;
+    submit.image_placeholders_available = 2U;
+    submit.image_resources_resolved = 1U;
+    submit.image_resources_missing = 1U;
+    submit.image_sprites_submitted = 1U;
+
+    const auto plan = mirakana::review_ui_renderer_atlas_handoff(mirakana::UiRendererAtlasHandoffRequest{
+        .id = "bad-ui-renderer-atlas-handoff",
+        .image_atlas_page_count = 1U,
+        .image_atlas_binding_count = 2U,
+        .glyph_atlas_page_count = 1U,
+        .glyph_atlas_binding_count = 3U,
+        .submit_result = submit,
+        .renderer_sprites_submitted = 3U,
+        .max_image_bindings = 1U,
+        .max_glyph_bindings = 2U,
+        .image_atlas_metadata_built = true,
+        .glyph_atlas_metadata_built = true,
+        .atlas_eviction_diagnostics_reviewed = false,
+        .texture_upload_handoff_reviewed = false,
+        .renderer_submission_counters_reviewed = false,
+        .selected_package_counter_evidence = false,
+        .requested_renderer_texture_upload_api = true,
+        .requested_public_native_handle = true,
+        .claims_broad_text_rendering = true,
+        .claims_broad_image_rendering = true,
+        .invoked_source_image_decode = true,
+        .invoked_live_glyph_atlas_generation = true,
+        .invoked_renderer_upload = true,
+    });
+
+    MK_REQUIRE(plan.status == mirakana::UiRendererAtlasHandoffStatus::invalid_request);
+    MK_REQUIRE(!plan.ready());
+    MK_REQUIRE(!plan.selected_package_evidence_ready);
+    MK_REQUIRE(plan.unsupported_claim_rows == 4U);
+    MK_REQUIRE(plan.side_effect_rows == 3U);
+    MK_REQUIRE(plan.diagnostics.size() >= 10U);
+    MK_REQUIRE(plan.replay_hash != 0U);
 }
 
 MK_TEST("ui renderer rejects runtime glyph atlas metadata that references a non texture page") {
@@ -1921,6 +2189,71 @@ MK_TEST("ui font rasterization result reports invalid adapter allocation") {
     MK_REQUIRE(adapter.published_request.font_family == "Inter");
 }
 
+MK_TEST("ui font rasterization result rejects missing bitmap and metrics evidence") {
+    mirakana::ui::FontRasterizationRequest request;
+    request.font_family = "Inter";
+    request.glyph = 65;
+    request.pixel_size = 18.0F;
+
+    CapturingFontRasterizerAdapter adapter;
+    adapter.include_bitmap_and_metrics = false;
+    const auto result = mirakana::ui::rasterize_font_glyph(adapter, request);
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.rasterized);
+    MK_REQUIRE(result.allocation.has_value());
+    MK_REQUIRE(result.diagnostics.size() == 1);
+    MK_REQUIRE(result.diagnostics[0].code == mirakana::ui::AdapterPayloadDiagnosticCode::invalid_font_allocation);
+    MK_REQUIRE(adapter.publish_calls == 1);
+}
+
+MK_TEST("ui font rasterization result rejects invalid pixel format evidence") {
+    mirakana::ui::FontRasterizationRequest request;
+    request.font_family = "Inter";
+    request.glyph = 65;
+    request.pixel_size = 18.0F;
+
+    CapturingFontRasterizerAdapter adapter;
+    adapter.pixel_format = mirakana::ui::FontRasterizationPixelFormat::unknown;
+    const auto result = mirakana::ui::rasterize_font_glyph(adapter, request);
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.rasterized);
+    MK_REQUIRE(result.allocation.has_value());
+    MK_REQUIRE(result.diagnostics.size() == 1);
+    MK_REQUIRE(result.diagnostics[0].code == mirakana::ui::AdapterPayloadDiagnosticCode::invalid_font_allocation);
+    MK_REQUIRE(adapter.publish_calls == 1);
+}
+
+MK_TEST("ui font rasterization result accepts zero ink glyph evidence") {
+    mirakana::ui::FontRasterizationRequest request;
+    request.font_family = "Inter";
+    request.glyph = 8205;
+    request.pixel_size = 18.0F;
+
+    CapturingFontRasterizerAdapter adapter;
+    adapter.use_custom_atlas_bounds = true;
+    adapter.custom_atlas_bounds = mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 0.0F, .height = 0.0F};
+    adapter.bitmap_width = 0;
+    adapter.bitmap_height = 0;
+    adapter.pixel_count = 0U;
+    adapter.metrics_width = 0.0F;
+    adapter.metrics_height = 0.0F;
+    adapter.metrics_bearing_y = 0.0F;
+    adapter.metrics_advance_x = 0.0F;
+
+    const auto result = mirakana::ui::rasterize_font_glyph(adapter, request);
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.rasterized);
+    MK_REQUIRE(result.allocation.has_value());
+    MK_REQUIRE(result.allocation->glyph == 8205);
+    MK_REQUIRE(result.allocation->bitmap.pixel_format == mirakana::ui::FontRasterizationPixelFormat::alpha8);
+    MK_REQUIRE(result.allocation->bitmap.pixels.empty());
+    MK_REQUIRE(result.diagnostics.empty());
+    MK_REQUIRE(adapter.publish_calls == 1);
+}
+
 MK_TEST("ui image decode request plan dispatches valid request to adapter") {
     mirakana::ui::ImageDecodeRequest request;
     request.asset_uri = "assets/ui/icon.png";
@@ -2039,10 +2372,8 @@ MK_TEST("ui text shaping request plan dispatches valid request to adapter") {
     MK_REQUIRE(plan.diagnostics.empty());
 
     CapturingTextShapingAdapter adapter;
-    adapter.response.push_back(mirakana::ui::TextLayoutRun{
-        .text = "Play",
-        .bounds = mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 32.0F, .height = 16.0F},
-    });
+    adapter.response.push_back(
+        make_shaped_text_run("Play", mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 32.0F, .height = 16.0F}));
 
     const auto result = mirakana::ui::shape_text_run(adapter, request);
 
@@ -2073,10 +2404,8 @@ MK_TEST("ui text shaping request plan blocks invalid request before adapter") {
     MK_REQUIRE(plan.diagnostics[2].code == mirakana::ui::AdapterPayloadDiagnosticCode::invalid_text_shaping_max_width);
 
     CapturingTextShapingAdapter adapter;
-    adapter.response.push_back(mirakana::ui::TextLayoutRun{
-        .text = "Play\nNow",
-        .bounds = mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 64.0F, .height = 16.0F},
-    });
+    adapter.response.push_back(
+        make_shaped_text_run("Play Now", mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 64.0F, .height = 16.0F}));
 
     const auto result = mirakana::ui::shape_text_run(adapter, request);
 
@@ -2130,6 +2459,17 @@ MK_TEST("ui text shaping request plan blocks invalid request before adapter") {
     MK_REQUIRE(nan_width_plan.diagnostics.size() == 1);
     MK_REQUIRE(nan_width_plan.diagnostics[0].code ==
                mirakana::ui::AdapterPayloadDiagnosticCode::invalid_text_shaping_max_width);
+
+    mirakana::ui::TextLayoutRequest invalid_utf8_request;
+    invalid_utf8_request.text = std::string("\xC3", 1);
+    invalid_utf8_request.font_family = "Inter";
+    invalid_utf8_request.max_width = 160.0F;
+
+    const auto invalid_utf8_plan = mirakana::ui::plan_text_shaping_request(invalid_utf8_request);
+    MK_REQUIRE(!invalid_utf8_plan.ready());
+    MK_REQUIRE(invalid_utf8_plan.diagnostics.size() == 1);
+    MK_REQUIRE(invalid_utf8_plan.diagnostics[0].code ==
+               mirakana::ui::AdapterPayloadDiagnosticCode::invalid_text_shaping_text);
 }
 
 MK_TEST("ui text shaping result reports invalid adapter runs") {
@@ -2148,10 +2488,8 @@ MK_TEST("ui text shaping result reports invalid adapter runs") {
     MK_REQUIRE(missing_adapter.publish_calls == 1);
 
     CapturingTextShapingAdapter invalid_bounds_adapter;
-    invalid_bounds_adapter.response.push_back(mirakana::ui::TextLayoutRun{
-        .text = "Play",
-        .bounds = mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 0.0F, .height = 16.0F},
-    });
+    invalid_bounds_adapter.response.push_back(
+        make_shaped_text_run("Play", mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 0.0F, .height = 16.0F}));
     const auto invalid_bounds = mirakana::ui::shape_text_run(invalid_bounds_adapter, request);
 
     MK_REQUIRE(!invalid_bounds.succeeded());
@@ -2166,6 +2504,10 @@ MK_TEST("ui text shaping result reports invalid adapter runs") {
     empty_text_adapter.response.push_back(mirakana::ui::TextLayoutRun{
         .text = "",
         .bounds = mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 32.0F, .height = 16.0F},
+        .segments = {},
+        .glyphs = {},
+        .boundaries = {},
+        .fallback_rows = {},
     });
     const auto empty_text = mirakana::ui::shape_text_run(empty_text_adapter, request);
 
@@ -2178,10 +2520,8 @@ MK_TEST("ui text shaping result reports invalid adapter runs") {
     MK_REQUIRE(empty_text_adapter.publish_calls == 1);
 
     CapturingTextShapingAdapter unsafe_text_adapter;
-    unsafe_text_adapter.response.push_back(mirakana::ui::TextLayoutRun{
-        .text = "Pl\nay",
-        .bounds = mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 32.0F, .height = 16.0F},
-    });
+    unsafe_text_adapter.response.push_back(
+        make_shaped_text_run("Pl\nay", mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 32.0F, .height = 16.0F}));
     const auto unsafe_text = mirakana::ui::shape_text_run(unsafe_text_adapter, request);
 
     MK_REQUIRE(!unsafe_text.succeeded());
@@ -2193,10 +2533,8 @@ MK_TEST("ui text shaping result reports invalid adapter runs") {
     MK_REQUIRE(unsafe_text_adapter.publish_calls == 1);
 
     CapturingTextShapingAdapter mismatch_adapter;
-    mismatch_adapter.response.push_back(mirakana::ui::TextLayoutRun{
-        .text = "Plan",
-        .bounds = mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 32.0F, .height = 16.0F},
-    });
+    mismatch_adapter.response.push_back(
+        make_shaped_text_run("Plan", mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 32.0F, .height = 16.0F}));
     const auto mismatch = mirakana::ui::shape_text_run(mismatch_adapter, request);
 
     MK_REQUIRE(!mismatch.succeeded());
@@ -2205,6 +2543,149 @@ MK_TEST("ui text shaping result reports invalid adapter runs") {
     MK_REQUIRE(mismatch.diagnostics.size() == 1);
     MK_REQUIRE(mismatch.diagnostics[0].code == mirakana::ui::AdapterPayloadDiagnosticCode::invalid_text_shaping_result);
     MK_REQUIRE(mismatch_adapter.publish_calls == 1);
+}
+
+MK_TEST("ui text shaping result accepts zero advance glyph evidence") {
+    mirakana::ui::TextLayoutRequest request;
+    request.text = "x";
+    request.font_family = "Inter";
+
+    CapturingTextShapingAdapter adapter;
+    auto run = make_shaped_text_run("x", mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 16.0F, .height = 16.0F});
+    run.glyphs[0].advance_x = 0.0F;
+    run.glyphs[0].advance_y = 0.0F;
+    adapter.response.push_back(std::move(run));
+
+    const auto result = mirakana::ui::shape_text_run(adapter, request);
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.shaped);
+    MK_REQUIRE(result.runs.size() == 1);
+    MK_REQUIRE(result.diagnostics.empty());
+    MK_REQUIRE(adapter.publish_calls == 1);
+}
+
+MK_TEST("ui text shaping result rejects missing glyph and boundary evidence") {
+    mirakana::ui::TextLayoutRequest request;
+    request.text = "Play";
+    request.font_family = "Inter";
+
+    CapturingTextShapingAdapter adapter;
+    adapter.response.push_back(mirakana::ui::TextLayoutRun{
+        .text = "Play",
+        .bounds = mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 32.0F, .height = 16.0F},
+        .segments = make_latin_text_segments(4U),
+        .glyphs = {},
+        .boundaries = {},
+        .fallback_rows = {},
+    });
+
+    const auto result = mirakana::ui::shape_text_run(adapter, request);
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.shaped);
+    MK_REQUIRE(result.runs.size() == 1);
+    MK_REQUIRE(result.diagnostics.size() == 1);
+    MK_REQUIRE(result.diagnostics[0].code == mirakana::ui::AdapterPayloadDiagnosticCode::invalid_text_shaping_result);
+    MK_REQUIRE(adapter.publish_calls == 1);
+}
+
+MK_TEST("ui text shaping result rejects unresolved segment and invalid cluster evidence") {
+    mirakana::ui::TextLayoutRequest request;
+    request.text = "Play";
+    request.font_family = "Inter";
+
+    CapturingTextShapingAdapter unresolved_segment_adapter;
+    auto unresolved_segment_run =
+        make_shaped_text_run("Play", mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 32.0F, .height = 16.0F});
+    unresolved_segment_run.segments[0].direction = mirakana::ui::TextDirection::automatic;
+    unresolved_segment_adapter.response.push_back(std::move(unresolved_segment_run));
+
+    const auto unresolved_segment = mirakana::ui::shape_text_run(unresolved_segment_adapter, request);
+
+    MK_REQUIRE(!unresolved_segment.succeeded());
+    MK_REQUIRE(unresolved_segment.shaped);
+    MK_REQUIRE(unresolved_segment.diagnostics.size() == 1);
+    MK_REQUIRE(unresolved_segment.diagnostics[0].code ==
+               mirakana::ui::AdapterPayloadDiagnosticCode::invalid_text_shaping_result);
+
+    CapturingTextShapingAdapter invalid_cluster_adapter;
+    auto invalid_cluster_run =
+        make_shaped_text_run("Play", mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 32.0F, .height = 16.0F});
+    invalid_cluster_run.glyphs[0].cluster_byte_offset = 4U;
+    invalid_cluster_adapter.response.push_back(std::move(invalid_cluster_run));
+
+    const auto invalid_cluster = mirakana::ui::shape_text_run(invalid_cluster_adapter, request);
+
+    MK_REQUIRE(!invalid_cluster.succeeded());
+    MK_REQUIRE(invalid_cluster.shaped);
+    MK_REQUIRE(invalid_cluster.diagnostics.size() == 1);
+    MK_REQUIRE(invalid_cluster.diagnostics[0].code ==
+               mirakana::ui::AdapterPayloadDiagnosticCode::invalid_text_shaping_result);
+}
+
+MK_TEST("ui text shaping result rejects mid scalar byte evidence") {
+    mirakana::ui::TextLayoutRequest request;
+    request.text = "\xC3\xA9";
+    request.font_family = "Inter";
+
+    CapturingTextShapingAdapter invalid_segment_adapter;
+    auto invalid_segment_run =
+        make_shaped_text_run(request.text, mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 32.0F, .height = 16.0F});
+    invalid_segment_run.segments[0].end_byte = 1U;
+    invalid_segment_adapter.response.push_back(std::move(invalid_segment_run));
+
+    const auto invalid_segment = mirakana::ui::shape_text_run(invalid_segment_adapter, request);
+
+    MK_REQUIRE(!invalid_segment.succeeded());
+    MK_REQUIRE(invalid_segment.shaped);
+    MK_REQUIRE(invalid_segment.diagnostics.size() == 1);
+    MK_REQUIRE(invalid_segment.diagnostics[0].code ==
+               mirakana::ui::AdapterPayloadDiagnosticCode::invalid_text_shaping_result);
+
+    CapturingTextShapingAdapter invalid_cluster_adapter;
+    auto invalid_cluster_run =
+        make_shaped_text_run(request.text, mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 32.0F, .height = 16.0F});
+    invalid_cluster_run.glyphs[0].cluster_byte_offset = 1U;
+    invalid_cluster_adapter.response.push_back(std::move(invalid_cluster_run));
+
+    const auto invalid_cluster = mirakana::ui::shape_text_run(invalid_cluster_adapter, request);
+
+    MK_REQUIRE(!invalid_cluster.succeeded());
+    MK_REQUIRE(invalid_cluster.shaped);
+    MK_REQUIRE(invalid_cluster.diagnostics.size() == 1);
+    MK_REQUIRE(invalid_cluster.diagnostics[0].code ==
+               mirakana::ui::AdapterPayloadDiagnosticCode::invalid_text_shaping_result);
+}
+
+MK_TEST("ui line breaking adapter contract does not require shaping glyph evidence") {
+    mirakana::ui::TextLayoutRequest request;
+    request.text = "Play";
+    request.font_family = "Inter";
+    request.max_width = 160.0F;
+
+    CapturingLineBreakingAdapter adapter;
+    adapter.response.push_back(mirakana::ui::TextLineBreakRun{
+        .text = "Play",
+        .bounds = mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 32.0F, .height = 16.0F},
+        .boundaries =
+            {
+                mirakana::ui::TextBoundaryEvidence{
+                    .kind = mirakana::ui::TextBoundaryEvidenceKind::line_break,
+                    .start_byte = 0U,
+                    .end_byte = 4U,
+                },
+            },
+    });
+
+    const auto runs = adapter.break_lines(request);
+
+    MK_REQUIRE(adapter.publish_calls == 1);
+    MK_REQUIRE(adapter.published_request.text == "Play");
+    MK_REQUIRE(runs.size() == 1);
+    MK_REQUIRE(runs[0].text == "Play");
+    MK_REQUIRE(runs[0].boundaries.size() == 1);
+    MK_REQUIRE(runs[0].boundaries[0].kind == mirakana::ui::TextBoundaryEvidenceKind::line_break);
 }
 
 MK_TEST("ui monospace text layout policy wraps words into deterministic glyph boxes") {

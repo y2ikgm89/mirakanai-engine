@@ -1561,13 +1561,22 @@ class FakeExternalAssetImporter final : public mirakana::IExternalAssetImporter 
     };
 }
 
+[[nodiscard]] mirakana::ShaderCompileRequest fullscreen_vulkan_compile_request() {
+    auto request = fullscreen_compile_request();
+    request.target = mirakana::ShaderCompileTarget::vulkan_spirv;
+    request.output_path = "out/shaders/fullscreen.vs.spv";
+    request.profile = "vs_6_7";
+    return request;
+}
+
 [[nodiscard]] mirakana::ShaderCompileExecutionRequest
 fullscreen_execution_request(const mirakana::ShaderCompileRequest& request) {
     return mirakana::ShaderCompileExecutionRequest{
         .compile_request = request,
         .tool = mirakana::ShaderToolDescriptor{.kind = mirakana::ShaderToolKind::dxc,
                                                .executable_path = "toolchains/dxc/bin/dxc.exe",
-                                               .version = "dxcompiler 1.8.2505"},
+                                               .version = "dxcompiler 1.8.2505",
+                                               .supports_spirv_codegen = true},
         .cache_index_path = "out/shaders/shader-cache.gecache",
     };
 }
@@ -1908,8 +1917,10 @@ MK_TEST("spirv shader validation command uses validator executable and process p
     const auto command = mirakana::make_spirv_shader_validation_command(artifact);
 
     MK_REQUIRE(command.executable == "spirv-val");
-    MK_REQUIRE(command.arguments.size() == 1);
-    MK_REQUIRE(command.arguments[0] == "out/shaders/fullscreen.vs.spv");
+    MK_REQUIRE(command.arguments.size() == 3);
+    MK_REQUIRE(command.arguments[0] == "--target-env");
+    MK_REQUIRE(command.arguments[1] == "vulkan1.3");
+    MK_REQUIRE(command.arguments[2] == "out/shaders/fullscreen.vs.spv");
     MK_REQUIRE(command.artifact.path == artifact.path);
     MK_REQUIRE(mirakana::is_safe_shader_artifact_validation_command(command));
 
@@ -1976,7 +1987,9 @@ MK_TEST("shader artifact validation action checks existing spirv artifacts") {
     MK_REQUIRE(result.succeeded());
     MK_REQUIRE(result.artifact_checked);
     MK_REQUIRE(runner.calls == 1);
-    MK_REQUIRE(runner.last_command.arguments[0] == "out/shaders/fullscreen.vs.spv");
+    MK_REQUIRE(runner.last_command.arguments[0] == "--target-env");
+    MK_REQUIRE(runner.last_command.arguments[1] == "vulkan1.3");
+    MK_REQUIRE(runner.last_command.arguments[2] == "out/shaders/fullscreen.vs.spv");
 
     CountingShaderArtifactValidatorRunner missing_runner;
     const auto missing = mirakana::execute_shader_artifact_validation_action(
@@ -2475,6 +2488,122 @@ MK_TEST("shader pipeline cache reconciliation rebuilds malformed selected index 
     MK_REQUIRE(reconciled.plan.ok);
     MK_REQUIRE(reconciled.written_cache_index_paths.size() == 1);
     MK_REQUIRE(index.entries.size() == 2);
+}
+
+MK_TEST("shader generation cache review proves exact offline commands validation and cache metadata") {
+    mirakana::MemoryFileSystem fs;
+    write_fullscreen_shader_sources(fs);
+
+    const std::vector<mirakana::ShaderCompileExecutionRequest> requests{
+        fullscreen_execution_request(fullscreen_compile_request()),
+        fullscreen_execution_request(fullscreen_vulkan_compile_request()),
+    };
+
+    CountingShaderToolRunner runner;
+    for (const auto& request : requests) {
+        const auto result = mirakana::execute_shader_compile_action(fs, runner, request);
+        MK_REQUIRE(result.succeeded());
+    }
+
+    const auto review = mirakana::review_shader_generation_cache_execution(
+        fs,
+        mirakana::ShaderGenerationCacheReviewRequest{
+            .compile_requests = requests,
+            .validation_requests = {mirakana::ShaderArtifactValidationExecutionRequest{
+                .artifact = mirakana::make_shader_compile_command(requests[1].compile_request).artifact,
+                .validator = mirakana::ShaderToolDescriptor{.kind = mirakana::ShaderToolKind::spirv_val,
+                                                            .executable_path = "toolchains/vulkan/bin/spirv-val.exe",
+                                                            .version = "SPIRV-Tools 2025.1"},
+            }},
+            .toolchain = mirakana::evaluate_shader_toolchain_readiness(
+                {requests[0].tool,
+                 mirakana::ShaderToolDescriptor{.kind = mirakana::ShaderToolKind::spirv_val,
+                                                .executable_path = "toolchains/vulkan/bin/spirv-val.exe",
+                                                .version = "SPIRV-Tools 2025.1"}}),
+        });
+
+    MK_REQUIRE(review.status == mirakana::ShaderGenerationCacheReviewStatus::ready);
+    MK_REQUIRE(review.reviewed);
+    MK_REQUIRE(review.ready);
+    MK_REQUIRE(review.rows.size() == 2);
+    MK_REQUIRE(review.ready_rows == 2);
+    MK_REQUIRE(review.d3d12_compile_rows == 1);
+    MK_REQUIRE(review.vulkan_compile_rows == 1);
+    MK_REQUIRE(review.spirv_validation_rows == 1);
+    MK_REQUIRE(review.cache_key_rows == 2);
+    MK_REQUIRE(review.provenance_rows == 2);
+    MK_REQUIRE(review.diagnostics.empty());
+    MK_REQUIRE(review.d3d12_offline_compile_ready);
+    MK_REQUIRE(review.vulkan_offline_compile_ready);
+    MK_REQUIRE(review.selected_package_cache_ready);
+    MK_REQUIRE(!review.live_shader_generation_ready);
+    MK_REQUIRE(!review.runtime_compiler_execution_ready);
+    MK_REQUIRE(!review.native_cache_handle_ready);
+    MK_REQUIRE(!review.renderer_rhi_residency_ready);
+    MK_REQUIRE(!review.metal_library_generation_ready);
+    MK_REQUIRE(review.rows[0].target_environment == "d3d12-dxil");
+    MK_REQUIRE(review.rows[1].target_environment == "vulkan1.3");
+    MK_REQUIRE(review.rows[1].validation_arguments.size() == 3);
+    MK_REQUIRE(review.rows[1].validation_arguments[0] == "--target-env");
+    MK_REQUIRE(review.rows[1].validation_arguments[1] == "vulkan1.3");
+    MK_REQUIRE(review.rows[1].validation_arguments[2] == "out/shaders/fullscreen.vs.spv");
+}
+
+MK_TEST("shader generation cache review rejects live runtime native residency and metal claims") {
+    mirakana::MemoryFileSystem fs;
+    write_fullscreen_shader_sources(fs);
+    const auto request = fullscreen_execution_request(fullscreen_compile_request());
+    CountingShaderToolRunner runner;
+    (void)mirakana::execute_shader_compile_action(fs, runner, request);
+
+    const auto review = mirakana::review_shader_generation_cache_execution(
+        fs, mirakana::ShaderGenerationCacheReviewRequest{
+                .compile_requests = {request},
+                .toolchain = mirakana::evaluate_shader_toolchain_readiness({request.tool}),
+                .request_live_shader_generation = true,
+                .request_runtime_compiler_execution = true,
+                .request_native_cache_handle_access = true,
+                .request_renderer_rhi_residency = true,
+                .request_metal_library_generation = true,
+            });
+
+    MK_REQUIRE(review.status == mirakana::ShaderGenerationCacheReviewStatus::invalid_request);
+    MK_REQUIRE(!review.ready);
+    MK_REQUIRE(review.diagnostics.size() == 5);
+    MK_REQUIRE(review.unsupported_claim_rows == 5);
+    MK_REQUIRE(!review.invoked_live_shader_generation);
+    MK_REQUIRE(!review.invoked_runtime_compiler);
+    MK_REQUIRE(!review.exposed_native_cache_handle);
+    MK_REQUIRE(!review.invoked_renderer_rhi_residency);
+    MK_REQUIRE(!review.invoked_metal_library_generation);
+}
+
+MK_TEST("shader generation cache review keeps Vulkan execution host gated without spirv validation evidence") {
+    mirakana::MemoryFileSystem fs;
+    write_fullscreen_shader_sources(fs);
+    const std::vector<mirakana::ShaderCompileExecutionRequest> requests{
+        fullscreen_execution_request(fullscreen_compile_request()),
+        fullscreen_execution_request(fullscreen_vulkan_compile_request()),
+    };
+    CountingShaderToolRunner runner;
+    for (const auto& request : requests) {
+        (void)mirakana::execute_shader_compile_action(fs, runner, request);
+    }
+
+    const auto review = mirakana::review_shader_generation_cache_execution(
+        fs, mirakana::ShaderGenerationCacheReviewRequest{
+                .compile_requests = requests,
+                .toolchain = mirakana::evaluate_shader_toolchain_readiness({requests[0].tool}),
+            });
+
+    MK_REQUIRE(review.status == mirakana::ShaderGenerationCacheReviewStatus::host_evidence_required);
+    MK_REQUIRE(!review.ready);
+    MK_REQUIRE(review.d3d12_offline_compile_ready);
+    MK_REQUIRE(!review.vulkan_offline_compile_ready);
+    MK_REQUIRE(review.host_gated_rows == 1);
+    MK_REQUIRE(review.spirv_validation_rows == 0);
+    MK_REQUIRE(!review.selected_package_cache_ready);
+    MK_REQUIRE(!review.diagnostics.empty());
 }
 
 MK_TEST("asset import executor writes cooked artifacts through filesystem") {
@@ -4836,6 +4965,42 @@ MK_TEST("production authoring workflow review fails closed on shared mutation sh
     MK_REQUIRE(has_diagnostic("cooked_package_mutation"));
     MK_REQUIRE(has_diagnostic("native_backend_term"));
     MK_REQUIRE(has_diagnostic("invalid_target_path"));
+    MK_REQUIRE(!result.invoked_file_mutation);
+    MK_REQUIRE(!result.invoked_package_io);
+    MK_REQUIRE(!result.invoked_command_execution);
+}
+
+MK_TEST("production authoring workflow review rejects parser compiler and native handle leakage claims") {
+    mirakana::ProductionAuthoringWorkflowRequest request;
+    request.supported_capability_ids = {"scene-placement-v1"};
+    request.validation_recipe_ids = {"desktop-2d-package"};
+    request.package_evidence_ids = {"sample_2d_desktop_runtime_package"};
+    request.reviewed_surface_ids = {"scene-prefab-authoring"};
+    request.workflow_rows.push_back(mirakana::ProductionAuthoringWorkflowRow{
+        .workflow_id = "public_row_leakage",
+        .kind = mirakana::ProductionAuthoringWorkflowKind::scene_placement,
+        .target_path = "games/sample_2d_desktop_runtime_package/source/scenes/playable.scene",
+        .required_capability_ids = {"scene-placement-v1"},
+        .validation_recipe_ids = {"desktop-2d-package"},
+        .package_evidence_ids = {"sample_2d_desktop_runtime_package"},
+        .reviewed_surface_ids = {"scene-prefab-authoring"},
+        .claimed_scope_ids = {"fastgltf parser type", "IDxcCompiler3 compiler handle", "native handle"},
+        .requests_shared_surface_mutation = false,
+        .requests_arbitrary_shell = false,
+        .requests_cooked_package_mutation = false,
+        .source_index = 10,
+    });
+
+    const auto result = mirakana::review_production_authoring_workflow(request);
+
+    const auto diagnostic_count = [&result](std::string_view code) {
+        return static_cast<std::size_t>(std::ranges::count_if(
+            result.diagnostics, [code](const auto& diagnostic) { return diagnostic.code == code; }));
+    };
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.accepted_rows.empty());
+    MK_REQUIRE(result.mutation_ledger_rows.empty());
+    MK_REQUIRE(diagnostic_count("native_backend_term") == 3U);
     MK_REQUIRE(!result.invoked_file_mutation);
     MK_REQUIRE(!result.invoked_package_io);
     MK_REQUIRE(!result.invoked_command_execution);

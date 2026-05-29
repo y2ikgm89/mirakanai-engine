@@ -17,6 +17,7 @@
       "Bash(git reset:*)",
       "Bash(git restore:*)",
       "Bash(git clean:*)",
+      "Bash(git clone:*)",
       "Bash(git worktree remove:*)",
       "Bash(git worktree prune:*)",
       "Bash(git worktree repair:*)",

@@ -51,6 +51,7 @@ void append_diagnostic(std::vector<RuntimeUiProductionDiagnostic>& diagnostics, 
     case RuntimeUiProductionProofKind::adapter_handoff:
     case RuntimeUiProductionProofKind::selected_package:
     case RuntimeUiProductionProofKind::host_gate:
+    case RuntimeUiProductionProofKind::skipped:
         return true;
     }
     return false;
@@ -97,6 +98,51 @@ void append_diagnostic(std::vector<RuntimeUiProductionDiagnostic>& diagnostics, 
     return false;
 }
 
+[[nodiscard]] bool is_adapter_invoked(const RuntimeUiProductionEvidenceRow& row) noexcept {
+    return row.invokes_adapter || row.invokes_native_platform || row.invokes_renderer_upload;
+}
+
+[[nodiscard]] bool is_unsupported_claim(const RuntimeUiProductionEvidenceRow& row) {
+    return row.uses_public_native_handle || has_unsafe_native_reference(row.id) || row.uses_ui_middleware_api ||
+           row.claims_general_production_text_stack || row.claims_broad_platform_ui_parity;
+}
+
+void record_adapter_invocation(RuntimeUiProductionStackPlan& plan, const RuntimeUiProductionEvidenceRow& row) noexcept {
+    if (!is_adapter_invoked(row)) {
+        return;
+    }
+
+    ++plan.adapter_invoked_rows;
+    if (row.invokes_native_platform) {
+        plan.invoked_native_platform = true;
+    }
+    if (row.invokes_renderer_upload) {
+        plan.invoked_renderer_upload = true;
+    }
+    if (!row.invokes_adapter) {
+        return;
+    }
+
+    switch (row.feature) {
+    case RuntimeUiProductionFeatureKind::text_shaping:
+        plan.invoked_text_shaping = true;
+        break;
+    case RuntimeUiProductionFeatureKind::font_rasterization:
+        plan.invoked_font_rasterization = true;
+        break;
+    case RuntimeUiProductionFeatureKind::glyph_atlas:
+    case RuntimeUiProductionFeatureKind::renderer_submission:
+        plan.invoked_renderer_upload = true;
+        break;
+    case RuntimeUiProductionFeatureKind::ime:
+        plan.invoked_ime_adapter = true;
+        break;
+    case RuntimeUiProductionFeatureKind::accessibility:
+        plan.invoked_accessibility_bridge = true;
+        break;
+    }
+}
+
 void require_flag(std::vector<RuntimeUiProductionDiagnostic>& diagnostics, bool value,
                   RuntimeUiProductionDiagnosticCode code, std::string_view row_id, std::string_view message) {
     if (!value) {
@@ -110,6 +156,9 @@ void validate_text_shaping_row(std::vector<RuntimeUiProductionDiagnostic>& diagn
                  row.id, "runtime UI text shaping evidence requires strict request validation");
     require_flag(diagnostics, row.shaping_segments, RuntimeUiProductionDiagnosticCode::missing_shaping_segments, row.id,
                  "runtime UI text shaping evidence requires shaping segment rows");
+    require_flag(diagnostics, row.shaping_direction_script_language,
+                 RuntimeUiProductionDiagnosticCode::missing_shaping_direction_script_language, row.id,
+                 "runtime UI text shaping evidence requires resolved direction, script, and language rows");
     require_flag(diagnostics, row.glyph_clusters, RuntimeUiProductionDiagnosticCode::missing_shaping_glyph_clusters,
                  row.id, "runtime UI text shaping evidence requires glyph cluster rows");
     require_flag(diagnostics, row.glyph_advances_offsets,
@@ -129,6 +178,9 @@ void validate_font_rasterization_row(std::vector<RuntimeUiProductionDiagnostic>&
                  row.id, "runtime UI font rasterization evidence requires strict request validation");
     require_flag(diagnostics, row.glyph_bitmap_rows, RuntimeUiProductionDiagnosticCode::missing_raster_glyph_bitmaps,
                  row.id, "runtime UI font rasterization evidence requires glyph bitmap rows");
+    require_flag(diagnostics, row.glyph_pixel_format_rows,
+                 RuntimeUiProductionDiagnosticCode::missing_raster_pixel_format_rows, row.id,
+                 "runtime UI font rasterization evidence requires glyph pixel-format rows");
     require_flag(diagnostics, row.glyph_metric_rows, RuntimeUiProductionDiagnosticCode::missing_raster_glyph_metrics,
                  row.id, "runtime UI font rasterization evidence requires glyph metric rows");
 }
@@ -159,15 +211,28 @@ void validate_renderer_submission_row(std::vector<RuntimeUiProductionDiagnostic>
 
 void validate_ime_row(std::vector<RuntimeUiProductionDiagnostic>& diagnostics,
                       const RuntimeUiProductionEvidenceRow& row) {
-    require_flag(diagnostics, row.ime_begin_update_end, RuntimeUiProductionDiagnosticCode::missing_ime_begin_update_end,
-                 row.id, "runtime UI IME evidence requires begin, update, and end rows");
+    require_flag(diagnostics, row.ime_session_begin_end_rows,
+                 RuntimeUiProductionDiagnosticCode::missing_ime_session_rows, row.id,
+                 "runtime UI IME evidence requires text input session begin and end rows");
+    require_flag(diagnostics, row.ime_composition_update_rows,
+                 RuntimeUiProductionDiagnosticCode::missing_ime_composition_update_rows, row.id,
+                 "runtime UI IME evidence requires composition update rows");
     require_flag(diagnostics, row.ime_candidate_rows, RuntimeUiProductionDiagnosticCode::missing_ime_candidate_rows,
                  row.id, "runtime UI IME evidence requires candidate rows");
-    require_flag(diagnostics, row.ime_text_area_rows, RuntimeUiProductionDiagnosticCode::missing_ime_text_area_rows,
-                 row.id, "runtime UI IME evidence requires text input area and cursor rows");
+    require_flag(diagnostics, row.ime_text_area_cursor_rows,
+                 RuntimeUiProductionDiagnosticCode::missing_ime_text_area_cursor_rows, row.id,
+                 "runtime UI IME evidence requires text input area and cursor rows");
     require_flag(diagnostics, row.ime_committed_text_rows,
                  RuntimeUiProductionDiagnosticCode::missing_ime_committed_text_rows, row.id,
                  "runtime UI IME evidence requires committed text rows");
+    require_flag(diagnostics, row.ime_clipboard_rows, RuntimeUiProductionDiagnosticCode::missing_ime_clipboard_rows,
+                 row.id, "runtime UI IME evidence requires clipboard text command rows");
+    require_flag(diagnostics, row.ime_platform_adapter_proof_rows,
+                 RuntimeUiProductionDiagnosticCode::missing_ime_platform_adapter_proof_rows, row.id,
+                 "runtime UI IME evidence requires selected platform adapter proof rows");
+    require_flag(diagnostics, row.ime_platform_host_gate_rows,
+                 RuntimeUiProductionDiagnosticCode::missing_ime_platform_host_gate_rows, row.id,
+                 "runtime UI IME evidence requires per-platform host gate rows");
     require_flag(diagnostics, row.platform_adapter_dispatch_boundary,
                  RuntimeUiProductionDiagnosticCode::missing_platform_dispatch_boundary, row.id,
                  "runtime UI IME evidence requires platform adapter dispatch boundary rows");
@@ -178,9 +243,12 @@ void validate_accessibility_row(std::vector<RuntimeUiProductionDiagnostic>& diag
     require_flag(diagnostics, row.accessibility_role_rows,
                  RuntimeUiProductionDiagnosticCode::missing_accessibility_roles, row.id,
                  "runtime UI accessibility evidence requires role rows");
-    require_flag(diagnostics, row.accessibility_label_rows,
-                 RuntimeUiProductionDiagnosticCode::missing_accessibility_labels, row.id,
-                 "runtime UI accessibility evidence requires label rows");
+    require_flag(diagnostics, row.accessibility_name_rows,
+                 RuntimeUiProductionDiagnosticCode::missing_accessibility_names, row.id,
+                 "runtime UI accessibility evidence requires accessible name rows");
+    require_flag(diagnostics, row.accessibility_description_rows,
+                 RuntimeUiProductionDiagnosticCode::missing_accessibility_descriptions, row.id,
+                 "runtime UI accessibility evidence requires description rows");
     require_flag(diagnostics, row.accessibility_state_rows,
                  RuntimeUiProductionDiagnosticCode::missing_accessibility_states, row.id,
                  "runtime UI accessibility evidence requires state rows");
@@ -196,9 +264,18 @@ void validate_accessibility_row(std::vector<RuntimeUiProductionDiagnostic>& diag
     require_flag(diagnostics, row.accessibility_live_region_rows,
                  RuntimeUiProductionDiagnosticCode::missing_accessibility_live_regions, row.id,
                  "runtime UI accessibility evidence requires live-region update rows");
-    require_flag(diagnostics, row.accessibility_os_publication_gate,
-                 RuntimeUiProductionDiagnosticCode::missing_accessibility_os_publication_gate, row.id,
-                 "runtime UI accessibility evidence requires an OS publication host gate");
+    require_flag(diagnostics, row.accessibility_keyboard_pattern_rows,
+                 RuntimeUiProductionDiagnosticCode::missing_accessibility_keyboard_patterns, row.id,
+                 "runtime UI accessibility evidence requires keyboard pattern rows");
+    require_flag(diagnostics, row.accessibility_publication_status_rows,
+                 RuntimeUiProductionDiagnosticCode::missing_accessibility_publication_status, row.id,
+                 "runtime UI accessibility evidence requires publication status rows");
+    require_flag(diagnostics, row.accessibility_uia_host_gate_rows,
+                 RuntimeUiProductionDiagnosticCode::missing_accessibility_uia_host_gate, row.id,
+                 "runtime UI accessibility evidence requires Microsoft UI Automation host gate rows");
+    require_flag(diagnostics, row.accessibility_platform_host_gate_rows,
+                 RuntimeUiProductionDiagnosticCode::missing_accessibility_platform_host_gate, row.id,
+                 "runtime UI accessibility evidence requires per-platform accessibility host gate rows");
 }
 
 void hash_byte(std::uint64_t& hash, std::uint8_t value) noexcept {
@@ -228,31 +305,41 @@ void hash_string(std::uint64_t& hash, std::string_view value) noexcept {
         hash_bool(hash, row.host_evidence_available);
         hash_bool(hash, row.request_validation);
         hash_bool(hash, row.shaping_segments);
+        hash_bool(hash, row.shaping_direction_script_language);
         hash_bool(hash, row.glyph_clusters);
         hash_bool(hash, row.glyph_advances_offsets);
         hash_bool(hash, row.fallback_font_rows);
         hash_bool(hash, row.bidi_boundaries);
         hash_bool(hash, row.line_break_boundaries);
         hash_bool(hash, row.glyph_bitmap_rows);
+        hash_bool(hash, row.glyph_pixel_format_rows);
         hash_bool(hash, row.glyph_metric_rows);
         hash_bool(hash, row.atlas_placement_rows);
         hash_bool(hash, row.atlas_budget_rows);
         hash_bool(hash, row.atlas_eviction_diagnostics);
         hash_bool(hash, row.renderer_texture_upload_handoff);
         hash_bool(hash, row.selected_package_counter_evidence);
-        hash_bool(hash, row.ime_begin_update_end);
+        hash_bool(hash, row.ime_session_begin_end_rows);
+        hash_bool(hash, row.ime_composition_update_rows);
         hash_bool(hash, row.ime_candidate_rows);
-        hash_bool(hash, row.ime_text_area_rows);
+        hash_bool(hash, row.ime_text_area_cursor_rows);
         hash_bool(hash, row.ime_committed_text_rows);
+        hash_bool(hash, row.ime_clipboard_rows);
+        hash_bool(hash, row.ime_platform_adapter_proof_rows);
+        hash_bool(hash, row.ime_platform_host_gate_rows);
         hash_bool(hash, row.platform_adapter_dispatch_boundary);
         hash_bool(hash, row.accessibility_role_rows);
-        hash_bool(hash, row.accessibility_label_rows);
+        hash_bool(hash, row.accessibility_name_rows);
+        hash_bool(hash, row.accessibility_description_rows);
         hash_bool(hash, row.accessibility_state_rows);
         hash_bool(hash, row.accessibility_focus_rows);
         hash_bool(hash, row.accessibility_action_rows);
         hash_bool(hash, row.accessibility_relationship_rows);
         hash_bool(hash, row.accessibility_live_region_rows);
-        hash_bool(hash, row.accessibility_os_publication_gate);
+        hash_bool(hash, row.accessibility_keyboard_pattern_rows);
+        hash_bool(hash, row.accessibility_publication_status_rows);
+        hash_bool(hash, row.accessibility_uia_host_gate_rows);
+        hash_bool(hash, row.accessibility_platform_host_gate_rows);
         hash_bool(hash, row.requires_optional_dependency_adapter);
         hash_bool(hash, row.dependency_adapter_reviewed);
         hash_bool(hash, row.uses_public_native_handle);
@@ -305,6 +392,10 @@ std::string_view runtime_ui_production_stack_status_name(RuntimeUiProductionStac
         return "ready";
     case RuntimeUiProductionStackStatus::host_evidence_required:
         return "host_evidence_required";
+    case RuntimeUiProductionStackStatus::dependency_evidence_required:
+        return "dependency_evidence_required";
+    case RuntimeUiProductionStackStatus::evidence_skipped:
+        return "evidence_skipped";
     case RuntimeUiProductionStackStatus::no_rows:
         return "no_rows";
     case RuntimeUiProductionStackStatus::invalid_request:
@@ -358,6 +449,18 @@ RuntimeUiProductionStackPlan plan_runtime_ui_production_stack(const RuntimeUiPro
         }
 
         seen_features[static_cast<std::size_t>(row.feature)] = true;
+        const bool skipped = row.proof == RuntimeUiProductionProofKind::skipped;
+        const bool dependency_gated = row.requires_optional_dependency_adapter;
+        if (skipped) {
+            ++plan.skipped_rows;
+        }
+        if (dependency_gated) {
+            ++plan.dependency_gated_rows;
+        }
+        if (is_unsupported_claim(row)) {
+            ++plan.unsupported_rows;
+        }
+        record_adapter_invocation(plan, row);
 
         if (row.uses_public_native_handle || has_unsafe_native_reference(row.id)) {
             append_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::unsupported_native_handle, row.id,
@@ -379,6 +482,10 @@ RuntimeUiProductionStackPlan plan_runtime_ui_production_stack(const RuntimeUiPro
         if (row.invokes_adapter || row.invokes_native_platform || row.invokes_renderer_upload) {
             append_diagnostic(plan.diagnostics, RuntimeUiProductionDiagnosticCode::side_effect_invocation, row.id,
                               "runtime UI production evidence planning must not invoke adapters or host services");
+        }
+
+        if (skipped || dependency_gated) {
+            continue;
         }
 
         switch (row.feature) {
@@ -416,6 +523,9 @@ RuntimeUiProductionStackPlan plan_runtime_ui_production_stack(const RuntimeUiPro
     plan.selected_package_counter_evidence_ready = true;
 
     for (const auto& row : plan.rows) {
+        if (row.proof == RuntimeUiProductionProofKind::skipped || row.requires_optional_dependency_adapter) {
+            continue;
+        }
         if (row.host_evidence_required && !row.host_evidence_available) {
             ++plan.host_gated_rows;
         } else {
@@ -437,9 +547,17 @@ RuntimeUiProductionStackPlan plan_runtime_ui_production_stack(const RuntimeUiPro
     }
 
     plan.production_runtime_ui_ready = plan.text_stack_contract_ready && plan.selected_package_counter_evidence_ready &&
-                                       plan.host_gated_rows == 0U && plan.ready_rows == plan.rows.size();
-    plan.status = plan.production_runtime_ui_ready ? RuntimeUiProductionStackStatus::ready
-                                                   : RuntimeUiProductionStackStatus::host_evidence_required;
+                                       plan.host_gated_rows == 0U && plan.dependency_gated_rows == 0U &&
+                                       plan.skipped_rows == 0U && plan.ready_rows == plan.rows.size();
+    if (plan.production_runtime_ui_ready) {
+        plan.status = RuntimeUiProductionStackStatus::ready;
+    } else if (plan.host_gated_rows > 0U) {
+        plan.status = RuntimeUiProductionStackStatus::host_evidence_required;
+    } else if (plan.dependency_gated_rows > 0U) {
+        plan.status = RuntimeUiProductionStackStatus::dependency_evidence_required;
+    } else {
+        plan.status = RuntimeUiProductionStackStatus::evidence_skipped;
+    }
     return plan;
 }
 

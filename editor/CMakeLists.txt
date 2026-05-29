@@ -48,44 +48,7 @@ if(NOT MK_ENABLE_DESKTOP_GUI)
     return()
 endif()
 
-find_package(SDL3 CONFIG REQUIRED)
-find_package(imgui CONFIG REQUIRED)
-
-add_executable(MK_editor
-    src/main.cpp
-    src/material_preview_gpu_cache.cpp
-    src/sdl_viewport_texture.cpp
-)
-
-target_include_directories(MK_editor PRIVATE
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-)
-
-target_link_libraries(MK_editor
-    PRIVATE
-        MK_editor_core
-        MK_core
-        MK_assets
-        MK_math
-        MK_platform
-        MK_platform_sdl3
-        MK_renderer
-        MK_runtime_rhi
-        MK_scene
-        MK_scene_renderer
-        SDL3::SDL3
-        imgui::imgui
-)
-
-if(WIN32)
-    target_link_libraries(MK_editor PRIVATE MK_rhi_d3d12 MK_rhi_vulkan)
-    target_compile_definitions(MK_editor PRIVATE MK_EDITOR_ENABLE_D3D12=1 MK_EDITOR_ENABLE_VULKAN=1)
-endif()
-
-MK_apply_common_target_options(MK_editor)
-
-add_custom_command(TARGET MK_editor POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        $<TARGET_FILE:SDL3::SDL3>
-        $<TARGET_FILE_DIR:MK_editor>
+message(FATAL_ERROR
+    "MK_editor visible shell is deferred after SDL3 removal. "
+    "MK_editor_core remains the supported editor logic target; a future visible shell must use first-party Win32/D3D12 adapters and must not depend on SDL3."
 )

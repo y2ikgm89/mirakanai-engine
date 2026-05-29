@@ -6,6 +6,7 @@
 #include "mirakana/animation/skeleton.hpp"
 #include "mirakana/animation/state_machine.hpp"
 #include "mirakana/assets/asset_identity.hpp"
+#include "mirakana/assets/asset_import_production_review.hpp"
 #include "mirakana/assets/asset_registry.hpp"
 #include "mirakana/assets/asset_source_format.hpp"
 #include "mirakana/audio/audio_mixer.hpp"
@@ -20,6 +21,8 @@
 #include "mirakana/physics/physics3d.hpp"
 #include "mirakana/platform/filesystem.hpp"
 #include "mirakana/platform/input.hpp"
+#include "mirakana/renderer/debug_profiling_policy.hpp"
+#include "mirakana/renderer/gpu_memory_policy.hpp"
 #include "mirakana/renderer/production_vfx_profiling.hpp"
 #include "mirakana/renderer/renderer.hpp"
 #include "mirakana/renderer/renderer_quality_matrix.hpp"
@@ -37,9 +40,9 @@
 #include "mirakana/runtime/resource_runtime.hpp"
 #include "mirakana/runtime/session_services.hpp"
 #include "mirakana/runtime/world_entity_model.hpp"
-#include "mirakana/runtime_host/sdl3/sdl_desktop_game_host.hpp"
-#include "mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp"
 #include "mirakana/runtime_host/shader_bytecode.hpp"
+#include "mirakana/runtime_host/win32/win32_desktop_game_host.hpp"
+#include "mirakana/runtime_host/win32/win32_desktop_presentation.hpp"
 #include "mirakana/runtime_rhi/package_streaming_frame_graph.hpp"
 #include "mirakana/runtime_rhi/runtime_upload.hpp"
 #include "mirakana/runtime_scene/runtime_scene.hpp"
@@ -102,6 +105,9 @@ struct DesktopRuntimeOptions {
     bool require_quaternion_animation{false};
     bool require_package_streaming_safe_point{false};
     bool require_package_upload_staging{false};
+    bool require_ktx2_basis_texture_review{false};
+    bool require_gltf_scene_import_review{false};
+    bool require_source_image_audio_codec_review{false};
     bool require_gameplay_systems{false};
     bool require_scene_collision_package{false};
     bool require_entity_scale_culling{false};
@@ -110,7 +116,6 @@ struct DesktopRuntimeOptions {
     bool require_audio_gameplay_mixer{false};
     bool require_audio_production{false};
     std::uint32_t max_frames{0};
-    std::string video_driver_hint;
     std::string required_config_path;
     std::string required_scene_package_path;
 };
@@ -273,7 +278,7 @@ package_streaming_status_name(mirakana::runtime::RuntimePackageStreamingExecutio
 }
 
 [[nodiscard]] mirakana::runtime_rhi::RuntimePackageUploadStagingEvidence
-run_package_upload_staging_evidence(mirakana::SdlDesktopPresentation& presentation) {
+run_package_upload_staging_evidence(mirakana::Win32DesktopPresentation& presentation) {
     if (auto* device = presentation.scene_pbr_frame_rhi_device(); device != nullptr) {
         return mirakana::runtime_rhi::execute_runtime_package_upload_staging_evidence(*device);
     }
@@ -630,6 +635,51 @@ enum class GameplaySystemsStatus : std::uint8_t {
     return "unknown";
 }
 
+[[nodiscard]] const char* ktx_basis_texture_review_status_name(mirakana::KtxBasisTextureReviewStatus status) noexcept {
+    switch (status) {
+    case mirakana::KtxBasisTextureReviewStatus::ready:
+        return "ready";
+    case mirakana::KtxBasisTextureReviewStatus::host_evidence_required:
+        return "host_evidence_required";
+    case mirakana::KtxBasisTextureReviewStatus::dependency_evidence_required:
+        return "dependency_evidence_required";
+    case mirakana::KtxBasisTextureReviewStatus::no_rows:
+        return "no_rows";
+    case mirakana::KtxBasisTextureReviewStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] const char* gltf_scene_import_review_status_name(mirakana::GltfSceneImportReviewStatus status) noexcept {
+    switch (status) {
+    case mirakana::GltfSceneImportReviewStatus::ready:
+        return "ready";
+    case mirakana::GltfSceneImportReviewStatus::dependency_evidence_required:
+        return "dependency_evidence_required";
+    case mirakana::GltfSceneImportReviewStatus::no_rows:
+        return "no_rows";
+    case mirakana::GltfSceneImportReviewStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] const char*
+source_image_audio_codec_review_status_name(mirakana::SourceImageAudioCodecReviewStatus status) noexcept {
+    switch (status) {
+    case mirakana::SourceImageAudioCodecReviewStatus::ready:
+        return "ready";
+    case mirakana::SourceImageAudioCodecReviewStatus::dependency_evidence_required:
+        return "dependency_evidence_required";
+    case mirakana::SourceImageAudioCodecReviewStatus::no_rows:
+        return "no_rows";
+    case mirakana::SourceImageAudioCodecReviewStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
+}
+
 struct AudioGameplayMixerProbeResult {
     bool ready{false};
     std::size_t diagnostics{0U};
@@ -675,6 +725,91 @@ struct AudioProductionProbeResult {
     std::size_t diagnostics{0U};
     std::uint64_t replay_hash{0U};
     bool package_evidence_ready{false};
+};
+
+struct KtxBasisTextureReviewProbeResult {
+    mirakana::KtxBasisTextureReviewStatus status{mirakana::KtxBasisTextureReviewStatus::invalid_request};
+    bool reviewed{false};
+    bool ready{false};
+    std::size_t rows{0U};
+    std::size_t ready_rows{0U};
+    std::size_t host_gated_rows{0U};
+    std::size_t dependency_gated_rows{0U};
+    std::size_t unsupported_claim_rows{0U};
+    std::size_t container_validation_rows{0U};
+    std::size_t supercompression_policy_rows{0U};
+    std::size_t transcode_target_policy_rows{0U};
+    std::size_t gpu_target_compatibility_rows{0U};
+    std::size_t source_provenance_rows{0U};
+    std::size_t package_output_rows{0U};
+    std::size_t host_tool_gate_rows{0U};
+    bool dependency_legal_records_ready{false};
+    bool selected_package_evidence_ready{false};
+    bool ktx_basis_review_ready{false};
+    bool broad_texture_codec_ready{false};
+    bool invoked_runtime_transcoding{false};
+    bool invoked_gpu_upload{false};
+    bool invoked_compression_tool{false};
+    std::size_t diagnostics{0U};
+    std::uint64_t replay_hash{0U};
+};
+
+struct GltfSceneImportReviewProbeResult {
+    mirakana::GltfSceneImportReviewStatus status{mirakana::GltfSceneImportReviewStatus::invalid_request};
+    bool reviewed{false};
+    bool ready{false};
+    std::size_t rows{0U};
+    std::size_t ready_rows{0U};
+    std::size_t dependency_gated_rows{0U};
+    std::size_t unsupported_claim_rows{0U};
+    std::size_t source_root_rows{0U};
+    std::size_t parser_validation_rows{0U};
+    std::size_t geometry_payload_rows{0U};
+    std::size_t material_payload_rows{0U};
+    std::size_t animation_payload_rows{0U};
+    std::size_t external_resource_policy_rows{0U};
+    std::size_t source_provenance_rows{0U};
+    std::size_t package_output_rows{0U};
+    bool dependency_legal_records_ready{false};
+    bool selected_package_evidence_ready{false};
+    bool gltf_scene_import_ready{false};
+    bool broad_scene_import_ready{false};
+    bool invoked_external_network_fetch{false};
+    bool invoked_runtime_source_parsing{false};
+    bool leaked_parser_type{false};
+    bool exposed_native_handle{false};
+    bool mutated_packages{false};
+    std::size_t diagnostics{0U};
+    std::uint64_t replay_hash{0U};
+};
+
+struct SourceImageAudioCodecReviewProbeResult {
+    mirakana::SourceImageAudioCodecReviewStatus status{mirakana::SourceImageAudioCodecReviewStatus::invalid_request};
+    bool reviewed{false};
+    bool ready{false};
+    std::size_t rows{0U};
+    std::size_t ready_rows{0U};
+    std::size_t dependency_gated_rows{0U};
+    std::size_t unsupported_claim_rows{0U};
+    std::size_t png_decode_rows{0U};
+    std::size_t png_pixel_format_rows{0U};
+    std::size_t audio_decode_rows{0U};
+    std::size_t audio_sample_format_rows{0U};
+    std::size_t source_provenance_rows{0U};
+    std::size_t package_output_rows{0U};
+    bool dependency_legal_records_ready{false};
+    bool selected_package_evidence_ready{false};
+    bool source_image_audio_codec_ready{false};
+    bool broad_image_codec_ready{false};
+    bool broad_audio_codec_ready{false};
+    bool invoked_svg_vector_decode{false};
+    bool invoked_background_decode_streaming{false};
+    bool invoked_hrtf_middleware{false};
+    bool invoked_runtime_source_parsing{false};
+    bool exposed_native_handle{false};
+    bool mutated_packages{false};
+    std::size_t diagnostics{0U};
+    std::uint64_t replay_hash{0U};
 };
 
 [[nodiscard]] AudioGameplayMixerProbeResult
@@ -868,7 +1003,7 @@ validate_audio_production_package_evidence(const mirakana::AudioClipSampleData& 
         .device_lifecycle_rows =
             {
                 mirakana::AudioProductionDeviceLifecycleRow{
-                    .backend_id = "sdl3",
+                    .backend_id = "wasapi",
                     .uses_logical_device = true,
                     .uses_audio_stream = true,
                     .uses_queueing = true,
@@ -936,6 +1071,366 @@ validate_audio_production_package_evidence(const mirakana::AudioClipSampleData& 
         !result.invoked_device_callback && !result.invoked_device_io && result.diagnostics == 2U &&
         result.replay_hash != 0U;
     return result;
+}
+
+[[nodiscard]] mirakana::KtxBasisTextureReviewRow
+make_ktx_basis_texture_review_row(mirakana::KtxBasisTextureReviewFeature feature, std::uint32_t source_index) {
+    const auto has_ktx_dependency = feature != mirakana::KtxBasisTextureReviewFeature::host_tool_gate;
+    const auto is_host_tool_gate = feature == mirakana::KtxBasisTextureReviewFeature::host_tool_gate;
+
+    return mirakana::KtxBasisTextureReviewRow{
+        .row_id = std::string{"ktx2-basis."} + std::to_string(source_index),
+        .feature = feature,
+        .container_validator_ids = feature == mirakana::KtxBasisTextureReviewFeature::container_validation
+                                       ? std::vector<std::string>{"ktx2check-review"}
+                                       : std::vector<std::string>{},
+        .supercompression_scheme =
+            feature == mirakana::KtxBasisTextureReviewFeature::supercompression_policy ? "basis-uastc" : "",
+        .transcode_policy =
+            feature == mirakana::KtxBasisTextureReviewFeature::transcode_target_policy ? "offline-reviewed-target" : "",
+        .transcode_target =
+            feature == mirakana::KtxBasisTextureReviewFeature::transcode_target_policy ? "bc7-rgba" : "",
+        .gpu_target =
+            feature == mirakana::KtxBasisTextureReviewFeature::gpu_target_compatibility ? "d3d12-bc7-rgba" : "",
+        .source_provenance_ids = feature == mirakana::KtxBasisTextureReviewFeature::source_provenance
+                                     ? std::vector<std::string>{"provenance.ktx2-basis-source"}
+                                     : std::vector<std::string>{},
+        .package_output_rows = feature == mirakana::KtxBasisTextureReviewFeature::package_output
+                                   ? std::vector<std::string>{"runtime/assets/3d/ktx2_basis_texture.geasset"}
+                                   : std::vector<std::string>{},
+        .dependency_ids = has_ktx_dependency ? std::vector<std::string>{"vcpkg.ktx"} : std::vector<std::string>{},
+        .license_ids = has_ktx_dependency || feature == mirakana::KtxBasisTextureReviewFeature::source_provenance
+                           ? std::vector<std::string>{"LicenseRef-KTX-Software"}
+                           : std::vector<std::string>{},
+        .deterministic_content_hash = std::string{"sha256:ktx2-basis-row-"} + std::to_string(source_index),
+        .reviewed = true,
+        .container_validation_evidence = feature == mirakana::KtxBasisTextureReviewFeature::container_validation,
+        .supercompression_policy_evidence = feature == mirakana::KtxBasisTextureReviewFeature::supercompression_policy,
+        .transcode_target_evidence = feature == mirakana::KtxBasisTextureReviewFeature::transcode_target_policy,
+        .gpu_target_compatibility_evidence =
+            feature == mirakana::KtxBasisTextureReviewFeature::gpu_target_compatibility,
+        .source_provenance_evidence = feature == mirakana::KtxBasisTextureReviewFeature::source_provenance,
+        .package_output_evidence = feature == mirakana::KtxBasisTextureReviewFeature::package_output,
+        .dependency_legal_evidence = has_ktx_dependency,
+        .dependency_gate_required = false,
+        .host_tool_validated = false,
+        .host_tool_gate_required = is_host_tool_gate,
+        .request_runtime_transcoding = false,
+        .request_gpu_upload = false,
+        .request_compression_execution = false,
+        .request_native_handle_access = false,
+        .request_broad_texture_codec_claim = false,
+        .source_index = source_index,
+    };
+}
+
+[[nodiscard]] KtxBasisTextureReviewProbeResult validate_ktx_basis_texture_review_package_evidence() {
+    const mirakana::KtxBasisTextureReviewFeature required_features[] = {
+        mirakana::KtxBasisTextureReviewFeature::container_validation,
+        mirakana::KtxBasisTextureReviewFeature::supercompression_policy,
+        mirakana::KtxBasisTextureReviewFeature::transcode_target_policy,
+        mirakana::KtxBasisTextureReviewFeature::gpu_target_compatibility,
+        mirakana::KtxBasisTextureReviewFeature::source_provenance,
+        mirakana::KtxBasisTextureReviewFeature::package_output,
+        mirakana::KtxBasisTextureReviewFeature::host_tool_gate,
+    };
+
+    std::vector<mirakana::KtxBasisTextureReviewRow> rows;
+    rows.reserve(7U);
+    std::uint32_t source_index{1U};
+    for (const auto feature : required_features) {
+        rows.push_back(make_ktx_basis_texture_review_row(feature, source_index++));
+    }
+
+    const auto review = mirakana::review_ktx_basis_texture_readiness(mirakana::KtxBasisTextureReviewRequest{
+        .required_features =
+            {
+                mirakana::KtxBasisTextureReviewFeature::container_validation,
+                mirakana::KtxBasisTextureReviewFeature::supercompression_policy,
+                mirakana::KtxBasisTextureReviewFeature::transcode_target_policy,
+                mirakana::KtxBasisTextureReviewFeature::gpu_target_compatibility,
+                mirakana::KtxBasisTextureReviewFeature::source_provenance,
+                mirakana::KtxBasisTextureReviewFeature::package_output,
+                mirakana::KtxBasisTextureReviewFeature::host_tool_gate,
+            },
+        .rows = std::move(rows),
+        .row_budget = 16U,
+        .seed = 379U,
+    });
+
+    return KtxBasisTextureReviewProbeResult{
+        .status = review.status,
+        .reviewed = review.status != mirakana::KtxBasisTextureReviewStatus::no_rows &&
+                    review.status != mirakana::KtxBasisTextureReviewStatus::invalid_request,
+        .ready = review.selected_package_evidence_ready,
+        .rows = review.row_count,
+        .ready_rows = review.ready_row_count,
+        .host_gated_rows = review.host_gated_row_count,
+        .dependency_gated_rows = review.dependency_gated_row_count,
+        .unsupported_claim_rows = review.unsupported_claim_row_count,
+        .container_validation_rows = review.container_validation_rows,
+        .supercompression_policy_rows = review.supercompression_policy_rows,
+        .transcode_target_policy_rows = review.transcode_target_policy_rows,
+        .gpu_target_compatibility_rows = review.gpu_target_compatibility_rows,
+        .source_provenance_rows = review.source_provenance_rows,
+        .package_output_rows = review.package_output_rows,
+        .host_tool_gate_rows = review.host_tool_gate_rows,
+        .dependency_legal_records_ready = review.dependency_legal_records_ready,
+        .selected_package_evidence_ready = review.selected_package_evidence_ready,
+        .ktx_basis_review_ready = review.ktx_basis_review_ready,
+        .broad_texture_codec_ready = review.broad_texture_codec_ready,
+        .invoked_runtime_transcoding = review.invoked_runtime_transcoding,
+        .invoked_gpu_upload = review.invoked_gpu_upload,
+        .invoked_compression_tool = review.invoked_compression_tool,
+        .diagnostics = review.diagnostics.size(),
+        .replay_hash = review.replay_hash,
+    };
+}
+
+[[nodiscard]] mirakana::GltfSceneImportReviewRow
+make_gltf_scene_import_review_row(mirakana::GltfSceneImportReviewFeature feature, std::uint32_t source_index) {
+    return mirakana::GltfSceneImportReviewRow{
+        .row_id = std::string{"gltf-scene-import."} + std::to_string(source_index),
+        .feature = feature,
+        .source_root = "source/assets/3d",
+        .importer_id = "reviewed.gltf-scene-import",
+        .declared_extensions = {".gltf", ".glb"},
+        .validator_ids = feature == mirakana::GltfSceneImportReviewFeature::parser_validation
+                             ? std::vector<std::string>{"gltf-validator"}
+                             : std::vector<std::string>{},
+        .dependency_ids = {"vcpkg.asset-importers"},
+        .license_ids = {"third-party-notice.asset-importers", "LicenseRef-Proprietary"},
+        .provenance_ids = feature == mirakana::GltfSceneImportReviewFeature::source_provenance
+                              ? std::vector<std::string>{"provenance.gltf-scene-import-source"}
+                              : std::vector<std::string>{},
+        .package_output_rows = feature == mirakana::GltfSceneImportReviewFeature::package_output
+                                   ? std::vector<std::string>{"runtime/assets/3d/gltf_scene_import.geasset"}
+                                   : std::vector<std::string>{},
+        .deterministic_content_hash = std::string{"sha256:gltf-scene-import-row-"} + std::to_string(source_index),
+        .external_resource_policy = feature == mirakana::GltfSceneImportReviewFeature::external_resource_policy
+                                        ? "local-file-or-glb-buffer-only"
+                                        : "",
+        .reviewed = true,
+        .source_root_evidence = feature == mirakana::GltfSceneImportReviewFeature::source_root_policy,
+        .parser_validation_evidence = feature == mirakana::GltfSceneImportReviewFeature::parser_validation,
+        .geometry_payload_evidence = feature == mirakana::GltfSceneImportReviewFeature::geometry_payload,
+        .material_payload_evidence = feature == mirakana::GltfSceneImportReviewFeature::material_payload,
+        .animation_payload_evidence = feature == mirakana::GltfSceneImportReviewFeature::animation_payload,
+        .external_resource_policy_evidence =
+            feature == mirakana::GltfSceneImportReviewFeature::external_resource_policy,
+        .source_provenance_evidence = feature == mirakana::GltfSceneImportReviewFeature::source_provenance,
+        .package_output_evidence = feature == mirakana::GltfSceneImportReviewFeature::package_output,
+        .dependency_legal_evidence = true,
+        .dependency_gate_required = false,
+        .request_arbitrary_extension = false,
+        .request_external_network_fetch = false,
+        .request_runtime_source_parsing = false,
+        .request_parser_type_access = false,
+        .request_native_handle_access = false,
+        .request_broad_scene_import_claim = false,
+        .request_package_mutation = false,
+        .source_index = source_index,
+    };
+}
+
+[[nodiscard]] GltfSceneImportReviewProbeResult validate_gltf_scene_import_review_package_evidence() {
+    const mirakana::GltfSceneImportReviewFeature required_features[] = {
+        mirakana::GltfSceneImportReviewFeature::source_root_policy,
+        mirakana::GltfSceneImportReviewFeature::parser_validation,
+        mirakana::GltfSceneImportReviewFeature::geometry_payload,
+        mirakana::GltfSceneImportReviewFeature::material_payload,
+        mirakana::GltfSceneImportReviewFeature::animation_payload,
+        mirakana::GltfSceneImportReviewFeature::external_resource_policy,
+        mirakana::GltfSceneImportReviewFeature::source_provenance,
+        mirakana::GltfSceneImportReviewFeature::package_output,
+    };
+
+    std::vector<mirakana::GltfSceneImportReviewRow> rows;
+    rows.reserve(8U);
+    std::uint32_t source_index{1U};
+    for (const auto feature : required_features) {
+        rows.push_back(make_gltf_scene_import_review_row(feature, source_index++));
+    }
+
+    const auto review = mirakana::review_gltf_scene_import_readiness(mirakana::GltfSceneImportReviewRequest{
+        .required_features =
+            {
+                mirakana::GltfSceneImportReviewFeature::source_root_policy,
+                mirakana::GltfSceneImportReviewFeature::parser_validation,
+                mirakana::GltfSceneImportReviewFeature::geometry_payload,
+                mirakana::GltfSceneImportReviewFeature::material_payload,
+                mirakana::GltfSceneImportReviewFeature::animation_payload,
+                mirakana::GltfSceneImportReviewFeature::external_resource_policy,
+                mirakana::GltfSceneImportReviewFeature::source_provenance,
+                mirakana::GltfSceneImportReviewFeature::package_output,
+            },
+        .rows = std::move(rows),
+        .row_budget = 16U,
+        .seed = 571U,
+    });
+
+    return GltfSceneImportReviewProbeResult{
+        .status = review.status,
+        .reviewed = review.status != mirakana::GltfSceneImportReviewStatus::no_rows &&
+                    review.status != mirakana::GltfSceneImportReviewStatus::invalid_request,
+        .ready = review.selected_package_evidence_ready,
+        .rows = review.row_count,
+        .ready_rows = review.ready_row_count,
+        .dependency_gated_rows = review.dependency_gated_row_count,
+        .unsupported_claim_rows = review.unsupported_claim_row_count,
+        .source_root_rows = review.source_root_rows,
+        .parser_validation_rows = review.parser_validation_rows,
+        .geometry_payload_rows = review.geometry_payload_rows,
+        .material_payload_rows = review.material_payload_rows,
+        .animation_payload_rows = review.animation_payload_rows,
+        .external_resource_policy_rows = review.external_resource_policy_rows,
+        .source_provenance_rows = review.source_provenance_rows,
+        .package_output_rows = review.package_output_rows,
+        .dependency_legal_records_ready = review.dependency_legal_records_ready,
+        .selected_package_evidence_ready = review.selected_package_evidence_ready,
+        .gltf_scene_import_ready = review.gltf_scene_import_ready,
+        .broad_scene_import_ready = review.broad_scene_import_ready,
+        .invoked_external_network_fetch = review.invoked_external_network_fetch,
+        .invoked_runtime_source_parsing = review.invoked_runtime_source_parsing,
+        .leaked_parser_type = review.leaked_parser_type,
+        .exposed_native_handle = review.exposed_native_handle,
+        .mutated_packages = review.mutated_packages,
+        .diagnostics = review.diagnostics.size(),
+        .replay_hash = review.replay_hash,
+    };
+}
+
+[[nodiscard]] mirakana::SourceImageAudioCodecReviewRow
+make_source_image_audio_codec_review_row(mirakana::SourceImageAudioCodecReviewFeature feature,
+                                         std::uint32_t source_index) {
+    const auto is_png = feature == mirakana::SourceImageAudioCodecReviewFeature::png_decode_adapter ||
+                        feature == mirakana::SourceImageAudioCodecReviewFeature::png_pixel_format;
+    const auto is_audio = feature == mirakana::SourceImageAudioCodecReviewFeature::audio_decode_adapter ||
+                          feature == mirakana::SourceImageAudioCodecReviewFeature::audio_sample_format;
+    const auto has_both_dependencies = feature == mirakana::SourceImageAudioCodecReviewFeature::source_provenance ||
+                                       feature == mirakana::SourceImageAudioCodecReviewFeature::package_output;
+
+    return mirakana::SourceImageAudioCodecReviewRow{
+        .row_id = std::string{"source-image-audio-codec."} + std::to_string(source_index),
+        .feature = feature,
+        .source_root = "source/assets/3d",
+        .importer_id = is_png     ? "reviewed.libspng-png-rgba8"
+                       : is_audio ? "reviewed.miniaudio-common-audio-pcm"
+                                  : "reviewed.source-image-audio-codec-package",
+        .declared_extensions = is_png                  ? std::vector<std::string>{".png"}
+                               : is_audio              ? std::vector<std::string>{".wav", ".flac", ".mp3"}
+                               : has_both_dependencies ? std::vector<std::string>{".png", ".wav", ".flac", ".mp3"}
+                                                       : std::vector<std::string>{},
+        .dependency_ids = is_png                  ? std::vector<std::string>{"vcpkg.libspng"}
+                          : is_audio              ? std::vector<std::string>{"vcpkg.miniaudio"}
+                          : has_both_dependencies ? std::vector<std::string>{"vcpkg.libspng", "vcpkg.miniaudio"}
+                                                  : std::vector<std::string>{},
+        .license_ids = is_png     ? std::vector<std::string>{"BSD-2-Clause.libspng"}
+                       : is_audio ? std::vector<std::string>{"MIT-0-or-Unlicense.miniaudio"}
+                       : has_both_dependencies
+                           ? std::vector<std::string>{"BSD-2-Clause.libspng", "MIT-0-or-Unlicense.miniaudio"}
+                           : std::vector<std::string>{},
+        .provenance_ids = feature == mirakana::SourceImageAudioCodecReviewFeature::source_provenance
+                              ? std::vector<std::string>{"provenance.source-image-audio-codec-source"}
+                              : std::vector<std::string>{},
+        .package_output_rows = feature == mirakana::SourceImageAudioCodecReviewFeature::package_output
+                                   ? std::vector<std::string>{"runtime/assets/3d/base_color.texture.geasset",
+                                                              "runtime/assets/3d/gameplay_systems.audio.geasset"}
+                                   : std::vector<std::string>{},
+        .deterministic_content_hash =
+            std::string{"sha256:source-image-audio-codec-row-"} + std::to_string(source_index),
+        .image_pixel_format = is_png ? "rgba8_unorm" : "",
+        .image_width = is_png ? 1U : 0U,
+        .image_height = is_png ? 1U : 0U,
+        .audio_sample_format = is_audio ? "float32" : "",
+        .audio_channels = is_audio ? 2U : 0U,
+        .audio_sample_rate = is_audio ? 44100U : 0U,
+        .audio_frame_count = is_audio ? 1U : 0U,
+        .reviewed = true,
+        .source_root_evidence = true,
+        .decode_adapter_evidence = feature == mirakana::SourceImageAudioCodecReviewFeature::png_decode_adapter ||
+                                   feature == mirakana::SourceImageAudioCodecReviewFeature::audio_decode_adapter,
+        .pixel_format_evidence = feature == mirakana::SourceImageAudioCodecReviewFeature::png_pixel_format,
+        .sample_format_evidence = feature == mirakana::SourceImageAudioCodecReviewFeature::audio_sample_format,
+        .source_provenance_evidence = feature == mirakana::SourceImageAudioCodecReviewFeature::source_provenance,
+        .package_output_evidence = feature == mirakana::SourceImageAudioCodecReviewFeature::package_output,
+        .deterministic_hash_evidence = true,
+        .dependency_legal_evidence = true,
+        .dependency_gate_required = false,
+        .request_svg_vector_codec = false,
+        .request_broad_image_codec = false,
+        .request_broad_audio_codec = false,
+        .request_background_decode_streaming = false,
+        .request_hrtf_middleware = false,
+        .request_runtime_source_parsing = false,
+        .request_native_handle_access = false,
+        .request_package_mutation = false,
+        .source_index = source_index,
+    };
+}
+
+[[nodiscard]] SourceImageAudioCodecReviewProbeResult validate_source_image_audio_codec_review_package_evidence() {
+    const mirakana::SourceImageAudioCodecReviewFeature required_features[] = {
+        mirakana::SourceImageAudioCodecReviewFeature::png_decode_adapter,
+        mirakana::SourceImageAudioCodecReviewFeature::png_pixel_format,
+        mirakana::SourceImageAudioCodecReviewFeature::audio_decode_adapter,
+        mirakana::SourceImageAudioCodecReviewFeature::audio_sample_format,
+        mirakana::SourceImageAudioCodecReviewFeature::source_provenance,
+        mirakana::SourceImageAudioCodecReviewFeature::package_output,
+    };
+
+    std::vector<mirakana::SourceImageAudioCodecReviewRow> rows;
+    rows.reserve(6U);
+    std::uint32_t source_index{1U};
+    for (const auto feature : required_features) {
+        rows.push_back(make_source_image_audio_codec_review_row(feature, source_index++));
+    }
+
+    const auto review =
+        mirakana::review_source_image_audio_codec_readiness(mirakana::SourceImageAudioCodecReviewRequest{
+            .required_features =
+                {
+                    mirakana::SourceImageAudioCodecReviewFeature::png_decode_adapter,
+                    mirakana::SourceImageAudioCodecReviewFeature::png_pixel_format,
+                    mirakana::SourceImageAudioCodecReviewFeature::audio_decode_adapter,
+                    mirakana::SourceImageAudioCodecReviewFeature::audio_sample_format,
+                    mirakana::SourceImageAudioCodecReviewFeature::source_provenance,
+                    mirakana::SourceImageAudioCodecReviewFeature::package_output,
+                },
+            .rows = std::move(rows),
+            .row_budget = 16U,
+            .seed = 613U,
+        });
+
+    return SourceImageAudioCodecReviewProbeResult{
+        .status = review.status,
+        .reviewed = review.status != mirakana::SourceImageAudioCodecReviewStatus::no_rows &&
+                    review.status != mirakana::SourceImageAudioCodecReviewStatus::invalid_request,
+        .ready = review.selected_package_evidence_ready,
+        .rows = review.row_count,
+        .ready_rows = review.ready_row_count,
+        .dependency_gated_rows = review.dependency_gated_row_count,
+        .unsupported_claim_rows = review.unsupported_claim_row_count,
+        .png_decode_rows = review.png_decode_rows,
+        .png_pixel_format_rows = review.png_pixel_format_rows,
+        .audio_decode_rows = review.audio_decode_rows,
+        .audio_sample_format_rows = review.audio_sample_format_rows,
+        .source_provenance_rows = review.source_provenance_rows,
+        .package_output_rows = review.package_output_rows,
+        .dependency_legal_records_ready = review.dependency_legal_records_ready,
+        .selected_package_evidence_ready = review.selected_package_evidence_ready,
+        .source_image_audio_codec_ready = review.source_image_audio_codec_ready,
+        .broad_image_codec_ready = review.broad_image_codec_ready,
+        .broad_audio_codec_ready = review.broad_audio_codec_ready,
+        .invoked_svg_vector_decode = review.invoked_svg_vector_decode,
+        .invoked_background_decode_streaming = review.invoked_background_decode_streaming,
+        .invoked_hrtf_middleware = review.invoked_hrtf_middleware,
+        .invoked_runtime_source_parsing = review.invoked_runtime_source_parsing,
+        .exposed_native_handle = review.exposed_native_handle,
+        .mutated_packages = review.mutated_packages,
+        .diagnostics = review.diagnostics.size(),
+        .replay_hash = review.replay_hash,
+    };
 }
 
 [[nodiscard]] std::string_view
@@ -1296,6 +1791,25 @@ struct RenderingVfxProfilingProbeResult {
     bool invoked_gpu_commands{false};
     bool invoked_native_capture{false};
     bool invoked_crash_upload{false};
+    bool debug_policy_ready{false};
+    bool debug_cpu_profile_zone_evidence_ready{false};
+    bool debug_trace_capture_handoff_evidence_ready{false};
+    bool debug_package_counter_evidence_ready{false};
+    bool memory_policy_ready{false};
+    bool memory_budget_evidence_ready{false};
+    bool memory_residency_pressure_evidence_ready{false};
+    bool memory_package_counter_evidence_ready{false};
+    std::uint64_t debug_gpu_timestamp_ticks_per_second{0U};
+    std::uint64_t debug_cpu_profile_zones{0U};
+    std::uint64_t debug_trace_capture_handoff_rows{0U};
+    std::uint64_t memory_requested_bytes{0U};
+    std::uint64_t memory_residency_pressure_events{0U};
+    std::uint32_t debug_cpu_profile_zone_requests{0U};
+    std::uint32_t debug_trace_capture_handoff_requests{0U};
+    std::uint32_t debug_package_counter_requests{0U};
+    std::uint32_t memory_declared_budget_requests{0U};
+    std::uint32_t memory_residency_pressure_requests{0U};
+    std::uint32_t memory_package_counter_requests{0U};
     std::size_t diagnostics{0U};
     bool reviewed{false};
     bool ready{false};
@@ -2396,6 +2910,78 @@ validate_simulation_management_package_evidence(std::string_view sample_id) {
                     .seed = 123U,
                 });
 
+    const std::vector<mirakana::DebugProfilingRequestDesc> debug_policy_requests{
+        mirakana::DebugProfilingRequestDesc{
+            .capture_kind = mirakana::DebugProfilingCaptureKind::pix_gpu_handoff,
+            .require_gpu_timestamps = true,
+            .require_gpu_debug_markers = true,
+            .require_capture_handoff_evidence = true,
+            .require_cpu_profile_zone_evidence = true,
+            .require_trace_capture_handoff_evidence = true,
+            .require_package_counter_evidence = true,
+            .scene_frame_resources_available = true,
+            .request_automatic_capture_execution = false,
+            .request_production_flame_graph = false,
+            .request_crash_telemetry_export = false,
+            .source_index = 16U,
+        },
+    };
+    const auto debug_policy = mirakana::plan_debug_profiling_policy(mirakana::DebugProfilingPolicyDesc{
+        .requests = debug_policy_requests,
+        .expected_frames = 2U,
+        .frames_finished = 2U,
+        .gpu_timestamp_ticks_per_second = 1000000000ULL,
+        .gpu_debug_scopes_begun = 2U,
+        .gpu_debug_scopes_ended = 2U,
+        .gpu_debug_markers_inserted = 2U,
+        .cpu_profile_zone_count = 2U,
+        .trace_capture_handoff_row_count = 1U,
+        .framegraph_barrier_steps_executed = 4U,
+        .framegraph_render_passes_recorded = 2U,
+        .backend = Backend::d3d12,
+        .require_backend_profiling_evidence = true,
+        .backend_profiling_evidence_ready = true,
+        .package_counter_evidence_ready = true,
+    });
+
+    const std::vector<mirakana::GpuMemoryRequestDesc> memory_policy_requests{
+        mirakana::GpuMemoryRequestDesc{
+            .residency = mirakana::GpuMemoryResidencyClass::placed,
+            .requested_bytes = 32ULL * 1024ULL * 1024ULL,
+            .transient_heap = mirakana::GpuMemoryTransientHeapPolicy::alias_group_heap,
+            .upload_pressure = mirakana::GpuMemoryUploadPressureKind::ring_buffer,
+            .scene_resources_available = true,
+            .request_background_streaming = false,
+            .request_automatic_eviction = false,
+            .require_declared_budget_evidence = true,
+            .require_residency_pressure_evidence = true,
+            .require_package_counter_evidence = true,
+            .source_index = 17U,
+        },
+    };
+    const auto memory_policy = mirakana::plan_gpu_memory_policy(mirakana::GpuMemoryPolicyDesc{
+        .requests = memory_policy_requests,
+        .declared_local_budget_bytes = 128ULL * 1024ULL * 1024ULL,
+        .declared_non_local_budget_bytes = 0U,
+        .os_video_memory_budget_available = true,
+        .os_local_budget_bytes = 256ULL * 1024ULL * 1024ULL,
+        .os_local_usage_bytes = 64ULL * 1024ULL * 1024ULL,
+        .os_non_local_budget_bytes = 0U,
+        .os_non_local_usage_bytes = 0U,
+        .committed_byte_estimate_available = true,
+        .committed_byte_estimate = 32ULL * 1024ULL * 1024ULL,
+        .transient_heap_allocations = 1U,
+        .transient_placed_allocations = 1U,
+        .transient_placed_resources_alive = 1U,
+        .upload_bytes_written = 4ULL * 1024ULL * 1024ULL,
+        .residency_pressure_event_count = 2U,
+        .backend = Backend::d3d12,
+        .require_backend_memory_evidence = true,
+        .backend_memory_evidence_ready = true,
+        .require_os_video_memory_budget = true,
+        .package_counter_evidence_ready = true,
+    });
+
     RenderingVfxProfilingProbeResult result;
     result.status = plan.status;
     result.feature_rows = plan.feature_row_count;
@@ -2421,19 +3007,42 @@ validate_simulation_management_package_evidence(std::string_view sample_id) {
     result.invoked_gpu_commands = plan.invoked_gpu_commands;
     result.invoked_native_capture = plan.invoked_native_capture;
     result.invoked_crash_upload = plan.invoked_crash_upload;
+    result.debug_policy_ready = debug_policy.succeeded();
+    result.debug_cpu_profile_zone_evidence_ready = debug_policy.cpu_profile_zone_evidence_ready;
+    result.debug_trace_capture_handoff_evidence_ready = debug_policy.trace_capture_handoff_evidence_ready;
+    result.debug_package_counter_evidence_ready = debug_policy.package_counter_evidence_ready;
+    result.memory_policy_ready = memory_policy.succeeded();
+    result.memory_budget_evidence_ready = memory_policy.memory_budget_evidence_ready;
+    result.memory_residency_pressure_evidence_ready = memory_policy.residency_pressure_evidence_ready;
+    result.memory_package_counter_evidence_ready = memory_policy.package_counter_evidence_ready;
+    result.debug_gpu_timestamp_ticks_per_second = debug_policy.gpu_timestamp_ticks_per_second;
+    result.debug_cpu_profile_zones = debug_policy.cpu_profile_zone_count;
+    result.debug_trace_capture_handoff_rows = debug_policy.trace_capture_handoff_row_count;
+    result.memory_requested_bytes = memory_policy.total_requested_bytes;
+    result.memory_residency_pressure_events = memory_policy.residency_pressure_event_count;
+    result.debug_cpu_profile_zone_requests = debug_policy.cpu_profile_zone_request_count;
+    result.debug_trace_capture_handoff_requests = debug_policy.trace_capture_handoff_request_count;
+    result.debug_package_counter_requests = debug_policy.package_counter_request_count;
+    result.memory_declared_budget_requests = memory_policy.declared_budget_request_count;
+    result.memory_residency_pressure_requests = memory_policy.residency_pressure_request_count;
+    result.memory_package_counter_requests = memory_policy.package_counter_request_count;
     result.diagnostics = plan.diagnostics.size();
-    result.reviewed = plan.status == Status::host_evidence_required && result.feature_rows == 3U &&
-                      result.gpu_particle_budget_rows == 3U && result.postprocess_rows == 3U &&
-                      result.backend_timing_rows == 3U && result.backend_evidence_rows == 3U &&
-                      result.backend_evidence_ready == 2U && result.backend_evidence_host_gated == 1U &&
-                      result.cpu_profile_rows == 3U && result.package_counter_rows == 3U &&
-                      result.package_counter_ready == 2U && result.package_counter_host_gated == 1U &&
-                      result.crash_telemetry_handoff_rows == 3U && result.host_validated_backends == 2U &&
-                      result.rejected_unsafe_rows == 0U && result.replay_hash != 0U &&
-                      result.d3d12_host_evidence_ready && result.vulkan_strict_host_evidence_ready &&
-                      !result.metal_host_evidence_ready && result.requires_metal_host_evidence &&
-                      !result.has_metal_host_evidence && !result.invoked_gpu_commands &&
-                      !result.invoked_native_capture && !result.invoked_crash_upload && result.diagnostics == 0U;
+    result.reviewed =
+        plan.status == Status::host_evidence_required && result.feature_rows == 3U &&
+        result.gpu_particle_budget_rows == 3U && result.postprocess_rows == 3U && result.backend_timing_rows == 3U &&
+        result.backend_evidence_rows == 3U && result.backend_evidence_ready == 2U &&
+        result.backend_evidence_host_gated == 1U && result.cpu_profile_rows == 3U &&
+        result.package_counter_rows == 3U && result.package_counter_ready == 2U &&
+        result.package_counter_host_gated == 1U && result.crash_telemetry_handoff_rows == 3U &&
+        result.host_validated_backends == 2U && result.rejected_unsafe_rows == 0U && result.replay_hash != 0U &&
+        result.d3d12_host_evidence_ready && result.vulkan_strict_host_evidence_ready &&
+        !result.metal_host_evidence_ready && result.requires_metal_host_evidence && !result.has_metal_host_evidence &&
+        !result.invoked_gpu_commands && !result.invoked_native_capture && !result.invoked_crash_upload &&
+        result.debug_policy_ready && result.debug_cpu_profile_zone_evidence_ready &&
+        result.debug_trace_capture_handoff_evidence_ready && result.debug_package_counter_evidence_ready &&
+        result.memory_policy_ready && result.memory_budget_evidence_ready &&
+        result.memory_residency_pressure_evidence_ready && result.memory_package_counter_evidence_ready &&
+        result.diagnostics == 0U;
     result.ready = plan.status == Status::ready && plan.succeeded() && result.feature_rows == 3U &&
                    result.gpu_particle_budget_rows == 3U && result.postprocess_rows == 3U &&
                    result.backend_timing_rows == 3U && result.backend_evidence_rows == 3U &&
@@ -2445,7 +3054,7 @@ validate_simulation_management_package_evidence(std::string_view sample_id) {
                    result.vulkan_strict_host_evidence_ready && result.metal_host_evidence_ready &&
                    result.requires_metal_host_evidence && result.has_metal_host_evidence &&
                    !result.invoked_gpu_commands && !result.invoked_native_capture && !result.invoked_crash_upload &&
-                   result.diagnostics == 0U;
+                   result.debug_policy_ready && result.memory_policy_ready && result.diagnostics == 0U;
     return result;
 }
 
@@ -2481,19 +3090,7 @@ make_renderer_quality_matrix_ready_row(mirakana::RendererQualityFeatureKind feat
         .feature = feature,
         .backend = backend,
         .proof = mirakana::RendererQualityProofKind::selected_package,
-        .status = mirakana::RendererQualityRowStatus::ready,
-        .evidence_categories =
-            {
-                mirakana::RendererQualityEvidenceCategory::synchronization,
-                mirakana::RendererQualityEvidenceCategory::shader_tool_validation,
-                mirakana::RendererQualityEvidenceCategory::memory_residency,
-                mirakana::RendererQualityEvidenceCategory::render_pass_frame_graph,
-                mirakana::RendererQualityEvidenceCategory::profiling,
-                mirakana::RendererQualityEvidenceCategory::package_evidence,
-            },
-        .dependency_gate_id = {},
-        .unsupported_claim_id = {},
-        .notes = "backend-local package renderer quality evidence",
+        .status = mirakana::RendererQualityMatrixRowStatus::ready,
         .reviewed = true,
         .backend_local_evidence = true,
         .d3d12_resource_state_barrier_evidence = is_d3d12,
@@ -2511,6 +3108,7 @@ make_renderer_quality_matrix_ready_row(mirakana::RendererQualityFeatureKind feat
         .backend_parity_evidence = true,
         .host_validated = true,
         .host_gate_required = false,
+        .dependency_gate_required = false,
         .request_native_handle_access = false,
         .request_capture_execution = false,
         .request_crash_upload_execution = false,
@@ -2528,14 +3126,7 @@ make_renderer_quality_matrix_metal_host_gated_row(mirakana::RendererQualityFeatu
         .feature = feature,
         .backend = mirakana::rhi::BackendKind::metal,
         .proof = mirakana::RendererQualityProofKind::host_gate,
-        .status = mirakana::RendererQualityRowStatus::host_gated,
-        .evidence_categories =
-            {
-                mirakana::RendererQualityEvidenceCategory::host_gate,
-            },
-        .dependency_gate_id = {},
-        .unsupported_claim_id = {},
-        .notes = "Metal quality row requires Apple host evidence",
+        .status = mirakana::RendererQualityMatrixRowStatus::host_gated,
         .reviewed = true,
         .backend_local_evidence = true,
         .d3d12_resource_state_barrier_evidence = false,
@@ -2553,6 +3144,7 @@ make_renderer_quality_matrix_metal_host_gated_row(mirakana::RendererQualityFeatu
         .backend_parity_evidence = false,
         .host_validated = false,
         .host_gate_required = true,
+        .dependency_gate_required = false,
         .request_native_handle_access = false,
         .request_capture_execution = false,
         .request_crash_upload_execution = false,
@@ -6802,7 +7394,7 @@ class GeneratedDesktopRuntime3DPackageGame final : public mirakana::GameApp {
 }
 
 void print_usage() {
-    std::cout << "sample_generated_desktop_runtime_3d_package [--smoke] [--max-frames N] [--video-driver NAME] "
+    std::cout << "sample_generated_desktop_runtime_3d_package [--smoke] [--max-frames N] "
                  "[--require-config PATH] [--require-scene-package PATH] [--require-d3d12-scene-shaders] "
                  "[--require-vulkan-scene-shaders] [--require-d3d12-renderer] [--require-vulkan-renderer] "
                  "[--require-scene-gpu-bindings] [--require-postprocess] [--require-postprocess-depth-input] "
@@ -6820,10 +7412,12 @@ void print_usage() {
                  "[--require-compute-morph-skin] [--require-compute-morph-async-telemetry] "
                  "[--require-quaternion-animation] [--require-package-streaming-safe-point] "
                  "[--require-package-upload-staging] "
+                 "[--require-ktx2-basis-texture-review] "
+                 "[--require-gltf-scene-import-review] "
                  "[--require-gameplay-systems] [--require-scene-collision-package] "
                  "[--require-entity-scale-culling] [--require-runtime-profile-resume] "
                  "[--require-runtime-menu-hud] [--require-audio-gameplay-mixer] "
-                 "[--require-audio-production]\n";
+                 "[--require-audio-production] [--require-source-image-audio-codec-review]\n";
 }
 
 [[nodiscard]] bool parse_args(int argc, char** argv, DesktopRuntimeOptions& options) {
@@ -7051,6 +7645,18 @@ void print_usage() {
             options.require_package_upload_staging = true;
             continue;
         }
+        if (arg == "--require-ktx2-basis-texture-review") {
+            options.require_ktx2_basis_texture_review = true;
+            continue;
+        }
+        if (arg == "--require-gltf-scene-import-review") {
+            options.require_gltf_scene_import_review = true;
+            continue;
+        }
+        if (arg == "--require-source-image-audio-codec-review") {
+            options.require_source_image_audio_codec_review = true;
+            continue;
+        }
         if (arg == "--require-gameplay-systems") {
             options.require_gameplay_systems = true;
             continue;
@@ -7086,15 +7692,6 @@ void print_usage() {
                 std::cerr << "--max-frames requires a positive integer\n";
                 return false;
             }
-            ++index;
-            continue;
-        }
-        if (arg == "--video-driver") {
-            if (index + 1 >= argc) {
-                std::cerr << "--video-driver requires a driver name\n";
-                return false;
-            }
-            options.video_driver_hint = argv[index + 1];
             ++index;
             continue;
         }
@@ -7149,17 +7746,14 @@ void print_usage() {
         if (options.max_frames == 0) {
             options.max_frames = 2;
         }
-        if (options.video_driver_hint.empty()) {
-            options.video_driver_hint = "dummy";
-        }
         options.throttle = false;
     }
     return true;
 }
 
-[[nodiscard]] mirakana::SdlDesktopPresentationQualityGateDesc
+[[nodiscard]] mirakana::Win32DesktopPresentationQualityGateDesc
 make_renderer_quality_gate_desc(const DesktopRuntimeOptions& options) noexcept {
-    mirakana::SdlDesktopPresentationQualityGateDesc desc;
+    mirakana::Win32DesktopPresentationQualityGateDesc desc;
     if (options.require_renderer_quality_gates) {
         desc.require_scene_gpu_bindings = true;
         desc.require_postprocess = true;
@@ -7784,7 +8378,7 @@ void print_collision_package_diagnostics(const CollisionPackageReport& report) {
            game.scene_mesh_plan_succeeded() && game.scene_mesh_plan_diagnostics() == 0;
 }
 
-[[nodiscard]] bool scene_gpu_ready(const mirakana::SdlDesktopPresentationReport& report,
+[[nodiscard]] bool scene_gpu_ready(const mirakana::Win32DesktopPresentationReport& report,
                                    std::uint32_t expected_frames) noexcept {
     const auto& stats = report.scene_gpu_stats;
     return (stats.mesh_bindings > 0 || stats.skinned_mesh_bindings > 0) && stats.material_bindings > 0 &&
@@ -7803,12 +8397,12 @@ void print_collision_package_diagnostics(const CollisionPackageReport& report) {
     return postprocess_depth_input_requested ? (frame_count == 0 ? 0 : 1 + (frame_count * 4)) : frame_count * 2;
 }
 
-[[nodiscard]] bool postprocess_ready(const mirakana::SdlDesktopPresentationReport& report,
+[[nodiscard]] bool postprocess_ready(const mirakana::Win32DesktopPresentationReport& report,
                                      std::uint32_t expected_frames) noexcept {
     const auto expected_framegraph_passes = report.directional_shadow_requested ? 3U : 2U;
     const auto expected_framegraph_barrier_step_count = expected_framegraph_barrier_steps(
         report.directional_shadow_requested, report.postprocess_depth_input_requested, expected_frames);
-    return report.postprocess_status == mirakana::SdlDesktopPresentationPostprocessStatus::ready &&
+    return report.postprocess_status == mirakana::Win32DesktopPresentationPostprocessStatus::ready &&
            report.framegraph_passes == expected_framegraph_passes &&
            report.renderer_stats.framegraph_passes_executed ==
                static_cast<std::uint64_t>(expected_frames) * expected_framegraph_passes &&
@@ -7818,7 +8412,7 @@ void print_collision_package_diagnostics(const CollisionPackageReport& report) {
            report.renderer_stats.postprocess_passes_executed == static_cast<std::uint64_t>(expected_frames);
 }
 
-[[nodiscard]] bool compute_morph_ready(const mirakana::SdlDesktopPresentationReport& report,
+[[nodiscard]] bool compute_morph_ready(const mirakana::Win32DesktopPresentationReport& report,
                                        const DesktopRuntimeOptions& options) noexcept {
     const auto& stats = report.scene_gpu_stats;
     if (!options.require_compute_morph || options.require_compute_morph_skin) {
@@ -7831,7 +8425,7 @@ void print_collision_package_diagnostics(const CollisionPackageReport& report) {
            report.renderer_stats.gpu_morph_draws == 0 && report.renderer_stats.morph_descriptor_binds == 0;
 }
 
-[[nodiscard]] bool compute_morph_skin_ready(const mirakana::SdlDesktopPresentationReport& report,
+[[nodiscard]] bool compute_morph_skin_ready(const mirakana::Win32DesktopPresentationReport& report,
                                             const DesktopRuntimeOptions& options) noexcept {
     const auto& stats = report.scene_gpu_stats;
     if (!options.require_compute_morph_skin) {
@@ -7846,7 +8440,8 @@ void print_collision_package_diagnostics(const CollisionPackageReport& report) {
            report.renderer_stats.skinned_palette_descriptor_binds == static_cast<std::uint64_t>(options.max_frames);
 }
 
-[[nodiscard]] bool compute_morph_async_telemetry_ready(const mirakana::SdlDesktopPresentationReport& report) noexcept {
+[[nodiscard]] bool
+compute_morph_async_telemetry_ready(const mirakana::Win32DesktopPresentationReport& report) noexcept {
     const auto& stats = report.scene_gpu_stats;
     return stats.compute_morph_async_compute_queue_submits > 0 && stats.compute_morph_async_graphics_queue_waits > 0 &&
            stats.compute_morph_async_graphics_queue_submits > 0 &&
@@ -7861,8 +8456,8 @@ evaluate_playable_3d_slice(const DesktopRuntimeOptions& options, const mirakana:
                            const GeneratedDesktopRuntime3DPackageGame& game,
                            const mirakana::runtime::RuntimePackageStreamingExecutionResult& package_streaming_result,
                            std::size_t expected_package_records,
-                           const mirakana::SdlDesktopPresentationReport& presentation_report,
-                           const mirakana::SdlDesktopPresentationQualityGateReport& renderer_quality) noexcept {
+                           const mirakana::Win32DesktopPresentationReport& presentation_report,
+                           const mirakana::Win32DesktopPresentationQualityGateReport& renderer_quality) noexcept {
     Playable3dSliceReport report;
     report.expected_frames = options.max_frames;
     report.frames_ok =
@@ -7923,14 +8518,14 @@ evaluate_playable_3d_slice(const DesktopRuntimeOptions& options, const mirakana:
 
 [[nodiscard]] Visible3dProductionProofReport
 evaluate_visible_3d_production_proof(const DesktopRuntimeOptions& options, const mirakana::DesktopRunResult& result,
-                                     const mirakana::SdlDesktopPresentationReport& presentation_report,
-                                     const mirakana::SdlDesktopPresentationQualityGateReport& renderer_quality,
+                                     const mirakana::Win32DesktopPresentationReport& presentation_report,
+                                     const mirakana::Win32DesktopPresentationQualityGateReport& renderer_quality,
                                      const Playable3dSliceReport& playable_3d, bool gameplay_systems_ready) noexcept {
     Visible3dProductionProofReport report;
     report.expected_frames = options.max_frames;
     report.presented_frames = presentation_report.renderer_stats.frames_finished;
-    report.d3d12_selected = presentation_report.selected_backend == mirakana::SdlDesktopPresentationBackend::d3d12;
-    report.vulkan_selected = presentation_report.selected_backend == mirakana::SdlDesktopPresentationBackend::vulkan;
+    report.d3d12_selected = presentation_report.selected_backend == mirakana::Win32DesktopPresentationBackend::d3d12;
+    report.vulkan_selected = presentation_report.selected_backend == mirakana::Win32DesktopPresentationBackend::vulkan;
     report.null_fallback_used = presentation_report.used_null_fallback;
     report.scene_gpu_ready = scene_gpu_ready(presentation_report, options.max_frames);
     report.postprocess_ready = postprocess_ready(presentation_report, options.max_frames);
@@ -7938,7 +8533,8 @@ evaluate_visible_3d_production_proof(const DesktopRuntimeOptions& options, const
     report.playable_ready = playable_3d.ready && playable_3d.diagnostics_count == 0;
     report.ui_overlay_ready =
         presentation_report.native_ui_overlay_requested && presentation_report.native_ui_overlay_ready &&
-        presentation_report.native_ui_overlay_status == mirakana::SdlDesktopPresentationNativeUiOverlayStatus::ready &&
+        presentation_report.native_ui_overlay_status ==
+            mirakana::Win32DesktopPresentationNativeUiOverlayStatus::ready &&
         presentation_report.native_ui_overlay_sprites_submitted >= static_cast<std::uint64_t>(options.max_frames) &&
         presentation_report.native_ui_overlay_draws == static_cast<std::uint64_t>(options.max_frames);
 
@@ -8479,9 +9075,9 @@ load_packaged_vulkan_native_ui_overlay_shaders(const char* executable_path) {
     });
 }
 
-[[nodiscard]] mirakana::SdlDesktopPresentationShaderBytecode
+[[nodiscard]] mirakana::Win32DesktopPresentationShaderBytecode
 to_presentation_shader_bytecode(const mirakana::DesktopShaderBytecodeBlob& bytecode) noexcept {
-    return mirakana::SdlDesktopPresentationShaderBytecode{
+    return mirakana::Win32DesktopPresentationShaderBytecode{
         .entry_point = bytecode.entry_point,
         .bytecode = std::span<const std::uint8_t>{bytecode.bytecode.data(), bytecode.bytecode.size()},
     };
@@ -8501,23 +9097,23 @@ to_presentation_shader_bytecode(const mirakana::DesktopShaderBytecodeBlob& bytec
     return "unknown";
 }
 
-void print_presentation_report(std::string_view prefix, const mirakana::SdlDesktopGameHost& host) {
+void print_presentation_report(std::string_view prefix, const mirakana::Win32DesktopGameHost& host) {
     const auto report = host.presentation_report();
     std::cout << prefix << " presentation_report=requested="
-              << mirakana::sdl_desktop_presentation_backend_name(report.requested_backend)
-              << " selected=" << mirakana::sdl_desktop_presentation_backend_name(report.selected_backend)
-              << " fallback=" << mirakana::sdl_desktop_presentation_fallback_reason_name(report.fallback_reason)
+              << mirakana::win32_desktop_presentation_backend_name(report.requested_backend)
+              << " selected=" << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
+              << " fallback=" << mirakana::win32_desktop_presentation_fallback_reason_name(report.fallback_reason)
               << " used_null_fallback=" << (report.used_null_fallback ? 1 : 0)
               << " diagnostics=" << report.diagnostics_count << " backend_reports=" << report.backend_reports_count
               << " scene_gpu_status="
-              << mirakana::sdl_desktop_presentation_scene_gpu_binding_status_name(report.scene_gpu_status)
+              << mirakana::win32_desktop_presentation_scene_gpu_binding_status_name(report.scene_gpu_status)
               << " renderer_frames_finished=" << report.renderer_stats.frames_finished << '\n';
     for (const auto& backend_report : host.presentation_backend_reports()) {
         std::cout << prefix << " presentation_backend_report="
-                  << mirakana::sdl_desktop_presentation_backend_name(backend_report.backend) << ":"
-                  << mirakana::sdl_desktop_presentation_backend_report_status_name(backend_report.status) << ":"
-                  << mirakana::sdl_desktop_presentation_fallback_reason_name(backend_report.fallback_reason) << ": "
-                  << backend_report.message << '\n';
+                  << mirakana::win32_desktop_presentation_backend_name(backend_report.backend) << ":"
+                  << mirakana::win32_desktop_presentation_backend_report_status_name(backend_report.status) << ":"
+                  << mirakana::win32_desktop_presentation_fallback_reason_name(backend_report.fallback_reason) << ": "
+                  << backend_report.diagnostic << '\n';
     }
 }
 
@@ -8835,7 +9431,7 @@ int main(int argc, char** argv) {
         return 6;
     }
 
-    std::optional<mirakana::SdlDesktopPresentationD3d12SceneRendererDesc> d3d12_scene_renderer;
+    std::optional<mirakana::Win32DesktopPresentationD3d12SceneRendererDesc> d3d12_scene_renderer;
     const auto& d3d12_scene_bytecode =
         options.require_directional_shadow ? d3d12_shadow_receiver_bytecode : d3d12_shader_bytecode;
     const bool require_graphics_morph_scene =
@@ -8850,27 +9446,27 @@ int main(int argc, char** argv) {
         (!options.require_compute_morph_skin || d3d12_compute_morph_skinned_shader_bytecode.ready()) &&
         d3d12_native_ui_overlay_ready && d3d12_postprocess_bytecode.ready() && runtime_package.has_value() &&
         packaged_scene.has_value()) {
-        d3d12_scene_renderer.emplace(mirakana::SdlDesktopPresentationD3d12SceneRendererDesc{
+        d3d12_scene_renderer.emplace(mirakana::Win32DesktopPresentationD3d12SceneRendererDesc{
             .vertex_shader =
-                mirakana::SdlDesktopPresentationShaderBytecode{
+                mirakana::Win32DesktopPresentationShaderBytecode{
                     .entry_point = d3d12_scene_bytecode.vertex_shader.entry_point,
                     .bytecode = std::span<const std::uint8_t>{d3d12_scene_bytecode.vertex_shader.bytecode.data(),
                                                               d3d12_scene_bytecode.vertex_shader.bytecode.size()},
                 },
             .fragment_shader =
-                mirakana::SdlDesktopPresentationShaderBytecode{
+                mirakana::Win32DesktopPresentationShaderBytecode{
                     .entry_point = d3d12_scene_bytecode.fragment_shader.entry_point,
                     .bytecode = std::span<const std::uint8_t>{d3d12_scene_bytecode.fragment_shader.bytecode.data(),
                                                               d3d12_scene_bytecode.fragment_shader.bytecode.size()},
                 },
             .postprocess_vertex_shader =
-                mirakana::SdlDesktopPresentationShaderBytecode{
+                mirakana::Win32DesktopPresentationShaderBytecode{
                     .entry_point = d3d12_postprocess_bytecode.vertex_shader.entry_point,
                     .bytecode = std::span<const std::uint8_t>{d3d12_postprocess_bytecode.vertex_shader.bytecode.data(),
                                                               d3d12_postprocess_bytecode.vertex_shader.bytecode.size()},
                 },
             .postprocess_fragment_shader =
-                mirakana::SdlDesktopPresentationShaderBytecode{
+                mirakana::Win32DesktopPresentationShaderBytecode{
                     .entry_point = d3d12_postprocess_bytecode.fragment_shader.entry_point,
                     .bytecode =
                         std::span<const std::uint8_t>{d3d12_postprocess_bytecode.fragment_shader.bytecode.data(),
@@ -8892,14 +9488,14 @@ int main(int argc, char** argv) {
             .enable_native_ui_overlay_textures = requires_native_ui_texture_overlay,
         });
         if (options.require_compute_morph_skin) {
-            d3d12_scene_renderer->skinned_vertex_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+            d3d12_scene_renderer->skinned_vertex_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                 .entry_point = d3d12_compute_morph_skinned_shader_bytecode.vertex_shader.entry_point,
                 .bytecode =
                     std::span<const std::uint8_t>{
                         d3d12_compute_morph_skinned_shader_bytecode.vertex_shader.bytecode.data(),
                         d3d12_compute_morph_skinned_shader_bytecode.vertex_shader.bytecode.size()},
             };
-            d3d12_scene_renderer->compute_morph_skinned_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+            d3d12_scene_renderer->compute_morph_skinned_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                 .entry_point = d3d12_compute_morph_skinned_shader_bytecode.fragment_shader.entry_point,
                 .bytecode =
                     std::span<const std::uint8_t>{
@@ -8909,20 +9505,20 @@ int main(int argc, char** argv) {
             d3d12_scene_renderer->skinned_vertex_buffers = runtime_compute_morph_skinned_scene_vertex_buffers();
             d3d12_scene_renderer->skinned_vertex_attributes = runtime_compute_morph_skinned_scene_vertex_attributes();
             d3d12_scene_renderer->compute_morph_skinned_mesh_bindings = {
-                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_skinned_mesh_asset_id(),
-                                                                      .morph_mesh = packaged_morph_mesh_asset_id()},
+                mirakana::Win32DesktopPresentationSceneMorphMeshBinding{.mesh = packaged_skinned_mesh_asset_id(),
+                                                                        .morph_mesh = packaged_morph_mesh_asset_id()},
             };
         } else if (options.require_compute_morph) {
             const auto& selected_compute_morph_shader_bytecode = options.require_compute_morph_normal_tangent
                                                                      ? d3d12_compute_morph_tangent_frame_shader_bytecode
                                                                      : d3d12_compute_morph_shader_bytecode;
-            d3d12_scene_renderer->compute_morph_vertex_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+            d3d12_scene_renderer->compute_morph_vertex_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                 .entry_point = selected_compute_morph_shader_bytecode.vertex_shader.entry_point,
                 .bytecode =
                     std::span<const std::uint8_t>{selected_compute_morph_shader_bytecode.vertex_shader.bytecode.data(),
                                                   selected_compute_morph_shader_bytecode.vertex_shader.bytecode.size()},
             };
-            d3d12_scene_renderer->compute_morph_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+            d3d12_scene_renderer->compute_morph_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                 .entry_point = selected_compute_morph_shader_bytecode.fragment_shader.entry_point,
                 .bytecode =
                     std::span<const std::uint8_t>{
@@ -8932,24 +9528,24 @@ int main(int argc, char** argv) {
             d3d12_scene_renderer->enable_compute_morph_tangent_frame_output =
                 options.require_compute_morph_normal_tangent;
             d3d12_scene_renderer->compute_morph_mesh_bindings = {
-                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_mesh_asset_id(),
-                                                                      .morph_mesh = packaged_morph_mesh_asset_id()},
+                mirakana::Win32DesktopPresentationSceneMorphMeshBinding{.mesh = packaged_mesh_asset_id(),
+                                                                        .morph_mesh = packaged_morph_mesh_asset_id()},
             };
         } else if (options.require_morph_package) {
-            d3d12_scene_renderer->morph_vertex_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+            d3d12_scene_renderer->morph_vertex_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                 .entry_point = d3d12_morph_shader_bytecode.vertex_shader.entry_point,
                 .bytecode = std::span<const std::uint8_t>{d3d12_morph_shader_bytecode.vertex_shader.bytecode.data(),
                                                           d3d12_morph_shader_bytecode.vertex_shader.bytecode.size()},
             };
             d3d12_scene_renderer->morph_mesh_assets = {packaged_morph_mesh_asset_id()};
             d3d12_scene_renderer->morph_mesh_bindings = {
-                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_mesh_asset_id(),
-                                                                      .morph_mesh = packaged_morph_mesh_asset_id()},
+                mirakana::Win32DesktopPresentationSceneMorphMeshBinding{.mesh = packaged_mesh_asset_id(),
+                                                                        .morph_mesh = packaged_morph_mesh_asset_id()},
             };
         }
         if (options.require_directional_shadow) {
             if (require_graphics_morph_scene) {
-                d3d12_scene_renderer->skinned_scene_fragment_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+                d3d12_scene_renderer->skinned_scene_fragment_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                     .entry_point = d3d12_shifted_shadow_receiver_bytecode.fragment_shader.entry_point,
                     .bytecode =
                         std::span<const std::uint8_t>{
@@ -8957,12 +9553,12 @@ int main(int argc, char** argv) {
                             d3d12_shifted_shadow_receiver_bytecode.fragment_shader.bytecode.size()},
                 };
             }
-            d3d12_scene_renderer->shadow_vertex_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+            d3d12_scene_renderer->shadow_vertex_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                 .entry_point = d3d12_shadow_bytecode.vertex_shader.entry_point,
                 .bytecode = std::span<const std::uint8_t>{d3d12_shadow_bytecode.vertex_shader.bytecode.data(),
                                                           d3d12_shadow_bytecode.vertex_shader.bytecode.size()},
             };
-            d3d12_scene_renderer->shadow_fragment_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+            d3d12_scene_renderer->shadow_fragment_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                 .entry_point = d3d12_shadow_bytecode.fragment_shader.entry_point,
                 .bytecode = std::span<const std::uint8_t>{d3d12_shadow_bytecode.fragment_shader.bytecode.data(),
                                                           d3d12_shadow_bytecode.fragment_shader.bytecode.size()},
@@ -8970,7 +9566,7 @@ int main(int argc, char** argv) {
         }
     }
 
-    std::optional<mirakana::SdlDesktopPresentationVulkanSceneRendererDesc> vulkan_scene_renderer;
+    std::optional<mirakana::Win32DesktopPresentationVulkanSceneRendererDesc> vulkan_scene_renderer;
     const auto& vulkan_scene_bytecode =
         options.require_directional_shadow ? vulkan_shadow_receiver_bytecode : vulkan_shader_bytecode;
     const bool vulkan_morph_ready = !require_graphics_morph_scene || vulkan_morph_shader_bytecode.ready();
@@ -8985,28 +9581,28 @@ int main(int argc, char** argv) {
         (!options.require_directional_shadow || vulkan_compute_morph_shader_bytecode.ready()) &&
         vulkan_native_ui_overlay_ready && vulkan_postprocess_bytecode.ready() && runtime_package.has_value() &&
         packaged_scene.has_value()) {
-        vulkan_scene_renderer.emplace(mirakana::SdlDesktopPresentationVulkanSceneRendererDesc{
+        vulkan_scene_renderer.emplace(mirakana::Win32DesktopPresentationVulkanSceneRendererDesc{
             .vertex_shader =
-                mirakana::SdlDesktopPresentationShaderBytecode{
+                mirakana::Win32DesktopPresentationShaderBytecode{
                     .entry_point = vulkan_scene_bytecode.vertex_shader.entry_point,
                     .bytecode = std::span<const std::uint8_t>{vulkan_scene_bytecode.vertex_shader.bytecode.data(),
                                                               vulkan_scene_bytecode.vertex_shader.bytecode.size()},
                 },
             .fragment_shader =
-                mirakana::SdlDesktopPresentationShaderBytecode{
+                mirakana::Win32DesktopPresentationShaderBytecode{
                     .entry_point = vulkan_scene_bytecode.fragment_shader.entry_point,
                     .bytecode = std::span<const std::uint8_t>{vulkan_scene_bytecode.fragment_shader.bytecode.data(),
                                                               vulkan_scene_bytecode.fragment_shader.bytecode.size()},
                 },
             .postprocess_vertex_shader =
-                mirakana::SdlDesktopPresentationShaderBytecode{
+                mirakana::Win32DesktopPresentationShaderBytecode{
                     .entry_point = vulkan_postprocess_bytecode.vertex_shader.entry_point,
                     .bytecode =
                         std::span<const std::uint8_t>{vulkan_postprocess_bytecode.vertex_shader.bytecode.data(),
                                                       vulkan_postprocess_bytecode.vertex_shader.bytecode.size()},
                 },
             .postprocess_fragment_shader =
-                mirakana::SdlDesktopPresentationShaderBytecode{
+                mirakana::Win32DesktopPresentationShaderBytecode{
                     .entry_point = vulkan_postprocess_bytecode.fragment_shader.entry_point,
                     .bytecode =
                         std::span<const std::uint8_t>{vulkan_postprocess_bytecode.fragment_shader.bytecode.data(),
@@ -9028,14 +9624,14 @@ int main(int argc, char** argv) {
             .enable_native_ui_overlay_textures = requires_native_ui_texture_overlay,
         });
         if (options.require_compute_morph_skin) {
-            vulkan_scene_renderer->skinned_vertex_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+            vulkan_scene_renderer->skinned_vertex_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                 .entry_point = vulkan_compute_morph_skinned_shader_bytecode.vertex_shader.entry_point,
                 .bytecode =
                     std::span<const std::uint8_t>{
                         vulkan_compute_morph_skinned_shader_bytecode.vertex_shader.bytecode.data(),
                         vulkan_compute_morph_skinned_shader_bytecode.vertex_shader.bytecode.size()},
             };
-            vulkan_scene_renderer->compute_morph_skinned_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+            vulkan_scene_renderer->compute_morph_skinned_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                 .entry_point = vulkan_compute_morph_skinned_shader_bytecode.fragment_shader.entry_point,
                 .bytecode =
                     std::span<const std::uint8_t>{
@@ -9045,20 +9641,20 @@ int main(int argc, char** argv) {
             vulkan_scene_renderer->skinned_vertex_buffers = runtime_compute_morph_skinned_scene_vertex_buffers();
             vulkan_scene_renderer->skinned_vertex_attributes = runtime_compute_morph_skinned_scene_vertex_attributes();
             vulkan_scene_renderer->compute_morph_skinned_mesh_bindings = {
-                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_skinned_mesh_asset_id(),
-                                                                      .morph_mesh = packaged_morph_mesh_asset_id()},
+                mirakana::Win32DesktopPresentationSceneMorphMeshBinding{.mesh = packaged_skinned_mesh_asset_id(),
+                                                                        .morph_mesh = packaged_morph_mesh_asset_id()},
             };
         } else if (options.require_compute_morph) {
             const auto& selected_compute_morph_shader_bytecode =
                 options.require_compute_morph_normal_tangent ? vulkan_compute_morph_tangent_frame_shader_bytecode
                                                              : vulkan_compute_morph_shader_bytecode;
-            vulkan_scene_renderer->compute_morph_vertex_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+            vulkan_scene_renderer->compute_morph_vertex_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                 .entry_point = selected_compute_morph_shader_bytecode.vertex_shader.entry_point,
                 .bytecode =
                     std::span<const std::uint8_t>{selected_compute_morph_shader_bytecode.vertex_shader.bytecode.data(),
                                                   selected_compute_morph_shader_bytecode.vertex_shader.bytecode.size()},
             };
-            vulkan_scene_renderer->compute_morph_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+            vulkan_scene_renderer->compute_morph_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                 .entry_point = selected_compute_morph_shader_bytecode.fragment_shader.entry_point,
                 .bytecode =
                     std::span<const std::uint8_t>{
@@ -9068,24 +9664,24 @@ int main(int argc, char** argv) {
             vulkan_scene_renderer->enable_compute_morph_tangent_frame_output =
                 options.require_compute_morph_normal_tangent;
             vulkan_scene_renderer->compute_morph_mesh_bindings = {
-                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_mesh_asset_id(),
-                                                                      .morph_mesh = packaged_morph_mesh_asset_id()},
+                mirakana::Win32DesktopPresentationSceneMorphMeshBinding{.mesh = packaged_mesh_asset_id(),
+                                                                        .morph_mesh = packaged_morph_mesh_asset_id()},
             };
         } else if (options.require_morph_package) {
-            vulkan_scene_renderer->morph_vertex_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+            vulkan_scene_renderer->morph_vertex_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                 .entry_point = vulkan_morph_shader_bytecode.vertex_shader.entry_point,
                 .bytecode = std::span<const std::uint8_t>{vulkan_morph_shader_bytecode.vertex_shader.bytecode.data(),
                                                           vulkan_morph_shader_bytecode.vertex_shader.bytecode.size()},
             };
             vulkan_scene_renderer->morph_mesh_assets = {packaged_morph_mesh_asset_id()};
             vulkan_scene_renderer->morph_mesh_bindings = {
-                mirakana::SdlDesktopPresentationSceneMorphMeshBinding{.mesh = packaged_mesh_asset_id(),
-                                                                      .morph_mesh = packaged_morph_mesh_asset_id()},
+                mirakana::Win32DesktopPresentationSceneMorphMeshBinding{.mesh = packaged_mesh_asset_id(),
+                                                                        .morph_mesh = packaged_morph_mesh_asset_id()},
             };
         }
         if (options.require_directional_shadow) {
             if (require_graphics_morph_scene) {
-                vulkan_scene_renderer->skinned_scene_fragment_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+                vulkan_scene_renderer->skinned_scene_fragment_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                     .entry_point = vulkan_shifted_shadow_receiver_bytecode.fragment_shader.entry_point,
                     .bytecode =
                         std::span<const std::uint8_t>{
@@ -9093,18 +9689,18 @@ int main(int argc, char** argv) {
                             vulkan_shifted_shadow_receiver_bytecode.fragment_shader.bytecode.size()},
                 };
             }
-            vulkan_scene_renderer->compute_morph_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+            vulkan_scene_renderer->compute_morph_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                 .entry_point = vulkan_compute_morph_shader_bytecode.fragment_shader.entry_point,
                 .bytecode =
                     std::span<const std::uint8_t>{vulkan_compute_morph_shader_bytecode.fragment_shader.bytecode.data(),
                                                   vulkan_compute_morph_shader_bytecode.fragment_shader.bytecode.size()},
             };
-            vulkan_scene_renderer->shadow_vertex_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+            vulkan_scene_renderer->shadow_vertex_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                 .entry_point = vulkan_shadow_bytecode.vertex_shader.entry_point,
                 .bytecode = std::span<const std::uint8_t>{vulkan_shadow_bytecode.vertex_shader.bytecode.data(),
                                                           vulkan_shadow_bytecode.vertex_shader.bytecode.size()},
             };
-            vulkan_scene_renderer->shadow_fragment_shader = mirakana::SdlDesktopPresentationShaderBytecode{
+            vulkan_scene_renderer->shadow_fragment_shader = mirakana::Win32DesktopPresentationShaderBytecode{
                 .entry_point = vulkan_shadow_bytecode.fragment_shader.entry_point,
                 .bytecode = std::span<const std::uint8_t>{vulkan_shadow_bytecode.fragment_shader.bytecode.data(),
                                                           vulkan_shadow_bytecode.fragment_shader.bytecode.size()},
@@ -9112,10 +9708,9 @@ int main(int argc, char** argv) {
         }
     }
 
-    mirakana::SdlDesktopGameHostDesc host_desc{
+    mirakana::Win32DesktopGameHostDesc host_desc{
         .title = "sample-generated-desktop-runtime-3d-package",
         .extent = mirakana::WindowExtent{.width = 960, .height = 540},
-        .video_driver_hint = options.video_driver_hint,
         .prefer_vulkan = options.require_vulkan_renderer,
     };
     if (d3d12_scene_renderer.has_value()) {
@@ -9125,16 +9720,16 @@ int main(int argc, char** argv) {
         host_desc.vulkan_scene_renderer = &*vulkan_scene_renderer;
     }
 
-    mirakana::SdlDesktopGameHost host(host_desc);
+    mirakana::Win32DesktopGameHost host(host_desc);
     if (options.require_d3d12_renderer &&
-        host.presentation_backend() != mirakana::SdlDesktopPresentationBackend::d3d12) {
+        host.presentation_backend() != mirakana::Win32DesktopPresentationBackend::d3d12) {
         std::cout << "sample_generated_desktop_runtime_3d_package required_d3d12_renderer_unavailable renderer="
                   << host.presentation_backend_name() << '\n';
         print_presentation_report("sample_generated_desktop_runtime_3d_package", host);
         return 5;
     }
     if (options.require_vulkan_renderer &&
-        host.presentation_backend() != mirakana::SdlDesktopPresentationBackend::vulkan) {
+        host.presentation_backend() != mirakana::Win32DesktopPresentationBackend::vulkan) {
         std::cout << "sample_generated_desktop_runtime_3d_package required_vulkan_renderer_unavailable renderer="
                   << host.presentation_backend_name() << '\n';
         print_presentation_report("sample_generated_desktop_runtime_3d_package", host);
@@ -9142,15 +9737,15 @@ int main(int argc, char** argv) {
     }
     if (options.require_scene_gpu_bindings && !host.scene_gpu_bindings_ready()) {
         std::cout << "sample_generated_desktop_runtime_3d_package required_scene_gpu_bindings_unavailable status="
-                  << mirakana::sdl_desktop_presentation_scene_gpu_binding_status_name(host.scene_gpu_binding_status())
+                  << mirakana::win32_desktop_presentation_scene_gpu_binding_status_name(host.scene_gpu_binding_status())
                   << '\n';
         print_presentation_report("sample_generated_desktop_runtime_3d_package", host);
         return 5;
     }
     if (options.require_postprocess &&
-        host.presentation_report().postprocess_status != mirakana::SdlDesktopPresentationPostprocessStatus::ready) {
+        host.presentation_report().postprocess_status != mirakana::Win32DesktopPresentationPostprocessStatus::ready) {
         std::cout << "sample_generated_desktop_runtime_3d_package required_postprocess_unavailable status="
-                  << mirakana::sdl_desktop_presentation_postprocess_status_name(
+                  << mirakana::win32_desktop_presentation_postprocess_status_name(
                          host.presentation_report().postprocess_status)
                   << '\n';
         print_presentation_report("sample_generated_desktop_runtime_3d_package", host);
@@ -9163,13 +9758,13 @@ int main(int argc, char** argv) {
     }
     if (options.require_native_ui_overlay && !host.presentation_report().native_ui_overlay_ready) {
         std::cout << "sample_generated_desktop_runtime_3d_package required_native_ui_overlay_unavailable status="
-                  << mirakana::sdl_desktop_presentation_native_ui_overlay_status_name(
+                  << mirakana::win32_desktop_presentation_native_ui_overlay_status_name(
                          host.presentation_report().native_ui_overlay_status)
                   << '\n';
         print_presentation_report("sample_generated_desktop_runtime_3d_package", host);
         for (const auto& diagnostic : host.native_ui_overlay_diagnostics()) {
             std::cout << "sample_generated_desktop_runtime_3d_package native_ui_overlay_diagnostic="
-                      << mirakana::sdl_desktop_presentation_native_ui_overlay_status_name(diagnostic.status) << ": "
+                      << mirakana::win32_desktop_presentation_native_ui_overlay_status_name(diagnostic.status) << ": "
                       << diagnostic.message << '\n';
         }
         return 10;
@@ -9177,18 +9772,19 @@ int main(int argc, char** argv) {
     if (requires_native_ui_texture_overlay) {
         const auto texture_overlay_report = host.presentation_report();
         if (texture_overlay_report.native_ui_texture_overlay_status !=
-                mirakana::SdlDesktopPresentationNativeUiTextureOverlayStatus::ready ||
+                mirakana::Win32DesktopPresentationNativeUiTextureOverlayStatus::ready ||
             !texture_overlay_report.native_ui_texture_overlay_atlas_ready) {
             std::cout << "sample_generated_desktop_runtime_3d_package required_native_ui_texture_overlay_unavailable "
                          "status="
-                      << mirakana::sdl_desktop_presentation_native_ui_texture_overlay_status_name(
+                      << mirakana::win32_desktop_presentation_native_ui_texture_overlay_status_name(
                              texture_overlay_report.native_ui_texture_overlay_status)
                       << " atlas_ready=" << (texture_overlay_report.native_ui_texture_overlay_atlas_ready ? 1 : 0)
                       << '\n';
             print_presentation_report("sample_generated_desktop_runtime_3d_package", host);
             for (const auto& diagnostic : host.native_ui_texture_overlay_diagnostics()) {
                 std::cout << "sample_generated_desktop_runtime_3d_package native_ui_texture_overlay_diagnostic="
-                          << mirakana::sdl_desktop_presentation_native_ui_texture_overlay_status_name(diagnostic.status)
+                          << mirakana::win32_desktop_presentation_native_ui_texture_overlay_status_name(
+                                 diagnostic.status)
                           << ": " << diagnostic.message << '\n';
             }
             return 11;
@@ -9196,13 +9792,13 @@ int main(int argc, char** argv) {
     }
     if (options.require_directional_shadow && !host.presentation_report().directional_shadow_ready) {
         std::cout << "sample_generated_desktop_runtime_3d_package required_directional_shadow_unavailable status="
-                  << mirakana::sdl_desktop_presentation_directional_shadow_status_name(
+                  << mirakana::win32_desktop_presentation_directional_shadow_status_name(
                          host.presentation_report().directional_shadow_status)
                   << '\n';
         print_presentation_report("sample_generated_desktop_runtime_3d_package", host);
         for (const auto& diagnostic : host.directional_shadow_diagnostics()) {
             std::cout << "sample_generated_desktop_runtime_3d_package directional_shadow_diagnostic="
-                      << mirakana::sdl_desktop_presentation_directional_shadow_status_name(diagnostic.status) << ": "
+                      << mirakana::win32_desktop_presentation_directional_shadow_status_name(diagnostic.status) << ": "
                       << diagnostic.message << '\n';
         }
         return 9;
@@ -9210,11 +9806,11 @@ int main(int argc, char** argv) {
     if (options.require_directional_shadow_filtering) {
         const auto report = host.presentation_report();
         if (report.directional_shadow_filter_mode !=
-                mirakana::SdlDesktopPresentationDirectionalShadowFilterMode::fixed_pcf_3x3 ||
+                mirakana::Win32DesktopPresentationDirectionalShadowFilterMode::fixed_pcf_3x3 ||
             report.directional_shadow_filter_tap_count != 9 || report.directional_shadow_filter_radius_texels != 1.0F) {
             std::cout << "sample_generated_desktop_runtime_3d_package "
                          "required_directional_shadow_filtering_unavailable mode="
-                      << mirakana::sdl_desktop_presentation_directional_shadow_filter_mode_name(
+                      << mirakana::win32_desktop_presentation_directional_shadow_filter_mode_name(
                              report.directional_shadow_filter_mode)
                       << " taps=" << report.directional_shadow_filter_tap_count
                       << " radius_texels=" << report.directional_shadow_filter_radius_texels << '\n';
@@ -9236,9 +9832,9 @@ int main(int argc, char** argv) {
     const auto result = host.run(game, mirakana::DesktopRunConfig{.max_frames = options.max_frames});
     const auto report = host.presentation_report();
     const auto scene_gpu_stats = report.scene_gpu_stats;
-    const auto postprocess_policy = mirakana::evaluate_sdl_desktop_presentation_postprocess_policy(report);
+    const auto postprocess_policy = mirakana::evaluate_win32_desktop_presentation_postprocess_policy(report);
     const auto renderer_quality =
-        mirakana::evaluate_sdl_desktop_presentation_quality_gate(report, make_renderer_quality_gate_desc(options));
+        mirakana::evaluate_win32_desktop_presentation_quality_gate(report, make_renderer_quality_gate_desc(options));
     const auto playable_3d =
         evaluate_playable_3d_slice(options, result, game, package_streaming_result,
                                    runtime_package ? runtime_package->records().size() : 0U, report, renderer_quality);
@@ -9298,18 +9894,28 @@ int main(int argc, char** argv) {
     const auto package_upload_staging = options.require_package_upload_staging
                                             ? run_package_upload_staging_evidence(host.presentation())
                                             : mirakana::runtime_rhi::RuntimePackageUploadStagingEvidence{};
+    const auto ktx_basis_texture_review_probe = options.require_ktx2_basis_texture_review
+                                                    ? validate_ktx_basis_texture_review_package_evidence()
+                                                    : KtxBasisTextureReviewProbeResult{};
+    const auto gltf_scene_import_review_probe = options.require_gltf_scene_import_review
+                                                    ? validate_gltf_scene_import_review_package_evidence()
+                                                    : GltfSceneImportReviewProbeResult{};
+    const auto source_image_audio_codec_review_probe = options.require_source_image_audio_codec_review
+                                                           ? validate_source_image_audio_codec_review_package_evidence()
+                                                           : SourceImageAudioCodecReviewProbeResult{};
 
     const auto& audio_gameplay_mixer = game.gameplay_systems_audio_gameplay_mixer_probe();
     std::cout
         << "sample_generated_desktop_runtime_3d_package status=" << status_name(result.status)
-        << " renderer=" << mirakana::sdl_desktop_presentation_backend_name(report.selected_backend)
-        << " presentation_requested=" << mirakana::sdl_desktop_presentation_backend_name(report.requested_backend)
-        << " presentation_selected=" << mirakana::sdl_desktop_presentation_backend_name(report.selected_backend)
-        << " presentation_fallback=" << mirakana::sdl_desktop_presentation_fallback_reason_name(report.fallback_reason)
+        << " renderer=" << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
+        << " presentation_requested=" << mirakana::win32_desktop_presentation_backend_name(report.requested_backend)
+        << " presentation_selected=" << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
+        << " presentation_fallback="
+        << mirakana::win32_desktop_presentation_fallback_reason_name(report.fallback_reason)
         << " presentation_used_null_fallback=" << (report.used_null_fallback ? 1 : 0)
         << " presentation_backend_reports=" << report.backend_reports_count
         << " presentation_diagnostics=" << report.diagnostics_count << " scene_gpu_status="
-        << mirakana::sdl_desktop_presentation_scene_gpu_binding_status_name(report.scene_gpu_status)
+        << mirakana::win32_desktop_presentation_scene_gpu_binding_status_name(report.scene_gpu_status)
         << " scene_gpu_mesh_bindings=" << scene_gpu_stats.mesh_bindings
         << " scene_gpu_skinned_mesh_bindings=" << scene_gpu_stats.skinned_mesh_bindings
         << " scene_gpu_material_bindings=" << scene_gpu_stats.material_bindings
@@ -9358,10 +9964,10 @@ int main(int argc, char** argv) {
         << " scene_gpu_mesh_resolved=" << scene_gpu_stats.mesh_bindings_resolved
         << " scene_gpu_skinned_mesh_resolved=" << scene_gpu_stats.skinned_mesh_bindings_resolved
         << " scene_gpu_material_resolved=" << scene_gpu_stats.material_bindings_resolved << " postprocess_status="
-        << mirakana::sdl_desktop_presentation_postprocess_status_name(report.postprocess_status)
+        << mirakana::win32_desktop_presentation_postprocess_status_name(report.postprocess_status)
         << " postprocess_depth_input_ready=" << (report.postprocess_depth_input_ready ? 1 : 0)
         << " postprocess_policy_status="
-        << mirakana::sdl_desktop_presentation_postprocess_policy_status_name(postprocess_policy.status)
+        << mirakana::win32_desktop_presentation_postprocess_policy_status_name(postprocess_policy.status)
         << " postprocess_policy_ready=" << (postprocess_policy.ready ? 1 : 0)
         << " postprocess_policy_diagnostics=" << postprocess_policy.diagnostics_count
         << " postprocess_policy_effects=" << postprocess_policy.effect_count
@@ -9373,15 +9979,16 @@ int main(int argc, char** argv) {
         << " postprocess_policy_color_grading_effect=" << (postprocess_policy.color_grading_effect ? 1 : 0)
         << " postprocess_policy_backend_shader_evidence_ready="
         << (postprocess_policy.backend_shader_evidence_ready ? 1 : 0) << " directional_shadow_status="
-        << mirakana::sdl_desktop_presentation_directional_shadow_status_name(report.directional_shadow_status)
+        << mirakana::win32_desktop_presentation_directional_shadow_status_name(report.directional_shadow_status)
         << " directional_shadow_requested=" << (report.directional_shadow_requested ? 1 : 0)
         << " directional_shadow_ready=" << (report.directional_shadow_ready ? 1 : 0)
         << " directional_shadow_filter_mode="
-        << mirakana::sdl_desktop_presentation_directional_shadow_filter_mode_name(report.directional_shadow_filter_mode)
+        << mirakana::win32_desktop_presentation_directional_shadow_filter_mode_name(
+               report.directional_shadow_filter_mode)
         << " directional_shadow_filter_taps=" << report.directional_shadow_filter_tap_count
         << " directional_shadow_filter_radius_texels=" << report.directional_shadow_filter_radius_texels
         << " ui_overlay_requested=" << (report.native_ui_overlay_requested ? 1 : 0) << " ui_overlay_status="
-        << mirakana::sdl_desktop_presentation_native_ui_overlay_status_name(report.native_ui_overlay_status)
+        << mirakana::win32_desktop_presentation_native_ui_overlay_status_name(report.native_ui_overlay_status)
         << " ui_overlay_ready=" << (report.native_ui_overlay_ready ? 1 : 0)
         << " ui_overlay_sprites_submitted=" << report.native_ui_overlay_sprites_submitted
         << " ui_overlay_draws=" << report.native_ui_overlay_draws
@@ -9392,7 +9999,7 @@ int main(int argc, char** argv) {
         << " ui_atlas_metadata_glyphs=" << ui_atlas_metadata_glyphs
         << " ui_texture_overlay_requested=" << (report.native_ui_texture_overlay_requested ? 1 : 0)
         << " ui_texture_overlay_status="
-        << mirakana::sdl_desktop_presentation_native_ui_texture_overlay_status_name(
+        << mirakana::win32_desktop_presentation_native_ui_texture_overlay_status_name(
                report.native_ui_texture_overlay_status)
         << " ui_texture_overlay_atlas_ready=" << (report.native_ui_texture_overlay_atlas_ready ? 1 : 0)
         << " ui_texture_overlay_sprites_submitted=" << report.native_ui_texture_overlay_sprites_submitted
@@ -9441,7 +10048,123 @@ int main(int argc, char** argv) {
         << " package_upload_staging_queue_waits=" << package_upload_staging.queue_waits
         << " package_upload_staging_fence_waits=" << package_upload_staging.fence_waits
         << " package_upload_staging_graphics_waited_for_copy="
-        << (package_upload_staging.graphics_waited_for_copy ? 1 : 0)
+        << (package_upload_staging.graphics_waited_for_copy ? 1 : 0) << " ktx_basis_texture_review_status="
+        << ktx_basis_texture_review_status_name(ktx_basis_texture_review_probe.status)
+        << " ktx_basis_texture_review_reviewed=" << (ktx_basis_texture_review_probe.reviewed ? 1 : 0)
+        << " ktx_basis_texture_review_ready=" << (ktx_basis_texture_review_probe.ready ? 1 : 0)
+        << " ktx_basis_texture_review_rows=" << ktx_basis_texture_review_probe.rows
+        << " ktx_basis_texture_review_ready_rows=" << ktx_basis_texture_review_probe.ready_rows
+        << " ktx_basis_texture_review_host_gated_rows=" << ktx_basis_texture_review_probe.host_gated_rows
+        << " ktx_basis_texture_review_dependency_gated_rows=" << ktx_basis_texture_review_probe.dependency_gated_rows
+        << " ktx_basis_texture_review_unsupported_claim_rows=" << ktx_basis_texture_review_probe.unsupported_claim_rows
+        << " ktx_basis_texture_review_container_validation_rows="
+        << ktx_basis_texture_review_probe.container_validation_rows
+        << " ktx_basis_texture_review_supercompression_policy_rows="
+        << ktx_basis_texture_review_probe.supercompression_policy_rows
+        << " ktx_basis_texture_review_transcode_target_policy_rows="
+        << ktx_basis_texture_review_probe.transcode_target_policy_rows
+        << " ktx_basis_texture_review_gpu_target_compatibility_rows="
+        << ktx_basis_texture_review_probe.gpu_target_compatibility_rows
+        << " ktx_basis_texture_review_source_provenance_rows=" << ktx_basis_texture_review_probe.source_provenance_rows
+        << " ktx_basis_texture_review_package_output_rows=" << ktx_basis_texture_review_probe.package_output_rows
+        << " ktx_basis_texture_review_host_tool_gate_rows=" << ktx_basis_texture_review_probe.host_tool_gate_rows
+        << " ktx_basis_texture_review_dependency_legal_records_ready="
+        << (ktx_basis_texture_review_probe.dependency_legal_records_ready ? 1 : 0)
+        << " ktx_basis_texture_review_selected_package_evidence_ready="
+        << (ktx_basis_texture_review_probe.selected_package_evidence_ready ? 1 : 0)
+        << " ktx_basis_texture_review_ktx_basis_review_ready="
+        << (ktx_basis_texture_review_probe.ktx_basis_review_ready ? 1 : 0)
+        << " ktx_basis_texture_review_broad_texture_codec_ready="
+        << (ktx_basis_texture_review_probe.broad_texture_codec_ready ? 1 : 0)
+        << " ktx_basis_texture_review_invoked_runtime_transcoding="
+        << (ktx_basis_texture_review_probe.invoked_runtime_transcoding ? 1 : 0)
+        << " ktx_basis_texture_review_invoked_gpu_upload="
+        << (ktx_basis_texture_review_probe.invoked_gpu_upload ? 1 : 0)
+        << " ktx_basis_texture_review_invoked_compression_tool="
+        << (ktx_basis_texture_review_probe.invoked_compression_tool ? 1 : 0)
+        << " ktx_basis_texture_review_diagnostics=" << ktx_basis_texture_review_probe.diagnostics
+        << " ktx_basis_texture_review_replay_hash=" << ktx_basis_texture_review_probe.replay_hash
+        << " gltf_scene_import_review_status="
+        << gltf_scene_import_review_status_name(gltf_scene_import_review_probe.status)
+        << " gltf_scene_import_review_reviewed=" << (gltf_scene_import_review_probe.reviewed ? 1 : 0)
+        << " gltf_scene_import_review_ready=" << (gltf_scene_import_review_probe.ready ? 1 : 0)
+        << " gltf_scene_import_review_rows=" << gltf_scene_import_review_probe.rows
+        << " gltf_scene_import_review_ready_rows=" << gltf_scene_import_review_probe.ready_rows
+        << " gltf_scene_import_review_dependency_gated_rows=" << gltf_scene_import_review_probe.dependency_gated_rows
+        << " gltf_scene_import_review_unsupported_claim_rows=" << gltf_scene_import_review_probe.unsupported_claim_rows
+        << " gltf_scene_import_review_source_root_rows=" << gltf_scene_import_review_probe.source_root_rows
+        << " gltf_scene_import_review_parser_validation_rows=" << gltf_scene_import_review_probe.parser_validation_rows
+        << " gltf_scene_import_review_geometry_payload_rows=" << gltf_scene_import_review_probe.geometry_payload_rows
+        << " gltf_scene_import_review_material_payload_rows=" << gltf_scene_import_review_probe.material_payload_rows
+        << " gltf_scene_import_review_animation_payload_rows=" << gltf_scene_import_review_probe.animation_payload_rows
+        << " gltf_scene_import_review_external_resource_policy_rows="
+        << gltf_scene_import_review_probe.external_resource_policy_rows
+        << " gltf_scene_import_review_source_provenance_rows=" << gltf_scene_import_review_probe.source_provenance_rows
+        << " gltf_scene_import_review_package_output_rows=" << gltf_scene_import_review_probe.package_output_rows
+        << " gltf_scene_import_review_dependency_legal_records_ready="
+        << (gltf_scene_import_review_probe.dependency_legal_records_ready ? 1 : 0)
+        << " gltf_scene_import_review_selected_package_evidence_ready="
+        << (gltf_scene_import_review_probe.selected_package_evidence_ready ? 1 : 0)
+        << " gltf_scene_import_review_gltf_scene_import_ready="
+        << (gltf_scene_import_review_probe.gltf_scene_import_ready ? 1 : 0)
+        << " gltf_scene_import_review_broad_scene_import_ready="
+        << (gltf_scene_import_review_probe.broad_scene_import_ready ? 1 : 0)
+        << " gltf_scene_import_review_invoked_external_network_fetch="
+        << (gltf_scene_import_review_probe.invoked_external_network_fetch ? 1 : 0)
+        << " gltf_scene_import_review_invoked_runtime_source_parsing="
+        << (gltf_scene_import_review_probe.invoked_runtime_source_parsing ? 1 : 0)
+        << " gltf_scene_import_review_leaked_parser_type="
+        << (gltf_scene_import_review_probe.leaked_parser_type ? 1 : 0)
+        << " gltf_scene_import_review_exposed_native_handle="
+        << (gltf_scene_import_review_probe.exposed_native_handle ? 1 : 0)
+        << " gltf_scene_import_review_mutated_packages=" << (gltf_scene_import_review_probe.mutated_packages ? 1 : 0)
+        << " gltf_scene_import_review_diagnostics=" << gltf_scene_import_review_probe.diagnostics
+        << " gltf_scene_import_review_replay_hash=" << gltf_scene_import_review_probe.replay_hash
+        << " source_image_audio_codec_review_status="
+        << source_image_audio_codec_review_status_name(source_image_audio_codec_review_probe.status)
+        << " source_image_audio_codec_review_reviewed=" << (source_image_audio_codec_review_probe.reviewed ? 1 : 0)
+        << " source_image_audio_codec_review_ready=" << (source_image_audio_codec_review_probe.ready ? 1 : 0)
+        << " source_image_audio_codec_review_rows=" << source_image_audio_codec_review_probe.rows
+        << " source_image_audio_codec_review_ready_rows=" << source_image_audio_codec_review_probe.ready_rows
+        << " source_image_audio_codec_review_dependency_gated_rows="
+        << source_image_audio_codec_review_probe.dependency_gated_rows
+        << " source_image_audio_codec_review_unsupported_claim_rows="
+        << source_image_audio_codec_review_probe.unsupported_claim_rows
+        << " source_image_audio_codec_review_png_decode_rows=" << source_image_audio_codec_review_probe.png_decode_rows
+        << " source_image_audio_codec_review_png_pixel_format_rows="
+        << source_image_audio_codec_review_probe.png_pixel_format_rows
+        << " source_image_audio_codec_review_audio_decode_rows="
+        << source_image_audio_codec_review_probe.audio_decode_rows
+        << " source_image_audio_codec_review_audio_sample_format_rows="
+        << source_image_audio_codec_review_probe.audio_sample_format_rows
+        << " source_image_audio_codec_review_source_provenance_rows="
+        << source_image_audio_codec_review_probe.source_provenance_rows
+        << " source_image_audio_codec_review_package_output_rows="
+        << source_image_audio_codec_review_probe.package_output_rows
+        << " source_image_audio_codec_review_dependency_legal_records_ready="
+        << (source_image_audio_codec_review_probe.dependency_legal_records_ready ? 1 : 0)
+        << " source_image_audio_codec_review_selected_package_evidence_ready="
+        << (source_image_audio_codec_review_probe.selected_package_evidence_ready ? 1 : 0)
+        << " source_image_audio_codec_review_source_image_audio_codec_ready="
+        << (source_image_audio_codec_review_probe.source_image_audio_codec_ready ? 1 : 0)
+        << " source_image_audio_codec_review_broad_image_codec_ready="
+        << (source_image_audio_codec_review_probe.broad_image_codec_ready ? 1 : 0)
+        << " source_image_audio_codec_review_broad_audio_codec_ready="
+        << (source_image_audio_codec_review_probe.broad_audio_codec_ready ? 1 : 0)
+        << " source_image_audio_codec_review_invoked_svg_vector_decode="
+        << (source_image_audio_codec_review_probe.invoked_svg_vector_decode ? 1 : 0)
+        << " source_image_audio_codec_review_invoked_background_decode_streaming="
+        << (source_image_audio_codec_review_probe.invoked_background_decode_streaming ? 1 : 0)
+        << " source_image_audio_codec_review_invoked_hrtf_middleware="
+        << (source_image_audio_codec_review_probe.invoked_hrtf_middleware ? 1 : 0)
+        << " source_image_audio_codec_review_invoked_runtime_source_parsing="
+        << (source_image_audio_codec_review_probe.invoked_runtime_source_parsing ? 1 : 0)
+        << " source_image_audio_codec_review_exposed_native_handle="
+        << (source_image_audio_codec_review_probe.exposed_native_handle ? 1 : 0)
+        << " source_image_audio_codec_review_mutated_packages="
+        << (source_image_audio_codec_review_probe.mutated_packages ? 1 : 0)
+        << " source_image_audio_codec_review_diagnostics=" << source_image_audio_codec_review_probe.diagnostics
+        << " source_image_audio_codec_review_replay_hash=" << source_image_audio_codec_review_probe.replay_hash
         << " collision_package_status=" << collision_package_status_name(collision_package.status)
         << " collision_package_ready=" << (collision_package.ready ? 1 : 0)
         << " collision_package_diagnostics=" << collision_package.diagnostics_count
@@ -9467,7 +10190,7 @@ int main(int argc, char** argv) {
         << " framegraph_render_passes_recorded=" << report.renderer_stats.framegraph_render_passes_recorded
         << " framegraph_barrier_steps_executed=" << report.renderer_stats.framegraph_barrier_steps_executed
         << " renderer_quality_status="
-        << mirakana::sdl_desktop_presentation_quality_gate_status_name(renderer_quality.status)
+        << mirakana::win32_desktop_presentation_quality_gate_status_name(renderer_quality.status)
         << " renderer_quality_ready=" << (renderer_quality.ready ? 1 : 0)
         << " renderer_quality_diagnostics=" << renderer_quality.diagnostics_count
         << " renderer_quality_expected_framegraph_passes=" << renderer_quality.expected_framegraph_passes
@@ -9748,6 +10471,41 @@ int main(int argc, char** argv) {
         << (rendering_vfx_profiling_probe.invoked_native_capture ? 1 : 0)
         << " rendering_vfx_profiling_invoked_crash_upload="
         << (rendering_vfx_profiling_probe.invoked_crash_upload ? 1 : 0)
+        << " rendering_vfx_profiling_debug_policy_ready=" << (rendering_vfx_profiling_probe.debug_policy_ready ? 1 : 0)
+        << " rendering_vfx_profiling_debug_gpu_timestamp_ticks_per_second="
+        << rendering_vfx_profiling_probe.debug_gpu_timestamp_ticks_per_second
+        << " rendering_vfx_profiling_debug_cpu_profile_zones=" << rendering_vfx_profiling_probe.debug_cpu_profile_zones
+        << " rendering_vfx_profiling_debug_trace_capture_handoff_rows="
+        << rendering_vfx_profiling_probe.debug_trace_capture_handoff_rows
+        << " rendering_vfx_profiling_debug_cpu_profile_zone_requests="
+        << rendering_vfx_profiling_probe.debug_cpu_profile_zone_requests
+        << " rendering_vfx_profiling_debug_trace_capture_handoff_requests="
+        << rendering_vfx_profiling_probe.debug_trace_capture_handoff_requests
+        << " rendering_vfx_profiling_debug_package_counter_requests="
+        << rendering_vfx_profiling_probe.debug_package_counter_requests
+        << " rendering_vfx_profiling_debug_cpu_profile_zone_evidence_ready="
+        << (rendering_vfx_profiling_probe.debug_cpu_profile_zone_evidence_ready ? 1 : 0)
+        << " rendering_vfx_profiling_debug_trace_capture_handoff_evidence_ready="
+        << (rendering_vfx_profiling_probe.debug_trace_capture_handoff_evidence_ready ? 1 : 0)
+        << " rendering_vfx_profiling_debug_package_counter_evidence_ready="
+        << (rendering_vfx_profiling_probe.debug_package_counter_evidence_ready ? 1 : 0)
+        << " rendering_vfx_profiling_memory_policy_ready="
+        << (rendering_vfx_profiling_probe.memory_policy_ready ? 1 : 0)
+        << " rendering_vfx_profiling_memory_requested_bytes=" << rendering_vfx_profiling_probe.memory_requested_bytes
+        << " rendering_vfx_profiling_memory_residency_pressure_events="
+        << rendering_vfx_profiling_probe.memory_residency_pressure_events
+        << " rendering_vfx_profiling_memory_declared_budget_requests="
+        << rendering_vfx_profiling_probe.memory_declared_budget_requests
+        << " rendering_vfx_profiling_memory_residency_pressure_requests="
+        << rendering_vfx_profiling_probe.memory_residency_pressure_requests
+        << " rendering_vfx_profiling_memory_package_counter_requests="
+        << rendering_vfx_profiling_probe.memory_package_counter_requests
+        << " rendering_vfx_profiling_memory_budget_evidence_ready="
+        << (rendering_vfx_profiling_probe.memory_budget_evidence_ready ? 1 : 0)
+        << " rendering_vfx_profiling_memory_residency_pressure_evidence_ready="
+        << (rendering_vfx_profiling_probe.memory_residency_pressure_evidence_ready ? 1 : 0)
+        << " rendering_vfx_profiling_memory_package_counter_evidence_ready="
+        << (rendering_vfx_profiling_probe.memory_package_counter_evidence_ready ? 1 : 0)
         << " rendering_vfx_profiling_diagnostics=" << rendering_vfx_profiling_probe.diagnostics
         << " gameplay_systems_ticks=" << game.gameplay_systems_ticks()
         << " gameplay_systems_physics_ticks=" << game.gameplay_systems_physics_ticks()
@@ -10053,18 +10811,18 @@ int main(int argc, char** argv) {
     print_presentation_report("sample_generated_desktop_runtime_3d_package", host);
     for (const auto& diagnostic : host.presentation_diagnostics()) {
         std::cout << "sample_generated_desktop_runtime_3d_package presentation_diagnostic="
-                  << mirakana::sdl_desktop_presentation_fallback_reason_name(diagnostic.reason) << ": "
+                  << mirakana::win32_desktop_presentation_fallback_reason_name(diagnostic.reason) << ": "
                   << diagnostic.message << '\n';
     }
     for (const auto& diagnostic : host.native_ui_overlay_diagnostics()) {
         std::cout << "sample_generated_desktop_runtime_3d_package native_ui_overlay_diagnostic="
-                  << mirakana::sdl_desktop_presentation_native_ui_overlay_status_name(diagnostic.status) << ": "
+                  << mirakana::win32_desktop_presentation_native_ui_overlay_status_name(diagnostic.status) << ": "
                   << diagnostic.message << '\n';
     }
     for (const auto& diagnostic : host.native_ui_texture_overlay_diagnostics()) {
         std::cout << "sample_generated_desktop_runtime_3d_package native_ui_texture_overlay_diagnostic="
-                  << mirakana::sdl_desktop_presentation_native_ui_texture_overlay_status_name(diagnostic.status) << ": "
-                  << diagnostic.message << '\n';
+                  << mirakana::win32_desktop_presentation_native_ui_texture_overlay_status_name(diagnostic.status)
+                  << ": " << diagnostic.message << '\n';
     }
     print_package_streaming_diagnostics(package_streaming_result);
     for (const auto& diagnostic : package_upload_staging.diagnostics) {
@@ -10112,6 +10870,88 @@ int main(int argc, char** argv) {
         }
         if (options.require_package_upload_staging && !package_upload_staging.ready) {
             return 3;
+        }
+        if (options.require_ktx2_basis_texture_review &&
+            (!ktx_basis_texture_review_probe.reviewed || !ktx_basis_texture_review_probe.ready ||
+             ktx_basis_texture_review_probe.diagnostics != 0U ||
+             ktx_basis_texture_review_probe.dependency_gated_rows != 0U ||
+             ktx_basis_texture_review_probe.unsupported_claim_rows != 0U ||
+             ktx_basis_texture_review_probe.broad_texture_codec_ready ||
+             ktx_basis_texture_review_probe.invoked_runtime_transcoding ||
+             ktx_basis_texture_review_probe.invoked_gpu_upload ||
+             ktx_basis_texture_review_probe.invoked_compression_tool)) {
+            std::cout << "sample_generated_desktop_runtime_3d_package required_ktx_basis_texture_review_unavailable"
+                      << " ktx_basis_texture_review_status="
+                      << ktx_basis_texture_review_status_name(ktx_basis_texture_review_probe.status)
+                      << " ktx_basis_texture_review_reviewed=" << (ktx_basis_texture_review_probe.reviewed ? 1 : 0)
+                      << " ktx_basis_texture_review_ready=" << (ktx_basis_texture_review_probe.ready ? 1 : 0)
+                      << " ktx_basis_texture_review_rows=" << ktx_basis_texture_review_probe.rows
+                      << " ktx_basis_texture_review_ready_rows=" << ktx_basis_texture_review_probe.ready_rows
+                      << " ktx_basis_texture_review_host_gated_rows=" << ktx_basis_texture_review_probe.host_gated_rows
+                      << " ktx_basis_texture_review_dependency_gated_rows="
+                      << ktx_basis_texture_review_probe.dependency_gated_rows
+                      << " ktx_basis_texture_review_unsupported_claim_rows="
+                      << ktx_basis_texture_review_probe.unsupported_claim_rows
+                      << " ktx_basis_texture_review_diagnostics=" << ktx_basis_texture_review_probe.diagnostics
+                      << " ktx_basis_texture_review_replay_hash=" << ktx_basis_texture_review_probe.replay_hash << '\n';
+            return 23;
+        }
+        if (options.require_gltf_scene_import_review &&
+            (!gltf_scene_import_review_probe.reviewed || !gltf_scene_import_review_probe.ready ||
+             gltf_scene_import_review_probe.diagnostics != 0U ||
+             gltf_scene_import_review_probe.dependency_gated_rows != 0U ||
+             gltf_scene_import_review_probe.unsupported_claim_rows != 0U ||
+             gltf_scene_import_review_probe.broad_scene_import_ready ||
+             gltf_scene_import_review_probe.invoked_external_network_fetch ||
+             gltf_scene_import_review_probe.invoked_runtime_source_parsing ||
+             gltf_scene_import_review_probe.leaked_parser_type ||
+             gltf_scene_import_review_probe.exposed_native_handle || gltf_scene_import_review_probe.mutated_packages)) {
+            std::cout << "sample_generated_desktop_runtime_3d_package required_gltf_scene_import_review_unavailable"
+                      << " gltf_scene_import_review_status="
+                      << gltf_scene_import_review_status_name(gltf_scene_import_review_probe.status)
+                      << " gltf_scene_import_review_reviewed=" << (gltf_scene_import_review_probe.reviewed ? 1 : 0)
+                      << " gltf_scene_import_review_ready=" << (gltf_scene_import_review_probe.ready ? 1 : 0)
+                      << " gltf_scene_import_review_rows=" << gltf_scene_import_review_probe.rows
+                      << " gltf_scene_import_review_ready_rows=" << gltf_scene_import_review_probe.ready_rows
+                      << " gltf_scene_import_review_dependency_gated_rows="
+                      << gltf_scene_import_review_probe.dependency_gated_rows
+                      << " gltf_scene_import_review_unsupported_claim_rows="
+                      << gltf_scene_import_review_probe.unsupported_claim_rows
+                      << " gltf_scene_import_review_diagnostics=" << gltf_scene_import_review_probe.diagnostics
+                      << " gltf_scene_import_review_replay_hash=" << gltf_scene_import_review_probe.replay_hash << '\n';
+            return 24;
+        }
+        if (options.require_source_image_audio_codec_review &&
+            (!source_image_audio_codec_review_probe.reviewed || !source_image_audio_codec_review_probe.ready ||
+             source_image_audio_codec_review_probe.diagnostics != 0U ||
+             source_image_audio_codec_review_probe.dependency_gated_rows != 0U ||
+             source_image_audio_codec_review_probe.unsupported_claim_rows != 0U ||
+             source_image_audio_codec_review_probe.broad_image_codec_ready ||
+             source_image_audio_codec_review_probe.broad_audio_codec_ready ||
+             source_image_audio_codec_review_probe.invoked_svg_vector_decode ||
+             source_image_audio_codec_review_probe.invoked_background_decode_streaming ||
+             source_image_audio_codec_review_probe.invoked_hrtf_middleware ||
+             source_image_audio_codec_review_probe.invoked_runtime_source_parsing ||
+             source_image_audio_codec_review_probe.exposed_native_handle ||
+             source_image_audio_codec_review_probe.mutated_packages)) {
+            std::cout
+                << "sample_generated_desktop_runtime_3d_package "
+                   "required_source_image_audio_codec_review_unavailable"
+                << " source_image_audio_codec_review_status="
+                << source_image_audio_codec_review_status_name(source_image_audio_codec_review_probe.status)
+                << " source_image_audio_codec_review_reviewed="
+                << (source_image_audio_codec_review_probe.reviewed ? 1 : 0)
+                << " source_image_audio_codec_review_ready=" << (source_image_audio_codec_review_probe.ready ? 1 : 0)
+                << " source_image_audio_codec_review_rows=" << source_image_audio_codec_review_probe.rows
+                << " source_image_audio_codec_review_ready_rows=" << source_image_audio_codec_review_probe.ready_rows
+                << " source_image_audio_codec_review_dependency_gated_rows="
+                << source_image_audio_codec_review_probe.dependency_gated_rows
+                << " source_image_audio_codec_review_unsupported_claim_rows="
+                << source_image_audio_codec_review_probe.unsupported_claim_rows
+                << " source_image_audio_codec_review_diagnostics=" << source_image_audio_codec_review_probe.diagnostics
+                << " source_image_audio_codec_review_replay_hash=" << source_image_audio_codec_review_probe.replay_hash
+                << '\n';
+            return 25;
         }
         if (options.require_renderer_quality_gates && !renderer_quality.ready) {
             return 3;
@@ -10449,7 +11289,7 @@ int main(int argc, char** argv) {
             static_cast<std::uint64_t>(options.max_frames) + expected_texture_overlay_sprites;
         if (options.require_native_ui_overlay &&
             (!game.hud_passed(options.max_frames) ||
-             report.native_ui_overlay_status != mirakana::SdlDesktopPresentationNativeUiOverlayStatus::ready ||
+             report.native_ui_overlay_status != mirakana::Win32DesktopPresentationNativeUiOverlayStatus::ready ||
              !report.native_ui_overlay_requested || !report.native_ui_overlay_ready ||
              report.native_ui_overlay_sprites_submitted != expected_ui_overlay_sprites ||
              report.native_ui_overlay_draws != static_cast<std::uint64_t>(options.max_frames))) {
@@ -10472,7 +11312,7 @@ int main(int argc, char** argv) {
         if (requires_native_ui_texture_overlay &&
             (expected_texture_overlay_sprites == 0 ||
              report.native_ui_texture_overlay_status !=
-                 mirakana::SdlDesktopPresentationNativeUiTextureOverlayStatus::ready ||
+                 mirakana::Win32DesktopPresentationNativeUiTextureOverlayStatus::ready ||
              !report.native_ui_texture_overlay_requested || !report.native_ui_texture_overlay_atlas_ready ||
              report.native_ui_texture_overlay_sprites_submitted != expected_texture_overlay_sprites ||
              report.native_ui_texture_overlay_texture_binds != expected_texture_overlay_sprites ||
@@ -10485,7 +11325,7 @@ int main(int argc, char** argv) {
         const auto expected_framegraph_barrier_step_count = expected_framegraph_barrier_steps(
             options.require_directional_shadow, options.require_postprocess_depth_input, options.max_frames);
         if (options.require_postprocess &&
-            (report.postprocess_status != mirakana::SdlDesktopPresentationPostprocessStatus::ready ||
+            (report.postprocess_status != mirakana::Win32DesktopPresentationPostprocessStatus::ready ||
              !postprocess_policy.ready || postprocess_policy.diagnostics_count != 0 ||
              postprocess_policy.effect_count != 1 || postprocess_policy.postprocess_pass_count != 1 ||
              postprocess_policy.framegraph_pass_count != 2 || postprocess_policy.framegraph_barrier_step_budget != 2 ||
@@ -10504,13 +11344,13 @@ int main(int argc, char** argv) {
             return 3;
         }
         if (options.require_directional_shadow &&
-            (report.directional_shadow_status != mirakana::SdlDesktopPresentationDirectionalShadowStatus::ready ||
+            (report.directional_shadow_status != mirakana::Win32DesktopPresentationDirectionalShadowStatus::ready ||
              !report.directional_shadow_requested || !report.directional_shadow_ready)) {
             return 3;
         }
         if (options.require_directional_shadow_filtering &&
             (report.directional_shadow_filter_mode !=
-                 mirakana::SdlDesktopPresentationDirectionalShadowFilterMode::fixed_pcf_3x3 ||
+                 mirakana::Win32DesktopPresentationDirectionalShadowFilterMode::fixed_pcf_3x3 ||
              report.directional_shadow_filter_tap_count != 9 ||
              report.directional_shadow_filter_radius_texels != 1.0F)) {
             return 3;

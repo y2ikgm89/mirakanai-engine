@@ -10,21 +10,24 @@ Dependencies are introduced only through official source repositories or officia
 3909e67a639d426ea939d9bff77bfe1d10443476
 ```
 
-Update the baseline only as an explicit dependency-maintenance task: update the official `external/vcpkg` checkout, verify the selected port versions and licenses, update this document and `THIRD_PARTY_NOTICES.md`, then run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1`.
+Update the baseline only as an explicit dependency-maintenance task: update the official `external/vcpkg` checkout, verify the selected port versions and licenses, update this document and `THIRD_PARTY_NOTICES.md`, then run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`.
 
 ## Current Runtime Dependencies
 
 None are required for the default headless build.
 
-On Windows, the default validation build uses Windows SDK system libraries for the D3D12 backend and tests:
+On Windows, the default validation build uses Windows SDK system libraries for the Win32 platform adapter, WASAPI audio adapter, D3D12 backend, and tests:
 
+- `ole32`
+- `shell32`
+- `user32`
 - `d3d12`
 - `dxgi`
 - `d3dcompiler`
 
 These are official platform SDK libraries and are not bundled in the repository.
 
-The optional desktop runtime, desktop GUI/editor, asset importer, native physics middleware adapter, and network transport adapter builds use vcpkg manifest features so SDL3, GUI, importer, Jolt, and ENet dependencies remain isolated from the default build and from system-wide package locations.
+The optional desktop runtime, desktop GUI/editor, asset importer, native physics middleware adapter, and network transport adapter lanes use vcpkg manifest features so optional package dependencies remain isolated from the default build and from system-wide package locations. The current `desktop-runtime` and `desktop-gui` features are dependency-free; Windows desktop integration uses host SDK libraries.
 
 Run the optional vcpkg dependency bootstrap with:
 
@@ -40,13 +43,13 @@ GitHub Actions restores the gitignored `external/vcpkg` tool checkout before cal
 
 On restricted sandboxed hosts, `bootstrap-deps` can still require an unrestricted run because it is the step that intentionally launches vcpkg, downloads archives, extracts helper tools, and builds dependency ports. After it succeeds, normal configure/build/package lanes should not invoke vcpkg.
 
-Build the desktop GUI/editor targets with:
+The visible desktop GUI/editor shell is deferred after SDL3 removal. The wrapper below is retained as a fail-closed entrypoint for stale automation:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1
 ```
 
-`build-gui` configures, builds, and runs the `desktop-gui` CTest preset.
+`build-gui` currently exits with the deferral message instead of configuring or building `desktop-gui`. `MK_editor_core` remains covered by the default validation lane.
 
 Validate or package the editor-independent desktop game runtime shell with:
 
@@ -55,7 +58,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtim
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1
 ```
 
-`desktop-game-runtime` uses the `desktop-runtime` preset and the bootstrapped `desktop-runtime` vcpkg feature so it does not require Dear ImGui. `package-desktop-runtime` uses the `desktop-runtime-release` preset, cleans its desktop runtime install prefix, installs the SDL3 runtime DLL from `vcpkg_installed/x64-windows/bin` plus a selected registered desktop runtime game executable, validates the installed executable, and then creates a CPack ZIP. Registered desktop runtime game targets generate `desktop-runtime-games.json` metadata for their `games/<game_name>/game.agent.json` manifest path, required source-tree smoke args, installed package smoke args, selected package target, target-specific shader-artifact paths, shader-artifact requirements, and runtime package files. Package files should be authored once in `game.agent.json.runtimePackageFiles` and registered through `PACKAGE_FILES_FROM_MANIFEST`; literal CMake `PACKAGE_FILES` remains valid only when it intentionally mirrors the manifest. Static schema checks and focused/package validation confirm that `desktop-runtime-release` manifest claims match CMake registration, `GAME_MANIFEST`, safe `runtimePackageFiles`, and package recipes. The default package target remains `sample_desktop_runtime_shell` and requires generated DXIL and SPIR-V shader artifacts through metadata; `sample_desktop_runtime_game` can be selected with `-GameTarget` and now validates bundled config, cooked scene package files, target-specific scene DXIL artifacts, and host-owned D3D12 scene GPU binding by default. The same selected game target can validate target-specific scene SPIR-V artifacts and host-owned Vulkan scene GPU binding with `-RequireVulkanShaders` plus explicit Vulkan smoke args on a ready Windows/Vulkan host.
+`desktop-game-runtime` uses the `desktop-runtime` preset and the dependency-free `desktop-runtime` vcpkg feature so it does not require Dear ImGui or external desktop packages. `package-desktop-runtime` uses the `desktop-runtime-release` preset, cleans its desktop runtime install prefix, installs the selected registered desktop runtime game executable, validates the installed executable, rejects legacy desktop runtime DLLs in the install tree or CPack ZIP, and then creates a CPack ZIP. Registered desktop runtime game targets generate `desktop-runtime-games.json` metadata for their `games/<game_name>/game.agent.json` manifest path, required source-tree smoke args, installed package smoke args, selected package target, target-specific shader-artifact paths, shader-artifact requirements, and runtime package files. Package files should be authored once in `game.agent.json.runtimePackageFiles` and registered through `PACKAGE_FILES_FROM_MANIFEST`; literal CMake `PACKAGE_FILES` remains valid only when it intentionally mirrors the manifest. Static schema checks and focused/package validation confirm that `desktop-runtime-release` manifest claims match CMake registration, `GAME_MANIFEST`, safe `runtimePackageFiles`, and package recipes. The default package target remains `sample_desktop_runtime_shell`, uses the Windows-native `Win32DesktopGameHost`, and requires generated DXIL plus SPIR-V shader artifacts through metadata while validating D3D12 presentation on the installed smoke. `sample_desktop_runtime_game`, committed generated desktop runtime package samples, and generated desktop runtime templates are Win32-backed through `Win32DesktopGameHost` / `Win32DesktopPresentation`. The same selected game target can validate target-specific scene SPIR-V artifacts and host-owned Vulkan scene GPU binding with `-RequireVulkanShaders` plus explicit Vulkan smoke args on a ready Windows/Vulkan host.
 
 ## Windows Host Diagnostics Tooling
 
@@ -70,20 +73,13 @@ Apply ADK servicing patches only when they match installed ADK features. Do not 
 
 ## Optional Features
 
-`desktop-runtime` in `vcpkg.json` declares:
+`desktop-runtime` in `vcpkg.json` is currently a dependency-free feature. It enables the Windows-native platform/audio/runtime host lane through `MK_ENABLE_DESKTOP_RUNTIME=ON` while relying on host SDK libraries such as Win32, WASAPI, DXGI, and D3D12. It is intentionally separate from `desktop-gui` so windowed games can be validated and packaged without Dear ImGui or `MK_editor`.
 
-- `sdl3`
+`desktop-gui` in `vcpkg.json` is currently a deferred empty feature. It declares no package dependencies, does not install Dear ImGui, and does not enable the desktop runtime lane.
 
-This feature builds SDL3-backed platform, audio, and desktop runtime host adapters plus registered desktop runtime game samples when `MK_ENABLE_DESKTOP_RUNTIME=ON`. It is intentionally separate from `desktop-gui` so windowed games can be validated and packaged without Dear ImGui or `MK_editor`.
+The previous visible editor shell was removed from active build lanes before final desktop platform cleanup. `MK_editor_core` remains the supported editor logic target. A future visible editor shell must select audited dependencies explicitly and use first-party Win32/D3D12 adapters on Windows.
 
-`desktop-gui` in `vcpkg.json` declares:
-
-- `sdl3`
-- `imgui` with `docking-experimental`, `sdl3-binding`, and `sdl3-renderer-binding`
-
-This feature builds the optional SDL3 + Dear ImGui editor shell. `MK_ENABLE_DESKTOP_GUI=ON` also enables the desktop runtime targets, but Dear ImGui remains scoped to the editor/debug shell.
-
-Dear ImGui is scoped to the optional developer/editor shell and debug tooling. It is not the production game/runtime UI foundation. Production runtime UI work should first define first-party `MK_ui` contracts.
+Dear ImGui remains a possible future developer/editor/debug-shell dependency, but it is not currently declared or distributed. It is not the production game/runtime UI foundation. Production runtime UI work should first define first-party `MK_ui` contracts.
 
 ### Editor native module boundary (not a vcpkg dependency)
 
@@ -93,11 +89,12 @@ Optional **same-build** loading of an editor game module driver uses the Windows
 
 - `libspng` for PNG decoding
 - `fastgltf` for glTF 2.0 parsing
+- `ktx` / KTX Software for KTX2/Basis texture container review and offline transcode-target planning
 - `miniaudio` for WAV/MP3/FLAC audio decoding
 
-This feature is linked only when `MK_ENABLE_ASSET_IMPORTERS=ON` through the `asset-importers` CMake preset. `MK_tools` owns the optional adapters and converts source files into first-party source documents before cooked artifacts are written. Audited PNG bytes decode to RGBA8 `TextureSourceDocument` through `mirakana::decode_audited_png_rgba8` (`mirakana/tools/source_image_decode.hpp`), shared with `PngTextureExternalAssetImporter` and the optional `PngImageDecodingAdapter` bridge for `mirakana::ui::IImageDecodingAdapter`. The dependency-free packed UI atlas bridge (`author_packed_ui_atlas_from_decoded_images`, `plan_packed_ui_atlas_package_update`) consumes already validated `ImageDecodeResult` rows and emits first-party `GameEngine.CookedTexture.v1` plus `GameEngine.UiAtlas.v1` package artifacts without adding a new dependency. The dependency-free glyph atlas bridge (`author_packed_ui_glyph_atlas_from_rasterized_glyphs`, `plan_packed_ui_glyph_atlas_package_update`, `UiAtlasMetadataGlyph`, `RuntimeUiAtlasGlyph`) consumes already-rasterized RGBA8 glyph pixels and emits first-party cooked glyph atlas package metadata without adding a font, shaping, rasterization, platform SDK, or renderer upload dependency. Runtime/game code must consume cooked assets and must not parse external source formats directly.
+This feature is linked only when `MK_ENABLE_ASSET_IMPORTERS=ON` through the `asset-importers` CMake preset. `MK_tools` owns the optional adapters and converts source files into first-party source documents before cooked artifacts are written. Audited PNG bytes decode to RGBA8 `TextureSourceDocument` through `mirakana::decode_audited_png_rgba8` (`mirakana/tools/source_image_decode.hpp`), shared with `PngTextureExternalAssetImporter` and the optional `PngImageDecodingAdapter` bridge for `mirakana::ui::IImageDecodingAdapter`. KTX Software is selected only as an optional dependency/legal record for reviewed KTX2/Basis container validation and offline transcode-target planning evidence; the current KTX2/Basis package smoke does not load KTX files, run Basis transcoding/compression tools, upload GPU textures, or expose KTX/native handles. The dependency-free packed UI atlas bridge (`author_packed_ui_atlas_from_decoded_images`, `plan_packed_ui_atlas_package_update`) consumes already validated `ImageDecodeResult` rows and emits first-party `GameEngine.CookedTexture.v1` plus `GameEngine.UiAtlas.v1` package artifacts without adding a new dependency. The dependency-free glyph atlas bridge (`author_packed_ui_glyph_atlas_from_rasterized_glyphs`, `plan_packed_ui_glyph_atlas_package_update`, `UiAtlasMetadataGlyph`, `RuntimeUiAtlasGlyph`) consumes already-rasterized RGBA8 glyph pixels and emits first-party cooked glyph atlas package metadata without adding a font, shaping, rasterization, platform SDK, or renderer upload dependency. Runtime/game code must consume cooked assets and must not parse external source formats directly.
 
-Installed SDKs built with `MK_ENABLE_ASSET_IMPORTERS=ON` advertise `Mirakanai_HAS_ASSET_IMPORTERS` in `MirakanaiConfig.cmake` and resolve `SPNG` and `fastgltf` before loading exported Mirakanai targets. `miniaudio` remains a private header-only implementation dependency of the optional adapter build.
+Installed SDKs built with `MK_ENABLE_ASSET_IMPORTERS=ON` advertise `Mirakanai_HAS_ASSET_IMPORTERS` in `MirakanaiConfig.cmake` and resolve `SPNG`, `fastgltf`, and `Ktx` before loading exported Mirakanai targets. `miniaudio` remains a private header-only implementation dependency of the optional adapter build.
 
 Validate the optional importer lane with:
 
@@ -174,10 +171,12 @@ Validated local package versions:
 
 | Package | Version | Use |
 | --- | --- | --- |
-| SDL3 | 3.4.4 | Desktop window/event loop for optional desktop runtime games, the editor, and optional desktop audio output through `MK_audio_sdl3` |
-| Dear ImGui | 1.92.7 | Docking editor UI, SDL3 backend, SDL renderer backend |
 | libspng | vcpkg baseline selected | Optional `MK_tools` PNG source importer |
 | fastgltf | vcpkg baseline selected | Optional `MK_tools` glTF 2.0 source importer |
+| KTX Software | 4.4.2 | Optional `MK_tools` KTX2/Basis texture review dependency/legal evidence |
+| Zstandard | 1.5.7 | Optional `MK_tools` build output through KTX Software |
+| OpenGL Registry | 2026-01-26 | Optional `MK_tools` build output through KTX Software |
+| EGL Registry | 2025-05-27 | Optional `MK_tools` build output through KTX Software |
 | miniaudio | vcpkg baseline selected | Optional `MK_tools` WAV/MP3/FLAC source importer |
 | Jolt Physics | 5.5.0 | Optional `MK_physics_jolt` native physics middleware adapter |
 | ENet | 1.3.18 | Optional `MK_runtime_network_enet` loopback network transport adapter |
@@ -196,13 +195,10 @@ Validated local package versions:
 
 - vcpkg manifest mode: https://learn.microsoft.com/en-us/vcpkg/concepts/manifest-mode
 - vcpkg CMake integration: https://learn.microsoft.com/en-us/vcpkg/users/buildsystems/cmake-integration
-- SDL3: https://github.com/libsdl-org/SDL
-- SDL3 platforms: https://wiki.libsdl.org/SDL3/README-platforms
-- SDL3 audio streams: https://wiki.libsdl.org/SDL3/SDL_OpenAudioDeviceStream
-- Dear ImGui: https://github.com/ocornut/imgui
-- Dear ImGui getting started: https://github.com/ocornut/imgui/wiki/Getting-Started
+- Windows Core Audio / WASAPI: https://learn.microsoft.com/en-us/windows/win32/coreaudio/wasapi
 - libspng: https://libspng.org/
 - fastgltf: https://github.com/spnda/fastgltf
+- KTX Software: https://github.com/KhronosGroup/KTX-Software
 - miniaudio: https://miniaud.io/
 - Jolt Physics: https://github.com/jrouwe/JoltPhysics
 - Jolt Physics documentation: https://jrouwe.github.io/JoltPhysics/
@@ -233,10 +229,11 @@ Validated local package versions:
 
 ## License Notes
 
-- SDL3 is recorded by vcpkg as `Zlib AND MIT AND Apache-2.0`.
-- Dear ImGui uses the MIT license.
 - libspng is BSD-2-Clause.
 - fastgltf is MIT and currently pulls `simdjson` through vcpkg.
+- KTX Software is primarily Apache-2.0 for repository-unique files and ships an upstream `LICENSES/*` bundle including a non-open Ericsson `LicenseRef-ETCSLA` special case recorded by its copyright file; it is kept behind the optional `asset-importers` lane.
+- Zstandard is BSD-3-Clause OR GPL-2.0-only and is pulled through KTX Software.
+- Khronos OpenGL/EGL registry files use per-file license comments and are pulled through KTX Software.
 - miniaudio is public domain or MIT No Attribution.
 - Jolt Physics is MIT licensed and isolated to the optional `physics-jolt` adapter lane.
 - ENet is MIT licensed and isolated to the optional `network-enet` adapter lane.

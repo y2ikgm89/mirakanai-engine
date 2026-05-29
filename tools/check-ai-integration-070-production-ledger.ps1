@@ -34,28 +34,11 @@ $editorProjectNativeDialogChecks = @(
         )
     },
     @{
-        Path = "editor/src/main.cpp"
+        Path = "editor/CMakeLists.txt"
         Needles = @(
-            "Open Project...",
-            "Save Project As...",
-            "Project Open Dialog",
-            "Project Save Dialog",
-            "show_project_open_dialog",
-            "show_project_save_dialog",
-            "poll_project_file_dialogs",
-            "project_store_relative_project_path",
-            "workspace_path_for_project_path",
-            "scene_path_for_project_document",
-            "open_project_bundle_from_paths",
-            "save_project_bundle_to_paths",
-            "project_open_dialog_id_",
-            "project_save_dialog_id_",
-            "make_project_open_dialog_request",
-            "make_project_save_dialog_request",
-            "make_project_open_dialog_model",
-            "make_project_save_dialog_model",
-            "mirakana::IFileDialogService",
-            "mirakana::SdlFileDialogService"
+            "MK_editor visible shell is deferred after SDL3 removal",
+            "MK_editor_core remains the supported editor logic target",
+            "must not depend on SDL3"
         )
     },
     @{
@@ -763,7 +746,7 @@ if ($sample2dDesktopManifest.target -ne "sample_2d_desktop_runtime_package") {
 if ($sample2dDesktopManifest.gameplayContract.productionRecipe -ne "2d-desktop-runtime-package") {
     Write-Error "$sample2dDesktopManifestPath gameplayContract.productionRecipe must be 2d-desktop-runtime-package"
 }
-foreach ($module in @("MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_renderer")) {
+    foreach ($module in @("MK_platform_win32", "MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_renderer")) {
     if (@($sample2dDesktopManifest.engineModules) -notcontains $module) {
         Write-Error "$sample2dDesktopManifestPath engineModules missing $module"
     }
@@ -781,6 +764,7 @@ foreach ($packageFile in @(
     "runtime/assets/2d/jump.audio.geasset",
     "runtime/assets/2d/level.tilemap",
     "runtime/assets/2d/player.sprite_animation",
+    "runtime/assets/2d/hud.uiatlas",
     "runtime/assets/2d/playable.scene"
 )) {
     if (@($sample2dDesktopManifest.runtimePackageFiles) -notcontains $packageFile) {
@@ -794,7 +778,8 @@ foreach ($attributeRule in @(
     "*.material text eol=lf",
     "*.scene text eol=lf",
     "*.tilemap text eol=lf",
-    "*.sprite_animation text eol=lf"
+    "*.sprite_animation text eol=lf",
+    "*.uiatlas text eol=lf"
 )) {
     Assert-ContainsText $sample2dDesktopGitAttributes $attributeRule "games/sample_2d_desktop_runtime_package/runtime/.gitattributes"
 }
@@ -821,6 +806,8 @@ foreach ($needle in @(
     "--require-networking-foundation-policy",
     "simulation orchestration package proof",
     "--require-simulation-orchestration",
+    "Runtime UI renderer atlas handoff smoke",
+    "--require-runtime-ui-renderer-atlas-handoff",
     "gameplayRuntimeScheduler",
     "gameplay_runtime_scheduler_ready=1",
     "worldEntityModel",
@@ -833,8 +820,8 @@ foreach ($needle in @(
     "addressableContentStreaming",
     "addressable_content_status=ready",
     "addressable_content_ready=1",
-    "addressable_content_address_rows=5",
-    "addressable_content_dependency_rows=6",
+    "addressable_content_address_rows=6",
+    "addressable_content_dependency_rows=7",
     "addressable_content_load_rows=3",
     "addressable_content_release_rows=1",
     "addressable_content_refcount_rows=4",
@@ -1105,6 +1092,11 @@ foreach ($needle in @(
     "runtime_ui_workbench_image_decoding=",
     "runtime_ui_workbench_native_platform=",
     "runtime_ui_workbench_diagnostics=",
+    "--require-runtime-ui-renderer-atlas-handoff",
+    "runtime_ui_renderer_atlas_handoff_ready=",
+    "runtime_ui_renderer_atlas_handoff_renderer_sprites_submitted=",
+    "runtime_ui_renderer_atlas_handoff_invoked_renderer_upload=",
+    "required_runtime_ui_renderer_atlas_handoff_unavailable",
     "required_gameplay_runtime_scheduler_unavailable",
     "required_world_entity_model_unavailable",
     "required_addressable_content_unavailable",
@@ -1290,7 +1282,10 @@ foreach ($needle in @(
     "runtime_ui_workbench_accessibility_bridge",
     "runtime_ui_workbench_image_decoding",
     "runtime_ui_workbench_native_platform",
-    "runtime_ui_workbench_diagnostics"
+    "runtime_ui_workbench_diagnostics",
+    "runtime_ui_renderer_atlas_handoff_ready",
+    "runtime_ui_renderer_atlas_handoff_renderer_sprites_submitted",
+    "runtime_ui_renderer_atlas_handoff_invoked_renderer_upload"
 )) {
     Assert-ContainsText $sample2dInstalledRuntimeValidationText $needle "tools/validate-installed-desktop-runtime.ps1"
 }
@@ -1308,7 +1303,8 @@ foreach ($needle in @(
     "--require-networking-foundation-policy",
     "--require-simulation-orchestration",
     "--require-production-authoring-workflows",
-    "--require-runtime-ui-workbench"
+    "--require-runtime-ui-workbench",
+    "--require-runtime-ui-renderer-atlas-handoff"
 )) {
     Assert-ContainsText $sample2dDesktopCMakeText $needle "games/CMakeLists.txt"
 }
@@ -1335,7 +1331,7 @@ if ($sample3dManifest.target -ne "sample_desktop_runtime_game") {
 if ($sample3dManifest.gameplayContract.productionRecipe -ne "3d-playable-desktop-package") {
     Write-Error "$sample3dManifestPath gameplayContract.productionRecipe must be 3d-playable-desktop-package"
 }
-foreach ($module in @("MK_animation", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_sdl3", "MK_runtime_host_sdl3_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
+foreach ($module in @("MK_animation", "MK_platform_win32", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
     if (@($sample3dManifest.engineModules) -notcontains $module) {
         Write-Error "$sample3dManifestPath engineModules missing $module"
     }
@@ -1593,7 +1589,7 @@ foreach ($packageStreamingSmokeGuidance in @(
     Assert-ContainsText $packageStreamingSmokeGuidanceText "package_streaming_status" $packageStreamingSmokeGuidance
     Assert-ContainsText $packageStreamingSmokeGuidanceText "broad async/background streaming" $packageStreamingSmokeGuidance
     Assert-ContainsText $packageStreamingSmokeGuidanceText "--require-renderer-quality-gates" $packageStreamingSmokeGuidance
-    Assert-ContainsText $packageStreamingSmokeGuidanceText "evaluate_sdl_desktop_presentation_quality_gate" $packageStreamingSmokeGuidance
+    Assert-ContainsText $packageStreamingSmokeGuidanceText "evaluate_win32_desktop_presentation_quality_gate" $packageStreamingSmokeGuidance
     Assert-ContainsText $packageStreamingSmokeGuidanceText "renderer_quality_expected_framegraph_passes=2" $packageStreamingSmokeGuidance
     Assert-ContainsText $packageStreamingSmokeGuidanceText "renderer_quality_expected_framegraph_barrier_steps=4" $packageStreamingSmokeGuidance
     Assert-ContainsText $packageStreamingSmokeGuidanceText "depth-input postprocess" $packageStreamingSmokeGuidance

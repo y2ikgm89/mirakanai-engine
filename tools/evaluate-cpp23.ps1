@@ -43,13 +43,7 @@ if ($Release) {
 }
 
 if ($Gui) {
-    $null = Assert-VcpkgExecutable -Purpose "the C++23 desktop GUI verification"
-
-    Set-MirakanaiVcpkgEnvironment | Out-Null
-
-    Invoke-CheckedCommand $tools.CMake --preset cpp23-desktop-gui-eval
-    Invoke-CheckedCommand $tools.CMake --build --preset cpp23-desktop-gui-eval --parallel $effectiveJobs
-    Invoke-CheckedCommand $tools.CTest --preset cpp23-desktop-gui-eval --output-on-failure --timeout 300 --parallel $effectiveJobs
+    Write-Error "The C++23 GUI lane is deferred after SDL3 removal. MK_editor_core remains covered by the default Debug lane; a future visible editor shell must use first-party Win32/D3D12 adapters and must not depend on SDL3."
 }
 
 Write-Host "cpp23-verification: ok"

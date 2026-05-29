@@ -105,6 +105,10 @@ if (-not (Test-Path -LiteralPath $runtimeExecutable -PathType Leaf)) {
     Write-Error "Installed desktop runtime game was not found: $runtimeExecutable"
 }
 
+if (Test-Path -LiteralPath $sdlDll -PathType Leaf) {
+    Write-Error "Installed desktop runtime package must not ship SDL3 runtime DLL: $sdlDll"
+}
+
 if ($requireD3d12ShaderArtifacts) {
     $shaderArtifacts = @()
     if ($null -ne $gameMetadata -and $gameMetadata.PSObject.Properties.Name.Contains("d3d12ShaderArtifacts")) {
@@ -154,12 +158,6 @@ if ($requireVulkanShaderArtifacts) {
         if ((Get-Item -LiteralPath $shaderPath).Length -le 0) {
             Write-Error "Installed desktop runtime Vulkan shader artifact is empty: $shaderPath"
         }
-    }
-}
-
-if ([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform([System.Runtime.InteropServices.OSPlatform]::Windows)) {
-    if (-not (Test-Path -LiteralPath $sdlDll -PathType Leaf)) {
-        Write-Error "Installed SDL3 runtime DLL was not found: $sdlDll"
     }
 }
 
@@ -222,6 +220,8 @@ if ($requiresRenderingVfxProfiling) {
 $requiresFrameGraphMultiQueueEvidence = @($SmokeArgs) -contains "--require-framegraph-multiqueue-evidence"
 $requiresVulkanFrameGraphMultiQueueEvidence = @($SmokeArgs) -contains "--require-vulkan-framegraph-multiqueue-evidence"
 $requiresPackageUploadStaging = @($SmokeArgs) -contains "--require-package-upload-staging"
+$requiresKtx2BasisTextureReview = @($SmokeArgs) -contains "--require-ktx2-basis-texture-review"
+$requiresGltfSceneImportReview = @($SmokeArgs) -contains "--require-gltf-scene-import-review"
 $requiresNative2dSprites = @($SmokeArgs) -contains "--require-native-2d-sprites"
 $requiresSpriteAnimation = @($SmokeArgs) -contains "--require-sprite-animation"
 $requiresTilemapRuntimeUx = @($SmokeArgs) -contains "--require-tilemap-runtime-ux"
@@ -237,6 +237,7 @@ $requiresGameplayAuthoringReview = @($SmokeArgs) -contains "--require-gameplay-a
 $requiresProductionAuthoringWorkflows = @($SmokeArgs) -contains "--require-production-authoring-workflows"
 $requiresRuntimeUiWorkbench = @($SmokeArgs) -contains "--require-runtime-ui-workbench"
 $requiresRuntimeUiProductionStack = @($SmokeArgs) -contains "--require-runtime-ui-production-stack"
+$requiresRuntimeUiRendererAtlasHandoff = @($SmokeArgs) -contains "--require-runtime-ui-renderer-atlas-handoff"
 $requiresPackageStreamingSafePoint = @($SmokeArgs) -contains "--require-package-streaming-safe-point"
 $requiresSceneCollisionPackage = @($SmokeArgs) -contains "--require-scene-collision-package"
 $requiresAudioProduction = @($SmokeArgs) -contains "--require-audio-production"
@@ -388,6 +389,9 @@ if ($requiresAudioProduction -and $GameTarget -ne "sample_2d_desktop_runtime_pac
 }
 if ($GameTarget -eq "sample_generated_desktop_runtime_material_shader_package") {
     $expectedVulkanMaterialShaderEvidence = if ($requireVulkanShaderArtifacts) { 1 } else { 0 }
+    $expectedShaderGenerationReadyRows = if ($requireVulkanShaderArtifacts) { 4 } else { 2 }
+    $expectedShaderGenerationHostGatedRows = if ($requireVulkanShaderArtifacts) { 0 } else { 2 }
+    $expectedShaderGenerationSpirvValidationRows = if ($requireVulkanShaderArtifacts) { 2 } else { 0 }
     foreach ($field in @(
             "modern_material_variants",
             "modern_material_ready",
@@ -409,7 +413,26 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_material_shader_package") 
             "material_graph_vulkan_compile_requests",
             "material_graph_runtime_sources_shipped",
             "material_graph_unsupported_boundaries",
-            "material_graph_authoring_diagnostics"
+            "material_graph_authoring_diagnostics",
+            "shader_generation_cache_reviewed",
+            "shader_generation_cache_selected_ready",
+            "shader_generation_cache_d3d12_ready",
+            "shader_generation_cache_vulkan_ready",
+            "shader_generation_cache_rows",
+            "shader_generation_cache_ready_rows",
+            "shader_generation_cache_host_gated_rows",
+            "shader_generation_cache_d3d12_rows",
+            "shader_generation_cache_vulkan_rows",
+            "shader_generation_cache_spirv_validation_rows",
+            "shader_generation_cache_key_rows",
+            "shader_generation_cache_provenance_rows",
+            "shader_generation_cache_unsupported_claim_rows",
+            "shader_generation_cache_diagnostics",
+            "shader_generation_cache_live_generation_ready",
+            "shader_generation_cache_runtime_compiler_ready",
+            "shader_generation_cache_native_cache_handle_ready",
+            "shader_generation_cache_renderer_residency_ready",
+            "shader_generation_cache_metal_library_ready"
         )) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
             Write-Error "Installed material/shader package smoke status line did not include modern material field: $field"
@@ -450,6 +473,25 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_material_shader_package") 
             "material_graph_runtime_sources_shipped" = "0"
             "material_graph_unsupported_boundaries" = "4"
             "material_graph_authoring_diagnostics" = "0"
+            "shader_generation_cache_reviewed" = "1"
+            "shader_generation_cache_selected_ready" = "1"
+            "shader_generation_cache_d3d12_ready" = "1"
+            "shader_generation_cache_vulkan_ready" = [string]$expectedVulkanMaterialShaderEvidence
+            "shader_generation_cache_rows" = "4"
+            "shader_generation_cache_ready_rows" = [string]$expectedShaderGenerationReadyRows
+            "shader_generation_cache_host_gated_rows" = [string]$expectedShaderGenerationHostGatedRows
+            "shader_generation_cache_d3d12_rows" = "2"
+            "shader_generation_cache_vulkan_rows" = "2"
+            "shader_generation_cache_spirv_validation_rows" = [string]$expectedShaderGenerationSpirvValidationRows
+            "shader_generation_cache_key_rows" = [string]$expectedShaderGenerationReadyRows
+            "shader_generation_cache_provenance_rows" = [string]$expectedShaderGenerationReadyRows
+            "shader_generation_cache_unsupported_claim_rows" = "0"
+            "shader_generation_cache_diagnostics" = "0"
+            "shader_generation_cache_live_generation_ready" = "0"
+            "shader_generation_cache_runtime_compiler_ready" = "0"
+            "shader_generation_cache_native_cache_handle_ready" = "0"
+            "shader_generation_cache_renderer_residency_ready" = "0"
+            "shader_generation_cache_metal_library_ready" = "0"
         }.GetEnumerator()) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$([regex]::Escape($expected.Key))=$([regex]::Escape($expected.Value))\b") {
             Write-Error "Installed material/shader package smoke status line did not prove $($expected.Key)=$($expected.Value)."
@@ -631,7 +673,6 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
         $expectedGpuMemoryBackendEvidence =
             if ($requiresD3d12GpuMemoryEvidence -or $requiresVulkanGpuMemoryEvidence) { "1" } else { "0" }
         $expectedGpuMemoryOsVideoBudgetRequired = if ($requiresD3d12GpuMemoryEvidence) { "1" } else { "0" }
-        $expectedGpuMemoryResidencyPressureRequired = if ($requiresD3d12GpuMemoryEvidence) { "1" } else { "0" }
         $expectedGpuMemoryPolicyFields = @{
             "gpu_memory_policy_status" = "ready"
             "gpu_memory_policy_ready" = "1"
@@ -643,8 +684,9 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
             "gpu_memory_policy_backend_memory_evidence_required" = $expectedGpuMemoryBackendEvidence
             "gpu_memory_policy_backend_memory_evidence_ready" = $expectedGpuMemoryBackendEvidence
             "gpu_memory_policy_os_video_memory_budget_required" = $expectedGpuMemoryOsVideoBudgetRequired
-            "gpu_memory_policy_residency_pressure_required" = $expectedGpuMemoryResidencyPressureRequired
-            "gpu_memory_policy_package_counter_evidence_required" = $expectedGpuMemoryBackendEvidence
+            "gpu_memory_policy_memory_budget_evidence_ready" = "1"
+            "gpu_memory_policy_residency_pressure_evidence_ready" = "1"
+            "gpu_memory_policy_package_counter_evidence_ready" = "1"
         }
         foreach ($field in $expectedGpuMemoryPolicyFields.Keys) {
             $expectedValue = [regex]::Escape($expectedGpuMemoryPolicyFields[$field])
@@ -658,7 +700,10 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
                 "gpu_memory_policy_counted_bytes",
                 "gpu_memory_policy_committed_byte_estimate",
                 "gpu_memory_policy_upload_bytes_written",
-                "gpu_memory_policy_package_counters"
+                "gpu_memory_policy_declared_budget_requests",
+                "gpu_memory_policy_residency_pressure_requests",
+                "gpu_memory_policy_package_counter_requests",
+                "gpu_memory_policy_residency_pressure_events"
             )) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
                 Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive GPU memory policy field: $field"
@@ -682,9 +727,7 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
         }
         foreach ($field in @(
                 "d3d12_gpu_memory_execution_committed_resources_byte_estimate",
-                "d3d12_gpu_memory_execution_upload_bytes_written",
-                "gpu_memory_policy_residency_pressure_bytes",
-                "gpu_memory_policy_package_counters_ready"
+                "d3d12_gpu_memory_execution_upload_bytes_written"
             )) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
                 Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive D3D12 GPU memory evidence field: $field"
@@ -709,8 +752,7 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
         foreach ($field in @(
                 "vulkan_gpu_memory_execution_committed_resources_byte_estimate",
                 "vulkan_gpu_memory_execution_upload_bytes_written",
-                "vulkan_gpu_memory_execution_framegraph_barrier_steps_executed",
-                "gpu_memory_policy_package_counters_ready"
+                "vulkan_gpu_memory_execution_framegraph_barrier_steps_executed"
             )) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
                 Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive Vulkan GPU memory evidence field: $field"
@@ -730,10 +772,9 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
             "debug_profiling_policy_frames_current" = "1"
             "debug_profiling_policy_backend_profiling_evidence_required" = $expectedDebugProfilingBackendEvidence
             "debug_profiling_policy_backend_profiling_evidence_ready" = $expectedDebugProfilingBackendEvidence
-            "debug_profiling_policy_cpu_profile_zone_evidence_required" = "0"
-            "debug_profiling_policy_profile_budget_evidence_required" = "0"
-            "debug_profiling_policy_package_counter_evidence_required" = $expectedDebugProfilingBackendEvidence
-            "debug_profiling_policy_trace_capture_handoff_review_ready" = $expectedDebugProfilingBackendEvidence
+            "debug_profiling_policy_cpu_profile_zone_evidence_ready" = "1"
+            "debug_profiling_policy_trace_capture_handoff_evidence_ready" = "1"
+            "debug_profiling_policy_package_counter_evidence_ready" = "1"
         }
         foreach ($field in $expectedDebugProfilingPolicyFields.Keys) {
             $expectedValue = [regex]::Escape($expectedDebugProfilingPolicyFields[$field])
@@ -746,7 +787,11 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
                 "debug_profiling_policy_gpu_debug_markers_inserted",
                 "debug_profiling_policy_framegraph_barrier_steps_executed",
                 "debug_profiling_policy_framegraph_render_passes_recorded",
-                "debug_profiling_policy_package_counters"
+                "debug_profiling_policy_cpu_profile_zones",
+                "debug_profiling_policy_trace_capture_handoff_rows",
+                "debug_profiling_policy_cpu_profile_zone_requests",
+                "debug_profiling_policy_trace_capture_handoff_requests",
+                "debug_profiling_policy_package_counter_requests"
             )) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
                 Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive debug profiling policy field: $field"
@@ -755,11 +800,6 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
         if ($requiresD3d12DebugProfilingEvidence) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bdebug_profiling_policy_gpu_timestamp_ticks_per_second=[1-9]\d*\b") {
                 Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive debug profiling policy field: debug_profiling_policy_gpu_timestamp_ticks_per_second"
-            }
-        }
-        if ($requiresD3d12DebugProfilingEvidence -or $requiresVulkanDebugProfilingEvidence) {
-            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bdebug_profiling_policy_package_counters_ready=[1-9]\d*\b") {
-                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive debug profiling policy field: debug_profiling_policy_package_counters_ready"
             }
         }
     }
@@ -3062,8 +3102,8 @@ if ($requiresSimulationOrchestration) {
     $expectedAddressableContentFields = @{
         "addressable_content_status" = "ready"
         "addressable_content_ready" = "1"
-        "addressable_content_address_rows" = "5"
-        "addressable_content_dependency_rows" = "6"
+        "addressable_content_address_rows" = "6"
+        "addressable_content_dependency_rows" = "7"
         "addressable_content_load_rows" = "3"
         "addressable_content_release_rows" = "1"
         "addressable_content_refcount_rows" = "4"
@@ -3246,8 +3286,30 @@ if ($requiresRuntimeUiProductionStack) {
             "runtime_ui_production_stack_production_ready",
             "runtime_ui_production_stack_requires_ime_host_evidence",
             "runtime_ui_production_stack_ime_host_evidence",
+            "runtime_ui_production_stack_ime_session_rows",
+            "runtime_ui_production_stack_ime_composition_rows",
+            "runtime_ui_production_stack_ime_candidate_rows",
+            "runtime_ui_production_stack_ime_text_area_cursor_rows",
+            "runtime_ui_production_stack_ime_committed_text_rows",
+            "runtime_ui_production_stack_ime_clipboard_rows",
+            "runtime_ui_production_stack_ime_platform_adapter_proof_rows",
+            "runtime_ui_production_stack_ime_platform_host_gate_rows",
+            "runtime_ui_production_stack_ime_platform_parity_ready",
             "runtime_ui_production_stack_requires_accessibility_host_evidence",
             "runtime_ui_production_stack_accessibility_host_evidence",
+            "runtime_ui_production_stack_accessibility_role_rows",
+            "runtime_ui_production_stack_accessibility_name_rows",
+            "runtime_ui_production_stack_accessibility_description_rows",
+            "runtime_ui_production_stack_accessibility_state_rows",
+            "runtime_ui_production_stack_accessibility_focus_rows",
+            "runtime_ui_production_stack_accessibility_action_rows",
+            "runtime_ui_production_stack_accessibility_relationship_rows",
+            "runtime_ui_production_stack_accessibility_live_region_rows",
+            "runtime_ui_production_stack_accessibility_keyboard_pattern_rows",
+            "runtime_ui_production_stack_accessibility_publication_status_rows",
+            "runtime_ui_production_stack_accessibility_uia_host_gate_rows",
+            "runtime_ui_production_stack_accessibility_platform_host_gate_rows",
+            "runtime_ui_production_stack_accessibility_platform_parity_ready",
             "runtime_ui_production_stack_invoked_text_shaping",
             "runtime_ui_production_stack_invoked_font_rasterization",
             "runtime_ui_production_stack_invoked_ime",
@@ -3273,8 +3335,30 @@ if ($requiresRuntimeUiProductionStack) {
         "runtime_ui_production_stack_production_ready" = "0"
         "runtime_ui_production_stack_requires_ime_host_evidence" = "1"
         "runtime_ui_production_stack_ime_host_evidence" = "0"
+        "runtime_ui_production_stack_ime_session_rows" = "1"
+        "runtime_ui_production_stack_ime_composition_rows" = "1"
+        "runtime_ui_production_stack_ime_candidate_rows" = "1"
+        "runtime_ui_production_stack_ime_text_area_cursor_rows" = "1"
+        "runtime_ui_production_stack_ime_committed_text_rows" = "1"
+        "runtime_ui_production_stack_ime_clipboard_rows" = "1"
+        "runtime_ui_production_stack_ime_platform_adapter_proof_rows" = "1"
+        "runtime_ui_production_stack_ime_platform_host_gate_rows" = "1"
+        "runtime_ui_production_stack_ime_platform_parity_ready" = "0"
         "runtime_ui_production_stack_requires_accessibility_host_evidence" = "1"
         "runtime_ui_production_stack_accessibility_host_evidence" = "0"
+        "runtime_ui_production_stack_accessibility_role_rows" = "1"
+        "runtime_ui_production_stack_accessibility_name_rows" = "1"
+        "runtime_ui_production_stack_accessibility_description_rows" = "1"
+        "runtime_ui_production_stack_accessibility_state_rows" = "1"
+        "runtime_ui_production_stack_accessibility_focus_rows" = "1"
+        "runtime_ui_production_stack_accessibility_action_rows" = "1"
+        "runtime_ui_production_stack_accessibility_relationship_rows" = "1"
+        "runtime_ui_production_stack_accessibility_live_region_rows" = "1"
+        "runtime_ui_production_stack_accessibility_keyboard_pattern_rows" = "1"
+        "runtime_ui_production_stack_accessibility_publication_status_rows" = "1"
+        "runtime_ui_production_stack_accessibility_uia_host_gate_rows" = "1"
+        "runtime_ui_production_stack_accessibility_platform_host_gate_rows" = "1"
+        "runtime_ui_production_stack_accessibility_platform_parity_ready" = "0"
         "runtime_ui_production_stack_invoked_text_shaping" = "0"
         "runtime_ui_production_stack_invoked_font_rasterization" = "0"
         "runtime_ui_production_stack_invoked_ime" = "0"
@@ -3291,6 +3375,86 @@ if ($requiresRuntimeUiProductionStack) {
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bruntime_ui_production_stack_replay_hash=[1-9]\d*\b") {
         Write-Error "Installed desktop runtime smoke status line did not prove positive runtime UI production stack replay hash."
+    }
+}
+if ($requiresRuntimeUiRendererAtlasHandoff) {
+    foreach ($field in @(
+            "runtime_ui_renderer_atlas_handoff_status",
+            "runtime_ui_renderer_atlas_handoff_ready",
+            "runtime_ui_renderer_atlas_handoff_selected_package_evidence_ready",
+            "runtime_ui_renderer_atlas_handoff_reviewed",
+            "runtime_ui_renderer_atlas_handoff_image_atlas_pages",
+            "runtime_ui_renderer_atlas_handoff_image_atlas_bindings",
+            "runtime_ui_renderer_atlas_handoff_glyph_atlas_pages",
+            "runtime_ui_renderer_atlas_handoff_glyph_atlas_bindings",
+            "runtime_ui_renderer_atlas_handoff_atlas_placement_rows",
+            "runtime_ui_renderer_atlas_handoff_atlas_budget_rows",
+            "runtime_ui_renderer_atlas_handoff_atlas_eviction_diagnostic_rows",
+            "runtime_ui_renderer_atlas_handoff_texture_upload_handoff_rows",
+            "runtime_ui_renderer_atlas_handoff_renderer_submission_counter_rows",
+            "runtime_ui_renderer_atlas_handoff_text_glyphs_available",
+            "runtime_ui_renderer_atlas_handoff_text_glyphs_resolved",
+            "runtime_ui_renderer_atlas_handoff_text_glyphs_missing",
+            "runtime_ui_renderer_atlas_handoff_text_glyph_sprites_submitted",
+            "runtime_ui_renderer_atlas_handoff_image_placeholders_available",
+            "runtime_ui_renderer_atlas_handoff_image_resources_resolved",
+            "runtime_ui_renderer_atlas_handoff_image_resources_missing",
+            "runtime_ui_renderer_atlas_handoff_image_sprites_submitted",
+            "runtime_ui_renderer_atlas_handoff_renderer_sprites_submitted",
+            "runtime_ui_renderer_atlas_handoff_unsupported_claim_rows",
+            "runtime_ui_renderer_atlas_handoff_side_effect_rows",
+            "runtime_ui_renderer_atlas_handoff_requested_renderer_texture_upload_api",
+            "runtime_ui_renderer_atlas_handoff_requested_public_native_handle",
+            "runtime_ui_renderer_atlas_handoff_invoked_source_image_decode",
+            "runtime_ui_renderer_atlas_handoff_invoked_live_glyph_atlas_generation",
+            "runtime_ui_renderer_atlas_handoff_invoked_renderer_upload",
+            "runtime_ui_renderer_atlas_handoff_diagnostics",
+            "runtime_ui_renderer_atlas_handoff_replay_hash"
+        )) {
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
+            Write-Error "Installed desktop runtime smoke status line did not include runtime UI renderer atlas handoff field: $field"
+        }
+    }
+    $expectedRuntimeUiRendererAtlasHandoffFields = @{
+        "runtime_ui_renderer_atlas_handoff_status" = "ready"
+        "runtime_ui_renderer_atlas_handoff_ready" = "1"
+        "runtime_ui_renderer_atlas_handoff_selected_package_evidence_ready" = "1"
+        "runtime_ui_renderer_atlas_handoff_reviewed" = "1"
+        "runtime_ui_renderer_atlas_handoff_image_atlas_pages" = "1"
+        "runtime_ui_renderer_atlas_handoff_image_atlas_bindings" = "1"
+        "runtime_ui_renderer_atlas_handoff_glyph_atlas_pages" = "1"
+        "runtime_ui_renderer_atlas_handoff_glyph_atlas_bindings" = "1"
+        "runtime_ui_renderer_atlas_handoff_atlas_placement_rows" = "2"
+        "runtime_ui_renderer_atlas_handoff_atlas_budget_rows" = "2"
+        "runtime_ui_renderer_atlas_handoff_atlas_eviction_diagnostic_rows" = "1"
+        "runtime_ui_renderer_atlas_handoff_texture_upload_handoff_rows" = "1"
+        "runtime_ui_renderer_atlas_handoff_renderer_submission_counter_rows" = "1"
+        "runtime_ui_renderer_atlas_handoff_text_glyphs_available" = "1"
+        "runtime_ui_renderer_atlas_handoff_text_glyphs_resolved" = "1"
+        "runtime_ui_renderer_atlas_handoff_text_glyphs_missing" = "0"
+        "runtime_ui_renderer_atlas_handoff_text_glyph_sprites_submitted" = "1"
+        "runtime_ui_renderer_atlas_handoff_image_placeholders_available" = "1"
+        "runtime_ui_renderer_atlas_handoff_image_resources_resolved" = "1"
+        "runtime_ui_renderer_atlas_handoff_image_resources_missing" = "0"
+        "runtime_ui_renderer_atlas_handoff_image_sprites_submitted" = "1"
+        "runtime_ui_renderer_atlas_handoff_renderer_sprites_submitted" = "2"
+        "runtime_ui_renderer_atlas_handoff_unsupported_claim_rows" = "0"
+        "runtime_ui_renderer_atlas_handoff_side_effect_rows" = "0"
+        "runtime_ui_renderer_atlas_handoff_requested_renderer_texture_upload_api" = "0"
+        "runtime_ui_renderer_atlas_handoff_requested_public_native_handle" = "0"
+        "runtime_ui_renderer_atlas_handoff_invoked_source_image_decode" = "0"
+        "runtime_ui_renderer_atlas_handoff_invoked_live_glyph_atlas_generation" = "0"
+        "runtime_ui_renderer_atlas_handoff_invoked_renderer_upload" = "0"
+        "runtime_ui_renderer_atlas_handoff_diagnostics" = "0"
+    }
+    foreach ($field in $expectedRuntimeUiRendererAtlasHandoffFields.Keys) {
+        $expectedValue = $expectedRuntimeUiRendererAtlasHandoffFields[$field]
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove runtime UI renderer atlas handoff field $field=$expectedValue."
+        }
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bruntime_ui_renderer_atlas_handoff_replay_hash=[1-9]\d*\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove positive runtime UI renderer atlas handoff replay hash."
     }
 }
 if ($requiresPackageUploadStaging) {
@@ -3331,6 +3495,80 @@ if ($requiresPackageUploadStaging) {
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bpackage_upload_staging_uploaded_bytes=[1-9]\d*\b") {
         Write-Error "Installed desktop runtime smoke status line did not prove positive package upload staging bytes."
+    }
+}
+if ($requiresKtx2BasisTextureReview) {
+    $expectedKtx2BasisTextureReviewFields = @{
+        "ktx_basis_texture_review_status" = "host_evidence_required"
+        "ktx_basis_texture_review_reviewed" = "1"
+        "ktx_basis_texture_review_ready" = "1"
+        "ktx_basis_texture_review_rows" = "7"
+        "ktx_basis_texture_review_ready_rows" = "6"
+        "ktx_basis_texture_review_host_gated_rows" = "1"
+        "ktx_basis_texture_review_dependency_gated_rows" = "0"
+        "ktx_basis_texture_review_unsupported_claim_rows" = "0"
+        "ktx_basis_texture_review_container_validation_rows" = "1"
+        "ktx_basis_texture_review_supercompression_policy_rows" = "1"
+        "ktx_basis_texture_review_transcode_target_policy_rows" = "1"
+        "ktx_basis_texture_review_gpu_target_compatibility_rows" = "1"
+        "ktx_basis_texture_review_source_provenance_rows" = "1"
+        "ktx_basis_texture_review_package_output_rows" = "1"
+        "ktx_basis_texture_review_host_tool_gate_rows" = "1"
+        "ktx_basis_texture_review_dependency_legal_records_ready" = "1"
+        "ktx_basis_texture_review_selected_package_evidence_ready" = "1"
+        "ktx_basis_texture_review_ktx_basis_review_ready" = "1"
+        "ktx_basis_texture_review_broad_texture_codec_ready" = "0"
+        "ktx_basis_texture_review_invoked_runtime_transcoding" = "0"
+        "ktx_basis_texture_review_invoked_gpu_upload" = "0"
+        "ktx_basis_texture_review_invoked_compression_tool" = "0"
+        "ktx_basis_texture_review_diagnostics" = "0"
+    }
+    foreach ($field in $expectedKtx2BasisTextureReviewFields.Keys) {
+        $expectedValue = [regex]::Escape($expectedKtx2BasisTextureReviewFields[$field])
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove KTX2/Basis texture review field: $field=$($expectedKtx2BasisTextureReviewFields[$field])"
+        }
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bktx_basis_texture_review_replay_hash=[1-9]\d*\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove positive KTX2/Basis texture review replay hash."
+    }
+}
+if ($requiresGltfSceneImportReview) {
+    $expectedGltfSceneImportReviewFields = @{
+        "gltf_scene_import_review_status" = "ready"
+        "gltf_scene_import_review_reviewed" = "1"
+        "gltf_scene_import_review_ready" = "1"
+        "gltf_scene_import_review_rows" = "8"
+        "gltf_scene_import_review_ready_rows" = "8"
+        "gltf_scene_import_review_dependency_gated_rows" = "0"
+        "gltf_scene_import_review_unsupported_claim_rows" = "0"
+        "gltf_scene_import_review_source_root_rows" = "1"
+        "gltf_scene_import_review_parser_validation_rows" = "1"
+        "gltf_scene_import_review_geometry_payload_rows" = "1"
+        "gltf_scene_import_review_material_payload_rows" = "1"
+        "gltf_scene_import_review_animation_payload_rows" = "1"
+        "gltf_scene_import_review_external_resource_policy_rows" = "1"
+        "gltf_scene_import_review_source_provenance_rows" = "1"
+        "gltf_scene_import_review_package_output_rows" = "1"
+        "gltf_scene_import_review_dependency_legal_records_ready" = "1"
+        "gltf_scene_import_review_selected_package_evidence_ready" = "1"
+        "gltf_scene_import_review_gltf_scene_import_ready" = "1"
+        "gltf_scene_import_review_broad_scene_import_ready" = "0"
+        "gltf_scene_import_review_invoked_external_network_fetch" = "0"
+        "gltf_scene_import_review_invoked_runtime_source_parsing" = "0"
+        "gltf_scene_import_review_leaked_parser_type" = "0"
+        "gltf_scene_import_review_exposed_native_handle" = "0"
+        "gltf_scene_import_review_mutated_packages" = "0"
+        "gltf_scene_import_review_diagnostics" = "0"
+    }
+    foreach ($field in $expectedGltfSceneImportReviewFields.Keys) {
+        $expectedValue = [regex]::Escape($expectedGltfSceneImportReviewFields[$field])
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove glTF scene import review field: $field=$($expectedGltfSceneImportReviewFields[$field])"
+        }
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bgltf_scene_import_review_replay_hash=[1-9]\d*\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove positive glTF scene import review replay hash."
     }
 }
 if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=ready") {
@@ -3721,6 +3959,14 @@ if ($requiresRenderingVfxProfiling) {
         "rendering_vfx_profiling_invoked_gpu_commands" = "0"
         "rendering_vfx_profiling_invoked_native_capture" = "0"
         "rendering_vfx_profiling_invoked_crash_upload" = "0"
+        "rendering_vfx_profiling_debug_policy_ready" = "1"
+        "rendering_vfx_profiling_debug_cpu_profile_zone_evidence_ready" = "1"
+        "rendering_vfx_profiling_debug_trace_capture_handoff_evidence_ready" = "1"
+        "rendering_vfx_profiling_debug_package_counter_evidence_ready" = "1"
+        "rendering_vfx_profiling_memory_policy_ready" = "1"
+        "rendering_vfx_profiling_memory_budget_evidence_ready" = "1"
+        "rendering_vfx_profiling_memory_residency_pressure_evidence_ready" = "1"
+        "rendering_vfx_profiling_memory_package_counter_evidence_ready" = "1"
         "rendering_vfx_profiling_diagnostics" = "0"
     }
     foreach ($field in $expectedRenderingVfxProfilingFields.Keys) {
@@ -3731,6 +3977,23 @@ if ($requiresRenderingVfxProfiling) {
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\brendering_vfx_profiling_replay_hash=[1-9]\d*\b") {
         Write-Error "Installed desktop runtime smoke status line did not prove positive rendering VFX/profiling replay hash."
+    }
+    foreach ($field in @(
+            "rendering_vfx_profiling_debug_gpu_timestamp_ticks_per_second",
+            "rendering_vfx_profiling_debug_cpu_profile_zones",
+            "rendering_vfx_profiling_debug_trace_capture_handoff_rows",
+            "rendering_vfx_profiling_debug_cpu_profile_zone_requests",
+            "rendering_vfx_profiling_debug_trace_capture_handoff_requests",
+            "rendering_vfx_profiling_debug_package_counter_requests",
+            "rendering_vfx_profiling_memory_requested_bytes",
+            "rendering_vfx_profiling_memory_residency_pressure_events",
+            "rendering_vfx_profiling_memory_declared_budget_requests",
+            "rendering_vfx_profiling_memory_residency_pressure_requests",
+            "rendering_vfx_profiling_memory_package_counter_requests"
+        )) {
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove positive rendering VFX/profiling field: $field"
+        }
     }
 }
 if ($requiresFrameGraphMultiQueueEvidence -or $requiresVulkanFrameGraphMultiQueueEvidence) {

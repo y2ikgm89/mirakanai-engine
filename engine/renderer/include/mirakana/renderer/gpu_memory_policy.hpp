@@ -47,22 +47,9 @@ enum class GpuMemoryDiagnosticCode : std::uint8_t {
     exceeds_declared_budget,
     missing_backend_memory_evidence,
     missing_os_video_memory_budget,
+    missing_declared_budget_evidence,
     missing_residency_pressure_evidence,
-    invalid_package_counter,
     missing_package_counter_evidence,
-};
-
-enum class GpuMemoryPackageCounterKind : std::uint8_t {
-    unknown = 0,
-    local_budget_bytes,
-    local_usage_bytes,
-    non_local_budget_bytes,
-    non_local_usage_bytes,
-    committed_byte_estimate,
-    transient_heap_allocations,
-    upload_bytes_written,
-    framegraph_barrier_steps,
-    residency_pressure_bytes,
 };
 
 struct GpuMemoryRequestDesc {
@@ -73,13 +60,9 @@ struct GpuMemoryRequestDesc {
     bool scene_resources_available{true};
     bool request_background_streaming{false};
     bool request_automatic_eviction{false};
-    std::uint32_t source_index{0};
-};
-
-struct GpuMemoryPackageCounterDesc {
-    GpuMemoryPackageCounterKind kind{GpuMemoryPackageCounterKind::unknown};
-    std::uint64_t value{0};
-    bool required{true};
+    bool require_declared_budget_evidence{false};
+    bool require_residency_pressure_evidence{false};
+    bool require_package_counter_evidence{false};
     std::uint32_t source_index{0};
 };
 
@@ -98,14 +81,12 @@ struct GpuMemoryPolicyDesc {
     std::uint64_t transient_placed_allocations{0};
     std::uint64_t transient_placed_resources_alive{0};
     std::uint64_t upload_bytes_written{0};
-    std::uint64_t residency_pressure_bytes{0};
-    std::span<const GpuMemoryPackageCounterDesc> package_counters;
+    std::uint64_t residency_pressure_event_count{0};
     rhi::BackendKind backend{rhi::BackendKind::null};
     bool require_backend_memory_evidence{false};
     bool backend_memory_evidence_ready{false};
     bool require_os_video_memory_budget{false};
-    bool require_residency_pressure_evidence{false};
-    bool require_package_counter_evidence{false};
+    bool package_counter_evidence_ready{false};
 };
 
 struct GpuMemoryRequestRow {
@@ -116,14 +97,12 @@ struct GpuMemoryRequestRow {
     GpuMemoryUploadPressureKind upload_pressure{GpuMemoryUploadPressureKind::none};
     bool uses_transient_heap{false};
     bool uses_upload_pressure{false};
-    std::uint32_t source_index{0};
-};
-
-struct GpuMemoryPackageCounterRow {
-    GpuMemoryPackageCounterKind kind{GpuMemoryPackageCounterKind::unknown};
-    std::uint64_t value{0};
-    bool required{true};
-    bool ready{false};
+    bool requires_declared_budget_evidence{false};
+    bool requires_residency_pressure_evidence{false};
+    bool requires_package_counter_evidence{false};
+    bool declared_budget_evidence_ready{false};
+    bool residency_pressure_evidence_ready{false};
+    bool package_counter_evidence_ready{false};
     std::uint32_t source_index{0};
 };
 
@@ -149,18 +128,20 @@ struct GpuMemoryPolicyPlan {
     std::uint64_t transient_placed_allocations{0};
     std::uint64_t transient_placed_resources_alive{0};
     std::uint64_t upload_bytes_written{0};
-    std::uint64_t residency_pressure_bytes{0};
+    std::uint64_t residency_pressure_event_count{0};
     std::uint32_t transient_heap_request_count{0};
     std::uint32_t upload_pressure_request_count{0};
+    std::uint32_t declared_budget_request_count{0};
+    std::uint32_t residency_pressure_request_count{0};
+    std::uint32_t package_counter_request_count{0};
     rhi::BackendKind backend{rhi::BackendKind::null};
     bool os_video_memory_budget_available{false};
     bool committed_byte_estimate_available{false};
     bool backend_memory_evidence_ready{false};
-    bool residency_pressure_ready{false};
-    std::uint32_t package_counter_count{0};
-    std::uint32_t package_counter_ready_count{0};
+    bool memory_budget_evidence_ready{false};
+    bool residency_pressure_evidence_ready{false};
+    bool package_counter_evidence_ready{false};
     std::vector<GpuMemoryRequestRow> request_rows;
-    std::vector<GpuMemoryPackageCounterRow> package_counter_rows;
     std::vector<GpuMemoryDiagnostic> diagnostics;
 
     [[nodiscard]] bool succeeded() const noexcept {

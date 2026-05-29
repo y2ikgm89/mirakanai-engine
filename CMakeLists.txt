@@ -10,10 +10,8 @@ include(CTest)
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
-set(CMAKE_OBJECT_PATH_MAX 240)
-
-option(MK_ENABLE_DESKTOP_RUNTIME "Build SDL3 desktop game runtime targets" OFF)
-option(MK_ENABLE_DESKTOP_GUI "Build SDL3/Dear ImGui desktop editor targets" OFF)
+option(MK_ENABLE_DESKTOP_RUNTIME "Build desktop game runtime targets" OFF)
+option(MK_ENABLE_DESKTOP_GUI "Build the visible desktop editor shell; currently deferred after SDL3 removal" OFF)
 option(MK_ENABLE_SANITIZERS "Enable compiler sanitizer instrumentation where supported" OFF)
 option(MK_ENABLE_CXX_MODULE_SCANNING "Enable CMake C++ module dependency scanning for targets" ON)
 option(MK_ENABLE_IMPORT_STD "Enable CMake-managed import std support when the active toolchain and generator support it" ON)
@@ -34,9 +32,6 @@ if(NOT MK_CXX_STANDARD STREQUAL "23")
 endif()
 
 set(MK_DESKTOP_RUNTIME_ENABLED ${MK_ENABLE_DESKTOP_RUNTIME})
-if(MK_ENABLE_DESKTOP_GUI)
-    set(MK_DESKTOP_RUNTIME_ENABLED ON)
-endif()
 
 if(MSVC)
     if(NOT MK_MSVC_CXX23_STANDARD_OPTION MATCHES "^/std:c\\+\\+23(preview)?$")
@@ -94,48 +89,6 @@ else()
     message(STATUS "Mirakanai sanitizers: MK_ENABLE_SANITIZERS=OFF.")
 endif()
 
-function(MK_apply_msvc_visual_studio_short_object_names target_name)
-    if(NOT MSVC OR NOT CMAKE_GENERATOR MATCHES "^Visual Studio")
-        return()
-    endif()
-
-    get_target_property(MK_TARGET_SOURCES ${target_name} SOURCES)
-    if(NOT MK_TARGET_SOURCES)
-        return()
-    endif()
-
-    foreach(MK_TARGET_SOURCE IN LISTS MK_TARGET_SOURCES)
-        if(MK_TARGET_SOURCE MATCHES "^\\$<")
-            continue()
-        endif()
-
-        get_filename_component(MK_SOURCE_EXTENSION "${MK_TARGET_SOURCE}" EXT)
-        string(TOLOWER "${MK_SOURCE_EXTENSION}" MK_SOURCE_EXTENSION_LOWER)
-        if(NOT MK_SOURCE_EXTENSION_LOWER MATCHES "^\\.(c|cc|cpp|cxx|m|mm)$")
-            continue()
-        endif()
-
-        get_source_file_property(MK_SOURCE_VS_SETTINGS "${MK_TARGET_SOURCE}" VS_SETTINGS)
-        if(MK_SOURCE_VS_SETTINGS MATCHES "(^|;)ObjectFileName=")
-            continue()
-        endif()
-
-        if(IS_ABSOLUTE "${MK_TARGET_SOURCE}")
-            set(MK_SOURCE_ID "${MK_TARGET_SOURCE}")
-        else()
-            get_filename_component(MK_SOURCE_ID "${MK_TARGET_SOURCE}" ABSOLUTE BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
-        endif()
-        string(SHA256 MK_SOURCE_HASH "${MK_SOURCE_ID}")
-        string(SUBSTRING "${MK_SOURCE_HASH}" 0 16 MK_SOURCE_HASH_SHORT)
-
-        set_property(
-            SOURCE "${MK_TARGET_SOURCE}"
-            APPEND
-            PROPERTY VS_SETTINGS "ObjectFileName=$(IntDir)mk_${MK_SOURCE_HASH_SHORT}.obj"
-        )
-    endforeach()
-endfunction()
-
 function(MK_apply_common_target_options target_name)
     target_compile_features(${target_name} PUBLIC cxx_std_${MK_CXX_STANDARD})
     set_target_properties(${target_name} PROPERTIES
@@ -154,7 +107,6 @@ function(MK_apply_common_target_options target_name)
             COMPILE_PDB_NAME ${target_name}
             COMPILE_PDB_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/pdb"
         )
-        MK_apply_msvc_visual_studio_short_object_names(${target_name})
         get_target_property(MK_TARGET_TYPE ${target_name} TYPE)
         if(MK_TARGET_TYPE STREQUAL "EXECUTABLE" OR
             MK_TARGET_TYPE STREQUAL "SHARED_LIBRARY" OR
@@ -302,6 +254,24 @@ if(BUILD_TESTING)
     target_include_directories(MK_runtime_tests PRIVATE tests)
     MK_apply_common_target_options(MK_runtime_tests)
     add_test(NAME MK_runtime_tests COMMAND MK_runtime_tests)
+
+    add_executable(MK_native_desktop_contract_public_api_compile
+        tests/unit/native_desktop_contract_public_api_compile.cpp
+    )
+    target_link_libraries(MK_native_desktop_contract_public_api_compile PRIVATE
+        MK_audio
+        MK_editor_core
+        MK_platform
+        MK_renderer
+        MK_runtime_host
+        MK_runtime_rhi
+        MK_ui
+    )
+    target_include_directories(MK_native_desktop_contract_public_api_compile PRIVATE
+        tests
+    )
+    MK_apply_common_target_options(MK_native_desktop_contract_public_api_compile)
+    add_test(NAME MK_native_desktop_contract_public_api_compile COMMAND MK_native_desktop_contract_public_api_compile)
 
     add_executable(MK_runtime_quest_dialogue_tests
         tests/unit/runtime_quest_dialogue_tests.cpp
@@ -564,13 +534,13 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_runtime_package_candidate_resident_mount_tests)
     add_test(NAME MK_runtime_package_candidate_resident_mount_tests COMMAND MK_runtime_package_candidate_resident_mount_tests)
 
-    add_executable(MK_runtime_package_candidate_resident_mount_reviewed_evictions_tests
+    add_executable(MK_rt_pkg_cand_res_mnt_review_evict_tests
         tests/unit/runtime_package_candidate_resident_mount_reviewed_evictions_tests.cpp
     )
-    target_link_libraries(MK_runtime_package_candidate_resident_mount_reviewed_evictions_tests PRIVATE MK_runtime)
-    target_include_directories(MK_runtime_package_candidate_resident_mount_reviewed_evictions_tests PRIVATE tests)
-    MK_apply_common_target_options(MK_runtime_package_candidate_resident_mount_reviewed_evictions_tests)
-    add_test(NAME MK_runtime_package_candidate_resident_mount_reviewed_evictions_tests COMMAND MK_runtime_package_candidate_resident_mount_reviewed_evictions_tests)
+    target_link_libraries(MK_rt_pkg_cand_res_mnt_review_evict_tests PRIVATE MK_runtime)
+    target_include_directories(MK_rt_pkg_cand_res_mnt_review_evict_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_rt_pkg_cand_res_mnt_review_evict_tests)
+    add_test(NAME MK_runtime_package_candidate_resident_mount_reviewed_evictions_tests COMMAND MK_rt_pkg_cand_res_mnt_review_evict_tests)
 
     add_executable(MK_runtime_package_candidate_resident_replace_tests
         tests/unit/runtime_package_candidate_resident_replace_tests.cpp
@@ -580,13 +550,13 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_runtime_package_candidate_resident_replace_tests)
     add_test(NAME MK_runtime_package_candidate_resident_replace_tests COMMAND MK_runtime_package_candidate_resident_replace_tests)
 
-    add_executable(MK_runtime_package_candidate_resident_replace_reviewed_evictions_tests
+    add_executable(MK_rt_pkg_cand_res_repl_review_evict_tests
         tests/unit/runtime_package_candidate_resident_replace_reviewed_evictions_tests.cpp
     )
-    target_link_libraries(MK_runtime_package_candidate_resident_replace_reviewed_evictions_tests PRIVATE MK_runtime)
-    target_include_directories(MK_runtime_package_candidate_resident_replace_reviewed_evictions_tests PRIVATE tests)
-    MK_apply_common_target_options(MK_runtime_package_candidate_resident_replace_reviewed_evictions_tests)
-    add_test(NAME MK_runtime_package_candidate_resident_replace_reviewed_evictions_tests COMMAND MK_runtime_package_candidate_resident_replace_reviewed_evictions_tests)
+    target_link_libraries(MK_rt_pkg_cand_res_repl_review_evict_tests PRIVATE MK_runtime)
+    target_include_directories(MK_rt_pkg_cand_res_repl_review_evict_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_rt_pkg_cand_res_repl_review_evict_tests)
+    add_test(NAME MK_runtime_package_candidate_resident_replace_reviewed_evictions_tests COMMAND MK_rt_pkg_cand_res_repl_review_evict_tests)
 
     add_executable(MK_runtime_package_discovery_resident_commit_tests
         tests/unit/runtime_package_discovery_resident_commit_tests.cpp
@@ -596,21 +566,21 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_runtime_package_discovery_resident_commit_tests)
     add_test(NAME MK_runtime_package_discovery_resident_commit_tests COMMAND MK_runtime_package_discovery_resident_commit_tests)
 
-    add_executable(MK_runtime_package_discovery_resident_mount_reviewed_evictions_tests
+    add_executable(MK_rt_pkg_disc_res_mnt_review_evict_tests
         tests/unit/runtime_package_discovery_resident_mount_reviewed_evictions_tests.cpp
     )
-    target_link_libraries(MK_runtime_package_discovery_resident_mount_reviewed_evictions_tests PRIVATE MK_runtime)
-    target_include_directories(MK_runtime_package_discovery_resident_mount_reviewed_evictions_tests PRIVATE tests)
-    MK_apply_common_target_options(MK_runtime_package_discovery_resident_mount_reviewed_evictions_tests)
-    add_test(NAME MK_runtime_package_discovery_resident_mount_reviewed_evictions_tests COMMAND MK_runtime_package_discovery_resident_mount_reviewed_evictions_tests)
+    target_link_libraries(MK_rt_pkg_disc_res_mnt_review_evict_tests PRIVATE MK_runtime)
+    target_include_directories(MK_rt_pkg_disc_res_mnt_review_evict_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_rt_pkg_disc_res_mnt_review_evict_tests)
+    add_test(NAME MK_runtime_package_discovery_resident_mount_reviewed_evictions_tests COMMAND MK_rt_pkg_disc_res_mnt_review_evict_tests)
 
-    add_executable(MK_runtime_package_discovery_resident_replace_reviewed_evictions_tests
+    add_executable(MK_rt_pkg_disc_res_repl_review_evict_tests
         tests/unit/runtime_package_discovery_resident_replace_reviewed_evictions_tests.cpp
     )
-    target_link_libraries(MK_runtime_package_discovery_resident_replace_reviewed_evictions_tests PRIVATE MK_runtime)
-    target_include_directories(MK_runtime_package_discovery_resident_replace_reviewed_evictions_tests PRIVATE tests)
-    MK_apply_common_target_options(MK_runtime_package_discovery_resident_replace_reviewed_evictions_tests)
-    add_test(NAME MK_runtime_package_discovery_resident_replace_reviewed_evictions_tests COMMAND MK_runtime_package_discovery_resident_replace_reviewed_evictions_tests)
+    target_link_libraries(MK_rt_pkg_disc_res_repl_review_evict_tests PRIVATE MK_runtime)
+    target_include_directories(MK_rt_pkg_disc_res_repl_review_evict_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_rt_pkg_disc_res_repl_review_evict_tests)
+    add_test(NAME MK_runtime_package_discovery_resident_replace_reviewed_evictions_tests COMMAND MK_rt_pkg_disc_res_repl_review_evict_tests)
 
     add_executable(MK_runtime_package_hot_reload_candidate_review_tests
         tests/unit/runtime_package_hot_reload_candidate_review_tests.cpp
@@ -620,13 +590,13 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_runtime_package_hot_reload_candidate_review_tests)
     add_test(NAME MK_runtime_package_hot_reload_candidate_review_tests COMMAND MK_runtime_package_hot_reload_candidate_review_tests)
 
-    add_executable(MK_runtime_package_hot_reload_replacement_intent_review_tests
+    add_executable(MK_rt_pkg_hot_reload_repl_intent_review_tests
         tests/unit/runtime_package_hot_reload_replacement_intent_review_tests.cpp
     )
-    target_link_libraries(MK_runtime_package_hot_reload_replacement_intent_review_tests PRIVATE MK_runtime)
-    target_include_directories(MK_runtime_package_hot_reload_replacement_intent_review_tests PRIVATE tests)
-    MK_apply_common_target_options(MK_runtime_package_hot_reload_replacement_intent_review_tests)
-    add_test(NAME MK_runtime_package_hot_reload_replacement_intent_review_tests COMMAND MK_runtime_package_hot_reload_replacement_intent_review_tests)
+    target_link_libraries(MK_rt_pkg_hot_reload_repl_intent_review_tests PRIVATE MK_runtime)
+    target_include_directories(MK_rt_pkg_hot_reload_repl_intent_review_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_rt_pkg_hot_reload_repl_intent_review_tests)
+    add_test(NAME MK_runtime_package_hot_reload_replacement_intent_review_tests COMMAND MK_rt_pkg_hot_reload_repl_intent_review_tests)
 
     add_executable(MK_runtime_package_hot_reload_recook_change_review_tests
         tests/unit/runtime_package_hot_reload_recook_change_review_tests.cpp
@@ -916,42 +886,48 @@ if(BUILD_TESTING)
         add_test(NAME MK_platform_native_file_watcher_tests COMMAND MK_platform_native_file_watcher_tests)
     endif()
 
-    if(MK_DESKTOP_RUNTIME_ENABLED)
-        find_package(SDL3 CONFIG REQUIRED)
-
-        add_executable(MK_sdl3_platform_tests
-            tests/unit/sdl3_platform_tests.cpp
+    if(WIN32)
+        add_executable(MK_win32_platform_tests
+            tests/unit/win32_platform_tests.cpp
         )
-        target_link_libraries(MK_sdl3_platform_tests PRIVATE MK_platform MK_platform_sdl3 SDL3::SDL3)
-        target_include_directories(MK_sdl3_platform_tests PRIVATE tests)
-        MK_apply_common_target_options(MK_sdl3_platform_tests)
-        add_test(NAME MK_sdl3_platform_tests COMMAND MK_sdl3_platform_tests)
+        target_link_libraries(MK_win32_platform_tests PRIVATE MK_platform_win32)
+        target_include_directories(MK_win32_platform_tests PRIVATE tests)
+        MK_apply_common_target_options(MK_win32_platform_tests)
+        add_test(NAME MK_win32_platform_tests COMMAND MK_win32_platform_tests)
 
-        add_executable(MK_sdl3_audio_tests
-            tests/unit/sdl3_audio_tests.cpp
+        add_executable(MK_wasapi_audio_tests
+            tests/unit/wasapi_audio_tests.cpp
         )
-        target_link_libraries(MK_sdl3_audio_tests PRIVATE MK_audio_sdl3)
-        target_include_directories(MK_sdl3_audio_tests PRIVATE tests)
-        MK_apply_common_target_options(MK_sdl3_audio_tests)
-        add_test(NAME MK_sdl3_audio_tests COMMAND MK_sdl3_audio_tests)
+        target_link_libraries(MK_wasapi_audio_tests PRIVATE MK_audio_wasapi)
+        target_include_directories(MK_wasapi_audio_tests PRIVATE tests)
+        MK_apply_common_target_options(MK_wasapi_audio_tests)
+        add_test(NAME MK_wasapi_audio_tests COMMAND MK_wasapi_audio_tests)
 
-        add_executable(MK_runtime_host_sdl3_tests
-            tests/unit/runtime_host_sdl3_tests.cpp
-        )
-        target_link_libraries(MK_runtime_host_sdl3_tests PRIVATE MK_runtime_host_sdl3 MK_runtime_host_sdl3_presentation MK_core MK_platform_sdl3 MK_renderer MK_runtime MK_runtime_scene_rhi MK_scene SDL3::SDL3)
-        if(WIN32)
-            target_link_libraries(MK_runtime_host_sdl3_tests PRIVATE d3dcompiler)
+        if(TARGET MK_runtime_host_win32_presentation)
+            add_executable(MK_runtime_host_win32_tests
+                tests/unit/runtime_host_win32_tests.cpp
+            )
+            target_link_libraries(MK_runtime_host_win32_tests PRIVATE
+                MK_runtime_host_win32
+                MK_runtime_host_win32_presentation
+                MK_core
+                MK_platform_win32
+                MK_renderer
+            )
+            if(TARGET MK_rhi_d3d12)
+                target_link_libraries(MK_runtime_host_win32_tests PRIVATE MK_rhi_d3d12 d3dcompiler)
+            endif()
+            target_include_directories(MK_runtime_host_win32_tests PRIVATE tests)
+            MK_apply_common_target_options(MK_runtime_host_win32_tests)
+            add_test(NAME MK_runtime_host_win32_tests COMMAND MK_runtime_host_win32_tests)
+
+            add_executable(MK_runtime_host_win32_public_api_compile
+                tests/unit/runtime_host_win32_public_api_compile.cpp
+            )
+            target_link_libraries(MK_runtime_host_win32_public_api_compile PRIVATE MK_runtime_host_win32_presentation)
+            MK_apply_common_target_options(MK_runtime_host_win32_public_api_compile)
+            add_test(NAME MK_runtime_host_win32_public_api_compile COMMAND MK_runtime_host_win32_public_api_compile)
         endif()
-        target_include_directories(MK_runtime_host_sdl3_tests PRIVATE tests engine/runtime_host/sdl3/src)
-        MK_apply_common_target_options(MK_runtime_host_sdl3_tests)
-        add_test(NAME MK_runtime_host_sdl3_tests COMMAND MK_runtime_host_sdl3_tests)
-
-        add_executable(MK_runtime_host_sdl3_public_api_compile
-            tests/unit/runtime_host_sdl3_public_api_compile.cpp
-        )
-        target_link_libraries(MK_runtime_host_sdl3_public_api_compile PRIVATE MK_runtime_host_sdl3_presentation)
-        MK_apply_common_target_options(MK_runtime_host_sdl3_public_api_compile)
-        add_test(NAME MK_runtime_host_sdl3_public_api_compile COMMAND MK_runtime_host_sdl3_public_api_compile)
     endif()
 
     get_property(MK_CURRENT_DIRECTORY_TARGETS DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
@@ -985,12 +961,13 @@ MK_set_export_name(MK_runtime_network_enet runtime_network_enet)
 MK_set_export_name(MK_physics physics)
 MK_set_export_name(MK_physics_jolt physics_jolt)
 MK_set_export_name(MK_platform platform)
+MK_set_export_name(MK_platform_win32 platform_win32)
 MK_set_export_name(MK_renderer renderer)
 MK_set_export_name(MK_rhi rhi)
 MK_set_export_name(MK_runtime runtime)
 MK_set_export_name(MK_runtime_host runtime_host)
-MK_set_export_name(MK_runtime_host_sdl3 runtime_host_sdl3)
-MK_set_export_name(MK_runtime_host_sdl3_presentation runtime_host_sdl3_presentation)
+MK_set_export_name(MK_runtime_host_win32 runtime_host_win32)
+MK_set_export_name(MK_runtime_host_win32_presentation runtime_host_win32_presentation)
 MK_set_export_name(MK_runtime_rhi runtime_rhi)
 MK_set_export_name(MK_runtime_scene runtime_scene)
 MK_set_export_name(MK_runtime_scene_rhi runtime_scene_rhi)
@@ -1002,8 +979,7 @@ MK_set_export_name(MK_scene_renderer scene_renderer)
 MK_set_export_name(MK_tools tools)
 MK_set_export_name(MK_ui ui)
 MK_set_export_name(MK_ui_renderer ui_renderer)
-MK_set_export_name(MK_audio_sdl3 audio_sdl3)
-MK_set_export_name(MK_platform_sdl3 platform_sdl3)
+MK_set_export_name(MK_audio_wasapi audio_wasapi)
 MK_set_export_name(MK_editor_core editor_core)
 
 set(MK_LIBRARY_TARGETS
@@ -1042,8 +1018,9 @@ set(MK_RUNTIME_TARGETS
     sample_ui_audio_assets
 )
 
-foreach(optional_target IN ITEMS mirakana_rhi_d3d12 mirakana_audio_sdl3 mirakana_platform_sdl3 MK_runtime_host_sdl3
-        MK_runtime_host_sdl3_presentation MK_editor_core mirakana_physics_jolt mirakana_runtime_network_enet)
+foreach(optional_target IN ITEMS mirakana_rhi_d3d12 mirakana_audio_wasapi mirakana_platform_win32
+        MK_runtime_host_win32 MK_runtime_host_win32_presentation MK_editor_core mirakana_physics_jolt
+        mirakana_runtime_network_enet)
     if(TARGET ${optional_target})
         list(APPEND MK_LIBRARY_TARGETS ${optional_target})
     endif()
@@ -1216,9 +1193,10 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
     )
     foreach(MK_DESKTOP_RUNTIME_PACKAGE_TEST_TARGET IN ITEMS
         MK_runtime_host_tests
-        MK_runtime_host_sdl3_tests
-        MK_sdl3_platform_tests
-        MK_sdl3_audio_tests
+        MK_runtime_host_win32_public_api_compile
+        MK_runtime_host_win32_tests
+        MK_win32_platform_tests
+        MK_wasapi_audio_tests
     )
         if(TARGET ${MK_DESKTOP_RUNTIME_PACKAGE_TEST_TARGET})
             add_dependencies(MK_desktop_runtime_package_build ${MK_DESKTOP_RUNTIME_PACKAGE_TEST_TARGET})
@@ -1246,11 +1224,6 @@ install(EXPORT MirakanaiTargets
     NAMESPACE mirakana::
     DESTINATION ${MK_CMAKE_PACKAGE_DIR}
 )
-
-set(MK_PACKAGE_HAS_SDL3 OFF)
-if(TARGET MK_platform_sdl3 OR TARGET MK_audio_sdl3 OR TARGET MK_runtime_host_sdl3_presentation)
-    set(MK_PACKAGE_HAS_SDL3 ON)
-endif()
 
 set(MK_PACKAGE_HAS_ASSET_IMPORTERS OFF)
 if(MK_ENABLE_ASSET_IMPORTERS)
@@ -1321,16 +1294,16 @@ install(DIRECTORY
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
-if(TARGET MK_platform_sdl3)
-    install(DIRECTORY engine/platform/sdl3/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+if(TARGET MK_platform_win32)
+    install(DIRECTORY engine/platform/win32/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 endif()
 
-if(TARGET MK_runtime_host_sdl3)
-    install(DIRECTORY engine/runtime_host/sdl3/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+if(TARGET MK_runtime_host_win32)
+    install(DIRECTORY engine/runtime_host/win32/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 endif()
 
-if(TARGET MK_audio_sdl3)
-    install(DIRECTORY engine/audio/sdl3/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+if(TARGET MK_audio_wasapi)
+    install(DIRECTORY engine/audio/wasapi/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 endif()
 
 if(TARGET MK_physics_jolt)

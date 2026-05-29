@@ -95,11 +95,11 @@ function Invoke-ValidateBackgroundJob {
         [object[]]$ArgumentList = @()
     )
 
-    if (Get-Command Start-ThreadJob -ErrorAction SilentlyContinue) {
-        return Start-ThreadJob -Name $Name -ScriptBlock $ScriptBlock -ArgumentList $ArgumentList
+    if (Get-Command Start-Job -ErrorAction SilentlyContinue) {
+        return Start-Job -Name $Name -ScriptBlock $ScriptBlock -ArgumentList $ArgumentList
     }
 
-    return Start-Job -Name $Name -ScriptBlock $ScriptBlock -ArgumentList $ArgumentList
+    return Start-ThreadJob -Name $Name -ScriptBlock $ScriptBlock -ArgumentList $ArgumentList
 }
 
 function Invoke-ValidateToolScriptBatch {
@@ -286,6 +286,7 @@ function Invoke-ValidateToolScriptBatch {
             $startInfo.FileName = $PwshPath
             $startInfo.WorkingDirectory = $RepositoryRoot
             $startInfo.UseShellExecute = $false
+            $startInfo.RedirectStandardInput = $true
             $startInfo.RedirectStandardOutput = $true
             $startInfo.RedirectStandardError = $true
             $startInfo.CreateNoWindow = $true
@@ -303,6 +304,7 @@ function Invoke-ValidateToolScriptBatch {
             $process.StartInfo = $startInfo
 
             $null = $process.Start()
+            $process.StandardInput.Close()
             $standardOutputTask = $process.StandardOutput.ReadToEndAsync()
             $standardErrorTask = $process.StandardError.ReadToEndAsync()
 
@@ -547,8 +549,8 @@ $staticTasks = @(
     Get-ValidateTask -ScriptFileName "check-cpp-standard-policy.ps1"
     Get-ValidateTask -ScriptFileName "check-coverage-thresholds.ps1"
     Get-ValidateTask -ScriptFileName "check-shader-toolchain.ps1"
-    Get-ValidateTask -ScriptFileName "check-mobile-packaging.ps1"
     Get-ValidateTask -ScriptFileName "check-apple-host-evidence.ps1"
+    Get-ValidateTask -ScriptFileName "check-native-desktop-contracts.ps1"
     Get-ValidateTask -ScriptFileName "check-public-api-boundaries.ps1"
 )
 
@@ -557,6 +559,7 @@ if (-not $SkipStaticChecks.IsPresent) {
         -Tasks $staticTasks `
         -Jobs (Resolve-ValidateStaticJobCount -Jobs $StaticJobs) `
         -TaskTimeoutSeconds $StaticCheckTimeoutSeconds
+    Invoke-ValidateToolScript -ScriptFileName "check-mobile-packaging.ps1"
 }
 
 if ($StaticOnly.IsPresent) {

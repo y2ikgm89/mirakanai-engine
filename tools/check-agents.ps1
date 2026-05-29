@@ -402,6 +402,7 @@ if (Test-Path $claudeSettingsPath) {
             "Bash(git reset:*)",
             "Bash(git restore:*)",
             "Bash(git clean:*)",
+            "Bash(git clone:*)",
             "Bash(git worktree remove:*)",
             "Bash(git push --force:*)",
             "Bash(git push --force-with-lease:*)",
@@ -422,6 +423,14 @@ if (Test-Path $claudeSettingsPath) {
             "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/smoke-ios-package.ps1:*)"
         )) {
         Assert-RequiredArrayEntry -Actual @($settings.permissions.ask) -Expected $requiredAskEntry -Label ".claude/settings.json permissions.ask"
+    }
+
+    foreach ($requiredAllowEntry in @(
+            "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1:*)",
+            "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1:*)",
+            "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ready-task-pr.ps1:*)"
+        )) {
+        Assert-RequiredArrayEntry -Actual @($settings.permissions.allow) -Expected $requiredAllowEntry -Label ".claude/settings.json permissions.allow"
     }
 }
 
@@ -466,6 +475,7 @@ $claudeToCodexSkillMap = @{
     "gameengine-editor"             = "editor-change"
     "gameengine-feature"            = "gameengine-feature"
     "gameengine-game-development"   = "gameengine-game-development"
+    "gameengine-git-publication-preflight" = "gameengine-git-publication-preflight"
     "gameengine-license-audit"      = "license-audit"
     "gameengine-rendering"          = "rendering-change"
 }

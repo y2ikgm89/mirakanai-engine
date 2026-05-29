@@ -28,25 +28,12 @@ enum class DebugProfilingDiagnosticCode : std::uint8_t {
     missing_frame_diagnostic_evidence,
     missing_scene_frame_resources,
     missing_backend_profiling_evidence,
-    missing_cpu_profile_zone_evidence,
-    missing_profile_budget_evidence,
-    invalid_package_counter,
-    missing_package_counter_evidence,
-    missing_trace_capture_handoff_evidence,
     unsupported_automatic_capture_execution,
     unsupported_production_flame_graph,
     unsupported_crash_telemetry_export,
-};
-
-enum class DebugProfilingPackageCounterKind : std::uint8_t {
-    unknown = 0,
-    cpu_profile_zone_count,
-    cpu_profile_budget_microseconds,
-    gpu_profile_budget_microseconds,
-    gpu_timestamp_frequency,
-    gpu_debug_marker_count,
-    frame_diagnostic_count,
-    trace_capture_handoff,
+    missing_cpu_profile_zone_evidence,
+    missing_trace_capture_handoff_evidence,
+    missing_package_counter_evidence,
 };
 
 struct DebugProfilingRequestDesc {
@@ -54,6 +41,9 @@ struct DebugProfilingRequestDesc {
     bool require_gpu_timestamps{false};
     bool require_gpu_debug_markers{false};
     bool require_capture_handoff_evidence{false};
+    bool require_cpu_profile_zone_evidence{false};
+    bool require_trace_capture_handoff_evidence{false};
+    bool require_package_counter_evidence{false};
     bool scene_frame_resources_available{true};
     bool request_automatic_capture_execution{false};
     bool request_production_flame_graph{false};
@@ -61,34 +51,22 @@ struct DebugProfilingRequestDesc {
     std::uint32_t source_index{0};
 };
 
-struct DebugProfilingPackageCounterDesc {
-    DebugProfilingPackageCounterKind kind{DebugProfilingPackageCounterKind::unknown};
-    std::uint64_t value{0};
-    bool required{true};
-    std::uint32_t source_index{0};
-};
-
 struct DebugProfilingPolicyDesc {
     std::span<const DebugProfilingRequestDesc> requests;
     std::uint64_t expected_frames{0};
     std::uint64_t frames_finished{0};
-    std::uint64_t cpu_profile_zone_count{0};
-    std::uint64_t cpu_profile_budget_microseconds{0};
-    std::uint64_t gpu_profile_budget_microseconds{0};
     std::uint64_t gpu_timestamp_ticks_per_second{0};
     std::uint64_t gpu_debug_scopes_begun{0};
     std::uint64_t gpu_debug_scopes_ended{0};
     std::uint64_t gpu_debug_markers_inserted{0};
+    std::uint64_t cpu_profile_zone_count{0};
+    std::uint64_t trace_capture_handoff_row_count{0};
     std::uint64_t framegraph_barrier_steps_executed{0};
     std::uint64_t framegraph_render_passes_recorded{0};
-    std::span<const DebugProfilingPackageCounterDesc> package_counters;
     rhi::BackendKind backend{rhi::BackendKind::null};
     bool require_backend_profiling_evidence{false};
     bool backend_profiling_evidence_ready{false};
-    bool require_cpu_profile_zone_evidence{false};
-    bool require_profile_budget_evidence{false};
-    bool require_package_counter_evidence{false};
-    bool trace_capture_handoff_review_ready{false};
+    bool package_counter_evidence_ready{false};
 };
 
 struct DebugProfilingRequestRow {
@@ -99,14 +77,9 @@ struct DebugProfilingRequestRow {
     bool gpu_timestamps_ready{false};
     bool gpu_debug_markers_ready{false};
     bool capture_handoff_ready{false};
-    std::uint32_t source_index{0};
-};
-
-struct DebugProfilingPackageCounterRow {
-    DebugProfilingPackageCounterKind kind{DebugProfilingPackageCounterKind::unknown};
-    std::uint64_t value{0};
-    bool required{true};
-    bool ready{false};
+    bool cpu_profile_zone_evidence_ready{false};
+    bool trace_capture_handoff_evidence_ready{false};
+    bool package_counter_evidence_ready{false};
     std::uint32_t source_index{0};
 };
 
@@ -121,28 +94,27 @@ struct DebugProfilingPolicyPlan {
     std::uint32_t request_count{0};
     std::uint64_t expected_frames{0};
     std::uint64_t frames_finished{0};
-    std::uint64_t cpu_profile_zone_count{0};
-    std::uint64_t cpu_profile_budget_microseconds{0};
-    std::uint64_t gpu_profile_budget_microseconds{0};
     std::uint64_t gpu_timestamp_ticks_per_second{0};
     std::uint64_t gpu_debug_scopes_begun{0};
     std::uint64_t gpu_debug_scopes_ended{0};
     std::uint64_t gpu_debug_markers_inserted{0};
+    std::uint64_t cpu_profile_zone_count{0};
+    std::uint64_t trace_capture_handoff_row_count{0};
     std::uint64_t framegraph_barrier_steps_executed{0};
     std::uint64_t framegraph_render_passes_recorded{0};
     std::uint32_t gpu_timestamp_request_count{0};
     std::uint32_t gpu_debug_marker_request_count{0};
     std::uint32_t capture_handoff_request_count{0};
+    std::uint32_t cpu_profile_zone_request_count{0};
+    std::uint32_t trace_capture_handoff_request_count{0};
+    std::uint32_t package_counter_request_count{0};
     rhi::BackendKind backend{rhi::BackendKind::null};
     bool backend_profiling_evidence_ready{false};
     bool frame_diagnostics_ready{false};
     bool cpu_profile_zone_evidence_ready{false};
-    bool profile_budget_ready{false};
-    bool trace_capture_handoff_review_ready{false};
-    std::uint32_t package_counter_count{0};
-    std::uint32_t package_counter_ready_count{0};
+    bool trace_capture_handoff_evidence_ready{false};
+    bool package_counter_evidence_ready{false};
     std::vector<DebugProfilingRequestRow> request_rows;
-    std::vector<DebugProfilingPackageCounterRow> package_counter_rows;
     std::vector<DebugProfilingDiagnostic> diagnostics;
 
     [[nodiscard]] bool succeeded() const noexcept {

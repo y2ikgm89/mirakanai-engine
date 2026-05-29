@@ -21,12 +21,6 @@ constexpr std::array kRequiredFeatures{
     RendererQualityFeatureKind::profiling_capture,
 };
 
-constexpr std::array kReadyEvidenceCategories{
-    RendererQualityEvidenceCategory::synchronization,  RendererQualityEvidenceCategory::shader_tool_validation,
-    RendererQualityEvidenceCategory::memory_residency, RendererQualityEvidenceCategory::render_pass_frame_graph,
-    RendererQualityEvidenceCategory::profiling,        RendererQualityEvidenceCategory::package_evidence,
-};
-
 [[nodiscard]] bool is_supported_backend(rhi::BackendKind backend) noexcept {
     return backend == rhi::BackendKind::d3d12 || backend == rhi::BackendKind::vulkan ||
            backend == rhi::BackendKind::metal;
@@ -90,27 +84,18 @@ constexpr std::array kReadyEvidenceCategories{
     return is_supported_backend(backend) && contains_backend(request.required_backends, backend);
 }
 
-[[nodiscard]] bool has_evidence_category(const RendererQualityMatrixRow& row,
-                                         RendererQualityEvidenceCategory category) {
-    return std::ranges::find(row.evidence_categories, category) != row.evidence_categories.end();
-}
-
-[[nodiscard]] bool has_ready_evidence_categories(const RendererQualityMatrixRow& row) {
-    return std::ranges::all_of(kReadyEvidenceCategories,
-                               [&row](const auto category) { return has_evidence_category(row, category); });
-}
-
 [[nodiscard]] bool is_host_gated_row(const RendererQualityMatrixRow& row) noexcept {
-    return row.status == RendererQualityRowStatus::host_gated ||
-           (row.backend == rhi::BackendKind::metal && row.host_gate_required && !row.host_validated);
+    return row.status == RendererQualityMatrixRowStatus::host_gated && row.host_gate_required && !row.host_validated;
 }
 
 [[nodiscard]] bool is_dependency_gated_row(const RendererQualityMatrixRow& row) noexcept {
-    return row.status == RendererQualityRowStatus::dependency_gated;
+    return row.status == RendererQualityMatrixRowStatus::dependency_gated && row.dependency_gate_required &&
+           !row.host_gate_required;
 }
 
 [[nodiscard]] bool is_unsupported_row(const RendererQualityMatrixRow& row) noexcept {
-    return row.status == RendererQualityRowStatus::unsupported;
+    return row.status == RendererQualityMatrixRowStatus::unsupported && !row.host_gate_required &&
+           !row.dependency_gate_required;
 }
 
 [[nodiscard]] bool resource_synchronization_ready(const RendererQualityMatrixRow& row) noexcept {
@@ -143,13 +128,20 @@ constexpr std::array kReadyEvidenceCategories{
     });
 }
 
+[[nodiscard]] bool package_counter_ids_valid(const RendererQualityMatrixRow& row) {
+    return std::ranges::all_of(row.package_counter_ids, [](const auto& counter_id) {
+        return is_valid_id(counter_id) && !has_native_token(counter_id);
+    });
+}
+
 [[nodiscard]] bool row_ready(const RendererQualityMatrixRow& row) {
-    return row.status == RendererQualityRowStatus::ready && has_ready_evidence_categories(row) && row.reviewed &&
-           row.backend_local_evidence && resource_synchronization_ready(row) && backend_validation_ready(row) &&
+    return row.status == RendererQualityMatrixRowStatus::ready && row.reviewed && row.backend_local_evidence &&
+           resource_synchronization_ready(row) && backend_validation_ready(row) &&
            row.shader_tool_validation_evidence && package_counter_ids_ready(row) && row.timing_budget_us > 0U &&
-           row.gpu_memory_evidence && row.backend_parity_evidence && row.host_validated &&
-           !row.request_native_handle_access && !row.request_capture_execution && !row.request_crash_upload_execution &&
-           !row.request_inferred_backend_parity && !row.request_subjective_visual_quality_claim;
+           row.gpu_memory_evidence && row.backend_parity_evidence && row.host_validated && !row.host_gate_required &&
+           !row.dependency_gate_required && !row.request_native_handle_access && !row.request_capture_execution &&
+           !row.request_crash_upload_execution && !row.request_inferred_backend_parity &&
+           !row.request_subjective_visual_quality_claim;
 }
 
 void add_diagnostic(RendererQualityMatrixPlan& plan, RendererQualityMatrixDiagnosticCode code, rhi::BackendKind backend,
@@ -274,33 +266,40 @@ void validate_row_ids(RendererQualityMatrixPlan& plan, const RendererQualityMatr
                            row.feature_id, "renderer quality matrix row backend must be required and supported",
                            row.source_index);
         }
-        const auto has_valid_gate_id =
-            row.status != RendererQualityRowStatus::dependency_gated ||
-            (is_valid_id(row.dependency_gate_id) && !has_native_token(row.dependency_gate_id));
-        const auto has_valid_unsupported_id =
-            row.status != RendererQualityRowStatus::unsupported ||
-            (is_valid_id(row.unsupported_claim_id) && !has_native_token(row.unsupported_claim_id));
-        const auto has_valid_status_category =
-            (row.status == RendererQualityRowStatus::ready && has_ready_evidence_categories(row)) ||
-            (row.status == RendererQualityRowStatus::host_gated &&
-             has_evidence_category(row, RendererQualityEvidenceCategory::host_gate)) ||
-            (row.status == RendererQualityRowStatus::dependency_gated &&
-             has_evidence_category(row, RendererQualityEvidenceCategory::dependency_gate)) ||
-            (row.status == RendererQualityRowStatus::unsupported &&
-             has_evidence_category(row, RendererQualityEvidenceCategory::unsupported_claim));
-        const auto requires_package_counters = row.status != RendererQualityRowStatus::host_gated;
-        if (!is_valid_id(row.feature_id) || has_native_token(row.feature_id) || !row.reviewed || !has_valid_gate_id ||
-            !has_valid_unsupported_id || !has_valid_status_category ||
-            (requires_package_counters && !package_counter_ids_ready(row))) {
+        if (!is_valid_id(row.feature_id) || has_native_token(row.feature_id) || !row.reviewed ||
+            !package_counter_ids_valid(row) ||
+            (row.status == RendererQualityMatrixRowStatus::ready && row.package_counter_ids.empty())) {
             add_diagnostic(plan, RendererQualityMatrixDiagnosticCode::invalid_quality_row, row.backend, row.feature,
                            row.feature_id,
                            "renderer quality matrix rows require reviewed backend-neutral ids and counter ids",
                            row.source_index);
         }
-        if (has_native_token(row.notes)) {
-            add_diagnostic(plan, RendererQualityMatrixDiagnosticCode::unsupported_native_handle_claim, row.backend,
-                           row.feature, row.feature_id,
-                           "renderer quality matrix notes must not expose backend-native handles or tokens",
+    }
+}
+
+void validate_row_status(RendererQualityMatrixPlan& plan, const RendererQualityMatrixRequest& request) {
+    for (const auto& row : request.rows) {
+        bool valid_status{false};
+        switch (row.status) {
+        case RendererQualityMatrixRowStatus::ready:
+            valid_status = row.host_validated && !row.host_gate_required && !row.dependency_gate_required;
+            break;
+        case RendererQualityMatrixRowStatus::host_gated:
+            valid_status = row.host_gate_required && !row.dependency_gate_required && !row.host_validated;
+            break;
+        case RendererQualityMatrixRowStatus::dependency_gated:
+            valid_status = !row.host_gate_required && row.dependency_gate_required;
+            break;
+        case RendererQualityMatrixRowStatus::unsupported:
+            valid_status = !row.host_gate_required && !row.dependency_gate_required;
+            break;
+        }
+
+        if (!valid_status) {
+            add_diagnostic(plan, RendererQualityMatrixDiagnosticCode::invalid_quality_row, row.backend, row.feature,
+                           row.feature_id,
+                           "renderer quality matrix rows require explicit ready, host-gated, dependency-gated, or "
+                           "unsupported taxonomy",
                            row.source_index);
         }
     }
@@ -341,23 +340,13 @@ void validate_unsupported_claims(RendererQualityMatrixPlan& plan, const Renderer
 
 void validate_evidence_rows(RendererQualityMatrixPlan& plan, const RendererQualityMatrixRequest& request) {
     for (const auto& row : request.rows) {
-        if (is_dependency_gated_row(row) || is_unsupported_row(row)) {
-            if (!package_counter_ids_ready(row)) {
-                add_diagnostic(plan, RendererQualityMatrixDiagnosticCode::missing_package_counter_evidence, row.backend,
-                               row.feature, row.feature_id,
-                               "non-ready renderer quality rows require package-visible status counters",
-                               row.source_index);
-            }
-            continue;
-        }
-
         if (!row.backend_local_evidence) {
             add_diagnostic(plan, RendererQualityMatrixDiagnosticCode::missing_backend_local_evidence, row.backend,
                            row.feature, row.feature_id,
                            "renderer quality evidence cannot be inferred from another backend", row.source_index);
         }
 
-        if (is_host_gated_row(row)) {
+        if (is_host_gated_row(row) || is_dependency_gated_row(row) || is_unsupported_row(row)) {
             continue;
         }
 
@@ -448,12 +437,6 @@ void hash_string(std::uint64_t& hash, std::string_view value) noexcept {
         hash_mix(hash, static_cast<std::uint8_t>(row.backend));
         hash_mix(hash, static_cast<std::uint8_t>(row.proof));
         hash_mix(hash, static_cast<std::uint8_t>(row.status));
-        for (const auto category : row.evidence_categories) {
-            hash_mix(hash, static_cast<std::uint8_t>(category));
-        }
-        hash_string(hash, row.dependency_gate_id);
-        hash_string(hash, row.unsupported_claim_id);
-        hash_string(hash, row.notes);
         hash_mix(hash, row.reviewed ? 1U : 0U);
         hash_mix(hash, row.backend_local_evidence ? 1U : 0U);
         hash_mix(hash, row.d3d12_resource_state_barrier_evidence ? 1U : 0U);
@@ -473,6 +456,12 @@ void hash_string(std::uint64_t& hash, std::string_view value) noexcept {
         hash_mix(hash, row.backend_parity_evidence ? 1U : 0U);
         hash_mix(hash, row.host_validated ? 1U : 0U);
         hash_mix(hash, row.host_gate_required ? 1U : 0U);
+        hash_mix(hash, row.dependency_gate_required ? 1U : 0U);
+        hash_mix(hash, row.request_native_handle_access ? 1U : 0U);
+        hash_mix(hash, row.request_capture_execution ? 1U : 0U);
+        hash_mix(hash, row.request_crash_upload_execution ? 1U : 0U);
+        hash_mix(hash, row.request_inferred_backend_parity ? 1U : 0U);
+        hash_mix(hash, row.request_subjective_visual_quality_claim ? 1U : 0U);
         hash_mix(hash, row.source_index);
     }
     return hash == 0U ? 1U : hash;
@@ -544,6 +533,7 @@ RendererQualityMatrixPlan plan_renderer_quality_matrix(const RendererQualityMatr
     validate_duplicate_rows(plan, request);
     validate_required_feature_rows(plan, request);
     validate_row_ids(plan, request);
+    validate_row_status(plan, request);
     validate_unsupported_claims(plan, request);
     validate_evidence_rows(plan, request);
     validate_budget(plan, request);

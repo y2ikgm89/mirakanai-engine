@@ -26,13 +26,15 @@ Checked-in CMake configure/build presets still inherit `normalized-configure-env
 
 MSVC targets use bounded compiler-level parallelism through `MK_apply_common_target_options`: `MK_MSVC_MULTIPROCESSOR_COMPILE_PROCESSES` defaults to `2`, emitting `/MP2` for each target plus `/Zf` for faster PDB generation during parallel builds. CMake/MSBuild still owns target-level parallelism through the repository wrappers, so the default avoids the worst `P x C` oversubscription while improving targets with multiple translation units.
 
-MSVC targets also use target-unique compiler PDB settings through `MK_apply_common_target_options`: `COMPILE_PDB_OUTPUT_DIRECTORY` is rooted at a short build-tree `pdb` directory and `COMPILE_PDB_NAME` is the logical target name. CMake's Visual Studio generator appends the active configuration subdirectory for `COMPILE_PDB_OUTPUT_DIRECTORY`, so the generated `/Fd` path stays unique without repeating long target names in both the directory and file name. Root CMake sets `CMAKE_OBJECT_PATH_MAX` to `240` for native generators, and Visual Studio projects get documented `VS_SETTINGS` `ObjectFileName=$(IntDir)mk_<hash>.obj` metadata per compiled source so target-unique `$(IntDir)` paths can keep short object basenames. Together these avoid cross-target compile-PDB `C1041` contention, long-path C1041 failures, and long-object-path C1083 failures without adding `/FS`, so normal MSBuild parallelism stays intact. Supported `tools/*.ps1` CMake build entrypoints serialize overlapping CMake build invocations against the same clone and remove stale Visual Studio `.tlog` state whose `.lastbuildstate` points at an older aliased build root, which keeps MSB8028 aligned with Microsoft's unique `$(IntDir)` guidance without slowing normal parallel builds. Use a separate worktree/build tree for intentional concurrent builds.
+MSVC targets also use target-named compiler PDB settings through `MK_apply_common_target_options`: `COMPILE_PDB_OUTPUT_DIRECTORY` is the short build-tree `pdb` directory and `COMPILE_PDB_NAME` is the logical target name. This avoids cross-target compile-PDB `C1041` contention and keeps long target names under Windows path limits in linked worktrees without adding `/FS`, so normal MSBuild parallelism stays intact. Supported `tools/*.ps1` CMake build entrypoints serialize overlapping CMake build invocations against the same clone and remove stale Visual Studio `.tlog` state whose `.lastbuildstate` points at an older aliased build root, which keeps MSB8028 aligned with Microsoft's unique `$(IntDir)` guidance without slowing normal parallel builds. Use a separate worktree/build tree for intentional concurrent builds.
+
+For large one-source test suites, keep CMake target names compact and put the full behavioral description in the CTest name and documentation. Visual Studio derives `$(IntDir)` and `.obj` paths from the CMake target name plus source basename, so very long test target names can exceed MSVC path limits in linked worktrees even when the compile-PDB path is short.
 
 MSVC linkable targets use `/INCREMENTAL:NO` through `MK_apply_common_target_options`. This keeps `tools/build.ps1` and `tools/validate.ps1` independent of `.ilk` incremental-link state and avoids Debug relink failures where `link.exe` cannot open a newly created or scanned `.exe` / `.pdb`.
 
 ## Local worktree cleanup (disk space)
 
-You may delete **`out/`** (preset build trees) and other paths listed in `.gitignore` that are clearly regenerated outputs (for example Android Gradle/CXX dirs under `platform/android/`, `*.log`, `imgui.ini`). **`external/vcpkg` is not disposable cache**: it is the gitignored Microsoft **vcpkg tool checkout** referenced by optional dependency presets in `CMakePresets.json`. The default `dev` preset is dependency-free and does not require SDL3 or vcpkg packages. Removing `external/vcpkg` breaks optional vcpkg-backed configure lanes until you run `git clone https://github.com/microsoft/vcpkg.git external/vcpkg`, bootstrap `vcpkg.exe`, then `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1`. Optional: remove **`vcpkg_installed/`** only when you intend to rerun `tools/bootstrap-deps.ps1` afterward.
+You may delete **`out/`** (preset build trees) and other paths listed in `.gitignore` that are clearly regenerated outputs (for example Android Gradle/CXX dirs under `platform/android/`, `*.log`, `imgui.ini`). **`external/vcpkg` is not disposable cache**: it is the gitignored Microsoft **vcpkg tool checkout** referenced by `CMAKE_TOOLCHAIN_FILE` in `CMakePresets.json`. Removing it breaks configure until you run `git clone https://github.com/microsoft/vcpkg.git external/vcpkg`, bootstrap `vcpkg.exe`, then `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev` or `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1`. Optional: remove **`vcpkg_installed/`** only when you intend to rerun `tools/bootstrap-deps.ps1` afterward.
 
 For a manual linked worktree under `.worktrees/`, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1` after `git worktree add` and before the first configure. The script verifies the ignored worktree/tool-output roots, links an existing local `external/vcpkg` checkout, and links an existing local `vcpkg_installed/` package tree when available instead of downloading packages during CMake configure.
 
@@ -67,7 +69,7 @@ add_executable(my_game main.cpp)
 target_link_libraries(my_game PRIVATE mirakana::core mirakana::runtime)
 ```
 
-`MirakanaiConfig.cmake` calls `find_dependency` for SDL3 and optional importer dependencies according to what was enabled when the package was built. See `cmake/MirakanaiConfig.cmake.in`.
+`MirakanaiConfig.cmake` calls `find_dependency` for optional importer, physics, and network dependencies according to what was enabled when the package was built. See `cmake/MirakanaiConfig.cmake.in`.
 
 ## Minimal Exported Target Set
 
@@ -77,7 +79,7 @@ Always-present core examples:
 
 `MK_ai`, `MK_animation`, `MK_assets`, `MK_audio`, `MK_core`, `MK_math`, `MK_navigation`, `MK_physics`, `MK_platform`, `MK_renderer`, `MK_rhi`, `MK_runtime`, `MK_runtime_host`, `MK_runtime_rhi`, `MK_runtime_scene`, `MK_runtime_scene_rhi`, `MK_rhi_metal`, `MK_rhi_vulkan`, `MK_scene`, `MK_scene_renderer`, `MK_tools`, `MK_ui`, `MK_ui_renderer`
 
-Generated optional targets are added to `MK_LIBRARY_TARGETS` only when the `TARGET` exists, such as `MK_rhi_d3d12`, `MK_platform_sdl3`, or `MK_editor_core`. `EXPORT_NAME` shortens the public package names so consumers reference targets such as `mirakana::core`. Runtime executables are installed outside the export set with `RUNTIME` and Apple `BUNDLE` destinations.
+Generated optional targets are added to `MK_LIBRARY_TARGETS` only when the `TARGET` exists, such as `MK_rhi_d3d12`, `MK_platform_win32`, or `MK_editor_core`. `EXPORT_NAME` shortens the public package names so consumers reference targets such as `mirakana::core`. Runtime executables are installed outside the export set with `RUNTIME` and Apple `BUNDLE` destinations.
 
 ## C++ Modules And `import std`
 

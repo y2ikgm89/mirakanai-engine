@@ -24,6 +24,9 @@ $legalPath = Resolve-RequiredAgentPath "docs/legal-and-licensing.md"
 $planRegistryPath = Resolve-RequiredAgentPath "docs/superpowers/plans/README.md"
 $productionCompletionMasterPlanPath = Resolve-RequiredAgentPath "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
 $publicationPreflightToolPath = Resolve-RequiredAgentPath "tools/check-publication-preflight.ps1"
+$codexPublicationPreflightSkillPath = Resolve-RequiredAgentPath ".agents/skills/gameengine-git-publication-preflight/SKILL.md"
+$claudePublicationPreflightSkillPath = Resolve-RequiredAgentPath ".claude/skills/gameengine-git-publication-preflight/SKILL.md"
+$cursorPublicationPreflightSkillPath = Resolve-RequiredAgentPath ".cursor/skills/gameengine-git-publication-preflight/SKILL.md"
 $removeMergedWorktreeToolPath = Resolve-RequiredAgentPath "tools/remove-merged-worktree.ps1"
 foreach ($textFormatToolPath in @("tools/check-text-format.ps1", "tools/check-text-format-contract.ps1", "tools/format-text.ps1", "tools/text-format-core.ps1")) {
     Resolve-RequiredAgentPath $textFormatToolPath | Out-Null
@@ -89,15 +92,49 @@ Assert-ContainsText $agentsContent "validated commit checkpoints" "AGENTS.md"
 Assert-ContainsText $agentsContent "policy reload" "AGENTS.md"
 Assert-ContainsText $agentsContent "GitHub Desktop" "AGENTS.md"
 Assert-ContainsText $agentsContent "official GitHub Flow" "AGENTS.md"
+Assert-ContainsText $agentsContent 'Before staging/push/PR/merge, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1' "AGENTS.md"
 Assert-ContainsText $agentsContent "tools/check-publication-preflight.ps1" "AGENTS.md"
-Assert-ContainsText $agentsContent "Before starting work expected to publish" "AGENTS.md"
-Assert-ContainsText $agentsContent 'Git admin write, remote state, `origin`, and `gh auth`' "AGENTS.md"
+Assert-ContainsText $agentsContent "PR head SHA" "AGENTS.md"
 
 $publicationPreflightToolContent = Get-Content -LiteralPath $publicationPreflightToolPath -Raw
-Assert-ContainsText $publicationPreflightToolContent "publication-preflight" "tools/check-publication-preflight.ps1"
-Assert-ContainsText $publicationPreflightToolContent '"ls-remote", "--heads", "origin", $Branch' "tools/check-publication-preflight.ps1"
-Assert-ContainsText $publicationPreflightToolContent "gh auth status" "tools/check-publication-preflight.ps1"
-Assert-ContainsText $publicationPreflightToolContent "trusted local/full-access session" "tools/check-publication-preflight.ps1"
+foreach ($needle in @(
+        "Test-PublicationPreflight",
+        "git update-index -q --refresh",
+        "git rev-parse --path-format=absolute --git-path index.lock",
+        "Test-NetConnection",
+        "gh auth status",
+        "gh pr view",
+        "publication-preflight: ok",
+        "publication-preflight: blocked",
+        "PublicationPreflightStatus"
+    )) {
+    Assert-ContainsText $publicationPreflightToolContent $needle "tools/check-publication-preflight.ps1"
+}
+
+$publicationPreflightDetailedSkillSurfaces = @(
+    @{ Path = $codexPublicationPreflightSkillPath; Label = ".agents/skills/gameengine-git-publication-preflight/SKILL.md" },
+    @{ Path = $claudePublicationPreflightSkillPath; Label = ".claude/skills/gameengine-git-publication-preflight/SKILL.md" }
+)
+foreach ($publicationPreflightSkillSurface in $publicationPreflightDetailedSkillSurfaces) {
+    $publicationPreflightSkillText = Get-Content -LiteralPath $publicationPreflightSkillSurface.Path -Raw
+    foreach ($needle in @(
+            "tools/check-publication-preflight.ps1",
+            "whoami",
+            "git update-index -q --refresh",
+            "Test-NetConnection github.com -Port 443",
+            "gh auth status",
+            "gh pr view <pr> --json headRefOid,statusCheckRollup,url",
+            "publication-preflight: blocked",
+            "publication temp clone"
+        )) {
+        Assert-ContainsText $publicationPreflightSkillText $needle $publicationPreflightSkillSurface.Label
+    }
+}
+$cursorPublicationPreflightSkillText = Get-Content -LiteralPath $cursorPublicationPreflightSkillPath -Raw
+foreach ($needle in @("tools/check-publication-preflight.ps1", "publication-preflight: blocked", "publication temp clone")) {
+    Assert-ContainsText $cursorPublicationPreflightSkillText $needle ".cursor/skills/gameengine-git-publication-preflight/SKILL.md"
+}
+
 $removeMergedWorktreeToolContent = Get-Content -LiteralPath $removeMergedWorktreeToolPath -Raw
 Assert-ContainsText $removeMergedWorktreeToolContent "ConvertTo-ExtendedLengthPath" "tools/remove-merged-worktree.ps1"
 Assert-ContainsText $removeMergedWorktreeToolContent "long-path-delete-fallback=enabled" "tools/remove-merged-worktree.ps1"
@@ -126,7 +163,7 @@ Assert-ContainsText $agentsContent "checkpoint-based, not commit-count-based" "A
 foreach ($gitCadenceNeedle in @("purpose/checkpoint-based", "commit validated phases", "push validated checkpoints", "one PR per focused capability/gap-cluster/milestone", "split unrelated work")) {
     Assert-ContainsText $agentsContent $gitCadenceNeedle "AGENTS.md"
 }
-Assert-ContainsText $agentsContent "remote state" "AGENTS.md"
+Assert-ContainsText $agentsContent "network" "AGENTS.md"
 Assert-ContainsText $agentsContent "open draft PR" "AGENTS.md"
 Assert-ContainsText $agentsContent "before final report" "AGENTS.md"
 Assert-ContainsText $agentsContent "codex-<topic>" "AGENTS.md"
@@ -180,6 +217,9 @@ Assert-ContainsText $workflowsContent "Treat publishing as a slice-closing gate"
 Assert-ContainsText $workflowsContent "Publication-capable Codex sessions" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "tools/check-publication-preflight.ps1" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "git rev-parse --path-format=absolute --git-path index.lock" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "git update-index -q --refresh" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "publication-preflight: blocked" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "publication temp clone" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "gh auth status" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "do not bypass GitHub Flow by hand-writing GitHub REST/MCP blobs" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "do not report a task complete while task-owned changes only exist locally after validation" "docs/workflows.md"
@@ -231,9 +271,6 @@ Assert-ContainsText $workflowsContent "GITHUB_TOKEN" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "credential-manager-core" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "git config --show-origin --get-all credential.helper" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "approval-capable session" "docs/workflows.md"
-foreach ($publicationGuidanceFile in @(".agents/skills/gameengine-agent-integration/SKILL.md", ".claude/skills/gameengine-agent-integration/SKILL.md", ".cursor/skills/gameengine-agent-integration/SKILL.md", ".cursor/skills/gameengine-cursor-baseline/SKILL.md", ".codex/rules/gameengine.rules", ".claude/settings.json", ".claude/rules/ai-agent-integration.md", ".cursor/rules/mirakana-repository-baseline.mdc", ".codex/agents/agent-surface-auditor.toml", ".claude/agents/agent-surface-auditor.md", ".cursor/agents/agent-surface-auditor.md", "docs/ai-integration.md")) {
-    Assert-ContainsText (Get-AgentSurfaceText $publicationGuidanceFile) "tools/check-publication-preflight.ps1" $publicationGuidanceFile
-}
 Assert-ContainsText $workflowsContent "Worktree And Parallel Agent Workflow" "docs/workflows.md"
 Assert-ContainsText $workflowsContent '`planning-auditor`: read-only plan lifecycle audit' "docs/workflows.md"
 Assert-ContainsText $workflowsContent '`planning-auditor`, and `rendering-auditor` use `gpt-5.4` with high reasoning' "docs/workflows.md"
@@ -281,13 +318,14 @@ Assert-ContainsText $buildingContent "tools/cmake.ps1 --preset dev" "docs/buildi
 Assert-ContainsText $buildingContent "tools/ctest.ps1 --preset dev --output-on-failure" "docs/building.md"
 Assert-ContainsText $agentsContent "/INCREMENTAL:NO" "AGENTS.md"
 Assert-ContainsText $agentsContent "COMPILE_PDB_OUTPUT_DIRECTORY" "AGENTS.md"
-Assert-ContainsText $agentsContent "ObjectFileName" "AGENTS.md"
+Assert-ContainsText $agentsContent "compact CMake target names" "AGENTS.md"
 Assert-ContainsText $agentsContent "/MP2" "AGENTS.md"
 Assert-ContainsText $agentsContent "/Zf" "AGENTS.md"
 Assert-ContainsText $agentsContent 'stale MSVC `.tlog` roots' "AGENTS.md"
 Assert-ContainsText $buildingContent "/INCREMENTAL:NO" "docs/building.md"
 Assert-ContainsText $buildingContent "COMPILE_PDB_OUTPUT_DIRECTORY" "docs/building.md"
-Assert-ContainsText $buildingContent "ObjectFileName" "docs/building.md"
+Assert-ContainsText $buildingContent "compact" "docs/building.md MSVC object path guidance"
+Assert-ContainsText $buildingContent "CTest name" "docs/building.md MSVC object path guidance"
 Assert-ContainsText $buildingContent "/MP2" "docs/building.md"
 Assert-ContainsText $buildingContent "/Zf" "docs/building.md"
 Assert-ContainsText $buildingContent "MSB8028" "docs/building.md"
@@ -295,11 +333,18 @@ $cmakeListsContent = Get-AgentSurfaceText "CMakeLists.txt"
 Assert-ContainsText $cmakeListsContent 'MK_MSVC_MULTIPROCESSOR_COMPILE_PROCESSES' "CMakeLists.txt"
 Assert-ContainsText $cmakeListsContent '/MP${MK_MSVC_MULTIPROCESSOR_COMPILE_PROCESSES}' "CMakeLists.txt"
 Assert-ContainsText $cmakeListsContent '/Zf' "CMakeLists.txt"
-Assert-ContainsText $cmakeListsContent 'CMAKE_OBJECT_PATH_MAX 240' "CMakeLists.txt"
 Assert-ContainsText $cmakeListsContent 'COMPILE_PDB_NAME ${target_name}' "CMakeLists.txt"
 Assert-ContainsText $cmakeListsContent 'COMPILE_PDB_OUTPUT_DIRECTORY' "CMakeLists.txt"
-Assert-ContainsText $cmakeListsContent 'MK_apply_msvc_visual_studio_short_object_names' "CMakeLists.txt"
-Assert-ContainsText $cmakeListsContent 'PROPERTY VS_SETTINGS "ObjectFileName=$(IntDir)mk_${MK_SOURCE_HASH_SHORT}.obj"' "CMakeLists.txt"
+Assert-ContainsText $cmakeListsContent 'COMPILE_PDB_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/pdb"' "CMakeLists.txt"
+foreach ($compactTestTarget in @(
+    "MK_rt_pkg_cand_res_mnt_review_evict_tests",
+    "MK_rt_pkg_cand_res_repl_review_evict_tests",
+    "MK_rt_pkg_disc_res_mnt_review_evict_tests",
+    "MK_rt_pkg_disc_res_repl_review_evict_tests",
+    "MK_rt_pkg_hot_reload_repl_intent_review_tests"
+)) {
+    Assert-ContainsText $cmakeListsContent $compactTestTarget "CMakeLists.txt compact MSVC test target names"
+}
 Assert-ContainsText $cmakeListsContent 'get_target_property(MK_TARGET_TYPE ${target_name} TYPE)' "CMakeLists.txt"
 Assert-ContainsText $cmakeListsContent 'MK_TARGET_TYPE STREQUAL "EXECUTABLE"' "CMakeLists.txt"
 Assert-ContainsText $cmakeListsContent 'MK_TARGET_TYPE STREQUAL "SHARED_LIBRARY"' "CMakeLists.txt"
@@ -316,7 +361,7 @@ foreach ($cmakeSkillPath in @(
 )) {
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "/INCREMENTAL:NO" $cmakeSkillPath
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "COMPILE_PDB_OUTPUT_DIRECTORY" $cmakeSkillPath
-    Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "ObjectFileName" $cmakeSkillPath
+    Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "compact CMake target names" $cmakeSkillPath
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "/MP2" $cmakeSkillPath
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "/Zf" $cmakeSkillPath
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "-ShardCount" $cmakeSkillPath
@@ -335,10 +380,8 @@ foreach ($buildFixerPath in @(".codex/agents/build-fixer.toml", ".claude/agents/
     Assert-ContainsText $buildFixerAgentText 'Do not repair generated `out/build/<preset>` trees' $buildFixerPath
     Assert-ContainsText $buildFixerAgentText "CMakeCache.txt" $buildFixerPath
     Assert-ContainsText $buildFixerAgentText "C1041" $buildFixerPath
-    Assert-ContainsText $buildFixerAgentText "C1083" $buildFixerPath
     Assert-ContainsText $buildFixerAgentText "COMPILE_PDB_OUTPUT_DIRECTORY" $buildFixerPath
-    Assert-ContainsText $buildFixerAgentText "CMAKE_OBJECT_PATH_MAX=240" $buildFixerPath
-    Assert-ContainsText $buildFixerAgentText "ObjectFileName" $buildFixerPath
+    Assert-ContainsText $buildFixerAgentText 'source-basename `.obj` path' $buildFixerPath
     Assert-ContainsText $buildFixerAgentText "/MP2" $buildFixerPath
     Assert-ContainsText $buildFixerAgentText "/Zf" $buildFixerPath
     Assert-ContainsText $buildFixerAgentText 'global `/FS`' $buildFixerPath
@@ -350,7 +393,7 @@ foreach ($buildFixerPath in @(".codex/agents/build-fixer.toml", ".claude/agents/
 }
 $cursorCmakeRuleText = Get-AgentSurfaceText ".cursor/rules/mirakana-cmake-vcpkg.mdc"
 Assert-ContainsText $cursorCmakeRuleText "COMPILE_PDB_OUTPUT_DIRECTORY" ".cursor/rules/mirakana-cmake-vcpkg.mdc"
-Assert-ContainsText $cursorCmakeRuleText "ObjectFileName" ".cursor/rules/mirakana-cmake-vcpkg.mdc"
+Assert-ContainsText $cursorCmakeRuleText "compact CMake target names" ".cursor/rules/mirakana-cmake-vcpkg.mdc"
 Assert-ContainsText $cursorCmakeRuleText "/MP2" ".cursor/rules/mirakana-cmake-vcpkg.mdc"
 Assert-ContainsText $cursorCmakeRuleText "/Zf" ".cursor/rules/mirakana-cmake-vcpkg.mdc"
 Assert-ContainsText $cursorCmakeRuleText 'global `/FS`' ".cursor/rules/mirakana-cmake-vcpkg.mdc"
@@ -360,7 +403,7 @@ Assert-ContainsText $manifestRaw "msvcCompileThroughput" "engine/agent/manifest.
 Assert-ContainsText $manifestRaw "/MP2" "engine/agent/manifest.json"
 Assert-ContainsText $manifestRaw "/Zf" "engine/agent/manifest.json"
 Assert-ContainsText $manifestRaw "msvcCompilePdbIsolation" "engine/agent/manifest.json"
-Assert-ContainsText $manifestRaw "ObjectFileName" "engine/agent/manifest.json"
+Assert-ContainsText $manifestRaw "msvcObjectPathHygiene" "engine/agent/manifest.json"
 Assert-ContainsText $manifestRaw ".lastbuildstate" "engine/agent/manifest.json"
 Assert-ContainsText (Get-AgentSurfaceText "tools/common.ps1") 'ToolId "cmake-build"' "tools/common.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/common.ps1") 'Test-CMakeBuildCommand' "tools/common.ps1"
@@ -380,10 +423,6 @@ Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") 'independent sta
 Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") 'Get-ValidateOutputCapture' "tools/validate.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") '[int]$StaticCheckTimeoutSeconds = 1800' "tools/validate.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") 'validate: timed out after ${TaskTimeoutSeconds}s' "tools/validate.ps1"
-Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") '$validateProcessExitDrainMilliseconds = 2000' "tools/validate.ps1"
-Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") '$validateStreamDrainMilliseconds = 2000' "tools/validate.ps1"
-Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") 'MK_MOBILE_DEVICE_PROBE' "tools/validate.ps1"
-Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") 'stream capture did not finish' "tools/validate.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") 'OutputLogPath' "tools/validate.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") 'OmittedOutputLineCount' "tools/validate.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") 'out" (Join-Path "validation-logs"' "tools/validate.ps1"
@@ -550,6 +589,8 @@ $cursorBaselineSkillText = Get-AgentSurfaceText ".cursor/skills/gameengine-curso
 Assert-ContainsText $cursorBaselineSkillText "Cursor global instructions" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "workspace override" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 Assert-ContainsText $cursorBaselineSkillText "official GitHub Flow" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
+Assert-ContainsText $cursorBaselineSkillText "tools/check-publication-preflight.ps1" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
+Assert-ContainsText $cursorBaselineSkillText "publication-preflight: blocked" ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 foreach ($cursorBaselineCadenceNeedle in @("purpose/checkpoint-based", "push validated checkpoints", "one PR per focused capability/gap-cluster/milestone", "avoid PRs per commit/checklist item")) {
     Assert-ContainsText $cursorBaselineSkillText $cursorBaselineCadenceNeedle ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 }
@@ -567,6 +608,8 @@ Assert-ContainsText $cursorAgentIntegrationSkillText "mergeStateStatus" ".cursor
 Assert-ContainsText $cursorAgentIntegrationSkillText "--match-head-commit <headRefOid>" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText 'stale `headRefOid` invalidates the merge decision' ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "official GitHub Flow" ".cursor/skills/gameengine-agent-integration/SKILL.md"
+Assert-ContainsText $cursorAgentIntegrationSkillText "tools/check-publication-preflight.ps1" ".cursor/skills/gameengine-agent-integration/SKILL.md"
+Assert-ContainsText $cursorAgentIntegrationSkillText "publication-preflight: blocked" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 foreach ($cursorAgentCadenceNeedle in @("purpose/checkpoint-based", "push validated topic-branch checkpoints", "one PR per focused capability/gap-cluster/milestone", "avoid PRs per commit/checklist item")) {
     Assert-ContainsText $cursorAgentIntegrationSkillText $cursorAgentCadenceNeedle ".cursor/skills/gameengine-agent-integration/SKILL.md"
 }
@@ -581,6 +624,31 @@ Assert-ContainsText $cursorAgentIntegrationSkillText "PowerShell parse checks" "
 Assert-ContainsText $cursorAgentIntegrationSkillText "single-quoted PowerShell strings" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "selected hosted checks to complete" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText '`PR Gate` to report `SUCCESS`' ".cursor/skills/gameengine-agent-integration/SKILL.md"
+
+$codexAgentIntegrationSkillText = Get-AgentSurfaceText ".agents/skills/gameengine-agent-integration/SKILL.md"
+$claudeAgentIntegrationSkillText = Get-AgentSurfaceText ".claude/skills/gameengine-agent-integration/SKILL.md"
+foreach ($agentSkillSurface in @(
+        @{ Text = $codexAgentIntegrationSkillText; Label = ".agents/skills/gameengine-agent-integration/SKILL.md" },
+        @{ Text = $claudeAgentIntegrationSkillText; Label = ".claude/skills/gameengine-agent-integration/SKILL.md" },
+        @{ Text = $cursorAgentIntegrationSkillText; Label = ".cursor/skills/gameengine-agent-integration/SKILL.md" }
+    )) {
+    Assert-ContainsText $agentSkillSurface.Text "tools/check-publication-preflight.ps1" $agentSkillSurface.Label
+    Assert-ContainsText $agentSkillSurface.Text "publication-preflight: blocked" $agentSkillSurface.Label
+    Assert-ContainsText $agentSkillSurface.Text "before staging/push/PR/merge" $agentSkillSurface.Label
+}
+
+$codexRulesText = Get-AgentSurfaceText ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRulesText '"tools/check-publication-preflight.ps1"' ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRulesText "linked-worktree index.lock ACL" ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRulesText 'pattern = ["git", "clone"]' ".codex/rules/gameengine.rules"
+Assert-ContainsText $codexRulesText "Publication temp clones bypass the repository preflight path" ".codex/rules/gameengine.rules"
+$claudeRulesText = Get-AgentSurfaceText ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $claudeRulesText "tools/check-publication-preflight.ps1" ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $claudeRulesText "publication-preflight: blocked" ".claude/rules/ai-agent-integration.md"
+Assert-ContainsText $claudeRulesText "Publication temp clones" ".claude/rules/ai-agent-integration.md"
+$claudeSettingsText = Get-AgentSurfaceText ".claude/settings.json"
+Assert-ContainsText $claudeSettingsText "Bash(pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1:*)" ".claude/settings.json"
+Assert-ContainsText $claudeSettingsText "Bash(git clone:*)" ".claude/settings.json"
 Assert-ContainsText $cursorAgentIntegrationSkillText "Hosted PR failure hardening" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "Use lightweight static validation for docs/agent/rules/subagent-only PRs" ".cursor/skills/gameengine-agent-integration/SKILL.md"
 Assert-ContainsText $cursorAgentIntegrationSkillText "HeaderFilterRegex" ".cursor/skills/gameengine-agent-integration/SKILL.md"
@@ -670,11 +738,6 @@ if (-not $manifest.commands.PSObject.Properties.Name.Contains("prepareWorktree")
     Write-Error "engine/agent/manifest.json commands missing required command: prepareWorktree"
 } elseif ($manifest.commands.prepareWorktree -ne "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1") {
     Write-Error "engine/agent/manifest.json commands.prepareWorktree must be pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1"
-}
-if (-not $manifest.commands.PSObject.Properties.Name.Contains("publicationPreflight")) {
-    Write-Error "engine/agent/manifest.json commands missing required command: publicationPreflight"
-} elseif ($manifest.commands.publicationPreflight -ne "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1 -Branch <branch>") {
-    Write-Error "engine/agent/manifest.json commands.publicationPreflight must expose the publication-capable session preflight"
 }
 if (-not $manifest.commands.PSObject.Properties.Name.Contains("removeMergedWorktree")) {
     Write-Error "engine/agent/manifest.json commands missing required command: removeMergedWorktree"
@@ -917,8 +980,8 @@ Assert-ContainsText $roadmapContent "generated 3D morph GPU palette smoke" "docs
 Assert-ContainsText $productionCompletionMasterPlanContent "generated-3d-morph-gpu-palette-smoke-v1" "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
 Assert-ContainsText $historicalPlanEvidenceText "2026-05-05-generated-3d-morph-gpu-palette-smoke-v1.md" "docs/superpowers/plans/README.md"
 Assert-ContainsText $manifestRaw "desktopRuntime3dMorphGpuPaletteSmoke" "engine/agent/manifest.json"
-Assert-ContainsText (Get-AgentSurfaceText "engine/runtime_host/sdl3/include/mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp") "morph_mesh_assets" "MK_runtime_host_sdl3 public header"
-Assert-ContainsText (Get-AgentSurfaceText "engine/runtime_host/sdl3/include/mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp") "uploaded_morph_bytes" "MK_runtime_host_sdl3 public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/runtime_host/win32/include/mirakana/runtime_host/win32/win32_desktop_presentation.hpp") "morph_mesh_assets" "MK_runtime_host_win32 public header"
+Assert-ContainsText (Get-AgentSurfaceText "engine/runtime_host/win32/include/mirakana/runtime_host/win32/win32_desktop_presentation.hpp") "uploaded_morph_bytes" "MK_runtime_host_win32 public header"
 Assert-ContainsText $currentCapabilitiesContent "Generated 3D Morph NORMAL/TANGENT Package Smoke v1" "docs/current-capabilities.md"
 Assert-ContainsText $aiGameDevelopmentContent "POSITION/NORMAL/TANGENT morph delta buffers" "docs/ai-game-development.md"
 Assert-ContainsText $roadmapContent "generated 3D NORMAL/TANGENT morph package smoke" "docs/roadmap.md"
@@ -1580,6 +1643,18 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     )) {
         Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan engine gap matrix"
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "next-production-gap-selection") {
+    foreach ($needle in @(
+        "First-Party Desktop Platform And SDL3 Removal v1",
+        "MK_platform_win32",
+        "MK_runtime_host_win32",
+        "MK_runtime_host_win32_presentation",
+        "MK_audio_wasapi",
+        "unsupportedProductionGaps = []",
+        "selection gate"
+    )) {
+        Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan selection gate closeout"
+    }
 } else {
     foreach ($needle in @(
     "Frame Graph Transient Texture Alias Planning v1",
@@ -1711,11 +1786,11 @@ $runtimeSceneRhiHeaderText = Get-AgentSurfaceText "engine/runtime_scene_rhi/incl
 $runtimeSceneRhiSourceText = Get-AgentSurfaceText "engine/runtime_scene_rhi/src/runtime_scene_rhi.cpp"
 $rendererHeaderText = Get-AgentSurfaceText "engine/renderer/include/mirakana/renderer/renderer.hpp"
 $rendererSourceText = Get-AgentSurfaceText "engine/renderer/src/rhi_frame_renderer.cpp"
-$runtimeHostSdl3HeaderText = Get-AgentSurfaceText "engine/runtime_host/sdl3/include/mirakana/runtime_host/sdl3/sdl_desktop_presentation.hpp"
-$runtimeHostSdl3SourceText = Get-AgentSurfaceText "engine/runtime_host/sdl3/src/sdl_desktop_presentation.cpp"
-$runtimeHostSdl3SceneGpuInjectingRendererText = Get-AgentSurfaceText "engine/runtime_host/sdl3/src/scene_gpu_binding_injecting_renderer.hpp"
-$runtimeHostSdl3TestsText = Get-AgentSurfaceText "tests/unit/runtime_host_sdl3_tests.cpp"
-$runtimeHostSdl3PublicApiText = Get-AgentSurfaceText "tests/unit/runtime_host_sdl3_public_api_compile.cpp"
+$runtimeHostWin32HeaderText = Get-AgentSurfaceText "engine/runtime_host/win32/include/mirakana/runtime_host/win32/win32_desktop_presentation.hpp"
+$runtimeHostWin32SourceText = Get-AgentSurfaceText "engine/runtime_host/win32/src/win32_desktop_presentation.cpp"
+$runtimeHostWin32SceneGpuInjectingRendererText = Get-AgentSurfaceText "engine/runtime_host/win32/src/scene_gpu_binding_injecting_renderer.hpp"
+$runtimeHostWin32TestsText = Get-AgentSurfaceText "tests/unit/runtime_host_win32_tests.cpp"
+$runtimeHostWin32PublicApiText = Get-AgentSurfaceText "tests/unit/runtime_host_win32_public_api_compile.cpp"
 $newGameToolText = Get-AgentSurfaceText "tools/new-game.ps1"
 $newGameHelpersText = Get-AgentSurfaceText "tools/new-game-helpers.ps1"
 $newGameTemplatesText = Get-AgentSurfaceText "tools/new-game-templates.ps1"
@@ -2154,13 +2229,13 @@ Assert-ContainsText $runtimeComputeMorphNormalTangentOutputVulkanPlanText "Do no
 Assert-ContainsText $generatedComputeMorphPackageVulkanPlanText "Generated 3D Compute Morph Package Smoke Vulkan v1" "Generated 3D compute morph package smoke Vulkan plan"
 Assert-ContainsText $generatedComputeMorphPackageVulkanPlanText "**Status:** Completed" "Generated 3D compute morph package smoke Vulkan plan"
 Assert-ContainsText $generatedComputeMorphPackageVulkanPlanText "DesktopRuntime3DPackage" "Generated 3D compute morph package smoke Vulkan plan"
-Assert-ContainsText $generatedComputeMorphPackageVulkanPlanText "SdlDesktopPresentationVulkanSceneRendererDesc" "Generated 3D compute morph package smoke Vulkan plan"
+Assert-ContainsText $generatedComputeMorphPackageVulkanPlanText "Win32DesktopPresentationVulkanSceneRendererDesc" "Generated 3D compute morph package smoke Vulkan plan"
 Assert-ContainsText $generatedComputeMorphPackageVulkanPlanText "--require-compute-morph" "Generated 3D compute morph package smoke Vulkan plan"
 Assert-ContainsText $generatedComputeMorphPackageVulkanPlanText "Do not claim Vulkan NORMAL/TANGENT package smoke" "Generated 3D compute morph package smoke Vulkan plan"
 Assert-ContainsText $generatedComputeMorphSkinPackageVulkanPlanText "Generated 3D Compute Morph Skin Package Smoke Vulkan v1" "Generated 3D compute morph skin package smoke Vulkan plan"
 Assert-ContainsText $generatedComputeMorphSkinPackageVulkanPlanText "**Status:** Completed" "Generated 3D compute morph skin package smoke Vulkan plan"
 Assert-ContainsText $generatedComputeMorphSkinPackageVulkanPlanText "DesktopRuntime3DPackage" "Generated 3D compute morph skin package smoke Vulkan plan"
-Assert-ContainsText $generatedComputeMorphSkinPackageVulkanPlanText "SdlDesktopPresentationVulkanSceneRendererDesc::compute_morph_skinned_shader" "Generated 3D compute morph skin package smoke Vulkan plan"
+Assert-ContainsText $generatedComputeMorphSkinPackageVulkanPlanText "Win32DesktopPresentationVulkanSceneRendererDesc::compute_morph_skinned_shader" "Generated 3D compute morph skin package smoke Vulkan plan"
 Assert-ContainsText $generatedComputeMorphSkinPackageVulkanPlanText "compute_morph_skinned_mesh_bindings" "Generated 3D compute morph skin package smoke Vulkan plan"
 Assert-ContainsText $generatedComputeMorphSkinPackageVulkanPlanText "without exposing Vulkan/native handles" "Generated 3D compute morph skin package smoke Vulkan plan"
 Assert-ContainsText $nativeSpriteBatchingExecutionPlanText "2D Native Sprite Batching Execution v1" "2D native sprite batching execution plan"

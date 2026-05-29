@@ -9,12 +9,12 @@
     "MK_core",
     "MK_math",
     "MK_platform",
-    "MK_platform_sdl3",
+    "MK_platform_win32",
     "MK_rhi",
     "MK_renderer",
     "MK_runtime_host",
-    "MK_runtime_host_sdl3",
-    "MK_runtime_host_sdl3_presentation"
+    "MK_runtime_host_win32",
+    "MK_runtime_host_win32_presentation"
   ],
   "aiWorkflow": {
     "spec": "games/sample_desktop_runtime_shell/README.md",
@@ -27,11 +27,11 @@
   "gameplayContract": {
     "appType": "mirakana::GameApp",
     "runner": "mirakana::DesktopGameRunner",
-    "currentRuntime": "desktop-windowed-sdl3-presentation-with-build-output-d3d12-dxil-vulkan-spirv-and-null-fallback"
+    "currentRuntime": "desktop-windowed-win32-presentation-with-build-output-d3d12-dxil-vulkan-spirv-artifact-validation-and-null-fallback"
   },
   "backendReadiness": {
-    "platform": "sdl3-desktop",
-    "graphics": "build-output-d3d12-dxil-and-vulkan-spirv-with-null-fallback",
+    "platform": "win32-desktop",
+    "graphics": "build-output-d3d12-dxil-with-null-fallback-and-vulkan-spirv-artifact-validation",
     "audio": "device-independent",
     "ui": "mirakana_ui-headless",
     "physics": "not-required"
@@ -58,11 +58,11 @@
     },
     {
       "name": "desktop-d3d12-window-smoke",
-      "command": "out\\build\\desktop-runtime\\games\\Debug\\sample_desktop_runtime_shell.exe --smoke --video-driver windows --require-d3d12-shaders --require-d3d12-renderer"
+      "command": "out\\build\\desktop-runtime\\games\\Debug\\sample_desktop_runtime_shell.exe --smoke --require-d3d12-shaders --require-d3d12-renderer"
     },
     {
-      "name": "desktop-vulkan-window-smoke",
-      "command": "out\\build\\desktop-runtime\\games\\Debug\\sample_desktop_runtime_shell.exe --smoke --video-driver windows --require-vulkan-shaders --require-vulkan-renderer"
+      "name": "desktop-vulkan-shader-artifact-smoke",
+      "command": "out\\build\\desktop-runtime\\games\\Debug\\sample_desktop_runtime_shell.exe --smoke --require-vulkan-shaders"
     }
   ]
 }

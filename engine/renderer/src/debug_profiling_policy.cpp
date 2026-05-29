@@ -34,44 +34,6 @@ namespace {
     return "unknown";
 }
 
-[[nodiscard]] bool is_supported_package_counter(DebugProfilingPackageCounterKind kind) noexcept {
-    switch (kind) {
-    case DebugProfilingPackageCounterKind::cpu_profile_zone_count:
-    case DebugProfilingPackageCounterKind::cpu_profile_budget_microseconds:
-    case DebugProfilingPackageCounterKind::gpu_profile_budget_microseconds:
-    case DebugProfilingPackageCounterKind::gpu_timestamp_frequency:
-    case DebugProfilingPackageCounterKind::gpu_debug_marker_count:
-    case DebugProfilingPackageCounterKind::frame_diagnostic_count:
-    case DebugProfilingPackageCounterKind::trace_capture_handoff:
-        return true;
-    case DebugProfilingPackageCounterKind::unknown:
-        return false;
-    }
-    return false;
-}
-
-[[nodiscard]] std::string_view package_counter_name(DebugProfilingPackageCounterKind kind) noexcept {
-    switch (kind) {
-    case DebugProfilingPackageCounterKind::cpu_profile_zone_count:
-        return "cpu_profile_zone_count";
-    case DebugProfilingPackageCounterKind::cpu_profile_budget_microseconds:
-        return "cpu_profile_budget_microseconds";
-    case DebugProfilingPackageCounterKind::gpu_profile_budget_microseconds:
-        return "gpu_profile_budget_microseconds";
-    case DebugProfilingPackageCounterKind::gpu_timestamp_frequency:
-        return "gpu_timestamp_frequency";
-    case DebugProfilingPackageCounterKind::gpu_debug_marker_count:
-        return "gpu_debug_marker_count";
-    case DebugProfilingPackageCounterKind::frame_diagnostic_count:
-        return "frame_diagnostic_count";
-    case DebugProfilingPackageCounterKind::trace_capture_handoff:
-        return "trace_capture_handoff";
-    case DebugProfilingPackageCounterKind::unknown:
-        return "unknown";
-    }
-    return "unknown";
-}
-
 [[nodiscard]] std::string_view backend_name(rhi::BackendKind backend) noexcept {
     switch (backend) {
     case rhi::BackendKind::null:
@@ -104,7 +66,15 @@ void add_diagnostic(DebugProfilingPolicyPlan& plan, DebugProfilingDiagnosticCode
     return desc.gpu_debug_scopes_begun > 0 || desc.gpu_debug_scopes_ended > 0 || desc.gpu_debug_markers_inserted > 0;
 }
 
-[[nodiscard]] bool capture_handoff_backend_matches(DebugProfilingCaptureKind kind, rhi::BackendKind backend) noexcept {
+[[nodiscard]] bool cpu_profile_zone_evidence_ready(const DebugProfilingPolicyDesc& desc) noexcept {
+    return desc.cpu_profile_zone_count > 0;
+}
+
+[[nodiscard]] bool trace_capture_handoff_evidence_ready(const DebugProfilingPolicyDesc& desc) noexcept {
+    return desc.trace_capture_handoff_row_count > 0;
+}
+
+[[nodiscard]] bool capture_handoff_ready(DebugProfilingCaptureKind kind, rhi::BackendKind backend) noexcept {
     switch (kind) {
     case DebugProfilingCaptureKind::pix_gpu_handoff:
         return backend == rhi::BackendKind::d3d12;
@@ -129,25 +99,25 @@ DebugProfilingPolicyPlan plan_debug_profiling_policy(const DebugProfilingPolicyD
     DebugProfilingPolicyPlan plan;
     plan.expected_frames = desc.expected_frames;
     plan.frames_finished = desc.frames_finished;
-    plan.cpu_profile_zone_count = desc.cpu_profile_zone_count;
-    plan.cpu_profile_budget_microseconds = desc.cpu_profile_budget_microseconds;
-    plan.gpu_profile_budget_microseconds = desc.gpu_profile_budget_microseconds;
     plan.gpu_timestamp_ticks_per_second = desc.gpu_timestamp_ticks_per_second;
     plan.gpu_debug_scopes_begun = desc.gpu_debug_scopes_begun;
     plan.gpu_debug_scopes_ended = desc.gpu_debug_scopes_ended;
     plan.gpu_debug_markers_inserted = desc.gpu_debug_markers_inserted;
+    plan.cpu_profile_zone_count = desc.cpu_profile_zone_count;
+    plan.trace_capture_handoff_row_count = desc.trace_capture_handoff_row_count;
     plan.framegraph_barrier_steps_executed = desc.framegraph_barrier_steps_executed;
     plan.framegraph_render_passes_recorded = desc.framegraph_render_passes_recorded;
     plan.backend = desc.backend;
     plan.backend_profiling_evidence_ready = desc.backend_profiling_evidence_ready;
     plan.frame_diagnostics_ready = frame_diagnostics_ready(desc);
-    plan.cpu_profile_zone_evidence_ready = desc.cpu_profile_zone_count > 0;
-    plan.profile_budget_ready = desc.cpu_profile_budget_microseconds > 0 && desc.gpu_profile_budget_microseconds > 0;
-    plan.trace_capture_handoff_review_ready = desc.trace_capture_handoff_review_ready;
+    plan.cpu_profile_zone_evidence_ready = cpu_profile_zone_evidence_ready(desc);
+    plan.trace_capture_handoff_evidence_ready = trace_capture_handoff_evidence_ready(desc);
+    plan.package_counter_evidence_ready = desc.package_counter_evidence_ready;
 
     if (desc.requests.empty()) {
         add_diagnostic(plan, DebugProfilingDiagnosticCode::no_profiling_requests, 0, 0,
                        "debug profiling policy requires at least one request row");
+        return plan;
     }
 
     if (!plan.frame_diagnostics_ready) {
@@ -159,46 +129,6 @@ DebugProfilingPolicyPlan plan_debug_profiling_policy(const DebugProfilingPolicyD
         add_diagnostic(plan, DebugProfilingDiagnosticCode::missing_backend_profiling_evidence, 0, 0,
                        "backend profiling evidence is required but not ready for backend " +
                            std::string(backend_name(desc.backend)));
-    }
-    if (desc.require_cpu_profile_zone_evidence && !plan.cpu_profile_zone_evidence_ready) {
-        add_diagnostic(plan, DebugProfilingDiagnosticCode::missing_cpu_profile_zone_evidence, 0, 0,
-                       "debug profiling policy requires package-visible CPU profile zone evidence");
-    }
-    if (desc.require_profile_budget_evidence && !plan.profile_budget_ready) {
-        add_diagnostic(plan, DebugProfilingDiagnosticCode::missing_profile_budget_evidence, 0, 0,
-                       "debug profiling policy requires CPU and GPU profile budget evidence");
-    }
-    if (desc.require_package_counter_evidence && desc.package_counters.empty()) {
-        add_diagnostic(plan, DebugProfilingDiagnosticCode::missing_package_counter_evidence, 0, 0,
-                       "debug profiling policy requires package-visible counter rows");
-    }
-
-    for (std::size_t counter_index = 0; counter_index < desc.package_counters.size(); ++counter_index) {
-        const auto& counter = desc.package_counters[counter_index];
-        ++plan.package_counter_count;
-        const auto supported = is_supported_package_counter(counter.kind);
-        const auto ready = supported && counter.value > 0;
-        if (!supported) {
-            add_diagnostic(
-                plan, DebugProfilingDiagnosticCode::invalid_package_counter, counter_index, counter.source_index,
-                "unsupported debug profiling package counter kind=" + std::string(package_counter_name(counter.kind)));
-        }
-        if (counter.required && !ready) {
-            add_diagnostic(plan, DebugProfilingDiagnosticCode::missing_package_counter_evidence, counter_index,
-                           counter.source_index,
-                           "debug profiling package counter requires a positive value for " +
-                               std::string(package_counter_name(counter.kind)));
-        }
-        if (ready) {
-            ++plan.package_counter_ready_count;
-        }
-        plan.package_counter_rows.push_back(DebugProfilingPackageCounterRow{
-            .kind = counter.kind,
-            .value = counter.value,
-            .required = counter.required,
-            .ready = ready,
-            .source_index = counter.source_index,
-        });
     }
 
     for (std::size_t request_index = 0; request_index < desc.requests.size(); ++request_index) {
@@ -234,9 +164,10 @@ DebugProfilingPolicyPlan plan_debug_profiling_policy(const DebugProfilingPolicyD
 
         const auto timestamps_ready = gpu_timestamps_ready(desc);
         const auto markers_ready = gpu_debug_markers_ready(desc);
-        const auto handoff_backend_matches = capture_handoff_backend_matches(request.capture_kind, desc.backend);
-        const auto handoff_ready = request.capture_kind == DebugProfilingCaptureKind::none ||
-                                   (handoff_backend_matches && desc.trace_capture_handoff_review_ready);
+        const auto handoff_ready = capture_handoff_ready(request.capture_kind, desc.backend);
+        const auto cpu_zones_ready = cpu_profile_zone_evidence_ready(desc);
+        const auto trace_handoff_ready = trace_capture_handoff_evidence_ready(desc);
+        const auto package_counter_ready = desc.package_counter_evidence_ready;
 
         if (request.require_gpu_timestamps) {
             ++plan.gpu_timestamp_request_count;
@@ -258,17 +189,36 @@ DebugProfilingPolicyPlan plan_debug_profiling_policy(const DebugProfilingPolicyD
         }
         if (request.require_capture_handoff_evidence) {
             ++plan.capture_handoff_request_count;
-            if (!handoff_backend_matches) {
+            if (!handoff_ready) {
                 add_diagnostic(plan, DebugProfilingDiagnosticCode::unsupported_capture_kind, request_index,
                                request.source_index,
                                "capture handoff evidence is host-gated for capture_kind=" +
                                    std::string(capture_kind_name(request.capture_kind)) + " on backend " +
                                    std::string(backend_name(desc.backend)));
-            } else if (!handoff_ready) {
+            }
+        }
+        if (request.require_cpu_profile_zone_evidence) {
+            ++plan.cpu_profile_zone_request_count;
+            if (!cpu_zones_ready) {
+                add_diagnostic(plan, DebugProfilingDiagnosticCode::missing_cpu_profile_zone_evidence, request_index,
+                               request.source_index,
+                               "CPU profile zone evidence is required for broad renderer profiling");
+            }
+        }
+        if (request.require_trace_capture_handoff_evidence) {
+            ++plan.trace_capture_handoff_request_count;
+            if (!trace_handoff_ready) {
                 add_diagnostic(plan, DebugProfilingDiagnosticCode::missing_trace_capture_handoff_evidence,
                                request_index, request.source_index,
-                               "trace capture handoff review evidence is required for capture_kind=" +
-                                   std::string(capture_kind_name(request.capture_kind)));
+                               "trace/capture handoff review evidence is required without executing external capture");
+            }
+        }
+        if (request.require_package_counter_evidence) {
+            ++plan.package_counter_request_count;
+            if (!package_counter_ready) {
+                add_diagnostic(plan, DebugProfilingDiagnosticCode::missing_package_counter_evidence, request_index,
+                               request.source_index,
+                               "package-visible renderer profiling counters are required for broad profiling evidence");
             }
         }
 
@@ -280,6 +230,9 @@ DebugProfilingPolicyPlan plan_debug_profiling_policy(const DebugProfilingPolicyD
             .gpu_timestamps_ready = timestamps_ready,
             .gpu_debug_markers_ready = markers_ready,
             .capture_handoff_ready = handoff_ready,
+            .cpu_profile_zone_evidence_ready = cpu_zones_ready,
+            .trace_capture_handoff_evidence_ready = trace_handoff_ready,
+            .package_counter_evidence_ready = package_counter_ready,
             .source_index = request.source_index,
         });
     }

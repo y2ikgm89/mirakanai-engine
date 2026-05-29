@@ -9,7 +9,7 @@ Describe the desktop runtime game goal here before expanding gameplay.
 This game uses the optional desktop runtime package lane:
 
 - `mirakana::GameApp`
-- `mirakana::SdlDesktopGameHost`
+- `mirakana::Win32DesktopGameHost`
 - `mirakana::IRenderer` with deterministic NullRenderer fallback unless host-owned shader artifacts are added later
 - `game.agent.json.runtimePackageFiles` plus `PACKAGE_FILES_FROM_MANIFEST`
 

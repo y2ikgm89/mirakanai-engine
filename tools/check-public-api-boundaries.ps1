@@ -11,11 +11,10 @@ $publicRoots = @(
     "engine/core/include",
     "engine/math/include",
     "engine/platform/include",
-    "engine/platform/sdl3/include",
     "engine/runtime/include",
     "engine/runtime/network/enet/include",
     "engine/runtime_host/include",
-    "engine/runtime_host/sdl3/include",
+    "engine/runtime_host/win32/include",
     "engine/runtime_rhi/include",
     "engine/runtime_scene/include",
     "engine/rhi/include",
@@ -27,18 +26,20 @@ $publicRoots = @(
     "engine/scene_renderer/include",
     "engine/assets/include",
     "engine/audio/include",
+    "engine/audio/wasapi/include",
     "engine/physics/include",
     "engine/physics/jolt/include",
     "engine/navigation/include",
     "engine/animation/include",
     "engine/tools/include",
-    "editor/core/include"
+    "editor/core/include",
+    "editor/include"
 )
 
 $forbiddenPatterns = @(
     @{
-        Pattern = '#\s*include\s*[<"](?:windows|d3d12|dxgi|dxgi1_\d+|wrl/client)\.h[>"]'
-        Label = "native Windows/D3D12/DXGI header include"
+        Pattern = '#\s*include\s*[<"](?:Windows|windows|windef|winuser|handleapi|unknwn|objidl|combaseapi|guiddef|propidl|propvarutil|audioclient|audiopolicy|mmdeviceapi|endpointvolume|xinput|gameinput|d3d12|dxgi|dxgi1_\d+|wrl/client)\.h[>"]'
+        Label = "native Windows, COM, WASAPI, controller, D3D12, or DXGI header include"
     },
     @{
         Pattern = '\b(?:ID3D12\w*|IDXGI\w*|D3D12_[A-Z0-9_]+|DXGI_[A-Z0-9_]+|D3D_ROOT_SIGNATURE_VERSION)\b'
@@ -49,8 +50,16 @@ $forbiddenPatterns = @(
         Label = "native Win32 handle or message type"
     },
     @{
-        Pattern = '\b(?:Microsoft::WRL|ComPtr)\b'
-        Label = "COM smart pointer type"
+        Pattern = '\b(?:IAudioClient|IAudioRenderClient|IAudioClock|IMMDevice[A-Za-z0-9_]*|WAVEFORMATEX|REFERENCE_TIME)\b'
+        Label = "native WASAPI or Core Audio symbol"
+    },
+    @{
+        Pattern = '\b(?:XINPUT_STATE|XINPUT_GAMEPAD|XINPUT_KEYSTROKE|GameInput[A-Za-z0-9_]*|IGameInput[A-Za-z0-9_]*)\b'
+        Label = "native Windows controller symbol"
+    },
+    @{
+        Pattern = '\b(?:IUnknown|HRESULT|GUID|REFGUID|REFIID|IID|CLSID|PROPVARIANT|CoTaskMem[A-Za-z0-9_]*|Microsoft::WRL|ComPtr)\b'
+        Label = "native COM type or smart pointer"
     },
     @{
         Pattern = '#\s*include\s*[<"]SDL3/'
@@ -116,6 +125,13 @@ $moduleBoundaryRules = @(
     }
 )
 
+$runtimeHostWin32ForbiddenPatterns = @(
+    @{
+        Pattern = '\b(?:SurfaceHandle|NativeWindowHandle|SdlNativeWindowHandle|native_window_token|native_window\s*\()'
+        Label = "runtime_host_win32 public API exposing a native window or RHI surface escape hatch"
+    }
+)
+
 function Get-PublicApiHeaderFile {
     param(
         [string[]]$RelativeRoots
@@ -154,6 +170,14 @@ foreach ($file in Get-PublicApiHeaderFile -RelativeRoots $publicRoots) {
             if ($line -cmatch $rule.Pattern) {
                 $violations.Add("${relativeFile}:${lineNumber}: public API boundary violation: $($rule.Label): $line") |
                     Out-Null
+            }
+        }
+        if ($relativeFileForMatching.StartsWith("engine/runtime_host/win32/include/", [System.StringComparison]::Ordinal)) {
+            foreach ($entry in $runtimeHostWin32ForbiddenPatterns) {
+                if ($line -cmatch $entry.Pattern) {
+                    $violations.Add("${relativeFile}:${lineNumber}: public API exposes $($entry.Label): $line") |
+                        Out-Null
+                }
             }
         }
     }

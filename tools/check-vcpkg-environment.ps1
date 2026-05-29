@@ -124,13 +124,11 @@ if ([string]::IsNullOrWhiteSpace(`$pathValue) -or
 
     foreach ($script in @(
             "bootstrap-deps.ps1",
-            "build-gui.ps1",
             "validate-desktop-game-runtime.ps1",
             "package-desktop-runtime.ps1",
             "build-asset-importers.ps1",
             "validate-network-enet.ps1",
-            "validate-physics-jolt.ps1",
-            "evaluate-cpp23.ps1"
+            "validate-physics-jolt.ps1"
         )) {
         $content = Get-Content -LiteralPath (Join-Path $PSScriptRoot $script) -Raw
         Assert-ContainsText $content "Set-MirakanaiVcpkgEnvironment" "$script vcpkg environment setup"
@@ -138,14 +136,15 @@ if ([string]::IsNullOrWhiteSpace(`$pathValue) -or
     $bootstrapContent = Get-Content -LiteralPath (Join-Path $PSScriptRoot "bootstrap-deps.ps1") -Raw
     Assert-ContainsText $bootstrapContent "Get-VcpkgRoot" "bootstrap-deps.ps1 vcpkg root resolution"
     Assert-ContainsText $bootstrapContent "Get-VcpkgExecutablePath" "bootstrap-deps.ps1 vcpkg executable resolution"
+    $buildGuiContent = Get-Content -LiteralPath (Join-Path $PSScriptRoot "build-gui.ps1") -Raw
+    Assert-ContainsText $buildGuiContent "visible editor shell is deferred after SDL3 removal" "build-gui.ps1 fail-closed editor shell deferral"
+    Assert-ContainsText $buildGuiContent "MK_editor_core" "build-gui.ps1 fail-closed editor core guidance"
     foreach ($script in @(
-            "build-gui.ps1",
             "validate-desktop-game-runtime.ps1",
             "package-desktop-runtime.ps1",
             "build-asset-importers.ps1",
             "validate-network-enet.ps1",
-            "validate-physics-jolt.ps1",
-            "evaluate-cpp23.ps1"
+            "validate-physics-jolt.ps1"
         )) {
         $content = Get-Content -LiteralPath (Join-Path $PSScriptRoot $script) -Raw
         Assert-ContainsText $content "Assert-VcpkgExecutable" "$script vcpkg executable preflight"

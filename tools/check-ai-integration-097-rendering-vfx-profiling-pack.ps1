@@ -110,6 +110,20 @@ foreach ($needle in @(
         "rendering_vfx_profiling_invoked_gpu_commands=",
         "rendering_vfx_profiling_invoked_native_capture=",
         "rendering_vfx_profiling_invoked_crash_upload=",
+        "rendering_vfx_profiling_debug_policy_ready=",
+        "rendering_vfx_profiling_debug_cpu_profile_zones=",
+        "rendering_vfx_profiling_debug_trace_capture_handoff_rows=",
+        "rendering_vfx_profiling_debug_package_counter_requests=",
+        "rendering_vfx_profiling_debug_cpu_profile_zone_evidence_ready=",
+        "rendering_vfx_profiling_debug_trace_capture_handoff_evidence_ready=",
+        "rendering_vfx_profiling_debug_package_counter_evidence_ready=",
+        "rendering_vfx_profiling_memory_policy_ready=",
+        "rendering_vfx_profiling_memory_residency_pressure_events=",
+        "rendering_vfx_profiling_memory_declared_budget_requests=",
+        "rendering_vfx_profiling_memory_package_counter_requests=",
+        "rendering_vfx_profiling_memory_budget_evidence_ready=",
+        "rendering_vfx_profiling_memory_residency_pressure_evidence_ready=",
+        "rendering_vfx_profiling_memory_package_counter_evidence_ready=",
         "rendering_vfx_profiling_diagnostics="
     )) {
     Assert-ContainsText $sample3dMainText $needle "games/sample_generated_desktop_runtime_3d_package/main.cpp"
@@ -121,6 +135,8 @@ foreach ($needle in @(
         "rendering_vfx_profiling_reviewed=1",
         "rendering_vfx_profiling_ready=0",
         "rendering_vfx_profiling_diagnostics=0",
+        "debug CPU profile zone",
+        "memory budget",
         "D3D12 and strict Vulkan host evidence ready",
         "--require-native-ui-overlay",
         "--require-visible-3d-production-proof",
@@ -159,6 +175,14 @@ foreach ($needle in @(
         "rendering_vfx_profiling_invoked_gpu_commands",
         "rendering_vfx_profiling_invoked_native_capture",
         "rendering_vfx_profiling_invoked_crash_upload",
+        "rendering_vfx_profiling_debug_policy_ready",
+        "rendering_vfx_profiling_debug_cpu_profile_zone_evidence_ready",
+        "rendering_vfx_profiling_debug_trace_capture_handoff_evidence_ready",
+        "rendering_vfx_profiling_debug_package_counter_evidence_ready",
+        "rendering_vfx_profiling_memory_policy_ready",
+        "rendering_vfx_profiling_memory_budget_evidence_ready",
+        "rendering_vfx_profiling_memory_residency_pressure_evidence_ready",
+        "rendering_vfx_profiling_memory_package_counter_evidence_ready",
         "rendering_vfx_profiling_diagnostics"
     )) {
     Assert-ContainsText $installedValidationText $needle "tools/validate-installed-desktop-runtime.ps1"
@@ -169,6 +193,10 @@ Assert-ContainsText $installedValidationText '"rendering_vfx_profiling_package_c
 Assert-ContainsText $installedValidationText '"rendering_vfx_profiling_package_counter_ready" = "2"' "tools/validate-installed-desktop-runtime.ps1"
 Assert-ContainsText $installedValidationText '"rendering_vfx_profiling_host_validated_backends" = "2"' "tools/validate-installed-desktop-runtime.ps1"
 Assert-ContainsText $installedValidationText '"rendering_vfx_profiling_vulkan_strict_host_evidence_ready" = "1"' "tools/validate-installed-desktop-runtime.ps1"
+Assert-ContainsText $installedValidationText '"rendering_vfx_profiling_debug_policy_ready" = "1"' "tools/validate-installed-desktop-runtime.ps1"
+Assert-ContainsText $installedValidationText '"rendering_vfx_profiling_memory_policy_ready" = "1"' "tools/validate-installed-desktop-runtime.ps1"
+Assert-ContainsText $installedValidationText '"rendering_vfx_profiling_debug_cpu_profile_zone_evidence_ready" = "1"' "tools/validate-installed-desktop-runtime.ps1"
+Assert-ContainsText $installedValidationText '"rendering_vfx_profiling_memory_residency_pressure_evidence_ready" = "1"' "tools/validate-installed-desktop-runtime.ps1"
 
 foreach ($docSurface in @(
         @{ Text = $planText; Label = "docs/superpowers/plans/2026-05-25-general-purpose-game-production-v1.md" },
@@ -181,6 +209,17 @@ foreach ($docSurface in @(
     Assert-ContainsText $docSurface.Text "rendering_vfx_profiling_reviewed=1" $docSurface.Label
     Assert-ContainsText $docSurface.Text "rendering_vfx_profiling_ready=0" $docSurface.Label
     Assert-ContainsText $docSurface.Text "D3D12 and strict Vulkan host evidence" $docSurface.Label
+}
+
+foreach ($docSurface in @(
+        @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
+        @{ Text = $aiGameDevelopmentText; Label = "docs/ai-game-development.md" },
+        @{ Text = $sample3dReadmeText; Label = "games/sample_generated_desktop_runtime_3d_package/README.md" },
+        @{ Text = $backlogText; Label = "docs/superpowers/master-plans/production-completion-v1/04-developer-owned-engine-capability-backlog.md" },
+        @{ Text = $projectionText; Label = "docs/superpowers/master-plans/production-completion-v1/05-projections-and-scenarios.md" }
+    )) {
+    Assert-ContainsText $docSurface.Text "CPU profile" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "residency pressure" $docSurface.Label
 }
 
 foreach ($docSurface in @(
@@ -203,6 +242,8 @@ foreach ($needle in @(
         "RendererProductionVfxProfilingPlan",
         "plan_renderer_production_vfx_profiling",
         "rendering_vfx_profiling_*",
+        "rendering_vfx_profiling_debug_policy_ready",
+        "rendering_vfx_profiling_memory_policy_ready",
         "currentRendererProductionVfxProfiling"
     )) {
     Assert-ContainsText $manifestText $needle "engine/agent/manifest.json"
@@ -214,7 +255,9 @@ foreach ($needle in @(
         "RendererProductionCpuProfileRow",
         "RendererProductionPackageCounterRow",
         "D3D12 and strict Vulkan host evidence ready",
-        "Metal host evidence absent"
+        "Metal host evidence absent",
+        "trace handoff",
+        "residency pressure"
     )) {
     Assert-ContainsText $modulesFragmentText $needle "engine/agent/manifest.fragments/004-modules.json"
 }
