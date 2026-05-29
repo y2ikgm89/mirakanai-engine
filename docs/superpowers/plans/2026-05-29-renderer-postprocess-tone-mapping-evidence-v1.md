@@ -12,7 +12,7 @@
 
 **Plan ID:** `renderer-postprocess-tone-mapping-evidence-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
 **Date:** 2026-05-29
 
@@ -69,7 +69,7 @@ Official practice checks:
 
 - [x] Run focused checks: `tools/check-ai-integration.ps1`, `tools/check-text-format.ps1`, and `git diff --check`.
 - [x] Run C++ slice gate: `tools/check-toolchain.ps1`, `tools/cmake.ps1 --preset dev`, target build, target CTest, then `tools/validate.ps1` if code/build evidence changed.
-- [ ] Commit the validated candidate, push a topic branch, create a PR with evidence, wait for required hosted checks, merge through GitHub Flow, and clean the worktree.
+- [x] Commit the validated candidate, push a topic branch, create a PR with evidence, wait for required hosted checks, merge through GitHub Flow, and clean the worktree.
 
 ## Done When
 
@@ -91,3 +91,5 @@ Official practice checks:
 | `git diff --check` | Pass | No whitespace errors. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1` | Pass | Linked worktree, vcpkg junction, CMake, CTest, CPack, MSBuild, and clang-format ready. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Pass | Full validation passed, including 19 static checks, full build, tidy smoke, and 79/79 CTest tests. Apple/Metal checks remained host-gated diagnostic-only on Windows. |
+| PR #298 hosted checks | Pass | PR Gate, Agent Static Guards, Windows MSVC, Linux CMake, Linux Coverage, Linux Clang ASan/UBSan, full static analysis shards, macOS Metal CMake, iOS Simulator smoke, and CodeQL passed. |
+| PR #298 merge and cleanup | Pass | Merged at `5a9fb0fa5643dc3dcaf1275da6adbed99cf470cf`; task worktree and local/remote topic branch were removed with guarded cleanup. |
