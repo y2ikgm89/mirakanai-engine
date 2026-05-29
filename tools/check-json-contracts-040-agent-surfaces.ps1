@@ -542,7 +542,7 @@ if ($playable3dGap.Count -ne 0) {
     Write-Error "engine manifest aiOperableProductionLoop 3d-playable-vertical-slice gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
 $recommendedText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
-if ([string]$productionLoop.recommendedNextPlan.id -notin @("general-purpose-game-production-v1", "generated-game-studio-v1", "engine-1-0-gap-matrix-v1", "next-production-gap-selection", "physics-navigation-commercial-coverage-v1")) {
+if ([string]$productionLoop.recommendedNextPlan.id -notin @("general-purpose-game-production-v1", "generated-game-studio-v1", "engine-1-0-gap-matrix-v1", "next-production-gap-selection", "physics-navigation-commercial-coverage-v1", "renderer-backend-parity-metal-apple-evidence-v1")) {
     foreach ($needle in @(
         "3d-playable-vertical-slice",
         "generated desktop 3D package proof",
@@ -618,6 +618,22 @@ if ([string]$productionLoop.recommendedNextPlan.id -ne "general-purpose-game-pro
             "broad middleware parity fail-closed"
         )) {
             Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan physics/navigation selection"
+        }
+    } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "renderer-backend-parity-metal-apple-evidence-v1") {
+        foreach ($needle in @(
+            "Renderer Backend Parity Metal Apple Evidence v1",
+            "renderer-backend-parity-v1",
+            "metal-apple remains host-gated",
+            "shader-toolchain",
+            "mobile-packaging",
+            "ios-simulator-smoke",
+            "Apple/Metal host evidence",
+            "Windows/Vulkan proof must not promote Metal readiness",
+            "no SDL3",
+            "native handles remain hidden",
+            "unsupportedProductionGaps = []"
+        )) {
+            Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan renderer Metal Apple selection"
         }
     } else {
         foreach ($needle in @(

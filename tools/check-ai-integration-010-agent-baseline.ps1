@@ -1668,6 +1668,22 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     )) {
         Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan physics/navigation selection"
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "renderer-backend-parity-metal-apple-evidence-v1") {
+    foreach ($needle in @(
+        "Renderer Backend Parity Metal Apple Evidence v1",
+        "renderer-backend-parity-v1",
+        "metal-apple remains host-gated",
+        "shader-toolchain",
+        "mobile-packaging",
+        "ios-simulator-smoke",
+        "Apple/Metal host evidence",
+        "Windows/Vulkan proof must not promote Metal readiness",
+        "no SDL3",
+        "native handles remain hidden",
+        "unsupportedProductionGaps = []"
+    )) {
+        Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan renderer Metal Apple selection"
+    }
 } else {
     foreach ($needle in @(
     "Frame Graph Transient Texture Alias Planning v1",

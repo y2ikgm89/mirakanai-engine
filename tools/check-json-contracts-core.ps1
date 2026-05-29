@@ -134,6 +134,14 @@ function Assert-ActiveProductionPlanDrift($productionLoop) {
         if ($productionLoop.currentActivePlan -ne $activePlan.path) {
             Write-Error "engine manifest aiOperableProductionLoop.currentActivePlan must match active child plan: $($activePlan.path)"
         }
+        if (-not [string]::IsNullOrWhiteSpace($activePlan.planId) -and
+            $productionLoop.recommendedNextPlan.id -ne $activePlan.planId) {
+            Write-Error "engine manifest aiOperableProductionLoop.recommendedNextPlan.id must match active child plan id: $($activePlan.planId)"
+        }
+        if ($productionLoop.recommendedNextPlan.PSObject.Properties.Name.Contains("path") -and
+            $productionLoop.recommendedNextPlan.path -ne $activePlan.path) {
+            Write-Error "engine manifest aiOperableProductionLoop.recommendedNextPlan.path must match active child plan path: $($activePlan.path)"
+        }
         if (-not $activeSliceRow.Value.Contains($activePlan.fileName) -and
             ([string]::IsNullOrWhiteSpace($activePlan.planId) -or -not $activeSliceRow.Value.Contains($activePlan.planId))) {
             Write-Error "$planRegistryPath Active slice or milestone row must mention active child plan id or path: $($activePlan.path)"

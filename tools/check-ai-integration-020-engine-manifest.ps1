@@ -85,7 +85,7 @@ Assert-ContainsText $masterPlanRuntimeUiLedgerNote.Value "RuntimeInputRebindingP
 Assert-ContainsText $masterPlanRuntimeUiLedgerNote.Value "platform input glyph generation" "master plan runtime UI ledger note"
 Assert-ContainsText $masterPlanText "Completed gap burn-down" "production master plan completed gap pointer"
 Assert-ContainsText $masterPlanText "Renderer RHI Resource Foundation 1.0 Scope Closeout v1" "production master plan renderer-rhi closeout pointer"
-Assert-ContainsText $masterPlanText "recommendedNextPlan.id = next-production-gap-selection" "production master plan selection gate pointer"
+Assert-ContainsText $masterPlanText "recommendedNextPlan.id = renderer-backend-parity-metal-apple-evidence-v1" "production master plan active renderer Metal Apple pointer"
 Assert-ContainsText $rhiPublicHeaderText "struct ComputePipelineDesc" "engine/rhi/include/mirakana/rhi/rhi.hpp"
 Assert-ContainsText $rhiPublicHeaderText "create_compute_pipeline" "engine/rhi/include/mirakana/rhi/rhi.hpp"
 Assert-ContainsText $rhiPublicHeaderText "bind_compute_pipeline" "engine/rhi/include/mirakana/rhi/rhi.hpp"
@@ -2255,7 +2255,7 @@ if ($runtimeResourceGap.Count -ne 0) {
 }
 $recommendedText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
 $recommendedPlanId = [string]$productionLoop.recommendedNextPlan.id
-$recommendedPlanUsesLegacyCloseoutContext = $recommendedPlanId -notin @("general-purpose-game-production-v1", "generated-game-studio-v1", "engine-1-0-gap-matrix-v1", "next-production-gap-selection", "physics-navigation-commercial-coverage-v1")
+$recommendedPlanUsesLegacyCloseoutContext = $recommendedPlanId -notin @("general-purpose-game-production-v1", "generated-game-studio-v1", "engine-1-0-gap-matrix-v1", "next-production-gap-selection", "physics-navigation-commercial-coverage-v1", "renderer-backend-parity-metal-apple-evidence-v1")
 if ($productionLoop.currentActivePlan -eq "docs/superpowers/plans/2026-05-23-candidate-backlog-burn-down-v1.md") {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop.currentActivePlan must not point at completed Candidate Backlog Burn-down v1"
 }
@@ -2568,6 +2568,10 @@ if ($recommendedPlanId -eq "general-purpose-game-production-v1") {
     Assert-ContainsText $recommendedText "unsupportedProductionGaps = []" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan physics/navigation selection"
     Assert-ContainsText $recommendedText "native handles hidden" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan physics/navigation selection"
     Assert-ContainsText $recommendedText "broad middleware parity fail-closed" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan physics/navigation selection"
+} elseif ($recommendedPlanId -eq "renderer-backend-parity-metal-apple-evidence-v1") {
+    foreach ($needle in @("Renderer Backend Parity Metal Apple Evidence v1", "renderer-backend-parity-v1", "metal-apple remains host-gated", "shader-toolchain", "mobile-packaging", "ios-simulator-smoke", "Apple/Metal host evidence", "Windows/Vulkan proof must not promote Metal readiness", "no SDL3", "native handles remain hidden", "unsupportedProductionGaps = []")) {
+        Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan renderer Metal Apple selection"
+    }
 } else {
     Assert-ContainsText $recommendedText "Frame Graph v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
     Assert-ContainsText $recommendedText "upload-staging-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
