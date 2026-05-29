@@ -7,10 +7,13 @@ $sandboxHeaderText = Get-AgentSurfaceText "engine/runtime/include/mirakana/runti
 $sandboxSourceText = Get-AgentSurfaceText "engine/runtime/src/genre_sandbox_world.cpp"
 $sandboxRuntimeHeaderText = Get-AgentSurfaceText "engine/runtime/include/mirakana/runtime/sandbox_world_runtime.hpp"
 $sandboxRuntimeSourceText = Get-AgentSurfaceText "engine/runtime/src/sandbox_world_runtime.cpp"
+$sandboxPersistenceHeaderText = Get-AgentSurfaceText "engine/runtime/include/mirakana/runtime/sandbox_world_persistence.hpp"
+$sandboxPersistenceSourceText = Get-AgentSurfaceText "engine/runtime/src/sandbox_world_persistence.cpp"
 $runtimeCMakeText = Get-AgentSurfaceText "engine/runtime/CMakeLists.txt"
 $rootCMakeText = Get-AgentSurfaceText "CMakeLists.txt"
 $sandboxTestsText = Get-AgentSurfaceText "tests/unit/runtime_genre_sandbox_world_tests.cpp"
 $sandboxRuntimeTestsText = Get-AgentSurfaceText "tests/unit/runtime_sandbox_world_runtime_tests.cpp"
+$sandboxPersistenceTestsText = Get-AgentSurfaceText "tests/unit/runtime_sandbox_world_persistence_tests.cpp"
 $sample2dMainText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/main.cpp"
 $sample3dMainText = Get-AgentSurfaceText "games/sample_generated_desktop_runtime_3d_package/main.cpp"
 $sample2dManifestText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/game.agent.json"
@@ -140,6 +143,43 @@ Assert-ContainsText $sandboxRuntimeTestsText "runtime sandbox tile simulation re
 Assert-ContainsText $sandboxRuntimeTestsText "RuntimeSandboxTileSimulationDiagnosticCode::row_budget_exceeded" "tests/unit/runtime_sandbox_world_runtime_tests.cpp"
 Assert-ContainsText $sandboxRuntimeTestsText "scheduled_update_rows" "tests/unit/runtime_sandbox_world_runtime_tests.cpp"
 
+foreach ($needle in @(
+        "RuntimeSandboxWorldPersistenceDocumentDesc",
+        "RuntimeSandboxWorldPersistenceDocumentPlan",
+        "RuntimeSandboxWorldSnapshotDiffDesc",
+        "RuntimeSandboxWorldMigrationReviewPlan",
+        "RuntimeSandboxWorldAtomicSavePlan",
+        "plan_runtime_sandbox_world_persistence_document",
+        "plan_runtime_sandbox_world_snapshot_diff",
+        "review_runtime_sandbox_world_migration",
+        "plan_runtime_sandbox_world_atomic_save"
+    )) {
+    Assert-ContainsText $sandboxPersistenceHeaderText $needle "engine/runtime/include/mirakana/runtime/sandbox_world_persistence.hpp"
+}
+
+foreach ($needle in @(
+        "GameEngine.RuntimeSandboxWorldSnapshot.v1",
+        "RuntimeSandboxWorldPersistenceStatus::ready",
+        "RuntimeSandboxWorldPersistenceDiagnosticCode::invalid_path",
+        "RuntimeSandboxWorldPersistenceDiagnosticCode::unsupported_future_schema",
+        "RuntimeSandboxWorldAtomicSaveOperationKind::replace_target_with_temp",
+        "RuntimeSandboxWorldAtomicSaveOperationKind::rollback_from_backup_on_failure",
+        "append_line(output",
+        "is_safe_project_path",
+        "plan_runtime_sandbox_world_snapshot_diff",
+        "review_runtime_sandbox_world_migration",
+        "plan_runtime_sandbox_world_atomic_save"
+    )) {
+    Assert-ContainsText $sandboxPersistenceSourceText $needle "engine/runtime/src/sandbox_world_persistence.cpp"
+}
+
+Assert-ContainsText $runtimeCMakeText "src/sandbox_world_persistence.cpp" "engine/runtime/CMakeLists.txt"
+Assert-ContainsText $rootCMakeText "MK_runtime_sandbox_world_persistence_tests" "CMakeLists.txt"
+Assert-ContainsText $sandboxPersistenceTestsText "runtime sandbox persistence document emits canonical snapshot rows" "tests/unit/runtime_sandbox_world_persistence_tests.cpp"
+Assert-ContainsText $sandboxPersistenceTestsText "runtime sandbox snapshot diff omits unchanged chunks and budgets deterministic dirty chunks" "tests/unit/runtime_sandbox_world_persistence_tests.cpp"
+Assert-ContainsText $sandboxPersistenceTestsText "runtime sandbox migration review reports exact chains and corruption recovery boundaries" "tests/unit/runtime_sandbox_world_persistence_tests.cpp"
+Assert-ContainsText $sandboxPersistenceTestsText "runtime sandbox atomic save plans temp flush replace backup and rollback without filesystem calls" "tests/unit/runtime_sandbox_world_persistence_tests.cpp"
+
 foreach ($sampleSurface in @(
         @{ Text = $sample2dMainText; Label = "games/sample_2d_desktop_runtime_package/main.cpp" },
         @{ Text = $sample3dMainText; Label = "games/sample_generated_desktop_runtime_3d_package/main.cpp" }
@@ -248,6 +288,20 @@ foreach ($docSurface in @(
 }
 
 foreach ($docSurface in @(
+        @{ Text = $tileSimulationPlanText; Label = "docs/superpowers/plans/2026-05-27-generic-2d-sandbox-production-lane-v1.md" },
+        @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
+        @{ Text = $roadmapText; Label = "docs/roadmap.md" },
+        @{ Text = $aiGameDevelopmentText; Label = "docs/ai-game-development.md" },
+        @{ Text = $testingText; Label = "docs/testing.md" },
+        @{ Text = $planRegistryText; Label = "docs/superpowers/plans/README.md" },
+        @{ Text = $backlogText; Label = "docs/superpowers/master-plans/production-completion-v1/04-developer-owned-engine-capability-backlog.md" },
+        @{ Text = $projectionText; Label = "docs/superpowers/master-plans/production-completion-v1/05-projections-and-scenarios.md" }
+    )) {
+    Assert-ContainsText $docSurface.Text "RuntimeSandboxWorldPersistenceDocumentPlan" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "plan_runtime_sandbox_world_atomic_save" $docSurface.Label
+}
+
+foreach ($docSurface in @(
         @{ Text = $runtimePlanText; Label = "docs/superpowers/plans/2026-05-29-generic-2d-sandbox-runtime-foundation-v1.md" },
         @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" }
     )) {
@@ -272,6 +326,7 @@ foreach ($needle in @(
         "production-rendering-vfx-profiling-v1",
         "engine/runtime/include/mirakana/runtime/genre_sandbox_world.hpp",
         "engine/runtime/include/mirakana/runtime/sandbox_world_runtime.hpp",
+        "engine/runtime/include/mirakana/runtime/sandbox_world_persistence.hpp",
         "RuntimeSandboxChunkRow",
         "RuntimeSandboxWorldDesc",
         "RuntimeSandboxWorldMutationExecutionStatus",
@@ -281,12 +336,16 @@ foreach ($needle in @(
         "RuntimeSandboxLightPropagationRow",
         "RuntimeSandboxLiquidFlowRow",
         "RuntimeSandboxScheduledTileUpdateRow",
+        "RuntimeSandboxWorldPersistenceDocumentPlan",
+        "RuntimeSandboxWorldAtomicSavePlan",
         "plan_runtime_sandbox_world_mutation",
         "build_runtime_sandbox_world",
         "apply_runtime_sandbox_world_mutations",
         "plan_runtime_sandbox_tile_simulation",
+        "plan_runtime_sandbox_world_atomic_save",
         "sandbox_world_*",
         "currentRuntimeSandboxTileSimulation",
+        "currentRuntimeSandboxWorldPersistence",
         "currentRuntimeSandboxWorld"
     )) {
     Assert-ContainsText $manifestText $needle "engine/agent/manifest.json"
