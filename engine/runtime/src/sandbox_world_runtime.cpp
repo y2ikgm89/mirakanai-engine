@@ -197,6 +197,23 @@ void sort_diagnostics(RuntimeSandboxWorldBuildResult& result) {
     });
 }
 
+[[nodiscard]] auto find_world_cell(const std::vector<RuntimeSandboxExistingCellRow>& cells, std::string_view chunk_id,
+                                   RuntimeSandboxCellCoord coord) {
+    return std::ranges::find_if(cells, [chunk_id, coord](const auto& cell) {
+        return cell.chunk_id == chunk_id && same_coord(cell.coord, coord);
+    });
+}
+
+[[nodiscard]] const RuntimeSandboxTileMaterialRow*
+find_material(const std::vector<RuntimeSandboxTileMaterialRow>& materials, std::string_view tile_id) {
+    const auto iter =
+        std::ranges::find_if(materials, [tile_id](const auto& material) { return material.tile_id == tile_id; });
+    if (iter == materials.end()) {
+        return nullptr;
+    }
+    return &(*iter);
+}
+
 [[nodiscard]] bool world_contains_cell(const std::vector<RuntimeSandboxChunkRow>& chunks, std::string_view chunk_id,
                                        RuntimeSandboxCellCoord coord) noexcept {
     const auto iter =
@@ -310,10 +327,264 @@ void mix_hash(std::uint64_t& hash, const RuntimeSandboxWorldDirtyRegion& region)
     mix_hash(hash, region.chunk_dirty ? 1U : 0U);
 }
 
+[[nodiscard]] std::uint64_t compute_tile_row_hash(std::string_view chunk_id, RuntimeSandboxCellCoord coord,
+                                                  std::string_view tile_id, std::uint32_t salt) noexcept {
+    auto hash = std::uint64_t{1469598103934665603ULL};
+    mix_hash(hash, chunk_id);
+    mix_hash(hash, coord);
+    mix_hash(hash, tile_id);
+    mix_hash(hash, salt);
+    return hash == 0U ? 1U : hash;
+}
+
+[[nodiscard]] RuntimeSandboxCellCoord offset_coord(RuntimeSandboxCellCoord coord, std::int32_t x,
+                                                   std::int32_t y) noexcept {
+    return RuntimeSandboxCellCoord{
+        .x = static_cast<std::int32_t>(coord.x + x),
+        .y = static_cast<std::int32_t>(coord.y + y),
+        .z = coord.z,
+    };
+}
+
+void add_diagnostic(RuntimeSandboxTileSimulationPlan& plan, RuntimeSandboxTileSimulationDiagnosticCode code,
+                    std::string tile_id, std::string chunk_id, RuntimeSandboxCellCoord coord, std::string message,
+                    std::uint32_t source_index) {
+    plan.diagnostics.push_back(RuntimeSandboxTileSimulationDiagnostic{
+        .code = code,
+        .tile_id = std::move(tile_id),
+        .chunk_id = std::move(chunk_id),
+        .coord = coord,
+        .message = std::move(message),
+        .source_index = source_index,
+    });
+}
+
+void sort_diagnostics(RuntimeSandboxTileSimulationPlan& plan) {
+    std::ranges::sort(plan.diagnostics, [](const auto& lhs, const auto& rhs) {
+        if (lhs.code != rhs.code) {
+            return static_cast<std::uint8_t>(lhs.code) < static_cast<std::uint8_t>(rhs.code);
+        }
+        if (lhs.tile_id != rhs.tile_id) {
+            return lhs.tile_id < rhs.tile_id;
+        }
+        if (lhs.chunk_id != rhs.chunk_id) {
+            return lhs.chunk_id < rhs.chunk_id;
+        }
+        if (!same_coord(lhs.coord, rhs.coord)) {
+            return coord_less(lhs.coord, rhs.coord);
+        }
+        if (lhs.source_index != rhs.source_index) {
+            return lhs.source_index < rhs.source_index;
+        }
+        return lhs.message < rhs.message;
+    });
+}
+
+[[nodiscard]] bool material_less(const RuntimeSandboxTileMaterialRow& lhs, const RuntimeSandboxTileMaterialRow& rhs) {
+    if (lhs.tile_id != rhs.tile_id) {
+        return lhs.tile_id < rhs.tile_id;
+    }
+    return lhs.source_index < rhs.source_index;
+}
+
+[[nodiscard]] bool cell_row_less(const RuntimeSandboxTileCellRow& lhs, const RuntimeSandboxTileCellRow& rhs) {
+    if (!same_coord(lhs.coord, rhs.coord)) {
+        return coord_less(lhs.coord, rhs.coord);
+    }
+    if (lhs.chunk_id != rhs.chunk_id) {
+        return lhs.chunk_id < rhs.chunk_id;
+    }
+    return lhs.tile_id < rhs.tile_id;
+}
+
+[[nodiscard]] bool span_row_less(const RuntimeSandboxTileCollisionSpanRow& lhs,
+                                 const RuntimeSandboxTileCollisionSpanRow& rhs) {
+    if (!same_coord(lhs.min_coord, rhs.min_coord)) {
+        return coord_less(lhs.min_coord, rhs.min_coord);
+    }
+    if (lhs.chunk_id != rhs.chunk_id) {
+        return lhs.chunk_id < rhs.chunk_id;
+    }
+    return lhs.tile_id < rhs.tile_id;
+}
+
+[[nodiscard]] bool light_row_less(const RuntimeSandboxLightPropagationRow& lhs,
+                                  const RuntimeSandboxLightPropagationRow& rhs) {
+    if (!same_coord(lhs.source_coord, rhs.source_coord)) {
+        return coord_less(lhs.source_coord, rhs.source_coord);
+    }
+    if (!same_coord(lhs.target_coord, rhs.target_coord)) {
+        return coord_less(lhs.target_coord, rhs.target_coord);
+    }
+    return lhs.source_tile_id < rhs.source_tile_id;
+}
+
+[[nodiscard]] bool liquid_row_less(const RuntimeSandboxLiquidFlowRow& lhs, const RuntimeSandboxLiquidFlowRow& rhs) {
+    if (!same_coord(lhs.source_coord, rhs.source_coord)) {
+        return coord_less(lhs.source_coord, rhs.source_coord);
+    }
+    if (!same_coord(lhs.target_coord, rhs.target_coord)) {
+        return coord_less(lhs.target_coord, rhs.target_coord);
+    }
+    return lhs.source_tile_id < rhs.source_tile_id;
+}
+
+[[nodiscard]] bool scheduled_row_less(const RuntimeSandboxScheduledTileUpdateRow& lhs,
+                                      const RuntimeSandboxScheduledTileUpdateRow& rhs) {
+    if (!same_coord(lhs.coord, rhs.coord)) {
+        return coord_less(lhs.coord, rhs.coord);
+    }
+    if (lhs.scheduled_tick != rhs.scheduled_tick) {
+        return lhs.scheduled_tick < rhs.scheduled_tick;
+    }
+    return lhs.tile_id < rhs.tile_id;
+}
+
+[[nodiscard]] bool is_valid_material_row(const RuntimeSandboxTileMaterialRow& material,
+                                         const RuntimeSandboxTileSimulationDesc& desc) {
+    return is_valid_id(material.tile_id) && !has_backend_reference(material.tile_id) && material.render_layer >= 0 &&
+           material.render_layer <= 63 && material.light_radius <= desc.light_radius_budget;
+}
+
+[[nodiscard]] std::uint64_t compute_collision_span_hash(const RuntimeSandboxTileCollisionSpanRow& row) noexcept {
+    auto hash = compute_tile_row_hash(row.chunk_id, row.min_coord, row.tile_id, 11U);
+    mix_hash(hash, row.max_coord_exclusive);
+    mix_hash(hash, static_cast<std::uint64_t>(static_cast<std::int64_t>(row.render_layer)));
+    return hash == 0U ? 1U : hash;
+}
+
+[[nodiscard]] std::uint64_t compute_tile_cell_hash(const RuntimeSandboxTileCellRow& row) noexcept {
+    auto hash = compute_tile_row_hash(row.chunk_id, row.coord, row.tile_id, 23U);
+    mix_hash(hash, static_cast<std::uint64_t>(static_cast<std::int64_t>(row.render_layer)));
+    return hash == 0U ? 1U : hash;
+}
+
+[[nodiscard]] std::uint64_t compute_light_row_hash(const RuntimeSandboxLightPropagationRow& row) noexcept {
+    auto hash = compute_tile_row_hash(row.chunk_id, row.source_coord, row.source_tile_id, 37U);
+    mix_hash(hash, row.target_coord);
+    mix_hash(hash, row.blocking_tile_id);
+    mix_hash(hash, row.intensity);
+    mix_hash(hash, row.blocked_by_solid ? 1U : 0U);
+    return hash == 0U ? 1U : hash;
+}
+
+[[nodiscard]] std::uint64_t compute_liquid_row_hash(const RuntimeSandboxLiquidFlowRow& row) noexcept {
+    auto hash = compute_tile_row_hash(row.chunk_id, row.source_coord, row.source_tile_id, 41U);
+    mix_hash(hash, row.target_coord);
+    mix_hash(hash, row.blocking_tile_id);
+    mix_hash(hash, row.blocked ? 1U : 0U);
+    return hash == 0U ? 1U : hash;
+}
+
+[[nodiscard]] std::uint64_t compute_scheduled_row_hash(const RuntimeSandboxScheduledTileUpdateRow& row) noexcept {
+    auto hash = compute_tile_row_hash(row.chunk_id, row.coord, row.tile_id, 43U);
+    mix_hash(hash, row.cadence_ticks);
+    mix_hash(hash, row.scheduled_tick);
+    return hash == 0U ? 1U : hash;
+}
+
+void clear_tile_simulation_outputs(RuntimeSandboxTileSimulationPlan& plan) {
+    plan.solid_collision_spans.clear();
+    plan.platform_collision_spans.clear();
+    plan.liquid_cells.clear();
+    plan.trigger_cells.clear();
+    plan.scheduled_update_rows.clear();
+    plan.light_rows.clear();
+    plan.liquid_flow_rows.clear();
+    plan.replay_hash = 0U;
+}
+
+[[nodiscard]] std::size_t tile_simulation_output_row_count(const RuntimeSandboxTileSimulationPlan& plan) noexcept {
+    return plan.solid_collision_spans.size() + plan.platform_collision_spans.size() + plan.liquid_cells.size() +
+           plan.trigger_cells.size() + plan.scheduled_update_rows.size() + plan.light_rows.size() +
+           plan.liquid_flow_rows.size();
+}
+
+[[nodiscard]] bool sample_is_solid(const RuntimeSandboxCellSample& sample,
+                                   const std::vector<RuntimeSandboxTileMaterialRow>& materials) {
+    if (sample.status != RuntimeSandboxCellSampleStatus::occupied) {
+        return false;
+    }
+    const auto* material = find_material(materials, sample.block_id);
+    return material != nullptr && material->solid;
+}
+
+void append_light_rows(RuntimeSandboxTileSimulationPlan& plan, const RuntimeSandboxWorld& world,
+                       const RuntimeSandboxExistingCellRow& cell, const RuntimeSandboxTileMaterialRow& material,
+                       const RuntimeSandboxTileSimulationDesc& desc,
+                       const std::vector<RuntimeSandboxTileMaterialRow>& materials) {
+    const auto radius = std::min(material.light_radius, desc.light_radius_budget);
+    auto source_row = RuntimeSandboxLightPropagationRow{
+        .chunk_id = cell.chunk_id,
+        .source_coord = cell.coord,
+        .target_coord = cell.coord,
+        .source_tile_id = cell.block_id,
+        .intensity = radius + 1U,
+    };
+    source_row.replay_hash = compute_light_row_hash(source_row);
+    plan.light_rows.push_back(std::move(source_row));
+
+    constexpr auto directions =
+        std::array<std::pair<std::int32_t, std::int32_t>, 4U>{{{-1, 0}, {1, 0}, {0, -1}, {0, 1}}};
+    for (auto distance = std::uint32_t{1U}; distance <= radius; ++distance) {
+        for (const auto [x, y] : directions) {
+            const auto target =
+                offset_coord(cell.coord, static_cast<std::int32_t>(x * static_cast<std::int32_t>(distance)),
+                             static_cast<std::int32_t>(y * static_cast<std::int32_t>(distance)));
+            const auto sample = sample_runtime_sandbox_cell(world, target);
+            if (sample.status == RuntimeSandboxCellSampleStatus::missing_chunk) {
+                continue;
+            }
+            auto row = RuntimeSandboxLightPropagationRow{
+                .chunk_id = cell.chunk_id,
+                .source_coord = cell.coord,
+                .target_coord = target,
+                .source_tile_id = cell.block_id,
+                .blocking_tile_id = sample_is_solid(sample, materials) ? sample.block_id : std::string{},
+                .intensity = radius - distance + 1U,
+                .blocked_by_solid = sample_is_solid(sample, materials),
+            };
+            row.replay_hash = compute_light_row_hash(row);
+            plan.light_rows.push_back(std::move(row));
+        }
+    }
+}
+
+void append_liquid_flow_row(RuntimeSandboxTileSimulationPlan& plan, const RuntimeSandboxWorld& world,
+                            const RuntimeSandboxExistingCellRow& cell,
+                            const std::vector<RuntimeSandboxTileMaterialRow>& materials) {
+    const auto target = offset_coord(cell.coord, 1, 0);
+    const auto sample = sample_runtime_sandbox_cell(world, target);
+    auto blocked = sample.status == RuntimeSandboxCellSampleStatus::missing_chunk;
+    auto blocking_tile_id = std::string{};
+    if (sample.status == RuntimeSandboxCellSampleStatus::occupied) {
+        const auto* target_material = find_material(materials, sample.block_id);
+        blocked = target_material == nullptr || !target_material->replaceable;
+        if (blocked) {
+            blocking_tile_id = sample.block_id;
+        }
+    }
+
+    auto row = RuntimeSandboxLiquidFlowRow{
+        .chunk_id = cell.chunk_id,
+        .source_coord = cell.coord,
+        .target_coord = target,
+        .source_tile_id = cell.block_id,
+        .blocking_tile_id = std::move(blocking_tile_id),
+        .blocked = blocked,
+    };
+    row.replay_hash = compute_liquid_row_hash(row);
+    plan.liquid_flow_rows.push_back(std::move(row));
+}
+
 } // namespace
 
 bool RuntimeSandboxWorldBuildResult::succeeded() const noexcept {
     return status == RuntimeSandboxWorldRuntimeStatus::ready && diagnostics.empty();
+}
+
+bool RuntimeSandboxTileSimulationPlan::succeeded() const noexcept {
+    return status == RuntimeSandboxTileSimulationStatus::ready && diagnostics.empty();
 }
 
 RuntimeSandboxWorldBuildResult build_runtime_sandbox_world(const RuntimeSandboxWorldDesc& desc) {
@@ -577,6 +848,181 @@ apply_runtime_sandbox_world_mutations(const RuntimeSandboxWorld& world, const Ru
     }
     result.replay_hash = replay_hash == 0U ? 1U : replay_hash;
     return result;
+}
+
+RuntimeSandboxTileSimulationPlan plan_runtime_sandbox_tile_simulation(const RuntimeSandboxWorld& world,
+                                                                      const RuntimeSandboxTileSimulationDesc& desc) {
+    RuntimeSandboxTileSimulationPlan plan;
+    plan.material_count = desc.material_rows.size();
+
+    if (desc.material_rows.size() + world.cells.size() + desc.dirty_regions.size() > desc.row_budget) {
+        add_diagnostic(plan, RuntimeSandboxTileSimulationDiagnosticCode::row_budget_exceeded, {}, {}, {},
+                       "runtime sandbox tile simulation input exceeds its row budget", 0U);
+    }
+
+    std::vector<std::string> tile_ids;
+    tile_ids.reserve(desc.material_rows.size());
+    for (const auto& material : desc.material_rows) {
+        if (!is_valid_material_row(material, desc)) {
+            add_diagnostic(
+                plan, RuntimeSandboxTileSimulationDiagnosticCode::invalid_material, material.tile_id, {}, {},
+                "tile material rows require backend-neutral ids, render layers in [0, 63], and bounded light "
+                "radii",
+                material.source_index);
+        }
+
+        if (std::ranges::find(tile_ids, material.tile_id) != tile_ids.end()) {
+            add_diagnostic(plan, RuntimeSandboxTileSimulationDiagnosticCode::duplicate_material, material.tile_id, {},
+                           {}, "tile material ids must be unique", material.source_index);
+        } else {
+            tile_ids.push_back(material.tile_id);
+        }
+    }
+
+    for (const auto& cell : world.cells) {
+        if (find_material(desc.material_rows, cell.block_id) == nullptr) {
+            add_diagnostic(plan, RuntimeSandboxTileSimulationDiagnosticCode::unknown_cell_material, cell.block_id,
+                           cell.chunk_id, cell.coord, "runtime sandbox cells must resolve to a tile material row",
+                           cell.source_index);
+        }
+    }
+
+    if (!plan.diagnostics.empty()) {
+        sort_diagnostics(plan);
+        return plan;
+    }
+
+    auto materials = desc.material_rows;
+    std::ranges::sort(materials, material_less);
+    plan.status = RuntimeSandboxTileSimulationStatus::ready;
+
+    auto liquid_updates = std::uint32_t{0U};
+    for (const auto& cell : world.cells) {
+        const auto* material = find_material(materials, cell.block_id);
+        if (material == nullptr) {
+            continue;
+        }
+
+        if (material->solid) {
+            auto row = RuntimeSandboxTileCollisionSpanRow{
+                .chunk_id = cell.chunk_id,
+                .min_coord = cell.coord,
+                .max_coord_exclusive = next_cell_coord(cell.coord),
+                .tile_id = cell.block_id,
+                .render_layer = material->render_layer,
+            };
+            row.replay_hash = compute_collision_span_hash(row);
+            plan.solid_collision_spans.push_back(std::move(row));
+        }
+        if (material->platform) {
+            auto row = RuntimeSandboxTileCollisionSpanRow{
+                .chunk_id = cell.chunk_id,
+                .min_coord = cell.coord,
+                .max_coord_exclusive = next_cell_coord(cell.coord),
+                .tile_id = cell.block_id,
+                .render_layer = material->render_layer,
+            };
+            row.replay_hash = compute_collision_span_hash(row);
+            plan.platform_collision_spans.push_back(std::move(row));
+        }
+        if (material->liquid) {
+            auto row = RuntimeSandboxTileCellRow{
+                .chunk_id = cell.chunk_id,
+                .coord = cell.coord,
+                .tile_id = cell.block_id,
+                .render_layer = material->render_layer,
+            };
+            row.replay_hash = compute_tile_cell_hash(row);
+            plan.liquid_cells.push_back(std::move(row));
+            if (liquid_updates < desc.liquid_update_budget) {
+                append_liquid_flow_row(plan, world, cell, materials);
+                ++liquid_updates;
+            }
+        }
+        if (material->trigger) {
+            auto row = RuntimeSandboxTileCellRow{
+                .chunk_id = cell.chunk_id,
+                .coord = cell.coord,
+                .tile_id = cell.block_id,
+                .render_layer = material->render_layer,
+            };
+            row.replay_hash = compute_tile_cell_hash(row);
+            plan.trigger_cells.push_back(std::move(row));
+        }
+        if (material->update_cadence_ticks > 0U) {
+            auto row = RuntimeSandboxScheduledTileUpdateRow{
+                .chunk_id = cell.chunk_id,
+                .coord = cell.coord,
+                .tile_id = cell.block_id,
+                .cadence_ticks = material->update_cadence_ticks,
+                .scheduled_tick = world.world_tick + material->update_cadence_ticks,
+            };
+            row.replay_hash = compute_scheduled_row_hash(row);
+            plan.scheduled_update_rows.push_back(std::move(row));
+        }
+        if (material->light_emitter) {
+            append_light_rows(plan, world, cell, *material, desc, materials);
+        }
+    }
+
+    std::ranges::sort(plan.solid_collision_spans, span_row_less);
+    std::ranges::sort(plan.platform_collision_spans, span_row_less);
+    std::ranges::sort(plan.liquid_cells, cell_row_less);
+    std::ranges::sort(plan.trigger_cells, cell_row_less);
+    std::ranges::sort(plan.scheduled_update_rows, scheduled_row_less);
+    std::ranges::sort(plan.liquid_flow_rows, liquid_row_less);
+
+    if (tile_simulation_output_row_count(plan) > desc.row_budget) {
+        add_diagnostic(plan, RuntimeSandboxTileSimulationDiagnosticCode::row_budget_exceeded, {}, {}, {},
+                       "runtime sandbox tile simulation output exceeds its row budget", 0U);
+        plan.status = RuntimeSandboxTileSimulationStatus::invalid_request;
+        clear_tile_simulation_outputs(plan);
+        sort_diagnostics(plan);
+        return plan;
+    }
+
+    auto replay_hash = std::uint64_t{1469598103934665603ULL};
+    mix_hash(replay_hash, world.snapshot_hash);
+    mix_hash(replay_hash, plan.material_count);
+    for (const auto& material : materials) {
+        mix_hash(replay_hash, material.tile_id);
+        mix_hash(replay_hash, material.solid ? 1U : 0U);
+        mix_hash(replay_hash, material.platform ? 1U : 0U);
+        mix_hash(replay_hash, material.liquid ? 1U : 0U);
+        mix_hash(replay_hash, material.light_emitter ? 1U : 0U);
+        mix_hash(replay_hash, material.replaceable ? 1U : 0U);
+        mix_hash(replay_hash, material.trigger ? 1U : 0U);
+        mix_hash(replay_hash, material.update_cadence_ticks);
+        mix_hash(replay_hash, static_cast<std::uint64_t>(static_cast<std::int64_t>(material.render_layer)));
+        mix_hash(replay_hash, material.light_radius);
+        mix_hash(replay_hash, material.source_index);
+    }
+    for (const auto& region : desc.dirty_regions) {
+        mix_hash(replay_hash, region);
+    }
+    for (const auto& row : plan.solid_collision_spans) {
+        mix_hash(replay_hash, row.replay_hash);
+    }
+    for (const auto& row : plan.platform_collision_spans) {
+        mix_hash(replay_hash, row.replay_hash);
+    }
+    for (const auto& row : plan.liquid_cells) {
+        mix_hash(replay_hash, row.replay_hash);
+    }
+    for (const auto& row : plan.trigger_cells) {
+        mix_hash(replay_hash, row.replay_hash);
+    }
+    for (const auto& row : plan.scheduled_update_rows) {
+        mix_hash(replay_hash, row.replay_hash);
+    }
+    for (const auto& row : plan.light_rows) {
+        mix_hash(replay_hash, row.replay_hash);
+    }
+    for (const auto& row : plan.liquid_flow_rows) {
+        mix_hash(replay_hash, row.replay_hash);
+    }
+    plan.replay_hash = replay_hash == 0U ? 1U : replay_hash;
+    return plan;
 }
 
 } // namespace mirakana::runtime
