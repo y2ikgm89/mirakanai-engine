@@ -2256,7 +2256,7 @@ if ($runtimeResourceGap.Count -ne 0) {
 }
 $recommendedText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
 $recommendedPlanId = [string]$productionLoop.recommendedNextPlan.id
-$recommendedPlanUsesLegacyCloseoutContext = $recommendedPlanId -notin @("general-purpose-game-production-v1", "generated-game-studio-v1", "engine-1-0-gap-matrix-v1", "next-production-gap-selection", "physics-navigation-commercial-coverage-v1", "renderer-backend-parity-metal-apple-evidence-v1")
+$recommendedPlanUsesLegacyCloseoutContext = $recommendedPlanId -notin @("general-purpose-game-production-v1", "generated-game-studio-v1", "engine-1-0-gap-matrix-v1", "next-production-gap-selection", "physics-navigation-commercial-coverage-v1", "renderer-backend-parity-metal-apple-evidence-v1", "renderer-postprocess-tone-mapping-evidence-v1")
 if ($productionLoop.currentActivePlan -eq "docs/superpowers/plans/2026-05-23-candidate-backlog-burn-down-v1.md") {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop.currentActivePlan must not point at completed Candidate Backlog Burn-down v1"
 }
@@ -2360,7 +2360,6 @@ foreach ($check in @(
         Assert-ContainsText $fileText $needle "$($check.Path) runtime-resource-v2 closeout evidence"
     }
 }
-
 $rendererRhiGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "renderer-rhi-resource-foundation" })
 if ($rendererRhiGap.Count -ne 0) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop renderer-rhi-resource-foundation gap must leave unsupportedProductionGaps after 1.0 scope closeout"
@@ -2572,6 +2571,10 @@ if ($recommendedPlanId -eq "general-purpose-game-production-v1") {
 } elseif ($recommendedPlanId -eq "renderer-backend-parity-metal-apple-evidence-v1") {
     foreach ($needle in @("Renderer Backend Parity Metal Apple Evidence v1", "renderer-backend-parity-v1", "metal-apple remains host-gated", "shader-toolchain", "mobile-packaging", "ios-simulator-smoke", "Apple/Metal host evidence", "Windows/Vulkan proof must not promote Metal readiness", "no SDL3", "native handles remain hidden", "unsupportedProductionGaps = []")) {
         Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan renderer Metal Apple selection"
+    }
+} elseif ($recommendedPlanId -eq "renderer-postprocess-tone-mapping-evidence-v1") {
+    foreach ($needle in @("Renderer Postprocess Tone Mapping Evidence v1", "renderer-postprocess-v1", "PostprocessToneMappingEvidencePlan", "plan_postprocess_tone_mapping_evidence", "D3D12/Vulkan", "Metal host-gated", "no SDL3", "native handles", "subjective visual quality", "unsupportedProductionGaps = []")) {
+        Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan renderer postprocess tone mapping selection"
     }
 } else {
     Assert-ContainsText $recommendedText "Frame Graph v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
