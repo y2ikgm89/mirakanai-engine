@@ -146,6 +146,13 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset d
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure
 ```
 
+For sandbox runtime tile primitives such as `RuntimeSandboxTileSimulationPlan` and `plan_runtime_sandbox_tile_simulation`, keep the focused loop explicit so RED/GREEN proof covers both compilation and CTest execution:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_sandbox_world_runtime_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_sandbox_world_runtime_tests
+```
+
 Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake` only when a task specifically requires raw `cmake --preset ...` commands instead of repository wrappers. On Windows Visual Studio generator hosts, checked-in presets normalize the configure/build environment by inheriting `PATH` and unsetting `Path`; `RequireDirectCMake` verifies raw `cmake` discovery without treating uppercase-only `PATH` as a blocker.
 
 In a manual linked worktree, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1` before the first configure. It verifies `.worktrees/`, `.claude/worktrees/`, `external/`, and `vcpkg_installed/` are ignored, then links an existing local `external/vcpkg` checkout and, when available, an existing local `vcpkg_installed/` package tree so CMake presets keep using the required vcpkg toolchain and installed packages without configure-time package install or duplicate vcpkg clones.

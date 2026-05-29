@@ -12,7 +12,7 @@
 
 **Plan ID:** `generic-2d-sandbox-production-lane-v1`
 
-**Status:** Proposed future milestone. This file does not replace `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`, does not reopen `unsupportedProductionGaps`, and does not mark any planned capability as ready.
+**Status:** Phased milestone implementation in progress. Phases 1-3 have completed as reviewable slices, but this file does not replace `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`, does not reopen `unsupportedProductionGaps`, and does not mark later planned capabilities as ready.
 
 ## Current Evidence And Gap Summary
 
@@ -196,16 +196,22 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 - Modify: `engine/runtime/src/sandbox_world_runtime.cpp`
 - Create tests or extend: `tests/unit/runtime_sandbox_world_runtime_tests.cpp`
 
-- [ ] Add RED tests for tile material metadata rows: solid, platform, liquid, light emitter, replaceable, trigger, update cadence, and renderer layer.
-- [ ] Add RED tests for collision extraction: occupied solid cells become deterministic collision spans; platform/liquid/non-solid rows are separated.
-- [ ] Add RED tests for light propagation planning: seeded light emitters, bounded propagation radius, blocked-by-solid policy, dirty-light-region output, and deterministic budget limits.
-- [ ] Add RED tests for liquid planning only as bounded simulation rows: source cells, flow candidates, blocked flow, update budget, and replay hash. Do not claim full fluid simulation quality.
-- [ ] Implement first-party value/execution APIs behind `MK_runtime` only. Physics-specific collision shape upload and renderer lightmap upload remain later phases.
-- [ ] Run focused tests:
+**Official Evidence:** 2026-05-30 implementation reused the plan's Microsoft/Context7 clean-break boundary: Win32/platform/render/audio handles remain behind first-party adapters, while Phase 3 adds only backend-neutral `MK_runtime` value rows. No new external SDK or dependency was introduced for this phase.
+
+- [x] Add RED tests for tile material metadata rows: solid, platform, liquid, light emitter, replaceable, trigger, update cadence, and render layer.
+- [x] Add RED tests for collision extraction: occupied solid cells become deterministic collision spans; platform/liquid/non-solid rows are separated.
+- [x] Add RED tests for light propagation planning: seeded light emitters, bounded propagation radius, blocked-by-solid policy, light row output, and deterministic budget limits.
+- [x] Add RED tests for liquid planning only as bounded simulation rows: source cells, flow candidates, blocked flow, update budget, and replay hash. Do not claim full fluid simulation quality.
+- [x] Add RED tests for scheduled tile update rows driven by tile material update cadence.
+- [x] Implement first-party value/execution APIs behind `MK_runtime` only. Physics-specific collision shape upload and renderer lightmap upload remain later phases.
+- [x] Run focused tests:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "runtime_sandbox_world_runtime"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_sandbox_world_runtime_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_sandbox_world_runtime_tests
 ```
+
+Evidence: `MK_runtime_sandbox_world_runtime_tests` passed after `RuntimeSandboxTileMaterialRow`, `RuntimeSandboxTileSimulationDesc`, `RuntimeSandboxTileSimulationPlan`, `RuntimeSandboxTileCollisionSpanRow`, `RuntimeSandboxTileCellRow`, `RuntimeSandboxLightPropagationRow`, `RuntimeSandboxLiquidFlowRow`, `RuntimeSandboxScheduledTileUpdateRow`, and `plan_runtime_sandbox_tile_simulation` landed. Outputs stay value-only with explicit zero physics/renderer/platform/thread side-effect flags.
 
 ## Phase 4 - Persistence, Snapshots, Migration, And Corruption Recovery
 

@@ -19,9 +19,11 @@ $installedValidationText = Get-AgentSurfaceText "tools/validate-installed-deskto
 $planText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-25-general-purpose-game-production-v1.md"
 $runtimePlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-29-generic-2d-sandbox-runtime-foundation-v1.md"
 $mutationExecutionPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-30-generic-2d-sandbox-mutation-execution-v1.md"
+$tileSimulationPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-27-generic-2d-sandbox-production-lane-v1.md"
 $planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
 $currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
 $roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
+$testingText = Get-AgentSurfaceText "docs/testing.md"
 $generatedValidationText = Get-AgentSurfaceText "docs/specs/generated-game-validation-scenarios.md"
 $aiGameDevelopmentText = Get-AgentSurfaceText "docs/ai-game-development.md"
 $sample2dReadmeText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/README.md"
@@ -80,10 +82,19 @@ foreach ($needle in @(
         "RuntimeSandboxWorldMutationExecutionStatus",
         "RuntimeSandboxWorldDirtyRegion",
         "RuntimeSandboxWorldMutationExecutionResult",
+        "RuntimeSandboxTileMaterialRow",
+        "RuntimeSandboxTileSimulationDesc",
+        "RuntimeSandboxTileSimulationPlan",
+        "RuntimeSandboxTileCollisionSpanRow",
+        "RuntimeSandboxTileCellRow",
+        "RuntimeSandboxLightPropagationRow",
+        "RuntimeSandboxLiquidFlowRow",
+        "RuntimeSandboxScheduledTileUpdateRow",
         "build_runtime_sandbox_world",
         "sample_runtime_sandbox_cell",
         "snapshot_runtime_sandbox_world",
-        "apply_runtime_sandbox_world_mutations"
+        "apply_runtime_sandbox_world_mutations",
+        "plan_runtime_sandbox_tile_simulation"
     )) {
     Assert-ContainsText $sandboxRuntimeHeaderText $needle "engine/runtime/include/mirakana/runtime/sandbox_world_runtime.hpp"
 }
@@ -96,6 +107,14 @@ foreach ($needle in @(
         "world_contains_cell",
         "layer_mask_for",
         "compute_dirty_region_hash",
+        "compute_light_row_hash",
+        "compute_liquid_row_hash",
+        "compute_scheduled_row_hash",
+        "append_light_rows",
+        "append_liquid_flow_row",
+        "RuntimeSandboxTileSimulationStatus::ready",
+        "RuntimeSandboxTileSimulationDiagnosticCode::unknown_cell_material",
+        "plan_runtime_sandbox_tile_simulation",
         "world.chunks.size()",
         "world.cells.size()",
         "world.invoked_persistence_io ? 1U : 0U",
@@ -116,6 +135,10 @@ Assert-ContainsText $sandboxRuntimeTestsText "changed_block.world.snapshot_hash 
 Assert-ContainsText $sandboxRuntimeTestsText "runtime sandbox world snapshot recomputes mutable public world state" "tests/unit/runtime_sandbox_world_runtime_tests.cpp"
 Assert-ContainsText $sandboxRuntimeTestsText "runtime sandbox world applies accepted placement and destruction with dirty regions" "tests/unit/runtime_sandbox_world_runtime_tests.cpp"
 Assert-ContainsText $sandboxRuntimeTestsText "runtime sandbox world rejects invalid execution plans without changing the input snapshot" "tests/unit/runtime_sandbox_world_runtime_tests.cpp"
+Assert-ContainsText $sandboxRuntimeTestsText "runtime sandbox tile simulation plans collision light liquid and trigger rows" "tests/unit/runtime_sandbox_world_runtime_tests.cpp"
+Assert-ContainsText $sandboxRuntimeTestsText "runtime sandbox tile simulation rejects invalid material rows and unknown cells before output" "tests/unit/runtime_sandbox_world_runtime_tests.cpp"
+Assert-ContainsText $sandboxRuntimeTestsText "RuntimeSandboxTileSimulationDiagnosticCode::row_budget_exceeded" "tests/unit/runtime_sandbox_world_runtime_tests.cpp"
+Assert-ContainsText $sandboxRuntimeTestsText "scheduled_update_rows" "tests/unit/runtime_sandbox_world_runtime_tests.cpp"
 
 foreach ($sampleSurface in @(
         @{ Text = $sample2dMainText; Label = "games/sample_2d_desktop_runtime_package/main.cpp" },
@@ -211,6 +234,20 @@ foreach ($docSurface in @(
 }
 
 foreach ($docSurface in @(
+        @{ Text = $tileSimulationPlanText; Label = "docs/superpowers/plans/2026-05-27-generic-2d-sandbox-production-lane-v1.md" },
+        @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
+        @{ Text = $roadmapText; Label = "docs/roadmap.md" },
+        @{ Text = $aiGameDevelopmentText; Label = "docs/ai-game-development.md" },
+        @{ Text = $testingText; Label = "docs/testing.md" },
+        @{ Text = $planRegistryText; Label = "docs/superpowers/plans/README.md" },
+        @{ Text = $backlogText; Label = "docs/superpowers/master-plans/production-completion-v1/04-developer-owned-engine-capability-backlog.md" },
+        @{ Text = $projectionText; Label = "docs/superpowers/master-plans/production-completion-v1/05-projections-and-scenarios.md" }
+    )) {
+    Assert-ContainsText $docSurface.Text "RuntimeSandboxTileSimulationPlan" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "plan_runtime_sandbox_tile_simulation" $docSurface.Label
+}
+
+foreach ($docSurface in @(
         @{ Text = $runtimePlanText; Label = "docs/superpowers/plans/2026-05-29-generic-2d-sandbox-runtime-foundation-v1.md" },
         @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" }
     )) {
@@ -240,10 +277,16 @@ foreach ($needle in @(
         "RuntimeSandboxWorldMutationExecutionStatus",
         "RuntimeSandboxWorldDirtyRegion",
         "RuntimeSandboxWorldMutationExecutionResult",
+        "RuntimeSandboxTileSimulationPlan",
+        "RuntimeSandboxLightPropagationRow",
+        "RuntimeSandboxLiquidFlowRow",
+        "RuntimeSandboxScheduledTileUpdateRow",
         "plan_runtime_sandbox_world_mutation",
         "build_runtime_sandbox_world",
         "apply_runtime_sandbox_world_mutations",
+        "plan_runtime_sandbox_tile_simulation",
         "sandbox_world_*",
+        "currentRuntimeSandboxTileSimulation",
         "currentRuntimeSandboxWorld"
     )) {
     Assert-ContainsText $manifestText $needle "engine/agent/manifest.json"

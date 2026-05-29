@@ -16,6 +16,8 @@ namespace {
 using mirakana::runtime::RuntimeSandboxCellCoord;
 using mirakana::runtime::RuntimeSandboxMutationKind;
 using mirakana::runtime::RuntimeSandboxMutationStatus;
+using mirakana::runtime::RuntimeSandboxTileSimulationDiagnosticCode;
+using mirakana::runtime::RuntimeSandboxTileSimulationStatus;
 using mirakana::runtime::RuntimeSandboxWorldMutationExecutionStatus;
 using mirakana::runtime::RuntimeSandboxWorldRuntimeDiagnosticCode;
 using mirakana::runtime::RuntimeSandboxWorldRuntimeStatus;
@@ -71,6 +73,18 @@ existing_cell(std::string chunk_id, RuntimeSandboxCellCoord coord, std::string b
     };
 }
 
+[[nodiscard]] mirakana::runtime::RuntimeSandboxWorldDesc make_tile_simulation_world_desc() {
+    auto desc = make_world_desc();
+    desc.existing_cell_rows = {
+        existing_cell("chunk.a", cell(1, 1, 0), "tile.stone", 1U),
+        existing_cell("chunk.a", cell(0, 0, 0), "tile.one_way", 2U),
+        existing_cell("chunk.a", cell(2, 1, 0), "tile.lantern", 3U),
+        existing_cell("chunk.a", cell(0, 1, 0), "tile.water", 4U),
+        existing_cell("chunk.a", cell(3, 0, 0), "tile.trigger", 5U),
+    };
+    return desc;
+}
+
 [[nodiscard]] std::size_t diagnostic_count(const mirakana::runtime::RuntimeSandboxWorldBuildResult& result,
                                            RuntimeSandboxWorldRuntimeDiagnosticCode code) {
     std::size_t count{0U};
@@ -103,6 +117,51 @@ make_execution_plan(std::vector<mirakana::runtime::RuntimeSandboxMutationRow> ro
         .mutation_rows = std::move(rows),
         .replay_hash = 99U,
     };
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeSandboxTileMaterialRow
+tile_material(std::string tile_id, bool solid, bool platform, bool liquid, bool light_emitter, bool replaceable,
+              bool trigger, std::uint32_t light_radius, std::uint32_t source_index) {
+    return mirakana::runtime::RuntimeSandboxTileMaterialRow{
+        .tile_id = std::move(tile_id),
+        .solid = solid,
+        .platform = platform,
+        .liquid = liquid,
+        .light_emitter = light_emitter,
+        .replaceable = replaceable,
+        .trigger = trigger,
+        .update_cadence_ticks = liquid || light_emitter ? 1U : 0U,
+        .render_layer = platform ? 1 : 0,
+        .light_radius = light_radius,
+        .source_index = source_index,
+    };
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeSandboxTileSimulationDesc make_tile_simulation_desc() {
+    return mirakana::runtime::RuntimeSandboxTileSimulationDesc{
+        .material_rows =
+            {
+                tile_material("tile.stone", true, false, false, false, false, false, 0U, 1U),
+                tile_material("tile.one_way", false, true, false, false, false, false, 0U, 2U),
+                tile_material("tile.lantern", false, false, false, true, false, false, 2U, 3U),
+                tile_material("tile.water", false, false, true, false, true, false, 0U, 4U),
+                tile_material("tile.trigger", false, false, false, false, false, true, 0U, 5U),
+            },
+        .row_budget = 64U,
+        .light_radius_budget = 2U,
+        .liquid_update_budget = 2U,
+    };
+}
+
+[[nodiscard]] std::size_t diagnostic_count(const mirakana::runtime::RuntimeSandboxTileSimulationPlan& plan,
+                                           RuntimeSandboxTileSimulationDiagnosticCode code) {
+    std::size_t count{0U};
+    for (const auto& diagnostic : plan.diagnostics) {
+        if (diagnostic.code == code) {
+            ++count;
+        }
+    }
+    return count;
 }
 
 } // namespace
@@ -300,6 +359,76 @@ MK_TEST("runtime sandbox world rejects invalid execution plans without changing 
     MK_REQUIRE(execution.dirty_regions.empty());
     const auto after = mirakana::runtime::snapshot_runtime_sandbox_world(execution.world);
     MK_REQUIRE(after.hash == before.hash);
+}
+
+MK_TEST("runtime sandbox tile simulation plans collision light liquid and trigger rows") {
+    const auto built = mirakana::runtime::build_runtime_sandbox_world(make_tile_simulation_world_desc());
+    MK_REQUIRE(built.succeeded());
+
+    const auto plan = mirakana::runtime::plan_runtime_sandbox_tile_simulation(built.world, make_tile_simulation_desc());
+
+    MK_REQUIRE(plan.status == RuntimeSandboxTileSimulationStatus::ready);
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.diagnostics.empty());
+    MK_REQUIRE(plan.material_count == 5U);
+    MK_REQUIRE(plan.solid_collision_spans.size() == 1U);
+    MK_REQUIRE(plan.solid_collision_spans[0].chunk_id == "chunk.a");
+    MK_REQUIRE(plan.solid_collision_spans[0].min_coord == cell(1, 1, 0));
+    MK_REQUIRE(plan.solid_collision_spans[0].max_coord_exclusive == cell(2, 2, 1));
+    MK_REQUIRE(plan.solid_collision_spans[0].tile_id == "tile.stone");
+    MK_REQUIRE(plan.platform_collision_spans.size() == 1U);
+    MK_REQUIRE(plan.platform_collision_spans[0].tile_id == "tile.one_way");
+    MK_REQUIRE(plan.liquid_cells.size() == 1U);
+    MK_REQUIRE(plan.liquid_cells[0].tile_id == "tile.water");
+    MK_REQUIRE(plan.trigger_cells.size() == 1U);
+    MK_REQUIRE(plan.trigger_cells[0].tile_id == "tile.trigger");
+    MK_REQUIRE(plan.scheduled_update_rows.size() == 2U);
+    MK_REQUIRE(plan.scheduled_update_rows[0].tile_id == "tile.water");
+    MK_REQUIRE(plan.scheduled_update_rows[0].scheduled_tick == 43U);
+    MK_REQUIRE(plan.scheduled_update_rows[1].tile_id == "tile.lantern");
+    MK_REQUIRE(plan.scheduled_update_rows[1].scheduled_tick == 43U);
+    MK_REQUIRE(plan.light_rows.size() >= 2U);
+    MK_REQUIRE(plan.light_rows[0].source_coord == cell(2, 1, 0));
+    MK_REQUIRE(plan.light_rows[0].target_coord == cell(2, 1, 0));
+    MK_REQUIRE(!plan.light_rows[0].blocked_by_solid);
+    MK_REQUIRE(plan.light_rows[0].replay_hash != 0U);
+    MK_REQUIRE(plan.light_rows[1].target_coord == cell(1, 1, 0));
+    MK_REQUIRE(plan.light_rows[1].blocked_by_solid);
+    MK_REQUIRE(plan.liquid_flow_rows.size() == 1U);
+    MK_REQUIRE(plan.liquid_flow_rows[0].source_coord == cell(0, 1, 0));
+    MK_REQUIRE(plan.liquid_flow_rows[0].target_coord == cell(1, 1, 0));
+    MK_REQUIRE(plan.liquid_flow_rows[0].blocked);
+    MK_REQUIRE(plan.replay_hash != 0U);
+    MK_REQUIRE(!plan.invoked_physics_upload);
+    MK_REQUIRE(!plan.invoked_renderer_upload);
+    MK_REQUIRE(!plan.invoked_platform_call);
+    MK_REQUIRE(!plan.invoked_threading);
+}
+
+MK_TEST("runtime sandbox tile simulation rejects invalid material rows and unknown cells before output") {
+    const auto built = mirakana::runtime::build_runtime_sandbox_world(make_tile_simulation_world_desc());
+    MK_REQUIRE(built.succeeded());
+    auto desc = make_tile_simulation_desc();
+    desc.material_rows.push_back(desc.material_rows[0]);
+    desc.material_rows.push_back(tile_material("tile.renderer", true, false, false, false, false, false, 0U, 6U));
+    desc.material_rows.back().render_layer = -1;
+    desc.material_rows.erase(desc.material_rows.begin() + 3);
+    desc.row_budget = 2U;
+
+    const auto plan = mirakana::runtime::plan_runtime_sandbox_tile_simulation(built.world, desc);
+
+    MK_REQUIRE(plan.status == RuntimeSandboxTileSimulationStatus::invalid_request);
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(diagnostic_count(plan, RuntimeSandboxTileSimulationDiagnosticCode::duplicate_material) == 1U);
+    MK_REQUIRE(diagnostic_count(plan, RuntimeSandboxTileSimulationDiagnosticCode::invalid_material) == 1U);
+    MK_REQUIRE(diagnostic_count(plan, RuntimeSandboxTileSimulationDiagnosticCode::unknown_cell_material) == 1U);
+    MK_REQUIRE(diagnostic_count(plan, RuntimeSandboxTileSimulationDiagnosticCode::row_budget_exceeded) == 1U);
+    MK_REQUIRE(plan.solid_collision_spans.empty());
+    MK_REQUIRE(plan.scheduled_update_rows.empty());
+    MK_REQUIRE(plan.light_rows.empty());
+    MK_REQUIRE(plan.liquid_flow_rows.empty());
+    MK_REQUIRE(!plan.invoked_physics_upload);
+    MK_REQUIRE(!plan.invoked_renderer_upload);
 }
 
 int main() {
