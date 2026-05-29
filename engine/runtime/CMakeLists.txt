@@ -18,6 +18,7 @@ add_library(mirakana_runtime
     src/quest_dialogue.cpp
     src/resource_runtime.cpp
     src/runtime_diagnostics.cpp
+    src/sandbox_world_persistence.cpp
     src/sandbox_world_runtime.cpp
     src/scripting_sandbox.cpp
     src/session_services.cpp

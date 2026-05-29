@@ -12,7 +12,7 @@
 
 **Plan ID:** `generic-2d-sandbox-production-lane-v1`
 
-**Status:** Phased milestone implementation in progress. Phases 1-3 have completed as reviewable slices, but this file does not replace `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`, does not reopen `unsupportedProductionGaps`, and does not mark later planned capabilities as ready.
+**Status:** Phased milestone implementation in progress. Phases 1-4 have completed as reviewable slices, but this file does not replace `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`, does not reopen `unsupportedProductionGaps`, and does not mark later planned capabilities as ready.
 
 ## Current Evidence And Gap Summary
 
@@ -224,17 +224,21 @@ Evidence: `MK_runtime_sandbox_world_runtime_tests` passed after `RuntimeSandboxT
 - Create: `tests/unit/runtime_sandbox_world_persistence_tests.cpp`
 - Modify: `docs/testing.md`
 
-- [ ] Add RED tests for canonical text or binary-neutral document rows: world id, schema version, chunk coords, layer rows, changed cells, source package id, seed, tick, and content hash.
-- [ ] Add RED tests for snapshot diff planning: unchanged chunks omitted, dirty chunks included, deterministic chunk ordering, size budget diagnostics.
-- [ ] Add RED tests for migration review: exact schema chain, unsupported future schema, missing migration, repairable corruption, unrecoverable corruption, and no filesystem side effects.
-- [ ] Add RED tests for atomic-save planning: temp path, target path, backup path, write order, fsync/flush intent, rollback diagnostics. The first API only plans operations; platform/filesystem execution is separate.
-- [ ] Implement persistence review and serialization helpers using `IFileSystem` only when the phase explicitly adds apply APIs. Use rooted project-relative paths and reject absolute or parent-relative paths.
-- [ ] Run:
+**Official Evidence:** 2026-05-30 implementation used Context7 `/websites/cmake_cmake_help` for the official `add_test(NAME ... COMMAND ...)` and target-based CTest registration pattern, and Microsoft Learn Win32 documentation for future platform execution boundaries: `ReplaceFileW` replaces a file with an optional backup, and `FlushFileBuffers` flushes buffered data for a file handle. Phase 4 therefore implements only first-party `MK_runtime` value planning for canonical snapshot rows, diff rows, migration/recovery review, and atomic-save operation intent; it does not call Win32, `IFileSystem`, platform APIs, filesystem IO, package IO, renderer APIs, or threads. Future apply/execution APIs must stay in rooted project-relative platform/filesystem adapters.
+
+- [x] Add RED tests for canonical text or binary-neutral document rows: world id, schema version, chunk coords, layer rows, changed cells, source package id, seed, tick, and content hash.
+- [x] Add RED tests for snapshot diff planning: unchanged chunks omitted, dirty chunks included, deterministic chunk ordering, size budget diagnostics.
+- [x] Add RED tests for migration review: exact schema chain, unsupported future schema, missing migration, repairable corruption, unrecoverable corruption, and no filesystem side effects.
+- [x] Add RED tests for atomic-save planning: temp path, target path, backup path, write order, fsync/flush intent, rollback diagnostics. The first API only plans operations; platform/filesystem execution is separate.
+- [x] Implement persistence review and serialization helpers using `IFileSystem` only when the phase explicitly adds apply APIs. Use rooted project-relative paths and reject absolute or parent-relative paths.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_sandbox_world_persistence_tests
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "runtime_sandbox_world_persistence"
 ```
+
+Evidence: RED compile proof first failed with unresolved `RuntimeSandboxWorldPersistenceDocumentPlan::succeeded`, `RuntimeSandboxWorldMigrationReviewPlan::succeeded`, `RuntimeSandboxWorldAtomicSavePlan::succeeded`, `plan_runtime_sandbox_world_persistence_document`, `plan_runtime_sandbox_world_snapshot_diff`, `review_runtime_sandbox_world_migration`, and `plan_runtime_sandbox_world_atomic_save`. GREEN focused validation then passed `MK_runtime_sandbox_world_persistence_tests` build and `ctest -R "runtime_sandbox_world_persistence"` with `1/1` tests passing. Outputs stay value-only with explicit zero filesystem/platform/thread side-effect flags.
 
 ## Phase 5 - Chunk Streaming, Addressable Content, And Residency
 

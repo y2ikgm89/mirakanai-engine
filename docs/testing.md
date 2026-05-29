@@ -153,6 +153,13 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset d
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_sandbox_world_runtime_tests
 ```
 
+For sandbox world persistence planning such as `RuntimeSandboxWorldPersistenceDocumentPlan`, `RuntimeSandboxWorldMigrationReviewPlan`, `RuntimeSandboxWorldAtomicSavePlan`, and `plan_runtime_sandbox_world_atomic_save`, keep the loop on the dedicated target so canonical snapshot, diff, migration/recovery, safe-path, and atomic-save intent rows remain value-only before any filesystem execution exists:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_sandbox_world_persistence_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "runtime_sandbox_world_persistence"
+```
+
 Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake` only when a task specifically requires raw `cmake --preset ...` commands instead of repository wrappers. On Windows Visual Studio generator hosts, checked-in presets normalize the configure/build environment by inheriting `PATH` and unsetting `Path`; `RequireDirectCMake` verifies raw `cmake` discovery without treating uppercase-only `PATH` as a blocker.
 
 In a manual linked worktree, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1` before the first configure. It verifies `.worktrees/`, `.claude/worktrees/`, `external/`, and `vcpkg_installed/` are ignored, then links an existing local `external/vcpkg` checkout and, when available, an existing local `vcpkg_installed/` package tree so CMake presets keep using the required vcpkg toolchain and installed packages without configure-time package install or duplicate vcpkg clones.
