@@ -9,11 +9,14 @@ $sandboxRuntimeHeaderText = Get-AgentSurfaceText "engine/runtime/include/mirakan
 $sandboxRuntimeSourceText = Get-AgentSurfaceText "engine/runtime/src/sandbox_world_runtime.cpp"
 $sandboxPersistenceHeaderText = Get-AgentSurfaceText "engine/runtime/include/mirakana/runtime/sandbox_world_persistence.hpp"
 $sandboxPersistenceSourceText = Get-AgentSurfaceText "engine/runtime/src/sandbox_world_persistence.cpp"
+$sandboxStreamingHeaderText = Get-AgentSurfaceText "engine/runtime/include/mirakana/runtime/sandbox_world_streaming.hpp"
+$sandboxStreamingSourceText = Get-AgentSurfaceText "engine/runtime/src/sandbox_world_streaming.cpp"
 $runtimeCMakeText = Get-AgentSurfaceText "engine/runtime/CMakeLists.txt"
 $rootCMakeText = Get-AgentSurfaceText "CMakeLists.txt"
 $sandboxTestsText = Get-AgentSurfaceText "tests/unit/runtime_genre_sandbox_world_tests.cpp"
 $sandboxRuntimeTestsText = Get-AgentSurfaceText "tests/unit/runtime_sandbox_world_runtime_tests.cpp"
 $sandboxPersistenceTestsText = Get-AgentSurfaceText "tests/unit/runtime_sandbox_world_persistence_tests.cpp"
+$sandboxStreamingTestsText = Get-AgentSurfaceText "tests/unit/runtime_sandbox_world_streaming_tests.cpp"
 $sample2dMainText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/main.cpp"
 $sample3dMainText = Get-AgentSurfaceText "games/sample_generated_desktop_runtime_3d_package/main.cpp"
 $sample2dManifestText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/game.agent.json"
@@ -180,6 +183,43 @@ Assert-ContainsText $sandboxPersistenceTestsText "runtime sandbox snapshot diff 
 Assert-ContainsText $sandboxPersistenceTestsText "runtime sandbox migration review reports exact chains and corruption recovery boundaries" "tests/unit/runtime_sandbox_world_persistence_tests.cpp"
 Assert-ContainsText $sandboxPersistenceTestsText "runtime sandbox atomic save plans temp flush replace backup and rollback without filesystem calls" "tests/unit/runtime_sandbox_world_persistence_tests.cpp"
 
+foreach ($needle in @(
+        "RuntimeSandboxWorldStreamingSourceRow",
+        "RuntimeSandboxWorldAddressableDependencyRow",
+        "RuntimeSandboxWorldStreamingPlan",
+        "RuntimeSandboxWorldStreamingSafePointDesc",
+        "RuntimeSandboxWorldStreamingSafePointResult",
+        "unsupported_automatic_lru_eviction",
+        "plan_runtime_sandbox_world_streaming",
+        "execute_runtime_sandbox_world_streaming_safe_point",
+        "bool invoked_automatic_lru_eviction{false}"
+    )) {
+    Assert-ContainsText $sandboxStreamingHeaderText $needle "engine/runtime/include/mirakana/runtime/sandbox_world_streaming.hpp"
+}
+
+foreach ($needle in @(
+        "pin_dirty_chunks",
+        "plan_runtime_sandbox_world_streaming",
+        "plan_runtime_world_region_streaming",
+        "plan_runtime_addressable_content_streaming",
+        "execute_runtime_world_region_streaming_safe_point",
+        "RuntimeSandboxWorldStreamingDiagnosticCode::unsupported_automatic_lru_eviction",
+        "RuntimeSandboxWorldStreamingDiagnosticCode::missing_addressable_dependency",
+        "allow_automatic_lru_eviction"
+    )) {
+    Assert-ContainsText $sandboxStreamingSourceText $needle "engine/runtime/src/sandbox_world_streaming.cpp"
+}
+
+Assert-ContainsText $runtimeCMakeText "src/sandbox_world_streaming.cpp" "engine/runtime/CMakeLists.txt"
+Assert-ContainsText $rootCMakeText "MK_runtime_sandbox_world_streaming_tests" "CMakeLists.txt"
+Assert-ContainsText $sandboxStreamingTestsText "runtime sandbox world streaming plans source selected chunks and addressable dependencies" "tests/unit/runtime_sandbox_world_streaming_tests.cpp"
+Assert-ContainsText $sandboxStreamingTestsText "runtime sandbox world streaming pins dirty resident chunks and fails closed on resident budgets" "tests/unit/runtime_sandbox_world_streaming_tests.cpp"
+Assert-ContainsText $sandboxStreamingTestsText "runtime sandbox world streaming rejects missing required addressable dependencies" "tests/unit/runtime_sandbox_world_streaming_tests.cpp"
+Assert-ContainsText $sandboxStreamingTestsText "runtime sandbox world streaming rejects unsupported automatic lru eviction" "tests/unit/runtime_sandbox_world_streaming_tests.cpp"
+Assert-ContainsText $sandboxStreamingTestsText "runtime sandbox world streaming safe point rejects invalid plans without package reads or live mutation" "tests/unit/runtime_sandbox_world_streaming_tests.cpp"
+Assert-ContainsText $sandboxStreamingTestsText "runtime sandbox world streaming safe point adopts reviewed package candidates" "tests/unit/runtime_sandbox_world_streaming_tests.cpp"
+Assert-ContainsText $sandboxStreamingTestsText "filesystem.read_text_count() == 2" "tests/unit/runtime_sandbox_world_streaming_tests.cpp"
+
 foreach ($sampleSurface in @(
         @{ Text = $sample2dMainText; Label = "games/sample_2d_desktop_runtime_package/main.cpp" },
         @{ Text = $sample3dMainText; Label = "games/sample_generated_desktop_runtime_3d_package/main.cpp" }
@@ -302,6 +342,21 @@ foreach ($docSurface in @(
 }
 
 foreach ($docSurface in @(
+        @{ Text = $tileSimulationPlanText; Label = "docs/superpowers/plans/2026-05-27-generic-2d-sandbox-production-lane-v1.md" },
+        @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
+        @{ Text = $roadmapText; Label = "docs/roadmap.md" },
+        @{ Text = $aiGameDevelopmentText; Label = "docs/ai-game-development.md" },
+        @{ Text = $testingText; Label = "docs/testing.md" },
+        @{ Text = $planRegistryText; Label = "docs/superpowers/plans/README.md" },
+        @{ Text = $backlogText; Label = "docs/superpowers/master-plans/production-completion-v1/04-developer-owned-engine-capability-backlog.md" },
+        @{ Text = $projectionText; Label = "docs/superpowers/master-plans/production-completion-v1/05-projections-and-scenarios.md" }
+    )) {
+    Assert-ContainsText $docSurface.Text "RuntimeSandboxWorldStreamingPlan" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "plan_runtime_sandbox_world_streaming" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "execute_runtime_sandbox_world_streaming_safe_point" $docSurface.Label
+}
+
+foreach ($docSurface in @(
         @{ Text = $runtimePlanText; Label = "docs/superpowers/plans/2026-05-29-generic-2d-sandbox-runtime-foundation-v1.md" },
         @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" }
     )) {
@@ -327,6 +382,7 @@ foreach ($needle in @(
         "engine/runtime/include/mirakana/runtime/genre_sandbox_world.hpp",
         "engine/runtime/include/mirakana/runtime/sandbox_world_runtime.hpp",
         "engine/runtime/include/mirakana/runtime/sandbox_world_persistence.hpp",
+        "engine/runtime/include/mirakana/runtime/sandbox_world_streaming.hpp",
         "RuntimeSandboxChunkRow",
         "RuntimeSandboxWorldDesc",
         "RuntimeSandboxWorldMutationExecutionStatus",
@@ -338,14 +394,19 @@ foreach ($needle in @(
         "RuntimeSandboxScheduledTileUpdateRow",
         "RuntimeSandboxWorldPersistenceDocumentPlan",
         "RuntimeSandboxWorldAtomicSavePlan",
+        "RuntimeSandboxWorldStreamingPlan",
+        "RuntimeSandboxWorldStreamingSafePointResult",
         "plan_runtime_sandbox_world_mutation",
         "build_runtime_sandbox_world",
         "apply_runtime_sandbox_world_mutations",
         "plan_runtime_sandbox_tile_simulation",
         "plan_runtime_sandbox_world_atomic_save",
+        "plan_runtime_sandbox_world_streaming",
+        "execute_runtime_sandbox_world_streaming_safe_point",
         "sandbox_world_*",
         "currentRuntimeSandboxTileSimulation",
         "currentRuntimeSandboxWorldPersistence",
+        "currentRuntimeSandboxWorldStreaming",
         "currentRuntimeSandboxWorld"
     )) {
     Assert-ContainsText $manifestText $needle "engine/agent/manifest.json"
