@@ -1965,6 +1965,11 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     foreach ($needle in @("Physics Navigation Commercial Coverage v1", "Jolt/Recast/Detour-class", "adapter_boundary_id", "host_validation_recipe_id", "adapter_lifecycle_reviewed", "unsupportedProductionGaps = []", "native handles hidden", "broad middleware parity fail-closed")) {
         Assert-ContainsText $physicsNavigationRecommendedText $needle "recommended next plan physics/navigation selection reason"
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "renderer-backend-parity-metal-apple-evidence-v1") {
+    $rendererMetalRecommendedText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
+    foreach ($needle in @("Renderer Backend Parity Metal Apple Evidence v1", "renderer-backend-parity-v1", "metal-apple remains host-gated", "shader-toolchain", "mobile-packaging", "ios-simulator-smoke", "Apple/Metal host evidence", "Windows/Vulkan proof must not promote Metal readiness", "no SDL3", "native handles remain hidden", "unsupportedProductionGaps = []")) {
+        Assert-ContainsText $rendererMetalRecommendedText $needle "recommended next plan renderer Metal Apple selection reason"
+    }
 } else {
     Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "Frame Graph v1" "recommended next plan reason"
     Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "upload-staging-v1" "recommended next plan reason"

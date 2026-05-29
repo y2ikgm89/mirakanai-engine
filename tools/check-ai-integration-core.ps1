@@ -191,6 +191,7 @@ function Assert-ActiveProductionPlanDrift($productionLoop) {
     $masterPlanPath = "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
     $planRegistryPath = "docs/superpowers/plans/README.md"
     $planRegistryText = Get-AgentSurfaceText $planRegistryPath
+    $roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
     $activeSliceRow = [regex]::Match($planRegistryText, '(?m)^\| Active (slice|milestone) \(`currentActivePlan`\) \|.*$')
     if (-not $activeSliceRow.Success) {
         Write-Error "$planRegistryPath must contain an Active slice or milestone currentActivePlan row"
@@ -206,9 +207,24 @@ function Assert-ActiveProductionPlanDrift($productionLoop) {
         if ($productionLoop.currentActivePlan -ne $activePlan.path) {
             Write-Error "engine/agent/manifest.json aiOperableProductionLoop.currentActivePlan must match active child plan: $($activePlan.path)"
         }
+        if (-not [string]::IsNullOrWhiteSpace($activePlan.planId) -and
+            $productionLoop.recommendedNextPlan.id -ne $activePlan.planId) {
+            Write-Error "engine/agent/manifest.json aiOperableProductionLoop.recommendedNextPlan.id must match active child plan id: $($activePlan.planId)"
+        }
+        if ($productionLoop.recommendedNextPlan.PSObject.Properties.Name.Contains("path") -and
+            $productionLoop.recommendedNextPlan.path -ne $activePlan.path) {
+            Write-Error "engine/agent/manifest.json aiOperableProductionLoop.recommendedNextPlan.path must match active child plan path: $($activePlan.path)"
+        }
         if (-not $activeSliceRow.Value.Contains($activePlan.fileName) -and
             ([string]::IsNullOrWhiteSpace($activePlan.planId) -or -not $activeSliceRow.Value.Contains($activePlan.planId))) {
             Write-Error "$planRegistryPath Active slice or milestone row must mention active child plan id or path: $($activePlan.path)"
+        }
+        if (-not $roadmapText.Contains($activePlan.fileName) -and
+            ([string]::IsNullOrWhiteSpace($activePlan.planId) -or -not $roadmapText.Contains($activePlan.planId))) {
+            Write-Error "docs/roadmap.md must mention the active child plan id or file: $($activePlan.path)"
+        }
+        if ([regex]::IsMatch($roadmapText, 'currentActivePlan`\s+now points to `docs/superpowers/plans/2026-05-29-physics-navigation-commercial-coverage-v1\.md`|Physics Navigation Commercial Coverage v1` is now the active selected slice')) {
+            Write-Error "docs/roadmap.md must not claim the completed physics/navigation slice is active"
         }
         return
     }
@@ -218,6 +234,12 @@ function Assert-ActiveProductionPlanDrift($productionLoop) {
     }
     if ($productionLoop.recommendedNextPlan.id -ne "next-production-gap-selection") {
         Write-Error "engine/agent/manifest.json aiOperableProductionLoop.recommendedNextPlan.id must be next-production-gap-selection when no child plan is active"
+    }
+    if (-not $roadmapText.Contains("recommendedNextPlan.id = next-production-gap-selection")) {
+        Write-Error "docs/roadmap.md must describe the production-completion selection gate when no child plan is active"
+    }
+    if ([regex]::IsMatch($roadmapText, 'currentActivePlan`\s+now points to `docs/superpowers/plans/2026-05-29-physics-navigation-commercial-coverage-v1\.md`|Physics Navigation Commercial Coverage v1` is now the active selected slice')) {
+        Write-Error "docs/roadmap.md must not claim the completed physics/navigation slice is active"
     }
 }
 
