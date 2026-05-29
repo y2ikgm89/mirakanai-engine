@@ -15,6 +15,7 @@
 #include "mirakana/platform/input.hpp"
 #include "mirakana/renderer/renderer.hpp"
 #include "mirakana/renderer/sprite_batch.hpp"
+#include "mirakana/renderer/tile_chunk_renderer.hpp"
 #include "mirakana/runtime/addressable_content_streaming.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
 #include "mirakana/runtime/entity_scale_culling.hpp"
@@ -88,6 +89,7 @@ struct DesktopRuntimeOptions {
     bool require_sprite_collision_hitbox{false};
     bool require_sprite_effects_particles{false};
     bool require_tilemap_runtime_ux{false};
+    bool require_production_tile_renderer{false};
     bool require_gameplay_systems{false};
     bool require_procedural_generation{false};
     bool require_world_region_streaming{false};
@@ -490,6 +492,20 @@ sprite_batch_budget_profile_status_name(mirakana::SpriteBatchBudgetProfileStatus
     case mirakana::SpriteBatchBudgetProfileStatus::diagnostics:
         return "diagnostics";
     case mirakana::SpriteBatchBudgetProfileStatus::budget_exceeded:
+        return "budget_exceeded";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view tile_chunk_renderer_status_name(mirakana::TileChunkRendererStatus status) noexcept {
+    switch (status) {
+    case mirakana::TileChunkRendererStatus::ready:
+        return "ready";
+    case mirakana::TileChunkRendererStatus::invalid_request:
+        return "invalid_request";
+    case mirakana::TileChunkRendererStatus::diagnostics:
+        return "diagnostics";
+    case mirakana::TileChunkRendererStatus::budget_exceeded:
         return "budget_exceeded";
     }
     return "unknown";
@@ -6751,6 +6767,26 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
         tilemap_sampled_cells_ = tilemap_sample.sampled_cell_count;
         tilemap_diagnostics_ = tilemap_sample.diagnostic_count;
 
+        const auto tile_chunk_plan = build_tile_chunk_renderer_plan();
+        tile_chunk_renderer_status_ = tile_chunk_plan.status;
+        tile_chunk_renderer_ready_ = tile_chunk_plan.succeeded();
+        tile_chunk_renderer_visible_cells_ = tile_chunk_plan.visible_cell_count;
+        tile_chunk_renderer_opaque_cells_ = tile_chunk_plan.opaque_cell_count;
+        tile_chunk_renderer_transparent_cells_ = tile_chunk_plan.transparent_cell_count;
+        tile_chunk_renderer_sprite_rows_ = tile_chunk_plan.sprite_rows.size();
+        tile_chunk_renderer_draw_rows_ = tile_chunk_plan.draw_rows.size();
+        tile_chunk_renderer_texture_binds_ = tile_chunk_plan.sprite_batch_plan.texture_bind_count;
+        tile_chunk_renderer_dirty_rebuild_rows_ = tile_chunk_plan.dirty_rebuild_rows.size();
+        tile_chunk_renderer_dirty_rebuild_cells_ = 0U;
+        for (const auto& dirty_row : tile_chunk_plan.dirty_rebuild_rows) {
+            tile_chunk_renderer_dirty_rebuild_cells_ += dirty_row.affected_cells;
+        }
+        tile_chunk_renderer_light_rows_ = tile_chunk_plan.lightmap_rows.size();
+        tile_chunk_renderer_changed_light_cells_ = tile_chunk_plan.changed_light_cell_count;
+        tile_chunk_renderer_diagnostics_ = tile_chunk_plan.diagnostics.size();
+        tile_chunk_renderer_backend_submission_invoked_ = tile_chunk_plan.invoked_backend_specific_submission;
+        tile_chunk_renderer_native_texture_ownership_invoked_ = tile_chunk_plan.invoked_native_texture_ownership;
+
         ui_ok_ = build_hud();
         theme_.add(mirakana::UiThemeColor{.token = "hud.panel",
                                           .color = mirakana::Color{.r = 0.06F, .g = 0.08F, .b = 0.09F, .a = 1.0F}});
@@ -6960,7 +6996,7 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
                audio_commands_ == 1 && audio_underruns_ == 0 && package_scene_sprites_ == 2 && tilemap_runtime_ok_ &&
                tilemap_layers_ == 1 && tilemap_visible_layers_ == 1 && tilemap_tiles_ == 2 &&
                tilemap_non_empty_cells_ == 3 && tilemap_sampled_cells_ == 3 && tilemap_diagnostics_ == 0 &&
-               sprite_effect_particles_ready() && scene_gameplay_bindings_.ready &&
+               production_tile_renderer_ready() && sprite_effect_particles_ready() && scene_gameplay_bindings_.ready &&
                gameplay_systems_.passed(expected_frames);
     }
 
@@ -7189,6 +7225,73 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
 
     [[nodiscard]] std::size_t tilemap_diagnostics() const noexcept {
         return tilemap_diagnostics_;
+    }
+
+    [[nodiscard]] mirakana::TileChunkRendererStatus tile_chunk_renderer_status() const noexcept {
+        return tile_chunk_renderer_status_;
+    }
+
+    [[nodiscard]] bool production_tile_renderer_ready() const noexcept {
+        return tile_chunk_renderer_ready_ && tile_chunk_renderer_visible_cells_ == 3U &&
+               tile_chunk_renderer_opaque_cells_ == 2U && tile_chunk_renderer_transparent_cells_ == 1U &&
+               tile_chunk_renderer_sprite_rows_ == 3U && tile_chunk_renderer_draw_rows_ == 2U &&
+               tile_chunk_renderer_texture_binds_ == 1U && tile_chunk_renderer_dirty_rebuild_rows_ == 2U &&
+               tile_chunk_renderer_dirty_rebuild_cells_ == 5U && tile_chunk_renderer_light_rows_ == 3U &&
+               tile_chunk_renderer_changed_light_cells_ == 1U && tile_chunk_renderer_diagnostics_ == 0U &&
+               !tile_chunk_renderer_backend_submission_invoked_ &&
+               !tile_chunk_renderer_native_texture_ownership_invoked_;
+    }
+
+    [[nodiscard]] std::uint64_t tile_chunk_renderer_visible_cells() const noexcept {
+        return tile_chunk_renderer_visible_cells_;
+    }
+
+    [[nodiscard]] std::uint64_t tile_chunk_renderer_opaque_cells() const noexcept {
+        return tile_chunk_renderer_opaque_cells_;
+    }
+
+    [[nodiscard]] std::uint64_t tile_chunk_renderer_transparent_cells() const noexcept {
+        return tile_chunk_renderer_transparent_cells_;
+    }
+
+    [[nodiscard]] std::uint64_t tile_chunk_renderer_sprite_rows() const noexcept {
+        return tile_chunk_renderer_sprite_rows_;
+    }
+
+    [[nodiscard]] std::uint64_t tile_chunk_renderer_draw_rows() const noexcept {
+        return tile_chunk_renderer_draw_rows_;
+    }
+
+    [[nodiscard]] std::uint64_t tile_chunk_renderer_texture_binds() const noexcept {
+        return tile_chunk_renderer_texture_binds_;
+    }
+
+    [[nodiscard]] std::uint64_t tile_chunk_renderer_dirty_rebuild_rows() const noexcept {
+        return tile_chunk_renderer_dirty_rebuild_rows_;
+    }
+
+    [[nodiscard]] std::uint64_t tile_chunk_renderer_dirty_rebuild_cells() const noexcept {
+        return tile_chunk_renderer_dirty_rebuild_cells_;
+    }
+
+    [[nodiscard]] std::uint64_t tile_chunk_renderer_light_rows() const noexcept {
+        return tile_chunk_renderer_light_rows_;
+    }
+
+    [[nodiscard]] std::uint64_t tile_chunk_renderer_changed_light_cells() const noexcept {
+        return tile_chunk_renderer_changed_light_cells_;
+    }
+
+    [[nodiscard]] std::size_t tile_chunk_renderer_diagnostics() const noexcept {
+        return tile_chunk_renderer_diagnostics_;
+    }
+
+    [[nodiscard]] bool tile_chunk_renderer_backend_submission_invoked() const noexcept {
+        return tile_chunk_renderer_backend_submission_invoked_;
+    }
+
+    [[nodiscard]] bool tile_chunk_renderer_native_texture_ownership_invoked() const noexcept {
+        return tile_chunk_renderer_native_texture_ownership_invoked_;
     }
 
     [[nodiscard]] std::size_t scene_sprite_sources_submitted() const noexcept {
@@ -7855,6 +7958,112 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
         return batch_plan;
     }
 
+    [[nodiscard]] const mirakana::runtime::RuntimeTilemapTile*
+    find_tilemap_tile(std::string_view tile_id) const noexcept {
+        for (const auto& tile : tilemap_.tiles) {
+            if (tile.id == tile_id) {
+                return &tile;
+            }
+        }
+        return nullptr;
+    }
+
+    [[nodiscard]] mirakana::TileChunkRendererPlan build_tile_chunk_renderer_plan() const {
+        std::vector<mirakana::TileChunkCellRow> cells;
+        std::vector<mirakana::TileChunkLightCellRow> light_cells;
+        cells.reserve(tilemap_non_empty_cells_);
+        light_cells.reserve(tilemap_non_empty_cells_);
+
+        mirakana::Extent2D chunk_size;
+        const auto light_texture =
+            asset_id_from_game_asset_key("runtime/lightmaps/sample_2d_desktop_runtime_package/tile_chunk");
+
+        for (std::size_t layer_index = 0; layer_index < tilemap_.layers.size(); ++layer_index) {
+            const auto& layer = tilemap_.layers[layer_index];
+            if (!layer.visible) {
+                continue;
+            }
+
+            chunk_size.width = std::max(chunk_size.width, layer.width);
+            chunk_size.height = std::max(chunk_size.height, layer.height);
+            for (std::uint32_t y = 0; y < layer.height; ++y) {
+                for (std::uint32_t x = 0; x < layer.width; ++x) {
+                    const auto cell_index = static_cast<std::size_t>(y) * static_cast<std::size_t>(layer.width) +
+                                            static_cast<std::size_t>(x);
+                    if (cell_index >= layer.cells.size() || layer.cells[cell_index].empty()) {
+                        continue;
+                    }
+
+                    const auto* tile = find_tilemap_tile(layer.cells[cell_index]);
+                    if (tile == nullptr) {
+                        continue;
+                    }
+
+                    const auto tile_color = mirakana::Color{
+                        .r = tile->color[0],
+                        .g = tile->color[1],
+                        .b = tile->color[2],
+                        .a = tile->color[3],
+                    };
+                    const auto transparent = tile->id == "water" || tile_color.a < 1.0F;
+                    cells.push_back(mirakana::TileChunkCellRow{
+                        .tile_id = tile->id,
+                        .material_id = tile->id,
+                        .x = static_cast<std::int32_t>(x),
+                        .y = static_cast<std::int32_t>(y),
+                        .layer = static_cast<std::int32_t>(layer_index),
+                        .visible = true,
+                        .transparent = transparent,
+                        .atlas_page = tile->page,
+                        .uv_rect =
+                            mirakana::SpriteUvRect{
+                                .u0 = tile->u0,
+                                .v0 = tile->v0,
+                                .u1 = tile->u1,
+                                .v1 = tile->v1,
+                            },
+                        .color = tile_color,
+                    });
+
+                    light_cells.push_back(mirakana::TileChunkLightCellRow{
+                        .x = static_cast<std::int32_t>(x),
+                        .y = static_cast<std::int32_t>(y),
+                        .color =
+                            mirakana::Color{
+                                .r = tile_color.r * 0.35F,
+                                .g = tile_color.g * 0.35F,
+                                .b = tile_color.b * 0.45F,
+                                .a = 1.0F,
+                            },
+                        .changed = light_cells.empty(),
+                        .light_texture = light_texture,
+                    });
+                }
+            }
+        }
+
+        const std::array<mirakana::TileChunkDirtyRegion, 2> dirty_regions{
+            mirakana::TileChunkDirtyRegion{.x = 0, .y = 0, .width = 1, .height = 1, .full_chunk = false},
+            mirakana::TileChunkDirtyRegion{.x = 0, .y = 0, .width = 0, .height = 0, .full_chunk = true},
+        };
+
+        return mirakana::plan_tile_chunk_renderer(mirakana::TileChunkRendererDesc{
+            .chunk_id = "sample_2d_desktop_runtime_package/chunk/0_0",
+            .chunk_size = chunk_size,
+            .tile_size = mirakana::Extent2D{.width = tilemap_.tile_width, .height = tilemap_.tile_height},
+            .cells = cells,
+            .dirty_regions = dirty_regions,
+            .light_cells = light_cells,
+            .light_texture = light_texture,
+            .max_sprite_rows = 16,
+            .max_draw_rows = 8,
+            .max_dirty_rebuild_cells = 16,
+            .max_light_rows = 16,
+            .request_native_texture_ownership = false,
+            .request_backend_specific_submission = false,
+        });
+    }
+
     mirakana::VirtualInput& input_;
     mirakana::IRenderer& renderer_;
     mirakana::runtime::RuntimeInputActionMap actions_;
@@ -7928,6 +8137,18 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
     std::size_t tilemap_non_empty_cells_{0};
     std::size_t tilemap_sampled_cells_{0};
     std::size_t tilemap_diagnostics_{0};
+    mirakana::TileChunkRendererStatus tile_chunk_renderer_status_{mirakana::TileChunkRendererStatus::invalid_request};
+    std::uint64_t tile_chunk_renderer_visible_cells_{0};
+    std::uint64_t tile_chunk_renderer_opaque_cells_{0};
+    std::uint64_t tile_chunk_renderer_transparent_cells_{0};
+    std::uint64_t tile_chunk_renderer_sprite_rows_{0};
+    std::uint64_t tile_chunk_renderer_draw_rows_{0};
+    std::uint64_t tile_chunk_renderer_texture_binds_{0};
+    std::uint64_t tile_chunk_renderer_dirty_rebuild_rows_{0};
+    std::uint64_t tile_chunk_renderer_dirty_rebuild_cells_{0};
+    std::uint64_t tile_chunk_renderer_light_rows_{0};
+    std::uint64_t tile_chunk_renderer_changed_light_cells_{0};
+    std::size_t tile_chunk_renderer_diagnostics_{0};
     std::uint32_t frames_{0};
     std::uint32_t sprite_flipbook_ticks_{0};
     float final_x_{0.0F};
@@ -7942,6 +8163,9 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
     bool sprite_flipbook_ok_{true};
     bool sprite_effect_particles_ok_{true};
     bool tilemap_runtime_ok_{false};
+    bool tile_chunk_renderer_ready_{false};
+    bool tile_chunk_renderer_backend_submission_invoked_{false};
+    bool tile_chunk_renderer_native_texture_ownership_invoked_{false};
     bool throttle_{true};
     mirakana::runtime::RuntimeSpriteEffectParticlePlanStatus sprite_effect_particles_status_{
         mirakana::runtime::RuntimeSpriteEffectParticlePlanStatus::no_spawns};
@@ -7966,7 +8190,7 @@ void print_usage() {
                  "[--require-vulkan-shaders] [--require-vulkan-renderer] [--require-native-2d-sprites] "
                  "[--require-sprite-animation] [--require-sprite-sorting-layer] [--require-sprite-9slice-tiled] "
                  "[--require-sprite-collision-hitbox] [--require-sprite-effects-particles] "
-                 "[--require-tilemap-runtime-ux] "
+                 "[--require-tilemap-runtime-ux] [--require-production-tile-renderer] "
                  "[--require-gameplay-systems] "
                  "[--require-procedural-generation] [--require-world-region-streaming] "
                  "[--require-entity-scale-culling] [--require-scripting-sandbox-policy] "
@@ -8032,6 +8256,11 @@ void print_usage() {
             continue;
         }
         if (arg == "--require-tilemap-runtime-ux") {
+            options.require_tilemap_runtime_ux = true;
+            continue;
+        }
+        if (arg == "--require-production-tile-renderer") {
+            options.require_production_tile_renderer = true;
             options.require_tilemap_runtime_ux = true;
             continue;
         }
@@ -8930,7 +9159,24 @@ int main(int argc, char** argv) {
         << " tilemap_layers=" << game.tilemap_layers() << " tilemap_visible_layers=" << game.tilemap_visible_layers()
         << " tilemap_tiles=" << game.tilemap_tiles() << " tilemap_non_empty_cells=" << game.tilemap_non_empty_cells()
         << " tilemap_cells_sampled=" << game.tilemap_sampled_cells()
-        << " tilemap_diagnostics=" << game.tilemap_diagnostics() << " gameplay_systems_status="
+        << " tilemap_diagnostics=" << game.tilemap_diagnostics()
+        << " tile_chunk_renderer_status=" << tile_chunk_renderer_status_name(game.tile_chunk_renderer_status())
+        << " tile_chunk_renderer_ready=" << (game.production_tile_renderer_ready() ? 1 : 0)
+        << " tile_chunk_renderer_visible_cells=" << game.tile_chunk_renderer_visible_cells()
+        << " tile_chunk_renderer_opaque_cells=" << game.tile_chunk_renderer_opaque_cells()
+        << " tile_chunk_renderer_transparent_cells=" << game.tile_chunk_renderer_transparent_cells()
+        << " tile_chunk_renderer_sprite_rows=" << game.tile_chunk_renderer_sprite_rows()
+        << " tile_chunk_renderer_draw_rows=" << game.tile_chunk_renderer_draw_rows()
+        << " tile_chunk_renderer_texture_binds=" << game.tile_chunk_renderer_texture_binds()
+        << " tile_chunk_renderer_dirty_rebuild_rows=" << game.tile_chunk_renderer_dirty_rebuild_rows()
+        << " tile_chunk_renderer_dirty_rebuild_cells=" << game.tile_chunk_renderer_dirty_rebuild_cells()
+        << " tile_chunk_renderer_light_rows=" << game.tile_chunk_renderer_light_rows()
+        << " tile_chunk_renderer_changed_light_cells=" << game.tile_chunk_renderer_changed_light_cells()
+        << " tile_chunk_renderer_diagnostics=" << game.tile_chunk_renderer_diagnostics()
+        << " tile_chunk_renderer_backend_submission_invoked="
+        << (game.tile_chunk_renderer_backend_submission_invoked() ? 1 : 0)
+        << " tile_chunk_renderer_native_texture_ownership_invoked="
+        << (game.tile_chunk_renderer_native_texture_ownership_invoked() ? 1 : 0) << " gameplay_systems_status="
         << gameplay_2d_systems_status_name(game.gameplay_systems_status(options.max_frames))
         << " gameplay_systems_ready="
         << ((game.gameplay_systems_passed(options.max_frames) && game.gameplay_systems_scene_binding_ready() &&
@@ -9800,6 +10046,29 @@ int main(int argc, char** argv) {
                   << " tilemap_cells_sampled=" << game.tilemap_sampled_cells()
                   << " tilemap_diagnostics=" << game.tilemap_diagnostics() << '\n';
         return 11;
+    }
+
+    if (options.require_production_tile_renderer && !game.production_tile_renderer_ready()) {
+        std::cout << "sample_2d_desktop_runtime_package required_production_tile_renderer_unavailable"
+                  << " tile_chunk_renderer_status="
+                  << tile_chunk_renderer_status_name(game.tile_chunk_renderer_status())
+                  << " tile_chunk_renderer_ready=" << (game.production_tile_renderer_ready() ? 1 : 0)
+                  << " tile_chunk_renderer_visible_cells=" << game.tile_chunk_renderer_visible_cells()
+                  << " tile_chunk_renderer_opaque_cells=" << game.tile_chunk_renderer_opaque_cells()
+                  << " tile_chunk_renderer_transparent_cells=" << game.tile_chunk_renderer_transparent_cells()
+                  << " tile_chunk_renderer_sprite_rows=" << game.tile_chunk_renderer_sprite_rows()
+                  << " tile_chunk_renderer_draw_rows=" << game.tile_chunk_renderer_draw_rows()
+                  << " tile_chunk_renderer_texture_binds=" << game.tile_chunk_renderer_texture_binds()
+                  << " tile_chunk_renderer_dirty_rebuild_rows=" << game.tile_chunk_renderer_dirty_rebuild_rows()
+                  << " tile_chunk_renderer_dirty_rebuild_cells=" << game.tile_chunk_renderer_dirty_rebuild_cells()
+                  << " tile_chunk_renderer_light_rows=" << game.tile_chunk_renderer_light_rows()
+                  << " tile_chunk_renderer_changed_light_cells=" << game.tile_chunk_renderer_changed_light_cells()
+                  << " tile_chunk_renderer_diagnostics=" << game.tile_chunk_renderer_diagnostics()
+                  << " tile_chunk_renderer_backend_submission_invoked="
+                  << (game.tile_chunk_renderer_backend_submission_invoked() ? 1 : 0)
+                  << " tile_chunk_renderer_native_texture_ownership_invoked="
+                  << (game.tile_chunk_renderer_native_texture_ownership_invoked() ? 1 : 0) << '\n';
+        return 31;
     }
 
     if (options.require_procedural_generation && !game.gameplay_systems_procedural_generation_ready()) {

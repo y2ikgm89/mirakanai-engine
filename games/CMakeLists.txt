@@ -1567,6 +1567,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-sprite-collision-hitbox
             --require-sprite-effects-particles
             --require-tilemap-runtime-ux
+            --require-production-tile-renderer
             --require-gameplay-systems
             --require-procedural-generation
             --require-world-region-streaming
@@ -1594,6 +1595,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-sprite-collision-hitbox
             --require-sprite-effects-particles
             --require-tilemap-runtime-ux
+            --require-production-tile-renderer
             --require-gameplay-systems
             --require-procedural-generation
             --require-world-region-streaming

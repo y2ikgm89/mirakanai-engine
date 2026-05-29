@@ -16,6 +16,7 @@ add_library(mirakana_renderer
     src/scene_scale_policy.cpp
     src/shadow_map.cpp
     src/sprite_batch.cpp
+    src/tile_chunk_renderer.cpp
 )
 
 target_include_directories(mirakana_renderer
