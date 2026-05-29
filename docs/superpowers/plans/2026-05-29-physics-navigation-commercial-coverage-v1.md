@@ -12,7 +12,7 @@
 
 **Plan ID:** `physics-navigation-commercial-coverage-v1`
 
-**Status:** Active.
+**Status:** Complete. Implemented and published through PR #294; the production loop returned to the selection gate in the closeout follow-up.
 
 **Date:** 2026-05-29
 
@@ -216,7 +216,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 ```
 
-- [ ] **Step 3: Create validated commit and PR**
+- [x] **Step 3: Create validated commit and PR**
 
 Commit only task-owned files. Push `codex/physics-navigation-commercial-coverage-v1`, create a focused PR with local validation evidence, wait for hosted checks, use `gh pr merge --auto --merge --match-head-commit <headRefOid>` after checks are clean, and remove the merged worktree with `tools/remove-merged-worktree.ps1`.
 
@@ -237,3 +237,11 @@ Commit only task-owned files. Push `codex/physics-navigation-commercial-coverage
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_physics_navigation_production_breadth_tests` | Pass | Focused target rebuilt after final static-check edits. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "physics_navigation_production_breadth"` | Pass | 1/1 focused CTest passed after final static-check edits. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Pass | Full validation passed: 19 static checks, build, tidy smoke, and 79/79 CTest tests passed; Apple/Metal remained diagnostic-only host-gated on this Windows host. |
+| PR #294 hosted checks | Pass | Same-head hosted checks passed for commit `2bbf78d84fe2cc7551e13217b1ce223c8e75375e`: PR Gate, Windows MSVC, Linux CMake, Linux Coverage, Linux Clang ASan/UBSan, Full Repository Static Analysis shards 0-3, macOS Metal CMake, iOS Simulator smoke, and CodeQL succeeded; Windows C++23 Release Evaluation was skipped by tier selection. |
+| PR #294 merge and cleanup | Pass | PR #294 merged at `d65827d2f29fe3f33c27be4e739ef0fc25344014`; `tools/remove-merged-worktree.ps1` removed the task worktree and deleted the task branch/remote branch. |
+| Closeout `git diff --check` | Pass | No whitespace errors after returning `currentActivePlan` to the production-completion master plan. |
+| Closeout `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | Pass | Text and clang-format checks passed for the docs/manifest closeout. |
+| Closeout `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | Pass | Manifest compose and JSON contract checks passed after returning `recommendedNextPlan.id` to `next-production-gap-selection`. |
+| Closeout `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | Pass | AI integration checks passed with `unsupportedProductionGaps = []` and no active child plan. |
+| Closeout `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | Pass | Agent surface budget and parity checks passed. |
+| Closeout `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-production-readiness-audit.ps1` | Pass | Production readiness audit reported `unsupported_gaps=0`. |
