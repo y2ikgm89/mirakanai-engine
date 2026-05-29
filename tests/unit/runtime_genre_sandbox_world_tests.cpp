@@ -125,6 +125,14 @@ make_placement(std::string intent_id, std::string chunk_id, RuntimeSandboxCellCo
         .destruction_intents = {make_destruction("destroy.0", "chunk.0", cell(1, 0, 1), 1U)},
         .construction_cost_rows = {make_cost("block.wall", "item.wood", 2U, 1U)},
         .persistence_rows = {make_persistence("chunk.0", "persist.chunk.0", 2U, 1U, 1U)},
+        .tile_drop_rows = {},
+        .tool_effectiveness_rows = {},
+        .spawn_region_rows = {},
+        .day_night_event_rows = {},
+        .trigger_rows = {},
+        .game_content_rule_ids = {},
+        .row_budget = 512U,
+        .seed = 0U,
     };
 }
 
@@ -168,6 +176,14 @@ MK_TEST("runtime sandbox world plans chunk placement destruction costs mutation 
                     make_persistence("chunk.0", "persist.chunk.0", 2U, 2U, 1U),
                     make_persistence("chunk.1", "persist.chunk.1", 3U, 2U, 2U),
                 },
+            .tile_drop_rows = {},
+            .tool_effectiveness_rows = {},
+            .spawn_region_rows = {},
+            .day_night_event_rows = {},
+            .trigger_rows = {},
+            .game_content_rule_ids = {},
+            .row_budget = 512U,
+            .seed = 0U,
         });
 
     MK_REQUIRE(plan.status == RuntimeSandboxWorldStatus::ready);
@@ -209,6 +225,156 @@ MK_TEST("runtime sandbox world plans chunk placement destruction costs mutation 
     MK_REQUIRE(plan.persistence_rows[1].status == RuntimeSandboxPersistenceStatus::repairable);
 }
 
+MK_TEST("runtime sandbox world emits generic gameplay hook rows without owning game rules") {
+    using mirakana::runtime::RuntimeSandboxDayNightPhase;
+    using mirakana::runtime::RuntimeSandboxTriggerKind;
+
+    const auto
+        plan =
+            mirakana::runtime::plan_runtime_sandbox_world_mutation(
+                mirakana::runtime::RuntimeSandboxWorldMutationRequest{
+                    .world_id = "sandbox.gameplay.hooks",
+                    .world_tick = 32U,
+                    .chunk_rows = {make_chunk("chunk.0", "region.spawn", true, true, 1U)},
+                    .existing_cell_rows = {make_existing_cell("chunk.0", cell(1, 0, 1), "block.soil", true, false, 1U)},
+                    .placement_intents = {make_placement("place.wall", "chunk.0", cell(3, 0, 1), "block.wall",
+                                                         {make_cost("block.wall", "item.wood", 3U, 1U)}, 1U)},
+                    .destruction_intents = {make_destruction("destroy.soil", "chunk.0", cell(1, 0, 1), 1U)},
+                    .construction_cost_rows = {make_cost("block.wall", "item.wood", 3U, 1U)},
+                    .persistence_rows = {},
+                    .tile_drop_rows =
+                        {
+                            mirakana::runtime::RuntimeSandboxTileDropRow{
+                                .block_id = "block.soil",
+                                .item_id = "item.soil",
+                                .min_quantity = 1U,
+                                .max_quantity = 2U,
+                                .required_tool_category_id = "tool.digging",
+                                .source_index = 1U,
+                            },
+                        },
+                    .tool_effectiveness_rows =
+                        {
+                            mirakana::runtime::RuntimeSandboxToolEffectivenessRow{
+                                .tool_category_id = "tool.digging",
+                                .block_tag_id = "tag.soft_ground",
+                                .effectiveness_tier = 2U,
+                                .source_index = 1U,
+                            },
+                        },
+                    .spawn_region_rows =
+                        {
+                            mirakana::runtime::RuntimeSandboxSpawnRegionRow{
+                                .region_id = "region.spawn",
+                                .spawn_group_id = "spawn.passive",
+                                .max_active = 4U,
+                                .source_index = 1U,
+                            },
+                        },
+                    .day_night_event_rows =
+                        {
+                            mirakana::runtime::RuntimeSandboxDayNightEventRow{
+                                .event_id = "cycle.dawn",
+                                .phase = RuntimeSandboxDayNightPhase::dawn,
+                                .first_tick = 120U,
+                                .repeat_interval_ticks = 240U,
+                                .source_index = 1U,
+                            },
+                        },
+                    .trigger_rows =
+                        {
+                            mirakana::runtime::RuntimeSandboxTriggerRow{
+                                .trigger_id = "trigger.camp",
+                                .kind = RuntimeSandboxTriggerKind::interaction,
+                                .event_id = "cycle.dawn",
+                                .chunk_id = "chunk.0",
+                                .coord = cell(2, 0, 1),
+                                .interaction_id = "interaction.inspect",
+                                .source_index = 1U,
+                            },
+                        },
+                    .game_content_rule_ids = {},
+                    .row_budget = 64U,
+                    .seed = 7U,
+                });
+
+    MK_REQUIRE(plan.status == RuntimeSandboxWorldStatus::ready);
+    MK_REQUIRE(plan.diagnostics.empty());
+    MK_REQUIRE(plan.tile_drop_rows.size() == 1U);
+    MK_REQUIRE(plan.tool_effectiveness_rows.size() == 1U);
+    MK_REQUIRE(plan.spawn_region_rows.size() == 1U);
+    MK_REQUIRE(plan.day_night_event_rows.size() == 1U);
+    MK_REQUIRE(plan.trigger_rows.size() == 1U);
+    MK_REQUIRE(plan.construction_cost_consumption_rows.size() == 1U);
+    MK_REQUIRE(plan.construction_cost_consumption_rows[0].intent_id == "place.wall");
+    MK_REQUIRE(plan.construction_cost_consumption_rows[0].item_id == "item.wood");
+    MK_REQUIRE(plan.construction_cost_consumption_rows[0].required_quantity == 3U);
+    MK_REQUIRE(plan.construction_cost_consumption_rows[0].consumed_quantity == 3U);
+    MK_REQUIRE(plan.construction_cost_consumption_rows[0].accepted);
+    MK_REQUIRE(plan.tile_drop_count == 1U);
+    MK_REQUIRE(plan.construction_cost_consumption_count == 1U);
+    MK_REQUIRE(plan.tool_effectiveness_count == 1U);
+    MK_REQUIRE(plan.spawn_region_count == 1U);
+    MK_REQUIRE(plan.day_night_event_count == 1U);
+    MK_REQUIRE(plan.trigger_count == 1U);
+    MK_REQUIRE(plan.replay_hash != 0U);
+}
+
+MK_TEST("runtime sandbox world rejects game specific catalogs formulas and economy hooks") {
+    const auto plan =
+        mirakana::runtime::plan_runtime_sandbox_world_mutation(mirakana::runtime::RuntimeSandboxWorldMutationRequest{
+            .world_id = "sandbox.gameplay.reject",
+            .world_tick = 33U,
+            .chunk_rows = {make_chunk("chunk.0", "region.spawn", true, true, 1U)},
+            .existing_cell_rows = {},
+            .placement_intents = {},
+            .destruction_intents = {},
+            .construction_cost_rows = {},
+            .persistence_rows = {},
+            .tile_drop_rows = {mirakana::runtime::RuntimeSandboxTileDropRow{
+                .block_id = "boss.dragon",
+                .item_id = "item.trophy",
+                .min_quantity = 1U,
+                .max_quantity = 1U,
+                .required_tool_category_id = "tool.any",
+                .source_index = 1U,
+            }},
+            .tool_effectiveness_rows = {mirakana::runtime::RuntimeSandboxToolEffectivenessRow{
+                .tool_category_id = "damage_formula.fire",
+                .block_tag_id = "tag.soft_ground",
+                .effectiveness_tier = 1U,
+                .source_index = 2U,
+            }},
+            .spawn_region_rows = {mirakana::runtime::RuntimeSandboxSpawnRegionRow{
+                .region_id = "region.spawn",
+                .spawn_group_id = "npc.merchant",
+                .max_active = 1U,
+                .source_index = 3U,
+            }},
+            .day_night_event_rows = {mirakana::runtime::RuntimeSandboxDayNightEventRow{
+                .event_id = "economy_balance.market",
+                .phase = mirakana::runtime::RuntimeSandboxDayNightPhase::day,
+                .first_tick = 1U,
+                .repeat_interval_ticks = 10U,
+                .source_index = 4U,
+            }},
+            .trigger_rows = {},
+            .game_content_rule_ids = {},
+            .row_budget = 64U,
+            .seed = 8U,
+        });
+
+    MK_REQUIRE(plan.status == RuntimeSandboxWorldStatus::invalid_request);
+    MK_REQUIRE(diagnostic_count(plan, mirakana::runtime::RuntimeSandboxDiagnosticCode::unsupported_game_content_rule) ==
+               4U);
+    MK_REQUIRE(plan.tile_drop_rows.empty());
+    MK_REQUIRE(plan.tool_effectiveness_rows.empty());
+    MK_REQUIRE(plan.spawn_region_rows.empty());
+    MK_REQUIRE(plan.day_night_event_rows.empty());
+    MK_REQUIRE(plan.trigger_rows.empty());
+    MK_REQUIRE(plan.construction_cost_consumption_rows.empty());
+}
+
 MK_TEST("runtime sandbox world rejects malformed rows and game-owned content rules before output rows") {
     const auto plan =
         mirakana::runtime::plan_runtime_sandbox_world_mutation(mirakana::runtime::RuntimeSandboxWorldMutationRequest{
@@ -233,7 +399,15 @@ MK_TEST("runtime sandbox world rejects malformed rows and game-owned content rul
                 },
             .destruction_intents = {make_destruction("destroy.backend", "native", cell(0, 0, 0), 1U)},
             .construction_cost_rows = {make_cost("block.wall", "item.wood", 0U, 1U)},
+            .persistence_rows = {},
+            .tile_drop_rows = {},
+            .tool_effectiveness_rows = {},
+            .spawn_region_rows = {},
+            .day_night_event_rows = {},
+            .trigger_rows = {},
             .game_content_rule_ids = {"biome.desert", "balance.block-hardness"},
+            .row_budget = 512U,
+            .seed = 0U,
         });
 
     MK_REQUIRE(plan.status == RuntimeSandboxWorldStatus::invalid_request);
@@ -295,6 +469,18 @@ MK_TEST("runtime sandbox world diagnostics are totally ordered by stable public 
             .world_tick = 1U,
             .chunk_rows = {make_chunk("chunk.0", "region.0", true, true, 1U)},
             .existing_cell_rows = {make_existing_cell("chunk.0", cell(99, 0, 0), "renderer", true, false, 7U)},
+            .placement_intents = {},
+            .destruction_intents = {},
+            .construction_cost_rows = {},
+            .persistence_rows = {},
+            .tile_drop_rows = {},
+            .tool_effectiveness_rows = {},
+            .spawn_region_rows = {},
+            .day_night_event_rows = {},
+            .trigger_rows = {},
+            .game_content_rule_ids = {},
+            .row_budget = 512U,
+            .seed = 0U,
         });
 
     MK_REQUIRE(plan.status == RuntimeSandboxWorldStatus::invalid_request);
