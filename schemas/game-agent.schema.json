@@ -271,7 +271,13 @@
                   },
                   "delivery": {
                     "type": "string",
-                    "enum": ["runtime-package-file", "reviewed-source-authoring", "host-built-shader-artifact", "first-party-placeholder"]
+                    "enum": [
+                      "runtime-package-file",
+                      "reviewed-source-authoring",
+                      "reviewed-package-authoring",
+                      "host-built-shader-artifact",
+                      "first-party-placeholder"
+                    ]
                   }
                 }
               }
@@ -1833,6 +1839,154 @@
             "const": "unsupported"
           },
           "nativeGpuSpriteBatching": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "preflightRecipeIds": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9-]*$"
+            }
+          }
+        }
+      }
+    },
+    "sandboxWorldAuthoringTargets": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "mode",
+          "reviewApi",
+          "applyApi",
+          "packageIndexPath",
+          "tilemapPath",
+          "reviewDocumentPath",
+          "atlasTexturePath",
+          "tilemapAssetKey",
+          "atlasTextureAssetKey",
+          "tileDefinitionRows",
+          "paletteBrushRows",
+          "chunkTemplateRows",
+          "proceduralSeedRows",
+          "changedFileRows",
+          "tilemapPackageChangedFileRows",
+          "packageDependencyEdges",
+          "externalImageDecoding",
+          "externalDownload",
+          "importerPluginExecution",
+          "runtimeSourceParsing",
+          "rendererRhiResidency",
+          "packageApplyDuringReview",
+          "nativeHandles",
+          "preflightRecipeIds"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
+          "mode": {
+            "type": "string",
+            "const": "reviewed-tilemap-sandbox-world-authoring"
+          },
+          "reviewApi": {
+            "type": "string",
+            "const": "review_sandbox_world_authoring_package"
+          },
+          "applyApi": {
+            "type": "string",
+            "const": "apply_sandbox_world_authoring_package"
+          },
+          "packageIndexPath": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.geindex$"
+          },
+          "tilemapPath": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.tilemap$"
+          },
+          "reviewDocumentPath": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.sandbox_authoring$"
+          },
+          "atlasTexturePath": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?![A-Za-z]:)(?!games/)(?!.*(^|[\\\\/])\\.\\.($|[\\\\/]))(?!.*;).+\\.geasset$"
+          },
+          "tilemapAssetKey": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?!.*(^|/)\\.\\.($|/))(?!.*\\s).+$"
+          },
+          "atlasTextureAssetKey": {
+            "type": "string",
+            "minLength": 1,
+            "pattern": "^(?!/)(?!.*(^|/)\\.\\.($|/))(?!.*\\s).+$"
+          },
+          "tileDefinitionRows": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "paletteBrushRows": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "chunkTemplateRows": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "proceduralSeedRows": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "changedFileRows": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "tilemapPackageChangedFileRows": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "packageDependencyEdges": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "externalImageDecoding": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "externalDownload": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "importerPluginExecution": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "runtimeSourceParsing": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "rendererRhiResidency": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "packageApplyDuringReview": {
+            "type": "string",
+            "const": "unsupported"
+          },
+          "nativeHandles": {
             "type": "string",
             "const": "unsupported"
           },

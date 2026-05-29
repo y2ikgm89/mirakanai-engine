@@ -45,6 +45,8 @@ Missing generated-game art/audio should use reviewed engine tooling such as `mir
 
 Reviewed generated 2D source atlas rows should use `mirakana::SpriteAtlasSourceFrameDesc` / `mirakana::SpriteAtlasSourceAuthoringDesc` / `mirakana::plan_sprite_atlas_source_authoring` to pack already-decoded RGBA8 frames into deterministic `GameEngine.TextureSource.v1` atlas source plus `GameEngine.SourceAssetRegistry.v1` texture rows before registered source cook/package planning. `DesktopRuntime2DPackage` scaffolds expose this as `spriteAtlasSourceAuthoringTargets` while keeping `source/assets/package.geassets` and `source/sprites/player_atlas.texture_source` out of `runtimePackageFiles`. Do not parse source images at runtime, create renderer/RHI residency, infer animation semantics, or use this helper as game-specific art direction.
 
+2D sandbox authoring: `MK_tools` review/apply APIs, `sandboxWorldAuthoringTargets`, `--require-sandbox-authoring-review`, `sandbox_authoring_review_*`; `.sandbox_authoring` outside `runtimePackageFiles`; no external decode/download/importer, review-time apply, runtime source parsing, renderer/RHI, native handles.
+
 Generated `DesktopRuntime2DPackage` smokes report atlas-backed repeated scene sprite plan counters through `sprite_batch_plan_atlas_backed_batches`, `sprite_batch_plan_repeated_atlas_batches`, and `sprite_batch_plan_repeated_atlas_sprites` over adjacent cooked scene sprite rows. Treat these as deterministic package evidence only, not sprite sorting, production atlas packing, public native/RHI handle access, or broad production sprite batching readiness.
 
 Generated 2D tile proof: `plan_tile_chunk_renderer`; `--require-production-tile-renderer`; no native texture ownership.

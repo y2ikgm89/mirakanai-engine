@@ -847,6 +847,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_tools_tests)
     add_test(NAME MK_tools_tests COMMAND MK_tools_tests)
 
+    add_executable(MK_tools_sandbox_world_authoring_tests
+        tests/unit/tools_sandbox_world_authoring_tests.cpp
+    )
+    target_link_libraries(MK_tools_sandbox_world_authoring_tests PRIVATE MK_tools)
+    target_include_directories(MK_tools_sandbox_world_authoring_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_tools_sandbox_world_authoring_tests)
+    add_test(NAME MK_tools_sandbox_world_authoring_tests COMMAND MK_tools_sandbox_world_authoring_tests)
+
     add_executable(MK_tools_runtime_hot_reload_package_tests
         tests/unit/tools_runtime_hot_reload_package_tests.cpp
     )

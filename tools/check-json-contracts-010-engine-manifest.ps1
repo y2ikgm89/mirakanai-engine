@@ -18,6 +18,9 @@ if (-not $gameAgentSchema.properties.PSObject.Properties.Name.Contains("packageS
 if (-not $gameAgentSchema.properties.PSObject.Properties.Name.Contains("atlasTilemapAuthoringTargets")) {
     Write-Error "schemas/game-agent.schema.json must define atlasTilemapAuthoringTargets"
 }
+if (-not $gameAgentSchema.properties.PSObject.Properties.Name.Contains("sandboxWorldAuthoringTargets")) {
+    Write-Error "schemas/game-agent.schema.json must define sandboxWorldAuthoringTargets"
+}
 if (-not $gameAgentSchema.properties.PSObject.Properties.Name.Contains("prefabScenePackageAuthoringTargets")) {
     Write-Error "schemas/game-agent.schema.json must define prefabScenePackageAuthoringTargets"
 }
@@ -108,7 +111,31 @@ Assert-Properties $engine.gameCodeGuidance @("currentEditorInProcessRuntimeHost"
 Assert-Properties $engine.gameCodeGuidance @("currentEditorGameModuleDriverLoad") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentEditorRuntimeScenePackageValidationExecution") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentSpriteAnimationFlipbook") "engine manifest gameCodeGuidance"
+Assert-Properties $engine.gameCodeGuidance @("currentSandboxWorldAuthoring") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("desktopRuntimeGameplaySystemsPackageSmoke") "engine manifest gameCodeGuidance"
+foreach ($needle in @(
+    "SandboxWorldAuthoringPackageDesc",
+    "SandboxWorldTileDefinitionRow",
+    "SandboxWorldPaletteBrushRow",
+    "SandboxWorldChunkTemplateRow",
+    "SandboxWorldProceduralSeedRow",
+    "sandbox_world_authoring_review_format_v1",
+    "review_sandbox_world_authoring_package",
+    "apply_sandbox_world_authoring_package",
+    "sandboxWorldAuthoringTargets",
+    "--require-sandbox-authoring-review",
+    "sandbox_authoring_review_status=ready",
+    "external image decoding",
+    "external download",
+    "importer plugin",
+    "package apply during review",
+    "renderer/RHI residency",
+    "native handles"
+)) {
+    if (-not ([string]$engine.gameCodeGuidance.currentSandboxWorldAuthoring).Contains($needle)) {
+        Write-Error "engine manifest gameCodeGuidance.currentSandboxWorldAuthoring missing: $needle"
+    }
+}
 foreach ($needle in @(
     "evaluate_ai_perception_readiness_2d",
     "gameplay_systems_perception_readiness_status=ready",

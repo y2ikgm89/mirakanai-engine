@@ -35,6 +35,7 @@
 #include "mirakana/tools/production_authoring_workflows.hpp"
 #include "mirakana/tools/registered_source_asset_cook_package_tool.hpp"
 #include "mirakana/tools/runtime_scene_package_validation_tool.hpp"
+#include "mirakana/tools/sandbox_world_authoring.hpp"
 #include "mirakana/tools/scene_prefab_authoring_tool.hpp"
 #include "mirakana/tools/scene_tool.hpp"
 #include "mirakana/tools/scene_v2_runtime_package_migration_tool.hpp"
@@ -2813,6 +2814,13 @@ MK_TEST("tilemap apply tooling rejects missing page rows and unsafe paths") {
     const auto wrong_page_kind = mirakana::plan_cooked_tilemap_package_update(update);
     MK_REQUIRE(!wrong_page_kind.succeeded());
     MK_REQUIRE(failures_contain(wrong_page_kind.failures, "tilemap atlas texture package entry is not a texture"));
+}
+
+MK_TEST("sandbox world authoring exposes reviewed cook format and shared safe paths") {
+    MK_REQUIRE(mirakana::sandbox_world_authoring_review_format_v1() ==
+               std::string_view{"GameEngine.SandboxWorldAuthoringReview.v1"});
+    MK_REQUIRE(mirakana::is_safe_tilemap_package_relative_path("runtime/assets/worlds/seed.sandbox_authoring"));
+    MK_REQUIRE(!mirakana::is_safe_tilemap_package_relative_path("../runtime/assets/worlds/seed.sandbox_authoring"));
 }
 
 MK_TEST("physics collision package tooling authors deterministic payload and package row") {

@@ -591,7 +591,6 @@ if ($null -eq $sample2dDesktopManifestEntry) {
         "MK_ai",
         "MK_navigation",
         "MK_physics",
-        "MK_tools",
         "sample_2d_desktop_runtime_package_shaders",
         "sample_2d_desktop_runtime_package_vulkan_shaders",
         "REQUIRES_D3D12_SHADERS"

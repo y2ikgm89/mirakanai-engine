@@ -1576,6 +1576,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-networking-foundation-policy
             --require-simulation-orchestration
             --require-gameplay-authoring-review
+            --require-sandbox-authoring-review
             --require-production-authoring-workflows
             --require-runtime-ui-workbench
             --require-runtime-ui-production-stack
@@ -1604,6 +1605,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-networking-foundation-policy
             --require-simulation-orchestration
             --require-gameplay-authoring-review
+            --require-sandbox-authoring-review
             --require-production-authoring-workflows
             --require-runtime-ui-workbench
             --require-runtime-ui-production-stack
