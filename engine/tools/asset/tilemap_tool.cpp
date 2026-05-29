@@ -32,12 +32,6 @@ void sort_failures(std::vector<CookedTilemapAuthoringFailure>& failures) {
     });
 }
 
-[[nodiscard]] bool valid_output_path(std::string_view path) noexcept {
-    return !path.empty() && path.find('\0') == std::string_view::npos && path.find('\n') == std::string_view::npos &&
-           path.find('\r') == std::string_view::npos && path.find('\\') == std::string_view::npos &&
-           path.find(':') == std::string_view::npos && path.front() != '/' && path.find("..") == std::string_view::npos;
-}
-
 void sort_asset_ids(std::vector<AssetId>& ids) {
     std::ranges::sort(ids, [](AssetId lhs, AssetId rhs) { return lhs.value < rhs.value; });
 }
@@ -134,7 +128,7 @@ void append_changed_file(std::vector<CookedTilemapPackageChangedFile>& files, st
 
 void validate_package_relative_path(std::vector<CookedTilemapAuthoringFailure>& failures, AssetId asset,
                                     std::string_view path, std::string_view field) {
-    if (!valid_output_path(path)) {
+    if (!is_safe_tilemap_package_relative_path(path)) {
         add_failure(failures, asset, std::string{path}, std::string{field} + " must be a package-relative safe path");
     }
 }
@@ -164,9 +158,15 @@ void canonicalize_package_index(AssetCookedPackageIndex& index) {
 
 } // namespace
 
+bool is_safe_tilemap_package_relative_path(std::string_view path) noexcept {
+    return !path.empty() && path.find('\0') == std::string_view::npos && path.find('\n') == std::string_view::npos &&
+           path.find('\r') == std::string_view::npos && path.find('\\') == std::string_view::npos &&
+           path.find(':') == std::string_view::npos && path.front() != '/' && path.find("..") == std::string_view::npos;
+}
+
 CookedTilemapAuthoringResult author_cooked_tilemap_metadata(const CookedTilemapAuthoringDesc& desc) {
     CookedTilemapAuthoringResult result;
-    if (!valid_output_path(desc.output_path)) {
+    if (!is_safe_tilemap_package_relative_path(desc.output_path)) {
         add_failure(result.failures, desc.tilemap_asset, desc.output_path, "tilemap metadata output path is invalid");
     }
     if (desc.source_revision == 0) {

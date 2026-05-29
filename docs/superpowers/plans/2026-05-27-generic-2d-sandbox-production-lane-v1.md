@@ -12,7 +12,7 @@
 
 **Plan ID:** `generic-2d-sandbox-production-lane-v1`
 
-**Status:** Phased milestone implementation in progress. Phases 1-4 have completed as reviewable slices, but this file does not replace `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`, does not reopen `unsupportedProductionGaps`, and does not mark later planned capabilities as ready.
+**Status:** Phased milestone implementation in progress. Phases 1-7 have completed as reviewable slices, but this file does not replace `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`, does not reopen `unsupportedProductionGaps`, and does not mark later planned capabilities as ready.
 
 ## Current Evidence And Gap Summary
 
@@ -20,7 +20,7 @@ Existing ready foundations:
 
 - `engine/runtime/include/mirakana/runtime/genre_sandbox_world.hpp` plans sandbox chunk/cell placement, destruction, construction cost, mutation, persistence-review, and replay-hash rows, but it does not mutate a live world or write persistence.
 - `engine/runtime/include/mirakana/runtime/asset_runtime.hpp` exposes runtime tilemap payload sampling, but current tilemap support is metadata and visible-cell sampling rather than mutable chunk execution.
-- `engine/tools/include/mirakana/tools/tilemap_tool.hpp` authors cooked tilemap metadata and package index rows, but it explicitly rejects production atlas/source decode/native GPU claims unless later adapters implement them.
+- `engine/tools/include/mirakana/tools/tilemap_tool.hpp` authors cooked tilemap metadata and package index rows, and `engine/tools/include/mirakana/tools/sandbox_world_authoring.hpp` reviews deterministic sandbox tile/palette/chunk/seed changed-file rows before safe package-relative apply. They explicitly reject production atlas/source decode/native GPU claims, external downloads, arbitrary importer plugins, runtime source parsing, and package apply during review unless later adapters implement them.
 - `engine/runtime/include/mirakana/runtime/world_region_streaming.hpp`, addressable content rows, runtime package resident mounts, and resource catalogs provide reviewed load/release planning, but broad background streaming and renderer-owned residency remain outside the current claim.
 - `engine/renderer/include/mirakana/renderer/sprite_batch.hpp` and the selected 2D package have sprite batching, sprite animation, sorting, 9-slice/tiled, particle, and native sprite evidence, but broad high-density production tile rendering is not yet proven.
 - `games/sample_2d_desktop_runtime_package/README.md` intentionally excludes runtime source image decoding, production atlas packing, full tilemap editor UX, broad package streaming, socket IO, rollback/lockstep, broad renderer quality, and broad multiplayer readiness.
@@ -310,18 +310,22 @@ Evidence: RED compile proof first failed with unresolved `mirakana/renderer/tile
 - Modify: `tests/unit/tools_tests.cpp`
 - Modify: `games/sample_2d_desktop_runtime_package/game.agent.json`
 
-- [ ] Re-check Unity Tilemaps, Unity Addressables, CMake, vcpkg, and asset/import official practice anchors before changing authoring or package metadata.
-- [ ] Add RED tests for tile definition documents: tile id, atlas frame, collision kind, material tags, light/liquid/update policy, localization key, accessibility label key for UI-facing tiles, and provenance/license rows.
-- [ ] Add RED tests for palette/brush rows: brush id, shape, layer mask, replacement policy, symmetry, fill policy, and invalid path diagnostics.
-- [ ] Add RED tests for chunk template and procedural seed rows: stable generator id, seed, dimensions, allowed tile sets, object placement rules, and deterministic preview hash.
-- [ ] Add RED tests for package update dry-run/apply rows using `IFileSystem`, safe paths, deterministic changed files, and package index dependency edges.
-- [ ] Implement authoring APIs. Keep actual external image decoding, external downloads, and arbitrary importer plugins rejected unless a separate dependency phase implements them.
-- [ ] Run:
+**Official Evidence:** 2026-05-30 implementation refreshed Context7 `/websites/unity3d_manual` for Unity Tilemap/Tile Palette/Tile Asset authoring concepts and kept this phase as first-party rows rather than an editor-specific clone; Unity Addressables official manual (<https://docs.unity3d.com/ja/6000.0/Manual/com.unity.addressables.html>) for address/dependency package intent without adopting Unity runtime APIs; Context7 `/websites/cmake_cmake_help` for target/test registration through `target_sources`, `target_link_libraries`, and `add_test(NAME ... COMMAND ...)`; and Context7 `/microsoft/vcpkg` for preserving manifest-feature/dependency ownership without adding new dependencies. Phase 7 therefore adds `MK_tools` value review/apply APIs and selected package smoke counters only; it rejects external image decoding, external downloads, arbitrary importer plugins, runtime source parsing, renderer/RHI residency, native handles, and package apply during review.
+
+- [x] Re-check Unity Tilemaps, Unity Addressables, CMake, vcpkg, and asset/import official practice anchors before changing authoring or package metadata.
+- [x] Add RED tests for tile definition documents: tile id, atlas frame, collision kind, material tags, light/liquid/update policy, localization key, accessibility label key for UI-facing tiles, and provenance/license rows.
+- [x] Add RED tests for palette/brush rows: brush id, shape, layer mask, replacement policy, symmetry, fill policy, and invalid path diagnostics.
+- [x] Add RED tests for chunk template and procedural seed rows: stable generator id, seed, dimensions, allowed tile sets, object placement rules, and deterministic preview hash.
+- [x] Add RED tests for package update dry-run/apply rows using `IFileSystem`, safe paths, deterministic changed files, and package index dependency edges.
+- [x] Implement authoring APIs. Keep actual external image decoding, external downloads, and arbitrary importer plugins rejected unless a separate dependency phase implements them.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_tools_sandbox_world_authoring_tests MK_tools_tests
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "tools_sandbox_world_authoring|tools"
 ```
+
+Evidence: RED compile proof first failed on missing `mirakana/tools/sandbox_world_authoring.hpp` after registering `MK_tools_sandbox_world_authoring_tests`. GREEN focused validation then passed `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_tools_sandbox_world_authoring_tests MK_tools_tests` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "tools_sandbox_world_authoring|MK_tools_tests"`. Desktop-runtime focused validation passed `tools/prepare-worktree.ps1`, `tools/cmake.ps1 --preset desktop-runtime`, `tools/cmake.ps1 --build --preset desktop-runtime --target sample_2d_desktop_runtime_package`, `tools/ctest.ps1 --preset desktop-runtime --output-on-failure -R "sample_2d_desktop_runtime_package"`, and a manual package smoke with `--require-sandbox-authoring-review`. The smoke reported `sandbox_authoring_review_status=ready`, tile definition/palette brush/chunk template/procedural seed rows `2/1/1/1`, changed files `3`, tilemap package changed files `2`, dependency edges `1`, positive preview hash, zero external image decoding/download/importer plugin/package apply during review invocation, and zero diagnostics.
 
 ## Phase 8 - Generic Gameplay Integration Rows
 

@@ -12,6 +12,7 @@
     "MK_platform_win32",
     "MK_renderer",
     "MK_runtime",
+    "MK_tools",
     "MK_runtime_scene",
     "MK_runtime_host",
     "MK_runtime_host_win32",
@@ -102,6 +103,12 @@
           "delivery": "runtime-package-file"
         },
         {
+          "id": "sandbox-authoring-review",
+          "kind": "tilemap",
+          "purpose": "Reviewed sandbox-world tile definitions, palette brushes, chunk templates, procedural seeds, and package-update rows feed deterministic cook review before runtime package mutation.",
+          "delivery": "reviewed-package-authoring"
+        },
+        {
           "id": "hud-ui-atlas",
           "kind": "ui-atlas",
           "purpose": "Cooked UI atlas metadata proves image and glyph atlas palette handoff counters before renderer submission.",
@@ -129,7 +136,8 @@
         "simulation-management",
         "network-replication",
         "network-production-security",
-        "simulation-orchestration"
+        "simulation-orchestration",
+        "sandbox-authoring-review"
       ],
       "packageTargets": [
         "desktop-game-runtime",
@@ -149,6 +157,7 @@
         "installed-2d-source-image-audio-codec-review-smoke",
         "installed-2d-simulation-orchestration-smoke",
         "installed-2d-sprite-effects-particles-smoke",
+        "installed-2d-sandbox-authoring-review-smoke",
         "installed-native-2d-sprite-smoke"
       ],
       "qualityGates": [
@@ -180,6 +189,13 @@
           "evidence": "Sandbox world smoke reports deterministic chunk, resident chunk, existing cell, placement/destruction intent, cost, mutation, persistence, repairable persistence, unsafe rejection, replay-hash, and zero world/persistence/package side-effect counters.",
           "recipeIds": [
             "installed-2d-gameplay-systems-smoke"
+          ]
+        },
+        {
+          "id": "sandbox-authoring-review",
+          "evidence": "Sandbox authoring review smoke reports sandbox_authoring_review_status=ready, deterministic tile definition, palette brush, chunk template, procedural seed, changed-file, dependency-edge, and preview-hash counters, with sandbox_authoring_review_external_image_decoding_invoked=0, sandbox_authoring_review_external_download_invoked=0, sandbox_authoring_review_importer_plugin_invoked=0, sandbox_authoring_review_package_apply_invoked=0, and zero diagnostic counters.",
+          "recipeIds": [
+            "installed-2d-sandbox-authoring-review-smoke"
           ]
         },
         {
@@ -270,6 +286,9 @@
         "broad-commercial-quality",
         "broad-online-services",
         "internet-facing-network-execution",
+        "external-image-decoding",
+        "external-asset-download",
+        "arbitrary-importer-plugin",
         "matchmaking-nat-traversal",
         "network-encryption-authentication",
         "svg-vector-codec",
@@ -1886,7 +1905,7 @@
     "ui": "mirakana_ui-headless renderer submission plus Runtime UI Workbench package evidence through --require-runtime-ui-workbench, Runtime UI Production Stack selected package evidence through --require-runtime-ui-production-stack, and cooked UI atlas renderer handoff counters through --require-runtime-ui-renderer-atlas-handoff",
     "physics": "MK_physics 2D deterministic contact and trigger proof through --require-gameplay-systems",
     "navigation": "MK_navigation grid path planning and agent update proof through --require-gameplay-systems",
-    "ai": "MK_ai behavior authoring, perception-blackboard, and behavior-tree proof plus MK_runtime quest/dialogue progression, inventory items crafting, RPG systems review, construction placement validation, procedural generation, entity scale/culling package evidence, scripting sandbox policy package evidence, networking foundation policy package evidence, network production security threat-model/package evidence, simulation orchestration package evidence, MK_tools gameplay authoring review and production authoring workflow package evidence, and MK_runtime_scene placement/procedural-placement intent proof through --require-gameplay-systems, --require-procedural-generation, --require-entity-scale-culling, --require-scripting-sandbox-policy, --require-networking-foundation-policy, --require-simulation-orchestration, --require-gameplay-authoring-review, and --require-production-authoring-workflows"
+    "ai": "MK_ai behavior authoring, perception-blackboard, and behavior-tree proof plus MK_runtime quest/dialogue progression, inventory items crafting, RPG systems review, construction placement validation, procedural generation, entity scale/culling package evidence, scripting sandbox policy package evidence, networking foundation policy package evidence, network production security threat-model/package evidence, simulation orchestration package evidence, MK_tools gameplay authoring review, sandbox-world authoring review, and production authoring workflow package evidence, and MK_runtime_scene placement/procedural-placement intent proof through --require-gameplay-systems, --require-procedural-generation, --require-entity-scale-culling, --require-scripting-sandbox-policy, --require-networking-foundation-policy, --require-simulation-orchestration, --require-gameplay-authoring-review, --require-sandbox-authoring-review, and --require-production-authoring-workflows"
   },
   "importerRequirements": {
     "sourceFormats": [
@@ -1996,6 +2015,7 @@
         "installed-2d-networking-foundation-policy-smoke",
         "installed-2d-simulation-orchestration-smoke",
         "installed-2d-gameplay-authoring-review-smoke",
+        "installed-2d-sandbox-authoring-review-smoke",
         "installed-2d-runtime-ui-workbench-smoke",
         "installed-2d-runtime-ui-production-stack-smoke",
         "installed-2d-sprite-effects-particles-smoke"
@@ -2027,11 +2047,49 @@
         "installed-2d-networking-foundation-policy-smoke",
         "installed-2d-simulation-orchestration-smoke",
         "installed-2d-gameplay-authoring-review-smoke",
+        "installed-2d-sandbox-authoring-review-smoke",
         "installed-2d-runtime-ui-workbench-smoke",
         "installed-2d-runtime-ui-production-stack-smoke",
         "installed-2d-sprite-effects-particles-smoke",
         "installed-d3d12-window-smoke",
         "installed-vulkan-window-smoke"
+      ]
+    }
+  ],
+  "sandboxWorldAuthoringTargets": [
+    {
+      "id": "packaged-2d-sandbox-authoring-review",
+      "mode": "reviewed-tilemap-sandbox-world-authoring",
+      "reviewApi": "review_sandbox_world_authoring_package",
+      "applyApi": "apply_sandbox_world_authoring_package",
+      "packageIndexPath": "runtime/sample_2d_desktop_runtime_package.geindex",
+      "tilemapPath": "runtime/assets/2d/level.tilemap",
+      "reviewDocumentPath": "runtime/assets/2d/level.sandbox_authoring",
+      "atlasTexturePath": "runtime/assets/2d/player.texture.geasset",
+      "tilemapAssetKey": "sample/2d-desktop-runtime-package/tilemap",
+      "atlasTextureAssetKey": "sample/2d-desktop-runtime-package/player-sprite",
+      "tileDefinitionRows": 2,
+      "paletteBrushRows": 1,
+      "chunkTemplateRows": 1,
+      "proceduralSeedRows": 1,
+      "changedFileRows": 3,
+      "tilemapPackageChangedFileRows": 2,
+      "packageDependencyEdges": 1,
+      "externalImageDecoding": "unsupported",
+      "externalDownload": "unsupported",
+      "importerPluginExecution": "unsupported",
+      "runtimeSourceParsing": "unsupported",
+      "rendererRhiResidency": "unsupported",
+      "packageApplyDuringReview": "unsupported",
+      "nativeHandles": "unsupported",
+      "preflightRecipeIds": [
+        "desktop-game-runtime",
+        "desktop-runtime-release-target",
+        "installed-2d-package-smoke",
+        "installed-2d-tilemap-runtime-ux-smoke",
+        "installed-2d-production-tile-renderer-smoke",
+        "installed-2d-sandbox-authoring-review-smoke",
+        "installed-native-2d-sprite-smoke"
       ]
     }
   ],
@@ -2118,6 +2176,10 @@
       "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-production-tile-renderer"
     },
     {
+      "name": "installed-2d-sandbox-authoring-review-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-sandbox-authoring-review"
+    },
+    {
       "name": "installed-2d-gameplay-systems-smoke",
       "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-gameplay-systems --require-procedural-generation"
     },
@@ -2187,7 +2249,7 @@
     },
     {
       "name": "installed-native-2d-sprite-smoke",
-      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-d3d12-shaders --require-d3d12-renderer --require-native-2d-sprites --require-sprite-animation --require-sprite-9slice-tiled --require-sprite-effects-particles --require-tilemap-runtime-ux --require-production-tile-renderer --require-gameplay-systems --require-procedural-generation --require-world-region-streaming --require-entity-scale-culling --require-scripting-sandbox-policy --require-networking-foundation-policy --require-simulation-orchestration --require-gameplay-authoring-review --require-production-authoring-workflows --require-runtime-ui-workbench --require-runtime-ui-production-stack --require-runtime-ui-renderer-atlas-handoff --require-runtime-profile-resume --require-runtime-menu-hud"
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-d3d12-shaders --require-d3d12-renderer --require-native-2d-sprites --require-sprite-animation --require-sprite-9slice-tiled --require-sprite-effects-particles --require-tilemap-runtime-ux --require-production-tile-renderer --require-gameplay-systems --require-procedural-generation --require-world-region-streaming --require-entity-scale-culling --require-scripting-sandbox-policy --require-networking-foundation-policy --require-simulation-orchestration --require-gameplay-authoring-review --require-sandbox-authoring-review --require-production-authoring-workflows --require-runtime-ui-workbench --require-runtime-ui-production-stack --require-runtime-ui-renderer-atlas-handoff --require-runtime-profile-resume --require-runtime-menu-hud"
     },
     {
       "name": "installed-vulkan-window-smoke",

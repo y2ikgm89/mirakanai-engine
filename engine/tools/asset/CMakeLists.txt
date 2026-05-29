@@ -9,6 +9,7 @@ add_library(MK_tools_asset OBJECT
     source_asset_registration_tool.cpp
     source_image_decode.cpp
     sprite_atlas_tool.cpp
+    sandbox_world_authoring.cpp
     material_tool.cpp
     tilemap_tool.cpp
     gameplay_authoring_tool.cpp

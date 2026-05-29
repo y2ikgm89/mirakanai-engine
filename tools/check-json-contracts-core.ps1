@@ -481,13 +481,9 @@ function Assert-RuntimeSceneValidationTargets($game, [string]$relativePath, [boo
 
 function Assert-MaterialShaderAuthoringTargets($game, [string]$relativePath, [bool]$required) {
     $gameDirectory = Get-GameDirectoryFromManifestPath $relativePath
-    $packageFiles = @(Get-NormalizedRuntimePackageFiles $game $relativePath | ForEach-Object {
-            $_.Substring($gameDirectory.Length + 1)
-        })
+    $packageFiles = @(Get-NormalizedRuntimePackageFiles $game $relativePath | ForEach-Object { $_.Substring($gameDirectory.Length + 1) })
     $packageFileSet = @{}
-    foreach ($packageFile in $packageFiles) {
-        $packageFileSet[$packageFile] = $true
-    }
+    foreach ($packageFile in $packageFiles) { $packageFileSet[$packageFile] = $true }
 
     if (-not $game.PSObject.Properties.Name.Contains("materialShaderAuthoringTargets")) {
         if ($required) {

@@ -235,6 +235,7 @@ $requiresScriptingSandboxPolicy = @($SmokeArgs) -contains "--require-scripting-s
 $requiresNetworkingFoundationPolicy = @($SmokeArgs) -contains "--require-networking-foundation-policy"
 $requiresSimulationOrchestration = @($SmokeArgs) -contains "--require-simulation-orchestration"
 $requiresGameplayAuthoringReview = @($SmokeArgs) -contains "--require-gameplay-authoring-review"
+$requiresSandboxAuthoringReview = @($SmokeArgs) -contains "--require-sandbox-authoring-review"
 $requiresProductionAuthoringWorkflows = @($SmokeArgs) -contains "--require-production-authoring-workflows"
 $requiresRuntimeUiWorkbench = @($SmokeArgs) -contains "--require-runtime-ui-workbench"
 $requiresRuntimeUiProductionStack = @($SmokeArgs) -contains "--require-runtime-ui-production-stack"
@@ -3205,6 +3206,54 @@ if ($requiresGameplayAuthoringReview) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove gameplay authoring review field $field=$expectedValue."
         }
+    }
+}
+if ($requiresSandboxAuthoringReview) {
+    foreach ($field in @(
+            "sandbox_authoring_review_status",
+            "sandbox_authoring_review_ready",
+            "sandbox_authoring_review_tile_definition_rows",
+            "sandbox_authoring_review_palette_brush_rows",
+            "sandbox_authoring_review_chunk_template_rows",
+            "sandbox_authoring_review_procedural_seed_rows",
+            "sandbox_authoring_review_changed_files",
+            "sandbox_authoring_review_tilemap_package_changed_files",
+            "sandbox_authoring_review_package_dependency_edges",
+            "sandbox_authoring_review_preview_hash",
+            "sandbox_authoring_review_external_image_decoding_invoked",
+            "sandbox_authoring_review_external_download_invoked",
+            "sandbox_authoring_review_importer_plugin_invoked",
+            "sandbox_authoring_review_package_apply_invoked",
+            "sandbox_authoring_review_diagnostics"
+        )) {
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
+            Write-Error "Installed desktop runtime smoke status line did not include sandbox authoring review field: $field"
+        }
+    }
+    $expectedSandboxAuthoringReviewFields = @{
+        "sandbox_authoring_review_status" = "ready"
+        "sandbox_authoring_review_ready" = "1"
+        "sandbox_authoring_review_tile_definition_rows" = "2"
+        "sandbox_authoring_review_palette_brush_rows" = "1"
+        "sandbox_authoring_review_chunk_template_rows" = "1"
+        "sandbox_authoring_review_procedural_seed_rows" = "1"
+        "sandbox_authoring_review_changed_files" = "3"
+        "sandbox_authoring_review_tilemap_package_changed_files" = "2"
+        "sandbox_authoring_review_package_dependency_edges" = "1"
+        "sandbox_authoring_review_external_image_decoding_invoked" = "0"
+        "sandbox_authoring_review_external_download_invoked" = "0"
+        "sandbox_authoring_review_importer_plugin_invoked" = "0"
+        "sandbox_authoring_review_package_apply_invoked" = "0"
+        "sandbox_authoring_review_diagnostics" = "0"
+    }
+    foreach ($field in $expectedSandboxAuthoringReviewFields.Keys) {
+        $expectedValue = [regex]::Escape($expectedSandboxAuthoringReviewFields[$field])
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove sandbox authoring review field $field=$($expectedSandboxAuthoringReviewFields[$field])."
+        }
+    }
+    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsandbox_authoring_review_preview_hash=[1-9][0-9]*\b") {
+        Write-Error "Installed desktop runtime smoke status line did not prove sandbox authoring review nonzero preview hash."
     }
 }
 if ($requiresProductionAuthoringWorkflows) {

@@ -101,6 +101,7 @@ struct CookedTilemapPackageUpdateResult {
     }
 };
 
+[[nodiscard]] bool is_safe_tilemap_package_relative_path(std::string_view path) noexcept;
 [[nodiscard]] CookedTilemapAuthoringResult author_cooked_tilemap_metadata(const CookedTilemapAuthoringDesc& desc);
 [[nodiscard]] CookedTilemapAuthoringResult write_cooked_tilemap_metadata(IFileSystem& filesystem,
                                                                          const CookedTilemapAuthoringDesc& desc);

@@ -48,6 +48,7 @@
 #include "mirakana/scene_renderer/scene_renderer.hpp"
 #include "mirakana/tools/gameplay_authoring_tool.hpp"
 #include "mirakana/tools/production_authoring_workflows.hpp"
+#include "mirakana/tools/sandbox_world_authoring.hpp"
 #include "mirakana/ui/runtime_ui_production_stack.hpp"
 #include "mirakana/ui/runtime_ui_workbench.hpp"
 #include "mirakana/ui/ui.hpp"
@@ -98,6 +99,7 @@ struct DesktopRuntimeOptions {
     bool require_networking_foundation_policy{false};
     bool require_simulation_orchestration{false};
     bool require_gameplay_authoring_review{false};
+    bool require_sandbox_authoring_review{false};
     bool require_production_authoring_workflows{false};
     bool require_runtime_profile_resume{false};
     bool require_runtime_menu_hud{false};
@@ -450,6 +452,24 @@ struct GameplayAuthoringReviewProbeResult {
     std::size_t missing_package_evidence_diagnostics{0U};
     std::size_t unsupported_claim_diagnostics{0U};
     std::size_t diagnostics{0U};
+    bool ready{false};
+};
+
+struct SandboxWorldAuthoringReviewProbeResult {
+    mirakana::SandboxWorldAuthoringStatus status{mirakana::SandboxWorldAuthoringStatus::invalid_request};
+    std::size_t tile_definition_rows{0U};
+    std::size_t palette_brush_rows{0U};
+    std::size_t chunk_template_rows{0U};
+    std::size_t procedural_seed_rows{0U};
+    std::size_t changed_files{0U};
+    std::size_t tilemap_package_changed_files{0U};
+    std::size_t package_dependency_edges{0U};
+    std::uint64_t deterministic_preview_hash{0U};
+    std::size_t diagnostics{0U};
+    bool external_image_decoding_invoked{false};
+    bool external_download_invoked{false};
+    bool importer_plugin_invoked{false};
+    bool package_apply_invoked{false};
     bool ready{false};
 };
 
@@ -834,6 +854,17 @@ count_input_rebinding_glyph_lookup_keys(const mirakana::runtime::RuntimeInputReb
 [[nodiscard]] std::string_view
 gameplay_authoring_review_status_name(const GameplayAuthoringReviewProbeResult& result) noexcept {
     return result.ready ? "ready" : "diagnostics";
+}
+
+[[nodiscard]] std::string_view
+sandbox_world_authoring_review_status_name(mirakana::SandboxWorldAuthoringStatus status) noexcept {
+    switch (status) {
+    case mirakana::SandboxWorldAuthoringStatus::ready:
+        return "ready";
+    case mirakana::SandboxWorldAuthoringStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "unknown";
 }
 
 [[nodiscard]] std::string_view
@@ -5835,6 +5866,186 @@ count_production_authoring_diagnostics(const mirakana::ProductionAuthoringWorkfl
     return asset_id_from_game_asset_key("sample/2d-desktop-runtime-package/ui-atlas");
 }
 
+[[nodiscard]] mirakana::CookedTilemapAuthoringDesc make_sample_sandbox_authoring_tilemap_desc() {
+    mirakana::CookedTilemapAuthoringDesc desc;
+    desc.tilemap_asset = packaged_tilemap_asset_id();
+    desc.output_path = "runtime/assets/2d/level.tilemap";
+    desc.source_revision = 17;
+    desc.atlas_page = packaged_sprite_texture_asset_id();
+    desc.atlas_page_uri = "runtime/assets/2d/player.texture.geasset";
+    desc.tile_width = 16;
+    desc.tile_height = 16;
+    desc.tiles.push_back(mirakana::CookedTilemapTileDesc{
+        .id = "grass",
+        .page = desc.atlas_page,
+        .u0 = 0.0F,
+        .v0 = 0.0F,
+        .u1 = 0.5F,
+        .v1 = 0.5F,
+        .color = {0.5F, 1.0F, 0.25F, 1.0F},
+    });
+    desc.tiles.push_back(mirakana::CookedTilemapTileDesc{
+        .id = "water",
+        .page = desc.atlas_page,
+        .u0 = 0.5F,
+        .v0 = 0.0F,
+        .u1 = 1.0F,
+        .v1 = 0.5F,
+        .color = {0.25F, 0.5F, 1.0F, 1.0F},
+    });
+    desc.layers.push_back(mirakana::CookedTilemapLayerDesc{
+        .name = "ground",
+        .width = 2,
+        .height = 2,
+        .visible = true,
+        .cells = {"grass", "water", "", "grass"},
+    });
+    return desc;
+}
+
+[[nodiscard]] std::string
+sample_sandbox_authoring_base_package_index_content(const mirakana::CookedTilemapAuthoringDesc& desc) {
+    return mirakana::serialize_asset_cooked_package_index(mirakana::build_asset_cooked_package_index(
+        {
+            mirakana::AssetCookedArtifact{
+                .asset = desc.atlas_page,
+                .kind = mirakana::AssetKind::texture,
+                .path = desc.atlas_page_uri,
+                .content = "format=GameEngine.CookedTexture.v1\nasset.id=sample_2d_player\n",
+                .source_revision = 17,
+                .dependencies = {},
+            },
+        },
+        {}));
+}
+
+[[nodiscard]] SandboxWorldAuthoringReviewProbeResult validate_sandbox_world_authoring_review_package_evidence() {
+    auto tilemap_desc = make_sample_sandbox_authoring_tilemap_desc();
+    mirakana::SandboxWorldAuthoringPackageDesc package;
+    package.review_document_path = "runtime/assets/2d/level.sandbox_authoring";
+    package.tilemap = tilemap_desc;
+    package.tile_definitions = {
+        mirakana::SandboxWorldTileDefinitionRow{
+            .tile_id = "grass",
+            .atlas_frame_id = "player_atlas/grass",
+            .atlas_page = tilemap_desc.atlas_page,
+            .u0 = 0.0F,
+            .v0 = 0.0F,
+            .u1 = 0.5F,
+            .v1 = 0.5F,
+            .collision_kind = mirakana::SandboxWorldTileCollisionKind::solid,
+            .material_tags = {"soil", "walkable"},
+            .emits_light = false,
+            .light_radius = 0,
+            .liquid = false,
+            .update_policy = mirakana::SandboxWorldTileUpdatePolicy::none,
+            .localization_key = "tile.grass.name",
+            .accessibility_label_key = "tile.grass.accessibility",
+            .provenance = "first-party",
+            .license_id = "LicenseRef-Proprietary",
+            .source_index = 1U,
+        },
+        mirakana::SandboxWorldTileDefinitionRow{
+            .tile_id = "water",
+            .atlas_frame_id = "player_atlas/water",
+            .atlas_page = tilemap_desc.atlas_page,
+            .u0 = 0.5F,
+            .v0 = 0.0F,
+            .u1 = 1.0F,
+            .v1 = 0.5F,
+            .collision_kind = mirakana::SandboxWorldTileCollisionKind::liquid,
+            .material_tags = {"liquid", "swimmable"},
+            .emits_light = false,
+            .light_radius = 0,
+            .liquid = true,
+            .update_policy = mirakana::SandboxWorldTileUpdatePolicy::scheduled,
+            .localization_key = "tile.water.name",
+            .accessibility_label_key = "tile.water.accessibility",
+            .provenance = "first-party",
+            .license_id = "LicenseRef-Proprietary",
+            .source_index = 2U,
+        },
+    };
+    package.palette_brushes = {
+        mirakana::SandboxWorldPaletteBrushRow{
+            .brush_id = "paint/grass",
+            .shape = mirakana::SandboxWorldBrushShape::single_cell,
+            .layer_mask = 1U,
+            .tile_id = "grass",
+            .replacement_policy = mirakana::SandboxWorldBrushReplacementPolicy::any,
+            .symmetry = mirakana::SandboxWorldBrushSymmetry::mirror_x,
+            .fill_policy = mirakana::SandboxWorldBrushFillPolicy::paint,
+            .preview_path = "runtime/assets/2d/brushes/grass.brush",
+            .source_index = 1U,
+        },
+    };
+    package.chunk_templates = {
+        mirakana::SandboxWorldChunkTemplateRow{
+            .template_id = "spawn/meadow",
+            .width = 16U,
+            .height = 16U,
+            .allowed_tile_ids = {"grass", "water"},
+            .object_placement_rules = {mirakana::SandboxWorldObjectPlacementRuleRow{
+                .object_id = "object/tree",
+                .anchor_tile_id = "grass",
+                .max_per_chunk = 4U,
+                .spawn_weight = 3U,
+            }},
+            .source_index = 1U,
+        },
+    };
+    package.procedural_seeds = {
+        mirakana::SandboxWorldProceduralSeedRow{
+            .generator_id = "generator/meadow",
+            .seed = 12345U,
+            .width = 32U,
+            .height = 16U,
+            .allowed_tile_ids = {"grass", "water"},
+            .object_placement_rules = {mirakana::SandboxWorldObjectPlacementRuleRow{
+                .object_id = "object/ore",
+                .anchor_tile_id = "grass",
+                .max_per_chunk = 2U,
+                .spawn_weight = 1U,
+            }},
+            .source_index = 1U,
+        },
+    };
+
+    const auto review = mirakana::review_sandbox_world_authoring_package(mirakana::SandboxWorldAuthoringReviewDesc{
+        .package_index_path = "runtime/sample_2d_desktop_runtime_package.geindex",
+        .package_index_content = sample_sandbox_authoring_base_package_index_content(tilemap_desc),
+        .package = package,
+    });
+
+    SandboxWorldAuthoringReviewProbeResult result;
+    result.status = review.status;
+    result.tile_definition_rows = review.tile_definition_rows;
+    result.palette_brush_rows = review.palette_brush_rows;
+    result.chunk_template_rows = review.chunk_template_rows;
+    result.procedural_seed_rows = review.procedural_seed_rows;
+    result.changed_files = review.changed_files.size();
+    result.tilemap_package_changed_files = review.tilemap_package_update.changed_files.size();
+    result.deterministic_preview_hash = review.deterministic_preview_hash;
+    result.diagnostics = review.diagnostics.size();
+    result.external_image_decoding_invoked = review.external_image_decoding_invoked;
+    result.external_download_invoked = review.external_download_invoked;
+    result.importer_plugin_invoked = review.importer_plugin_invoked;
+    result.package_apply_invoked = review.package_apply_invoked;
+    if (review.tilemap_package_update.succeeded()) {
+        const auto index =
+            mirakana::deserialize_asset_cooked_package_index(review.tilemap_package_update.package_index_content);
+        result.package_dependency_edges = index.dependencies.size();
+    }
+    result.ready = review.succeeded() && result.tile_definition_rows == 2U && result.palette_brush_rows == 1U &&
+                   result.chunk_template_rows == 1U && result.procedural_seed_rows == 1U &&
+                   result.changed_files == 3U && result.tilemap_package_changed_files == 2U &&
+                   result.package_dependency_edges == 1U && result.deterministic_preview_hash != 0U &&
+                   result.diagnostics == 0U && !result.external_image_decoding_invoked &&
+                   !result.external_download_invoked && !result.importer_plugin_invoked &&
+                   !result.package_apply_invoked;
+    return result;
+}
+
 class Gameplay2DSystemsProbe final {
   public:
     Gameplay2DSystemsProbe() : physics_(mirakana::PhysicsWorld2DConfig{mirakana::Vec2{.x = 0.0F, .y = 0.0F}}) {}
@@ -8195,7 +8406,8 @@ void print_usage() {
                  "[--require-procedural-generation] [--require-world-region-streaming] "
                  "[--require-entity-scale-culling] [--require-scripting-sandbox-policy] "
                  "[--require-networking-foundation-policy] [--require-simulation-orchestration] "
-                 "[--require-gameplay-authoring-review] [--require-production-authoring-workflows] "
+                 "[--require-gameplay-authoring-review] [--require-sandbox-authoring-review] "
+                 "[--require-production-authoring-workflows] "
                  "[--require-runtime-profile-resume] [--require-runtime-menu-hud] "
                  "[--require-runtime-ui-workbench] [--require-runtime-ui-production-stack] "
                  "[--require-runtime-ui-renderer-atlas-handoff] [--require-audio-gameplay-mixer] "
@@ -8294,6 +8506,10 @@ void print_usage() {
         }
         if (arg == "--require-gameplay-authoring-review") {
             options.require_gameplay_authoring_review = true;
+            continue;
+        }
+        if (arg == "--require-sandbox-authoring-review") {
+            options.require_sandbox_authoring_review = true;
             continue;
         }
         if (arg == "--require-production-authoring-workflows") {
@@ -8929,6 +9145,9 @@ int main(int argc, char** argv) {
     const auto gameplay_authoring_review_probe = options.require_gameplay_authoring_review
                                                      ? validate_gameplay_authoring_review_package_evidence()
                                                      : GameplayAuthoringReviewProbeResult{};
+    const auto sandbox_authoring_review_probe = options.require_sandbox_authoring_review
+                                                    ? validate_sandbox_world_authoring_review_package_evidence()
+                                                    : SandboxWorldAuthoringReviewProbeResult{};
     const auto production_authoring_workflow_probe = options.require_production_authoring_workflows
                                                          ? validate_production_authoring_workflow_package_evidence()
                                                          : ProductionAuthoringWorkflowProbeResult{};
@@ -9652,6 +9871,28 @@ int main(int argc, char** argv) {
         << " gameplay_authoring_review_unsupported_claim_diagnostics="
         << gameplay_authoring_review_probe.unsupported_claim_diagnostics
         << " gameplay_authoring_review_diagnostics=" << gameplay_authoring_review_probe.diagnostics
+        << " sandbox_authoring_review_status="
+        << sandbox_world_authoring_review_status_name(sandbox_authoring_review_probe.status)
+        << " sandbox_authoring_review_ready=" << (sandbox_authoring_review_probe.ready ? 1 : 0)
+        << " sandbox_authoring_review_tile_definition_rows=" << sandbox_authoring_review_probe.tile_definition_rows
+        << " sandbox_authoring_review_palette_brush_rows=" << sandbox_authoring_review_probe.palette_brush_rows
+        << " sandbox_authoring_review_chunk_template_rows=" << sandbox_authoring_review_probe.chunk_template_rows
+        << " sandbox_authoring_review_procedural_seed_rows=" << sandbox_authoring_review_probe.procedural_seed_rows
+        << " sandbox_authoring_review_changed_files=" << sandbox_authoring_review_probe.changed_files
+        << " sandbox_authoring_review_tilemap_package_changed_files="
+        << sandbox_authoring_review_probe.tilemap_package_changed_files
+        << " sandbox_authoring_review_package_dependency_edges="
+        << sandbox_authoring_review_probe.package_dependency_edges
+        << " sandbox_authoring_review_preview_hash=" << sandbox_authoring_review_probe.deterministic_preview_hash
+        << " sandbox_authoring_review_external_image_decoding_invoked="
+        << (sandbox_authoring_review_probe.external_image_decoding_invoked ? 1 : 0)
+        << " sandbox_authoring_review_external_download_invoked="
+        << (sandbox_authoring_review_probe.external_download_invoked ? 1 : 0)
+        << " sandbox_authoring_review_importer_plugin_invoked="
+        << (sandbox_authoring_review_probe.importer_plugin_invoked ? 1 : 0)
+        << " sandbox_authoring_review_package_apply_invoked="
+        << (sandbox_authoring_review_probe.package_apply_invoked ? 1 : 0)
+        << " sandbox_authoring_review_diagnostics=" << sandbox_authoring_review_probe.diagnostics
         << " production_authoring_workflow_status="
         << production_authoring_workflow_status_name(production_authoring_workflow_probe)
         << " production_authoring_workflow_ready=" << (production_authoring_workflow_probe.ready ? 1 : 0)
@@ -10476,6 +10717,26 @@ int main(int argc, char** argv) {
                   << gameplay_authoring_review_probe.unsupported_claim_diagnostics
                   << " gameplay_authoring_review_diagnostics=" << gameplay_authoring_review_probe.diagnostics << '\n';
         return 19;
+    }
+
+    if (options.require_sandbox_authoring_review && !sandbox_authoring_review_probe.ready) {
+        std::cout
+            << "sample_2d_desktop_runtime_package required_sandbox_authoring_review_unavailable"
+            << " sandbox_authoring_review_status="
+            << sandbox_world_authoring_review_status_name(sandbox_authoring_review_probe.status)
+            << " sandbox_authoring_review_ready=" << (sandbox_authoring_review_probe.ready ? 1 : 0)
+            << " sandbox_authoring_review_tile_definition_rows=" << sandbox_authoring_review_probe.tile_definition_rows
+            << " sandbox_authoring_review_palette_brush_rows=" << sandbox_authoring_review_probe.palette_brush_rows
+            << " sandbox_authoring_review_chunk_template_rows=" << sandbox_authoring_review_probe.chunk_template_rows
+            << " sandbox_authoring_review_procedural_seed_rows=" << sandbox_authoring_review_probe.procedural_seed_rows
+            << " sandbox_authoring_review_changed_files=" << sandbox_authoring_review_probe.changed_files
+            << " sandbox_authoring_review_tilemap_package_changed_files="
+            << sandbox_authoring_review_probe.tilemap_package_changed_files
+            << " sandbox_authoring_review_package_dependency_edges="
+            << sandbox_authoring_review_probe.package_dependency_edges
+            << " sandbox_authoring_review_preview_hash=" << sandbox_authoring_review_probe.deterministic_preview_hash
+            << " sandbox_authoring_review_diagnostics=" << sandbox_authoring_review_probe.diagnostics << '\n';
+        return 32;
     }
 
     if (options.require_production_authoring_workflows && !production_authoring_workflow_probe.ready) {
