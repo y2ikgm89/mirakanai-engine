@@ -1,7 +1,7 @@
 # Renderer Backend Parity Metal Apple Evidence v1 (2026-05-29)
 
 **Plan ID:** `renderer-backend-parity-metal-apple-evidence-v1`
-**Status:** Active.
+**Status:** Completed.
 **Owner:** `MK_renderer` / agent-surface governance
 **Parent:** [Production Completion Master Plan v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
 
@@ -39,15 +39,18 @@ This plan is intentionally a narrow evidence and governance candidate. It does n
 - [x] Update the plan registry, roadmap, production master plan, and projections chapter so they name this active selection and keep `unsupportedProductionGaps = []`.
 - [x] Update static contract branches for `renderer-backend-parity-metal-apple-evidence-v1`.
 - [x] Run focused docs/agent validation and record evidence.
-- [ ] Publish as a validated candidate PR and wait for hosted checks.
+- [x] Publish as a validated candidate PR and wait for hosted checks.
+- [x] Close the active pointer back to the production-completion selection gate after PR #296 merge.
 
 ## Done When
 
 - `docs/roadmap.md` no longer claims the completed physics/navigation slice is active.
-- The manifest active path and `recommendedNextPlan.id`/`path` point to this plan.
+- During execution, the manifest active path and `recommendedNextPlan.id`/`path` pointed to this plan.
+- After PR #296 merge, `currentActivePlan` returns to the production-completion master plan and `recommendedNextPlan.id = next-production-gap-selection`.
 - `metal-apple` remains `host-gated` with `shader-toolchain`, `mobile-packaging`, and `ios-simulator-smoke` as validation recipes.
 - Static checks reject mismatched active plan, stale roadmap active prose, and missing renderer/Metal evidence-selection needles.
 - Local validation evidence includes `compose-agent-manifest`, `check-json-contracts`, `check-ai-integration`, `check-production-readiness-audit`, `check-text-format`, and `git diff --check`.
+- Hosted PR evidence includes PR #296 merge with PR Gate, macOS Metal CMake, iOS Simulator smoke, Windows MSVC, Linux CMake, full repository static analysis shards, and CodeQL success.
 
 ## Validation Evidence
 
@@ -62,3 +65,11 @@ This plan is intentionally a narrow evidence and governance candidate. It does n
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | Passed | `agent-config-check: ok`. |
 | `git diff --check` | Passed | No whitespace errors. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1 -StaticOnly -StaticJobs 1 -StaticCheckTimeoutSeconds 120` | Passed | `validate: static ok`; Apple/Metal and Apple mobile checks remained diagnostic host gates on this Windows host. |
+| PR #296 hosted checks | Passed | PR Gate, macOS Metal CMake, iOS Simulator smoke, Windows MSVC, Linux CMake, full repository static analysis shards, and CodeQL succeeded; merged as `6542c223e349912a42bb490528ded9ef2c7d0a80`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write` during closeout | Passed | Regenerated `engine/agent/manifest.json` after returning to `next-production-gap-selection`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` during closeout | Passed | `agent-manifest-compose: ok`; `json-contract-check: ok`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` during closeout | Passed | `ai-integration-check: ok`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-production-readiness-audit.ps1` during closeout | Passed | `unsupported_gaps=0`; `production-readiness-audit-check: ok`. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1` during closeout | Passed | `text-format-check: ok`. |
+| `git diff --check` during closeout | Passed | No whitespace errors. |
+| `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1 -StaticOnly -StaticJobs 1 -StaticCheckTimeoutSeconds 120` during closeout | Passed | `validate: static ok`; Apple/Metal and Apple mobile checks remained diagnostic host gates on this Windows host. |
