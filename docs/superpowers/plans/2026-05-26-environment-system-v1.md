@@ -1,0 +1,805 @@
+# Environment System v1 Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Add a first-class MIRAIKANAI Environment System for sky, sun, moon, ambient lighting, reflections, fog, clouds, rain, snow, storms, time-of-day, weather presets, and quality tiers without preserving backward compatibility.
+
+**Architecture:** Introduce a clean `MK_environment` module for backend-neutral value contracts, deterministic text IO, validation, and package rows. Keep `MK_scene` limited to environment references, `MK_scene_renderer` responsible for converting scene plus environment data into renderer packets, and `MK_renderer` / `MK_rhi` responsible for backend-neutral render planning and backend-private execution. No native handles, legacy desktop middleware, Dear ImGui, or backend resources are exposed through environment public APIs.
+
+**Tech Stack:** C++23, `MK_environment`, `MK_assets`, `MK_scene`, `MK_scene_renderer`, `MK_renderer`, `MK_rhi`, `MK_runtime_scene`, `MK_runtime_host_win32_presentation`, D3D12, Vulkan, Metal host gates, HLSL, SPIR-V, future MSL, PowerShell validation tools, optional OpenEXR/KTX-class HDR environment import after dependency and license review.
+
+---
+
+## Status
+
+This is a proposed implementation plan only. It is not selected as the active plan until the plan registry, roadmap, and composed agent manifest are intentionally updated in a separate planning-governance step.
+
+No engine implementation, CMake edits, manifest edits, registry edits, or validation changes have been performed by creating this plan.
+
+## Official Source Baseline
+
+Before implementation, re-check the exact current documents for the APIs touched in that implementation slice. The planning baseline used these official or primary sources:
+
+- Unreal Engine Sky Atmosphere: <https://dev.epicgames.com/documentation/unreal-engine/sky-atmosphere-component-in-unreal-engine>
+- Unreal Engine Volumetric Clouds: <https://dev.epicgames.com/documentation/en-us/unreal-engine/volumetric-clouds-reference?application_version=4.27>
+- Unreal Engine Sky Lights: <https://dev.epicgames.com/documentation/unreal-engine/sky-lights-in-unreal-engine?lang=en-US>
+- Unity HDRP Environment Lighting: <https://docs.unity3d.com/ja/Packages/com.unity.render-pipelines.high-definition%4010.5/manual/Environment-Lighting.html>
+- Unity HDRP clouds overview: <https://docs.unity.cn/Packages/com.unity.render-pipelines.high-definition%4017.0/manual/understand-clouds.html>
+- Godot Environment and post-processing: <https://docs.godotengine.org/en/stable/tutorials/3d/environment_and_post_processing.html>
+- Godot Volumetric Fog: <https://docs.godotengine.org/en/4.0/tutorials/3d/volumetric_fog.html>
+- Hillaire 2020, "A Scalable and Production Ready Sky and Atmosphere Rendering Technique": <https://diglib.eg.org/items/8a3e5350-18b3-46bd-9274-3add5af88c75>
+- Vulkan synchronization examples: <https://docs.vulkan.org/guide/latest/synchronization_examples.html>
+- D3D12 ResourceBarrier reference: <https://learn.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12graphicscommandlist-resourcebarrier>
+- OpenEXR documentation: <https://openexr.com/>
+
+## Clean-Break Policy
+
+- Do not preserve compatibility with the current ad hoc sky/lighting assumptions.
+- Do not add deprecated aliases, duplicate environment APIs, or migration shims.
+- Do not overload `LightComponent` with sky, weather, cloud, or environment settings.
+- Do not expose D3D12, Vulkan, Metal, legacy desktop middleware, Dear ImGui, or raw RHI handles through `MK_environment`.
+- Do not claim production sky, fog, cloud, rain, weather, IBL, or renderer parity until tests and package-visible evidence prove that exact feature.
+- Do not infer Vulkan or Metal readiness from D3D12 evidence. Each backend needs its own evidence row.
+- Keep gameplay-facing runtime code on first-party public contracts only.
+
+## Current Engine Baseline
+
+The repository already has useful foundations:
+
+- `MK_scene` has camera, light, mesh, and sprite renderer components.
+- `LightComponent` supports directional, point, and spot lights with color, intensity, range, cone values, and shadow intent.
+- `MK_renderer` has postprocess policy rows and a current `fog` enum value, but fog is not yet a proven rendered feature.
+- D3D12 and strict Vulkan package smokes already prove selected scene GPU binding, depth-aware postprocess, and narrow directional shadow filtering in sample lanes.
+- `MK_runtime_host_win32_presentation` already owns host-private Windows desktop presentation and package-visible diagnostics.
+
+This plan promotes those foundations into a general environment system without turning existing smoke paths into broad claims early.
+
+## Proposed Module Boundaries
+
+| Module | Responsibility |
+| --- | --- |
+| `MK_environment` | Environment profile value APIs, validation, text IO, package rows, time-of-day and weather planning, no GPU execution. |
+| `MK_scene` | Environment profile reference on Scene v2 and runtime scene package metadata only. |
+| `MK_scene_renderer` | Builds `EnvironmentRenderPacket` from scene, camera, lights, and environment profile values. |
+| `MK_renderer` | Backend-neutral environment render policies, pass plans, quality budgets, diagnostics, and shader contract layouts. |
+| `MK_rhi` | Backend-neutral resource, descriptor, render-pass, compute, barrier, and readback contracts needed by environment rendering. |
+| `MK_rhi_d3d12` | D3D12 execution evidence with backend-private resources, descriptor heaps, root signatures, barriers, and WARP-safe tests. |
+| `MK_rhi_vulkan` | Strict Vulkan execution evidence with synchronization2, image layouts, descriptor sets, SPIR-V validation, and host gates. |
+| `MK_rhi_metal` | Apple-host-gated Metal evidence only after Xcode/Metal tools are available. |
+| `MK_runtime_host_win32_presentation` | Package-visible environment status fields while keeping native presentation resources private. |
+| `MK_editor_core` / `MK_editor` | Reviewed environment authoring model and visible panel after core contracts are stable. |
+
+## Public Contract Shape
+
+The initial public API should use explicit value objects and fail-closed diagnostics:
+
+```cpp
+namespace mirakana {
+
+enum class EnvironmentSkyModel : std::uint8_t {
+    none = 0,
+    color,
+    gradient,
+    hdri,
+    physical_atmosphere,
+};
+
+enum class EnvironmentWeatherKind : std::uint8_t {
+    clear = 0,
+    cloudy,
+    rain,
+    storm,
+    snow,
+    foggy,
+    dust,
+    ash,
+};
+
+enum class EnvironmentPrecipitationKind : std::uint8_t {
+    none = 0,
+    rain,
+    snow,
+    sleet,
+    hail,
+    ash,
+    dust,
+};
+
+struct EnvironmentSunMoonDesc {
+    Vec3 direction{.x = 0.0F, .y = -1.0F, .z = 0.0F};
+    Vec3 color{.x = 1.0F, .y = 1.0F, .z = 1.0F};
+    float illuminance_lux{100000.0F};
+    float angular_radius_radians{0.00465F};
+    bool visible_disk{true};
+    bool affects_atmosphere{true};
+    bool affects_clouds{true};
+    bool casts_environment_shadows{true};
+};
+
+struct EnvironmentAtmosphereDesc {
+    float planet_radius_km{6360.0F};
+    float atmosphere_height_km{100.0F};
+    float rayleigh_density{1.0F};
+    float mie_density{1.0F};
+    float mie_anisotropy{0.8F};
+    float ozone_density{1.0F};
+    float ground_albedo{0.3F};
+};
+
+struct EnvironmentFogDesc {
+    bool enabled{false};
+    float density{0.0F};
+    float height_falloff{0.2F};
+    Vec3 albedo{.x = 1.0F, .y = 1.0F, .z = 1.0F};
+    float anisotropy{0.0F};
+    float sky_affect{1.0F};
+};
+
+struct EnvironmentPrecipitationDesc {
+    EnvironmentPrecipitationKind kind{EnvironmentPrecipitationKind::none};
+    float intensity{0.0F};
+    float particle_radius_meters{0.001F};
+    float fall_speed_meters_per_second{9.0F};
+    Vec3 wind_velocity_meters_per_second{};
+    bool surface_wetness{false};
+    bool collision_splashes{false};
+    bool occlusion_required{true};
+};
+
+struct EnvironmentProfileDesc {
+    std::string id;
+    EnvironmentSkyModel sky_model{EnvironmentSkyModel::physical_atmosphere};
+    EnvironmentWeatherKind weather{EnvironmentWeatherKind::clear};
+    EnvironmentSunMoonDesc sun;
+    EnvironmentSunMoonDesc moon;
+    EnvironmentAtmosphereDesc atmosphere;
+    EnvironmentFogDesc fog;
+    EnvironmentPrecipitationDesc precipitation;
+};
+
+} // namespace mirakana
+```
+
+The final names can change during implementation, but the shape should remain explicit, deterministic, and backend-neutral.
+
+## Quality And Evidence Counters
+
+Package-visible evidence should use narrow counters rather than a broad `environment_ready` claim:
+
+- `environment_profile_status`
+- `environment_profile_diagnostics`
+- `environment_sky_status`
+- `environment_atmosphere_status`
+- `environment_sun_lights`
+- `environment_moon_lights`
+- `environment_sky_lighting_status`
+- `environment_fog_status`
+- `environment_volumetric_fog_status`
+- `environment_cloud_layer_status`
+- `environment_volumetric_cloud_status`
+- `environment_precipitation_status`
+- `environment_surface_wetness_status`
+- `environment_weather_blend_status`
+- `environment_d3d12_evidence_ready`
+- `environment_vulkan_evidence_ready`
+- `environment_metal_host_evidence`
+
+Each counter must be tied to a validation recipe and exact implementation evidence.
+
+---
+
+## Task 1: Official-Practice Design Record
+
+**Files:**
+- Create: `docs/specs/2026-05-26-environment-system-v1-design.md`
+
+- [ ] **Step 1: Write the design record**
+
+Create a design record that summarizes the official source baseline, clean-break policy, module boundaries, public API family, and feature phase order from this plan. Include the source URLs listed above and explicitly state that no broad readiness claim exists before validation evidence lands.
+
+- [ ] **Step 2: Review against current engine boundaries**
+
+Check the design against:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1 -ContextProfile Minimal
+```
+
+Expected: The output confirms `MK_scene`, `MK_scene_renderer`, `MK_renderer`, `MK_rhi`, and `MK_runtime_host_win32_presentation` are the correct integration boundaries.
+
+- [ ] **Step 3: Drift check**
+
+Run:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1
+```
+
+Expected: PASS, or only pre-existing unrelated text-format issues are reported with exact paths.
+
+## Task 2: `MK_environment` Contract Foundation
+
+**Files:**
+- Create: `engine/environment/include/mirakana/environment/environment_profile.hpp`
+- Create: `engine/environment/src/environment_profile.cpp`
+- Create: `engine/environment/CMakeLists.txt`
+- Modify: root `CMakeLists.txt`
+- Create: `tests/unit/environment_tests.cpp`
+- Modify: `tests/unit/CMakeLists.txt`
+
+- [ ] **Step 1: Add RED tests for validation**
+
+Add tests that require:
+
+- valid Earth-like default profile succeeds;
+- duplicate or empty profile ids fail;
+- invalid sun/moon directions fail;
+- negative atmosphere height fails;
+- invalid fog density fails;
+- invalid rain/snow intensity fails;
+- native/backend/editor token strings in profile ids fail.
+
+- [ ] **Step 2: Add the public contract**
+
+Implement the clean value types shown in the "Public Contract Shape" section, plus:
+
+```cpp
+enum class EnvironmentProfileDiagnosticCode : std::uint8_t;
+struct EnvironmentProfileDiagnostic;
+struct EnvironmentProfileValidationResult;
+
+[[nodiscard]] EnvironmentProfileValidationResult
+validate_environment_profile(const EnvironmentProfileDesc& desc);
+
+[[nodiscard]] bool is_valid_environment_profile(const EnvironmentProfileDesc& desc) noexcept;
+```
+
+- [ ] **Step 3: Build and test the focused target**
+
+Run:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_environment_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "environment"
+```
+
+Expected: `MK_environment_tests` passes.
+
+## Task 3: Environment Text IO And Package Rows
+
+**Files:**
+- Create: `engine/environment/include/mirakana/environment/environment_io.hpp`
+- Create: `engine/environment/src/environment_io.cpp`
+- Modify: `tests/unit/environment_tests.cpp`
+- Modify: `engine/assets/include/mirakana/assets/asset_kind.hpp`
+- Modify: `engine/tools/src/asset_import_plan.cpp`
+
+- [ ] **Step 1: Add RED text IO tests**
+
+Require deterministic round-trip serialization for `GameEngine.EnvironmentProfile.v1` with stable key ordering:
+
+```text
+GameEngine.EnvironmentProfile.v1
+id=default_outdoor
+sky.model=physical_atmosphere
+weather.kind=clear
+sun.direction=0,-1,0
+sun.illuminance_lux=100000
+fog.enabled=false
+precipitation.kind=none
+```
+
+- [ ] **Step 2: Add package asset kind**
+
+Add `AssetKind::environment_profile` and ensure package rows can reference cooked environment profile content without runtime source parsing.
+
+- [ ] **Step 3: Validate malformed documents**
+
+Reject unknown schema names, invalid enums, duplicate keys, non-finite floats, negative precipitation values, and native/backend/editor tokens in authored ids.
+
+- [ ] **Step 4: Focused validation**
+
+Run:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_environment_tests MK_assets_tests MK_tools_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "environment|asset|tools"
+```
+
+Expected: Focused tests pass.
+
+## Task 4: Scene Environment Binding
+
+**Files:**
+- Modify: `engine/scene/include/mirakana/scene/schema_v2.hpp`
+- Modify: `engine/scene/src/schema_v2.cpp`
+- Modify: `engine/scene/include/mirakana/scene/render_packet.hpp`
+- Modify: `engine/scene/src/render_packet.cpp`
+- Modify: `engine/runtime_scene/include/mirakana/runtime_scene/runtime_scene.hpp`
+- Modify: `engine/runtime_scene/src/runtime_scene.cpp`
+- Create: `tests/unit/scene_environment_tests.cpp`
+
+- [ ] **Step 1: Add RED scene binding tests**
+
+Require authored scenes to carry exactly one selected environment profile reference when a runtime environment is requested. Missing profile references should be diagnostics, not implicit defaults.
+
+- [ ] **Step 2: Add scene reference rows**
+
+Add scene rows equivalent to:
+
+```text
+environment.profile=environment/default_outdoor.environment
+environment.required=true
+```
+
+- [ ] **Step 3: Keep `LightComponent` clean**
+
+Do not add sky, weather, cloud, rain, or atmosphere fields to `LightComponent`. Scene lights remain physical scene lights; environment sun/moon lives in `MK_environment`.
+
+- [ ] **Step 4: Focused validation**
+
+Run:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_scene_tests MK_runtime_scene_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "scene_environment|runtime_scene"
+```
+
+Expected: Scene and runtime scene tests pass.
+
+## Task 5: Environment Render Packet Planning
+
+**Files:**
+- Create: `engine/scene_renderer/include/mirakana/scene_renderer/environment_renderer.hpp`
+- Create: `engine/scene_renderer/src/environment_renderer.cpp`
+- Modify: `engine/scene_renderer/CMakeLists.txt`
+- Create: `tests/unit/scene_environment_renderer_tests.cpp`
+
+- [ ] **Step 1: Add RED packet tests**
+
+Require `build_environment_render_packet` to combine camera, scene lights, and environment profile into deterministic render rows. Reject conflicting sun directions when a scene directional light is explicitly bound to the environment sun but points elsewhere.
+
+- [ ] **Step 2: Add packet value types**
+
+Expose value rows:
+
+```cpp
+struct EnvironmentAtmosphereRenderRow;
+struct EnvironmentSkyRenderRow;
+struct EnvironmentFogRenderRow;
+struct EnvironmentCloudRenderRow;
+struct EnvironmentPrecipitationRenderRow;
+struct EnvironmentRenderPacket;
+
+[[nodiscard]] EnvironmentRenderPacket
+build_environment_render_packet(const SceneRenderPacket& scene_packet,
+                                const EnvironmentProfileDesc& environment);
+```
+
+- [ ] **Step 3: Keep renderer-free behavior**
+
+This task must not create GPU resources, compile shaders, or call `IRenderer`.
+
+- [ ] **Step 4: Focused validation**
+
+Run:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_scene_renderer_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "scene_environment_renderer|scene_renderer"
+```
+
+Expected: Scene renderer environment tests pass.
+
+## Task 6: Renderer Environment Policy Foundation
+
+**Files:**
+- Create: `engine/renderer/include/mirakana/renderer/environment_policy.hpp`
+- Create: `engine/renderer/src/environment_policy.cpp`
+- Modify: `engine/renderer/CMakeLists.txt`
+- Create: `tests/unit/renderer_environment_policy_tests.cpp`
+
+- [ ] **Step 1: Add RED policy tests**
+
+Require fail-closed diagnostics for missing scene color, missing scene depth when fog or cloud shadowing needs it, missing backend shader evidence, excessive raymarch step budgets, unsupported backend inheritance, and public native handle claims.
+
+- [ ] **Step 2: Add policy types**
+
+Add:
+
+```cpp
+enum class EnvironmentRenderFeature : std::uint8_t;
+enum class EnvironmentPolicyDiagnosticCode : std::uint8_t;
+struct EnvironmentPolicyDesc;
+struct EnvironmentPolicyPlan;
+
+[[nodiscard]] EnvironmentPolicyPlan plan_environment_render_policy(const EnvironmentPolicyDesc& desc);
+```
+
+- [ ] **Step 3: Keep it backend-neutral**
+
+The policy plan may mention D3D12, Vulkan, and Metal evidence rows by name, but it must not include native structs, native enums, or native handles.
+
+- [ ] **Step 4: Focused validation**
+
+Run:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "renderer_environment_policy|renderer"
+```
+
+Expected: Renderer policy tests pass.
+
+## Task 7: Physical Sky And Sun Disk
+
+**Files:**
+- Create: `engine/renderer/include/mirakana/renderer/physical_sky_policy.hpp`
+- Create: `engine/renderer/src/physical_sky_policy.cpp`
+- Create: `shaders/environment/physical_sky.hlsl`
+- Create: `tests/shaders/environment_physical_sky.hlsl`
+- Modify: `tests/unit/renderer_environment_policy_tests.cpp`
+- Modify: `tools/check-shader-toolchain.ps1` only if a new shader artifact class needs validation.
+
+- [ ] **Step 1: Re-check official sky sources**
+
+Re-check Unreal Sky Atmosphere and Hillaire 2020 before writing shader constants. Record source URLs in the phase evidence.
+
+- [ ] **Step 2: Add RED tests for sky policy**
+
+Require deterministic validation for Rayleigh density, Mie density, Mie anisotropy, ozone density, planet radius, atmosphere height, sun disk radius, sample budget, and aerial perspective mode.
+
+- [ ] **Step 3: Implement policy and shader contract**
+
+Add backend-neutral constant layout rows for transmittance, sky-view, aerial perspective, and multiple-scattering LUT intent. Do not allocate LUT textures in this task unless the same PR adds D3D12 or Vulkan readback proof.
+
+- [ ] **Step 4: Validate shader planning**
+
+Run:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-shader-toolchain.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "physical_sky|renderer_environment"
+```
+
+Expected: Policy tests pass; shader toolchain either reports ready or a concrete host/tool blocker.
+
+## Task 8: Sky Lighting And IBL
+
+**Files:**
+- Create: `engine/renderer/include/mirakana/renderer/environment_lighting_policy.hpp`
+- Create: `engine/renderer/src/environment_lighting_policy.cpp`
+- Modify: `engine/assets/include/mirakana/assets/asset_kind.hpp`
+- Modify: `engine/tools/src/asset_import_plan.cpp`
+- Modify: `docs/dependencies.md`
+- Modify: `docs/legal-and-licensing.md`
+- Modify: `THIRD_PARTY_NOTICES.md`
+- Modify: `vcpkg.json` only if EXR/KTX support is selected for this phase.
+
+- [ ] **Step 1: Choose dependency mode**
+
+Select one mode for this phase:
+
+- no new dependency: use existing first-party cooked texture payloads and HDRI metadata only;
+- optional OpenEXR feature: add EXR source import through a vcpkg feature and legal records;
+- optional KTX feature: add KTX environment map package support through a vcpkg feature and legal records.
+
+- [ ] **Step 2: Add RED IBL policy tests**
+
+Require separation of visual sky from lighting sky, reflection cubemap size, irradiance rows, radiance mip rows, roughness mip count, HDR clamp exposure policy, and package evidence rows.
+
+- [ ] **Step 3: Implement policy**
+
+Add a renderer policy that produces deterministic rows for ambient lighting and reflection fallback without requiring the sky to be visible in the main camera.
+
+- [ ] **Step 4: Dependency validation when selected**
+
+If a dependency is added, run:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1
+```
+
+Expected: Dependency and legal checks pass, or dependency bootstrap records a concrete host blocker.
+
+## Task 9: Height Fog And Aerial Perspective
+
+**Files:**
+- Modify: `engine/renderer/include/mirakana/renderer/postprocess_policy.hpp`
+- Modify: `engine/renderer/src/postprocess_policy.cpp`
+- Create: `engine/renderer/include/mirakana/renderer/environment_fog_policy.hpp`
+- Create: `engine/renderer/src/environment_fog_policy.cpp`
+- Create: `shaders/environment/height_fog.hlsl`
+- Modify: `tests/unit/renderer_rhi_tests.cpp`
+- Modify: `tests/unit/renderer_environment_policy_tests.cpp`
+
+- [ ] **Step 1: Add RED fog execution policy tests**
+
+The tests must prove `fog` is no longer only an enum value. Require depth input, finite density, valid height falloff, valid sky affect, valid anisotropy, shader evidence, and exact pass budget rows.
+
+- [ ] **Step 2: Implement policy**
+
+Use existing postprocess depth input foundations. The policy must report `environment_fog_status=ready` only when depth input and shader evidence are present.
+
+- [ ] **Step 3: Add D3D12 readback proof**
+
+Add a focused D3D12 WARP-safe readback test proving fog changes at least two known depths differently. Do not use subjective screenshot comparison as the only proof.
+
+- [ ] **Step 4: Add Vulkan host-gated proof**
+
+Add a strict Vulkan proof guarded by explicit SPIR-V artifact environment variables and validation-layer readiness.
+
+## Task 10: Volumetric Fog
+
+**Files:**
+- Create: `engine/renderer/include/mirakana/renderer/volumetric_fog_policy.hpp`
+- Create: `engine/renderer/src/volumetric_fog_policy.cpp`
+- Create: `shaders/environment/volumetric_fog.hlsl`
+- Create: `tests/unit/renderer_volumetric_fog_tests.cpp`
+
+- [ ] **Step 1: Add RED volumetric fog policy tests**
+
+Require froxel grid dimensions, slice count, range, density, albedo, anisotropy, temporal reprojection toggle, history weight, local fog volume rows, and quality tier diagnostics.
+
+- [ ] **Step 2: Implement value planning**
+
+Add CPU-side policy rows first. The first PR for this task may stop at value planning and validation if GPU execution is too large for one review.
+
+- [ ] **Step 3: Add execution proof**
+
+Promote to ready only after D3D12 readback or package evidence proves volumetric fog output. Vulkan remains strict-gated; Metal remains Apple-host-gated.
+
+## Task 11: Cloud Layer
+
+**Files:**
+- Create: `engine/environment/include/mirakana/environment/cloud_layer.hpp`
+- Create: `engine/renderer/include/mirakana/renderer/cloud_layer_policy.hpp`
+- Create: `engine/renderer/src/cloud_layer_policy.cpp`
+- Create: `shaders/environment/cloud_layer.hlsl`
+- Create: `tests/unit/environment_cloud_tests.cpp`
+
+- [ ] **Step 1: Add RED cloud layer tests**
+
+Require 2D cloud coverage, opacity, altitude, wind velocity, flow-map asset reference, sky tint response, time-of-day response, and IBL contribution mode diagnostics.
+
+- [ ] **Step 2: Implement cheap cloud layer**
+
+This is the low-cost weather sky path. It should be usable without volumetric clouds and should be the default for lower quality tiers.
+
+- [ ] **Step 3: Package evidence**
+
+Add package status fields only when the selected sample proves the cloud layer path through a render/readback or strict smoke lane.
+
+## Task 12: Weather And Precipitation
+
+**Files:**
+- Create: `engine/environment/include/mirakana/environment/weather.hpp`
+- Create: `engine/environment/src/weather.cpp`
+- Create: `engine/renderer/include/mirakana/renderer/precipitation_policy.hpp`
+- Create: `engine/renderer/src/precipitation_policy.cpp`
+- Create: `shaders/environment/precipitation.hlsl`
+- Create: `tests/unit/environment_weather_tests.cpp`
+- Create: `tests/unit/renderer_precipitation_policy_tests.cpp`
+
+- [ ] **Step 1: Add RED weather contract tests**
+
+Require deterministic plans for `clear`, `cloudy`, `rain`, `storm`, `snow`, `foggy`, `dust`, and `ash`. Reject invalid intensity, non-finite wind, unsupported precipitation kind, missing occlusion policy when rain reaches scene geometry, and backend/native handle claims.
+
+- [ ] **Step 2: Add precipitation planning**
+
+Add value rows for rain, snow, sleet, hail, ash, and dust:
+
+```cpp
+struct EnvironmentPrecipitationParticleRow;
+struct EnvironmentSurfaceWetnessRow;
+struct EnvironmentPrecipitationOcclusionRow;
+struct EnvironmentPrecipitationPlan;
+
+[[nodiscard]] EnvironmentPrecipitationPlan
+plan_environment_precipitation(const EnvironmentProfileDesc& environment,
+                               const EnvironmentRenderPacket& packet);
+```
+
+- [ ] **Step 3: Add rain occlusion and wetness policy**
+
+Plan camera-near precipitation, surface wetness, splash/ripple intent, and roof/indoor occlusion as explicit rows. Do not mutate materials or scene geometry in this phase.
+
+- [ ] **Step 4: Add audio handoff rows**
+
+Add value-only rows for rain loop, indoor muffling, thunder delay, and storm intensity handoff to `MK_audio`. Do not play audio in `MK_environment`.
+
+- [ ] **Step 5: Evidence**
+
+Promote `environment_precipitation_status=ready` only after package-visible counters prove selected rain or snow rows and zero native handle leakage.
+
+## Task 13: Volumetric Clouds And Storm Lighting
+
+**Files:**
+- Create: `engine/renderer/include/mirakana/renderer/volumetric_cloud_policy.hpp`
+- Create: `engine/renderer/src/volumetric_cloud_policy.cpp`
+- Create: `shaders/environment/volumetric_clouds.hlsl`
+- Create: `tests/unit/renderer_volumetric_cloud_tests.cpp`
+
+- [ ] **Step 1: Re-check official cloud sources**
+
+Re-check Unreal Volumetric Clouds and Unity HDRP clouds before selecting property names and quality budgets.
+
+- [ ] **Step 2: Add RED cloud policy tests**
+
+Require weather map, coverage, density, shape noise reference, erosion noise reference, altitude range, wind, lighting source count, raymarch primary steps, raymarch light steps, temporal reprojection, and cloud shadow diagnostics.
+
+- [ ] **Step 3: Implement policy rows**
+
+Add policy rows that support at most two atmospheric directional lights, matching the sun/moon structure. Reject extra atmospheric lights deterministically.
+
+- [ ] **Step 4: Add storm rows**
+
+Plan lightning flash intensity, lightning direction, thunder delay, cloud darkening, precipitation boost, wind gusts, and exposure response as value rows. Renderer and audio execution remain separate adapter work within this task's evidence boundary.
+
+## Task 14: Time Of Day And Weather Blending
+
+**Files:**
+- Create: `engine/environment/include/mirakana/environment/time_of_day.hpp`
+- Create: `engine/environment/src/time_of_day.cpp`
+- Create: `tests/unit/environment_time_of_day_tests.cpp`
+
+- [ ] **Step 1: Add RED time-of-day tests**
+
+Require deterministic sun direction, moon direction, normalized day time, profile blend weights, exposure intent, weather transition rows, and stable replay hash.
+
+- [ ] **Step 2: Implement value planning**
+
+Add:
+
+```cpp
+struct EnvironmentTimeOfDayRequest;
+struct EnvironmentTimeOfDayPlan;
+
+[[nodiscard]] EnvironmentTimeOfDayPlan
+plan_environment_time_of_day(const EnvironmentTimeOfDayRequest& request);
+```
+
+- [ ] **Step 3: Keep gameplay ownership clear**
+
+The planner returns environment values. It does not tick game state, mutate scenes, or own a scheduler.
+
+## Task 15: Editor Authoring Surface
+
+**Files:**
+- Modify: `editor/core/include/mirakana/editor_core/environment_authoring.hpp`
+- Create: `editor/core/src/environment_authoring.cpp`
+- Modify: `editor/src/editor_app.cpp`
+- Create: `tests/unit/editor_environment_tests.cpp`
+
+- [ ] **Step 1: Add editor-core model tests**
+
+Require deterministic inspector rows for sky, sun, moon, atmosphere, fog, cloud layer, volumetric clouds, precipitation, weather presets, and quality tier.
+
+- [ ] **Step 2: Add authoring document**
+
+Add an editor-core document over `GameEngine.EnvironmentProfile.v1` text IO using `ITextStore`, undo/redo, dirty tracking, validation diagnostics, and package registration review rows.
+
+- [ ] **Step 3: Add visible editor panel**
+
+Add a visible Dear ImGui panel only after editor-core model tests pass. The editor panel must not expose native renderer/RHI handles or execute package scripts.
+
+## Task 16: Package And Validation Evidence
+
+**Files:**
+- Modify: `tools/package-desktop-runtime.ps1`
+- Modify: `tools/validate-installed-desktop-runtime.ps1`
+- Modify: `tools/run-validation-recipe.ps1`
+- Modify: `games/sample_desktop_runtime_game/game.agent.json`
+- Modify: `games/sample_desktop_runtime_game/main.cpp`
+- Modify: `engine/agent/manifest.fragments/009-validationRecipes.json`
+- Modify: `engine/agent/manifest.fragments/014-gameCodeGuidance.json`
+
+- [ ] **Step 1: Add smoke flags only for implemented phases**
+
+Add flags such as:
+
+```text
+--require-environment-profile
+--require-environment-physical-sky
+--require-environment-fog
+--require-environment-cloud-layer
+--require-environment-precipitation
+--require-environment-volumetric-clouds
+```
+
+Do not add a flag before its corresponding implementation and tests exist.
+
+- [ ] **Step 2: Validate installed output**
+
+Installed validation must reject missing status rows, mismatched selected backend evidence, inferred Vulkan readiness, inferred Metal readiness, and broad environment-ready claims without narrow counters.
+
+- [ ] **Step 3: Compose manifest**
+
+When agent-surface rows change, run:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
+```
+
+Expected: composed manifest and AI integration checks pass.
+
+## Task 17: Final Documentation Closeout
+
+**Files:**
+- Modify: `docs/current-capabilities.md`
+- Modify: `docs/roadmap.md`
+- Modify: `docs/rhi.md`
+- Modify: `docs/ai-game-development.md`
+- Modify: `docs/superpowers/plans/README.md`
+- Modify: `docs/superpowers/plans/2026-05-26-environment-system-v1.md`
+
+- [ ] **Step 1: Update current-truth docs**
+
+Document only the phases that have actually landed. Keep host-gated and planned environment features separate from ready features.
+
+- [ ] **Step 2: Register active plan state**
+
+If this plan becomes active, update the plan registry and manifest fragments in the same change. If it remains proposed, do not make it the `currentActivePlan`.
+
+- [ ] **Step 3: Run final validation**
+
+For C++/runtime/rendering/package changes, run:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
+```
+
+Expected: PASS, or a concrete missing-host/toolchain blocker is recorded.
+
+## Validation Matrix
+
+| Slice | Required evidence before ready claim |
+| --- | --- |
+| Environment profile | Unit tests, text IO round trip, package row validation. |
+| Scene binding | Scene v2 tests, runtime scene tests, no `LightComponent` pollution. |
+| Render packet | `MK_scene_renderer` tests, deterministic rows, no GPU execution. |
+| Physical sky | Policy tests, shader contract validation, D3D12 proof before runtime ready. |
+| IBL | Cubemap policy tests, HDR dependency/legal checks if EXR/KTX is selected. |
+| Height fog | Depth-aware readback/package evidence, not only enum support. |
+| Volumetric fog | Froxel policy tests, D3D12 readback or package evidence. |
+| Cloud layer | Cheap cloud layer tests, package evidence for selected sample. |
+| Rain/snow/storm | Precipitation, wetness, occlusion, and audio handoff value tests. |
+| Volumetric clouds | Raymarch quality budget tests, D3D12 proof, Vulkan strict gate. |
+| Editor | Editor-core model tests before visible Dear ImGui panel. |
+| Package | Installed validation counters for each selected feature. |
+
+## Recommended PR Slices
+
+1. PR 1: `MK_environment` value contract, validation, and tests.
+2. PR 2: Environment text IO, asset kind, and package rows.
+3. PR 3: Scene/runtime scene environment binding.
+4. PR 4: Environment render packet and renderer policy planning.
+5. PR 5: Physical sky policy and shader contract.
+6. PR 6: D3D12 physical sky proof and strict Vulkan gated proof.
+7. PR 7: Sky lighting and IBL policy.
+8. PR 8: Height fog execution proof.
+9. PR 9: Volumetric fog policy and first execution proof.
+10. PR 10: Cloud layer.
+11. PR 11: Weather and precipitation, including rain, snow, wetness, occlusion, and audio handoff rows.
+12. PR 12: Volumetric clouds and storm lighting.
+13. PR 13: Time-of-day and weather blending.
+14. PR 14: Editor environment authoring.
+15. PR 15: Package validation recipes, manifest, docs, and final closeout.
+
+## Completion Definition
+
+The Environment System v1 plan is complete only when:
+
+- environment profiles are first-class package assets;
+- scene and runtime packages can reference environment profiles;
+- physical sky, environment lighting, fog, clouds, rain/snow/storm, and time-of-day each have narrow ready counters only after evidence exists;
+- D3D12 has primary host/package proof for selected runtime samples;
+- Vulkan has strict host/toolchain/runtime gated proof for selected features;
+- Metal is either Apple-host proven or explicitly host-gated;
+- editor authoring exists through reviewed editor-core models before visible UI claims;
+- docs, plan registry, manifest fragments, composed manifest, static checks, and validation recipes match the implemented evidence;
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passes or records an exact local host/toolchain blocker.
