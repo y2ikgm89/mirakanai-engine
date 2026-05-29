@@ -404,6 +404,12 @@ struct SandboxWorldProbeResult {
     std::size_t destruction_accepted_rows{0U};
     std::size_t destruction_rejected_rows{0U};
     std::size_t construction_cost_rows{0U};
+    std::size_t cost_consumption_rows{0U};
+    std::size_t tile_drop_rows{0U};
+    std::size_t tool_effectiveness_rows{0U};
+    std::size_t spawn_region_rows{0U};
+    std::size_t day_night_event_rows{0U};
+    std::size_t trigger_rows{0U};
     std::size_t mutation_rows{0U};
     std::size_t persistence_rows{0U};
     std::size_t persistence_repairable_rows{0U};
@@ -4827,10 +4833,17 @@ count_simulation_orchestration_diagnostics(const mirakana::runtime::RuntimeSimul
     using Chunk = mirakana::runtime::RuntimeSandboxChunkRow;
     using Cost = mirakana::runtime::RuntimeSandboxConstructionCostRow;
     using Destruction = mirakana::runtime::RuntimeSandboxDestructionIntent;
+    using DayNightEvent = mirakana::runtime::RuntimeSandboxDayNightEventRow;
+    using DayNightPhase = mirakana::runtime::RuntimeSandboxDayNightPhase;
     using ExistingCell = mirakana::runtime::RuntimeSandboxExistingCellRow;
     using Persistence = mirakana::runtime::RuntimeSandboxPersistenceRow;
     using PersistenceStatus = mirakana::runtime::RuntimeSandboxPersistenceStatus;
     using Placement = mirakana::runtime::RuntimeSandboxPlacementIntent;
+    using SpawnRegion = mirakana::runtime::RuntimeSandboxSpawnRegionRow;
+    using TileDrop = mirakana::runtime::RuntimeSandboxTileDropRow;
+    using ToolEffectiveness = mirakana::runtime::RuntimeSandboxToolEffectivenessRow;
+    using Trigger = mirakana::runtime::RuntimeSandboxTriggerRow;
+    using TriggerKind = mirakana::runtime::RuntimeSandboxTriggerKind;
     using Request = mirakana::runtime::RuntimeSandboxWorldMutationRequest;
     using Status = mirakana::runtime::RuntimeSandboxWorldStatus;
 
@@ -4921,20 +4934,65 @@ count_simulation_orchestration_diagnostics(const mirakana::runtime::RuntimeSimul
                             Cost{.block_id = "block.wall", .item_id = "item.wood", .quantity = 3U, .source_index = 1U},
                             Cost{.block_id = "block.door", .item_id = "item.wood", .quantity = 4U, .source_index = 2U},
                         },
-                    .persistence_rows = std::vector<Persistence>{
-                        Persistence{.chunk_id = "chunk.0",
-                                    .key = "persist.chunk.0",
-                                    .expected_schema_version = 2U,
-                                    .observed_schema_version = 2U,
-                                    .status = PersistenceStatus::rejected,
+                    .persistence_rows =
+                        std::vector<Persistence>{
+                            Persistence{.chunk_id = "chunk.0",
+                                        .key = "persist.chunk.0",
+                                        .expected_schema_version = 2U,
+                                        .observed_schema_version = 2U,
+                                        .status = PersistenceStatus::rejected,
+                                        .source_index = 1U},
+                            Persistence{.chunk_id = "chunk.1",
+                                        .key = "persist.chunk.1",
+                                        .expected_schema_version = 3U,
+                                        .observed_schema_version = 2U,
+                                        .status = PersistenceStatus::rejected,
+                                        .source_index = 2U},
+                        },
+                    .tile_drop_rows =
+                        std::vector<TileDrop>{
+                            TileDrop{.block_id = "block.soil",
+                                     .item_id = "item.soil",
+                                     .min_quantity = 1U,
+                                     .max_quantity = 2U,
+                                     .required_tool_category_id = "tool.digging",
+                                     .source_index = 1U},
+                        },
+                    .tool_effectiveness_rows =
+                        std::vector<ToolEffectiveness>{
+                            ToolEffectiveness{.tool_category_id = "tool.digging",
+                                              .block_tag_id = "tag.soft_ground",
+                                              .effectiveness_tier = 2U,
+                                              .source_index = 1U},
+                        },
+                    .spawn_region_rows =
+                        std::vector<SpawnRegion>{
+                            SpawnRegion{.region_id = "region.spawn",
+                                        .spawn_group_id = "spawn.passive",
+                                        .max_active = 4U,
+                                        .source_index = 1U},
+                        },
+                    .day_night_event_rows =
+                        std::vector<DayNightEvent>{
+                            DayNightEvent{.event_id = "cycle.dawn",
+                                          .phase = DayNightPhase::dawn,
+                                          .first_tick = 120U,
+                                          .repeat_interval_ticks = 240U,
+                                          .source_index = 1U},
+                        },
+                    .trigger_rows =
+                        std::vector<Trigger>{
+                            Trigger{.trigger_id = "trigger.camp",
+                                    .kind = TriggerKind::interaction,
+                                    .event_id = "cycle.dawn",
+                                    .chunk_id = "chunk.0",
+                                    .coord = make_sandbox_cell(2, 0, 1),
+                                    .interaction_id = "interaction.inspect",
                                     .source_index = 1U},
-                        Persistence{.chunk_id = "chunk.1",
-                                    .key = "persist.chunk.1",
-                                    .expected_schema_version = 3U,
-                                    .observed_schema_version = 2U,
-                                    .status = PersistenceStatus::rejected,
-                                    .source_index = 2U},
-                    }});
+                        },
+                    .game_content_rule_ids = {},
+                    .row_budget = 128U,
+                    .seed = 11U});
 
     SandboxWorldProbeResult result;
     result.status = plan.status;
@@ -4948,6 +5006,12 @@ count_simulation_orchestration_diagnostics(const mirakana::runtime::RuntimeSimul
     result.destruction_accepted_rows = plan.accepted_destruction_count;
     result.destruction_rejected_rows = plan.rejected_destruction_count;
     result.construction_cost_rows = plan.construction_cost_count;
+    result.cost_consumption_rows = plan.construction_cost_consumption_count;
+    result.tile_drop_rows = plan.tile_drop_count;
+    result.tool_effectiveness_rows = plan.tool_effectiveness_count;
+    result.spawn_region_rows = plan.spawn_region_count;
+    result.day_night_event_rows = plan.day_night_event_count;
+    result.trigger_rows = plan.trigger_count;
     result.mutation_rows = plan.mutation_rows.size();
     result.persistence_rows = plan.persistence_row_count;
     result.persistence_repairable_rows = plan.repairable_persistence_row_count;
@@ -4957,15 +5021,17 @@ count_simulation_orchestration_diagnostics(const mirakana::runtime::RuntimeSimul
     result.invoked_world_mutation = plan.invoked_world_mutation;
     result.invoked_persistence_io = plan.invoked_persistence_io;
     result.invoked_package_io = plan.invoked_package_io;
-    result.ready = plan.status == Status::ready && plan.succeeded() && result.chunk_rows == 2U &&
-                   result.resident_chunk_rows == 2U && result.existing_cell_rows == 2U &&
-                   result.placement_intent_rows == 3U && result.placement_accepted_rows == 1U &&
-                   result.placement_rejected_rows == 2U && result.destruction_intent_rows == 2U &&
-                   result.destruction_accepted_rows == 1U && result.destruction_rejected_rows == 1U &&
-                   result.construction_cost_rows == 2U && result.mutation_rows == 5U && result.persistence_rows == 2U &&
-                   result.persistence_repairable_rows == 1U && result.rejected_unsafe_mutation_rows == 3U &&
-                   result.diagnostics == 0U && result.replay_hash != 0U && !result.invoked_world_mutation &&
-                   !result.invoked_persistence_io && !result.invoked_package_io;
+    result.ready =
+        plan.status == Status::ready && plan.succeeded() && result.chunk_rows == 2U &&
+        result.resident_chunk_rows == 2U && result.existing_cell_rows == 2U && result.placement_intent_rows == 3U &&
+        result.placement_accepted_rows == 1U && result.placement_rejected_rows == 2U &&
+        result.destruction_intent_rows == 2U && result.destruction_accepted_rows == 1U &&
+        result.destruction_rejected_rows == 1U && result.construction_cost_rows == 2U &&
+        result.cost_consumption_rows == 1U && result.tile_drop_rows == 1U && result.tool_effectiveness_rows == 1U &&
+        result.spawn_region_rows == 1U && result.day_night_event_rows == 1U && result.trigger_rows == 1U &&
+        result.mutation_rows == 5U && result.persistence_rows == 2U && result.persistence_repairable_rows == 1U &&
+        result.rejected_unsafe_mutation_rows == 3U && result.diagnostics == 0U && result.replay_hash != 0U &&
+        !result.invoked_world_mutation && !result.invoked_persistence_io && !result.invoked_package_io;
     return result;
 }
 
@@ -9606,6 +9672,12 @@ int main(int argc, char** argv) {
         << " sandbox_world_destruction_accepted_rows=" << sandbox_world_probe.destruction_accepted_rows
         << " sandbox_world_destruction_rejected_rows=" << sandbox_world_probe.destruction_rejected_rows
         << " sandbox_world_construction_cost_rows=" << sandbox_world_probe.construction_cost_rows
+        << " sandbox_world_cost_consumption_rows=" << sandbox_world_probe.cost_consumption_rows
+        << " sandbox_world_tile_drop_rows=" << sandbox_world_probe.tile_drop_rows
+        << " sandbox_world_tool_effectiveness_rows=" << sandbox_world_probe.tool_effectiveness_rows
+        << " sandbox_world_spawn_region_rows=" << sandbox_world_probe.spawn_region_rows
+        << " sandbox_world_day_night_event_rows=" << sandbox_world_probe.day_night_event_rows
+        << " sandbox_world_trigger_rows=" << sandbox_world_probe.trigger_rows
         << " sandbox_world_mutation_rows=" << sandbox_world_probe.mutation_rows
         << " sandbox_world_persistence_rows=" << sandbox_world_probe.persistence_rows
         << " sandbox_world_persistence_repairable_rows=" << sandbox_world_probe.persistence_repairable_rows
@@ -10433,6 +10505,12 @@ int main(int argc, char** argv) {
             << " sandbox_world_status=" << sandbox_world_status_name(sandbox_world_probe.status)
             << " sandbox_world_ready=" << (sandbox_world_probe.ready ? 1 : 0)
             << " sandbox_world_diagnostics=" << sandbox_world_probe.diagnostics
+            << " sandbox_world_cost_consumption_rows=" << sandbox_world_probe.cost_consumption_rows
+            << " sandbox_world_tile_drop_rows=" << sandbox_world_probe.tile_drop_rows
+            << " sandbox_world_tool_effectiveness_rows=" << sandbox_world_probe.tool_effectiveness_rows
+            << " sandbox_world_spawn_region_rows=" << sandbox_world_probe.spawn_region_rows
+            << " sandbox_world_day_night_event_rows=" << sandbox_world_probe.day_night_event_rows
+            << " sandbox_world_trigger_rows=" << sandbox_world_probe.trigger_rows
             << " sandbox_world_replay_hash=" << sandbox_world_probe.replay_hash
             << " simulation_management_status=" << simulation_management_status_name(simulation_management_probe.status)
             << " simulation_management_ready=" << (simulation_management_probe.ready ? 1 : 0)

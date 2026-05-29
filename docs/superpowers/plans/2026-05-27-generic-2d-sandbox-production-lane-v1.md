@@ -12,7 +12,7 @@
 
 **Plan ID:** `generic-2d-sandbox-production-lane-v1`
 
-**Status:** Phased milestone implementation in progress. Phases 1-7 have completed as reviewable slices, but this file does not replace `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`, does not reopen `unsupportedProductionGaps`, and does not mark later planned capabilities as ready.
+**Status:** Phased milestone implementation in progress. Phases 1-8 have completed as reviewable slices, but this file does not replace `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`, does not reopen `unsupportedProductionGaps`, and does not mark later planned capabilities as ready.
 
 ## Current Evidence And Gap Summary
 
@@ -338,10 +338,14 @@ Evidence: RED compile proof first failed on missing `mirakana/tools/sandbox_worl
 - Modify: `tests/unit/runtime_genre_sandbox_world_tests.cpp`
 - Modify selected runtime gameplay tests that already own inventory/crafting/spawn rows.
 
-- [ ] Add RED tests for engine-owned generic hooks: tile drops as data rows, construction cost consumption, tool effectiveness category, spawn-region rows, day/night event rows, and trigger rows.
-- [ ] Add RED tests that reject game-specific content names, hardcoded damage formulas, boss/NPC catalogs, and economy balance inside engine modules.
-- [ ] Implement generic row production only. Actual game rules consume rows in `games/<game_name>/`.
-- [ ] Add package counters to `sample_2d_desktop_runtime_package` only for generic hooks.
+**Official Evidence:** 2026-05-30 implementation refreshed Context7 `/websites/cmake_cmake_help` for official CMake/CTest test registration practice (`add_test(NAME ... COMMAND ...)`) and kept the phase on existing first-party `MK_runtime`/sample package targets rather than adding dependencies, SDK adapters, or middleware. No new third-party library, package manager feature, renderer/RHI API, platform SDK surface, or SDL3 adapter was introduced; the phase extends value-only runtime rows and selected package counters.
+
+- [x] Add RED tests for engine-owned generic hooks: tile drops as data rows, construction cost consumption, tool effectiveness category, spawn-region rows, day/night event rows, and trigger rows.
+- [x] Add RED tests that reject game-specific content names, hardcoded damage formulas, boss/NPC catalogs, and economy balance inside engine modules.
+- [x] Implement generic row production only. Actual game rules consume rows in `games/<game_name>/`.
+- [x] Add package counters to `sample_2d_desktop_runtime_package` only for generic hooks.
+
+Evidence: RED compile proof first failed on missing `RuntimeSandboxDayNightPhase`, `RuntimeSandboxTriggerKind`, `RuntimeSandboxTileDropRow`, `RuntimeSandboxToolEffectivenessRow`, `RuntimeSandboxSpawnRegionRow`, `RuntimeSandboxDayNightEventRow`, `RuntimeSandboxTriggerRow`, and new `RuntimeSandboxWorldMutationRequest` / `RuntimeSandboxWorldMutationPlan` members. GREEN focused validation passed `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_genre_sandbox_world_tests`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "runtime_genre_sandbox_world"`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset desktop-runtime`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset desktop-runtime --target sample_2d_desktop_runtime_package`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset desktop-runtime --output-on-failure -R "sample_2d_desktop_runtime_package"`, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package`. A direct source-tree smoke with the registered 2D package args reported `sandbox_world_cost_consumption_rows=1`, `sandbox_world_tile_drop_rows=1`, `sandbox_world_tool_effectiveness_rows=1`, `sandbox_world_spawn_region_rows=1`, `sandbox_world_day_night_event_rows=1`, `sandbox_world_trigger_rows=1`, positive `sandbox_world_replay_hash`, zero world/persistence/package side-effect counters, and `sandbox_world_diagnostics=0`; installed package validation also passed for `sample_2d_desktop_runtime_package`. The negative runtime test rejects boss/NPC/damage-formula/economy hook ids before output rows, and the engine still does not execute inventory/crafting/spawn/dialogue/AI rules, mutate worlds from review, write persistence, call renderer/platform/editor APIs, expose native handles, or reintroduce SDL3.
 
 ## Phase 9 - Optional Multiplayer And Modding Gate
 

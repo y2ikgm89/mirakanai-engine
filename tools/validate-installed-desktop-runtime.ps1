@@ -1071,6 +1071,12 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
                 "sandbox_world_destruction_accepted_rows",
                 "sandbox_world_destruction_rejected_rows",
                 "sandbox_world_construction_cost_rows",
+                "sandbox_world_cost_consumption_rows",
+                "sandbox_world_tile_drop_rows",
+                "sandbox_world_tool_effectiveness_rows",
+                "sandbox_world_spawn_region_rows",
+                "sandbox_world_day_night_event_rows",
+                "sandbox_world_trigger_rows",
                 "sandbox_world_mutation_rows",
                 "sandbox_world_persistence_rows",
                 "sandbox_world_persistence_repairable_rows",
@@ -1409,6 +1415,12 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
                 "sandbox_world_destruction_accepted_rows" = "1"
                 "sandbox_world_destruction_rejected_rows" = "1"
                 "sandbox_world_construction_cost_rows" = "2"
+                "sandbox_world_cost_consumption_rows" = "1"
+                "sandbox_world_tile_drop_rows" = "1"
+                "sandbox_world_tool_effectiveness_rows" = "1"
+                "sandbox_world_spawn_region_rows" = "1"
+                "sandbox_world_day_night_event_rows" = "1"
+                "sandbox_world_trigger_rows" = "1"
                 "sandbox_world_mutation_rows" = "5"
                 "sandbox_world_persistence_rows" = "2"
                 "sandbox_world_persistence_repairable_rows" = "1"

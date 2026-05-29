@@ -45,6 +45,12 @@ foreach ($needle in @(
         "RuntimeSandboxDestructionIntent",
         "RuntimeSandboxConstructionCostRow",
         "RuntimeSandboxPersistenceRow",
+        "RuntimeSandboxTileDropRow",
+        "RuntimeSandboxConstructionCostConsumptionRow",
+        "RuntimeSandboxToolEffectivenessRow",
+        "RuntimeSandboxSpawnRegionRow",
+        "RuntimeSandboxDayNightEventRow",
+        "RuntimeSandboxTriggerRow",
         "RuntimeSandboxWorldMutationPlan",
         "plan_runtime_sandbox_world_mutation"
     )) {
@@ -58,7 +64,10 @@ foreach ($needle in @(
         "RuntimeSandboxWorldStatus::invalid_request",
         "lhs.message < rhs.message",
         "is_valid_id(intent.chunk_id)",
-        "row.provided_costs.size()"
+        "row.provided_costs.size()",
+        "has_game_owned_content_reference",
+        "construction_cost_consumption_rows",
+        "validate_gameplay_hook_rows"
     )) {
     Assert-ContainsText $sandboxSourceText $needle "engine/runtime/src/genre_sandbox_world.cpp"
 }
@@ -76,6 +85,8 @@ Assert-ContainsText $rootCMakeText "MK_runtime_genre_sandbox_world_tests" "CMake
 Assert-ContainsText $sandboxTestsText "runtime sandbox world plans chunk placement destruction costs mutation rows and persistence" "tests/unit/runtime_genre_sandbox_world_tests.cpp"
 Assert-ContainsText $sandboxTestsText "runtime sandbox world rejects malformed rows and game-owned content rules before output rows" "tests/unit/runtime_genre_sandbox_world_tests.cpp"
 Assert-ContainsText $sandboxTestsText "runtime sandbox world diagnostics are totally ordered by stable public fields" "tests/unit/runtime_genre_sandbox_world_tests.cpp"
+Assert-ContainsText $sandboxTestsText "runtime sandbox world emits generic gameplay hook rows without owning game rules" "tests/unit/runtime_genre_sandbox_world_tests.cpp"
+Assert-ContainsText $sandboxTestsText "runtime sandbox world rejects game specific catalogs formulas and economy hooks" "tests/unit/runtime_genre_sandbox_world_tests.cpp"
 Assert-ContainsText $sandboxTestsText "changed_destruction.replay_hash != first.replay_hash" "tests/unit/runtime_genre_sandbox_world_tests.cpp"
 Assert-ContainsText $sandboxTestsText "changed_provided_cost.replay_hash != first.replay_hash" "tests/unit/runtime_genre_sandbox_world_tests.cpp"
 
@@ -237,6 +248,17 @@ foreach ($sampleSurface in @(
     }
 }
 
+foreach ($needle in @(
+        "sandbox_world_cost_consumption_rows=",
+        "sandbox_world_tile_drop_rows=",
+        "sandbox_world_tool_effectiveness_rows=",
+        "sandbox_world_spawn_region_rows=",
+        "sandbox_world_day_night_event_rows=",
+        "sandbox_world_trigger_rows="
+    )) {
+    Assert-ContainsText $sample2dMainText $needle "games/sample_2d_desktop_runtime_package/main.cpp"
+}
+
 foreach ($manifestSurface in @(
         @{ Text = $sample2dManifestText; Label = "games/sample_2d_desktop_runtime_package/game.agent.json" },
         @{ Text = $sample3dManifestText; Label = "games/sample_generated_desktop_runtime_3d_package/game.agent.json" }
@@ -257,6 +279,17 @@ foreach ($manifestSurface in @(
 }
 
 foreach ($needle in @(
+        "sandbox_world_cost_consumption_rows=1",
+        "sandbox_world_tile_drop_rows=1",
+        "sandbox_world_tool_effectiveness_rows=1",
+        "sandbox_world_spawn_region_rows=1",
+        "sandbox_world_day_night_event_rows=1",
+        "sandbox_world_trigger_rows=1"
+    )) {
+    Assert-ContainsText $sample2dManifestText $needle "games/sample_2d_desktop_runtime_package/game.agent.json"
+}
+
+foreach ($needle in @(
         "sandbox_world_status",
         "sandbox_world_ready",
         "sandbox_world_chunk_rows",
@@ -264,6 +297,12 @@ foreach ($needle in @(
         "sandbox_world_existing_cell_rows",
         "sandbox_world_placement_accepted_rows",
         "sandbox_world_destruction_accepted_rows",
+        "sandbox_world_cost_consumption_rows",
+        "sandbox_world_tile_drop_rows",
+        "sandbox_world_tool_effectiveness_rows",
+        "sandbox_world_spawn_region_rows",
+        "sandbox_world_day_night_event_rows",
+        "sandbox_world_trigger_rows",
         "sandbox_world_mutation_rows",
         "sandbox_world_persistence_repairable_rows",
         "sandbox_world_rejected_unsafe_mutation_rows",
@@ -284,6 +323,16 @@ foreach ($docSurface in @(
     )) {
     Assert-ContainsText $docSurface.Text "plan_runtime_sandbox_world_mutation" $docSurface.Label
     Assert-ContainsText $docSurface.Text "sandbox_world_ready=1" $docSurface.Label
+}
+
+foreach ($docSurface in @(
+        @{ Text = $tileSimulationPlanText; Label = "docs/superpowers/plans/2026-05-27-generic-2d-sandbox-production-lane-v1.md" },
+        @{ Text = $planRegistryText; Label = "docs/superpowers/plans/README.md" },
+        @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
+        @{ Text = $roadmapText; Label = "docs/roadmap.md" },
+        @{ Text = $generatedValidationText; Label = "docs/specs/generated-game-validation-scenarios.md" }
+    )) {
+    Assert-ContainsText $docSurface.Text "sandbox_world_tile_drop_rows" $docSurface.Label
 }
 
 foreach ($docSurface in @(
@@ -384,6 +433,12 @@ foreach ($needle in @(
         "engine/runtime/include/mirakana/runtime/sandbox_world_persistence.hpp",
         "engine/runtime/include/mirakana/runtime/sandbox_world_streaming.hpp",
         "RuntimeSandboxChunkRow",
+        "RuntimeSandboxTileDropRow",
+        "RuntimeSandboxConstructionCostConsumptionRow",
+        "RuntimeSandboxToolEffectivenessRow",
+        "RuntimeSandboxSpawnRegionRow",
+        "RuntimeSandboxDayNightEventRow",
+        "RuntimeSandboxTriggerRow",
         "RuntimeSandboxWorldDesc",
         "RuntimeSandboxWorldMutationExecutionStatus",
         "RuntimeSandboxWorldDirtyRegion",

@@ -71,6 +71,19 @@ struct RuntimeSandboxCellLookupRow {
     return is_forbidden_backend_token(token);
 }
 
+[[nodiscard]] bool has_game_owned_content_reference(std::string_view value) {
+    std::string lower;
+    lower.reserve(value.size());
+    for (const auto ch : value) {
+        lower.push_back(lower_ascii(ch));
+    }
+    constexpr auto forbidden = std::array<std::string_view, 8U>{
+        "boss", "npc", "damage_formula", "damage-formula", "damage.formula", "economy", "price", "currency",
+    };
+    return std::ranges::any_of(forbidden,
+                               [&lower](std::string_view token) { return lower.find(token) != std::string::npos; });
+}
+
 [[nodiscard]] bool same_coord(RuntimeSandboxCellCoord lhs, RuntimeSandboxCellCoord rhs) noexcept {
     return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z;
 }
@@ -154,13 +167,17 @@ void sort_diagnostics(RuntimeSandboxWorldMutationPlan& plan) {
     }
     return request.chunk_rows.size() + request.existing_cell_rows.size() + request.placement_intents.size() +
            request.destruction_intents.size() + request.construction_cost_rows.size() +
-           request.persistence_rows.size() + request.game_content_rule_ids.size() + provided_cost_count;
+           request.persistence_rows.size() + request.tile_drop_rows.size() + request.tool_effectiveness_rows.size() +
+           request.spawn_region_rows.size() + request.day_night_event_rows.size() + request.trigger_rows.size() +
+           request.game_content_rule_ids.size() + provided_cost_count;
 }
 
 [[nodiscard]] std::size_t output_row_count(const RuntimeSandboxWorldMutationPlan& plan) {
     return plan.chunk_rows.size() + plan.existing_cell_rows.size() + plan.placement_intent_rows.size() +
            plan.destruction_intent_rows.size() + plan.construction_cost_rows.size() + plan.mutation_rows.size() +
-           plan.persistence_rows.size();
+           plan.persistence_rows.size() + plan.tile_drop_rows.size() + plan.construction_cost_consumption_rows.size() +
+           plan.tool_effectiveness_rows.size() + plan.spawn_region_rows.size() + plan.day_night_event_rows.size() +
+           plan.trigger_rows.size();
 }
 
 void clear_output_rows(RuntimeSandboxWorldMutationPlan& plan) {
@@ -171,6 +188,12 @@ void clear_output_rows(RuntimeSandboxWorldMutationPlan& plan) {
     plan.construction_cost_rows.clear();
     plan.mutation_rows.clear();
     plan.persistence_rows.clear();
+    plan.tile_drop_rows.clear();
+    plan.construction_cost_consumption_rows.clear();
+    plan.tool_effectiveness_rows.clear();
+    plan.spawn_region_rows.clear();
+    plan.day_night_event_rows.clear();
+    plan.trigger_rows.clear();
     plan.chunk_count = 0U;
     plan.resident_chunk_count = 0U;
     plan.placement_intent_count = 0U;
@@ -182,6 +205,12 @@ void clear_output_rows(RuntimeSandboxWorldMutationPlan& plan) {
     plan.construction_cost_count = 0U;
     plan.persistence_row_count = 0U;
     plan.repairable_persistence_row_count = 0U;
+    plan.tile_drop_count = 0U;
+    plan.construction_cost_consumption_count = 0U;
+    plan.tool_effectiveness_count = 0U;
+    plan.spawn_region_count = 0U;
+    plan.day_night_event_count = 0U;
+    plan.trigger_count = 0U;
     plan.rejected_unsafe_mutation_count = 0U;
     plan.replay_hash = 0U;
 }
@@ -432,6 +461,126 @@ void validate_persistence_rows(RuntimeSandboxWorldMutationPlan& plan, const Runt
     }
 }
 
+void validate_gameplay_hook_value(RuntimeSandboxWorldMutationPlan& plan,
+                                  const RuntimeSandboxWorldMutationRequest& request, std::string_view value,
+                                  std::string row_id, std::uint32_t source_index) {
+    if (has_game_owned_content_reference(value)) {
+        add_diagnostic(plan, RuntimeSandboxDiagnosticCode::unsupported_game_content_rule, request, std::move(row_id),
+                       {}, {},
+                       "sandbox gameplay hooks must stay generic and not encode boss, NPC, damage formula, or economy "
+                       "balance catalogs",
+                       source_index);
+    }
+}
+
+void validate_gameplay_hook_rows(RuntimeSandboxWorldMutationPlan& plan,
+                                 const RuntimeSandboxWorldMutationRequest& request,
+                                 const std::vector<RuntimeSandboxChunkLookupRow>& chunks) {
+    std::vector<std::string> tile_drop_keys;
+    std::vector<std::string> tool_keys;
+    std::vector<std::string> spawn_keys;
+    std::vector<std::string> event_ids;
+    std::vector<std::string> trigger_ids;
+
+    for (const auto& row : request.tile_drop_rows) {
+        const auto key = make_pair_key(row.block_id, row.item_id);
+        if (!is_valid_id(row.block_id) || !is_valid_id(row.item_id) ||
+            (!row.required_tool_category_id.empty() && !is_valid_id(row.required_tool_category_id)) ||
+            has_backend_reference(row.block_id) || has_backend_reference(row.item_id) ||
+            has_backend_reference(row.required_tool_category_id) || row.min_quantity == 0U ||
+            row.max_quantity < row.min_quantity) {
+            add_diagnostic(
+                plan, RuntimeSandboxDiagnosticCode::invalid_construction_cost, request, row.item_id, row.block_id, {},
+                "sandbox tile drops require generic block/item/tool ids and quantity ranges", row.source_index);
+        }
+        if (contains_value(tile_drop_keys, key)) {
+            add_diagnostic(plan, RuntimeSandboxDiagnosticCode::duplicate_construction_cost, request, row.item_id,
+                           row.block_id, {}, "sandbox tile drop rows must be unique per block and item",
+                           row.source_index);
+        } else {
+            tile_drop_keys.push_back(key);
+        }
+        validate_gameplay_hook_value(plan, request, row.block_id, row.block_id, row.source_index);
+        validate_gameplay_hook_value(plan, request, row.item_id, row.item_id, row.source_index);
+        validate_gameplay_hook_value(plan, request, row.required_tool_category_id, row.required_tool_category_id,
+                                     row.source_index);
+    }
+
+    for (const auto& row : request.tool_effectiveness_rows) {
+        const auto key = make_pair_key(row.tool_category_id, row.block_tag_id);
+        if (!is_valid_id(row.tool_category_id) || !is_valid_id(row.block_tag_id) ||
+            has_backend_reference(row.tool_category_id) || has_backend_reference(row.block_tag_id) ||
+            row.effectiveness_tier == 0U) {
+            add_diagnostic(plan, RuntimeSandboxDiagnosticCode::invalid_construction_cost, request, row.tool_category_id,
+                           {}, {}, "sandbox tool effectiveness rows require generic tool and block tag ids",
+                           row.source_index);
+        }
+        if (contains_value(tool_keys, key)) {
+            add_diagnostic(plan, RuntimeSandboxDiagnosticCode::duplicate_construction_cost, request,
+                           row.tool_category_id, {}, {}, "sandbox tool effectiveness rows must be unique",
+                           row.source_index);
+        } else {
+            tool_keys.push_back(key);
+        }
+        validate_gameplay_hook_value(plan, request, row.tool_category_id, row.tool_category_id, row.source_index);
+        validate_gameplay_hook_value(plan, request, row.block_tag_id, row.block_tag_id, row.source_index);
+    }
+
+    for (const auto& row : request.spawn_region_rows) {
+        const auto key = make_pair_key(row.region_id, row.spawn_group_id);
+        if (!is_valid_id(row.region_id) || !is_valid_id(row.spawn_group_id) || has_backend_reference(row.region_id) ||
+            has_backend_reference(row.spawn_group_id) || row.max_active == 0U) {
+            add_diagnostic(plan, RuntimeSandboxDiagnosticCode::invalid_persistence_row, request, row.spawn_group_id,
+                           row.region_id, {}, "sandbox spawn region rows require generic region and spawn group ids",
+                           row.source_index);
+        }
+        if (contains_value(spawn_keys, key)) {
+            add_diagnostic(plan, RuntimeSandboxDiagnosticCode::duplicate_persistence_key, request, row.spawn_group_id,
+                           row.region_id, {}, "sandbox spawn region rows must be unique", row.source_index);
+        } else {
+            spawn_keys.push_back(key);
+        }
+        validate_gameplay_hook_value(plan, request, row.region_id, row.region_id, row.source_index);
+        validate_gameplay_hook_value(plan, request, row.spawn_group_id, row.spawn_group_id, row.source_index);
+    }
+
+    for (const auto& row : request.day_night_event_rows) {
+        if (!is_valid_id(row.event_id) || has_backend_reference(row.event_id) || row.repeat_interval_ticks == 0U) {
+            add_diagnostic(plan, RuntimeSandboxDiagnosticCode::invalid_persistence_row, request, row.event_id, {}, {},
+                           "sandbox day/night events require generic event ids and repeat intervals", row.source_index);
+        }
+        if (contains_value(event_ids, row.event_id)) {
+            add_diagnostic(plan, RuntimeSandboxDiagnosticCode::duplicate_persistence_key, request, row.event_id, {}, {},
+                           "sandbox day/night event ids must be unique", row.source_index);
+        } else {
+            event_ids.push_back(row.event_id);
+        }
+        validate_gameplay_hook_value(plan, request, row.event_id, row.event_id, row.source_index);
+    }
+
+    for (const auto& row : request.trigger_rows) {
+        const auto* chunk = find_chunk(chunks, row.chunk_id);
+        if (!is_valid_id(row.trigger_id) || !is_valid_id(row.event_id) || !is_valid_id(row.chunk_id) ||
+            !is_valid_id(row.interaction_id) || has_backend_reference(row.trigger_id) ||
+            has_backend_reference(row.event_id) || has_backend_reference(row.chunk_id) ||
+            has_backend_reference(row.interaction_id) || chunk == nullptr ||
+            (chunk != nullptr && !contains_coord(*chunk, row.coord))) {
+            add_diagnostic(plan, RuntimeSandboxDiagnosticCode::invalid_placement_intent, request, row.trigger_id,
+                           row.chunk_id, row.coord,
+                           "sandbox trigger rows require generic ids and known in-chunk coordinates", row.source_index);
+        }
+        if (contains_value(trigger_ids, row.trigger_id)) {
+            add_diagnostic(plan, RuntimeSandboxDiagnosticCode::duplicate_placement_intent, request, row.trigger_id,
+                           row.chunk_id, row.coord, "sandbox trigger ids must be unique", row.source_index);
+        } else {
+            trigger_ids.push_back(row.trigger_id);
+        }
+        validate_gameplay_hook_value(plan, request, row.trigger_id, row.trigger_id, row.source_index);
+        validate_gameplay_hook_value(plan, request, row.event_id, row.event_id, row.source_index);
+        validate_gameplay_hook_value(plan, request, row.interaction_id, row.interaction_id, row.source_index);
+    }
+}
+
 [[nodiscard]] bool provided_costs_cover_required(std::string_view block_id,
                                                  const std::vector<RuntimeSandboxConstructionCostRow>& required,
                                                  const std::vector<RuntimeSandboxConstructionCostRow>& provided) {
@@ -504,6 +653,11 @@ void append_output_rows(RuntimeSandboxWorldMutationPlan& plan, const RuntimeSand
     plan.placement_intent_rows = request.placement_intents;
     plan.destruction_intent_rows = request.destruction_intents;
     plan.construction_cost_rows = request.construction_cost_rows;
+    plan.tile_drop_rows = request.tile_drop_rows;
+    plan.tool_effectiveness_rows = request.tool_effectiveness_rows;
+    plan.spawn_region_rows = request.spawn_region_rows;
+    plan.day_night_event_rows = request.day_night_event_rows;
+    plan.trigger_rows = request.trigger_rows;
     std::ranges::sort(plan.chunk_rows, [](const auto& lhs, const auto& rhs) { return lhs.chunk_id < rhs.chunk_id; });
     std::ranges::sort(plan.existing_cell_rows, [](const auto& lhs, const auto& rhs) {
         if (lhs.chunk_id != rhs.chunk_id) {
@@ -517,6 +671,28 @@ void append_output_rows(RuntimeSandboxWorldMutationPlan& plan, const RuntimeSand
         }
         return lhs.item_id < rhs.item_id;
     });
+    std::ranges::sort(plan.tile_drop_rows, [](const auto& lhs, const auto& rhs) {
+        if (lhs.block_id != rhs.block_id) {
+            return lhs.block_id < rhs.block_id;
+        }
+        return lhs.item_id < rhs.item_id;
+    });
+    std::ranges::sort(plan.tool_effectiveness_rows, [](const auto& lhs, const auto& rhs) {
+        if (lhs.tool_category_id != rhs.tool_category_id) {
+            return lhs.tool_category_id < rhs.tool_category_id;
+        }
+        return lhs.block_tag_id < rhs.block_tag_id;
+    });
+    std::ranges::sort(plan.spawn_region_rows, [](const auto& lhs, const auto& rhs) {
+        if (lhs.region_id != rhs.region_id) {
+            return lhs.region_id < rhs.region_id;
+        }
+        return lhs.spawn_group_id < rhs.spawn_group_id;
+    });
+    std::ranges::sort(plan.day_night_event_rows,
+                      [](const auto& lhs, const auto& rhs) { return lhs.event_id < rhs.event_id; });
+    std::ranges::sort(plan.trigger_rows,
+                      [](const auto& lhs, const auto& rhs) { return lhs.trigger_id < rhs.trigger_id; });
 
     for (const auto& intent : request.placement_intents) {
         const auto status = placement_status_for(intent, chunks, cells, request.construction_cost_rows);
@@ -529,6 +705,29 @@ void append_output_rows(RuntimeSandboxWorldMutationPlan& plan, const RuntimeSand
             .block_id = intent.block_id,
             .source_index = intent.source_index,
         });
+        if (status == RuntimeSandboxMutationStatus::accepted) {
+            for (const auto& cost : request.construction_cost_rows) {
+                if (cost.block_id != intent.block_id) {
+                    continue;
+                }
+                const auto provided_iter =
+                    std::ranges::find_if(intent.provided_costs, [&cost](const auto& provided_cost) {
+                        return provided_cost.block_id == cost.block_id && provided_cost.item_id == cost.item_id;
+                    });
+                const auto consumed_quantity = provided_iter != intent.provided_costs.end()
+                                                   ? std::min(provided_iter->quantity, cost.quantity)
+                                                   : 0U;
+                plan.construction_cost_consumption_rows.push_back(RuntimeSandboxConstructionCostConsumptionRow{
+                    .intent_id = intent.intent_id,
+                    .block_id = intent.block_id,
+                    .item_id = cost.item_id,
+                    .required_quantity = cost.quantity,
+                    .consumed_quantity = consumed_quantity,
+                    .accepted = consumed_quantity >= cost.quantity,
+                    .source_index = intent.source_index,
+                });
+            }
+        }
     }
     for (const auto& intent : request.destruction_intents) {
         const auto status = destruction_status_for(intent, chunks, cells);
@@ -563,6 +762,12 @@ void update_counts(RuntimeSandboxWorldMutationPlan& plan) {
     plan.destruction_intent_count = plan.destruction_intent_rows.size();
     plan.construction_cost_count = plan.construction_cost_rows.size();
     plan.persistence_row_count = plan.persistence_rows.size();
+    plan.tile_drop_count = plan.tile_drop_rows.size();
+    plan.construction_cost_consumption_count = plan.construction_cost_consumption_rows.size();
+    plan.tool_effectiveness_count = plan.tool_effectiveness_rows.size();
+    plan.spawn_region_count = plan.spawn_region_rows.size();
+    plan.day_night_event_count = plan.day_night_event_rows.size();
+    plan.trigger_count = plan.trigger_rows.size();
     for (const auto& row : plan.mutation_rows) {
         if (row.kind == RuntimeSandboxMutationKind::placement) {
             if (row.status == RuntimeSandboxMutationStatus::accepted) {
@@ -621,6 +826,12 @@ void mix_hash(std::uint64_t& hash, RuntimeSandboxCellCoord coord) noexcept {
     mix_hash(hash, plan.construction_cost_count);
     mix_hash(hash, plan.persistence_row_count);
     mix_hash(hash, plan.repairable_persistence_row_count);
+    mix_hash(hash, plan.tile_drop_count);
+    mix_hash(hash, plan.construction_cost_consumption_count);
+    mix_hash(hash, plan.tool_effectiveness_count);
+    mix_hash(hash, plan.spawn_region_count);
+    mix_hash(hash, plan.day_night_event_count);
+    mix_hash(hash, plan.trigger_count);
     mix_hash(hash, plan.rejected_unsafe_mutation_count);
     for (const auto& row : plan.chunk_rows) {
         mix_hash(hash, row.chunk_id);
@@ -686,6 +897,51 @@ void mix_hash(std::uint64_t& hash, RuntimeSandboxCellCoord coord) noexcept {
         mix_hash(hash, static_cast<std::uint64_t>(row.status));
         mix_hash(hash, row.source_index);
     }
+    for (const auto& row : plan.tile_drop_rows) {
+        mix_hash(hash, row.block_id);
+        mix_hash(hash, row.item_id);
+        mix_hash(hash, row.min_quantity);
+        mix_hash(hash, row.max_quantity);
+        mix_hash(hash, row.required_tool_category_id);
+        mix_hash(hash, row.source_index);
+    }
+    for (const auto& row : plan.construction_cost_consumption_rows) {
+        mix_hash(hash, row.intent_id);
+        mix_hash(hash, row.block_id);
+        mix_hash(hash, row.item_id);
+        mix_hash(hash, row.required_quantity);
+        mix_hash(hash, row.consumed_quantity);
+        mix_hash(hash, row.accepted ? 1U : 0U);
+        mix_hash(hash, row.source_index);
+    }
+    for (const auto& row : plan.tool_effectiveness_rows) {
+        mix_hash(hash, row.tool_category_id);
+        mix_hash(hash, row.block_tag_id);
+        mix_hash(hash, row.effectiveness_tier);
+        mix_hash(hash, row.source_index);
+    }
+    for (const auto& row : plan.spawn_region_rows) {
+        mix_hash(hash, row.region_id);
+        mix_hash(hash, row.spawn_group_id);
+        mix_hash(hash, row.max_active);
+        mix_hash(hash, row.source_index);
+    }
+    for (const auto& row : plan.day_night_event_rows) {
+        mix_hash(hash, row.event_id);
+        mix_hash(hash, static_cast<std::uint64_t>(row.phase));
+        mix_hash(hash, row.first_tick);
+        mix_hash(hash, row.repeat_interval_ticks);
+        mix_hash(hash, row.source_index);
+    }
+    for (const auto& row : plan.trigger_rows) {
+        mix_hash(hash, row.trigger_id);
+        mix_hash(hash, static_cast<std::uint64_t>(row.kind));
+        mix_hash(hash, row.event_id);
+        mix_hash(hash, row.chunk_id);
+        mix_hash(hash, row.coord);
+        mix_hash(hash, row.interaction_id);
+        mix_hash(hash, row.source_index);
+    }
     mix_hash(hash, plan.invoked_world_mutation ? 1U : 0U);
     mix_hash(hash, plan.invoked_persistence_io ? 1U : 0U);
     mix_hash(hash, plan.invoked_package_io ? 1U : 0U);
@@ -707,6 +963,7 @@ RuntimeSandboxWorldMutationPlan plan_runtime_sandbox_world_mutation(const Runtim
     validate_cost_rows(plan, request);
     validate_intent_ids(plan, request);
     validate_persistence_rows(plan, request, chunks);
+    validate_gameplay_hook_rows(plan, request, chunks);
 
     if (!plan.diagnostics.empty()) {
         sort_diagnostics(plan);

@@ -150,6 +150,13 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset d
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure
 ```
 
+For sandbox world mutation review and generic gameplay integration rows such as `RuntimeSandboxTileDropRow`, `RuntimeSandboxConstructionCostConsumptionRow`, `RuntimeSandboxToolEffectivenessRow`, `RuntimeSandboxSpawnRegionRow`, `RuntimeSandboxDayNightEventRow`, and `RuntimeSandboxTriggerRow`, keep the focused loop on `MK_runtime_genre_sandbox_world_tests` so row production, replay hashes, fail-closed diagnostics, and game-owned content-rule rejection stay covered before package smokes:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_genre_sandbox_world_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "runtime_genre_sandbox_world"
+```
+
 For sandbox runtime tile primitives such as `RuntimeSandboxTileSimulationPlan` and `plan_runtime_sandbox_tile_simulation`, keep the focused loop explicit so RED/GREEN proof covers both compilation and CTest execution:
 
 ```powershell
