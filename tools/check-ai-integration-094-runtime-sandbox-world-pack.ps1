@@ -5,15 +5,19 @@
 
 $sandboxHeaderText = Get-AgentSurfaceText "engine/runtime/include/mirakana/runtime/genre_sandbox_world.hpp"
 $sandboxSourceText = Get-AgentSurfaceText "engine/runtime/src/genre_sandbox_world.cpp"
+$sandboxRuntimeHeaderText = Get-AgentSurfaceText "engine/runtime/include/mirakana/runtime/sandbox_world_runtime.hpp"
+$sandboxRuntimeSourceText = Get-AgentSurfaceText "engine/runtime/src/sandbox_world_runtime.cpp"
 $runtimeCMakeText = Get-AgentSurfaceText "engine/runtime/CMakeLists.txt"
 $rootCMakeText = Get-AgentSurfaceText "CMakeLists.txt"
 $sandboxTestsText = Get-AgentSurfaceText "tests/unit/runtime_genre_sandbox_world_tests.cpp"
+$sandboxRuntimeTestsText = Get-AgentSurfaceText "tests/unit/runtime_sandbox_world_runtime_tests.cpp"
 $sample2dMainText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/main.cpp"
 $sample3dMainText = Get-AgentSurfaceText "games/sample_generated_desktop_runtime_3d_package/main.cpp"
 $sample2dManifestText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/game.agent.json"
 $sample3dManifestText = Get-AgentSurfaceText "games/sample_generated_desktop_runtime_3d_package/game.agent.json"
 $installedValidationText = Get-AgentSurfaceText "tools/validate-installed-desktop-runtime.ps1"
 $planText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-25-general-purpose-game-production-v1.md"
+$runtimePlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-29-generic-2d-sandbox-runtime-foundation-v1.md"
 $planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
 $currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
 $roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
@@ -65,6 +69,43 @@ Assert-ContainsText $sandboxTestsText "runtime sandbox world rejects malformed r
 Assert-ContainsText $sandboxTestsText "runtime sandbox world diagnostics are totally ordered by stable public fields" "tests/unit/runtime_genre_sandbox_world_tests.cpp"
 Assert-ContainsText $sandboxTestsText "changed_destruction.replay_hash != first.replay_hash" "tests/unit/runtime_genre_sandbox_world_tests.cpp"
 Assert-ContainsText $sandboxTestsText "changed_provided_cost.replay_hash != first.replay_hash" "tests/unit/runtime_genre_sandbox_world_tests.cpp"
+
+foreach ($needle in @(
+        "RuntimeSandboxWorldDesc",
+        "RuntimeSandboxWorldBuildResult",
+        "RuntimeSandboxWorld",
+        "RuntimeSandboxWorldSnapshot",
+        "RuntimeSandboxCellSample",
+        "build_runtime_sandbox_world",
+        "sample_runtime_sandbox_cell",
+        "snapshot_runtime_sandbox_world",
+        "SDL3"
+    )) {
+    Assert-ContainsText $sandboxRuntimeHeaderText $needle "engine/runtime/include/mirakana/runtime/sandbox_world_runtime.hpp"
+}
+
+foreach ($needle in @(
+        "RuntimeSandboxWorldRuntimeDiagnosticCode::unsupported_backend_reference",
+        '"sdl3"',
+        "chunks_overlap",
+        "compute_snapshot_hash",
+        "world.chunks.size()",
+        "world.cells.size()",
+        "world.invoked_persistence_io ? 1U : 0U",
+        "RuntimeSandboxCellSampleStatus::missing_chunk",
+        "RuntimeSandboxCellSampleStatus::occupied"
+    )) {
+    Assert-ContainsText $sandboxRuntimeSourceText $needle "engine/runtime/src/sandbox_world_runtime.cpp"
+}
+
+Assert-ContainsText $runtimeCMakeText "src/sandbox_world_runtime.cpp" "engine/runtime/CMakeLists.txt"
+Assert-ContainsText $rootCMakeText "MK_runtime_sandbox_world_runtime_tests" "CMakeLists.txt"
+Assert-ContainsText $sandboxRuntimeTestsText "runtime sandbox world builds a deterministic in memory chunk snapshot" "tests/unit/runtime_sandbox_world_runtime_tests.cpp"
+Assert-ContainsText $sandboxRuntimeTestsText "runtime sandbox world samples existing empty and out of bounds cells" "tests/unit/runtime_sandbox_world_runtime_tests.cpp"
+Assert-ContainsText $sandboxRuntimeTestsText "runtime sandbox world rejects invalid chunks cells duplicates and row budgets" "tests/unit/runtime_sandbox_world_runtime_tests.cpp"
+Assert-ContainsText $sandboxRuntimeTestsText "runtime sandbox world rejects overlapping chunks before sampling" "tests/unit/runtime_sandbox_world_runtime_tests.cpp"
+Assert-ContainsText $sandboxRuntimeTestsText "changed_block.world.snapshot_hash != first.world.snapshot_hash" "tests/unit/runtime_sandbox_world_runtime_tests.cpp"
+Assert-ContainsText $sandboxRuntimeTestsText "runtime sandbox world snapshot recomputes mutable public world state" "tests/unit/runtime_sandbox_world_runtime_tests.cpp"
 
 foreach ($sampleSurface in @(
         @{ Text = $sample2dMainText; Label = "games/sample_2d_desktop_runtime_package/main.cpp" },
@@ -121,6 +162,7 @@ foreach ($needle in @(
 
 foreach ($docSurface in @(
         @{ Text = $planText; Label = "docs/superpowers/plans/2026-05-25-general-purpose-game-production-v1.md" },
+        @{ Text = $runtimePlanText; Label = "docs/superpowers/plans/2026-05-29-generic-2d-sandbox-runtime-foundation-v1.md" },
         @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
         @{ Text = $generatedValidationText; Label = "docs/specs/generated-game-validation-scenarios.md" },
         @{ Text = $aiGameDevelopmentText; Label = "docs/ai-game-development.md" },
@@ -129,6 +171,26 @@ foreach ($docSurface in @(
     )) {
     Assert-ContainsText $docSurface.Text "plan_runtime_sandbox_world_mutation" $docSurface.Label
     Assert-ContainsText $docSurface.Text "sandbox_world_ready=1" $docSurface.Label
+}
+
+foreach ($docSurface in @(
+        @{ Text = $runtimePlanText; Label = "docs/superpowers/plans/2026-05-29-generic-2d-sandbox-runtime-foundation-v1.md" },
+        @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
+        @{ Text = $roadmapText; Label = "docs/roadmap.md" },
+        @{ Text = $aiGameDevelopmentText; Label = "docs/ai-game-development.md" },
+        @{ Text = $backlogText; Label = "docs/superpowers/master-plans/production-completion-v1/04-developer-owned-engine-capability-backlog.md" },
+        @{ Text = $projectionText; Label = "docs/superpowers/master-plans/production-completion-v1/05-projections-and-scenarios.md" }
+    )) {
+    Assert-ContainsText $docSurface.Text "build_runtime_sandbox_world" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "sample_runtime_sandbox_cell" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "snapshot_runtime_sandbox_world" $docSurface.Label
+}
+
+foreach ($docSurface in @(
+        @{ Text = $runtimePlanText; Label = "docs/superpowers/plans/2026-05-29-generic-2d-sandbox-runtime-foundation-v1.md" },
+        @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" }
+    )) {
+    Assert-ContainsText $docSurface.Text "MK_runtime_sandbox_world_runtime_tests" $docSurface.Label
 }
 
 foreach ($docSurface in @(
@@ -148,8 +210,11 @@ foreach ($needle in @(
         "production-network-replication-v1",
         "production-rendering-vfx-profiling-v1",
         "engine/runtime/include/mirakana/runtime/genre_sandbox_world.hpp",
+        "engine/runtime/include/mirakana/runtime/sandbox_world_runtime.hpp",
         "RuntimeSandboxChunkRow",
+        "RuntimeSandboxWorldDesc",
         "plan_runtime_sandbox_world_mutation",
+        "build_runtime_sandbox_world",
         "sandbox_world_*",
         "currentRuntimeSandboxWorld"
     )) {
