@@ -2256,7 +2256,7 @@ if ($runtimeResourceGap.Count -ne 0) {
 }
 $recommendedText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
 $recommendedPlanId = [string]$productionLoop.recommendedNextPlan.id
-$recommendedPlanUsesLegacyCloseoutContext = $recommendedPlanId -notin @("general-purpose-game-production-v1", "generated-game-studio-v1", "engine-1-0-gap-matrix-v1", "next-production-gap-selection", "physics-navigation-commercial-coverage-v1", "renderer-backend-parity-metal-apple-evidence-v1", "renderer-postprocess-tone-mapping-evidence-v1")
+$recommendedPlanUsesLegacyCloseoutContext = $recommendedPlanId -notin @("general-purpose-game-production-v1", "generated-game-studio-v1", "engine-1-0-gap-matrix-v1", "next-production-gap-selection", "physics-navigation-commercial-coverage-v1", "renderer-backend-parity-metal-apple-evidence-v1", "renderer-postprocess-tone-mapping-evidence-v1", "sandbox-world-network-modding-gate-v1")
 if ($productionLoop.currentActivePlan -eq "docs/superpowers/plans/2026-05-23-candidate-backlog-burn-down-v1.md") {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop.currentActivePlan must not point at completed Candidate Backlog Burn-down v1"
 }
@@ -2576,7 +2576,7 @@ if ($recommendedPlanId -eq "general-purpose-game-production-v1") {
     foreach ($needle in @("Renderer Postprocess Tone Mapping Evidence v1", "renderer-postprocess-v1", "PostprocessToneMappingEvidencePlan", "plan_postprocess_tone_mapping_evidence", "D3D12/Vulkan", "Metal host-gated", "no SDL3", "native handles", "subjective visual quality", "unsupportedProductionGaps = []")) {
         Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan renderer postprocess tone mapping selection"
     }
-} else {
+} elseif ($recommendedPlanId -eq "sandbox-world-network-modding-gate-v1") { foreach ($needle in @("Selected focused child plan", "sandbox-world-specific mutation replication", "reviewed modding policy gates", "unsupportedProductionGaps = []", "Broad online multiplayer", "SDL3", "native handle exposure")) { Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan sandbox world network/modding selection" } } else {
     Assert-ContainsText $recommendedText "Frame Graph v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
     Assert-ContainsText $recommendedText "upload-staging-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
     Assert-ContainsText $recommendedText "scene-component-prefab-schema-v2" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"

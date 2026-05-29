@@ -43,6 +43,11 @@ function Get-ValidationRecipeCommandPlan {
         $diagNetwork = New-RunnerDiagnostic -Severity 'info' -Code 'diagnostic-host-gate' -Message 'Optional ENet validation requires bootstrapped vcpkg network-enet packages and reports missing dependency state explicitly on non-ready hosts.' -ValidationRecipe $RecipeName -HostGate 'network-enet-vcpkg'
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($cmdPlanEntry) -HostGates @('network-enet-vcpkg') -RequiredAcknowledgements @() -AllowedGameTargets @() -AllowedStrictBackend @() -Diagnostics @($diagNetwork)
     }
+    elseif ($RecipeName -eq 'network-production-security') {
+        $ctestArgs = @('--preset', 'dev', '--output-on-failure', '-R', 'runtime_network|production_network_replication')
+        $pwEntry = Get-PwshScriptCommandPlan -ScriptPath 'tools/ctest.ps1' -ScriptArguments $ctestArgs
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @() -RequiredAcknowledgements @() -AllowedGameTargets @() -AllowedStrictBackend @() -Diagnostics @()
+    }
     elseif ($RecipeName -eq 'desktop-runtime-sample-game-scene-gpu-package') {
         $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
         $pkgArgs = @('-GameTarget', $target)

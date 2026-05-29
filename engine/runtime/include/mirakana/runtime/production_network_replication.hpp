@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "mirakana/runtime/genre_sandbox_world.hpp"
 #include "mirakana/runtime/networking_foundation.hpp"
 #include "mirakana/runtime/world_entity_model.hpp"
 
@@ -63,6 +64,13 @@ enum class RuntimeNetworkReplicationDiagnosticCode : std::uint8_t {
     rollback_window_exceeded,
     row_budget_exceeded,
     unsupported_host_claim,
+    invalid_sandbox_mutation_command,
+    duplicate_sandbox_mutation_command_id,
+    duplicate_sandbox_mutation_sequence,
+    non_monotonic_sandbox_mutation_tick,
+    invalid_sandbox_snapshot_delta,
+    unknown_sandbox_snapshot_command,
+    sandbox_delta_byte_budget_exceeded,
 };
 
 struct RuntimeNetworkReplicationSessionDesc {
@@ -107,6 +115,34 @@ struct RuntimeReplicationSnapshotRow {
     std::uint32_t source_index{0U};
 };
 
+struct RuntimeNetworkSandboxMutationCommandRow {
+    std::string player_id;
+    std::string command_id;
+    std::string channel_id;
+    std::uint64_t target_tick{0U};
+    std::uint64_t sequence{0U};
+    RuntimeSandboxMutationKind kind{RuntimeSandboxMutationKind::placement};
+    std::string chunk_id;
+    RuntimeSandboxCellCoord coord;
+    std::string block_id;
+    std::uint64_t payload_hash{0U};
+    std::uint32_t byte_count{0U};
+    std::uint32_t source_index{0U};
+};
+
+struct RuntimeNetworkSandboxSnapshotDeltaRow {
+    std::string delta_id;
+    std::string channel_id;
+    std::string chunk_id;
+    std::uint64_t base_tick{0U};
+    std::uint64_t target_tick{0U};
+    std::vector<std::string> command_ids;
+    std::uint32_t changed_cell_count{0U};
+    std::uint64_t state_hash{0U};
+    std::uint32_t byte_count{0U};
+    std::uint32_t source_index{0U};
+};
+
 struct RuntimeRollbackPolicyRow {
     RuntimeRollbackMode mode{RuntimeRollbackMode::disabled};
     std::uint32_t max_rollback_ticks{0U};
@@ -132,6 +168,8 @@ struct RuntimeNetworkReplicationRequest {
     std::vector<RuntimeReplicatedObjectRow> object_rows;
     std::vector<RuntimeReplicationInputCommandRow> input_rows;
     std::vector<RuntimeReplicationSnapshotRow> snapshot_rows;
+    std::vector<RuntimeNetworkSandboxMutationCommandRow> sandbox_mutation_command_rows;
+    std::vector<RuntimeNetworkSandboxSnapshotDeltaRow> sandbox_snapshot_delta_rows;
     RuntimeRollbackPolicyRow rollback_policy;
     std::vector<RuntimeNetworkTransportEvidenceRow> transport_evidence_rows;
     std::size_t row_budget{512U};
@@ -155,11 +193,15 @@ struct RuntimeNetworkReplicationPlan {
     std::vector<RuntimeReplicatedObjectRow> object_rows;
     std::vector<RuntimeReplicationInputCommandRow> input_rows;
     std::vector<RuntimeReplicationSnapshotRow> snapshot_rows;
+    std::vector<RuntimeNetworkSandboxMutationCommandRow> sandbox_mutation_command_rows;
+    std::vector<RuntimeNetworkSandboxSnapshotDeltaRow> sandbox_snapshot_delta_rows;
     std::vector<RuntimeRollbackPolicyRow> rollback_rows;
     std::vector<RuntimeNetworkTransportEvidenceRow> transport_evidence_rows;
     std::size_t replicated_object_count{0U};
     std::size_t input_row_count{0U};
     std::size_t snapshot_row_count{0U};
+    std::size_t sandbox_mutation_command_count{0U};
+    std::size_t sandbox_snapshot_delta_count{0U};
     std::size_t rollback_row_count{0U};
     std::size_t rejected_unsafe_row_count{0U};
     std::uint64_t replay_hash{0U};

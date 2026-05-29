@@ -5,15 +5,20 @@
 
 $replicationHeaderText = Get-AgentSurfaceText "engine/runtime/include/mirakana/runtime/production_network_replication.hpp"
 $replicationSourceText = Get-AgentSurfaceText "engine/runtime/src/production_network_replication.cpp"
+$scriptModdingHeaderText = Get-AgentSurfaceText "engine/runtime/include/mirakana/runtime/scripting_sandbox.hpp"
+$scriptModdingSourceText = Get-AgentSurfaceText "engine/runtime/src/scripting_sandbox.cpp"
 $runtimeCMakeText = Get-AgentSurfaceText "engine/runtime/CMakeLists.txt"
 $rootCMakeText = Get-AgentSurfaceText "CMakeLists.txt"
 $replicationTestsText = Get-AgentSurfaceText "tests/unit/runtime_production_network_replication_tests.cpp"
+$scriptModdingTestsText = Get-AgentSurfaceText "tests/unit/runtime_scripting_sandbox_tests.cpp"
 $sample2dMainText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/main.cpp"
 $sample3dMainText = Get-AgentSurfaceText "games/sample_generated_desktop_runtime_3d_package/main.cpp"
 $sample2dManifestText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/game.agent.json"
 $sample3dManifestText = Get-AgentSurfaceText "games/sample_generated_desktop_runtime_3d_package/game.agent.json"
 $installedValidationText = Get-AgentSurfaceText "tools/validate-installed-desktop-runtime.ps1"
 $planText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-25-general-purpose-game-production-v1.md"
+$sandboxNetworkModdingPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-30-sandbox-world-network-modding-gate-v1.md"
+$sandboxNetworkThreatModelText = Get-AgentSurfaceText "docs/specs/2026-05-30-sandbox-world-network-security-threat-model.md"
 $planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
 $currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
 $roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
@@ -31,6 +36,8 @@ foreach ($needle in @(
         "RuntimeReplicationInputCommandRow",
         "RuntimeReplicationSnapshotRow",
         "RuntimeRollbackPolicyRow",
+        "RuntimeNetworkSandboxMutationCommandRow",
+        "RuntimeNetworkSandboxSnapshotDeltaRow",
         "RuntimeNetworkTransportEvidenceRow",
         "RuntimeNetworkReplicationPlan",
         "RuntimeNetworkReplicationDiagnosticCode",
@@ -45,8 +52,15 @@ foreach ($needle in @(
         "RuntimeNetworkReplicationDiagnosticCode::unsupported_topology",
         "RuntimeNetworkReplicationDiagnosticCode::channel_authority_mismatch",
         "RuntimeNetworkReplicationDiagnosticCode::duplicate_input_sequence",
+        "RuntimeNetworkReplicationDiagnosticCode::duplicate_sandbox_mutation_command_id",
+        "RuntimeNetworkReplicationDiagnosticCode::duplicate_sandbox_mutation_sequence",
         "RuntimeNetworkReplicationDiagnosticCode::non_monotonic_snapshot_tick",
+        "RuntimeNetworkReplicationDiagnosticCode::non_monotonic_sandbox_mutation_tick",
+        "RuntimeNetworkReplicationDiagnosticCode::invalid_sandbox_mutation_command",
+        "RuntimeNetworkReplicationDiagnosticCode::invalid_sandbox_snapshot_delta",
+        "RuntimeNetworkReplicationDiagnosticCode::unknown_sandbox_snapshot_command",
         "RuntimeNetworkReplicationDiagnosticCode::snapshot_byte_budget_exceeded",
+        "RuntimeNetworkReplicationDiagnosticCode::sandbox_delta_byte_budget_exceeded",
         "RuntimeNetworkReplicationDiagnosticCode::rollback_prerequisite_missing",
         "RuntimeNetworkReplicationDiagnosticCode::unsupported_host_claim",
         "RuntimeNetworkReplicationStatus::host_evidence_required",
@@ -66,6 +80,15 @@ foreach ($needle in @(
     Assert-ContainsText $replicationHeaderText $needle "engine/runtime/include/mirakana/runtime/production_network_replication.hpp"
 }
 
+foreach ($needle in @(
+        "sandbox_mutation_command_rows",
+        "sandbox_snapshot_delta_rows",
+        "sandbox_mutation_command_count",
+        "sandbox_snapshot_delta_count"
+    )) {
+    Assert-ContainsText $replicationHeaderText $needle "engine/runtime/include/mirakana/runtime/production_network_replication.hpp"
+}
+
 Assert-ContainsText $runtimeCMakeText "src/production_network_replication.cpp" "engine/runtime/CMakeLists.txt"
 Assert-ContainsText $rootCMakeText "MK_runtime_production_network_replication_tests" "CMakeLists.txt"
 Assert-ContainsText $replicationTestsText "production network replication plans authoritative rows with host transport evidence" "tests/unit/runtime_production_network_replication_tests.cpp"
@@ -76,6 +99,42 @@ Assert-ContainsText $replicationTestsText "production network replication reject
 Assert-ContainsText $replicationTestsText "production network replication rejects rollback when deterministic prerequisites are absent" "tests/unit/runtime_production_network_replication_tests.cpp"
 Assert-ContainsText $replicationTestsText "production network replication rejects budgets unsupported host claims and invalid foundation plans" "tests/unit/runtime_production_network_replication_tests.cpp"
 Assert-ContainsText $replicationTestsText "production network replication counts rejected unsafe rows uniquely" "tests/unit/runtime_production_network_replication_tests.cpp"
+Assert-ContainsText $replicationTestsText "production network replication reviews sandbox mutation commands and snapshot deltas" "tests/unit/runtime_production_network_replication_tests.cpp"
+Assert-ContainsText $replicationTestsText "production network replication rejects sandbox mutation replay authority and delta abuse" "tests/unit/runtime_production_network_replication_tests.cpp"
+Assert-ContainsText $replicationTestsText "production network replication rejects duplicate sandbox mutation command ids" "tests/unit/runtime_production_network_replication_tests.cpp"
+Assert-ContainsText $replicationTestsText "production network replication applies one byte budget across snapshots and sandbox deltas" "tests/unit/runtime_production_network_replication_tests.cpp"
+
+foreach ($needle in @(
+        "RuntimeScriptModdingAdapterPolicyRow",
+        "RuntimeScriptModdingDeniedCapabilityRow",
+        "RuntimeScriptModdingPolicyDesc",
+        "RuntimeScriptModdingPolicyPlan",
+        "plan_runtime_script_modding_policy"
+    )) {
+    Assert-ContainsText $scriptModdingHeaderText $needle "engine/runtime/include/mirakana/runtime/scripting_sandbox.hpp"
+}
+
+foreach ($needle in @(
+        "filesystem",
+        "network",
+        "process",
+        "native_plugin",
+        "package_mutation",
+        "denied_capability_requested",
+        "unreviewed_adapter",
+        "nondeterministic_adapter",
+        "missing_replay_seed"
+    )) {
+    Assert-ContainsText $scriptModdingSourceText $needle "engine/runtime/src/scripting_sandbox.cpp"
+}
+
+foreach ($needle in @(
+        "runtime script modding policy plans sorted reviewed deterministic adapter rows",
+        "runtime script modding policy rejects unsafe capability requests before adapter rows",
+        "runtime script modding policy requires reviewed deterministic adapters"
+    )) {
+    Assert-ContainsText $scriptModdingTestsText $needle "tests/unit/runtime_scripting_sandbox_tests.cpp"
+}
 
 foreach ($sampleSurface in @(
         @{ Text = $sample2dMainText; Label = "games/sample_2d_desktop_runtime_package/main.cpp" },
@@ -165,16 +224,32 @@ foreach ($docSurface in @(
     Assert-ContainsText $docSurface.Text "plan_runtime_network_replication" $docSurface.Label
 }
 
+foreach ($docSurface in @(
+        @{ Text = $sandboxNetworkModdingPlanText; Label = "docs/superpowers/plans/2026-05-30-sandbox-world-network-modding-gate-v1.md" },
+        @{ Text = $sandboxNetworkThreatModelText; Label = "docs/specs/2026-05-30-sandbox-world-network-security-threat-model.md" },
+        @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
+        @{ Text = $aiGameDevelopmentText; Label = "docs/ai-game-development.md" }
+    )) {
+    Assert-ContainsText $docSurface.Text "plan_runtime_script_modding_policy" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "broad online" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "SDL3" $docSurface.Label
+}
+
 foreach ($needle in @(
         "production-network-replication-v1",
+        "sandbox-world-network-modding-gate-v1",
         '"unsupportedProductionGaps": []',
         "production-rendering-vfx-profiling-v1",
         "engine/runtime/include/mirakana/runtime/production_network_replication.hpp",
         "RuntimeNetworkReplicationSessionDesc",
         "RuntimeNetworkReplicationPlan",
+        "RuntimeNetworkSandboxMutationCommandRow",
+        "RuntimeScriptModdingAdapterPolicyRow",
         "plan_runtime_network_replication",
+        "plan_runtime_script_modding_policy",
         "network_replication_*",
-        "currentRuntimeNetworkReplication"
+        "currentRuntimeNetworkReplication",
+        "currentSandboxWorldNetworkModding"
     )) {
     Assert-ContainsText $manifestText $needle "engine/agent/manifest.json"
 }

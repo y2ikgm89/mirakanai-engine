@@ -81,6 +81,7 @@ namespace {
 
 [[nodiscard]] std::size_t request_row_count(const RuntimeNetworkReplicationRequest& request) {
     return 1U + request.object_rows.size() + request.input_rows.size() + request.snapshot_rows.size() +
+           request.sandbox_mutation_command_rows.size() + request.sandbox_snapshot_delta_rows.size() +
            (request.rollback_policy.mode == RuntimeRollbackMode::disabled ? 0U : 1U) +
            request.transport_evidence_rows.size();
 }
@@ -349,8 +350,9 @@ void validate_inputs(RuntimeNetworkReplicationPlan& plan, const RuntimeNetworkRe
     }
 }
 
-void validate_snapshots(RuntimeNetworkReplicationPlan& plan, const RuntimeNetworkReplicationRequest& request,
-                        const std::vector<std::string>& object_ids) {
+[[nodiscard]] std::uint64_t validate_snapshots(RuntimeNetworkReplicationPlan& plan,
+                                               const RuntimeNetworkReplicationRequest& request,
+                                               const std::vector<std::string>& object_ids) {
     std::vector<std::string> channel_ids;
     std::vector<std::uint64_t> last_ticks;
     std::uint64_t byte_count{0U};
@@ -411,6 +413,176 @@ void validate_snapshots(RuntimeNetworkReplicationPlan& plan, const RuntimeNetwor
         add_diagnostic(plan, RuntimeNetworkReplicationDiagnosticCode::snapshot_byte_budget_exceeded,
                        request.session.session_id, request.session.session_id, {},
                        "replication snapshot byte count exceeds the request snapshot byte budget", 0U);
+    }
+    return byte_count;
+}
+
+[[nodiscard]] bool valid_sandbox_mutation_command(const RuntimeNetworkSandboxMutationCommandRow& row) {
+    const auto block_id_valid =
+        row.kind == RuntimeSandboxMutationKind::placement
+            ? is_valid_id(row.block_id) && !has_runtime_backend_reference(row.block_id)
+            : row.block_id.empty() || (!has_runtime_backend_reference(row.block_id) && is_valid_id(row.block_id));
+    return is_valid_id(row.player_id) && is_valid_id(row.command_id) && is_valid_id(row.channel_id) &&
+           is_valid_id(row.chunk_id) && !has_runtime_backend_reference(row.player_id) &&
+           !has_runtime_backend_reference(row.command_id) && !has_runtime_backend_reference(row.channel_id) &&
+           !has_runtime_backend_reference(row.chunk_id) && block_id_valid && row.target_tick > 0U &&
+           row.payload_hash != 0U && row.byte_count > 0U;
+}
+
+[[nodiscard]] std::vector<std::string>
+validate_sandbox_mutation_commands(RuntimeNetworkReplicationPlan& plan,
+                                   const RuntimeNetworkReplicationRequest& request) {
+    std::vector<std::string> command_ids;
+    std::vector<std::string> all_command_ids;
+    std::vector<std::string> sequence_keys;
+    std::vector<std::string> timeline_keys;
+    std::vector<std::uint64_t> last_ticks;
+
+    command_ids.reserve(request.sandbox_mutation_command_rows.size());
+    all_command_ids.reserve(request.sandbox_mutation_command_rows.size());
+    for (const auto& row : request.sandbox_mutation_command_rows) {
+        auto row_valid = true;
+        if (!valid_sandbox_mutation_command(row)) {
+            add_diagnostic(plan, RuntimeNetworkReplicationDiagnosticCode::invalid_sandbox_mutation_command,
+                           request.session.session_id, row.command_id, row.channel_id,
+                           "sandbox mutation commands require backend-neutral ids, positive bytes, and payload hash",
+                           row.source_index);
+            row_valid = false;
+        }
+
+        if (contains_id(all_command_ids, row.command_id)) {
+            add_diagnostic(plan, RuntimeNetworkReplicationDiagnosticCode::duplicate_sandbox_mutation_command_id,
+                           request.session.session_id, row.command_id, row.channel_id,
+                           "sandbox mutation command ids must be unique per session", row.source_index);
+            row_valid = false;
+        } else if (is_valid_id(row.command_id) && !has_runtime_backend_reference(row.command_id)) {
+            all_command_ids.push_back(row.command_id);
+        }
+
+        const auto* channel =
+            find_foundation_channel(request.foundation_plan, request.session.session_id, row.channel_id);
+        if (channel == nullptr) {
+            add_diagnostic(plan, RuntimeNetworkReplicationDiagnosticCode::unknown_channel_id,
+                           request.session.session_id, row.command_id, row.channel_id,
+                           "sandbox mutation command channel must exist in the foundation plan", row.source_index);
+            row_valid = false;
+        } else if (!is_input_authority(channel->authority)) {
+            add_diagnostic(plan, RuntimeNetworkReplicationDiagnosticCode::channel_authority_mismatch,
+                           request.session.session_id, row.command_id, row.channel_id,
+                           "sandbox mutation commands must use client authoritative input channels", row.source_index);
+            row_valid = false;
+        }
+
+        auto sequence_key = make_pair_key(row.player_id, row.channel_id);
+        sequence_key.push_back('\n');
+        sequence_key.append(std::to_string(row.sequence));
+        if (contains_id(sequence_keys, sequence_key)) {
+            add_diagnostic(plan, RuntimeNetworkReplicationDiagnosticCode::duplicate_sandbox_mutation_sequence,
+                           request.session.session_id, row.command_id, row.channel_id,
+                           "sandbox mutation command sequences must be unique per player and channel",
+                           row.source_index);
+            row_valid = false;
+        } else {
+            sequence_keys.push_back(sequence_key);
+        }
+
+        const auto timeline_key = make_pair_key(row.player_id, row.channel_id);
+        const auto timeline_iter = std::ranges::find(timeline_keys, timeline_key);
+        if (timeline_iter == timeline_keys.end()) {
+            timeline_keys.push_back(timeline_key);
+            last_ticks.push_back(row.target_tick);
+        } else {
+            const auto index = static_cast<std::size_t>(timeline_iter - timeline_keys.begin());
+            if (row.target_tick <= last_ticks[index]) {
+                add_diagnostic(plan, RuntimeNetworkReplicationDiagnosticCode::non_monotonic_sandbox_mutation_tick,
+                               request.session.session_id, row.command_id, row.channel_id,
+                               "sandbox mutation command target ticks must increase per player and channel",
+                               row.source_index);
+                row_valid = false;
+            }
+            last_ticks[index] = row.target_tick;
+        }
+
+        if (row_valid && !contains_id(command_ids, row.command_id)) {
+            command_ids.push_back(row.command_id);
+        }
+    }
+    return command_ids;
+}
+
+[[nodiscard]] bool valid_sandbox_delta_id_fields(const RuntimeNetworkSandboxSnapshotDeltaRow& row) {
+    return is_valid_id(row.delta_id) && is_valid_id(row.channel_id) && is_valid_id(row.chunk_id) &&
+           !has_runtime_backend_reference(row.delta_id) && !has_runtime_backend_reference(row.channel_id) &&
+           !has_runtime_backend_reference(row.chunk_id);
+}
+
+void validate_sandbox_snapshot_deltas(RuntimeNetworkReplicationPlan& plan,
+                                      const RuntimeNetworkReplicationRequest& request,
+                                      const std::vector<std::string>& command_ids, std::uint64_t snapshot_byte_count) {
+    std::vector<std::string> channel_ids;
+    std::vector<std::uint64_t> last_ticks;
+    std::uint64_t byte_count{0U};
+
+    for (const auto& row : request.sandbox_snapshot_delta_rows) {
+        if (!valid_sandbox_delta_id_fields(row) || row.base_tick >= row.target_tick || row.command_ids.empty() ||
+            row.changed_cell_count == 0U || row.state_hash == 0U || row.byte_count == 0U) {
+            add_diagnostic(plan, RuntimeNetworkReplicationDiagnosticCode::invalid_sandbox_snapshot_delta,
+                           request.session.session_id, row.delta_id, row.channel_id,
+                           "sandbox snapshot deltas require ids, increasing ticks, changed cells, hash, and bytes",
+                           row.source_index);
+        }
+
+        const auto* channel =
+            find_foundation_channel(request.foundation_plan, request.session.session_id, row.channel_id);
+        if (channel == nullptr) {
+            add_diagnostic(plan, RuntimeNetworkReplicationDiagnosticCode::unknown_channel_id,
+                           request.session.session_id, row.delta_id, row.channel_id,
+                           "sandbox snapshot delta channel must exist in the foundation plan", row.source_index);
+        } else if (!is_snapshot_authority(channel->authority)) {
+            add_diagnostic(plan, RuntimeNetworkReplicationDiagnosticCode::channel_authority_mismatch,
+                           request.session.session_id, row.delta_id, row.channel_id,
+                           "sandbox snapshot deltas must use server or host authoritative channels", row.source_index);
+        }
+
+        for (const auto& command_id : row.command_ids) {
+            if (!is_valid_id(command_id) || has_runtime_backend_reference(command_id) ||
+                !contains_id(command_ids, command_id)) {
+                add_diagnostic(plan, RuntimeNetworkReplicationDiagnosticCode::unknown_sandbox_snapshot_command,
+                               request.session.session_id, row.delta_id, command_id,
+                               "sandbox snapshot deltas must reference reviewed sandbox mutation commands",
+                               row.source_index);
+            }
+        }
+
+        const auto channel_iter = std::ranges::find(channel_ids, row.channel_id);
+        if (channel_iter == channel_ids.end()) {
+            channel_ids.push_back(row.channel_id);
+            last_ticks.push_back(row.target_tick);
+        } else {
+            const auto index = static_cast<std::size_t>(channel_iter - channel_ids.begin());
+            if (row.target_tick <= last_ticks[index]) {
+                add_diagnostic(plan, RuntimeNetworkReplicationDiagnosticCode::invalid_sandbox_snapshot_delta,
+                               request.session.session_id, row.delta_id, row.channel_id,
+                               "sandbox snapshot delta target ticks must increase per channel", row.source_index);
+            }
+            last_ticks[index] = row.target_tick;
+        }
+
+        if (row.byte_count > std::numeric_limits<std::uint64_t>::max() - byte_count) {
+            byte_count = std::numeric_limits<std::uint64_t>::max();
+        } else {
+            byte_count += row.byte_count;
+        }
+    }
+
+    const auto total_byte_count = snapshot_byte_count > std::numeric_limits<std::uint64_t>::max() - byte_count
+                                      ? std::numeric_limits<std::uint64_t>::max()
+                                      : snapshot_byte_count + byte_count;
+    if (total_byte_count > request.snapshot_byte_budget) {
+        add_diagnostic(
+            plan, RuntimeNetworkReplicationDiagnosticCode::sandbox_delta_byte_budget_exceeded,
+            request.session.session_id, request.session.session_id, {},
+            "combined replication snapshot and sandbox delta byte count exceeds the request snapshot byte budget", 0U);
     }
 }
 
@@ -480,11 +652,15 @@ void clear_output_rows(RuntimeNetworkReplicationPlan& plan) {
     plan.object_rows.clear();
     plan.input_rows.clear();
     plan.snapshot_rows.clear();
+    plan.sandbox_mutation_command_rows.clear();
+    plan.sandbox_snapshot_delta_rows.clear();
     plan.rollback_rows.clear();
     plan.transport_evidence_rows.clear();
     plan.replicated_object_count = 0U;
     plan.input_row_count = 0U;
     plan.snapshot_row_count = 0U;
+    plan.sandbox_mutation_command_count = 0U;
+    plan.sandbox_snapshot_delta_count = 0U;
     plan.rollback_row_count = 0U;
     plan.replay_hash = 0U;
     plan.requires_transport_host_evidence = false;
@@ -516,6 +692,36 @@ void sort_output_rows(RuntimeNetworkReplicationPlan& plan) {
         }
         if (lhs.tick != rhs.tick) {
             return lhs.tick < rhs.tick;
+        }
+        return lhs.source_index < rhs.source_index;
+    });
+    std::ranges::sort(plan.sandbox_mutation_command_rows, [](const auto& lhs, const auto& rhs) {
+        if (lhs.target_tick != rhs.target_tick) {
+            return lhs.target_tick < rhs.target_tick;
+        }
+        if (lhs.player_id != rhs.player_id) {
+            return lhs.player_id < rhs.player_id;
+        }
+        if (lhs.channel_id != rhs.channel_id) {
+            return lhs.channel_id < rhs.channel_id;
+        }
+        if (lhs.sequence != rhs.sequence) {
+            return lhs.sequence < rhs.sequence;
+        }
+        if (lhs.command_id != rhs.command_id) {
+            return lhs.command_id < rhs.command_id;
+        }
+        return lhs.source_index < rhs.source_index;
+    });
+    std::ranges::sort(plan.sandbox_snapshot_delta_rows, [](const auto& lhs, const auto& rhs) {
+        if (lhs.channel_id != rhs.channel_id) {
+            return lhs.channel_id < rhs.channel_id;
+        }
+        if (lhs.target_tick != rhs.target_tick) {
+            return lhs.target_tick < rhs.target_tick;
+        }
+        if (lhs.delta_id != rhs.delta_id) {
+            return lhs.delta_id < rhs.delta_id;
         }
         return lhs.source_index < rhs.source_index;
     });
@@ -579,6 +785,34 @@ void hash_string(std::uint64_t& hash, std::string_view value) noexcept {
         hash_mix(hash, row.state_hash);
         hash_mix(hash, row.byte_count);
     }
+    for (const auto& row : plan.sandbox_mutation_command_rows) {
+        hash_string(hash, row.player_id);
+        hash_string(hash, row.command_id);
+        hash_string(hash, row.channel_id);
+        hash_mix(hash, row.target_tick);
+        hash_mix(hash, row.sequence);
+        hash_mix(hash, static_cast<std::uint8_t>(row.kind));
+        hash_string(hash, row.chunk_id);
+        hash_mix(hash, static_cast<std::uint64_t>(row.coord.x));
+        hash_mix(hash, static_cast<std::uint64_t>(row.coord.y));
+        hash_mix(hash, static_cast<std::uint64_t>(row.coord.z));
+        hash_string(hash, row.block_id);
+        hash_mix(hash, row.payload_hash);
+        hash_mix(hash, row.byte_count);
+    }
+    for (const auto& row : plan.sandbox_snapshot_delta_rows) {
+        hash_string(hash, row.delta_id);
+        hash_string(hash, row.channel_id);
+        hash_string(hash, row.chunk_id);
+        hash_mix(hash, row.base_tick);
+        hash_mix(hash, row.target_tick);
+        for (const auto& command_id : row.command_ids) {
+            hash_string(hash, command_id);
+        }
+        hash_mix(hash, row.changed_cell_count);
+        hash_mix(hash, row.state_hash);
+        hash_mix(hash, row.byte_count);
+    }
     for (const auto& row : plan.rollback_rows) {
         hash_mix(hash, static_cast<std::uint8_t>(row.mode));
         hash_mix(hash, row.max_rollback_ticks);
@@ -595,6 +829,8 @@ void append_output_rows(RuntimeNetworkReplicationPlan& plan, const RuntimeNetwor
     plan.object_rows = request.object_rows;
     plan.input_rows = request.input_rows;
     plan.snapshot_rows = request.snapshot_rows;
+    plan.sandbox_mutation_command_rows = request.sandbox_mutation_command_rows;
+    plan.sandbox_snapshot_delta_rows = request.sandbox_snapshot_delta_rows;
     if (request.rollback_policy.mode != RuntimeRollbackMode::disabled) {
         plan.rollback_rows.push_back(request.rollback_policy);
     }
@@ -602,6 +838,8 @@ void append_output_rows(RuntimeNetworkReplicationPlan& plan, const RuntimeNetwor
     plan.replicated_object_count = plan.object_rows.size();
     plan.input_row_count = plan.input_rows.size();
     plan.snapshot_row_count = plan.snapshot_rows.size();
+    plan.sandbox_mutation_command_count = plan.sandbox_mutation_command_rows.size();
+    plan.sandbox_snapshot_delta_count = plan.sandbox_snapshot_delta_rows.size();
     plan.rollback_row_count = plan.rollback_rows.size();
     plan.requires_transport_host_evidence = request.rollback_policy.requires_transport_host_evidence;
     plan.has_transport_host_evidence = std::ranges::any_of(plan.transport_evidence_rows, [](const auto& row) {
@@ -624,7 +862,9 @@ RuntimeNetworkReplicationPlan plan_runtime_network_replication(const RuntimeNetw
     validate_session(plan, request);
     const auto object_ids = validate_objects(plan, request);
     validate_inputs(plan, request);
-    validate_snapshots(plan, request, object_ids);
+    const auto snapshot_byte_count = validate_snapshots(plan, request, object_ids);
+    const auto sandbox_command_ids = validate_sandbox_mutation_commands(plan, request);
+    validate_sandbox_snapshot_deltas(plan, request, sandbox_command_ids, snapshot_byte_count);
     validate_rollback(plan, request);
     validate_transport_evidence(plan, request);
     validate_budgets(plan, request);
@@ -638,6 +878,7 @@ RuntimeNetworkReplicationPlan plan_runtime_network_replication(const RuntimeNetw
     }
 
     if (request.object_rows.empty() && request.input_rows.empty() && request.snapshot_rows.empty() &&
+        request.sandbox_mutation_command_rows.empty() && request.sandbox_snapshot_delta_rows.empty() &&
         request.rollback_policy.mode == RuntimeRollbackMode::disabled) {
         plan.status = RuntimeNetworkReplicationStatus::no_rows;
         return plan;

@@ -1699,6 +1699,18 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     )) {
         Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan renderer postprocess selection"
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "sandbox-world-network-modding-gate-v1") {
+    foreach ($needle in @(
+        "Selected focused child plan",
+        "sandbox-world-specific mutation replication",
+        "reviewed modding policy gates",
+        "unsupportedProductionGaps = []",
+        "Broad online multiplayer",
+        "SDL3",
+        "native handle exposure"
+    )) {
+        Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan sandbox world network/modding selection"
+    }
 } else {
     foreach ($needle in @(
     "Frame Graph Transient Texture Alias Planning v1",

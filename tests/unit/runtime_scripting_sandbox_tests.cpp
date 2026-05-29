@@ -78,6 +78,23 @@ make_module(std::string module_id, std::string source_uri,
     return false;
 }
 
+[[nodiscard]] std::size_t modding_diagnostic_count(const mirakana::runtime::RuntimeScriptModdingPolicyPlan& plan,
+                                                   mirakana::runtime::RuntimeScriptModdingPolicyDiagnosticCode code) {
+    std::size_t count{0U};
+    for (const auto& diagnostic : plan.diagnostics) {
+        if (diagnostic.code == code) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+[[nodiscard]] bool has_no_modding_side_effects(const mirakana::runtime::RuntimeScriptModdingPolicyPlan& plan) {
+    return plan.filesystem_side_effect_count == 0U && plan.network_side_effect_count == 0U &&
+           plan.process_side_effect_count == 0U && plan.native_plugin_side_effect_count == 0U &&
+           plan.package_mutation_side_effect_count == 0U;
+}
+
 [[nodiscard]] mirakana::runtime::RuntimeScriptSandboxPolicyDesc make_reviewed_execution_policy() {
     using EntryKind = mirakana::runtime::RuntimeScriptSandboxEntrypointKind;
     using Permission = mirakana::runtime::RuntimeScriptSandboxPermissionKind;
@@ -648,6 +665,186 @@ MK_TEST("runtime scripting sandbox execution reports adapter failures and budget
     MK_REQUIRE(budget_failure.diagnostics[0].code == Code::instruction_budget_exceeded);
     MK_REQUIRE(budget_failure.diagnostics[1].code == Code::memory_budget_exceeded);
     MK_REQUIRE(over_budget_adapter.call_count == 1U);
+}
+
+MK_TEST("runtime script modding policy plans sorted reviewed deterministic adapter rows") {
+    using Capability = mirakana::runtime::RuntimeScriptModdingDeniedCapabilityKind;
+    using Status = mirakana::runtime::RuntimeScriptModdingPolicyStatus;
+
+    const auto policy = mirakana::runtime::RuntimeScriptModdingPolicyDesc{
+        .adapter_rows =
+            {
+                mirakana::runtime::RuntimeScriptModdingAdapterPolicyRow{
+                    .adapter_id = "z_mod_adapter",
+                    .module_id = "weather_mod",
+                    .entrypoint_id = "tick",
+                    .reviewed = true,
+                    .deterministic = true,
+                    .replay_seed = 99U,
+                    .requested_capabilities = {},
+                    .source_index = 9U,
+                },
+                mirakana::runtime::RuntimeScriptModdingAdapterPolicyRow{
+                    .adapter_id = "a_mod_adapter",
+                    .module_id = "building_mod",
+                    .entrypoint_id = "apply",
+                    .reviewed = true,
+                    .deterministic = true,
+                    .replay_seed = 11U,
+                    .requested_capabilities = {},
+                    .source_index = 1U,
+                },
+            },
+    };
+    const auto reordered_policy = mirakana::runtime::RuntimeScriptModdingPolicyDesc{
+        .adapter_rows = {policy.adapter_rows[1], policy.adapter_rows[0]},
+    };
+
+    const auto plan = mirakana::runtime::plan_runtime_script_modding_policy(policy);
+    const auto reordered_plan = mirakana::runtime::plan_runtime_script_modding_policy(reordered_policy);
+
+    MK_REQUIRE(plan.status == Status::planned);
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.diagnostics.empty());
+    MK_REQUIRE(plan.adapter_rows.size() == 2U);
+    MK_REQUIRE(plan.adapter_rows[0].adapter_id == "a_mod_adapter");
+    MK_REQUIRE(plan.adapter_rows[0].module_id == "building_mod");
+    MK_REQUIRE(plan.adapter_rows[0].entrypoint_id == "apply");
+    MK_REQUIRE(plan.adapter_rows[1].adapter_id == "z_mod_adapter");
+    MK_REQUIRE(plan.denied_capability_rows.size() == 10U);
+    MK_REQUIRE(plan.denied_capability_rows[0].adapter_id == "a_mod_adapter");
+    MK_REQUIRE(plan.denied_capability_rows[0].kind == Capability::filesystem);
+    MK_REQUIRE(!plan.denied_capability_rows[0].requested);
+    MK_REQUIRE(plan.denied_capability_rows[0].denied);
+    MK_REQUIRE(plan.denied_capability_rows[4].kind == Capability::package_mutation);
+    MK_REQUIRE(plan.denied_capability_rows[5].adapter_id == "z_mod_adapter");
+    MK_REQUIRE(plan.denied_capability_rows[5].kind == Capability::filesystem);
+    MK_REQUIRE(plan.replay_hash != 0U);
+    MK_REQUIRE(plan.replay_hash == reordered_plan.replay_hash);
+    MK_REQUIRE(has_no_modding_side_effects(plan));
+}
+
+MK_TEST("runtime script modding policy rejects unsafe capability requests before adapter rows") {
+    using Capability = mirakana::runtime::RuntimeScriptModdingDeniedCapabilityKind;
+    using Code = mirakana::runtime::RuntimeScriptModdingPolicyDiagnosticCode;
+    using Status = mirakana::runtime::RuntimeScriptModdingPolicyStatus;
+
+    const auto policy = mirakana::runtime::RuntimeScriptModdingPolicyDesc{
+        .adapter_rows =
+            {
+                mirakana::runtime::RuntimeScriptModdingAdapterPolicyRow{
+                    .adapter_id = "unsafe_mod_adapter",
+                    .module_id = "unsafe_mod",
+                    .entrypoint_id = "load",
+                    .reviewed = true,
+                    .deterministic = true,
+                    .replay_seed = 44U,
+                    .requested_capabilities =
+                        {
+                            Capability::filesystem,
+                            Capability::network,
+                            Capability::process,
+                            Capability::native_plugin,
+                            Capability::package_mutation,
+                        },
+                    .source_index = 7U,
+                },
+            },
+    };
+
+    const auto plan = mirakana::runtime::plan_runtime_script_modding_policy(policy);
+
+    MK_REQUIRE(plan.status == Status::invalid_request);
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.adapter_rows.empty());
+    MK_REQUIRE(plan.denied_capability_rows.empty());
+    MK_REQUIRE(modding_diagnostic_count(plan, Code::denied_capability_requested) == 5U);
+    MK_REQUIRE(plan.replay_hash == 0U);
+    MK_REQUIRE(has_no_modding_side_effects(plan));
+}
+
+MK_TEST("runtime script modding policy requires reviewed deterministic adapters") {
+    using Code = mirakana::runtime::RuntimeScriptModdingPolicyDiagnosticCode;
+    using Status = mirakana::runtime::RuntimeScriptModdingPolicyStatus;
+
+    const auto policy = mirakana::runtime::RuntimeScriptModdingPolicyDesc{
+        .adapter_rows =
+            {
+                mirakana::runtime::RuntimeScriptModdingAdapterPolicyRow{
+                    .adapter_id = "",
+                    .module_id = "missing_adapter_id",
+                    .entrypoint_id = "tick",
+                    .reviewed = true,
+                    .deterministic = true,
+                    .replay_seed = 1U,
+                    .requested_capabilities = {},
+                    .source_index = 1U,
+                },
+                mirakana::runtime::RuntimeScriptModdingAdapterPolicyRow{
+                    .adapter_id = "dupe_adapter",
+                    .module_id = "first",
+                    .entrypoint_id = "tick",
+                    .reviewed = true,
+                    .deterministic = true,
+                    .replay_seed = 2U,
+                    .requested_capabilities = {},
+                    .source_index = 2U,
+                },
+                mirakana::runtime::RuntimeScriptModdingAdapterPolicyRow{
+                    .adapter_id = "dupe_adapter",
+                    .module_id = "second",
+                    .entrypoint_id = "tick",
+                    .reviewed = true,
+                    .deterministic = true,
+                    .replay_seed = 3U,
+                    .requested_capabilities = {},
+                    .source_index = 3U,
+                },
+                mirakana::runtime::RuntimeScriptModdingAdapterPolicyRow{
+                    .adapter_id = "unreviewed_adapter",
+                    .module_id = "unreviewed",
+                    .entrypoint_id = "tick",
+                    .reviewed = false,
+                    .deterministic = true,
+                    .replay_seed = 4U,
+                    .requested_capabilities = {},
+                    .source_index = 4U,
+                },
+                mirakana::runtime::RuntimeScriptModdingAdapterPolicyRow{
+                    .adapter_id = "nondeterministic_adapter",
+                    .module_id = "nondeterministic",
+                    .entrypoint_id = "tick",
+                    .reviewed = true,
+                    .deterministic = false,
+                    .replay_seed = 5U,
+                    .requested_capabilities = {},
+                    .source_index = 5U,
+                },
+                mirakana::runtime::RuntimeScriptModdingAdapterPolicyRow{
+                    .adapter_id = "missing_seed_adapter",
+                    .module_id = "missing_seed",
+                    .entrypoint_id = "tick",
+                    .reviewed = true,
+                    .deterministic = true,
+                    .replay_seed = 0U,
+                    .requested_capabilities = {},
+                    .source_index = 6U,
+                },
+            },
+    };
+
+    const auto plan = mirakana::runtime::plan_runtime_script_modding_policy(policy);
+
+    MK_REQUIRE(plan.status == Status::invalid_request);
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.adapter_rows.empty());
+    MK_REQUIRE(modding_diagnostic_count(plan, Code::missing_adapter_id) == 1U);
+    MK_REQUIRE(modding_diagnostic_count(plan, Code::duplicate_adapter_id) == 1U);
+    MK_REQUIRE(modding_diagnostic_count(plan, Code::unreviewed_adapter) == 1U);
+    MK_REQUIRE(modding_diagnostic_count(plan, Code::nondeterministic_adapter) == 1U);
+    MK_REQUIRE(modding_diagnostic_count(plan, Code::missing_replay_seed) == 1U);
+    MK_REQUIRE(plan.replay_hash == 0U);
+    MK_REQUIRE(has_no_modding_side_effects(plan));
 }
 
 int main() {

@@ -12,7 +12,7 @@
 
 **Plan ID:** `generic-2d-sandbox-production-lane-v1`
 
-**Status:** Phased milestone implementation in progress. Phases 1-8 have completed as reviewable slices, but this file does not replace `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`, does not reopen `unsupportedProductionGaps`, and does not mark later planned capabilities as ready.
+**Status:** Phased milestone implementation in progress. Phases 1-8 have completed as reviewable slices, and Phase 9 is implemented through the focused child plan `Sandbox World Network And Modding Gate v1` pending PR publication/hosted review. This file does not replace `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`, does not reopen `unsupportedProductionGaps`, and does not mark later planned capabilities as ready.
 
 ## Current Evidence And Gap Summary
 
@@ -359,10 +359,12 @@ Evidence: RED compile proof first failed on missing `RuntimeSandboxDayNightPhase
 - Modify tests: `tests/unit/runtime_production_network_replication_tests.cpp`, `tests/unit/runtime_network_*`, `tests/unit/runtime_scripting_sandbox_tests.cpp`
 - Create docs only when selected: `docs/specs/2026-05-27-sandbox-world-network-security-threat-model.md`
 
-- [ ] Write the threat model before any network execution code. Cover client authority, tile mutation tampering, replay attacks, rollback windows, bandwidth abuse, chunk streaming abuse, save corruption, authentication exclusions, encryption exclusions, NAT/matchmaking exclusions, and server authority assumptions.
-- [ ] Add RED tests for serialized mutation command validation, sequence/replay rejection, snapshot delta rows, rollback-window diagnostics, authority diagnostics, and transport host evidence.
-- [ ] Keep ENet optional behind the existing `network-enet` feature and validation wrapper.
-- [ ] Add scripting/modding only as reviewed policy and deterministic adapter rows. Filesystem, network, process, native plugin, and package script access remain denied by default.
+- [x] Write the threat model before any network execution code. Cover client authority, tile mutation tampering, replay attacks, rollback windows, bandwidth abuse, chunk streaming abuse, save corruption, authentication exclusions, encryption exclusions, NAT/matchmaking exclusions, and server authority assumptions.
+- [x] Add RED tests for serialized mutation command validation, sequence/replay rejection, snapshot delta rows, rollback-window diagnostics, authority diagnostics, and transport host evidence.
+- [x] Keep ENet optional behind the existing `network-enet` feature and validation wrapper.
+- [x] Add scripting/modding only as reviewed policy and deterministic adapter rows. Filesystem, network, process, native plugin, and package script access remain denied by default.
+
+Evidence: Phase 9 selected and implemented through `docs/superpowers/plans/2026-05-30-sandbox-world-network-modding-gate-v1.md`. It adds `RuntimeNetworkSandboxMutationCommandRow`, `RuntimeNetworkSandboxSnapshotDeltaRow`, `RuntimeScriptModdingAdapterPolicyRow`, `RuntimeScriptModdingDeniedCapabilityRow`, and `plan_runtime_script_modding_policy`, with sandbox mutation authority, unique command ids, sequence uniqueness, monotonic tick, snapshot delta reference/hash/shared-byte-budget, reviewed deterministic adapter, replay-seed, and denied capability tests. Focused build/CTest and full `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed locally; ENet remains optional/host-gated, SDL3 remains absent, and broad online multiplayer/modding readiness remains unclaimed.
 
 ## Phase 10 - Sample Package, Validation Recipes, And Performance Budgets
 

@@ -542,7 +542,7 @@ if ($playable3dGap.Count -ne 0) {
     Write-Error "engine manifest aiOperableProductionLoop 3d-playable-vertical-slice gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
 $recommendedText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
-if ([string]$productionLoop.recommendedNextPlan.id -notin @("general-purpose-game-production-v1", "generated-game-studio-v1", "engine-1-0-gap-matrix-v1", "next-production-gap-selection", "physics-navigation-commercial-coverage-v1", "renderer-backend-parity-metal-apple-evidence-v1", "renderer-postprocess-tone-mapping-evidence-v1")) {
+if ([string]$productionLoop.recommendedNextPlan.id -notin @("general-purpose-game-production-v1", "generated-game-studio-v1", "engine-1-0-gap-matrix-v1", "next-production-gap-selection", "physics-navigation-commercial-coverage-v1", "renderer-backend-parity-metal-apple-evidence-v1", "renderer-postprocess-tone-mapping-evidence-v1", "sandbox-world-network-modding-gate-v1")) {
     foreach ($needle in @(
         "3d-playable-vertical-slice",
         "generated desktop 3D package proof",
@@ -649,6 +649,18 @@ if ([string]$productionLoop.recommendedNextPlan.id -ne "general-purpose-game-pro
             "unsupportedProductionGaps = []"
         )) {
             Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan renderer postprocess selection"
+        }
+    } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "sandbox-world-network-modding-gate-v1") {
+        foreach ($needle in @(
+            "Selected focused child plan",
+            "sandbox-world-specific mutation replication",
+            "reviewed modding policy gates",
+            "unsupportedProductionGaps = []",
+            "Broad online multiplayer",
+            "SDL3",
+            "native handle exposure"
+        )) {
+            Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan sandbox world network/modding selection"
         }
     } else {
         foreach ($needle in @(

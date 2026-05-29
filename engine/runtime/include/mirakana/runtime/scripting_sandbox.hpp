@@ -74,6 +74,31 @@ enum class RuntimeScriptExecutionDiagnosticCode : std::uint8_t {
     adapter_failed,
 };
 
+enum class RuntimeScriptModdingPolicyStatus : std::uint8_t {
+    planned = 0,
+    no_adapters,
+    invalid_request,
+};
+
+enum class RuntimeScriptModdingPolicyDiagnosticCode : std::uint8_t {
+    missing_adapter_id = 0,
+    duplicate_adapter_id,
+    missing_module_id,
+    missing_entrypoint_id,
+    unreviewed_adapter,
+    nondeterministic_adapter,
+    missing_replay_seed,
+    denied_capability_requested,
+};
+
+enum class RuntimeScriptModdingDeniedCapabilityKind : std::uint8_t {
+    filesystem = 0,
+    network,
+    process,
+    native_plugin,
+    package_mutation,
+};
+
 struct RuntimeScriptSandboxPermissionDesc {
     RuntimeScriptSandboxPermissionKind kind{RuntimeScriptSandboxPermissionKind::emit_diagnostic};
     std::string host_api_id;
@@ -197,6 +222,52 @@ struct RuntimeScriptExecutionResult {
     [[nodiscard]] bool succeeded() const noexcept;
 };
 
+struct RuntimeScriptModdingAdapterPolicyRow {
+    std::string adapter_id;
+    std::string module_id;
+    std::string entrypoint_id;
+    bool reviewed{false};
+    bool deterministic{false};
+    std::uint64_t replay_seed{0U};
+    std::vector<RuntimeScriptModdingDeniedCapabilityKind> requested_capabilities;
+    std::uint32_t source_index{0U};
+};
+
+struct RuntimeScriptModdingDeniedCapabilityRow {
+    std::string adapter_id;
+    RuntimeScriptModdingDeniedCapabilityKind kind{RuntimeScriptModdingDeniedCapabilityKind::filesystem};
+    bool requested{false};
+    bool denied{true};
+    std::uint32_t source_index{0U};
+};
+
+struct RuntimeScriptModdingPolicyDesc {
+    std::vector<RuntimeScriptModdingAdapterPolicyRow> adapter_rows;
+};
+
+struct RuntimeScriptModdingPolicyDiagnostic {
+    RuntimeScriptModdingPolicyDiagnosticCode code{RuntimeScriptModdingPolicyDiagnosticCode::missing_adapter_id};
+    std::string adapter_id;
+    RuntimeScriptModdingDeniedCapabilityKind capability_kind{RuntimeScriptModdingDeniedCapabilityKind::filesystem};
+    std::string message;
+    std::uint32_t source_index{0U};
+};
+
+struct RuntimeScriptModdingPolicyPlan {
+    RuntimeScriptModdingPolicyStatus status{RuntimeScriptModdingPolicyStatus::invalid_request};
+    std::vector<RuntimeScriptModdingPolicyDiagnostic> diagnostics;
+    std::vector<RuntimeScriptModdingAdapterPolicyRow> adapter_rows;
+    std::vector<RuntimeScriptModdingDeniedCapabilityRow> denied_capability_rows;
+    std::uint64_t replay_hash{0U};
+    std::size_t filesystem_side_effect_count{0U};
+    std::size_t network_side_effect_count{0U};
+    std::size_t process_side_effect_count{0U};
+    std::size_t native_plugin_side_effect_count{0U};
+    std::size_t package_mutation_side_effect_count{0U};
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
 class IRuntimeScriptExecutionAdapter {
   public:
     virtual ~IRuntimeScriptExecutionAdapter() = default;
@@ -217,5 +288,11 @@ class IRuntimeScriptExecutionAdapter {
 [[nodiscard]] RuntimeScriptExecutionResult
 execute_runtime_script_entrypoint(const RuntimeScriptExecutionRequest& request,
                                   IRuntimeScriptExecutionAdapter& adapter);
+
+/// Plans reviewed deterministic modding adapter metadata and fail-closed capability rows.
+/// This does not open files, access the network, spawn processes, bind native plugins, mutate packages,
+/// execute package scripts, load code, expose native handles, or grant unreviewed mod capabilities.
+[[nodiscard]] RuntimeScriptModdingPolicyPlan
+plan_runtime_script_modding_policy(const RuntimeScriptModdingPolicyDesc& policy);
 
 } // namespace mirakana::runtime

@@ -179,6 +179,8 @@ make_snapshot(std::string snapshot_id, std::uint64_t tick, std::uint32_t source_
                 make_snapshot("snapshot.100", 100U, 1U),
                 make_snapshot("snapshot.101", 101U, 2U),
             },
+        .sandbox_mutation_command_rows = {},
+        .sandbox_snapshot_delta_rows = {},
         .rollback_policy =
             mirakana::runtime::RuntimeRollbackPolicyRow{
                 .mode = RuntimeRollbackMode::input_resimulation,

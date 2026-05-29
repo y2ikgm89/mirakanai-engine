@@ -1375,6 +1375,20 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
             Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe renderer postprocess tone-mapping selection: $needle"
         }
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "sandbox-world-network-modding-gate-v1") {
+    foreach ($needle in @(
+    "Selected focused child plan",
+    "sandbox-world-specific mutation replication",
+    "reviewed modding policy gates",
+    "unsupportedProductionGaps = []",
+    "Broad online multiplayer",
+    "SDL3",
+    "native handle exposure"
+    )) {
+        if (-not $recommendedText.Contains($needle)) {
+            Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe sandbox world network/modding selection: $needle"
+        }
+    }
 } else {
     foreach ($needle in @(
     "Frame Graph Transient Texture Alias Planning v1",

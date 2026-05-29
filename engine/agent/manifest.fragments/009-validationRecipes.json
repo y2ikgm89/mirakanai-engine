@@ -193,7 +193,7 @@
     {
       "name": "network-production-security",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R \"runtime_network|production_network_replication\"",
-      "purpose": "Validate the first-party networking production security gate, networking foundation, transport adapter facade, and replication review tests, including threat-model, session lifecycle, connection state, channel policy, sequence/replay rejection, input command validation, snapshot validation, rollback-window diagnostics, and host-gated loopback/replication separation without broad online-service claims."
+      "purpose": "Validate the first-party networking production security gate, networking foundation, transport adapter facade, and replication review tests, including threat-model, session lifecycle, connection state, channel policy, sequence/replay rejection, input command validation, snapshot validation, sandbox mutation command and snapshot delta review, duplicate command-id rejection, shared snapshot/delta byte-budget rejection, rollback-window diagnostics, and host-gated loopback/replication separation without broad online-service claims."
     },
     {
       "name": "audio-production",

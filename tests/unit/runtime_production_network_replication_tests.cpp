@@ -26,6 +26,7 @@ using mirakana::runtime::RuntimeNetworkTrustBoundary;
 using mirakana::runtime::RuntimeReplicationOwnership;
 using mirakana::runtime::RuntimeReplicationSnapshotKind;
 using mirakana::runtime::RuntimeRollbackMode;
+using mirakana::runtime::RuntimeSandboxMutationKind;
 
 [[nodiscard]] mirakana::runtime::RuntimeNetworkTransportRequirementDesc
 make_transport(RuntimeNetworkTransportCapabilityKind capability, std::uint32_t source_index) {
@@ -198,6 +199,8 @@ make_snapshot(std::string snapshot_id, std::uint64_t tick, std::vector<std::stri
                 make_snapshot("snapshot.100", 100U, {"player.0", "crate.0"}, 256U, 1U),
                 make_snapshot("snapshot.101", 101U, {"player.0", "crate.0"}, 128U, 2U),
             },
+        .sandbox_mutation_command_rows = {},
+        .sandbox_snapshot_delta_rows = {},
         .rollback_policy = make_rollback(RuntimeRollbackMode::input_resimulation),
         .transport_evidence_rows = include_transport_evidence
                                        ? std::vector{make_transport_evidence()}
@@ -399,6 +402,252 @@ MK_TEST("production network replication counts rejected unsafe rows uniquely") {
     MK_REQUIRE(diagnostic_count(plan, RuntimeNetworkReplicationDiagnosticCode::unknown_channel_id) == 1U);
     MK_REQUIRE(plan.diagnostics.size() == 2U);
     MK_REQUIRE(plan.rejected_unsafe_row_count == 1U);
+}
+
+MK_TEST("production network replication reviews sandbox mutation commands and snapshot deltas") {
+    auto request = make_valid_request(true);
+    request.sandbox_mutation_command_rows = {
+        mirakana::runtime::RuntimeNetworkSandboxMutationCommandRow{
+            .player_id = "player.0",
+            .command_id = "place.stone.0",
+            .channel_id = "input",
+            .target_tick = 102U,
+            .sequence = 3U,
+            .kind = RuntimeSandboxMutationKind::placement,
+            .chunk_id = "chunk.0",
+            .coord = mirakana::runtime::RuntimeSandboxCellCoord{.x = 1, .y = 2, .z = 0},
+            .block_id = "block.stone",
+            .payload_hash = 7003U,
+            .byte_count = 48U,
+            .source_index = 40U,
+        },
+        mirakana::runtime::RuntimeNetworkSandboxMutationCommandRow{
+            .player_id = "player.0",
+            .command_id = "destroy.dirt.0",
+            .channel_id = "input",
+            .target_tick = 103U,
+            .sequence = 4U,
+            .kind = RuntimeSandboxMutationKind::destruction,
+            .chunk_id = "chunk.0",
+            .coord = mirakana::runtime::RuntimeSandboxCellCoord{.x = 2, .y = 2, .z = 0},
+            .block_id = {},
+            .payload_hash = 7004U,
+            .byte_count = 32U,
+            .source_index = 41U,
+        },
+    };
+    request.sandbox_snapshot_delta_rows = {
+        mirakana::runtime::RuntimeNetworkSandboxSnapshotDeltaRow{
+            .delta_id = "sandbox.delta.103",
+            .channel_id = "state",
+            .chunk_id = "chunk.0",
+            .base_tick = 101U,
+            .target_tick = 103U,
+            .command_ids = {"place.stone.0", "destroy.dirt.0"},
+            .changed_cell_count = 2U,
+            .state_hash = 8003U,
+            .byte_count = 96U,
+            .source_index = 42U,
+        },
+    };
+    request.row_budget = 64U;
+    request.snapshot_byte_budget = 4096U;
+
+    const auto plan = mirakana::runtime::plan_runtime_network_replication(request);
+
+    MK_REQUIRE(plan.status == RuntimeNetworkReplicationStatus::ready);
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.diagnostics.empty());
+    MK_REQUIRE(plan.sandbox_mutation_command_count == 2U);
+    MK_REQUIRE(plan.sandbox_snapshot_delta_count == 1U);
+    MK_REQUIRE(plan.sandbox_mutation_command_rows[0].command_id == "place.stone.0");
+    MK_REQUIRE(plan.sandbox_mutation_command_rows[1].command_id == "destroy.dirt.0");
+    MK_REQUIRE(plan.sandbox_snapshot_delta_rows[0].delta_id == "sandbox.delta.103");
+    MK_REQUIRE(plan.sandbox_snapshot_delta_rows[0].changed_cell_count == 2U);
+    MK_REQUIRE(plan.replay_hash != 0U);
+    MK_REQUIRE(!plan.invoked_network_io);
+    MK_REQUIRE(!plan.invoked_rollback_execution);
+    MK_REQUIRE(!plan.invoked_world_mutation);
+}
+
+MK_TEST("production network replication rejects sandbox mutation replay authority and delta abuse") {
+    auto request = make_valid_request(true);
+    request.sandbox_mutation_command_rows = {
+        mirakana::runtime::RuntimeNetworkSandboxMutationCommandRow{
+            .player_id = "player.0",
+            .command_id = "place.1",
+            .channel_id = "input",
+            .target_tick = 105U,
+            .sequence = 8U,
+            .kind = RuntimeSandboxMutationKind::placement,
+            .chunk_id = "chunk.0",
+            .coord = mirakana::runtime::RuntimeSandboxCellCoord{.x = 1, .y = 1, .z = 0},
+            .block_id = "block.stone",
+            .payload_hash = 8001U,
+            .byte_count = 48U,
+            .source_index = 50U,
+        },
+        mirakana::runtime::RuntimeNetworkSandboxMutationCommandRow{
+            .player_id = "player.0",
+            .command_id = "place.2",
+            .channel_id = "input",
+            .target_tick = 104U,
+            .sequence = 8U,
+            .kind = RuntimeSandboxMutationKind::placement,
+            .chunk_id = "chunk.0",
+            .coord = mirakana::runtime::RuntimeSandboxCellCoord{.x = 2, .y = 1, .z = 0},
+            .block_id = "block.stone",
+            .payload_hash = 8002U,
+            .byte_count = 48U,
+            .source_index = 51U,
+        },
+        mirakana::runtime::RuntimeNetworkSandboxMutationCommandRow{
+            .player_id = "player.0",
+            .command_id = "state.channel.command",
+            .channel_id = "state",
+            .target_tick = 106U,
+            .sequence = 9U,
+            .kind = RuntimeSandboxMutationKind::destruction,
+            .chunk_id = "chunk.0",
+            .coord = mirakana::runtime::RuntimeSandboxCellCoord{.x = 3, .y = 1, .z = 0},
+            .payload_hash = 8003U,
+            .byte_count = 24U,
+            .source_index = 52U,
+        },
+    };
+    request.sandbox_snapshot_delta_rows = {
+        mirakana::runtime::RuntimeNetworkSandboxSnapshotDeltaRow{
+            .delta_id = "bad.delta",
+            .channel_id = "input",
+            .chunk_id = "chunk.0",
+            .base_tick = 108U,
+            .target_tick = 107U,
+            .command_ids = {"missing.command"},
+            .changed_cell_count = 0U,
+            .state_hash = 0U,
+            .byte_count = 2048U,
+            .source_index = 60U,
+        },
+    };
+    request.snapshot_byte_budget = 1024U;
+
+    const auto plan = mirakana::runtime::plan_runtime_network_replication(request);
+
+    MK_REQUIRE(plan.status == RuntimeNetworkReplicationStatus::invalid_request);
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.sandbox_mutation_command_rows.empty());
+    MK_REQUIRE(plan.sandbox_snapshot_delta_rows.empty());
+    MK_REQUIRE(diagnostic_count(plan, RuntimeNetworkReplicationDiagnosticCode::duplicate_sandbox_mutation_sequence) ==
+               1U);
+    MK_REQUIRE(diagnostic_count(plan, RuntimeNetworkReplicationDiagnosticCode::non_monotonic_sandbox_mutation_tick) ==
+               1U);
+    MK_REQUIRE(diagnostic_count(plan, RuntimeNetworkReplicationDiagnosticCode::channel_authority_mismatch) == 2U);
+    MK_REQUIRE(diagnostic_count(plan, RuntimeNetworkReplicationDiagnosticCode::invalid_sandbox_snapshot_delta) == 1U);
+    MK_REQUIRE(diagnostic_count(plan, RuntimeNetworkReplicationDiagnosticCode::unknown_sandbox_snapshot_command) == 1U);
+    MK_REQUIRE(diagnostic_count(plan, RuntimeNetworkReplicationDiagnosticCode::sandbox_delta_byte_budget_exceeded) ==
+               1U);
+}
+
+MK_TEST("production network replication rejects duplicate sandbox mutation command ids") {
+    auto request = make_valid_request(true);
+    request.sandbox_mutation_command_rows = {
+        mirakana::runtime::RuntimeNetworkSandboxMutationCommandRow{
+            .player_id = "player.0",
+            .command_id = "place.duplicate",
+            .channel_id = "input",
+            .target_tick = 102U,
+            .sequence = 3U,
+            .kind = RuntimeSandboxMutationKind::placement,
+            .chunk_id = "chunk.0",
+            .coord = mirakana::runtime::RuntimeSandboxCellCoord{.x = 1, .y = 2, .z = 0},
+            .block_id = "block.stone",
+            .payload_hash = 7003U,
+            .byte_count = 48U,
+            .source_index = 70U,
+        },
+        mirakana::runtime::RuntimeNetworkSandboxMutationCommandRow{
+            .player_id = "player.1",
+            .command_id = "place.duplicate",
+            .channel_id = "input",
+            .target_tick = 103U,
+            .sequence = 1U,
+            .kind = RuntimeSandboxMutationKind::placement,
+            .chunk_id = "chunk.1",
+            .coord = mirakana::runtime::RuntimeSandboxCellCoord{.x = 2, .y = 2, .z = 0},
+            .block_id = "block.dirt",
+            .payload_hash = 7004U,
+            .byte_count = 48U,
+            .source_index = 71U,
+        },
+    };
+    request.sandbox_snapshot_delta_rows = {
+        mirakana::runtime::RuntimeNetworkSandboxSnapshotDeltaRow{
+            .delta_id = "sandbox.delta.duplicate",
+            .channel_id = "state",
+            .chunk_id = "chunk.0",
+            .base_tick = 101U,
+            .target_tick = 103U,
+            .command_ids = {"place.duplicate"},
+            .changed_cell_count = 1U,
+            .state_hash = 8103U,
+            .byte_count = 96U,
+            .source_index = 72U,
+        },
+    };
+
+    const auto plan = mirakana::runtime::plan_runtime_network_replication(request);
+
+    MK_REQUIRE(plan.status == RuntimeNetworkReplicationStatus::invalid_request);
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.sandbox_mutation_command_rows.empty());
+    MK_REQUIRE(plan.sandbox_snapshot_delta_rows.empty());
+    MK_REQUIRE(diagnostic_count(plan, RuntimeNetworkReplicationDiagnosticCode::duplicate_sandbox_mutation_command_id) ==
+               1U);
+}
+
+MK_TEST("production network replication applies one byte budget across snapshots and sandbox deltas") {
+    auto request = make_valid_request(true);
+    request.sandbox_mutation_command_rows = {
+        mirakana::runtime::RuntimeNetworkSandboxMutationCommandRow{
+            .player_id = "player.0",
+            .command_id = "place.stone.0",
+            .channel_id = "input",
+            .target_tick = 102U,
+            .sequence = 3U,
+            .kind = RuntimeSandboxMutationKind::placement,
+            .chunk_id = "chunk.0",
+            .coord = mirakana::runtime::RuntimeSandboxCellCoord{.x = 1, .y = 2, .z = 0},
+            .block_id = "block.stone",
+            .payload_hash = 7003U,
+            .byte_count = 48U,
+            .source_index = 80U,
+        },
+    };
+    request.sandbox_snapshot_delta_rows = {
+        mirakana::runtime::RuntimeNetworkSandboxSnapshotDeltaRow{
+            .delta_id = "sandbox.delta.102",
+            .channel_id = "state",
+            .chunk_id = "chunk.0",
+            .base_tick = 101U,
+            .target_tick = 102U,
+            .command_ids = {"place.stone.0"},
+            .changed_cell_count = 1U,
+            .state_hash = 8102U,
+            .byte_count = 700U,
+            .source_index = 81U,
+        },
+    };
+    request.snapshot_byte_budget = 1024U;
+
+    const auto plan = mirakana::runtime::plan_runtime_network_replication(request);
+
+    MK_REQUIRE(plan.status == RuntimeNetworkReplicationStatus::invalid_request);
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.snapshot_rows.empty());
+    MK_REQUIRE(plan.sandbox_snapshot_delta_rows.empty());
+    MK_REQUIRE(diagnostic_count(plan, RuntimeNetworkReplicationDiagnosticCode::sandbox_delta_byte_budget_exceeded) ==
+               1U);
+    MK_REQUIRE(diagnostic_count(plan, RuntimeNetworkReplicationDiagnosticCode::snapshot_byte_budget_exceeded) == 0U);
 }
 
 int main() {
