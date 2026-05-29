@@ -226,6 +226,9 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
 
         if(BUILD_TESTING)
             add_test(NAME ${target_name}_smoke COMMAND ${target_name} ${MK_DESKTOP_GAME_SMOKE_ARGS})
+            set_tests_properties(${target_name}_smoke PROPERTIES
+                WORKING_DIRECTORY "$<TARGET_FILE_DIR:${target_name}>"
+            )
         endif()
 
         if(MK_DESKTOP_GAME_PACKAGE_FILES_NORMALIZED)
@@ -753,6 +756,9 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                         ${MK_SCENE_SHADER_SOURCE_SMOKE_ARGS}
                         --require-d3d12-scene-shaders
                 )
+                set_tests_properties(${MK_SCENE_SHADER_TARGET}_shader_artifacts_smoke PROPERTIES
+                    WORKING_DIRECTORY "$<TARGET_FILE_DIR:${MK_SCENE_SHADER_TARGET}>"
+                )
             endif()
 
             if(MK_SAMPLE_DESKTOP_RUNTIME_DXC_SUPPORTS_SPIRV)
@@ -899,61 +905,78 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                 if(MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE)
                     set(MK_SCENE_SHADER_VULKAN_VALIDATION_COMMANDS
                         COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                            --target-env vulkan1.3
                             "${MK_SCENE_SHADER_VULKAN_VERTEX_SHADER_OUTPUT}"
                         COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                            --target-env vulkan1.3
                             "${MK_SCENE_SHADER_VULKAN_FRAGMENT_SHADER_OUTPUT}"
                         COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                            --target-env vulkan1.3
                             "${MK_SCENE_SHADER_VULKAN_POSTPROCESS_VERTEX_SHADER_OUTPUT}"
                         COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                            --target-env vulkan1.3
                             "${MK_SCENE_SHADER_VULKAN_POSTPROCESS_FRAGMENT_SHADER_OUTPUT}"
                     )
                     if(MK_SCENE_SHADER_HAS_UI_OVERLAY_ARTIFACTS)
                         list(APPEND MK_SCENE_SHADER_VULKAN_VALIDATION_COMMANDS
                             COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                                --target-env vulkan1.3
                                 "${MK_SCENE_SHADER_VULKAN_UI_OVERLAY_VERTEX_SHADER_OUTPUT}"
                             COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                                --target-env vulkan1.3
                                 "${MK_SCENE_SHADER_VULKAN_UI_OVERLAY_FRAGMENT_SHADER_OUTPUT}"
                         )
                     endif()
                     if(MK_SCENE_SHADER_HAS_SHADOW_ARTIFACTS)
                         list(APPEND MK_SCENE_SHADER_VULKAN_VALIDATION_COMMANDS
                             COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                                --target-env vulkan1.3
                                 "${MK_SCENE_SHADER_VULKAN_SHADOW_RECEIVER_FRAGMENT_SHADER_OUTPUT}"
                             COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                                --target-env vulkan1.3
                                 "${MK_SCENE_SHADER_VULKAN_SHIFTED_SHADOW_RECEIVER_FRAGMENT_SHADER_OUTPUT}"
                             COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                                --target-env vulkan1.3
                                 "${MK_SCENE_SHADER_VULKAN_SHADOW_VERTEX_SHADER_OUTPUT}"
                             COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                                --target-env vulkan1.3
                                 "${MK_SCENE_SHADER_VULKAN_SHADOW_FRAGMENT_SHADER_OUTPUT}"
                         )
                     endif()
                     if(MK_SCENE_SHADER_MORPH_VERTEX_ENTRY)
                         list(APPEND MK_SCENE_SHADER_VULKAN_VALIDATION_COMMANDS
                             COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                                --target-env vulkan1.3
                                 "${MK_SCENE_SHADER_VULKAN_MORPH_VERTEX_SHADER_OUTPUT}"
                         )
                     endif()
                     if(MK_SCENE_SHADER_COMPUTE_MORPH_ENTRY)
                         list(APPEND MK_SCENE_SHADER_VULKAN_VALIDATION_COMMANDS
                             COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                                --target-env vulkan1.3
                                 "${MK_SCENE_SHADER_VULKAN_COMPUTE_MORPH_VERTEX_SHADER_OUTPUT}"
                             COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                                --target-env vulkan1.3
                                 "${MK_SCENE_SHADER_VULKAN_COMPUTE_MORPH_SHADER_OUTPUT}"
                         )
                     endif()
                     if(MK_SCENE_SHADER_COMPUTE_MORPH_TANGENT_ENTRY)
                         list(APPEND MK_SCENE_SHADER_VULKAN_VALIDATION_COMMANDS
                             COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                                --target-env vulkan1.3
                                 "${MK_SCENE_SHADER_VULKAN_COMPUTE_MORPH_TANGENT_VERTEX_SHADER_OUTPUT}"
                             COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                                --target-env vulkan1.3
                                 "${MK_SCENE_SHADER_VULKAN_COMPUTE_MORPH_TANGENT_SHADER_OUTPUT}"
                         )
                     endif()
                     if(MK_SCENE_SHADER_COMPUTE_MORPH_SKINNED_ENTRY)
                         list(APPEND MK_SCENE_SHADER_VULKAN_VALIDATION_COMMANDS
                             COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                                --target-env vulkan1.3
                                 "${MK_SCENE_SHADER_VULKAN_COMPUTE_MORPH_SKINNED_VERTEX_SHADER_OUTPUT}"
                             COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                                --target-env vulkan1.3
                                 "${MK_SCENE_SHADER_VULKAN_COMPUTE_MORPH_SKINNED_SHADER_OUTPUT}"
                         )
                     endif()
@@ -1131,6 +1154,9 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                         ${MK_SPRITE_SHADER_SOURCE_SMOKE_ARGS}
                         --require-d3d12-shaders
                 )
+                set_tests_properties(${MK_SPRITE_SHADER_TARGET}_shader_artifacts_smoke PROPERTIES
+                    WORKING_DIRECTORY "$<TARGET_FILE_DIR:${MK_SPRITE_SHADER_TARGET}>"
+                )
             endif()
 
             if(MK_SAMPLE_DESKTOP_RUNTIME_DXC_SUPPORTS_SPIRV)
@@ -1193,6 +1219,9 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                         COMMAND ${MK_SPRITE_SHADER_TARGET}
                             ${MK_SPRITE_SHADER_SOURCE_SMOKE_ARGS}
                             --require-vulkan-shaders
+                    )
+                    set_tests_properties(${MK_SPRITE_SHADER_TARGET}_vulkan_shader_artifacts_smoke PROPERTIES
+                        WORKING_DIRECTORY "$<TARGET_FILE_DIR:${MK_SPRITE_SHADER_TARGET}>"
                     )
                 endif()
             endif()
@@ -1445,10 +1474,16 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                     NAME sample_desktop_runtime_shell_shader_artifacts_smoke
                     COMMAND sample_desktop_runtime_shell --smoke --require-d3d12-shaders
                 )
+                set_tests_properties(sample_desktop_runtime_shell_shader_artifacts_smoke PROPERTIES
+                    WORKING_DIRECTORY "$<TARGET_FILE_DIR:sample_desktop_runtime_shell>"
+                )
                 if(TARGET sample_desktop_runtime_shell_vulkan_shaders)
                     add_test(
                         NAME sample_desktop_runtime_shell_vulkan_shader_artifacts_smoke
                         COMMAND sample_desktop_runtime_shell --smoke --require-vulkan-shaders
+                    )
+                    set_tests_properties(sample_desktop_runtime_shell_vulkan_shader_artifacts_smoke PROPERTIES
+                        WORKING_DIRECTORY "$<TARGET_FILE_DIR:sample_desktop_runtime_shell>"
                     )
                 endif()
             endif()
@@ -1709,6 +1744,9 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                         ${MK_SAMPLE_2D_DESKTOP_RUNTIME_SOURCE_SMOKE_ARGS}
                         --require-d3d12-shaders
                 )
+                set_tests_properties(sample_2d_desktop_runtime_package_shader_artifacts_smoke PROPERTIES
+                    WORKING_DIRECTORY "$<TARGET_FILE_DIR:sample_2d_desktop_runtime_package>"
+                )
             endif()
 
             if(MK_SAMPLE_DESKTOP_RUNTIME_DXC_SUPPORTS_SPIRV)
@@ -1771,6 +1809,9 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                         COMMAND sample_2d_desktop_runtime_package
                             ${MK_SAMPLE_2D_DESKTOP_RUNTIME_SOURCE_SMOKE_ARGS}
                             --require-vulkan-shaders
+                    )
+                    set_tests_properties(sample_2d_desktop_runtime_package_vulkan_shader_artifacts_smoke PROPERTIES
+                        WORKING_DIRECTORY "$<TARGET_FILE_DIR:sample_2d_desktop_runtime_package>"
                     )
                 endif()
             endif()

@@ -12,7 +12,7 @@
 
 **Plan ID:** `reviewed-importers-codecs-shader-generation-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
 Selected child plan of `clean-break-broad-production-readiness-master-plan-v1` after `runtime-ui-text-platform-stack-v1` completed through PR #264, PR #265, PR #266, PR #267, and PR #268. Paused on 2026-05-27 when operator direction selected `first-party-desktop-platform-sdl3-removal-v1` as the active milestone, then resumed after the manifest, registry, and master plan pointers intentionally selected it again.
 
@@ -224,16 +224,27 @@ Task 5 completed source image/audio codec review evidence while leaving Task 6 s
 
 ## Task 6 - Reviewed Shader Generation And Cache Execution Lane
 
-- [ ] Add reviewed offline compiler execution rows for exact DXC and `spirv-val` commands, inputs, outputs, target profiles/environments, cache keys, provenance, and diagnostics.
-- [ ] Keep live shader generation, runtime compiler execution, native PSO/Vulkan/Metal cache handles, renderer/RHI residency, and Metal library generation host-gated or unsupported.
-- [ ] Add package-visible shader generation/cache counters only for implemented D3D12/Vulkan lanes.
-- [ ] Run shader toolchain, generated material/shader package, Vulkan strict package, dependency/static, and full validation gates.
+- [x] Add reviewed offline compiler execution rows for exact DXC and `spirv-val` commands, inputs, outputs, target profiles/environments, cache keys, provenance, and diagnostics.
+- [x] Keep live shader generation, runtime compiler execution, native PSO/Vulkan/Metal cache handles, renderer/RHI residency, and Metal library generation host-gated or unsupported.
+- [x] Add package-visible shader generation/cache counters only for implemented D3D12/Vulkan lanes.
+- [x] Run shader toolchain, generated material/shader package, Vulkan strict package, dependency/static, and full validation gates.
+
+### Task 6 Validation Evidence
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Toolchain preflight | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1` | Passed. |
+| Shader toolchain | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-shader-toolchain.ps1` | Passed as diagnostic-only: D3D12 DXIL, DXC SPIR-V CodeGen, and `spirv-val` were ready on this Windows host; Metal remained missing/host-gated. |
+| RED tests | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_tools_tests` | Failed as expected before implementation on missing `review_shader_generation_cache_execution` public rows and diagnostics. |
+| Focused build/test | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests MK_tools_tests`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_(core|tools)_tests"` | Passed after adding the reviewed shader generation/cache API, `spirv-val --target-env vulkan1.3`, package counter checks, and Windows long-path filesystem coverage needed by the source-tree package smoke. |
+| Default material/shader package | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_material_shader_package` | Passed with `shader_generation_cache_reviewed=1`, D3D12 ready rows, Vulkan host-gated rows, cache/provenance rows, and live/runtime/native/renderer/Metal readiness counters at 0. |
+| Vulkan shader/cache strict package | `pwsh -NoProfile -ExecutionPolicy Bypass -Command "& .\tools\package-desktop-runtime.ps1 -GameTarget sample_generated_desktop_runtime_material_shader_package -RequireVulkanShaders -SmokeArgs @('--smoke','--require-config','runtime/sample_generated_desktop_runtime_material_shader_package.config','--require-scene-package','runtime/sample_generated_desktop_runtime_material_shader_package.geindex','--require-vulkan-scene-shaders','--require-material-graph-authoring')"` | Passed with packaged SPIR-V artifacts, `spirv-val --target-env vulkan1.3` evidence, four shader generation/cache ready rows, two SPIR-V validation rows, four cache/provenance rows, and no Vulkan renderer/RHI residency claim. |
 
 ## Task 7 - Docs, Manifest, Static Checks, And Closeout
 
-- [ ] Reconcile current capabilities, roadmap, AI game guidance, generated-game scenarios, dependency/legal records, manifest fragments, schemas, static checks, and validation recipes with only the implemented rows.
-- [ ] Compose the manifest.
-- [ ] Run:
+- [x] Reconcile current capabilities, roadmap, AI game guidance, generated-game scenarios, dependency/legal records, manifest fragments, schemas, static checks, and validation recipes with only the implemented rows.
+- [x] Compose the manifest.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write
@@ -248,6 +259,19 @@ git diff --check
 ```
 
 Expected: all checks pass, or exact host/dependency blockers are recorded.
+
+### Task 7 Validation Evidence
+
+| Check | Command | Result |
+| --- | --- | --- |
+| Manifest compose | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write` | Passed; regenerated `engine/agent/manifest.json` from fragments. |
+| JSON contracts | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | Passed; `json-contract-check: ok`. |
+| Validation recipe contracts | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-validation-recipe-runner.ps1` | Passed; material shader strict recipe keeps shader/cache evidence separate from Vulkan renderer residency. |
+| Agent integration | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | Passed; generated-game dry-run templates and reviewed shader/cache needles are aligned. |
+| Agent config | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | Passed; `agent-config-check: ok`. |
+| Dependency policy | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1` | Passed; no dependency or legal record change was required. |
+| Format/text/diff | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1`; `git diff --check` | Passed; no formatting or whitespace drift. |
+| Full validation | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed; command exited 0 on this Windows host. |
 
 ## Done When
 

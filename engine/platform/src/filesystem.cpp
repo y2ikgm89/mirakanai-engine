@@ -7,6 +7,8 @@
 #include <fstream>
 #include <iterator>
 #include <stdexcept>
+#include <string>
+#include <string_view>
 #include <utility>
 
 namespace mirakana {
@@ -30,6 +32,36 @@ void validate_relative_path(std::string_view path, const char* name) {
             throw std::invalid_argument(std::string(name) + " must not contain '..'");
         }
     }
+}
+
+[[nodiscard]] constexpr char native_narrow_separator() noexcept {
+#if defined(_WIN32)
+    return '\\';
+#else
+    return '/';
+#endif
+}
+
+[[nodiscard]] std::filesystem::path filesystem_api_path(const std::filesystem::path& path) {
+#if defined(_WIN32)
+    if (!path.is_absolute()) {
+        return path;
+    }
+
+    const std::wstring text = path.wstring();
+    constexpr std::wstring_view long_path_prefix{L"\\\\?\\"};
+    constexpr std::wstring_view device_path_prefix{L"\\\\.\\"};
+    constexpr std::wstring_view unc_prefix{L"\\\\"};
+    if (text.starts_with(long_path_prefix) || text.starts_with(device_path_prefix)) {
+        return path;
+    }
+    if (text.starts_with(unc_prefix)) {
+        return std::filesystem::path{std::wstring{L"\\\\?\\UNC\\"} + text.substr(2)};
+    }
+    return std::filesystem::path{std::wstring{long_path_prefix} + text};
+#else
+    return path;
+#endif
 }
 
 } // namespace
@@ -94,15 +126,15 @@ RootedFileSystem::RootedFileSystem(std::filesystem::path root_path) : root_path_
 }
 
 bool RootedFileSystem::exists(std::string_view path) const {
-    return std::filesystem::exists(resolve(path));
+    return std::filesystem::exists(filesystem_api_path(resolve(path)));
 }
 
 bool RootedFileSystem::is_directory(std::string_view path) const {
-    return std::filesystem::is_directory(resolve(path));
+    return std::filesystem::is_directory(filesystem_api_path(resolve(path)));
 }
 
 std::string RootedFileSystem::read_text(std::string_view path) const {
-    const auto full_path = resolve(path);
+    const auto full_path = filesystem_api_path(resolve(path));
     std::ifstream input(full_path, std::ios::binary);
     if (!input) {
         throw std::out_of_range("file does not exist: " + std::string(path));
@@ -111,7 +143,8 @@ std::string RootedFileSystem::read_text(std::string_view path) const {
 }
 
 std::vector<std::string> RootedFileSystem::list_files(std::string_view root) const {
-    const auto full_root = resolve(root);
+    const auto full_root = filesystem_api_path(resolve(root));
+    const auto relative_root = filesystem_api_path(root_path_);
     std::vector<std::string> result;
     if (!std::filesystem::exists(full_root)) {
         return result;
@@ -120,14 +153,14 @@ std::vector<std::string> RootedFileSystem::list_files(std::string_view root) con
         if (!entry.is_regular_file()) {
             continue;
         }
-        result.push_back(relative_portable_path(std::filesystem::relative(entry.path(), root_path_)));
+        result.push_back(relative_portable_path(std::filesystem::relative(entry.path(), relative_root)));
     }
     std::ranges::sort(result);
     return result;
 }
 
 void RootedFileSystem::write_text(std::string_view path, std::string_view text) {
-    const auto full_path = resolve(path);
+    const auto full_path = filesystem_api_path(resolve(path));
     if (const auto parent = full_path.parent_path(); !parent.empty()) {
         std::filesystem::create_directories(parent);
     }
@@ -144,7 +177,7 @@ void RootedFileSystem::write_text(std::string_view path, std::string_view text) 
 }
 
 void RootedFileSystem::remove(std::string_view path) {
-    const auto full_path = resolve(path);
+    const auto full_path = filesystem_api_path(resolve(path));
     std::error_code error;
     std::filesystem::remove(full_path, error);
     if (error) {
@@ -153,7 +186,7 @@ void RootedFileSystem::remove(std::string_view path) {
 }
 
 void RootedFileSystem::remove_empty_directory(std::string_view path) {
-    const auto full_path = resolve(path);
+    const auto full_path = filesystem_api_path(resolve(path));
     if (!std::filesystem::exists(full_path)) {
         return;
     }
@@ -174,7 +207,9 @@ const std::filesystem::path& RootedFileSystem::root_path() const noexcept {
 
 std::filesystem::path RootedFileSystem::resolve(std::string_view path) const {
     validate_relative_path(path, "filesystem path");
-    return root_path_ / std::filesystem::path{std::string(path)};
+    std::string native_path{path};
+    std::ranges::replace(native_path, '/', native_narrow_separator());
+    return root_path_ / std::filesystem::path{native_path};
 }
 
 std::string RootedFileSystem::relative_portable_path(const std::filesystem::path& path) {

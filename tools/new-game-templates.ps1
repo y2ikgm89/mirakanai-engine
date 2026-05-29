@@ -469,21 +469,57 @@ struct MaterialGraphAuthoringEvidence {
     std::size_t runtime_sources_shipped{0};
     std::size_t unsupported_boundaries{0};
     std::size_t diagnostics{0};
+    std::size_t shader_generation_reviewed{0};
+    std::size_t shader_generation_selected_cache_ready{0};
+    std::size_t shader_generation_d3d12_ready{0};
+    std::size_t shader_generation_vulkan_ready{0};
+    std::size_t shader_generation_rows{0};
+    std::size_t shader_generation_ready_rows{0};
+    std::size_t shader_generation_host_gated_rows{0};
+    std::size_t shader_generation_d3d12_rows{0};
+    std::size_t shader_generation_vulkan_rows{0};
+    std::size_t shader_generation_spirv_validation_rows{0};
+    std::size_t shader_generation_cache_key_rows{0};
+    std::size_t shader_generation_provenance_rows{0};
+    std::size_t shader_generation_unsupported_claim_rows{0};
+    std::size_t shader_generation_diagnostics{0};
+    std::size_t shader_generation_live_generation_ready{0};
+    std::size_t shader_generation_runtime_compiler_ready{0};
+    std::size_t shader_generation_native_cache_handle_ready{0};
+    std::size_t shader_generation_renderer_residency_ready{0};
+    std::size_t shader_generation_metal_library_ready{0};
 };
 
 [[nodiscard]] MaterialGraphAuthoringEvidence
 build_material_graph_authoring_evidence(const ModernMaterialPackageEvidence& material_evidence) noexcept {
     MaterialGraphAuthoringEvidence evidence;
-    evidence.authoring_targets = material_evidence.variants == 0 ? 0U : 1U;
-    evidence.lowered_materials = material_evidence.ready;
-    evidence.shader_exports = material_evidence.variants == 0 ? 0U : 1U;
-    evidence.compile_targets = material_evidence.variants == 0 ? 0U : 2U;
-    evidence.compile_requests = material_evidence.variants == 0 ? 0U : 4U;
-    evidence.d3d12_compile_requests = material_evidence.variants == 0 ? 0U : 2U;
-    evidence.vulkan_compile_requests = material_evidence.variants == 0 ? 0U : 2U;
+    if (material_evidence.variants != 1 || material_evidence.texture_dependencies != 1 ||
+        material_evidence.d3d12_shader_evidence_ready != 1) {
+        evidence.diagnostics = 1;
+        return evidence;
+    }
+
+    evidence.authoring_targets = 1;
+    evidence.lowered_materials = 1;
+    evidence.shader_exports = 1;
+    evidence.compile_targets = 2;
+    evidence.compile_requests = 4;
+    evidence.d3d12_compile_requests = 2;
+    evidence.vulkan_compile_requests = 2;
     evidence.runtime_sources_shipped = 0U;
-    evidence.unsupported_boundaries = material_evidence.variants == 0 ? 0U : 4U;
-    evidence.diagnostics = material_evidence.diagnostics;
+    evidence.unsupported_boundaries = 4U;
+    evidence.shader_generation_reviewed = 1U;
+    evidence.shader_generation_selected_cache_ready = material_evidence.selected_shader_evidence_ready;
+    evidence.shader_generation_d3d12_ready = material_evidence.d3d12_shader_evidence_ready;
+    evidence.shader_generation_vulkan_ready = material_evidence.vulkan_shader_evidence_ready;
+    evidence.shader_generation_rows = 4U;
+    evidence.shader_generation_ready_rows = 2U + (material_evidence.vulkan_shader_evidence_ready * 2U);
+    evidence.shader_generation_host_gated_rows = material_evidence.vulkan_shader_evidence_ready == 1U ? 0U : 2U;
+    evidence.shader_generation_d3d12_rows = 2U;
+    evidence.shader_generation_vulkan_rows = 2U;
+    evidence.shader_generation_spirv_validation_rows = material_evidence.vulkan_shader_evidence_ready * 2U;
+    evidence.shader_generation_cache_key_rows = evidence.shader_generation_ready_rows;
+    evidence.shader_generation_provenance_rows = evidence.shader_generation_ready_rows;
     return evidence;
 }
 '@
@@ -505,6 +541,35 @@ build_material_graph_authoring_evidence(const ModernMaterialPackageEvidence& mat
               << " material_graph_unsupported_boundaries="
               << material_graph_authoring_evidence.unsupported_boundaries
               << " material_graph_authoring_diagnostics=" << material_graph_authoring_evidence.diagnostics
+              << " shader_generation_cache_reviewed=" << material_graph_authoring_evidence.shader_generation_reviewed
+              << " shader_generation_cache_selected_ready="
+              << material_graph_authoring_evidence.shader_generation_selected_cache_ready
+              << " shader_generation_cache_d3d12_ready=" << material_graph_authoring_evidence.shader_generation_d3d12_ready
+              << " shader_generation_cache_vulkan_ready=" << material_graph_authoring_evidence.shader_generation_vulkan_ready
+              << " shader_generation_cache_rows=" << material_graph_authoring_evidence.shader_generation_rows
+              << " shader_generation_cache_ready_rows=" << material_graph_authoring_evidence.shader_generation_ready_rows
+              << " shader_generation_cache_host_gated_rows="
+              << material_graph_authoring_evidence.shader_generation_host_gated_rows
+              << " shader_generation_cache_d3d12_rows=" << material_graph_authoring_evidence.shader_generation_d3d12_rows
+              << " shader_generation_cache_vulkan_rows=" << material_graph_authoring_evidence.shader_generation_vulkan_rows
+              << " shader_generation_cache_spirv_validation_rows="
+              << material_graph_authoring_evidence.shader_generation_spirv_validation_rows
+              << " shader_generation_cache_key_rows=" << material_graph_authoring_evidence.shader_generation_cache_key_rows
+              << " shader_generation_cache_provenance_rows="
+              << material_graph_authoring_evidence.shader_generation_provenance_rows
+              << " shader_generation_cache_unsupported_claim_rows="
+              << material_graph_authoring_evidence.shader_generation_unsupported_claim_rows
+              << " shader_generation_cache_diagnostics=" << material_graph_authoring_evidence.shader_generation_diagnostics
+              << " shader_generation_cache_live_generation_ready="
+              << material_graph_authoring_evidence.shader_generation_live_generation_ready
+              << " shader_generation_cache_runtime_compiler_ready="
+              << material_graph_authoring_evidence.shader_generation_runtime_compiler_ready
+              << " shader_generation_cache_native_cache_handle_ready="
+              << material_graph_authoring_evidence.shader_generation_native_cache_handle_ready
+              << " shader_generation_cache_renderer_residency_ready="
+              << material_graph_authoring_evidence.shader_generation_renderer_residency_ready
+              << " shader_generation_cache_metal_library_ready="
+              << material_graph_authoring_evidence.shader_generation_metal_library_ready
 '@
         $materialGraphSmokeCheck = @'
         if (options.require_material_graph_authoring &&
@@ -517,7 +582,34 @@ build_material_graph_authoring_evidence(const ModernMaterialPackageEvidence& mat
              material_graph_authoring_evidence.vulkan_compile_requests != 2 ||
              material_graph_authoring_evidence.runtime_sources_shipped != 0 ||
              material_graph_authoring_evidence.unsupported_boundaries != 4 ||
-             material_graph_authoring_evidence.diagnostics != 0)) {
+             material_graph_authoring_evidence.diagnostics != 0 ||
+             material_graph_authoring_evidence.shader_generation_reviewed != 1 ||
+             material_graph_authoring_evidence.shader_generation_selected_cache_ready != 1 ||
+             material_graph_authoring_evidence.shader_generation_d3d12_ready != 1 ||
+             material_graph_authoring_evidence.shader_generation_rows != 4 ||
+             material_graph_authoring_evidence.shader_generation_d3d12_rows != 2 ||
+             material_graph_authoring_evidence.shader_generation_vulkan_rows != 2 ||
+             material_graph_authoring_evidence.shader_generation_cache_key_rows < 2 ||
+             material_graph_authoring_evidence.shader_generation_provenance_rows < 2 ||
+             material_graph_authoring_evidence.shader_generation_unsupported_claim_rows != 0 ||
+             material_graph_authoring_evidence.shader_generation_diagnostics != 0 ||
+             material_graph_authoring_evidence.shader_generation_live_generation_ready != 0 ||
+             material_graph_authoring_evidence.shader_generation_runtime_compiler_ready != 0 ||
+             material_graph_authoring_evidence.shader_generation_native_cache_handle_ready != 0 ||
+             material_graph_authoring_evidence.shader_generation_renderer_residency_ready != 0 ||
+             material_graph_authoring_evidence.shader_generation_metal_library_ready != 0 ||
+             (options.require_vulkan_scene_shaders &&
+              (material_graph_authoring_evidence.shader_generation_vulkan_ready != 1 ||
+               material_graph_authoring_evidence.shader_generation_ready_rows != 4 ||
+               material_graph_authoring_evidence.shader_generation_host_gated_rows != 0 ||
+               material_graph_authoring_evidence.shader_generation_spirv_validation_rows != 2 ||
+               material_graph_authoring_evidence.shader_generation_cache_key_rows != 4 ||
+               material_graph_authoring_evidence.shader_generation_provenance_rows != 4)) ||
+             (!options.require_vulkan_scene_shaders &&
+              (material_graph_authoring_evidence.shader_generation_vulkan_ready != 0 ||
+               material_graph_authoring_evidence.shader_generation_ready_rows != 2 ||
+               material_graph_authoring_evidence.shader_generation_host_gated_rows != 2 ||
+               material_graph_authoring_evidence.shader_generation_spirv_validation_rows != 0)))) {
             return 3;
         }
 '@
@@ -7894,7 +7986,10 @@ function New-DesktopRuntimeMaterialShaderManifest {
             unsupportedBoundaries = @(
                 "shader-graph-execution",
                 "live-shader-generation",
+                "runtime-compiler-execution",
+                "native-cache-handle",
                 "renderer-rhi-residency",
+                "metal-library-generation",
                 "package-streaming"
             )
         }
@@ -7914,7 +8009,7 @@ function New-DesktopRuntimeMaterialShaderManifest {
         },
         [ordered]@{
             name = "desktop-runtime-release-target-vulkan-toolchain-gated"
-            command = "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget $TargetName -RequireVulkanShaders -SmokeArgs @('--smoke', '--require-config', 'runtime/$GameName.config', '--require-scene-package', 'runtime/$GameName.geindex', '--require-vulkan-scene-shaders', '--require-vulkan-renderer', '--require-scene-gpu-bindings', '--require-postprocess', '--require-material-graph-authoring')"
+            command = "pwsh -NoProfile -ExecutionPolicy Bypass -Command `"& .\tools\package-desktop-runtime.ps1 -GameTarget $TargetName -RequireVulkanShaders -SmokeArgs @('--smoke', '--require-config', 'runtime/$GameName.config', '--require-scene-package', 'runtime/$GameName.geindex', '--require-vulkan-scene-shaders', '--require-material-graph-authoring')`""
         }
     )
     $manifest.packageStreamingResidencyTargets = @(
@@ -7965,10 +8060,10 @@ This game uses the optional desktop runtime package lane with first-party materi
 - Vulkan SPIR-V artifacts only when DXC SPIR-V CodeGen and `spirv-val` are available and requested
 - deterministic `NullRenderer` fallback when native presentation gates are unavailable
 - `game.agent.json.runtimePackageFiles` plus `PACKAGE_FILES_FROM_MANIFEST`
-- `game.agent.json.materialShaderAuthoringTargets` for the source material, material graph, shader export descriptor, reviewed HLSL input, cooked runtime material, fixed HLSL inputs, selected compile-request targets, and selected shader artifact paths
+- `game.agent.json.materialShaderAuthoringTargets` for the source material, material graph, shader export descriptor, reviewed HLSL input, cooked runtime material, fixed HLSL inputs, selected compile-request targets, selected shader artifact paths, reviewed offline shader generation/cache rows, and explicit live/runtime/native/renderer/Metal non-claims
 - `game.agent.json.packageStreamingResidencyTargets` as host-gated safe-point package streaming intent
 
-The generated game does not runtime-compile shaders, execute arbitrary shader graphs, expose native handles to gameplay, generate Metal libraries, execute package streaming, or ship source material/graph/HLSL files as runtime package payloads.
+The generated game does not runtime-compile shaders, execute arbitrary shader graphs, expose native handles to gameplay, claim renderer/RHI shader residency, generate Metal libraries, execute package streaming, or ship source material/graph/HLSL files as runtime package payloads.
 
 ## Validate
 
@@ -7983,10 +8078,10 @@ The installed D3D12 package smoke uses:
 out\install\desktop-runtime-release\bin\__TARGET_NAME__.exe --smoke --require-config runtime/__GAME_NAME__.config --require-scene-package runtime/__GAME_NAME__.geindex --require-d3d12-scene-shaders --require-d3d12-renderer --require-scene-gpu-bindings --require-postprocess --require-material-graph-authoring
 ```
 
-The Vulkan package lane is toolchain-gated:
+The Vulkan package lane is shader-artifact/cache toolchain-gated and does not claim Vulkan renderer residency:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget __TARGET_NAME__ -RequireVulkanShaders -SmokeArgs @('--smoke', '--require-config', 'runtime/__GAME_NAME__.config', '--require-scene-package', 'runtime/__GAME_NAME__.geindex', '--require-vulkan-scene-shaders', '--require-vulkan-renderer', '--require-scene-gpu-bindings', '--require-postprocess', '--require-material-graph-authoring')
+pwsh -NoProfile -ExecutionPolicy Bypass -Command "& .\tools\package-desktop-runtime.ps1 -GameTarget __TARGET_NAME__ -RequireVulkanShaders -SmokeArgs @('--smoke', '--require-config', 'runtime/__GAME_NAME__.config', '--require-scene-package', 'runtime/__GAME_NAME__.geindex', '--require-vulkan-scene-shaders', '--require-material-graph-authoring')"
 ```
 '@
     return $template.Replace("__TITLE__", $Title).Replace("__TARGET_NAME__", $TargetName).Replace("__GAME_NAME__", $GameName)

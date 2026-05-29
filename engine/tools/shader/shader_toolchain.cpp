@@ -503,7 +503,7 @@ ShaderArtifactValidationCommand make_spirv_shader_validation_command(const Shade
 
     return ShaderArtifactValidationCommand{
         .executable = "spirv-val",
-        .arguments = {artifact.path},
+        .arguments = {"--target-env", "vulkan1.3", artifact.path},
         .artifact = artifact,
     };
 }
@@ -517,7 +517,8 @@ bool is_safe_shader_artifact_validation_command(const ShaderArtifactValidationCo
         is_absolute_or_parent_relative(command.artifact.path)) {
         return false;
     }
-    if (command.arguments.size() != 1 || command.arguments[0] != command.artifact.path) {
+    if (command.arguments.size() != 3 || command.arguments[0] != "--target-env" ||
+        command.arguments[1] != "vulkan1.3" || command.arguments[2] != command.artifact.path) {
         return false;
     }
     if (!std::ranges::all_of(command.arguments, [](std::string_view argument) { return valid_argument(argument); })) {

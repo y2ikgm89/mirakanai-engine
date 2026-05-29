@@ -44,7 +44,8 @@
       "selectedPackageReviewApis": [
         "mirakana::review_ktx_basis_texture_readiness",
         "mirakana::review_gltf_scene_import_readiness",
-        "mirakana::review_source_image_audio_codec_readiness"
+        "mirakana::review_source_image_audio_codec_readiness",
+        "mirakana::review_shader_generation_cache_execution"
       ],
       "requiredFeatureRows": [
         "source_root_policy",
@@ -65,13 +66,17 @@
         "gltf-scene-import-review",
         "common-audio",
         "selected-libspng-png-rgba8",
-        "selected-miniaudio-source-audio-pcm"
+        "selected-miniaudio-source-audio-pcm",
+        "reviewed-dxc-d3d12-dxil-offline-compile",
+        "reviewed-dxc-vulkan-spirv-offline-compile",
+        "reviewed-spirv-val-vulkan1.3-validation",
+        "reviewed-shader-generation-cache-provenance"
       ],
       "reviewOnlyRows": [
         "KTX2/Basis evidence rows may be reviewed when supplied, but no first-party KTX importer adapter is implemented by this row and KTX rows require exact vcpkg.ktx dependency/legal evidence before readiness.",
         "Selected glTF scene import review rows may be reviewed when supplied with exact vcpkg.asset-importers dependency/legal evidence, source-root policy, parser validation, geometry/material/animation payload evidence, external resource policy, source provenance, and package output rows, but broad scene import readiness, runtime source parsing, external network fetches, parser type leakage, native handle exposure, and package mutation remain unsupported.",
         "Selected source image/audio codec review rows may be reviewed when supplied with exact vcpkg.libspng and vcpkg.miniaudio dependency/legal evidence, source-root policy, PNG RGBA8 pixel-format diagnostics, audio sample-format diagnostics, source provenance, deterministic hashes, and package output rows, but SVG/vector decoding, broad image/audio codec readiness, background decode streaming, HRTF/middleware, runtime source parsing, native handle exposure, and package mutation remain unsupported.",
-        "Shader rows are reviewed offline compile-request/package-cache evidence only, not compiler execution, and shader rows require exact toolchain.dxc plus toolchain.spirv-tools dependency/legal evidence before readiness."
+        "Selected shader generation/cache rows may be reviewed when supplied with exact DXC D3D12 DXIL and DXC Vulkan SPIR-V offline compiler commands, SPIR-V Tools spirv-val --target-env vulkan1.3 validation commands, inputs, outputs, target profiles/environments, cache keys, provenance, diagnostics, and package evidence. Live shader generation, runtime compiler execution, native PSO/Vulkan/Metal cache handles, renderer/RHI residency, Metal library generation, package mutation, and broad shader readiness remain unsupported or host-gated."
       ],
       "executionReadinessRows": [
         "reviewed_execution",
@@ -91,6 +96,10 @@
         "arbitrary importer plugin execution",
         "external asset download",
         "live shader generation",
+        "runtime shader compiler execution",
+        "native shader cache handle exposure",
+        "renderer/RHI shader residency",
+        "Metal shader library generation",
         "source mutation outside reviewed roots",
         "package mutation from importer review rows",
         "runtime source parsing",
