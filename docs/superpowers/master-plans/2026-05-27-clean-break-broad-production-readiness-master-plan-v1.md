@@ -12,7 +12,7 @@
 
 **Plan ID:** `clean-break-broad-production-readiness-master-plan-v1`
 
-**Status:** Active child selection for `physics-navigation-commercial-coverage-v1` after the completed `reviewed-importers-codecs-shader-generation-v1` closeout.
+**Status:** Completed clean-break broad production selection stack. Further post-1.0 work is selected from the production-completion master plan.
 
 **Date:** 2026-05-27
 
@@ -29,7 +29,7 @@ This work is too broad for one implementation branch. It must be executed throug
 - Networking production coverage.
 - Cross-domain package evidence and closeout.
 
-The reviewed importer/codecs/shader-generation child was selected again through an explicit manifest/registry switch after the SDL3 removal milestone and backlog selection-gate reconciliation, then completed selected importer/codec/shader-generation evidence before the manifest returned to the production-completion selection gate. `physics-navigation-commercial-coverage-v1` is now selected through a new manifest/registry switch.
+The reviewed importer/codecs/shader-generation child was selected again through an explicit manifest/registry switch after the SDL3 removal milestone and backlog selection-gate reconciliation, then completed selected importer/codec/shader-generation evidence before the manifest returned to the production-completion selection gate. `physics-navigation-commercial-coverage-v1` then completed a separate post-1.0 production-completion slice and returned the manifest to the selection gate.
 
 `unsupportedProductionGaps = []` remains the Engine 1.0 ready-surface truth. This plan does not reopen 1.0; it selects post-1.0 / 1.x production breadth.
 
@@ -119,7 +119,7 @@ Context7 evidence recorded during this selection pass:
 
 **Purpose:** Expand first-party and optional adapter coverage for controllers, queries, constraints, vehicles, navmesh, dynamic obstacles, crowds, streaming nav data, and genre coverage rows.
 
-**Status:** Active selected slice: [Physics Navigation Commercial Coverage v1](../plans/2026-05-29-physics-navigation-commercial-coverage-v1.md).
+**Status:** Completed selected slice: [Physics Navigation Commercial Coverage v1](../plans/2026-05-29-physics-navigation-commercial-coverage-v1.md). The first candidate added fail-closed optional-adapter evidence gates for `adapter_boundary_id`, `host_validation_recipe_id`, and `adapter_lifecycle_reviewed` without exposing native handles, executing runtime navmesh bakes, mutating source geometry, or claiming broad middleware parity.
 
 ### Child Plan 5 - Audio Production Coverage v1
 
