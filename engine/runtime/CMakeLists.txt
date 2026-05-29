@@ -20,6 +20,7 @@ add_library(mirakana_runtime
     src/runtime_diagnostics.cpp
     src/sandbox_world_persistence.cpp
     src/sandbox_world_runtime.cpp
+    src/sandbox_world_streaming.cpp
     src/scripting_sandbox.cpp
     src/session_services.cpp
     src/simulation_orchestration.cpp

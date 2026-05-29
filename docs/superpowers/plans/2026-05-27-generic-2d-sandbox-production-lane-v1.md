@@ -103,7 +103,7 @@ Expected new or expanded implementation surfaces:
 
 **Goal:** Start from current truth and prevent this proposed milestone from conflicting with the active production-completion selection state.
 
-- [ ] Check current branch and worktree:
+- [x] Check current branch and worktree:
 
 ```powershell
 git status --short --branch
@@ -111,7 +111,7 @@ git status --short --branch
 
 Expected: no unrelated task-owned changes are staged for this milestone.
 
-- [ ] Refresh minimal engine context:
+- [x] Refresh minimal engine context:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1 -ContextProfile Minimal
@@ -119,7 +119,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1 -ContextPr
 
 Expected: record the current `currentActivePlan`, `recommendedNextPlan`, and `unsupportedProductionGaps` values from the composed manifest. Do not assume an older active-plan filename; this milestone stays proposed unless a selection PR explicitly updates the manifest fragments.
 
-- [ ] Re-read the active plan, current capabilities, and plan registry before editing runtime code.
+- [x] Re-read the active plan, current capabilities, and plan registry before editing runtime code.
 
 Files:
 - `docs/current-capabilities.md`
@@ -127,7 +127,7 @@ Files:
 - `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
 - the current first-party desktop platform replacement plan, if present in the registry, as prerequisite/historical evidence for the first-party host lane
 
-- [ ] If this milestone is selected for implementation, first verify that `MK_platform_win32`, `MK_runtime_host_win32`, `MK_runtime_host_win32_presentation`, and `MK_audio_wasapi` are implemented and validated or select that prerequisite as a separate plan. Then update `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` only in the selection PR, run compose, and keep `unsupportedProductionGaps` honest.
+- [x] If this milestone is selected for implementation, first verify that `MK_platform_win32`, `MK_runtime_host_win32`, `MK_runtime_host_win32_presentation`, and `MK_audio_wasapi` are implemented and validated or select that prerequisite as a separate plan. Then update `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` only in the selection PR, run compose, and keep `unsupportedProductionGaps` honest.
 
 ## Phase 1 - Sandbox World Runtime Data Model
 
@@ -139,11 +139,11 @@ Files:
 - Modify: `engine/runtime/CMakeLists.txt`
 - Create: `tests/unit/runtime_sandbox_world_runtime_tests.cpp`
 
-- [ ] Add RED tests for chunk descriptor validation: world id, chunk coord, chunk size, layer count, cell count, stable row sorting, duplicate chunk rejection, invalid bounds rejection, and budget diagnostics.
-- [ ] Add RED tests for live cell lookup and immutable snapshots: empty cell, existing cell, out-of-bounds cell, missing chunk, and deterministic snapshot hash.
-- [ ] Add RED tests that prove no package IO, persistence IO, renderer upload, threading, native handle, or platform calls occur.
-- [ ] Implement `RuntimeSandboxWorldDesc`, `RuntimeSandboxChunkCoord`, `RuntimeSandboxLayerId`, `RuntimeSandboxTileId`, `RuntimeSandboxCell`, `RuntimeSandboxChunk`, `RuntimeSandboxWorld`, and `build_runtime_sandbox_world`.
-- [ ] Implement deterministic lookup and snapshot helpers:
+- [x] Add RED tests for chunk descriptor validation: world id, chunk coord, chunk size, layer count, cell count, stable row sorting, duplicate chunk rejection, invalid bounds rejection, and budget diagnostics.
+- [x] Add RED tests for live cell lookup and immutable snapshots: empty cell, existing cell, out-of-bounds cell, missing chunk, and deterministic snapshot hash.
+- [x] Add RED tests that prove no package IO, persistence IO, renderer upload, threading, native handle, or platform calls occur.
+- [x] Implement `RuntimeSandboxWorldDesc`, `RuntimeSandboxChunkCoord`, `RuntimeSandboxLayerId`, `RuntimeSandboxTileId`, `RuntimeSandboxCell`, `RuntimeSandboxChunk`, `RuntimeSandboxWorld`, and `build_runtime_sandbox_world`.
+- [x] Implement deterministic lookup and snapshot helpers:
 
 ```cpp
 mirakana::runtime::RuntimeSandboxCellSample sample_runtime_sandbox_cell(
@@ -154,7 +154,7 @@ mirakana::runtime::RuntimeSandboxWorldSnapshot snapshot_runtime_sandbox_world(
     const RuntimeSandboxWorld& world);
 ```
 
-- [ ] Run focused validation:
+- [x] Run focused validation:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_sandbox_world_runtime_tests
@@ -162,6 +162,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 ```
 
 Expected: tests pass and runtime module still has no renderer/RHI/platform/editor dependency.
+
+Evidence: Phase 1 landed as `Generic 2D Sandbox Runtime Foundation v1` with `RuntimeSandboxWorldDesc`, `RuntimeSandboxWorldBuildResult`, `RuntimeSandboxWorld`, `RuntimeSandboxWorldSnapshot`, `RuntimeSandboxCellSample`, `build_runtime_sandbox_world`, `sample_runtime_sandbox_cell`, and `snapshot_runtime_sandbox_world`, covered by `MK_runtime_sandbox_world_runtime_tests` and documented without renderer/RHI/platform/editor/package side effects.
 
 ## Phase 2 - Mutation Execution And Dirty Region Events
 
@@ -175,17 +177,19 @@ Expected: tests pass and runtime module still has no renderer/RHI/platform/edito
 - Modify: `tests/unit/runtime_sandbox_world_runtime_tests.cpp`
 - Modify: `tests/unit/runtime_genre_sandbox_world_tests.cpp`
 
-- [ ] Add RED tests for placement execution into empty cells, destruction execution from occupied cells, replace-denied diagnostics, missing-cost diagnostics, unsupported layer diagnostics, and deterministic mutation order.
-- [ ] Add RED tests for dirty region output: chunk dirty flag, rectangular cell bounds, layer mask, previous tile id, new tile id, and event replay hash.
-- [ ] Add RED tests for safe failure: rejected requests leave the original world snapshot unchanged.
-- [ ] Implement `apply_runtime_sandbox_world_mutations` as an explicit mutation API. Keep `plan_runtime_sandbox_world_mutation` value-only and side-effect-free.
-- [ ] Add package counter names only after the API is green: `sandbox_world_runtime_mutations_applied`, `sandbox_world_runtime_dirty_chunks`, `sandbox_world_runtime_replay_hash`, `sandbox_world_runtime_side_effect_diagnostics`.
-- [ ] Run:
+- [x] Add RED tests for placement execution into empty cells, destruction execution from occupied cells, replace-denied diagnostics, missing-cost diagnostics, unsupported layer diagnostics, and deterministic mutation order.
+- [x] Add RED tests for dirty region output: chunk dirty flag, rectangular cell bounds, layer mask, previous tile id, new tile id, and event replay hash.
+- [x] Add RED tests for safe failure: rejected requests leave the original world snapshot unchanged.
+- [x] Implement `apply_runtime_sandbox_world_mutations` as an explicit mutation API. Keep `plan_runtime_sandbox_world_mutation` value-only and side-effect-free.
+- [x] Add package counter names only after the API is green: `sandbox_world_runtime_mutations_applied`, `sandbox_world_runtime_dirty_chunks`, `sandbox_world_runtime_replay_hash`, `sandbox_world_runtime_side_effect_diagnostics`.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_sandbox_world_runtime_tests MK_runtime_genre_sandbox_world_tests
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "runtime_sandbox_world_runtime|runtime_genre_sandbox_world"
 ```
+
+Evidence: Phase 2 landed as `Generic 2D Sandbox Mutation Execution v1` with `RuntimeSandboxWorldMutationExecutionStatus`, `RuntimeSandboxWorldDirtyRegion`, `RuntimeSandboxWorldMutationExecutionResult`, and `apply_runtime_sandbox_world_mutations`, covered by focused runtime sandbox and genre sandbox tests while preserving input snapshots on invalid plans and keeping persistence IO, package IO, renderer/platform/editor APIs, threads, native handles, and game-specific rules out of scope.
 
 ## Phase 3 - Tile Simulation Primitives
 
@@ -247,21 +251,22 @@ Evidence: RED compile proof first failed with unresolved `RuntimeSandboxWorldPer
 **Files:**
 - Create: `engine/runtime/include/mirakana/runtime/sandbox_world_streaming.hpp`
 - Create: `engine/runtime/src/sandbox_world_streaming.cpp`
-- Modify: `engine/runtime/include/mirakana/runtime/world_region_streaming.hpp`
-- Modify: `engine/runtime/src/world_region_streaming.cpp`
 - Create: `tests/unit/runtime_sandbox_world_streaming_tests.cpp`
-- Modify: `tests/unit/runtime_world_region_streaming_tests.cpp`
+- Modify: `engine/runtime/CMakeLists.txt`
+- Modify: `CMakeLists.txt`
 
-- [ ] Add RED tests for streaming-source rows: player/source position, rectangular or radius load range, chunk priority, target state `loaded` versus `active`, and unload protection for dirty chunks.
-- [ ] Add RED tests for addressable chunk dependencies: tile atlas, biome material rows, audio rows, prefab/object rows, and missing dependency diagnostics.
-- [ ] Add RED tests for resident budget execution: chunk count cap, payload byte cap, dirty chunk pinning, explicit eviction review, and no automatic LRU claim until implemented.
-- [ ] Implement safe-point adoption APIs that consume reviewed package candidates and existing resident catalog rows. Do not create background threads in this phase.
-- [ ] Run:
+- [x] Add RED tests for streaming-source rows: player/source position, rectangular or radius load range, chunk priority, target state `loaded` versus `active`, and unload protection for dirty chunks.
+- [x] Add RED tests for addressable chunk dependencies: tile atlas, biome material rows, audio rows, prefab/object rows, and missing dependency diagnostics.
+- [x] Add RED tests for resident budget execution: chunk count cap, payload byte cap, dirty chunk pinning, explicit eviction review, and no automatic LRU claim until implemented.
+- [x] Implement safe-point adoption APIs that consume reviewed package candidates and existing resident catalog rows. Do not create background threads in this phase.
+- [x] Run:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_sandbox_world_streaming_tests MK_runtime_world_region_streaming_tests
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "sandbox_world_streaming|world_region_streaming"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_sandbox_world_streaming_tests MK_runtime_world_region_streaming_tests MK_runtime_addressable_content_streaming_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "sandbox_world_streaming|world_region_streaming|addressable_content_streaming"
 ```
+
+Evidence: RED compile proof first failed with unresolved `mirakana/runtime/sandbox_world_streaming.hpp` after registering `MK_runtime_sandbox_world_streaming_tests`. GREEN focused validation then passed `MK_runtime_sandbox_world_streaming_tests`, `MK_runtime_world_region_streaming_tests`, and `MK_runtime_addressable_content_streaming_tests` build plus `ctest -R "sandbox_world_streaming|world_region_streaming|addressable_content_streaming"` with `3/3` tests passing. Phase 5 adds `RuntimeSandboxWorldStreamingSourceRow`, `RuntimeSandboxWorldAddressableDependencyRow`, `RuntimeSandboxWorldStreamingPlan`, `RuntimeSandboxWorldStreamingSafePointDesc`, `RuntimeSandboxWorldStreamingSafePointResult`, `plan_runtime_sandbox_world_streaming`, and `execute_runtime_sandbox_world_streaming_safe_point`. Outputs cover source-range chunk selection, dirty resident chunk pinning, addressable dependency rows, resident budget diagnostics, and reviewed world-region safe-point adoption. Background streaming, async addressable execution, automatic LRU eviction, renderer/RHI residency, native handles, and game-specific biome/block-art ownership remain outside this phase.
 
 ## Phase 6 - Production Tile Renderer And 2D Lighting Evidence
 
