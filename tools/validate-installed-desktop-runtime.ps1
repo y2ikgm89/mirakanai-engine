@@ -389,6 +389,9 @@ if ($requiresAudioProduction -and $GameTarget -ne "sample_2d_desktop_runtime_pac
 }
 if ($GameTarget -eq "sample_generated_desktop_runtime_material_shader_package") {
     $expectedVulkanMaterialShaderEvidence = if ($requireVulkanShaderArtifacts) { 1 } else { 0 }
+    $expectedShaderGenerationReadyRows = if ($requireVulkanShaderArtifacts) { 4 } else { 2 }
+    $expectedShaderGenerationHostGatedRows = if ($requireVulkanShaderArtifacts) { 0 } else { 2 }
+    $expectedShaderGenerationSpirvValidationRows = if ($requireVulkanShaderArtifacts) { 2 } else { 0 }
     foreach ($field in @(
             "modern_material_variants",
             "modern_material_ready",
@@ -410,7 +413,26 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_material_shader_package") 
             "material_graph_vulkan_compile_requests",
             "material_graph_runtime_sources_shipped",
             "material_graph_unsupported_boundaries",
-            "material_graph_authoring_diagnostics"
+            "material_graph_authoring_diagnostics",
+            "shader_generation_cache_reviewed",
+            "shader_generation_cache_selected_ready",
+            "shader_generation_cache_d3d12_ready",
+            "shader_generation_cache_vulkan_ready",
+            "shader_generation_cache_rows",
+            "shader_generation_cache_ready_rows",
+            "shader_generation_cache_host_gated_rows",
+            "shader_generation_cache_d3d12_rows",
+            "shader_generation_cache_vulkan_rows",
+            "shader_generation_cache_spirv_validation_rows",
+            "shader_generation_cache_key_rows",
+            "shader_generation_cache_provenance_rows",
+            "shader_generation_cache_unsupported_claim_rows",
+            "shader_generation_cache_diagnostics",
+            "shader_generation_cache_live_generation_ready",
+            "shader_generation_cache_runtime_compiler_ready",
+            "shader_generation_cache_native_cache_handle_ready",
+            "shader_generation_cache_renderer_residency_ready",
+            "shader_generation_cache_metal_library_ready"
         )) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
             Write-Error "Installed material/shader package smoke status line did not include modern material field: $field"
@@ -451,6 +473,25 @@ if ($GameTarget -eq "sample_generated_desktop_runtime_material_shader_package") 
             "material_graph_runtime_sources_shipped" = "0"
             "material_graph_unsupported_boundaries" = "4"
             "material_graph_authoring_diagnostics" = "0"
+            "shader_generation_cache_reviewed" = "1"
+            "shader_generation_cache_selected_ready" = "1"
+            "shader_generation_cache_d3d12_ready" = "1"
+            "shader_generation_cache_vulkan_ready" = [string]$expectedVulkanMaterialShaderEvidence
+            "shader_generation_cache_rows" = "4"
+            "shader_generation_cache_ready_rows" = [string]$expectedShaderGenerationReadyRows
+            "shader_generation_cache_host_gated_rows" = [string]$expectedShaderGenerationHostGatedRows
+            "shader_generation_cache_d3d12_rows" = "2"
+            "shader_generation_cache_vulkan_rows" = "2"
+            "shader_generation_cache_spirv_validation_rows" = [string]$expectedShaderGenerationSpirvValidationRows
+            "shader_generation_cache_key_rows" = [string]$expectedShaderGenerationReadyRows
+            "shader_generation_cache_provenance_rows" = [string]$expectedShaderGenerationReadyRows
+            "shader_generation_cache_unsupported_claim_rows" = "0"
+            "shader_generation_cache_diagnostics" = "0"
+            "shader_generation_cache_live_generation_ready" = "0"
+            "shader_generation_cache_runtime_compiler_ready" = "0"
+            "shader_generation_cache_native_cache_handle_ready" = "0"
+            "shader_generation_cache_renderer_residency_ready" = "0"
+            "shader_generation_cache_metal_library_ready" = "0"
         }.GetEnumerator()) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$([regex]::Escape($expected.Key))=$([regex]::Escape($expected.Value))\b") {
             Write-Error "Installed material/shader package smoke status line did not prove $($expected.Key)=$($expected.Value)."

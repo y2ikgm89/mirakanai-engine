@@ -111,6 +111,64 @@ void append_unique(std::vector<std::string>& paths, std::string value) {
     }
 }
 
+[[nodiscard]] std::string target_environment_name(ShaderCompileTarget target) {
+    switch (target) {
+    case ShaderCompileTarget::d3d12_dxil:
+        return "d3d12-dxil";
+    case ShaderCompileTarget::vulkan_spirv:
+        return "vulkan1.3";
+    case ShaderCompileTarget::metal_ir:
+        return "metal-ir";
+    case ShaderCompileTarget::metal_library:
+        return "metal-library";
+    case ShaderCompileTarget::unknown:
+        break;
+    }
+    return "unknown";
+}
+
+void append_review_diagnostic(std::vector<ShaderGenerationCacheReviewDiagnostic>& diagnostics,
+                              ShaderGenerationCacheReviewDiagnosticCode code, ShaderCompileTarget target,
+                              std::string artifact_path, std::string message) {
+    diagnostics.push_back(ShaderGenerationCacheReviewDiagnostic{
+        .code = code,
+        .target = target,
+        .artifact_path = std::move(artifact_path),
+        .message = std::move(message),
+    });
+}
+
+[[nodiscard]] bool is_invalid_shader_generation_diagnostic(ShaderGenerationCacheReviewDiagnosticCode code) noexcept {
+    switch (code) {
+    case ShaderGenerationCacheReviewDiagnosticCode::invalid_compile_request:
+    case ShaderGenerationCacheReviewDiagnosticCode::missing_cache_metadata:
+    case ShaderGenerationCacheReviewDiagnosticCode::missing_provenance_metadata:
+    case ShaderGenerationCacheReviewDiagnosticCode::unsupported_live_shader_generation:
+    case ShaderGenerationCacheReviewDiagnosticCode::unsupported_runtime_compiler_execution:
+    case ShaderGenerationCacheReviewDiagnosticCode::unsupported_native_cache_handle_access:
+    case ShaderGenerationCacheReviewDiagnosticCode::unsupported_renderer_rhi_residency:
+    case ShaderGenerationCacheReviewDiagnosticCode::unsupported_metal_library_generation:
+    case ShaderGenerationCacheReviewDiagnosticCode::row_budget_exceeded:
+        return true;
+    case ShaderGenerationCacheReviewDiagnosticCode::none:
+    case ShaderGenerationCacheReviewDiagnosticCode::missing_d3d12_toolchain_evidence:
+    case ShaderGenerationCacheReviewDiagnosticCode::missing_vulkan_toolchain_evidence:
+    case ShaderGenerationCacheReviewDiagnosticCode::missing_spirv_validation_evidence:
+        return false;
+    }
+    return true;
+}
+
+[[nodiscard]] const ShaderArtifactValidationExecutionRequest*
+find_validation_request_for_artifact(const std::vector<ShaderArtifactValidationExecutionRequest>& requests,
+                                     const ShaderGeneratedArtifact& artifact) noexcept {
+    const auto found = std::ranges::find_if(requests, [&artifact](const ShaderArtifactValidationExecutionRequest& row) {
+        return row.artifact.path == artifact.path && row.artifact.format == artifact.format &&
+               row.artifact.profile == artifact.profile && row.artifact.entry_point == artifact.entry_point;
+    });
+    return found == requests.end() ? nullptr : &*found;
+}
+
 } // namespace
 
 std::string shader_artifact_provenance_path(const ShaderGeneratedArtifact& artifact) {
@@ -422,6 +480,185 @@ execute_shader_artifact_validation_action(const IFileSystem& filesystem, IShader
         .validation_result = run_shader_artifact_validation_command(runner, command),
         .artifact_checked = true,
     };
+}
+
+ShaderGenerationCacheReview
+review_shader_generation_cache_execution(const IFileSystem& filesystem,
+                                         const ShaderGenerationCacheReviewRequest& request) {
+    ShaderGenerationCacheReview review;
+
+    const auto append_unsupported = [&](ShaderGenerationCacheReviewDiagnosticCode code, std::string message) {
+        ++review.unsupported_claim_rows;
+        append_review_diagnostic(review.diagnostics, code, ShaderCompileTarget::unknown, {}, std::move(message));
+    };
+
+    if (request.request_live_shader_generation) {
+        append_unsupported(ShaderGenerationCacheReviewDiagnosticCode::unsupported_live_shader_generation,
+                           "live shader generation is unsupported by reviewed shader cache execution");
+    }
+    if (request.request_runtime_compiler_execution) {
+        append_unsupported(ShaderGenerationCacheReviewDiagnosticCode::unsupported_runtime_compiler_execution,
+                           "runtime shader compiler execution is unsupported");
+    }
+    if (request.request_native_cache_handle_access) {
+        append_unsupported(ShaderGenerationCacheReviewDiagnosticCode::unsupported_native_cache_handle_access,
+                           "native PSO/Vulkan/Metal cache handles are not exposed");
+    }
+    if (request.request_renderer_rhi_residency) {
+        append_unsupported(ShaderGenerationCacheReviewDiagnosticCode::unsupported_renderer_rhi_residency,
+                           "renderer/RHI residency is outside shader cache execution review");
+    }
+    if (request.request_metal_library_generation) {
+        append_unsupported(ShaderGenerationCacheReviewDiagnosticCode::unsupported_metal_library_generation,
+                           "Metal library generation remains Apple host/toolchain gated");
+    }
+    if (request.compile_requests.size() > request.row_budget) {
+        append_review_diagnostic(review.diagnostics, ShaderGenerationCacheReviewDiagnosticCode::row_budget_exceeded,
+                                 ShaderCompileTarget::unknown, {},
+                                 "shader generation cache review row budget exceeded");
+    }
+    if (request.compile_requests.empty()) {
+        review.status = review.diagnostics.empty() ? ShaderGenerationCacheReviewStatus::no_rows
+                                                   : ShaderGenerationCacheReviewStatus::invalid_request;
+        return review;
+    }
+
+    for (const auto& compile_request : request.compile_requests) {
+        ShaderGenerationCacheReviewRow row;
+        row.target = compile_request.compile_request.target;
+        row.source_path = compile_request.compile_request.source.source_path;
+        row.profile = compile_request.compile_request.profile;
+        row.entry_point = compile_request.compile_request.source.entry_point;
+        row.target_environment = target_environment_name(row.target);
+        row.cache_index_path = compile_request.cache_index_path;
+
+        try {
+            const auto command = make_shader_compile_command(compile_request.compile_request);
+            row.artifact = command.artifact;
+            row.executable = command.executable;
+            row.command_arguments = command.arguments;
+            row.provenance_path = shader_artifact_provenance_path(command.artifact);
+
+            switch (row.target) {
+            case ShaderCompileTarget::d3d12_dxil:
+                ++review.d3d12_compile_rows;
+                row.host_toolchain_ready = request.toolchain.ready_for_d3d12_dxil();
+                if (!row.host_toolchain_ready) {
+                    ++review.host_gated_rows;
+                    append_review_diagnostic(
+                        review.diagnostics, ShaderGenerationCacheReviewDiagnosticCode::missing_d3d12_toolchain_evidence,
+                        row.target, row.artifact.path,
+                        "DXC toolchain evidence is missing for D3D12 DXIL shader execution");
+                }
+                break;
+            case ShaderCompileTarget::vulkan_spirv:
+                ++review.vulkan_compile_rows;
+                row.host_toolchain_ready = request.toolchain.ready_for_vulkan_spirv();
+                if (!row.host_toolchain_ready) {
+                    append_review_diagnostic(
+                        review.diagnostics,
+                        ShaderGenerationCacheReviewDiagnosticCode::missing_vulkan_toolchain_evidence, row.target,
+                        row.artifact.path,
+                        "DXC SPIR-V CodeGen and spirv-val evidence is missing for Vulkan SPIR-V shader execution");
+                }
+                if (const auto* validation_request =
+                        find_validation_request_for_artifact(request.validation_requests, command.artifact);
+                    validation_request != nullptr && validation_request->validator.kind == ShaderToolKind::spirv_val &&
+                    valid_token(validation_request->validator.executable_path)) {
+                    const auto validation_command = make_spirv_shader_validation_command(validation_request->artifact);
+                    row.validation_arguments = validation_command.arguments;
+                    row.spirv_validation_ready = is_safe_shader_artifact_validation_command(validation_command);
+                }
+                if (row.spirv_validation_ready) {
+                    ++review.spirv_validation_rows;
+                } else {
+                    append_review_diagnostic(
+                        review.diagnostics,
+                        ShaderGenerationCacheReviewDiagnosticCode::missing_spirv_validation_evidence, row.target,
+                        row.artifact.path, "SPIR-V validation command evidence is missing for Vulkan shader artifacts");
+                }
+                if (!row.host_toolchain_ready || !row.spirv_validation_ready) {
+                    ++review.host_gated_rows;
+                }
+                break;
+            case ShaderCompileTarget::metal_ir:
+            case ShaderCompileTarget::metal_library:
+                ++review.host_gated_rows;
+                append_review_diagnostic(
+                    review.diagnostics, ShaderGenerationCacheReviewDiagnosticCode::unsupported_metal_library_generation,
+                    row.target, row.artifact.path, "Metal shader generation remains Apple host/toolchain gated");
+                break;
+            case ShaderCompileTarget::unknown:
+                append_review_diagnostic(review.diagnostics,
+                                         ShaderGenerationCacheReviewDiagnosticCode::invalid_compile_request, row.target,
+                                         row.artifact.path, "shader compile target is unknown");
+                break;
+            }
+
+            const auto cache_plan = build_shader_pipeline_cache_plan(filesystem, {compile_request});
+            if (!cache_plan.entries.empty()) {
+                const auto& cache_entry = cache_plan.entries.front();
+                row.cache_entry_current = cache_entry.cache_index_valid && cache_entry.cache_entry_current;
+                row.provenance_current =
+                    cache_entry.hot_reload.provenance_exists && cache_entry.hot_reload.inputs_current;
+            }
+            if (row.cache_entry_current) {
+                ++review.cache_key_rows;
+            } else {
+                append_review_diagnostic(review.diagnostics,
+                                         ShaderGenerationCacheReviewDiagnosticCode::missing_cache_metadata, row.target,
+                                         row.artifact.path, "shader cache index entry is missing or stale");
+            }
+            if (row.provenance_current) {
+                ++review.provenance_rows;
+                const auto provenance =
+                    deserialize_shader_artifact_provenance(filesystem.read_text(row.provenance_path));
+                row.command_fingerprint = provenance.command_fingerprint;
+                row.input_count = provenance.inputs.size();
+            } else {
+                append_review_diagnostic(
+                    review.diagnostics, ShaderGenerationCacheReviewDiagnosticCode::missing_provenance_metadata,
+                    row.target, row.artifact.path, "shader provenance metadata is missing or stale");
+            }
+            row.ready = row.host_toolchain_ready && row.cache_entry_current && row.provenance_current &&
+                        (row.target != ShaderCompileTarget::vulkan_spirv || row.spirv_validation_ready);
+            if (row.ready) {
+                ++review.ready_rows;
+            }
+        } catch (const std::exception& error) {
+            append_review_diagnostic(
+                review.diagnostics, ShaderGenerationCacheReviewDiagnosticCode::invalid_compile_request, row.target,
+                row.artifact.path, std::string{"shader generation cache review row is invalid: "} + error.what());
+        }
+
+        review.rows.push_back(std::move(row));
+    }
+
+    review.d3d12_offline_compile_ready =
+        review.d3d12_compile_rows > 0U && std::ranges::any_of(review.rows, [](const auto& row) {
+            return row.target == ShaderCompileTarget::d3d12_dxil && row.ready;
+        });
+    review.vulkan_offline_compile_ready =
+        review.vulkan_compile_rows > 0U && std::ranges::any_of(review.rows, [](const auto& row) {
+            return row.target == ShaderCompileTarget::vulkan_spirv && row.ready;
+        });
+    review.selected_package_cache_ready = !review.rows.empty() && review.ready_rows == review.rows.size() &&
+                                          review.cache_key_rows == review.rows.size() &&
+                                          review.provenance_rows == review.rows.size();
+    review.reviewed = !review.rows.empty();
+
+    const bool has_invalid_diagnostic = std::ranges::any_of(review.diagnostics, [](const auto& diagnostic) {
+        return is_invalid_shader_generation_diagnostic(diagnostic.code);
+    });
+    if (has_invalid_diagnostic) {
+        review.status = ShaderGenerationCacheReviewStatus::invalid_request;
+    } else if (review.host_gated_rows > 0U) {
+        review.status = ShaderGenerationCacheReviewStatus::host_evidence_required;
+    } else {
+        review.status = ShaderGenerationCacheReviewStatus::ready;
+    }
+    review.ready = review.status == ShaderGenerationCacheReviewStatus::ready && review.selected_package_cache_ready;
+    return review;
 }
 
 } // namespace mirakana

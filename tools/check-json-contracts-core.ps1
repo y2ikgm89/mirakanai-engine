@@ -575,7 +575,7 @@ function Assert-MaterialShaderAuthoringTargets($game, [string]$relativePath, [bo
                     Write-Error "$relativePath materialShaderAuthoringTargets compileRequestTargets missing $compileTarget"
                 }
             }
-            foreach ($unsupportedBoundary in @("shader-graph-execution", "live-shader-generation", "renderer-rhi-residency", "package-streaming")) {
+            foreach ($unsupportedBoundary in @("shader-graph-execution", "live-shader-generation", "runtime-compiler-execution", "native-cache-handle", "renderer-rhi-residency", "metal-library-generation", "package-streaming")) {
                 if (@($target.unsupportedBoundaries) -notcontains $unsupportedBoundary) {
                     Write-Error "$relativePath materialShaderAuthoringTargets unsupportedBoundaries missing $unsupportedBoundary"
                 }

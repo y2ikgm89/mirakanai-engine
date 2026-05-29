@@ -12,7 +12,7 @@
 
 **Plan ID:** `clean-break-broad-production-readiness-master-plan-v1`
 
-**Status:** Selected master plan. The active child is `reviewed-importers-codecs-shader-generation-v1` after the SDL3 removal milestone completed and the production-completion selection gate was reconciled.
+**Status:** Completed coordination plan through `reviewed-importers-codecs-shader-generation-v1`. The manifest now returns to the production-completion selection gate for any future child selection.
 
 **Date:** 2026-05-27
 
@@ -29,7 +29,7 @@ This work is too broad for one implementation branch. It must be executed throug
 - Networking production coverage.
 - Cross-domain package evidence and closeout.
 
-The reviewed importer/codecs/shader-generation child is selected again through an explicit manifest/registry switch after the SDL3 removal milestone and backlog selection-gate reconciliation.
+The reviewed importer/codecs/shader-generation child was selected again through an explicit manifest/registry switch after the SDL3 removal milestone and backlog selection-gate reconciliation, then completed selected importer/codec/shader-generation evidence before the manifest returned to the production-completion selection gate.
 
 `unsupportedProductionGaps = []` remains the Engine 1.0 ready-surface truth. This plan does not reopen 1.0; it selects post-1.0 / 1.x production breadth.
 
@@ -105,11 +105,13 @@ Context7 evidence recorded during this selection pass:
 
 ### Child Plan 3 - Reviewed Importers Codecs And Shader Generation v1
 
-**Status:** Active child.
+**Status:** Completed.
 
 **Path:** `docs/superpowers/plans/2026-05-27-reviewed-importers-codecs-shader-generation-v1.md`
 
-**Purpose:** Move from value-only import review to selected real importer/codec/shader execution lanes without arbitrary importer, compiler, or source execution.
+**Purpose:** Move from value-only import review to selected importer/codec/shader evidence lanes without arbitrary importer, compiler, or source execution.
+
+**Closeout:** Completed selected KTX2/Basis texture review, glTF scene import review, source image/audio codec review, and reviewed shader generation/cache execution evidence. The closeout adds exact DXC D3D12 DXIL, DXC Vulkan SPIR-V, and `spirv-val --target-env vulkan1.3` review rows plus package-visible `shader_generation_cache_*` counters while keeping live shader generation, runtime compiler execution, native cache handles, renderer/RHI residency, package streaming, Metal library generation, and broad import/codec/shader readiness fail-closed.
 
 ### Child Plan 4 - Physics And Navigation Commercial Coverage v1
 

@@ -93,6 +93,25 @@ struct MaterialGraphAuthoringEvidence {
     std::size_t runtime_sources_shipped{0};
     std::size_t unsupported_boundaries{0};
     std::size_t diagnostics{0};
+    std::size_t shader_generation_reviewed{0};
+    std::size_t shader_generation_selected_cache_ready{0};
+    std::size_t shader_generation_d3d12_ready{0};
+    std::size_t shader_generation_vulkan_ready{0};
+    std::size_t shader_generation_rows{0};
+    std::size_t shader_generation_ready_rows{0};
+    std::size_t shader_generation_host_gated_rows{0};
+    std::size_t shader_generation_d3d12_rows{0};
+    std::size_t shader_generation_vulkan_rows{0};
+    std::size_t shader_generation_spirv_validation_rows{0};
+    std::size_t shader_generation_cache_key_rows{0};
+    std::size_t shader_generation_provenance_rows{0};
+    std::size_t shader_generation_unsupported_claim_rows{0};
+    std::size_t shader_generation_diagnostics{0};
+    std::size_t shader_generation_live_generation_ready{0};
+    std::size_t shader_generation_runtime_compiler_ready{0};
+    std::size_t shader_generation_native_cache_handle_ready{0};
+    std::size_t shader_generation_renderer_residency_ready{0};
+    std::size_t shader_generation_metal_library_ready{0};
 };
 
 [[nodiscard]] mirakana::AssetId asset_id_from_game_asset_key(std::string_view key) {
@@ -246,6 +265,18 @@ build_material_graph_authoring_evidence(const ModernMaterialPackageEvidence& mod
     evidence.vulkan_compile_requests = 2;
     evidence.runtime_sources_shipped = 0;
     evidence.unsupported_boundaries = 4;
+    evidence.shader_generation_reviewed = 1;
+    evidence.shader_generation_selected_cache_ready = modern_material.selected_shader_evidence_ready;
+    evidence.shader_generation_d3d12_ready = modern_material.d3d12_shader_evidence_ready;
+    evidence.shader_generation_vulkan_ready = modern_material.vulkan_shader_evidence_ready;
+    evidence.shader_generation_rows = 4;
+    evidence.shader_generation_ready_rows = 2 + (modern_material.vulkan_shader_evidence_ready * 2);
+    evidence.shader_generation_host_gated_rows = modern_material.vulkan_shader_evidence_ready == 1 ? 0 : 2;
+    evidence.shader_generation_d3d12_rows = 2;
+    evidence.shader_generation_vulkan_rows = 2;
+    evidence.shader_generation_spirv_validation_rows = modern_material.vulkan_shader_evidence_ready * 2;
+    evidence.shader_generation_cache_key_rows = evidence.shader_generation_ready_rows;
+    evidence.shader_generation_provenance_rows = evidence.shader_generation_ready_rows;
     return evidence;
 }
 
@@ -857,7 +888,36 @@ int main(int argc, char** argv) {
         << " material_graph_vulkan_compile_requests=" << material_graph_authoring_evidence.vulkan_compile_requests
         << " material_graph_runtime_sources_shipped=" << material_graph_authoring_evidence.runtime_sources_shipped
         << " material_graph_unsupported_boundaries=" << material_graph_authoring_evidence.unsupported_boundaries
-        << " material_graph_authoring_diagnostics=" << material_graph_authoring_evidence.diagnostics << '\n';
+        << " material_graph_authoring_diagnostics=" << material_graph_authoring_evidence.diagnostics
+        << " shader_generation_cache_reviewed=" << material_graph_authoring_evidence.shader_generation_reviewed
+        << " shader_generation_cache_selected_ready="
+        << material_graph_authoring_evidence.shader_generation_selected_cache_ready
+        << " shader_generation_cache_d3d12_ready=" << material_graph_authoring_evidence.shader_generation_d3d12_ready
+        << " shader_generation_cache_vulkan_ready=" << material_graph_authoring_evidence.shader_generation_vulkan_ready
+        << " shader_generation_cache_rows=" << material_graph_authoring_evidence.shader_generation_rows
+        << " shader_generation_cache_ready_rows=" << material_graph_authoring_evidence.shader_generation_ready_rows
+        << " shader_generation_cache_host_gated_rows="
+        << material_graph_authoring_evidence.shader_generation_host_gated_rows
+        << " shader_generation_cache_d3d12_rows=" << material_graph_authoring_evidence.shader_generation_d3d12_rows
+        << " shader_generation_cache_vulkan_rows=" << material_graph_authoring_evidence.shader_generation_vulkan_rows
+        << " shader_generation_cache_spirv_validation_rows="
+        << material_graph_authoring_evidence.shader_generation_spirv_validation_rows
+        << " shader_generation_cache_key_rows=" << material_graph_authoring_evidence.shader_generation_cache_key_rows
+        << " shader_generation_cache_provenance_rows="
+        << material_graph_authoring_evidence.shader_generation_provenance_rows
+        << " shader_generation_cache_unsupported_claim_rows="
+        << material_graph_authoring_evidence.shader_generation_unsupported_claim_rows
+        << " shader_generation_cache_diagnostics=" << material_graph_authoring_evidence.shader_generation_diagnostics
+        << " shader_generation_cache_live_generation_ready="
+        << material_graph_authoring_evidence.shader_generation_live_generation_ready
+        << " shader_generation_cache_runtime_compiler_ready="
+        << material_graph_authoring_evidence.shader_generation_runtime_compiler_ready
+        << " shader_generation_cache_native_cache_handle_ready="
+        << material_graph_authoring_evidence.shader_generation_native_cache_handle_ready
+        << " shader_generation_cache_renderer_residency_ready="
+        << material_graph_authoring_evidence.shader_generation_renderer_residency_ready
+        << " shader_generation_cache_metal_library_ready="
+        << material_graph_authoring_evidence.shader_generation_metal_library_ready << '\n';
     print_presentation_report("sample_generated_desktop_runtime_material_shader_package", host);
     for (const auto& diagnostic : host.presentation_diagnostics()) {
         std::cout << "sample_generated_desktop_runtime_material_shader_package presentation_diagnostic="
@@ -907,7 +967,34 @@ int main(int argc, char** argv) {
              material_graph_authoring_evidence.vulkan_compile_requests != 2 ||
              material_graph_authoring_evidence.runtime_sources_shipped != 0 ||
              material_graph_authoring_evidence.unsupported_boundaries != 4 ||
-             material_graph_authoring_evidence.diagnostics != 0)) {
+             material_graph_authoring_evidence.diagnostics != 0 ||
+             material_graph_authoring_evidence.shader_generation_reviewed != 1 ||
+             material_graph_authoring_evidence.shader_generation_selected_cache_ready != 1 ||
+             material_graph_authoring_evidence.shader_generation_d3d12_ready != 1 ||
+             material_graph_authoring_evidence.shader_generation_rows != 4 ||
+             material_graph_authoring_evidence.shader_generation_d3d12_rows != 2 ||
+             material_graph_authoring_evidence.shader_generation_vulkan_rows != 2 ||
+             material_graph_authoring_evidence.shader_generation_cache_key_rows < 2 ||
+             material_graph_authoring_evidence.shader_generation_provenance_rows < 2 ||
+             material_graph_authoring_evidence.shader_generation_unsupported_claim_rows != 0 ||
+             material_graph_authoring_evidence.shader_generation_diagnostics != 0 ||
+             material_graph_authoring_evidence.shader_generation_live_generation_ready != 0 ||
+             material_graph_authoring_evidence.shader_generation_runtime_compiler_ready != 0 ||
+             material_graph_authoring_evidence.shader_generation_native_cache_handle_ready != 0 ||
+             material_graph_authoring_evidence.shader_generation_renderer_residency_ready != 0 ||
+             material_graph_authoring_evidence.shader_generation_metal_library_ready != 0 ||
+             (options.require_vulkan_scene_shaders &&
+              (material_graph_authoring_evidence.shader_generation_vulkan_ready != 1 ||
+               material_graph_authoring_evidence.shader_generation_ready_rows != 4 ||
+               material_graph_authoring_evidence.shader_generation_host_gated_rows != 0 ||
+               material_graph_authoring_evidence.shader_generation_spirv_validation_rows != 2 ||
+               material_graph_authoring_evidence.shader_generation_cache_key_rows != 4 ||
+               material_graph_authoring_evidence.shader_generation_provenance_rows != 4)) ||
+             (!options.require_vulkan_scene_shaders &&
+              (material_graph_authoring_evidence.shader_generation_vulkan_ready != 0 ||
+               material_graph_authoring_evidence.shader_generation_ready_rows != 2 ||
+               material_graph_authoring_evidence.shader_generation_host_gated_rows != 2 ||
+               material_graph_authoring_evidence.shader_generation_spirv_validation_rows != 0)))) {
             return 3;
         }
     }

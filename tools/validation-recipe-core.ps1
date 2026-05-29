@@ -204,11 +204,7 @@ function Get-GeneratedMaterialShaderScaffoldPackageVulkanSmokeArgs {
         '--require-scene-package',
         'runtime/sample_generated_desktop_runtime_material_shader_package.geindex',
         '--require-vulkan-scene-shaders',
-        '--video-driver',
-        'windows',
-        '--require-vulkan-renderer',
-        '--require-scene-gpu-bindings',
-        '--require-postprocess'
+        '--require-material-graph-authoring'
     )
 }
 
