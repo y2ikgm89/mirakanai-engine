@@ -42,7 +42,7 @@ struct ChunkBounds {
 
 [[nodiscard]] bool is_forbidden_backend_token(std::string_view token) {
     constexpr auto forbidden = std::array<std::string_view, 11U>{
-        "backend", "native", "renderer", "rhi", "d3d12", "vulkan", "metal", "sdl", "sdl3", "imgui", "gpu",
+        "backend", "native", "renderer", "rhi", "d3d12", "vulkan", "metal", "platform", "window", "imgui", "gpu",
     };
     return std::ranges::find(forbidden, token) != forbidden.end();
 }
@@ -190,6 +190,35 @@ void sort_diagnostics(RuntimeSandboxWorldBuildResult& result) {
     return lhs.block_id < rhs.block_id;
 }
 
+[[nodiscard]] auto find_world_cell(std::vector<RuntimeSandboxExistingCellRow>& cells, std::string_view chunk_id,
+                                   RuntimeSandboxCellCoord coord) {
+    return std::ranges::find_if(cells, [chunk_id, coord](const auto& cell) {
+        return cell.chunk_id == chunk_id && same_coord(cell.coord, coord);
+    });
+}
+
+[[nodiscard]] bool world_contains_cell(const std::vector<RuntimeSandboxChunkRow>& chunks, std::string_view chunk_id,
+                                       RuntimeSandboxCellCoord coord) noexcept {
+    const auto iter =
+        std::ranges::find_if(chunks, [chunk_id](const auto& chunk) { return chunk.chunk_id == chunk_id; });
+    if (iter == chunks.end()) {
+        return false;
+    }
+
+    return contains_coord(
+        ChunkBounds{
+            .chunk_id = iter->chunk_id,
+            .origin =
+                RuntimeSandboxCellCoord{
+                    .x = iter->origin_x,
+                    .y = iter->origin_y,
+                    .z = iter->origin_z,
+                },
+            .end_exclusive = end_coord(*iter),
+        },
+        coord);
+}
+
 void mix_hash(std::uint64_t& hash, std::uint64_t value) noexcept {
     hash ^= value + 0x9e3779b97f4a7c15ULL + (hash << 6U) + (hash >> 2U);
 }
@@ -238,6 +267,47 @@ void mix_hash(std::uint64_t& hash, RuntimeSandboxCellCoord coord) noexcept {
     mix_hash(hash, world.invoked_package_io ? 1U : 0U);
     mix_hash(hash, world.invoked_renderer_upload ? 1U : 0U);
     return hash == 0U ? 1U : hash;
+}
+
+[[nodiscard]] std::uint64_t layer_mask_for(RuntimeSandboxCellCoord coord) noexcept {
+    if (coord.z < 0 || coord.z >= 64) {
+        return 0U;
+    }
+    return 1ULL << static_cast<std::uint64_t>(coord.z);
+}
+
+[[nodiscard]] RuntimeSandboxCellCoord next_cell_coord(RuntimeSandboxCellCoord coord) noexcept {
+    return RuntimeSandboxCellCoord{
+        .x = static_cast<std::int32_t>(coord.x + 1),
+        .y = static_cast<std::int32_t>(coord.y + 1),
+        .z = static_cast<std::int32_t>(coord.z + 1),
+    };
+}
+
+[[nodiscard]] std::uint64_t compute_dirty_region_hash(const RuntimeSandboxMutationRow& row,
+                                                      std::string_view previous_block_id,
+                                                      std::string_view new_block_id) noexcept {
+    auto hash = std::uint64_t{1469598103934665603ULL};
+    mix_hash(hash, static_cast<std::uint64_t>(row.kind));
+    mix_hash(hash, row.intent_id);
+    mix_hash(hash, row.chunk_id);
+    mix_hash(hash, row.coord);
+    mix_hash(hash, previous_block_id);
+    mix_hash(hash, new_block_id);
+    mix_hash(hash, row.source_index);
+    return hash == 0U ? 1U : hash;
+}
+
+void mix_hash(std::uint64_t& hash, const RuntimeSandboxWorldDirtyRegion& region) noexcept {
+    mix_hash(hash, region.chunk_id);
+    mix_hash(hash, region.intent_id);
+    mix_hash(hash, region.min_coord);
+    mix_hash(hash, region.max_coord_exclusive);
+    mix_hash(hash, region.layer_mask);
+    mix_hash(hash, region.previous_block_id);
+    mix_hash(hash, region.new_block_id);
+    mix_hash(hash, region.replay_hash);
+    mix_hash(hash, region.chunk_dirty ? 1U : 0U);
 }
 
 } // namespace
@@ -422,6 +492,91 @@ RuntimeSandboxWorldSnapshot snapshot_runtime_sandbox_world(const RuntimeSandboxW
         .cell_count = world.cells.size(),
         .hash = compute_snapshot_hash(world),
     };
+}
+
+RuntimeSandboxWorldMutationExecutionResult
+apply_runtime_sandbox_world_mutations(const RuntimeSandboxWorld& world, const RuntimeSandboxWorldMutationPlan& plan) {
+    RuntimeSandboxWorldMutationExecutionResult result;
+    result.world = world;
+
+    if (!plan.succeeded()) {
+        result.status = RuntimeSandboxWorldMutationExecutionStatus::rejected_plan;
+        result.rejected_mutation_count = plan.mutation_rows.size();
+        return result;
+    }
+
+    result.status = RuntimeSandboxWorldMutationExecutionStatus::ready;
+    for (const auto& row : plan.mutation_rows) {
+        if (row.status != RuntimeSandboxMutationStatus::accepted) {
+            ++result.rejected_mutation_count;
+            continue;
+        }
+
+        auto previous_block_id = std::string{};
+        auto new_block_id = std::string{};
+        auto applied = false;
+        if (!world_contains_cell(result.world.chunks, row.chunk_id, row.coord)) {
+            ++result.rejected_mutation_count;
+            continue;
+        }
+        auto cell_iter = find_world_cell(result.world.cells, row.chunk_id, row.coord);
+        if (row.kind == RuntimeSandboxMutationKind::placement) {
+            if (cell_iter != result.world.cells.end()) {
+                ++result.rejected_mutation_count;
+                continue;
+            }
+            result.world.cells.push_back(RuntimeSandboxExistingCellRow{
+                .chunk_id = row.chunk_id,
+                .coord = row.coord,
+                .block_id = row.block_id,
+                .destructible = true,
+                .protected_cell = false,
+                .source_index = row.source_index,
+            });
+            new_block_id = row.block_id;
+            applied = true;
+        } else {
+            if (cell_iter == result.world.cells.end()) {
+                ++result.rejected_mutation_count;
+                continue;
+            }
+            previous_block_id = cell_iter->block_id;
+            result.world.cells.erase(cell_iter);
+            applied = true;
+        }
+
+        if (applied) {
+            ++result.applied_mutation_count;
+            const auto region_hash = compute_dirty_region_hash(row, previous_block_id, new_block_id);
+            result.dirty_regions.push_back(RuntimeSandboxWorldDirtyRegion{
+                .chunk_id = row.chunk_id,
+                .intent_id = row.intent_id,
+                .min_coord = row.coord,
+                .max_coord_exclusive = next_cell_coord(row.coord),
+                .layer_mask = layer_mask_for(row.coord),
+                .previous_block_id = std::move(previous_block_id),
+                .new_block_id = std::move(new_block_id),
+                .replay_hash = region_hash,
+                .chunk_dirty = true,
+            });
+        }
+    }
+
+    std::ranges::sort(result.world.cells, cell_less);
+    result.world.chunk_count = result.world.chunks.size();
+    result.world.cell_count = result.world.cells.size();
+    result.world.snapshot_hash = compute_snapshot_hash(result.world);
+
+    auto replay_hash = std::uint64_t{1469598103934665603ULL};
+    mix_hash(replay_hash, plan.replay_hash);
+    mix_hash(replay_hash, result.world.snapshot_hash);
+    mix_hash(replay_hash, result.applied_mutation_count);
+    mix_hash(replay_hash, result.rejected_mutation_count);
+    for (const auto& region : result.dirty_regions) {
+        mix_hash(replay_hash, region);
+    }
+    result.replay_hash = replay_hash == 0U ? 1U : replay_hash;
+    return result;
 }
 
 } // namespace mirakana::runtime
