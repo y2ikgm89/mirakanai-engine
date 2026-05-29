@@ -18,6 +18,9 @@ physics_row(mirakana::PhysicsProductionBreadthFeature feature, const char* featu
         .feature_id = feature_id,
         .official_source_url = "https://jrouwe.github.io/JoltPhysics/",
         .package_counter_id = feature_id,
+        .adapter_boundary_id = {},
+        .host_validation_recipe_id = {},
+        .adapter_lifecycle_reviewed = false,
         .reviewed = true,
         .host_validated = true,
         .package_visible = true,
@@ -50,6 +53,9 @@ navigation_row(mirakana::NavigationProductionBreadthFeature feature, const char*
         .feature_id = feature_id,
         .official_source_url = "https://recastnav.com/",
         .package_counter_id = feature_id,
+        .adapter_boundary_id = {},
+        .host_validation_recipe_id = {},
+        .adapter_lifecycle_reviewed = false,
         .reviewed = true,
         .host_validated = true,
         .package_visible = true,
@@ -123,6 +129,9 @@ MK_TEST("physics production breadth review fails closed on missing and unsafe ev
 MK_TEST("physics production breadth review separates host gated optional adapter evidence") {
     auto rows = physics_ready_rows();
     rows[8].proof = mirakana::PhysicsProductionBreadthProof::optional_native_adapter;
+    rows[8].adapter_boundary_id = "MK_physics_jolt";
+    rows[8].host_validation_recipe_id = "validate-physics-jolt";
+    rows[8].adapter_lifecycle_reviewed = true;
     rows[8].host_validated = false;
     rows[8].host_gated = true;
     rows[8].dependency_legal_recorded = true;
@@ -133,6 +142,24 @@ MK_TEST("physics production breadth review separates host gated optional adapter
     MK_REQUIRE(review.status == mirakana::PhysicsProductionBreadthStatus::host_evidence_required);
     MK_REQUIRE(review.diagnostic == mirakana::PhysicsProductionBreadthDiagnostic::none);
     MK_REQUIRE(review.host_gated_rows == 1U);
+}
+
+MK_TEST("physics production breadth review requires optional adapter boundary evidence") {
+    auto rows = physics_ready_rows();
+    rows[8].proof = mirakana::PhysicsProductionBreadthProof::optional_native_adapter;
+    rows[8].host_validated = false;
+    rows[8].host_gated = true;
+    rows[8].dependency_legal_recorded = true;
+
+    const auto review = mirakana::review_physics_production_breadth(
+        mirakana::PhysicsProductionBreadthReviewRequest{.rows = rows, .require_broad_readiness = true});
+
+    MK_REQUIRE(review.status == mirakana::PhysicsProductionBreadthStatus::diagnostics);
+    MK_REQUIRE(review.diagnostic == mirakana::PhysicsProductionBreadthDiagnostic::missing_adapter_boundary);
+    MK_REQUIRE(review.diagnostics.size() == 4U);
+    MK_REQUIRE(review.diagnostics[1] == mirakana::PhysicsProductionBreadthDiagnostic::missing_host_validation_recipe);
+    MK_REQUIRE(review.diagnostics[2] == mirakana::PhysicsProductionBreadthDiagnostic::missing_adapter_lifecycle_review);
+    MK_REQUIRE(review.diagnostics[3] == mirakana::PhysicsProductionBreadthDiagnostic::missing_required_feature);
 }
 
 MK_TEST("navigation production breadth review accepts complete first party evidence") {
@@ -176,6 +203,9 @@ MK_TEST("navigation production breadth review fails closed on source mutation an
 MK_TEST("navigation production breadth review separates host gated recast detour evidence") {
     auto rows = navigation_ready_rows();
     rows[0].proof = mirakana::NavigationProductionBreadthProof::optional_recast_detour_adapter;
+    rows[0].adapter_boundary_id = "RecastDetourPrivateAdapter";
+    rows[0].host_validation_recipe_id = "validate-navigation-recast-detour";
+    rows[0].adapter_lifecycle_reviewed = true;
     rows[0].host_validated = false;
     rows[0].host_gated = true;
     rows[0].dependency_legal_recorded = true;
@@ -186,6 +216,26 @@ MK_TEST("navigation production breadth review separates host gated recast detour
     MK_REQUIRE(review.status == mirakana::NavigationProductionBreadthStatus::host_evidence_required);
     MK_REQUIRE(review.diagnostic == mirakana::NavigationProductionBreadthDiagnostic::none);
     MK_REQUIRE(review.host_gated_rows == 1U);
+}
+
+MK_TEST("navigation production breadth review requires recast detour adapter boundary evidence") {
+    auto rows = navigation_ready_rows();
+    rows[0].proof = mirakana::NavigationProductionBreadthProof::optional_recast_detour_adapter;
+    rows[0].host_validated = false;
+    rows[0].host_gated = true;
+    rows[0].dependency_legal_recorded = true;
+
+    const auto review = mirakana::review_navigation_production_breadth(
+        mirakana::NavigationProductionBreadthReviewRequest{.rows = rows, .require_broad_readiness = true});
+
+    MK_REQUIRE(review.status == mirakana::NavigationProductionBreadthStatus::diagnostics);
+    MK_REQUIRE(review.diagnostic == mirakana::NavigationProductionBreadthDiagnostic::missing_adapter_boundary);
+    MK_REQUIRE(review.diagnostics.size() == 4U);
+    MK_REQUIRE(review.diagnostics[1] ==
+               mirakana::NavigationProductionBreadthDiagnostic::missing_host_validation_recipe);
+    MK_REQUIRE(review.diagnostics[2] ==
+               mirakana::NavigationProductionBreadthDiagnostic::missing_adapter_lifecycle_review);
+    MK_REQUIRE(review.diagnostics[3] == mirakana::NavigationProductionBreadthDiagnostic::missing_required_feature);
 }
 
 int main() {

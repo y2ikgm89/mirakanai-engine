@@ -1325,6 +1325,21 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
             Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe SDL3 removal closeout and selection gate: $needle"
         }
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "physics-navigation-commercial-coverage-v1") {
+    foreach ($needle in @(
+    "Physics Navigation Commercial Coverage v1",
+    "Jolt/Recast/Detour-class",
+    "adapter_boundary_id",
+    "host_validation_recipe_id",
+    "adapter_lifecycle_reviewed",
+    "unsupportedProductionGaps = []",
+    "native handles hidden",
+    "broad middleware parity fail-closed"
+    )) {
+        if (-not $recommendedText.Contains($needle)) {
+            Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe physics/navigation commercial coverage selection: $needle"
+        }
+    }
 } else {
     foreach ($needle in @(
     "Frame Graph Transient Texture Alias Planning v1",

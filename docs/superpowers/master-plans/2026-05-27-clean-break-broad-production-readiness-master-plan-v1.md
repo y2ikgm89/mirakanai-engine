@@ -12,7 +12,7 @@
 
 **Plan ID:** `clean-break-broad-production-readiness-master-plan-v1`
 
-**Status:** Completed coordination plan through `reviewed-importers-codecs-shader-generation-v1`. The manifest now returns to the production-completion selection gate for any future child selection.
+**Status:** Active child selection for `physics-navigation-commercial-coverage-v1` after the completed `reviewed-importers-codecs-shader-generation-v1` closeout.
 
 **Date:** 2026-05-27
 
@@ -29,7 +29,7 @@ This work is too broad for one implementation branch. It must be executed throug
 - Networking production coverage.
 - Cross-domain package evidence and closeout.
 
-The reviewed importer/codecs/shader-generation child was selected again through an explicit manifest/registry switch after the SDL3 removal milestone and backlog selection-gate reconciliation, then completed selected importer/codec/shader-generation evidence before the manifest returned to the production-completion selection gate.
+The reviewed importer/codecs/shader-generation child was selected again through an explicit manifest/registry switch after the SDL3 removal milestone and backlog selection-gate reconciliation, then completed selected importer/codec/shader-generation evidence before the manifest returned to the production-completion selection gate. `physics-navigation-commercial-coverage-v1` is now selected through a new manifest/registry switch.
 
 `unsupportedProductionGaps = []` remains the Engine 1.0 ready-surface truth. This plan does not reopen 1.0; it selects post-1.0 / 1.x production breadth.
 
@@ -72,6 +72,8 @@ Re-check exact docs during child-plan execution:
 Context7 evidence recorded during this selection pass:
 
 - `/libsdl-org/sdlwiki`: Historical selection-pass evidence only. The retired text-input/clipboard adapter proof was used before the SDL3 removal closeout and must not be treated as current implementation guidance or a reason to reintroduce SDL3 APIs.
+- `/jrouwe/joltphysics`: Physics/navigation commercial coverage selection evidence for optional Jolt-class adapter lifecycle, collision layers, query, character, and vehicle capability gates behind first-party value contracts.
+- `/websites/recastnav`: Physics/navigation commercial coverage selection evidence for Recast build inputs, Detour navmesh queries, DetourTileCache dynamic obstacles, and DetourCrowd local avoidance gates behind first-party value contracts.
 
 ## Child Plan Sequence
 
@@ -116,6 +118,8 @@ Context7 evidence recorded during this selection pass:
 ### Child Plan 4 - Physics And Navigation Commercial Coverage v1
 
 **Purpose:** Expand first-party and optional adapter coverage for controllers, queries, constraints, vehicles, navmesh, dynamic obstacles, crowds, streaming nav data, and genre coverage rows.
+
+**Status:** Active selected slice: [Physics Navigation Commercial Coverage v1](../plans/2026-05-29-physics-navigation-commercial-coverage-v1.md).
 
 ### Child Plan 5 - Audio Production Coverage v1
 

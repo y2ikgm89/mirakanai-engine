@@ -86,11 +86,17 @@ PhysicsProductionBreadthReview review_physics_production_breadth(const PhysicsPr
         hash_string(review.review_hash, row.feature_id);
         hash_string(review.review_hash, row.official_source_url);
         hash_string(review.review_hash, row.package_counter_id);
+        hash_string(review.review_hash, row.adapter_boundary_id);
+        hash_string(review.review_hash, row.host_validation_recipe_id);
+        hash_byte(review.review_hash, row.adapter_lifecycle_reviewed ? 1U : 0U);
         hash_byte(review.review_hash, row.reviewed ? 1U : 0U);
         hash_byte(review.review_hash, row.host_validated ? 1U : 0U);
         hash_byte(review.review_hash, row.host_gated ? 1U : 0U);
+        hash_byte(review.review_hash, row.dependency_legal_recorded ? 1U : 0U);
         hash_byte(review.review_hash, row.package_visible ? 1U : 0U);
         hash_byte(review.review_hash, row.deterministic_replay ? 1U : 0U);
+        hash_byte(review.review_hash, row.native_handles_exposed ? 1U : 0U);
+        hash_byte(review.review_hash, row.claims_broad_middleware_parity ? 1U : 0U);
         hash_uint64(review.review_hash, row.body_budget);
         hash_uint64(review.review_hash, row.row_budget);
 
@@ -136,9 +142,23 @@ PhysicsProductionBreadthReview review_physics_production_breadth(const PhysicsPr
             append_diagnostic(review, PhysicsProductionBreadthDiagnostic::missing_deterministic_replay);
             row_ready = false;
         }
-        if (row.proof == PhysicsProductionBreadthProof::optional_native_adapter && !row.dependency_legal_recorded) {
-            append_diagnostic(review, PhysicsProductionBreadthDiagnostic::missing_dependency_legal_record);
-            row_ready = false;
+        if (row.proof == PhysicsProductionBreadthProof::optional_native_adapter) {
+            if (row.adapter_boundary_id.empty()) {
+                append_diagnostic(review, PhysicsProductionBreadthDiagnostic::missing_adapter_boundary);
+                row_ready = false;
+            }
+            if (row.host_validation_recipe_id.empty()) {
+                append_diagnostic(review, PhysicsProductionBreadthDiagnostic::missing_host_validation_recipe);
+                row_ready = false;
+            }
+            if (!row.adapter_lifecycle_reviewed) {
+                append_diagnostic(review, PhysicsProductionBreadthDiagnostic::missing_adapter_lifecycle_review);
+                row_ready = false;
+            }
+            if (!row.dependency_legal_recorded) {
+                append_diagnostic(review, PhysicsProductionBreadthDiagnostic::missing_dependency_legal_record);
+                row_ready = false;
+            }
         }
         if (!row.host_validated) {
             if (row.host_gated) {

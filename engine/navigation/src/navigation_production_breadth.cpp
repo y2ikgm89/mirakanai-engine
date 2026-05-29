@@ -88,11 +88,19 @@ review_navigation_production_breadth(const NavigationProductionBreadthReviewRequ
         hash_string(review.review_hash, row.feature_id);
         hash_string(review.review_hash, row.official_source_url);
         hash_string(review.review_hash, row.package_counter_id);
+        hash_string(review.review_hash, row.adapter_boundary_id);
+        hash_string(review.review_hash, row.host_validation_recipe_id);
+        hash_byte(review.review_hash, row.adapter_lifecycle_reviewed ? 1U : 0U);
         hash_byte(review.review_hash, row.reviewed ? 1U : 0U);
         hash_byte(review.review_hash, row.host_validated ? 1U : 0U);
         hash_byte(review.review_hash, row.host_gated ? 1U : 0U);
+        hash_byte(review.review_hash, row.dependency_legal_recorded ? 1U : 0U);
         hash_byte(review.review_hash, row.package_visible ? 1U : 0U);
         hash_byte(review.review_hash, row.deterministic_path ? 1U : 0U);
+        hash_byte(review.review_hash, row.exposes_native_recast_detour_handles ? 1U : 0U);
+        hash_byte(review.review_hash, row.mutates_source_geometry ? 1U : 0U);
+        hash_byte(review.review_hash, row.claims_arbitrary_runtime_bake ? 1U : 0U);
+        hash_byte(review.review_hash, row.claims_broad_middleware_parity ? 1U : 0U);
         hash_uint64(review.review_hash, row.agent_budget);
         hash_uint64(review.review_hash, row.row_budget);
 
@@ -142,10 +150,23 @@ review_navigation_production_breadth(const NavigationProductionBreadthReviewRequ
             append_diagnostic(review, NavigationProductionBreadthDiagnostic::missing_deterministic_path);
             row_ready = false;
         }
-        if (row.proof == NavigationProductionBreadthProof::optional_recast_detour_adapter &&
-            !row.dependency_legal_recorded) {
-            append_diagnostic(review, NavigationProductionBreadthDiagnostic::missing_dependency_legal_record);
-            row_ready = false;
+        if (row.proof == NavigationProductionBreadthProof::optional_recast_detour_adapter) {
+            if (row.adapter_boundary_id.empty()) {
+                append_diagnostic(review, NavigationProductionBreadthDiagnostic::missing_adapter_boundary);
+                row_ready = false;
+            }
+            if (row.host_validation_recipe_id.empty()) {
+                append_diagnostic(review, NavigationProductionBreadthDiagnostic::missing_host_validation_recipe);
+                row_ready = false;
+            }
+            if (!row.adapter_lifecycle_reviewed) {
+                append_diagnostic(review, NavigationProductionBreadthDiagnostic::missing_adapter_lifecycle_review);
+                row_ready = false;
+            }
+            if (!row.dependency_legal_recorded) {
+                append_diagnostic(review, NavigationProductionBreadthDiagnostic::missing_dependency_legal_record);
+                row_ready = false;
+            }
         }
         if (!row.host_validated) {
             if (row.host_gated) {
