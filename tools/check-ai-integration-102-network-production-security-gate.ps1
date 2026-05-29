@@ -15,6 +15,7 @@ $sampleManifestText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_pack
 $sampleReadmeText = Get-AgentSurfaceText "games/sample_2d_desktop_runtime_package/README.md"
 $installedValidationText = Get-AgentSurfaceText "tools/validate-installed-desktop-runtime.ps1"
 $networkValidationText = Get-AgentSurfaceText "tools/validate-network-enet.ps1"
+$runValidationRecipePlansText = Get-AgentSurfaceText "tools/run-validation-recipe-plans.ps1"
 $planText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-26-engine-general-production-quality-expansion-v1.md"
 $registryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
 $currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
@@ -122,6 +123,8 @@ foreach ($needle in @(
 Assert-ContainsText $sampleReadmeText "Network production security proof" "games/sample_2d_desktop_runtime_package/README.md"
 Assert-ContainsText $networkValidationText "MK_runtime_network_production_security_tests" "tools/validate-network-enet.ps1"
 Assert-ContainsText $networkValidationText "runtime_network_(production_security|transport_adapter|enet)_tests" "tools/validate-network-enet.ps1"
+Assert-ContainsText $runValidationRecipePlansText "network-production-security" "tools/run-validation-recipe-plans.ps1"
+Assert-ContainsText $runValidationRecipePlansText "runtime_network|production_network_replication" "tools/run-validation-recipe-plans.ps1"
 
 foreach ($docSurface in @(
         @{ Text = $planText; Label = "docs/superpowers/plans/2026-05-26-engine-general-production-quality-expansion-v1.md" },

@@ -201,6 +201,8 @@ MK_TEST("enet network transport adapter supplies production security loopback ho
                             .object_rows = {},
                             .input_rows = {},
                             .snapshot_rows = {},
+                            .sandbox_mutation_command_rows = {},
+                            .sandbox_snapshot_delta_rows = {},
                             .rollback_rows = {},
                             .transport_evidence_rows =
                                 {
@@ -215,6 +217,8 @@ MK_TEST("enet network transport adapter supplies production security loopback ho
                             .replicated_object_count = 0U,
                             .input_row_count = 0U,
                             .snapshot_row_count = 0U,
+                            .sandbox_mutation_command_count = 0U,
+                            .sandbox_snapshot_delta_count = 0U,
                             .rollback_row_count = 0U,
                             .rejected_unsafe_row_count = 0U,
                             .replay_hash = 99U,

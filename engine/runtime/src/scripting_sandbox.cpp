@@ -395,6 +395,169 @@ void hash_string(std::uint64_t& hash, std::string_view value) noexcept {
     return hash == 0U ? offset_basis : hash;
 }
 
+[[nodiscard]] std::span<const RuntimeScriptModdingDeniedCapabilityKind> default_modding_denied_capabilities() {
+    static constexpr RuntimeScriptModdingDeniedCapabilityKind capabilities[]{
+        RuntimeScriptModdingDeniedCapabilityKind::filesystem,
+        RuntimeScriptModdingDeniedCapabilityKind::network,
+        RuntimeScriptModdingDeniedCapabilityKind::process,
+        RuntimeScriptModdingDeniedCapabilityKind::native_plugin,
+        RuntimeScriptModdingDeniedCapabilityKind::package_mutation,
+    };
+    return std::span<const RuntimeScriptModdingDeniedCapabilityKind>{capabilities};
+}
+
+void add_modding_diagnostic(RuntimeScriptModdingPolicyPlan& plan, RuntimeScriptModdingPolicyDiagnosticCode code,
+                            std::string adapter_id, RuntimeScriptModdingDeniedCapabilityKind capability_kind,
+                            std::string message, std::uint32_t source_index) {
+    plan.diagnostics.push_back(RuntimeScriptModdingPolicyDiagnostic{
+        .code = code,
+        .adapter_id = std::move(adapter_id),
+        .capability_kind = capability_kind,
+        .message = std::move(message),
+        .source_index = source_index,
+    });
+}
+
+void append_default_modding_denied_capability_rows(RuntimeScriptModdingPolicyPlan& plan,
+                                                   const RuntimeScriptModdingAdapterPolicyRow& row) {
+    for (const auto capability : default_modding_denied_capabilities()) {
+        plan.denied_capability_rows.push_back(RuntimeScriptModdingDeniedCapabilityRow{
+            .adapter_id = row.adapter_id,
+            .kind = capability,
+            .requested = false,
+            .denied = true,
+            .source_index = row.source_index,
+        });
+    }
+}
+
+void validate_modding_policy(RuntimeScriptModdingPolicyPlan& plan, const RuntimeScriptModdingPolicyDesc& policy) {
+    std::vector<std::string> adapter_ids;
+    adapter_ids.reserve(policy.adapter_rows.size());
+
+    for (const auto& row : policy.adapter_rows) {
+        if (!is_valid_id(row.adapter_id)) {
+            add_modding_diagnostic(plan, RuntimeScriptModdingPolicyDiagnosticCode::missing_adapter_id, row.adapter_id,
+                                   RuntimeScriptModdingDeniedCapabilityKind::filesystem,
+                                   "modding adapter id must be non-empty and path-safe", row.source_index);
+        } else if (contains_id(adapter_ids, row.adapter_id)) {
+            add_modding_diagnostic(plan, RuntimeScriptModdingPolicyDiagnosticCode::duplicate_adapter_id, row.adapter_id,
+                                   RuntimeScriptModdingDeniedCapabilityKind::filesystem,
+                                   "modding adapter ids must be unique", row.source_index);
+        } else {
+            adapter_ids.push_back(row.adapter_id);
+        }
+
+        if (!is_valid_id(row.module_id)) {
+            add_modding_diagnostic(plan, RuntimeScriptModdingPolicyDiagnosticCode::missing_module_id, row.adapter_id,
+                                   RuntimeScriptModdingDeniedCapabilityKind::filesystem,
+                                   "modding adapter module id must be non-empty and path-safe", row.source_index);
+        }
+        if (!is_valid_id(row.entrypoint_id)) {
+            add_modding_diagnostic(plan, RuntimeScriptModdingPolicyDiagnosticCode::missing_entrypoint_id,
+                                   row.adapter_id, RuntimeScriptModdingDeniedCapabilityKind::filesystem,
+                                   "modding adapter entrypoint id must be non-empty and path-safe", row.source_index);
+        }
+        if (!row.reviewed) {
+            add_modding_diagnostic(plan, RuntimeScriptModdingPolicyDiagnosticCode::unreviewed_adapter, row.adapter_id,
+                                   RuntimeScriptModdingDeniedCapabilityKind::filesystem,
+                                   "modding adapter rows must be explicitly reviewed", row.source_index);
+        }
+        if (!row.deterministic) {
+            add_modding_diagnostic(plan, RuntimeScriptModdingPolicyDiagnosticCode::nondeterministic_adapter,
+                                   row.adapter_id, RuntimeScriptModdingDeniedCapabilityKind::filesystem,
+                                   "modding adapter rows must be deterministic", row.source_index);
+        }
+        if (row.replay_seed == 0U) {
+            add_modding_diagnostic(plan, RuntimeScriptModdingPolicyDiagnosticCode::missing_replay_seed, row.adapter_id,
+                                   RuntimeScriptModdingDeniedCapabilityKind::filesystem,
+                                   "modding adapter rows require an explicit non-zero replay seed", row.source_index);
+        }
+
+        for (const auto capability : row.requested_capabilities) {
+            add_modding_diagnostic(
+                plan, RuntimeScriptModdingPolicyDiagnosticCode::denied_capability_requested, row.adapter_id, capability,
+                "modding capability is denied by default and requires a future reviewed adapter", row.source_index);
+        }
+    }
+}
+
+void sort_modding_rows(RuntimeScriptModdingPolicyPlan& plan) {
+    std::ranges::sort(plan.adapter_rows, [](const auto& lhs, const auto& rhs) {
+        if (lhs.adapter_id != rhs.adapter_id) {
+            return lhs.adapter_id < rhs.adapter_id;
+        }
+        if (lhs.module_id != rhs.module_id) {
+            return lhs.module_id < rhs.module_id;
+        }
+        if (lhs.entrypoint_id != rhs.entrypoint_id) {
+            return lhs.entrypoint_id < rhs.entrypoint_id;
+        }
+        return lhs.source_index < rhs.source_index;
+    });
+
+    std::ranges::sort(plan.denied_capability_rows, [](const auto& lhs, const auto& rhs) {
+        if (lhs.adapter_id != rhs.adapter_id) {
+            return lhs.adapter_id < rhs.adapter_id;
+        }
+        if (lhs.kind != rhs.kind) {
+            return static_cast<std::uint8_t>(lhs.kind) < static_cast<std::uint8_t>(rhs.kind);
+        }
+        if (lhs.requested != rhs.requested) {
+            return lhs.requested;
+        }
+        return lhs.source_index < rhs.source_index;
+    });
+}
+
+void sort_modding_diagnostics(RuntimeScriptModdingPolicyPlan& plan) {
+    std::ranges::sort(plan.diagnostics, [](const auto& lhs, const auto& rhs) {
+        if (lhs.adapter_id != rhs.adapter_id) {
+            return lhs.adapter_id < rhs.adapter_id;
+        }
+        if (lhs.source_index != rhs.source_index) {
+            return lhs.source_index < rhs.source_index;
+        }
+        if (lhs.code != rhs.code) {
+            return static_cast<std::uint8_t>(lhs.code) < static_cast<std::uint8_t>(rhs.code);
+        }
+        return static_cast<std::uint8_t>(lhs.capability_kind) < static_cast<std::uint8_t>(rhs.capability_kind);
+    });
+}
+
+void hash_modding_capability(std::uint64_t& hash, RuntimeScriptModdingDeniedCapabilityKind capability) noexcept {
+    hash_byte(hash, static_cast<std::uint8_t>(capability));
+}
+
+[[nodiscard]] std::uint64_t compute_modding_policy_replay_hash(const RuntimeScriptModdingPolicyPlan& plan) noexcept {
+    constexpr std::uint64_t offset_basis{1469598103934665603ULL};
+    std::uint64_t hash{offset_basis};
+    hash_string(hash, "runtime-script-modding-policy-v1");
+    hash_size(hash, plan.adapter_rows.size());
+    for (const auto& row : plan.adapter_rows) {
+        hash_string(hash, row.adapter_id);
+        hash_string(hash, row.module_id);
+        hash_string(hash, row.entrypoint_id);
+        hash_byte(hash, row.reviewed ? 1U : 0U);
+        hash_byte(hash, row.deterministic ? 1U : 0U);
+        hash_uint64(hash, row.replay_seed);
+        hash_size(hash, row.requested_capabilities.size());
+        for (const auto capability : row.requested_capabilities) {
+            hash_modding_capability(hash, capability);
+        }
+        hash_uint32(hash, row.source_index);
+    }
+    hash_size(hash, plan.denied_capability_rows.size());
+    for (const auto& row : plan.denied_capability_rows) {
+        hash_string(hash, row.adapter_id);
+        hash_modding_capability(hash, row.kind);
+        hash_byte(hash, row.requested ? 1U : 0U);
+        hash_byte(hash, row.denied ? 1U : 0U);
+        hash_uint32(hash, row.source_index);
+    }
+    return hash == 0U ? offset_basis : hash;
+}
+
 } // namespace
 
 bool RuntimeScriptSandboxPlan::succeeded() const noexcept {
@@ -403,6 +566,11 @@ bool RuntimeScriptSandboxPlan::succeeded() const noexcept {
 
 bool RuntimeScriptExecutionResult::succeeded() const noexcept {
     return status == RuntimeScriptExecutionStatus::completed;
+}
+
+bool RuntimeScriptModdingPolicyPlan::succeeded() const noexcept {
+    return status == RuntimeScriptModdingPolicyStatus::planned ||
+           status == RuntimeScriptModdingPolicyStatus::no_adapters;
 }
 
 RuntimeScriptSandboxPlan plan_runtime_script_sandbox(const RuntimeScriptSandboxPolicyDesc& policy) {
@@ -535,6 +703,34 @@ RuntimeScriptExecutionResult execute_runtime_script_entrypoint(const RuntimeScri
     result.status = RuntimeScriptExecutionStatus::completed;
     result.replay_signature = compute_replay_signature(request, adapter_result);
     return result;
+}
+
+RuntimeScriptModdingPolicyPlan plan_runtime_script_modding_policy(const RuntimeScriptModdingPolicyDesc& policy) {
+    RuntimeScriptModdingPolicyPlan plan;
+
+    validate_modding_policy(plan, policy);
+    if (!plan.diagnostics.empty()) {
+        sort_modding_rows(plan);
+        sort_modding_diagnostics(plan);
+        plan.status = RuntimeScriptModdingPolicyStatus::invalid_request;
+        return plan;
+    }
+
+    plan.adapter_rows = policy.adapter_rows;
+    sort_modding_rows(plan);
+    for (const auto& row : plan.adapter_rows) {
+        append_default_modding_denied_capability_rows(plan, row);
+    }
+    sort_modding_rows(plan);
+
+    if (plan.adapter_rows.empty()) {
+        plan.status = RuntimeScriptModdingPolicyStatus::no_adapters;
+        return plan;
+    }
+
+    plan.status = RuntimeScriptModdingPolicyStatus::planned;
+    plan.replay_hash = compute_modding_policy_replay_hash(plan);
+    return plan;
 }
 
 } // namespace mirakana::runtime
