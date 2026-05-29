@@ -225,6 +225,7 @@ $requiresGltfSceneImportReview = @($SmokeArgs) -contains "--require-gltf-scene-i
 $requiresNative2dSprites = @($SmokeArgs) -contains "--require-native-2d-sprites"
 $requiresSpriteAnimation = @($SmokeArgs) -contains "--require-sprite-animation"
 $requiresTilemapRuntimeUx = @($SmokeArgs) -contains "--require-tilemap-runtime-ux"
+$requiresProductionTileRenderer = @($SmokeArgs) -contains "--require-production-tile-renderer"
 $requiresD3d12Renderer = @($SmokeArgs) -contains "--require-d3d12-renderer"
 $requiresGameplaySystems = @($SmokeArgs) -contains "--require-gameplay-systems"
 $requiresProceduralGeneration = @($SmokeArgs) -contains "--require-procedural-generation"
@@ -2633,6 +2634,51 @@ if ($requiresTilemapRuntimeUx) {
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\btilemap_diagnostics=0\b") {
         Write-Error "Installed desktop runtime smoke status line did not prove clean tilemap runtime UX diagnostics."
+    }
+}
+if ($requiresProductionTileRenderer) {
+    foreach ($field in @(
+            "tile_chunk_renderer_status",
+            "tile_chunk_renderer_ready",
+            "tile_chunk_renderer_visible_cells",
+            "tile_chunk_renderer_opaque_cells",
+            "tile_chunk_renderer_transparent_cells",
+            "tile_chunk_renderer_sprite_rows",
+            "tile_chunk_renderer_draw_rows",
+            "tile_chunk_renderer_texture_binds",
+            "tile_chunk_renderer_dirty_rebuild_rows",
+            "tile_chunk_renderer_dirty_rebuild_cells",
+            "tile_chunk_renderer_light_rows",
+            "tile_chunk_renderer_changed_light_cells",
+            "tile_chunk_renderer_diagnostics",
+            "tile_chunk_renderer_backend_submission_invoked",
+            "tile_chunk_renderer_native_texture_ownership_invoked"
+        )) {
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=") {
+            Write-Error "Installed desktop runtime smoke status line did not include production tile renderer field: $field"
+        }
+    }
+    $expectedTileRendererFields = [ordered]@{
+        "tile_chunk_renderer_status" = "ready"
+        "tile_chunk_renderer_ready" = "1"
+        "tile_chunk_renderer_visible_cells" = "3"
+        "tile_chunk_renderer_opaque_cells" = "2"
+        "tile_chunk_renderer_transparent_cells" = "1"
+        "tile_chunk_renderer_sprite_rows" = "3"
+        "tile_chunk_renderer_draw_rows" = "2"
+        "tile_chunk_renderer_texture_binds" = "1"
+        "tile_chunk_renderer_dirty_rebuild_rows" = "2"
+        "tile_chunk_renderer_dirty_rebuild_cells" = "5"
+        "tile_chunk_renderer_light_rows" = "3"
+        "tile_chunk_renderer_changed_light_cells" = "1"
+        "tile_chunk_renderer_diagnostics" = "0"
+        "tile_chunk_renderer_backend_submission_invoked" = "0"
+        "tile_chunk_renderer_native_texture_ownership_invoked" = "0"
+    }
+    foreach ($expectedTileRendererField in $expectedTileRendererFields.GetEnumerator()) {
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$($expectedTileRendererField.Key)=$($expectedTileRendererField.Value)\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove production tile renderer field: $($expectedTileRendererField.Key)=$($expectedTileRendererField.Value)"
+        }
     }
 }
 if ($requiresPackageStreamingSafePoint) {

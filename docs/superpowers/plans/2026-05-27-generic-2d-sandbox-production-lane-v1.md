@@ -276,22 +276,25 @@ Evidence: RED compile proof first failed with unresolved `mirakana/runtime/sandb
 - Create: `engine/renderer/include/mirakana/renderer/tile_chunk_renderer.hpp`
 - Create: `engine/renderer/src/tile_chunk_renderer.cpp`
 - Modify: `engine/renderer/CMakeLists.txt`
-- Modify: `engine/renderer/include/mirakana/renderer/sprite_batch.hpp`
-- Modify: `engine/renderer/src/sprite_batch.cpp`
 - Create: `tests/unit/renderer_tile_chunk_renderer_tests.cpp`
 - Modify: `games/sample_2d_desktop_runtime_package/main.cpp`
 
-- [ ] Re-check D3D12 and Vulkan synchronization docs before GPU-visible tile upload or lightmap work.
-- [ ] Add RED tests for chunk mesh generation: visible cells only, atlas UV rows, layer sorting, material grouping, transparent/opaque split, and deterministic draw rows.
-- [ ] Add RED tests for dirty-region rebuild budgets: partial chunk rebuild, full chunk rebuild, no-op clean chunk, and over-budget diagnostics.
-- [ ] Add RED tests for lightmap rows: light cell grid, changed light region, atlas/light texture dependency, and renderer-neutral submission. Do not implement backend-native texture ownership in `MK_runtime`.
-- [ ] Add package smoke counters under the selected 2D sample only after focused tests pass.
-- [ ] Run:
+- [x] Re-check D3D12 and Vulkan synchronization docs before GPU-visible tile upload or lightmap work.
+- [x] Add RED tests for chunk mesh generation: visible cells only, atlas UV rows, layer sorting, material grouping, transparent/opaque split, and deterministic draw rows.
+- [x] Add RED tests for dirty-region rebuild budgets: partial chunk rebuild, full chunk rebuild, no-op clean chunk, and over-budget diagnostics.
+- [x] Add RED tests for lightmap rows: light cell grid, changed light region, atlas/light texture dependency, and renderer-neutral submission. Do not implement backend-native texture ownership in `MK_runtime`.
+- [x] Add package smoke counters under the selected 2D sample only after focused tests pass.
+- [x] Run:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_tile_chunk_renderer_tests sample_2d_desktop_runtime_package
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "renderer_tile_chunk_renderer|sample_2d_desktop_runtime_package"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_tile_chunk_renderer_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "renderer_tile_chunk_renderer"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset desktop-runtime
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset desktop-runtime --target sample_2d_desktop_runtime_package
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset desktop-runtime --output-on-failure -R "sample_2d_desktop_runtime_package"
 ```
+
+Evidence: RED compile proof first failed with unresolved `mirakana/renderer/tile_chunk_renderer.hpp` after registering `MK_renderer_tile_chunk_renderer_tests`. Context7 official CMake, Direct3D 12 barrier/state-transition, and Vulkan synchronization2 barrier/layout/access-mask references were rechecked before choosing a renderer-neutral value planner rather than backend upload ownership. GREEN focused validation then passed `MK_renderer_tile_chunk_renderer_tests` and `ctest -R "renderer_tile_chunk_renderer"` under `dev`, and `sample_2d_desktop_runtime_package` build plus `ctest -R "sample_2d_desktop_runtime_package"` under `desktop-runtime`. Manual package-smoke proof with `--require-production-tile-renderer` reported `tile_chunk_renderer_status=ready`, visible/opaque/transparent cells `3/2/1`, sprite rows `3`, draw rows `2`, texture binds `1`, dirty rebuild rows/cells `2/5`, light rows `3`, changed light cells `1`, diagnostics `0`, and zero backend-specific submission or native texture ownership invocation. Phase 6 adds `TileChunkCellRow`, `TileChunkDirtyRegion`, `TileChunkLightCellRow`, `TileChunkRendererDesc`, `TileChunkRendererPlan`, `TileChunkSpriteRow`, `TileChunkDrawRow`, `TileChunkDirtyRebuildRow`, `TileChunkLightmapRow`, and `plan_tile_chunk_renderer` in `MK_renderer`. Backend-native texture ownership, backend-specific submission, runtime renderer/RHI residency, public native handles, SDL3, and broad renderer quality remain outside this phase.
 
 ## Phase 7 - Sandbox Authoring And Cook Pipeline
 
