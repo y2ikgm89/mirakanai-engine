@@ -143,16 +143,26 @@ void sort_diagnostics(BackendRendererParityPolicyPlan& plan) {
     if (!is_valid_id(row.proof_id) || has_native_token(row.proof_id)) {
         return false;
     }
+    if (!row.host_validation_recipe_id.empty() &&
+        (!is_valid_id(row.host_validation_recipe_id) || has_native_token(row.host_validation_recipe_id))) {
+        return false;
+    }
     if (row.package_counter_id.empty()) {
         return row.host_gate_required;
     }
     return is_valid_id(row.package_counter_id) && !has_native_token(row.package_counter_id);
 }
 
+[[nodiscard]] bool host_validation_recipe_ready(const BackendRendererParityProofRow& row) noexcept {
+    return row.selected_backend != rhi::BackendKind::metal ||
+           (!row.host_validation_recipe_id.empty() && is_valid_id(row.host_validation_recipe_id) &&
+            !has_native_token(row.host_validation_recipe_id));
+}
+
 [[nodiscard]] bool is_host_gate_row(const BackendRendererParityProofRow& row) noexcept {
     return row.selected_backend == rhi::BackendKind::metal && row.proof_backend == rhi::BackendKind::metal &&
            row.host_gate_required && !row.host_validated && row.reviewed && !row.request_native_handle_access &&
-           proof_ids_valid(row);
+           host_validation_recipe_ready(row) && proof_ids_valid(row);
 }
 
 [[nodiscard]] bool is_ready_row(const BackendRendererParityProofRow& row) noexcept {
@@ -161,7 +171,7 @@ void sort_diagnostics(BackendRendererParityPolicyPlan& plan) {
                .proof_backend = row.proof_backend,
            }) &&
            row.reviewed && row.host_validated && !row.host_gate_required && !row.request_native_handle_access &&
-           proof_ids_valid(row);
+           host_validation_recipe_ready(row) && proof_ids_valid(row);
 }
 
 void validate_budget(BackendRendererParityPolicyPlan& plan, const BackendRendererParityPolicyRequest& request) {
@@ -285,6 +295,12 @@ void validate_proof_rows(BackendRendererParityPolicyPlan& plan, const BackendRen
                            "Metal renderer parity needs Apple host evidence or an explicit host gate",
                            row.source_index);
         }
+        if (row.selected_backend == rhi::BackendKind::metal && row.host_validation_recipe_id.empty()) {
+            add_diagnostic(plan, BackendRendererParityDiagnosticCode::missing_host_validation_recipe,
+                           row.selected_backend, row.feature, row.proof_id,
+                           "Metal renderer parity host evidence needs an explicit validation recipe id",
+                           row.source_index);
+        }
         if (row.request_native_handle_access) {
             add_diagnostic(plan, BackendRendererParityDiagnosticCode::unsupported_native_handle_claim,
                            row.selected_backend, row.feature, row.proof_id,
@@ -349,6 +365,7 @@ void compute_replay_hash(BackendRendererParityPolicyPlan& plan, const BackendRen
         hash_mix(hash, row.reviewed ? 1U : 0U);
         hash_mix(hash, row.host_validated ? 1U : 0U);
         hash_mix(hash, row.host_gate_required ? 1U : 0U);
+        hash_mix_string(hash, row.host_validation_recipe_id);
         hash_mix(hash, row.request_native_handle_access ? 1U : 0U);
         hash_mix_string(hash, row.package_counter_id);
         hash_mix(hash, row.source_index);
@@ -431,6 +448,8 @@ const char* backend_renderer_parity_diagnostic_message(const BackendRendererPari
         return "cross_backend_proof_transfer";
     case BackendRendererParityDiagnosticCode::missing_metal_host_evidence:
         return "missing_metal_host_evidence";
+    case BackendRendererParityDiagnosticCode::missing_host_validation_recipe:
+        return "missing_host_validation_recipe";
     case BackendRendererParityDiagnosticCode::unsupported_native_handle_claim:
         return "unsupported_native_handle_claim";
     case BackendRendererParityDiagnosticCode::row_budget_exceeded:

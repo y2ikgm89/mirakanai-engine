@@ -39,6 +39,7 @@ enum class BackendRendererParityDiagnosticCode : std::uint8_t {
     invalid_proof,
     cross_backend_proof_transfer,
     missing_metal_host_evidence,
+    missing_host_validation_recipe,
     unsupported_native_handle_claim,
     row_budget_exceeded,
 };
@@ -56,6 +57,7 @@ struct BackendRendererParityProofRow {
     bool reviewed{false};
     bool host_validated{false};
     bool host_gate_required{false};
+    std::string host_validation_recipe_id;
     bool request_native_handle_access{false};
     std::string package_counter_id;
     std::uint32_t source_index{0U};
