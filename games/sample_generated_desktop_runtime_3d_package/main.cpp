@@ -1775,6 +1775,10 @@ struct RenderingVfxProfilingProbeResult {
     std::size_t backend_evidence_rows{0U};
     std::size_t backend_evidence_ready{0U};
     std::size_t backend_evidence_host_gated{0U};
+    std::size_t cpu_profile_rows{0U};
+    std::size_t package_counter_rows{0U};
+    std::size_t package_counter_ready{0U};
+    std::size_t package_counter_host_gated{0U};
     std::size_t crash_telemetry_handoff_rows{0U};
     std::size_t host_validated_backends{0U};
     std::size_t rejected_unsafe_rows{0U};
@@ -2809,6 +2813,60 @@ validate_simulation_management_package_evidence(std::string_view sample_id) {
                                 .source_index = 12U,
                             },
                         },
+                    .cpu_profile_rows =
+                        {
+                            mirakana::RendererProductionCpuProfileRow{
+                                .backend = Backend::d3d12,
+                                .profile_zone_id = "frame.main.cpu",
+                                .begin_tick = 2000ULL,
+                                .end_tick = 2900ULL,
+                                .budget_us = 1200U,
+                                .sample_count = 4U,
+                                .source_index = 13U,
+                            },
+                            mirakana::RendererProductionCpuProfileRow{
+                                .backend = Backend::vulkan,
+                                .profile_zone_id = "frame.main.cpu",
+                                .begin_tick = 4000ULL,
+                                .end_tick = 4900ULL,
+                                .budget_us = 1200U,
+                                .sample_count = 4U,
+                                .source_index = 14U,
+                            },
+                            mirakana::RendererProductionCpuProfileRow{
+                                .backend = Backend::metal,
+                                .profile_zone_id = "frame.main.cpu",
+                                .begin_tick = 6000ULL,
+                                .end_tick = 6900ULL,
+                                .budget_us = 1200U,
+                                .sample_count = 4U,
+                                .source_index = 15U,
+                            },
+                        },
+                    .package_counter_rows =
+                        {
+                            mirakana::RendererProductionPackageCounterRow{
+                                .backend = Backend::d3d12,
+                                .counter_id = "rendering_vfx_profiling.d3d12.backend_ready",
+                                .ready = true,
+                                .host_gated = false,
+                                .source_index = 16U,
+                            },
+                            mirakana::RendererProductionPackageCounterRow{
+                                .backend = Backend::vulkan,
+                                .counter_id = "rendering_vfx_profiling.vulkan.backend_ready",
+                                .ready = true,
+                                .host_gated = false,
+                                .source_index = 17U,
+                            },
+                            mirakana::RendererProductionPackageCounterRow{
+                                .backend = Backend::metal,
+                                .counter_id = "rendering_vfx_profiling.metal.host_gated",
+                                .ready = false,
+                                .host_gated = true,
+                                .source_index = 18U,
+                            },
+                        },
                     .crash_telemetry_handoff_rows =
                         {
                             mirakana::RendererProductionCrashTelemetryHandoffRow{
@@ -2821,7 +2879,7 @@ validate_simulation_management_package_evidence(std::string_view sample_id) {
                                 .operator_handoff_ready = true,
                                 .request_crash_upload = false,
                                 .request_native_capture = false,
-                                .source_index = 13U,
+                                .source_index = 19U,
                             },
                             mirakana::RendererProductionCrashTelemetryHandoffRow{
                                 .handoff_id = "handoff.strict_vulkan",
@@ -2833,7 +2891,7 @@ validate_simulation_management_package_evidence(std::string_view sample_id) {
                                 .operator_handoff_ready = true,
                                 .request_crash_upload = false,
                                 .request_native_capture = false,
-                                .source_index = 14U,
+                                .source_index = 20U,
                             },
                             mirakana::RendererProductionCrashTelemetryHandoffRow{
                                 .handoff_id = "handoff.apple",
@@ -2845,7 +2903,7 @@ validate_simulation_management_package_evidence(std::string_view sample_id) {
                                 .operator_handoff_ready = true,
                                 .request_crash_upload = false,
                                 .request_native_capture = false,
-                                .source_index = 15U,
+                                .source_index = 21U,
                             },
                         },
                     .row_budget = 32U,
@@ -2933,6 +2991,10 @@ validate_simulation_management_package_evidence(std::string_view sample_id) {
     result.backend_evidence_rows = plan.backend_evidence_row_count;
     result.backend_evidence_ready = plan.backend_evidence_ready_count;
     result.backend_evidence_host_gated = plan.backend_evidence_host_gated_count;
+    result.cpu_profile_rows = plan.cpu_profile_row_count;
+    result.package_counter_rows = plan.package_counter_row_count;
+    result.package_counter_ready = plan.package_counter_ready_count;
+    result.package_counter_host_gated = plan.package_counter_host_gated_count;
     result.crash_telemetry_handoff_rows = plan.crash_telemetry_handoff_row_count;
     result.host_validated_backends = plan.host_validated_backend_count;
     result.rejected_unsafe_rows = plan.rejected_unsafe_row_count;
@@ -2969,7 +3031,9 @@ validate_simulation_management_package_evidence(std::string_view sample_id) {
         plan.status == Status::host_evidence_required && result.feature_rows == 3U &&
         result.gpu_particle_budget_rows == 3U && result.postprocess_rows == 3U && result.backend_timing_rows == 3U &&
         result.backend_evidence_rows == 3U && result.backend_evidence_ready == 2U &&
-        result.backend_evidence_host_gated == 1U && result.crash_telemetry_handoff_rows == 3U &&
+        result.backend_evidence_host_gated == 1U && result.cpu_profile_rows == 3U &&
+        result.package_counter_rows == 3U && result.package_counter_ready == 2U &&
+        result.package_counter_host_gated == 1U && result.crash_telemetry_handoff_rows == 3U &&
         result.host_validated_backends == 2U && result.rejected_unsafe_rows == 0U && result.replay_hash != 0U &&
         result.d3d12_host_evidence_ready && result.vulkan_strict_host_evidence_ready &&
         !result.metal_host_evidence_ready && result.requires_metal_host_evidence && !result.has_metal_host_evidence &&
@@ -2983,6 +3047,8 @@ validate_simulation_management_package_evidence(std::string_view sample_id) {
                    result.gpu_particle_budget_rows == 3U && result.postprocess_rows == 3U &&
                    result.backend_timing_rows == 3U && result.backend_evidence_rows == 3U &&
                    result.backend_evidence_ready == 3U && result.backend_evidence_host_gated == 0U &&
+                   result.cpu_profile_rows == 3U && result.package_counter_rows == 3U &&
+                   result.package_counter_ready == 3U && result.package_counter_host_gated == 0U &&
                    result.crash_telemetry_handoff_rows == 3U && result.host_validated_backends == 3U &&
                    result.rejected_unsafe_rows == 0U && result.replay_hash != 0U && result.d3d12_host_evidence_ready &&
                    result.vulkan_strict_host_evidence_ready && result.metal_host_evidence_ready &&
@@ -10379,6 +10445,11 @@ int main(int argc, char** argv) {
         << " rendering_vfx_profiling_backend_evidence_ready=" << rendering_vfx_profiling_probe.backend_evidence_ready
         << " rendering_vfx_profiling_backend_evidence_host_gated="
         << rendering_vfx_profiling_probe.backend_evidence_host_gated
+        << " rendering_vfx_profiling_cpu_profile_rows=" << rendering_vfx_profiling_probe.cpu_profile_rows
+        << " rendering_vfx_profiling_package_counter_rows=" << rendering_vfx_profiling_probe.package_counter_rows
+        << " rendering_vfx_profiling_package_counter_ready=" << rendering_vfx_profiling_probe.package_counter_ready
+        << " rendering_vfx_profiling_package_counter_host_gated="
+        << rendering_vfx_profiling_probe.package_counter_host_gated
         << " rendering_vfx_profiling_crash_telemetry_handoff_rows="
         << rendering_vfx_profiling_probe.crash_telemetry_handoff_rows
         << " rendering_vfx_profiling_host_validated_backends=" << rendering_vfx_profiling_probe.host_validated_backends
@@ -11134,6 +11205,13 @@ int main(int argc, char** argv) {
                       << rendering_vfx_profiling_probe.backend_evidence_ready
                       << " rendering_vfx_profiling_backend_evidence_host_gated="
                       << rendering_vfx_profiling_probe.backend_evidence_host_gated
+                      << " rendering_vfx_profiling_cpu_profile_rows=" << rendering_vfx_profiling_probe.cpu_profile_rows
+                      << " rendering_vfx_profiling_package_counter_rows="
+                      << rendering_vfx_profiling_probe.package_counter_rows
+                      << " rendering_vfx_profiling_package_counter_ready="
+                      << rendering_vfx_profiling_probe.package_counter_ready
+                      << " rendering_vfx_profiling_package_counter_host_gated="
+                      << rendering_vfx_profiling_probe.package_counter_host_gated
                       << " rendering_vfx_profiling_crash_telemetry_handoff_rows="
                       << rendering_vfx_profiling_probe.crash_telemetry_handoff_rows
                       << " rendering_vfx_profiling_host_validated_backends="

@@ -274,6 +274,8 @@ function Invoke-ValidateToolScriptBatch {
             $null = New-Item -ItemType Directory -Path $outputLogDirectory -Force
         }
 
+        $validateProcessExitDrainMilliseconds = 2000
+        $validateStreamDrainMilliseconds = 2000
         $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
         $capture = Get-ValidateOutputCapture -FirstLineCount $FirstLineCount -TailLineCount $TailLineCount
         $utf8NoBom = [System.Text.UTF8Encoding]::new($false)
@@ -293,6 +295,9 @@ function Invoke-ValidateToolScriptBatch {
             }
             foreach ($argument in @($ChildArguments)) {
                 $startInfo.ArgumentList.Add($argument)
+            }
+            if ($ScriptFileName -eq "check-mobile-packaging.ps1" -and @($ChildArguments) -notcontains "-RequireAndroid") {
+                $startInfo.Environment["MK_MOBILE_DEVICE_PROBE"] = "0"
             }
 
             $process = [System.Diagnostics.Process]::new()
@@ -322,7 +327,12 @@ function Invoke-ValidateToolScriptBatch {
             }
 
             try {
-                $process.WaitForExit()
+                if (-not $process.WaitForExit($validateProcessExitDrainMilliseconds)) {
+                    Write-ValidateCapturedLine `
+                        -Writer $writer `
+                        -Capture $capture `
+                        -Line "validate: process did not exit within ${validateProcessExitDrainMilliseconds}ms after wait/kill for $ScriptFileName"
+                }
             }
             catch {
                 Write-ValidateCapturedLine `
@@ -330,9 +340,47 @@ function Invoke-ValidateToolScriptBatch {
                     -Capture $capture `
                     -Line "validate: failed while waiting for $ScriptFileName to exit after cancellation: $_"
             }
-            Add-ValidateOutputText -Text $standardOutputTask.GetAwaiter().GetResult() -Writer $writer -Capture $capture
-            Add-ValidateOutputText -Text $standardErrorTask.GetAwaiter().GetResult() -Writer $writer -Capture $capture
-            $exitCode = if ($timedOut) { 124 } else { $process.ExitCode }
+
+            try {
+                if ($standardOutputTask.Wait($validateStreamDrainMilliseconds)) {
+                    Add-ValidateOutputText -Text $standardOutputTask.GetAwaiter().GetResult() -Writer $writer -Capture $capture
+                }
+                else {
+                    Write-ValidateCapturedLine `
+                        -Writer $writer `
+                        -Capture $capture `
+                        -Line "validate: stdout stream capture did not finish within ${validateStreamDrainMilliseconds}ms for $ScriptFileName"
+                }
+            }
+            catch {
+                Write-ValidateCapturedLine -Writer $writer -Capture $capture -Line "validate: stdout capture failed for ${ScriptFileName}: $_"
+            }
+
+            try {
+                if ($standardErrorTask.Wait($validateStreamDrainMilliseconds)) {
+                    Add-ValidateOutputText -Text $standardErrorTask.GetAwaiter().GetResult() -Writer $writer -Capture $capture
+                }
+                else {
+                    Write-ValidateCapturedLine `
+                        -Writer $writer `
+                        -Capture $capture `
+                        -Line "validate: stderr stream capture did not finish within ${validateStreamDrainMilliseconds}ms for $ScriptFileName"
+                }
+            }
+            catch {
+                Write-ValidateCapturedLine -Writer $writer -Capture $capture -Line "validate: stderr capture failed for ${ScriptFileName}: $_"
+            }
+
+            if ($timedOut) {
+                $exitCode = 124
+            }
+            elseif ($process.HasExited) {
+                $exitCode = $process.ExitCode
+            }
+            else {
+                $exitCode = 1
+                Write-ValidateCapturedLine -Writer $writer -Capture $capture -Line "validate: process remained active without timeout status for $ScriptFileName"
+            }
         }
         catch {
             $line = [string]$_

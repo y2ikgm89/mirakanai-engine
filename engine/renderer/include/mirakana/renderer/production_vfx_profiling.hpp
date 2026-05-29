@@ -46,6 +46,10 @@ enum class RendererProductionVfxProfilingDiagnosticCode : std::uint8_t {
     missing_backend_validation_evidence,
     missing_backend_host_evidence,
     missing_backend_capture_handoff,
+    invalid_cpu_profile_row,
+    invalid_package_counter_row,
+    missing_cpu_profile_rows,
+    missing_package_counter_rows,
     row_budget_exceeded,
 };
 
@@ -126,6 +130,24 @@ struct RendererProductionBackendEvidenceRow {
     std::uint32_t source_index{0U};
 };
 
+struct RendererProductionCpuProfileRow {
+    rhi::BackendKind backend{rhi::BackendKind::null};
+    std::string profile_zone_id;
+    std::uint64_t begin_tick{0U};
+    std::uint64_t end_tick{0U};
+    std::uint32_t budget_us{0U};
+    std::uint32_t sample_count{0U};
+    std::uint32_t source_index{0U};
+};
+
+struct RendererProductionPackageCounterRow {
+    rhi::BackendKind backend{rhi::BackendKind::null};
+    std::string counter_id;
+    bool ready{false};
+    bool host_gated{false};
+    std::uint32_t source_index{0U};
+};
+
 struct RendererProductionCrashTelemetryHandoffRow {
     std::string handoff_id;
     rhi::BackendKind backend{rhi::BackendKind::null};
@@ -145,6 +167,8 @@ struct RendererProductionVfxProfilingRequest {
     std::vector<RendererProductionGpuParticleBudgetRow> gpu_particle_budget_rows;
     std::vector<RendererProductionPostprocessRow> postprocess_rows;
     std::vector<RendererProductionBackendTimingRow> backend_timing_rows;
+    std::vector<RendererProductionCpuProfileRow> cpu_profile_rows;
+    std::vector<RendererProductionPackageCounterRow> package_counter_rows;
     std::vector<RendererProductionCrashTelemetryHandoffRow> crash_telemetry_handoff_rows;
     std::size_t row_budget{256U};
     std::uint64_t seed{0U};
@@ -167,6 +191,8 @@ struct RendererProductionVfxProfilingPlan {
     std::vector<RendererProductionPostprocessRow> postprocess_rows;
     std::vector<RendererProductionBackendTimingRow> backend_timing_rows;
     std::vector<RendererProductionBackendEvidenceRow> backend_evidence_rows;
+    std::vector<RendererProductionCpuProfileRow> cpu_profile_rows;
+    std::vector<RendererProductionPackageCounterRow> package_counter_rows;
     std::vector<RendererProductionCrashTelemetryHandoffRow> crash_telemetry_handoff_rows;
     std::size_t feature_row_count{0U};
     std::size_t gpu_particle_budget_row_count{0U};
@@ -175,6 +201,10 @@ struct RendererProductionVfxProfilingPlan {
     std::size_t backend_evidence_row_count{0U};
     std::size_t backend_evidence_ready_count{0U};
     std::size_t backend_evidence_host_gated_count{0U};
+    std::size_t cpu_profile_row_count{0U};
+    std::size_t package_counter_row_count{0U};
+    std::size_t package_counter_ready_count{0U};
+    std::size_t package_counter_host_gated_count{0U};
     std::size_t crash_telemetry_handoff_row_count{0U};
     std::size_t host_validated_backend_count{0U};
     std::size_t rejected_unsafe_row_count{0U};
