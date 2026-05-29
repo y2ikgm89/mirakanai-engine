@@ -6115,6 +6115,216 @@ MK_TEST("postprocess chain policy plans supported effects and fail-closed diagno
         disabled_only, mirakana::PostprocessChainDiagnosticCode::missing_scene_color));
 }
 
+[[nodiscard]] mirakana::PostprocessToneMappingEvidenceRow
+make_tone_mapping_row(std::string chain_id, mirakana::rhi::BackendKind backend, bool host_validated,
+                      bool host_gate_required, std::uint32_t source_index) {
+    return mirakana::PostprocessToneMappingEvidenceRow{
+        .chain_id = std::move(chain_id),
+        .backend = backend,
+        .tone_mapping_operator = mirakana::PostprocessToneMappingOperator::aces_fitted,
+        .input_transfer = mirakana::PostprocessColorTransferFunction::linear_scene,
+        .output_transfer = mirakana::PostprocessColorTransferFunction::srgb,
+        .exposure_bias_ev = 0.0F,
+        .paper_white_nits = 200U,
+        .max_content_nits = 1000U,
+        .display_max_nits = 1000U,
+        .hdr_input_available = true,
+        .color_space_evidence_ready = host_validated,
+        .resource_synchronization_evidence_ready = host_validated,
+        .shader_validation_evidence_ready = host_validated,
+        .backend_validation_evidence_ready = host_validated,
+        .host_validated = host_validated,
+        .host_gate_required = host_gate_required,
+        .request_native_handle_access = false,
+        .request_subjective_visual_quality_claim = false,
+        .source_index = source_index,
+    };
+}
+
+[[nodiscard]] mirakana::PostprocessToneMappingEvidenceRequest
+make_tone_mapping_request(bool include_metal_host_evidence) {
+    return mirakana::PostprocessToneMappingEvidenceRequest{
+        .required_backends =
+            {
+                mirakana::rhi::BackendKind::d3d12,
+                mirakana::rhi::BackendKind::vulkan,
+                mirakana::rhi::BackendKind::metal,
+            },
+        .rows =
+            {
+                make_tone_mapping_row("post.tone", mirakana::rhi::BackendKind::d3d12, true, false, 1U),
+                make_tone_mapping_row("post.tone", mirakana::rhi::BackendKind::vulkan, true, false, 2U),
+                make_tone_mapping_row("post.tone", mirakana::rhi::BackendKind::metal, include_metal_host_evidence,
+                                      !include_metal_host_evidence, 3U),
+            },
+        .row_budget = 16U,
+        .seed = 99U,
+    };
+}
+
+MK_TEST("postprocess tone mapping evidence keeps Metal host gated") {
+    const auto plan = mirakana::plan_postprocess_tone_mapping_evidence(make_tone_mapping_request(false));
+
+    MK_REQUIRE(plan.status == mirakana::PostprocessToneMappingEvidenceStatus::host_evidence_required);
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.diagnostics.empty());
+    MK_REQUIRE(plan.row_count == 3U);
+    MK_REQUIRE(plan.ready_row_count == 2U);
+    MK_REQUIRE(plan.host_gated_row_count == 1U);
+    MK_REQUIRE(plan.host_validated_backend_count == 2U);
+    MK_REQUIRE(plan.d3d12_tone_mapping_ready);
+    MK_REQUIRE(plan.vulkan_strict_tone_mapping_ready);
+    MK_REQUIRE(!plan.metal_tone_mapping_ready);
+    MK_REQUIRE(plan.requires_metal_host_evidence);
+    MK_REQUIRE(!plan.has_metal_host_evidence);
+    MK_REQUIRE(plan.replay_hash != 0U);
+    MK_REQUIRE(!plan.invoked_gpu_commands);
+    MK_REQUIRE(!plan.invoked_native_capture);
+    MK_REQUIRE(!plan.invoked_crash_upload);
+}
+
+MK_TEST("postprocess tone mapping evidence is ready with all backend host evidence") {
+    const auto plan = mirakana::plan_postprocess_tone_mapping_evidence(make_tone_mapping_request(true));
+
+    MK_REQUIRE(plan.status == mirakana::PostprocessToneMappingEvidenceStatus::ready);
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.diagnostics.empty());
+    MK_REQUIRE(plan.row_count == 3U);
+    MK_REQUIRE(plan.ready_row_count == 3U);
+    MK_REQUIRE(plan.host_gated_row_count == 0U);
+    MK_REQUIRE(plan.host_validated_backend_count == 3U);
+    MK_REQUIRE(plan.d3d12_tone_mapping_ready);
+    MK_REQUIRE(plan.vulkan_strict_tone_mapping_ready);
+    MK_REQUIRE(plan.metal_tone_mapping_ready);
+    MK_REQUIRE(plan.requires_metal_host_evidence);
+    MK_REQUIRE(plan.has_metal_host_evidence);
+    MK_REQUIRE(plan.replay_hash != 0U);
+}
+
+MK_TEST("postprocess tone mapping evidence rejects missing strict backend proof") {
+    auto request = make_tone_mapping_request(true);
+    request.rows[0].color_space_evidence_ready = false;
+    request.rows[1].resource_synchronization_evidence_ready = false;
+    request.rows[1].shader_validation_evidence_ready = false;
+    request.rows[1].backend_validation_evidence_ready = false;
+
+    const auto plan = mirakana::plan_postprocess_tone_mapping_evidence(request);
+
+    MK_REQUIRE(plan.status == mirakana::PostprocessToneMappingEvidenceStatus::invalid_request);
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(mirakana::has_postprocess_tone_mapping_evidence_diagnostic(
+        plan, mirakana::PostprocessToneMappingEvidenceDiagnosticCode::missing_color_space_evidence));
+    MK_REQUIRE(mirakana::has_postprocess_tone_mapping_evidence_diagnostic(
+        plan, mirakana::PostprocessToneMappingEvidenceDiagnosticCode::missing_resource_synchronization_evidence));
+    MK_REQUIRE(mirakana::has_postprocess_tone_mapping_evidence_diagnostic(
+        plan, mirakana::PostprocessToneMappingEvidenceDiagnosticCode::missing_shader_validation_evidence));
+    MK_REQUIRE(mirakana::has_postprocess_tone_mapping_evidence_diagnostic(
+        plan, mirakana::PostprocessToneMappingEvidenceDiagnosticCode::missing_backend_validation_evidence));
+    MK_REQUIRE(plan.replay_hash == 0U);
+}
+
+MK_TEST("postprocess tone mapping evidence rejects unsafe claims and invalid tone rows") {
+    auto request = make_tone_mapping_request(true);
+    request.rows[0].chain_id = "native/id3d12";
+    request.rows[0].tone_mapping_operator = mirakana::PostprocessToneMappingOperator::unknown;
+    request.rows[0].input_transfer = mirakana::PostprocessColorTransferFunction::srgb;
+    request.rows[0].paper_white_nits = 1200U;
+    request.rows[0].display_max_nits = 1000U;
+    request.rows[0].exposure_bias_ev = 25.0F;
+    request.rows[0].hdr_input_available = false;
+    request.rows[0].request_native_handle_access = true;
+    request.rows[0].request_subjective_visual_quality_claim = true;
+    request.row_budget = 2U;
+
+    const auto plan = mirakana::plan_postprocess_tone_mapping_evidence(request);
+
+    MK_REQUIRE(plan.status == mirakana::PostprocessToneMappingEvidenceStatus::invalid_request);
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(mirakana::has_postprocess_tone_mapping_evidence_diagnostic(
+        plan, mirakana::PostprocessToneMappingEvidenceDiagnosticCode::invalid_chain_id));
+    MK_REQUIRE(mirakana::has_postprocess_tone_mapping_evidence_diagnostic(
+        plan, mirakana::PostprocessToneMappingEvidenceDiagnosticCode::unsupported_operator));
+    MK_REQUIRE(mirakana::has_postprocess_tone_mapping_evidence_diagnostic(
+        plan, mirakana::PostprocessToneMappingEvidenceDiagnosticCode::invalid_transfer_function));
+    MK_REQUIRE(mirakana::has_postprocess_tone_mapping_evidence_diagnostic(
+        plan, mirakana::PostprocessToneMappingEvidenceDiagnosticCode::invalid_luminance_range));
+    MK_REQUIRE(mirakana::has_postprocess_tone_mapping_evidence_diagnostic(
+        plan, mirakana::PostprocessToneMappingEvidenceDiagnosticCode::invalid_exposure_bias));
+    MK_REQUIRE(mirakana::has_postprocess_tone_mapping_evidence_diagnostic(
+        plan, mirakana::PostprocessToneMappingEvidenceDiagnosticCode::missing_hdr_input));
+    MK_REQUIRE(mirakana::has_postprocess_tone_mapping_evidence_diagnostic(
+        plan, mirakana::PostprocessToneMappingEvidenceDiagnosticCode::unsupported_native_handle_claim));
+    MK_REQUIRE(mirakana::has_postprocess_tone_mapping_evidence_diagnostic(
+        plan, mirakana::PostprocessToneMappingEvidenceDiagnosticCode::unsupported_subjective_quality_claim));
+    MK_REQUIRE(mirakana::has_postprocess_tone_mapping_evidence_diagnostic(
+        plan, mirakana::PostprocessToneMappingEvidenceDiagnosticCode::row_budget_exceeded));
+    MK_REQUIRE(plan.rejected_unsafe_row_count >= 1U);
+}
+
+MK_TEST("postprocess tone mapping evidence rejects backend tokens in chain ids") {
+    auto request = make_tone_mapping_request(true);
+    request.rows[0].chain_id = "d3d12";
+    request.rows[1].chain_id = "vulkan_hdr";
+    request.rows[2].chain_id = "metal_tonemap";
+
+    const auto plan = mirakana::plan_postprocess_tone_mapping_evidence(request);
+
+    MK_REQUIRE(plan.status == mirakana::PostprocessToneMappingEvidenceStatus::invalid_request);
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(mirakana::has_postprocess_tone_mapping_evidence_diagnostic(
+        plan, mirakana::PostprocessToneMappingEvidenceDiagnosticCode::invalid_chain_id));
+    MK_REQUIRE(plan.rejected_unsafe_row_count >= 3U);
+    MK_REQUIRE(plan.replay_hash == 0U);
+}
+
+MK_TEST("postprocess tone mapping evidence row budget counts evidence rows") {
+    auto request = make_tone_mapping_request(true);
+    request.row_budget = request.rows.size();
+
+    const auto boundary = mirakana::plan_postprocess_tone_mapping_evidence(request);
+
+    MK_REQUIRE(boundary.status == mirakana::PostprocessToneMappingEvidenceStatus::ready);
+    MK_REQUIRE(!mirakana::has_postprocess_tone_mapping_evidence_diagnostic(
+        boundary, mirakana::PostprocessToneMappingEvidenceDiagnosticCode::row_budget_exceeded));
+
+    request.row_budget = request.rows.size() - 1U;
+    const auto exceeded = mirakana::plan_postprocess_tone_mapping_evidence(request);
+
+    MK_REQUIRE(exceeded.status == mirakana::PostprocessToneMappingEvidenceStatus::invalid_request);
+    MK_REQUIRE(mirakana::has_postprocess_tone_mapping_evidence_diagnostic(
+        exceeded, mirakana::PostprocessToneMappingEvidenceDiagnosticCode::row_budget_exceeded));
+}
+
+MK_TEST("postprocess tone mapping evidence replay hash includes accepted row details") {
+    auto request = make_tone_mapping_request(true);
+    const auto base = mirakana::plan_postprocess_tone_mapping_evidence(request);
+
+    request.rows[0].exposure_bias_ev = 0.25F;
+    const auto exposure_variant = mirakana::plan_postprocess_tone_mapping_evidence(request);
+
+    request.rows[0].exposure_bias_ev = -0.25F;
+    const auto negative_exposure_variant = mirakana::plan_postprocess_tone_mapping_evidence(request);
+
+    MK_REQUIRE(base.status == mirakana::PostprocessToneMappingEvidenceStatus::ready);
+    MK_REQUIRE(exposure_variant.status == mirakana::PostprocessToneMappingEvidenceStatus::ready);
+    MK_REQUIRE(negative_exposure_variant.status == mirakana::PostprocessToneMappingEvidenceStatus::ready);
+    MK_REQUIRE(base.replay_hash != 0U);
+    MK_REQUIRE(exposure_variant.replay_hash != base.replay_hash);
+    MK_REQUIRE(negative_exposure_variant.replay_hash != base.replay_hash);
+    MK_REQUIRE(negative_exposure_variant.replay_hash != exposure_variant.replay_hash);
+}
+
+MK_TEST("postprocess tone mapping evidence reports no rows without backend claims") {
+    const auto plan =
+        mirakana::plan_postprocess_tone_mapping_evidence(mirakana::PostprocessToneMappingEvidenceRequest{});
+
+    MK_REQUIRE(plan.status == mirakana::PostprocessToneMappingEvidenceStatus::no_rows);
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.diagnostics.empty());
+    MK_REQUIRE(plan.row_count == 0U);
+    MK_REQUIRE(plan.replay_hash == 0U);
+}
+
 MK_TEST("scene scale policy plans instancing culling lod and fail-closed diagnostics") {
     const std::array groups{
         mirakana::SceneScaleDrawGroupDesc{.kind = mirakana::SceneScaleDrawGroupKind::static_mesh,
