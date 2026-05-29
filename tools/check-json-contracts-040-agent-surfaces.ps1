@@ -542,7 +542,7 @@ if ($playable3dGap.Count -ne 0) {
     Write-Error "engine manifest aiOperableProductionLoop 3d-playable-vertical-slice gap must leave unsupportedProductionGaps after 1.0 closeout"
 }
 $recommendedText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
-if ([string]$productionLoop.recommendedNextPlan.id -notin @("general-purpose-game-production-v1", "generated-game-studio-v1", "engine-1-0-gap-matrix-v1", "next-production-gap-selection")) {
+if ([string]$productionLoop.recommendedNextPlan.id -notin @("general-purpose-game-production-v1", "generated-game-studio-v1", "engine-1-0-gap-matrix-v1", "next-production-gap-selection", "physics-navigation-commercial-coverage-v1")) {
     foreach ($needle in @(
         "3d-playable-vertical-slice",
         "generated desktop 3D package proof",
@@ -605,6 +605,19 @@ if ([string]$productionLoop.recommendedNextPlan.id -ne "general-purpose-game-pro
             "selection gate"
         )) {
             Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan selection gate"
+        }
+    } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "physics-navigation-commercial-coverage-v1") {
+        foreach ($needle in @(
+            "Physics Navigation Commercial Coverage v1",
+            "Jolt/Recast/Detour-class",
+            "adapter_boundary_id",
+            "host_validation_recipe_id",
+            "adapter_lifecycle_reviewed",
+            "unsupportedProductionGaps = []",
+            "native handles hidden",
+            "broad middleware parity fail-closed"
+        )) {
+            Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan physics/navigation selection"
         }
     } else {
         foreach ($needle in @(

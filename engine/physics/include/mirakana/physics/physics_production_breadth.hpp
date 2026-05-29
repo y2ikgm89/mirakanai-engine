@@ -52,6 +52,9 @@ enum class PhysicsProductionBreadthDiagnostic : std::uint8_t {
     missing_host_evidence,
     missing_package_counter,
     missing_dependency_legal_record,
+    missing_adapter_boundary,
+    missing_host_validation_recipe,
+    missing_adapter_lifecycle_review,
     missing_deterministic_replay,
     missing_budget,
     native_handles_exposed,
@@ -64,6 +67,9 @@ struct PhysicsProductionBreadthEvidenceRow {
     std::string feature_id;
     std::string official_source_url;
     std::string package_counter_id;
+    std::string adapter_boundary_id;
+    std::string host_validation_recipe_id;
+    bool adapter_lifecycle_reviewed{false};
     bool reviewed{false};
     bool host_validated{false};
     bool host_gated{false};

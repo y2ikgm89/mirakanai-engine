@@ -1655,6 +1655,19 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     )) {
         Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan selection gate closeout"
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "physics-navigation-commercial-coverage-v1") {
+    foreach ($needle in @(
+        "Physics Navigation Commercial Coverage v1",
+        "Jolt/Recast/Detour-class",
+        "adapter_boundary_id",
+        "host_validation_recipe_id",
+        "adapter_lifecycle_reviewed",
+        "unsupportedProductionGaps = []",
+        "native handles hidden",
+        "broad middleware parity fail-closed"
+    )) {
+        Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan physics/navigation selection"
+    }
 } else {
     foreach ($needle in @(
     "Frame Graph Transient Texture Alias Planning v1",

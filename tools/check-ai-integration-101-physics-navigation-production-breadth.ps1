@@ -12,6 +12,7 @@ $navigationCMakeText = Get-AgentSurfaceText "engine/navigation/CMakeLists.txt"
 $rootCMakeText = Get-AgentSurfaceText "CMakeLists.txt"
 $testText = Get-AgentSurfaceText "tests/unit/physics_navigation_production_breadth_tests.cpp"
 $planText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-26-engine-general-production-quality-expansion-v1.md"
+$commercialCoveragePlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-05-29-physics-navigation-commercial-coverage-v1.md"
 $currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
 $roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
 $modulesFragmentText = Get-AgentSurfaceText "engine/agent/manifest.fragments/004-modules.json"
@@ -25,6 +26,12 @@ foreach ($needle in @(
         "oriented_box_query",
         "persistent_joint_asset",
         "optional_native_adapter",
+        "adapter_boundary_id",
+        "host_validation_recipe_id",
+        "adapter_lifecycle_reviewed",
+        "missing_adapter_boundary",
+        "missing_host_validation_recipe",
+        "missing_adapter_lifecycle_review",
         "host_evidence_required",
         "native_handles_exposed",
         "unsupported_broad_claim",
@@ -38,6 +45,9 @@ foreach ($needle in @(
         "PhysicsProductionBreadthDiagnostic::missing_budget",
         "PhysicsProductionBreadthDiagnostic::missing_required_feature",
         "PhysicsProductionBreadthDiagnostic::missing_dependency_legal_record",
+        "PhysicsProductionBreadthDiagnostic::missing_adapter_boundary",
+        "PhysicsProductionBreadthDiagnostic::missing_host_validation_recipe",
+        "PhysicsProductionBreadthDiagnostic::missing_adapter_lifecycle_review",
         "PhysicsProductionBreadthStatus::host_evidence_required",
         "claims_broad_middleware_parity",
         "native_handles_exposed",
@@ -53,6 +63,12 @@ foreach ($needle in @(
         "navmesh_source_import",
         "string_pulling_path",
         "optional_recast_detour_adapter",
+        "adapter_boundary_id",
+        "host_validation_recipe_id",
+        "adapter_lifecycle_reviewed",
+        "missing_adapter_boundary",
+        "missing_host_validation_recipe",
+        "missing_adapter_lifecycle_review",
         "host_evidence_required",
         "source_mutation_claimed",
         "unsupported_broad_claim",
@@ -66,6 +82,9 @@ foreach ($needle in @(
         "NavigationProductionBreadthDiagnostic::missing_budget",
         "NavigationProductionBreadthDiagnostic::missing_required_feature",
         "NavigationProductionBreadthDiagnostic::missing_dependency_legal_record",
+        "NavigationProductionBreadthDiagnostic::missing_adapter_boundary",
+        "NavigationProductionBreadthDiagnostic::missing_host_validation_recipe",
+        "NavigationProductionBreadthDiagnostic::missing_adapter_lifecycle_review",
         "NavigationProductionBreadthStatus::host_evidence_required",
         "claims_arbitrary_runtime_bake",
         "exposes_native_recast_detour_handles",
@@ -82,9 +101,11 @@ foreach ($needle in @(
         "physics production breadth review accepts complete first party evidence",
         "physics production breadth review fails closed on missing and unsafe evidence",
         "physics production breadth review separates host gated optional adapter evidence",
+        "physics production breadth review requires optional adapter boundary evidence",
         "navigation production breadth review accepts complete first party evidence",
         "navigation production breadth review fails closed on source mutation and native claims",
         "navigation production breadth review separates host gated recast detour evidence",
+        "navigation production breadth review requires recast detour adapter boundary evidence",
         "https://jrouwe.github.io/JoltPhysics/",
         "https://recastnav.com/"
     )) {
@@ -101,6 +122,17 @@ foreach ($docSurface in @(
     Assert-ContainsText $docSurface.Text "review_navigation_production_breadth" $docSurface.Label
     Assert-ContainsText $docSurface.Text "host-gated" $docSurface.Label
     Assert-ContainsText $docSurface.Text "native handle" $docSurface.Label
+}
+
+foreach ($docSurface in @(
+        @{ Text = $commercialCoveragePlanText; Label = "docs/superpowers/plans/2026-05-29-physics-navigation-commercial-coverage-v1.md" },
+        @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
+        @{ Text = $roadmapText; Label = "docs/roadmap.md" },
+        @{ Text = $gameGuidanceFragmentText; Label = "engine/agent/manifest.fragments/014-gameCodeGuidance.json" }
+    )) {
+    Assert-ContainsText $docSurface.Text "adapter_boundary_id" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "host_validation_recipe_id" $docSurface.Label
+    Assert-ContainsText $docSurface.Text "adapter_lifecycle_reviewed" $docSurface.Label
 }
 
 foreach ($needle in @(

@@ -2255,7 +2255,7 @@ if ($runtimeResourceGap.Count -ne 0) {
 }
 $recommendedText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
 $recommendedPlanId = [string]$productionLoop.recommendedNextPlan.id
-$recommendedPlanUsesLegacyCloseoutContext = $recommendedPlanId -notin @("general-purpose-game-production-v1", "generated-game-studio-v1", "engine-1-0-gap-matrix-v1", "next-production-gap-selection")
+$recommendedPlanUsesLegacyCloseoutContext = $recommendedPlanId -notin @("general-purpose-game-production-v1", "generated-game-studio-v1", "engine-1-0-gap-matrix-v1", "next-production-gap-selection", "physics-navigation-commercial-coverage-v1")
 if ($productionLoop.currentActivePlan -eq "docs/superpowers/plans/2026-05-23-candidate-backlog-burn-down-v1.md") {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop.currentActivePlan must not point at completed Candidate Backlog Burn-down v1"
 }
@@ -2559,6 +2559,15 @@ if ($recommendedPlanId -eq "general-purpose-game-production-v1") {
     Assert-ContainsText $recommendedText "MK_audio_wasapi" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan selection gate"
     Assert-ContainsText $recommendedText "unsupportedProductionGaps = []" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan selection gate"
     Assert-ContainsText $recommendedText "selection gate" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan selection gate"
+} elseif ($recommendedPlanId -eq "physics-navigation-commercial-coverage-v1") {
+    Assert-ContainsText $recommendedText "Physics Navigation Commercial Coverage v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan physics/navigation selection"
+    Assert-ContainsText $recommendedText "Jolt/Recast/Detour-class" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan physics/navigation selection"
+    Assert-ContainsText $recommendedText "adapter_boundary_id" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan physics/navigation selection"
+    Assert-ContainsText $recommendedText "host_validation_recipe_id" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan physics/navigation selection"
+    Assert-ContainsText $recommendedText "adapter_lifecycle_reviewed" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan physics/navigation selection"
+    Assert-ContainsText $recommendedText "unsupportedProductionGaps = []" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan physics/navigation selection"
+    Assert-ContainsText $recommendedText "native handles hidden" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan physics/navigation selection"
+    Assert-ContainsText $recommendedText "broad middleware parity fail-closed" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan physics/navigation selection"
 } else {
     Assert-ContainsText $recommendedText "Frame Graph v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
     Assert-ContainsText $recommendedText "upload-staging-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"

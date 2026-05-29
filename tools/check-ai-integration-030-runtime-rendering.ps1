@@ -1960,6 +1960,11 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     foreach ($needle in @("First-Party Desktop Platform And SDL3 Removal v1", "MK_platform_win32", "MK_runtime_host_win32_presentation", "MK_audio_wasapi", "selection gate")) {
         Assert-ContainsText $selectionGateRecommendedText $needle "recommended next plan selection gate reason"
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "physics-navigation-commercial-coverage-v1") {
+    $physicsNavigationRecommendedText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
+    foreach ($needle in @("Physics Navigation Commercial Coverage v1", "Jolt/Recast/Detour-class", "adapter_boundary_id", "host_validation_recipe_id", "adapter_lifecycle_reviewed", "unsupportedProductionGaps = []", "native handles hidden", "broad middleware parity fail-closed")) {
+        Assert-ContainsText $physicsNavigationRecommendedText $needle "recommended next plan physics/navigation selection reason"
+    }
 } else {
     Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "Frame Graph v1" "recommended next plan reason"
     Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) "upload-staging-v1" "recommended next plan reason"
