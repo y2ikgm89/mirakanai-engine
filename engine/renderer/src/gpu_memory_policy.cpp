@@ -32,6 +32,24 @@ namespace {
            kind == GpuMemoryUploadPressureKind::staging_pool;
 }
 
+[[nodiscard]] bool is_supported_package_counter(GpuMemoryPackageCounterKind kind) noexcept {
+    switch (kind) {
+    case GpuMemoryPackageCounterKind::local_budget_bytes:
+    case GpuMemoryPackageCounterKind::local_usage_bytes:
+    case GpuMemoryPackageCounterKind::non_local_budget_bytes:
+    case GpuMemoryPackageCounterKind::non_local_usage_bytes:
+    case GpuMemoryPackageCounterKind::committed_byte_estimate:
+    case GpuMemoryPackageCounterKind::transient_heap_allocations:
+    case GpuMemoryPackageCounterKind::upload_bytes_written:
+    case GpuMemoryPackageCounterKind::framegraph_barrier_steps:
+    case GpuMemoryPackageCounterKind::residency_pressure_bytes:
+        return true;
+    case GpuMemoryPackageCounterKind::unknown:
+        return false;
+    }
+    return false;
+}
+
 [[nodiscard]] bool transient_heap_required(GpuMemoryResidencyClass residency) noexcept {
     return residency == GpuMemoryResidencyClass::transient;
 }
@@ -74,6 +92,32 @@ namespace {
     return "unknown";
 }
 
+[[nodiscard]] std::string_view package_counter_name(GpuMemoryPackageCounterKind kind) noexcept {
+    switch (kind) {
+    case GpuMemoryPackageCounterKind::local_budget_bytes:
+        return "local_budget_bytes";
+    case GpuMemoryPackageCounterKind::local_usage_bytes:
+        return "local_usage_bytes";
+    case GpuMemoryPackageCounterKind::non_local_budget_bytes:
+        return "non_local_budget_bytes";
+    case GpuMemoryPackageCounterKind::non_local_usage_bytes:
+        return "non_local_usage_bytes";
+    case GpuMemoryPackageCounterKind::committed_byte_estimate:
+        return "committed_byte_estimate";
+    case GpuMemoryPackageCounterKind::transient_heap_allocations:
+        return "transient_heap_allocations";
+    case GpuMemoryPackageCounterKind::upload_bytes_written:
+        return "upload_bytes_written";
+    case GpuMemoryPackageCounterKind::framegraph_barrier_steps:
+        return "framegraph_barrier_steps";
+    case GpuMemoryPackageCounterKind::residency_pressure_bytes:
+        return "residency_pressure_bytes";
+    case GpuMemoryPackageCounterKind::unknown:
+        return "unknown";
+    }
+    return "unknown";
+}
+
 [[nodiscard]] std::string_view backend_name(rhi::BackendKind backend) noexcept {
     switch (backend) {
     case rhi::BackendKind::null:
@@ -108,6 +152,12 @@ void add_diagnostic(GpuMemoryPolicyPlan& plan, GpuMemoryDiagnosticCode code, std
     return 0;
 }
 
+[[nodiscard]] bool residency_pressure_ready(const GpuMemoryPolicyDesc& desc) noexcept {
+    return desc.residency_pressure_bytes > 0 || desc.os_local_usage_bytes > 0 || desc.os_non_local_usage_bytes > 0 ||
+           desc.transient_heap_allocations > 0 || desc.transient_placed_allocations > 0 ||
+           desc.transient_placed_resources_alive > 0;
+}
+
 } // namespace
 
 GpuMemoryPolicyPlan plan_gpu_memory_policy(const GpuMemoryPolicyDesc& desc) {
@@ -125,8 +175,11 @@ GpuMemoryPolicyPlan plan_gpu_memory_policy(const GpuMemoryPolicyDesc& desc) {
     plan.transient_placed_allocations = desc.transient_placed_allocations;
     plan.transient_placed_resources_alive = desc.transient_placed_resources_alive;
     plan.upload_bytes_written = desc.upload_bytes_written;
+    plan.residency_pressure_bytes =
+        desc.residency_pressure_bytes > 0 ? desc.residency_pressure_bytes : desc.os_local_usage_bytes;
     plan.backend = desc.backend;
     plan.backend_memory_evidence_ready = desc.backend_memory_evidence_ready;
+    plan.residency_pressure_ready = residency_pressure_ready(desc);
 
     if (desc.requests.empty()) {
         add_diagnostic(plan, GpuMemoryDiagnosticCode::no_memory_requests, 0, 0,
@@ -141,6 +194,43 @@ GpuMemoryPolicyPlan plan_gpu_memory_policy(const GpuMemoryPolicyDesc& desc) {
         add_diagnostic(plan, GpuMemoryDiagnosticCode::missing_backend_memory_evidence, 0, 0,
                        std::string{"gpu memory policy requires backend memory evidence for "} +
                            std::string{backend_name(desc.backend)});
+    }
+    if (desc.require_residency_pressure_evidence && !plan.residency_pressure_ready) {
+        add_diagnostic(plan, GpuMemoryDiagnosticCode::missing_residency_pressure_evidence, 0, 0,
+                       std::string{"gpu memory policy requires residency pressure evidence for "} +
+                           std::string{backend_name(desc.backend)});
+    }
+    if (desc.require_package_counter_evidence && desc.package_counters.empty()) {
+        add_diagnostic(plan, GpuMemoryDiagnosticCode::missing_package_counter_evidence, 0, 0,
+                       "gpu memory policy requires package-visible counter rows");
+    }
+
+    for (std::size_t counter_index = 0; counter_index < desc.package_counters.size(); ++counter_index) {
+        const auto& counter = desc.package_counters[counter_index];
+        ++plan.package_counter_count;
+        const auto supported = is_supported_package_counter(counter.kind);
+        const auto ready = supported && counter.value > 0;
+        if (!supported) {
+            add_diagnostic(plan, GpuMemoryDiagnosticCode::invalid_package_counter, counter_index, counter.source_index,
+                           std::string{"unsupported gpu memory package counter kind "} +
+                               std::string{package_counter_name(counter.kind)});
+        }
+        if (counter.required && !ready) {
+            add_diagnostic(plan, GpuMemoryDiagnosticCode::missing_package_counter_evidence, counter_index,
+                           counter.source_index,
+                           std::string{"gpu memory package counter requires a positive value for "} +
+                               std::string{package_counter_name(counter.kind)});
+        }
+        if (ready) {
+            ++plan.package_counter_ready_count;
+        }
+        plan.package_counter_rows.push_back(GpuMemoryPackageCounterRow{
+            .kind = counter.kind,
+            .value = counter.value,
+            .required = counter.required,
+            .ready = ready,
+            .source_index = counter.source_index,
+        });
     }
 
     for (std::size_t index = 0; index < desc.requests.size(); ++index) {

@@ -84,8 +84,8 @@ void add_diagnostic(RendererProductionVfxProfilingPlan& plan, RendererProduction
 
 [[nodiscard]] std::size_t request_row_count(const RendererProductionVfxProfilingRequest& request) noexcept {
     return request.required_backends.size() + request.feature_rows.size() + request.gpu_particle_budget_rows.size() +
-           request.postprocess_rows.size() + request.backend_timing_rows.size() +
-           request.crash_telemetry_handoff_rows.size();
+           request.postprocess_rows.size() + request.backend_timing_rows.size() + request.cpu_profile_rows.size() +
+           request.package_counter_rows.size() + request.crash_telemetry_handoff_rows.size();
 }
 
 void sort_required_backends(std::vector<rhi::BackendKind>& backends) {
@@ -224,6 +224,15 @@ void validate_postprocess_rows(RendererProductionVfxProfilingPlan& plan,
            (row.debug_scope_count > 0U || row.debug_marker_count > 0U);
 }
 
+[[nodiscard]] bool is_valid_cpu_profile_row(const RendererProductionCpuProfileRow& row) {
+    return is_valid_id(row.profile_zone_id) && !has_native_token(row.profile_zone_id) &&
+           row.end_tick > row.begin_tick && row.budget_us > 0U && row.sample_count > 0U;
+}
+
+[[nodiscard]] bool is_valid_package_counter_row(const RendererProductionPackageCounterRow& row) {
+    return is_valid_id(row.counter_id) && !has_native_token(row.counter_id) && row.ready != row.host_gated;
+}
+
 [[nodiscard]] bool requires_strict_backend_evidence(rhi::BackendKind backend) noexcept {
     return backend == rhi::BackendKind::d3d12 || backend == rhi::BackendKind::vulkan;
 }
@@ -329,6 +338,40 @@ void validate_timing_rows(RendererProductionVfxProfilingPlan& plan,
     }
 }
 
+void validate_cpu_profile_rows(RendererProductionVfxProfilingPlan& plan,
+                               const RendererProductionVfxProfilingRequest& request) {
+    for (const auto& row : request.cpu_profile_rows) {
+        if (!row_backend_allowed(request, row.backend)) {
+            add_diagnostic(plan, RendererProductionVfxProfilingDiagnosticCode::unsupported_backend, row.backend,
+                           row.profile_zone_id,
+                           "CPU profile row backend must be one of the required production backends", row.source_index);
+        }
+        if (!is_valid_cpu_profile_row(row)) {
+            add_diagnostic(plan, RendererProductionVfxProfilingDiagnosticCode::invalid_cpu_profile_row, row.backend,
+                           row.profile_zone_id,
+                           "CPU profile rows require backend-neutral profile ids, ordered ticks, budget, and samples",
+                           row.source_index);
+        }
+    }
+}
+
+void validate_package_counter_rows(RendererProductionVfxProfilingPlan& plan,
+                                   const RendererProductionVfxProfilingRequest& request) {
+    for (const auto& row : request.package_counter_rows) {
+        if (!row_backend_allowed(request, row.backend)) {
+            add_diagnostic(
+                plan, RendererProductionVfxProfilingDiagnosticCode::unsupported_backend, row.backend, row.counter_id,
+                "package counter row backend must be one of the required production backends", row.source_index);
+        }
+        if (!is_valid_package_counter_row(row)) {
+            add_diagnostic(plan, RendererProductionVfxProfilingDiagnosticCode::invalid_package_counter_row, row.backend,
+                           row.counter_id,
+                           "package counter rows require backend-neutral ids and exactly one ready or host-gated state",
+                           row.source_index);
+        }
+    }
+}
+
 void validate_crash_handoff_rows(RendererProductionVfxProfilingPlan& plan,
                                  const RendererProductionVfxProfilingRequest& request) {
     for (const auto& row : request.crash_telemetry_handoff_rows) {
@@ -386,6 +429,10 @@ void validate_backend_parity(RendererProductionVfxProfilingPlan& plan,
         });
         const auto has_timing = has_row_for_backend(request.backend_timing_rows, backend,
                                                     [](const auto& row) { return is_valid_timing_row(row); });
+        const auto has_cpu_profile = has_row_for_backend(request.cpu_profile_rows, backend,
+                                                         [](const auto& row) { return is_valid_cpu_profile_row(row); });
+        const auto has_package_counter = has_row_for_backend(
+            request.package_counter_rows, backend, [](const auto& row) { return is_valid_package_counter_row(row); });
 
         if (!(has_feature && has_budget && has_postprocess && has_crash)) {
             add_diagnostic(plan, RendererProductionVfxProfilingDiagnosticCode::missing_backend_parity, backend, {},
@@ -395,6 +442,14 @@ void validate_backend_parity(RendererProductionVfxProfilingPlan& plan,
         if (!has_timing) {
             add_diagnostic(plan, RendererProductionVfxProfilingDiagnosticCode::missing_backend_timing, backend, {},
                            "each required backend needs its own timing/profile evidence row", 0U);
+        }
+        if (!has_cpu_profile) {
+            add_diagnostic(plan, RendererProductionVfxProfilingDiagnosticCode::missing_cpu_profile_rows, backend, {},
+                           "each required backend needs its own CPU profile evidence row", 0U);
+        }
+        if (!has_package_counter) {
+            add_diagnostic(plan, RendererProductionVfxProfilingDiagnosticCode::missing_package_counter_rows, backend,
+                           {}, "each required backend needs its own package-visible readiness counter row", 0U);
         }
     }
 }
@@ -428,12 +483,16 @@ void append_output_rows(RendererProductionVfxProfilingPlan& plan,
     plan.gpu_particle_budget_rows = request.gpu_particle_budget_rows;
     plan.postprocess_rows = request.postprocess_rows;
     plan.backend_timing_rows = request.backend_timing_rows;
+    plan.cpu_profile_rows = request.cpu_profile_rows;
+    plan.package_counter_rows = request.package_counter_rows;
     plan.crash_telemetry_handoff_rows = request.crash_telemetry_handoff_rows;
 
     sort_rows(plan.feature_rows, [](const auto& row) -> std::string_view { return row.feature_id; });
     sort_rows(plan.gpu_particle_budget_rows, [](const auto& row) -> std::string_view { return row.effect_id; });
     sort_rows(plan.postprocess_rows, [](const auto& row) -> std::string_view { return row.chain_id; });
     sort_rows(plan.backend_timing_rows, [](const auto& row) -> std::string_view { return row.profile_zone_id; });
+    sort_rows(plan.cpu_profile_rows, [](const auto& row) -> std::string_view { return row.profile_zone_id; });
+    sort_rows(plan.package_counter_rows, [](const auto& row) -> std::string_view { return row.counter_id; });
     sort_rows(plan.crash_telemetry_handoff_rows, [](const auto& row) -> std::string_view { return row.handoff_id; });
     plan.backend_evidence_rows.reserve(plan.backend_timing_rows.size());
     for (const auto& row : plan.backend_timing_rows) {
@@ -446,6 +505,12 @@ void append_output_rows(RendererProductionVfxProfilingPlan& plan,
     plan.postprocess_row_count = plan.postprocess_rows.size();
     plan.backend_timing_row_count = plan.backend_timing_rows.size();
     plan.backend_evidence_row_count = plan.backend_evidence_rows.size();
+    plan.cpu_profile_row_count = plan.cpu_profile_rows.size();
+    plan.package_counter_row_count = plan.package_counter_rows.size();
+    plan.package_counter_ready_count = static_cast<std::size_t>(
+        std::ranges::count_if(plan.package_counter_rows, [](const auto& row) { return row.ready; }));
+    plan.package_counter_host_gated_count = static_cast<std::size_t>(
+        std::ranges::count_if(plan.package_counter_rows, [](const auto& row) { return row.host_gated; }));
     plan.crash_telemetry_handoff_row_count = plan.crash_telemetry_handoff_rows.size();
 }
 
@@ -523,6 +588,23 @@ void hash_string(std::uint64_t& hash, std::string_view value) noexcept {
         hash_mix(hash, row.host_validated ? 1U : 0U);
         hash_mix(hash, row.source_index);
     }
+    for (const auto& row : plan.cpu_profile_rows) {
+        hash_mix(hash, static_cast<std::uint8_t>(row.backend));
+        hash_string(hash, row.profile_zone_id);
+        hash_mix(hash, row.begin_tick);
+        hash_mix(hash, row.end_tick);
+        hash_mix(hash, row.end_tick - row.begin_tick);
+        hash_mix(hash, row.budget_us);
+        hash_mix(hash, row.sample_count);
+        hash_mix(hash, row.source_index);
+    }
+    for (const auto& row : plan.package_counter_rows) {
+        hash_mix(hash, static_cast<std::uint8_t>(row.backend));
+        hash_string(hash, row.counter_id);
+        hash_mix(hash, row.ready ? 1U : 0U);
+        hash_mix(hash, row.host_gated ? 1U : 0U);
+        hash_mix(hash, row.source_index);
+    }
     for (const auto& row : plan.crash_telemetry_handoff_rows) {
         hash_string(hash, row.handoff_id);
         hash_mix(hash, static_cast<std::uint8_t>(row.backend));
@@ -596,6 +678,8 @@ plan_renderer_production_vfx_profiling(const RendererProductionVfxProfilingReque
     validate_particle_budget_rows(plan, request);
     validate_postprocess_rows(plan, request);
     validate_timing_rows(plan, request);
+    validate_cpu_profile_rows(plan, request);
+    validate_package_counter_rows(plan, request);
     validate_crash_handoff_rows(plan, request);
     validate_backend_parity(plan, request);
     validate_budgets(plan, request);

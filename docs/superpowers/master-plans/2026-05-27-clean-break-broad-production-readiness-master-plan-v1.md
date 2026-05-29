@@ -6,7 +6,7 @@
 
 **Architecture:** This is a master coordination plan, not one implementation slice. Each broad domain gets its own child plan, public first-party contract, adapter boundary, tests, package evidence, host gates, docs, manifest rows, dependency/legal records, and final validation before any ready claim is promoted.
 
-**Tech Stack:** C++23, CMake/CTest, PowerShell validation tools, `MK_renderer`, `MK_rhi`, `MK_runtime_rhi`, `MK_scene_renderer`, `MK_ui`, `MK_ui_renderer`, `MK_platform_sdl3`, `MK_assets`, `MK_tools`, `MK_physics`, `MK_navigation`, `MK_audio`, `MK_runtime`, optional vcpkg manifest features, D3D12, Vulkan, Apple Metal, SDL3, HarfBuzz-class shaping, FreeType-class rasterization, ICU-class Unicode services, Khronos glTF/KTX, DXC/SPIR-V tools, Jolt-class physics adapters, Recast/Detour-class navigation adapters, ENet/GameNetworkingSockets-class transport adapters, OpenAL/miniaudio-class audio adapters, and platform accessibility SDKs.
+**Tech Stack:** C++23, CMake/CTest, PowerShell validation tools, `MK_renderer`, `MK_rhi`, `MK_runtime_rhi`, `MK_scene_renderer`, `MK_ui`, `MK_ui_renderer`, first-party native desktop platform adapters, `MK_assets`, `MK_tools`, `MK_physics`, `MK_navigation`, `MK_audio`, `MK_runtime`, optional vcpkg manifest features, D3D12, Vulkan, Apple Metal, Win32/DXGI/WASAPI first-party Windows lanes, HarfBuzz-class shaping, FreeType-class rasterization, ICU-class Unicode services, Khronos glTF/KTX, DXC/SPIR-V tools, Jolt-class physics adapters, Recast/Detour-class navigation adapters, ENet/GameNetworkingSockets-class transport adapters, OpenAL/miniaudio-class audio adapters, and platform accessibility SDKs. Legacy desktop middleware dependencies are removal targets, not future implementation dependencies.
 
 ---
 
@@ -34,7 +34,8 @@ This work is too broad for one implementation branch. It must be executed throug
 
 - No backward-compatibility shims, deprecated aliases, duplicate public APIs, or transitional adapters unless a future release policy explicitly requires them.
 - When a public aggregate, enum, function, manifest literal, package counter, JSON schema, or validation command changes, update every caller, designated initializer, test, sample, doc, manifest fragment, and static check in the same child plan.
-- Gameplay-facing APIs stay first-party and value-based. D3D12, Vulkan, Metal, SDL3, HarfBuzz, FreeType, ICU, Jolt, Recast/Detour, ENet, GameNetworkingSockets, OpenAL, miniaudio, codec libraries, platform accessibility objects, and native OS handles stay behind private adapter boundaries.
+- Gameplay-facing APIs stay first-party and value-based. D3D12, Vulkan, Metal, Win32/DXGI/WASAPI objects, HarfBuzz, FreeType, ICU, Jolt, Recast/Detour, ENet, GameNetworkingSockets, OpenAL, miniaudio, codec libraries, platform accessibility objects, and native OS handles stay behind private adapter boundaries.
+- Do not add new SDL3 code, dependencies, package recipes, or validation lanes. Existing SDL3 surfaces are legacy replacement/removal work and must be deleted after first-party native replacements are proven.
 - Optional dependencies enter only through vcpkg manifest features plus `tools/bootstrap-deps.ps1`. Each dependency child plan updates `vcpkg.json`, `docs/dependencies.md`, `docs/legal-and-licensing.md`, `THIRD_PARTY_NOTICES.md`, validation wrappers, and manifest feature rows.
 - Official SDK and dependency documentation must be rechecked at the start of each child plan. Record exact URLs or Context7 library IDs in that child plan evidence.
 - Broad readiness is fail-closed by default. Package counters distinguish ready rows, host-gated rows, dependency-gated rows, skipped rows, and unsupported claims.
@@ -50,7 +51,8 @@ Re-check exact docs during child-plan execution:
 - Vulkan validation layers: <https://docs.vulkan.org/guide/latest/validation_overview.html>
 - Apple Metal resource synchronization: <https://developer.apple.com/documentation/metal/resource-synchronization>
 - Apple Metal capabilities: <https://developer.apple.com/metal/capabilities/>
-- SDL3 documentation: <https://wiki.libsdl.org/SDL3/>
+- Win32 windowing and messages: <https://learn.microsoft.com/en-us/windows/win32/learnwin32/creating-a-window> and <https://learn.microsoft.com/en-us/windows/win32/winmsg/about-messages-and-message-queues>
+- WASAPI stream management: <https://learn.microsoft.com/en-us/windows/win32/coreaudio/stream-management>
 - HarfBuzz documentation: <https://harfbuzz.github.io/>
 - FreeType glyph conventions: <https://freetype.org/freetype2/docs/glyphs/index.html>
 - ICU user guide: <https://unicode-org.github.io/icu/userguide/>
@@ -69,7 +71,7 @@ Re-check exact docs during child-plan execution:
 
 Context7 evidence recorded during this selection pass:
 
-- `/libsdl-org/sdlwiki`: SDL3 text input must be explicitly started with `SDL_StartTextInput`, paired with `SDL_StopTextInput`, can emit `SDL_EVENT_TEXT_INPUT` and `SDL_EVENT_TEXT_EDITING`, and `SDL_SetTextInputArea` is main-thread text-input-area/cursor placement evidence for IME UI. Clipboard APIs move UTF-8 text through `SDL_SetClipboardText` / `SDL_GetClipboardText`. These APIs remain platform/runtime-host adapter concerns, not `MK_ui` contracts.
+- 2026-05-29 update: SDL3 is explicitly removed from future planning. Future desktop work must use first-party native platform lanes, with Windows starting from official Win32 message/window, DXGI presentation, and WASAPI documentation. Retain old SDL3 references only as deletion inventory until their replacement/removal candidate closes.
 
 ## Child Plan Sequence
 
@@ -89,9 +91,9 @@ Context7 evidence recorded during this selection pass:
 
 **Purpose:** Replace selected renderer confidence with backend-local, measurable production quality, parity, profiling, and package evidence gates.
 
-### Child Plan 2 - Runtime UI Text Platform Stack v1
+### Child Plan 2 - First-Party Desktop Platform And Runtime UI Text Stack v1
 
-**Purpose:** Implement real text shaping, font rasterization, IME, accessibility, and platform UI publication lanes behind first-party contracts and optional dependency adapters.
+**Purpose:** Replace remaining SDL3 desktop/runtime-host assumptions with first-party native desktop platform lanes, then implement real text shaping, font rasterization, IME, accessibility, and platform UI publication behind first-party contracts and optional dependency adapters.
 
 ### Child Plan 3 - Reviewed Importers Codecs And Shader Generation v1
 

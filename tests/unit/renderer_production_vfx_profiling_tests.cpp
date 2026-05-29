@@ -89,6 +89,32 @@ make_timing(mirakana::rhi::BackendKind backend, bool host_validated, std::uint32
     };
 }
 
+[[nodiscard]] mirakana::RendererProductionCpuProfileRow make_cpu_profile(mirakana::rhi::BackendKind backend,
+                                                                         std::uint32_t source_index) {
+    return mirakana::RendererProductionCpuProfileRow{
+        .backend = backend,
+        .profile_zone_id = "frame.main.cpu",
+        .begin_tick = 3000ULL,
+        .end_tick = 3900ULL,
+        .budget_us = 1200U,
+        .sample_count = 4U,
+        .source_index = source_index,
+    };
+}
+
+[[nodiscard]] mirakana::RendererProductionPackageCounterRow make_package_counter(std::string counter_id,
+                                                                                 mirakana::rhi::BackendKind backend,
+                                                                                 bool host_gated,
+                                                                                 std::uint32_t source_index) {
+    return mirakana::RendererProductionPackageCounterRow{
+        .backend = backend,
+        .counter_id = std::move(counter_id),
+        .ready = !host_gated,
+        .host_gated = host_gated,
+        .source_index = source_index,
+    };
+}
+
 [[nodiscard]] mirakana::RendererProductionCrashTelemetryHandoffRow
 make_crash_handoff(std::string handoff_id, mirakana::rhi::BackendKind backend, std::uint32_t source_index) {
     return mirakana::RendererProductionCrashTelemetryHandoffRow{
@@ -140,11 +166,26 @@ make_crash_handoff(std::string handoff_id, mirakana::rhi::BackendKind backend, s
                 make_timing(mirakana::rhi::BackendKind::vulkan, true, 11U),
                 make_timing(mirakana::rhi::BackendKind::metal, include_metal_host_evidence, 12U),
             },
+        .cpu_profile_rows =
+            {
+                make_cpu_profile(mirakana::rhi::BackendKind::d3d12, 13U),
+                make_cpu_profile(mirakana::rhi::BackendKind::vulkan, 14U),
+                make_cpu_profile(mirakana::rhi::BackendKind::metal, 15U),
+            },
+        .package_counter_rows =
+            {
+                make_package_counter("rendering_vfx_profiling.d3d12.backend_ready", mirakana::rhi::BackendKind::d3d12,
+                                     false, 16U),
+                make_package_counter("rendering_vfx_profiling.vulkan.backend_ready", mirakana::rhi::BackendKind::vulkan,
+                                     false, 17U),
+                make_package_counter("rendering_vfx_profiling.metal.host_gated", mirakana::rhi::BackendKind::metal,
+                                     !include_metal_host_evidence, 18U),
+            },
         .crash_telemetry_handoff_rows =
             {
-                make_crash_handoff("crash.d3d12", mirakana::rhi::BackendKind::d3d12, 13U),
-                make_crash_handoff("crash.vulkan", mirakana::rhi::BackendKind::vulkan, 14U),
-                make_crash_handoff("crash.metal", mirakana::rhi::BackendKind::metal, 15U),
+                make_crash_handoff("crash.d3d12", mirakana::rhi::BackendKind::d3d12, 19U),
+                make_crash_handoff("crash.vulkan", mirakana::rhi::BackendKind::vulkan, 20U),
+                make_crash_handoff("crash.metal", mirakana::rhi::BackendKind::metal, 21U),
             },
         .row_budget = 32U,
         .seed = 77U,
@@ -174,11 +215,17 @@ MK_TEST("production renderer VFX profiling keeps Metal host evidence gated") {
     MK_REQUIRE(plan.gpu_particle_budget_rows.size() == 3U);
     MK_REQUIRE(plan.postprocess_rows.size() == 3U);
     MK_REQUIRE(plan.backend_timing_rows.size() == 3U);
+    MK_REQUIRE(plan.cpu_profile_rows.size() == 3U);
+    MK_REQUIRE(plan.package_counter_rows.size() == 3U);
     MK_REQUIRE(plan.crash_telemetry_handoff_rows.size() == 3U);
     MK_REQUIRE(plan.feature_row_count == 3U);
     MK_REQUIRE(plan.gpu_particle_budget_row_count == 3U);
     MK_REQUIRE(plan.postprocess_row_count == 3U);
     MK_REQUIRE(plan.backend_timing_row_count == 3U);
+    MK_REQUIRE(plan.cpu_profile_row_count == 3U);
+    MK_REQUIRE(plan.package_counter_row_count == 3U);
+    MK_REQUIRE(plan.package_counter_ready_count == 2U);
+    MK_REQUIRE(plan.package_counter_host_gated_count == 1U);
     MK_REQUIRE(plan.crash_telemetry_handoff_row_count == 3U);
     MK_REQUIRE(plan.host_validated_backend_count == 2U);
     MK_REQUIRE(plan.backend_evidence_rows.size() == 3U);
@@ -206,6 +253,9 @@ MK_TEST("production renderer VFX profiling is ready with per-backend host timing
     MK_REQUIRE(plan.backend_evidence_row_count == 3U);
     MK_REQUIRE(plan.backend_evidence_ready_count == 3U);
     MK_REQUIRE(plan.backend_evidence_host_gated_count == 0U);
+    MK_REQUIRE(plan.cpu_profile_row_count == 3U);
+    MK_REQUIRE(plan.package_counter_ready_count == 3U);
+    MK_REQUIRE(plan.package_counter_host_gated_count == 0U);
     MK_REQUIRE(plan.d3d12_host_evidence_ready);
     MK_REQUIRE(plan.vulkan_strict_host_evidence_ready);
     MK_REQUIRE(plan.metal_host_evidence_ready);
@@ -234,6 +284,24 @@ MK_TEST("production renderer VFX profiling keeps Metal gated when any Metal evid
     MK_REQUIRE(plan.requires_metal_host_evidence);
     MK_REQUIRE(!plan.has_metal_host_evidence);
     MK_REQUIRE(plan.host_validated_backend_count == 2U);
+}
+
+MK_TEST("production renderer VFX profiling rejects broad readiness without cpu profile package counter and capture "
+        "trace rows") {
+    auto request = make_valid_request(true);
+    request.cpu_profile_rows.clear();
+    request.package_counter_rows.clear();
+    request.crash_telemetry_handoff_rows.clear();
+
+    const auto plan = mirakana::plan_renderer_production_vfx_profiling(request);
+
+    MK_REQUIRE(plan.status == RendererProductionVfxProfilingStatus::invalid_request);
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(diagnostic_count(plan, RendererProductionVfxProfilingDiagnosticCode::missing_cpu_profile_rows) == 3U);
+    MK_REQUIRE(diagnostic_count(plan, RendererProductionVfxProfilingDiagnosticCode::missing_package_counter_rows) ==
+               3U);
+    MK_REQUIRE(diagnostic_count(plan, RendererProductionVfxProfilingDiagnosticCode::missing_backend_parity) == 3U);
+    MK_REQUIRE(plan.replay_hash == 0U);
 }
 
 MK_TEST("production renderer VFX profiling replay hash includes accepted row details") {

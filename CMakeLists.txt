@@ -10,6 +10,8 @@ include(CTest)
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
+set(CMAKE_OBJECT_PATH_MAX 240)
+
 option(MK_ENABLE_DESKTOP_RUNTIME "Build SDL3 desktop game runtime targets" OFF)
 option(MK_ENABLE_DESKTOP_GUI "Build SDL3/Dear ImGui desktop editor targets" OFF)
 option(MK_ENABLE_SANITIZERS "Enable compiler sanitizer instrumentation where supported" OFF)
@@ -92,6 +94,48 @@ else()
     message(STATUS "Mirakanai sanitizers: MK_ENABLE_SANITIZERS=OFF.")
 endif()
 
+function(MK_apply_msvc_visual_studio_short_object_names target_name)
+    if(NOT MSVC OR NOT CMAKE_GENERATOR MATCHES "^Visual Studio")
+        return()
+    endif()
+
+    get_target_property(MK_TARGET_SOURCES ${target_name} SOURCES)
+    if(NOT MK_TARGET_SOURCES)
+        return()
+    endif()
+
+    foreach(MK_TARGET_SOURCE IN LISTS MK_TARGET_SOURCES)
+        if(MK_TARGET_SOURCE MATCHES "^\\$<")
+            continue()
+        endif()
+
+        get_filename_component(MK_SOURCE_EXTENSION "${MK_TARGET_SOURCE}" EXT)
+        string(TOLOWER "${MK_SOURCE_EXTENSION}" MK_SOURCE_EXTENSION_LOWER)
+        if(NOT MK_SOURCE_EXTENSION_LOWER MATCHES "^\\.(c|cc|cpp|cxx|m|mm)$")
+            continue()
+        endif()
+
+        get_source_file_property(MK_SOURCE_VS_SETTINGS "${MK_TARGET_SOURCE}" VS_SETTINGS)
+        if(MK_SOURCE_VS_SETTINGS MATCHES "(^|;)ObjectFileName=")
+            continue()
+        endif()
+
+        if(IS_ABSOLUTE "${MK_TARGET_SOURCE}")
+            set(MK_SOURCE_ID "${MK_TARGET_SOURCE}")
+        else()
+            get_filename_component(MK_SOURCE_ID "${MK_TARGET_SOURCE}" ABSOLUTE BASE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+        endif()
+        string(SHA256 MK_SOURCE_HASH "${MK_SOURCE_ID}")
+        string(SUBSTRING "${MK_SOURCE_HASH}" 0 16 MK_SOURCE_HASH_SHORT)
+
+        set_property(
+            SOURCE "${MK_TARGET_SOURCE}"
+            APPEND
+            PROPERTY VS_SETTINGS "ObjectFileName=$(IntDir)mk_${MK_SOURCE_HASH_SHORT}.obj"
+        )
+    endforeach()
+endfunction()
+
 function(MK_apply_common_target_options target_name)
     target_compile_features(${target_name} PUBLIC cxx_std_${MK_CXX_STANDARD})
     set_target_properties(${target_name} PROPERTIES
@@ -108,8 +152,9 @@ function(MK_apply_common_target_options target_name)
         target_compile_options(${target_name} PRIVATE /W4 /permissive- /EHsc ${MK_MSVC_MULTIPROCESSOR_COMPILE_OPTION} /Zf)
         set_target_properties(${target_name} PROPERTIES
             COMPILE_PDB_NAME ${target_name}
-            COMPILE_PDB_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/pdb/${target_name}"
+            COMPILE_PDB_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/pdb"
         )
+        MK_apply_msvc_visual_studio_short_object_names(${target_name})
         get_target_property(MK_TARGET_TYPE ${target_name} TYPE)
         if(MK_TARGET_TYPE STREQUAL "EXECUTABLE" OR
             MK_TARGET_TYPE STREQUAL "SHARED_LIBRARY" OR

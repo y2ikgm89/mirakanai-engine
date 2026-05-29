@@ -29,6 +29,8 @@ foreach ($needle in @(
         "RendererProductionPostprocessRow",
         "RendererProductionBackendTimingRow",
         "RendererProductionBackendEvidenceRow",
+        "RendererProductionCpuProfileRow",
+        "RendererProductionPackageCounterRow",
         "RendererProductionCrashTelemetryHandoffRow",
         "RendererProductionVfxProfilingPlan",
         "RendererProductionVfxProfilingDiagnosticCode",
@@ -40,6 +42,10 @@ foreach ($needle in @(
 foreach ($needle in @(
         "bool requires_metal_host_evidence{false}",
         "bool has_metal_host_evidence{false}",
+        "std::size_t cpu_profile_row_count{0U}",
+        "std::size_t package_counter_row_count{0U}",
+        "std::size_t package_counter_ready_count{0U}",
+        "std::size_t package_counter_host_gated_count{0U}",
         "bool invoked_gpu_commands{false}",
         "bool invoked_native_capture{false}",
         "bool invoked_crash_upload{false}"
@@ -55,6 +61,8 @@ foreach ($needle in @(
         "RendererProductionVfxProfilingDiagnosticCode::missing_backend_validation_evidence",
         "RendererProductionVfxProfilingDiagnosticCode::missing_backend_host_evidence",
         "RendererProductionVfxProfilingDiagnosticCode::missing_backend_capture_handoff",
+        "RendererProductionVfxProfilingDiagnosticCode::missing_cpu_profile_rows",
+        "RendererProductionVfxProfilingDiagnosticCode::missing_package_counter_rows",
         "RendererProductionVfxProfilingDiagnosticCode::broad_performance_claim",
         "RendererProductionVfxProfilingDiagnosticCode::unsupported_native_handle_claim",
         "RendererProductionVfxProfilingDiagnosticCode::unsupported_crash_upload",
@@ -70,6 +78,7 @@ Assert-ContainsText $rootCMakeText "MK_renderer_production_vfx_profiling_tests" 
 Assert-ContainsText $rendererTestsText "production renderer VFX profiling keeps Metal host evidence gated" "tests/unit/renderer_production_vfx_profiling_tests.cpp"
 Assert-ContainsText $rendererTestsText "production renderer VFX profiling is ready with per-backend host timing evidence" "tests/unit/renderer_production_vfx_profiling_tests.cpp"
 Assert-ContainsText $rendererTestsText "production renderer VFX profiling rejects cross-backend proof transfer" "tests/unit/renderer_production_vfx_profiling_tests.cpp"
+Assert-ContainsText $rendererTestsText "production renderer VFX profiling rejects broad readiness without cpu profile package counter and capture" "tests/unit/renderer_production_vfx_profiling_tests.cpp"
 Assert-ContainsText $rendererTestsText "production renderer VFX profiling rejects unsafe rows and broad claims" "tests/unit/renderer_production_vfx_profiling_tests.cpp"
 Assert-ContainsText $rendererTestsText "production renderer VFX profiling reports no rows without backend claims" "tests/unit/renderer_production_vfx_profiling_tests.cpp"
 
@@ -87,6 +96,10 @@ foreach ($needle in @(
         "rendering_vfx_profiling_backend_evidence_rows=",
         "rendering_vfx_profiling_backend_evidence_ready=",
         "rendering_vfx_profiling_backend_evidence_host_gated=",
+        "rendering_vfx_profiling_cpu_profile_rows=",
+        "rendering_vfx_profiling_package_counter_rows=",
+        "rendering_vfx_profiling_package_counter_ready=",
+        "rendering_vfx_profiling_package_counter_host_gated=",
         "rendering_vfx_profiling_crash_telemetry_handoff_rows=",
         "rendering_vfx_profiling_replay_hash=",
         "rendering_vfx_profiling_d3d12_host_evidence_ready=",
@@ -130,6 +143,10 @@ foreach ($needle in @(
         "rendering_vfx_profiling_backend_evidence_rows",
         "rendering_vfx_profiling_backend_evidence_ready",
         "rendering_vfx_profiling_backend_evidence_host_gated",
+        "rendering_vfx_profiling_cpu_profile_rows",
+        "rendering_vfx_profiling_package_counter_rows",
+        "rendering_vfx_profiling_package_counter_ready",
+        "rendering_vfx_profiling_package_counter_host_gated",
         "rendering_vfx_profiling_crash_telemetry_handoff_rows",
         "rendering_vfx_profiling_host_validated_backends",
         "rendering_vfx_profiling_rejected_unsafe_rows",
@@ -147,6 +164,9 @@ foreach ($needle in @(
     Assert-ContainsText $installedValidationText $needle "tools/validate-installed-desktop-runtime.ps1"
 }
 Assert-ContainsText $installedValidationText '"rendering_vfx_profiling_feature_rows" = "3"' "tools/validate-installed-desktop-runtime.ps1"
+Assert-ContainsText $installedValidationText '"rendering_vfx_profiling_cpu_profile_rows" = "3"' "tools/validate-installed-desktop-runtime.ps1"
+Assert-ContainsText $installedValidationText '"rendering_vfx_profiling_package_counter_rows" = "3"' "tools/validate-installed-desktop-runtime.ps1"
+Assert-ContainsText $installedValidationText '"rendering_vfx_profiling_package_counter_ready" = "2"' "tools/validate-installed-desktop-runtime.ps1"
 Assert-ContainsText $installedValidationText '"rendering_vfx_profiling_host_validated_backends" = "2"' "tools/validate-installed-desktop-runtime.ps1"
 Assert-ContainsText $installedValidationText '"rendering_vfx_profiling_vulkan_strict_host_evidence_ready" = "1"' "tools/validate-installed-desktop-runtime.ps1"
 
@@ -178,6 +198,8 @@ foreach ($needle in @(
         '"unsupportedProductionGaps": []',
         "engine/renderer/include/mirakana/renderer/production_vfx_profiling.hpp",
         "RendererProductionBackendEvidenceRow",
+        "RendererProductionCpuProfileRow",
+        "RendererProductionPackageCounterRow",
         "RendererProductionVfxProfilingPlan",
         "plan_renderer_production_vfx_profiling",
         "rendering_vfx_profiling_*",
@@ -189,6 +211,8 @@ foreach ($needle in @(
 foreach ($needle in @(
         "Production Rendering VFX Profiling v1",
         "RendererProductionBackendEvidenceRow",
+        "RendererProductionCpuProfileRow",
+        "RendererProductionPackageCounterRow",
         "D3D12 and strict Vulkan host evidence ready",
         "Metal host evidence absent"
     )) {

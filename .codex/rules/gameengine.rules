@@ -58,6 +58,20 @@ prefix_rule(
 )
 
 prefix_rule(
+    pattern = ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools/check-publication-preflight.ps1"],
+    decision = "allow",
+    justification = "Publication preflight is a guarded read-only GitHub Flow check that probes linked-worktree Git admin write access with a temporary file, origin reachability, and host-local gh auth before commit, push, or PR work.",
+    match = [
+        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1 -Branch codex/example",
+        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1 -Branch codex/example -SkipRemote -SkipGhAuth",
+    ],
+    not_match = [
+        "git push origin main",
+        "gh pr create --base main --head codex/example --title \"Implement focused slice\" --body \"Validation: validate.ps1 passed\"",
+    ],
+)
+
+prefix_rule(
     pattern = ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools/remove-merged-worktree.ps1"],
     decision = "allow",
     justification = "Guarded post-merge cleanup is allowed because the repository script fetches/prunes, fast-forwards a clean base checkout, verifies standard roots from Git worktree porcelain records, clean status, and branch ancestry, and unlinks worktree-local dependency reparse points before invoking Git worktree removal.",

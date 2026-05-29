@@ -409,6 +409,8 @@ struct SdlDesktopPresentationGpuMemoryPolicyDesc {
     bool require_backend_memory_evidence{false};
     bool backend_memory_evidence_ready{false};
     bool require_os_video_memory_budget{false};
+    bool require_residency_pressure_evidence{false};
+    bool require_package_counter_evidence{false};
     std::uint64_t expected_frames{0};
     std::uint64_t declared_local_budget_bytes{0};
 };
@@ -422,6 +424,9 @@ struct SdlDesktopPresentationGpuMemoryPolicyReport {
     bool backend_memory_evidence_ready{false};
     bool os_video_memory_budget_required{false};
     bool os_video_memory_budget_available{false};
+    bool residency_pressure_required{false};
+    bool residency_pressure_ready{false};
+    bool package_counter_evidence_required{false};
     std::uint64_t expected_frames{0};
     std::uint64_t frames_finished{0};
     std::uint32_t diagnostics_count{0};
@@ -435,8 +440,11 @@ struct SdlDesktopPresentationGpuMemoryPolicyReport {
     std::uint64_t transient_placed_allocations{0};
     std::uint64_t transient_placed_resources_alive{0};
     std::uint64_t upload_bytes_written{0};
+    std::uint64_t residency_pressure_bytes{0};
     std::uint32_t transient_heap_request_count{0};
     std::uint32_t upload_pressure_request_count{0};
+    std::uint32_t package_counter_count{0};
+    std::uint32_t package_counter_ready_count{0};
 };
 
 struct SdlDesktopPresentationD3d12GpuMemoryExecutionReport {
@@ -495,6 +503,10 @@ struct SdlDesktopPresentationDebugProfilingPolicyDesc {
     bool require_scene_gpu_bindings{false};
     bool require_backend_profiling_evidence{false};
     bool backend_profiling_evidence_ready{false};
+    bool require_cpu_profile_zone_evidence{false};
+    bool require_profile_budget_evidence{false};
+    bool require_package_counter_evidence{false};
+    bool require_trace_capture_handoff_review{false};
     std::uint64_t expected_frames{0};
 };
 
@@ -506,10 +518,19 @@ struct SdlDesktopPresentationDebugProfilingPolicyReport {
     bool frames_current{false};
     bool backend_profiling_evidence_required{false};
     bool backend_profiling_evidence_ready{false};
+    bool cpu_profile_zone_evidence_required{false};
+    bool cpu_profile_zone_evidence_ready{false};
+    bool profile_budget_evidence_required{false};
+    bool profile_budget_ready{false};
+    bool package_counter_evidence_required{false};
+    bool trace_capture_handoff_review_ready{false};
     std::uint64_t expected_frames{0};
     std::uint64_t frames_finished{0};
     std::uint32_t diagnostics_count{0};
     std::uint32_t request_count{0};
+    std::uint64_t cpu_profile_zone_count{0};
+    std::uint64_t cpu_profile_budget_microseconds{0};
+    std::uint64_t gpu_profile_budget_microseconds{0};
     std::uint64_t gpu_timestamp_ticks_per_second{0};
     std::uint64_t gpu_debug_scopes_begun{0};
     std::uint64_t gpu_debug_scopes_ended{0};
@@ -519,6 +540,8 @@ struct SdlDesktopPresentationDebugProfilingPolicyReport {
     std::uint32_t gpu_timestamp_request_count{0};
     std::uint32_t gpu_debug_marker_request_count{0};
     std::uint32_t capture_handoff_request_count{0};
+    std::uint32_t package_counter_count{0};
+    std::uint32_t package_counter_ready_count{0};
 };
 
 struct SdlDesktopPresentationD3d12DebugProfilingExecutionReport {

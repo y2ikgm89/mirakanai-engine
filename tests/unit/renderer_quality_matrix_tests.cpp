@@ -13,10 +13,12 @@
 
 namespace {
 
+using mirakana::RendererQualityEvidenceCategory;
 using mirakana::RendererQualityFeatureKind;
 using mirakana::RendererQualityMatrixDiagnosticCode;
 using mirakana::RendererQualityMatrixStatus;
 using mirakana::RendererQualityProofKind;
+using mirakana::RendererQualityRowStatus;
 
 constexpr RendererQualityFeatureKind kRequiredFeatures[] = {
     RendererQualityFeatureKind::materials,         RendererQualityFeatureKind::lighting_shadows,
@@ -55,6 +57,19 @@ make_ready_row(RendererQualityFeatureKind feature, mirakana::rhi::BackendKind ba
         .feature = feature,
         .backend = backend,
         .proof = RendererQualityProofKind::selected_package,
+        .status = RendererQualityRowStatus::ready,
+        .evidence_categories =
+            {
+                RendererQualityEvidenceCategory::synchronization,
+                RendererQualityEvidenceCategory::shader_tool_validation,
+                RendererQualityEvidenceCategory::memory_residency,
+                RendererQualityEvidenceCategory::render_pass_frame_graph,
+                RendererQualityEvidenceCategory::profiling,
+                RendererQualityEvidenceCategory::package_evidence,
+            },
+        .dependency_gate_id = {},
+        .unsupported_claim_id = {},
+        .notes = "backend local package evidence",
         .reviewed = true,
         .backend_local_evidence = true,
         .d3d12_resource_state_barrier_evidence = is_d3d12,
@@ -88,6 +103,14 @@ make_ready_row(RendererQualityFeatureKind feature, mirakana::rhi::BackendKind ba
         .feature = feature,
         .backend = mirakana::rhi::BackendKind::metal,
         .proof = RendererQualityProofKind::host_gate,
+        .status = RendererQualityRowStatus::host_gated,
+        .evidence_categories =
+            {
+                RendererQualityEvidenceCategory::host_gate,
+            },
+        .dependency_gate_id = {},
+        .unsupported_claim_id = {},
+        .notes = "Apple host evidence required",
         .reviewed = true,
         .backend_local_evidence = true,
         .d3d12_resource_state_barrier_evidence = false,
@@ -228,6 +251,66 @@ MK_TEST("renderer quality matrix rejects missing strict Vulkan synchronization v
     MK_REQUIRE(diagnostic_count(plan, RendererQualityMatrixDiagnosticCode::missing_shader_tool_validation_evidence) ==
                1U);
     MK_REQUIRE(plan.ready_row_count == 0U);
+    MK_REQUIRE(plan.replay_hash == 0U);
+}
+
+MK_TEST("renderer quality matrix rejects missing Metal synchronization and feature-set evidence") {
+    auto request = make_request(true);
+    request.rows[2].metal_resource_synchronization_evidence = false;
+    request.rows[2].metal_feature_set_evidence = false;
+
+    const auto plan = mirakana::plan_renderer_quality_matrix(request);
+
+    MK_REQUIRE(plan.status == RendererQualityMatrixStatus::invalid_request);
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(diagnostic_count(plan, RendererQualityMatrixDiagnosticCode::missing_resource_synchronization_evidence) ==
+               1U);
+    MK_REQUIRE(plan.ready_row_count == 0U);
+    MK_REQUIRE(plan.replay_hash == 0U);
+}
+
+MK_TEST("renderer quality matrix reports dependency gated and unsupported rows per backend feature") {
+    auto request = make_request(true);
+    request.rows[0].proof = RendererQualityProofKind::dependency_gate;
+    request.rows[0].status = RendererQualityRowStatus::dependency_gated;
+    request.rows[0].evidence_categories = {RendererQualityEvidenceCategory::dependency_gate};
+    request.rows[0].dependency_gate_id = "d3d12.residency.host_budget_probe";
+    request.rows[0].package_counter_ids = {"renderer_quality_matrix.dependency_gated.d3d12.residency"};
+    request.rows[0].host_validated = false;
+    request.rows[0].backend_parity_evidence = false;
+
+    request.rows[1].proof = RendererQualityProofKind::unsupported_claim;
+    request.rows[1].status = RendererQualityRowStatus::unsupported;
+    request.rows[1].evidence_categories = {RendererQualityEvidenceCategory::unsupported_claim};
+    request.rows[1].unsupported_claim_id = "vulkan.broad_renderer_quality";
+    request.rows[1].package_counter_ids = {"renderer_quality_matrix.unsupported.vulkan.broad_renderer_quality"};
+    request.rows[1].host_validated = false;
+    request.rows[1].backend_parity_evidence = false;
+
+    const auto plan = mirakana::plan_renderer_quality_matrix(request);
+
+    MK_REQUIRE(plan.status == RendererQualityMatrixStatus::unsupported);
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.diagnostics.empty());
+    MK_REQUIRE(plan.dependency_gated_row_count == 1U);
+    MK_REQUIRE(plan.unsupported_row_count == 1U);
+    MK_REQUIRE(plan.ready_row_count == 19U);
+    MK_REQUIRE(plan.host_gated_row_count == 0U);
+    MK_REQUIRE(!plan.d3d12_quality_matrix_ready);
+    MK_REQUIRE(!plan.vulkan_strict_quality_matrix_ready);
+    MK_REQUIRE(!plan.selected_package_quality_evidence_ready);
+    MK_REQUIRE(!plan.general_renderer_quality_ready);
+}
+
+MK_TEST("renderer quality matrix rejects backend native tokens in gameplay facing row notes") {
+    auto request = make_request(true);
+    request.rows[0].notes = "uses ID3D12Resource native handle";
+
+    const auto plan = mirakana::plan_renderer_quality_matrix(request);
+
+    MK_REQUIRE(plan.status == RendererQualityMatrixStatus::invalid_request);
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(diagnostic_count(plan, RendererQualityMatrixDiagnosticCode::unsupported_native_handle_claim) == 1U);
     MK_REQUIRE(plan.replay_hash == 0U);
 }
 

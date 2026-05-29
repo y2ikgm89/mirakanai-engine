@@ -932,6 +932,8 @@ MK_TEST("sdl desktop presentation gpu memory policy exposes package-visible budg
     desc.require_backend_memory_evidence = true;
     desc.backend_memory_evidence_ready = true;
     desc.require_os_video_memory_budget = true;
+    desc.require_residency_pressure_evidence = true;
+    desc.require_package_counter_evidence = true;
 
     const auto policy = mirakana::evaluate_sdl_desktop_presentation_gpu_memory_policy(report, desc);
 
@@ -944,6 +946,9 @@ MK_TEST("sdl desktop presentation gpu memory policy exposes package-visible budg
     MK_REQUIRE(policy.upload_bytes_written > 0);
     MK_REQUIRE(policy.backend_memory_evidence_ready);
     MK_REQUIRE(policy.os_video_memory_budget_available);
+    MK_REQUIRE(policy.residency_pressure_ready);
+    MK_REQUIRE(policy.package_counter_count > 0);
+    MK_REQUIRE(policy.package_counter_ready_count > 0);
 }
 
 MK_TEST("sdl desktop presentation d3d12 gpu memory execution report requires budget and transient counters") {
@@ -983,6 +988,8 @@ MK_TEST("sdl desktop presentation debug profiling policy exposes package-visible
     desc.require_scene_gpu_bindings = true;
     desc.expected_frames = 2;
     desc.require_backend_profiling_evidence = true;
+    desc.require_package_counter_evidence = true;
+    desc.require_trace_capture_handoff_review = true;
 
     const auto policy = mirakana::evaluate_sdl_desktop_presentation_debug_profiling_policy(report, desc);
 
@@ -994,6 +1001,9 @@ MK_TEST("sdl desktop presentation debug profiling policy exposes package-visible
     MK_REQUIRE(policy.gpu_timestamp_ticks_per_second > 0);
     MK_REQUIRE(policy.gpu_debug_markers_inserted > 0);
     MK_REQUIRE(policy.backend_profiling_evidence_ready);
+    MK_REQUIRE(policy.trace_capture_handoff_review_ready);
+    MK_REQUIRE(policy.package_counter_count > 0);
+    MK_REQUIRE(policy.package_counter_ready_count > 0);
 }
 
 MK_TEST(
@@ -1049,6 +1059,7 @@ MK_TEST("sdl desktop presentation vulkan gpu memory policy exposes backend evide
     desc.require_scene_gpu_bindings = true;
     desc.expected_frames = 2;
     desc.require_backend_memory_evidence = true;
+    desc.require_package_counter_evidence = true;
 
     const auto policy = mirakana::evaluate_sdl_desktop_presentation_gpu_memory_policy(report, desc);
 
@@ -1056,6 +1067,8 @@ MK_TEST("sdl desktop presentation vulkan gpu memory policy exposes backend evide
     MK_REQUIRE(policy.ready);
     MK_REQUIRE(policy.backend_memory_evidence_ready);
     MK_REQUIRE(!policy.os_video_memory_budget_required);
+    MK_REQUIRE(policy.package_counter_count > 0);
+    MK_REQUIRE(policy.package_counter_ready_count > 0);
 }
 
 MK_TEST("sdl desktop presentation vulkan debug profiling execution report requires markers and frame counters") {
@@ -1088,6 +1101,8 @@ MK_TEST("sdl desktop presentation debug profiling policy exposes vulkan backend 
     desc.require_scene_gpu_bindings = true;
     desc.expected_frames = 2;
     desc.require_backend_profiling_evidence = true;
+    desc.require_package_counter_evidence = true;
+    desc.require_trace_capture_handoff_review = true;
 
     const auto policy = mirakana::evaluate_sdl_desktop_presentation_debug_profiling_policy(report, desc);
 
@@ -1095,6 +1110,9 @@ MK_TEST("sdl desktop presentation debug profiling policy exposes vulkan backend 
     MK_REQUIRE(policy.ready);
     MK_REQUIRE(policy.backend_profiling_evidence_ready);
     MK_REQUIRE(policy.gpu_debug_markers_inserted > 0);
+    MK_REQUIRE(policy.trace_capture_handoff_review_ready);
+    MK_REQUIRE(policy.package_counter_count > 0);
+    MK_REQUIRE(policy.package_counter_ready_count > 0);
 }
 
 MK_TEST("sdl desktop presentation d3d12 instanced draw execution report requires backend instanced counters") {

@@ -47,7 +47,7 @@
       "name": "dev",
       "displayName": "Developer build",
       "binaryDir": "${sourceDir}/out/build/dev",
-      "inherits": ["normalized-configure-environment", "dev-core", "dev-windows-gui"],
+      "inherits": ["normalized-configure-environment", "dev-core"],
       "cacheVariables": {
         "MK_CXX_STANDARD": "23",
         "MK_ENABLE_CXX_MODULE_SCANNING": "ON",

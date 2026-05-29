@@ -332,6 +332,7 @@ if (Test-Path -LiteralPath $codexRuleRoot) {
             'pattern\s*=\s*\["gh",\s*"pr",\s*"view"\]',
             'pattern\s*=\s*\["gh",\s*"pr",\s*"create"\]',
             'pattern\s*=\s*\["gh",\s*"pr",\s*"merge",\s*"--auto",\s*"--merge",\s*"--match-head-commit"\]',
+            'pattern\s*=\s*\["pwsh",\s*"-NoProfile",\s*"-ExecutionPolicy",\s*"Bypass",\s*"-File",\s*"tools/check-publication-preflight\.ps1"\]',
             'pattern\s*=\s*\["pwsh",\s*"-NoProfile",\s*"-ExecutionPolicy",\s*"Bypass",\s*"-File",\s*"tools/remove-merged-worktree\.ps1"\]',
             'pattern\s*=\s*\["pwsh",\s*"-NoProfile",\s*"-ExecutionPolicy",\s*"Bypass",\s*"-File",\s*"tools/ready-task-pr\.ps1"\]'
         )

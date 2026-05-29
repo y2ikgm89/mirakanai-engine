@@ -1106,6 +1106,8 @@ make_gpu_memory_policy_desc(const DesktopRuntimeGameOptions& options) noexcept {
         desc.require_backend_memory_evidence =
             options.require_d3d12_gpu_memory_evidence || options.require_vulkan_gpu_memory_evidence;
         desc.require_os_video_memory_budget = options.require_d3d12_gpu_memory_evidence;
+        desc.require_residency_pressure_evidence = options.require_d3d12_gpu_memory_evidence;
+        desc.require_package_counter_evidence = desc.require_backend_memory_evidence;
     }
     return desc;
 }
@@ -1118,6 +1120,8 @@ make_debug_profiling_policy_desc(const DesktopRuntimeGameOptions& options) noexc
         desc.expected_frames = options.max_frames;
         desc.require_backend_profiling_evidence =
             options.require_d3d12_debug_profiling_evidence || options.require_vulkan_debug_profiling_evidence;
+        desc.require_package_counter_evidence = desc.require_backend_profiling_evidence;
+        desc.require_trace_capture_handoff_review = desc.require_backend_profiling_evidence;
     }
     return desc;
 }
@@ -2236,7 +2240,15 @@ int main(int argc, char** argv) {
         << " gpu_memory_policy_os_video_memory_budget_required="
         << (gpu_memory_policy.os_video_memory_budget_required ? 1 : 0)
         << " gpu_memory_policy_os_video_memory_budget_available="
-        << (gpu_memory_policy.os_video_memory_budget_available ? 1 : 0) << " d3d12_gpu_memory_execution_status="
+        << (gpu_memory_policy.os_video_memory_budget_available ? 1 : 0)
+        << " gpu_memory_policy_residency_pressure_required=" << (gpu_memory_policy.residency_pressure_required ? 1 : 0)
+        << " gpu_memory_policy_residency_pressure_ready=" << (gpu_memory_policy.residency_pressure_ready ? 1 : 0)
+        << " gpu_memory_policy_residency_pressure_bytes=" << gpu_memory_policy.residency_pressure_bytes
+        << " gpu_memory_policy_package_counter_evidence_required="
+        << (gpu_memory_policy.package_counter_evidence_required ? 1 : 0)
+        << " gpu_memory_policy_package_counters=" << gpu_memory_policy.package_counter_count
+        << " gpu_memory_policy_package_counters_ready=" << gpu_memory_policy.package_counter_ready_count
+        << " d3d12_gpu_memory_execution_status="
         << mirakana::sdl_desktop_presentation_d3d12_gpu_memory_execution_status_name(d3d12_gpu_memory_execution.status)
         << " d3d12_gpu_memory_execution_ready=" << (d3d12_gpu_memory_execution.ready ? 1 : 0)
         << " d3d12_gpu_memory_execution_selected=" << (d3d12_gpu_memory_execution.d3d12_backend_selected ? 1 : 0)
@@ -2300,6 +2312,19 @@ int main(int argc, char** argv) {
         << " debug_profiling_policy_gpu_timestamp_requests=" << debug_profiling_policy.gpu_timestamp_request_count
         << " debug_profiling_policy_gpu_debug_marker_requests=" << debug_profiling_policy.gpu_debug_marker_request_count
         << " debug_profiling_policy_capture_handoff_requests=" << debug_profiling_policy.capture_handoff_request_count
+        << " debug_profiling_policy_cpu_profile_zone_evidence_required="
+        << (debug_profiling_policy.cpu_profile_zone_evidence_required ? 1 : 0)
+        << " debug_profiling_policy_cpu_profile_zone_evidence_ready="
+        << (debug_profiling_policy.cpu_profile_zone_evidence_ready ? 1 : 0)
+        << " debug_profiling_policy_profile_budget_evidence_required="
+        << (debug_profiling_policy.profile_budget_evidence_required ? 1 : 0)
+        << " debug_profiling_policy_profile_budget_ready=" << (debug_profiling_policy.profile_budget_ready ? 1 : 0)
+        << " debug_profiling_policy_package_counter_evidence_required="
+        << (debug_profiling_policy.package_counter_evidence_required ? 1 : 0)
+        << " debug_profiling_policy_package_counters=" << debug_profiling_policy.package_counter_count
+        << " debug_profiling_policy_package_counters_ready=" << debug_profiling_policy.package_counter_ready_count
+        << " debug_profiling_policy_trace_capture_handoff_review_ready="
+        << (debug_profiling_policy.trace_capture_handoff_review_ready ? 1 : 0)
         << " debug_profiling_policy_backend_profiling_evidence_required="
         << (debug_profiling_policy.backend_profiling_evidence_required ? 1 : 0)
         << " debug_profiling_policy_backend_profiling_evidence_ready="

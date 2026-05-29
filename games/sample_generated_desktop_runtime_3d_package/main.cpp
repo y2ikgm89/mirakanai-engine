@@ -1093,6 +1093,10 @@ rendering_vfx_profiling_status_name(mirakana::RendererProductionVfxProfilingStat
         return "ready";
     case mirakana::RendererQualityMatrixStatus::host_evidence_required:
         return "host_evidence_required";
+    case mirakana::RendererQualityMatrixStatus::dependency_evidence_required:
+        return "dependency_evidence_required";
+    case mirakana::RendererQualityMatrixStatus::unsupported:
+        return "unsupported";
     case mirakana::RendererQualityMatrixStatus::no_rows:
         return "no_rows";
     case mirakana::RendererQualityMatrixStatus::invalid_request:
@@ -1276,6 +1280,10 @@ struct RenderingVfxProfilingProbeResult {
     std::size_t backend_evidence_rows{0U};
     std::size_t backend_evidence_ready{0U};
     std::size_t backend_evidence_host_gated{0U};
+    std::size_t cpu_profile_rows{0U};
+    std::size_t package_counter_rows{0U};
+    std::size_t package_counter_ready{0U};
+    std::size_t package_counter_host_gated{0U};
     std::size_t crash_telemetry_handoff_rows{0U};
     std::size_t host_validated_backends{0U};
     std::size_t rejected_unsafe_rows{0U};
@@ -1298,6 +1306,8 @@ struct RendererQualityMatrixProbeResult {
     std::size_t rows{0U};
     std::size_t ready_rows{0U};
     std::size_t host_gated_rows{0U};
+    std::size_t dependency_gated_rows{0U};
+    std::size_t unsupported_rows{0U};
     std::size_t host_validated_backends{0U};
     std::uint64_t replay_hash{0U};
     bool d3d12_ready{false};
@@ -2289,6 +2299,60 @@ validate_simulation_management_package_evidence(std::string_view sample_id) {
                                 .source_index = 12U,
                             },
                         },
+                    .cpu_profile_rows =
+                        {
+                            mirakana::RendererProductionCpuProfileRow{
+                                .backend = Backend::d3d12,
+                                .profile_zone_id = "frame.main.cpu",
+                                .begin_tick = 2000ULL,
+                                .end_tick = 2900ULL,
+                                .budget_us = 1200U,
+                                .sample_count = 4U,
+                                .source_index = 13U,
+                            },
+                            mirakana::RendererProductionCpuProfileRow{
+                                .backend = Backend::vulkan,
+                                .profile_zone_id = "frame.main.cpu",
+                                .begin_tick = 4000ULL,
+                                .end_tick = 4900ULL,
+                                .budget_us = 1200U,
+                                .sample_count = 4U,
+                                .source_index = 14U,
+                            },
+                            mirakana::RendererProductionCpuProfileRow{
+                                .backend = Backend::metal,
+                                .profile_zone_id = "frame.main.cpu",
+                                .begin_tick = 6000ULL,
+                                .end_tick = 6900ULL,
+                                .budget_us = 1200U,
+                                .sample_count = 4U,
+                                .source_index = 15U,
+                            },
+                        },
+                    .package_counter_rows =
+                        {
+                            mirakana::RendererProductionPackageCounterRow{
+                                .backend = Backend::d3d12,
+                                .counter_id = "rendering_vfx_profiling.d3d12.backend_ready",
+                                .ready = true,
+                                .host_gated = false,
+                                .source_index = 16U,
+                            },
+                            mirakana::RendererProductionPackageCounterRow{
+                                .backend = Backend::vulkan,
+                                .counter_id = "rendering_vfx_profiling.vulkan.backend_ready",
+                                .ready = true,
+                                .host_gated = false,
+                                .source_index = 17U,
+                            },
+                            mirakana::RendererProductionPackageCounterRow{
+                                .backend = Backend::metal,
+                                .counter_id = "rendering_vfx_profiling.metal.host_gated",
+                                .ready = false,
+                                .host_gated = true,
+                                .source_index = 18U,
+                            },
+                        },
                     .crash_telemetry_handoff_rows =
                         {
                             mirakana::RendererProductionCrashTelemetryHandoffRow{
@@ -2301,7 +2365,7 @@ validate_simulation_management_package_evidence(std::string_view sample_id) {
                                 .operator_handoff_ready = true,
                                 .request_crash_upload = false,
                                 .request_native_capture = false,
-                                .source_index = 13U,
+                                .source_index = 19U,
                             },
                             mirakana::RendererProductionCrashTelemetryHandoffRow{
                                 .handoff_id = "handoff.strict_vulkan",
@@ -2313,7 +2377,7 @@ validate_simulation_management_package_evidence(std::string_view sample_id) {
                                 .operator_handoff_ready = true,
                                 .request_crash_upload = false,
                                 .request_native_capture = false,
-                                .source_index = 14U,
+                                .source_index = 20U,
                             },
                             mirakana::RendererProductionCrashTelemetryHandoffRow{
                                 .handoff_id = "handoff.apple",
@@ -2325,7 +2389,7 @@ validate_simulation_management_package_evidence(std::string_view sample_id) {
                                 .operator_handoff_ready = true,
                                 .request_crash_upload = false,
                                 .request_native_capture = false,
-                                .source_index = 15U,
+                                .source_index = 21U,
                             },
                         },
                     .row_budget = 32U,
@@ -2341,6 +2405,10 @@ validate_simulation_management_package_evidence(std::string_view sample_id) {
     result.backend_evidence_rows = plan.backend_evidence_row_count;
     result.backend_evidence_ready = plan.backend_evidence_ready_count;
     result.backend_evidence_host_gated = plan.backend_evidence_host_gated_count;
+    result.cpu_profile_rows = plan.cpu_profile_row_count;
+    result.package_counter_rows = plan.package_counter_row_count;
+    result.package_counter_ready = plan.package_counter_ready_count;
+    result.package_counter_host_gated = plan.package_counter_host_gated_count;
     result.crash_telemetry_handoff_rows = plan.crash_telemetry_handoff_row_count;
     result.host_validated_backends = plan.host_validated_backend_count;
     result.rejected_unsafe_rows = plan.rejected_unsafe_row_count;
@@ -2358,6 +2426,8 @@ validate_simulation_management_package_evidence(std::string_view sample_id) {
                       result.gpu_particle_budget_rows == 3U && result.postprocess_rows == 3U &&
                       result.backend_timing_rows == 3U && result.backend_evidence_rows == 3U &&
                       result.backend_evidence_ready == 2U && result.backend_evidence_host_gated == 1U &&
+                      result.cpu_profile_rows == 3U && result.package_counter_rows == 3U &&
+                      result.package_counter_ready == 2U && result.package_counter_host_gated == 1U &&
                       result.crash_telemetry_handoff_rows == 3U && result.host_validated_backends == 2U &&
                       result.rejected_unsafe_rows == 0U && result.replay_hash != 0U &&
                       result.d3d12_host_evidence_ready && result.vulkan_strict_host_evidence_ready &&
@@ -2368,6 +2438,8 @@ validate_simulation_management_package_evidence(std::string_view sample_id) {
                    result.gpu_particle_budget_rows == 3U && result.postprocess_rows == 3U &&
                    result.backend_timing_rows == 3U && result.backend_evidence_rows == 3U &&
                    result.backend_evidence_ready == 3U && result.backend_evidence_host_gated == 0U &&
+                   result.cpu_profile_rows == 3U && result.package_counter_rows == 3U &&
+                   result.package_counter_ready == 3U && result.package_counter_host_gated == 0U &&
                    result.crash_telemetry_handoff_rows == 3U && result.host_validated_backends == 3U &&
                    result.rejected_unsafe_rows == 0U && result.replay_hash != 0U && result.d3d12_host_evidence_ready &&
                    result.vulkan_strict_host_evidence_ready && result.metal_host_evidence_ready &&
@@ -2409,6 +2481,19 @@ make_renderer_quality_matrix_ready_row(mirakana::RendererQualityFeatureKind feat
         .feature = feature,
         .backend = backend,
         .proof = mirakana::RendererQualityProofKind::selected_package,
+        .status = mirakana::RendererQualityRowStatus::ready,
+        .evidence_categories =
+            {
+                mirakana::RendererQualityEvidenceCategory::synchronization,
+                mirakana::RendererQualityEvidenceCategory::shader_tool_validation,
+                mirakana::RendererQualityEvidenceCategory::memory_residency,
+                mirakana::RendererQualityEvidenceCategory::render_pass_frame_graph,
+                mirakana::RendererQualityEvidenceCategory::profiling,
+                mirakana::RendererQualityEvidenceCategory::package_evidence,
+            },
+        .dependency_gate_id = {},
+        .unsupported_claim_id = {},
+        .notes = "backend-local package renderer quality evidence",
         .reviewed = true,
         .backend_local_evidence = true,
         .d3d12_resource_state_barrier_evidence = is_d3d12,
@@ -2443,6 +2528,14 @@ make_renderer_quality_matrix_metal_host_gated_row(mirakana::RendererQualityFeatu
         .feature = feature,
         .backend = mirakana::rhi::BackendKind::metal,
         .proof = mirakana::RendererQualityProofKind::host_gate,
+        .status = mirakana::RendererQualityRowStatus::host_gated,
+        .evidence_categories =
+            {
+                mirakana::RendererQualityEvidenceCategory::host_gate,
+            },
+        .dependency_gate_id = {},
+        .unsupported_claim_id = {},
+        .notes = "Metal quality row requires Apple host evidence",
         .reviewed = true,
         .backend_local_evidence = true,
         .d3d12_resource_state_barrier_evidence = false,
@@ -2508,6 +2601,8 @@ make_renderer_quality_matrix_metal_host_gated_row(mirakana::RendererQualityFeatu
     result.rows = plan.row_count;
     result.ready_rows = plan.ready_row_count;
     result.host_gated_rows = plan.host_gated_row_count;
+    result.dependency_gated_rows = plan.dependency_gated_row_count;
+    result.unsupported_rows = plan.unsupported_row_count;
     result.host_validated_backends = plan.host_validated_backend_count;
     result.replay_hash = plan.replay_hash;
     result.d3d12_ready = plan.d3d12_quality_matrix_ready;
@@ -2523,6 +2618,7 @@ make_renderer_quality_matrix_metal_host_gated_row(mirakana::RendererQualityFeatu
     result.diagnostics = plan.diagnostics.size();
     result.reviewed = plan.status == mirakana::RendererQualityMatrixStatus::host_evidence_required &&
                       result.rows == 21U && result.ready_rows == 14U && result.host_gated_rows == 7U &&
+                      result.dependency_gated_rows == 0U && result.unsupported_rows == 0U &&
                       result.host_validated_backends == 2U && result.replay_hash != 0U && result.d3d12_ready &&
                       result.vulkan_strict_ready && !result.metal_ready && result.requires_metal_host_evidence &&
                       !result.has_metal_host_evidence && result.selected_package_evidence_ready &&
@@ -2530,6 +2626,7 @@ make_renderer_quality_matrix_metal_host_gated_row(mirakana::RendererQualityFeatu
                       !result.invoked_native_capture && !result.invoked_crash_upload && result.diagnostics == 0U;
     result.ready = plan.status == mirakana::RendererQualityMatrixStatus::ready && plan.succeeded() &&
                    result.rows == 21U && result.ready_rows == 21U && result.host_gated_rows == 0U &&
+                   result.dependency_gated_rows == 0U && result.unsupported_rows == 0U &&
                    result.host_validated_backends == 3U && result.replay_hash != 0U && result.d3d12_ready &&
                    result.vulkan_strict_ready && result.metal_ready && result.requires_metal_host_evidence &&
                    result.has_metal_host_evidence && result.selected_package_evidence_ready &&
@@ -9396,6 +9493,8 @@ int main(int argc, char** argv) {
         << " renderer_quality_matrix_rows=" << renderer_quality_matrix_probe.rows
         << " renderer_quality_matrix_ready_rows=" << renderer_quality_matrix_probe.ready_rows
         << " renderer_quality_matrix_host_gated_rows=" << renderer_quality_matrix_probe.host_gated_rows
+        << " renderer_quality_matrix_dependency_gated_rows=" << renderer_quality_matrix_probe.dependency_gated_rows
+        << " renderer_quality_matrix_unsupported_rows=" << renderer_quality_matrix_probe.unsupported_rows
         << " renderer_quality_matrix_host_validated_backends=" << renderer_quality_matrix_probe.host_validated_backends
         << " renderer_quality_matrix_replay_hash=" << renderer_quality_matrix_probe.replay_hash
         << " renderer_quality_matrix_d3d12_ready=" << (renderer_quality_matrix_probe.d3d12_ready ? 1 : 0)
@@ -9623,6 +9722,11 @@ int main(int argc, char** argv) {
         << " rendering_vfx_profiling_backend_evidence_ready=" << rendering_vfx_profiling_probe.backend_evidence_ready
         << " rendering_vfx_profiling_backend_evidence_host_gated="
         << rendering_vfx_profiling_probe.backend_evidence_host_gated
+        << " rendering_vfx_profiling_cpu_profile_rows=" << rendering_vfx_profiling_probe.cpu_profile_rows
+        << " rendering_vfx_profiling_package_counter_rows=" << rendering_vfx_profiling_probe.package_counter_rows
+        << " rendering_vfx_profiling_package_counter_ready=" << rendering_vfx_profiling_probe.package_counter_ready
+        << " rendering_vfx_profiling_package_counter_host_gated="
+        << rendering_vfx_profiling_probe.package_counter_host_gated
         << " rendering_vfx_profiling_crash_telemetry_handoff_rows="
         << rendering_vfx_profiling_probe.crash_telemetry_handoff_rows
         << " rendering_vfx_profiling_host_validated_backends=" << rendering_vfx_profiling_probe.host_validated_backends
@@ -10221,6 +10325,9 @@ int main(int argc, char** argv) {
                       << " renderer_quality_matrix_rows=" << renderer_quality_matrix_probe.rows
                       << " renderer_quality_matrix_ready_rows=" << renderer_quality_matrix_probe.ready_rows
                       << " renderer_quality_matrix_host_gated_rows=" << renderer_quality_matrix_probe.host_gated_rows
+                      << " renderer_quality_matrix_dependency_gated_rows="
+                      << renderer_quality_matrix_probe.dependency_gated_rows
+                      << " renderer_quality_matrix_unsupported_rows=" << renderer_quality_matrix_probe.unsupported_rows
                       << " renderer_quality_matrix_host_validated_backends="
                       << renderer_quality_matrix_probe.host_validated_backends
                       << " renderer_quality_matrix_d3d12_ready=" << (renderer_quality_matrix_probe.d3d12_ready ? 1 : 0)
@@ -10258,6 +10365,13 @@ int main(int argc, char** argv) {
                       << rendering_vfx_profiling_probe.backend_evidence_ready
                       << " rendering_vfx_profiling_backend_evidence_host_gated="
                       << rendering_vfx_profiling_probe.backend_evidence_host_gated
+                      << " rendering_vfx_profiling_cpu_profile_rows=" << rendering_vfx_profiling_probe.cpu_profile_rows
+                      << " rendering_vfx_profiling_package_counter_rows="
+                      << rendering_vfx_profiling_probe.package_counter_rows
+                      << " rendering_vfx_profiling_package_counter_ready="
+                      << rendering_vfx_profiling_probe.package_counter_ready
+                      << " rendering_vfx_profiling_package_counter_host_gated="
+                      << rendering_vfx_profiling_probe.package_counter_host_gated
                       << " rendering_vfx_profiling_crash_telemetry_handoff_rows="
                       << rendering_vfx_profiling_probe.crash_telemetry_handoff_rows
                       << " rendering_vfx_profiling_host_validated_backends="

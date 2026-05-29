@@ -38,6 +38,8 @@ foreach ($needle in @(
         "RendererQualityMatrixStatus",
         "RendererQualityFeatureKind",
         "RendererQualityProofKind",
+        "RendererQualityRowStatus",
+        "RendererQualityEvidenceCategory",
         "RendererQualityMatrixDiagnosticCode",
         "RendererQualityMatrixRow",
         "RendererQualityMatrixRequest",
@@ -56,6 +58,11 @@ foreach ($needle in @(
         "bool vulkan_spirv_validation_evidence{false}",
         "bool metal_resource_synchronization_evidence{false}",
         "bool metal_feature_set_evidence{false}",
+        "std::vector<RendererQualityEvidenceCategory> evidence_categories",
+        "std::string dependency_gate_id",
+        "std::string unsupported_claim_id",
+        "std::size_t dependency_gated_row_count{0U}",
+        "std::size_t unsupported_row_count{0U}",
         "bool general_renderer_quality_ready{false}",
         "bool invoked_gpu_commands{false}",
         "bool invoked_native_capture{false}",
@@ -78,6 +85,10 @@ foreach ($needle in @(
         "RendererQualityMatrixDiagnosticCode::unsupported_inferred_backend_parity",
         "RendererQualityMatrixDiagnosticCode::unsupported_subjective_visual_quality_claim",
         "RendererQualityMatrixStatus::host_evidence_required",
+        "RendererQualityMatrixStatus::dependency_evidence_required",
+        "RendererQualityMatrixStatus::unsupported",
+        "RendererQualityEvidenceCategory::dependency_gate",
+        "RendererQualityEvidenceCategory::unsupported_claim",
         "resource_synchronization_ready",
         "backend_validation_ready",
         "compute_readiness",
@@ -94,8 +105,11 @@ foreach ($needle in @(
         "renderer quality matrix is ready when every backend has local host evidence",
         "renderer quality matrix rejects missing D3D12 barrier and fence evidence",
         "renderer quality matrix rejects missing strict Vulkan synchronization validation and SPIR-V evidence",
+        "renderer quality matrix rejects missing Metal synchronization and feature-set evidence",
         "renderer quality matrix rejects unsafe side effects and subjective quality claims",
         "renderer quality matrix rejects native handle tokens in ids and counters",
+        "renderer quality matrix reports dependency gated and unsupported rows per backend feature",
+        "renderer quality matrix rejects backend native tokens in gameplay facing row notes",
         "renderer quality matrix rejects missing backend feature rows and duplicate backend rows",
         "renderer quality matrix reports no rows without backend claims"
     )) {
@@ -114,6 +128,8 @@ foreach ($needle in @(
         "renderer_quality_matrix_rows=",
         "renderer_quality_matrix_ready_rows=",
         "renderer_quality_matrix_host_gated_rows=",
+        "renderer_quality_matrix_dependency_gated_rows=",
+        "renderer_quality_matrix_unsupported_rows=",
         "renderer_quality_matrix_host_validated_backends=",
         "renderer_quality_matrix_replay_hash=",
         "renderer_quality_matrix_d3d12_ready=",
@@ -163,6 +179,8 @@ foreach ($needle in @(
         "renderer_quality_matrix_rows",
         "renderer_quality_matrix_ready_rows",
         "renderer_quality_matrix_host_gated_rows",
+        "renderer_quality_matrix_dependency_gated_rows",
+        "renderer_quality_matrix_unsupported_rows",
         "renderer_quality_matrix_host_validated_backends",
         "renderer_quality_matrix_replay_hash",
         "renderer_quality_matrix_d3d12_ready",
@@ -181,6 +199,8 @@ foreach ($needle in @(
 }
 Assert-ContainsText $installedValidationText '"renderer_quality_matrix_rows" = "21"' "tools/validate-installed-desktop-runtime.ps1"
 Assert-ContainsText $installedValidationText '"renderer_quality_matrix_ready_rows" = "14"' "tools/validate-installed-desktop-runtime.ps1"
+Assert-ContainsText $installedValidationText '"renderer_quality_matrix_dependency_gated_rows" = "0"' "tools/validate-installed-desktop-runtime.ps1"
+Assert-ContainsText $installedValidationText '"renderer_quality_matrix_unsupported_rows" = "0"' "tools/validate-installed-desktop-runtime.ps1"
 Assert-ContainsText $installedValidationText '"renderer_quality_matrix_host_validated_backends" = "2"' "tools/validate-installed-desktop-runtime.ps1"
 Assert-ContainsText $installedValidationText '"renderer_quality_matrix_general_renderer_quality_ready" = "0"' "tools/validate-installed-desktop-runtime.ps1"
 

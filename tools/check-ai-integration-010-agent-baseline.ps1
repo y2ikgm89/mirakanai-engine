@@ -23,6 +23,7 @@ $dependenciesPath = Resolve-RequiredAgentPath "docs/dependencies.md"
 $legalPath = Resolve-RequiredAgentPath "docs/legal-and-licensing.md"
 $planRegistryPath = Resolve-RequiredAgentPath "docs/superpowers/plans/README.md"
 $productionCompletionMasterPlanPath = Resolve-RequiredAgentPath "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
+$publicationPreflightToolPath = Resolve-RequiredAgentPath "tools/check-publication-preflight.ps1"
 $removeMergedWorktreeToolPath = Resolve-RequiredAgentPath "tools/remove-merged-worktree.ps1"
 foreach ($textFormatToolPath in @("tools/check-text-format.ps1", "tools/check-text-format-contract.ps1", "tools/format-text.ps1", "tools/text-format-core.ps1")) {
     Resolve-RequiredAgentPath $textFormatToolPath | Out-Null
@@ -88,8 +89,15 @@ Assert-ContainsText $agentsContent "validated commit checkpoints" "AGENTS.md"
 Assert-ContainsText $agentsContent "policy reload" "AGENTS.md"
 Assert-ContainsText $agentsContent "GitHub Desktop" "AGENTS.md"
 Assert-ContainsText $agentsContent "official GitHub Flow" "AGENTS.md"
-Assert-ContainsText $agentsContent 'Before push/PR, preflight Git admin write, remote state, `origin`, and `gh auth`' "AGENTS.md"
+Assert-ContainsText $agentsContent "tools/check-publication-preflight.ps1" "AGENTS.md"
+Assert-ContainsText $agentsContent "Before starting work expected to publish" "AGENTS.md"
+Assert-ContainsText $agentsContent 'Git admin write, remote state, `origin`, and `gh auth`' "AGENTS.md"
 
+$publicationPreflightToolContent = Get-Content -LiteralPath $publicationPreflightToolPath -Raw
+Assert-ContainsText $publicationPreflightToolContent "publication-preflight" "tools/check-publication-preflight.ps1"
+Assert-ContainsText $publicationPreflightToolContent '"ls-remote", "--heads", "origin", $Branch' "tools/check-publication-preflight.ps1"
+Assert-ContainsText $publicationPreflightToolContent "gh auth status" "tools/check-publication-preflight.ps1"
+Assert-ContainsText $publicationPreflightToolContent "trusted local/full-access session" "tools/check-publication-preflight.ps1"
 $removeMergedWorktreeToolContent = Get-Content -LiteralPath $removeMergedWorktreeToolPath -Raw
 Assert-ContainsText $removeMergedWorktreeToolContent "ConvertTo-ExtendedLengthPath" "tools/remove-merged-worktree.ps1"
 Assert-ContainsText $removeMergedWorktreeToolContent "long-path-delete-fallback=enabled" "tools/remove-merged-worktree.ps1"
@@ -170,6 +178,7 @@ Assert-ContainsText $workflowsContent "AGENTS.override.md" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "Commit, Push, And Pull Request Workflow" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "Treat publishing as a slice-closing gate" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "Publication-capable Codex sessions" "docs/workflows.md"
+Assert-ContainsText $workflowsContent "tools/check-publication-preflight.ps1" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "git rev-parse --path-format=absolute --git-path index.lock" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "gh auth status" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "do not bypass GitHub Flow by hand-writing GitHub REST/MCP blobs" "docs/workflows.md"
@@ -222,6 +231,9 @@ Assert-ContainsText $workflowsContent "GITHUB_TOKEN" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "credential-manager-core" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "git config --show-origin --get-all credential.helper" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "approval-capable session" "docs/workflows.md"
+foreach ($publicationGuidanceFile in @(".agents/skills/gameengine-agent-integration/SKILL.md", ".claude/skills/gameengine-agent-integration/SKILL.md", ".cursor/skills/gameengine-agent-integration/SKILL.md", ".cursor/skills/gameengine-cursor-baseline/SKILL.md", ".codex/rules/gameengine.rules", ".claude/settings.json", ".claude/rules/ai-agent-integration.md", ".cursor/rules/mirakana-repository-baseline.mdc", ".codex/agents/agent-surface-auditor.toml", ".claude/agents/agent-surface-auditor.md", ".cursor/agents/agent-surface-auditor.md", "docs/ai-integration.md")) {
+    Assert-ContainsText (Get-AgentSurfaceText $publicationGuidanceFile) "tools/check-publication-preflight.ps1" $publicationGuidanceFile
+}
 Assert-ContainsText $workflowsContent "Worktree And Parallel Agent Workflow" "docs/workflows.md"
 Assert-ContainsText $workflowsContent '`planning-auditor`: read-only plan lifecycle audit' "docs/workflows.md"
 Assert-ContainsText $workflowsContent '`planning-auditor`, and `rendering-auditor` use `gpt-5.4` with high reasoning' "docs/workflows.md"
@@ -269,11 +281,13 @@ Assert-ContainsText $buildingContent "tools/cmake.ps1 --preset dev" "docs/buildi
 Assert-ContainsText $buildingContent "tools/ctest.ps1 --preset dev --output-on-failure" "docs/building.md"
 Assert-ContainsText $agentsContent "/INCREMENTAL:NO" "AGENTS.md"
 Assert-ContainsText $agentsContent "COMPILE_PDB_OUTPUT_DIRECTORY" "AGENTS.md"
+Assert-ContainsText $agentsContent "ObjectFileName" "AGENTS.md"
 Assert-ContainsText $agentsContent "/MP2" "AGENTS.md"
 Assert-ContainsText $agentsContent "/Zf" "AGENTS.md"
 Assert-ContainsText $agentsContent 'stale MSVC `.tlog` roots' "AGENTS.md"
 Assert-ContainsText $buildingContent "/INCREMENTAL:NO" "docs/building.md"
 Assert-ContainsText $buildingContent "COMPILE_PDB_OUTPUT_DIRECTORY" "docs/building.md"
+Assert-ContainsText $buildingContent "ObjectFileName" "docs/building.md"
 Assert-ContainsText $buildingContent "/MP2" "docs/building.md"
 Assert-ContainsText $buildingContent "/Zf" "docs/building.md"
 Assert-ContainsText $buildingContent "MSB8028" "docs/building.md"
@@ -281,8 +295,11 @@ $cmakeListsContent = Get-AgentSurfaceText "CMakeLists.txt"
 Assert-ContainsText $cmakeListsContent 'MK_MSVC_MULTIPROCESSOR_COMPILE_PROCESSES' "CMakeLists.txt"
 Assert-ContainsText $cmakeListsContent '/MP${MK_MSVC_MULTIPROCESSOR_COMPILE_PROCESSES}' "CMakeLists.txt"
 Assert-ContainsText $cmakeListsContent '/Zf' "CMakeLists.txt"
+Assert-ContainsText $cmakeListsContent 'CMAKE_OBJECT_PATH_MAX 240' "CMakeLists.txt"
 Assert-ContainsText $cmakeListsContent 'COMPILE_PDB_NAME ${target_name}' "CMakeLists.txt"
 Assert-ContainsText $cmakeListsContent 'COMPILE_PDB_OUTPUT_DIRECTORY' "CMakeLists.txt"
+Assert-ContainsText $cmakeListsContent 'MK_apply_msvc_visual_studio_short_object_names' "CMakeLists.txt"
+Assert-ContainsText $cmakeListsContent 'PROPERTY VS_SETTINGS "ObjectFileName=$(IntDir)mk_${MK_SOURCE_HASH_SHORT}.obj"' "CMakeLists.txt"
 Assert-ContainsText $cmakeListsContent 'get_target_property(MK_TARGET_TYPE ${target_name} TYPE)' "CMakeLists.txt"
 Assert-ContainsText $cmakeListsContent 'MK_TARGET_TYPE STREQUAL "EXECUTABLE"' "CMakeLists.txt"
 Assert-ContainsText $cmakeListsContent 'MK_TARGET_TYPE STREQUAL "SHARED_LIBRARY"' "CMakeLists.txt"
@@ -299,6 +316,7 @@ foreach ($cmakeSkillPath in @(
 )) {
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "/INCREMENTAL:NO" $cmakeSkillPath
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "COMPILE_PDB_OUTPUT_DIRECTORY" $cmakeSkillPath
+    Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "ObjectFileName" $cmakeSkillPath
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "/MP2" $cmakeSkillPath
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "/Zf" $cmakeSkillPath
     Assert-ContainsText (Get-AgentSurfaceText $cmakeSkillPath) "-ShardCount" $cmakeSkillPath
@@ -317,7 +335,10 @@ foreach ($buildFixerPath in @(".codex/agents/build-fixer.toml", ".claude/agents/
     Assert-ContainsText $buildFixerAgentText 'Do not repair generated `out/build/<preset>` trees' $buildFixerPath
     Assert-ContainsText $buildFixerAgentText "CMakeCache.txt" $buildFixerPath
     Assert-ContainsText $buildFixerAgentText "C1041" $buildFixerPath
+    Assert-ContainsText $buildFixerAgentText "C1083" $buildFixerPath
     Assert-ContainsText $buildFixerAgentText "COMPILE_PDB_OUTPUT_DIRECTORY" $buildFixerPath
+    Assert-ContainsText $buildFixerAgentText "CMAKE_OBJECT_PATH_MAX=240" $buildFixerPath
+    Assert-ContainsText $buildFixerAgentText "ObjectFileName" $buildFixerPath
     Assert-ContainsText $buildFixerAgentText "/MP2" $buildFixerPath
     Assert-ContainsText $buildFixerAgentText "/Zf" $buildFixerPath
     Assert-ContainsText $buildFixerAgentText 'global `/FS`' $buildFixerPath
@@ -329,6 +350,7 @@ foreach ($buildFixerPath in @(".codex/agents/build-fixer.toml", ".claude/agents/
 }
 $cursorCmakeRuleText = Get-AgentSurfaceText ".cursor/rules/mirakana-cmake-vcpkg.mdc"
 Assert-ContainsText $cursorCmakeRuleText "COMPILE_PDB_OUTPUT_DIRECTORY" ".cursor/rules/mirakana-cmake-vcpkg.mdc"
+Assert-ContainsText $cursorCmakeRuleText "ObjectFileName" ".cursor/rules/mirakana-cmake-vcpkg.mdc"
 Assert-ContainsText $cursorCmakeRuleText "/MP2" ".cursor/rules/mirakana-cmake-vcpkg.mdc"
 Assert-ContainsText $cursorCmakeRuleText "/Zf" ".cursor/rules/mirakana-cmake-vcpkg.mdc"
 Assert-ContainsText $cursorCmakeRuleText 'global `/FS`' ".cursor/rules/mirakana-cmake-vcpkg.mdc"
@@ -338,6 +360,7 @@ Assert-ContainsText $manifestRaw "msvcCompileThroughput" "engine/agent/manifest.
 Assert-ContainsText $manifestRaw "/MP2" "engine/agent/manifest.json"
 Assert-ContainsText $manifestRaw "/Zf" "engine/agent/manifest.json"
 Assert-ContainsText $manifestRaw "msvcCompilePdbIsolation" "engine/agent/manifest.json"
+Assert-ContainsText $manifestRaw "ObjectFileName" "engine/agent/manifest.json"
 Assert-ContainsText $manifestRaw ".lastbuildstate" "engine/agent/manifest.json"
 Assert-ContainsText (Get-AgentSurfaceText "tools/common.ps1") 'ToolId "cmake-build"' "tools/common.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/common.ps1") 'Test-CMakeBuildCommand' "tools/common.ps1"
@@ -357,6 +380,10 @@ Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") 'independent sta
 Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") 'Get-ValidateOutputCapture' "tools/validate.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") '[int]$StaticCheckTimeoutSeconds = 1800' "tools/validate.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") 'validate: timed out after ${TaskTimeoutSeconds}s' "tools/validate.ps1"
+Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") '$validateProcessExitDrainMilliseconds = 2000' "tools/validate.ps1"
+Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") '$validateStreamDrainMilliseconds = 2000' "tools/validate.ps1"
+Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") 'MK_MOBILE_DEVICE_PROBE' "tools/validate.ps1"
+Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") 'stream capture did not finish' "tools/validate.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") 'OutputLogPath' "tools/validate.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") 'OmittedOutputLineCount' "tools/validate.ps1"
 Assert-ContainsText (Get-AgentSurfaceText "tools/validate.ps1") 'out" (Join-Path "validation-logs"' "tools/validate.ps1"
@@ -643,6 +670,11 @@ if (-not $manifest.commands.PSObject.Properties.Name.Contains("prepareWorktree")
     Write-Error "engine/agent/manifest.json commands missing required command: prepareWorktree"
 } elseif ($manifest.commands.prepareWorktree -ne "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1") {
     Write-Error "engine/agent/manifest.json commands.prepareWorktree must be pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1"
+}
+if (-not $manifest.commands.PSObject.Properties.Name.Contains("publicationPreflight")) {
+    Write-Error "engine/agent/manifest.json commands missing required command: publicationPreflight"
+} elseif ($manifest.commands.publicationPreflight -ne "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1 -Branch <branch>") {
+    Write-Error "engine/agent/manifest.json commands.publicationPreflight must expose the publication-capable session preflight"
 }
 if (-not $manifest.commands.PSObject.Properties.Name.Contains("removeMergedWorktree")) {
     Write-Error "engine/agent/manifest.json commands missing required command: removeMergedWorktree"

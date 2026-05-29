@@ -631,6 +631,7 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
         $expectedGpuMemoryBackendEvidence =
             if ($requiresD3d12GpuMemoryEvidence -or $requiresVulkanGpuMemoryEvidence) { "1" } else { "0" }
         $expectedGpuMemoryOsVideoBudgetRequired = if ($requiresD3d12GpuMemoryEvidence) { "1" } else { "0" }
+        $expectedGpuMemoryResidencyPressureRequired = if ($requiresD3d12GpuMemoryEvidence) { "1" } else { "0" }
         $expectedGpuMemoryPolicyFields = @{
             "gpu_memory_policy_status" = "ready"
             "gpu_memory_policy_ready" = "1"
@@ -642,6 +643,8 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
             "gpu_memory_policy_backend_memory_evidence_required" = $expectedGpuMemoryBackendEvidence
             "gpu_memory_policy_backend_memory_evidence_ready" = $expectedGpuMemoryBackendEvidence
             "gpu_memory_policy_os_video_memory_budget_required" = $expectedGpuMemoryOsVideoBudgetRequired
+            "gpu_memory_policy_residency_pressure_required" = $expectedGpuMemoryResidencyPressureRequired
+            "gpu_memory_policy_package_counter_evidence_required" = $expectedGpuMemoryBackendEvidence
         }
         foreach ($field in $expectedGpuMemoryPolicyFields.Keys) {
             $expectedValue = [regex]::Escape($expectedGpuMemoryPolicyFields[$field])
@@ -654,7 +657,8 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
                 "gpu_memory_policy_requested_bytes",
                 "gpu_memory_policy_counted_bytes",
                 "gpu_memory_policy_committed_byte_estimate",
-                "gpu_memory_policy_upload_bytes_written"
+                "gpu_memory_policy_upload_bytes_written",
+                "gpu_memory_policy_package_counters"
             )) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
                 Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive GPU memory policy field: $field"
@@ -678,7 +682,9 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
         }
         foreach ($field in @(
                 "d3d12_gpu_memory_execution_committed_resources_byte_estimate",
-                "d3d12_gpu_memory_execution_upload_bytes_written"
+                "d3d12_gpu_memory_execution_upload_bytes_written",
+                "gpu_memory_policy_residency_pressure_bytes",
+                "gpu_memory_policy_package_counters_ready"
             )) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
                 Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive D3D12 GPU memory evidence field: $field"
@@ -703,7 +709,8 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
         foreach ($field in @(
                 "vulkan_gpu_memory_execution_committed_resources_byte_estimate",
                 "vulkan_gpu_memory_execution_upload_bytes_written",
-                "vulkan_gpu_memory_execution_framegraph_barrier_steps_executed"
+                "vulkan_gpu_memory_execution_framegraph_barrier_steps_executed",
+                "gpu_memory_policy_package_counters_ready"
             )) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
                 Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive Vulkan GPU memory evidence field: $field"
@@ -723,6 +730,10 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
             "debug_profiling_policy_frames_current" = "1"
             "debug_profiling_policy_backend_profiling_evidence_required" = $expectedDebugProfilingBackendEvidence
             "debug_profiling_policy_backend_profiling_evidence_ready" = $expectedDebugProfilingBackendEvidence
+            "debug_profiling_policy_cpu_profile_zone_evidence_required" = "0"
+            "debug_profiling_policy_profile_budget_evidence_required" = "0"
+            "debug_profiling_policy_package_counter_evidence_required" = $expectedDebugProfilingBackendEvidence
+            "debug_profiling_policy_trace_capture_handoff_review_ready" = $expectedDebugProfilingBackendEvidence
         }
         foreach ($field in $expectedDebugProfilingPolicyFields.Keys) {
             $expectedValue = [regex]::Escape($expectedDebugProfilingPolicyFields[$field])
@@ -734,7 +745,8 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
                 "debug_profiling_policy_requests",
                 "debug_profiling_policy_gpu_debug_markers_inserted",
                 "debug_profiling_policy_framegraph_barrier_steps_executed",
-                "debug_profiling_policy_framegraph_render_passes_recorded"
+                "debug_profiling_policy_framegraph_render_passes_recorded",
+                "debug_profiling_policy_package_counters"
             )) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
                 Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive debug profiling policy field: $field"
@@ -743,6 +755,11 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
         if ($requiresD3d12DebugProfilingEvidence) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bdebug_profiling_policy_gpu_timestamp_ticks_per_second=[1-9]\d*\b") {
                 Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive debug profiling policy field: debug_profiling_policy_gpu_timestamp_ticks_per_second"
+            }
+        }
+        if ($requiresD3d12DebugProfilingEvidence -or $requiresVulkanDebugProfilingEvidence) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bdebug_profiling_policy_package_counters_ready=[1-9]\d*\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive debug profiling policy field: debug_profiling_policy_package_counters_ready"
             }
         }
     }
@@ -3652,6 +3669,8 @@ if ($requiresRendererQualityMatrix) {
         "renderer_quality_matrix_rows" = "21"
         "renderer_quality_matrix_ready_rows" = "14"
         "renderer_quality_matrix_host_gated_rows" = "7"
+        "renderer_quality_matrix_dependency_gated_rows" = "0"
+        "renderer_quality_matrix_unsupported_rows" = "0"
         "renderer_quality_matrix_host_validated_backends" = "2"
         "renderer_quality_matrix_d3d12_ready" = "1"
         "renderer_quality_matrix_vulkan_strict_ready" = "1"
@@ -3687,6 +3706,10 @@ if ($requiresRenderingVfxProfiling) {
         "rendering_vfx_profiling_backend_evidence_rows" = "3"
         "rendering_vfx_profiling_backend_evidence_ready" = "2"
         "rendering_vfx_profiling_backend_evidence_host_gated" = "1"
+        "rendering_vfx_profiling_cpu_profile_rows" = "3"
+        "rendering_vfx_profiling_package_counter_rows" = "3"
+        "rendering_vfx_profiling_package_counter_ready" = "2"
+        "rendering_vfx_profiling_package_counter_host_gated" = "1"
         "rendering_vfx_profiling_crash_telemetry_handoff_rows" = "3"
         "rendering_vfx_profiling_host_validated_backends" = "2"
         "rendering_vfx_profiling_rejected_unsafe_rows" = "0"
