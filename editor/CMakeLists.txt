@@ -47,6 +47,7 @@ MK_apply_common_target_options(MK_editor_core)
 add_library(MK_editor_shell_common
     src/native_editor_app.cpp
     src/native_editor_launch.cpp
+    src/native_viewport_surface.cpp
     src/win32_imgui_descriptor_allocator.cpp
 )
 

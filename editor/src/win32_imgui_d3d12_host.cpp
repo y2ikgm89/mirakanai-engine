@@ -457,6 +457,7 @@ struct Win32ImguiD3d12Host::Impl {
         ImGui::NewFrame();
         app.record_native_frame();
         app.record_native_resource_device_ready(result.frames_rendered + 1U);
+        app.record_native_viewport_d3d12_host_ready(result.frames_rendered + 1U);
         (void)render_native_editor_panels(app);
         ImGui::Render();
         ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), command_list.Get());

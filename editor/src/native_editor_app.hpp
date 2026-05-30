@@ -4,6 +4,7 @@
 #pragma once
 
 #include "native_editor_launch.hpp"
+#include "native_viewport_surface.hpp"
 
 #include "mirakana/editor/ai_command_panel.hpp"
 #include "mirakana/editor/profiler.hpp"
@@ -94,6 +95,8 @@ class NativeEditorApp {
     [[nodiscard]] const EditorTimelinePanelModel& timeline() const noexcept;
     [[nodiscard]] std::vector<ProjectSettingsError> project_settings_errors() const;
     [[nodiscard]] const NativeEditorServiceStatus& services() const noexcept;
+    [[nodiscard]] const ViewportState& viewport() const noexcept;
+    [[nodiscard]] const NativeViewportDisplayPlan& viewport_display() const noexcept;
 
     void bind_native_services(NativeEditorServiceBindings services);
     [[nodiscard]] FileDialogId show_file_dialog(FileDialogRequest request);
@@ -108,6 +111,7 @@ class NativeEditorApp {
     void record_native_frame() noexcept;
     void record_native_panels_rendered(std::uint32_t count) noexcept;
     void record_native_resource_device_ready(std::uint64_t frame_index);
+    void record_native_viewport_d3d12_host_ready(std::uint64_t frame_index);
 
   private:
     NativeEditorLaunchOptions options_;

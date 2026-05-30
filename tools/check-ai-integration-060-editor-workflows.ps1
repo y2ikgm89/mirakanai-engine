@@ -1830,3 +1830,147 @@ foreach ($check in $nativeEditorServiceChecks) {
         Write-Error "ai-integration-check: $($check.Path) missing native editor service contract: $($missingNeedles -join ', ')"
     }
 }
+
+$nativeEditorViewportChecks = @(
+    @{
+        Path = "editor/src/native_viewport_surface.hpp"
+        Needles = @(
+            "NativeViewportDisplayDesc",
+            "NativeViewportDisplayPlan",
+            "d3d12_host_available",
+            "renderer_output_available",
+            "texture_display_ready",
+            "native_texture_handles_exposed",
+            "native_texture_handle_policy",
+            "plan_native_viewport_display"
+        )
+    },
+    @{
+        Path = "editor/src/native_viewport_surface.cpp"
+        Needles = @(
+            "host_unavailable",
+            "invalid_extent",
+            "diagnostic_only",
+            "renderer output unavailable",
+            "native D3D12 texture display adapter is private"
+        )
+    },
+    @{
+        Path = "editor/src/native_editor_app.hpp"
+        Needles = @(
+            "native_viewport_surface.hpp",
+            "viewport()",
+            "viewport_display()",
+            "record_native_viewport_d3d12_host_ready"
+        )
+    },
+    @{
+        Path = "editor/src/native_editor_app.cpp"
+        Needles = @(
+            'NativePanelToken{.id = "viewport"}',
+            "plan_native_viewport_display",
+            "ViewportState viewport",
+            "NativeViewportDisplayPlan viewport_display",
+            "record_native_viewport_d3d12_host_ready",
+            'set_renderer("d3d12")'
+        )
+    },
+    @{
+        Path = "editor/src/native_editor_panels.cpp"
+        Needles = @(
+            "render_native_editor_viewport_panel",
+            "PanelId::viewport",
+            "native_viewport_surface",
+            "diagnostic only",
+            "native handles"
+        )
+    },
+    @{
+        Path = "editor/src/win32_imgui_d3d12_host.cpp"
+        Needles = @(
+            "record_native_viewport_d3d12_host_ready"
+        )
+    },
+    @{
+        Path = "editor/src/main.cpp"
+        Needles = @(
+            "editor_shell_viewport_status=",
+            "editor_shell_viewport_native_handles_exposed="
+        )
+    },
+    @{
+        Path = "CMakeLists.txt"
+        Needles = @(
+            "editor_shell_panels=11",
+            "editor_shell_viewport_status=diagnostic_only",
+            "editor_shell_viewport_native_handles_exposed=0"
+        )
+    },
+    @{
+        Path = "editor/CMakeLists.txt"
+        Needles = @(
+            "src/native_viewport_surface.cpp"
+        )
+    },
+    @{
+        Path = "tests/unit/editor_native_shell_tests.cpp"
+        Needles = @(
+            "editor native viewport display plan rejects missing d3d12 host",
+            "editor native viewport display plan records diagnostic-only viewport when renderer output is unavailable",
+            "editor native viewport display plan does not expose native texture handles",
+            "native_texture_handle_policy"
+        )
+    },
+    @{
+        Path = "docs/editor.md"
+        Needles = @(
+            "Viewport",
+            "editor_shell_panels=11",
+            "editor_shell_viewport_status=diagnostic_only",
+            "editor_shell_viewport_native_handles_exposed=0",
+            "full D3D12 texture display"
+        )
+    },
+    @{
+        Path = "docs/current-capabilities.md"
+        Needles = @(
+            "diagnostic-only native Viewport panel",
+            "editor_shell_panels=11",
+            "editor_shell_viewport_status=diagnostic_only",
+            "editor_shell_viewport_native_handles_exposed=0",
+            "Full Viewport D3D12 texture display"
+        )
+    },
+    @{
+        Path = "docs/roadmap.md"
+        Needles = @(
+            "diagnostic-only viewport display",
+            "editor_shell_panels=11",
+            "editor_shell_viewport_status=diagnostic_only",
+            "editor_shell_viewport_native_handles_exposed=0",
+            "full viewport texture display"
+        )
+    },
+    @{
+        Path = "engine/agent/manifest.json"
+        Needles = @(
+            "diagnostic-only viewport display",
+            "editor_shell_panels=11",
+            "editor_shell_viewport_status=diagnostic_only",
+            "editor_shell_viewport_native_handles_exposed=0",
+            "private D3D12 texture adapter"
+        )
+    }
+)
+foreach ($check in $nativeEditorViewportChecks) {
+    $fileText = Get-AgentSurfaceText $check.Path
+    $missingNeedles = @()
+    foreach ($needle in $check.Needles) {
+        if (-not $fileText.Contains($needle)) {
+            $missingNeedles += $needle
+        }
+    }
+    if ($missingNeedles.Count -gt 0) {
+        Write-Error "ai-integration-check: $($check.Path) missing native editor viewport contract: $($missingNeedles -join ', ')"
+    }
+}
