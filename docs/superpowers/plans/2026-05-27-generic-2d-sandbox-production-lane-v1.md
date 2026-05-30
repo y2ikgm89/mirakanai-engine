@@ -12,7 +12,7 @@
 
 **Plan ID:** `generic-2d-sandbox-production-lane-v1`
 
-**Status:** Phased milestone implementation in progress. Phases 1-9 have completed as reviewable slices, and Phase 10 is selected through the focused child plan `Sandbox World Package Validation And Performance Budgets v1`. This file does not replace `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`, does not reopen `unsupportedProductionGaps`, and does not mark later planned capabilities as ready.
+**Status:** Completed. Phases 1-10 have completed as reviewable slices, ending with `Sandbox World Package Validation And Performance Budgets v1` through PR #313 / merge commit `04cc3b0f9cb1331f1ea21b15f91f116eb3fec8cf`. This file does not replace `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`, does not reopen `unsupportedProductionGaps`, and does not mark later planned capabilities as ready.
 
 ## Current Evidence And Gap Summary
 
@@ -391,6 +391,8 @@ out\install\desktop-runtime-release\bin\sample_2d_desktop_runtime_package.exe --
 
 Expected: package stdout includes positive ready counters for implemented phases and explicit zero counters for forbidden package IO, native handle exposure, arbitrary shell execution, external downloads, broad multiplayer, and broad renderer quality.
 
+Evidence: Phase 10 selected and implemented through `docs/superpowers/plans/2026-05-30-sandbox-world-package-validation-performance-budgets-v1.md`. It adds selected Win32 runtime host, D3D12 presentation, WASAPI, sandbox runtime/persistence/streaming, production tile renderer, authoring workflow, runtime UI renderer atlas handoff, and `--require-sandbox-package-budgets` package proof with deterministic `sandbox_package_budget_*` counters, source-tree over-budget negative CTest coverage, installed package validation, docs/manifest/static-check sync, no SDL3, no public native handles, and no broad online/modding/renderer-quality claim. Focused desktop-runtime build/CTest, installed package validation, and full `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed locally; PR #313 merged at `04cc3b0f9cb1331f1ea21b15f91f116eb3fec8cf` after hosted `PR Gate`, `Windows MSVC`, Linux, macOS Metal CMake, iOS smoke, static analysis, and CodeQL checks succeeded.
+
 ## Phase 11 - Docs, Manifest, Static Checks, And Closeout
 
 **Goal:** Publish only the evidence that exists, keep AI-operable contracts honest, and preserve host gates.
@@ -432,7 +434,7 @@ git diff --check
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 ```
 
-- [ ] Publish each coherent implementation phase through GitHub Flow with one reviewable PR per phase or tightly related phase group. Do not push directly to `main`, force-push, or mark host-gated lanes ready without hosted or local host evidence.
+- [x] Publish each coherent implementation phase through GitHub Flow with one reviewable PR per phase or tightly related phase group. Do not push directly to `main`, force-push, or mark host-gated lanes ready without hosted or local host evidence.
 
 ## Done When
 
