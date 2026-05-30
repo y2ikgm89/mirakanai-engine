@@ -27,7 +27,7 @@ On Windows, the default validation build uses Windows SDK system libraries for t
 
 These are official platform SDK libraries and are not bundled in the repository.
 
-The optional desktop runtime, desktop GUI/editor, asset importer, native physics middleware adapter, and network transport adapter lanes use vcpkg manifest features so optional package dependencies remain isolated from the default build and from system-wide package locations. The current `desktop-runtime` and `desktop-gui` features are dependency-free; Windows desktop integration uses host SDK libraries.
+The optional desktop runtime, desktop GUI/editor, asset importer, native physics middleware adapter, and network transport adapter lanes use vcpkg manifest features so optional package dependencies remain isolated from the default build and from system-wide package locations. The current `desktop-runtime` feature is dependency-free and uses host SDK libraries. The `desktop-gui` feature declares Dear ImGui only for the future native editor shell.
 
 Run the optional vcpkg dependency bootstrap with:
 
@@ -43,7 +43,7 @@ GitHub Actions restores the gitignored `external/vcpkg` tool checkout before cal
 
 On restricted sandboxed hosts, `bootstrap-deps` can still require an unrestricted run because it is the step that intentionally launches vcpkg, downloads archives, extracts helper tools, and builds dependency ports. After it succeeds, normal configure/build/package lanes should not invoke vcpkg.
 
-The visible desktop GUI/editor shell is deferred after SDL3 removal. The wrapper below is retained as a fail-closed entrypoint for stale automation:
+The visible desktop GUI/editor shell is still deferred after SDL3 removal until the native Win32/D3D12 `MK_editor` target lands. The wrapper below remains the supported entrypoint and fails closed until that implementation replaces the deferral:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1
@@ -75,11 +75,11 @@ Apply ADK servicing patches only when they match installed ADK features. Do not 
 
 `desktop-runtime` in `vcpkg.json` is currently a dependency-free feature. It enables the Windows-native platform/audio/runtime host lane through `MK_ENABLE_DESKTOP_RUNTIME=ON` while relying on host SDK libraries such as Win32, WASAPI, DXGI, and D3D12. It is intentionally separate from `desktop-gui` so windowed games can be validated and packaged without Dear ImGui or `MK_editor`.
 
-`desktop-gui` in `vcpkg.json` is currently a deferred empty feature. It declares no package dependencies, does not install Dear ImGui, and does not enable the desktop runtime lane.
+`desktop-gui` in `vcpkg.json` declares:
 
-The previous visible editor shell was removed from active build lanes before final desktop platform cleanup. `MK_editor_core` remains the supported editor logic target. A future visible editor shell must select audited dependencies explicitly and use first-party Win32/D3D12 adapters on Windows.
+- `imgui` with the `win32-binding` and `dx12-binding` vcpkg features
 
-Dear ImGui remains a possible future developer/editor/debug-shell dependency, but it is not currently declared or distributed. It is not the production game/runtime UI foundation. Production runtime UI work should first define first-party `MK_ui` contracts.
+Dear ImGui is optional and editor/developer-shell only. Dear ImGui is not the production runtime game UI foundation. The selected desktop-gui feature uses Win32 and DirectX 12 backends and must not enable SDL3 bindings. The previous visible editor shell was removed from active build lanes before final desktop platform cleanup. `MK_editor_core` remains the supported editor logic target, and the future visible editor shell must keep Dear ImGui, Win32, D3D12, DXGI, and native handles in private editor implementation files rather than public engine, gameplay, runtime UI, or editor-core APIs.
 
 ### Editor native module boundary (not a vcpkg dependency)
 
@@ -178,6 +178,7 @@ Validated local package versions:
 | OpenGL Registry | 2026-01-26 | Optional `MK_tools` build output through KTX Software |
 | EGL Registry | 2025-05-27 | Optional `MK_tools` build output through KTX Software |
 | miniaudio | vcpkg baseline selected | Optional `MK_tools` WAV/MP3/FLAC source importer |
+| Dear ImGui | 1.92.8 | Optional `MK_editor` developer/editor shell dependency |
 | Jolt Physics | 5.5.0 | Optional `MK_physics_jolt` native physics middleware adapter |
 | ENet | 1.3.18 | Optional `MK_runtime_network_enet` loopback network transport adapter |
 | Android Gradle Plugin | 9.1.0 | Toolchain-gated Android package template |
@@ -200,6 +201,7 @@ Validated local package versions:
 - fastgltf: https://github.com/spnda/fastgltf
 - KTX Software: https://github.com/KhronosGroup/KTX-Software
 - miniaudio: https://miniaud.io/
+- Dear ImGui: https://github.com/ocornut/imgui
 - Jolt Physics: https://github.com/jrouwe/JoltPhysics
 - Jolt Physics documentation: https://jrouwe.github.io/JoltPhysics/
 - ENet: https://github.com/lsalzman/enet
@@ -235,6 +237,7 @@ Validated local package versions:
 - Zstandard is BSD-3-Clause OR GPL-2.0-only and is pulled through KTX Software.
 - Khronos OpenGL/EGL registry files use per-file license comments and are pulled through KTX Software.
 - miniaudio is public domain or MIT No Attribution.
+- Dear ImGui is MIT licensed and isolated to the optional `desktop-gui` developer/editor shell lane.
 - Jolt Physics is MIT licensed and isolated to the optional `physics-jolt` adapter lane.
 - ENet is MIT licensed and isolated to the optional `network-enet` adapter lane.
 - Android Gradle Plugin, AndroidX AppCompat, AndroidX Core, and AndroidX Games Activity are Apache-2.0 licensed Android toolchain/template dependencies and are not part of the default build.

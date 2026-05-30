@@ -13,7 +13,7 @@ Long capability prose lower in this file is retained historical/static-check evi
 
 ## Principle
 
-Build a clean C++23 engine with no early backward-compatibility burden. Prefer official platform guidance, explicit module boundaries, deterministic tests, and AI-readable contracts. Separate developer-facing tooling from production runtime UI: the previous Dear ImGui visible editor shell is removed from active build lanes, `MK_editor_core` remains the supported editor logic surface, and future game UI plus scalable editor surfaces should evolve toward first-party retained-mode UI layers similar in role to Unreal Slate/UMG/Common UI or Unity UI Toolkit.
+Build a clean C++23 engine with no early backward-compatibility burden. Prefer official platform guidance, explicit module boundaries, deterministic tests, and AI-readable contracts. Separate developer-facing tooling from production runtime UI: the previous SDL3/Dear ImGui visible editor shell is removed from active build lanes, `MK_editor_core` remains the supported editor logic surface, the new native editor shell plan may use Dear ImGui only as an optional Win32/D3D12 developer/editor shell dependency, and future game UI plus scalable runtime surfaces should evolve toward first-party retained-mode UI layers similar in role to Unreal Slate/UMG/Common UI or Unity UI Toolkit.
 
 ## Core-First MVP Closure
 
@@ -27,7 +27,7 @@ The following remain outside the MVP closure claim: Apple-hosted iOS simulator/d
 
 `Desktop Runtime Productization` is complete as the first practical Windows desktop vertical slice after `core-first-mvp`: source-tree desktop runtime validation, the default desktop runtime package lane, and the selected `sample_desktop_runtime_game` package lane with installed config, cooked scene package files, target-specific shader artifacts, scene GPU binding reports, depth-aware postprocess status, and fixed 3x3 PCF directional-shadow smoke reports.
 
-Optional vcpkg-backed lanes now use explicit dependency bootstrap rather than configure-time restore: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1` owns `vcpkg install` for `desktop-runtime`, the currently empty/deferred `desktop-gui` feature, `asset-importers`, `physics-jolt`, and `network-enet`, while CMake presets consume `${sourceDir}/vcpkg_installed` with `VCPKG_MANIFEST_INSTALL=OFF`.
+Optional vcpkg-backed lanes now use explicit dependency bootstrap rather than configure-time restore: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1` owns `vcpkg install` for `desktop-runtime`, the Dear ImGui-backed `desktop-gui` feature, `asset-importers`, `physics-jolt`, and `network-enet`, while CMake presets consume `${sourceDir}/vcpkg_installed` with `VCPKG_MANIFEST_INSTALL=OFF`.
 
 D3D12 is the primary verified Windows package lane for this slice. The current Windows host also validates the strict selected Vulkan package command, but Vulkan remains host/runtime/toolchain-gated for other environments. Apple/iOS/Metal productization, production renderer quality, material/shader graph authoring, live shader generation, broader authored/cooked packaged-game conventions, editor UX expansion, concrete runtime UI adapters, telemetry/crash reporting, allocator diagnostics, and GPU marker adapters remain next-phase work.
 
