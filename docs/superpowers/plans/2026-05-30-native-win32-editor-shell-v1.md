@@ -137,7 +137,7 @@ The first launchable shell should show a real window, draw ImGui content, drive 
 - Audit: `tools/check-ai-integration-040-agent-surfaces.ps1`
 - Audit: `tools/check-ai-integration-060-editor-workflows.ps1`
 
-- [ ] **Step 1: Confirm clean baseline**
+- [x] **Step 1: Confirm clean baseline**
 
 Run:
 
@@ -149,7 +149,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 
 Expected: clean or task-owned changes only, toolchain check passes, and full validation passes before the editor shell work starts.
 
-- [ ] **Step 2: Confirm current fail-closed GUI baseline**
+- [x] **Step 2: Confirm current fail-closed GUI baseline**
 
 Run:
 
@@ -159,7 +159,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1
 
 Expected at plan creation: nonzero exit with `visible editor shell is deferred after SDL3 removal`. After Phase 2, the expected fail-closed message is the launch-contract skeleton message until the native host and GUI smoke lane are wired.
 
-- [ ] **Step 3: Inventory deferred editor needles**
+- [x] **Step 3: Inventory deferred editor needles**
 
 Run:
 
@@ -169,7 +169,7 @@ rg -n "visible editor shell is deferred|MK_editor visible shell is deferred|buil
 
 Expected: one auditable list of every file that needs to move from fail-closed deferred shell text to native shell readiness text during later phases.
 
-- [ ] **Step 4: Select this plan only when implementation begins**
+- [x] **Step 4: Select this plan only when implementation begins**
 
 If implementation is selected, update `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` so `currentActivePlan` points to this file and `recommendedNextPlan.id` is `native-win32-editor-shell-v1`. Compose and verify:
 
@@ -198,7 +198,7 @@ Expected: manifest composition and AI integration checks pass.
 - Modify: `docs/roadmap.md`
 - Modify: `docs/current-capabilities.md`
 
-- [ ] **Step 1: Re-check vcpkg imgui feature names**
+- [x] **Step 1: Re-check vcpkg imgui feature names**
 
 Run:
 
@@ -208,7 +208,7 @@ Get-Content -Path external/vcpkg/ports/imgui/vcpkg.json -Raw
 
 Expected: the port still offers `win32-binding` and `dx12-binding`, and SDL3 binding features remain separate.
 
-- [ ] **Step 2: Update `desktop-gui` dependency shape**
+- [x] **Step 2: Update `desktop-gui` dependency shape**
 
 Change `vcpkg.json` so `desktop-gui` declares only:
 
@@ -224,7 +224,7 @@ Change `vcpkg.json` so `desktop-gui` declares only:
 
 Expected: no `sdl3-binding`, no `sdl3-renderer-binding`, and no `sdl3` dependency in `desktop-gui`.
 
-- [ ] **Step 3: Update dependency policy assertions**
+- [x] **Step 3: Update dependency policy assertions**
 
 Change `tools/check-dependency-policy.ps1` so it requires `desktop-gui` to include `imgui` with `win32-binding` and `dx12-binding`, still rejects `sdl3`, and requires Dear ImGui notices while the GUI feature declares it.
 
@@ -237,7 +237,7 @@ desktop-gui imgui dependency must include feature: dx12-binding
 desktop-gui feature must not declare dependency: sdl3
 ```
 
-- [ ] **Step 4: Update legal and dependency docs**
+- [x] **Step 4: Update legal and dependency docs**
 
 Record Dear ImGui as an MIT-licensed optional editor-shell dependency in:
 
@@ -255,7 +255,7 @@ Dear ImGui is not the production runtime game UI foundation.
 The selected desktop-gui feature uses Win32 and DirectX 12 backends and must not enable SDL3 bindings.
 ```
 
-- [ ] **Step 5: Bootstrap and validate dependency policy**
+- [x] **Step 5: Bootstrap and validate dependency policy**
 
 Run:
 
@@ -286,7 +286,7 @@ Expected: vcpkg installs the selected imgui feature set, dependency policy passe
 - Modify: `CMakeLists.txt`
 - Modify: `tools/check-json-contracts-030-tooling-contracts.ps1`
 
-- [ ] **Step 1: Write RED launch-option tests**
+- [x] **Step 1: Write RED launch-option tests**
 
 Add `tests/unit/editor_native_shell_tests.cpp` with tests that require these private launch contracts:
 
@@ -300,7 +300,7 @@ Add `tests/unit/editor_native_shell_tests.cpp` with tests that require these pri
 
 Expected initial build failure: `NativeEditorLaunchOptions`, `NativeEditorLaunchParseResult`, `parse_native_editor_launch`, or `validate_native_editor_launch` does not exist.
 
-- [ ] **Step 2: Build RED target**
+- [x] **Step 2: Build RED target**
 
 Run:
 
@@ -311,7 +311,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset d
 
 Expected: build fails on missing native editor launch types.
 
-- [ ] **Step 3: Add private launch contracts**
+- [x] **Step 3: Add private launch contracts**
 
 Create `editor/src/native_editor_launch.hpp` and `editor/src/native_editor_launch.cpp` with:
 
@@ -354,7 +354,7 @@ smoke_frames == -1 or smoke_frames > 0
 no native handles in the launch contract
 ```
 
-- [ ] **Step 4: Add CMake skeleton**
+- [x] **Step 4: Add CMake skeleton**
 
 Change `editor/CMakeLists.txt` so `MK_ENABLE_DESKTOP_GUI=ON` creates:
 
@@ -392,11 +392,11 @@ target_link_libraries(MK_editor PRIVATE MK_editor_shell_win32)
 
 Keep all native shell includes private to build targets; do not install `editor/src` headers. The launch-contract skeleton intentionally does not consume `imgui::imgui` until Phase 3 wires the Dear ImGui backend lifecycle.
 
-- [ ] **Step 5: Add thin executable entrypoint**
+- [x] **Step 5: Add thin executable entrypoint**
 
 Create `editor/src/main.cpp` so it parses options, validates them, prints a diagnostic plus usage to `stderr` on invalid input, and returns deterministic usage-error exit code `2` before native window creation. At this phase, a valid invocation may return success after validation while the host is not wired.
 
-- [ ] **Step 6: Prove skeleton tests pass**
+- [x] **Step 6: Prove skeleton tests pass**
 
 Run:
 
