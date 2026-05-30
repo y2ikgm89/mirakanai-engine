@@ -102,6 +102,6 @@ add_executable(MK_editor
     src/main.cpp
 )
 
-target_link_libraries(MK_editor PRIVATE MK_editor_shell_win32)
+target_link_libraries(MK_editor PRIVATE MK_editor_shell_common MK_editor_shell_win32)
 
 MK_apply_common_target_options(MK_editor)
