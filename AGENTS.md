@@ -13,7 +13,7 @@
 - Keep this always-loaded file under Codex's default 32 KiB `project_doc_max_bytes` budget; `tools/check-agents.ps1` enforces this. Move long procedures to skills/docs/subagents/manifest.
 - Do not put long procedures, stale status snapshots, personal preferences, credentials, API keys, MCP connection state, or machine-specific paths in tracked instructions.
 - Put reusable workflows in skills, path-specific guidance in rules, specialized behavior in subagents, and machine-readable capability/status claims in the **composed** `engine/agent/manifest.json` (edit `engine/agent/manifest.fragments/*.json` and run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`).
-- Every implementation change, improvement, bug fix, refactor, or architecture/toolchain/workflow/validation/packaging change must include an **agent-surface drift check** before completion. If durable guidance or AI-operable contracts are stale, update the affected docs, skills, rules, subagents, manifest fragments + compose output, schemas, validation checks, and tracked `.clangd` in the same task; do not wait for a follow-up.
+- Every implementation change, improvement, bug fix, refactor, or architecture/toolchain/workflow/validation/packaging change must include an **agent-surface drift check** before completion. If durable guidance or AI-operable contracts are stale, update the affected docs, skills, rules, subagents, manifest fragments + compose output, schemas, validation checks, and tracked `.clangd` in the same task; do not wait for a follow-up. Scope drift checks to owning surfaces only.
 - **Expanded validation, editor shell, plan lifecycle, production-completion, and game-lane procedures** live in [docs/agent-operational-reference.md](docs/agent-operational-reference.md) (English). Cursor file-scoped rules live under [`.cursor/rules/`](.cursor/rules/). Keep needles enforced by `tools/check-ai-integration.ps1` in this file when you change policy.
 
 ## Repository command entrypoints
@@ -35,7 +35,7 @@
 - Do not narrate routine file reads, searches, or obvious command sequencing.
 - Provide user-facing updates only for meaningful decisions, planned edits, long-running validation, blockers, and final results.
 - Keep Japanese responses concise unless the user asks for detailed reasoning.
-- This does not relax requirements for official best practices, clean breaking changes, focused validation, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`, or documentation updates.
+- This does not relax validation, best-practice, or documentation requirements.
 
 ## Development Efficiency and Scope Control
 
@@ -44,7 +44,7 @@
 - Keep the greenfield clean-break policy useful: avoid backward-compatibility shims, deprecated aliases, duplicate APIs, or migration layers unless an explicit future release policy requires them.
 - Treat plan files as capability/gap-cluster/milestone records, not PR/task-count units; keep phase behavior/API/validation gates and small steps in the active plan. Do not create dated plans for validation-only follow-up, docs/manifest/static-check sync, small cleanup, or substeps.
 - Tests should lock the smallest externally meaningful guarantee for a behavior change, public API change, or bug fix. Prefer updating existing tests when they already cover the contract; avoid tests that merely mirror implementation details, duplicate an existing guarantee, or over-specify incidental ordering.
-- During implementation, use focused build/test/static loops first and batch docs/manifest/skills synchronization after behavior is green unless those files are the behavior under test. Before reporting done, run a targeted agent-surface drift check against the changed behavior/workflow and owning surfaces; do not broad-load every agent surface when no durable guidance changed. Use full `validate.ps1` once at the coherent slice-closing gate unless later edits invalidate that evidence.
+- During implementation, use focused build/test/static loops first and batch docs/manifest/skills sync after behavior is green unless those files are under test. Before reporting done, run a targeted agent-surface drift check; use full `validate.ps1` once at slice close unless later edits invalidate it.
 
 ## Repository Hygiene
 
@@ -108,7 +108,7 @@
 - Toolchain preflight: use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1`; use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake` only for raw `cmake --preset ...`, and `-RequireVcpkgToolchain` for vcpkg gates. Presets inherit `normalized-configure-environment` / `normalized-build-environment`; local loops use `tools/cmake.ps1` / `tools/ctest.ps1`.
 - Formatting: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` / `tools/format.ps1` cover C++ and tracked text; `tools/check-text-format.ps1` / `tools/format-text.ps1` are text-only. Raw `clang-format --dry-run ...` requires `direct-clang-format-status=ready`.
 - Static-analysis PR failures need root fixes: keep `HeaderFilterRegex` path aware and hosted `--warnings-as-errors=*`; preserve diagnostics; suppress only `NN warnings generated.`; use `tools/check-tidy.ps1 -Files` locally and sharded `-Jobs 0` in CI. `validate.ps1` uses bounded static jobs with per-check timeouts, File API reuse, `test.ps1 -SkipBuild`, CI-only `-StaticOnly`/`-SkipStaticChecks`/`-SkipTidySmoke`, and automatic CMake/CTest parallelism.
-- For hosted PR/CI check failures, inspect the latest PR head SHA first (`gh pr view <pr> --json headRefOid,statusCheckRollup,url`), open the failing job log for that same SHA, reproduce the narrowest local lane, fix the root cause, then add or extend a repository static guard when the failure exposed a drift-prone contract. If all jobs fail before checkout with a GitHub account billing/spending-limit annotation, report it as a hosted account blocker. Do not diagnose against stale runs or solve by loosening branch protection, Codex rules, or Claude permissions.
+- For hosted PR/CI failures, inspect latest PR head SHA, open the failing job log for that SHA, reproduce the narrowest local lane, fix root cause, then extend static guards when the failure exposed drift-prone contracts. Billing/spending-limit failures before checkout are hosted account blockers. Do not diagnose stale runs or loosen branch protection, Codex rules, or Claude permissions.
 - PR CI selection uses an always-running required gate plus conditional lanes, not path-filtered required workflows. `tools/classify-pr-validation-tier.ps1` selects; `tools/check-ci-matrix.ps1` guards. `Agent Static Guards` runs `validate.ps1 -StaticOnly -StaticJobs 1 -StaticCheckTimeoutSeconds 120`; PR `Windows MSVC` runs `validate.ps1 -SkipStaticChecks -SkipTidySmoke`; checkout is pinned/read-only with one retry; Windows tool/package/install/build caches use nonblocking `actions/cache/restore`/`actions/cache/save`; restore failures fall back. Same-ref concurrency cancels stale runs. Docs/agent/rules/subagent-only PRs use agent/static guards unless they touch CI/build/runtime/packaging/public contracts.
 - Hosted `MK_d3d12_rhi_tests` uses Microsoft WARP for CI; hardware proof needs host diagnostics/package smoke.
 - For Linux coverage policy changes, remember hosted `lcov` 2.x treats unmatched remove filters as errors. Keep optional `lcovRemovePatterns` guarded with `lcov --ignore-errors unused`, and update `tools/check-coverage-thresholds.ps1` when changing coverage filtering.
@@ -135,7 +135,7 @@
 - Keep active plans concise: put detailed evidence in final validation tables, batch docs/manifest/skills synchronization after behavior is green unless those files are the behavior, and ensure each active phase still has Goal, Context, Constraints, Done When, and validation evidence.
 - Before generating game code or changing engine APIs, read `engine/agent/manifest.json`, a targeted `engine/agent/manifest.fragments/` file, or `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1`. Prefer `-ContextProfile Minimal` or `-ContextProfile Standard`; use Full only when the decision needs full manifest-shaped output.
 - Use `.agents/skills/` when a task matches them, keep overlapping `.claude/skills/` behaviorally equivalent, and keep `.cursor/skills/gameengine-*` folders as thin pointers matching `.claude/skills/` names except the intentional Cursor-only `gameengine-cursor-baseline` and `gameengine-plan-registry`.
-- After changing agent surfaces (`tools/*.ps1` dot-source pairs, skill folders, validation scripts, rules, settings, subagents, or manifest fragments), follow **Repository consistency checklist** in `docs/workflows.md` (toolchain -> `check-agents` -> `check-ai-integration` -> public API checks -> `validate.ps1` as appropriate).
+- After changing agent surfaces (`tools/*.ps1` dot-source pairs, skill folders, validation scripts, rules, settings, subagents, or manifest fragments), follow **Repository consistency checklist** in `docs/workflows.md` (toolchain -> `check-agents` -> `check-ai-integration` -> `check-json-contracts` -> public API checks -> `validate.ps1`).
 - Tracked `.clangd` points at `out/build/dev`; run `tools/cmake.ps1 --preset dev` when clangd lacks a database. Use `editor/src/compile_flags.txt` and `editor/include/compile_flags.txt` only as fallback IDE flags. `MK_tools` sources live under `engine/tools/{shader,gltf,asset,scene}/`; public headers stay in `engine/tools/include/mirakana/tools/`.
 - For parallel write work, prefer Codex app Worktree/Handoff or Claude Code `--worktree` / subagent `isolation: worktree`; keep `.worktrees/` and `.claude/worktrees/` ignored; manual worktrees use setup, merged worktrees use guarded cleanup.
 - Use subagents in `.codex/agents/` and `.claude/agents/` only when explicitly asked; keep roles scoped, close completed/obsolete/no-longer-needed agents promptly after their result is consumed and before spawning replacements, and leave useful work running.
@@ -162,7 +162,7 @@
 - Do not push directly to default/protected branches, force-push without explicit branch-owned request, use admin bypasses, or bypass GitHub branch protection/status checks.
 - Auto-merge registration must use `gh pr merge --auto --merge --match-head-commit <headRefOid>` after `gh pr view <pr> --json ...`; do not pass `--delete-branch` in linked-worktree sessions because GitHub CLI also deletes the local branch. Require clean local worktree, task-owned open PR, fresh validation, expected base, current `headRefOid`, and clean PR state; runtime/build/public-contract PRs wait for selected hosted checks and `PR Gate` `SUCCESS`. After merge, `git fetch origin --prune` and verify `git log --oneline origin/main..<headRefOid>` is empty; commits pushed after merge need a new PR.
 - Draft-to-ready automation must use `tools/ready-task-pr.ps1`, not raw `gh pr ready`.
-- After a PR merges into `main`, run `tools/remove-merged-worktree.ps1` from Local or another clean non-target base checkout; it fetches/prunes, fast-forwards, verifies local/remote branch ancestry, unlinks worktree-local vcpkg links, and keeps Windows fallback guarded/non-following. No ad hoc deletion.
+- After merge to `main`, run `tools/remove-merged-worktree.ps1` from a clean base checkout; it fetches/prunes, fast-forwards, verifies branch ancestry, unlinks worktree-local vcpkg links; Windows fallback stays guarded/non-following.
 - Raw PR state changes through `gh pr edit`, immediate `gh pr merge` without `--auto`, raw `gh pr ready`, `gh pr close`, or `gh pr reopen` remain prompt-gated. If the wrapper blocks, use GitHub Desktop/Web or an approval-capable session.
 - Git warnings are local maintenance. Missing `credential-manager-core`: inspect `git config --show-origin --get-all credential.helper`, prefer `manager`, and avoid repo overrides. Auto-GC loose objects: clean `git status --short --branch`, inspect `git count-objects -vH`, then `git maintenance run --task=gc`; avoid `git prune` / `git gc --prune=now` unless requested.
 
@@ -197,3 +197,12 @@
 - Relevant tests are added or updated when behavior/API/regression risk changed, and they cover the smallest durable external guarantee.
 - Validation has run: focused checks for docs/agent-only/non-runtime slices, full `tools/validate.ps1` for C++/runtime/build/packaging/public-contract slices, or a concrete blocker is recorded.
 - Legal and third-party records are updated for any external material.
+
+## Learned User Preferences
+
+- Autonomous burn-down through merge; stop on hard blockers only.
+- Same-slice agent-surface updates; fix linter warnings at root cause.
+
+## Learned Workspace Facts
+
+- Manifest: production master plan active; `recommendedNextPlan.id = next-production-gap-selection` after Native Win32 Editor Shell v1 (#322).

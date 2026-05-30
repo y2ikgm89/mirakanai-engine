@@ -33,6 +33,18 @@
           "Claude Code skills",
           "Claude Code subagents"
         ]
+      },
+      "cursor": {
+        "rules": "https://cursor.com/docs/rules",
+        "skills": "https://cursor.com/docs/skills",
+        "subagents": "https://cursor.com/docs/subagents",
+        "composer25": "https://cursor.com/changelog/composer-2-5",
+        "useFor": [
+          "Cursor rules",
+          "Cursor Agent Skills",
+          "Cursor subagents",
+          "Composer 2.5 subagent defaults"
+        ]
       }
     },
     "useFor": [

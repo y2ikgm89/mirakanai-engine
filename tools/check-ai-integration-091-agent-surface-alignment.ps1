@@ -70,7 +70,7 @@ $agentSurfaceAlignmentChecks = @(
     },
     @{
         Path = ".cursor/skills/gameengine-agent-integration/SKILL.md"
-        Needles = @("aiSurfaces.crossToolAlignment", "AI Codex/Claude/Cursor Agent Surface v1", "forbidden broad grants", ".codex/rules", ".claude/settings.json", "after their results are consumed")
+        Needles = @(".claude/skills/gameengine-agent-integration/SKILL.md", ".agents/skills/gameengine-agent-integration/SKILL.md", "compose-agent-manifest.ps1", "drift check")
     },
     @{
         Path = ".codex/rules/gameengine.rules"
@@ -82,7 +82,7 @@ $agentSurfaceAlignmentChecks = @(
     },
     @{
         Path = ".cursor/rules/mirakana-repository-baseline.mdc"
-        Needles = @("AGENTS.md", ".cursor/skills/", "tools/*.ps1", "never push directly to the default branch", "500-line budget")
+        Needles = @("AGENTS.md", ".cursor/skills/", "tools/<script>.ps1", "mirakana-cpp-engine", "Drift check")
     },
     @{
         Path = ".cursor/skills/gameengine-cursor-baseline/SKILL.md"

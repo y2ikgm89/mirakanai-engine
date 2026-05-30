@@ -616,8 +616,38 @@ if ((Test-Path -LiteralPath $cursorSkillRoot) -and (Test-Path -LiteralPath $clau
         if ($cursorPaths -ne $claudePaths) {
             Write-Error "Cursor thin skill 'paths:' must match Claude skill for '$cursorFolderName'.`nCursor:`n$cursorPaths`n`nClaude:`n$claudePaths"
         }
+
+        $cursorLineCount = (Get-Content -LiteralPath $cursorSkillFile).Count
+        if ($cursorLineCount -gt 45) {
+            Write-Error "Cursor thin-pointer skill '$cursorFolderName' exceeds 45 lines ($cursorLineCount). Keep router skills concise; use Claude/Codex canonical bodies."
+        }
+
+        $disableModelInvocation = $null
+        if ($cursorFm -match '(?m)^disable-model-invocation:\s*(true|false)\s*$') {
+            $disableModelInvocation = $Matches[1]
+        }
+        if ($null -ne $disableModelInvocation -and $disableModelInvocation -eq 'true') {
+            Write-Error "Cursor skill '$cursorFolderName' must not set disable-model-invocation: true (reserved for gameengine-plan-registry)."
+        }
     }
 }
+
+$cursorPlanRegistrySkillFile = Join-Path $cursorSkillRoot "gameengine-plan-registry/SKILL.md"
+if (Test-Path -LiteralPath $cursorPlanRegistrySkillFile) {
+    $planRegistryFm = Get-SkillFrontmatterBlock -SkillMdPath $cursorPlanRegistrySkillFile
+    if ($planRegistryFm -notmatch '(?m)^disable-model-invocation:\s*true\s*$') {
+        Write-Error "Cursor skill 'gameengine-plan-registry' must set disable-model-invocation: true."
+    }
+}
+
+$aiSurfacesFragmentPath = Join-Path $root "engine/agent/manifest.fragments/011-aiSurfaces.json"
+if (-not (Test-Path -LiteralPath $aiSurfacesFragmentPath)) {
+    Write-Error "Missing manifest fragment for Cursor agent list: engine/agent/manifest.fragments/011-aiSurfaces.json"
+}
+$aiSurfacesFragment = Get-Content -LiteralPath $aiSurfacesFragmentPath -Raw | ConvertFrom-Json
+$requiredCursorAgents = @($aiSurfacesFragment.aiSurfaces.cursor.requiredAgents)
+$cursorReadOnlyAgents = @($aiSurfacesFragment.aiSurfaces.cursor.readOnlyAgents)
+$cursorRequiredAgentModel = "composer-2.5-fast"
 
 if (Test-Path -LiteralPath $claudeAgentRoot) {
     Get-ChildItem -LiteralPath $claudeAgentRoot -Filter "*.md" | ForEach-Object {
@@ -633,25 +663,6 @@ if (Test-Path -LiteralPath $claudeAgentRoot) {
     }
 }
 
-$requiredCursorAgents = @(
-    "agent-surface-auditor",
-    "build-fixer",
-    "cpp-reviewer",
-    "engine-architect",
-    "explorer",
-    "gameplay-builder",
-    "planning-auditor",
-    "rendering-auditor"
-)
-$cursorReadOnlyAgents = @(
-    "agent-surface-auditor",
-    "cpp-reviewer",
-    "engine-architect",
-    "explorer",
-    "planning-auditor",
-    "rendering-auditor"
-)
-$cursorRequiredAgentModel = "composer-2.5-fast"
 if (-not (Test-Path -LiteralPath $cursorAgentRoot)) {
     Write-Error "Cursor project subagents must live under .cursor/agents per Cursor Subagents documentation."
 }

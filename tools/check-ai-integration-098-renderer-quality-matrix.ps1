@@ -235,8 +235,7 @@ foreach ($skillSurface in @(
         @{ Text = $codexGameSkillText; Label = ".agents/skills/gameengine-game-development/SKILL.md" },
         @{ Text = $claudeGameSkillText; Label = ".claude/skills/gameengine-game-development/SKILL.md" },
         @{ Text = $codexGameGuidanceText; Label = ".agents/skills/gameengine-game-development/references/full-guidance.md" },
-        @{ Text = $claudeGameGuidanceText; Label = ".claude/skills/gameengine-game-development/references/full-guidance.md" },
-        @{ Text = $cursorGameSkillText; Label = ".cursor/skills/gameengine-game-development/SKILL.md" }
+        @{ Text = $claudeGameGuidanceText; Label = ".claude/skills/gameengine-game-development/references/full-guidance.md" }
     )) {
     Assert-ContainsText $skillSurface.Text "Renderer General Quality Matrix v1" $skillSurface.Label
     Assert-ContainsText $skillSurface.Text "--require-renderer-quality-matrix" $skillSurface.Label

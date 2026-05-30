@@ -41,7 +41,10 @@ foreach ($requiredDocId in @(
         "openai-codex-agents-md",
         "anthropic-claude-code-settings",
         "anthropic-claude-code-subagents",
-        "cursor-rules-agents-md"
+        "cursor-rules-agents-md",
+        "cursor-skills",
+        "cursor-subagents",
+        "cursor-composer-2-5"
     )) {
     if ($officialDocIds -notcontains $requiredDocId) {
         Write-Error "engine manifest aiSurfaces.crossToolAlignment officialDocs missing: $requiredDocId"

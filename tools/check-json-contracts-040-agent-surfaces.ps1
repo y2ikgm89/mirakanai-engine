@@ -2,6 +2,7 @@
 #requires -PSEdition Core
 
 # Chapter 4 for check-json-contracts.ps1 static contracts.
+# Agent-surface and tooling needles only. Runtime UI/tools C++ surface texts load in check-json-contracts-050-generated-games.ps1.
 
 function Assert-UniqueStringArray {
     param(
@@ -854,6 +855,7 @@ $checkAiIntegrationText = Get-Content -LiteralPath (Join-Path $root "tools/check
 $checkAiIntegrationCoreText = Get-Content -LiteralPath (Join-Path $root "tools/check-ai-integration-core.ps1") -Raw
 $checkAiProductionLedgerText = Get-Content -LiteralPath (Join-Path $root "tools/check-ai-integration-070-production-ledger.ps1") -Raw
 $checkAiBaselineText = Get-Content -LiteralPath (Join-Path $root "tools/check-ai-integration-010-agent-baseline.ps1") -Raw
+$checkAiEngineManifestText = Get-Content -LiteralPath (Join-Path $root "tools/check-ai-integration-020-engine-manifest.ps1") -Raw
 $checkJsonContractsText = Get-Content -LiteralPath (Join-Path $root "tools/check-json-contracts.ps1") -Raw
 $agentContextText = Get-Content -LiteralPath (Join-Path $root "tools/agent-context.ps1") -Raw
 $mobilePackagingScriptText = Get-Content -LiteralPath (Join-Path $root "tools/check-mobile-packaging.ps1") -Raw
@@ -923,6 +925,43 @@ $checkAiBaselineManifestReadMatches = [System.Text.RegularExpressions.Regex]::Ma
 if ($checkAiBaselineManifestReadMatches.Count -ne 1) {
     Write-Error "tools/check-ai-integration-010-agent-baseline.ps1 must read engine/agent/manifest.json raw text exactly once; found $($checkAiBaselineManifestReadMatches.Count)"
 }
+foreach ($forbiddenBaselineSurfaceAssignment in @(
+        '$runtimeInputRebindingPresentationRowsPlanText = Get-AgentSurfaceText',
+        '$aiGameDevelopmentText = Get-AgentSurfaceText',
+        '$generatedGameValidationScenariosText = Get-AgentSurfaceText',
+        '$rhiPublicHeaderText = Get-AgentSurfaceText',
+        '$rhiAsyncOverlapSourceText = Get-AgentSurfaceText',
+        '$nullRhiSourceText = Get-AgentSurfaceText',
+        '$d3d12RhiHeaderText = Get-AgentSurfaceText',
+        '$d3d12RhiSourceText = Get-AgentSurfaceText',
+        '$vulkanRhiHeaderText = Get-AgentSurfaceText',
+        '$vulkanRhiSourceText = Get-AgentSurfaceText',
+        '$runtimeRhiHeaderText = Get-AgentSurfaceText',
+        '$runtimeRhiSourceText = Get-AgentSurfaceText',
+        '$runtimeSceneHeaderText = Get-AgentSurfaceText',
+        '$runtimeSceneSourceText = Get-AgentSurfaceText',
+        '$runtimeSceneTestsText = Get-AgentSurfaceText',
+        '$runtimeSceneRhiHeaderText = Get-AgentSurfaceText',
+        '$runtimeSceneRhiSourceText = Get-AgentSurfaceText',
+        '$rendererHeaderText = Get-AgentSurfaceText "engine/renderer/include/mirakana/renderer/renderer.hpp"',
+        '$rendererSourceText = Get-AgentSurfaceText "engine/renderer/src/rhi_frame_renderer.cpp"',
+        '$runtimeHostWin32HeaderText = Get-AgentSurfaceText',
+        '$runtimeHostWin32SourceText = Get-AgentSurfaceText',
+        '$runtimeHostWin32SceneGpuInjectingRendererText = Get-AgentSurfaceText',
+        '$runtimeHostWin32TestsText = Get-AgentSurfaceText',
+        '$runtimeHostWin32PublicApiText = Get-AgentSurfaceText',
+        '$rhiTestsText = Get-AgentSurfaceText',
+        '$runtimeRhiTestsText = Get-AgentSurfaceText',
+        '$backendScaffoldTestsText = Get-AgentSurfaceText',
+        '$vulkanComputeMorphShaderText = Get-AgentSurfaceText',
+        '$vulkanComputeMorphRendererShaderText = Get-AgentSurfaceText',
+        '$vulkanComputeMorphTangentFrameShaderText = Get-AgentSurfaceText'
+    )) {
+    Assert-DoesNotContainText $checkAiBaselineText $forbiddenBaselineSurfaceAssignment "tools/check-ai-integration-010-agent-baseline.ps1"
+}
+Assert-ContainsText $checkAiEngineManifestText "# Engine/RHI/runtime surface texts consumed by this chapter and later rendering packs." "tools/check-ai-integration-020-engine-manifest.ps1"
+Assert-ContainsText $checkAiEngineManifestText '$rhiPublicHeaderText = Get-AgentSurfaceText "engine/rhi/include/mirakana/rhi/rhi.hpp"' "tools/check-ai-integration-020-engine-manifest.ps1"
+Assert-ContainsText $checkAiEngineManifestText '$aiGameDevelopmentText = Get-AgentSurfaceText "docs/ai-game-development.md"' "tools/check-ai-integration-020-engine-manifest.ps1"
 $staticContractLedgerText = Get-Content -LiteralPath (Join-Path $root "tools/static-contract-ledger.ps1") -Raw
 Assert-ContainsText $staticContractLedgerText "function Get-StaticContractSectionFile" "tools/static-contract-ledger.ps1"
 Assert-ContainsText $staticContractLedgerText "Get-ChildItem -LiteralPath" "tools/static-contract-ledger.ps1"
@@ -1451,11 +1490,3 @@ foreach ($docPath in $editorInputRebindingActionCaptureDocs.Keys) {
         }
     }
 }
-$geUiHeaderText = Get-Content -LiteralPath (Join-Path $root "engine/ui/include/mirakana/ui/ui.hpp") -Raw
-$geUiSourceText = Get-Content -LiteralPath (Join-Path $root "engine/ui/src/ui.cpp") -Raw
-$sourceImageDecodeHeaderText = Get-Content -LiteralPath (Join-Path $root "engine/tools/include/mirakana/tools/source_image_decode.hpp") -Raw
-$sourceImageDecodeSourceText = Get-Content -LiteralPath (Join-Path $root "engine/tools/asset/source_image_decode.cpp") -Raw
-$uiAtlasToolHeaderText = Get-Content -LiteralPath (Join-Path $root "engine/tools/include/mirakana/tools/ui_atlas_tool.hpp") -Raw
-$uiAtlasToolSourceText = Get-Content -LiteralPath (Join-Path $root "engine/tools/asset/ui_atlas_tool.cpp") -Raw
-$toolsTestsText = Get-Content -LiteralPath (Join-Path $root "tests/unit/tools_tests.cpp") -Raw
-$uiRendererTestsText = Get-Content -LiteralPath (Join-Path $root "tests/unit/ui_renderer_tests.cpp") -Raw

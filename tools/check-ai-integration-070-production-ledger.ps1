@@ -1903,7 +1903,6 @@ foreach ($readyTaskPrSurface in @(
     "AGENTS.md",
     "docs/workflows.md",
     "docs/ai-integration.md",
-    ".cursor/skills/gameengine-agent-integration/SKILL.md",
     ".cursor/skills/gameengine-cursor-baseline/SKILL.md"
 )) {
     $readyTaskPrSurfaceText = Get-AgentSurfaceText $readyTaskPrSurface

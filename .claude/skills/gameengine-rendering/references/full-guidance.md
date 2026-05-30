@@ -1,15 +1,25 @@
-# Rendering Change Full Guidance
+# GameEngine Rendering Full Guidance
 
 This file is detailed reference material for the `.claude/skills/gameengine-rendering/SKILL.md` skill. Load it only when the short `SKILL.md` router says the current task needs detailed API names, detailed validation lanes, retained ids, or exact package/render/editor counters.
 
 # GameEngine Rendering
 
-- Keep renderer interfaces independent from backend APIs.
-- Keep rendering code out of `engine/core`.
-- Prefer Vulkan for Windows/Linux/Android backend work and Metal for Apple backend work.
-- Document backend capability assumptions.
-- Add the smallest tests or visual verification that prove the externally visible renderer/RHI/shader contract; avoid implementation-mirroring or duplicate coverage.
-- Use focused renderer/RHI/shader checks while iterating, then run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` at the coherent slice-closing gate.
+## Boundary Rules
+
+- Keep API-independent renderer interfaces separate from backend implementation.
+- Prefer Vulkan for Windows/Linux/Android backend work.
+- Prefer Metal for Apple backend work.
+- Do not expose graphics API handles through core game APIs unless an explicit interop design accepts it.
+
+## Required Checks
+
+1. Confirm which layer is changing: renderer interface, backend, shader pipeline, or sample.
+2. Add the smallest tests or visual/golden checks that prove the layer's externally visible contract; avoid implementation-mirroring or duplicate coverage.
+3. Document backend capability assumptions.
+4. Use focused renderer/RHI/shader checks while iterating, then run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` at the coherent slice-closing gate.
+
+## Shader Tooling Checks
+
 - Keep shader tools as executable-plus-argument vectors, never shell strings.
 - Use `mirakana::discover_shader_tools` for deterministic tool descriptors.
 - Use `mirakana::evaluate_shader_toolchain_readiness` before promoting shader-dependent backend work; Vulkan SPIR-V readiness requires DXC, proven DXC SPIR-V CodeGen support, and `spirv-val`.
@@ -21,6 +31,9 @@ This file is detailed reference material for the `.claude/skills/gameengine-rend
 - Use `mirakana::build_shader_pipeline_cache_plan` and `mirakana::reconcile_shader_pipeline_cache_index` for selected reviewed compile-request batches when repairing first-party cache-index metadata from current provenance; this planner/reconciler must not invoke compilers, write shader artifacts, expose native PSO/Vulkan/Metal cache blobs, or claim renderer/RHI residency.
 - Generate Vulkan SPIR-V through DXC executable-plus-argument vectors with `-spirv` and `-fspv-target-env=vulkan1.3`; do not use shell strings or omit the target environment.
 - Disable shader artifact marker writes for real compiler-backed runs so missing bytecode artifacts fail instead of being faked.
+
+## Backend-Specific Checks
+
 - For Debug Profiling Policy v1 work, keep `DebugProfilingPolicyDesc`, `DebugProfilingRequestDesc`, `DebugProfilingCaptureKind`, `DebugProfilingPolicyPlan`, and `plan_debug_profiling_policy` in the backend-neutral `MK_renderer` public contract. The planner may classify GPU timestamp/marker rows, CPU profile zone rows, PIX/Vulkan/Metal trace/capture handoff gates, package counter evidence, frame diagnostics, and fail-closed diagnostics for unsupported automatic capture, production flame graphs, or crash telemetry export. Frame renderers may insert `mirakana.presentation` GPU debug markers; `IRhiDevice::gpu_timestamp_ticks_per_second` and `RhiStats` `gpu_debug_*` counters supply evidence. `sample_desktop_runtime_game --require-debug-profiling-policy --require-d3d12-debug-profiling-evidence` may expose selected D3D12 counters through `evaluate_win32_desktop_presentation_debug_profiling_policy` and `evaluate_win32_desktop_presentation_d3d12_debug_profiling_execution`, including `debug_profiling_policy_status=ready`, `debug_profiling_policy_ready=1`, `debug_profiling_policy_diagnostics=0`, positive `debug_profiling_policy_gpu_timestamp_ticks_per_second`, positive `debug_profiling_policy_gpu_debug_markers_inserted`, positive `debug_profiling_policy_cpu_profile_zones`, positive `debug_profiling_policy_trace_capture_handoff_rows`, positive `debug_profiling_policy_cpu_profile_zone_requests`, positive `debug_profiling_policy_trace_capture_handoff_requests`, positive `debug_profiling_policy_package_counter_requests`, `debug_profiling_policy_cpu_profile_zone_evidence_ready=1`, `debug_profiling_policy_trace_capture_handoff_evidence_ready=1`, `debug_profiling_policy_package_counter_evidence_ready=1`, `debug_profiling_policy_backend_profiling_evidence_required=1`, `debug_profiling_policy_backend_profiling_evidence_ready=1`, `d3d12_debug_profiling_execution_status=ready`, `d3d12_debug_profiling_execution_ready=1`, `d3d12_debug_profiling_execution_selected=1`, `d3d12_debug_profiling_execution_gpu_timestamps_ok=1`, `d3d12_debug_profiling_execution_gpu_debug_markers_ok=1`, and `d3d12_debug_profiling_execution_frame_diagnostics_ok=1`, without automatic external capture execution. Backend Renderer Parity v1 may add `debug_profiling_policy_backend_evidence_ready`, `BackendRendererParityPolicyRequest`, `BackendRendererParityProofRow`, `BackendRendererParityPolicyPlan`, `plan_backend_renderer_parity_policy`, `backend_renderer_parity_proof_matches_selected_backend`, and `evaluate_win32_desktop_presentation_vulkan_debug_profiling_execution`; the separate Vulkan installed package smoke may require `--require-vulkan-debug-profiling-evidence` and report `vulkan_debug_profiling_execution_status=ready`, `vulkan_debug_profiling_execution_ready=1`, `vulkan_debug_profiling_execution_selected=1`, `vulkan_debug_profiling_execution_gpu_debug_markers_ok=1`, and `vulkan_debug_profiling_execution_frame_diagnostics_ok=1` without treating D3D12 proof as cross-backend evidence. Use `plan_backend_renderer_parity_policy` for value-only synchronization, shader-validation, memory-residency, profiling, and package-evidence proof rows; keep Metal Apple-host-gated and reject public native-handle or inferred-parity claims.
 - For Backend Renderer Parity host recipe work, every Metal `BackendRendererParityProofRow` must set `host_validation_recipe_id` to the reviewed Apple validation lane such as `shader-toolchain`, `mobile-packaging`, or `ios-simulator-smoke`. `plan_backend_renderer_parity_policy` must fail closed with `missing_host_validation_recipe` when Metal evidence omits the recipe id, include the recipe id in replay hashes, keep `metal-apple` host-gated until Apple-host proof exists, and keep D3D12/Vulkan evidence backend-local.
 - For GPU Memory Policy v1 work, keep `GpuMemoryPolicyDesc`, `GpuMemoryRequestDesc`, `GpuMemoryResidencyClass`, `GpuMemoryPolicyPlan`, `plan_gpu_memory_policy`, and `gpu_memory_policy_backend_evidence_ready` in the backend-neutral `MK_renderer` public contract. The planner may classify committed/placed/transient budget rows, declared memory budget evidence, residency pressure evidence, transient heap policy, upload-pressure rows, scene resource availability, package counter evidence, per-backend memory-evidence gates without cross-backend proof transfer, OS video-memory budget gates on D3D12, and fail-closed diagnostics for unsupported automatic eviction or background streaming before backend execution. `IRhiDevice::memory_diagnostics()` may expose `RhiDeviceMemoryDiagnostics` with DXGI `QueryVideoMemoryInfo` rows on D3D12 and committed-byte estimates on Vulkan; `RhiStats` may expose transient heap/placed counters and `upload_bytes_written`. `sample_desktop_runtime_game --require-gpu-memory-policy --require-d3d12-gpu-memory-evidence` may expose selected D3D12 package counters through `evaluate_win32_desktop_presentation_gpu_memory_policy` and `evaluate_win32_desktop_presentation_d3d12_gpu_memory_execution`, and `installed-vulkan-scene-gpu-smoke` may require `--require-vulkan-gpu-memory-evidence` through `evaluate_win32_desktop_presentation_vulkan_gpu_memory_execution`, including `gpu_memory_policy_status=ready`, `gpu_memory_policy_ready=1`, `gpu_memory_policy_diagnostics=0`, positive `gpu_memory_policy_requests`, positive `gpu_memory_policy_committed_byte_estimate`, positive `gpu_memory_policy_upload_bytes_written`, positive `gpu_memory_policy_declared_budget_requests`, positive `gpu_memory_policy_residency_pressure_requests`, positive `gpu_memory_policy_package_counter_requests`, positive `gpu_memory_policy_residency_pressure_events`, `gpu_memory_policy_memory_budget_evidence_ready=1`, `gpu_memory_policy_residency_pressure_evidence_ready=1`, `gpu_memory_policy_package_counter_evidence_ready=1`, `gpu_memory_policy_backend_memory_evidence_required=1`, `gpu_memory_policy_backend_memory_evidence_ready=1`, `d3d12_gpu_memory_execution_status=ready`, `d3d12_gpu_memory_execution_ready=1`, `d3d12_gpu_memory_execution_selected=1`, `d3d12_gpu_memory_execution_budget_ok=1`, `d3d12_gpu_memory_execution_transient_heap_ok=1`, `vulkan_gpu_memory_execution_status=ready`, `vulkan_gpu_memory_execution_ready=1`, `vulkan_gpu_memory_execution_selected=1`, `vulkan_gpu_memory_execution_budget_ok=1`, and `vulkan_gpu_memory_execution_transient_heap_ok=1`, without exposing native handles or claiming Metal memory parity.
@@ -116,3 +129,9 @@ This file is detailed reference material for the `.claude/skills/gameengine-rend
 - Route scene cameras and lights through `SceneRenderPacket::cameras`/`lights`, `make_scene_camera_matrices`, and `make_scene_light_command`; do not make `mirakana_scene` depend on renderer command types.
 - Resolve material base colors and material instance overrides through `mirakana::SceneMaterialPalette` until a fuller shader/material binding model exists.
 - Before calling a backend "visible", verify a real window path with render-target transition, clear/draw, execute, fence wait, and present.
+
+## Do Not
+
+- Put rendering code in `engine/core`.
+- Mix platform window lifecycle with renderer resource ownership.
+- Commit shader compiler binaries or add shader cross-compilation dependencies without license records.

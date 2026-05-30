@@ -17,7 +17,7 @@ disable-model-invocation: true
 
 ## Before writing or extending plans
 
-1. Read **`docs/superpowers/plans/README.md`** for active roadmap vs active phase/child vs completed vs host-gated rules.
+1. Read **`docs/superpowers/plans/README.md`** for active roadmap vs active phase/child vs completed vs host-gated rules; honor **`currentActivePlan`** in `engine/agent/manifest.json` when selecting work.
 2. Read **`docs/current-capabilities.md`** and **`docs/roadmap.md`** for current truth; plans are evidence records, not replacements for those pages.
 3. In Codex or Claude Code, use the read-only `planning-auditor` subagent only for bounded plan lifecycle audits; this Cursor skill remains the thin plan-registry pointer.
 4. **Do not append unrelated work** to **`docs/superpowers/plans/2026-05-01-core-first-mvp-closure.md`** or historical MVP bodies — start a dated capability/gap-cluster/milestone plan and use phases for behavior/API/validation boundary decisions.

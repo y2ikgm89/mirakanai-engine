@@ -143,14 +143,6 @@ $generatedGameStudioChecks = @(
         )
     },
     @{
-        Path = ".cursor/skills/gameengine-editor/SKILL.md"
-        Needles = @(
-            "EditorAiGeneratedGameStudioV1Model",
-            "generated_game_studio",
-            "renderer/RHI residency"
-        )
-    },
-    @{
         Path = ".agents/skills/gameengine-game-development/SKILL.md"
         Needles = @(
             "Generated Game Studio v1",
@@ -160,14 +152,6 @@ $generatedGameStudioChecks = @(
     },
     @{
         Path = ".claude/skills/gameengine-game-development/SKILL.md"
-        Needles = @(
-            "Generated Game Studio v1",
-            "EditorAiGeneratedGameStudioV1Model",
-            "engine-internal edits"
-        )
-    },
-    @{
-        Path = ".cursor/skills/gameengine-game-development/SKILL.md"
         Needles = @(
             "Generated Game Studio v1",
             "EditorAiGeneratedGameStudioV1Model",

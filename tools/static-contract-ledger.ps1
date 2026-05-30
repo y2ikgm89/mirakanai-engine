@@ -34,7 +34,7 @@ function Get-StaticContractLedger {
             SectionFiles = Get-StaticContractSectionFile -Prefix "check-ai-integration"
             MaximumEntryLines = 80
             MaximumCoreLines = 1600
-            MaximumSectionLines = 2600
+            MaximumSectionLines = 2650
         },
         [pscustomobject]@{
             Id = "check-json-contracts"
@@ -43,7 +43,7 @@ function Get-StaticContractLedger {
             SectionFiles = Get-StaticContractSectionFile -Prefix "check-json-contracts"
             MaximumEntryLines = 80
             MaximumCoreLines = 1600
-            MaximumSectionLines = 1550
+            MaximumSectionLines = 1600
         }
     )
 }

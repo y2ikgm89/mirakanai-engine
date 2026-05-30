@@ -6706,6 +6706,7 @@
         "gameengine-agent-integration",
         "gameengine-feature",
         "gameengine-game-development",
+        "gameengine-git-publication-preflight",
         "license-audit",
         "rendering-change"
       ],
@@ -6746,6 +6747,7 @@
         "gameengine-editor",
         "gameengine-feature",
         "gameengine-game-development",
+        "gameengine-git-publication-preflight",
         "gameengine-license-audit",
         "gameengine-rendering"
       ],
@@ -6781,6 +6783,7 @@
         "gameengine-editor",
         "gameengine-feature",
         "gameengine-game-development",
+        "gameengine-git-publication-preflight",
         "gameengine-license-audit",
         "gameengine-plan-registry",
         "gameengine-rendering"
@@ -6883,7 +6886,7 @@
         {
           "id": "cursor-rules-agents-md",
           "surface": "cursor",
-          "url": "https://docs.cursor.com/en/context",
+          "url": "https://cursor.com/docs/rules",
           "appliesTo": [
             ".cursor/rules",
             "AGENTS.md",
@@ -7058,6 +7061,18 @@
           "Claude Code hooks",
           "Claude Code skills",
           "Claude Code subagents"
+        ]
+      },
+      "cursor": {
+        "rules": "https://cursor.com/docs/rules",
+        "skills": "https://cursor.com/docs/skills",
+        "subagents": "https://cursor.com/docs/subagents",
+        "composer25": "https://cursor.com/changelog/composer-2-5",
+        "useFor": [
+          "Cursor rules",
+          "Cursor Agent Skills",
+          "Cursor subagents",
+          "Composer 2.5 subagent defaults"
         ]
       }
     },

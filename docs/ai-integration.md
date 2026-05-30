@@ -138,12 +138,23 @@ Tracked `.clangd` sets `CompileFlags.CompilationDatabase` to `out/build/dev`; ru
 
 The required project-level AI surfaces are:
 
-- Codex skills: `cmake-build-system`, `cpp-engine-debugging`, `editor-change`, `gameengine-agent-integration`, `gameengine-feature`, `gameengine-game-development`, `license-audit`, and `rendering-change`.
-- Claude Code skills: `gameengine-agent-integration`, `gameengine-cmake-build-system`, `gameengine-debugging`, `gameengine-editor`, `gameengine-feature`, `gameengine-game-development`, `gameengine-license-audit`, and `gameengine-rendering`.
-- Cursor Agent Skills (repository-local): Cursor-only `gameengine-cursor-baseline` and `gameengine-plan-registry`, plus thin pointers for every Claude `gameengine-*` topic listed above (same folder names under `.cursor/skills/`).
+- Codex skills: `cmake-build-system`, `cpp-engine-debugging`, `editor-change`, `gameengine-agent-integration`, `gameengine-feature`, `gameengine-game-development`, `gameengine-git-publication-preflight`, `license-audit`, and `rendering-change`.
+- Claude Code skills: `gameengine-agent-integration`, `gameengine-cmake-build-system`, `gameengine-debugging`, `gameengine-editor`, `gameengine-feature`, `gameengine-game-development`, `gameengine-git-publication-preflight`, `gameengine-license-audit`, and `gameengine-rendering`.
+- Cursor Agent Skills (repository-local): Cursor-only `gameengine-cursor-baseline` and `gameengine-plan-registry`, plus thin routers for every Claude `gameengine-*` topic above (same folder names under `.cursor/skills/`, including `gameengine-git-publication-preflight`).
 - Shared subagent roles: `agent-surface-auditor`, `explorer`, `cpp-reviewer`, `engine-architect`, `planning-auditor`, `rendering-auditor`, `gameplay-builder`, and `build-fixer` under `.codex/agents/`, `.claude/agents/`, and `.cursor/agents/`.
 
 `agent-surface-auditor`, `explorer`, `cpp-reviewer`, `engine-architect`, `planning-auditor`, and `rendering-auditor` are read-only roles. `gameplay-builder` and `build-fixer` may edit only when their delegated task expects production work or a targeted fix.
+
+## Static contract chapter ownership
+
+`tools/check-ai-integration.ps1` and `tools/check-json-contracts.ps1` dot-source numeric chapter files in one shared scope. Keep reusable surface-text loads in the chapter that owns the assertions:
+
+- **Chapter 1:** `tools/check-ai-integration-010-agent-baseline.ps1` — agent baseline, docs, plans, tooling needles.
+- **Chapter 2:** `tools/check-ai-integration-020-engine-manifest.ps1` — `Get-AgentSurfaceText` for engine/RHI/runtime/renderer contracts (later rendering packs reuse through dot-source).
+- **Chapter 4:** `tools/check-json-contracts-040-agent-surfaces.ps1` — agent surfaces and cross-check needles only.
+- **Chapter 5:** `tools/check-json-contracts-050-generated-games.ps1` — `Get-JsonContractSurfaceText` for runtime UI/tools C++ contracts.
+
+See `.agents/skills/gameengine-agent-integration/references/static-contract-chapters.md` and **Repository consistency checklist** step 3 in `docs/workflows.md`.
 
 ## Required Checks
 
@@ -151,11 +162,12 @@ Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 ```
 
 `agent-check` validates the agent manifest, Claude/Codex instruction surfaces, skills, and custom agents.
-When you add retained editor UI ids (`play_in_editor.*`), manifest slices, or editor-shell literals enforced by `tools/check-ai-integration.ps1`, extend the matching **Needles** in that script and keep Codex/Claude editor skills aligned in the same change (see **Repository consistency checklist** in `docs/workflows.md`).
+When you add retained editor UI ids (`play_in_editor.*`), manifest slices, or editor-shell literals enforced by `tools/check-ai-integration.ps1`, extend the matching **Needles** in that script and keep Codex/Claude editor skills aligned in the same change; Cursor `.cursor/skills/gameengine-editor/SKILL.md` stays a thin router that points at the Claude skill and `references/full-guidance.md` (see **Repository consistency checklist** in `docs/workflows.md`).
 When you edit any `tools/*.ps1` (especially `check-ai-integration.ps1` or `common.ps1`), follow **`AGENTS.md` → Repository command entrypoints** for **PSScriptAnalyzer-friendly** PowerShell patterns and run **`Invoke-ScriptAnalyzer`** on touched files when the module is installed.
 `schema-check` validates engine and game agent JSON contracts with repository-local rules.
 `toolchain-check` also enforces that checked-in CMake configure/build presets keep inheriting `normalized-configure-environment` / `normalized-build-environment`, reports linked-worktree and `external/vcpkg` readiness, and `agent-check` verifies the matching guidance remains present in AGENTS, workflow docs, CMake skills, Claude rules, build-fixer subagents, and the engine manifest so Windows CMake/MSBuild `Path`/`PATH` environment regressions are not reintroduced silently.

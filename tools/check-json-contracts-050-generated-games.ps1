@@ -3,6 +3,32 @@
 
 # Chapter 5 for check-json-contracts.ps1 static contracts.
 
+# Runtime UI/tools surface texts owned by this chapter.
+$geUiHeaderText = Get-JsonContractSurfaceText "engine/ui/include/mirakana/ui/ui.hpp"
+$geUiSourceText = Get-JsonContractSurfaceText "engine/ui/src/ui.cpp"
+$sourceImageDecodeHeaderText = Get-JsonContractSurfaceText "engine/tools/include/mirakana/tools/source_image_decode.hpp"
+$sourceImageDecodeSourceText = Get-JsonContractSurfaceText "engine/tools/asset/source_image_decode.cpp"
+$uiAtlasToolHeaderText = Get-JsonContractSurfaceText "engine/tools/include/mirakana/tools/ui_atlas_tool.hpp"
+$uiAtlasToolSourceText = Get-JsonContractSurfaceText "engine/tools/asset/ui_atlas_tool.cpp"
+$toolsTestsText = Get-JsonContractSurfaceText "tests/unit/tools_tests.cpp"
+$uiRendererTestsText = Get-JsonContractSurfaceText "tests/unit/ui_renderer_tests.cpp"
+
+$checkJsonContract040Text = Get-Content -LiteralPath (Join-Path $root "tools/check-json-contracts-040-agent-surfaces.ps1") -Raw
+foreach ($forbiddenJsonContract040UiAssignment in @(
+        '$geUiHeaderText = Get-Content -LiteralPath (Join-Path $root "engine/ui/include/mirakana/ui/ui.hpp")',
+        '$geUiSourceText = Get-Content -LiteralPath (Join-Path $root "engine/ui/src/ui.cpp")',
+        '$sourceImageDecodeHeaderText = Get-Content -LiteralPath (Join-Path $root "engine/tools/include/mirakana/tools/source_image_decode.hpp")',
+        '$sourceImageDecodeSourceText = Get-Content -LiteralPath (Join-Path $root "engine/tools/asset/source_image_decode.cpp")',
+        '$uiAtlasToolHeaderText = Get-Content -LiteralPath (Join-Path $root "engine/tools/include/mirakana/tools/ui_atlas_tool.hpp")',
+        '$uiAtlasToolSourceText = Get-Content -LiteralPath (Join-Path $root "engine/tools/asset/ui_atlas_tool.cpp")',
+        '$toolsTestsText = Get-Content -LiteralPath (Join-Path $root "tests/unit/tools_tests.cpp")',
+        '$uiRendererTestsText = Get-Content -LiteralPath (Join-Path $root "tests/unit/ui_renderer_tests.cpp")'
+    )) {
+    if ($checkJsonContract040Text.Contains($forbiddenJsonContract040UiAssignment)) {
+        Write-Error "tools/check-json-contracts-040-agent-surfaces.ps1 must not preload runtime UI/tools surface texts; load them in tools/check-json-contracts-050-generated-games.ps1 instead: $forbiddenJsonContract040UiAssignment"
+    }
+}
+
 foreach ($needle in @(
     "AccessibilityPublishPlan",
     "AccessibilityPublishResult",

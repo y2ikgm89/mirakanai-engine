@@ -9,6 +9,12 @@ paths:
   - ".claude/settings.json"
 ---
 
-# GameEngine Git Publication Preflight
+# GameEngine Git Publication Preflight (Cursor)
 
-Use `.claude/skills/gameengine-git-publication-preflight/SKILL.md` and `.agents/skills/gameengine-git-publication-preflight/SKILL.md` as the canonical workflow. Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1 [-PullRequest <pr>] [-RequireClean]` before staging, push, PR creation/update, ready conversion, or auto-merge registration. If `publication-preflight: blocked` appears, switch session/user/host context; do not create a publication temp clone or bypass GitHub Flow.
+| Layer | Path |
+| --- | --- |
+| Claude Code | `.claude/skills/gameengine-git-publication-preflight/SKILL.md` |
+| Codex | `.agents/skills/gameengine-git-publication-preflight/SKILL.md` |
+| Baseline | `AGENTS.md` → Git Workflow |
+
+Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1 [-PullRequest <pr>] [-RequireClean]` before staging, push, PR creation/update, ready conversion, or auto-merge registration. Manual probes when blocked include `whoami`, `git update-index -q --refresh`, `Test-NetConnection github.com -Port 443`, `gh auth status`, and `gh pr view <pr> --json headRefOid,statusCheckRollup,url`. If `publication-preflight: blocked` appears, switch session/user/host context; do not create a publication temp clone or bypass GitHub Flow.

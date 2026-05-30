@@ -1,0 +1,18 @@
+---
+description: Agent-surface drift, manifest compose, and cross-tool integration when editing AI operable contracts.
+globs: AGENTS.md,CLAUDE.md,.agents/**,.claude/**,.cursor/**,.codex/**,.clangd,engine/agent/**,schemas/**,tools/agent-context.ps1,tools/compose-agent-manifest.ps1,tools/check-agents.ps1,tools/check-ai-integration*.ps1,tools/check-json-contracts*.ps1,tools/check-publication-preflight.ps1,tools/remove-merged-worktree.ps1,tools/ready-task-pr.ps1,docs/workflows.md,docs/ai-integration.md
+alwaysApply: false
+---
+
+# AI agent integration (Cursor rule)
+
+- [`AGENTS.md`](../../AGENTS.md) is the shared baseline; resolve conflicts in its favor.
+- Keep Codex, Claude Code, and Cursor surfaces behaviorally equivalent when durable workflow changes.
+- Every implementation change includes a targeted **agent-surface drift check** before completion.
+- Edit `engine/agent/manifest.fragments/*.json`, then run `tools/compose-agent-manifest.ps1 -Write`; never hand-edit `engine/agent/manifest.json`.
+- Keep `.cursor/skills/gameengine-*` as thin pointers matching `.claude/skills/` except Cursor-only `gameengine-cursor-baseline` and `gameengine-plan-registry`.
+- Run `tools/check-agents.ps1` and the **Repository consistency checklist** in [`docs/workflows.md`](../../docs/workflows.md) when agent surfaces change.
+- Static-contract chapter ownership: baseline needles in `check-ai-integration-010` / `check-json-contracts-040`; engine/RHI surfaces in `check-ai-integration-020`; runtime UI/tools surfaces in `check-json-contracts-050` (see `.claude/skills/gameengine-agent-integration/references/static-contract-chapters.md`).
+- Publication: `tools/check-publication-preflight.ps1` before staging/push/PR/merge; follow official GitHub Flow in `AGENTS.md`.
+
+See [`.claude/rules/ai-agent-integration.md`](../../.claude/rules/ai-agent-integration.md) and [`.cursor/skills/gameengine-agent-integration/SKILL.md`](../../.cursor/skills/gameengine-agent-integration/SKILL.md).

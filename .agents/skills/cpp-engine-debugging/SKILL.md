@@ -14,11 +14,12 @@ paths:
 ## Workflow
 
 1. Reproduce with the narrowest command.
-2. Identify the failing public behavior.
-3. Add or update a failing test before changing production code when tools can run; target the smallest public behavior/API guarantee that would have caught the defect.
-4. Inspect ownership, lifetime, thread access, and value invariants.
-5. Make the smallest fix.
-6. Rerun the narrow reproduction and focused target checks first, then run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` at the slice-closing gate.
+2. Read the complete error output.
+3. Identify whether the issue is code, build configuration, missing local tools, or environment.
+4. Add or update a failing test for behavior bugs when possible; target the smallest public behavior/API guarantee that would have caught the defect.
+5. Inspect ownership, lifetime, thread access, and value invariants.
+6. Make the smallest fix.
+7. Rerun the narrow reproduction and focused target checks first, then run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` at the slice-closing gate.
 
 ## Focus Areas
 
@@ -47,6 +48,7 @@ paths:
 
 ## Do Not
 
+- Do not guess around compiler or CMake errors; fix the root cause.
 - Do not mask defects behind fallback paths; fix root causes and validate behavior.
 - Add dependencies for debugging convenience.
 - Change public API and tests in the same direction without first proving the old behavior is wrong.

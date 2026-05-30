@@ -1856,7 +1856,6 @@ $worldStreamingLargeSceneSurfaceChecks = @(
     @{ Path = "docs/ai-game-development.md"; Needles = @("RuntimeWorldStreamingLargeSceneReadinessRequest", "evaluate_runtime_world_streaming_large_scene_readiness", "optional path-cache readiness", "streaming execution") },
     @{ Path = ".agents/skills/gameengine-game-development/SKILL.md"; Needles = @("RuntimeWorldStreamingLargeSceneReadinessRequest", "world_region_streaming_large_scene_readiness_status", "background streaming") },
     @{ Path = ".claude/skills/gameengine-game-development/SKILL.md"; Needles = @("RuntimeWorldStreamingLargeSceneReadinessRequest", "world_region_streaming_large_scene_readiness_status", "background streaming") },
-    @{ Path = ".cursor/skills/gameengine-game-development/SKILL.md"; Needles = @("RuntimeWorldStreamingLargeSceneReadinessRequest", "world_region_streaming_navigation_path_cache_ready", "background streaming") },
     @{ Path = ".agents/skills/gameengine-game-development/references/full-guidance.md"; Needles = @("RuntimeWorldStreamingLargeSceneReadinessRequest", "navigation path-cache readiness", "automatic eviction policy") },
     @{ Path = ".claude/skills/gameengine-game-development/references/full-guidance.md"; Needles = @("RuntimeWorldStreamingLargeSceneReadinessRequest", "navigation path-cache readiness", "automatic eviction policy") }
 )
@@ -1872,7 +1871,6 @@ $proceduralGenerationSurfaceChecks = @(
     @{ Path = "docs/ai-game-development.md"; Needles = @("plan_runtime_procedural_generation", "gameplay_systems_procedural_generation_package_visible_rows", "gameplay_systems_procedural_generation_placement_intent_accepted_rows", "content-quality claims") },
     @{ Path = ".agents/skills/gameengine-game-development/SKILL.md"; Needles = @("plan_runtime_procedural_generation", "gameplay_systems_procedural_generation_rows", "content quality") },
     @{ Path = ".claude/skills/gameengine-game-development/SKILL.md"; Needles = @("plan_runtime_procedural_generation", "gameplay_systems_procedural_generation_rows", "content quality") },
-    @{ Path = ".cursor/skills/gameengine-game-development/SKILL.md"; Needles = @("plan_runtime_procedural_generation", "gameplay_systems_procedural_generation_rows", "content quality") },
     @{ Path = "tools/validate-installed-desktop-runtime.ps1"; Needles = @("requiresProceduralGeneration", "gameplay_systems_procedural_generation_placement_intent_accepted_rows", "exact procedural generation") }
 )
 foreach ($check in $proceduralGenerationSurfaceChecks) {

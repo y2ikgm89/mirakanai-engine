@@ -11,15 +11,24 @@ paths:
 
 # GameEngine Debugging
 
+## Workflow
+
 1. Reproduce with the narrowest command.
 2. Read the complete error output.
 3. Identify whether the issue is code, build configuration, missing local tools, or environment.
 4. Add or update a failing test for behavior bugs when possible; target the smallest public behavior/API guarantee that would have caught the defect.
-5. Make the smallest fix.
-6. Rerun the narrow reproduction and focused target checks first, then run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` at the slice-closing gate.
+5. Inspect ownership, lifetime, thread access, and value invariants.
+6. Make the smallest fix.
+7. Rerun the narrow reproduction and focused target checks first, then run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` at the slice-closing gate.
 
-Do not guess around compiler or CMake errors. Fix the root cause.
-Do not add broad or implementation-mirroring tests when one focused regression test or an existing test update captures the durable guarantee.
+## Focus Areas
+
+- RAII correctness
+- dangling references and raw pointer storage
+- moved-from values
+- invalid entity/component access
+- frame-step determinism
+- global mutable state
 
 ## Windows Native Debugging
 
@@ -36,3 +45,11 @@ Do not add broad or implementation-mirroring tests when one focused regression t
 
 - Prefer `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1` over raw `clang-tidy`. The wrapper verifies `.clang-tidy`, reuses native Makefile/Ninja `compile_commands.json` when present, or synthesizes `compile_commands.json` under the active preset `binaryDir` from CMake File API codemodel data on the default Windows Visual Studio `dev` lane. In full validation, `build.ps1` prepares that File API query before generation, then the tidy smoke reuses the reply. Missing CMake or `clang-tidy` is a host blocker, not an engine defect.
 - Noisy warnings in **`tests/unit/*.cpp`** and similar churn in **`editor/core`** production TUs: fix patterns first (complete designated initializers—including declaration order when the toolchain flags skipped members—C++23 **`std::string::contains` / `starts_with`** and the same on **`std::string_view`**, one anonymous namespace through test bodies with `int main()` outside for large TUs, `class` test doubles with private state and `const` getters instead of public counters, **Rule of Five** on file-local C API adapters when special-member clang-tidy checks fire). See **Unit tests** and production notes in `docs/cpp-style.md`. Use narrow NOLINT only after the pattern fix or for documented false positives.
+
+## Do Not
+
+- Do not guess around compiler or CMake errors; fix the root cause.
+- Do not mask defects behind fallback paths; fix root causes and validate behavior.
+- Add dependencies for debugging convenience.
+- Change public API and tests in the same direction without first proving the old behavior is wrong.
+- Add broad or implementation-mirroring tests when one focused regression test or an existing test update captures the durable guarantee.

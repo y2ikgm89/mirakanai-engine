@@ -99,9 +99,9 @@ foreach ($surface in @("codex", "claudeCode", "cursor")) {
     }
 }
 $requiredSurfaceSkills = @{
-    codex      = @("cmake-build-system", "cpp-engine-debugging", "editor-change", "gameengine-agent-integration", "gameengine-feature", "gameengine-game-development", "license-audit", "rendering-change")
-    claudeCode = @("gameengine-agent-integration", "gameengine-cmake-build-system", "gameengine-debugging", "gameengine-editor", "gameengine-feature", "gameengine-game-development", "gameengine-license-audit", "gameengine-rendering")
-    cursor     = @("gameengine-agent-integration", "gameengine-cmake-build-system", "gameengine-cursor-baseline", "gameengine-debugging", "gameengine-editor", "gameengine-feature", "gameengine-game-development", "gameengine-license-audit", "gameengine-plan-registry", "gameengine-rendering")
+    codex      = @($manifest.aiSurfaces.codex.requiredSkills)
+    claudeCode = @($manifest.aiSurfaces.claudeCode.requiredSkills)
+    cursor     = @($manifest.aiSurfaces.cursor.requiredSkills)
 }
 foreach ($surfaceSkills in $requiredSurfaceSkills.GetEnumerator()) {
     $surfaceName = $surfaceSkills.Key
@@ -764,8 +764,7 @@ foreach ($questDialogueGuidanceNeedle in @(
 foreach ($questDialogueSurface in @(
     "docs/current-capabilities.md",
     ".agents/skills/gameengine-game-development/SKILL.md",
-    ".claude/skills/gameengine-game-development/SKILL.md",
-    ".cursor/skills/gameengine-game-development/SKILL.md"
+    ".claude/skills/gameengine-game-development/SKILL.md"
 )) {
     $questDialogueSurfaceText = Get-AgentSurfaceText $questDialogueSurface
     Assert-ContainsText $questDialogueSurfaceText "RuntimeQuestDialogueDocument" $questDialogueSurface
@@ -834,8 +833,7 @@ foreach ($inventoryItemSurface in @(
     "docs/ai-game-development.md",
     "docs/roadmap.md",
     ".agents/skills/gameengine-game-development/SKILL.md",
-    ".claude/skills/gameengine-game-development/SKILL.md",
-    ".cursor/skills/gameengine-game-development/SKILL.md"
+    ".claude/skills/gameengine-game-development/SKILL.md"
 )) {
     $inventoryItemSurfaceText = Get-AgentSurfaceText $inventoryItemSurface
     Assert-ContainsText $inventoryItemSurfaceText "RuntimeItemCatalogDocument" $inventoryItemSurface
@@ -932,8 +930,7 @@ foreach ($gameplayDebugOverlayGuidance in @(
     "docs/current-capabilities.md",
     "docs/specs/generated-game-validation-scenarios.md",
     ".agents/skills/gameengine-game-development/SKILL.md",
-    ".claude/skills/gameengine-game-development/SKILL.md",
-    ".cursor/skills/gameengine-game-development/SKILL.md"
+    ".claude/skills/gameengine-game-development/SKILL.md"
 )) {
     $gameplayDebugOverlayText = Get-AgentSurfaceText $gameplayDebugOverlayGuidance
     Assert-ContainsText $gameplayDebugOverlayText "debug overlay" $gameplayDebugOverlayGuidance
@@ -1561,7 +1558,6 @@ foreach ($advancedControllerPackageGuidance in @(
     ".agents/skills/gameengine-game-development/references/full-guidance.md",
     ".claude/skills/gameengine-game-development/SKILL.md",
     ".claude/skills/gameengine-game-development/references/full-guidance.md",
-    ".cursor/skills/gameengine-game-development/SKILL.md",
     "tools/validate-installed-desktop-runtime.ps1"
 )) {
     $advancedControllerPackageText = Get-AgentSurfaceText $advancedControllerPackageGuidance
@@ -1992,7 +1988,7 @@ foreach ($tileChunkRendererCheck in @(
 }
 $geRendererRecentEvidenceText = @($geRendererModule[0].recentEvidence | ForEach-Object { [string]$_ }) -join " "
 foreach ($needle in @("Generic 2D Sandbox Production Tile Renderer v1", "plan_tile_chunk_renderer", "--require-production-tile-renderer", "zero backend submission/native texture ownership invocation")) { Assert-ContainsText $geRendererRecentEvidenceText $needle "MK_renderer module recentEvidence"; Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentProductionTileRenderer) $needle "production tile renderer game guidance" }
-foreach ($productionTileRendererGuidance in @("docs/current-capabilities.md", "docs/ai-game-development.md", "docs/roadmap.md", "docs/testing.md", "docs/superpowers/plans/README.md", "docs/superpowers/plans/2026-05-27-generic-2d-sandbox-production-lane-v1.md", ".agents/skills/gameengine-game-development/SKILL.md", ".claude/skills/gameengine-game-development/SKILL.md", ".cursor/skills/gameengine-game-development/SKILL.md", "games/sample_2d_desktop_runtime_package/README.md", "games/sample_2d_desktop_runtime_package/game.agent.json")) { foreach ($needle in @("plan_tile_chunk_renderer", "--require-production-tile-renderer", "native texture ownership")) { Assert-ContainsText (Get-AgentSurfaceText $productionTileRendererGuidance) $needle $productionTileRendererGuidance } }
+foreach ($productionTileRendererGuidance in @("docs/current-capabilities.md", "docs/ai-game-development.md", "docs/roadmap.md", "docs/testing.md", "docs/superpowers/plans/README.md", "docs/superpowers/plans/2026-05-27-generic-2d-sandbox-production-lane-v1.md", ".agents/skills/gameengine-game-development/SKILL.md", ".claude/skills/gameengine-game-development/SKILL.md", "games/sample_2d_desktop_runtime_package/README.md", "games/sample_2d_desktop_runtime_package/game.agent.json")) { foreach ($needle in @("plan_tile_chunk_renderer", "--require-production-tile-renderer", "native texture ownership")) { Assert-ContainsText (Get-AgentSurfaceText $productionTileRendererGuidance) $needle $productionTileRendererGuidance } }
 foreach ($needle in @("plan_scene_lighting_shadow_policy", "build_scene_directional_shadow_light_space_plan", "sample_and_apply_runtime_scene_render_animation_float_clip", "advance_runtime_sprite_flipbook", "sample_runtime_morph_mesh_cpu_animation_float_clip")) {
     Assert-ContainsText ([string]$geSceneRendererModule[0].purpose) $needle "MK_scene_renderer module purpose"
 }
