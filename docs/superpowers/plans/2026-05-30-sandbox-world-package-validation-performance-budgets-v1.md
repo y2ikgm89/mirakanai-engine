@@ -12,9 +12,9 @@
 
 **Plan ID:** `sandbox-world-package-validation-performance-budgets-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
-Local implementation status: code, source-tree smoke flags, budget counters, negative probe, installed validation, game manifest, validation recipe, and static guard sync are implemented pending full validation and PR publication.
+Closeout status: implemented and published through PR #313 / merge commit `04cc3b0f9cb1331f1ea21b15f91f116eb3fec8cf` after local full validation and hosted `PR Gate`, `Windows MSVC`, Linux, macOS Metal CMake, iOS smoke, full repository static analysis shards, `Agent Static Guards`, and CodeQL checks succeeded.
 
 ## Official Evidence
 
@@ -171,9 +171,9 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 **Files:**
 - All task-owned files above.
 
-- [ ] Commit a verified candidate on `codex/generic-2d-sandbox-package-validation-budgets-v1`.
-- [ ] Push and open a reviewable PR with local validation evidence.
-- [ ] Wait for hosted checks including `PR Gate` before merge/cleanup.
+- [x] Commit a verified candidate on `codex/generic-2d-sandbox-package-validation-budgets-v1`.
+- [x] Push and open a reviewable PR with local validation evidence.
+- [x] Wait for hosted checks including `PR Gate` before merge/cleanup.
 
 ## Done When
 
@@ -195,3 +195,5 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`.
 - PASS: `git diff --check`.
 - PASS: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`; full static checks, build, tidy smoke, and 84/84 `dev` CTests passed. Apple/Metal and mobile Apple lanes remained host-gated diagnostic-only on this Windows host.
+- PASS: PR #313 hosted checks completed for `PR Gate`, `Windows MSVC`, Linux CMake, macOS Metal CMake, iOS Simulator smoke, full repository static analysis shards, `Agent Static Guards`, and CodeQL; Linux Coverage, Linux Clang ASan/UBSan, and Windows C++23 Release Evaluation were skipped by PR validation-tier selection.
+- MERGED: PR #313 merged to `main` as merge commit `04cc3b0f9cb1331f1ea21b15f91f116eb3fec8cf`; implementation commit `b473bfd772bc163b83cc5b522c1d3fd5985abec2` is contained in `origin/main`.
