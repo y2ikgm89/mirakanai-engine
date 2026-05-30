@@ -175,7 +175,7 @@ Expected: manifest composition and AI integration checks pass.
 
 **Done When:** The baseline is validated, deferred GUI references are inventoried, and this plan is either still Proposed or explicitly selected in manifest fragments.
 
-**Phase Evidence:** Not started.
+**Phase Evidence:** Candidate boundaries selected in `codex/native-win32-editor-dependency-gate-v1`; linked worktree prepared with `tools/prepare-worktree.ps1`, vcpkg/CMake/Dear ImGui official documentation rechecked, and local static baseline checks passed.
 
 ## Phase 1 - Dear ImGui Dependency, Legal, And Policy Gate
 
@@ -261,7 +261,7 @@ Expected: vcpkg installs the selected imgui feature set, dependency policy passe
 
 **Done When:** `desktop-gui` has an audited Dear ImGui Win32/DX12 dependency and no SDL3 dependency can enter through policy.
 
-**Phase Evidence:** Not started.
+**Phase Evidence:** In progress in candidate `codex/native-win32-editor-dependency-gate-v1`. Static policy, JSON contract, format, vcpkg environment, and AI integration checks pass locally. `tools/bootstrap-deps.ps1` is still blocked in this no-approval Codex session by dependency-bootstrap command policy, so Dear ImGui package install evidence is not complete yet.
 
 ## Phase 2 - Private Native Shell Skeleton And Tests
 

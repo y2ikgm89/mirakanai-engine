@@ -99,22 +99,52 @@ if ($desktopRuntimeDependencyNames.Count -ne 0) {
 }
 
 $dependencyNames = @()
+$desktopGuiImguiFeatures = @()
 foreach ($dependency in $desktopGui.dependencies) {
     if ($dependency -is [string]) {
         $dependencyNames += $dependency
     } else {
         $dependencyNames += $dependency.name
+        if ($dependency.name -eq "imgui" -and (Test-JsonProperty -Object $dependency -Property "features")) {
+            foreach ($feature in $dependency.features) {
+                $desktopGuiImguiFeatures += [string]$feature
+            }
+        }
     }
 }
 
-foreach ($dependencyName in @("sdl3", "imgui")) {
+foreach ($dependencyName in @("sdl3")) {
     if ($dependencyNames -contains $dependencyName) {
-        Write-Error "desktop-gui feature is deferred after SDL3 removal and must not declare dependency: $dependencyName"
+        Write-Error "desktop-gui feature must not declare dependency: $dependencyName"
     }
 }
 
-if ($dependencyNames.Count -ne 0) {
-    Write-Error "desktop-gui feature is deferred after SDL3 removal and must not declare package dependencies"
+if ($dependencyNames -notcontains "imgui") {
+    Write-Error "desktop-gui feature must declare dependency: imgui"
+}
+
+foreach ($dependencyName in $dependencyNames) {
+    if ($dependencyName -ne "imgui") {
+        Write-Error "desktop-gui feature must declare only audited dependency: imgui"
+    }
+}
+
+foreach ($requiredFeature in @("win32-binding", "dx12-binding")) {
+    if ($desktopGuiImguiFeatures -notcontains $requiredFeature) {
+        Write-Error "desktop-gui imgui dependency must include feature: $requiredFeature"
+    }
+}
+
+foreach ($forbiddenFeature in @("sdl3-binding", "sdl3-renderer-binding", "sdlgpu3-binding")) {
+    if ($desktopGuiImguiFeatures -contains $forbiddenFeature) {
+        Write-Error "desktop-gui imgui dependency must not include feature: $forbiddenFeature"
+    }
+}
+
+foreach ($feature in $desktopGuiImguiFeatures) {
+    if (@("win32-binding", "dx12-binding") -notcontains $feature) {
+        Write-Error "desktop-gui imgui dependency must only enable Win32 and DirectX 12 features"
+    }
 }
 
 $assetImporterDependencyNames = @()
@@ -177,18 +207,20 @@ if ($enetDefaultFeatures -ne $false) {
 if ((Get-Content -LiteralPath (Join-Path $root "THIRD_PARTY_NOTICES.md") -Raw) -match "\| SDL3 \|") {
     Write-Error "third-party notices must not list SDL3 after final SDL3 source and dependency removal"
 }
-if ((Get-Content -LiteralPath (Join-Path $root "THIRD_PARTY_NOTICES.md") -Raw) -match "\| Dear ImGui \|") {
-    Write-Error "third-party notices must not list Dear ImGui while the visible editor shell is deferred and no package dependency declares it"
-}
+Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| Dear ImGui \|" "third-party notices"
 Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| Jolt Physics \|" "third-party notices"
 Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| ENet \|" "third-party notices"
 Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| KTX Software \|" "third-party notices"
 Assert-TextContains "docs/dependencies.md" "builtin-baseline" "dependency docs"
+Assert-TextContains "docs/dependencies.md" "Dear ImGui is optional and editor/developer-shell only" "dependency docs"
+Assert-TextContains "docs/dependencies.md" "Dear ImGui is not the production runtime game UI foundation" "dependency docs"
+Assert-TextContains "docs/dependencies.md" "Win32 and DirectX 12 backends and must not enable SDL3 bindings" "dependency docs"
 Assert-TextContains "docs/dependencies.md" "Foundation" "dependency docs"
 Assert-TextContains "docs/dependencies.md" "physics-jolt" "dependency docs"
 Assert-TextContains "docs/dependencies.md" "network-enet" "dependency docs"
 Assert-TextContains "docs/dependencies.md" "KTX Software" "dependency docs"
 Assert-TextContains "docs/legal-and-licensing.md" "Foundation" "legal dependency docs"
+Assert-TextContains "docs/legal-and-licensing.md" "Dear ImGui" "legal dependency docs"
 Assert-TextContains "docs/legal-and-licensing.md" "Jolt Physics" "legal dependency docs"
 Assert-TextContains "docs/legal-and-licensing.md" "ENet" "legal dependency docs"
 Assert-TextContains "docs/legal-and-licensing.md" "KTX Software" "legal dependency docs"

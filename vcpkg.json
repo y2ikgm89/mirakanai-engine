@@ -39,8 +39,16 @@
       ]
     },
     "desktop-gui": {
-      "description": "Deferred desktop editor shell feature. The SDL3/Dear ImGui shell has been removed from active build lanes; future Win32/D3D12 editor work must add audited dependencies explicitly.",
-      "dependencies": []
+      "description": "Optional Windows native desktop editor shell lane. Dear ImGui is available only for developer/editor tooling through Win32 and DirectX 12 backends; SDL3 bindings remain excluded.",
+      "dependencies": [
+        {
+          "name": "imgui",
+          "features": [
+            "win32-binding",
+            "dx12-binding"
+          ]
+        }
+      ]
     }
   }
 }
