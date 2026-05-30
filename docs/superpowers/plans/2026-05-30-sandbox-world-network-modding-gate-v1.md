@@ -10,7 +10,7 @@
 
 **Plan ID:** `sandbox-world-network-modding-gate-v1`
 
-**Status:** Active.
+**Status:** Completed through PR #312 / merge commit `0fa26b1823d6bb4b68837f19b4040ede781e09b9`.
 
 ---
 
@@ -131,9 +131,9 @@ git diff --check
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 ```
 
-- [ ] Commit a verified candidate on `codex/generic-2d-sandbox-network-modding-gate-v1`.
-- [ ] Push and open a reviewable PR with validation evidence.
-- [ ] Wait for hosted checks including `PR Gate` before merge/cleanup.
+- [x] Commit a verified candidate on `codex/generic-2d-sandbox-network-modding-gate-v1`.
+- [x] Push and open a reviewable PR with validation evidence.
+- [x] Wait for hosted checks including `PR Gate` before merge/cleanup.
 
 ## Done When
 
@@ -149,3 +149,4 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 - Validation recipe dry-runs passed for `network-production-security`; `network-enet` remains host-gated by `network-enet-vcpkg`.
 - Targeted drift checks passed: `tools/check-public-api-boundaries.ps1`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-format.ps1`, and `git diff --check`.
 - Full validation passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` with `validate: ok` and 84/84 CTest tests passed. Apple/Metal and Apple packaging evidence remained diagnostic host gates on this Windows host; Android packaging preflight reported ready.
+- PR #312 merged at merge commit `0fa26b1823d6bb4b68837f19b4040ede781e09b9` after hosted `PR Gate`, `Windows MSVC`, `Agent Static Guards`, `Linux CMake`, `Linux Coverage`, `Linux Clang ASan/UBSan`, full repository static analysis shards, `macOS Metal CMake`, `iOS Simulator smoke`, and CodeQL checks succeeded for head `7f039e13d1f28d05e5b68eaf7d414eb87862217a`.

@@ -79,6 +79,8 @@ struct DesktopRuntimeOptions {
     bool smoke{false};
     bool show_help{false};
     bool throttle{true};
+    bool require_win32_runtime_host{false};
+    bool require_win32_d3d12_presentation{false};
     bool require_d3d12_shaders{false};
     bool require_d3d12_renderer{false};
     bool require_vulkan_shaders{false};
@@ -94,6 +96,9 @@ struct DesktopRuntimeOptions {
     bool require_gameplay_systems{false};
     bool require_procedural_generation{false};
     bool require_world_region_streaming{false};
+    bool require_sandbox_world_runtime{false};
+    bool require_sandbox_world_persistence{false};
+    bool require_sandbox_world_streaming{false};
     bool require_entity_scale_culling{false};
     bool require_scripting_sandbox_policy{false};
     bool require_networking_foundation_policy{false};
@@ -107,7 +112,10 @@ struct DesktopRuntimeOptions {
     bool require_runtime_ui_production_stack{false};
     bool require_runtime_ui_renderer_atlas_handoff{false};
     bool require_audio_gameplay_mixer{false};
+    bool require_wasapi_audio{false};
     bool require_source_image_audio_codec_review{false};
+    bool require_sandbox_package_budgets{false};
+    bool force_sandbox_package_budget_overflow{false};
     std::uint32_t max_frames{0};
     std::string required_config_path;
     std::string required_scene_package_path;
@@ -155,6 +163,12 @@ enum class Gameplay2DSystemsStatus : std::uint8_t {
     not_started,
     ready,
     diagnostics,
+};
+
+enum class SandboxPackageBudgetStatus : std::uint8_t {
+    invalid,
+    ready,
+    budget_limited,
 };
 
 struct WorldRegionStreamingProbeResult {
@@ -504,6 +518,18 @@ struct ProductionAuthoringWorkflowProbeResult {
         return "ready";
     case Gameplay2DSystemsStatus::diagnostics:
         return "diagnostics";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view sandbox_package_budget_status_name(SandboxPackageBudgetStatus status) noexcept {
+    switch (status) {
+    case SandboxPackageBudgetStatus::invalid:
+        return "invalid";
+    case SandboxPackageBudgetStatus::ready:
+        return "ready";
+    case SandboxPackageBudgetStatus::budget_limited:
+        return "budget_limited";
     }
     return "unknown";
 }
@@ -1730,6 +1756,34 @@ struct SourceImageAudioCodecReviewProbeResult {
     bool mutated_packages{false};
     std::size_t diagnostics{0U};
     std::uint64_t replay_hash{0U};
+};
+
+struct SandboxPackageBudgetProbeResult {
+    SandboxPackageBudgetStatus status{SandboxPackageBudgetStatus::invalid};
+    std::uint64_t rows{0U};
+    std::uint64_t diagnostics{0U};
+    std::uint64_t row_limit{256U};
+    std::uint64_t byte_limit{32U * 1024U * 1024U};
+    std::uint64_t chunk_bytes{0U};
+    std::uint64_t dirty_chunks{0U};
+    std::uint64_t renderer_draw_rows{0U};
+    std::uint64_t tile_draw_calls{0U};
+    std::uint64_t light_rows{0U};
+    std::uint64_t persisted_chunks{0U};
+    std::uint64_t streaming_load_rows{0U};
+    std::uint64_t streaming_unload_rows{0U};
+    std::uint64_t replay_hash{0U};
+    std::uint64_t package_io_invoked{0U};
+    std::uint64_t native_handles_exposed{0U};
+    std::uint64_t arbitrary_shell_invoked{0U};
+    std::uint64_t external_download_invoked{0U};
+    std::uint64_t source_image_decode_invoked{0U};
+    std::uint64_t broad_multiplayer_ready{0U};
+    std::uint64_t backend_submission_invoked{0U};
+    std::uint64_t native_texture_ownership_invoked{0U};
+    std::uint64_t renderer_rhi_residency_invoked{0U};
+    std::uint64_t broad_renderer_quality_ready{0U};
+    bool ready{false};
 };
 
 struct Gameplay2DConstructionPlacementProbeResult {
@@ -8452,6 +8506,126 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
         mirakana::runtime::RuntimeSpriteEffectParticlePlanStatus::no_spawns};
 };
 
+[[nodiscard]] constexpr std::uint64_t budget_flag(bool value) noexcept {
+    return value ? 1U : 0U;
+}
+
+[[nodiscard]] constexpr std::uint64_t mix_budget_hash(std::uint64_t seed, std::uint64_t value) noexcept {
+    return (seed ^ (value + 0x9E37'79B9'7F4A'7C15ULL + (seed << 6U) + (seed >> 2U))) * 0x1000'0000'01B3ULL;
+}
+
+[[nodiscard]] SandboxPackageBudgetProbeResult
+evaluate_sandbox_package_budget(const Sample2DDesktopRuntimePackageGame& game,
+                                const SandboxWorldProbeResult& sandbox_world_probe,
+                                const WorldRegionStreamingProbeResult& world_region_streaming_probe,
+                                const SandboxWorldAuthoringReviewProbeResult& sandbox_authoring_review_probe,
+                                const ProductionAuthoringWorkflowProbeResult& production_authoring_workflow_probe,
+                                const NetworkProductionSecurityProbeResult& network_production_security_probe,
+                                const RuntimeUiRendererAtlasHandoffProbeResult& runtime_ui_renderer_atlas_handoff_probe,
+                                const SourceImageAudioCodecReviewProbeResult& source_image_audio_codec_review_probe,
+                                std::size_t package_records, bool force_overflow) noexcept {
+    SandboxPackageBudgetProbeResult result;
+    if (world_region_streaming_probe.budget_bytes > 0U) {
+        result.byte_limit = world_region_streaming_probe.budget_bytes;
+    }
+    result.row_limit = 256U;
+    result.chunk_bytes = world_region_streaming_probe.projected_bytes;
+    if (result.chunk_bytes == 0U) {
+        result.chunk_bytes = static_cast<std::uint64_t>(sandbox_world_probe.resident_chunk_rows) * 4096U;
+    }
+    result.dirty_chunks = game.tile_chunk_renderer_dirty_rebuild_rows();
+    result.renderer_draw_rows = game.tile_chunk_renderer_draw_rows() + game.sprite_batch_plan_draws();
+    result.tile_draw_calls = game.tile_chunk_renderer_draw_rows();
+    result.light_rows = game.tile_chunk_renderer_light_rows();
+    result.persisted_chunks = sandbox_world_probe.persistence_rows;
+    result.streaming_load_rows = world_region_streaming_probe.load_rows;
+    result.streaming_unload_rows = world_region_streaming_probe.unload_rows;
+
+    result.rows = static_cast<std::uint64_t>(
+        sandbox_world_probe.chunk_rows + sandbox_world_probe.resident_chunk_rows +
+        sandbox_world_probe.existing_cell_rows + sandbox_world_probe.placement_intent_rows +
+        sandbox_world_probe.placement_accepted_rows + sandbox_world_probe.placement_rejected_rows +
+        sandbox_world_probe.destruction_intent_rows + sandbox_world_probe.destruction_accepted_rows +
+        sandbox_world_probe.destruction_rejected_rows + sandbox_world_probe.construction_cost_rows +
+        sandbox_world_probe.cost_consumption_rows + sandbox_world_probe.tile_drop_rows +
+        sandbox_world_probe.tool_effectiveness_rows + sandbox_world_probe.spawn_region_rows +
+        sandbox_world_probe.day_night_event_rows + sandbox_world_probe.trigger_rows +
+        sandbox_world_probe.mutation_rows + sandbox_world_probe.persistence_rows +
+        sandbox_world_probe.persistence_repairable_rows + sandbox_world_probe.rejected_unsafe_mutation_rows);
+    result.rows += game.tile_chunk_renderer_sprite_rows() + game.tile_chunk_renderer_draw_rows() +
+                   game.tile_chunk_renderer_dirty_rebuild_rows() + game.tile_chunk_renderer_light_rows();
+    result.rows +=
+        game.sprite_batch_budget_rows() + game.sprite_batch_plan_draws() + game.sprite_batch_plan_texture_binds();
+    result.rows += static_cast<std::uint64_t>(
+        world_region_streaming_probe.plan_rows + world_region_streaming_probe.load_rows +
+        world_region_streaming_probe.keep_rows + world_region_streaming_probe.unload_rows +
+        world_region_streaming_probe.safe_point_rows + world_region_streaming_probe.committed_rows);
+    result.rows += static_cast<std::uint64_t>(
+        sandbox_authoring_review_probe.tile_definition_rows + sandbox_authoring_review_probe.palette_brush_rows +
+        sandbox_authoring_review_probe.chunk_template_rows + sandbox_authoring_review_probe.procedural_seed_rows +
+        sandbox_authoring_review_probe.package_dependency_edges);
+    result.rows += static_cast<std::uint64_t>(package_records + game.package_scene_sprites());
+
+    result.package_io_invoked = budget_flag(sandbox_world_probe.invoked_package_io) +
+                                budget_flag(production_authoring_workflow_probe.invoked_package_io);
+    result.native_handles_exposed =
+        budget_flag(runtime_ui_renderer_atlas_handoff_probe.requested_public_native_handle) +
+        budget_flag(source_image_audio_codec_review_probe.exposed_native_handle);
+    result.arbitrary_shell_invoked = budget_flag(production_authoring_workflow_probe.invoked_command_execution);
+    result.external_download_invoked = budget_flag(sandbox_authoring_review_probe.external_download_invoked);
+    result.source_image_decode_invoked =
+        budget_flag(runtime_ui_renderer_atlas_handoff_probe.invoked_source_image_decode) +
+        budget_flag(source_image_audio_codec_review_probe.invoked_svg_vector_decode) +
+        budget_flag(source_image_audio_codec_review_probe.invoked_runtime_source_parsing);
+    result.broad_multiplayer_ready = budget_flag(network_production_security_probe.general_online_ready);
+    result.backend_submission_invoked = budget_flag(game.tile_chunk_renderer_backend_submission_invoked());
+    result.native_texture_ownership_invoked = budget_flag(game.tile_chunk_renderer_native_texture_ownership_invoked());
+    result.renderer_rhi_residency_invoked =
+        budget_flag(runtime_ui_renderer_atlas_handoff_probe.requested_renderer_texture_upload_api) +
+        budget_flag(runtime_ui_renderer_atlas_handoff_probe.invoked_renderer_upload);
+    result.broad_renderer_quality_ready = 0U;
+
+    if (force_overflow) {
+        result.row_limit = 1U;
+        result.byte_limit = 1U;
+    }
+
+    std::uint64_t hash = 0xCBF2'9CE4'8422'2325ULL;
+    hash = mix_budget_hash(hash, result.rows);
+    hash = mix_budget_hash(hash, result.chunk_bytes);
+    hash = mix_budget_hash(hash, result.dirty_chunks);
+    hash = mix_budget_hash(hash, result.renderer_draw_rows);
+    hash = mix_budget_hash(hash, result.tile_draw_calls);
+    hash = mix_budget_hash(hash, result.light_rows);
+    hash = mix_budget_hash(hash, result.persisted_chunks);
+    hash = mix_budget_hash(hash, result.streaming_load_rows);
+    hash = mix_budget_hash(hash, result.streaming_unload_rows);
+    hash = mix_budget_hash(hash, sandbox_world_probe.replay_hash);
+    hash = mix_budget_hash(hash, sandbox_authoring_review_probe.deterministic_preview_hash);
+    result.replay_hash = hash == 0U ? 1U : hash;
+
+    const bool over_budget = result.rows > result.row_limit || result.chunk_bytes > result.byte_limit;
+    const std::uint64_t unsupported_side_effects =
+        result.package_io_invoked + result.native_handles_exposed + result.arbitrary_shell_invoked +
+        result.external_download_invoked + result.source_image_decode_invoked + result.broad_multiplayer_ready +
+        result.backend_submission_invoked + result.native_texture_ownership_invoked +
+        result.renderer_rhi_residency_invoked + result.broad_renderer_quality_ready;
+    if (over_budget) {
+        result.status = SandboxPackageBudgetStatus::budget_limited;
+        result.diagnostics = 1U;
+    } else if (unsupported_side_effects == 0U && result.replay_hash != 0U && result.rows > 0U &&
+               result.chunk_bytes > 0U && result.dirty_chunks > 0U && result.renderer_draw_rows > 0U &&
+               result.tile_draw_calls > 0U && result.light_rows > 0U && result.persisted_chunks > 0U &&
+               result.streaming_load_rows > 0U && result.streaming_unload_rows > 0U) {
+        result.status = SandboxPackageBudgetStatus::ready;
+        result.ready = true;
+    } else {
+        result.status = SandboxPackageBudgetStatus::invalid;
+        result.diagnostics = 1U;
+    }
+    return result;
+}
+
 [[nodiscard]] bool parse_positive_uint32(std::string_view text, std::uint32_t& value) noexcept {
     std::uint32_t parsed{};
     const char* begin = text.data();
@@ -8467,6 +8641,7 @@ class Sample2DDesktopRuntimePackageGame final : public mirakana::GameApp {
 void print_usage() {
     std::cout << "sample_2d_desktop_runtime_package [--smoke] [--max-frames N] "
                  "[--require-config PATH] --require-scene-package PATH "
+                 "[--require-win32-runtime-host] [--require-win32-d3d12-presentation] "
                  "[--require-d3d12-shaders] [--require-d3d12-renderer] "
                  "[--require-vulkan-shaders] [--require-vulkan-renderer] [--require-native-2d-sprites] "
                  "[--require-sprite-animation] [--require-sprite-sorting-layer] [--require-sprite-9slice-tiled] "
@@ -8474,6 +8649,8 @@ void print_usage() {
                  "[--require-tilemap-runtime-ux] [--require-production-tile-renderer] "
                  "[--require-gameplay-systems] "
                  "[--require-procedural-generation] [--require-world-region-streaming] "
+                 "[--require-sandbox-world-runtime] [--require-sandbox-world-persistence] "
+                 "[--require-sandbox-world-streaming] "
                  "[--require-entity-scale-culling] [--require-scripting-sandbox-policy] "
                  "[--require-networking-foundation-policy] [--require-simulation-orchestration] "
                  "[--require-gameplay-authoring-review] [--require-sandbox-authoring-review] "
@@ -8481,7 +8658,8 @@ void print_usage() {
                  "[--require-runtime-profile-resume] [--require-runtime-menu-hud] "
                  "[--require-runtime-ui-workbench] [--require-runtime-ui-production-stack] "
                  "[--require-runtime-ui-renderer-atlas-handoff] [--require-audio-gameplay-mixer] "
-                 "[--require-source-image-audio-codec-review]\n";
+                 "[--require-wasapi-audio] [--require-source-image-audio-codec-review] "
+                 "[--require-sandbox-package-budgets] [--force-sandbox-package-budget-overflow]\n";
 }
 
 [[nodiscard]] bool parse_args(int argc, char** argv, DesktopRuntimeOptions& options) {
@@ -8493,6 +8671,17 @@ void print_usage() {
         }
         if (arg == "--smoke") {
             options.smoke = true;
+            continue;
+        }
+        if (arg == "--require-win32-runtime-host") {
+            options.require_win32_runtime_host = true;
+            continue;
+        }
+        if (arg == "--require-win32-d3d12-presentation") {
+            options.require_win32_d3d12_presentation = true;
+            options.require_win32_runtime_host = true;
+            options.require_d3d12_renderer = true;
+            options.require_d3d12_shaders = true;
             continue;
         }
         if (arg == "--require-d3d12-shaders") {
@@ -8558,6 +8747,24 @@ void print_usage() {
             options.require_world_region_streaming = true;
             continue;
         }
+        if (arg == "--require-sandbox-world-runtime") {
+            options.require_sandbox_world_runtime = true;
+            options.require_gameplay_systems = true;
+            continue;
+        }
+        if (arg == "--require-sandbox-world-persistence") {
+            options.require_sandbox_world_persistence = true;
+            options.require_sandbox_world_runtime = true;
+            options.require_gameplay_systems = true;
+            continue;
+        }
+        if (arg == "--require-sandbox-world-streaming") {
+            options.require_sandbox_world_streaming = true;
+            options.require_sandbox_world_runtime = true;
+            options.require_world_region_streaming = true;
+            options.require_gameplay_systems = true;
+            continue;
+        }
         if (arg == "--require-entity-scale-culling") {
             options.require_entity_scale_culling = true;
             continue;
@@ -8611,8 +8818,45 @@ void print_usage() {
             options.require_audio_gameplay_mixer = true;
             continue;
         }
+        if (arg == "--require-wasapi-audio") {
+            options.require_wasapi_audio = true;
+            continue;
+        }
         if (arg == "--require-source-image-audio-codec-review") {
             options.require_source_image_audio_codec_review = true;
+            continue;
+        }
+        if (arg == "--require-sandbox-package-budgets") {
+            options.require_sandbox_package_budgets = true;
+            options.require_win32_runtime_host = true;
+            options.require_wasapi_audio = true;
+            options.require_sandbox_world_runtime = true;
+            options.require_sandbox_world_persistence = true;
+            options.require_sandbox_world_streaming = true;
+            options.require_gameplay_systems = true;
+            options.require_world_region_streaming = true;
+            options.require_production_tile_renderer = true;
+            options.require_tilemap_runtime_ux = true;
+            options.require_sandbox_authoring_review = true;
+            options.require_production_authoring_workflows = true;
+            options.require_runtime_ui_renderer_atlas_handoff = true;
+            continue;
+        }
+        if (arg == "--force-sandbox-package-budget-overflow") {
+            options.force_sandbox_package_budget_overflow = true;
+            options.require_sandbox_package_budgets = true;
+            options.require_win32_runtime_host = true;
+            options.require_wasapi_audio = true;
+            options.require_sandbox_world_runtime = true;
+            options.require_sandbox_world_persistence = true;
+            options.require_sandbox_world_streaming = true;
+            options.require_gameplay_systems = true;
+            options.require_world_region_streaming = true;
+            options.require_production_tile_renderer = true;
+            options.require_tilemap_runtime_ux = true;
+            options.require_sandbox_authoring_review = true;
+            options.require_production_authoring_workflows = true;
+            options.require_runtime_ui_renderer_atlas_handoff = true;
             continue;
         }
         if (arg == "--max-frames") {
@@ -8659,6 +8903,20 @@ void print_usage() {
             options.require_d3d12_renderer = true;
             options.require_d3d12_shaders = true;
         }
+    }
+    if (options.require_sandbox_package_budgets) {
+        options.require_win32_runtime_host = true;
+        options.require_wasapi_audio = true;
+        options.require_sandbox_world_runtime = true;
+        options.require_sandbox_world_persistence = true;
+        options.require_sandbox_world_streaming = true;
+        options.require_gameplay_systems = true;
+        options.require_world_region_streaming = true;
+        options.require_production_tile_renderer = true;
+        options.require_tilemap_runtime_ux = true;
+        options.require_sandbox_authoring_review = true;
+        options.require_production_authoring_workflows = true;
+        options.require_runtime_ui_renderer_atlas_handoff = true;
     }
     return true;
 }
@@ -9369,6 +9627,20 @@ int main(int argc, char** argv) {
                                          ? validate_sandbox_world_package_evidence("sample2d")
                                          : SandboxWorldProbeResult{};
     const auto package_records = runtime_package.has_value() ? runtime_package->records().size() : 0U;
+    const auto sandbox_package_budget_probe = evaluate_sandbox_package_budget(
+        game, sandbox_world_probe, world_region_streaming_probe, sandbox_authoring_review_probe,
+        production_authoring_workflow_probe, network_production_security_probe, runtime_ui_renderer_atlas_handoff_probe,
+        source_image_audio_codec_review_probe, package_records, options.force_sandbox_package_budget_overflow);
+    const auto win32_runtime_host_ready = result.status == mirakana::DesktopRunStatus::completed &&
+                                          result.frames_run == options.max_frames &&
+                                          game.frames() == options.max_frames && report.backend_reports_count > 0U;
+    const auto win32_d3d12_presentation_ready =
+        report.selected_backend == mirakana::Win32DesktopPresentationBackend::d3d12 && !report.used_null_fallback &&
+        report.renderer_stats.frames_finished >= result.frames_run && report.diagnostics_count == 0U;
+    const auto wasapi_audio_evidence_ready =
+        audio_production_probe.reviewed && audio_production_probe.selected_package_evidence_ready &&
+        audio_production_probe.package_evidence_ready && audio_production_probe.device_lifecycle_rows == 1U &&
+        !audio_production_probe.device_host_evidence_available && !audio_production_probe.invoked_device_io;
     std::cout
         << "sample_2d_desktop_runtime_package status=" << status_name(result.status)
         << " renderer=" << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
@@ -9380,6 +9652,16 @@ int main(int argc, char** argv) {
         << " presentation_backend_reports=" << report.backend_reports_count
         << " presentation_diagnostics=" << report.diagnostics_count << " scene_gpu_status="
         << mirakana::win32_desktop_presentation_scene_gpu_binding_status_name(report.scene_gpu_status)
+        << " win32_runtime_host_ready=" << (win32_runtime_host_ready ? 1 : 0)
+        << " win32_runtime_host_frames=" << result.frames_run << " win32_runtime_host_game_frames=" << game.frames()
+        << " win32_runtime_host_diagnostics=" << report.diagnostics_count
+        << " win32_d3d12_presentation_ready=" << (win32_d3d12_presentation_ready ? 1 : 0)
+        << " win32_d3d12_presentation_selected="
+        << (report.selected_backend == mirakana::Win32DesktopPresentationBackend::d3d12 ? 1 : 0)
+        << " win32_d3d12_presentation_backend="
+        << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
+        << " win32_d3d12_presentation_frames=" << report.renderer_stats.frames_finished
+        << " win32_d3d12_presentation_diagnostics=" << report.diagnostics_count
         << " native_2d_sprites_requested=" << (report.native_ui_overlay_requested ? 1 : 0)
         << " native_2d_sprites_status="
         << mirakana::win32_desktop_presentation_native_ui_overlay_status_name(report.native_ui_overlay_status)
@@ -10252,12 +10534,165 @@ int main(int argc, char** argv) {
         << " audio_gameplay_mixer_render_samples=" << audio_gameplay_mixer.render_samples
         << " audio_gameplay_mixer_sample_abs_sum=" << audio_gameplay_mixer.sample_abs_sum
         << " audio_gameplay_mixer_payload_diagnostics=" << audio_gameplay_mixer.payload_diagnostics
-        << " package_records=" << package_records << " package_scene_sprites=" << game.package_scene_sprites() << '\n';
+        << " wasapi_audio_evidence_ready=" << (wasapi_audio_evidence_ready ? 1 : 0)
+        << " wasapi_audio_device_io_invoked=" << (audio_production_probe.invoked_device_io ? 1 : 0)
+        << " sandbox_package_budget_status=" << sandbox_package_budget_status_name(sandbox_package_budget_probe.status)
+        << " sandbox_package_budget_rows=" << sandbox_package_budget_probe.rows
+        << " sandbox_package_budget_diagnostics=" << sandbox_package_budget_probe.diagnostics
+        << " sandbox_package_budget_row_limit=" << sandbox_package_budget_probe.row_limit
+        << " sandbox_package_budget_byte_limit=" << sandbox_package_budget_probe.byte_limit
+        << " sandbox_package_budget_chunk_bytes=" << sandbox_package_budget_probe.chunk_bytes
+        << " sandbox_package_budget_dirty_chunks=" << sandbox_package_budget_probe.dirty_chunks
+        << " sandbox_package_budget_renderer_draw_rows=" << sandbox_package_budget_probe.renderer_draw_rows
+        << " sandbox_package_budget_tile_draw_calls=" << sandbox_package_budget_probe.tile_draw_calls
+        << " sandbox_package_budget_light_rows=" << sandbox_package_budget_probe.light_rows
+        << " sandbox_package_budget_persisted_chunks=" << sandbox_package_budget_probe.persisted_chunks
+        << " sandbox_package_budget_streaming_load_rows=" << sandbox_package_budget_probe.streaming_load_rows
+        << " sandbox_package_budget_streaming_unload_rows=" << sandbox_package_budget_probe.streaming_unload_rows
+        << " sandbox_package_budget_replay_hash=" << sandbox_package_budget_probe.replay_hash
+        << " sandbox_package_budget_package_io_invoked=" << sandbox_package_budget_probe.package_io_invoked
+        << " sandbox_package_budget_native_handles_exposed=" << sandbox_package_budget_probe.native_handles_exposed
+        << " sandbox_package_budget_arbitrary_shell_invoked=" << sandbox_package_budget_probe.arbitrary_shell_invoked
+        << " sandbox_package_budget_external_download_invoked="
+        << sandbox_package_budget_probe.external_download_invoked
+        << " sandbox_package_budget_source_image_decode_invoked="
+        << sandbox_package_budget_probe.source_image_decode_invoked
+        << " sandbox_package_budget_broad_multiplayer_ready=" << sandbox_package_budget_probe.broad_multiplayer_ready
+        << " sandbox_package_budget_backend_submission_invoked="
+        << sandbox_package_budget_probe.backend_submission_invoked
+        << " sandbox_package_budget_native_texture_ownership_invoked="
+        << sandbox_package_budget_probe.native_texture_ownership_invoked
+        << " sandbox_package_budget_renderer_rhi_residency_invoked="
+        << sandbox_package_budget_probe.renderer_rhi_residency_invoked
+        << " sandbox_package_budget_broad_renderer_quality_ready="
+        << sandbox_package_budget_probe.broad_renderer_quality_ready << " package_records=" << package_records
+        << " package_scene_sprites=" << game.package_scene_sprites() << '\n';
     print_presentation_report("sample_2d_desktop_runtime_package", host);
     for (const auto& diagnostic : host.presentation_diagnostics()) {
         std::cout << "sample_2d_desktop_runtime_package presentation_diagnostic="
                   << mirakana::win32_desktop_presentation_fallback_reason_name(diagnostic.reason) << ": "
                   << diagnostic.message << '\n';
+    }
+
+    if (options.require_win32_runtime_host && !win32_runtime_host_ready) {
+        std::cout << "sample_2d_desktop_runtime_package required_win32_runtime_host_unavailable"
+                  << " win32_runtime_host_ready=" << (win32_runtime_host_ready ? 1 : 0)
+                  << " win32_runtime_host_frames=" << result.frames_run
+                  << " win32_runtime_host_game_frames=" << game.frames()
+                  << " win32_runtime_host_diagnostics=" << report.diagnostics_count << '\n';
+        return 33;
+    }
+
+    if (options.require_win32_d3d12_presentation && !win32_d3d12_presentation_ready) {
+        std::cout << "sample_2d_desktop_runtime_package required_win32_d3d12_presentation_unavailable"
+                  << " win32_d3d12_presentation_ready=" << (win32_d3d12_presentation_ready ? 1 : 0)
+                  << " win32_d3d12_presentation_selected="
+                  << (report.selected_backend == mirakana::Win32DesktopPresentationBackend::d3d12 ? 1 : 0)
+                  << " win32_d3d12_presentation_backend="
+                  << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
+                  << " win32_d3d12_presentation_frames=" << report.renderer_stats.frames_finished
+                  << " win32_d3d12_presentation_diagnostics=" << report.diagnostics_count << '\n';
+        return 34;
+    }
+
+    if (options.require_wasapi_audio && !wasapi_audio_evidence_ready) {
+        std::cout << "sample_2d_desktop_runtime_package required_wasapi_audio_unavailable"
+                  << " wasapi_audio_evidence_ready=" << (wasapi_audio_evidence_ready ? 1 : 0)
+                  << " audio_production_status=" << audio_production_status_name(audio_production_probe.status)
+                  << " audio_production_package_evidence_ready="
+                  << (audio_production_probe.package_evidence_ready ? 1 : 0)
+                  << " audio_production_device_lifecycle_rows=" << audio_production_probe.device_lifecycle_rows
+                  << " wasapi_audio_device_io_invoked=" << (audio_production_probe.invoked_device_io ? 1 : 0) << '\n';
+        return 35;
+    }
+
+    if (options.require_sandbox_world_runtime &&
+        (!sandbox_world_probe.ready || sandbox_world_probe.chunk_rows == 0U ||
+         sandbox_world_probe.mutation_rows == 0U || sandbox_world_probe.replay_hash == 0U)) {
+        std::cout << "sample_2d_desktop_runtime_package required_sandbox_world_runtime_unavailable"
+                  << " sandbox_world_ready=" << (sandbox_world_probe.ready ? 1 : 0)
+                  << " sandbox_world_chunk_rows=" << sandbox_world_probe.chunk_rows
+                  << " sandbox_world_mutation_rows=" << sandbox_world_probe.mutation_rows
+                  << " sandbox_world_replay_hash=" << sandbox_world_probe.replay_hash
+                  << " sandbox_world_diagnostics=" << sandbox_world_probe.diagnostics << '\n';
+        return 36;
+    }
+
+    if (options.require_sandbox_world_persistence &&
+        (!sandbox_world_probe.ready || sandbox_world_probe.persistence_rows == 0U ||
+         sandbox_world_probe.persistence_repairable_rows == 0U || sandbox_world_probe.invoked_persistence_io)) {
+        std::cout << "sample_2d_desktop_runtime_package required_sandbox_world_persistence_unavailable"
+                  << " sandbox_world_ready=" << (sandbox_world_probe.ready ? 1 : 0)
+                  << " sandbox_world_persistence_rows=" << sandbox_world_probe.persistence_rows
+                  << " sandbox_world_persistence_repairable_rows=" << sandbox_world_probe.persistence_repairable_rows
+                  << " sandbox_world_invoked_persistence_io=" << (sandbox_world_probe.invoked_persistence_io ? 1 : 0)
+                  << '\n';
+        return 37;
+    }
+
+    if (options.require_sandbox_world_streaming &&
+        (!world_region_streaming_probe.ready || world_region_streaming_probe.load_rows == 0U ||
+         world_region_streaming_probe.unload_rows == 0U || world_region_streaming_probe.projected_bytes == 0U)) {
+        std::cout << "sample_2d_desktop_runtime_package required_sandbox_world_streaming_unavailable"
+                  << " world_region_streaming_ready=" << (world_region_streaming_probe.ready ? 1 : 0)
+                  << " world_region_streaming_load_rows=" << world_region_streaming_probe.load_rows
+                  << " world_region_streaming_unload_rows=" << world_region_streaming_probe.unload_rows
+                  << " world_region_streaming_projected_bytes=" << world_region_streaming_probe.projected_bytes
+                  << " world_region_streaming_safe_point_diagnostics="
+                  << world_region_streaming_probe.safe_point_diagnostics << '\n';
+        return 38;
+    }
+
+    if (options.force_sandbox_package_budget_overflow) {
+        return 39;
+    }
+
+    if (options.require_sandbox_package_budgets &&
+        (sandbox_package_budget_probe.status != SandboxPackageBudgetStatus::ready ||
+         !sandbox_package_budget_probe.ready || sandbox_package_budget_probe.diagnostics != 0U ||
+         sandbox_package_budget_probe.replay_hash == 0U || sandbox_package_budget_probe.rows == 0U ||
+         sandbox_package_budget_probe.chunk_bytes == 0U || sandbox_package_budget_probe.dirty_chunks == 0U ||
+         sandbox_package_budget_probe.renderer_draw_rows == 0U || sandbox_package_budget_probe.tile_draw_calls == 0U ||
+         sandbox_package_budget_probe.light_rows == 0U || sandbox_package_budget_probe.persisted_chunks == 0U ||
+         sandbox_package_budget_probe.streaming_load_rows == 0U ||
+         sandbox_package_budget_probe.streaming_unload_rows == 0U ||
+         sandbox_package_budget_probe.package_io_invoked != 0U ||
+         sandbox_package_budget_probe.native_handles_exposed != 0U ||
+         sandbox_package_budget_probe.arbitrary_shell_invoked != 0U ||
+         sandbox_package_budget_probe.external_download_invoked != 0U ||
+         sandbox_package_budget_probe.source_image_decode_invoked != 0U ||
+         sandbox_package_budget_probe.broad_multiplayer_ready != 0U ||
+         sandbox_package_budget_probe.backend_submission_invoked != 0U ||
+         sandbox_package_budget_probe.native_texture_ownership_invoked != 0U ||
+         sandbox_package_budget_probe.renderer_rhi_residency_invoked != 0U ||
+         sandbox_package_budget_probe.broad_renderer_quality_ready != 0U)) {
+        std::cout << "sample_2d_desktop_runtime_package required_sandbox_package_budgets_unavailable"
+                  << " sandbox_package_budget_status="
+                  << sandbox_package_budget_status_name(sandbox_package_budget_probe.status)
+                  << " sandbox_package_budget_rows=" << sandbox_package_budget_probe.rows
+                  << " sandbox_package_budget_diagnostics=" << sandbox_package_budget_probe.diagnostics
+                  << " sandbox_package_budget_chunk_bytes=" << sandbox_package_budget_probe.chunk_bytes
+                  << " sandbox_package_budget_replay_hash=" << sandbox_package_budget_probe.replay_hash
+                  << " sandbox_package_budget_package_io_invoked=" << sandbox_package_budget_probe.package_io_invoked
+                  << " sandbox_package_budget_native_handles_exposed="
+                  << sandbox_package_budget_probe.native_handles_exposed
+                  << " sandbox_package_budget_arbitrary_shell_invoked="
+                  << sandbox_package_budget_probe.arbitrary_shell_invoked
+                  << " sandbox_package_budget_external_download_invoked="
+                  << sandbox_package_budget_probe.external_download_invoked
+                  << " sandbox_package_budget_source_image_decode_invoked="
+                  << sandbox_package_budget_probe.source_image_decode_invoked
+                  << " sandbox_package_budget_broad_multiplayer_ready="
+                  << sandbox_package_budget_probe.broad_multiplayer_ready
+                  << " sandbox_package_budget_backend_submission_invoked="
+                  << sandbox_package_budget_probe.backend_submission_invoked
+                  << " sandbox_package_budget_native_texture_ownership_invoked="
+                  << sandbox_package_budget_probe.native_texture_ownership_invoked
+                  << " sandbox_package_budget_renderer_rhi_residency_invoked="
+                  << sandbox_package_budget_probe.renderer_rhi_residency_invoked
+                  << " sandbox_package_budget_broad_renderer_quality_ready="
+                  << sandbox_package_budget_probe.broad_renderer_quality_ready << '\n';
+        return 40;
     }
 
     if (options.require_native_2d_sprites &&

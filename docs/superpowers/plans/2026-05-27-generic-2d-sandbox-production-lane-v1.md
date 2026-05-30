@@ -12,7 +12,7 @@
 
 **Plan ID:** `generic-2d-sandbox-production-lane-v1`
 
-**Status:** Phased milestone implementation in progress. Phases 1-8 have completed as reviewable slices, and Phase 9 is implemented through the focused child plan `Sandbox World Network And Modding Gate v1` pending PR publication/hosted review. This file does not replace `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`, does not reopen `unsupportedProductionGaps`, and does not mark later planned capabilities as ready.
+**Status:** Phased milestone implementation in progress. Phases 1-9 have completed as reviewable slices, and Phase 10 is selected through the focused child plan `Sandbox World Package Validation And Performance Budgets v1`. This file does not replace `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`, does not reopen `unsupportedProductionGaps`, and does not mark later planned capabilities as ready.
 
 ## Current Evidence And Gap Summary
 
@@ -364,7 +364,7 @@ Evidence: RED compile proof first failed on missing `RuntimeSandboxDayNightPhase
 - [x] Keep ENet optional behind the existing `network-enet` feature and validation wrapper.
 - [x] Add scripting/modding only as reviewed policy and deterministic adapter rows. Filesystem, network, process, native plugin, and package script access remain denied by default.
 
-Evidence: Phase 9 selected and implemented through `docs/superpowers/plans/2026-05-30-sandbox-world-network-modding-gate-v1.md`. It adds `RuntimeNetworkSandboxMutationCommandRow`, `RuntimeNetworkSandboxSnapshotDeltaRow`, `RuntimeScriptModdingAdapterPolicyRow`, `RuntimeScriptModdingDeniedCapabilityRow`, and `plan_runtime_script_modding_policy`, with sandbox mutation authority, unique command ids, sequence uniqueness, monotonic tick, snapshot delta reference/hash/shared-byte-budget, reviewed deterministic adapter, replay-seed, and denied capability tests. Focused build/CTest and full `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed locally; ENet remains optional/host-gated, SDL3 remains absent, and broad online multiplayer/modding readiness remains unclaimed.
+Evidence: Phase 9 selected and implemented through `docs/superpowers/plans/2026-05-30-sandbox-world-network-modding-gate-v1.md`. It adds `RuntimeNetworkSandboxMutationCommandRow`, `RuntimeNetworkSandboxSnapshotDeltaRow`, `RuntimeScriptModdingAdapterPolicyRow`, `RuntimeScriptModdingDeniedCapabilityRow`, and `plan_runtime_script_modding_policy`, with sandbox mutation authority, unique command ids, sequence uniqueness, monotonic tick, snapshot delta reference/hash/shared-byte-budget, reviewed deterministic adapter, replay-seed, and denied capability tests. Focused build/CTest and full `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed locally; PR #312 merged at `0fa26b1823d6bb4b68837f19b4040ede781e09b9` after hosted `PR Gate`, `Windows MSVC`, Linux, macOS Metal CMake, iOS smoke, static analysis, and CodeQL checks succeeded. ENet remains optional/host-gated, SDL3 remains absent, and broad online multiplayer/modding readiness remains unclaimed.
 
 ## Phase 10 - Sample Package, Validation Recipes, And Performance Budgets
 
@@ -377,15 +377,16 @@ Evidence: Phase 9 selected and implemented through `docs/superpowers/plans/2026-
 - Modify: `tools/validate-installed-desktop-runtime.ps1`
 - Modify: `engine/agent/manifest.fragments/009-validationRecipes.json`
 
-- [ ] Add smoke flags only after each underlying phase is green. Candidate flags: `--require-win32-runtime-host`, `--require-win32-d3d12-presentation`, `--require-wasapi-audio`, `--require-sandbox-world-runtime`, `--require-sandbox-world-persistence`, `--require-sandbox-world-streaming`, `--require-production-tile-renderer`, `--require-sandbox-authoring-review`.
-- [ ] Add package-visible counters for rows, diagnostics, dirty chunks, chunk bytes, renderer draw rows, tile draw calls, light rows, persisted chunks, streaming loads/unloads, replay hashes, and unsupported side-effect counters.
-- [ ] Add over-budget negative probes that fail closed when row counts or byte counts exceed declared budgets.
-- [ ] Run selected package proof:
+- [x] Select Phase 10 through child plan `docs/superpowers/plans/2026-05-30-sandbox-world-package-validation-performance-budgets-v1.md`.
+- [x] Add smoke flags only after each underlying phase is green. Candidate flags: `--require-win32-runtime-host`, `--require-win32-d3d12-presentation`, `--require-wasapi-audio`, `--require-sandbox-world-runtime`, `--require-sandbox-world-persistence`, `--require-sandbox-world-streaming`, `--require-production-tile-renderer`, `--require-sandbox-authoring-review`, and `--require-sandbox-package-budgets`.
+- [x] Add package-visible counters for rows, diagnostics, dirty chunks, chunk bytes, renderer draw rows, tile draw calls, light rows, persisted chunks, streaming loads/unloads, replay hashes, and unsupported side-effect counters.
+- [x] Add over-budget negative probes that fail closed when row counts or byte counts exceed declared budgets.
+- [x] Run selected package proof:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package
-out\install\desktop-runtime-release\bin\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-d3d12-shaders --require-win32-runtime-host --require-win32-d3d12-presentation --require-wasapi-audio --require-sandbox-world-runtime --require-sandbox-world-persistence --require-sandbox-world-streaming --require-production-tile-renderer --require-sandbox-authoring-review
+out\install\desktop-runtime-release\bin\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-d3d12-shaders --require-win32-runtime-host --require-win32-d3d12-presentation --require-wasapi-audio --require-sandbox-world-runtime --require-sandbox-world-persistence --require-sandbox-world-streaming --require-production-tile-renderer --require-sandbox-authoring-review --require-sandbox-package-budgets
 ```
 
 Expected: package stdout includes positive ready counters for implemented phases and explicit zero counters for forbidden package IO, native handle exposure, arbitrary shell execution, external downloads, broad multiplayer, and broad renderer quality.
@@ -408,14 +409,14 @@ Expected: package stdout includes positive ready counters for implemented phases
 - Generate: `engine/agent/manifest.json`
 - Modify static checks only for new machine-readable literals.
 
-- [ ] Update current capabilities with exact supported boundaries. Do not write that the engine supports Terraria-level games broadly; write the exact generic systems proven by validation.
-- [ ] Update manifest fragments and compose output:
+- [x] Update current capabilities with exact supported boundaries. Do not write that the engine supports Terraria-level games broadly; write the exact generic systems proven by validation.
+- [x] Update manifest fragments and compose output:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write
 ```
 
-- [ ] Run targeted drift checks:
+- [x] Run targeted drift checks:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
@@ -425,7 +426,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1
 git diff --check
 ```
 
-- [ ] Run full validation for runtime/public-contract closeout:
+- [x] Run full validation for runtime/public-contract closeout:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1

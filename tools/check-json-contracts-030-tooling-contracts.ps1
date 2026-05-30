@@ -1389,6 +1389,24 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
             Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe sandbox world network/modding selection: $needle"
         }
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "sandbox-world-package-validation-performance-budgets-v1") {
+    foreach ($needle in @(
+    "Selected focused child plan",
+    "sample package smoke flags",
+    "installed validation",
+    "package-visible counters",
+    "--require-sandbox-package-budgets",
+    "sandbox_package_budget_*",
+    "unsupportedProductionGaps = []",
+    "broad renderer quality",
+    "package mutation",
+    "SDL3",
+    "native handle exposure"
+    )) {
+        if (-not $recommendedText.Contains($needle)) {
+            Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe sandbox world package validation and performance budget selection: $needle"
+        }
+    }
 } else {
     foreach ($needle in @(
     "Frame Graph Transient Texture Alias Planning v1",
