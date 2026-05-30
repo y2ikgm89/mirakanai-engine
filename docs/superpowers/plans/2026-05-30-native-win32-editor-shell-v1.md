@@ -16,9 +16,9 @@
 
 ## Status
 
-**Status:** Active.
+**Status:** Completed.
 
-Selected as the long-running milestone for restoring the native editor shell. `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` points at this plan while its candidate PRs are implemented, validated, published, and merged.
+Closed through PR #322 after Phases 1-8, documentation/validation closeout, and manifest return to `next-production-gap-selection`. Full D3D12 viewport/material texture display, docking, and cross-platform editor shells remain explicit follow-up work outside this milestone.
 
 ## Current Baseline
 
@@ -714,7 +714,7 @@ editor_shell_clipboard_service=win32
 editor_shell_reviewed_process_runner=win32
 ```
 
-- [ ] **Step 5: Run service-focused checks**
+- [x] **Step 5: Run service-focused checks**
 
 Run:
 
@@ -728,7 +728,7 @@ Expected: service smoke passes and process policy remains reviewed.
 
 **Done When:** Native shell services are wired through existing Win32 adapters and reviewed execution gates, not ad hoc shell code.
 
-**Phase Evidence:** Candidate 5 is in progress in `codex/native-win32-editor-services-v1`. Official-source refresh used Microsoft Learn Common Item Dialog, Clipboard, `SetClipboardData`, and `CreateProcessW` documentation plus Context7 CMake `target_link_libraries` usage-requirement guidance. RED tests first failed because `NativeEditorApp` lacked service binding, file-dialog routing, clipboard routing, and reviewed process execution APIs. The implementation adds private `NativeEditorWin32Services` under `editor/src`, binds `mirakana::win32::Win32FileDialogService` with the private owner-window token, binds `mirakana::win32::Win32Clipboard` through `Win32ClipboardTextAdapter`, binds `Win32ProcessRunner`, requires explicit user confirmation before executing reviewed allowlisted `ProcessCommand` values, and extends smoke expectations to `editor_shell_file_dialog_service=win32`, `editor_shell_clipboard_service=win32`, and `editor_shell_reviewed_process_runner=win32`. Local dev evidence passed: `tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests MK_platform_process_tests`, `tools/ctest.ps1 --preset dev --output-on-failure -R "MK_editor_native_shell_tests|MK_platform_process_tests"`, `tools/check-tidy.ps1 -Files editor/src/native_editor_app.cpp,editor/src/native_editor_win32_services.cpp,tests/unit/editor_native_shell_tests.cpp`, `tools/check-public-api-boundaries.ps1`, `tools/check-native-desktop-contracts.ps1`, `tools/check-json-contracts.ps1`, `tools/check-validation-recipe-runner.ps1`, `tools/check-agents.ps1`, and full `tools/validate.ps1` with 85/85 tests passing. Local `tools/build-gui.ps1` and `desktop-gui` service smoke remain blocked at configure because the linked worktree `vcpkg_installed` tree lacks `imguiConfig.cmake`; `tools/bootstrap-deps.ps1` is policy-gated in this no-approval session, so hosted Windows MSVC remains required before this phase is publication-complete.
+**Phase Evidence:** Completed through PR #320 / merge commit `89022e08b7dccca0536e5e81e194bf7d17471475`. Local desktop-gui evidence on 2026-05-30 passed `tools/build-gui.ps1` (86/86 tests including `MK_editor_smoke` and `MK_platform_process_tests`), `tools/check-public-api-boundaries.ps1`, and focused static checks after `tools/bootstrap-deps.ps1` in the material-preview worktree.
 
 ## Phase 7 - Native Viewport Display Foundation
 
@@ -782,7 +782,7 @@ smoke diagnostics.
 
 Do not add `ImTextureID`, D3D12 descriptors, or native texture handles to editor-core or public engine headers.
 
-- [ ] **Step 4: Run viewport checks**
+- [x] **Step 4: Run viewport checks**
 
 Run:
 
@@ -797,7 +797,7 @@ Expected: diagnostic-only or native texture display path passes without public n
 
 **Done When:** The editor viewport no longer depends on SDL-era texture display and has either validated diagnostic-only output or a private D3D12 texture display path with explicit smoke evidence.
 
-**Phase Evidence:** Candidate 6 is in progress in `codex/native-win32-editor-viewport-v1`. Official-source refresh used current Dear ImGui upstream D3D12 backend expectations through Context7 and Microsoft Learn D3D12 resource-barrier/resource-state guidance. RED tests first failed because `NativeViewportDisplayDesc`, `NativeViewportDisplayPlan`, and `plan_native_viewport_display` did not exist. The implementation adds private `editor/src/native_viewport_surface.*`, keeps `ImTextureID`, D3D12 descriptors, and native texture handles out of editor-core and public headers, restores a diagnostic-only Viewport panel over `ViewportState`, records D3D12 host availability from the private Win32/Dear ImGui/D3D12 frame loop, and extends smoke expectations to `editor_shell_panels=11`, `editor_shell_viewport_status=diagnostic_only`, and `editor_shell_viewport_native_handles_exposed=0`. Full D3D12 viewport texture display remains a later private adapter step owning offscreen render targets, resource transitions, SRV descriptor leases, `ImTextureID` conversion, and resize-safe teardown. Local dev evidence passed: `tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests`, `tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_native_shell_tests`, `tools/check-tidy.ps1 -Files editor/src/native_editor_app.cpp,editor/src/native_viewport_surface.cpp,tests/unit/editor_native_shell_tests.cpp`, `tools/check-format.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-native-desktop-contracts.ps1`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-validation-recipe-runner.ps1`, and full `tools/validate.ps1` with 85/85 tests passing. Local `tools/build-gui.ps1` remains blocked at desktop-gui configure because the linked worktree `vcpkg_installed` tree lacks `imguiConfig.cmake`; the exact CMake error is `Could not find a package configuration file provided by "imgui"` from `editor/CMakeLists.txt:80 (find_package)`.
+**Phase Evidence:** Completed through PR #321 / merge commit `de60c9ac60c52f70d40bacc1bb19253e1f4d5d87`. Official-source refresh used current Dear ImGui upstream D3D12 backend expectations through Context7 and Microsoft Learn D3D12 resource-barrier/resource-state guidance. RED tests first failed because `NativeViewportDisplayDesc`, `NativeViewportDisplayPlan`, and `plan_native_viewport_display` did not exist. The implementation adds private `editor/src/native_viewport_surface.*`, keeps `ImTextureID`, D3D12 descriptors, and native texture handles out of editor-core and public headers, restores a diagnostic-only Viewport panel over `ViewportState`, records D3D12 host availability from the private Win32/Dear ImGui/D3D12 frame loop, and extends smoke expectations to `editor_shell_panels=11`, `editor_shell_viewport_status=diagnostic_only`, and `editor_shell_viewport_native_handles_exposed=0`. Full D3D12 viewport texture display remains a later private adapter step owning offscreen render targets, resource transitions, SRV descriptor leases, `ImTextureID` conversion, and resize-safe teardown. Local dev evidence passed: `tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests`, `tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_native_shell_tests`, `tools/check-tidy.ps1 -Files editor/src/native_editor_app.cpp,editor/src/native_viewport_surface.cpp,tests/unit/editor_native_shell_tests.cpp`, `tools/check-format.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-native-desktop-contracts.ps1`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-validation-recipe-runner.ps1`, and full `tools/validate.ps1` with 85/85 tests passing. Local `tools/build-gui.ps1` remained blocked at desktop-gui configure because the linked worktree `vcpkg_installed` tree lacked `imguiConfig.cmake`; hosted Windows MSVC, PR Gate, Linux, macOS, iOS, static analysis, Agent Static Guards, and CodeQL passed before merge.
 
 ## Phase 8 - Material Preview GPU Display
 
@@ -812,7 +812,7 @@ Expected: diagnostic-only or native texture display path passes without public n
 - Modify: `tests/unit/editor_native_shell_tests.cpp`
 - Modify if core model evidence changes: `tests/unit/editor_core_tests.cpp`
 
-- [ ] **Step 1: Add RED material preview native-display tests**
+- [x] **Step 1: Add RED material preview native-display tests**
 
 Add tests with these names:
 
@@ -824,11 +824,11 @@ editor native material preview plan keeps d3d12 handles private
 
 Expected initial failure: native material preview plan types do not exist.
 
-- [ ] **Step 2: Keep preview readiness in `MK_editor_core`**
+- [x] **Step 2: Keep preview readiness in `MK_editor_core`**
 
 Do not move shader artifact discovery, material metadata, cooked material validation, or preview readiness policy out of `MK_editor_core`. The native shell consumes the existing readiness rows.
 
-- [ ] **Step 3: Add private D3D12 preview display**
+- [x] **Step 3: Add private D3D12 preview display**
 
 The native preview cache may create private D3D12 resources and ImGui texture IDs inside `editor/src`. It must report:
 
@@ -843,7 +843,7 @@ editor_shell_material_preview_status=d3d12
 editor_shell_material_preview_native_handles_exposed=0
 ```
 
-- [ ] **Step 4: Run preview checks**
+- [x] **Step 4: Run preview checks**
 
 Run:
 
@@ -857,7 +857,7 @@ Expected: material preview status is deterministic and native handles remain pri
 
 **Done When:** Material preview display has a native shell path or an explicit diagnostic-only status without any SDL compatibility bridge.
 
-**Phase Evidence:** Not started.
+**Phase Evidence:** Candidate 7 in `codex/native-win32-editor-material-preview-v1`. Local desktop-gui evidence on 2026-05-30 passed `tools/build-gui.ps1` (86/86 tests including `MK_editor_smoke`), `MK_editor_native_shell_tests`, `MK_editor_core_tests`, `tools/check-public-api-boundaries.ps1`, `tools/check-ai-integration.ps1`, `tools/check-json-contracts.ps1`, and `tools/check-agents.ps1` after `tools/bootstrap-deps.ps1` in the linked worktree. Smoke reports `editor_shell_material_preview_status=diagnostic_only` and `editor_shell_material_preview_native_handles_exposed=0`; full D3D12 material preview texture display remains future private adapter work.
 
 ## Phase 9 - GUI Static Guards And Agent Surface Update
 
@@ -949,7 +949,7 @@ Expected: generated manifest and AI surface checks pass.
 - Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` if closing the selected plan.
 - Generate: `engine/agent/manifest.json`
 
-- [ ] **Step 1: Update user-facing editor docs**
+- [x] **Step 1: Update user-facing editor docs**
 
 `docs/editor.md` must describe:
 
@@ -962,7 +962,7 @@ that SDL3 is absent,
 that Dear ImGui is editor-shell-only.
 ```
 
-- [ ] **Step 2: Update validation docs**
+- [x] **Step 2: Update validation docs**
 
 `docs/testing.md` and `docs/workflows.md` must state:
 
@@ -973,7 +973,7 @@ desktop-gui uses vcpkg bootstrap and does not configure-time install dependencie
 GUI validation is Windows-native and does not claim macOS/Linux parity.
 ```
 
-- [ ] **Step 3: Run final local validation**
+- [x] **Step 3: Run final local validation**
 
 Run:
 
@@ -994,7 +994,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 
 Expected: all checks pass, or any host/tool blocker is recorded with exact command and failure.
 
-- [ ] **Step 4: Prepare publication**
+- [x] **Step 4: Prepare publication**
 
 Use GitHub Flow:
 
@@ -1007,7 +1007,7 @@ Then publish through the repository-supported PR path. Do not push to protected 
 
 **Done When:** `MK_editor` launches through the supported GUI lane, docs and agent surfaces describe the native shell accurately, SDL3 remains absent, local validation passes, and hosted PR evidence is recorded.
 
-**Phase Evidence:** Not started.
+**Phase Evidence:** Local evidence passed on branch `codex/native-win32-editor-material-preview-v1`: `tools/check-toolchain.ps1`, `tools/bootstrap-deps.ps1`, `tools/check-dependency-policy.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-native-desktop-contracts.ps1`, `tools/build-gui.ps1` (86/86 CTest), `tools/evaluate-cpp23.ps1 -Gui`, `tools/compose-agent-manifest.ps1 -Write`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-format.ps1`, and `tools/validate.ps1` (85/85). Publication: https://github.com/y2ikgm89/mirakanai-engine/pull/322 (`374fcd9d`). Docs updated in `docs/editor.md`, `docs/testing.md`, `docs/workflows.md`, `docs/current-capabilities.md`, `docs/agent-operational-reference.md`, and plan registry; manifest returned to production-completion master plan with `recommendedNextPlan.id = next-production-gap-selection`.
 
 ## Risk Ledger
 

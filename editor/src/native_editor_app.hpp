@@ -4,9 +4,11 @@
 #pragma once
 
 #include "native_editor_launch.hpp"
+#include "native_material_preview_cache.hpp"
 #include "native_viewport_surface.hpp"
 
 #include "mirakana/editor/ai_command_panel.hpp"
+#include "mirakana/editor/material_asset_preview_panel.hpp"
 #include "mirakana/editor/profiler.hpp"
 #include "mirakana/editor/project.hpp"
 #include "mirakana/editor/resource_panel.hpp"
@@ -97,6 +99,8 @@ class NativeEditorApp {
     [[nodiscard]] const NativeEditorServiceStatus& services() const noexcept;
     [[nodiscard]] const ViewportState& viewport() const noexcept;
     [[nodiscard]] const NativeViewportDisplayPlan& viewport_display() const noexcept;
+    [[nodiscard]] const EditorMaterialAssetPreviewPanelModel& material_preview() const noexcept;
+    [[nodiscard]] const NativeMaterialPreviewDisplayPlan& material_preview_display() const noexcept;
 
     void bind_native_services(NativeEditorServiceBindings services);
     [[nodiscard]] FileDialogId show_file_dialog(FileDialogRequest request);
@@ -112,6 +116,7 @@ class NativeEditorApp {
     void record_native_panels_rendered(std::uint32_t count) noexcept;
     void record_native_resource_device_ready(std::uint64_t frame_index);
     void record_native_viewport_d3d12_host_ready(std::uint64_t frame_index);
+    void record_native_material_preview_d3d12_host_ready(std::uint64_t frame_index);
 
   private:
     NativeEditorLaunchOptions options_;

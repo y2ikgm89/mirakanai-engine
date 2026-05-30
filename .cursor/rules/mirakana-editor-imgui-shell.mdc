@@ -1,13 +1,15 @@
 ---
-description: Deferred MK_editor shell and editor/include public API hygiene.
+description: Native MK_editor Win32/D3D12 shell boundaries and editor/include public API hygiene.
 globs: editor/CMakeLists.txt,editor/src/**/*.cpp,editor/include/mirakana/editor/**/*.hpp
 alwaysApply: false
 ---
 
-# Deferred Editor Shell (Cursor Rule)
+# Native Editor Shell (Cursor Rule)
 
-- The visible `MK_editor` shell is deferred after SDL3 removal; do not recreate the removed SDL3/Dear ImGui shell files without a focused native Win32/D3D12 plan.
-- Keep `MK_editor_core` GUI-independent and covered by the default validation lane.
-- `tools/build-gui.ps1`, `tools/evaluate-cpp23.ps1 -Gui`, and `MK_ENABLE_DESKTOP_GUI=ON` should fail closed until a first-party visible shell lands.
-- Future shell caches and native handles must stay behind explicit private adapter APIs; do not add public mutable cache fields without an architecture decision.
-- Editor-local `compile_flags.txt` fallbacks were removed with the old shell. Future shell work must add IDE fallback flags explicitly when needed. Full checklist: [`docs/agent-operational-reference.md`](../../docs/agent-operational-reference.md).
+- The visible `MK_editor` shell is an active private Win32/Dear ImGui/Direct3D 12 target under the optional `desktop-gui` lane; do not recreate removed SDL3 adapters or move shell sources into `editor/core`.
+- Keep `MK_editor_core` GUI-independent and covered by the default validation lane; route persistent behavior through editor-core models before shell wiring.
+- Do not add SDL3 or move Dear ImGui, Win32, D3D12, DXGI, COM, clipboard, file-dialog, process-runner, or native-handle usage into `editor/core` or public engine/game APIs.
+- Treat Dear ImGui as editor-only optional developer tooling, not a production runtime UI foundation.
+- Shell caches and native handles must stay behind explicit private adapter APIs; do not add public mutable cache fields or expose HWND, graphics API, or UI middleware handles through public game APIs.
+- Use `tools/build-gui.ps1` as the optional native GUI build/test lane; local runs require the bootstrapped `desktop-gui` vcpkg feature and may be host-gated when Dear ImGui packages are absent.
+- Editor-local `compile_flags.txt` fallbacks were removed with the old shell. Add IDE fallback flags explicitly when shell work needs them. Full checklist: [`docs/agent-operational-reference.md`](../../docs/agent-operational-reference.md).

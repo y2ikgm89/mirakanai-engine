@@ -42,6 +42,7 @@ int main(int argc, char** argv) {
     if (launch.options.smoke_frames > 0) {
         const auto& services = app.services();
         const auto& viewport_display = app.viewport_display();
+        const auto& material_preview_display = app.material_preview_display();
         std::cout << (result.succeeded ? "editor_shell_status=ready" : "editor_shell_status=failed") << '\n'
                   << "editor_shell_backend=d3d12\n"
                   << "editor_shell_sdl3=0\n"
@@ -51,6 +52,9 @@ int main(int argc, char** argv) {
                   << "editor_shell_viewport_status=" << viewport_display.status_id << '\n'
                   << "editor_shell_viewport_native_handles_exposed="
                   << (viewport_display.native_texture_handles_exposed ? 1 : 0) << '\n'
+                  << "editor_shell_material_preview_status=" << material_preview_display.status_id << '\n'
+                  << "editor_shell_material_preview_native_handles_exposed="
+                  << (material_preview_display.native_texture_handles_exposed ? 1 : 0) << '\n'
                   << "editor_shell_frames=" << result.frames_rendered << '\n'
                   << "editor_shell_panels=" << app.panels_rendered_last_frame() << '\n'
                   << "editor_shell_resizes=" << result.resize_count << '\n'
