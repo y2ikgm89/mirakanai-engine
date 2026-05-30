@@ -255,6 +255,13 @@ void render_native_editor_ai_commands_panel(NativeEditorApp& app) {
     key_value("blocked stages", static_cast<std::uint64_t>(ai.blocked_stage_count));
     key_value("host gated stages", static_cast<std::uint64_t>(ai.host_gated_stage_count));
     key_value("operator handoff", ai.ready_for_operator_handoff ? "ready" : "not ready");
+    const auto& services = app.services();
+    ImGui::SeparatorText("Reviewed process runner");
+    key_value("service", services.reviewed_process_runner_id);
+    key_value("status", services.reviewed_process_status_label);
+    key_value("confirmation", services.user_confirmation_required_for_process_execution ? "required" : "not required");
+    key_value("reviewed plans", static_cast<std::uint64_t>(services.reviewed_process_plans));
+    key_value("executions", static_cast<std::uint64_t>(services.reviewed_process_executions));
     for (const auto& diagnostic : ai.diagnostics) {
         ImGui::BulletText("%s", diagnostic.c_str());
     }
@@ -310,6 +317,13 @@ void render_native_editor_project_settings_panel(NativeEditorApp& app) {
     key_value("game manifest", project.game_manifest_path);
     key_value("startup scene", project.startup_scene_path);
     key_value("shader tool", project.shader_tool.executable);
+    const auto& services = app.services();
+    ImGui::SeparatorText("Native services");
+    key_value("file dialog", services.file_dialog_service_id);
+    key_value("clipboard", services.clipboard_service_id);
+    key_value("process runner", services.reviewed_process_runner_id);
+    key_value("file dialog requests", static_cast<std::uint64_t>(services.file_dialog_requests_routed));
+    key_value("clipboard operations", static_cast<std::uint64_t>(services.clipboard_operations_routed));
     const auto errors = app.project_settings_errors();
     if (!errors.empty()) {
         ImGui::SeparatorText("Validation");

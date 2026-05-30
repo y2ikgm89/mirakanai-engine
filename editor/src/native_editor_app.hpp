@@ -12,14 +12,56 @@
 #include "mirakana/editor/scene_authoring.hpp"
 #include "mirakana/editor/ui_model.hpp"
 #include "mirakana/editor/workspace.hpp"
+#include "mirakana/platform/file_dialog.hpp"
+#include "mirakana/platform/process.hpp"
+#include "mirakana/ui/ui.hpp"
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <span>
+#include <string>
 #include <string_view>
 #include <vector>
 
 namespace mirakana::editor {
+
+struct NativeEditorServiceStatus {
+    std::string file_dialog_service_id{"memory"};
+    std::string clipboard_service_id{"memory"};
+    std::string reviewed_process_runner_id{"recording"};
+    bool file_dialog_available{true};
+    bool clipboard_available{true};
+    bool reviewed_process_runner_available{true};
+    bool user_confirmation_required_for_process_execution{true};
+    std::uint32_t file_dialog_requests_routed{0};
+    std::uint32_t clipboard_operations_routed{0};
+    std::uint32_t reviewed_process_plans{0};
+    std::uint32_t reviewed_process_executions{0};
+    std::string reviewed_process_status_label{"confirmation required"};
+};
+
+struct NativeEditorServiceBindings {
+    IFileDialogService* file_dialog_service{nullptr};
+    ui::IClipboardTextAdapter* clipboard_text_adapter{nullptr};
+    IProcessRunner* reviewed_process_runner{nullptr};
+    std::string file_dialog_service_id;
+    std::string clipboard_service_id;
+    std::string reviewed_process_runner_id;
+};
+
+struct NativeEditorReviewedProcessRequest {
+    EditorAiReviewedValidationExecutionModel plan;
+    bool user_confirmed{false};
+};
+
+struct NativeEditorReviewedProcessResult {
+    bool reviewed{false};
+    bool user_confirmed{false};
+    bool executed{false};
+    ProcessResult process;
+    std::string diagnostic;
+};
 
 class NativeEditorApp {
   public:
@@ -51,6 +93,16 @@ class NativeEditorApp {
     [[nodiscard]] const EditorProfilerPanelModel& profiler() const noexcept;
     [[nodiscard]] const EditorTimelinePanelModel& timeline() const noexcept;
     [[nodiscard]] std::vector<ProjectSettingsError> project_settings_errors() const;
+    [[nodiscard]] const NativeEditorServiceStatus& services() const noexcept;
+
+    void bind_native_services(NativeEditorServiceBindings services);
+    [[nodiscard]] FileDialogId show_file_dialog(FileDialogRequest request);
+    [[nodiscard]] std::optional<FileDialogResult> poll_file_dialog_result(FileDialogId id);
+    [[nodiscard]] ui::ClipboardTextWriteResult write_clipboard_text(ui::ClipboardTextWriteRequest request);
+    [[nodiscard]] ui::ClipboardTextReadResult read_clipboard_text(ui::ClipboardTextReadRequest request);
+    [[nodiscard]] EditorAiReviewedValidationExecutionModel
+    reviewed_validation_execution_plan(const EditorAiReviewedValidationExecutionDesc& desc);
+    [[nodiscard]] NativeEditorReviewedProcessResult run_reviewed_process(NativeEditorReviewedProcessRequest request);
 
     [[nodiscard]] int run();
     void record_native_frame() noexcept;

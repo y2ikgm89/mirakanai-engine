@@ -57,6 +57,11 @@ target_include_directories(MK_editor_shell_common
 
 target_link_libraries(MK_editor_shell_common PUBLIC MK_editor_core)
 
+if(WIN32)
+    target_sources(MK_editor_shell_common PRIVATE src/native_editor_win32_services.cpp)
+    target_link_libraries(MK_editor_shell_common PRIVATE MK_platform_win32)
+endif()
+
 MK_apply_common_target_options(MK_editor_shell_common)
 
 if(NOT MK_ENABLE_DESKTOP_GUI)
