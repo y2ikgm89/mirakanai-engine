@@ -22,12 +22,13 @@ struct NativePanelToken {
     std::string_view id;
 };
 
-constexpr std::array<NativePanelToken, 10> native_panel_tokens{{
+constexpr std::array<NativePanelToken, 11> native_panel_tokens{{
     NativePanelToken{.id = "main_menu"},
     NativePanelToken{.id = "scene"},
     NativePanelToken{.id = "inspector"},
     NativePanelToken{.id = "assets"},
     NativePanelToken{.id = "console"},
+    NativePanelToken{.id = "viewport"},
     NativePanelToken{.id = "resources"},
     NativePanelToken{.id = "ai_commands"},
     NativePanelToken{.id = "profiler"},
@@ -53,7 +54,6 @@ constexpr std::array<NativePanelToken, 10> native_panel_tokens{{
     workspace.set_panel_visible(PanelId::profiler, true);
     workspace.set_panel_visible(PanelId::project_settings, true);
     workspace.set_panel_visible(PanelId::timeline, true);
-    workspace.set_panel_visible(PanelId::viewport, false);
     workspace.set_panel_visible(PanelId::input_rebinding, false);
     return workspace;
 }
@@ -198,12 +198,15 @@ class NativeEditorClipboardTextAdapter final : public mirakana::ui::IClipboardTe
 } // namespace
 
 struct NativeEditorApp::Impl {
-    explicit Impl(const NativeEditorLaunchOptions& /*options*/)
+    explicit Impl(const NativeEditorLaunchOptions& options)
         : project(make_default_project_document()), workspace(make_default_workspace(project)),
           scene(make_default_scene_document()), inspector_rows(make_default_inspector_rows(project)),
           asset_rows(make_default_asset_rows()), console_rows(make_default_console_rows()),
           resources(make_native_resource_panel_model(false, 0U)), ai_commands(make_default_ai_command_model()),
           profiler(make_default_profiler_model(console_rows)), timeline(make_default_timeline_model()),
+          viewport_display(plan_native_viewport_display(NativeViewportDisplayDesc{
+              .extent = ViewportExtent{.width = options.width, .height = options.height},
+          })),
           clipboard_text_adapter(memory_clipboard) {
         file_dialog_service = &memory_file_dialog_service;
         clipboard_adapter = &clipboard_text_adapter;
@@ -220,6 +223,8 @@ struct NativeEditorApp::Impl {
     EditorAiCommandPanelModel ai_commands;
     EditorProfilerPanelModel profiler;
     EditorTimelinePanelModel timeline;
+    ViewportState viewport;
+    NativeViewportDisplayPlan viewport_display;
     MemoryFileDialogService memory_file_dialog_service;
     MemoryClipboard memory_clipboard;
     NativeEditorClipboardTextAdapter clipboard_text_adapter;
@@ -313,6 +318,14 @@ std::vector<ProjectSettingsError> NativeEditorApp::project_settings_errors() con
 
 const NativeEditorServiceStatus& NativeEditorApp::services() const noexcept {
     return impl_->service_status;
+}
+
+const ViewportState& NativeEditorApp::viewport() const noexcept {
+    return impl_->viewport;
+}
+
+const NativeViewportDisplayPlan& NativeEditorApp::viewport_display() const noexcept {
+    return impl_->viewport_display;
 }
 
 void NativeEditorApp::bind_native_services(NativeEditorServiceBindings services) {
@@ -445,6 +458,20 @@ void NativeEditorApp::record_native_panels_rendered(std::uint32_t count) noexcep
 
 void NativeEditorApp::record_native_resource_device_ready(std::uint64_t frame_index) {
     impl_->resources = make_native_resource_panel_model(true, frame_index);
+}
+
+void NativeEditorApp::record_native_viewport_d3d12_host_ready(std::uint64_t frame_index) {
+    const ViewportExtent extent{.width = options_.width, .height = options_.height};
+    impl_->viewport.set_renderer("d3d12");
+    impl_->viewport.resize(extent);
+    impl_->viewport.mark_frame_rendered();
+    impl_->viewport_display = plan_native_viewport_display(NativeViewportDisplayDesc{
+        .d3d12_host_available = true,
+        .renderer_output_available = false,
+        .extent = extent,
+        .frame_index = frame_index,
+        .backend_id = "d3d12",
+    });
 }
 
 } // namespace mirakana::editor

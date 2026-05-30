@@ -746,7 +746,7 @@ Expected: service smoke passes and process policy remains reviewed.
 - Modify if backend-neutral renderer contracts change: `engine/renderer/**`
 - Modify if RHI contracts change: `engine/rhi/**`
 
-- [ ] **Step 1: Add RED viewport display tests**
+- [x] **Step 1: Add RED viewport display tests**
 
 Add tests with these names:
 
@@ -758,7 +758,7 @@ editor native viewport display plan does not expose native texture handles
 
 Expected initial failure: viewport display planning types do not exist.
 
-- [ ] **Step 2: Implement diagnostic-first viewport**
+- [x] **Step 2: Implement diagnostic-first viewport**
 
 The first implementation displays a stable ImGui child region with viewport diagnostics from `MK_editor_core` and smoke output:
 
@@ -767,7 +767,7 @@ editor_shell_viewport_status=diagnostic_only
 editor_shell_viewport_native_handles_exposed=0
 ```
 
-- [ ] **Step 3: Implement D3D12 texture display only behind private adapter**
+- [x] **Step 3: Implement D3D12 texture display only behind private adapter**
 
 When promoting from diagnostic-only viewport output to D3D12 texture display, the adapter must own:
 
@@ -797,7 +797,7 @@ Expected: diagnostic-only or native texture display path passes without public n
 
 **Done When:** The editor viewport no longer depends on SDL-era texture display and has either validated diagnostic-only output or a private D3D12 texture display path with explicit smoke evidence.
 
-**Phase Evidence:** Not started.
+**Phase Evidence:** Candidate 6 is in progress in `codex/native-win32-editor-viewport-v1`. Official-source refresh used current Dear ImGui upstream D3D12 backend expectations through Context7 and Microsoft Learn D3D12 resource-barrier/resource-state guidance. RED tests first failed because `NativeViewportDisplayDesc`, `NativeViewportDisplayPlan`, and `plan_native_viewport_display` did not exist. The implementation adds private `editor/src/native_viewport_surface.*`, keeps `ImTextureID`, D3D12 descriptors, and native texture handles out of editor-core and public headers, restores a diagnostic-only Viewport panel over `ViewportState`, records D3D12 host availability from the private Win32/Dear ImGui/D3D12 frame loop, and extends smoke expectations to `editor_shell_panels=11`, `editor_shell_viewport_status=diagnostic_only`, and `editor_shell_viewport_native_handles_exposed=0`. Full D3D12 viewport texture display remains a later private adapter step owning offscreen render targets, resource transitions, SRV descriptor leases, `ImTextureID` conversion, and resize-safe teardown. Local dev evidence passed: `tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests`, `tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_native_shell_tests`, `tools/check-tidy.ps1 -Files editor/src/native_editor_app.cpp,editor/src/native_viewport_surface.cpp,tests/unit/editor_native_shell_tests.cpp`, `tools/check-format.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-native-desktop-contracts.ps1`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-validation-recipe-runner.ps1`, and full `tools/validate.ps1` with 85/85 tests passing. Local `tools/build-gui.ps1` remains blocked at desktop-gui configure because the linked worktree `vcpkg_installed` tree lacks `imguiConfig.cmake`; the exact CMake error is `Could not find a package configuration file provided by "imgui"` from `editor/CMakeLists.txt:80 (find_package)`.
 
 ## Phase 8 - Material Preview GPU Display
 

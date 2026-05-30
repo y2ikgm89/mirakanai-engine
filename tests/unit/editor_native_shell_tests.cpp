@@ -5,6 +5,7 @@
 
 #include "native_editor_app.hpp"
 #include "native_editor_launch.hpp"
+#include "native_viewport_surface.hpp"
 #include "win32_imgui_descriptor_allocator.hpp"
 
 #include "mirakana/platform/file_dialog.hpp"
@@ -188,7 +189,7 @@ MK_TEST("editor native shell no-user-config disables imgui persistence") {
 MK_TEST("editor native shell app exposes the core backed panel set") {
     mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
 
-    MK_REQUIRE(app.native_panel_count() == 10U);
+    MK_REQUIRE(app.native_panel_count() == 11U);
     MK_REQUIRE(app.has_native_panel("main_menu"));
     MK_REQUIRE(app.has_native_panel("scene"));
     MK_REQUIRE(app.has_native_panel("inspector"));
@@ -199,15 +200,15 @@ MK_TEST("editor native shell app exposes the core backed panel set") {
     MK_REQUIRE(app.has_native_panel("profiler"));
     MK_REQUIRE(app.has_native_panel("timeline"));
     MK_REQUIRE(app.has_native_panel("project_settings"));
-    MK_REQUIRE(!app.has_native_panel("viewport"));
+    MK_REQUIRE(app.has_native_panel("viewport"));
 }
 
 MK_TEST("editor native shell app records deterministic panel smoke counters") {
     mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
 
     MK_REQUIRE(app.panels_rendered_last_frame() == 0U);
-    app.record_native_panels_rendered(10U);
-    MK_REQUIRE(app.panels_rendered_last_frame() == 10U);
+    app.record_native_panels_rendered(11U);
+    MK_REQUIRE(app.panels_rendered_last_frame() == 11U);
 }
 
 MK_TEST("editor native shell app updates resources panel from native host availability") {
@@ -228,6 +229,47 @@ MK_TEST("editor native shell app updates resources panel from native host availa
     MK_REQUIRE(frame != nullptr);
     MK_REQUIRE(frame->available);
     MK_REQUIRE(frame->value == "3");
+}
+
+MK_TEST("editor native viewport display plan rejects missing d3d12 host") {
+    const auto plan = mirakana::editor::plan_native_viewport_display(mirakana::editor::NativeViewportDisplayDesc{
+        .d3d12_host_available = false,
+        .renderer_output_available = true,
+        .extent = mirakana::editor::ViewportExtent{.width = 1280, .height = 720},
+        .frame_index = 7,
+    });
+
+    MK_REQUIRE(!plan.accepted);
+    MK_REQUIRE(plan.status_id == "host_unavailable");
+    MK_REQUIRE(plan.diagnostic.contains("D3D12 host"));
+    MK_REQUIRE(!plan.native_texture_handles_exposed);
+}
+
+MK_TEST("editor native viewport display plan records diagnostic-only viewport when renderer output is unavailable") {
+    const auto plan = mirakana::editor::plan_native_viewport_display(mirakana::editor::NativeViewportDisplayDesc{
+        .d3d12_host_available = true,
+        .renderer_output_available = false,
+        .extent = mirakana::editor::ViewportExtent{.width = 1280, .height = 720},
+        .frame_index = 8,
+    });
+
+    MK_REQUIRE(plan.accepted);
+    MK_REQUIRE(plan.status_id == "diagnostic_only");
+    MK_REQUIRE(plan.extent.width == 1280U);
+    MK_REQUIRE(plan.frame_index == 8U);
+    MK_REQUIRE(plan.diagnostic.contains("renderer output"));
+    MK_REQUIRE(!plan.texture_display_ready);
+}
+
+MK_TEST("editor native viewport display plan does not expose native texture handles") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+
+    app.record_native_viewport_d3d12_host_ready(9U);
+
+    MK_REQUIRE(app.viewport_display().status_id == "diagnostic_only");
+    MK_REQUIRE(!app.viewport_display().native_texture_handles_exposed);
+    MK_REQUIRE(app.viewport_display().native_texture_handle_policy == "private");
+    MK_REQUIRE(app.viewport().renderer_name() == "d3d12");
 }
 
 MK_TEST("editor native shell routes file dialog requests through bound service") {

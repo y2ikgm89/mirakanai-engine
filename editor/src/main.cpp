@@ -41,12 +41,16 @@ int main(int argc, char** argv) {
     const auto result = host.run(app);
     if (launch.options.smoke_frames > 0) {
         const auto& services = app.services();
+        const auto& viewport_display = app.viewport_display();
         std::cout << (result.succeeded ? "editor_shell_status=ready" : "editor_shell_status=failed") << '\n'
                   << "editor_shell_backend=d3d12\n"
                   << "editor_shell_sdl3=0\n"
                   << "editor_shell_file_dialog_service=" << services.file_dialog_service_id << '\n'
                   << "editor_shell_clipboard_service=" << services.clipboard_service_id << '\n'
                   << "editor_shell_reviewed_process_runner=" << services.reviewed_process_runner_id << '\n'
+                  << "editor_shell_viewport_status=" << viewport_display.status_id << '\n'
+                  << "editor_shell_viewport_native_handles_exposed="
+                  << (viewport_display.native_texture_handles_exposed ? 1 : 0) << '\n'
                   << "editor_shell_frames=" << result.frames_rendered << '\n'
                   << "editor_shell_panels=" << app.panels_rendered_last_frame() << '\n'
                   << "editor_shell_resizes=" << result.resize_count << '\n'

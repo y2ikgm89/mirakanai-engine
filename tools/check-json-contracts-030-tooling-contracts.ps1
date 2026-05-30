@@ -121,8 +121,10 @@ foreach ($requiredNeedle in @(
         "--smoke-resize",
         "--no-user-config",
         "editor_shell_backend=d3d12",
-        "editor_shell_panels=10",
+        "editor_shell_panels=11",
         "editor_shell_sdl3=0",
+        "editor_shell_viewport_status=diagnostic_only",
+        "editor_shell_viewport_native_handles_exposed=0",
         "tests/unit/editor_native_shell_tests.cpp",
         "MK_editor_shell_common"
     )) {
@@ -157,7 +159,10 @@ foreach ($requiredNeedle in @(
         "optional-native-win32-shell-active",
         "Win32/Dear ImGui/Direct3D 12 implementation",
         "editor_shell_backend=d3d12",
-        "editor_shell_panels=10",
+        "editor_shell_panels=11",
+        "editor_shell_viewport_status=diagnostic_only",
+        "editor_shell_viewport_native_handles_exposed=0",
+        "Viewport",
         "tools/build-gui.ps1",
         "tools/evaluate-cpp23.ps1 -Gui",
         "must not depend on SDL3"
@@ -174,7 +179,9 @@ foreach ($requiredNeedle in @(
         "MK_editor_native_shell_tests",
         "MK_editor_smoke",
         "editor_shell_backend=d3d12",
-        "editor_shell_panels=10",
+        "editor_shell_panels=11",
+        "editor_shell_viewport_status=diagnostic_only",
+        "editor_shell_viewport_native_handles_exposed=0",
         "SDL3-free"
     )) {
     if (-not $validationRecipeManifestFragment.Contains($requiredNeedle)) {
@@ -1477,7 +1484,9 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     "desktop-gui",
     "PR #316",
     "PR #318",
-    "editor_shell_panels=10",
+    "PR #320",
+    "editor_shell_panels=11",
+    "editor_shell_viewport_status=diagnostic_only",
     "unsupportedProductionGaps = []",
     "SDL3",
     "native handles",

@@ -157,9 +157,9 @@ void render_native_editor_main_menu(NativeEditorApp& app) {
     }
 
     if (ImGui::BeginMenu("View")) {
-        for (const auto panel :
-             {PanelId::scene, PanelId::inspector, PanelId::assets, PanelId::console, PanelId::resources,
-              PanelId::ai_commands, PanelId::profiler, PanelId::timeline, PanelId::project_settings}) {
+        for (const auto panel : {PanelId::scene, PanelId::inspector, PanelId::assets, PanelId::console,
+                                 PanelId::viewport, PanelId::resources, PanelId::ai_commands, PanelId::profiler,
+                                 PanelId::timeline, PanelId::project_settings}) {
             bool visible = app.is_panel_visible(panel);
             if (ImGui::MenuItem(panel_id_to_string(panel).data(), nullptr, visible)) {
                 app.set_panel_visible(panel, !visible);
@@ -217,6 +217,35 @@ void render_native_editor_console_panel(NativeEditorApp& app) {
     }
 
     render_console_rows(app.console_rows());
+    end_workspace_panel();
+}
+
+void render_native_editor_viewport_panel(NativeEditorApp& app) {
+    if (!begin_workspace_panel(app, PanelId::viewport, "Viewport")) {
+        return;
+    }
+
+    const auto& viewport = app.viewport();
+    const auto& display = app.viewport_display();
+    const auto renderer_name = viewport.renderer_name();
+    key_value("status", display.status_id);
+    key_value("backend", display.backend_id);
+    key_value("renderer", renderer_name.empty() ? std::string_view{"-"} : renderer_name);
+    key_value("mode", viewport_run_mode_label(viewport.run_mode()));
+    key_value("tool", viewport_tool_label(viewport.active_tool()));
+    key_value("frames", viewport.rendered_frame_count());
+    key_value("native handles", display.native_texture_handles_exposed
+                                    ? std::string_view{"exposed"}
+                                    : std::string_view{display.native_texture_handle_policy});
+
+    ImGui::SeparatorText("Surface");
+    ImGui::BeginChild("native_viewport_surface", ImVec2(0.0F, 240.0F), true);
+    key_value("display", display.texture_display_ready ? "native texture" : "diagnostic only");
+    key_value("extent", std::to_string(display.extent.width) + "x" + std::to_string(display.extent.height));
+    key_value("frame", display.frame_index);
+    key_value("diagnostic", display.diagnostic);
+    ImGui::EndChild();
+
     end_workspace_panel();
 }
 
@@ -343,6 +372,7 @@ std::uint32_t render_native_editor_panels(NativeEditorApp& app) {
     render_counted_panel(app, PanelId::inspector, render_native_editor_inspector_panel, rendered_count);
     render_counted_panel(app, PanelId::assets, render_native_editor_assets_panel, rendered_count);
     render_counted_panel(app, PanelId::console, render_native_editor_console_panel, rendered_count);
+    render_counted_panel(app, PanelId::viewport, render_native_editor_viewport_panel, rendered_count);
     render_counted_panel(app, PanelId::resources, render_native_editor_resources_panel, rendered_count);
     render_counted_panel(app, PanelId::ai_commands, render_native_editor_ai_commands_panel, rendered_count);
     render_counted_panel(app, PanelId::profiler, render_native_editor_profiler_panel, rendered_count);
