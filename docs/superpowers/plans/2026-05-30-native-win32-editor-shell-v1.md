@@ -664,7 +664,7 @@ editor_shell_sdl3=0
 
 Add static or CTest output checks where existing tooling supports them.
 
-- [ ] **Step 4: Run focused checks**
+- [x] **Step 4: Run focused checks**
 
 Run:
 
@@ -679,7 +679,7 @@ Expected: panel smoke and existing editor-core tests pass, public API checks pas
 
 **Done When:** The native editor shell displays core-backed panels and reports deterministic smoke counters without adding native behavior to `MK_editor_core`.
 
-**Phase Evidence:** Candidate 4 in progress in `codex/native-win32-editor-panels-v1`. RED tests first failed because `NativeEditorApp` lacked core-backed panel contracts, deterministic panel counters, ImGui user-config policy, and native host resource availability updates. The implementation adds private `native_editor_panels.*`, renders Main Menu, Scene, Inspector, Assets, Console, Resources, AI Commands, Profiler, Timeline, and Project Settings over `MK_editor_core` data, disables Dear ImGui `.ini`/log persistence when `--no-user-config` is set, refreshes the Resources panel from live native D3D12 host availability before rendering, and extends smoke expectations to `editor_shell_backend=d3d12`, `editor_shell_panels=10`, and `editor_shell_sdl3=0`. Local evidence passed: `tools/cmake.ps1 --preset dev`, `tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests`, `tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_native_shell_tests`, `tools/check-tidy.ps1 -Files editor/src/native_editor_app.cpp,editor/src/native_editor_launch.cpp,tests/unit/editor_native_shell_tests.cpp`, `tools/check-format.ps1`, `tools/check-native-desktop-contracts.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-validation-recipe-runner.ps1`, and full `tools/validate.ps1` with 85/85 tests passing. Local `tools/build-gui.ps1` remains blocked because the linked worktree `vcpkg_installed` tree lacks `imguiConfig.cmake`; `tools/bootstrap-deps.ps1` is policy-gated in this no-approval session, so hosted Windows MSVC is required before this phase is publication-complete.
+**Phase Evidence:** Completed through PR #319 / merge commit `61674e0f05379146894425f7c46d3306afd38f55`. RED tests first failed because `NativeEditorApp` lacked core-backed panel contracts, deterministic panel counters, ImGui user-config policy, and native host resource availability updates. The implementation adds private `native_editor_panels.*`, renders Main Menu, Scene, Inspector, Assets, Console, Resources, AI Commands, Profiler, Timeline, and Project Settings over `MK_editor_core` data, disables Dear ImGui `.ini`/log persistence when `--no-user-config` is set, refreshes the Resources panel from live native D3D12 host availability before rendering, and extends smoke expectations to `editor_shell_backend=d3d12`, `editor_shell_panels=10`, and `editor_shell_sdl3=0`. Local evidence passed: `tools/cmake.ps1 --preset dev`, `tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests`, `tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_native_shell_tests`, `tools/check-tidy.ps1 -Files editor/src/native_editor_app.cpp,editor/src/native_editor_launch.cpp,tests/unit/editor_native_shell_tests.cpp`, `tools/check-format.ps1`, `tools/check-native-desktop-contracts.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-validation-recipe-runner.ps1`, and full `tools/validate.ps1` with 85/85 tests passing. Local `tools/build-gui.ps1` remained blocked because the linked worktree `vcpkg_installed` tree lacked `imguiConfig.cmake`; hosted Windows MSVC, `PR Gate`, Linux, macOS, iOS, static analysis, Agent Static Guards, and CodeQL provided publication evidence for the panel slice.
 
 ## Phase 6 - Win32 Services Integration
 
@@ -692,19 +692,19 @@ Expected: panel smoke and existing editor-core tests pass, public API checks pas
 - Modify: `tests/unit/editor_native_shell_tests.cpp`
 - Modify if new core behavior is needed: `tests/unit/editor_core_tests.cpp`
 
-- [ ] **Step 1: Use existing Win32 file dialog service**
+- [x] **Step 1: Use existing Win32 file dialog service**
 
 Construct `mirakana::win32::Win32FileDialogService` with the private owner window token inside `editor/src`. Route existing editor-core file-dialog request rows through that service.
 
-- [ ] **Step 2: Use existing Win32 clipboard service**
+- [x] **Step 2: Use existing Win32 clipboard service**
 
 Construct `mirakana::win32::Win32Clipboard` and `mirakana::win32::Win32ClipboardTextAdapter` in `NativeEditorApp`. Route text clipboard operations through `MK_ui` / editor-core contracts where those contracts already exist.
 
-- [ ] **Step 3: Preserve reviewed process execution boundaries**
+- [x] **Step 3: Preserve reviewed process execution boundaries**
 
 When panels need validation recipe execution or PIX helper review, keep using `Win32ProcessRunner` and existing allowlisted command review helpers. The ImGui shell must show review state and user confirmation before execution.
 
-- [ ] **Step 4: Add smoke counters**
+- [x] **Step 4: Add smoke counters**
 
 Extend smoke output with:
 
@@ -728,7 +728,7 @@ Expected: service smoke passes and process policy remains reviewed.
 
 **Done When:** Native shell services are wired through existing Win32 adapters and reviewed execution gates, not ad hoc shell code.
 
-**Phase Evidence:** Not started.
+**Phase Evidence:** Candidate 5 is in progress in `codex/native-win32-editor-services-v1`. Official-source refresh used Microsoft Learn Common Item Dialog, Clipboard, `SetClipboardData`, and `CreateProcessW` documentation plus Context7 CMake `target_link_libraries` usage-requirement guidance. RED tests first failed because `NativeEditorApp` lacked service binding, file-dialog routing, clipboard routing, and reviewed process execution APIs. The implementation adds private `NativeEditorWin32Services` under `editor/src`, binds `mirakana::win32::Win32FileDialogService` with the private owner-window token, binds `mirakana::win32::Win32Clipboard` through `Win32ClipboardTextAdapter`, binds `Win32ProcessRunner`, requires explicit user confirmation before executing reviewed allowlisted `ProcessCommand` values, and extends smoke expectations to `editor_shell_file_dialog_service=win32`, `editor_shell_clipboard_service=win32`, and `editor_shell_reviewed_process_runner=win32`. Local dev evidence passed: `tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests MK_platform_process_tests`, `tools/ctest.ps1 --preset dev --output-on-failure -R "MK_editor_native_shell_tests|MK_platform_process_tests"`, `tools/check-tidy.ps1 -Files editor/src/native_editor_app.cpp,editor/src/native_editor_win32_services.cpp,tests/unit/editor_native_shell_tests.cpp`, `tools/check-public-api-boundaries.ps1`, `tools/check-native-desktop-contracts.ps1`, `tools/check-json-contracts.ps1`, `tools/check-validation-recipe-runner.ps1`, `tools/check-agents.ps1`, and full `tools/validate.ps1` with 85/85 tests passing. Local `tools/build-gui.ps1` and `desktop-gui` service smoke remain blocked at configure because the linked worktree `vcpkg_installed` tree lacks `imguiConfig.cmake`; `tools/bootstrap-deps.ps1` is policy-gated in this no-approval session, so hosted Windows MSVC remains required before this phase is publication-complete.
 
 ## Phase 7 - Native Viewport Display Foundation
 

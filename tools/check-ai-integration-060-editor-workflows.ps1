@@ -1681,3 +1681,152 @@ foreach ($check in $editorSceneNativeDialogChecks) {
         Write-Error "ai-integration-check: $($check.Path) missing editor scene native dialog contract: $($missingNeedles -join ', ')"
     }
 }
+
+$nativeEditorServiceChecks = @(
+    @{
+        Path = "editor/src/native_editor_app.hpp"
+        Needles = @(
+            "NativeEditorServiceStatus",
+            "NativeEditorServiceBindings",
+            "NativeEditorReviewedProcessRequest",
+            "NativeEditorReviewedProcessResult",
+            "file_dialog_service_id",
+            "clipboard_service_id",
+            "reviewed_process_runner_id",
+            "user_confirmation_required_for_process_execution",
+            "bind_native_services",
+            "show_file_dialog",
+            "poll_file_dialog_result",
+            "write_clipboard_text",
+            "read_clipboard_text",
+            "reviewed_validation_execution_plan",
+            "run_reviewed_process"
+        )
+    },
+    @{
+        Path = "editor/src/native_editor_app.cpp"
+        Needles = @(
+            "MemoryFileDialogService",
+            "MemoryClipboard",
+            "NativeEditorClipboardTextAdapter",
+            "RecordingProcessRunner",
+            "make_editor_ai_reviewed_validation_execution_plan",
+            "is_allowed_process_command",
+            "run_process_command",
+            "reviewed process execution requires user confirmation before launch"
+        )
+    },
+    @{
+        Path = "editor/src/native_editor_win32_services.hpp"
+        Needles = @(
+            "NativeEditorWin32Services",
+            "Win32FileDialogService",
+            "Win32Clipboard",
+            "Win32ClipboardTextAdapter",
+            "Win32ProcessRunner"
+        )
+    },
+    @{
+        Path = "editor/src/native_editor_win32_services.cpp"
+        Needles = @(
+            "file_dialogs_(owner_window_token)",
+            "clipboard_adapter_(clipboard_)",
+            '.file_dialog_service_id = "win32"',
+            '.clipboard_service_id = "win32"',
+            '.reviewed_process_runner_id = "win32"'
+        )
+    },
+    @{
+        Path = "editor/src/win32_imgui_d3d12_host.cpp"
+        Needles = @(
+            "native_editor_win32_services.hpp",
+            "NativeEditorWin32Services",
+            "window->native_window_token()",
+            "services->bind(app)"
+        )
+    },
+    @{
+        Path = "editor/src/native_editor_panels.cpp"
+        Needles = @(
+            "Reviewed process runner",
+            "Native services",
+            "file dialog requests",
+            "clipboard operations",
+            "reviewed plans",
+            "executions"
+        )
+    },
+    @{
+        Path = "editor/src/main.cpp"
+        Needles = @(
+            "editor_shell_file_dialog_service=",
+            "editor_shell_clipboard_service=",
+            "editor_shell_reviewed_process_runner="
+        )
+    },
+    @{
+        Path = "CMakeLists.txt"
+        Needles = @(
+            "editor_shell_file_dialog_service=win32",
+            "editor_shell_clipboard_service=win32",
+            "editor_shell_reviewed_process_runner=win32"
+        )
+    },
+    @{
+        Path = "tests/unit/editor_native_shell_tests.cpp"
+        Needles = @(
+            "editor native shell routes file dialog requests through bound service",
+            "editor native shell routes clipboard text through bound adapter",
+            "editor native shell reviewed process execution requires confirmation",
+            "editor native shell service status defaults stay deterministic"
+        )
+    },
+    @{
+        Path = "docs/current-capabilities.md"
+        Needles = @(
+            "editor_shell_file_dialog_service=win32",
+            "editor_shell_clipboard_service=win32",
+            "editor_shell_reviewed_process_runner=win32",
+            "native shell file-dialog service"
+        )
+    },
+    @{
+        Path = "docs/editor.md"
+        Needles = @(
+            "Win32 file-dialog, clipboard, and reviewed process-runner service adapters",
+            "editor_shell_file_dialog_service=win32",
+            "editor_shell_clipboard_service=win32",
+            "editor_shell_reviewed_process_runner=win32"
+        )
+    },
+    @{
+        Path = "docs/roadmap.md"
+        Needles = @(
+            "Win32 file-dialog, clipboard, reviewed process-runner service adapters",
+            "editor_shell_file_dialog_service=win32",
+            "editor_shell_clipboard_service=win32",
+            "editor_shell_reviewed_process_runner=win32"
+        )
+    },
+    @{
+        Path = "engine/agent/manifest.json"
+        Needles = @(
+            "Win32 file-dialog, clipboard, reviewed process-runner service adapters",
+            "editor_shell_file_dialog_service=win32",
+            "editor_shell_clipboard_service=win32",
+            "editor_shell_reviewed_process_runner=win32"
+        )
+    }
+)
+foreach ($check in $nativeEditorServiceChecks) {
+    $fileText = Get-AgentSurfaceText $check.Path
+    $missingNeedles = @()
+    foreach ($needle in $check.Needles) {
+        if (-not $fileText.Contains($needle)) {
+            $missingNeedles += $needle
+        }
+    }
+    if ($missingNeedles.Count -gt 0) {
+        Write-Error "ai-integration-check: $($check.Path) missing native editor service contract: $($missingNeedles -join ', ')"
+    }
+}

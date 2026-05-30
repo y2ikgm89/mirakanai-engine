@@ -5,6 +5,7 @@
 
 #include "native_editor_app.hpp"
 #include "native_editor_panels.hpp"
+#include "native_editor_win32_services.hpp"
 #include "win32_imgui_descriptor_allocator.hpp"
 #include "win32_imgui_message_bridge.hpp"
 
@@ -145,6 +146,7 @@ struct Win32ImguiD3d12Host::Impl {
     Win32ImguiD3d12HostRunResult result;
     std::unique_ptr<mirakana::win32::Win32Runtime> runtime;
     std::unique_ptr<mirakana::win32::Win32Window> window;
+    std::unique_ptr<NativeEditorWin32Services> services;
     std::unique_ptr<Win32ImguiMessageBridge> message_bridge;
     mirakana::win32::Win32EventPump event_pump;
     HWND hwnd{nullptr};
@@ -171,12 +173,12 @@ struct Win32ImguiD3d12Host::Impl {
     bool imgui_dx12_initialized{false};
     bool initialized{false};
 
-    void initialize() {
+    void initialize(NativeEditorApp& app) {
         if (initialized) {
             return;
         }
         result = Win32ImguiD3d12HostRunResult{};
-        create_window();
+        create_window(app);
         create_device_and_queue();
         create_swapchain();
         create_render_targets();
@@ -184,7 +186,7 @@ struct Win32ImguiD3d12Host::Impl {
         initialized = true;
     }
 
-    void create_window() {
+    void create_window(NativeEditorApp& app) {
         runtime = std::make_unique<mirakana::win32::Win32Runtime>(mirakana::win32::Win32RuntimeDesc{
             .window_class_name = "MIRAIKANAI Native Win32 Editor Shell",
             .dpi_aware = true,
@@ -198,6 +200,8 @@ struct Win32ImguiD3d12Host::Impl {
         if (hwnd == nullptr) {
             throw std::runtime_error("native editor window creation returned a null HWND");
         }
+        services = std::make_unique<NativeEditorWin32Services>(window->native_window_token());
+        services->bind(app);
         if (desc.launch.smoke_frames < 0) {
             ShowWindow(hwnd, SW_SHOWDEFAULT);
             UpdateWindow(hwnd);
@@ -502,7 +506,7 @@ struct Win32ImguiD3d12Host::Impl {
 
     Win32ImguiD3d12HostRunResult run(NativeEditorApp& app) {
         try {
-            initialize();
+            initialize(app);
             const auto target_frames =
                 desc.launch.smoke_frames > 0 ? static_cast<std::uint32_t>(desc.launch.smoke_frames) : 0U;
             if (target_frames > 0) {
@@ -584,6 +588,7 @@ struct Win32ImguiD3d12Host::Impl {
             CloseHandle(fence_event);
             fence_event = nullptr;
         }
+        services.reset();
         window.reset();
         runtime.reset();
         initialized = false;

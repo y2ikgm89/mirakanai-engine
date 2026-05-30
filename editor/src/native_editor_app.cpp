@@ -4,6 +4,7 @@
 #include "native_editor_app.hpp"
 
 #include "mirakana/core/diagnostics.hpp"
+#include "mirakana/platform/clipboard.hpp"
 #include "mirakana/scene/scene.hpp"
 
 #include <algorithm>
@@ -170,6 +171,30 @@ constexpr std::array<NativePanelToken, 10> native_panel_tokens{{
     return make_editor_timeline_panel_model(desc, 0.0F, false);
 }
 
+class NativeEditorClipboardTextAdapter final : public mirakana::ui::IClipboardTextAdapter {
+  public:
+    explicit NativeEditorClipboardTextAdapter(IClipboard& clipboard) noexcept : clipboard_(&clipboard) {}
+
+    void set_clipboard_text(std::string_view text) override {
+        if (text.empty()) {
+            clipboard_->clear();
+            return;
+        }
+        clipboard_->set_text(text);
+    }
+
+    [[nodiscard]] bool has_clipboard_text() const override {
+        return clipboard_->has_text();
+    }
+
+    [[nodiscard]] std::string clipboard_text() const override {
+        return clipboard_->text();
+    }
+
+  private:
+    IClipboard* clipboard_{nullptr};
+};
+
 } // namespace
 
 struct NativeEditorApp::Impl {
@@ -178,7 +203,12 @@ struct NativeEditorApp::Impl {
           scene(make_default_scene_document()), inspector_rows(make_default_inspector_rows(project)),
           asset_rows(make_default_asset_rows()), console_rows(make_default_console_rows()),
           resources(make_native_resource_panel_model(false, 0U)), ai_commands(make_default_ai_command_model()),
-          profiler(make_default_profiler_model(console_rows)), timeline(make_default_timeline_model()) {}
+          profiler(make_default_profiler_model(console_rows)), timeline(make_default_timeline_model()),
+          clipboard_text_adapter(memory_clipboard) {
+        file_dialog_service = &memory_file_dialog_service;
+        clipboard_adapter = &clipboard_text_adapter;
+        process_runner = &recording_process_runner;
+    }
 
     ProjectDocument project;
     Workspace workspace;
@@ -190,6 +220,14 @@ struct NativeEditorApp::Impl {
     EditorAiCommandPanelModel ai_commands;
     EditorProfilerPanelModel profiler;
     EditorTimelinePanelModel timeline;
+    MemoryFileDialogService memory_file_dialog_service;
+    MemoryClipboard memory_clipboard;
+    NativeEditorClipboardTextAdapter clipboard_text_adapter;
+    RecordingProcessRunner recording_process_runner;
+    IFileDialogService* file_dialog_service{nullptr};
+    ui::IClipboardTextAdapter* clipboard_adapter{nullptr};
+    IProcessRunner* process_runner{nullptr};
+    NativeEditorServiceStatus service_status;
 };
 
 NativeEditorApp::NativeEditorApp(NativeEditorLaunchOptions options)
@@ -271,6 +309,126 @@ const EditorTimelinePanelModel& NativeEditorApp::timeline() const noexcept {
 
 std::vector<ProjectSettingsError> NativeEditorApp::project_settings_errors() const {
     return ProjectSettingsDraft::from_project(impl_->project).validation_errors();
+}
+
+const NativeEditorServiceStatus& NativeEditorApp::services() const noexcept {
+    return impl_->service_status;
+}
+
+void NativeEditorApp::bind_native_services(NativeEditorServiceBindings services) {
+    if (services.file_dialog_service != nullptr) {
+        impl_->file_dialog_service = services.file_dialog_service;
+        impl_->service_status.file_dialog_service_id =
+            services.file_dialog_service_id.empty() ? "external" : std::move(services.file_dialog_service_id);
+        impl_->service_status.file_dialog_available = true;
+    }
+    if (services.clipboard_text_adapter != nullptr) {
+        impl_->clipboard_adapter = services.clipboard_text_adapter;
+        impl_->service_status.clipboard_service_id =
+            services.clipboard_service_id.empty() ? "external" : std::move(services.clipboard_service_id);
+        impl_->service_status.clipboard_available = true;
+    }
+    if (services.reviewed_process_runner != nullptr) {
+        impl_->process_runner = services.reviewed_process_runner;
+        impl_->service_status.reviewed_process_runner_id =
+            services.reviewed_process_runner_id.empty() ? "external" : std::move(services.reviewed_process_runner_id);
+        impl_->service_status.reviewed_process_runner_available = true;
+    }
+}
+
+FileDialogId NativeEditorApp::show_file_dialog(FileDialogRequest request) {
+    if (impl_->file_dialog_service == nullptr) {
+        impl_->service_status.file_dialog_available = false;
+        return 0;
+    }
+    ++impl_->service_status.file_dialog_requests_routed;
+    return impl_->file_dialog_service->show(std::move(request));
+}
+
+std::optional<FileDialogResult> NativeEditorApp::poll_file_dialog_result(FileDialogId id) {
+    if (impl_->file_dialog_service == nullptr) {
+        impl_->service_status.file_dialog_available = false;
+        return std::nullopt;
+    }
+    return impl_->file_dialog_service->poll_result(id);
+}
+
+ui::ClipboardTextWriteResult NativeEditorApp::write_clipboard_text(ui::ClipboardTextWriteRequest request) {
+    if (impl_->clipboard_adapter == nullptr) {
+        impl_->service_status.clipboard_available = false;
+        ui::ClipboardTextWriteResult result;
+        result.diagnostics.push_back(ui::AdapterPayloadDiagnostic{
+            .id = request.target,
+            .code = ui::AdapterPayloadDiagnosticCode::invalid_clipboard_text,
+            .message = "native editor clipboard service is unavailable",
+        });
+        return result;
+    }
+
+    auto result = ui::write_clipboard_text(*impl_->clipboard_adapter, request);
+    if (result.succeeded()) {
+        ++impl_->service_status.clipboard_operations_routed;
+    }
+    return result;
+}
+
+ui::ClipboardTextReadResult NativeEditorApp::read_clipboard_text(ui::ClipboardTextReadRequest request) {
+    if (impl_->clipboard_adapter == nullptr) {
+        impl_->service_status.clipboard_available = false;
+        ui::ClipboardTextReadResult result;
+        result.diagnostics.push_back(ui::AdapterPayloadDiagnostic{
+            .id = request.target,
+            .code = ui::AdapterPayloadDiagnosticCode::invalid_clipboard_text_result,
+            .message = "native editor clipboard service is unavailable",
+        });
+        return result;
+    }
+
+    auto result = ui::read_clipboard_text(*impl_->clipboard_adapter, request);
+    if (result.succeeded()) {
+        ++impl_->service_status.clipboard_operations_routed;
+    }
+    return result;
+}
+
+EditorAiReviewedValidationExecutionModel
+NativeEditorApp::reviewed_validation_execution_plan(const EditorAiReviewedValidationExecutionDesc& desc) {
+    auto model = make_editor_ai_reviewed_validation_execution_plan(desc);
+    ++impl_->service_status.reviewed_process_plans;
+    impl_->service_status.reviewed_process_status_label = model.status_label;
+    return model;
+}
+
+NativeEditorReviewedProcessResult NativeEditorApp::run_reviewed_process(NativeEditorReviewedProcessRequest request) {
+    NativeEditorReviewedProcessResult result{
+        .reviewed = request.plan.can_execute && is_allowed_process_command(request.plan.command),
+        .user_confirmed = request.user_confirmed,
+        .executed = false,
+        .process = {},
+        .diagnostic = {},
+    };
+
+    if (!result.reviewed) {
+        result.diagnostic = "reviewed process execution requires a ready allowlisted command";
+        impl_->service_status.reviewed_process_status_label = "blocked";
+        return result;
+    }
+    if (!request.user_confirmed) {
+        result.diagnostic = "reviewed process execution requires user confirmation before launch";
+        impl_->service_status.reviewed_process_status_label = "confirmation required";
+        return result;
+    }
+    if (impl_->process_runner == nullptr) {
+        impl_->service_status.reviewed_process_runner_available = false;
+        result.diagnostic = "reviewed process runner is unavailable";
+        return result;
+    }
+
+    result.process = run_process_command(*impl_->process_runner, request.plan.command);
+    result.executed = result.process.launched;
+    ++impl_->service_status.reviewed_process_executions;
+    impl_->service_status.reviewed_process_status_label = result.process.succeeded() ? "executed" : "failed";
+    return result;
 }
 
 int NativeEditorApp::run() {

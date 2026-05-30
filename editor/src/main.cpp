@@ -40,9 +40,13 @@ int main(int argc, char** argv) {
     mirakana::editor::Win32ImguiD3d12Host host{mirakana::editor::Win32ImguiD3d12HostDesc{.launch = launch.options}};
     const auto result = host.run(app);
     if (launch.options.smoke_frames > 0) {
+        const auto& services = app.services();
         std::cout << (result.succeeded ? "editor_shell_status=ready" : "editor_shell_status=failed") << '\n'
                   << "editor_shell_backend=d3d12\n"
                   << "editor_shell_sdl3=0\n"
+                  << "editor_shell_file_dialog_service=" << services.file_dialog_service_id << '\n'
+                  << "editor_shell_clipboard_service=" << services.clipboard_service_id << '\n'
+                  << "editor_shell_reviewed_process_runner=" << services.reviewed_process_runner_id << '\n'
                   << "editor_shell_frames=" << result.frames_rendered << '\n'
                   << "editor_shell_panels=" << app.panels_rendered_last_frame() << '\n'
                   << "editor_shell_resizes=" << result.resize_count << '\n'

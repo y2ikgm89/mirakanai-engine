@@ -10,9 +10,9 @@
     {
       "name": "desktop-gui",
       "platform": "desktop",
-      "status": "deferred-fail-closed",
+      "status": "host-gated-optional",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1",
-      "notes": "Fails closed with the visible editor shell deferral message after SDL3 removal. MK_editor_core remains covered by the default validation lane; a future native visible shell must add fresh dependency, legal, and validation records."
+      "notes": "Builds and tests the optional Windows-native MK_editor shell through the desktop-gui lane when the bootstrapped Dear ImGui Win32/DX12 vcpkg packages are present. MK_editor_core remains covered by the default validation lane; the GUI lane keeps SDL3 absent, native handles private under editor/src, and reports deterministic backend, panel, file-dialog, clipboard, and reviewed process-runner smoke counters."
     },
     {
       "name": "desktop-game-runtime",

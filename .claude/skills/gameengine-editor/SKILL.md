@@ -1,6 +1,6 @@
 ---
 name: gameengine-editor
-description: Guides editor/core, deferred visible editor shell boundaries, project IO, asset UI, viewport tools, and editor tests. Use when editing files under editor/ or editor-related tests.
+description: Guides editor/core, native visible editor shell boundaries, project IO, asset UI, viewport tools, and editor tests. Use when editing files under editor/ or editor-related tests.
 paths:
   - "editor/**"
 ---
@@ -9,7 +9,7 @@ paths:
 
 ## Scope
 
-Use this skill for editor/core models, deferred visible editor shell boundaries, project IO, asset UI, viewport tools, and editor tests.
+Use this skill for editor/core models, native visible editor shell boundaries, project IO, asset UI, viewport tools, and editor tests.
 
 ## Context Budget Rules
 

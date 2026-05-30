@@ -105,6 +105,7 @@ foreach ($needle in @("RuntimeWorldStreamingLargeSceneReadinessRequest", "Runtim
         Write-Error "engine manifest world-region streaming large-scene surface missing $needle"
     }
 }
+Assert-Properties $engine.gameCodeGuidance @("currentEditor") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentEditorContentBrowserImportDiagnostics") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentEditorPrefabInstanceSourceLinks") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentEditorInProcessRuntimeHost") "engine manifest gameCodeGuidance"
@@ -113,6 +114,24 @@ Assert-Properties $engine.gameCodeGuidance @("currentEditorRuntimeScenePackageVa
 Assert-Properties $engine.gameCodeGuidance @("currentSpriteAnimationFlipbook") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentSandboxWorldAuthoring") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("desktopRuntimeGameplaySystemsPackageSmoke") "engine manifest gameCodeGuidance"
+foreach ($needle in @(
+    "optional Windows-native editor/developer shell",
+    "Win32 file-dialog, clipboard, reviewed process-runner service adapters",
+    "editor_shell_backend=d3d12",
+    "editor_shell_panels=10",
+    "editor_shell_sdl3=0",
+    "editor_shell_file_dialog_service=win32",
+    "editor_shell_clipboard_service=win32",
+    "editor_shell_reviewed_process_runner=win32",
+    "explicit confirmation policy",
+    "automatic validation recipe execution",
+    "validation recipe execution from editor core",
+    "renderer/RHI handle exposure"
+)) {
+    if (-not ([string]$engine.gameCodeGuidance.currentEditor).Contains($needle)) {
+        Write-Error "engine manifest gameCodeGuidance.currentEditor missing: $needle"
+    }
+}
 foreach ($needle in @(
     "SandboxWorldAuthoringPackageDesc",
     "SandboxWorldTileDefinitionRow",

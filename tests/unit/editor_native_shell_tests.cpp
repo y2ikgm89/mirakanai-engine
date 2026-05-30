@@ -7,6 +7,10 @@
 #include "native_editor_launch.hpp"
 #include "win32_imgui_descriptor_allocator.hpp"
 
+#include "mirakana/platform/file_dialog.hpp"
+#include "mirakana/platform/process.hpp"
+#include "mirakana/ui/ui.hpp"
+
 #include <string>
 #include <string_view>
 #include <vector>
@@ -30,6 +34,47 @@ find_resource_row(const mirakana::editor::EditorResourcePanelModel& model, std::
         }
     }
     return nullptr;
+}
+
+class RecordingClipboardTextAdapter final : public mirakana::ui::IClipboardTextAdapter {
+  public:
+    void set_clipboard_text(std::string_view text) override {
+        text_ = text;
+    }
+
+    [[nodiscard]] bool has_clipboard_text() const override {
+        return !text_.empty();
+    }
+
+    [[nodiscard]] std::string clipboard_text() const override {
+        return text_;
+    }
+
+  private:
+    std::string text_;
+};
+
+[[nodiscard]] mirakana::editor::EditorAiReviewedValidationExecutionDesc make_reviewed_validation_execution_desc() {
+    mirakana::editor::EditorAiPlaytestOperatorHandoffCommandRow row{
+        .recipe_id = "desktop-gui",
+        .status = mirakana::editor::EditorAiPackageAuthoringDiagnosticStatus::ready,
+        .command_display =
+            "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode DryRun -Recipe "
+            "desktop-gui",
+        .argv = {"pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools/run-validation-recipe.ps1",
+                 "-Mode", "DryRun", "-Recipe", "desktop-gui"},
+        .host_gates = {},
+        .blocked_by = {},
+        .readiness_dependency = "EditorAiPlaytestReadinessReportModel.ready_for_operator_validation",
+        .diagnostic = "desktop-gui handoff ready",
+    };
+
+    return mirakana::editor::EditorAiReviewedValidationExecutionDesc{
+        .command_row = row,
+        .working_directory = "G:/workspace/development/GameEngine",
+        .acknowledge_host_gates = false,
+        .acknowledged_host_gates = {},
+    };
 }
 
 } // namespace
@@ -183,6 +228,104 @@ MK_TEST("editor native shell app updates resources panel from native host availa
     MK_REQUIRE(frame != nullptr);
     MK_REQUIRE(frame->available);
     MK_REQUIRE(frame->value == "3");
+}
+
+MK_TEST("editor native shell routes file dialog requests through bound service") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    mirakana::MemoryFileDialogService file_dialogs;
+    file_dialogs.enqueue_response(mirakana::MemoryFileDialogResponse{
+        .status = mirakana::FileDialogStatus::accepted,
+        .paths = {"games/sample/GameEngine.geproject"},
+        .selected_filter = 0,
+        .error = {},
+    });
+
+    app.bind_native_services(mirakana::editor::NativeEditorServiceBindings{
+        .file_dialog_service = &file_dialogs,
+        .file_dialog_service_id = "win32",
+    });
+
+    const auto request = mirakana::editor::make_project_open_dialog_request(".");
+    const auto id = app.show_file_dialog(request);
+    const auto result = app.poll_file_dialog_result(id);
+
+    MK_REQUIRE(id != 0U);
+    MK_REQUIRE(result.has_value());
+    MK_REQUIRE(result->status == mirakana::FileDialogStatus::accepted);
+    MK_REQUIRE(result->paths.size() == 1U);
+    MK_REQUIRE(result->paths[0] == "games/sample/GameEngine.geproject");
+    MK_REQUIRE(file_dialogs.last_request().has_value());
+    MK_REQUIRE(file_dialogs.last_request()->kind == mirakana::FileDialogKind::open_file);
+    MK_REQUIRE(app.services().file_dialog_service_id == "win32");
+    MK_REQUIRE(app.services().file_dialog_requests_routed == 1U);
+}
+
+MK_TEST("editor native shell routes clipboard text through bound adapter") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    RecordingClipboardTextAdapter clipboard;
+
+    app.bind_native_services(mirakana::editor::NativeEditorServiceBindings{
+        .clipboard_text_adapter = &clipboard,
+        .clipboard_service_id = "win32",
+    });
+
+    const auto write = app.write_clipboard_text(mirakana::ui::ClipboardTextWriteRequest{
+        .target = mirakana::ui::ElementId{.value = "project_settings.name"},
+        .text = "MIRAIKANAI",
+    });
+    const auto read = app.read_clipboard_text(mirakana::ui::ClipboardTextReadRequest{
+        .target = mirakana::ui::ElementId{.value = "project_settings.name"},
+    });
+
+    MK_REQUIRE(write.succeeded());
+    MK_REQUIRE(read.succeeded());
+    MK_REQUIRE(read.has_text);
+    MK_REQUIRE(read.text == "MIRAIKANAI");
+    MK_REQUIRE(app.services().clipboard_service_id == "win32");
+    MK_REQUIRE(app.services().clipboard_operations_routed == 2U);
+}
+
+MK_TEST("editor native shell reviewed process execution requires confirmation") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    mirakana::RecordingProcessRunner runner;
+
+    app.bind_native_services(mirakana::editor::NativeEditorServiceBindings{
+        .reviewed_process_runner = &runner,
+        .reviewed_process_runner_id = "win32",
+    });
+
+    const auto plan = app.reviewed_validation_execution_plan(make_reviewed_validation_execution_desc());
+    MK_REQUIRE(plan.can_execute);
+
+    const auto blocked = app.run_reviewed_process(mirakana::editor::NativeEditorReviewedProcessRequest{
+        .plan = plan,
+        .user_confirmed = false,
+    });
+    MK_REQUIRE(!blocked.executed);
+    MK_REQUIRE(!blocked.process.launched);
+    MK_REQUIRE(blocked.diagnostic.contains("confirmation"));
+    MK_REQUIRE(runner.commands().empty());
+
+    const auto executed = app.run_reviewed_process(mirakana::editor::NativeEditorReviewedProcessRequest{
+        .plan = plan,
+        .user_confirmed = true,
+    });
+    MK_REQUIRE(executed.executed);
+    MK_REQUIRE(executed.process.succeeded());
+    MK_REQUIRE(runner.commands().size() == 1U);
+    MK_REQUIRE(runner.commands()[0].executable == "pwsh");
+    MK_REQUIRE(app.services().reviewed_process_runner_id == "win32");
+    MK_REQUIRE(app.services().reviewed_process_plans == 1U);
+    MK_REQUIRE(app.services().reviewed_process_executions == 1U);
+}
+
+MK_TEST("editor native shell service status defaults stay deterministic") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+
+    MK_REQUIRE(app.services().file_dialog_service_id == "memory");
+    MK_REQUIRE(app.services().clipboard_service_id == "memory");
+    MK_REQUIRE(app.services().reviewed_process_runner_id == "recording");
+    MK_REQUIRE(app.services().user_confirmation_required_for_process_execution);
 }
 
 MK_TEST("editor imgui descriptor allocator rejects zero capacity") {

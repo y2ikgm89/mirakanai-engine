@@ -1544,7 +1544,7 @@ $editorProfilerTraceExportChecks = @(
             "Review Trace JSON",
             "Import Trace JSON",
             "Browse Trace JSON",
-            "future native file-dialog adapter",
+            "native shell file-dialog service",
             "broader editor native save/open dialogs outside Profiler",
             "arbitrary JSON conversion",
             "first-party exported Trace Event JSON subset"
