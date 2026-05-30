@@ -202,7 +202,8 @@
 
 - Autonomous burn-down through merge; stop on hard blockers only.
 - Same-slice agent-surface updates; fix linter warnings at root cause.
+- Candidate-scoped commits/PRs; no direct `main` pushes.
 
 ## Learned Workspace Facts
 
-- Manifest: production master plan active; `recommendedNextPlan.id = next-production-gap-selection` after Native Win32 Editor Shell v1 (#322).
+- Post Native Win32 Editor Shell v1 (#322): manifest `next-production-gap-selection`; `MK_editor` via `desktop-gui`, no SDL3.
