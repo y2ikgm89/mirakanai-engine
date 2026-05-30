@@ -38,6 +38,19 @@ function Get-ValidationRecipeCommandPlan {
         $cmdPlanEntry = Get-RepositoryToolCommandPlan -ToolScriptName 'validate-desktop-game-runtime.ps1'
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($cmdPlanEntry) -HostGates @() -RequiredAcknowledgements @() -AllowedGameTargets @() -AllowedStrictBackend @() -Diagnostics @()
     }
+    elseif ($RecipeName -eq 'installed-2d-sandbox-package-budget-smoke') {
+        $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_2d_desktop_runtime_package' } else { $SelectedGameTarget }
+        $smokeTail = @(
+            '--smoke',
+            '--require-config',
+            'runtime/sample_2d_desktop_runtime_package.config',
+            '--require-scene-package',
+            'runtime/sample_2d_desktop_runtime_package.geindex',
+            '--require-sandbox-package-budgets'
+        )
+        $pwEntry = Get-DesktopRuntimePackageCommandPlan -ScriptPath $packageScript -GameTarget $target -SmokeArgs $smokeTail
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @() -RequiredAcknowledgements @() -AllowedGameTargets @('sample_2d_desktop_runtime_package') -AllowedStrictBackend @('', 'D3D12') -Diagnostics @()
+    }
     elseif ($RecipeName -eq 'network-enet') {
         $cmdPlanEntry = Get-RepositoryToolCommandPlan -ToolScriptName 'validate-network-enet.ps1'
         $diagNetwork = New-RunnerDiagnostic -Severity 'info' -Code 'diagnostic-host-gate' -Message 'Optional ENet validation requires bootstrapped vcpkg network-enet packages and reports missing dependency state explicitly on non-ready hosts.' -ValidationRecipe $RecipeName -HostGate 'network-enet-vcpkg'

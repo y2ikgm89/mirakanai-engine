@@ -1561,6 +1561,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             runtime/sample_2d_desktop_runtime_package.config
             --require-scene-package
             runtime/sample_2d_desktop_runtime_package.geindex
+            --require-win32-runtime-host
             --require-sprite-animation
             --require-sprite-sorting-layer
             --require-sprite-9slice-tiled
@@ -1575,18 +1576,25 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-scripting-sandbox-policy
             --require-networking-foundation-policy
             --require-simulation-orchestration
+            --require-sandbox-world-runtime
+            --require-sandbox-world-persistence
+            --require-sandbox-world-streaming
             --require-gameplay-authoring-review
             --require-sandbox-authoring-review
             --require-production-authoring-workflows
             --require-runtime-ui-workbench
             --require-runtime-ui-production-stack
             --require-runtime-ui-renderer-atlas-handoff
+            --require-wasapi-audio
+            --require-sandbox-package-budgets
         PACKAGE_SMOKE_ARGS
             --smoke
             --require-config
             runtime/sample_2d_desktop_runtime_package.config
             --require-scene-package
             runtime/sample_2d_desktop_runtime_package.geindex
+            --require-win32-runtime-host
+            --require-win32-d3d12-presentation
             --require-d3d12-shaders
             --require-d3d12-renderer
             --require-native-2d-sprites
@@ -1604,12 +1612,17 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-scripting-sandbox-policy
             --require-networking-foundation-policy
             --require-simulation-orchestration
+            --require-sandbox-world-runtime
+            --require-sandbox-world-persistence
+            --require-sandbox-world-streaming
             --require-gameplay-authoring-review
             --require-sandbox-authoring-review
             --require-production-authoring-workflows
             --require-runtime-ui-workbench
             --require-runtime-ui-production-stack
             --require-runtime-ui-renderer-atlas-handoff
+            --require-wasapi-audio
+            --require-sandbox-package-budgets
         REQUIRES_D3D12_SHADERS
         PACKAGE_FILES_FROM_MANIFEST
     )
@@ -1633,6 +1646,22 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
     set_property(TARGET sample_2d_desktop_runtime_package PROPERTY MK_DESKTOP_RUNTIME_VULKAN_SHADER_ARTIFACTS
         "shaders/sample_2d_desktop_runtime_package_sprite.vs.spv;shaders/sample_2d_desktop_runtime_package_sprite.ps.spv;shaders/sample_2d_desktop_runtime_package_native_sprite_overlay.vs.spv;shaders/sample_2d_desktop_runtime_package_native_sprite_overlay.ps.spv"
     )
+    if(BUILD_TESTING)
+        get_target_property(MK_SAMPLE_2D_DESKTOP_RUNTIME_SOURCE_SMOKE_ARGS
+            sample_2d_desktop_runtime_package
+            MK_DESKTOP_RUNTIME_SMOKE_ARGS
+        )
+        add_test(
+            NAME sample_2d_desktop_runtime_package_budget_overflow_smoke
+            COMMAND sample_2d_desktop_runtime_package
+                ${MK_SAMPLE_2D_DESKTOP_RUNTIME_SOURCE_SMOKE_ARGS}
+                --force-sandbox-package-budget-overflow
+        )
+        set_tests_properties(sample_2d_desktop_runtime_package_budget_overflow_smoke PROPERTIES
+            WILL_FAIL TRUE
+            WORKING_DIRECTORY "$<TARGET_FILE_DIR:sample_2d_desktop_runtime_package>"
+        )
+    endif()
     if(WIN32)
         set(MK_SAMPLE_2D_DESKTOP_RUNTIME_REQUIRES_DXIL OFF)
         set(MK_SAMPLE_2D_DESKTOP_RUNTIME_REQUIRES_SPIRV OFF)

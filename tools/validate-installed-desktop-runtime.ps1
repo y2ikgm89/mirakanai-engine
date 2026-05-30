@@ -226,10 +226,15 @@ $requiresNative2dSprites = @($SmokeArgs) -contains "--require-native-2d-sprites"
 $requiresSpriteAnimation = @($SmokeArgs) -contains "--require-sprite-animation"
 $requiresTilemapRuntimeUx = @($SmokeArgs) -contains "--require-tilemap-runtime-ux"
 $requiresProductionTileRenderer = @($SmokeArgs) -contains "--require-production-tile-renderer"
+$requiresWin32RuntimeHost = @($SmokeArgs) -contains "--require-win32-runtime-host"
+$requiresWin32D3d12Presentation = @($SmokeArgs) -contains "--require-win32-d3d12-presentation"
 $requiresD3d12Renderer = @($SmokeArgs) -contains "--require-d3d12-renderer"
 $requiresGameplaySystems = @($SmokeArgs) -contains "--require-gameplay-systems"
 $requiresProceduralGeneration = @($SmokeArgs) -contains "--require-procedural-generation"
 $requiresWorldRegionStreaming = @($SmokeArgs) -contains "--require-world-region-streaming"
+$requiresSandboxWorldRuntime = @($SmokeArgs) -contains "--require-sandbox-world-runtime"
+$requiresSandboxWorldPersistence = @($SmokeArgs) -contains "--require-sandbox-world-persistence"
+$requiresSandboxWorldStreaming = @($SmokeArgs) -contains "--require-sandbox-world-streaming"
 $requiresEntityScaleCulling = @($SmokeArgs) -contains "--require-entity-scale-culling"
 $requiresScriptingSandboxPolicy = @($SmokeArgs) -contains "--require-scripting-sandbox-policy"
 $requiresNetworkingFoundationPolicy = @($SmokeArgs) -contains "--require-networking-foundation-policy"
@@ -243,6 +248,8 @@ $requiresRuntimeUiRendererAtlasHandoff = @($SmokeArgs) -contains "--require-runt
 $requiresPackageStreamingSafePoint = @($SmokeArgs) -contains "--require-package-streaming-safe-point"
 $requiresSceneCollisionPackage = @($SmokeArgs) -contains "--require-scene-collision-package"
 $requiresAudioProduction = @($SmokeArgs) -contains "--require-audio-production"
+$requiresWasapiAudio = @($SmokeArgs) -contains "--require-wasapi-audio"
+$requiresSandboxPackageBudgets = @($SmokeArgs) -contains "--require-sandbox-package-budgets"
 $expectedSmokeFrames = if ($GameTarget -eq "sample_2d_desktop_runtime_package") { 3 } else { 2 }
 for ($index = 0; $index -lt ($SmokeArgs.Count - 1); ++$index) {
     if ($SmokeArgs[$index] -eq "--max-frames") {
@@ -323,6 +330,153 @@ function Assert-InstalledAudioProductionEvidence {
         Write-Error "Installed $Context smoke status line did not prove positive audio production replay hash."
     }
 }
+function Assert-InstalledWin32RuntimeHostEvidence {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SmokeOutput,
+
+        [Parameter(Mandatory = $true)]
+        [string]$EscapedGameTarget,
+
+        [Parameter(Mandatory = $true)]
+        [int]$ExpectedFrames,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Context
+    )
+
+    foreach ($expected in @{
+            "win32_runtime_host_ready" = "1"
+            "win32_runtime_host_frames" = [string]$ExpectedFrames
+            "win32_runtime_host_game_frames" = [string]$ExpectedFrames
+            "win32_runtime_host_diagnostics" = "0"
+        }.GetEnumerator()) {
+        if ($SmokeOutput -notmatch "(?m)^$EscapedGameTarget status=.*\b$([regex]::Escape($expected.Key))=$([regex]::Escape($expected.Value))\b") {
+            Write-Error "Installed $Context smoke status line did not prove Win32 runtime host field: $($expected.Key)=$($expected.Value)."
+        }
+    }
+}
+function Assert-InstalledWin32D3d12PresentationEvidence {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SmokeOutput,
+
+        [Parameter(Mandatory = $true)]
+        [string]$EscapedGameTarget,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Context
+    )
+
+    foreach ($expected in @{
+            "win32_d3d12_presentation_ready" = "1"
+            "win32_d3d12_presentation_selected" = "1"
+            "win32_d3d12_presentation_backend" = "d3d12"
+            "win32_d3d12_presentation_diagnostics" = "0"
+        }.GetEnumerator()) {
+        if ($SmokeOutput -notmatch "(?m)^$EscapedGameTarget status=.*\b$([regex]::Escape($expected.Key))=$([regex]::Escape($expected.Value))\b") {
+            Write-Error "Installed $Context smoke status line did not prove Win32 D3D12 presentation field: $($expected.Key)=$($expected.Value)."
+        }
+    }
+    if ($SmokeOutput -notmatch "(?m)^$EscapedGameTarget status=.*\bwin32_d3d12_presentation_frames=[1-9]\d*\b") {
+        Write-Error "Installed $Context smoke status line did not prove positive Win32 D3D12 presentation frames."
+    }
+}
+function Assert-InstalledWasapiAudioEvidence {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SmokeOutput,
+
+        [Parameter(Mandatory = $true)]
+        [string]$EscapedGameTarget,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Context
+    )
+
+    foreach ($expected in @{
+            "wasapi_audio_evidence_ready" = "1"
+            "wasapi_audio_device_io_invoked" = "0"
+        }.GetEnumerator()) {
+        if ($SmokeOutput -notmatch "(?m)^$EscapedGameTarget status=.*\b$([regex]::Escape($expected.Key))=$([regex]::Escape($expected.Value))\b") {
+            Write-Error "Installed $Context smoke status line did not prove WASAPI audio field: $($expected.Key)=$($expected.Value)."
+        }
+    }
+}
+function Assert-InstalledSandboxPackageBudgetEvidence {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SmokeOutput,
+
+        [Parameter(Mandatory = $true)]
+        [string]$EscapedGameTarget,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Context
+    )
+
+    foreach ($expected in @{
+            "sandbox_package_budget_status" = "ready"
+            "sandbox_package_budget_rows" = "89"
+            "sandbox_package_budget_diagnostics" = "0"
+            "sandbox_package_budget_row_limit" = "256"
+            "sandbox_package_budget_byte_limit" = "7409"
+            "sandbox_package_budget_chunk_bytes" = "7408"
+            "sandbox_package_budget_dirty_chunks" = "2"
+            "sandbox_package_budget_renderer_draw_rows" = "5"
+            "sandbox_package_budget_tile_draw_calls" = "2"
+            "sandbox_package_budget_light_rows" = "3"
+            "sandbox_package_budget_persisted_chunks" = "2"
+            "sandbox_package_budget_streaming_load_rows" = "1"
+            "sandbox_package_budget_streaming_unload_rows" = "1"
+            "sandbox_package_budget_package_io_invoked" = "0"
+            "sandbox_package_budget_native_handles_exposed" = "0"
+            "sandbox_package_budget_arbitrary_shell_invoked" = "0"
+            "sandbox_package_budget_external_download_invoked" = "0"
+            "sandbox_package_budget_source_image_decode_invoked" = "0"
+            "sandbox_package_budget_broad_multiplayer_ready" = "0"
+            "sandbox_package_budget_backend_submission_invoked" = "0"
+            "sandbox_package_budget_native_texture_ownership_invoked" = "0"
+            "sandbox_package_budget_renderer_rhi_residency_invoked" = "0"
+            "sandbox_package_budget_broad_renderer_quality_ready" = "0"
+        }.GetEnumerator()) {
+        if ($SmokeOutput -notmatch "(?m)^$EscapedGameTarget status=.*\b$([regex]::Escape($expected.Key))=$([regex]::Escape($expected.Value))\b") {
+            Write-Error "Installed $Context smoke status line did not prove sandbox package budget field: $($expected.Key)=$($expected.Value)."
+        }
+    }
+    if ($SmokeOutput -notmatch "(?m)^$EscapedGameTarget status=.*\bsandbox_package_budget_replay_hash=[1-9]\d*\b") {
+        Write-Error "Installed $Context smoke status line did not prove positive sandbox package budget replay hash."
+    }
+}
+if ($requiresWin32D3d12Presentation) {
+    $requiresWin32RuntimeHost = $true
+    $requiresD3d12Renderer = $true
+}
+if ($requiresSandboxWorldPersistence) {
+    $requiresSandboxWorldRuntime = $true
+    $requiresGameplaySystems = $true
+}
+if ($requiresSandboxWorldStreaming) {
+    $requiresSandboxWorldRuntime = $true
+    $requiresGameplaySystems = $true
+    $requiresWorldRegionStreaming = $true
+}
+if ($requiresSandboxWorldRuntime) {
+    $requiresGameplaySystems = $true
+}
+if ($requiresSandboxPackageBudgets) {
+    $requiresWin32RuntimeHost = $true
+    $requiresWasapiAudio = $true
+    $requiresSandboxWorldRuntime = $true
+    $requiresSandboxWorldPersistence = $true
+    $requiresSandboxWorldStreaming = $true
+    $requiresGameplaySystems = $true
+    $requiresWorldRegionStreaming = $true
+    $requiresProductionTileRenderer = $true
+    $requiresSandboxAuthoringReview = $true
+    $requiresProductionAuthoringWorkflows = $true
+    $requiresRuntimeUiRendererAtlasHandoff = $true
+}
 if ($requiresPlayable3dSlice) {
     $requiresRendererQualityGates = $true
     $requiresPackageStreamingSafePoint = $true
@@ -385,6 +539,15 @@ if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bpresentation_sele
 }
 if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bpresentation_backend_reports=") {
     Write-Error "Installed desktop runtime smoke status line did not include presentation_backend_reports report field."
+}
+if ($requiresWin32RuntimeHost) {
+    Assert-InstalledWin32RuntimeHostEvidence -SmokeOutput $smokeOutput -EscapedGameTarget $escapedGameTarget -ExpectedFrames $expectedSmokeFrames -Context $GameTarget
+}
+if ($requiresWin32D3d12Presentation) {
+    Assert-InstalledWin32D3d12PresentationEvidence -SmokeOutput $smokeOutput -EscapedGameTarget $escapedGameTarget -Context $GameTarget
+}
+if ($requiresWasapiAudio) {
+    Assert-InstalledWasapiAudioEvidence -SmokeOutput $smokeOutput -EscapedGameTarget $escapedGameTarget -Context $GameTarget
 }
 if ($requiresAudioProduction -and $GameTarget -ne "sample_2d_desktop_runtime_package") {
     Assert-InstalledAudioProductionEvidence -SmokeOutput $smokeOutput -EscapedGameTarget $escapedGameTarget -Context $GameTarget
@@ -888,6 +1051,9 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
         Write-Error "Installed sample_2d_desktop_runtime_package smoke status line did not prove clean sprite batch planning diagnostics."
     }
     Assert-InstalledAudioProductionEvidence -SmokeOutput $smokeOutput -EscapedGameTarget $escapedGameTarget -Context "sample_2d_desktop_runtime_package"
+    if ($requiresSandboxPackageBudgets) {
+        Assert-InstalledSandboxPackageBudgetEvidence -SmokeOutput $smokeOutput -EscapedGameTarget $escapedGameTarget -Context "sample_2d_desktop_runtime_package"
+    }
     foreach ($field in @(
             "sprite_batch_budget_status",
             "sprite_batch_budget_profiles_ready",

@@ -1711,6 +1711,22 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     )) {
         Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan sandbox world network/modding selection"
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "sandbox-world-package-validation-performance-budgets-v1") {
+    foreach ($needle in @(
+        "Selected focused child plan",
+        "sample package smoke flags",
+        "installed validation",
+        "package-visible counters",
+        "--require-sandbox-package-budgets",
+        "sandbox_package_budget_*",
+        "unsupportedProductionGaps = []",
+        "broad renderer quality",
+        "package mutation",
+        "SDL3",
+        "native handle exposure"
+    )) {
+        Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan sandbox world package validation and performance budget selection"
+    }
 } else {
     foreach ($needle in @(
     "Frame Graph Transient Texture Alias Planning v1",

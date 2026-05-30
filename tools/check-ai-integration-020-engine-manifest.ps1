@@ -554,7 +554,7 @@ if ($desktop2dRecipe.Count -ne 1) {
             Write-Error "engine/agent/manifest.json 2d-desktop-runtime-package recipe must allow $target"
         }
     }
-    foreach ($validationRecipe in @("desktop-game-runtime", "desktop-runtime-2d-package-proof", "desktop-runtime-2d-vulkan-window-package", "shader-toolchain")) {
+    foreach ($validationRecipe in @("desktop-game-runtime", "desktop-runtime-2d-package-proof", "installed-2d-sandbox-package-budget-smoke", "desktop-runtime-2d-vulkan-window-package", "shader-toolchain")) {
         if (@($desktop2dRecipe[0].validationRecipes) -notcontains $validationRecipe) {
             Write-Error "engine/agent/manifest.json 2d-desktop-runtime-package recipe must include $validationRecipe validation"
         }
@@ -2256,7 +2256,7 @@ if ($runtimeResourceGap.Count -ne 0) {
 }
 $recommendedText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
 $recommendedPlanId = [string]$productionLoop.recommendedNextPlan.id
-$recommendedPlanUsesLegacyCloseoutContext = $recommendedPlanId -notin @("general-purpose-game-production-v1", "generated-game-studio-v1", "engine-1-0-gap-matrix-v1", "next-production-gap-selection", "physics-navigation-commercial-coverage-v1", "renderer-backend-parity-metal-apple-evidence-v1", "renderer-postprocess-tone-mapping-evidence-v1", "sandbox-world-network-modding-gate-v1")
+$recommendedPlanUsesLegacyCloseoutContext = $recommendedPlanId -notin @("general-purpose-game-production-v1", "generated-game-studio-v1", "engine-1-0-gap-matrix-v1", "next-production-gap-selection", "physics-navigation-commercial-coverage-v1", "renderer-backend-parity-metal-apple-evidence-v1", "renderer-postprocess-tone-mapping-evidence-v1", "sandbox-world-network-modding-gate-v1", "sandbox-world-package-validation-performance-budgets-v1")
 if ($productionLoop.currentActivePlan -eq "docs/superpowers/plans/2026-05-23-candidate-backlog-burn-down-v1.md") {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop.currentActivePlan must not point at completed Candidate Backlog Burn-down v1"
 }
@@ -2462,17 +2462,15 @@ if ($recommendedPlanUsesLegacyCloseoutContext) {
         )) {
         Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan gameplay closeout evidence"
     }
-}
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Transient Texture Alias Planning v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "FrameGraphTransientTextureAliasPlan" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Shadow Scratch Color Target-State Ownership v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "6 pass callbacks/15 barrier steps" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Viewport Surface Color State Executor v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "RhiViewportSurface" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "viewport_color" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Texture Aliasing Barrier Command v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "record_frame_graph_texture_aliasing_barriers" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-if ($recommendedPlanUsesLegacyCloseoutContext) {
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Transient Texture Alias Planning v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "FrameGraphTransientTextureAliasPlan" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Shadow Scratch Color Target-State Ownership v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "6 pass callbacks/15 barrier steps" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Viewport Surface Color State Executor v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "RhiViewportSurface" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "viewport_color" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Texture Aliasing Barrier Command v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "record_frame_graph_texture_aliasing_barriers" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
     Assert-ContainsText $recommendedText "Package Streaming Frame Graph Texture Binding Handoff v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package streaming handoff"
     Assert-ContainsText $recommendedText "make_runtime_package_streaming_frame_graph_texture_bindings" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package streaming handoff"
     Assert-ContainsText $recommendedText "Runtime Package Streaming RHI Upload Binding Transaction v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan package streaming upload transaction"
@@ -2499,31 +2497,31 @@ if ($recommendedPlanUsesLegacyCloseoutContext) {
     Assert-ContainsText $recommendedText "RhiUploadRingDesc::buffer" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan staging pool lease adoption"
     Assert-ContainsText $recommendedText "Upload Staging v1 Staging Pool Lease Adoption v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan staging pool lease adoption"
     Assert-ContainsText $recommendedText "Frame Graph Automatic Aliasing Barrier Insertion v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan automatic aliasing barrier"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Render Pass Envelope v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "render_passes_recorded" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph RHI Queue Dependency Plan v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "plan_frame_graph_rhi_queue_waits" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "IRhiDevice::wait_for_queue" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph RHI Multi-Queue Executor v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph RHI Multi-Queue Texture Barrier Execution v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "FrameGraphRhiMultiQueueExecutionResult::barriers_recorded" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Multi-Queue Automatic Aliasing Barrier Execution v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "FrameGraphRhiMultiQueueExecutionDesc::transient_texture_lifetimes" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "FrameGraphRhiMultiQueueExecutionResult::aliasing_barriers_recorded" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "FrameGraphRhiMultiQueuePackageEvidence" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "framegraph_multiqueue" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "alias-induced cross-queue waits" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Public Null Aliasing Barriers v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Render Pass Stats Evidence v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "RendererStats::framegraph_render_passes_recorded" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "execute_frame_graph_rhi_multi_queue_schedule" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Remaining Render Pass Envelopes v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "RhiFrameRenderer primary_color" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "RhiViewportSurface viewport.clear" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph v1 1.0 Scope Closeout v1 closes frame-graph-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "broad production render graph scheduling" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
+    Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Metal memory alias allocation" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 }
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Render Pass Envelope v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "render_passes_recorded" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph RHI Queue Dependency Plan v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "plan_frame_graph_rhi_queue_waits" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "IRhiDevice::wait_for_queue" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph RHI Multi-Queue Executor v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph RHI Multi-Queue Texture Barrier Execution v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "FrameGraphRhiMultiQueueExecutionResult::barriers_recorded" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Multi-Queue Automatic Aliasing Barrier Execution v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "FrameGraphRhiMultiQueueExecutionDesc::transient_texture_lifetimes" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "FrameGraphRhiMultiQueueExecutionResult::aliasing_barriers_recorded" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "FrameGraphRhiMultiQueuePackageEvidence" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "framegraph_multiqueue" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "alias-induced cross-queue waits" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Public Null Aliasing Barriers v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Render Pass Stats Evidence v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "RendererStats::framegraph_render_passes_recorded" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "execute_frame_graph_rhi_multi_queue_schedule" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph Remaining Render Pass Envelopes v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "RhiFrameRenderer primary_color" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "RhiViewportSurface viewport.clear" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Frame Graph v1 1.0 Scope Closeout v1 closes frame-graph-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "broad production render graph scheduling" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
-Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.completedContext) "Metal memory alias allocation" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan.completedContext"
 if ($recommendedPlanId -eq "general-purpose-game-production-v1") {
     foreach ($needle in @(
             "General Purpose Game Production v1",
@@ -2576,7 +2574,7 @@ if ($recommendedPlanId -eq "general-purpose-game-production-v1") {
     foreach ($needle in @("Renderer Postprocess Tone Mapping Evidence v1", "renderer-postprocess-v1", "PostprocessToneMappingEvidencePlan", "plan_postprocess_tone_mapping_evidence", "D3D12/Vulkan", "Metal host-gated", "no SDL3", "native handles", "subjective visual quality", "unsupportedProductionGaps = []")) {
         Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan renderer postprocess tone mapping selection"
     }
-} elseif ($recommendedPlanId -eq "sandbox-world-network-modding-gate-v1") { foreach ($needle in @("Selected focused child plan", "sandbox-world-specific mutation replication", "reviewed modding policy gates", "unsupportedProductionGaps = []", "Broad online multiplayer", "SDL3", "native handle exposure")) { Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan sandbox world network/modding selection" } } else {
+} elseif ($recommendedPlanId -eq "sandbox-world-network-modding-gate-v1") { foreach ($needle in @("Selected focused child plan", "sandbox-world-specific mutation replication", "reviewed modding policy gates", "unsupportedProductionGaps = []", "Broad online multiplayer", "SDL3", "native handle exposure")) { Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan sandbox world network/modding selection" } } elseif ($recommendedPlanId -eq "sandbox-world-package-validation-performance-budgets-v1") { foreach ($needle in @("Selected focused child plan", "sample package smoke flags", "installed validation", "package-visible counters", "--require-sandbox-package-budgets", "sandbox_package_budget_*", "unsupportedProductionGaps = []", "broad renderer quality", "package mutation", "SDL3", "native handle exposure")) { Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan sandbox world package validation and performance budget selection" } } else {
     Assert-ContainsText $recommendedText "Frame Graph v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
     Assert-ContainsText $recommendedText "upload-staging-v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
     Assert-ContainsText $recommendedText "scene-component-prefab-schema-v2" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"

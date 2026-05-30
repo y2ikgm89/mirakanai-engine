@@ -158,6 +158,7 @@
         "installed-2d-simulation-orchestration-smoke",
         "installed-2d-sprite-effects-particles-smoke",
         "installed-2d-sandbox-authoring-review-smoke",
+        "installed-2d-sandbox-package-budget-smoke",
         "installed-native-2d-sprite-smoke"
       ],
       "qualityGates": [
@@ -189,6 +190,13 @@
           "evidence": "Sandbox world smoke reports deterministic chunk, resident chunk, existing cell, placement/destruction intent, cost, mutation, persistence, repairable persistence, unsafe rejection, replay-hash, and zero world/persistence/package side-effect counters.",
           "recipeIds": [
             "installed-2d-gameplay-systems-smoke"
+          ]
+        },
+        {
+          "id": "sandbox-package-budgets",
+          "evidence": "Sandbox package budget smoke reports sandbox_package_budget_status=ready, deterministic row/byte/chunk/dirty/draw/light/persistence/streaming counters, positive replay hash, and zero package IO, native handle, arbitrary shell, external download, source image decode, broad multiplayer, backend submission, native texture ownership, renderer/RHI residency, and broad renderer quality side-effect counters.",
+          "recipeIds": [
+            "installed-2d-sandbox-package-budget-smoke"
           ]
         },
         {
@@ -2178,6 +2186,10 @@
     {
       "name": "installed-2d-sandbox-authoring-review-smoke",
       "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-sandbox-authoring-review"
+    },
+    {
+      "name": "installed-2d-sandbox-package-budget-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-sandbox-package-budgets"
     },
     {
       "name": "installed-2d-gameplay-systems-smoke",
