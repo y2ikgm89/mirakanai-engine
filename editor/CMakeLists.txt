@@ -47,12 +47,13 @@ MK_apply_common_target_options(MK_editor_core)
 add_library(MK_editor_shell_common
     src/native_editor_app.cpp
     src/native_editor_launch.cpp
+    src/native_material_preview_cache.cpp
     src/native_viewport_surface.cpp
     src/win32_imgui_descriptor_allocator.cpp
 )
 
 target_include_directories(MK_editor_shell_common
-    PUBLIC
+    PRIVATE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
 )
 

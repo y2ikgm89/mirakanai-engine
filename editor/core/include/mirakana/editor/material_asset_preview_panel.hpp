@@ -61,6 +61,8 @@ struct EditorMaterialGpuPreviewExecutionSnapshot {
     std::string backend_label;
     std::string display_path_label;
     std::uint64_t frames_rendered{0};
+    bool executes{false};
+    bool exposes_native_handles{false};
 };
 
 struct EditorMaterialAssetPreviewPanelModel {
@@ -95,6 +97,7 @@ struct EditorMaterialAssetPreviewPanelModel {
     bool gpu_execution_rendered{false};
     bool mutates{false};
     bool executes{false};
+    bool exposes_native_handles{false};
 };
 
 [[nodiscard]] std::string_view

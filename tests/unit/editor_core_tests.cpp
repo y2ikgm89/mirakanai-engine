@@ -2414,6 +2414,58 @@ MK_TEST("editor material asset preview panel reports host gpu preview execution 
     MK_REQUIRE(!model.gpu_execution_rendered);
 }
 
+MK_TEST("editor material asset preview panel rejects unsafe gpu execution snapshot claims") {
+    mirakana::MemoryFileSystem fs;
+    mirakana::AssetRegistry registry;
+    const auto material_id = mirakana::AssetId::from_name("materials/unsafe");
+    registry.add(mirakana::AssetRecord{
+        .id = material_id, .kind = mirakana::AssetKind::material, .path = "assets/materials/unsafe.material"});
+    fs.write_text("assets/materials/unsafe.material",
+                  mirakana::serialize_material_definition(mirakana::MaterialDefinition{
+                      .id = material_id,
+                      .name = "Unsafe",
+                      .shading_model = mirakana::MaterialShadingModel::lit,
+                      .surface_mode = mirakana::MaterialSurfaceMode::opaque,
+                      .factors =
+                          mirakana::MaterialFactors{
+                              .base_color = {1.0F, 1.0F, 1.0F, 1.0F},
+                              .emissive = {0.0F, 0.0F, 0.0F},
+                              .metallic = 0.0F,
+                              .roughness = 1.0F,
+                          },
+                      .texture_bindings = {},
+                      .double_sided = false,
+                  }));
+
+    const auto shader_requests = mirakana::editor::make_material_preview_shader_compile_requests("out/editor/shaders");
+    fs.write_text("out/editor/shaders/editor-material-preview-factor.vs.dxil", "factor vertex bytecode");
+    fs.write_text("out/editor/shaders/editor-material-preview-factor.ps.dxil", "factor fragment bytecode");
+    mirakana::editor::ViewportShaderArtifactState shader_artifacts;
+    shader_artifacts.refresh_from(fs, shader_requests);
+
+    mirakana::editor::EditorMaterialAssetPreviewPanelModel model =
+        mirakana::editor::make_editor_material_asset_preview_panel_model(fs, registry, material_id, shader_artifacts);
+
+    mirakana::editor::EditorMaterialGpuPreviewExecutionSnapshot unsafe_snapshot;
+    unsafe_snapshot.status = mirakana::editor::EditorMaterialGpuPreviewStatus::ready;
+    unsafe_snapshot.backend_label = "D3D12";
+    unsafe_snapshot.display_path_label = "host-private-native";
+    unsafe_snapshot.frames_rendered = 3;
+    unsafe_snapshot.executes = true;
+    unsafe_snapshot.exposes_native_handles = true;
+    mirakana::editor::apply_editor_material_gpu_preview_execution_snapshot(model, unsafe_snapshot);
+
+    MK_REQUIRE(model.gpu_execution_status_label == "RHI Unavailable");
+    MK_REQUIRE(model.gpu_execution_diagnostic.contains("must not claim"));
+    MK_REQUIRE(model.gpu_execution_backend_label == "-");
+    MK_REQUIRE(model.gpu_execution_display_path_label == "-");
+    MK_REQUIRE(model.gpu_execution_frames_rendered == 0U);
+    MK_REQUIRE(!model.gpu_execution_ready);
+    MK_REQUIRE(!model.gpu_execution_rendered);
+    MK_REQUIRE(!model.executes);
+    MK_REQUIRE(!model.exposes_native_handles);
+}
+
 MK_TEST("editor selected material preview reports missing artifact without throwing") {
     mirakana::MemoryFileSystem fs;
     mirakana::AssetRegistry registry;

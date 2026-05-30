@@ -125,6 +125,8 @@ foreach ($requiredNeedle in @(
         "editor_shell_sdl3=0",
         "editor_shell_viewport_status=diagnostic_only",
         "editor_shell_viewport_native_handles_exposed=0",
+        "editor_shell_material_preview_status=diagnostic_only",
+        "editor_shell_material_preview_native_handles_exposed=0",
         "tests/unit/editor_native_shell_tests.cpp",
         "MK_editor_shell_common"
     )) {
@@ -162,7 +164,10 @@ foreach ($requiredNeedle in @(
         "editor_shell_panels=11",
         "editor_shell_viewport_status=diagnostic_only",
         "editor_shell_viewport_native_handles_exposed=0",
+        "editor_shell_material_preview_status=diagnostic_only",
+        "editor_shell_material_preview_native_handles_exposed=0",
         "Viewport",
+        "Material Preview",
         "tools/build-gui.ps1",
         "tools/evaluate-cpp23.ps1 -Gui",
         "must not depend on SDL3"
@@ -182,6 +187,8 @@ foreach ($requiredNeedle in @(
         "editor_shell_panels=11",
         "editor_shell_viewport_status=diagnostic_only",
         "editor_shell_viewport_native_handles_exposed=0",
+        "editor_shell_material_preview_status=diagnostic_only",
+        "editor_shell_material_preview_native_handles_exposed=0",
         "SDL3-free"
     )) {
     if (-not $validationRecipeManifestFragment.Contains($requiredNeedle)) {

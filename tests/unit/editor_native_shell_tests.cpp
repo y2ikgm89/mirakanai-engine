@@ -5,6 +5,7 @@
 
 #include "native_editor_app.hpp"
 #include "native_editor_launch.hpp"
+#include "native_material_preview_cache.hpp"
 #include "native_viewport_surface.hpp"
 #include "win32_imgui_descriptor_allocator.hpp"
 
@@ -270,6 +271,63 @@ MK_TEST("editor native viewport display plan does not expose native texture hand
     MK_REQUIRE(!app.viewport_display().native_texture_handles_exposed);
     MK_REQUIRE(app.viewport_display().native_texture_handle_policy == "private");
     MK_REQUIRE(app.viewport().renderer_name() == "d3d12");
+}
+
+MK_TEST("editor native material preview plan rejects missing shader artifacts") {
+    const auto plan =
+        mirakana::editor::plan_native_material_preview_display(mirakana::editor::NativeMaterialPreviewDisplayDesc{
+            .d3d12_host_available = true,
+            .shader_artifacts_available = false,
+            .gpu_payload_available = true,
+            .frame_index = 12,
+        });
+
+    MK_REQUIRE(!plan.accepted);
+    MK_REQUIRE(plan.status_id == "shader_artifacts_missing");
+    MK_REQUIRE(plan.diagnostic.contains("shader artifacts"));
+    MK_REQUIRE(!plan.texture_display_ready);
+    MK_REQUIRE(!plan.native_texture_handles_exposed);
+    MK_REQUIRE(plan.native_texture_handle_policy == "private");
+    MK_REQUIRE(plan.execution_snapshot.status == mirakana::editor::EditorMaterialGpuPreviewStatus::rhi_unavailable);
+    MK_REQUIRE(!plan.execution_snapshot.executes);
+    MK_REQUIRE(!plan.execution_snapshot.exposes_native_handles);
+}
+
+MK_TEST("editor native material preview plan reports diagnostic-only preview without gpu display") {
+    const auto plan =
+        mirakana::editor::plan_native_material_preview_display(mirakana::editor::NativeMaterialPreviewDisplayDesc{
+            .d3d12_host_available = true,
+            .shader_artifacts_available = true,
+            .gpu_payload_available = true,
+            .frame_index = 13,
+        });
+
+    MK_REQUIRE(plan.accepted);
+    MK_REQUIRE(plan.status_id == "diagnostic_only");
+    MK_REQUIRE(!plan.texture_display_ready);
+    MK_REQUIRE(plan.execution_snapshot.backend_label == "D3D12");
+    MK_REQUIRE(plan.execution_snapshot.display_path_label == "host-private-native");
+    MK_REQUIRE(plan.execution_snapshot.frames_rendered == 0U);
+    MK_REQUIRE(plan.execution_snapshot.status == mirakana::editor::EditorMaterialGpuPreviewStatus::rhi_unavailable);
+    MK_REQUIRE(plan.diagnostic.contains("diagnostic-only"));
+}
+
+MK_TEST("editor native material preview plan keeps d3d12 handles private") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+
+    app.record_native_material_preview_d3d12_host_ready(14U);
+
+    MK_REQUIRE(app.material_preview_display().status_id == "diagnostic_only");
+    MK_REQUIRE(!app.material_preview_display().texture_display_ready);
+    MK_REQUIRE(!app.material_preview_display().native_texture_handles_exposed);
+    MK_REQUIRE(app.material_preview_display().native_texture_handle_policy == "private");
+    MK_REQUIRE(!app.material_preview_display().execution_snapshot.executes);
+    MK_REQUIRE(!app.material_preview_display().execution_snapshot.exposes_native_handles);
+    MK_REQUIRE(app.material_preview().gpu_execution_display_path_label == "host-private-native");
+    MK_REQUIRE(!app.material_preview().gpu_execution_ready);
+    MK_REQUIRE(!app.material_preview().gpu_execution_rendered);
+    MK_REQUIRE(!app.material_preview().executes);
+    MK_REQUIRE(!app.material_preview().exposes_native_handles);
 }
 
 MK_TEST("editor native shell routes file dialog requests through bound service") {

@@ -1974,3 +1974,154 @@ foreach ($check in $nativeEditorViewportChecks) {
         Write-Error "ai-integration-check: $($check.Path) missing native editor viewport contract: $($missingNeedles -join ', ')"
     }
 }
+
+$nativeEditorMaterialPreviewChecks = @(
+    @{
+        Path = "editor/src/native_material_preview_cache.hpp"
+        Needles = @(
+            "NativeMaterialPreviewDisplayDesc",
+            "NativeMaterialPreviewDisplayPlan",
+            "shader_artifacts_available",
+            "gpu_payload_available",
+            "texture_display_ready",
+            "native_texture_handles_exposed",
+            "native_texture_handle_policy",
+            "EditorMaterialGpuPreviewExecutionSnapshot",
+            "plan_native_material_preview_display"
+        )
+    },
+    @{
+        Path = "editor/src/native_material_preview_cache.cpp"
+        Needles = @(
+            "shader_artifacts_missing",
+            "diagnostic_only",
+            "host-private-native",
+            "GPU payload unavailable",
+            "native material preview texture display adapter is private",
+            "exposes_native_handles = false"
+        )
+    },
+    @{
+        Path = "editor/core/include/mirakana/editor/material_asset_preview_panel.hpp"
+        Needles = @(
+            "EditorMaterialGpuPreviewExecutionSnapshot",
+            "bool executes",
+            "bool exposes_native_handles"
+        )
+    },
+    @{
+        Path = "editor/core/src/material_asset_preview_panel.cpp"
+        Needles = @(
+            "host-private-native",
+            "material GPU preview execution snapshot must not claim editor-core execution or native handle exposure",
+            "material_asset_preview.gpu.execution.native_handles"
+        )
+    },
+    @{
+        Path = "editor/src/native_editor_app.hpp"
+        Needles = @(
+            "native_material_preview_cache.hpp",
+            "material_preview()",
+            "material_preview_display()",
+            "record_native_material_preview_d3d12_host_ready"
+        )
+    },
+    @{
+        Path = "editor/src/native_editor_app.cpp"
+        Needles = @(
+            "make_default_material_preview_panel_model",
+            "make_material_preview_shader_compile_requests",
+            "EditorMaterialAssetPreviewPanelModel material_preview",
+            "NativeMaterialPreviewDisplayPlan material_preview_display",
+            "record_native_material_preview_d3d12_host_ready",
+            "apply_editor_material_gpu_preview_execution_snapshot"
+        )
+    },
+    @{
+        Path = "editor/src/native_editor_panels.cpp"
+        Needles = @(
+            "render_material_preview_summary",
+            "native_material_preview_surface",
+            "diagnostic only",
+            "native handles"
+        )
+    },
+    @{
+        Path = "editor/src/win32_imgui_d3d12_host.cpp"
+        Needles = @(
+            "record_native_material_preview_d3d12_host_ready"
+        )
+    },
+    @{
+        Path = "editor/src/main.cpp"
+        Needles = @(
+            "editor_shell_material_preview_status=",
+            "editor_shell_material_preview_native_handles_exposed="
+        )
+    },
+    @{
+        Path = "CMakeLists.txt"
+        Needles = @(
+            "editor_shell_material_preview_status=diagnostic_only",
+            "editor_shell_material_preview_native_handles_exposed=0"
+        )
+    },
+    @{
+        Path = "editor/CMakeLists.txt"
+        Needles = @(
+            "src/native_material_preview_cache.cpp",
+            'target_include_directories(MK_editor_shell_common'
+        )
+    },
+    @{
+        Path = "tests/unit/editor_native_shell_tests.cpp"
+        Needles = @(
+            "editor native material preview plan rejects missing shader artifacts",
+            "editor native material preview plan reports diagnostic-only preview without gpu display",
+            "editor native material preview plan keeps d3d12 handles private"
+        )
+    },
+    @{
+        Path = "tests/unit/editor_core_tests.cpp"
+        Needles = @(
+            "editor material asset preview panel rejects unsafe gpu execution snapshot claims",
+            "unsafe_snapshot.executes = true",
+            "unsafe_snapshot.exposes_native_handles = true"
+        )
+    },
+    @{
+        Path = "docs/editor.md"
+        Needles = @(
+            "editor_shell_material_preview_status=diagnostic_only",
+            "editor_shell_material_preview_native_handles_exposed=0",
+            "host-private-native",
+            "material-preview GPU parity remains unsupported"
+        )
+    },
+    @{
+        Path = "engine/agent/manifest.json"
+        Needles = @(
+            "editor_shell_material_preview_status=diagnostic_only",
+            "editor_shell_material_preview_native_handles_exposed=0",
+            "host-private-native",
+            "material-preview GPU parity remains unsupported"
+        )
+    }
+)
+foreach ($check in $nativeEditorMaterialPreviewChecks) {
+    $fileText = Get-AgentSurfaceText $check.Path
+    $missingNeedles = @()
+    foreach ($needle in $check.Needles) {
+        if (-not $fileText.Contains($needle)) {
+            $missingNeedles += $needle
+        }
+    }
+    if ($missingNeedles.Count -gt 0) {
+        Write-Error "ai-integration-check: $($check.Path) missing native editor material preview contract: $($missingNeedles -join ', ')"
+    }
+}
+
+$materialPreviewCoreText = Get-AgentSurfaceText "editor/core/src/material_asset_preview_panel.cpp"
+if ($materialPreviewCoreText.Contains("d3d12-shared-texture")) {
+    Write-Error "ai-integration-check: material preview core display path contract must stay backend-neutral"
+}

@@ -87,7 +87,7 @@ void populate_editor_material_gpu_preview_display_parity_checklist(EditorMateria
     push_row("backend_scope", backend_reported ? "complete" : "pending", model.gpu_execution_backend_label);
 
     const auto& display_path = model.gpu_execution_display_path_label;
-    const bool display_path_classified = display_path == "cpu-readback" || display_path == "d3d12-shared-texture";
+    const bool display_path_classified = display_path == "cpu-readback" || display_path == "host-private-native";
     push_row("display_path_scope", display_path_classified ? "complete" : "pending", display_path);
 
     push_row("vulkan_visible_refresh_gate", model.gpu_execution_vulkan_visible_refresh_evidence,
@@ -381,14 +381,37 @@ make_editor_material_asset_preview_panel_model(IFileSystem& filesystem, const As
 
 void apply_editor_material_gpu_preview_execution_snapshot(EditorMaterialAssetPreviewPanelModel& model,
                                                           const EditorMaterialGpuPreviewExecutionSnapshot& snapshot) {
+    model.gpu_execution_host_owned = true;
+
+    if (snapshot.executes || snapshot.exposes_native_handles) {
+        model.gpu_execution_status_label =
+            std::string(editor_material_gpu_preview_status_label(EditorMaterialGpuPreviewStatus::rhi_unavailable));
+        model.gpu_execution_diagnostic =
+            "material GPU preview execution snapshot must not claim editor-core execution or native handle exposure";
+        model.gpu_execution_backend_label = "-";
+        model.gpu_execution_display_path_label = "-";
+        model.gpu_execution_frames_rendered = 0;
+        model.gpu_execution_ready = false;
+        model.gpu_execution_rendered = false;
+        model.gpu_execution_vulkan_visible_refresh_evidence =
+            std::string(editor_material_gpu_preview_vulkan_visible_refresh_evidence({}));
+        model.gpu_execution_metal_visible_refresh_evidence =
+            std::string(editor_material_gpu_preview_metal_visible_refresh_evidence({}));
+        model.executes = false;
+        model.exposes_native_handles = false;
+        populate_editor_material_gpu_preview_display_parity_checklist(model);
+        return;
+    }
+
     model.gpu_execution_status_label = std::string(editor_material_gpu_preview_status_label(snapshot.status));
     model.gpu_execution_diagnostic = snapshot.diagnostic;
     model.gpu_execution_backend_label = snapshot.backend_label.empty() ? "-" : snapshot.backend_label;
     model.gpu_execution_display_path_label = snapshot.display_path_label.empty() ? "-" : snapshot.display_path_label;
     model.gpu_execution_frames_rendered = snapshot.frames_rendered;
-    model.gpu_execution_host_owned = true;
     model.gpu_execution_ready = snapshot.status == EditorMaterialGpuPreviewStatus::ready;
     model.gpu_execution_rendered = model.gpu_execution_ready && snapshot.frames_rendered > 0;
+    model.executes = false;
+    model.exposes_native_handles = false;
     model.gpu_execution_vulkan_visible_refresh_evidence =
         std::string(editor_material_gpu_preview_vulkan_visible_refresh_evidence(snapshot));
     model.gpu_execution_metal_visible_refresh_evidence =
@@ -458,6 +481,8 @@ mirakana::ui::UiDocument make_material_asset_preview_panel_ui_model(const Editor
                  std::to_string(model.gpu_execution_frames_rendered));
     append_label(document, execution_root, "material_asset_preview.gpu.execution.rendered",
                  model.gpu_execution_rendered ? "rendered" : "not-rendered");
+    append_label(document, execution_root, "material_asset_preview.gpu.execution.native_handles",
+                 model.exposes_native_handles ? "exposed" : "private");
     append_label(document, execution_root, "material_asset_preview.gpu.execution.vulkan_visible_refresh",
                  model.gpu_execution_vulkan_visible_refresh_evidence);
     append_label(document, execution_root, "material_asset_preview.gpu.execution.metal_visible_refresh",

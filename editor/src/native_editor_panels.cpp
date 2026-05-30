@@ -89,6 +89,27 @@ void render_asset_rows(std::span<const EditorAssetListRow> rows) {
     }
 }
 
+void render_material_preview_summary(const EditorMaterialAssetPreviewPanelModel& model,
+                                     const NativeMaterialPreviewDisplayPlan& display) {
+    ImGui::SeparatorText("Material Preview");
+    key_value("status", display.status_id);
+    key_value("material", model.material_path.empty() ? std::string_view{"-"} : std::string_view{model.material_path});
+    key_value("gpu payload", model.gpu_payload_ready ? "ready" : "not ready");
+    key_value("required shader", model.required_shader_ready ? "ready" : "missing");
+    key_value("execution", model.gpu_execution_status_label);
+    key_value("backend", model.gpu_execution_backend_label);
+    key_value("display", model.gpu_execution_display_path_label);
+    key_value("native handles", display.native_texture_handles_exposed
+                                    ? std::string_view{"exposed"}
+                                    : std::string_view{display.native_texture_handle_policy});
+
+    ImGui::BeginChild("native_material_preview_surface", ImVec2(0.0F, 160.0F), true);
+    key_value("surface", display.texture_display_ready ? "native texture" : "diagnostic only");
+    key_value("frame", display.frame_index);
+    key_value("diagnostic", display.diagnostic);
+    ImGui::EndChild();
+}
+
 void render_console_rows(std::span<const EditorDiagnosticRow> rows) {
     for (const auto& row : rows) {
         ImGui::BulletText("%s", row.id.c_str());
@@ -208,6 +229,7 @@ void render_native_editor_assets_panel(NativeEditorApp& app) {
     }
 
     render_asset_rows(app.asset_rows());
+    render_material_preview_summary(app.material_preview(), app.material_preview_display());
     end_workspace_panel();
 }
 

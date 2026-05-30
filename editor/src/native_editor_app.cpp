@@ -3,7 +3,9 @@
 
 #include "native_editor_app.hpp"
 
+#include "mirakana/assets/material.hpp"
 #include "mirakana/core/diagnostics.hpp"
+#include "mirakana/editor/shader_compile.hpp"
 #include "mirakana/platform/clipboard.hpp"
 #include "mirakana/scene/scene.hpp"
 
@@ -86,6 +88,43 @@ constexpr std::array<NativePanelToken, 11> native_panel_tokens{{
         EditorAssetListRow{.id = "material_default", .path = "assets/materials/default.material", .kind = "material"},
         EditorAssetListRow{.id = "shader_editor", .path = "assets/shaders/editor_preview.shader", .kind = "shader"},
     };
+}
+
+[[nodiscard]] EditorMaterialAssetPreviewPanelModel make_default_material_preview_panel_model() {
+    constexpr std::string_view shader_output_root{"out/editor/shaders"};
+    const auto material_id = AssetId::from_name("materials/default");
+
+    MemoryFileSystem filesystem;
+    AssetRegistry registry;
+    registry.add(AssetRecord{
+        .id = material_id,
+        .kind = AssetKind::material,
+        .path = "assets/materials/default.material",
+    });
+    const MaterialDefinition material{
+        .id = material_id,
+        .name = "Default Material",
+        .shading_model = MaterialShadingModel::lit,
+        .surface_mode = MaterialSurfaceMode::opaque,
+        .factors =
+            MaterialFactors{
+                .base_color = {0.8F, 0.8F, 0.8F, 1.0F},
+                .emissive = {0.0F, 0.0F, 0.0F},
+                .metallic = 0.0F,
+                .roughness = 1.0F,
+            },
+        .texture_bindings = {},
+        .double_sided = false,
+    };
+    filesystem.write_text("assets/materials/default.material", serialize_material_definition(material));
+
+    const auto shader_requests = make_material_preview_shader_compile_requests(shader_output_root);
+    filesystem.write_text("out/editor/shaders/editor-material-preview-factor.vs.dxil", "native factor vertex");
+    filesystem.write_text("out/editor/shaders/editor-material-preview-factor.ps.dxil", "native factor fragment");
+    ViewportShaderArtifactState shader_artifacts;
+    shader_artifacts.refresh_from(filesystem, shader_requests);
+
+    return make_editor_material_asset_preview_panel_model(filesystem, registry, material_id, shader_artifacts);
 }
 
 [[nodiscard]] std::vector<EditorDiagnosticRow> make_default_console_rows() {
@@ -204,6 +243,11 @@ struct NativeEditorApp::Impl {
           asset_rows(make_default_asset_rows()), console_rows(make_default_console_rows()),
           resources(make_native_resource_panel_model(false, 0U)), ai_commands(make_default_ai_command_model()),
           profiler(make_default_profiler_model(console_rows)), timeline(make_default_timeline_model()),
+          material_preview(make_default_material_preview_panel_model()),
+          material_preview_display(plan_native_material_preview_display(NativeMaterialPreviewDisplayDesc{
+              .shader_artifacts_available = material_preview.required_shader_ready,
+              .gpu_payload_available = material_preview.gpu_payload_ready,
+          })),
           viewport_display(plan_native_viewport_display(NativeViewportDisplayDesc{
               .extent = ViewportExtent{.width = options.width, .height = options.height},
           })),
@@ -223,7 +267,9 @@ struct NativeEditorApp::Impl {
     EditorAiCommandPanelModel ai_commands;
     EditorProfilerPanelModel profiler;
     EditorTimelinePanelModel timeline;
+    EditorMaterialAssetPreviewPanelModel material_preview;
     ViewportState viewport;
+    NativeMaterialPreviewDisplayPlan material_preview_display;
     NativeViewportDisplayPlan viewport_display;
     MemoryFileDialogService memory_file_dialog_service;
     MemoryClipboard memory_clipboard;
@@ -326,6 +372,14 @@ const ViewportState& NativeEditorApp::viewport() const noexcept {
 
 const NativeViewportDisplayPlan& NativeEditorApp::viewport_display() const noexcept {
     return impl_->viewport_display;
+}
+
+const EditorMaterialAssetPreviewPanelModel& NativeEditorApp::material_preview() const noexcept {
+    return impl_->material_preview;
+}
+
+const NativeMaterialPreviewDisplayPlan& NativeEditorApp::material_preview_display() const noexcept {
+    return impl_->material_preview_display;
 }
 
 void NativeEditorApp::bind_native_services(NativeEditorServiceBindings services) {
@@ -472,6 +526,18 @@ void NativeEditorApp::record_native_viewport_d3d12_host_ready(std::uint64_t fram
         .frame_index = frame_index,
         .backend_id = "d3d12",
     });
+}
+
+void NativeEditorApp::record_native_material_preview_d3d12_host_ready(std::uint64_t frame_index) {
+    impl_->material_preview_display = plan_native_material_preview_display(NativeMaterialPreviewDisplayDesc{
+        .d3d12_host_available = true,
+        .shader_artifacts_available = impl_->material_preview.required_shader_ready,
+        .gpu_payload_available = impl_->material_preview.gpu_payload_ready,
+        .frame_index = frame_index,
+        .backend_id = "d3d12",
+    });
+    apply_editor_material_gpu_preview_execution_snapshot(impl_->material_preview,
+                                                         impl_->material_preview_display.execution_snapshot);
 }
 
 } // namespace mirakana::editor

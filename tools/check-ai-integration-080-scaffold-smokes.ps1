@@ -1059,7 +1059,7 @@ foreach ($needle in @(
 $editorMainText = Get-AgentSurfaceText "editor/src/main.cpp"
 Assert-ContainsText $editorMainText "validate_native_editor_launch" "native editor shell main"
 Assert-ContainsText $editorMainText "native_editor_launch_usage_error_exit_code" "native editor shell main"
-foreach ($nativeShellMainNeedle in @("win32_imgui_d3d12_host.hpp", "editor_shell_status=ready", "editor_shell_backend=d3d12", "editor_shell_panels=", "editor_shell_sdl3=0")) { Assert-ContainsText $editorMainText $nativeShellMainNeedle "native editor shell main" }
+foreach ($nativeShellMainNeedle in @("win32_imgui_d3d12_host.hpp", "editor_shell_status=ready", "editor_shell_backend=d3d12", "editor_shell_panels=", "editor_shell_sdl3=0", "editor_shell_material_preview_status=", "editor_shell_material_preview_native_handles_exposed=")) { Assert-ContainsText $editorMainText $nativeShellMainNeedle "native editor shell main" }
 foreach ($forbiddenNeedle in @("SDL3", "SDL_", "ImGui_Impl", "imgui.h", "windows.h", "d3d12.h", "dxgi")) { Assert-DoesNotContainText $editorMainText $forbiddenNeedle "native editor shell main" }
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorInputRebindingProfiles) "in-memory profile" "editor input rebinding capture guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorInputRebindingProfiles) "axis capture" "editor input rebinding capture guidance"

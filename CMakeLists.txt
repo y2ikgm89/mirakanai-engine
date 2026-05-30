@@ -738,7 +738,7 @@ if(BUILD_TESTING)
         add_test(NAME MK_editor_smoke COMMAND MK_editor --smoke-frames 2 --smoke-resize --no-user-config)
         set_tests_properties(MK_editor_smoke PROPERTIES
             RUN_SERIAL TRUE
-            PASS_REGULAR_EXPRESSION "editor_shell_status=ready;editor_shell_backend=d3d12;editor_shell_panels=11;editor_shell_sdl3=0;editor_shell_file_dialog_service=win32;editor_shell_clipboard_service=win32;editor_shell_reviewed_process_runner=win32;editor_shell_viewport_status=diagnostic_only;editor_shell_viewport_native_handles_exposed=0"
+            PASS_REGULAR_EXPRESSION "editor_shell_status=ready;editor_shell_backend=d3d12;editor_shell_panels=11;editor_shell_sdl3=0;editor_shell_file_dialog_service=win32;editor_shell_clipboard_service=win32;editor_shell_reviewed_process_runner=win32;editor_shell_viewport_status=diagnostic_only;editor_shell_viewport_native_handles_exposed=0;editor_shell_material_preview_status=diagnostic_only;editor_shell_material_preview_native_handles_exposed=0"
         )
     endif()
 
