@@ -45,6 +45,7 @@ target_link_libraries(MK_editor_core PUBLIC MK_animation MK_assets MK_core MK_pl
 MK_apply_common_target_options(MK_editor_core)
 
 add_library(MK_editor_shell_common
+    src/native_editor_app.cpp
     src/native_editor_launch.cpp
     src/win32_imgui_descriptor_allocator.cpp
 )
@@ -53,6 +54,8 @@ target_include_directories(MK_editor_shell_common
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
 )
+
+target_link_libraries(MK_editor_shell_common PUBLIC MK_editor_core)
 
 MK_apply_common_target_options(MK_editor_shell_common)
 
@@ -71,7 +74,7 @@ endif()
 find_package(imgui CONFIG REQUIRED)
 
 add_library(MK_editor_shell_win32
-    src/native_editor_app.cpp
+    src/native_editor_panels.cpp
     src/win32_imgui_d3d12_host.cpp
     src/win32_imgui_message_bridge.cpp
 )
@@ -99,6 +102,6 @@ add_executable(MK_editor
     src/main.cpp
 )
 
-target_link_libraries(MK_editor PRIVATE MK_editor_shell_win32)
+target_link_libraries(MK_editor PRIVATE MK_editor_shell_common MK_editor_shell_win32)
 
 MK_apply_common_target_options(MK_editor)

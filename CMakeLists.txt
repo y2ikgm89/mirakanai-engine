@@ -738,7 +738,7 @@ if(BUILD_TESTING)
         add_test(NAME MK_editor_smoke COMMAND MK_editor --smoke-frames 2 --smoke-resize --no-user-config)
         set_tests_properties(MK_editor_smoke PROPERTIES
             RUN_SERIAL TRUE
-            PASS_REGULAR_EXPRESSION "editor_shell_status=ready"
+            PASS_REGULAR_EXPRESSION "editor_shell_status=ready;editor_shell_backend=d3d12;editor_shell_panels=10;editor_shell_sdl3=0"
         )
     endif()
 

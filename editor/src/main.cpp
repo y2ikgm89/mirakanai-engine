@@ -41,8 +41,10 @@ int main(int argc, char** argv) {
     const auto result = host.run(app);
     if (launch.options.smoke_frames > 0) {
         std::cout << (result.succeeded ? "editor_shell_status=ready" : "editor_shell_status=failed") << '\n'
+                  << "editor_shell_backend=d3d12\n"
                   << "editor_shell_sdl3=0\n"
                   << "editor_shell_frames=" << result.frames_rendered << '\n'
+                  << "editor_shell_panels=" << app.panels_rendered_last_frame() << '\n'
                   << "editor_shell_resizes=" << result.resize_count << '\n'
                   << "editor_shell_adapter=" << adapter_name(result.adapter_kind) << '\n';
     }

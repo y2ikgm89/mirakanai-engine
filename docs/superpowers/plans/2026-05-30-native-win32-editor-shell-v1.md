@@ -508,7 +508,7 @@ ImGui::DestroyContext
 
 If hardware adapter creation fails, the editor host may use WARP for smoke validation. Record selected adapter kind in a private smoke result row. Do not claim hardware graphics readiness from WARP.
 
-- [ ] **Step 7: Run focused native host tests**
+- [x] **Step 7: Run focused native host tests**
 
 Run:
 
@@ -522,7 +522,7 @@ Expected: private tests pass and clang-tidy accepts the new editor host sources.
 
 **Done When:** The private host can initialize ImGui + D3D12 resources, render an empty frame, present, resize, and shut down without leaking native handles into public headers.
 
-**Phase Evidence:** Candidate 3 in progress. Checked current Dear ImGui Win32 + DirectX 12 backend documentation/source on 2026-05-30; `ImGui_ImplDX12_InitInfo` is used with `Device`, `CommandQueue`, `NumFramesInFlight`, `RTVFormat`, `SrvDescriptorHeap`, `SrvDescriptorAllocFn`, and `SrvDescriptorFreeFn`. Added private `Win32ImguiDescriptorAllocator`, `Win32ImguiMessageBridge`, and `Win32ImguiD3d12Host` under `editor/src` without public Win32/D3D12/ImGui handle exposure. Local evidence so far: `tools/check-toolchain.ps1`, `tools/cmake.ps1 --preset dev`, `tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests`, `tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_native_shell_tests`, and `tools/check-tidy.ps1 -Files editor/src/native_editor_launch.cpp,editor/src/win32_imgui_descriptor_allocator.cpp,tests/unit/editor_native_shell_tests.cpp` passed. Local `desktop-gui` configure remains dependency-blocked because the linked worktree `vcpkg_installed` tree does not contain `imgui`; `tools/bootstrap-deps.ps1` is policy-gated in this no-approval session, so hosted Windows CI is the required GUI compile/smoke proof for this candidate.
+**Phase Evidence:** Completed through PR #318 / merge commit `4611f7165f4423a242e299d17f9f022c0f241a0b`. Checked current Dear ImGui Win32 + DirectX 12 backend documentation/source on 2026-05-30; `ImGui_ImplDX12_InitInfo` is used with `Device`, `CommandQueue`, `NumFramesInFlight`, `RTVFormat`, `SrvDescriptorHeap`, `SrvDescriptorAllocFn`, and `SrvDescriptorFreeFn`. Added private `Win32ImguiDescriptorAllocator`, `Win32ImguiMessageBridge`, and `Win32ImguiD3d12Host` under `editor/src` without public Win32/D3D12/ImGui handle exposure. Local focused checks passed before publication, local `desktop-gui` configure remained dependency-blocked because the linked worktree `vcpkg_installed` tree did not contain `imgui`, and hosted Windows MSVC plus `PR Gate` provided the GUI compile/smoke proof for PR #318.
 
 ## Phase 4 - Smoke-Launchable `MK_editor`
 
@@ -579,7 +579,7 @@ Invoke-CheckedCommand $tools.CTest --preset desktop-gui --output-on-failure
 
 Change `tools/evaluate-cpp23.ps1 -Gui` so it configures, builds, and tests `cpp23-desktop-gui-eval` instead of emitting the deferral message.
 
-- [ ] **Step 5: Run GUI smoke lane**
+- [x] **Step 5: Run GUI smoke lane**
 
 Run:
 
@@ -592,7 +592,7 @@ Expected: both commands pass and include `MK_editor_smoke`.
 
 **Done When:** A real `MK_editor` process can launch the native shell, render deterministic smoke frames, and exit successfully through supported wrappers.
 
-**Phase Evidence:** Candidate 3 in progress. `MK_editor_smoke` now runs `MK_editor --smoke-frames 2 --smoke-resize --no-user-config` and requires `editor_shell_status=ready`; smoke output also reports `editor_shell_sdl3=0`, frame count, resize count, and adapter kind. `tools/build-gui.ps1` now configures/builds/tests `desktop-gui`, `tools/evaluate-cpp23.ps1 -Gui` targets `cpp23-desktop-gui-eval`, and the Windows MSVC workflow runs `tools/build-gui.ps1` after dependency bootstrap. Local GUI execution is deferred to hosted CI for the same `imgui` bootstrap blocker recorded in Phase 3.
+**Phase Evidence:** Completed through PR #318 / merge commit `4611f7165f4423a242e299d17f9f022c0f241a0b`. `MK_editor_smoke` runs `MK_editor --smoke-frames 2 --smoke-resize --no-user-config` and requires `editor_shell_status=ready`; smoke output also reports `editor_shell_sdl3=0`, frame count, resize count, and adapter kind. `tools/build-gui.ps1` configures/builds/tests `desktop-gui`, `tools/evaluate-cpp23.ps1 -Gui` targets `cpp23-desktop-gui-eval`, and the Windows MSVC workflow runs `tools/build-gui.ps1` after dependency bootstrap. Local GUI execution was dependency-blocked by missing linked-worktree `imgui`; hosted Windows MSVC plus `PR Gate` provided the GUI smoke proof.
 
 ## Phase 5 - Core-Backed Editor Panels
 
@@ -606,7 +606,7 @@ Expected: both commands pass and include `MK_editor_smoke`.
 - Modify: `tests/unit/editor_core_tests.cpp` only when core model behavior needs new coverage.
 - Modify: `tests/unit/editor_native_shell_tests.cpp`
 
-- [ ] **Step 1: Define first panel set**
+- [x] **Step 1: Define first panel set**
 
 Implement these panels first:
 
@@ -625,7 +625,7 @@ Project Settings
 
 The panels consume existing editor-core models and transient shell state. They must not execute package scripts, validation recipes, PIX helpers, or process commands except through already-reviewed editor-core/process-runner gates.
 
-- [ ] **Step 2: Keep panel rendering private**
+- [x] **Step 2: Keep panel rendering private**
 
 Declare rendering functions in `editor/src/native_editor_panels.hpp`:
 
@@ -650,7 +650,7 @@ void render_native_editor_project_settings_panel(NativeEditorApp& app);
 
 These declarations stay private under `editor/src`.
 
-- [ ] **Step 3: Add panel smoke assertions**
+- [x] **Step 3: Add panel smoke assertions**
 
 Extend `MK_editor_smoke` output so it prints bounded lines:
 
@@ -679,7 +679,7 @@ Expected: panel smoke and existing editor-core tests pass, public API checks pas
 
 **Done When:** The native editor shell displays core-backed panels and reports deterministic smoke counters without adding native behavior to `MK_editor_core`.
 
-**Phase Evidence:** Not started.
+**Phase Evidence:** Candidate 4 in progress in `codex/native-win32-editor-panels-v1`. RED tests first failed because `NativeEditorApp` lacked core-backed panel contracts, deterministic panel counters, ImGui user-config policy, and native host resource availability updates. The implementation adds private `native_editor_panels.*`, renders Main Menu, Scene, Inspector, Assets, Console, Resources, AI Commands, Profiler, Timeline, and Project Settings over `MK_editor_core` data, disables Dear ImGui `.ini`/log persistence when `--no-user-config` is set, refreshes the Resources panel from live native D3D12 host availability before rendering, and extends smoke expectations to `editor_shell_backend=d3d12`, `editor_shell_panels=10`, and `editor_shell_sdl3=0`. Local evidence passed: `tools/cmake.ps1 --preset dev`, `tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests`, `tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_native_shell_tests`, `tools/check-tidy.ps1 -Files editor/src/native_editor_app.cpp,editor/src/native_editor_launch.cpp,tests/unit/editor_native_shell_tests.cpp`, `tools/check-format.ps1`, `tools/check-native-desktop-contracts.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-validation-recipe-runner.ps1`, and full `tools/validate.ps1` with 85/85 tests passing. Local `tools/build-gui.ps1` remains blocked because the linked worktree `vcpkg_installed` tree lacks `imguiConfig.cmake`; `tools/bootstrap-deps.ps1` is policy-gated in this no-approval session, so hosted Windows MSVC is required before this phase is publication-complete.
 
 ## Phase 6 - Win32 Services Integration
 
