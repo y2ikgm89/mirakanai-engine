@@ -16,9 +16,9 @@
 
 ## Status
 
-**Status:** Active.
+**Status:** Completed.
 
-Selected as the long-running milestone for restoring the native editor shell. `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` points at this plan while its candidate PRs are implemented, validated, published, and merged.
+Closed through PR #322 after Phases 1-8, documentation/validation closeout, and manifest return to `next-production-gap-selection`. Full D3D12 viewport/material texture display, docking, and cross-platform editor shells remain explicit follow-up work outside this milestone.
 
 ## Current Baseline
 
@@ -949,7 +949,7 @@ Expected: generated manifest and AI surface checks pass.
 - Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` if closing the selected plan.
 - Generate: `engine/agent/manifest.json`
 
-- [ ] **Step 1: Update user-facing editor docs**
+- [x] **Step 1: Update user-facing editor docs**
 
 `docs/editor.md` must describe:
 
@@ -962,7 +962,7 @@ that SDL3 is absent,
 that Dear ImGui is editor-shell-only.
 ```
 
-- [ ] **Step 2: Update validation docs**
+- [x] **Step 2: Update validation docs**
 
 `docs/testing.md` and `docs/workflows.md` must state:
 
@@ -973,7 +973,7 @@ desktop-gui uses vcpkg bootstrap and does not configure-time install dependencie
 GUI validation is Windows-native and does not claim macOS/Linux parity.
 ```
 
-- [ ] **Step 3: Run final local validation**
+- [x] **Step 3: Run final local validation**
 
 Run:
 
@@ -994,7 +994,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 
 Expected: all checks pass, or any host/tool blocker is recorded with exact command and failure.
 
-- [ ] **Step 4: Prepare publication**
+- [x] **Step 4: Prepare publication**
 
 Use GitHub Flow:
 
@@ -1007,7 +1007,7 @@ Then publish through the repository-supported PR path. Do not push to protected 
 
 **Done When:** `MK_editor` launches through the supported GUI lane, docs and agent surfaces describe the native shell accurately, SDL3 remains absent, local validation passes, and hosted PR evidence is recorded.
 
-**Phase Evidence:** Not started.
+**Phase Evidence:** Local evidence passed on branch `codex/native-win32-editor-material-preview-v1`: `tools/check-toolchain.ps1`, `tools/bootstrap-deps.ps1`, `tools/check-dependency-policy.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-native-desktop-contracts.ps1`, `tools/build-gui.ps1` (86/86 CTest), `tools/evaluate-cpp23.ps1 -Gui`, `tools/compose-agent-manifest.ps1 -Write`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-format.ps1`, and `tools/validate.ps1` (85/85). Publication: https://github.com/y2ikgm89/mirakanai-engine/pull/322 (`374fcd9d`). Docs updated in `docs/editor.md`, `docs/testing.md`, `docs/workflows.md`, `docs/current-capabilities.md`, `docs/agent-operational-reference.md`, and plan registry; manifest returned to production-completion master plan with `recommendedNextPlan.id = next-production-gap-selection`.
 
 ## Risk Ledger
 

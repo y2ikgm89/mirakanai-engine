@@ -11,6 +11,8 @@ Use this file as a short status and priority route, not as the exhaustive implem
 
 Long capability prose lower in this file is retained historical/static-check evidence. Do not use it to override the manifest, current-capabilities summary, or active plan registry.
 
+Current manifest-led execution: `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` points at the production-completion master plan, `unsupportedProductionGaps = []`, and `recommendedNextPlan.id = next-production-gap-selection` after Native Win32 Editor Shell v1 closed through PR #322.
+
 ## Principle
 
 Build a clean C++23 engine with no early backward-compatibility burden. Prefer official platform guidance, explicit module boundaries, deterministic tests, and AI-readable contracts. Separate developer-facing tooling from production runtime UI: the previous SDL3/Dear ImGui visible editor shell is removed from active build lanes, `MK_editor_core` remains the supported editor logic surface, the new native editor shell uses Dear ImGui only as an optional Win32/D3D12 developer/editor shell dependency, and future game UI plus scalable runtime surfaces should evolve toward first-party retained-mode UI layers similar in role to Unreal Slate/UMG/Common UI or Unity UI Toolkit.

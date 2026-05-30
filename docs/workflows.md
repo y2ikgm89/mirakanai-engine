@@ -302,6 +302,13 @@ These rules follow the Git documentation for `.gitignore`, `$GIT_DIR/info/exclud
 - Treat Debugging Tools for Windows, Windows Graphics Tools, PIX on Windows, and Windows Performance Toolkit as host diagnostics. They are not required for the default build, are not installed by CMake configure, and are blockers only for tasks that explicitly need native debugging, D3D12 debug-layer validation, GPU capture, or ETW/performance evidence.
 - After Machine `PATH` or Machine `_NT_SYMBOL_PATH` changes, open a new terminal before rerunning PATH-based checks. Existing shells can keep stale environment blocks.
 
+## Native Editor GUI Validation Lane
+
+- Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1` before the optional `desktop-gui` lane when `vcpkg_installed/` is missing. Bootstrap is the only supported dependency acquisition path; `desktop-gui` CMake presets set `VCPKG_MANIFEST_INSTALL=OFF` and consume `${sourceDir}/vcpkg_installed` without configure-time package installation.
+- Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1` as the supported GUI validation lane for the optional Windows-native `MK_editor` shell. It configures, builds, and tests the `desktop-gui` preset, including `MK_editor_native_shell_tests` and deterministic `MK_editor_smoke` counters for Win32/Dear ImGui/Direct3D 12 host readiness, core-backed panels, diagnostic-only viewport display, and diagnostic-only material preview.
+- Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/evaluate-cpp23.ps1 -Gui` for the `cpp23-desktop-gui-eval` C++23 GUI lane. Keep it aligned with `tools/build-gui.ps1` and the `desktop-gui` validation recipe.
+- GUI validation is Windows-native editor/developer-shell tooling only. It does not claim macOS/Linux visible editor parity, runtime game UI middleware readiness, SDL3 restoration, or public native handle exposure.
+
 ## C++ Standard
 
 - The required language baseline is C++23.
