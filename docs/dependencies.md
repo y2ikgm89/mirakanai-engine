@@ -27,7 +27,7 @@ On Windows, the default validation build uses Windows SDK system libraries for t
 
 These are official platform SDK libraries and are not bundled in the repository.
 
-The optional desktop runtime, desktop GUI/editor, asset importer, native physics middleware adapter, and network transport adapter lanes use vcpkg manifest features so optional package dependencies remain isolated from the default build and from system-wide package locations. The current `desktop-runtime` feature is dependency-free and uses host SDK libraries. The `desktop-gui` feature declares Dear ImGui only for the future native editor shell.
+The optional desktop runtime, desktop GUI/editor, asset importer, native physics middleware adapter, and network transport adapter lanes use vcpkg manifest features so optional package dependencies remain isolated from the default build and from system-wide package locations. The current `desktop-runtime` feature is dependency-free and uses host SDK libraries. The `desktop-gui` feature declares Dear ImGui only for the optional native editor shell.
 
 Run the optional vcpkg dependency bootstrap with:
 
@@ -43,13 +43,13 @@ GitHub Actions restores the gitignored `external/vcpkg` tool checkout before cal
 
 On restricted sandboxed hosts, `bootstrap-deps` can still require an unrestricted run because it is the step that intentionally launches vcpkg, downloads archives, extracts helper tools, and builds dependency ports. After it succeeds, normal configure/build/package lanes should not invoke vcpkg.
 
-The visible desktop GUI/editor shell is still deferred after SDL3 removal until the native Win32/D3D12 `MK_editor` target lands. The wrapper below remains the supported entrypoint and fails closed until that implementation replaces the deferral:
+The visible desktop GUI/editor shell is restored through the optional native Win32 + Dear ImGui + Direct3D 12 `MK_editor` target. The wrapper below is the supported entrypoint for configuring, building, and testing that lane:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1
 ```
 
-`build-gui` currently exits with the deferral message instead of configuring or building `desktop-gui`. `MK_editor_core` remains covered by the default validation lane.
+`build-gui` requires the vcpkg-backed `desktop-gui` dependency set. `MK_editor_core` remains covered by the default validation lane.
 
 Validate or package the editor-independent desktop game runtime shell with:
 
@@ -79,7 +79,7 @@ Apply ADK servicing patches only when they match installed ADK features. Do not 
 
 - `imgui` with the `win32-binding` and `dx12-binding` vcpkg features
 
-Dear ImGui is optional and editor/developer-shell only. Dear ImGui is not the production runtime game UI foundation. The selected desktop-gui feature uses Win32 and DirectX 12 backends and must not enable SDL3 bindings. The previous visible editor shell was removed from active build lanes before final desktop platform cleanup. `MK_editor_core` remains the supported editor logic target, and the future visible editor shell must keep Dear ImGui, Win32, D3D12, DXGI, and native handles in private editor implementation files rather than public engine, gameplay, runtime UI, or editor-core APIs.
+Dear ImGui is optional and editor/developer-shell only. Dear ImGui is not the production runtime game UI foundation. The selected desktop-gui feature uses Win32 and DirectX 12 backends and must not enable SDL3 bindings. The previous visible editor shell was removed from active build lanes before final desktop platform cleanup. `MK_editor_core` remains the supported editor logic target, and the native visible editor shell must keep Dear ImGui, Win32, D3D12, DXGI, and native handles in private editor implementation files rather than public engine, gameplay, runtime UI, or editor-core APIs.
 
 ### Editor native module boundary (not a vcpkg dependency)
 

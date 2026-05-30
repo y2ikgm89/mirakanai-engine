@@ -228,6 +228,7 @@ Assert-DryRunRecipe -Recipe "agent-contract" -ExpectedArgv @("-File", "check-ai-
 Assert-DryRunRecipe -Recipe "default" -ExpectedArgv @("-File", "validate.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "shader-toolchain" -ExpectedArgv @("-File", "check-shader-toolchain.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "network-enet" -ExpectedArgv @("-File", "validate-network-enet.ps1") | Out-Null
+Assert-DryRunRecipe -Recipe "desktop-gui" -ExpectedArgv @("-File", "build-gui.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-scene-gpu-package" -ExpectedArgv @("-File", "tools/package-desktop-runtime.ps1", "-GameTarget", "sample_desktop_runtime_game") | Out-Null
 Assert-DryRunRecipe -Recipe "desktop-runtime-generated-material-shader-scaffold-package" -ExpectedArgv @("-File", "tools/package-desktop-runtime.ps1", "-GameTarget", "sample_generated_desktop_runtime_material_shader_package") | Out-Null
 $materialVulkanDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict" -ExpectedArgv @("-Command")

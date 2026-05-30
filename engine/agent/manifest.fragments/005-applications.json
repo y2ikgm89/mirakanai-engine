@@ -3,12 +3,12 @@
     {
       "name": "MK_editor",
       "path": "editor",
-      "status": "visible-shell-deferred-during-sdl3-removal",
+      "status": "optional-native-win32-shell-active",
       "buildCommand": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1",
       "dependencies": [
         "MK_editor_core"
       ],
-      "purpose": "Visible desktop editor shell is explicitly deferred during the First-Party Desktop Platform And SDL3 Removal milestone. The previous SDL3/Dear ImGui shell has been removed from active build lanes so SDL3 can be deleted cleanly without carrying compatibility shims. `MK_editor_core` remains the supported editor logic and AI-operable retained-model surface for project IO, authoring, profiler rows, generated game studio rows, input rebinding rows, play-in-editor review rows, and game-module driver tests. `tools/build-gui.ps1` and `tools/evaluate-cpp23.ps1 -Gui` fail closed with a deferral message. A future visible shell must be implemented as a focused first-party Windows adapter, using Win32/D3D12 or another audited native stack, and must not depend on SDL3 or expose native handles through public editor/game APIs."
+      "purpose": "Optional desktop editor shell built by the `desktop-gui` lane. The previous SDL3/Dear ImGui shell has been replaced by a clean Win32/Dear ImGui/Direct3D 12 implementation owned privately under `editor/src`, with `MK_editor_core` remaining the supported editor logic and AI-operable retained-model surface for project IO, authoring, profiler rows, generated game studio rows, input rebinding rows, play-in-editor review rows, and game-module driver tests. `tools/build-gui.ps1` configures, builds, and tests the native GUI lane, and `tools/evaluate-cpp23.ps1 -Gui` covers the C++23 GUI preset. The shell must not depend on SDL3 or expose Win32, D3D12, DXGI, swapchain, descriptor heap, or Dear ImGui handles through public editor, engine, gameplay, or runtime UI APIs."
     }
   ]
 }

@@ -14,6 +14,7 @@ struct NativeEditorLaunchOptions {
     std::uint32_t width{1280};
     std::uint32_t height{720};
     std::int32_t smoke_frames{-1};
+    bool smoke_resize{false};
     bool no_user_config{false};
 };
 

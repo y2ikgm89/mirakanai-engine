@@ -59,7 +59,7 @@ $editorInputRebindingProfilePanelChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "Native MK_editor shell skeleton is SDL3-free",
+            "Native MK_editor shell is SDL3-free",
             "MK_editor_shell_common",
             "add_executable(MK_editor"
         )
@@ -1461,7 +1461,7 @@ $visiblePrefabVariantGuiChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "Native MK_editor shell skeleton is SDL3-free",
+            "Native MK_editor shell is SDL3-free",
             "MK_editor_shell_common",
             "add_executable(MK_editor"
         )
@@ -1519,7 +1519,7 @@ $editorSceneNativeDialogChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "Native MK_editor shell skeleton is SDL3-free",
+            "Native MK_editor shell is SDL3-free",
             "MK_editor_shell_common",
             "add_executable(MK_editor"
         )

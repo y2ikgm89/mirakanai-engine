@@ -34,7 +34,7 @@ $editorPackageRegistrationDraftChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "Native MK_editor shell skeleton is SDL3-free",
+            "Native MK_editor shell is SDL3-free",
             "MK_editor_shell_common",
             "add_executable(MK_editor"
         )
@@ -174,7 +174,7 @@ $editorPlayInEditorIsolationChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "Native MK_editor shell skeleton is SDL3-free",
+            "Native MK_editor shell is SDL3-free",
             "MK_editor_shell_common",
             "add_executable(MK_editor"
         )
@@ -257,7 +257,7 @@ $editorRuntimeHostPlaytestLaunchChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "Native MK_editor shell skeleton is SDL3-free",
+            "Native MK_editor shell is SDL3-free",
             "MK_editor_shell_common",
             "add_executable(MK_editor"
         )
@@ -405,7 +405,7 @@ $editorInProcessRuntimeHostReviewChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "Native MK_editor shell skeleton is SDL3-free",
+            "Native MK_editor shell is SDL3-free",
             "MK_editor_shell_common",
             "add_executable(MK_editor"
         )
@@ -608,7 +608,7 @@ $editorGameModuleDriverLoadChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "Native MK_editor shell skeleton is SDL3-free",
+            "Native MK_editor shell is SDL3-free",
             "MK_editor_shell_common",
             "add_executable(MK_editor"
         )
@@ -879,7 +879,7 @@ $editorRuntimeScenePackageValidationExecutionChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "Native MK_editor shell skeleton is SDL3-free",
+            "Native MK_editor shell is SDL3-free",
             "MK_editor_shell_common",
             "add_executable(MK_editor"
         )
@@ -1104,7 +1104,7 @@ $editorProfilerTraceExportChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "Native MK_editor shell skeleton is SDL3-free",
+            "Native MK_editor shell is SDL3-free",
             "MK_editor_shell_common",
             "add_executable(MK_editor"
         )
@@ -1663,7 +1663,7 @@ $editorResourcePanelChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "Native MK_editor shell skeleton is SDL3-free",
+            "Native MK_editor shell is SDL3-free",
             "MK_editor_shell_common",
             "add_executable(MK_editor"
         )
@@ -1745,7 +1745,7 @@ $editorResourceCaptureRequestChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "Native MK_editor shell skeleton is SDL3-free",
+            "Native MK_editor shell is SDL3-free",
             "MK_editor_shell_common",
             "add_executable(MK_editor"
         )

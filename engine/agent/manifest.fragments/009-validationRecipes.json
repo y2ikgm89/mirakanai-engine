@@ -28,7 +28,7 @@
     {
       "name": "desktop-gui",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1",
-      "purpose": "Fail closed with the current visible-editor deferral message. The removed SDL3/Dear ImGui MK_editor shell is not an active build lane after SDL3 removal; MK_editor_core remains covered by the default validation lane."
+      "purpose": "Build and test the optional native Win32/Dear ImGui/Direct3D 12 MK_editor shell through the desktop-gui preset, including MK_editor_native_shell_tests and MK_editor_smoke. The default lane continues to cover MK_editor_core without GUI dependencies, and the GUI lane must remain SDL3-free with native handles private to editor implementation files."
     },
     {
       "name": "desktop-game-runtime",

@@ -5,4 +5,10 @@ $ErrorActionPreference = "Stop"
 
 . (Join-Path $PSScriptRoot "common.ps1")
 
-Write-Error "The native MK_editor shell has only the launch-contract skeleton in this phase. The Win32/Dear ImGui/D3D12 host and GUI smoke lane are not wired yet; use MK_editor_native_shell_tests for the current skeleton evidence. The final shell must remain SDL3-free."
+$null = Assert-VcpkgExecutable -Purpose "the native desktop GUI build"
+Set-MirakanaiVcpkgEnvironment | Out-Null
+$tools = Assert-CppBuildTools
+
+Invoke-CheckedCommand $tools.CMake --preset desktop-gui
+Invoke-CheckedCommand $tools.CMake --build --preset desktop-gui
+Invoke-CheckedCommand $tools.CTest --preset desktop-gui --output-on-failure

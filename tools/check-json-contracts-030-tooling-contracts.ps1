@@ -85,7 +85,7 @@ foreach ($forbiddenNeedle in @(
         "MK_platform_sdl3"
     )) {
     if ($editorCmakeContent.Contains($forbiddenNeedle)) {
-        Write-Error "native editor shell skeleton must remain SDL3-free: $forbiddenNeedle"
+        Write-Error "native editor shell must remain SDL3-free: $forbiddenNeedle"
     }
 }
 foreach ($requiredNeedle in @(
@@ -95,14 +95,18 @@ foreach ($requiredNeedle in @(
         "src/native_editor_app.cpp",
         "MK_editor_core",
         "MK_platform_win32",
+        "find_package(imgui CONFIG REQUIRED)",
+        "src/win32_imgui_d3d12_host.cpp",
+        "src/win32_imgui_message_bridge.cpp",
+        "imgui::imgui",
         "MK_ENABLE_DESKTOP_GUI is Windows-only",
         "MK_ENABLE_DESKTOP_GUI requires MK_platform_win32",
         "add_executable(MK_editor",
         "src/main.cpp",
-        "Native MK_editor shell skeleton is SDL3-free"
+        "Native MK_editor shell is SDL3-free"
     )) {
     if (-not $editorCmakeContent.Contains($requiredNeedle)) {
-        Write-Error "editor/CMakeLists.txt must expose the native editor shell skeleton contract: $requiredNeedle"
+        Write-Error "editor/CMakeLists.txt must expose the native editor shell contract: $requiredNeedle"
     }
 }
 
@@ -112,6 +116,8 @@ if ($rootCmakeContent.Contains("if(MK_ENABLE_DESKTOP_GUI)`r`n    set(MK_DESKTOP_
 }
 foreach ($requiredNeedle in @(
         "MK_editor_native_shell_tests",
+        "MK_editor_smoke",
+        "--smoke-resize",
         "tests/unit/editor_native_shell_tests.cpp",
         "MK_editor_shell_common"
     )) {
@@ -122,21 +128,48 @@ foreach ($requiredNeedle in @(
 
 $buildGuiScript = Get-Content -LiteralPath (Join-Path $root "tools/build-gui.ps1") -Raw
 foreach ($requiredNeedle in @(
-        "native MK_editor shell has only the launch-contract skeleton",
-        "Win32/Dear ImGui/D3D12 host and GUI smoke lane are not wired yet",
-        "MK_editor_native_shell_tests",
-        "SDL3-free"
+        "Assert-VcpkgExecutable",
+        "--preset desktop-gui",
+        "--build --preset desktop-gui",
+        "--output-on-failure"
     )) {
     if (-not $buildGuiScript.Contains($requiredNeedle)) {
-        Write-Error "tools/build-gui.ps1 must fail closed with the native editor skeleton message: $requiredNeedle"
+        Write-Error "tools/build-gui.ps1 must validate the native desktop GUI lane: $requiredNeedle"
     }
 }
 foreach ($forbiddenNeedle in @(
-        "--preset desktop-gui",
-        "--build --preset desktop-gui"
+        "visible editor shell is deferred",
+        "launch-contract skeleton",
+        "SDL3 removal"
     )) {
     if ($buildGuiScript.Contains($forbiddenNeedle)) {
-        Write-Error "tools/build-gui.ps1 must not configure or build the deferred SDL3/ImGui editor shell: $forbiddenNeedle"
+        Write-Error "tools/build-gui.ps1 must not keep deferred GUI wording: $forbiddenNeedle"
+    }
+}
+
+$applicationManifestFragment = Get-Content -LiteralPath (Join-Path $root "engine/agent/manifest.fragments/005-applications.json") -Raw
+foreach ($requiredNeedle in @(
+        "optional-native-win32-shell-active",
+        "Win32/Dear ImGui/Direct3D 12 implementation",
+        "tools/build-gui.ps1",
+        "tools/evaluate-cpp23.ps1 -Gui",
+        "must not depend on SDL3"
+    )) {
+    if (-not $applicationManifestFragment.Contains($requiredNeedle)) {
+        Write-Error "MK_editor application manifest must describe the active native editor shell: $requiredNeedle"
+    }
+}
+
+$validationRecipeManifestFragment =
+    Get-Content -LiteralPath (Join-Path $root "engine/agent/manifest.fragments/009-validationRecipes.json") -Raw
+foreach ($requiredNeedle in @(
+        "native Win32/Dear ImGui/Direct3D 12 MK_editor shell",
+        "MK_editor_native_shell_tests",
+        "MK_editor_smoke",
+        "SDL3-free"
+    )) {
+    if (-not $validationRecipeManifestFragment.Contains($requiredNeedle)) {
+        Write-Error "desktop-gui validation recipe must describe the active native editor shell: $requiredNeedle"
     }
 }
 
@@ -823,6 +856,7 @@ if ($validationRunnerCommand.Count -ne 1 -or $validationRunnerCommand[0].status 
             "public-api-boundary",
             "shader-toolchain",
             "desktop-game-runtime",
+            "desktop-gui",
             "desktop-runtime-sample-game-scene-gpu-package",
             "desktop-runtime-generated-material-shader-scaffold-package",
             "desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict",
@@ -833,7 +867,7 @@ if ($validationRunnerCommand.Count -ne 1 -or $validationRunnerCommand[0].status 
             Write-Error "engine manifest run-validation-recipe validationRecipes missing allowlisted recipe: $recipe"
         }
     }
-    if (@($validationRunnerCommand[0].validationRecipes).Count -ne 10) {
+    if (@($validationRunnerCommand[0].validationRecipes).Count -ne 11) {
         Write-Error "engine manifest run-validation-recipe validationRecipes must be exactly the reviewed allowlist"
     }
     if (@($validationRunnerCommand[0].requestModes | Where-Object { $_.id -eq "apply" -and $_.status -eq "ready" }).Count -gt 0) {

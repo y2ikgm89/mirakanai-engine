@@ -12,11 +12,14 @@ class NativeEditorApp {
     explicit NativeEditorApp(NativeEditorLaunchOptions options);
 
     [[nodiscard]] const NativeEditorLaunchOptions& options() const noexcept;
+    [[nodiscard]] std::uint32_t frames_recorded() const noexcept;
 
     [[nodiscard]] int run();
+    void record_native_frame() noexcept;
 
   private:
     NativeEditorLaunchOptions options_;
+    std::uint32_t frames_recorded_{0};
 };
 
 } // namespace mirakana::editor

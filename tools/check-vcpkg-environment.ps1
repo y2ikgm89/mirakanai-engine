@@ -137,8 +137,10 @@ if ([string]::IsNullOrWhiteSpace(`$pathValue) -or
     Assert-ContainsText $bootstrapContent "Get-VcpkgRoot" "bootstrap-deps.ps1 vcpkg root resolution"
     Assert-ContainsText $bootstrapContent "Get-VcpkgExecutablePath" "bootstrap-deps.ps1 vcpkg executable resolution"
     $buildGuiContent = Get-Content -LiteralPath (Join-Path $PSScriptRoot "build-gui.ps1") -Raw
-    Assert-ContainsText $buildGuiContent "native MK_editor shell has only the launch-contract skeleton" "build-gui.ps1 fail-closed native editor shell skeleton"
-    Assert-ContainsText $buildGuiContent "MK_editor_native_shell_tests" "build-gui.ps1 fail-closed native editor shell guidance"
+    Assert-ContainsText $buildGuiContent "Assert-VcpkgExecutable" "build-gui.ps1 vcpkg executable preflight"
+    Assert-ContainsText $buildGuiContent "--preset desktop-gui" "build-gui.ps1 native editor GUI configure"
+    Assert-ContainsText $buildGuiContent "--build --preset desktop-gui" "build-gui.ps1 native editor GUI build"
+    Assert-ContainsText $buildGuiContent "--output-on-failure" "build-gui.ps1 native editor GUI test"
     foreach ($script in @(
             "validate-desktop-game-runtime.ps1",
             "package-desktop-runtime.ps1",

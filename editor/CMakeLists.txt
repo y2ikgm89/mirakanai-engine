@@ -46,6 +46,7 @@ MK_apply_common_target_options(MK_editor_core)
 
 add_library(MK_editor_shell_common
     src/native_editor_launch.cpp
+    src/win32_imgui_descriptor_allocator.cpp
 )
 
 target_include_directories(MK_editor_shell_common
@@ -67,8 +68,12 @@ if(NOT TARGET MK_platform_win32)
     message(FATAL_ERROR "MK_ENABLE_DESKTOP_GUI requires MK_platform_win32")
 endif()
 
+find_package(imgui CONFIG REQUIRED)
+
 add_library(MK_editor_shell_win32
     src/native_editor_app.cpp
+    src/win32_imgui_d3d12_host.cpp
+    src/win32_imgui_message_bridge.cpp
 )
 
 target_include_directories(MK_editor_shell_win32
@@ -81,10 +86,13 @@ target_link_libraries(MK_editor_shell_win32
         MK_editor_core
         MK_editor_shell_common
         MK_platform_win32
+        imgui::imgui
+        d3d12
+        dxgi
 )
 
-# Native MK_editor shell skeleton is SDL3-free. The Win32/D3D12/ImGui host
-# lifecycle is added in the next phase; build-gui.ps1 remains fail-closed until then.
+# Native MK_editor shell is SDL3-free and uses private Win32/Dear ImGui/D3D12
+# lifecycle code behind the editor executable target.
 MK_apply_common_target_options(MK_editor_shell_win32)
 
 add_executable(MK_editor

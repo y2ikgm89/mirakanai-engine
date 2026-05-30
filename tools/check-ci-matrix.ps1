@@ -246,8 +246,9 @@ Assert-ContainsAll $cpp23EvaluationScript @(
     "cpp23-release-preset-eval",
     "Invoke-CheckedCommand `$tools.CMake --build --preset cpp23-release-eval --parallel `$effectiveJobs",
     "Invoke-CheckedCommand `$tools.CTest --preset cpp23-release-eval --output-on-failure --timeout 300 --parallel `$effectiveJobs",
-    "The C++23 GUI lane is deferred after SDL3 removal",
-    "first-party Win32/D3D12 adapters and must not depend on SDL3"
+    "cpp23-desktop-gui-eval",
+    "Invoke-CheckedCommand `$tools.CMake --build --preset cpp23-desktop-gui-eval --parallel `$effectiveJobs",
+    "Invoke-CheckedCommand `$tools.CTest --preset cpp23-desktop-gui-eval --output-on-failure --timeout 300 --parallel `$effectiveJobs"
 ) "tools/evaluate-cpp23.ps1 release artifact validation"
 Assert-DoesNotContainText $cpp23EvaluationScript "Resolve-Cpp23EvaluationJobCount" "tools/evaluate-cpp23.ps1 shared parallel job helper"
 Assert-DoesNotContainText $cpp23EvaluationScript "[Environment]::ProcessorCount" "tools/evaluate-cpp23.ps1 shared parallel job helper"
@@ -495,6 +496,7 @@ Assert-ContainsAll $windowsJob @(
     "restore-dev-build",
     "run: ./tools/bootstrap-deps.ps1",
     "run: ./tools/validate.ps1 -SkipStaticChecks -SkipTidySmoke",
+    "run: ./tools/build-gui.ps1",
     "run: ./tools/validate-network-enet.ps1",
     "Save vcpkg package cache",
     "Save vcpkg installed cache",

@@ -2587,13 +2587,13 @@ foreach ($field in @(
 foreach ($requiredAgentPath in @("games/CMakeLists.txt", "docs/README.md", "docs/current-capabilities.md", "docs/roadmap.md", "docs/workflows.md", "games/sample_headless/game.agent.json", "docs/ai-game-development.md", "docs/superpowers/plans/README.md", "docs/specs/README.md", "docs/specs/game-template.md", "docs/specs/generated-game-validation-scenarios.md", "docs/specs/game-prompt-pack.md")) { Resolve-RequiredAgentPath $requiredAgentPath | Out-Null }
 
 $editorCmake = Get-AgentSurfaceText "editor/CMakeLists.txt"
-foreach ($nativeEditorNeedle in @("add_library(MK_editor_shell_common", "src/native_editor_launch.cpp", "add_library(MK_editor_shell_win32", "add_executable(MK_editor", "MK_platform_win32", "MK_ENABLE_DESKTOP_GUI is Windows-only", "MK_ENABLE_DESKTOP_GUI requires MK_platform_win32", "Native MK_editor shell skeleton is SDL3-free")) {
-    Assert-ContainsText $editorCmake $nativeEditorNeedle "native editor shell skeleton contract"
+foreach ($nativeEditorNeedle in @("add_library(MK_editor_shell_common", "src/native_editor_launch.cpp", "add_library(MK_editor_shell_win32", "src/win32_imgui_d3d12_host.cpp", "src/win32_imgui_message_bridge.cpp", "imgui::imgui", "add_executable(MK_editor", "MK_platform_win32", "MK_ENABLE_DESKTOP_GUI is Windows-only", "MK_ENABLE_DESKTOP_GUI requires MK_platform_win32", "Native MK_editor shell is SDL3-free")) {
+    Assert-ContainsText $editorCmake $nativeEditorNeedle "native editor shell contract"
 }
 $editorMainText = Get-AgentSurfaceText "editor/src/main.cpp"
-foreach ($requiredNeedle in @("native_editor_launch.hpp", "native_editor_app.hpp", "parse_native_editor_launch", "validate_native_editor_launch", "native_editor_launch_usage_error_exit_code")) {
+foreach ($requiredNeedle in @("native_editor_launch.hpp", "native_editor_app.hpp", "win32_imgui_d3d12_host.hpp", "parse_native_editor_launch", "validate_native_editor_launch", "native_editor_launch_usage_error_exit_code", "editor_shell_status=ready", "editor_shell_sdl3=0")) {
     Assert-ContainsText $editorMainText $requiredNeedle "native editor shell main"
 }
 foreach ($forbiddenNeedle in @("SDL3", "SDL_", "ImGui_Impl", "imgui.h", "windows.h", "d3d12.h", "dxgi")) {
-    Assert-DoesNotContainText $editorMainText $forbiddenNeedle "native editor shell main skeleton"
+    Assert-DoesNotContainText $editorMainText $forbiddenNeedle "native editor shell main"
 }

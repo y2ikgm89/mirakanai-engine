@@ -428,7 +428,7 @@ Expected: `MK_editor` and `MK_editor_native_shell_tests` build, launch-option te
 - Modify: `editor/CMakeLists.txt`
 - Modify: `tests/unit/editor_native_shell_tests.cpp`
 
-- [ ] **Step 1: Re-check upstream ImGui DX12 initialization shape**
+- [x] **Step 1: Re-check upstream ImGui DX12 initialization shape**
 
 Confirm the current `ImGui_ImplDX12_InitInfo` fields and descriptor allocation callback requirements from upstream docs/source before coding this phase.
 
@@ -439,7 +439,7 @@ Checked upstream Dear ImGui Win32 + DirectX 12 backend on <date>.
 ImGui_ImplDX12_InitInfo requires Device, CommandQueue, NumFramesInFlight, RTVFormat, SrvDescriptorHeap, SrvDescriptorAllocFn, and SrvDescriptorFreeFn.
 ```
 
-- [ ] **Step 2: Write RED descriptor allocator tests**
+- [x] **Step 2: Write RED descriptor allocator tests**
 
 Extend `tests/unit/editor_native_shell_tests.cpp` with:
 
@@ -452,11 +452,11 @@ Extend `tests/unit/editor_native_shell_tests.cpp` with:
 
 Expected initial build failure: `EditorImguiDescriptorAllocatorPlan` or equivalent private allocator types do not exist.
 
-- [ ] **Step 3: Implement descriptor allocator**
+- [x] **Step 3: Implement descriptor allocator**
 
 Create a private allocator that stores CPU/GPU base handles, descriptor size, capacity, and free indices. It returns stable slot rows for ImGui backend callbacks and records exhaustion as a diagnostic. Keep native D3D12 handle fields only in `editor/src` private headers.
 
-- [ ] **Step 4: Implement message bridge**
+- [x] **Step 4: Implement message bridge**
 
 Create a private WndProc bridge that:
 
@@ -469,7 +469,7 @@ does not expose HWND or WNDPROC outside editor/src.
 
 The bridge may use `win32::Win32Window::native_window_token()` inside `editor/src` and cast it to `HWND` privately.
 
-- [ ] **Step 5: Implement D3D12 host lifecycle**
+- [x] **Step 5: Implement D3D12 host lifecycle**
 
 Create `Win32ImguiD3d12Host` with private methods:
 
@@ -504,7 +504,7 @@ ImGui_ImplWin32_Shutdown
 ImGui::DestroyContext
 ```
 
-- [ ] **Step 6: Use WARP fallback only as a recorded host diagnostic**
+- [x] **Step 6: Use WARP fallback only as a recorded host diagnostic**
 
 If hardware adapter creation fails, the editor host may use WARP for smoke validation. Record selected adapter kind in a private smoke result row. Do not claim hardware graphics readiness from WARP.
 
@@ -522,7 +522,7 @@ Expected: private tests pass and clang-tidy accepts the new editor host sources.
 
 **Done When:** The private host can initialize ImGui + D3D12 resources, render an empty frame, present, resize, and shut down without leaking native handles into public headers.
 
-**Phase Evidence:** Not started.
+**Phase Evidence:** Candidate 3 in progress. Checked current Dear ImGui Win32 + DirectX 12 backend documentation/source on 2026-05-30; `ImGui_ImplDX12_InitInfo` is used with `Device`, `CommandQueue`, `NumFramesInFlight`, `RTVFormat`, `SrvDescriptorHeap`, `SrvDescriptorAllocFn`, and `SrvDescriptorFreeFn`. Added private `Win32ImguiDescriptorAllocator`, `Win32ImguiMessageBridge`, and `Win32ImguiD3d12Host` under `editor/src` without public Win32/D3D12/ImGui handle exposure. Local evidence so far: `tools/check-toolchain.ps1`, `tools/cmake.ps1 --preset dev`, `tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests`, `tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_native_shell_tests`, and `tools/check-tidy.ps1 -Files editor/src/native_editor_launch.cpp,editor/src/win32_imgui_descriptor_allocator.cpp,tests/unit/editor_native_shell_tests.cpp` passed. Local `desktop-gui` configure remains dependency-blocked because the linked worktree `vcpkg_installed` tree does not contain `imgui`; `tools/bootstrap-deps.ps1` is policy-gated in this no-approval session, so hosted Windows CI is the required GUI compile/smoke proof for this candidate.
 
 ## Phase 4 - Smoke-Launchable `MK_editor`
 
@@ -538,7 +538,7 @@ Expected: private tests pass and clang-tidy accepts the new editor host sources.
 - Modify: `tools/build-gui.ps1`
 - Modify: `tools/evaluate-cpp23.ps1`
 
-- [ ] **Step 1: Add an editor smoke CTest**
+- [x] **Step 1: Add an editor smoke CTest**
 
 Register a Windows-only CTest named `MK_editor_smoke` that runs:
 
@@ -548,7 +548,7 @@ $<TARGET_FILE:MK_editor> --smoke-frames 2 --no-user-config
 
 Expected initial result before full host wiring: test fails because `MK_editor` does not complete the smoke frame loop.
 
-- [ ] **Step 2: Implement smoke frame loop**
+- [x] **Step 2: Implement smoke frame loop**
 
 The smoke loop must:
 
@@ -560,7 +560,7 @@ return exit code 0 when N frames complete,
 return nonzero with a bounded diagnostic when native initialization fails.
 ```
 
-- [ ] **Step 3: Replace fail-closed build script**
+- [x] **Step 3: Replace fail-closed build script**
 
 Change `tools/build-gui.ps1` to:
 
@@ -575,7 +575,7 @@ Invoke-CheckedCommand $tools.CMake --build --preset desktop-gui
 Invoke-CheckedCommand $tools.CTest --preset desktop-gui --output-on-failure
 ```
 
-- [ ] **Step 4: Restore C++23 GUI evaluation**
+- [x] **Step 4: Restore C++23 GUI evaluation**
 
 Change `tools/evaluate-cpp23.ps1 -Gui` so it configures, builds, and tests `cpp23-desktop-gui-eval` instead of emitting the deferral message.
 
@@ -592,7 +592,7 @@ Expected: both commands pass and include `MK_editor_smoke`.
 
 **Done When:** A real `MK_editor` process can launch the native shell, render deterministic smoke frames, and exit successfully through supported wrappers.
 
-**Phase Evidence:** Not started.
+**Phase Evidence:** Candidate 3 in progress. `MK_editor_smoke` now runs `MK_editor --smoke-frames 2 --smoke-resize --no-user-config` and requires `editor_shell_status=ready`; smoke output also reports `editor_shell_sdl3=0`, frame count, resize count, and adapter kind. `tools/build-gui.ps1` now configures/builds/tests `desktop-gui`, `tools/evaluate-cpp23.ps1 -Gui` targets `cpp23-desktop-gui-eval`, and the Windows MSVC workflow runs `tools/build-gui.ps1` after dependency bootstrap. Local GUI execution is deferred to hosted CI for the same `imgui` bootstrap blocker recorded in Phase 3.
 
 ## Phase 5 - Core-Backed Editor Panels
 
@@ -881,7 +881,7 @@ Expected: material preview status is deterministic and native handles remain pri
 - Modify: `.claude/skills/gameengine-editor/SKILL.md`
 - Modify: `.cursor/skills/gameengine-editor/SKILL.md` if present.
 
-- [ ] **Step 1: Replace fail-closed needles**
+- [x] **Step 1: Replace fail-closed needles**
 
 Remove active checks that require:
 
@@ -900,7 +900,7 @@ imgui win32-binding dx12-binding
 
 Keep historical references only in archive/plan evidence where static checks allow historical prose.
 
-- [ ] **Step 2: Update manifest module status**
+- [x] **Step 2: Update manifest module status**
 
 Change the `MK_editor` manifest row from `visible-shell-deferred-during-sdl3-removal` to a precise status such as:
 
@@ -915,7 +915,7 @@ Ready: Win32 window, Dear ImGui Win32/D3D12 backend, smoke frames, core-backed p
 Unsupported or later: cross-platform editor shells, full viewport display if Phase 7 is diagnostic-only, broad material preview GPU parity if Phase 8 is diagnostic-only, docking/multi-viewport unless separately selected.
 ```
 
-- [ ] **Step 3: Compose and verify agent surfaces**
+- [x] **Step 3: Compose and verify agent surfaces**
 
 Run:
 
@@ -930,7 +930,7 @@ Expected: generated manifest and AI surface checks pass.
 
 **Done When:** Static checks no longer require the deferred shell and now guard the native Win32 editor shell truth.
 
-**Phase Evidence:** Not started.
+**Phase Evidence:** Candidate 3 updated deferred-shell needles to native-shell readiness guards for the host/smoke/build-gui slice. `engine/agent/manifest.fragments/005-applications.json`, `009-validationRecipes.json`, `010-aiOperableProductionLoop.json`, and `015-aiDrivenGameWorkflow.json` were updated and `engine/agent/manifest.json` was regenerated. `tools/check-json-contracts-030-tooling-contracts.ps1`, `tools/check-ai-integration-020-engine-manifest.ps1`, and `tools/check-validation-recipe-runner.ps1` now guard the active `desktop-gui` validation recipe and run-validation allowlist. Evidence passed: `tools/compose-agent-manifest.ps1 -Write`, `tools/check-validation-recipe-runner.ps1`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, and `tools/check-agents.ps1`.
 
 ## Phase 10 - Documentation, Validation Closeout, And Publication
 

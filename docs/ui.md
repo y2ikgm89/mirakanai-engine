@@ -46,9 +46,9 @@ Adapters may depend on platform SDKs or audited third-party libraries only after
 
 ## Dear ImGui Role
 
-Dear ImGui is no longer declared by the active build or vcpkg feature set while the desktop platform cleanup milestone is in progress. It remains a possible future developer/editor/debug-shell dependency only after a separate dependency and adapter review. It is not the production game UI foundation and must not be required by generated game runtime code.
+Dear ImGui is declared only by the optional `desktop-gui` feature for the native Win32/D3D12 editor/developer shell. It is not the production game UI foundation and must not be required by generated game runtime code.
 
-The visible `mirakana_editor` shell is deferred after removal of the old third-party desktop shell. Durable panel state remains in `editor/core`; future high-complexity panels should be modeled through `mirakana_editor_ui` first, then rendered by a first-party platform/rendering adapter.
+The visible `MK_editor` shell keeps Dear ImGui, Win32, D3D12, DXGI, swapchains, descriptor heaps, fences, and message bridging in private `editor/src` implementation files. Durable panel state remains in `editor/core`; high-complexity panels should be modeled through `mirakana_editor_ui` first, then rendered by a first-party platform/rendering adapter.
 
 ## Middleware Policy
 
