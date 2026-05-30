@@ -5,4 +5,4 @@ $ErrorActionPreference = "Stop"
 
 . (Join-Path $PSScriptRoot "common.ps1")
 
-Write-Error "The visible editor shell is deferred after SDL3 removal. MK_editor_core remains available through the default validation lane; a future MK_editor shell must use first-party Win32/D3D12 adapters and must not depend on SDL3."
+Write-Error "The native MK_editor shell has only the launch-contract skeleton in this phase. The Win32/Dear ImGui/D3D12 host and GUI smoke lane are not wired yet; use MK_editor_native_shell_tests for the current skeleton evidence. The final shell must remain SDL3-free."

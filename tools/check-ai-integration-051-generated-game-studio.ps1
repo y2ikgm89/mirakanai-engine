@@ -34,9 +34,9 @@ $generatedGameStudioChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "MK_editor visible shell is deferred after SDL3 removal",
-            "MK_editor_core remains the supported editor logic target",
-            "must not depend on SDL3"
+            "Native MK_editor shell skeleton is SDL3-free",
+            "MK_editor_shell_common",
+            "add_executable(MK_editor"
         )
     },
     @{

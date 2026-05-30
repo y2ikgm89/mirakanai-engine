@@ -16,11 +16,13 @@
 
 ## Status
 
-Proposed long-running milestone. This plan does not become `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` until a separate manifest selection change explicitly points at it.
+**Status:** Active.
+
+Selected as the long-running milestone for restoring the native editor shell. `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` points at this plan while its candidate PRs are implemented, validated, published, and merged.
 
 ## Current Baseline
 
-The completed `First-Party Desktop Platform And SDL3 Removal v1` milestone removed the old SDL3/Dear ImGui shell from active build lanes. Current baseline behavior is intentionally fail-closed:
+The completed `First-Party Desktop Platform And SDL3 Removal v1` milestone removed the old SDL3/Dear ImGui shell from active build lanes. At plan creation, baseline behavior was intentionally fail-closed:
 
 - `editor/CMakeLists.txt` emits `MK_editor visible shell is deferred after SDL3 removal` when `MK_ENABLE_DESKTOP_GUI=ON`.
 - `tools/build-gui.ps1` exits with the same deferral message.
@@ -29,6 +31,12 @@ The completed `First-Party Desktop Platform And SDL3 Removal v1` milestone remov
 - `MK_editor_core` remains supported and validated by the default lane.
 
 This plan replaces that deferred state with a new native Windows editor shell. It must not resurrect any deleted SDL3 source, target, vcpkg feature, runtime DLL expectation, generated-game hook, or compatibility alias.
+
+Current execution state:
+
+- Phase 1 completed the audited `desktop-gui` Dear ImGui Win32/DX12 dependency gate through PR #316.
+- Phase 2 replaces the old CMake deferral with a minimal Windows-only `MK_editor` launch-contract skeleton and `MK_editor_native_shell_tests`.
+- `tools/build-gui.ps1` remains fail-closed until Phase 3/4 wires the Win32/Dear ImGui/D3D12 host and GUI smoke lane; its current message points operators at `MK_editor_native_shell_tests`.
 
 ## Official Source Refresh Gate
 
@@ -149,7 +157,7 @@ Run:
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1
 ```
 
-Expected: nonzero exit with `visible editor shell is deferred after SDL3 removal`.
+Expected at plan creation: nonzero exit with `visible editor shell is deferred after SDL3 removal`. After Phase 2, the expected fail-closed message is the launch-contract skeleton message until the native host and GUI smoke lane are wired.
 
 - [ ] **Step 3: Inventory deferred editor needles**
 
@@ -175,7 +183,7 @@ Expected: manifest composition and AI integration checks pass.
 
 **Done When:** The baseline is validated, deferred GUI references are inventoried, and this plan is either still Proposed or explicitly selected in manifest fragments.
 
-**Phase Evidence:** Candidate boundaries selected in `codex/native-win32-editor-dependency-gate-v1`; linked worktree prepared with `tools/prepare-worktree.ps1`, vcpkg/CMake/Dear ImGui official documentation rechecked, and local static baseline checks passed.
+**Phase Evidence:** Candidate boundaries selected in `codex/native-win32-editor-dependency-gate-v1`; linked worktree prepared with `tools/prepare-worktree.ps1`, vcpkg/CMake/Dear ImGui official documentation rechecked, local static baseline checks passed, and the active milestone pointer is being moved to this plan in `codex/native-win32-editor-shell-skeleton-v1`.
 
 ## Phase 1 - Dear ImGui Dependency, Legal, And Policy Gate
 
@@ -261,7 +269,7 @@ Expected: vcpkg installs the selected imgui feature set, dependency policy passe
 
 **Done When:** `desktop-gui` has an audited Dear ImGui Win32/DX12 dependency and no SDL3 dependency can enter through policy.
 
-**Phase Evidence:** In progress in candidate `codex/native-win32-editor-dependency-gate-v1`. Static policy, JSON contract, format, vcpkg environment, and AI integration checks pass locally. `tools/bootstrap-deps.ps1` is still blocked in this no-approval Codex session by dependency-bootstrap command policy, so Dear ImGui package install evidence is not complete yet.
+**Phase Evidence:** Completed through PR #316 / merge commit `b1a55f6d52d86bcb4cfde8134592b23fff5bf4c5` from candidate `codex/native-win32-editor-dependency-gate-v1`. Local validation passed static policy, JSON contract, format, vcpkg environment, AI integration, and full `tools/validate.ps1`; local `tools/bootstrap-deps.ps1` remained prompt-gated in the no-approval Codex session, while hosted Windows MSVC evidence covered dependency bootstrap and `PR Gate` passed.
 
 ## Phase 2 - Private Native Shell Skeleton And Tests
 
@@ -290,7 +298,7 @@ Add `tests/unit/editor_native_shell_tests.cpp` with tests that require these pri
 // - editor native shell launch options reject negative smoke frames
 ```
 
-Expected initial build failure: `NativeEditorLaunchOptions`, `parse_native_editor_launch_options`, or `validate_native_editor_launch_options` does not exist.
+Expected initial build failure: `NativeEditorLaunchOptions`, `NativeEditorLaunchParseResult`, `parse_native_editor_launch`, or `validate_native_editor_launch` does not exist.
 
 - [ ] **Step 2: Build RED target**
 
@@ -322,9 +330,14 @@ struct NativeEditorLaunchValidation {
     std::string diagnostic;
 };
 
-[[nodiscard]] NativeEditorLaunchOptions parse_native_editor_launch_options(int argc, char** argv);
-[[nodiscard]] NativeEditorLaunchValidation validate_native_editor_launch_options(
-    const NativeEditorLaunchOptions& options);
+struct NativeEditorLaunchParseResult {
+    NativeEditorLaunchOptions options;
+    std::vector<std::string> diagnostics;
+};
+
+[[nodiscard]] NativeEditorLaunchParseResult parse_native_editor_launch(int argc, char** argv);
+[[nodiscard]] NativeEditorLaunchValidation validate_native_editor_launch(const NativeEditorLaunchParseResult& launch);
+[[nodiscard]] constexpr int native_editor_launch_usage_error_exit_code() noexcept;
 
 } // namespace mirakana::editor
 ```
@@ -332,6 +345,9 @@ struct NativeEditorLaunchValidation {
 Validation rules:
 
 ```text
+unknown options are rejected
+missing option values are rejected
+non-numeric option values are rejected
 width > 0
 height > 0
 smoke_frames == -1 or smoke_frames > 0
@@ -343,29 +359,42 @@ no native handles in the launch contract
 Change `editor/CMakeLists.txt` so `MK_ENABLE_DESKTOP_GUI=ON` creates:
 
 ```cmake
-find_package(imgui CONFIG REQUIRED)
+add_library(MK_editor_shell_common
+    src/native_editor_launch.cpp
+)
+
+if(NOT MK_ENABLE_DESKTOP_GUI)
+    return()
+endif()
+
+if(NOT WIN32)
+    message(FATAL_ERROR "MK_ENABLE_DESKTOP_GUI is Windows-only for the native Win32 editor shell")
+endif()
+
+if(NOT TARGET MK_platform_win32)
+    message(FATAL_ERROR "MK_ENABLE_DESKTOP_GUI requires MK_platform_win32")
+endif()
 
 add_library(MK_editor_shell_win32
-    src/native_editor_launch.cpp
     src/native_editor_app.cpp
 )
 
 target_link_libraries(MK_editor_shell_win32
     PRIVATE
         MK_editor_core
+        MK_editor_shell_common
         MK_platform_win32
-        imgui::imgui
 )
 
 add_executable(MK_editor src/main.cpp)
 target_link_libraries(MK_editor PRIVATE MK_editor_shell_win32)
 ```
 
-Keep all includes `PRIVATE`; do not install `editor/src` headers.
+Keep all native shell includes private to build targets; do not install `editor/src` headers. The launch-contract skeleton intentionally does not consume `imgui::imgui` until Phase 3 wires the Dear ImGui backend lifecycle.
 
 - [ ] **Step 5: Add thin executable entrypoint**
 
-Create `editor/src/main.cpp` so it parses options, validates them, prints a diagnostic to `stderr` on invalid input, and returns nonzero before native window creation. At this phase, a valid invocation may return success after validation while the host is not wired.
+Create `editor/src/main.cpp` so it parses options, validates them, prints a diagnostic plus usage to `stderr` on invalid input, and returns deterministic usage-error exit code `2` before native window creation. At this phase, a valid invocation may return success after validation while the host is not wired.
 
 - [ ] **Step 6: Prove skeleton tests pass**
 
@@ -382,7 +411,7 @@ Expected: `MK_editor` and `MK_editor_native_shell_tests` build, launch-option te
 
 **Done When:** `MK_editor` exists as a Windows-only target again, but only validates launch options and carries no SDL3 or public native-handle surface.
 
-**Phase Evidence:** Not started.
+**Phase Evidence:** Completed locally in candidate `codex/native-win32-editor-shell-skeleton-v1`. RED build failed before the parse-result contract existed; GREEN evidence includes `tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests`, `tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_native_shell_tests`, `tools/cmake.ps1 --preset desktop-gui`, `tools/cmake.ps1 --build --preset desktop-gui --target MK_editor MK_editor_native_shell_tests`, `tools/ctest.ps1 --preset desktop-gui --output-on-failure -R MK_editor_native_shell_tests`, an `MK_editor.exe --width wide` invalid-launch smoke returning exit code 2, focused static checks, and full `tools/validate.ps1` with 85/85 tests passing. The implementation keeps the launch-contract skeleton dependency-free until the Phase 3 Dear ImGui backend lifecycle is introduced, rejects malformed CLI input before any future interactive window path, and makes non-Windows `MK_ENABLE_DESKTOP_GUI` failure explicit, so `desktop-gui` can build `MK_editor` locally even when dependency bootstrap is prompt-gated.
 
 ## Phase 3 - Win32 + Dear ImGui + D3D12 Host
 
