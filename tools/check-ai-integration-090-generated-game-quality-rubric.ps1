@@ -39,10 +39,6 @@ $generatedGameQualityRubricChecks = @(
     @{
         Path = ".claude/skills/gameengine-game-development/SKILL.md"
         Needles = @("aiWorkflow.generatedGameQualityRubric", "subjective fun", "broad production readiness")
-    },
-    @{
-        Path = ".cursor/skills/gameengine-game-development/SKILL.md"
-        Needles = @("aiWorkflow.generatedGameQualityRubric", "subjective fun", "broad production readiness")
     }
 )
 

@@ -129,6 +129,64 @@ function Assert-DoesNotContainText($text, $needle, $label) {
     }
 }
 
+$script:cursorThinRouterSkillCodexTwinMap = @{
+    "gameengine-agent-integration"         = ".agents/skills/gameengine-agent-integration/SKILL.md"
+    "gameengine-cmake-build-system"        = ".agents/skills/cmake-build-system/SKILL.md"
+    "gameengine-debugging"                 = ".agents/skills/cpp-engine-debugging/SKILL.md"
+    "gameengine-editor"                    = ".agents/skills/editor-change/SKILL.md"
+    "gameengine-feature"                   = ".agents/skills/gameengine-feature/SKILL.md"
+    "gameengine-game-development"          = ".agents/skills/gameengine-game-development/SKILL.md"
+    "gameengine-git-publication-preflight" = ".agents/skills/gameengine-git-publication-preflight/SKILL.md"
+    "gameengine-license-audit"             = ".agents/skills/license-audit/SKILL.md"
+    "gameengine-rendering"                 = ".agents/skills/rendering-change/SKILL.md"
+}
+
+$script:cursorThinRouterSkillExceptions = @(
+    "gameengine-cursor-baseline",
+    "gameengine-plan-registry"
+)
+
+$script:cursorThinRouterSkillFullGuidance = @(
+    "gameengine-game-development",
+    "gameengine-editor",
+    "gameengine-rendering"
+)
+
+function Assert-CursorThinRouterSkill {
+    param(
+        [Parameter(Mandatory)][string]$CursorSkillFolder
+    )
+
+    if ($script:cursorThinRouterSkillExceptions -contains $CursorSkillFolder) {
+        return
+    }
+
+    $cursorRelativePath = ".cursor/skills/$CursorSkillFolder/SKILL.md"
+    $cursorText = Get-Content -LiteralPath (Resolve-RequiredAgentPath $cursorRelativePath) -Raw
+    Assert-ContainsText $cursorText ".claude/skills/$CursorSkillFolder/SKILL.md" $cursorRelativePath
+    Assert-ContainsText $cursorText "AGENTS.md" $cursorRelativePath
+
+    if ($script:cursorThinRouterSkillFullGuidance -contains $CursorSkillFolder) {
+        Assert-ContainsText $cursorText ".claude/skills/$CursorSkillFolder/references/full-guidance.md" $cursorRelativePath
+    }
+
+    if ($script:cursorThinRouterSkillCodexTwinMap.ContainsKey($CursorSkillFolder)) {
+        Assert-ContainsText $cursorText $script:cursorThinRouterSkillCodexTwinMap[$CursorSkillFolder] $cursorRelativePath
+    }
+}
+
+function Assert-AllCursorThinRouterSkills {
+    $cursorSkillRoot = Resolve-RequiredAgentPath ".cursor/skills"
+    Get-ChildItem -LiteralPath $cursorSkillRoot -Directory | ForEach-Object {
+        $folderName = $_.Name
+        if ($folderName -notmatch '^gameengine-') {
+            return
+        }
+
+        Assert-CursorThinRouterSkill -CursorSkillFolder $folderName
+    }
+}
+
 function Assert-MatchesText($text, $pattern, $label) {
     if (-not [System.Text.RegularExpressions.Regex]::IsMatch($text, $pattern, [System.Text.RegularExpressions.RegexOptions]::Singleline)) {
         Write-Error "$label did not match expected pattern: $pattern"

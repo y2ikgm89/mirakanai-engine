@@ -183,14 +183,6 @@ $aiGameDesignSpecChecks = @(
             "validation recipe ids",
             "same-manifest package targets"
         )
-    },
-    @{
-        Path = ".cursor/skills/gameengine-game-development/SKILL.md"
-        Needles = @(
-            "game.agent.json.aiWorkflow.gameDesignSpec",
-            "validation recipe ids",
-            "same-manifest package targets"
-        )
     }
 )
 foreach ($check in $aiGameDesignSpecChecks) {
@@ -270,14 +262,6 @@ $aiGameGenerationOrchestratorChecks = @(
     },
     @{
         Path = ".claude/skills/gameengine-game-development/SKILL.md"
-        Needles = @(
-            "tools/create-game-recipe.ps1",
-            "plannedFiles",
-            "arbitrary shell text"
-        )
-    },
-    @{
-        Path = ".cursor/skills/gameengine-game-development/SKILL.md"
         Needles = @(
             "tools/create-game-recipe.ps1",
             "plannedFiles",
@@ -391,14 +375,6 @@ $aiSafeContentMutationLedgerChecks = @(
             "register-runtime-package-files.ps1",
             "games/CMakeLists.txt"
         )
-    },
-    @{
-        Path = ".cursor/skills/gameengine-game-development/SKILL.md"
-        Needles = @(
-            "game.agent.json.aiWorkflow.contentMutationLedger",
-            "register-runtime-package-files.ps1",
-            "games/CMakeLists.txt"
-        )
     }
 )
 foreach ($check in $aiSafeContentMutationLedgerChecks) {
@@ -498,14 +474,6 @@ $aiPlaceholderAssetPipelineChecks = @(
     },
     @{
         Path = ".claude/skills/gameengine-game-development/SKILL.md"
-        Needles = @(
-            "game.agent.json.aiWorkflow.placeholderAssetPipeline",
-            "first-party placeholder assets",
-            "no external asset downloads"
-        )
-    },
-    @{
-        Path = ".cursor/skills/gameengine-game-development/SKILL.md"
         Needles = @(
             "game.agent.json.aiWorkflow.placeholderAssetPipeline",
             "first-party placeholder assets",
@@ -614,14 +582,6 @@ $aiGeneratedGamePlaytestLoopChecks = @(
             "failure classification",
             "no validation weakening"
         )
-    },
-    @{
-        Path = ".cursor/skills/gameengine-game-development/SKILL.md"
-        Needles = @(
-            "game.agent.json.aiWorkflow.generatedGamePlaytestLoop",
-            "failure classification",
-            "no validation weakening"
-        )
     }
 )
 foreach ($check in $aiGeneratedGamePlaytestLoopChecks) {
@@ -642,8 +602,7 @@ $aiValidationRemediationRecipesChecks = @(
     @{ Path = "docs/superpowers/master-plans/production-completion-v1/04-developer-owned-engine-capability-backlog.md"; Needles = @("ai-validation-remediation-recipes-v1", "implemented-1x-foundation", "game.agent.json.aiWorkflow.validationRemediationRecipes") },
     @{ Path = "engine/agent/manifest.json"; Needles = @("AI Validation Remediation Recipes v1", "aiWorkflow.validationRemediationRecipes", "common missing package file, invalid reference, host gate, shader/tool gap, counter mismatch, and runtime package load failures") },
     @{ Path = ".agents/skills/gameengine-game-development/SKILL.md"; Needles = @("game.agent.json.aiWorkflow.validationRemediationRecipes", "rerun selected validation recipes", "no validation weakening") },
-    @{ Path = ".claude/skills/gameengine-game-development/SKILL.md"; Needles = @("game.agent.json.aiWorkflow.validationRemediationRecipes", "rerun selected validation recipes", "no validation weakening") },
-    @{ Path = ".cursor/skills/gameengine-game-development/SKILL.md"; Needles = @("game.agent.json.aiWorkflow.validationRemediationRecipes", "rerun selected validation recipes", "no validation weakening") }
+    @{ Path = ".claude/skills/gameengine-game-development/SKILL.md"; Needles = @("game.agent.json.aiWorkflow.validationRemediationRecipes", "rerun selected validation recipes", "no validation weakening") }
 )
 foreach ($check in $aiValidationRemediationRecipesChecks) {
     $remediationRecipesText = Get-AgentSurfaceText $check.Path

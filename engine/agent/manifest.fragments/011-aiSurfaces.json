@@ -12,6 +12,7 @@
         "gameengine-agent-integration",
         "gameengine-feature",
         "gameengine-game-development",
+        "gameengine-git-publication-preflight",
         "license-audit",
         "rendering-change"
       ],
@@ -52,6 +53,7 @@
         "gameengine-editor",
         "gameengine-feature",
         "gameengine-game-development",
+        "gameengine-git-publication-preflight",
         "gameengine-license-audit",
         "gameengine-rendering"
       ],
@@ -87,6 +89,7 @@
         "gameengine-editor",
         "gameengine-feature",
         "gameengine-game-development",
+        "gameengine-git-publication-preflight",
         "gameengine-license-audit",
         "gameengine-plan-registry",
         "gameengine-rendering"
@@ -189,7 +192,7 @@
         {
           "id": "cursor-rules-agents-md",
           "surface": "cursor",
-          "url": "https://docs.cursor.com/en/context",
+          "url": "https://cursor.com/docs/rules",
           "appliesTo": [
             ".cursor/rules",
             "AGENTS.md",

@@ -35,7 +35,7 @@ paths:
 
 ## Do Not
 
-Do not add third-party dependencies or assets without updating `docs/dependencies.md`, `vcpkg.json`, and `THIRD_PARTY_NOTICES.md`.
+Do not add third-party dependencies or assets without updating `docs/dependencies.md`, `docs/legal-and-licensing.md`, `vcpkg.json`, and `THIRD_PARTY_NOTICES.md`.
 Do not reintroduce configure-time vcpkg restore/install or move optional feature selection into CMake presets.
 Do not add compatibility shims for old C++ standards.
 Do not add tests that merely mirror implementation details, duplicate an existing guarantee, or over-specify incidental ordering.
