@@ -36,11 +36,11 @@ This document expands validation, tooling, editor-shell, and IDE-integration gui
 - Direct `cmake --preset ...` commands assume CMake is on `PATH`; repository wrappers remain the preferred local loop because they use the resolved full path reported by `check-toolchain.ps1` and normalize before launch, while CMake presets also normalize the configure/build environment for raw preset commands.
 - Direct `clang-format --dry-run ...` commands assume `clang-format` is on `PATH`; repository format wrappers use the resolved tool reported by `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1`, including Visual Studio Build Tools LLVM tools when available.
 
-## Deferred visible editor shell (`MK_editor`)
+## Native visible editor shell (`MK_editor`)
 
-The visible `MK_editor` shell is deferred after SDL3 removal. The removed SDL3/Dear ImGui shell sources (`editor/src/main.cpp`, `editor/src/material_preview_gpu_cache.cpp`, `editor/src/sdl_viewport_texture.cpp`, and editor-local `compile_flags.txt` fallbacks) are no longer active guidance. `MK_editor_core` remains the supported editor logic target and is covered by the default validation lane.
+The visible `MK_editor` shell is restored as a Windows-native Win32 + Dear ImGui + Direct3D 12 developer/editor shell. The removed SDL3/Dear ImGui shell sources (`editor/src/material_preview_gpu_cache.cpp`, `editor/src/sdl_viewport_texture.cpp`, and editor-local `compile_flags.txt` fallbacks) are no longer active guidance. `MK_editor_core` remains the supported editor logic target and is covered by the default validation lane.
 
-Future visible editor shell work must start from a focused native shell plan, use first-party Win32/D3D12 adapters, keep backend handles private, and add its own ImGui/native-adapter coding conventions plus validation gates before claiming editor readiness. Until then, `tools/build-gui.ps1`, `tools/evaluate-cpp23.ps1 -Gui`, and `MK_ENABLE_DESKTOP_GUI=ON` intentionally fail closed instead of rebuilding an SDL3/Dear ImGui lane.
+Native editor shell work must keep Win32, Dear ImGui, Direct3D 12, DXGI, and descriptor/fence ownership private to `editor/src` implementation targets. Use `tools/build-gui.ps1` for the supported GUI validation lane and keep `tools/evaluate-cpp23.ps1 -Gui` aligned with the `cpp23-desktop-gui-eval` preset. The shell remains editor/developer tooling only; runtime game UI must use first-party `mirakana_ui` contracts and must not depend on Dear ImGui or SDL3.
 
 ## AI development workflow (expanded)
 

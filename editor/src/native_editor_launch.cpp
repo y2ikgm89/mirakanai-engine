@@ -68,6 +68,8 @@ NativeEditorLaunchParseResult parse_native_editor_launch(int argc, char** argv) 
         const auto token = argv_token(argc, argv, index);
         if (token == "--no-user-config") {
             result.options.no_user_config = true;
+        } else if (token == "--smoke-resize") {
+            result.options.smoke_resize = true;
         } else if (token_requires_value(token)) {
             if (index + 1 >= argc) {
                 result.diagnostics.push_back(missing_value_diagnostic(token));
@@ -115,6 +117,10 @@ NativeEditorLaunchValidation validate_native_editor_launch_options(const NativeE
             .valid = false,
             .diagnostic = "native editor smoke frames must be -1 for interactive mode or a positive frame count"};
     }
+    if (options.smoke_resize && options.smoke_frames < 2) {
+        return NativeEditorLaunchValidation{.valid = false,
+                                            .diagnostic = "native editor smoke resize requires at least two frames"};
+    }
     return NativeEditorLaunchValidation{.valid = true, .diagnostic = {}};
 }
 
@@ -133,7 +139,8 @@ std::string native_editor_launch_usage(std::string_view executable_name) {
     usage.reserve(executable_name.size() + 128U);
     usage.append("usage: ");
     usage.append(executable_name);
-    usage.append(" [--width <pixels>] [--height <pixels>] [--smoke-frames <count>] [--no-user-config]");
+    usage.append(
+        " [--width <pixels>] [--height <pixels>] [--smoke-frames <count>] [--smoke-resize] [--no-user-config]");
     return usage;
 }
 

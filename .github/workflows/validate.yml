@@ -224,6 +224,10 @@ jobs:
         shell: pwsh
         run: ./tools/validate.ps1 -SkipStaticChecks -SkipTidySmoke
 
+      - name: Validate native desktop GUI
+        shell: pwsh
+        run: ./tools/build-gui.ps1
+
       - name: Validate optional ENet network adapter
         shell: pwsh
         run: ./tools/validate-network-enet.ps1

@@ -680,7 +680,7 @@ $editorResourceCaptureExecutionChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "Native MK_editor shell skeleton is SDL3-free",
+            "Native MK_editor shell is SDL3-free",
             "MK_editor_shell_common",
             "add_executable(MK_editor"
         )
@@ -844,7 +844,7 @@ $editorAiCommandPanelChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "Native MK_editor shell skeleton is SDL3-free",
+            "Native MK_editor shell is SDL3-free",
             "MK_editor_shell_common",
             "add_executable(MK_editor"
         )
@@ -994,7 +994,7 @@ $editorAiEvidenceImportReviewChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "Native MK_editor shell skeleton is SDL3-free",
+            "Native MK_editor shell is SDL3-free",
             "MK_editor_shell_common",
             "add_executable(MK_editor"
         )
@@ -1162,7 +1162,7 @@ $editorAiReviewedValidationExecutionChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "Native MK_editor shell skeleton is SDL3-free",
+            "Native MK_editor shell is SDL3-free",
             "MK_editor_shell_common",
             "add_executable(MK_editor"
         )
@@ -1342,7 +1342,7 @@ $editorAiReviewedValidationBatchExecutionChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "Native MK_editor shell skeleton is SDL3-free",
+            "Native MK_editor shell is SDL3-free",
             "MK_editor_shell_common",
             "add_executable(MK_editor"
         )
@@ -1522,7 +1522,7 @@ $editorContentBrowserImportPanelChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "Native MK_editor shell skeleton is SDL3-free",
+            "Native MK_editor shell is SDL3-free",
             "MK_editor_shell_common",
             "add_executable(MK_editor"
         )
@@ -1673,7 +1673,7 @@ $editorContentBrowserImportPanelChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "Native MK_editor shell skeleton is SDL3-free",
+            "Native MK_editor shell is SDL3-free",
             "MK_editor_shell_common",
             "add_executable(MK_editor"
         )
@@ -1734,7 +1734,7 @@ $editorContentBrowserImportNativeDialogChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "Native MK_editor shell skeleton is SDL3-free",
+            "Native MK_editor shell is SDL3-free",
             "MK_editor_shell_common",
             "add_executable(MK_editor"
         )
@@ -1874,7 +1874,7 @@ $editorContentBrowserImportExternalCopyReviewChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "Native MK_editor shell skeleton is SDL3-free",
+            "Native MK_editor shell is SDL3-free",
             "MK_editor_shell_common",
             "add_executable(MK_editor"
         )
@@ -2056,7 +2056,7 @@ $editorContentBrowserImportCodecAdapterCompletedPlanChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "Native MK_editor shell skeleton is SDL3-free",
+            "Native MK_editor shell is SDL3-free",
             "MK_editor_shell_common",
             "add_executable(MK_editor"
         )
@@ -2372,7 +2372,7 @@ $editorMaterialAssetPreviewPanelChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "Native MK_editor shell skeleton is SDL3-free",
+            "Native MK_editor shell is SDL3-free",
             "MK_editor_shell_common",
             "add_executable(MK_editor"
         )
