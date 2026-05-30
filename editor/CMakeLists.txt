@@ -44,11 +44,53 @@ target_link_libraries(MK_editor_core PUBLIC MK_animation MK_assets MK_core MK_pl
 
 MK_apply_common_target_options(MK_editor_core)
 
+add_library(MK_editor_shell_common
+    src/native_editor_launch.cpp
+)
+
+target_include_directories(MK_editor_shell_common
+    PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+)
+
+MK_apply_common_target_options(MK_editor_shell_common)
+
 if(NOT MK_ENABLE_DESKTOP_GUI)
     return()
 endif()
 
-message(FATAL_ERROR
-    "MK_editor visible shell is deferred after SDL3 removal. "
-    "MK_editor_core remains the supported editor logic target; a future visible shell must use first-party Win32/D3D12 adapters and must not depend on SDL3."
+if(NOT WIN32)
+    message(FATAL_ERROR "MK_ENABLE_DESKTOP_GUI is Windows-only for the native Win32 editor shell")
+endif()
+
+if(NOT TARGET MK_platform_win32)
+    message(FATAL_ERROR "MK_ENABLE_DESKTOP_GUI requires MK_platform_win32")
+endif()
+
+add_library(MK_editor_shell_win32
+    src/native_editor_app.cpp
 )
+
+target_include_directories(MK_editor_shell_win32
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src
+)
+
+target_link_libraries(MK_editor_shell_win32
+    PRIVATE
+        MK_editor_core
+        MK_editor_shell_common
+        MK_platform_win32
+)
+
+# Native MK_editor shell skeleton is SDL3-free. The Win32/D3D12/ImGui host
+# lifecycle is added in the next phase; build-gui.ps1 remains fail-closed until then.
+MK_apply_common_target_options(MK_editor_shell_win32)
+
+add_executable(MK_editor
+    src/main.cpp
+)
+
+target_link_libraries(MK_editor PRIVATE MK_editor_shell_win32)
+
+MK_apply_common_target_options(MK_editor)

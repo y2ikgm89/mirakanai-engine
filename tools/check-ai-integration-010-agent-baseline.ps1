@@ -1727,6 +1727,21 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     )) {
         Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan sandbox world package validation and performance budget selection"
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "native-win32-editor-shell-v1") {
+    foreach ($needle in @(
+        "Native Win32 Editor Shell v1",
+        "MK_editor",
+        "Dear ImGui",
+        "Direct3D 12",
+        "desktop-gui",
+        "PR #316",
+        "unsupportedProductionGaps = []",
+        "SDL3",
+        "native handles",
+        "editor/developer-shell"
+    )) {
+        Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan native editor shell selection"
+    }
 } else {
     foreach ($needle in @(
     "Frame Graph Transient Texture Alias Planning v1",

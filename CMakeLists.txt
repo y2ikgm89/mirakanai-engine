@@ -11,7 +11,7 @@ include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
 option(MK_ENABLE_DESKTOP_RUNTIME "Build desktop game runtime targets" OFF)
-option(MK_ENABLE_DESKTOP_GUI "Build the visible desktop editor shell; currently deferred after SDL3 removal" OFF)
+option(MK_ENABLE_DESKTOP_GUI "Build the native desktop editor shell target" OFF)
 option(MK_ENABLE_SANITIZERS "Enable compiler sanitizer instrumentation where supported" OFF)
 option(MK_ENABLE_CXX_MODULE_SCANNING "Enable CMake C++ module dependency scanning for targets" ON)
 option(MK_ENABLE_IMPORT_STD "Enable CMake-managed import std support when the active toolchain and generator support it" ON)
@@ -725,6 +725,14 @@ if(BUILD_TESTING)
     target_include_directories(MK_editor_core_tests PRIVATE tests)
     MK_apply_common_target_options(MK_editor_core_tests)
     add_test(NAME MK_editor_core_tests COMMAND MK_editor_core_tests)
+
+    add_executable(MK_editor_native_shell_tests
+        tests/unit/editor_native_shell_tests.cpp
+    )
+    target_link_libraries(MK_editor_native_shell_tests PRIVATE MK_editor_shell_common)
+    target_include_directories(MK_editor_native_shell_tests PRIVATE tests editor/src)
+    MK_apply_common_target_options(MK_editor_native_shell_tests)
+    add_test(NAME MK_editor_native_shell_tests COMMAND MK_editor_native_shell_tests)
 
     add_executable(MK_rhi_tests
         tests/unit/rhi_tests.cpp

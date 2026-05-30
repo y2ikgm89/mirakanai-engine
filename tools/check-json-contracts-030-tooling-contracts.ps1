@@ -82,35 +82,53 @@ $editorCmakeContent = Get-Content -LiteralPath (Join-Path $root "editor/CMakeLis
 foreach ($forbiddenNeedle in @(
         "find_package(SDL3",
         "SDL3::SDL3",
-        "MK_platform_sdl3",
-        "imgui::imgui",
-        "add_executable(MK_editor"
+        "MK_platform_sdl3"
     )) {
     if ($editorCmakeContent.Contains($forbiddenNeedle)) {
-        Write-Error "visible editor shell is deferred after SDL3 removal and editor/CMakeLists.txt must not retain active SDL3/ImGui shell wiring: $forbiddenNeedle"
+        Write-Error "native editor shell skeleton must remain SDL3-free: $forbiddenNeedle"
     }
 }
 foreach ($requiredNeedle in @(
-        "MK_editor visible shell is deferred after SDL3 removal",
-        "MK_editor_core"
+        "add_library(MK_editor_shell_common",
+        "src/native_editor_launch.cpp",
+        "add_library(MK_editor_shell_win32",
+        "src/native_editor_app.cpp",
+        "MK_editor_core",
+        "MK_platform_win32",
+        "MK_ENABLE_DESKTOP_GUI is Windows-only",
+        "MK_ENABLE_DESKTOP_GUI requires MK_platform_win32",
+        "add_executable(MK_editor",
+        "src/main.cpp",
+        "Native MK_editor shell skeleton is SDL3-free"
     )) {
     if (-not $editorCmakeContent.Contains($requiredNeedle)) {
-        Write-Error "editor/CMakeLists.txt must document the deferred visible editor shell boundary: $requiredNeedle"
+        Write-Error "editor/CMakeLists.txt must expose the native editor shell skeleton contract: $requiredNeedle"
     }
 }
 
 $rootCmakeContent = Get-Content -LiteralPath (Join-Path $root "CMakeLists.txt") -Raw
 if ($rootCmakeContent.Contains("if(MK_ENABLE_DESKTOP_GUI)`r`n    set(MK_DESKTOP_RUNTIME_ENABLED ON)")) {
-    Write-Error "MK_ENABLE_DESKTOP_GUI must not imply the removed SDL3 desktop runtime lane while the visible editor shell is deferred"
+    Write-Error "MK_ENABLE_DESKTOP_GUI must not imply the removed SDL3 desktop runtime lane"
+}
+foreach ($requiredNeedle in @(
+        "MK_editor_native_shell_tests",
+        "tests/unit/editor_native_shell_tests.cpp",
+        "MK_editor_shell_common"
+    )) {
+    if (-not $rootCmakeContent.Contains($requiredNeedle)) {
+        Write-Error "root CMakeLists.txt must register native editor shell launch-contract tests: $requiredNeedle"
+    }
 }
 
 $buildGuiScript = Get-Content -LiteralPath (Join-Path $root "tools/build-gui.ps1") -Raw
 foreach ($requiredNeedle in @(
-        "visible editor shell is deferred after SDL3 removal",
-        "MK_editor_core"
+        "native MK_editor shell has only the launch-contract skeleton",
+        "Win32/Dear ImGui/D3D12 host and GUI smoke lane are not wired yet",
+        "MK_editor_native_shell_tests",
+        "SDL3-free"
     )) {
     if (-not $buildGuiScript.Contains($requiredNeedle)) {
-        Write-Error "tools/build-gui.ps1 must fail closed with the deferred editor shell message: $requiredNeedle"
+        Write-Error "tools/build-gui.ps1 must fail closed with the native editor skeleton message: $requiredNeedle"
     }
 }
 foreach ($forbiddenNeedle in @(
@@ -1405,6 +1423,23 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     )) {
         if (-not $recommendedText.Contains($needle)) {
             Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe sandbox world package validation and performance budget selection: $needle"
+        }
+    }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "native-win32-editor-shell-v1") {
+    foreach ($needle in @(
+    "Native Win32 Editor Shell v1",
+    "MK_editor",
+    "Dear ImGui",
+    "Direct3D 12",
+    "desktop-gui",
+    "PR #316",
+    "unsupportedProductionGaps = []",
+    "SDL3",
+    "native handles",
+    "editor/developer-shell"
+    )) {
+        if (-not $recommendedText.Contains($needle)) {
+            Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe native editor shell selection: $needle"
         }
     }
 } else {

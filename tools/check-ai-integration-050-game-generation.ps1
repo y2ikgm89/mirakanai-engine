@@ -680,9 +680,9 @@ $editorResourceCaptureExecutionChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "MK_editor visible shell is deferred after SDL3 removal",
-            "MK_editor_core remains the supported editor logic target",
-            "must not depend on SDL3"
+            "Native MK_editor shell skeleton is SDL3-free",
+            "MK_editor_shell_common",
+            "add_executable(MK_editor"
         )
     },
     @{
@@ -844,9 +844,9 @@ $editorAiCommandPanelChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "MK_editor visible shell is deferred after SDL3 removal",
-            "MK_editor_core remains the supported editor logic target",
-            "must not depend on SDL3"
+            "Native MK_editor shell skeleton is SDL3-free",
+            "MK_editor_shell_common",
+            "add_executable(MK_editor"
         )
     },
     @{
@@ -994,9 +994,9 @@ $editorAiEvidenceImportReviewChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "MK_editor visible shell is deferred after SDL3 removal",
-            "MK_editor_core remains the supported editor logic target",
-            "must not depend on SDL3"
+            "Native MK_editor shell skeleton is SDL3-free",
+            "MK_editor_shell_common",
+            "add_executable(MK_editor"
         )
     },
     @{
@@ -1162,9 +1162,9 @@ $editorAiReviewedValidationExecutionChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "MK_editor visible shell is deferred after SDL3 removal",
-            "MK_editor_core remains the supported editor logic target",
-            "must not depend on SDL3"
+            "Native MK_editor shell skeleton is SDL3-free",
+            "MK_editor_shell_common",
+            "add_executable(MK_editor"
         )
     },
     @{
@@ -1342,9 +1342,9 @@ $editorAiReviewedValidationBatchExecutionChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "MK_editor visible shell is deferred after SDL3 removal",
-            "MK_editor_core remains the supported editor logic target",
-            "must not depend on SDL3"
+            "Native MK_editor shell skeleton is SDL3-free",
+            "MK_editor_shell_common",
+            "add_executable(MK_editor"
         )
     },
     @{
@@ -1522,9 +1522,9 @@ $editorContentBrowserImportPanelChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "MK_editor visible shell is deferred after SDL3 removal",
-            "MK_editor_core remains the supported editor logic target",
-            "must not depend on SDL3"
+            "Native MK_editor shell skeleton is SDL3-free",
+            "MK_editor_shell_common",
+            "add_executable(MK_editor"
         )
     },
     @{
@@ -1673,9 +1673,9 @@ $editorContentBrowserImportPanelChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "MK_editor visible shell is deferred after SDL3 removal",
-            "MK_editor_core remains the supported editor logic target",
-            "must not depend on SDL3"
+            "Native MK_editor shell skeleton is SDL3-free",
+            "MK_editor_shell_common",
+            "add_executable(MK_editor"
         )
     },
     @{
@@ -1734,9 +1734,9 @@ $editorContentBrowserImportNativeDialogChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "MK_editor visible shell is deferred after SDL3 removal",
-            "MK_editor_core remains the supported editor logic target",
-            "must not depend on SDL3"
+            "Native MK_editor shell skeleton is SDL3-free",
+            "MK_editor_shell_common",
+            "add_executable(MK_editor"
         )
     },
     @{
@@ -1874,9 +1874,9 @@ $editorContentBrowserImportExternalCopyReviewChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "MK_editor visible shell is deferred after SDL3 removal",
-            "MK_editor_core remains the supported editor logic target",
-            "must not depend on SDL3"
+            "Native MK_editor shell skeleton is SDL3-free",
+            "MK_editor_shell_common",
+            "add_executable(MK_editor"
         )
     },
     @{
@@ -2056,9 +2056,9 @@ $editorContentBrowserImportCodecAdapterCompletedPlanChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "MK_editor visible shell is deferred after SDL3 removal",
-            "MK_editor_core remains the supported editor logic target",
-            "must not depend on SDL3"
+            "Native MK_editor shell skeleton is SDL3-free",
+            "MK_editor_shell_common",
+            "add_executable(MK_editor"
         )
     },
     @{
@@ -2198,7 +2198,7 @@ $ciMatrixContractCheckCompletedPlanChecks = @(
             "2026-05-07-ci-matrix-contract-check-v1.md",
             "tools/check-ci-matrix.ps1",
             "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1",
-            "next-production-gap-selection"
+            "native-win32-editor-shell-v1"
         )
     },
     @{
@@ -2372,9 +2372,9 @@ $editorMaterialAssetPreviewPanelChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "MK_editor visible shell is deferred after SDL3 removal",
-            "MK_editor_core remains the supported editor logic target",
-            "must not depend on SDL3"
+            "Native MK_editor shell skeleton is SDL3-free",
+            "MK_editor_shell_common",
+            "add_executable(MK_editor"
         )
     },
     @{

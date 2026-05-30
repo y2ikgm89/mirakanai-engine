@@ -1020,7 +1020,7 @@ foreach ($needle in @(
 Assert-ContainsText $editorWorkspaceHeader "input_rebinding" "editor workspace input rebinding panel header"
 Assert-ContainsText $editorWorkspaceSource 'PanelToken{.id = PanelId::input_rebinding, .token = "input_rebinding"}' "editor workspace input rebinding panel source"
 Assert-ContainsText $editorWorkspaceSource "PanelState{.id = PanelId::input_rebinding, .visible = false}" "editor workspace input rebinding panel source"
-Assert-ContainsText (Get-AgentSurfaceText "editor/CMakeLists.txt") "MK_editor visible shell is deferred after SDL3 removal" "deferred MK_editor shell source"
+Assert-ContainsText (Get-AgentSurfaceText "editor/CMakeLists.txt") "Native MK_editor shell skeleton is SDL3-free" "native MK_editor shell skeleton source"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorInputRebindingProfiles) "EditorInputRebindingProfilePanelModel" "editor input rebinding profile guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorInputRebindingProfiles) "make_editor_input_rebinding_profile_panel_model" "editor input rebinding profile guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorInputRebindingProfiles) "make_input_rebinding_profile_panel_ui_model" "editor input rebinding profile guidance"
@@ -1056,9 +1056,10 @@ foreach ($needle in @(
 )) {
     Assert-ContainsText $editorCoreTests $needle "editor input rebinding capture panel tests"
 }
-if (Test-Path -LiteralPath (Join-Path $root "editor/src/main.cpp")) {
-    Write-Error "ai-integration-check: editor/src/main.cpp must not remain as an active SDL3/Dear ImGui shell while MK_editor is deferred"
-}
+$editorMainText = Get-AgentSurfaceText "editor/src/main.cpp"
+Assert-ContainsText $editorMainText "validate_native_editor_launch" "native editor shell main skeleton"
+Assert-ContainsText $editorMainText "native_editor_launch_usage_error_exit_code" "native editor shell main skeleton"
+foreach ($forbiddenNeedle in @("SDL3", "SDL_", "ImGui_Impl", "imgui.h", "windows.h", "d3d12.h", "dxgi")) { Assert-DoesNotContainText $editorMainText $forbiddenNeedle "native editor shell main skeleton" }
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorInputRebindingProfiles) "in-memory profile" "editor input rebinding capture guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorInputRebindingProfiles) "axis capture" "editor input rebinding capture guidance"
 
