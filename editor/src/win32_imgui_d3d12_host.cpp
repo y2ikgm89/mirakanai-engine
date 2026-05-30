@@ -4,6 +4,7 @@
 #include "win32_imgui_d3d12_host.hpp"
 
 #include "native_editor_app.hpp"
+#include "native_editor_panels.hpp"
 #include "win32_imgui_descriptor_allocator.hpp"
 #include "win32_imgui_message_bridge.hpp"
 
@@ -337,6 +338,13 @@ struct Win32ImguiD3d12Host::Impl {
         ImGui::CreateContext();
         imgui_context_created = true;
         ImGuiIO& io = ImGui::GetIO();
+        const auto user_config_policy = make_native_editor_imgui_user_config_policy(desc.launch);
+        if (!user_config_policy.ini_file_enabled) {
+            io.IniFilename = nullptr;
+        }
+        if (!user_config_policy.log_file_enabled) {
+            io.LogFilename = nullptr;
+        }
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
         ImGui::StyleColorsDark();
@@ -444,6 +452,8 @@ struct Win32ImguiD3d12Host::Impl {
         ImGui_ImplWin32_NewFrame();
         ImGui::NewFrame();
         app.record_native_frame();
+        app.record_native_resource_device_ready(result.frames_rendered + 1U);
+        (void)render_native_editor_panels(app);
         ImGui::Render();
         ImGui_ImplDX12_RenderDrawData(ImGui::GetDrawData(), command_list.Get());
 

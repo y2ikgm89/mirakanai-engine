@@ -3,10 +3,12 @@
 
 #include "test_framework.hpp"
 
+#include "native_editor_app.hpp"
 #include "native_editor_launch.hpp"
 #include "win32_imgui_descriptor_allocator.hpp"
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace {
@@ -18,6 +20,16 @@ namespace {
         argv.push_back(arg.data());
     }
     return mirakana::editor::parse_native_editor_launch(static_cast<int>(argv.size()), argv.data());
+}
+
+[[nodiscard]] const mirakana::editor::EditorResourceRow*
+find_resource_row(const mirakana::editor::EditorResourcePanelModel& model, std::string_view id) noexcept {
+    for (const auto& row : model.status_rows) {
+        if (row.id == id) {
+            return &row;
+        }
+    }
+    return nullptr;
 }
 
 } // namespace
@@ -113,6 +125,64 @@ MK_TEST("editor native shell launch options reject unknown option") {
 
 MK_TEST("editor native shell invalid launch exit code stays deterministic") {
     MK_REQUIRE(mirakana::editor::native_editor_launch_usage_error_exit_code() == 2);
+}
+
+MK_TEST("editor native shell no-user-config disables imgui persistence") {
+    mirakana::editor::NativeEditorLaunchOptions options;
+
+    const auto default_policy = mirakana::editor::make_native_editor_imgui_user_config_policy(options);
+    MK_REQUIRE(default_policy.ini_file_enabled);
+    MK_REQUIRE(default_policy.log_file_enabled);
+
+    options.no_user_config = true;
+    const auto smoke_policy = mirakana::editor::make_native_editor_imgui_user_config_policy(options);
+    MK_REQUIRE(!smoke_policy.ini_file_enabled);
+    MK_REQUIRE(!smoke_policy.log_file_enabled);
+}
+
+MK_TEST("editor native shell app exposes the core backed panel set") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+
+    MK_REQUIRE(app.native_panel_count() == 10U);
+    MK_REQUIRE(app.has_native_panel("main_menu"));
+    MK_REQUIRE(app.has_native_panel("scene"));
+    MK_REQUIRE(app.has_native_panel("inspector"));
+    MK_REQUIRE(app.has_native_panel("assets"));
+    MK_REQUIRE(app.has_native_panel("console"));
+    MK_REQUIRE(app.has_native_panel("resources"));
+    MK_REQUIRE(app.has_native_panel("ai_commands"));
+    MK_REQUIRE(app.has_native_panel("profiler"));
+    MK_REQUIRE(app.has_native_panel("timeline"));
+    MK_REQUIRE(app.has_native_panel("project_settings"));
+    MK_REQUIRE(!app.has_native_panel("viewport"));
+}
+
+MK_TEST("editor native shell app records deterministic panel smoke counters") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+
+    MK_REQUIRE(app.panels_rendered_last_frame() == 0U);
+    app.record_native_panels_rendered(10U);
+    MK_REQUIRE(app.panels_rendered_last_frame() == 10U);
+}
+
+MK_TEST("editor native shell app updates resources panel from native host availability") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+
+    MK_REQUIRE(!app.resources().device_available);
+    MK_REQUIRE(app.resources().status == "No RHI device");
+
+    app.record_native_resource_device_ready(3U);
+
+    MK_REQUIRE(app.resources().device_available);
+    MK_REQUIRE(app.resources().status == "Ready");
+    const auto* const backend = find_resource_row(app.resources(), "backend");
+    MK_REQUIRE(backend != nullptr);
+    MK_REQUIRE(backend->available);
+    MK_REQUIRE(backend->value == "Native Win32/D3D12 host");
+    const auto* const frame = find_resource_row(app.resources(), "frame");
+    MK_REQUIRE(frame != nullptr);
+    MK_REQUIRE(frame->available);
+    MK_REQUIRE(frame->value == "3");
 }
 
 MK_TEST("editor imgui descriptor allocator rejects zero capacity") {

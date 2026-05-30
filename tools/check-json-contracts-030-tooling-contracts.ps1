@@ -96,6 +96,7 @@ foreach ($requiredNeedle in @(
         "MK_editor_core",
         "MK_platform_win32",
         "find_package(imgui CONFIG REQUIRED)",
+        "src/native_editor_panels.cpp",
         "src/win32_imgui_d3d12_host.cpp",
         "src/win32_imgui_message_bridge.cpp",
         "imgui::imgui",
@@ -118,6 +119,10 @@ foreach ($requiredNeedle in @(
         "MK_editor_native_shell_tests",
         "MK_editor_smoke",
         "--smoke-resize",
+        "--no-user-config",
+        "editor_shell_backend=d3d12",
+        "editor_shell_panels=10",
+        "editor_shell_sdl3=0",
         "tests/unit/editor_native_shell_tests.cpp",
         "MK_editor_shell_common"
     )) {
@@ -151,6 +156,8 @@ $applicationManifestFragment = Get-Content -LiteralPath (Join-Path $root "engine
 foreach ($requiredNeedle in @(
         "optional-native-win32-shell-active",
         "Win32/Dear ImGui/Direct3D 12 implementation",
+        "editor_shell_backend=d3d12",
+        "editor_shell_panels=10",
         "tools/build-gui.ps1",
         "tools/evaluate-cpp23.ps1 -Gui",
         "must not depend on SDL3"
@@ -166,6 +173,8 @@ foreach ($requiredNeedle in @(
         "native Win32/Dear ImGui/Direct3D 12 MK_editor shell",
         "MK_editor_native_shell_tests",
         "MK_editor_smoke",
+        "editor_shell_backend=d3d12",
+        "editor_shell_panels=10",
         "SDL3-free"
     )) {
     if (-not $validationRecipeManifestFragment.Contains($requiredNeedle)) {
@@ -1467,6 +1476,8 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     "Direct3D 12",
     "desktop-gui",
     "PR #316",
+    "PR #318",
+    "editor_shell_panels=10",
     "unsupportedProductionGaps = []",
     "SDL3",
     "native handles",
