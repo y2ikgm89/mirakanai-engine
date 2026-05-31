@@ -13,6 +13,7 @@
 #include "mirakana/editor/content_browser.hpp"
 #include "mirakana/editor/content_browser_import_panel.hpp"
 #include "mirakana/editor/editor_dock_layout.hpp"
+#include "mirakana/editor/editor_rich_text.hpp"
 #include "mirakana/editor/game_module_driver.hpp"
 #include "mirakana/editor/generated_game_studio.hpp"
 #include "mirakana/editor/gltf_mesh_catalog.hpp"
@@ -576,6 +577,164 @@ MK_TEST("editor core dock layout rejects invalid graph and unsafe middleware tok
     MK_REQUIRE(!unsafe_validation.valid);
     MK_REQUIRE(std::ranges::any_of(unsafe_validation.diagnostics,
                                    [](const auto& diagnostic) { return diagnostic.code == "unsafe_token"; }));
+}
+
+MK_TEST("editor core rich text validates rows selection copy and low level gates") {
+    mirakana::editor::EditorRichTextDocument document{
+        .id = "editor.rich_text.console",
+        .paragraphs =
+            {
+                mirakana::editor::EditorRichTextParagraph{
+                    .id = "p0",
+                    .spans =
+                        {
+                            mirakana::editor::EditorRichTextSpan{
+                                .id = "severity",
+                                .style_token = "editor.warning",
+                                .text = "Warning: ",
+                                .inline_objects = {},
+                            },
+                            mirakana::editor::EditorRichTextSpan{
+                                .id = "message",
+                                .style_token = "editor.text",
+                                .text = "package review required",
+                                .inline_objects =
+                                    {
+                                        mirakana::editor::EditorRichTextInlineObject{
+                                            .id = "details",
+                                            .kind = mirakana::editor::EditorRichTextInlineObjectKind::command_link,
+                                            .command_id = "editor.panel.ai_commands.show",
+                                            .resource_id = {},
+                                            .accessibility_label = "Show AI Commands",
+                                        },
+                                    },
+                            },
+                        },
+                },
+            },
+        .selection =
+            mirakana::editor::EditorRichTextSelection{
+                .active = true,
+                .start_paragraph_id = "p0",
+                .start_span_id = "severity",
+                .start_byte_offset = 0U,
+                .end_paragraph_id = "p0",
+                .end_span_id = "message",
+                .end_byte_offset = 7U,
+            },
+        .unsupported_capabilities = mirakana::editor::make_editor_rich_text_low_level_unsupported_capabilities(),
+    };
+
+    const auto validation = mirakana::editor::validate_editor_rich_text_document(document);
+    MK_REQUIRE(validation.valid);
+    MK_REQUIRE(validation.diagnostics.empty());
+    MK_REQUIRE(!document.unsupported_capabilities.empty());
+    for (const auto& capability : document.unsupported_capabilities) {
+        MK_REQUIRE(!capability.implemented);
+        MK_REQUIRE(!capability.native_handles_public);
+    }
+
+    const auto copy = mirakana::editor::copy_editor_rich_text_selection_plain_text(document);
+    MK_REQUIRE(copy.valid);
+    MK_REQUIRE(copy.text == "Warning: package");
+}
+
+MK_TEST("editor core rich text rejects duplicate ids unsupported markup and unsafe tokens") {
+    auto duplicate = mirakana::editor::EditorRichTextDocument{
+        .id = "editor.rich_text.console",
+        .paragraphs =
+            {
+                mirakana::editor::EditorRichTextParagraph{
+                    .id = "p0",
+                    .spans =
+                        {
+                            mirakana::editor::EditorRichTextSpan{
+                                .id = "message",
+                                .style_token = "editor.text",
+                                .text = "first",
+                                .inline_objects = {},
+                            },
+                            mirakana::editor::EditorRichTextSpan{
+                                .id = "message",
+                                .style_token = "editor.text",
+                                .text = "second",
+                                .inline_objects = {},
+                            },
+                        },
+                },
+            },
+        .selection = {},
+        .unsupported_capabilities = mirakana::editor::make_editor_rich_text_low_level_unsupported_capabilities(),
+    };
+
+    const auto duplicate_validation = mirakana::editor::validate_editor_rich_text_document(duplicate);
+    MK_REQUIRE(!duplicate_validation.valid);
+    MK_REQUIRE(std::ranges::any_of(duplicate_validation.diagnostics,
+                                   [](const auto& diagnostic) { return diagnostic.code == "duplicate_span_id"; }));
+
+    auto unsupported_markup = duplicate;
+    unsupported_markup.paragraphs.front().spans.pop_back();
+    unsupported_markup.paragraphs.front().spans.front().text = "<b>unsupported</b>";
+    const auto markup_validation = mirakana::editor::validate_editor_rich_text_document(unsupported_markup);
+    MK_REQUIRE(!markup_validation.valid);
+    MK_REQUIRE(std::ranges::any_of(markup_validation.diagnostics,
+                                   [](const auto& diagnostic) { return diagnostic.code == "unsupported_markup"; }));
+
+    auto unsafe_style = unsupported_markup;
+    unsafe_style.paragraphs.front().spans.front().text = "plain";
+    unsafe_style.paragraphs.front().spans.front().style_token = "ImGui.Text";
+    const auto unsafe_validation = mirakana::editor::validate_editor_rich_text_document(unsafe_style);
+    MK_REQUIRE(!unsafe_validation.valid);
+    MK_REQUIRE(std::ranges::any_of(unsafe_validation.diagnostics,
+                                   [](const auto& diagnostic) { return diagnostic.code == "unsafe_token"; }));
+
+    auto invalid_selection = unsupported_markup;
+    invalid_selection.paragraphs.front().spans.front().text = "plain";
+    invalid_selection.selection = mirakana::editor::EditorRichTextSelection{
+        .active = true,
+        .start_paragraph_id = "p0",
+        .start_span_id = "message",
+        .start_byte_offset = 4U,
+        .end_paragraph_id = "p0",
+        .end_span_id = "message",
+        .end_byte_offset = 2U,
+    };
+    const auto selection_validation = mirakana::editor::validate_editor_rich_text_document(invalid_selection);
+    MK_REQUIRE(!selection_validation.valid);
+    MK_REQUIRE(std::ranges::any_of(selection_validation.diagnostics, [](const auto& diagnostic) {
+        return diagnostic.code == "invalid_selection_order";
+    }));
+}
+
+MK_TEST("editor core rich text builds retained ui labels with stable ids") {
+    const mirakana::editor::EditorRichTextDocument document{
+        .id = "editor.rich_text.console",
+        .paragraphs =
+            {
+                mirakana::editor::EditorRichTextParagraph{
+                    .id = "p0",
+                    .spans =
+                        {
+                            mirakana::editor::EditorRichTextSpan{
+                                .id = "message",
+                                .style_token = "editor.info",
+                                .text = "Hello",
+                                .inline_objects = {},
+                            },
+                        },
+                },
+            },
+        .selection = {},
+        .unsupported_capabilities = mirakana::editor::make_editor_rich_text_low_level_unsupported_capabilities(),
+    };
+
+    const auto ui_document = mirakana::editor::make_editor_rich_text_ui_model(document);
+    MK_REQUIRE(ui_document.find(mirakana::ui::ElementId{.value = "editor.rich_text.console"}) != nullptr);
+    const auto* span =
+        ui_document.find(mirakana::ui::ElementId{.value = "editor.rich_text.console.paragraph.p0.span.message"});
+    MK_REQUIRE(span != nullptr);
+    MK_REQUIRE(span->text.label == "Hello");
+    MK_REQUIRE(span->style.foreground_token == "editor.info");
 }
 
 MK_TEST("editor ai operation snapshot exposes visible panel rows") {

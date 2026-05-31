@@ -6,6 +6,7 @@ add_library(MK_editor_core
     core/src/content_browser.cpp
     core/src/content_browser_import_panel.cpp
     core/src/editor_dock_layout.cpp
+    core/src/editor_rich_text.cpp
     core/src/game_module_driver.cpp
     core/src/generated_game_studio.cpp
     core/src/gltf_mesh_catalog.cpp
@@ -48,7 +49,6 @@ MK_apply_common_target_options(MK_editor_core)
 
 add_library(MK_editor_shell_common
     src/first_party_editor_document.cpp
-    src/first_party_editor_rich_text.cpp
     src/native_editor_app.cpp
     src/native_editor_launch.cpp
     src/native_material_preview_cache.cpp

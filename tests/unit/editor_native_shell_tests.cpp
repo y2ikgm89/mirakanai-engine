@@ -5,7 +5,6 @@
 
 #include "first_party_editor_adapter_boundaries.hpp"
 #include "first_party_editor_document.hpp"
-#include "first_party_editor_rich_text.hpp"
 #include "native_editor_app.hpp"
 #include "native_editor_launch.hpp"
 #include "native_material_preview_cache.hpp"
@@ -340,91 +339,6 @@ MK_TEST("editor first party document consumes core dock layout and workspace vis
     MK_REQUIRE(contains_element(shell_document.document, "editor.panel.main_menu"));
     MK_REQUIRE(!contains_element(shell_document.document, "editor.panel.resources"));
     MK_REQUIRE(shell_document.panel_root_count == app.native_panel_count() - 1U);
-}
-
-MK_TEST("first party rich text validates paragraph and span ids") {
-    mirakana::editor::FirstPartyEditorRichTextDocument document{
-        .id = "editor.rich_text.console",
-        .paragraphs =
-            {
-                mirakana::editor::FirstPartyEditorRichTextParagraph{
-                    .id = "summary",
-                    .spans =
-                        {
-                            mirakana::editor::FirstPartyEditorRichTextSpan{
-                                .id = "level",
-                                .style_token = "editor.log.info",
-                                .text = "Info",
-                            },
-                        },
-                },
-            },
-    };
-    const auto valid = mirakana::editor::validate_first_party_editor_rich_text_document(document);
-    MK_REQUIRE(valid.valid);
-
-    document.paragraphs.push_back(document.paragraphs.front());
-    const auto invalid = mirakana::editor::validate_first_party_editor_rich_text_document(document);
-    MK_REQUIRE(!invalid.valid);
-    MK_REQUIRE(!invalid.diagnostics.empty());
-    MK_REQUIRE(invalid.diagnostics.front().find("duplicate paragraph") != std::string::npos);
-}
-
-MK_TEST("first party rich text preserves style tokens without shaping claims") {
-    const mirakana::editor::FirstPartyEditorRichTextDocument document{
-        .id = "editor.rich_text.console",
-        .paragraphs =
-            {
-                mirakana::editor::FirstPartyEditorRichTextParagraph{
-                    .id = "summary",
-                    .spans =
-                        {
-                            mirakana::editor::FirstPartyEditorRichTextSpan{
-                                .id = "level",
-                                .style_token = "editor.log.warning",
-                                .text = "Warning",
-                            },
-                        },
-                },
-            },
-    };
-
-    const auto ui_document = mirakana::editor::make_first_party_editor_rich_text_ui_model(document);
-    const auto* span =
-        ui_document.find(mirakana::ui::ElementId{.value = "editor.rich_text.console.paragraph.summary.span.level"});
-
-    MK_REQUIRE(span != nullptr);
-    MK_REQUIRE(span->role == mirakana::ui::SemanticRole::label);
-    MK_REQUIRE(span->text.label == "Warning");
-    MK_REQUIRE(span->style.foreground_token == "editor.log.warning");
-    MK_REQUIRE(span->text.font_family == "editor-ui");
-}
-
-MK_TEST("first party rich text produces semantic ui labels") {
-    const mirakana::editor::FirstPartyEditorRichTextDocument document{
-        .id = "editor.rich_text.ai_commands",
-        .paragraphs =
-            {
-                mirakana::editor::FirstPartyEditorRichTextParagraph{
-                    .id = "intro",
-                    .spans =
-                        {
-                            mirakana::editor::FirstPartyEditorRichTextSpan{
-                                .id = "status",
-                                .style_token = "editor.text",
-                                .text = "Ready",
-                            },
-                        },
-                },
-            },
-    };
-
-    const auto ui_document = mirakana::editor::make_first_party_editor_rich_text_ui_model(document);
-
-    MK_REQUIRE(contains_element(ui_document, "editor.rich_text.ai_commands"));
-    MK_REQUIRE(contains_element(ui_document, "editor.rich_text.ai_commands.paragraph.intro"));
-    MK_REQUIRE(contains_element(ui_document, "editor.rich_text.ai_commands.paragraph.intro.span.status"));
-    MK_REQUIRE(ui_document.size() == 3U);
 }
 
 MK_TEST("first party editor adapter boundaries stay value-only and unimplemented") {
