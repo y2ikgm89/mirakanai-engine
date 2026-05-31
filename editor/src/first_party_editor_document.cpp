@@ -3,10 +3,10 @@
 
 #include "first_party_editor_document.hpp"
 
-#include "first_party_editor_docking.hpp"
 #include "native_editor_app.hpp"
 
-#include <array>
+#include "mirakana/editor/editor_dock_layout.hpp"
+
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -14,25 +14,6 @@
 
 namespace mirakana::editor {
 namespace {
-
-struct EditorPanelDocumentToken {
-    std::string_view id;
-    std::string_view label;
-};
-
-constexpr std::array<EditorPanelDocumentToken, 11> editor_panel_tokens{{
-    EditorPanelDocumentToken{.id = "main_menu", .label = "Main Menu"},
-    EditorPanelDocumentToken{.id = "scene", .label = "Scene"},
-    EditorPanelDocumentToken{.id = "inspector", .label = "Inspector"},
-    EditorPanelDocumentToken{.id = "assets", .label = "Assets"},
-    EditorPanelDocumentToken{.id = "console", .label = "Console"},
-    EditorPanelDocumentToken{.id = "viewport", .label = "Viewport"},
-    EditorPanelDocumentToken{.id = "resources", .label = "Resources"},
-    EditorPanelDocumentToken{.id = "ai_commands", .label = "AI Commands"},
-    EditorPanelDocumentToken{.id = "profiler", .label = "Profiler"},
-    EditorPanelDocumentToken{.id = "timeline", .label = "Timeline"},
-    EditorPanelDocumentToken{.id = "project_settings", .label = "Project Settings"},
-}};
 
 [[nodiscard]] ui::ElementId element_id(std::string value) {
     return ui::ElementId{.value = std::move(value)};
@@ -66,21 +47,10 @@ constexpr std::array<EditorPanelDocumentToken, 11> editor_panel_tokens{{
     return "editor.dock." + std::string{dock_node_id};
 }
 
-[[nodiscard]] const FirstPartyEditorDockNode* find_dock_node(const FirstPartyEditorDockGraph& graph,
-                                                             std::string_view id) noexcept {
-    for (const auto& node : graph.nodes) {
-        if (node.id == id) {
-            return &node;
-        }
-    }
-    return nullptr;
-}
-
 [[nodiscard]] std::string panel_label(std::string_view panel_id) {
-    for (const auto& panel : editor_panel_tokens) {
-        if (panel.id == panel_id) {
-            return std::string{panel.label};
-        }
+    const auto catalog = editor_dock_panel_catalog();
+    if (const auto* panel = find_editor_dock_panel(catalog, panel_id); panel != nullptr) {
+        return panel->label;
     }
     return std::string{panel_id};
 }
@@ -119,6 +89,11 @@ void append_panel_root(ui::UiDocument& document, const NativeEditorApp& app, std
     if (!app.has_native_panel(panel_id)) {
         return;
     }
+    const auto catalog = editor_dock_panel_catalog();
+    const auto* panel = find_editor_dock_panel(catalog, panel_id);
+    if (panel != nullptr && panel->workspace_panel && !app.is_panel_visible(panel->workspace_id)) {
+        return;
+    }
 
     const std::string panel_root_id = "editor.panel." + std::string{panel_id};
     ui::ElementDesc panel_root = child(panel_root_id, parent, ui::SemanticRole::panel);
@@ -131,25 +106,25 @@ void append_panel_root(ui::UiDocument& document, const NativeEditorApp& app, std
     append_panel_status(document, app, panel_id, panel_element_id);
 }
 
-void append_dock_node(ui::UiDocument& document, const NativeEditorApp& app, const FirstPartyEditorDockGraph& graph,
-                      const FirstPartyEditorDockNode& node, const ui::ElementId& parent, std::uint32_t& panel_count) {
+void append_dock_node(ui::UiDocument& document, const NativeEditorApp& app, const EditorDockLayout& layout,
+                      const EditorDockNode& node, const ui::ElementId& parent, std::uint32_t& panel_count) {
     const std::string node_element_id = dock_element_id(node.id);
     ui::ElementDesc node_element = child(node_element_id, parent, ui::SemanticRole::panel);
     node_element.accessibility_label = node.id;
-    if (node.kind == FirstPartyEditorDockNodeKind::split && node.axis == FirstPartyEditorDockSplitAxis::horizontal) {
+    if (node.kind == EditorDockNodeKind::split && node.axis == EditorDockSplitAxis::horizontal) {
         node_element.style.layout = ui::LayoutMode::row;
     }
     add_or_throw(document, std::move(node_element));
 
     const ui::ElementId node_parent_id = element_id(node_element_id);
-    if (node.kind == FirstPartyEditorDockNodeKind::split) {
+    if (node.kind == EditorDockNodeKind::split) {
         for (const auto& child_node_id : node.children) {
-            const FirstPartyEditorDockNode* child_node = find_dock_node(graph, child_node_id);
+            const EditorDockNode* child_node = find_editor_dock_node(layout, child_node_id);
             if (child_node != nullptr) {
-                append_dock_node(document, app, graph, *child_node, node_parent_id, panel_count);
+                append_dock_node(document, app, layout, *child_node, node_parent_id, panel_count);
             }
         }
-    } else if (node.kind == FirstPartyEditorDockNodeKind::tab_stack) {
+    } else if (node.kind == EditorDockNodeKind::tab_stack) {
         for (const auto& tab : node.tabs) {
             append_panel_root(document, app, tab, node_parent_id, panel_count);
         }
@@ -176,12 +151,16 @@ FirstPartyEditorDocument make_first_party_editor_document(const NativeEditorApp&
     dock.accessibility_label = "Editor Dock";
     add_or_throw(document, std::move(dock));
 
-    const FirstPartyEditorDockGraph graph = make_default_first_party_editor_dock_graph();
-    const FirstPartyEditorDockNode* dock_root = find_dock_node(graph, graph.root_id);
-    if (dock_root == nullptr) {
-        throw std::invalid_argument("first-party editor dock graph is missing its root node");
+    const EditorDockLayout layout = make_default_editor_dock_layout();
+    const auto validation = validate_editor_dock_layout(layout);
+    if (!validation.valid) {
+        throw std::invalid_argument("first-party editor core dock layout is invalid");
     }
-    append_dock_node(document, app, graph, *dock_root, element_id("editor.dock"), result.panel_root_count);
+    const EditorDockNode* dock_root = find_editor_dock_node(layout, layout.root_id);
+    if (dock_root == nullptr) {
+        throw std::invalid_argument("first-party editor core dock layout is missing its root node");
+    }
+    append_dock_node(document, app, layout, *dock_root, element_id("editor.dock"), result.panel_root_count);
 
     result.layout = ui::solve_layout(document, root_id, root_bounds);
     result.renderer_submission = ui::build_renderer_submission(document, result.layout);

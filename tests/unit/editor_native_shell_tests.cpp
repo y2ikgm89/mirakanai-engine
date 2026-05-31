@@ -4,7 +4,6 @@
 #include "test_framework.hpp"
 
 #include "first_party_editor_adapter_boundaries.hpp"
-#include "first_party_editor_docking.hpp"
 #include "first_party_editor_document.hpp"
 #include "first_party_editor_rich_text.hpp"
 #include "native_editor_app.hpp"
@@ -13,6 +12,7 @@
 #include "native_viewport_surface.hpp"
 #include "win32_first_party_editor_host.hpp"
 
+#include "mirakana/editor/editor_dock_layout.hpp"
 #include "mirakana/platform/file_dialog.hpp"
 #include "mirakana/platform/process.hpp"
 #include "mirakana/ui/ui.hpp"
@@ -85,35 +85,6 @@ class RecordingClipboardTextAdapter final : public mirakana::ui::IClipboardTextA
 
 [[nodiscard]] bool contains_element(const mirakana::ui::UiDocument& document, std::string_view id) {
     return document.find(mirakana::ui::ElementId{.value = std::string{id}}) != nullptr;
-}
-
-[[nodiscard]] const mirakana::editor::FirstPartyEditorDockNode*
-find_dock_node(const mirakana::editor::FirstPartyEditorDockGraph& graph, std::string_view id) noexcept {
-    for (const auto& node : graph.nodes) {
-        if (node.id == id) {
-            return &node;
-        }
-    }
-    return nullptr;
-}
-
-[[nodiscard]] mirakana::editor::FirstPartyEditorDockNode*
-find_dock_node(mirakana::editor::FirstPartyEditorDockGraph& graph, std::string_view id) noexcept {
-    for (auto& node : graph.nodes) {
-        if (node.id == id) {
-            return &node;
-        }
-    }
-    return nullptr;
-}
-
-[[nodiscard]] bool has_dock_tab(const mirakana::editor::FirstPartyEditorDockNode& node, std::string_view tab) {
-    for (const auto& candidate : node.tabs) {
-        if (candidate == tab) {
-            return true;
-        }
-    }
-    return false;
 }
 
 [[nodiscard]] const mirakana::editor::FirstPartyEditorAdapterBoundaryRow*
@@ -334,65 +305,6 @@ MK_TEST("editor first party win32 host result defaults to explicit no backend") 
     MK_REQUIRE(result.diagnostic.empty());
 }
 
-MK_TEST("first party editor dock graph validates default split and tab stacks") {
-    const auto graph = mirakana::editor::make_default_first_party_editor_dock_graph();
-    const auto validation = mirakana::editor::validate_first_party_editor_dock_graph(graph);
-
-    MK_REQUIRE(validation.valid);
-    MK_REQUIRE(validation.diagnostics.empty());
-    MK_REQUIRE(graph.root_id == "dock.root");
-
-    const auto* root = find_dock_node(graph, "dock.root");
-    const auto* left = find_dock_node(graph, "dock.left_stack");
-    const auto* center = find_dock_node(graph, "dock.center_split");
-    const auto* viewport = find_dock_node(graph, "dock.viewport_stack");
-    const auto* bottom = find_dock_node(graph, "dock.bottom_stack");
-    const auto* right = find_dock_node(graph, "dock.right_stack");
-
-    MK_REQUIRE(root != nullptr);
-    MK_REQUIRE(root->kind == mirakana::editor::FirstPartyEditorDockNodeKind::split);
-    MK_REQUIRE(root->axis == mirakana::editor::FirstPartyEditorDockSplitAxis::horizontal);
-    MK_REQUIRE(root->children.size() == 3U);
-    MK_REQUIRE(left != nullptr);
-    MK_REQUIRE(left->kind == mirakana::editor::FirstPartyEditorDockNodeKind::tab_stack);
-    MK_REQUIRE(left->active_tab == "scene");
-    MK_REQUIRE(has_dock_tab(*left, "assets"));
-    MK_REQUIRE(center != nullptr);
-    MK_REQUIRE(center->kind == mirakana::editor::FirstPartyEditorDockNodeKind::split);
-    MK_REQUIRE(center->axis == mirakana::editor::FirstPartyEditorDockSplitAxis::vertical);
-    MK_REQUIRE(viewport != nullptr);
-    MK_REQUIRE(viewport->active_tab == "viewport");
-    MK_REQUIRE(bottom != nullptr);
-    MK_REQUIRE(has_dock_tab(*bottom, "console"));
-    MK_REQUIRE(has_dock_tab(*bottom, "profiler"));
-    MK_REQUIRE(right != nullptr);
-    MK_REQUIRE(has_dock_tab(*right, "project_settings"));
-}
-
-MK_TEST("first party editor dock graph rejects duplicate node ids") {
-    auto graph = mirakana::editor::make_default_first_party_editor_dock_graph();
-    graph.nodes.push_back(graph.nodes.front());
-
-    const auto validation = mirakana::editor::validate_first_party_editor_dock_graph(graph);
-
-    MK_REQUIRE(!validation.valid);
-    MK_REQUIRE(!validation.diagnostics.empty());
-    MK_REQUIRE(validation.diagnostics.front().find("duplicate") != std::string::npos);
-}
-
-MK_TEST("first party editor dock graph rejects missing active tab") {
-    auto graph = mirakana::editor::make_default_first_party_editor_dock_graph();
-    auto* left = find_dock_node(graph, "dock.left_stack");
-    MK_REQUIRE(left != nullptr);
-    left->active_tab = "missing_panel";
-
-    const auto validation = mirakana::editor::validate_first_party_editor_dock_graph(graph);
-
-    MK_REQUIRE(!validation.valid);
-    MK_REQUIRE(!validation.diagnostics.empty());
-    MK_REQUIRE(validation.diagnostics.front().find("active tab") != std::string::npos);
-}
-
 MK_TEST("first party editor document orders panels through dock graph") {
     mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
 
@@ -414,6 +326,20 @@ MK_TEST("first party editor document orders panels through dock graph") {
     MK_REQUIRE(scene->parent.value == left->id.value);
     MK_REQUIRE(inspector->parent.value == right->id.value);
     MK_REQUIRE(shell_document.panel_root_count == app.native_panel_count());
+}
+
+MK_TEST("editor first party document consumes core dock layout and workspace visibility") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    app.set_panel_visible(mirakana::editor::PanelId::resources, false);
+
+    const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
+    const auto layout = mirakana::editor::make_default_editor_dock_layout();
+    const auto* root = mirakana::editor::find_editor_dock_node(layout, "dock.root");
+
+    MK_REQUIRE(root != nullptr);
+    MK_REQUIRE(contains_element(shell_document.document, "editor.panel.main_menu"));
+    MK_REQUIRE(!contains_element(shell_document.document, "editor.panel.resources"));
+    MK_REQUIRE(shell_document.panel_root_count == app.native_panel_count() - 1U);
 }
 
 MK_TEST("first party rich text validates paragraph and span ids") {

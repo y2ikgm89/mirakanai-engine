@@ -12,6 +12,7 @@
 #include "mirakana/editor/command.hpp"
 #include "mirakana/editor/content_browser.hpp"
 #include "mirakana/editor/content_browser_import_panel.hpp"
+#include "mirakana/editor/editor_dock_layout.hpp"
 #include "mirakana/editor/game_module_driver.hpp"
 #include "mirakana/editor/generated_game_studio.hpp"
 #include "mirakana/editor/gltf_mesh_catalog.hpp"
@@ -477,6 +478,104 @@ MK_TEST("editor workspace rejects duplicate panel state") {
         rejected_duplicate_panel = true;
     }
     MK_REQUIRE(rejected_duplicate_panel);
+}
+
+MK_TEST("editor core dock layout validates split tab stacks focus and unsupported adapter flags") {
+    const auto layout = mirakana::editor::make_default_editor_dock_layout();
+    const auto validation = mirakana::editor::validate_editor_dock_layout(layout);
+
+    MK_REQUIRE(validation.valid);
+    MK_REQUIRE(validation.diagnostics.empty());
+    MK_REQUIRE(layout.root_id == "dock.root");
+    MK_REQUIRE(layout.focused_panel_id == "viewport");
+    MK_REQUIRE(layout.layout_revision == 1U);
+    MK_REQUIRE(layout.persist_to_workspace);
+    MK_REQUIRE(!layout.unsupported_capabilities.empty());
+
+    const auto* root = mirakana::editor::find_editor_dock_node(layout, "dock.root");
+    const auto* viewport = mirakana::editor::find_editor_dock_node(layout, "dock.viewport_stack");
+    MK_REQUIRE(root != nullptr);
+    MK_REQUIRE(root->kind == mirakana::editor::EditorDockNodeKind::split);
+    MK_REQUIRE(root->children.size() == 3U);
+    MK_REQUIRE(viewport != nullptr);
+    MK_REQUIRE(viewport->kind == mirakana::editor::EditorDockNodeKind::tab_stack);
+    MK_REQUIRE(viewport->active_tab_id == "viewport");
+
+    bool has_text_shape_gate = false;
+    for (const auto& capability : layout.unsupported_capabilities) {
+        MK_REQUIRE(!capability.native_handles_public);
+        if (capability.id == "text_shaping") {
+            has_text_shape_gate = true;
+        }
+    }
+    MK_REQUIRE(has_text_shape_gate);
+}
+
+MK_TEST("editor core dock panel catalog aligns shell chrome native shell and workspace panels") {
+    const auto catalog = mirakana::editor::editor_dock_panel_catalog();
+    const auto* main_menu = mirakana::editor::find_editor_dock_panel(catalog, "main_menu");
+    const auto* input_rebinding = mirakana::editor::find_editor_dock_panel(catalog, "input_rebinding");
+    const auto* viewport = mirakana::editor::find_editor_dock_panel(catalog, "viewport");
+
+    MK_REQUIRE(catalog.size() == 12U);
+    MK_REQUIRE(main_menu != nullptr);
+    MK_REQUIRE(main_menu->shell_chrome);
+    MK_REQUIRE(!main_menu->workspace_panel);
+    MK_REQUIRE(main_menu->native_shell_panel);
+    MK_REQUIRE(input_rebinding != nullptr);
+    MK_REQUIRE(!input_rebinding->shell_chrome);
+    MK_REQUIRE(input_rebinding->workspace_panel);
+    MK_REQUIRE(!input_rebinding->native_shell_panel);
+    MK_REQUIRE(viewport != nullptr);
+    MK_REQUIRE(viewport->workspace_panel);
+    MK_REQUIRE(viewport->native_shell_panel);
+}
+
+MK_TEST("editor core dock layout rejects invalid graph and unsafe middleware tokens") {
+    auto duplicate = mirakana::editor::make_default_editor_dock_layout();
+    duplicate.nodes.push_back(duplicate.nodes.front());
+    const auto duplicate_validation = mirakana::editor::validate_editor_dock_layout(duplicate);
+    MK_REQUIRE(!duplicate_validation.valid);
+    MK_REQUIRE(!duplicate_validation.diagnostics.empty());
+    MK_REQUIRE(duplicate_validation.diagnostics.front().code == "duplicate_dock_node_id");
+
+    auto invalid_split = mirakana::editor::make_default_editor_dock_layout();
+    auto* root = mirakana::editor::find_editor_dock_node(invalid_split, "dock.root");
+    MK_REQUIRE(root != nullptr);
+    root->children = {"dock.left_stack"};
+    root->split_ratio = 1.0F;
+    const auto split_validation = mirakana::editor::validate_editor_dock_layout(invalid_split);
+    MK_REQUIRE(!split_validation.valid);
+
+    auto missing_tab = mirakana::editor::make_default_editor_dock_layout();
+    auto* left = mirakana::editor::find_editor_dock_node(missing_tab, "dock.left_stack");
+    MK_REQUIRE(left != nullptr);
+    left->tabs.clear();
+    left->active_tab_id = "scene";
+    const auto tab_validation = mirakana::editor::validate_editor_dock_layout(missing_tab);
+    MK_REQUIRE(!tab_validation.valid);
+
+    auto stale_active = mirakana::editor::make_default_editor_dock_layout();
+    left = mirakana::editor::find_editor_dock_node(stale_active, "dock.left_stack");
+    MK_REQUIRE(left != nullptr);
+    left->active_tab_id = "missing";
+    const auto active_validation = mirakana::editor::validate_editor_dock_layout(stale_active);
+    MK_REQUIRE(!active_validation.valid);
+
+    auto invalid_focus = mirakana::editor::make_default_editor_dock_layout();
+    invalid_focus.focused_panel_id = "input_rebinding";
+    const auto focus_validation = mirakana::editor::validate_editor_dock_layout(invalid_focus);
+    MK_REQUIRE(!focus_validation.valid);
+    MK_REQUIRE(std::ranges::any_of(focus_validation.diagnostics, [](const auto& diagnostic) {
+        return diagnostic.code == "focused_panel_not_native_shell";
+    }));
+
+    auto unsafe = mirakana::editor::make_default_editor_dock_layout();
+    unsafe.nodes.front().id = "dock.ImGuiViewport";
+    const auto unsafe_validation = mirakana::editor::validate_editor_dock_layout(unsafe);
+    MK_REQUIRE(!unsafe_validation.valid);
+    MK_REQUIRE(std::ranges::any_of(unsafe_validation.diagnostics,
+                                   [](const auto& diagnostic) { return diagnostic.code == "unsafe_token"; }));
 }
 
 MK_TEST("editor ai operation snapshot exposes visible panel rows") {
