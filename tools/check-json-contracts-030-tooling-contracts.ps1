@@ -1503,6 +1503,32 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
             Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe native editor shell selection: $needle"
         }
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "first-party-editor-shell-v1") {
+    foreach ($needle in @(
+    "First-Party Editor Shell v1",
+    "first-party retained MK_editor shell",
+    "desktop-editor",
+    "UiDocument ids",
+    "dock graph",
+    "rich-text rows",
+    "EditorAiOperationSnapshot",
+    "EditorAiCommandCatalog",
+    "EditorAiCommandRequest",
+    "EditorAiCommandDryRunResult",
+    "EditorAiCommandApplyResult",
+    "adapter-boundary diagnostics",
+    "DirectWrite",
+    "Text Services Framework",
+    "UI Automation",
+    "unsupportedProductionGaps = []",
+    "SDL3",
+    "native handles",
+    "Dear ImGui"
+    )) {
+        if (-not $recommendedText.Contains($needle)) {
+            Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe first-party editor shell selection: $needle"
+        }
+    }
 } else {
     foreach ($needle in @(
     "Frame Graph Transient Texture Alias Planning v1",

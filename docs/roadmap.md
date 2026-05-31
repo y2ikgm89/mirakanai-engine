@@ -11,11 +11,11 @@ Use this file as a short status and priority route, not as the exhaustive implem
 
 Long capability prose lower in this file is retained historical/static-check evidence. Do not use it to override the manifest, current-capabilities summary, or active plan registry.
 
-Current manifest-led execution: `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` points at the production-completion master plan, `unsupportedProductionGaps = []`, and `recommendedNextPlan.id = next-production-gap-selection` after Native Win32 Editor Shell v1 closed through PR #322.
+Current manifest-led execution: `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` points at `docs/superpowers/plans/2026-05-31-first-party-editor-shell-v1.md`, `unsupportedProductionGaps = []`, and `recommendedNextPlan.id = first-party-editor-shell-v1` after Native Win32 Editor Shell v1 closed through PR #322.
 
 ## Principle
 
-Build a clean C++23 engine with no early backward-compatibility burden. Prefer official platform guidance, explicit module boundaries, deterministic tests, and AI-readable contracts. Separate developer-facing tooling from production runtime UI: the previous SDL3/Dear ImGui visible editor shell is removed from active build lanes, `MK_editor_core` remains the supported editor logic surface, the new native editor shell uses Dear ImGui only as an optional Win32/D3D12 developer/editor shell dependency, and future game UI plus scalable runtime surfaces should evolve toward first-party retained-mode UI layers similar in role to Unreal Slate/UMG/Common UI or Unity UI Toolkit.
+Build a clean C++23 engine with no early backward-compatibility burden. Prefer official platform guidance, explicit module boundaries, deterministic tests, and AI-readable contracts. Separate developer-facing tooling from production runtime UI: the previous SDL3/Dear ImGui visible editor shell is being replaced by the active `first-party-editor-shell-v1` clean-break milestone, `MK_editor_core` remains the supported editor logic surface, and future game UI plus scalable runtime surfaces should evolve toward first-party retained-mode UI layers similar in role to Unreal Slate/UMG/Common UI, Unity UI Toolkit, or Godot Control nodes while low-level text, IME, accessibility, font, image, and platform services stay behind official-SDK or audited adapter boundaries.
 
 ## Core-First MVP Closure
 
@@ -430,11 +430,11 @@ The previous core-first MVP plan remains as history and implementation evidence.
 
 ### Wave 8: Editor and Runtime UI Architecture
 
-- keep Dear ImGui as the optional developer-facing editor/debug shell for fast iteration, diagnostics, and early tools
+- replace the active Dear ImGui-backed editor/debug shell with the `first-party-editor-shell-v1` clean-break milestone; keep Dear ImGui only as historical completed-shell evidence until Phase 7 deletes active implementation and dependency records
 - follow `docs/ui.md`: own the `MK_ui`/`MK_editor_ui` contracts, but do not hand-roll mature low-level font, text shaping, IME, accessibility, image decoding, or platform integration systems without an accepted architecture decision
 - continue the first-party retained-mode UI runtime, `MK_ui`, and its first `MK_ui_renderer` adapter from the implemented headless document/focus/style/text/image/layout/animation/binding/renderer-submission/text-image-accessibility-payload/monospace-text-layout/IRenderer-adapter contracts plus host-independent text shaping/font/image/accessibility/IME/text-input/text-edit command/clipboard text gates, Runtime UI Workbench Production v1 dense menu/inventory/equipment/shop/simulation-dashboard intent rows, the narrow Win32 text edit key-command and clipboard text bridges, `UiRendererGlyphAtlasPalette`, `UiRendererImagePalette`, `UiAtlasMetadataGlyph`, `RuntimeUiAtlasGlyph`, and the decoded-image plus rasterized-glyph atlas package bridges into concrete text shaping/font loading/rasterization adapters, accessibility, real image upload adapters, richer layout models, broader localization integration, accessibility metadata, and future editor surfaces
 - keep runtime UI independent from `editor`, Dear ImGui, Qt, NoesisGUI, Slint, RmlUi, or platform middleware APIs; evaluate those and lower-level text/font/accessibility dependencies only as optional adapters after `license-audit` and dependency policy updates
-- expand the implemented `MK_editor_ui` model bridge so high-complexity editor panels can move from immediate-mode code into tested retained models without breaking the current ImGui shell
+- expand the implemented `MK_editor_ui` model bridge so high-complexity editor panels move into tested retained models and the current visible shell no longer depends on Dear ImGui, Qt, Slint, RmlUi, or other UI middleware
 - add UI-heavy sample coverage after the core retained-mode contracts exist
 
 ### Wave 9: Mobile Packaging

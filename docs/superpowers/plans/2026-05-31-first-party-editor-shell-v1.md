@@ -12,13 +12,22 @@
 
 ## Plan ID
 
+**Plan ID:** `first-party-editor-shell-v1`
+
 `first-party-editor-shell-v1`
 
 ## Status
 
-**Status:** Proposed plan for operator review. It is not yet selected in `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`.
+**Status:** Active.
 
-Execution Phase 0 selects this plan in the manifest/registry before code changes. Until then, the repository truth remains the completed Native Win32 Editor Shell v1 with `recommendedNextPlan.id = next-production-gap-selection`.
+Phase 0 selected this plan in the manifest/registry as the active clean-break milestone after Native Win32 Editor Shell v1 completed through PR #322. The repository now treats `recommendedNextPlan.id = first-party-editor-shell-v1` and `currentActivePlan = docs/superpowers/plans/2026-05-31-first-party-editor-shell-v1.md` as the active execution truth.
+
+## Phase 0 Evidence
+
+- Worktree setup: `tools/prepare-worktree.ps1` reported `linked-worktree=true`, `external-vcpkg=linked`, `vcpkg-installed=linked`, and `ok` in `.worktrees/first-party-editor-shell-v1`.
+- Official source refresh checked on 2026-05-31: Microsoft Learn Win32 window creation, Direct3D 12 programming guide, DirectWrite portal, Text Services Framework, and UI Automation Providers Overview; Unity 6.4 UI system comparison; Unreal Engine 5.7 Slate UI framework; Godot stable UI docs.
+- Context7 source refresh checked: `/kitware/cmake` target dependency scope guidance and `/microsoft/vcpkg` manifest optional feature / `VCPKG_MANIFEST_INSTALL` behavior.
+- Plan/static validation passed after selection: `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-format.ps1`, and `git diff --check`.
 
 ## Current Baseline
 
@@ -45,7 +54,7 @@ This plan keeps the editor state and AI-operable models, but replaces the immedi
 
 The migration follows the common production-engine split rather than attempting to hand-roll every UI subsystem:
 
-- Unity currently documents three UI systems and recommends UI Toolkit for Editor UI while keeping runtime UI options separate. The lesson for this engine is to keep the editor UI model first-party and retained, while not treating legacy immediate-mode tooling as the long-term editor foundation.
+- Unity currently documents three UI systems and recommends UI Toolkit for Editor UI while keeping runtime UI options separate. The lesson for this engine is to keep the editor UI model first-party and retained, while treating legacy immediate-mode tooling only as historical evidence, not as the long-term editor foundation.
 - Unreal Engine uses Slate as its lower-level UI framework, UMG/Common UI as higher-level authoring/runtime UI layers, and first-party editor tab/docking infrastructure. The lesson is to own widget identity, docking state, command routing, and editor automation surfaces inside the engine.
 - Godot builds runtime UI and editor UI around first-party `Control` / `Container` nodes, while complex text is routed through text server infrastructure. The lesson is to expose stable engine-owned nodes and semantic rows, but keep text shaping/font complexity behind a specialized service boundary.
 - Engines and tools that use Qt-class editor frameworks get mature docking/text/accessibility quickly, but inherit framework object models, licensing, distribution, and automation boundaries that this clean-break plan intentionally avoids for the core editor shell.
@@ -90,7 +99,7 @@ Before each implementation phase, re-check the current official documentation fo
 - Text Services Framework for IME/text-service adapter design: <https://learn.microsoft.com/en-us/windows/win32/tsf/text-services-framework>
 - UI Automation providers for accessibility bridge publication: <https://learn.microsoft.com/en-us/windows/win32/winauto/uiauto-providersoverview>
 - CMake and vcpkg documentation through Context7 or official docs for target/preset/dependency-policy changes.
-- Unity UI system comparison and UI Toolkit guidance when updating rationale docs: <https://docs.unity3d.com/6000.0/Documentation/Manual/UI-system-compare.html>
+- Unity UI system comparison and UI Toolkit guidance when updating rationale docs: <https://docs.unity3d.com/Manual/UI-system-compare.html>
 - Unreal Slate and UMG UI architecture when updating rationale docs: <https://dev.epicgames.com/documentation/en-us/unreal-engine/slate-user-interface-programming-framework-for-unreal-engine> and <https://dev.epicgames.com/documentation/en-us/unreal-engine/creating-user-interfaces-with-umg-and-slate-in-unreal-engine>
 - Godot Control UI and RichTextLabel/TextServer docs when updating rationale docs: <https://docs.godotengine.org/en/stable/tutorials/ui/index.html>, <https://docs.godotengine.org/en/stable/classes/class_richtextlabel.html>, and <https://docs.godotengine.org/en/stable/classes/class_textserver.html>
 
@@ -225,7 +234,7 @@ Delete after replacement is green:
 
 **Goal:** Make this plan the selected active slice and prove the migration surface is fully inventoried before code changes.
 
-**Context:** The manifest currently points to `next-production-gap-selection`; Native Win32 Editor Shell v1 is completed historical evidence.
+**Context:** Before Phase 0, the manifest pointed to `next-production-gap-selection`; Native Win32 Editor Shell v1 remains completed historical evidence. Phase 0 now selects this clean-break plan as the active milestone.
 
 **Constraints:** Do not change behavior yet. Do not hand-edit `engine/agent/manifest.json`.
 
@@ -248,8 +257,8 @@ Files:
 
 Steps:
 
-- [ ] Read `engine/agent/manifest.json.aiOperableProductionLoop`, `docs/superpowers/plans/README.md`, `docs/ui.md`, `docs/editor.md`, `docs/dependencies.md`, and `editor/CMakeLists.txt`.
-- [ ] Run the active UI-middleware surface inventory:
+- [x] Read `engine/agent/manifest.json.aiOperableProductionLoop`, `docs/superpowers/plans/README.md`, `docs/ui.md`, `docs/editor.md`, `docs/dependencies.md`, and `editor/CMakeLists.txt`.
+- [x] Run the active UI-middleware surface inventory:
 
 ```powershell
 rg -n "desktop-gui|build-gui|MK_ENABLE_DESKTOP_GUI|cpp23-desktop-gui-eval|Dear ImGui|imgui|ImGui|win32_imgui|Qt|Slint|RmlUi|NoesisGUI" CMakeLists.txt CMakePresets.json vcpkg.json README.md docs engine editor tests tools THIRD_PARTY_NOTICES.md
@@ -257,11 +266,11 @@ rg -n "desktop-gui|build-gui|MK_ENABLE_DESKTOP_GUI|cpp23-desktop-gui-eval|Dear I
 
 Expected: all current active build, test, docs, manifest, and static-check references that must be updated or intentionally retained as forbidden-term guards or historical archive evidence.
 
-- [ ] Record the official source refresh links used for Win32, D3D12/DXGI, DirectWrite, TSF, and UI Automation in the phase evidence section before implementation begins.
-- [ ] Record the Unity/Unreal/Godot comparison outcome in docs as the accepted design pattern: first-party UI/editor state plus official-SDK or audited adapter implementations for low-level text/platform services.
-- [ ] Record the clean-break decision that old lane names and Dear ImGui implementation files are deleted at closeout, with no compatibility forwarding scripts or aliases.
-- [ ] Select `first-party-editor-shell-v1` in `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` and explain that it is a clean-break replacement for the completed Dear ImGui shell, not a compatibility extension.
-- [ ] Run:
+- [x] Record the official source refresh links used for Win32, D3D12/DXGI, DirectWrite, TSF, and UI Automation in the phase evidence section before implementation begins.
+- [x] Record the Unity/Unreal/Godot comparison outcome in docs as the accepted design pattern: first-party UI/editor state plus official-SDK or audited adapter implementations for low-level text/platform services.
+- [x] Record the clean-break decision that old lane names and Dear ImGui implementation files are deleted at closeout, with no compatibility forwarding scripts or aliases.
+- [x] Select `first-party-editor-shell-v1` in `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` and explain that it is a clean-break replacement for the completed Dear ImGui shell, not a compatibility extension.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write
