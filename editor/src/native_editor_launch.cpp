@@ -131,10 +131,9 @@ NativeEditorLaunchValidation validate_native_editor_launch(const NativeEditorLau
     return validate_native_editor_launch_options(launch.options);
 }
 
-NativeEditorImguiUserConfigPolicy
-make_native_editor_imgui_user_config_policy(const NativeEditorLaunchOptions& options) noexcept {
-    return NativeEditorImguiUserConfigPolicy{.ini_file_enabled = !options.no_user_config,
-                                             .log_file_enabled = !options.no_user_config};
+NativeEditorUserConfigPolicy make_native_editor_user_config_policy(const NativeEditorLaunchOptions& options) noexcept {
+    return NativeEditorUserConfigPolicy{.ini_file_enabled = !options.no_user_config,
+                                        .log_file_enabled = !options.no_user_config};
 }
 
 std::string native_editor_launch_usage(std::string_view executable_name) {

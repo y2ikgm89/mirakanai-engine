@@ -1709,6 +1709,32 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     )) {
         Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan sandbox world package validation and performance budget selection"
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "first-party-editor-shell-v1") {
+    foreach ($needle in @(
+        "First-Party Editor Shell v1",
+        "MK_editor",
+        "MK_editor_core",
+        "first-party retained",
+        "desktop-editor",
+        "mirakana::ui",
+        "MK_ui_renderer",
+        "EditorAiOperationSnapshot",
+        "EditorAiCommandCatalog",
+        "EditorAiCommandRequest",
+        "EditorAiCommandDryRunResult",
+        "EditorAiCommandApplyResult",
+        "dock graph",
+        "rich-text",
+        "DirectWrite",
+        "Text Services Framework",
+        "UI Automation",
+        "unsupportedProductionGaps = []",
+        "SDL3",
+        "native handles",
+        "Dear ImGui"
+    )) {
+        Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan first-party editor shell selection"
+    }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "native-win32-editor-shell-v1") {
     foreach ($needle in @(
         "Native Win32 Editor Shell v1",

@@ -54,12 +54,12 @@ This plan keeps the editor state and AI-operable models, but replaces the immedi
 
 The migration follows the common production-engine split rather than attempting to hand-roll every UI subsystem:
 
-- Unity currently documents three UI systems and recommends UI Toolkit for Editor UI while keeping runtime UI options separate. The lesson for this engine is to keep the editor UI model first-party and retained, while treating legacy immediate-mode tooling only as historical evidence, not as the long-term editor foundation.
-- Unreal Engine uses Slate as its lower-level UI framework, UMG/Common UI as higher-level authoring/runtime UI layers, and first-party editor tab/docking infrastructure. The lesson is to own widget identity, docking state, command routing, and editor automation surfaces inside the engine.
-- Godot builds runtime UI and editor UI around first-party `Control` / `Container` nodes, while complex text is routed through text server infrastructure. The lesson is to expose stable engine-owned nodes and semantic rows, but keep text shaping/font complexity behind a specialized service boundary.
+- Unity 6.4 documents separate runtime/editor recommendations and recommends UI Toolkit for complex Editor UI, with IMGUI as the alternative for legacy or quick extensibility cases. The lesson for this engine is to keep the editor UI model first-party and retained, while treating immediate-mode tooling only as historical evidence, not as the long-term editor foundation.
+- Unreal Engine exposes Slate as its custom UI programming framework and uses higher-level UI authoring layers for game-facing UI. The lesson is to own widget identity, docking state, command routing, and editor automation surfaces inside the engine instead of delegating them to a third-party object model.
+- Godot builds runtime UI and editor UI around first-party `Control` / `Container` nodes, while `TextServer` owns low-level font/text rendering services. The lesson is to expose stable engine-owned nodes and semantic rows, but keep shaping/font complexity behind a specialized service boundary.
 - Engines and tools that use Qt-class editor frameworks get mature docking/text/accessibility quickly, but inherit framework object models, licensing, distribution, and automation boundaries that this clean-break plan intentionally avoids for the core editor shell.
 
-The adopted rule is: own the UI/editor contract, not every low-level platform implementation detail.
+The adopted rule is: own the UI/editor contract and the AI-operable semantic model, not every low-level platform implementation detail.
 
 ## Official-Recommendation Clean-Break Policy
 
@@ -70,15 +70,30 @@ This plan treats official platform guidance and established engine architecture 
 - Prefer audited optional adapters for non-Windows or cross-platform low-level services only after dependency/legal/static-check updates. Do not import a UI framework to recover convenience lost by removing Dear ImGui.
 - Remove obsolete names and lanes instead of forwarding them. The clean closeout deletes `desktop-gui`, `build-gui.ps1`, `MK_ENABLE_DESKTOP_GUI`, ImGui source files, and active Dear ImGui dependency records.
 - Make every operation machine-readable before making it visually rich. AI and tests must be able to inspect state, enumerate commands, dry-run mutations, apply reviewed commands, and read results without native UI automation.
+- Treat old behavior breakage as expected when it protects the new contract. If a stale script, CMake option, manifest recipe, smoke counter, or API name still works through compatibility forwarding, the phase is not clean-break complete.
+- Use official built-in platform controls only where the selected host UI stack actually owns those controls. Because this editor renders a first-party retained tree rather than WinUI/WPF controls, text scaling, reflow, focus, accessibility semantics, and UI Automation publication must be explicitly planned and validated instead of assumed.
 
 The result should resemble the major-engine pattern at the architecture level: first-party UI/editor model like Unreal Slate/Godot Control/UI Toolkit-style retained trees, plus official/audited low-level adapters for text, IME, accessibility, font, image, and platform services.
+
+## Adopted Recommendation Snapshot
+
+Official-source refresh on 2026-05-31 leads to these implementation decisions:
+
+| Source pattern | Adopted decision |
+| --- | --- |
+| Unity 6 recommends UI Toolkit for complex Editor UI and keeps runtime/editor UI choices explicit. | `MK_editor` moves to a retained first-party editor document model; generated/runtime UI stays on public `mirakana::ui`, not editor-private APIs. |
+| Unreal keeps a custom engine UI framework and separate higher-level authoring/game UI layers. | `MK_ui`, `MK_editor_core`, shell-common document composition, dock graph rows, and command catalogs are engine-owned contracts. |
+| Godot exposes UI through first-party `Control` nodes and routes font/text complexity through text-server infrastructure. | Docking, rich-text intent, semantic roles, focus, command ids, and AI rows are first-party; shaping, bidi, complex line breaking, font fallback, and raster quality remain adapter work. |
+| Microsoft Windows guidance gives the best text/accessibility experience through built-in controls, and requires custom providers for custom controls. | The first-party renderer must not claim Windows text scaling or accessibility for free; UI Automation provider publication, text reflow, and high-quality font adapters need focused official-SDK phases. |
+
+This means the plan is not "write Qt/Slate/UI Toolkit from scratch." It is "own the durable engine contract, then use official SDKs or audited low-level adapters behind that contract where the platform already has hard problems solved."
 
 ## Ownership Boundary Matrix
 
 | Area | First-party ownership | Adapter ownership |
 | --- | --- | --- |
 | Docking | Dock graph, split/tab stacks, stable panel ids, layout persistence, focus, keyboard navigation, command routing, smoke counters | Native multi-window behavior, OS drag affordances, monitor-specific placement if later selected |
-| Rich text | Document model, paragraph/span ids, style tokens, selection model, editor commands, serialization, AI-operable diagnostics | Shaping, bidi, complex line breaking, glyph fallback, font loading/rasterization |
+| Rich text | Document model, paragraph/span ids, style tokens, selection model, editor commands, serialization, AI-operable diagnostics | Shaping, bidi, complex line breaking, glyph fallback, font loading/rasterization, text scaling quality |
 | AI operation | Snapshot rows, command catalog, command request values, dry-run result, apply result, confirmation policy, diagnostics, state revision | External LLM/tool orchestration; no editor-private or native automation dependency |
 | IME/text input | `PlatformTextInputSession`, composition rows, committed text rows, caret rect, surrounding text contract, focus ownership | Windows TSF or platform text-service implementation, candidate UI integration, virtual keyboard behavior |
 | Accessibility | Semantic tree, roles, names, states, actions, bounds, stable ids, validation before publication | UI Automation, NSAccessibility, AT-SPI, Android/iOS accessibility bridge publication |
@@ -96,6 +111,7 @@ Before each implementation phase, re-check the current official documentation fo
 - DXGI swap chains and display behavior: <https://learn.microsoft.com/en-us/windows/win32/direct3ddxgi/d3d10-graphics-programming-guide-dxgi>
 - Direct2D for official Windows 2D/UI rendering guidance when a Windows SDK 2D adapter is selected: <https://learn.microsoft.com/en-us/windows/win32/direct2d/direct2d-portal>
 - DirectWrite for official Windows text layout/rendering adapters: <https://learn.microsoft.com/en-us/windows/win32/directwrite/direct-write-portal>
+- Windows text scaling and custom-control UX guidance when claiming text scale/reflow behavior: <https://learn.microsoft.com/en-us/windows/apps/develop/input/text-scaling>
 - Text Services Framework for IME/text-service adapter design: <https://learn.microsoft.com/en-us/windows/win32/tsf/text-services-framework>
 - UI Automation providers for accessibility bridge publication: <https://learn.microsoft.com/en-us/windows/win32/winauto/uiauto-providersoverview>
 - CMake and vcpkg documentation through Context7 or official docs for target/preset/dependency-policy changes.
@@ -113,6 +129,7 @@ If an official source recommends native handles or framework object exposure in 
 - Do not move Win32, D3D12, DXGI, file dialogs, process execution, renderer/RHI ownership, or platform-native handles into `MK_editor_core`.
 - Do not claim full docking, multi-window, cross-platform editor shell parity, production text shaping, production font loading/rasterization, native IME candidate UI, OS accessibility publication, or full viewport/material GPU texture display until focused phases prove them.
 - Do not hand-roll production IME engines, OS accessibility bridges, OpenType shaping, bidi reordering, glyph hinting, broad font fallback, or complex Unicode line breaking inside editor panels or shell host code.
+- Do not claim platform text scaling or accessibility parity merely because semantic rows exist; custom first-party controls require explicit reflow and provider publication evidence.
 - Do not weaken public-boundary, dependency-policy, JSON contract, or AI-integration checks to make the migration easier.
 - Keep generated games on `mirakana::ui` and public engine APIs; generated games must not use `mirakana_editor`, editor-private APIs, native handles, Dear ImGui, or UI middleware.
 
@@ -279,6 +296,15 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
 
 Expected: composed manifest updated, JSON/static contract checks pass after the selection text is aligned.
 
+### Phase 0 Evidence
+
+- Worktree: `G:/workspace/development/GameEngine/.worktrees/first-party-editor-shell-v1` on branch `codex/first-party-editor-shell-v1`; `tools/prepare-worktree.ps1` reported `linked-worktree=true`, `external-vcpkg=linked`, `vcpkg-installed=linked`, and `ok`.
+- Official source refresh: Microsoft Win32 windows/messages, Direct3D 12, DXGI, Direct2D, DirectWrite, Windows text scaling/custom-control guidance, Text Services Framework, and UI Automation provider documentation were rechecked for the Windows SDK boundaries; Context7 was used for current CMake target-scope and vcpkg manifest/feature behavior.
+- Engine comparison refresh: Unity UI Toolkit/editor UI guidance, Unreal Slate/UMG, and Godot Control/RichTextLabel/TextServer patterns support the selected architecture: first-party retained UI/editor contracts plus official-SDK or audited adapters for low-level text, IME, accessibility, font, image, and platform services.
+- Clean-break decision: `desktop-gui`, `build-gui.ps1`, `MK_ENABLE_DESKTOP_GUI`, Dear ImGui implementation files, and active UI-middleware dependency claims are deletion targets at closeout, not compatibility aliases.
+- Inventory command: `rg -n "desktop-gui|build-gui|MK_ENABLE_DESKTOP_GUI|cpp23-desktop-gui-eval|Dear ImGui|imgui|ImGui|win32_imgui|Qt|Slint|RmlUi|NoesisGUI" CMakeLists.txt CMakePresets.json vcpkg.json README.md docs engine editor tests tools THIRD_PARTY_NOTICES.md` found the active build, dependency, editor source, test, docs, and static-check surfaces that later phases must update or remove.
+- Validation: `tools/compose-agent-manifest.ps1 -Write`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-text-format.ps1`, and `tools/check-agents.ps1` passed for the Phase 0 docs/manifest/static-check selection slice.
+
 ## Phase 1 - Test-First First-Party Shell Contract
 
 **Goal:** Replace the visible shell contract tests before replacing the shell implementation.
@@ -299,7 +325,7 @@ Files:
 
 Steps:
 
-- [ ] Rename the user-config policy test from `imgui persistence` to first-party shell persistence:
+- [x] Rename the user-config policy test from `imgui persistence` to first-party shell persistence:
 
 ```cpp
 MK_TEST("editor native shell no-user-config disables shell persistence")
@@ -307,12 +333,12 @@ MK_TEST("editor native shell no-user-config disables shell persistence")
 
 Expected: it calls `make_native_editor_user_config_policy`, not `make_native_editor_imgui_user_config_policy`.
 
-- [ ] Delete ImGui descriptor allocator tests and replace them with first-party document/renderer-planning tests:
+- [x] Delete ImGui descriptor allocator tests and replace them with first-party document/renderer-planning tests:
   - `first party editor document includes visible panel roots`
   - `first party editor document keeps stable semantic element ids`
   - `first party editor document produces renderer submission without native handles`
   - `first party editor shell smoke counters report imgui disabled`
-- [ ] Add expected smoke key coverage:
+- [x] Add expected smoke key coverage:
 
 ```text
 editor_shell_ui=first_party
@@ -324,8 +350,8 @@ editor_shell_viewport_native_handles_exposed=0
 editor_shell_material_preview_native_handles_exposed=0
 ```
 
-- [ ] Keep service routing tests for file dialog, clipboard, and reviewed process execution unchanged except recipe ids renamed from `desktop-gui` to `desktop-editor`.
-- [ ] Run:
+- [x] Keep service routing tests for file dialog, clipboard, and reviewed process execution unchanged except recipe ids renamed from `desktop-gui` to `desktop-editor`.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests
@@ -333,6 +359,11 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 ```
 
 Expected at this phase start: tests fail or do not compile until later phases replace the implementation. At phase close: they pass.
+
+### Phase 1 Evidence
+
+- RED: `tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests` failed because `first_party_editor_document.hpp` did not exist after the test replacement.
+- GREEN: `tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests` and `tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_native_shell_tests` passed after the first-party shell contract implementation.
 
 ## Phase 2 - First-Party Editor Document Composition
 
@@ -355,38 +386,40 @@ Files:
 
 Steps:
 
-- [ ] Add a private shell document API:
+- [x] Add a private shell document API:
 
 ```cpp
 namespace mirakana::editor {
 
-struct FirstPartyEditorDocumentDesc {
-    const NativeEditorApp* app{nullptr};
-    mirakana::ui::Rect viewport{};
-};
-
-struct FirstPartyEditorDocumentResult {
+struct FirstPartyEditorDocument {
     mirakana::ui::UiDocument document;
-    mirakana::ui::RendererSubmission submission;
-    std::uint32_t panel_roots{0};
-    std::uint32_t visible_panel_roots{0};
-    std::string diagnostic;
-
-    [[nodiscard]] bool succeeded() const noexcept;
+    mirakana::ui::LayoutResult layout;
+    mirakana::ui::RendererSubmission renderer_submission;
+    std::uint32_t panel_root_count{0};
+    bool native_handles_exposed{false};
 };
 
-[[nodiscard]] FirstPartyEditorDocumentResult
-build_first_party_editor_document(const FirstPartyEditorDocumentDesc& desc);
+struct FirstPartyEditorShellSmokeCounters {
+    std::string ui{"first_party"};
+    std::string backend{"d3d12"};
+    std::uint32_t panel_count{0};
+    bool imgui_enabled{false};
+    bool sdl3_enabled{false};
+    bool viewport_native_handles_exposed{false};
+    bool material_preview_native_handles_exposed{false};
+};
+
+[[nodiscard]] FirstPartyEditorDocument make_first_party_editor_document(const NativeEditorApp& app);
 
 } // namespace mirakana::editor
 ```
 
-- [ ] Compose top-level panel roots for Main Menu, Scene, Inspector, Assets, Console, Viewport, Resources, AI Commands, Profiler, Timeline, and Project Settings.
-- [ ] Reuse existing `make_inspector_ui_model`, `make_asset_list_ui_model`, `make_diagnostics_ui_model`, and `make_timeline_ui_model` patterns where they fit; create shell-only composition helpers for panels that still lack core UI model functions.
-- [ ] Assign stable element ids using panel-qualified prefixes such as `main_menu.file.open_project`, `viewport.status`, `resources.backend`, and `project_settings.services.clipboard`.
-- [ ] Create a restrained default shell theme in `first_party_editor_theme.*` only if tests need deterministic color tokens; keep it private.
-- [ ] Ensure all renderer payloads come from `mirakana::ui` submission helpers and `MK_ui_renderer`; do not draw through native UI middleware.
-- [ ] Run:
+- [x] Compose top-level panel roots for Main Menu, Scene, Inspector, Assets, Console, Viewport, Resources, AI Commands, Profiler, Timeline, and Project Settings.
+- [x] Reuse existing `MK_ui` document composition patterns; deeper per-panel core UI model embedding remains for later richer panel phases.
+- [x] Assign stable element ids using `editor.panel.<panel>` prefixes such as `editor.panel.viewport.status`, `editor.panel.resources.status`, and `editor.panel.project_settings.status`.
+- [x] Confirm no `first_party_editor_theme.*` files are needed for this candidate; deterministic style tokens live in the private document composition helper.
+- [x] Ensure all renderer payloads come from `mirakana::ui` submission helpers; do not draw through native UI middleware.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests MK_ui_renderer_tests
@@ -394,6 +427,15 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 ```
 
 Expected: first-party document and renderer submission tests pass.
+
+### Phase 2 Evidence
+
+- Added private `editor/src/first_party_editor_document.hpp` and `.cpp` to `MK_editor_shell_common`.
+- `make_first_party_editor_document` now builds deterministic retained panel roots, layout, renderer submission, accessibility rows, and native-handle non-exposure evidence.
+- `make_first_party_editor_shell_smoke_counters` reports `ui=first_party`, `imgui_enabled=false`, `sdl3_enabled=false`, panel count, backend, and native handle exposure flags.
+- Focused validation passed: `tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests`; `tools/cmake.ps1 --build --preset dev --target MK_ui_renderer_tests`; `tools/ctest.ps1 --preset dev --output-on-failure -R "MK_editor_native_shell_tests|MK_ui_renderer_tests"`.
+- Static drift validation passed: `tools/check-format.ps1`; `tools/check-tidy.ps1 -Files editor/src/first_party_editor_document.cpp,editor/src/native_editor_launch.cpp,tests/unit/editor_native_shell_tests.cpp -ReuseExistingFileApiReply`; `tools/check-public-api-boundaries.ps1`; `tools/check-native-desktop-contracts.ps1`; `tools/check-json-contracts.ps1`; `tools/check-ai-integration.ps1`; `tools/check-agents.ps1`; `git diff --check`.
+- Full slice validation passed: `tools/validate.ps1`.
 
 ## Phase 3 - First-Party Docking, Rich Text, And Adapter Boundary Contracts
 
@@ -419,7 +461,7 @@ Files:
 
 Steps:
 
-- [ ] Add a private dock graph API:
+- [x] Add a private dock graph API:
 
 ```cpp
 namespace mirakana::editor {
@@ -462,12 +504,12 @@ validate_first_party_editor_dock_graph(const FirstPartyEditorDockGraph& graph);
 } // namespace mirakana::editor
 ```
 
-- [ ] Add tests:
+- [x] Add tests:
   - `first party editor dock graph validates default split and tab stacks`
   - `first party editor dock graph rejects duplicate node ids`
   - `first party editor dock graph rejects missing active tab`
   - `first party editor document orders panels through dock graph`
-- [ ] Add a private rich-text row API:
+- [x] Add a private rich-text row API:
 
 ```cpp
 namespace mirakana::editor {
@@ -501,11 +543,11 @@ make_first_party_editor_rich_text_ui_model(const FirstPartyEditorRichTextDocumen
 } // namespace mirakana::editor
 ```
 
-- [ ] Add tests:
+- [x] Add tests:
   - `first party rich text validates paragraph and span ids`
   - `first party rich text preserves style tokens without shaping claims`
   - `first party rich text produces semantic ui labels`
-- [ ] Add adapter boundary declarations that are values only:
+- [x] Add adapter boundary declarations that are values only:
 
 ```cpp
 namespace mirakana::editor {
@@ -532,9 +574,9 @@ first_party_editor_required_adapter_boundaries();
 } // namespace mirakana::editor
 ```
 
-- [ ] Add tests proving required rows exist for `text_shaping`, `font_rasterization`, `ime_text_services`, and `accessibility_bridge`, and that every row has `implemented == false` until a focused adapter phase lands.
-- [ ] Integrate the default dock graph into `build_first_party_editor_document` so the shell document is structured by `DockRoot`, `Split`, and `TabStack` rows instead of hard-coded panel ordering.
-- [ ] Run:
+- [x] Add tests proving required rows exist for `text_shaping`, `font_rasterization`, `ime_text_services`, and `accessibility_bridge`, and that every row has `implemented == false` until a focused adapter phase lands.
+- [x] Integrate the default dock graph into `make_first_party_editor_document` so the shell document is structured by dock `Split` and `TabStack` rows instead of hard-coded panel ordering.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests
@@ -542,6 +584,12 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 ```
 
 Expected: dock graph, rich-text, and adapter-boundary tests pass with no native SDK or middleware implementation dependency.
+
+### Phase 3 Evidence
+
+- RED: `tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests` failed because `first_party_editor_adapter_boundaries.hpp` did not exist after the Phase 3 tests were added.
+- GREEN: `tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests` and `tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_native_shell_tests` passed after adding dock graph, rich-text, adapter-boundary contracts, and dock-graph-backed document composition.
+- Focused static validation passed: `tools/check-format.ps1`; `tools/check-tidy.ps1 -Files editor/src/first_party_editor_docking.cpp,editor/src/first_party_editor_document.cpp,editor/src/first_party_editor_rich_text.cpp,tests/unit/editor_native_shell_tests.cpp -ReuseExistingFileApiReply`.
 
 ## Phase 4 - AI Operation Surface Contract
 
@@ -559,12 +607,14 @@ Files:
 - Create: `editor/core/src/ai_operation_surface.cpp`
 - Modify: `editor/CMakeLists.txt`
 - Modify: `tests/unit/editor_core_tests.cpp`
+- Modify: `docs/editor.md`
+- Modify: `tools/check-ai-integration-030-runtime-rendering.ps1` only if the public header/source literals need an owning static guard before Phase 8 closeout
 - Modify: `editor/src/first_party_editor_document.cpp` only to surface command ids into UI element metadata when that metadata exists
 - Modify: `tests/unit/editor_native_shell_tests.cpp` only for shell-facing command catalog checks
 
 Steps:
 
-- [ ] Add the editor-core operation surface API:
+- [x] Add the editor-core operation surface API:
 
 ```cpp
 namespace mirakana::editor {
@@ -640,14 +690,14 @@ apply_editor_ai_command(Workspace& workspace, const EditorAiCommandCatalog& cata
 } // namespace mirakana::editor
 ```
 
-- [ ] Add tests:
+- [x] Add tests:
   - `editor ai operation snapshot exposes visible panel rows`
   - `editor ai command catalog exposes stable panel visibility commands`
   - `editor ai command dry run rejects unknown command`
   - `editor ai command dry run rejects target mismatch`
   - `editor ai command apply toggles panel visibility after accepted dry run`
   - `editor ai command apply requires confirmation for mutating commands marked confirmable`
-- [ ] Keep the first command set deliberately narrow:
+- [x] Keep the first command set deliberately narrow:
 
 ```text
 editor.panel.resources.show
@@ -660,10 +710,11 @@ editor.panel.profiler.hide
 
 Expected: no command launches processes, runs validation, edits project files, mutates manifests, or touches renderer/native handles.
 
-- [ ] Require command ids and target ids to match catalog rows exactly; return diagnostics instead of guessing.
-- [ ] Require `dry_run_editor_ai_command` to be valid before `apply_editor_ai_command` applies a mutation.
-- [ ] Increment snapshot/catalog revision deterministically after an applied in-memory workspace mutation.
-- [ ] Run:
+- [x] Require command ids and target ids to match catalog rows exactly; return diagnostics instead of guessing.
+- [x] Require `dry_run_editor_ai_command` to be valid before `apply_editor_ai_command` applies a mutation.
+- [x] Return deterministic snapshot/catalog revision values that change after an applied in-memory workspace mutation.
+- [x] Update `docs/editor.md`, `engine/agent/manifest.fragments/004-modules.json`, `engine/agent/manifest.fragments/014-gameCodeGuidance.json`, and the owning AI-integration static check so agents can discover `EditorAiOperationSnapshot`, command catalogs, dry-run, apply-result rows, confirmation policy, and the narrow panel command set before the broader Phase 8 closeout.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests
@@ -671,6 +722,14 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 ```
 
 Expected: AI operation surface tests pass without building the visible editor shell.
+
+### Phase 4 Evidence
+
+- RED: `tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests` failed because `mirakana/editor/ai_operation_surface.hpp` did not exist after the Phase 4 tests were added.
+- GREEN: `tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests` and `tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_core_tests` passed after adding the operation snapshot, command catalog, dry-run, and apply-result implementation.
+- Focused static validation passed before the plan-update docs edit: `tools/check-format.ps1`; `tools/check-tidy.ps1 -Files editor/core/src/ai_operation_surface.cpp,tests/unit/editor_core_tests.cpp -ReuseExistingFileApiReply`.
+- Agent-surface sync passed after the official-recommendation plan update: `tools/compose-agent-manifest.ps1 -Write`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-format.ps1`, `tools/check-agents.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_core_tests`, and `git diff --check`.
+- Full validation passed for the candidate before publication: `tools/validate.ps1` completed with `validate: ok` and 85/85 CTest tests passing; Metal/iOS checks remained diagnostic host-gated on this Windows host as expected.
 
 ## Phase 5 - First-Party Win32 Shell Host
 
