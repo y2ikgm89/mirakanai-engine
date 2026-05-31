@@ -437,7 +437,7 @@ Files:
 
 Steps:
 
-- [ ] Add a private dock graph API:
+- [x] Add a private dock graph API:
 
 ```cpp
 namespace mirakana::editor {
@@ -480,12 +480,12 @@ validate_first_party_editor_dock_graph(const FirstPartyEditorDockGraph& graph);
 } // namespace mirakana::editor
 ```
 
-- [ ] Add tests:
+- [x] Add tests:
   - `first party editor dock graph validates default split and tab stacks`
   - `first party editor dock graph rejects duplicate node ids`
   - `first party editor dock graph rejects missing active tab`
   - `first party editor document orders panels through dock graph`
-- [ ] Add a private rich-text row API:
+- [x] Add a private rich-text row API:
 
 ```cpp
 namespace mirakana::editor {
@@ -519,11 +519,11 @@ make_first_party_editor_rich_text_ui_model(const FirstPartyEditorRichTextDocumen
 } // namespace mirakana::editor
 ```
 
-- [ ] Add tests:
+- [x] Add tests:
   - `first party rich text validates paragraph and span ids`
   - `first party rich text preserves style tokens without shaping claims`
   - `first party rich text produces semantic ui labels`
-- [ ] Add adapter boundary declarations that are values only:
+- [x] Add adapter boundary declarations that are values only:
 
 ```cpp
 namespace mirakana::editor {
@@ -550,9 +550,9 @@ first_party_editor_required_adapter_boundaries();
 } // namespace mirakana::editor
 ```
 
-- [ ] Add tests proving required rows exist for `text_shaping`, `font_rasterization`, `ime_text_services`, and `accessibility_bridge`, and that every row has `implemented == false` until a focused adapter phase lands.
-- [ ] Integrate the default dock graph into `build_first_party_editor_document` so the shell document is structured by `DockRoot`, `Split`, and `TabStack` rows instead of hard-coded panel ordering.
-- [ ] Run:
+- [x] Add tests proving required rows exist for `text_shaping`, `font_rasterization`, `ime_text_services`, and `accessibility_bridge`, and that every row has `implemented == false` until a focused adapter phase lands.
+- [x] Integrate the default dock graph into `make_first_party_editor_document` so the shell document is structured by dock `Split` and `TabStack` rows instead of hard-coded panel ordering.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests
@@ -560,6 +560,12 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 ```
 
 Expected: dock graph, rich-text, and adapter-boundary tests pass with no native SDK or middleware implementation dependency.
+
+### Phase 3 Evidence
+
+- RED: `tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests` failed because `first_party_editor_adapter_boundaries.hpp` did not exist after the Phase 3 tests were added.
+- GREEN: `tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests` and `tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_native_shell_tests` passed after adding dock graph, rich-text, adapter-boundary contracts, and dock-graph-backed document composition.
+- Focused static validation passed: `tools/check-format.ps1`; `tools/check-tidy.ps1 -Files editor/src/first_party_editor_docking.cpp,editor/src/first_party_editor_document.cpp,editor/src/first_party_editor_rich_text.cpp,tests/unit/editor_native_shell_tests.cpp -ReuseExistingFileApiReply`.
 
 ## Phase 4 - AI Operation Surface Contract
 
