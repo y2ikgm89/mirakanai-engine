@@ -3,7 +3,10 @@
 
 #include "test_framework.hpp"
 
+#include "first_party_editor_adapter_boundaries.hpp"
+#include "first_party_editor_docking.hpp"
 #include "first_party_editor_document.hpp"
+#include "first_party_editor_rich_text.hpp"
 #include "native_editor_app.hpp"
 #include "native_editor_launch.hpp"
 #include "native_material_preview_cache.hpp"
@@ -81,6 +84,46 @@ class RecordingClipboardTextAdapter final : public mirakana::ui::IClipboardTextA
 
 [[nodiscard]] bool contains_element(const mirakana::ui::UiDocument& document, std::string_view id) {
     return document.find(mirakana::ui::ElementId{.value = std::string{id}}) != nullptr;
+}
+
+[[nodiscard]] const mirakana::editor::FirstPartyEditorDockNode*
+find_dock_node(const mirakana::editor::FirstPartyEditorDockGraph& graph, std::string_view id) noexcept {
+    for (const auto& node : graph.nodes) {
+        if (node.id == id) {
+            return &node;
+        }
+    }
+    return nullptr;
+}
+
+[[nodiscard]] mirakana::editor::FirstPartyEditorDockNode*
+find_dock_node(mirakana::editor::FirstPartyEditorDockGraph& graph, std::string_view id) noexcept {
+    for (auto& node : graph.nodes) {
+        if (node.id == id) {
+            return &node;
+        }
+    }
+    return nullptr;
+}
+
+[[nodiscard]] bool has_dock_tab(const mirakana::editor::FirstPartyEditorDockNode& node, std::string_view tab) {
+    for (const auto& candidate : node.tabs) {
+        if (candidate == tab) {
+            return true;
+        }
+    }
+    return false;
+}
+
+[[nodiscard]] const mirakana::editor::FirstPartyEditorAdapterBoundaryRow*
+find_adapter_boundary(const std::vector<mirakana::editor::FirstPartyEditorAdapterBoundaryRow>& rows,
+                      mirakana::editor::FirstPartyEditorAdapterBoundary boundary) noexcept {
+    for (const auto& row : rows) {
+        if (row.boundary == boundary) {
+            return &row;
+        }
+    }
+    return nullptr;
 }
 
 } // namespace
@@ -275,6 +318,200 @@ MK_TEST("editor first party shell smoke counters report imgui disabled") {
     MK_REQUIRE(!counters.sdl3_enabled);
     MK_REQUIRE(!counters.viewport_native_handles_exposed);
     MK_REQUIRE(!counters.material_preview_native_handles_exposed);
+}
+
+MK_TEST("first party editor dock graph validates default split and tab stacks") {
+    const auto graph = mirakana::editor::make_default_first_party_editor_dock_graph();
+    const auto validation = mirakana::editor::validate_first_party_editor_dock_graph(graph);
+
+    MK_REQUIRE(validation.valid);
+    MK_REQUIRE(validation.diagnostics.empty());
+    MK_REQUIRE(graph.root_id == "dock.root");
+
+    const auto* root = find_dock_node(graph, "dock.root");
+    const auto* left = find_dock_node(graph, "dock.left_stack");
+    const auto* center = find_dock_node(graph, "dock.center_split");
+    const auto* viewport = find_dock_node(graph, "dock.viewport_stack");
+    const auto* bottom = find_dock_node(graph, "dock.bottom_stack");
+    const auto* right = find_dock_node(graph, "dock.right_stack");
+
+    MK_REQUIRE(root != nullptr);
+    MK_REQUIRE(root->kind == mirakana::editor::FirstPartyEditorDockNodeKind::split);
+    MK_REQUIRE(root->axis == mirakana::editor::FirstPartyEditorDockSplitAxis::horizontal);
+    MK_REQUIRE(root->children.size() == 3U);
+    MK_REQUIRE(left != nullptr);
+    MK_REQUIRE(left->kind == mirakana::editor::FirstPartyEditorDockNodeKind::tab_stack);
+    MK_REQUIRE(left->active_tab == "scene");
+    MK_REQUIRE(has_dock_tab(*left, "assets"));
+    MK_REQUIRE(center != nullptr);
+    MK_REQUIRE(center->kind == mirakana::editor::FirstPartyEditorDockNodeKind::split);
+    MK_REQUIRE(center->axis == mirakana::editor::FirstPartyEditorDockSplitAxis::vertical);
+    MK_REQUIRE(viewport != nullptr);
+    MK_REQUIRE(viewport->active_tab == "viewport");
+    MK_REQUIRE(bottom != nullptr);
+    MK_REQUIRE(has_dock_tab(*bottom, "console"));
+    MK_REQUIRE(has_dock_tab(*bottom, "profiler"));
+    MK_REQUIRE(right != nullptr);
+    MK_REQUIRE(has_dock_tab(*right, "project_settings"));
+}
+
+MK_TEST("first party editor dock graph rejects duplicate node ids") {
+    auto graph = mirakana::editor::make_default_first_party_editor_dock_graph();
+    graph.nodes.push_back(graph.nodes.front());
+
+    const auto validation = mirakana::editor::validate_first_party_editor_dock_graph(graph);
+
+    MK_REQUIRE(!validation.valid);
+    MK_REQUIRE(!validation.diagnostics.empty());
+    MK_REQUIRE(validation.diagnostics.front().find("duplicate") != std::string::npos);
+}
+
+MK_TEST("first party editor dock graph rejects missing active tab") {
+    auto graph = mirakana::editor::make_default_first_party_editor_dock_graph();
+    auto* left = find_dock_node(graph, "dock.left_stack");
+    MK_REQUIRE(left != nullptr);
+    left->active_tab = "missing_panel";
+
+    const auto validation = mirakana::editor::validate_first_party_editor_dock_graph(graph);
+
+    MK_REQUIRE(!validation.valid);
+    MK_REQUIRE(!validation.diagnostics.empty());
+    MK_REQUIRE(validation.diagnostics.front().find("active tab") != std::string::npos);
+}
+
+MK_TEST("first party editor document orders panels through dock graph") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+
+    const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
+    const auto* root = shell_document.document.find(mirakana::ui::ElementId{.value = "editor.dock.dock.root"});
+    const auto* left = shell_document.document.find(mirakana::ui::ElementId{.value = "editor.dock.dock.left_stack"});
+    const auto* scene = shell_document.document.find(mirakana::ui::ElementId{.value = "editor.panel.scene"});
+    const auto* viewport = shell_document.document.find(mirakana::ui::ElementId{.value = "editor.panel.viewport"});
+    const auto* right = shell_document.document.find(mirakana::ui::ElementId{.value = "editor.dock.dock.right_stack"});
+    const auto* inspector = shell_document.document.find(mirakana::ui::ElementId{.value = "editor.panel.inspector"});
+
+    MK_REQUIRE(root != nullptr);
+    MK_REQUIRE(left != nullptr);
+    MK_REQUIRE(scene != nullptr);
+    MK_REQUIRE(viewport != nullptr);
+    MK_REQUIRE(right != nullptr);
+    MK_REQUIRE(inspector != nullptr);
+    MK_REQUIRE(left->parent.value == root->id.value);
+    MK_REQUIRE(scene->parent.value == left->id.value);
+    MK_REQUIRE(inspector->parent.value == right->id.value);
+    MK_REQUIRE(shell_document.panel_root_count == app.native_panel_count());
+}
+
+MK_TEST("first party rich text validates paragraph and span ids") {
+    mirakana::editor::FirstPartyEditorRichTextDocument document{
+        .id = "editor.rich_text.console",
+        .paragraphs =
+            {
+                mirakana::editor::FirstPartyEditorRichTextParagraph{
+                    .id = "summary",
+                    .spans =
+                        {
+                            mirakana::editor::FirstPartyEditorRichTextSpan{
+                                .id = "level",
+                                .style_token = "editor.log.info",
+                                .text = "Info",
+                            },
+                        },
+                },
+            },
+    };
+    const auto valid = mirakana::editor::validate_first_party_editor_rich_text_document(document);
+    MK_REQUIRE(valid.valid);
+
+    document.paragraphs.push_back(document.paragraphs.front());
+    const auto invalid = mirakana::editor::validate_first_party_editor_rich_text_document(document);
+    MK_REQUIRE(!invalid.valid);
+    MK_REQUIRE(!invalid.diagnostics.empty());
+    MK_REQUIRE(invalid.diagnostics.front().find("duplicate paragraph") != std::string::npos);
+}
+
+MK_TEST("first party rich text preserves style tokens without shaping claims") {
+    const mirakana::editor::FirstPartyEditorRichTextDocument document{
+        .id = "editor.rich_text.console",
+        .paragraphs =
+            {
+                mirakana::editor::FirstPartyEditorRichTextParagraph{
+                    .id = "summary",
+                    .spans =
+                        {
+                            mirakana::editor::FirstPartyEditorRichTextSpan{
+                                .id = "level",
+                                .style_token = "editor.log.warning",
+                                .text = "Warning",
+                            },
+                        },
+                },
+            },
+    };
+
+    const auto ui_document = mirakana::editor::make_first_party_editor_rich_text_ui_model(document);
+    const auto* span =
+        ui_document.find(mirakana::ui::ElementId{.value = "editor.rich_text.console.paragraph.summary.span.level"});
+
+    MK_REQUIRE(span != nullptr);
+    MK_REQUIRE(span->role == mirakana::ui::SemanticRole::label);
+    MK_REQUIRE(span->text.label == "Warning");
+    MK_REQUIRE(span->style.foreground_token == "editor.log.warning");
+    MK_REQUIRE(span->text.font_family == "editor-ui");
+}
+
+MK_TEST("first party rich text produces semantic ui labels") {
+    const mirakana::editor::FirstPartyEditorRichTextDocument document{
+        .id = "editor.rich_text.ai_commands",
+        .paragraphs =
+            {
+                mirakana::editor::FirstPartyEditorRichTextParagraph{
+                    .id = "intro",
+                    .spans =
+                        {
+                            mirakana::editor::FirstPartyEditorRichTextSpan{
+                                .id = "status",
+                                .style_token = "editor.text",
+                                .text = "Ready",
+                            },
+                        },
+                },
+            },
+    };
+
+    const auto ui_document = mirakana::editor::make_first_party_editor_rich_text_ui_model(document);
+
+    MK_REQUIRE(contains_element(ui_document, "editor.rich_text.ai_commands"));
+    MK_REQUIRE(contains_element(ui_document, "editor.rich_text.ai_commands.paragraph.intro"));
+    MK_REQUIRE(contains_element(ui_document, "editor.rich_text.ai_commands.paragraph.intro.span.status"));
+    MK_REQUIRE(ui_document.size() == 3U);
+}
+
+MK_TEST("first party editor adapter boundaries stay value-only and unimplemented") {
+    const auto rows = mirakana::editor::first_party_editor_required_adapter_boundaries();
+
+    const auto* text_shaping =
+        find_adapter_boundary(rows, mirakana::editor::FirstPartyEditorAdapterBoundary::text_shaping);
+    const auto* font_rasterization =
+        find_adapter_boundary(rows, mirakana::editor::FirstPartyEditorAdapterBoundary::font_rasterization);
+    const auto* ime_text_services =
+        find_adapter_boundary(rows, mirakana::editor::FirstPartyEditorAdapterBoundary::ime_text_services);
+    const auto* accessibility =
+        find_adapter_boundary(rows, mirakana::editor::FirstPartyEditorAdapterBoundary::accessibility_bridge);
+
+    MK_REQUIRE(text_shaping != nullptr);
+    MK_REQUIRE(font_rasterization != nullptr);
+    MK_REQUIRE(ime_text_services != nullptr);
+    MK_REQUIRE(accessibility != nullptr);
+    MK_REQUIRE(text_shaping->official_source_family.find("DirectWrite") != std::string::npos);
+    MK_REQUIRE(ime_text_services->official_source_family.find("Text Services Framework") != std::string::npos);
+    MK_REQUIRE(accessibility->official_source_family.find("UI Automation") != std::string::npos);
+
+    for (const auto& row : rows) {
+        MK_REQUIRE(!row.id.empty());
+        MK_REQUIRE(!row.implemented);
+        MK_REQUIRE(!row.native_handles_public);
+    }
 }
 
 MK_TEST("editor native shell app records deterministic panel smoke counters") {
