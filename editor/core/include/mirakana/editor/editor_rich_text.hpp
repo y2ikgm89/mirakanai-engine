@@ -138,6 +138,9 @@ make_editor_console_rich_text_document(std::span<const EditorDiagnosticRow> rows
 [[nodiscard]] EditorRichTextDocument
 make_editor_ai_command_panel_rich_text_document(const EditorAiCommandPanelModel& model,
                                                 std::string document_id = "editor.rich_text.ai_commands");
+[[nodiscard]] EditorRichTextDocument
+make_editor_inspector_rich_text_document(std::span<const EditorPropertyRow> rows,
+                                         std::string document_id = "editor.rich_text.inspector");
 [[nodiscard]] EditorRichTextValidation validate_editor_rich_text_document(const EditorRichTextDocument& document);
 [[nodiscard]] EditorRichTextCopyResult copy_editor_rich_text_plain_text(const EditorRichTextDocument& document);
 [[nodiscard]] EditorRichTextCopyResult

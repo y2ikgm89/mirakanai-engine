@@ -117,6 +117,10 @@ void append_panel_status(ui::UiDocument& document, const NativeEditorApp& app, s
     const std::string prefix = "editor.panel." + std::string{panel_id};
     if (panel_id == "viewport") {
         append_label(document, panel_root, prefix + ".status", "viewport " + app.viewport_display().status_id);
+    } else if (panel_id == "inspector") {
+        append_rich_text_document(
+            document, panel_root,
+            make_editor_inspector_rich_text_document(app.inspector_rows(), "editor.panel.inspector.rich_text"));
     } else if (panel_id == "console") {
         append_rich_text_document(
             document, panel_root,
