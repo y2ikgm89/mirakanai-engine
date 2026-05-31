@@ -13,9 +13,13 @@ void NativeEditorWin32Services::bind(NativeEditorApp& app) {
         .file_dialog_service = &file_dialogs_,
         .clipboard_text_adapter = &clipboard_adapter_,
         .reviewed_process_runner = &process_runner_,
+        .platform_text_input_adapter = &text_services_,
+        .ime_adapter = &text_services_,
         .file_dialog_service_id = "win32",
         .clipboard_service_id = "win32",
         .reviewed_process_runner_id = "win32",
+        .platform_text_input_service_id = "win32_tsf",
+        .ime_service_id = "win32_tsf",
     });
 }
 

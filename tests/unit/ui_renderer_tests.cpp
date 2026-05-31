@@ -1920,6 +1920,8 @@ MK_TEST("ui platform text input session plan dispatches valid begin request to a
     mirakana::ui::PlatformTextInputRequest request;
     request.target = mirakana::ui::ElementId{"chat.input"};
     request.text_bounds = mirakana::ui::Rect{.x = 8.0F, .y = 12.0F, .width = 240.0F, .height = 32.0F};
+    request.surrounding_text = "player name";
+    request.cursor_byte_offset = request.surrounding_text.size();
 
     const auto plan = mirakana::ui::plan_platform_text_input_session(request);
     MK_REQUIRE(plan.ready());
@@ -1928,6 +1930,9 @@ MK_TEST("ui platform text input session plan dispatches valid begin request to a
     MK_REQUIRE(plan.request.text_bounds.y == 12.0F);
     MK_REQUIRE(plan.request.text_bounds.width == 240.0F);
     MK_REQUIRE(plan.request.text_bounds.height == 32.0F);
+    MK_REQUIRE(plan.request.surrounding_text == "player name");
+    MK_REQUIRE(plan.request.cursor_byte_offset == 11U);
+    MK_REQUIRE(plan.request.selection_byte_length == 0U);
     MK_REQUIRE(plan.diagnostics.empty());
 
     CapturingPlatformIntegrationAdapter adapter;
@@ -1939,6 +1944,8 @@ MK_TEST("ui platform text input session plan dispatches valid begin request to a
     MK_REQUIRE(adapter.begin_calls == 1);
     MK_REQUIRE(adapter.published_begin_request.target == mirakana::ui::ElementId{"chat.input"});
     MK_REQUIRE(adapter.published_begin_request.text_bounds.width == 240.0F);
+    MK_REQUIRE(adapter.published_begin_request.surrounding_text == "player name");
+    MK_REQUIRE(adapter.published_begin_request.cursor_byte_offset == 11U);
     MK_REQUIRE(adapter.end_calls == 0);
 }
 
@@ -1964,6 +1971,22 @@ MK_TEST("ui platform text input session plan blocks invalid begin request before
     MK_REQUIRE(adapter.begin_calls == 0);
     MK_REQUIRE(adapter.published_begin_request.target.value.empty());
     MK_REQUIRE(adapter.end_calls == 0);
+}
+
+MK_TEST("ui platform text input session plan validates surrounding text cursor and selection") {
+    mirakana::ui::PlatformTextInputRequest request;
+    request.target = mirakana::ui::ElementId{"chat.input"};
+    request.text_bounds = mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 240.0F, .height = 24.0F};
+    request.surrounding_text = "a\303\251";
+    request.cursor_byte_offset = 2U;
+    request.selection_byte_length = 1U;
+
+    const auto plan = mirakana::ui::plan_platform_text_input_session(request);
+
+    MK_REQUIRE(!plan.ready());
+    MK_REQUIRE(plan.diagnostics.size() == 2);
+    MK_REQUIRE(plan.diagnostics[0].code == mirakana::ui::AdapterPayloadDiagnosticCode::invalid_text_edit_cursor);
+    MK_REQUIRE(plan.diagnostics[1].code == mirakana::ui::AdapterPayloadDiagnosticCode::invalid_text_edit_selection);
 }
 
 MK_TEST("ui platform text input end plan dispatches valid target and blocks invalid target") {

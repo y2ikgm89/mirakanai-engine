@@ -253,6 +253,10 @@ make_text_input_diagnostic(ui::ElementId id, ui::AdapterPayloadDiagnosticCode co
     return ui::AdapterPayloadDiagnostic{.id = std::move(id), .code = code, .message = std::move(message)};
 }
 
+[[nodiscard]] bool is_win32_tsf_service_id(std::string_view id) noexcept {
+    return id == "win32_tsf";
+}
+
 } // namespace
 
 struct NativeEditorApp::Impl {
@@ -473,12 +477,16 @@ void NativeEditorApp::bind_native_services(NativeEditorServiceBindings services)
                                                                    ? "external"
                                                                    : std::move(services.platform_text_input_service_id);
         impl_->service_status.platform_text_input_available = true;
+        impl_->text_input_state.tsf_adapter_selected =
+            is_win32_tsf_service_id(impl_->service_status.platform_text_input_service_id);
     }
     if (services.ime_adapter != nullptr) {
         impl_->ime_adapter = services.ime_adapter;
         impl_->service_status.ime_service_id =
             services.ime_service_id.empty() ? "external" : std::move(services.ime_service_id);
         impl_->service_status.ime_available = true;
+        impl_->text_input_state.tsf_adapter_selected = impl_->text_input_state.tsf_adapter_selected ||
+                                                       is_win32_tsf_service_id(impl_->service_status.ime_service_id);
     }
 }
 
@@ -517,6 +525,9 @@ NativeEditorTextInputFocusResult NativeEditorApp::focus_text_input_target(Native
     }
 
     impl_->text_input_state = make_native_editor_text_input_state(target);
+    impl_->text_input_state.tsf_adapter_selected =
+        is_win32_tsf_service_id(impl_->service_status.platform_text_input_service_id) ||
+        is_win32_tsf_service_id(impl_->service_status.ime_service_id);
     impl_->text_input_state.session_active = true;
     result.accepted = true;
     return result;

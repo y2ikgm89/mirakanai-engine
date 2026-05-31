@@ -29,6 +29,7 @@ struct NativeEditorTextInputState {
     bool caret_rect_ready{false};
     bool surrounding_text_ready{false};
     bool candidate_ui_host_owned{true};
+    bool tsf_adapter_selected{false};
     bool native_handles_exposed{false};
 };
 
