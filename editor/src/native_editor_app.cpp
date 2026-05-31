@@ -113,8 +113,9 @@ namespace {
     return {
         EditorDiagnosticRow{
             .id = "native_shell", .severity = EditorDiagnosticSeverity::info, .message = "Native editor shell ready"},
-        EditorDiagnosticRow{
-            .id = "sdl3_removed", .severity = EditorDiagnosticSeverity::info, .message = "SDL3 dependency absent"},
+        EditorDiagnosticRow{.id = "legacy_middleware_removed",
+                            .severity = EditorDiagnosticSeverity::info,
+                            .message = "Legacy middleware dependency absent"},
     };
 }
 

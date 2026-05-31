@@ -191,6 +191,9 @@ $validationRecipeManifestFragment =
     Get-Content -LiteralPath (Join-Path $root "engine/agent/manifest.fragments/009-validationRecipes.json") -Raw
 foreach ($requiredNeedle in @(
         "native Win32 first-party retained MK_editor shell",
+        "make_editor_rich_text_view_model",
+        "make_editor_rich_text_ai_snapshot",
+        "console rich-text coverage proves read-only diagnostic spans",
         "MK_editor_native_shell_tests",
         "MK_editor_smoke",
         "editor_shell_ui=first_party",

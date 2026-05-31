@@ -449,6 +449,22 @@ EditorAiOperationSnapshot make_editor_ai_operation_snapshot(const Workspace& wor
     return snapshot;
 }
 
+EditorAiOperationSnapshot make_editor_ai_operation_snapshot(const Workspace& workspace,
+                                                            const EditorDockLayout& dock_layout,
+                                                            std::span<const EditorRichTextDocument> rich_text_documents,
+                                                            EditorRichTextViewport viewport) {
+    auto snapshot = make_editor_ai_operation_snapshot(workspace, dock_layout);
+    for (const auto& document : rich_text_documents) {
+        const auto rich_text = make_editor_rich_text_ai_snapshot(document, viewport);
+        snapshot.revision = (snapshot.revision * 131U) + rich_text.revision;
+        snapshot.rich_text_rows.insert(snapshot.rich_text_rows.end(), rich_text.rows.begin(), rich_text.rows.end());
+        for (const auto& item : rich_text.diagnostics) {
+            snapshot.diagnostics.push_back(diagnostic(item.code, item.message));
+        }
+    }
+    return snapshot;
+}
+
 EditorAiCommandCatalog make_editor_ai_command_catalog(const Workspace& workspace) {
     EditorAiCommandCatalog catalog;
     catalog.revision = workspace_operation_revision(workspace);

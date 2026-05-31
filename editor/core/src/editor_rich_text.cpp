@@ -23,6 +23,14 @@ struct SelectionEndpoint {
     const EditorRichTextSpan* span{nullptr};
 };
 
+struct ParagraphWindow {
+    std::size_t first{0U};
+    std::size_t count{0U};
+    std::size_t skipped_before{0U};
+    std::size_t skipped_after{0U};
+    bool virtualized{false};
+};
+
 constexpr std::array<UnsafeNeedle, 10> unsafe_needles{{
     UnsafeNeedle{.token = "Dear"},
     UnsafeNeedle{.token = "ImGui"},
@@ -66,6 +74,10 @@ constexpr std::array<std::string_view, 9> unsupported_markup_needles{{
 
 void append_diagnostic(EditorRichTextValidation& validation, std::string code, std::string message) {
     validation.diagnostics.push_back(EditorRichTextDiagnostic{.code = std::move(code), .message = std::move(message)});
+}
+
+void append_diagnostic(std::vector<EditorRichTextDiagnostic>& diagnostics, std::string code, std::string message) {
+    diagnostics.push_back(EditorRichTextDiagnostic{.code = std::move(code), .message = std::move(message)});
 }
 
 void validate_id_token(EditorRichTextValidation& validation, std::string_view value, std::string_view label) {
@@ -114,6 +126,38 @@ void validate_optional_text_token(EditorRichTextValidation& validation, std::str
         return lhs.span_index > rhs.span_index;
     }
     return lhs_offset > rhs_offset;
+}
+
+[[nodiscard]] bool is_before(const SelectionEndpoint& lhs, std::size_t lhs_offset, const SelectionEndpoint& rhs,
+                             std::size_t rhs_offset) noexcept {
+    if (lhs.paragraph_index != rhs.paragraph_index) {
+        return lhs.paragraph_index < rhs.paragraph_index;
+    }
+    if (lhs.span_index != rhs.span_index) {
+        return lhs.span_index < rhs.span_index;
+    }
+    return lhs_offset < rhs_offset;
+}
+
+[[nodiscard]] bool span_intersects_selection(const EditorRichTextDocument& document, std::size_t paragraph_index,
+                                             std::size_t span_index) noexcept {
+    if (!document.selection.active) {
+        return false;
+    }
+
+    const auto start =
+        find_selection_endpoint(document, document.selection.start_paragraph_id, document.selection.start_span_id);
+    const auto end =
+        find_selection_endpoint(document, document.selection.end_paragraph_id, document.selection.end_span_id);
+    if (!start.has_value() || !end.has_value()) {
+        return false;
+    }
+
+    const SelectionEndpoint span_start{.paragraph_index = paragraph_index, .span_index = span_index, .span = nullptr};
+    const SelectionEndpoint span_end{.paragraph_index = paragraph_index, .span_index = span_index, .span = nullptr};
+    const auto& span = document.paragraphs[paragraph_index].spans[span_index];
+    return is_before(span_start, 0U, *end, document.selection.end_byte_offset) &&
+           is_after(span_end, span.text.size(), *start, document.selection.start_byte_offset);
 }
 
 void validate_selection(EditorRichTextValidation& validation, const EditorRichTextDocument& document) {
@@ -200,6 +244,80 @@ void validate_inline_object(EditorRichTextValidation& validation, const EditorRi
     return desc;
 }
 
+[[nodiscard]] std::string severity_style_token(EditorDiagnosticSeverity severity) {
+    switch (severity) {
+    case EditorDiagnosticSeverity::info:
+        return "editor.info";
+    case EditorDiagnosticSeverity::warning:
+        return "editor.warning";
+    case EditorDiagnosticSeverity::error:
+        return "editor.error";
+    }
+    return "editor.text";
+}
+
+[[nodiscard]] ParagraphWindow resolve_viewport(std::size_t paragraph_count, EditorRichTextViewport viewport) noexcept {
+    ParagraphWindow window;
+    window.count = paragraph_count;
+    if (!viewport.enabled || viewport.max_paragraphs == 0U || paragraph_count <= viewport.max_paragraphs) {
+        return window;
+    }
+
+    window.first = std::min(viewport.first_paragraph, paragraph_count);
+    window.count = std::min(viewport.max_paragraphs, paragraph_count - window.first);
+    window.skipped_before = window.first;
+    window.skipped_after = paragraph_count - window.first - window.count;
+    window.virtualized = true;
+    return window;
+}
+
+[[nodiscard]] std::uint64_t rich_text_revision(const EditorRichTextDocument& document) noexcept {
+    std::uint64_t revision = 1469598103934665603ULL;
+    const auto hash_byte = [&revision](std::uint8_t value) noexcept {
+        revision ^= value;
+        revision *= 1099511628211ULL;
+    };
+    const auto hash_string = [&hash_byte](std::string_view value) noexcept {
+        for (const char ch : value) {
+            hash_byte(static_cast<std::uint8_t>(ch));
+        }
+        hash_byte(0U);
+    };
+    const auto hash_size = [&hash_byte](std::size_t value) noexcept {
+        for (std::size_t shift = 0U; shift < sizeof(std::size_t) * 8U; shift += 8U) {
+            hash_byte(static_cast<std::uint8_t>((value >> shift) & 0xFFU));
+        }
+    };
+
+    hash_string(document.id);
+    hash_size(document.paragraphs.size());
+    for (const auto& paragraph : document.paragraphs) {
+        hash_string(paragraph.id);
+        hash_size(paragraph.spans.size());
+        for (const auto& span : paragraph.spans) {
+            hash_string(span.id);
+            hash_string(span.style_token);
+            hash_string(span.text);
+            hash_size(span.inline_objects.size());
+            for (const auto& object : span.inline_objects) {
+                hash_string(object.id);
+                hash_string(object.command_id);
+                hash_string(object.resource_id);
+                hash_string(object.accessibility_label);
+                hash_byte(static_cast<std::uint8_t>(object.kind));
+            }
+        }
+    }
+    hash_byte(document.selection.active ? 1U : 0U);
+    hash_string(document.selection.start_paragraph_id);
+    hash_string(document.selection.start_span_id);
+    hash_size(document.selection.start_byte_offset);
+    hash_string(document.selection.end_paragraph_id);
+    hash_string(document.selection.end_span_id);
+    hash_size(document.selection.end_byte_offset);
+    return revision == 0U ? 1U : revision;
+}
+
 void add_or_throw(ui::UiDocument& document, ui::ElementDesc desc) {
     if (!document.try_add_element(std::move(desc))) {
         throw std::invalid_argument("editor rich text element is invalid or duplicated");
@@ -253,6 +371,37 @@ std::vector<EditorRichTextUnsupportedCapability> make_editor_rich_text_low_level
                                             .implemented = false,
                                             .native_handles_public = false},
     };
+}
+
+EditorRichTextDocument make_editor_console_rich_text_document(std::span<const EditorDiagnosticRow> rows,
+                                                              std::string document_id) {
+    EditorRichTextDocument document;
+    document.id = std::move(document_id);
+    document.paragraphs.reserve(rows.size());
+    for (const auto& row : rows) {
+        const std::string severity_label{editor_diagnostic_severity_label(row.severity)};
+        const std::string style_token = severity_style_token(row.severity);
+        document.paragraphs.push_back(EditorRichTextParagraph{
+            .id = row.id,
+            .spans =
+                {
+                    EditorRichTextSpan{
+                        .id = "severity",
+                        .style_token = style_token,
+                        .text = severity_label + ": ",
+                        .inline_objects = {},
+                    },
+                    EditorRichTextSpan{
+                        .id = "message",
+                        .style_token = style_token,
+                        .text = row.message,
+                        .inline_objects = {},
+                    },
+                },
+        });
+    }
+    document.unsupported_capabilities = make_editor_rich_text_low_level_unsupported_capabilities();
+    return document;
 }
 
 EditorRichTextValidation validate_editor_rich_text_document(const EditorRichTextDocument& document) {
@@ -383,11 +532,29 @@ EditorRichTextCopyResult copy_editor_rich_text_selection_plain_text(const Editor
     return result;
 }
 
-ui::UiDocument make_editor_rich_text_ui_model(const EditorRichTextDocument& document) {
+EditorRichTextUiModel make_editor_rich_text_view_model(const EditorRichTextDocument& document,
+                                                       EditorRichTextViewport viewport) {
     const auto validation = validate_editor_rich_text_document(document);
+    EditorRichTextUiModel model;
+    model.total_paragraph_count = document.paragraphs.size();
+    model.diagnostics = validation.diagnostics;
+    model.plain_utf8_clipboard_only = true;
     if (!validation.valid) {
         throw std::invalid_argument("editor rich text document is invalid");
     }
+
+    if (const auto copy = copy_editor_rich_text_plain_text(document); copy.valid) {
+        model.copyable_plain_text = copy.text;
+    }
+    if (const auto copy = copy_editor_rich_text_selection_plain_text(document); copy.valid) {
+        model.selected_plain_text = copy.text;
+    }
+
+    const ParagraphWindow window = resolve_viewport(document.paragraphs.size(), viewport);
+    model.visible_paragraph_count = window.count;
+    model.skipped_before_count = window.skipped_before;
+    model.skipped_after_count = window.skipped_after;
+    model.virtualized = window.virtualized;
 
     ui::UiDocument ui_document;
     ui::ElementDesc root = element(document.id, ui::SemanticRole::root);
@@ -395,7 +562,8 @@ ui::UiDocument make_editor_rich_text_ui_model(const EditorRichTextDocument& docu
     add_or_throw(ui_document, std::move(root));
 
     const ui::ElementId root_id = element_id(document.id);
-    for (const auto& paragraph : document.paragraphs) {
+    for (std::size_t paragraph_index = window.first; paragraph_index < window.first + window.count; ++paragraph_index) {
+        const auto& paragraph = document.paragraphs[paragraph_index];
         const std::string paragraph_id = document.id + ".paragraph." + paragraph.id;
         ui::ElementDesc paragraph_element = child(paragraph_id, root_id, ui::SemanticRole::panel);
         paragraph_element.accessibility_label = paragraph.id;
@@ -417,7 +585,104 @@ ui::UiDocument make_editor_rich_text_ui_model(const EditorRichTextDocument& docu
         }
     }
 
-    return ui_document;
+    model.document = std::move(ui_document);
+    return model;
+}
+
+EditorRichTextAiSnapshot make_editor_rich_text_ai_snapshot(const EditorRichTextDocument& document,
+                                                           EditorRichTextViewport viewport) {
+    const auto validation = validate_editor_rich_text_document(document);
+    EditorRichTextAiSnapshot snapshot;
+    snapshot.document_id = document.id;
+    snapshot.revision = rich_text_revision(document);
+    snapshot.total_paragraph_count = document.paragraphs.size();
+    snapshot.diagnostics = validation.diagnostics;
+    if (!validation.valid) {
+        return snapshot;
+    }
+
+    if (const auto copy = copy_editor_rich_text_plain_text(document); copy.valid) {
+        snapshot.copyable_plain_text = copy.text;
+    }
+    if (const auto copy = copy_editor_rich_text_selection_plain_text(document); copy.valid) {
+        snapshot.selected_plain_text = copy.text;
+    }
+
+    const ParagraphWindow window = resolve_viewport(document.paragraphs.size(), viewport);
+    snapshot.visible_paragraph_count = window.count;
+    snapshot.skipped_before_count = window.skipped_before;
+    snapshot.skipped_after_count = window.skipped_after;
+
+    snapshot.rows.push_back(EditorRichTextAiRow{
+        .id = document.id,
+        .role = "rich_text_document",
+        .accessibility_label = document.id,
+        .visible = true,
+        .selected = false,
+        .copyable = true,
+    });
+
+    for (std::size_t paragraph_index = window.first; paragraph_index < window.first + window.count; ++paragraph_index) {
+        const auto& paragraph = document.paragraphs[paragraph_index];
+        const std::string paragraph_row_id = document.id + ".paragraph." + paragraph.id;
+        snapshot.rows.push_back(EditorRichTextAiRow{
+            .id = paragraph_row_id,
+            .role = "rich_text_paragraph",
+            .paragraph_id = paragraph.id,
+            .accessibility_label = paragraph.id,
+            .visible = true,
+            .selected = false,
+            .copyable = true,
+        });
+
+        for (std::size_t span_index = 0U; span_index < paragraph.spans.size(); ++span_index) {
+            const auto& span = paragraph.spans[span_index];
+            const std::string span_row_id = paragraph_row_id + ".span." + span.id;
+            const bool selected = span_intersects_selection(document, paragraph_index, span_index);
+            snapshot.rows.push_back(EditorRichTextAiRow{
+                .id = span_row_id,
+                .role = "rich_text_span",
+                .paragraph_id = paragraph.id,
+                .span_id = span.id,
+                .style_token = span.style_token,
+                .text = span.text,
+                .accessibility_label = span.text,
+                .visible = true,
+                .selected = selected,
+                .copyable = true,
+            });
+
+            for (const auto& object : span.inline_objects) {
+                const bool is_command = object.kind == EditorRichTextInlineObjectKind::command_link;
+                snapshot.rows.push_back(EditorRichTextAiRow{
+                    .id = span_row_id + ".inline." + object.id,
+                    .role = is_command ? "rich_text_inline_command" : "rich_text_inline_resource",
+                    .paragraph_id = paragraph.id,
+                    .span_id = span.id,
+                    .command_id = object.command_id,
+                    .resource_id = object.resource_id,
+                    .accessibility_label = object.accessibility_label.empty() ? object.id : object.accessibility_label,
+                    .visible = true,
+                    .selected = selected,
+                    .copyable = false,
+                });
+            }
+        }
+    }
+
+    for (const auto& capability : document.unsupported_capabilities) {
+        if (!capability.implemented) {
+            append_diagnostic(snapshot.diagnostics, "unsupported_capability",
+                              "rich text capability remains adapter-owned: " + capability.id + " via " +
+                                  capability.official_boundary);
+        }
+    }
+
+    return snapshot;
+}
+
+ui::UiDocument make_editor_rich_text_ui_model(const EditorRichTextDocument& document) {
+    return make_editor_rich_text_view_model(document).document;
 }
 
 } // namespace mirakana::editor
