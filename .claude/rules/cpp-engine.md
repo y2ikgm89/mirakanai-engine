@@ -24,7 +24,7 @@ paths:
 - Prefer RAII, value types, and explicit ownership.
 - Prefer C++23 **`std::string_view::contains`** / **`starts_with`** (and `std::string` equivalents) over `find` + `npos` for plain substring/prefix checks. Types with a non-trivial destructor and deleted copy operations must also declare **move construction and move assignment** (delete, default, or custom) so special members stay explicit (**Rule of Five**); see `docs/cpp-style.md`.
 - Keep native OS, window, GPU, and tool interop handles behind backend/PIMPL or first-party opaque handles unless an explicit interop design is accepted.
-- Treat inactive Dear ImGui shell files as closeout-only deletion targets; runtime game UI should use public `mirakana::ui` contracts and must not depend on editor, removed SDL3 adapters, Dear ImGui, or UI middleware APIs.
+- Treat removed Dear ImGui shell implementation as historical evidence only; runtime game UI should use public `mirakana::ui` contracts and must not depend on editor, removed SDL3 adapters, Dear ImGui, or UI middleware APIs.
 - The optional Windows-native `MK_editor` shell is active through the dependency-free `desktop-editor` lane. Do not recreate the removed SDL3 `editor/src/main.cpp`, material preview GPU cache, SDL viewport bridge, or editor-local `compile_flags.txt` fallbacks.
 - Future full viewport/material GPU display work must keep Win32/D3D12 integration private to `editor/src`, keep backend handles out of public APIs, and add focused validation evidence before broadening ready claims.
 - On `_WIN32`, prefer `GetEnvironmentVariableA`/`W` into `std::string` over `_dupenv_s` + CRT `free` for read-only environment lookups in `editor/` or other first-party sources unless a stronger adapter already wraps the read.

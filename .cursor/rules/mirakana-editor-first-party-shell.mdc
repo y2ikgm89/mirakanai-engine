@@ -9,7 +9,7 @@ alwaysApply: false
 - The visible `MK_editor` shell is an active private Win32/Direct3D 12 first-party retained target under the dependency-free `desktop-editor` lane; do not recreate removed SDL3 adapters or move shell sources into `editor/core`.
 - Keep `MK_editor_core` GUI-independent and covered by the default validation lane; route persistent behavior through editor-core models before shell wiring.
 - Do not add SDL3 or move Dear ImGui, Win32, D3D12, DXGI, COM, clipboard, file-dialog, process-runner, or native-handle usage into `editor/core` or public engine/game APIs.
-- Treat inactive Dear ImGui shell files as closeout-only deletion targets, not an optional developer-tooling lane.
+- Treat removed Dear ImGui shell implementation as historical evidence only, not an optional developer-tooling lane.
 - Shell caches and native handles must stay behind explicit private adapter APIs; do not add public mutable cache fields or expose HWND, graphics API, or UI middleware handles through public game APIs.
 - Use `tools/build-editor.ps1` as the optional native editor build/test lane; it uses the dependency-free `desktop-editor` preset.
 - Editor-local `compile_flags.txt` fallbacks were removed with the old shell. Add IDE fallback flags explicitly when shell work needs them. Full checklist: [`docs/agent-operational-reference.md`](../../docs/agent-operational-reference.md).
