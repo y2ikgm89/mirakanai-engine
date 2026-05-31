@@ -11,8 +11,10 @@ namespace mirakana::editor {
 
 #if defined(_WIN32)
 inline constexpr bool kFirstPartyEditorDirectWriteTextFontAdapterImplemented = true;
+inline constexpr bool kFirstPartyEditorTsfTextServicesAdapterImplemented = true;
 #else
 inline constexpr bool kFirstPartyEditorDirectWriteTextFontAdapterImplemented = false;
+inline constexpr bool kFirstPartyEditorTsfTextServicesAdapterImplemented = false;
 #endif
 
 enum class FirstPartyEditorAdapterBoundary : std::uint8_t {
@@ -49,6 +51,7 @@ struct FirstPartyEditorAdapterBoundaryRow {
             .boundary = FirstPartyEditorAdapterBoundary::ime_text_services,
             .id = "editor.adapter.ime_text_services",
             .official_source_family = "Text Services Framework or platform text services adapter",
+            .implemented = kFirstPartyEditorTsfTextServicesAdapterImplemented,
         },
         FirstPartyEditorAdapterBoundaryRow{
             .boundary = FirstPartyEditorAdapterBoundary::accessibility_bridge,

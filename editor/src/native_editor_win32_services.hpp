@@ -4,6 +4,7 @@
 #pragma once
 
 #include "native_editor_app.hpp"
+#include "native_editor_tsf_text_input.hpp"
 
 #include "mirakana/platform/win32/win32_clipboard.hpp"
 #include "mirakana/platform/win32/win32_file_dialog.hpp"
@@ -24,6 +25,7 @@ class NativeEditorWin32Services final {
     mirakana::win32::Win32Clipboard clipboard_;
     mirakana::win32::Win32ClipboardTextAdapter clipboard_adapter_;
     Win32ProcessRunner process_runner_;
+    NativeEditorTsfTextServicesAdapter text_services_;
 };
 
 } // namespace mirakana::editor

@@ -469,6 +469,11 @@ struct AdapterPayloadDiagnostic {
 struct PlatformTextInputRequest {
     ElementId target;
     Rect text_bounds;
+    // Text must be strict UTF-8. Offsets are byte offsets on scalar boundaries.
+    // A selection covers [cursor_byte_offset, cursor_byte_offset + selection_byte_length).
+    std::string surrounding_text;
+    std::size_t cursor_byte_offset{0};
+    std::size_t selection_byte_length{0};
 };
 
 // Text must be strict UTF-8. Offsets are byte offsets on scalar boundaries.

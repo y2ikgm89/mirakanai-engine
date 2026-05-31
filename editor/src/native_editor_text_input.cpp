@@ -58,6 +58,9 @@ NativeEditorTextInputState make_native_editor_text_input_state(const NativeEdito
     const auto platform_plan = ui::plan_platform_text_input_session(ui::PlatformTextInputRequest{
         .target = target.edit_state.target,
         .text_bounds = target.caret_bounds,
+        .surrounding_text = target.edit_state.text,
+        .cursor_byte_offset = target.edit_state.cursor_byte_offset,
+        .selection_byte_length = target.edit_state.selection_byte_length,
     });
     const bool ready = target.editable && platform_plan.ready();
 
@@ -84,6 +87,9 @@ plan_native_editor_text_input_focus_change(const NativeEditorTextInputState& cur
     plan.request = ui::PlatformTextInputRequest{
         .target = target.edit_state.target,
         .text_bounds = target.caret_bounds,
+        .surrounding_text = target.edit_state.text,
+        .cursor_byte_offset = target.edit_state.cursor_byte_offset,
+        .selection_byte_length = target.edit_state.selection_byte_length,
     };
     plan.previous_target = current.edit_state.target;
 
@@ -126,9 +132,9 @@ std::string native_editor_text_input_status(const NativeEditorTextInputState& st
         return "value_text_input_commit_applied";
     }
     if (state.session_active) {
-        return "value_text_input_session_active";
+        return state.tsf_adapter_selected ? "win32_tsf_session_active" : "value_text_input_session_active";
     }
-    return "value_text_input_controller_ready";
+    return state.tsf_adapter_selected ? "win32_tsf_selected" : "value_text_input_controller_ready";
 }
 
 } // namespace mirakana::editor

@@ -11,6 +11,7 @@
 #include "native_editor_text_input.hpp"
 #if defined(_WIN32)
 #include "native_editor_text_font_adapters.hpp"
+#include "native_editor_tsf_text_input.hpp"
 #endif
 #include "native_material_preview_cache.hpp"
 #include "native_viewport_surface.hpp"
@@ -556,7 +557,7 @@ MK_TEST("first party editor adapter boundaries report private DirectWrite text a
 #endif
     MK_REQUIRE(text_shaping->implemented == text_font_adapter_implemented);
     MK_REQUIRE(font_rasterization->implemented == text_font_adapter_implemented);
-    MK_REQUIRE(!ime_text_services->implemented);
+    MK_REQUIRE(ime_text_services->implemented == text_font_adapter_implemented);
     MK_REQUIRE(!accessibility->implemented);
     for (const auto& row : rows) {
         MK_REQUIRE(!row.id.empty());
@@ -644,6 +645,54 @@ MK_TEST("editor DirectWrite text atlas handoff evidence separates adapter glyph 
     MK_REQUIRE(std::ranges::any_of(evidence.rows, [](const auto& row) {
         return row.id == "editor.text_atlas.gpu_upload.unsupported" && row.status == "unsupported" && row.unsupported;
     }));
+}
+
+MK_TEST("editor private TSF text services adapter tracks platform request rows without native handles") {
+    auto adapter = mirakana::editor::make_native_editor_tsf_text_services_adapter();
+
+    MK_REQUIRE(adapter != nullptr);
+    MK_REQUIRE(!adapter->native_handles_exposed());
+    MK_REQUIRE(!adapter->active_request().has_value());
+
+    const mirakana::ui::PlatformTextInputRequest request{
+        .target = mirakana::ui::ElementId{.value = "editor.panel.project_settings.name.text_field"},
+        .text_bounds = mirakana::ui::Rect{.x = 16.0F, .y = 48.0F, .width = 320.0F, .height = 24.0F},
+        .surrounding_text = "MIRAIKANAI",
+        .cursor_byte_offset = 10U,
+        .selection_byte_length = 0U,
+    };
+
+    adapter->begin_text_input(request);
+
+    MK_REQUIRE(adapter->active_request().has_value());
+    MK_REQUIRE(adapter->active_request()->target == request.target);
+    MK_REQUIRE(adapter->active_request()->surrounding_text == "MIRAIKANAI");
+    MK_REQUIRE(adapter->active_request()->cursor_byte_offset == 10U);
+    MK_REQUIRE(adapter->tsf_thread_manager_ready());
+    MK_REQUIRE(adapter->tsf_document_manager_ready());
+
+    adapter->end_text_input(request.target);
+
+    MK_REQUIRE(!adapter->active_request().has_value());
+    MK_REQUIRE(!adapter->tsf_document_manager_ready());
+}
+
+MK_TEST("editor native app recognizes private TSF text input and IME adapters") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    auto adapter = mirakana::editor::make_native_editor_tsf_text_services_adapter();
+
+    app.bind_native_services(mirakana::editor::NativeEditorServiceBindings{
+        .platform_text_input_adapter = adapter.get(),
+        .ime_adapter = adapter.get(),
+        .platform_text_input_service_id = "win32_tsf",
+        .ime_service_id = "win32_tsf",
+    });
+
+    MK_REQUIRE(app.services().platform_text_input_service_id == "win32_tsf");
+    MK_REQUIRE(app.services().ime_service_id == "win32_tsf");
+    MK_REQUIRE(app.text_input_state().tsf_adapter_selected);
+    MK_REQUIRE(!app.text_input_state().native_handles_exposed);
+    MK_REQUIRE(mirakana::editor::native_editor_text_input_status(app.text_input_state()) == "win32_tsf_selected");
 }
 #endif
 

@@ -1799,6 +1799,30 @@ PlatformTextInputSessionPlan plan_platform_text_input_session(const PlatformText
             .message = "platform text input bounds must be finite and positive",
         });
     }
+    const bool strict_surrounding_text = is_strict_utf8(plan.request.surrounding_text);
+    const bool cursor_available = plan.request.cursor_byte_offset <= plan.request.surrounding_text.size();
+    const bool cursor_on_boundary =
+        cursor_available && is_utf8_scalar_boundary(plan.request.surrounding_text, plan.request.cursor_byte_offset);
+    if (!strict_surrounding_text || !cursor_available || !cursor_on_boundary) {
+        plan.diagnostics.push_back(AdapterPayloadDiagnostic{
+            .id = plan.request.target,
+            .code = AdapterPayloadDiagnosticCode::invalid_text_edit_cursor,
+            .message = "platform text input cursor must be within the UTF-8 surrounding text and on a scalar boundary",
+        });
+    }
+    const auto selection_available =
+        plan.request.cursor_byte_offset <= plan.request.surrounding_text.size() &&
+        plan.request.selection_byte_length <= plan.request.surrounding_text.size() - plan.request.cursor_byte_offset;
+    const auto selection_end =
+        selection_available ? plan.request.cursor_byte_offset + plan.request.selection_byte_length : 0U;
+    if (!selection_available || !strict_surrounding_text || !cursor_on_boundary ||
+        !is_utf8_scalar_boundary(plan.request.surrounding_text, selection_end)) {
+        plan.diagnostics.push_back(AdapterPayloadDiagnostic{
+            .id = plan.request.target,
+            .code = AdapterPayloadDiagnosticCode::invalid_text_edit_selection,
+            .message = "platform text input selection must fit the UTF-8 surrounding text and end on a scalar boundary",
+        });
+    }
 
     return plan;
 }

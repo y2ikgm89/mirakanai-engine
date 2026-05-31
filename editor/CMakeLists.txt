@@ -67,6 +67,7 @@ target_link_libraries(MK_editor_shell_common PUBLIC MK_editor_core)
 if(WIN32)
     target_sources(MK_editor_shell_common PRIVATE
         src/native_editor_text_font_adapters.cpp
+        src/native_editor_tsf_text_input.cpp
         src/native_editor_win32_services.cpp
     )
     target_link_libraries(MK_editor_shell_common PRIVATE MK_platform_win32 dwrite)
