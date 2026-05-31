@@ -42,6 +42,14 @@ struct FirstPartyEditorShellSmokeCounters {
     bool text_font_native_handles_exposed{false};
     std::uint32_t text_atlas_handoff_host_gated_rows{0};
     std::uint32_t text_atlas_handoff_unsupported_rows{0};
+    std::string ime_status{"value_text_input_not_started"};
+    std::uint32_t ime_text_input_session_rows{0};
+    std::uint32_t ime_composition_rows{0};
+    std::uint32_t ime_committed_text_rows{0};
+    std::uint32_t ime_caret_rect_rows{0};
+    std::uint32_t ime_surrounding_text_rows{0};
+    bool ime_candidate_ui_host_owned{true};
+    bool ime_native_handles_exposed{false};
     std::string docking_status{"not_rendered"};
     std::uint32_t dock_tab_header_count{0};
     std::uint32_t dock_split_gutter_count{0};

@@ -5,6 +5,7 @@
 
 #include "native_editor_launch.hpp"
 #include "native_editor_text_atlas_handoff.hpp"
+#include "native_editor_text_input.hpp"
 #include "native_material_preview_cache.hpp"
 #include "native_viewport_surface.hpp"
 
@@ -34,14 +35,22 @@ struct NativeEditorServiceStatus {
     std::string file_dialog_service_id{"memory"};
     std::string clipboard_service_id{"memory"};
     std::string reviewed_process_runner_id{"recording"};
+    std::string platform_text_input_service_id{"memory"};
+    std::string ime_service_id{"memory"};
     bool file_dialog_available{true};
     bool clipboard_available{true};
     bool reviewed_process_runner_available{true};
+    bool platform_text_input_available{true};
+    bool ime_available{true};
     bool user_confirmation_required_for_process_execution{true};
     std::uint32_t file_dialog_requests_routed{0};
     std::uint32_t clipboard_operations_routed{0};
     std::uint32_t reviewed_process_plans{0};
     std::uint32_t reviewed_process_executions{0};
+    std::uint32_t platform_text_input_sessions_started{0};
+    std::uint32_t platform_text_input_sessions_ended{0};
+    std::uint32_t ime_composition_updates{0};
+    std::uint32_t committed_text_inputs{0};
     std::string reviewed_process_status_label{"confirmation required"};
 };
 
@@ -49,9 +58,13 @@ struct NativeEditorServiceBindings {
     IFileDialogService* file_dialog_service{nullptr};
     ui::IClipboardTextAdapter* clipboard_text_adapter{nullptr};
     IProcessRunner* reviewed_process_runner{nullptr};
+    ui::IPlatformIntegrationAdapter* platform_text_input_adapter{nullptr};
+    ui::IImeAdapter* ime_adapter{nullptr};
     std::string file_dialog_service_id;
     std::string clipboard_service_id;
     std::string reviewed_process_runner_id;
+    std::string platform_text_input_service_id;
+    std::string ime_service_id;
 };
 
 struct NativeEditorReviewedProcessRequest {
@@ -106,10 +119,16 @@ class NativeEditorApp {
     [[nodiscard]] const ViewportState& viewport() const noexcept;
     [[nodiscard]] const NativeViewportDisplayPlan& viewport_display() const noexcept;
     [[nodiscard]] const NativeEditorTextAtlasHandoffEvidence& text_atlas_handoff_evidence() const noexcept;
+    [[nodiscard]] const NativeEditorTextInputState& text_input_state() const noexcept;
     [[nodiscard]] const EditorMaterialAssetPreviewPanelModel& material_preview() const noexcept;
     [[nodiscard]] const NativeMaterialPreviewDisplayPlan& material_preview_display() const noexcept;
 
     void bind_native_services(NativeEditorServiceBindings services);
+    [[nodiscard]] NativeEditorTextInputFocusResult focus_text_input_target(NativeEditorTextInputTargetDesc target);
+    [[nodiscard]] NativeEditorTextInputEndResult end_text_input_session();
+    [[nodiscard]] NativeEditorImeCompositionResult update_ime_composition(ui::ImeComposition composition);
+    [[nodiscard]] NativeEditorImeCompositionResult cancel_ime_composition();
+    [[nodiscard]] NativeEditorTextInputCommitResult commit_text_input(ui::CommittedTextInput input);
     [[nodiscard]] FileDialogId show_file_dialog(FileDialogRequest request);
     [[nodiscard]] std::optional<FileDialogResult> poll_file_dialog_result(FileDialogId id);
     [[nodiscard]] ui::ClipboardTextWriteResult write_clipboard_text(ui::ClipboardTextWriteRequest request);

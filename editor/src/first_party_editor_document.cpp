@@ -88,6 +88,23 @@ void append_label(ui::UiDocument& document, const ui::ElementId& parent, std::st
     add_or_throw(document, std::move(desc));
 }
 
+void append_text_field(ui::UiDocument& document, const ui::ElementId& parent,
+                       const NativeEditorTextInputState& text_input) {
+    ui::ElementDesc desc = child(text_input.edit_state.target.value, parent, ui::SemanticRole::text_field);
+    desc.text = text(text_input.edit_state.text);
+    desc.accessibility_label = "Project Name";
+    desc.bounds = text_input.caret_bounds;
+    desc.enabled = text_input.target_registered;
+    desc.style.background_token = "editor.input.background";
+    desc.style.foreground_token = "editor.text";
+    add_or_throw(document, std::move(desc));
+
+    if (text_input.composition_active) {
+        append_label(document, parent, text_input.edit_state.target.value + ".composition",
+                     text_input.composition.composition_text);
+    }
+}
+
 [[nodiscard]] ui::ElementDesc clone_element_desc(const ui::Element& element, const ui::ElementId& fallback_parent) {
     ui::ElementDesc desc;
     desc.id = element.id;
@@ -134,6 +151,7 @@ void append_panel_status(ui::UiDocument& document, const NativeEditorApp& app, s
     } else if (panel_id == "project_settings") {
         append_label(document, panel_root, prefix + ".status",
                      "project settings diagnostics " + std::to_string(app.project_settings_errors().size()));
+        append_text_field(document, panel_root, app.text_input_state());
     }
 }
 
@@ -319,6 +337,7 @@ FirstPartyEditorDocument make_first_party_editor_document(const NativeEditorApp&
 FirstPartyEditorShellSmokeCounters
 make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const FirstPartyEditorDocument& document) {
     const auto& text_atlas = app.text_atlas_handoff_evidence();
+    const auto& text_input = app.text_input_state();
     return FirstPartyEditorShellSmokeCounters{
         .ui = "first_party",
         .backend = "d3d12",
@@ -336,6 +355,14 @@ make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const F
         .text_font_native_handles_exposed = text_atlas.native_handles_exposed,
         .text_atlas_handoff_host_gated_rows = text_atlas.host_gated_rows,
         .text_atlas_handoff_unsupported_rows = text_atlas.unsupported_rows,
+        .ime_status = native_editor_text_input_status(text_input),
+        .ime_text_input_session_rows = text_input.session_active ? 1U : 0U,
+        .ime_composition_rows = text_input.composition_active ? 1U : 0U,
+        .ime_committed_text_rows = text_input.commit_applied ? 1U : 0U,
+        .ime_caret_rect_rows = text_input.caret_rect_ready ? 1U : 0U,
+        .ime_surrounding_text_rows = text_input.surrounding_text_ready ? 1U : 0U,
+        .ime_candidate_ui_host_owned = text_input.candidate_ui_host_owned,
+        .ime_native_handles_exposed = text_input.native_handles_exposed,
         .docking_status = document.docking_status,
         .dock_tab_header_count = document.tab_header_count,
         .dock_split_gutter_count = document.split_gutter_count,

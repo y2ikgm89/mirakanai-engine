@@ -60,6 +60,7 @@ int main(int argc, char** argv) {
         const auto& viewport_display = app.viewport_display();
         const auto& material_preview_display = app.material_preview_display();
         const auto& text_atlas = app.text_atlas_handoff_evidence();
+        const auto& text_input = app.text_input_state();
         std::cout << (result.succeeded ? "editor_shell_status=ready" : "editor_shell_status=failed") << '\n'
                   << "editor_shell_ui=first_party\n"
                   << "editor_shell_backend=" << backend_name(result.adapter_kind) << '\n'
@@ -84,6 +85,16 @@ int main(int argc, char** argv) {
                   << "editor_shell_text_atlas_handoff_unsupported_rows=" << text_atlas.unsupported_rows << '\n'
                   << "editor_shell_text_font_native_handles_exposed=" << (text_atlas.native_handles_exposed ? 1 : 0)
                   << '\n'
+                  << "editor_shell_text_input_service=" << services.platform_text_input_service_id << '\n'
+                  << "editor_shell_ime_service=" << services.ime_service_id << '\n'
+                  << "editor_shell_ime_status=" << mirakana::editor::native_editor_text_input_status(text_input) << '\n'
+                  << "editor_shell_ime_text_input_session_rows=" << (text_input.session_active ? 1 : 0) << '\n'
+                  << "editor_shell_ime_composition_rows=" << (text_input.composition_active ? 1 : 0) << '\n'
+                  << "editor_shell_ime_committed_text_rows=" << (text_input.commit_applied ? 1 : 0) << '\n'
+                  << "editor_shell_ime_caret_rect_rows=" << (text_input.caret_rect_ready ? 1 : 0) << '\n'
+                  << "editor_shell_ime_surrounding_text_rows=" << (text_input.surrounding_text_ready ? 1 : 0) << '\n'
+                  << "editor_shell_ime_candidate_ui_host_owned=" << (text_input.candidate_ui_host_owned ? 1 : 0) << '\n'
+                  << "editor_shell_ime_native_handles_exposed=" << (text_input.native_handles_exposed ? 1 : 0) << '\n'
                   << "editor_shell_frames=" << result.frames_rendered << '\n'
                   << "editor_shell_panels=" << app.panels_rendered_last_frame() << '\n'
                   << "editor_shell_docking_status=" << app.docking_status_last_frame() << '\n'

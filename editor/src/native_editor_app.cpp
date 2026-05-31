@@ -217,6 +217,42 @@ class NativeEditorClipboardTextAdapter final : public mirakana::ui::IClipboardTe
     IClipboard* clipboard_{nullptr};
 };
 
+class NativeEditorPlatformTextInputAdapter final : public mirakana::ui::IPlatformIntegrationAdapter {
+  public:
+    void begin_text_input(const mirakana::ui::PlatformTextInputRequest& request) override {
+        active_request_ = request;
+    }
+
+    void end_text_input(const mirakana::ui::ElementId& target) override {
+        if (active_request_.has_value() && active_request_->target == target) {
+            active_request_.reset();
+        }
+    }
+
+  private:
+    std::optional<mirakana::ui::PlatformTextInputRequest> active_request_;
+};
+
+class NativeEditorImeAdapter final : public mirakana::ui::IImeAdapter {
+  public:
+    void update_composition(const mirakana::ui::ImeComposition& composition) override {
+        composition_ = composition;
+    }
+
+  private:
+    mirakana::ui::ImeComposition composition_;
+};
+
+void append_diagnostics(std::vector<ui::AdapterPayloadDiagnostic>& target,
+                        const std::vector<ui::AdapterPayloadDiagnostic>& source) {
+    target.insert(target.end(), source.begin(), source.end());
+}
+
+[[nodiscard]] ui::AdapterPayloadDiagnostic
+make_text_input_diagnostic(ui::ElementId id, ui::AdapterPayloadDiagnosticCode code, std::string message) {
+    return ui::AdapterPayloadDiagnostic{.id = std::move(id), .code = code, .message = std::move(message)};
+}
+
 } // namespace
 
 struct NativeEditorApp::Impl {
@@ -234,10 +270,14 @@ struct NativeEditorApp::Impl {
           viewport_display(plan_native_viewport_display(NativeViewportDisplayDesc{
               .extent = ViewportExtent{.width = options.width, .height = options.height},
           })),
+          text_input_state(
+              make_native_editor_text_input_state(make_native_editor_project_name_text_input_target(project.name))),
           clipboard_text_adapter(memory_clipboard) {
         file_dialog_service = &memory_file_dialog_service;
         clipboard_adapter = &clipboard_text_adapter;
         process_runner = &recording_process_runner;
+        platform_text_input_adapter = &memory_text_input_adapter;
+        ime_adapter = &memory_ime_adapter;
     }
 
     ProjectDocument project;
@@ -255,13 +295,18 @@ struct NativeEditorApp::Impl {
     NativeMaterialPreviewDisplayPlan material_preview_display;
     NativeViewportDisplayPlan viewport_display;
     NativeEditorTextAtlasHandoffEvidence text_atlas_handoff_evidence;
+    NativeEditorTextInputState text_input_state;
     MemoryFileDialogService memory_file_dialog_service;
     MemoryClipboard memory_clipboard;
     NativeEditorClipboardTextAdapter clipboard_text_adapter;
+    NativeEditorPlatformTextInputAdapter memory_text_input_adapter;
+    NativeEditorImeAdapter memory_ime_adapter;
     RecordingProcessRunner recording_process_runner;
     IFileDialogService* file_dialog_service{nullptr};
     ui::IClipboardTextAdapter* clipboard_adapter{nullptr};
     IProcessRunner* process_runner{nullptr};
+    ui::IPlatformIntegrationAdapter* platform_text_input_adapter{nullptr};
+    ui::IImeAdapter* ime_adapter{nullptr};
     NativeEditorServiceStatus service_status;
     std::string docking_status_last_frame{"not_rendered"};
     std::uint32_t dock_tab_headers_last_frame{0};
@@ -391,6 +436,10 @@ const NativeEditorTextAtlasHandoffEvidence& NativeEditorApp::text_atlas_handoff_
     return impl_->text_atlas_handoff_evidence;
 }
 
+const NativeEditorTextInputState& NativeEditorApp::text_input_state() const noexcept {
+    return impl_->text_input_state;
+}
+
 const EditorMaterialAssetPreviewPanelModel& NativeEditorApp::material_preview() const noexcept {
     return impl_->material_preview;
 }
@@ -418,6 +467,157 @@ void NativeEditorApp::bind_native_services(NativeEditorServiceBindings services)
             services.reviewed_process_runner_id.empty() ? "external" : std::move(services.reviewed_process_runner_id);
         impl_->service_status.reviewed_process_runner_available = true;
     }
+    if (services.platform_text_input_adapter != nullptr) {
+        impl_->platform_text_input_adapter = services.platform_text_input_adapter;
+        impl_->service_status.platform_text_input_service_id = services.platform_text_input_service_id.empty()
+                                                                   ? "external"
+                                                                   : std::move(services.platform_text_input_service_id);
+        impl_->service_status.platform_text_input_available = true;
+    }
+    if (services.ime_adapter != nullptr) {
+        impl_->ime_adapter = services.ime_adapter;
+        impl_->service_status.ime_service_id =
+            services.ime_service_id.empty() ? "external" : std::move(services.ime_service_id);
+        impl_->service_status.ime_available = true;
+    }
+}
+
+NativeEditorTextInputFocusResult NativeEditorApp::focus_text_input_target(NativeEditorTextInputTargetDesc target) {
+    const auto plan = plan_native_editor_text_input_focus_change(impl_->text_input_state, target);
+    NativeEditorTextInputFocusResult result;
+    result.diagnostics = plan.diagnostics;
+    if (!plan.ready()) {
+        return result;
+    }
+    if (impl_->platform_text_input_adapter == nullptr) {
+        impl_->service_status.platform_text_input_available = false;
+        result.diagnostics.push_back(make_text_input_diagnostic(
+            plan.request.target, ui::AdapterPayloadDiagnosticCode::invalid_platform_text_input_target,
+            "native editor platform text input adapter is unavailable"));
+        return result;
+    }
+
+    if (plan.end_previous_session) {
+        const auto end_result = ui::end_platform_text_input(*impl_->platform_text_input_adapter, plan.previous_target);
+        append_diagnostics(result.diagnostics, end_result.diagnostics);
+        if (!end_result.succeeded()) {
+            return result;
+        }
+        result.previous_session_ended = true;
+        ++impl_->service_status.platform_text_input_sessions_ended;
+    }
+    if (plan.begin_session) {
+        const auto begin_result = ui::begin_platform_text_input(*impl_->platform_text_input_adapter, plan.request);
+        append_diagnostics(result.diagnostics, begin_result.diagnostics);
+        if (!begin_result.succeeded()) {
+            return result;
+        }
+        result.session_begun = true;
+        ++impl_->service_status.platform_text_input_sessions_started;
+    }
+
+    impl_->text_input_state = make_native_editor_text_input_state(target);
+    impl_->text_input_state.session_active = true;
+    result.accepted = true;
+    return result;
+}
+
+NativeEditorTextInputEndResult NativeEditorApp::end_text_input_session() {
+    NativeEditorTextInputEndResult result;
+    if (!impl_->text_input_state.session_active) {
+        result.accepted = true;
+        return result;
+    }
+    if (impl_->platform_text_input_adapter == nullptr) {
+        impl_->service_status.platform_text_input_available = false;
+        result.diagnostics.push_back(
+            make_text_input_diagnostic(impl_->text_input_state.edit_state.target,
+                                       ui::AdapterPayloadDiagnosticCode::invalid_platform_text_input_target,
+                                       "native editor platform text input adapter is unavailable"));
+        return result;
+    }
+
+    const auto end_result =
+        ui::end_platform_text_input(*impl_->platform_text_input_adapter, impl_->text_input_state.edit_state.target);
+    result.diagnostics = end_result.diagnostics;
+    if (!end_result.succeeded()) {
+        return result;
+    }
+
+    impl_->text_input_state.session_active = false;
+    impl_->text_input_state.composition_active = false;
+    impl_->text_input_state.composition = ui::ImeComposition{.target = impl_->text_input_state.edit_state.target};
+    result.session_ended = true;
+    result.accepted = true;
+    ++impl_->service_status.platform_text_input_sessions_ended;
+    return result;
+}
+
+NativeEditorImeCompositionResult NativeEditorApp::update_ime_composition(ui::ImeComposition composition) {
+    NativeEditorImeCompositionResult result;
+    if (!impl_->text_input_state.session_active || composition.target != impl_->text_input_state.edit_state.target) {
+        result.diagnostics.push_back(make_text_input_diagnostic(
+            composition.target, ui::AdapterPayloadDiagnosticCode::invalid_ime_target,
+            "native editor IME composition target must match the active text input session"));
+        return result;
+    }
+    if (impl_->ime_adapter == nullptr) {
+        impl_->service_status.ime_available = false;
+        result.diagnostics.push_back(make_text_input_diagnostic(composition.target,
+                                                                ui::AdapterPayloadDiagnosticCode::invalid_ime_target,
+                                                                "native editor IME adapter is unavailable"));
+        return result;
+    }
+
+    const auto publish_result = ui::publish_ime_composition(*impl_->ime_adapter, composition);
+    result.diagnostics = publish_result.diagnostics;
+    if (!publish_result.succeeded()) {
+        return result;
+    }
+
+    impl_->text_input_state.composition = std::move(composition);
+    impl_->text_input_state.composition_active = !impl_->text_input_state.composition.composition_text.empty();
+    impl_->text_input_state.commit_applied = false;
+    result.accepted = true;
+    result.published = true;
+    ++impl_->service_status.ime_composition_updates;
+    return result;
+}
+
+NativeEditorImeCompositionResult NativeEditorApp::cancel_ime_composition() {
+    return update_ime_composition(ui::ImeComposition{
+        .target = impl_->text_input_state.edit_state.target,
+        .composition_text = {},
+        .cursor_index = 0U,
+    });
+}
+
+NativeEditorTextInputCommitResult NativeEditorApp::commit_text_input(ui::CommittedTextInput input) {
+    NativeEditorTextInputCommitResult result;
+    result.state = impl_->text_input_state.edit_state;
+    if (!impl_->text_input_state.session_active || input.target != impl_->text_input_state.edit_state.target) {
+        result.diagnostics.push_back(
+            make_text_input_diagnostic(input.target, ui::AdapterPayloadDiagnosticCode::mismatched_committed_text_target,
+                                       "native editor committed text target must match the active text input session"));
+        return result;
+    }
+
+    const auto commit_result = ui::apply_committed_text_input(impl_->text_input_state.edit_state, input);
+    result.diagnostics = commit_result.diagnostics;
+    result.state = commit_result.state;
+    if (!commit_result.succeeded()) {
+        return result;
+    }
+
+    impl_->text_input_state.edit_state = commit_result.state;
+    impl_->text_input_state.surrounding_text = commit_result.state.text;
+    impl_->text_input_state.composition = ui::ImeComposition{.target = commit_result.state.target};
+    impl_->text_input_state.composition_active = false;
+    impl_->text_input_state.commit_applied = true;
+    result.accepted = true;
+    result.committed = true;
+    ++impl_->service_status.committed_text_inputs;
+    return result;
 }
 
 FileDialogId NativeEditorApp::show_file_dialog(FileDialogRequest request) {
