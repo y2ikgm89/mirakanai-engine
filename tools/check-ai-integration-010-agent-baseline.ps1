@@ -1638,6 +1638,29 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     )) {
         Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan selection gate closeout"
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "first-party-ui-editor-production-stack-v1") {
+    foreach ($needle in @(
+        "First-Party UI Editor Production Stack v1",
+        "MK_editor",
+        "MK_editor_core",
+        "desktop-editor",
+        "mirakana::ui",
+        "MK_ui_renderer",
+        "dock graph",
+        "rich text",
+        "DirectWrite",
+        "Text Services Framework",
+        "UI Automation",
+        "D3D12 viewport/material texture display",
+        "AI-operable",
+        "compatibility shims",
+        "unsupportedProductionGaps = []",
+        "SDL3",
+        "native handles",
+        "Dear ImGui"
+    )) {
+        Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan first-party UI editor production selection"
+    }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "first-party-editor-shell-v1") {
     foreach ($needle in @(
         "First-Party Editor Shell v1",
@@ -1728,6 +1751,29 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
         "native handle exposure"
     )) {
         Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan sandbox world package validation and performance budget selection"
+    }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "first-party-ui-editor-production-stack-v1") {
+    foreach ($needle in @(
+        "First-Party UI Editor Production Stack v1",
+        "MK_editor",
+        "MK_editor_core",
+        "desktop-editor",
+        "mirakana::ui",
+        "MK_ui_renderer",
+        "dock graph",
+        "rich text",
+        "DirectWrite",
+        "Text Services Framework",
+        "UI Automation",
+        "D3D12 viewport/material texture display",
+        "AI-operable",
+        "compatibility shims",
+        "unsupportedProductionGaps = []",
+        "SDL3",
+        "native handles",
+        "Dear ImGui"
+    )) {
+        Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan first-party UI editor production selection"
     }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "first-party-editor-shell-v1") {
     foreach ($needle in @(
