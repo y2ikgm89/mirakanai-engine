@@ -1746,14 +1746,14 @@ $nativeEditorServiceChecks = @(
         )
     },
     @{
-        Path = "editor/src/native_editor_panels.cpp"
+        Path = "editor/src/native_editor_app.cpp"
         Needles = @(
-            "Reviewed process runner",
-            "Native services",
-            "file dialog requests",
-            "clipboard operations",
-            "reviewed plans",
-            "executions"
+            "file_dialog_requests_routed",
+            "clipboard_operations_routed",
+            "reviewed_process_plans",
+            "reviewed_process_executions",
+            "reviewed_process_status_label",
+            "run_reviewed_process"
         )
     },
     @{
@@ -1876,13 +1876,13 @@ $nativeEditorViewportChecks = @(
         )
     },
     @{
-        Path = "editor/src/native_editor_panels.cpp"
+        Path = "editor/src/first_party_editor_document.cpp"
         Needles = @(
-            "render_native_editor_viewport_panel",
-            "PanelId::viewport",
-            "native_viewport_surface",
-            "diagnostic only",
-            "native handles"
+            '.id = "viewport"',
+            "app.viewport_display().status_id",
+            ".viewport_native_handles_exposed",
+            "editor.panel.",
+            "append_panel_status"
         )
     },
     @{
@@ -2038,12 +2038,13 @@ $nativeEditorMaterialPreviewChecks = @(
         )
     },
     @{
-        Path = "editor/src/native_editor_panels.cpp"
+        Path = "editor/src/first_party_editor_document.cpp"
         Needles = @(
-            "render_material_preview_summary",
-            "native_material_preview_surface",
-            "diagnostic only",
-            "native handles"
+            ".material_preview_native_handles_exposed",
+            "app.material_preview_display().native_texture_handles_exposed",
+            "make_first_party_editor_shell_smoke_counters",
+            "renderer_submission",
+            "editor_panel_tokens"
         )
     },
     @{

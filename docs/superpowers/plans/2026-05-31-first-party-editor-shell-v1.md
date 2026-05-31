@@ -904,6 +904,7 @@ Expected: dependency policy rejects the removed `desktop-gui` / `imgui` path; fi
 Files:
 
 - Delete: `editor/src/native_editor_panels.cpp`
+- Delete: `editor/src/native_editor_panels.hpp`
 - Delete: `editor/src/win32_imgui_d3d12_host.hpp`
 - Delete: `editor/src/win32_imgui_d3d12_host.cpp`
 - Delete: `editor/src/win32_imgui_message_bridge.hpp`
@@ -918,20 +919,37 @@ Files:
 
 Steps:
 
-- [ ] Delete old Dear ImGui implementation files once no target references them.
-- [ ] Verify the Dear ImGui row remains absent from `THIRD_PARTY_NOTICES.md` and no active dependency keeps it.
-- [ ] Verify dependency/legal docs still say the first-party editor shell has no UI-middleware dependency, while future low-level text/font/accessibility/image dependencies still require official-source refresh, license audit, dependency records, and notices before introduction.
-- [ ] Verify UI/editor docs describe `MK_editor` as first-party retained UI over `MK_editor_core`, `MK_ui`, and `MK_ui_renderer`, with dock graph and rich-text model ownership inside the shell/core contract.
-- [ ] Verify UI/editor docs state that IME, OS accessibility bridge publication, shaping, bidi, line breaking, font fallback, and high-quality rasterization are adapter-owned responsibilities, not panel code responsibilities.
-- [ ] Update roadmap/current capabilities only if the source-file deletion changes current user-facing claims.
-- [ ] Keep forbidden-term checks for public APIs so future Dear ImGui or middleware symbols still fail if exposed through public surfaces.
-- [ ] Run the closeout inventory:
+- [x] Delete old Dear ImGui implementation files once no target references them.
+- [x] Verify the Dear ImGui row remains absent from `THIRD_PARTY_NOTICES.md` and no active dependency keeps it.
+- [x] Verify dependency/legal docs still say the first-party editor shell has no UI-middleware dependency, while future low-level text/font/accessibility/image dependencies still require official-source refresh, license audit, dependency records, and notices before introduction.
+- [x] Verify UI/editor docs describe `MK_editor` as first-party retained UI over `MK_editor_core`, `MK_ui`, and `MK_ui_renderer`, with dock graph and rich-text model ownership inside the shell/core contract.
+- [x] Verify UI/editor docs state that IME, OS accessibility bridge publication, shaping, bidi, line breaking, font fallback, and high-quality rasterization are adapter-owned responsibilities, not panel code responsibilities.
+- [x] Update roadmap/current capabilities only if the source-file deletion changes current user-facing claims.
+- [x] Keep forbidden-term checks for public APIs so future Dear ImGui or middleware symbols still fail if exposed through public surfaces.
+- [x] Run the closeout inventory:
 
 ```powershell
 rg -n "desktop-gui|build-gui|MK_ENABLE_DESKTOP_GUI|cpp23-desktop-gui-eval|Dear ImGui|imgui|ImGui|win32_imgui" CMakeLists.txt CMakePresets.json vcpkg.json README.md docs engine editor tests tools THIRD_PARTY_NOTICES.md
 ```
 
 Expected: results are limited to historical completed-plan/archive evidence and explicit forbidden-term/public-boundary guards. Any active build, dependency, manifest, validation, or current-capability reference is a closeout blocker.
+
+**Phase Evidence:** Completed in candidate `codex/first-party-editor-shell-v1-candidate6`. The inactive Dear ImGui host, descriptor allocator, message bridge, and native panel implementation/header files were deleted after `desktop-editor` became the active first-party editor lane. Active docs, roadmap/current-capability notes, Codex/Claude/Cursor guidance, AI-integration needles, and the composed manifest now treat the removed Dear ImGui shell implementation as historical only, while retaining explicit public-boundary/forbidden-term checks. Context7 checks against official vcpkg and CMake documentation confirmed the clean-break shape: optional package features are explicit, `VCPKG_MANIFEST_INSTALL=OFF` prevents CMake configure from implicitly installing packages, and target source/link ownership belongs in the affected CMake targets rather than compatibility shims. The closeout inventory found no active Dear ImGui build or dependency path; remaining active source hits are fail-closed evidence such as `editor_shell_imgui=0`, `imgui_enabled=false`, and engine public-boundary forbidden-token guards, while broader references are historical completed-plan evidence or explicit unsupported/forbidden policy text. Validation passed:
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-native-desktop-contracts.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1`
+- `git diff --check`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests MK_editor_native_shell_tests MK_ui_renderer_tests`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_editor_core_tests|MK_editor_native_shell_tests|MK_ui_renderer_tests|MK_editor_smoke"` (dev preset passed the three enabled matching tests; `MK_editor_smoke` is provided by the optional `desktop-editor` lane)
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1` (desktop-editor CTest 86/86 passed, including `MK_editor_smoke`)
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` (static checks passed, dev CTest 85/85 passed; Apple/Metal diagnostics remain host-gated on Windows as expected)
 
 ## Phase 8 - Agent Surface And AI-Operable Contract Closeout
 
