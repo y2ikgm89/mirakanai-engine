@@ -20,4 +20,6 @@ The visible `MK_editor` shell is active through the dependency-free `desktop-edi
 
 Prefer first-party editor documents, stable `mirakana::ui` ids, semantic roles, and private shell adapters; do not adapt editor work to Dear ImGui or UI middleware.
 
+Dock command planning uses `EditorDockCommandKind`, `EditorDockCommandRequest`, `EditorDockCommandPlan`, `plan_editor_dock_command`, and `apply_editor_dock_command` in `MK_editor_core`; keep it value-only until shell persistence and AI operation catalog phases are validated.
+
 Validation: focused `MK_editor_core_tests` / `check-tidy.ps1 -Files` loops while iterating, then `tools/validate.ps1` at the slice gate per `AGENTS.md`.
