@@ -81,6 +81,11 @@ class NativeEditorApp {
     [[nodiscard]] std::uint32_t native_panel_count() const noexcept;
     [[nodiscard]] bool has_native_panel(std::string_view id) const noexcept;
     [[nodiscard]] std::uint32_t panels_rendered_last_frame() const noexcept;
+    [[nodiscard]] std::string_view docking_status_last_frame() const noexcept;
+    [[nodiscard]] std::uint32_t dock_tab_headers_last_frame() const noexcept;
+    [[nodiscard]] std::uint32_t dock_split_gutters_last_frame() const noexcept;
+    [[nodiscard]] std::uint32_t dock_active_panels_last_frame() const noexcept;
+    [[nodiscard]] std::uint32_t dock_focusable_controls_last_frame() const noexcept;
 
     [[nodiscard]] const Workspace& workspace() const noexcept;
     [[nodiscard]] bool is_panel_visible(PanelId id) const noexcept;
@@ -114,6 +119,9 @@ class NativeEditorApp {
     [[nodiscard]] int run();
     void record_native_frame() noexcept;
     void record_native_panels_rendered(std::uint32_t count) noexcept;
+    void record_native_docking_frame(std::string status, std::uint32_t tab_header_count,
+                                     std::uint32_t split_gutter_count, std::uint32_t active_panel_count,
+                                     std::uint32_t focusable_control_count);
     void record_native_resource_device_ready(std::uint64_t frame_index);
     void record_native_viewport_d3d12_host_ready(std::uint64_t frame_index);
     void record_native_material_preview_d3d12_host_ready(std::uint64_t frame_index);

@@ -20,6 +20,6 @@ The visible `MK_editor` shell is active through the dependency-free `desktop-edi
 
 Prefer first-party editor documents, stable `mirakana::ui` ids, semantic roles, and private shell adapters; do not adapt editor work to Dear ImGui or UI middleware.
 
-Dock command planning uses `EditorDockCommandKind`, `EditorDockCommandRequest`, `EditorDockCommandPlan`, `plan_editor_dock_command`, and `apply_editor_dock_command` in `MK_editor_core`; AI operation overloads expose reviewed dock layout rows and show/hide/activate/move/split/reset command rows, and workspace v2 persists core dock layouts. Shell tab/gutter UX and docking smoke counters remain future phases.
+Dock command planning uses `EditorDockCommandKind`, `EditorDockCommandRequest`, `EditorDockCommandPlan`, `plan_editor_dock_command`, and `apply_editor_dock_command` in `MK_editor_core`; AI operation overloads expose reviewed dock layout rows and show/hide/activate/move/split/reset command rows, workspace v2 persists core dock layouts, and the native shell renders single-window dock tab headers/gutters, active/focused panel state, hidden-tab disabled commands, keyboard focus traversal over dock tabs, and docking smoke counters. Multi-window drag/tear-off remains a future phase.
 
 Validation: focused `MK_editor_core_tests` / `check-tidy.ps1 -Files` loops while iterating, then `tools/validate.ps1` at the slice gate per `AGENTS.md`.

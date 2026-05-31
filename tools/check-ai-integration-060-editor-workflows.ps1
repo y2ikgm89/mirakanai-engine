@@ -2045,13 +2045,22 @@ $nativeEditorViewportChecks = @(
             "app.viewport_display().status_id",
             ".viewport_native_handles_exposed",
             "editor.panel.",
-            "append_panel_status"
+            "append_panel_status",
+            "dock_tab_id",
+            "dock_gutter_id",
+            "editor.dock.tab.focused",
+            "editor.dock.gutter.horizontal",
+            "focused_element",
+            "tab_header_count",
+            "split_gutter_count",
+            "focusable_dock_control_count"
         )
     },
     @{
         Path = "editor/src/win32_first_party_editor_host.cpp"
         Needles = @(
-            "record_native_viewport_d3d12_host_ready"
+            "record_native_viewport_d3d12_host_ready",
+            "record_native_docking_frame"
         )
     },
     @{
@@ -2065,6 +2074,11 @@ $nativeEditorViewportChecks = @(
         Path = "CMakeLists.txt"
         Needles = @(
             "editor_shell_panels=11",
+            "editor_shell_docking_status=single_window_ready",
+            "editor_shell_dock_tab_headers=11",
+            "editor_shell_dock_split_gutters=3",
+            "editor_shell_dock_active_panels=4",
+            "editor_shell_dock_focusable_controls=11",
             "editor_shell_viewport_status=diagnostic_only",
             "editor_shell_viewport_native_handles_exposed=0"
         )
@@ -2089,6 +2103,11 @@ $nativeEditorViewportChecks = @(
         Needles = @(
             "Viewport",
             "editor_shell_panels=11",
+            "editor_shell_docking_status=single_window_ready",
+            "editor_shell_dock_tab_headers=11",
+            "editor_shell_dock_split_gutters=3",
+            "editor_shell_dock_active_panels=4",
+            "editor_shell_dock_focusable_controls=11",
             "editor_shell_viewport_status=diagnostic_only",
             "editor_shell_viewport_native_handles_exposed=0",
             "full D3D12 texture display"
@@ -2099,6 +2118,11 @@ $nativeEditorViewportChecks = @(
         Needles = @(
             "diagnostic-only native Viewport panel",
             "editor_shell_panels=11",
+            "editor_shell_docking_status=single_window_ready",
+            "editor_shell_dock_tab_headers=11",
+            "editor_shell_dock_split_gutters=3",
+            "editor_shell_dock_active_panels=4",
+            "editor_shell_dock_focusable_controls=11",
             "editor_shell_viewport_status=diagnostic_only",
             "editor_shell_viewport_native_handles_exposed=0",
             "Full Viewport D3D12 texture display"
@@ -2109,6 +2133,11 @@ $nativeEditorViewportChecks = @(
         Needles = @(
             "diagnostic-only viewport display",
             "editor_shell_panels=11",
+            "editor_shell_docking_status=single_window_ready",
+            "editor_shell_dock_tab_headers=11",
+            "editor_shell_dock_split_gutters=3",
+            "editor_shell_dock_active_panels=4",
+            "editor_shell_dock_focusable_controls=11",
             "editor_shell_viewport_status=diagnostic_only",
             "editor_shell_viewport_native_handles_exposed=0",
             "full viewport texture display"
@@ -2119,6 +2148,11 @@ $nativeEditorViewportChecks = @(
         Needles = @(
             "diagnostic-only viewport display",
             "editor_shell_panels=11",
+            "editor_shell_docking_status=single_window_ready",
+            "editor_shell_dock_tab_headers=11",
+            "editor_shell_dock_split_gutters=3",
+            "editor_shell_dock_active_panels=4",
+            "editor_shell_dock_focusable_controls=11",
             "editor_shell_viewport_status=diagnostic_only",
             "editor_shell_viewport_native_handles_exposed=0",
             "private D3D12 texture adapter"
