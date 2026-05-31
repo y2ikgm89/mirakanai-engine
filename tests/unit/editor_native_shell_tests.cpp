@@ -11,6 +11,7 @@
 #include "native_editor_launch.hpp"
 #include "native_material_preview_cache.hpp"
 #include "native_viewport_surface.hpp"
+#include "win32_first_party_editor_host.hpp"
 
 #include "mirakana/platform/file_dialog.hpp"
 #include "mirakana/platform/process.hpp"
@@ -318,6 +319,19 @@ MK_TEST("editor first party shell smoke counters report imgui disabled") {
     MK_REQUIRE(!counters.sdl3_enabled);
     MK_REQUIRE(!counters.viewport_native_handles_exposed);
     MK_REQUIRE(!counters.material_preview_native_handles_exposed);
+}
+
+MK_TEST("editor first party win32 host result defaults to explicit no backend") {
+    mirakana::editor::Win32FirstPartyEditorRunResult result;
+
+    MK_REQUIRE(!result.succeeded);
+    MK_REQUIRE(result.exit_code == 1);
+    MK_REQUIRE(result.frames_rendered == 0U);
+    MK_REQUIRE(result.resize_count == 0U);
+    MK_REQUIRE(result.adapter_kind == mirakana::editor::Win32FirstPartyEditorAdapterKind::none);
+    MK_REQUIRE(result.renderer_boxes_submitted == 0U);
+    MK_REQUIRE(result.renderer_text_runs_available == 0U);
+    MK_REQUIRE(result.diagnostic.empty());
 }
 
 MK_TEST("first party editor dock graph validates default split and tab stacks") {

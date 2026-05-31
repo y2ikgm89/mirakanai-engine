@@ -750,11 +750,19 @@ Files:
 - Modify: `editor/src/native_editor_launch.cpp`
 - Modify: `editor/src/native_editor_app.cpp`
 - Modify: `editor/CMakeLists.txt`
+- Modify: `CMakeLists.txt`
 - Modify: `tests/unit/editor_native_shell_tests.cpp`
+- Modify: `docs/editor.md`
+- Modify: `engine/agent/manifest.fragments/005-applications.json`
+- Modify: `engine/agent/manifest.fragments/009-validationRecipes.json`
+- Modify: `engine/agent/manifest.fragments/014-gameCodeGuidance.json`
+- Generate: `engine/agent/manifest.json`
+- Modify: `tools/check-ai-integration*.ps1`
+- Modify: `tools/check-json-contracts*.ps1`
 
 Steps:
 
-- [ ] Add private host result types:
+- [x] Add private host result types:
 
 ```cpp
 namespace mirakana::editor {
@@ -790,13 +798,13 @@ class Win32FirstPartyEditorHost final {
 } // namespace mirakana::editor
 ```
 
-- [ ] Bind Win32 file dialog, clipboard, and reviewed process services through existing platform interfaces.
-- [ ] Build one `FirstPartyEditorDocumentResult` per frame and submit it through `submit_ui_renderer_submission`.
-- [ ] Start with a renderer path that is deterministic on hosts without a ready D3D12 device. Use `NullRenderer` fallback only as an explicit fallback report; keep `editor_shell_backend=d3d12` only when the private D3D12 path is actually selected.
-- [ ] Preserve resize smoke and frame counters.
-- [ ] Record resource, viewport, and material-preview host readiness through `NativeEditorApp` without exposing native texture handles.
-- [ ] Update `editor/src/main.cpp` smoke output to include `editor_shell_ui=first_party` and `editor_shell_imgui=0`.
-- [ ] Run:
+- [x] Bind Win32 file dialog, clipboard, and reviewed process services through existing platform interfaces.
+- [x] Build one `FirstPartyEditorDocumentResult` per frame and submit it through `submit_ui_renderer_submission`.
+- [x] Start with a renderer path that is deterministic on hosts without a ready D3D12 device. Use `NullRenderer` fallback only as an explicit fallback report; keep `editor_shell_backend=d3d12` only when the private D3D12 path is actually selected.
+- [x] Preserve resize smoke and frame counters.
+- [x] Record resource, viewport, and material-preview host readiness through `NativeEditorApp` without exposing native texture handles.
+- [x] Update `editor/src/main.cpp` smoke output to include `editor_shell_ui=first_party` and `editor_shell_imgui=0`.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests MK_editor
@@ -804,6 +812,15 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 ```
 
 Expected: focused native shell tests and smoke pass on a Windows host with the dev preset configured.
+
+### Phase 5 Evidence
+
+- Official source refresh: checked Microsoft Direct3D 12 programming guide on 2026-05-31 for private D3D12 adapter probing and kept Windows/DXGI/D3D12 handles inside `editor/src`.
+- RED: `tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests` failed because `win32_first_party_editor_host.hpp` did not exist after the host result-default test was added.
+- GREEN focused editor checks passed: `tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests`; `tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_native_shell_tests`.
+- Current visible shell lane checks passed before Phase 6 rename: `tools/cmake.ps1 --preset desktop-gui`; `tools/cmake.ps1 --build --preset desktop-gui --target MK_editor_native_shell_tests MK_editor`; `tools/ctest.ps1 --preset desktop-gui --output-on-failure -R "MK_editor_native_shell_tests|MK_editor_smoke"`.
+- Direct smoke passed: `out/build/desktop-gui/editor/Debug/MK_editor.exe --smoke-frames 2 --smoke-resize --no-user-config` reported `editor_shell_ui=first_party`, `editor_shell_backend=d3d12`, `editor_shell_imgui=0`, `editor_shell_panels=11`, `editor_shell_resizes=1`, `editor_shell_adapter=hardware`, `editor_shell_renderer_boxes_submitted=34`, and `editor_shell_renderer_text_runs_available=15`.
+- Focused static and drift checks passed: `tools/check-tidy.ps1 -Preset desktop-gui -Files editor/src/win32_first_party_editor_host.cpp,tests/unit/editor_native_shell_tests.cpp -ReuseExistingFileApiReply`; `tools/check-format.ps1`; `tools/check-json-contracts.ps1`; `tools/check-ai-integration.ps1`; `tools/check-public-api-boundaries.ps1`.
 
 ## Phase 6 - Clean CMake, Preset, And Validation Lane Rename
 

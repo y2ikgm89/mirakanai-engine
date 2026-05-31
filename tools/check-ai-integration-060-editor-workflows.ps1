@@ -1737,7 +1737,7 @@ $nativeEditorServiceChecks = @(
         )
     },
     @{
-        Path = "editor/src/win32_imgui_d3d12_host.cpp"
+        Path = "editor/src/win32_first_party_editor_host.cpp"
         Needles = @(
             "native_editor_win32_services.hpp",
             "NativeEditorWin32Services",
@@ -1886,7 +1886,7 @@ $nativeEditorViewportChecks = @(
         )
     },
     @{
-        Path = "editor/src/win32_imgui_d3d12_host.cpp"
+        Path = "editor/src/win32_first_party_editor_host.cpp"
         Needles = @(
             "record_native_viewport_d3d12_host_ready"
         )
@@ -2047,7 +2047,7 @@ $nativeEditorMaterialPreviewChecks = @(
         )
     },
     @{
-        Path = "editor/src/win32_imgui_d3d12_host.cpp"
+        Path = "editor/src/win32_first_party_editor_host.cpp"
         Needles = @(
             "record_native_material_preview_d3d12_host_ready"
         )

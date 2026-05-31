@@ -148,7 +148,7 @@ constexpr std::array<NativePanelToken, 11> native_panel_tokens{{
                 EditorResourceCounterInput{
                     .id = "swapchain_back_buffers", .label = "Swapchain back buffers", .value = 2U},
                 EditorResourceCounterInput{
-                    .id = "imgui_srv_descriptors", .label = "ImGui SRV descriptors", .value = 32U},
+                    .id = "first_party_ui_renderer", .label = "First-party UI renderer", .value = 1U},
             },
         .capture_requests =
             {
