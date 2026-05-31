@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "mirakana/editor/editor_dock_layout.hpp"
 #include "mirakana/editor/workspace.hpp"
 
 #include <cstdint>
@@ -71,14 +72,25 @@ struct EditorAiCommandApplyResult {
 };
 
 [[nodiscard]] EditorAiOperationSnapshot make_editor_ai_operation_snapshot(const Workspace& workspace);
+[[nodiscard]] EditorAiOperationSnapshot make_editor_ai_operation_snapshot(const Workspace& workspace,
+                                                                          const EditorDockLayout& dock_layout);
 
 [[nodiscard]] EditorAiCommandCatalog make_editor_ai_command_catalog(const Workspace& workspace);
+[[nodiscard]] EditorAiCommandCatalog make_editor_ai_command_catalog(const Workspace& workspace,
+                                                                    const EditorDockLayout& dock_layout);
 
 [[nodiscard]] EditorAiCommandDryRunResult dry_run_editor_ai_command(const Workspace& workspace,
                                                                     const EditorAiCommandCatalog& catalog,
                                                                     const EditorAiCommandRequest& request);
+[[nodiscard]] EditorAiCommandDryRunResult dry_run_editor_ai_command(const Workspace& workspace,
+                                                                    const EditorDockLayout& dock_layout,
+                                                                    const EditorAiCommandCatalog& catalog,
+                                                                    const EditorAiCommandRequest& request);
 
 [[nodiscard]] EditorAiCommandApplyResult apply_editor_ai_command(Workspace& workspace,
+                                                                 const EditorAiCommandCatalog& catalog,
+                                                                 const EditorAiCommandRequest& request);
+[[nodiscard]] EditorAiCommandApplyResult apply_editor_ai_command(Workspace& workspace, EditorDockLayout& dock_layout,
                                                                  const EditorAiCommandCatalog& catalog,
                                                                  const EditorAiCommandRequest& request);
 

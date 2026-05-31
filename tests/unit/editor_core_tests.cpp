@@ -931,6 +931,32 @@ MK_TEST("editor ai operation snapshot exposes visible panel rows") {
     MK_REQUIRE(resources->enabled);
 }
 
+MK_TEST("editor ai operation snapshot exposes dock layout rows") {
+    const auto workspace = mirakana::editor::Workspace::create_default(
+        mirakana::editor::ProjectInfo{.name = "sample", .root_path = "games/sample"});
+    const auto layout = mirakana::editor::make_default_editor_dock_layout();
+
+    const auto snapshot = mirakana::editor::make_editor_ai_operation_snapshot(workspace, layout);
+    const auto* root = find_ai_operation_element(snapshot, "editor.dock.layout");
+    const auto* left_stack = find_ai_operation_element(snapshot, "editor.dock.stack.dock.left_stack");
+    const auto* viewport_panel = find_ai_operation_element(snapshot, "editor.dock.panel.viewport");
+
+    MK_REQUIRE(snapshot.revision >= layout.layout_revision);
+    MK_REQUIRE(snapshot.diagnostics.empty());
+    MK_REQUIRE(root != nullptr);
+    MK_REQUIRE(root->role == "dock_layout");
+    MK_REQUIRE(root->visible);
+    MK_REQUIRE(root->enabled);
+    MK_REQUIRE(left_stack != nullptr);
+    MK_REQUIRE(left_stack->role == "dock_stack");
+    MK_REQUIRE(left_stack->label == "dock.left_stack");
+    MK_REQUIRE(viewport_panel != nullptr);
+    MK_REQUIRE(viewport_panel->role == "dock_panel");
+    MK_REQUIRE(viewport_panel->label == "Viewport");
+    MK_REQUIRE(viewport_panel->visible);
+    MK_REQUIRE(viewport_panel->enabled);
+}
+
 MK_TEST("editor ai command catalog exposes stable panel visibility commands") {
     const auto workspace = mirakana::editor::Workspace::create_default(
         mirakana::editor::ProjectInfo{.name = "sample", .root_path = "games/sample"});
@@ -954,6 +980,35 @@ MK_TEST("editor ai command catalog exposes stable panel visibility commands") {
     MK_REQUIRE(show_ai_commands->target_element_id == "editor.panel.ai_commands");
     MK_REQUIRE(hide_profiler != nullptr);
     MK_REQUIRE(hide_profiler->target_element_id == "editor.panel.profiler");
+}
+
+MK_TEST("editor ai command catalog exposes dock commands") {
+    const auto workspace = mirakana::editor::Workspace::create_default(
+        mirakana::editor::ProjectInfo{.name = "sample", .root_path = "games/sample"});
+    const auto layout = mirakana::editor::make_default_editor_dock_layout();
+
+    const auto catalog = mirakana::editor::make_editor_ai_command_catalog(workspace, layout);
+    const auto* activate_assets = find_ai_command(catalog, "editor.dock.panel.assets.activate");
+    const auto* move_assets = find_ai_command(catalog, "editor.dock.panel.assets.move");
+    const auto* hide_main_menu = find_ai_command(catalog, "editor.dock.panel.main_menu.hide");
+    const auto* reset_layout = find_ai_command(catalog, "editor.dock.layout.reset");
+
+    MK_REQUIRE(catalog.revision >= layout.layout_revision);
+    MK_REQUIRE(activate_assets != nullptr);
+    MK_REQUIRE(activate_assets->target_element_id == "editor.dock.panel.assets");
+    MK_REQUIRE(activate_assets->enabled);
+    MK_REQUIRE(activate_assets->mutates_state);
+    MK_REQUIRE(!activate_assets->requires_confirmation);
+    MK_REQUIRE(move_assets != nullptr);
+    MK_REQUIRE(move_assets->target_element_id == "editor.dock.panel.assets");
+    MK_REQUIRE(move_assets->enabled);
+    MK_REQUIRE(hide_main_menu != nullptr);
+    MK_REQUIRE(!hide_main_menu->enabled);
+    MK_REQUIRE(reset_layout != nullptr);
+    MK_REQUIRE(reset_layout->target_element_id == "editor.dock.layout");
+    MK_REQUIRE(reset_layout->enabled);
+    MK_REQUIRE(reset_layout->mutates_state);
+    MK_REQUIRE(reset_layout->requires_confirmation);
 }
 
 MK_TEST("editor ai command dry run rejects unknown command") {
@@ -1003,6 +1058,138 @@ MK_TEST("editor ai command apply toggles panel visibility after accepted dry run
     MK_REQUIRE(apply_result.applied);
     MK_REQUIRE(apply_result.before_revision != apply_result.after_revision);
     MK_REQUIRE(workspace.is_panel_visible(mirakana::editor::PanelId::resources));
+}
+
+MK_TEST("editor ai dock command dry run and apply move panel through dock planner") {
+    auto workspace = mirakana::editor::Workspace::create_default(
+        mirakana::editor::ProjectInfo{.name = "sample", .root_path = "games/sample"});
+    auto layout = mirakana::editor::make_default_editor_dock_layout();
+    const auto catalog = mirakana::editor::make_editor_ai_command_catalog(workspace, layout);
+    const mirakana::editor::EditorAiCommandRequest request{
+        .command_id = "editor.dock.panel.assets.move",
+        .target_element_id = "editor.dock.panel.assets",
+        .parameters =
+            {
+                mirakana::editor::EditorAiCommandParameter{.key = "target_stack_id", .value = "dock.right_stack"},
+            },
+        .user_confirmed = false,
+    };
+
+    const auto dry_run = mirakana::editor::dry_run_editor_ai_command(workspace, layout, catalog, request);
+    const auto apply_result = mirakana::editor::apply_editor_ai_command(workspace, layout, catalog, request);
+
+    MK_REQUIRE(dry_run.accepted);
+    MK_REQUIRE(dry_run.would_mutate);
+    MK_REQUIRE(!dry_run.requires_confirmation);
+    MK_REQUIRE(apply_result.applied);
+    MK_REQUIRE(apply_result.before_revision != apply_result.after_revision);
+    const auto* left = mirakana::editor::find_editor_dock_node(layout, "dock.left_stack");
+    const auto* right = mirakana::editor::find_editor_dock_node(layout, "dock.right_stack");
+    MK_REQUIRE(left != nullptr);
+    MK_REQUIRE(right != nullptr);
+    MK_REQUIRE(std::ranges::find(left->tabs, "assets") == left->tabs.end());
+    MK_REQUIRE(std::ranges::find(right->tabs, "assets") != right->tabs.end());
+    MK_REQUIRE(right->active_tab_id == "assets");
+    MK_REQUIRE(layout.focused_panel_id == "assets");
+}
+
+MK_TEST("editor ai dock command reset requires confirmation") {
+    auto workspace = mirakana::editor::Workspace::create_default(
+        mirakana::editor::ProjectInfo{.name = "sample", .root_path = "games/sample"});
+    auto layout = mirakana::editor::make_default_editor_dock_layout();
+    auto move_plan = mirakana::editor::apply_editor_dock_command(
+        layout, mirakana::editor::EditorDockCommandRequest{
+                    .kind = mirakana::editor::EditorDockCommandKind::move_panel_to_stack,
+                    .panel_id = "assets",
+                    .target_stack_id = "dock.right_stack",
+                    .user_confirmed = false,
+                });
+    MK_REQUIRE(move_plan.accepted);
+    const auto catalog = mirakana::editor::make_editor_ai_command_catalog(workspace, layout);
+    const mirakana::editor::EditorAiCommandRequest unconfirmed{
+        .command_id = "editor.dock.layout.reset",
+        .target_element_id = "editor.dock.layout",
+        .parameters = {},
+        .user_confirmed = false,
+    };
+    const mirakana::editor::EditorAiCommandRequest confirmed{
+        .command_id = "editor.dock.layout.reset",
+        .target_element_id = "editor.dock.layout",
+        .parameters = {},
+        .user_confirmed = true,
+    };
+
+    const auto dry_run = mirakana::editor::dry_run_editor_ai_command(workspace, layout, catalog, unconfirmed);
+    const auto rejected = mirakana::editor::apply_editor_ai_command(workspace, layout, catalog, unconfirmed);
+    const auto applied = mirakana::editor::apply_editor_ai_command(workspace, layout, catalog, confirmed);
+
+    MK_REQUIRE(dry_run.accepted);
+    MK_REQUIRE(dry_run.would_mutate);
+    MK_REQUIRE(dry_run.requires_confirmation);
+    MK_REQUIRE(!rejected.applied);
+    MK_REQUIRE(!rejected.diagnostics.empty());
+    MK_REQUIRE(rejected.diagnostics.front().code == "confirmation_required");
+    MK_REQUIRE(applied.applied);
+    MK_REQUIRE(layout.focused_panel_id == "viewport");
+    const auto* reset_left = mirakana::editor::find_editor_dock_node(layout, "dock.left_stack");
+    MK_REQUIRE(reset_left != nullptr);
+    MK_REQUIRE(std::ranges::find(reset_left->tabs, "assets") != reset_left->tabs.end());
+    MK_REQUIRE(reset_left->active_tab_id == "scene");
+}
+
+MK_TEST("editor ai dock command rejects missing move target parameter") {
+    const auto workspace = mirakana::editor::Workspace::create_default(
+        mirakana::editor::ProjectInfo{.name = "sample", .root_path = "games/sample"});
+    const auto layout = mirakana::editor::make_default_editor_dock_layout();
+    const auto catalog = mirakana::editor::make_editor_ai_command_catalog(workspace, layout);
+
+    const auto dry_run =
+        mirakana::editor::dry_run_editor_ai_command(workspace, layout, catalog,
+                                                    mirakana::editor::EditorAiCommandRequest{
+                                                        .command_id = "editor.dock.panel.assets.move",
+                                                        .target_element_id = "editor.dock.panel.assets",
+                                                        .parameters = {},
+                                                        .user_confirmed = false,
+                                                    });
+
+    MK_REQUIRE(!dry_run.accepted);
+    MK_REQUIRE(!dry_run.diagnostics.empty());
+    MK_REQUIRE(dry_run.diagnostics.front().code == "missing_parameter");
+}
+
+MK_TEST("editor ai dock command can show a hidden panel with a target stack") {
+    auto workspace = mirakana::editor::Workspace::create_default(
+        mirakana::editor::ProjectInfo{.name = "sample", .root_path = "games/sample"});
+    auto layout = mirakana::editor::make_default_editor_dock_layout();
+    auto hide_plan = mirakana::editor::apply_editor_dock_command(
+        layout, mirakana::editor::EditorDockCommandRequest{
+                    .kind = mirakana::editor::EditorDockCommandKind::hide_panel,
+                    .panel_id = "assets",
+                    .target_stack_id = {},
+                    .user_confirmed = false,
+                });
+    MK_REQUIRE(hide_plan.accepted);
+    const auto catalog = mirakana::editor::make_editor_ai_command_catalog(workspace, layout);
+    const mirakana::editor::EditorAiCommandRequest request{
+        .command_id = "editor.dock.panel.assets.show",
+        .target_element_id = "editor.dock.panel.assets",
+        .parameters =
+            {
+                mirakana::editor::EditorAiCommandParameter{.key = "target_stack_id", .value = "dock.right_stack"},
+            },
+        .user_confirmed = false,
+    };
+
+    const auto dry_run = mirakana::editor::dry_run_editor_ai_command(workspace, layout, catalog, request);
+    const auto applied = mirakana::editor::apply_editor_ai_command(workspace, layout, catalog, request);
+
+    MK_REQUIRE(dry_run.accepted);
+    MK_REQUIRE(dry_run.would_mutate);
+    MK_REQUIRE(applied.applied);
+    const auto* right = mirakana::editor::find_editor_dock_node(layout, "dock.right_stack");
+    MK_REQUIRE(right != nullptr);
+    MK_REQUIRE(std::ranges::find(right->tabs, "assets") != right->tabs.end());
+    MK_REQUIRE(right->active_tab_id == "assets");
 }
 
 MK_TEST("editor ai command apply requires confirmation for mutating commands marked confirmable") {

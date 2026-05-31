@@ -1694,6 +1694,17 @@ $editorCoreDockCommandChecks = @(
         )
     },
     @{
+        Path = "editor/core/include/mirakana/editor/ai_operation_surface.hpp"
+        Needles = @(
+            "const EditorDockLayout& dock_layout",
+            "EditorDockLayout& dock_layout",
+            "make_editor_ai_operation_snapshot",
+            "make_editor_ai_command_catalog",
+            "dry_run_editor_ai_command",
+            "apply_editor_ai_command"
+        )
+    },
+    @{
         Path = "editor/core/src/editor_dock_layout.cpp"
         Needles = @(
             "show_panel",
@@ -1710,12 +1721,27 @@ $editorCoreDockCommandChecks = @(
         )
     },
     @{
+        Path = "editor/core/src/ai_operation_surface.cpp"
+        Needles = @(
+            "editor.dock.layout",
+            "editor.dock.stack.",
+            "editor.dock.panel.",
+            "editor.dock.layout.reset",
+            "target_stack_id",
+            "plan_editor_dock_command",
+            "apply_editor_dock_command"
+        )
+    },
+    @{
         Path = "tests/unit/editor_core_tests.cpp"
         Needles = @(
             "editor core dock command plans show panel without mutating source layout",
             "editor core dock command hides active panel with fallback focus",
             "editor core dock command rejects unsafe panel and confirmation states",
             "editor core dock command activates moves and applies reset",
+            "editor ai dock command dry run and apply move panel through dock planner",
+            "editor ai dock command reset requires confirmation",
+            "editor ai dock command can show a hidden panel with a target stack",
             "unknown_panel",
             "confirmation_required"
         )
@@ -1726,7 +1752,7 @@ $editorCoreDockCommandChecks = @(
             "EditorDockCommandKind",
             "plan_editor_dock_command",
             "apply_editor_dock_command",
-            "AI operation catalog integration for dock mutations"
+            "reviewed dock commands"
         )
     },
     @{
@@ -1735,7 +1761,7 @@ $editorCoreDockCommandChecks = @(
             "EditorDockCommandPlan",
             "value-only dock command planners",
             "shell-rendered docking tab/gutter UX",
-            "AI operation catalog integration for dock mutations"
+            "AI operation snapshot/catalog/dry-run/apply overloads"
         )
     },
     @{
@@ -1753,7 +1779,7 @@ $editorCoreDockCommandChecks = @(
             "EditorDockCommandPlan",
             "plan_editor_dock_command",
             "apply_editor_dock_command",
-            "not yet exposed through EditorAiOperationSnapshot"
+            "EditorDockLayout-aware AI operation overloads"
         )
     }
 )
