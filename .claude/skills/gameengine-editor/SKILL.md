@@ -21,6 +21,7 @@ Use this skill for editor/core models, native visible editor shell boundaries, p
 ## Required Discipline
 
 - Keep `editor/core` GUI-independent and route persistent behavior through editor-core models before shell wiring.
+- Prefer first-party editor documents, stable `mirakana::ui` ids, semantic roles, and private shell adapters; do not adapt editor work to Dear ImGui or UI middleware.
 - Read `references/full-guidance.md` only when detailed retained row ids, panel contracts, visible-shell boundary rules, or detailed validation lanes are needed.
 - Prefer focused `MK_editor_core_tests` or `check-tidy.ps1 -Files` loops while iterating, then `tools/validate.ps1` at the slice gate.
 - When adding retained UI ids or CMake target literals enforced by `check-ai-integration.ps1`, update Needles and Codex/Claude skill twins together.

@@ -18,9 +18,9 @@
 
 ## Status
 
-**Status:** Active.
+**Status:** Completed.
 
-Phase 0 selected this plan in the manifest/registry as the active clean-break milestone after Native Win32 Editor Shell v1 completed through PR #322. The repository now treats `recommendedNextPlan.id = first-party-editor-shell-v1` and `currentActivePlan = docs/superpowers/plans/2026-05-31-first-party-editor-shell-v1.md` as the active execution truth.
+Phase 0 selected this plan in the manifest/registry as the active clean-break milestone after Native Win32 Editor Shell v1 completed through PR #322. Phase 9 completed the replacement and returned `currentActivePlan` to the production-completion master plan with `recommendedNextPlan.id = next-production-gap-selection` and `unsupportedProductionGaps = []`.
 
 ## Phase 0 Evidence
 
@@ -977,19 +977,19 @@ Files:
 
 Steps:
 
-- [ ] Update `gameCodeGuidance.currentEditor` to state that `MK_editor` is a first-party retained shell, not a Dear ImGui shell.
-- [ ] Update `gameCodeGuidance.currentEditor` to list `EditorAiOperationSnapshot`, `EditorAiCommandCatalog`, `EditorAiCommandRequest`, `EditorAiCommandDryRunResult`, `EditorAiCommandApplyResult`, dock graph, rich-text rows, semantic roles, command ids, and adapter-boundary diagnostics as AI-operable editor surfaces.
-- [ ] Update unsupported claims in `gameCodeGuidance.currentEditor` so production IME engines, OS accessibility publication, broad text shaping, font raster quality, and cross-platform shell parity remain unsupported until focused adapter phases validate them.
-- [ ] Update smoke counters in manifest guidance to include `editor_shell_ui=first_party` and `editor_shell_imgui=0`.
-- [ ] Update validation recipes and command surfaces from `desktop-gui` to `desktop-editor`.
-- [ ] Update editor-change skill guidance to prefer first-party editor documents and shell adapters rather than adapting to ImGui.
-- [ ] Compose the manifest:
+- [x] Update `gameCodeGuidance.currentEditor` to state that `MK_editor` is a first-party retained shell, not a Dear ImGui shell.
+- [x] Update `gameCodeGuidance.currentEditor` to list `EditorAiOperationSnapshot`, `EditorAiCommandCatalog`, `EditorAiCommandRequest`, `EditorAiCommandDryRunResult`, `EditorAiCommandApplyResult`, dock graph, rich-text rows, semantic roles, command ids, and adapter-boundary diagnostics as AI-operable editor surfaces.
+- [x] Update unsupported claims in `gameCodeGuidance.currentEditor` so production IME engines, OS accessibility publication, broad text shaping, font raster quality, and cross-platform shell parity remain unsupported until focused adapter phases validate them.
+- [x] Update smoke counters in manifest guidance to include `editor_shell_ui=first_party` and `editor_shell_imgui=0`.
+- [x] Update validation recipes and command surfaces from `desktop-gui` to `desktop-editor`.
+- [x] Update editor-change skill guidance to prefer first-party editor documents and shell adapters rather than adapting to ImGui.
+- [x] Compose the manifest:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write
 ```
 
-- [ ] Run:
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1
@@ -999,6 +999,17 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.
 ```
 
 Expected: all agent/static checks assert the first-party editor shell and no active Dear ImGui lane.
+
+**Phase Evidence:** Completed in candidate `codex/first-party-editor-shell-v1-candidate7`. `gameCodeGuidance.currentEditor` now explicitly describes `MK_editor` as a dependency-free `desktop-editor` first-party retained shell, includes the agent-operable snapshot/catalog/request/dry-run/apply-result surface plus dock graph, rich-text rows, semantic roles, command ids, and adapter-boundary diagnostics, and preserves unsupported claims for production IME engines, OS accessibility publication, broad text shaping, bidi, line breaking, font fallback, font raster quality, cross-platform shells, and related adapter work. The validation recipe fragment already points at `desktop-editor` / `tools/build-editor.ps1`; Codex, Claude, and Cursor editor skills now tell agents to prefer first-party editor documents, stable `mirakana::ui` ids, semantic roles, and private shell adapters rather than adapting work to Dear ImGui or UI middleware. Validation passed:
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`
+- `git diff --check`
 
 ## Phase 9 - Full Validation And Closeout
 
@@ -1019,7 +1030,7 @@ Files:
 
 Steps:
 
-- [ ] Run focused validation:
+- [x] Run focused validation:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1
@@ -1029,7 +1040,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1
 ```
 
-- [ ] Run static and contract checks:
+- [x] Run static and contract checks:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1
@@ -1039,15 +1050,15 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1
 ```
 
-- [ ] Run full validation:
+- [x] Run full validation:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 ```
 
-- [ ] Update this plan's status and phase evidence with exact commands, outcomes, and any host-gated blockers.
-- [ ] Return `currentActivePlan` to the production-completion selection gate or select the next explicit plan in `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`, then compose the manifest.
-- [ ] Run a final text/agent/static sweep after closeout edits:
+- [x] Update this plan's status and phase evidence with exact commands, outcomes, and any host-gated blockers.
+- [x] Return `currentActivePlan` to the production-completion selection gate or select the next explicit plan in `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`, then compose the manifest.
+- [x] Run a final text/agent/static sweep after closeout edits:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1
@@ -1055,6 +1066,20 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
 ```
 
 Expected: the branch is ready for a validated publication checkpoint.
+
+**Phase Evidence:** Completed in candidate `codex/first-party-editor-shell-v1-candidate7`. Focused editor validation, `desktop-editor` smoke, static/contract checks, and full validation passed after closeout pointer sync. The manifest now points `currentActivePlan` back to `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`, sets `recommendedNextPlan.id = next-production-gap-selection`, keeps `unsupportedProductionGaps = []`, and records First-Party Editor Shell v1 as completed clean-break evidence. Windows-local validation passed:
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests MK_editor_native_shell_tests MK_ui_renderer_tests`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_editor_core_tests|MK_editor_native_shell_tests|MK_ui_renderer_tests|MK_editor_smoke"` (dev preset passed the three enabled matching tests; `MK_editor_smoke` is provided by the optional `desktop-editor` lane)
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1` (desktop-editor CTest 86/86 passed, including `MK_editor_smoke`)
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` (static checks passed, dev CTest 85/85 passed; Apple/Metal diagnostics remain host-gated on Windows as expected)
 
 ## Closeout Search Expectations
 
