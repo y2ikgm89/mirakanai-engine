@@ -27,7 +27,7 @@ On Windows, the default validation build uses Windows SDK system libraries for t
 
 These are official platform SDK libraries and are not bundled in the repository.
 
-The optional desktop runtime, desktop GUI/editor, asset importer, native physics middleware adapter, and network transport adapter lanes use vcpkg manifest features so optional package dependencies remain isolated from the default build and from system-wide package locations. The current `desktop-runtime` feature is dependency-free and uses host SDK libraries. The `desktop-gui` feature declares Dear ImGui only for the optional native editor shell.
+The optional desktop runtime, asset importer, native physics middleware adapter, and network transport adapter lanes use vcpkg manifest features so optional package dependencies remain isolated from the default build and from system-wide package locations. The current `desktop-runtime` feature is dependency-free and uses host SDK libraries. The native `desktop-editor` lane is also dependency-free: it is a CMake preset/tooling lane for the first-party Win32/D3D12 editor shell, not a vcpkg feature and not a UI middleware dependency path.
 
 Run the optional vcpkg dependency bootstrap with:
 
@@ -37,19 +37,19 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1
 
 The repository PowerShell wrappers configure vcpkg through official process environment variables before optional dependency steps. `VCPKG_DOWNLOADS` points at `out/vcpkg/downloads`, `VCPKG_DEFAULT_BINARY_CACHE` points at `out/vcpkg/binary-cache`, and `VCPKG_BINARY_SOURCES` is set to a file provider over that binary cache. This keeps optional dependency downloads and binary packages out of user-global locations and avoids relying on sandbox-inherited cache state.
 
-`bootstrap-deps` is the only wrapper that runs `vcpkg install`. It installs the `desktop-runtime`, `desktop-gui`, `asset-importers`, `physics-jolt`, and `network-enet` manifest features into the repository root `vcpkg_installed` tree. Optional CMake presets set `VCPKG_MANIFEST_INSTALL=OFF` and `VCPKG_INSTALLED_DIR=${sourceDir}/vcpkg_installed`, so CMake configure consumes the already-bootstrapped manifest install tree instead of downloading, extracting tools, or running vcpkg during configure.
+`bootstrap-deps` is the only wrapper that runs `vcpkg install`. It installs the `desktop-runtime`, `asset-importers`, `physics-jolt`, and `network-enet` manifest features into the repository root `vcpkg_installed` tree. Optional CMake presets set `VCPKG_MANIFEST_INSTALL=OFF` and `VCPKG_INSTALLED_DIR=${sourceDir}/vcpkg_installed`, so CMake configure consumes the already-bootstrapped manifest install tree instead of downloading, extracting tools, or running vcpkg during configure.
 
 GitHub Actions restores the gitignored `external/vcpkg` tool checkout before calling `bootstrap-deps`, then checks out the `vcpkg.json` `builtin-baseline` commit. Local hosts must still provide or restore `external/vcpkg` before running optional vcpkg-backed lanes.
 
 On restricted sandboxed hosts, `bootstrap-deps` can still require an unrestricted run because it is the step that intentionally launches vcpkg, downloads archives, extracts helper tools, and builds dependency ports. After it succeeds, normal configure/build/package lanes should not invoke vcpkg.
 
-The visible desktop GUI/editor shell is restored through the optional native Win32 + Dear ImGui + Direct3D 12 `MK_editor` target. The wrapper below is the supported entrypoint for configuring, building, and testing that lane:
+The visible desktop editor shell is built through the dependency-free native Win32 + first-party retained UI + Direct3D 12 `MK_editor` target. The wrapper below is the supported entrypoint for configuring, building, and testing that lane:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1
 ```
 
-`build-gui` requires the vcpkg-backed `desktop-gui` dependency set. `MK_editor_core` remains covered by the default validation lane.
+`build-editor` uses the `desktop-editor` CMake preset with `MK_ENABLE_DESKTOP_EDITOR=ON` and no vcpkg toolchain. `MK_editor_core` remains covered by the default validation lane.
 
 Validate or package the editor-independent desktop game runtime shell with:
 
@@ -73,13 +73,9 @@ Apply ADK servicing patches only when they match installed ADK features. Do not 
 
 ## Optional Features
 
-`desktop-runtime` in `vcpkg.json` is currently a dependency-free feature. It enables the Windows-native platform/audio/runtime host lane through `MK_ENABLE_DESKTOP_RUNTIME=ON` while relying on host SDK libraries such as Win32, WASAPI, DXGI, and D3D12. It is intentionally separate from `desktop-gui` so windowed games can be validated and packaged without Dear ImGui or `MK_editor`.
+`desktop-runtime` in `vcpkg.json` is currently a dependency-free feature. It enables the Windows-native platform/audio/runtime host lane through `MK_ENABLE_DESKTOP_RUNTIME=ON` while relying on host SDK libraries such as Win32, WASAPI, DXGI, and D3D12. It is intentionally separate from `desktop-editor` so windowed games can be validated and packaged without `MK_editor`.
 
-`desktop-gui` in `vcpkg.json` declares:
-
-- `imgui` with the `win32-binding` and `dx12-binding` vcpkg features
-
-Dear ImGui is optional and editor/developer-shell only. Dear ImGui is not the production runtime game UI foundation. The selected desktop-gui feature uses Win32 and DirectX 12 backends and must not enable SDL3 bindings. The previous visible editor shell was removed from active build lanes before final desktop platform cleanup. `MK_editor_core` remains the supported editor logic target, and the native visible editor shell must keep Dear ImGui, Win32, D3D12, DXGI, and native handles in private editor implementation files rather than public engine, gameplay, runtime UI, or editor-core APIs.
+`desktop-editor` is not a `vcpkg.json` feature. It is a dependency-free CMake preset that enables the Windows-native first-party `MK_editor` shell through `MK_ENABLE_DESKTOP_EDITOR=ON` while relying on host SDK libraries and first-party `mirakana::ui` / `MK_ui_renderer` contracts. `MK_editor_core` remains the supported editor logic target, and the native visible editor shell must keep Win32, D3D12, DXGI, and native handles in private editor implementation files rather than public engine, gameplay, runtime UI, or editor-core APIs.
 
 ### Editor native module boundary (not a vcpkg dependency)
 
@@ -178,7 +174,6 @@ Validated local package versions:
 | OpenGL Registry | 2026-01-26 | Optional `MK_tools` build output through KTX Software |
 | EGL Registry | 2025-05-27 | Optional `MK_tools` build output through KTX Software |
 | miniaudio | vcpkg baseline selected | Optional `MK_tools` WAV/MP3/FLAC source importer |
-| Dear ImGui | 1.92.8 | Optional `MK_editor` developer/editor shell dependency |
 | Jolt Physics | 5.5.0 | Optional `MK_physics_jolt` native physics middleware adapter |
 | ENet | 1.3.18 | Optional `MK_runtime_network_enet` loopback network transport adapter |
 | Android Gradle Plugin | 9.1.0 | Toolchain-gated Android package template |
@@ -190,7 +185,7 @@ Validated local package versions:
 | vcpkg-cmake | 2024-04-23 | vcpkg CMake helper |
 | vcpkg-cmake-config | 2024-05-23 | vcpkg CMake config helper |
 
-`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` includes `tools/check-dependency-policy.ps1`, which verifies that the default build has no third-party dependencies, optional `desktop-runtime`, `desktop-gui`, `asset-importers`, `physics-jolt`, and `network-enet` features keep their dependency shapes, `builtin-baseline` is present, notices exist, optional CMake presets disable configure-time vcpkg manifest install and use the root install tree, `bootstrap-deps` installs all optional feature dependency sets, and `tools/validate-physics-jolt.ps1` / `tools/validate-network-enet.ps1` remain the dedicated optional adapter build/test/install wrappers.
+`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` includes `tools/check-dependency-policy.ps1`, which verifies that the default build has no third-party dependencies, optional `desktop-runtime`, `asset-importers`, `physics-jolt`, and `network-enet` features keep their dependency shapes, the removed `desktop-gui` / `imgui` dependency path stays absent, `builtin-baseline` is present, notices exist, optional CMake presets disable configure-time vcpkg manifest install and use the root install tree, `bootstrap-deps` installs all optional feature dependency sets, and `tools/validate-physics-jolt.ps1` / `tools/validate-network-enet.ps1` remain the dedicated optional adapter build/test/install wrappers.
 
 ## Official References
 
@@ -201,7 +196,6 @@ Validated local package versions:
 - fastgltf: https://github.com/spnda/fastgltf
 - KTX Software: https://github.com/KhronosGroup/KTX-Software
 - miniaudio: https://miniaud.io/
-- Dear ImGui: https://github.com/ocornut/imgui
 - Jolt Physics: https://github.com/jrouwe/JoltPhysics
 - Jolt Physics documentation: https://jrouwe.github.io/JoltPhysics/
 - ENet: https://github.com/lsalzman/enet
@@ -237,7 +231,7 @@ Validated local package versions:
 - Zstandard is BSD-3-Clause OR GPL-2.0-only and is pulled through KTX Software.
 - Khronos OpenGL/EGL registry files use per-file license comments and are pulled through KTX Software.
 - miniaudio is public domain or MIT No Attribution.
-- Dear ImGui is MIT licensed and isolated to the optional `desktop-gui` developer/editor shell lane.
+- The `desktop-editor` developer/editor shell lane is first-party and dependency-free; any future UI, font, text, or platform adapter dependency must be added through `license-audit`, `vcpkg.json`, this document, and `THIRD_PARTY_NOTICES.md` before use.
 - Jolt Physics is MIT licensed and isolated to the optional `physics-jolt` adapter lane.
 - ENet is MIT licensed and isolated to the optional `network-enet` adapter lane.
 - Android Gradle Plugin, AndroidX AppCompat, AndroidX Core, and AndroidX Games Activity are Apache-2.0 licensed Android toolchain/template dependencies and are not part of the default build.

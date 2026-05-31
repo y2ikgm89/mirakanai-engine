@@ -69,16 +69,16 @@ endif()
 
 MK_apply_common_target_options(MK_editor_shell_common)
 
-if(NOT MK_ENABLE_DESKTOP_GUI)
+if(NOT MK_ENABLE_DESKTOP_EDITOR)
     return()
 endif()
 
 if(NOT WIN32)
-    message(FATAL_ERROR "MK_ENABLE_DESKTOP_GUI is Windows-only for the native Win32 editor shell")
+    message(FATAL_ERROR "MK_ENABLE_DESKTOP_EDITOR is Windows-only for the native Win32 editor shell")
 endif()
 
 if(NOT TARGET MK_platform_win32)
-    message(FATAL_ERROR "MK_ENABLE_DESKTOP_GUI requires MK_platform_win32")
+    message(FATAL_ERROR "MK_ENABLE_DESKTOP_EDITOR requires MK_platform_win32")
 endif()
 
 add_library(MK_editor_shell_win32

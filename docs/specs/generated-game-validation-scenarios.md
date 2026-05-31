@@ -175,8 +175,8 @@ For editor-assisted packaged playtests, use Editor Playtest Package Review Loop 
 - Use for: engine-owned rendered PCM output checks, not normal game runtime dependency.
 - Modules: `mirakana_audio`, optional `mirakana_audio_wasapi`.
 - Backend readiness: `audio=win32-desktop`.
-- Packaging target: `desktop-game-runtime` or `desktop-gui`.
-- Proof: deterministic `mirakana::AudioMixer::render_interleaved_float` output routed to the optional WASAPI adapter plus `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1`; use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1` when the editor shell is also affected.
+- Packaging target: `desktop-game-runtime` or `desktop-editor`.
+- Proof: deterministic `mirakana::AudioMixer::render_interleaved_float` output routed to the optional WASAPI adapter plus `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1`; use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1` when the editor shell is also affected.
 
 ## Asset Importer Tool Smoke
 

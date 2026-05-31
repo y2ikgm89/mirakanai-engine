@@ -44,11 +44,11 @@ The following are adapter responsibilities, not core public UI contracts:
 
 Adapters may depend on platform SDKs or audited third-party libraries only after `license-audit`, `docs/dependencies.md`, `vcpkg.json`, and `THIRD_PARTY_NOTICES.md` are updated.
 
-## Dear ImGui Role
+## First-Party Editor Shell
 
-Dear ImGui is declared only by the optional `desktop-gui` feature for the native Win32/D3D12 editor/developer shell. It is not the production game UI foundation and must not be required by generated game runtime code.
+The native `MK_editor` shell uses first-party retained `mirakana::ui` documents and `MK_ui_renderer` submissions in the dependency-free `desktop-editor` lane. It is not a runtime game UI dependency and must not be required by generated game runtime code.
 
-The visible `MK_editor` shell keeps Dear ImGui, Win32, D3D12, DXGI, swapchains, descriptor heaps, fences, and message bridging in private `editor/src` implementation files. Durable panel state remains in `editor/core`; high-complexity panels should be modeled through `mirakana_editor_ui` first, then rendered by a first-party platform/rendering adapter.
+The visible `MK_editor` shell keeps Win32, D3D12, DXGI, swapchains, descriptor heaps, fences, and message bridging in private `editor/src` implementation files. Durable panel state remains in `editor/core`; high-complexity panels should be modeled through `mirakana_editor_ui` first, then rendered by a first-party platform/rendering adapter.
 
 ## Middleware Policy
 

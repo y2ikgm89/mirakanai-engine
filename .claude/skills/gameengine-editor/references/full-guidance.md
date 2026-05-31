@@ -7,7 +7,7 @@ This file is detailed reference material for the `.claude/skills/gameengine-edit
 ## Boundary Rules
 
 - Keep `editor/core` GUI-independent and buildable in the default preset.
-- Keep removed SDL3 adapters, Dear ImGui, OS windows, and native UI handles out of `editor/core`; the visible GUI target is a private Windows-native shell over `MK_editor_core`.
+- Keep removed SDL3 adapters, inactive Dear ImGui shell files, OS windows, and native UI handles out of `editor/core`; the visible editor target is a private Windows-native first-party shell over `MK_editor_core`.
 - Route persistent editor behavior through `mirakana_editor_core` models before wiring panels.
 - Store project-wide editor tool configuration in `ProjectDocument`/`ProjectShaderToolSettings` and edit it through `ProjectSettingsDraft` before using it from `mirakana_editor`.
 - Store editor viewport backend preference with `mirakana::editor::EditorRenderBackend` in `ProjectDocument`; resolve availability through `mirakana::editor::choose_editor_render_backend` before using it from GUI code.
@@ -16,11 +16,11 @@ This file is detailed reference material for the `.claude/skills/gameengine-edit
 - Treat any future immediate-mode developer/editor shell as optional tooling, not the production runtime UI foundation.
 - Runtime game UI should target first-party `mirakana_ui` contracts; do not expose Dear ImGui, SDL3, Qt, NoesisGUI, Slint, RmlUi, or other UI middleware through public game APIs.
 - Text shaping, font rasterization, IME, OS accessibility bridges, image decoding, and concrete renderer adapters belong behind adapters; do not hand-roll those systems inside panels or leak their dependencies into editor/core models.
-- For complex editor panels, add GUI-independent state/model contracts in `editor/core` first, then expose durable retained models through `mirakana_editor_ui` before wiring an ImGui adapter.
+- For complex editor panels, add GUI-independent state/model contracts in `editor/core` first, then expose durable retained models through `mirakana_editor_ui` before wiring a visible shell adapter.
 
 ## Visible shell
 
-The SDL3/Dear ImGui `MK_editor` shell sources have been removed from active build lanes. `MK_editor_core` remains the supported editor logic target, and the optional `desktop-gui` lane now owns a private Win32/Dear ImGui/Direct3D 12 shell plus Win32 file-dialog, clipboard, and reviewed process-runner service adapters under `editor/src`.
+The `MK_editor` shell is active through the dependency-free `desktop-editor` lane as a private Win32/Direct3D 12 first-party retained shell plus Win32 file-dialog, clipboard, and reviewed process-runner service adapters under `editor/src`. `MK_editor_core` remains the supported editor logic target.
 
 - Do not add SDL3 or move Dear ImGui, Win32, D3D12, DXGI, COM, clipboard, file-dialog, process-runner, or native-handle usage into `editor/core` or public engine/game APIs.
 - Future visible shell work must start from a focused plan, use first-party native adapters such as Win32/D3D12 on Windows, and add explicit dependency/legal/validation records before introducing any new optional third-party GUI tooling.
@@ -48,7 +48,7 @@ The SDL3/Dear ImGui `MK_editor` shell sources have been removed from active buil
 2. Add or update tests in **`tests/unit/editor_core_tests.cpp`** before production editor-core behavior (CMake executable and CTest filter: **`MK_editor_core_tests`**). Use the canonical `MK_editor_core_tests` name in new guidance and validation evidence.
 3. Update `docs/editor.md` and the engine agent manifest for new editor-facing contracts by editing the relevant `engine/agent/manifest.fragments/*.json` and running `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`; when adding retained `play_in_editor.*` row ids, CMake target strings surfaced to agents, or other literals enforced in `tools/check-ai-integration.ps1`, extend the matching Needles blocks there and keep `.agents/skills/editor-change/SKILL.md` equivalent paragraphs aligned in the same task.
 4. During implementation, prefer a focused loop: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_core_tests` when `editor/core` or `tests/unit/editor_core_tests.cpp` changes, and run only the static checks matching touched docs/manifest/API files.
-5. Treat `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1` as the optional native GUI build/test lane; local runs require the bootstrapped `desktop-gui` vcpkg feature and may be host-gated when Dear ImGui packages are absent.
+5. Treat `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1` as the optional native editor build/test lane; it uses the dependency-free `desktop-editor` preset and must not require a vcpkg UI middleware feature.
 6. Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` once at the slice-closing gate after code, docs, manifest, and static-check updates are settled.
 
 ## Asset and Viewport Rules

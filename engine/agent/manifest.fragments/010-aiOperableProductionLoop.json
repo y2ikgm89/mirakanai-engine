@@ -9,7 +9,7 @@
       "title": "First-Party Editor Shell v1",
       "status": "active",
       "path": "docs/superpowers/plans/2026-05-31-first-party-editor-shell-v1.md",
-      "latestCloseoutEvidence": "Selected active clean-break child plan to replace the completed Native Win32 Editor Shell v1 Dear ImGui shell with a first-party retained MK_editor shell. Candidate 0 is governance-only: manifest, registry, roadmap, static contract needles, and official source refresh. Implementation targets rename the active validation lane from desktop-gui to desktop-editor, keep MK_editor_core as the durable editor model, drive the visible shell through mirakana::ui / MK_ui_renderer, and delete active Dear ImGui implementation and dependency records at closeout. Official source refresh covers Microsoft Win32/D3D12/DirectWrite/TSF/UI Automation, Unity UI Toolkit guidance, Unreal Slate, Godot Control/TextServer, Context7 CMake, and Context7 vcpkg. unsupportedProductionGaps = [] stays unchanged; SDL3, Qt, Slint, RmlUi, NoesisGUI, public native handles, and broad UI middleware claims remain unsupported.",
+      "latestCloseoutEvidence": "Selected active clean-break child plan to replace the completed Native Win32 Editor Shell v1 Dear ImGui shell with a first-party retained MK_editor shell. Candidate 5 renames the active validation lane from desktop-gui to dependency-free desktop-editor, keeps MK_editor_core as the durable editor model, drives the visible shell through mirakana::ui / MK_ui_renderer, removes active desktop-gui/imgui dependency records, and leaves deletion of inactive Dear ImGui implementation files for the closeout phase. Official source refresh covers Microsoft Win32/D3D12/DirectWrite/TSF/UI Automation, Unity UI Toolkit guidance, Unreal Slate, Godot Control/TextServer, Context7 CMake, and Context7 vcpkg. unsupportedProductionGaps = [] stays unchanged; SDL3, Qt, Slint, RmlUi, NoesisGUI, public native handles, and broad UI middleware claims remain unsupported.",
       "completedContext": "Retained context is intentionally short: Native Win32 Editor Shell v1 completed PR #316 through PR #322 with private Win32/Dear ImGui/Direct3D 12 implementation evidence and no public native handles. Renderer RHI Resource Foundation 1.0 Scope Closeout v1, Renderer Backend Parity Host Recipe Proof v1, Renderer Postprocess Tone Mapping Evidence v1, and production-rendering-vfx-profiling-v1 remain completed rendering evidence. First-Party Editor Shell v1 is now the active clean-break replacement plan, not a compatibility extension. The selected design owns stable first-party editor UI state, dock graph, rich-text rows/contracts, semantic ids, adapter-boundary diagnostics, EditorAiOperationSnapshot, EditorAiCommandCatalog, EditorAiCommandRequest, EditorAiCommandDryRunResult, and EditorAiCommandApplyResult while putting DirectWrite, Text Services Framework, UI Automation, font rasterization, image decoding, and platform integration behind official-SDK or audited adapter boundaries.",
       "reason": "Operator selected first-party UI and editor ownership over Dear ImGui/Qt/Slint/RmlUi middleware. The plan follows official platform guidance and established engine patterns: first-party retained UI/editor contracts like Unreal Slate/Godot Control/UI Toolkit-style editor state, plus official/audited low-level adapters for text shaping, DirectWrite-class font quality, IME via Text Services Framework, accessibility via UI Automation, and platform services. AI operation improves because agents inspect deterministic editor data and apply reviewed command rows instead of driving screen coordinates, Dear ImGui state, native handles, or UI middleware automation. Full docking productization, rich text rendering parity, native IME candidate UI, OS accessibility bridge publication, production font fallback, full D3D12 viewport/material texture display, cross-platform shells, package mutation, SDL3, and native handle exposure remain unclaimed until focused phases validate them."
 
@@ -4712,11 +4712,10 @@
         ],
         "hostGates": [
           "d3d12-windows-primary",
-          "desktop-gui-vcpkg",
+          "windows-msvc-desktop-editor",
           "vulkan-strict",
           "metal-apple",
           "android-gameactivity",
-          "windows-msvc-desktop-gui",
           "windows-msvc-dev-editor-game-module-driver-ctest"
         ],
         "validationRecipes": [
@@ -4725,7 +4724,7 @@
           "public-api-boundary",
           "shader-toolchain",
           "desktop-game-runtime",
-          "desktop-gui",
+          "desktop-editor",
           "desktop-runtime-sample-game-scene-gpu-package",
           "desktop-runtime-generated-material-shader-scaffold-package",
           "desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict",
@@ -4737,7 +4736,7 @@
           "status": "placeholder-only",
           "notes": "Validation command execution is non-mutating, but structured command results still carry the placeholder undo field."
         },
-        "notes": "Ready narrow validation runner through tools/run-validation-recipe.ps1. Get-ValidationRecipeCommandPlan maps the allowlist to reviewed argv builders, including the native desktop-gui editor shell recipe, the generated material/shader scaffold package recipe, the strict Vulkan variant desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict, the strict Vulkan sample game UI atlas metadata package recipe desktop-runtime-sample-game-vulkan-ui-atlas-metadata-package, and the Windows-only dev preset lane dev-windows-editor-game-module-driver-load-tests (MK_editor_game_module_driver_load_tests). Invoke-ValidationRecipeCommandPlan executes reviewed argv entries with ProcessStartInfo.ArgumentList; package-script recipes with hyphen-prefixed SmokeArgs use fixed reviewed PowerShell -Command wrappers so the array reaches tools/package-desktop-runtime.ps1 without evaluating raw manifest command strings. The runner is not arbitrary shell, and free-form arguments are rejected. It does not provide a CI service, package mutation, editor productization, shader graph/live shader generation, package streaming, native handle exposure, Metal readiness, or general production renderer quality."
+        "notes": "Ready narrow validation runner through tools/run-validation-recipe.ps1. Get-ValidationRecipeCommandPlan maps the allowlist to reviewed argv builders, including the native desktop-editor shell recipe, the generated material/shader scaffold package recipe, the strict Vulkan variant desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict, the strict Vulkan sample game UI atlas metadata package recipe desktop-runtime-sample-game-vulkan-ui-atlas-metadata-package, and the Windows-only dev preset lane dev-windows-editor-game-module-driver-load-tests (MK_editor_game_module_driver_load_tests). Invoke-ValidationRecipeCommandPlan executes reviewed argv entries with ProcessStartInfo.ArgumentList; package-script recipes with hyphen-prefixed SmokeArgs use fixed reviewed PowerShell -Command wrappers so the array reaches tools/package-desktop-runtime.ps1 without evaluating raw manifest command strings. The runner is not arbitrary shell, and free-form arguments are rejected. It does not provide a CI service, package mutation, editor productization, shader graph/live shader generation, package streaming, native handle exposure, Metal readiness, or general production renderer quality."
       }
     ],
     "authoringSurfaces": [
@@ -5056,30 +5055,17 @@
         "notes": "Android Debug/Release/signing/emulator lanes depend on mobile-check output and selected game package commands."
       },
       {
-        "id": "desktop-gui-vcpkg",
+        "id": "windows-msvc-desktop-editor",
         "status": "host-gated",
         "hosts": [
           "windows",
-          "bootstrapped desktop-gui vcpkg feature",
-          "Dear ImGui Win32 and DirectX 12 backend package"
-        ],
-        "validationRecipes": [
-          "desktop-gui"
-        ],
-        "notes": "The optional native MK_editor GUI lane requires the official bootstrap-deps.ps1 vcpkg install before tools/build-gui.ps1 can configure desktop-gui; CMake configure must not install packages."
-      },
-      {
-        "id": "windows-msvc-desktop-gui",
-        "status": "host-gated",
-        "hosts": [
-          "windows",
-          "Visual Studio desktop-gui preset",
+          "Visual Studio desktop-editor preset",
           "Windows SDK D3D12/DXGI runtime"
         ],
         "validationRecipes": [
-          "desktop-gui"
+          "desktop-editor"
         ],
-        "notes": "The optional native MK_editor GUI lane is Windows-only and validates Win32/Dear ImGui/Direct3D 12 smoke behavior without SDL3 or public native handles."
+        "notes": "The optional native MK_editor lane is Windows-only and validates Win32/first-party retained UI/Direct3D 12 smoke behavior without SDL3, UI middleware, vcpkg UI packages, or public native handles."
       },
       {
         "id": "windows-msvc-dev-editor-game-module-driver-ctest",

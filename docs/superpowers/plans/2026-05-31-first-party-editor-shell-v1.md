@@ -39,14 +39,14 @@ The repository already has the right foundation for a first-party editor shell:
 - `MK_platform_win32` owns first-party Win32 window/event/clipboard/file-dialog/process service adapters behind engine interfaces.
 - `MK_runtime_host_win32_presentation` already contains validated private Win32/DXGI/D3D12 presentation and native UI overlay evidence that can guide editor-private presentation work.
 
-The current visible shell is intentionally temporary for this new direction:
+Initial snapshot before the clean-break phases:
 
-- `MK_editor` is active only through the optional `desktop-gui` lane.
+- `MK_editor` was active only through the optional `desktop-gui` lane.
 - `editor/src/main.cpp` instantiates `Win32ImguiD3d12Host`.
 - `editor/src/native_editor_panels.cpp` renders the panel set directly with `ImGui::*`.
 - `editor/src/win32_imgui_d3d12_host.*`, `win32_imgui_message_bridge.*`, and `win32_imgui_descriptor_allocator.*` own the private Dear ImGui backend.
 - `native_editor_launch.*` exposes `NativeEditorImguiUserConfigPolicy`.
-- `vcpkg.json`, `CMakePresets.json`, `tools/build-gui.ps1`, `tools/bootstrap-deps.ps1`, dependency/legal docs, static checks, and manifest fragments currently describe `desktop-gui` as the Dear ImGui editor lane.
+- `vcpkg.json`, `CMakePresets.json`, `tools/build-gui.ps1`, `tools/bootstrap-deps.ps1`, dependency/legal docs, static checks, and manifest fragments described `desktop-gui` as the Dear ImGui editor lane before Phase 6.
 
 This plan keeps the editor state and AI-operable models, but replaces the immediate-mode rendering and dependency lane with first-party retained UI.
 
@@ -826,7 +826,7 @@ Expected: focused native shell tests and smoke pass on a Windows host with the d
 
 **Goal:** Replace the active `desktop-gui` dependency lane with a dependency-free `desktop-editor` lane.
 
-**Context:** `desktop-gui` currently exists because Dear ImGui is supplied by vcpkg. The first-party replacement should not require package-manager UI dependencies.
+**Context:** `desktop-gui` existed because Dear ImGui was supplied by vcpkg. The first-party replacement should not require package-manager UI dependencies, and the active dependency/legal records should reflect that as soon as the lane is renamed.
 
 **Constraints:** No `desktop-gui`, `build-gui.ps1`, `MK_ENABLE_DESKTOP_GUI`, or `-Gui` compatibility entrypoints remain after phase closeout.
 
@@ -847,21 +847,24 @@ Files:
 - Modify: `tools/check-dependency-policy.ps1`
 - Modify: `tools/check-json-contracts*.ps1`
 - Modify: `tools/check-ai-integration*.ps1`
+- Modify: dependency/legal/current editor docs and notices that described `desktop-gui` as active
 
 Steps:
 
-- [ ] Rename the root CMake option to `MK_ENABLE_DESKTOP_EDITOR`.
-- [ ] Rename presets:
+- [x] Rename the root CMake option to `MK_ENABLE_DESKTOP_EDITOR`.
+- [x] Rename presets:
   - `desktop-gui` to `desktop-editor`
   - `cpp23-desktop-gui-eval` to `cpp23-desktop-editor-eval`
-- [ ] Remove `find_package(imgui CONFIG REQUIRED)` and `imgui::imgui` from `editor/CMakeLists.txt`.
-- [ ] Link the shell target only against first-party engine targets and Windows SDK libraries required by private implementation files.
-- [ ] Remove the `desktop-gui` vcpkg feature from `vcpkg.json`.
-- [ ] Remove `--x-feature=desktop-gui` from `tools/bootstrap-deps.ps1`.
-- [ ] Add `tools/build-editor.ps1` to configure, build, and test the `desktop-editor` preset.
-- [ ] Rename `tools/evaluate-cpp23.ps1 -Gui` to `-Editor` and align static checks.
-- [ ] Rename the validation recipe from `desktop-gui` to `desktop-editor` and update host gates from `desktop-gui-vcpkg` / `windows-msvc-desktop-gui` to dependency-free Windows editor gates such as `windows-msvc-desktop-editor`.
-- [ ] Run:
+- [x] Remove `find_package(imgui CONFIG REQUIRED)` and `imgui::imgui` from `editor/CMakeLists.txt`.
+- [x] Link the shell target only against first-party engine targets and Windows SDK libraries required by private implementation files.
+- [x] Remove the `desktop-gui` vcpkg feature from `vcpkg.json`.
+- [x] Remove `--x-feature=desktop-gui` from `tools/bootstrap-deps.ps1`.
+- [x] Add `tools/build-editor.ps1` to configure, build, and test the `desktop-editor` preset.
+- [x] Rename `tools/evaluate-cpp23.ps1 -Gui` to `-Editor` and align static checks.
+- [x] Rename the validation recipe from `desktop-gui` to `desktop-editor` and update host gates from `desktop-gui-vcpkg` / `windows-msvc-desktop-gui` to dependency-free Windows editor gates such as `windows-msvc-desktop-editor`.
+- [x] Remove active Dear ImGui dependency records from `vcpkg.json`, `docs/dependencies.md`, `docs/legal-and-licensing.md`, and `THIRD_PARTY_NOTICES.md`.
+- [x] Update current UI/editor docs and manifest fragments so `desktop-editor` is the active first-party lane.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1
@@ -870,17 +873,33 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1
 ```
 
-Expected: dependency policy no longer requires Dear ImGui; first-party editor lane configures, builds, and tests through the new entrypoint.
+Expected: dependency policy rejects the removed `desktop-gui` / `imgui` path; first-party editor lane configures, builds, and tests through the new entrypoint.
 
-## Phase 7 - Delete Dear ImGui Implementation And Dependency Records
+**Phase Evidence:** Completed in candidate `codex/first-party-editor-shell-v1-candidate5`. The active editor lane is now `desktop-editor` / `MK_ENABLE_DESKTOP_EDITOR` / `tools/build-editor.ps1` / `tools/evaluate-cpp23.ps1 -Editor`, with no compatibility forwarding for old `desktop-gui`, `build-gui.ps1`, `MK_ENABLE_DESKTOP_GUI`, or `-Gui` names. `vcpkg.json` has no `desktop-gui` feature or `imgui` dependency, `tools/bootstrap-deps.ps1` no longer installs `--x-feature=desktop-gui`, and dependency/legal/notices docs describe the editor shell as first-party and dependency-free. Agent surfaces, Cursor/Claude/Codex guidance, static contract checks, and the composed manifest now point at `desktop-editor` while preserving historical `build-gui` evidence only in historical archives and completed plans. Validation passed:
 
-**Goal:** Remove active Dear ImGui implementation files, dependency records, and documentation claims after the first-party shell is green.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-cpp-standard-policy.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-vcpkg-environment.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-validation-recipe-runner.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`
+- `git diff --check`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1` (desktop-editor CTest 86/86 passed)
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` (static checks passed, dev CTest 85/85 passed; Apple/Metal diagnostics remain host-gated on Windows as expected)
 
-**Context:** Leaving old ImGui files or docs after the new shell lands would create a second accidental UI path and weaken the clean-break decision.
+## Phase 7 - Delete Inactive Dear ImGui Implementation Files
 
-**Constraints:** Preserve historical completed-plan evidence where it is explicitly historical, but remove active docs/manifests/static checks that claim Dear ImGui is supported.
+**Goal:** Remove inactive Dear ImGui implementation files and any remaining active documentation/static-check residue after the first-party `desktop-editor` shell is green.
 
-**Done When:** The active source, build, dependency, docs, manifest, and validation surfaces no longer depend on Dear ImGui.
+**Context:** Phase 6 removes the active package-manager dependency lane and records. Leaving old ImGui files or active docs after the new shell lands would create a second accidental UI path and weaken the clean-break decision.
+
+**Constraints:** Preserve historical completed-plan evidence where it is explicitly historical, but remove active source, docs/manifests/static checks that claim Dear ImGui is supported.
+
+**Done When:** The active source, build, dependency, docs, manifest, and validation surfaces no longer depend on Dear ImGui; inventory hits are limited to historical evidence and explicit forbidden-term guards.
 
 Files:
 
@@ -891,11 +910,7 @@ Files:
 - Delete: `editor/src/win32_imgui_message_bridge.cpp`
 - Delete: `editor/src/win32_imgui_descriptor_allocator.hpp`
 - Delete: `editor/src/win32_imgui_descriptor_allocator.cpp`
-- Modify: `THIRD_PARTY_NOTICES.md`
-- Modify: `docs/dependencies.md`
-- Modify: `docs/legal-and-licensing.md`
-- Modify: `docs/ui.md`
-- Modify: `docs/editor.md`
+- Review/update only if Phase 7 exposes new active residue: `docs/ui.md`, `docs/editor.md`, `docs/current-capabilities.md`, `docs/roadmap.md`, `README.md`, manifest fragments, and static checks
 - Modify: `docs/current-capabilities.md`
 - Modify: `docs/roadmap.md`
 - Modify: `README.md`
@@ -904,11 +919,11 @@ Files:
 Steps:
 
 - [ ] Delete old Dear ImGui implementation files once no target references them.
-- [ ] Remove the Dear ImGui row from `THIRD_PARTY_NOTICES.md` if no active dependency keeps it.
-- [ ] Update dependency/legal docs to say the first-party editor shell has no UI-middleware dependency, while future low-level text/font/accessibility/image dependencies still require official-source refresh, license audit, dependency records, and notices before introduction.
-- [ ] Update UI/editor docs to describe `MK_editor` as first-party retained UI over `MK_editor_core`, `MK_ui`, and `MK_ui_renderer`, with dock graph and rich-text model ownership inside the shell/core contract.
-- [ ] Update UI/editor docs to state that IME, OS accessibility bridge publication, shaping, bidi, line breaking, font fallback, and high-quality rasterization are adapter-owned responsibilities, not panel code responsibilities.
-- [ ] Update roadmap/current capabilities to remove active `desktop-gui` and Dear ImGui claims.
+- [ ] Verify the Dear ImGui row remains absent from `THIRD_PARTY_NOTICES.md` and no active dependency keeps it.
+- [ ] Verify dependency/legal docs still say the first-party editor shell has no UI-middleware dependency, while future low-level text/font/accessibility/image dependencies still require official-source refresh, license audit, dependency records, and notices before introduction.
+- [ ] Verify UI/editor docs describe `MK_editor` as first-party retained UI over `MK_editor_core`, `MK_ui`, and `MK_ui_renderer`, with dock graph and rich-text model ownership inside the shell/core contract.
+- [ ] Verify UI/editor docs state that IME, OS accessibility bridge publication, shaping, bidi, line breaking, font fallback, and high-quality rasterization are adapter-owned responsibilities, not panel code responsibilities.
+- [ ] Update roadmap/current capabilities only if the source-file deletion changes current user-facing claims.
 - [ ] Keep forbidden-term checks for public APIs so future Dear ImGui or middleware symbols still fail if exposed through public surfaces.
 - [ ] Run the closeout inventory:
 

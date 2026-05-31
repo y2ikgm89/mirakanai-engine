@@ -67,7 +67,7 @@ if ($presets.cmakeMinimumRequired.major -lt 3 -or
     Write-Error "CMakePresets.json cmakeMinimumRequired must be at least 3.30 for CMAKE_CXX_MODULE_STD and module scanning policy"
 }
 
-foreach ($presetName in @("dev", "desktop-runtime", "desktop-gui", "asset-importers", "release", "desktop-runtime-release", "clang-asan-ubsan", "ci-linux-clang")) {
+foreach ($presetName in @("dev", "desktop-runtime", "desktop-editor", "asset-importers", "release", "desktop-runtime-release", "clang-asan-ubsan", "ci-linux-clang")) {
     $configurePreset = $presets.configurePresets | Where-Object { $_.name -eq $presetName } | Select-Object -First 1
     if (-not $configurePreset) {
         Write-Error "CMakePresets.json missing $presetName configure preset"

@@ -7,7 +7,7 @@ alwaysApply: true
 
 - **Authority:** [`AGENTS.md`](../../AGENTS.md) is the shared baseline; resolve conflicts in favor of `AGENTS.md`.
 - **Automation:** Use **PowerShell 7** only: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/<script>.ps1`.
-- **Scoped rules:** [`.cursor/rules/`](../../.cursor/rules/) (`mirakana-cmake-vcpkg`, `mirakana-cpp-engine`, `mirakana-editor-imgui-shell`, `mirakana-ai-agent-integration`).
+- **Scoped rules:** [`.cursor/rules/`](../../.cursor/rules/) (`mirakana-cmake-vcpkg`, `mirakana-cpp-engine`, `mirakana-editor-first-party-shell`, `mirakana-ai-agent-integration`).
 - **Skills/subagents:** Thin pointers under [`.cursor/skills/`](../../.cursor/skills/); Cursor-only `gameengine-cursor-baseline` and `gameengine-plan-registry`; subagents under [`.cursor/agents/`](../../.cursor/agents/).
 - **Drift check:** Before finishing implementation, compare changed behavior against owning agent surfaces and update stale guidance in the same task.
 - **User language:** Respond in Japanese when the user writes Japanese; keep code, paths, and API names in ASCII.

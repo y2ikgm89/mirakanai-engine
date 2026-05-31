@@ -237,7 +237,7 @@ Assert-ContainsAll $cpp23EvaluationScript @(
     "[int]`$Jobs = 0",
     "`$effectiveJobs = Resolve-ParallelJobCount -Jobs `$Jobs",
     "cpp23-verification: cmake/ctest parallel jobs=`$effectiveJobs",
-    "`$runDebug = `$Debug.IsPresent -or (-not `$Release.IsPresent -and -not `$Gui.IsPresent)",
+    "`$runDebug = `$Debug.IsPresent -or (-not `$Release.IsPresent -and -not `$Editor.IsPresent)",
     "if (`$runDebug) {",
     "Invoke-CheckedCommand `$tools.CMake --build --preset cpp23-eval --parallel `$effectiveJobs",
     "Invoke-CheckedCommand `$tools.CTest --preset cpp23-eval --output-on-failure --timeout 300 --parallel `$effectiveJobs",
@@ -246,9 +246,9 @@ Assert-ContainsAll $cpp23EvaluationScript @(
     "cpp23-release-preset-eval",
     "Invoke-CheckedCommand `$tools.CMake --build --preset cpp23-release-eval --parallel `$effectiveJobs",
     "Invoke-CheckedCommand `$tools.CTest --preset cpp23-release-eval --output-on-failure --timeout 300 --parallel `$effectiveJobs",
-    "cpp23-desktop-gui-eval",
-    "Invoke-CheckedCommand `$tools.CMake --build --preset cpp23-desktop-gui-eval --parallel `$effectiveJobs",
-    "Invoke-CheckedCommand `$tools.CTest --preset cpp23-desktop-gui-eval --output-on-failure --timeout 300 --parallel `$effectiveJobs"
+    "cpp23-desktop-editor-eval",
+    "Invoke-CheckedCommand `$tools.CMake --build --preset cpp23-desktop-editor-eval --parallel `$effectiveJobs",
+    "Invoke-CheckedCommand `$tools.CTest --preset cpp23-desktop-editor-eval --output-on-failure --timeout 300 --parallel `$effectiveJobs"
 ) "tools/evaluate-cpp23.ps1 release artifact validation"
 Assert-DoesNotContainText $cpp23EvaluationScript "Resolve-Cpp23EvaluationJobCount" "tools/evaluate-cpp23.ps1 shared parallel job helper"
 Assert-DoesNotContainText $cpp23EvaluationScript "[Environment]::ProcessorCount" "tools/evaluate-cpp23.ps1 shared parallel job helper"
@@ -496,7 +496,7 @@ Assert-ContainsAll $windowsJob @(
     "restore-dev-build",
     "run: ./tools/bootstrap-deps.ps1",
     "run: ./tools/validate.ps1 -SkipStaticChecks -SkipTidySmoke",
-    "run: ./tools/build-gui.ps1",
+    "run: ./tools/build-editor.ps1",
     "run: ./tools/validate-network-enet.ps1",
     "Save vcpkg package cache",
     "Save vcpkg installed cache",

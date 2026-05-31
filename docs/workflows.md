@@ -304,16 +304,16 @@ These rules follow the Git documentation for `.gitignore`, `$GIT_DIR/info/exclud
 
 ## Native Editor GUI Validation Lane
 
-- Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1` before the optional `desktop-gui` lane when `vcpkg_installed/` is missing. Bootstrap is the only supported dependency acquisition path; `desktop-gui` CMake presets set `VCPKG_MANIFEST_INSTALL=OFF` and consume `${sourceDir}/vcpkg_installed` without configure-time package installation.
-- Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1` as the supported GUI validation lane for the optional Windows-native `MK_editor` shell. It configures, builds, and tests the `desktop-gui` preset, including `MK_editor_native_shell_tests` and deterministic `MK_editor_smoke` counters for Win32/Dear ImGui/Direct3D 12 host readiness, core-backed panels, diagnostic-only viewport display, and diagnostic-only material preview.
-- Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/evaluate-cpp23.ps1 -Gui` for the `cpp23-desktop-gui-eval` C++23 GUI lane. Keep it aligned with `tools/build-gui.ps1` and the `desktop-gui` validation recipe.
+- Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1` before optional vcpkg-backed dependency lanes when `vcpkg_installed/` is missing. Bootstrap is the only supported dependency acquisition path; vcpkg-backed CMake presets set `VCPKG_MANIFEST_INSTALL=OFF` and consume `${sourceDir}/vcpkg_installed` without configure-time package installation.
+- Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1` as the supported validation lane for the optional Windows-native `MK_editor` shell. It configures, builds, and tests the dependency-free `desktop-editor` preset, including `MK_editor_native_shell_tests` and deterministic `MK_editor_smoke` counters for Win32/first-party retained UI/Direct3D 12 host readiness, core-backed panels, diagnostic-only viewport display, and diagnostic-only material preview.
+- Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/evaluate-cpp23.ps1 -Editor` for the `cpp23-desktop-editor-eval` C++23 editor lane. Keep it aligned with `tools/build-editor.ps1` and the `desktop-editor` validation recipe.
 - GUI validation is Windows-native editor/developer-shell tooling only. It does not claim macOS/Linux visible editor parity, runtime game UI middleware readiness, SDL3 restoration, or public native handle exposure.
 
 ## C++ Standard
 
 - The required language baseline is C++23.
 - Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-cpp-standard-policy.ps1` after changing CMake standard policy, manifests, schemas, or AI guidance.
-- Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/evaluate-cpp23.ps1 -Release` for release packaging. Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/evaluate-cpp23.ps1 -Gui` for the native `cpp23-desktop-gui-eval` GUI lane. The script uses automatic CMake/CTest parallelism by default; pass `-Jobs <N>` only to throttle a constrained host.
+- Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/evaluate-cpp23.ps1 -Release` for release packaging. Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/evaluate-cpp23.ps1 -Editor` for the native `cpp23-desktop-editor-eval` editor lane. The script uses automatic CMake/CTest parallelism by default; pass `-Jobs <N>` only to throttle a constrained host.
 - Add C++ modules through CMake `FILE_SET CXX_MODULES`; do not bypass CMake module scanning.
 - Keep CMake module scanning off for non-module test/probe/sample/game executables; engine/library targets keep the preset-level module scan policy.
 - Use `import std;` only when CMake reports C++23 standard-library module support for the active generator/toolchain.
