@@ -2157,7 +2157,7 @@ $ciMatrixContractCheckCompletedPlanChecks = @(
             "2026-05-07-ci-matrix-contract-check-v1.md",
             "tools/check-ci-matrix.ps1",
             "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ci-matrix.ps1",
-            "native-win32-editor-shell-v1"
+            "first-party-editor-shell-v1"
         )
     },
     @{
