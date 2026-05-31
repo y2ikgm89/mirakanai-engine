@@ -205,11 +205,15 @@ Steps:
 
 Steps:
 
-- [ ] Add RED tests for style token validation, span ordering, inline object ids, link/action ids, selection ranges, copy extraction, and unsupported markup rejection.
-- [ ] Implement a first-party rich text model in `MK_editor_core` with stable row ids and safe serialization where needed.
-- [ ] Render rich text through `MK_ui` labels/spans and `MK_ui_renderer` glyph atlas placeholders until Phase 4 provides real font quality.
-- [ ] Add AI snapshot rows for rich text diagnostics and selected/copyable text.
-- [ ] Keep clipboard output plain UTF-8 text unless a separate rich clipboard plan is accepted.
+- [x] Add RED tests for style token validation, inline object ids, link/action ids, selection ranges, copy extraction, unsupported markup rejection, console diagnostics virtualization, and AI-visible rows.
+- [x] Implement a first-party rich text model in `MK_editor_core` with stable row ids, view-model metadata, read-only console diagnostic document creation, and no markup execution surface.
+- [x] Render read-only Console diagnostics through `MK_ui` labels/spans and `MK_ui_renderer` text runs until Phase 4 provides real font quality.
+- [x] Add AI snapshot rows for rich text diagnostics, selected/copyable text, inline command ids, inline resource ids, and unsupported low-level capability diagnostics.
+- [x] Keep clipboard output plain UTF-8 text unless a separate rich clipboard plan is accepted.
+- [ ] Extend the same read-only rich text composition to AI command output/help/inspector text where those panels need formatted output.
+- [ ] Add editable rich-text target state, caret/focus ownership, and reviewed text-edit command routing after the TSF/clipboard boundary is selected.
+
+**Phase 3a Evidence:** Candidate `codex/first-party-ui-editor-rich-text-display-candidate7` adds `EditorRichTextViewport`, `EditorRichTextUiModel`, `EditorRichTextAiRow`, `EditorRichTextAiSnapshot`, `make_editor_console_rich_text_document`, `make_editor_rich_text_view_model`, and `make_editor_rich_text_ai_snapshot` in `MK_editor_core`; extends `EditorAiOperationSnapshot` with `rich_text_rows`; virtualizes long diagnostic documents by paragraph window; exposes copyable and selected plain UTF-8 text; emits AI rows for document, paragraph, span, inline command, and inline resource objects; and keeps shaping, bidi, font fallback, IME, accessibility publication, and rich clipboard as explicit adapter-owned diagnostics. `MK_editor_shell_common` now composes the Console panel through the core rich-text view model and submits the resulting spans through the first-party `mirakana::ui` / `MK_ui_renderer` path. RED/GREEN evidence covered `MK_editor_core_tests` and `MK_editor_native_shell_tests`; focused validation passed: `tools/cmake.ps1 --preset dev`; `tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests MK_editor_native_shell_tests`; and `tools/ctest.ps1 --preset dev --output-on-failure -R "MK_editor_core_tests|MK_editor_native_shell_tests"`.
 
 ## Phase 4 - Windows DirectWrite/Direct2D Font And Text Adapter v1
 

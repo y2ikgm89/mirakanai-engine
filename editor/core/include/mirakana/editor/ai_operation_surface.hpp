@@ -4,9 +4,11 @@
 #pragma once
 
 #include "mirakana/editor/editor_dock_layout.hpp"
+#include "mirakana/editor/editor_rich_text.hpp"
 #include "mirakana/editor/workspace.hpp"
 
 #include <cstdint>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -28,6 +30,7 @@ struct EditorAiOperationDiagnostic {
 struct EditorAiOperationSnapshot {
     std::uint64_t revision{0};
     std::vector<EditorAiOperationElementRow> elements;
+    std::vector<EditorRichTextAiRow> rich_text_rows;
     std::vector<EditorAiOperationDiagnostic> diagnostics;
 };
 
@@ -74,6 +77,10 @@ struct EditorAiCommandApplyResult {
 [[nodiscard]] EditorAiOperationSnapshot make_editor_ai_operation_snapshot(const Workspace& workspace);
 [[nodiscard]] EditorAiOperationSnapshot make_editor_ai_operation_snapshot(const Workspace& workspace,
                                                                           const EditorDockLayout& dock_layout);
+[[nodiscard]] EditorAiOperationSnapshot
+make_editor_ai_operation_snapshot(const Workspace& workspace, const EditorDockLayout& dock_layout,
+                                  std::span<const EditorRichTextDocument> rich_text_documents,
+                                  EditorRichTextViewport viewport = {});
 
 [[nodiscard]] EditorAiCommandCatalog make_editor_ai_command_catalog(const Workspace& workspace);
 [[nodiscard]] EditorAiCommandCatalog make_editor_ai_command_catalog(const Workspace& workspace,

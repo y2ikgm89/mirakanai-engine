@@ -6,6 +6,7 @@
 #include "native_editor_app.hpp"
 
 #include "mirakana/editor/editor_dock_layout.hpp"
+#include "mirakana/editor/editor_rich_text.hpp"
 
 #include <cstddef>
 #include <stdexcept>
@@ -87,11 +88,39 @@ void append_label(ui::UiDocument& document, const ui::ElementId& parent, std::st
     add_or_throw(document, std::move(desc));
 }
 
+[[nodiscard]] ui::ElementDesc clone_element_desc(const ui::Element& element, const ui::ElementId& fallback_parent) {
+    ui::ElementDesc desc;
+    desc.id = element.id;
+    desc.parent = ui::empty(element.parent) ? fallback_parent : element.parent;
+    desc.role = element.role;
+    desc.bounds = element.bounds;
+    desc.visible = element.visible;
+    desc.enabled = element.enabled;
+    desc.text = element.text;
+    desc.image = element.image;
+    desc.accessibility_label = element.accessibility_label;
+    desc.style = element.style;
+    return desc;
+}
+
+void append_rich_text_document(ui::UiDocument& document, const ui::ElementId& parent,
+                               const EditorRichTextDocument& rich_text) {
+    const auto model = make_editor_rich_text_view_model(
+        rich_text, EditorRichTextViewport{.enabled = true, .first_paragraph = 0U, .max_paragraphs = 64U});
+    for (const auto& element : model.document.traverse()) {
+        add_or_throw(document, clone_element_desc(element, parent));
+    }
+}
+
 void append_panel_status(ui::UiDocument& document, const NativeEditorApp& app, std::string_view panel_id,
                          const ui::ElementId& panel_root) {
     const std::string prefix = "editor.panel." + std::string{panel_id};
     if (panel_id == "viewport") {
         append_label(document, panel_root, prefix + ".status", "viewport " + app.viewport_display().status_id);
+    } else if (panel_id == "console") {
+        append_rich_text_document(
+            document, panel_root,
+            make_editor_console_rich_text_document(app.console_rows(), "editor.panel.console.rich_text"));
     } else if (panel_id == "resources") {
         append_label(document, panel_root, prefix + ".status", "resources " + app.resources().status);
     } else if (panel_id == "ai_commands") {

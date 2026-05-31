@@ -16,6 +16,7 @@
 #include "mirakana/platform/process.hpp"
 #include "mirakana/ui/ui.hpp"
 
+#include <algorithm>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -334,6 +335,32 @@ MK_TEST("editor first party document keeps stable semantic element ids") {
     MK_REQUIRE(command_label->text.label == "AI Commands");
     MK_REQUIRE(viewport_status != nullptr);
     MK_REQUIRE(viewport_status->text.label.contains("diagnostic"));
+}
+
+MK_TEST("editor first party document composes console diagnostics as read only rich text") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+
+    const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
+    const auto* rich_text_root =
+        shell_document.document.find(mirakana::ui::ElementId{.value = "editor.panel.console.rich_text"});
+    const auto* severity = shell_document.document.find(
+        mirakana::ui::ElementId{.value = "editor.panel.console.rich_text.paragraph.native_shell.span.severity"});
+    const auto* message = shell_document.document.find(
+        mirakana::ui::ElementId{.value = "editor.panel.console.rich_text.paragraph.native_shell.span.message"});
+
+    MK_REQUIRE(rich_text_root != nullptr);
+    MK_REQUIRE(rich_text_root->role == mirakana::ui::SemanticRole::root);
+    MK_REQUIRE(rich_text_root->parent.value == "editor.panel.console");
+    MK_REQUIRE(severity != nullptr);
+    MK_REQUIRE(severity->text.label == "Info: ");
+    MK_REQUIRE(severity->style.foreground_token == "editor.info");
+    MK_REQUIRE(message != nullptr);
+    MK_REQUIRE(message->text.label == "Native editor shell ready");
+    MK_REQUIRE(message->style.foreground_token == "editor.info");
+    MK_REQUIRE(std::ranges::any_of(shell_document.renderer_submission.text_runs, [](const auto& run) {
+        return run.id.value == "editor.panel.console.rich_text.paragraph.native_shell.span.message" &&
+               run.text.label == "Native editor shell ready";
+    }));
 }
 
 MK_TEST("editor first party document produces renderer submission without native handles") {

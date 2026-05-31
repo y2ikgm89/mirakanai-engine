@@ -366,6 +366,21 @@ find_ai_operation_element(const mirakana::editor::EditorAiOperationSnapshot& sna
     return it == snapshot.elements.end() ? nullptr : &(*it);
 }
 
+[[nodiscard]] const mirakana::editor::EditorRichTextAiRow*
+find_rich_text_ai_row(const mirakana::editor::EditorRichTextAiSnapshot& snapshot, std::string_view id) noexcept {
+    const auto it = std::ranges::find_if(
+        snapshot.rows, [id](const mirakana::editor::EditorRichTextAiRow& row) { return row.id == id; });
+    return it == snapshot.rows.end() ? nullptr : &(*it);
+}
+
+[[nodiscard]] const mirakana::editor::EditorRichTextAiRow*
+find_operation_rich_text_ai_row(const mirakana::editor::EditorAiOperationSnapshot& snapshot,
+                                std::string_view id) noexcept {
+    const auto it = std::ranges::find_if(
+        snapshot.rich_text_rows, [id](const mirakana::editor::EditorRichTextAiRow& row) { return row.id == id; });
+    return it == snapshot.rich_text_rows.end() ? nullptr : &(*it);
+}
+
 [[nodiscard]] const mirakana::editor::EditorAiCommandRow*
 find_ai_command(const mirakana::editor::EditorAiCommandCatalog& catalog, std::string_view id) noexcept {
     const auto it = std::ranges::find_if(
@@ -1029,6 +1044,168 @@ MK_TEST("editor core rich text builds retained ui labels with stable ids") {
     MK_REQUIRE(span != nullptr);
     MK_REQUIRE(span->text.label == "Hello");
     MK_REQUIRE(span->style.foreground_token == "editor.info");
+}
+
+MK_TEST("editor core rich text console view model virtualizes diagnostics and preserves plain clipboard text") {
+    const std::vector<mirakana::editor::EditorDiagnosticRow> rows{
+        mirakana::editor::EditorDiagnosticRow{
+            .id = "native_shell",
+            .severity = mirakana::editor::EditorDiagnosticSeverity::info,
+            .message = "alpha",
+        },
+        mirakana::editor::EditorDiagnosticRow{
+            .id = "asset_warning",
+            .severity = mirakana::editor::EditorDiagnosticSeverity::warning,
+            .message = "beta",
+        },
+        mirakana::editor::EditorDiagnosticRow{
+            .id = "import_error",
+            .severity = mirakana::editor::EditorDiagnosticSeverity::error,
+            .message = "gamma",
+        },
+        mirakana::editor::EditorDiagnosticRow{
+            .id = "packaging_info",
+            .severity = mirakana::editor::EditorDiagnosticSeverity::info,
+            .message = "delta",
+        },
+    };
+    auto document = mirakana::editor::make_editor_console_rich_text_document(rows);
+    document.selection = mirakana::editor::EditorRichTextSelection{
+        .active = true,
+        .start_paragraph_id = "asset_warning",
+        .start_span_id = "severity",
+        .start_byte_offset = 0U,
+        .end_paragraph_id = "import_error",
+        .end_span_id = "message",
+        .end_byte_offset = 5U,
+    };
+
+    const auto model =
+        mirakana::editor::make_editor_rich_text_view_model(document, mirakana::editor::EditorRichTextViewport{
+                                                                         .enabled = true,
+                                                                         .first_paragraph = 1U,
+                                                                         .max_paragraphs = 2U,
+                                                                     });
+
+    MK_REQUIRE(model.total_paragraph_count == 4U);
+    MK_REQUIRE(model.visible_paragraph_count == 2U);
+    MK_REQUIRE(model.skipped_before_count == 1U);
+    MK_REQUIRE(model.skipped_after_count == 1U);
+    MK_REQUIRE(model.virtualized);
+    MK_REQUIRE(model.plain_utf8_clipboard_only);
+    MK_REQUIRE(model.copyable_plain_text == "Info: alpha\nWarning: beta\nError: gamma\nInfo: delta");
+    MK_REQUIRE(model.selected_plain_text == "Warning: beta\nError: gamma");
+    MK_REQUIRE(model.document.find(mirakana::ui::ElementId{
+                   .value = "editor.rich_text.console.paragraph.asset_warning.span.message"}) != nullptr);
+    MK_REQUIRE(model.document.find(mirakana::ui::ElementId{
+                   .value = "editor.rich_text.console.paragraph.import_error.span.message"}) != nullptr);
+    MK_REQUIRE(model.document.find(mirakana::ui::ElementId{
+                   .value = "editor.rich_text.console.paragraph.native_shell.span.message"}) == nullptr);
+    MK_REQUIRE(model.document.find(mirakana::ui::ElementId{
+                   .value = "editor.rich_text.console.paragraph.packaging_info.span.message"}) == nullptr);
+
+    const auto layout =
+        mirakana::ui::solve_layout(model.document, mirakana::ui::ElementId{.value = "editor.rich_text.console"},
+                                   mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 640.0F, .height = 360.0F});
+    const auto submission = mirakana::ui::build_renderer_submission(model.document, layout);
+    MK_REQUIRE(std::ranges::any_of(submission.text_runs, [](const auto& run) {
+        return run.id.value == "editor.rich_text.console.paragraph.asset_warning.span.message" &&
+               run.text.label == "beta";
+    }));
+    const auto text_payload = mirakana::ui::build_text_adapter_payload(submission);
+    MK_REQUIRE(std::ranges::any_of(text_payload.rows, [](const auto& row) {
+        return row.id.value == "editor.rich_text.console.paragraph.import_error.span.message" && row.text == "gamma" &&
+               row.foreground_token == "editor.error";
+    }));
+}
+
+MK_TEST("editor core rich text ai snapshot exposes rows diagnostics and operation surface") {
+    mirakana::editor::EditorRichTextDocument
+        document{
+            .id = "editor.rich_text.ai_output",
+            .paragraphs =
+                {
+                    mirakana::editor::EditorRichTextParagraph{
+                        .id = "p0",
+                        .spans =
+                            {
+                                mirakana::editor::EditorRichTextSpan{
+                                    .id = "message",
+                                    .style_token = "editor.info",
+                                    .text = "Open imported texture",
+                                    .inline_objects =
+                                        {
+                                            mirakana::editor::EditorRichTextInlineObject{
+                                                .id = "open",
+                                                .kind = mirakana::editor::EditorRichTextInlineObjectKind::command_link,
+                                                .command_id = "editor.panel.assets.show",
+                                                .resource_id = {},
+                                                .accessibility_label = "Open Assets",
+                                            },
+                                            mirakana::editor::EditorRichTextInlineObject{
+                                                .id = "texture",
+                                                .kind = mirakana::editor::EditorRichTextInlineObjectKind::resource_icon,
+                                                .command_id = {},
+                                                .resource_id = "textures/default",
+                                                .accessibility_label = "Default texture",
+                                            },
+                                        },
+                                },
+                            },
+                    },
+                },
+            .selection =
+                mirakana::editor::EditorRichTextSelection{
+                    .active = true,
+                    .start_paragraph_id = "p0",
+                    .start_span_id = "message",
+                    .start_byte_offset = 0U,
+                    .end_paragraph_id = "p0",
+                    .end_span_id = "message",
+                    .end_byte_offset = 4U,
+                },
+            .unsupported_capabilities = mirakana::editor::make_editor_rich_text_low_level_unsupported_capabilities(),
+        };
+
+    const auto snapshot = mirakana::editor::make_editor_rich_text_ai_snapshot(document);
+    const auto* span = find_rich_text_ai_row(snapshot, "editor.rich_text.ai_output.paragraph.p0.span.message");
+    const auto* command =
+        find_rich_text_ai_row(snapshot, "editor.rich_text.ai_output.paragraph.p0.span.message.inline.open");
+    const auto* resource =
+        find_rich_text_ai_row(snapshot, "editor.rich_text.ai_output.paragraph.p0.span.message.inline.texture");
+
+    MK_REQUIRE(snapshot.document_id == "editor.rich_text.ai_output");
+    MK_REQUIRE(snapshot.revision > 0U);
+    MK_REQUIRE(snapshot.copyable_plain_text == "Open imported texture");
+    MK_REQUIRE(snapshot.selected_plain_text == "Open");
+    MK_REQUIRE(snapshot.plain_utf8_clipboard_only);
+    MK_REQUIRE(span != nullptr);
+    MK_REQUIRE(span->role == "rich_text_span");
+    MK_REQUIRE(span->style_token == "editor.info");
+    MK_REQUIRE(span->text == "Open imported texture");
+    MK_REQUIRE(span->selected);
+    MK_REQUIRE(span->copyable);
+    MK_REQUIRE(command != nullptr);
+    MK_REQUIRE(command->role == "rich_text_inline_command");
+    MK_REQUIRE(command->command_id == "editor.panel.assets.show");
+    MK_REQUIRE(resource != nullptr);
+    MK_REQUIRE(resource->role == "rich_text_inline_resource");
+    MK_REQUIRE(resource->resource_id == "textures/default");
+    MK_REQUIRE(std::ranges::any_of(snapshot.diagnostics, [](const auto& diagnostic) {
+        return diagnostic.code == "unsupported_capability" &&
+               diagnostic.message.find("text_shaping") != std::string::npos;
+    }));
+
+    const auto workspace = mirakana::editor::Workspace::create_default(
+        mirakana::editor::ProjectInfo{.name = "sample", .root_path = "games/sample"});
+    const auto operation_snapshot = mirakana::editor::make_editor_ai_operation_snapshot(
+        workspace, mirakana::editor::make_default_editor_dock_layout(), std::vector{document});
+    const auto* operation_span =
+        find_operation_rich_text_ai_row(operation_snapshot, "editor.rich_text.ai_output.paragraph.p0.span.message");
+    MK_REQUIRE(operation_span != nullptr);
+    MK_REQUIRE(operation_span->text == "Open imported texture");
+    MK_REQUIRE(std::ranges::any_of(operation_snapshot.diagnostics,
+                                   [](const auto& diagnostic) { return diagnostic.code == "unsupported_capability"; }));
 }
 
 MK_TEST("editor ai operation snapshot exposes visible panel rows") {
