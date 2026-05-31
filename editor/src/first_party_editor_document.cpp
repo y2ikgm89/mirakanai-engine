@@ -124,8 +124,9 @@ void append_panel_status(ui::UiDocument& document, const NativeEditorApp& app, s
     } else if (panel_id == "resources") {
         append_label(document, panel_root, prefix + ".status", "resources " + app.resources().status);
     } else if (panel_id == "ai_commands") {
-        append_label(document, panel_root, prefix + ".status",
-                     "commands " + std::to_string(app.ai_commands().command_rows.size()));
+        append_rich_text_document(
+            document, panel_root,
+            make_editor_ai_command_panel_rich_text_document(app.ai_commands(), "editor.panel.ai_commands.rich_text"));
     } else if (panel_id == "project_settings") {
         append_label(document, panel_root, prefix + ".status",
                      "project settings diagnostics " + std::to_string(app.project_settings_errors().size()));

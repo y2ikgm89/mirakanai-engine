@@ -14,6 +14,8 @@
 
 namespace mirakana::editor {
 
+struct EditorAiCommandPanelModel;
+
 enum class EditorRichTextInlineObjectKind : std::uint8_t {
     command_link,
     resource_icon,
@@ -133,6 +135,9 @@ make_editor_rich_text_low_level_unsupported_capabilities();
 [[nodiscard]] EditorRichTextDocument
 make_editor_console_rich_text_document(std::span<const EditorDiagnosticRow> rows,
                                        std::string document_id = "editor.rich_text.console");
+[[nodiscard]] EditorRichTextDocument
+make_editor_ai_command_panel_rich_text_document(const EditorAiCommandPanelModel& model,
+                                                std::string document_id = "editor.rich_text.ai_commands");
 [[nodiscard]] EditorRichTextValidation validate_editor_rich_text_document(const EditorRichTextDocument& document);
 [[nodiscard]] EditorRichTextCopyResult copy_editor_rich_text_plain_text(const EditorRichTextDocument& document);
 [[nodiscard]] EditorRichTextCopyResult

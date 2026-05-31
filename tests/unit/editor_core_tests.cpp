@@ -1119,6 +1119,43 @@ MK_TEST("editor core rich text console view model virtualizes diagnostics and pr
     }));
 }
 
+MK_TEST("editor core rich text builds ai command panel document") {
+    mirakana::editor::EditorAiCommandPanelModel ai_model;
+    ai_model.status_label = "host_gated";
+    ai_model.ready_for_operator_handoff = false;
+    ai_model.command_rows.push_back(mirakana::editor::EditorAiCommandPanelCommandRow{
+        .recipe_id = "desktop-editor",
+        .status_label = "host_gated",
+        .command_display =
+            "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode DryRun -Recipe "
+            "desktop-editor",
+        .argv = {},
+        .host_gates = {"windows-msvc-desktop-editor"},
+        .blocked_by = {"host-gate"},
+        .readiness_dependency = "EditorAiPlaytestReadinessReportModel.ready_for_operator_validation",
+        .diagnostic = "awaiting Windows editor host evidence",
+    });
+    ai_model.diagnostics.push_back("host evidence required");
+
+    const auto ai_commands = mirakana::editor::make_editor_ai_command_panel_rich_text_document(ai_model);
+    const auto ai_snapshot = mirakana::editor::make_editor_rich_text_ai_snapshot(ai_commands);
+    const auto* status = find_rich_text_ai_row(ai_snapshot, "editor.rich_text.ai_commands.paragraph.status.span.value");
+    const auto* command =
+        find_rich_text_ai_row(ai_snapshot, "editor.rich_text.ai_commands.paragraph.command.desktop-editor.span.recipe");
+    const auto* diagnostic =
+        find_rich_text_ai_row(ai_snapshot, "editor.rich_text.ai_commands.paragraph.diagnostic.0.span.message");
+
+    MK_REQUIRE(ai_snapshot.diagnostics.size() >= ai_commands.unsupported_capabilities.size());
+    MK_REQUIRE(ai_snapshot.copyable_plain_text.contains("Status: host_gated"));
+    MK_REQUIRE(ai_snapshot.copyable_plain_text.contains("Command: desktop-editor"));
+    MK_REQUIRE(status != nullptr);
+    MK_REQUIRE(status->style_token == "editor.warning");
+    MK_REQUIRE(command != nullptr);
+    MK_REQUIRE(command->text == "Command: desktop-editor");
+    MK_REQUIRE(diagnostic != nullptr);
+    MK_REQUIRE(diagnostic->style_token == "editor.error");
+}
+
 MK_TEST("editor core rich text ai snapshot exposes rows diagnostics and operation surface") {
     mirakana::editor::EditorRichTextDocument
         document{

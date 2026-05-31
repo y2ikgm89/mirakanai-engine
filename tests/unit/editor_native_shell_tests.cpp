@@ -363,6 +363,23 @@ MK_TEST("editor first party document composes console diagnostics as read only r
     }));
 }
 
+MK_TEST("editor first party document composes ai commands as read only rich text") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+
+    const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
+    const auto* ai_root =
+        shell_document.document.find(mirakana::ui::ElementId{.value = "editor.panel.ai_commands.rich_text"});
+    const auto* ai_status = shell_document.document.find(
+        mirakana::ui::ElementId{.value = "editor.panel.ai_commands.rich_text.paragraph.status."
+                                         "span.value"});
+
+    MK_REQUIRE(ai_root != nullptr);
+    MK_REQUIRE(ai_root->role == mirakana::ui::SemanticRole::root);
+    MK_REQUIRE(ai_root->parent.value == "editor.panel.ai_commands");
+    MK_REQUIRE(ai_status != nullptr);
+    MK_REQUIRE(ai_status->text.label == "ready");
+}
+
 MK_TEST("editor first party document produces renderer submission without native handles") {
     mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
 
