@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <array>
 #include <optional>
+#include <stdexcept>
 #include <string_view>
 #include <utility>
 
@@ -72,10 +73,24 @@ struct ParsedDockCommand {
     std::string panel_id;
 };
 
+struct ParsedDockParameters {
+    bool accepted{false};
+    std::string target_stack_id;
+    std::string source_stack_id;
+    std::string new_stack_id;
+    EditorDockSplitAxis split_axis{EditorDockSplitAxis::horizontal};
+    float split_ratio{0.5F};
+    std::vector<EditorAiOperationDiagnostic> diagnostics;
+};
+
 constexpr std::string_view dock_command_prefix = "editor.dock.";
 constexpr std::string_view dock_panel_command_prefix = "editor.dock.panel.";
 constexpr std::string_view dock_layout_reset_command = "editor.dock.layout.reset";
 constexpr std::string_view target_stack_parameter = "target_stack_id";
+constexpr std::string_view source_stack_parameter = "source_stack_id";
+constexpr std::string_view new_stack_parameter = "new_stack_id";
+constexpr std::string_view split_axis_parameter = "split_axis";
+constexpr std::string_view split_ratio_parameter = "split_ratio";
 
 [[nodiscard]] std::string panel_element_id(PanelId panel) {
     return "editor.panel." + std::string{panel_id_to_string(panel)};
@@ -146,6 +161,34 @@ constexpr std::string_view target_stack_parameter = "target_stack_id";
     });
 }
 
+[[nodiscard]] bool has_unsupported_split_parameter(const EditorAiCommandRequest& request) noexcept {
+    return std::ranges::any_of(request.parameters, [](const EditorAiCommandParameter& parameter) {
+        return parameter.key != source_stack_parameter && parameter.key != new_stack_parameter &&
+               parameter.key != split_axis_parameter && parameter.key != split_ratio_parameter;
+    });
+}
+
+[[nodiscard]] EditorAiOperationDiagnostic diagnostic(std::string code, std::string message);
+
+[[nodiscard]] EditorDockSplitAxis parse_dock_split_axis(std::string_view value) {
+    if (value == "horizontal") {
+        return EditorDockSplitAxis::horizontal;
+    }
+    if (value == "vertical") {
+        return EditorDockSplitAxis::vertical;
+    }
+    throw std::invalid_argument("AI editor dock split axis must be horizontal or vertical");
+}
+
+[[nodiscard]] float parse_dock_split_ratio(std::string_view value) {
+    std::size_t consumed = 0;
+    const auto parsed = std::stof(std::string{value}, &consumed);
+    if (consumed != value.size()) {
+        throw std::invalid_argument("AI editor dock split ratio must be a float");
+    }
+    return parsed;
+}
+
 [[nodiscard]] ParsedDockCommand parse_dock_command(std::string_view command_id) {
     if (command_id == dock_layout_reset_command) {
         return ParsedDockCommand{.recognized = true, .kind = EditorDockCommandKind::reset_layout, .panel_id = {}};
@@ -178,15 +221,86 @@ constexpr std::string_view target_stack_parameter = "target_stack_id";
         return ParsedDockCommand{
             .recognized = true, .kind = EditorDockCommandKind::move_panel_to_stack, .panel_id = std::string{panel_id}};
     }
+    if (action == "split") {
+        return ParsedDockCommand{
+            .recognized = true, .kind = EditorDockCommandKind::split_panel_to_stack, .panel_id = std::string{panel_id}};
+    }
 
     return {};
 }
 
-[[nodiscard]] EditorDockCommandRequest make_dock_request(const ParsedDockCommand& parsed, std::string target_stack_id,
-                                                         bool user_confirmed) {
+[[nodiscard]] ParsedDockParameters parse_dock_parameters(const ParsedDockCommand& parsed,
+                                                         const EditorAiCommandRequest& request) {
+    ParsedDockParameters result;
+
+    if (parsed.kind == EditorDockCommandKind::move_panel_to_stack) {
+        if (has_unsupported_parameter(request, target_stack_parameter)) {
+            result.diagnostics.push_back(
+                diagnostic("unsupported_parameters", "AI editor dock move command accepts target_stack_id only"));
+            return result;
+        }
+        const auto target_stack = find_parameter(request, target_stack_parameter);
+        if (!target_stack.has_value() || target_stack->empty()) {
+            result.diagnostics.push_back(
+                diagnostic("missing_parameter", "AI editor dock move command requires target_stack_id"));
+            return result;
+        }
+        result.target_stack_id = std::string{*target_stack};
+    } else if (parsed.kind == EditorDockCommandKind::show_panel) {
+        if (has_unsupported_parameter(request, target_stack_parameter)) {
+            result.diagnostics.push_back(
+                diagnostic("unsupported_parameters", "AI editor dock show command accepts target_stack_id only"));
+            return result;
+        }
+        if (const auto target_stack = find_parameter(request, target_stack_parameter); target_stack.has_value()) {
+            result.target_stack_id = std::string{*target_stack};
+        }
+    } else if (parsed.kind == EditorDockCommandKind::split_panel_to_stack) {
+        if (has_unsupported_split_parameter(request)) {
+            result.diagnostics.push_back(diagnostic(
+                "unsupported_parameters",
+                "AI editor dock split command accepts source_stack_id, new_stack_id, split_axis, and split_ratio"));
+            return result;
+        }
+        const auto source_stack = find_parameter(request, source_stack_parameter);
+        const auto new_stack = find_parameter(request, new_stack_parameter);
+        if (!source_stack.has_value() || source_stack->empty() || !new_stack.has_value() || new_stack->empty()) {
+            result.diagnostics.push_back(diagnostic(
+                "missing_parameter", "AI editor dock split command requires source_stack_id and new_stack_id"));
+            return result;
+        }
+        result.source_stack_id = std::string{*source_stack};
+        result.new_stack_id = std::string{*new_stack};
+        try {
+            if (const auto split_axis = find_parameter(request, split_axis_parameter); split_axis.has_value()) {
+                result.split_axis = parse_dock_split_axis(*split_axis);
+            }
+            if (const auto split_ratio = find_parameter(request, split_ratio_parameter); split_ratio.has_value()) {
+                result.split_ratio = parse_dock_split_ratio(*split_ratio);
+            }
+        } catch (const std::invalid_argument& error) {
+            result.diagnostics.push_back(diagnostic("invalid_parameter", error.what()));
+            return result;
+        }
+    } else if (!request.parameters.empty()) {
+        result.diagnostics.push_back(
+            diagnostic("unsupported_parameters", "AI editor dock command does not accept parameters"));
+        return result;
+    }
+
+    result.accepted = true;
+    return result;
+}
+
+[[nodiscard]] EditorDockCommandRequest make_dock_request(const ParsedDockCommand& parsed,
+                                                         const ParsedDockParameters& parameters, bool user_confirmed) {
     return EditorDockCommandRequest{.kind = parsed.kind,
                                     .panel_id = parsed.panel_id,
-                                    .target_stack_id = std::move(target_stack_id),
+                                    .target_stack_id = parameters.target_stack_id,
+                                    .source_stack_id = parameters.source_stack_id,
+                                    .new_stack_id = parameters.new_stack_id,
+                                    .split_axis = parameters.split_axis,
+                                    .split_ratio = parameters.split_ratio,
                                     .user_confirmed = user_confirmed};
 }
 
@@ -237,6 +351,15 @@ void append_dock_command_diagnostics(EditorAiCommandApplyResult& result, const E
 
 [[nodiscard]] bool dock_move_command_can_mutate(const EditorDockLayout& dock_layout,
                                                 const EditorDockPanelCatalogRow& panel) noexcept {
+    if (panel.shell_chrome || !panel.native_shell_panel) {
+        return false;
+    }
+    const auto* source_stack = find_dock_stack_containing_panel(dock_layout, panel.id);
+    return source_stack != nullptr && source_stack->tabs.size() > 1U;
+}
+
+[[nodiscard]] bool dock_split_command_can_mutate(const EditorDockLayout& dock_layout,
+                                                 const EditorDockPanelCatalogRow& panel) noexcept {
     if (panel.shell_chrome || !panel.native_shell_panel) {
         return false;
     }
@@ -392,6 +515,14 @@ EditorAiCommandCatalog make_editor_ai_command_catalog(const Workspace& workspace
             .mutates_state = true,
             .requires_confirmation = false,
         });
+        catalog.commands.push_back(EditorAiCommandRow{
+            .id = dock_panel_element_id(panel.id) + ".split",
+            .label = dock_command_label("Split", panel.label),
+            .target_element_id = dock_panel_element_id(panel.id),
+            .enabled = dock_split_command_can_mutate(dock_layout, panel),
+            .mutates_state = true,
+            .requires_confirmation = false,
+        });
     }
 
     catalog.commands.push_back(EditorAiCommandRow{
@@ -461,32 +592,9 @@ EditorAiCommandDryRunResult dry_run_editor_ai_command(const Workspace& workspace
         return result;
     }
 
-    std::string target_stack_id;
-    if (parsed.kind == EditorDockCommandKind::move_panel_to_stack) {
-        if (has_unsupported_parameter(request, target_stack_parameter)) {
-            result.diagnostics.push_back(
-                diagnostic("unsupported_parameters", "AI editor dock move command accepts target_stack_id only"));
-            return result;
-        }
-        const auto target_stack = find_parameter(request, target_stack_parameter);
-        if (!target_stack.has_value() || target_stack->empty()) {
-            result.diagnostics.push_back(
-                diagnostic("missing_parameter", "AI editor dock move command requires target_stack_id"));
-            return result;
-        }
-        target_stack_id = std::string{*target_stack};
-    } else if (parsed.kind == EditorDockCommandKind::show_panel) {
-        if (has_unsupported_parameter(request, target_stack_parameter)) {
-            result.diagnostics.push_back(
-                diagnostic("unsupported_parameters", "AI editor dock show command accepts target_stack_id only"));
-            return result;
-        }
-        if (const auto target_stack = find_parameter(request, target_stack_parameter); target_stack.has_value()) {
-            target_stack_id = std::string{*target_stack};
-        }
-    } else if (!request.parameters.empty()) {
-        result.diagnostics.push_back(
-            diagnostic("unsupported_parameters", "AI editor dock command does not accept parameters"));
+    auto parsed_parameters = parse_dock_parameters(parsed, request);
+    if (!parsed_parameters.accepted) {
+        result.diagnostics = std::move(parsed_parameters.diagnostics);
         return result;
     }
 
@@ -495,7 +603,7 @@ EditorAiCommandDryRunResult dry_run_editor_ai_command(const Workspace& workspace
         return result;
     }
 
-    auto dock_request = make_dock_request(parsed, std::move(target_stack_id), request.user_confirmed);
+    auto dock_request = make_dock_request(parsed, parsed_parameters, request.user_confirmed);
     if (parsed.kind == EditorDockCommandKind::reset_layout) {
         dock_request.user_confirmed = true;
     }
@@ -577,13 +685,13 @@ EditorAiCommandApplyResult apply_editor_ai_command(Workspace& workspace, EditorD
         return result;
     }
 
-    std::string target_stack_id;
-    if (const auto target_stack = find_parameter(request, target_stack_parameter); target_stack.has_value()) {
-        target_stack_id = std::string{*target_stack};
+    auto parsed_parameters = parse_dock_parameters(parsed, request);
+    if (!parsed_parameters.accepted) {
+        result.diagnostics = std::move(parsed_parameters.diagnostics);
+        return result;
     }
 
-    const auto plan =
-        apply_editor_dock_command(dock_layout, make_dock_request(parsed, std::move(target_stack_id), true));
+    const auto plan = apply_editor_dock_command(dock_layout, make_dock_request(parsed, parsed_parameters, true));
     if (!plan.accepted) {
         append_dock_command_diagnostics(result, plan);
         return result;

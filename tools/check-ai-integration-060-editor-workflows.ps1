@@ -44,7 +44,7 @@ $editorInputRebindingProfilePanelChecks = @(
         )
     },
     @{
-        Path = "editor/core/include/mirakana/editor/workspace.hpp"
+        Path = "editor/core/include/mirakana/editor/editor_panel.hpp"
         Needles = @(
             "input_rebinding"
         )
@@ -1689,8 +1689,22 @@ $editorCoreDockCommandChecks = @(
             "EditorDockCommandKind",
             "EditorDockCommandRequest",
             "EditorDockCommandPlan",
+            "split_panel_to_stack",
+            "source_stack_id",
+            "new_stack_id",
+            "split_axis",
+            "split_ratio",
             "plan_editor_dock_command",
             "apply_editor_dock_command"
+        )
+    },
+    @{
+        Path = "editor/core/include/mirakana/editor/workspace.hpp"
+        Needles = @(
+            "EditorDockLayout",
+            "const EditorDockLayout& dock_layout",
+            "EditorDockLayout& dock_layout",
+            "set_dock_layout"
         )
     },
     @{
@@ -1711,13 +1725,28 @@ $editorCoreDockCommandChecks = @(
             "hide_panel",
             "activate_tab",
             "move_panel_to_stack",
+            "split_panel_to_stack",
             "reset_layout",
             "confirmation_required",
             "cannot_hide_shell_chrome",
             "panel_not_native_shell",
             "empty_stack_after_hide",
             "empty_stack_after_move",
+            "empty_stack_after_split",
+            "dock_graph_cycle",
+            "duplicate_dock_tab",
             "validate_editor_dock_layout(plan.result_layout)"
+        )
+    },
+    @{
+        Path = "editor/core/src/workspace.cpp"
+        Needles = @(
+            "GameEngine.Workspace.v2",
+            "dock.root",
+            "dock.node.",
+            "finish_parsed_dock_layout",
+            "set_dock_layout",
+            "unsupported workspace format"
         )
     },
     @{
@@ -1728,6 +1757,11 @@ $editorCoreDockCommandChecks = @(
             "editor.dock.panel.",
             "editor.dock.layout.reset",
             "target_stack_id",
+            "source_stack_id",
+            "new_stack_id",
+            "split_axis",
+            "split_ratio",
+            ".split",
             "plan_editor_dock_command",
             "apply_editor_dock_command"
         )
@@ -1739,7 +1773,10 @@ $editorCoreDockCommandChecks = @(
             "editor core dock command hides active panel with fallback focus",
             "editor core dock command rejects unsafe panel and confirmation states",
             "editor core dock command activates moves and applies reset",
+            "editor core dock command splits a panel into a new stack",
+            "editor workspace persists split dock layout through reviewed workspace IO",
             "editor ai dock command dry run and apply move panel through dock planner",
+            "editor ai dock command can split a panel into a new stack",
             "editor ai dock command reset requires confirmation",
             "editor ai dock command can show a hidden panel with a target stack",
             "unknown_panel",
@@ -1752,7 +1789,8 @@ $editorCoreDockCommandChecks = @(
             "EditorDockCommandKind",
             "plan_editor_dock_command",
             "apply_editor_dock_command",
-            "reviewed dock commands"
+            "reviewed dock commands",
+            "GameEngine.Workspace.v2"
         )
     },
     @{
@@ -1760,6 +1798,7 @@ $editorCoreDockCommandChecks = @(
         Needles = @(
             "EditorDockCommandPlan",
             "value-only dock command planners",
+            "GameEngine.Workspace.v2",
             "shell-rendered docking tab/gutter UX",
             "AI operation snapshot/catalog/dry-run/apply overloads"
         )
@@ -1770,6 +1809,7 @@ $editorCoreDockCommandChecks = @(
             "EditorDockCommandKind",
             "plan_editor_dock_command",
             "apply_editor_dock_command",
+            "GameEngine.Workspace.v2",
             "value-only core dock command planners"
         )
     },
@@ -1779,6 +1819,7 @@ $editorCoreDockCommandChecks = @(
             "EditorDockCommandPlan",
             "plan_editor_dock_command",
             "apply_editor_dock_command",
+            "GameEngine.Workspace.v2",
             "EditorDockLayout-aware AI operation overloads"
         )
     }
@@ -2000,7 +2041,7 @@ $nativeEditorViewportChecks = @(
     @{
         Path = "editor/src/first_party_editor_document.cpp"
         Needles = @(
-            "make_default_editor_dock_layout",
+            "app.workspace().dock_layout()",
             "app.viewport_display().status_id",
             ".viewport_native_handles_exposed",
             "editor.panel.",

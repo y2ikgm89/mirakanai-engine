@@ -424,10 +424,13 @@ MK_TEST("editor workspace serializes and restores panel state") {
     workspace.set_panel_visible(mirakana::editor::PanelId::profiler, true);
 
     const auto serialized = mirakana::editor::serialize_workspace(workspace);
-    MK_REQUIRE(serialized.contains("format=GameEngine.Workspace.v1"));
+    MK_REQUIRE(serialized.contains("format=GameEngine.Workspace.v2"));
     MK_REQUIRE(serialized.contains("project.name=sample"));
     MK_REQUIRE(serialized.contains("panel.assets=hidden"));
+    MK_REQUIRE(serialized.contains("dock.root=dock.root"));
+    MK_REQUIRE(serialized.contains("dock.focus=viewport"));
     MK_REQUIRE(!serialized.contains("panel.resources=visible"));
+    MK_REQUIRE(!serialized.contains("GameEngine.Workspace.v1"));
 
     workspace.set_panel_visible(mirakana::editor::PanelId::resources, true);
     workspace.set_panel_visible(mirakana::editor::PanelId::ai_commands, true);
@@ -447,30 +450,37 @@ MK_TEST("editor workspace serializes and restores panel state") {
     MK_REQUIRE(restored.is_panel_visible(mirakana::editor::PanelId::input_rebinding));
     MK_REQUIRE(restored.is_panel_visible(mirakana::editor::PanelId::profiler));
     MK_REQUIRE(restored.is_panel_visible(mirakana::editor::PanelId::scene));
+    MK_REQUIRE(restored.dock_layout().root_id == "dock.root");
+    MK_REQUIRE(restored.dock_layout().focused_panel_id == "viewport");
+    MK_REQUIRE(mirakana::editor::validate_editor_dock_layout(restored.dock_layout()).valid);
 }
 
-MK_TEST("editor workspace migrates v0 panel state to current defaults") {
-    const auto migrated = mirakana::editor::migrate_workspace("format=GameEngine.Workspace.v0\n"
-                                                              "project.name=legacy\n"
-                                                              "project.root=games/legacy\n"
-                                                              "panel.assets=hidden\n");
+MK_TEST("editor workspace rejects legacy workspace formats without migration shims") {
+    bool rejected_v0 = false;
+    try {
+        (void)mirakana::editor::deserialize_workspace("format=GameEngine.Workspace.v0\n"
+                                                      "project.name=legacy\n"
+                                                      "project.root=games/legacy\n");
+    } catch (const std::invalid_argument&) {
+        rejected_v0 = true;
+    }
+    MK_REQUIRE(rejected_v0);
 
-    MK_REQUIRE(migrated.source_version == 0);
-    MK_REQUIRE(migrated.target_version == 1);
-    MK_REQUIRE(migrated.migrated);
-    MK_REQUIRE(migrated.workspace.project().name == "legacy");
-    MK_REQUIRE(!migrated.workspace.is_panel_visible(mirakana::editor::PanelId::assets));
-    MK_REQUIRE(migrated.workspace.is_panel_visible(mirakana::editor::PanelId::viewport));
-    MK_REQUIRE(!migrated.workspace.is_panel_visible(mirakana::editor::PanelId::resources));
-    MK_REQUIRE(!migrated.workspace.is_panel_visible(mirakana::editor::PanelId::ai_commands));
-    MK_REQUIRE(!migrated.workspace.is_panel_visible(mirakana::editor::PanelId::input_rebinding));
-    MK_REQUIRE(!migrated.workspace.is_panel_visible(mirakana::editor::PanelId::profiler));
+    bool rejected_v1 = false;
+    try {
+        (void)mirakana::editor::deserialize_workspace("format=GameEngine.Workspace.v1\n"
+                                                      "project.name=legacy\n"
+                                                      "project.root=games/legacy\n");
+    } catch (const std::invalid_argument&) {
+        rejected_v1 = true;
+    }
+    MK_REQUIRE(rejected_v1);
 }
 
 MK_TEST("editor workspace rejects duplicate panel state") {
     bool rejected_duplicate_panel = false;
     try {
-        (void)mirakana::editor::deserialize_workspace("format=GameEngine.Workspace.v1\n"
+        (void)mirakana::editor::deserialize_workspace("format=GameEngine.Workspace.v2\n"
                                                       "project.name=sample\n"
                                                       "project.root=games/sample\n"
                                                       "panel.assets=visible\n"
@@ -579,6 +589,26 @@ MK_TEST("editor core dock layout rejects invalid graph and unsafe middleware tok
                                    [](const auto& diagnostic) { return diagnostic.code == "unsafe_token"; }));
 }
 
+MK_TEST("editor core dock layout rejects cycles and duplicate tabs") {
+    auto cycle = mirakana::editor::make_default_editor_dock_layout();
+    auto* center = mirakana::editor::find_editor_dock_node(cycle, "dock.center_split");
+    MK_REQUIRE(center != nullptr);
+    center->children.push_back("dock.root");
+    const auto cycle_validation = mirakana::editor::validate_editor_dock_layout(cycle);
+    MK_REQUIRE(!cycle_validation.valid);
+    MK_REQUIRE(std::ranges::any_of(cycle_validation.diagnostics,
+                                   [](const auto& diagnostic) { return diagnostic.code == "dock_graph_cycle"; }));
+
+    auto duplicate_tab = mirakana::editor::make_default_editor_dock_layout();
+    auto* right = mirakana::editor::find_editor_dock_node(duplicate_tab, "dock.right_stack");
+    MK_REQUIRE(right != nullptr);
+    right->tabs.push_back("assets");
+    const auto duplicate_tab_validation = mirakana::editor::validate_editor_dock_layout(duplicate_tab);
+    MK_REQUIRE(!duplicate_tab_validation.valid);
+    MK_REQUIRE(std::ranges::any_of(duplicate_tab_validation.diagnostics,
+                                   [](const auto& diagnostic) { return diagnostic.code == "duplicate_dock_tab"; }));
+}
+
 MK_TEST("editor core dock command plans show panel without mutating source layout") {
     auto layout = mirakana::editor::make_default_editor_dock_layout();
     auto* left = mirakana::editor::find_editor_dock_node(layout, "dock.left_stack");
@@ -608,6 +638,98 @@ MK_TEST("editor core dock command plans show panel without mutating source layou
     MK_REQUIRE(planned_left->active_tab_id == "resources");
     MK_REQUIRE(plan.result_layout.focused_panel_id == "resources");
     MK_REQUIRE(mirakana::editor::validate_editor_dock_layout(plan.result_layout).valid);
+}
+
+MK_TEST("editor core dock command splits a panel into a new stack") {
+    auto layout = mirakana::editor::make_default_editor_dock_layout();
+    const auto* original_left = mirakana::editor::find_editor_dock_node(layout, "dock.left_stack");
+    MK_REQUIRE(original_left != nullptr);
+    MK_REQUIRE(std::ranges::find(original_left->tabs, "assets") != original_left->tabs.end());
+
+    const auto plan = mirakana::editor::plan_editor_dock_command(
+        layout, mirakana::editor::EditorDockCommandRequest{
+                    .kind = mirakana::editor::EditorDockCommandKind::split_panel_to_stack,
+                    .panel_id = "assets",
+                    .target_stack_id = {},
+                    .source_stack_id = "dock.left_stack",
+                    .new_stack_id = "dock.assets_stack",
+                    .split_axis = mirakana::editor::EditorDockSplitAxis::vertical,
+                    .split_ratio = 0.62F,
+                    .user_confirmed = false,
+                });
+
+    MK_REQUIRE(plan.accepted);
+    MK_REQUIRE(plan.would_mutate);
+    MK_REQUIRE(plan.before_revision == 1U);
+    MK_REQUIRE(plan.after_revision == 2U);
+    MK_REQUIRE(std::ranges::find(original_left->tabs, "assets") != original_left->tabs.end());
+
+    const auto* planned_left = mirakana::editor::find_editor_dock_node(plan.result_layout, "dock.left_stack");
+    const auto* planned_assets = mirakana::editor::find_editor_dock_node(plan.result_layout, "dock.assets_stack");
+    const auto* planned_split =
+        mirakana::editor::find_editor_dock_node(plan.result_layout, "dock.left_stack.split.dock.assets_stack");
+    const auto* planned_root = mirakana::editor::find_editor_dock_node(plan.result_layout, "dock.root");
+    MK_REQUIRE(planned_left != nullptr);
+    MK_REQUIRE(planned_assets != nullptr);
+    MK_REQUIRE(planned_split != nullptr);
+    MK_REQUIRE(planned_root != nullptr);
+    MK_REQUIRE(std::ranges::find(planned_left->tabs, "assets") == planned_left->tabs.end());
+    MK_REQUIRE(planned_left->active_tab_id == "scene");
+    MK_REQUIRE(planned_assets->kind == mirakana::editor::EditorDockNodeKind::tab_stack);
+    MK_REQUIRE(planned_assets->tabs.size() == 1U);
+    MK_REQUIRE(planned_assets->tabs.front() == "assets");
+    MK_REQUIRE(planned_assets->active_tab_id == "assets");
+    MK_REQUIRE(planned_split->kind == mirakana::editor::EditorDockNodeKind::split);
+    MK_REQUIRE(planned_split->axis == mirakana::editor::EditorDockSplitAxis::vertical);
+    MK_REQUIRE(planned_split->split_ratio == 0.62F);
+    MK_REQUIRE(planned_split->children.size() == 2U);
+    MK_REQUIRE(planned_split->children.front() == "dock.left_stack");
+    MK_REQUIRE(planned_split->children.back() == "dock.assets_stack");
+    MK_REQUIRE(std::ranges::find(planned_root->children, "dock.left_stack.split.dock.assets_stack") !=
+               planned_root->children.end());
+    MK_REQUIRE(plan.result_layout.focused_panel_id == "assets");
+    MK_REQUIRE(mirakana::editor::validate_editor_dock_layout(plan.result_layout).valid);
+}
+
+MK_TEST("editor workspace persists split dock layout through reviewed workspace IO") {
+    auto workspace = mirakana::editor::Workspace::create_default(
+        mirakana::editor::ProjectInfo{.name = "sample", .root_path = "games/sample"});
+    auto split_plan = mirakana::editor::apply_editor_dock_command(
+        workspace.dock_layout(), mirakana::editor::EditorDockCommandRequest{
+                                     .kind = mirakana::editor::EditorDockCommandKind::split_panel_to_stack,
+                                     .panel_id = "assets",
+                                     .target_stack_id = {},
+                                     .source_stack_id = "dock.left_stack",
+                                     .new_stack_id = "dock.assets_stack",
+                                     .split_axis = mirakana::editor::EditorDockSplitAxis::vertical,
+                                     .split_ratio = 0.62F,
+                                     .user_confirmed = false,
+                                 });
+    MK_REQUIRE(split_plan.accepted);
+    workspace.set_panel_visible(mirakana::editor::PanelId::resources, true);
+
+    const auto serialized = mirakana::editor::serialize_workspace(workspace);
+    MK_REQUIRE(serialized.contains("format=GameEngine.Workspace.v2"));
+    MK_REQUIRE(serialized.contains("dock.revision=2"));
+    MK_REQUIRE(serialized.contains("dock.node.6.id=dock.left_stack.split.dock.assets_stack"));
+    MK_REQUIRE(serialized.contains("dock.node.7.id=dock.assets_stack"));
+    MK_REQUIRE(serialized.contains("dock.node.7.tabs=assets"));
+    MK_REQUIRE(serialized.contains("dock.node.7.active=assets"));
+
+    const auto restored = mirakana::editor::deserialize_workspace(serialized);
+    const auto* restored_split =
+        mirakana::editor::find_editor_dock_node(restored.dock_layout(), "dock.left_stack.split.dock.assets_stack");
+    const auto* restored_assets = mirakana::editor::find_editor_dock_node(restored.dock_layout(), "dock.assets_stack");
+    MK_REQUIRE(restored.is_panel_visible(mirakana::editor::PanelId::resources));
+    MK_REQUIRE(restored.dock_layout().layout_revision == 2U);
+    MK_REQUIRE(restored.dock_layout().focused_panel_id == "assets");
+    MK_REQUIRE(restored_split != nullptr);
+    MK_REQUIRE(restored_split->axis == mirakana::editor::EditorDockSplitAxis::vertical);
+    MK_REQUIRE(restored_split->split_ratio == 0.62F);
+    MK_REQUIRE(restored_assets != nullptr);
+    MK_REQUIRE(restored_assets->tabs.size() == 1U);
+    MK_REQUIRE(restored_assets->tabs.front() == "assets");
+    MK_REQUIRE(mirakana::editor::validate_editor_dock_layout(restored.dock_layout()).valid);
 }
 
 MK_TEST("editor core dock command hides active panel with fallback focus") {
@@ -990,6 +1112,7 @@ MK_TEST("editor ai command catalog exposes dock commands") {
     const auto catalog = mirakana::editor::make_editor_ai_command_catalog(workspace, layout);
     const auto* activate_assets = find_ai_command(catalog, "editor.dock.panel.assets.activate");
     const auto* move_assets = find_ai_command(catalog, "editor.dock.panel.assets.move");
+    const auto* split_assets = find_ai_command(catalog, "editor.dock.panel.assets.split");
     const auto* hide_main_menu = find_ai_command(catalog, "editor.dock.panel.main_menu.hide");
     const auto* reset_layout = find_ai_command(catalog, "editor.dock.layout.reset");
 
@@ -1002,6 +1125,10 @@ MK_TEST("editor ai command catalog exposes dock commands") {
     MK_REQUIRE(move_assets != nullptr);
     MK_REQUIRE(move_assets->target_element_id == "editor.dock.panel.assets");
     MK_REQUIRE(move_assets->enabled);
+    MK_REQUIRE(split_assets != nullptr);
+    MK_REQUIRE(split_assets->target_element_id == "editor.dock.panel.assets");
+    MK_REQUIRE(split_assets->enabled);
+    MK_REQUIRE(split_assets->mutates_state);
     MK_REQUIRE(hide_main_menu != nullptr);
     MK_REQUIRE(!hide_main_menu->enabled);
     MK_REQUIRE(reset_layout != nullptr);
@@ -1090,6 +1217,40 @@ MK_TEST("editor ai dock command dry run and apply move panel through dock planne
     MK_REQUIRE(std::ranges::find(left->tabs, "assets") == left->tabs.end());
     MK_REQUIRE(std::ranges::find(right->tabs, "assets") != right->tabs.end());
     MK_REQUIRE(right->active_tab_id == "assets");
+    MK_REQUIRE(layout.focused_panel_id == "assets");
+}
+
+MK_TEST("editor ai dock command can split a panel into a new stack") {
+    auto workspace = mirakana::editor::Workspace::create_default(
+        mirakana::editor::ProjectInfo{.name = "sample", .root_path = "games/sample"});
+    auto layout = mirakana::editor::make_default_editor_dock_layout();
+    const auto catalog = mirakana::editor::make_editor_ai_command_catalog(workspace, layout);
+    const mirakana::editor::EditorAiCommandRequest request{
+        .command_id = "editor.dock.panel.assets.split",
+        .target_element_id = "editor.dock.panel.assets",
+        .parameters =
+            {
+                mirakana::editor::EditorAiCommandParameter{.key = "source_stack_id", .value = "dock.left_stack"},
+                mirakana::editor::EditorAiCommandParameter{.key = "new_stack_id", .value = "dock.assets_stack"},
+                mirakana::editor::EditorAiCommandParameter{.key = "split_axis", .value = "vertical"},
+                mirakana::editor::EditorAiCommandParameter{.key = "split_ratio", .value = "0.62"},
+            },
+        .user_confirmed = false,
+    };
+
+    const auto dry_run = mirakana::editor::dry_run_editor_ai_command(workspace, layout, catalog, request);
+    const auto applied = mirakana::editor::apply_editor_ai_command(workspace, layout, catalog, request);
+
+    MK_REQUIRE(dry_run.accepted);
+    MK_REQUIRE(dry_run.would_mutate);
+    MK_REQUIRE(applied.applied);
+    const auto* split = mirakana::editor::find_editor_dock_node(layout, "dock.left_stack.split.dock.assets_stack");
+    const auto* assets = mirakana::editor::find_editor_dock_node(layout, "dock.assets_stack");
+    MK_REQUIRE(split != nullptr);
+    MK_REQUIRE(split->axis == mirakana::editor::EditorDockSplitAxis::vertical);
+    MK_REQUIRE(split->split_ratio == 0.62F);
+    MK_REQUIRE(assets != nullptr);
+    MK_REQUIRE(assets->active_tab_id == "assets");
     MK_REQUIRE(layout.focused_panel_id == "assets");
 }
 

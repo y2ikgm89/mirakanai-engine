@@ -151,7 +151,7 @@ FirstPartyEditorDocument make_first_party_editor_document(const NativeEditorApp&
     dock.accessibility_label = "Editor Dock";
     add_or_throw(document, std::move(dock));
 
-    const EditorDockLayout layout = make_default_editor_dock_layout();
+    const EditorDockLayout& layout = app.workspace().dock_layout();
     const auto validation = validate_editor_dock_layout(layout);
     if (!validation.valid) {
         throw std::invalid_argument("first-party editor core dock layout is invalid");

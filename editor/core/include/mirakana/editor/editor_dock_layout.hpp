@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "mirakana/editor/workspace.hpp"
+#include "mirakana/editor/editor_panel.hpp"
 
 #include <cstdint>
 #include <string>
@@ -72,6 +72,7 @@ enum class EditorDockCommandKind : std::uint8_t {
     hide_panel,
     activate_tab,
     move_panel_to_stack,
+    split_panel_to_stack,
     reset_layout,
 };
 
@@ -79,6 +80,10 @@ struct EditorDockCommandRequest {
     EditorDockCommandKind kind{EditorDockCommandKind::show_panel};
     std::string panel_id;
     std::string target_stack_id;
+    std::string source_stack_id;
+    std::string new_stack_id;
+    EditorDockSplitAxis split_axis{EditorDockSplitAxis::horizontal};
+    float split_ratio{0.5F};
     bool user_confirmed{false};
 };
 

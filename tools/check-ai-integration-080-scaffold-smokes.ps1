@@ -956,7 +956,7 @@ $editorCoreHeader = Get-AgentSurfaceText "editor/core/include/mirakana/editor/pl
 $editorCoreSource = Get-AgentSurfaceText "editor/core/src/playtest_package_review.cpp"
 $editorInputRebindingHeader = Get-AgentSurfaceText "editor/core/include/mirakana/editor/input_rebinding.hpp"
 $editorInputRebindingSource = Get-AgentSurfaceText "editor/core/src/input_rebinding.cpp"
-$editorWorkspaceHeader = Get-AgentSurfaceText "editor/core/include/mirakana/editor/workspace.hpp"
+$editorWorkspaceHeader = Get-AgentSurfaceText "editor/core/include/mirakana/editor/editor_panel.hpp"
 $editorWorkspaceSource = Get-AgentSurfaceText "editor/core/src/workspace.cpp"
 $editorCoreTests = Get-AgentSurfaceText "tests/unit/editor_core_tests.cpp"
 foreach ($needle in @(
