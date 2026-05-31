@@ -12,13 +12,15 @@
 
 ## Plan ID
 
+**Plan ID:** `first-party-editor-shell-v1`
+
 `first-party-editor-shell-v1`
 
 ## Status
 
-**Status:** Proposed plan for operator review. It is not yet selected in `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan`.
+**Status:** Active.
 
-Execution Phase 0 selects this plan in the manifest/registry before code changes. Until then, the repository truth remains the completed Native Win32 Editor Shell v1 with `recommendedNextPlan.id = next-production-gap-selection`.
+Execution Phase 0 selects this plan in the manifest/registry before code changes. The repository truth for current implementation work is now this clean-break replacement for the completed Native Win32 Editor Shell v1.
 
 ## Current Baseline
 
@@ -248,8 +250,8 @@ Files:
 
 Steps:
 
-- [ ] Read `engine/agent/manifest.json.aiOperableProductionLoop`, `docs/superpowers/plans/README.md`, `docs/ui.md`, `docs/editor.md`, `docs/dependencies.md`, and `editor/CMakeLists.txt`.
-- [ ] Run the active UI-middleware surface inventory:
+- [x] Read `engine/agent/manifest.json.aiOperableProductionLoop`, `docs/superpowers/plans/README.md`, `docs/ui.md`, `docs/editor.md`, `docs/dependencies.md`, and `editor/CMakeLists.txt`.
+- [x] Run the active UI-middleware surface inventory:
 
 ```powershell
 rg -n "desktop-gui|build-gui|MK_ENABLE_DESKTOP_GUI|cpp23-desktop-gui-eval|Dear ImGui|imgui|ImGui|win32_imgui|Qt|Slint|RmlUi|NoesisGUI" CMakeLists.txt CMakePresets.json vcpkg.json README.md docs engine editor tests tools THIRD_PARTY_NOTICES.md
@@ -257,11 +259,11 @@ rg -n "desktop-gui|build-gui|MK_ENABLE_DESKTOP_GUI|cpp23-desktop-gui-eval|Dear I
 
 Expected: all current active build, test, docs, manifest, and static-check references that must be updated or intentionally retained as forbidden-term guards or historical archive evidence.
 
-- [ ] Record the official source refresh links used for Win32, D3D12/DXGI, DirectWrite, TSF, and UI Automation in the phase evidence section before implementation begins.
-- [ ] Record the Unity/Unreal/Godot comparison outcome in docs as the accepted design pattern: first-party UI/editor state plus official-SDK or audited adapter implementations for low-level text/platform services.
-- [ ] Record the clean-break decision that old lane names and Dear ImGui implementation files are deleted at closeout, with no compatibility forwarding scripts or aliases.
-- [ ] Select `first-party-editor-shell-v1` in `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` and explain that it is a clean-break replacement for the completed Dear ImGui shell, not a compatibility extension.
-- [ ] Run:
+- [x] Record the official source refresh links used for Win32, D3D12/DXGI, DirectWrite, TSF, and UI Automation in the phase evidence section before implementation begins.
+- [x] Record the Unity/Unreal/Godot comparison outcome in docs as the accepted design pattern: first-party UI/editor state plus official-SDK or audited adapter implementations for low-level text/platform services.
+- [x] Record the clean-break decision that old lane names and Dear ImGui implementation files are deleted at closeout, with no compatibility forwarding scripts or aliases.
+- [x] Select `first-party-editor-shell-v1` in `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` and explain that it is a clean-break replacement for the completed Dear ImGui shell, not a compatibility extension.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write
@@ -269,6 +271,15 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
 ```
 
 Expected: composed manifest updated, JSON/static contract checks pass after the selection text is aligned.
+
+### Phase 0 Evidence
+
+- Worktree: `G:/workspace/development/GameEngine/.worktrees/first-party-editor-shell-v1` on branch `codex/first-party-editor-shell-v1`; `tools/prepare-worktree.ps1` reported `linked-worktree=true`, `external-vcpkg=linked`, `vcpkg-installed=linked`, and `ok`.
+- Official source refresh: Microsoft Win32 windows/messages, Direct3D 12, DXGI, Direct2D, DirectWrite, Text Services Framework, and UI Automation provider documentation were rechecked for the Windows SDK boundaries; Context7 was used for current CMake target-scope and vcpkg manifest/feature behavior.
+- Engine comparison refresh: Unity UI Toolkit/editor UI guidance, Unreal Slate/UMG, and Godot Control/RichTextLabel/TextServer patterns support the selected architecture: first-party retained UI/editor contracts plus official-SDK or audited adapters for low-level text, IME, accessibility, font, image, and platform services.
+- Clean-break decision: `desktop-gui`, `build-gui.ps1`, `MK_ENABLE_DESKTOP_GUI`, Dear ImGui implementation files, and active UI-middleware dependency claims are deletion targets at closeout, not compatibility aliases.
+- Inventory command: `rg -n "desktop-gui|build-gui|MK_ENABLE_DESKTOP_GUI|cpp23-desktop-gui-eval|Dear ImGui|imgui|ImGui|win32_imgui|Qt|Slint|RmlUi|NoesisGUI" CMakeLists.txt CMakePresets.json vcpkg.json README.md docs engine editor tests tools THIRD_PARTY_NOTICES.md` found the active build, dependency, editor source, test, docs, and static-check surfaces that later phases must update or remove.
+- Validation: `tools/compose-agent-manifest.ps1 -Write`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-text-format.ps1`, and `tools/check-agents.ps1` passed for the Phase 0 docs/manifest/static-check selection slice.
 
 ## Phase 1 - Test-First First-Party Shell Contract
 
