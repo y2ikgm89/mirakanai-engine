@@ -16,7 +16,7 @@ Update the baseline only as an explicit dependency-maintenance task: update the 
 
 None are required for the default headless build.
 
-On Windows, the default validation build uses Windows SDK system libraries for the Win32 platform adapter, WASAPI audio adapter, D3D12 backend, and tests:
+On Windows, the default validation build uses Windows SDK system libraries for the Win32 platform adapter, WASAPI audio adapter, D3D12 backend, DirectWrite editor text/font adapter, and tests:
 
 - `ole32`
 - `shell32`
@@ -24,10 +24,11 @@ On Windows, the default validation build uses Windows SDK system libraries for t
 - `d3d12`
 - `dxgi`
 - `d3dcompiler`
+- `dwrite`
 
 These are official platform SDK libraries and are not bundled in the repository.
 
-The optional desktop runtime, asset importer, native physics middleware adapter, and network transport adapter lanes use vcpkg manifest features so optional package dependencies remain isolated from the default build and from system-wide package locations. The current `desktop-runtime` feature is dependency-free and uses host SDK libraries. The native `desktop-editor` lane is also dependency-free: it is a CMake preset/tooling lane for the first-party Win32/D3D12 editor shell, not a vcpkg feature and not a UI middleware dependency path.
+The optional desktop runtime, asset importer, native physics middleware adapter, and network transport adapter lanes use vcpkg manifest features so optional package dependencies remain isolated from the default build and from system-wide package locations. The current `desktop-runtime` feature is dependency-free and uses host SDK libraries. The native `desktop-editor` lane is also dependency-free: it is a CMake preset/tooling lane for the first-party Win32/D3D12/DirectWrite editor shell, not a vcpkg feature and not a UI middleware dependency path.
 
 Run the optional vcpkg dependency bootstrap with:
 
@@ -75,7 +76,7 @@ Apply ADK servicing patches only when they match installed ADK features. Do not 
 
 `desktop-runtime` in `vcpkg.json` is currently a dependency-free feature. It enables the Windows-native platform/audio/runtime host lane through `MK_ENABLE_DESKTOP_RUNTIME=ON` while relying on host SDK libraries such as Win32, WASAPI, DXGI, and D3D12. It is intentionally separate from `desktop-editor` so windowed games can be validated and packaged without `MK_editor`.
 
-`desktop-editor` is not a `vcpkg.json` feature. It is a dependency-free CMake preset that enables the Windows-native first-party `MK_editor` shell through `MK_ENABLE_DESKTOP_EDITOR=ON` while relying on host SDK libraries and first-party `mirakana::ui` / `MK_ui_renderer` contracts. `MK_editor_core` remains the supported editor logic target, and the native visible editor shell must keep Win32, D3D12, DXGI, and native handles in private editor implementation files rather than public engine, gameplay, runtime UI, or editor-core APIs.
+`desktop-editor` is not a `vcpkg.json` feature. It is a dependency-free CMake preset that enables the Windows-native first-party `MK_editor` shell through `MK_ENABLE_DESKTOP_EDITOR=ON` while relying on host SDK libraries and first-party `mirakana::ui` / `MK_ui_renderer` contracts. `MK_editor_core` remains the supported editor logic target, and the native visible editor shell must keep Win32, D3D12, DXGI, DirectWrite, COM, and native handles in private editor implementation files rather than public engine, gameplay, runtime UI, or editor-core APIs.
 
 ### Editor native module boundary (not a vcpkg dependency)
 
@@ -192,6 +193,8 @@ Validated local package versions:
 - vcpkg manifest mode: https://learn.microsoft.com/en-us/vcpkg/concepts/manifest-mode
 - vcpkg CMake integration: https://learn.microsoft.com/en-us/vcpkg/users/buildsystems/cmake-integration
 - Windows Core Audio / WASAPI: https://learn.microsoft.com/en-us/windows/win32/coreaudio/wasapi
+- DirectWrite: https://learn.microsoft.com/en-us/windows/win32/directwrite/direct-write-portal
+- Text Rendering with Direct2D and DirectWrite: https://learn.microsoft.com/en-us/windows/win32/direct2d/direct2d-and-directwrite
 - libspng: https://libspng.org/
 - fastgltf: https://github.com/spnda/fastgltf
 - KTX Software: https://github.com/KhronosGroup/KTX-Software

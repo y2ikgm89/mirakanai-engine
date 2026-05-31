@@ -117,6 +117,9 @@ Assert-Properties $engine.gameCodeGuidance @("desktopRuntimeGameplaySystemsPacka
 foreach ($needle in @(
     "optional Windows-native editor/developer shell",
     "Win32 file-dialog, clipboard, reviewed process-runner service adapters",
+    "private Windows SDK DirectWrite text-layout/glyph-raster adapters",
+    "ITextShapingAdapter",
+    "IFontRasterizerAdapter",
     "EditorDockCommandPlan",
     "plan_editor_dock_command",
     "apply_editor_dock_command",

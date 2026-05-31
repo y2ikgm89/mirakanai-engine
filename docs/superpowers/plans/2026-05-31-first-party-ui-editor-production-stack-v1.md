@@ -231,12 +231,14 @@ Steps:
 
 Steps:
 
-- [ ] Recheck current Microsoft DirectWrite/Direct2D documentation before implementation and record links in phase evidence.
-- [ ] Add RED tests around adapter result validation using fake adapters first.
-- [ ] Add private Win32 editor text/font adapter types under `editor/src` or a narrowly scoped platform adapter target.
-- [ ] Route adapter output through existing `ITextShapingAdapter` / `IFontRasterizerAdapter` result validation.
+- [x] Recheck current Microsoft DirectWrite/Direct2D documentation before implementation and record links in phase evidence.
+- [x] Add RED tests around adapter result validation using existing runtime fake-adapter coverage plus a private editor adapter RED.
+- [x] Add private Win32 editor text/font adapter types under `editor/src` or a narrowly scoped platform adapter target.
+- [x] Route adapter output through existing `ITextShapingAdapter` / `IFontRasterizerAdapter` result validation.
 - [ ] Add atlas handoff evidence that distinguishes adapter invoked, glyphs ready, fallback used, host-gated, and unsupported rows.
-- [ ] Update dependency/legal records only if a non-Windows-SDK dependency is selected. Windows SDK usage alone must remain a host SDK boundary, not a vcpkg UI dependency.
+- [x] Update dependency/legal records only if a non-Windows-SDK dependency is selected. Windows SDK usage alone must remain a host SDK boundary, not a vcpkg UI dependency.
+
+**Phase 4a Evidence:** Candidate `codex/first-party-ui-editor-directwrite-text-font-candidate10` adds a private Windows SDK DirectWrite text/font adapter under `editor/src/native_editor_text_font_adapters.*`, links only the Windows SDK `dwrite` library from `MK_editor_shell_common`, and keeps COM/DirectWrite types out of public engine/game/runtime UI and `editor/core` headers. The implementation follows current Microsoft guidance rechecked during this phase: DirectWrite provides high-quality Unicode text layout, glyph measurement, and low-level glyph rendering APIs ([DirectWrite portal](https://learn.microsoft.com/en-us/windows/win32/directwrite/direct-write-portal)); Direct2D and DirectWrite are separate cooperating APIs where `IDWriteTextLayout`, `IDWriteTextRenderer::DrawGlyphRun`, and Direct2D/DirectWrite glyph rendering stay behind the renderer boundary ([Text Rendering with Direct2D and DirectWrite](https://learn.microsoft.com/en-us/windows/win32/direct2d/direct2d-and-directwrite)); and `IDWriteFactory::CreateGlyphRunAnalysis` creates glyph-run analysis used for selected glyph bitmap evidence ([CreateGlyphRunAnalysis](https://learn.microsoft.com/en-us/windows/win32/api/dwrite/nf-dwrite-idwritefactory-createglyphrunanalysis)). RED/GREEN evidence: `MK_editor_native_shell_tests` first failed because `native_editor_text_font_adapters.hpp` did not exist, then passed after `make_native_editor_directwrite_text_shaping_adapter`, `make_native_editor_directwrite_font_rasterizer_adapter`, and `native_editor_directwrite_text_font_adapters_expose_native_handles` fed `shape_text_run` / `rasterize_font_glyph` validation with selected `Segoe UI` text/glyph evidence and `native_handles_public=false`. Focused validation passed: `tools/cmake.ps1 --preset dev`; `tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests`; and `tools/ctest.ps1 --preset dev --output-on-failure -R "MK_editor_core_tests|MK_editor_native_shell_tests"`. Slice-gate validation also passed: `tools/build-editor.ps1` built the `desktop-editor` lane and ran 86/86 tests, `tools/validate.ps1` returned `validate: ok`, and `git diff --check` reported no whitespace errors. This is not a broad runtime UI production text readiness claim: atlas handoff counters, Direct2D GPU text rendering, full bidi/line-breaking, production fallback, editable rich text, IME, UIA publication, and cross-platform adapters remain later phases.
 
 ## Phase 5 - Windows TSF IME Adapter v1
 

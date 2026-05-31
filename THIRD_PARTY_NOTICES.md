@@ -2,7 +2,7 @@
 
 No third-party source code, binary libraries, fonts, images, audio, models, shaders, or other distributable assets are included in the default headless build.
 
-Optional asset-importer, native physics adapter, and network adapter dependencies are declared in `vcpkg.json`, installed through vcpkg manifest mode, and excluded from source control. The `desktop-runtime` feature and dependency-free `desktop-editor` lane use first-party or host SDK paths and declare no package dependencies. Optional dependencies are used only by explicit optional build lanes such as `tools/bootstrap-deps.ps1`, `tools/build-asset-importers.ps1`, `tools/validate-physics-jolt.ps1`, and `tools/validate-network-enet.ps1`.
+Optional asset-importer, native physics adapter, and network adapter dependencies are declared in `vcpkg.json`, installed through vcpkg manifest mode, and excluded from source control. The `desktop-runtime` feature and dependency-free `desktop-editor` lane use first-party or host SDK paths, including Windows SDK Win32/DXGI/D3D12/DirectWrite libraries for the native editor, and declare no package dependencies. Optional dependencies are used only by explicit optional build lanes such as `tools/bootstrap-deps.ps1`, `tools/build-asset-importers.ps1`, `tools/validate-physics-jolt.ps1`, and `tools/validate-network-enet.ps1`.
 
 | Name | Source | Retrieved | Version | Copyright holder | License | Modified | Distribution target |
 | --- | --- | --- | --- | --- | --- | --- | --- |
