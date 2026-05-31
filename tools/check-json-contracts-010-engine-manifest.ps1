@@ -117,6 +117,10 @@ Assert-Properties $engine.gameCodeGuidance @("desktopRuntimeGameplaySystemsPacka
 foreach ($needle in @(
     "optional Windows-native editor/developer shell",
     "Win32 file-dialog, clipboard, reviewed process-runner service adapters",
+    "EditorDockCommandPlan",
+    "plan_editor_dock_command",
+    "apply_editor_dock_command",
+    "not yet exposed through EditorAiOperationSnapshot",
     "editor_shell_backend=d3d12",
     "editor_shell_panels=11",
     "editor_shell_sdl3=0",

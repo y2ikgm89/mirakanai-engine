@@ -67,6 +67,36 @@ struct EditorDockLayoutValidation {
     std::vector<EditorDockLayoutDiagnostic> diagnostics;
 };
 
+enum class EditorDockCommandKind : std::uint8_t {
+    show_panel,
+    hide_panel,
+    activate_tab,
+    move_panel_to_stack,
+    reset_layout,
+};
+
+struct EditorDockCommandRequest {
+    EditorDockCommandKind kind{EditorDockCommandKind::show_panel};
+    std::string panel_id;
+    std::string target_stack_id;
+    bool user_confirmed{false};
+};
+
+struct EditorDockCommandDiagnostic {
+    std::string code;
+    std::string message;
+};
+
+struct EditorDockCommandPlan {
+    bool accepted{false};
+    bool would_mutate{false};
+    bool requires_confirmation{false};
+    std::uint64_t before_revision{0};
+    std::uint64_t after_revision{0};
+    EditorDockLayout result_layout;
+    std::vector<EditorDockCommandDiagnostic> diagnostics;
+};
+
 [[nodiscard]] std::vector<EditorDockPanelCatalogRow> editor_dock_panel_catalog();
 [[nodiscard]] const EditorDockPanelCatalogRow*
 find_editor_dock_panel(const std::vector<EditorDockPanelCatalogRow>& catalog, std::string_view id) noexcept;
@@ -78,5 +108,10 @@ find_editor_dock_panel(const std::vector<EditorDockPanelCatalogRow>& catalog, st
 
 [[nodiscard]] const EditorDockNode* find_editor_dock_node(const EditorDockLayout& layout, std::string_view id) noexcept;
 [[nodiscard]] EditorDockNode* find_editor_dock_node(EditorDockLayout& layout, std::string_view id) noexcept;
+
+[[nodiscard]] EditorDockCommandPlan plan_editor_dock_command(const EditorDockLayout& layout,
+                                                             const EditorDockCommandRequest& request);
+[[nodiscard]] EditorDockCommandPlan apply_editor_dock_command(EditorDockLayout& layout,
+                                                              const EditorDockCommandRequest& request);
 
 } // namespace mirakana::editor

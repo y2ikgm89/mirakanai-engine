@@ -43,6 +43,10 @@ void append_diagnostic(EditorDockLayoutValidation& validation, std::string code,
         EditorDockLayoutDiagnostic{.code = std::move(code), .message = std::move(message)});
 }
 
+void append_diagnostic(EditorDockCommandPlan& plan, std::string code, std::string message) {
+    plan.diagnostics.push_back(EditorDockCommandDiagnostic{.code = std::move(code), .message = std::move(message)});
+}
+
 void validate_id_token(EditorDockLayoutValidation& validation, std::string_view id, std::string_view label) {
     if (id.empty()) {
         append_diagnostic(validation, "missing_id", std::string{label} + " id must not be empty");
@@ -52,6 +56,52 @@ void validate_id_token(EditorDockLayoutValidation& validation, std::string_view 
         append_diagnostic(validation, "unsafe_token",
                           std::string{label} + " id contains an unsafe token: " + std::string{id});
     }
+}
+
+[[nodiscard]] EditorDockNode* find_tab_stack_containing_panel(EditorDockLayout& layout,
+                                                              std::string_view panel_id) noexcept {
+    const auto it = std::ranges::find_if(layout.nodes, [panel_id](const EditorDockNode& node) {
+        return node.kind == EditorDockNodeKind::tab_stack && contains_string(node.tabs, panel_id);
+    });
+    return it == layout.nodes.end() ? nullptr : &(*it);
+}
+
+[[nodiscard]] const EditorDockPanelCatalogRow*
+validate_command_panel(EditorDockCommandPlan& plan, const std::vector<EditorDockPanelCatalogRow>& catalog,
+                       std::string_view panel_id) {
+    if (panel_id.empty()) {
+        append_diagnostic(plan, "missing_panel", "dock command panel id is required");
+        return nullptr;
+    }
+    const auto* panel = find_editor_dock_panel(catalog, panel_id);
+    if (panel == nullptr) {
+        append_diagnostic(plan, "unknown_panel",
+                          "dock command panel is not in the panel catalog: " + std::string{panel_id});
+        return nullptr;
+    }
+    if (!panel->native_shell_panel) {
+        append_diagnostic(plan, "panel_not_native_shell",
+                          "dock command panel is outside the native shell: " + std::string{panel_id});
+        return nullptr;
+    }
+    return panel;
+}
+
+void accept_dock_noop(EditorDockCommandPlan& plan) noexcept {
+    plan.accepted = true;
+    plan.after_revision = plan.before_revision;
+}
+
+void accept_dock_mutation(EditorDockCommandPlan& plan) {
+    plan.result_layout.layout_revision = plan.before_revision + 1U;
+    const auto result_validation = validate_editor_dock_layout(plan.result_layout);
+    if (!result_validation.valid) {
+        append_diagnostic(plan, "invalid_result_layout", "dock command result layout is invalid");
+        return;
+    }
+    plan.accepted = true;
+    plan.would_mutate = true;
+    plan.after_revision = plan.result_layout.layout_revision;
 }
 
 } // namespace
@@ -321,6 +371,171 @@ EditorDockLayoutValidation validate_editor_dock_layout(const EditorDockLayout& l
 
     validation.valid = validation.diagnostics.empty();
     return validation;
+}
+
+EditorDockCommandPlan plan_editor_dock_command(const EditorDockLayout& layout,
+                                               const EditorDockCommandRequest& request) {
+    EditorDockCommandPlan plan{
+        .accepted = false,
+        .would_mutate = false,
+        .requires_confirmation = false,
+        .before_revision = layout.layout_revision,
+        .after_revision = layout.layout_revision,
+        .result_layout = layout,
+        .diagnostics = {},
+    };
+
+    if (request.kind == EditorDockCommandKind::reset_layout) {
+        plan.requires_confirmation = true;
+        plan.would_mutate = true;
+        if (!request.user_confirmed) {
+            append_diagnostic(plan, "confirmation_required", "dock reset command requires explicit confirmation");
+            return plan;
+        }
+        plan.result_layout = make_default_editor_dock_layout();
+        accept_dock_mutation(plan);
+        return plan;
+    }
+
+    const auto source_validation = validate_editor_dock_layout(layout);
+    if (!source_validation.valid) {
+        append_diagnostic(plan, "invalid_layout", "dock command source layout is invalid");
+        return plan;
+    }
+
+    const auto catalog = editor_dock_panel_catalog();
+    const auto* panel = validate_command_panel(plan, catalog, request.panel_id);
+    if (panel == nullptr) {
+        return plan;
+    }
+
+    switch (request.kind) {
+    case EditorDockCommandKind::show_panel: {
+        auto* existing_stack = find_tab_stack_containing_panel(plan.result_layout, request.panel_id);
+        if (existing_stack != nullptr) {
+            if (existing_stack->active_tab_id == request.panel_id &&
+                plan.result_layout.focused_panel_id == request.panel_id) {
+                accept_dock_noop(plan);
+                return plan;
+            }
+            existing_stack->active_tab_id = request.panel_id;
+            plan.result_layout.focused_panel_id = request.panel_id;
+            accept_dock_mutation(plan);
+            return plan;
+        }
+
+        auto* target_stack = find_editor_dock_node(plan.result_layout, request.target_stack_id);
+        if (target_stack == nullptr || target_stack->kind != EditorDockNodeKind::tab_stack) {
+            append_diagnostic(plan, "missing_target_stack",
+                              "dock show command target stack is missing: " + request.target_stack_id);
+            return plan;
+        }
+        target_stack->tabs.push_back(request.panel_id);
+        target_stack->active_tab_id = request.panel_id;
+        plan.result_layout.focused_panel_id = request.panel_id;
+        accept_dock_mutation(plan);
+        return plan;
+    }
+
+    case EditorDockCommandKind::hide_panel: {
+        if (panel->shell_chrome) {
+            append_diagnostic(plan, "cannot_hide_shell_chrome",
+                              "dock hide command cannot hide shell chrome: " + request.panel_id);
+            return plan;
+        }
+        auto* stack = find_tab_stack_containing_panel(plan.result_layout, request.panel_id);
+        if (stack == nullptr) {
+            accept_dock_noop(plan);
+            return plan;
+        }
+        if (stack->tabs.size() <= 1U) {
+            append_diagnostic(plan, "empty_stack_after_hide",
+                              "dock hide command would leave a tab stack empty: " + stack->id);
+            return plan;
+        }
+        std::erase(stack->tabs, request.panel_id);
+        if (stack->active_tab_id == request.panel_id) {
+            stack->active_tab_id = stack->tabs.front();
+        }
+        if (plan.result_layout.focused_panel_id == request.panel_id) {
+            plan.result_layout.focused_panel_id = stack->active_tab_id;
+        }
+        accept_dock_mutation(plan);
+        return plan;
+    }
+
+    case EditorDockCommandKind::activate_tab: {
+        auto* stack = find_tab_stack_containing_panel(plan.result_layout, request.panel_id);
+        if (stack == nullptr) {
+            append_diagnostic(plan, "panel_not_docked",
+                              "dock activate command panel is not docked: " + request.panel_id);
+            return plan;
+        }
+        if (stack->active_tab_id == request.panel_id && plan.result_layout.focused_panel_id == request.panel_id) {
+            accept_dock_noop(plan);
+            return plan;
+        }
+        stack->active_tab_id = request.panel_id;
+        plan.result_layout.focused_panel_id = request.panel_id;
+        accept_dock_mutation(plan);
+        return plan;
+    }
+
+    case EditorDockCommandKind::move_panel_to_stack: {
+        auto* source_stack = find_tab_stack_containing_panel(plan.result_layout, request.panel_id);
+        auto* target_stack = find_editor_dock_node(plan.result_layout, request.target_stack_id);
+        if (source_stack == nullptr) {
+            append_diagnostic(plan, "panel_not_docked", "dock move command panel is not docked: " + request.panel_id);
+            return plan;
+        }
+        if (target_stack == nullptr || target_stack->kind != EditorDockNodeKind::tab_stack) {
+            append_diagnostic(plan, "missing_target_stack",
+                              "dock move command target stack is missing: " + request.target_stack_id);
+            return plan;
+        }
+        if (source_stack == target_stack) {
+            if (target_stack->active_tab_id == request.panel_id &&
+                plan.result_layout.focused_panel_id == request.panel_id) {
+                accept_dock_noop(plan);
+                return plan;
+            }
+            target_stack->active_tab_id = request.panel_id;
+            plan.result_layout.focused_panel_id = request.panel_id;
+            accept_dock_mutation(plan);
+            return plan;
+        }
+        if (source_stack->tabs.size() <= 1U) {
+            append_diagnostic(plan, "empty_stack_after_move",
+                              "dock move command would leave a tab stack empty: " + source_stack->id);
+            return plan;
+        }
+        std::erase(source_stack->tabs, request.panel_id);
+        if (source_stack->active_tab_id == request.panel_id) {
+            source_stack->active_tab_id = source_stack->tabs.front();
+        }
+        if (!contains_string(target_stack->tabs, request.panel_id)) {
+            target_stack->tabs.push_back(request.panel_id);
+        }
+        target_stack->active_tab_id = request.panel_id;
+        plan.result_layout.focused_panel_id = request.panel_id;
+        accept_dock_mutation(plan);
+        return plan;
+    }
+
+    case EditorDockCommandKind::reset_layout:
+        break;
+    }
+
+    append_diagnostic(plan, "unsupported_command", "dock command kind is not implemented");
+    return plan;
+}
+
+EditorDockCommandPlan apply_editor_dock_command(EditorDockLayout& layout, const EditorDockCommandRequest& request) {
+    auto plan = plan_editor_dock_command(layout, request);
+    if (plan.accepted) {
+        layout = plan.result_layout;
+    }
+    return plan;
 }
 
 } // namespace mirakana::editor

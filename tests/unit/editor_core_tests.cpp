@@ -579,6 +579,178 @@ MK_TEST("editor core dock layout rejects invalid graph and unsafe middleware tok
                                    [](const auto& diagnostic) { return diagnostic.code == "unsafe_token"; }));
 }
 
+MK_TEST("editor core dock command plans show panel without mutating source layout") {
+    auto layout = mirakana::editor::make_default_editor_dock_layout();
+    auto* left = mirakana::editor::find_editor_dock_node(layout, "dock.left_stack");
+    MK_REQUIRE(left != nullptr);
+    std::erase(left->tabs, std::string{"resources"});
+    MK_REQUIRE(std::ranges::find(left->tabs, "resources") == left->tabs.end());
+
+    const auto plan = mirakana::editor::plan_editor_dock_command(
+        layout, mirakana::editor::EditorDockCommandRequest{
+                    .kind = mirakana::editor::EditorDockCommandKind::show_panel,
+                    .panel_id = "resources",
+                    .target_stack_id = "dock.left_stack",
+                    .user_confirmed = false,
+                });
+
+    MK_REQUIRE(plan.accepted);
+    MK_REQUIRE(plan.would_mutate);
+    MK_REQUIRE(!plan.requires_confirmation);
+    MK_REQUIRE(plan.before_revision == 1U);
+    MK_REQUIRE(plan.after_revision == 2U);
+    MK_REQUIRE(layout.layout_revision == 1U);
+    MK_REQUIRE(std::ranges::find(left->tabs, "resources") == left->tabs.end());
+
+    const auto* planned_left = mirakana::editor::find_editor_dock_node(plan.result_layout, "dock.left_stack");
+    MK_REQUIRE(planned_left != nullptr);
+    MK_REQUIRE(std::ranges::find(planned_left->tabs, "resources") != planned_left->tabs.end());
+    MK_REQUIRE(planned_left->active_tab_id == "resources");
+    MK_REQUIRE(plan.result_layout.focused_panel_id == "resources");
+    MK_REQUIRE(mirakana::editor::validate_editor_dock_layout(plan.result_layout).valid);
+}
+
+MK_TEST("editor core dock command hides active panel with fallback focus") {
+    auto layout = mirakana::editor::make_default_editor_dock_layout();
+    layout.focused_panel_id = "console";
+
+    const auto plan = mirakana::editor::plan_editor_dock_command(
+        layout, mirakana::editor::EditorDockCommandRequest{
+                    .kind = mirakana::editor::EditorDockCommandKind::hide_panel,
+                    .panel_id = "console",
+                    .target_stack_id = {},
+                    .user_confirmed = false,
+                });
+
+    MK_REQUIRE(plan.accepted);
+    MK_REQUIRE(plan.would_mutate);
+    MK_REQUIRE(plan.after_revision == 2U);
+    MK_REQUIRE(layout.focused_panel_id == "console");
+
+    const auto* bottom = mirakana::editor::find_editor_dock_node(plan.result_layout, "dock.bottom_stack");
+    MK_REQUIRE(bottom != nullptr);
+    MK_REQUIRE(std::ranges::find(bottom->tabs, "console") == bottom->tabs.end());
+    MK_REQUIRE(bottom->active_tab_id == "profiler");
+    MK_REQUIRE(plan.result_layout.focused_panel_id == "profiler");
+    MK_REQUIRE(mirakana::editor::validate_editor_dock_layout(plan.result_layout).valid);
+}
+
+MK_TEST("editor core dock command rejects unsafe panel and confirmation states") {
+    const auto layout = mirakana::editor::make_default_editor_dock_layout();
+
+    const auto chrome = mirakana::editor::plan_editor_dock_command(
+        layout, mirakana::editor::EditorDockCommandRequest{
+                    .kind = mirakana::editor::EditorDockCommandKind::hide_panel,
+                    .panel_id = "main_menu",
+                    .target_stack_id = {},
+                    .user_confirmed = false,
+                });
+    MK_REQUIRE(!chrome.accepted);
+    MK_REQUIRE(std::ranges::any_of(
+        chrome.diagnostics, [](const auto& diagnostic) { return diagnostic.code == "cannot_hide_shell_chrome"; }));
+
+    const auto non_native = mirakana::editor::plan_editor_dock_command(
+        layout, mirakana::editor::EditorDockCommandRequest{
+                    .kind = mirakana::editor::EditorDockCommandKind::show_panel,
+                    .panel_id = "input_rebinding",
+                    .target_stack_id = "dock.left_stack",
+                    .user_confirmed = false,
+                });
+    MK_REQUIRE(!non_native.accepted);
+    MK_REQUIRE(std::ranges::any_of(non_native.diagnostics,
+                                   [](const auto& diagnostic) { return diagnostic.code == "panel_not_native_shell"; }));
+
+    const auto unknown = mirakana::editor::plan_editor_dock_command(
+        layout, mirakana::editor::EditorDockCommandRequest{
+                    .kind = mirakana::editor::EditorDockCommandKind::show_panel,
+                    .panel_id = "missing_panel",
+                    .target_stack_id = "dock.left_stack",
+                    .user_confirmed = false,
+                });
+    MK_REQUIRE(!unknown.accepted);
+    MK_REQUIRE(std::ranges::any_of(unknown.diagnostics,
+                                   [](const auto& diagnostic) { return diagnostic.code == "unknown_panel"; }));
+
+    const auto empty_stack = mirakana::editor::plan_editor_dock_command(
+        layout, mirakana::editor::EditorDockCommandRequest{
+                    .kind = mirakana::editor::EditorDockCommandKind::hide_panel,
+                    .panel_id = "viewport",
+                    .target_stack_id = {},
+                    .user_confirmed = false,
+                });
+    MK_REQUIRE(!empty_stack.accepted);
+    MK_REQUIRE(std::ranges::any_of(empty_stack.diagnostics,
+                                   [](const auto& diagnostic) { return diagnostic.code == "empty_stack_after_hide"; }));
+
+    const auto reset = mirakana::editor::plan_editor_dock_command(
+        layout, mirakana::editor::EditorDockCommandRequest{
+                    .kind = mirakana::editor::EditorDockCommandKind::reset_layout,
+                    .panel_id = {},
+                    .target_stack_id = {},
+                    .user_confirmed = false,
+                });
+    MK_REQUIRE(!reset.accepted);
+    MK_REQUIRE(reset.would_mutate);
+    MK_REQUIRE(reset.requires_confirmation);
+    MK_REQUIRE(std::ranges::any_of(reset.diagnostics,
+                                   [](const auto& diagnostic) { return diagnostic.code == "confirmation_required"; }));
+}
+
+MK_TEST("editor core dock command activates moves and applies reset") {
+    auto layout = mirakana::editor::make_default_editor_dock_layout();
+
+    const auto activate = mirakana::editor::plan_editor_dock_command(
+        layout, mirakana::editor::EditorDockCommandRequest{
+                    .kind = mirakana::editor::EditorDockCommandKind::activate_tab,
+                    .panel_id = "assets",
+                    .target_stack_id = {},
+                    .user_confirmed = false,
+                });
+    MK_REQUIRE(activate.accepted);
+    MK_REQUIRE(activate.would_mutate);
+    const auto* activated_left = mirakana::editor::find_editor_dock_node(activate.result_layout, "dock.left_stack");
+    MK_REQUIRE(activated_left != nullptr);
+    MK_REQUIRE(activated_left->active_tab_id == "assets");
+    MK_REQUIRE(activate.result_layout.focused_panel_id == "assets");
+
+    const auto move = mirakana::editor::apply_editor_dock_command(
+        layout, mirakana::editor::EditorDockCommandRequest{
+                    .kind = mirakana::editor::EditorDockCommandKind::move_panel_to_stack,
+                    .panel_id = "assets",
+                    .target_stack_id = "dock.right_stack",
+                    .user_confirmed = false,
+                });
+    MK_REQUIRE(move.accepted);
+    MK_REQUIRE(move.would_mutate);
+    MK_REQUIRE(layout.layout_revision == 2U);
+    const auto* moved_left = mirakana::editor::find_editor_dock_node(layout, "dock.left_stack");
+    const auto* moved_right = mirakana::editor::find_editor_dock_node(layout, "dock.right_stack");
+    MK_REQUIRE(moved_left != nullptr);
+    MK_REQUIRE(moved_right != nullptr);
+    MK_REQUIRE(std::ranges::find(moved_left->tabs, "assets") == moved_left->tabs.end());
+    MK_REQUIRE(std::ranges::find(moved_right->tabs, "assets") != moved_right->tabs.end());
+    MK_REQUIRE(moved_right->active_tab_id == "assets");
+    MK_REQUIRE(layout.focused_panel_id == "assets");
+
+    const auto reset = mirakana::editor::apply_editor_dock_command(
+        layout, mirakana::editor::EditorDockCommandRequest{
+                    .kind = mirakana::editor::EditorDockCommandKind::reset_layout,
+                    .panel_id = {},
+                    .target_stack_id = {},
+                    .user_confirmed = true,
+                });
+    MK_REQUIRE(reset.accepted);
+    MK_REQUIRE(reset.would_mutate);
+    MK_REQUIRE(reset.requires_confirmation);
+    MK_REQUIRE(layout.layout_revision == 3U);
+    MK_REQUIRE(layout.focused_panel_id == "viewport");
+    const auto* reset_left = mirakana::editor::find_editor_dock_node(layout, "dock.left_stack");
+    MK_REQUIRE(reset_left != nullptr);
+    MK_REQUIRE(reset_left->active_tab_id == "scene");
+    MK_REQUIRE(std::ranges::find(reset_left->tabs, "assets") != reset_left->tabs.end());
+    MK_REQUIRE(mirakana::editor::validate_editor_dock_layout(layout).valid);
+}
+
 MK_TEST("editor core rich text validates rows selection copy and low level gates") {
     mirakana::editor::EditorRichTextDocument document{
         .id = "editor.rich_text.console",

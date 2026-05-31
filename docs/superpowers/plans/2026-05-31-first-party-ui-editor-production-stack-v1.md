@@ -178,12 +178,15 @@ Steps:
 
 Steps:
 
-- [ ] Add RED tests for dock commands: show panel, hide panel, activate tab, move panel to existing stack, split stack, reset layout, reject unknown panels, reject invalid cycles, and require confirmation for destructive reset.
-- [ ] Implement value-only dock mutation planners in `MK_editor_core`.
+- [x] Add RED tests for the Phase 2a dock command subset: show panel, hide panel, activate tab, move panel to existing stack, reset layout, reject unknown panels, reject shell chrome hide, reject non-native shell panels, reject empty-stack mutations, and require confirmation for destructive reset.
+- [x] Implement value-only dock mutation planners in `MK_editor_core` through `EditorDockCommandKind`, `EditorDockCommandRequest`, `EditorDockCommandPlan`, `plan_editor_dock_command`, and `apply_editor_dock_command`.
+- [ ] Add RED tests for the remaining dock command subset: split stack, reject invalid cycles, and workspace persistence edge cases.
 - [ ] Add shell rendering for tab headers, split gutters, active/focused panels, disabled commands, and deterministic style tokens.
 - [ ] Add persisted workspace layout save/load through reviewed editor-core IO; do not write from shell host code directly.
 - [ ] Extend `EditorAiOperationSnapshot` / command catalog / dry-run / apply to include dock operations.
 - [ ] Update smoke output only for proven counters, for example `editor_shell_docking_status=single_window_ready`.
+
+**Phase 2a Evidence:** Candidate `codex/first-party-ui-editor-dock-commands-candidate3` adds GUI-independent dock mutation planning to `MK_editor_core`. The new value-only API covers show/hide/activate/move/reset over existing tab stacks, returns before/after revision rows, preserves plan-before-apply behavior, validates result layouts, rejects unknown panels, shell chrome hide, non-native shell panels, and mutations that would leave a tab stack empty, and requires explicit confirmation for reset. This does not yet implement shell-rendered tab headers/gutters, workspace persistence, split-stack authoring, invalid-cycle mutation tests, AI operation catalog integration, or docking smoke counters. RED/GREEN evidence covered `MK_editor_core_tests`; validation passed: `tools/check-toolchain.ps1`; `tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests MK_editor_native_shell_tests`; `tools/ctest.ps1 --preset dev --output-on-failure -R "MK_editor_core_tests|MK_editor_native_shell_tests"`; `tools/check-tidy.ps1 -Files editor/core/src/editor_dock_layout.cpp,tests/unit/editor_core_tests.cpp -ReuseExistingFileApiReply`; `tools/check-format.ps1`; `tools/check-public-api-boundaries.ps1`; `tools/check-native-desktop-contracts.ps1`; `tools/check-json-contracts.ps1`; `tools/check-ai-integration.ps1`; `tools/check-agents.ps1`; `tools/build-editor.ps1` (86/86); and full `tools/validate.ps1` (85/85).
 
 ## Phase 3 - Rich Text Display And Editing v1
 

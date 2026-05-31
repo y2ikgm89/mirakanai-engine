@@ -1682,6 +1682,94 @@ foreach ($check in $editorSceneNativeDialogChecks) {
     }
 }
 
+$editorCoreDockCommandChecks = @(
+    @{
+        Path = "editor/core/include/mirakana/editor/editor_dock_layout.hpp"
+        Needles = @(
+            "EditorDockCommandKind",
+            "EditorDockCommandRequest",
+            "EditorDockCommandPlan",
+            "plan_editor_dock_command",
+            "apply_editor_dock_command"
+        )
+    },
+    @{
+        Path = "editor/core/src/editor_dock_layout.cpp"
+        Needles = @(
+            "show_panel",
+            "hide_panel",
+            "activate_tab",
+            "move_panel_to_stack",
+            "reset_layout",
+            "confirmation_required",
+            "cannot_hide_shell_chrome",
+            "panel_not_native_shell",
+            "empty_stack_after_hide",
+            "empty_stack_after_move",
+            "validate_editor_dock_layout(plan.result_layout)"
+        )
+    },
+    @{
+        Path = "tests/unit/editor_core_tests.cpp"
+        Needles = @(
+            "editor core dock command plans show panel without mutating source layout",
+            "editor core dock command hides active panel with fallback focus",
+            "editor core dock command rejects unsafe panel and confirmation states",
+            "editor core dock command activates moves and applies reset",
+            "unknown_panel",
+            "confirmation_required"
+        )
+    },
+    @{
+        Path = "docs/editor.md"
+        Needles = @(
+            "EditorDockCommandKind",
+            "plan_editor_dock_command",
+            "apply_editor_dock_command",
+            "AI operation catalog integration for dock mutations"
+        )
+    },
+    @{
+        Path = "docs/current-capabilities.md"
+        Needles = @(
+            "EditorDockCommandPlan",
+            "value-only dock command planners",
+            "shell-rendered docking tab/gutter UX",
+            "AI operation catalog integration for dock mutations"
+        )
+    },
+    @{
+        Path = "docs/roadmap.md"
+        Needles = @(
+            "EditorDockCommandKind",
+            "plan_editor_dock_command",
+            "apply_editor_dock_command",
+            "value-only core dock command planners"
+        )
+    },
+    @{
+        Path = "engine/agent/manifest.json"
+        Needles = @(
+            "EditorDockCommandPlan",
+            "plan_editor_dock_command",
+            "apply_editor_dock_command",
+            "not yet exposed through EditorAiOperationSnapshot"
+        )
+    }
+)
+foreach ($check in $editorCoreDockCommandChecks) {
+    $fileText = Get-AgentSurfaceText $check.Path
+    $missingNeedles = @()
+    foreach ($needle in $check.Needles) {
+        if (-not $fileText.Contains($needle)) {
+            $missingNeedles += $needle
+        }
+    }
+    if ($missingNeedles.Count -gt 0) {
+        Write-Error "ai-integration-check: $($check.Path) missing editor core dock command contract: $($missingNeedles -join ', ')"
+    }
+}
+
 $nativeEditorServiceChecks = @(
     @{
         Path = "editor/src/native_editor_app.hpp"
