@@ -59,6 +59,7 @@ int main(int argc, char** argv) {
         const auto& services = app.services();
         const auto& viewport_display = app.viewport_display();
         const auto& material_preview_display = app.material_preview_display();
+        const auto& text_atlas = app.text_atlas_handoff_evidence();
         std::cout << (result.succeeded ? "editor_shell_status=ready" : "editor_shell_status=failed") << '\n'
                   << "editor_shell_ui=first_party\n"
                   << "editor_shell_backend=" << backend_name(result.adapter_kind) << '\n'
@@ -73,6 +74,16 @@ int main(int argc, char** argv) {
                   << "editor_shell_material_preview_status=" << material_preview_display.status_id << '\n'
                   << "editor_shell_material_preview_native_handles_exposed="
                   << (material_preview_display.native_texture_handles_exposed ? 1 : 0) << '\n'
+                  << "editor_shell_text_atlas_handoff_status=" << text_atlas.status << '\n'
+                  << "editor_shell_text_font_adapter_invoked="
+                  << (text_atlas.text_shaping_adapter_invoked && text_atlas.font_rasterizer_adapter_invoked ? 1 : 0)
+                  << '\n'
+                  << "editor_shell_text_font_glyphs_ready=" << (text_atlas.glyphs_ready ? 1 : 0) << '\n'
+                  << "editor_shell_text_font_fallback_used=" << (text_atlas.fallback_used ? 1 : 0) << '\n'
+                  << "editor_shell_text_atlas_handoff_host_gated_rows=" << text_atlas.host_gated_rows << '\n'
+                  << "editor_shell_text_atlas_handoff_unsupported_rows=" << text_atlas.unsupported_rows << '\n'
+                  << "editor_shell_text_font_native_handles_exposed=" << (text_atlas.native_handles_exposed ? 1 : 0)
+                  << '\n'
                   << "editor_shell_frames=" << result.frames_rendered << '\n'
                   << "editor_shell_panels=" << app.panels_rendered_last_frame() << '\n'
                   << "editor_shell_docking_status=" << app.docking_status_last_frame() << '\n'

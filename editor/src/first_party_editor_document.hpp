@@ -34,6 +34,14 @@ struct FirstPartyEditorShellSmokeCounters {
     bool sdl3_enabled{false};
     bool viewport_native_handles_exposed{false};
     bool material_preview_native_handles_exposed{false};
+    std::string text_atlas_handoff_status{"not_evaluated"};
+    bool text_font_adapter_invoked{false};
+    bool text_font_glyphs_ready{false};
+    bool text_font_fallback_used{false};
+    bool text_atlas_handoff_ready{false};
+    bool text_font_native_handles_exposed{false};
+    std::uint32_t text_atlas_handoff_host_gated_rows{0};
+    std::uint32_t text_atlas_handoff_unsupported_rows{0};
     std::string docking_status{"not_rendered"};
     std::uint32_t dock_tab_header_count{0};
     std::uint32_t dock_split_gutter_count{0};

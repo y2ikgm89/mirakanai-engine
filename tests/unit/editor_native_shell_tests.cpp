@@ -7,6 +7,7 @@
 #include "first_party_editor_document.hpp"
 #include "native_editor_app.hpp"
 #include "native_editor_launch.hpp"
+#include "native_editor_text_atlas_handoff.hpp"
 #if defined(_WIN32)
 #include "native_editor_text_font_adapters.hpp"
 #endif
@@ -558,7 +559,88 @@ MK_TEST("editor DirectWrite text and font adapters feed runtime UI validation wi
     MK_REQUIRE(rasterized.allocation->bitmap.pixel_format == mirakana::ui::FontRasterizationPixelFormat::alpha8);
     MK_REQUIRE(rasterized.allocation->metrics.advance_x > 0.0F);
 }
+
+MK_TEST("editor DirectWrite text atlas handoff evidence separates adapter glyph fallback and gate rows") {
+    const auto evidence = mirakana::editor::make_native_editor_directwrite_text_atlas_handoff_evidence(
+        mirakana::editor::NativeEditorTextAtlasHandoffDesc{
+            .text = "Mirakanai",
+            .font_family = "Segoe UI",
+            .pixel_size = 18.0F,
+            .max_width = 512.0F,
+        });
+
+    MK_REQUIRE(evidence.status == "glyphs_ready_atlas_handoff_host_gated");
+    MK_REQUIRE(evidence.text_shaping_adapter_invoked);
+    MK_REQUIRE(evidence.font_rasterizer_adapter_invoked);
+    MK_REQUIRE(evidence.adapter_invoked_rows == 2U);
+    MK_REQUIRE(evidence.glyphs_ready);
+    MK_REQUIRE(evidence.glyphs_ready_rows == 1U);
+    MK_REQUIRE(evidence.shaped_glyph_count >= 4U);
+    MK_REQUIRE(evidence.rasterized_glyph_count >= 1U);
+    MK_REQUIRE(evidence.fallback_rows >= 1U);
+    MK_REQUIRE(evidence.fallback_used_rows == 0U);
+    MK_REQUIRE(evidence.fallback_not_used_rows >= 1U);
+    MK_REQUIRE(!evidence.fallback_used);
+    MK_REQUIRE(evidence.host_gated_rows == 1U);
+    MK_REQUIRE(evidence.unsupported_rows == 1U);
+    MK_REQUIRE(!evidence.atlas_handoff_ready);
+    MK_REQUIRE(!evidence.native_handles_exposed);
+
+    MK_REQUIRE(std::ranges::any_of(evidence.rows, [](const auto& row) {
+        return row.id == "editor.text_atlas.adapter.text_shaping" && row.status == "adapter_invoked" &&
+               row.adapter_invoked && !row.native_handles_public;
+    }));
+    MK_REQUIRE(std::ranges::any_of(evidence.rows, [](const auto& row) {
+        return row.id == "editor.text_atlas.glyphs.ready" && row.status == "ready" && row.glyphs_ready;
+    }));
+    MK_REQUIRE(std::ranges::any_of(evidence.rows, [](const auto& row) {
+        return row.id == "editor.text_atlas.font_fallback" && row.status == "not_used" && !row.fallback_used;
+    }));
+    MK_REQUIRE(std::ranges::any_of(evidence.rows, [](const auto& row) {
+        return row.id == "editor.text_atlas.direct2d_atlas.host_gate" && row.status == "host_evidence_required" &&
+               row.host_evidence_required && !row.host_evidence_available;
+    }));
+    MK_REQUIRE(std::ranges::any_of(evidence.rows, [](const auto& row) {
+        return row.id == "editor.text_atlas.gpu_upload.unsupported" && row.status == "unsupported" && row.unsupported;
+    }));
+}
 #endif
+
+MK_TEST("editor first party shell smoke counters expose text atlas handoff evidence") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    app.record_native_text_atlas_handoff_evidence(mirakana::editor::NativeEditorTextAtlasHandoffEvidence{
+        .status = "glyphs_ready_atlas_handoff_host_gated",
+        .text_shaping_adapter_invoked = true,
+        .font_rasterizer_adapter_invoked = true,
+        .glyphs_ready = true,
+        .fallback_used = false,
+        .atlas_handoff_ready = false,
+        .native_handles_exposed = false,
+        .adapter_invoked_rows = 2U,
+        .glyphs_ready_rows = 1U,
+        .fallback_rows = 1U,
+        .fallback_used_rows = 0U,
+        .fallback_not_used_rows = 1U,
+        .host_gated_rows = 1U,
+        .unsupported_rows = 1U,
+        .shaped_glyph_count = 9U,
+        .rasterized_glyph_count = 9U,
+        .zero_ink_glyph_count = 0U,
+        .rows = {},
+    });
+
+    const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
+    const auto counters = mirakana::editor::make_first_party_editor_shell_smoke_counters(app, shell_document);
+
+    MK_REQUIRE(counters.text_atlas_handoff_status == "glyphs_ready_atlas_handoff_host_gated");
+    MK_REQUIRE(counters.text_font_adapter_invoked);
+    MK_REQUIRE(counters.text_font_glyphs_ready);
+    MK_REQUIRE(!counters.text_font_fallback_used);
+    MK_REQUIRE(counters.text_atlas_handoff_host_gated_rows == 1U);
+    MK_REQUIRE(counters.text_atlas_handoff_unsupported_rows == 1U);
+    MK_REQUIRE(!counters.text_atlas_handoff_ready);
+    MK_REQUIRE(!counters.text_font_native_handles_exposed);
+}
 
 MK_TEST("editor native shell app records deterministic panel smoke counters") {
     mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
