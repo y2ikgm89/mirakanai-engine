@@ -430,11 +430,11 @@ The previous core-first MVP plan remains as history and implementation evidence.
 
 ### Wave 8: Editor and Runtime UI Architecture
 
-- keep Dear ImGui as the optional developer-facing editor/debug shell for fast iteration, diagnostics, and early tools
+- replace the active Dear ImGui-backed editor/debug shell with the `first-party-editor-shell-v1` clean-break milestone; keep Dear ImGui only as historical completed-shell evidence until Phase 7 deletes active implementation and dependency records
 - follow `docs/ui.md`: own the `MK_ui`/`MK_editor_ui` contracts, but do not hand-roll mature low-level font, text shaping, IME, accessibility, image decoding, or platform integration systems without an accepted architecture decision
 - continue the first-party retained-mode UI runtime, `MK_ui`, and its first `MK_ui_renderer` adapter from the implemented headless document/focus/style/text/image/layout/animation/binding/renderer-submission/text-image-accessibility-payload/monospace-text-layout/IRenderer-adapter contracts plus host-independent text shaping/font/image/accessibility/IME/text-input/text-edit command/clipboard text gates, Runtime UI Workbench Production v1 dense menu/inventory/equipment/shop/simulation-dashboard intent rows, the narrow Win32 text edit key-command and clipboard text bridges, `UiRendererGlyphAtlasPalette`, `UiRendererImagePalette`, `UiAtlasMetadataGlyph`, `RuntimeUiAtlasGlyph`, and the decoded-image plus rasterized-glyph atlas package bridges into concrete text shaping/font loading/rasterization adapters, accessibility, real image upload adapters, richer layout models, broader localization integration, accessibility metadata, and future editor surfaces
 - keep runtime UI independent from `editor`, Dear ImGui, Qt, NoesisGUI, Slint, RmlUi, or platform middleware APIs; evaluate those and lower-level text/font/accessibility dependencies only as optional adapters after `license-audit` and dependency policy updates
-- expand the implemented `MK_editor_ui` model bridge so high-complexity editor panels can move from immediate-mode code into tested retained models without breaking the current ImGui shell
+- expand the implemented `MK_editor_ui` model bridge so high-complexity editor panels move into tested retained models and the current visible shell no longer depends on Dear ImGui, Qt, Slint, RmlUi, or other UI middleware
 - add UI-heavy sample coverage after the core retained-mode contracts exist
 
 ### Wave 9: Mobile Packaging

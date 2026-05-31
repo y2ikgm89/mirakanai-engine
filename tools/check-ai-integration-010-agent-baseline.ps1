@@ -1618,6 +1618,25 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     )) {
         Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan selection gate closeout"
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "first-party-editor-shell-v1") {
+    foreach ($needle in @(
+        "First-Party Editor Shell v1",
+        "first-party retained MK_editor shell",
+        "desktop-editor",
+        "EditorAiOperationSnapshot",
+        "EditorAiCommandCatalog",
+        "dock graph",
+        "rich-text rows",
+        "DirectWrite",
+        "Text Services Framework",
+        "UI Automation",
+        "unsupportedProductionGaps = []",
+        "SDL3",
+        "native handles",
+        "Dear ImGui"
+    )) {
+        Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan first-party editor shell selection"
+    }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "physics-navigation-commercial-coverage-v1") {
     foreach ($needle in @(
         "Physics Navigation Commercial Coverage v1",

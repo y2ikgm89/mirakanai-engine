@@ -20,7 +20,14 @@
 
 **Status:** Active.
 
-Execution Phase 0 selects this plan in the manifest/registry before code changes. The repository truth for current implementation work is now this clean-break replacement for the completed Native Win32 Editor Shell v1.
+Phase 0 selected this plan in the manifest/registry as the active clean-break milestone after Native Win32 Editor Shell v1 completed through PR #322. The repository now treats `recommendedNextPlan.id = first-party-editor-shell-v1` and `currentActivePlan = docs/superpowers/plans/2026-05-31-first-party-editor-shell-v1.md` as the active execution truth.
+
+## Phase 0 Evidence
+
+- Worktree setup: `tools/prepare-worktree.ps1` reported `linked-worktree=true`, `external-vcpkg=linked`, `vcpkg-installed=linked`, and `ok` in `.worktrees/first-party-editor-shell-v1`.
+- Official source refresh checked on 2026-05-31: Microsoft Learn Win32 window creation, Direct3D 12 programming guide, DirectWrite portal, Text Services Framework, and UI Automation Providers Overview; Unity 6.4 UI system comparison; Unreal Engine 5.7 Slate UI framework; Godot stable UI docs.
+- Context7 source refresh checked: `/kitware/cmake` target dependency scope guidance and `/microsoft/vcpkg` manifest optional feature / `VCPKG_MANIFEST_INSTALL` behavior.
+- Plan/static validation passed after selection: `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-format.ps1`, and `git diff --check`.
 
 ## Current Baseline
 
@@ -47,7 +54,7 @@ This plan keeps the editor state and AI-operable models, but replaces the immedi
 
 The migration follows the common production-engine split rather than attempting to hand-roll every UI subsystem:
 
-- Unity 6 documents separate runtime/editor recommendations and recommends UI Toolkit for complex Editor UI, with IMGUI as the alternative for legacy or quick extensibility cases. The lesson for this engine is to keep the editor UI model first-party and retained, while not treating immediate-mode tooling as the long-term editor foundation.
+- Unity 6.4 documents separate runtime/editor recommendations and recommends UI Toolkit for complex Editor UI, with IMGUI as the alternative for legacy or quick extensibility cases. The lesson for this engine is to keep the editor UI model first-party and retained, while treating immediate-mode tooling only as historical evidence, not as the long-term editor foundation.
 - Unreal Engine exposes Slate as its custom UI programming framework and uses higher-level UI authoring layers for game-facing UI. The lesson is to own widget identity, docking state, command routing, and editor automation surfaces inside the engine instead of delegating them to a third-party object model.
 - Godot builds runtime UI and editor UI around first-party `Control` / `Container` nodes, while `TextServer` owns low-level font/text rendering services. The lesson is to expose stable engine-owned nodes and semantic rows, but keep shaping/font complexity behind a specialized service boundary.
 - Engines and tools that use Qt-class editor frameworks get mature docking/text/accessibility quickly, but inherit framework object models, licensing, distribution, and automation boundaries that this clean-break plan intentionally avoids for the core editor shell.
@@ -108,7 +115,7 @@ Before each implementation phase, re-check the current official documentation fo
 - Text Services Framework for IME/text-service adapter design: <https://learn.microsoft.com/en-us/windows/win32/tsf/text-services-framework>
 - UI Automation providers for accessibility bridge publication: <https://learn.microsoft.com/en-us/windows/win32/winauto/uiauto-providersoverview>
 - CMake and vcpkg documentation through Context7 or official docs for target/preset/dependency-policy changes.
-- Unity UI system comparison and UI Toolkit guidance when updating rationale docs: <https://docs.unity3d.com/6000.0/Documentation/Manual/UI-system-compare.html>
+- Unity UI system comparison and UI Toolkit guidance when updating rationale docs: <https://docs.unity3d.com/Manual/UI-system-compare.html>
 - Unreal Slate and UMG UI architecture when updating rationale docs: <https://dev.epicgames.com/documentation/en-us/unreal-engine/slate-user-interface-programming-framework-for-unreal-engine> and <https://dev.epicgames.com/documentation/en-us/unreal-engine/creating-user-interfaces-with-umg-and-slate-in-unreal-engine>
 - Godot Control UI and RichTextLabel/TextServer docs when updating rationale docs: <https://docs.godotengine.org/en/stable/tutorials/ui/index.html>, <https://docs.godotengine.org/en/stable/classes/class_richtextlabel.html>, and <https://docs.godotengine.org/en/stable/classes/class_textserver.html>
 
@@ -244,7 +251,7 @@ Delete after replacement is green:
 
 **Goal:** Make this plan the selected active slice and prove the migration surface is fully inventoried before code changes.
 
-**Context:** The manifest currently points to `next-production-gap-selection`; Native Win32 Editor Shell v1 is completed historical evidence.
+**Context:** Before Phase 0, the manifest pointed to `next-production-gap-selection`; Native Win32 Editor Shell v1 remains completed historical evidence. Phase 0 now selects this clean-break plan as the active milestone.
 
 **Constraints:** Do not change behavior yet. Do not hand-edit `engine/agent/manifest.json`.
 
