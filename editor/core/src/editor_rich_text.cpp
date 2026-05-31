@@ -3,8 +3,11 @@
 
 #include "mirakana/editor/editor_rich_text.hpp"
 
+#include "mirakana/editor/ai_command_panel.hpp"
+
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <optional>
 #include <stdexcept>
 #include <string_view>
@@ -58,6 +61,21 @@ constexpr std::array<std::string_view, 9> unsupported_markup_needles{{
 
 [[nodiscard]] bool contains_string(const std::vector<std::string>& values, std::string_view value) noexcept {
     return std::ranges::any_of(values, [value](const std::string& candidate) { return candidate == value; });
+}
+
+[[nodiscard]] std::string join_values(const std::vector<std::string>& values) {
+    if (values.empty()) {
+        return "-";
+    }
+
+    std::string text;
+    for (const auto& value : values) {
+        if (!text.empty()) {
+            text += ", ";
+        }
+        text += value;
+    }
+    return text;
 }
 
 [[nodiscard]] bool contains_unsafe_token(std::string_view value) noexcept {
@@ -256,6 +274,43 @@ void validate_inline_object(EditorRichTextValidation& validation, const EditorRi
     return "editor.text";
 }
 
+[[nodiscard]] std::string ai_status_style_token(std::string_view status_label) {
+    if (status_label == "ready") {
+        return "editor.info";
+    }
+    if (status_label == "host_gated" || status_label == "external_action_required") {
+        return "editor.warning";
+    }
+    return "editor.error";
+}
+
+[[nodiscard]] std::string safe_rich_text(std::string_view value) {
+    std::string text;
+    text.reserve(value.size());
+    for (const char character : value) {
+        if (character == '\n' || character == '\r' || character == '=') {
+            text.push_back(' ');
+        } else {
+            text.push_back(character);
+        }
+    }
+    return text.empty() ? "-" : text;
+}
+
+[[nodiscard]] std::string rich_text_id_component(std::string_view value) {
+    std::string text;
+    text.reserve(value.size());
+    for (const char character : value) {
+        const auto byte = static_cast<unsigned char>(character);
+        if (std::isalnum(byte) != 0 || character == '_' || character == '-' || character == '.') {
+            text.push_back(character);
+        } else {
+            text.push_back('_');
+        }
+    }
+    return text.empty() ? "row" : text;
+}
+
 [[nodiscard]] ParagraphWindow resolve_viewport(std::size_t paragraph_count, EditorRichTextViewport viewport) noexcept {
     ParagraphWindow window;
     window.count = paragraph_count;
@@ -338,6 +393,70 @@ void append_inline_object_ui(ui::UiDocument& document, const ui::ElementId& pare
     add_or_throw(document, std::move(desc));
 }
 
+[[nodiscard]] EditorRichTextSpan rich_text_span(std::string id, std::string style_token, std::string text) {
+    return EditorRichTextSpan{
+        .id = std::move(id),
+        .style_token = std::move(style_token),
+        .text = safe_rich_text(text),
+        .inline_objects = {},
+    };
+}
+
+void append_ai_status_paragraph(EditorRichTextDocument& document, std::string id, std::string label, std::string value,
+                                std::string style_token) {
+    document.paragraphs.push_back(EditorRichTextParagraph{
+        .id = std::move(id),
+        .spans =
+            {
+                rich_text_span("label", "editor.text", std::move(label)),
+                rich_text_span("value", std::move(style_token), std::move(value)),
+            },
+    });
+}
+
+void append_ai_command_row_paragraph(EditorRichTextDocument& document, const EditorAiCommandPanelCommandRow& row) {
+    document.paragraphs.push_back(EditorRichTextParagraph{
+        .id = "command." + rich_text_id_component(row.recipe_id),
+        .spans =
+            {
+                rich_text_span("recipe", ai_status_style_token(row.status_label),
+                               "Command: " + safe_rich_text(row.recipe_id)),
+                rich_text_span("status", ai_status_style_token(row.status_label),
+                               " status " + safe_rich_text(row.status_label)),
+                rich_text_span("display", "editor.text", " display " + safe_rich_text(row.command_display)),
+                rich_text_span("host_gates", "editor.text",
+                               " host gates " + safe_rich_text(join_values(row.host_gates))),
+                rich_text_span("blocked_by", "editor.warning",
+                               " blocked by " + safe_rich_text(join_values(row.blocked_by))),
+            },
+    });
+}
+
+void append_ai_evidence_row_paragraph(EditorRichTextDocument& document, const EditorAiCommandPanelEvidenceRow& row) {
+    document.paragraphs.push_back(EditorRichTextParagraph{
+        .id = "evidence." + rich_text_id_component(row.recipe_id),
+        .spans =
+            {
+                rich_text_span("recipe", ai_status_style_token(row.status_label),
+                               "Evidence: " + safe_rich_text(row.recipe_id)),
+                rich_text_span("status", ai_status_style_token(row.status_label),
+                               " status " + safe_rich_text(row.status_label)),
+                rich_text_span("summary", "editor.text", " summary " + safe_rich_text(row.summary)),
+            },
+    });
+}
+
+void append_ai_diagnostic_paragraph(EditorRichTextDocument& document, std::size_t index, std::string_view diagnostic) {
+    document.paragraphs.push_back(EditorRichTextParagraph{
+        .id = "diagnostic." + std::to_string(index),
+        .spans =
+            {
+                rich_text_span("label", "editor.error", "Diagnostic: "),
+                rich_text_span("message", "editor.error", safe_rich_text(diagnostic)),
+            },
+    });
+}
+
 } // namespace
 
 std::vector<EditorRichTextUnsupportedCapability> make_editor_rich_text_low_level_unsupported_capabilities() {
@@ -400,6 +519,34 @@ EditorRichTextDocument make_editor_console_rich_text_document(std::span<const Ed
                 },
         });
     }
+    document.unsupported_capabilities = make_editor_rich_text_low_level_unsupported_capabilities();
+    return document;
+}
+
+EditorRichTextDocument make_editor_ai_command_panel_rich_text_document(const EditorAiCommandPanelModel& model,
+                                                                       std::string document_id) {
+    EditorRichTextDocument document;
+    document.id = std::move(document_id);
+
+    append_ai_status_paragraph(document, "status", "Status: ", model.status_label,
+                               ai_status_style_token(model.status_label));
+    append_ai_status_paragraph(document, "operator_handoff",
+                               "Operator handoff: ", model.ready_for_operator_handoff ? "ready" : "not ready",
+                               model.ready_for_operator_handoff ? "editor.info" : "editor.warning");
+    append_ai_status_paragraph(document, "evidence",
+                               "Evidence: ", model.all_required_evidence_passed ? "passed" : "not complete",
+                               model.all_required_evidence_passed ? "editor.info" : "editor.warning");
+
+    for (const auto& row : model.command_rows) {
+        append_ai_command_row_paragraph(document, row);
+    }
+    for (const auto& row : model.evidence_rows) {
+        append_ai_evidence_row_paragraph(document, row);
+    }
+    for (std::size_t index = 0U; index < model.diagnostics.size(); ++index) {
+        append_ai_diagnostic_paragraph(document, index, model.diagnostics[index]);
+    }
+
     document.unsupported_capabilities = make_editor_rich_text_low_level_unsupported_capabilities();
     return document;
 }
