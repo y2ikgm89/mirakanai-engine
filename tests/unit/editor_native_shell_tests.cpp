@@ -8,6 +8,7 @@
 #include "native_editor_app.hpp"
 #include "native_editor_launch.hpp"
 #include "native_editor_text_atlas_handoff.hpp"
+#include "native_editor_text_input.hpp"
 #if defined(_WIN32)
 #include "native_editor_text_font_adapters.hpp"
 #endif
@@ -62,6 +63,29 @@ class RecordingClipboardTextAdapter final : public mirakana::ui::IClipboardTextA
 
   private:
     std::string text_;
+};
+
+class RecordingPlatformTextInputAdapter final : public mirakana::ui::IPlatformIntegrationAdapter {
+  public:
+    void begin_text_input(const mirakana::ui::PlatformTextInputRequest& request) override {
+        begin_requests.push_back(request);
+    }
+
+    void end_text_input(const mirakana::ui::ElementId& target) override {
+        ended_targets.push_back(target);
+    }
+
+    std::vector<mirakana::ui::PlatformTextInputRequest> begin_requests;
+    std::vector<mirakana::ui::ElementId> ended_targets;
+};
+
+class RecordingImeAdapter final : public mirakana::ui::IImeAdapter {
+  public:
+    void update_composition(const mirakana::ui::ImeComposition& composition) override {
+        updates.push_back(composition);
+    }
+
+    std::vector<mirakana::ui::ImeComposition> updates;
 };
 
 [[nodiscard]] mirakana::editor::EditorAiReviewedValidationExecutionDesc make_reviewed_validation_execution_desc() {
@@ -404,6 +428,23 @@ MK_TEST("editor first party document composes inspector as read only rich text")
     }));
 }
 
+MK_TEST("editor first party document exposes a first party editable text target") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+
+    const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
+    const auto& text_input = app.text_input_state();
+    const auto* field = shell_document.document.find(text_input.edit_state.target);
+
+    MK_REQUIRE(field != nullptr);
+    MK_REQUIRE(field->role == mirakana::ui::SemanticRole::text_field);
+    MK_REQUIRE(field->text.label == app.project().name);
+    MK_REQUIRE(field->enabled);
+    MK_REQUIRE(text_input.target_registered);
+    MK_REQUIRE(text_input.caret_rect_ready);
+    MK_REQUIRE(text_input.surrounding_text_ready);
+    MK_REQUIRE(!text_input.native_handles_exposed);
+}
+
 MK_TEST("editor first party document produces renderer submission without native handles") {
     mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
 
@@ -640,6 +681,189 @@ MK_TEST("editor first party shell smoke counters expose text atlas handoff evide
     MK_REQUIRE(counters.text_atlas_handoff_unsupported_rows == 1U);
     MK_REQUIRE(!counters.text_atlas_handoff_ready);
     MK_REQUIRE(!counters.text_font_native_handles_exposed);
+}
+
+MK_TEST("editor native shell first party IME controller routes focused text target sessions") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    RecordingPlatformTextInputAdapter platform_text_input;
+    RecordingImeAdapter ime;
+    app.bind_native_services(mirakana::editor::NativeEditorServiceBindings{
+        .platform_text_input_adapter = &platform_text_input,
+        .ime_adapter = &ime,
+        .platform_text_input_service_id = "test_platform_text_input",
+        .ime_service_id = "test_ime",
+    });
+
+    auto project_name = mirakana::editor::make_native_editor_project_name_text_input_target("MIRAIKANAI");
+    project_name.edit_state.cursor_byte_offset = project_name.edit_state.text.size();
+    const auto first_focus = app.focus_text_input_target(project_name);
+
+    MK_REQUIRE(first_focus.succeeded());
+    MK_REQUIRE(first_focus.session_begun);
+    MK_REQUIRE(!first_focus.previous_session_ended);
+    MK_REQUIRE(platform_text_input.begin_requests.size() == 1U);
+    MK_REQUIRE(platform_text_input.begin_requests[0].target == project_name.edit_state.target);
+    MK_REQUIRE(platform_text_input.ended_targets.empty());
+    MK_REQUIRE(app.text_input_state().session_active);
+    MK_REQUIRE(app.text_input_state().surrounding_text == "MIRAIKANAI");
+    MK_REQUIRE(app.services().platform_text_input_service_id == "test_platform_text_input");
+    MK_REQUIRE(app.services().ime_service_id == "test_ime");
+    MK_REQUIRE(app.services().platform_text_input_sessions_started == 1U);
+
+    auto asset_root = mirakana::editor::make_native_editor_project_name_text_input_target("assets");
+    asset_root.edit_state.target.value = "editor.panel.project_settings.asset_root.text_field";
+    asset_root.edit_state.cursor_byte_offset = asset_root.edit_state.text.size();
+    asset_root.caret_bounds.x = 32.0F;
+
+    const auto second_focus = app.focus_text_input_target(asset_root);
+
+    MK_REQUIRE(second_focus.succeeded());
+    MK_REQUIRE(second_focus.session_begun);
+    MK_REQUIRE(second_focus.previous_session_ended);
+    MK_REQUIRE(platform_text_input.begin_requests.size() == 2U);
+    MK_REQUIRE(platform_text_input.ended_targets.size() == 1U);
+    MK_REQUIRE(platform_text_input.ended_targets[0] == project_name.edit_state.target);
+    MK_REQUIRE(app.text_input_state().edit_state.target == asset_root.edit_state.target);
+    MK_REQUIRE(app.services().platform_text_input_sessions_started == 2U);
+    MK_REQUIRE(app.services().platform_text_input_sessions_ended == 1U);
+}
+
+MK_TEST("editor native shell first party IME composition and commit use shared UI text contracts") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    RecordingPlatformTextInputAdapter platform_text_input;
+    RecordingImeAdapter ime;
+    app.bind_native_services(mirakana::editor::NativeEditorServiceBindings{
+        .platform_text_input_adapter = &platform_text_input,
+        .ime_adapter = &ime,
+    });
+
+    auto target = mirakana::editor::make_native_editor_project_name_text_input_target("MIRAI");
+    target.edit_state.cursor_byte_offset = target.edit_state.text.size();
+    MK_REQUIRE(app.focus_text_input_target(target).succeeded());
+
+    const auto composition = app.update_ime_composition(mirakana::ui::ImeComposition{
+        .target = target.edit_state.target,
+        .composition_text = "kana",
+        .cursor_index = 4U,
+    });
+
+    MK_REQUIRE(composition.succeeded());
+    MK_REQUIRE(ime.updates.size() == 1U);
+    MK_REQUIRE(app.text_input_state().composition_active);
+    MK_REQUIRE(app.text_input_state().composition.composition_text == "kana");
+    MK_REQUIRE(app.text_input_state().edit_state.text == "MIRAI");
+    MK_REQUIRE(app.services().ime_composition_updates == 1U);
+
+    const auto commit = app.commit_text_input(mirakana::ui::CommittedTextInput{
+        .target = target.edit_state.target,
+        .text = "KANAI",
+    });
+
+    MK_REQUIRE(commit.succeeded());
+    MK_REQUIRE(commit.state.text == "MIRAIKANAI");
+    MK_REQUIRE(commit.state.cursor_byte_offset == commit.state.text.size());
+    MK_REQUIRE(!app.text_input_state().composition_active);
+    MK_REQUIRE(app.text_input_state().commit_applied);
+    MK_REQUIRE(app.text_input_state().surrounding_text == "MIRAIKANAI");
+    MK_REQUIRE(app.services().committed_text_inputs == 1U);
+}
+
+MK_TEST("editor native shell first party IME cancel clears composition without changing committed text") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    RecordingPlatformTextInputAdapter platform_text_input;
+    RecordingImeAdapter ime;
+    app.bind_native_services(mirakana::editor::NativeEditorServiceBindings{
+        .platform_text_input_adapter = &platform_text_input,
+        .ime_adapter = &ime,
+    });
+
+    auto target = mirakana::editor::make_native_editor_project_name_text_input_target("MIRAI");
+    target.edit_state.cursor_byte_offset = target.edit_state.text.size();
+    MK_REQUIRE(app.focus_text_input_target(target).succeeded());
+    MK_REQUIRE(app.update_ime_composition(mirakana::ui::ImeComposition{
+                                              .target = target.edit_state.target,
+                                              .composition_text = "kana",
+                                              .cursor_index = 4U,
+                                          })
+                   .succeeded());
+
+    const auto canceled = app.cancel_ime_composition();
+
+    MK_REQUIRE(canceled.succeeded());
+    MK_REQUIRE(ime.updates.size() == 2U);
+    MK_REQUIRE(ime.updates[1].composition_text.empty());
+    MK_REQUIRE(!app.text_input_state().composition_active);
+    MK_REQUIRE(app.text_input_state().edit_state.text == "MIRAI");
+}
+
+MK_TEST("editor native shell first party IME controller rejects invalid targets before adapter dispatch") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    RecordingPlatformTextInputAdapter platform_text_input;
+    RecordingImeAdapter ime;
+    app.bind_native_services(mirakana::editor::NativeEditorServiceBindings{
+        .platform_text_input_adapter = &platform_text_input,
+        .ime_adapter = &ime,
+    });
+
+    auto read_only = mirakana::editor::make_native_editor_project_name_text_input_target("MIRAIKANAI");
+    read_only.editable = false;
+    const auto read_only_focus = app.focus_text_input_target(read_only);
+
+    MK_REQUIRE(!read_only_focus.succeeded());
+    MK_REQUIRE(platform_text_input.begin_requests.empty());
+
+    auto invalid_bounds = mirakana::editor::make_native_editor_project_name_text_input_target("MIRAIKANAI");
+    invalid_bounds.caret_bounds.width = 0.0F;
+    const auto invalid_focus = app.focus_text_input_target(invalid_bounds);
+
+    MK_REQUIRE(!invalid_focus.succeeded());
+    MK_REQUIRE(platform_text_input.begin_requests.empty());
+
+    auto target = mirakana::editor::make_native_editor_project_name_text_input_target("MIRAIKANAI");
+    MK_REQUIRE(app.focus_text_input_target(target).succeeded());
+
+    const auto mismatched_composition = app.update_ime_composition(mirakana::ui::ImeComposition{
+        .target = mirakana::ui::ElementId{.value = "editor.panel.assets.search"},
+        .composition_text = "kana",
+        .cursor_index = 4U,
+    });
+
+    MK_REQUIRE(!mismatched_composition.succeeded());
+    MK_REQUIRE(ime.updates.empty());
+}
+
+MK_TEST("editor first party shell smoke counters expose value IME controller readiness") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+
+    const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
+    const auto counters = mirakana::editor::make_first_party_editor_shell_smoke_counters(app, shell_document);
+
+    MK_REQUIRE(counters.ime_status == "value_text_input_controller_ready");
+    MK_REQUIRE(counters.ime_text_input_session_rows == 0U);
+    MK_REQUIRE(counters.ime_composition_rows == 0U);
+    MK_REQUIRE(counters.ime_committed_text_rows == 0U);
+    MK_REQUIRE(counters.ime_caret_rect_rows == 1U);
+    MK_REQUIRE(counters.ime_surrounding_text_rows == 1U);
+    MK_REQUIRE(counters.ime_candidate_ui_host_owned);
+    MK_REQUIRE(!counters.ime_native_handles_exposed);
+
+    RecordingPlatformTextInputAdapter platform_text_input;
+    app.bind_native_services(mirakana::editor::NativeEditorServiceBindings{
+        .platform_text_input_adapter = &platform_text_input,
+    });
+    auto target = mirakana::editor::make_native_editor_project_name_text_input_target("MIRAI");
+    target.edit_state.cursor_byte_offset = target.edit_state.text.size();
+    MK_REQUIRE(app.focus_text_input_target(target).succeeded());
+    MK_REQUIRE(app.commit_text_input(mirakana::ui::CommittedTextInput{
+                                         .target = target.edit_state.target,
+                                         .text = "KANAI",
+                                     })
+                   .succeeded());
+
+    const auto committed_counters = mirakana::editor::make_first_party_editor_shell_smoke_counters(app, shell_document);
+    MK_REQUIRE(committed_counters.ime_status == "value_text_input_commit_applied");
+    MK_REQUIRE(committed_counters.ime_text_input_session_rows == 1U);
+    MK_REQUIRE(committed_counters.ime_committed_text_rows == 1U);
 }
 
 MK_TEST("editor native shell app records deterministic panel smoke counters") {

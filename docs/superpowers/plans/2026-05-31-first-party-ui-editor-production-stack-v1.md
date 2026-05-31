@@ -252,11 +252,13 @@ Steps:
 
 Steps:
 
-- [ ] Recheck current TSF documentation before implementation and record links in phase evidence.
-- [ ] Add fake-adapter tests for session lifecycle, focus changes, caret rect, surrounding text, composition update, commit, cancel, and invalid target rejection.
+- [x] Recheck current TSF documentation before implementation and record links in phase evidence.
+- [x] Add fake-adapter tests for session lifecycle, focus changes, caret rect, surrounding text, composition update, commit, cancel, and invalid target rejection.
 - [ ] Add private Windows TSF adapter code without leaking COM/TSF types to public headers.
-- [ ] Wire editor text targets through `PlatformTextInputSession` and `ImeComposition` rows.
-- [ ] Add smoke counters that distinguish `editor_shell_ime_status=win32_tsf_selected` from cross-platform parity.
+- [x] Wire editor text targets through `PlatformTextInputSession` and `ImeComposition` rows.
+- [x] Add smoke counters that distinguish the current value-only controller from `editor_shell_ime_status=win32_tsf_selected` and from cross-platform parity.
+
+**Phase 5a Evidence:** Candidate `codex/first-party-ui-editor-tsf-ime-candidate12` adds a first-party value-only text-input/IME session controller under `editor/src/native_editor_text_input.*` and wires it into `NativeEditorApp`, `MK_editor_shell_common`, retained `mirakana::ui` documents, and deterministic smoke counters. Current Microsoft TSF guidance was rechecked before implementation: TSF architecture puts the TSF manager between applications and text services ([Architecture](https://learn.microsoft.com/en-us/windows/win32/tsf/architecture)); the thread manager owns activation, document-manager creation, and input-focus relationships ([Thread Manager](https://learn.microsoft.com/en-us/windows/win32/tsf/thread-manager)); `ITextStoreACP` is the application-owned text store manipulated by TSF ([ITextStoreACP](https://learn.microsoft.com/en-us/windows/win32/api/textstor/nn-textstor-itextstoreacp)); and compositions are temporary input states whose start/update/end must be reflected by the application ([Compositions](https://learn.microsoft.com/en-us/windows/win32/tsf/compositions)). Based on that official shape, this slice deliberately does not instantiate COM/TSF yet: it first gives the native shell a focused editable Project Settings text field, caret rect, surrounding text, begin/end session routing through `ui::PlatformTextInputRequest`, composition publication through `ui::ImeComposition`, commit through `ui::apply_committed_text_input`, cancel, invalid-target fail-closed behavior, service counters, and smoke rows such as `editor_shell_ime_status=value_text_input_controller_ready`, `editor_shell_ime_caret_rect_rows=1`, `editor_shell_ime_surrounding_text_rows=1`, `editor_shell_ime_candidate_ui_host_owned=1`, and `editor_shell_ime_native_handles_exposed=0`. RED/GREEN evidence covered `MK_editor_native_shell_tests` for focus changes, previous-session end, composition update, commit, cancel, read-only/invalid-caret rejection before adapter dispatch, retained text-field composition, and smoke counters. This is not the private Windows TSF COM adapter, native candidate UI, reconversion, rich-text editing, cross-platform IME parity, production shaping/bidi/fallback, UIA publication, or public native handle exposure; `win32_tsf_selected` remains reserved for the next TSF adapter slice.
 
 ## Phase 6 - Windows UI Automation Provider v1
 
