@@ -9,6 +9,12 @@
 
 namespace mirakana::editor {
 
+#if defined(_WIN32)
+inline constexpr bool kFirstPartyEditorDirectWriteTextFontAdapterImplemented = true;
+#else
+inline constexpr bool kFirstPartyEditorDirectWriteTextFontAdapterImplemented = false;
+#endif
+
 enum class FirstPartyEditorAdapterBoundary : std::uint8_t {
     text_shaping,
     font_rasterization,
@@ -30,12 +36,14 @@ struct FirstPartyEditorAdapterBoundaryRow {
         FirstPartyEditorAdapterBoundaryRow{
             .boundary = FirstPartyEditorAdapterBoundary::text_shaping,
             .id = "editor.adapter.text_shaping",
-            .official_source_family = "Windows DirectWrite or audited text shaping adapter",
+            .official_source_family = "Windows SDK DirectWrite private text layout adapter",
+            .implemented = kFirstPartyEditorDirectWriteTextFontAdapterImplemented,
         },
         FirstPartyEditorAdapterBoundaryRow{
             .boundary = FirstPartyEditorAdapterBoundary::font_rasterization,
             .id = "editor.adapter.font_rasterization",
-            .official_source_family = "DirectWrite, CoreText, FreeType-class audited font rasterization adapter",
+            .official_source_family = "Windows SDK DirectWrite private glyph rasterization adapter",
+            .implemented = kFirstPartyEditorDirectWriteTextFontAdapterImplemented,
         },
         FirstPartyEditorAdapterBoundaryRow{
             .boundary = FirstPartyEditorAdapterBoundary::ime_text_services,

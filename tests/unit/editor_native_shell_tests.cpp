@@ -7,6 +7,9 @@
 #include "first_party_editor_document.hpp"
 #include "native_editor_app.hpp"
 #include "native_editor_launch.hpp"
+#if defined(_WIN32)
+#include "native_editor_text_font_adapters.hpp"
+#endif
 #include "native_material_preview_cache.hpp"
 #include "native_viewport_surface.hpp"
 #include "win32_first_party_editor_host.hpp"
@@ -483,7 +486,7 @@ MK_TEST("editor first party document consumes core dock layout and workspace vis
     MK_REQUIRE(shell_document.panel_root_count == app.native_panel_count() - 1U);
 }
 
-MK_TEST("first party editor adapter boundaries stay value-only and unimplemented") {
+MK_TEST("first party editor adapter boundaries report private DirectWrite text and font readiness") {
     const auto rows = mirakana::editor::first_party_editor_required_adapter_boundaries();
 
     const auto* text_shaping =
@@ -500,15 +503,62 @@ MK_TEST("first party editor adapter boundaries stay value-only and unimplemented
     MK_REQUIRE(ime_text_services != nullptr);
     MK_REQUIRE(accessibility != nullptr);
     MK_REQUIRE(text_shaping->official_source_family.find("DirectWrite") != std::string::npos);
+    MK_REQUIRE(font_rasterization->official_source_family.find("DirectWrite") != std::string::npos);
     MK_REQUIRE(ime_text_services->official_source_family.find("Text Services Framework") != std::string::npos);
     MK_REQUIRE(accessibility->official_source_family.find("UI Automation") != std::string::npos);
 
+#if defined(_WIN32)
+    constexpr bool text_font_adapter_implemented = true;
+#else
+    constexpr bool text_font_adapter_implemented = false;
+#endif
+    MK_REQUIRE(text_shaping->implemented == text_font_adapter_implemented);
+    MK_REQUIRE(font_rasterization->implemented == text_font_adapter_implemented);
+    MK_REQUIRE(!ime_text_services->implemented);
+    MK_REQUIRE(!accessibility->implemented);
     for (const auto& row : rows) {
         MK_REQUIRE(!row.id.empty());
-        MK_REQUIRE(!row.implemented);
         MK_REQUIRE(!row.native_handles_public);
     }
 }
+
+#if defined(_WIN32)
+MK_TEST("editor DirectWrite text and font adapters feed runtime UI validation without native handles") {
+    auto text_shaping = mirakana::editor::make_native_editor_directwrite_text_shaping_adapter();
+    auto font_rasterizer = mirakana::editor::make_native_editor_directwrite_font_rasterizer_adapter();
+
+    MK_REQUIRE(text_shaping != nullptr);
+    MK_REQUIRE(font_rasterizer != nullptr);
+    MK_REQUIRE(!mirakana::editor::native_editor_directwrite_text_font_adapters_expose_native_handles());
+
+    const mirakana::ui::TextLayoutRequest text_request{
+        .text = "Mirakanai",
+        .font_family = "Segoe UI",
+        .direction = mirakana::ui::TextDirection::left_to_right,
+        .wrap = mirakana::ui::TextWrapMode::clip,
+        .max_width = 256.0F,
+    };
+    const auto shaped = mirakana::ui::shape_text_run(*text_shaping, text_request);
+
+    MK_REQUIRE(shaped.succeeded());
+    MK_REQUIRE(!shaped.runs.empty());
+    MK_REQUIRE(!shaped.runs.front().glyphs.empty());
+
+    const auto& shaped_glyph = shaped.runs.front().glyphs.front();
+    const mirakana::ui::FontRasterizationRequest font_request{
+        .font_family = shaped_glyph.font_family,
+        .glyph = shaped_glyph.glyph,
+        .pixel_size = 18.0F,
+    };
+    const auto rasterized = mirakana::ui::rasterize_font_glyph(*font_rasterizer, font_request);
+
+    MK_REQUIRE(rasterized.succeeded());
+    MK_REQUIRE(rasterized.allocation.has_value());
+    MK_REQUIRE(rasterized.allocation->glyph == shaped_glyph.glyph);
+    MK_REQUIRE(rasterized.allocation->bitmap.pixel_format == mirakana::ui::FontRasterizationPixelFormat::alpha8);
+    MK_REQUIRE(rasterized.allocation->metrics.advance_x > 0.0F);
+}
+#endif
 
 MK_TEST("editor native shell app records deterministic panel smoke counters") {
     mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
