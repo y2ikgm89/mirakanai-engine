@@ -7,6 +7,7 @@
 #include "mirakana/assets/material_graph.hpp"
 
 #include "mirakana/editor/ai_command_panel.hpp"
+#include "mirakana/editor/ai_operation_surface.hpp"
 #include "mirakana/editor/asset_pipeline.hpp"
 #include "mirakana/editor/command.hpp"
 #include "mirakana/editor/content_browser.hpp"
@@ -356,6 +357,20 @@ find_editor_resource_capture_execution_row(const std::vector<mirakana::editor::E
     return it == rows.end() ? nullptr : &(*it);
 }
 
+[[nodiscard]] const mirakana::editor::EditorAiOperationElementRow*
+find_ai_operation_element(const mirakana::editor::EditorAiOperationSnapshot& snapshot, std::string_view id) noexcept {
+    const auto it = std::ranges::find_if(
+        snapshot.elements, [id](const mirakana::editor::EditorAiOperationElementRow& row) { return row.id == id; });
+    return it == snapshot.elements.end() ? nullptr : &(*it);
+}
+
+[[nodiscard]] const mirakana::editor::EditorAiCommandRow*
+find_ai_command(const mirakana::editor::EditorAiCommandCatalog& catalog, std::string_view id) noexcept {
+    const auto it = std::ranges::find_if(
+        catalog.commands, [id](const mirakana::editor::EditorAiCommandRow& row) { return row.id == id; });
+    return it == catalog.commands.end() ? nullptr : &(*it);
+}
+
 MK_TEST("editor workspace creates required default panels") {
     const auto workspace = mirakana::editor::Workspace::create_default(
         mirakana::editor::ProjectInfo{.name = "sample", .root_path = "games/sample"});
@@ -462,6 +477,121 @@ MK_TEST("editor workspace rejects duplicate panel state") {
         rejected_duplicate_panel = true;
     }
     MK_REQUIRE(rejected_duplicate_panel);
+}
+
+MK_TEST("editor ai operation snapshot exposes visible panel rows") {
+    const auto workspace = mirakana::editor::Workspace::create_default(
+        mirakana::editor::ProjectInfo{.name = "sample", .root_path = "games/sample"});
+
+    const auto snapshot = mirakana::editor::make_editor_ai_operation_snapshot(workspace);
+    const auto* scene = find_ai_operation_element(snapshot, "editor.panel.scene");
+    const auto* resources = find_ai_operation_element(snapshot, "editor.panel.resources");
+
+    MK_REQUIRE(snapshot.revision > 0U);
+    MK_REQUIRE(snapshot.diagnostics.empty());
+    MK_REQUIRE(scene != nullptr);
+    MK_REQUIRE(scene->role == "panel");
+    MK_REQUIRE(scene->label == "Scene");
+    MK_REQUIRE(scene->visible);
+    MK_REQUIRE(scene->enabled);
+    MK_REQUIRE(resources != nullptr);
+    MK_REQUIRE(resources->role == "panel");
+    MK_REQUIRE(resources->label == "Resources");
+    MK_REQUIRE(!resources->visible);
+    MK_REQUIRE(resources->enabled);
+}
+
+MK_TEST("editor ai command catalog exposes stable panel visibility commands") {
+    const auto workspace = mirakana::editor::Workspace::create_default(
+        mirakana::editor::ProjectInfo{.name = "sample", .root_path = "games/sample"});
+
+    const auto catalog = mirakana::editor::make_editor_ai_command_catalog(workspace);
+    const auto* show_resources = find_ai_command(catalog, "editor.panel.resources.show");
+    const auto* hide_resources = find_ai_command(catalog, "editor.panel.resources.hide");
+    const auto* show_ai_commands = find_ai_command(catalog, "editor.panel.ai_commands.show");
+    const auto* hide_profiler = find_ai_command(catalog, "editor.panel.profiler.hide");
+
+    MK_REQUIRE(catalog.revision > 0U);
+    MK_REQUIRE(catalog.commands.size() == 6U);
+    MK_REQUIRE(show_resources != nullptr);
+    MK_REQUIRE(show_resources->target_element_id == "editor.panel.resources");
+    MK_REQUIRE(show_resources->enabled);
+    MK_REQUIRE(show_resources->mutates_state);
+    MK_REQUIRE(show_resources->requires_confirmation);
+    MK_REQUIRE(hide_resources != nullptr);
+    MK_REQUIRE(!hide_resources->enabled);
+    MK_REQUIRE(show_ai_commands != nullptr);
+    MK_REQUIRE(show_ai_commands->target_element_id == "editor.panel.ai_commands");
+    MK_REQUIRE(hide_profiler != nullptr);
+    MK_REQUIRE(hide_profiler->target_element_id == "editor.panel.profiler");
+}
+
+MK_TEST("editor ai command dry run rejects unknown command") {
+    const auto workspace = mirakana::editor::Workspace::create_default(
+        mirakana::editor::ProjectInfo{.name = "sample", .root_path = "games/sample"});
+    const auto catalog = mirakana::editor::make_editor_ai_command_catalog(workspace);
+
+    const auto dry_run = mirakana::editor::dry_run_editor_ai_command(
+        workspace, catalog,
+        mirakana::editor::EditorAiCommandRequest{.command_id = "editor.run.validation",
+                                                 .target_element_id = "editor.panel.resources"});
+
+    MK_REQUIRE(!dry_run.accepted);
+    MK_REQUIRE(!dry_run.diagnostics.empty());
+    MK_REQUIRE(dry_run.diagnostics.front().code == "unknown_command");
+}
+
+MK_TEST("editor ai command dry run rejects target mismatch") {
+    const auto workspace = mirakana::editor::Workspace::create_default(
+        mirakana::editor::ProjectInfo{.name = "sample", .root_path = "games/sample"});
+    const auto catalog = mirakana::editor::make_editor_ai_command_catalog(workspace);
+
+    const auto dry_run = mirakana::editor::dry_run_editor_ai_command(
+        workspace, catalog,
+        mirakana::editor::EditorAiCommandRequest{.command_id = "editor.panel.resources.show",
+                                                 .target_element_id = "editor.panel.profiler"});
+
+    MK_REQUIRE(!dry_run.accepted);
+    MK_REQUIRE(!dry_run.diagnostics.empty());
+    MK_REQUIRE(dry_run.diagnostics.front().code == "target_mismatch");
+}
+
+MK_TEST("editor ai command apply toggles panel visibility after accepted dry run") {
+    auto workspace = mirakana::editor::Workspace::create_default(
+        mirakana::editor::ProjectInfo{.name = "sample", .root_path = "games/sample"});
+    const auto catalog = mirakana::editor::make_editor_ai_command_catalog(workspace);
+    const mirakana::editor::EditorAiCommandRequest request{.command_id = "editor.panel.resources.show",
+                                                           .target_element_id = "editor.panel.resources",
+                                                           .user_confirmed = true};
+
+    const auto dry_run = mirakana::editor::dry_run_editor_ai_command(workspace, catalog, request);
+    const auto apply_result = mirakana::editor::apply_editor_ai_command(workspace, catalog, request);
+
+    MK_REQUIRE(dry_run.accepted);
+    MK_REQUIRE(dry_run.would_mutate);
+    MK_REQUIRE(dry_run.requires_confirmation);
+    MK_REQUIRE(apply_result.applied);
+    MK_REQUIRE(apply_result.before_revision != apply_result.after_revision);
+    MK_REQUIRE(workspace.is_panel_visible(mirakana::editor::PanelId::resources));
+}
+
+MK_TEST("editor ai command apply requires confirmation for mutating commands marked confirmable") {
+    auto workspace = mirakana::editor::Workspace::create_default(
+        mirakana::editor::ProjectInfo{.name = "sample", .root_path = "games/sample"});
+    const auto catalog = mirakana::editor::make_editor_ai_command_catalog(workspace);
+    const mirakana::editor::EditorAiCommandRequest request{.command_id = "editor.panel.resources.show",
+                                                           .target_element_id = "editor.panel.resources"};
+
+    const auto dry_run = mirakana::editor::dry_run_editor_ai_command(workspace, catalog, request);
+    const auto apply_result = mirakana::editor::apply_editor_ai_command(workspace, catalog, request);
+
+    MK_REQUIRE(dry_run.accepted);
+    MK_REQUIRE(dry_run.requires_confirmation);
+    MK_REQUIRE(!apply_result.applied);
+    MK_REQUIRE(apply_result.before_revision == apply_result.after_revision);
+    MK_REQUIRE(!apply_result.diagnostics.empty());
+    MK_REQUIRE(apply_result.diagnostics.front().code == "confirmation_required");
+    MK_REQUIRE(!workspace.is_panel_visible(mirakana::editor::PanelId::resources));
 }
 
 MK_TEST("editor command registry executes registered commands") {

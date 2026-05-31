@@ -278,6 +278,9 @@ if (@($geToolsModule[0].publicHeaders) -notcontains "engine/tools/include/miraka
 if (@($geEditorCoreModule[0].publicHeaders) -notcontains "editor/core/include/mirakana/editor/play_in_editor.hpp") {
     Write-Error "engine/agent/manifest.json MK_editor_core publicHeaders must include play_in_editor.hpp"
 }
+if (@($geEditorCoreModule[0].publicHeaders) -notcontains "editor/core/include/mirakana/editor/ai_operation_surface.hpp") {
+    Write-Error "engine/agent/manifest.json MK_editor_core publicHeaders must include ai_operation_surface.hpp"
+}
 if (@($geUiModule[0].publicHeaders) -notcontains "engine/ui/include/mirakana/ui/runtime_ui_workbench.hpp") { Write-Error "engine/agent/manifest.json MK_ui publicHeaders must include runtime_ui_workbench.hpp" }
 foreach ($runtimeUiWorkbenchModuleNeedle in @("Runtime UI Workbench Production v1", "RuntimeUiWorkbenchDocument", "RuntimeUiWorkbenchPlan", "plan_runtime_ui_workbench", "backend/native/editor/RHI/UI-middleware", "zero renderer/text-shaping/font-rasterization/IME/accessibility-bridge/image-decoding/native-platform adapter invocation")) { Assert-ContainsText ([string]$geUiModule[0].purpose) $runtimeUiWorkbenchModuleNeedle "MK_ui module purpose" }
 Assert-ContainsText ([string]$geUiModule[0].purpose) "MonospaceTextLayoutPolicy" "MK_ui module purpose"
@@ -449,6 +452,9 @@ Assert-ContainsText ([string]$geEditorCoreModule[0].purpose) "EditorPlaySession"
 Assert-ContainsText ([string]$geEditorCoreModule[0].purpose) "IEditorPlaySessionDriver" "MK_editor_core module purpose"
 Assert-ContainsText ([string]$geEditorCoreModule[0].purpose) "EditorPlaySessionTickContext" "MK_editor_core module purpose"
 Assert-ContainsText ([string]$geEditorCoreModule[0].purpose) "isolated simulation scene" "MK_editor_core module purpose"
+foreach ($needle in @("EditorAiOperationSnapshot", "EditorAiCommandCatalog", "EditorAiCommandRequest", "EditorAiCommandDryRunResult", "EditorAiCommandApplyResult", "dry-run-before-apply AI panel visibility command rows")) {
+    Assert-ContainsText ([string]$geEditorCoreModule[0].purpose) $needle "MK_editor_core module purpose"
+}
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditor) "EditorPlaySession" "editor game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditor) "IEditorPlaySessionDriver" "editor game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditor) "isolated simulation scene" "editor game guidance"
@@ -2585,10 +2591,12 @@ foreach ($requiredAgentPath in @("games/CMakeLists.txt", "docs/README.md", "docs
 
 $currentEditorGuidance = [string]$manifest.gameCodeGuidance.currentEditor
 foreach ($requiredNeedle in @("Windows-native editor/developer shell", "editor_shell_backend=d3d12", "editor_shell_panels=11", "editor_shell_viewport_status=diagnostic_only", "editor_shell_viewport_native_handles_exposed=0", "editor_shell_material_preview_status=diagnostic_only", "editor_shell_material_preview_native_handles_exposed=0", "--no-user-config", "Resources panel refreshes D3D12 host availability", "private D3D12 texture adapter", "material-preview GPU parity remains unsupported", "runtime game UI Dear ImGui usage")) { Assert-ContainsText $currentEditorGuidance $requiredNeedle "gameCodeGuidance.currentEditor native shell" }
+foreach ($requiredNeedle in @("First-Party Editor Shell v1", "EditorAiOperationSnapshot", "EditorAiCommandCatalog", "EditorAiCommandRequest", "EditorAiCommandDryRunResult", "EditorAiCommandApplyResult", "dry-run-before-apply AI panel visibility command rows", "editor.panel.resources.show", "editor.panel.ai_commands.show", "editor.panel.profiler.hide", "visual scraping")) { Assert-ContainsText $currentEditorGuidance $requiredNeedle "gameCodeGuidance.currentEditor AI operation surface" }
 foreach ($forbiddenNeedle in @("optional SDL3 + Dear ImGui docking shell", "D3D12 shared texture wrapping through SDL3", "GUI-local SDL viewport display texture")) { Assert-DoesNotContainText $currentEditorGuidance $forbiddenNeedle "gameCodeGuidance.currentEditor native shell" }
 
 $editorCmake = Get-AgentSurfaceText "editor/CMakeLists.txt"
 foreach ($nativeEditorNeedle in @("add_library(MK_editor_shell_common", "src/first_party_editor_docking.cpp", "src/first_party_editor_document.cpp", "src/first_party_editor_rich_text.cpp", "src/native_editor_launch.cpp", "add_library(MK_editor_shell_win32", "src/native_editor_panels.cpp", "src/win32_imgui_d3d12_host.cpp", "src/win32_imgui_message_bridge.cpp", "imgui::imgui", "add_executable(MK_editor", "MK_platform_win32", "MK_ENABLE_DESKTOP_GUI is Windows-only", "MK_ENABLE_DESKTOP_GUI requires MK_platform_win32", "Native MK_editor shell is SDL3-free")) { Assert-ContainsText $editorCmake $nativeEditorNeedle "native editor shell contract" }
+Assert-ContainsText $editorCmake "core/src/ai_operation_surface.cpp" "editor core AI operation source list"
 $editorMainText = Get-AgentSurfaceText "editor/src/main.cpp"
 foreach ($requiredNeedle in @("native_editor_launch.hpp", "native_editor_app.hpp", "win32_imgui_d3d12_host.hpp", "parse_native_editor_launch", "validate_native_editor_launch", "native_editor_launch_usage_error_exit_code", "editor_shell_status=ready", "editor_shell_backend=d3d12", "editor_shell_panels=", "editor_shell_sdl3=0", "editor_shell_material_preview_status=", "editor_shell_material_preview_native_handles_exposed=")) { Assert-ContainsText $editorMainText $requiredNeedle "native editor shell main" }
 foreach ($forbiddenNeedle in @("SDL3", "SDL_", "ImGui_Impl", "imgui.h", "windows.h", "d3d12.h", "dxgi")) { Assert-DoesNotContainText $editorMainText $forbiddenNeedle "native editor shell main" }

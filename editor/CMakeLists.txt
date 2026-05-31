@@ -1,5 +1,6 @@
 add_library(MK_editor_core
     core/src/ai_command_panel.cpp
+    core/src/ai_operation_surface.cpp
     core/src/asset_pipeline.cpp
     core/src/command.cpp
     core/src/content_browser.cpp
