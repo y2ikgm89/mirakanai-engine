@@ -244,6 +244,8 @@ struct Win32FirstPartyEditorHost::Impl {
 
         const auto document = make_first_party_editor_document(app);
         app.record_native_panels_rendered(document.panel_root_count);
+        app.record_native_docking_frame(document.docking_status, document.tab_header_count, document.split_gutter_count,
+                                        document.active_panel_count, document.focusable_dock_control_count);
 
         renderer->begin_frame();
         const auto submit = mirakana::submit_ui_renderer_submission(*renderer, document.renderer_submission,

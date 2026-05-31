@@ -261,6 +261,11 @@ struct NativeEditorApp::Impl {
     ui::IClipboardTextAdapter* clipboard_adapter{nullptr};
     IProcessRunner* process_runner{nullptr};
     NativeEditorServiceStatus service_status;
+    std::string docking_status_last_frame{"not_rendered"};
+    std::uint32_t dock_tab_headers_last_frame{0};
+    std::uint32_t dock_split_gutters_last_frame{0};
+    std::uint32_t dock_active_panels_last_frame{0};
+    std::uint32_t dock_focusable_controls_last_frame{0};
 };
 
 NativeEditorApp::NativeEditorApp(NativeEditorLaunchOptions options)
@@ -294,6 +299,26 @@ bool NativeEditorApp::has_native_panel(std::string_view id) const noexcept {
 
 std::uint32_t NativeEditorApp::panels_rendered_last_frame() const noexcept {
     return panels_rendered_last_frame_;
+}
+
+std::string_view NativeEditorApp::docking_status_last_frame() const noexcept {
+    return impl_->docking_status_last_frame;
+}
+
+std::uint32_t NativeEditorApp::dock_tab_headers_last_frame() const noexcept {
+    return impl_->dock_tab_headers_last_frame;
+}
+
+std::uint32_t NativeEditorApp::dock_split_gutters_last_frame() const noexcept {
+    return impl_->dock_split_gutters_last_frame;
+}
+
+std::uint32_t NativeEditorApp::dock_active_panels_last_frame() const noexcept {
+    return impl_->dock_active_panels_last_frame;
+}
+
+std::uint32_t NativeEditorApp::dock_focusable_controls_last_frame() const noexcept {
+    return impl_->dock_focusable_controls_last_frame;
 }
 
 const Workspace& NativeEditorApp::workspace() const noexcept {
@@ -494,6 +519,16 @@ void NativeEditorApp::record_native_frame() noexcept {
 
 void NativeEditorApp::record_native_panels_rendered(std::uint32_t count) noexcept {
     panels_rendered_last_frame_ = count;
+}
+
+void NativeEditorApp::record_native_docking_frame(std::string status, std::uint32_t tab_header_count,
+                                                  std::uint32_t split_gutter_count, std::uint32_t active_panel_count,
+                                                  std::uint32_t focusable_control_count) {
+    impl_->docking_status_last_frame = std::move(status);
+    impl_->dock_tab_headers_last_frame = tab_header_count;
+    impl_->dock_split_gutters_last_frame = split_gutter_count;
+    impl_->dock_active_panels_last_frame = active_panel_count;
+    impl_->dock_focusable_controls_last_frame = focusable_control_count;
 }
 
 void NativeEditorApp::record_native_resource_device_ready(std::uint64_t frame_index) {

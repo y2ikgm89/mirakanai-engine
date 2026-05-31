@@ -243,6 +243,79 @@ MK_TEST("editor first party document includes visible panel roots") {
     MK_REQUIRE(contains_element(shell_document.document, "editor.panel.project_settings"));
 }
 
+MK_TEST("editor first party document renders dock tab headers gutters and focused active panels") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+
+    const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
+    const auto* left_tabs =
+        shell_document.document.find(mirakana::ui::ElementId{.value = "editor.dock.dock.left_stack.tabs"});
+    const auto* scene_tab =
+        shell_document.document.find(mirakana::ui::ElementId{.value = "editor.dock.dock.left_stack.tab.scene"});
+    const auto* viewport_tab =
+        shell_document.document.find(mirakana::ui::ElementId{.value = "editor.dock.dock.viewport_stack.tab.viewport"});
+    const auto* root_gutter =
+        shell_document.document.find(mirakana::ui::ElementId{.value = "editor.dock.dock.root.gutter.1"});
+    const auto* scene_panel = shell_document.document.find(mirakana::ui::ElementId{.value = "editor.panel.scene"});
+    const auto* assets_panel = shell_document.document.find(mirakana::ui::ElementId{.value = "editor.panel.assets"});
+    const auto* viewport_panel =
+        shell_document.document.find(mirakana::ui::ElementId{.value = "editor.panel.viewport"});
+
+    MK_REQUIRE(left_tabs != nullptr);
+    MK_REQUIRE(left_tabs->role == mirakana::ui::SemanticRole::list);
+    MK_REQUIRE(scene_tab != nullptr);
+    MK_REQUIRE(scene_tab->role == mirakana::ui::SemanticRole::button);
+    MK_REQUIRE(scene_tab->style.background_token == "editor.dock.tab.active");
+    MK_REQUIRE(viewport_tab != nullptr);
+    MK_REQUIRE(viewport_tab->style.background_token == "editor.dock.tab.focused");
+    MK_REQUIRE(root_gutter != nullptr);
+    MK_REQUIRE(root_gutter->style.background_token == "editor.dock.gutter.horizontal");
+    MK_REQUIRE(scene_panel != nullptr);
+    MK_REQUIRE(scene_panel->visible);
+    MK_REQUIRE(scene_panel->style.background_token == "editor.panel.active");
+    MK_REQUIRE(assets_panel != nullptr);
+    MK_REQUIRE(!assets_panel->visible);
+    MK_REQUIRE(viewport_panel != nullptr);
+    MK_REQUIRE(viewport_panel->style.background_token == "editor.panel.focused");
+    MK_REQUIRE(shell_document.focused_element.value == "editor.dock.dock.viewport_stack.tab.viewport");
+    MK_REQUIRE(shell_document.tab_header_count == 11U);
+    MK_REQUIRE(shell_document.split_gutter_count == 3U);
+    MK_REQUIRE(shell_document.active_panel_count == 4U);
+    MK_REQUIRE(shell_document.focusable_dock_control_count == 11U);
+    MK_REQUIRE(shell_document.docking_status == "single_window_ready");
+}
+
+MK_TEST("editor first party document exposes keyboard focus traversal over dock tabs") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+
+    const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
+    mirakana::ui::InteractionState interaction;
+
+    MK_REQUIRE(interaction.set_focus(shell_document.document, shell_document.focused_element));
+    MK_REQUIRE(interaction.focused().value == "editor.dock.dock.viewport_stack.tab.viewport");
+    MK_REQUIRE(interaction.route_navigation(shell_document.document, mirakana::ui::NavigationDirection::next));
+    MK_REQUIRE(interaction.focused().value != "editor.dock.dock.viewport_stack.tab.viewport");
+    MK_REQUIRE(interaction.route_navigation(shell_document.document, mirakana::ui::NavigationDirection::previous));
+    MK_REQUIRE(interaction.focused().value == "editor.dock.dock.viewport_stack.tab.viewport");
+}
+
+MK_TEST("editor first party document disables hidden dock tab commands") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    app.set_panel_visible(mirakana::editor::PanelId::resources, false);
+
+    const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
+    const auto* resources_tab =
+        shell_document.document.find(mirakana::ui::ElementId{.value = "editor.dock.dock.left_stack.tab.resources"});
+    const auto* resources_panel =
+        shell_document.document.find(mirakana::ui::ElementId{.value = "editor.panel.resources"});
+
+    MK_REQUIRE(resources_tab != nullptr);
+    MK_REQUIRE(!resources_tab->enabled);
+    MK_REQUIRE(resources_tab->style.background_token == "editor.dock.tab.disabled");
+    MK_REQUIRE(resources_panel == nullptr);
+    MK_REQUIRE(shell_document.tab_header_count == 11U);
+    MK_REQUIRE(shell_document.focusable_dock_control_count == 10U);
+}
+
 MK_TEST("editor first party document keeps stable semantic element ids") {
     mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
     app.record_native_viewport_d3d12_host_ready(1U);
@@ -269,7 +342,7 @@ MK_TEST("editor first party document produces renderer submission without native
     const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
 
     MK_REQUIRE(!shell_document.native_handles_exposed);
-    MK_REQUIRE(shell_document.renderer_submission.elements.size() == shell_document.document.size());
+    MK_REQUIRE(shell_document.renderer_submission.elements.size() < shell_document.document.size());
     MK_REQUIRE(!shell_document.renderer_submission.boxes.empty());
     MK_REQUIRE(!shell_document.renderer_submission.text_runs.empty());
     MK_REQUIRE(!shell_document.renderer_submission.accessibility_nodes.empty());
@@ -289,6 +362,11 @@ MK_TEST("editor first party shell smoke counters report imgui disabled") {
     MK_REQUIRE(!counters.sdl3_enabled);
     MK_REQUIRE(!counters.viewport_native_handles_exposed);
     MK_REQUIRE(!counters.material_preview_native_handles_exposed);
+    MK_REQUIRE(counters.docking_status == "single_window_ready");
+    MK_REQUIRE(counters.dock_tab_header_count == 11U);
+    MK_REQUIRE(counters.dock_split_gutter_count == 3U);
+    MK_REQUIRE(counters.dock_active_panel_count == 4U);
+    MK_REQUIRE(counters.dock_focusable_control_count == 11U);
 }
 
 MK_TEST("editor first party win32 host result defaults to explicit no backend") {
@@ -372,8 +450,21 @@ MK_TEST("editor native shell app records deterministic panel smoke counters") {
     mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
 
     MK_REQUIRE(app.panels_rendered_last_frame() == 0U);
+    MK_REQUIRE(app.docking_status_last_frame() == "not_rendered");
+    MK_REQUIRE(app.dock_tab_headers_last_frame() == 0U);
+    MK_REQUIRE(app.dock_split_gutters_last_frame() == 0U);
+    MK_REQUIRE(app.dock_active_panels_last_frame() == 0U);
+    MK_REQUIRE(app.dock_focusable_controls_last_frame() == 0U);
+
     app.record_native_panels_rendered(11U);
+    app.record_native_docking_frame("single_window_ready", 11U, 3U, 4U, 11U);
+
     MK_REQUIRE(app.panels_rendered_last_frame() == 11U);
+    MK_REQUIRE(app.docking_status_last_frame() == "single_window_ready");
+    MK_REQUIRE(app.dock_tab_headers_last_frame() == 11U);
+    MK_REQUIRE(app.dock_split_gutters_last_frame() == 3U);
+    MK_REQUIRE(app.dock_active_panels_last_frame() == 4U);
+    MK_REQUIRE(app.dock_focusable_controls_last_frame() == 11U);
 }
 
 MK_TEST("editor native shell app updates resources panel from native host availability") {

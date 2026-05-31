@@ -113,6 +113,7 @@ $rootCmakeContent = Get-Content -LiteralPath (Join-Path $root "CMakeLists.txt") 
 if ($rootCmakeContent.Contains("if(MK_ENABLE_DESKTOP_EDITOR)`r`n    set(MK_DESKTOP_RUNTIME_ENABLED ON)")) {
     Write-Error "MK_ENABLE_DESKTOP_EDITOR must not imply the removed SDL3 desktop runtime lane"
 }
+$editorDockingSmokeNeedles = @("editor_shell_docking_status=single_window_ready", "editor_shell_dock_tab_headers=11", "editor_shell_dock_split_gutters=3", "editor_shell_dock_active_panels=4", "editor_shell_dock_focusable_controls=11")
 foreach ($requiredNeedle in @(
         "MK_editor_native_shell_tests",
         "MK_editor_smoke",
@@ -121,7 +122,8 @@ foreach ($requiredNeedle in @(
         "editor_shell_ui=first_party",
         "editor_shell_backend=d3d12",
         "editor_shell_imgui=0",
-        "editor_shell_panels=11",
+        "editor_shell_panels=11"
+    ) + $editorDockingSmokeNeedles + @(
         "editor_shell_sdl3=0",
         "editor_shell_viewport_status=diagnostic_only",
         "editor_shell_viewport_native_handles_exposed=0",
@@ -166,7 +168,8 @@ foreach ($requiredNeedle in @(
         "editor_shell_ui=first_party",
         "editor_shell_backend=d3d12",
         "editor_shell_imgui=0",
-        "editor_shell_panels=11",
+        "editor_shell_panels=11"
+    ) + $editorDockingSmokeNeedles + @(
         "editor_shell_viewport_status=diagnostic_only",
         "editor_shell_viewport_native_handles_exposed=0",
         "editor_shell_material_preview_status=diagnostic_only",
@@ -193,7 +196,8 @@ foreach ($requiredNeedle in @(
         "editor_shell_ui=first_party",
         "editor_shell_backend=d3d12",
         "editor_shell_imgui=0",
-        "editor_shell_panels=11",
+        "editor_shell_panels=11"
+    ) + $editorDockingSmokeNeedles + @(
         "editor_shell_viewport_status=diagnostic_only",
         "editor_shell_viewport_native_handles_exposed=0",
         "editor_shell_material_preview_status=diagnostic_only",

@@ -16,7 +16,13 @@ struct FirstPartyEditorDocument {
     ui::UiDocument document;
     ui::LayoutResult layout;
     ui::RendererSubmission renderer_submission;
+    std::string docking_status{"not_rendered"};
+    ui::ElementId focused_element;
     std::uint32_t panel_root_count{0};
+    std::uint32_t tab_header_count{0};
+    std::uint32_t split_gutter_count{0};
+    std::uint32_t active_panel_count{0};
+    std::uint32_t focusable_dock_control_count{0};
     bool native_handles_exposed{false};
 };
 
@@ -28,6 +34,11 @@ struct FirstPartyEditorShellSmokeCounters {
     bool sdl3_enabled{false};
     bool viewport_native_handles_exposed{false};
     bool material_preview_native_handles_exposed{false};
+    std::string docking_status{"not_rendered"};
+    std::uint32_t dock_tab_header_count{0};
+    std::uint32_t dock_split_gutter_count{0};
+    std::uint32_t dock_active_panel_count{0};
+    std::uint32_t dock_focusable_control_count{0};
 };
 
 [[nodiscard]] FirstPartyEditorDocument make_first_party_editor_document(const NativeEditorApp& app);
