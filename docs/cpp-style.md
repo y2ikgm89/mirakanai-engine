@@ -109,7 +109,7 @@ Large translation units (for example `core_tests.cpp`, `editor_core_tests.cpp`) 
 
 ## Desktop editor shell
 
-The visible `MK_editor` shell is deferred after SDL3 removal. The previous SDL3/Dear ImGui translation units and editor-local `compile_flags.txt` fallbacks have been removed from active guidance. For `editor/core` implementation TUs, see **Editor core C++** in the editor skills and production adapter notes under **Unit tests** in this file. Future visible shell work must add its own focused native-adapter coding conventions, dependencies, and validation gates without reintroducing SDL3.
+The visible `MK_editor` shell is the active first-party `desktop-editor` lane after SDL3/Dear ImGui removal. The previous SDL3/Dear ImGui translation units and editor-local `compile_flags.txt` fallbacks have been removed from active guidance. For `editor/core` implementation TUs, see **Editor core C++** in the editor skills and production adapter notes under **Unit tests** in this file. Future visible shell work must keep focused native-adapter coding conventions, dependencies, and validation gates without reintroducing SDL3 or UI middleware.
 
 ## AI Development Notes
 

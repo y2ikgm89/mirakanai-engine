@@ -38,7 +38,7 @@ This document expands validation, tooling, editor-shell, and IDE-integration gui
 
 ## Native visible editor shell (`MK_editor`)
 
-The visible `MK_editor` shell is a Windows-native Win32 + first-party retained UI + Direct3D 12 developer/editor shell. The removed SDL3 shell sources (`editor/src/material_preview_gpu_cache.cpp`, `editor/src/sdl_viewport_texture.cpp`, and editor-local `compile_flags.txt` fallbacks) are no longer active guidance, and the remaining historical Dear ImGui shell files are closeout-only deletion targets rather than an active supported lane. `MK_editor_core` remains the supported editor logic target and is covered by the default validation lane.
+The visible `MK_editor` shell is a Windows-native Win32 + first-party retained UI + Direct3D 12 developer/editor shell. The removed SDL3 shell sources (`editor/src/material_preview_gpu_cache.cpp`, `editor/src/sdl_viewport_texture.cpp`, and editor-local `compile_flags.txt` fallbacks) are no longer active guidance, and the historical Dear ImGui shell implementation files have been deleted rather than retained as an active supported lane. `MK_editor_core` remains the supported editor logic target and is covered by the default validation lane.
 
 Native editor shell work must keep Win32, Direct3D 12, DXGI, and descriptor/fence ownership private to `editor/src` implementation targets. Use `tools/build-editor.ps1` for the supported dependency-free editor validation lane and keep `tools/evaluate-cpp23.ps1 -Editor` aligned with the `cpp23-desktop-editor-eval` preset. The shell remains editor/developer tooling only; runtime game UI must use first-party `mirakana_ui` contracts and must not depend on Dear ImGui, UI middleware, or SDL3.
 
