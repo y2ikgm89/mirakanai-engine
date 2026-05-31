@@ -11,10 +11,18 @@ $manifestRaw = Get-Content -LiteralPath $manifestPath -Raw
 $gameAgentSchemaPath = Resolve-RequiredAgentPath "schemas/game-agent.schema.json"
 $currentCapabilitiesPath = Resolve-RequiredAgentPath "docs/current-capabilities.md"
 $aiGameDevelopmentPath = Resolve-RequiredAgentPath "docs/ai-game-development.md"
+$aiIntegrationPath = Resolve-RequiredAgentPath "docs/ai-integration.md"
+$architecturePath = Resolve-RequiredAgentPath "docs/architecture.md"
+$agentOperationalReferencePath = Resolve-RequiredAgentPath "docs/agent-operational-reference.md"
+$cppStylePath = Resolve-RequiredAgentPath "docs/cpp-style.md"
 $roadmapPath = Resolve-RequiredAgentPath "docs/roadmap.md"
 $gameAgentSchemaText = Get-Content -LiteralPath $gameAgentSchemaPath -Raw
 $currentCapabilitiesContent = Get-Content -LiteralPath $currentCapabilitiesPath -Raw
 $aiGameDevelopmentContent = Get-Content -LiteralPath $aiGameDevelopmentPath -Raw
+$aiIntegrationContent = Get-Content -LiteralPath $aiIntegrationPath -Raw
+$architectureContent = Get-Content -LiteralPath $architecturePath -Raw
+$agentOperationalReferenceContent = Get-Content -LiteralPath $agentOperationalReferencePath -Raw
+$cppStyleContent = Get-Content -LiteralPath $cppStylePath -Raw
 $roadmapContent = Get-Content -LiteralPath $roadmapPath -Raw
 $workflowsPath = Resolve-RequiredAgentPath "docs/workflows.md"
 $testingPath = Resolve-RequiredAgentPath "docs/testing.md"
@@ -58,6 +66,8 @@ foreach ($needle in @("Instruction Hygiene", "specific, concise, verifiable", "M
 }
 Assert-ContainsText $agentsContent "agent-surface drift check" "AGENTS.md"
 Assert-ContainsText $agentsContent "do not broad-load every agent surface" "AGENTS.md"
+Assert-ContainsText $agentsContent 'Active editor/runtime UI uses first-party `mirakana_ui`, `mirakana::ui`, and `MK_editor`' "AGENTS.md first-party UI baseline"
+Assert-DoesNotContainText $agentsContent "Treat Dear ImGui as optional developer/editor tooling only" "AGENTS.md stale Dear ImGui guidance"
 if ($agentsContent -notmatch "docs/README\.md" -or $agentsContent -notmatch "docs/superpowers/plans/README\.md") {
     Write-Error "AGENTS.md must document the docs entrypoint and implementation plan registry"
 }
@@ -83,6 +93,16 @@ Assert-ContainsText $agentsContent "VCPKG_MANIFEST_INSTALL=OFF" "AGENTS.md"
 Assert-ContainsText $agentsContent 'VCPKG_INSTALLED_DIR=${sourceDir}/vcpkg_installed' "AGENTS.md"
 Assert-ContainsText $agentsContent "CMake configure must not install, restore, or download vcpkg packages" "AGENTS.md"
 Assert-ContainsText $agentsContent "phase-gated milestone plan" "AGENTS.md"
+Assert-ContainsText $aiIntegrationContent "CMake, vcpkg, Direct3D 12, Vulkan, Metal, and C++ tooling" "docs/ai-integration.md live docs policy"
+Assert-DoesNotContainText $aiIntegrationContent "CMake, vcpkg, SDL3, Dear ImGui" "docs/ai-integration.md stale live docs policy"
+Assert-ContainsText $architectureContent 'The visible `MK_editor` shell is the active dependency-free `desktop-editor` lane' "docs/architecture.md first-party editor shell"
+Assert-ContainsText $architectureContent 'Active editor UI must use first-party retained `MK_editor` / `mirakana::ui` contracts' "docs/architecture.md editor dependency rule"
+Assert-DoesNotContainText $architectureContent 'The visible `MK_editor` shell is currently deferred' "docs/architecture.md stale deferred editor shell"
+Assert-DoesNotContainText $architectureContent 'may adapt editor-core or future `MK_editor_ui` models to Dear ImGui' "docs/architecture.md stale Dear ImGui editor allowance"
+Assert-ContainsText $agentOperationalReferenceContent "the historical Dear ImGui shell implementation files have been deleted" "docs/agent-operational-reference.md first-party editor closeout"
+Assert-DoesNotContainText $agentOperationalReferenceContent "remaining historical Dear ImGui shell files are closeout-only deletion targets" "docs/agent-operational-reference.md stale Dear ImGui deletion target"
+Assert-ContainsText $cppStyleContent 'The visible `MK_editor` shell is the active first-party `desktop-editor` lane' "docs/cpp-style.md first-party editor shell"
+Assert-DoesNotContainText $cppStyleContent 'The visible `MK_editor` shell is deferred after SDL3 removal' "docs/cpp-style.md stale deferred editor shell"
 foreach ($planVolumeNeedle in @("live plan stack shallow", "active gap-cluster burn-down or milestone", "capability/gap-cluster/milestone", "not PR/task-count units", "phase behavior/API/validation", "validation-only follow-up", "Git history")) {
     Assert-ContainsText $agentsContent $planVolumeNeedle "AGENTS.md"
 }

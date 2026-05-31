@@ -177,7 +177,7 @@ The engine manifest also declares `aiOperableProductionLoop`: recipe ids, struct
 
 ## Live Documentation Policy
 
-- Use Context7 MCP for live library, SDK, build-system, and toolchain documentation such as CMake, vcpkg, SDL3, Dear ImGui, Direct3D 12, Vulkan, Metal, and C++ tooling.
+- Use Context7 MCP for live library, SDK, build-system, and toolchain documentation such as CMake, vcpkg, Direct3D 12, Vulkan, Metal, and C++ tooling.
 - Use the OpenAI developer documentation MCP, or official OpenAI documentation when MCP is unavailable, for OpenAI API, Codex, ChatGPT Apps SDK, OpenAI agent, and OpenAI model questions.
 - Use official Anthropic documentation for Claude Code memory, settings, permissions, hooks, skills, and subagent behavior.
 - Use official Microsoft documentation for Windows SDK Debugging Tools, Graphics Tools / D3D12 debug layer, PIX on Windows, Windows Performance Toolkit, and ADK servicing guidance. Keep those tools host-local and do not commit installer state, symbol caches, traces, or personal PATH settings.
