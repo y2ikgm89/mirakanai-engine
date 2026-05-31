@@ -23,7 +23,7 @@ struct NativeEditorLaunchValidation {
     std::string diagnostic;
 };
 
-struct NativeEditorImguiUserConfigPolicy {
+struct NativeEditorUserConfigPolicy {
     bool ini_file_enabled{true};
     bool log_file_enabled{true};
 };
@@ -40,8 +40,8 @@ validate_native_editor_launch_options(const NativeEditorLaunchOptions& options);
 
 [[nodiscard]] NativeEditorLaunchValidation validate_native_editor_launch(const NativeEditorLaunchParseResult& launch);
 
-[[nodiscard]] NativeEditorImguiUserConfigPolicy
-make_native_editor_imgui_user_config_policy(const NativeEditorLaunchOptions& options) noexcept;
+[[nodiscard]] NativeEditorUserConfigPolicy
+make_native_editor_user_config_policy(const NativeEditorLaunchOptions& options) noexcept;
 
 [[nodiscard]] std::string native_editor_launch_usage(std::string_view executable_name);
 

@@ -301,7 +301,7 @@ Files:
 
 Steps:
 
-- [ ] Rename the user-config policy test from `imgui persistence` to first-party shell persistence:
+- [x] Rename the user-config policy test from `imgui persistence` to first-party shell persistence:
 
 ```cpp
 MK_TEST("editor native shell no-user-config disables shell persistence")
@@ -309,12 +309,12 @@ MK_TEST("editor native shell no-user-config disables shell persistence")
 
 Expected: it calls `make_native_editor_user_config_policy`, not `make_native_editor_imgui_user_config_policy`.
 
-- [ ] Delete ImGui descriptor allocator tests and replace them with first-party document/renderer-planning tests:
+- [x] Delete ImGui descriptor allocator tests and replace them with first-party document/renderer-planning tests:
   - `first party editor document includes visible panel roots`
   - `first party editor document keeps stable semantic element ids`
   - `first party editor document produces renderer submission without native handles`
   - `first party editor shell smoke counters report imgui disabled`
-- [ ] Add expected smoke key coverage:
+- [x] Add expected smoke key coverage:
 
 ```text
 editor_shell_ui=first_party
@@ -326,8 +326,8 @@ editor_shell_viewport_native_handles_exposed=0
 editor_shell_material_preview_native_handles_exposed=0
 ```
 
-- [ ] Keep service routing tests for file dialog, clipboard, and reviewed process execution unchanged except recipe ids renamed from `desktop-gui` to `desktop-editor`.
-- [ ] Run:
+- [x] Keep service routing tests for file dialog, clipboard, and reviewed process execution unchanged except recipe ids renamed from `desktop-gui` to `desktop-editor`.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests
@@ -335,6 +335,11 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 ```
 
 Expected at this phase start: tests fail or do not compile until later phases replace the implementation. At phase close: they pass.
+
+### Phase 1 Evidence
+
+- RED: `tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests` failed because `first_party_editor_document.hpp` did not exist after the test replacement.
+- GREEN: `tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests` and `tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_native_shell_tests` passed after the first-party shell contract implementation.
 
 ## Phase 2 - First-Party Editor Document Composition
 
@@ -357,38 +362,40 @@ Files:
 
 Steps:
 
-- [ ] Add a private shell document API:
+- [x] Add a private shell document API:
 
 ```cpp
 namespace mirakana::editor {
 
-struct FirstPartyEditorDocumentDesc {
-    const NativeEditorApp* app{nullptr};
-    mirakana::ui::Rect viewport{};
-};
-
-struct FirstPartyEditorDocumentResult {
+struct FirstPartyEditorDocument {
     mirakana::ui::UiDocument document;
-    mirakana::ui::RendererSubmission submission;
-    std::uint32_t panel_roots{0};
-    std::uint32_t visible_panel_roots{0};
-    std::string diagnostic;
-
-    [[nodiscard]] bool succeeded() const noexcept;
+    mirakana::ui::LayoutResult layout;
+    mirakana::ui::RendererSubmission renderer_submission;
+    std::uint32_t panel_root_count{0};
+    bool native_handles_exposed{false};
 };
 
-[[nodiscard]] FirstPartyEditorDocumentResult
-build_first_party_editor_document(const FirstPartyEditorDocumentDesc& desc);
+struct FirstPartyEditorShellSmokeCounters {
+    std::string ui{"first_party"};
+    std::string backend{"d3d12"};
+    std::uint32_t panel_count{0};
+    bool imgui_enabled{false};
+    bool sdl3_enabled{false};
+    bool viewport_native_handles_exposed{false};
+    bool material_preview_native_handles_exposed{false};
+};
+
+[[nodiscard]] FirstPartyEditorDocument make_first_party_editor_document(const NativeEditorApp& app);
 
 } // namespace mirakana::editor
 ```
 
-- [ ] Compose top-level panel roots for Main Menu, Scene, Inspector, Assets, Console, Viewport, Resources, AI Commands, Profiler, Timeline, and Project Settings.
-- [ ] Reuse existing `make_inspector_ui_model`, `make_asset_list_ui_model`, `make_diagnostics_ui_model`, and `make_timeline_ui_model` patterns where they fit; create shell-only composition helpers for panels that still lack core UI model functions.
-- [ ] Assign stable element ids using panel-qualified prefixes such as `main_menu.file.open_project`, `viewport.status`, `resources.backend`, and `project_settings.services.clipboard`.
-- [ ] Create a restrained default shell theme in `first_party_editor_theme.*` only if tests need deterministic color tokens; keep it private.
-- [ ] Ensure all renderer payloads come from `mirakana::ui` submission helpers and `MK_ui_renderer`; do not draw through native UI middleware.
-- [ ] Run:
+- [x] Compose top-level panel roots for Main Menu, Scene, Inspector, Assets, Console, Viewport, Resources, AI Commands, Profiler, Timeline, and Project Settings.
+- [x] Reuse existing `MK_ui` document composition patterns; deeper per-panel core UI model embedding remains for later richer panel phases.
+- [x] Assign stable element ids using `editor.panel.<panel>` prefixes such as `editor.panel.viewport.status`, `editor.panel.resources.status`, and `editor.panel.project_settings.status`.
+- [x] Confirm no `first_party_editor_theme.*` files are needed for this candidate; deterministic style tokens live in the private document composition helper.
+- [x] Ensure all renderer payloads come from `mirakana::ui` submission helpers; do not draw through native UI middleware.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests MK_ui_renderer_tests
@@ -396,6 +403,15 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 ```
 
 Expected: first-party document and renderer submission tests pass.
+
+### Phase 2 Evidence
+
+- Added private `editor/src/first_party_editor_document.hpp` and `.cpp` to `MK_editor_shell_common`.
+- `make_first_party_editor_document` now builds deterministic retained panel roots, layout, renderer submission, accessibility rows, and native-handle non-exposure evidence.
+- `make_first_party_editor_shell_smoke_counters` reports `ui=first_party`, `imgui_enabled=false`, `sdl3_enabled=false`, panel count, backend, and native handle exposure flags.
+- Focused validation passed: `tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests`; `tools/cmake.ps1 --build --preset dev --target MK_ui_renderer_tests`; `tools/ctest.ps1 --preset dev --output-on-failure -R "MK_editor_native_shell_tests|MK_ui_renderer_tests"`.
+- Static drift validation passed: `tools/check-format.ps1`; `tools/check-tidy.ps1 -Files editor/src/first_party_editor_document.cpp,editor/src/native_editor_launch.cpp,tests/unit/editor_native_shell_tests.cpp -ReuseExistingFileApiReply`; `tools/check-public-api-boundaries.ps1`; `tools/check-native-desktop-contracts.ps1`; `tools/check-json-contracts.ps1`; `tools/check-ai-integration.ps1`; `tools/check-agents.ps1`; `git diff --check`.
+- Full slice validation passed: `tools/validate.ps1`.
 
 ## Phase 3 - First-Party Docking, Rich Text, And Adapter Boundary Contracts
 

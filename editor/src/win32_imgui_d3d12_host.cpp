@@ -342,7 +342,7 @@ struct Win32ImguiD3d12Host::Impl {
         ImGui::CreateContext();
         imgui_context_created = true;
         ImGuiIO& io = ImGui::GetIO();
-        const auto user_config_policy = make_native_editor_imgui_user_config_policy(desc.launch);
+        const auto user_config_policy = make_native_editor_user_config_policy(desc.launch);
         if (!user_config_policy.ini_file_enabled) {
             io.IniFilename = nullptr;
         }

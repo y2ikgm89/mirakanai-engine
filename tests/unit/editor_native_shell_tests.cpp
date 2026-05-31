@@ -3,11 +3,11 @@
 
 #include "test_framework.hpp"
 
+#include "first_party_editor_document.hpp"
 #include "native_editor_app.hpp"
 #include "native_editor_launch.hpp"
 #include "native_material_preview_cache.hpp"
 #include "native_viewport_surface.hpp"
-#include "win32_imgui_descriptor_allocator.hpp"
 
 #include "mirakana/platform/file_dialog.hpp"
 #include "mirakana/platform/process.hpp"
@@ -58,17 +58,17 @@ class RecordingClipboardTextAdapter final : public mirakana::ui::IClipboardTextA
 
 [[nodiscard]] mirakana::editor::EditorAiReviewedValidationExecutionDesc make_reviewed_validation_execution_desc() {
     mirakana::editor::EditorAiPlaytestOperatorHandoffCommandRow row{
-        .recipe_id = "desktop-gui",
+        .recipe_id = "desktop-editor",
         .status = mirakana::editor::EditorAiPackageAuthoringDiagnosticStatus::ready,
         .command_display =
             "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode DryRun -Recipe "
-            "desktop-gui",
+            "desktop-editor",
         .argv = {"pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools/run-validation-recipe.ps1",
-                 "-Mode", "DryRun", "-Recipe", "desktop-gui"},
+                 "-Mode", "DryRun", "-Recipe", "desktop-editor"},
         .host_gates = {},
         .blocked_by = {},
         .readiness_dependency = "EditorAiPlaytestReadinessReportModel.ready_for_operator_validation",
-        .diagnostic = "desktop-gui handoff ready",
+        .diagnostic = "desktop-editor handoff ready",
     };
 
     return mirakana::editor::EditorAiReviewedValidationExecutionDesc{
@@ -77,6 +77,10 @@ class RecordingClipboardTextAdapter final : public mirakana::ui::IClipboardTextA
         .acknowledge_host_gates = false,
         .acknowledged_host_gates = {},
     };
+}
+
+[[nodiscard]] bool contains_element(const mirakana::ui::UiDocument& document, std::string_view id) {
+    return document.find(mirakana::ui::ElementId{.value = std::string{id}}) != nullptr;
 }
 
 } // namespace
@@ -174,15 +178,15 @@ MK_TEST("editor native shell invalid launch exit code stays deterministic") {
     MK_REQUIRE(mirakana::editor::native_editor_launch_usage_error_exit_code() == 2);
 }
 
-MK_TEST("editor native shell no-user-config disables imgui persistence") {
+MK_TEST("editor native shell no-user-config disables first-party shell persistence") {
     mirakana::editor::NativeEditorLaunchOptions options;
 
-    const auto default_policy = mirakana::editor::make_native_editor_imgui_user_config_policy(options);
+    const auto default_policy = mirakana::editor::make_native_editor_user_config_policy(options);
     MK_REQUIRE(default_policy.ini_file_enabled);
     MK_REQUIRE(default_policy.log_file_enabled);
 
     options.no_user_config = true;
-    const auto smoke_policy = mirakana::editor::make_native_editor_imgui_user_config_policy(options);
+    const auto smoke_policy = mirakana::editor::make_native_editor_user_config_policy(options);
     MK_REQUIRE(!smoke_policy.ini_file_enabled);
     MK_REQUIRE(!smoke_policy.log_file_enabled);
 }
@@ -202,6 +206,75 @@ MK_TEST("editor native shell app exposes the core backed panel set") {
     MK_REQUIRE(app.has_native_panel("timeline"));
     MK_REQUIRE(app.has_native_panel("project_settings"));
     MK_REQUIRE(app.has_native_panel("viewport"));
+}
+
+MK_TEST("editor first party document includes visible panel roots") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+
+    const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
+
+    MK_REQUIRE(shell_document.panel_root_count == app.native_panel_count());
+    MK_REQUIRE(contains_element(shell_document.document, "editor.root"));
+    MK_REQUIRE(contains_element(shell_document.document, "editor.dock"));
+    MK_REQUIRE(contains_element(shell_document.document, "editor.panel.main_menu"));
+    MK_REQUIRE(contains_element(shell_document.document, "editor.panel.scene"));
+    MK_REQUIRE(contains_element(shell_document.document, "editor.panel.inspector"));
+    MK_REQUIRE(contains_element(shell_document.document, "editor.panel.assets"));
+    MK_REQUIRE(contains_element(shell_document.document, "editor.panel.console"));
+    MK_REQUIRE(contains_element(shell_document.document, "editor.panel.viewport"));
+    MK_REQUIRE(contains_element(shell_document.document, "editor.panel.resources"));
+    MK_REQUIRE(contains_element(shell_document.document, "editor.panel.ai_commands"));
+    MK_REQUIRE(contains_element(shell_document.document, "editor.panel.profiler"));
+    MK_REQUIRE(contains_element(shell_document.document, "editor.panel.timeline"));
+    MK_REQUIRE(contains_element(shell_document.document, "editor.panel.project_settings"));
+}
+
+MK_TEST("editor first party document keeps stable semantic element ids") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    app.record_native_viewport_d3d12_host_ready(1U);
+
+    const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
+    const auto* inspector = shell_document.document.find(mirakana::ui::ElementId{.value = "editor.panel.inspector"});
+    const auto* command_label =
+        shell_document.document.find(mirakana::ui::ElementId{.value = "editor.panel.ai_commands.title"});
+    const auto* viewport_status =
+        shell_document.document.find(mirakana::ui::ElementId{.value = "editor.panel.viewport.status"});
+
+    MK_REQUIRE(inspector != nullptr);
+    MK_REQUIRE(inspector->role == mirakana::ui::SemanticRole::panel);
+    MK_REQUIRE(inspector->accessibility_label == "Inspector");
+    MK_REQUIRE(command_label != nullptr);
+    MK_REQUIRE(command_label->text.label == "AI Commands");
+    MK_REQUIRE(viewport_status != nullptr);
+    MK_REQUIRE(viewport_status->text.label.contains("diagnostic"));
+}
+
+MK_TEST("editor first party document produces renderer submission without native handles") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+
+    const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
+
+    MK_REQUIRE(!shell_document.native_handles_exposed);
+    MK_REQUIRE(shell_document.renderer_submission.elements.size() == shell_document.document.size());
+    MK_REQUIRE(!shell_document.renderer_submission.boxes.empty());
+    MK_REQUIRE(!shell_document.renderer_submission.text_runs.empty());
+    MK_REQUIRE(!shell_document.renderer_submission.accessibility_nodes.empty());
+    MK_REQUIRE(shell_document.renderer_submission.image_placeholders.empty());
+}
+
+MK_TEST("editor first party shell smoke counters report imgui disabled") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
+
+    const auto counters = mirakana::editor::make_first_party_editor_shell_smoke_counters(app, shell_document);
+
+    MK_REQUIRE(counters.ui == "first_party");
+    MK_REQUIRE(!counters.imgui_enabled);
+    MK_REQUIRE(counters.backend == "d3d12");
+    MK_REQUIRE(counters.panel_count == 11U);
+    MK_REQUIRE(!counters.sdl3_enabled);
+    MK_REQUIRE(!counters.viewport_native_handles_exposed);
+    MK_REQUIRE(!counters.material_preview_native_handles_exposed);
 }
 
 MK_TEST("editor native shell app records deterministic panel smoke counters") {
@@ -426,121 +499,6 @@ MK_TEST("editor native shell service status defaults stay deterministic") {
     MK_REQUIRE(app.services().clipboard_service_id == "memory");
     MK_REQUIRE(app.services().reviewed_process_runner_id == "recording");
     MK_REQUIRE(app.services().user_confirmation_required_for_process_execution);
-}
-
-MK_TEST("editor imgui descriptor allocator rejects zero capacity") {
-    const auto plan =
-        mirakana::editor::plan_win32_imgui_descriptor_allocator(mirakana::editor::Win32ImguiDescriptorAllocatorDesc{
-            .cpu_descriptor_base = 100,
-            .gpu_descriptor_base = 200,
-            .descriptor_size = 16,
-            .capacity = 0,
-        });
-
-    MK_REQUIRE(!plan.valid);
-    MK_REQUIRE(plan.diagnostic.find("capacity") != std::string::npos);
-}
-
-MK_TEST("editor imgui descriptor allocator rejects zero descriptor size") {
-    const auto plan =
-        mirakana::editor::plan_win32_imgui_descriptor_allocator(mirakana::editor::Win32ImguiDescriptorAllocatorDesc{
-            .cpu_descriptor_base = 100,
-            .gpu_descriptor_base = 200,
-            .descriptor_size = 0,
-            .capacity = 2,
-        });
-
-    MK_REQUIRE(!plan.valid);
-    MK_REQUIRE(plan.diagnostic.find("descriptor size") != std::string::npos);
-}
-
-MK_TEST("editor imgui descriptor allocator leases and reuses descriptor slots") {
-    mirakana::editor::Win32ImguiDescriptorAllocator allocator(mirakana::editor::Win32ImguiDescriptorAllocatorDesc{
-        .cpu_descriptor_base = 100,
-        .gpu_descriptor_base = 200,
-        .descriptor_size = 16,
-        .capacity = 2,
-    });
-
-    auto first = allocator.allocate();
-    MK_REQUIRE(first.valid);
-    MK_REQUIRE(allocator.leased_count() == 1U);
-    MK_REQUIRE(first.index == 0U);
-    MK_REQUIRE(first.cpu_descriptor == 100U);
-    MK_REQUIRE(first.gpu_descriptor == 200U);
-
-    auto second = allocator.allocate();
-    MK_REQUIRE(second.valid);
-    MK_REQUIRE(allocator.leased_count() == 2U);
-    MK_REQUIRE(second.index == 1U);
-    MK_REQUIRE(second.cpu_descriptor == 116U);
-    MK_REQUIRE(second.gpu_descriptor == 216U);
-
-    allocator.release(first);
-    MK_REQUIRE(allocator.leased_count() == 1U);
-    auto reused = allocator.allocate();
-    MK_REQUIRE(reused.valid);
-    MK_REQUIRE(reused.index == first.index);
-    MK_REQUIRE(reused.cpu_descriptor == first.cpu_descriptor);
-    MK_REQUIRE(reused.gpu_descriptor == first.gpu_descriptor);
-}
-
-MK_TEST("editor imgui descriptor allocator reports exhaustion without corrupting free list") {
-    mirakana::editor::Win32ImguiDescriptorAllocator allocator(mirakana::editor::Win32ImguiDescriptorAllocatorDesc{
-        .cpu_descriptor_base = 8,
-        .gpu_descriptor_base = 32,
-        .descriptor_size = 8,
-        .capacity = 1,
-    });
-
-    const auto first = allocator.allocate();
-    MK_REQUIRE(first.valid);
-
-    const auto exhausted = allocator.allocate();
-    MK_REQUIRE(!exhausted.valid);
-    MK_REQUIRE(exhausted.diagnostic.find("exhausted") != std::string::npos);
-
-    allocator.release(first);
-    const auto after_release = allocator.allocate();
-    MK_REQUIRE(after_release.valid);
-    MK_REQUIRE(after_release.index == first.index);
-
-    allocator.release_cpu_descriptor(after_release.cpu_descriptor);
-    const auto after_cpu_release = allocator.allocate();
-    MK_REQUIRE(after_cpu_release.valid);
-    MK_REQUIRE(after_cpu_release.index == first.index);
-}
-
-MK_TEST("editor imgui descriptor allocator ignores invalid release rows") {
-    mirakana::editor::Win32ImguiDescriptorAllocator allocator(mirakana::editor::Win32ImguiDescriptorAllocatorDesc{
-        .cpu_descriptor_base = 100,
-        .gpu_descriptor_base = 200,
-        .descriptor_size = 16,
-        .capacity = 1,
-    });
-
-    allocator.release(mirakana::editor::Win32ImguiDescriptorLease{
-        .valid = true,
-        .index = 7,
-        .cpu_descriptor = 212,
-        .gpu_descriptor = 312,
-    });
-    MK_REQUIRE(allocator.leased_count() == 0U);
-
-    const auto first = allocator.allocate();
-    MK_REQUIRE(first.valid);
-    MK_REQUIRE(allocator.leased_count() == 1U);
-
-    allocator.release_cpu_descriptor(first.cpu_descriptor + 1U);
-    MK_REQUIRE(allocator.leased_count() == 1U);
-
-    allocator.release(first);
-    allocator.release(first);
-    MK_REQUIRE(allocator.leased_count() == 0U);
-
-    const auto reused = allocator.allocate();
-    MK_REQUIRE(reused.valid);
-    MK_REQUIRE(reused.index == first.index);
 }
 
 int main() {
