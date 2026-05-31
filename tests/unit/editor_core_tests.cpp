@@ -1156,6 +1156,43 @@ MK_TEST("editor core rich text builds ai command panel document") {
     MK_REQUIRE(diagnostic->style_token == "editor.error");
 }
 
+MK_TEST("editor core rich text builds inspector property document") {
+    const std::vector<mirakana::editor::EditorPropertyRow> rows{
+        mirakana::editor::EditorPropertyRow{
+            .id = "project",
+            .label = "Project",
+            .value = "MIRAIKANAI Editor",
+            .editable = false,
+        },
+        mirakana::editor::EditorPropertyRow{
+            .id = "asset_root",
+            .label = "Asset Root",
+            .value = "assets",
+            .editable = true,
+        },
+    };
+
+    const auto inspector = mirakana::editor::make_editor_inspector_rich_text_document(rows);
+    const auto snapshot = mirakana::editor::make_editor_rich_text_ai_snapshot(inspector);
+    const auto* label =
+        find_rich_text_ai_row(snapshot, "editor.rich_text.inspector.paragraph.property.project.span.label");
+    const auto* value =
+        find_rich_text_ai_row(snapshot, "editor.rich_text.inspector.paragraph.property.project.span.value");
+    const auto* state =
+        find_rich_text_ai_row(snapshot, "editor.rich_text.inspector.paragraph.property.asset_root.span.state");
+
+    MK_REQUIRE(snapshot.diagnostics.size() >= inspector.unsupported_capabilities.size());
+    MK_REQUIRE(snapshot.copyable_plain_text.contains("Project: MIRAIKANAI Editor readonly"));
+    MK_REQUIRE(snapshot.copyable_plain_text.contains("Asset Root: assets editable"));
+    MK_REQUIRE(label != nullptr);
+    MK_REQUIRE(label->text == "Project: ");
+    MK_REQUIRE(value != nullptr);
+    MK_REQUIRE(value->style_token == "editor.text");
+    MK_REQUIRE(value->text == "MIRAIKANAI Editor");
+    MK_REQUIRE(state != nullptr);
+    MK_REQUIRE(state->text == " editable");
+}
+
 MK_TEST("editor core rich text ai snapshot exposes rows diagnostics and operation surface") {
     mirakana::editor::EditorRichTextDocument
         document{

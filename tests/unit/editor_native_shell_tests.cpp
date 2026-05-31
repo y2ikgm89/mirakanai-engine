@@ -380,6 +380,26 @@ MK_TEST("editor first party document composes ai commands as read only rich text
     MK_REQUIRE(ai_status->text.label == "ready");
 }
 
+MK_TEST("editor first party document composes inspector as read only rich text") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+
+    const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
+    const auto* inspector_root =
+        shell_document.document.find(mirakana::ui::ElementId{.value = "editor.panel.inspector.rich_text"});
+    const auto* project_value = shell_document.document.find(
+        mirakana::ui::ElementId{.value = "editor.panel.inspector.rich_text.paragraph.property.project.span.value"});
+
+    MK_REQUIRE(inspector_root != nullptr);
+    MK_REQUIRE(inspector_root->role == mirakana::ui::SemanticRole::root);
+    MK_REQUIRE(inspector_root->parent.value == "editor.panel.inspector");
+    MK_REQUIRE(project_value != nullptr);
+    MK_REQUIRE(project_value->text.label == "MIRAIKANAI Editor");
+    MK_REQUIRE(std::ranges::any_of(shell_document.renderer_submission.text_runs, [](const auto& run) {
+        return run.id.value == "editor.panel.inspector.rich_text.paragraph.property.project.span.value" &&
+               run.text.label == "MIRAIKANAI Editor";
+    }));
+}
+
 MK_TEST("editor first party document produces renderer submission without native handles") {
     mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
 

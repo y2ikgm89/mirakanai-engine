@@ -457,6 +457,19 @@ void append_ai_diagnostic_paragraph(EditorRichTextDocument& document, std::size_
     });
 }
 
+void append_inspector_property_paragraph(EditorRichTextDocument& document, const EditorPropertyRow& row) {
+    document.paragraphs.push_back(EditorRichTextParagraph{
+        .id = "property." + rich_text_id_component(row.id),
+        .spans =
+            {
+                rich_text_span("label", "editor.text", safe_rich_text(row.label) + ": "),
+                rich_text_span("value", "editor.text", row.value),
+                rich_text_span("state", row.editable ? "editor.info" : "editor.text",
+                               row.editable ? " editable" : " readonly"),
+            },
+    });
+}
+
 } // namespace
 
 std::vector<EditorRichTextUnsupportedCapability> make_editor_rich_text_low_level_unsupported_capabilities() {
@@ -547,6 +560,17 @@ EditorRichTextDocument make_editor_ai_command_panel_rich_text_document(const Edi
         append_ai_diagnostic_paragraph(document, index, model.diagnostics[index]);
     }
 
+    document.unsupported_capabilities = make_editor_rich_text_low_level_unsupported_capabilities();
+    return document;
+}
+
+EditorRichTextDocument make_editor_inspector_rich_text_document(std::span<const EditorPropertyRow> rows,
+                                                                std::string document_id) {
+    EditorRichTextDocument document;
+    document.id = std::move(document_id);
+    for (const auto& row : rows) {
+        append_inspector_property_paragraph(document, row);
+    }
     document.unsupported_capabilities = make_editor_rich_text_low_level_unsupported_capabilities();
     return document;
 }
