@@ -318,6 +318,7 @@ FirstPartyEditorDocument make_first_party_editor_document(const NativeEditorApp&
 
 FirstPartyEditorShellSmokeCounters
 make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const FirstPartyEditorDocument& document) {
+    const auto& text_atlas = app.text_atlas_handoff_evidence();
     return FirstPartyEditorShellSmokeCounters{
         .ui = "first_party",
         .backend = "d3d12",
@@ -326,6 +327,15 @@ make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const F
         .sdl3_enabled = false,
         .viewport_native_handles_exposed = app.viewport_display().native_texture_handles_exposed,
         .material_preview_native_handles_exposed = app.material_preview_display().native_texture_handles_exposed,
+        .text_atlas_handoff_status = text_atlas.status,
+        .text_font_adapter_invoked =
+            text_atlas.text_shaping_adapter_invoked && text_atlas.font_rasterizer_adapter_invoked,
+        .text_font_glyphs_ready = text_atlas.glyphs_ready,
+        .text_font_fallback_used = text_atlas.fallback_used,
+        .text_atlas_handoff_ready = text_atlas.atlas_handoff_ready,
+        .text_font_native_handles_exposed = text_atlas.native_handles_exposed,
+        .text_atlas_handoff_host_gated_rows = text_atlas.host_gated_rows,
+        .text_atlas_handoff_unsupported_rows = text_atlas.unsupported_rows,
         .docking_status = document.docking_status,
         .dock_tab_header_count = document.tab_header_count,
         .dock_split_gutter_count = document.split_gutter_count,

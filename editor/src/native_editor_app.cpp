@@ -254,6 +254,7 @@ struct NativeEditorApp::Impl {
     ViewportState viewport;
     NativeMaterialPreviewDisplayPlan material_preview_display;
     NativeViewportDisplayPlan viewport_display;
+    NativeEditorTextAtlasHandoffEvidence text_atlas_handoff_evidence;
     MemoryFileDialogService memory_file_dialog_service;
     MemoryClipboard memory_clipboard;
     NativeEditorClipboardTextAdapter clipboard_text_adapter;
@@ -384,6 +385,10 @@ const ViewportState& NativeEditorApp::viewport() const noexcept {
 
 const NativeViewportDisplayPlan& NativeEditorApp::viewport_display() const noexcept {
     return impl_->viewport_display;
+}
+
+const NativeEditorTextAtlasHandoffEvidence& NativeEditorApp::text_atlas_handoff_evidence() const noexcept {
+    return impl_->text_atlas_handoff_evidence;
 }
 
 const EditorMaterialAssetPreviewPanelModel& NativeEditorApp::material_preview() const noexcept {
@@ -560,6 +565,10 @@ void NativeEditorApp::record_native_material_preview_d3d12_host_ready(std::uint6
     });
     apply_editor_material_gpu_preview_execution_snapshot(impl_->material_preview,
                                                          impl_->material_preview_display.execution_snapshot);
+}
+
+void NativeEditorApp::record_native_text_atlas_handoff_evidence(NativeEditorTextAtlasHandoffEvidence evidence) {
+    impl_->text_atlas_handoff_evidence = std::move(evidence);
 }
 
 } // namespace mirakana::editor

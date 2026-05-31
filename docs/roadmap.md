@@ -11,7 +11,7 @@ Use this file as a short status and priority route, not as the exhaustive implem
 
 Long capability prose lower in this file is retained historical/static-check evidence. Do not use it to override the manifest, current-capabilities summary, or active plan registry.
 
-Current manifest-led execution: `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` points at `docs/superpowers/plans/2026-05-31-first-party-ui-editor-production-stack-v1.md`, `unsupportedProductionGaps = []`, and `recommendedNextPlan.id = first-party-ui-editor-production-stack-v1` after First-Party Editor Shell v1 completed the clean-break first-party editor shell replacement.
+Current manifest-led execution: `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` points at `docs/superpowers/plans/2026-05-31-first-party-ui-editor-production-stack-v1.md`, `unsupportedProductionGaps = []`, and `recommendedNextPlan.id = first-party-ui-editor-production-stack-v1` after First-Party Editor Shell v1 completed the clean-break first-party editor shell replacement. Phase 4 now has selected Windows DirectWrite text/font validation plus editor text atlas handoff evidence, while Direct2D GPU text rendering, renderer upload, TSF, UIA, and viewport/material texture display remain focused follow-up phases.
 
 ## Principle
 

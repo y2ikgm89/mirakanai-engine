@@ -5,6 +5,7 @@
 
 #include "first_party_editor_document.hpp"
 #include "native_editor_app.hpp"
+#include "native_editor_text_atlas_handoff.hpp"
 #include "native_editor_win32_services.hpp"
 
 #include "mirakana/platform/win32/win32_event_pump.hpp"
@@ -240,6 +241,8 @@ struct Win32FirstPartyEditorHost::Impl {
             app.record_native_resource_device_ready(result.frames_rendered + 1U);
             app.record_native_viewport_d3d12_host_ready(result.frames_rendered + 1U);
             app.record_native_material_preview_d3d12_host_ready(result.frames_rendered + 1U);
+            app.record_native_text_atlas_handoff_evidence(
+                make_native_editor_directwrite_text_atlas_handoff_evidence(NativeEditorTextAtlasHandoffDesc{}));
         }
 
         const auto document = make_first_party_editor_document(app);

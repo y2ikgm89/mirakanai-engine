@@ -4,6 +4,7 @@
 #pragma once
 
 #include "native_editor_launch.hpp"
+#include "native_editor_text_atlas_handoff.hpp"
 #include "native_material_preview_cache.hpp"
 #include "native_viewport_surface.hpp"
 
@@ -104,6 +105,7 @@ class NativeEditorApp {
     [[nodiscard]] const NativeEditorServiceStatus& services() const noexcept;
     [[nodiscard]] const ViewportState& viewport() const noexcept;
     [[nodiscard]] const NativeViewportDisplayPlan& viewport_display() const noexcept;
+    [[nodiscard]] const NativeEditorTextAtlasHandoffEvidence& text_atlas_handoff_evidence() const noexcept;
     [[nodiscard]] const EditorMaterialAssetPreviewPanelModel& material_preview() const noexcept;
     [[nodiscard]] const NativeMaterialPreviewDisplayPlan& material_preview_display() const noexcept;
 
@@ -125,6 +127,7 @@ class NativeEditorApp {
     void record_native_resource_device_ready(std::uint64_t frame_index);
     void record_native_viewport_d3d12_host_ready(std::uint64_t frame_index);
     void record_native_material_preview_d3d12_host_ready(std::uint64_t frame_index);
+    void record_native_text_atlas_handoff_evidence(NativeEditorTextAtlasHandoffEvidence evidence);
 
   private:
     NativeEditorLaunchOptions options_;
