@@ -84,7 +84,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1
 The default build remains third-party-free. The visible desktop editor shell is deferred; the supported editor logic target is `MK_editor_core`, covered by the default validation lane. The retained GUI wrapper fails closed for stale automation:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1
 ```
 
 A future visible editor shell must add explicit audited dependencies and use first-party Win32/D3D12 adapters on Windows.

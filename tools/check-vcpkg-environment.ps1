@@ -29,6 +29,18 @@ function Assert-ContainsText {
     }
 }
 
+function Assert-DoesNotContainText {
+    param(
+        [Parameter(Mandatory = $true)][string]$Text,
+        [Parameter(Mandatory = $true)][string]$Needle,
+        [Parameter(Mandatory = $true)][string]$Label
+    )
+
+    if ($Text.Contains($Needle)) {
+        Write-Error "$Label contained forbidden text: $Needle"
+    }
+}
+
 $oldDownloads = [Environment]::GetEnvironmentVariable("VCPKG_DOWNLOADS", "Process")
 $oldDefaultCache = [Environment]::GetEnvironmentVariable("VCPKG_DEFAULT_BINARY_CACHE", "Process")
 $oldBinarySources = [Environment]::GetEnvironmentVariable("VCPKG_BINARY_SOURCES", "Process")
@@ -136,11 +148,11 @@ if ([string]::IsNullOrWhiteSpace(`$pathValue) -or
     $bootstrapContent = Get-Content -LiteralPath (Join-Path $PSScriptRoot "bootstrap-deps.ps1") -Raw
     Assert-ContainsText $bootstrapContent "Get-VcpkgRoot" "bootstrap-deps.ps1 vcpkg root resolution"
     Assert-ContainsText $bootstrapContent "Get-VcpkgExecutablePath" "bootstrap-deps.ps1 vcpkg executable resolution"
-    $buildGuiContent = Get-Content -LiteralPath (Join-Path $PSScriptRoot "build-gui.ps1") -Raw
-    Assert-ContainsText $buildGuiContent "Assert-VcpkgExecutable" "build-gui.ps1 vcpkg executable preflight"
-    Assert-ContainsText $buildGuiContent "--preset desktop-gui" "build-gui.ps1 native editor GUI configure"
-    Assert-ContainsText $buildGuiContent "--build --preset desktop-gui" "build-gui.ps1 native editor GUI build"
-    Assert-ContainsText $buildGuiContent "--output-on-failure" "build-gui.ps1 native editor GUI test"
+    $buildEditorContent = Get-Content -LiteralPath (Join-Path $PSScriptRoot "build-editor.ps1") -Raw
+    Assert-DoesNotContainText $buildEditorContent "Assert-VcpkgExecutable" "build-editor.ps1 dependency-free editor lane"
+    Assert-ContainsText $buildEditorContent "--preset desktop-editor" "build-editor.ps1 native editor configure"
+    Assert-ContainsText $buildEditorContent "--build --preset desktop-editor" "build-editor.ps1 native editor build"
+    Assert-ContainsText $buildEditorContent "--output-on-failure" "build-editor.ps1 native editor test"
     foreach ($script in @(
             "validate-desktop-game-runtime.ps1",
             "package-desktop-runtime.ps1",

@@ -38,10 +38,10 @@ function Get-ValidationRecipeCommandPlan {
         $cmdPlanEntry = Get-RepositoryToolCommandPlan -ToolScriptName 'validate-desktop-game-runtime.ps1'
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($cmdPlanEntry) -HostGates @() -RequiredAcknowledgements @() -AllowedGameTargets @() -AllowedStrictBackend @() -Diagnostics @()
     }
-    elseif ($RecipeName -eq 'desktop-gui') {
-        $cmdPlanEntry = Get-RepositoryToolCommandPlan -ToolScriptName 'build-gui.ps1'
-        $diagGui = New-RunnerDiagnostic -Severity 'info' -Code 'diagnostic-host-gate' -Message 'Optional native editor GUI validation requires Windows with bootstrapped desktop-gui Dear ImGui Win32/DX12 packages and reports missing dependency state explicitly on non-ready hosts.' -ValidationRecipe $RecipeName -HostGate 'desktop-gui-vcpkg'
-        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($cmdPlanEntry) -HostGates @('desktop-gui-vcpkg', 'windows-msvc-desktop-gui') -RequiredAcknowledgements @() -AllowedGameTargets @() -AllowedStrictBackend @() -Diagnostics @($diagGui)
+    elseif ($RecipeName -eq 'desktop-editor') {
+        $cmdPlanEntry = Get-RepositoryToolCommandPlan -ToolScriptName 'build-editor.ps1'
+        $diagEditor = New-RunnerDiagnostic -Severity 'info' -Code 'diagnostic-host-gate' -Message 'Optional native editor validation requires Windows with the desktop-editor preset and reports host readiness explicitly on non-ready hosts.' -ValidationRecipe $RecipeName -HostGate 'windows-msvc-desktop-editor'
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($cmdPlanEntry) -HostGates @('windows-msvc-desktop-editor') -RequiredAcknowledgements @() -AllowedGameTargets @() -AllowedStrictBackend @() -Diagnostics @($diagEditor)
     }
     elseif ($RecipeName -eq 'installed-2d-sandbox-package-budget-smoke') {
         $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_2d_desktop_runtime_package' } else { $SelectedGameTarget }

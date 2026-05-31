@@ -36,7 +36,7 @@
         "rhs": "Windows"
       },
       "cacheVariables": {
-        "MK_ENABLE_DESKTOP_GUI": "OFF",
+        "MK_ENABLE_DESKTOP_EDITOR": "OFF",
         "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/external/vcpkg/scripts/buildsystems/vcpkg.cmake",
         "VCPKG_TARGET_TRIPLET": "x64-windows",
         "VCPKG_MANIFEST_INSTALL": "OFF",
@@ -96,7 +96,7 @@
         "MK_ENABLE_IMPORT_STD": "ON",
         "MK_MSVC_CXX23_STANDARD_OPTION": "/std:c++23preview",
         "MK_ENABLE_DESKTOP_RUNTIME": "ON",
-        "MK_ENABLE_DESKTOP_GUI": "OFF",
+        "MK_ENABLE_DESKTOP_EDITOR": "OFF",
         "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/external/vcpkg/scripts/buildsystems/vcpkg.cmake",
         "VCPKG_TARGET_TRIPLET": "x64-windows",
         "VCPKG_MANIFEST_INSTALL": "OFF",
@@ -104,9 +104,9 @@
       }
     },
     {
-      "name": "desktop-gui",
-      "displayName": "Deferred desktop GUI build",
-      "binaryDir": "${sourceDir}/out/build/desktop-gui",
+      "name": "desktop-editor",
+      "displayName": "Desktop editor build",
+      "binaryDir": "${sourceDir}/out/build/desktop-editor",
       "inherits": "normalized-configure-environment",
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
@@ -115,11 +115,7 @@
         "MK_ENABLE_CXX_MODULE_SCANNING": "ON",
         "MK_ENABLE_IMPORT_STD": "ON",
         "MK_MSVC_CXX23_STANDARD_OPTION": "/std:c++23preview",
-        "MK_ENABLE_DESKTOP_GUI": "ON",
-        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/external/vcpkg/scripts/buildsystems/vcpkg.cmake",
-        "VCPKG_TARGET_TRIPLET": "x64-windows",
-        "VCPKG_MANIFEST_INSTALL": "OFF",
-        "VCPKG_INSTALLED_DIR": "${sourceDir}/vcpkg_installed"
+        "MK_ENABLE_DESKTOP_EDITOR": "ON"
       }
     },
     {
@@ -180,9 +176,9 @@
       }
     },
     {
-      "name": "cpp23-desktop-gui-eval",
-      "displayName": "Deferred C++23 desktop GUI verification build",
-      "binaryDir": "${sourceDir}/out/build/cpp23-desktop-gui-eval",
+      "name": "cpp23-desktop-editor-eval",
+      "displayName": "C++23 desktop editor verification build",
+      "binaryDir": "${sourceDir}/out/build/cpp23-desktop-editor-eval",
       "inherits": "normalized-configure-environment",
       "cacheVariables": {
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
@@ -191,11 +187,7 @@
         "MK_ENABLE_CXX_MODULE_SCANNING": "ON",
         "MK_ENABLE_IMPORT_STD": "ON",
         "MK_MSVC_CXX23_STANDARD_OPTION": "/std:c++23preview",
-        "MK_ENABLE_DESKTOP_GUI": "ON",
-        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/external/vcpkg/scripts/buildsystems/vcpkg.cmake",
-        "VCPKG_TARGET_TRIPLET": "x64-windows",
-        "VCPKG_MANIFEST_INSTALL": "OFF",
-        "VCPKG_INSTALLED_DIR": "${sourceDir}/vcpkg_installed"
+        "MK_ENABLE_DESKTOP_EDITOR": "ON"
       }
     },
     {
@@ -225,7 +217,7 @@
         "MK_ENABLE_IMPORT_STD": "ON",
         "MK_MSVC_CXX23_STANDARD_OPTION": "/std:c++23preview",
         "MK_ENABLE_DESKTOP_RUNTIME": "ON",
-        "MK_ENABLE_DESKTOP_GUI": "OFF",
+        "MK_ENABLE_DESKTOP_EDITOR": "OFF",
         "MK_REQUIRE_DESKTOP_RUNTIME_DXIL": "OFF",
         "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/external/vcpkg/scripts/buildsystems/vcpkg.cmake",
         "VCPKG_TARGET_TRIPLET": "x64-windows",
@@ -375,9 +367,9 @@
       "configuration": "Debug"
     },
     {
-      "name": "desktop-gui",
+      "name": "desktop-editor",
       "inherits": "normalized-build-environment",
-      "configurePreset": "desktop-gui",
+      "configurePreset": "desktop-editor",
       "configuration": "Debug"
     },
     {
@@ -399,9 +391,9 @@
       "configuration": "Debug"
     },
     {
-      "name": "cpp23-desktop-gui-eval",
+      "name": "cpp23-desktop-editor-eval",
       "inherits": "normalized-build-environment",
-      "configurePreset": "cpp23-desktop-gui-eval",
+      "configurePreset": "cpp23-desktop-editor-eval",
       "configuration": "Debug"
     },
     {
@@ -481,8 +473,8 @@
       }
     },
     {
-      "name": "desktop-gui",
-      "configurePreset": "desktop-gui",
+      "name": "desktop-editor",
+      "configurePreset": "desktop-editor",
       "configuration": "Debug",
       "output": {
         "outputOnFailure": true
@@ -513,8 +505,8 @@
       }
     },
     {
-      "name": "cpp23-desktop-gui-eval",
-      "configurePreset": "cpp23-desktop-gui-eval",
+      "name": "cpp23-desktop-editor-eval",
+      "configurePreset": "cpp23-desktop-editor-eval",
       "configuration": "Debug",
       "output": {
         "outputOnFailure": true

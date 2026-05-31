@@ -98,8 +98,8 @@ foreach ($requiredNeedle in @(
         "MK_renderer",
         "MK_ui_renderer",
         "MK_platform_win32",
-        "MK_ENABLE_DESKTOP_GUI is Windows-only",
-        "MK_ENABLE_DESKTOP_GUI requires MK_platform_win32",
+        "MK_ENABLE_DESKTOP_EDITOR is Windows-only",
+        "MK_ENABLE_DESKTOP_EDITOR requires MK_platform_win32",
         "add_executable(MK_editor",
         "src/main.cpp",
         "Native MK_editor shell is SDL3-free"
@@ -110,8 +110,8 @@ foreach ($requiredNeedle in @(
 }
 
 $rootCmakeContent = Get-Content -LiteralPath (Join-Path $root "CMakeLists.txt") -Raw
-if ($rootCmakeContent.Contains("if(MK_ENABLE_DESKTOP_GUI)`r`n    set(MK_DESKTOP_RUNTIME_ENABLED ON)")) {
-    Write-Error "MK_ENABLE_DESKTOP_GUI must not imply the removed SDL3 desktop runtime lane"
+if ($rootCmakeContent.Contains("if(MK_ENABLE_DESKTOP_EDITOR)`r`n    set(MK_DESKTOP_RUNTIME_ENABLED ON)")) {
+    Write-Error "MK_ENABLE_DESKTOP_EDITOR must not imply the removed SDL3 desktop runtime lane"
 }
 foreach ($requiredNeedle in @(
         "MK_editor_native_shell_tests",
@@ -137,24 +137,24 @@ foreach ($requiredNeedle in @(
     }
 }
 
-$buildGuiScript = Get-Content -LiteralPath (Join-Path $root "tools/build-gui.ps1") -Raw
+$buildEditorScript = Get-Content -LiteralPath (Join-Path $root "tools/build-editor.ps1") -Raw
 foreach ($requiredNeedle in @(
-        "Assert-VcpkgExecutable",
-        "--preset desktop-gui",
-        "--build --preset desktop-gui",
+        "--preset desktop-editor",
+        "--build --preset desktop-editor",
         "--output-on-failure"
     )) {
-    if (-not $buildGuiScript.Contains($requiredNeedle)) {
-        Write-Error "tools/build-gui.ps1 must validate the native desktop GUI lane: $requiredNeedle"
+    if (-not $buildEditorScript.Contains($requiredNeedle)) {
+        Write-Error "tools/build-editor.ps1 must validate the native desktop editor lane: $requiredNeedle"
     }
 }
 foreach ($forbiddenNeedle in @(
+        "Assert-VcpkgExecutable",
         "visible editor shell is deferred",
         "launch-contract skeleton",
         "SDL3 removal"
     )) {
-    if ($buildGuiScript.Contains($forbiddenNeedle)) {
-        Write-Error "tools/build-gui.ps1 must not keep deferred GUI wording: $forbiddenNeedle"
+    if ($buildEditorScript.Contains($forbiddenNeedle)) {
+        Write-Error "tools/build-editor.ps1 must not keep deferred or dependency wording: $forbiddenNeedle"
     }
 }
 
@@ -175,8 +175,8 @@ foreach ($requiredNeedle in @(
         "editor_shell_renderer_text_runs_available",
         "Viewport",
         "Material Preview",
-        "tools/build-gui.ps1",
-        "tools/evaluate-cpp23.ps1 -Gui",
+        "tools/build-editor.ps1",
+        "tools/evaluate-cpp23.ps1 -Editor",
         "must not depend on SDL3"
     )) {
     if (-not $applicationManifestFragment.Contains($requiredNeedle)) {
@@ -203,7 +203,7 @@ foreach ($requiredNeedle in @(
         "SDL3-free"
     )) {
     if (-not $validationRecipeManifestFragment.Contains($requiredNeedle)) {
-        Write-Error "desktop-gui validation recipe must describe the active native editor shell: $requiredNeedle"
+        Write-Error "desktop-editor validation recipe must describe the active native editor shell: $requiredNeedle"
     }
 }
 
@@ -890,7 +890,7 @@ if ($validationRunnerCommand.Count -ne 1 -or $validationRunnerCommand[0].status 
             "public-api-boundary",
             "shader-toolchain",
             "desktop-game-runtime",
-            "desktop-gui",
+            "desktop-editor",
             "desktop-runtime-sample-game-scene-gpu-package",
             "desktop-runtime-generated-material-shader-scaffold-package",
             "desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict",

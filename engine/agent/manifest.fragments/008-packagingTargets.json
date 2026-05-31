@@ -8,11 +8,11 @@
       "notes": "Builds and tests the engine and sample games from the source tree."
     },
     {
-      "name": "desktop-gui",
+      "name": "desktop-editor",
       "platform": "desktop",
       "status": "host-gated-optional",
-      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1",
-      "notes": "Builds and tests the optional Windows-native MK_editor shell through the desktop-gui lane when the bootstrapped Dear ImGui Win32/DX12 vcpkg packages are present. MK_editor_core remains covered by the default validation lane; the GUI lane keeps SDL3 absent, native handles private under editor/src, and reports deterministic backend, panel, file-dialog, clipboard, and reviewed process-runner smoke counters."
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1",
+      "notes": "Builds and tests the optional Windows-native MK_editor shell through the dependency-free desktop-editor lane. MK_editor_core remains covered by the default validation lane; the editor lane keeps SDL3 and UI middleware absent, native handles private under editor/src, and reports deterministic backend, panel, file-dialog, clipboard, reviewed process-runner, first-party UI, and renderer-submission smoke counters."
     },
     {
       "name": "desktop-game-runtime",

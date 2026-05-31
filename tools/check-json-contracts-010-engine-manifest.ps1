@@ -359,7 +359,7 @@ foreach ($needle in @(
         Write-Error "engine manifest gameCodeGuidance.currentEditorContentBrowserImportDiagnostics missing: $needle"
     }
 }
-Assert-Properties $engine.commands @("validate", "prepareWorktree", "removeMergedWorktree", "toolchainCheck", "directToolchainCheck", "bootstrapDeps", "build", "buildGui", "buildAssetImporters", "validatePhysicsJolt", "validateNetworkEnet", "test", "dependencyCheck", "cppStandardCheck", "evaluateCpp23", "shaderToolchainCheck", "agentContext", "agentCheck", "newGame", "ciMatrixCheck", "classifyPrValidationTier") "engine manifest commands"
+Assert-Properties $engine.commands @("validate", "prepareWorktree", "removeMergedWorktree", "toolchainCheck", "directToolchainCheck", "bootstrapDeps", "build", "buildEditor", "buildAssetImporters", "validatePhysicsJolt", "validateNetworkEnet", "test", "dependencyCheck", "cppStandardCheck", "evaluateCpp23", "shaderToolchainCheck", "agentContext", "agentCheck", "newGame", "ciMatrixCheck", "classifyPrValidationTier") "engine manifest commands"
 if ($engine.commands.removeMergedWorktree -ne "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1 -WorktreePath <path> [-BaseRef origin/main] [-BaseBranch main] [-Remote origin] [-LocalCheckoutPath <path>] [-DeleteLocalBranch] [-DeleteRemoteBranch]") {
     Write-Error "engine manifest commands.removeMergedWorktree must expose the guarded post-merge worktree cleanup command"
 }

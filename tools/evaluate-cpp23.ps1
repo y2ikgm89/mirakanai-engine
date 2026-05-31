@@ -3,7 +3,7 @@
 
 param(
     [switch]$Debug,
-    [switch]$Gui,
+    [switch]$Editor,
     [switch]$Release,
     [ValidateRange(0, 1024)]
     [int]$Jobs = 0
@@ -18,7 +18,7 @@ $tools = Assert-CppBuildTools
 $effectiveJobs = Resolve-ParallelJobCount -Jobs $Jobs
 Write-Information "cpp23-verification: cmake/ctest parallel jobs=$effectiveJobs" -InformationAction Continue
 
-$runDebug = $Debug.IsPresent -or (-not $Release.IsPresent -and -not $Gui.IsPresent)
+$runDebug = $Debug.IsPresent -or (-not $Release.IsPresent -and -not $Editor.IsPresent)
 
 if ($runDebug) {
     Invoke-CheckedCommand $tools.CMake --preset cpp23-eval
@@ -42,10 +42,10 @@ if ($Release) {
     Assert-ReleasePackageArtifacts -BuildDir $releaseBuildDir
 }
 
-if ($Gui) {
-    Invoke-CheckedCommand $tools.CMake --preset cpp23-desktop-gui-eval
-    Invoke-CheckedCommand $tools.CMake --build --preset cpp23-desktop-gui-eval --parallel $effectiveJobs
-    Invoke-CheckedCommand $tools.CTest --preset cpp23-desktop-gui-eval --output-on-failure --timeout 300 --parallel $effectiveJobs
+if ($Editor) {
+    Invoke-CheckedCommand $tools.CMake --preset cpp23-desktop-editor-eval
+    Invoke-CheckedCommand $tools.CMake --build --preset cpp23-desktop-editor-eval --parallel $effectiveJobs
+    Invoke-CheckedCommand $tools.CTest --preset cpp23-desktop-editor-eval --output-on-failure --timeout 300 --parallel $effectiveJobs
 }
 
 Write-Host "cpp23-verification: ok"

@@ -216,7 +216,7 @@ jobs:
             ${{ runner.os }}-dev-build-${{ steps.windows-toolchain-cache.outputs.identity }}-${{ hashFiles('CMakePresets.json', 'vcpkg.json', '**/CMakeLists.txt') }}-
             ${{ runner.os }}-dev-build-${{ steps.windows-toolchain-cache.outputs.identity }}-
 
-      - name: Bootstrap vcpkg dependencies (Windows dev preset enables desktop GUI)
+      - name: Bootstrap vcpkg dependencies
         shell: pwsh
         run: ./tools/bootstrap-deps.ps1
 
@@ -224,9 +224,9 @@ jobs:
         shell: pwsh
         run: ./tools/validate.ps1 -SkipStaticChecks -SkipTidySmoke
 
-      - name: Validate native desktop GUI
+      - name: Validate native desktop editor
         shell: pwsh
-        run: ./tools/build-gui.ps1
+        run: ./tools/build-editor.ps1
 
       - name: Validate optional ENet network adapter
         shell: pwsh
@@ -401,7 +401,7 @@ jobs:
             ${{ runner.os }}-cpp23-build-${{ steps.windows-toolchain-cache.outputs.identity }}-${{ hashFiles('CMakePresets.json', 'vcpkg.json', '**/CMakeLists.txt') }}-
             ${{ runner.os }}-cpp23-build-${{ steps.windows-toolchain-cache.outputs.identity }}-
 
-      - name: Bootstrap vcpkg dependencies (Windows dev preset enables desktop GUI)
+      - name: Bootstrap vcpkg dependencies
         shell: pwsh
         run: ./tools/bootstrap-deps.ps1
 

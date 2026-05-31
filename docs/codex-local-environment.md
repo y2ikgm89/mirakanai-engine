@@ -72,7 +72,7 @@ Optional dependency or desktop-runtime actions. Add these only if the operator w
 | Name | Icon | Command |
 | --- | --- | --- |
 | `Bootstrap Deps` | `tool` | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1` |
-| `Build GUI` | `run` | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1` |
+| `Build Editor` | `run` | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1` |
 | `Desktop Runtime Validate` | `debug` | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1` |
 
 ```powershell
@@ -80,7 +80,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1
 ```
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-gui.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1
 ```
 
 ```powershell

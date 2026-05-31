@@ -1518,7 +1518,7 @@ if ($validationRunnerCommand.Count -ne 1 -or $validationRunnerCommand[0].status 
             "public-api-boundary",
             "shader-toolchain",
             "desktop-game-runtime",
-            "desktop-gui",
+            "desktop-editor",
             "desktop-runtime-sample-game-scene-gpu-package",
             "desktop-runtime-generated-material-shader-scaffold-package",
             "desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict",

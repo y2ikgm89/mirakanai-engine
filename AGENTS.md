@@ -206,4 +206,4 @@
 
 ## Learned Workspace Facts
 
-- Post Native Win32 Editor Shell v1 (#322): manifest `next-production-gap-selection`; `MK_editor` via `desktop-gui`, no SDL3.
+- Post First-Party Editor Shell v1 Phase 6: `MK_editor` via dependency-free `desktop-editor`, no SDL3 or active Dear ImGui dependency lane.

@@ -37,18 +37,6 @@
           "default-features": false
         }
       ]
-    },
-    "desktop-gui": {
-      "description": "Optional Windows native desktop editor shell lane. Dear ImGui is available only for developer/editor tooling through Win32 and DirectX 12 backends; SDL3 bindings remain excluded.",
-      "dependencies": [
-        {
-          "name": "imgui",
-          "features": [
-            "win32-binding",
-            "dx12-binding"
-          ]
-        }
-      ]
     }
   }
 }
