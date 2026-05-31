@@ -787,7 +787,7 @@ $editorAiCommandPanelChecks = @(
         )
     },
     @{
-        Path = "editor/core/include/mirakana/editor/workspace.hpp"
+        Path = "editor/core/include/mirakana/editor/editor_panel.hpp"
         Needles = @(
             "PanelId",
             "ai_commands"

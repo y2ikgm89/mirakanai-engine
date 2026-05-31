@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <string_view>
 #include <utility>
 
@@ -52,10 +53,14 @@ void validate_id_token(EditorDockLayoutValidation& validation, std::string_view 
         append_diagnostic(validation, "missing_id", std::string{label} + " id must not be empty");
         return;
     }
-    if (id.find_first_of("\r\n=") != std::string_view::npos || contains_unsafe_token(id)) {
+    if (id.find_first_of("\r\n=,") != std::string_view::npos || contains_unsafe_token(id)) {
         append_diagnostic(validation, "unsafe_token",
                           std::string{label} + " id contains an unsafe token: " + std::string{id});
     }
+}
+
+void append_diagnostic(EditorDockCommandPlan& plan, const EditorDockLayoutDiagnostic& diagnostic) {
+    append_diagnostic(plan, diagnostic.code, diagnostic.message);
 }
 
 [[nodiscard]] EditorDockNode* find_tab_stack_containing_panel(EditorDockLayout& layout,
@@ -64,6 +69,76 @@ void validate_id_token(EditorDockLayoutValidation& validation, std::string_view 
         return node.kind == EditorDockNodeKind::tab_stack && contains_string(node.tabs, panel_id);
     });
     return it == layout.nodes.end() ? nullptr : &(*it);
+}
+
+[[nodiscard]] const EditorDockNode* find_tab_stack_containing_panel(const EditorDockLayout& layout,
+                                                                    std::string_view panel_id) noexcept {
+    const auto it = std::ranges::find_if(layout.nodes, [panel_id](const EditorDockNode& node) {
+        return node.kind == EditorDockNodeKind::tab_stack && contains_string(node.tabs, panel_id);
+    });
+    return it == layout.nodes.end() ? nullptr : &(*it);
+}
+
+[[nodiscard]] EditorDockNode* find_parent_split_containing_child(EditorDockLayout& layout,
+                                                                 std::string_view child_id) noexcept {
+    const auto it = std::ranges::find_if(layout.nodes, [child_id](const EditorDockNode& node) {
+        return node.kind == EditorDockNodeKind::split && contains_string(node.children, child_id);
+    });
+    return it == layout.nodes.end() ? nullptr : &(*it);
+}
+
+[[nodiscard]] std::size_t find_node_index(const EditorDockLayout& layout, std::string_view id) noexcept {
+    for (std::size_t index = 0; index < layout.nodes.size(); ++index) {
+        if (layout.nodes[index].id == id) {
+            return index;
+        }
+    }
+    return layout.nodes.size();
+}
+
+enum class DockGraphVisitState : std::uint8_t {
+    unvisited,
+    visiting,
+    visited,
+};
+
+void validate_reachable_dock_node(EditorDockLayoutValidation& validation, const EditorDockLayout& layout,
+                                  std::string_view id, std::vector<DockGraphVisitState>& visit_states) {
+    const auto index = find_node_index(layout, id);
+    if (index >= layout.nodes.size()) {
+        return;
+    }
+    if (visit_states[index] == DockGraphVisitState::visiting) {
+        append_diagnostic(validation, "dock_graph_cycle", "dock graph contains a cycle at node: " + std::string{id});
+        return;
+    }
+    if (visit_states[index] == DockGraphVisitState::visited) {
+        return;
+    }
+
+    visit_states[index] = DockGraphVisitState::visiting;
+    const auto& node = layout.nodes[index];
+    if (node.kind == EditorDockNodeKind::split) {
+        for (const auto& child : node.children) {
+            validate_reachable_dock_node(validation, layout, child, visit_states);
+        }
+    }
+    visit_states[index] = DockGraphVisitState::visited;
+}
+
+[[nodiscard]] bool validate_new_dock_node_id(EditorDockCommandPlan& plan, const EditorDockLayout& layout,
+                                             std::string_view id, std::string_view code, std::string_view label) {
+    EditorDockLayoutValidation id_validation{.valid = true};
+    validate_id_token(id_validation, id, label);
+    if (!id_validation.diagnostics.empty()) {
+        append_diagnostic(plan, std::string{code}, std::string{label} + " is not a safe dock node id");
+        return false;
+    }
+    if (find_editor_dock_node(layout, id) != nullptr) {
+        append_diagnostic(plan, std::string{code}, std::string{label} + " already exists: " + std::string{id});
+        return false;
+    }
+    return true;
 }
 
 [[nodiscard]] const EditorDockPanelCatalogRow*
@@ -319,6 +394,7 @@ EditorDockLayoutValidation validate_editor_dock_layout(const EditorDockLayout& l
         }
     }
 
+    std::vector<std::string> seen_tabs;
     for (const auto& node : layout.nodes) {
         if (node.id.empty()) {
             continue;
@@ -334,6 +410,10 @@ EditorDockLayoutValidation validate_editor_dock_layout(const EditorDockLayout& l
             }
             for (const auto& child : node.children) {
                 validate_id_token(validation, child, "dock child");
+                if (std::ranges::count(node.children, child) > 1) {
+                    append_diagnostic(validation, "duplicate_split_child",
+                                      "split dock node references a child more than once: " + child);
+                }
                 if (find_editor_dock_node(layout, child) == nullptr) {
                     append_diagnostic(validation, "missing_child_node",
                                       "split dock node references missing child: " + child);
@@ -349,6 +429,12 @@ EditorDockLayoutValidation validate_editor_dock_layout(const EditorDockLayout& l
             }
             for (const auto& tab : node.tabs) {
                 validate_id_token(validation, tab, "dock tab");
+                if (contains_string(seen_tabs, tab)) {
+                    append_diagnostic(validation, "duplicate_dock_tab",
+                                      "dock tab appears in more than one stack: " + tab);
+                } else {
+                    seen_tabs.push_back(tab);
+                }
                 const auto* panel = find_editor_dock_panel(catalog, tab);
                 if (panel == nullptr) {
                     append_diagnostic(validation, "unknown_panel", "dock tab references unknown panel: " + tab);
@@ -356,6 +442,17 @@ EditorDockLayoutValidation validate_editor_dock_layout(const EditorDockLayout& l
                     append_diagnostic(validation, "panel_not_native_shell",
                                       "dock tab references a panel outside the native shell: " + tab);
                 }
+            }
+        }
+    }
+
+    if (!layout.nodes.empty() && find_editor_dock_node(layout, layout.root_id) != nullptr) {
+        std::vector<DockGraphVisitState> visit_states(layout.nodes.size(), DockGraphVisitState::unvisited);
+        validate_reachable_dock_node(validation, layout, layout.root_id, visit_states);
+        for (std::size_t index = 0; index < visit_states.size(); ++index) {
+            if (visit_states[index] == DockGraphVisitState::unvisited) {
+                append_diagnostic(validation, "unreachable_dock_node",
+                                  "dock node is not reachable from root: " + layout.nodes[index].id);
             }
         }
     }
@@ -517,6 +614,84 @@ EditorDockCommandPlan plan_editor_dock_command(const EditorDockLayout& layout,
             target_stack->tabs.push_back(request.panel_id);
         }
         target_stack->active_tab_id = request.panel_id;
+        plan.result_layout.focused_panel_id = request.panel_id;
+        accept_dock_mutation(plan);
+        return plan;
+    }
+
+    case EditorDockCommandKind::split_panel_to_stack: {
+        if (panel->shell_chrome) {
+            append_diagnostic(plan, "cannot_split_shell_chrome",
+                              "dock split command cannot split shell chrome: " + request.panel_id);
+            return plan;
+        }
+        auto* source_stack = find_tab_stack_containing_panel(plan.result_layout, request.panel_id);
+        if (source_stack == nullptr) {
+            append_diagnostic(plan, "panel_not_docked", "dock split command panel is not docked: " + request.panel_id);
+            return plan;
+        }
+        if (!request.source_stack_id.empty() && source_stack->id != request.source_stack_id) {
+            append_diagnostic(plan, "source_stack_mismatch",
+                              "dock split command source stack does not contain panel: " + request.source_stack_id);
+            return plan;
+        }
+        if (source_stack->tabs.size() <= 1U) {
+            append_diagnostic(plan, "empty_stack_after_split",
+                              "dock split command would leave a tab stack empty: " + source_stack->id);
+            return plan;
+        }
+        if (request.split_ratio <= 0.0F || request.split_ratio >= 1.0F) {
+            append_diagnostic(plan, "invalid_split_ratio", "dock split command ratio must be between zero and one");
+            return plan;
+        }
+        if (!validate_new_dock_node_id(plan, plan.result_layout, request.new_stack_id, "invalid_new_stack_id",
+                                       "dock split new stack")) {
+            return plan;
+        }
+
+        const std::string source_stack_id = source_stack->id;
+        const std::string new_split_id = source_stack_id + ".split." + request.new_stack_id;
+        if (!validate_new_dock_node_id(plan, plan.result_layout, new_split_id, "invalid_new_split_id",
+                                       "dock split node")) {
+            return plan;
+        }
+
+        auto* parent_split = find_parent_split_containing_child(plan.result_layout, source_stack_id);
+        if (parent_split == nullptr && plan.result_layout.root_id != source_stack_id) {
+            append_diagnostic(plan, "missing_source_parent",
+                              "dock split command source stack is not reachable from a split parent: " +
+                                  source_stack_id);
+            return plan;
+        }
+
+        std::erase(source_stack->tabs, request.panel_id);
+        if (source_stack->active_tab_id == request.panel_id) {
+            source_stack->active_tab_id = source_stack->tabs.front();
+        }
+
+        if (parent_split != nullptr) {
+            std::ranges::replace(parent_split->children, source_stack_id, new_split_id);
+        } else {
+            plan.result_layout.root_id = new_split_id;
+        }
+        plan.result_layout.nodes.push_back(EditorDockNode{
+            .id = new_split_id,
+            .kind = EditorDockNodeKind::split,
+            .axis = request.split_axis,
+            .split_ratio = request.split_ratio,
+            .children = {source_stack_id, request.new_stack_id},
+            .tabs = {},
+            .active_tab_id = {},
+        });
+        plan.result_layout.nodes.push_back(EditorDockNode{
+            .id = request.new_stack_id,
+            .kind = EditorDockNodeKind::tab_stack,
+            .axis = EditorDockSplitAxis::horizontal,
+            .split_ratio = 0.5F,
+            .children = {},
+            .tabs = {request.panel_id},
+            .active_tab_id = request.panel_id,
+        });
         plan.result_layout.focused_panel_id = request.panel_id;
         accept_dock_mutation(plan);
         return plan;

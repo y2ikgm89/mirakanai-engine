@@ -3,27 +3,15 @@
 
 #pragma once
 
+#include "mirakana/editor/editor_dock_layout.hpp"
+#include "mirakana/editor/editor_panel.hpp"
+
 #include <cstddef>
-#include <cstdint>
 #include <string>
 #include <string_view>
 #include <vector>
 
 namespace mirakana::editor {
-
-enum class PanelId : std::uint8_t {
-    scene = 0,
-    inspector,
-    assets,
-    console,
-    viewport,
-    resources,
-    ai_commands,
-    input_rebinding,
-    profiler,
-    project_settings,
-    timeline
-};
 
 struct ProjectInfo {
     std::string name;
@@ -43,8 +31,11 @@ class Workspace {
     [[nodiscard]] std::size_t panel_count() const noexcept;
     [[nodiscard]] const std::vector<PanelState>& panels() const noexcept;
     [[nodiscard]] bool is_panel_visible(PanelId id) const noexcept;
+    [[nodiscard]] const EditorDockLayout& dock_layout() const noexcept;
+    [[nodiscard]] EditorDockLayout& dock_layout() noexcept;
 
     void set_panel_visible(PanelId id, bool visible);
+    void set_dock_layout(EditorDockLayout layout);
 
   private:
     explicit Workspace(ProjectInfo project);
@@ -54,18 +45,11 @@ class Workspace {
 
     ProjectInfo project_;
     std::vector<PanelState> panels_;
-};
-
-struct WorkspaceMigrationResult {
-    Workspace workspace;
-    int source_version{1};
-    int target_version{1};
-    bool migrated{false};
+    EditorDockLayout dock_layout_;
 };
 
 [[nodiscard]] std::string_view panel_id_to_string(PanelId id) noexcept;
 [[nodiscard]] std::string serialize_workspace(const Workspace& workspace);
-[[nodiscard]] WorkspaceMigrationResult migrate_workspace(std::string_view text);
 [[nodiscard]] Workspace deserialize_workspace(std::string_view text);
 
 } // namespace mirakana::editor
