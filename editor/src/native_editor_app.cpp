@@ -5,12 +5,12 @@
 
 #include "mirakana/assets/material.hpp"
 #include "mirakana/core/diagnostics.hpp"
+#include "mirakana/editor/editor_dock_layout.hpp"
 #include "mirakana/editor/shader_compile.hpp"
 #include "mirakana/platform/clipboard.hpp"
 #include "mirakana/scene/scene.hpp"
 
 #include <algorithm>
-#include <array>
 #include <cstdint>
 #include <span>
 #include <string_view>
@@ -19,24 +19,6 @@
 
 namespace mirakana::editor {
 namespace {
-
-struct NativePanelToken {
-    std::string_view id;
-};
-
-constexpr std::array<NativePanelToken, 11> native_panel_tokens{{
-    NativePanelToken{.id = "main_menu"},
-    NativePanelToken{.id = "scene"},
-    NativePanelToken{.id = "inspector"},
-    NativePanelToken{.id = "assets"},
-    NativePanelToken{.id = "console"},
-    NativePanelToken{.id = "viewport"},
-    NativePanelToken{.id = "resources"},
-    NativePanelToken{.id = "ai_commands"},
-    NativePanelToken{.id = "profiler"},
-    NativePanelToken{.id = "timeline"},
-    NativePanelToken{.id = "project_settings"},
-}};
 
 [[nodiscard]] ProjectDocument make_default_project_document() {
     return ProjectDocument{
@@ -299,11 +281,15 @@ std::uint32_t NativeEditorApp::frames_recorded() const noexcept {
 }
 
 std::uint32_t NativeEditorApp::native_panel_count() const noexcept {
-    return static_cast<std::uint32_t>(native_panel_tokens.size());
+    const auto catalog = editor_dock_panel_catalog();
+    return static_cast<std::uint32_t>(std::ranges::count_if(
+        catalog, [](const EditorDockPanelCatalogRow& panel) { return panel.native_shell_panel; }));
 }
 
 bool NativeEditorApp::has_native_panel(std::string_view id) const noexcept {
-    return std::ranges::any_of(native_panel_tokens, [id](const NativePanelToken& panel) { return panel.id == id; });
+    const auto catalog = editor_dock_panel_catalog();
+    const auto* panel = find_editor_dock_panel(catalog, id);
+    return panel != nullptr && panel->native_shell_panel;
 }
 
 std::uint32_t NativeEditorApp::panels_rendered_last_frame() const noexcept {

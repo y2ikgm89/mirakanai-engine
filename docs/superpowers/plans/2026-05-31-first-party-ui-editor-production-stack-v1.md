@@ -26,9 +26,9 @@ The repository already has the right foundation:
 
 - `MK_ui` owns retained `UiDocument` values, layout solving, renderer submissions, semantic roles, accessibility payload rows, text shaping/rasterization request plans, IME composition publication plans, platform text-input session plans, clipboard/text-edit rows, image decode request plans, and adapter interfaces without depending on editor, renderer backend, platform SDK, Dear ImGui, or UI middleware.
 - `MK_ui_renderer` converts `MK_ui` renderer submissions into renderer sprite submissions and already has cooked image/glyph atlas metadata handoff evidence, while leaving live text shaping, font loading/rasterization, image decoding, OS accessibility publication, and renderer texture upload execution behind separate boundaries.
-- `MK_editor_core` is GUI-independent and already owns project IO, workspace state, authoring models, material/viewport diagnostic rows, playtest/package review rows, resource/profiler/input/prefab/game-module-driver models, and AI-operable command surfaces.
+- `MK_editor_core` is GUI-independent and already owns project IO, workspace state, authoring models, material/viewport diagnostic rows, playtest/package review rows, resource/profiler/input/prefab/game-module-driver models, AI-operable command surfaces, and the core-backed `EditorDockLayout` / `editor_dock_panel_catalog` foundation for deterministic dock graph and panel identity rows.
 - `MK_editor` now builds through the dependency-free `desktop-editor` lane with private Win32 first-party retained UI, D3D12 host probing, eleven core-backed panels, Win32 file-dialog/clipboard/reviewed process-runner services, and deterministic smoke counters.
-- `editor/src/first_party_editor_docking.*`, `first_party_editor_rich_text.*`, and `first_party_editor_adapter_boundaries.hpp` are value-only shell contracts. They prove stable ids and unsupported low-level adapter boundaries, but they are not yet a productized docking, rich text, IME, accessibility, or font-quality implementation.
+- `editor/src/first_party_editor_rich_text.*` and `first_party_editor_adapter_boundaries.hpp` are still value-only shell contracts. They prove stable rich-text ids and unsupported low-level adapter boundaries, but they are not yet a productized rich text, IME, accessibility, or font-quality implementation.
 - `editor/src/native_viewport_surface.*` and `native_material_preview_cache.*` still report `diagnostic_only` for D3D12 texture display. They preserve private-handle policy, but do not yet display actual viewport/material textures.
 - The active manifest and docs keep full D3D12 viewport/material texture display, full docking productization, native IME candidate UI, OS accessibility bridge publication, broad production font fallback, cross-platform editor shells, public native handles, SDL3, and UI middleware automation unsupported.
 
@@ -124,11 +124,11 @@ Files:
 
 Steps:
 
-- [ ] Record the audit summary in this plan without broad source-tree prose.
-- [ ] Switch `currentActivePlan` and `recommendedNextPlan` to this plan in `010-aiOperableProductionLoop.json`; keep `unsupportedProductionGaps = []`.
-- [ ] Update registry, current-capabilities, roadmap, and production-completion pointers so agents can find this plan without bulk-reading historical plans.
-- [ ] Add static-check branches for `first-party-ui-editor-production-stack-v1`.
-- [ ] Compose the manifest and run focused docs/agent checks:
+- [x] Record the audit summary in this plan without broad source-tree prose.
+- [x] Switch `currentActivePlan` and `recommendedNextPlan` to this plan in `010-aiOperableProductionLoop.json`; keep `unsupportedProductionGaps = []`.
+- [x] Update registry, current-capabilities, roadmap, and production-completion pointers so agents can find this plan without bulk-reading historical plans.
+- [x] Add static-check branches for `first-party-ui-editor-production-stack-v1`.
+- [x] Compose the manifest and run focused docs/agent checks:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write
@@ -157,12 +157,14 @@ Files:
 
 Steps:
 
-- [ ] Add RED tests for duplicate dock ids, invalid splits, missing tabs, stale active tab ids, invalid rich-text paragraph/span ids, and unsafe/native/middleware tokens.
-- [ ] Add core-level dock layout records that can represent split nodes, tab stacks, active panels, visibility, focus target, layout revision, and workspace persistence intent.
+- [x] Add RED tests for duplicate dock ids, invalid splits, missing tabs, stale active tab ids, native-shell focus rejection, and unsafe/native/middleware tokens.
+- [x] Add core-level dock layout records that can represent split nodes, tab stacks, active panels, focus target, layout revision, workspace persistence intent, and native-shell panel identity.
 - [ ] Add core-level rich text records for paragraph/span ids, style tokens, inline semantic rows, selection/copy metadata, and unsupported markup diagnostics.
-- [ ] Make shell document composition consume these core-level models instead of hard-coded private defaults.
-- [ ] Keep low-level shaping/font/IME/accessibility unsupported flags explicit in the core models.
-- [ ] Run focused editor-core/native-shell tests and static checks.
+- [x] Make shell document composition consume the core-level dock model instead of hard-coded private docking defaults.
+- [x] Keep low-level shaping/font/IME/accessibility unsupported flags explicit in the core dock model.
+- [x] Run focused editor-core/native-shell tests for the dock foundation slice.
+
+**Phase 1a Evidence:** Candidate `codex/first-party-ui-editor-core-state-candidate1` promotes the shell-only dock graph into GUI-independent `MK_editor_core` as `EditorDockLayout`, adds `editor_dock_panel_catalog()` as the canonical panel identity source, deletes `editor/src/first_party_editor_docking.*`, and switches `MK_editor_shell_common` document composition plus `NativeEditorApp` panel counting to consume the core layout/catalog. The catalog explicitly classifies `main_menu` as shell chrome / native shell, and `input_rebinding` as a workspace panel that is not in the current native shell panel set. Focused RED/GREEN evidence covered `MK_editor_core_tests` and `MK_editor_native_shell_tests`; rich text promotion remains Phase 1b. Validation passed: `tools/cmake.ps1 --preset dev`; `tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests MK_editor_native_shell_tests`; `tools/ctest.ps1 --preset dev --output-on-failure -R "MK_editor_core_tests|MK_editor_native_shell_tests"`; `tools/check-tidy.ps1 -Files editor/core/src/editor_dock_layout.cpp,editor/src/first_party_editor_document.cpp,editor/src/native_editor_app.cpp,tests/unit/editor_core_tests.cpp,tests/unit/editor_native_shell_tests.cpp -ReuseExistingFileApiReply`; `tools/check-format.ps1`; `tools/check-public-api-boundaries.ps1`; `tools/check-native-desktop-contracts.ps1`; `tools/check-json-contracts.ps1`; `tools/check-ai-integration.ps1`; `tools/check-agents.ps1`; `tools/build-editor.ps1` (86/86); and full `tools/validate.ps1` (85/85).
 
 ## Phase 2 - Docking Productization v1
 

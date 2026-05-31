@@ -1867,7 +1867,8 @@ $nativeEditorViewportChecks = @(
     @{
         Path = "editor/src/native_editor_app.cpp"
         Needles = @(
-            'NativePanelToken{.id = "viewport"}',
+            "editor_dock_panel_catalog",
+            "native_shell_panel",
             "plan_native_viewport_display",
             "ViewportState viewport",
             "NativeViewportDisplayPlan viewport_display",
@@ -1876,9 +1877,16 @@ $nativeEditorViewportChecks = @(
         )
     },
     @{
-        Path = "editor/src/first_party_editor_document.cpp"
+        Path = "editor/core/src/editor_dock_layout.cpp"
         Needles = @(
             '.id = "viewport"',
+            ".native_shell_panel = true"
+        )
+    },
+    @{
+        Path = "editor/src/first_party_editor_document.cpp"
+        Needles = @(
+            "make_default_editor_dock_layout",
             "app.viewport_display().status_id",
             ".viewport_native_handles_exposed",
             "editor.panel.",
@@ -2044,7 +2052,7 @@ $nativeEditorMaterialPreviewChecks = @(
             "app.material_preview_display().native_texture_handles_exposed",
             "make_first_party_editor_shell_smoke_counters",
             "renderer_submission",
-            "editor_panel_tokens"
+            "editor_dock_panel_catalog"
         )
     },
     @{
