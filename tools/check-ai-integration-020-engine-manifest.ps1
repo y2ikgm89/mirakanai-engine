@@ -117,7 +117,7 @@ Assert-ContainsText $masterPlanRuntimeUiLedgerNote.Value "RuntimeInputRebindingP
 Assert-ContainsText $masterPlanRuntimeUiLedgerNote.Value "platform input glyph generation" "master plan runtime UI ledger note"
 Assert-ContainsText $masterPlanText "Completed gap burn-down" "production master plan completed gap pointer"
 Assert-ContainsText $masterPlanText "Renderer RHI Resource Foundation 1.0 Scope Closeout v1" "production master plan renderer-rhi closeout pointer"
-Assert-ContainsText $masterPlanText "recommendedNextPlan.id = first-party-editor-shell-v1" "production master plan active pointer"
+Assert-ContainsText $masterPlanText "recommendedNextPlan.id = next-production-gap-selection" "production master plan selection-gate pointer"
 Assert-ContainsText $masterPlanText "Native Win32 Editor Shell v1" "production master plan native editor shell closeout pointer"
 Assert-ContainsText $masterPlanText "Renderer Backend Parity Metal Apple Evidence v1" "production master plan renderer Metal Apple closeout pointer"
 Assert-ContainsText $rhiPublicHeaderText "struct ComputePipelineDesc" "engine/rhi/include/mirakana/rhi/rhi.hpp"
