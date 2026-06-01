@@ -27,10 +27,70 @@ struct EditorAiOperationDiagnostic {
     std::string message;
 };
 
+struct EditorAiOperationStatusRow {
+    std::string id;
+    std::string role;
+    std::string label;
+    std::string target_element_id;
+    std::string status;
+    std::uint64_t count{0};
+    bool ready{false};
+    bool visible{true};
+    bool enabled{true};
+    bool host_gated{false};
+    bool native_handles_public{false};
+};
+
+struct EditorAiOperationUxStatusDesc {
+    std::string selected_dock_panel_id;
+    std::uint64_t rich_text_document_count{0};
+    std::string focused_text_target_id;
+    std::string text_input_status;
+    std::string ime_service_id;
+    std::uint32_t ime_text_input_session_rows{0};
+    std::uint32_t ime_composition_rows{0};
+    std::uint32_t ime_committed_text_rows{0};
+    std::uint32_t ime_caret_rect_rows{0};
+    std::uint32_t ime_surrounding_text_rows{0};
+    bool ime_candidate_ui_host_owned{true};
+    bool ime_native_handles_exposed{false};
+    std::string text_atlas_handoff_status;
+    bool text_font_adapter_invoked{false};
+    bool text_font_glyphs_ready{false};
+    bool text_font_fallback_used{false};
+    bool text_atlas_handoff_ready{false};
+    bool text_font_native_handles_exposed{false};
+    std::uint32_t text_atlas_handoff_host_gated_rows{0};
+    std::uint32_t text_atlas_handoff_unsupported_rows{0};
+    std::string accessibility_status;
+    std::uint32_t accessibility_nodes{0};
+    std::uint32_t accessibility_role_rows{0};
+    std::uint32_t accessibility_name_rows{0};
+    std::uint32_t accessibility_state_rows{0};
+    std::uint32_t accessibility_focus_rows{0};
+    std::uint32_t accessibility_action_rows{0};
+    std::uint32_t accessibility_relationship_rows{0};
+    std::uint32_t accessibility_tree_navigation_rows{0};
+    std::uint32_t accessibility_diagnostics{0};
+    std::uint32_t accessibility_missing_name_diagnostics{0};
+    std::uint32_t accessibility_missing_role_diagnostics{0};
+    std::uint32_t accessibility_invalid_bounds_diagnostics{0};
+    std::uint32_t accessibility_hidden_nodes{0};
+    std::uint32_t accessibility_unsupported_pattern_diagnostics{0};
+    bool accessibility_native_handles_exposed{false};
+    std::string viewport_status;
+    std::uint64_t viewport_visible_texture_composites{0};
+    bool viewport_native_handles_exposed{false};
+    std::string material_preview_status;
+    std::uint64_t material_preview_visible_texture_composites{0};
+    bool material_preview_native_handles_exposed{false};
+};
+
 struct EditorAiOperationSnapshot {
     std::uint64_t revision{0};
     std::vector<EditorAiOperationElementRow> elements;
     std::vector<EditorRichTextAiRow> rich_text_rows;
+    std::vector<EditorAiOperationStatusRow> status_rows;
     std::vector<EditorAiOperationDiagnostic> diagnostics;
 };
 
@@ -58,6 +118,7 @@ struct EditorAiCommandRequest {
     std::string target_element_id;
     std::vector<EditorAiCommandParameter> parameters;
     bool user_confirmed{false};
+    std::uint64_t expected_revision{0};
 };
 
 struct EditorAiCommandDryRunResult {
@@ -65,6 +126,8 @@ struct EditorAiCommandDryRunResult {
     bool would_mutate{false};
     bool requires_confirmation{false};
     std::vector<EditorAiOperationDiagnostic> diagnostics;
+    std::string output_text;
+    std::string output_mime_type;
 };
 
 struct EditorAiCommandApplyResult {
@@ -72,8 +135,14 @@ struct EditorAiCommandApplyResult {
     std::uint64_t before_revision{0};
     std::uint64_t after_revision{0};
     std::vector<EditorAiOperationDiagnostic> diagnostics;
+    bool accepted{false};
+    bool completed{false};
+    std::string output_text;
+    std::string output_mime_type;
 };
 
+[[nodiscard]] std::vector<EditorAiOperationStatusRow>
+make_editor_ai_operation_ux_status_rows(const EditorAiOperationUxStatusDesc& desc);
 [[nodiscard]] EditorAiOperationSnapshot make_editor_ai_operation_snapshot(const Workspace& workspace);
 [[nodiscard]] EditorAiOperationSnapshot make_editor_ai_operation_snapshot(const Workspace& workspace,
                                                                           const EditorDockLayout& dock_layout);
@@ -81,10 +150,18 @@ struct EditorAiCommandApplyResult {
 make_editor_ai_operation_snapshot(const Workspace& workspace, const EditorDockLayout& dock_layout,
                                   std::span<const EditorRichTextDocument> rich_text_documents,
                                   EditorRichTextViewport viewport = {});
+[[nodiscard]] EditorAiOperationSnapshot
+make_editor_ai_operation_snapshot(const Workspace& workspace, const EditorDockLayout& dock_layout,
+                                  std::span<const EditorRichTextDocument> rich_text_documents,
+                                  std::span<const EditorAiOperationStatusRow> status_rows,
+                                  EditorRichTextViewport viewport = {});
 
 [[nodiscard]] EditorAiCommandCatalog make_editor_ai_command_catalog(const Workspace& workspace);
 [[nodiscard]] EditorAiCommandCatalog make_editor_ai_command_catalog(const Workspace& workspace,
                                                                     const EditorDockLayout& dock_layout);
+[[nodiscard]] EditorAiCommandCatalog
+make_editor_ai_command_catalog(const Workspace& workspace, const EditorDockLayout& dock_layout,
+                               std::span<const EditorRichTextDocument> rich_text_documents);
 
 [[nodiscard]] EditorAiCommandDryRunResult dry_run_editor_ai_command(const Workspace& workspace,
                                                                     const EditorAiCommandCatalog& catalog,
@@ -93,6 +170,10 @@ make_editor_ai_operation_snapshot(const Workspace& workspace, const EditorDockLa
                                                                     const EditorDockLayout& dock_layout,
                                                                     const EditorAiCommandCatalog& catalog,
                                                                     const EditorAiCommandRequest& request);
+[[nodiscard]] EditorAiCommandDryRunResult
+dry_run_editor_ai_command(const Workspace& workspace, const EditorDockLayout& dock_layout,
+                          std::span<const EditorRichTextDocument> rich_text_documents,
+                          const EditorAiCommandCatalog& catalog, const EditorAiCommandRequest& request);
 
 [[nodiscard]] EditorAiCommandApplyResult apply_editor_ai_command(Workspace& workspace,
                                                                  const EditorAiCommandCatalog& catalog,
@@ -100,5 +181,9 @@ make_editor_ai_operation_snapshot(const Workspace& workspace, const EditorDockLa
 [[nodiscard]] EditorAiCommandApplyResult apply_editor_ai_command(Workspace& workspace, EditorDockLayout& dock_layout,
                                                                  const EditorAiCommandCatalog& catalog,
                                                                  const EditorAiCommandRequest& request);
+[[nodiscard]] EditorAiCommandApplyResult
+apply_editor_ai_command(const Workspace& workspace, const EditorDockLayout& dock_layout,
+                        std::span<const EditorRichTextDocument> rich_text_documents,
+                        const EditorAiCommandCatalog& catalog, const EditorAiCommandRequest& request);
 
 } // namespace mirakana::editor

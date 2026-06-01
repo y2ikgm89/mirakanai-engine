@@ -13,6 +13,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace mirakana::editor {
 namespace {
@@ -153,6 +154,15 @@ void append_panel_status(ui::UiDocument& document, const NativeEditorApp& app, s
                      "project settings diagnostics " + std::to_string(app.project_settings_errors().size()));
         append_text_field(document, panel_root, app.text_input_state());
     }
+}
+
+[[nodiscard]] std::vector<EditorRichTextDocument>
+make_first_party_editor_rich_text_documents(const NativeEditorApp& app) {
+    return {
+        make_editor_console_rich_text_document(app.console_rows(), "editor.panel.console.rich_text"),
+        make_editor_ai_command_panel_rich_text_document(app.ai_commands(), "editor.panel.ai_commands.rich_text"),
+        make_editor_inspector_rich_text_document(app.inspector_rows(), "editor.panel.inspector.rich_text"),
+    };
 }
 
 void append_panel_root(ui::UiDocument& document, const NativeEditorApp& app, std::string_view panel_id,
@@ -392,6 +402,66 @@ make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const F
         .dock_active_panel_count = document.active_panel_count,
         .dock_focusable_control_count = document.focusable_dock_control_count,
     };
+}
+
+EditorAiOperationUxStatusDesc
+make_first_party_editor_ai_operation_ux_status_desc(const NativeEditorApp& app,
+                                                    const FirstPartyEditorDocument& document) {
+    const auto counters = make_first_party_editor_shell_smoke_counters(app, document);
+    return EditorAiOperationUxStatusDesc{
+        .selected_dock_panel_id = app.workspace().dock_layout().focused_panel_id,
+        .rich_text_document_count = make_first_party_editor_rich_text_documents(app).size(),
+        .focused_text_target_id = app.text_input_state().edit_state.target.value,
+        .text_input_status = counters.ime_status,
+        .ime_service_id = app.services().ime_service_id,
+        .ime_text_input_session_rows = counters.ime_text_input_session_rows,
+        .ime_composition_rows = counters.ime_composition_rows,
+        .ime_committed_text_rows = counters.ime_committed_text_rows,
+        .ime_caret_rect_rows = counters.ime_caret_rect_rows,
+        .ime_surrounding_text_rows = counters.ime_surrounding_text_rows,
+        .ime_candidate_ui_host_owned = counters.ime_candidate_ui_host_owned,
+        .ime_native_handles_exposed = counters.ime_native_handles_exposed,
+        .text_atlas_handoff_status = counters.text_atlas_handoff_status,
+        .text_font_adapter_invoked = counters.text_font_adapter_invoked,
+        .text_font_glyphs_ready = counters.text_font_glyphs_ready,
+        .text_font_fallback_used = counters.text_font_fallback_used,
+        .text_atlas_handoff_ready = counters.text_atlas_handoff_ready,
+        .text_font_native_handles_exposed = counters.text_font_native_handles_exposed,
+        .text_atlas_handoff_host_gated_rows = counters.text_atlas_handoff_host_gated_rows,
+        .text_atlas_handoff_unsupported_rows = counters.text_atlas_handoff_unsupported_rows,
+        .accessibility_status = counters.accessibility_status,
+        .accessibility_nodes = counters.accessibility_nodes,
+        .accessibility_role_rows = counters.accessibility_role_rows,
+        .accessibility_name_rows = counters.accessibility_name_rows,
+        .accessibility_state_rows = counters.accessibility_state_rows,
+        .accessibility_focus_rows = counters.accessibility_focus_rows,
+        .accessibility_action_rows = counters.accessibility_action_rows,
+        .accessibility_relationship_rows = counters.accessibility_relationship_rows,
+        .accessibility_tree_navigation_rows = counters.accessibility_tree_navigation_rows,
+        .accessibility_diagnostics = counters.accessibility_diagnostics,
+        .accessibility_missing_name_diagnostics = counters.accessibility_missing_name_diagnostics,
+        .accessibility_missing_role_diagnostics = counters.accessibility_missing_role_diagnostics,
+        .accessibility_invalid_bounds_diagnostics = counters.accessibility_invalid_bounds_diagnostics,
+        .accessibility_hidden_nodes = counters.accessibility_hidden_nodes,
+        .accessibility_unsupported_pattern_diagnostics = counters.accessibility_unsupported_pattern_diagnostics,
+        .accessibility_native_handles_exposed = counters.accessibility_native_handles_exposed,
+        .viewport_status = counters.viewport_status,
+        .viewport_visible_texture_composites = counters.viewport_visible_texture_composites,
+        .viewport_native_handles_exposed = counters.viewport_native_handles_exposed,
+        .material_preview_status = counters.material_preview_status,
+        .material_preview_visible_texture_composites = counters.material_preview_visible_texture_composites,
+        .material_preview_native_handles_exposed = counters.material_preview_native_handles_exposed,
+    };
+}
+
+EditorAiOperationSnapshot make_first_party_editor_ai_operation_snapshot(const NativeEditorApp& app,
+                                                                        const FirstPartyEditorDocument& document) {
+    const auto ux_status = make_first_party_editor_ai_operation_ux_status_desc(app, document);
+    const auto status_rows = make_editor_ai_operation_ux_status_rows(ux_status);
+    const auto rich_text_documents = make_first_party_editor_rich_text_documents(app);
+    return make_editor_ai_operation_snapshot(
+        app.workspace(), app.workspace().dock_layout(), rich_text_documents, status_rows,
+        EditorRichTextViewport{.enabled = true, .first_paragraph = 0U, .max_paragraphs = 64U});
 }
 
 } // namespace mirakana::editor

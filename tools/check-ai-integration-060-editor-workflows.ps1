@@ -2438,6 +2438,131 @@ foreach ($check in $nativeEditorMaterialPreviewChecks) {
     }
 }
 
+$editorAiUxOperationChecks = @(
+    @{
+        Path = "editor/core/include/mirakana/editor/ai_operation_surface.hpp"
+        Needles = @(
+            "EditorAiOperationStatusRow",
+            "EditorAiOperationUxStatusDesc",
+            "std::vector<EditorAiOperationStatusRow> status_rows",
+            "expected_revision",
+            "output_mime_type"
+        )
+    },
+    @{
+        Path = "editor/core/src/ai_operation_surface.cpp"
+        Needles = @(
+            "editor.ai.dock.selected_panel",
+            "editor.ai.rich_text.documents",
+            "editor.ai.text_input.focused_target",
+            "editor.ai.adapter.text_font",
+            "editor.ai.ime.session",
+            "editor.ai.accessibility.uia_provider",
+            "editor.ai.viewport.display",
+            "editor.ai.material_preview.display",
+            ".copy_plain_text",
+            ".copy_selection_plain_text",
+            "native_handle_unsupported",
+            "shell_execution_unsupported",
+            "validation_recipe_execution_unsupported",
+            "screen_coordinates_unsupported",
+            "stale_revision"
+        )
+    },
+    @{
+        Path = "editor/src/first_party_editor_document.cpp"
+        Needles = @(
+            "make_first_party_editor_ai_operation_ux_status_desc",
+            "make_first_party_editor_ai_operation_snapshot",
+            "make_editor_ai_operation_ux_status_rows"
+        )
+    },
+    @{
+        Path = "tests/unit/editor_core_tests.cpp"
+        Needles = @(
+            "editor ai operation snapshot exposes UX status rows without native handles",
+            "editor ai command catalog exposes reviewed rich text copy commands",
+            "editor ai command surface rejects stale revisions native handles shell and validation execution"
+        )
+    },
+    @{
+        Path = "tests/unit/editor_native_shell_tests.cpp"
+        Needles = @(
+            "editor first party shell exposes AI operation UX rows from native readiness",
+            "editor.ai.validation_recipe.execution"
+        )
+    },
+    @{
+        Path = "docs/superpowers/plans/2026-05-31-first-party-ui-editor-production-stack-v1.md"
+        Needles = @(
+            "editor.ai.accessibility.uia_provider",
+            "<rich_text_document_id>.copy_selection_plain_text",
+            "validation-recipe execution"
+        )
+    },
+    @{
+        Path = "docs/current-capabilities.md"
+        Needles = @(
+            "editor.ai.material_preview.display",
+            "<rich_text_document_id>.copy_plain_text",
+            "screen coordinates"
+        )
+    },
+    @{
+        Path = "docs/editor.md"
+        Needles = @(
+            "EditorAiOperationSnapshot.status_rows",
+            "editor.ai.viewport.display",
+            "validation-recipe execution"
+        )
+    },
+    @{
+        Path = ".agents/skills/editor-change/SKILL.md"
+        Needles = @(
+            "EditorAiOperationSnapshot.status_rows",
+            "editor.ai.ime.session",
+            "<rich_text_document_id>.copy_selection_plain_text"
+        )
+    },
+    @{
+        Path = ".claude/skills/gameengine-editor/SKILL.md"
+        Needles = @(
+            "EditorAiOperationSnapshot.status_rows",
+            "editor.ai.ime.session",
+            "<rich_text_document_id>.copy_selection_plain_text"
+        )
+    },
+    @{
+        Path = ".cursor/skills/gameengine-editor/SKILL.md"
+        Needles = @(
+            "EditorAiOperationSnapshot.status_rows",
+            "editor.ai.ime.session",
+            "<rich_text_document_id>.copy_selection_plain_text"
+        )
+    },
+    @{
+        Path = "engine/agent/manifest.json"
+        Needles = @(
+            "editor.ai.dock.selected_panel",
+            "editor.ai.material_preview.display",
+            ".copy_selection_plain_text",
+            "validation-recipe execution"
+        )
+    }
+)
+foreach ($check in $editorAiUxOperationChecks) {
+    $fileText = Get-AgentSurfaceText $check.Path
+    $missingNeedles = @()
+    foreach ($needle in $check.Needles) {
+        if (-not $fileText.Contains($needle)) {
+            $missingNeedles += $needle
+        }
+    }
+    if ($missingNeedles.Count -gt 0) {
+        Write-Error "ai-integration-check: $($check.Path) missing editor AI UX operation contract: $($missingNeedles -join ', ')"
+    }
+}
+
 $materialPreviewCoreText = Get-AgentSurfaceText "editor/core/src/material_asset_preview_panel.cpp"
 if ($materialPreviewCoreText.Contains("d3d12-shared-texture")) {
     Write-Error "ai-integration-check: material preview core display path contract must stay backend-neutral"

@@ -315,10 +315,12 @@ Steps:
 
 Steps:
 
-- [ ] Extend `EditorAiOperationSnapshot` to include selected dock, rich text, text input, adapter status, Windows UIA accessibility state, and viewport/material display rows.
-- [ ] Extend command catalog/dry-run/apply for reviewed dock and rich-text operations only.
-- [ ] Add rejection tests for arbitrary command ids, stale revisions, target mismatches, missing confirmation, native handles, shell execution, and validation-recipe execution from editor core.
-- [ ] Update manifest guidance and static checks with exact AI-operable row names.
+- [x] Extend `EditorAiOperationSnapshot` to include selected dock, rich text, text input, adapter status, Windows UIA accessibility state, and viewport/material display rows.
+- [x] Extend command catalog/dry-run/apply for reviewed dock and rich-text operations only.
+- [x] Add rejection tests for arbitrary command ids, stale revisions, target mismatches, missing confirmation, native handles, shell execution, and validation-recipe execution from editor core.
+- [x] Update manifest guidance and static checks with exact AI-operable row names.
+
+**Phase 8 Evidence:** Candidate `codex/first-party-ui-editor-ai-ux-candidate19` adds GUI-independent `EditorAiOperationStatusRow` / `EditorAiOperationUxStatusDesc` rows plus `make_editor_ai_operation_ux_status_rows`, extends `EditorAiOperationSnapshot` with `status_rows`, and wires the first-party shell through `make_first_party_editor_ai_operation_snapshot`. The exact AI-visible UX rows are `editor.ai.dock.selected_panel`, `editor.ai.rich_text.documents`, `editor.ai.text_input.focused_target`, `editor.ai.adapter.text_font`, `editor.ai.ime.session`, `editor.ai.accessibility.uia_provider`, `editor.ai.viewport.display`, and `editor.ai.material_preview.display`; native handle exposure on any row emits `native_handle_unsupported`. The reviewed rich-text command ids are `<rich_text_document_id>.copy_plain_text` and `<rich_text_document_id>.copy_selection_plain_text`, returning `text/plain;charset=utf-8` output through dry-run/apply without mutating state. `EditorAiCommandRequest::expected_revision` rejects stale catalogs, and core command validation now fails closed for native handles, shell/process execution, validation-recipe execution, screen coordinates, target mismatches, missing confirmation, unsupported parameters, disabled commands, and unknown command ids. RED/GREEN evidence covered `MK_editor_core_tests` and `MK_editor_native_shell_tests` for UX status rows, shell-projected native readiness rows, rich-text copy commands, stale revision rejection, native handle rejection, shell execution rejection, and validation recipe rejection without exposing Win32/D3D12/DirectWrite/TSF/UIA handles.
 
 ## Phase 9 - Cross-Platform Adapter Boundary Review
 

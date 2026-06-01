@@ -366,6 +366,14 @@ find_ai_operation_element(const mirakana::editor::EditorAiOperationSnapshot& sna
     return it == snapshot.elements.end() ? nullptr : &(*it);
 }
 
+[[nodiscard]] const mirakana::editor::EditorAiOperationStatusRow*
+find_ai_operation_status_row(const mirakana::editor::EditorAiOperationSnapshot& snapshot,
+                             std::string_view id) noexcept {
+    const auto it = std::ranges::find_if(
+        snapshot.status_rows, [id](const mirakana::editor::EditorAiOperationStatusRow& row) { return row.id == id; });
+    return it == snapshot.status_rows.end() ? nullptr : &(*it);
+}
+
 [[nodiscard]] const mirakana::editor::EditorRichTextAiRow*
 find_rich_text_ai_row(const mirakana::editor::EditorRichTextAiSnapshot& snapshot, std::string_view id) noexcept {
     const auto it = std::ranges::find_if(
@@ -1330,6 +1338,93 @@ MK_TEST("editor ai operation snapshot exposes dock layout rows") {
     MK_REQUIRE(viewport_panel->enabled);
 }
 
+MK_TEST("editor ai operation snapshot exposes UX status rows without native handles") {
+    const auto workspace = mirakana::editor::Workspace::create_default(
+        mirakana::editor::ProjectInfo{.name = "sample", .root_path = "games/sample"});
+    const auto layout = mirakana::editor::make_default_editor_dock_layout();
+    const mirakana::editor::EditorAiOperationUxStatusDesc ux_status{
+        .selected_dock_panel_id = "viewport",
+        .rich_text_document_count = 3U,
+        .focused_text_target_id = "editor.panel.project_settings.name.text_field",
+        .text_input_status = "win32_tsf_selected",
+        .ime_service_id = "win32_tsf",
+        .ime_text_input_session_rows = 1U,
+        .ime_committed_text_rows = 1U,
+        .ime_caret_rect_rows = 1U,
+        .ime_surrounding_text_rows = 1U,
+        .ime_candidate_ui_host_owned = true,
+        .ime_native_handles_exposed = false,
+        .text_atlas_handoff_status = "glyphs_ready_atlas_handoff_host_gated",
+        .text_font_adapter_invoked = true,
+        .text_font_glyphs_ready = true,
+        .text_font_fallback_used = false,
+        .text_atlas_handoff_ready = false,
+        .text_font_native_handles_exposed = false,
+        .text_atlas_handoff_host_gated_rows = 1U,
+        .text_atlas_handoff_unsupported_rows = 1U,
+        .accessibility_status = "uia_provider_ready",
+        .accessibility_nodes = 12U,
+        .accessibility_role_rows = 12U,
+        .accessibility_name_rows = 12U,
+        .accessibility_state_rows = 12U,
+        .accessibility_focus_rows = 1U,
+        .accessibility_action_rows = 6U,
+        .accessibility_relationship_rows = 8U,
+        .accessibility_tree_navigation_rows = 8U,
+        .accessibility_diagnostics = 0U,
+        .accessibility_native_handles_exposed = false,
+        .viewport_status = "d3d12_texture_ready",
+        .viewport_visible_texture_composites = 2U,
+        .viewport_native_handles_exposed = false,
+        .material_preview_status = "d3d12_texture_ready",
+        .material_preview_visible_texture_composites = 2U,
+        .material_preview_native_handles_exposed = false,
+    };
+
+    const auto rows = mirakana::editor::make_editor_ai_operation_ux_status_rows(ux_status);
+    const std::vector<mirakana::editor::EditorRichTextDocument> no_rich_text_documents;
+    const auto snapshot =
+        mirakana::editor::make_editor_ai_operation_snapshot(workspace, layout, no_rich_text_documents, rows);
+    const auto* selected_dock = find_ai_operation_status_row(snapshot, "editor.ai.dock.selected_panel");
+    const auto* text_input = find_ai_operation_status_row(snapshot, "editor.ai.text_input.focused_target");
+    const auto* text_font = find_ai_operation_status_row(snapshot, "editor.ai.adapter.text_font");
+    const auto* ime = find_ai_operation_status_row(snapshot, "editor.ai.ime.session");
+    const auto* accessibility = find_ai_operation_status_row(snapshot, "editor.ai.accessibility.uia_provider");
+    const auto* viewport = find_ai_operation_status_row(snapshot, "editor.ai.viewport.display");
+    const auto* material = find_ai_operation_status_row(snapshot, "editor.ai.material_preview.display");
+
+    MK_REQUIRE(selected_dock != nullptr);
+    MK_REQUIRE(selected_dock->role == "selected_dock_panel");
+    MK_REQUIRE(selected_dock->status == "viewport");
+    MK_REQUIRE(selected_dock->target_element_id == "editor.dock.panel.viewport");
+    MK_REQUIRE(text_input != nullptr);
+    MK_REQUIRE(text_input->status == "win32_tsf_selected");
+    MK_REQUIRE(text_input->target_element_id == "editor.panel.project_settings.name.text_field");
+    MK_REQUIRE(text_font != nullptr);
+    MK_REQUIRE(text_font->ready);
+    MK_REQUIRE(text_font->count == 1U);
+    MK_REQUIRE(!text_font->native_handles_public);
+    MK_REQUIRE(ime != nullptr);
+    MK_REQUIRE(ime->status == "win32_tsf_selected");
+    MK_REQUIRE(ime->count == 1U);
+    MK_REQUIRE(!ime->native_handles_public);
+    MK_REQUIRE(accessibility != nullptr);
+    MK_REQUIRE(accessibility->status == "uia_provider_ready");
+    MK_REQUIRE(accessibility->ready);
+    MK_REQUIRE(accessibility->count == 12U);
+    MK_REQUIRE(!accessibility->native_handles_public);
+    MK_REQUIRE(viewport != nullptr);
+    MK_REQUIRE(viewport->status == "d3d12_texture_ready");
+    MK_REQUIRE(viewport->ready);
+    MK_REQUIRE(viewport->count == 2U);
+    MK_REQUIRE(!viewport->native_handles_public);
+    MK_REQUIRE(material != nullptr);
+    MK_REQUIRE(material->status == "d3d12_texture_ready");
+    MK_REQUIRE(material->ready);
+    MK_REQUIRE(material->count == 2U);
+    MK_REQUIRE(!material->native_handles_public);
+}
+
 MK_TEST("editor ai command catalog exposes stable panel visibility commands") {
     const auto workspace = mirakana::editor::Workspace::create_default(
         mirakana::editor::ProjectInfo{.name = "sample", .root_path = "games/sample"});
@@ -1389,6 +1484,72 @@ MK_TEST("editor ai command catalog exposes dock commands") {
     MK_REQUIRE(reset_layout->requires_confirmation);
 }
 
+MK_TEST("editor ai command catalog exposes reviewed rich text copy commands") {
+    const auto workspace = mirakana::editor::Workspace::create_default(
+        mirakana::editor::ProjectInfo{.name = "sample", .root_path = "games/sample"});
+    const auto layout = mirakana::editor::make_default_editor_dock_layout();
+    const mirakana::editor::EditorRichTextDocument document{
+        .id = "editor.rich_text.ai_output",
+        .paragraphs =
+            {
+                mirakana::editor::EditorRichTextParagraph{
+                    .id = "p0",
+                    .spans =
+                        {
+                            mirakana::editor::EditorRichTextSpan{
+                                .id = "message",
+                                .style_token = "editor.info",
+                                .text = "Open imported texture",
+                            },
+                        },
+                },
+            },
+        .selection =
+            mirakana::editor::EditorRichTextSelection{
+                .active = true,
+                .start_paragraph_id = "p0",
+                .start_span_id = "message",
+                .start_byte_offset = 0U,
+                .end_paragraph_id = "p0",
+                .end_span_id = "message",
+                .end_byte_offset = 4U,
+            },
+    };
+    const std::vector documents{document};
+
+    const auto catalog = mirakana::editor::make_editor_ai_command_catalog(workspace, layout, documents);
+    const auto* copy_plain = find_ai_command(catalog, "editor.rich_text.ai_output.copy_plain_text");
+    const auto* copy_selection = find_ai_command(catalog, "editor.rich_text.ai_output.copy_selection_plain_text");
+    const mirakana::editor::EditorAiCommandRequest request{
+        .command_id = "editor.rich_text.ai_output.copy_selection_plain_text",
+        .target_element_id = "editor.rich_text.ai_output",
+        .expected_revision = catalog.revision,
+    };
+
+    const auto dry_run = mirakana::editor::dry_run_editor_ai_command(workspace, layout, documents, catalog, request);
+    const auto applied = mirakana::editor::apply_editor_ai_command(workspace, layout, documents, catalog, request);
+
+    MK_REQUIRE(copy_plain != nullptr);
+    MK_REQUIRE(copy_plain->target_element_id == "editor.rich_text.ai_output");
+    MK_REQUIRE(copy_plain->enabled);
+    MK_REQUIRE(!copy_plain->mutates_state);
+    MK_REQUIRE(!copy_plain->requires_confirmation);
+    MK_REQUIRE(copy_selection != nullptr);
+    MK_REQUIRE(copy_selection->target_element_id == "editor.rich_text.ai_output");
+    MK_REQUIRE(copy_selection->enabled);
+    MK_REQUIRE(dry_run.accepted);
+    MK_REQUIRE(!dry_run.would_mutate);
+    MK_REQUIRE(!dry_run.requires_confirmation);
+    MK_REQUIRE(dry_run.output_text == "Open");
+    MK_REQUIRE(dry_run.output_mime_type == "text/plain;charset=utf-8");
+    MK_REQUIRE(applied.accepted);
+    MK_REQUIRE(applied.completed);
+    MK_REQUIRE(!applied.applied);
+    MK_REQUIRE(applied.before_revision == applied.after_revision);
+    MK_REQUIRE(applied.output_text == "Open");
+    MK_REQUIRE(applied.output_mime_type == "text/plain;charset=utf-8");
+}
+
 MK_TEST("editor ai command dry run rejects unknown command") {
     const auto workspace = mirakana::editor::Workspace::create_default(
         mirakana::editor::ProjectInfo{.name = "sample", .root_path = "games/sample"});
@@ -1417,6 +1578,48 @@ MK_TEST("editor ai command dry run rejects target mismatch") {
     MK_REQUIRE(!dry_run.accepted);
     MK_REQUIRE(!dry_run.diagnostics.empty());
     MK_REQUIRE(dry_run.diagnostics.front().code == "target_mismatch");
+}
+
+MK_TEST("editor ai command surface rejects stale revisions native handles shell and validation execution") {
+    const auto workspace = mirakana::editor::Workspace::create_default(
+        mirakana::editor::ProjectInfo{.name = "sample", .root_path = "games/sample"});
+    const auto layout = mirakana::editor::make_default_editor_dock_layout();
+    const auto catalog = mirakana::editor::make_editor_ai_command_catalog(workspace, layout);
+
+    const auto stale =
+        mirakana::editor::dry_run_editor_ai_command(workspace, layout, catalog,
+                                                    mirakana::editor::EditorAiCommandRequest{
+                                                        .command_id = "editor.dock.panel.assets.activate",
+                                                        .target_element_id = "editor.dock.panel.assets",
+                                                        .expected_revision = catalog.revision + 1U,
+                                                    });
+    const auto native_handle =
+        mirakana::editor::dry_run_editor_ai_command(workspace, layout, catalog,
+                                                    mirakana::editor::EditorAiCommandRequest{
+                                                        .command_id = "editor.dock.panel.viewport.native_handle",
+                                                        .target_element_id = "editor.native_handle.d3d12",
+                                                    });
+    const auto shell = mirakana::editor::dry_run_editor_ai_command(workspace, layout, catalog,
+                                                                   mirakana::editor::EditorAiCommandRequest{
+                                                                       .command_id = "editor.shell.execute",
+                                                                       .target_element_id = "editor.panel.console",
+                                                                   });
+    const auto validation_recipe =
+        mirakana::editor::dry_run_editor_ai_command(workspace, layout, catalog,
+                                                    mirakana::editor::EditorAiCommandRequest{
+                                                        .command_id = "editor.validation.recipe.run",
+                                                        .target_element_id = "editor.panel.ai_commands",
+                                                    });
+
+    MK_REQUIRE(!stale.accepted);
+    MK_REQUIRE(!stale.diagnostics.empty());
+    MK_REQUIRE(stale.diagnostics.front().code == "stale_revision");
+    MK_REQUIRE(!native_handle.accepted);
+    MK_REQUIRE(native_handle.diagnostics.front().code == "native_handle_unsupported");
+    MK_REQUIRE(!shell.accepted);
+    MK_REQUIRE(shell.diagnostics.front().code == "shell_execution_unsupported");
+    MK_REQUIRE(!validation_recipe.accepted);
+    MK_REQUIRE(validation_recipe.diagnostics.front().code == "validation_recipe_execution_unsupported");
 }
 
 MK_TEST("editor ai command apply toggles panel visibility after accepted dry run") {

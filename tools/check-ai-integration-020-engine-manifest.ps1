@@ -2615,6 +2615,18 @@ if ($recommendedPlanId -eq "general-purpose-game-production-v1") {
     Assert-ContainsText $recommendedText "2d-playable-vertical-slice" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
     Assert-ContainsText $recommendedText "3d-playable-vertical-slice" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
 }
+if ($recommendedPlanId -eq "first-party-ui-editor-production-stack-v1") {
+    foreach ($needle in @(
+            "EditorAiOperationSnapshot.status_rows",
+            "editor.ai.dock.selected_panel",
+            "editor.ai.material_preview.display",
+            "<rich_text_document_id>.copy_selection_plain_text",
+            "validation-recipe execution",
+            "screen coordinates"
+        )) {
+        Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan first-party UI editor AI UX operation rows"
+    }
+}
 if ($recommendedPlanUsesLegacyCloseoutContext) {
     foreach ($needle in @(
             "editor-productization",

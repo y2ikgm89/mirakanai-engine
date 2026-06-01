@@ -20,6 +20,7 @@
 #include "native_viewport_surface.hpp"
 #include "win32_first_party_editor_host.hpp"
 
+#include "mirakana/editor/ai_operation_surface.hpp"
 #include "mirakana/editor/editor_dock_layout.hpp"
 #include "mirakana/platform/file_dialog.hpp"
 #include "mirakana/platform/process.hpp"
@@ -137,6 +138,17 @@ find_uia_node(const mirakana::editor::NativeEditorUiaProviderState& state, std::
     for (const auto& node : state.nodes) {
         if (node.id.value == id) {
             return &node;
+        }
+    }
+    return nullptr;
+}
+
+[[nodiscard]] const mirakana::editor::EditorAiOperationStatusRow*
+find_ai_operation_status_row(const mirakana::editor::EditorAiOperationSnapshot& snapshot,
+                             std::string_view id) noexcept {
+    for (const auto& row : snapshot.status_rows) {
+        if (row.id == id) {
+            return &row;
         }
     }
     return nullptr;
@@ -1156,6 +1168,99 @@ MK_TEST("editor first party shell smoke counters expose visible texture readines
     MK_REQUIRE(counters.material_preview_status == "d3d12_texture_ready");
     MK_REQUIRE(counters.material_preview_visible_texture_composites == 1U);
     MK_REQUIRE(!counters.material_preview_native_handles_exposed);
+}
+
+MK_TEST("editor first party shell exposes AI operation UX rows from native readiness") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    RecordingPlatformTextInputAdapter platform_text_input;
+    RecordingImeAdapter ime;
+    auto accessibility = mirakana::editor::make_native_editor_uia_accessibility_adapter();
+    app.bind_native_services(mirakana::editor::NativeEditorServiceBindings{
+        .platform_text_input_adapter = &platform_text_input,
+        .ime_adapter = &ime,
+        .accessibility_adapter = accessibility.get(),
+        .platform_text_input_service_id = "win32_tsf",
+        .ime_service_id = "win32_tsf",
+        .accessibility_service_id = "win32_uia",
+    });
+    app.record_native_text_atlas_handoff_evidence(mirakana::editor::NativeEditorTextAtlasHandoffEvidence{
+        .status = "glyphs_ready_atlas_handoff_host_gated",
+        .text_shaping_adapter_invoked = true,
+        .font_rasterizer_adapter_invoked = true,
+        .glyphs_ready = true,
+        .fallback_used = false,
+        .atlas_handoff_ready = false,
+        .native_handles_exposed = false,
+        .host_gated_rows = 1U,
+        .unsupported_rows = 1U,
+    });
+    const auto viewport_plan =
+        mirakana::editor::plan_native_viewport_display(mirakana::editor::NativeViewportDisplayDesc{
+            .d3d12_host_available = true,
+            .renderer_output_available = true,
+            .texture_display_requested = true,
+            .texture_adapter_available = true,
+            .offscreen_target_available = true,
+            .descriptor_lease_available = true,
+            .resource_barriers_recorded = true,
+            .fence_lifecycle_ready = true,
+            .visible_panel_available = true,
+            .visible_texture_composite_recorded = true,
+            .visible_texture_composites = 3U,
+            .extent = mirakana::editor::ViewportExtent{.width = 1280, .height = 720},
+            .frame_index = 28U,
+            .backend_id = "d3d12",
+        });
+    const auto material_plan =
+        mirakana::editor::plan_native_material_preview_display(mirakana::editor::NativeMaterialPreviewDisplayDesc{
+            .d3d12_host_available = true,
+            .shader_artifacts_available = true,
+            .gpu_payload_available = true,
+            .texture_display_requested = true,
+            .texture_adapter_available = true,
+            .offscreen_target_available = true,
+            .descriptor_lease_available = true,
+            .resource_barriers_recorded = true,
+            .fence_lifecycle_ready = true,
+            .visible_panel_available = true,
+            .visible_texture_composite_recorded = true,
+            .visible_texture_composites = 3U,
+            .frame_index = 28U,
+            .backend_id = "d3d12",
+            .frames_rendered = 1U,
+            .executes = true,
+        });
+    app.record_native_viewport_texture_display(viewport_plan);
+    app.record_native_material_preview_texture_display(material_plan);
+
+    const auto published_document = mirakana::editor::make_first_party_editor_document(app);
+    const auto payload = mirakana::ui::build_accessibility_payload(published_document.renderer_submission);
+    MK_REQUIRE(app.publish_native_accessibility_payload(payload, published_document.focused_element).published);
+    const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
+    const auto snapshot = mirakana::editor::make_first_party_editor_ai_operation_snapshot(app, shell_document);
+    const auto* text_input = find_ai_operation_status_row(snapshot, "editor.ai.text_input.focused_target");
+    const auto* accessibility_row = find_ai_operation_status_row(snapshot, "editor.ai.accessibility.uia_provider");
+    const auto* viewport = find_ai_operation_status_row(snapshot, "editor.ai.viewport.display");
+    const auto* material = find_ai_operation_status_row(snapshot, "editor.ai.material_preview.display");
+
+    MK_REQUIRE(text_input != nullptr);
+    MK_REQUIRE(text_input->status == "win32_tsf_selected");
+    MK_REQUIRE(text_input->target_element_id == "editor.panel.project_settings.name.text_field");
+    MK_REQUIRE(!text_input->native_handles_public);
+    MK_REQUIRE(accessibility_row != nullptr);
+    MK_REQUIRE(accessibility_row->status == "uia_provider_ready");
+    MK_REQUIRE(accessibility_row->ready);
+    MK_REQUIRE(accessibility_row->count == app.accessibility_state().nodes.size());
+    MK_REQUIRE(!accessibility_row->native_handles_public);
+    MK_REQUIRE(viewport != nullptr);
+    MK_REQUIRE(viewport->status == "d3d12_texture_ready");
+    MK_REQUIRE(viewport->count == 3U);
+    MK_REQUIRE(!viewport->native_handles_public);
+    MK_REQUIRE(material != nullptr);
+    MK_REQUIRE(material->status == "d3d12_texture_ready");
+    MK_REQUIRE(material->count == 3U);
+    MK_REQUIRE(!material->native_handles_public);
+    MK_REQUIRE(find_ai_operation_status_row(snapshot, "editor.ai.validation_recipe.execution") == nullptr);
 }
 
 MK_TEST("editor native shell app updates resources panel from native host availability") {
