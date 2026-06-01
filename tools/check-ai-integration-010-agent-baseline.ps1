@@ -1808,6 +1808,16 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     )) {
         Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan performance budget evidence selection"
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "performance-baseline-v1") {
+    foreach ($needle in @(
+        "reproducible benchmark scenes/packages",
+        "trace export recipes",
+        "subsystem counters",
+        "p95/p99 frame budget reporting",
+        "broad CPU/GPU/memory optimization"
+    )) {
+        Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan performance baseline selection"
+    }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "first-party-ui-editor-production-stack-v1") {
     foreach ($needle in @(
         "First-Party UI Editor Production Stack v1",

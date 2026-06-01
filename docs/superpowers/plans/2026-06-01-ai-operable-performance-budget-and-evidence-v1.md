@@ -12,9 +12,11 @@
 
 **Plan ID:** `ai-operable-performance-budget-and-evidence-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
 Selected on 2026-06-01 after the optimization foundation research concluded that budget/evidence contracts must precede broad CPU/GPU/memory optimization implementation.
+
+Completed on 2026-06-01 through PR #361 and merge commit `e344326a270d39526be7e56d989bf96d86c01808`. The slice added schema-backed `game.agent.json.performanceBudgets`, selected 2D/3D sample and template budget rows, manifest `performanceBudgetEvidenceLoops`, docs, static checks, and validation evidence without claiming broad CPU/GPU/memory optimization readiness.
 
 ## Official Practice Check
 
@@ -81,9 +83,9 @@ Selected on 2026-06-01 after the optimization foundation research concluded that
 
 - [x] Compose the engine agent manifest.
 - [x] Run focused static checks and full repository validation because schema/manifest public contracts change.
-- [ ] Commit the validated candidate, run publication preflight, push the branch, and open a PR with validation evidence.
+- [x] Commit the validated candidate, run publication preflight, push the branch, and open a PR with validation evidence.
 
-Validation evidence on 2026-06-01: `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-text-format.ps1`, `git diff --check`, and `tools/validate.ps1` passed in the candidate worktree.
+Validation evidence on 2026-06-01: `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-text-format.ps1`, `git diff --check`, and `tools/validate.ps1` passed in the candidate worktree. Publication evidence: PR #361 merged to `main` as `e344326a270d39526be7e56d989bf96d86c01808` after hosted PR checks passed.
 
 ## Done When
 
