@@ -5,6 +5,8 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <limits>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -49,6 +51,36 @@ struct DiagnosticSummary {
     std::uint64_t total_profile_time_ns{0};
     std::uint64_t min_profile_time_ns{0};
     std::uint64_t max_profile_time_ns{0};
+};
+
+enum class DiagnosticsBudgetStatus : std::uint8_t {
+    ready,
+    missing_samples,
+    invalid_samples,
+    invalid_thresholds,
+    threshold_exceeded
+};
+
+struct DiagnosticsBudgetThresholds {
+    std::uint64_t minimum_sample_count{1};
+    double maximum_average{std::numeric_limits<double>::infinity()};
+    double maximum_p95{std::numeric_limits<double>::infinity()};
+    double maximum_p99{std::numeric_limits<double>::infinity()};
+    double maximum_sample{std::numeric_limits<double>::infinity()};
+};
+
+struct DiagnosticsBudgetSummary {
+    std::string sample_name;
+    std::uint64_t count{0};
+    std::uint64_t non_finite_sample_count{0};
+    double min{0.0};
+    double average{0.0};
+    // p95 and p99 use nearest-rank percentiles over sorted finite samples.
+    double p95{0.0};
+    double p99{0.0};
+    double max{0.0};
+    DiagnosticsBudgetStatus status{DiagnosticsBudgetStatus::missing_samples};
+    std::vector<std::string> diagnostics;
 };
 
 struct DiagnosticsTraceExportOptions {
@@ -184,6 +216,13 @@ class ScopedProfileZone {
 
 [[nodiscard]] DiagnosticSummary summarize_diagnostics(const DiagnosticCapture& capture) noexcept;
 [[nodiscard]] std::string_view diagnostic_severity_label(DiagnosticSeverity severity) noexcept;
+[[nodiscard]] std::string_view diagnostics_budget_status_label(DiagnosticsBudgetStatus status) noexcept;
+[[nodiscard]] DiagnosticsBudgetSummary summarize_counter_budget(std::span<const CounterSample> counters,
+                                                                std::string_view sample_name,
+                                                                const DiagnosticsBudgetThresholds& thresholds = {});
+[[nodiscard]] DiagnosticsBudgetSummary summarize_profile_budget(std::span<const ProfileSample> profiles,
+                                                                std::string_view sample_name,
+                                                                const DiagnosticsBudgetThresholds& thresholds = {});
 [[nodiscard]] std::string_view diagnostics_ops_artifact_kind_label(DiagnosticsOpsArtifactKind kind) noexcept;
 [[nodiscard]] std::string_view diagnostics_ops_artifact_status_label(DiagnosticsOpsArtifactStatus status) noexcept;
 [[nodiscard]] DiagnosticsOpsPlan build_diagnostics_ops_plan(const DiagnosticCapture& capture,

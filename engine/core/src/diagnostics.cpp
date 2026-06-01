@@ -228,6 +228,112 @@ struct TraceEventFields {
     return true;
 }
 
+[[nodiscard]] double nearest_rank_percentile(const std::vector<double>& sorted_values, double percentile) noexcept {
+    if (sorted_values.empty()) {
+        return 0.0;
+    }
+
+    auto one_based_rank = static_cast<std::size_t>(std::ceil(percentile * static_cast<double>(sorted_values.size())));
+    if (one_based_rank == 0) {
+        one_based_rank = 1;
+    }
+    one_based_rank = std::min(one_based_rank, sorted_values.size());
+    return sorted_values[one_based_rank - 1U];
+}
+
+void append_threshold_diagnostic(DiagnosticsBudgetSummary& summary, std::string_view field, double value,
+                                 double maximum) {
+    if (maximum == std::numeric_limits<double>::infinity() || value <= maximum) {
+        return;
+    }
+
+    summary.diagnostics.push_back(summary.sample_name + " " + std::string(field) + " " + std::to_string(value) +
+                                  " exceeds threshold " + std::to_string(maximum));
+}
+
+void append_invalid_threshold_diagnostic(DiagnosticsBudgetSummary& summary, std::string_view field, double maximum) {
+    if (std::isfinite(maximum) || maximum == std::numeric_limits<double>::infinity()) {
+        return;
+    }
+
+    summary.diagnostics.push_back(summary.sample_name + " invalid " + std::string(field) + " threshold " +
+                                  std::to_string(maximum));
+}
+
+[[nodiscard]] bool has_invalid_thresholds(const DiagnosticsBudgetThresholds& thresholds) noexcept {
+    const auto invalid = [](double value) noexcept {
+        return !std::isfinite(value) && value != std::numeric_limits<double>::infinity();
+    };
+    return invalid(thresholds.maximum_average) || invalid(thresholds.maximum_p95) || invalid(thresholds.maximum_p99) ||
+           invalid(thresholds.maximum_sample);
+}
+
+[[nodiscard]] DiagnosticsBudgetSummary build_budget_summary(std::string_view sample_name, std::vector<double> values,
+                                                            std::uint64_t non_finite_sample_count,
+                                                            const DiagnosticsBudgetThresholds& thresholds) {
+    DiagnosticsBudgetSummary summary;
+    summary.sample_name = std::string(sample_name);
+    summary.non_finite_sample_count = non_finite_sample_count;
+
+    if (non_finite_sample_count > 0) {
+        summary.diagnostics.push_back(summary.sample_name +
+                                      " ignored non-finite samples: " + std::to_string(non_finite_sample_count));
+    }
+
+    std::ranges::sort(values);
+    summary.count = static_cast<std::uint64_t>(values.size());
+    if (!values.empty()) {
+        long double total = 0.0L;
+        for (const auto value : values) {
+            total += static_cast<long double>(value);
+        }
+        summary.min = values.front();
+        summary.average = static_cast<double>(total / static_cast<long double>(values.size()));
+        summary.p95 = nearest_rank_percentile(values, 0.95);
+        summary.p99 = nearest_rank_percentile(values, 0.99);
+        summary.max = values.back();
+    }
+
+    append_invalid_threshold_diagnostic(summary, "average", thresholds.maximum_average);
+    append_invalid_threshold_diagnostic(summary, "p95", thresholds.maximum_p95);
+    append_invalid_threshold_diagnostic(summary, "p99", thresholds.maximum_p99);
+    append_invalid_threshold_diagnostic(summary, "max", thresholds.maximum_sample);
+
+    const auto required_count = std::max<std::uint64_t>(1, thresholds.minimum_sample_count);
+    if (summary.count < required_count) {
+        if (summary.count == 0) {
+            summary.diagnostics.push_back("diagnostics budget requires sample '" + summary.sample_name + "'");
+        } else {
+            summary.diagnostics.push_back("diagnostics budget requires at least " + std::to_string(required_count) +
+                                          " finite samples for '" + summary.sample_name + "'");
+        }
+    }
+
+    if (has_invalid_thresholds(thresholds)) {
+        summary.status = DiagnosticsBudgetStatus::invalid_thresholds;
+        return summary;
+    }
+
+    if (non_finite_sample_count > 0) {
+        summary.status = DiagnosticsBudgetStatus::invalid_samples;
+        return summary;
+    }
+
+    if (summary.count < required_count) {
+        summary.status = DiagnosticsBudgetStatus::missing_samples;
+        return summary;
+    }
+
+    append_threshold_diagnostic(summary, "average", summary.average, thresholds.maximum_average);
+    append_threshold_diagnostic(summary, "p95", summary.p95, thresholds.maximum_p95);
+    append_threshold_diagnostic(summary, "p99", summary.p99, thresholds.maximum_p99);
+    append_threshold_diagnostic(summary, "max", summary.max, thresholds.maximum_sample);
+
+    summary.status =
+        summary.diagnostics.empty() ? DiagnosticsBudgetStatus::ready : DiagnosticsBudgetStatus::threshold_exceeded;
+    return summary;
+}
+
 class TraceJsonReviewParser {
   public:
     explicit TraceJsonReviewParser(std::string_view text, DiagnosticCapture* capture = nullptr,
@@ -1098,6 +1204,54 @@ std::string_view diagnostic_severity_label(DiagnosticSeverity severity) noexcept
         return "fatal";
     }
     return "unknown";
+}
+
+std::string_view diagnostics_budget_status_label(DiagnosticsBudgetStatus status) noexcept {
+    switch (status) {
+    case DiagnosticsBudgetStatus::ready:
+        return "ready";
+    case DiagnosticsBudgetStatus::missing_samples:
+        return "missing_samples";
+    case DiagnosticsBudgetStatus::invalid_samples:
+        return "invalid_samples";
+    case DiagnosticsBudgetStatus::invalid_thresholds:
+        return "invalid_thresholds";
+    case DiagnosticsBudgetStatus::threshold_exceeded:
+        return "threshold_exceeded";
+    }
+    return "unknown";
+}
+
+DiagnosticsBudgetSummary summarize_counter_budget(std::span<const CounterSample> counters, std::string_view sample_name,
+                                                  const DiagnosticsBudgetThresholds& thresholds) {
+    std::vector<double> values;
+    std::uint64_t non_finite_sample_count = 0;
+    for (const auto& counter : counters) {
+        if (counter.name != sample_name) {
+            continue;
+        }
+        if (!std::isfinite(counter.value)) {
+            ++non_finite_sample_count;
+            continue;
+        }
+        values.push_back(counter.value);
+    }
+
+    return build_budget_summary(sample_name, std::move(values), non_finite_sample_count, thresholds);
+}
+
+DiagnosticsBudgetSummary summarize_profile_budget(std::span<const ProfileSample> profiles, std::string_view sample_name,
+                                                  const DiagnosticsBudgetThresholds& thresholds) {
+    std::vector<double> values;
+    values.reserve(profiles.size());
+    for (const auto& profile : profiles) {
+        if (profile.name != sample_name) {
+            continue;
+        }
+        values.push_back(static_cast<double>(profile.duration_ns));
+    }
+
+    return build_budget_summary(sample_name, std::move(values), 0, thresholds);
 }
 
 std::string_view diagnostics_ops_artifact_kind_label(DiagnosticsOpsArtifactKind kind) noexcept {

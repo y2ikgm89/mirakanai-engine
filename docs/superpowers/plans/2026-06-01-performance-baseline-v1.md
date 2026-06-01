@@ -63,7 +63,7 @@ This ordering lets AI-generated games optimize content and recipe choices now wh
 - [x] Select this plan as `currentActivePlan` and `recommendedNextPlan.id = performance-baseline-v1`.
 - [x] Keep `unsupportedProductionGaps = []` and update registry, roadmap, master plan, ledger, manifest, and static checks.
 - [x] Run focused static validation and full repository validation for the closeout/selection slice.
-- [ ] Publish a PR with validation evidence.
+- [x] Publish a PR with validation evidence.
 
 ## Phase 1 - Diagnostics Percentile Budget Helpers
 
@@ -73,9 +73,9 @@ This ordering lets AI-generated games optimize content and recipe choices now wh
 - Test: `tests/unit/core_tests.cpp`
 - Modify when public behavior lands: `docs/current-capabilities.md`
 
-- [ ] Add a small diagnostics budget summary type over existing `CounterSample` and `ProfileSample` rows that reports count, min, average, p95, p99, max, missing-sample diagnostics, and threshold status.
-- [ ] Add unit tests for sorted, unsorted, one-sample, empty, non-finite, and threshold-fail cases.
-- [ ] Keep the helper data-only and dependency-free inside `MK_core`; do not add platform timers, profiler SDKs, threads, file IO, or renderer/RHI dependencies.
+- [x] Add a small diagnostics budget summary type over existing `CounterSample` and `ProfileSample` rows that reports count, min, average, p95, p99, max, missing-sample diagnostics, and threshold status.
+- [x] Add unit tests for sorted, unsorted, one-sample, empty, non-finite, and threshold-fail cases.
+- [x] Keep the helper data-only and dependency-free inside `MK_core`; do not add platform timers, profiler SDKs, threads, file IO, or renderer/RHI dependencies.
 
 ## Phase 2 - Selected 2D Package Baseline Smoke
 
@@ -131,6 +131,20 @@ Closeout/selection slice validation on 2026-06-01:
 All listed commands passed in the candidate worktree. `tools/validate.ps1` reported expected diagnostic-only Windows host blockers for Metal/Apple lanes while returning `validate: ok`.
 
 Future C++/runtime/package slices must also run the smallest focused unit/package checks first and close with `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` when public/runtime contracts change.
+
+Phase 1 focused evidence on 2026-06-01:
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_core_tests`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -ReuseExistingFileApiReply -Files 'engine/core/src/diagnostics.cpp,tests/unit/core_tests.cpp'`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`
+
+The focused `MK_core_tests` lane passed after adding `DiagnosticsBudgetThresholds`, `DiagnosticsBudgetSummary`, `DiagnosticsBudgetStatus`, `summarize_counter_budget`, and `summarize_profile_budget`. Code review feedback hardened fail-closed behavior for invalid samples combined with missing samples, invalid `NaN`/negative-infinity thresholds, and public nearest-rank percentile semantics. Slice-close `tools/validate.ps1` passed with the expected Windows-host diagnostic-only Metal/Apple blockers while returning `validate: ok`.
 
 ## Done When
 
