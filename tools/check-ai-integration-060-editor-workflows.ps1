@@ -2563,6 +2563,34 @@ foreach ($check in $editorAiUxOperationChecks) {
     }
 }
 
+$editorCrossPlatformAdapterGateChecks = @(
+    @{ Path = "docs/superpowers/plans/2026-05-31-first-party-ui-editor-production-stack-v1.md"; Needles = @("Core Text", "InputMethodKit", "NSAccessibility", "AT-SPI", "IBus/Fcitx", "InputMethodService", "UITextInput", "HarfBuzz", "FreeType", "ICU", "editor.cross_platform.adapter.macos.core_text", "editor.cross_platform.adapter.linux.at_spi", "editor.cross_platform.adapter.android.input_method_service", "editor.cross_platform.adapter.ios.uitextinput", "editor.cross_platform.adapter.dependency.harfbuzz", "license-audit", "THIRD_PARTY_NOTICES.md") },
+    @{ Path = "docs/current-capabilities.md"; Needles = @("editor.cross_platform.adapter.macos.core_text", "editor.cross_platform.adapter.linux.ibus", "editor.cross_platform.adapter.android.accessibility", "editor.cross_platform.adapter.ios.uiaccessibility", "editor.cross_platform.adapter.dependency.freetype", "Generated games and runtime UI remain on public") },
+    @{ Path = "docs/editor.md"; Needles = @("Cross-platform editor adapter work is explicitly future-gated", "editor.cross_platform.adapter.macos.input_method_kit", "editor.cross_platform.adapter.linux.fcitx", "editor.cross_platform.adapter.dependency.icu", "license-audit", "vcpkg.json") },
+    @{ Path = "docs/roadmap.md"; Needles = @("Phase 9 locks", "editor.cross_platform.adapter.*", "Core Text/InputMethodKit/NSAccessibility", "AT-SPI/IBus/Fcitx", "HarfBuzz/FreeType/ICU-class") },
+    @{ Path = "docs/superpowers/plans/README.md"; Needles = @("Phase 9 keeps macOS Core Text/InputMethodKit/NSAccessibility", "editor.cross_platform.adapter.*", "HarfBuzz/FreeType/ICU-class adapters") },
+    @{ Path = "docs/dependencies.md"; Needles = @("HarfBuzz, FreeType, ICU", "license-audit", "vcpkg.json", "THIRD_PARTY_NOTICES.md") },
+    @{ Path = "docs/legal-and-licensing.md"; Needles = @("HarfBuzz, FreeType, ICU", "legal/dependency-gated", "license-audit", "THIRD_PARTY_NOTICES.md") },
+    @{ Path = "docs/ui.md"; Needles = @("generated games must not depend on their headers or object models directly", "Do not expose Dear ImGui, Qt, NoesisGUI, Slint, RmlUi", "Do not add fonts, UI art, UI middleware, or text/font libraries without dependency and notice records") },
+    @{ Path = "docs/ai-game-development.md"; Needles = @("Generated games must not bypass these recipes by exposing third-party windowing", "Runtime UI production stack evidence", "do not treat it as production text shaping") },
+    @{ Path = ".agents/skills/editor-change/SKILL.md"; Needles = @("Cross-platform editor adapter work is future-gated", "editor.cross_platform.adapter.*", "HarfBuzz/FreeType/ICU-class") },
+    @{ Path = ".claude/skills/gameengine-editor/SKILL.md"; Needles = @("Cross-platform editor adapter work is future-gated", "editor.cross_platform.adapter.*", "HarfBuzz/FreeType/ICU-class") },
+    @{ Path = ".cursor/skills/gameengine-editor/SKILL.md"; Needles = @("Cross-platform editor adapter work is future-gated", "editor.cross_platform.adapter.*", "HarfBuzz/FreeType/ICU-class") },
+    @{ Path = "engine/agent/manifest.json"; Needles = @("editor.cross_platform.adapter.macos.core_text", "editor.cross_platform.adapter.linux.at_spi", "editor.cross_platform.adapter.android.input_method_service", "editor.cross_platform.adapter.ios.uitextinput", "editor.cross_platform.adapter.dependency.harfbuzz", "THIRD_PARTY_NOTICES.md") }
+)
+foreach ($check in $editorCrossPlatformAdapterGateChecks) {
+    $fileText = Get-AgentSurfaceText $check.Path
+    $missingNeedles = @()
+    foreach ($needle in $check.Needles) {
+        if (-not $fileText.Contains($needle)) {
+            $missingNeedles += $needle
+        }
+    }
+    if ($missingNeedles.Count -gt 0) {
+        Write-Error "ai-integration-check: $($check.Path) missing editor cross-platform adapter gate contract: $($missingNeedles -join ', ')"
+    }
+}
+
 $materialPreviewCoreText = Get-AgentSurfaceText "editor/core/src/material_asset_preview_panel.cpp"
 if ($materialPreviewCoreText.Contains("d3d12-shared-texture")) {
     Write-Error "ai-integration-check: material preview core display path contract must stay backend-neutral"
