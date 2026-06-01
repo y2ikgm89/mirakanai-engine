@@ -71,6 +71,7 @@
 #include <tuple>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 namespace {
 
@@ -535,6 +536,141 @@ MK_TEST("diagnostics ops plan marks host supplied crash and telemetry adapters r
     MK_REQUIRE(telemetry != nullptr);
     MK_REQUIRE(telemetry->status == mirakana::DiagnosticsOpsArtifactStatus::ready);
     MK_REQUIRE(telemetry->producer == "caller-provided telemetry backend");
+}
+
+MK_TEST("diagnostics budget summaries compute deterministic counter and profile percentiles") {
+    const std::array counters{
+        mirakana::CounterSample{.name = "runtime.frame_ms", .value = 7.0, .frame_index = 3},
+        mirakana::CounterSample{.name = "runtime.frame_ms", .value = 1.0, .frame_index = 1},
+        mirakana::CounterSample{.name = "runtime.frame_ms", .value = 3.0, .frame_index = 2},
+        mirakana::CounterSample{.name = "runtime.frame_ms", .value = 5.0, .frame_index = 4},
+        mirakana::CounterSample{.name = "runtime.other", .value = 100.0, .frame_index = 5},
+    };
+
+    const auto counter_summary = mirakana::summarize_counter_budget(counters, "runtime.frame_ms");
+
+    MK_REQUIRE(counter_summary.sample_name == "runtime.frame_ms");
+    MK_REQUIRE(counter_summary.status == mirakana::DiagnosticsBudgetStatus::ready);
+    MK_REQUIRE(counter_summary.count == 4);
+    MK_REQUIRE(counter_summary.non_finite_sample_count == 0);
+    MK_REQUIRE(counter_summary.min == 1.0);
+    MK_REQUIRE(counter_summary.average == 4.0);
+    MK_REQUIRE(counter_summary.p95 == 7.0);
+    MK_REQUIRE(counter_summary.p99 == 7.0);
+    MK_REQUIRE(counter_summary.max == 7.0);
+    MK_REQUIRE(counter_summary.diagnostics.empty());
+
+    const std::array profiles{
+        mirakana::ProfileSample{
+            .name = "runtime_host.frame", .frame_index = 1, .start_time_ns = 0, .duration_ns = 100, .depth = 0},
+        mirakana::ProfileSample{
+            .name = "runtime_host.frame", .frame_index = 2, .start_time_ns = 100, .duration_ns = 200, .depth = 0},
+        mirakana::ProfileSample{
+            .name = "runtime_host.frame", .frame_index = 3, .start_time_ns = 300, .duration_ns = 400, .depth = 0},
+        mirakana::ProfileSample{
+            .name = "runtime_host.frame", .frame_index = 4, .start_time_ns = 700, .duration_ns = 800, .depth = 0},
+    };
+
+    const auto profile_summary = mirakana::summarize_profile_budget(profiles, "runtime_host.frame");
+
+    MK_REQUIRE(profile_summary.status == mirakana::DiagnosticsBudgetStatus::ready);
+    MK_REQUIRE(profile_summary.count == 4);
+    MK_REQUIRE(profile_summary.min == 100.0);
+    MK_REQUIRE(profile_summary.average == 375.0);
+    MK_REQUIRE(profile_summary.p95 == 800.0);
+    MK_REQUIRE(profile_summary.p99 == 800.0);
+    MK_REQUIRE(profile_summary.max == 800.0);
+
+    std::vector<mirakana::CounterSample> percentile_boundary_samples;
+    for (std::uint64_t frame_index = 20; frame_index > 0; --frame_index) {
+        percentile_boundary_samples.push_back(mirakana::CounterSample{
+            .name = "runtime.frame_ms", .value = static_cast<double>(frame_index), .frame_index = frame_index});
+    }
+
+    const auto percentile_boundary =
+        mirakana::summarize_counter_budget(percentile_boundary_samples, "runtime.frame_ms");
+
+    MK_REQUIRE(percentile_boundary.count == 20);
+    MK_REQUIRE(percentile_boundary.p95 == 19.0);
+    MK_REQUIRE(percentile_boundary.p99 == 20.0);
+}
+
+MK_TEST("diagnostics budget summaries report one sample missing samples and invalid samples") {
+    const std::array counters{
+        mirakana::CounterSample{
+            .name = "runtime.frame_ms", .value = std::numeric_limits<double>::quiet_NaN(), .frame_index = 1},
+        mirakana::CounterSample{.name = "runtime.frame_ms", .value = 2.5, .frame_index = 2},
+        mirakana::CounterSample{
+            .name = "runtime.frame_ms", .value = std::numeric_limits<double>::infinity(), .frame_index = 3},
+    };
+
+    const auto one_sample = mirakana::summarize_counter_budget(
+        counters, "runtime.frame_ms",
+        mirakana::DiagnosticsBudgetThresholds{.minimum_sample_count = 1, .maximum_p95 = 3.0, .maximum_p99 = 3.0});
+
+    MK_REQUIRE(one_sample.status == mirakana::DiagnosticsBudgetStatus::invalid_samples);
+    MK_REQUIRE(one_sample.count == 1);
+    MK_REQUIRE(one_sample.non_finite_sample_count == 2);
+    MK_REQUIRE(one_sample.min == 2.5);
+    MK_REQUIRE(one_sample.average == 2.5);
+    MK_REQUIRE(one_sample.p95 == 2.5);
+    MK_REQUIRE(one_sample.p99 == 2.5);
+    MK_REQUIRE(one_sample.max == 2.5);
+    MK_REQUIRE(!one_sample.diagnostics.empty());
+    MK_REQUIRE(one_sample.diagnostics[0].contains("ignored non-finite"));
+
+    const auto missing = mirakana::summarize_counter_budget(counters, "runtime.missing");
+
+    MK_REQUIRE(missing.status == mirakana::DiagnosticsBudgetStatus::missing_samples);
+    MK_REQUIRE(missing.count == 0);
+    MK_REQUIRE(missing.diagnostics.size() == 1U);
+    MK_REQUIRE(missing.diagnostics[0].contains("requires sample"));
+
+    const auto invalid_and_missing = mirakana::summarize_counter_budget(
+        counters, "runtime.frame_ms", mirakana::DiagnosticsBudgetThresholds{.minimum_sample_count = 2});
+
+    MK_REQUIRE(invalid_and_missing.status == mirakana::DiagnosticsBudgetStatus::invalid_samples);
+    MK_REQUIRE(invalid_and_missing.count == 1);
+    MK_REQUIRE(invalid_and_missing.non_finite_sample_count == 2);
+    MK_REQUIRE(invalid_and_missing.diagnostics.size() == 2U);
+    MK_REQUIRE(invalid_and_missing.diagnostics[0].contains("ignored non-finite"));
+    MK_REQUIRE(invalid_and_missing.diagnostics[1].contains("at least 2"));
+}
+
+MK_TEST("diagnostics budget summaries fail thresholds deterministically") {
+    const std::array counters{
+        mirakana::CounterSample{.name = "runtime.frame_ms", .value = 1.0, .frame_index = 1},
+        mirakana::CounterSample{.name = "runtime.frame_ms", .value = 2.0, .frame_index = 2},
+        mirakana::CounterSample{.name = "runtime.frame_ms", .value = 9.0, .frame_index = 3},
+    };
+
+    const auto summary =
+        mirakana::summarize_counter_budget(counters, "runtime.frame_ms",
+                                           mirakana::DiagnosticsBudgetThresholds{.minimum_sample_count = 3,
+                                                                                 .maximum_average = 4.0,
+                                                                                 .maximum_p95 = 8.0,
+                                                                                 .maximum_p99 = 8.0,
+                                                                                 .maximum_sample = 8.0});
+
+    MK_REQUIRE(summary.status == mirakana::DiagnosticsBudgetStatus::threshold_exceeded);
+    MK_REQUIRE(summary.count == 3);
+    MK_REQUIRE(summary.average == 4.0);
+    MK_REQUIRE(summary.p95 == 9.0);
+    MK_REQUIRE(summary.p99 == 9.0);
+    MK_REQUIRE(summary.max == 9.0);
+    MK_REQUIRE(summary.diagnostics.size() == 3U);
+    MK_REQUIRE(summary.diagnostics[0].contains("p95"));
+    MK_REQUIRE(summary.diagnostics[1].contains("p99"));
+    MK_REQUIRE(summary.diagnostics[2].contains("max"));
+
+    const auto invalid_threshold = mirakana::summarize_counter_budget(
+        counters, "runtime.frame_ms",
+        mirakana::DiagnosticsBudgetThresholds{.minimum_sample_count = 3,
+                                              .maximum_p95 = std::numeric_limits<double>::quiet_NaN()});
+
+    MK_REQUIRE(invalid_threshold.status == mirakana::DiagnosticsBudgetStatus::invalid_thresholds);
+    MK_REQUIRE(invalid_threshold.diagnostics.size() == 1U);
+    MK_REQUIRE(invalid_threshold.diagnostics[0].contains("invalid p95 threshold"));
 }
 
 MK_TEST("registry invalidates destroyed entities") {
