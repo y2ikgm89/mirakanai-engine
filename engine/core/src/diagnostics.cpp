@@ -380,6 +380,18 @@ void append_memory_diagnostic(MemoryDiagnosticsSummary& summary, MemoryClassDiag
     summary.diagnostics.push_back(std::move(message));
 }
 
+[[nodiscard]] bool supports_scratch_reuse(MemoryLifetimeClass lifetime_class) noexcept {
+    return lifetime_class == MemoryLifetimeClass::frame_temporary ||
+           lifetime_class == MemoryLifetimeClass::worker_scratch;
+}
+
+[[nodiscard]] std::uint64_t effective_use_after_safe_point_count(const MemoryCounterRow& row) noexcept {
+    if (row.use_after_safe_point_count > 0) {
+        return row.use_after_safe_point_count;
+    }
+    return row.use_after_safe_point ? std::uint64_t{1} : std::uint64_t{0};
+}
+
 [[nodiscard]] double normalized_memory_pressure_warning_ratio(const MemoryDiagnosticsOptions& options) noexcept {
     if (!std::isfinite(options.budget_pressure_warning_ratio) || options.budget_pressure_warning_ratio <= 0.0 ||
         options.budget_pressure_warning_ratio > 1.0) {
@@ -1324,6 +1336,10 @@ std::string_view memory_diagnostics_code_label(MemoryDiagnosticsCode code) noexc
         return "stale_generation";
     case MemoryDiagnosticsCode::use_after_safe_point:
         return "use_after_safe_point";
+    case MemoryDiagnosticsCode::cross_thread_free:
+        return "cross_thread_free";
+    case MemoryDiagnosticsCode::false_sharing:
+        return "false_sharing";
     case MemoryDiagnosticsCode::budget_pressure:
         return "budget_pressure";
     case MemoryDiagnosticsCode::budget_exceeded:
@@ -1407,12 +1423,23 @@ MemoryDiagnosticsSummary summarize_memory_diagnostics(std::span<const MemoryCoun
         ++class_summary.row_count;
         class_summary.bytes += row.bytes;
         class_summary.allocation_count += row.allocation_count;
+        class_summary.reuse_count += row.reuse_count;
+        class_summary.reset_count += row.reset_count;
         class_summary.high_water_bytes += row.high_water_bytes;
         class_summary.budget_bytes = std::max(class_summary.budget_bytes, row.budget_bytes);
+        class_summary.cross_thread_free_count += row.cross_thread_free_count;
+        const auto row_use_after_safe_point_count = effective_use_after_safe_point_count(row);
+        class_summary.use_after_safe_point_count += row_use_after_safe_point_count;
+        class_summary.false_sharing_count += row.false_sharing_count;
 
         summary.total_bytes += row.bytes;
         summary.total_allocation_count += row.allocation_count;
+        summary.total_reuse_count += row.reuse_count;
+        summary.total_reset_count += row.reset_count;
         summary.high_water_bytes += row.high_water_bytes;
+        summary.total_cross_thread_free_count += row.cross_thread_free_count;
+        summary.total_use_after_safe_point_count += row_use_after_safe_point_count;
+        summary.total_false_sharing_count += row.false_sharing_count;
 
         const auto class_label = std::string(memory_lifetime_class_label(row.lifetime_class));
         const auto row_label = row.name.empty() ? class_label : row.name;
@@ -1421,9 +1448,11 @@ MemoryDiagnosticsSummary summarize_memory_diagnostics(std::span<const MemoryCoun
             append_memory_diagnostic(summary, class_summary, MemoryDiagnosticsCode::invalid_counter,
                                      class_label + " memory diagnostics row requires a name");
         }
-        if (row.bytes > 0 && row.allocation_count == 0) {
+        const auto has_scratch_reuse_without_allocation =
+            row.reuse_count > 0 && supports_scratch_reuse(row.lifetime_class);
+        if (row.bytes > 0 && row.allocation_count == 0 && !has_scratch_reuse_without_allocation) {
             append_memory_diagnostic(summary, class_summary, MemoryDiagnosticsCode::invalid_counter,
-                                     row_label + " reports bytes with zero allocation count");
+                                     row_label + " reports bytes with zero allocation count outside scratch reuse");
         }
         if (row.high_water_bytes < row.bytes) {
             append_memory_diagnostic(summary, class_summary, MemoryDiagnosticsCode::invalid_counter,
@@ -1434,9 +1463,23 @@ MemoryDiagnosticsSummary summarize_memory_diagnostics(std::span<const MemoryCoun
                                      row_label + " stale generation " + std::to_string(row.generation) +
                                          " is older than safe point " + std::to_string(row.safe_point_generation));
         }
-        if (row.use_after_safe_point) {
+        if (row.use_after_safe_point_count > 0) {
+            append_memory_diagnostic(summary, class_summary, MemoryDiagnosticsCode::use_after_safe_point,
+                                     row_label + " use after safe point count " +
+                                         std::to_string(row.use_after_safe_point_count) + " was reported");
+        } else if (row.use_after_safe_point) {
             append_memory_diagnostic(summary, class_summary, MemoryDiagnosticsCode::use_after_safe_point,
                                      row_label + " use after safe point was reported");
+        }
+        if (row.cross_thread_free_count > 0) {
+            append_memory_diagnostic(summary, class_summary, MemoryDiagnosticsCode::cross_thread_free,
+                                     row_label + " cross-thread free count " +
+                                         std::to_string(row.cross_thread_free_count) + " was reported");
+        }
+        if (row.false_sharing_count > 0) {
+            append_memory_diagnostic(summary, class_summary, MemoryDiagnosticsCode::false_sharing,
+                                     row_label + " false sharing count " + std::to_string(row.false_sharing_count) +
+                                         " was reported");
         }
     }
 
@@ -1455,6 +1498,10 @@ MemoryDiagnosticsSummary summarize_memory_diagnostics(std::span<const MemoryCoun
             std::ranges::find(class_summary.diagnostic_codes, MemoryDiagnosticsCode::stale_generation) !=
                 class_summary.diagnostic_codes.end() ||
             std::ranges::find(class_summary.diagnostic_codes, MemoryDiagnosticsCode::use_after_safe_point) !=
+                class_summary.diagnostic_codes.end() ||
+            std::ranges::find(class_summary.diagnostic_codes, MemoryDiagnosticsCode::cross_thread_free) !=
+                class_summary.diagnostic_codes.end() ||
+            std::ranges::find(class_summary.diagnostic_codes, MemoryDiagnosticsCode::false_sharing) !=
                 class_summary.diagnostic_codes.end()) {
             has_invalid_rows = true;
         }

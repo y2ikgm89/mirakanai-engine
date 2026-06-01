@@ -2189,14 +2189,22 @@ foreach ($memoryDiagnosticsNeedle in @(
         "MemoryBudgetPressure",
         "MemoryDiagnosticsCode",
         "MemoryDiagnosticsStatus",
+        "reuse_count",
+        "reset_count",
+        "cross_thread_free_count",
+        "false_sharing_count",
         "summarize_memory_diagnostics"
     )) {
     Assert-ContainsText $coreDiagnosticsHeaderText $memoryDiagnosticsNeedle "engine/core/include/mirakana/core/diagnostics.hpp"
 }
 foreach ($memoryDiagnosticsTestNeedle in @(
         "memory diagnostics summarize classes high water and budget pressure",
+        "memory diagnostics summarize frame and worker scratch reuse reset evidence",
+        "memory diagnostics reject reuse without allocation outside scratch classes",
         "memory diagnostics fail closed for empty rows and exceeded budgets",
         "memory diagnostics fail closed for invalid stale and safe point rows",
+        "memory diagnostics do not double count safe point boolean and count",
+        "memory diagnostics fail closed for scratch ownership and cache hazards",
         "memory diagnostics labels are stable"
     )) {
     Assert-ContainsText $coreTestsText $memoryDiagnosticsTestNeedle "tests/unit/core_tests.cpp"
@@ -2209,8 +2217,12 @@ foreach ($memoryDiagnosticsDocCheck in @(
             "Memory Diagnostics v1",
             "MemoryCounterRow",
             "summarize_memory_diagnostics",
+            "reuse counts",
+            "reset counts",
             "stale-generation diagnostics",
             "use-after-safe-point diagnostics",
+            "cross-thread-free diagnostics",
+            "false-sharing diagnostics",
             "sample_desktop_runtime_game --require-memory-diagnostics",
             "memory_diagnostics_status=ready",
             '`memory_diagnostics_*` counters'
