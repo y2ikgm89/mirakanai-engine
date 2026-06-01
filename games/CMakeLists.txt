@@ -1623,6 +1623,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-runtime-ui-renderer-atlas-handoff
             --require-wasapi-audio
             --require-sandbox-package-budgets
+            --require-performance-baseline
         REQUIRES_D3D12_SHADERS
         PACKAGE_FILES_FROM_MANIFEST
     )

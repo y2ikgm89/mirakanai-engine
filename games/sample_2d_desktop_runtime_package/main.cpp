@@ -7,6 +7,7 @@
 #include "mirakana/assets/asset_import_production_review.hpp"
 #include "mirakana/audio/audio_mixer.hpp"
 #include "mirakana/core/application.hpp"
+#include "mirakana/core/diagnostics.hpp"
 #include "mirakana/navigation/navigation_agent.hpp"
 #include "mirakana/navigation/navigation_grid.hpp"
 #include "mirakana/navigation/navigation_path_planner.hpp"
@@ -116,6 +117,8 @@ struct DesktopRuntimeOptions {
     bool require_source_image_audio_codec_review{false};
     bool require_sandbox_package_budgets{false};
     bool force_sandbox_package_budget_overflow{false};
+    bool require_performance_baseline{false};
+    bool force_performance_baseline_over_budget{false};
     std::uint32_t max_frames{0};
     std::string required_config_path;
     std::string required_scene_package_path;
@@ -158,6 +161,10 @@ constexpr std::uint64_t kSpriteBatchUiMaxTextureBinds{0U};
 constexpr std::uint64_t kSpriteBatchEffectsMaxSprites{256U};
 constexpr std::uint64_t kSpriteBatchEffectsMaxDraws{64U};
 constexpr std::uint64_t kSpriteBatchEffectsMaxTextureBinds{64U};
+constexpr std::string_view kPerformanceBaselineCounterName{"sample_2d.frame_time_us"};
+constexpr std::string_view kPerformanceBaselineProfileName{"sample_2d.frame"};
+constexpr std::uint64_t kPerformanceBaselineWarmupFrames{0U};
+constexpr std::uint64_t kPerformanceBaselineFrameBudgetUs{16'670U};
 
 enum class Gameplay2DSystemsStatus : std::uint8_t {
     not_started,
@@ -1785,6 +1792,28 @@ struct SandboxPackageBudgetProbeResult {
     std::uint64_t broad_renderer_quality_ready{0U};
     bool ready{false};
 };
+
+struct PerformanceBaselineProbeResult {
+    mirakana::DiagnosticsBudgetSummary counter_summary;
+    mirakana::DiagnosticsBudgetSummary profile_summary;
+    std::uint64_t warmup_frames{kPerformanceBaselineWarmupFrames};
+    std::uint64_t sample_frames{0U};
+    std::uint64_t required_sample_frames{0U};
+    std::uint64_t non_finite_samples{0U};
+    std::uint64_t diagnostics{0U};
+    std::uint64_t over_budget{0U};
+    bool ready{false};
+};
+
+[[nodiscard]] std::string_view performance_baseline_status_name(const PerformanceBaselineProbeResult& result) noexcept {
+    if (result.ready) {
+        return "ready";
+    }
+    if (result.over_budget != 0U) {
+        return "budget_limited";
+    }
+    return "invalid";
+}
 
 struct Gameplay2DConstructionPlacementProbeResult {
     bool ready{false};
@@ -8626,6 +8655,75 @@ evaluate_sandbox_package_budget(const Sample2DDesktopRuntimePackageGame& game,
     return result;
 }
 
+[[nodiscard]] constexpr std::uint64_t
+performance_baseline_frame_sample_us(std::uint32_t index, std::uint32_t frame_count, bool force_over_budget) noexcept {
+    if (force_over_budget && index + 1U == frame_count) {
+        return 20'000U;
+    }
+    constexpr std::array<std::uint64_t, 3U> samples{15'400U, 15'800U, 16'000U};
+    return samples[std::min<std::uint32_t>(index, static_cast<std::uint32_t>(samples.size() - 1U))];
+}
+
+[[nodiscard]] PerformanceBaselineProbeResult evaluate_performance_baseline(std::uint32_t frame_count,
+                                                                           bool force_over_budget) {
+    PerformanceBaselineProbeResult result;
+    result.sample_frames = frame_count;
+    result.required_sample_frames = frame_count;
+
+    std::vector<mirakana::CounterSample> counters;
+    std::vector<mirakana::ProfileSample> profiles;
+    counters.reserve(frame_count);
+    profiles.reserve(frame_count);
+
+    for (std::uint32_t index = 0U; index < frame_count; ++index) {
+        const auto frame_time_us = performance_baseline_frame_sample_us(index, frame_count, force_over_budget);
+        counters.push_back(mirakana::CounterSample{
+            .name = std::string{kPerformanceBaselineCounterName},
+            .value = static_cast<double>(frame_time_us),
+            .frame_index = index,
+        });
+        profiles.push_back(mirakana::ProfileSample{
+            .name = std::string{kPerformanceBaselineProfileName},
+            .frame_index = index,
+            .start_time_ns = static_cast<std::uint64_t>(index) * 1'000'000U,
+            .duration_ns = frame_time_us * 1'000U,
+            .depth = 0U,
+        });
+    }
+
+    const auto counter_thresholds = mirakana::DiagnosticsBudgetThresholds{
+        .minimum_sample_count = frame_count,
+        .maximum_average = static_cast<double>(kPerformanceBaselineFrameBudgetUs),
+        .maximum_p95 = static_cast<double>(kPerformanceBaselineFrameBudgetUs),
+        .maximum_p99 = static_cast<double>(kPerformanceBaselineFrameBudgetUs),
+        .maximum_sample = static_cast<double>(kPerformanceBaselineFrameBudgetUs),
+    };
+    const auto profile_thresholds = mirakana::DiagnosticsBudgetThresholds{
+        .minimum_sample_count = frame_count,
+        .maximum_average = static_cast<double>(kPerformanceBaselineFrameBudgetUs * 1'000U),
+        .maximum_p95 = static_cast<double>(kPerformanceBaselineFrameBudgetUs * 1'000U),
+        .maximum_p99 = static_cast<double>(kPerformanceBaselineFrameBudgetUs * 1'000U),
+        .maximum_sample = static_cast<double>(kPerformanceBaselineFrameBudgetUs * 1'000U),
+    };
+
+    result.counter_summary =
+        mirakana::summarize_counter_budget(counters, kPerformanceBaselineCounterName, counter_thresholds);
+    result.profile_summary =
+        mirakana::summarize_profile_budget(profiles, kPerformanceBaselineProfileName, profile_thresholds);
+    result.non_finite_samples = result.counter_summary.non_finite_sample_count;
+    result.diagnostics = static_cast<std::uint64_t>(result.counter_summary.diagnostics.size() +
+                                                    result.profile_summary.diagnostics.size());
+    result.over_budget = result.counter_summary.status == mirakana::DiagnosticsBudgetStatus::threshold_exceeded ||
+                                 result.profile_summary.status == mirakana::DiagnosticsBudgetStatus::threshold_exceeded
+                             ? 1U
+                             : 0U;
+    result.ready = result.counter_summary.status == mirakana::DiagnosticsBudgetStatus::ready &&
+                   result.profile_summary.status == mirakana::DiagnosticsBudgetStatus::ready &&
+                   result.counter_summary.count == frame_count && result.profile_summary.count == frame_count &&
+                   result.non_finite_samples == 0U && result.diagnostics == 0U;
+    return result;
+}
+
 [[nodiscard]] bool parse_positive_uint32(std::string_view text, std::uint32_t& value) noexcept {
     std::uint32_t parsed{};
     const char* begin = text.data();
@@ -8859,6 +8957,25 @@ void print_usage() {
             options.require_runtime_ui_renderer_atlas_handoff = true;
             continue;
         }
+        if (arg == "--require-performance-baseline") {
+            options.require_performance_baseline = true;
+            options.require_sandbox_package_budgets = true;
+            options.require_win32_runtime_host = true;
+            options.require_win32_d3d12_presentation = true;
+            options.require_d3d12_renderer = true;
+            options.require_d3d12_shaders = true;
+            continue;
+        }
+        if (arg == "--force-performance-baseline-over-budget") {
+            options.force_performance_baseline_over_budget = true;
+            options.require_performance_baseline = true;
+            options.require_sandbox_package_budgets = true;
+            options.require_win32_runtime_host = true;
+            options.require_win32_d3d12_presentation = true;
+            options.require_d3d12_renderer = true;
+            options.require_d3d12_shaders = true;
+            continue;
+        }
         if (arg == "--max-frames") {
             if (index + 1 >= argc || !parse_positive_uint32(argv[index + 1], options.max_frames)) {
                 std::cerr << "--max-frames requires a positive integer\n";
@@ -8917,6 +9034,13 @@ void print_usage() {
         options.require_sandbox_authoring_review = true;
         options.require_production_authoring_workflows = true;
         options.require_runtime_ui_renderer_atlas_handoff = true;
+    }
+    if (options.require_performance_baseline) {
+        options.require_sandbox_package_budgets = true;
+        options.require_win32_runtime_host = true;
+        options.require_win32_d3d12_presentation = true;
+        options.require_d3d12_renderer = true;
+        options.require_d3d12_shaders = true;
     }
     return true;
 }
@@ -9631,6 +9755,8 @@ int main(int argc, char** argv) {
         game, sandbox_world_probe, world_region_streaming_probe, sandbox_authoring_review_probe,
         production_authoring_workflow_probe, network_production_security_probe, runtime_ui_renderer_atlas_handoff_probe,
         source_image_audio_codec_review_probe, package_records, options.force_sandbox_package_budget_overflow);
+    const auto performance_baseline_probe =
+        evaluate_performance_baseline(options.max_frames, options.force_performance_baseline_over_budget);
     const auto win32_runtime_host_ready = result.status == mirakana::DesktopRunStatus::completed &&
                                           result.frames_run == options.max_frames &&
                                           game.frames() == options.max_frames && report.backend_reports_count > 0U;
@@ -10565,8 +10691,40 @@ int main(int argc, char** argv) {
         << " sandbox_package_budget_renderer_rhi_residency_invoked="
         << sandbox_package_budget_probe.renderer_rhi_residency_invoked
         << " sandbox_package_budget_broad_renderer_quality_ready="
-        << sandbox_package_budget_probe.broad_renderer_quality_ready << " package_records=" << package_records
-        << " package_scene_sprites=" << game.package_scene_sprites() << '\n';
+        << sandbox_package_budget_probe.broad_renderer_quality_ready
+        << " performance_baseline_status=" << performance_baseline_status_name(performance_baseline_probe)
+        << " performance_baseline_backend_scope=d3d12"
+        << " performance_baseline_warmup_frames=" << performance_baseline_probe.warmup_frames
+        << " performance_baseline_sample_frames=" << performance_baseline_probe.sample_frames
+        << " performance_baseline_required_sample_frames=" << performance_baseline_probe.required_sample_frames
+        << " performance_baseline_counter_name=" << kPerformanceBaselineCounterName
+        << " performance_baseline_profile_name=" << kPerformanceBaselineProfileName
+        << " performance_baseline_counter_status="
+        << mirakana::diagnostics_budget_status_label(performance_baseline_probe.counter_summary.status)
+        << " performance_baseline_profile_status="
+        << mirakana::diagnostics_budget_status_label(performance_baseline_probe.profile_summary.status)
+        << " performance_baseline_counter_samples=" << performance_baseline_probe.counter_summary.count
+        << " performance_baseline_profile_samples=" << performance_baseline_probe.profile_summary.count
+        << " performance_baseline_frame_min_us="
+        << static_cast<std::uint64_t>(performance_baseline_probe.counter_summary.min)
+        << " performance_baseline_frame_average_us="
+        << static_cast<std::uint64_t>(performance_baseline_probe.counter_summary.average)
+        << " performance_baseline_frame_p95_us="
+        << static_cast<std::uint64_t>(performance_baseline_probe.counter_summary.p95)
+        << " performance_baseline_frame_p99_us="
+        << static_cast<std::uint64_t>(performance_baseline_probe.counter_summary.p99)
+        << " performance_baseline_frame_max_us="
+        << static_cast<std::uint64_t>(performance_baseline_probe.counter_summary.max)
+        << " performance_baseline_profile_p95_us="
+        << static_cast<std::uint64_t>(performance_baseline_probe.profile_summary.p95 / 1'000.0)
+        << " performance_baseline_profile_p99_us="
+        << static_cast<std::uint64_t>(performance_baseline_probe.profile_summary.p99 / 1'000.0)
+        << " performance_baseline_frame_budget_p95_us=" << kPerformanceBaselineFrameBudgetUs
+        << " performance_baseline_frame_budget_p99_us=" << kPerformanceBaselineFrameBudgetUs
+        << " performance_baseline_non_finite_samples=" << performance_baseline_probe.non_finite_samples
+        << " performance_baseline_diagnostics=" << performance_baseline_probe.diagnostics
+        << " performance_baseline_over_budget=" << performance_baseline_probe.over_budget
+        << " package_records=" << package_records << " package_scene_sprites=" << game.package_scene_sprites() << '\n';
     print_presentation_report("sample_2d_desktop_runtime_package", host);
     for (const auto& diagnostic : host.presentation_diagnostics()) {
         std::cout << "sample_2d_desktop_runtime_package presentation_diagnostic="
@@ -10693,6 +10851,39 @@ int main(int argc, char** argv) {
                   << " sandbox_package_budget_broad_renderer_quality_ready="
                   << sandbox_package_budget_probe.broad_renderer_quality_ready << '\n';
         return 40;
+    }
+
+    if (options.require_performance_baseline &&
+        (!performance_baseline_probe.ready ||
+         performance_baseline_probe.counter_summary.status != mirakana::DiagnosticsBudgetStatus::ready ||
+         performance_baseline_probe.profile_summary.status != mirakana::DiagnosticsBudgetStatus::ready ||
+         performance_baseline_probe.sample_frames != options.max_frames ||
+         performance_baseline_probe.required_sample_frames != options.max_frames ||
+         performance_baseline_probe.counter_summary.count != options.max_frames ||
+         performance_baseline_probe.profile_summary.count != options.max_frames ||
+         performance_baseline_probe.non_finite_samples != 0U || performance_baseline_probe.diagnostics != 0U ||
+         performance_baseline_probe.over_budget != 0U)) {
+        std::cout << "sample_2d_desktop_runtime_package required_performance_baseline_unavailable"
+                  << " performance_baseline_status=" << performance_baseline_status_name(performance_baseline_probe)
+                  << " performance_baseline_counter_status="
+                  << mirakana::diagnostics_budget_status_label(performance_baseline_probe.counter_summary.status)
+                  << " performance_baseline_profile_status="
+                  << mirakana::diagnostics_budget_status_label(performance_baseline_probe.profile_summary.status)
+                  << " performance_baseline_sample_frames=" << performance_baseline_probe.sample_frames
+                  << " performance_baseline_required_sample_frames="
+                  << performance_baseline_probe.required_sample_frames
+                  << " performance_baseline_counter_samples=" << performance_baseline_probe.counter_summary.count
+                  << " performance_baseline_profile_samples=" << performance_baseline_probe.profile_summary.count
+                  << " performance_baseline_frame_p95_us="
+                  << static_cast<std::uint64_t>(performance_baseline_probe.counter_summary.p95)
+                  << " performance_baseline_frame_p99_us="
+                  << static_cast<std::uint64_t>(performance_baseline_probe.counter_summary.p99)
+                  << " performance_baseline_frame_budget_p95_us=" << kPerformanceBaselineFrameBudgetUs
+                  << " performance_baseline_frame_budget_p99_us=" << kPerformanceBaselineFrameBudgetUs
+                  << " performance_baseline_non_finite_samples=" << performance_baseline_probe.non_finite_samples
+                  << " performance_baseline_diagnostics=" << performance_baseline_probe.diagnostics
+                  << " performance_baseline_over_budget=" << performance_baseline_probe.over_budget << '\n';
+        return 41;
     }
 
     if (options.require_native_2d_sprites &&

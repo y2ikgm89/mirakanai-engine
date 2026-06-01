@@ -587,7 +587,7 @@ if ($desktop2dRecipe.Count -ne 1) {
             Write-Error "engine/agent/manifest.json 2d-desktop-runtime-package recipe must allow $target"
         }
     }
-    foreach ($validationRecipe in @("desktop-game-runtime", "desktop-runtime-2d-package-proof", "installed-2d-sandbox-package-budget-smoke", "desktop-runtime-2d-vulkan-window-package", "shader-toolchain")) {
+    foreach ($validationRecipe in @("desktop-game-runtime", "desktop-runtime-2d-package-proof", "installed-2d-sandbox-package-budget-smoke", "installed-2d-performance-baseline-smoke", "desktop-runtime-2d-vulkan-window-package", "shader-toolchain")) {
         if (@($desktop2dRecipe[0].validationRecipes) -notcontains $validationRecipe) {
             Write-Error "engine/agent/manifest.json 2d-desktop-runtime-package recipe must include $validationRecipe validation"
         }
@@ -1522,14 +1522,14 @@ if ($validationRunnerCommand.Count -ne 1 -or $validationRunnerCommand[0].status 
             "desktop-runtime-sample-game-scene-gpu-package",
             "desktop-runtime-generated-material-shader-scaffold-package",
             "desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict",
-            "desktop-runtime-sample-game-vulkan-ui-atlas-metadata-package",
+            "desktop-runtime-sample-game-vulkan-ui-atlas-metadata-package", "installed-2d-performance-baseline-smoke",
             "dev-windows-editor-game-module-driver-load-tests"
         )) {
         if (@($validationRunnerCommand[0].validationRecipes) -notcontains $recipe) {
             Write-Error "engine/agent/manifest.json run-validation-recipe validationRecipes missing allowlisted recipe: $recipe"
         }
     }
-    if (@($validationRunnerCommand[0].validationRecipes).Count -ne 11) {
+    if (@($validationRunnerCommand[0].validationRecipes).Count -ne 12) {
         Write-Error "engine/agent/manifest.json run-validation-recipe validationRecipes must be exactly the reviewed allowlist"
     }
     if (@($validationRunnerCommand[0].requestModes | Where-Object { $_.id -eq "apply" -and $_.status -eq "ready" }).Count -gt 0) {

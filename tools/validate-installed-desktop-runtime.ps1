@@ -250,6 +250,7 @@ $requiresSceneCollisionPackage = @($SmokeArgs) -contains "--require-scene-collis
 $requiresAudioProduction = @($SmokeArgs) -contains "--require-audio-production"
 $requiresWasapiAudio = @($SmokeArgs) -contains "--require-wasapi-audio"
 $requiresSandboxPackageBudgets = @($SmokeArgs) -contains "--require-sandbox-package-budgets"
+$requiresPerformanceBaseline = @($SmokeArgs) -contains "--require-performance-baseline"
 $expectedSmokeFrames = if ($GameTarget -eq "sample_2d_desktop_runtime_package") { 3 } else { 2 }
 for ($index = 0; $index -lt ($SmokeArgs.Count - 1); ++$index) {
     if ($SmokeArgs[$index] -eq "--max-frames") {
@@ -448,8 +449,72 @@ function Assert-InstalledSandboxPackageBudgetEvidence {
         Write-Error "Installed $Context smoke status line did not prove positive sandbox package budget replay hash."
     }
 }
+function Get-ExpectedInstalledPerformanceBaselinePercentileUs {
+    param(
+        [Parameter(Mandatory = $true)]
+        [int]$ExpectedFrames
+    )
+
+    if ($ExpectedFrames -le 1) {
+        return 15400
+    }
+    if ($ExpectedFrames -eq 2) {
+        return 15800
+    }
+    return 16000
+}
+function Assert-InstalledPerformanceBaselineEvidence {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SmokeOutput,
+
+        [Parameter(Mandatory = $true)]
+        [string]$EscapedGameTarget,
+
+        [Parameter(Mandatory = $true)]
+        [int]$ExpectedFrames,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Context
+    )
+
+    $expectedP95Us = Get-ExpectedInstalledPerformanceBaselinePercentileUs -ExpectedFrames $ExpectedFrames
+    $expectedP99Us = $expectedP95Us
+    foreach ($expected in @{
+            "performance_baseline_status" = "ready"
+            "performance_baseline_backend_scope" = "d3d12"
+            "performance_baseline_warmup_frames" = "0"
+            "performance_baseline_sample_frames" = [string]$ExpectedFrames
+            "performance_baseline_required_sample_frames" = [string]$ExpectedFrames
+            "performance_baseline_counter_name" = "sample_2d.frame_time_us"
+            "performance_baseline_profile_name" = "sample_2d.frame"
+            "performance_baseline_counter_status" = "ready"
+            "performance_baseline_profile_status" = "ready"
+            "performance_baseline_counter_samples" = [string]$ExpectedFrames
+            "performance_baseline_profile_samples" = [string]$ExpectedFrames
+            "performance_baseline_frame_p95_us" = [string]$expectedP95Us
+            "performance_baseline_frame_p99_us" = [string]$expectedP99Us
+            "performance_baseline_profile_p95_us" = [string]$expectedP95Us
+            "performance_baseline_profile_p99_us" = [string]$expectedP99Us
+            "performance_baseline_frame_budget_p95_us" = "16670"
+            "performance_baseline_frame_budget_p99_us" = "16670"
+            "performance_baseline_non_finite_samples" = "0"
+            "performance_baseline_diagnostics" = "0"
+            "performance_baseline_over_budget" = "0"
+        }.GetEnumerator()) {
+        if ($SmokeOutput -notmatch "(?m)^$EscapedGameTarget status=.*\b$([regex]::Escape($expected.Key))=$([regex]::Escape($expected.Value))\b") {
+            Write-Error "Installed $Context smoke status line did not prove performance baseline field: $($expected.Key)=$($expected.Value)."
+        }
+    }
+}
 if ($requiresWin32D3d12Presentation) {
     $requiresWin32RuntimeHost = $true
+    $requiresD3d12Renderer = $true
+}
+if ($requiresPerformanceBaseline) {
+    $requiresSandboxPackageBudgets = $true
+    $requiresWin32RuntimeHost = $true
+    $requiresWin32D3d12Presentation = $true
     $requiresD3d12Renderer = $true
 }
 if ($requiresSandboxWorldPersistence) {
@@ -1053,6 +1118,9 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
     Assert-InstalledAudioProductionEvidence -SmokeOutput $smokeOutput -EscapedGameTarget $escapedGameTarget -Context "sample_2d_desktop_runtime_package"
     if ($requiresSandboxPackageBudgets) {
         Assert-InstalledSandboxPackageBudgetEvidence -SmokeOutput $smokeOutput -EscapedGameTarget $escapedGameTarget -Context "sample_2d_desktop_runtime_package"
+    }
+    if ($requiresPerformanceBaseline) {
+        Assert-InstalledPerformanceBaselineEvidence -SmokeOutput $smokeOutput -EscapedGameTarget $escapedGameTarget -ExpectedFrames $expectedSmokeFrames -Context "sample_2d_desktop_runtime_package"
     }
     foreach ($field in @(
             "sprite_batch_budget_status",

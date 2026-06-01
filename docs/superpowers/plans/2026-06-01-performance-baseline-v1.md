@@ -85,9 +85,9 @@ This ordering lets AI-generated games optimize content and recipe choices now wh
 - Modify only if existing counters are insufficient: `games/sample_2d_desktop_runtime_package/main.cpp`
 - Test: focused installed-runtime validation recipe selected by the modified manifest
 
-- [ ] Add a selected `installed-2d-performance-baseline-smoke` recipe or extend the existing profile-resume smoke with a fail-closed performance-baseline requirement.
-- [ ] Require deterministic run settings, warm-up policy, fixed sample count or fixed frame count, and explicit counter names before computing p95/p99.
-- [ ] Fail only on missing evidence or threshold violation for the selected lane; do not infer broad generated-game, GPU, vendor, or backend readiness.
+- [x] Add a selected `installed-2d-performance-baseline-smoke` recipe or extend the existing profile-resume smoke with a fail-closed performance-baseline requirement.
+- [x] Require deterministic run settings, warm-up policy, fixed sample count or fixed frame count, and explicit counter names before computing p95/p99.
+- [x] Fail only on missing evidence or threshold violation for the selected lane; do not infer broad generated-game, GPU, vendor, or backend readiness.
 
 ## Phase 3 - Trace And Artifact Evidence Rows
 
@@ -145,6 +145,23 @@ Phase 1 focused evidence on 2026-06-01:
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`
 
 The focused `MK_core_tests` lane passed after adding `DiagnosticsBudgetThresholds`, `DiagnosticsBudgetSummary`, `DiagnosticsBudgetStatus`, `summarize_counter_budget`, and `summarize_profile_budget`. Code review feedback hardened fail-closed behavior for invalid samples combined with missing samples, invalid `NaN`/negative-infinity thresholds, and public nearest-rank percentile semantics. Slice-close `tools/validate.ps1` passed with the expected Windows-host diagnostic-only Metal/Apple blockers while returning `validate: ok`.
+
+Phase 2 focused evidence:
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode DryRun -Recipe installed-2d-performance-baseline-smoke`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Preset desktop-runtime-release -Configuration Release -ReuseExistingFileApiReply -Files games/sample_2d_desktop_runtime_package/main.cpp`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`
+- `git diff --check`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`
+
+The installed 2D package smoke now reports `performance_baseline_status=ready`, `performance_baseline_backend_scope=d3d12`, `performance_baseline_warmup_frames=0`, three fixed frame/profile samples, explicit `sample_2d.frame_time_us` and `sample_2d.frame` names, p95/p99 frame time `16000us` under the `16670us` budget, zero non-finite samples, zero diagnostics, and zero over-budget status. The selected proof remains scoped to the D3D12 2D package lane and keeps broad CPU/GPU/memory optimization, cross-vendor parity, cross-backend parity, allocator enforcement, CUDA/HIP, GPU-driven rendering, Metal readiness, and broad renderer quality unsupported.
 
 ## Done When
 
