@@ -82,10 +82,12 @@ Phase 1 evidence on 2026-06-02: audited representative public headers for RHI re
 - Modify when checks need new needles: `tools/check-ai-integration-010-agent-baseline.ps1`
 - Modify when checks need new needles: `tools/check-ai-integration-020-engine-manifest.ps1`
 
-- [ ] Classify transient frame allocations, asset/package residency, renderer/RHI resources, editor/runtime UI resources, diagnostics buffers, and game-owned content memory.
-- [ ] Add AI-readable wording for allocator and lifetime boundaries: what is ready, what is planned, what is host-gated, and what must remain unsupported.
-- [ ] Define which future memory counters need to exist before allocator, pool, arena, or GPU residency changes can claim a performance improvement.
-- [ ] Keep CPU all-core usage, GPU memory residency, CUDA/HIP/SYCL, cross-vendor parity, and cross-backend parity unclaimed unless backed by focused recipes.
+- [x] Classify transient frame allocations, asset/package residency, renderer/RHI resources, editor/runtime UI resources, diagnostics buffers, and game-owned content memory.
+- [x] Add AI-readable wording for allocator and lifetime boundaries: what is ready, what is planned, what is host-gated, and what must remain unsupported.
+- [x] Define which future memory counters need to exist before allocator, pool, arena, or GPU residency changes can claim a performance improvement.
+- [x] Keep CPU all-core usage, GPU memory residency, CUDA/HIP/SYCL, cross-vendor parity, and cross-backend parity unclaimed unless backed by focused recipes.
+
+Phase 2 evidence on 2026-06-02: classified memory readiness into frame temporary, worker scratch, persistent CPU, package resident CPU, upload/staging, resident GPU, transient GPU, readback, and editor/tooling classes in `docs/specs/2026-06-01-engine-performance-optimization-foundation-v1.md`. AI-facing guidance in `docs/ai-game-development.md`, `docs/current-capabilities.md`, and `docs/rhi.md` now ties existing resident-byte, runtime residency budget, upload/staging, read-only RHI memory diagnostic, transient alias allocation, and `gpu_memory_policy_*` evidence to narrow ready claims while keeping global allocator replacement, allocator enforcement, all-core scheduling, NUMA/affinity tuning, SIMD dispatch, automatic/LRU GPU residency, CUDA/HIP/SYCL runtime paths, cross-vendor parity, cross-backend parity, and broad memory optimization unsupported.
 
 ## Phase 3 - Static Check And Next Implementation Wave Selection
 
@@ -124,6 +126,16 @@ Phase 1 validation on 2026-06-02:
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` - passed.
 - `git diff --check` - passed.
 - Full `tools/validate.ps1` was not run for this Phase 1 slice because the change is limited to docs/agent-surface wording and the targeted checks cover the changed contracts.
+
+Phase 2 validation on 2026-06-02:
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write` - passed, no manifest drift retained.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` - passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` - passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` - passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` - passed.
+- `git diff --check` - passed.
+- Full `tools/validate.ps1` was not run for this Phase 2 slice because the change is limited to docs/agent-surface wording and existing manifest/static checks already cover the active memory lifetime contract.
 
 ## Done When
 

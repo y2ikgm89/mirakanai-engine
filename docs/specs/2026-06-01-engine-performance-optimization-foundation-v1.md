@@ -161,6 +161,22 @@ Ownership rules:
 - Budget overflow must fail closed or degrade predictably; it must not silently evict live resources behind public gameplay handles.
 - Debug builds should detect leaked frame allocations, stale generation handles, use-after-safe-point rows, and missing resource teardown evidence.
 
+Phase 2 memory class map:
+
+| Memory class | Owner and reset/release boundary | Existing evidence | Missing before optimization claims |
+| ------------ | -------------------------------- | ----------------- | ---------------------------------- |
+| Frame temporary | Frame phase or frame graph owner; reset at the frame/safe-point boundary. | Frame graph transient lifetime rows, alias groups, aliasing barriers, and `RhiStats::transient_*` counters. | Frame allocation byte/count counters, high-water marks, leak-on-frame-exit diagnostics, and per-phase scratch budgets. |
+| Worker scratch | Future worker/job owner; reset by worker, job, or deterministic merge point. | No production worker scratch API is claimed yet. | Job graph ownership rows, per-worker scratch high-water marks, false-sharing diagnostics, and reclamation rules for idle workers. |
+| Persistent CPU | Owning engine module, host adapter, or editor subsystem; released by explicit owner shutdown. | C++ RAII/value ownership rules, `std::unique_ptr` guidance, module boundaries, and diagnostics rows where implemented. | Cross-module allocation category counters, leak summaries, persistent-cache budgets, and shutdown-order evidence. |
+| Package resident CPU | Runtime package, resident mount set, and catalog cache; changed only at reviewed safe points. | `RuntimeResourceResidencyBudgetV2`, resident mount/cache safe-point results, `estimated_resident_bytes`, package resident byte counters, and budget-failure diagnostics. | Automatic/LRU policy evidence, broad/background streaming evidence, package cache high-water marks, and allocator enforcement. |
+| Upload/staging | Host-owned RHI upload plan, upload ring, staging pool lease, and submitted fence retirement. | `RhiUploadStagingPlan`, `RhiUploadRing`, `RhiStagingBufferLease`, stale-generation diagnostics, uploaded-byte counters, submitted fences, and queue-wait evidence. | Runtime-wide staging-pool ownership, ring pressure high-water marks, reusable pool fragmentation counters, and measured async-overlap wins. |
+| Resident GPU | Renderer/RHI device and backend-private resource owners; released through lifetime registry or safe-point teardown. | `RhiResourceLifetimeRegistry`, `RhiDeviceMemoryDiagnostics`, `GpuMemoryPolicyPlan`, backend memory evidence gates, and package-visible `gpu_memory_policy_*` counters. | GPU allocator/suballocation policy, residency enforcement, automatic eviction, Metal memory parity, and cross-vendor/backend performance proof. |
+| Transient GPU | Frame graph and backend transient lease owner; retired after pass lifetime, fence, or alias-group interval. | `TransientResourceHandle`, transient texture alias groups, aliasing barrier counters, and D3D12/Vulkan placed/alias allocation counters. | Metal alias allocation evidence, content-preservation policy, alias fragmentation counters, and production render graph ownership. |
+| Readback | RHI readback resource owner and caller-visible result rows; latency explicit at readback call sites. | CPU buffer readback commands, `bytes_read`, readback-domain buffers, and explicit copy/read counters. | Readback latency budgets, no-hidden-wait diagnostics, and profiler-visible readback stall evidence. |
+| Editor/tooling | Editor/tool adapter or host tool; never a runtime requirement unless promoted through a separate contract. | Editor Resources diagnostics, capture handoff rows, trace import/export rows, and host-gated profiler/capture evidence. | Cache-size budgets, editor-only allocator diagnostics, and host-tool memory pressure rows that stay separate from generated-game runtime claims. |
+
+The next implementation wave should add memory diagnostics before allocator replacement: counters for bytes/counts by class, high-water marks, budget pressure, leak/stale-generation/use-after-safe-point diagnostics, and package-visible evidence rows. Until those rows exist, allocator, pool, arena, GPU residency, or async-upload changes cannot claim a performance improvement from memory behavior alone.
+
 ### 6. Use Topology Carefully
 
 CPU topology tuning should be late-stage and measured:
