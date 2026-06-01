@@ -663,6 +663,57 @@ function Assert-PackageStreamingResidencyTarget($manifest, [string]$label, [stri
     }
 }
 
+function Assert-PerformanceBudgets($manifest, [string]$label, [string]$selectedRecipeId, [string]$targetBackend, [string[]]$requiredBudgetRowIds) {
+    if (-not $manifest.PSObject.Properties.Name.Contains("performanceBudgets")) {
+        Write-Error "$label must declare performanceBudgets"
+        return
+    }
+
+    $budget = $manifest.performanceBudgets
+    Assert-JsonProperty $budget @("schemaVersion", "capabilityId", "budgetSetId", "selectedRecipeId", "targetBackend", "hostGateId", "validationRecipeIds", "budgetRows", "evidenceRows", "unsupportedClaims") "$label performanceBudgets"
+    if ($budget.capabilityId -ne "ai-operable-performance-budget-and-evidence-v1") {
+        Write-Error "$label performanceBudgets capabilityId must be ai-operable-performance-budget-and-evidence-v1"
+    }
+    if ($budget.selectedRecipeId -ne $selectedRecipeId) {
+        Write-Error "$label performanceBudgets selectedRecipeId must be $selectedRecipeId"
+    }
+    if ($budget.targetBackend -ne $targetBackend) {
+        Write-Error "$label performanceBudgets targetBackend must be $targetBackend"
+    }
+    $validationRecipeNames = @($manifest.validationRecipes | ForEach-Object { $_.name })
+    foreach ($recipeId in @($budget.validationRecipeIds) + @($budget.selectedRecipeId)) {
+        if ($validationRecipeNames -notcontains $recipeId) {
+            Write-Error "$label performanceBudgets validationRecipeIds must reference validationRecipes: $recipeId"
+        }
+    }
+    $budgetRowIds = @($budget.budgetRows | ForEach-Object { $_.id })
+    foreach ($budgetRowId in $requiredBudgetRowIds) {
+        if ($budgetRowIds -notcontains $budgetRowId) {
+            Write-Error "$label performanceBudgets budgetRows missing $budgetRowId"
+        }
+    }
+    foreach ($evidence in @($budget.evidenceRows)) {
+        if ($validationRecipeNames -notcontains $evidence.validationRecipeId) {
+            Write-Error "$label performanceBudgets evidenceRows must reference validationRecipes: $($evidence.validationRecipeId)"
+        }
+        foreach ($budgetRowId in @($evidence.budgetRowIds)) {
+            if ($budgetRowIds -notcontains $budgetRowId) {
+                Write-Error "$label performanceBudgets evidenceRows reference missing budgetRows id: $budgetRowId"
+            }
+        }
+    }
+    foreach ($claim in @("broad-optimized-game", "cross-vendor-performance-parity", "cross-backend-performance-parity", "native-handles", "allocator-gpu-budget-enforcement", "cuda-hip-runtime-path", "gpu-driven-rendering-ready", "metal-readiness")) {
+        if (@($budget.unsupportedClaims) -notcontains $claim) {
+            Write-Error "$label performanceBudgets unsupportedClaims missing $claim"
+        }
+    }
+    foreach ($forbiddenField in @("command", "shell", "argv", "executionRecipe", "nativeHandle", "rhiHandle", "cudaStream", "hipQueue", "metalDevice", "threadScheduler", "jobSystem", "allocatorHandle", "gpuBudgetEnforcement", "broadOptimizationReady", "crossVendorReady")) {
+        if ($budget.PSObject.Properties.Name.Contains($forbiddenField)) {
+            Write-Error "$label performanceBudgets must not expose unsupported field: $forbiddenField"
+        }
+    }
+}
+
 function Assert-PrefabScenePackageAuthoringTarget($manifest, [string]$label, [string]$id, [string]$packageIndexPath, [string]$outputScenePath, [string]$runtimeSceneValidationTargetId) {
     if (-not $manifest.PSObject.Properties.Name.Contains("prefabScenePackageAuthoringTargets")) {
         Write-Error "$label must declare prefabScenePackageAuthoringTargets"

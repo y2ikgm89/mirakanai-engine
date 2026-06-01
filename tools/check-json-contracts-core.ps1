@@ -1055,6 +1055,57 @@ function Assert-PackageStreamingResidencyTargets($game, [string]$relativePath, [
     }
 }
 
+function Assert-PerformanceBudgets($game, [string]$relativePath, [bool]$required) {
+    if (-not $game.PSObject.Properties.Name.Contains("performanceBudgets")) {
+        if ($required) { Write-Error "$relativePath selected package manifests must declare performanceBudgets" }
+        return
+    }
+    $budget = $game.performanceBudgets
+    Assert-Properties $budget @("schemaVersion", "capabilityId", "budgetSetId", "selectedRecipeId", "targetBackend", "hostGateId", "validationRecipeIds", "budgetRows", "evidenceRows", "unsupportedClaims") "$relativePath performanceBudgets"
+    if ($budget.schemaVersion -ne 1) { Write-Error "$relativePath performanceBudgets schemaVersion must be 1" }
+    if ([string]$budget.capabilityId -ne "ai-operable-performance-budget-and-evidence-v1") { Write-Error "$relativePath performanceBudgets capabilityId must be ai-operable-performance-budget-and-evidence-v1" }
+    foreach ($kebabValue in @("budgetSetId", "hostGateId")) { if ([string]$budget.$kebabValue -notmatch "^[a-z][a-z0-9-]*$") { Write-Error "$relativePath performanceBudgets $kebabValue must be kebab-case: $($budget.$kebabValue)" } }
+    if (@("none", "null", "d3d12", "vulkan", "metal", "multi-backend", "host-gated") -notcontains [string]$budget.targetBackend) { Write-Error "$relativePath performanceBudgets targetBackend has unsupported value: $($budget.targetBackend)" }
+    $validationRecipeIds = @{}
+    foreach ($recipe in @($game.validationRecipes)) { $validationRecipeIds[[string]$recipe.name] = $true }
+    foreach ($recipeId in @($budget.validationRecipeIds) + @($budget.selectedRecipeId)) { if (-not $validationRecipeIds.ContainsKey([string]$recipeId)) { Write-Error "$relativePath performanceBudgets validation recipe reference is missing from validationRecipes: $recipeId" } }
+    if ($budget.budgetRows -isnot [System.Array] -or @($budget.budgetRows).Count -lt 1) { Write-Error "$relativePath performanceBudgets budgetRows must be a non-empty array" }
+    $budgetCategories = @("frame", "cpu", "gpu", "memory", "draw", "dispatch", "upload", "package", "streaming", "shader-pipeline", "trace")
+    $budgetUnits = @("ms", "us", "bytes", "count", "percent", "bool")
+    $budgetRowIds = @{}
+    foreach ($row in @($budget.budgetRows)) {
+        Assert-Properties $row @("id", "category", "metric", "limit", "unit", "evidenceRequired", "notes") "$relativePath performanceBudgets budgetRows"
+        $rowId = [string]$row.id
+        if ($rowId -notmatch "^[a-z][a-z0-9-]*$") { Write-Error "$relativePath performanceBudgets budgetRows id must be kebab-case: $rowId" }
+        if ($budgetRowIds.ContainsKey($rowId)) { Write-Error "$relativePath performanceBudgets budgetRows id is duplicated: $rowId" }
+        $budgetRowIds[$rowId] = $true
+        if ($budgetCategories -notcontains [string]$row.category) { Write-Error "$relativePath performanceBudgets budgetRows '$rowId' has unsupported category: $($row.category)" }
+        if ([string]::IsNullOrWhiteSpace([string]$row.metric)) { Write-Error "$relativePath performanceBudgets budgetRows '$rowId' metric must be non-empty" }
+        if (-not ($row.limit -is [int] -or $row.limit -is [long] -or $row.limit -is [double] -or $row.limit -is [decimal])) { Write-Error "$relativePath performanceBudgets budgetRows '$rowId' limit must be numeric" }
+        if ($budgetUnits -notcontains [string]$row.unit) { Write-Error "$relativePath performanceBudgets budgetRows '$rowId' has unsupported unit: $($row.unit)" }
+        if ($row.evidenceRequired -isnot [bool]) { Write-Error "$relativePath performanceBudgets budgetRows '$rowId' evidenceRequired must be boolean" }
+    }
+    if ($budget.evidenceRows -isnot [System.Array] -or @($budget.evidenceRows).Count -lt 1) { Write-Error "$relativePath performanceBudgets evidenceRows must be a non-empty array" }
+    $evidenceKinds = @("package-smoke-counter", "trace-artifact", "profiler-artifact", "manifest-budget", "static-contract", "manual-host-evidence")
+    $evidenceRowIds = @{}
+    foreach ($row in @($budget.evidenceRows)) {
+        Assert-Properties $row @("id", "budgetRowIds", "evidenceKind", "source", "validationRecipeId", "status") "$relativePath performanceBudgets evidenceRows"
+        $rowId = [string]$row.id
+        if ($rowId -notmatch "^[a-z][a-z0-9-]*$") { Write-Error "$relativePath performanceBudgets evidenceRows id must be kebab-case: $rowId" }
+        if ($evidenceRowIds.ContainsKey($rowId)) { Write-Error "$relativePath performanceBudgets evidenceRows id is duplicated: $rowId" }
+        $evidenceRowIds[$rowId] = $true
+        if ($row.budgetRowIds -isnot [System.Array] -or @($row.budgetRowIds).Count -lt 1) { Write-Error "$relativePath performanceBudgets evidenceRows '$rowId' budgetRowIds must be a non-empty array" }
+        foreach ($budgetRowId in @($row.budgetRowIds)) { if (-not $budgetRowIds.ContainsKey([string]$budgetRowId)) { Write-Error "$relativePath performanceBudgets evidenceRows '$rowId' references unknown budgetRows id: $budgetRowId" } }
+        if ($evidenceKinds -notcontains [string]$row.evidenceKind) { Write-Error "$relativePath performanceBudgets evidenceRows '$rowId' has unsupported evidenceKind: $($row.evidenceKind)" }
+        if (-not $validationRecipeIds.ContainsKey([string]$row.validationRecipeId)) { Write-Error "$relativePath performanceBudgets evidenceRows '$rowId' validationRecipeId must reference validationRecipes: $($row.validationRecipeId)" }
+        if (@("ready", "host-gated", "planned", "unsupported") -notcontains [string]$row.status) { Write-Error "$relativePath performanceBudgets evidenceRows '$rowId' has unsupported status: $($row.status)" }
+        if ($row.PSObject.Properties.Name.Contains("artifactPath") -and -not (Test-SafeGameRelativePath (ConvertTo-RepoPath ([string]$row.artifactPath)))) { Write-Error "$relativePath performanceBudgets evidenceRows '$rowId' artifactPath must be safe and game-relative: $($row.artifactPath)" }
+    }
+    foreach ($claim in @("broad-optimized-game", "cross-vendor-performance-parity", "cross-backend-performance-parity", "native-handles")) { if (@($budget.unsupportedClaims) -notcontains $claim) { Write-Error "$relativePath performanceBudgets unsupportedClaims missing required claim: $claim" } }
+    $allowedClaims = @("broad-optimized-game", "cross-vendor-performance-parity", "cross-backend-performance-parity", "unbounded-frame-time", "runtime-source-parsing", "renderer-rhi-residency", "native-handles", "allocator-gpu-budget-enforcement", "metal-readiness", "cuda-hip-runtime-path", "gpu-driven-rendering-ready")
+    foreach ($claim in @($budget.unsupportedClaims)) { if ($allowedClaims -notcontains [string]$claim) { Write-Error "$relativePath performanceBudgets unsupportedClaims has unsupported claim: $claim" } }
+    foreach ($forbiddenField in @("command", "shell", "argv", "nativeHandle", "rhiHandle", "cudaContext", "hipContext", "metalDevice", "allocatorHandle", "gpuBudgetEnforcement", "threadScheduler", "workStealingReady", "optimizedGameReady")) { if ($budget.PSObject.Properties.Name.Contains($forbiddenField)) { Write-Error "$relativePath performanceBudgets must not expose execution, native-handle, scheduler, or broad readiness field: $forbiddenField" } }
+}
 function Assert-PrefabScenePackageAuthoringTargets($game, [string]$relativePath, [bool]$required) {
     $gameDirectory = Get-GameDirectoryFromManifestPath $relativePath
     $packageFiles = @(Get-NormalizedRuntimePackageFiles $game $relativePath | ForEach-Object {

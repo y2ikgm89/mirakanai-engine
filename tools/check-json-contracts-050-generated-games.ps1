@@ -359,6 +359,11 @@ foreach ($gameManifestEntry in Get-GameAgentManifests) {
     Assert-PrefabScenePackageAuthoringTargets $game $relative $requiresPrefabScene3dTargets
     Assert-RegisteredSourceAssetCookTargets $game $relative $requiresPrefabScene3dTargets
     Assert-PackageStreamingResidencyTargets $game $relative $hasRuntimeScenePackage
+    $requiresPerformanceBudgets = @(
+        "games/sample_2d_desktop_runtime_package/game.agent.json",
+        "games/sample_generated_desktop_runtime_3d_package/game.agent.json"
+    ) -contains $relative
+    Assert-PerformanceBudgets $game $relative $requiresPerformanceBudgets
     foreach ($recipe in $game.validationRecipes) {
         Assert-Properties $recipe @("name", "command") "$relative validationRecipes"
         if ([string]::IsNullOrWhiteSpace($recipe.command)) {

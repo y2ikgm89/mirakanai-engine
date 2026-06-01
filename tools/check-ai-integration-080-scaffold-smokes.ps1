@@ -270,6 +270,12 @@ try {
     if (@($sample2dDesktopManifest.validationRecipes | ForEach-Object { $_.name }) -notcontains "installed-2d-sprite-effects-particles-smoke") {
         Write-Error "sample_2d_desktop_runtime_package manifest validationRecipes missing installed-2d-sprite-effects-particles-smoke"
     }
+    Assert-PerformanceBudgets `
+        $sample2dDesktopManifest `
+        "sample_2d_desktop_runtime_package manifest" `
+        "installed-2d-sandbox-package-budget-smoke" `
+        "d3d12" `
+        @("frame-p95-ms", "sprite-draw-count", "sandbox-package-bytes", "resident-memory-bytes")
     Assert-ContainsText $repositoryGamesCmake "--require-sprite-sorting-layer" "games/CMakeLists.txt sample_2d_desktop_runtime_package smoke args"
     Assert-ContainsText $repositoryGamesCmake "--require-sprite-9slice-tiled" "games/CMakeLists.txt sample_2d_desktop_runtime_package smoke args"
     Assert-ContainsText $repositoryGamesCmake "--require-sprite-collision-hitbox" "games/CMakeLists.txt sample_2d_desktop_runtime_package smoke args"
@@ -371,6 +377,12 @@ try {
     if ($desktop2dManifest.aiWorkflow.generatedGameQualityRubric.capabilityId -ne "ai-generated-game-quality-rubric-v1") { Write-Error "Desktop runtime 2D package scaffold manifest must carry ai-generated-game-quality-rubric-v1" }
     $desktop2dQualityRubricText = $desktop2dManifest.aiWorkflow.generatedGameQualityRubric | ConvertTo-Json -Depth 40
     foreach ($qualityNeedle in @("objective-quality-gate", "deterministic-package-smoke-quality-gate", "headless-quality-report", "commercial-quality")) { Assert-ContainsText $desktop2dQualityRubricText $qualityNeedle "Desktop runtime 2D package scaffold generated-game quality rubric" }
+    Assert-PerformanceBudgets `
+        $desktop2dManifest `
+        "Desktop runtime 2D package scaffold manifest" `
+        "installed-native-2d-sprite-smoke" `
+        "d3d12" `
+        @("frame-p95-ms", "sprite-draw-count", "resident-memory-bytes")
     foreach ($module in @("MK_platform_win32", "MK_runtime", "MK_runtime_scene", "MK_runtime_host", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_audio", "MK_renderer", "MK_ai", "MK_navigation", "MK_physics")) {
         if (@($desktop2dManifest.engineModules) -notcontains $module) {
             Write-Error "Desktop runtime 2D package scaffold manifest missing engine module: $module"
@@ -1228,6 +1240,12 @@ try {
     if ($desktop3dManifest.aiWorkflow.generatedGameQualityRubric.capabilityId -ne "ai-generated-game-quality-rubric-v1") { Write-Error "Desktop runtime 3D package scaffold manifest must carry ai-generated-game-quality-rubric-v1" }
     $desktop3dQualityRubricText = $desktop3dManifest.aiWorkflow.generatedGameQualityRubric | ConvertTo-Json -Depth 40
     foreach ($qualityNeedle in @("feedback-quality-gate", "budget-evidence-quality-gate", "package-quality-report", "broad-production-readiness")) { Assert-ContainsText $desktop3dQualityRubricText $qualityNeedle "Desktop runtime 3D package scaffold generated-game quality rubric" }
+    Assert-PerformanceBudgets `
+        $desktop3dManifest `
+        "Desktop runtime 3D package scaffold manifest" `
+        "installed-d3d12-3d-package-smoke" `
+        "d3d12" `
+        @("frame-p95-ms", "framegraph-pass-count", "resident-memory-bytes")
     foreach ($module in @("MK_ai", "MK_animation", "MK_audio", "MK_navigation", "MK_physics", "MK_platform_win32", "MK_runtime", "MK_runtime_rhi", "MK_runtime_scene", "MK_runtime_scene_rhi", "MK_runtime_host", "MK_runtime_host_win32", "MK_runtime_host_win32_presentation", "MK_scene", "MK_scene_renderer", "MK_ui", "MK_ui_renderer", "MK_renderer")) {
         if (@($desktop3dManifest.engineModules) -notcontains $module) {
             Write-Error "Desktop runtime 3D package scaffold manifest missing engine module: $module"
@@ -1842,6 +1860,12 @@ if ([string]::IsNullOrWhiteSpace($committedDesktop3dCmakeBlock)) {
 if ($committedDesktop3dManifest.gameplayContract.productionRecipe -ne "3d-playable-desktop-package") {
     Write-Error "$committedDesktop3dManifestPath must select 3d-playable-desktop-package"
 }
+Assert-PerformanceBudgets `
+    $committedDesktop3dManifest `
+    $committedDesktop3dManifestPath `
+    "installed-d3d12-3d-package-smoke" `
+    "d3d12" `
+    @("frame-p95-ms", "package-upload-bytes", "framegraph-pass-count", "resident-memory-bytes")
 foreach ($relativePath in @(
     "runtime/sample_generated_desktop_runtime_3d_package.config",
     "runtime/sample_generated_desktop_runtime_3d_package.geindex",

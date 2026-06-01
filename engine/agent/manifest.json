@@ -1455,15 +1455,15 @@
     "schemaVersion": 1,
     "design": "docs/specs/2026-05-01-ai-operable-game-engine-production-roadmap-v1-design.md",
     "foundationPlan": "docs/superpowers/plans/2026-05-01-ai-operable-production-loop-foundation-v1.md",
-    "currentActivePlan": "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md",
+    "currentActivePlan": "docs/superpowers/plans/2026-06-01-ai-operable-performance-budget-and-evidence-v1.md",
     "recommendedNextPlan": {
-      "id": "next-production-gap-selection",
-      "title": "Next Production Gap Selection",
+      "id": "ai-operable-performance-budget-and-evidence-v1",
+      "title": "AI-Operable Performance Budget And Evidence v1",
       "status": "ready",
-      "path": "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md",
+      "path": "docs/superpowers/plans/2026-06-01-ai-operable-performance-budget-and-evidence-v1.md",
       "latestCloseoutEvidence": "First-Party UI Editor Production Stack v1 completed Phases 1-10 and returned the manifest to the production selection gate. Closeout preserves the completed first-party retained MK_editor shell over desktop-editor, MK_editor_core, mirakana::ui, MK_ui_renderer, dock graph persistence, rich text rows, DirectWrite text/font evidence, selected text atlas handoff evidence, Text Services Framework IME selection, UI Automation provider publication, private visible D3D12 viewport display and material texture display, private D3D12 texture adapter evidence through native_texture_display_adapter and native_editor_visible_texture_compositor, editor_shell_panels=11, editor_shell_docking_status=single_window_ready, editor_shell_dock_tab_headers=11, editor_shell_dock_split_gutters=3, editor_shell_dock_active_panels=4, editor_shell_dock_focusable_controls=11, editor_shell_viewport_status=d3d12_texture_ready, editor_shell_viewport_visible_texture_composites, editor_shell_viewport_native_handles_exposed=0, editor_shell_material_preview_status=d3d12_texture_ready, editor_shell_material_preview_visible_texture_composites, editor_shell_material_preview_native_handles_exposed=0, host-private-native material preview evidence, and AI-operable EditorAiOperationSnapshot.status_rows with editor.ai.dock.selected_panel, editor.ai.rich_text.documents, editor.ai.text_input.focused_target, editor.ai.adapter.text_font, editor.ai.ime.session, editor.ai.accessibility.uia_provider, editor.ai.viewport.display, and editor.ai.material_preview.display. Reviewed rich-text commands remain \u003Crich_text_document_id\u003E.copy_plain_text and \u003Crich_text_document_id\u003E.copy_selection_plain_text with text/plain;charset=utf-8 output, stale revision rejection, native handle rejection, shell/process execution rejection, validation-recipe execution rejection, screen coordinates rejection, target mismatch, missing confirmation, unsupported parameter, disabled command, and unknown command fail-closed diagnostics. Phase 9 cross-platform gates remain explicit as editor.cross_platform.adapter.macos.core_text, editor.cross_platform.adapter.macos.input_method_kit, editor.cross_platform.adapter.macos.nsaccessibility, editor.cross_platform.adapter.linux.at_spi, editor.cross_platform.adapter.linux.ibus, editor.cross_platform.adapter.linux.fcitx, editor.cross_platform.adapter.android.input_method_service, editor.cross_platform.adapter.android.accessibility, editor.cross_platform.adapter.ios.uitextinput, editor.cross_platform.adapter.ios.uiaccessibility, editor.cross_platform.adapter.dependency.harfbuzz, editor.cross_platform.adapter.dependency.freetype, and editor.cross_platform.adapter.dependency.icu; third-party text/font/image dependencies still require license-audit, vcpkg.json, docs/dependencies.md, and THIRD_PARTY_NOTICES.md. Local closeout validation included build-editor, docs/agent/static checks, full tools/validate.ps1, and git diff --check; hosted evidence for the final closeout PR remains part of the PR gate. First-Party Desktop Platform And SDL3 Removal v1 remains completed with MK_platform_win32, MK_runtime_host_win32_presentation, and MK_audio_wasapi evidence. Renderer RHI Resource Foundation 1.0 Scope Closeout v1, production-rendering-vfx-profiling-v1, genre-sandbox-world-pack-v1, genre-simulation-management-pack-v1, and production-network-replication-v1 remain completed evidence. Renderer Backend Parity Host Recipe Proof v1 remains completed, SDL3 stays absent, unsupportedProductionGaps = [] remains unchanged, and this is the selection gate.",
       "completedContext": "First-Party UI Editor Production Stack v1 is completed as a clean-break first-party editor/UI productization milestone after First-Party Editor Shell v1. Completed scope includes core-backed docking, workspace v2 dock persistence, single-window dock tab/gutter/focus UX, read-only Console/AI Commands/Inspector rich text, selected Windows DirectWrite text/font and text-atlas evidence, selected Windows TSF text-input/IME session evidence, private Windows UIA provider publication, private D3D12 viewport/material visible texture display, AI-operable editor UX status rows, reviewed rich-text copy commands, and cross-platform adapter host/dependency gates. Remaining unclaimed work includes broad editable rich text, Direct2D GPU text rendering/upload, broad shaping/bidi/fallback, full app-owned ITextStoreACP callback coverage, native IME candidate UI, reconversion, full UIA control pattern/event parity, Vulkan/Metal editor texture-display parity, broader material-preview GPU parity, cross-platform accessibility/editor shell parity, runtime game UI OS accessibility publication, production font fallback, public native handles, SDL3, UI middleware, package mutation, and runtime game UI middleware. Generated games and runtime UI stay on public mirakana::ui contracts, not editor-private APIs. The production loop now returns to next-production-gap-selection with unsupportedProductionGaps = [].",
-      "reason": "First-Party UI Editor Production Stack v1 is closed, no manifest unsupported gap was reopened, and the repository should select the next focused production gap from the master plan rather than keeping the completed dated plan active."
+      "reason": "Selected as the focused optimization foundation because AI-generated games need schema-backed performanceBudgets, budgetRows, evidenceRows, validation recipe links, and unsupported broad optimization claims before broader CPU/GPU/memory optimization implementation proceeds."
     },
     "recipeStatusEnum": [
       "ready",
@@ -2825,6 +2825,115 @@
           "general renderer quality"
         ],
         "notes": "This loop is a manifest-reviewed authoring sequence over existing narrow surfaces. It is not broad asset import orchestration, runtime source parsing, renderer/RHI residency ownership, package streaming execution, editor productization, Metal validation, or a production renderer-quality claim."
+      }
+    ],
+    "performanceBudgetEvidenceLoops": [
+      {
+        "id": "ai-operable-performance-budget-evidence",
+        "status": "ready",
+        "owner": "game-agent-manifest",
+        "summary": "Descriptor-first performance budget and evidence loop for AI-created games. It selects game.agent.json.performanceBudgets rows, ties budget rows to validation recipes and evidence rows, and keeps host-gated trace/profiler evidence separate from broad optimized-game claims.",
+        "orderedSteps": [
+          {
+            "id": "select-performance-budget-set",
+            "surface": "game.agent.json.performanceBudgets",
+            "status": "ready",
+            "mutates": false,
+            "notes": "Select exactly one schema-backed performance budget set before claiming an optimized game."
+          },
+          {
+            "id": "validate-budget-recipe-links",
+            "surface": "validationRecipeIds and evidenceRows.validationRecipeId",
+            "status": "ready",
+            "mutates": false,
+            "notes": "Every selected recipe id must resolve to game.agent.json.validationRecipes."
+          },
+          {
+            "id": "review-budget-rows",
+            "surface": "budgetRows",
+            "status": "ready",
+            "mutates": false,
+            "notes": "Review frame, CPU, GPU, memory, draw, dispatch, upload, package, streaming, shader-pipeline, and trace budget rows as explicit limits, not inferred performance claims."
+          },
+          {
+            "id": "attach-evidence-rows",
+            "surface": "evidenceRows",
+            "status": "ready",
+            "mutates": false,
+            "notes": "Attach package-smoke counters, manifest budget rows, static contracts, trace artifacts, profiler artifacts, or manual host evidence to referenced budget rows."
+          },
+          {
+            "id": "reject-broad-optimization-claims",
+            "surface": "unsupportedClaims",
+            "status": "ready",
+            "mutates": false,
+            "notes": "Reject broad optimized-game, cross-vendor parity, cross-backend parity, native handle, allocator/GPU enforcement, CUDA/HIP, GPU-driven rendering, and Metal-ready claims unless a later focused slice proves them."
+          }
+        ],
+        "requiredManifestFields": [
+          "performanceBudgets",
+          "runtimePackageFiles",
+          "runtimeSceneValidationTargets",
+          "packageStreamingResidencyTargets",
+          "validationRecipes"
+        ],
+        "descriptorFields": [
+          "schemaVersion",
+          "capabilityId",
+          "budgetSetId",
+          "selectedRecipeId",
+          "targetBackend",
+          "hostGateId",
+          "validationRecipeIds",
+          "budgetRows",
+          "evidenceRows",
+          "unsupportedClaims"
+        ],
+        "budgetCategories": [
+          "frame",
+          "cpu",
+          "gpu",
+          "memory",
+          "draw",
+          "dispatch",
+          "upload",
+          "package",
+          "streaming",
+          "shader-pipeline",
+          "trace"
+        ],
+        "evidenceKinds": [
+          "package-smoke-counter",
+          "trace-artifact",
+          "profiler-artifact",
+          "manifest-budget",
+          "static-contract",
+          "manual-host-evidence"
+        ],
+        "blockedExecution": [
+          "profiler execution",
+          "PGO execution",
+          "GPU capture execution",
+          "allocator/GPU budget enforcement",
+          "public native/RHI handles",
+          "CUDA/HIP runtime path",
+          "GPU-driven rendering",
+          "Metal readiness"
+        ],
+        "unsupportedClaims": [
+          "broad optimized game generation",
+          "cross-vendor performance parity",
+          "cross-backend performance parity",
+          "unbounded frame time",
+          "runtime source parsing",
+          "renderer/RHI residency execution",
+          "native handles",
+          "allocator/GPU budget enforcement",
+          "Metal readiness",
+          "CUDA/HIP runtime path",
+          "GPU-driven rendering readiness"
+        ],
+        "notes": "This loop makes optimization readiness AI-operable before deeper implementation work. Ready status means the descriptor, references, and static checks are ready; it does not mean runtime frame-time, CPU scheduling, GPU occupancy, allocator enforcement, or backend parity is proven."
       }
     ],
     "packageStreamingResidencyLoops": [

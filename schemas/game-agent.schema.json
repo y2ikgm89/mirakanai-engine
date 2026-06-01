@@ -1669,6 +1669,195 @@
         "type": "string"
       }
     },
+    "performanceBudgets": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "capabilityId",
+        "budgetSetId",
+        "selectedRecipeId",
+        "targetBackend",
+        "hostGateId",
+        "validationRecipeIds",
+        "budgetRows",
+        "evidenceRows",
+        "unsupportedClaims"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "type": "integer",
+          "const": 1
+        },
+        "capabilityId": {
+          "type": "string",
+          "const": "ai-operable-performance-budget-and-evidence-v1"
+        },
+        "budgetSetId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "selectedRecipeId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "targetBackend": {
+          "enum": ["none", "null", "d3d12", "vulkan", "metal", "multi-backend", "host-gated"]
+        },
+        "hostGateId": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*$"
+        },
+        "validationRecipeIds": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$"
+          }
+        },
+        "budgetRows": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "category", "metric", "limit", "unit", "evidenceRequired", "notes"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "category": {
+                "enum": [
+                  "frame",
+                  "cpu",
+                  "gpu",
+                  "memory",
+                  "draw",
+                  "dispatch",
+                  "upload",
+                  "package",
+                  "streaming",
+                  "shader-pipeline",
+                  "trace"
+                ]
+              },
+              "metric": {
+                "type": "string",
+                "minLength": 1
+              },
+              "limit": {
+                "type": "number"
+              },
+              "unit": {
+                "enum": ["ms", "us", "bytes", "count", "percent", "bool"]
+              },
+              "evidenceRequired": {
+                "type": "boolean"
+              },
+              "notes": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        },
+        "evidenceRows": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "budgetRowIds", "evidenceKind", "source", "validationRecipeId", "status"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "budgetRowIds": {
+                "type": "array",
+                "minItems": 1,
+                "uniqueItems": true,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9-]*$"
+                }
+              },
+              "evidenceKind": {
+                "enum": [
+                  "package-smoke-counter",
+                  "trace-artifact",
+                  "profiler-artifact",
+                  "manifest-budget",
+                  "static-contract",
+                  "manual-host-evidence"
+                ]
+              },
+              "source": {
+                "type": "string",
+                "minLength": 1
+              },
+              "validationRecipeId": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*$"
+              },
+              "status": {
+                "enum": ["ready", "host-gated", "planned", "unsupported"]
+              },
+              "artifactPath": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^(?!/)(?![A-Za-z]:)(?!.*(^|/)\\.\\.($|/)).+"
+              }
+            }
+          }
+        },
+        "unsupportedClaims": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "broad-optimized-game",
+              "cross-vendor-performance-parity",
+              "cross-backend-performance-parity",
+              "unbounded-frame-time",
+              "runtime-source-parsing",
+              "renderer-rhi-residency",
+              "native-handles",
+              "allocator-gpu-budget-enforcement",
+              "metal-readiness",
+              "cuda-hip-runtime-path",
+              "gpu-driven-rendering-ready"
+            ]
+          },
+          "allOf": [
+            {
+              "contains": {
+                "const": "broad-optimized-game"
+              }
+            },
+            {
+              "contains": {
+                "const": "cross-vendor-performance-parity"
+              }
+            },
+            {
+              "contains": {
+                "const": "cross-backend-performance-parity"
+              }
+            },
+            {
+              "contains": {
+                "const": "native-handles"
+              }
+            }
+          ]
+        }
+      }
+    },
     "runtimePackageFiles": {
       "type": "array",
       "uniqueItems": true,

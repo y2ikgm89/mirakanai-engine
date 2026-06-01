@@ -216,6 +216,59 @@ if ($prefabScene3dAuthoringLoop.Count -ne 1) {
         }
     }
 }
+$performanceBudgetEvidenceLoop = @($productionLoop.performanceBudgetEvidenceLoops | Where-Object { $_.id -eq "ai-operable-performance-budget-evidence" })
+if ($performanceBudgetEvidenceLoop.Count -ne 1) {
+    Write-Error "engine manifest aiOperableProductionLoop must expose one ai-operable-performance-budget-evidence loop"
+} else {
+    Assert-Properties $performanceBudgetEvidenceLoop[0] @("id", "status", "owner", "summary", "orderedSteps", "requiredManifestFields", "descriptorFields", "budgetCategories", "evidenceKinds", "blockedExecution", "unsupportedClaims", "notes") "engine manifest aiOperableProductionLoop ai-operable-performance-budget-evidence"
+    if ($performanceBudgetEvidenceLoop[0].status -ne "ready") {
+        Write-Error "engine manifest ai-operable-performance-budget-evidence must be ready after the descriptor contract is implemented"
+    }
+    $expectedPerformanceBudgetSteps = @(
+        "select-performance-budget-set",
+        "validate-budget-recipe-links",
+        "review-budget-rows",
+        "attach-evidence-rows",
+        "reject-broad-optimization-claims"
+    )
+    $actualPerformanceBudgetSteps = @($performanceBudgetEvidenceLoop[0].orderedSteps | ForEach-Object {
+            Assert-Properties $_ @("id", "surface", "status", "mutates", "notes") "engine manifest ai-operable-performance-budget-evidence ordered step"
+            $_.id
+        })
+    if (($actualPerformanceBudgetSteps -join "|") -ne ($expectedPerformanceBudgetSteps -join "|")) {
+        Write-Error "engine manifest ai-operable-performance-budget-evidence orderedSteps must be exactly: $($expectedPerformanceBudgetSteps -join ', ')"
+    }
+    foreach ($field in @("performanceBudgets", "runtimePackageFiles", "runtimeSceneValidationTargets", "packageStreamingResidencyTargets", "validationRecipes")) {
+        if (@($performanceBudgetEvidenceLoop[0].requiredManifestFields) -notcontains $field) {
+            Write-Error "engine manifest ai-operable-performance-budget-evidence requiredManifestFields missing: $field"
+        }
+    }
+    foreach ($field in @("schemaVersion", "capabilityId", "budgetSetId", "selectedRecipeId", "targetBackend", "hostGateId", "validationRecipeIds", "budgetRows", "evidenceRows", "unsupportedClaims")) {
+        if (@($performanceBudgetEvidenceLoop[0].descriptorFields) -notcontains $field) {
+            Write-Error "engine manifest ai-operable-performance-budget-evidence descriptorFields missing: $field"
+        }
+    }
+    foreach ($category in @("frame", "cpu", "gpu", "memory", "draw", "dispatch", "upload", "package", "streaming", "shader-pipeline", "trace")) {
+        if (@($performanceBudgetEvidenceLoop[0].budgetCategories) -notcontains $category) {
+            Write-Error "engine manifest ai-operable-performance-budget-evidence budgetCategories missing: $category"
+        }
+    }
+    foreach ($kind in @("package-smoke-counter", "trace-artifact", "profiler-artifact", "manifest-budget", "static-contract", "manual-host-evidence")) {
+        if (@($performanceBudgetEvidenceLoop[0].evidenceKinds) -notcontains $kind) {
+            Write-Error "engine manifest ai-operable-performance-budget-evidence evidenceKinds missing: $kind"
+        }
+    }
+    foreach ($blocked in @("profiler execution", "PGO execution", "GPU capture execution", "allocator/GPU budget enforcement", "public native/RHI handles", "CUDA/HIP runtime path", "GPU-driven rendering", "Metal readiness")) {
+        if (-not ((@($performanceBudgetEvidenceLoop[0].blockedExecution) -join " ").Contains($blocked))) {
+            Write-Error "engine manifest ai-operable-performance-budget-evidence blockedExecution missing: $blocked"
+        }
+    }
+    foreach ($claim in @("broad optimized game generation", "cross-vendor performance parity", "cross-backend performance parity", "native handles", "allocator/GPU budget enforcement", "CUDA/HIP runtime path", "GPU-driven rendering readiness")) {
+        if (-not ((@($performanceBudgetEvidenceLoop[0].unsupportedClaims) -join " ").Contains($claim))) {
+            Write-Error "engine manifest ai-operable-performance-budget-evidence unsupportedClaims missing: $claim"
+        }
+    }
+}
 $packageStreamingResidencyLoop = @($productionLoop.packageStreamingResidencyLoops | Where-Object { $_.id -eq "package-streaming-residency-budget-contract" })
 if ($packageStreamingResidencyLoop.Count -ne 1) {
     Write-Error "engine manifest aiOperableProductionLoop must expose one package-streaming-residency-budget-contract loop"

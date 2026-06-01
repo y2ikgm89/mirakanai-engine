@@ -2108,6 +2108,112 @@
     "desktop-game-runtime",
     "desktop-runtime-release"
   ],
+  "performanceBudgets": {
+    "schemaVersion": 1,
+    "capabilityId": "ai-operable-performance-budget-and-evidence-v1",
+    "budgetSetId": "sample-generated-3d-package-performance-budget",
+    "selectedRecipeId": "installed-d3d12-3d-package-smoke",
+    "targetBackend": "d3d12",
+    "hostGateId": "d3d12-windows-package-smoke",
+    "validationRecipeIds": [
+      "installed-d3d12-3d-package-smoke",
+      "installed-d3d12-3d-directional-shadow-smoke",
+      "installed-d3d12-3d-native-ui-overlay-smoke",
+      "desktop-game-runtime"
+    ],
+    "budgetRows": [
+      {
+        "id": "frame-p95-ms",
+        "category": "frame",
+        "metric": "p95_frame_time",
+        "limit": 16.67,
+        "unit": "ms",
+        "evidenceRequired": true,
+        "notes": "Host-gated trace or profiler evidence is required before this row can prove frame-time readiness."
+      },
+      {
+        "id": "package-upload-bytes",
+        "category": "upload",
+        "metric": "package_upload_staging_uploaded_bytes",
+        "limit": 16777216,
+        "unit": "bytes",
+        "evidenceRequired": true,
+        "notes": "Selected package upload staging evidence bounds generated 3D package upload rows without claiming async overlap performance."
+      },
+      {
+        "id": "framegraph-pass-count",
+        "category": "gpu",
+        "metric": "renderer_quality_expected_framegraph_render_passes",
+        "limit": 3,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "Selected renderer quality smoke reports expected frame graph pass counters for the D3D12 package lane only."
+      },
+      {
+        "id": "resident-memory-bytes",
+        "category": "memory",
+        "metric": "package_streaming_resident_budget_bytes",
+        "limit": 67108864,
+        "unit": "bytes",
+        "evidenceRequired": true,
+        "notes": "Residency budget is descriptor and smoke evidence only; it is not allocator or GPU budget enforcement."
+      }
+    ],
+    "evidenceRows": [
+      {
+        "id": "package-upload-smoke",
+        "budgetRowIds": [
+          "package-upload-bytes"
+        ],
+        "evidenceKind": "package-smoke-counter",
+        "source": "package_upload_staging_* counters from selected generated 3D package smoke",
+        "validationRecipeId": "installed-d3d12-3d-package-smoke",
+        "status": "ready"
+      },
+      {
+        "id": "framegraph-pass-smoke",
+        "budgetRowIds": [
+          "framegraph-pass-count"
+        ],
+        "evidenceKind": "package-smoke-counter",
+        "source": "renderer_quality_expected_framegraph_render_passes from selected D3D12 package smoke",
+        "validationRecipeId": "installed-d3d12-3d-directional-shadow-smoke",
+        "status": "ready"
+      },
+      {
+        "id": "residency-budget-descriptor",
+        "budgetRowIds": [
+          "resident-memory-bytes"
+        ],
+        "evidenceKind": "manifest-budget",
+        "source": "packageStreamingResidencyTargets packaged-3d-residency-budget",
+        "validationRecipeId": "installed-d3d12-3d-package-smoke",
+        "status": "host-gated"
+      },
+      {
+        "id": "frame-trace-required",
+        "budgetRowIds": [
+          "frame-p95-ms"
+        ],
+        "evidenceKind": "trace-artifact",
+        "source": "Trace or profiler artifact is not required by default validation and must be attached by a host performance lane.",
+        "validationRecipeId": "desktop-game-runtime",
+        "status": "host-gated"
+      }
+    ],
+    "unsupportedClaims": [
+      "broad-optimized-game",
+      "cross-vendor-performance-parity",
+      "cross-backend-performance-parity",
+      "unbounded-frame-time",
+      "renderer-rhi-residency",
+      "native-handles",
+      "allocator-gpu-budget-enforcement",
+      "metal-readiness",
+      "cuda-hip-runtime-path",
+      "gpu-driven-rendering-ready"
+    ]
+  },
   "runtimePackageFiles": [
     "runtime/sample_generated_desktop_runtime_3d_package.config",
     "runtime/sample_generated_desktop_runtime_3d_package.geindex",
