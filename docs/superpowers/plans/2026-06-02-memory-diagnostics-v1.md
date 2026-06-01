@@ -86,9 +86,11 @@ Phase 1 closeout on 2026-06-02 adds `MemoryLifetimeClass`, `MemoryCounterRow`, `
 - Generate when manifest changes: `engine/agent/manifest.json`
 - Modify when checks need new needles: relevant `tools/check-ai-integration*.ps1` and `tools/check-json-contracts*.ps1`
 
-- [ ] Define package-visible `memory_diagnostics_*` counter names for the selected lane before wiring runtime output.
-- [ ] Map existing RHI read-only memory diagnostics, upload/staging byte counters, transient alias allocation counters, and `gpu_memory_policy_*` rows to narrow memory-evidence claims.
-- [ ] Preserve unsupported claims for allocator enforcement, automatic/LRU GPU residency, cross-vendor/backend parity, CUDA/HIP/SYCL, all-core scheduling, NUMA/affinity, and broad memory optimization.
+- [x] Define package-visible `memory_diagnostics_*` counter names for the selected lane before wiring runtime output.
+- [x] Map existing RHI read-only memory diagnostics, upload/staging byte counters, transient alias allocation counters, and `gpu_memory_policy_*` rows to narrow memory-evidence claims.
+- [x] Preserve unsupported claims for allocator enforcement, automatic/LRU GPU residency, cross-vendor/backend parity, CUDA/HIP/SYCL, all-core scheduling, NUMA/affinity, and broad memory optimization.
+
+Phase 2 closeout on 2026-06-02 wires `sample_desktop_runtime_game --require-memory-diagnostics` to selected package-visible `memory_diagnostics_*` counters. The D3D12 package smoke maps package resident CPU bytes, resident GPU committed-resource bytes plus budget, upload/staging bytes, and transient GPU allocation counts through `summarize_memory_diagnostics`; the validated status line reports `memory_diagnostics_status=ready`, `memory_diagnostics_ready=1`, `memory_diagnostics_diagnostics=0`, positive total/package-resident/resident-GPU/upload bytes, `memory_diagnostics_resident_gpu_pressure=nominal`, and `memory_diagnostics_transient_gpu_allocations=0` for the current selected D3D12 path. This remains evidence-only and does not claim allocator enforcement, automatic residency, Metal parity, or broad memory optimization.
 
 ## Phase 3 - Closeout And Next Wave Selection
 
@@ -145,6 +147,21 @@ Phase 1 focused validation on 2026-06-02:
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`
+- `git diff --check`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with `validate: ok`; Windows host Metal/Apple checks remained diagnostic-only or host-gated as expected, and 85 CTest tests passed.
+
+Phase 2 focused validation on 2026-06-02:
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset desktop-runtime`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset desktop-runtime --target sample_desktop_runtime_game`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game` passed after correcting the validator to accept `memory_diagnostics_transient_gpu_allocations=0` for the selected D3D12 smoke lane.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Preset desktop-runtime -Configuration Debug -ReuseExistingFileApiReply -Files games/sample_desktop_runtime_game/main.cpp`
 - `git diff --check`
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with `validate: ok`; Windows host Metal/Apple checks remained diagnostic-only or host-gated as expected, and 85 CTest tests passed.
 

@@ -176,6 +176,7 @@ $requiresVulkanInstancedDrawEvidence = @($SmokeArgs) -contains "--require-vulkan
 $requiresD3d12PostprocessEvidence = @($SmokeArgs) -contains "--require-d3d12-postprocess-evidence"
 $requiresVulkanPostprocessEvidence = @($SmokeArgs) -contains "--require-vulkan-postprocess-evidence"
 $requiresGpuMemoryPolicy = @($SmokeArgs) -contains "--require-gpu-memory-policy"
+$requiresMemoryDiagnostics = @($SmokeArgs) -contains "--require-memory-diagnostics"
 $requiresD3d12GpuMemoryEvidence = @($SmokeArgs) -contains "--require-d3d12-gpu-memory-evidence"
 $requiresVulkanGpuMemoryEvidence = @($SmokeArgs) -contains "--require-vulkan-gpu-memory-evidence"
 $requiresDebugProfilingPolicy = @($SmokeArgs) -contains "--require-debug-profiling-policy"
@@ -185,6 +186,9 @@ if ($requiresD3d12InstancedDrawEvidence -or $requiresVulkanInstancedDrawEvidence
     $requiresSceneScalePolicy = $true
 }
 if ($requiresD3d12GpuMemoryEvidence -or $requiresVulkanGpuMemoryEvidence) {
+    $requiresGpuMemoryPolicy = $true
+}
+if ($requiresMemoryDiagnostics) {
     $requiresGpuMemoryPolicy = $true
 }
 if ($requiresD3d12DebugProfilingEvidence -or $requiresVulkanDebugProfilingEvidence) {
@@ -937,6 +941,45 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
             )) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
                 Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive GPU memory policy field: $field"
+            }
+        }
+    }
+    if ($requiresMemoryDiagnostics) {
+        $expectedMemoryDiagnosticsFields = @{
+            "memory_diagnostics_status" = "ready"
+            "memory_diagnostics_ready" = "1"
+            "memory_diagnostics_diagnostics" = "0"
+            "memory_diagnostics_budget_pressure_classes" = "0"
+            "memory_diagnostics_budget_exceeded_classes" = "0"
+            "memory_diagnostics_invalid_counter" = "0"
+            "memory_diagnostics_stale_generation" = "0"
+            "memory_diagnostics_use_after_safe_point" = "0"
+            "memory_diagnostics_resident_gpu_pressure" = "nominal"
+            "memory_diagnostics_transient_gpu_allocations" = "0"
+        }
+        foreach ($field in $expectedMemoryDiagnosticsFields.Keys) {
+            $expectedValue = [regex]::Escape($expectedMemoryDiagnosticsFields[$field])
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove memory diagnostics field: $field=$($expectedMemoryDiagnosticsFields[$field])"
+            }
+        }
+        foreach ($field in @(
+                "memory_diagnostics_rows",
+                "memory_diagnostics_classes",
+                "memory_diagnostics_total_bytes",
+                "memory_diagnostics_high_water_bytes",
+                "memory_diagnostics_total_allocation_count",
+                "memory_diagnostics_budgeted_classes",
+                "memory_diagnostics_package_resident_cpu_bytes",
+                "memory_diagnostics_package_resident_cpu_allocations",
+                "memory_diagnostics_resident_gpu_bytes",
+                "memory_diagnostics_resident_gpu_allocations",
+                "memory_diagnostics_resident_gpu_budget_bytes",
+                "memory_diagnostics_upload_staging_bytes",
+                "memory_diagnostics_upload_staging_allocations"
+            )) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive memory diagnostics field: $field"
             }
         }
     }

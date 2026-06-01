@@ -4,6 +4,7 @@
 #include "mirakana/animation/skeleton.hpp"
 #include "mirakana/assets/asset_identity.hpp"
 #include "mirakana/core/application.hpp"
+#include "mirakana/core/diagnostics.hpp"
 #include "mirakana/math/transform.hpp"
 #include "mirakana/platform/filesystem.hpp"
 #include "mirakana/platform/input.hpp"
@@ -58,6 +59,7 @@ struct DesktopRuntimeGameOptions {
     bool require_d3d12_postprocess_evidence{false};
     bool require_vulkan_postprocess_evidence{false};
     bool require_gpu_memory_policy{false};
+    bool require_memory_diagnostics{false};
     bool require_d3d12_gpu_memory_evidence{false};
     bool require_vulkan_gpu_memory_evidence{false};
     bool require_debug_profiling_policy{false};
@@ -734,7 +736,7 @@ void print_usage() {
                  "[--require-vulkan-instanced-draw-evidence] "
                  "[--require-d3d12-postprocess-evidence] "
                  "[--require-vulkan-postprocess-evidence] "
-                 "[--require-gpu-memory-policy] [--require-d3d12-gpu-memory-evidence] "
+                 "[--require-gpu-memory-policy] [--require-memory-diagnostics] [--require-d3d12-gpu-memory-evidence] "
                  "[--require-vulkan-gpu-memory-evidence] "
                  "[--require-debug-profiling-policy] [--require-d3d12-debug-profiling-evidence] "
                  "[--require-vulkan-debug-profiling-evidence] "
@@ -862,6 +864,12 @@ void print_usage() {
         if (arg == "--require-gpu-memory-policy") {
             options.require_scene_gpu_bindings = true;
             options.require_gpu_memory_policy = true;
+            continue;
+        }
+        if (arg == "--require-memory-diagnostics") {
+            options.require_scene_gpu_bindings = true;
+            options.require_gpu_memory_policy = true;
+            options.require_memory_diagnostics = true;
             continue;
         }
         if (arg == "--require-d3d12-gpu-memory-evidence") {
@@ -1119,6 +1127,146 @@ make_debug_profiling_policy_desc(const DesktopRuntimeGameOptions& options) noexc
         desc.package_counter_evidence_ready = true;
     }
     return desc;
+}
+
+[[nodiscard]] std::uint64_t positive_count_for_bytes(std::uint64_t bytes, std::uint64_t count) noexcept {
+    return count > 0U ? count : static_cast<std::uint64_t>(bytes > 0U ? 1U : 0U);
+}
+
+[[nodiscard]] std::uint64_t
+selected_gpu_memory_budget(const mirakana::Win32DesktopPresentationGpuMemoryPolicyReport& gpu_memory_policy) noexcept {
+    if (gpu_memory_policy.os_local_budget_bytes > 0U) {
+        return gpu_memory_policy.os_local_budget_bytes;
+    }
+    return 64ULL * 1024ULL * 1024ULL;
+}
+
+[[nodiscard]] mirakana::MemoryDiagnosticsSummary
+summarize_package_memory_diagnostics(const std::optional<mirakana::runtime::RuntimeAssetPackage>& runtime_package,
+                                     const mirakana::Win32DesktopPresentationGpuMemoryPolicyReport& gpu_memory_policy) {
+    std::vector<mirakana::MemoryCounterRow> rows;
+
+    if (runtime_package.has_value()) {
+        const auto package_bytes = mirakana::runtime::estimate_runtime_asset_package_resident_bytes(*runtime_package);
+        rows.push_back(mirakana::MemoryCounterRow{
+            .lifetime_class = mirakana::MemoryLifetimeClass::package_resident_cpu,
+            .name = "package.runtime_scene",
+            .bytes = package_bytes,
+            .allocation_count = static_cast<std::uint64_t>(runtime_package->records().size()),
+            .high_water_bytes = package_bytes,
+            .budget_bytes = 0U,
+        });
+    }
+
+    const auto resident_gpu_bytes = gpu_memory_policy.committed_byte_estimate > 0U
+                                        ? gpu_memory_policy.committed_byte_estimate
+                                        : gpu_memory_policy.total_counted_bytes;
+    if (resident_gpu_bytes > 0U) {
+        rows.push_back(mirakana::MemoryCounterRow{
+            .lifetime_class = mirakana::MemoryLifetimeClass::resident_gpu,
+            .name = "rhi.committed_resources",
+            .bytes = resident_gpu_bytes,
+            .allocation_count = positive_count_for_bytes(resident_gpu_bytes, gpu_memory_policy.request_count),
+            .high_water_bytes = resident_gpu_bytes,
+            .budget_bytes = selected_gpu_memory_budget(gpu_memory_policy),
+        });
+    }
+
+    if (gpu_memory_policy.upload_bytes_written > 0U) {
+        rows.push_back(mirakana::MemoryCounterRow{
+            .lifetime_class = mirakana::MemoryLifetimeClass::upload_staging,
+            .name = "rhi.upload_staging",
+            .bytes = gpu_memory_policy.upload_bytes_written,
+            .allocation_count = positive_count_for_bytes(gpu_memory_policy.upload_bytes_written,
+                                                         gpu_memory_policy.upload_pressure_request_count),
+            .high_water_bytes = gpu_memory_policy.upload_bytes_written,
+            .budget_bytes = 0U,
+        });
+    }
+
+    const auto transient_allocations = gpu_memory_policy.transient_placed_allocations > 0U
+                                           ? gpu_memory_policy.transient_placed_allocations
+                                           : gpu_memory_policy.transient_heap_allocations;
+    if (transient_allocations > 0U || gpu_memory_policy.transient_placed_resources_alive > 0U) {
+        rows.push_back(mirakana::MemoryCounterRow{
+            .lifetime_class = mirakana::MemoryLifetimeClass::transient_gpu,
+            .name = "rhi.transient_textures",
+            .bytes = 0U,
+            .allocation_count = transient_allocations,
+            .high_water_bytes = 0U,
+            .budget_bytes = 0U,
+        });
+    }
+
+    return mirakana::summarize_memory_diagnostics(
+        rows, mirakana::MemoryDiagnosticsOptions{.budget_pressure_warning_ratio = 0.95});
+}
+
+[[nodiscard]] const mirakana::MemoryClassDiagnosticsSummary*
+find_memory_class_summary(const mirakana::MemoryDiagnosticsSummary& summary,
+                          mirakana::MemoryLifetimeClass lifetime_class) noexcept {
+    for (const auto& class_summary : summary.class_summaries) {
+        if (class_summary.lifetime_class == lifetime_class) {
+            return &class_summary;
+        }
+    }
+    return nullptr;
+}
+
+[[nodiscard]] std::uint64_t memory_class_bytes(const mirakana::MemoryDiagnosticsSummary& summary,
+                                               mirakana::MemoryLifetimeClass lifetime_class) noexcept {
+    const auto* class_summary = find_memory_class_summary(summary, lifetime_class);
+    return class_summary == nullptr ? 0U : class_summary->bytes;
+}
+
+[[nodiscard]] std::uint64_t memory_class_allocations(const mirakana::MemoryDiagnosticsSummary& summary,
+                                                     mirakana::MemoryLifetimeClass lifetime_class) noexcept {
+    const auto* class_summary = find_memory_class_summary(summary, lifetime_class);
+    return class_summary == nullptr ? 0U : class_summary->allocation_count;
+}
+
+[[nodiscard]] std::uint64_t memory_class_budget(const mirakana::MemoryDiagnosticsSummary& summary,
+                                                mirakana::MemoryLifetimeClass lifetime_class) noexcept {
+    const auto* class_summary = find_memory_class_summary(summary, lifetime_class);
+    return class_summary == nullptr ? 0U : class_summary->budget_bytes;
+}
+
+[[nodiscard]] std::string_view memory_class_pressure(const mirakana::MemoryDiagnosticsSummary& summary,
+                                                     mirakana::MemoryLifetimeClass lifetime_class) noexcept {
+    const auto* class_summary = find_memory_class_summary(summary, lifetime_class);
+    return class_summary == nullptr ? "missing" : mirakana::memory_budget_pressure_label(class_summary->pressure);
+}
+
+[[nodiscard]] bool memory_diagnostic_code_present(const mirakana::MemoryDiagnosticsSummary& summary,
+                                                  mirakana::MemoryDiagnosticsCode code) noexcept {
+    for (const auto diagnostic_code : summary.diagnostic_codes) {
+        if (diagnostic_code == code) {
+            return true;
+        }
+    }
+    return false;
+}
+
+[[nodiscard]] std::uint64_t
+memory_diagnostics_budgeted_class_count(const mirakana::MemoryDiagnosticsSummary& summary) noexcept {
+    std::uint64_t count = 0U;
+    for (const auto& class_summary : summary.class_summaries) {
+        if (class_summary.budget_bytes > 0U) {
+            ++count;
+        }
+    }
+    return count;
+}
+
+[[nodiscard]] std::uint64_t memory_diagnostics_pressure_class_count(const mirakana::MemoryDiagnosticsSummary& summary,
+                                                                    mirakana::MemoryBudgetPressure pressure) noexcept {
+    std::uint64_t count = 0U;
+    for (const auto& class_summary : summary.class_summaries) {
+        if (class_summary.pressure == pressure) {
+            ++count;
+        }
+    }
+    return count;
 }
 
 [[nodiscard]] mirakana::Win32DesktopPresentationQualityGateDesc
@@ -2011,6 +2159,7 @@ int main(int argc, char** argv) {
         report, options.require_vulkan_gpu_memory_evidence);
     const auto gpu_memory_policy =
         mirakana::evaluate_win32_desktop_presentation_gpu_memory_policy(report, make_gpu_memory_policy_desc(options));
+    const auto memory_diagnostics = summarize_package_memory_diagnostics(runtime_package, gpu_memory_policy);
     const auto d3d12_debug_profiling_execution =
         mirakana::evaluate_win32_desktop_presentation_d3d12_debug_profiling_execution(
             report, options.require_d3d12_debug_profiling_evidence);
@@ -2248,7 +2397,50 @@ int main(int argc, char** argv) {
         << " gpu_memory_policy_os_video_memory_budget_required="
         << (gpu_memory_policy.os_video_memory_budget_required ? 1 : 0)
         << " gpu_memory_policy_os_video_memory_budget_available="
-        << (gpu_memory_policy.os_video_memory_budget_available ? 1 : 0) << " d3d12_gpu_memory_execution_status="
+        << (gpu_memory_policy.os_video_memory_budget_available ? 1 : 0)
+        << " memory_diagnostics_status=" << mirakana::memory_diagnostics_status_label(memory_diagnostics.status)
+        << " memory_diagnostics_ready="
+        << (memory_diagnostics.status == mirakana::MemoryDiagnosticsStatus::ready ? 1 : 0)
+        << " memory_diagnostics_rows=" << memory_diagnostics.row_count
+        << " memory_diagnostics_classes=" << memory_diagnostics.class_summaries.size()
+        << " memory_diagnostics_total_bytes=" << memory_diagnostics.total_bytes
+        << " memory_diagnostics_high_water_bytes=" << memory_diagnostics.high_water_bytes
+        << " memory_diagnostics_total_allocation_count=" << memory_diagnostics.total_allocation_count
+        << " memory_diagnostics_diagnostics=" << memory_diagnostics.diagnostics.size()
+        << " memory_diagnostics_budgeted_classes=" << memory_diagnostics_budgeted_class_count(memory_diagnostics)
+        << " memory_diagnostics_budget_pressure_classes="
+        << memory_diagnostics_pressure_class_count(memory_diagnostics, mirakana::MemoryBudgetPressure::warning)
+        << " memory_diagnostics_budget_exceeded_classes="
+        << memory_diagnostics_pressure_class_count(memory_diagnostics, mirakana::MemoryBudgetPressure::exceeded)
+        << " memory_diagnostics_invalid_counter="
+        << (memory_diagnostic_code_present(memory_diagnostics, mirakana::MemoryDiagnosticsCode::invalid_counter) ? 1
+                                                                                                                 : 0)
+        << " memory_diagnostics_stale_generation="
+        << (memory_diagnostic_code_present(memory_diagnostics, mirakana::MemoryDiagnosticsCode::stale_generation) ? 1
+                                                                                                                  : 0)
+        << " memory_diagnostics_use_after_safe_point="
+        << (memory_diagnostic_code_present(memory_diagnostics, mirakana::MemoryDiagnosticsCode::use_after_safe_point)
+                ? 1
+                : 0)
+        << " memory_diagnostics_package_resident_cpu_bytes="
+        << memory_class_bytes(memory_diagnostics, mirakana::MemoryLifetimeClass::package_resident_cpu)
+        << " memory_diagnostics_package_resident_cpu_allocations="
+        << memory_class_allocations(memory_diagnostics, mirakana::MemoryLifetimeClass::package_resident_cpu)
+        << " memory_diagnostics_resident_gpu_bytes="
+        << memory_class_bytes(memory_diagnostics, mirakana::MemoryLifetimeClass::resident_gpu)
+        << " memory_diagnostics_resident_gpu_allocations="
+        << memory_class_allocations(memory_diagnostics, mirakana::MemoryLifetimeClass::resident_gpu)
+        << " memory_diagnostics_resident_gpu_budget_bytes="
+        << memory_class_budget(memory_diagnostics, mirakana::MemoryLifetimeClass::resident_gpu)
+        << " memory_diagnostics_resident_gpu_pressure="
+        << memory_class_pressure(memory_diagnostics, mirakana::MemoryLifetimeClass::resident_gpu)
+        << " memory_diagnostics_upload_staging_bytes="
+        << memory_class_bytes(memory_diagnostics, mirakana::MemoryLifetimeClass::upload_staging)
+        << " memory_diagnostics_upload_staging_allocations="
+        << memory_class_allocations(memory_diagnostics, mirakana::MemoryLifetimeClass::upload_staging)
+        << " memory_diagnostics_transient_gpu_allocations="
+        << memory_class_allocations(memory_diagnostics, mirakana::MemoryLifetimeClass::transient_gpu)
+        << " d3d12_gpu_memory_execution_status="
         << mirakana::win32_desktop_presentation_d3d12_gpu_memory_execution_status_name(
                d3d12_gpu_memory_execution.status)
         << " d3d12_gpu_memory_execution_ready=" << (d3d12_gpu_memory_execution.ready ? 1 : 0)
@@ -2595,6 +2787,10 @@ int main(int argc, char** argv) {
             return 3;
         }
         if (options.require_gpu_memory_policy && !gpu_memory_policy.ready) {
+            return 3;
+        }
+        if (options.require_memory_diagnostics &&
+            memory_diagnostics.status != mirakana::MemoryDiagnosticsStatus::ready) {
             return 3;
         }
         if (options.require_d3d12_gpu_memory_evidence && !d3d12_gpu_memory_execution.ready) {

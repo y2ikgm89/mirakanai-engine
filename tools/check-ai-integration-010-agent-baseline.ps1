@@ -2191,11 +2191,13 @@ foreach ($memoryDiagnosticsDocCheck in @(
         @{ Text = $aiGameDevelopmentContent; Label = "docs/ai-game-development.md" }
     )) {
     foreach ($memoryDiagnosticsDocNeedle in @(
-            "Memory Diagnostics v1 Phase 1",
+            "Memory Diagnostics v1",
             "MemoryCounterRow",
             "summarize_memory_diagnostics",
             "stale-generation diagnostics",
             "use-after-safe-point diagnostics",
+            "sample_desktop_runtime_game --require-memory-diagnostics",
+            "memory_diagnostics_status=ready",
             '`memory_diagnostics_*` counters'
         )) {
         Assert-ContainsText $memoryDiagnosticsDocCheck.Text $memoryDiagnosticsDocNeedle $memoryDiagnosticsDocCheck.Label
