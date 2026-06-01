@@ -19,14 +19,15 @@ make_diagnostic_execution_snapshot(std::string_view diagnostic) {
     };
 }
 
-[[nodiscard]] EditorMaterialGpuPreviewExecutionSnapshot make_ready_execution_snapshot() {
+[[nodiscard]] EditorMaterialGpuPreviewExecutionSnapshot make_ready_execution_snapshot(std::uint64_t frames_rendered,
+                                                                                      bool executes) {
     return EditorMaterialGpuPreviewExecutionSnapshot{
         .status = EditorMaterialGpuPreviewStatus::ready,
         .diagnostic = "native material preview private D3D12 texture display is ready",
         .backend_label = "D3D12",
         .display_path_label = "host-private-native",
-        .frames_rendered = 0,
-        .executes = false,
+        .frames_rendered = frames_rendered,
+        .executes = executes,
         .exposes_native_handles = false,
     };
 }
@@ -140,7 +141,7 @@ NativeMaterialPreviewDisplayPlan plan_native_material_preview_display(NativeMate
     plan.texture_display_ready = true;
     plan.diagnostic =
         "native material preview private D3D12 texture display is ready without exposing native texture handles";
-    plan.execution_snapshot = make_ready_execution_snapshot();
+    plan.execution_snapshot = make_ready_execution_snapshot(desc.frames_rendered, desc.executes);
     return plan;
 }
 
