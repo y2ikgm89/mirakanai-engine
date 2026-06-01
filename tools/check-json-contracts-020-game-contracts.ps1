@@ -243,7 +243,7 @@ if ($performanceBudgetEvidenceLoop.Count -ne 1) {
             Write-Error "engine manifest ai-operable-performance-budget-evidence requiredManifestFields missing: $field"
         }
     }
-    foreach ($field in @("schemaVersion", "capabilityId", "budgetSetId", "selectedRecipeId", "targetBackend", "hostGateId", "validationRecipeIds", "budgetRows", "evidenceRows", "unsupportedClaims")) {
+    foreach ($field in @("schemaVersion", "capabilityId", "budgetSetId", "selectedRecipeId", "targetBackend", "hostGateId", "validationRecipeIds", "budgetRows", "evidenceRows", "budgetRows.metric", "evidenceRows.source", "evidenceRows.artifactPath", "unsupportedClaims")) {
         if (@($performanceBudgetEvidenceLoop[0].descriptorFields) -notcontains $field) {
             Write-Error "engine manifest ai-operable-performance-budget-evidence descriptorFields missing: $field"
         }

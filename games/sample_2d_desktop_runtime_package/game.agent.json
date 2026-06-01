@@ -2031,7 +2031,7 @@
           "frame-p99-us"
         ],
         "evidenceKind": "package-smoke-counter",
-        "source": "performance_baseline_* counters from installed 2D performance baseline smoke",
+        "source": "Package-visible performance_baseline_* counters from installed 2D performance baseline smoke: performance_baseline_counter_name=sample_2d.frame_time_us, performance_baseline_profile_name=sample_2d.frame, performance_baseline_frame_p95_us, performance_baseline_frame_p99_us, performance_baseline_frame_budget_us, and zero diagnostics/over-budget counters.",
         "validationRecipeId": "installed-2d-performance-baseline-smoke",
         "status": "ready"
       },
@@ -2072,9 +2072,10 @@
           "frame-p99-us"
         ],
         "evidenceKind": "trace-artifact",
-        "source": "Trace or profiler artifact is not required by default validation and must be attached by a host performance lane.",
+        "source": "Host-attached Chrome Trace Event JSON artifact for the selected D3D12 package lane. The artifact must include sample_2d.frame duration events or equivalent first-party frame/profile rows before it can upgrade this host-gated row.",
         "validationRecipeId": "installed-2d-performance-baseline-smoke",
-        "status": "host-gated"
+        "status": "host-gated",
+        "artifactPath": "out/performance/sample_2d_desktop_runtime_package/installed-2d-performance-baseline.trace.json"
       }
     ],
     "unsupportedClaims": [
