@@ -899,13 +899,14 @@ if ($validationRunnerCommand.Count -ne 1 -or $validationRunnerCommand[0].status 
             "desktop-runtime-generated-material-shader-scaffold-package",
             "desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict",
             "desktop-runtime-sample-game-vulkan-ui-atlas-metadata-package",
+            "installed-2d-performance-baseline-smoke",
             "dev-windows-editor-game-module-driver-load-tests"
         )) {
         if (@($validationRunnerCommand[0].validationRecipes) -notcontains $recipe) {
             Write-Error "engine manifest run-validation-recipe validationRecipes missing allowlisted recipe: $recipe"
         }
     }
-    if (@($validationRunnerCommand[0].validationRecipes).Count -ne 11) {
+    if (@($validationRunnerCommand[0].validationRecipes).Count -ne 12) {
         Write-Error "engine manifest run-validation-recipe validationRecipes must be exactly the reviewed allowlist"
     }
     if (@($validationRunnerCommand[0].requestModes | Where-Object { $_.id -eq "apply" -and $_.status -eq "ready" }).Count -gt 0) {

@@ -159,6 +159,7 @@
         "installed-2d-sprite-effects-particles-smoke",
         "installed-2d-sandbox-authoring-review-smoke",
         "installed-2d-sandbox-package-budget-smoke",
+        "installed-2d-performance-baseline-smoke",
         "installed-native-2d-sprite-smoke"
       ],
       "qualityGates": [
@@ -197,6 +198,13 @@
           "evidence": "Sandbox package budget smoke reports sandbox_package_budget_status=ready, deterministic row/byte/chunk/dirty/draw/light/persistence/streaming counters, positive replay hash, and zero package IO, native handle, arbitrary shell, external download, source image decode, broad multiplayer, backend submission, native texture ownership, renderer/RHI residency, and broad renderer quality side-effect counters.",
           "recipeIds": [
             "installed-2d-sandbox-package-budget-smoke"
+          ]
+        },
+        {
+          "id": "performance-baseline",
+          "evidence": "Performance baseline smoke reports deterministic performance_baseline_* frame/profile samples over the selected D3D12 package lane, including fixed warm-up, sample-frame count, counter/profile names, p95/p99 frame-time budget rows, and zero diagnostics.",
+          "recipeIds": [
+            "installed-2d-performance-baseline-smoke"
           ]
         },
         {
@@ -1958,24 +1966,34 @@
     "schemaVersion": 1,
     "capabilityId": "ai-operable-performance-budget-and-evidence-v1",
     "budgetSetId": "sample-2d-package-performance-budget",
-    "selectedRecipeId": "installed-2d-sandbox-package-budget-smoke",
+    "selectedRecipeId": "installed-2d-performance-baseline-smoke",
     "targetBackend": "d3d12",
     "hostGateId": "d3d12-windows-package-smoke",
     "validationRecipeIds": [
       "installed-2d-package-smoke",
       "installed-2d-sandbox-package-budget-smoke",
+      "installed-2d-performance-baseline-smoke",
       "installed-native-2d-sprite-smoke",
       "desktop-game-runtime"
     ],
     "budgetRows": [
       {
-        "id": "frame-p95-ms",
+        "id": "frame-p95-us",
         "category": "frame",
-        "metric": "p95_frame_time",
-        "limit": 16.67,
-        "unit": "ms",
+        "metric": "performance_baseline_frame_p95_us",
+        "limit": 16670,
+        "unit": "us",
         "evidenceRequired": true,
-        "notes": "Host-gated trace or profiler evidence is required before this row can prove frame-time readiness."
+        "notes": "Selected performance baseline smoke requires deterministic frame samples before this row can prove the selected package lane."
+      },
+      {
+        "id": "frame-p99-us",
+        "category": "frame",
+        "metric": "performance_baseline_frame_p99_us",
+        "limit": 16670,
+        "unit": "us",
+        "evidenceRequired": true,
+        "notes": "Selected performance baseline smoke reports p99 in microseconds for the same fixed frame sample set as p95."
       },
       {
         "id": "sprite-draw-count",
@@ -2006,6 +2024,17 @@
       }
     ],
     "evidenceRows": [
+      {
+        "id": "frame-budget-baseline-smoke",
+        "budgetRowIds": [
+          "frame-p95-us",
+          "frame-p99-us"
+        ],
+        "evidenceKind": "package-smoke-counter",
+        "source": "performance_baseline_* counters from installed 2D performance baseline smoke",
+        "validationRecipeId": "installed-2d-performance-baseline-smoke",
+        "status": "ready"
+      },
       {
         "id": "sprite-budget-smoke",
         "budgetRowIds": [
@@ -2039,11 +2068,12 @@
       {
         "id": "frame-trace-required",
         "budgetRowIds": [
-          "frame-p95-ms"
+          "frame-p95-us",
+          "frame-p99-us"
         ],
         "evidenceKind": "trace-artifact",
         "source": "Trace or profiler artifact is not required by default validation and must be attached by a host performance lane.",
-        "validationRecipeId": "desktop-game-runtime",
+        "validationRecipeId": "installed-2d-performance-baseline-smoke",
         "status": "host-gated"
       }
     ],
@@ -2296,6 +2326,10 @@
     {
       "name": "installed-2d-sandbox-package-budget-smoke",
       "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-sandbox-package-budgets"
+    },
+    {
+      "name": "installed-2d-performance-baseline-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-win32-runtime-host --require-win32-d3d12-presentation --require-d3d12-shaders --require-d3d12-renderer --require-sandbox-package-budgets --require-performance-baseline"
     },
     {
       "name": "installed-2d-gameplay-systems-smoke",

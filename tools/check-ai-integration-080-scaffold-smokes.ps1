@@ -273,9 +273,9 @@ try {
     Assert-PerformanceBudgets `
         $sample2dDesktopManifest `
         "sample_2d_desktop_runtime_package manifest" `
-        "installed-2d-sandbox-package-budget-smoke" `
+        "installed-2d-performance-baseline-smoke" `
         "d3d12" `
-        @("frame-p95-ms", "sprite-draw-count", "sandbox-package-bytes", "resident-memory-bytes")
+        @("frame-p95-us", "frame-p99-us", "sprite-draw-count", "sandbox-package-bytes", "resident-memory-bytes")
     Assert-ContainsText $repositoryGamesCmake "--require-sprite-sorting-layer" "games/CMakeLists.txt sample_2d_desktop_runtime_package smoke args"
     Assert-ContainsText $repositoryGamesCmake "--require-sprite-9slice-tiled" "games/CMakeLists.txt sample_2d_desktop_runtime_package smoke args"
     Assert-ContainsText $repositoryGamesCmake "--require-sprite-collision-hitbox" "games/CMakeLists.txt sample_2d_desktop_runtime_package smoke args"
