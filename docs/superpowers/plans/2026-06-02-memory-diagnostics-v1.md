@@ -69,9 +69,11 @@ Phase 0 closeout on 2026-06-02 selected this plan as the active memory diagnosti
 - Test: `tests/unit/core_tests.cpp`
 - Modify when public behavior lands: `docs/current-capabilities.md`
 
-- [ ] Add dependency-free data types for lifetime class, memory counter rows, high-water summaries, budget pressure summaries, and diagnostic codes.
-- [ ] Add unit tests for empty input, class aggregation, high-water updates, budget pressure, stale-generation diagnostics, use-after-safe-point diagnostics, non-finite or invalid byte/count rows, and threshold failures.
-- [ ] Keep the model data-only; do not add global allocators, hooks, threads, OS heap calls, GPU APIs, file IO, or profiler SDK integrations.
+- [x] Add dependency-free data types for lifetime class, memory counter rows, high-water summaries, budget pressure summaries, and diagnostic codes.
+- [x] Add unit tests for empty input, class aggregation, high-water updates, budget pressure, stale-generation diagnostics, use-after-safe-point diagnostics, invalid byte/count rows, and threshold failures.
+- [x] Keep the model data-only; do not add global allocators, hooks, threads, OS heap calls, GPU APIs, file IO, or profiler SDK integrations.
+
+Phase 1 closeout on 2026-06-02 adds `MemoryLifetimeClass`, `MemoryCounterRow`, `MemoryDiagnosticsOptions`, `MemoryClassDiagnosticsSummary`, `MemoryDiagnosticsSummary`, `MemoryBudgetPressure`, `MemoryDiagnosticsCode`, `MemoryDiagnosticsStatus`, `summarize_memory_diagnostics`, and stable label helpers to `MK_core`. The summary aggregates bytes, allocation counts, high-water bytes, budget pressure, invalid counter rows, stale-generation diagnostics, and use-after-safe-point diagnostics by lifetime class. It is deliberately data-only: package-visible `memory_diagnostics_*` counters, allocator hooks/enforcement, pool/arena policy, GPU residency policy, all-core scheduling, NUMA/affinity, SIMD dispatch, CUDA/HIP/SYCL paths, cross-vendor parity, cross-backend parity, and broad memory optimization remain unsupported until later focused evidence.
 
 ## Phase 2 - Package And RHI Evidence Mapping
 
@@ -128,6 +130,23 @@ Phase 0 closeout validation on 2026-06-02:
 - `git diff --check`
 - Full `tools/validate.ps1` was not run for this Phase 0 closeout because the change is limited to docs, manifest pointers, and static contract needles; targeted manifest/agent/static checks cover the changed contracts.
 - Hosted PR evidence is recorded on the task-owned Phase 0 PR.
+
+Phase 1 focused validation on 2026-06-02:
+
+- TDD red check: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests` failed before implementation because the new memory diagnostics API did not exist.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_core_tests`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -ReuseExistingFileApiReply -Files engine/core/src/diagnostics.cpp,tests/unit/core_tests.cpp`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`
+- `git diff --check`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with `validate: ok`; Windows host Metal/Apple checks remained diagnostic-only or host-gated as expected, and 85 CTest tests passed.
 
 ## Done When
 

@@ -334,6 +334,60 @@ void append_invalid_threshold_diagnostic(DiagnosticsBudgetSummary& summary, std:
     return summary;
 }
 
+[[nodiscard]] constexpr std::array<MemoryLifetimeClass, 9> memory_lifetime_classes() noexcept {
+    return {MemoryLifetimeClass::frame_temporary, MemoryLifetimeClass::worker_scratch,
+            MemoryLifetimeClass::persistent_cpu,  MemoryLifetimeClass::package_resident_cpu,
+            MemoryLifetimeClass::upload_staging,  MemoryLifetimeClass::resident_gpu,
+            MemoryLifetimeClass::transient_gpu,   MemoryLifetimeClass::readback,
+            MemoryLifetimeClass::editor_tooling};
+}
+
+[[nodiscard]] constexpr std::size_t memory_lifetime_class_index(MemoryLifetimeClass lifetime_class) noexcept {
+    switch (lifetime_class) {
+    case MemoryLifetimeClass::frame_temporary:
+        return 0;
+    case MemoryLifetimeClass::worker_scratch:
+        return 1;
+    case MemoryLifetimeClass::persistent_cpu:
+        return 2;
+    case MemoryLifetimeClass::package_resident_cpu:
+        return 3;
+    case MemoryLifetimeClass::upload_staging:
+        return 4;
+    case MemoryLifetimeClass::resident_gpu:
+        return 5;
+    case MemoryLifetimeClass::transient_gpu:
+        return 6;
+    case MemoryLifetimeClass::readback:
+        return 7;
+    case MemoryLifetimeClass::editor_tooling:
+        return 8;
+    }
+    return 0;
+}
+
+void append_unique_code(std::vector<MemoryDiagnosticsCode>& codes, MemoryDiagnosticsCode code) {
+    if (code == MemoryDiagnosticsCode::none || std::ranges::find(codes, code) != codes.end()) {
+        return;
+    }
+    codes.push_back(code);
+}
+
+void append_memory_diagnostic(MemoryDiagnosticsSummary& summary, MemoryClassDiagnosticsSummary& class_summary,
+                              MemoryDiagnosticsCode code, std::string message) {
+    append_unique_code(summary.diagnostic_codes, code);
+    append_unique_code(class_summary.diagnostic_codes, code);
+    summary.diagnostics.push_back(std::move(message));
+}
+
+[[nodiscard]] double normalized_memory_pressure_warning_ratio(const MemoryDiagnosticsOptions& options) noexcept {
+    if (!std::isfinite(options.budget_pressure_warning_ratio) || options.budget_pressure_warning_ratio <= 0.0 ||
+        options.budget_pressure_warning_ratio > 1.0) {
+        return 0.9;
+    }
+    return options.budget_pressure_warning_ratio;
+}
+
 class TraceJsonReviewParser {
   public:
     explicit TraceJsonReviewParser(std::string_view text, DiagnosticCapture* capture = nullptr,
@@ -1222,6 +1276,78 @@ std::string_view diagnostics_budget_status_label(DiagnosticsBudgetStatus status)
     return "unknown";
 }
 
+std::string_view memory_lifetime_class_label(MemoryLifetimeClass lifetime_class) noexcept {
+    switch (lifetime_class) {
+    case MemoryLifetimeClass::frame_temporary:
+        return "frame_temporary";
+    case MemoryLifetimeClass::worker_scratch:
+        return "worker_scratch";
+    case MemoryLifetimeClass::persistent_cpu:
+        return "persistent_cpu";
+    case MemoryLifetimeClass::package_resident_cpu:
+        return "package_resident_cpu";
+    case MemoryLifetimeClass::upload_staging:
+        return "upload_staging";
+    case MemoryLifetimeClass::resident_gpu:
+        return "resident_gpu";
+    case MemoryLifetimeClass::transient_gpu:
+        return "transient_gpu";
+    case MemoryLifetimeClass::readback:
+        return "readback";
+    case MemoryLifetimeClass::editor_tooling:
+        return "editor_tooling";
+    }
+    return "unknown";
+}
+
+std::string_view memory_budget_pressure_label(MemoryBudgetPressure pressure) noexcept {
+    switch (pressure) {
+    case MemoryBudgetPressure::none:
+        return "none";
+    case MemoryBudgetPressure::nominal:
+        return "nominal";
+    case MemoryBudgetPressure::warning:
+        return "warning";
+    case MemoryBudgetPressure::exceeded:
+        return "exceeded";
+    }
+    return "unknown";
+}
+
+std::string_view memory_diagnostics_code_label(MemoryDiagnosticsCode code) noexcept {
+    switch (code) {
+    case MemoryDiagnosticsCode::none:
+        return "none";
+    case MemoryDiagnosticsCode::invalid_counter:
+        return "invalid_counter";
+    case MemoryDiagnosticsCode::stale_generation:
+        return "stale_generation";
+    case MemoryDiagnosticsCode::use_after_safe_point:
+        return "use_after_safe_point";
+    case MemoryDiagnosticsCode::budget_pressure:
+        return "budget_pressure";
+    case MemoryDiagnosticsCode::budget_exceeded:
+        return "budget_exceeded";
+    }
+    return "unknown";
+}
+
+std::string_view memory_diagnostics_status_label(MemoryDiagnosticsStatus status) noexcept {
+    switch (status) {
+    case MemoryDiagnosticsStatus::ready:
+        return "ready";
+    case MemoryDiagnosticsStatus::missing_rows:
+        return "missing_rows";
+    case MemoryDiagnosticsStatus::invalid_rows:
+        return "invalid_rows";
+    case MemoryDiagnosticsStatus::budget_pressure:
+        return "budget_pressure";
+    case MemoryDiagnosticsStatus::budget_exceeded:
+        return "budget_exceeded";
+    }
+    return "unknown";
+}
+
 DiagnosticsBudgetSummary summarize_counter_budget(std::span<const CounterSample> counters, std::string_view sample_name,
                                                   const DiagnosticsBudgetThresholds& thresholds) {
     std::vector<double> values;
@@ -1252,6 +1378,121 @@ DiagnosticsBudgetSummary summarize_profile_budget(std::span<const ProfileSample>
     }
 
     return build_budget_summary(sample_name, std::move(values), 0, thresholds);
+}
+
+MemoryDiagnosticsSummary summarize_memory_diagnostics(std::span<const MemoryCounterRow> rows,
+                                                      const MemoryDiagnosticsOptions& options) {
+    MemoryDiagnosticsSummary summary;
+    summary.row_count = static_cast<std::uint64_t>(rows.size());
+    if (rows.empty()) {
+        summary.status = MemoryDiagnosticsStatus::missing_rows;
+        summary.diagnostics.emplace_back("memory diagnostics require at least one counter row");
+        return summary;
+    }
+
+    struct ClassAccumulator {
+        MemoryClassDiagnosticsSummary summary;
+        bool has_rows{false};
+    };
+
+    std::array<ClassAccumulator, memory_lifetime_classes().size()> accumulators{};
+    for (const auto lifetime_class : memory_lifetime_classes()) {
+        accumulators[memory_lifetime_class_index(lifetime_class)].summary.lifetime_class = lifetime_class;
+    }
+
+    for (const auto& row : rows) {
+        auto& class_summary = accumulators[memory_lifetime_class_index(row.lifetime_class)].summary;
+        accumulators[memory_lifetime_class_index(row.lifetime_class)].has_rows = true;
+
+        ++class_summary.row_count;
+        class_summary.bytes += row.bytes;
+        class_summary.allocation_count += row.allocation_count;
+        class_summary.high_water_bytes += row.high_water_bytes;
+        class_summary.budget_bytes = std::max(class_summary.budget_bytes, row.budget_bytes);
+
+        summary.total_bytes += row.bytes;
+        summary.total_allocation_count += row.allocation_count;
+        summary.high_water_bytes += row.high_water_bytes;
+
+        const auto class_label = std::string(memory_lifetime_class_label(row.lifetime_class));
+        const auto row_label = row.name.empty() ? class_label : row.name;
+
+        if (row.name.empty()) {
+            append_memory_diagnostic(summary, class_summary, MemoryDiagnosticsCode::invalid_counter,
+                                     class_label + " memory diagnostics row requires a name");
+        }
+        if (row.bytes > 0 && row.allocation_count == 0) {
+            append_memory_diagnostic(summary, class_summary, MemoryDiagnosticsCode::invalid_counter,
+                                     row_label + " reports bytes with zero allocation count");
+        }
+        if (row.high_water_bytes < row.bytes) {
+            append_memory_diagnostic(summary, class_summary, MemoryDiagnosticsCode::invalid_counter,
+                                     row_label + " high water bytes are below current bytes");
+        }
+        if (row.generation < row.safe_point_generation) {
+            append_memory_diagnostic(summary, class_summary, MemoryDiagnosticsCode::stale_generation,
+                                     row_label + " stale generation " + std::to_string(row.generation) +
+                                         " is older than safe point " + std::to_string(row.safe_point_generation));
+        }
+        if (row.use_after_safe_point) {
+            append_memory_diagnostic(summary, class_summary, MemoryDiagnosticsCode::use_after_safe_point,
+                                     row_label + " use after safe point was reported");
+        }
+    }
+
+    const auto warning_ratio = normalized_memory_pressure_warning_ratio(options);
+    bool has_invalid_rows = false;
+    bool has_budget_pressure = false;
+    bool has_budget_exceeded = false;
+    for (auto& accumulator : accumulators) {
+        auto& class_summary = accumulator.summary;
+        if (!accumulator.has_rows) {
+            continue;
+        }
+
+        if (std::ranges::find(class_summary.diagnostic_codes, MemoryDiagnosticsCode::invalid_counter) !=
+                class_summary.diagnostic_codes.end() ||
+            std::ranges::find(class_summary.diagnostic_codes, MemoryDiagnosticsCode::stale_generation) !=
+                class_summary.diagnostic_codes.end() ||
+            std::ranges::find(class_summary.diagnostic_codes, MemoryDiagnosticsCode::use_after_safe_point) !=
+                class_summary.diagnostic_codes.end()) {
+            has_invalid_rows = true;
+        }
+
+        if (class_summary.budget_bytes == 0) {
+            class_summary.pressure = MemoryBudgetPressure::none;
+        } else {
+            class_summary.budget_pressure_ratio =
+                static_cast<double>(class_summary.bytes) / static_cast<double>(class_summary.budget_bytes);
+            if (class_summary.bytes > class_summary.budget_bytes) {
+                class_summary.pressure = MemoryBudgetPressure::exceeded;
+                append_unique_code(class_summary.diagnostic_codes, MemoryDiagnosticsCode::budget_exceeded);
+                append_unique_code(summary.diagnostic_codes, MemoryDiagnosticsCode::budget_exceeded);
+                has_budget_exceeded = true;
+            } else if (class_summary.budget_pressure_ratio >= warning_ratio) {
+                class_summary.pressure = MemoryBudgetPressure::warning;
+                append_unique_code(class_summary.diagnostic_codes, MemoryDiagnosticsCode::budget_pressure);
+                append_unique_code(summary.diagnostic_codes, MemoryDiagnosticsCode::budget_pressure);
+                has_budget_pressure = true;
+            } else {
+                class_summary.pressure = MemoryBudgetPressure::nominal;
+            }
+        }
+
+        summary.class_summaries.push_back(std::move(class_summary));
+    }
+
+    if (has_invalid_rows) {
+        summary.status = MemoryDiagnosticsStatus::invalid_rows;
+    } else if (has_budget_exceeded) {
+        summary.status = MemoryDiagnosticsStatus::budget_exceeded;
+    } else if (has_budget_pressure) {
+        summary.status = MemoryDiagnosticsStatus::budget_pressure;
+    } else {
+        summary.status = MemoryDiagnosticsStatus::ready;
+    }
+
+    return summary;
 }
 
 std::string_view diagnostics_ops_artifact_kind_label(DiagnosticsOpsArtifactKind kind) noexcept {

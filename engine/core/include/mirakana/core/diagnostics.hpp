@@ -83,6 +83,77 @@ struct DiagnosticsBudgetSummary {
     std::vector<std::string> diagnostics;
 };
 
+enum class MemoryLifetimeClass : std::uint8_t {
+    frame_temporary,
+    worker_scratch,
+    persistent_cpu,
+    package_resident_cpu,
+    upload_staging,
+    resident_gpu,
+    transient_gpu,
+    readback,
+    editor_tooling
+};
+
+enum class MemoryBudgetPressure : std::uint8_t { none, nominal, warning, exceeded };
+
+enum class MemoryDiagnosticsCode : std::uint8_t {
+    none,
+    invalid_counter,
+    stale_generation,
+    use_after_safe_point,
+    budget_pressure,
+    budget_exceeded
+};
+
+enum class MemoryDiagnosticsStatus : std::uint8_t {
+    ready,
+    missing_rows,
+    invalid_rows,
+    budget_pressure,
+    budget_exceeded
+};
+
+struct MemoryCounterRow {
+    MemoryLifetimeClass lifetime_class{MemoryLifetimeClass::frame_temporary};
+    std::string name;
+    std::uint64_t bytes{0};
+    std::uint64_t allocation_count{0};
+    std::uint64_t high_water_bytes{0};
+    std::uint64_t budget_bytes{0};
+    std::uint64_t generation{0};
+    std::uint64_t safe_point_generation{0};
+    std::uint64_t frame_index{0};
+    bool use_after_safe_point{false};
+};
+
+struct MemoryClassDiagnosticsSummary {
+    MemoryLifetimeClass lifetime_class{MemoryLifetimeClass::frame_temporary};
+    std::uint64_t row_count{0};
+    std::uint64_t bytes{0};
+    std::uint64_t allocation_count{0};
+    std::uint64_t high_water_bytes{0};
+    std::uint64_t budget_bytes{0};
+    double budget_pressure_ratio{0.0};
+    MemoryBudgetPressure pressure{MemoryBudgetPressure::none};
+    std::vector<MemoryDiagnosticsCode> diagnostic_codes;
+};
+
+struct MemoryDiagnosticsOptions {
+    double budget_pressure_warning_ratio{0.9};
+};
+
+struct MemoryDiagnosticsSummary {
+    std::uint64_t row_count{0};
+    std::uint64_t total_bytes{0};
+    std::uint64_t total_allocation_count{0};
+    std::uint64_t high_water_bytes{0};
+    MemoryDiagnosticsStatus status{MemoryDiagnosticsStatus::missing_rows};
+    std::vector<MemoryClassDiagnosticsSummary> class_summaries;
+    std::vector<MemoryDiagnosticsCode> diagnostic_codes;
+    std::vector<std::string> diagnostics;
+};
+
 struct DiagnosticsTraceExportOptions {
     std::string trace_name{"GameEngine Diagnostics"};
     std::string thread_name{"main"};
@@ -217,12 +288,18 @@ class ScopedProfileZone {
 [[nodiscard]] DiagnosticSummary summarize_diagnostics(const DiagnosticCapture& capture) noexcept;
 [[nodiscard]] std::string_view diagnostic_severity_label(DiagnosticSeverity severity) noexcept;
 [[nodiscard]] std::string_view diagnostics_budget_status_label(DiagnosticsBudgetStatus status) noexcept;
+[[nodiscard]] std::string_view memory_lifetime_class_label(MemoryLifetimeClass lifetime_class) noexcept;
+[[nodiscard]] std::string_view memory_budget_pressure_label(MemoryBudgetPressure pressure) noexcept;
+[[nodiscard]] std::string_view memory_diagnostics_code_label(MemoryDiagnosticsCode code) noexcept;
+[[nodiscard]] std::string_view memory_diagnostics_status_label(MemoryDiagnosticsStatus status) noexcept;
 [[nodiscard]] DiagnosticsBudgetSummary summarize_counter_budget(std::span<const CounterSample> counters,
                                                                 std::string_view sample_name,
                                                                 const DiagnosticsBudgetThresholds& thresholds = {});
 [[nodiscard]] DiagnosticsBudgetSummary summarize_profile_budget(std::span<const ProfileSample> profiles,
                                                                 std::string_view sample_name,
                                                                 const DiagnosticsBudgetThresholds& thresholds = {});
+[[nodiscard]] MemoryDiagnosticsSummary summarize_memory_diagnostics(std::span<const MemoryCounterRow> rows,
+                                                                    const MemoryDiagnosticsOptions& options = {});
 [[nodiscard]] std::string_view diagnostics_ops_artifact_kind_label(DiagnosticsOpsArtifactKind kind) noexcept;
 [[nodiscard]] std::string_view diagnostics_ops_artifact_status_label(DiagnosticsOpsArtifactStatus status) noexcept;
 [[nodiscard]] DiagnosticsOpsPlan build_diagnostics_ops_plan(const DiagnosticCapture& capture,

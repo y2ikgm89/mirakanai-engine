@@ -673,6 +673,172 @@ MK_TEST("diagnostics budget summaries fail thresholds deterministically") {
     MK_REQUIRE(invalid_threshold.diagnostics[0].contains("invalid p95 threshold"));
 }
 
+MK_TEST("memory diagnostics summarize classes high water and budget pressure") {
+    const std::array rows{
+        mirakana::MemoryCounterRow{.lifetime_class = mirakana::MemoryLifetimeClass::frame_temporary,
+                                   .name = "frame.scratch",
+                                   .bytes = 1024,
+                                   .allocation_count = 4,
+                                   .high_water_bytes = 2048,
+                                   .budget_bytes = 4096,
+                                   .frame_index = 12},
+        mirakana::MemoryCounterRow{.lifetime_class = mirakana::MemoryLifetimeClass::frame_temporary,
+                                   .name = "frame.upload_rows",
+                                   .bytes = 512,
+                                   .allocation_count = 1,
+                                   .high_water_bytes = 1024,
+                                   .budget_bytes = 4096,
+                                   .frame_index = 12},
+        mirakana::MemoryCounterRow{.lifetime_class = mirakana::MemoryLifetimeClass::resident_gpu,
+                                   .name = "resident.textures",
+                                   .bytes = 900,
+                                   .allocation_count = 2,
+                                   .high_water_bytes = 1000,
+                                   .budget_bytes = 1000,
+                                   .frame_index = 12},
+    };
+
+    const auto summary = mirakana::summarize_memory_diagnostics(rows);
+
+    MK_REQUIRE(summary.status == mirakana::MemoryDiagnosticsStatus::budget_pressure);
+    MK_REQUIRE(summary.row_count == 3);
+    MK_REQUIRE(summary.total_bytes == 2436);
+    MK_REQUIRE(summary.total_allocation_count == 7);
+    MK_REQUIRE(summary.high_water_bytes == 4072);
+    MK_REQUIRE(summary.class_summaries.size() == 2);
+
+    const auto& frame = summary.class_summaries[0];
+    MK_REQUIRE(frame.lifetime_class == mirakana::MemoryLifetimeClass::frame_temporary);
+    MK_REQUIRE(frame.row_count == 2);
+    MK_REQUIRE(frame.bytes == 1536);
+    MK_REQUIRE(frame.allocation_count == 5);
+    MK_REQUIRE(frame.high_water_bytes == 3072);
+    MK_REQUIRE(frame.budget_bytes == 4096);
+    MK_REQUIRE(frame.pressure == mirakana::MemoryBudgetPressure::nominal);
+    MK_REQUIRE(frame.diagnostic_codes.empty());
+
+    const auto& resident_gpu = summary.class_summaries[1];
+    MK_REQUIRE(resident_gpu.lifetime_class == mirakana::MemoryLifetimeClass::resident_gpu);
+    MK_REQUIRE(resident_gpu.bytes == 900);
+    MK_REQUIRE(resident_gpu.high_water_bytes == 1000);
+    MK_REQUIRE(resident_gpu.budget_bytes == 1000);
+    MK_REQUIRE(resident_gpu.pressure == mirakana::MemoryBudgetPressure::warning);
+    MK_REQUIRE(resident_gpu.diagnostic_codes.size() == 1U);
+    MK_REQUIRE(resident_gpu.diagnostic_codes[0] == mirakana::MemoryDiagnosticsCode::budget_pressure);
+}
+
+MK_TEST("memory diagnostics fail closed for empty rows and exceeded budgets") {
+    const auto empty_summary = mirakana::summarize_memory_diagnostics({});
+
+    MK_REQUIRE(empty_summary.status == mirakana::MemoryDiagnosticsStatus::missing_rows);
+    MK_REQUIRE(empty_summary.row_count == 0);
+    MK_REQUIRE(empty_summary.class_summaries.empty());
+    MK_REQUIRE(empty_summary.diagnostics.size() == 1U);
+    MK_REQUIRE(empty_summary.diagnostics[0].contains("at least one counter row"));
+
+    const std::array rows{
+        mirakana::MemoryCounterRow{.lifetime_class = mirakana::MemoryLifetimeClass::transient_gpu,
+                                   .name = "transient.shadow_atlas",
+                                   .bytes = 2048,
+                                   .allocation_count = 3,
+                                   .high_water_bytes = 3072,
+                                   .budget_bytes = 1024,
+                                   .frame_index = 9},
+        mirakana::MemoryCounterRow{.lifetime_class = mirakana::MemoryLifetimeClass::editor_tooling,
+                                   .name = "editor.selection_cache",
+                                   .bytes = 512,
+                                   .allocation_count = 1,
+                                   .high_water_bytes = 512,
+                                   .budget_bytes = 1024,
+                                   .frame_index = 9},
+    };
+
+    const auto summary = mirakana::summarize_memory_diagnostics(
+        rows,
+        mirakana::MemoryDiagnosticsOptions{.budget_pressure_warning_ratio = std::numeric_limits<double>::quiet_NaN()});
+
+    MK_REQUIRE(summary.status == mirakana::MemoryDiagnosticsStatus::budget_exceeded);
+    MK_REQUIRE(summary.class_summaries.size() == 2U);
+    MK_REQUIRE(summary.class_summaries[0].lifetime_class == mirakana::MemoryLifetimeClass::transient_gpu);
+    MK_REQUIRE(summary.class_summaries[0].pressure == mirakana::MemoryBudgetPressure::exceeded);
+    MK_REQUIRE(summary.class_summaries[1].lifetime_class == mirakana::MemoryLifetimeClass::editor_tooling);
+    MK_REQUIRE(summary.class_summaries[1].pressure == mirakana::MemoryBudgetPressure::nominal);
+    MK_REQUIRE(summary.diagnostic_codes.size() == 1U);
+    MK_REQUIRE(summary.diagnostic_codes[0] == mirakana::MemoryDiagnosticsCode::budget_exceeded);
+}
+
+MK_TEST("memory diagnostics fail closed for invalid stale and safe point rows") {
+    const std::array rows{
+        mirakana::MemoryCounterRow{.lifetime_class = mirakana::MemoryLifetimeClass::worker_scratch,
+                                   .name = "",
+                                   .bytes = 128,
+                                   .allocation_count = 1,
+                                   .high_water_bytes = 128,
+                                   .frame_index = 2},
+        mirakana::MemoryCounterRow{.lifetime_class = mirakana::MemoryLifetimeClass::persistent_cpu,
+                                   .name = "persistent.bad_high_water",
+                                   .bytes = 512,
+                                   .allocation_count = 1,
+                                   .high_water_bytes = 128,
+                                   .frame_index = 2},
+        mirakana::MemoryCounterRow{.lifetime_class = mirakana::MemoryLifetimeClass::package_resident_cpu,
+                                   .name = "package.stale",
+                                   .bytes = 64,
+                                   .allocation_count = 1,
+                                   .high_water_bytes = 64,
+                                   .generation = 2,
+                                   .safe_point_generation = 3,
+                                   .frame_index = 2},
+        mirakana::MemoryCounterRow{.lifetime_class = mirakana::MemoryLifetimeClass::upload_staging,
+                                   .name = "upload.after_safe_point",
+                                   .bytes = 64,
+                                   .allocation_count = 1,
+                                   .high_water_bytes = 64,
+                                   .frame_index = 2,
+                                   .use_after_safe_point = true},
+    };
+
+    const auto summary = mirakana::summarize_memory_diagnostics(rows);
+
+    MK_REQUIRE(summary.status == mirakana::MemoryDiagnosticsStatus::invalid_rows);
+    MK_REQUIRE(summary.row_count == 4);
+    MK_REQUIRE(summary.diagnostic_codes.size() == 3U);
+    MK_REQUIRE(std::ranges::find(summary.diagnostic_codes, mirakana::MemoryDiagnosticsCode::invalid_counter) !=
+               summary.diagnostic_codes.end());
+    MK_REQUIRE(std::ranges::find(summary.diagnostic_codes, mirakana::MemoryDiagnosticsCode::stale_generation) !=
+               summary.diagnostic_codes.end());
+    MK_REQUIRE(std::ranges::find(summary.diagnostic_codes, mirakana::MemoryDiagnosticsCode::use_after_safe_point) !=
+               summary.diagnostic_codes.end());
+    MK_REQUIRE(summary.diagnostics.size() == 4U);
+    MK_REQUIRE(summary.diagnostics[0].contains("requires a name"));
+    MK_REQUIRE(summary.diagnostics[1].contains("high water"));
+    MK_REQUIRE(summary.diagnostics[2].contains("stale generation"));
+    MK_REQUIRE(summary.diagnostics[3].contains("use after safe point"));
+}
+
+MK_TEST("memory diagnostics labels are stable") {
+    MK_REQUIRE(mirakana::memory_lifetime_class_label(mirakana::MemoryLifetimeClass::frame_temporary) ==
+               "frame_temporary");
+    MK_REQUIRE(mirakana::memory_lifetime_class_label(mirakana::MemoryLifetimeClass::worker_scratch) ==
+               "worker_scratch");
+    MK_REQUIRE(mirakana::memory_lifetime_class_label(mirakana::MemoryLifetimeClass::persistent_cpu) ==
+               "persistent_cpu");
+    MK_REQUIRE(mirakana::memory_lifetime_class_label(mirakana::MemoryLifetimeClass::package_resident_cpu) ==
+               "package_resident_cpu");
+    MK_REQUIRE(mirakana::memory_lifetime_class_label(mirakana::MemoryLifetimeClass::upload_staging) ==
+               "upload_staging");
+    MK_REQUIRE(mirakana::memory_lifetime_class_label(mirakana::MemoryLifetimeClass::resident_gpu) == "resident_gpu");
+    MK_REQUIRE(mirakana::memory_lifetime_class_label(mirakana::MemoryLifetimeClass::transient_gpu) == "transient_gpu");
+    MK_REQUIRE(mirakana::memory_lifetime_class_label(mirakana::MemoryLifetimeClass::readback) == "readback");
+    MK_REQUIRE(mirakana::memory_lifetime_class_label(mirakana::MemoryLifetimeClass::editor_tooling) ==
+               "editor_tooling");
+    MK_REQUIRE(mirakana::memory_budget_pressure_label(mirakana::MemoryBudgetPressure::warning) == "warning");
+    MK_REQUIRE(mirakana::memory_diagnostics_code_label(mirakana::MemoryDiagnosticsCode::use_after_safe_point) ==
+               "use_after_safe_point");
+    MK_REQUIRE(mirakana::memory_diagnostics_status_label(mirakana::MemoryDiagnosticsStatus::budget_exceeded) ==
+               "budget_exceeded");
+}
+
 MK_TEST("registry invalidates destroyed entities") {
     mirakana::Registry registry;
 

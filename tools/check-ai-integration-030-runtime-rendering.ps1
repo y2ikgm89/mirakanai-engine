@@ -171,6 +171,7 @@ if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentRu
 if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentRuntimeUiWorkbench")) { Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentRuntimeUiWorkbench" }
 if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentEditorAiReviewedValidationExecution")) { Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentEditorAiReviewedValidationExecution" }
 if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentEditorProfilerTraceExport")) { Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentEditorProfilerTraceExport" }
+if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentMemoryDiagnostics")) { Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentMemoryDiagnostics" }
 if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentEditorPrefabVariantFileDialogs")) { Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentEditorPrefabVariantFileDialogs" }
 if (-not $manifest.gameCodeGuidance.PSObject.Properties.Name.Contains("currentEditorPrefabInstanceSourceLinks")) {
     Write-Error "engine/agent/manifest.json must expose gameCodeGuidance.currentEditorPrefabInstanceSourceLinks"
@@ -465,6 +466,21 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditor) "EditorPl
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditor) "IEditorPlaySessionDriver" "editor game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditor) "isolated simulation scene" "editor game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditor) "scene_prefab_source_links" "editor prefab source-link guidance"
+foreach ($memoryDiagnosticsGuidanceNeedle in @(
+        "Memory Diagnostics v1 Phase 1",
+        "MemoryCounterRow",
+        "MemoryLifetimeClass",
+        "MemoryDiagnosticsSummary",
+        "summarize_memory_diagnostics",
+        "high-water bytes",
+        "budget pressure",
+        "stale-generation diagnostics",
+        "use-after-safe-point diagnostics",
+        "package-visible memory_diagnostics_* counters",
+        "broad memory optimization"
+    )) {
+    Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentMemoryDiagnostics) $memoryDiagnosticsGuidanceNeedle "memory diagnostics game guidance"
+}
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorProfilerTraceExport) "EditorProfilerTraceExportModel" "editor profiler trace export guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorProfilerTraceExport) "make_editor_profiler_trace_export_model" "editor profiler trace export guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditorProfilerTraceExport) "profiler.trace_export" "editor profiler trace export guidance"
