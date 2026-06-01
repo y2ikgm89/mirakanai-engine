@@ -21,6 +21,9 @@ struct NativeMaterialPreviewDisplayDesc {
     bool descriptor_lease_available{false};
     bool resource_barriers_recorded{false};
     bool fence_lifecycle_ready{false};
+    bool visible_panel_available{false};
+    bool visible_texture_composite_recorded{false};
+    std::uint64_t visible_texture_composites{0};
     std::uint64_t frame_index{0};
     std::string_view backend_id{"d3d12"};
     std::uint64_t frames_rendered{0};
@@ -39,6 +42,9 @@ struct NativeMaterialPreviewDisplayPlan {
     bool descriptor_lease_available{false};
     bool resource_barriers_recorded{false};
     bool fence_lifecycle_ready{false};
+    bool visible_panel_available{false};
+    bool visible_texture_composite_recorded{false};
+    std::uint64_t visible_texture_composites{0};
     bool texture_display_ready{false};
     bool native_texture_handles_exposed{false};
     std::string native_texture_handle_policy{"private"};

@@ -52,6 +52,9 @@ NativeMaterialPreviewDisplayPlan plan_native_material_preview_display(NativeMate
         .descriptor_lease_available = desc.descriptor_lease_available,
         .resource_barriers_recorded = desc.resource_barriers_recorded,
         .fence_lifecycle_ready = desc.fence_lifecycle_ready,
+        .visible_panel_available = desc.visible_panel_available,
+        .visible_texture_composite_recorded = desc.visible_texture_composite_recorded,
+        .visible_texture_composites = desc.visible_texture_composites,
         .texture_display_ready = false,
         .native_texture_handles_exposed = false,
         .native_texture_handle_policy = "private",
@@ -132,6 +135,23 @@ NativeMaterialPreviewDisplayPlan plan_native_material_preview_display(NativeMate
         plan.status_id = "fence_lifecycle_missing";
         plan.lifecycle_status = "fence_pending";
         plan.diagnostic = "native material preview display requires fence evidence before descriptor reuse";
+        plan.execution_snapshot = make_diagnostic_execution_snapshot(plan.diagnostic);
+        return plan;
+    }
+
+    if (!desc.visible_panel_available) {
+        plan.status_id = "visible_panel_unavailable";
+        plan.lifecycle_status = "panel_pending";
+        plan.diagnostic = "native material preview display requires a visible material preview panel";
+        plan.execution_snapshot = make_diagnostic_execution_snapshot(plan.diagnostic);
+        return plan;
+    }
+
+    if (!desc.visible_texture_composite_recorded || desc.visible_texture_composites == 0U) {
+        plan.status_id = "visible_composite_pending";
+        plan.lifecycle_status = "presentation_pending";
+        plan.diagnostic =
+            "native material preview display requires a visible compositor pass sampling the private D3D12 texture";
         plan.execution_snapshot = make_diagnostic_execution_snapshot(plan.diagnostic);
         return plan;
     }

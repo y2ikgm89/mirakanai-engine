@@ -28,6 +28,9 @@ NativeViewportDisplayPlan plan_native_viewport_display(NativeViewportDisplayDesc
         .fence_lifecycle_ready = desc.fence_lifecycle_ready,
         .resize_safe_teardown_completed = desc.resize_safe_teardown_completed,
         .resize_recreate_required = desc.resize_recreate_required,
+        .visible_panel_available = desc.visible_panel_available,
+        .visible_texture_composite_recorded = desc.visible_texture_composite_recorded,
+        .visible_texture_composites = desc.visible_texture_composites,
         .texture_display_ready = false,
         .native_texture_handles_exposed = false,
         .native_texture_handle_policy = "private",
@@ -106,6 +109,21 @@ NativeViewportDisplayPlan plan_native_viewport_display(NativeViewportDisplayDesc
         plan.status_id = "fence_lifecycle_missing";
         plan.lifecycle_status = "fence_pending";
         plan.diagnostic = "native viewport display requires fence evidence before descriptor reuse";
+        return plan;
+    }
+
+    if (!desc.visible_panel_available) {
+        plan.status_id = "visible_panel_unavailable";
+        plan.lifecycle_status = "panel_pending";
+        plan.diagnostic = "native viewport display requires a visible editor viewport panel";
+        return plan;
+    }
+
+    if (!desc.visible_texture_composite_recorded || desc.visible_texture_composites == 0U) {
+        plan.status_id = "visible_composite_pending";
+        plan.lifecycle_status = "presentation_pending";
+        plan.diagnostic =
+            "native viewport display requires a visible compositor pass sampling the private D3D12 texture";
         return plan;
     }
 
