@@ -70,6 +70,26 @@ Avoid C++ reserved identifier forms in project-defined names:
 
 Compiler, OS, and SDK-provided macros such as `_WIN32`, `__APPLE__`, and `__LINE__` may be used only as platform/compiler probes.
 
+## Ownership, Lifetime, And Views
+
+Use these terms consistently in public APIs, implementation reviews, AI handoff rows, and docs:
+
+- **Owner**: the object, module, or handle registry responsible for creation, mutation, and destruction. Ownership transfer must be visible in the type (`std::unique_ptr`, move-only value, first-party handle creation/release API) or in an explicit result contract.
+- **Observer**: a non-owning reference, raw pointer, `std::span`, `std::string_view`, or lookup result. Observers never extend lifetime and must not delete, release, or retain the target beyond the documented owner lifetime.
+- **Borrowed range**: a `std::span<T>`, `std::span<const T>`, byte span, or `std::string_view` over caller-owned contiguous data. Borrowed ranges are valid only for the call or explicitly documented scope; copy data into owner-owned storage before storing it.
+- **Frame-local scratch**: transient allocations, spans, temporary vectors, upload rows, or staging descriptors valid only until the current frame, safe point, or submit/retire boundary. Frame-local data must not cross worker, async, package, or GPU boundaries unless copied or converted into stable handles/ids.
+- **Stable handle or id**: a first-party value such as `RuntimeAssetHandle`, `RuntimeResourceHandleV2`, `AssetId`, `BufferHandle`, or `TextureHandle` that may cross module and AI-facing boundaries without exposing the owned object or native backend state.
+- **Backend-private object**: a Win32, D3D12, Vulkan, Metal, WASAPI, profiler SDK, allocator, queue, fence, descriptor, or GPU memory object owned behind a backend/PIMPL boundary. Public game and AI APIs use first-party values or handles instead.
+- **Handoff/result row**: a value-only descriptor, plan, diagnostic, or execution result that crosses subsystem or AI boundaries. Handoff rows may contain non-owning pointers only when the owning input/result object and lifetime are named by the row contract.
+
+Use values for small deterministic rows, ids, diagnostics, math types, commands, and manifest-facing data. Use `const T&` for required non-null call-bound observation of a single object. Use `T*` or `const T*` only for optional observers, lookup results, ABI callback context, or narrow backend execution descriptors where the owner is named nearby. Raw pointers are non-owning everywhere in this repository; any owning raw pointer is a bug unless it is immediately wrapped inside a private factory before publication.
+
+For heap-owned objects, prefer `std::make_unique<T>(...)` and return or convert the resulting `std::unique_ptr` to interface ownership as needed. Use direct `new` only in a narrow factory where access control prevents `make_unique` from calling a private constructor, and keep that allocation immediately wrapped in `std::unique_ptr`. Do not introduce shared ownership as a convenience; use explicit owners, handles, or lifetime registries unless a new architecture decision accepts shared lifetime.
+
+Use `std::span` and `std::string_view` instead of raw pointer-plus-count or copied strings when the callee only needs borrowed call-bound access. Do not return or store views into temporaries, local containers, moved strings, or frame scratch. If a descriptor stores a view, the descriptor name or documentation must identify the owner and the valid scope.
+
+When crossing frames, threads, jobs, package safe points, runtime-residency boundaries, or GPU submission boundaries, prefer copied value rows, immutable snapshots, generation-checked ids, first-party handles, or explicit safe-point result rows. Never move backend-native handles, allocator internals, queue/fence objects, profiler SDK objects, or raw resource pointers into generated-game APIs or manifest descriptors.
+
 ## CMake Naming
 
 - Local CMake targets use the `MK_<module>` prefix, for example `MK_core`, `MK_rhi`, `MK_scene_renderer`.
@@ -83,7 +103,6 @@ Compiler, OS, and SDK-provided macros such as `_WIN32`, `__APPLE__`, and `__LINE
 - C++ module sources must be added through CMake `FILE_SET CXX_MODULES`, not ad hoc compiler flags.
 - `import std;` is allowed only when the active CMake generator/toolchain reports C++23 standard-library module support. Keep public installed SDK headers available until module export/install design is accepted.
 - C++23-only standard-library features are allowed after local validation. Encapsulate compiler-specific workarounds in implementation files or backend modules, not public API compatibility shims.
-- For heap-owned objects, prefer `std::make_unique<T>(...)` and return/convert the resulting `std::unique_ptr` to interface ownership as needed. Use direct `new` only in a narrow factory where access control prevents `make_unique` from calling a private constructor, and keep that allocation immediately wrapped in `std::unique_ptr`.
 - Public include directories must provide both build-tree and install-tree interfaces:
 
 ```cmake
