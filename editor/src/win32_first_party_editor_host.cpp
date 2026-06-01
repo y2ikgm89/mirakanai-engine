@@ -6,6 +6,7 @@
 #include "first_party_editor_document.hpp"
 #include "native_editor_app.hpp"
 #include "native_editor_text_atlas_handoff.hpp"
+#include "native_editor_visible_texture_compositor.hpp"
 #include "native_editor_win32_services.hpp"
 
 #include "mirakana/platform/win32/win32_event_pump.hpp"
@@ -13,6 +14,8 @@
 #include "mirakana/platform/win32/win32_window.hpp"
 #include "mirakana/platform/window.hpp"
 #include "mirakana/renderer/renderer.hpp"
+#include "mirakana/rhi/d3d12/d3d12_backend.hpp"
+#include "mirakana/rhi/rhi.hpp"
 #include "mirakana/ui_renderer/ui_renderer.hpp"
 
 #ifndef WIN32_LEAN_AND_MEAN
@@ -30,11 +33,21 @@
 #include <algorithm>
 #include <cstdint>
 #include <exception>
+#include <fstream>
+#include <iterator>
 #include <limits>
 #include <memory>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <vector>
+
+#ifndef MK_EDITOR_VISIBLE_TEXTURE_VERTEX_SHADER_PATH
+#define MK_EDITOR_VISIBLE_TEXTURE_VERTEX_SHADER_PATH ""
+#endif
+#ifndef MK_EDITOR_VISIBLE_TEXTURE_FRAGMENT_SHADER_PATH
+#define MK_EDITOR_VISIBLE_TEXTURE_FRAGMENT_SHADER_PATH ""
+#endif
 
 namespace mirakana::editor {
 namespace {
@@ -130,6 +143,21 @@ using Microsoft::WRL::ComPtr;
     return kind == Win32FirstPartyEditorAdapterKind::hardware || kind == Win32FirstPartyEditorAdapterKind::warp;
 }
 
+[[nodiscard]] mirakana::rhi::Extent2D to_rhi_extent(ViewportExtent extent) noexcept {
+    return mirakana::rhi::Extent2D{.width = extent.width, .height = extent.height};
+}
+
+[[nodiscard]] std::vector<std::uint8_t> read_shader_bytecode(std::string_view path) {
+    if (path.empty()) {
+        return {};
+    }
+    std::ifstream file{std::string{path}, std::ios::binary};
+    if (!file) {
+        return {};
+    }
+    return std::vector<std::uint8_t>{std::istreambuf_iterator<char>{file}, std::istreambuf_iterator<char>{}};
+}
+
 } // namespace
 
 struct Win32FirstPartyEditorHost::Impl {
@@ -141,6 +169,11 @@ struct Win32FirstPartyEditorHost::Impl {
     std::unique_ptr<mirakana::win32::Win32Window> window;
     std::unique_ptr<NativeEditorWin32Services> services;
     std::unique_ptr<mirakana::NullRenderer> renderer;
+    std::unique_ptr<mirakana::rhi::IRhiDevice> visible_texture_device;
+    mirakana::rhi::SwapchainHandle visible_texture_swapchain;
+    std::unique_ptr<NativeTextureDisplayAdapter> viewport_texture_adapter;
+    std::unique_ptr<NativeTextureDisplayAdapter> material_preview_texture_adapter;
+    std::unique_ptr<NativeEditorVisibleTextureCompositor> visible_texture_compositor;
     mirakana::win32::Win32EventPump event_pump;
     HWND hwnd{nullptr};
     bool smoke_resize_completed{false};
@@ -187,6 +220,76 @@ struct Win32FirstPartyEditorHost::Impl {
         renderer = std::make_unique<mirakana::NullRenderer>(
             mirakana::Extent2D{.width = desc.launch.width, .height = desc.launch.height});
         renderer->set_clear_color(mirakana::Color{.r = 0.06F, .g = 0.07F, .b = 0.08F, .a = 1.0F});
+        create_visible_texture_compositor();
+    }
+
+    void create_visible_texture_compositor() {
+        if (!d3d12_adapter_selected(result.adapter_kind)) {
+            return;
+        }
+        const auto vertex_shader = read_shader_bytecode(MK_EDITOR_VISIBLE_TEXTURE_VERTEX_SHADER_PATH);
+        const auto fragment_shader = read_shader_bytecode(MK_EDITOR_VISIBLE_TEXTURE_FRAGMENT_SHADER_PATH);
+        if (vertex_shader.empty() || fragment_shader.empty()) {
+            result.diagnostic = "native editor visible texture compositor shader bytecode is unavailable";
+            return;
+        }
+
+        try {
+            auto device = mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{
+                .prefer_warp = result.adapter_kind == Win32FirstPartyEditorAdapterKind::warp,
+                .enable_debug_layer = desc.enable_debug_layer,
+            });
+            if (device == nullptr) {
+                result.diagnostic = "native editor visible texture compositor D3D12 device creation failed";
+                return;
+            }
+            const auto extent =
+                mirakana::editor::ViewportExtent{.width = desc.launch.width, .height = desc.launch.height};
+            const auto swapchain = device->create_swapchain(mirakana::rhi::SwapchainDesc{
+                .extent = to_rhi_extent(extent),
+                .format = mirakana::rhi::Format::bgra8_unorm,
+                .buffer_count = 2,
+                .vsync = true,
+                .surface = mirakana::rhi::SurfaceHandle{window->native_window_token()},
+            });
+            viewport_texture_adapter = std::make_unique<NativeTextureDisplayAdapter>(NativeTextureDisplayAdapterDesc{
+                .device = device.get(),
+                .extent = extent,
+                .d3d12_host_available = true,
+                .renderer_output_available = true,
+                .backend_id = "d3d12",
+            });
+            material_preview_texture_adapter =
+                std::make_unique<NativeTextureDisplayAdapter>(NativeTextureDisplayAdapterDesc{
+                    .device = device.get(),
+                    .extent = extent,
+                    .d3d12_host_available = true,
+                    .renderer_output_available = true,
+                    .shader_artifacts_available = true,
+                    .gpu_payload_available = true,
+                    .backend_id = "d3d12",
+                });
+            visible_texture_compositor =
+                std::make_unique<NativeEditorVisibleTextureCompositor>(NativeEditorVisibleTextureCompositorDesc{
+                    .device = device.get(),
+                    .swapchain = swapchain,
+                    .extent = extent,
+                    .vertex_shader_entry_point = "vs_main",
+                    .vertex_shader_bytecode = vertex_shader,
+                    .fragment_shader_entry_point = "ps_main",
+                    .fragment_shader_bytecode = fragment_shader,
+                    .backend_id = "d3d12",
+                });
+            visible_texture_swapchain = swapchain;
+            visible_texture_device = std::move(device);
+        } catch (const std::exception& error) {
+            result.diagnostic = error.what();
+            visible_texture_compositor.reset();
+            material_preview_texture_adapter.reset();
+            viewport_texture_adapter.reset();
+            visible_texture_device.reset();
+            visible_texture_swapchain = {};
+        }
     }
 
     void poll_window_messages() {
@@ -211,6 +314,20 @@ struct Win32FirstPartyEditorHost::Impl {
         desc.launch.height = height;
         if (renderer != nullptr) {
             renderer->resize(mirakana::Extent2D{.width = width, .height = height});
+        }
+        if (visible_texture_device != nullptr && visible_texture_swapchain.value != 0U) {
+            visible_texture_device->resize_swapchain(visible_texture_swapchain,
+                                                     mirakana::rhi::Extent2D{.width = width, .height = height});
+        }
+        const auto extent = mirakana::editor::ViewportExtent{.width = width, .height = height};
+        if (viewport_texture_adapter != nullptr) {
+            viewport_texture_adapter->resize(extent);
+        }
+        if (material_preview_texture_adapter != nullptr) {
+            material_preview_texture_adapter->resize(extent);
+        }
+        if (visible_texture_compositor != nullptr) {
+            visible_texture_compositor->resize(extent);
         }
         ++result.resize_count;
     }
@@ -239,8 +356,17 @@ struct Win32FirstPartyEditorHost::Impl {
         app.record_native_frame();
         if (d3d12_adapter_selected(result.adapter_kind)) {
             app.record_native_resource_device_ready(result.frames_rendered + 1U);
-            app.record_native_viewport_d3d12_host_ready(result.frames_rendered + 1U);
-            app.record_native_material_preview_d3d12_host_ready(result.frames_rendered + 1U);
+            if (visible_texture_compositor != nullptr && viewport_texture_adapter != nullptr &&
+                material_preview_texture_adapter != nullptr) {
+                app.record_native_viewport_texture_display(visible_texture_compositor->render_viewport_frame(
+                    *viewport_texture_adapter, result.frames_rendered + 1U));
+                app.record_native_material_preview_texture_display(
+                    visible_texture_compositor->render_material_preview_frame(*material_preview_texture_adapter,
+                                                                              result.frames_rendered + 1U));
+            } else {
+                app.record_native_viewport_d3d12_host_ready(result.frames_rendered + 1U);
+                app.record_native_material_preview_d3d12_host_ready(result.frames_rendered + 1U);
+            }
             app.record_native_text_atlas_handoff_evidence(
                 make_native_editor_directwrite_text_atlas_handoff_evidence(NativeEditorTextAtlasHandoffDesc{}));
         }
@@ -300,6 +426,10 @@ struct Win32FirstPartyEditorHost::Impl {
     }
 
     void shutdown() noexcept {
+        visible_texture_compositor.reset();
+        material_preview_texture_adapter.reset();
+        viewport_texture_adapter.reset();
+        visible_texture_device.reset();
         renderer.reset();
         services.reset();
         window.reset();

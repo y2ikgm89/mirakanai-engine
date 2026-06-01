@@ -10,6 +10,7 @@
 #include "native_editor_text_atlas_handoff.hpp"
 #include "native_editor_text_input.hpp"
 #include "native_editor_uia_provider.hpp"
+#include "native_editor_visible_texture_compositor.hpp"
 #if defined(_WIN32)
 #include "native_editor_text_font_adapters.hpp"
 #include "native_editor_tsf_text_input.hpp"
@@ -26,6 +27,7 @@
 #include "mirakana/ui/ui.hpp"
 
 #include <algorithm>
+#include <array>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -1099,6 +1101,63 @@ MK_TEST("editor native shell app records deterministic panel smoke counters") {
     MK_REQUIRE(app.dock_focusable_controls_last_frame() == 11U);
 }
 
+MK_TEST("editor first party shell smoke counters expose visible texture readiness") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    const auto viewport_plan =
+        mirakana::editor::plan_native_viewport_display(mirakana::editor::NativeViewportDisplayDesc{
+            .d3d12_host_available = true,
+            .renderer_output_available = true,
+            .texture_display_requested = true,
+            .texture_adapter_available = true,
+            .offscreen_target_available = true,
+            .descriptor_lease_available = true,
+            .resource_barriers_recorded = true,
+            .fence_lifecycle_ready = true,
+            .visible_panel_available = true,
+            .visible_texture_composite_recorded = true,
+            .visible_texture_composites = 1U,
+            .extent = mirakana::editor::ViewportExtent{.width = 1280, .height = 720},
+            .frame_index = 26U,
+            .backend_id = "d3d12",
+        });
+    const auto material_plan =
+        mirakana::editor::plan_native_material_preview_display(mirakana::editor::NativeMaterialPreviewDisplayDesc{
+            .d3d12_host_available = true,
+            .shader_artifacts_available = true,
+            .gpu_payload_available = true,
+            .texture_display_requested = true,
+            .texture_adapter_available = true,
+            .offscreen_target_available = true,
+            .descriptor_lease_available = true,
+            .resource_barriers_recorded = true,
+            .fence_lifecycle_ready = true,
+            .visible_panel_available = true,
+            .visible_texture_composite_recorded = true,
+            .visible_texture_composites = 1U,
+            .frame_index = 26U,
+            .backend_id = "d3d12",
+            .frames_rendered = 1U,
+            .executes = true,
+        });
+
+    app.record_native_viewport_texture_display(viewport_plan);
+    app.record_native_material_preview_texture_display(material_plan);
+
+    const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
+    const auto counters = mirakana::editor::make_first_party_editor_shell_smoke_counters(app, shell_document);
+    const auto* viewport_status =
+        shell_document.document.find(mirakana::ui::ElementId{.value = "editor.panel.viewport.status"});
+
+    MK_REQUIRE(viewport_status != nullptr);
+    MK_REQUIRE(viewport_status->text.label.contains("d3d12_texture_ready"));
+    MK_REQUIRE(counters.viewport_status == "d3d12_texture_ready");
+    MK_REQUIRE(counters.viewport_visible_texture_composites == 1U);
+    MK_REQUIRE(!counters.viewport_native_handles_exposed);
+    MK_REQUIRE(counters.material_preview_status == "d3d12_texture_ready");
+    MK_REQUIRE(counters.material_preview_visible_texture_composites == 1U);
+    MK_REQUIRE(!counters.material_preview_native_handles_exposed);
+}
+
 MK_TEST("editor native shell app updates resources panel from native host availability") {
     mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
 
@@ -1400,6 +1459,103 @@ MK_TEST("editor native texture display adapter prepares material preview executi
     MK_REQUIRE(plan.execution_snapshot.display_path_label == "host-private-native");
     MK_REQUIRE(!plan.execution_snapshot.exposes_native_handles);
     MK_REQUIRE(evidence.frames_rendered == 1U);
+}
+
+MK_TEST("editor visible texture compositor samples viewport texture into swapchain before readiness") {
+    mirakana::rhi::NullRhiDevice device;
+    const auto swapchain = device.create_swapchain(mirakana::rhi::SwapchainDesc{
+        .extent = mirakana::rhi::Extent2D{.width = 64, .height = 36},
+        .format = mirakana::rhi::Format::bgra8_unorm,
+        .buffer_count = 2,
+        .vsync = false,
+        .surface = mirakana::rhi::SurfaceHandle{.value = 1U},
+    });
+    constexpr std::array<std::uint8_t, 4> shader_bytecode{0x4d, 0x4b, 0x43, 0x00};
+    mirakana::editor::NativeTextureDisplayAdapter adapter(mirakana::editor::NativeTextureDisplayAdapterDesc{
+        .device = &device,
+        .extent = mirakana::editor::ViewportExtent{.width = 64, .height = 36},
+        .d3d12_host_available = true,
+        .renderer_output_available = true,
+        .backend_id = "d3d12",
+    });
+    mirakana::editor::NativeEditorVisibleTextureCompositor compositor(
+        mirakana::editor::NativeEditorVisibleTextureCompositorDesc{
+            .device = &device,
+            .swapchain = swapchain,
+            .extent = mirakana::editor::ViewportExtent{.width = 64, .height = 36},
+            .vertex_shader_entry_point = "vs_native_editor_visible_texture",
+            .vertex_shader_bytecode = shader_bytecode,
+            .fragment_shader_entry_point = "ps_native_editor_visible_texture",
+            .fragment_shader_bytecode = shader_bytecode,
+            .backend_id = "d3d12",
+        });
+
+    const auto plan = compositor.render_viewport_frame(adapter, 24U);
+    const auto& evidence = compositor.evidence();
+
+    MK_REQUIRE(plan.accepted);
+    MK_REQUIRE(plan.status_id == "d3d12_texture_ready");
+    MK_REQUIRE(plan.texture_display_ready);
+    MK_REQUIRE(plan.visible_panel_available);
+    MK_REQUIRE(plan.visible_texture_composite_recorded);
+    MK_REQUIRE(plan.visible_texture_composites == 1U);
+    MK_REQUIRE(plan.frame_index == 24U);
+    MK_REQUIRE(!plan.native_texture_handles_exposed);
+    MK_REQUIRE(evidence.swapchain_frame_acquired);
+    MK_REQUIRE(evidence.render_pass_recorded);
+    MK_REQUIRE(evidence.sampled_texture_descriptor_bound);
+    MK_REQUIRE(evidence.draw_recorded);
+    MK_REQUIRE(evidence.present_recorded);
+    MK_REQUIRE(evidence.fence_waited);
+    MK_REQUIRE(device.stats().swapchain_frames_acquired >= 1U);
+    MK_REQUIRE(device.stats().render_passes_begun >= 1U);
+    MK_REQUIRE(device.stats().descriptor_sets_bound >= 1U);
+    MK_REQUIRE(device.stats().draw_calls >= 1U);
+    MK_REQUIRE(device.stats().present_calls >= 1U);
+}
+
+MK_TEST("editor visible texture compositor promotes material preview only after visible panel composite") {
+    mirakana::rhi::NullRhiDevice device;
+    const auto swapchain = device.create_swapchain(mirakana::rhi::SwapchainDesc{
+        .extent = mirakana::rhi::Extent2D{.width = 96, .height = 96},
+        .format = mirakana::rhi::Format::bgra8_unorm,
+        .buffer_count = 2,
+        .vsync = false,
+        .surface = mirakana::rhi::SurfaceHandle{.value = 2U},
+    });
+    constexpr std::array<std::uint8_t, 4> shader_bytecode{0x4d, 0x4b, 0x43, 0x00};
+    mirakana::editor::NativeTextureDisplayAdapter adapter(mirakana::editor::NativeTextureDisplayAdapterDesc{
+        .device = &device,
+        .extent = mirakana::editor::ViewportExtent{.width = 96, .height = 96},
+        .d3d12_host_available = true,
+        .shader_artifacts_available = true,
+        .gpu_payload_available = true,
+        .backend_id = "d3d12",
+    });
+    mirakana::editor::NativeEditorVisibleTextureCompositor compositor(
+        mirakana::editor::NativeEditorVisibleTextureCompositorDesc{
+            .device = &device,
+            .swapchain = swapchain,
+            .extent = mirakana::editor::ViewportExtent{.width = 96, .height = 96},
+            .vertex_shader_entry_point = "vs_native_editor_visible_texture",
+            .vertex_shader_bytecode = shader_bytecode,
+            .fragment_shader_entry_point = "ps_native_editor_visible_texture",
+            .fragment_shader_bytecode = shader_bytecode,
+            .backend_id = "d3d12",
+        });
+
+    const auto plan = compositor.render_material_preview_frame(adapter, 25U);
+
+    MK_REQUIRE(plan.accepted);
+    MK_REQUIRE(plan.status_id == "d3d12_texture_ready");
+    MK_REQUIRE(plan.texture_display_ready);
+    MK_REQUIRE(plan.visible_panel_available);
+    MK_REQUIRE(plan.visible_texture_composite_recorded);
+    MK_REQUIRE(plan.visible_texture_composites == 1U);
+    MK_REQUIRE(plan.execution_snapshot.status == mirakana::editor::EditorMaterialGpuPreviewStatus::ready);
+    MK_REQUIRE(plan.execution_snapshot.frames_rendered >= 1U);
+    MK_REQUIRE(plan.execution_snapshot.executes);
+    MK_REQUIRE(!plan.execution_snapshot.exposes_native_handles);
 }
 
 MK_TEST("editor native material preview plan rejects missing shader artifacts") {

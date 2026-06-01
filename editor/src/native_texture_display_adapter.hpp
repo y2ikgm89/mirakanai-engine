@@ -6,6 +6,8 @@
 #include "native_material_preview_cache.hpp"
 #include "native_viewport_surface.hpp"
 
+#include "mirakana/rhi/rhi.hpp"
+
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -45,6 +47,15 @@ struct NativeTextureDisplayAdapterEvidence {
     std::string diagnostic;
 };
 
+struct NativeTextureDisplayFrame {
+    bool available{false};
+    rhi::TextureHandle texture;
+    ViewportExtent extent{};
+    rhi::Format format{rhi::Format::unknown};
+    std::uint64_t frame_index{0};
+    std::uint64_t frames_rendered{0};
+};
+
 class NativeTextureDisplayAdapter final {
   public:
     explicit NativeTextureDisplayAdapter(NativeTextureDisplayAdapterDesc desc);
@@ -59,6 +70,7 @@ class NativeTextureDisplayAdapter final {
     [[nodiscard]] NativeViewportDisplayPlan render_viewport_frame(std::uint64_t frame_index);
     [[nodiscard]] NativeMaterialPreviewDisplayPlan render_material_preview_frame(std::uint64_t frame_index);
     [[nodiscard]] const NativeTextureDisplayAdapterEvidence& evidence() const noexcept;
+    [[nodiscard]] NativeTextureDisplayFrame display_frame() const noexcept;
 
   private:
     struct Impl;
