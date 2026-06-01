@@ -6,7 +6,8 @@
 namespace mirakana::editor {
 
 NativeEditorWin32Services::NativeEditorWin32Services(std::uintptr_t owner_window_token)
-    : file_dialogs_(owner_window_token), clipboard_adapter_(clipboard_) {}
+    : file_dialogs_(owner_window_token), clipboard_adapter_(clipboard_),
+      accessibility_(make_native_editor_win32_uia_accessibility_adapter(owner_window_token)) {}
 
 void NativeEditorWin32Services::bind(NativeEditorApp& app) {
     app.bind_native_services(NativeEditorServiceBindings{
@@ -15,11 +16,13 @@ void NativeEditorWin32Services::bind(NativeEditorApp& app) {
         .reviewed_process_runner = &process_runner_,
         .platform_text_input_adapter = &text_services_,
         .ime_adapter = &text_services_,
+        .accessibility_adapter = accessibility_.get(),
         .file_dialog_service_id = "win32",
         .clipboard_service_id = "win32",
         .reviewed_process_runner_id = "win32",
         .platform_text_input_service_id = "win32_tsf",
         .ime_service_id = "win32_tsf",
+        .accessibility_service_id = "win32_uia",
     });
 }
 

@@ -12,9 +12,11 @@ namespace mirakana::editor {
 #if defined(_WIN32)
 inline constexpr bool kFirstPartyEditorDirectWriteTextFontAdapterImplemented = true;
 inline constexpr bool kFirstPartyEditorTsfTextServicesAdapterImplemented = true;
+inline constexpr bool kFirstPartyEditorUiaAccessibilityBridgeImplemented = true;
 #else
 inline constexpr bool kFirstPartyEditorDirectWriteTextFontAdapterImplemented = false;
 inline constexpr bool kFirstPartyEditorTsfTextServicesAdapterImplemented = false;
+inline constexpr bool kFirstPartyEditorUiaAccessibilityBridgeImplemented = false;
 #endif
 
 enum class FirstPartyEditorAdapterBoundary : std::uint8_t {
@@ -57,6 +59,7 @@ struct FirstPartyEditorAdapterBoundaryRow {
             .boundary = FirstPartyEditorAdapterBoundary::accessibility_bridge,
             .id = "editor.adapter.accessibility_bridge",
             .official_source_family = "UI Automation, NSAccessibility, AT-SPI, Android, or iOS accessibility adapter",
+            .implemented = kFirstPartyEditorUiaAccessibilityBridgeImplemented,
         },
         FirstPartyEditorAdapterBoundaryRow{
             .boundary = FirstPartyEditorAdapterBoundary::image_decoding,

@@ -91,6 +91,7 @@ foreach ($forbiddenNeedle in @(
 foreach ($requiredNeedle in @(
         "add_library(MK_editor_shell_common",
         "src/native_editor_launch.cpp", "src/native_editor_text_atlas_handoff.cpp",
+        "src/native_editor_uia_provider.cpp",
         "src/native_editor_text_font_adapters.cpp",
         "add_library(MK_editor_shell_win32",
         "src/native_editor_app.cpp",
@@ -98,7 +99,7 @@ foreach ($requiredNeedle in @(
         "MK_editor_core",
         "MK_renderer",
         "MK_ui_renderer",
-        "MK_platform_win32", "dwrite",
+        "MK_platform_win32", "dwrite", "uiautomationcore",
         "MK_ENABLE_DESKTOP_EDITOR is Windows-only",
         "MK_ENABLE_DESKTOP_EDITOR requires MK_platform_win32",
         "add_executable(MK_editor",
@@ -118,6 +119,7 @@ $editorDockingSmokeNeedles = @("editor_shell_docking_status=single_window_ready"
 $editorNativeDiagnosticSmokeNeedles = @("editor_shell_viewport_status=diagnostic_only", "editor_shell_viewport_native_handles_exposed=0", "editor_shell_material_preview_status=diagnostic_only", "editor_shell_material_preview_native_handles_exposed=0")
 $editorTextAtlasSmokeNeedles = @("editor_shell_text_atlas_handoff_status=glyphs_ready_atlas_handoff_host_gated", "editor_shell_text_font_adapter_invoked=1", "editor_shell_text_font_glyphs_ready=1", "editor_shell_text_font_fallback_used=0", "editor_shell_text_atlas_handoff_host_gated_rows=1", "editor_shell_text_atlas_handoff_unsupported_rows=1", "editor_shell_text_font_native_handles_exposed=0")
 $editorImeSmokeNeedles = @("editor_shell_text_input_service=win32_tsf", "editor_shell_ime_service=win32_tsf", "editor_shell_ime_status=win32_tsf_selected", "editor_shell_ime_caret_rect_rows=1", "editor_shell_ime_surrounding_text_rows=1", "editor_shell_ime_native_handles_exposed=0")
+$editorAccessibilitySmokeNeedles = @("editor_shell_accessibility_service=win32_uia", "editor_shell_accessibility_status=uia_provider_ready", "editor_shell_accessibility_nodes", "editor_shell_accessibility_role_rows", "editor_shell_accessibility_name_rows", "editor_shell_accessibility_state_rows", "editor_shell_accessibility_focus_rows=1", "editor_shell_accessibility_action_rows", "editor_shell_accessibility_relationship_rows", "editor_shell_accessibility_tree_navigation_rows", "editor_shell_accessibility_diagnostics=0", "editor_shell_accessibility_missing_name_diagnostics=0", "editor_shell_accessibility_missing_role_diagnostics=0", "editor_shell_accessibility_invalid_bounds_diagnostics=0", "editor_shell_accessibility_hidden_nodes=0", "editor_shell_accessibility_unsupported_pattern_diagnostics=0", "editor_shell_accessibility_native_handles_exposed=0")
 foreach ($requiredNeedle in @(
         "MK_editor_native_shell_tests",
         "MK_editor_smoke",
@@ -129,7 +131,7 @@ foreach ($requiredNeedle in @(
         "editor_shell_panels=11"
     ) + $editorDockingSmokeNeedles + @(
         "editor_shell_sdl3=0"
-    ) + $editorNativeDiagnosticSmokeNeedles + $editorTextAtlasSmokeNeedles + $editorImeSmokeNeedles + @(
+    ) + $editorNativeDiagnosticSmokeNeedles + $editorTextAtlasSmokeNeedles + $editorImeSmokeNeedles + $editorAccessibilitySmokeNeedles + @(
         "editor_shell_renderer_boxes_submitted",
         "editor_shell_renderer_text_runs_available",
         "tests/unit/editor_native_shell_tests.cpp",
@@ -170,7 +172,7 @@ foreach ($requiredNeedle in @(
         "editor_shell_backend=d3d12",
         "editor_shell_imgui=0",
         "editor_shell_panels=11"
-    ) + $editorDockingSmokeNeedles + $editorNativeDiagnosticSmokeNeedles + $editorTextAtlasSmokeNeedles + $editorImeSmokeNeedles + @(
+    ) + $editorDockingSmokeNeedles + $editorNativeDiagnosticSmokeNeedles + $editorTextAtlasSmokeNeedles + $editorImeSmokeNeedles + $editorAccessibilitySmokeNeedles + @(
         "editor_shell_renderer_boxes_submitted",
         "editor_shell_renderer_text_runs_available", "Windows SDK DirectWrite text-layout/glyph-raster",
         "private Windows TSF text-input/IME session adapter",
@@ -201,7 +203,7 @@ foreach ($requiredNeedle in @(
         "editor_shell_backend=d3d12",
         "editor_shell_imgui=0",
         "editor_shell_panels=11"
-    ) + $editorDockingSmokeNeedles + $editorNativeDiagnosticSmokeNeedles + $editorTextAtlasSmokeNeedles + $editorImeSmokeNeedles + @(
+    ) + $editorDockingSmokeNeedles + $editorNativeDiagnosticSmokeNeedles + $editorTextAtlasSmokeNeedles + $editorImeSmokeNeedles + $editorAccessibilitySmokeNeedles + @(
         "editor_shell_renderer_boxes_submitted",
         "editor_shell_renderer_text_runs_available",
         "SDL3-free"
