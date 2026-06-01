@@ -2167,6 +2167,40 @@ Assert-ContainsText $coreDiagnosticsHeaderText "DiagnosticsOpsPlan" "engine/core
 Assert-ContainsText $coreDiagnosticsHeaderText "DiagnosticsOpsArtifactStatus" "engine/core/include/mirakana/core/diagnostics.hpp"
 Assert-ContainsText $coreDiagnosticsHeaderText "build_diagnostics_ops_plan" "engine/core/include/mirakana/core/diagnostics.hpp"
 Assert-ContainsText $coreTestsText "diagnostics ops plan reports trace summary and unsupported upload boundaries" "tests/unit/core_tests.cpp"
+foreach ($memoryDiagnosticsNeedle in @(
+        "MemoryLifetimeClass",
+        "MemoryCounterRow",
+        "MemoryDiagnosticsSummary",
+        "MemoryBudgetPressure",
+        "MemoryDiagnosticsCode",
+        "MemoryDiagnosticsStatus",
+        "summarize_memory_diagnostics"
+    )) {
+    Assert-ContainsText $coreDiagnosticsHeaderText $memoryDiagnosticsNeedle "engine/core/include/mirakana/core/diagnostics.hpp"
+}
+foreach ($memoryDiagnosticsTestNeedle in @(
+        "memory diagnostics summarize classes high water and budget pressure",
+        "memory diagnostics fail closed for empty rows and exceeded budgets",
+        "memory diagnostics fail closed for invalid stale and safe point rows",
+        "memory diagnostics labels are stable"
+    )) {
+    Assert-ContainsText $coreTestsText $memoryDiagnosticsTestNeedle "tests/unit/core_tests.cpp"
+}
+foreach ($memoryDiagnosticsDocCheck in @(
+        @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
+        @{ Text = $aiGameDevelopmentContent; Label = "docs/ai-game-development.md" }
+    )) {
+    foreach ($memoryDiagnosticsDocNeedle in @(
+            "Memory Diagnostics v1 Phase 1",
+            "MemoryCounterRow",
+            "summarize_memory_diagnostics",
+            "stale-generation diagnostics",
+            "use-after-safe-point diagnostics",
+            '`memory_diagnostics_*` counters'
+        )) {
+        Assert-ContainsText $memoryDiagnosticsDocCheck.Text $memoryDiagnosticsDocNeedle $memoryDiagnosticsDocCheck.Label
+    }
+}
 foreach ($diagnosticsOpsDocCheck in @(
     @{ Text = $currentCapabilitiesText; Label = "docs/current-capabilities.md" },
     @{ Text = $roadmapText; Label = "docs/roadmap.md" },

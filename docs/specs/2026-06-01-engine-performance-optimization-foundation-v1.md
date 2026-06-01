@@ -175,7 +175,7 @@ Phase 2 memory class map:
 | Readback | RHI readback resource owner and caller-visible result rows; latency explicit at readback call sites. | CPU buffer readback commands, `bytes_read`, readback-domain buffers, and explicit copy/read counters. | Readback latency budgets, no-hidden-wait diagnostics, and profiler-visible readback stall evidence. |
 | Editor/tooling | Editor/tool adapter or host tool; never a runtime requirement unless promoted through a separate contract. | Editor Resources diagnostics, capture handoff rows, trace import/export rows, and host-gated profiler/capture evidence. | Cache-size budgets, editor-only allocator diagnostics, and host-tool memory pressure rows that stay separate from generated-game runtime claims. |
 
-The next implementation wave should add memory diagnostics before allocator replacement: counters for bytes/counts by class, high-water marks, budget pressure, leak/stale-generation/use-after-safe-point diagnostics, and package-visible evidence rows. Until those rows exist, allocator, pool, arena, GPU residency, or async-upload changes cannot claim a performance improvement from memory behavior alone.
+The next implementation wave should add memory diagnostics before allocator replacement: counters for bytes/counts by class, high-water marks, budget pressure, leak/stale-generation/use-after-safe-point diagnostics, and package-visible evidence rows. Memory Diagnostics v1 Phase 1 now covers the core data model and summary API; package-visible `memory_diagnostics_*` counters and runtime/RHI evidence wiring still need a focused slice before allocator, pool, arena, GPU residency, or async-upload changes can claim a performance improvement from memory behavior alone.
 
 ### 6. Use Topology Carefully
 

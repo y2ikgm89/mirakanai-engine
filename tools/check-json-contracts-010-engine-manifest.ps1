@@ -109,6 +109,7 @@ foreach ($needle in @("RuntimeWorldStreamingLargeSceneReadinessRequest", "Runtim
     }
 }
 Assert-Properties $engine.gameCodeGuidance @("currentEditor") "engine manifest gameCodeGuidance"
+Assert-Properties $engine.gameCodeGuidance @("currentMemoryDiagnostics") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentEditorContentBrowserImportDiagnostics") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentEditorPrefabInstanceSourceLinks") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentEditorInProcessRuntimeHost") "engine manifest gameCodeGuidance"
@@ -117,6 +118,23 @@ Assert-Properties $engine.gameCodeGuidance @("currentEditorRuntimeScenePackageVa
 Assert-Properties $engine.gameCodeGuidance @("currentSpriteAnimationFlipbook") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentSandboxWorldAuthoring") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("desktopRuntimeGameplaySystemsPackageSmoke") "engine manifest gameCodeGuidance"
+foreach ($memoryDiagnosticsGuidanceNeedle in @(
+        "Memory Diagnostics v1 Phase 1",
+        "MemoryCounterRow",
+        "MemoryLifetimeClass",
+        "MemoryDiagnosticsSummary",
+        "summarize_memory_diagnostics",
+        "high-water bytes",
+        "budget pressure",
+        "stale-generation diagnostics",
+        "use-after-safe-point diagnostics",
+        "package-visible memory_diagnostics_* counters",
+        "broad memory optimization"
+    )) {
+    if (-not ([string]$engine.gameCodeGuidance.currentMemoryDiagnostics).Contains($memoryDiagnosticsGuidanceNeedle)) {
+        Write-Error "engine manifest gameCodeGuidance.currentMemoryDiagnostics missing: $memoryDiagnosticsGuidanceNeedle"
+    }
+}
 foreach ($needle in @(
     "optional Windows-native editor/developer shell",
     "Win32 file-dialog, clipboard, reviewed process-runner service adapters",
