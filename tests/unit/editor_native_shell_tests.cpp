@@ -1147,6 +1147,100 @@ MK_TEST("editor native viewport display plan records diagnostic-only viewport wh
     MK_REQUIRE(!plan.texture_display_ready);
 }
 
+MK_TEST("editor native viewport display plan rejects zero extent before texture readiness") {
+    const auto plan = mirakana::editor::plan_native_viewport_display(mirakana::editor::NativeViewportDisplayDesc{
+        .d3d12_host_available = true,
+        .renderer_output_available = true,
+        .texture_adapter_available = true,
+        .offscreen_target_available = true,
+        .descriptor_lease_available = true,
+        .resource_barriers_recorded = true,
+        .fence_lifecycle_ready = true,
+        .resize_safe_teardown_completed = true,
+        .extent = mirakana::editor::ViewportExtent{.width = 0, .height = 720},
+        .frame_index = 8,
+    });
+
+    MK_REQUIRE(!plan.accepted);
+    MK_REQUIRE(plan.status_id == "invalid_extent");
+    MK_REQUIRE(!plan.texture_display_ready);
+    MK_REQUIRE(!plan.native_texture_handles_exposed);
+    MK_REQUIRE(plan.lifecycle_status == "invalid_extent");
+}
+
+MK_TEST("editor native viewport display plan waits for requested texture adapter") {
+    const auto plan = mirakana::editor::plan_native_viewport_display(mirakana::editor::NativeViewportDisplayDesc{
+        .d3d12_host_available = true,
+        .renderer_output_available = true,
+        .texture_display_requested = true,
+        .extent = mirakana::editor::ViewportExtent{.width = 1280, .height = 720},
+        .frame_index = 9,
+    });
+
+    MK_REQUIRE(plan.accepted);
+    MK_REQUIRE(plan.status_id == "texture_adapter_unavailable");
+    MK_REQUIRE(plan.texture_display_requested);
+    MK_REQUIRE(!plan.texture_adapter_available);
+    MK_REQUIRE(!plan.texture_display_ready);
+    MK_REQUIRE(plan.lifecycle_status == "adapter_pending");
+    MK_REQUIRE(plan.diagnostic.contains("texture adapter"));
+}
+
+MK_TEST("editor native viewport display plan waits for resize-safe teardown") {
+    const auto plan = mirakana::editor::plan_native_viewport_display(mirakana::editor::NativeViewportDisplayDesc{
+        .d3d12_host_available = true,
+        .renderer_output_available = true,
+        .texture_display_requested = true,
+        .texture_adapter_available = true,
+        .offscreen_target_available = true,
+        .descriptor_lease_available = true,
+        .resource_barriers_recorded = true,
+        .fence_lifecycle_ready = true,
+        .resize_safe_teardown_completed = false,
+        .resize_recreate_required = true,
+        .extent = mirakana::editor::ViewportExtent{.width = 1366, .height = 768},
+        .frame_index = 9,
+    });
+
+    MK_REQUIRE(plan.accepted);
+    MK_REQUIRE(plan.status_id == "resize_recreate_required");
+    MK_REQUIRE(!plan.texture_display_ready);
+    MK_REQUIRE(plan.resize_recreate_required);
+    MK_REQUIRE(!plan.resize_safe_teardown_completed);
+    MK_REQUIRE(plan.lifecycle_status == "resize_pending");
+    MK_REQUIRE(plan.diagnostic.contains("resize-safe teardown"));
+}
+
+MK_TEST("editor native viewport display plan reports private d3d12 texture readiness") {
+    const auto plan = mirakana::editor::plan_native_viewport_display(mirakana::editor::NativeViewportDisplayDesc{
+        .d3d12_host_available = true,
+        .renderer_output_available = true,
+        .texture_display_requested = true,
+        .texture_adapter_available = true,
+        .offscreen_target_available = true,
+        .descriptor_lease_available = true,
+        .resource_barriers_recorded = true,
+        .fence_lifecycle_ready = true,
+        .resize_safe_teardown_completed = true,
+        .extent = mirakana::editor::ViewportExtent{.width = 1280, .height = 720},
+        .frame_index = 10,
+    });
+
+    MK_REQUIRE(plan.accepted);
+    MK_REQUIRE(plan.status_id == "d3d12_texture_ready");
+    MK_REQUIRE(plan.texture_display_ready);
+    MK_REQUIRE(plan.texture_display_requested);
+    MK_REQUIRE(plan.texture_adapter_available);
+    MK_REQUIRE(plan.offscreen_target_available);
+    MK_REQUIRE(plan.descriptor_lease_available);
+    MK_REQUIRE(plan.resource_barriers_recorded);
+    MK_REQUIRE(plan.fence_lifecycle_ready);
+    MK_REQUIRE(plan.resize_safe_teardown_completed);
+    MK_REQUIRE(plan.lifecycle_status == "ready");
+    MK_REQUIRE(!plan.native_texture_handles_exposed);
+    MK_REQUIRE(plan.native_texture_handle_policy == "private");
+}
+
 MK_TEST("editor native viewport display plan does not expose native texture handles") {
     mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
 
@@ -1195,6 +1289,99 @@ MK_TEST("editor native material preview plan reports diagnostic-only preview wit
     MK_REQUIRE(plan.execution_snapshot.frames_rendered == 0U);
     MK_REQUIRE(plan.execution_snapshot.status == mirakana::editor::EditorMaterialGpuPreviewStatus::rhi_unavailable);
     MK_REQUIRE(plan.diagnostic.contains("diagnostic-only"));
+}
+
+MK_TEST("editor native material preview plan waits for descriptor and fence lifecycle") {
+    const auto plan =
+        mirakana::editor::plan_native_material_preview_display(mirakana::editor::NativeMaterialPreviewDisplayDesc{
+            .d3d12_host_available = true,
+            .shader_artifacts_available = true,
+            .gpu_payload_available = true,
+            .texture_display_requested = true,
+            .texture_adapter_available = true,
+            .offscreen_target_available = true,
+            .descriptor_lease_available = false,
+            .resource_barriers_recorded = true,
+            .fence_lifecycle_ready = true,
+            .frame_index = 15,
+        });
+
+    MK_REQUIRE(plan.accepted);
+    MK_REQUIRE(plan.status_id == "descriptor_lease_unavailable");
+    MK_REQUIRE(!plan.texture_display_ready);
+    MK_REQUIRE(plan.texture_display_requested);
+    MK_REQUIRE(plan.texture_adapter_available);
+    MK_REQUIRE(plan.offscreen_target_available);
+    MK_REQUIRE(!plan.descriptor_lease_available);
+    MK_REQUIRE(plan.resource_barriers_recorded);
+    MK_REQUIRE(plan.fence_lifecycle_ready);
+    MK_REQUIRE(plan.lifecycle_status == "descriptor_pending");
+    MK_REQUIRE(plan.execution_snapshot.status == mirakana::editor::EditorMaterialGpuPreviewStatus::rhi_unavailable);
+    MK_REQUIRE(!plan.execution_snapshot.executes);
+    MK_REQUIRE(!plan.execution_snapshot.exposes_native_handles);
+}
+
+MK_TEST("editor native material preview plan waits for requested texture adapter") {
+    const auto plan =
+        mirakana::editor::plan_native_material_preview_display(mirakana::editor::NativeMaterialPreviewDisplayDesc{
+            .d3d12_host_available = true,
+            .shader_artifacts_available = true,
+            .gpu_payload_available = true,
+            .texture_display_requested = true,
+            .frame_index = 15,
+        });
+
+    MK_REQUIRE(plan.accepted);
+    MK_REQUIRE(plan.status_id == "texture_adapter_unavailable");
+    MK_REQUIRE(plan.texture_display_requested);
+    MK_REQUIRE(!plan.texture_adapter_available);
+    MK_REQUIRE(!plan.texture_display_ready);
+    MK_REQUIRE(plan.lifecycle_status == "adapter_pending");
+    MK_REQUIRE(plan.execution_snapshot.status == mirakana::editor::EditorMaterialGpuPreviewStatus::rhi_unavailable);
+    MK_REQUIRE(!plan.execution_snapshot.executes);
+    MK_REQUIRE(!plan.execution_snapshot.exposes_native_handles);
+}
+
+MK_TEST("editor native material preview plan reports private d3d12 texture readiness") {
+    const auto plan =
+        mirakana::editor::plan_native_material_preview_display(mirakana::editor::NativeMaterialPreviewDisplayDesc{
+            .d3d12_host_available = true,
+            .shader_artifacts_available = true,
+            .gpu_payload_available = true,
+            .texture_display_requested = true,
+            .texture_adapter_available = true,
+            .offscreen_target_available = true,
+            .descriptor_lease_available = true,
+            .resource_barriers_recorded = true,
+            .fence_lifecycle_ready = true,
+            .frame_index = 16,
+        });
+
+    MK_REQUIRE(plan.accepted);
+    MK_REQUIRE(plan.status_id == "d3d12_texture_ready");
+    MK_REQUIRE(plan.texture_display_ready);
+    MK_REQUIRE(plan.texture_display_requested);
+    MK_REQUIRE(plan.texture_adapter_available);
+    MK_REQUIRE(plan.offscreen_target_available);
+    MK_REQUIRE(plan.descriptor_lease_available);
+    MK_REQUIRE(plan.resource_barriers_recorded);
+    MK_REQUIRE(plan.fence_lifecycle_ready);
+    MK_REQUIRE(plan.lifecycle_status == "ready");
+    MK_REQUIRE(!plan.native_texture_handles_exposed);
+    MK_REQUIRE(plan.native_texture_handle_policy == "private");
+    MK_REQUIRE(plan.execution_snapshot.status == mirakana::editor::EditorMaterialGpuPreviewStatus::ready);
+    MK_REQUIRE(plan.execution_snapshot.frames_rendered == 0U);
+    MK_REQUIRE(plan.execution_snapshot.display_path_label == "host-private-native");
+    MK_REQUIRE(!plan.execution_snapshot.executes);
+    MK_REQUIRE(!plan.execution_snapshot.exposes_native_handles);
+
+    mirakana::editor::EditorMaterialAssetPreviewPanelModel model;
+    mirakana::editor::apply_editor_material_gpu_preview_execution_snapshot(model, plan.execution_snapshot);
+    MK_REQUIRE(model.gpu_execution_ready);
+    MK_REQUIRE(!model.gpu_execution_rendered);
+    MK_REQUIRE(model.gpu_execution_frames_rendered == 0U);
+    MK_REQUIRE(!model.executes);
+    MK_REQUIRE(!model.exposes_native_handles);
 }
 
 MK_TEST("editor native material preview plan keeps d3d12 handles private") {

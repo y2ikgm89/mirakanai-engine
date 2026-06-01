@@ -14,6 +14,14 @@ namespace mirakana::editor {
 struct NativeViewportDisplayDesc {
     bool d3d12_host_available{false};
     bool renderer_output_available{false};
+    bool texture_display_requested{false};
+    bool texture_adapter_available{false};
+    bool offscreen_target_available{false};
+    bool descriptor_lease_available{false};
+    bool resource_barriers_recorded{false};
+    bool fence_lifecycle_ready{false};
+    bool resize_safe_teardown_completed{true};
+    bool resize_recreate_required{false};
     ViewportExtent extent{.width = 1280, .height = 720};
     std::uint64_t frame_index{0};
     std::string_view backend_id{"d3d12"};
@@ -24,12 +32,21 @@ struct NativeViewportDisplayPlan {
     std::string status_id{"host_unavailable"};
     bool d3d12_host_available{false};
     bool renderer_output_available{false};
+    bool texture_display_requested{false};
+    bool texture_adapter_available{false};
+    bool offscreen_target_available{false};
+    bool descriptor_lease_available{false};
+    bool resource_barriers_recorded{false};
+    bool fence_lifecycle_ready{false};
+    bool resize_safe_teardown_completed{true};
+    bool resize_recreate_required{false};
     bool texture_display_ready{false};
     bool native_texture_handles_exposed{false};
     std::string native_texture_handle_policy{"private"};
     ViewportExtent extent{};
     std::uint64_t frame_index{0};
     std::string backend_id{"d3d12"};
+    std::string lifecycle_status{"host_unavailable"};
     std::string diagnostic;
 };
 
