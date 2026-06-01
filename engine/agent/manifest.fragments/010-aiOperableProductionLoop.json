@@ -1408,7 +1408,7 @@
             "surface": "evidenceRows",
             "status": "ready",
             "mutates": false,
-            "notes": "Attach package-smoke counters, manifest budget rows, static contracts, trace artifacts, profiler artifacts, or manual host evidence to referenced budget rows."
+            "notes": "Attach package-smoke counters, manifest budget rows, static contracts, trace artifacts, profiler artifacts, or manual host evidence to referenced budget rows; use evidenceRows.source for package-visible counter names and evidenceRows.artifactPath for host-attached trace/profiler files."
           },
           {
             "id": "reject-broad-optimization-claims",
@@ -1435,6 +1435,9 @@
           "validationRecipeIds",
           "budgetRows",
           "evidenceRows",
+          "budgetRows.metric",
+          "evidenceRows.source",
+          "evidenceRows.artifactPath",
           "unsupportedClaims"
         ],
         "budgetCategories": [

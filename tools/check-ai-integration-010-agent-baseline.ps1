@@ -813,6 +813,7 @@ Assert-ContainsText $gameAgentSchemaText '"materialShaderAuthoringTargets"' "sch
 Assert-ContainsText $gameAgentSchemaText '"atlasTilemapAuthoringTargets"' "schemas/game-agent.schema.json"
 Assert-ContainsText $gameAgentSchemaText '"packageStreamingResidencyTargets"' "schemas/game-agent.schema.json"
 Assert-ContainsText $gameAgentSchemaText '"performanceBudgets"' "schemas/game-agent.schema.json"
+Assert-ContainsText $gameAgentSchemaText '"artifactPath"' "schemas/game-agent.schema.json"
 Assert-ContainsText $gameAgentSchemaText '"prefabScenePackageAuthoringTargets"' "schemas/game-agent.schema.json"
 Assert-ContainsText $gameAgentSchemaText '"registeredSourceAssetCookTargets"' "schemas/game-agent.schema.json"
 Assert-ContainsText $manifestRaw "runtimeSceneValidationTargets" "engine/agent/manifest.json"
@@ -828,6 +829,7 @@ Assert-ContainsText $currentCapabilitiesContent "create-material-from-graph" "do
 Assert-ContainsText $currentCapabilitiesContent "packageStreamingResidencyTargets" "docs/current-capabilities.md"
 Assert-ContainsText $currentCapabilitiesContent "performanceBudgets" "docs/current-capabilities.md"
 Assert-ContainsText $currentCapabilitiesContent "performanceBudgetEvidenceLoops" "docs/current-capabilities.md"
+Assert-ContainsText $currentCapabilitiesContent "installed-2d-performance-baseline.trace.json" "docs/current-capabilities.md"
 Assert-ContainsText $currentCapabilitiesContent "registeredSourceAssetCookTargets" "docs/current-capabilities.md"
 Assert-ContainsText $currentCapabilitiesContent "Safe-Point Package Unload Replacement Execution v1" "docs/current-capabilities.md"
 Assert-ContainsText $currentCapabilitiesContent "commit_runtime_package_safe_point_unload" "docs/current-capabilities.md"
@@ -837,6 +839,7 @@ Assert-ContainsText $aiGameDevelopmentContent "plan_material_graph_package_updat
 Assert-ContainsText $aiGameDevelopmentContent "atlasTilemapAuthoringTargets" "docs/ai-game-development.md"
 Assert-ContainsText $aiGameDevelopmentContent "packageStreamingResidencyTargets" "docs/ai-game-development.md"
 Assert-ContainsText $aiGameDevelopmentContent "performanceBudgets" "docs/ai-game-development.md"
+Assert-ContainsText $aiGameDevelopmentContent "evidenceRows.artifactPath" "docs/ai-game-development.md"
 Assert-ContainsText $aiGameDevelopmentContent "prefabScenePackageAuthoringTargets" "docs/ai-game-development.md"
 Assert-ContainsText $aiGameDevelopmentContent "registeredSourceAssetCookTargets" "docs/ai-game-development.md"
 Assert-ContainsText $aiGameDevelopmentContent "plan_placeholder_asset_bundle" "docs/ai-game-development.md"
@@ -1449,7 +1452,7 @@ if ($performanceBudgetEvidenceLoop.Count -eq 1) {
             Write-Error "engine/agent/manifest.json ai-operable-performance-budget-evidence requiredManifestFields missing: $field"
         }
     }
-    foreach ($field in @("schemaVersion", "capabilityId", "budgetSetId", "selectedRecipeId", "targetBackend", "hostGateId", "validationRecipeIds", "budgetRows", "evidenceRows", "unsupportedClaims")) {
+    foreach ($field in @("schemaVersion", "capabilityId", "budgetSetId", "selectedRecipeId", "targetBackend", "hostGateId", "validationRecipeIds", "budgetRows", "evidenceRows", "budgetRows.metric", "evidenceRows.source", "evidenceRows.artifactPath", "unsupportedClaims")) {
         if (@($performanceBudgetEvidenceLoop[0].descriptorFields) -notcontains $field) {
             Write-Error "engine/agent/manifest.json ai-operable-performance-budget-evidence descriptorFields missing: $field"
         }

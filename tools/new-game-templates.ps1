@@ -7255,9 +7255,10 @@ function New-AiPerformanceBudgets {
                     id = "frame-trace-required"
                     budgetRowIds = @("frame-p95-ms")
                     evidenceKind = "trace-artifact"
-                    source = "Trace or profiler artifact is not required by default validation and must be attached by a host performance lane."
+                    source = "Host-attached Chrome Trace Event JSON artifact for the selected 2D package lane. The artifact must include selected frame duration events or equivalent first-party frame/profile rows before it can upgrade this host-gated row."
                     validationRecipeId = "desktop-game-runtime"
                     status = "host-gated"
+                    artifactPath = "out/performance/$AssetKeyPrefix/selected-2d-package-frame.trace.json"
                 }
             )
             unsupportedClaims = @(
@@ -7337,9 +7338,10 @@ function New-AiPerformanceBudgets {
                 id = "frame-trace-required"
                 budgetRowIds = @("frame-p95-ms")
                 evidenceKind = "trace-artifact"
-                source = "Trace or profiler artifact is not required by default validation and must be attached by a host performance lane."
+                source = "Host-attached Chrome Trace Event JSON artifact for the selected 3D package lane. The artifact must include selected frame duration events or equivalent first-party frame/profile rows before it can upgrade this host-gated row."
                 validationRecipeId = "desktop-game-runtime"
                 status = "host-gated"
+                artifactPath = "out/performance/$AssetKeyPrefix/selected-3d-package-frame.trace.json"
             }
         )
         unsupportedClaims = @(

@@ -696,6 +696,9 @@ function Assert-PerformanceBudgets($manifest, [string]$label, [string]$selectedR
         if ($validationRecipeNames -notcontains $evidence.validationRecipeId) {
             Write-Error "$label performanceBudgets evidenceRows must reference validationRecipes: $($evidence.validationRecipeId)"
         }
+        if ($evidence.evidenceKind -eq "trace-artifact" -and -not $evidence.PSObject.Properties.Name.Contains("artifactPath")) {
+            Write-Error "$label performanceBudgets trace-artifact evidenceRows must carry artifactPath: $($evidence.id)"
+        }
         foreach ($budgetRowId in @($evidence.budgetRowIds)) {
             if ($budgetRowIds -notcontains $budgetRowId) {
                 Write-Error "$label performanceBudgets evidenceRows reference missing budgetRows id: $budgetRowId"

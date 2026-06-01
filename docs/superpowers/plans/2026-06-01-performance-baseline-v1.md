@@ -95,12 +95,19 @@ This ordering lets AI-generated games optimize content and recipe choices now wh
 - Modify: `docs/ai-game-development.md`
 - Modify: `docs/specs/generated-game-validation-scenarios.md`
 - Modify: `docs/current-capabilities.md`
-- Modify if schema needs explicit artifact fields: `schemas/game-agent.schema.json`
-- Modify if schema changes: `tools/check-json-contracts-020-game-contracts.ps1`
+- Modify: `games/sample_2d_desktop_runtime_package/game.agent.json`
+- Modify: `games/sample_generated_desktop_runtime_3d_package/game.agent.json`
+- Modify: `tools/new-game-templates.ps1`
+- Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
+- Generate: `engine/agent/manifest.json`
+- Modify: `tools/check-ai-integration-010-agent-baseline.ps1`
+- Modify: `tools/check-ai-integration-core.ps1`
+- Modify: `tools/check-json-contracts-020-game-contracts.ps1`
+- Modify: `tools/check-json-contracts-core.ps1`
 
-- [ ] Connect the selected baseline recipe to Trace Event JSON artifact references and package-visible counter names.
-- [ ] Document how an AI agent should read budgets, choose lower-cost content, rerun the selected recipe, and file an engine capability handoff when required evidence is absent.
-- [ ] Preserve unsupported claims for cross-vendor parity, cross-backend parity, allocator enforcement, all-core CPU use, CUDA/HIP, GPU-driven rendering, and Metal readiness.
+- [x] Connect the selected baseline recipe to Trace Event JSON artifact references and package-visible counter names.
+- [x] Document how an AI agent should read budgets, choose lower-cost content, rerun the selected recipe, and file an engine capability handoff when required evidence is absent.
+- [x] Preserve unsupported claims for cross-vendor parity, cross-backend parity, allocator enforcement, all-core CPU use, CUDA/HIP, GPU-driven rendering, and Metal readiness.
 
 ## Phase 4 - Closeout And Next Wave Selection
 
@@ -162,6 +169,21 @@ Phase 2 focused evidence:
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`
 
 The installed 2D package smoke now reports `performance_baseline_status=ready`, `performance_baseline_backend_scope=d3d12`, `performance_baseline_warmup_frames=0`, three fixed frame/profile samples, explicit `sample_2d.frame_time_us` and `sample_2d.frame` names, p95/p99 frame time `16000us` under the `16670us` budget, zero non-finite samples, zero diagnostics, and zero over-budget status. The selected proof remains scoped to the D3D12 2D package lane and keeps broad CPU/GPU/memory optimization, cross-vendor parity, cross-backend parity, allocator enforcement, CUDA/HIP, GPU-driven rendering, Metal readiness, and broad renderer quality unsupported.
+
+Phase 3 focused evidence:
+
+- Official source checked: Perfetto documents Chrome JSON trace files as event arrays with fields such as `pid`, `tid`, `ts`, `ph`, `name`, `cat`, and `args`, including `X`, `C`, `I`, and `M` event handling.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode DryRun -Recipe installed-2d-performance-baseline-smoke`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`
+- `git diff --check`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`
+
+The selected sample 2D budget row now names package-visible `performance_baseline_*` counters, the host-gated Trace Event JSON artifact path `out/performance/sample_2d_desktop_runtime_package/installed-2d-performance-baseline.trace.json`, and the `installed-2d-performance-baseline-smoke` recipe. Generated 2D/3D templates and the committed generated 3D sample now require `artifactPath` on trace-artifact evidence rows. Static checks verify `budgetRows.metric`, `evidenceRows.source`, and `evidenceRows.artifactPath` remain part of the AI-operable performance budget descriptor contract. Slice-close `tools/validate.ps1` passed with expected diagnostic-only Windows host blockers for Metal/Apple lanes while returning `validate: ok`.
 
 ## Done When
 

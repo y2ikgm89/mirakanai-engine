@@ -1054,7 +1054,6 @@ function Assert-PackageStreamingResidencyTargets($game, [string]$relativePath, [
         }
     }
 }
-
 function Assert-PerformanceBudgets($game, [string]$relativePath, [bool]$required) {
     if (-not $game.PSObject.Properties.Name.Contains("performanceBudgets")) {
         if ($required) { Write-Error "$relativePath selected package manifests must declare performanceBudgets" }
@@ -1099,6 +1098,7 @@ function Assert-PerformanceBudgets($game, [string]$relativePath, [bool]$required
         if ($evidenceKinds -notcontains [string]$row.evidenceKind) { Write-Error "$relativePath performanceBudgets evidenceRows '$rowId' has unsupported evidenceKind: $($row.evidenceKind)" }
         if (-not $validationRecipeIds.ContainsKey([string]$row.validationRecipeId)) { Write-Error "$relativePath performanceBudgets evidenceRows '$rowId' validationRecipeId must reference validationRecipes: $($row.validationRecipeId)" }
         if (@("ready", "host-gated", "planned", "unsupported") -notcontains [string]$row.status) { Write-Error "$relativePath performanceBudgets evidenceRows '$rowId' has unsupported status: $($row.status)" }
+        if ([string]$row.evidenceKind -eq "trace-artifact" -and -not $row.PSObject.Properties.Name.Contains("artifactPath")) { Write-Error "$relativePath performanceBudgets evidenceRows '$rowId' trace-artifact must carry artifactPath" }
         if ($row.PSObject.Properties.Name.Contains("artifactPath") -and -not (Test-SafeGameRelativePath (ConvertTo-RepoPath ([string]$row.artifactPath)))) { Write-Error "$relativePath performanceBudgets evidenceRows '$rowId' artifactPath must be safe and game-relative: $($row.artifactPath)" }
     }
     foreach ($claim in @("broad-optimized-game", "cross-vendor-performance-parity", "cross-backend-performance-parity", "native-handles")) { if (@($budget.unsupportedClaims) -notcontains $claim) { Write-Error "$relativePath performanceBudgets unsupportedClaims missing required claim: $claim" } }
