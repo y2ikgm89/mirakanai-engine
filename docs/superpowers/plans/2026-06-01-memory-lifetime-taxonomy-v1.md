@@ -12,7 +12,7 @@
 
 **Plan ID:** `memory-lifetime-taxonomy-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
 Selected on 2026-06-01 after [Performance Baseline v1](2026-06-01-performance-baseline-v1.md) completed the first measurement/evidence lane for selected package frame budgets, p95/p99 counters, and Trace Event JSON artifact references.
 
@@ -100,9 +100,11 @@ Phase 2 evidence on 2026-06-02: classified memory readiness into frame temporary
 - Generate: `engine/agent/manifest.json`
 - Modify: relevant `tools/check-ai-integration*.ps1` and `tools/check-json-contracts*.ps1` files when new durable literals are added
 
-- [ ] Add static checks only for durable AI-operable contract text, not every explanatory sentence.
-- [ ] Select the next measured implementation wave after the taxonomy is complete, likely allocator diagnostics, transient-frame allocation counters, or job-system scheduling evidence depending on the audit.
-- [ ] Record final validation evidence and hosted PR evidence.
+- [x] Add static checks only for durable AI-operable contract text, not every explanatory sentence.
+- [x] Select the next measured implementation wave after the taxonomy is complete, likely allocator diagnostics, transient-frame allocation counters, or job-system scheduling evidence depending on the audit.
+- [x] Record final validation evidence and hosted PR evidence.
+
+Phase 3 closeout on 2026-06-02 selected [Memory Diagnostics v1](2026-06-02-memory-diagnostics-v1.md) as the next measured implementation wave. The taxonomy audit showed that allocator replacement, pool/arena enforcement, worker scratch enforcement, all-core scheduling, NUMA/affinity tuning, SIMD dispatch, automatic/LRU GPU residency, CUDA/HIP/SYCL paths, and broad cross-vendor/backend performance claims need class-specific bytes/counts, high-water marks, budget pressure, stale-generation, and use-after-safe-point evidence before implementation can claim a memory optimization. Static checks were updated only for the durable `memory-diagnostics-v1` plan pointer and manifest recommendedNextPlan selection needles.
 
 ## Validation Evidence
 
@@ -136,6 +138,17 @@ Phase 2 validation on 2026-06-02:
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` - passed.
 - `git diff --check` - passed.
 - Full `tools/validate.ps1` was not run for this Phase 2 slice because the change is limited to docs/agent-surface wording and existing manifest/static checks already cover the active memory lifetime contract.
+
+Phase 3 closeout validation on 2026-06-02:
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`
+- `git diff --check`
+- Full `tools/validate.ps1` was not run for this Phase 3 closeout because the change is limited to docs, manifest pointers, and static contract needles; targeted manifest/agent/static checks cover the changed contracts.
+- Hosted PR evidence for the closeout slice is recorded on the task-owned Phase 3 PR.
 
 ## Done When
 

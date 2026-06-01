@@ -1833,6 +1833,19 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     )) {
         Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan memory lifetime taxonomy selection"
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "memory-diagnostics-v1") {
+    foreach ($needle in @(
+        "memory diagnostics",
+        "memory class counters",
+        "high-water marks",
+        "budget pressure",
+        "stale-generation",
+        "use-after-safe-point",
+        "allocator replacement",
+        "broad CPU/GPU/memory optimization"
+    )) {
+        Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan memory diagnostics selection"
+    }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "first-party-ui-editor-production-stack-v1") {
     foreach ($needle in @(
         "First-Party UI Editor Production Stack v1",
