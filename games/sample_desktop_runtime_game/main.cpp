@@ -1269,6 +1269,16 @@ memory_diagnostics_budgeted_class_count(const mirakana::MemoryDiagnosticsSummary
     return count;
 }
 
+[[nodiscard]] std::size_t memory_diagnostics_transient_gpu_aliasing_barriers(
+    bool requested, const mirakana::FrameGraphRhiMultiQueuePackageEvidence& evidence) noexcept {
+    return requested ? evidence.aliasing_barriers_recorded : 0U;
+}
+
+[[nodiscard]] bool memory_diagnostics_transient_gpu_framegraph_aliasing_ready(
+    bool requested, const mirakana::FrameGraphRhiMultiQueuePackageEvidence& evidence) noexcept {
+    return requested && evidence.ready && evidence.aliasing_barriers_recorded > 0U;
+}
+
 [[nodiscard]] mirakana::Win32DesktopPresentationQualityGateDesc
 make_renderer_quality_gate_desc(const DesktopRuntimeGameOptions& options) noexcept {
     mirakana::Win32DesktopPresentationQualityGateDesc desc;
@@ -2440,6 +2450,13 @@ int main(int argc, char** argv) {
         << memory_class_allocations(memory_diagnostics, mirakana::MemoryLifetimeClass::upload_staging)
         << " memory_diagnostics_transient_gpu_allocations="
         << memory_class_allocations(memory_diagnostics, mirakana::MemoryLifetimeClass::transient_gpu)
+        << " memory_diagnostics_transient_gpu_aliasing_barriers="
+        << memory_diagnostics_transient_gpu_aliasing_barriers(framegraph_multiqueue_requested, framegraph_multiqueue)
+        << " memory_diagnostics_transient_gpu_framegraph_aliasing_ready="
+        << (memory_diagnostics_transient_gpu_framegraph_aliasing_ready(framegraph_multiqueue_requested,
+                                                                       framegraph_multiqueue)
+                ? 1
+                : 0)
         << " d3d12_gpu_memory_execution_status="
         << mirakana::win32_desktop_presentation_d3d12_gpu_memory_execution_status_name(
                d3d12_gpu_memory_execution.status)

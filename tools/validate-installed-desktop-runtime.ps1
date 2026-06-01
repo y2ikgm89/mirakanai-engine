@@ -196,6 +196,9 @@ if ($requiresD3d12DebugProfilingEvidence -or $requiresVulkanDebugProfilingEviden
 }
 $requiresShadowMorphComposition = @($SmokeArgs) -contains "--require-shadow-morph-composition"
 $requiresRendererQualityGates = @($SmokeArgs) -contains "--require-renderer-quality-gates"
+$requiresFramegraphMultiqueueEvidence = @($SmokeArgs) -contains "--require-framegraph-multiqueue-evidence"
+$requiresVulkanFramegraphMultiqueueEvidence = @($SmokeArgs) -contains "--require-vulkan-framegraph-multiqueue-evidence"
+$requiresAnyFramegraphMultiqueueEvidence = $requiresFramegraphMultiqueueEvidence -or $requiresVulkanFramegraphMultiqueueEvidence
 $requiresRendererQualityMatrix = @($SmokeArgs) -contains "--require-renderer-quality-matrix"
 $requiresRenderingVfxProfiling = @($SmokeArgs) -contains "--require-rendering-vfx-profiling"
 $requiresPlayable3dSlice = @($SmokeArgs) -contains "--require-playable-3d-slice"
@@ -956,6 +959,7 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
             "memory_diagnostics_use_after_safe_point" = "0"
             "memory_diagnostics_resident_gpu_pressure" = "nominal"
             "memory_diagnostics_transient_gpu_allocations" = "0"
+            "memory_diagnostics_transient_gpu_framegraph_aliasing_ready" = if ($requiresAnyFramegraphMultiqueueEvidence) { "1" } else { "0" }
         }
         foreach ($field in $expectedMemoryDiagnosticsFields.Keys) {
             $expectedValue = [regex]::Escape($expectedMemoryDiagnosticsFields[$field])
@@ -981,6 +985,10 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
                 Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive memory diagnostics field: $field"
             }
+        }
+        if ($requiresAnyFramegraphMultiqueueEvidence -and
+            $smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bmemory_diagnostics_transient_gpu_aliasing_barriers=[1-9]\d*\b") {
+            Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive memory diagnostics transient GPU aliasing evidence."
         }
     }
     if ($requiresD3d12GpuMemoryEvidence) {
