@@ -339,13 +339,19 @@ make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const F
     const auto& text_atlas = app.text_atlas_handoff_evidence();
     const auto& text_input = app.text_input_state();
     const auto& accessibility = app.accessibility_state();
+    const auto& viewport_display = app.viewport_display();
+    const auto& material_preview_display = app.material_preview_display();
     return FirstPartyEditorShellSmokeCounters{
         .ui = "first_party",
         .backend = "d3d12",
         .panel_count = document.panel_root_count,
         .imgui_enabled = false,
         .sdl3_enabled = false,
-        .viewport_native_handles_exposed = app.viewport_display().native_texture_handles_exposed,
+        .viewport_status = viewport_display.status_id,
+        .viewport_visible_texture_composites = viewport_display.visible_texture_composites,
+        .viewport_native_handles_exposed = viewport_display.native_texture_handles_exposed,
+        .material_preview_status = material_preview_display.status_id,
+        .material_preview_visible_texture_composites = material_preview_display.visible_texture_composites,
         .material_preview_native_handles_exposed = app.material_preview_display().native_texture_handles_exposed,
         .text_atlas_handoff_status = text_atlas.status,
         .text_font_adapter_invoked =

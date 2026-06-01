@@ -2027,9 +2027,11 @@ $nativeEditorViewportChecks = @(
         Needles = @(
             "NativeTextureDisplayAdapterDesc",
             "NativeTextureDisplayAdapterEvidence",
+            "NativeTextureDisplayFrame",
             "NativeTextureDisplayAdapter",
             "render_viewport_frame",
             "render_material_preview_frame",
+            "display_frame",
             "native_texture_handles_exposed"
         )
     },
@@ -2043,6 +2045,35 @@ $nativeEditorViewportChecks = @(
             "resource_transitions",
             "fence_waits",
             "wait(fence)",
+            "display_frame",
+            "plan_native_viewport_display",
+            "plan_native_material_preview_display"
+        )
+    },
+    @{
+        Path = "editor/src/native_editor_visible_texture_compositor.hpp"
+        Needles = @(
+            "NativeEditorVisibleTextureCompositorDesc",
+            "NativeEditorVisibleTextureCompositorEvidence",
+            "NativeEditorVisibleTextureCompositor",
+            "render_viewport_frame",
+            "render_material_preview_frame",
+            "visible_texture_composites",
+            "native_texture_handles_exposed"
+        )
+    },
+    @{
+        Path = "editor/src/native_editor_visible_texture_compositor.cpp"
+        Needles = @(
+            "create_descriptor_set_layout",
+            "update_descriptor_set",
+            "acquire_swapchain_frame",
+            "begin_render_pass",
+            "bind_graphics_pipeline",
+            "bind_descriptor_set",
+            "draw(3U, 1U)",
+            "present",
+            "wait(fence)",
             "plan_native_viewport_display",
             "plan_native_material_preview_display"
         )
@@ -2053,7 +2084,8 @@ $nativeEditorViewportChecks = @(
             "native_viewport_surface.hpp",
             "viewport()",
             "viewport_display()",
-            "record_native_viewport_d3d12_host_ready"
+            "record_native_viewport_d3d12_host_ready",
+            "record_native_viewport_texture_display"
         )
     },
     @{
@@ -2065,6 +2097,7 @@ $nativeEditorViewportChecks = @(
             "ViewportState viewport",
             "NativeViewportDisplayPlan viewport_display",
             "record_native_viewport_d3d12_host_ready",
+            "record_native_viewport_texture_display",
             'set_renderer("d3d12")'
         )
     },
@@ -2096,7 +2129,10 @@ $nativeEditorViewportChecks = @(
     @{
         Path = "editor/src/win32_first_party_editor_host.cpp"
         Needles = @(
+            "native_editor_visible_texture_compositor.hpp",
+            "create_visible_texture_compositor",
             "record_native_viewport_d3d12_host_ready",
+            "record_native_viewport_texture_display",
             "record_native_docking_frame"
         )
     },
@@ -2104,6 +2140,7 @@ $nativeEditorViewportChecks = @(
         Path = "editor/src/main.cpp"
         Needles = @(
             "editor_shell_viewport_status=",
+            "editor_shell_viewport_visible_texture_composites=",
             "editor_shell_viewport_native_handles_exposed="
         )
     },
@@ -2116,7 +2153,8 @@ $nativeEditorViewportChecks = @(
             "editor_shell_dock_split_gutters=3",
             "editor_shell_dock_active_panels=4",
             "editor_shell_dock_focusable_controls=11",
-            "editor_shell_viewport_status=diagnostic_only",
+            "editor_shell_viewport_status=d3d12_texture_ready",
+            "editor_shell_viewport_visible_texture_composites",
             "editor_shell_viewport_native_handles_exposed=0"
         )
     },
@@ -2125,7 +2163,10 @@ $nativeEditorViewportChecks = @(
         Needles = @(
             "src/native_viewport_surface.cpp",
             "src/native_texture_display_adapter.cpp",
-            "MK_renderer"
+            "src/native_editor_visible_texture_compositor.cpp",
+            "MK_renderer",
+            "MK_rhi_d3d12",
+            "MK_editor_visible_texture_shaders"
         )
     },
     @{
@@ -2137,6 +2178,7 @@ $nativeEditorViewportChecks = @(
             "editor native viewport display plan waits for resize-safe teardown",
             "editor native viewport display plan reports private d3d12 texture readiness",
             "editor native texture display adapter prepares viewport display frame through rhi descriptors",
+            "editor visible texture compositor samples viewport texture into swapchain before readiness",
             "editor native texture display adapter waits before resize replacement",
             "editor native viewport display plan does not expose native texture handles",
             "native_texture_handle_policy"
@@ -2152,55 +2194,60 @@ $nativeEditorViewportChecks = @(
             "editor_shell_dock_split_gutters=3",
             "editor_shell_dock_active_panels=4",
             "editor_shell_dock_focusable_controls=11",
-            "editor_shell_viewport_status=diagnostic_only",
+            "editor_shell_viewport_status=d3d12_texture_ready",
+            "editor_shell_viewport_visible_texture_composites",
             "editor_shell_viewport_native_handles_exposed=0",
-            "Full D3D12 texture display"
+            "native_editor_visible_texture_compositor"
         )
     },
     @{
         Path = "docs/current-capabilities.md"
         Needles = @(
-            "diagnostic-only native Viewport panel",
+            "private visible D3D12 native Viewport panel",
             "editor_shell_panels=11",
             "editor_shell_docking_status=single_window_ready",
             "editor_shell_dock_tab_headers=11",
             "editor_shell_dock_split_gutters=3",
             "editor_shell_dock_active_panels=4",
             "editor_shell_dock_focusable_controls=11",
-            "editor_shell_viewport_status=diagnostic_only",
+            "editor_shell_viewport_status=d3d12_texture_ready",
+            "editor_shell_viewport_visible_texture_composites",
             "editor_shell_viewport_native_handles_exposed=0",
-            "Full Viewport D3D12 texture display"
+            "native_editor_visible_texture_compositor"
         )
     },
     @{
         Path = "docs/roadmap.md"
         Needles = @(
-            "diagnostic-only viewport display",
+            "private visible D3D12 viewport display",
             "editor_shell_panels=11",
             "editor_shell_docking_status=single_window_ready",
             "editor_shell_dock_tab_headers=11",
             "editor_shell_dock_split_gutters=3",
             "editor_shell_dock_active_panels=4",
             "editor_shell_dock_focusable_controls=11",
-            "editor_shell_viewport_status=diagnostic_only",
+            "editor_shell_viewport_status=d3d12_texture_ready",
+            "editor_shell_viewport_visible_texture_composites",
             "editor_shell_viewport_native_handles_exposed=0",
-            "full viewport texture display"
+            "visible compositor presentation"
         )
     },
     @{
         Path = "engine/agent/manifest.json"
         Needles = @(
-            "diagnostic-only viewport display",
+            "private visible D3D12 viewport display",
             "editor_shell_panels=11",
             "editor_shell_docking_status=single_window_ready",
             "editor_shell_dock_tab_headers=11",
             "editor_shell_dock_split_gutters=3",
             "editor_shell_dock_active_panels=4",
             "editor_shell_dock_focusable_controls=11",
-            "editor_shell_viewport_status=diagnostic_only",
+            "editor_shell_viewport_status=d3d12_texture_ready",
+            "editor_shell_viewport_visible_texture_composites",
             "editor_shell_viewport_native_handles_exposed=0",
             "private D3D12 texture adapter",
-            "native_texture_display_adapter"
+            "native_texture_display_adapter",
+            "native_editor_visible_texture_compositor"
         )
     }
 )
@@ -2279,7 +2326,8 @@ $nativeEditorMaterialPreviewChecks = @(
             "native_material_preview_cache.hpp",
             "material_preview()",
             "material_preview_display()",
-            "record_native_material_preview_d3d12_host_ready"
+            "record_native_material_preview_d3d12_host_ready",
+            "record_native_material_preview_texture_display"
         )
     },
     @{
@@ -2290,6 +2338,7 @@ $nativeEditorMaterialPreviewChecks = @(
             "EditorMaterialAssetPreviewPanelModel material_preview",
             "NativeMaterialPreviewDisplayPlan material_preview_display",
             "record_native_material_preview_d3d12_host_ready",
+            "record_native_material_preview_texture_display",
             "apply_editor_material_gpu_preview_execution_snapshot"
         )
     },
@@ -2306,20 +2355,23 @@ $nativeEditorMaterialPreviewChecks = @(
     @{
         Path = "editor/src/win32_first_party_editor_host.cpp"
         Needles = @(
-            "record_native_material_preview_d3d12_host_ready"
+            "record_native_material_preview_d3d12_host_ready",
+            "record_native_material_preview_texture_display"
         )
     },
     @{
         Path = "editor/src/main.cpp"
         Needles = @(
             "editor_shell_material_preview_status=",
+            "editor_shell_material_preview_visible_texture_composites=",
             "editor_shell_material_preview_native_handles_exposed="
         )
     },
     @{
         Path = "CMakeLists.txt"
         Needles = @(
-            "editor_shell_material_preview_status=diagnostic_only",
+            "editor_shell_material_preview_status=d3d12_texture_ready",
+            "editor_shell_material_preview_visible_texture_composites",
             "editor_shell_material_preview_native_handles_exposed=0"
         )
     },
@@ -2340,6 +2392,7 @@ $nativeEditorMaterialPreviewChecks = @(
             "editor native material preview plan waits for descriptor and fence lifecycle",
             "editor native material preview plan reports private d3d12 texture readiness",
             "editor native texture display adapter prepares material preview execution evidence",
+            "editor visible texture compositor promotes material preview only after visible panel composite",
             "editor native material preview plan keeps d3d12 handles private"
         )
     },
@@ -2354,19 +2407,21 @@ $nativeEditorMaterialPreviewChecks = @(
     @{
         Path = "docs/editor.md"
         Needles = @(
-            "editor_shell_material_preview_status=diagnostic_only",
+            "editor_shell_material_preview_status=d3d12_texture_ready",
+            "editor_shell_material_preview_visible_texture_composites",
             "editor_shell_material_preview_native_handles_exposed=0",
             "host-private-native",
-            "material-preview GPU parity remains unsupported"
+            "broader material-preview GPU parity"
         )
     },
     @{
         Path = "engine/agent/manifest.json"
         Needles = @(
-            "editor_shell_material_preview_status=diagnostic_only",
+            "editor_shell_material_preview_status=d3d12_texture_ready",
+            "editor_shell_material_preview_visible_texture_composites",
             "editor_shell_material_preview_native_handles_exposed=0",
             "host-private-native",
-            "material-preview GPU parity remains unsupported"
+            "broader material-preview GPU parity"
         )
     }
 )

@@ -71,9 +71,13 @@ int main(int argc, char** argv) {
                   << "editor_shell_clipboard_service=" << services.clipboard_service_id << '\n'
                   << "editor_shell_reviewed_process_runner=" << services.reviewed_process_runner_id << '\n'
                   << "editor_shell_viewport_status=" << viewport_display.status_id << '\n'
+                  << "editor_shell_viewport_visible_texture_composites=" << viewport_display.visible_texture_composites
+                  << '\n'
                   << "editor_shell_viewport_native_handles_exposed="
                   << (viewport_display.native_texture_handles_exposed ? 1 : 0) << '\n'
                   << "editor_shell_material_preview_status=" << material_preview_display.status_id << '\n'
+                  << "editor_shell_material_preview_visible_texture_composites="
+                  << material_preview_display.visible_texture_composites << '\n'
                   << "editor_shell_material_preview_native_handles_exposed="
                   << (material_preview_display.native_texture_handles_exposed ? 1 : 0) << '\n'
                   << "editor_shell_text_atlas_handoff_status=" << text_atlas.status << '\n'

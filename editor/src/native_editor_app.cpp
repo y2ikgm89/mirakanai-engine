@@ -826,6 +826,21 @@ void NativeEditorApp::record_native_material_preview_d3d12_host_ready(std::uint6
                                                          impl_->material_preview_display.execution_snapshot);
 }
 
+void NativeEditorApp::record_native_viewport_texture_display(NativeViewportDisplayPlan plan) {
+    impl_->viewport.set_renderer(plan.backend_id);
+    impl_->viewport.resize(plan.extent);
+    if (plan.texture_display_ready) {
+        impl_->viewport.mark_frame_rendered();
+    }
+    impl_->viewport_display = std::move(plan);
+}
+
+void NativeEditorApp::record_native_material_preview_texture_display(NativeMaterialPreviewDisplayPlan plan) {
+    impl_->material_preview_display = std::move(plan);
+    apply_editor_material_gpu_preview_execution_snapshot(impl_->material_preview,
+                                                         impl_->material_preview_display.execution_snapshot);
+}
+
 void NativeEditorApp::record_native_text_atlas_handoff_evidence(NativeEditorTextAtlasHandoffEvidence evidence) {
     impl_->text_atlas_handoff_evidence = std::move(evidence);
 }

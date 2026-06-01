@@ -48,6 +48,7 @@ struct NativeTextureDisplayAdapter::Impl {
     rhi::DescriptorSetLayoutHandle sampled_texture_layout;
     rhi::DescriptorSetHandle sampled_texture_set;
     NativeTextureDisplayAdapterEvidence evidence;
+    NativeTextureDisplayFrame display_frame;
 
     void resize(ViewportExtent next_extent) {
         if (next_extent.width == extent.width && next_extent.height == extent.height) {
@@ -116,6 +117,7 @@ struct NativeTextureDisplayAdapter::Impl {
             .fence_waits = 0U,
             .diagnostic = {},
         };
+        display_frame = NativeTextureDisplayFrame{};
 
         if (!d3d12_host_available || device == nullptr || !valid_extent(extent)) {
             evidence.diagnostic =
@@ -128,6 +130,14 @@ struct NativeTextureDisplayAdapter::Impl {
             ensure_surface();
             surface->render_clear_frame();
             const auto display = surface->prepare_display_frame();
+            display_frame = NativeTextureDisplayFrame{
+                .available = display.texture.value != 0U,
+                .texture = display.texture,
+                .extent = ViewportExtent{.width = display.extent.width, .height = display.extent.height},
+                .format = display.format,
+                .frame_index = frame_index,
+                .frames_rendered = surface->frames_rendered(),
+            };
             ensure_descriptor_lease();
             device->update_descriptor_set(rhi::DescriptorWrite{
                 .set = sampled_texture_set,
@@ -224,6 +234,10 @@ NativeMaterialPreviewDisplayPlan NativeTextureDisplayAdapter::render_material_pr
 
 const NativeTextureDisplayAdapterEvidence& NativeTextureDisplayAdapter::evidence() const noexcept {
     return impl_->evidence;
+}
+
+NativeTextureDisplayFrame NativeTextureDisplayAdapter::display_frame() const noexcept {
+    return impl_->display_frame;
 }
 
 } // namespace mirakana::editor

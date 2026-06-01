@@ -32,7 +32,11 @@ struct FirstPartyEditorShellSmokeCounters {
     std::uint32_t panel_count{0};
     bool imgui_enabled{false};
     bool sdl3_enabled{false};
+    std::string viewport_status{"host_unavailable"};
+    std::uint64_t viewport_visible_texture_composites{0};
     bool viewport_native_handles_exposed{false};
+    std::string material_preview_status{"host_unavailable"};
+    std::uint64_t material_preview_visible_texture_composites{0};
     bool material_preview_native_handles_exposed{false};
     std::string text_atlas_handoff_status{"not_evaluated"};
     bool text_font_adapter_invoked{false};

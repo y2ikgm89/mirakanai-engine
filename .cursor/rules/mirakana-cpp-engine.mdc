@@ -11,7 +11,7 @@ alwaysApply: false
 - Keep `engine/core` standard-library-only; platform work behind `engine/platform`; graphics behind renderer/RHI.
 - Prefer RAII, value types, explicit ownership, and `mirakana::` for public API.
 - Treat removed Dear ImGui shell implementation as historical evidence only; runtime game UI uses public `mirakana::ui` contracts and must not depend on UI middleware.
-- The optional Windows-native `MK_editor` shell is active through the dependency-free `desktop-editor` lane; do not recreate removed SDL3 shell sources. Full D3D12 viewport/material texture display remains private future adapter work under `editor/src`.
+- The optional Windows-native `MK_editor` shell is active through the dependency-free `desktop-editor` lane; do not recreate removed SDL3 shell sources. The current Windows D3D12 viewport/material visible texture compositor remains private under `editor/src`; future Vulkan/Metal parity or broader material-preview GPU parity needs focused validation.
 - Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1`, `tools/cmake.ps1`, `tools/ctest.ps1`, and `tools/check-tidy.ps1` per [`AGENTS.md`](../../AGENTS.md).
 - Use focused target builds/tests while iterating, then `tools/validate.ps1` at the slice-closing gate.
 

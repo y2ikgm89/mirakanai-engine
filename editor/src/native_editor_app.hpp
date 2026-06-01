@@ -155,6 +155,8 @@ class NativeEditorApp {
     void record_native_resource_device_ready(std::uint64_t frame_index);
     void record_native_viewport_d3d12_host_ready(std::uint64_t frame_index);
     void record_native_material_preview_d3d12_host_ready(std::uint64_t frame_index);
+    void record_native_viewport_texture_display(NativeViewportDisplayPlan plan);
+    void record_native_material_preview_texture_display(NativeMaterialPreviewDisplayPlan plan);
     void record_native_text_atlas_handoff_evidence(NativeEditorTextAtlasHandoffEvidence evidence);
 
   private:
