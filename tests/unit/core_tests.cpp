@@ -727,6 +727,74 @@ MK_TEST("memory diagnostics summarize classes high water and budget pressure") {
     MK_REQUIRE(resident_gpu.diagnostic_codes[0] == mirakana::MemoryDiagnosticsCode::budget_pressure);
 }
 
+MK_TEST("memory diagnostics summarize frame and worker scratch reuse reset evidence") {
+    const std::array rows{
+        mirakana::MemoryCounterRow{.lifetime_class = mirakana::MemoryLifetimeClass::frame_temporary,
+                                   .name = "frame.frame_arena",
+                                   .bytes = 768,
+                                   .allocation_count = 2,
+                                   .high_water_bytes = 1024,
+                                   .budget_bytes = 2048,
+                                   .frame_index = 14,
+                                   .reuse_count = 5,
+                                   .reset_count = 1},
+        mirakana::MemoryCounterRow{.lifetime_class = mirakana::MemoryLifetimeClass::worker_scratch,
+                                   .name = "worker.3.scratch_arena",
+                                   .bytes = 512,
+                                   .allocation_count = 0,
+                                   .high_water_bytes = 1024,
+                                   .budget_bytes = 4096,
+                                   .frame_index = 14,
+                                   .reuse_count = 4,
+                                   .reset_count = 2},
+    };
+
+    const auto summary = mirakana::summarize_memory_diagnostics(rows);
+
+    MK_REQUIRE(summary.status == mirakana::MemoryDiagnosticsStatus::ready);
+    MK_REQUIRE(summary.total_bytes == 1280);
+    MK_REQUIRE(summary.total_allocation_count == 2);
+    MK_REQUIRE(summary.total_reuse_count == 9);
+    MK_REQUIRE(summary.total_reset_count == 3);
+    MK_REQUIRE(summary.high_water_bytes == 2048);
+    MK_REQUIRE(summary.class_summaries.size() == 2U);
+
+    const auto& frame = summary.class_summaries[0];
+    MK_REQUIRE(frame.lifetime_class == mirakana::MemoryLifetimeClass::frame_temporary);
+    MK_REQUIRE(frame.allocation_count == 2);
+    MK_REQUIRE(frame.reuse_count == 5);
+    MK_REQUIRE(frame.reset_count == 1);
+    MK_REQUIRE(frame.diagnostic_codes.empty());
+
+    const auto& worker = summary.class_summaries[1];
+    MK_REQUIRE(worker.lifetime_class == mirakana::MemoryLifetimeClass::worker_scratch);
+    MK_REQUIRE(worker.allocation_count == 0);
+    MK_REQUIRE(worker.reuse_count == 4);
+    MK_REQUIRE(worker.reset_count == 2);
+    MK_REQUIRE(worker.diagnostic_codes.empty());
+}
+
+MK_TEST("memory diagnostics reject reuse without allocation outside scratch classes") {
+    const std::array rows{
+        mirakana::MemoryCounterRow{.lifetime_class = mirakana::MemoryLifetimeClass::persistent_cpu,
+                                   .name = "persistent.bad_reuse",
+                                   .bytes = 256,
+                                   .allocation_count = 0,
+                                   .high_water_bytes = 256,
+                                   .frame_index = 14,
+                                   .reuse_count = 1},
+    };
+
+    const auto summary = mirakana::summarize_memory_diagnostics(rows);
+
+    MK_REQUIRE(summary.status == mirakana::MemoryDiagnosticsStatus::invalid_rows);
+    MK_REQUIRE(summary.total_reuse_count == 1);
+    MK_REQUIRE(summary.diagnostic_codes.size() == 1U);
+    MK_REQUIRE(summary.diagnostic_codes[0] == mirakana::MemoryDiagnosticsCode::invalid_counter);
+    MK_REQUIRE(summary.diagnostics.size() == 1U);
+    MK_REQUIRE(summary.diagnostics[0].contains("zero allocation count"));
+}
+
 MK_TEST("memory diagnostics fail closed for empty rows and exceeded budgets") {
     const auto empty_summary = mirakana::summarize_memory_diagnostics({});
 
@@ -816,6 +884,89 @@ MK_TEST("memory diagnostics fail closed for invalid stale and safe point rows") 
     MK_REQUIRE(summary.diagnostics[3].contains("use after safe point"));
 }
 
+MK_TEST("memory diagnostics do not double count safe point boolean and count") {
+    const std::array rows{
+        mirakana::MemoryCounterRow{.lifetime_class = mirakana::MemoryLifetimeClass::frame_temporary,
+                                   .name = "frame.after_safe_point",
+                                   .bytes = 64,
+                                   .allocation_count = 1,
+                                   .high_water_bytes = 64,
+                                   .frame_index = 22,
+                                   .use_after_safe_point_count = 2,
+                                   .use_after_safe_point = true},
+    };
+
+    const auto summary = mirakana::summarize_memory_diagnostics(rows);
+
+    MK_REQUIRE(summary.status == mirakana::MemoryDiagnosticsStatus::invalid_rows);
+    MK_REQUIRE(summary.total_use_after_safe_point_count == 2);
+    MK_REQUIRE(summary.class_summaries.size() == 1U);
+    MK_REQUIRE(summary.class_summaries[0].use_after_safe_point_count == 2);
+    MK_REQUIRE(summary.diagnostic_codes.size() == 1U);
+    MK_REQUIRE(summary.diagnostic_codes[0] == mirakana::MemoryDiagnosticsCode::use_after_safe_point);
+    MK_REQUIRE(summary.diagnostics.size() == 1U);
+    MK_REQUIRE(summary.diagnostics[0].contains("use after safe point count 2"));
+}
+
+MK_TEST("memory diagnostics fail closed for scratch ownership and cache hazards") {
+    const std::array rows{
+        mirakana::MemoryCounterRow{.lifetime_class = mirakana::MemoryLifetimeClass::worker_scratch,
+                                   .name = "worker.2.cross_thread_free",
+                                   .bytes = 256,
+                                   .allocation_count = 1,
+                                   .high_water_bytes = 512,
+                                   .frame_index = 22,
+                                   .cross_thread_free_count = 1},
+        mirakana::MemoryCounterRow{.lifetime_class = mirakana::MemoryLifetimeClass::frame_temporary,
+                                   .name = "frame.after_safe_point",
+                                   .bytes = 128,
+                                   .allocation_count = 1,
+                                   .high_water_bytes = 256,
+                                   .frame_index = 22,
+                                   .use_after_safe_point_count = 2},
+        mirakana::MemoryCounterRow{.lifetime_class = mirakana::MemoryLifetimeClass::worker_scratch,
+                                   .name = "worker.3.false_sharing",
+                                   .bytes = 64,
+                                   .allocation_count = 1,
+                                   .high_water_bytes = 128,
+                                   .frame_index = 22,
+                                   .false_sharing_count = 3},
+    };
+
+    const auto summary = mirakana::summarize_memory_diagnostics(rows);
+
+    MK_REQUIRE(summary.status == mirakana::MemoryDiagnosticsStatus::invalid_rows);
+    MK_REQUIRE(summary.total_cross_thread_free_count == 1);
+    MK_REQUIRE(summary.total_use_after_safe_point_count == 2);
+    MK_REQUIRE(summary.total_false_sharing_count == 3);
+    MK_REQUIRE(std::ranges::find(summary.diagnostic_codes, mirakana::MemoryDiagnosticsCode::cross_thread_free) !=
+               summary.diagnostic_codes.end());
+    MK_REQUIRE(std::ranges::find(summary.diagnostic_codes, mirakana::MemoryDiagnosticsCode::use_after_safe_point) !=
+               summary.diagnostic_codes.end());
+    MK_REQUIRE(std::ranges::find(summary.diagnostic_codes, mirakana::MemoryDiagnosticsCode::false_sharing) !=
+               summary.diagnostic_codes.end());
+
+    const auto& frame = summary.class_summaries[0];
+    MK_REQUIRE(frame.lifetime_class == mirakana::MemoryLifetimeClass::frame_temporary);
+    MK_REQUIRE(frame.use_after_safe_point_count == 2);
+    MK_REQUIRE(std::ranges::find(frame.diagnostic_codes, mirakana::MemoryDiagnosticsCode::use_after_safe_point) !=
+               frame.diagnostic_codes.end());
+
+    const auto& worker = summary.class_summaries[1];
+    MK_REQUIRE(worker.lifetime_class == mirakana::MemoryLifetimeClass::worker_scratch);
+    MK_REQUIRE(worker.cross_thread_free_count == 1);
+    MK_REQUIRE(worker.false_sharing_count == 3);
+    MK_REQUIRE(std::ranges::find(worker.diagnostic_codes, mirakana::MemoryDiagnosticsCode::cross_thread_free) !=
+               worker.diagnostic_codes.end());
+    MK_REQUIRE(std::ranges::find(worker.diagnostic_codes, mirakana::MemoryDiagnosticsCode::false_sharing) !=
+               worker.diagnostic_codes.end());
+
+    MK_REQUIRE(summary.diagnostics.size() == 3U);
+    MK_REQUIRE(summary.diagnostics[0].contains("cross-thread free"));
+    MK_REQUIRE(summary.diagnostics[1].contains("use after safe point"));
+    MK_REQUIRE(summary.diagnostics[2].contains("false sharing"));
+}
+
 MK_TEST("memory diagnostics labels are stable") {
     MK_REQUIRE(mirakana::memory_lifetime_class_label(mirakana::MemoryLifetimeClass::frame_temporary) ==
                "frame_temporary");
@@ -835,6 +986,10 @@ MK_TEST("memory diagnostics labels are stable") {
     MK_REQUIRE(mirakana::memory_budget_pressure_label(mirakana::MemoryBudgetPressure::warning) == "warning");
     MK_REQUIRE(mirakana::memory_diagnostics_code_label(mirakana::MemoryDiagnosticsCode::use_after_safe_point) ==
                "use_after_safe_point");
+    MK_REQUIRE(mirakana::memory_diagnostics_code_label(mirakana::MemoryDiagnosticsCode::cross_thread_free) ==
+               "cross_thread_free");
+    MK_REQUIRE(mirakana::memory_diagnostics_code_label(mirakana::MemoryDiagnosticsCode::false_sharing) ==
+               "false_sharing");
     MK_REQUIRE(mirakana::memory_diagnostics_status_label(mirakana::MemoryDiagnosticsStatus::budget_exceeded) ==
                "budget_exceeded");
 }

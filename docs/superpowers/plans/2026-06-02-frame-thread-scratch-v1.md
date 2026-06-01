@@ -74,9 +74,11 @@ Do frame/thread scratch evidence before allocator replacement, broad job schedul
 - Modify: `engine/core/src/diagnostics.cpp` only if a reusable data-summary extension is needed
 - Test: `tests/unit/core_tests.cpp` when `MK_core` behavior changes
 
-- [ ] Define or reuse data-only rows that can summarize frame temporary and worker scratch bytes, allocations, high-water marks, reset counts, cross-thread frees, stale safe-point use, and false-sharing diagnostics by lifetime class.
-- [ ] Keep the model host-independent and dependency-free.
-- [ ] Add focused tests only for durable external behavior, not for incidental implementation ordering.
+- [x] Define or reuse data-only rows that can summarize frame temporary and worker scratch bytes, allocations, high-water marks, reset counts, cross-thread frees, stale safe-point use, and false-sharing diagnostics by lifetime class.
+- [x] Keep the model host-independent and dependency-free.
+- [x] Add focused tests only for durable external behavior, not for incidental implementation ordering.
+
+Phase 1 implementation on 2026-06-02 extends the dependency-free `MK_core` `MemoryCounterRow`, `MemoryClassDiagnosticsSummary`, and `MemoryDiagnosticsSummary` rows with reuse counts, reset counts, cross-thread-free counts, use-after-safe-point counts, and false-sharing counts. `summarize_memory_diagnostics` now aggregates those values by lifetime class, treats zero-allocation reuse as valid evidence only for `frame_temporary` and `worker_scratch`, deduplicates legacy boolean and counted use-after-safe-point reports, and reports `cross_thread_free` / `false_sharing` diagnostics without installing allocators, enforcing arenas, or changing scheduler behavior.
 
 ## Phase 2 - First-Party Scratch Ownership APIs
 
@@ -133,6 +135,23 @@ Phase 0 selection validation on 2026-06-02:
 - `git diff --check`
 - Full `tools/validate.ps1` was not run for this Phase 0 selection because the change is limited to docs, manifest pointers, and static contract needles; targeted manifest/agent/static checks cover the changed contracts.
 - Hosted PR evidence is recorded on the task-owned Phase 0 selection PR.
+
+Phase 1 focused validation on 2026-06-02:
+
+- TDD red check: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests` failed before implementation because `MemoryCounterRow` did not yet expose `reuse_count`, `reset_count`, `cross_thread_free_count`, `use_after_safe_point_count`, `false_sharing_count`, and the summary rows did not expose matching totals or diagnostic codes.
+- Review red check: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev -R MK_core_tests --output-on-failure` failed after adding boundary tests for non-scratch zero-allocation reuse and legacy/count use-after-safe-point double counting.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev -R MK_core_tests --output-on-failure`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files "engine/core/src/diagnostics.cpp,tests/unit/core_tests.cpp"`
+- `git diff --check`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`
+- Hosted PR evidence is recorded on the task-owned Phase 1 PR.
 
 ## Done When
 

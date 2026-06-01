@@ -102,6 +102,8 @@ enum class MemoryDiagnosticsCode : std::uint8_t {
     invalid_counter,
     stale_generation,
     use_after_safe_point,
+    cross_thread_free,
+    false_sharing,
     budget_pressure,
     budget_exceeded
 };
@@ -124,6 +126,11 @@ struct MemoryCounterRow {
     std::uint64_t generation{0};
     std::uint64_t safe_point_generation{0};
     std::uint64_t frame_index{0};
+    std::uint64_t reuse_count{0};
+    std::uint64_t reset_count{0};
+    std::uint64_t cross_thread_free_count{0};
+    std::uint64_t use_after_safe_point_count{0};
+    std::uint64_t false_sharing_count{0};
     bool use_after_safe_point{false};
 };
 
@@ -132,8 +139,13 @@ struct MemoryClassDiagnosticsSummary {
     std::uint64_t row_count{0};
     std::uint64_t bytes{0};
     std::uint64_t allocation_count{0};
+    std::uint64_t reuse_count{0};
+    std::uint64_t reset_count{0};
     std::uint64_t high_water_bytes{0};
     std::uint64_t budget_bytes{0};
+    std::uint64_t cross_thread_free_count{0};
+    std::uint64_t use_after_safe_point_count{0};
+    std::uint64_t false_sharing_count{0};
     double budget_pressure_ratio{0.0};
     MemoryBudgetPressure pressure{MemoryBudgetPressure::none};
     std::vector<MemoryDiagnosticsCode> diagnostic_codes;
@@ -147,7 +159,12 @@ struct MemoryDiagnosticsSummary {
     std::uint64_t row_count{0};
     std::uint64_t total_bytes{0};
     std::uint64_t total_allocation_count{0};
+    std::uint64_t total_reuse_count{0};
+    std::uint64_t total_reset_count{0};
     std::uint64_t high_water_bytes{0};
+    std::uint64_t total_cross_thread_free_count{0};
+    std::uint64_t total_use_after_safe_point_count{0};
+    std::uint64_t total_false_sharing_count{0};
     MemoryDiagnosticsStatus status{MemoryDiagnosticsStatus::missing_rows};
     std::vector<MemoryClassDiagnosticsSummary> class_summaries;
     std::vector<MemoryDiagnosticsCode> diagnostic_codes;
