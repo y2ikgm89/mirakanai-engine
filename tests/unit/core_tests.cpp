@@ -33,6 +33,7 @@
 #include "mirakana/core/application.hpp"
 #include "mirakana/core/diagnostics.hpp"
 #include "mirakana/core/log.hpp"
+#include "mirakana/core/memory.hpp"
 #include "mirakana/core/registry.hpp"
 #include "mirakana/core/time.hpp"
 #include "mirakana/core/version.hpp"
@@ -992,6 +993,173 @@ MK_TEST("memory diagnostics labels are stable") {
                "false_sharing");
     MK_REQUIRE(mirakana::memory_diagnostics_status_label(mirakana::MemoryDiagnosticsStatus::budget_exceeded) ==
                "budget_exceeded");
+    MK_REQUIRE(mirakana::scratch_lease_status_label(mirakana::ScratchLeaseStatus::ready) == "ready");
+    MK_REQUIRE(mirakana::scratch_lease_status_label(mirakana::ScratchLeaseStatus::released) == "released");
+    MK_REQUIRE(mirakana::scratch_lease_status_label(mirakana::ScratchLeaseStatus::invalid_request) ==
+               "invalid_request");
+    MK_REQUIRE(mirakana::scratch_lease_status_label(mirakana::ScratchLeaseStatus::invalid_alignment) ==
+               "invalid_alignment");
+    MK_REQUIRE(mirakana::scratch_lease_status_label(mirakana::ScratchLeaseStatus::capacity_exceeded) ==
+               "capacity_exceeded");
+    MK_REQUIRE(mirakana::scratch_lease_status_label(mirakana::ScratchLeaseStatus::invalid_owner) == "invalid_owner");
+    MK_REQUIRE(mirakana::scratch_lease_status_label(mirakana::ScratchLeaseStatus::stale_generation) ==
+               "stale_generation");
+}
+
+MK_TEST("scratch arena acquires bounded frame leases and resets at safe points") {
+    static_assert(!std::is_copy_constructible_v<mirakana::ScratchArena>);
+    static_assert(!std::is_move_constructible_v<mirakana::ScratchArena>);
+
+    auto arena = mirakana::ScratchArena::make_frame("frame.frame_arena", 256);
+
+    const auto first = arena.acquire(64, 16);
+    MK_REQUIRE(first.status == mirakana::ScratchLeaseStatus::ready);
+    MK_REQUIRE(first.bytes.size() == 64U);
+    MK_REQUIRE(reinterpret_cast<std::uintptr_t>(first.bytes.data()) % 16U == 0U);
+    std::ranges::fill(first.bytes, std::byte{0x2a});
+
+    const auto second = arena.acquire(96, 32);
+    MK_REQUIRE(second.status == mirakana::ScratchLeaseStatus::ready);
+    MK_REQUIRE(second.bytes.size() == 96U);
+    MK_REQUIRE(reinterpret_cast<std::uintptr_t>(second.bytes.data()) % 32U == 0U);
+
+    const auto exhausted = arena.acquire(512, 16);
+    MK_REQUIRE(exhausted.status == mirakana::ScratchLeaseStatus::capacity_exceeded);
+    MK_REQUIRE(exhausted.bytes.empty());
+
+    arena.reset_at_safe_point();
+    const auto reused = arena.acquire(32, 16);
+    MK_REQUIRE(reused.status == mirakana::ScratchLeaseStatus::ready);
+    MK_REQUIRE(reused.generation == 1);
+
+    const auto row = arena.memory_counter_row(44);
+    MK_REQUIRE(row.lifetime_class == mirakana::MemoryLifetimeClass::frame_temporary);
+    MK_REQUIRE(row.name == "frame.frame_arena");
+    MK_REQUIRE(row.bytes == 32);
+    MK_REQUIRE(row.allocation_count == 3);
+    MK_REQUIRE(row.high_water_bytes == 160);
+    MK_REQUIRE(row.budget_bytes == 256);
+    MK_REQUIRE(row.generation == 1);
+    MK_REQUIRE(row.safe_point_generation == 1);
+    MK_REQUIRE(row.frame_index == 44);
+    MK_REQUIRE(row.reuse_count == 1);
+    MK_REQUIRE(row.reset_count == 1);
+
+    const std::array rows{row};
+    const auto summary = mirakana::summarize_memory_diagnostics(rows);
+    MK_REQUIRE(summary.status == mirakana::MemoryDiagnosticsStatus::ready);
+    MK_REQUIRE(summary.total_reuse_count == 1);
+    MK_REQUIRE(summary.total_reset_count == 1);
+}
+
+MK_TEST("scratch arena charges alignment padding to capacity evidence") {
+    constexpr std::size_t alignment = 64;
+
+    auto arena = mirakana::ScratchArena::make_frame("frame.aligned_scratch", 4096);
+    const auto probe = arena.acquire(1, 1);
+    MK_REQUIRE(probe.status == mirakana::ScratchLeaseStatus::ready);
+
+    const auto base_address = reinterpret_cast<std::uintptr_t>(probe.bytes.data());
+    const auto prefix_bytes = ((alignment - (base_address % alignment)) % alignment) + 1U;
+    arena.reset_at_safe_point();
+
+    const auto prefix = arena.acquire(prefix_bytes, 1);
+    MK_REQUIRE(prefix.status == mirakana::ScratchLeaseStatus::ready);
+
+    const auto aligned = arena.acquire(8, alignment);
+    MK_REQUIRE(aligned.status == mirakana::ScratchLeaseStatus::ready);
+
+    const auto aligned_offset = reinterpret_cast<std::uintptr_t>(aligned.bytes.data()) - base_address;
+    const auto consumed_bytes = aligned_offset + aligned.bytes.size();
+    MK_REQUIRE(consumed_bytes == prefix_bytes + alignment - 1U + aligned.bytes.size());
+    MK_REQUIRE(arena.used_bytes() == consumed_bytes);
+
+    const auto row = arena.memory_counter_row(46);
+    MK_REQUIRE(row.bytes == consumed_bytes);
+    MK_REQUIRE(row.high_water_bytes == consumed_bytes);
+}
+
+MK_TEST("scratch arena rejects invalid alignment requests") {
+    auto arena = mirakana::ScratchArena::make_frame("frame.invalid_alignment", 128);
+
+    const auto zero_alignment = arena.acquire(8, 0);
+    MK_REQUIRE(zero_alignment.status == mirakana::ScratchLeaseStatus::invalid_alignment);
+    MK_REQUIRE(zero_alignment.bytes.empty());
+
+    const auto non_power_of_two = arena.acquire(8, 24);
+    MK_REQUIRE(non_power_of_two.status == mirakana::ScratchLeaseStatus::invalid_alignment);
+    MK_REQUIRE(non_power_of_two.bytes.empty());
+
+    const auto too_large = arena.acquire(8, 8192);
+    MK_REQUIRE(too_large.status == mirakana::ScratchLeaseStatus::invalid_alignment);
+    MK_REQUIRE(too_large.bytes.empty());
+
+    const auto zero_bytes = arena.acquire(0, 16);
+    MK_REQUIRE(zero_bytes.status == mirakana::ScratchLeaseStatus::invalid_request);
+    MK_REQUIRE(zero_bytes.bytes.empty());
+
+    const auto row = arena.memory_counter_row(47);
+    MK_REQUIRE(row.bytes == 0);
+    MK_REQUIRE(row.allocation_count == 0);
+}
+
+MK_TEST("scratch arena enforces worker ownership and stale lease boundaries") {
+    auto arena = mirakana::ScratchArena::make_worker("worker.3.scratch_arena", 128, 3);
+
+    const auto wrong_owner = arena.acquire(16, 16, 4);
+    MK_REQUIRE(wrong_owner.status == mirakana::ScratchLeaseStatus::invalid_owner);
+    MK_REQUIRE(wrong_owner.bytes.empty());
+
+    const auto lease = arena.acquire(32, 16, 3);
+    MK_REQUIRE(lease.status == mirakana::ScratchLeaseStatus::ready);
+    MK_REQUIRE(lease.owner_id == 3);
+    MK_REQUIRE(lease.lifetime_class == mirakana::MemoryLifetimeClass::worker_scratch);
+
+    MK_REQUIRE(arena.release(lease, 4) == mirakana::ScratchLeaseStatus::invalid_owner);
+    arena.reset_at_safe_point();
+    MK_REQUIRE(arena.release(lease, 3) == mirakana::ScratchLeaseStatus::stale_generation);
+
+    const auto row = arena.memory_counter_row(45);
+    MK_REQUIRE(row.lifetime_class == mirakana::MemoryLifetimeClass::worker_scratch);
+    MK_REQUIRE(row.name == "worker.3.scratch_arena");
+    MK_REQUIRE(row.bytes == 0);
+    MK_REQUIRE(row.allocation_count == 1);
+    MK_REQUIRE(row.high_water_bytes == 32);
+    MK_REQUIRE(row.budget_bytes == 128);
+    MK_REQUIRE(row.generation == 1);
+    MK_REQUIRE(row.safe_point_generation == 1);
+    MK_REQUIRE(row.cross_thread_free_count == 1);
+    MK_REQUIRE(row.use_after_safe_point_count == 1);
+
+    const std::array rows{row};
+    const auto summary = mirakana::summarize_memory_diagnostics(rows);
+    MK_REQUIRE(summary.status == mirakana::MemoryDiagnosticsStatus::invalid_rows);
+    MK_REQUIRE(summary.total_cross_thread_free_count == 1);
+    MK_REQUIRE(summary.total_use_after_safe_point_count == 1);
+    MK_REQUIRE(std::ranges::find(summary.diagnostic_codes, mirakana::MemoryDiagnosticsCode::cross_thread_free) !=
+               summary.diagnostic_codes.end());
+    MK_REQUIRE(std::ranges::find(summary.diagnostic_codes, mirakana::MemoryDiagnosticsCode::use_after_safe_point) !=
+               summary.diagnostic_codes.end());
+}
+
+MK_TEST("scratch arena rejects leases outside its backing storage") {
+    auto owner = mirakana::ScratchArena::make_worker("worker.7.scratch_arena", 128, 7);
+    auto other = mirakana::ScratchArena::make_worker("worker.7.other_scratch_arena", 128, 7);
+
+    const auto other_lease = other.acquire(16, 16, 7);
+    MK_REQUIRE(other_lease.status == mirakana::ScratchLeaseStatus::ready);
+    MK_REQUIRE(owner.release(other_lease, 7) == mirakana::ScratchLeaseStatus::invalid_request);
+
+    auto forged = other_lease;
+    forged.bytes = {};
+    forged.lifetime_class = mirakana::MemoryLifetimeClass::worker_scratch;
+    forged.owner_id = 7;
+    forged.generation = owner.generation();
+    MK_REQUIRE(owner.release(forged, 7) == mirakana::ScratchLeaseStatus::invalid_request);
+
+    const auto row = owner.memory_counter_row(48);
+    MK_REQUIRE(row.cross_thread_free_count == 0);
+    MK_REQUIRE(row.use_after_safe_point_count == 0);
 }
 
 MK_TEST("registry invalidates destroyed entities") {

@@ -467,7 +467,7 @@ Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditor) "IEditorP
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditor) "isolated simulation scene" "editor game guidance"
 Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentEditor) "scene_prefab_source_links" "editor prefab source-link guidance"
 foreach ($memoryDiagnosticsGuidanceNeedle in @(
-        "Memory Diagnostics v1",
+        "Memory Diagnostics v1", "ScratchArena", "ScratchLease", "ScratchLeaseStatus", "reset_at_safe_point", "memory_counter_row",
         "MemoryCounterRow",
         "MemoryLifetimeClass",
         "MemoryDiagnosticsSummary",
