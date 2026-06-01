@@ -1,8 +1,6 @@
 #requires -Version 7.0
 #requires -PSEdition Core
-
 # Chapter 3 for check-json-contracts.ps1 static contracts.
-
 $validateDesktopRuntimeScript = Get-Content -LiteralPath (Join-Path $root "tools/validate-desktop-game-runtime.ps1") -Raw
 foreach ($requiredNeedle in @(
         "MK_runtime_host_win32_public_api_compile",
@@ -1500,6 +1498,7 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
         }
     }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "ai-operable-performance-budget-and-evidence-v1") { foreach ($needle in @("performanceBudgets", "budgetRows", "evidenceRows", "validation recipe", "unsupported broad optimization claims", "CPU/GPU/memory optimization")) { if (-not $recommendedText.Contains($needle)) { Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe performance budget evidence selection: $needle" } }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "performance-baseline-v1") { foreach ($needle in @("reproducible benchmark scenes/packages", "trace export recipes", "subsystem counters", "p95/p99 frame budget reporting", "broad CPU/GPU/memory optimization")) { if (-not $recommendedText.Contains($needle)) { Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe performance baseline selection: $needle" } }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "first-party-ui-editor-production-stack-v1") {
     foreach ($needle in @("First-Party UI Editor Production Stack v1", "MK_editor", "MK_editor_core", "desktop-editor", "mirakana::ui", "MK_ui_renderer", "dock graph", "rich text", "DirectWrite", "Text Services Framework", "UI Automation", "D3D12 viewport/material texture display", "AI-operable", "compatibility shims", "unsupportedProductionGaps = []", "SDL3", "native handles", "Dear ImGui")) {
         if (-not $recommendedText.Contains($needle)) {
