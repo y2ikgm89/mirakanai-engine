@@ -9,6 +9,7 @@
 #include "native_editor_launch.hpp"
 #include "native_editor_text_atlas_handoff.hpp"
 #include "native_editor_text_input.hpp"
+#include "native_editor_uia_provider.hpp"
 #if defined(_WIN32)
 #include "native_editor_text_font_adapters.hpp"
 #include "native_editor_tsf_text_input.hpp"
@@ -122,6 +123,16 @@ find_adapter_boundary(const std::vector<mirakana::editor::FirstPartyEditorAdapte
     for (const auto& row : rows) {
         if (row.boundary == boundary) {
             return &row;
+        }
+    }
+    return nullptr;
+}
+
+[[nodiscard]] const mirakana::editor::NativeEditorUiaNode*
+find_uia_node(const mirakana::editor::NativeEditorUiaProviderState& state, std::string_view id) noexcept {
+    for (const auto& node : state.nodes) {
+        if (node.id.value == id) {
+            return &node;
         }
     }
     return nullptr;
@@ -459,6 +470,124 @@ MK_TEST("editor first party document produces renderer submission without native
     MK_REQUIRE(shell_document.renderer_submission.image_placeholders.empty());
 }
 
+MK_TEST("editor native UIA provider maps accessibility payload to stable fragment tree rows") {
+    const mirakana::ui::ElementId root_id{.value = "editor.root"};
+    const mirakana::ui::ElementId panel_id{.value = "editor.panel.inspector"};
+    const mirakana::ui::ElementId button_id{.value = "editor.panel.inspector.apply"};
+    const mirakana::ui::ElementId text_field_id{.value = "editor.panel.project_settings.name.text_field"};
+    const mirakana::ui::AccessibilityPayload payload{
+        .nodes = {
+            mirakana::ui::AccessibilityNode{
+                .id = root_id,
+                .role = mirakana::ui::SemanticRole::root,
+                .label = "MIRAIKANAI Editor",
+                .bounds = mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 1280.0F, .height = 720.0F},
+            },
+            mirakana::ui::AccessibilityNode{
+                .id = panel_id,
+                .role = mirakana::ui::SemanticRole::panel,
+                .label = "Inspector",
+                .bounds = mirakana::ui::Rect{.x = 960.0F, .y = 0.0F, .width = 320.0F, .height = 720.0F},
+                .parent = root_id,
+                .depth = 1U,
+            },
+            mirakana::ui::AccessibilityNode{
+                .id = button_id,
+                .role = mirakana::ui::SemanticRole::button,
+                .label = "Apply",
+                .bounds = mirakana::ui::Rect{.x = 976.0F, .y = 48.0F, .width = 96.0F, .height = 28.0F},
+                .enabled = true,
+                .focusable = true,
+                .parent = panel_id,
+                .depth = 2U,
+            },
+            mirakana::ui::AccessibilityNode{
+                .id = text_field_id,
+                .role = mirakana::ui::SemanticRole::text_field,
+                .label = "Project Name",
+                .bounds = mirakana::ui::Rect{.x = 976.0F, .y = 92.0F, .width = 240.0F, .height = 28.0F},
+                .enabled = true,
+                .focusable = true,
+                .parent = panel_id,
+                .depth = 2U,
+            },
+        }};
+
+    const mirakana::editor::NativeEditorUiaScreenOrigin screen_origin{.x = 320.0F, .y = 48.0F};
+    const auto state = mirakana::editor::plan_native_editor_uia_provider_tree(payload, button_id, screen_origin);
+
+    MK_REQUIRE(state.service_id == "win32_uia");
+    MK_REQUIRE(state.status_id == "uia_provider_ready");
+    MK_REQUIRE(state.provider_available);
+    MK_REQUIRE(!state.native_handles_exposed);
+    MK_REQUIRE(state.nodes.size() == 4U);
+    MK_REQUIRE(state.role_rows == 4U);
+    MK_REQUIRE(state.name_rows == 4U);
+    MK_REQUIRE(state.state_rows == 4U);
+    MK_REQUIRE(state.focus_rows == 1U);
+    MK_REQUIRE(state.action_rows == 2U);
+    MK_REQUIRE(state.relationship_rows == 3U);
+    MK_REQUIRE(state.tree_navigation_rows >= 6U);
+    MK_REQUIRE(state.diagnostics.empty());
+    MK_REQUIRE(state.hidden_nodes == 0U);
+    MK_REQUIRE(state.unsupported_pattern_diagnostics == 0U);
+
+    const auto* root = find_uia_node(state, root_id.value);
+    const auto* panel = find_uia_node(state, panel_id.value);
+    const auto* button = find_uia_node(state, button_id.value);
+    const auto* text_field = find_uia_node(state, text_field_id.value);
+
+    MK_REQUIRE(root != nullptr);
+    MK_REQUIRE(panel != nullptr);
+    MK_REQUIRE(button != nullptr);
+    MK_REQUIRE(text_field != nullptr);
+    MK_REQUIRE(root->control_type_id == "UIA_PaneControlTypeId");
+    MK_REQUIRE(panel->control_type_id == "UIA_PaneControlTypeId");
+    MK_REQUIRE(button->control_type_id == "UIA_ButtonControlTypeId");
+    MK_REQUIRE(text_field->control_type_id == "UIA_EditControlTypeId");
+    MK_REQUIRE(root->bounds == (mirakana::ui::Rect{.x = 320.0F, .y = 48.0F, .width = 1280.0F, .height = 720.0F}));
+    MK_REQUIRE(panel->bounds == (mirakana::ui::Rect{.x = 1280.0F, .y = 48.0F, .width = 320.0F, .height = 720.0F}));
+    MK_REQUIRE(button->bounds == (mirakana::ui::Rect{.x = 1296.0F, .y = 96.0F, .width = 96.0F, .height = 28.0F}));
+    MK_REQUIRE(root->first_child == panel_id);
+    MK_REQUIRE(panel->parent == root_id);
+    MK_REQUIRE(panel->first_child == button_id);
+    MK_REQUIRE(panel->last_child == text_field_id);
+    MK_REQUIRE(button->next_sibling == text_field_id);
+    MK_REQUIRE(text_field->previous_sibling == button_id);
+    MK_REQUIRE(button->has_keyboard_focus);
+    MK_REQUIRE(!text_field->has_keyboard_focus);
+    MK_REQUIRE(root->runtime_id.empty());
+    MK_REQUIRE(!panel->runtime_id.empty());
+    MK_REQUIRE(!button->runtime_id.empty());
+    MK_REQUIRE(button->runtime_id.front() == 3);
+    MK_REQUIRE(std::ranges::find(button->actions, "focus") != button->actions.end());
+    MK_REQUIRE(std::ranges::find(text_field->actions, "focus") != text_field->actions.end());
+}
+
+MK_TEST("editor native UIA provider diagnoses incomplete accessibility rows") {
+    const mirakana::ui::ElementId invalid_id{.value = "editor.invalid"};
+    const mirakana::ui::AccessibilityPayload payload{
+        .nodes = {
+            mirakana::ui::AccessibilityNode{
+                .id = invalid_id,
+                .role = mirakana::ui::SemanticRole::none,
+                .label = "",
+                .bounds = mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 0.0F, .height = 16.0F},
+            },
+        }};
+
+    const auto state = mirakana::editor::plan_native_editor_uia_provider_tree(payload, {});
+
+    MK_REQUIRE(!state.provider_available);
+    MK_REQUIRE(state.status_id == "uia_provider_diagnostics");
+    MK_REQUIRE(state.missing_name_diagnostics == 1U);
+    MK_REQUIRE(state.missing_role_diagnostics == 1U);
+    MK_REQUIRE(state.invalid_bounds_diagnostics == 1U);
+    MK_REQUIRE(state.hidden_nodes == 0U);
+    MK_REQUIRE(state.unsupported_pattern_diagnostics == 0U);
+    MK_REQUIRE(state.diagnostics.size() == 3U);
+}
+
 MK_TEST("editor first party shell smoke counters report imgui disabled") {
     mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
     const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
@@ -552,13 +681,15 @@ MK_TEST("first party editor adapter boundaries report private DirectWrite text a
 
 #if defined(_WIN32)
     constexpr bool text_font_adapter_implemented = true;
+    constexpr bool accessibility_adapter_implemented = true;
 #else
     constexpr bool text_font_adapter_implemented = false;
+    constexpr bool accessibility_adapter_implemented = false;
 #endif
     MK_REQUIRE(text_shaping->implemented == text_font_adapter_implemented);
     MK_REQUIRE(font_rasterization->implemented == text_font_adapter_implemented);
     MK_REQUIRE(ime_text_services->implemented == text_font_adapter_implemented);
-    MK_REQUIRE(!accessibility->implemented);
+    MK_REQUIRE(accessibility->implemented == accessibility_adapter_implemented);
     for (const auto& row : rows) {
         MK_REQUIRE(!row.id.empty());
         MK_REQUIRE(!row.native_handles_public);
@@ -693,6 +824,36 @@ MK_TEST("editor native app recognizes private TSF text input and IME adapters") 
     MK_REQUIRE(app.text_input_state().tsf_adapter_selected);
     MK_REQUIRE(!app.text_input_state().native_handles_exposed);
     MK_REQUIRE(mirakana::editor::native_editor_text_input_status(app.text_input_state()) == "win32_tsf_selected");
+}
+
+MK_TEST("editor native app publishes first party shell accessibility through private UIA adapter") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    auto adapter = mirakana::editor::make_native_editor_uia_accessibility_adapter();
+
+    app.bind_native_services(mirakana::editor::NativeEditorServiceBindings{
+        .accessibility_adapter = adapter.get(),
+        .accessibility_service_id = "win32_uia",
+    });
+
+    const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
+    const auto payload = mirakana::ui::build_accessibility_payload(shell_document.renderer_submission);
+    const auto result = app.publish_native_accessibility_payload(payload, shell_document.focused_element);
+
+    MK_REQUIRE(result.published);
+    MK_REQUIRE(result.nodes_published == payload.nodes.size());
+    MK_REQUIRE(app.services().accessibility_service_id == "win32_uia");
+    MK_REQUIRE(app.services().accessibility_available);
+    MK_REQUIRE(app.services().accessibility_publish_requests == 1U);
+    MK_REQUIRE(app.accessibility_state().status_id == "uia_provider_ready");
+    MK_REQUIRE(app.accessibility_state().provider_available);
+    MK_REQUIRE(app.accessibility_state().nodes.size() == payload.nodes.size());
+    MK_REQUIRE(app.accessibility_state().focus_rows == 1U);
+    MK_REQUIRE(!app.accessibility_state().nodes.empty());
+    MK_REQUIRE(app.accessibility_state().nodes.front().runtime_id.empty());
+    MK_REQUIRE(app.accessibility_state().hidden_nodes == 0U);
+    MK_REQUIRE(app.accessibility_state().unsupported_pattern_diagnostics == 0U);
+    MK_REQUIRE(!app.accessibility_state().native_handles_exposed);
+    MK_REQUIRE(adapter->state().status_id == "uia_provider_ready");
 }
 #endif
 

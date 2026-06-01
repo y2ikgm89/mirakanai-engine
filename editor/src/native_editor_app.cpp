@@ -311,6 +311,8 @@ struct NativeEditorApp::Impl {
     IProcessRunner* process_runner{nullptr};
     ui::IPlatformIntegrationAdapter* platform_text_input_adapter{nullptr};
     ui::IImeAdapter* ime_adapter{nullptr};
+    ui::IAccessibilityAdapter* accessibility_adapter{nullptr};
+    NativeEditorUiaProviderState accessibility_state;
     NativeEditorServiceStatus service_status;
     std::string docking_status_last_frame{"not_rendered"};
     std::uint32_t dock_tab_headers_last_frame{0};
@@ -444,6 +446,10 @@ const NativeEditorTextInputState& NativeEditorApp::text_input_state() const noex
     return impl_->text_input_state;
 }
 
+const NativeEditorUiaProviderState& NativeEditorApp::accessibility_state() const noexcept {
+    return impl_->accessibility_state;
+}
+
 const EditorMaterialAssetPreviewPanelModel& NativeEditorApp::material_preview() const noexcept {
     return impl_->material_preview;
 }
@@ -487,6 +493,12 @@ void NativeEditorApp::bind_native_services(NativeEditorServiceBindings services)
         impl_->service_status.ime_available = true;
         impl_->text_input_state.tsf_adapter_selected = impl_->text_input_state.tsf_adapter_selected ||
                                                        is_win32_tsf_service_id(impl_->service_status.ime_service_id);
+    }
+    if (services.accessibility_adapter != nullptr) {
+        impl_->accessibility_adapter = services.accessibility_adapter;
+        impl_->service_status.accessibility_service_id =
+            services.accessibility_service_id.empty() ? "external" : std::move(services.accessibility_service_id);
+        impl_->service_status.accessibility_available = true;
     }
 }
 
@@ -628,6 +640,42 @@ NativeEditorTextInputCommitResult NativeEditorApp::commit_text_input(ui::Committ
     result.accepted = true;
     result.committed = true;
     ++impl_->service_status.committed_text_inputs;
+    return result;
+}
+
+ui::AccessibilityPublishResult
+NativeEditorApp::publish_native_accessibility_payload(const ui::AccessibilityPayload& payload,
+                                                      const ui::ElementId& focused) {
+    impl_->accessibility_state = plan_native_editor_uia_provider_tree(payload, focused);
+    ui::AccessibilityPublishResult result;
+    result.diagnostics = impl_->accessibility_state.diagnostics;
+    if (!result.diagnostics.empty()) {
+        return result;
+    }
+    if (impl_->accessibility_adapter == nullptr) {
+        impl_->service_status.accessibility_available = false;
+        result.diagnostics.push_back(ui::AdapterPayloadDiagnostic{
+            .id = focused,
+            .code = ui::AdapterPayloadDiagnosticCode::invalid_accessibility_bounds,
+            .message = "native editor accessibility adapter is unavailable",
+        });
+        return result;
+    }
+
+    if (auto* native_adapter = dynamic_cast<NativeEditorUiaAccessibilityAdapter*>(impl_->accessibility_adapter);
+        native_adapter != nullptr) {
+        native_adapter->set_focused_element(focused);
+    }
+
+    result = ui::publish_accessibility_payload(*impl_->accessibility_adapter, payload);
+    if (result.succeeded()) {
+        ++impl_->service_status.accessibility_publish_requests;
+        if (const auto* native_adapter =
+                dynamic_cast<const NativeEditorUiaAccessibilityAdapter*>(impl_->accessibility_adapter);
+            native_adapter != nullptr) {
+            impl_->accessibility_state = native_adapter->state();
+        }
+    }
     return result;
 }
 

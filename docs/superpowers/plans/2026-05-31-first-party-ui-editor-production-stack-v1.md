@@ -72,7 +72,7 @@ Do not add Dear ImGui, Qt, Slint, RmlUi, NoesisGUI, or another UI middleware fra
 - No backward-compatibility shims for removed lane names, CMake options, script names, source filenames, smoke counters, API aliases, or dependency features.
 - No public `HWND`, `HINSTANCE`, `HANDLE`, `IDXGI*`, `ID3D12*`, `D3D12_*`, `DXGI_*`, COM pointer, DirectWrite/Direct2D/TSF/UIA interface, UI middleware type, renderer/RHI native handle, or platform SDK object in public engine, game, runtime UI, or `editor/core` headers.
 - `MK_editor_core` remains GUI-independent. Native shell and platform adapters stay in private editor/platform implementation code.
-- Do not claim full docking, cross-platform shell parity, production text shaping, production font fallback, native IME candidate UI, OS accessibility publication, full D3D12 viewport/material texture display, or broad UI renderer quality until focused phases prove them.
+- Do not claim full docking, cross-platform shell parity, production text shaping, production font fallback, native IME candidate UI, full UIA control pattern/event parity, cross-platform accessibility parity, runtime UI OS accessibility publication, full D3D12 viewport/material texture display, or broad UI renderer quality until focused phases prove them.
 - Do not hand-roll OpenType shaping, bidi reordering, glyph hinting, broad font fallback, OS accessibility bridges, or IME engines inside panel code.
 - Each implementation phase must update tests, docs, manifest fragments, static checks, and validation recipes only to the scope actually proven.
 
@@ -268,15 +268,17 @@ Steps:
 
 **Context:** The current shell emits accessibility payload rows, but a custom-rendered HWND remains opaque to UI Automation until a provider maps semantic nodes to UIA elements.
 
-**Done When:** The Windows shell exposes a provider fragment root with stable element ids, role/control type mapping, names, states, focus, bounds, actions, and tree navigation for the supported panel/control set. Tests prove mapping with fakes; host smoke records provider availability without claiming full accessibility parity across platforms.
+**Done When:** The Windows shell exposes a provider fragment root with stable element ids, role/control type mapping, names, states, focus, screen-space bounds, hosted-root null runtime ids, child `UiaAppendRuntimeId` rows, actions, and tree navigation for the supported panel/control set. Tests prove mapping with fakes; host smoke records provider availability without claiming full accessibility parity across platforms.
 
 Steps:
 
-- [ ] Recheck current Microsoft UI Automation provider documentation before implementation and record links in phase evidence.
-- [ ] Add model tests for semantic node to UIA role/name/state/action mapping.
-- [ ] Add private UIA provider implementation under the Win32 editor shell.
-- [ ] Keep provider node ids tied to `UiDocument` ids and editor-core model ids.
-- [ ] Add accessibility smoke counters and diagnostics for missing names, missing roles, invalid bounds, hidden nodes, and unsupported patterns.
+- [x] Recheck current Microsoft UI Automation provider documentation before implementation and record links in phase evidence.
+- [x] Add model tests for semantic node to UIA role/name/state/action mapping.
+- [x] Add private UIA provider implementation under the Win32 editor shell.
+- [x] Keep provider node ids tied to `UiDocument` ids and editor-core model ids.
+- [x] Add accessibility smoke counters and diagnostics for missing names, missing roles, invalid bounds, hidden nodes, and unsupported patterns.
+
+**Phase 6 Evidence:** Candidate `codex/first-party-ui-editor-uia-candidate14` adds private `editor/src/native_editor_uia_provider.*` UI Automation publication for the Windows editor shell. Current Microsoft UI Automation guidance was rechecked before implementation: custom controls need server-side providers when they are otherwise opaque to accessibility clients ([UI Automation Providers Overview](https://learn.microsoft.com/en-us/windows/win32/winauto/uiauto-providersoverview)); complex custom controls should expose `IRawElementProviderSimple`, `IRawElementProviderFragment`, and `IRawElementProviderFragmentRoot` with provider tree navigation, properties, focus, bounds, and fragment roots ([Implement a Server-Side UI Automation Provider](https://learn.microsoft.com/en-us/windows/win32/winauto/uiauto-serversideprovider)); `IRawElementProviderFragment::Navigate` defines parent/child/sibling tree relationships ([Navigate](https://learn.microsoft.com/en-us/windows/win32/api/uiautomationcore/nf-uiautomationcore-irawelementproviderfragment-navigate)); and Win32 controls return providers from `WM_GETOBJECT` through `UiaReturnRawElementProvider` ([UiaReturnRawElementProvider](https://learn.microsoft.com/en-us/windows/win32/api/uiautomationcoreapi/nf-uiautomationcoreapi-uiareturnrawelementprovider)). This slice keeps all Win32/UIA/COM types in implementation files, binds a private `win32_uia` accessibility adapter through `NativeEditorWin32Services`, subclasses only the private editor HWND to answer `WM_GETOBJECT`, maps retained `AccessibilityPayload` rows to stable `UiDocument` element ids, UIA control type ids, names, enabled/focusable/focused states, screen-space bounds from `ClientToScreen`, focus actions, a hosted-root null runtime id, child `UiaAppendRuntimeId` partial ids, parent/child/sibling navigation rows, and fail-closed diagnostics for missing names, missing roles, and invalid bounds. RED/GREEN evidence covered `MK_editor_native_shell_tests`: the tests first failed because `native_editor_uia_provider.hpp` did not exist, then passed after semantic role/name/state/action mapping, diagnostics, adapter-boundary readiness, app publication, screen-space bounds, hosted-root runtime id behavior, and no-native-handle checks were implemented. Desktop smoke reports `editor_shell_accessibility_service=win32_uia`, `editor_shell_accessibility_status=uia_provider_ready`, positive node/role/name/state/action/relationship/navigation counters, one focus row, zero diagnostics, `editor_shell_accessibility_hidden_nodes=0`, `editor_shell_accessibility_unsupported_pattern_diagnostics=0`, and `editor_shell_accessibility_native_handles_exposed=0`. This completes the selected Windows editor UIA provider publication slice without claiming cross-platform accessibility parity, runtime UI OS accessibility publication, full invoke/value/toggle/range control pattern execution, live-region parity, UIA event parity, or public native handle exposure.
 
 ## Phase 7 - Viewport And Material Preview Texture Display v1
 
@@ -298,13 +300,13 @@ Steps:
 
 **Goal:** Ensure every productized UI feature is inspectable and operable by AI through first-party contracts, not screen automation.
 
-**Context:** Current AI command rows are narrow panel visibility commands. Docking, rich text, text targets, accessibility, and viewport/material diagnostics need the same inspect/dry-run/apply discipline.
+**Context:** Current AI command rows are narrow panel visibility commands. Docking, rich text, text targets, Windows UIA accessibility state, and viewport/material diagnostics need the same inspect/dry-run/apply discipline.
 
 **Done When:** AI can inspect dock layout, rich text state, focused text target, IME/accessibility/font adapter status, viewport/material display readiness, command availability, dry-run results, apply results, and diagnostics without native handles, screen coordinates, or shell command execution.
 
 Steps:
 
-- [ ] Extend `EditorAiOperationSnapshot` to include selected dock, rich text, text input, adapter status, accessibility publication, and viewport/material display rows.
+- [ ] Extend `EditorAiOperationSnapshot` to include selected dock, rich text, text input, adapter status, Windows UIA accessibility state, and viewport/material display rows.
 - [ ] Extend command catalog/dry-run/apply for reviewed dock and rich-text operations only.
 - [ ] Add rejection tests for arbitrary command ids, stale revisions, target mismatches, missing confirmation, native handles, shell execution, and validation-recipe execution from editor core.
 - [ ] Update manifest guidance and static checks with exact AI-operable row names.

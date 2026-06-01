@@ -53,6 +53,7 @@ add_library(MK_editor_shell_common
     src/native_editor_launch.cpp
     src/native_editor_text_atlas_handoff.cpp
     src/native_editor_text_input.cpp
+    src/native_editor_uia_provider.cpp
     src/native_material_preview_cache.cpp
     src/native_viewport_surface.cpp
 )
@@ -70,7 +71,7 @@ if(WIN32)
         src/native_editor_tsf_text_input.cpp
         src/native_editor_win32_services.cpp
     )
-    target_link_libraries(MK_editor_shell_common PRIVATE MK_platform_win32 dwrite)
+    target_link_libraries(MK_editor_shell_common PRIVATE MK_platform_win32 dwrite uiautomationcore)
 endif()
 
 MK_apply_common_target_options(MK_editor_shell_common)

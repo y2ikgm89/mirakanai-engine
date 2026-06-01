@@ -338,6 +338,7 @@ FirstPartyEditorShellSmokeCounters
 make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const FirstPartyEditorDocument& document) {
     const auto& text_atlas = app.text_atlas_handoff_evidence();
     const auto& text_input = app.text_input_state();
+    const auto& accessibility = app.accessibility_state();
     return FirstPartyEditorShellSmokeCounters{
         .ui = "first_party",
         .backend = "d3d12",
@@ -363,6 +364,22 @@ make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const F
         .ime_surrounding_text_rows = text_input.surrounding_text_ready ? 1U : 0U,
         .ime_candidate_ui_host_owned = text_input.candidate_ui_host_owned,
         .ime_native_handles_exposed = text_input.native_handles_exposed,
+        .accessibility_status = accessibility.status_id,
+        .accessibility_nodes = static_cast<std::uint32_t>(accessibility.nodes.size()),
+        .accessibility_role_rows = accessibility.role_rows,
+        .accessibility_name_rows = accessibility.name_rows,
+        .accessibility_state_rows = accessibility.state_rows,
+        .accessibility_focus_rows = accessibility.focus_rows,
+        .accessibility_action_rows = accessibility.action_rows,
+        .accessibility_relationship_rows = accessibility.relationship_rows,
+        .accessibility_tree_navigation_rows = accessibility.tree_navigation_rows,
+        .accessibility_diagnostics = static_cast<std::uint32_t>(accessibility.diagnostics.size()),
+        .accessibility_missing_name_diagnostics = accessibility.missing_name_diagnostics,
+        .accessibility_missing_role_diagnostics = accessibility.missing_role_diagnostics,
+        .accessibility_invalid_bounds_diagnostics = accessibility.invalid_bounds_diagnostics,
+        .accessibility_hidden_nodes = accessibility.hidden_nodes,
+        .accessibility_unsupported_pattern_diagnostics = accessibility.unsupported_pattern_diagnostics,
+        .accessibility_native_handles_exposed = accessibility.native_handles_exposed,
         .docking_status = document.docking_status,
         .dock_tab_header_count = document.tab_header_count,
         .dock_split_gutter_count = document.split_gutter_count,

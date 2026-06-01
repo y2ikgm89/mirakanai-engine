@@ -61,6 +61,7 @@ int main(int argc, char** argv) {
         const auto& material_preview_display = app.material_preview_display();
         const auto& text_atlas = app.text_atlas_handoff_evidence();
         const auto& text_input = app.text_input_state();
+        const auto& accessibility = app.accessibility_state();
         std::cout << (result.succeeded ? "editor_shell_status=ready" : "editor_shell_status=failed") << '\n'
                   << "editor_shell_ui=first_party\n"
                   << "editor_shell_backend=" << backend_name(result.adapter_kind) << '\n'
@@ -95,6 +96,28 @@ int main(int argc, char** argv) {
                   << "editor_shell_ime_surrounding_text_rows=" << (text_input.surrounding_text_ready ? 1 : 0) << '\n'
                   << "editor_shell_ime_candidate_ui_host_owned=" << (text_input.candidate_ui_host_owned ? 1 : 0) << '\n'
                   << "editor_shell_ime_native_handles_exposed=" << (text_input.native_handles_exposed ? 1 : 0) << '\n'
+                  << "editor_shell_accessibility_service=" << services.accessibility_service_id << '\n'
+                  << "editor_shell_accessibility_status=" << accessibility.status_id << '\n'
+                  << "editor_shell_accessibility_nodes=" << accessibility.nodes.size() << '\n'
+                  << "editor_shell_accessibility_role_rows=" << accessibility.role_rows << '\n'
+                  << "editor_shell_accessibility_name_rows=" << accessibility.name_rows << '\n'
+                  << "editor_shell_accessibility_state_rows=" << accessibility.state_rows << '\n'
+                  << "editor_shell_accessibility_focus_rows=" << accessibility.focus_rows << '\n'
+                  << "editor_shell_accessibility_action_rows=" << accessibility.action_rows << '\n'
+                  << "editor_shell_accessibility_relationship_rows=" << accessibility.relationship_rows << '\n'
+                  << "editor_shell_accessibility_tree_navigation_rows=" << accessibility.tree_navigation_rows << '\n'
+                  << "editor_shell_accessibility_diagnostics=" << accessibility.diagnostics.size() << '\n'
+                  << "editor_shell_accessibility_missing_name_diagnostics=" << accessibility.missing_name_diagnostics
+                  << '\n'
+                  << "editor_shell_accessibility_missing_role_diagnostics=" << accessibility.missing_role_diagnostics
+                  << '\n'
+                  << "editor_shell_accessibility_invalid_bounds_diagnostics="
+                  << accessibility.invalid_bounds_diagnostics << '\n'
+                  << "editor_shell_accessibility_hidden_nodes=" << accessibility.hidden_nodes << '\n'
+                  << "editor_shell_accessibility_unsupported_pattern_diagnostics="
+                  << accessibility.unsupported_pattern_diagnostics << '\n'
+                  << "editor_shell_accessibility_native_handles_exposed="
+                  << (accessibility.native_handles_exposed ? 1 : 0) << '\n'
                   << "editor_shell_frames=" << result.frames_rendered << '\n'
                   << "editor_shell_panels=" << app.panels_rendered_last_frame() << '\n'
                   << "editor_shell_docking_status=" << app.docking_status_last_frame() << '\n'
