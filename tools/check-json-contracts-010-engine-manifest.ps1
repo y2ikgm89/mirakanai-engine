@@ -119,7 +119,7 @@ Assert-Properties $engine.gameCodeGuidance @("currentSpriteAnimationFlipbook") "
 Assert-Properties $engine.gameCodeGuidance @("currentSandboxWorldAuthoring") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("desktopRuntimeGameplaySystemsPackageSmoke") "engine manifest gameCodeGuidance"
 foreach ($memoryDiagnosticsGuidanceNeedle in @(
-        "Memory Diagnostics v1 Phase 1",
+        "Memory Diagnostics v1",
         "MemoryCounterRow",
         "MemoryLifetimeClass",
         "MemoryDiagnosticsSummary",
@@ -129,6 +129,9 @@ foreach ($memoryDiagnosticsGuidanceNeedle in @(
         "stale-generation diagnostics",
         "use-after-safe-point diagnostics",
         "package-visible memory_diagnostics_* counters",
+        "sample_desktop_runtime_game --require-memory-diagnostics",
+        "memory_diagnostics_status=ready",
+        "memory_diagnostics_resident_gpu_pressure=nominal",
         "broad memory optimization"
     )) {
     if (-not ([string]$engine.gameCodeGuidance.currentMemoryDiagnostics).Contains($memoryDiagnosticsGuidanceNeedle)) {
