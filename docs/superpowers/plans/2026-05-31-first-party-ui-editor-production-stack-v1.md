@@ -16,9 +16,9 @@
 
 ## Status
 
-**Status:** Active.
+**Status:** Completed.
 
-Selected on 2026-05-31 after a repository-wide UI/editor/agent-contract audit. The previous active state was the production-completion selection gate after [First-Party Editor Shell v1](2026-05-31-first-party-editor-shell-v1.md) completed the clean-break Dear ImGui replacement and returned `recommendedNextPlan.id = next-production-gap-selection`.
+Selected on 2026-05-31 after a repository-wide UI/editor/agent-contract audit. Completed on 2026-06-01 after Phase 10 closeout returned `currentActivePlan` to the production-completion master plan and `recommendedNextPlan.id = next-production-gap-selection`. The previous active state was the production-completion selection gate after [First-Party Editor Shell v1](2026-05-31-first-party-editor-shell-v1.md) completed the clean-break Dear ImGui replacement and returned `recommendedNextPlan.id = next-production-gap-selection`.
 
 ## Current Audit
 
@@ -363,6 +363,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 git diff --check
 ```
 
+**Phase 10 Evidence:** Candidate `codex/first-party-ui-editor-closeout-candidate21` closes the milestone without adding runtime/editor behavior. It returns the composed manifest to the production-completion selection gate (`currentActivePlan = docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`, `recommendedNextPlan.id = next-production-gap-selection`) while preserving `unsupportedProductionGaps = []`, the completed Phase 1-9 evidence, the exact AI UX status row ids, the reviewed rich-text copy command ids, and the Phase 9 cross-platform adapter future-gate rows. It also updates the registry, master-plan pointers, roadmap, current-capabilities summary, editor docs, backlog row, and manifest fragment so no completed dated plan remains active.
+
 ## Acceptance Criteria
 
 - `MK_editor_core` owns durable docking/rich-text/text-target/AI operation state; native shell code only adapts and renders it.
@@ -378,11 +380,11 @@ git diff --check
 
 ## Self-Review Checklist
 
-- [ ] Did this phase remove or replace stale private contracts cleanly instead of adding aliases?
-- [ ] Are all new editor UI states inspectable without launching the native shell?
-- [ ] Are AI command ids stable, reviewed, dry-runnable, and revision-checked?
-- [ ] Are native handles and platform SDK types kept out of public headers and editor core?
-- [ ] Are DirectWrite/TSF/UIA responsibilities private adapters, not panel logic?
-- [ ] Do docs and manifest avoid broad cross-platform or broad production UI claims?
-- [ ] Did dependency/legal records change exactly with any selected third-party dependency?
-- [ ] Did focused validation run before full validation?
+- [x] Did this phase remove or replace stale private contracts cleanly instead of adding aliases?
+- [x] Are all new editor UI states inspectable without launching the native shell?
+- [x] Are AI command ids stable, reviewed, dry-runnable, and revision-checked?
+- [x] Are native handles and platform SDK types kept out of public headers and editor core?
+- [x] Are DirectWrite/TSF/UIA responsibilities private adapters, not panel logic?
+- [x] Do docs and manifest avoid broad cross-platform or broad production UI claims?
+- [x] Did dependency/legal records change exactly with any selected third-party dependency?
+- [x] Did focused validation run before full validation?
