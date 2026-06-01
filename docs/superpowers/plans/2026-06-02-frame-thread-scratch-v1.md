@@ -86,9 +86,11 @@ Phase 1 implementation on 2026-06-02 extends the dependency-free `MK_core` `Memo
 - Modify: selected `engine/core/` or runtime files only after Phase 1 evidence names are stable
 - Test: focused core/runtime tests matching touched code
 
-- [ ] Add explicit first-party frame scratch and per-worker scratch ownership APIs with deterministic reset/safe-point boundaries.
-- [ ] Keep raw pointers non-owning and expose scratch leases through bounded value/view types rather than pointer-owned gameplay APIs.
-- [ ] Preserve global allocator behavior and avoid broad scheduler or CPU-affinity changes.
+- [x] Add explicit first-party frame scratch and per-worker scratch ownership APIs with deterministic reset/safe-point boundaries.
+- [x] Keep raw pointers non-owning and expose scratch leases through bounded value/view types rather than pointer-owned gameplay APIs.
+- [x] Preserve global allocator behavior and avoid broad scheduler or CPU-affinity changes.
+
+Phase 2 implementation on 2026-06-02 adds `mirakana/core/memory.hpp` and `MK_core` `ScratchArena`, `ScratchLease`, `ScratchLeaseStatus`, and `scratch_lease_status_label`. `ScratchArena::make_frame` and `ScratchArena::make_worker` own their backing storage internally, are non-copyable/non-movable stable owners, return bounded non-owning `std::span<std::byte>` leases, validate worker owner ids on acquire/release, reject leases outside their backing storage, reset only through explicit `reset_at_safe_point`, charge alignment padding to capacity/high-water evidence, and export `MemoryCounterRow` evidence through `memory_counter_row`. The API deliberately does not replace global allocators, expose native/OS allocator handles, install scheduler policy, pin CPU cores, or claim broad pool/arena enforcement.
 
 ## Phase 3 - RHI/Package Evidence Mapping
 
@@ -152,6 +154,23 @@ Phase 1 focused validation on 2026-06-02:
 - `git diff --check`
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`
 - Hosted PR evidence is recorded on the task-owned Phase 1 PR.
+
+Phase 2 focused validation on 2026-06-02:
+
+- TDD red check: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests` failed before implementation because `mirakana/core/memory.hpp`, `ScratchArena`, `ScratchLease`, `ScratchLeaseStatus`, and `scratch_lease_status_label` did not exist.
+- Review red check: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests` failed after adding review-driven tests because `ScratchArena` was still movable and the new ownership/capacity guarantees were not implemented.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev -R MK_core_tests --output-on-failure`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files "engine/core/src/memory.cpp,tests/unit/core_tests.cpp"`
+- `git diff --check`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`
+- Hosted PR evidence is recorded on the task-owned Phase 2 PR.
 
 ## Done When
 

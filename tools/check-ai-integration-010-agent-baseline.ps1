@@ -2033,6 +2033,7 @@ $productionReadinessAuditScriptText = Get-AgentSurfaceText "tools/check-producti
 $currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
 $roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
 $coreDiagnosticsHeaderText = Get-AgentSurfaceText "engine/core/include/mirakana/core/diagnostics.hpp"
+$coreMemoryHeaderText = Get-AgentSurfaceText "engine/core/include/mirakana/core/memory.hpp"
 $coreTestsText = Get-AgentSurfaceText "tests/unit/core_tests.cpp"
 $tilemapMetadataSourceText = Get-AgentSurfaceText "engine/assets/src/tilemap_metadata.cpp"
 $uiAtlasMetadataSourceText = Get-AgentSurfaceText "engine/assets/src/ui_atlas_metadata.cpp"
@@ -2197,6 +2198,16 @@ foreach ($memoryDiagnosticsNeedle in @(
     )) {
     Assert-ContainsText $coreDiagnosticsHeaderText $memoryDiagnosticsNeedle "engine/core/include/mirakana/core/diagnostics.hpp"
 }
+foreach ($scratchMemoryNeedle in @(
+        "ScratchArena",
+        "ScratchLease",
+        "ScratchLeaseStatus",
+        "scratch_lease_status_label",
+        "reset_at_safe_point",
+        "memory_counter_row"
+    )) {
+    Assert-ContainsText $coreMemoryHeaderText $scratchMemoryNeedle "engine/core/include/mirakana/core/memory.hpp"
+}
 foreach ($memoryDiagnosticsTestNeedle in @(
         "memory diagnostics summarize classes high water and budget pressure",
         "memory diagnostics summarize frame and worker scratch reuse reset evidence",
@@ -2205,6 +2216,11 @@ foreach ($memoryDiagnosticsTestNeedle in @(
         "memory diagnostics fail closed for invalid stale and safe point rows",
         "memory diagnostics do not double count safe point boolean and count",
         "memory diagnostics fail closed for scratch ownership and cache hazards",
+        "scratch arena acquires bounded frame leases and resets at safe points",
+        "scratch arena charges alignment padding to capacity evidence",
+        "scratch arena rejects invalid alignment requests",
+        "scratch arena enforces worker ownership and stale lease boundaries",
+        "scratch arena rejects leases outside its backing storage",
         "memory diagnostics labels are stable"
     )) {
     Assert-ContainsText $coreTestsText $memoryDiagnosticsTestNeedle "tests/unit/core_tests.cpp"
@@ -2215,6 +2231,9 @@ foreach ($memoryDiagnosticsDocCheck in @(
     )) {
     foreach ($memoryDiagnosticsDocNeedle in @(
             "Memory Diagnostics v1",
+            "ScratchArena",
+            "ScratchLease",
+            "ScratchLeaseStatus",
             "MemoryCounterRow",
             "summarize_memory_diagnostics",
             "reuse counts",

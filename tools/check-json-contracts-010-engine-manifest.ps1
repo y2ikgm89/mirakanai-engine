@@ -120,6 +120,11 @@ Assert-Properties $engine.gameCodeGuidance @("currentSandboxWorldAuthoring") "en
 Assert-Properties $engine.gameCodeGuidance @("desktopRuntimeGameplaySystemsPackageSmoke") "engine manifest gameCodeGuidance"
 foreach ($memoryDiagnosticsGuidanceNeedle in @(
         "Memory Diagnostics v1",
+        "ScratchArena",
+        "ScratchLease",
+        "ScratchLeaseStatus",
+        "reset_at_safe_point",
+        "memory_counter_row",
         "MemoryCounterRow",
         "MemoryLifetimeClass",
         "MemoryDiagnosticsSummary",
