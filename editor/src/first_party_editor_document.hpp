@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "mirakana/editor/ai_operation_surface.hpp"
 #include "mirakana/ui/ui.hpp"
 
 #include <cstdint>
@@ -81,5 +82,10 @@ struct FirstPartyEditorShellSmokeCounters {
 
 [[nodiscard]] FirstPartyEditorShellSmokeCounters
 make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const FirstPartyEditorDocument& document);
+[[nodiscard]] EditorAiOperationUxStatusDesc
+make_first_party_editor_ai_operation_ux_status_desc(const NativeEditorApp& app,
+                                                    const FirstPartyEditorDocument& document);
+[[nodiscard]] EditorAiOperationSnapshot
+make_first_party_editor_ai_operation_snapshot(const NativeEditorApp& app, const FirstPartyEditorDocument& document);
 
 } // namespace mirakana::editor
