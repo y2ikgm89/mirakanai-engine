@@ -12,7 +12,7 @@
 
 **Plan ID:** `performance-baseline-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
 Selected on 2026-06-01 after [AI-Operable Performance Budget And Evidence v1](2026-06-01-ai-operable-performance-budget-and-evidence-v1.md) completed the descriptor/schema layer through PR #361.
 
@@ -113,14 +113,20 @@ This ordering lets AI-generated games optimize content and recipe choices now wh
 
 **Files:**
 - Modify: this plan
+- Create: `docs/superpowers/plans/2026-06-01-memory-lifetime-taxonomy-v1.md`
 - Modify: `docs/superpowers/plans/README.md`
 - Modify: `docs/roadmap.md`
+- Modify: `docs/current-capabilities.md`
+- Modify: `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`
+- Modify: `docs/superpowers/master-plans/production-completion-v1/01-one-dot-zero-readiness-ledger.md`
 - Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
 - Generate: `engine/agent/manifest.json`
+- Modify: `tools/check-ai-integration-010-agent-baseline.ps1`
+- Modify: `tools/check-ai-integration-020-engine-manifest.ps1`
 
-- [ ] Record final validation evidence and hosted PR evidence.
-- [ ] Select the next optimization wave, likely `memory-lifetime-taxonomy-v1`, unless the baseline evidence shows a more urgent measured bottleneck.
-- [ ] Keep completed evidence concise and avoid copying long benchmark output into durable docs.
+- [x] Record final validation evidence and hosted PR evidence.
+- [x] Select the next optimization wave, `memory-lifetime-taxonomy-v1`, because the completed baseline evidence showed the next useful prerequisite is ownership/lifetime/pointer/allocation taxonomy before allocator, job-system, NUMA, GPU residency, CUDA/HIP/SYCL, or vendor-specific optimization implementation.
+- [x] Keep completed evidence concise and avoid copying long benchmark output into durable docs.
 
 ## Validation Evidence
 
@@ -184,6 +190,19 @@ Phase 3 focused evidence:
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`
 
 The selected sample 2D budget row now names package-visible `performance_baseline_*` counters, the host-gated Trace Event JSON artifact path `out/performance/sample_2d_desktop_runtime_package/installed-2d-performance-baseline.trace.json`, and the `installed-2d-performance-baseline-smoke` recipe. Generated 2D/3D templates and the committed generated 3D sample now require `artifactPath` on trace-artifact evidence rows. Static checks verify `budgetRows.metric`, `evidenceRows.source`, and `evidenceRows.artifactPath` remain part of the AI-operable performance budget descriptor contract. Slice-close `tools/validate.ps1` passed with expected diagnostic-only Windows host blockers for Metal/Apple lanes while returning `validate: ok`.
+
+Phase 4 closeout evidence:
+
+- Selected [Memory Lifetime Taxonomy v1](2026-06-01-memory-lifetime-taxonomy-v1.md) as the next optimization-foundation wave.
+- Updated the plan registry, roadmap, current capabilities summary, production-completion master plan, readiness ledger, composed manifest pointer, and static-check needles so `currentActivePlan` / `recommendedNextPlan.id` no longer point at this completed plan.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`
+- `git diff --check`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`
+- Hosted PR evidence for the closeout slice is recorded on the task-owned closeout PR; durable docs keep only the concise plan selection and validation command list.
 
 ## Done When
 
