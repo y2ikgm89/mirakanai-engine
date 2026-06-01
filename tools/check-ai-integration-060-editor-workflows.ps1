@@ -1994,6 +1994,7 @@ $nativeEditorViewportChecks = @(
             "NativeViewportDisplayPlan",
             "d3d12_host_available",
             "renderer_output_available",
+            "texture_display_requested",
             "texture_display_ready",
             "native_texture_handles_exposed",
             "native_texture_handle_policy",
@@ -2006,6 +2007,11 @@ $nativeEditorViewportChecks = @(
             "host_unavailable",
             "invalid_extent",
             "diagnostic_only",
+            "texture_adapter_unavailable",
+            "descriptor_lease_unavailable",
+            "barrier_lifecycle_missing",
+            "fence_lifecycle_missing",
+            "d3d12_texture_ready",
             "renderer output unavailable",
             "native D3D12 texture display adapter is private"
         )
@@ -2094,6 +2100,9 @@ $nativeEditorViewportChecks = @(
         Needles = @(
             "editor native viewport display plan rejects missing d3d12 host",
             "editor native viewport display plan records diagnostic-only viewport when renderer output is unavailable",
+            "editor native viewport display plan waits for requested texture adapter",
+            "editor native viewport display plan waits for resize-safe teardown",
+            "editor native viewport display plan reports private d3d12 texture readiness",
             "editor native viewport display plan does not expose native texture handles",
             "native_texture_handle_policy"
         )
@@ -2180,6 +2189,7 @@ $nativeEditorMaterialPreviewChecks = @(
             "NativeMaterialPreviewDisplayPlan",
             "shader_artifacts_available",
             "gpu_payload_available",
+            "texture_display_requested",
             "texture_display_ready",
             "native_texture_handles_exposed",
             "native_texture_handle_policy",
@@ -2192,6 +2202,11 @@ $nativeEditorMaterialPreviewChecks = @(
         Needles = @(
             "shader_artifacts_missing",
             "diagnostic_only",
+            "texture_adapter_unavailable",
+            "descriptor_lease_unavailable",
+            "barrier_lifecycle_missing",
+            "fence_lifecycle_missing",
+            "d3d12_texture_ready",
             "host-private-native",
             "GPU payload unavailable",
             "native material preview texture display adapter is private",
@@ -2276,6 +2291,9 @@ $nativeEditorMaterialPreviewChecks = @(
         Needles = @(
             "editor native material preview plan rejects missing shader artifacts",
             "editor native material preview plan reports diagnostic-only preview without gpu display",
+            "editor native material preview plan waits for requested texture adapter",
+            "editor native material preview plan waits for descriptor and fence lifecycle",
+            "editor native material preview plan reports private d3d12 texture readiness",
             "editor native material preview plan keeps d3d12 handles private"
         )
     },
