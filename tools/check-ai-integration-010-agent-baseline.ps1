@@ -1846,6 +1846,21 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     )) {
         Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan memory diagnostics selection"
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "frame-thread-scratch-v1") {
+    foreach ($needle in @(
+        "frame temporary",
+        "worker scratch",
+        "first-party frame arenas",
+        "per-worker scratch arenas",
+        "explicit ownership APIs",
+        "high-water marks",
+        "false-sharing diagnostics",
+        "allocator replacement",
+        "all-core CPU scheduling",
+        "broad CPU/GPU/memory optimization"
+    )) {
+        Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan frame/thread scratch selection"
+    }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "first-party-ui-editor-production-stack-v1") {
     foreach ($needle in @(
         "First-Party UI Editor Production Stack v1",

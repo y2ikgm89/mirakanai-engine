@@ -12,7 +12,7 @@
 
 **Plan ID:** `memory-diagnostics-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
 Selected on 2026-06-02 after [Memory Lifetime Taxonomy v1](2026-06-01-memory-lifetime-taxonomy-v1.md) completed the ownership, pointer/view, handle, and memory-class taxonomy needed before measurable memory optimization work.
 
@@ -105,9 +105,11 @@ Phase 2 closeout on 2026-06-02 wires `sample_desktop_runtime_game --require-memo
 - Generate: `engine/agent/manifest.json`
 - Modify: relevant static checks only when the selected next wave adds durable literals
 
-- [ ] Record final validation evidence and hosted PR evidence.
-- [ ] Select the next measured implementation wave, likely transient-frame allocation counters, worker scratch/job scheduling evidence, or renderer/RHI GPU residency diagnostics depending on Phase 1/2 results.
-- [ ] Keep completed evidence concise and avoid copying long command output into durable docs.
+- [x] Record final validation evidence and hosted PR evidence.
+- [x] Select the next measured implementation wave, likely transient-frame allocation counters, worker scratch/job scheduling evidence, or renderer/RHI GPU residency diagnostics depending on Phase 1/2 results.
+- [x] Keep completed evidence concise and avoid copying long command output into durable docs.
+
+Phase 3 closeout on 2026-06-02 completes this plan and selects [Frame/Thread Scratch v1](2026-06-02-frame-thread-scratch-v1.md) as the next measured optimization wave. Phase 1 landed the dependency-free `MK_core` memory diagnostics model through PR #370 / merge commit `0593cc44`; Phase 2 landed selected package-visible `memory_diagnostics_*` evidence through PR #371 / merge commit `537b52a3`. The next wave should fill the remaining frame temporary and worker scratch evidence gap with first-party frame arenas, per-worker scratch arenas, explicit ownership APIs, high-water marks, false-sharing diagnostics, and selected package evidence before allocator replacement, all-core scheduling, NUMA/affinity tuning, SIMD dispatch, automatic/LRU GPU residency, CUDA/HIP/SYCL paths, cross-vendor parity, cross-backend parity, or broad CPU/GPU/memory optimization claims.
 
 ## Validation Evidence
 
@@ -164,6 +166,17 @@ Phase 2 focused validation on 2026-06-02:
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Preset desktop-runtime -Configuration Debug -ReuseExistingFileApiReply -Files games/sample_desktop_runtime_game/main.cpp`
 - `git diff --check`
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with `validate: ok`; Windows host Metal/Apple checks remained diagnostic-only or host-gated as expected, and 85 CTest tests passed.
+
+Phase 3 closeout validation on 2026-06-02:
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`
+- `git diff --check`
+- Full `tools/validate.ps1` was not run for this Phase 3 closeout because the change is limited to docs, manifest pointers, and static contract needles; targeted manifest/agent/static checks cover the changed contracts.
+- Hosted PR evidence is recorded on the task-owned Phase 3 closeout PR.
 
 ## Done When
 
