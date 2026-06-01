@@ -1821,6 +1821,18 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     )) {
         Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan performance baseline selection"
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "memory-lifetime-taxonomy-v1") {
+    foreach ($needle in @(
+        "memory lifetime taxonomy",
+        "ownership semantics",
+        "raw pointers are non-owning",
+        "std::unique_ptr",
+        "std::span",
+        "allocator/job/NUMA/GPU memory",
+        "broad CPU/GPU/memory optimization"
+    )) {
+        Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan memory lifetime taxonomy selection"
+    }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "first-party-ui-editor-production-stack-v1") {
     foreach ($needle in @(
         "First-Party UI Editor Production Stack v1",
