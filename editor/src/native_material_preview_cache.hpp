@@ -23,6 +23,8 @@ struct NativeMaterialPreviewDisplayDesc {
     bool fence_lifecycle_ready{false};
     std::uint64_t frame_index{0};
     std::string_view backend_id{"d3d12"};
+    std::uint64_t frames_rendered{0};
+    bool executes{false};
 };
 
 struct NativeMaterialPreviewDisplayPlan {

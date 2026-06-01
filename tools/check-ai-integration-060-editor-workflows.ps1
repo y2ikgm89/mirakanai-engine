@@ -2017,6 +2017,31 @@ $nativeEditorViewportChecks = @(
         )
     },
     @{
+        Path = "editor/src/native_texture_display_adapter.hpp"
+        Needles = @(
+            "NativeTextureDisplayAdapterDesc",
+            "NativeTextureDisplayAdapterEvidence",
+            "NativeTextureDisplayAdapter",
+            "render_viewport_frame",
+            "render_material_preview_frame",
+            "native_texture_handles_exposed"
+        )
+    },
+    @{
+        Path = "editor/src/native_texture_display_adapter.cpp"
+        Needles = @(
+            "RhiViewportSurface",
+            "allow_native_display_interop = true",
+            "create_descriptor_set_layout",
+            "update_descriptor_set",
+            "resource_transitions",
+            "fence_waits",
+            "wait(fence)",
+            "plan_native_viewport_display",
+            "plan_native_material_preview_display"
+        )
+    },
+    @{
         Path = "editor/src/native_editor_app.hpp"
         Needles = @(
             "native_viewport_surface.hpp",
@@ -2092,7 +2117,9 @@ $nativeEditorViewportChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
-            "src/native_viewport_surface.cpp"
+            "src/native_viewport_surface.cpp",
+            "src/native_texture_display_adapter.cpp",
+            "MK_renderer"
         )
     },
     @{
@@ -2103,6 +2130,8 @@ $nativeEditorViewportChecks = @(
             "editor native viewport display plan waits for requested texture adapter",
             "editor native viewport display plan waits for resize-safe teardown",
             "editor native viewport display plan reports private d3d12 texture readiness",
+            "editor native texture display adapter prepares viewport display frame through rhi descriptors",
+            "editor native texture display adapter waits before resize replacement",
             "editor native viewport display plan does not expose native texture handles",
             "native_texture_handle_policy"
         )
@@ -2119,7 +2148,7 @@ $nativeEditorViewportChecks = @(
             "editor_shell_dock_focusable_controls=11",
             "editor_shell_viewport_status=diagnostic_only",
             "editor_shell_viewport_native_handles_exposed=0",
-            "full D3D12 texture display"
+            "Full D3D12 texture display"
         )
     },
     @{
@@ -2164,7 +2193,8 @@ $nativeEditorViewportChecks = @(
             "editor_shell_dock_focusable_controls=11",
             "editor_shell_viewport_status=diagnostic_only",
             "editor_shell_viewport_native_handles_exposed=0",
-            "private D3D12 texture adapter"
+            "private D3D12 texture adapter",
+            "native_texture_display_adapter"
         )
     }
 )
@@ -2193,6 +2223,8 @@ $nativeEditorMaterialPreviewChecks = @(
             "texture_display_ready",
             "native_texture_handles_exposed",
             "native_texture_handle_policy",
+            "frames_rendered",
+            "bool executes",
             "EditorMaterialGpuPreviewExecutionSnapshot",
             "plan_native_material_preview_display"
         )
@@ -2282,6 +2314,7 @@ $nativeEditorMaterialPreviewChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
         Needles = @(
+            "src/native_texture_display_adapter.cpp",
             "src/native_material_preview_cache.cpp",
             'target_include_directories(MK_editor_shell_common'
         )
@@ -2294,6 +2327,7 @@ $nativeEditorMaterialPreviewChecks = @(
             "editor native material preview plan waits for requested texture adapter",
             "editor native material preview plan waits for descriptor and fence lifecycle",
             "editor native material preview plan reports private d3d12 texture readiness",
+            "editor native texture display adapter prepares material preview execution evidence",
             "editor native material preview plan keeps d3d12 handles private"
         )
     },

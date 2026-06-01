@@ -729,7 +729,7 @@ if(BUILD_TESTING)
     add_executable(MK_editor_native_shell_tests
         tests/unit/editor_native_shell_tests.cpp
     )
-    target_link_libraries(MK_editor_native_shell_tests PRIVATE MK_editor_shell_common)
+    target_link_libraries(MK_editor_native_shell_tests PRIVATE MK_editor_shell_common MK_rhi)
     target_include_directories(MK_editor_native_shell_tests PRIVATE tests editor/src)
     MK_apply_common_target_options(MK_editor_native_shell_tests)
     add_test(NAME MK_editor_native_shell_tests COMMAND MK_editor_native_shell_tests)

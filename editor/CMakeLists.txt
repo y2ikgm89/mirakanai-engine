@@ -55,6 +55,7 @@ add_library(MK_editor_shell_common
     src/native_editor_text_input.cpp
     src/native_editor_uia_provider.cpp
     src/native_material_preview_cache.cpp
+    src/native_texture_display_adapter.cpp
     src/native_viewport_surface.cpp
 )
 
@@ -64,6 +65,7 @@ target_include_directories(MK_editor_shell_common
 )
 
 target_link_libraries(MK_editor_shell_common PUBLIC MK_editor_core)
+target_link_libraries(MK_editor_shell_common PRIVATE MK_renderer)
 
 if(WIN32)
     target_sources(MK_editor_shell_common PRIVATE

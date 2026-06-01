@@ -15,12 +15,14 @@
 #include "native_editor_tsf_text_input.hpp"
 #endif
 #include "native_material_preview_cache.hpp"
+#include "native_texture_display_adapter.hpp"
 #include "native_viewport_surface.hpp"
 #include "win32_first_party_editor_host.hpp"
 
 #include "mirakana/editor/editor_dock_layout.hpp"
 #include "mirakana/platform/file_dialog.hpp"
 #include "mirakana/platform/process.hpp"
+#include "mirakana/rhi/rhi.hpp"
 #include "mirakana/ui/ui.hpp"
 
 #include <algorithm>
@@ -1250,6 +1252,88 @@ MK_TEST("editor native viewport display plan does not expose native texture hand
     MK_REQUIRE(!app.viewport_display().native_texture_handles_exposed);
     MK_REQUIRE(app.viewport_display().native_texture_handle_policy == "private");
     MK_REQUIRE(app.viewport().renderer_name() == "d3d12");
+}
+
+MK_TEST("editor native texture display adapter prepares viewport display frame through rhi descriptors") {
+    mirakana::rhi::NullRhiDevice device;
+    mirakana::editor::NativeTextureDisplayAdapter adapter(mirakana::editor::NativeTextureDisplayAdapterDesc{
+        .device = &device,
+        .extent = mirakana::editor::ViewportExtent{.width = 64, .height = 36},
+        .d3d12_host_available = true,
+        .renderer_output_available = true,
+        .backend_id = "d3d12",
+    });
+
+    const auto plan = adapter.render_viewport_frame(17U);
+    const auto& evidence = adapter.evidence();
+
+    MK_REQUIRE(plan.accepted);
+    MK_REQUIRE(plan.status_id == "d3d12_texture_ready");
+    MK_REQUIRE(plan.texture_display_ready);
+    MK_REQUIRE(plan.texture_display_requested);
+    MK_REQUIRE(plan.texture_adapter_available);
+    MK_REQUIRE(plan.offscreen_target_available);
+    MK_REQUIRE(plan.descriptor_lease_available);
+    MK_REQUIRE(plan.resource_barriers_recorded);
+    MK_REQUIRE(plan.fence_lifecycle_ready);
+    MK_REQUIRE(!plan.native_texture_handles_exposed);
+    MK_REQUIRE(plan.frame_index == 17U);
+    MK_REQUIRE(evidence.frames_rendered == 1U);
+    MK_REQUIRE(evidence.descriptor_writes >= 1U);
+    MK_REQUIRE(evidence.resource_transitions >= 1U);
+    MK_REQUIRE(evidence.fence_waits >= 1U);
+    MK_REQUIRE(device.stats().texture_buffer_copies == 0U);
+    MK_REQUIRE(device.stats().buffer_reads == 0U);
+}
+
+MK_TEST("editor native texture display adapter waits before resize replacement") {
+    mirakana::rhi::NullRhiDevice device;
+    mirakana::editor::NativeTextureDisplayAdapter adapter(mirakana::editor::NativeTextureDisplayAdapterDesc{
+        .device = &device,
+        .extent = mirakana::editor::ViewportExtent{.width = 32, .height = 18},
+        .d3d12_host_available = true,
+        .renderer_output_available = true,
+        .backend_id = "d3d12",
+    });
+
+    const auto first = adapter.render_viewport_frame(1U);
+    adapter.resize(mirakana::editor::ViewportExtent{.width = 80, .height = 45});
+    const auto resized = adapter.render_viewport_frame(2U);
+    const auto& evidence = adapter.evidence();
+
+    MK_REQUIRE(first.texture_display_ready);
+    MK_REQUIRE(resized.texture_display_ready);
+    MK_REQUIRE(resized.resize_recreate_required);
+    MK_REQUIRE(resized.resize_safe_teardown_completed);
+    MK_REQUIRE(resized.extent.width == 80U);
+    MK_REQUIRE(resized.extent.height == 45U);
+    MK_REQUIRE(evidence.resize_recreate_required);
+    MK_REQUIRE(evidence.resize_safe_teardown_completed);
+    MK_REQUIRE(evidence.frames_rendered == 2U);
+    MK_REQUIRE(device.stats().fence_waits >= device.stats().fences_signaled);
+}
+
+MK_TEST("editor native texture display adapter prepares material preview execution evidence") {
+    mirakana::rhi::NullRhiDevice device;
+    mirakana::editor::NativeTextureDisplayAdapter adapter(mirakana::editor::NativeTextureDisplayAdapterDesc{
+        .device = &device,
+        .extent = mirakana::editor::ViewportExtent{.width = 96, .height = 96},
+        .d3d12_host_available = true,
+        .shader_artifacts_available = true,
+        .gpu_payload_available = true,
+        .backend_id = "d3d12",
+    });
+
+    const auto plan = adapter.render_material_preview_frame(23U);
+
+    MK_REQUIRE(plan.accepted);
+    MK_REQUIRE(plan.status_id == "d3d12_texture_ready");
+    MK_REQUIRE(plan.texture_display_ready);
+    MK_REQUIRE(plan.execution_snapshot.status == mirakana::editor::EditorMaterialGpuPreviewStatus::ready);
+    MK_REQUIRE(plan.execution_snapshot.frames_rendered == 1U);
+    MK_REQUIRE(plan.execution_snapshot.executes);
+    MK_REQUIRE(plan.execution_snapshot.display_path_label == "host-private-native");
+    MK_REQUIRE(!plan.execution_snapshot.exposes_native_handles);
 }
 
 MK_TEST("editor native material preview plan rejects missing shader artifacts") {
