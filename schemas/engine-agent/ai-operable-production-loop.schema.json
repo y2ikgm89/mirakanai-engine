@@ -22,6 +22,7 @@
     "materialShaderAuthoringLoops",
     "atlasTilemapAuthoringLoops",
     "prefabScenePackageAuthoringLoops",
+    "performanceBudgetEvidenceLoops",
     "packageStreamingResidencyLoops",
     "safePointPackageReplacementLoops"
   ],
@@ -405,6 +406,14 @@
       "items": {
         "type": "object",
         "required": ["id", "status", "owner", "orderedSteps", "requiredManifestFields", "descriptorFields", "unsupportedClaims"]
+      }
+    },
+    "performanceBudgetEvidenceLoops": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "status", "owner", "summary", "orderedSteps", "requiredManifestFields", "descriptorFields", "budgetCategories", "evidenceKinds", "blockedExecution", "unsupportedClaims", "notes"]
       }
     },
     "packageStreamingResidencyLoops": {

@@ -15,6 +15,9 @@ if (-not $gameAgentSchema.properties.PSObject.Properties.Name.Contains("material
 if (-not $gameAgentSchema.properties.PSObject.Properties.Name.Contains("packageStreamingResidencyTargets")) {
     Write-Error "schemas/game-agent.schema.json must define packageStreamingResidencyTargets"
 }
+if (-not $gameAgentSchema.properties.PSObject.Properties.Name.Contains("performanceBudgets")) {
+    Write-Error "schemas/game-agent.schema.json must define performanceBudgets"
+}
 if (-not $gameAgentSchema.properties.PSObject.Properties.Name.Contains("atlasTilemapAuthoringTargets")) {
     Write-Error "schemas/game-agent.schema.json must define atlasTilemapAuthoringTargets"
 }
@@ -779,7 +782,7 @@ foreach ($recipe in $engine.validationRecipes) {
 }
 
 $productionLoop = $engine.aiOperableProductionLoop
-Assert-Properties $productionLoop @("schemaVersion", "design", "foundationPlan", "currentActivePlan", "recommendedNextPlan", "recipeStatusEnum", "recipes", "commandSurfaces", "authoringSurfaces", "packageSurfaces", "physicsBackendAdapterDecisions", "unsupportedProductionGaps", "hostGates", "validationRecipeMap", "reviewLoops", "resourceExecutionLoops", "materialShaderAuthoringLoops", "atlasTilemapAuthoringLoops", "packageStreamingResidencyLoops", "safePointPackageReplacementLoops") "engine manifest aiOperableProductionLoop"
+Assert-Properties $productionLoop @("schemaVersion", "design", "foundationPlan", "currentActivePlan", "recommendedNextPlan", "recipeStatusEnum", "recipes", "commandSurfaces", "authoringSurfaces", "packageSurfaces", "physicsBackendAdapterDecisions", "unsupportedProductionGaps", "hostGates", "validationRecipeMap", "reviewLoops", "resourceExecutionLoops", "materialShaderAuthoringLoops", "atlasTilemapAuthoringLoops", "performanceBudgetEvidenceLoops", "packageStreamingResidencyLoops", "safePointPackageReplacementLoops") "engine manifest aiOperableProductionLoop"
 if ($productionLoop.schemaVersion -ne 1) {
     Write-Error "engine manifest aiOperableProductionLoop.schemaVersion must be 1"
 }

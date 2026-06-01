@@ -812,18 +812,22 @@ Resolve-RequiredAgentPath "schemas/engine-agent/ai-operable-production-loop.sche
 Assert-ContainsText $gameAgentSchemaText '"materialShaderAuthoringTargets"' "schemas/game-agent.schema.json"
 Assert-ContainsText $gameAgentSchemaText '"atlasTilemapAuthoringTargets"' "schemas/game-agent.schema.json"
 Assert-ContainsText $gameAgentSchemaText '"packageStreamingResidencyTargets"' "schemas/game-agent.schema.json"
+Assert-ContainsText $gameAgentSchemaText '"performanceBudgets"' "schemas/game-agent.schema.json"
 Assert-ContainsText $gameAgentSchemaText '"prefabScenePackageAuthoringTargets"' "schemas/game-agent.schema.json"
 Assert-ContainsText $gameAgentSchemaText '"registeredSourceAssetCookTargets"' "schemas/game-agent.schema.json"
 Assert-ContainsText $manifestRaw "runtimeSceneValidationTargets" "engine/agent/manifest.json"
 Assert-ContainsText $manifestRaw "materialShaderAuthoringLoops" "engine/agent/manifest.json"
 Assert-ContainsText $manifestRaw "atlasTilemapAuthoringLoops" "engine/agent/manifest.json"
 Assert-ContainsText $manifestRaw "packageStreamingResidencyLoops" "engine/agent/manifest.json"
+Assert-ContainsText $manifestRaw "performanceBudgetEvidenceLoops" "engine/agent/manifest.json"
 Assert-ContainsText $manifestRaw "prefabScenePackageAuthoringLoops" "engine/agent/manifest.json"
 Assert-ContainsText $manifestRaw "safePointPackageReplacementLoops" "engine/agent/manifest.json"
 Assert-ContainsText $currentCapabilitiesContent "runtimeSceneValidationTargets" "docs/current-capabilities.md"
 Assert-ContainsText $currentCapabilitiesContent "Material Shader Authoring Loop v1" "docs/current-capabilities.md"
 Assert-ContainsText $currentCapabilitiesContent "create-material-from-graph" "docs/current-capabilities.md"
 Assert-ContainsText $currentCapabilitiesContent "packageStreamingResidencyTargets" "docs/current-capabilities.md"
+Assert-ContainsText $currentCapabilitiesContent "performanceBudgets" "docs/current-capabilities.md"
+Assert-ContainsText $currentCapabilitiesContent "performanceBudgetEvidenceLoops" "docs/current-capabilities.md"
 Assert-ContainsText $currentCapabilitiesContent "registeredSourceAssetCookTargets" "docs/current-capabilities.md"
 Assert-ContainsText $currentCapabilitiesContent "Safe-Point Package Unload Replacement Execution v1" "docs/current-capabilities.md"
 Assert-ContainsText $currentCapabilitiesContent "commit_runtime_package_safe_point_unload" "docs/current-capabilities.md"
@@ -832,6 +836,7 @@ Assert-ContainsText $aiGameDevelopmentContent "materialShaderAuthoringTargets" "
 Assert-ContainsText $aiGameDevelopmentContent "plan_material_graph_package_update" "docs/ai-game-development.md"
 Assert-ContainsText $aiGameDevelopmentContent "atlasTilemapAuthoringTargets" "docs/ai-game-development.md"
 Assert-ContainsText $aiGameDevelopmentContent "packageStreamingResidencyTargets" "docs/ai-game-development.md"
+Assert-ContainsText $aiGameDevelopmentContent "performanceBudgets" "docs/ai-game-development.md"
 Assert-ContainsText $aiGameDevelopmentContent "prefabScenePackageAuthoringTargets" "docs/ai-game-development.md"
 Assert-ContainsText $aiGameDevelopmentContent "registeredSourceAssetCookTargets" "docs/ai-game-development.md"
 Assert-ContainsText $aiGameDevelopmentContent "plan_placeholder_asset_bundle" "docs/ai-game-development.md"
@@ -845,6 +850,7 @@ Assert-ContainsText $aiGameDevelopmentContent "safe-point package replacement" "
 Assert-ContainsText $aiGameDevelopmentContent "commit_runtime_package_safe_point_unload" "docs/ai-game-development.md"
 Assert-ContainsText $roadmapContent "runtimeSceneValidationTargets" "docs/roadmap.md"
 Assert-ContainsText $roadmapContent "packageStreamingResidencyTargets" "docs/roadmap.md"
+Assert-ContainsText $roadmapContent "performanceBudgets" "docs/roadmap.md"
 Assert-ContainsText $roadmapContent "registeredSourceAssetCookTargets" "docs/roadmap.md"
 Assert-ContainsText $roadmapContent "Safe-Point Package Unload Replacement Execution v1" "docs/roadmap.md"
 Assert-ContainsText $roadmapContent "commit_runtime_package_safe_point_unload" "docs/roadmap.md"
@@ -1005,7 +1011,7 @@ Assert-ContainsText $historicalPlanEvidenceText "2026-05-06-desktop-release-pack
 Assert-ContainsText $manifestRaw "validate the current ZIP SHA-256 sidecar" "engine/agent/manifest.json"
 
 $productionLoop = $manifest.aiOperableProductionLoop
-Assert-JsonProperty $productionLoop @("schemaVersion", "design", "foundationPlan", "currentActivePlan", "recommendedNextPlan", "recipeStatusEnum", "recipes", "commandSurfaces", "authoringSurfaces", "packageSurfaces", "physicsBackendAdapterDecisions", "unsupportedProductionGaps", "hostGates", "validationRecipeMap") "engine/agent/manifest.json aiOperableProductionLoop"
+Assert-JsonProperty $productionLoop @("schemaVersion", "design", "foundationPlan", "currentActivePlan", "recommendedNextPlan", "recipeStatusEnum", "recipes", "commandSurfaces", "authoringSurfaces", "packageSurfaces", "physicsBackendAdapterDecisions", "unsupportedProductionGaps", "hostGates", "validationRecipeMap", "performanceBudgetEvidenceLoops") "engine/agent/manifest.json aiOperableProductionLoop"
 if ($productionLoop.schemaVersion -ne 1) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop.schemaVersion must be 1"
 }
@@ -1415,6 +1421,45 @@ if ($prefabScene3dAuthoringLoop.Count -eq 1) {
         }
     }
 }
+if (-not $productionLoop.PSObject.Properties.Name.Contains("performanceBudgetEvidenceLoops")) {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop missing performanceBudgetEvidenceLoops"
+}
+$performanceBudgetEvidenceLoop = @($productionLoop.performanceBudgetEvidenceLoops | Where-Object { $_.id -eq "ai-operable-performance-budget-evidence" })
+if ($performanceBudgetEvidenceLoop.Count -ne 1) {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop must expose one ai-operable-performance-budget-evidence loop"
+}
+if ($performanceBudgetEvidenceLoop.Count -eq 1) {
+    Assert-JsonProperty $performanceBudgetEvidenceLoop[0] @("id", "status", "owner", "summary", "orderedSteps", "requiredManifestFields", "descriptorFields", "budgetCategories", "evidenceKinds", "blockedExecution", "unsupportedClaims") "engine/agent/manifest.json ai-operable-performance-budget-evidence"
+    if ($performanceBudgetEvidenceLoop[0].status -ne "ready") {
+        Write-Error "engine/agent/manifest.json ai-operable-performance-budget-evidence must be ready"
+    }
+    $expectedPerformanceBudgetSteps = @(
+        "select-performance-budget-set",
+        "validate-budget-recipe-links",
+        "review-budget-rows",
+        "attach-evidence-rows",
+        "reject-broad-optimization-claims"
+    )
+    $actualPerformanceBudgetSteps = @($performanceBudgetEvidenceLoop[0].orderedSteps | ForEach-Object { $_.id })
+    if (($actualPerformanceBudgetSteps -join "|") -ne ($expectedPerformanceBudgetSteps -join "|")) {
+        Write-Error "engine/agent/manifest.json ai-operable-performance-budget-evidence orderedSteps must be: $($expectedPerformanceBudgetSteps -join ', ')"
+    }
+    foreach ($field in @("performanceBudgets", "runtimePackageFiles", "runtimeSceneValidationTargets", "packageStreamingResidencyTargets", "validationRecipes")) {
+        if (@($performanceBudgetEvidenceLoop[0].requiredManifestFields) -notcontains $field) {
+            Write-Error "engine/agent/manifest.json ai-operable-performance-budget-evidence requiredManifestFields missing: $field"
+        }
+    }
+    foreach ($field in @("schemaVersion", "capabilityId", "budgetSetId", "selectedRecipeId", "targetBackend", "hostGateId", "validationRecipeIds", "budgetRows", "evidenceRows", "unsupportedClaims")) {
+        if (@($performanceBudgetEvidenceLoop[0].descriptorFields) -notcontains $field) {
+            Write-Error "engine/agent/manifest.json ai-operable-performance-budget-evidence descriptorFields missing: $field"
+        }
+    }
+    foreach ($claim in @("broad optimized game generation", "cross-vendor performance parity", "cross-backend performance parity", "native handles", "allocator/GPU budget enforcement", "CUDA/HIP runtime path", "GPU-driven rendering readiness")) {
+        if (-not ((@($performanceBudgetEvidenceLoop[0].unsupportedClaims) -join " ").Contains($claim))) {
+            Write-Error "engine/agent/manifest.json ai-operable-performance-budget-evidence unsupportedClaims missing: $claim"
+        }
+    }
+}
 if (-not $productionLoop.PSObject.Properties.Name.Contains("packageStreamingResidencyLoops")) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop missing packageStreamingResidencyLoops"
 }
@@ -1751,6 +1796,17 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
         "native handle exposure"
     )) {
         Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan sandbox world package validation and performance budget selection"
+    }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "ai-operable-performance-budget-and-evidence-v1") {
+    foreach ($needle in @(
+        "performanceBudgets",
+        "budgetRows",
+        "evidenceRows",
+        "validation recipe",
+        "unsupported broad optimization claims",
+        "CPU/GPU/memory optimization"
+    )) {
+        Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan performance budget evidence selection"
     }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "first-party-ui-editor-production-stack-v1") {
     foreach ($needle in @(

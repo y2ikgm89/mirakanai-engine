@@ -1954,6 +1954,112 @@
     "desktop-game-runtime",
     "desktop-runtime-release"
   ],
+  "performanceBudgets": {
+    "schemaVersion": 1,
+    "capabilityId": "ai-operable-performance-budget-and-evidence-v1",
+    "budgetSetId": "sample-2d-package-performance-budget",
+    "selectedRecipeId": "installed-2d-sandbox-package-budget-smoke",
+    "targetBackend": "d3d12",
+    "hostGateId": "d3d12-windows-package-smoke",
+    "validationRecipeIds": [
+      "installed-2d-package-smoke",
+      "installed-2d-sandbox-package-budget-smoke",
+      "installed-native-2d-sprite-smoke",
+      "desktop-game-runtime"
+    ],
+    "budgetRows": [
+      {
+        "id": "frame-p95-ms",
+        "category": "frame",
+        "metric": "p95_frame_time",
+        "limit": 16.67,
+        "unit": "ms",
+        "evidenceRequired": true,
+        "notes": "Host-gated trace or profiler evidence is required before this row can prove frame-time readiness."
+      },
+      {
+        "id": "sprite-draw-count",
+        "category": "draw",
+        "metric": "sprite_batch_budget_total_draws",
+        "limit": 16,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "Selected sprite batch budget smoke keeps draw rows bounded for the generated 2D package."
+      },
+      {
+        "id": "sandbox-package-bytes",
+        "category": "package",
+        "metric": "sandbox_package_budget_byte_limit",
+        "limit": 7409,
+        "unit": "bytes",
+        "evidenceRequired": true,
+        "notes": "Selected sandbox package budget smoke reports deterministic package byte limits without package mutation."
+      },
+      {
+        "id": "resident-memory-bytes",
+        "category": "memory",
+        "metric": "package_streaming_resident_budget_bytes",
+        "limit": 33554432,
+        "unit": "bytes",
+        "evidenceRequired": true,
+        "notes": "Residency budget is descriptor and smoke evidence only; it is not allocator or GPU budget enforcement."
+      }
+    ],
+    "evidenceRows": [
+      {
+        "id": "sprite-budget-smoke",
+        "budgetRowIds": [
+          "sprite-draw-count"
+        ],
+        "evidenceKind": "package-smoke-counter",
+        "source": "sprite_batch_budget_* counters from installed package smoke",
+        "validationRecipeId": "installed-native-2d-sprite-smoke",
+        "status": "ready"
+      },
+      {
+        "id": "sandbox-package-budget-smoke",
+        "budgetRowIds": [
+          "sandbox-package-bytes"
+        ],
+        "evidenceKind": "package-smoke-counter",
+        "source": "sandbox_package_budget_* counters from installed package smoke",
+        "validationRecipeId": "installed-2d-sandbox-package-budget-smoke",
+        "status": "ready"
+      },
+      {
+        "id": "residency-budget-descriptor",
+        "budgetRowIds": [
+          "resident-memory-bytes"
+        ],
+        "evidenceKind": "manifest-budget",
+        "source": "packageStreamingResidencyTargets packaged-2d-residency-budget",
+        "validationRecipeId": "installed-2d-package-smoke",
+        "status": "host-gated"
+      },
+      {
+        "id": "frame-trace-required",
+        "budgetRowIds": [
+          "frame-p95-ms"
+        ],
+        "evidenceKind": "trace-artifact",
+        "source": "Trace or profiler artifact is not required by default validation and must be attached by a host performance lane.",
+        "validationRecipeId": "desktop-game-runtime",
+        "status": "host-gated"
+      }
+    ],
+    "unsupportedClaims": [
+      "broad-optimized-game",
+      "cross-vendor-performance-parity",
+      "cross-backend-performance-parity",
+      "unbounded-frame-time",
+      "renderer-rhi-residency",
+      "native-handles",
+      "allocator-gpu-budget-enforcement",
+      "metal-readiness",
+      "cuda-hip-runtime-path",
+      "gpu-driven-rendering-ready"
+    ]
+  },
   "runtimePackageFiles": [
     "runtime/sample_2d_desktop_runtime_package.config",
     "runtime/sample_2d_desktop_runtime_package.geindex",

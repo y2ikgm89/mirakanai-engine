@@ -5776,6 +5776,7 @@ This game uses the optional desktop runtime package lane with a first-party cook
 - `game.agent.json.atlasTilemapAuthoringTargets` for deterministic package data only
 - `game.agent.json.runtimeSceneValidationTargets`
 - `game.agent.json.packageStreamingResidencyTargets` as host-gated safe-point package streaming intent
+- `game.agent.json.performanceBudgets` as descriptor-only optimization budget and evidence intent
 - `PACKAGE_FILES_FROM_MANIFEST`
 
 The generated package proves cooked sprite/material/audio/scene loading, atlas-backed repeated scene sprite planning counters through `sprite_batch_plan_atlas_backed_batches`, `sprite_batch_plan_repeated_atlas_batches`, and `sprite_batch_plan_repeated_atlas_sprites`, first-party cooked sprite animation frame sampling and application, deterministic flipbook ticks with package-visible `sprite_flipbook_frames_sampled` / `sprite_flipbook_frames_applied` counters through `--require-sprite-animation`, deterministic data-only tilemap metadata with visible-cell runtime sampling counters through `--require-tilemap-runtime-ux`, a deterministic 2D gameplay systems package proof through `--require-gameplay-systems` including behavior-authoring readiness status, diagnostics, trace, action binding, and blackboard-condition counters, deterministic entity scale/culling rows through `--require-entity-scale-culling`, 2D scene validation, HUD submission, audio cue intent, package smoke validation, and a host-gated D3D12 native 2D sprite overlay smoke through `--require-native-2d-sprites`. It does not claim production atlas packing, full tilemap editor UX, runtime image decoding, production sprite batching, package streaming execution, broad entity scale execution/performance/GPU culling, visual scripting, arbitrary AI code execution, ML inference, networked AI replication, Metal readiness, public native/RHI handles, or general renderer quality.
@@ -5849,6 +5850,7 @@ This `DesktopRuntime3DPackage` game uses the optional desktop runtime package la
 - `game.agent.json.runtimePackageFiles`
 - `game.agent.json.runtimeSceneValidationTargets`
 - `game.agent.json.packageStreamingResidencyTargets` as host-gated safe-point package streaming intent
+- `game.agent.json.performanceBudgets` as descriptor-only optimization budget and evidence intent
 - `PACKAGE_FILES_FROM_MANIFEST`
 
 The generated package proves cooked texture/mesh/skinned-mesh/material/animation/morph/quaternion-animation/scene/physics-collision loading, runtime scene validation target descriptors, camera/controller package smoke validation, transform animation binding smoke validation, morph package consumption smoke validation, quaternion local-pose sampling smoke validation, selected host-gated safe-point package streaming counters through `--require-package-streaming-safe-point`, selected KTX2/Basis texture review counters through `--require-ktx2-basis-texture-review` with `ktx_basis_texture_review_status=host_evidence_required`, `ktx_basis_texture_review_ready=1`, selected package evidence ready, zero dependency-gated/unsupported rows, zero runtime transcoding/GPU upload/compression tool invocation counters, zero diagnostics, and a positive replay hash, selected generated gameplay systems counters through `--require-gameplay-systems`, including `gameplay_systems_navigation_navmesh_dynamic_obstacles=1`, `gameplay_systems_navigation_navmesh_readiness_status=ready`, `gameplay_systems_navigation_navmesh_readiness_diagnostics=0`, `gameplay_systems_navigation_navmesh_scene_refs=3`, `gameplay_systems_navigation_navmesh_visited_polygons=3`, `gameplay_systems_navigation_crowd_source_order_ready=1`, `gameplay_systems_navigation_crowd_applied_neighbors=2`, `gameplay_systems_navigation_crowd_readiness_status=ready`, `gameplay_systems_navigation_crowd_readiness_diagnostics=0`, `gameplay_systems_navigation_crowd_readiness_source_order_ready=1`, `gameplay_systems_navigation_crowd_readiness_applied_neighbors=2`, `gameplay_systems_navigation_crowd_readiness_dynamic_obstacles=2`, `gameplay_systems_local_avoidance_applied_neighbors`, `gameplay_systems_physics_policy_dynamic_pushes=1`, `gameplay_systems_advanced_controller_status=moved`, `gameplay_systems_advanced_controller_platform_applied=1`, `gameplay_systems_advanced_controller_constraint_rows=1`, `gameplay_systems_advanced_controller_replay_changed=1`, `gameplay_systems_character_dynamics_status=ready`, `gameplay_systems_character_dynamics_step_ups=1`, `gameplay_systems_character_dynamics_walkable_slope_rows=1`, `gameplay_systems_character_dynamics_ground_probes=1`, `gameplay_systems_character_dynamics_replay_changed=1`, `gameplay_systems_physics_constraints_status=solved`, `gameplay_systems_physics_constraints_diagnostic=none`, `gameplay_systems_physics_constraints_rows=2`, `gameplay_systems_physics_constraints_fixed_rows=1`, `gameplay_systems_physics_constraints_linear_axis_rows=1`, `gameplay_systems_physics_constraints_axis_limit_clamped=1`, `gameplay_systems_vehicle_status=grounded`, `gameplay_systems_vehicle_diagnostic=none`, `gameplay_systems_vehicle_wheel_rows=4`, `gameplay_systems_vehicle_grounded_wheels=4`, and `gameplay_systems_vehicle_wheel_probe_hits=4`, selected package collision counters through `--require-scene-collision-package` including `collision_query_readiness_status=ready`, `collision_query_readiness_diagnostic=none`, and `collision_query_readiness_diagnostics=0`, generated 3D renderer quality counters through `--require-renderer-quality-gates` for scene GPU + depth-aware postprocess with framegraph_passes=2, framegraph_passes_executed=4, framegraph_render_passes_recorded=4, framegraph_barrier_steps_executed=9, renderer_quality_expected_framegraph_render_passes=4, and renderer_quality_expected_framegraph_barrier_steps=9 only, generated 3D postprocess depth-input counters through `--require-postprocess-depth-input`, selected generated 3D directional shadow counters through `--require-directional-shadow --require-directional-shadow-filtering`, selected D3D12 generated 3D graphics morph + directional shadow receiver counters through `--require-shadow-morph-composition` with framegraph_render_passes_recorded=6, selected D3D12 visible generated 3D production-style package counters through `--require-visible-3d-production-proof`, selected D3D12 generated 3D native UI overlay HUD box counters through `--require-native-ui-overlay`, selected D3D12 generated 3D cooked UI atlas image sprite counters through `--require-native-ui-textured-sprite-atlas`, selected D3D12 generated 3D cooked UI atlas text glyph counters through `--require-native-ui-text-glyph-atlas`, selected generated 3D playable package counters through `--require-playable-3d-slice`, D3D12 compute morph dispatch into renderer-consumed POSITION/NORMAL/TANGENT buffers, generated D3D12 skin+compute package smoke counters, Vulkan POSITION/NORMAL/TANGENT compute morph package smoke through explicit SPIR-V artifacts, Vulkan skin+compute package smoke counters through explicit SPIR-V artifacts, and selected-target shader artifact metadata. It does not claim runtime source parsing, broad dependency cooking, KTX2/Basis runtime transcoding, KTX GPU upload, compression tool execution, broad texture codec readiness, broad async/background package streaming, scene/physics perception integration, navmesh asset import, persistent/full crowd simulation beyond value-only batch planning, animation-aware steering, middleware, production physics middleware/native backend readiness, dynamic-vs-dynamic TOI, rotational CCD, rotational rigid-body constraints, 2D CCD, persistent joint assets, broad vehicle dynamics, persistent vehicle simulation, production text shaping, font rasterization, glyph atlas generation, runtime source image decoding, source image atlas packing, authored animation graph workflows, broad skeletal renderer deformation, broad directional shadow production quality, morph-deformed shadow-caster silhouettes, compute morph + shadow composition, broad shadow+morph composition, Metal compute morph deformation, async compute overlap/performance, broad frame graph scheduling, graphics morph+skin composition beyond the host-owned skin+compute package smoke, material/shader graphs, live shader generation, editor productization, native/RHI handle exposure, Vulkan/Metal parity for the visible proof, general renderer quality, or broad generated 3D production readiness.
@@ -7181,6 +7183,180 @@ function New-DesktopRuntime3DGameDesignSpec {
     }
 }
 
+function New-AiPerformanceBudgets {
+    param(
+        [Parameter(Mandatory)]
+        [ValidateSet("2d", "3d")]
+        [string]$Kind,
+        [Parameter(Mandatory)]
+        [string]$AssetKeyPrefix
+    )
+
+    if ($Kind -eq "2d") {
+        return [ordered]@{
+            schemaVersion = 1
+            capabilityId = "ai-operable-performance-budget-and-evidence-v1"
+            budgetSetId = "$AssetKeyPrefix-2d-package-performance-budget"
+            selectedRecipeId = "installed-native-2d-sprite-smoke"
+            targetBackend = "d3d12"
+            hostGateId = "d3d12-windows-package-smoke"
+            validationRecipeIds = @(
+                "installed-2d-package-smoke",
+                "installed-native-2d-sprite-smoke",
+                "desktop-game-runtime"
+            )
+            budgetRows = @(
+                [ordered]@{
+                    id = "frame-p95-ms"
+                    category = "frame"
+                    metric = "p95_frame_time"
+                    limit = 16.67
+                    unit = "ms"
+                    evidenceRequired = $true
+                    notes = "Host-gated trace or profiler evidence is required before this row can prove frame-time readiness."
+                },
+                [ordered]@{
+                    id = "sprite-draw-count"
+                    category = "draw"
+                    metric = "sprite_batch_budget_total_draws"
+                    limit = 16
+                    unit = "count"
+                    evidenceRequired = $true
+                    notes = "Selected native 2D sprite smoke keeps generated sprite draw rows bounded for the package lane."
+                },
+                [ordered]@{
+                    id = "resident-memory-bytes"
+                    category = "memory"
+                    metric = "package_streaming_resident_budget_bytes"
+                    limit = 33554432
+                    unit = "bytes"
+                    evidenceRequired = $true
+                    notes = "Residency budget is descriptor and smoke evidence only; it is not allocator or GPU budget enforcement."
+                }
+            )
+            evidenceRows = @(
+                [ordered]@{
+                    id = "sprite-budget-smoke"
+                    budgetRowIds = @("sprite-draw-count")
+                    evidenceKind = "package-smoke-counter"
+                    source = "sprite_batch_budget_* counters from installed native 2D sprite package smoke"
+                    validationRecipeId = "installed-native-2d-sprite-smoke"
+                    status = "ready"
+                },
+                [ordered]@{
+                    id = "residency-budget-descriptor"
+                    budgetRowIds = @("resident-memory-bytes")
+                    evidenceKind = "manifest-budget"
+                    source = "packageStreamingResidencyTargets packaged-2d-residency-budget"
+                    validationRecipeId = "installed-2d-package-smoke"
+                    status = "host-gated"
+                },
+                [ordered]@{
+                    id = "frame-trace-required"
+                    budgetRowIds = @("frame-p95-ms")
+                    evidenceKind = "trace-artifact"
+                    source = "Trace or profiler artifact is not required by default validation and must be attached by a host performance lane."
+                    validationRecipeId = "desktop-game-runtime"
+                    status = "host-gated"
+                }
+            )
+            unsupportedClaims = @(
+                "broad-optimized-game",
+                "cross-vendor-performance-parity",
+                "cross-backend-performance-parity",
+                "unbounded-frame-time",
+                "renderer-rhi-residency",
+                "native-handles",
+                "allocator-gpu-budget-enforcement",
+                "metal-readiness",
+                "cuda-hip-runtime-path",
+                "gpu-driven-rendering-ready"
+            )
+        }
+    }
+
+    return [ordered]@{
+        schemaVersion = 1
+        capabilityId = "ai-operable-performance-budget-and-evidence-v1"
+        budgetSetId = "$AssetKeyPrefix-3d-package-performance-budget"
+        selectedRecipeId = "installed-d3d12-3d-package-smoke"
+        targetBackend = "d3d12"
+        hostGateId = "d3d12-windows-package-smoke"
+        validationRecipeIds = @(
+            "installed-d3d12-3d-package-smoke",
+            "installed-d3d12-3d-directional-shadow-smoke",
+            "desktop-game-runtime"
+        )
+        budgetRows = @(
+            [ordered]@{
+                id = "frame-p95-ms"
+                category = "frame"
+                metric = "p95_frame_time"
+                limit = 16.67
+                unit = "ms"
+                evidenceRequired = $true
+                notes = "Host-gated trace or profiler evidence is required before this row can prove frame-time readiness."
+            },
+            [ordered]@{
+                id = "framegraph-pass-count"
+                category = "gpu"
+                metric = "renderer_quality_expected_framegraph_render_passes"
+                limit = 3
+                unit = "count"
+                evidenceRequired = $true
+                notes = "Selected renderer quality smoke reports expected frame graph pass counters for the D3D12 package lane only."
+            },
+            [ordered]@{
+                id = "resident-memory-bytes"
+                category = "memory"
+                metric = "package_streaming_resident_budget_bytes"
+                limit = 67108864
+                unit = "bytes"
+                evidenceRequired = $true
+                notes = "Residency budget is descriptor and smoke evidence only; it is not allocator or GPU budget enforcement."
+            }
+        )
+        evidenceRows = @(
+            [ordered]@{
+                id = "framegraph-pass-smoke"
+                budgetRowIds = @("framegraph-pass-count")
+                evidenceKind = "package-smoke-counter"
+                source = "renderer_quality_expected_framegraph_render_passes from selected D3D12 package smoke"
+                validationRecipeId = "installed-d3d12-3d-directional-shadow-smoke"
+                status = "ready"
+            },
+            [ordered]@{
+                id = "residency-budget-descriptor"
+                budgetRowIds = @("resident-memory-bytes")
+                evidenceKind = "manifest-budget"
+                source = "packageStreamingResidencyTargets packaged-3d-residency-budget"
+                validationRecipeId = "installed-d3d12-3d-package-smoke"
+                status = "host-gated"
+            },
+            [ordered]@{
+                id = "frame-trace-required"
+                budgetRowIds = @("frame-p95-ms")
+                evidenceKind = "trace-artifact"
+                source = "Trace or profiler artifact is not required by default validation and must be attached by a host performance lane."
+                validationRecipeId = "desktop-game-runtime"
+                status = "host-gated"
+            }
+        )
+        unsupportedClaims = @(
+            "broad-optimized-game",
+            "cross-vendor-performance-parity",
+            "cross-backend-performance-parity",
+            "unbounded-frame-time",
+            "renderer-rhi-residency",
+            "native-handles",
+            "allocator-gpu-budget-enforcement",
+            "metal-readiness",
+            "cuda-hip-runtime-path",
+            "gpu-driven-rendering-ready"
+        )
+    }
+}
+
 function New-DesktopRuntime2DManifest {
     param(
         [string]$GameName,
@@ -7335,6 +7511,7 @@ function New-DesktopRuntime2DManifest {
             externalImportersRequired = @()
         }
         packagingTargets = @("desktop-game-runtime", "desktop-runtime-release")
+        performanceBudgets = New-AiPerformanceBudgets -Kind "2d" -AssetKeyPrefix $assetKeyPrefix
         runtimePackageFiles = @(
             "runtime/$GameName.config",
             "runtime/$GameName.geindex",
@@ -7683,6 +7860,7 @@ function New-DesktopRuntime3DManifest {
             }
         }
         packagingTargets = @("desktop-game-runtime", "desktop-runtime-release")
+        performanceBudgets = New-AiPerformanceBudgets -Kind "3d" -AssetKeyPrefix $assetKeyPrefix
         runtimePackageFiles = @(
             "runtime/$GameName.config",
             "runtime/$GameName.geindex",
