@@ -65,10 +65,12 @@ Use these official or primary sources as source-of-truth anchors during implemen
 - Modify when manifest-visible claims change: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
 - Generate when manifest changes: `engine/agent/manifest.json`
 
-- [ ] Audit public headers for ownership-returning APIs, raw pointer/reference parameters, raw pointer/reference members, view-like parameters, and backend handle boundaries.
-- [ ] Define the project vocabulary for owner, observer, borrowed range, frame-local scratch, stable handle, backend-private object, and handoff/result rows.
-- [ ] Document when to use values, references, raw pointers, `std::unique_ptr`, `std::span`, `std::string_view`, first-party handles, and IDs.
-- [ ] Preserve the existing rule that raw pointers are non-owning; any ownership transfer must be explicit in type or result contract.
+- [x] Audit public headers for ownership-returning APIs, raw pointer/reference parameters, raw pointer/reference members, view-like parameters, and backend handle boundaries.
+- [x] Define the project vocabulary for owner, observer, borrowed range, frame-local scratch, stable handle, backend-private object, and handoff/result rows.
+- [x] Document when to use values, references, raw pointers, `std::unique_ptr`, `std::span`, `std::string_view`, first-party handles, and IDs.
+- [x] Preserve the existing rule that raw pointers are non-owning; any ownership transfer must be explicit in type or result contract.
+
+Phase 1 evidence on 2026-06-02: audited representative public headers for RHI resource handles and lifetime registry APIs, runtime asset/package observer lookups, runtime scene borrowed ranges, runtime/RHI execution descriptors, scene/UI/editor lookup observers, and Windows runtime-host observer descriptors. Durable guidance now lives in `docs/cpp-style.md`, `docs/architecture.md`, `docs/ai-game-development.md`, and `docs/current-capabilities.md`. Manifest fragments and static-check needles were inspected and left unchanged because they already cover `memory-lifetime-taxonomy-v1`, raw pointer non-ownership, `std::unique_ptr`, `std::span`, and allocator/job/NUMA/GPU-memory follow-up gates.
 
 ## Phase 2 - Memory Lifetime And Allocation Boundary Rows
 
@@ -112,6 +114,16 @@ Close each behavior or contract slice with the smallest relevant focused checks 
 - `git diff --check`
 
 Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` at the slice-closing gate when C++/runtime/build/packaging/public contracts change, or when narrower checks cannot prove the changed surface.
+
+Phase 1 validation on 2026-06-02:
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write` - passed, no manifest drift retained.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` - passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` - passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` - passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` - passed.
+- `git diff --check` - passed.
+- Full `tools/validate.ps1` was not run for this Phase 1 slice because the change is limited to docs/agent-surface wording and the targeted checks cover the changed contracts.
 
 ## Done When
 

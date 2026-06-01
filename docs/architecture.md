@@ -117,6 +117,18 @@ Its readback path now maps readback-domain runtime buffers through `read_runtime
 
 The visible `MK_editor` shell owns explicit dynamic game-module driver loading for Play-In-Editor. It reviews the path and factory symbol through `MK_editor_core`, loads the module through `MK_platform` `DynamicLibrary`, resolves `mirakana_create_editor_game_module_driver_v1`, wraps the returned `GameEngine.EditorGameModuleDriver.v1` function table as an `IEditorPlaySessionDriver`, and keeps the module loaded until the driver is destroyed. Editor core does not load modules or expose native handles, and the shell blocks unload while the isolated play session is active; hot reload, active-session reload/unload, stable third-party ABI, `DesktopGameRunner` embedding, package scripts, validation recipes, renderer/RHI uploads or handles, native handles, and package streaming remain outside this boundary.
 
+## Memory And Lifetime Boundaries
+
+GameEngine uses explicit ownership boundaries before allocator, job-system, NUMA, SIMD, GPU residency, or vendor-specific optimization work. Public contracts use value rows, immutable snapshots, generation-checked ids, first-party handles, `std::unique_ptr` ownership transfer, `std::span` / `std::string_view` borrowed views, and non-owning raw pointers or references only when the owner and lifetime are clear from the surrounding contract.
+
+Module-owned resources stay inside their module or backend. Runtime package contents are owned by runtime package/store/catalog objects; renderer and RHI resources are owned by renderer/RHI devices and lifetime registries; editor and host shell native state is owned by private shell adapters. Cross-module handoffs use copied rows, stable handles, or explicit safe-point results instead of shared mutable ownership.
+
+Frame-local scratch, upload staging, transient render rows, and borrowed views cannot outlive the frame, call, worker handoff, safe point, or GPU submission/retire boundary that created them. If data must cross a worker/thread boundary, package residency transition, or GPU fence boundary, copy it into owner-owned storage or convert it into a stable first-party handle/id plus explicit diagnostics.
+
+Backend-private objects include Win32, D3D12, Vulkan, Metal, WASAPI, profiler SDK, allocator, queue, fence, descriptor, heap, and GPU memory objects. Official D3D12 and Vulkan models make application-owned memory, synchronization, residency, and fence/ownership transitions explicit, so GameEngine keeps those details behind backend/PIMPL or first-party opaque handles rather than exposing native handles to gameplay, generated games, manifests, or AI command surfaces.
+
+AI-generated games must treat these lifetime rules as part of recipe selection. When the selected recipe lacks a stable handle, budget counter, safe-point result, trace artifact, or host-gated profiler evidence for a requested optimization, the correct outcome is an AI Engine Capability Handoff row, not a game-local raw pointer, native handle, allocator, or backend shortcut.
+
 ## Dependency Rules
 
 - `engine/core` depends only on the C++ standard library. Shared observability contracts such as diagnostics, counters, clocks, profile samples, and capture-to-trace serialization belong here when renderer, runtime host, platform, and editor modules all need them.
