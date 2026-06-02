@@ -1565,7 +1565,8 @@ MK_TEST("job execution pool executes batches on worker threads with deterministi
                                                                           .worker_count = 2,
                                                                           .queue_capacity_per_worker = 4,
                                                                           .scratch_budget_bytes_per_worker = 512,
-                                                                          .frame_index = 41});
+                                                                          .frame_index = 41,
+                                                                          .worker_placement_callback = {}});
     MK_REQUIRE(pool.status() == mirakana::JobExecutionPoolStatus::ready);
     MK_REQUIRE(pool.worker_threads_started() == 2);
 
@@ -1645,6 +1646,78 @@ MK_TEST("job execution pool executes batches on worker threads with deterministi
                "queue_overflow");
 }
 
+MK_TEST("job execution pool runs worker placement callback before task execution") {
+    std::array<std::atomic_bool, 2> worker_placed{};
+    std::array<std::atomic_uint64_t, 2> placement_calls{};
+
+    auto pool = mirakana::JobExecutionPool(mirakana::JobExecutionPoolDesc{
+        .name = "core.worker_placement_pool",
+        .logical_processor_count = 2,
+        .worker_count = 2,
+        .queue_capacity_per_worker = 4,
+        .scratch_budget_bytes_per_worker = 512,
+        .frame_index = 45,
+        .worker_placement_callback = [&](const mirakana::JobExecutionWorkerPlacementRequest& request) {
+            MK_REQUIRE(request.pool_name == "core.worker_placement_pool");
+            MK_REQUIRE(request.worker_id < worker_placed.size());
+            MK_REQUIRE(request.worker_count == 2U);
+            if (request.worker_id == 1U) {
+                std::this_thread::sleep_for(std::chrono::milliseconds{100});
+            }
+            placement_calls[request.worker_id].fetch_add(1, std::memory_order_relaxed);
+            worker_placed[request.worker_id].store(true, std::memory_order_release);
+            return mirakana::JobExecutionWorkerPlacementResult{.status =
+                                                                   mirakana::JobExecutionWorkerPlacementStatus::ready,
+                                                               .worker_id = request.worker_id,
+                                                               .attempted = true,
+                                                               .applied = true,
+                                                               .selected_cpu_set_count = 1};
+        }});
+    MK_REQUIRE(pool.status() == mirakana::JobExecutionPoolStatus::ready);
+
+    std::atomic_uint64_t tasks_seen_after_placement{0};
+    std::atomic_uint64_t tasks_seen_after_all_worker_placement{0};
+    const auto body = [&](mirakana::JobExecutionContext& context) {
+        if (worker_placed[context.worker_id].load(std::memory_order_acquire)) {
+            tasks_seen_after_placement.fetch_add(1, std::memory_order_relaxed);
+        }
+        if (placement_calls[0].load(std::memory_order_acquire) == 1U &&
+            placement_calls[1].load(std::memory_order_acquire) == 1U) {
+            tasks_seen_after_all_worker_placement.fetch_add(1, std::memory_order_relaxed);
+        }
+    };
+
+    auto batch = mirakana::JobExecutionBatchDesc{};
+    batch.tasks = {
+        mirakana::JobExecutionTaskDesc{.evidence = mirakana::JobSchedulingWorkItemRow{.job_id = "place_worker_zero",
+                                                                                      .worker_id = 0,
+                                                                                      .batch_size = 8,
+                                                                                      .worker_local_output_count = 1,
+                                                                                      .merge_order = 0},
+                                       .body = body},
+        mirakana::JobExecutionTaskDesc{.evidence = mirakana::JobSchedulingWorkItemRow{.job_id = "place_worker_one",
+                                                                                      .worker_id = 1,
+                                                                                      .batch_size = 8,
+                                                                                      .worker_local_output_count = 1,
+                                                                                      .merge_order = 1},
+                                       .body = body},
+    };
+    batch.options.minimum_batch_size = 4;
+    batch.options.maximum_batch_size = 64;
+
+    const auto result = pool.execute(batch);
+
+    MK_REQUIRE(result.status == mirakana::JobExecutionRunStatus::ready);
+    MK_REQUIRE(result.worker_placement_attempt_count == 2U);
+    MK_REQUIRE(result.worker_placement_applied_count == 2U);
+    MK_REQUIRE(result.worker_placement_diagnostic_count == 0U);
+    MK_REQUIRE(result.worker_placement_selected_cpu_set_count == 2U);
+    MK_REQUIRE(placement_calls[0].load(std::memory_order_relaxed) == 1U);
+    MK_REQUIRE(placement_calls[1].load(std::memory_order_relaxed) == 1U);
+    MK_REQUIRE(tasks_seen_after_placement.load(std::memory_order_relaxed) == 2U);
+    MK_REQUIRE(tasks_seen_after_all_worker_placement.load(std::memory_order_relaxed) == 2U);
+}
+
 MK_TEST("job execution pool applies opt in work stealing without changing deterministic publish evidence") {
     auto pool = mirakana::JobExecutionPool(mirakana::JobExecutionPoolDesc{.name = "core.work_stealing_pool",
                                                                           .logical_processor_count = 2,
@@ -1652,7 +1725,8 @@ MK_TEST("job execution pool applies opt in work stealing without changing determ
                                                                           .queue_capacity_per_worker = 4,
                                                                           .scratch_budget_bytes_per_worker = 512,
                                                                           .frame_index = 44,
-                                                                          .work_stealing_enabled = true});
+                                                                          .work_stealing_enabled = true,
+                                                                          .worker_placement_callback = {}});
     MK_REQUIRE(pool.status() == mirakana::JobExecutionPoolStatus::ready);
 
     std::mutex observed_mutex;
@@ -1734,8 +1808,11 @@ MK_TEST("job execution pool applies opt in work stealing without changing determ
 }
 
 MK_TEST("job execution pool rejects invalid tasks queue overflow and dependency hazards before execution") {
-    auto invalid_pool = mirakana::JobExecutionPool(mirakana::JobExecutionPoolDesc{
-        .name = "", .worker_count = 0, .queue_capacity_per_worker = 0, .scratch_budget_bytes_per_worker = 0});
+    auto invalid_pool = mirakana::JobExecutionPool(mirakana::JobExecutionPoolDesc{.name = "",
+                                                                                  .worker_count = 0,
+                                                                                  .queue_capacity_per_worker = 0,
+                                                                                  .scratch_budget_bytes_per_worker = 0,
+                                                                                  .worker_placement_callback = {}});
     MK_REQUIRE(invalid_pool.status() == mirakana::JobExecutionPoolStatus::invalid_configuration);
     MK_REQUIRE(invalid_pool.worker_threads_started() == 0);
     MK_REQUIRE(invalid_pool.execute({}).status == mirakana::JobExecutionRunStatus::invalid_configuration);
@@ -1746,7 +1823,8 @@ MK_TEST("job execution pool rejects invalid tasks queue overflow and dependency 
                                                                           .worker_count = 1,
                                                                           .queue_capacity_per_worker = 1,
                                                                           .scratch_budget_bytes_per_worker = 256,
-                                                                          .frame_index = 42});
+                                                                          .frame_index = 42,
+                                                                          .worker_placement_callback = {}});
     std::atomic_uint64_t executed_tasks{0};
     const auto body = [&](mirakana::JobExecutionContext&) { executed_tasks.fetch_add(1, std::memory_order_relaxed); };
 
@@ -1807,7 +1885,8 @@ MK_TEST("job execution pool captures task exceptions and rejects stopped executi
                                                                           .worker_count = 1,
                                                                           .queue_capacity_per_worker = 4,
                                                                           .scratch_budget_bytes_per_worker = 256,
-                                                                          .frame_index = 43});
+                                                                          .frame_index = 43,
+                                                                          .worker_placement_callback = {}});
 
     std::atomic_uint64_t dependent_executions{0};
     auto throwing_batch = mirakana::JobExecutionBatchDesc{};

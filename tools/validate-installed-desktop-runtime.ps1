@@ -187,6 +187,7 @@ $requiresJobExecutionFoundation = @($SmokeArgs) -contains "--require-job-executi
 $requiresJobExecutionTopologyPolicy = @($SmokeArgs) -contains "--require-job-execution-topology-policy"
 $requiresJobExecutionWorkStealing = @($SmokeArgs) -contains "--require-job-execution-work-stealing"
 $requiresJobExecutionPlacementPolicy = @($SmokeArgs) -contains "--require-job-execution-placement-policy"
+$requiresWindowsCpuSetWorkerPlacement = @($SmokeArgs) -contains "--require-windows-cpu-set-worker-placement"
 if ($requiresD3d12InstancedDrawEvidence -or $requiresVulkanInstancedDrawEvidence) {
     $requiresSceneScalePolicy = $true
 }
@@ -198,6 +199,12 @@ if ($requiresMemoryDiagnostics) {
 }
 if ($requiresD3d12DebugProfilingEvidence -or $requiresVulkanDebugProfilingEvidence) {
     $requiresDebugProfilingPolicy = $true
+}
+if ($requiresWindowsCpuSetWorkerPlacement) {
+    $requiresJobExecutionFoundation = $true
+    $requiresJobExecutionTopologyPolicy = $true
+    $requiresJobExecutionWorkStealing = $true
+    $requiresJobExecutionPlacementPolicy = $true
 }
 $requiresShadowMorphComposition = @($SmokeArgs) -contains "--require-shadow-morph-composition"
 $requiresRendererQualityGates = @($SmokeArgs) -contains "--require-renderer-quality-gates"
@@ -1178,6 +1185,43 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
                 Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove job execution placement policy field: $field=$($expectedJobExecutionPlacementPolicyFields[$field])"
             }
+        }
+    }
+    if ($requiresWindowsCpuSetWorkerPlacement) {
+        $expectedWindowsCpuSetWorkerPlacementFields = @{
+            "windows_cpu_set_worker_placement_status" = "ready"
+            "windows_cpu_set_worker_placement_ready" = "1"
+            "windows_cpu_set_worker_placement_pool_status" = "ready"
+            "windows_cpu_set_worker_placement_run_status" = "ready"
+            "windows_cpu_set_worker_placement_diagnostics" = "0"
+            "windows_cpu_set_worker_placement_topology_rows" = "1"
+            "windows_cpu_set_worker_placement_worker_rows" = "2"
+            "windows_cpu_set_worker_placement_worker_threads_started" = "2"
+            "windows_cpu_set_worker_placement_attempts" = "2"
+            "windows_cpu_set_worker_placement_applied" = "2"
+            "windows_cpu_set_worker_placement_selected_cpu_set_applications" = "2"
+            "windows_cpu_set_worker_placement_tasks_submitted" = "2"
+            "windows_cpu_set_worker_placement_tasks_executed" = "2"
+            "windows_cpu_set_worker_placement_tasks_failed" = "0"
+            "windows_cpu_set_worker_placement_task_side_effects" = "2"
+            "windows_cpu_set_worker_placement_native_thread_handles_exposed" = "0"
+            "windows_cpu_set_worker_placement_linux_affinity_applied" = "0"
+            "windows_cpu_set_worker_placement_numa_allocation_applied" = "0"
+            "windows_cpu_set_worker_placement_hybrid_smt_policy_applied" = "0"
+            "windows_cpu_set_worker_placement_simd_dispatch_applied" = "0"
+            "windows_cpu_set_worker_placement_gpu_async_overlap_applied" = "0"
+            "windows_cpu_set_worker_placement_cuda_path_used" = "0"
+            "windows_cpu_set_worker_placement_hip_path_used" = "0"
+            "windows_cpu_set_worker_placement_sycl_path_used" = "0"
+        }
+        foreach ($field in $expectedWindowsCpuSetWorkerPlacementFields.Keys) {
+            $expectedValue = [regex]::Escape($expectedWindowsCpuSetWorkerPlacementFields[$field])
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove Windows CPU Set worker placement field: $field=$($expectedWindowsCpuSetWorkerPlacementFields[$field])"
+            }
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bwindows_cpu_set_worker_placement_selected_cpu_sets=[1-9]\d*\b") {
+            Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive Windows CPU Set selection."
         }
     }
     if ($requiresD3d12GpuMemoryEvidence) {

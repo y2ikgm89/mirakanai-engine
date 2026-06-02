@@ -112,7 +112,10 @@ Assert-Properties $engine.gameCodeGuidance @("currentEditor") "engine manifest g
 Assert-Properties $engine.gameCodeGuidance @("currentMemoryDiagnostics") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentJobSchedulingDiagnostics") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentJobExecutionWorkerPool") "engine manifest gameCodeGuidance"
+Assert-Properties $engine.gameCodeGuidance @("currentJobExecutionWorkStealing") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentJobExecutionTopologyPolicy") "engine manifest gameCodeGuidance"
+Assert-Properties $engine.gameCodeGuidance @("currentJobExecutionPlacementPolicy") "engine manifest gameCodeGuidance"
+Assert-Properties $engine.gameCodeGuidance @("currentJobExecutionWindowsCpuSetWorkerPlacement") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentEditorContentBrowserImportDiagnostics") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentEditorPrefabInstanceSourceLinks") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentEditorInProcessRuntimeHost") "engine manifest gameCodeGuidance"
@@ -282,6 +285,46 @@ foreach ($jobExecutionTopologyPolicyGuidanceNeedle in @(
     )) {
     if (-not ([string]$engine.gameCodeGuidance.currentJobExecutionTopologyPolicy).Contains($jobExecutionTopologyPolicyGuidanceNeedle)) {
         Write-Error "engine manifest gameCodeGuidance.currentJobExecutionTopologyPolicy missing: $jobExecutionTopologyPolicyGuidanceNeedle"
+    }
+}
+foreach ($jobExecutionPlacementPolicyGuidanceNeedle in @(
+        "Job Execution Placement Policy v1",
+        "JobExecutionPlacementPolicyMode",
+        "JobExecutionPlacementPolicyDesc",
+        "select_job_execution_placement_policy",
+        "sample_desktop_runtime_game --require-job-execution-placement-policy",
+        "job_execution_placement_policy_status=ready",
+        "job_execution_placement_policy_ready=1",
+        "job_execution_placement_policy_host_evidence_required_diagnostics=1",
+        "Linux affinity",
+        "NUMA allocation execution",
+        "SIMD dispatch",
+        "broad CPU/GPU/memory optimization"
+    )) {
+    if (-not ([string]$engine.gameCodeGuidance.currentJobExecutionPlacementPolicy).Contains($jobExecutionPlacementPolicyGuidanceNeedle)) {
+        Write-Error "engine manifest gameCodeGuidance.currentJobExecutionPlacementPolicy missing: $jobExecutionPlacementPolicyGuidanceNeedle"
+    }
+}
+foreach ($windowsCpuSetWorkerPlacementGuidanceNeedle in @(
+        "Windows CPU Set Worker Placement v1",
+        "MK_platform_win32",
+        "sample_desktop_runtime_game --require-windows-cpu-set-worker-placement",
+        "windows_cpu_set_worker_placement_status=ready",
+        "windows_cpu_set_worker_placement_ready=1",
+        "windows_cpu_set_worker_placement_selected_cpu_sets",
+        "windows_cpu_set_worker_placement_attempts=2",
+        "windows_cpu_set_worker_placement_applied=2",
+        "windows_cpu_set_worker_placement_native_thread_handles_exposed=0",
+        "Linux affinity",
+        "NUMA allocation",
+        "SIMD",
+        "GPU async",
+        "CUDA",
+        "HIP",
+        "SYCL"
+    )) {
+    if (-not ([string]$engine.gameCodeGuidance.currentJobExecutionWindowsCpuSetWorkerPlacement).Contains($windowsCpuSetWorkerPlacementGuidanceNeedle)) {
+        Write-Error "engine manifest gameCodeGuidance.currentJobExecutionWindowsCpuSetWorkerPlacement missing: $windowsCpuSetWorkerPlacementGuidanceNeedle"
     }
 }
 foreach ($needle in @(
