@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -47,6 +48,27 @@ enum class JobExecutionTopologyPolicyDiagnosticCode : std::uint8_t {
     invalid_configuration,
     missing_processor_group_evidence,
     missing_numa_evidence
+};
+
+enum class JobExecutionPlacementPolicyMode : std::uint8_t {
+    os_default,
+    prefer_local_numa,
+    prefer_performance_cores,
+    prefer_efficiency_cores,
+    avoid_smt_siblings,
+    manual_host_affinity
+};
+
+enum class JobExecutionPlacementPolicyStatus : std::uint8_t { ready, invalid_configuration, host_evidence_required };
+
+enum class JobExecutionPlacementPolicyDiagnosticCode : std::uint8_t {
+    none,
+    invalid_configuration,
+    missing_processor_group_evidence,
+    missing_numa_evidence,
+    missing_hybrid_core_evidence,
+    missing_smt_evidence,
+    host_execution_required
 };
 
 struct JobExecutionTopologyPolicyDesc {
@@ -100,6 +122,39 @@ struct JobExecutionTopologyPolicy {
 
     [[nodiscard]] bool ready() const noexcept {
         return status == JobExecutionTopologyPolicyStatus::ready;
+    }
+};
+
+struct JobExecutionPlacementPolicyDesc {
+    std::string name;
+    JobExecutionTopologyPolicy topology_policy;
+    JobExecutionPlacementPolicyMode requested_mode{JobExecutionPlacementPolicyMode::os_default};
+    std::optional<std::uint32_t> numa_node_count;
+    std::optional<std::uint32_t> performance_core_count;
+    std::optional<std::uint32_t> efficiency_core_count;
+    std::optional<bool> smt_sibling_topology_known;
+    bool allow_host_affinity_execution{false};
+};
+
+struct JobExecutionPlacementPolicy {
+    JobExecutionPlacementPolicyStatus status{JobExecutionPlacementPolicyStatus::invalid_configuration};
+    JobExecutionPlacementPolicyMode requested_mode{JobExecutionPlacementPolicyMode::os_default};
+    JobExecutionPlacementPolicyMode selected_mode{JobExecutionPlacementPolicyMode::os_default};
+    std::uint32_t inherited_worker_count{0};
+    std::uint32_t numa_node_count{0};
+    std::uint32_t performance_core_count{0};
+    std::uint32_t efficiency_core_count{0};
+    bool smt_sibling_topology_known{false};
+    bool affinity_policy_applied{false};
+    bool numa_policy_applied{false};
+    bool simd_dispatch_applied{false};
+    bool gpu_async_overlap_applied{false};
+    JobExecutionPoolDesc pool_desc;
+    std::vector<JobExecutionPlacementPolicyDiagnosticCode> diagnostic_codes;
+    std::vector<std::string> diagnostics;
+
+    [[nodiscard]] bool ready() const noexcept {
+        return status == JobExecutionPlacementPolicyStatus::ready;
     }
 };
 
@@ -174,11 +229,18 @@ class JobExecutionPool final {
 
 [[nodiscard]] JobExecutionTopologyPolicy
 select_job_execution_topology_policy(const JobExecutionTopologyPolicyDesc& desc);
+[[nodiscard]] JobExecutionPlacementPolicy
+select_job_execution_placement_policy(const JobExecutionPlacementPolicyDesc& desc);
 [[nodiscard]] std::uint32_t observe_job_execution_logical_processor_count() noexcept;
 [[nodiscard]] std::string_view
 job_execution_topology_policy_status_label(JobExecutionTopologyPolicyStatus status) noexcept;
 [[nodiscard]] std::string_view
 job_execution_topology_policy_diagnostic_code_label(JobExecutionTopologyPolicyDiagnosticCode code) noexcept;
+[[nodiscard]] std::string_view job_execution_placement_policy_mode_label(JobExecutionPlacementPolicyMode mode) noexcept;
+[[nodiscard]] std::string_view
+job_execution_placement_policy_status_label(JobExecutionPlacementPolicyStatus status) noexcept;
+[[nodiscard]] std::string_view
+job_execution_placement_policy_diagnostic_code_label(JobExecutionPlacementPolicyDiagnosticCode code) noexcept;
 [[nodiscard]] std::string_view job_execution_pool_status_label(JobExecutionPoolStatus status) noexcept;
 [[nodiscard]] std::string_view job_execution_run_status_label(JobExecutionRunStatus status) noexcept;
 [[nodiscard]] std::string_view job_execution_diagnostic_code_label(JobExecutionDiagnosticCode code) noexcept;

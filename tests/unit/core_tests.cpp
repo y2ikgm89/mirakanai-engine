@@ -1405,6 +1405,157 @@ MK_TEST("job execution topology policy records fallback and host evidence requir
                policy.diagnostic_codes.end());
 }
 
+MK_TEST("job execution placement policy accepts os default without host side effects") {
+    auto topology_desc = mirakana::JobExecutionTopologyPolicyDesc{.name = "core.placement_policy",
+                                                                  .observed_logical_processor_count = 8,
+                                                                  .worker_count_limit = 2,
+                                                                  .reserved_logical_processor_count = 1,
+                                                                  .queue_capacity_per_worker = 8,
+                                                                  .scratch_budget_bytes_per_worker = 2048,
+                                                                  .frame_index = 31,
+                                                                  .processor_group_count = 1,
+                                                                  .numa_node_count = 1,
+                                                                  .processor_groups_accounted_for = true,
+                                                                  .numa_topology_known = true,
+                                                                  .enable_work_stealing = true};
+    const auto topology_policy = mirakana::select_job_execution_topology_policy(topology_desc);
+
+    const auto policy = mirakana::select_job_execution_placement_policy(mirakana::JobExecutionPlacementPolicyDesc{
+        .name = "core.placement_policy",
+        .topology_policy = topology_policy,
+        .requested_mode = mirakana::JobExecutionPlacementPolicyMode::os_default,
+    });
+
+    MK_REQUIRE(policy.status == mirakana::JobExecutionPlacementPolicyStatus::ready);
+    MK_REQUIRE(policy.ready());
+    MK_REQUIRE(policy.requested_mode == mirakana::JobExecutionPlacementPolicyMode::os_default);
+    MK_REQUIRE(policy.selected_mode == mirakana::JobExecutionPlacementPolicyMode::os_default);
+    MK_REQUIRE(policy.pool_desc.worker_count == 2U);
+    MK_REQUIRE(policy.pool_desc.work_stealing_enabled);
+    MK_REQUIRE(policy.inherited_worker_count == 2U);
+    MK_REQUIRE(policy.numa_node_count == 1U);
+    MK_REQUIRE(!policy.affinity_policy_applied);
+    MK_REQUIRE(!policy.numa_policy_applied);
+    MK_REQUIRE(!policy.simd_dispatch_applied);
+    MK_REQUIRE(!policy.gpu_async_overlap_applied);
+    MK_REQUIRE(policy.diagnostics.empty());
+    MK_REQUIRE(mirakana::job_execution_placement_policy_status_label(
+                   mirakana::JobExecutionPlacementPolicyStatus::host_evidence_required) == "host_evidence_required");
+    MK_REQUIRE(mirakana::job_execution_placement_policy_mode_label(
+                   mirakana::JobExecutionPlacementPolicyMode::prefer_performance_cores) == "prefer_performance_cores");
+}
+
+MK_TEST("job execution placement policy fails closed for missing NUMA placement evidence") {
+    const auto topology_policy =
+        mirakana::select_job_execution_topology_policy(mirakana::JobExecutionTopologyPolicyDesc{
+            .name = "core.placement_numa",
+            .observed_logical_processor_count = 8,
+            .worker_count_limit = 2,
+            .reserved_logical_processor_count = 1,
+            .queue_capacity_per_worker = 8,
+            .scratch_budget_bytes_per_worker = 2048,
+            .frame_index = 32,
+            .processor_group_count = 1,
+            .numa_node_count = 1,
+            .processor_groups_accounted_for = true,
+            .numa_topology_known = true,
+        });
+
+    const auto policy = mirakana::select_job_execution_placement_policy(mirakana::JobExecutionPlacementPolicyDesc{
+        .name = "core.placement_numa",
+        .topology_policy = topology_policy,
+        .requested_mode = mirakana::JobExecutionPlacementPolicyMode::prefer_local_numa,
+    });
+
+    MK_REQUIRE(policy.status == mirakana::JobExecutionPlacementPolicyStatus::host_evidence_required);
+    MK_REQUIRE(!policy.ready());
+    MK_REQUIRE(policy.selected_mode == mirakana::JobExecutionPlacementPolicyMode::os_default);
+    MK_REQUIRE(!policy.numa_policy_applied);
+    MK_REQUIRE(std::ranges::find(policy.diagnostic_codes,
+                                 mirakana::JobExecutionPlacementPolicyDiagnosticCode::missing_numa_evidence) !=
+               policy.diagnostic_codes.end());
+}
+
+MK_TEST("job execution placement policy fails closed for missing hybrid core evidence") {
+    const auto topology_policy =
+        mirakana::select_job_execution_topology_policy(mirakana::JobExecutionTopologyPolicyDesc{
+            .name = "core.placement_hybrid",
+            .observed_logical_processor_count = 8,
+            .worker_count_limit = 2,
+            .reserved_logical_processor_count = 1,
+            .queue_capacity_per_worker = 8,
+            .scratch_budget_bytes_per_worker = 2048,
+            .frame_index = 33,
+            .processor_group_count = 1,
+            .numa_node_count = 1,
+            .processor_groups_accounted_for = true,
+            .numa_topology_known = true,
+        });
+
+    const auto policy = mirakana::select_job_execution_placement_policy(mirakana::JobExecutionPlacementPolicyDesc{
+        .name = "core.placement_hybrid",
+        .topology_policy = topology_policy,
+        .requested_mode = mirakana::JobExecutionPlacementPolicyMode::prefer_performance_cores,
+    });
+
+    MK_REQUIRE(policy.status == mirakana::JobExecutionPlacementPolicyStatus::host_evidence_required);
+    MK_REQUIRE(!policy.ready());
+    MK_REQUIRE(policy.performance_core_count == 0U);
+    MK_REQUIRE(policy.efficiency_core_count == 0U);
+    MK_REQUIRE(!policy.affinity_policy_applied);
+    MK_REQUIRE(std::ranges::find(policy.diagnostic_codes,
+                                 mirakana::JobExecutionPlacementPolicyDiagnosticCode::missing_hybrid_core_evidence) !=
+               policy.diagnostic_codes.end());
+}
+
+MK_TEST("job execution placement policy fails closed for manual host affinity execution") {
+    const auto topology_policy =
+        mirakana::select_job_execution_topology_policy(mirakana::JobExecutionTopologyPolicyDesc{
+            .name = "core.placement_manual_affinity",
+            .observed_logical_processor_count = 4,
+            .worker_count_limit = 2,
+            .reserved_logical_processor_count = 1,
+            .queue_capacity_per_worker = 8,
+            .scratch_budget_bytes_per_worker = 2048,
+            .frame_index = 34,
+            .processor_group_count = 1,
+            .numa_node_count = 1,
+            .processor_groups_accounted_for = true,
+            .numa_topology_known = true,
+        });
+
+    const auto policy = mirakana::select_job_execution_placement_policy(mirakana::JobExecutionPlacementPolicyDesc{
+        .name = "core.placement_manual_affinity",
+        .topology_policy = topology_policy,
+        .requested_mode = mirakana::JobExecutionPlacementPolicyMode::manual_host_affinity,
+        .allow_host_affinity_execution = false,
+    });
+
+    MK_REQUIRE(policy.status == mirakana::JobExecutionPlacementPolicyStatus::host_evidence_required);
+    MK_REQUIRE(!policy.ready());
+    MK_REQUIRE(!policy.affinity_policy_applied);
+    MK_REQUIRE(std::ranges::find(policy.diagnostic_codes,
+                                 mirakana::JobExecutionPlacementPolicyDiagnosticCode::host_execution_required) !=
+               policy.diagnostic_codes.end());
+}
+
+MK_TEST("job execution placement policy rejects invalid topology policy") {
+    const auto policy = mirakana::select_job_execution_placement_policy(mirakana::JobExecutionPlacementPolicyDesc{
+        .name = "core.invalid_placement",
+        .requested_mode = mirakana::JobExecutionPlacementPolicyMode::os_default,
+    });
+
+    MK_REQUIRE(policy.status == mirakana::JobExecutionPlacementPolicyStatus::invalid_configuration);
+    MK_REQUIRE(!policy.ready());
+    MK_REQUIRE(policy.pool_desc.worker_count == 0U);
+    MK_REQUIRE(std::ranges::find(policy.diagnostic_codes,
+                                 mirakana::JobExecutionPlacementPolicyDiagnosticCode::invalid_configuration) !=
+               policy.diagnostic_codes.end());
+    MK_REQUIRE(mirakana::job_execution_placement_policy_diagnostic_code_label(
+                   mirakana::JobExecutionPlacementPolicyDiagnosticCode::host_execution_required) ==
+               "host_execution_required");
+}
+
 MK_TEST("job execution pool executes batches on worker threads with deterministic evidence") {
     static_assert(!std::is_copy_constructible_v<mirakana::JobExecutionPool>);
     static_assert(!std::is_move_constructible_v<mirakana::JobExecutionPool>);

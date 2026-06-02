@@ -1984,7 +1984,7 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "engine-1-0-gap-matrix-v1") { foreach ($needle in @("Engine 1.0 Gap Matrix v1", "renderer-backend-parity-v1", "strict Vulkan evidence", "Metal remains Apple-host-gated", "unsupportedProductionGaps empty")) { Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.reason) $needle "recommended next plan engine gap matrix reason" }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "next-production-gap-selection") {
     $selectionGateRecommendedText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
-    foreach ($needle in @("First-Party Desktop Platform And SDL3 Removal v1", "MK_platform_win32", "MK_runtime_host_win32_presentation", "MK_audio_wasapi", "selection gate")) {
+    foreach ($needle in @("First-Party Desktop Platform And SDL3 Removal v1", "MK_platform_win32", "MK_runtime_host_win32_presentation", "MK_audio_wasapi", "Job Execution Placement Policy v1", "job_execution_placement_policy_status=ready", "host-independent CPU placement policy evidence", "selection gate")) {
         Assert-ContainsText $selectionGateRecommendedText $needle "recommended next plan selection gate reason"
     }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "physics-navigation-commercial-coverage-v1") {

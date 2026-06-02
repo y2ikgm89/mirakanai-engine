@@ -35,6 +35,15 @@ void append_topology_policy_diagnostic(JobExecutionTopologyPolicy& policy,
     policy.diagnostics.push_back(std::move(message));
 }
 
+void append_placement_policy_diagnostic(JobExecutionPlacementPolicy& policy,
+                                        JobExecutionPlacementPolicyDiagnosticCode code, std::string message) {
+    if (code != JobExecutionPlacementPolicyDiagnosticCode::none &&
+        std::ranges::find(policy.diagnostic_codes, code) == policy.diagnostic_codes.end()) {
+        policy.diagnostic_codes.push_back(code);
+    }
+    policy.diagnostics.push_back(std::move(message));
+}
+
 [[nodiscard]] JobExecutionRunStatus
 status_from_diagnostics(std::span<const JobExecutionDiagnosticCode> codes) noexcept {
     if (std::ranges::find(codes, JobExecutionDiagnosticCode::invalid_configuration) != codes.end()) {
@@ -648,6 +657,94 @@ JobExecutionTopologyPolicy select_job_execution_topology_policy(const JobExecuti
     return policy;
 }
 
+JobExecutionPlacementPolicy select_job_execution_placement_policy(const JobExecutionPlacementPolicyDesc& desc) {
+    auto policy = JobExecutionPlacementPolicy{};
+    policy.requested_mode = desc.requested_mode;
+    policy.selected_mode = JobExecutionPlacementPolicyMode::os_default;
+    policy.pool_desc = desc.topology_policy.pool_desc;
+    policy.inherited_worker_count = desc.topology_policy.pool_desc.worker_count;
+    policy.numa_node_count = desc.numa_node_count.value_or(desc.topology_policy.topology_row.numa_node_count);
+    policy.performance_core_count = desc.performance_core_count.value_or(0U);
+    policy.efficiency_core_count = desc.efficiency_core_count.value_or(0U);
+    policy.smt_sibling_topology_known = desc.smt_sibling_topology_known.value_or(false);
+
+    if (desc.name.empty()) {
+        append_placement_policy_diagnostic(policy, JobExecutionPlacementPolicyDiagnosticCode::invalid_configuration,
+                                           "job execution placement policy requires a non-empty name");
+    }
+    if (desc.topology_policy.status == JobExecutionTopologyPolicyStatus::invalid_configuration ||
+        desc.topology_policy.pool_desc.worker_count == 0) {
+        append_placement_policy_diagnostic(policy, JobExecutionPlacementPolicyDiagnosticCode::invalid_configuration,
+                                           "job execution placement policy requires a ready topology policy");
+    }
+
+    if (std::ranges::find(policy.diagnostic_codes, JobExecutionPlacementPolicyDiagnosticCode::invalid_configuration) !=
+        policy.diagnostic_codes.end()) {
+        policy.status = JobExecutionPlacementPolicyStatus::invalid_configuration;
+        return policy;
+    }
+
+    if (std::ranges::find(desc.topology_policy.diagnostic_codes,
+                          JobExecutionTopologyPolicyDiagnosticCode::missing_processor_group_evidence) !=
+        desc.topology_policy.diagnostic_codes.end()) {
+        append_placement_policy_diagnostic(
+            policy, JobExecutionPlacementPolicyDiagnosticCode::missing_processor_group_evidence,
+            "job execution placement policy needs processor group evidence before placement selection");
+    }
+    if (std::ranges::find(desc.topology_policy.diagnostic_codes,
+                          JobExecutionTopologyPolicyDiagnosticCode::missing_numa_evidence) !=
+        desc.topology_policy.diagnostic_codes.end()) {
+        append_placement_policy_diagnostic(policy, JobExecutionPlacementPolicyDiagnosticCode::missing_numa_evidence,
+                                           "job execution placement policy needs NUMA topology evidence");
+    }
+
+    switch (desc.requested_mode) {
+    case JobExecutionPlacementPolicyMode::os_default:
+        break;
+    case JobExecutionPlacementPolicyMode::prefer_local_numa:
+        if (!desc.numa_node_count.has_value() || policy.numa_node_count <= 1U ||
+            !desc.topology_policy.topology_row.numa_topology_known) {
+            append_placement_policy_diagnostic(policy, JobExecutionPlacementPolicyDiagnosticCode::missing_numa_evidence,
+                                               "job execution placement policy needs explicit NUMA placement evidence");
+        } else {
+            policy.selected_mode = desc.requested_mode;
+        }
+        break;
+    case JobExecutionPlacementPolicyMode::prefer_performance_cores:
+    case JobExecutionPlacementPolicyMode::prefer_efficiency_cores:
+        if (!desc.performance_core_count.has_value() || !desc.efficiency_core_count.has_value() ||
+            (policy.performance_core_count + policy.efficiency_core_count) == 0U) {
+            append_placement_policy_diagnostic(
+                policy, JobExecutionPlacementPolicyDiagnosticCode::missing_hybrid_core_evidence,
+                "job execution placement policy needs explicit hybrid core-type evidence");
+        } else {
+            policy.selected_mode = desc.requested_mode;
+        }
+        break;
+    case JobExecutionPlacementPolicyMode::avoid_smt_siblings:
+        if (!desc.smt_sibling_topology_known.value_or(false)) {
+            append_placement_policy_diagnostic(policy, JobExecutionPlacementPolicyDiagnosticCode::missing_smt_evidence,
+                                               "job execution placement policy needs SMT sibling evidence");
+        } else {
+            policy.selected_mode = desc.requested_mode;
+        }
+        break;
+    case JobExecutionPlacementPolicyMode::manual_host_affinity:
+        if (!desc.allow_host_affinity_execution) {
+            append_placement_policy_diagnostic(
+                policy, JobExecutionPlacementPolicyDiagnosticCode::host_execution_required,
+                "job execution placement policy manual affinity requires host execution");
+        } else {
+            policy.selected_mode = desc.requested_mode;
+        }
+        break;
+    }
+
+    policy.status = policy.diagnostics.empty() ? JobExecutionPlacementPolicyStatus::ready
+                                               : JobExecutionPlacementPolicyStatus::host_evidence_required;
+    return policy;
+}
+
 std::uint32_t observe_job_execution_logical_processor_count() noexcept {
     return std::thread::hardware_concurrency();
 }
@@ -695,6 +792,57 @@ job_execution_topology_policy_diagnostic_code_label(JobExecutionTopologyPolicyDi
         return "missing_processor_group_evidence";
     case JobExecutionTopologyPolicyDiagnosticCode::missing_numa_evidence:
         return "missing_numa_evidence";
+    }
+    return "unknown";
+}
+
+std::string_view job_execution_placement_policy_mode_label(JobExecutionPlacementPolicyMode mode) noexcept {
+    switch (mode) {
+    case JobExecutionPlacementPolicyMode::os_default:
+        return "os_default";
+    case JobExecutionPlacementPolicyMode::prefer_local_numa:
+        return "prefer_local_numa";
+    case JobExecutionPlacementPolicyMode::prefer_performance_cores:
+        return "prefer_performance_cores";
+    case JobExecutionPlacementPolicyMode::prefer_efficiency_cores:
+        return "prefer_efficiency_cores";
+    case JobExecutionPlacementPolicyMode::avoid_smt_siblings:
+        return "avoid_smt_siblings";
+    case JobExecutionPlacementPolicyMode::manual_host_affinity:
+        return "manual_host_affinity";
+    }
+    return "unknown";
+}
+
+std::string_view job_execution_placement_policy_status_label(JobExecutionPlacementPolicyStatus status) noexcept {
+    switch (status) {
+    case JobExecutionPlacementPolicyStatus::ready:
+        return "ready";
+    case JobExecutionPlacementPolicyStatus::invalid_configuration:
+        return "invalid_configuration";
+    case JobExecutionPlacementPolicyStatus::host_evidence_required:
+        return "host_evidence_required";
+    }
+    return "unknown";
+}
+
+std::string_view
+job_execution_placement_policy_diagnostic_code_label(JobExecutionPlacementPolicyDiagnosticCode code) noexcept {
+    switch (code) {
+    case JobExecutionPlacementPolicyDiagnosticCode::none:
+        return "none";
+    case JobExecutionPlacementPolicyDiagnosticCode::invalid_configuration:
+        return "invalid_configuration";
+    case JobExecutionPlacementPolicyDiagnosticCode::missing_processor_group_evidence:
+        return "missing_processor_group_evidence";
+    case JobExecutionPlacementPolicyDiagnosticCode::missing_numa_evidence:
+        return "missing_numa_evidence";
+    case JobExecutionPlacementPolicyDiagnosticCode::missing_hybrid_core_evidence:
+        return "missing_hybrid_core_evidence";
+    case JobExecutionPlacementPolicyDiagnosticCode::missing_smt_evidence:
+        return "missing_smt_evidence";
+    case JobExecutionPlacementPolicyDiagnosticCode::host_execution_required:
+        return "host_execution_required";
     }
     return "unknown";
 }

@@ -593,14 +593,7 @@ if ([string]$productionLoop.recommendedNextPlan.id -ne "general-purpose-game-pro
             Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan engine gap matrix"
         }
     } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "next-production-gap-selection") {
-        foreach ($needle in @(
-            "First-Party Desktop Platform And SDL3 Removal v1",
-            "MK_platform_win32",
-            "MK_runtime_host_win32_presentation",
-            "MK_audio_wasapi",
-            "unsupportedProductionGaps = []",
-            "selection gate"
-        )) {
+        foreach ($needle in @("First-Party Desktop Platform And SDL3 Removal v1", "MK_platform_win32", "MK_runtime_host_win32_presentation", "MK_audio_wasapi", "Job Execution Placement Policy v1", "job_execution_placement_policy_status=ready", "host-independent CPU placement policy evidence", "unsupportedProductionGaps = []", "selection gate")) {
             Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan selection gate"
         }
     } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "physics-navigation-commercial-coverage-v1") {

@@ -116,7 +116,7 @@ Assert-ContainsText $masterPlanRuntimeUiLedgerNote.Value "RuntimeInputRebindingP
 Assert-ContainsText $masterPlanRuntimeUiLedgerNote.Value "platform input glyph generation" "master plan runtime UI ledger note"
 Assert-ContainsText $masterPlanText "Completed gap burn-down" "production master plan completed gap pointer"
 Assert-ContainsText $masterPlanText "Renderer RHI Resource Foundation 1.0 Scope Closeout v1" "production master plan renderer-rhi closeout pointer"
-Assert-ContainsText $masterPlanText "recommendedNextPlan.id = next-production-gap-selection" "production master plan selection gate pointer"; Assert-ContainsText $masterPlanText "Job Execution Topology Policy v1" "production master plan topology policy closeout pointer"
+Assert-ContainsText $masterPlanText "recommendedNextPlan.id = next-production-gap-selection" "production master plan selection gate pointer"; Assert-ContainsText $masterPlanText "Job Execution Topology Policy v1" "production master plan topology policy closeout pointer"; Assert-ContainsText $masterPlanText "Job Execution Placement Policy v1" "production master plan placement policy closeout pointer"
 Assert-ContainsText $masterPlanText "Native Win32 Editor Shell v1" "production master plan native editor shell closeout pointer"
 Assert-ContainsText $masterPlanText "Renderer Backend Parity Metal Apple Evidence v1" "production master plan renderer Metal Apple closeout pointer"
 Assert-ContainsText $rhiPublicHeaderText "struct ComputePipelineDesc" "engine/rhi/include/mirakana/rhi/rhi.hpp"
@@ -2584,12 +2584,7 @@ if ($recommendedPlanId -eq "general-purpose-game-production-v1") {
     Assert-ContainsText $recommendedText "unsupportedProductionGaps empty" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
     Assert-ContainsText $recommendedText "broad commercial-engine" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan"
 } elseif ($recommendedPlanId -eq "next-production-gap-selection") {
-    Assert-ContainsText $recommendedText "First-Party Desktop Platform And SDL3 Removal v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan selection gate"
-    Assert-ContainsText $recommendedText "MK_platform_win32" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan selection gate"
-    Assert-ContainsText $recommendedText "MK_runtime_host_win32_presentation" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan selection gate"
-    Assert-ContainsText $recommendedText "MK_audio_wasapi" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan selection gate"
-    Assert-ContainsText $recommendedText "unsupportedProductionGaps = []" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan selection gate"
-    Assert-ContainsText $recommendedText "selection gate" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan selection gate"
+    foreach ($needle in @("First-Party Desktop Platform And SDL3 Removal v1", "MK_platform_win32", "MK_runtime_host_win32_presentation", "MK_audio_wasapi", "Job Execution Placement Policy v1", "job_execution_placement_policy_status=ready", "host-independent CPU placement policy evidence", "unsupportedProductionGaps = []", "selection gate")) { Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan selection gate" }
 } elseif ($recommendedPlanId -eq "physics-navigation-commercial-coverage-v1") {
     Assert-ContainsText $recommendedText "Physics Navigation Commercial Coverage v1" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan physics/navigation selection"
     Assert-ContainsText $recommendedText "Jolt/Recast/Detour-class" "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan physics/navigation selection"

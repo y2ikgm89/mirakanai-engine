@@ -76,6 +76,7 @@ struct DesktopRuntimeGameOptions {
     bool require_job_execution_foundation{false};
     bool require_job_execution_topology_policy{false};
     bool require_job_execution_work_stealing{false};
+    bool require_job_execution_placement_policy{false};
     bool require_renderer_quality_gates{false};
     bool require_framegraph_multiqueue_evidence{false};
     bool require_vulkan_framegraph_multiqueue_evidence{false};
@@ -753,6 +754,7 @@ void print_usage() {
                  "[--require-vulkan-debug-profiling-evidence] "
                  "[--require-job-scheduling-evidence] [--require-job-execution-foundation] "
                  "[--require-job-execution-topology-policy] [--require-job-execution-work-stealing] "
+                 "[--require-job-execution-placement-policy] "
                  "[--require-renderer-quality-gates] "
                  "[--require-framegraph-multiqueue-evidence] "
                  "[--require-native-ui-overlay] "
@@ -934,6 +936,13 @@ void print_usage() {
             options.require_job_execution_foundation = true;
             options.require_job_execution_topology_policy = true;
             options.require_job_execution_work_stealing = true;
+            continue;
+        }
+        if (arg == "--require-job-execution-placement-policy") {
+            options.require_job_execution_foundation = true;
+            options.require_job_execution_topology_policy = true;
+            options.require_job_execution_work_stealing = true;
+            options.require_job_execution_placement_policy = true;
             continue;
         }
         if (arg == "--require-renderer-quality-gates") {
@@ -1671,6 +1680,66 @@ job_execution_work_stealing_status_name(const JobExecutionWorkStealingEvidence& 
         return "not_requested";
     }
     return job_execution_work_stealing_ready(evidence) ? "ready" : "blocked";
+}
+
+struct JobExecutionPlacementPolicyEvidence {
+    bool requested{false};
+    mirakana::JobExecutionPlacementPolicy ready_policy;
+    mirakana::JobExecutionPlacementPolicy host_evidence_policy;
+};
+
+[[nodiscard]] JobExecutionPlacementPolicyEvidence
+build_package_job_execution_placement_policy_evidence(bool requested) {
+    JobExecutionPlacementPolicyEvidence evidence;
+    evidence.requested = requested;
+    if (!requested) {
+        return evidence;
+    }
+
+    auto topology_desc = make_package_job_execution_topology_policy_desc();
+    topology_desc.enable_work_stealing = true;
+    const auto topology_policy = mirakana::select_job_execution_topology_policy(topology_desc);
+    if (!topology_policy.ready()) {
+        return evidence;
+    }
+
+    evidence.ready_policy = mirakana::select_job_execution_placement_policy(mirakana::JobExecutionPlacementPolicyDesc{
+        .name = "desktop_runtime.package_execution_placement",
+        .topology_policy = topology_policy,
+        .requested_mode = mirakana::JobExecutionPlacementPolicyMode::os_default,
+    });
+    evidence.host_evidence_policy =
+        mirakana::select_job_execution_placement_policy(mirakana::JobExecutionPlacementPolicyDesc{
+            .name = "desktop_runtime.package_execution_placement.numa_probe",
+            .topology_policy = topology_policy,
+            .requested_mode = mirakana::JobExecutionPlacementPolicyMode::prefer_local_numa,
+        });
+    return evidence;
+}
+
+[[nodiscard]] bool job_execution_placement_policy_ready(const JobExecutionPlacementPolicyEvidence& evidence) noexcept {
+    const auto& policy = evidence.ready_policy;
+    const auto& host_evidence_policy = evidence.host_evidence_policy;
+    return evidence.requested && policy.status == mirakana::JobExecutionPlacementPolicyStatus::ready &&
+           policy.requested_mode == mirakana::JobExecutionPlacementPolicyMode::os_default &&
+           policy.selected_mode == mirakana::JobExecutionPlacementPolicyMode::os_default &&
+           policy.inherited_worker_count == 2U && policy.pool_desc.work_stealing_enabled &&
+           policy.numa_node_count == 1U && policy.performance_core_count == 0U && policy.efficiency_core_count == 0U &&
+           !policy.smt_sibling_topology_known && !policy.affinity_policy_applied && !policy.numa_policy_applied &&
+           !policy.simd_dispatch_applied && !policy.gpu_async_overlap_applied && policy.diagnostics.empty() &&
+           host_evidence_policy.status == mirakana::JobExecutionPlacementPolicyStatus::host_evidence_required &&
+           host_evidence_policy.diagnostic_codes.size() == 1U &&
+           std::ranges::find(host_evidence_policy.diagnostic_codes,
+                             mirakana::JobExecutionPlacementPolicyDiagnosticCode::missing_numa_evidence) !=
+               host_evidence_policy.diagnostic_codes.end();
+}
+
+[[nodiscard]] std::string_view
+job_execution_placement_policy_status_name(const JobExecutionPlacementPolicyEvidence& evidence) noexcept {
+    if (!evidence.requested) {
+        return "not_requested";
+    }
+    return job_execution_placement_policy_ready(evidence) ? "ready" : "blocked";
 }
 
 [[nodiscard]] mirakana::FrameGraphRhiMultiQueuePackageEvidence
@@ -2549,6 +2618,8 @@ int main(int argc, char** argv) {
         build_package_job_execution_foundation_evidence(options.require_job_execution_foundation);
     const auto job_execution_work_stealing =
         build_package_job_execution_work_stealing_evidence(options.require_job_execution_work_stealing);
+    const auto job_execution_placement_policy =
+        build_package_job_execution_placement_policy_evidence(options.require_job_execution_placement_policy);
     const auto renderer_quality =
         mirakana::evaluate_win32_desktop_presentation_quality_gate(report, make_renderer_quality_gate_desc(options));
     const bool framegraph_multiqueue_requested =
@@ -3101,6 +3172,43 @@ int main(int argc, char** argv) {
         << " job_execution_work_stealing_cuda_path_used=0"
         << " job_execution_work_stealing_hip_path_used=0"
         << " job_execution_work_stealing_sycl_path_used=0"
+        << " job_execution_placement_policy_status="
+        << job_execution_placement_policy_status_name(job_execution_placement_policy)
+        << " job_execution_placement_policy_ready="
+        << (job_execution_placement_policy_ready(job_execution_placement_policy) ? 1 : 0)
+        << " job_execution_placement_policy_requested_mode="
+        << mirakana::job_execution_placement_policy_mode_label(
+               job_execution_placement_policy.ready_policy.requested_mode)
+        << " job_execution_placement_policy_selected_mode="
+        << mirakana::job_execution_placement_policy_mode_label(
+               job_execution_placement_policy.ready_policy.selected_mode)
+        << " job_execution_placement_policy_diagnostics="
+        << job_execution_placement_policy.ready_policy.diagnostics.size()
+        << " job_execution_placement_policy_host_evidence_required_diagnostics="
+        << job_execution_placement_policy.host_evidence_policy.diagnostic_codes.size()
+        << " job_execution_placement_policy_inherited_worker_count="
+        << job_execution_placement_policy.ready_policy.inherited_worker_count
+        << " job_execution_placement_policy_inherited_work_stealing_enabled="
+        << (job_execution_placement_policy.ready_policy.pool_desc.work_stealing_enabled ? 1 : 0)
+        << " job_execution_placement_policy_numa_node_count="
+        << job_execution_placement_policy.ready_policy.numa_node_count
+        << " job_execution_placement_policy_performance_core_count="
+        << job_execution_placement_policy.ready_policy.performance_core_count
+        << " job_execution_placement_policy_efficiency_core_count="
+        << job_execution_placement_policy.ready_policy.efficiency_core_count
+        << " job_execution_placement_policy_smt_sibling_topology_known="
+        << (job_execution_placement_policy.ready_policy.smt_sibling_topology_known ? 1 : 0)
+        << " job_execution_placement_policy_affinity_policy_applied="
+        << (job_execution_placement_policy.ready_policy.affinity_policy_applied ? 1 : 0)
+        << " job_execution_placement_policy_numa_policy_applied="
+        << (job_execution_placement_policy.ready_policy.numa_policy_applied ? 1 : 0)
+        << " job_execution_placement_policy_simd_dispatch_applied="
+        << (job_execution_placement_policy.ready_policy.simd_dispatch_applied ? 1 : 0)
+        << " job_execution_placement_policy_gpu_async_overlap_applied="
+        << (job_execution_placement_policy.ready_policy.gpu_async_overlap_applied ? 1 : 0)
+        << " job_execution_placement_policy_cuda_path_used=0"
+        << " job_execution_placement_policy_hip_path_used=0"
+        << " job_execution_placement_policy_sycl_path_used=0"
         << " ui_overlay_requested=" << (report.native_ui_overlay_requested ? 1 : 0) << " ui_overlay_status="
         << mirakana::win32_desktop_presentation_native_ui_overlay_status_name(report.native_ui_overlay_status)
         << " ui_overlay_ready=" << (report.native_ui_overlay_ready ? 1 : 0)
@@ -3351,6 +3459,10 @@ int main(int argc, char** argv) {
         }
         if (options.require_job_execution_work_stealing &&
             !job_execution_work_stealing_ready(job_execution_work_stealing)) {
+            return 3;
+        }
+        if (options.require_job_execution_placement_policy &&
+            !job_execution_placement_policy_ready(job_execution_placement_policy)) {
             return 3;
         }
         if (options.require_d3d12_instanced_draw_evidence && !d3d12_instanced_draw_execution.ready) {
