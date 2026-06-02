@@ -69,9 +69,27 @@ Selected on 2026-06-02 after [Job Scheduling Evidence v1](2026-06-02-job-schedul
 - Modify: selected `game.agent.json` / validators only when installed package validation gains real pool counters
 - Modify: docs/manifest/static checks for durable counter names
 
-- [ ] Add package-visible `job_execution_foundation_*` counters only after Phase 1 is green.
-- [ ] Preserve previous `job_scheduling_evidence_*` rows as value-only evidence.
-- [ ] Keep broad all-core and vendor-specific optimization unsupported until measured follow-up plans land.
+- [x] Add package-visible `job_execution_foundation_*` counters only after Phase 1 is green.
+- [x] Preserve previous `job_scheduling_evidence_*` rows as value-only evidence.
+- [x] Keep broad all-core and vendor-specific optimization unsupported until measured follow-up plans land.
+
+**Phase 2 Evidence:** `sample_desktop_runtime_game --require-job-execution-foundation` now runs the real `MK_core` `JobExecutionPool` with two RAII-owned `std::thread` workers, three dependency-ordered task bodies, worker-local `ScratchArena` leases, deterministic merge evidence, and package-visible `job_execution_foundation_*` counters. The existing `job_scheduling_evidence_*` rows remain value-only and still report zero native-thread/thread-pool/affinity/NUMA/SIMD/GPU-overlap side-effect counters. New `job_execution_foundation_*` rows report ready pool/run status, two worker threads, three submitted/executed task bodies, positive worker scratch bytes/high-water, and zero work-stealing, affinity, NUMA, SIMD, GPU async-overlap, CUDA, HIP, and SYCL side-effect counters.
+
+**Phase 2 Focused Validation:**
+
+- TDD red: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset desktop-runtime --output-on-failure -R sample_desktop_runtime_game_smoke` failed on unknown `--require-job-execution-foundation` before implementation.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset desktop-runtime`: pass.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset desktop-runtime --target sample_desktop_runtime_game`: pass.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset desktop-runtime --output-on-failure -R sample_desktop_runtime_game_smoke`: pass.
+- Direct smoke output from `out/build/desktop-runtime/games/Debug/sample_desktop_runtime_game/sample_desktop_runtime_game.exe --smoke --require-job-scheduling-evidence --require-job-execution-foundation` reported `job_execution_foundation_status=ready`, `job_execution_foundation_ready=1`, `job_execution_foundation_worker_threads_started=2`, `job_execution_foundation_tasks_submitted=3`, `job_execution_foundation_tasks_executed=3`, `job_execution_foundation_task_side_effects=3`, `job_execution_foundation_deterministic_merges=3`, positive `job_execution_foundation_scratch_bytes` / `job_execution_foundation_scratch_high_water_bytes`, and zero work-stealing/affinity/NUMA/SIMD/GPU-overlap/CUDA/HIP/SYCL side-effect counters.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game`: pass; installed D3D12 package smoke reported the same `job_execution_foundation_*` counters and `installed-desktop-runtime-validation: ok`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Preset desktop-runtime -Configuration Debug -ReuseExistingFileApiReply -Files games/sample_desktop_runtime_game/main.cpp`: pass.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`: pass.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1`: pass.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`: pass.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`: pass.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`: pass.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`: pass.
 
 ## Validation Evidence
 

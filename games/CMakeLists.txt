@@ -1504,6 +1504,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
         SMOKE_ARGS
             --smoke
             --require-job-scheduling-evidence
+            --require-job-execution-foundation
         PACKAGE_SMOKE_ARGS
             --smoke
             --require-config
@@ -1528,6 +1529,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-debug-profiling-policy
             --require-d3d12-debug-profiling-evidence
             --require-job-scheduling-evidence
+            --require-job-execution-foundation
             # installed-d3d12-scene-gpu-smoke uses --require-d3d12-gpu-skinning-evidence; source-tree smokes may still use --require-gpu-skinning for counter-only checks
             # installed-vulkan-scene-gpu-smoke also accepts --require-vulkan-instanced-draw-evidence --require-vulkan-postprocess-evidence --require-vulkan-shadow-cascade-policy --require-vulkan-framegraph-multiqueue-evidence --require-vulkan-gpu-skinning-evidence --require-gpu-memory-policy --require-memory-diagnostics --require-vulkan-gpu-memory-evidence --require-debug-profiling-policy --require-vulkan-debug-profiling-evidence
             --require-renderer-quality-gates

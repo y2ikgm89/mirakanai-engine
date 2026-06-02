@@ -183,6 +183,7 @@ $requiresDebugProfilingPolicy = @($SmokeArgs) -contains "--require-debug-profili
 $requiresD3d12DebugProfilingEvidence = @($SmokeArgs) -contains "--require-d3d12-debug-profiling-evidence"
 $requiresVulkanDebugProfilingEvidence = @($SmokeArgs) -contains "--require-vulkan-debug-profiling-evidence"
 $requiresJobSchedulingEvidence = @($SmokeArgs) -contains "--require-job-scheduling-evidence"
+$requiresJobExecutionFoundation = @($SmokeArgs) -contains "--require-job-execution-foundation"
 if ($requiresD3d12InstancedDrawEvidence -or $requiresVulkanInstancedDrawEvidence) {
     $requiresSceneScalePolicy = $true
 }
@@ -1031,6 +1032,45 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
             )) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
                 Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive job scheduling evidence field: $field"
+            }
+        }
+    }
+    if ($requiresJobExecutionFoundation) {
+        $expectedJobExecutionFoundationFields = @{
+            "job_execution_foundation_status" = "ready"
+            "job_execution_foundation_ready" = "1"
+            "job_execution_foundation_pool_status" = "ready"
+            "job_execution_foundation_run_status" = "ready"
+            "job_execution_foundation_diagnostics" = "0"
+            "job_execution_foundation_worker_threads_started" = "2"
+            "job_execution_foundation_tasks_submitted" = "3"
+            "job_execution_foundation_tasks_executed" = "3"
+            "job_execution_foundation_tasks_failed" = "0"
+            "job_execution_foundation_task_side_effects" = "3"
+            "job_execution_foundation_execution_rows" = "3"
+            "job_execution_foundation_queue_rows" = "2"
+            "job_execution_foundation_deterministic_merges" = "3"
+            "job_execution_foundation_work_stealing_applied" = "0"
+            "job_execution_foundation_affinity_policy_applied" = "0"
+            "job_execution_foundation_numa_policy_applied" = "0"
+            "job_execution_foundation_simd_dispatch_applied" = "0"
+            "job_execution_foundation_gpu_async_overlap_applied" = "0"
+            "job_execution_foundation_cuda_path_used" = "0"
+            "job_execution_foundation_hip_path_used" = "0"
+            "job_execution_foundation_sycl_path_used" = "0"
+        }
+        foreach ($field in $expectedJobExecutionFoundationFields.Keys) {
+            $expectedValue = [regex]::Escape($expectedJobExecutionFoundationFields[$field])
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove job execution foundation field: $field=$($expectedJobExecutionFoundationFields[$field])"
+            }
+        }
+        foreach ($field in @(
+                "job_execution_foundation_scratch_bytes",
+                "job_execution_foundation_scratch_high_water_bytes"
+            )) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive job execution foundation field: $field"
             }
         }
     }
