@@ -12,7 +12,7 @@
 
 **Plan ID:** `frame-thread-scratch-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
 Selected on 2026-06-02 after [Memory Diagnostics v1](2026-06-02-memory-diagnostics-v1.md) completed class-specific memory diagnostics and selected package-visible memory evidence.
 
@@ -112,9 +112,11 @@ Phase 3 implementation on 2026-06-02 keeps `memory_diagnostics_transient_gpu_all
 - Modify: this plan
 - Modify: registry/roadmap/current-capabilities/master-plan/ledger/manifest/static checks as needed
 
-- [ ] Record final validation and hosted PR evidence.
-- [ ] Select the next measured wave, likely job scheduling evidence, GPU residency diagnostics, or allocator enforcement depending on Phase 1-3 results.
-- [ ] Keep completed evidence concise and avoid copying long command output into durable docs.
+- [x] Record final validation and hosted PR evidence.
+- [x] Select the next measured wave, likely job scheduling evidence, GPU residency diagnostics, or allocator enforcement depending on Phase 1-3 results.
+- [x] Keep completed evidence concise and avoid copying long command output into durable docs.
+
+Phase 4 closeout on 2026-06-02 completes this plan and selects [Job Scheduling Evidence v1](2026-06-02-job-scheduling-evidence-v1.md) as the next measured optimization wave. Phase 1 landed memory diagnostic scratch counters through PR #373, Phase 2 landed `ScratchArena` / `ScratchLease` ownership APIs through PR #374, and Phase 3 landed package-visible framegraph aliasing evidence through PR #375 / merge commit `c37d3ea2`. The next wave should add worker topology, bounded job queues, deterministic job/scratch evidence, and scheduler budget rows before broad all-core CPU scheduling, affinity, NUMA placement, SIMD dispatch, or vendor-specific CPU tuning claims.
 
 ## Validation Evidence
 
@@ -189,6 +191,17 @@ Phase 3 focused validation on 2026-06-02:
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Preset desktop-runtime -Configuration Debug -ReuseExistingFileApiReply -Files games/sample_desktop_runtime_game/main.cpp`
 - `git diff --check`
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`
+
+Phase 4 closeout validation on 2026-06-02:
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`
+- `git diff --check`
+- Full `tools/validate.ps1` is not required for this closeout pointer sync because no C++/runtime/build/packaging/public contract behavior changes in Phase 4.
 
 ## Done When
 

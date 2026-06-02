@@ -1861,6 +1861,24 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     )) {
         Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan frame/thread scratch selection"
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "job-scheduling-evidence-v1") {
+    foreach ($needle in @(
+        "job scheduling",
+        "worker topology",
+        "bounded job queues",
+        "deterministic job/scratch evidence",
+        "queue/steal/wait/merge diagnostics",
+        "work stealing",
+        "processor groups",
+        "package-visible scheduler budget rows",
+        "all-core CPU scheduling",
+        "affinity pinning",
+        "NUMA placement",
+        "SIMD dispatch",
+        "broad CPU/GPU/memory optimization"
+    )) {
+        Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan job scheduling evidence selection"
+    }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "first-party-ui-editor-production-stack-v1") {
     foreach ($needle in @(
         "First-Party UI Editor Production Stack v1",
