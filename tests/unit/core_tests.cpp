@@ -14,6 +14,7 @@
 #include <fstream>
 #include <limits>
 #include <mutex>
+#include <span>
 #include <thread>
 
 #include "mirakana/animation/chain_ik.hpp"
@@ -41,6 +42,7 @@
 #include "mirakana/core/log.hpp"
 #include "mirakana/core/memory.hpp"
 #include "mirakana/core/registry.hpp"
+#include "mirakana/core/simd_dispatch.hpp"
 #include "mirakana/core/time.hpp"
 #include "mirakana/core/version.hpp"
 #include "mirakana/math/mat4.hpp"
@@ -1555,6 +1557,106 @@ MK_TEST("job execution placement policy rejects invalid topology policy") {
     MK_REQUIRE(mirakana::job_execution_placement_policy_diagnostic_code_label(
                    mirakana::JobExecutionPlacementPolicyDiagnosticCode::host_execution_required) ==
                "host_execution_required");
+}
+
+MK_TEST("simd dispatch policy selects scalar fallback and computes stable span dot product") {
+    const auto features = mirakana::CpuSimdFeatureSet{.x86_or_x64_host = true,
+                                                      .sse2_compile_supported = true,
+                                                      .sse2_runtime_supported = false,
+                                                      .avx2_compile_supported = false,
+                                                      .avx2_runtime_supported = false};
+    const std::array lhs{1.0F, 2.0F, 3.0F, 4.0F, 5.0F};
+    const std::array rhs{5.0F, 4.0F, 3.0F, 2.0F, 1.0F};
+
+    const auto evidence = mirakana::build_simd_dot_product_evidence(
+        lhs, rhs,
+        mirakana::SimdDispatchPolicyDesc{.requested_lane = mirakana::CpuSimdLaneRequest::auto_select,
+                                         .features = features});
+
+    MK_REQUIRE(evidence.policy.status == mirakana::SimdDispatchStatus::ready);
+    MK_REQUIRE(evidence.policy.ready());
+    MK_REQUIRE(evidence.policy.selected_lane == mirakana::CpuSimdLane::scalar);
+    MK_REQUIRE(evidence.policy.scalar_fallback);
+    MK_REQUIRE(!evidence.policy.sse2_selected);
+    MK_REQUIRE(!evidence.policy.avx2_selected);
+    MK_REQUIRE(evidence.input_count == lhs.size());
+    MK_REQUIRE(evidence.result == 35.0F);
+    MK_REQUIRE(evidence.diagnostics.empty());
+    MK_REQUIRE(mirakana::cpu_simd_lane_label(mirakana::CpuSimdLane::scalar) == "scalar");
+    MK_REQUIRE(mirakana::simd_dispatch_status_label(mirakana::SimdDispatchStatus::ready) == "ready");
+}
+
+MK_TEST("simd dispatch policy selects SSE2 only when compile and runtime support are available") {
+    const std::array lhs{1.0F, -2.0F, 3.5F, 4.0F, 0.25F, 8.0F, -1.0F};
+    const std::array rhs{2.0F, 3.0F, -4.0F, 0.5F, 4.0F, -0.25F, -3.0F};
+    const auto scalar = mirakana::build_simd_dot_product_evidence(
+        lhs, rhs, mirakana::SimdDispatchPolicyDesc{.requested_lane = mirakana::CpuSimdLaneRequest::scalar});
+
+    const auto features = mirakana::observe_cpu_simd_features();
+    const auto evidence = mirakana::build_simd_dot_product_evidence(
+        lhs, rhs,
+        mirakana::SimdDispatchPolicyDesc{.requested_lane = mirakana::CpuSimdLaneRequest::sse2, .features = features});
+
+    if (features.sse2_compile_supported && features.sse2_runtime_supported) {
+        MK_REQUIRE(evidence.policy.status == mirakana::SimdDispatchStatus::ready);
+        MK_REQUIRE(evidence.policy.selected_lane == mirakana::CpuSimdLane::sse2);
+        MK_REQUIRE(evidence.policy.sse2_selected);
+        MK_REQUIRE(!evidence.policy.scalar_fallback);
+        MK_REQUIRE(evidence.result == scalar.result);
+    } else {
+        MK_REQUIRE(evidence.policy.status == mirakana::SimdDispatchStatus::unsupported);
+        MK_REQUIRE(evidence.policy.selected_lane == mirakana::CpuSimdLane::scalar);
+        MK_REQUIRE(evidence.policy.scalar_fallback);
+        MK_REQUIRE(std::ranges::find(evidence.policy.diagnostic_codes,
+                                     mirakana::SimdDispatchDiagnosticCode::compile_lane_unavailable) !=
+                       evidence.policy.diagnostic_codes.end() ||
+                   std::ranges::find(evidence.policy.diagnostic_codes,
+                                     mirakana::SimdDispatchDiagnosticCode::runtime_lane_unavailable) !=
+                       evidence.policy.diagnostic_codes.end());
+    }
+}
+
+MK_TEST("simd dispatch policy fails closed for AVX2 until a reviewed target gate is ready") {
+    const std::array lhs{1.0F, 2.0F, 3.0F, 4.0F};
+    const std::array rhs{4.0F, 3.0F, 2.0F, 1.0F};
+    const auto evidence = mirakana::build_simd_dot_product_evidence(
+        lhs, rhs,
+        mirakana::SimdDispatchPolicyDesc{.requested_lane = mirakana::CpuSimdLaneRequest::avx2,
+                                         .features = mirakana::CpuSimdFeatureSet{.x86_or_x64_host = true,
+                                                                                 .sse2_compile_supported = true,
+                                                                                 .sse2_runtime_supported = true,
+                                                                                 .avx2_compile_supported = true,
+                                                                                 .avx2_runtime_supported = true}});
+
+    MK_REQUIRE(evidence.policy.status == mirakana::SimdDispatchStatus::unsupported);
+    MK_REQUIRE(!evidence.policy.ready());
+    MK_REQUIRE(evidence.policy.requested_lane == mirakana::CpuSimdLaneRequest::avx2);
+    MK_REQUIRE(evidence.policy.selected_lane == mirakana::CpuSimdLane::scalar);
+    MK_REQUIRE(evidence.policy.scalar_fallback);
+    MK_REQUIRE(!evidence.policy.avx2_selected);
+    MK_REQUIRE(evidence.result == 20.0F);
+    MK_REQUIRE(std::ranges::find(evidence.policy.diagnostic_codes,
+                                 mirakana::SimdDispatchDiagnosticCode::reviewed_target_gate_missing) !=
+               evidence.policy.diagnostic_codes.end());
+    MK_REQUIRE(mirakana::cpu_simd_lane_request_label(mirakana::CpuSimdLaneRequest::avx2) == "avx2");
+    MK_REQUIRE(mirakana::simd_dispatch_diagnostic_code_label(
+                   mirakana::SimdDispatchDiagnosticCode::reviewed_target_gate_missing) ==
+               "reviewed_target_gate_missing");
+}
+
+MK_TEST("simd dispatch policy rejects mismatched spans without ownership transfer") {
+    const std::array lhs{1.0F, 2.0F, 3.0F};
+    const std::array rhs{1.0F, 2.0F};
+    const auto evidence = mirakana::build_simd_dot_product_evidence(
+        std::span<const float>{lhs}, std::span<const float>{rhs},
+        mirakana::SimdDispatchPolicyDesc{.requested_lane = mirakana::CpuSimdLaneRequest::auto_select});
+
+    MK_REQUIRE(evidence.policy.status == mirakana::SimdDispatchStatus::invalid_input);
+    MK_REQUIRE(evidence.input_count == 0U);
+    MK_REQUIRE(evidence.result == 0.0F);
+    MK_REQUIRE(std::ranges::find(evidence.policy.diagnostic_codes,
+                                 mirakana::SimdDispatchDiagnosticCode::input_size_mismatch) !=
+               evidence.policy.diagnostic_codes.end());
 }
 
 MK_TEST("job execution pool executes batches on worker threads with deterministic evidence") {

@@ -1510,6 +1510,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-job-execution-placement-policy
             --require-windows-cpu-set-worker-placement
             --require-windows-cpu-set-smt-worker-placement
+            --require-simd-dispatch-policy
         PACKAGE_SMOKE_ARGS
             --smoke
             --require-config
@@ -1540,8 +1541,9 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             --require-job-execution-placement-policy
             --require-windows-cpu-set-worker-placement
             --require-windows-cpu-set-smt-worker-placement
+            --require-simd-dispatch-policy
             # installed-d3d12-scene-gpu-smoke uses --require-d3d12-gpu-skinning-evidence; source-tree smokes may still use --require-gpu-skinning for counter-only checks
-            # installed-vulkan-scene-gpu-smoke also accepts --require-vulkan-instanced-draw-evidence --require-vulkan-postprocess-evidence --require-vulkan-shadow-cascade-policy --require-vulkan-framegraph-multiqueue-evidence --require-vulkan-gpu-skinning-evidence --require-gpu-memory-policy --require-memory-diagnostics --require-vulkan-gpu-memory-evidence --require-debug-profiling-policy --require-vulkan-debug-profiling-evidence
+            # installed-vulkan-scene-gpu-smoke also accepts --require-vulkan-instanced-draw-evidence --require-vulkan-postprocess-evidence --require-vulkan-shadow-cascade-policy --require-vulkan-framegraph-multiqueue-evidence --require-vulkan-gpu-skinning-evidence --require-gpu-memory-policy --require-memory-diagnostics --require-vulkan-gpu-memory-evidence --require-debug-profiling-policy --require-vulkan-debug-profiling-evidence --require-simd-dispatch-policy
             --require-renderer-quality-gates
             --require-framegraph-multiqueue-evidence
             --require-native-ui-overlay
@@ -1553,6 +1555,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
     )
     target_link_libraries(sample_desktop_runtime_game
         PRIVATE
+            MK_core
             MK_animation
             MK_runtime
             MK_runtime_rhi

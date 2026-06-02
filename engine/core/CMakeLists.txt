@@ -5,6 +5,7 @@ add_library(mirakana_core
     src/log.cpp
     src/memory.cpp
     src/registry.cpp
+    src/simd_dispatch.cpp
     src/time.cpp
     src/version.cpp
 )

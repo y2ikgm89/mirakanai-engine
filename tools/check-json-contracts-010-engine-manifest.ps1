@@ -124,6 +124,7 @@ Assert-Properties $engine.gameCodeGuidance @("currentEditorRuntimeScenePackageVa
 Assert-Properties $engine.gameCodeGuidance @("currentSpriteAnimationFlipbook") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentSandboxWorldAuthoring") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("desktopRuntimeGameplaySystemsPackageSmoke") "engine manifest gameCodeGuidance"
+Assert-Properties $engine.gameCodeGuidance @("currentCpuSimdDispatchDiagnostics") "engine manifest gameCodeGuidance"
 foreach ($memoryDiagnosticsGuidanceNeedle in @(
         "Memory Diagnostics v1",
         "ScratchArena",
@@ -153,6 +154,31 @@ foreach ($memoryDiagnosticsGuidanceNeedle in @(
     )) {
     if (-not ([string]$engine.gameCodeGuidance.currentMemoryDiagnostics).Contains($memoryDiagnosticsGuidanceNeedle)) {
         Write-Error "engine manifest gameCodeGuidance.currentMemoryDiagnostics missing: $memoryDiagnosticsGuidanceNeedle"
+    }
+}
+foreach ($cpuSimdGuidanceNeedle in @(
+        "SIMD Dispatch Policy And Evidence v1",
+        "CpuSimdFeatureSet",
+        "CpuSimdLaneRequest",
+        "SimdDispatchPolicyDesc",
+        "select_simd_dispatch_policy",
+        "build_simd_dot_product_evidence",
+        "sample_desktop_runtime_game --require-simd-dispatch-policy",
+        "simd_dispatch_policy_status=ready",
+        "simd_dispatch_policy_ready=1",
+        "simd_dispatch_policy_requested_lane=auto_select",
+        "simd_dispatch_policy_selected_lane=scalar or sse2",
+        "simd_dispatch_policy_dot_product_result=120",
+        "std::span<const float>",
+        "raw pointers",
+        "simd_dispatch_policy_avx2_selected=0",
+        "CUDA",
+        "HIP",
+        "SYCL",
+        "broad CPU/GPU/memory optimization"
+    )) {
+    if (-not ([string]$engine.gameCodeGuidance.currentCpuSimdDispatchDiagnostics).Contains($cpuSimdGuidanceNeedle)) {
+        Write-Error "engine manifest gameCodeGuidance.currentCpuSimdDispatchDiagnostics missing: $cpuSimdGuidanceNeedle"
     }
 }
 foreach ($jobSchedulingDiagnosticsGuidanceNeedle in @(
