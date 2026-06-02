@@ -181,6 +181,11 @@
       "purpose": "Report D3D12 DXIL, Vulkan SPIR-V, DXC SPIR-V CodeGen, spirv-val, Metal, and metallib readiness, using MK_SHADER_TOOLCHAIN_ROOT, User/Machine PATH, Vulkan SDK variables, vcpkg tool roots, and Windows SDK fallback discovery."
     },
     {
+      "name": "renderer-metal-apple-host-evidence",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-renderer-metal-apple.ps1",
+      "purpose": "On a macOS host with full Xcode, Metal compiler tools, and ci-macos-appleclang tooling ready, run Apple host evidence checking, configure ci-macos-appleclang, build MK_backend_scaffold_tests and MK_renderer_quality_matrix_tests, and run focused CTest for Metal backend scaffold plus renderer quality matrix evidence without marking Metal readiness or broad renderer quality ready."
+    },
+    {
       "name": "dev-windows-editor-game-module-driver-load-tests",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-editor-game-module-driver-load-tests.ps1",
       "purpose": "On Windows with MSVC dev preset tooling, configure dev, build MK_editor_game_module_driver_probe and MK_editor_game_module_driver_load_tests, and run CTest MK_editor_game_module_driver_load_tests for same-engine-build DLL load, factory resolution, isolated session tick, stopped-state unload plus second load, and paired DynamicLibrary refcount ordering without mirakana_editor execution, active-session hot reload, or stable third-party ABI claims."

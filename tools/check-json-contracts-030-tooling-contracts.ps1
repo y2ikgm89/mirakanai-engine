@@ -891,8 +891,8 @@ if ($validationRunnerCommand.Count -ne 1 -or $validationRunnerCommand[0].status 
     foreach ($recipe in @(
             "agent-contract",
             "default",
-            "public-api-boundary",
-            "shader-toolchain",
+            "public-api-boundary", "shader-toolchain",
+            "renderer-metal-apple-host-evidence",
             "desktop-game-runtime",
             "desktop-editor",
             "desktop-runtime-sample-game-scene-gpu-package",
@@ -906,7 +906,7 @@ if ($validationRunnerCommand.Count -ne 1 -or $validationRunnerCommand[0].status 
             Write-Error "engine manifest run-validation-recipe validationRecipes missing allowlisted recipe: $recipe"
         }
     }
-    if (@($validationRunnerCommand[0].validationRecipes).Count -ne 12) {
+    if (@($validationRunnerCommand[0].validationRecipes).Count -ne 13) {
         Write-Error "engine manifest run-validation-recipe validationRecipes must be exactly the reviewed allowlist"
     }
     if (@($validationRunnerCommand[0].requestModes | Where-Object { $_.id -eq "apply" -and $_.status -eq "ready" }).Count -gt 0) {

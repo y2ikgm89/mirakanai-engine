@@ -34,6 +34,11 @@ function Get-ValidationRecipeCommandPlan {
         $diagShader = New-RunnerDiagnostic -Severity 'info' -Code 'diagnostic-host-gate' -Message 'Shader toolchain validation reports Vulkan and Metal tool availability without marking missing host tools ready.' -ValidationRecipe $RecipeName
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($cmdPlanEntry) -HostGates @('vulkan-strict', 'metal-apple') -RequiredAcknowledgements @() -AllowedGameTargets @() -AllowedStrictBackend @() -Diagnostics @($diagShader)
     }
+    elseif ($RecipeName -eq 'renderer-metal-apple-host-evidence') {
+        $cmdPlanEntry = Get-RepositoryToolCommandPlan -ToolScriptName 'validate-renderer-metal-apple.ps1'
+        $diagMetal = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'Renderer Metal Apple host evidence requires macOS with full Xcode/Metal tools, then runs the ci-macos-appleclang configure/build/CTest path for MK_backend_scaffold_tests and MK_renderer_quality_matrix_tests without marking Metal or broad renderer quality ready.' -ValidationRecipe $RecipeName -HostGate 'metal-apple'
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($cmdPlanEntry) -HostGates @('metal-apple') -RequiredAcknowledgements @('metal-apple') -AllowedGameTargets @() -AllowedStrictBackend @() -Diagnostics @($diagMetal)
+    }
     elseif ($RecipeName -eq 'desktop-game-runtime') {
         $cmdPlanEntry = Get-RepositoryToolCommandPlan -ToolScriptName 'validate-desktop-game-runtime.ps1'
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($cmdPlanEntry) -HostGates @() -RequiredAcknowledgements @() -AllowedGameTargets @() -AllowedStrictBackend @() -Diagnostics @()
