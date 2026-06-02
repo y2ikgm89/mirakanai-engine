@@ -12,7 +12,7 @@
 
 **Plan ID:** `job-execution-placement-policy-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
 ## Official References
 
@@ -42,46 +42,46 @@
 
 ### Task 1: Core Policy API And Tests
 
-- [ ] Add `JobExecutionPlacementPolicyMode` with `os_default`, `prefer_local_numa`, `prefer_performance_cores`, `prefer_efficiency_cores`, `avoid_smt_siblings`, and `manual_host_affinity` values.
-- [ ] Add `JobExecutionPlacementPolicyStatus` with `ready`, `invalid_configuration`, and `host_evidence_required`.
-- [ ] Add `JobExecutionPlacementPolicyDiagnosticCode` with `none`, `invalid_configuration`, `missing_processor_group_evidence`, `missing_numa_evidence`, `missing_hybrid_core_evidence`, `missing_smt_evidence`, and `host_execution_required`.
-- [ ] Add `JobExecutionPlacementPolicyDesc` that consumes a completed `JobExecutionTopologyPolicy`, requested placement mode, optional NUMA node count, optional core-type class counts, optional SMT sibling evidence, and `allow_host_affinity_execution`.
-- [ ] Add `JobExecutionPlacementPolicy` with deterministic row counts, selected mode, inherited `JobExecutionPoolDesc`, `affinity_policy_applied=false`, `numa_policy_applied=false`, `simd_dispatch_applied=false`, `gpu_async_overlap_applied=false`, diagnostics, and label helpers.
-- [ ] Write failing tests in `tests/unit/core_tests.cpp` for OS-default ready policy, NUMA request missing NUMA evidence, hybrid-core request missing core-type evidence, manual host-affinity request requiring host execution, and invalid empty topology policy.
-- [ ] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests`.
-- [ ] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_core_tests`.
+- [x] Add `JobExecutionPlacementPolicyMode` with `os_default`, `prefer_local_numa`, `prefer_performance_cores`, `prefer_efficiency_cores`, `avoid_smt_siblings`, and `manual_host_affinity` values.
+- [x] Add `JobExecutionPlacementPolicyStatus` with `ready`, `invalid_configuration`, and `host_evidence_required`.
+- [x] Add `JobExecutionPlacementPolicyDiagnosticCode` with `none`, `invalid_configuration`, `missing_processor_group_evidence`, `missing_numa_evidence`, `missing_hybrid_core_evidence`, `missing_smt_evidence`, and `host_execution_required`.
+- [x] Add `JobExecutionPlacementPolicyDesc` that consumes a completed `JobExecutionTopologyPolicy`, requested placement mode, optional NUMA node count, optional core-type class counts, optional SMT sibling evidence, and `allow_host_affinity_execution`.
+- [x] Add `JobExecutionPlacementPolicy` with deterministic row counts, selected mode, inherited `JobExecutionPoolDesc`, `affinity_policy_applied=false`, `numa_policy_applied=false`, `simd_dispatch_applied=false`, `gpu_async_overlap_applied=false`, diagnostics, and label helpers.
+- [x] Write failing tests in `tests/unit/core_tests.cpp` for OS-default ready policy, NUMA request missing NUMA evidence, hybrid-core request missing core-type evidence, manual host-affinity request requiring host execution, and invalid empty topology policy.
+- [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests`.
+- [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_core_tests`.
 
 ### Task 2: Deterministic Placement Policy Selection
 
-- [ ] Implement `select_job_execution_placement_policy(const JobExecutionPlacementPolicyDesc& desc)` in `engine/core/src/job_execution.cpp`.
-- [ ] Make `os_default` ready when the inherited topology policy is ready and no missing host-evidence diagnostics are present.
-- [ ] Make NUMA, hybrid-core, SMT, and manual host-affinity modes fail closed to `host_evidence_required` until the required evidence flags are present.
-- [ ] Preserve completed worker-count, queue-capacity, scratch, and work-stealing decisions in the returned `pool_desc`.
-- [ ] Keep all OS API execution flags false in `MK_core`; host adapters will own any later `SetThreadSelectedCpuSetMasks`, `sched_setaffinity`, or NUMA allocation execution.
-- [ ] Re-run the focused `MK_core_tests` build and CTest.
+- [x] Implement `select_job_execution_placement_policy(const JobExecutionPlacementPolicyDesc& desc)` in `engine/core/src/job_execution.cpp`.
+- [x] Make `os_default` ready when the inherited topology policy is ready and no missing host-evidence diagnostics are present.
+- [x] Make NUMA, hybrid-core, SMT, and manual host-affinity modes fail closed to `host_evidence_required` until the required evidence flags are present.
+- [x] Preserve completed worker-count, queue-capacity, scratch, and work-stealing decisions in the returned `pool_desc`.
+- [x] Keep all OS API execution flags false in `MK_core`; host adapters will own any later `SetThreadSelectedCpuSetMasks`, `sched_setaffinity`, or NUMA allocation execution.
+- [x] Re-run the focused `MK_core_tests` build and CTest.
 
 ### Task 3: Package Smoke Evidence
 
-- [ ] Add `--require-job-execution-placement-policy` parsing in `sample_desktop_runtime_game`.
-- [ ] Build package evidence from the completed topology policy plus work-stealing policy, request `os_default`, and emit `job_execution_placement_policy_status=ready`, `job_execution_placement_policy_ready=1`, selected mode, inherited worker count, inherited work-stealing flag, clean diagnostics, and zero OS-affinity/NUMA/SIMD/GPU/CUDA/HIP/SYCL execution counters.
-- [ ] Add a host-evidence-required diagnostic counter for a selected NUMA request with intentionally missing NUMA placement evidence, without failing the ready OS-default package lane.
-- [ ] Update installed desktop runtime validation expectations for the selected flag.
-- [ ] Run the focused desktop runtime build and selected package smoke lane.
+- [x] Add `--require-job-execution-placement-policy` parsing in `sample_desktop_runtime_game`.
+- [x] Build package evidence from the completed topology policy plus work-stealing policy, request `os_default`, and emit `job_execution_placement_policy_status=ready`, `job_execution_placement_policy_ready=1`, selected mode, inherited worker count, inherited work-stealing flag, clean diagnostics, and zero OS-affinity/NUMA/SIMD/GPU/CUDA/HIP/SYCL execution counters.
+- [x] Add a host-evidence-required diagnostic counter for a selected NUMA request with intentionally missing NUMA placement evidence, without failing the ready OS-default package lane.
+- [x] Update installed desktop runtime validation expectations for the selected flag.
+- [x] Run the focused desktop runtime build and selected package smoke lane.
 
 ### Task 4: Docs, Manifest, And Agent Surface
 
-- [ ] Update current capabilities and roadmap to state that placement policy evidence is selected, while actual affinity pinning, NUMA placement execution, hybrid P-core/E-core pinning, SMT scheduling, SIMD dispatch, GPU async overlap, CUDA/HIP/SYCL paths, and broad optimization remain unclaimed.
-- [ ] Update the production backlog row for `job-execution-placement-policy-v1` from active to implemented only after code/package evidence lands.
-- [ ] Compose `engine/agent/manifest.json` from fragments with `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`.
-- [ ] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`.
-- [ ] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`.
-- [ ] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` if agent-facing skill or rule text changes.
+- [x] Update current capabilities and roadmap to state that placement policy evidence is selected, while actual affinity pinning, NUMA placement execution, hybrid P-core/E-core pinning, SMT scheduling, SIMD dispatch, GPU async overlap, CUDA/HIP/SYCL paths, and broad optimization remain unclaimed.
+- [x] Update the production backlog row for `job-execution-placement-policy-v1` from active to implemented only after code/package evidence lands.
+- [x] Compose `engine/agent/manifest.json` from fragments with `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`.
+- [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`.
+- [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`.
+- [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` if agent-facing skill or rule text changes.
 
 ### Task 5: Slice Validation And Publication
 
-- [ ] Run formatting/static checks relevant to touched files.
-- [ ] Run full `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`.
-- [ ] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1 -Branch codex/job-execution-placement-policy-v1`.
+- [x] Run formatting/static checks relevant to touched files.
+- [x] Run full `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`.
+- [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1 -Branch codex/job-execution-placement-policy-v1`.
 - [ ] Commit only task-owned files with validation evidence.
 - [ ] Push `codex/job-execution-placement-policy-v1`.
 - [ ] Create a PR with official-source notes, validation evidence, and explicit non-claims.

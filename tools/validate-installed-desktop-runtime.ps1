@@ -186,6 +186,7 @@ $requiresJobSchedulingEvidence = @($SmokeArgs) -contains "--require-job-scheduli
 $requiresJobExecutionFoundation = @($SmokeArgs) -contains "--require-job-execution-foundation"
 $requiresJobExecutionTopologyPolicy = @($SmokeArgs) -contains "--require-job-execution-topology-policy"
 $requiresJobExecutionWorkStealing = @($SmokeArgs) -contains "--require-job-execution-work-stealing"
+$requiresJobExecutionPlacementPolicy = @($SmokeArgs) -contains "--require-job-execution-placement-policy"
 if ($requiresD3d12InstancedDrawEvidence -or $requiresVulkanInstancedDrawEvidence) {
     $requiresSceneScalePolicy = $true
 }
@@ -1147,6 +1148,35 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
             )) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
                 Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive job execution work stealing field: $field"
+            }
+        }
+    }
+    if ($requiresJobExecutionPlacementPolicy) {
+        $expectedJobExecutionPlacementPolicyFields = @{
+            "job_execution_placement_policy_status" = "ready"
+            "job_execution_placement_policy_ready" = "1"
+            "job_execution_placement_policy_selected_mode" = "os_default"
+            "job_execution_placement_policy_requested_mode" = "os_default"
+            "job_execution_placement_policy_diagnostics" = "0"
+            "job_execution_placement_policy_host_evidence_required_diagnostics" = "1"
+            "job_execution_placement_policy_inherited_worker_count" = "2"
+            "job_execution_placement_policy_inherited_work_stealing_enabled" = "1"
+            "job_execution_placement_policy_numa_node_count" = "1"
+            "job_execution_placement_policy_performance_core_count" = "0"
+            "job_execution_placement_policy_efficiency_core_count" = "0"
+            "job_execution_placement_policy_smt_sibling_topology_known" = "0"
+            "job_execution_placement_policy_affinity_policy_applied" = "0"
+            "job_execution_placement_policy_numa_policy_applied" = "0"
+            "job_execution_placement_policy_simd_dispatch_applied" = "0"
+            "job_execution_placement_policy_gpu_async_overlap_applied" = "0"
+            "job_execution_placement_policy_cuda_path_used" = "0"
+            "job_execution_placement_policy_hip_path_used" = "0"
+            "job_execution_placement_policy_sycl_path_used" = "0"
+        }
+        foreach ($field in $expectedJobExecutionPlacementPolicyFields.Keys) {
+            $expectedValue = [regex]::Escape($expectedJobExecutionPlacementPolicyFields[$field])
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove job execution placement policy field: $field=$($expectedJobExecutionPlacementPolicyFields[$field])"
             }
         }
     }
