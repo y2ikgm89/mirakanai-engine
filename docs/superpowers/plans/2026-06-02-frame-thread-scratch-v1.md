@@ -100,9 +100,11 @@ Phase 2 implementation on 2026-06-02 adds `mirakana/core/memory.hpp` and `MK_cor
 - Modify: `tools/validate-installed-desktop-runtime.ps1` only when installed package validation gains new required fields
 - Modify: docs/manifest/static checks for new durable counter names
 
-- [ ] Map existing transient texture heap/placed allocation counters and aliasing-barrier evidence into the frame/thread scratch diagnostic story where appropriate.
-- [ ] Add selected package-visible counter names before wiring validator expectations.
-- [ ] Keep zero or host-dependent values honest; do not require positive transient allocation counts unless the selected path actually produces them.
+- [x] Map existing transient texture heap/placed allocation counters and aliasing-barrier evidence into the frame/thread scratch diagnostic story where appropriate.
+- [x] Add selected package-visible counter names before wiring validator expectations.
+- [x] Keep zero or host-dependent values honest; do not require positive transient allocation counts unless the selected path actually produces them.
+
+Phase 3 implementation on 2026-06-02 keeps `memory_diagnostics_transient_gpu_allocations=0` honest for the selected D3D12 package path and adds supplemental package-visible framegraph aliasing evidence instead. `sample_desktop_runtime_game --require-memory-diagnostics --require-framegraph-multiqueue-evidence` now emits `memory_diagnostics_transient_gpu_aliasing_barriers` and `memory_diagnostics_transient_gpu_framegraph_aliasing_ready`; `tools/validate-installed-desktop-runtime.ps1` requires a positive aliasing-barrier count and `memory_diagnostics_transient_gpu_framegraph_aliasing_ready=1` only when D3D12 or Vulkan framegraph multi-queue evidence is requested. This maps existing RHI/framegraph aliasing evidence into the memory diagnostics story without claiming automatic GPU residency, allocator enforcement, cross-backend parity, or broad transient allocation optimization.
 
 ## Phase 4 - Closeout And Next Wave Selection
 
@@ -171,6 +173,22 @@ Phase 2 focused validation on 2026-06-02:
 - `git diff --check`
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`
 - Hosted PR evidence is recorded on the task-owned Phase 2 PR.
+
+Phase 3 focused validation on 2026-06-02:
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset desktop-runtime`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset desktop-runtime --target sample_desktop_runtime_game`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset desktop-runtime --output-on-failure -R "sample_desktop_runtime_game"`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Preset desktop-runtime -Configuration Debug -ReuseExistingFileApiReply -Files games/sample_desktop_runtime_game/main.cpp`
+- `git diff --check`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`
 
 ## Done When
 

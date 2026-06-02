@@ -141,6 +141,8 @@ foreach ($memoryDiagnosticsGuidanceNeedle in @(
         "sample_desktop_runtime_game --require-memory-diagnostics",
         "memory_diagnostics_status=ready",
         "memory_diagnostics_resident_gpu_pressure=nominal",
+        "memory_diagnostics_transient_gpu_aliasing_barriers",
+        "memory_diagnostics_transient_gpu_framegraph_aliasing_ready=1",
         "broad memory optimization"
     )) {
     if (-not ([string]$engine.gameCodeGuidance.currentMemoryDiagnostics).Contains($memoryDiagnosticsGuidanceNeedle)) {
