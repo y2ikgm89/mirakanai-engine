@@ -1879,6 +1879,23 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     )) {
         Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan job scheduling evidence selection"
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "job-execution-worker-pool-v1") {
+    foreach ($needle in @(
+        "Job Execution Worker Pool v1",
+        "persistent worker-thread pool",
+        "explicit worker_count",
+        "bounded worker queues",
+        "std::thread",
+        "JobExecutionStopToken",
+        "execute(batch)",
+        "worker-local ScratchArena",
+        "deterministic publish order",
+        "JobSchedulingExecutionEvidence",
+        "unsupportedProductionGaps = []",
+        "broad CPU/GPU/memory optimization"
+    )) {
+        Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan job execution worker pool selection"
+    }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "first-party-ui-editor-production-stack-v1") {
     foreach ($needle in @(
         "First-Party UI Editor Production Stack v1",
