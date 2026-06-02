@@ -12,7 +12,7 @@
 
 **Plan ID:** `job-execution-work-stealing-v1`
 
-**Status:** Active.
+**Status:** Completed through PR #389 / merge commit `ec6239873e2997bd5a42272683f8e191bcd3905f`.
 
 ## Official References
 
@@ -74,11 +74,17 @@
 
 - [x] Run formatting/static checks relevant to touched files.
 - [x] Run full `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`.
-- [ ] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1 -Branch codex/job-execution-work-stealing-v1`.
-- [ ] Commit only task-owned files with validation evidence.
-- [ ] Push `codex/job-execution-work-stealing-v1`.
-- [ ] Create a PR with official-source notes, validation evidence, and explicit non-claims.
-- [ ] Wait for required hosted checks, merge through GitHub Flow with matched head SHA, sync `main`, and remove the merged worktree with `tools/remove-merged-worktree.ps1`.
+- [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1 -Branch codex/job-execution-work-stealing-v1`.
+- [x] Commit only task-owned files with validation evidence.
+- [x] Push `codex/job-execution-work-stealing-v1`.
+- [x] Create a PR with official-source notes, validation evidence, and explicit non-claims.
+- [x] Wait for required hosted checks, merge through GitHub Flow with matched head SHA, sync `main`, and remove the merged worktree with `tools/remove-merged-worktree.ps1`.
+
+## Closeout Evidence
+
+- PR #389 (`feat(core): add job execution work stealing`) merged on 2026-06-02 at merge commit `ec6239873e2997bd5a42272683f8e191bcd3905f`; the task head was `d0bb588cb08bb98d112f3672621aee3846dca331`.
+- Hosted checks for PR #389 succeeded: PR Gate, Windows MSVC, Agent Static Guards, Linux CMake, Linux Coverage, Linux Clang ASan/UBSan, Full Repository Static Analysis shards 0-3, macOS Metal CMake, iOS Simulator smoke, and CodeQL.
+- Local closeout cleanup removed the merged worktree and synced `main` to `origin/main` before the next selected optimization plan was opened.
 
 ## Done When
 
