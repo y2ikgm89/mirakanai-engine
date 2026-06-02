@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` or focused inline execution. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** Active.
+**Status:** Completed through PR #393 / merge commit `28ec2a3f99896df1f62639944e54f1376a41eb99`.
 
 **Goal:** Promote the completed Windows CPU Set worker-placement foundation into a selected SMT-aware worker placement lane that prefers distinct `CoreIndex` rows before CPU Sets that share significant execution resources, while still hiding native handles and avoiding broad CPU optimization claims.
 
@@ -76,8 +76,14 @@
 - [x] Run targeted `tools/check-tidy.ps1 -Files` for changed C++ files and sample file.
 - [x] Run full `tools/validate.ps1`.
 - [x] Run `tools/check-publication-preflight.ps1 -Branch codex/windows-cpu-set-smt-placement-v1`.
-- [ ] Commit task-owned files with validation evidence.
-- [ ] Push branch, create PR, wait for hosted checks including `PR Gate`, merge with `--match-head-commit`, verify `origin/main` contains the head, and run merged-worktree cleanup.
+- [x] Commit task-owned files with validation evidence.
+- [x] Push branch, create PR #393, wait for hosted checks including `PR Gate`, merge with `--match-head-commit`, verify `origin/main` contains the head, and run merged-worktree cleanup.
+
+## Closeout Evidence
+
+- Local validation: focused Win32 platform tests, desktop-runtime source-tree smoke, installed desktop runtime package smoke, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-format.ps1`, targeted `tools/check-tidy.ps1`, `tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game`, and full `tools/validate.ps1` passed before publication.
+- Hosted validation: PR #393 completed `Agent Static Guards`, CodeQL, Linux CMake, Linux Coverage, Linux Clang ASan/UBSan, macOS Metal CMake, iOS Simulator smoke, Windows MSVC, full static analysis shards, and `PR Gate`.
+- Merge evidence: PR #393 merged at `2026-06-02T20:12:08Z` as merge commit `28ec2a3f99896df1f62639944e54f1376a41eb99`; `origin/main..715c1acee13c596bd93d541bb6e2c441026d8b77` was empty after sync.
 
 ## Done When
 
