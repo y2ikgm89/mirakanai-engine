@@ -1891,6 +1891,9 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
         "worker-local ScratchArena",
         "deterministic publish order",
         "JobSchedulingExecutionEvidence",
+        "--require-job-execution-foundation",
+        "job_execution_foundation_status=ready",
+        "job_execution_foundation_worker_threads_started=2",
         "unsupportedProductionGaps = []",
         "broad CPU/GPU/memory optimization"
     )) {

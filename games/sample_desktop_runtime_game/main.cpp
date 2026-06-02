@@ -5,6 +5,7 @@
 #include "mirakana/assets/asset_identity.hpp"
 #include "mirakana/core/application.hpp"
 #include "mirakana/core/diagnostics.hpp"
+#include "mirakana/core/job_execution.hpp"
 #include "mirakana/math/transform.hpp"
 #include "mirakana/platform/filesystem.hpp"
 #include "mirakana/platform/input.hpp"
@@ -20,15 +21,18 @@
 #include "mirakana/ui_renderer/ui_renderer.hpp"
 
 #include <array>
+#include <atomic>
 #include <charconv>
 #include <chrono>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <exception>
 #include <filesystem>
 #include <iostream>
 #include <optional>
 #include <span>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -67,6 +71,7 @@ struct DesktopRuntimeGameOptions {
     bool require_d3d12_debug_profiling_evidence{false};
     bool require_vulkan_debug_profiling_evidence{false};
     bool require_job_scheduling_evidence{false};
+    bool require_job_execution_foundation{false};
     bool require_renderer_quality_gates{false};
     bool require_framegraph_multiqueue_evidence{false};
     bool require_vulkan_framegraph_multiqueue_evidence{false};
@@ -742,7 +747,7 @@ void print_usage() {
                  "[--require-vulkan-gpu-memory-evidence] "
                  "[--require-debug-profiling-policy] [--require-d3d12-debug-profiling-evidence] "
                  "[--require-vulkan-debug-profiling-evidence] "
-                 "[--require-job-scheduling-evidence] "
+                 "[--require-job-scheduling-evidence] [--require-job-execution-foundation] "
                  "[--require-renderer-quality-gates] "
                  "[--require-framegraph-multiqueue-evidence] "
                  "[--require-native-ui-overlay] "
@@ -910,6 +915,10 @@ void print_usage() {
         }
         if (arg == "--require-job-scheduling-evidence") {
             options.require_job_scheduling_evidence = true;
+            continue;
+        }
+        if (arg == "--require-job-execution-foundation") {
+            options.require_job_execution_foundation = true;
             continue;
         }
         if (arg == "--require-renderer-quality-gates") {
@@ -1379,6 +1388,117 @@ job_scheduling_evidence_status_name(bool requested, const mirakana::JobSchedulin
         return "not_requested";
     }
     return job_scheduling_evidence_ready(evidence) ? "ready" : "blocked";
+}
+
+struct JobExecutionFoundationEvidence {
+    bool requested{false};
+    mirakana::JobExecutionPoolStatus pool_status{mirakana::JobExecutionPoolStatus::invalid_configuration};
+    mirakana::JobExecutionRunResult run_result;
+    std::uint64_t task_side_effects{0};
+};
+
+[[nodiscard]] JobExecutionFoundationEvidence build_package_job_execution_foundation_evidence(bool requested) {
+    JobExecutionFoundationEvidence evidence;
+    evidence.requested = requested;
+    if (!requested) {
+        return evidence;
+    }
+
+    std::atomic_uint64_t task_side_effects{0};
+    auto pool =
+        mirakana::JobExecutionPool(mirakana::JobExecutionPoolDesc{.name = "desktop_runtime.package_execution_pool",
+                                                                  .logical_processor_count = 8,
+                                                                  .worker_count = 2,
+                                                                  .queue_capacity_per_worker = 4,
+                                                                  .scratch_budget_bytes_per_worker = 4096,
+                                                                  .frame_index = 0});
+    evidence.pool_status = pool.status();
+    if (evidence.pool_status != mirakana::JobExecutionPoolStatus::ready) {
+        return evidence;
+    }
+
+    const auto body = [&task_side_effects](mirakana::JobExecutionContext& context) {
+        if (context.stop_token.stop_requested()) {
+            throw std::runtime_error("job execution foundation task received an unexpected stop request");
+        }
+        const auto lease = context.scratch.acquire(32, 16, context.worker_id);
+        if (!lease.valid()) {
+            throw std::runtime_error("job execution foundation worker scratch lease failed");
+        }
+        lease.bytes.front() = std::byte{0x2A};
+        const auto release_status = context.scratch.release(lease, context.worker_id);
+        if (release_status != mirakana::ScratchLeaseStatus::released) {
+            throw std::runtime_error("job execution foundation worker scratch release failed");
+        }
+        task_side_effects.fetch_add(1, std::memory_order_relaxed);
+    };
+
+    auto batch = mirakana::JobExecutionBatchDesc{};
+    batch.tasks = {
+        mirakana::JobExecutionTaskDesc{.evidence =
+                                           mirakana::JobSchedulingWorkItemRow{.job_id = "package.execute_load_scene",
+                                                                              .worker_id = 0,
+                                                                              .batch_size = 32,
+                                                                              .scratch_bytes = 32,
+                                                                              .worker_local_output_count = 1,
+                                                                              .merge_order = 0},
+                                       .body = body},
+        mirakana::JobExecutionTaskDesc{
+            .evidence = mirakana::JobSchedulingWorkItemRow{.job_id = "package.execute_resolve_gameplay",
+                                                           .worker_id = 1,
+                                                           .dependency_job_ids = {"package.execute_load_scene"},
+                                                           .batch_size = 16,
+                                                           .scratch_bytes = 32,
+                                                           .worker_local_output_count = 1,
+                                                           .merge_order = 1},
+            .body = body},
+        mirakana::JobExecutionTaskDesc{
+            .evidence = mirakana::JobSchedulingWorkItemRow{.job_id = "package.execute_submit_render_intent",
+                                                           .worker_id = 0,
+                                                           .dependency_job_ids = {"package.execute_resolve_gameplay"},
+                                                           .batch_size = 8,
+                                                           .scratch_bytes = 32,
+                                                           .worker_local_output_count = 1,
+                                                           .merge_order = 2},
+            .body = body},
+    };
+    batch.options.minimum_batch_size = 4;
+    batch.options.maximum_batch_size = 64;
+
+    evidence.run_result = pool.execute(batch);
+    evidence.task_side_effects = task_side_effects.load(std::memory_order_relaxed);
+    return evidence;
+}
+
+[[nodiscard]] std::size_t
+job_execution_foundation_diagnostic_count(const JobExecutionFoundationEvidence& evidence) noexcept {
+    return evidence.run_result.diagnostics.size() +
+           evidence.run_result.scheduling_evidence.scheduling_summary.diagnostics.size() +
+           evidence.run_result.scheduling_evidence.scratch_summary.diagnostics.size();
+}
+
+[[nodiscard]] bool job_execution_foundation_ready(const JobExecutionFoundationEvidence& evidence) noexcept {
+    const auto& run = evidence.run_result;
+    const auto& scheduling = run.scheduling_evidence.scheduling_summary;
+    const auto& scratch = run.scheduling_evidence.scratch_summary;
+    return evidence.requested && evidence.pool_status == mirakana::JobExecutionPoolStatus::ready &&
+           run.status == mirakana::JobExecutionRunStatus::ready && run.worker_threads_started == 2U &&
+           scheduling.total_submitted_jobs == 3U && run.tasks_executed == 3U && run.tasks_failed == 0U &&
+           evidence.task_side_effects == 3U && run.scheduling_evidence.execution_order.size() == 3U &&
+           run.scheduling_evidence.queue_rows.size() == 2U && scheduling.total_deterministic_merge_count == 3U &&
+           scheduling.total_nondeterministic_merge_count == 0U && scheduling.total_blocked_dependency_count == 0U &&
+           scheduling.total_dependency_cycle_count == 0U && scheduling.total_queue_overflow_count == 0U &&
+           scratch.status == mirakana::MemoryDiagnosticsStatus::ready &&
+           run.scheduling_evidence.worker_scratch_rows.size() == 2U && scratch.total_bytes > 0U &&
+           scratch.high_water_bytes > 0U && job_execution_foundation_diagnostic_count(evidence) == 0U;
+}
+
+[[nodiscard]] std::string_view
+job_execution_foundation_status_name(const JobExecutionFoundationEvidence& evidence) noexcept {
+    if (!evidence.requested) {
+        return "not_requested";
+    }
+    return job_execution_foundation_ready(evidence) ? "ready" : "blocked";
 }
 
 [[nodiscard]] mirakana::FrameGraphRhiMultiQueuePackageEvidence
@@ -2251,6 +2371,8 @@ int main(int argc, char** argv) {
     const auto debug_profiling_policy = mirakana::evaluate_win32_desktop_presentation_debug_profiling_policy(
         report, make_debug_profiling_policy_desc(options));
     const auto job_scheduling_evidence = build_package_job_scheduling_evidence(options.require_job_scheduling_evidence);
+    const auto job_execution_foundation =
+        build_package_job_execution_foundation_evidence(options.require_job_execution_foundation);
     const auto renderer_quality =
         mirakana::evaluate_win32_desktop_presentation_quality_gate(report, make_renderer_quality_gate_desc(options));
     const bool framegraph_multiqueue_requested =
@@ -2694,6 +2816,40 @@ int main(int argc, char** argv) {
         << " job_scheduling_evidence_numa_policy_applied=0"
         << " job_scheduling_evidence_simd_dispatch_applied=0"
         << " job_scheduling_evidence_gpu_async_overlap_applied=0"
+        << " job_execution_foundation_status=" << job_execution_foundation_status_name(job_execution_foundation)
+        << " job_execution_foundation_ready=" << (job_execution_foundation_ready(job_execution_foundation) ? 1 : 0)
+        << " job_execution_foundation_pool_status="
+        << mirakana::job_execution_pool_status_label(job_execution_foundation.pool_status)
+        << " job_execution_foundation_run_status="
+        << mirakana::job_execution_run_status_label(job_execution_foundation.run_result.status)
+        << " job_execution_foundation_diagnostics="
+        << job_execution_foundation_diagnostic_count(job_execution_foundation)
+        << " job_execution_foundation_worker_threads_started="
+        << job_execution_foundation.run_result.worker_threads_started << " job_execution_foundation_tasks_submitted="
+        << job_execution_foundation.run_result.scheduling_evidence.scheduling_summary.total_submitted_jobs
+        << " job_execution_foundation_tasks_executed=" << job_execution_foundation.run_result.tasks_executed
+        << " job_execution_foundation_tasks_failed=" << job_execution_foundation.run_result.tasks_failed
+        << " job_execution_foundation_task_side_effects=" << job_execution_foundation.task_side_effects
+        << " job_execution_foundation_execution_rows="
+        << job_execution_foundation.run_result.scheduling_evidence.execution_order.size()
+        << " job_execution_foundation_queue_rows="
+        << job_execution_foundation.run_result.scheduling_evidence.queue_rows.size()
+        << " job_execution_foundation_deterministic_merges="
+        << job_execution_foundation.run_result.scheduling_evidence.scheduling_summary.total_deterministic_merge_count
+        << " job_execution_foundation_scratch_rows="
+        << job_execution_foundation.run_result.scheduling_evidence.worker_scratch_rows.size()
+        << " job_execution_foundation_scratch_bytes="
+        << job_execution_foundation.run_result.scheduling_evidence.scratch_summary.total_bytes
+        << " job_execution_foundation_scratch_high_water_bytes="
+        << job_execution_foundation.run_result.scheduling_evidence.scratch_summary.high_water_bytes
+        << " job_execution_foundation_work_stealing_applied=0"
+        << " job_execution_foundation_affinity_policy_applied=0"
+        << " job_execution_foundation_numa_policy_applied=0"
+        << " job_execution_foundation_simd_dispatch_applied=0"
+        << " job_execution_foundation_gpu_async_overlap_applied=0"
+        << " job_execution_foundation_cuda_path_used=0"
+        << " job_execution_foundation_hip_path_used=0"
+        << " job_execution_foundation_sycl_path_used=0"
         << " ui_overlay_requested=" << (report.native_ui_overlay_requested ? 1 : 0) << " ui_overlay_status="
         << mirakana::win32_desktop_presentation_native_ui_overlay_status_name(report.native_ui_overlay_status)
         << " ui_overlay_ready=" << (report.native_ui_overlay_ready ? 1 : 0)
