@@ -14,6 +14,7 @@
 #include <fstream>
 #include <limits>
 #include <mutex>
+#include <thread>
 
 #include "mirakana/animation/chain_ik.hpp"
 #include "mirakana/animation/keyframe_animation.hpp"
