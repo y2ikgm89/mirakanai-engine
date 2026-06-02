@@ -51,12 +51,17 @@ struct Win32CpuSetWorkerPlacementRow {
     std::uint8_t efficiency_class{0};
     std::uint8_t core_index{0};
     std::uint8_t numa_node_index{0};
+    bool smt_sibling_deferred{false};
 };
 
 struct Win32CpuSetWorkerPlacementPlan {
     Win32CpuSetWorkerPlacementStatus status{Win32CpuSetWorkerPlacementStatus::invalid_configuration};
     std::vector<Win32CpuSetWorkerPlacementRow> worker_rows;
     std::uint32_t selected_cpu_set_count{0};
+    std::uint32_t distinct_core_count{0};
+    std::uint32_t smt_sibling_cpu_set_count{0};
+    bool smt_sibling_topology_known{false};
+    bool smt_sibling_policy_applied{false};
     std::vector<Win32CpuSetWorkerPlacementDiagnosticCode> diagnostic_codes;
     std::vector<std::string> diagnostics;
 

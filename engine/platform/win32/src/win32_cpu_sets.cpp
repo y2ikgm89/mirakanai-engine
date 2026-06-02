@@ -13,12 +13,18 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
 
 namespace mirakana::win32 {
 namespace {
+
+struct OrderedCpuSetRow {
+    Win32CpuSetRow row;
+    bool smt_sibling_deferred{false};
+};
 
 [[nodiscard]] bool cpu_set_available(const Win32CpuSetRow& row) noexcept {
     return !row.parked && (!row.allocated || row.allocated_to_target_process);
@@ -74,6 +80,53 @@ void sort_cpu_sets_for_mode(std::vector<Win32CpuSetRow>& rows, JobExecutionPlace
         }
         return lhs.id < rhs.id;
     });
+}
+
+[[nodiscard]] bool same_core(const Win32CpuSetRow& lhs, const Win32CpuSetRow& rhs) noexcept {
+    return lhs.group == rhs.group && lhs.core_index == rhs.core_index;
+}
+
+[[nodiscard]] bool core_already_selected(std::span<const OrderedCpuSetRow> rows,
+                                         const Win32CpuSetRow& candidate) noexcept {
+    return std::ranges::any_of(rows,
+                               [&candidate](const OrderedCpuSetRow& row) { return same_core(row.row, candidate); });
+}
+
+[[nodiscard]] auto build_ordered_cpu_set_rows(std::vector<Win32CpuSetRow> rows, JobExecutionPlacementPolicyMode mode)
+    -> std::vector<OrderedCpuSetRow> {
+    sort_cpu_sets_for_mode(rows, mode);
+    std::vector<OrderedCpuSetRow> ordered_rows;
+    ordered_rows.reserve(rows.size());
+
+    if (mode != JobExecutionPlacementPolicyMode::avoid_smt_siblings) {
+        for (const auto& row : rows) {
+            ordered_rows.push_back(OrderedCpuSetRow{.row = row});
+        }
+        return ordered_rows;
+    }
+
+    std::vector<OrderedCpuSetRow> sibling_rows;
+    sibling_rows.reserve(rows.size());
+    for (const auto& row : rows) {
+        if (core_already_selected(ordered_rows, row)) {
+            sibling_rows.push_back(OrderedCpuSetRow{.row = row, .smt_sibling_deferred = true});
+        } else {
+            ordered_rows.push_back(OrderedCpuSetRow{.row = row});
+        }
+    }
+    ordered_rows.insert(ordered_rows.end(), sibling_rows.begin(), sibling_rows.end());
+    return ordered_rows;
+}
+
+[[nodiscard]] std::uint32_t count_distinct_cores(std::span<const OrderedCpuSetRow> rows) noexcept {
+    std::vector<OrderedCpuSetRow> distinct_rows;
+    distinct_rows.reserve(rows.size());
+    for (const auto& row : rows) {
+        if (!core_already_selected(distinct_rows, row.row)) {
+            distinct_rows.push_back(row);
+        }
+    }
+    return static_cast<std::uint32_t>(distinct_rows.size());
 }
 
 [[nodiscard]] auto find_worker_row(const Win32CpuSetWorkerPlacementPlan& plan, std::uint32_t worker_id) noexcept
@@ -134,19 +187,24 @@ Win32CpuSetWorkerPlacementPlan select_win32_cpu_set_worker_placement(const Win32
         return plan;
     }
 
-    sort_cpu_sets_for_mode(available_rows, desc.mode);
+    const auto ordered_rows = build_ordered_cpu_set_rows(std::move(available_rows), desc.mode);
     plan.status = Win32CpuSetWorkerPlacementStatus::ready;
-    plan.selected_cpu_set_count = static_cast<std::uint32_t>(available_rows.size());
+    plan.selected_cpu_set_count = static_cast<std::uint32_t>(ordered_rows.size());
+    plan.distinct_core_count = count_distinct_cores(ordered_rows);
+    plan.smt_sibling_cpu_set_count = plan.selected_cpu_set_count - plan.distinct_core_count;
+    plan.smt_sibling_topology_known = plan.smt_sibling_cpu_set_count > 0U;
+    plan.smt_sibling_policy_applied = desc.mode == JobExecutionPlacementPolicyMode::avoid_smt_siblings;
     plan.worker_rows.reserve(desc.worker_count);
 
     for (std::uint32_t worker_id = 0; worker_id < desc.worker_count; ++worker_id) {
-        const auto& row = available_rows[static_cast<std::size_t>(worker_id) % available_rows.size()];
+        const auto& row = ordered_rows[static_cast<std::size_t>(worker_id) % ordered_rows.size()];
         plan.worker_rows.push_back(Win32CpuSetWorkerPlacementRow{
             .worker_id = worker_id,
-            .cpu_set_id = row.id,
-            .efficiency_class = row.efficiency_class,
-            .core_index = row.core_index,
-            .numa_node_index = row.numa_node_index,
+            .cpu_set_id = row.row.id,
+            .efficiency_class = row.row.efficiency_class,
+            .core_index = row.row.core_index,
+            .numa_node_index = row.row.numa_node_index,
+            .smt_sibling_deferred = row.smt_sibling_deferred,
         });
     }
 
