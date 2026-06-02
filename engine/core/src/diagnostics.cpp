@@ -413,6 +413,77 @@ void append_job_scheduling_diagnostic(JobSchedulingDiagnosticsSummary& summary, 
     return options.budget_pressure_warning_ratio;
 }
 
+[[nodiscard]] std::uint32_t
+job_scheduling_topology_worker_count(std::span<const JobWorkerTopologyRow> topology_rows) noexcept {
+    std::uint64_t worker_count = 0;
+    for (const auto& topology : topology_rows) {
+        worker_count += topology.worker_count;
+    }
+    return static_cast<std::uint32_t>(std::min<std::uint64_t>(worker_count, std::numeric_limits<std::uint32_t>::max()));
+}
+
+[[nodiscard]] std::uint32_t observed_job_worker_count(std::span<const JobSchedulingWorkItemRow> work_items) noexcept {
+    std::uint32_t worker_count = 0;
+    for (const auto& work_item : work_items) {
+        if (work_item.worker_id >= work_items.size()) {
+            continue;
+        }
+        worker_count = std::max(worker_count, work_item.worker_id + 1U);
+    }
+    return worker_count;
+}
+
+[[nodiscard]] std::size_t find_job_index(std::span<const JobSchedulingWorkItemRow> work_items,
+                                         std::string_view job_id) noexcept {
+    for (std::size_t index = 0; index < work_items.size(); ++index) {
+        if (work_items[index].job_id == job_id) {
+            return index;
+        }
+    }
+    return work_items.size();
+}
+
+[[nodiscard]] std::size_t queue_index_for_worker(std::span<const JobQueueCounterRow> queue_rows,
+                                                 std::uint32_t worker_id) noexcept {
+    for (std::size_t index = 0; index < queue_rows.size(); ++index) {
+        if (queue_rows[index].worker_id == worker_id) {
+            return index;
+        }
+    }
+    return queue_rows.size();
+}
+
+[[nodiscard]] bool duplicate_merge_order(std::span<const JobSchedulingWorkItemRow> work_items,
+                                         std::size_t current_index) noexcept {
+    const auto& current = work_items[current_index];
+    if (current.worker_local_output_count == 0) {
+        return false;
+    }
+    for (std::size_t index = 0; index < work_items.size(); ++index) {
+        if (index == current_index || work_items[index].worker_local_output_count == 0) {
+            continue;
+        }
+        if (work_items[index].merge_order == current.merge_order) {
+            return true;
+        }
+    }
+    return false;
+}
+
+[[nodiscard]] std::uint64_t normalized_minimum_job_batch_size(const JobSchedulingExecutionOptions& options) noexcept {
+    return std::max<std::uint64_t>(1, options.minimum_batch_size);
+}
+
+[[nodiscard]] std::uint64_t normalized_maximum_job_batch_size(const JobSchedulingExecutionOptions& options) noexcept {
+    return std::max(normalized_minimum_job_batch_size(options), options.maximum_batch_size);
+}
+
+void finalize_job_scheduling_summary(JobSchedulingDiagnosticsSummary& summary) {
+    if (summary.status == JobSchedulingDiagnosticsStatus::ready && !summary.diagnostics.empty()) {
+        summary.status = JobSchedulingDiagnosticsStatus::invalid_rows;
+    }
+}
+
 class TraceJsonReviewParser {
   public:
     explicit TraceJsonReviewParser(std::string_view text, DiagnosticCapture* capture = nullptr,
@@ -1684,6 +1755,11 @@ summarize_job_scheduling_diagnostics(std::span<const JobWorkerTopologyRow> topol
             append_job_scheduling_diagnostic(summary, JobSchedulingDiagnosticsCode::invalid_queue,
                                              "job queue counter row requires a name");
         }
+        if (summary.worker_count > 0 && row.worker_id >= summary.worker_count) {
+            append_job_scheduling_diagnostic(summary, JobSchedulingDiagnosticsCode::invalid_queue,
+                                             row_label + " worker id " + std::to_string(row.worker_id) +
+                                                 " is outside worker count " + std::to_string(summary.worker_count));
+        }
         if (row.queue_capacity == 0) {
             append_job_scheduling_diagnostic(summary, JobSchedulingDiagnosticsCode::invalid_queue,
                                              row_label + " requires a non-zero bounded queue capacity");
@@ -1743,6 +1819,216 @@ summarize_job_scheduling_diagnostics(std::span<const JobWorkerTopologyRow> topol
     summary.status = summary.diagnostics.empty() ? JobSchedulingDiagnosticsStatus::ready
                                                  : JobSchedulingDiagnosticsStatus::invalid_rows;
     return summary;
+}
+
+JobSchedulingExecutionEvidence
+build_job_scheduling_execution_evidence(std::span<const JobWorkerTopologyRow> topology_rows,
+                                        std::span<const JobSchedulingWorkItemRow> work_items,
+                                        const JobSchedulingExecutionOptions& options) {
+    struct PendingJobDiagnostic {
+        JobSchedulingDiagnosticsCode code{JobSchedulingDiagnosticsCode::none};
+        std::string message;
+    };
+
+    JobSchedulingExecutionEvidence evidence;
+    const auto topology_worker_count = job_scheduling_topology_worker_count(topology_rows);
+    const auto worker_count = topology_worker_count > 0 ? topology_worker_count : observed_job_worker_count(work_items);
+    evidence.queue_rows.reserve(worker_count);
+    for (std::uint32_t worker_id = 0; worker_id < worker_count; ++worker_id) {
+        evidence.queue_rows.push_back(
+            JobQueueCounterRow{.name = "worker." + std::to_string(worker_id) + ".bounded_queue",
+                               .worker_id = worker_id,
+                               .queue_capacity = options.queue_capacity_per_worker,
+                               .frame_index = options.frame_index});
+    }
+
+    std::vector<std::uint64_t> scratch_request_counts(evidence.queue_rows.size(), 0);
+    std::vector<std::size_t> work_item_queue_indices(work_items.size(), evidence.queue_rows.size());
+    std::vector<bool> invalid_work_item_identity(work_items.size(), false);
+    std::vector<bool> blocked_work_items(work_items.size(), false);
+    std::vector<PendingJobDiagnostic> pending_diagnostics;
+
+    const auto minimum_batch_size = normalized_minimum_job_batch_size(options);
+    const auto maximum_batch_size = normalized_maximum_job_batch_size(options);
+    for (std::size_t work_item_index = 0; work_item_index < work_items.size(); ++work_item_index) {
+        const auto& work_item = work_items[work_item_index];
+        if (work_item.job_id.empty()) {
+            invalid_work_item_identity[work_item_index] = true;
+            pending_diagnostics.push_back(PendingJobDiagnostic{
+                .code = JobSchedulingDiagnosticsCode::invalid_queue,
+                .message = "job scheduling work item requires a non-empty job id",
+            });
+        }
+        for (std::size_t previous_index = 0; previous_index < work_item_index; ++previous_index) {
+            if (!work_item.job_id.empty() && work_items[previous_index].job_id == work_item.job_id) {
+                invalid_work_item_identity[work_item_index] = true;
+                pending_diagnostics.push_back(PendingJobDiagnostic{
+                    .code = JobSchedulingDiagnosticsCode::invalid_queue,
+                    .message = "job scheduling work item '" + work_item.job_id + "' duplicates an earlier job id",
+                });
+                break;
+            }
+        }
+
+        const auto queue_index = queue_index_for_worker(evidence.queue_rows, work_item.worker_id);
+        if (queue_index == evidence.queue_rows.size()) {
+            pending_diagnostics.push_back(PendingJobDiagnostic{
+                .code = JobSchedulingDiagnosticsCode::invalid_queue,
+                .message = "job scheduling work item '" + work_item.job_id + "' targets worker id " +
+                           std::to_string(work_item.worker_id) + " outside worker topology",
+            });
+            continue;
+        }
+
+        work_item_queue_indices[work_item_index] = queue_index;
+        auto& queue_row = evidence.queue_rows[queue_index];
+        ++queue_row.submitted_jobs;
+        queue_row.queue_depth_high_water = std::max(queue_row.queue_depth_high_water, queue_row.submitted_jobs);
+        queue_row.scratch_bytes += work_item.scratch_bytes;
+        queue_row.scratch_high_water_bytes += work_item.scratch_bytes;
+        if (work_item.scratch_bytes > 0) {
+            ++scratch_request_counts[queue_index];
+        }
+
+        const auto scratch_owner_worker_id =
+            work_item.scratch_owner_worker_id == std::numeric_limits<std::uint32_t>::max()
+                ? work_item.worker_id
+                : work_item.scratch_owner_worker_id;
+        if (work_item.scratch_bytes > 0 && scratch_owner_worker_id != work_item.worker_id) {
+            ++queue_row.scratch_misuse_count;
+        }
+        if (work_item.batch_size < minimum_batch_size) {
+            ++queue_row.undersized_job_batch_count;
+        }
+        if (work_item.batch_size > maximum_batch_size) {
+            ++queue_row.oversized_job_batch_count;
+        }
+        if (work_item.worker_local_output_count > 0) {
+            if (work_item.deterministic_merge && !duplicate_merge_order(work_items, work_item_index)) {
+                ++queue_row.deterministic_merge_count;
+            } else {
+                ++queue_row.nondeterministic_merge_count;
+            }
+        }
+    }
+
+    for (std::size_t work_item_index = 0; work_item_index < work_items.size(); ++work_item_index) {
+        if (invalid_work_item_identity[work_item_index] ||
+            work_item_queue_indices[work_item_index] == evidence.queue_rows.size()) {
+            continue;
+        }
+        auto& queue_row = evidence.queue_rows[work_item_queue_indices[work_item_index]];
+        for (const auto& dependency_id : work_items[work_item_index].dependency_job_ids) {
+            const auto dependency_index = find_job_index(work_items, dependency_id);
+            if (dependency_index == work_items.size() || invalid_work_item_identity[dependency_index]) {
+                blocked_work_items[work_item_index] = true;
+                ++queue_row.blocked_dependency_count;
+            }
+        }
+    }
+
+    bool propagated_blocked_dependency = true;
+    while (propagated_blocked_dependency) {
+        propagated_blocked_dependency = false;
+        for (std::size_t work_item_index = 0; work_item_index < work_items.size(); ++work_item_index) {
+            if (blocked_work_items[work_item_index] || invalid_work_item_identity[work_item_index] ||
+                work_item_queue_indices[work_item_index] == evidence.queue_rows.size()) {
+                continue;
+            }
+            for (const auto& dependency_id : work_items[work_item_index].dependency_job_ids) {
+                const auto dependency_index = find_job_index(work_items, dependency_id);
+                if (dependency_index < work_items.size() && blocked_work_items[dependency_index]) {
+                    blocked_work_items[work_item_index] = true;
+                    ++evidence.queue_rows[work_item_queue_indices[work_item_index]].blocked_dependency_count;
+                    propagated_blocked_dependency = true;
+                    break;
+                }
+            }
+        }
+    }
+
+    std::vector<bool> completed_work_items(work_items.size(), false);
+    bool completed_any_work_item = true;
+    while (completed_any_work_item) {
+        completed_any_work_item = false;
+        for (std::size_t work_item_index = 0; work_item_index < work_items.size(); ++work_item_index) {
+            if (completed_work_items[work_item_index] || blocked_work_items[work_item_index] ||
+                invalid_work_item_identity[work_item_index] ||
+                work_item_queue_indices[work_item_index] == evidence.queue_rows.size()) {
+                continue;
+            }
+
+            bool dependencies_completed = true;
+            for (const auto& dependency_id : work_items[work_item_index].dependency_job_ids) {
+                const auto dependency_index = find_job_index(work_items, dependency_id);
+                if (dependency_index == work_items.size() || !completed_work_items[dependency_index]) {
+                    dependencies_completed = false;
+                    break;
+                }
+            }
+            if (!dependencies_completed) {
+                continue;
+            }
+
+            const auto& work_item = work_items[work_item_index];
+            auto& queue_row = evidence.queue_rows[work_item_queue_indices[work_item_index]];
+            completed_work_items[work_item_index] = true;
+            ++queue_row.completed_jobs;
+            evidence.execution_order.push_back(JobSchedulingExecutionOrderRow{
+                .job_id = work_item.job_id,
+                .worker_id = work_item.worker_id,
+                .sequence_index = static_cast<std::uint64_t>(evidence.execution_order.size()),
+                .merge_order = work_item.merge_order,
+                .worker_local_output_count = work_item.worker_local_output_count,
+            });
+            completed_any_work_item = true;
+        }
+    }
+
+    for (std::size_t work_item_index = 0; work_item_index < work_items.size(); ++work_item_index) {
+        if (!completed_work_items[work_item_index] && !blocked_work_items[work_item_index] &&
+            !invalid_work_item_identity[work_item_index] &&
+            work_item_queue_indices[work_item_index] != evidence.queue_rows.size()) {
+            ++evidence.queue_rows[work_item_queue_indices[work_item_index]].dependency_cycle_count;
+        }
+    }
+
+    evidence.worker_scratch_rows.reserve(evidence.queue_rows.size());
+    for (std::size_t queue_index = 0; queue_index < evidence.queue_rows.size(); ++queue_index) {
+        auto& queue_row = evidence.queue_rows[queue_index];
+        if (queue_row.queue_capacity == 0) {
+            queue_row.queue_overflow_count = queue_row.submitted_jobs;
+        } else if (queue_row.submitted_jobs > queue_row.queue_capacity) {
+            queue_row.queue_overflow_count = queue_row.submitted_jobs - queue_row.queue_capacity;
+        }
+        if (queue_row.submitted_jobs == 0) {
+            queue_row.worker_wait_count = 1;
+        }
+
+        evidence.worker_scratch_rows.push_back(MemoryCounterRow{
+            .lifetime_class = MemoryLifetimeClass::worker_scratch,
+            .name = "worker." + std::to_string(queue_row.worker_id) + ".scheduler_scratch",
+            .bytes = queue_row.scratch_bytes,
+            .allocation_count = scratch_request_counts[queue_index],
+            .high_water_bytes = queue_row.scratch_high_water_bytes,
+            .budget_bytes = options.scratch_budget_bytes_per_worker,
+            .generation = options.frame_index,
+            .safe_point_generation = options.frame_index,
+            .frame_index = options.frame_index,
+            .reuse_count = scratch_request_counts[queue_index],
+            .reset_count = queue_row.submitted_jobs > 0 ? std::uint64_t{1} : std::uint64_t{0},
+            .cross_thread_free_count = queue_row.scratch_misuse_count,
+        });
+    }
+
+    evidence.scheduling_summary = summarize_job_scheduling_diagnostics(topology_rows, evidence.queue_rows);
+    for (auto& pending_diagnostic : pending_diagnostics) {
+        append_job_scheduling_diagnostic(evidence.scheduling_summary, pending_diagnostic.code,
+                                         std::move(pending_diagnostic.message));
+    }
+    finalize_job_scheduling_summary(evidence.scheduling_summary);
+    evidence.scratch_summary = summarize_memory_diagnostics(evidence.worker_scratch_rows);
+    return evidence;
 }
 
 std::string_view diagnostics_ops_artifact_kind_label(DiagnosticsOpsArtifactKind kind) noexcept {

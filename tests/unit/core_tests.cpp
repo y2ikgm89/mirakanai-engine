@@ -1151,6 +1151,179 @@ MK_TEST("job scheduling diagnostics fail closed for missing rows and expose stab
                    mirakana::JobSchedulingDiagnosticsCode::scratch_misuse) == "scratch_misuse");
 }
 
+MK_TEST("job scheduling execution evidence plans deterministic bounded queues and worker scratch") {
+    const std::array topologies{
+        mirakana::JobWorkerTopologyRow{.name = "cpu.default_pool",
+                                       .logical_processor_count = 8,
+                                       .worker_count = 2,
+                                       .queue_count = 2,
+                                       .processor_group_count = 1,
+                                       .numa_node_count = 1,
+                                       .processor_groups_accounted_for = true,
+                                       .numa_topology_known = true},
+    };
+    const std::array jobs{
+        mirakana::JobSchedulingWorkItemRow{.job_id = "load_tiles",
+                                           .worker_id = 0,
+                                           .batch_size = 32,
+                                           .scratch_bytes = 1024,
+                                           .worker_local_output_count = 1,
+                                           .merge_order = 0},
+        mirakana::JobSchedulingWorkItemRow{.job_id = "resolve_ai",
+                                           .worker_id = 1,
+                                           .dependency_job_ids = {"load_tiles"},
+                                           .batch_size = 16,
+                                           .scratch_bytes = 512,
+                                           .worker_local_output_count = 1,
+                                           .merge_order = 1},
+        mirakana::JobSchedulingWorkItemRow{.job_id = "submit_render_intent",
+                                           .worker_id = 0,
+                                           .dependency_job_ids = {"resolve_ai"},
+                                           .batch_size = 8,
+                                           .scratch_bytes = 256,
+                                           .worker_local_output_count = 1,
+                                           .merge_order = 2},
+    };
+    const auto options = mirakana::JobSchedulingExecutionOptions{
+        .queue_capacity_per_worker = 4,
+        .minimum_batch_size = 4,
+        .maximum_batch_size = 64,
+        .scratch_budget_bytes_per_worker = 4096,
+        .frame_index = 12,
+    };
+
+    const auto evidence = mirakana::build_job_scheduling_execution_evidence(topologies, jobs, options);
+
+    MK_REQUIRE(evidence.scheduling_summary.status == mirakana::JobSchedulingDiagnosticsStatus::ready);
+    MK_REQUIRE(evidence.scratch_summary.status == mirakana::MemoryDiagnosticsStatus::ready);
+    MK_REQUIRE(evidence.queue_rows.size() == 2U);
+    MK_REQUIRE(evidence.worker_scratch_rows.size() == 2U);
+    MK_REQUIRE(evidence.execution_order.size() == 3U);
+    MK_REQUIRE(evidence.execution_order[0].job_id == "load_tiles");
+    MK_REQUIRE(evidence.execution_order[1].job_id == "resolve_ai");
+    MK_REQUIRE(evidence.execution_order[2].job_id == "submit_render_intent");
+    MK_REQUIRE(evidence.queue_rows[0].submitted_jobs == 2);
+    MK_REQUIRE(evidence.queue_rows[0].completed_jobs == 2);
+    MK_REQUIRE(evidence.queue_rows[0].scratch_bytes == 1280);
+    MK_REQUIRE(evidence.queue_rows[1].submitted_jobs == 1);
+    MK_REQUIRE(evidence.queue_rows[1].completed_jobs == 1);
+    MK_REQUIRE(evidence.queue_rows[1].scratch_bytes == 512);
+    MK_REQUIRE(evidence.scheduling_summary.total_deterministic_merge_count == 3);
+    MK_REQUIRE(evidence.scheduling_summary.total_scratch_bytes == 1792);
+    MK_REQUIRE(evidence.worker_scratch_rows[0].lifetime_class == mirakana::MemoryLifetimeClass::worker_scratch);
+    MK_REQUIRE(evidence.worker_scratch_rows[0].allocation_count == 2);
+    MK_REQUIRE(evidence.worker_scratch_rows[0].reuse_count == 2);
+    MK_REQUIRE(evidence.worker_scratch_rows[0].reset_count == 1);
+    MK_REQUIRE(evidence.worker_scratch_rows[0].budget_bytes == 4096);
+    MK_REQUIRE(evidence.scheduling_summary.diagnostics.empty());
+    MK_REQUIRE(evidence.scratch_summary.diagnostics.empty());
+}
+
+MK_TEST("job scheduling execution evidence detects dependency batch merge queue and scratch hazards") {
+    const std::array topologies{
+        mirakana::JobWorkerTopologyRow{.name = "cpu.default_pool",
+                                       .logical_processor_count = 8,
+                                       .worker_count = 2,
+                                       .queue_count = 2,
+                                       .processor_group_count = 1,
+                                       .numa_node_count = 1,
+                                       .processor_groups_accounted_for = true,
+                                       .numa_topology_known = true},
+    };
+    const std::array jobs{
+        mirakana::JobSchedulingWorkItemRow{.job_id = "too_small",
+                                           .worker_id = 0,
+                                           .batch_size = 1,
+                                           .scratch_bytes = 256,
+                                           .worker_local_output_count = 1,
+                                           .merge_order = 0},
+        mirakana::JobSchedulingWorkItemRow{.job_id = "too_large",
+                                           .worker_id = 0,
+                                           .batch_size = 128,
+                                           .scratch_bytes = 256,
+                                           .worker_local_output_count = 1,
+                                           .merge_order = 1},
+        mirakana::JobSchedulingWorkItemRow{
+            .job_id = "missing_dep", .worker_id = 0, .dependency_job_ids = {"missing"}, .batch_size = 8},
+        mirakana::JobSchedulingWorkItemRow{.job_id = "cycle_a",
+                                           .worker_id = 0,
+                                           .dependency_job_ids = {"cycle_b"},
+                                           .batch_size = 8,
+                                           .worker_local_output_count = 1,
+                                           .merge_order = 2},
+        mirakana::JobSchedulingWorkItemRow{.job_id = "cycle_b",
+                                           .worker_id = 0,
+                                           .dependency_job_ids = {"cycle_a"},
+                                           .batch_size = 8,
+                                           .worker_local_output_count = 1,
+                                           .merge_order = 3},
+        mirakana::JobSchedulingWorkItemRow{.job_id = "cross_thread_scratch",
+                                           .worker_id = 1,
+                                           .batch_size = 8,
+                                           .scratch_bytes = 128,
+                                           .scratch_owner_worker_id = 0,
+                                           .worker_local_output_count = 1,
+                                           .merge_order = 4},
+        mirakana::JobSchedulingWorkItemRow{.job_id = "nondeterministic",
+                                           .worker_id = 1,
+                                           .batch_size = 8,
+                                           .deterministic_merge = false,
+                                           .worker_local_output_count = 1,
+                                           .merge_order = 5},
+        mirakana::JobSchedulingWorkItemRow{.job_id = "duplicate_merge_a",
+                                           .worker_id = 1,
+                                           .batch_size = 8,
+                                           .worker_local_output_count = 1,
+                                           .merge_order = 6},
+        mirakana::JobSchedulingWorkItemRow{.job_id = "duplicate_merge_b",
+                                           .worker_id = 1,
+                                           .batch_size = 8,
+                                           .worker_local_output_count = 1,
+                                           .merge_order = 6},
+    };
+    const auto options = mirakana::JobSchedulingExecutionOptions{
+        .queue_capacity_per_worker = 2,
+        .minimum_batch_size = 4,
+        .maximum_batch_size = 64,
+        .frame_index = 13,
+    };
+
+    const auto evidence = mirakana::build_job_scheduling_execution_evidence(topologies, jobs, options);
+
+    MK_REQUIRE(evidence.scheduling_summary.status == mirakana::JobSchedulingDiagnosticsStatus::invalid_rows);
+    MK_REQUIRE(evidence.scratch_summary.status == mirakana::MemoryDiagnosticsStatus::invalid_rows);
+    MK_REQUIRE(evidence.scheduling_summary.total_submitted_jobs == 9);
+    MK_REQUIRE(evidence.scheduling_summary.total_completed_jobs == 6);
+    MK_REQUIRE(evidence.scheduling_summary.total_queue_overflow_count == 5);
+    MK_REQUIRE(evidence.scheduling_summary.total_blocked_dependency_count >= 1);
+    MK_REQUIRE(evidence.scheduling_summary.total_dependency_cycle_count >= 1);
+    MK_REQUIRE(evidence.scheduling_summary.total_scratch_misuse_count == 1);
+    MK_REQUIRE(evidence.scheduling_summary.total_nondeterministic_merge_count >= 3);
+    MK_REQUIRE(evidence.scheduling_summary.total_undersized_job_batch_count == 1);
+    MK_REQUIRE(evidence.scheduling_summary.total_oversized_job_batch_count == 1);
+    MK_REQUIRE(std::ranges::find(evidence.scheduling_summary.diagnostic_codes,
+                                 mirakana::JobSchedulingDiagnosticsCode::queue_overflow) !=
+               evidence.scheduling_summary.diagnostic_codes.end());
+    MK_REQUIRE(std::ranges::find(evidence.scheduling_summary.diagnostic_codes,
+                                 mirakana::JobSchedulingDiagnosticsCode::blocked_dependency) !=
+               evidence.scheduling_summary.diagnostic_codes.end());
+    MK_REQUIRE(std::ranges::find(evidence.scheduling_summary.diagnostic_codes,
+                                 mirakana::JobSchedulingDiagnosticsCode::dependency_cycle) !=
+               evidence.scheduling_summary.diagnostic_codes.end());
+    MK_REQUIRE(std::ranges::find(evidence.scheduling_summary.diagnostic_codes,
+                                 mirakana::JobSchedulingDiagnosticsCode::scratch_misuse) !=
+               evidence.scheduling_summary.diagnostic_codes.end());
+    MK_REQUIRE(std::ranges::find(evidence.scheduling_summary.diagnostic_codes,
+                                 mirakana::JobSchedulingDiagnosticsCode::nondeterministic_merge) !=
+               evidence.scheduling_summary.diagnostic_codes.end());
+    MK_REQUIRE(std::ranges::find(evidence.scheduling_summary.diagnostic_codes,
+                                 mirakana::JobSchedulingDiagnosticsCode::undersized_job_batch) !=
+               evidence.scheduling_summary.diagnostic_codes.end());
+    MK_REQUIRE(std::ranges::find(evidence.scheduling_summary.diagnostic_codes,
+                                 mirakana::JobSchedulingDiagnosticsCode::oversized_job_batch) !=
+               evidence.scheduling_summary.diagnostic_codes.end());
+}
+
 MK_TEST("scratch arena acquires bounded frame leases and resets at safe points") {
     static_assert(!std::is_copy_constructible_v<mirakana::ScratchArena>);
     static_assert(!std::is_move_constructible_v<mirakana::ScratchArena>);

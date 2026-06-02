@@ -253,6 +253,42 @@ struct JobSchedulingDiagnosticsSummary {
     std::vector<std::string> diagnostics;
 };
 
+struct JobSchedulingWorkItemRow {
+    std::string job_id;
+    std::uint32_t worker_id{0};
+    std::vector<std::string> dependency_job_ids;
+    std::uint64_t batch_size{1};
+    std::uint64_t scratch_bytes{0};
+    std::uint32_t scratch_owner_worker_id{std::numeric_limits<std::uint32_t>::max()};
+    bool deterministic_merge{true};
+    std::uint64_t worker_local_output_count{0};
+    std::uint64_t merge_order{0};
+};
+
+struct JobSchedulingExecutionOptions {
+    std::uint64_t queue_capacity_per_worker{256};
+    std::uint64_t minimum_batch_size{1};
+    std::uint64_t maximum_batch_size{std::numeric_limits<std::uint64_t>::max()};
+    std::uint64_t scratch_budget_bytes_per_worker{0};
+    std::uint64_t frame_index{0};
+};
+
+struct JobSchedulingExecutionOrderRow {
+    std::string job_id;
+    std::uint32_t worker_id{0};
+    std::uint64_t sequence_index{0};
+    std::uint64_t merge_order{0};
+    std::uint64_t worker_local_output_count{0};
+};
+
+struct JobSchedulingExecutionEvidence {
+    std::vector<JobQueueCounterRow> queue_rows;
+    std::vector<MemoryCounterRow> worker_scratch_rows;
+    std::vector<JobSchedulingExecutionOrderRow> execution_order;
+    JobSchedulingDiagnosticsSummary scheduling_summary;
+    MemoryDiagnosticsSummary scratch_summary;
+};
+
 struct DiagnosticsTraceExportOptions {
     std::string trace_name{"GameEngine Diagnostics"};
     std::string thread_name{"main"};
@@ -404,6 +440,10 @@ class ScopedProfileZone {
 [[nodiscard]] JobSchedulingDiagnosticsSummary
 summarize_job_scheduling_diagnostics(std::span<const JobWorkerTopologyRow> topology_rows,
                                      std::span<const JobQueueCounterRow> queue_rows);
+[[nodiscard]] JobSchedulingExecutionEvidence
+build_job_scheduling_execution_evidence(std::span<const JobWorkerTopologyRow> topology_rows,
+                                        std::span<const JobSchedulingWorkItemRow> work_items,
+                                        const JobSchedulingExecutionOptions& options = {});
 [[nodiscard]] std::string_view diagnostics_ops_artifact_kind_label(DiagnosticsOpsArtifactKind kind) noexcept;
 [[nodiscard]] std::string_view diagnostics_ops_artifact_status_label(DiagnosticsOpsArtifactStatus status) noexcept;
 [[nodiscard]] DiagnosticsOpsPlan build_diagnostics_ops_plan(const DiagnosticCapture& capture,
