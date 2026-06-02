@@ -3,7 +3,6 @@
 
 # Chapter 1 for check-ai-integration.ps1 static contracts.
 # Agent baseline, docs, plans, and tooling needles only. Engine/RHI/runtime surface texts load in check-ai-integration-020-engine-manifest.ps1.
-
 $agents = Resolve-RequiredAgentPath "AGENTS.md"
 $claude = Resolve-RequiredAgentPath "CLAUDE.md"
 $manifestPath = Resolve-RequiredAgentPath "engine/agent/manifest.json"
@@ -1939,6 +1938,7 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     )) {
         Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan job execution work stealing selection"
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "job-execution-placement-policy-v1") { foreach ($needle in @("Job Execution Placement Policy v1", "host-independent CPU placement policy evidence", "topology", "worker-pool", "work-stealing", "affinity", "NUMA", "SMT", "hybrid-core", "Windows CPU Set", "Linux affinity", "SIMD", "GPU async", "CUDA/HIP/SYCL", "broad all-core CPU/GPU/memory optimization")) { Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan job execution placement policy selection" }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "first-party-ui-editor-production-stack-v1") {
     foreach ($needle in @(
         "First-Party UI Editor Production Stack v1",
