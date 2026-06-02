@@ -6,6 +6,7 @@
 **Status:** Completed
 **Owner:** `tools` / CI / agent-surface governance
 **Parent:** [Production Completion Master Plan v1](../master-plans/2026-05-03-production-completion-master-plan-v1.md)
+**Published:** PR #386 / merge commit `12fde1bf7ea369e97a45d95a0ee271b4e2515b3d`
 
 **Goal:** Make the reviewed renderer Metal Apple host-evidence recipe run in the hosted macOS validation lane without weakening existing full macOS build/CTest coverage or promoting broad Metal readiness.
 
@@ -67,3 +68,5 @@ Official/current-doc checks used for this slice:
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode Execute -Recipe renderer-metal-apple-host-evidence` | Rejected as expected | Failed closed with `missing-host-gate-acknowledgement`. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode Execute -Recipe renderer-metal-apple-host-evidence -HostGateAcknowledgements metal-apple -TimeoutSeconds 30` | Failed as expected on Windows | Reported `apple-host-evidence-check: host-gated` with missing macOS/Xcode/Metal blockers. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed | Full local validation passed: 19 static checks, build, tidy smoke, and 85/85 CTest tests. |
+| PR #386 hosted checks | Passed | `PR Gate`, `macOS Metal CMake`, `Windows MSVC`, Linux lanes, full repository static analysis, iOS Simulator smoke, and CodeQL passed for head `2079ca34050f930bad98d8775661cd5d37f4cb7f`; merged as `12fde1bf7ea369e97a45d95a0ee271b4e2515b3d`. |
+| PR #386 macOS recipe log | Passed | The hosted `macOS Metal CMake` job ran `Renderer Metal Apple host evidence recipe`, reported `apple-host-evidence-check: ready`, built Metal renderer evidence tests, ran `MK_backend_scaffold_tests` and `MK_renderer_quality_matrix_tests`, and ended with `renderer-metal-apple-check: ok`. |
