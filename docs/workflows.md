@@ -386,7 +386,7 @@ GitHub Actions runs:
 - Linux: `cmake --preset ci-linux-clang`, build/CTest
 - Linux coverage: `tools/check-coverage.ps1 -Strict`
 - Linux sanitizers: `cmake --preset clang-asan-ubsan`, build, and CTest
-- macOS: `cmake --preset ci-macos-appleclang`, build/CTest, including Apple-only Metal Objective-C++ sources
+- macOS: `tools/validate-renderer-metal-apple.ps1 -Jobs <logical-cpu-count>` for the reviewed Metal host-evidence recipe, then `cmake --preset ci-macos-appleclang`, build/CTest, including Apple-only Metal Objective-C++ sources
 - iOS Validate: `tools/smoke-ios-package.ps1` on a pinned macOS hosted runner, building the iOS Simulator bundle and running `xcrun simctl install`, `get_app_container`, `launch`, and cleanup for `sample_headless`
 
 Local Linux validation should use the CI preset with Ninja and Clang:
@@ -407,6 +407,13 @@ macOS CI is defined for Metal host coverage. Local macOS validation should mirro
 cmake --preset ci-macos-appleclang
 cmake --build --preset ci-macos-appleclang --parallel "$(sysctl -n hw.logicalcpu)"
 ctest --preset ci-macos-appleclang --output-on-failure --parallel "$(sysctl -n hw.logicalcpu)"
+```
+
+When hard Apple/Metal evidence is required, run the reviewed renderer recipe first:
+
+```powershell
+$jobs = [int](& sysctl -n hw.logicalcpu)
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-renderer-metal-apple.ps1 -Jobs $jobs
 ```
 
 ## Mobile Packaging
