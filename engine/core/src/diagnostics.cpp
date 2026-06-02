@@ -373,10 +373,23 @@ void append_unique_code(std::vector<MemoryDiagnosticsCode>& codes, MemoryDiagnos
     codes.push_back(code);
 }
 
+void append_unique_code(std::vector<JobSchedulingDiagnosticsCode>& codes, JobSchedulingDiagnosticsCode code) {
+    if (code == JobSchedulingDiagnosticsCode::none || std::ranges::find(codes, code) != codes.end()) {
+        return;
+    }
+    codes.push_back(code);
+}
+
 void append_memory_diagnostic(MemoryDiagnosticsSummary& summary, MemoryClassDiagnosticsSummary& class_summary,
                               MemoryDiagnosticsCode code, std::string message) {
     append_unique_code(summary.diagnostic_codes, code);
     append_unique_code(class_summary.diagnostic_codes, code);
+    summary.diagnostics.push_back(std::move(message));
+}
+
+void append_job_scheduling_diagnostic(JobSchedulingDiagnosticsSummary& summary, JobSchedulingDiagnosticsCode code,
+                                      std::string message) {
+    append_unique_code(summary.diagnostic_codes, code);
     summary.diagnostics.push_back(std::move(message));
 }
 
@@ -1364,6 +1377,50 @@ std::string_view memory_diagnostics_status_label(MemoryDiagnosticsStatus status)
     return "unknown";
 }
 
+std::string_view job_scheduling_diagnostics_code_label(JobSchedulingDiagnosticsCode code) noexcept {
+    switch (code) {
+    case JobSchedulingDiagnosticsCode::none:
+        return "none";
+    case JobSchedulingDiagnosticsCode::missing_rows:
+        return "missing_rows";
+    case JobSchedulingDiagnosticsCode::invalid_worker_topology:
+        return "invalid_worker_topology";
+    case JobSchedulingDiagnosticsCode::missing_processor_group_evidence:
+        return "missing_processor_group_evidence";
+    case JobSchedulingDiagnosticsCode::missing_numa_evidence:
+        return "missing_numa_evidence";
+    case JobSchedulingDiagnosticsCode::invalid_queue:
+        return "invalid_queue";
+    case JobSchedulingDiagnosticsCode::queue_overflow:
+        return "queue_overflow";
+    case JobSchedulingDiagnosticsCode::blocked_dependency:
+        return "blocked_dependency";
+    case JobSchedulingDiagnosticsCode::dependency_cycle:
+        return "dependency_cycle";
+    case JobSchedulingDiagnosticsCode::scratch_misuse:
+        return "scratch_misuse";
+    case JobSchedulingDiagnosticsCode::nondeterministic_merge:
+        return "nondeterministic_merge";
+    case JobSchedulingDiagnosticsCode::undersized_job_batch:
+        return "undersized_job_batch";
+    case JobSchedulingDiagnosticsCode::oversized_job_batch:
+        return "oversized_job_batch";
+    }
+    return "unknown";
+}
+
+std::string_view job_scheduling_diagnostics_status_label(JobSchedulingDiagnosticsStatus status) noexcept {
+    switch (status) {
+    case JobSchedulingDiagnosticsStatus::ready:
+        return "ready";
+    case JobSchedulingDiagnosticsStatus::missing_rows:
+        return "missing_rows";
+    case JobSchedulingDiagnosticsStatus::invalid_rows:
+        return "invalid_rows";
+    }
+    return "unknown";
+}
+
 DiagnosticsBudgetSummary summarize_counter_budget(std::span<const CounterSample> counters, std::string_view sample_name,
                                                   const DiagnosticsBudgetThresholds& thresholds) {
     std::vector<double> values;
@@ -1539,6 +1596,152 @@ MemoryDiagnosticsSummary summarize_memory_diagnostics(std::span<const MemoryCoun
         summary.status = MemoryDiagnosticsStatus::ready;
     }
 
+    return summary;
+}
+
+JobSchedulingDiagnosticsSummary
+summarize_job_scheduling_diagnostics(std::span<const JobWorkerTopologyRow> topology_rows,
+                                     std::span<const JobQueueCounterRow> queue_rows) {
+    JobSchedulingDiagnosticsSummary summary;
+    summary.worker_topology_row_count = static_cast<std::uint64_t>(topology_rows.size());
+    summary.queue_row_count = static_cast<std::uint64_t>(queue_rows.size());
+
+    if (topology_rows.empty() || queue_rows.empty()) {
+        summary.status = JobSchedulingDiagnosticsStatus::missing_rows;
+        append_job_scheduling_diagnostic(summary, JobSchedulingDiagnosticsCode::missing_rows,
+                                         "job scheduling diagnostics requires at least one worker topology row and "
+                                         "one queue counter row");
+        return summary;
+    }
+
+    for (const auto& row : topology_rows) {
+        const auto row_label = row.name.empty() ? std::string("job worker topology") : row.name;
+
+        summary.logical_processor_count = std::max(summary.logical_processor_count, row.logical_processor_count);
+        summary.worker_count += row.worker_count;
+        summary.queue_count += row.queue_count;
+        summary.processor_group_count = std::max(summary.processor_group_count, row.processor_group_count);
+        summary.numa_node_count = std::max(summary.numa_node_count, row.numa_node_count);
+
+        if (row.name.empty()) {
+            append_job_scheduling_diagnostic(summary, JobSchedulingDiagnosticsCode::invalid_worker_topology,
+                                             "job worker topology row requires a name");
+        }
+        if (row.logical_processor_count == 0) {
+            append_job_scheduling_diagnostic(summary, JobSchedulingDiagnosticsCode::invalid_worker_topology,
+                                             row_label + " requires a non-zero logical processor count");
+        }
+        if (row.worker_count == 0) {
+            append_job_scheduling_diagnostic(summary, JobSchedulingDiagnosticsCode::invalid_worker_topology,
+                                             row_label + " requires a non-zero worker count");
+        }
+        if (row.queue_count == 0) {
+            append_job_scheduling_diagnostic(summary, JobSchedulingDiagnosticsCode::invalid_worker_topology,
+                                             row_label + " requires a non-zero queue count");
+        }
+        if (row.logical_processor_count > 0 && row.worker_count > row.logical_processor_count) {
+            append_job_scheduling_diagnostic(summary, JobSchedulingDiagnosticsCode::invalid_worker_topology,
+                                             row_label + " worker count " + std::to_string(row.worker_count) +
+                                                 " exceeds logical processor count " +
+                                                 std::to_string(row.logical_processor_count));
+        }
+        if (row.processor_group_count > 1 && !row.processor_groups_accounted_for) {
+            append_job_scheduling_diagnostic(summary, JobSchedulingDiagnosticsCode::missing_processor_group_evidence,
+                                             row_label + " reports processor group count " +
+                                                 std::to_string(row.processor_group_count) +
+                                                 " without processor group scheduling evidence");
+        }
+        if (row.numa_node_count > 1 && !row.numa_topology_known) {
+            append_job_scheduling_diagnostic(summary, JobSchedulingDiagnosticsCode::missing_numa_evidence,
+                                             row_label + " reports NUMA node count " +
+                                                 std::to_string(row.numa_node_count) +
+                                                 " without NUMA topology evidence");
+        }
+    }
+
+    for (const auto& row : queue_rows) {
+        const auto row_label = row.name.empty() ? std::string("job queue") : row.name;
+
+        summary.total_submitted_jobs += row.submitted_jobs;
+        summary.total_completed_jobs += row.completed_jobs;
+        summary.total_queue_capacity += row.queue_capacity;
+        summary.queue_depth_high_water = std::max(summary.queue_depth_high_water, row.queue_depth_high_water);
+        summary.total_queue_overflow_count += row.queue_overflow_count;
+        summary.total_steal_attempt_count += row.steal_attempt_count;
+        summary.total_steal_success_count += row.steal_success_count;
+        summary.total_worker_wait_count += row.worker_wait_count;
+        summary.total_blocked_dependency_count += row.blocked_dependency_count;
+        summary.total_dependency_cycle_count += row.dependency_cycle_count;
+        summary.total_deterministic_merge_count += row.deterministic_merge_count;
+        summary.total_nondeterministic_merge_count += row.nondeterministic_merge_count;
+        summary.total_scratch_bytes += row.scratch_bytes;
+        summary.total_scratch_high_water_bytes += row.scratch_high_water_bytes;
+        summary.total_scratch_misuse_count += row.scratch_misuse_count;
+        summary.total_undersized_job_batch_count += row.undersized_job_batch_count;
+        summary.total_oversized_job_batch_count += row.oversized_job_batch_count;
+
+        if (row.name.empty()) {
+            append_job_scheduling_diagnostic(summary, JobSchedulingDiagnosticsCode::invalid_queue,
+                                             "job queue counter row requires a name");
+        }
+        if (row.queue_capacity == 0) {
+            append_job_scheduling_diagnostic(summary, JobSchedulingDiagnosticsCode::invalid_queue,
+                                             row_label + " requires a non-zero bounded queue capacity");
+        }
+        if (row.completed_jobs > row.submitted_jobs) {
+            append_job_scheduling_diagnostic(summary, JobSchedulingDiagnosticsCode::invalid_queue,
+                                             row_label + " completed jobs " + std::to_string(row.completed_jobs) +
+                                                 " exceed submitted jobs " + std::to_string(row.submitted_jobs));
+        }
+        if (row.queue_depth_high_water > row.queue_capacity || row.queue_overflow_count > 0) {
+            append_job_scheduling_diagnostic(summary, JobSchedulingDiagnosticsCode::queue_overflow,
+                                             row_label + " queue overflow evidence reports high water " +
+                                                 std::to_string(row.queue_depth_high_water) + " of capacity " +
+                                                 std::to_string(row.queue_capacity) + " and overflow count " +
+                                                 std::to_string(row.queue_overflow_count));
+        }
+        if (row.steal_success_count > row.steal_attempt_count) {
+            append_job_scheduling_diagnostic(
+                summary, JobSchedulingDiagnosticsCode::invalid_queue,
+                row_label + " steal success count " + std::to_string(row.steal_success_count) +
+                    " exceeds steal attempt count " + std::to_string(row.steal_attempt_count));
+        }
+        if (row.blocked_dependency_count > 0) {
+            append_job_scheduling_diagnostic(summary, JobSchedulingDiagnosticsCode::blocked_dependency,
+                                             row_label + " blocked dependency count " +
+                                                 std::to_string(row.blocked_dependency_count) + " was reported");
+        }
+        if (row.dependency_cycle_count > 0) {
+            append_job_scheduling_diagnostic(summary, JobSchedulingDiagnosticsCode::dependency_cycle,
+                                             row_label + " dependency cycle count " +
+                                                 std::to_string(row.dependency_cycle_count) + " was reported");
+        }
+        if (row.nondeterministic_merge_count > 0) {
+            append_job_scheduling_diagnostic(summary, JobSchedulingDiagnosticsCode::nondeterministic_merge,
+                                             row_label + " nondeterministic merge count " +
+                                                 std::to_string(row.nondeterministic_merge_count) + " was reported");
+        }
+        if (row.scratch_bytes > row.scratch_high_water_bytes || row.scratch_misuse_count > 0) {
+            append_job_scheduling_diagnostic(summary, JobSchedulingDiagnosticsCode::scratch_misuse,
+                                             row_label + " scratch misuse evidence reports current bytes " +
+                                                 std::to_string(row.scratch_bytes) + ", high water bytes " +
+                                                 std::to_string(row.scratch_high_water_bytes) + ", misuse count " +
+                                                 std::to_string(row.scratch_misuse_count));
+        }
+        if (row.undersized_job_batch_count > 0) {
+            append_job_scheduling_diagnostic(summary, JobSchedulingDiagnosticsCode::undersized_job_batch,
+                                             row_label + " undersized job batch count " +
+                                                 std::to_string(row.undersized_job_batch_count) + " was reported");
+        }
+        if (row.oversized_job_batch_count > 0) {
+            append_job_scheduling_diagnostic(summary, JobSchedulingDiagnosticsCode::oversized_job_batch,
+                                             row_label + " oversized job batch count " +
+                                                 std::to_string(row.oversized_job_batch_count) + " was reported");
+        }
+    }
+
+    summary.status = summary.diagnostics.empty() ? JobSchedulingDiagnosticsStatus::ready
+                                                 : JobSchedulingDiagnosticsStatus::invalid_rows;
     return summary;
 }
 

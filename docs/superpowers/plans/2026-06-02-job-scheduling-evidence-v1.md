@@ -79,9 +79,9 @@ Do job scheduling evidence before broad all-core CPU scheduling, affinity pinnin
 - Modify: selected `engine/core/` or runtime diagnostics files after evidence names are stable
 - Test: focused core/runtime tests matching touched code
 
-- [ ] Define worker topology rows for logical processor count, worker count, queue count, processor-group awareness, NUMA-awareness status, and host-gated topology diagnostics.
-- [ ] Define job scheduling diagnostic rows for submitted/completed jobs, queue depth, steal attempts/successes, waits, blocked dependencies, deterministic merge rows, and budget pressure.
-- [ ] Keep evidence host-independent by default; platform adapters may supply topology facts later, but public engine APIs must not expose OS handles.
+- [x] Define worker topology rows for logical processor count, worker count, queue count, processor-group awareness, NUMA-awareness status, and host-gated topology diagnostics through `JobWorkerTopologyRow`.
+- [x] Define job scheduling diagnostic rows for submitted/completed jobs, queue capacity, queue depth high-water, queue overflow, steal attempts/successes, waits, blocked dependencies, dependency cycles, deterministic/non-deterministic merge rows, scratch misuse, undersized batches, and oversized batches through `JobQueueCounterRow` plus `JobSchedulingDiagnosticsSummary`.
+- [x] Keep evidence host-independent by default; platform adapters may supply topology facts later, but public engine APIs must not expose OS handles, affinity masks, NUMA placement controls, thread pools, or native scheduler objects.
 
 ## Phase 2 - Bounded Scheduler/Queue Execution Evidence
 
@@ -129,6 +129,21 @@ Phase 0 selection validation on 2026-06-02:
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`
 - `git diff --check`
 - Full `tools/validate.ps1` was not run for this Phase 0 selection because the change is limited to docs, manifest pointers, and static contract needles; targeted manifest/agent/static checks cover the changed contracts.
+
+Phase 1 focused validation on 2026-06-02:
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev`
+- TDD red: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests` failed on missing `JobWorkerTopologyRow`, `JobQueueCounterRow`, `JobSchedulingDiagnosticsStatus`, `JobSchedulingDiagnosticsCode`, `summarize_job_scheduling_diagnostics`, `job_scheduling_diagnostics_code_label`, and `job_scheduling_diagnostics_status_label` before implementation.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_core_tests`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files 'engine/core/src/diagnostics.cpp,tests/unit/core_tests.cpp'`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`
 
 ## Done When
 
