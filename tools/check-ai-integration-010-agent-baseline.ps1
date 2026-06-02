@@ -1899,6 +1899,25 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     )) {
         Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan job execution worker pool selection"
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "job-execution-topology-policy-v1") {
+    foreach ($needle in @(
+        "Job Execution Topology Policy v1",
+        "portable MK_core worker-count selection",
+        "JobExecutionTopologyPolicyDesc",
+        "select_job_execution_topology_policy",
+        "observe_job_execution_logical_processor_count",
+        "derived JobExecutionPoolDesc",
+        "fallback/cap/reserve rules",
+        "processor-group and NUMA host-evidence diagnostics",
+        "--require-job-execution-topology-policy",
+        "job_execution_topology_policy_status=ready",
+        "job_execution_topology_policy_ready=1",
+        "selected worker count = 2",
+        "unsupportedProductionGaps = []",
+        "broad all-core CPU/GPU/memory optimization"
+    )) {
+        Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan job execution topology policy selection"
+    }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "first-party-ui-editor-production-stack-v1") {
     foreach ($needle in @(
         "First-Party UI Editor Production Stack v1",

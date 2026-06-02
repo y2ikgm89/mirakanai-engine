@@ -112,6 +112,7 @@ Assert-Properties $engine.gameCodeGuidance @("currentEditor") "engine manifest g
 Assert-Properties $engine.gameCodeGuidance @("currentMemoryDiagnostics") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentJobSchedulingDiagnostics") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentJobExecutionWorkerPool") "engine manifest gameCodeGuidance"
+Assert-Properties $engine.gameCodeGuidance @("currentJobExecutionTopologyPolicy") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentEditorContentBrowserImportDiagnostics") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentEditorPrefabInstanceSourceLinks") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentEditorInProcessRuntimeHost") "engine manifest gameCodeGuidance"
@@ -255,6 +256,32 @@ foreach ($jobExecutionWorkerPoolGuidanceNeedle in @(
     )) {
     if (-not ([string]$engine.gameCodeGuidance.currentJobExecutionWorkerPool).Contains($jobExecutionWorkerPoolGuidanceNeedle)) {
         Write-Error "engine manifest gameCodeGuidance.currentJobExecutionWorkerPool missing: $jobExecutionWorkerPoolGuidanceNeedle"
+    }
+}
+foreach ($jobExecutionTopologyPolicyGuidanceNeedle in @(
+        "Job Execution Topology Policy v1",
+        "JobExecutionTopologyPolicyDesc",
+        "JobExecutionTopologyPolicy",
+        "select_job_execution_topology_policy",
+        "observe_job_execution_logical_processor_count",
+        "JobExecutionPoolDesc",
+        "hardware_concurrency=0",
+        "worker count limit",
+        "reserved logical processor",
+        "host_evidence_required",
+        "sample_desktop_runtime_game --require-job-execution-topology-policy",
+        "job_execution_topology_policy_status=ready",
+        "job_execution_topology_policy_ready=1",
+        "job_execution_topology_policy_selected_worker_count=2",
+        "job_execution_topology_policy_worker_count_limit=2",
+        "job_execution_topology_policy_reserved_logical_processors=1",
+        "affinity pinning",
+        "NUMA placement execution",
+        "SIMD dispatch",
+        "broad CPU/GPU/memory optimization"
+    )) {
+    if (-not ([string]$engine.gameCodeGuidance.currentJobExecutionTopologyPolicy).Contains($jobExecutionTopologyPolicyGuidanceNeedle)) {
+        Write-Error "engine manifest gameCodeGuidance.currentJobExecutionTopologyPolicy missing: $jobExecutionTopologyPolicyGuidanceNeedle"
     }
 }
 foreach ($needle in @(

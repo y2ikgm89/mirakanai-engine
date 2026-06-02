@@ -184,6 +184,7 @@ $requiresD3d12DebugProfilingEvidence = @($SmokeArgs) -contains "--require-d3d12-
 $requiresVulkanDebugProfilingEvidence = @($SmokeArgs) -contains "--require-vulkan-debug-profiling-evidence"
 $requiresJobSchedulingEvidence = @($SmokeArgs) -contains "--require-job-scheduling-evidence"
 $requiresJobExecutionFoundation = @($SmokeArgs) -contains "--require-job-execution-foundation"
+$requiresJobExecutionTopologyPolicy = @($SmokeArgs) -contains "--require-job-execution-topology-policy"
 if ($requiresD3d12InstancedDrawEvidence -or $requiresVulkanInstancedDrawEvidence) {
     $requiresSceneScalePolicy = $true
 }
@@ -1032,6 +1033,38 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
             )) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
                 Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive job scheduling evidence field: $field"
+            }
+        }
+    }
+    if ($requiresJobExecutionTopologyPolicy) {
+        $expectedJobExecutionTopologyPolicyFields = @{
+            "job_execution_topology_policy_status" = "ready"
+            "job_execution_topology_policy_ready" = "1"
+            "job_execution_topology_policy_diagnostics" = "0"
+            "job_execution_topology_policy_observed_logical_processors" = "8"
+            "job_execution_topology_policy_effective_logical_processors" = "8"
+            "job_execution_topology_policy_selected_worker_count" = "2"
+            "job_execution_topology_policy_worker_count_limit" = "2"
+            "job_execution_topology_policy_reserved_logical_processors" = "1"
+            "job_execution_topology_policy_fallback_used" = "0"
+            "job_execution_topology_policy_worker_count_limited_by_cap" = "1"
+            "job_execution_topology_policy_requested_worker_count_used" = "0"
+            "job_execution_topology_policy_clamped_to_logical_processors" = "0"
+            "job_execution_topology_policy_processor_group_count" = "1"
+            "job_execution_topology_policy_numa_node_count" = "1"
+            "job_execution_topology_policy_processor_group_policy_applied" = "0"
+            "job_execution_topology_policy_numa_policy_applied" = "0"
+            "job_execution_topology_policy_affinity_policy_applied" = "0"
+            "job_execution_topology_policy_simd_dispatch_applied" = "0"
+            "job_execution_topology_policy_gpu_async_overlap_applied" = "0"
+            "job_execution_topology_policy_cuda_path_used" = "0"
+            "job_execution_topology_policy_hip_path_used" = "0"
+            "job_execution_topology_policy_sycl_path_used" = "0"
+        }
+        foreach ($field in $expectedJobExecutionTopologyPolicyFields.Keys) {
+            $expectedValue = [regex]::Escape($expectedJobExecutionTopologyPolicyFields[$field])
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove job execution topology policy field: $field=$($expectedJobExecutionTopologyPolicyFields[$field])"
             }
         }
     }

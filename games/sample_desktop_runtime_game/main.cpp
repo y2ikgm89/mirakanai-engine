@@ -72,6 +72,7 @@ struct DesktopRuntimeGameOptions {
     bool require_vulkan_debug_profiling_evidence{false};
     bool require_job_scheduling_evidence{false};
     bool require_job_execution_foundation{false};
+    bool require_job_execution_topology_policy{false};
     bool require_renderer_quality_gates{false};
     bool require_framegraph_multiqueue_evidence{false};
     bool require_vulkan_framegraph_multiqueue_evidence{false};
@@ -748,6 +749,7 @@ void print_usage() {
                  "[--require-debug-profiling-policy] [--require-d3d12-debug-profiling-evidence] "
                  "[--require-vulkan-debug-profiling-evidence] "
                  "[--require-job-scheduling-evidence] [--require-job-execution-foundation] "
+                 "[--require-job-execution-topology-policy] "
                  "[--require-renderer-quality-gates] "
                  "[--require-framegraph-multiqueue-evidence] "
                  "[--require-native-ui-overlay] "
@@ -919,6 +921,10 @@ void print_usage() {
         }
         if (arg == "--require-job-execution-foundation") {
             options.require_job_execution_foundation = true;
+            continue;
+        }
+        if (arg == "--require-job-execution-topology-policy") {
+            options.require_job_execution_topology_policy = true;
             continue;
         }
         if (arg == "--require-renderer-quality-gates") {
@@ -1390,6 +1396,50 @@ job_scheduling_evidence_status_name(bool requested, const mirakana::JobSchedulin
     return job_scheduling_evidence_ready(evidence) ? "ready" : "blocked";
 }
 
+[[nodiscard]] mirakana::JobExecutionTopologyPolicyDesc make_package_job_execution_topology_policy_desc() {
+    return mirakana::JobExecutionTopologyPolicyDesc{.name = "desktop_runtime.package_execution_pool",
+                                                    .observed_logical_processor_count = 8,
+                                                    .fallback_logical_processor_count = 1,
+                                                    .worker_count_limit = 2,
+                                                    .reserved_logical_processor_count = 1,
+                                                    .queue_capacity_per_worker = 4,
+                                                    .scratch_budget_bytes_per_worker = 4096,
+                                                    .frame_index = 0,
+                                                    .processor_group_count = 1,
+                                                    .numa_node_count = 1,
+                                                    .processor_groups_accounted_for = true,
+                                                    .numa_topology_known = true};
+}
+
+[[nodiscard]] mirakana::JobExecutionTopologyPolicy
+build_package_job_execution_topology_policy_evidence(bool requested) {
+    if (!requested) {
+        return {};
+    }
+    return mirakana::select_job_execution_topology_policy(make_package_job_execution_topology_policy_desc());
+}
+
+[[nodiscard]] bool job_execution_topology_policy_ready(const mirakana::JobExecutionTopologyPolicy& policy) noexcept {
+    return policy.status == mirakana::JobExecutionTopologyPolicyStatus::ready &&
+           policy.observed_logical_processor_count == 8U && policy.effective_logical_processor_count == 8U &&
+           policy.selected_worker_count == 2U && policy.worker_count_limit == 2U &&
+           policy.reserved_logical_processor_count == 1U && policy.worker_count_limited_by_cap &&
+           !policy.hardware_concurrency_fallback_used && !policy.requested_worker_count_used &&
+           !policy.worker_count_clamped_to_logical_processors && !policy.processor_group_policy_applied &&
+           !policy.numa_policy_applied && !policy.affinity_policy_applied && !policy.simd_dispatch_applied &&
+           !policy.gpu_async_overlap_applied && policy.topology_row.processor_group_count == 1U &&
+           policy.topology_row.numa_node_count == 1U && policy.topology_row.processor_groups_accounted_for &&
+           policy.topology_row.numa_topology_known && policy.diagnostics.empty();
+}
+
+[[nodiscard]] std::string_view
+job_execution_topology_policy_status_name(bool requested, const mirakana::JobExecutionTopologyPolicy& policy) noexcept {
+    if (!requested) {
+        return "not_requested";
+    }
+    return job_execution_topology_policy_ready(policy) ? "ready" : "blocked";
+}
+
 struct JobExecutionFoundationEvidence {
     bool requested{false};
     mirakana::JobExecutionPoolStatus pool_status{mirakana::JobExecutionPoolStatus::invalid_configuration};
@@ -1405,13 +1455,12 @@ struct JobExecutionFoundationEvidence {
     }
 
     std::atomic_uint64_t task_side_effects{0};
-    auto pool =
-        mirakana::JobExecutionPool(mirakana::JobExecutionPoolDesc{.name = "desktop_runtime.package_execution_pool",
-                                                                  .logical_processor_count = 8,
-                                                                  .worker_count = 2,
-                                                                  .queue_capacity_per_worker = 4,
-                                                                  .scratch_budget_bytes_per_worker = 4096,
-                                                                  .frame_index = 0});
+    const auto topology_policy =
+        mirakana::select_job_execution_topology_policy(make_package_job_execution_topology_policy_desc());
+    if (!topology_policy.ready()) {
+        return evidence;
+    }
+    auto pool = mirakana::JobExecutionPool(topology_policy.pool_desc);
     evidence.pool_status = pool.status();
     if (evidence.pool_status != mirakana::JobExecutionPoolStatus::ready) {
         return evidence;
@@ -2371,6 +2420,8 @@ int main(int argc, char** argv) {
     const auto debug_profiling_policy = mirakana::evaluate_win32_desktop_presentation_debug_profiling_policy(
         report, make_debug_profiling_policy_desc(options));
     const auto job_scheduling_evidence = build_package_job_scheduling_evidence(options.require_job_scheduling_evidence);
+    const auto job_execution_topology_policy =
+        build_package_job_execution_topology_policy_evidence(options.require_job_execution_topology_policy);
     const auto job_execution_foundation =
         build_package_job_execution_foundation_evidence(options.require_job_execution_foundation);
     const auto renderer_quality =
@@ -2816,6 +2867,41 @@ int main(int argc, char** argv) {
         << " job_scheduling_evidence_numa_policy_applied=0"
         << " job_scheduling_evidence_simd_dispatch_applied=0"
         << " job_scheduling_evidence_gpu_async_overlap_applied=0"
+        << " job_execution_topology_policy_status="
+        << job_execution_topology_policy_status_name(options.require_job_execution_topology_policy,
+                                                     job_execution_topology_policy)
+        << " job_execution_topology_policy_ready="
+        << (job_execution_topology_policy_ready(job_execution_topology_policy) ? 1 : 0)
+        << " job_execution_topology_policy_diagnostics=" << job_execution_topology_policy.diagnostics.size()
+        << " job_execution_topology_policy_observed_logical_processors="
+        << job_execution_topology_policy.observed_logical_processor_count
+        << " job_execution_topology_policy_effective_logical_processors="
+        << job_execution_topology_policy.effective_logical_processor_count
+        << " job_execution_topology_policy_selected_worker_count="
+        << job_execution_topology_policy.selected_worker_count
+        << " job_execution_topology_policy_worker_count_limit=" << job_execution_topology_policy.worker_count_limit
+        << " job_execution_topology_policy_reserved_logical_processors="
+        << job_execution_topology_policy.reserved_logical_processor_count
+        << " job_execution_topology_policy_fallback_used="
+        << (job_execution_topology_policy.hardware_concurrency_fallback_used ? 1 : 0)
+        << " job_execution_topology_policy_worker_count_limited_by_cap="
+        << (job_execution_topology_policy.worker_count_limited_by_cap ? 1 : 0)
+        << " job_execution_topology_policy_requested_worker_count_used="
+        << (job_execution_topology_policy.requested_worker_count_used ? 1 : 0)
+        << " job_execution_topology_policy_clamped_to_logical_processors="
+        << (job_execution_topology_policy.worker_count_clamped_to_logical_processors ? 1 : 0)
+        << " job_execution_topology_policy_processor_group_count="
+        << job_execution_topology_policy.topology_row.processor_group_count
+        << " job_execution_topology_policy_numa_node_count="
+        << job_execution_topology_policy.topology_row.numa_node_count
+        << " job_execution_topology_policy_processor_group_policy_applied=0"
+        << " job_execution_topology_policy_numa_policy_applied=0"
+        << " job_execution_topology_policy_affinity_policy_applied=0"
+        << " job_execution_topology_policy_simd_dispatch_applied=0"
+        << " job_execution_topology_policy_gpu_async_overlap_applied=0"
+        << " job_execution_topology_policy_cuda_path_used=0"
+        << " job_execution_topology_policy_hip_path_used=0"
+        << " job_execution_topology_policy_sycl_path_used=0"
         << " job_execution_foundation_status=" << job_execution_foundation_status_name(job_execution_foundation)
         << " job_execution_foundation_ready=" << (job_execution_foundation_ready(job_execution_foundation) ? 1 : 0)
         << " job_execution_foundation_pool_status="
@@ -3089,6 +3175,13 @@ int main(int argc, char** argv) {
             return 3;
         }
         if (options.require_job_scheduling_evidence && !job_scheduling_evidence_ready(job_scheduling_evidence)) {
+            return 3;
+        }
+        if (options.require_job_execution_topology_policy &&
+            !job_execution_topology_policy_ready(job_execution_topology_policy)) {
+            return 3;
+        }
+        if (options.require_job_execution_foundation && !job_execution_foundation_ready(job_execution_foundation)) {
             return 3;
         }
         if (options.require_d3d12_instanced_draw_evidence && !d3d12_instanced_draw_execution.ready) {

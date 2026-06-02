@@ -26,6 +26,15 @@ void append_execution_diagnostic(JobExecutionRunResult& result, JobExecutionDiag
     result.diagnostics.push_back(std::move(message));
 }
 
+void append_topology_policy_diagnostic(JobExecutionTopologyPolicy& policy,
+                                       JobExecutionTopologyPolicyDiagnosticCode code, std::string message) {
+    if (code != JobExecutionTopologyPolicyDiagnosticCode::none &&
+        std::ranges::find(policy.diagnostic_codes, code) == policy.diagnostic_codes.end()) {
+        policy.diagnostic_codes.push_back(code);
+    }
+    policy.diagnostics.push_back(std::move(message));
+}
+
 [[nodiscard]] JobExecutionRunStatus
 status_from_diagnostics(std::span<const JobExecutionDiagnosticCode> codes) noexcept {
     if (std::ranges::find(codes, JobExecutionDiagnosticCode::invalid_configuration) != codes.end()) {
@@ -79,6 +88,30 @@ execution_code_from_scheduling_code(JobSchedulingDiagnosticsCode code) noexcept 
 
 [[nodiscard]] std::string safe_pool_name(const JobExecutionPoolDesc& desc) {
     return desc.name.empty() ? "job_execution_pool" : desc.name;
+}
+
+[[nodiscard]] std::uint32_t selected_worker_count_for_policy(const JobExecutionTopologyPolicyDesc& desc,
+                                                             std::uint32_t effective_logical_processor_count,
+                                                             JobExecutionTopologyPolicy& policy) noexcept {
+    std::uint32_t selected_worker_count = 0;
+    if (desc.requested_worker_count > 0) {
+        selected_worker_count = desc.requested_worker_count;
+        policy.requested_worker_count_used = true;
+    } else if (effective_logical_processor_count > desc.reserved_logical_processor_count) {
+        selected_worker_count = effective_logical_processor_count - desc.reserved_logical_processor_count;
+    } else {
+        selected_worker_count = 1;
+    }
+
+    if (desc.worker_count_limit > 0 && selected_worker_count > desc.worker_count_limit) {
+        selected_worker_count = desc.worker_count_limit;
+        policy.worker_count_limited_by_cap = true;
+    }
+    if (selected_worker_count > effective_logical_processor_count) {
+        selected_worker_count = effective_logical_processor_count;
+        policy.worker_count_clamped_to_logical_processors = true;
+    }
+    return std::max<std::uint32_t>(1, selected_worker_count);
 }
 
 } // namespace
@@ -449,6 +482,79 @@ JobExecutionPool::JobExecutionPool(JobExecutionPoolDesc desc) : impl_(std::make_
 
 JobExecutionPool::~JobExecutionPool() = default;
 
+JobExecutionTopologyPolicy select_job_execution_topology_policy(const JobExecutionTopologyPolicyDesc& desc) {
+    auto policy = JobExecutionTopologyPolicy{};
+    policy.observed_logical_processor_count = desc.observed_logical_processor_count;
+    policy.hardware_concurrency_fallback_used = desc.observed_logical_processor_count == 0;
+    policy.effective_logical_processor_count = desc.observed_logical_processor_count == 0
+                                                   ? desc.fallback_logical_processor_count
+                                                   : desc.observed_logical_processor_count;
+    policy.worker_count_limit = desc.worker_count_limit;
+    policy.reserved_logical_processor_count = desc.reserved_logical_processor_count;
+
+    if (desc.name.empty()) {
+        append_topology_policy_diagnostic(policy, JobExecutionTopologyPolicyDiagnosticCode::invalid_configuration,
+                                          "job execution topology policy requires a non-empty name");
+    }
+    if (policy.effective_logical_processor_count == 0) {
+        append_topology_policy_diagnostic(
+            policy, JobExecutionTopologyPolicyDiagnosticCode::invalid_configuration,
+            "job execution topology policy requires observed or fallback logical processors");
+    }
+    if (desc.queue_capacity_per_worker == 0) {
+        append_topology_policy_diagnostic(policy, JobExecutionTopologyPolicyDiagnosticCode::invalid_configuration,
+                                          "job execution topology policy requires bounded queue capacity");
+    }
+    if (desc.scratch_budget_bytes_per_worker == 0 ||
+        desc.scratch_budget_bytes_per_worker > static_cast<std::uint64_t>(std::numeric_limits<std::size_t>::max())) {
+        append_topology_policy_diagnostic(policy, JobExecutionTopologyPolicyDiagnosticCode::invalid_configuration,
+                                          "job execution topology policy requires bounded worker scratch capacity");
+    }
+
+    if (std::ranges::find(policy.diagnostic_codes, JobExecutionTopologyPolicyDiagnosticCode::invalid_configuration) !=
+        policy.diagnostic_codes.end()) {
+        policy.status = JobExecutionTopologyPolicyStatus::invalid_configuration;
+        return policy;
+    }
+
+    policy.selected_worker_count =
+        selected_worker_count_for_policy(desc, policy.effective_logical_processor_count, policy);
+    const auto processor_group_count = std::max<std::uint32_t>(1, desc.processor_group_count);
+    policy.pool_desc = JobExecutionPoolDesc{.name = desc.name,
+                                            .logical_processor_count = policy.effective_logical_processor_count,
+                                            .worker_count = policy.selected_worker_count,
+                                            .queue_capacity_per_worker = desc.queue_capacity_per_worker,
+                                            .scratch_budget_bytes_per_worker = desc.scratch_budget_bytes_per_worker,
+                                            .frame_index = desc.frame_index};
+    policy.topology_row = JobWorkerTopologyRow{.name = desc.name,
+                                               .logical_processor_count = policy.effective_logical_processor_count,
+                                               .worker_count = policy.selected_worker_count,
+                                               .queue_count = policy.selected_worker_count,
+                                               .processor_group_count = processor_group_count,
+                                               .numa_node_count = desc.numa_node_count,
+                                               .processor_groups_accounted_for = desc.processor_groups_accounted_for,
+                                               .numa_topology_known = desc.numa_topology_known};
+
+    if (processor_group_count > 1 && !desc.processor_groups_accounted_for) {
+        append_topology_policy_diagnostic(
+            policy, JobExecutionTopologyPolicyDiagnosticCode::missing_processor_group_evidence,
+            "job execution topology policy needs processor group evidence before applying group-aware scheduling");
+    }
+    if (desc.numa_node_count > 1 && !desc.numa_topology_known) {
+        append_topology_policy_diagnostic(
+            policy, JobExecutionTopologyPolicyDiagnosticCode::missing_numa_evidence,
+            "job execution topology policy needs NUMA topology evidence before applying NUMA placement");
+    }
+
+    policy.status = policy.diagnostics.empty() ? JobExecutionTopologyPolicyStatus::ready
+                                               : JobExecutionTopologyPolicyStatus::host_evidence_required;
+    return policy;
+}
+
+std::uint32_t observe_job_execution_logical_processor_count() noexcept {
+    return std::thread::hardware_concurrency();
+}
+
 JobExecutionPoolStatus JobExecutionPool::status() const noexcept {
     return impl_->status();
 }
@@ -467,6 +573,33 @@ void JobExecutionPool::request_stop() noexcept {
 
 JobExecutionRunResult JobExecutionPool::stop_and_drain() {
     return impl_->stop_and_drain();
+}
+
+std::string_view job_execution_topology_policy_status_label(JobExecutionTopologyPolicyStatus status) noexcept {
+    switch (status) {
+    case JobExecutionTopologyPolicyStatus::ready:
+        return "ready";
+    case JobExecutionTopologyPolicyStatus::invalid_configuration:
+        return "invalid_configuration";
+    case JobExecutionTopologyPolicyStatus::host_evidence_required:
+        return "host_evidence_required";
+    }
+    return "unknown";
+}
+
+std::string_view
+job_execution_topology_policy_diagnostic_code_label(JobExecutionTopologyPolicyDiagnosticCode code) noexcept {
+    switch (code) {
+    case JobExecutionTopologyPolicyDiagnosticCode::none:
+        return "none";
+    case JobExecutionTopologyPolicyDiagnosticCode::invalid_configuration:
+        return "invalid_configuration";
+    case JobExecutionTopologyPolicyDiagnosticCode::missing_processor_group_evidence:
+        return "missing_processor_group_evidence";
+    case JobExecutionTopologyPolicyDiagnosticCode::missing_numa_evidence:
+        return "missing_numa_evidence";
+    }
+    return "unknown";
 }
 
 std::string_view job_execution_pool_status_label(JobExecutionPoolStatus status) noexcept {
