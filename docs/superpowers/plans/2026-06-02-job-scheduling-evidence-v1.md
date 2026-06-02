@@ -89,10 +89,10 @@ Do job scheduling evidence before broad all-core CPU scheduling, affinity pinnin
 - Modify: selected `engine/core/` or runtime scheduling files only after Phase 1 row names are stable
 - Test: focused scheduler/core/runtime tests matching touched code
 
-- [ ] Add a deterministic bounded queue or scheduler evidence path with explicit job dependencies, worker-local outputs, and deterministic merge behavior.
-- [ ] Charge per-worker scratch use through existing scratch evidence where jobs request temporary memory.
-- [ ] Detect oversized jobs, too-small job batches, queue overflow, dependency cycles, cross-thread scratch misuse, and non-deterministic merge attempts.
-- [ ] Preserve OS scheduling defaults; no affinity, NUMA, or SIMD tuning in this phase unless a later scoped phase adds evidence first.
+- [x] Add a deterministic bounded queue or scheduler evidence path with explicit job dependencies, worker-local outputs, and deterministic merge behavior.
+- [x] Charge per-worker scratch use through existing scratch evidence where jobs request temporary memory.
+- [x] Detect oversized jobs, too-small job batches, queue overflow, dependency cycles, cross-thread scratch misuse, and non-deterministic merge attempts.
+- [x] Preserve OS scheduling defaults; no affinity, NUMA, or SIMD tuning in this phase unless a later scoped phase adds evidence first.
 
 ## Phase 3 - Package And AI Evidence Mapping
 
@@ -142,6 +142,22 @@ Phase 1 focused validation on 2026-06-02:
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files 'engine/core/src/diagnostics.cpp,tests/unit/core_tests.cpp'`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`
+
+Phase 2 focused validation on 2026-06-02:
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev`
+- TDD red: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests` failed on missing `JobSchedulingWorkItemRow`, `JobSchedulingExecutionOptions`, and `build_job_scheduling_execution_evidence` before implementation.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_core_tests`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files 'engine/core/src/diagnostics.cpp,tests/unit/core_tests.cpp'`
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`
 
