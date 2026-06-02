@@ -10,9 +10,11 @@
 
 **Plan ID:** `job-execution-topology-policy-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
 Selected on 2026-06-02 after [Job Execution Worker Pool v1](2026-06-02-job-execution-worker-pool-v1.md) added real bounded worker-thread execution and package-visible `job_execution_foundation_*` evidence.
+
+Completed through PR #382 / merge commit `f277e990dfc27afea4492c7a1990969fd47a7c39`. The closeout returned `currentActivePlan` to the production-completion master selection gate with `recommendedNextPlan.id = next-production-gap-selection` and `unsupportedProductionGaps = []`.
 
 ## Official Guidance
 
