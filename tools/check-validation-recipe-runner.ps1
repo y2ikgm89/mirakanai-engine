@@ -227,6 +227,7 @@ Assert-RunnerCliSmoke
 Assert-DryRunRecipe -Recipe "agent-contract" -ExpectedArgv @("-File", "check-ai-integration.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "default" -ExpectedArgv @("-File", "validate.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "shader-toolchain" -ExpectedArgv @("-File", "check-shader-toolchain.ps1") | Out-Null
+Assert-DryRunRecipe -Recipe "renderer-metal-apple-host-evidence" -ExpectedArgv @("-File", "validate-renderer-metal-apple.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "network-enet" -ExpectedArgv @("-File", "validate-network-enet.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "desktop-editor" -ExpectedArgv @("-File", "build-editor.ps1") | Out-Null
 Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-scene-gpu-package" -ExpectedArgv @("-File", "tools/package-desktop-runtime.ps1", "-GameTarget", "sample_desktop_runtime_game") | Out-Null
@@ -279,6 +280,11 @@ if ($missingMaterialVulkanGate.status -ne "rejected" -or @($missingMaterialVulka
 $missingEditorDriverGate = Invoke-RunnerJson -Arguments @("-Mode", "Execute", "-Recipe", "dev-windows-editor-game-module-driver-load-tests") -ExpectedExitCode 2
 if ($missingEditorDriverGate.status -ne "rejected" -or @($missingEditorDriverGate.diagnostics | Where-Object { $_.code -eq "missing-host-gate-acknowledgement" }).Count -ne 1) {
     Write-Error "dev-windows-editor-game-module-driver-load-tests recipe must require windows-msvc-dev-editor-game-module-driver-ctest acknowledgement before execute"
+}
+
+$missingMetalAppleGate = Invoke-RunnerJson -Arguments @("-Mode", "Execute", "-Recipe", "renderer-metal-apple-host-evidence") -ExpectedExitCode 2
+if ($missingMetalAppleGate.status -ne "rejected" -or @($missingMetalAppleGate.diagnostics | Where-Object { $_.code -eq "missing-host-gate-acknowledgement" }).Count -ne 1) {
+    Write-Error "renderer-metal-apple-host-evidence recipe must require metal-apple acknowledgement before execute"
 }
 
 # Full `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` / `tools/check-ai-integration.ps1` runs once from `tools/validate.ps1` after this script.

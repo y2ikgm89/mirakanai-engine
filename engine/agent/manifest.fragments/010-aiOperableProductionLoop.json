@@ -4835,6 +4835,7 @@
           "default",
           "public-api-boundary",
           "shader-toolchain",
+          "renderer-metal-apple-host-evidence",
           "desktop-game-runtime",
           "desktop-editor",
           "desktop-runtime-sample-game-scene-gpu-package",
@@ -4849,7 +4850,7 @@
           "status": "placeholder-only",
           "notes": "Validation command execution is non-mutating, but structured command results still carry the placeholder undo field."
         },
-        "notes": "Ready narrow validation runner through tools/run-validation-recipe.ps1. Get-ValidationRecipeCommandPlan maps the allowlist to reviewed argv builders, including the native desktop-editor shell recipe, the selected 2D D3D12 performance baseline smoke installed-2d-performance-baseline-smoke, the generated material/shader scaffold package recipe, the strict Vulkan variant desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict, the strict Vulkan sample game UI atlas metadata package recipe desktop-runtime-sample-game-vulkan-ui-atlas-metadata-package, and the Windows-only dev preset lane dev-windows-editor-game-module-driver-load-tests (MK_editor_game_module_driver_load_tests). Invoke-ValidationRecipeCommandPlan executes reviewed argv entries with ProcessStartInfo.ArgumentList; package-script recipes with hyphen-prefixed SmokeArgs use fixed reviewed PowerShell -Command wrappers so the array reaches tools/package-desktop-runtime.ps1 without evaluating raw manifest command strings. The runner is not arbitrary shell, and free-form arguments are rejected. It does not provide a CI service, package mutation, editor productization, shader graph/live shader generation, package streaming, native handle exposure, Metal readiness, broad CPU/GPU/memory optimization, or general production renderer quality."
+        "notes": "Ready narrow validation runner through tools/run-validation-recipe.ps1. Get-ValidationRecipeCommandPlan maps the allowlist to reviewed argv builders, including the native desktop-editor shell recipe, the selected 2D D3D12 performance baseline smoke installed-2d-performance-baseline-smoke, the generated material/shader scaffold package recipe, the strict Vulkan variant desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict, the strict Vulkan sample game UI atlas metadata package recipe desktop-runtime-sample-game-vulkan-ui-atlas-metadata-package, the Apple-host renderer Metal evidence recipe renderer-metal-apple-host-evidence, and the Windows-only dev preset lane dev-windows-editor-game-module-driver-load-tests (MK_editor_game_module_driver_load_tests). Invoke-ValidationRecipeCommandPlan executes reviewed argv entries with ProcessStartInfo.ArgumentList; package-script recipes with hyphen-prefixed SmokeArgs use fixed reviewed PowerShell -Command wrappers so the array reaches tools/package-desktop-runtime.ps1 without evaluating raw manifest command strings. The runner is not arbitrary shell, and free-form arguments are rejected. It does not provide a CI service, package mutation, editor productization, shader graph/live shader generation, package streaming, native handle exposure, Metal readiness, broad CPU/GPU/memory optimization, or general production renderer quality."
       }
     ],
     "authoringSurfaces": [
@@ -5148,6 +5149,7 @@
         "validationRecipes": [
           "shader-toolchain",
           "mobile-packaging",
+          "renderer-metal-apple-host-evidence",
           "ios-simulator-smoke"
         ],
         "notes": "Metal visible presentation and Apple package readiness remain Apple-host gated and must not be marked ready from Windows validation."
