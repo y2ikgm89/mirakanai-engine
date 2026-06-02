@@ -12,7 +12,7 @@
 
 **Plan ID:** `job-scheduling-evidence-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
 Selected on 2026-06-02 after [Frame/Thread Scratch v1](2026-06-02-frame-thread-scratch-v1.md) completed frame temporary and worker scratch ownership APIs plus selected transient GPU aliasing package evidence.
 
@@ -102,9 +102,9 @@ Do job scheduling evidence before broad all-core CPU scheduling, affinity pinnin
 - Modify: selected validators only when installed package validation gains new required fields
 - Modify: docs/manifest/static checks for new durable counter names
 
-- [ ] Add selected package-visible scheduler counters when a sample path can honestly exercise the scheduler evidence.
-- [ ] Add AI-facing guidance so generated games can request reviewed job scheduling evidence without editing engine internals.
-- [ ] Keep broad all-core, affinity, NUMA, SIMD, GPU async overlap, and vendor-specific tuning claims unsupported until measured follow-up plans land.
+- [x] Add selected package-visible scheduler counters when a sample path can honestly exercise the scheduler evidence.
+- [x] Add AI-facing guidance so generated games can request reviewed job scheduling evidence without editing engine internals.
+- [x] Keep broad all-core, affinity, NUMA, SIMD, GPU async overlap, and vendor-specific tuning claims unsupported until measured follow-up plans land.
 
 ## Validation Evidence
 
@@ -160,6 +160,18 @@ Phase 2 focused validation on 2026-06-02:
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files 'engine/core/src/diagnostics.cpp,tests/unit/core_tests.cpp'`
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`
+
+Phase 3 focused validation on 2026-06-02:
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset desktop-runtime`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset desktop-runtime --target sample_desktop_runtime_game`
+- TDD red: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset desktop-runtime --output-on-failure -R sample_desktop_runtime_game_smoke` failed on unknown `--require-job-scheduling-evidence` before implementation.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset desktop-runtime --target sample_desktop_runtime_game`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset desktop-runtime --output-on-failure -R sample_desktop_runtime_game_smoke`
+- Direct smoke output from `out\build\desktop-runtime\games\Debug\sample_desktop_runtime_game\sample_desktop_runtime_game.exe --smoke --require-job-scheduling-evidence` reported `job_scheduling_evidence_status=ready`, `job_scheduling_evidence_ready=1`, `job_scheduling_evidence_diagnostics=0`, `job_scheduling_evidence_scratch_diagnostics=0`, `job_scheduling_evidence_worker_count=2`, `job_scheduling_evidence_queue_rows=2`, `job_scheduling_evidence_submitted_jobs=3`, `job_scheduling_evidence_completed_jobs=3`, `job_scheduling_evidence_execution_rows=3`, `job_scheduling_evidence_deterministic_merges=3`, positive scratch byte/high-water counters, and zero `job_scheduling_evidence_native_threads_started`, `job_scheduling_evidence_thread_pool_started`, `job_scheduling_evidence_affinity_policy_applied`, `job_scheduling_evidence_numa_policy_applied`, `job_scheduling_evidence_simd_dispatch_applied`, and `job_scheduling_evidence_gpu_async_overlap_applied` side-effect counters.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Preset desktop-runtime -Files 'games/sample_desktop_runtime_game/main.cpp'`
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with `validate: ok` and 85/85 tests passing.
 
 ## Done When
 

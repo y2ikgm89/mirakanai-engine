@@ -151,7 +151,7 @@ foreach ($memoryDiagnosticsGuidanceNeedle in @(
     }
 }
 foreach ($jobSchedulingDiagnosticsGuidanceNeedle in @(
-        "Job Scheduling Evidence v1 Phase 2",
+        "Job Scheduling Evidence v1 Phase 3",
         "JobWorkerTopologyRow",
         "JobQueueCounterRow",
         "JobSchedulingWorkItemRow",
@@ -174,6 +174,23 @@ foreach ($jobSchedulingDiagnosticsGuidanceNeedle in @(
         "queue_rows",
         "worker_scratch_rows",
         "execution_order",
+        "sample_desktop_runtime_game --require-job-scheduling-evidence",
+        "job_scheduling_evidence_status=ready",
+        "job_scheduling_evidence_ready=1",
+        "job_scheduling_evidence_worker_count=2",
+        "job_scheduling_evidence_queue_rows=2",
+        "job_scheduling_evidence_submitted_jobs=3",
+        "job_scheduling_evidence_completed_jobs=3",
+        "job_scheduling_evidence_execution_rows=3",
+        "job_scheduling_evidence_deterministic_merges=3",
+        "job_scheduling_evidence_scratch_bytes",
+        "job_scheduling_evidence_scratch_high_water_bytes",
+        "job_scheduling_evidence_native_threads_started=0",
+        "job_scheduling_evidence_thread_pool_started=0",
+        "job_scheduling_evidence_affinity_policy_applied=0",
+        "job_scheduling_evidence_numa_policy_applied=0",
+        "job_scheduling_evidence_simd_dispatch_applied=0",
+        "job_scheduling_evidence_gpu_async_overlap_applied=0",
         "MemoryCounterRow scratch charges",
         "queue depth high-water",
         "steal attempts/successes",
@@ -188,7 +205,6 @@ foreach ($jobSchedulingDiagnosticsGuidanceNeedle in @(
         "affinity pinning",
         "NUMA placement",
         "SIMD dispatch",
-        "package-visible scheduler budget rows",
         "broad CPU/GPU/memory optimization"
     )) {
     if (-not ([string]$engine.gameCodeGuidance.currentJobSchedulingDiagnostics).Contains($jobSchedulingDiagnosticsGuidanceNeedle)) {
