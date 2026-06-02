@@ -1327,6 +1327,82 @@ MK_TEST("job scheduling execution evidence detects dependency batch merge queue 
                evidence.scheduling_summary.diagnostic_codes.end());
 }
 
+MK_TEST("job execution topology policy selects bounded workers without affinity side effects") {
+    const auto policy = mirakana::select_job_execution_topology_policy(mirakana::JobExecutionTopologyPolicyDesc{
+        .name = "core.topology_policy",
+        .observed_logical_processor_count = 8,
+        .worker_count_limit = 4,
+        .reserved_logical_processor_count = 1,
+        .queue_capacity_per_worker = 8,
+        .scratch_budget_bytes_per_worker = 2048,
+        .frame_index = 21,
+        .processor_group_count = 1,
+        .numa_node_count = 1,
+        .processor_groups_accounted_for = true,
+        .numa_topology_known = true,
+    });
+
+    MK_REQUIRE(policy.status == mirakana::JobExecutionTopologyPolicyStatus::ready);
+    MK_REQUIRE(policy.ready());
+    MK_REQUIRE(policy.observed_logical_processor_count == 8);
+    MK_REQUIRE(policy.effective_logical_processor_count == 8);
+    MK_REQUIRE(policy.selected_worker_count == 4);
+    MK_REQUIRE(policy.worker_count_limited_by_cap);
+    MK_REQUIRE(!policy.hardware_concurrency_fallback_used);
+    MK_REQUIRE(!policy.affinity_policy_applied);
+    MK_REQUIRE(!policy.numa_policy_applied);
+    MK_REQUIRE(!policy.simd_dispatch_applied);
+    MK_REQUIRE(!policy.gpu_async_overlap_applied);
+    MK_REQUIRE(policy.pool_desc.name == "core.topology_policy");
+    MK_REQUIRE(policy.pool_desc.logical_processor_count == 8);
+    MK_REQUIRE(policy.pool_desc.worker_count == 4);
+    MK_REQUIRE(policy.pool_desc.queue_capacity_per_worker == 8);
+    MK_REQUIRE(policy.pool_desc.scratch_budget_bytes_per_worker == 2048);
+    MK_REQUIRE(policy.topology_row.worker_count == 4);
+    MK_REQUIRE(policy.topology_row.queue_count == 4);
+    MK_REQUIRE(policy.topology_row.processor_groups_accounted_for);
+    MK_REQUIRE(policy.topology_row.numa_topology_known);
+    MK_REQUIRE(policy.diagnostics.empty());
+    MK_REQUIRE(mirakana::job_execution_topology_policy_status_label(
+                   mirakana::JobExecutionTopologyPolicyStatus::host_evidence_required) == "host_evidence_required");
+}
+
+MK_TEST("job execution topology policy records fallback and host evidence requirements") {
+    const auto policy = mirakana::select_job_execution_topology_policy(mirakana::JobExecutionTopologyPolicyDesc{
+        .name = "core.host_gated_topology_policy",
+        .observed_logical_processor_count = 0,
+        .fallback_logical_processor_count = 2,
+        .worker_count_limit = 4,
+        .reserved_logical_processor_count = 1,
+        .queue_capacity_per_worker = 4,
+        .scratch_budget_bytes_per_worker = 1024,
+        .frame_index = 22,
+        .processor_group_count = 2,
+        .numa_node_count = 2,
+        .processor_groups_accounted_for = false,
+        .numa_topology_known = false,
+    });
+
+    MK_REQUIRE(policy.status == mirakana::JobExecutionTopologyPolicyStatus::host_evidence_required);
+    MK_REQUIRE(!policy.ready());
+    MK_REQUIRE(policy.hardware_concurrency_fallback_used);
+    MK_REQUIRE(policy.observed_logical_processor_count == 0);
+    MK_REQUIRE(policy.effective_logical_processor_count == 2);
+    MK_REQUIRE(policy.selected_worker_count == 1);
+    MK_REQUIRE(policy.topology_row.processor_group_count == 2);
+    MK_REQUIRE(policy.topology_row.numa_node_count == 2);
+    MK_REQUIRE(!policy.processor_group_policy_applied);
+    MK_REQUIRE(!policy.numa_policy_applied);
+    MK_REQUIRE(policy.diagnostic_codes.size() == 2U);
+    MK_REQUIRE(
+        std::ranges::find(policy.diagnostic_codes,
+                          mirakana::JobExecutionTopologyPolicyDiagnosticCode::missing_processor_group_evidence) !=
+        policy.diagnostic_codes.end());
+    MK_REQUIRE(std::ranges::find(policy.diagnostic_codes,
+                                 mirakana::JobExecutionTopologyPolicyDiagnosticCode::missing_numa_evidence) !=
+               policy.diagnostic_codes.end());
+}
+
 MK_TEST("job execution pool executes batches on worker threads with deterministic evidence") {
     static_assert(!std::is_copy_constructible_v<mirakana::JobExecutionPool>);
     static_assert(!std::is_move_constructible_v<mirakana::JobExecutionPool>);

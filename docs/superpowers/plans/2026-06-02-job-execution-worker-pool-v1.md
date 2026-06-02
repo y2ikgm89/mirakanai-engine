@@ -2,7 +2,7 @@
 
 **Goal:** Add a first-party C++23 worker-thread execution pool on top of completed Job Scheduling Evidence v1 so selected engine and sample paths can prove real worker threads, bounded queue execution, cooperative shutdown, and diagnostic evidence without claiming affinity, NUMA placement, SIMD dispatch, work stealing, or broad all-core optimization.
 
-**Architecture:** Keep the implementation in `MK_core`; use standard C++ RAII threads and synchronization only. Phase 1 starts a bounded persistent worker pool with explicit worker count, RAII-owned `std::thread` workers, cooperative stop, bounded worker queues, `execute(batch)` drain semantics, fail-closed execution diagnostics, worker-local scratch, and `JobSchedulingExecutionEvidence` mapping. Later phases may add package counters and topology policy, but only after focused evidence.
+**Architecture:** Keep the implementation in `MK_core`; use standard C++ RAII threads and synchronization only. Phase 1 starts a bounded persistent worker pool with explicit worker count, RAII-owned `std::thread` workers, cooperative stop, bounded worker queues, `execute(batch)` drain semantics, fail-closed execution diagnostics, worker-local scratch, and `JobSchedulingExecutionEvidence` mapping. Phase 2 adds package counters. Later topology, affinity, NUMA, SIMD, and GPU-overlap policies require separate focused plans.
 
 **Tech Stack:** C++23 `MK_core`, RAII-owned `std::thread`, `JobExecutionStopToken`, `std::mutex`, `std::condition_variable`, existing `ScratchArena`, `JobWorkerTopologyRow`, `JobQueueCounterRow`, `JobSchedulingWorkItemRow`, `JobSchedulingExecutionEvidence`, PowerShell 7 validation wrappers, composed `engine/agent/manifest.json`, and static checks under `tools/check-ai-integration*.ps1` / `tools/check-json-contracts*.ps1`.
 
@@ -10,9 +10,11 @@
 
 **Plan ID:** `job-execution-worker-pool-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
 Selected on 2026-06-02 after [Job Scheduling Evidence v1](2026-06-02-job-scheduling-evidence-v1.md) completed Phase 3 package-visible scheduler evidence.
+
+Completed through PR #381 / merge commit `8c6a56f8` with full validation and package-visible `job_execution_foundation_*` evidence.
 
 ## Official Guidance
 
