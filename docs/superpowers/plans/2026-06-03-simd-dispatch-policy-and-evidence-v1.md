@@ -4,6 +4,8 @@
 
 **Status:** Active.
 
+**Local validation:** Complete; publication pending.
+
 **Goal:** Add a narrow, vendor-neutral CPU SIMD dispatch evidence lane that lets AI-generated games distinguish scalar, SSE2, and AVX2-capable CPU math paths without claiming broad Intel/AMD optimization, GPU compute, CUDA, HIP, SYCL, or cross-vendor parity.
 
 **Architecture:** `MK_core` owns a value-only SIMD capability and dispatch planner because CPU feature labels and math-kernel selection must not depend on OS, GPU, renderer, or editor modules. The selected first kernel is a bounded `float` dot-product evidence path over borrowed `std::span<const float>` inputs: scalar is always available, SSE2 is allowed on x86/x64 when the compiler target supports it, and AVX2 stays gated behind compile/runtime evidence rather than becoming a global build requirement. `sample_desktop_runtime_game` reports package-visible `simd_dispatch_policy_*` counters so generated games can record which CPU SIMD lane was selected while keeping raw pointers non-owning and native handles absent.
@@ -48,35 +50,48 @@
 
 ## Task 1: Core SIMD Capability And Dispatch Contract
 
-- [ ] Add RED tests for scalar-only dispatch, x86/x64 SSE2-capable dispatch labels, AVX2 unsupported diagnostics when compile/runtime gates are missing, and stable dot-product results across the selected lane.
-- [ ] Add dependency-free public rows for SIMD feature labels, dispatch status, diagnostics, selected lane, requested lane, input count, scalar fallback, and deterministic numeric result evidence.
-- [ ] Implement runtime feature probing behind compiler/architecture guards; non-x86 hosts must report scalar-ready without failing the engine.
-- [ ] Implement the scalar dot-product evidence kernel with `std::span<const float>` and no ownership transfer.
-- [ ] Implement the SSE2 evidence kernel only behind architecture guards where the compiler target supports it; keep AVX2 planned/gated unless a local per-target compile flag is added safely.
-- [ ] Run focused `MK_core` tests.
+- [x] Add RED tests for scalar-only dispatch, x86/x64 SSE2-capable dispatch labels, AVX2 unsupported diagnostics when compile/runtime gates are missing, and stable dot-product results across the selected lane.
+- [x] Add dependency-free public rows for SIMD feature labels, dispatch status, diagnostics, selected lane, requested lane, input count, scalar fallback, and deterministic numeric result evidence.
+- [x] Implement runtime feature probing behind compiler/architecture guards; non-x86 hosts must report scalar-ready without failing the engine.
+- [x] Implement the scalar dot-product evidence kernel with `std::span<const float>` and no ownership transfer.
+- [x] Implement the SSE2 evidence kernel only behind architecture guards where the compiler target supports it; keep AVX2 planned/gated unless a local per-target compile flag is added safely.
+- [x] Run focused `MK_core` tests.
 
 ## Task 2: Package Evidence
 
-- [ ] Add `sample_desktop_runtime_game --require-simd-dispatch-policy`.
-- [ ] Emit `simd_dispatch_policy_status`, `simd_dispatch_policy_ready`, `simd_dispatch_policy_selected_lane`, `simd_dispatch_policy_scalar_fallback`, input/result counters, diagnostics, and explicit zero side-effect flags for CUDA/HIP/SYCL/GPU/NUMA/native handles.
-- [ ] Update source-tree and installed desktop runtime validation to require the new package-visible fields.
-- [ ] Run desktop-runtime source-tree smoke and installed package smoke.
+- [x] Add `sample_desktop_runtime_game --require-simd-dispatch-policy`.
+- [x] Emit `simd_dispatch_policy_status`, `simd_dispatch_policy_ready`, `simd_dispatch_policy_selected_lane`, `simd_dispatch_policy_scalar_fallback`, input/result counters, diagnostics, and explicit zero side-effect flags for CUDA/HIP/SYCL/GPU/NUMA/native handles.
+- [x] Update source-tree and installed desktop runtime validation to require the new package-visible fields.
+- [x] Run desktop-runtime source-tree smoke and installed package smoke.
 
 ## Task 3: Docs, Manifest, Static Guards
 
-- [ ] Update capabilities, roadmap, plan registry, manifest fragments, and static checks for the ready boundary and non-claims.
-- [ ] Compose `engine/agent/manifest.json`.
-- [ ] Run `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, and `tools/check-agents.ps1`.
+- [x] Update capabilities, roadmap, plan registry, manifest fragments, and static checks for the ready boundary and non-claims.
+- [x] Compose `engine/agent/manifest.json`.
+- [x] Run `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, and `tools/check-agents.ps1`.
 
 ## Task 4: Slice Validation And Publication
 
-- [ ] Run `tools/check-public-api-boundaries.ps1`.
-- [ ] Run `tools/check-format.ps1`.
-- [ ] Run targeted `tools/check-tidy.ps1 -Files` for changed C++ files and sample file.
-- [ ] Run full `tools/validate.ps1`.
-- [ ] Run `tools/check-publication-preflight.ps1 -Branch codex/simd-dispatch-policy-v1`.
-- [ ] Commit task-owned files with validation evidence.
+- [x] Run `tools/check-public-api-boundaries.ps1`.
+- [x] Run `tools/check-format.ps1`.
+- [x] Run targeted `tools/check-tidy.ps1 -Files` for changed C++ files and sample file.
+- [x] Run full `tools/validate.ps1`.
+- [x] Run `tools/check-publication-preflight.ps1 -Branch codex/simd-dispatch-policy-v1`.
+- [x] Commit task-owned files with validation evidence.
 - [ ] Push branch, create PR, wait for hosted checks including `PR Gate`, merge with `--match-head-commit`, verify `origin/main` contains the head, and run merged-worktree cleanup.
+
+## Validation Evidence
+
+- RED: changing the AVX2 diagnostic expectation to `reviewed_target_gate_missing` failed until the new SIMD diagnostic enum and policy gate were implemented.
+- Focused core: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_core_tests`.
+- Source-tree desktop runtime: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset desktop-runtime`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset desktop-runtime --target sample_desktop_runtime_game`; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset desktop-runtime --output-on-failure -R sample_desktop_runtime_game_smoke`.
+- Direct smoke evidence: `simd_dispatch_policy_status=ready`, `simd_dispatch_policy_ready=1`, `simd_dispatch_policy_requested_lane=auto_select`, `simd_dispatch_policy_selected_lane=sse2`, `simd_dispatch_policy_dot_product_result=120`, `simd_dispatch_policy_avx2_selected=0`, borrowed span inputs, no retained raw pointers, and zero native handle / NUMA / GPU async-overlap / CUDA / HIP / SYCL side effects.
+- Agent/static: `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, and `tools/check-agents.ps1`.
+- Installed package smoke: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game` passed and validated the same `simd_dispatch_policy_*` installed-runtime counters.
+- Quality gates: `tools/check-public-api-boundaries.ps1`; `tools/check-format.ps1`; `tools/check-tidy.ps1 -Files engine/core/src/simd_dispatch.cpp,tests/unit/core_tests.cpp`; `tools/check-tidy.ps1 -Preset desktop-runtime -Files games/sample_desktop_runtime_game/main.cpp`.
+- Full local validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed; diagnostic-only host gates remained Apple/Metal host availability as expected on Windows.
+- Publication preflight: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1 -Branch codex/simd-dispatch-policy-v1` passed with GitHub network/auth ready and no index lock blocker.
+- Commit: task-owned files committed with validation evidence.
 
 ## Done When
 

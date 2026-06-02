@@ -189,6 +189,7 @@ $requiresJobExecutionWorkStealing = @($SmokeArgs) -contains "--require-job-execu
 $requiresJobExecutionPlacementPolicy = @($SmokeArgs) -contains "--require-job-execution-placement-policy"
 $requiresWindowsCpuSetWorkerPlacement = @($SmokeArgs) -contains "--require-windows-cpu-set-worker-placement"
 $requiresWindowsCpuSetSmtWorkerPlacement = @($SmokeArgs) -contains "--require-windows-cpu-set-smt-worker-placement"
+$requiresSimdDispatchPolicy = @($SmokeArgs) -contains "--require-simd-dispatch-policy"
 if ($requiresD3d12InstancedDrawEvidence -or $requiresVulkanInstancedDrawEvidence) {
     $requiresSceneScalePolicy = $true
 }
@@ -1269,6 +1270,55 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
         }
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bwindows_cpu_set_smt_worker_placement_smt_sibling_cpu_sets=[1-9]\d*\b") {
             Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive Windows CPU Set SMT sibling evidence."
+        }
+    }
+    if ($requiresSimdDispatchPolicy) {
+        $expectedSimdDispatchPolicyFields = @{
+            "simd_dispatch_policy_status" = "ready"
+            "simd_dispatch_policy_ready" = "1"
+            "simd_dispatch_policy_requested_lane" = "auto_select"
+            "simd_dispatch_policy_diagnostics" = "0"
+            "simd_dispatch_policy_input_count" = "8"
+            "simd_dispatch_policy_dot_product_result" = "120"
+            "simd_dispatch_policy_avx2_selected" = "0"
+            "simd_dispatch_policy_span_inputs_used" = "1"
+            "simd_dispatch_policy_raw_pointers_retained" = "0"
+            "simd_dispatch_policy_native_handles_exposed" = "0"
+            "simd_dispatch_policy_numa_allocation_applied" = "0"
+            "simd_dispatch_policy_gpu_async_overlap_applied" = "0"
+            "simd_dispatch_policy_cuda_path_used" = "0"
+            "simd_dispatch_policy_hip_path_used" = "0"
+            "simd_dispatch_policy_sycl_path_used" = "0"
+        }
+        foreach ($field in $expectedSimdDispatchPolicyFields.Keys) {
+            $expectedValue = [regex]::Escape($expectedSimdDispatchPolicyFields[$field])
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove SIMD dispatch policy field: $field=$($expectedSimdDispatchPolicyFields[$field])"
+            }
+        }
+        foreach ($field in @(
+                "simd_dispatch_policy_sse2_compile_supported",
+                "simd_dispatch_policy_sse2_runtime_supported",
+                "simd_dispatch_policy_sse2_selected",
+                "simd_dispatch_policy_avx2_compile_supported",
+                "simd_dispatch_policy_avx2_runtime_supported",
+                "simd_dispatch_policy_scalar_fallback"
+            )) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[01]\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove boolean SIMD dispatch policy field: $field"
+            }
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsimd_dispatch_policy_selected_lane=(scalar|sse2)\b") {
+            Write-Error "Installed sample_desktop_runtime_game smoke status line selected an unsupported SIMD dispatch lane."
+        }
+        if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bsimd_dispatch_policy_selected_lane=sse2\b") {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsimd_dispatch_policy_scalar_fallback=0\b" -or
+                $smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsimd_dispatch_policy_sse2_selected=1\b") {
+                Write-Error "Installed sample_desktop_runtime_game SIMD dispatch SSE2 lane must report no scalar fallback and sse2_selected=1."
+            }
+        } elseif ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsimd_dispatch_policy_scalar_fallback=1\b" -or
+            $smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsimd_dispatch_policy_sse2_selected=0\b") {
+            Write-Error "Installed sample_desktop_runtime_game SIMD dispatch scalar lane must report scalar fallback and sse2_selected=0."
         }
     }
     if ($requiresD3d12GpuMemoryEvidence) {

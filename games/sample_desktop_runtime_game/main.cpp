@@ -6,6 +6,7 @@
 #include "mirakana/core/application.hpp"
 #include "mirakana/core/diagnostics.hpp"
 #include "mirakana/core/job_execution.hpp"
+#include "mirakana/core/simd_dispatch.hpp"
 #include "mirakana/math/transform.hpp"
 #include "mirakana/platform/filesystem.hpp"
 #include "mirakana/platform/input.hpp"
@@ -80,6 +81,7 @@ struct DesktopRuntimeGameOptions {
     bool require_job_execution_placement_policy{false};
     bool require_windows_cpu_set_worker_placement{false};
     bool require_windows_cpu_set_smt_worker_placement{false};
+    bool require_simd_dispatch_policy{false};
     bool require_renderer_quality_gates{false};
     bool require_framegraph_multiqueue_evidence{false};
     bool require_vulkan_framegraph_multiqueue_evidence{false};
@@ -758,6 +760,7 @@ void print_usage() {
                  "[--require-job-scheduling-evidence] [--require-job-execution-foundation] "
                  "[--require-job-execution-topology-policy] [--require-job-execution-work-stealing] "
                  "[--require-job-execution-placement-policy] [--require-windows-cpu-set-worker-placement] "
+                 "[--require-simd-dispatch-policy] "
                  "[--require-renderer-quality-gates] "
                  "[--require-framegraph-multiqueue-evidence] "
                  "[--require-native-ui-overlay] "
@@ -962,6 +965,10 @@ void print_usage() {
             options.require_job_execution_work_stealing = true;
             options.require_job_execution_placement_policy = true;
             options.require_windows_cpu_set_smt_worker_placement = true;
+            continue;
+        }
+        if (arg == "--require-simd-dispatch-policy") {
+            options.require_simd_dispatch_policy = true;
             continue;
         }
         if (arg == "--require-renderer-quality-gates") {
@@ -1905,6 +1912,40 @@ windows_cpu_set_smt_worker_placement_status_name(const WindowsCpuSetWorkerPlacem
     return windows_cpu_set_smt_worker_placement_ready(evidence) ? "ready" : "blocked";
 }
 
+struct SimdDispatchPolicyEvidence {
+    bool requested{false};
+    mirakana::SimdDotProductEvidence dot_product;
+};
+
+[[nodiscard]] SimdDispatchPolicyEvidence build_package_simd_dispatch_policy_evidence(bool requested) {
+    SimdDispatchPolicyEvidence evidence;
+    evidence.requested = requested;
+    if (!requested) {
+        return evidence;
+    }
+
+    constexpr std::array lhs{1.0F, 2.0F, 3.0F, 4.0F, 5.0F, 6.0F, 7.0F, 8.0F};
+    constexpr std::array rhs{8.0F, 7.0F, 6.0F, 5.0F, 4.0F, 3.0F, 2.0F, 1.0F};
+    evidence.dot_product = mirakana::build_simd_dot_product_evidence(
+        lhs, rhs, mirakana::SimdDispatchPolicyDesc{.requested_lane = mirakana::CpuSimdLaneRequest::auto_select});
+    return evidence;
+}
+
+[[nodiscard]] bool simd_dispatch_policy_ready(const SimdDispatchPolicyEvidence& evidence) noexcept {
+    const auto& dot = evidence.dot_product;
+    return evidence.requested && dot.policy.ready() && dot.input_count == 8U && dot.result == 120.0F &&
+           dot.span_inputs_used && !dot.raw_pointers_retained && dot.diagnostics.empty() &&
+           !dot.policy.gpu_async_overlap_applied && !dot.policy.cuda_path_used && !dot.policy.hip_path_used &&
+           !dot.policy.sycl_path_used && !dot.policy.avx2_selected;
+}
+
+[[nodiscard]] std::string_view simd_dispatch_policy_status_name(const SimdDispatchPolicyEvidence& evidence) noexcept {
+    if (!evidence.requested) {
+        return "not_requested";
+    }
+    return simd_dispatch_policy_ready(evidence) ? "ready" : "blocked";
+}
+
 [[nodiscard]] mirakana::FrameGraphRhiMultiQueuePackageEvidence
 run_frame_graph_multi_queue_package_evidence(mirakana::Win32DesktopPresentation& presentation) {
     auto* device = presentation.scene_pbr_frame_rhi_device();
@@ -2789,6 +2830,7 @@ int main(int argc, char** argv) {
     const auto windows_cpu_set_smt_worker_placement = build_package_windows_cpu_set_worker_placement_evidence(
         options.require_windows_cpu_set_smt_worker_placement,
         mirakana::JobExecutionPlacementPolicyMode::avoid_smt_siblings, "package.windows_cpu_set_smt");
+    const auto simd_dispatch_policy = build_package_simd_dispatch_policy_evidence(options.require_simd_dispatch_policy);
     const auto renderer_quality =
         mirakana::evaluate_win32_desktop_presentation_quality_gate(report, make_renderer_quality_gate_desc(options));
     const bool framegraph_multiqueue_requested =
@@ -3469,6 +3511,36 @@ int main(int argc, char** argv) {
         << " windows_cpu_set_smt_worker_placement_cuda_path_used=0"
         << " windows_cpu_set_smt_worker_placement_hip_path_used=0"
         << " windows_cpu_set_smt_worker_placement_sycl_path_used=0"
+        << " simd_dispatch_policy_status=" << simd_dispatch_policy_status_name(simd_dispatch_policy)
+        << " simd_dispatch_policy_ready=" << (simd_dispatch_policy_ready(simd_dispatch_policy) ? 1 : 0)
+        << " simd_dispatch_policy_requested_lane="
+        << mirakana::cpu_simd_lane_request_label(simd_dispatch_policy.dot_product.policy.requested_lane)
+        << " simd_dispatch_policy_selected_lane="
+        << mirakana::cpu_simd_lane_label(simd_dispatch_policy.dot_product.policy.selected_lane)
+        << " simd_dispatch_policy_diagnostics=" << simd_dispatch_policy.dot_product.diagnostics.size()
+        << " simd_dispatch_policy_input_count=" << simd_dispatch_policy.dot_product.input_count
+        << " simd_dispatch_policy_dot_product_result=" << simd_dispatch_policy.dot_product.result
+        << " simd_dispatch_policy_scalar_fallback=" << (simd_dispatch_policy.dot_product.policy.scalar_fallback ? 1 : 0)
+        << " simd_dispatch_policy_sse2_compile_supported="
+        << (simd_dispatch_policy.dot_product.policy.features.sse2_compile_supported ? 1 : 0)
+        << " simd_dispatch_policy_sse2_runtime_supported="
+        << (simd_dispatch_policy.dot_product.policy.features.sse2_runtime_supported ? 1 : 0)
+        << " simd_dispatch_policy_sse2_selected=" << (simd_dispatch_policy.dot_product.policy.sse2_selected ? 1 : 0)
+        << " simd_dispatch_policy_avx2_compile_supported="
+        << (simd_dispatch_policy.dot_product.policy.features.avx2_compile_supported ? 1 : 0)
+        << " simd_dispatch_policy_avx2_runtime_supported="
+        << (simd_dispatch_policy.dot_product.policy.features.avx2_runtime_supported ? 1 : 0)
+        << " simd_dispatch_policy_avx2_selected=" << (simd_dispatch_policy.dot_product.policy.avx2_selected ? 1 : 0)
+        << " simd_dispatch_policy_span_inputs_used=" << (simd_dispatch_policy.dot_product.span_inputs_used ? 1 : 0)
+        << " simd_dispatch_policy_raw_pointers_retained="
+        << (simd_dispatch_policy.dot_product.raw_pointers_retained ? 1 : 0)
+        << " simd_dispatch_policy_native_handles_exposed=0"
+        << " simd_dispatch_policy_numa_allocation_applied=0"
+        << " simd_dispatch_policy_gpu_async_overlap_applied="
+        << (simd_dispatch_policy.dot_product.policy.gpu_async_overlap_applied ? 1 : 0)
+        << " simd_dispatch_policy_cuda_path_used=" << (simd_dispatch_policy.dot_product.policy.cuda_path_used ? 1 : 0)
+        << " simd_dispatch_policy_hip_path_used=" << (simd_dispatch_policy.dot_product.policy.hip_path_used ? 1 : 0)
+        << " simd_dispatch_policy_sycl_path_used=" << (simd_dispatch_policy.dot_product.policy.sycl_path_used ? 1 : 0)
         << " ui_overlay_requested=" << (report.native_ui_overlay_requested ? 1 : 0) << " ui_overlay_status="
         << mirakana::win32_desktop_presentation_native_ui_overlay_status_name(report.native_ui_overlay_status)
         << " ui_overlay_ready=" << (report.native_ui_overlay_ready ? 1 : 0)
@@ -3731,6 +3803,9 @@ int main(int argc, char** argv) {
         }
         if (options.require_windows_cpu_set_smt_worker_placement &&
             !windows_cpu_set_smt_worker_placement_ready(windows_cpu_set_smt_worker_placement)) {
+            return 3;
+        }
+        if (options.require_simd_dispatch_policy && !simd_dispatch_policy_ready(simd_dispatch_policy)) {
             return 3;
         }
         if (options.require_d3d12_instanced_draw_evidence && !d3d12_instanced_draw_execution.ready) {
