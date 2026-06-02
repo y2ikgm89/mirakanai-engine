@@ -63,6 +63,17 @@ namespace {
     return std::ranges::any_of(kNativeTokens, [value](const auto token) { return value.find(token) != value.npos; });
 }
 
+[[nodiscard]] bool is_reviewed_metal_host_validation_recipe(const std::string& recipe_id) noexcept {
+    constexpr std::string_view kReviewedMetalHostValidationRecipes[] = {
+        "shader-toolchain",
+        "mobile-packaging",
+        "renderer-metal-apple-host-evidence",
+        "ios-simulator-smoke",
+    };
+    return std::ranges::any_of(kReviewedMetalHostValidationRecipes,
+                               [&recipe_id](const auto reviewed_id) { return recipe_id == reviewed_id; });
+}
+
 void hash_mix(std::uint64_t& hash, const std::uint64_t value) noexcept {
     hash ^= value + 0x9e3779b97f4a7c15ULL + (hash << 6U) + (hash >> 2U);
 }
@@ -156,7 +167,8 @@ void sort_diagnostics(BackendRendererParityPolicyPlan& plan) {
 [[nodiscard]] bool host_validation_recipe_ready(const BackendRendererParityProofRow& row) noexcept {
     return row.selected_backend != rhi::BackendKind::metal ||
            (!row.host_validation_recipe_id.empty() && is_valid_id(row.host_validation_recipe_id) &&
-            !has_native_token(row.host_validation_recipe_id));
+            !has_native_token(row.host_validation_recipe_id) &&
+            is_reviewed_metal_host_validation_recipe(row.host_validation_recipe_id));
 }
 
 [[nodiscard]] bool is_host_gate_row(const BackendRendererParityProofRow& row) noexcept {
@@ -299,6 +311,13 @@ void validate_proof_rows(BackendRendererParityPolicyPlan& plan, const BackendRen
             add_diagnostic(plan, BackendRendererParityDiagnosticCode::missing_host_validation_recipe,
                            row.selected_backend, row.feature, row.proof_id,
                            "Metal renderer parity host evidence needs an explicit validation recipe id",
+                           row.source_index);
+        } else if (row.selected_backend == rhi::BackendKind::metal && is_valid_id(row.host_validation_recipe_id) &&
+                   !has_native_token(row.host_validation_recipe_id) &&
+                   !is_reviewed_metal_host_validation_recipe(row.host_validation_recipe_id)) {
+            add_diagnostic(plan, BackendRendererParityDiagnosticCode::unreviewed_host_validation_recipe,
+                           row.selected_backend, row.feature, row.proof_id,
+                           "Metal renderer parity host evidence must name a reviewed validation recipe id",
                            row.source_index);
         }
         if (row.request_native_handle_access) {
@@ -450,6 +469,8 @@ const char* backend_renderer_parity_diagnostic_message(const BackendRendererPari
         return "missing_metal_host_evidence";
     case BackendRendererParityDiagnosticCode::missing_host_validation_recipe:
         return "missing_host_validation_recipe";
+    case BackendRendererParityDiagnosticCode::unreviewed_host_validation_recipe:
+        return "unreviewed_host_validation_recipe";
     case BackendRendererParityDiagnosticCode::unsupported_native_handle_claim:
         return "unsupported_native_handle_claim";
     case BackendRendererParityDiagnosticCode::row_budget_exceeded:

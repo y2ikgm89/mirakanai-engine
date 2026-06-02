@@ -6896,7 +6896,8 @@ make_backend_parity_ready_proof(mirakana::rhi::BackendKind backend, mirakana::Ba
         .reviewed = true,
         .host_validated = true,
         .host_gate_required = false,
-        .host_validation_recipe_id = backend == mirakana::rhi::BackendKind::metal ? "ios-simulator-smoke" : "",
+        .host_validation_recipe_id =
+            backend == mirakana::rhi::BackendKind::metal ? "renderer-metal-apple-host-evidence" : "",
         .request_native_handle_access = false,
         .package_counter_id = "backend_parity.counter",
         .source_index = source_index,
@@ -6913,7 +6914,7 @@ make_backend_parity_metal_host_gate(mirakana::BackendRendererParityFeatureKind f
         .reviewed = true,
         .host_validated = false,
         .host_gate_required = true,
-        .host_validation_recipe_id = "ios-simulator-smoke",
+        .host_validation_recipe_id = "renderer-metal-apple-host-evidence",
         .request_native_handle_access = false,
         .package_counter_id = {},
         .source_index = source_index,
@@ -7010,6 +7011,35 @@ MK_TEST("backend renderer parity policy requires host validation recipe for Meta
     MK_REQUIRE(!plan.succeeded());
     MK_REQUIRE(backend_parity_diagnostic_count(
                    plan, mirakana::BackendRendererParityDiagnosticCode::missing_host_validation_recipe) == 1U);
+    MK_REQUIRE(plan.replay_hash == 0U);
+}
+
+MK_TEST("backend renderer parity policy accepts reviewed Metal host validation recipes") {
+    auto request = make_backend_parity_request(false);
+    request.proofs[2].host_validation_recipe_id = "ios-simulator-smoke";
+
+    const auto plan = mirakana::plan_backend_renderer_parity_policy(request);
+
+    MK_REQUIRE(plan.status == mirakana::BackendRendererParityPolicyStatus::host_evidence_required);
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.diagnostics.empty());
+    MK_REQUIRE(plan.host_gated_row_count == 5U);
+    MK_REQUIRE(!plan.metal_parity_ready);
+    MK_REQUIRE(plan.replay_hash != 0U);
+}
+
+MK_TEST("backend renderer parity policy rejects unreviewed Metal host validation recipes") {
+    auto request = make_backend_parity_request(false);
+    request.proofs[2].host_validation_recipe_id = "custom-metal-smoke";
+
+    const auto plan = mirakana::plan_backend_renderer_parity_policy(request);
+
+    MK_REQUIRE(plan.status == mirakana::BackendRendererParityPolicyStatus::invalid_request);
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(backend_parity_diagnostic_count(
+                   plan, mirakana::BackendRendererParityDiagnosticCode::unreviewed_host_validation_recipe) == 1U);
+    MK_REQUIRE(plan.host_gated_row_count == 4U);
+    MK_REQUIRE(!plan.metal_parity_ready);
     MK_REQUIRE(plan.replay_hash == 0U);
 }
 

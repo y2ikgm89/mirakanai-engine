@@ -32,9 +32,9 @@ Official and Context7 checks used for this slice:
 ## Implementation
 
 - Added `BackendRendererParityProofRow::host_validation_recipe_id`.
-- Added `BackendRendererParityDiagnosticCode::missing_host_validation_recipe`.
+- Added `BackendRendererParityDiagnosticCode::missing_host_validation_recipe`; the later allowlist hardening also adds `BackendRendererParityDiagnosticCode::unreviewed_host_validation_recipe`.
 - Updated `plan_backend_renderer_parity_policy` so Metal rows require a non-empty, valid, native-token-free recipe id, and so replay hashes include the recipe id.
-- Documented reviewed recipe ids such as `shader-toolchain`, `mobile-packaging`, and `ios-simulator-smoke` as the explicit Metal host-validation anchors.
+- Documented reviewed recipe ids such as `shader-toolchain`, `mobile-packaging`, `renderer-metal-apple-host-evidence`, and `ios-simulator-smoke` as the explicit Metal host-validation anchors.
 - Updated renderer tests to cover missing Metal recipe ids.
 - Updated current capabilities, generated-game guidance, validation scenarios, roadmap, plan registry, production-completion projections, manifest fragments, and rendering skills.
 - Added static integration checks for the new public field, diagnostic, docs, manifest guidance, and test coverage.
