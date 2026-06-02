@@ -185,6 +185,7 @@ $requiresVulkanDebugProfilingEvidence = @($SmokeArgs) -contains "--require-vulka
 $requiresJobSchedulingEvidence = @($SmokeArgs) -contains "--require-job-scheduling-evidence"
 $requiresJobExecutionFoundation = @($SmokeArgs) -contains "--require-job-execution-foundation"
 $requiresJobExecutionTopologyPolicy = @($SmokeArgs) -contains "--require-job-execution-topology-policy"
+$requiresJobExecutionWorkStealing = @($SmokeArgs) -contains "--require-job-execution-work-stealing"
 if ($requiresD3d12InstancedDrawEvidence -or $requiresVulkanInstancedDrawEvidence) {
     $requiresSceneScalePolicy = $true
 }
@@ -1104,6 +1105,48 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
             )) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
                 Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive job execution foundation field: $field"
+            }
+        }
+    }
+    if ($requiresJobExecutionWorkStealing) {
+        $expectedJobExecutionWorkStealingFields = @{
+            "job_execution_work_stealing_status" = "ready"
+            "job_execution_work_stealing_ready" = "1"
+            "job_execution_work_stealing_pool_status" = "ready"
+            "job_execution_work_stealing_run_status" = "ready"
+            "job_execution_work_stealing_diagnostics" = "0"
+            "job_execution_work_stealing_worker_threads_started" = "2"
+            "job_execution_work_stealing_tasks_submitted" = "2"
+            "job_execution_work_stealing_tasks_executed" = "2"
+            "job_execution_work_stealing_tasks_failed" = "0"
+            "job_execution_work_stealing_task_side_effects" = "2"
+            "job_execution_work_stealing_execution_rows" = "2"
+            "job_execution_work_stealing_queue_rows" = "2"
+            "job_execution_work_stealing_deterministic_merges" = "2"
+            "job_execution_work_stealing_applied" = "1"
+            "job_execution_work_stealing_affinity_policy_applied" = "0"
+            "job_execution_work_stealing_numa_policy_applied" = "0"
+            "job_execution_work_stealing_simd_dispatch_applied" = "0"
+            "job_execution_work_stealing_gpu_async_overlap_applied" = "0"
+            "job_execution_work_stealing_cuda_path_used" = "0"
+            "job_execution_work_stealing_hip_path_used" = "0"
+            "job_execution_work_stealing_sycl_path_used" = "0"
+        }
+        foreach ($field in $expectedJobExecutionWorkStealingFields.Keys) {
+            $expectedValue = [regex]::Escape($expectedJobExecutionWorkStealingFields[$field])
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove job execution work stealing field: $field=$($expectedJobExecutionWorkStealingFields[$field])"
+            }
+        }
+        foreach ($field in @(
+                "job_execution_work_stealing_steal_attempts",
+                "job_execution_work_stealing_steal_successes",
+                "job_execution_work_stealing_worker_waits",
+                "job_execution_work_stealing_scratch_bytes",
+                "job_execution_work_stealing_scratch_high_water_bytes"
+            )) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive job execution work stealing field: $field"
             }
         }
     }

@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <array>
 #include <atomic>
+#include <chrono>
+#include <condition_variable>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -1490,6 +1492,94 @@ MK_TEST("job execution pool executes batches on worker threads with deterministi
                "task_exception");
     MK_REQUIRE(mirakana::job_execution_diagnostic_code_label(mirakana::JobExecutionDiagnosticCode::queue_overflow) ==
                "queue_overflow");
+}
+
+MK_TEST("job execution pool applies opt in work stealing without changing deterministic publish evidence") {
+    auto pool = mirakana::JobExecutionPool(mirakana::JobExecutionPoolDesc{.name = "core.work_stealing_pool",
+                                                                          .logical_processor_count = 2,
+                                                                          .worker_count = 2,
+                                                                          .queue_capacity_per_worker = 4,
+                                                                          .scratch_budget_bytes_per_worker = 512,
+                                                                          .frame_index = 44,
+                                                                          .work_stealing_enabled = true});
+    MK_REQUIRE(pool.status() == mirakana::JobExecutionPoolStatus::ready);
+
+    std::mutex observed_mutex;
+    std::condition_variable observed_cv;
+    std::vector<std::uint32_t> observed_worker_ids;
+    std::uint32_t started_task_count{0};
+    std::atomic_uint64_t executed_tasks{0};
+    const auto body = [&](mirakana::JobExecutionContext& context) {
+        const auto lease = context.scratch.acquire(32, 16, context.worker_id);
+        if (!lease.valid()) {
+            throw std::runtime_error("worker scratch lease failed");
+        }
+        const auto release_status = context.scratch.release(lease, context.worker_id);
+        if (release_status != mirakana::ScratchLeaseStatus::released) {
+            throw std::runtime_error("worker scratch release failed");
+        }
+
+        bool both_tasks_started = false;
+        {
+            std::unique_lock lock(observed_mutex);
+            observed_worker_ids.push_back(context.worker_id);
+            ++started_task_count;
+            observed_cv.notify_all();
+            both_tasks_started = observed_cv.wait_for(lock, std::chrono::seconds{2},
+                                                      [&started_task_count] { return started_task_count >= 2U; });
+        }
+        if (!both_tasks_started) {
+            throw std::runtime_error("work stealing task did not run concurrently");
+        }
+        executed_tasks.fetch_add(1, std::memory_order_relaxed);
+    };
+
+    auto batch = mirakana::JobExecutionBatchDesc{};
+    batch.tasks = {
+        mirakana::JobExecutionTaskDesc{.evidence = mirakana::JobSchedulingWorkItemRow{.job_id = "stealable_a",
+                                                                                      .worker_id = 0,
+                                                                                      .batch_size = 8,
+                                                                                      .scratch_bytes = 32,
+                                                                                      .worker_local_output_count = 1,
+                                                                                      .merge_order = 0},
+                                       .body = body},
+        mirakana::JobExecutionTaskDesc{.evidence = mirakana::JobSchedulingWorkItemRow{.job_id = "stealable_b",
+                                                                                      .worker_id = 0,
+                                                                                      .batch_size = 8,
+                                                                                      .scratch_bytes = 32,
+                                                                                      .worker_local_output_count = 1,
+                                                                                      .merge_order = 1},
+                                       .body = body},
+    };
+    batch.options.minimum_batch_size = 4;
+    batch.options.maximum_batch_size = 64;
+
+    const auto result = pool.execute(batch);
+
+    MK_REQUIRE(result.status == mirakana::JobExecutionRunStatus::ready);
+    MK_REQUIRE(result.worker_threads_started == 2);
+    MK_REQUIRE(result.tasks_executed == 2);
+    MK_REQUIRE(result.tasks_failed == 0);
+    MK_REQUIRE(result.diagnostics.empty());
+    MK_REQUIRE(executed_tasks.load(std::memory_order_relaxed) == 2);
+    {
+        std::scoped_lock lock(observed_mutex);
+        MK_REQUIRE(std::ranges::find(observed_worker_ids, 0U) != observed_worker_ids.end());
+        MK_REQUIRE(std::ranges::find(observed_worker_ids, 1U) != observed_worker_ids.end());
+    }
+    MK_REQUIRE(result.work_stealing_applied);
+    MK_REQUIRE(result.steal_attempt_count >= result.steal_success_count);
+    MK_REQUIRE(result.steal_success_count > 0);
+    MK_REQUIRE(result.worker_wait_count > 0);
+    MK_REQUIRE(result.scheduling_evidence.scheduling_summary.status == mirakana::JobSchedulingDiagnosticsStatus::ready);
+    MK_REQUIRE(result.scheduling_evidence.scheduling_summary.total_steal_attempt_count == result.steal_attempt_count);
+    MK_REQUIRE(result.scheduling_evidence.scheduling_summary.total_steal_success_count == result.steal_success_count);
+    MK_REQUIRE(result.scheduling_evidence.scheduling_summary.total_worker_wait_count >= result.worker_wait_count);
+    MK_REQUIRE(result.scheduling_evidence.scheduling_summary.total_deterministic_merge_count == 2);
+    MK_REQUIRE(result.scheduling_evidence.scheduling_summary.total_nondeterministic_merge_count == 0);
+    MK_REQUIRE(result.scheduling_evidence.execution_order.size() == 2U);
+    MK_REQUIRE(result.scheduling_evidence.execution_order[0].job_id == "stealable_a");
+    MK_REQUIRE(result.scheduling_evidence.execution_order[1].job_id == "stealable_b");
 }
 
 MK_TEST("job execution pool rejects invalid tasks queue overflow and dependency hazards before execution") {

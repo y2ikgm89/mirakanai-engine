@@ -144,6 +144,9 @@ struct JobExecutionPool::Impl {
         std::condition_variable cv;
         std::deque<WorkItem> queue;
         std::shared_ptr<std::atomic_bool> stop_requested{std::make_shared<std::atomic_bool>(false)};
+        std::atomic_uint64_t steal_attempt_count{0};
+        std::atomic_uint64_t steal_success_count{0};
+        std::atomic_uint64_t worker_wait_count{0};
         std::thread thread;
         bool stopping{false};
 
@@ -158,6 +161,12 @@ struct JobExecutionPool::Impl {
                 thread.join();
             }
         }
+    };
+
+    struct WorkerCounterSnapshot {
+        std::uint64_t steal_attempt_count{0};
+        std::uint64_t steal_success_count{0};
+        std::uint64_t worker_wait_count{0};
     };
 
     explicit Impl(JobExecutionPoolDesc pool_desc) : desc(std::move(pool_desc)) {
@@ -238,6 +247,7 @@ struct JobExecutionPool::Impl {
             return result;
         }
 
+        const auto counter_baseline = snapshot_counters();
         std::vector<std::uint8_t> completed(batch.tasks.size(), 0);
         std::uint64_t completed_count = 0;
         while (completed_count < batch.tasks.size()) {
@@ -295,6 +305,7 @@ struct JobExecutionPool::Impl {
             }
         }
 
+        apply_runtime_queue_counters(result, topology, counter_baseline);
         result.status = status_from_diagnostics(result.diagnostic_codes);
         return result;
     }
@@ -370,6 +381,47 @@ struct JobExecutionPool::Impl {
         result.diagnostics.insert(result.diagnostics.end(), summary.diagnostics.begin(), summary.diagnostics.end());
     }
 
+    [[nodiscard]] std::vector<WorkerCounterSnapshot> snapshot_counters() const {
+        std::vector<WorkerCounterSnapshot> snapshots;
+        snapshots.reserve(workers.size());
+        for (const auto& worker : workers) {
+            snapshots.push_back(WorkerCounterSnapshot{
+                .steal_attempt_count = worker->steal_attempt_count.load(std::memory_order_relaxed),
+                .steal_success_count = worker->steal_success_count.load(std::memory_order_relaxed),
+                .worker_wait_count = worker->worker_wait_count.load(std::memory_order_relaxed),
+            });
+        }
+        return snapshots;
+    }
+
+    void apply_runtime_queue_counters(JobExecutionRunResult& result,
+                                      std::span<const JobWorkerTopologyRow> topology_rows,
+                                      std::span<const WorkerCounterSnapshot> baseline) const {
+        for (std::size_t index = 0; index < workers.size() && index < baseline.size(); ++index) {
+            const auto steal_attempt_count = workers[index]->steal_attempt_count.load(std::memory_order_relaxed) -
+                                             baseline[index].steal_attempt_count;
+            const auto steal_success_count = workers[index]->steal_success_count.load(std::memory_order_relaxed) -
+                                             baseline[index].steal_success_count;
+            const auto worker_wait_count =
+                workers[index]->worker_wait_count.load(std::memory_order_relaxed) - baseline[index].worker_wait_count;
+
+            result.steal_attempt_count += steal_attempt_count;
+            result.steal_success_count += steal_success_count;
+            result.worker_wait_count += worker_wait_count;
+            if (index < result.scheduling_evidence.queue_rows.size()) {
+                auto& row = result.scheduling_evidence.queue_rows[index];
+                row.steal_attempt_count += steal_attempt_count;
+                row.steal_success_count += steal_success_count;
+                row.worker_wait_count += worker_wait_count;
+            }
+        }
+
+        result.work_stealing_applied =
+            desc.work_stealing_enabled && desc.worker_count > 1U && result.steal_success_count > 0U;
+        result.scheduling_evidence.scheduling_summary =
+            summarize_job_scheduling_diagnostics(topology_rows, result.scheduling_evidence.queue_rows);
+    }
+
     [[nodiscard]] static std::optional<std::size_t> find_task_index(std::span<const JobExecutionTaskDesc> tasks,
                                                                     std::string_view job_id) {
         for (std::size_t index = 0; index < tasks.size(); ++index) {
@@ -405,7 +457,14 @@ struct JobExecutionPool::Impl {
             }
             worker.queue.push_back(WorkItem{.job_id = task.evidence.job_id, .body = task.body, .group = group});
         }
-        worker.cv.notify_one();
+        available_work_count.fetch_add(1, std::memory_order_release);
+        if (desc.work_stealing_enabled && workers.size() > 1U) {
+            for (auto& candidate : workers) {
+                candidate->cv.notify_one();
+            }
+        } else {
+            worker.cv.notify_one();
+        }
         return true;
     }
 
@@ -414,21 +473,55 @@ struct JobExecutionPool::Impl {
         group.cv.wait(lock, [&group] { return group.remaining == 0; });
     }
 
+    [[nodiscard]] bool try_pop_local_work(WorkerState& worker, WorkItem& work) {
+        std::scoped_lock lock(worker.mutex);
+        if (worker.queue.empty()) {
+            return false;
+        }
+        work = std::move(worker.queue.front());
+        worker.queue.pop_front();
+        available_work_count.fetch_sub(1, std::memory_order_acq_rel);
+        return true;
+    }
+
+    [[nodiscard]] bool try_steal_work(WorkerState& worker, WorkItem& work) {
+        if (!desc.work_stealing_enabled || workers.size() <= 1U) {
+            return false;
+        }
+
+        for (std::uint32_t offset = 1; offset < desc.worker_count; ++offset) {
+            const auto victim_index = static_cast<std::size_t>((worker.worker_id + offset) % desc.worker_count);
+            auto& victim = *workers[victim_index];
+            worker.steal_attempt_count.fetch_add(1, std::memory_order_relaxed);
+
+            std::scoped_lock lock(victim.mutex);
+            if (victim.queue.empty()) {
+                continue;
+            }
+            work = std::move(victim.queue.back());
+            victim.queue.pop_back();
+            available_work_count.fetch_sub(1, std::memory_order_acq_rel);
+            worker.steal_success_count.fetch_add(1, std::memory_order_relaxed);
+            return true;
+        }
+        return false;
+    }
+
     void run_worker(WorkerState& worker) noexcept {
         while (true) {
             auto work = WorkItem{};
-            {
+            if (!try_pop_local_work(worker, work) && !try_steal_work(worker, work)) {
                 std::unique_lock lock(worker.mutex);
-                worker.cv.wait(lock, [&worker] {
-                    return worker.stopping || worker.stop_requested->load(std::memory_order_relaxed) ||
-                           !worker.queue.empty();
-                });
                 if ((worker.stop_requested->load(std::memory_order_relaxed) || worker.stopping) &&
-                    worker.queue.empty()) {
+                    worker.queue.empty() && available_work_count.load(std::memory_order_acquire) == 0U) {
                     return;
                 }
-                work = std::move(worker.queue.front());
-                worker.queue.pop_front();
+                worker.worker_wait_count.fetch_add(1, std::memory_order_relaxed);
+                worker.cv.wait(lock, [&worker, this] {
+                    return worker.stopping || worker.stop_requested->load(std::memory_order_relaxed) ||
+                           !worker.queue.empty() || available_work_count.load(std::memory_order_acquire) > 0U;
+                });
+                continue;
             }
 
             bool failed = false;
@@ -469,6 +562,7 @@ struct JobExecutionPool::Impl {
     JobExecutionPoolStatus pool_status{JobExecutionPoolStatus::invalid_configuration};
     std::uint32_t started_threads{0};
     std::vector<std::unique_ptr<WorkerState>> workers;
+    std::atomic_uint64_t available_work_count{0};
 };
 
 JobExecutionStopToken::JobExecutionStopToken(std::shared_ptr<const std::atomic_bool> stop_requested) noexcept
@@ -520,12 +614,15 @@ JobExecutionTopologyPolicy select_job_execution_topology_policy(const JobExecuti
     policy.selected_worker_count =
         selected_worker_count_for_policy(desc, policy.effective_logical_processor_count, policy);
     const auto processor_group_count = std::max<std::uint32_t>(1, desc.processor_group_count);
-    policy.pool_desc = JobExecutionPoolDesc{.name = desc.name,
-                                            .logical_processor_count = policy.effective_logical_processor_count,
-                                            .worker_count = policy.selected_worker_count,
-                                            .queue_capacity_per_worker = desc.queue_capacity_per_worker,
-                                            .scratch_budget_bytes_per_worker = desc.scratch_budget_bytes_per_worker,
-                                            .frame_index = desc.frame_index};
+    policy.pool_desc =
+        JobExecutionPoolDesc{.name = desc.name,
+                             .logical_processor_count = policy.effective_logical_processor_count,
+                             .worker_count = policy.selected_worker_count,
+                             .queue_capacity_per_worker = desc.queue_capacity_per_worker,
+                             .scratch_budget_bytes_per_worker = desc.scratch_budget_bytes_per_worker,
+                             .frame_index = desc.frame_index,
+                             .work_stealing_enabled = desc.enable_work_stealing && policy.selected_worker_count > 1U};
+    policy.work_stealing_applied = policy.pool_desc.work_stealing_enabled;
     policy.topology_row = JobWorkerTopologyRow{.name = desc.name,
                                                .logical_processor_count = policy.effective_logical_processor_count,
                                                .worker_count = policy.selected_worker_count,
