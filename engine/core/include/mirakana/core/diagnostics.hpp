@@ -171,6 +171,88 @@ struct MemoryDiagnosticsSummary {
     std::vector<std::string> diagnostics;
 };
 
+enum class JobSchedulingDiagnosticsCode : std::uint8_t {
+    none,
+    missing_rows,
+    invalid_worker_topology,
+    missing_processor_group_evidence,
+    missing_numa_evidence,
+    invalid_queue,
+    queue_overflow,
+    blocked_dependency,
+    dependency_cycle,
+    scratch_misuse,
+    nondeterministic_merge,
+    undersized_job_batch,
+    oversized_job_batch
+};
+
+enum class JobSchedulingDiagnosticsStatus : std::uint8_t { ready, missing_rows, invalid_rows };
+
+struct JobWorkerTopologyRow {
+    std::string name;
+    std::uint32_t logical_processor_count{0};
+    std::uint32_t worker_count{0};
+    std::uint32_t queue_count{0};
+    std::uint32_t processor_group_count{1};
+    std::uint32_t numa_node_count{0};
+    bool processor_groups_accounted_for{false};
+    bool numa_topology_known{false};
+};
+
+struct JobQueueCounterRow {
+    std::string name;
+    std::uint32_t worker_id{0};
+    std::uint64_t submitted_jobs{0};
+    std::uint64_t completed_jobs{0};
+    std::uint64_t queue_capacity{0};
+    std::uint64_t queue_depth_high_water{0};
+    std::uint64_t queue_overflow_count{0};
+    std::uint64_t steal_attempt_count{0};
+    std::uint64_t steal_success_count{0};
+    std::uint64_t worker_wait_count{0};
+    std::uint64_t blocked_dependency_count{0};
+    std::uint64_t dependency_cycle_count{0};
+    std::uint64_t deterministic_merge_count{0};
+    std::uint64_t nondeterministic_merge_count{0};
+    std::uint64_t scratch_bytes{0};
+    std::uint64_t scratch_high_water_bytes{0};
+    std::uint64_t scratch_misuse_count{0};
+    std::uint64_t undersized_job_batch_count{0};
+    std::uint64_t oversized_job_batch_count{0};
+    std::uint64_t frame_index{0};
+};
+
+struct JobSchedulingDiagnosticsSummary {
+    std::uint64_t worker_topology_row_count{0};
+    std::uint64_t queue_row_count{0};
+    std::uint32_t logical_processor_count{0};
+    std::uint32_t worker_count{0};
+    std::uint32_t queue_count{0};
+    std::uint32_t processor_group_count{0};
+    std::uint32_t numa_node_count{0};
+    std::uint64_t total_submitted_jobs{0};
+    std::uint64_t total_completed_jobs{0};
+    std::uint64_t total_queue_capacity{0};
+    std::uint64_t queue_depth_high_water{0};
+    std::uint64_t total_queue_overflow_count{0};
+    std::uint64_t total_steal_attempt_count{0};
+    std::uint64_t total_steal_success_count{0};
+    std::uint64_t total_worker_wait_count{0};
+    std::uint64_t total_blocked_dependency_count{0};
+    std::uint64_t total_dependency_cycle_count{0};
+    std::uint64_t total_deterministic_merge_count{0};
+    std::uint64_t total_nondeterministic_merge_count{0};
+    std::uint64_t total_scratch_bytes{0};
+    std::uint64_t total_scratch_high_water_bytes{0};
+    std::uint64_t total_scratch_misuse_count{0};
+    std::uint64_t total_undersized_job_batch_count{0};
+    std::uint64_t total_oversized_job_batch_count{0};
+    JobSchedulingDiagnosticsStatus status{JobSchedulingDiagnosticsStatus::missing_rows};
+    std::vector<JobSchedulingDiagnosticsCode> diagnostic_codes;
+    std::vector<std::string> diagnostics;
+};
+
 struct DiagnosticsTraceExportOptions {
     std::string trace_name{"GameEngine Diagnostics"};
     std::string thread_name{"main"};
@@ -309,6 +391,8 @@ class ScopedProfileZone {
 [[nodiscard]] std::string_view memory_budget_pressure_label(MemoryBudgetPressure pressure) noexcept;
 [[nodiscard]] std::string_view memory_diagnostics_code_label(MemoryDiagnosticsCode code) noexcept;
 [[nodiscard]] std::string_view memory_diagnostics_status_label(MemoryDiagnosticsStatus status) noexcept;
+[[nodiscard]] std::string_view job_scheduling_diagnostics_code_label(JobSchedulingDiagnosticsCode code) noexcept;
+[[nodiscard]] std::string_view job_scheduling_diagnostics_status_label(JobSchedulingDiagnosticsStatus status) noexcept;
 [[nodiscard]] DiagnosticsBudgetSummary summarize_counter_budget(std::span<const CounterSample> counters,
                                                                 std::string_view sample_name,
                                                                 const DiagnosticsBudgetThresholds& thresholds = {});
@@ -317,6 +401,9 @@ class ScopedProfileZone {
                                                                 const DiagnosticsBudgetThresholds& thresholds = {});
 [[nodiscard]] MemoryDiagnosticsSummary summarize_memory_diagnostics(std::span<const MemoryCounterRow> rows,
                                                                     const MemoryDiagnosticsOptions& options = {});
+[[nodiscard]] JobSchedulingDiagnosticsSummary
+summarize_job_scheduling_diagnostics(std::span<const JobWorkerTopologyRow> topology_rows,
+                                     std::span<const JobQueueCounterRow> queue_rows);
 [[nodiscard]] std::string_view diagnostics_ops_artifact_kind_label(DiagnosticsOpsArtifactKind kind) noexcept;
 [[nodiscard]] std::string_view diagnostics_ops_artifact_status_label(DiagnosticsOpsArtifactStatus status) noexcept;
 [[nodiscard]] DiagnosticsOpsPlan build_diagnostics_ops_plan(const DiagnosticCapture& capture,

@@ -110,6 +110,7 @@ foreach ($needle in @("RuntimeWorldStreamingLargeSceneReadinessRequest", "Runtim
 }
 Assert-Properties $engine.gameCodeGuidance @("currentEditor") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentMemoryDiagnostics") "engine manifest gameCodeGuidance"
+Assert-Properties $engine.gameCodeGuidance @("currentJobSchedulingDiagnostics") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentEditorContentBrowserImportDiagnostics") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentEditorPrefabInstanceSourceLinks") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentEditorInProcessRuntimeHost") "engine manifest gameCodeGuidance"
@@ -147,6 +148,37 @@ foreach ($memoryDiagnosticsGuidanceNeedle in @(
     )) {
     if (-not ([string]$engine.gameCodeGuidance.currentMemoryDiagnostics).Contains($memoryDiagnosticsGuidanceNeedle)) {
         Write-Error "engine manifest gameCodeGuidance.currentMemoryDiagnostics missing: $memoryDiagnosticsGuidanceNeedle"
+    }
+}
+foreach ($jobSchedulingDiagnosticsGuidanceNeedle in @(
+        "Job Scheduling Evidence v1 Phase 1",
+        "JobWorkerTopologyRow",
+        "JobQueueCounterRow",
+        "JobSchedulingDiagnosticsSummary",
+        "JobSchedulingDiagnosticsCode",
+        "JobSchedulingDiagnosticsStatus",
+        "summarize_job_scheduling_diagnostics",
+        "job_scheduling_diagnostics_code_label",
+        "job_scheduling_diagnostics_status_label",
+        "logical processor count",
+        "processor group count",
+        "NUMA node count",
+        "queue depth high-water",
+        "steal attempts/successes",
+        "worker waits",
+        "blocked dependencies",
+        "dependency cycles",
+        "nondeterministic merges",
+        "scratch misuse",
+        "all-core CPU scheduling",
+        "affinity pinning",
+        "NUMA placement",
+        "SIMD dispatch",
+        "package-visible scheduler budget rows",
+        "broad CPU/GPU/memory optimization"
+    )) {
+    if (-not ([string]$engine.gameCodeGuidance.currentJobSchedulingDiagnostics).Contains($jobSchedulingDiagnosticsGuidanceNeedle)) {
+        Write-Error "engine manifest gameCodeGuidance.currentJobSchedulingDiagnostics missing: $jobSchedulingDiagnosticsGuidanceNeedle"
     }
 }
 foreach ($needle in @(

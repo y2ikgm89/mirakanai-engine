@@ -1006,6 +1006,151 @@ MK_TEST("memory diagnostics labels are stable") {
                "stale_generation");
 }
 
+MK_TEST("job scheduling diagnostics summarize worker topology and queue evidence") {
+    const std::array topologies{
+        mirakana::JobWorkerTopologyRow{.name = "cpu.default_pool",
+                                       .logical_processor_count = 16,
+                                       .worker_count = 8,
+                                       .queue_count = 8,
+                                       .processor_group_count = 1,
+                                       .numa_node_count = 1,
+                                       .processor_groups_accounted_for = true,
+                                       .numa_topology_known = true},
+    };
+    const std::array queues{
+        mirakana::JobQueueCounterRow{.name = "worker.0.queue",
+                                     .worker_id = 0,
+                                     .submitted_jobs = 120,
+                                     .completed_jobs = 118,
+                                     .queue_capacity = 256,
+                                     .queue_depth_high_water = 32,
+                                     .steal_attempt_count = 14,
+                                     .steal_success_count = 5,
+                                     .worker_wait_count = 3,
+                                     .deterministic_merge_count = 9,
+                                     .scratch_bytes = 2048,
+                                     .scratch_high_water_bytes = 4096,
+                                     .frame_index = 77},
+        mirakana::JobQueueCounterRow{.name = "worker.1.queue",
+                                     .worker_id = 1,
+                                     .submitted_jobs = 64,
+                                     .completed_jobs = 64,
+                                     .queue_capacity = 128,
+                                     .queue_depth_high_water = 16,
+                                     .steal_attempt_count = 2,
+                                     .steal_success_count = 1,
+                                     .worker_wait_count = 1,
+                                     .deterministic_merge_count = 4,
+                                     .scratch_bytes = 512,
+                                     .scratch_high_water_bytes = 1024,
+                                     .frame_index = 77},
+    };
+
+    const auto summary = mirakana::summarize_job_scheduling_diagnostics(topologies, queues);
+
+    MK_REQUIRE(summary.status == mirakana::JobSchedulingDiagnosticsStatus::ready);
+    MK_REQUIRE(summary.worker_topology_row_count == 1);
+    MK_REQUIRE(summary.queue_row_count == 2);
+    MK_REQUIRE(summary.logical_processor_count == 16);
+    MK_REQUIRE(summary.worker_count == 8);
+    MK_REQUIRE(summary.queue_count == 8);
+    MK_REQUIRE(summary.total_submitted_jobs == 184);
+    MK_REQUIRE(summary.total_completed_jobs == 182);
+    MK_REQUIRE(summary.queue_depth_high_water == 32);
+    MK_REQUIRE(summary.total_steal_attempt_count == 16);
+    MK_REQUIRE(summary.total_steal_success_count == 6);
+    MK_REQUIRE(summary.total_worker_wait_count == 4);
+    MK_REQUIRE(summary.total_deterministic_merge_count == 13);
+    MK_REQUIRE(summary.total_scratch_bytes == 2560);
+    MK_REQUIRE(summary.total_scratch_high_water_bytes == 5120);
+    MK_REQUIRE(summary.diagnostic_codes.empty());
+    MK_REQUIRE(summary.diagnostics.empty());
+}
+
+MK_TEST("job scheduling diagnostics fail closed for topology and queue hazards") {
+    const std::array topologies{
+        mirakana::JobWorkerTopologyRow{.name = "cpu.large_host",
+                                       .logical_processor_count = 128,
+                                       .worker_count = 96,
+                                       .queue_count = 96,
+                                       .processor_group_count = 2,
+                                       .numa_node_count = 2,
+                                       .processor_groups_accounted_for = false,
+                                       .numa_topology_known = false},
+    };
+    const std::array queues{
+        mirakana::JobQueueCounterRow{.name = "worker.12.queue",
+                                     .worker_id = 12,
+                                     .submitted_jobs = 100,
+                                     .completed_jobs = 101,
+                                     .queue_capacity = 16,
+                                     .queue_depth_high_water = 32,
+                                     .queue_overflow_count = 2,
+                                     .steal_attempt_count = 4,
+                                     .steal_success_count = 5,
+                                     .blocked_dependency_count = 1,
+                                     .dependency_cycle_count = 1,
+                                     .deterministic_merge_count = 1,
+                                     .nondeterministic_merge_count = 1,
+                                     .scratch_bytes = 4096,
+                                     .scratch_high_water_bytes = 1024,
+                                     .scratch_misuse_count = 1,
+                                     .undersized_job_batch_count = 3,
+                                     .oversized_job_batch_count = 2,
+                                     .frame_index = 88},
+    };
+
+    const auto summary = mirakana::summarize_job_scheduling_diagnostics(topologies, queues);
+
+    MK_REQUIRE(summary.status == mirakana::JobSchedulingDiagnosticsStatus::invalid_rows);
+    MK_REQUIRE(summary.total_queue_overflow_count == 2);
+    MK_REQUIRE(summary.total_blocked_dependency_count == 1);
+    MK_REQUIRE(summary.total_dependency_cycle_count == 1);
+    MK_REQUIRE(summary.total_nondeterministic_merge_count == 1);
+    MK_REQUIRE(summary.total_scratch_misuse_count == 1);
+    MK_REQUIRE(summary.total_undersized_job_batch_count == 3);
+    MK_REQUIRE(summary.total_oversized_job_batch_count == 2);
+    MK_REQUIRE(std::ranges::find(summary.diagnostic_codes,
+                                 mirakana::JobSchedulingDiagnosticsCode::missing_processor_group_evidence) !=
+               summary.diagnostic_codes.end());
+    MK_REQUIRE(
+        std::ranges::find(summary.diagnostic_codes, mirakana::JobSchedulingDiagnosticsCode::missing_numa_evidence) !=
+        summary.diagnostic_codes.end());
+    MK_REQUIRE(std::ranges::find(summary.diagnostic_codes, mirakana::JobSchedulingDiagnosticsCode::invalid_queue) !=
+               summary.diagnostic_codes.end());
+    MK_REQUIRE(std::ranges::find(summary.diagnostic_codes, mirakana::JobSchedulingDiagnosticsCode::queue_overflow) !=
+               summary.diagnostic_codes.end());
+    MK_REQUIRE(
+        std::ranges::find(summary.diagnostic_codes, mirakana::JobSchedulingDiagnosticsCode::nondeterministic_merge) !=
+        summary.diagnostic_codes.end());
+    MK_REQUIRE(summary.diagnostics.size() == 11U);
+    MK_REQUIRE(summary.diagnostics[0].contains("processor group"));
+    MK_REQUIRE(summary.diagnostics[1].contains("NUMA"));
+    MK_REQUIRE(summary.diagnostics[2].contains("completed jobs"));
+    MK_REQUIRE(summary.diagnostics[10].contains("oversized"));
+}
+
+MK_TEST("job scheduling diagnostics fail closed for missing rows and expose stable labels") {
+    const auto empty_summary = mirakana::summarize_job_scheduling_diagnostics({}, {});
+
+    MK_REQUIRE(empty_summary.status == mirakana::JobSchedulingDiagnosticsStatus::missing_rows);
+    MK_REQUIRE(empty_summary.diagnostic_codes.size() == 1U);
+    MK_REQUIRE(empty_summary.diagnostic_codes[0] == mirakana::JobSchedulingDiagnosticsCode::missing_rows);
+    MK_REQUIRE(empty_summary.diagnostics.size() == 1U);
+    MK_REQUIRE(empty_summary.diagnostics[0].contains("requires at least one worker topology row"));
+    MK_REQUIRE(mirakana::job_scheduling_diagnostics_status_label(mirakana::JobSchedulingDiagnosticsStatus::ready) ==
+               "ready");
+    MK_REQUIRE(mirakana::job_scheduling_diagnostics_status_label(
+                   mirakana::JobSchedulingDiagnosticsStatus::invalid_rows) == "invalid_rows");
+    MK_REQUIRE(mirakana::job_scheduling_diagnostics_code_label(
+                   mirakana::JobSchedulingDiagnosticsCode::missing_processor_group_evidence) ==
+               "missing_processor_group_evidence");
+    MK_REQUIRE(mirakana::job_scheduling_diagnostics_code_label(
+                   mirakana::JobSchedulingDiagnosticsCode::nondeterministic_merge) == "nondeterministic_merge");
+    MK_REQUIRE(mirakana::job_scheduling_diagnostics_code_label(
+                   mirakana::JobSchedulingDiagnosticsCode::scratch_misuse) == "scratch_misuse");
+}
+
 MK_TEST("scratch arena acquires bounded frame leases and resets at safe points") {
     static_assert(!std::is_copy_constructible_v<mirakana::ScratchArena>);
     static_assert(!std::is_move_constructible_v<mirakana::ScratchArena>);
