@@ -74,6 +74,66 @@ MK_TEST("win32 CPU set worker placement filters unavailable rows and honors core
     MK_REQUIRE(efficiency.worker_rows[1].cpu_set_id == 30U);
 }
 
+MK_TEST("win32 CPU set worker placement avoids SMT siblings before reusing a core") {
+    const std::vector<mirakana::win32::Win32CpuSetRow> rows = {
+        mirakana::win32::Win32CpuSetRow{.id = 100,
+                                        .group = 0,
+                                        .logical_processor_index = 0,
+                                        .core_index = 2,
+                                        .numa_node_index = 0,
+                                        .efficiency_class = 8},
+        mirakana::win32::Win32CpuSetRow{.id = 101,
+                                        .group = 0,
+                                        .logical_processor_index = 1,
+                                        .core_index = 2,
+                                        .numa_node_index = 0,
+                                        .efficiency_class = 8},
+        mirakana::win32::Win32CpuSetRow{.id = 200,
+                                        .group = 0,
+                                        .logical_processor_index = 2,
+                                        .core_index = 3,
+                                        .numa_node_index = 0,
+                                        .efficiency_class = 8},
+        mirakana::win32::Win32CpuSetRow{.id = 300,
+                                        .group = 0,
+                                        .logical_processor_index = 3,
+                                        .core_index = 4,
+                                        .numa_node_index = 0,
+                                        .efficiency_class = 2},
+        mirakana::win32::Win32CpuSetRow{.id = 400,
+                                        .group = 0,
+                                        .logical_processor_index = 4,
+                                        .core_index = 5,
+                                        .numa_node_index = 0,
+                                        .efficiency_class = 9,
+                                        .allocated = true,
+                                        .allocated_to_target_process = false},
+    };
+
+    const auto placement =
+        mirakana::win32::select_win32_cpu_set_worker_placement(mirakana::win32::Win32CpuSetWorkerPlacementDesc{
+            .cpu_sets = rows,
+            .worker_count = 4,
+            .mode = mirakana::JobExecutionPlacementPolicyMode::avoid_smt_siblings,
+        });
+
+    MK_REQUIRE(placement.status == mirakana::win32::Win32CpuSetWorkerPlacementStatus::ready);
+    MK_REQUIRE(placement.selected_cpu_set_count == 4U);
+    MK_REQUIRE(placement.distinct_core_count == 3U);
+    MK_REQUIRE(placement.smt_sibling_cpu_set_count == 1U);
+    MK_REQUIRE(placement.smt_sibling_topology_known);
+    MK_REQUIRE(placement.smt_sibling_policy_applied);
+    MK_REQUIRE(placement.worker_rows.size() == 4U);
+    MK_REQUIRE(placement.worker_rows[0].cpu_set_id == 100U);
+    MK_REQUIRE(placement.worker_rows[1].cpu_set_id == 200U);
+    MK_REQUIRE(placement.worker_rows[2].cpu_set_id == 300U);
+    MK_REQUIRE(placement.worker_rows[3].cpu_set_id == 101U);
+    MK_REQUIRE(!placement.worker_rows[0].smt_sibling_deferred);
+    MK_REQUIRE(!placement.worker_rows[1].smt_sibling_deferred);
+    MK_REQUIRE(!placement.worker_rows[2].smt_sibling_deferred);
+    MK_REQUIRE(placement.worker_rows[3].smt_sibling_deferred);
+}
+
 MK_TEST("win32 runtime plans startup and shutdown rows") {
     const auto startup = mirakana::win32::plan_win32_runtime_startup(mirakana::win32::Win32RuntimeDesc{
         .window_class_name = "MIRAIKANAI Test Window",

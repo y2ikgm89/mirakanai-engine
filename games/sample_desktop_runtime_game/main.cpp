@@ -79,6 +79,7 @@ struct DesktopRuntimeGameOptions {
     bool require_job_execution_work_stealing{false};
     bool require_job_execution_placement_policy{false};
     bool require_windows_cpu_set_worker_placement{false};
+    bool require_windows_cpu_set_smt_worker_placement{false};
     bool require_renderer_quality_gates{false};
     bool require_framegraph_multiqueue_evidence{false};
     bool require_vulkan_framegraph_multiqueue_evidence{false};
@@ -955,6 +956,14 @@ void print_usage() {
             options.require_windows_cpu_set_worker_placement = true;
             continue;
         }
+        if (arg == "--require-windows-cpu-set-smt-worker-placement") {
+            options.require_job_execution_foundation = true;
+            options.require_job_execution_topology_policy = true;
+            options.require_job_execution_work_stealing = true;
+            options.require_job_execution_placement_policy = true;
+            options.require_windows_cpu_set_smt_worker_placement = true;
+            continue;
+        }
         if (arg == "--require-renderer-quality-gates") {
             options.require_scene_gpu_bindings = true;
             options.require_postprocess = true;
@@ -1755,6 +1764,7 @@ job_execution_placement_policy_status_name(const JobExecutionPlacementPolicyEvid
 
 struct WindowsCpuSetWorkerPlacementEvidence {
     bool requested{false};
+    mirakana::JobExecutionPlacementPolicyMode selected_mode{mirakana::JobExecutionPlacementPolicyMode::os_default};
     mirakana::win32::Win32CpuSetWorkerPlacementPlan placement_plan;
     mirakana::JobExecutionPoolStatus pool_status{mirakana::JobExecutionPoolStatus::invalid_configuration};
     mirakana::JobExecutionRunResult run_result;
@@ -1762,9 +1772,11 @@ struct WindowsCpuSetWorkerPlacementEvidence {
 };
 
 [[nodiscard]] WindowsCpuSetWorkerPlacementEvidence
-build_package_windows_cpu_set_worker_placement_evidence(bool requested) {
+build_package_windows_cpu_set_worker_placement_evidence(bool requested, mirakana::JobExecutionPlacementPolicyMode mode,
+                                                        std::string_view job_prefix) {
     WindowsCpuSetWorkerPlacementEvidence evidence;
     evidence.requested = requested;
+    evidence.selected_mode = mode;
     if (!requested) {
         return evidence;
     }
@@ -1780,15 +1792,15 @@ build_package_windows_cpu_set_worker_placement_evidence(bool requested) {
         mirakana::win32::select_win32_cpu_set_worker_placement(mirakana::win32::Win32CpuSetWorkerPlacementDesc{
             .cpu_sets = std::move(cpu_sets),
             .worker_count = topology_policy.selected_worker_count,
-            .mode = mirakana::JobExecutionPlacementPolicyMode::prefer_performance_cores,
+            .mode = mode,
         });
     if (!evidence.placement_plan.ready()) {
         return evidence;
     }
 
     auto pool_desc = topology_policy.pool_desc;
-    pool_desc.placement_requested_mode = mirakana::JobExecutionPlacementPolicyMode::prefer_performance_cores;
-    pool_desc.placement_selected_mode = mirakana::JobExecutionPlacementPolicyMode::prefer_performance_cores;
+    pool_desc.placement_requested_mode = mode;
+    pool_desc.placement_selected_mode = mode;
     pool_desc.worker_placement_callback =
         mirakana::win32::make_win32_cpu_set_worker_placement_callback(evidence.placement_plan);
 
@@ -1815,24 +1827,24 @@ build_package_windows_cpu_set_worker_placement_evidence(bool requested) {
         task_side_effects.fetch_add(1, std::memory_order_relaxed);
     };
 
+    const auto prepare_job_id = std::string{job_prefix} + ".prepare";
+    const auto execute_job_id = std::string{job_prefix} + ".execute";
     auto batch = mirakana::JobExecutionBatchDesc{};
     batch.tasks = {
-        mirakana::JobExecutionTaskDesc{
-            .evidence = mirakana::JobSchedulingWorkItemRow{.job_id = "package.windows_cpu_set_prepare",
-                                                           .worker_id = 0,
-                                                           .batch_size = 32,
-                                                           .scratch_bytes = 32,
-                                                           .worker_local_output_count = 1,
-                                                           .merge_order = 0},
-            .body = body},
-        mirakana::JobExecutionTaskDesc{
-            .evidence = mirakana::JobSchedulingWorkItemRow{.job_id = "package.windows_cpu_set_execute",
-                                                           .worker_id = 1,
-                                                           .batch_size = 32,
-                                                           .scratch_bytes = 32,
-                                                           .worker_local_output_count = 1,
-                                                           .merge_order = 1},
-            .body = body},
+        mirakana::JobExecutionTaskDesc{.evidence = mirakana::JobSchedulingWorkItemRow{.job_id = prepare_job_id,
+                                                                                      .worker_id = 0,
+                                                                                      .batch_size = 32,
+                                                                                      .scratch_bytes = 32,
+                                                                                      .worker_local_output_count = 1,
+                                                                                      .merge_order = 0},
+                                       .body = body},
+        mirakana::JobExecutionTaskDesc{.evidence = mirakana::JobSchedulingWorkItemRow{.job_id = execute_job_id,
+                                                                                      .worker_id = 1,
+                                                                                      .batch_size = 32,
+                                                                                      .scratch_bytes = 32,
+                                                                                      .worker_local_output_count = 1,
+                                                                                      .merge_order = 1},
+                                       .body = body},
     };
     batch.options.minimum_batch_size = 4;
     batch.options.maximum_batch_size = 64;
@@ -1875,6 +1887,22 @@ windows_cpu_set_worker_placement_status_name(const WindowsCpuSetWorkerPlacementE
         return "not_requested";
     }
     return windows_cpu_set_worker_placement_ready(evidence) ? "ready" : "blocked";
+}
+
+[[nodiscard]] bool
+windows_cpu_set_smt_worker_placement_ready(const WindowsCpuSetWorkerPlacementEvidence& evidence) noexcept {
+    return windows_cpu_set_worker_placement_ready(evidence) &&
+           evidence.selected_mode == mirakana::JobExecutionPlacementPolicyMode::avoid_smt_siblings &&
+           evidence.placement_plan.distinct_core_count > 0U && evidence.placement_plan.smt_sibling_topology_known &&
+           evidence.placement_plan.smt_sibling_cpu_set_count > 0U && evidence.placement_plan.smt_sibling_policy_applied;
+}
+
+[[nodiscard]] std::string_view
+windows_cpu_set_smt_worker_placement_status_name(const WindowsCpuSetWorkerPlacementEvidence& evidence) noexcept {
+    if (!evidence.requested) {
+        return "not_requested";
+    }
+    return windows_cpu_set_smt_worker_placement_ready(evidence) ? "ready" : "blocked";
 }
 
 [[nodiscard]] mirakana::FrameGraphRhiMultiQueuePackageEvidence
@@ -2755,8 +2783,12 @@ int main(int argc, char** argv) {
         build_package_job_execution_work_stealing_evidence(options.require_job_execution_work_stealing);
     const auto job_execution_placement_policy =
         build_package_job_execution_placement_policy_evidence(options.require_job_execution_placement_policy);
-    const auto windows_cpu_set_worker_placement =
-        build_package_windows_cpu_set_worker_placement_evidence(options.require_windows_cpu_set_worker_placement);
+    const auto windows_cpu_set_worker_placement = build_package_windows_cpu_set_worker_placement_evidence(
+        options.require_windows_cpu_set_worker_placement,
+        mirakana::JobExecutionPlacementPolicyMode::prefer_performance_cores, "package.windows_cpu_set");
+    const auto windows_cpu_set_smt_worker_placement = build_package_windows_cpu_set_worker_placement_evidence(
+        options.require_windows_cpu_set_smt_worker_placement,
+        mirakana::JobExecutionPlacementPolicyMode::avoid_smt_siblings, "package.windows_cpu_set_smt");
     const auto renderer_quality =
         mirakana::evaluate_win32_desktop_presentation_quality_gate(report, make_renderer_quality_gate_desc(options));
     const bool framegraph_multiqueue_requested =
@@ -3385,6 +3417,58 @@ int main(int argc, char** argv) {
         << " windows_cpu_set_worker_placement_cuda_path_used=0"
         << " windows_cpu_set_worker_placement_hip_path_used=0"
         << " windows_cpu_set_worker_placement_sycl_path_used=0"
+        << " windows_cpu_set_smt_worker_placement_status="
+        << windows_cpu_set_smt_worker_placement_status_name(windows_cpu_set_smt_worker_placement)
+        << " windows_cpu_set_smt_worker_placement_ready="
+        << (windows_cpu_set_smt_worker_placement_ready(windows_cpu_set_smt_worker_placement) ? 1 : 0)
+        << " windows_cpu_set_smt_worker_placement_pool_status="
+        << mirakana::job_execution_pool_status_label(windows_cpu_set_smt_worker_placement.pool_status)
+        << " windows_cpu_set_smt_worker_placement_run_status="
+        << mirakana::job_execution_run_status_label(windows_cpu_set_smt_worker_placement.run_result.status)
+        << " windows_cpu_set_smt_worker_placement_diagnostics="
+        << windows_cpu_set_worker_placement_diagnostic_count(windows_cpu_set_smt_worker_placement)
+        << " windows_cpu_set_smt_worker_placement_selected_mode="
+        << mirakana::job_execution_placement_policy_mode_label(windows_cpu_set_smt_worker_placement.selected_mode)
+        << " windows_cpu_set_smt_worker_placement_topology_rows="
+        << windows_cpu_set_smt_worker_placement.run_result.scheduling_evidence.scheduling_summary
+               .worker_topology_row_count
+        << " windows_cpu_set_smt_worker_placement_selected_cpu_sets="
+        << windows_cpu_set_smt_worker_placement.placement_plan.selected_cpu_set_count
+        << " windows_cpu_set_smt_worker_placement_distinct_cores="
+        << windows_cpu_set_smt_worker_placement.placement_plan.distinct_core_count
+        << " windows_cpu_set_smt_worker_placement_smt_sibling_cpu_sets="
+        << windows_cpu_set_smt_worker_placement.placement_plan.smt_sibling_cpu_set_count
+        << " windows_cpu_set_smt_worker_placement_smt_topology_known="
+        << (windows_cpu_set_smt_worker_placement.placement_plan.smt_sibling_topology_known ? 1 : 0)
+        << " windows_cpu_set_smt_worker_placement_smt_policy_applied="
+        << (windows_cpu_set_smt_worker_placement.placement_plan.smt_sibling_policy_applied ? 1 : 0)
+        << " windows_cpu_set_smt_worker_placement_worker_rows="
+        << windows_cpu_set_smt_worker_placement.placement_plan.worker_rows.size()
+        << " windows_cpu_set_smt_worker_placement_worker_threads_started="
+        << windows_cpu_set_smt_worker_placement.run_result.worker_threads_started
+        << " windows_cpu_set_smt_worker_placement_attempts="
+        << windows_cpu_set_smt_worker_placement.run_result.worker_placement_attempt_count
+        << " windows_cpu_set_smt_worker_placement_applied="
+        << windows_cpu_set_smt_worker_placement.run_result.worker_placement_applied_count
+        << " windows_cpu_set_smt_worker_placement_selected_cpu_set_applications="
+        << windows_cpu_set_smt_worker_placement.run_result.worker_placement_selected_cpu_set_count
+        << " windows_cpu_set_smt_worker_placement_tasks_submitted="
+        << windows_cpu_set_smt_worker_placement.run_result.scheduling_evidence.scheduling_summary.total_submitted_jobs
+        << " windows_cpu_set_smt_worker_placement_tasks_executed="
+        << windows_cpu_set_smt_worker_placement.run_result.tasks_executed
+        << " windows_cpu_set_smt_worker_placement_tasks_failed="
+        << windows_cpu_set_smt_worker_placement.run_result.tasks_failed
+        << " windows_cpu_set_smt_worker_placement_task_side_effects="
+        << windows_cpu_set_smt_worker_placement.task_side_effects
+        << " windows_cpu_set_smt_worker_placement_native_thread_handles_exposed=0"
+        << " windows_cpu_set_smt_worker_placement_hybrid_core_policy_applied=0"
+        << " windows_cpu_set_smt_worker_placement_linux_affinity_applied=0"
+        << " windows_cpu_set_smt_worker_placement_numa_allocation_applied=0"
+        << " windows_cpu_set_smt_worker_placement_simd_dispatch_applied=0"
+        << " windows_cpu_set_smt_worker_placement_gpu_async_overlap_applied=0"
+        << " windows_cpu_set_smt_worker_placement_cuda_path_used=0"
+        << " windows_cpu_set_smt_worker_placement_hip_path_used=0"
+        << " windows_cpu_set_smt_worker_placement_sycl_path_used=0"
         << " ui_overlay_requested=" << (report.native_ui_overlay_requested ? 1 : 0) << " ui_overlay_status="
         << mirakana::win32_desktop_presentation_native_ui_overlay_status_name(report.native_ui_overlay_status)
         << " ui_overlay_ready=" << (report.native_ui_overlay_ready ? 1 : 0)
@@ -3643,6 +3727,10 @@ int main(int argc, char** argv) {
         }
         if (options.require_windows_cpu_set_worker_placement &&
             !windows_cpu_set_worker_placement_ready(windows_cpu_set_worker_placement)) {
+            return 3;
+        }
+        if (options.require_windows_cpu_set_smt_worker_placement &&
+            !windows_cpu_set_smt_worker_placement_ready(windows_cpu_set_smt_worker_placement)) {
             return 3;
         }
         if (options.require_d3d12_instanced_draw_evidence && !d3d12_instanced_draw_execution.ready) {
