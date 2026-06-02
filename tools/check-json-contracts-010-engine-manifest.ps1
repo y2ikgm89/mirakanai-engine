@@ -111,6 +111,7 @@ foreach ($needle in @("RuntimeWorldStreamingLargeSceneReadinessRequest", "Runtim
 Assert-Properties $engine.gameCodeGuidance @("currentEditor") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentMemoryDiagnostics") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentJobSchedulingDiagnostics") "engine manifest gameCodeGuidance"
+Assert-Properties $engine.gameCodeGuidance @("currentJobExecutionWorkerPool") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentEditorContentBrowserImportDiagnostics") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentEditorPrefabInstanceSourceLinks") "engine manifest gameCodeGuidance"
 Assert-Properties $engine.gameCodeGuidance @("currentEditorInProcessRuntimeHost") "engine manifest gameCodeGuidance"
@@ -209,6 +210,42 @@ foreach ($jobSchedulingDiagnosticsGuidanceNeedle in @(
     )) {
     if (-not ([string]$engine.gameCodeGuidance.currentJobSchedulingDiagnostics).Contains($jobSchedulingDiagnosticsGuidanceNeedle)) {
         Write-Error "engine manifest gameCodeGuidance.currentJobSchedulingDiagnostics missing: $jobSchedulingDiagnosticsGuidanceNeedle"
+    }
+}
+foreach ($jobExecutionWorkerPoolGuidanceNeedle in @(
+        "Job Execution Worker Pool v1",
+        "JobExecutionPool",
+        "JobExecutionPoolDesc",
+        "JobExecutionBatchDesc",
+        "JobExecutionTaskDesc",
+        "JobExecutionContext",
+        "JobExecutionRunResult",
+        "JobExecutionPoolStatus",
+        "JobExecutionRunStatus",
+        "JobExecutionDiagnosticCode",
+        "execute(batch)",
+        "request_stop",
+        "stop_and_drain",
+        "worker_threads_started",
+        "job_execution_pool_status_label",
+        "job_execution_run_status_label",
+        "job_execution_diagnostic_code_label",
+        "std::thread",
+        "JobExecutionStopToken",
+        "worker-local ScratchArena",
+        "JobSchedulingExecutionEvidence",
+        "queue overflow",
+        "dependency cycles",
+        "task exceptions",
+        "package-visible job_execution_foundation_* counters",
+        "work stealing",
+        "affinity pinning",
+        "NUMA placement",
+        "SIMD dispatch",
+        "broad CPU/GPU/memory optimization"
+    )) {
+    if (-not ([string]$engine.gameCodeGuidance.currentJobExecutionWorkerPool).Contains($jobExecutionWorkerPoolGuidanceNeedle)) {
+        Write-Error "engine manifest gameCodeGuidance.currentJobExecutionWorkerPool missing: $jobExecutionWorkerPoolGuidanceNeedle"
     }
 }
 foreach ($needle in @(
