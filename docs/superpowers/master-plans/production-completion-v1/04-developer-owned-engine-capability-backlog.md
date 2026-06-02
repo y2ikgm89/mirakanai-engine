@@ -56,7 +56,8 @@ These rows are not 1.0 blockers while `engine/agent/manifest.json.aiOperableProd
 
 | Capability id | Tier | Status | Ready boundary | Evidence before promotion |
 | --- | --- | --- | --- | --- |
-| `frame-thread-scratch-v1` | `scale-enabler` | `selected-production-slice` | Frame temporary and worker scratch ownership APIs, first-party frame arenas, per-worker scratch arenas, high-water marks, false-sharing diagnostics, and selected package evidence. | Allocator replacement, broad job scheduling, all-core CPU scheduling, NUMA/affinity tuning, SIMD dispatch, automatic/LRU GPU residency, CUDA/HIP/SYCL, cross-vendor/backend parity, and broad CPU/GPU/memory optimization remain separate selected plans. |
+| `job-scheduling-evidence-v1` | `scale-enabler` | `selected-production-slice` | Worker topology, bounded job queues, deterministic job/scratch evidence, queue/steal/wait/merge diagnostics, and package-visible scheduler budget rows. | All-core CPU scheduling, affinity pinning, NUMA placement, SIMD dispatch, GPU async overlap, CUDA/HIP/SYCL, cross-vendor/backend parity, and broad CPU/GPU/memory optimization remain separate selected plans. |
+| `frame-thread-scratch-v1` | `scale-enabler` | `implemented-1x-foundation` | Frame temporary and worker scratch ownership APIs, first-party frame arenas, per-worker scratch arenas, high-water marks, false-sharing diagnostics, and selected package evidence. | Completed through PR #373, PR #374, and PR #375 / merge commit `c37d3ea2`; allocator replacement, broad job scheduling, all-core CPU scheduling, NUMA/affinity tuning, SIMD dispatch, automatic/LRU GPU residency, CUDA/HIP/SYCL, cross-vendor/backend parity, and broad CPU/GPU/memory optimization remain separate selected plans. |
 
 ### Game-Facing Systems
 
