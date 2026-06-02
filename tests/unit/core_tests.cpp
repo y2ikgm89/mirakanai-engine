@@ -5,11 +5,13 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
 #include <limits>
+#include <mutex>
 
 #include "mirakana/animation/chain_ik.hpp"
 #include "mirakana/animation/keyframe_animation.hpp"
@@ -32,6 +34,7 @@
 #include "mirakana/audio/audio_mixer.hpp"
 #include "mirakana/core/application.hpp"
 #include "mirakana/core/diagnostics.hpp"
+#include "mirakana/core/job_execution.hpp"
 #include "mirakana/core/log.hpp"
 #include "mirakana/core/memory.hpp"
 #include "mirakana/core/registry.hpp"
@@ -1322,6 +1325,216 @@ MK_TEST("job scheduling execution evidence detects dependency batch merge queue 
     MK_REQUIRE(std::ranges::find(evidence.scheduling_summary.diagnostic_codes,
                                  mirakana::JobSchedulingDiagnosticsCode::oversized_job_batch) !=
                evidence.scheduling_summary.diagnostic_codes.end());
+}
+
+MK_TEST("job execution pool executes batches on worker threads with deterministic evidence") {
+    static_assert(!std::is_copy_constructible_v<mirakana::JobExecutionPool>);
+    static_assert(!std::is_move_constructible_v<mirakana::JobExecutionPool>);
+
+    auto pool = mirakana::JobExecutionPool(mirakana::JobExecutionPoolDesc{.name = "core.execution_pool",
+                                                                          .logical_processor_count = 2,
+                                                                          .worker_count = 2,
+                                                                          .queue_capacity_per_worker = 4,
+                                                                          .scratch_budget_bytes_per_worker = 512,
+                                                                          .frame_index = 41});
+    MK_REQUIRE(pool.status() == mirakana::JobExecutionPoolStatus::ready);
+    MK_REQUIRE(pool.worker_threads_started() == 2);
+
+    std::mutex observed_mutex;
+    std::vector<std::uint32_t> observed_worker_ids;
+    std::atomic_uint64_t executed_tasks{0};
+    const auto body = [&](mirakana::JobExecutionContext& context) {
+        const auto lease = context.scratch.acquire(32, 16, context.worker_id);
+        if (!lease.valid()) {
+            throw std::runtime_error("worker scratch lease failed");
+        }
+        const auto release_status = context.scratch.release(lease, context.worker_id);
+        if (release_status != mirakana::ScratchLeaseStatus::released) {
+            throw std::runtime_error("worker scratch release failed");
+        }
+        {
+            std::scoped_lock lock(observed_mutex);
+            observed_worker_ids.push_back(context.worker_id);
+        }
+        executed_tasks.fetch_add(1, std::memory_order_relaxed);
+    };
+
+    auto batch = mirakana::JobExecutionBatchDesc{};
+    batch.tasks = {
+        mirakana::JobExecutionTaskDesc{.evidence = mirakana::JobSchedulingWorkItemRow{.job_id = "load_tiles",
+                                                                                      .worker_id = 0,
+                                                                                      .batch_size = 8,
+                                                                                      .scratch_bytes = 32,
+                                                                                      .worker_local_output_count = 1,
+                                                                                      .merge_order = 0},
+                                       .body = body},
+        mirakana::JobExecutionTaskDesc{.evidence =
+                                           mirakana::JobSchedulingWorkItemRow{.job_id = "resolve_ai",
+                                                                              .worker_id = 1,
+                                                                              .dependency_job_ids = {"load_tiles"},
+                                                                              .batch_size = 8,
+                                                                              .scratch_bytes = 32,
+                                                                              .worker_local_output_count = 1,
+                                                                              .merge_order = 1},
+                                       .body = body},
+        mirakana::JobExecutionTaskDesc{.evidence =
+                                           mirakana::JobSchedulingWorkItemRow{.job_id = "submit_render_intent",
+                                                                              .worker_id = 0,
+                                                                              .dependency_job_ids = {"resolve_ai"},
+                                                                              .batch_size = 8,
+                                                                              .scratch_bytes = 32,
+                                                                              .worker_local_output_count = 1,
+                                                                              .merge_order = 2},
+                                       .body = body},
+    };
+    batch.options.minimum_batch_size = 4;
+    batch.options.maximum_batch_size = 64;
+
+    const auto result = pool.execute(batch);
+
+    MK_REQUIRE(result.status == mirakana::JobExecutionRunStatus::ready);
+    MK_REQUIRE(result.worker_threads_started == 2);
+    MK_REQUIRE(result.tasks_executed == 3);
+    MK_REQUIRE(result.tasks_failed == 0);
+    MK_REQUIRE(result.diagnostics.empty());
+    MK_REQUIRE(executed_tasks.load(std::memory_order_relaxed) == 3);
+    MK_REQUIRE(std::ranges::find(observed_worker_ids, 0U) != observed_worker_ids.end());
+    MK_REQUIRE(std::ranges::find(observed_worker_ids, 1U) != observed_worker_ids.end());
+    MK_REQUIRE(result.scheduling_evidence.scheduling_summary.status == mirakana::JobSchedulingDiagnosticsStatus::ready);
+    MK_REQUIRE(result.scheduling_evidence.scratch_summary.status == mirakana::MemoryDiagnosticsStatus::ready);
+    MK_REQUIRE(result.scheduling_evidence.execution_order.size() == 3U);
+    MK_REQUIRE(result.scheduling_evidence.execution_order[0].job_id == "load_tiles");
+    MK_REQUIRE(result.scheduling_evidence.execution_order[1].job_id == "resolve_ai");
+    MK_REQUIRE(result.scheduling_evidence.execution_order[2].job_id == "submit_render_intent");
+    MK_REQUIRE(result.scheduling_evidence.scheduling_summary.total_deterministic_merge_count == 3);
+    MK_REQUIRE(result.scheduling_evidence.scheduling_summary.total_queue_overflow_count == 0);
+    MK_REQUIRE(result.scheduling_evidence.scheduling_summary.total_scratch_bytes == 96);
+    MK_REQUIRE(mirakana::job_execution_run_status_label(mirakana::JobExecutionRunStatus::task_exception) ==
+               "task_exception");
+    MK_REQUIRE(mirakana::job_execution_diagnostic_code_label(mirakana::JobExecutionDiagnosticCode::queue_overflow) ==
+               "queue_overflow");
+}
+
+MK_TEST("job execution pool rejects invalid tasks queue overflow and dependency hazards before execution") {
+    auto invalid_pool = mirakana::JobExecutionPool(mirakana::JobExecutionPoolDesc{
+        .name = "", .worker_count = 0, .queue_capacity_per_worker = 0, .scratch_budget_bytes_per_worker = 0});
+    MK_REQUIRE(invalid_pool.status() == mirakana::JobExecutionPoolStatus::invalid_configuration);
+    MK_REQUIRE(invalid_pool.worker_threads_started() == 0);
+    MK_REQUIRE(invalid_pool.execute({}).status == mirakana::JobExecutionRunStatus::invalid_configuration);
+    MK_REQUIRE(invalid_pool.stop_and_drain().status == mirakana::JobExecutionRunStatus::invalid_configuration);
+
+    auto pool = mirakana::JobExecutionPool(mirakana::JobExecutionPoolDesc{.name = "core.rejection_pool",
+                                                                          .logical_processor_count = 1,
+                                                                          .worker_count = 1,
+                                                                          .queue_capacity_per_worker = 1,
+                                                                          .scratch_budget_bytes_per_worker = 256,
+                                                                          .frame_index = 42});
+    std::atomic_uint64_t executed_tasks{0};
+    const auto body = [&](mirakana::JobExecutionContext&) { executed_tasks.fetch_add(1, std::memory_order_relaxed); };
+
+    auto invalid_batch = mirakana::JobExecutionBatchDesc{};
+    invalid_batch.tasks = {mirakana::JobExecutionTaskDesc{
+        .evidence = mirakana::JobSchedulingWorkItemRow{.job_id = "missing_body", .worker_id = 0},
+    }};
+    const auto invalid_result = pool.execute(invalid_batch);
+    MK_REQUIRE(invalid_result.status == mirakana::JobExecutionRunStatus::invalid_task);
+    MK_REQUIRE(invalid_result.tasks_executed == 0);
+    MK_REQUIRE(std::ranges::find(invalid_result.diagnostic_codes, mirakana::JobExecutionDiagnosticCode::invalid_task) !=
+               invalid_result.diagnostic_codes.end());
+
+    auto overflow_batch = mirakana::JobExecutionBatchDesc{};
+    overflow_batch.tasks = {
+        mirakana::JobExecutionTaskDesc{
+            .evidence = mirakana::JobSchedulingWorkItemRow{.job_id = "first", .worker_id = 0, .batch_size = 4},
+            .body = body},
+        mirakana::JobExecutionTaskDesc{
+            .evidence = mirakana::JobSchedulingWorkItemRow{.job_id = "second", .worker_id = 0, .batch_size = 4},
+            .body = body},
+    };
+    overflow_batch.options.minimum_batch_size = 1;
+    overflow_batch.options.maximum_batch_size = 64;
+    const auto overflow_result = pool.execute(overflow_batch);
+    MK_REQUIRE(overflow_result.status == mirakana::JobExecutionRunStatus::queue_overflow);
+    MK_REQUIRE(overflow_result.tasks_executed == 0);
+    MK_REQUIRE(overflow_result.scheduling_evidence.scheduling_summary.total_queue_overflow_count == 1);
+
+    auto cycle_batch = mirakana::JobExecutionBatchDesc{};
+    cycle_batch.tasks = {
+        mirakana::JobExecutionTaskDesc{.evidence = mirakana::JobSchedulingWorkItemRow{.job_id = "cycle_a",
+                                                                                      .worker_id = 0,
+                                                                                      .dependency_job_ids = {"cycle_b"},
+                                                                                      .batch_size = 4},
+                                       .body = body},
+        mirakana::JobExecutionTaskDesc{.evidence = mirakana::JobSchedulingWorkItemRow{.job_id = "cycle_b",
+                                                                                      .worker_id = 0,
+                                                                                      .dependency_job_ids = {"cycle_a"},
+                                                                                      .batch_size = 4},
+                                       .body = body},
+    };
+    cycle_batch.options.queue_capacity_per_worker = 4;
+    cycle_batch.options.minimum_batch_size = 1;
+    cycle_batch.options.maximum_batch_size = 64;
+    const auto cycle_result = pool.execute(cycle_batch);
+    MK_REQUIRE(cycle_result.status == mirakana::JobExecutionRunStatus::dependency_cycle);
+    MK_REQUIRE(cycle_result.tasks_executed == 0);
+    MK_REQUIRE(executed_tasks.load(std::memory_order_relaxed) == 0);
+    MK_REQUIRE(
+        std::ranges::find(cycle_result.diagnostic_codes, mirakana::JobExecutionDiagnosticCode::dependency_cycle) !=
+        cycle_result.diagnostic_codes.end());
+}
+
+MK_TEST("job execution pool captures task exceptions and rejects stopped execution") {
+    auto pool = mirakana::JobExecutionPool(mirakana::JobExecutionPoolDesc{.name = "core.exception_pool",
+                                                                          .logical_processor_count = 1,
+                                                                          .worker_count = 1,
+                                                                          .queue_capacity_per_worker = 4,
+                                                                          .scratch_budget_bytes_per_worker = 256,
+                                                                          .frame_index = 43});
+
+    std::atomic_uint64_t dependent_executions{0};
+    auto throwing_batch = mirakana::JobExecutionBatchDesc{};
+    throwing_batch.tasks = {
+        mirakana::JobExecutionTaskDesc{
+            .evidence =
+                mirakana::JobSchedulingWorkItemRow{
+                    .job_id = "throws", .worker_id = 0, .batch_size = 4, .merge_order = 0},
+            .body = [](mirakana::JobExecutionContext&) { throw std::runtime_error("expected task exception"); },
+        },
+        mirakana::JobExecutionTaskDesc{
+            .evidence = mirakana::JobSchedulingWorkItemRow{.job_id = "after_throw",
+                                                           .worker_id = 0,
+                                                           .dependency_job_ids = {"throws"},
+                                                           .batch_size = 4,
+                                                           .merge_order = 1},
+            .body =
+                [&](mirakana::JobExecutionContext&) { dependent_executions.fetch_add(1, std::memory_order_relaxed); },
+        },
+    };
+    throwing_batch.options.minimum_batch_size = 1;
+    throwing_batch.options.maximum_batch_size = 64;
+
+    const auto throwing_result = pool.execute(throwing_batch);
+    MK_REQUIRE(throwing_result.status == mirakana::JobExecutionRunStatus::task_exception);
+    MK_REQUIRE(throwing_result.tasks_executed == 1);
+    MK_REQUIRE(throwing_result.tasks_failed == 1);
+    MK_REQUIRE(dependent_executions.load(std::memory_order_relaxed) == 0);
+    MK_REQUIRE(
+        std::ranges::find(throwing_result.diagnostic_codes, mirakana::JobExecutionDiagnosticCode::task_exception) !=
+        throwing_result.diagnostic_codes.end());
+
+    const auto stopped = pool.stop_and_drain();
+    MK_REQUIRE(stopped.status == mirakana::JobExecutionRunStatus::stopped);
+    MK_REQUIRE(pool.status() == mirakana::JobExecutionPoolStatus::stopped);
+
+    auto stopped_batch = mirakana::JobExecutionBatchDesc{};
+    stopped_batch.tasks = {mirakana::JobExecutionTaskDesc{
+        .evidence = mirakana::JobSchedulingWorkItemRow{.job_id = "after_stop", .worker_id = 0, .batch_size = 4},
+        .body = [](mirakana::JobExecutionContext&) {},
+    }};
+    const auto stopped_result = pool.execute(stopped_batch);
+    MK_REQUIRE(stopped_result.status == mirakana::JobExecutionRunStatus::stopped);
+    MK_REQUIRE(std::ranges::find(stopped_result.diagnostic_codes, mirakana::JobExecutionDiagnosticCode::stopped) !=
+               stopped_result.diagnostic_codes.end());
 }
 
 MK_TEST("scratch arena acquires bounded frame leases and resets at safe points") {

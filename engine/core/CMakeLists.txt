@@ -1,6 +1,7 @@
 add_library(mirakana_core
     src/application.cpp
     src/diagnostics.cpp
+    src/job_execution.cpp
     src/log.cpp
     src/memory.cpp
     src/registry.cpp
