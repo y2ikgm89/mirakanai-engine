@@ -1,5 +1,6 @@
 add_library(mirakana_platform_win32
     src/win32_clipboard.cpp
+    src/win32_cpu_sets.cpp
     src/win32_cursor.cpp
     src/win32_event_pump.cpp
     src/win32_file_dialog.cpp
@@ -18,6 +19,7 @@ target_include_directories(mirakana_platform_win32
 
 target_link_libraries(mirakana_platform_win32
     PUBLIC
+        mirakana_core
         mirakana_platform
         mirakana_ui
     PRIVATE

@@ -71,6 +71,8 @@ enum class JobExecutionPlacementPolicyDiagnosticCode : std::uint8_t {
     host_execution_required
 };
 
+enum class JobExecutionWorkerPlacementStatus : std::uint8_t { ready, skipped, host_evidence_required, failed };
+
 struct JobExecutionTopologyPolicyDesc {
     std::string name;
     std::uint32_t observed_logical_processor_count{0};
@@ -88,6 +90,27 @@ struct JobExecutionTopologyPolicyDesc {
     bool enable_work_stealing{false};
 };
 
+struct JobExecutionWorkerPlacementRequest {
+    std::string_view pool_name;
+    std::uint32_t worker_id{0};
+    std::uint32_t worker_count{0};
+    JobExecutionPlacementPolicyMode requested_mode{JobExecutionPlacementPolicyMode::os_default};
+    JobExecutionPlacementPolicyMode selected_mode{JobExecutionPlacementPolicyMode::os_default};
+};
+
+struct JobExecutionWorkerPlacementResult {
+    JobExecutionWorkerPlacementStatus status{JobExecutionWorkerPlacementStatus::skipped};
+    std::uint32_t worker_id{0};
+    bool attempted{false};
+    bool applied{false};
+    std::uint32_t selected_cpu_set_count{0};
+    std::vector<JobExecutionPlacementPolicyDiagnosticCode> diagnostic_codes;
+    std::vector<std::string> diagnostics;
+};
+
+using JobExecutionWorkerPlacementCallback =
+    std::function<JobExecutionWorkerPlacementResult(const JobExecutionWorkerPlacementRequest&)>;
+
 struct JobExecutionPoolDesc {
     std::string name;
     std::uint32_t logical_processor_count{0};
@@ -96,6 +119,9 @@ struct JobExecutionPoolDesc {
     std::uint64_t scratch_budget_bytes_per_worker{4096};
     std::uint64_t frame_index{0};
     bool work_stealing_enabled{false};
+    JobExecutionPlacementPolicyMode placement_requested_mode{JobExecutionPlacementPolicyMode::os_default};
+    JobExecutionPlacementPolicyMode placement_selected_mode{JobExecutionPlacementPolicyMode::os_default};
+    JobExecutionWorkerPlacementCallback worker_placement_callback;
 };
 
 struct JobExecutionTopologyPolicy {
@@ -196,6 +222,10 @@ struct JobExecutionRunResult {
     std::uint64_t steal_attempt_count{0};
     std::uint64_t steal_success_count{0};
     std::uint64_t worker_wait_count{0};
+    std::uint64_t worker_placement_attempt_count{0};
+    std::uint64_t worker_placement_applied_count{0};
+    std::uint64_t worker_placement_diagnostic_count{0};
+    std::uint64_t worker_placement_selected_cpu_set_count{0};
     std::vector<JobExecutionDiagnosticCode> diagnostic_codes;
     std::vector<std::string> diagnostics;
     JobSchedulingExecutionEvidence scheduling_evidence;
