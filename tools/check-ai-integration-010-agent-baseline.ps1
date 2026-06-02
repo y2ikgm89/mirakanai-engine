@@ -1918,6 +1918,27 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     )) {
         Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan job execution topology policy selection"
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "job-execution-work-stealing-v1") {
+    foreach ($needle in @(
+        "Job Execution Work Stealing v1",
+        "opt-in JobExecutionPool",
+        "work_stealing_enabled",
+        "JobExecutionTopologyPolicyDesc.enable_work_stealing",
+        "steal attempt/success/wait counters",
+        "--require-job-execution-work-stealing",
+        "job_execution_work_stealing_status=ready",
+        "job_execution_work_stealing_applied=1",
+        "deterministic publish order",
+        "unsupportedProductionGaps = []",
+        "affinity", "NUMA",
+        "SMT/hybrid",
+        "SIMD",
+        "GPU async overlap",
+        "CUDA/HIP/SYCL",
+        "broad all-core CPU/GPU/memory optimization"
+    )) {
+        Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan job execution work stealing selection"
+    }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "first-party-ui-editor-production-stack-v1") {
     foreach ($needle in @(
         "First-Party UI Editor Production Stack v1",

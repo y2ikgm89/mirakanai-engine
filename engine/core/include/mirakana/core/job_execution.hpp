@@ -63,6 +63,7 @@ struct JobExecutionTopologyPolicyDesc {
     std::uint32_t numa_node_count{0};
     bool processor_groups_accounted_for{false};
     bool numa_topology_known{false};
+    bool enable_work_stealing{false};
 };
 
 struct JobExecutionPoolDesc {
@@ -72,6 +73,7 @@ struct JobExecutionPoolDesc {
     std::uint64_t queue_capacity_per_worker{256};
     std::uint64_t scratch_budget_bytes_per_worker{4096};
     std::uint64_t frame_index{0};
+    bool work_stealing_enabled{false};
 };
 
 struct JobExecutionTopologyPolicy {
@@ -88,6 +90,7 @@ struct JobExecutionTopologyPolicy {
     bool processor_group_policy_applied{false};
     bool numa_policy_applied{false};
     bool affinity_policy_applied{false};
+    bool work_stealing_applied{false};
     bool simd_dispatch_applied{false};
     bool gpu_async_overlap_applied{false};
     JobExecutionPoolDesc pool_desc;
@@ -134,6 +137,10 @@ struct JobExecutionRunResult {
     std::uint32_t worker_threads_started{0};
     std::uint64_t tasks_executed{0};
     std::uint64_t tasks_failed{0};
+    bool work_stealing_applied{false};
+    std::uint64_t steal_attempt_count{0};
+    std::uint64_t steal_success_count{0};
+    std::uint64_t worker_wait_count{0};
     std::vector<JobExecutionDiagnosticCode> diagnostic_codes;
     std::vector<std::string> diagnostics;
     JobSchedulingExecutionEvidence scheduling_evidence;

@@ -25,11 +25,13 @@
 #include <charconv>
 #include <chrono>
 #include <cmath>
+#include <condition_variable>
 #include <cstddef>
 #include <cstdint>
 #include <exception>
 #include <filesystem>
 #include <iostream>
+#include <mutex>
 #include <optional>
 #include <span>
 #include <stdexcept>
@@ -73,6 +75,7 @@ struct DesktopRuntimeGameOptions {
     bool require_job_scheduling_evidence{false};
     bool require_job_execution_foundation{false};
     bool require_job_execution_topology_policy{false};
+    bool require_job_execution_work_stealing{false};
     bool require_renderer_quality_gates{false};
     bool require_framegraph_multiqueue_evidence{false};
     bool require_vulkan_framegraph_multiqueue_evidence{false};
@@ -749,7 +752,7 @@ void print_usage() {
                  "[--require-debug-profiling-policy] [--require-d3d12-debug-profiling-evidence] "
                  "[--require-vulkan-debug-profiling-evidence] "
                  "[--require-job-scheduling-evidence] [--require-job-execution-foundation] "
-                 "[--require-job-execution-topology-policy] "
+                 "[--require-job-execution-topology-policy] [--require-job-execution-work-stealing] "
                  "[--require-renderer-quality-gates] "
                  "[--require-framegraph-multiqueue-evidence] "
                  "[--require-native-ui-overlay] "
@@ -925,6 +928,12 @@ void print_usage() {
         }
         if (arg == "--require-job-execution-topology-policy") {
             options.require_job_execution_topology_policy = true;
+            continue;
+        }
+        if (arg == "--require-job-execution-work-stealing") {
+            options.require_job_execution_foundation = true;
+            options.require_job_execution_topology_policy = true;
+            options.require_job_execution_work_stealing = true;
             continue;
         }
         if (arg == "--require-renderer-quality-gates") {
@@ -1548,6 +1557,120 @@ job_execution_foundation_status_name(const JobExecutionFoundationEvidence& evide
         return "not_requested";
     }
     return job_execution_foundation_ready(evidence) ? "ready" : "blocked";
+}
+
+struct JobExecutionWorkStealingEvidence {
+    bool requested{false};
+    mirakana::JobExecutionPoolStatus pool_status{mirakana::JobExecutionPoolStatus::invalid_configuration};
+    mirakana::JobExecutionRunResult run_result;
+    std::uint64_t task_side_effects{0};
+};
+
+[[nodiscard]] JobExecutionWorkStealingEvidence build_package_job_execution_work_stealing_evidence(bool requested) {
+    JobExecutionWorkStealingEvidence evidence;
+    evidence.requested = requested;
+    if (!requested) {
+        return evidence;
+    }
+
+    auto policy_desc = make_package_job_execution_topology_policy_desc();
+    policy_desc.enable_work_stealing = true;
+    const auto topology_policy = mirakana::select_job_execution_topology_policy(policy_desc);
+    if (!topology_policy.ready()) {
+        return evidence;
+    }
+    auto pool = mirakana::JobExecutionPool(topology_policy.pool_desc);
+    evidence.pool_status = pool.status();
+    if (evidence.pool_status != mirakana::JobExecutionPoolStatus::ready) {
+        return evidence;
+    }
+
+    std::mutex observed_mutex;
+    std::condition_variable observed_cv;
+    std::uint32_t started_task_count{0};
+    std::atomic_uint64_t task_side_effects{0};
+    const auto body = [&](mirakana::JobExecutionContext& context) {
+        const auto lease = context.scratch.acquire(32, 16, context.worker_id);
+        if (!lease.valid()) {
+            throw std::runtime_error("job execution work stealing worker scratch lease failed");
+        }
+        lease.bytes.front() = std::byte{0x42};
+        const auto release_status = context.scratch.release(lease, context.worker_id);
+        if (release_status != mirakana::ScratchLeaseStatus::released) {
+            throw std::runtime_error("job execution work stealing worker scratch release failed");
+        }
+
+        bool both_tasks_started = false;
+        {
+            std::unique_lock lock(observed_mutex);
+            ++started_task_count;
+            observed_cv.notify_all();
+            both_tasks_started = observed_cv.wait_for(lock, std::chrono::seconds{2},
+                                                      [&started_task_count] { return started_task_count >= 2U; });
+        }
+        if (!both_tasks_started) {
+            throw std::runtime_error("job execution work stealing task did not run concurrently");
+        }
+        task_side_effects.fetch_add(1, std::memory_order_relaxed);
+    };
+
+    auto batch = mirakana::JobExecutionBatchDesc{};
+    batch.tasks = {
+        mirakana::JobExecutionTaskDesc{.evidence = mirakana::JobSchedulingWorkItemRow{.job_id = "package.steal_prepare",
+                                                                                      .worker_id = 0,
+                                                                                      .batch_size = 32,
+                                                                                      .scratch_bytes = 32,
+                                                                                      .worker_local_output_count = 1,
+                                                                                      .merge_order = 0},
+                                       .body = body},
+        mirakana::JobExecutionTaskDesc{.evidence = mirakana::JobSchedulingWorkItemRow{.job_id = "package.steal_execute",
+                                                                                      .worker_id = 0,
+                                                                                      .batch_size = 32,
+                                                                                      .scratch_bytes = 32,
+                                                                                      .worker_local_output_count = 1,
+                                                                                      .merge_order = 1},
+                                       .body = body},
+    };
+    batch.options.minimum_batch_size = 4;
+    batch.options.maximum_batch_size = 64;
+
+    evidence.run_result = pool.execute(batch);
+    evidence.task_side_effects = task_side_effects.load(std::memory_order_relaxed);
+    return evidence;
+}
+
+[[nodiscard]] std::size_t
+job_execution_work_stealing_diagnostic_count(const JobExecutionWorkStealingEvidence& evidence) noexcept {
+    return evidence.run_result.diagnostics.size() +
+           evidence.run_result.scheduling_evidence.scheduling_summary.diagnostics.size() +
+           evidence.run_result.scheduling_evidence.scratch_summary.diagnostics.size();
+}
+
+[[nodiscard]] bool job_execution_work_stealing_ready(const JobExecutionWorkStealingEvidence& evidence) noexcept {
+    const auto& run = evidence.run_result;
+    const auto& scheduling = run.scheduling_evidence.scheduling_summary;
+    const auto& scratch = run.scheduling_evidence.scratch_summary;
+    return evidence.requested && evidence.pool_status == mirakana::JobExecutionPoolStatus::ready &&
+           run.status == mirakana::JobExecutionRunStatus::ready && run.worker_threads_started == 2U &&
+           scheduling.total_submitted_jobs == 2U && run.tasks_executed == 2U && run.tasks_failed == 0U &&
+           evidence.task_side_effects == 2U && run.scheduling_evidence.execution_order.size() == 2U &&
+           run.scheduling_evidence.queue_rows.size() == 2U && run.work_stealing_applied &&
+           run.steal_attempt_count >= run.steal_success_count && run.steal_success_count > 0U &&
+           scheduling.total_steal_attempt_count >= scheduling.total_steal_success_count &&
+           scheduling.total_steal_success_count > 0U && scheduling.total_deterministic_merge_count == 2U &&
+           scheduling.total_nondeterministic_merge_count == 0U && scheduling.total_blocked_dependency_count == 0U &&
+           scheduling.total_dependency_cycle_count == 0U && scheduling.total_queue_overflow_count == 0U &&
+           scratch.status == mirakana::MemoryDiagnosticsStatus::ready &&
+           run.scheduling_evidence.worker_scratch_rows.size() == 2U && scratch.total_bytes > 0U &&
+           scratch.high_water_bytes > 0U && job_execution_work_stealing_diagnostic_count(evidence) == 0U;
+}
+
+[[nodiscard]] std::string_view
+job_execution_work_stealing_status_name(const JobExecutionWorkStealingEvidence& evidence) noexcept {
+    if (!evidence.requested) {
+        return "not_requested";
+    }
+    return job_execution_work_stealing_ready(evidence) ? "ready" : "blocked";
 }
 
 [[nodiscard]] mirakana::FrameGraphRhiMultiQueuePackageEvidence
@@ -2424,6 +2547,8 @@ int main(int argc, char** argv) {
         build_package_job_execution_topology_policy_evidence(options.require_job_execution_topology_policy);
     const auto job_execution_foundation =
         build_package_job_execution_foundation_evidence(options.require_job_execution_foundation);
+    const auto job_execution_work_stealing =
+        build_package_job_execution_work_stealing_evidence(options.require_job_execution_work_stealing);
     const auto renderer_quality =
         mirakana::evaluate_win32_desktop_presentation_quality_gate(report, make_renderer_quality_gate_desc(options));
     const bool framegraph_multiqueue_requested =
@@ -2936,6 +3061,46 @@ int main(int argc, char** argv) {
         << " job_execution_foundation_cuda_path_used=0"
         << " job_execution_foundation_hip_path_used=0"
         << " job_execution_foundation_sycl_path_used=0"
+        << " job_execution_work_stealing_status="
+        << job_execution_work_stealing_status_name(job_execution_work_stealing) << " job_execution_work_stealing_ready="
+        << (job_execution_work_stealing_ready(job_execution_work_stealing) ? 1 : 0)
+        << " job_execution_work_stealing_pool_status="
+        << mirakana::job_execution_pool_status_label(job_execution_work_stealing.pool_status)
+        << " job_execution_work_stealing_run_status="
+        << mirakana::job_execution_run_status_label(job_execution_work_stealing.run_result.status)
+        << " job_execution_work_stealing_diagnostics="
+        << job_execution_work_stealing_diagnostic_count(job_execution_work_stealing)
+        << " job_execution_work_stealing_worker_threads_started="
+        << job_execution_work_stealing.run_result.worker_threads_started
+        << " job_execution_work_stealing_tasks_submitted="
+        << job_execution_work_stealing.run_result.scheduling_evidence.scheduling_summary.total_submitted_jobs
+        << " job_execution_work_stealing_tasks_executed=" << job_execution_work_stealing.run_result.tasks_executed
+        << " job_execution_work_stealing_tasks_failed=" << job_execution_work_stealing.run_result.tasks_failed
+        << " job_execution_work_stealing_task_side_effects=" << job_execution_work_stealing.task_side_effects
+        << " job_execution_work_stealing_execution_rows="
+        << job_execution_work_stealing.run_result.scheduling_evidence.execution_order.size()
+        << " job_execution_work_stealing_queue_rows="
+        << job_execution_work_stealing.run_result.scheduling_evidence.queue_rows.size()
+        << " job_execution_work_stealing_deterministic_merges="
+        << job_execution_work_stealing.run_result.scheduling_evidence.scheduling_summary.total_deterministic_merge_count
+        << " job_execution_work_stealing_steal_attempts=" << job_execution_work_stealing.run_result.steal_attempt_count
+        << " job_execution_work_stealing_steal_successes=" << job_execution_work_stealing.run_result.steal_success_count
+        << " job_execution_work_stealing_worker_waits=" << job_execution_work_stealing.run_result.worker_wait_count
+        << " job_execution_work_stealing_scratch_rows="
+        << job_execution_work_stealing.run_result.scheduling_evidence.worker_scratch_rows.size()
+        << " job_execution_work_stealing_scratch_bytes="
+        << job_execution_work_stealing.run_result.scheduling_evidence.scratch_summary.total_bytes
+        << " job_execution_work_stealing_scratch_high_water_bytes="
+        << job_execution_work_stealing.run_result.scheduling_evidence.scratch_summary.high_water_bytes
+        << " job_execution_work_stealing_applied="
+        << (job_execution_work_stealing.run_result.work_stealing_applied ? 1 : 0)
+        << " job_execution_work_stealing_affinity_policy_applied=0"
+        << " job_execution_work_stealing_numa_policy_applied=0"
+        << " job_execution_work_stealing_simd_dispatch_applied=0"
+        << " job_execution_work_stealing_gpu_async_overlap_applied=0"
+        << " job_execution_work_stealing_cuda_path_used=0"
+        << " job_execution_work_stealing_hip_path_used=0"
+        << " job_execution_work_stealing_sycl_path_used=0"
         << " ui_overlay_requested=" << (report.native_ui_overlay_requested ? 1 : 0) << " ui_overlay_status="
         << mirakana::win32_desktop_presentation_native_ui_overlay_status_name(report.native_ui_overlay_status)
         << " ui_overlay_ready=" << (report.native_ui_overlay_ready ? 1 : 0)
@@ -3182,6 +3347,10 @@ int main(int argc, char** argv) {
             return 3;
         }
         if (options.require_job_execution_foundation && !job_execution_foundation_ready(job_execution_foundation)) {
+            return 3;
+        }
+        if (options.require_job_execution_work_stealing &&
+            !job_execution_work_stealing_ready(job_execution_work_stealing)) {
             return 3;
         }
         if (options.require_d3d12_instanced_draw_evidence && !d3d12_instanced_draw_execution.ready) {
