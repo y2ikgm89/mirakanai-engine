@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` or focused inline execution. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** Active.
+**Status:** Completed through PR #395 / merge commit `a42fb0fe2322304da811116db641f7a8706a5a41`.
 
-**Local validation:** Complete; publication pending.
+**Local validation:** Complete; hosted checks and publication complete.
 
 **Goal:** Add a narrow, vendor-neutral CPU SIMD dispatch evidence lane that lets AI-generated games distinguish scalar, SSE2, and AVX2-capable CPU math paths without claiming broad Intel/AMD optimization, GPU compute, CUDA, HIP, SYCL, or cross-vendor parity.
 
@@ -78,7 +78,7 @@
 - [x] Run full `tools/validate.ps1`.
 - [x] Run `tools/check-publication-preflight.ps1 -Branch codex/simd-dispatch-policy-v1`.
 - [x] Commit task-owned files with validation evidence.
-- [ ] Push branch, create PR, wait for hosted checks including `PR Gate`, merge with `--match-head-commit`, verify `origin/main` contains the head, and run merged-worktree cleanup.
+- [x] Push branch, create PR, wait for hosted checks including `PR Gate`, merge with `--match-head-commit`, verify `origin/main` contains the head, and run merged-worktree cleanup.
 
 ## Validation Evidence
 
@@ -92,6 +92,8 @@
 - Full local validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed; diagnostic-only host gates remained Apple/Metal host availability as expected on Windows.
 - Publication preflight: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1 -Branch codex/simd-dispatch-policy-v1` passed with GitHub network/auth ready and no index lock blocker.
 - Commit: task-owned files committed with validation evidence.
+- Hosted PR evidence: PR #395 passed `PR Gate`, `Windows MSVC`, `Linux CMake`, `Linux Coverage`, `Linux Clang ASan/UBSan`, full repository static analysis, `macOS Metal CMake`, `iOS Simulator smoke`, and CodeQL checks.
+- Merge/cleanup: PR #395 merged as `a42fb0fe2322304da811116db641f7a8706a5a41`; `origin/main..3cd35f461e7fadab3189c59fc5146930a05189f2` was empty after fetch, and `tools/remove-merged-worktree.ps1` completed cleanup.
 
 ## Done When
 
