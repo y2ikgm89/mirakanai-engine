@@ -1171,6 +1171,10 @@ if ($null -eq $sample3dManifestEntry) {
         "skeletal animation production path remains unsupported",
         "GPU skinning is host-proven on the D3D12 package smoke lane",
         "sample_desktop_runtime_game --require-gpu-skinning",
+        "--require-job-scheduling-evidence",
+        "job_scheduling_evidence_status=ready",
+        "job_scheduling_evidence_native_threads_started=0",
+        "job_scheduling_evidence_thread_pool_started=0",
         "package streaming remains unsupported",
         "native GPU runtime UI overlay",
         "textured UI sprite atlas",
@@ -1265,6 +1269,15 @@ if ($null -eq $sample3dManifestEntry) {
         "framegraph_passes_executed=",
         "framegraph_barrier_steps_executed=",
         "--require-framegraph-multiqueue-evidence",
+        "--require-job-scheduling-evidence",
+        "job_scheduling_evidence_status=",
+        "job_scheduling_evidence_ready=",
+        "job_scheduling_evidence_worker_count=",
+        "job_scheduling_evidence_queue_rows=",
+        "job_scheduling_evidence_submitted_jobs=",
+        "job_scheduling_evidence_completed_jobs=",
+        "job_scheduling_evidence_execution_rows=",
+        "job_scheduling_evidence_deterministic_merges=",
         "framegraph_multiqueue_command_lists_submitted=",
         "framegraph_multiqueue_queue_waits_recorded=",
         "framegraph_multiqueue_barriers_recorded=",
@@ -1284,6 +1297,9 @@ if ($null -eq $sample3dManifestEntry) {
     }
     $sample3dCMakeText = Get-Content -LiteralPath (Join-Path $root "games/CMakeLists.txt") -Raw
     foreach ($needle in @("MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_COMPUTE_MAPPING_SHADER_OUTPUT", "sample_desktop_runtime_game_scene_mapping.cs.spv", "-E cs_vulkan_mapping_proof -T cs_6_0 -spirv -fspv-target-env=vulkan1.3")) { if (-not $sample3dCMakeText.Contains($needle)) { Write-Error "games/CMakeLists.txt missing sample_desktop_runtime_game Vulkan compute mapping proof: $needle" } }
+    foreach ($needle in @("--require-job-scheduling-evidence", "sample_desktop_runtime_game")) { if (-not $sample3dCMakeText.Contains($needle)) { Write-Error "games/CMakeLists.txt missing sample_desktop_runtime_game job scheduling smoke evidence: $needle" } }
+    $sample3dInstalledValidatorText = Get-Content -LiteralPath (Join-Path $root "tools/validate-installed-desktop-runtime.ps1") -Raw
+    foreach ($needle in @('$requiresJobSchedulingEvidence', '"job_scheduling_evidence_status" = "ready"', '"job_scheduling_evidence_ready" = "1"', '"job_scheduling_evidence_worker_count" = "2"', '"job_scheduling_evidence_queue_rows" = "2"', '"job_scheduling_evidence_submitted_jobs" = "3"', '"job_scheduling_evidence_completed_jobs" = "3"', '"job_scheduling_evidence_execution_rows" = "3"', '"job_scheduling_evidence_deterministic_merges" = "3"', '"job_scheduling_evidence_native_threads_started" = "0"', '"job_scheduling_evidence_thread_pool_started" = "0"', '"job_scheduling_evidence_affinity_policy_applied" = "0"', '"job_scheduling_evidence_numa_policy_applied" = "0"', '"job_scheduling_evidence_simd_dispatch_applied" = "0"', '"job_scheduling_evidence_gpu_async_overlap_applied" = "0"')) { if (-not $sample3dInstalledValidatorText.Contains($needle)) { Write-Error "tools/validate-installed-desktop-runtime.ps1 missing job scheduling evidence assertion: $needle" } }
     $sceneRendererHeaderText = Get-Content -LiteralPath (Join-Path $root "engine/scene_renderer/include/mirakana/scene_renderer/scene_renderer.hpp") -Raw
     foreach ($needle in @(
         "SceneMeshDrawPlan",

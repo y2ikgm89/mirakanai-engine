@@ -1870,7 +1870,7 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
         "queue/steal/wait/merge diagnostics",
         "work stealing",
         "processor groups",
-        "package-visible scheduler budget rows",
+        "package-visible job_scheduling_evidence_* counters",
         "all-core CPU scheduling",
         "affinity pinning",
         "NUMA placement",

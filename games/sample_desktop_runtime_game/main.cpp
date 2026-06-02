@@ -19,6 +19,7 @@
 #include "mirakana/ui/ui.hpp"
 #include "mirakana/ui_renderer/ui_renderer.hpp"
 
+#include <array>
 #include <charconv>
 #include <chrono>
 #include <cmath>
@@ -65,6 +66,7 @@ struct DesktopRuntimeGameOptions {
     bool require_debug_profiling_policy{false};
     bool require_d3d12_debug_profiling_evidence{false};
     bool require_vulkan_debug_profiling_evidence{false};
+    bool require_job_scheduling_evidence{false};
     bool require_renderer_quality_gates{false};
     bool require_framegraph_multiqueue_evidence{false};
     bool require_vulkan_framegraph_multiqueue_evidence{false};
@@ -740,6 +742,7 @@ void print_usage() {
                  "[--require-vulkan-gpu-memory-evidence] "
                  "[--require-debug-profiling-policy] [--require-d3d12-debug-profiling-evidence] "
                  "[--require-vulkan-debug-profiling-evidence] "
+                 "[--require-job-scheduling-evidence] "
                  "[--require-renderer-quality-gates] "
                  "[--require-framegraph-multiqueue-evidence] "
                  "[--require-native-ui-overlay] "
@@ -903,6 +906,10 @@ void print_usage() {
             options.require_scene_gpu_bindings = true;
             options.require_debug_profiling_policy = true;
             options.require_vulkan_debug_profiling_evidence = true;
+            continue;
+        }
+        if (arg == "--require-job-scheduling-evidence") {
+            options.require_job_scheduling_evidence = true;
             continue;
         }
         if (arg == "--require-renderer-quality-gates") {
@@ -1307,6 +1314,71 @@ frame_graph_multi_queue_status_name(bool requested,
         return "not_requested";
     }
     return evidence.ready ? "ready" : "blocked";
+}
+
+[[nodiscard]] mirakana::JobSchedulingExecutionEvidence build_package_job_scheduling_evidence(bool requested) {
+    if (!requested) {
+        return {};
+    }
+
+    const std::array<mirakana::JobWorkerTopologyRow, 1> topologies{
+        mirakana::JobWorkerTopologyRow{.name = "desktop_runtime.package_pool",
+                                       .logical_processor_count = 8,
+                                       .worker_count = 2,
+                                       .queue_count = 2,
+                                       .processor_group_count = 1,
+                                       .numa_node_count = 1,
+                                       .processor_groups_accounted_for = true,
+                                       .numa_topology_known = true},
+    };
+    const std::array<mirakana::JobSchedulingWorkItemRow, 3> work_items{
+        mirakana::JobSchedulingWorkItemRow{.job_id = "package.load_scene",
+                                           .worker_id = 0,
+                                           .batch_size = 32,
+                                           .scratch_bytes = 1024,
+                                           .worker_local_output_count = 1,
+                                           .merge_order = 0},
+        mirakana::JobSchedulingWorkItemRow{.job_id = "package.resolve_gameplay",
+                                           .worker_id = 1,
+                                           .dependency_job_ids = {"package.load_scene"},
+                                           .batch_size = 16,
+                                           .scratch_bytes = 512,
+                                           .worker_local_output_count = 1,
+                                           .merge_order = 1},
+        mirakana::JobSchedulingWorkItemRow{.job_id = "package.submit_render_intent",
+                                           .worker_id = 0,
+                                           .dependency_job_ids = {"package.resolve_gameplay"},
+                                           .batch_size = 8,
+                                           .scratch_bytes = 256,
+                                           .worker_local_output_count = 1,
+                                           .merge_order = 2},
+    };
+    return mirakana::build_job_scheduling_execution_evidence(
+        topologies, work_items,
+        mirakana::JobSchedulingExecutionOptions{.queue_capacity_per_worker = 4,
+                                                .minimum_batch_size = 4,
+                                                .maximum_batch_size = 64,
+                                                .scratch_budget_bytes_per_worker = 4096,
+                                                .frame_index = 0});
+}
+
+[[nodiscard]] bool job_scheduling_evidence_ready(const mirakana::JobSchedulingExecutionEvidence& evidence) noexcept {
+    return evidence.scheduling_summary.status == mirakana::JobSchedulingDiagnosticsStatus::ready &&
+           evidence.scratch_summary.status == mirakana::MemoryDiagnosticsStatus::ready &&
+           evidence.queue_rows.size() == 2U && evidence.worker_scratch_rows.size() == 2U &&
+           evidence.execution_order.size() == 3U && evidence.scheduling_summary.total_submitted_jobs == 3U &&
+           evidence.scheduling_summary.total_completed_jobs == 3U &&
+           evidence.scheduling_summary.total_deterministic_merge_count == 3U &&
+           evidence.scheduling_summary.total_nondeterministic_merge_count == 0U &&
+           evidence.scheduling_summary.total_scratch_misuse_count == 0U;
+}
+
+[[nodiscard]] std::string_view
+job_scheduling_evidence_status_name(bool requested, const mirakana::JobSchedulingExecutionEvidence& evidence) noexcept {
+    if (!requested) {
+        return "not_requested";
+    }
+    return job_scheduling_evidence_ready(evidence) ? "ready" : "blocked";
 }
 
 [[nodiscard]] mirakana::FrameGraphRhiMultiQueuePackageEvidence
@@ -2178,6 +2250,7 @@ int main(int argc, char** argv) {
             report, options.require_vulkan_debug_profiling_evidence);
     const auto debug_profiling_policy = mirakana::evaluate_win32_desktop_presentation_debug_profiling_policy(
         report, make_debug_profiling_policy_desc(options));
+    const auto job_scheduling_evidence = build_package_job_scheduling_evidence(options.require_job_scheduling_evidence);
     const auto renderer_quality =
         mirakana::evaluate_win32_desktop_presentation_quality_gate(report, make_renderer_quality_gate_desc(options));
     const bool framegraph_multiqueue_requested =
@@ -2586,7 +2659,41 @@ int main(int argc, char** argv) {
         << " vulkan_debug_profiling_execution_gpu_debug_markers_ok="
         << (vulkan_debug_profiling_execution.gpu_debug_markers_current ? 1 : 0)
         << " vulkan_debug_profiling_execution_frame_diagnostics_ok="
-        << (vulkan_debug_profiling_execution.frame_diagnostics_current ? 1 : 0)
+        << (vulkan_debug_profiling_execution.frame_diagnostics_current ? 1 : 0) << " job_scheduling_evidence_status="
+        << job_scheduling_evidence_status_name(options.require_job_scheduling_evidence, job_scheduling_evidence)
+        << " job_scheduling_evidence_ready=" << (job_scheduling_evidence_ready(job_scheduling_evidence) ? 1 : 0)
+        << " job_scheduling_evidence_diagnostics=" << job_scheduling_evidence.scheduling_summary.diagnostics.size()
+        << " job_scheduling_evidence_scratch_diagnostics=" << job_scheduling_evidence.scratch_summary.diagnostics.size()
+        << " job_scheduling_evidence_topology_rows="
+        << job_scheduling_evidence.scheduling_summary.worker_topology_row_count
+        << " job_scheduling_evidence_worker_count=" << job_scheduling_evidence.scheduling_summary.worker_count
+        << " job_scheduling_evidence_queue_count=" << job_scheduling_evidence.scheduling_summary.queue_count
+        << " job_scheduling_evidence_queue_rows=" << job_scheduling_evidence.queue_rows.size()
+        << " job_scheduling_evidence_submitted_jobs=" << job_scheduling_evidence.scheduling_summary.total_submitted_jobs
+        << " job_scheduling_evidence_completed_jobs=" << job_scheduling_evidence.scheduling_summary.total_completed_jobs
+        << " job_scheduling_evidence_execution_rows=" << job_scheduling_evidence.execution_order.size()
+        << " job_scheduling_evidence_deterministic_merges="
+        << job_scheduling_evidence.scheduling_summary.total_deterministic_merge_count
+        << " job_scheduling_evidence_nondeterministic_merges="
+        << job_scheduling_evidence.scheduling_summary.total_nondeterministic_merge_count
+        << " job_scheduling_evidence_blocked_dependencies="
+        << job_scheduling_evidence.scheduling_summary.total_blocked_dependency_count
+        << " job_scheduling_evidence_dependency_cycles="
+        << job_scheduling_evidence.scheduling_summary.total_dependency_cycle_count
+        << " job_scheduling_evidence_queue_overflows="
+        << job_scheduling_evidence.scheduling_summary.total_queue_overflow_count
+        << " job_scheduling_evidence_scratch_misuse="
+        << job_scheduling_evidence.scheduling_summary.total_scratch_misuse_count
+        << " job_scheduling_evidence_scratch_rows=" << job_scheduling_evidence.worker_scratch_rows.size()
+        << " job_scheduling_evidence_scratch_bytes=" << job_scheduling_evidence.scratch_summary.total_bytes
+        << " job_scheduling_evidence_scratch_high_water_bytes="
+        << job_scheduling_evidence.scratch_summary.high_water_bytes
+        << " job_scheduling_evidence_native_threads_started=0"
+        << " job_scheduling_evidence_thread_pool_started=0"
+        << " job_scheduling_evidence_affinity_policy_applied=0"
+        << " job_scheduling_evidence_numa_policy_applied=0"
+        << " job_scheduling_evidence_simd_dispatch_applied=0"
+        << " job_scheduling_evidence_gpu_async_overlap_applied=0"
         << " ui_overlay_requested=" << (report.native_ui_overlay_requested ? 1 : 0) << " ui_overlay_status="
         << mirakana::win32_desktop_presentation_native_ui_overlay_status_name(report.native_ui_overlay_status)
         << " ui_overlay_ready=" << (report.native_ui_overlay_ready ? 1 : 0)
@@ -2823,6 +2930,9 @@ int main(int argc, char** argv) {
             return 3;
         }
         if (options.require_vulkan_debug_profiling_evidence && !vulkan_debug_profiling_execution.ready) {
+            return 3;
+        }
+        if (options.require_job_scheduling_evidence && !job_scheduling_evidence_ready(job_scheduling_evidence)) {
             return 3;
         }
         if (options.require_d3d12_instanced_draw_evidence && !d3d12_instanced_draw_execution.ready) {

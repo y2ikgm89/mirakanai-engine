@@ -182,6 +182,7 @@ $requiresVulkanGpuMemoryEvidence = @($SmokeArgs) -contains "--require-vulkan-gpu
 $requiresDebugProfilingPolicy = @($SmokeArgs) -contains "--require-debug-profiling-policy"
 $requiresD3d12DebugProfilingEvidence = @($SmokeArgs) -contains "--require-d3d12-debug-profiling-evidence"
 $requiresVulkanDebugProfilingEvidence = @($SmokeArgs) -contains "--require-vulkan-debug-profiling-evidence"
+$requiresJobSchedulingEvidence = @($SmokeArgs) -contains "--require-job-scheduling-evidence"
 if ($requiresD3d12InstancedDrawEvidence -or $requiresVulkanInstancedDrawEvidence) {
     $requiresSceneScalePolicy = $true
 }
@@ -989,6 +990,48 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
         if ($requiresAnyFramegraphMultiqueueEvidence -and
             $smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bmemory_diagnostics_transient_gpu_aliasing_barriers=[1-9]\d*\b") {
             Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive memory diagnostics transient GPU aliasing evidence."
+        }
+    }
+    if ($requiresJobSchedulingEvidence) {
+        $expectedJobSchedulingFields = @{
+            "job_scheduling_evidence_status" = "ready"
+            "job_scheduling_evidence_ready" = "1"
+            "job_scheduling_evidence_diagnostics" = "0"
+            "job_scheduling_evidence_scratch_diagnostics" = "0"
+            "job_scheduling_evidence_topology_rows" = "1"
+            "job_scheduling_evidence_worker_count" = "2"
+            "job_scheduling_evidence_queue_count" = "2"
+            "job_scheduling_evidence_queue_rows" = "2"
+            "job_scheduling_evidence_submitted_jobs" = "3"
+            "job_scheduling_evidence_completed_jobs" = "3"
+            "job_scheduling_evidence_execution_rows" = "3"
+            "job_scheduling_evidence_deterministic_merges" = "3"
+            "job_scheduling_evidence_nondeterministic_merges" = "0"
+            "job_scheduling_evidence_blocked_dependencies" = "0"
+            "job_scheduling_evidence_dependency_cycles" = "0"
+            "job_scheduling_evidence_queue_overflows" = "0"
+            "job_scheduling_evidence_scratch_misuse" = "0"
+            "job_scheduling_evidence_scratch_rows" = "2"
+            "job_scheduling_evidence_native_threads_started" = "0"
+            "job_scheduling_evidence_thread_pool_started" = "0"
+            "job_scheduling_evidence_affinity_policy_applied" = "0"
+            "job_scheduling_evidence_numa_policy_applied" = "0"
+            "job_scheduling_evidence_simd_dispatch_applied" = "0"
+            "job_scheduling_evidence_gpu_async_overlap_applied" = "0"
+        }
+        foreach ($field in $expectedJobSchedulingFields.Keys) {
+            $expectedValue = [regex]::Escape($expectedJobSchedulingFields[$field])
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove job scheduling evidence field: $field=$($expectedJobSchedulingFields[$field])"
+            }
+        }
+        foreach ($field in @(
+                "job_scheduling_evidence_scratch_bytes",
+                "job_scheduling_evidence_scratch_high_water_bytes"
+            )) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove positive job scheduling evidence field: $field"
+            }
         }
     }
     if ($requiresD3d12GpuMemoryEvidence) {
