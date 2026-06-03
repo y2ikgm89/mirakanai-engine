@@ -1,4 +1,5 @@
 add_library(mirakana_renderer
+    src/cloud_layer_policy.cpp
     src/environment_fog_policy.cpp
     src/environment_lighting_policy.cpp
     src/environment_policy.cpp
@@ -30,7 +31,7 @@ target_include_directories(mirakana_renderer
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
-target_link_libraries(mirakana_renderer PUBLIC mirakana_assets mirakana_core mirakana_math mirakana_rhi)
+target_link_libraries(mirakana_renderer PUBLIC mirakana_assets mirakana_core mirakana_environment mirakana_math mirakana_rhi)
 
 mirakana_apply_common_target_options(mirakana_renderer)
 

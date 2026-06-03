@@ -1,4 +1,5 @@
 add_library(mirakana_environment
+    src/cloud_layer.cpp
     src/environment_io.cpp
     src/environment_profile.cpp
 )

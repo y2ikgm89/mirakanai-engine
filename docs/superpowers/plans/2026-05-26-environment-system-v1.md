@@ -609,22 +609,26 @@ Promote to ready only after D3D12 readback or package evidence proves volumetric
 
 **Files:**
 - Create: `engine/environment/include/mirakana/environment/cloud_layer.hpp`
+- Create: `engine/environment/src/cloud_layer.cpp`
 - Create: `engine/renderer/include/mirakana/renderer/cloud_layer_policy.hpp`
 - Create: `engine/renderer/src/cloud_layer_policy.cpp`
 - Create: `shaders/environment/cloud_layer.hlsl`
 - Create: `tests/unit/environment_cloud_tests.cpp`
+- Create: `tests/unit/renderer_cloud_layer_policy_tests.cpp`
 
-- [ ] **Step 1: Add RED cloud layer tests**
+- [x] **Step 1: Add RED cloud layer tests**
 
 Require 2D cloud coverage, opacity, altitude, wind velocity, flow-map asset reference, sky tint response, time-of-day response, and IBL contribution mode diagnostics.
 
-- [ ] **Step 2: Implement cheap cloud layer**
+- [x] **Step 2: Implement cheap cloud layer**
 
 This is the low-cost weather sky path. It should be usable without volumetric clouds and should be the default for lower quality tiers.
 
 - [ ] **Step 3: Package evidence**
 
 Add package status fields only when the selected sample proves the cloud layer path through a render/readback or strict smoke lane.
+
+**2026-06-04 PR12 Task 11 Evidence:** GREEN adds `MK_environment` cloud-layer value validation through `EnvironmentCloudLayerDesc`, `EnvironmentCloudLayerMode`, `EnvironmentCloudIblContributionMode`, `EnvironmentCloudLayerValidationResult`, `validate_environment_cloud_layer`, `is_valid_environment_cloud_layer`, and `has_environment_cloud_layer_diagnostic` for cheap 2D equirectangular sky clouds. `MK_renderer` adds `CloudLayerPolicyDesc`, `CloudLayerPolicyPlan`, texture/visual/IBL/shader-contract/quality rows, stable cloud-map binding `6`, flow-map binding `7`, sampler binding `6`, constants binding `6`, and fail-closed diagnostics for invalid environment rows, unsupported quality tiers, missing shader/package/execution evidence, unsupported texture upload, backend execution, native handles, and volumetric cloud claims. `shaders/environment/cloud_layer.hlsl` and `tests/shaders/environment_cloud_layer.hlsl` add a reviewed LatLong cloud-map + flow-map HLSL contract for the low-cost path. Official context was re-checked for Unity HDRP Cloud Layer as a 2D LatLong texture animated with a flowmap (`https://docs.unity.cn/Packages/com.unity.render-pipelines.high-definition%4016.0/manual/create-simple-clouds-cloud-layer`), Unreal Volumetric Cloud as a separate ray-marched 3D volume material path with quality/performance implications (`https://dev.epicgames.com/documentation/unreal-engine/volumetric-cloud-component-in-unreal-engine?lang=en-US`), and Context7 `/godotengine/godot-docs` ProceduralSkyMaterial `sky_cover` guidance for sky-layer overlays. Focused validation passed for `MK_environment_cloud_tests`, `MK_renderer_cloud_layer_policy_tests`, `tools/check-tidy.ps1 -Files engine/environment/src/cloud_layer.cpp,engine/renderer/src/cloud_layer_policy.cpp,tests/unit/environment_cloud_tests.cpp,tests/unit/renderer_cloud_layer_policy_tests.cpp`, `tools/check-format.ps1`, DXC DXIL vertex/pixel compilation, DXC Vulkan SPIR-V vertex/pixel compilation, and `spirv-val`. This is cloud-layer value planning and shader-contract evidence only; it does not upload textures, execute renderer/RHI backends, add D3D12 readback/package evidence, prove Vulkan runtime execution, prove Metal readiness, claim volumetric clouds, claim rain readiness, claim backend parity, claim broad optimization, or claim broad `environment_ready`.
 
 ## Task 12: Weather And Precipitation
 
