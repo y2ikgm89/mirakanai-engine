@@ -589,19 +589,21 @@ Add a strict Vulkan proof guarded by explicit SPIR-V artifact environment variab
 - Create: `engine/renderer/include/mirakana/renderer/volumetric_fog_policy.hpp`
 - Create: `engine/renderer/src/volumetric_fog_policy.cpp`
 - Create: `shaders/environment/volumetric_fog.hlsl`
-- Create: `tests/unit/renderer_volumetric_fog_tests.cpp`
+- Create: `tests/unit/renderer_volumetric_fog_policy_tests.cpp`
 
-- [ ] **Step 1: Add RED volumetric fog policy tests**
+- [x] **Step 1: Add RED volumetric fog policy tests**
 
 Require froxel grid dimensions, slice count, range, density, albedo, anisotropy, temporal reprojection toggle, history weight, local fog volume rows, and quality tier diagnostics.
 
-- [ ] **Step 2: Implement value planning**
+- [x] **Step 2: Implement value planning**
 
 Add CPU-side policy rows first. The first PR for this task may stop at value planning and validation if GPU execution is too large for one review.
 
 - [ ] **Step 3: Add execution proof**
 
 Promote to ready only after D3D12 readback or package evidence proves volumetric fog output. Vulkan remains strict-gated; Metal remains Apple-host-gated.
+
+**2026-06-04 PR11 Task 10 Evidence:** GREEN adds backend-neutral `VolumetricFogPolicyDesc`, `VolumetricFogFroxelGridDesc`, `VolumetricFogTemporalDesc`, `VolumetricFogLocalVolumeDesc`, `VolumetricFogPolicyPlan`, `plan_volumetric_fog_policy`, `has_volumetric_fog_diagnostic`, stable scene-depth bindings at `2/3`, stable constant binding `5`, froxel grid rows, quality/temporal rows, depth-input rows, local fog volume rows, and fail-closed diagnostics for unsupported quality tiers, invalid froxel grids, invalid range/density/albedo/anisotropy/history-weight values, invalid local volumes, missing scene depth, missing shader-contract evidence, missing execution evidence, unsupported froxel allocation, unsupported backend execution, and native-handle claims. `shaders/environment/volumetric_fog.hlsl` and `tests/shaders/environment_volumetric_fog.hlsl` add a reviewed compute-shader contract source for density, albedo, anisotropy, froxel slice range, temporal history weight, and scene-depth binding metadata. Official context was re-checked for Unreal Volumetric Fog global/local controls, view distance and grid-size/performance controls, and temporal reprojection (`https://dev.epicgames.com/documentation/en-us/unreal-engine/volumetric-fog-in-unreal-engine`), Unity HDRP Volumetric Lighting quality/reprojection guidance (`https://docs.unity.cn/Packages/com.unity.render-pipelines.high-definition%4016.0/manual/Volumetric-Lighting.html`), and Godot Volumetric Fog/FogVolume density, albedo, anisotropy, length, froxel volume size/depth, temporal reprojection, and local volume guidance (`https://docs.godotengine.org/en/stable/tutorials/3d/volumetric_fog.html`). Focused validation passed for `MK_renderer_volumetric_fog_policy_tests`, `tools/check-tidy.ps1 -Files engine/renderer/src/volumetric_fog_policy.cpp,tests/unit/renderer_volumetric_fog_policy_tests.cpp`, `tools/check-format.ps1`, DXC DXIL compute compilation, DXC Vulkan SPIR-V compute compilation, and `spirv-val`. This is volumetric-fog value planning and shader-contract evidence only; it does not allocate froxel volumes, execute renderer/RHI backends, add D3D12 readback/package evidence, prove Vulkan runtime execution, prove Metal readiness, claim cloud/rain readiness, claim backend parity, claim broad optimization, or claim broad `environment_ready`.
 
 ## Task 11: Cloud Layer
 

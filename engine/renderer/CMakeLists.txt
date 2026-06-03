@@ -21,6 +21,7 @@ add_library(mirakana_renderer
     src/shadow_map.cpp
     src/sprite_batch.cpp
     src/tile_chunk_renderer.cpp
+    src/volumetric_fog_policy.cpp
 )
 
 target_include_directories(mirakana_renderer
