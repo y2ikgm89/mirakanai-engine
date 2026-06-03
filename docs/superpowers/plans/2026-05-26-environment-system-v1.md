@@ -680,23 +680,26 @@ Promote `environment_precipitation_status=ready` only after package-visible coun
 - Create: `engine/renderer/include/mirakana/renderer/volumetric_cloud_policy.hpp`
 - Create: `engine/renderer/src/volumetric_cloud_policy.cpp`
 - Create: `shaders/environment/volumetric_clouds.hlsl`
+- Create: `tests/shaders/environment_volumetric_clouds.hlsl`
 - Create: `tests/unit/renderer_volumetric_cloud_tests.cpp`
 
-- [ ] **Step 1: Re-check official cloud sources**
+- [x] **Step 1: Re-check official cloud sources**
 
 Re-check Unreal Volumetric Clouds and Unity HDRP clouds before selecting property names and quality budgets.
 
-- [ ] **Step 2: Add RED cloud policy tests**
+- [x] **Step 2: Add RED cloud policy tests**
 
 Require weather map, coverage, density, shape noise reference, erosion noise reference, altitude range, wind, lighting source count, raymarch primary steps, raymarch light steps, temporal reprojection, and cloud shadow diagnostics.
 
-- [ ] **Step 3: Implement policy rows**
+- [x] **Step 3: Implement policy rows**
 
 Add policy rows that support at most two atmospheric directional lights, matching the sun/moon structure. Reject extra atmospheric lights deterministically.
 
-- [ ] **Step 4: Add storm rows**
+- [x] **Step 4: Add storm rows**
 
 Plan lightning flash intensity, lightning direction, thunder delay, cloud darkening, precipitation boost, wind gusts, and exposure response as value rows. Renderer and audio execution remain separate adapter work within this task's evidence boundary.
+
+**2026-06-04 PR14 Task 13 Evidence:** GREEN adds backend-neutral `VolumetricCloudPolicyDesc`, `VolumetricCloudPolicyPlan`, weather-map/shape-noise/erosion-noise rows, layer rows, lighting rows, raymarch rows, temporal rows, shadow rows, shader-contract rows, quality rows, storm rows, `plan_volumetric_cloud_policy`, `has_volumetric_cloud_diagnostic`, stable weather-map binding `10`, shape-noise binding `11`, erosion-noise binding `12`, sampler binding `10`, and constants binding `8`. The plan supports at most two atmospheric directional light rows, fails closed for invalid first-party asset references, coverage/density/altitude/wind/raymarch/temporal/shadow/storm values, missing shader-contract evidence, missing execution evidence for ready promotion, unsupported volume-texture upload, backend execution, native handles, audio playback, and precipitation execution. `shaders/environment/volumetric_clouds.hlsl` and `tests/shaders/environment_volumetric_clouds.hlsl` add a reviewed HLSL vertex/pixel shader contract for weather-map, shape-noise, erosion-noise, altitude shaping, bounded raymarch, and storm-lighting response. Official context was re-checked for Unreal Volumetric Clouds (`https://dev.epicgames.com/documentation/unreal-engine/volumetric-cloud-component-in-unreal-engine?lang=en-US`), Unity HDRP Volumetric Clouds (`https://docs.unity.cn/Packages/com.unity.render-pipelines.high-definition%4017.0/manual/Override-Volumetric-Clouds.html`), Godot volumetric fog/cloud-adjacent volume controls through Context7, and Microsoft HLSL semantics/resource binding. Focused validation passed for `MK_renderer_volumetric_cloud_tests`, `tools/check-tidy.ps1 -Files engine/renderer/src/volumetric_cloud_policy.cpp,tests/unit/renderer_volumetric_cloud_tests.cpp`, `tools/check-format.ps1`, `tools/check-shader-toolchain.ps1` diagnostic readiness, DXC DXIL vertex/pixel compilation, DXC Vulkan SPIR-V vertex/pixel compilation, and `spirv-val`. This is volumetric-cloud value planning and shader-contract evidence only; it does not upload volume textures, execute renderer/RHI/audio/precipitation backends, add D3D12 readback/package evidence, prove Vulkan runtime execution, prove Metal readiness, claim volumetric-cloud ready counters, claim backend parity, claim broad optimization, or claim broad `environment_ready`.
 
 ## Task 14: Time Of Day And Weather Blending
 
