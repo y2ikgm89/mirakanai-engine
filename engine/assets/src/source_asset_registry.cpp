@@ -27,6 +27,7 @@ constexpr std::string_view scene_source_format = "GameEngine.Scene.v1";
 constexpr std::string_view morph_mesh_cpu_source_format = "GameEngine.MorphMeshCpuSource.v1";
 constexpr std::string_view animation_float_clip_source_format = "GameEngine.AnimationFloatClipSource.v1";
 constexpr std::string_view animation_quaternion_clip_source_format = "GameEngine.AnimationQuaternionClipSource.v1";
+constexpr std::string_view environment_profile_source_format = "GameEngine.EnvironmentProfile.v1";
 
 struct SourceAssetTextDependencyRow {
     bool has_kind{false};
@@ -148,6 +149,8 @@ struct SourceAssetTextRow {
         return "tilemap";
     case AssetKind::physics_collision_scene:
         return "physics_collision_scene";
+    case AssetKind::environment_profile:
+        return "environment_profile";
     case AssetKind::unknown:
         break;
     }
@@ -196,6 +199,9 @@ struct SourceAssetTextRow {
     }
     if (value == "physics_collision_scene") {
         return AssetKind::physics_collision_scene;
+    }
+    if (value == "environment_profile") {
+        return AssetKind::environment_profile;
     }
     return AssetKind::unknown;
 }
@@ -375,6 +381,7 @@ bool is_supported_source_asset_kind_v1(AssetKind kind) noexcept {
     case AssetKind::audio:
     case AssetKind::material:
     case AssetKind::scene:
+    case AssetKind::environment_profile:
         return true;
     case AssetKind::unknown:
     case AssetKind::sprite_animation:
@@ -407,6 +414,8 @@ std::string_view expected_source_asset_format_v1(AssetKind kind) noexcept {
         return material_source_format;
     case AssetKind::scene:
         return scene_source_format;
+    case AssetKind::environment_profile:
+        return environment_profile_source_format;
     case AssetKind::unknown:
     case AssetKind::sprite_animation:
     case AssetKind::skinned_mesh:
@@ -807,6 +816,12 @@ AssetImportMetadataRegistry build_source_asset_import_metadata_registry(const So
                 .mesh_dependencies = std::move(mesh_dependencies),
                 .material_dependencies = std::move(material_dependencies),
                 .sprite_dependencies = std::move(sprite_dependencies),
+            });
+        } else if (row.kind == AssetKind::environment_profile) {
+            registry.add_environment_profile(EnvironmentProfileImportMetadata{
+                .id = id,
+                .source_path = row.source_path,
+                .imported_path = row.imported_path,
             });
         } else {
             throw std::invalid_argument("source asset registry row kind is unsupported for import metadata");

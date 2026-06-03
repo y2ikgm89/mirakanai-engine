@@ -18,7 +18,7 @@
 
 This plan is selected as the active `environment-system-v1` milestone. `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` points to this file, `recommendedNextPlan.id = environment-system-v1`, and `unsupportedProductionGaps = []` remains unchanged.
 
-The 2026-06-03 PR1 foundation implements only the `MK_environment` value contract, validation, CMake/export wiring, public API boundary coverage, and focused tests. It does not claim environment text IO, package rows, scene/runtime binding, render packets, renderer/RHI execution, editor authoring, package counters, Vulkan readiness, Metal readiness, or broad `environment_ready`.
+The 2026-06-03 PR1 foundation implements the `MK_environment` value contract, validation, CMake/export wiring, public API boundary coverage, and focused tests. The PR2 text IO/package-row slice adds deterministic `GameEngine.EnvironmentProfile.v1` text IO, `AssetKind::environment_profile`, source registry/import metadata planning, cooked `GameEngine.CookedEnvironmentProfile.v1` artifacts, and `.geindex` package rows without runtime source parsing. It does not claim scene/runtime binding, render packets, renderer/RHI execution, editor authoring, package counters, Vulkan readiness, Metal readiness, or broad `environment_ready`.
 
 Active execution must keep this as one milestone with reviewable PR slices. Do not change `009-validationRecipes.json`, `014-gameCodeGuidance.json`, package counters, optional OpenEXR/KTX dependency records, or broad environment readiness claims until the corresponding implementation evidence has landed.
 
@@ -300,7 +300,7 @@ Expected: `MK_environment_tests` passes.
 - Modify: `engine/assets/include/mirakana/assets/asset_kind.hpp`
 - Modify: `engine/tools/src/asset_import_plan.cpp`
 
-- [ ] **Step 1: Add RED text IO tests**
+- [x] **Step 1: Add RED text IO tests**
 
 Require deterministic round-trip serialization for `GameEngine.EnvironmentProfile.v1` with stable key ordering:
 
@@ -315,15 +315,15 @@ fog.enabled=false
 precipitation.kind=none
 ```
 
-- [ ] **Step 2: Add package asset kind**
+- [x] **Step 2: Add package asset kind**
 
 Add `AssetKind::environment_profile` and ensure package rows can reference cooked environment profile content without runtime source parsing.
 
-- [ ] **Step 3: Validate malformed documents**
+- [x] **Step 3: Validate malformed documents**
 
 Reject unknown schema names, invalid enums, duplicate keys, non-finite floats, negative precipitation values, and native/backend/editor tokens in authored ids.
 
-- [ ] **Step 4: Focused validation**
+- [x] **Step 4: Focused validation**
 
 Run:
 
@@ -333,6 +333,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 ```
 
 Expected: Focused tests pass.
+
+**2026-06-03 PR2 Evidence:** RED failed on missing `mirakana/environment/environment_io.hpp`; GREEN added deterministic `GameEngine.EnvironmentProfile.v1` serialization/deserialization, enum text conversion, fail-closed malformed document parsing, `AssetKind::environment_profile`, source registry/import metadata planning, cooked `GameEngine.CookedEnvironmentProfile.v1` artifact emission, package assembly/index rows, and runtime-scene diagnostic kind labels. Focused evidence passed: `tools/cmake.ps1 --build --preset dev --target MK_environment_tests MK_assets_tests MK_tools_tests`, `tools/ctest.ps1 --preset dev --output-on-failure -R "^(MK_environment_tests|MK_assets_tests|MK_tools_tests)$"`, `tools/check-public-api-boundaries.ps1`, `tools/check-format.ps1`, and targeted `tools/check-tidy.ps1 -Files ...` for 14 changed C++ files. The broader `ctest -R "environment|asset|tools"` pattern is intentionally too broad on this worktree unless all matching test executables are built first; the exact three-target focused CTest lane is the Task 3 evidence.
 
 ## Task 4: Scene Environment Binding
 

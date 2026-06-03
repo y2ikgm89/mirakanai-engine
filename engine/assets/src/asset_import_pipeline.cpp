@@ -27,6 +27,7 @@ namespace {
     case AssetImportActionKind::material:
     case AssetImportActionKind::scene:
     case AssetImportActionKind::audio:
+    case AssetImportActionKind::environment_profile:
         return true;
     case AssetImportActionKind::unknown:
         break;
@@ -273,6 +274,21 @@ AssetImportPlan build_asset_import_plan(const AssetImportMetadataRegistry& impor
         };
         if (!is_valid_asset_import_action(action)) {
             throw std::invalid_argument("scene import action is invalid");
+        }
+        plan.actions.push_back(std::move(action));
+    }
+
+    const auto environment_profiles = imports.environment_profile_records();
+    for (const auto& environment_profile : environment_profiles) {
+        AssetImportAction action{
+            .id = environment_profile.id,
+            .kind = AssetImportActionKind::environment_profile,
+            .source_path = environment_profile.source_path,
+            .output_path = environment_profile.imported_path,
+            .dependencies = {},
+        };
+        if (!is_valid_asset_import_action(action)) {
+            throw std::invalid_argument("environment profile import action is invalid");
         }
         plan.actions.push_back(std::move(action));
     }

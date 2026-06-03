@@ -142,6 +142,8 @@ struct AssetIdentityTextRow {
         return "tilemap";
     case AssetKind::physics_collision_scene:
         return "physics_collision_scene";
+    case AssetKind::environment_profile:
+        return "environment_profile";
     case AssetKind::unknown:
         break;
     }
@@ -193,6 +195,9 @@ struct AssetIdentityTextRow {
     }
     if (value == "physics_collision_scene") {
         return AssetKind::physics_collision_scene;
+    }
+    if (value == "environment_profile") {
+        return AssetKind::environment_profile;
     }
     return AssetKind::unknown;
 }

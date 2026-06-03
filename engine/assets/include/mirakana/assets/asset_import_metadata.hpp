@@ -76,6 +76,12 @@ struct SceneImportMetadata {
     std::vector<AssetId> sprite_dependencies;
 };
 
+struct EnvironmentProfileImportMetadata {
+    AssetId id;
+    std::string source_path;
+    std::string imported_path;
+};
+
 [[nodiscard]] bool is_valid_texture_import_metadata(const TextureImportMetadata& metadata) noexcept;
 [[nodiscard]] bool is_valid_mesh_import_metadata(const MeshImportMetadata& metadata) noexcept;
 [[nodiscard]] bool is_valid_morph_mesh_cpu_import_metadata(const MorphMeshCpuImportMetadata& metadata) noexcept;
@@ -86,6 +92,8 @@ is_valid_animation_quaternion_clip_import_metadata(const AnimationQuaternionClip
 [[nodiscard]] bool is_valid_material_import_metadata(const MaterialImportMetadata& metadata) noexcept;
 [[nodiscard]] bool is_valid_audio_import_metadata(const AudioImportMetadata& metadata) noexcept;
 [[nodiscard]] bool is_valid_scene_import_metadata(const SceneImportMetadata& metadata) noexcept;
+[[nodiscard]] bool
+is_valid_environment_profile_import_metadata(const EnvironmentProfileImportMetadata& metadata) noexcept;
 
 class AssetImportMetadataRegistry {
   public:
@@ -97,6 +105,7 @@ class AssetImportMetadataRegistry {
     bool try_add_material(MaterialImportMetadata metadata);
     bool try_add_audio(AudioImportMetadata metadata);
     bool try_add_scene(SceneImportMetadata metadata);
+    bool try_add_environment_profile(EnvironmentProfileImportMetadata metadata);
 
     void add_texture(TextureImportMetadata metadata);
     void add_mesh(MeshImportMetadata metadata);
@@ -106,6 +115,7 @@ class AssetImportMetadataRegistry {
     void add_material(MaterialImportMetadata metadata);
     void add_audio(AudioImportMetadata metadata);
     void add_scene(SceneImportMetadata metadata);
+    void add_environment_profile(EnvironmentProfileImportMetadata metadata);
 
     [[nodiscard]] const TextureImportMetadata* find_texture(AssetId id) const noexcept;
     [[nodiscard]] const MeshImportMetadata* find_mesh(AssetId id) const noexcept;
@@ -116,6 +126,7 @@ class AssetImportMetadataRegistry {
     [[nodiscard]] const MaterialImportMetadata* find_material(AssetId id) const noexcept;
     [[nodiscard]] const AudioImportMetadata* find_audio(AssetId id) const noexcept;
     [[nodiscard]] const SceneImportMetadata* find_scene(AssetId id) const noexcept;
+    [[nodiscard]] const EnvironmentProfileImportMetadata* find_environment_profile(AssetId id) const noexcept;
 
     [[nodiscard]] std::size_t texture_count() const noexcept;
     [[nodiscard]] std::size_t mesh_count() const noexcept;
@@ -125,6 +136,7 @@ class AssetImportMetadataRegistry {
     [[nodiscard]] std::size_t material_count() const noexcept;
     [[nodiscard]] std::size_t audio_count() const noexcept;
     [[nodiscard]] std::size_t scene_count() const noexcept;
+    [[nodiscard]] std::size_t environment_profile_count() const noexcept;
 
     [[nodiscard]] std::vector<TextureImportMetadata> texture_records() const;
     [[nodiscard]] std::vector<MeshImportMetadata> mesh_records() const;
@@ -134,6 +146,7 @@ class AssetImportMetadataRegistry {
     [[nodiscard]] std::vector<MaterialImportMetadata> material_records() const;
     [[nodiscard]] std::vector<AudioImportMetadata> audio_records() const;
     [[nodiscard]] std::vector<SceneImportMetadata> scene_records() const;
+    [[nodiscard]] std::vector<EnvironmentProfileImportMetadata> environment_profile_records() const;
 
   private:
     std::unordered_map<AssetId, TextureImportMetadata, AssetIdHash> textures_;
@@ -144,6 +157,7 @@ class AssetImportMetadataRegistry {
     std::unordered_map<AssetId, MaterialImportMetadata, AssetIdHash> materials_;
     std::unordered_map<AssetId, AudioImportMetadata, AssetIdHash> audio_;
     std::unordered_map<AssetId, SceneImportMetadata, AssetIdHash> scenes_;
+    std::unordered_map<AssetId, EnvironmentProfileImportMetadata, AssetIdHash> environment_profiles_;
 };
 
 } // namespace mirakana

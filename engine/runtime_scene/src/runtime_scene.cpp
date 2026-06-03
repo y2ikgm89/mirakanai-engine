@@ -45,6 +45,8 @@ namespace {
         return "tilemap";
     case AssetKind::physics_collision_scene:
         return "physics_collision_scene";
+    case AssetKind::environment_profile:
+        return "environment_profile";
     }
     return "unknown";
 }

@@ -2712,6 +2712,39 @@ MK_TEST("asset import executor writes cooked artifacts through filesystem") {
     MK_REQUIRE(fs.read_text("assets/scenes/level.scene").find("scene.name=Level\n") != std::string::npos);
 }
 
+MK_TEST("asset import executor cooks environment profile artifacts") {
+    mirakana::MemoryFileSystem fs;
+    const auto environment_id = mirakana::AssetId::from_name("environment/default_outdoor");
+    fs.write_text("source/environment/default_outdoor.environment", "format=GameEngine.EnvironmentProfile.v1\n"
+                                                                    "id=default_outdoor\n"
+                                                                    "sky.model=physical_atmosphere\n"
+                                                                    "weather.kind=clear\n"
+                                                                    "sun.direction=0,-1,0\n"
+                                                                    "sun.illuminance_lux=100000\n"
+                                                                    "fog.enabled=false\n"
+                                                                    "precipitation.kind=none\n");
+
+    mirakana::AssetImportPlan plan;
+    plan.actions.push_back(mirakana::AssetImportAction{
+        .id = environment_id,
+        .kind = mirakana::AssetImportActionKind::environment_profile,
+        .source_path = "source/environment/default_outdoor.environment",
+        .output_path = "runtime/environment/default_outdoor.environment",
+        .dependencies = {},
+    });
+
+    const auto result = mirakana::execute_asset_import_plan(fs, plan);
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.imported.size() == 1U);
+    const auto cooked = fs.read_text("runtime/environment/default_outdoor.environment");
+    MK_REQUIRE(cooked.find("format=GameEngine.CookedEnvironmentProfile.v1\n") == 0U);
+    MK_REQUIRE(cooked.find("asset.kind=environment_profile\n") != std::string::npos);
+    MK_REQUIRE(cooked.find("environment.source_format=GameEngine.EnvironmentProfile.v1\n") != std::string::npos);
+    MK_REQUIRE(cooked.find("profile.id=default_outdoor\n") != std::string::npos);
+    MK_REQUIRE(cooked.find("profile.precipitation.kind=none\n") != std::string::npos);
+}
+
 MK_TEST("tilemap tooling authors deterministic package data and tilemap_texture rows") {
     const auto desc = make_cooked_tilemap_authoring_desc();
     const auto expected = expected_cooked_tilemap_metadata();

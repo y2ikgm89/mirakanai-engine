@@ -92,6 +92,10 @@ bool is_valid_scene_import_metadata(const SceneImportMetadata& metadata) noexcep
            valid_dependency_list(metadata.sprite_dependencies);
 }
 
+bool is_valid_environment_profile_import_metadata(const EnvironmentProfileImportMetadata& metadata) noexcept {
+    return metadata.id.value != 0 && valid_token(metadata.source_path) && valid_token(metadata.imported_path);
+}
+
 bool AssetImportMetadataRegistry::try_add_texture(TextureImportMetadata metadata) {
     if (!is_valid_texture_import_metadata(metadata)) {
         return false;
@@ -156,6 +160,14 @@ bool AssetImportMetadataRegistry::try_add_scene(SceneImportMetadata metadata) {
     return inserted;
 }
 
+bool AssetImportMetadataRegistry::try_add_environment_profile(EnvironmentProfileImportMetadata metadata) {
+    if (!is_valid_environment_profile_import_metadata(metadata)) {
+        return false;
+    }
+    auto [_, inserted] = environment_profiles_.emplace(metadata.id, std::move(metadata));
+    return inserted;
+}
+
 void AssetImportMetadataRegistry::add_texture(TextureImportMetadata metadata) {
     if (!try_add_texture(std::move(metadata))) {
         throw std::logic_error("texture import metadata could not be added");
@@ -204,6 +216,12 @@ void AssetImportMetadataRegistry::add_scene(SceneImportMetadata metadata) {
     }
 }
 
+void AssetImportMetadataRegistry::add_environment_profile(EnvironmentProfileImportMetadata metadata) {
+    if (!try_add_environment_profile(std::move(metadata))) {
+        throw std::logic_error("environment profile import metadata could not be added");
+    }
+}
+
 const TextureImportMetadata* AssetImportMetadataRegistry::find_texture(AssetId id) const noexcept {
     const auto it = textures_.find(id);
     return it == textures_.end() ? nullptr : &it->second;
@@ -246,6 +264,12 @@ const SceneImportMetadata* AssetImportMetadataRegistry::find_scene(AssetId id) c
     return it == scenes_.end() ? nullptr : &it->second;
 }
 
+const EnvironmentProfileImportMetadata*
+AssetImportMetadataRegistry::find_environment_profile(AssetId id) const noexcept {
+    const auto it = environment_profiles_.find(id);
+    return it == environment_profiles_.end() ? nullptr : &it->second;
+}
+
 std::size_t AssetImportMetadataRegistry::texture_count() const noexcept {
     return textures_.size();
 }
@@ -276,6 +300,10 @@ std::size_t AssetImportMetadataRegistry::audio_count() const noexcept {
 
 std::size_t AssetImportMetadataRegistry::scene_count() const noexcept {
     return scenes_.size();
+}
+
+std::size_t AssetImportMetadataRegistry::environment_profile_count() const noexcept {
+    return environment_profiles_.size();
 }
 
 std::vector<TextureImportMetadata> AssetImportMetadataRegistry::texture_records() const {
@@ -309,6 +337,10 @@ std::vector<AudioImportMetadata> AssetImportMetadataRegistry::audio_records() co
 
 std::vector<SceneImportMetadata> AssetImportMetadataRegistry::scene_records() const {
     return sorted_records(scenes_);
+}
+
+std::vector<EnvironmentProfileImportMetadata> AssetImportMetadataRegistry::environment_profile_records() const {
+    return sorted_records(environment_profiles_);
 }
 
 } // namespace mirakana

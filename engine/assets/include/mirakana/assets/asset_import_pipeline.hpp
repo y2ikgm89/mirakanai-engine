@@ -22,7 +22,8 @@ enum class AssetImportActionKind : std::uint8_t {
     animation_quaternion_clip,
     material,
     scene,
-    audio
+    audio,
+    environment_profile
 };
 
 struct AssetImportAction {
