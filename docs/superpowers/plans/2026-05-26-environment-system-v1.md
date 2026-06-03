@@ -4,7 +4,7 @@
 
 **Plan ID:** `environment-system-v1`
 
-**Status:** Proposed / `production-candidate`, not `currentActivePlan`.
+**Status:** Active.
 
 **Goal:** Add a first-class MIRAIKANAI Environment System for sky, sun, moon, ambient lighting, reflections, fog, clouds, rain, snow, storms, time-of-day, weather presets, and quality tiers without preserving backward compatibility.
 
@@ -16,11 +16,11 @@
 
 ## Status
 
-This is a proposed implementation plan only. It is registered as the `environment-system-v1` production candidate, but it is not selected as the active plan while `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` remains the production-completion master plan and `recommendedNextPlan.id = next-production-gap-selection`.
+This plan is selected as the active `environment-system-v1` milestone. `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` points to this file, `recommendedNextPlan.id = environment-system-v1`, and `unsupportedProductionGaps = []` remains unchanged.
 
-The 2026-06-03 plan review updates documentation pointers only. No engine implementation, CMake edits, manifest edits, validation recipe changes, or ready capability claims have been performed by creating or reviewing this plan.
+The 2026-06-03 PR1 foundation implements only the `MK_environment` value contract, validation, CMake/export wiring, public API boundary coverage, and focused tests. It does not claim environment text IO, package rows, scene/runtime binding, render packets, renderer/RHI execution, editor authoring, package counters, Vulkan readiness, Metal readiness, or broad `environment_ready`.
 
-If this plan is promoted, promote it as an active milestone rather than as many small child plans. In that same governance change, update the plan registry, roadmap, `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`, compose `engine/agent/manifest.json`, and extend static checks for the selected `recommendedNextPlan` value. Do not change `009-validationRecipes.json`, `014-gameCodeGuidance.json`, package counters, or broad environment readiness claims until the corresponding implementation evidence has landed.
+Active execution must keep this as one milestone with reviewable PR slices. Do not change `009-validationRecipes.json`, `014-gameCodeGuidance.json`, package counters, optional OpenEXR/KTX dependency records, or broad environment readiness claims until the corresponding implementation evidence has landed.
 
 ## 2026-06-03 Project Alignment Review
 
@@ -214,11 +214,11 @@ Each counter must be tied to a validation recipe and exact implementation eviden
 **Files:**
 - Create: `docs/specs/2026-05-26-environment-system-v1-design.md`
 
-- [ ] **Step 1: Write the design record**
+- [x] **Step 1: Write the design record**
 
 Create a design record that summarizes the official source baseline, clean-break policy, module boundaries, public API family, and feature phase order from this plan. Include the source URLs listed above and explicitly state that no broad readiness claim exists before validation evidence lands.
 
-- [ ] **Step 2: Review against current engine boundaries**
+- [x] **Step 2: Review against current engine boundaries**
 
 Check the design against:
 
@@ -228,7 +228,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1 -ContextPr
 
 Expected: The output confirms `MK_scene`, `MK_scene_renderer`, `MK_renderer`, `MK_rhi`, and `MK_runtime_host_win32_presentation` are the correct integration boundaries.
 
-- [ ] **Step 3: Drift check**
+- [x] **Step 3: Drift check**
 
 Run:
 
@@ -238,6 +238,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1
 
 Expected: PASS, or only pre-existing unrelated text-format issues are reported with exact paths.
 
+**2026-06-03 Task 1 Evidence:** Added `docs/specs/2026-05-26-environment-system-v1-design.md`; compose-backed `tools/agent-context.ps1 -ContextProfile Minimal` confirmed `currentActivePlan = docs/superpowers/plans/2026-05-26-environment-system-v1.md`, `recommendedNextPlan.id = environment-system-v1`, `MK_environment` depends only on `MK_math`, and the integration boundaries remain `MK_scene`, `MK_scene_renderer`, `MK_renderer`, `MK_rhi`, and `MK_runtime_host_win32_presentation`. `tools/check-text-format.ps1` passed.
+
 ## Task 2: `MK_environment` Contract Foundation
 
 **Files:**
@@ -246,9 +248,9 @@ Expected: PASS, or only pre-existing unrelated text-format issues are reported w
 - Create: `engine/environment/CMakeLists.txt`
 - Modify: root `CMakeLists.txt`
 - Create: `tests/unit/environment_tests.cpp`
-- Modify: `tests/unit/CMakeLists.txt`
+- Modify: root `CMakeLists.txt` test target list
 
-- [ ] **Step 1: Add RED tests for validation**
+- [x] **Step 1: Add RED tests for validation**
 
 Add tests that require:
 
@@ -260,7 +262,7 @@ Add tests that require:
 - invalid rain/snow intensity fails;
 - native/backend/editor token strings in profile ids fail.
 
-- [ ] **Step 2: Add the public contract**
+- [x] **Step 2: Add the public contract**
 
 Implement the clean value types shown in the "Public Contract Shape" section, plus:
 
@@ -275,7 +277,7 @@ validate_environment_profile(const EnvironmentProfileDesc& desc);
 [[nodiscard]] bool is_valid_environment_profile(const EnvironmentProfileDesc& desc) noexcept;
 ```
 
-- [ ] **Step 3: Build and test the focused target**
+- [x] **Step 3: Build and test the focused target**
 
 Run:
 
@@ -286,6 +288,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 ```
 
 Expected: `MK_environment_tests` passes.
+
+**2026-06-03 PR1 Evidence:** RED failed on missing `mirakana/environment/environment_profile.hpp`; GREEN added `MK_environment` and validation APIs. Focused evidence passed: `tools/cmake.ps1 --preset dev`, `tools/cmake.ps1 --build --preset dev --target MK_environment_tests`, `tools/ctest.ps1 --preset dev --output-on-failure -R MK_environment_tests`, `tools/check-public-api-boundaries.ps1`, `tools/check-format.ps1`, and `tools/check-tidy.ps1 -Files engine/environment/src/environment_profile.cpp,tests/unit/environment_tests.cpp`.
 
 ## Task 3: Environment Text IO And Package Rows
 

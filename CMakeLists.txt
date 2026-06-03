@@ -143,6 +143,7 @@ endmacro()
 # rhi -> runtime_rhi -> renderer -> runtime_host -> ui_renderer -> scene -> runtime_scene -> scene_renderer -> runtime_scene_rhi -> editor
 add_subdirectory(engine/math)
 add_subdirectory(engine/core)
+add_subdirectory(engine/environment)
 add_subdirectory(engine/ai)
 add_subdirectory(engine/ui)
 add_subdirectory(engine/assets)
@@ -815,6 +816,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_renderer_quality_matrix_tests)
     add_test(NAME MK_renderer_quality_matrix_tests COMMAND MK_renderer_quality_matrix_tests)
 
+    add_executable(MK_environment_tests
+        tests/unit/environment_tests.cpp
+    )
+    target_link_libraries(MK_environment_tests PRIVATE MK_environment)
+    target_include_directories(MK_environment_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_environment_tests)
+    add_test(NAME MK_environment_tests COMMAND MK_environment_tests)
+
     add_executable(MK_runtime_host_tests
         tests/unit/runtime_host_tests.cpp
     )
@@ -1011,6 +1020,7 @@ MK_set_export_name(MK_ai ai)
 MK_set_export_name(MK_assets assets)
 MK_set_export_name(MK_audio audio)
 MK_set_export_name(MK_core core)
+MK_set_export_name(MK_environment environment)
 MK_set_export_name(MK_math math)
 MK_set_export_name(MK_navigation navigation)
 MK_set_export_name(MK_runtime_network_enet runtime_network_enet)
@@ -1044,6 +1054,7 @@ set(MK_LIBRARY_TARGETS
     mirakana_assets
     MK_audio
     mirakana_core
+    mirakana_environment
     mirakana_math
     mirakana_navigation
     mirakana_physics
@@ -1321,6 +1332,7 @@ install(DIRECTORY
     engine/assets/include/
     engine/audio/include/
     engine/core/include/
+    engine/environment/include/
     engine/math/include/
     engine/navigation/include/
     engine/physics/include/

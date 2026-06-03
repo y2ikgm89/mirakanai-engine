@@ -9,6 +9,7 @@ $root = Get-RepoRoot
 
 $publicRoots = @(
     "engine/core/include",
+    "engine/environment/include",
     "engine/math/include",
     "engine/platform/include",
     "engine/runtime/include",
@@ -122,6 +123,11 @@ $moduleBoundaryRules = @(
         Root = "engine/ui/include"
         Pattern = '#\s*include\s*[<"]mirakana/(?:renderer|rhi|platform|runtime|runtime_host|scene_renderer|ui_renderer|tools|editor)/'
         Label = "mirakana_ui public API depending on renderer/RHI/platform/runtime/tools/editor modules"
+    },
+    @{
+        Root = "engine/environment/include"
+        Pattern = '#\s*include\s*[<"]mirakana/(?:assets|scene|renderer|rhi|platform|runtime|runtime_host|scene_renderer|ui|ui_renderer|tools|editor)/'
+        Label = "mirakana_environment public API depending on assets/scene/renderer/RHI/platform/runtime/UI/tools/editor modules"
     }
 )
 
