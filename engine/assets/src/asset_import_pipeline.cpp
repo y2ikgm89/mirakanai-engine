@@ -103,6 +103,12 @@ void add_scene_dependency_edges(AssetImportPlan& plan, std::vector<AssetId>& act
                 throw std::invalid_argument("scene import references an unknown sprite texture dependency");
             }
             dependency_path = texture->imported_path;
+        } else if (kind == AssetDependencyKind::scene_environment_profile) {
+            const auto* environment_profile = imports.find_environment_profile(dependency);
+            if (environment_profile == nullptr) {
+                throw std::invalid_argument("scene import references an unknown environment profile dependency");
+            }
+            dependency_path = environment_profile->imported_path;
         } else {
             throw std::invalid_argument("scene import dependency kind is invalid");
         }
@@ -263,6 +269,8 @@ AssetImportPlan build_asset_import_plan(const AssetImportMetadataRegistry& impor
                                    AssetDependencyKind::scene_material, imports);
         add_scene_dependency_edges(plan, dependencies, scene.id, scene.sprite_dependencies,
                                    AssetDependencyKind::scene_sprite, imports);
+        add_scene_dependency_edges(plan, dependencies, scene.id, scene.environment_profile_dependencies,
+                                   AssetDependencyKind::scene_environment_profile, imports);
         sort_asset_ids(dependencies);
 
         AssetImportAction action{

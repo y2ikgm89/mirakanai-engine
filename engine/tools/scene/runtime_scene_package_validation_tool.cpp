@@ -248,6 +248,8 @@ void validate_request_shape(std::vector<RuntimeScenePackageValidationDiagnostic>
         return "material";
     case runtime_scene::RuntimeSceneReferenceKind::sprite:
         return "sprite";
+    case runtime_scene::RuntimeSceneReferenceKind::environment_profile:
+        return "environment_profile";
     }
     return "reference";
 }
@@ -262,6 +264,8 @@ void validate_request_shape(std::vector<RuntimeScenePackageValidationDiagnostic>
         return "wrong_asset_kind";
     case runtime_scene::RuntimeSceneDiagnosticCode::malformed_scene_payload:
         return "malformed_scene_payload";
+    case runtime_scene::RuntimeSceneDiagnosticCode::missing_environment_profile:
+        return "missing_environment_profile";
     case runtime_scene::RuntimeSceneDiagnosticCode::missing_referenced_asset:
         return "missing_referenced_asset";
     case runtime_scene::RuntimeSceneDiagnosticCode::referenced_asset_kind_mismatch:

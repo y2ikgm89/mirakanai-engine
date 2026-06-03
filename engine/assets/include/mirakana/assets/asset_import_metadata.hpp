@@ -74,6 +74,7 @@ struct SceneImportMetadata {
     std::vector<AssetId> mesh_dependencies;
     std::vector<AssetId> material_dependencies;
     std::vector<AssetId> sprite_dependencies;
+    std::vector<AssetId> environment_profile_dependencies;
 };
 
 struct EnvironmentProfileImportMetadata {

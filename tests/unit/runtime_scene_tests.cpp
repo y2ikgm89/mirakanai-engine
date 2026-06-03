@@ -60,6 +60,12 @@ namespace {
     return scene;
 }
 
+[[nodiscard]] mirakana::Scene make_environment_scene(mirakana::AssetId environment) {
+    mirakana::Scene scene("WeatherLevel");
+    scene.set_environment(mirakana::SceneEnvironmentReference{.profile = environment, .required = true});
+    return scene;
+}
+
 [[nodiscard]] mirakana::AssetId asset_id_from_test_key(std::string_view key) {
     return mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{.value = std::string{key}});
 }
@@ -303,6 +309,77 @@ MK_TEST("runtime scene instantiates cooked scene payloads and records component 
     MK_REQUIRE(result.instance->references[3].kind == mirakana::runtime_scene::RuntimeSceneReferenceKind::material);
 }
 
+MK_TEST("runtime scene validates environment profile references") {
+    const auto scene_asset = mirakana::AssetId::from_name("scenes/weather");
+    const auto environment = mirakana::AssetId::from_name("environment/default_outdoor");
+    const auto package = make_scene_package(
+        scene_asset, make_environment_scene(environment),
+        {
+            make_record(mirakana::runtime::RuntimeAssetHandle{1}, environment, mirakana::AssetKind::environment_profile,
+                        "assets/environment/default_outdoor.geenv", "format=GameEngine.CookedEnvironmentProfile.v1\n"),
+        });
+
+    const auto result = mirakana::runtime_scene::instantiate_runtime_scene(
+        package, scene_asset,
+        mirakana::runtime_scene::RuntimeSceneLoadOptions{.validate_asset_references = true,
+                                                         .require_unique_node_names = false,
+                                                         .require_environment_profile = true});
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.instance.has_value());
+    MK_REQUIRE(result.instance->scene.environment().has_value());
+    MK_REQUIRE(result.instance->references.size() == 1);
+    MK_REQUIRE(result.instance->references[0].node == mirakana::null_scene_node);
+    MK_REQUIRE(result.instance->references[0].kind ==
+               mirakana::runtime_scene::RuntimeSceneReferenceKind::environment_profile);
+    MK_REQUIRE(result.instance->references[0].asset == environment);
+    MK_REQUIRE(result.instance->references[0].expected_kind == mirakana::AssetKind::environment_profile);
+}
+
+MK_TEST("runtime scene reports missing required environment profiles without implicit defaults") {
+    const auto scene_asset = mirakana::AssetId::from_name("scenes/no_environment");
+    const auto package = make_scene_package(scene_asset, mirakana::Scene("NoEnvironment"), {});
+
+    const auto result = mirakana::runtime_scene::instantiate_runtime_scene(
+        package, scene_asset,
+        mirakana::runtime_scene::RuntimeSceneLoadOptions{.validate_asset_references = true,
+                                                         .require_unique_node_names = false,
+                                                         .require_environment_profile = true});
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.instance.has_value());
+    MK_REQUIRE(result.instance->references.empty());
+    MK_REQUIRE(result.diagnostics.size() == 1);
+    MK_REQUIRE(result.diagnostics[0].code ==
+               mirakana::runtime_scene::RuntimeSceneDiagnosticCode::missing_environment_profile);
+    MK_REQUIRE(result.diagnostics[0].reference_kind ==
+               mirakana::runtime_scene::RuntimeSceneReferenceKind::environment_profile);
+    MK_REQUIRE(result.diagnostics[0].expected_kind == mirakana::AssetKind::environment_profile);
+}
+
+MK_TEST("runtime scene reports environment profile kind mismatches") {
+    const auto scene_asset = mirakana::AssetId::from_name("scenes/wrong_environment");
+    const auto environment = mirakana::AssetId::from_name("environment/not_a_profile");
+    const auto package = make_scene_package(
+        scene_asset, make_environment_scene(environment),
+        {
+            make_record(mirakana::runtime::RuntimeAssetHandle{1}, environment, mirakana::AssetKind::material,
+                        "assets/materials/not_a_profile.material", "material"),
+        });
+
+    const auto result = mirakana::runtime_scene::instantiate_runtime_scene(package, scene_asset);
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.instance.has_value());
+    MK_REQUIRE(result.diagnostics.size() == 1);
+    MK_REQUIRE(result.diagnostics[0].code ==
+               mirakana::runtime_scene::RuntimeSceneDiagnosticCode::referenced_asset_kind_mismatch);
+    MK_REQUIRE(result.diagnostics[0].reference_kind ==
+               mirakana::runtime_scene::RuntimeSceneReferenceKind::environment_profile);
+    MK_REQUIRE(result.diagnostics[0].expected_kind == mirakana::AssetKind::environment_profile);
+    MK_REQUIRE(result.diagnostics[0].actual_kind == mirakana::AssetKind::material);
+}
+
 MK_TEST("runtime scene audits asset identity keys for component references") {
     const auto mesh = asset_id_from_test_key("meshes/player");
     const auto material = asset_id_from_test_key("materials/player");
@@ -351,6 +428,29 @@ MK_TEST("runtime scene audits asset identity keys for component references") {
         find_identity_reference(audit, "scene.component.sprite_renderer.material", mirakana::SceneNodeId{2});
     MK_REQUIRE(sprite_material_row != nullptr);
     MK_REQUIRE(sprite_material_row->asset == material);
+}
+
+MK_TEST("runtime scene asset identity audit records environment profile references") {
+    const auto environment = asset_id_from_test_key("environment/default_outdoor");
+    const auto source_scene = make_environment_scene(environment);
+    const mirakana::AssetIdentityDocumentV2 identities{.assets = {
+                                                           {.key = {.value = "environment/default_outdoor"},
+                                                            .kind = mirakana::AssetKind::environment_profile,
+                                                            .source_path = "source/environment/default_outdoor.geenv"},
+                                                       }};
+
+    const auto audit = mirakana::runtime_scene::audit_runtime_scene_asset_identity(source_scene, identities);
+
+    MK_REQUIRE(audit.diagnostics.empty());
+    MK_REQUIRE(audit.references.size() == 1);
+    const auto* environment_row =
+        find_identity_reference(audit, "scene.environment.profile", mirakana::null_scene_node);
+    MK_REQUIRE(environment_row != nullptr);
+    MK_REQUIRE(environment_row->asset == environment);
+    MK_REQUIRE(environment_row->key.value == "environment/default_outdoor");
+    MK_REQUIRE(environment_row->expected_kind == mirakana::AssetKind::environment_profile);
+    MK_REQUIRE(environment_row->actual_kind == mirakana::AssetKind::environment_profile);
+    MK_REQUIRE(environment_row->source_path == "source/environment/default_outdoor.geenv");
 }
 
 MK_TEST("runtime scene asset identity audit reports missing and wrong-kind rows") {

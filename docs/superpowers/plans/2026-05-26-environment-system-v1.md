@@ -345,13 +345,16 @@ Expected: Focused tests pass.
 - Modify: `engine/scene/src/render_packet.cpp`
 - Modify: `engine/runtime_scene/include/mirakana/runtime_scene/runtime_scene.hpp`
 - Modify: `engine/runtime_scene/src/runtime_scene.cpp`
-- Create: `tests/unit/scene_environment_tests.cpp`
+- Modify: `tests/unit/core_tests.cpp`
+- Modify: `tests/unit/scene_schema_v2_tests.cpp`
+- Modify: `tests/unit/runtime_scene_tests.cpp`
+- Modify: `tests/unit/tools_tests.cpp`
 
-- [ ] **Step 1: Add RED scene binding tests**
+- [x] **Step 1: Add RED scene binding tests**
 
 Require authored scenes to carry exactly one selected environment profile reference when a runtime environment is requested. Missing profile references should be diagnostics, not implicit defaults.
 
-- [ ] **Step 2: Add scene reference rows**
+- [x] **Step 2: Add scene reference rows**
 
 Add scene rows equivalent to:
 
@@ -360,20 +363,22 @@ environment.profile=environment/default_outdoor.environment
 environment.required=true
 ```
 
-- [ ] **Step 3: Keep `LightComponent` clean**
+- [x] **Step 3: Keep `LightComponent` clean**
 
 Do not add sky, weather, cloud, rain, or atmosphere fields to `LightComponent`. Scene lights remain physical scene lights; environment sun/moon lives in `MK_environment`.
 
-- [ ] **Step 4: Focused validation**
+- [x] **Step 4: Focused validation**
 
 Run:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_scene_tests MK_runtime_scene_tests
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "scene_environment|runtime_scene"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_assets_tests MK_core_tests MK_scene_schema_v2_tests MK_runtime_scene_tests MK_tools_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "^(MK_assets_tests|MK_core_tests|MK_scene_schema_v2_tests|MK_runtime_scene_tests|MK_tools_tests)$"
 ```
 
 Expected: Scene and runtime scene tests pass.
+
+**2026-06-03 PR3 Evidence:** RED failed on missing `SceneEnvironmentReference`, `Scene::set_environment`, `Scene::environment`, and `SceneRenderPacket::environment`; GREEN added scene-level environment profile references in `Scene`, deterministic `GameEngine.Scene.v1` and `GameEngine.Scene.v2` serialization/deserialization rows, render packet propagation, runtime scene `environment_profile` reference validation, missing-required-environment diagnostics, asset identity audit rows, source registry/import metadata `scene_environment_profile` dependencies, scene package dependency validation, and Scene v2 runtime package migration projection. `LightComponent` remains free of sky/weather/cloud/rain/atmosphere fields. Focused evidence passed: `tools/cmake.ps1 --build --preset dev --target MK_assets_tests MK_core_tests MK_scene_schema_v2_tests MK_runtime_scene_tests MK_tools_tests`, `tools/ctest.ps1 --preset dev --output-on-failure -R "^(MK_assets_tests|MK_core_tests|MK_scene_schema_v2_tests|MK_runtime_scene_tests|MK_tools_tests)$"`, targeted `tools/check-tidy.ps1 -Files ...`, `tools/check-public-api-boundaries.ps1`, `tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, and full `tools/validate.ps1` with 86/86 tests passed.
 
 ## Task 5: Environment Render Packet Planning
 
