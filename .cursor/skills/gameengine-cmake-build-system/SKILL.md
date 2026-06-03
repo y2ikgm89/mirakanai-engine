@@ -23,3 +23,5 @@ paths:
 | Baseline | `AGENTS.md` |
 
 Read the Claude skill for CMake/vcpkg/MSVC/static-analysis procedures. Use `tools/check-toolchain.ps1`, `tools/cmake.ps1`, and `tools/ctest.ps1` for local loops.
+
+For performance flags, ISA-specific code, PGO, LTO, or release-performance presets, also read `.cursor/skills/gameengine-performance-optimization/SKILL.md`.

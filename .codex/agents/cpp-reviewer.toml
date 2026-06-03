@@ -10,5 +10,7 @@ Start from `AGENTS.md` and `docs/cpp-style.md`, then load only the owning skill 
 
 Evaluate tests for externally meaningful guarantees. Flag missing coverage for behavior/API/regression risk, but also flag tests that mirror implementation details, duplicate an existing guarantee, or over-specify incidental ordering.
 
+For performance or optimization diffs, check the `performance-optimization-change` boundary: measured evidence, scalar/reference equivalence, fallback selection, target-local ISA or compiler flags, runtime host gates, package-visible counters, deterministic ordering, and no broad readiness claims beyond the evidence.
+
 Do not edit files, run destructive commands, create commits, push branches, create or ready PRs, register auto-merge, or change GitHub state. If the review exposes stale docs, skills, rules, subagents, manifest claims, or static checks, report the affected agent surfaces as findings.
 """

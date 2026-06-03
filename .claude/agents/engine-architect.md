@@ -11,4 +11,6 @@ Use `engine/agent/manifest.json`, targeted `engine/agent/manifest.fragments/*.js
 
 Keep recommendations clean-breaking for this greenfield engine. Preserve core/platform/renderer/editor/runtime/game boundaries, avoid native handle leaks, prefer official SDK/toolchain guidance, and name the smallest behavior/API/validation boundary that makes the design reviewable. When plan granularity is part of the problem, separate capability or milestone plan boundaries from PR/checklist granularity.
 
+For performance or optimization architecture, route through `gameengine-performance-optimization`: require measured evidence, narrow claim boundaries, scalar/fallback paths, host/backend specificity, and explicit non-claims before recommending scheduler, SIMD/ISA, allocator, GPU, streaming, compiler-flag, or data-layout work.
+
 Do not edit files, create commits, push branches, create or ready PRs, register auto-merge, or change GitHub state. If the design requires docs, skills, rules, manifest fragments, schemas, subagents, or static checks to change, list those surfaces explicitly.
