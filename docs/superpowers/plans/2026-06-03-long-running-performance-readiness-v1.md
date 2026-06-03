@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` or focused inline execution only after an operator explicitly selects this plan for implementation. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Plan ID:** `long-running-performance-readiness-v1-phase-2`
+**Plan ID:** `long-running-performance-readiness-v1-phase-7`
 
 **Status:** Active.
 
-Phase 0/1 is implemented as the first review boundary and published through PR #403. Phase 2 is selected as a docs/manifest/schema/static-contract slice; it must not implement Linux affinity, NUMA execution, broad SIMD, PGO/LTO, GPU async, CUDA, HIP, or SYCL.
+Phase 0/1 is implemented as the first review boundary and published through PR #403, which is merged. Phase 2 is implemented as a docs/manifest/schema/static-contract slice and exposes the host-gated CPU profiling matrix. Phase 7 is the current selected docs/manifest/schema/static-contract slice; it classifies optional GPU compute candidates and must not implement Linux affinity, NUMA execution, broad SIMD, PGO/LTO, GPU async, CUDA, HIP, SYCL, RHI compute changes, `vcpkg.json` features, CMake linkage, or default validation dependencies.
 
 **Goal:** Make the engine able to run representative games for long sessions with stable frame pacing, bounded memory growth, deterministic diagnostics, and evidence-driven CPU/GPU optimization decisions without reopening Engine 1.0 blockers.
 
@@ -23,9 +23,11 @@ Phase 0/1 is implemented as the first review boundary and published through PR #
 ## Current Selection State
 
 - Current live production pointer is `docs/superpowers/plans/2026-06-03-long-running-performance-readiness-v1.md`.
-- `recommendedNextPlan.id` is `long-running-performance-readiness-v1-phase-2`.
+- `recommendedNextPlan.id` is `long-running-performance-readiness-v1-phase-7`.
 - `unsupportedProductionGaps` remains `[]`.
-- Phase 2 may update docs, schemas, manifest fragments, validation recipe descriptors, static checks, and composed manifest output only for the host-gated CPU profiling matrix contract.
+- Phase 2 exposes `aiOperableProductionLoop.cpuProfilingMatrix` and `host-cpu-profiling-matrix` as the host-gated CPU profiling matrix contract.
+- Phase 7 may update docs, schemas, manifest fragments, validation recipe descriptors, static checks, and composed manifest output only for `Optional GPU Compute Review v1`, `optionalGpuComputeReview`, and `host-optional-gpu-compute-review`.
+- Phase 7 does not make CUDA/HIP/SYCL, RHI compute, GPU async overlap, broad GPU compute, cross-vendor parity, cross-backend parity, or broad CPU/GPU/memory optimization ready.
 
 ## Official References
 
@@ -328,13 +330,48 @@ Full `tools/validate.ps1` is not required for this Phase 2 closeout because the 
 - Add a review-only classifier under docs/tools or manifest evidence.
 - Do not add `vcpkg.json` features, CMake dependencies, or runtime linkage in this phase.
 
-- [ ] List each compute candidate and classify it as `rhi_compute`, `offline_tool_acceleration`, `cuda_hip_private_adapter_candidate`, `sycl_private_adapter_candidate`, or `non_goal`.
-- [ ] Require evidence for data transfer cost, memory residency, synchronization, stream/event usage, queue/profiler visibility, and dependency burden.
-- [ ] Prefer backend-neutral RHI compute for runtime rendering/simulation workloads.
-- [ ] Permit CUDA/HIP/SYCL only for optional tooling or private adapters with clear install gates and scalar/RHI fallback paths.
-- [ ] Reject candidates where vendor runtime installation, backend availability, or synchronization proof would make default validation fragile.
+- [x] List each compute candidate and classify it as `rhi_compute`, `offline_tool_acceleration`, `cuda_hip_private_adapter_candidate`, `sycl_private_adapter_candidate`, or `non_goal`.
+- [x] Require evidence for data transfer cost, memory residency, synchronization, stream/event usage, queue/profiler visibility, dependency burden, and scalar or RHI fallback.
+- [x] Prefer backend-neutral RHI compute for runtime rendering/simulation workloads.
+- [x] Permit CUDA/HIP/SYCL only for optional tooling or private adapters with clear install gates and scalar/RHI fallback paths.
+- [x] Reject candidates where vendor runtime installation, backend availability, synchronization proof, queue/profiler visibility, or fallback evidence would make default validation fragile.
 
 **Done When:** Every candidate has an explicit classification and no CUDA/HIP/SYCL runtime dependency has been introduced.
+
+**Phase 7 candidate classification:**
+
+| Candidate | Classification | Required proof before follow-up |
+| --- | --- | --- |
+| Runtime rendering/simulation compute | `rhi_compute` | Selected RHI backend/workload, queue family/type, timestamp/profiler evidence, explicit barriers/semaphores/fences/queue waits, and RHI fallback. |
+| Offline cook/import/compression/analysis acceleration | `offline_tool_acceleration` | Deterministic input/output hashes, data transfer cost, memory residency, host install gate, legal/dependency records, and scalar fallback. |
+| CUDA/HIP private adapter | `cuda_hip_private_adapter_candidate` | CUDA Toolkit or ROCm/HIP version, device properties including `asyncEngineCount` when relevant, stream/event synchronization, transfer/residency accounting, private adapter boundary, and scalar or RHI fallback. |
+| SYCL private adapter | `sycl_private_adapter_candidate` | SYCL implementation/backend, device/aspect availability, queue profiling when timing is claimed, event synchronization, buffer/USM residency accounting, and scalar or RHI fallback. |
+| Default runtime vendor compute | `non_goal` | Rejected for this milestone because default CUDA/HIP/SYCL runtime dependency, default validation dependency, public vendor handles, or duplicate backend ownership would make the engine host/vendor fragile. |
+
+**Validation if implemented:**
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
+git diff --check
+```
+
+Expected: `optionalGpuComputeReview`, `currentOptionalGpuComputeReview`, and `host-optional-gpu-compute-review` are schema/static-check visible; CUDA/HIP/SYCL introduce no runtime dependency, no `vcpkg.json` feature, no CMake linkage, and no default validation dependency.
+
+**Phase 7 validation evidence:**
+
+| Date | Command | Result |
+| --- | --- | --- |
+| 2026-06-03 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write` | Pass: composed `engine/agent/manifest.json`. |
+| 2026-06-03 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | Pass: `agent-config-check: ok`. |
+| 2026-06-03 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | Pass: `agent-manifest-compose: ok`, `json-contract-check: ok`. |
+| 2026-06-03 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | Pass: `ai-integration-check: ok`. |
+| 2026-06-03 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | Pass: `text-format-check: ok`, `format-check: ok`. |
+| 2026-06-03 | `git diff --check` | Pass: no whitespace errors. |
+
+Full `tools/validate.ps1` is not required for this Phase 7 closeout because the slice changes docs, schema, manifest fragments, composed manifest output, validation recipe descriptors, and static guards only; it does not change C++ runtime, build, packaging, or public API behavior.
 
 ## Phase 8: Long-Run Closeout And Next Selection
 
