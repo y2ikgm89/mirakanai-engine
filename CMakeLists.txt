@@ -808,6 +808,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_renderer_physical_sky_policy_tests)
     add_test(NAME MK_renderer_physical_sky_policy_tests COMMAND MK_renderer_physical_sky_policy_tests)
 
+    add_executable(MK_renderer_environment_lighting_policy_tests
+        tests/unit/renderer_environment_lighting_policy_tests.cpp
+    )
+    target_link_libraries(MK_renderer_environment_lighting_policy_tests PRIVATE MK_renderer)
+    target_include_directories(MK_renderer_environment_lighting_policy_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_renderer_environment_lighting_policy_tests)
+    add_test(NAME MK_renderer_environment_lighting_policy_tests COMMAND MK_renderer_environment_lighting_policy_tests)
+
     add_executable(MK_renderer_tile_chunk_renderer_tests
         tests/unit/renderer_tile_chunk_renderer_tests.cpp
     )

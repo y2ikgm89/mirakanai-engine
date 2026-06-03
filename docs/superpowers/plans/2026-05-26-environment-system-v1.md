@@ -18,7 +18,7 @@
 
 This plan is selected as the active `environment-system-v1` milestone. `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` points to this file, `recommendedNextPlan.id = environment-system-v1`, and `unsupportedProductionGaps = []` remains unchanged.
 
-The 2026-06-03 PR1 foundation implements the `MK_environment` value contract, validation, CMake/export wiring, public API boundary coverage, and focused tests. The PR2 text IO/package-row slice adds deterministic `GameEngine.EnvironmentProfile.v1` text IO, `AssetKind::environment_profile`, source registry/import metadata planning, cooked `GameEngine.CookedEnvironmentProfile.v1` artifacts, and `.geindex` package rows without runtime source parsing. It does not claim scene/runtime binding, render packets, renderer/RHI execution, editor authoring, package counters, Vulkan readiness, Metal readiness, or broad `environment_ready`.
+The 2026-06-03 PR1 foundation implements the `MK_environment` value contract, validation, CMake/export wiring, public API boundary coverage, and focused tests. The PR2 text IO/package-row slice adds deterministic `GameEngine.EnvironmentProfile.v1` text IO, `AssetKind::environment_profile`, source registry/import metadata planning, cooked `GameEngine.CookedEnvironmentProfile.v1` artifacts, and `.geindex` package rows without runtime source parsing. PR3 adds scene/runtime scene environment profile binding. PR4 adds value-only render packet and renderer policy planning. PR5 adds physical-sky policy and shader-contract evidence. PR6 adds first-party cooked-texture sky-lighting/IBL policy rows without new import dependencies. It does not claim renderer/RHI execution, editor authoring, package counters, Vulkan readiness, Metal readiness, or broad `environment_ready`.
 
 Active execution must keep this as one milestone with reviewable PR slices. Do not change `009-validationRecipes.json`, `014-gameCodeGuidance.json`, package counters, optional OpenEXR/KTX dependency records, or broad environment readiness claims until the corresponding implementation evidence has landed.
 
@@ -38,6 +38,8 @@ Before implementation, re-check the exact current documents for the APIs touched
 - Unreal Engine Sky Atmosphere: <https://dev.epicgames.com/documentation/unreal-engine/sky-atmosphere-component-in-unreal-engine?lang=en-US>
 - Unreal Engine Volumetric Cloud Component: <https://dev.epicgames.com/documentation/unreal-engine/volumetric-cloud-component-in-unreal-engine?lang=en-US>
 - Unreal Engine Sky Lights: <https://dev.epicgames.com/documentation/unreal-engine/sky-lights-in-unreal-engine?lang=en-US>
+- Unity Cubemaps: <https://docs.unity3d.com/Manual/class-Cubemap-introduction.html>
+- Unity Cubemap texture import/convolution settings: <https://docs.unity3d.com/Manual/texture-type-cubemap.html>
 - Unity HDRP Sky: <https://docs.unity.cn/Packages/com.unity.render-pipelines.high-definition%4017.0/manual/sky.html>
 - Unity HDRP Visual Environment: <https://docs.unity.cn/Packages/com.unity.render-pipelines.high-definition%4017.0/manual/Override-Visual-Environment.html>
 - Unity HDRP Clouds: <https://docs.unity.cn/Packages/com.unity.render-pipelines.high-definition%4017.0/manual/clouds-in-hdrp.html>
@@ -45,6 +47,8 @@ Before implementation, re-check the exact current documents for the APIs touched
 - Godot Environment and post-processing: <https://docs.godotengine.org/en/stable/tutorials/3d/environment_and_post_processing.html>
 - Godot Volumetric Fog and fog volumes: <https://docs.godotengine.org/en/stable/tutorials/3d/volumetric_fog.html>
 - Hillaire 2020, "A Scalable and Production Ready Sky and Atmosphere Rendering Technique": <https://diglib.eg.org/items/8a3e5350-18b3-46bd-9274-3add5af88c75>
+- Microsoft Direct3D 11 texture/cubemap resource overview: <https://learn.microsoft.com/en-us/windows/win32/direct3d11/overviews-direct3d-11-resources-textures-intro>
+- Microsoft DDS cubemap layout: <https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dds-file-layout-for-cubic-environment-maps>
 - Vulkan synchronization examples: <https://docs.vulkan.org/guide/latest/synchronization_examples.html>
 - D3D12 ResourceBarrier reference: <https://learn.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12graphicscommandlist-resourcebarrier>
 - D3D12 Root Signatures overview: <https://learn.microsoft.com/en-us/windows/win32/direct3d12/root-signatures-overview>
@@ -509,14 +513,10 @@ Expected: Policy tests pass; shader toolchain either reports ready or a concrete
 **Files:**
 - Create: `engine/renderer/include/mirakana/renderer/environment_lighting_policy.hpp`
 - Create: `engine/renderer/src/environment_lighting_policy.cpp`
-- Modify: `engine/assets/include/mirakana/assets/asset_kind.hpp`
-- Modify: `engine/tools/src/asset_import_plan.cpp`
-- Modify: `docs/dependencies.md`
-- Modify: `docs/legal-and-licensing.md`
-- Modify: `THIRD_PARTY_NOTICES.md`
+- Not modified in PR6 no-new-dependency mode: `engine/assets/include/mirakana/assets/asset_kind.hpp`, `engine/tools/src/asset_import_plan.cpp`, `docs/dependencies.md`, `docs/legal-and-licensing.md`, `THIRD_PARTY_NOTICES.md`
 - Modify: `vcpkg.json` only if EXR/KTX support is selected for this phase.
 
-- [ ] **Step 1: Choose dependency mode**
+- [x] **Step 1: Choose dependency mode**
 
 Select one mode for this phase:
 
@@ -524,15 +524,15 @@ Select one mode for this phase:
 - optional OpenEXR feature: add EXR source import through a vcpkg feature and legal records;
 - optional KTX feature: add KTX environment map package support through a vcpkg feature and legal records.
 
-- [ ] **Step 2: Add RED IBL policy tests**
+- [x] **Step 2: Add RED IBL policy tests**
 
 Require separation of visual sky from lighting sky, reflection cubemap size, irradiance rows, radiance mip rows, roughness mip count, HDR clamp exposure policy, and package evidence rows.
 
-- [ ] **Step 3: Implement policy**
+- [x] **Step 3: Implement policy**
 
 Add a renderer policy that produces deterministic rows for ambient lighting and reflection fallback without requiring the sky to be visible in the main camera.
 
-- [ ] **Step 4: Dependency validation when selected**
+- [x] **Step 4: Dependency validation when selected**
 
 If a dependency is added, run:
 
@@ -542,6 +542,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1
 ```
 
 Expected: Dependency and legal checks pass, or dependency bootstrap records a concrete host blocker.
+
+**2026-06-03 PR6 Task 8 Evidence:** GREEN selected the no-new-dependency mode: use existing first-party cooked texture payloads plus HDR metadata only, and do not add OpenEXR/KTX import, dependency/legal/vcpkg records, source importer changes, runtime capture, cubemap upload, descriptor creation, image-layout transitions, PSO/render-pass creation, package-visible environment counters, or backend execution in this slice. `MK_renderer` now exposes `EnvironmentLightingPolicyDesc`, `EnvironmentLightingPolicyPlan`, `EnvironmentReflectionCubemapDesc`, `EnvironmentIrradianceDesc`, `EnvironmentRadianceDesc`, `EnvironmentHdrClampPolicyDesc`, `plan_environment_lighting_policy`, and `has_environment_lighting_diagnostic`. The policy produces deterministic cubemap, irradiance SH, radiance mip/roughness, package-evidence, and HDR clamp rows while keeping visual sky and lighting sky independently declared and failing closed for unsupported import dependency requests, invalid cubemap size/mips/asset/HDR/package evidence, unsupported visual-lighting coupling, runtime capture, backend execution, and native-handle access. Official context re-checked Unreal Sky Lights (`https://dev.epicgames.com/documentation/unreal-engine/sky-lights-in-unreal-engine?lang=en-US`), Unity Cubemaps and cubemap import convolution (`https://docs.unity3d.com/Manual/class-Cubemap-introduction.html`, `https://docs.unity3d.com/Manual/texture-type-cubemap.html`), Microsoft Direct3D 11 cubemap/mipmap resource docs (`https://learn.microsoft.com/en-us/windows/win32/direct3d11/overviews-direct3d-11-resources-textures-intro`, `https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dds-file-layout-for-cubic-environment-maps`), and Context7 `/khronosgroup/vulkan-docs` image layout/descriptor evidence before implementation. Focused validation passed for `MK_renderer_environment_lighting_policy_tests`, `MK_renderer_environment_policy_tests`, and `MK_renderer_tests`; dependency validation is no-op beyond confirming no dependency was selected and preserving dependency/legal files unchanged. This is sky-lighting/IBL policy evidence only, not physical-sky backend execution, runtime cubemap capture, importer support, renderer/RHI environment execution, Vulkan readiness, Metal readiness, or broad `environment_ready`.
 
 ## Task 9: Height Fog And Aerial Perspective
 
@@ -817,8 +819,8 @@ Expected: PASS, or a concrete missing-host/toolchain blocker is recorded.
 3. PR 3: Scene/runtime scene environment binding.
 4. PR 4: Environment render packet and renderer policy planning.
 5. PR 5: Physical sky policy and shader contract.
-6. PR 6: D3D12 physical sky proof and strict Vulkan gated proof.
-7. PR 7: Sky lighting and IBL policy.
+6. PR 6: Sky lighting and IBL policy.
+7. PR 7: D3D12 physical sky proof and strict Vulkan gated proof.
 8. PR 8: Height fog execution proof.
 9. PR 9: Volumetric fog policy and first execution proof.
 10. PR 10: Cloud layer.
