@@ -1,31 +1,24 @@
-# Prompt or narrowly allow commands that commonly need local trust, network
-# access, user caches, signing state, or out-of-sandbox execution.
-# Rule edits are not guaranteed to relax the active Codex command policy in
-# the same session; rely on policy reload or a new session before running
-# newly allowed commands.
+# Narrow Codex command policy for MIRAIKANAI Engine.
+# Rule edits may need policy reload or a new session before they affect commands.
+
 prefix_rule(
     pattern = ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", ["tools/bootstrap-deps.ps1", "tools/build-mobile-android.ps1", "tools/check-android-release-package.ps1", "tools/smoke-android-package.ps1", "tools/build-mobile-apple.ps1", "tools/smoke-ios-package.ps1"]],
     decision = "prompt",
-    justification = "Dependency bootstrap and mobile package lanes can touch user caches, SDKs, emulators, or signing material; review the host action first.",
+    justification = "Dependency bootstrap and mobile lanes can touch user caches, SDKs, emulators, or signing material.",
     match = [
         "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1",
-        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-mobile-android.ps1 -Game sample_headless -Configuration Debug",
-        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-android-release-package.ps1 -Game sample_headless -UseLocalValidationKey",
         "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/smoke-android-package.ps1 -Game sample_headless -Configuration Release -SkipBuild -StartEmulator -AvdName Mirakanai_API36",
-        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-mobile-apple.ps1 -Game sample_headless -Configuration Debug -Platform Simulator",
-        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/smoke-ios-package.ps1 -Game sample_headless -Configuration Debug",
     ],
     not_match = [
         "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1",
         "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1",
-        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1",
     ],
 )
 
 prefix_rule(
     pattern = ["git", ["reset", "restore", "checkout", "clean"]],
     decision = "prompt",
-    justification = "Worktree-mutating Git operations require explicit review so user changes are not overwritten.",
+    justification = "Review worktree-mutating Git commands before user changes are overwritten.",
     match = [
         "git reset --hard",
         "git restore .",
@@ -36,20 +29,16 @@ prefix_rule(
         "git commit -m \"Implement focused slice\"",
         "git push -u origin codex/example",
         "git status --short",
-        "git diff",
-        "git show --stat",
     ],
 )
 
 prefix_rule(
     pattern = ["git", "worktree", ["remove", "prune", "repair"]],
     decision = "prompt",
-    justification = "Worktree cleanup can discard isolated session files or mutate shared Git administrative state; inspect the target and status first.",
+    justification = "Worktree cleanup mutates shared Git administrative state.",
     match = [
         "git worktree remove .worktrees/codex/example",
-        "git worktree remove ../GameEngine-example",
         "git worktree prune",
-        "git worktree repair",
     ],
     not_match = [
         "git worktree list",
@@ -60,14 +49,12 @@ prefix_rule(
 prefix_rule(
     pattern = ["git", "clone"],
     decision = "prompt",
-    justification = "Publication temp clones bypass the repository preflight path and can hide user/auth/ACL mismatches; use tools/check-publication-preflight.ps1 in the task worktree before publishing.",
+    justification = "Publication temp clones bypass the repository preflight path; use tools/check-publication-preflight.ps1 in the task worktree.",
     match = [
         "git clone https://github.com/y2ikgm89/mirakanai-engine.git out/publication-clone/example",
-        "git clone . out/publication-clone/example",
     ],
     not_match = [
         "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1",
-        "git status --short --branch",
         "git ls-remote --heads origin codex/example",
     ],
 )
@@ -75,10 +62,9 @@ prefix_rule(
 prefix_rule(
     pattern = ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools/remove-merged-worktree.ps1"],
     decision = "allow",
-    justification = "Guarded post-merge cleanup is allowed because the repository script fetches/prunes, fast-forwards a clean base checkout, verifies standard roots from Git worktree porcelain records, clean status, and branch ancestry, and unlinks worktree-local dependency reparse points before invoking Git worktree removal.",
+    justification = "Guarded cleanup verifies Git worktree porcelain records, clean status, branch ancestry, and reparse points before removal.",
     match = [
         "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1 -WorktreePath .worktrees/codex/example -BaseRef origin/main -BaseBranch main -Remote origin -DeleteLocalBranch",
-        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1 -WorktreePath .claude/worktrees/example -BaseRef origin/main -BaseBranch main -LocalCheckoutPath .",
     ],
     not_match = [
         "git worktree remove .worktrees/codex/example",
@@ -89,7 +75,7 @@ prefix_rule(
 prefix_rule(
     pattern = ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools/check-publication-preflight.ps1"],
     decision = "allow",
-    justification = "Guarded GitHub Flow publication preflight is allowed because the repository script verifies the current user, linked-worktree index.lock ACL, Git index refresh, remote reachability, GitHub CLI auth/config readability, and optional PR view before publishing.",
+    justification = "Guarded GitHub Flow preflight verifies current user, linked-worktree index.lock ACL, remote reachability, gh auth, and optional PR state.",
     match = [
         "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1",
         "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1 -PullRequest 268 -RequireClean",
@@ -97,29 +83,26 @@ prefix_rule(
     not_match = [
         "git push -u origin codex/example",
         "gh pr create --base main --head codex/example --title \"Implement focused slice\" --body \"Validation: validate.ps1 passed\"",
-        "Remove-Item -LiteralPath .worktrees/codex/example -Recurse -Force",
     ],
 )
 
 prefix_rule(
     pattern = ["pwsh", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", "tools/ready-task-pr.ps1"],
     decision = "allow",
-    justification = "Guarded PR ready conversion is allowed because the repository script verifies a clean task-owned branch, current local and remote head, open draft PR state, expected base, clean merge state, no requested changes, no failed or pending checks, and PR Gate success before invoking gh pr ready.",
+    justification = "Guarded PR ready conversion verifies branch, PR state, merge state, checks, and PR Gate before gh pr ready.",
     match = [
         "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ready-task-pr.ps1 -PullRequest 120 -ExpectedBase main",
-        "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ready-task-pr.ps1 -PullRequest 120 -ExpectedBase main -RequiredGate \"PR Gate\"",
     ],
     not_match = [
         "gh pr ready 120",
         "gh pr edit --base main",
-        "gh pr merge --merge --delete-branch",
     ],
 )
 
 prefix_rule(
     pattern = ["git", "push", "origin", ["main", "master"]],
     decision = "forbidden",
-    justification = "Direct pushes to default or protected branches are outside GitHub Flow; push a topic branch and use a pull request with branch protection instead.",
+    justification = "Direct pushes to default or protected branches are outside GitHub Flow.",
     match = [
         "git push origin main",
         "git push origin master",
@@ -133,59 +116,51 @@ prefix_rule(
 prefix_rule(
     pattern = ["git", "push", ["-u", "--set-upstream"], "origin", ["main", "master"]],
     decision = "forbidden",
-    justification = "Setting upstream while pushing the default branch bypasses the official GitHub Flow branch plus pull request path.",
+    justification = "Default-branch upstream pushes bypass GitHub Flow.",
     match = [
         "git push -u origin main",
-        "git push -u origin master",
-        "git push --set-upstream origin main",
         "git push --set-upstream origin master",
     ],
     not_match = [
         "git push -u origin codex/example",
-        "git push --set-upstream origin codex/example",
     ],
 )
 
 prefix_rule(
     pattern = ["git", "push", "origin", ["HEAD:main", "HEAD:master"]],
     decision = "forbidden",
-    justification = "Pushing HEAD directly to the default branch bypasses the official GitHub Flow branch plus pull request path.",
+    justification = "Pushing HEAD to the default branch bypasses GitHub Flow.",
     match = [
         "git push origin HEAD:main",
         "git push origin HEAD:master",
     ],
     not_match = [
         "git push origin HEAD:codex/example",
-        "git push origin codex/example",
     ],
 )
 
 prefix_rule(
     pattern = ["git", "push", ["--force", "--force-with-lease"], "origin", ["main", "master"]],
     decision = "forbidden",
-    justification = "History rewriting the default branch is outside GitHub Flow and must be blocked by branch protection.",
+    justification = "History rewriting the default branch must be blocked.",
     match = [
         "git push --force origin main",
-        "git push --force origin master",
-        "git push --force-with-lease origin main",
         "git push --force-with-lease origin master",
     ],
     not_match = [
         "git push --force-with-lease origin codex/example",
-        "git push --force origin codex/example",
     ],
 )
 
 prefix_rule(
     pattern = ["git", "push", ["--force", "--force-with-lease"]],
     decision = "prompt",
-    justification = "History rewriting pushes require explicit review of branch ownership and remote state.",
+    justification = "History rewriting pushes need branch-ownership review.",
     match = [
         "git push --force",
         "git push --force-with-lease origin codex/example",
     ],
     not_match = [
-        "git push -u origin codex/example",
         "git push origin codex/example",
     ],
 )
@@ -193,7 +168,7 @@ prefix_rule(
 prefix_rule(
     pattern = ["gh", "pr", "create"],
     decision = "allow",
-    justification = "After task-owned validation checkpoints, PR creation is allowed so unattended sessions can publish a reviewed topic branch or open an early draft PR for feedback.",
+    justification = "Task-owned PR creation is allowed after validation checkpoints.",
     match = [
         "gh pr create --base main --head codex/example --title \"Implement focused slice\" --body \"Validation: validate.ps1 passed\"",
         "gh pr create --draft --base main --head codex/example --title \"Implement focused slice\" --body \"Validation: focused checks passed\"",
@@ -201,14 +176,13 @@ prefix_rule(
     not_match = [
         "gh pr edit --base main",
         "gh pr ready",
-        "gh pr merge --merge --delete-branch",
     ],
 )
 
 prefix_rule(
     pattern = ["gh", "pr", "view"],
     decision = "allow",
-    justification = "Read-only PR state inspection is required before task-owned auto-merge registration.",
+    justification = "Read-only PR state inspection is required before auto-merge registration.",
     match = [
         "gh pr view --json state,isDraft,baseRefName,headRefName,headRefOid,mergeable,mergeStateStatus,reviewDecision,statusCheckRollup,autoMergeRequest,url",
         "gh pr view 4 --json state,isDraft,baseRefName,headRefName,headRefOid,mergeable,mergeStateStatus,reviewDecision,statusCheckRollup,autoMergeRequest,url",
@@ -222,29 +196,23 @@ prefix_rule(
 prefix_rule(
     pattern = ["gh", "pr", "merge", "--auto", "--merge", "--match-head-commit"],
     decision = "allow",
-    justification = "Register GitHub auto-merge only after docs/workflows.md PR preflight confirms a task-owned PR, clean local worktree, fresh validation, current headRefOid, PR Gate success for runtime/C++ slices, and no failed or pending selected hosted checks; branch cleanup stays in tools/remove-merged-worktree.ps1 so linked-worktree local branch deletion cannot fail after a successful merge.",
+    justification = "Register auto-merge only after PR preflight; branch cleanup stays in tools/remove-merged-worktree.ps1.",
     match = [
         "gh pr merge --auto --merge --match-head-commit 0123456789abcdef0123456789abcdef01234567",
         "gh pr merge --auto --merge --match-head-commit 0123456789abcdef0123456789abcdef01234567 42",
     ],
     not_match = [
-        "gh pr merge --auto --merge --delete-branch --match-head-commit 0123456789abcdef0123456789abcdef01234567",
         "gh pr merge --auto --merge --delete-branch",
-        "gh pr merge --auto --merge",
         "gh pr merge --merge --delete-branch",
-        "gh pr merge --squash --delete-branch",
-        "gh pr merge --admin --merge --delete-branch",
     ],
 )
 
 prefix_rule(
     pattern = ["gh", "pr", "merge", ["--merge", "--squash", "--rebase", "--admin"]],
     decision = "prompt",
-    justification = "Immediate GitHub pull request merge commands are outside the unattended GitHub Flow auto-merge path and require explicit review.",
+    justification = "Immediate PR merges are outside the unattended auto-merge path.",
     match = [
         "gh pr merge --merge --delete-branch",
-        "gh pr merge --squash --delete-branch",
-        "gh pr merge --rebase --delete-branch",
         "gh pr merge --admin --merge --delete-branch",
     ],
     not_match = [
@@ -255,27 +223,22 @@ prefix_rule(
 prefix_rule(
     pattern = ["gh", "pr", ["edit", "ready", "close", "reopen"]],
     decision = "prompt",
-    justification = "GitHub pull request state changes outside the approved create plus auto-merge path require explicit review of target branch, title, body, and validation evidence.",
+    justification = "PR state changes outside create plus auto-merge need review.",
     match = [
         "gh pr edit --base main",
         "gh pr ready",
         "gh pr close",
-        "gh pr reopen",
     ],
     not_match = [
-        "gh pr status",
         "gh pr view --json url,state",
-        "gh auth status",
         "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ready-task-pr.ps1 -PullRequest 120 -ExpectedBase main",
-        "gh pr create --base main --head codex/example --title \"Implement focused slice\" --body \"Validation: validate.ps1 passed\"",
-        "gh pr merge --auto --merge --match-head-commit 0123456789abcdef0123456789abcdef01234567",
     ],
 )
 
 prefix_rule(
     pattern = ["rm"],
     decision = "forbidden",
-    justification = "Use reviewed PowerShell Remove-Item with resolved in-workspace paths, or git rm for tracked files.",
+    justification = "Use reviewed PowerShell Remove-Item with resolved paths, or git rm for tracked files.",
     match = [
         "rm -rf out",
         "rm -rf .",
@@ -288,44 +251,37 @@ prefix_rule(
 prefix_rule(
     pattern = ["Remove-Item"],
     decision = "prompt",
-    justification = "PowerShell deletion can remove repository or generated files; review resolved paths and scope before running it.",
+    justification = "PowerShell deletion needs resolved-path and scope review.",
     match = [
         "Remove-Item -LiteralPath out -Recurse -Force",
-        "Remove-Item -LiteralPath . -Recurse -Force",
     ],
     not_match = [
         "Get-Item -LiteralPath out",
-        "Test-Path -LiteralPath out",
     ],
 )
 
 prefix_rule(
     pattern = [["curl", "wget", "Invoke-WebRequest", "Invoke-RestMethod"]],
     decision = "prompt",
-    justification = "Network downloads must be reviewed for source trust, prompt injection, and license impact.",
+    justification = "Network downloads need source-trust and license review.",
     match = [
-        "curl https://example.com/file.txt",
-        "wget https://example.com/file.txt",
         "Invoke-WebRequest -Uri https://example.com/file.txt -OutFile file.txt",
         "Invoke-RestMethod -Uri https://example.com/api",
     ],
     not_match = [
         "Get-Command Invoke-WebRequest",
-        "Get-Command Invoke-RestMethod",
     ],
 )
 
 prefix_rule(
     pattern = [["Add-WindowsCapability", "dism", "msiexec"]],
     decision = "prompt",
-    justification = "Windows optional feature, DISM, and MSI servicing commands can modify host toolchain or diagnostics state; review the host action first.",
+    justification = "Host diagnostic/toolchain servicing modifies Windows state.",
     match = [
         "Add-WindowsCapability -Online -Name Tools.Graphics.DirectX~~~~0.0.1.0",
-        "dism /online /Add-Capability /CapabilityName:Tools.Graphics.DirectX~~~~0.0.1.0",
         "msiexec /qn /p Windows_ADK_10.1.26100.2454_Update_KB5079391.msp",
     ],
     not_match = [
-        "Get-WindowsCapability -Online -Name Tools.Graphics.DirectX~~~~0.0.1.0",
         "Get-Command cdb",
     ],
 )

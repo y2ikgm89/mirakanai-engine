@@ -44,7 +44,7 @@ foreach ($check in $editorPackageRegistrationDraftChecks) {
     $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
-        if (-not $fileText.Contains($needle)) {
+        if (-not (Test-AgentSurfaceContainsText -Text $fileText -Needle $needle)) {
             $missingNeedles += $needle
         }
     }
@@ -130,7 +130,7 @@ foreach ($check in $editorPlaytestReviewChecks) {
     $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
-        if (-not $fileText.Contains($needle)) {
+        if (-not (Test-AgentSurfaceContainsText -Text $fileText -Needle $needle)) {
             $missingNeedles += $needle
         }
     }
@@ -224,7 +224,7 @@ foreach ($check in $editorPlayInEditorIsolationChecks) {
     $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
-        if (-not $fileText.Contains($needle)) {
+        if (-not (Test-AgentSurfaceContainsText -Text $fileText -Needle $needle)) {
             $missingNeedles += $needle
         }
     }
@@ -372,7 +372,7 @@ foreach ($check in $editorRuntimeHostPlaytestLaunchChecks) {
     $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
-        if (-not $fileText.Contains($needle)) {
+        if (-not (Test-AgentSurfaceContainsText -Text $fileText -Needle $needle)) {
             $missingNeedles += $needle
         }
     }
@@ -508,7 +508,7 @@ foreach ($check in $editorInProcessRuntimeHostReviewChecks) {
     $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
-        if (-not $fileText.Contains($needle)) {
+        if (-not (Test-AgentSurfaceContainsText -Text $fileText -Needle $needle)) {
             $missingNeedles += $needle
         }
     }
@@ -845,7 +845,7 @@ foreach ($check in $editorGameModuleDriverLoadChecks) {
     $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
-        if (-not $fileText.Contains($needle)) {
+        if (-not (Test-AgentSurfaceContainsText -Text $fileText -Needle $needle)) {
             $missingNeedles += $needle
         }
     }
@@ -974,7 +974,7 @@ foreach ($check in $editorRuntimeScenePackageValidationExecutionChecks) {
     $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
-        if (-not $fileText.Contains($needle)) {
+        if (-not (Test-AgentSurfaceContainsText -Text $fileText -Needle $needle)) {
             $missingNeedles += $needle
         }
     }
@@ -1615,7 +1615,7 @@ foreach ($check in $editorProfilerTraceExportChecks) {
     $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
-        if (-not $fileText.Contains($needle)) {
+        if (-not (Test-AgentSurfaceContainsText -Text $fileText -Needle $needle)) {
             $missingNeedles += $needle
         }
     }
@@ -1712,7 +1712,7 @@ foreach ($check in $editorResourcePanelChecks) {
     $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
-        if (-not $fileText.Contains($needle)) {
+        if (-not (Test-AgentSurfaceContainsText -Text $fileText -Needle $needle)) {
             $missingNeedles += $needle
         }
     }
@@ -1842,7 +1842,7 @@ foreach ($check in $editorResourceCaptureRequestChecks) {
     $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
-        if (-not $fileText.Contains($needle)) {
+        if (-not (Test-AgentSurfaceContainsText -Text $fileText -Needle $needle)) {
             $missingNeedles += $needle
         }
     }

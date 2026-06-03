@@ -886,7 +886,7 @@ if ($createGameRecipeCommand.Count -ne 1 -or $createGameRecipeCommand[0].status 
     }
     $createGameRecipeText = ($createGameRecipeCommand[0] | ConvertTo-Json -Depth 20)
     foreach ($needle in @("tools/create-game-recipe.ps1", "tools/new-game.ps1", "aiWorkflow.gameDesignSpec", "DesktopRuntime2DPackage", "DesktopRuntime3DPackage", "arbitrary shell", "external asset generation")) {
-        if (-not $createGameRecipeText.Contains($needle)) {
+        if (-not (Test-AgentSurfaceContainsText -Text $createGameRecipeText -Needle $needle)) {
             Write-Error "engine/agent/manifest.json create-game-recipe command surface missing reviewed boundary needle: $needle"
         }
     }
@@ -974,7 +974,7 @@ if ($materialGraphCommand.Count -ne 1 -or $materialGraphCommand[0].status -ne "r
             "renderer/RHI residency",
             "package streaming"
         )) {
-        if (-not $materialGraphNotes.Contains($needle)) {
+        if (-not (Test-AgentSurfaceContainsText -Text $materialGraphNotes -Needle $needle)) {
             Write-Error "engine/agent/manifest.json create-material-from-graph notes must keep helper names and unsupported graph/package limits explicit: $needle"
         }
     }
@@ -1007,7 +1007,7 @@ if ($scenePackageCommand.Count -ne 1 -or $scenePackageCommand[0].status -ne "rea
             "shader graph",
             "live shader generation"
         )) {
-        if (-not $sceneNotes.Contains($needle)) {
+        if (-not (Test-AgentSurfaceContainsText -Text $sceneNotes -Needle $needle)) {
             Write-Error "engine/agent/manifest.json update-scene-package notes must keep helper names and unsupported scene/package limits explicit: $needle"
         }
     }
@@ -1061,7 +1061,7 @@ foreach ($commandId in $scenePrefabAuthoringCommandIds) {
                 "editor productization",
                 "nested prefab merge/resolution UX"
             )) {
-            if (-not $scenePrefabPolicyText.Contains($needle)) {
+            if (-not (Test-AgentSurfaceContainsText -Text $scenePrefabPolicyText -Needle $needle)) {
                 Write-Error "engine/agent/manifest.json Scene/Prefab v2 authoring command '$commandId' must document reviewed helper/policy text: $needle"
             }
         }
@@ -1122,7 +1122,7 @@ if ($sourceAssetCommand.Count -ne 1 -or $sourceAssetCommand[0].status -ne "ready
             "Metal readiness",
             "public native/RHI handles"
         )) {
-        if (-not $sourceAssetPolicyText.Contains($needle)) {
+        if (-not (Test-AgentSurfaceContainsText -Text $sourceAssetPolicyText -Needle $needle)) {
             Write-Error "engine/agent/manifest.json register-source-asset must document reviewed helper/policy text: $needle"
         }
     }
@@ -1210,7 +1210,7 @@ if ($registeredCookCommand.Count -ne 1 -or $registeredCookCommand[0].status -ne 
             "general production renderer quality",
             "free-form edits are not supported"
         )) {
-        if (-not $registeredCookPolicyText.Contains($needle)) {
+        if (-not (Test-AgentSurfaceContainsText -Text $registeredCookPolicyText -Needle $needle)) {
             Write-Error "engine/agent/manifest.json cook-registered-source-assets must document reviewed helper/policy text: $needle"
         }
     }
@@ -1311,7 +1311,7 @@ if ($sceneMigrationCommand.Count -ne 1 -or $sceneMigrationCommand[0].status -ne 
             "general production renderer quality",
             "free-form edits are not supported"
         )) {
-        if (-not $sceneMigrationPolicyText.Contains($needle)) {
+        if (-not (Test-AgentSurfaceContainsText -Text $sceneMigrationPolicyText -Needle $needle)) {
             Write-Error "engine/agent/manifest.json migrate-scene-v2-runtime-package must document reviewed helper/policy text: $needle"
         }
     }
@@ -1425,7 +1425,7 @@ if ($runtimeSceneValidationCommand.Count -ne 1 -or $runtimeSceneValidationComman
             "general production renderer quality",
             "free-form edits are not supported"
         )) {
-        if (-not $runtimeSceneValidationPolicyText.Contains($needle)) {
+        if (-not (Test-AgentSurfaceContainsText -Text $runtimeSceneValidationPolicyText -Needle $needle)) {
             Write-Error "engine/agent/manifest.json validate-runtime-scene-package must document reviewed helper/policy text: $needle"
         }
     }
@@ -1498,7 +1498,7 @@ if ($validationRunnerCommand.Count -ne 1 -or $validationRunnerCommand[0].status 
             "free-form arguments are rejected",
             "not arbitrary shell"
         )) {
-        if (-not $runnerPolicyText.Contains($needle)) {
+        if (-not (Test-AgentSurfaceContainsText -Text $runnerPolicyText -Needle $needle)) {
             Write-Error "engine/agent/manifest.json run-validation-recipe must document runner path/helper/policy text: $needle"
         }
     }

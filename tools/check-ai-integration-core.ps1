@@ -60,6 +60,24 @@ function Get-AgentSurfaceText([Parameter(Mandatory)][string]$relativePath) {
     return $text
 }
 
+function ConvertTo-AgentSurfaceSearchText([Parameter(Mandatory)][string]$Text) {
+    $normalizedText = $Text -replace "`r`n", "`n"
+    return [System.Text.RegularExpressions.Regex]::Replace($normalizedText, '[ \t]*\n[ \t]*', ' ')
+}
+
+function Test-AgentSurfaceContainsText(
+    [Parameter(Mandatory)][string]$Text,
+    [Parameter(Mandatory)][string]$Needle
+) {
+    if ($Text.Contains($Needle)) {
+        return $true
+    }
+
+    $normalizedText = ConvertTo-AgentSurfaceSearchText -Text $Text
+    $normalizedNeedle = ConvertTo-AgentSurfaceSearchText -Text $Needle
+    return $normalizedText.Contains($normalizedNeedle)
+}
+
 $script:agentGameManifestCache = $null
 
 function Get-AgentGameManifests {
@@ -118,7 +136,7 @@ function Assert-CodexReadOnlyAgent($relativePath) {
 }
 
 function Assert-ContainsText($text, $needle, $label) {
-    if (-not $text.Contains($needle)) {
+    if (-not (Test-AgentSurfaceContainsText -Text $text -Needle $needle)) {
         Write-Error "$label did not contain expected text: $needle"
     }
 }

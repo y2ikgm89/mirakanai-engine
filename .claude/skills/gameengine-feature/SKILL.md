@@ -9,7 +9,9 @@ paths:
 
 # GameEngine Feature
 
-1. Read targeted engine context: prefer `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1 -ContextProfile Minimal` or `Standard`, or a targeted `engine/agent/manifest.fragments/*.json` file. Use full `engine/agent/manifest.json` only when the current decision needs it. When you **change** the engine agent contract, edit fragments and run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write` (never hand-edit `engine/agent/manifest.json`).
+## Workflow
+
+1. Read targeted engine context: prefer `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1 -ContextProfile Minimal` or `Standard`, or a targeted `engine/agent/manifest.fragments/*.json` file. Use full `engine/agent/manifest.json` only when the current decision needs it. For **edits** to the engine contract, change fragments and run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`; do not hand-edit `engine/agent/manifest.json`.
 2. Start documentation navigation from `docs/README.md`; use `docs/roadmap.md` for current status and `docs/superpowers/plans/README.md` as the plan registry.
 3. Read `docs/cpp-style.md` before changing public API names, file layout, or CMake target structure.
 4. For performance, optimization, profiling, SIMD/ISA, scheduler, memory-budget, data-layout, PGO/LTO, or speed-readiness work, also use `.claude/skills/gameengine-performance-optimization/SKILL.md`.
@@ -36,8 +38,8 @@ paths:
 
 ## Do Not
 
-Do not add third-party dependencies or assets without updating `docs/dependencies.md`, `docs/legal-and-licensing.md`, `vcpkg.json`, and `THIRD_PARTY_NOTICES.md`.
-Do not reintroduce configure-time vcpkg restore/install or move optional feature selection into CMake presets.
-Do not add compatibility shims for old C++ standards.
-Do not add tests that merely mirror implementation details, duplicate an existing guarantee, or over-specify incidental ordering.
-Do not claim planned or host-gated capability as implemented without validation evidence.
+- Add third-party dependencies or assets without updating `docs/dependencies.md`, `docs/legal-and-licensing.md`, `vcpkg.json`, and `THIRD_PARTY_NOTICES.md`.
+- Reintroduce configure-time vcpkg restore/install or move optional feature selection into CMake presets.
+- Do not add compatibility shims for old C++ standards.
+- Add tests that merely mirror implementation details, duplicate an existing guarantee, or over-specify incidental ordering.
+- Claim planned or host-gated capability as implemented without validation evidence.

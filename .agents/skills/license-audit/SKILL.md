@@ -24,7 +24,7 @@ Before external material ships, update `THIRD_PARTY_NOTICES.md` with:
 - modification status
 - distribution target
 
-For C++ package-manager dependencies, also update `vcpkg.json`, keep dependencies behind manifest features unless they are required by the default build, pin the official registry through `builtin-baseline`, and update `docs/dependencies.md`.
+For C++ package-manager dependencies, also update `vcpkg.json`, keep optional dependencies behind manifest features unless they are required by the default build, pin the official registry through `builtin-baseline`, and update `docs/dependencies.md`.
 
 ## Policy
 
