@@ -18,7 +18,7 @@
 
 This plan is selected as the active `environment-system-v1` milestone. `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` points to this file, `recommendedNextPlan.id = environment-system-v1`, and `unsupportedProductionGaps = []` remains unchanged.
 
-The 2026-06-03 PR1 foundation implements the `MK_environment` value contract, validation, CMake/export wiring, public API boundary coverage, and focused tests. The PR2 text IO/package-row slice adds deterministic `GameEngine.EnvironmentProfile.v1` text IO, `AssetKind::environment_profile`, source registry/import metadata planning, cooked `GameEngine.CookedEnvironmentProfile.v1` artifacts, and `.geindex` package rows without runtime source parsing. PR3 adds scene/runtime scene environment profile binding. PR4 adds value-only render packet and renderer policy planning. PR5 adds physical-sky policy and shader-contract evidence. PR6 adds first-party cooked-texture sky-lighting/IBL policy rows without new import dependencies. It does not claim renderer/RHI execution, editor authoring, package counters, Vulkan readiness, Metal readiness, or broad `environment_ready`.
+The 2026-06-03 PR1 foundation implements the `MK_environment` value contract, validation, CMake/export wiring, public API boundary coverage, and focused tests. The PR2 text IO/package-row slice adds deterministic `GameEngine.EnvironmentProfile.v1` text IO, `AssetKind::environment_profile`, source registry/import metadata planning, cooked `GameEngine.CookedEnvironmentProfile.v1` artifacts, and `.geindex` package rows without runtime source parsing. PR3 adds scene/runtime scene environment profile binding. PR4 adds value-only render packet and renderer policy planning. PR5 adds physical-sky policy and shader-contract evidence. PR6 adds first-party cooked-texture sky-lighting/IBL policy rows without new import dependencies. PR7 adds height-fog/aerial-perspective policy rows plus a reviewed depth-aware HLSL shader contract. It does not claim renderer/RHI execution, editor authoring, package counters, Vulkan readiness, Metal readiness, broad optimization, or broad `environment_ready`.
 
 Active execution must keep this as one milestone with reviewable PR slices. Do not change `009-validationRecipes.json`, `014-gameCodeGuidance.json`, package counters, optional OpenEXR/KTX dependency records, or broad environment readiness claims until the corresponding implementation evidence has landed.
 
@@ -36,12 +36,14 @@ Before implementation, re-check the exact current documents for the APIs touched
 
 - Unreal Engine environmental lighting with fog, clouds, sky, and atmosphere: <https://dev.epicgames.com/documentation/en-us/unreal-engine/environmental-light-with-fog-clouds-sky-and-atmosphere-in-unreal-engine>
 - Unreal Engine Sky Atmosphere: <https://dev.epicgames.com/documentation/unreal-engine/sky-atmosphere-component-in-unreal-engine?lang=en-US>
+- Unreal Engine Exponential Height Fog: <https://dev.epicgames.com/documentation/unreal-engine/exponential-height-fog-in-unreal-engine?lang=en-US>
 - Unreal Engine Volumetric Cloud Component: <https://dev.epicgames.com/documentation/unreal-engine/volumetric-cloud-component-in-unreal-engine?lang=en-US>
 - Unreal Engine Sky Lights: <https://dev.epicgames.com/documentation/unreal-engine/sky-lights-in-unreal-engine?lang=en-US>
 - Unity Cubemaps: <https://docs.unity3d.com/Manual/class-Cubemap-introduction.html>
 - Unity Cubemap texture import/convolution settings: <https://docs.unity3d.com/Manual/texture-type-cubemap.html>
 - Unity HDRP Sky: <https://docs.unity.cn/Packages/com.unity.render-pipelines.high-definition%4017.0/manual/sky.html>
 - Unity HDRP Visual Environment: <https://docs.unity.cn/Packages/com.unity.render-pipelines.high-definition%4017.0/manual/Override-Visual-Environment.html>
+- Unity HDRP Fog: <https://docs.unity.cn/Packages/com.unity.render-pipelines.high-definition%4017.0/manual/fog.html>
 - Unity HDRP Clouds: <https://docs.unity.cn/Packages/com.unity.render-pipelines.high-definition%4017.0/manual/clouds-in-hdrp.html>
 - Unity HDRP Volumetric Clouds override: <https://docs.unity.cn/Packages/com.unity.render-pipelines.high-definition%4017.0/manual/Override-Volumetric-Clouds.html>
 - Godot Environment and post-processing: <https://docs.godotengine.org/en/stable/tutorials/3d/environment_and_post_processing.html>
@@ -49,6 +51,7 @@ Before implementation, re-check the exact current documents for the APIs touched
 - Hillaire 2020, "A Scalable and Production Ready Sky and Atmosphere Rendering Technique": <https://diglib.eg.org/items/8a3e5350-18b3-46bd-9274-3add5af88c75>
 - Microsoft Direct3D 11 texture/cubemap resource overview: <https://learn.microsoft.com/en-us/windows/win32/direct3d11/overviews-direct3d-11-resources-textures-intro>
 - Microsoft DDS cubemap layout: <https://learn.microsoft.com/en-us/windows/win32/direct3ddds/dds-file-layout-for-cubic-environment-maps>
+- Microsoft HLSL semantics: <https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-semantics>
 - Vulkan synchronization examples: <https://docs.vulkan.org/guide/latest/synchronization_examples.html>
 - D3D12 ResourceBarrier reference: <https://learn.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12graphicscommandlist-resourcebarrier>
 - D3D12 Root Signatures overview: <https://learn.microsoft.com/en-us/windows/win32/direct3d12/root-signatures-overview>
@@ -548,21 +551,21 @@ Expected: Dependency and legal checks pass, or dependency bootstrap records a co
 ## Task 9: Height Fog And Aerial Perspective
 
 **Files:**
-- Modify: `engine/renderer/include/mirakana/renderer/postprocess_policy.hpp`
-- Modify: `engine/renderer/src/postprocess_policy.cpp`
+- Modify: `CMakeLists.txt`
+- Modify: `engine/renderer/CMakeLists.txt`
 - Create: `engine/renderer/include/mirakana/renderer/environment_fog_policy.hpp`
 - Create: `engine/renderer/src/environment_fog_policy.cpp`
 - Create: `shaders/environment/height_fog.hlsl`
-- Modify: `tests/unit/renderer_rhi_tests.cpp`
-- Modify: `tests/unit/renderer_environment_policy_tests.cpp`
+- Create: `tests/shaders/environment_height_fog.hlsl`
+- Create: `tests/unit/renderer_environment_fog_policy_tests.cpp`
 
-- [ ] **Step 1: Add RED fog execution policy tests**
+- [x] **Step 1: Add RED fog policy tests**
 
 The tests must prove `fog` is no longer only an enum value. Require depth input, finite density, valid height falloff, valid sky affect, valid anisotropy, shader evidence, and exact pass budget rows.
 
-- [ ] **Step 2: Implement policy**
+- [x] **Step 2: Implement policy**
 
-Use existing postprocess depth input foundations. The policy must report `environment_fog_status=ready` only when depth input and shader evidence are present.
+Use existing postprocess depth input foundations. PR7 adds policy/shader-contract evidence only; package-visible `environment_fog_status=ready` must remain unreported until depth-aware runtime/package execution proof lands.
 
 - [ ] **Step 3: Add D3D12 readback proof**
 
@@ -571,6 +574,8 @@ Add a focused D3D12 WARP-safe readback test proving fog changes at least two kno
 - [ ] **Step 4: Add Vulkan host-gated proof**
 
 Add a strict Vulkan proof guarded by explicit SPIR-V artifact environment variables and validation-layer readiness.
+
+**2026-06-03 PR7 Task 9 Evidence:** GREEN added backend-neutral `EnvironmentFogPolicyDesc`, `EnvironmentFogPolicyPlan`, `EnvironmentFogConstantLayoutRow`, `EnvironmentFogDepthInputRow`, `EnvironmentFogPassBudgetRow`, `EnvironmentFogPostprocessRow`, `plan_environment_fog_policy`, and `has_environment_fog_diagnostic`. The policy validates supported height-fog/aerial-perspective modes, finite density/falloff/height offset/distance/color values, sky affect, anisotropy, sample-step budget, scene-depth evidence, shader-contract evidence, and fail-closed volumetric-fog/backend/native-handle requests while producing exact one-pass fullscreen-triangle budget rows and `PostprocessEffectKind::fog` rows. `shaders/environment/height_fog.hlsl` and `tests/shaders/environment_height_fog.hlsl` add the reviewed depth-aware HLSL contract using `SV_VertexID`, `SV_Position`, `SV_Target0`, explicit `packoffset` constant rows, and sampled scene depth. Official context re-checked Unreal Exponential Height Fog (`https://dev.epicgames.com/documentation/unreal-engine/exponential-height-fog-in-unreal-engine?lang=en-US`), Unity HDRP Fog (`https://docs.unity.cn/Packages/com.unity.render-pipelines.high-definition%4017.0/manual/fog.html`), Godot Environment and post-processing fog guidance (`https://docs.godotengine.org/en/stable/tutorials/3d/environment_and_post_processing.html`), Microsoft HLSL semantics (`https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-semantics`), and Context7 `/khronosgroup/vulkan-docs` depth-attachment-to-fragment-shader sampled-read synchronization evidence before implementation. Focused validation passed for `MK_renderer_environment_fog_policy_tests`, `MK_renderer_environment_policy_tests`, and `MK_renderer_tests`; DXC compiled the contract to DXIL and Vulkan SPIR-V for vertex/pixel entry points, and `spirv-val --target-env vulkan1.3` passed for both SPIR-V artifacts. `tools/check-shader-toolchain.ps1` reported D3D12 DXIL and Vulkan SPIR-V ready, with Metal tools missing as diagnostic-only on this Windows host. This is height-fog policy and shader-contract evidence only; it does not add D3D12 readback proof, Vulkan runtime proof, package-visible `environment_fog_status`, renderer/RHI environment execution, volumetric fog, package counters, Vulkan readiness, Metal readiness, or broad `environment_ready`.
 
 ## Task 10: Volumetric Fog
 
@@ -820,8 +825,8 @@ Expected: PASS, or a concrete missing-host/toolchain blocker is recorded.
 4. PR 4: Environment render packet and renderer policy planning.
 5. PR 5: Physical sky policy and shader contract.
 6. PR 6: Sky lighting and IBL policy.
-7. PR 7: D3D12 physical sky proof and strict Vulkan gated proof.
-8. PR 8: Height fog execution proof.
+7. PR 7: Height fog policy and shader contract.
+8. PR 8: Physical sky and height fog execution proof, split further if review or host gates require it.
 9. PR 9: Volumetric fog policy and first execution proof.
 10. PR 10: Cloud layer.
 11. PR 11: Weather and precipitation, including rain, snow, wetness, occlusion, and audio handoff rows.

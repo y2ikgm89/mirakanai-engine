@@ -1,4 +1,5 @@
 add_library(mirakana_renderer
+    src/environment_fog_policy.cpp
     src/environment_lighting_policy.cpp
     src/environment_policy.cpp
     src/frame_graph.cpp
