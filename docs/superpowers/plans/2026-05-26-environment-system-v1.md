@@ -733,22 +733,25 @@ The planner returns environment values. It does not tick game state, mutate scen
 ## Task 15: Editor Authoring Surface
 
 **Files:**
-- Modify: `editor/core/include/mirakana/editor_core/environment_authoring.hpp`
+- Create: `editor/core/include/mirakana/editor/environment_authoring.hpp`
 - Create: `editor/core/src/environment_authoring.cpp`
-- Modify: `editor/src/editor_app.cpp`
+- Modify: `editor/src/native_editor_app.cpp`
+- Modify: `editor/src/native_editor_app.hpp`
 - Create: `tests/unit/editor_environment_tests.cpp`
 
-- [ ] **Step 1: Add editor-core model tests**
+- [x] **Step 1: Add editor-core model tests**
 
 Require deterministic inspector rows for sky, sun, moon, atmosphere, fog, cloud layer, volumetric clouds, precipitation, weather presets, and quality tier.
 
-- [ ] **Step 2: Add authoring document**
+- [x] **Step 2: Add authoring document**
 
 Add an editor-core document over `GameEngine.EnvironmentProfile.v1` text IO using `ITextStore`, undo/redo, dirty tracking, validation diagnostics, and package registration review rows.
 
-- [ ] **Step 3: Add visible editor panel**
+- [x] **Step 3: Add visible editor panel**
 
 Add a visible first-party retained `MK_editor` panel only after editor-core model tests pass. The editor panel must use `mirakana::ui` / `MK_ui_renderer` contracts and must not expose native renderer/RHI handles, reintroduce Dear ImGui or other UI middleware, or execute package scripts.
+
+**2026-06-04 PR16 Task 15 Evidence:** GREEN adds GUI-independent `MK_editor_core` environment authoring in `mirakana/editor/environment_authoring.hpp` with `EnvironmentAuthoringDocument`, deterministic `EnvironmentAuthoringInspectorModel` rows, validation diagnostics, `ITextStore` load/save over `GameEngine.EnvironmentProfile.v1`, `UndoStack` edit actions, dirty/revision tracking, environment package candidate rows, and package registration draft review rows. The native first-party shell integrates those rows into the existing Inspector rich-text/property surface through `native_editor_app`, keeping the existing panel count stable instead of adding a new dock panel. Official context was re-checked through Context7 and web docs for Unity UI Toolkit custom inspectors and `SerializedObject` data binding (`https://docs.unity.cn/2022.3/Documentation/Manual/UIE-HowTo-CreateCustomInspector.html`), Godot `EditorInspectorPlugin` / `add_inspector_plugin` (`https://docs.godotengine.org/en/4.3/tutorials/plugins/editor/inspector_plugins.html`), Unreal Environment Light Mixer (`https://dev.epicgames.com/documentation/en-us/unreal-engine/environment-light-mixer-in-unreal-engine`), and Unreal Light Mixer single-place editing (`https://dev.epicgames.com/documentation/en-us/unreal-engine/using-the-light-mixer-in-unreal-engine`). Focused validation passed for `MK_editor_environment_tests` build, `tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_environment_tests`, and `tools/check-tidy.ps1 -Files editor/core/src/environment_authoring.cpp,editor/src/native_editor_app.cpp,tests/unit/editor_environment_tests.cpp`; full `tools/validate.ps1` passed with 99/99 CTest tests. This is editor-core authoring and existing Inspector surfacing only; it does not execute renderer/RHI/audio backends, execute package scripts, mutate manifests, add new UI middleware, reintroduce Dear ImGui or SDL3, expose native handles, add package-visible environment counters, change validation recipes, claim editor productization beyond the reviewed rows, prove D3D12/Vulkan/Metal runtime execution, claim broad optimization, or claim broad `environment_ready`.
 
 ## Task 16: Package And Validation Evidence
 
