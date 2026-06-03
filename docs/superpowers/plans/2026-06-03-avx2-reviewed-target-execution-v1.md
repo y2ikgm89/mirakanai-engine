@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` or focused inline execution. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** Active.
+**Status:** Completed.
 
 **Goal:** Add a reviewed AVX2 CPU SIMD execution lane for the existing `MK_core` dot-product evidence without making AVX2 a global engine build or runtime requirement.
 
@@ -186,7 +186,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.
 
 - [x] Commit task-owned files with validation evidence.
 - [x] Push branch and create PR #397.
-- [ ] Wait for hosted checks including `PR Gate` and `Windows MSVC`, merge with `--match-head-commit`, verify the merged head reaches `origin/main`, and run guarded worktree cleanup.
+- [x] Hosted checks including `PR Gate`, `Windows MSVC`, and `Linux Clang ASan/UBSan` passed for PR #397 head `d86900ea`.
+- [x] Closeout pointer sync returns `currentActivePlan` to the production-completion master plan and `recommendedNextPlan.id = next-production-gap-selection`.
 
 ## Validation Evidence
 
@@ -213,10 +214,16 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.
 - Passed after hosted ASan hardening: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`
 - Passed after hosted ASan hardening: focused `tools/check-tidy.ps1` for `tests/unit/core_tests.cpp`.
 - Passed after hosted ASan hardening: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`; 19 static checks passed, diagnostic-only Apple/Metal host gates were reported on Windows, build passed, tidy smoke passed, and 85/85 dev CTest tests passed.
+- Passed hosted checks for PR #397 head `d86900ea`: `PR Gate`, `Windows MSVC`, `Linux Clang ASan/UBSan`, `Linux Coverage`, `Linux CMake`, `Agent Static Guards`, full repository static-analysis shards 0-3, `macOS Metal CMake`, `iOS Simulator smoke`, CodeQL, and validation-tier selection.
+- Passed closeout pointer sync: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`
+- Passed closeout pointer sync: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1`
+- Passed closeout pointer sync: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`
+- Passed closeout pointer sync: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`
+- Passed closeout pointer sync: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1`
 
 ## Done When
 
 - `MK_core` provides scalar, SSE2, and reviewed AVX2 dot-product evidence without making AVX2 global.
 - AVX2 dispatch is selected only when reviewed target compile support and runtime CPU/OS support are both true.
 - Package smoke reports coherent `simd_dispatch_policy_*` counters for scalar/SSE2/AVX2 and keeps native handles, NUMA, GPU async overlap, CUDA, HIP, and SYCL side effects at zero.
-- Docs, manifest, static checks, focused tests, package smoke, full validation, hosted checks, PR merge, and worktree cleanup are complete.
+- Docs, manifest, static checks, focused tests, package smoke, full validation, hosted checks, and closeout pointer sync are complete; PR merge verification and worktree cleanup are handled as the final publication step.
