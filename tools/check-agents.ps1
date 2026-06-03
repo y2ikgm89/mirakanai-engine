@@ -124,6 +124,27 @@ function Test-AgentFileSizeBudget {
     }
 }
 
+function Test-AgentFileMaxLineLength {
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [Parameter(Mandatory)][int]$MaxChars,
+        [Parameter(Mandatory)][string]$Label,
+        [Parameter(Mandatory)][string]$Guidance
+    )
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        return
+    }
+
+    $lineNumber = 0
+    foreach ($line in Get-Content -LiteralPath $Path) {
+        $lineNumber++
+        if ($line.Length -gt $MaxChars) {
+            Write-Error ("{0} line {1} is {2} chars, exceeding readability budget ({3} chars). {4}" -f $Label, $lineNumber, $line.Length, $MaxChars, $Guidance)
+        }
+    }
+}
+
 $agentsPath = Join-Path $root "AGENTS.md"
 Test-AgentFileSizeBudget `
     -Path $agentsPath `
@@ -300,6 +321,11 @@ if (Test-Path -LiteralPath $skillRoot) {
             -Guidance "Keep SKILL.md as a concise trigger/router; move detailed procedures to references/*.md or docs."
         Test-SkillFrontmatter -SkillMdPath $skillFile -ExpectedName $_.Name -RequirePaths $true -ForbidGlobs $false
         Test-SkillReferenceTarget -SkillMdPath $skillFile
+        Test-AgentFileMaxLineLength `
+            -Path (Join-Path $_.FullName "references/full-guidance.md") `
+            -MaxChars 240 `
+            -Label ".agents/skills/$($_.Name)/references/full-guidance.md" `
+            -Guidance "Wrap detailed reference prose so targeted reads and diffs stay efficient."
     }
 }
 
@@ -321,6 +347,11 @@ if (Test-Path -LiteralPath $agentRoot) {
 
 if (Test-Path -LiteralPath $codexRuleRoot) {
     Get-ChildItem -LiteralPath $codexRuleRoot -Filter "*.rules" | ForEach-Object {
+        Test-AgentFileSizeBudget `
+            -Path $_.FullName `
+            -MaxBytes (12 * 1024) `
+            -Label ".codex/rules/$($_.Name)" `
+            -Guidance "Codex rules should stay as narrow command policy; move detailed procedures to skills/docs."
         $content = Get-Content -LiteralPath $_.FullName -Raw
         if ($content -notmatch "prefix_rule\(" -or $content -notmatch "match\s*=" -or $content -notmatch "not_match\s*=") {
             Write-Error "Codex rule files must use prefix_rule with match and not_match examples: $($_.FullName)"
@@ -458,6 +489,11 @@ if (Test-Path -LiteralPath $claudeSkillRoot) {
             -Guidance "Keep SKILL.md as a concise trigger/router; move detailed procedures to references/*.md or docs."
         Test-SkillFrontmatter -SkillMdPath $skillFile -ExpectedName $_.Name -RequirePaths $true -ForbidGlobs $false
         Test-SkillReferenceTarget -SkillMdPath $skillFile
+        Test-AgentFileMaxLineLength `
+            -Path (Join-Path $_.FullName "references/full-guidance.md") `
+            -MaxChars 240 `
+            -Label ".claude/skills/$($_.Name)/references/full-guidance.md" `
+            -Guidance "Wrap detailed reference prose so targeted reads and diffs stay efficient."
     }
 }
 
@@ -490,6 +526,23 @@ $claudeToCodexSkillMap = @{
     "gameengine-license-audit"      = "license-audit"
     "gameengine-performance-optimization" = "performance-optimization-change"
     "gameengine-rendering"          = "rendering-change"
+}
+
+function ConvertTo-SkillParityText {
+    param(
+        [Parameter(Mandatory)][string]$Text,
+        [Parameter(Mandatory)][hashtable]$ClaudeToCodexMap
+    )
+
+    $normalized = $Text -replace "`r`n", "`n"
+    $normalized = $normalized -replace '(?m)^name:\s*.+$', 'name: <skill>'
+    $normalized = $normalized -replace '(?m)^# .+$', '# <skill>'
+    foreach ($claudeName in @($ClaudeToCodexMap.Keys)) {
+        $codexName = $ClaudeToCodexMap[$claudeName]
+        $normalized = $normalized.Replace(".claude/skills/$claudeName/SKILL.md", "<skill:$claudeName>")
+        $normalized = $normalized.Replace(".agents/skills/$codexName/SKILL.md", "<skill:$claudeName>")
+    }
+    return $normalized.TrimEnd()
 }
 
 function Get-FrontmatterPathsSection {
@@ -596,6 +649,16 @@ if ((Test-Path -LiteralPath $claudeSkillRoot) -and (Test-Path -LiteralPath $skil
         $codexPaths = Get-FrontmatterPathsSection -FrontmatterBlock $codexFm
         if ($claudePaths -ne $codexPaths) {
             Write-Error "Claude/Codex skill 'paths:' sections must match for parity ('$claudeFolderName' vs '$codexFolderName').`nClaude:`n$claudePaths`n`nCodex:`n$codexPaths"
+        }
+
+        $claudeParityText = ConvertTo-SkillParityText `
+            -Text (Get-Content -LiteralPath $claudeSkillFile -Raw) `
+            -ClaudeToCodexMap $claudeToCodexSkillMap
+        $codexParityText = ConvertTo-SkillParityText `
+            -Text (Get-Content -LiteralPath $codexSkillFile -Raw) `
+            -ClaudeToCodexMap $claudeToCodexSkillMap
+        if ($claudeParityText -ne $codexParityText) {
+            Write-Error "Claude/Codex skill bodies must stay equivalent after normalizing skill names and cross-tool skill references ('$claudeFolderName' vs '$codexFolderName')."
         }
     }
 }

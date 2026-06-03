@@ -13,6 +13,8 @@ paths:
 
 # GameEngine Performance Optimization
 
+## Workflow
+
 1. Scope the claim first: identify the exact subsystem, metric, host/backend, workload, fallback path, and unsupported adjacent claims. Never use a broad "optimized" claim when only a narrow lane is proven.
 2. Read the current performance context from `docs/current-capabilities.md`, `docs/superpowers/plans/README.md`, `docs/specs/2026-06-01-engine-performance-optimization-foundation-v1.md`, and targeted `engine/agent/manifest.fragments/*.json` or `tools/agent-context.ps1 -ContextProfile Minimal|Standard`.
 3. Prefer measurement, data layout, ownership clarity, and deterministic diagnostics before low-level tuning. Add budgets or package-visible evidence rows before claiming speedup.
@@ -21,7 +23,7 @@ paths:
 6. Update docs/plans/manifest fragments/static checks when public counters, validation recipes, package evidence, or AI-operable claims change. Compose `engine/agent/manifest.json` after fragment edits.
 7. Validate with focused builds/tests/static checks while iterating. Use full `tools/validate.ps1` only for C++/runtime/build/packaging/public-contract slice gates or when narrower checks cannot prove the changed surface.
 
-## Boundaries
+## Optimization Boundaries
 
 - For CPU scheduling, keep policy, evidence, and execution separate: job graph/evidence before worker pool, topology before placement, host-independent placement before OS-specific CPU Sets or affinity.
 - For memory work, classify lifetime and ownership before allocator replacement. Report bytes, counts, high-water marks, stale-generation, safe-point, cross-thread, false-sharing, and budget-pressure evidence.
@@ -32,7 +34,7 @@ paths:
 
 ## Do Not
 
-Do not broaden AGENTS.md, `.codex/rules`, or `.claude/settings.json` to make optimization faster; use narrower slices and focused validation.
-Do not add compatibility shims, deprecated aliases, duplicate APIs, or migration layers for greenfield optimization work unless a future release policy explicitly requires them.
-Do not claim broad CPU/GPU/memory optimization, all-core readiness, vendor parity, backend parity, async overlap, allocator enforcement, GPU residency, CUDA/HIP/SYCL, NEON, AVX-512, or PGO/LTO benefit without focused evidence for that exact claim.
-Do not expose native thread handles, affinity masks, RHI/native handles, or backend objects through public game APIs.
+- Do not broaden AGENTS.md, `.codex/rules`, or `.claude/settings.json` to make optimization faster; use narrower slices and focused validation.
+- Do not add compatibility shims, deprecated aliases, duplicate APIs, or migration layers for greenfield optimization work unless a future release policy explicitly requires them.
+- Do not claim broad CPU/GPU/memory optimization, all-core readiness, vendor parity, backend parity, async overlap, allocator enforcement, GPU residency, CUDA/HIP/SYCL, NEON, AVX-512, or PGO/LTO benefit without focused evidence for that exact claim.
+- Do not expose native thread handles, affinity masks, RHI/native handles, or backend objects through public game APIs.

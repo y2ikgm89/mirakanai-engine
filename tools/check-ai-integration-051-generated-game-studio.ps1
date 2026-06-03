@@ -163,7 +163,7 @@ foreach ($check in $generatedGameStudioChecks) {
     $fileText = Get-AgentSurfaceText $check.Path
     $missingNeedles = @()
     foreach ($needle in $check.Needles) {
-        if (-not $fileText.Contains($needle)) {
+        if (-not (Test-AgentSurfaceContainsText -Text $fileText -Needle $needle)) {
             $missingNeedles += $needle
         }
     }
