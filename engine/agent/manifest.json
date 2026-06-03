@@ -6837,6 +6837,7 @@
         "gameengine-game-development",
         "gameengine-git-publication-preflight",
         "license-audit",
+        "performance-optimization-change",
         "rendering-change"
       ],
       "requiredAgents": [
@@ -6878,6 +6879,7 @@
         "gameengine-game-development",
         "gameengine-git-publication-preflight",
         "gameengine-license-audit",
+        "gameengine-performance-optimization",
         "gameengine-rendering"
       ],
       "requiredAgents": [
@@ -6915,6 +6917,7 @@
         "gameengine-git-publication-preflight",
         "gameengine-license-audit",
         "gameengine-plan-registry",
+        "gameengine-performance-optimization",
         "gameengine-rendering"
       ],
       "requiredAgents": [

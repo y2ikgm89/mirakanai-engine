@@ -12,18 +12,19 @@ paths:
 1. Read targeted engine context: prefer `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1 -ContextProfile Minimal` or `Standard`, or a targeted `engine/agent/manifest.fragments/*.json` file. Use full `engine/agent/manifest.json` only when the current decision needs it. When you **change** the engine agent contract, edit fragments and run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write` (never hand-edit `engine/agent/manifest.json`).
 2. Start documentation navigation from `docs/README.md`; use `docs/roadmap.md` for current status and `docs/superpowers/plans/README.md` as the plan registry.
 3. Read `docs/cpp-style.md` before changing public API names, file layout, or CMake target structure.
-4. Read the relevant public headers under `engine/*/include`.
-5. Keep game code outside engine modules unless changing the engine itself.
-6. Add or update tests before production behavior when the toolchain can run; lock the smallest externally meaningful behavior/API/regression guarantee, and prefer updating existing tests when they already cover the contract.
-7. Update docs/specs/plans for non-trivial API or architecture changes. Prefer one dated capability/gap-cluster/milestone plan; keep phase behavior/API/validation boundary decisions, validation-only, docs/manifest/static-check, and small mechanical follow-up inside the active plan checklist.
-8. Keep `MK_CXX_STANDARD=23` as the required standard; do not add C++20 compatibility shims.
-9. Prefer C++23-native features, project modules, and `import std;` when the active CMake toolchain support is validated.
-10. Prefer RAII/value ownership and `std::make_unique` for heap-owned objects; use direct `new` only when a private/factory constructor makes `make_unique` impossible, and wrap it immediately.
-11. Keep optional C++ dependencies in vcpkg manifest features and preserve the official `builtin-baseline` unless doing an explicit dependency-maintenance task.
-12. When changing vcpkg dependencies or feature membership, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1`; do not rely on CMake configure to install, restore, or download vcpkg packages.
-13. Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` after public header or backend interop changes.
-14. Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1` after shared C++ implementation-pattern changes; prefer it over raw `clang-tidy` (native `compile_commands.json` or CMake File API synthesis under the `dev` preset `binaryDir`).
-15. Use focused target builds/tests/static checks while iterating, then run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` at the coherent slice-closing gate.
+4. For performance, optimization, profiling, SIMD/ISA, scheduler, memory-budget, data-layout, PGO/LTO, or speed-readiness work, also use `.claude/skills/gameengine-performance-optimization/SKILL.md`.
+5. Read the relevant public headers under `engine/*/include`.
+6. Keep game code outside engine modules unless changing the engine itself.
+7. Add or update tests before production behavior when the toolchain can run; lock the smallest externally meaningful behavior/API/regression guarantee, and prefer updating existing tests when they already cover the contract.
+8. Update docs/specs/plans for non-trivial API or architecture changes. Prefer one dated capability/gap-cluster/milestone plan; keep phase behavior/API/validation boundary decisions, validation-only, docs/manifest/static-check, and small mechanical follow-up inside the active plan checklist.
+9. Keep `MK_CXX_STANDARD=23` as the required standard; do not add C++20 compatibility shims.
+10. Prefer C++23-native features, project modules, and `import std;` when the active CMake toolchain support is validated.
+11. Prefer RAII/value ownership and `std::make_unique` for heap-owned objects; use direct `new` only when a private/factory constructor makes `make_unique` impossible, and wrap it immediately.
+12. Keep optional C++ dependencies in vcpkg manifest features and preserve the official `builtin-baseline` unless doing an explicit dependency-maintenance task.
+13. When changing vcpkg dependencies or feature membership, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1`; do not rely on CMake configure to install, restore, or download vcpkg packages.
+14. Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` after public header or backend interop changes.
+15. Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1` after shared C++ implementation-pattern changes; prefer it over raw `clang-tidy` (native `compile_commands.json` or CMake File API synthesis under the `dev` preset `binaryDir`).
+16. Use focused target builds/tests/static checks while iterating, then run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` at the coherent slice-closing gate.
 
 ## Boundaries
 

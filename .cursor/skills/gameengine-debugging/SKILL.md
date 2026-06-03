@@ -20,3 +20,5 @@ Full workflow lives in shared skills. Read these canonical files (ASCII paths):
 | Baseline | `AGENTS.md` |
 
 Validation: follow `AGENTS.md` debugging and `tools/check-toolchain.ps1` guidance before claiming root causes.
+
+For performance regressions, fallback selection, host/ISA gates, or evidence-counter integrity, also read `.cursor/skills/gameengine-performance-optimization/SKILL.md`.

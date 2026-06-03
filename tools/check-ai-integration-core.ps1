@@ -138,6 +138,7 @@ $script:cursorThinRouterSkillCodexTwinMap = @{
     "gameengine-game-development"          = ".agents/skills/gameengine-game-development/SKILL.md"
     "gameengine-git-publication-preflight" = ".agents/skills/gameengine-git-publication-preflight/SKILL.md"
     "gameengine-license-audit"             = ".agents/skills/license-audit/SKILL.md"
+    "gameengine-performance-optimization"  = ".agents/skills/performance-optimization-change/SKILL.md"
     "gameengine-rendering"                 = ".agents/skills/rendering-change/SKILL.md"
 }
 

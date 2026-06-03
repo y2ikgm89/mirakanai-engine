@@ -28,6 +28,7 @@ paths:
 - moved-from values
 - invalid entity/component access
 - frame-step determinism
+- performance regressions, fallback selection, host/ISA gates, and evidence-counter integrity
 - global mutable state
 
 ## Windows Native Debugging

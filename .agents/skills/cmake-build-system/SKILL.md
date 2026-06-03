@@ -18,6 +18,7 @@ paths:
 ## Rules
 
 - Use target-based CMake.
+- For performance flags, ISA-specific code, PGO, LTO, or release-performance presets, also use `.agents/skills/performance-optimization-change/SKILL.md`. Keep optimization flags target-local or preset-specific; do not change default validation with global compiler flags.
 - **`MK_tools`:** Keep implementation `.cpp` files under `engine/tools/{shader,gltf,asset,scene}/` as `OBJECT` targets (`MK_tools_shader`, `MK_tools_gltf`, `MK_tools_asset`, `MK_tools_scene`) aggregated by the `MK_tools` `STATIC` library in `engine/tools/CMakeLists.txt`. Each `OBJECT` target uses **cluster-minimal** `PUBLIC` `target_link_libraries`; **`MK_tools`** keeps the **full** `PUBLIC` `MK_*` set for consumer/install link closure. Do not reintroduce a flat `engine/tools/src/`. Cluster map and rules: `docs/specs/2026-05-11-directory-layout-target-v1.md`. When `.cpp` paths move, update `tools/check-json-contracts.ps1` and `tools/check-ai-integration.ps1` in the same task.
 - Keep include paths scoped with `target_include_directories`.
 - Give public libraries both `$<BUILD_INTERFACE:...>` and `$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>` include paths.

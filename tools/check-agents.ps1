@@ -477,6 +477,7 @@ $claudeToCodexSkillMap = @{
     "gameengine-game-development"   = "gameengine-game-development"
     "gameengine-git-publication-preflight" = "gameengine-git-publication-preflight"
     "gameengine-license-audit"      = "license-audit"
+    "gameengine-performance-optimization" = "performance-optimization-change"
     "gameengine-rendering"          = "rendering-change"
 }
 

@@ -18,3 +18,5 @@ Full workflow lives in shared skills. Read these canonical files (ASCII paths):
 | Baseline | `AGENTS.md` |
 
 Before changing engine-facing APIs or game scaffolding: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1` (optional `-ContextProfile Minimal|Standard|Full`) or targeted reads of `engine/agent/manifest.fragments/*.json` / `engine/agent/manifest.json`. To **change** the engine agent contract, edit fragments and run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write`.
+
+For performance or optimization claims, also read `.cursor/skills/gameengine-performance-optimization/SKILL.md`.
