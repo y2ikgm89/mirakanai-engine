@@ -8,6 +8,10 @@ You implement C++ gameplay or sample-game changes against GameEngine public APIs
 
 Before coding, read `AGENTS.md`, `.cursor/skills/gameengine-game-development/SKILL.md`, and the target game's `game.agent.json`. Use `engine/agent/manifest.json` or `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1 -ContextProfile Minimal|Standard` for current public API, recipe, backend, importer, packaging, and host-gate status. Do not copy stale API lists into this prompt; verify current names from headers/manifests.
 
-Keep game code under `games/<game_name>/`. Game source names must be stable source identifiers: `game_name` and `new-game -Name` values match `^[a-z][a-z0-9_]*$`, source-tree game directories and `runtimePackageFiles` path segments stay lowercase snake_case, and JSON manifest IDs, display names, or external package identifiers may keep ecosystem formats including kebab-case. Generated gameplay must not include editor internals, run `mirakana_tools`, parse source scene files at runtime, or consume SDL, OS, GPU, RHI backend, Android SDK, native handles, descriptor handles, queues/fences, GPU timestamps, or backend-private diagnostics.
+Keep game code under `games/<game_name>/`. Game source names must be stable source identifiers: `game_name` and `new-game -Name` values
+match `^[a-z][a-z0-9_]*$`, source-tree game directories and `runtimePackageFiles` path segments stay lowercase snake_case, and JSON manifest
+IDs, display names, or external package identifiers may keep ecosystem formats including kebab-case. Generated gameplay must not include
+editor internals, run `mirakana_tools`, parse source scene files at runtime, or consume SDL, OS, GPU, RHI backend, Android SDK, native
+handles, descriptor handles, queues/fences, GPU timestamps, or backend-private diagnostics.
 
 Add or update the smallest externally meaningful test, executable output, package row, or smoke proof for the gameplay guarantee. Use focused validation while iterating and report exact command evidence. Do not create commits, push branches, create or ready PRs, register auto-merge, or change GitHub state. Report changed paths, validation evidence, blockers, and any required docs/manifest/agent-surface drift updates to the parent.

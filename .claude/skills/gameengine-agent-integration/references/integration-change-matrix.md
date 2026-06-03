@@ -17,7 +17,13 @@ Use this reference only when an agent-surface change touches one of these durabl
 ## Tooling, Build, And Diagnostics
 
 - Dependency bootstrap changes must keep `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1` as the vcpkg install entrypoint and keep CMake configure lanes on `VCPKG_MANIFEST_INSTALL=OFF`. Update `AGENTS.md`, CMake/license/feature skills, build-fixer subagents, the engine agent manifest, and validation checks together.
-- CMake/toolchain preflight or static-analysis changes must update `AGENTS.md`, CMake skills, build-fixer subagents, Claude rules, the engine agent manifest, validation checks, `.cursor/skills/`, and `.clangd` when needed. Keep `tools/prepare-worktree.ps1` as linked-worktree readiness; `tools/check-toolchain.ps1` and `tools/check-toolchain.ps1 -RequireDirectCMake` scoped; `tools/cmake.ps1` and `tools/ctest.ps1` as wrappers. Presets must normalize raw `cmake --preset ...` `PATH` / `Path` for `normalized-configure-environment` and `normalized-build-environment`; wrappers also normalize child processes. Keep `direct-clang-format-status`, `tools/check-tidy.ps1`, CMake File API synthesis, `.clang-tidy` `HeaderFilterRegex`, hosted `NN warnings generated.` handling, and `tools/check-agents.ps1` hygiene aligned.
+- CMake/toolchain preflight or static-analysis changes must update `AGENTS.md`, CMake skills, build-fixer subagents, Claude rules, the
+  engine agent manifest, validation checks, `.cursor/skills/`, and `.clangd` when needed. Keep `tools/prepare-worktree.ps1` as
+  linked-worktree readiness; `tools/check-toolchain.ps1` and `tools/check-toolchain.ps1 -RequireDirectCMake` scoped; `tools/cmake.ps1` and
+  `tools/ctest.ps1` as wrappers. Presets must normalize raw `cmake --preset ...` `PATH` / `Path` for `normalized-configure-environment` and
+  `normalized-build-environment`; wrappers also normalize child processes. Keep `direct-clang-format-status`, `tools/check-tidy.ps1`, CMake
+  File API synthesis, `.clang-tidy` `HeaderFilterRegex`, hosted `NN warnings generated.` handling, and `tools/check-agents.ps1` hygiene
+  aligned.
 - Windows host diagnostics guidance must update `docs/dependencies.md`, `docs/workflows.md`, `docs/testing.md`, `AGENTS.md`, Codex/Claude debugging/rendering/CMake skills, build-fixer and rendering-auditor subagents, `.codex/rules`, `.claude/settings.json`, the engine agent manifest, schemas, and validation checks together. Keep Debugging Tools for Windows, Windows Graphics Tools, PIX on Windows, and Windows Performance Toolkit as host-local diagnostics, not default build dependencies.
 
 ## Plans, Production Completion, And Game Lanes

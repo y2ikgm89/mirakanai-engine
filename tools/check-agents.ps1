@@ -298,6 +298,31 @@ $cursorAgentRoot = Join-Path $root ".cursor/agents"
 $aiSurfacesFragmentPath = Join-Path $root "engine/agent/manifest.fragments/011-aiSurfaces.json"
 $aiSurfacesFragment = Get-Content -LiteralPath $aiSurfacesFragmentPath -Raw | ConvertFrom-Json
 
+foreach ($agentSurfaceRoot in @(
+        $skillRoot,
+        $agentRoot,
+        $codexRuleRoot,
+        $claudeRuleRoot,
+        $claudeSkillRoot,
+        $claudeAgentRoot,
+        $cursorSkillRoot,
+        $cursorAgentRoot,
+        (Join-Path $root ".cursor/rules")
+    )) {
+    if (-not (Test-Path -LiteralPath $agentSurfaceRoot)) {
+        continue
+    }
+
+    Get-ChildItem -LiteralPath $agentSurfaceRoot -Recurse -File |
+        ForEach-Object {
+            Test-AgentFileMaxLineLength `
+                -Path $_.FullName `
+                -MaxChars 600 `
+                -Label ([System.IO.Path]::GetRelativePath($root, $_.FullName)) `
+                -Guidance "Wrap initial-load and lazy reference prose so searches, diffs, and targeted reads stay efficient."
+        }
+}
+
 foreach ($skillName in @($aiSurfacesFragment.aiSurfaces.codex.requiredSkills)) {
     Assert-RequiredDirectoryChild -Root $skillRoot -Name ([string]$skillName) -Label "Codex required skills from 011-aiSurfaces.json" -RequiredLeaf "SKILL.md"
 }
