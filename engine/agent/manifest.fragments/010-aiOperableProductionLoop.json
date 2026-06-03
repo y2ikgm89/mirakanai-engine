@@ -5,13 +5,13 @@
     "foundationPlan": "docs/superpowers/plans/2026-05-01-ai-operable-production-loop-foundation-v1.md",
     "currentActivePlan": "docs/superpowers/plans/2026-06-03-long-running-performance-readiness-v1.md",
     "recommendedNextPlan": {
-      "id": "long-running-performance-readiness-v1-phase-1",
-      "title": "Long-Running Performance Readiness v1 Phase 1",
+      "id": "long-running-performance-readiness-v1-phase-7",
+      "title": "Long-Running Performance Readiness v1 Phase 7",
       "status": "active",
       "path": "docs/superpowers/plans/2026-06-03-long-running-performance-readiness-v1.md",
-      "latestCloseoutEvidence": "Long-Running Performance Readiness v1 Phase 0/1 is selected as a post-1.0 capability milestone. The focused installed 2D package smoke with --require-long-run-performance-readiness passed locally, reporting long_run_readiness_status=ready, ready=1, frames=3, p95/p99/max frame time 16000us, over_budget_frames=0, positive memory high-water bytes, memory_growth_bytes=0, diagnostics=0, shutdown_clean=1, and zero Linux affinity, NUMA, broad SIMD, GPU async overlap, CUDA, HIP, SYCL, and native-handle side effects. host-2d-long-run-readiness-soak is added as an opt-in 108000-frame host-owned recipe outside default validation. Full slice validation and publication are still required before closeout.",
-      "completedContext": "First-Party Desktop Platform And SDL3 Removal v1, MK_platform_win32, MK_runtime_host_win32, MK_runtime_host_win32_presentation, and MK_audio_wasapi remain completed native desktop evidence. Renderer RHI Resource Foundation 1.0 Scope Closeout v1, Renderer Backend Parity Host Recipe Proof v1, Renderer Metal Apple Host Validation Recipe v1, Renderer Metal CI Host Recipe v1, Renderer Backend Parity Recipe Allowlist v1, production-rendering-vfx-profiling-v1, Native Win32 Editor Shell v1, First-Party Editor Shell v1, and First-Party UI Editor Production Stack v1 remain completed evidence layers. Job Execution Placement Policy v1, Windows CPU Set Worker Placement v1, Windows CPU Set SMT Worker Placement v1, SIMD Dispatch Policy And Evidence v1, and AVX2 Reviewed Target Execution v1 are completed optimization slices. The active long-running readiness work starts with selected sample_2d_desktop_runtime_package short-soak counters plus opt-in host-2d-long-run-readiness-soak before Linux affinity, NUMA allocation execution, broad SIMD expansion, GPU async overlap, CUDA/HIP/SYCL, cross-vendor parity, cross-backend parity, or broad CPU/GPU/memory optimization can be claimed. unsupportedProductionGaps = [] remains the Engine 1.0 truth.",
-      "reason": "The operator selected a focused post-1.0 long-running performance readiness milestone. Phase 1 adds deterministic package-visible soak evidence first, with host-2d-long-run-readiness-soak retained as an opt-in host recipe; later phases remain host-gated and evidence-driven."
+      "latestCloseoutEvidence": "Long-Running Performance Readiness v1 Phase 0/1 added selected sample_2d_desktop_runtime_package short-soak evidence through --require-long-run-performance-readiness, local full validation passed, and PR #403 was merged. Phase 2 added aiOperableProductionLoop.cpuProfilingMatrix and host-cpu-profiling-matrix as the host-gated Intel/AMD CPU Profiling Matrix v1 contract before Linux affinity, NUMA placement, broader SIMD, PGO/LTO, data-layout tuning, scheduler-policy, or batch-size follow-up execution. Renderer Backend Parity Host Recipe Proof v1 remains inherited, SDL3 stays absent, and unsupportedProductionGaps = [] remains unchanged. The current Phase 7 selection adds Optional GPU Compute Review v1 through optionalGpuComputeReview and host-optional-gpu-compute-review as a review-only classifier before any rhi_compute, offline_tool_acceleration, cuda_hip_private_adapter_candidate, sycl_private_adapter_candidate, or non_goal decision is treated as executable.",
+      "completedContext": "First-Party Desktop Platform And SDL3 Removal v1, MK_platform_win32, MK_runtime_host_win32, MK_runtime_host_win32_presentation, and MK_audio_wasapi remain completed native desktop evidence. Renderer RHI Resource Foundation 1.0 Scope Closeout v1, Renderer Backend Parity Host Recipe Proof v1, Renderer Metal Apple Host Validation Recipe v1, Renderer Metal CI Host Recipe v1, Renderer Backend Parity Recipe Allowlist v1, production-rendering-vfx-profiling-v1, Native Win32 Editor Shell v1, First-Party Editor Shell v1, and First-Party UI Editor Production Stack v1 remain completed evidence layers. Job Execution Placement Policy v1, Windows CPU Set Worker Placement v1, Windows CPU Set SMT Worker Placement v1, SIMD Dispatch Policy And Evidence v1, AVX2 Reviewed Target Execution v1, Phase 1 selected 2D long-run short-soak counters, and Phase 2 CPU profiling matrix evidence selection are completed or published optimization evidence boundaries. The active Phase 7 classifier is review-only: every candidate must record data transfer cost, memory residency, synchronization, stream/event usage, queue/profiler visibility, dependency burden, and scalar or RHI fallback evidence before implementation. RHI compute remains preferred for runtime rendering/simulation, while CUDA/HIP/SYCL stays optional tooling or private adapter research only. It introduces no CUDA/HIP/SYCL runtime dependency, no vcpkg.json feature, no CMake linkage, no default validation dependency, no broad GPU compute, no async overlap claim, no cross-vendor or cross-backend parity, and no broad CPU/GPU/memory optimization. unsupportedProductionGaps = [] remains the Engine 1.0 truth.",
+      "reason": "The operator asked whether GPU async, CUDA, HIP, and SYCL should proceed now. Phase 7 answers that with an official-doc-backed, schema/static-check-visible classifier: prefer backend-neutral RHI compute for runtime workloads, allow CUDA/HIP/SYCL only as optional tooling or private adapters with scalar/RHI fallbacks and host install gates, and reject any default-runtime or default-validation dependency."
     },
     "recipeStatusEnum": [
       "ready",
@@ -1487,6 +1487,412 @@
         "notes": "This loop makes optimization readiness AI-operable before deeper implementation work. Ready status means the descriptor, references, and static checks are ready; it does not mean runtime frame-time, CPU scheduling, GPU occupancy, allocator enforcement, or backend parity is proven."
       }
     ],
+    "cpuProfilingMatrix": {
+      "id": "long-running-performance-readiness-v1-phase-2",
+      "status": "host-gated",
+      "owner": "performance-optimization",
+      "summary": "Intel/AMD CPU Profiling Matrix v1 is a host-gated evidence contract for deciding whether Linux affinity, NUMA placement, broader SIMD, PGO/LTO, batch sizing, scheduler policy, or data-layout work is justified. It records official-tool traces and host details only; it does not execute tuning or claim broad CPU optimization.",
+      "hostClasses": [
+        {
+          "id": "intel-mainstream-desktop-laptop",
+          "status": "host-gated",
+          "requiredEvidence": [
+            "exact_cpu_model",
+            "physical_core_count",
+            "logical_processor_count",
+            "smt_state",
+            "selected_simd_lane",
+            "wpr_or_vtune_trace_artifact"
+          ]
+        },
+        {
+          "id": "intel-hybrid-pcore-ecore",
+          "status": "host-gated",
+          "requiredEvidence": [
+            "exact_cpu_model",
+            "performance_efficiency_core_topology",
+            "processor_groups",
+            "thread_scheduler_context",
+            "wpr_or_vtune_trace_artifact"
+          ]
+        },
+        {
+          "id": "amd-ryzen",
+          "status": "host-gated",
+          "requiredEvidence": [
+            "exact_cpu_model",
+            "ccx_or_core_complex_context",
+            "smt_state",
+            "selected_simd_lane",
+            "uprof_or_perf_trace_artifact"
+          ]
+        },
+        {
+          "id": "amd-threadripper",
+          "status": "host-gated",
+          "requiredEvidence": [
+            "exact_cpu_model",
+            "chiplet_topology",
+            "numa_node_count",
+            "memory_bandwidth_counters",
+            "uprof_or_perf_trace_artifact"
+          ]
+        },
+        {
+          "id": "amd-epyc-nps",
+          "status": "host-gated",
+          "requiredEvidence": [
+            "exact_cpu_model",
+            "socket_count",
+            "numa_node_count",
+            "nps_state",
+            "local_remote_memory_counters",
+            "uprof_or_perf_trace_artifact"
+          ]
+        },
+        {
+          "id": "linux-ci-host",
+          "status": "host-gated",
+          "requiredEvidence": [
+            "kernel_version",
+            "perf_stat_artifact",
+            "perf_record_artifact",
+            "scheduler_affinity_context",
+            "cgroup_or_cpuset_context"
+          ]
+        },
+        {
+          "id": "windows-ci-host",
+          "status": "host-gated",
+          "requiredEvidence": [
+            "windows_build",
+            "processor_group_context",
+            "wpr_etl_artifact",
+            "wpa_summary_or_report",
+            "pmu_counter_availability"
+          ]
+        }
+      ],
+      "requiredCpuFields": [
+        "exact_cpu_model",
+        "os_kernel_or_build",
+        "topology",
+        "socket_count",
+        "physical_core_count",
+        "logical_processor_count",
+        "smt_state",
+        "processor_groups",
+        "numa_node_count",
+        "nps_state",
+        "scheduler_context",
+        "compiler_and_flags",
+        "selected_simd_lane",
+        "thermal_power_state",
+        "profiler_name_version",
+        "counter_set",
+        "workload_recipe",
+        "trace_artifact_id"
+      ],
+      "traceRecipes": [
+        {
+          "id": "cpu-frame-time",
+          "status": "host-gated",
+          "requiredArtifacts": [
+            "diagnostics_trace_json",
+            "profiler_timeline",
+            "p95_p99_max_frame_time",
+            "over_budget_frames"
+          ]
+        },
+        {
+          "id": "worker-utilization",
+          "status": "host-gated",
+          "requiredArtifacts": [
+            "worker_thread_timeline",
+            "per_worker_busy_idle_wait_summary",
+            "queue_depth_or_run_queue_context"
+          ]
+        },
+        {
+          "id": "queue-waits",
+          "status": "host-gated",
+          "requiredArtifacts": [
+            "job_queue_wait_counters",
+            "steal_attempt_success_wait_counters",
+            "scheduler_wait_trace"
+          ]
+        },
+        {
+          "id": "cache-behavior",
+          "status": "host-gated",
+          "requiredArtifacts": [
+            "cache_miss_counter_report",
+            "hot_function_or_callstack_report",
+            "cache_counter_tool_version"
+          ]
+        },
+        {
+          "id": "branch-misses",
+          "status": "host-gated",
+          "requiredArtifacts": [
+            "branch_mispredict_counter_report",
+            "hot_branch_region_report"
+          ]
+        },
+        {
+          "id": "memory-bandwidth",
+          "status": "host-gated",
+          "requiredArtifacts": [
+            "memory_bandwidth_counter_report",
+            "per_node_or_socket_memory_context"
+          ]
+        },
+        {
+          "id": "false-sharing",
+          "status": "host-gated",
+          "requiredArtifacts": [
+            "cache_line_contention_or_c2c_report",
+            "candidate_shared_structure",
+            "before_after_counter_pair"
+          ]
+        },
+        {
+          "id": "numa-locality",
+          "status": "host-gated",
+          "requiredArtifacts": [
+            "local_remote_memory_counter_report",
+            "cpu_to_node_mapping",
+            "allocation_or_first_touch_context"
+          ]
+        }
+      ],
+      "classification": [
+        "data-layout candidate",
+        "batch-size candidate",
+        "scheduler policy candidate",
+        "Linux affinity candidate",
+        "NUMA placement candidate",
+        "SIMD kernel candidate",
+        "compiler-lane candidate",
+        "non-goal"
+      ],
+      "beforeAfterTracePair": {
+        "required": true,
+        "baselineArtifact": "official-tool trace before the proposed tuning change",
+        "candidateArtifact": "official-tool trace after the proposed tuning change",
+        "comparisonFields": [
+          "frame_p95_p99_max",
+          "over_budget_frames",
+          "worker_waits",
+          "cache_misses",
+          "branch_misses",
+          "memory_bandwidth",
+          "local_remote_numa_ratio",
+          "diagnostics_count"
+        ]
+      },
+      "regressionBudget": {
+        "required": true,
+        "budgetFields": [
+          "frame_time_budget",
+          "memory_growth_budget",
+          "queue_wait_budget",
+          "cache_miss_budget",
+          "branch_miss_budget",
+          "memory_bandwidth_budget",
+          "diagnostics_budget"
+        ]
+      },
+      "nonGoals": [
+        "Linux affinity execution",
+        "NUMA allocation execution",
+        "broad SIMD expansion",
+        "PGO/LTO flag changes",
+        "data-layout rewrites",
+        "GPU async overlap",
+        "CUDA/HIP/SYCL execution",
+        "cross-vendor parity",
+        "cross-backend parity",
+        "broad CPU/GPU/memory optimization"
+      ],
+      "officialReferences": [
+        {
+          "id": "windows-performance-recorder",
+          "url": "https://learn.microsoft.com/en-us/windows-hardware/test/wpt/windows-performance-recorder",
+          "notes": "WPR records ETW events for analysis in WPA."
+        },
+        {
+          "id": "windows-pmu-events",
+          "url": "https://learn.microsoft.com/en-us/windows-hardware/test/wpt/recording-pmu-events",
+          "notes": "Windows PMU counter collection through WPR/Xperf depends on supported events on the running system."
+        },
+        {
+          "id": "linux-perf-stat",
+          "url": "https://man7.org/linux/man-pages/man1/perf-stat.1.html",
+          "notes": "perf stat gathers performance counter statistics for a command or target."
+        },
+        {
+          "id": "linux-perf-record",
+          "url": "https://man7.org/linux/man-pages/man1/perf-record.1.html",
+          "notes": "perf record captures sampled profiles into perf.data for later reporting."
+        },
+        {
+          "id": "intel-vtune-cli",
+          "url": "https://www.intel.com/content/www/us/en/docs/vtune-profiler/user-guide/2024-0/command-line-interface.html",
+          "notes": "VTune CLI supports scripted collection, reporting, import, and before/after comparison workflows."
+        },
+        {
+          "id": "intel-vtune-hotspots",
+          "url": "https://www.intel.com/content/www/us/en/docs/vtune-profiler/user-guide/current/basic-hotspots-analysis.html",
+          "notes": "VTune Hotspots identifies CPU time hotspots and reports utilization views."
+        },
+        {
+          "id": "amd-uprof-hotspots",
+          "url": "https://docs.amd.com/r/en-US/68658-uProf-getting-started-guide/AMD-uProf-Hotspots-Analysis",
+          "notes": "AMD uProf Hotspots and CLI workflows are host/tool-version dependent and can collect CPU time and hardware counter evidence."
+        }
+      ],
+      "validationRecipes": [
+        "host-cpu-profiling-matrix"
+      ],
+      "notes": "The matrix is schema/static-check visible, but every host row is host-gated until official profiler artifacts are attached. Missing host tools or missing counter support must be reported as host-gated evidence, not ready, blocked, or broad optimization."
+    },
+    "optionalGpuComputeReview": {
+      "id": "long-running-performance-readiness-v1-phase-7",
+      "status": "review-only",
+      "owner": "performance-optimization",
+      "summary": "Optional GPU Compute Review v1 classifies CUDA, HIP, SYCL, RHI compute, and offline acceleration candidates before any vendor runtime, toolchain dependency, backend path, or default validation requirement is introduced.",
+      "classifications": [
+        "rhi_compute",
+        "offline_tool_acceleration",
+        "cuda_hip_private_adapter_candidate",
+        "sycl_private_adapter_candidate",
+        "non_goal"
+      ],
+      "requiredEvidenceFields": [
+        "data transfer cost",
+        "memory residency",
+        "synchronization",
+        "stream/event usage",
+        "queue/profiler visibility",
+        "dependency burden",
+        "scalar or RHI fallback"
+      ],
+      "candidateRows": [
+        {
+          "id": "runtime-rendering-or-simulation-rhi-compute",
+          "classification": "rhi_compute",
+          "status": "host-gated",
+          "requiredEvidence": [
+            "selected RHI backend and workload",
+            "queue family or queue type",
+            "timestamp and profiler evidence",
+            "explicit barriers, semaphores, fences, or queue waits",
+            "RHI fallback path"
+          ],
+          "notes": "Runtime rendering, skinning, morph, simulation, and package-residency workloads prefer backend-neutral RHI compute instead of CUDA/HIP/SYCL so D3D12/Vulkan/Metal ownership and gameplay APIs remain first-party."
+        },
+        {
+          "id": "offline-asset-tool-acceleration",
+          "classification": "offline_tool_acceleration",
+          "status": "host-gated",
+          "requiredEvidence": [
+            "tooling-only workload",
+            "source and output artifact hashes",
+            "data transfer cost",
+            "host install gate",
+            "scalar fallback path"
+          ],
+          "notes": "Offline cook, import, compression, analysis, or bake tools may consider GPU acceleration only when deterministic output, legal/dependency records, and scalar fallback evidence are attached."
+        },
+        {
+          "id": "cuda-hip-private-adapter",
+          "classification": "cuda_hip_private_adapter_candidate",
+          "status": "host-gated",
+          "requiredEvidence": [
+            "CUDA Toolkit or ROCm/HIP version",
+            "device properties including asyncEngineCount when relevant",
+            "stream and event synchronization evidence",
+            "host/device transfer and residency accounting",
+            "private adapter boundary",
+            "scalar or RHI fallback path"
+          ],
+          "notes": "CUDA/HIP may be reviewed only as optional tooling or private adapter research. It must not add default runtime linkage, public handles, default validation dependencies, or broad cross-vendor claims."
+        },
+        {
+          "id": "sycl-private-adapter",
+          "classification": "sycl_private_adapter_candidate",
+          "status": "host-gated",
+          "requiredEvidence": [
+            "SYCL implementation and backend",
+            "device and aspect availability",
+            "queue profiling enabled when timing is claimed",
+            "event synchronization evidence",
+            "USM or buffer residency accounting",
+            "scalar or RHI fallback path"
+          ],
+          "notes": "SYCL may be reviewed only as optional tooling or private adapter research with explicit implementation/backend install gates. It is not a default runtime or validation dependency."
+        },
+        {
+          "id": "default-runtime-vendor-compute",
+          "classification": "non_goal",
+          "status": "blocked",
+          "requiredEvidence": [
+            "not applicable"
+          ],
+          "notes": "A default engine runtime dependency on CUDA, HIP, or SYCL is rejected for this milestone because it would make default validation host/vendor fragile and duplicate RHI backend ownership."
+        }
+      ],
+      "fallbackRequirements": [
+        "runtime candidates require RHI fallback",
+        "offline tool candidates require scalar fallback",
+        "private adapter candidates require install-gated opt-in feature selection",
+        "all candidates must fail closed when device, backend, profiler, or synchronization proof is unavailable"
+      ],
+      "nonGoals": [
+        "CUDA/HIP/SYCL runtime dependency",
+        "vcpkg.json feature",
+        "CMake linkage",
+        "default validation dependency",
+        "broad GPU compute",
+        "async overlap",
+        "cross-vendor parity",
+        "cross-backend parity",
+        "broad CPU/GPU/memory optimization",
+        "public native or vendor handles"
+      ],
+      "officialReferences": [
+        {
+          "id": "nvidia-cuda-best-practices",
+          "url": "https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/index.html",
+          "notes": "CUDA async overlap and deployment depend on measured transfers, device capability, streams, and runtime/toolkit availability."
+        },
+        {
+          "id": "amd-hip-asynchronous",
+          "url": "https://rocm.docs.amd.com/projects/HIP/en/latest/how-to/hip_runtime_api/asynchronous.html",
+          "notes": "HIP asynchronous work uses streams and explicit synchronization; overlap depends on device/runtime support."
+        },
+        {
+          "id": "khronos-sycl-2020",
+          "url": "https://registry.khronos.org/SYCL/specs/sycl-2020/html/sycl-2020.html",
+          "notes": "SYCL device/backend availability, queue events, USM/buffer choices, and profiling properties are implementation dependent."
+        },
+        {
+          "id": "vulkan-queues",
+          "url": "https://docs.vulkan.org/guide/latest/queues.html",
+          "notes": "Vulkan queue ordering and cross-queue execution require explicit synchronization."
+        },
+        {
+          "id": "d3d12-multi-engine-synchronization",
+          "url": "https://learn.microsoft.com/en-us/windows/win32/direct3d12/user-mode-heap-synchronization",
+          "notes": "D3D12 multi-engine work requires explicit fence timelines and queue synchronization."
+        }
+      ],
+      "validationRecipes": [
+        "host-optional-gpu-compute-review"
+      ],
+      "notes": "This review is machine-visible evidence selection only. It does not implement CUDA, HIP, SYCL, RHI compute changes, GPU async overlap, new package counters, CMake/vcpkg features, default validation requirements, or backend parity claims."
+    },
     "packageStreamingResidencyLoops": [
       {
         "id": "package-streaming-residency-budget-contract",
@@ -5138,6 +5544,36 @@
           "host-2d-long-run-readiness-soak"
         ],
         "notes": "Long-run soak execution is explicitly opt-in and outside default validation. It must be acknowledged before Execute mode and must not promote broad long-running readiness, Linux affinity, NUMA execution, GPU async overlap, CUDA/HIP/SYCL, cross-vendor parity, cross-backend parity, or broad CPU/GPU/memory optimization."
+      },
+      {
+        "id": "cpu-profiling-matrix-host",
+        "status": "host-gated",
+        "hosts": [
+          "Windows Intel or AMD host with Windows Performance Toolkit",
+          "Linux Intel or AMD host with perf",
+          "Intel host with VTune Profiler when selected",
+          "AMD host with AMD uProf when selected",
+          "stable thermal and power policy"
+        ],
+        "validationRecipes": [
+          "host-cpu-profiling-matrix"
+        ],
+        "notes": "CPU profiling matrix evidence is external host-owned artifact collection. Missing profiler tools, missing PMU support, incomplete topology, missing NUMA/NPS state, missing before/after traces, or absent regression budgets must report host-gated evidence rather than ready CPU optimization."
+      },
+      {
+        "id": "optional-gpu-compute-review-host",
+        "status": "host-gated",
+        "hosts": [
+          "Windows D3D12 or Vulkan capable host with GPU profiler",
+          "Linux Vulkan capable host with GPU profiler",
+          "NVIDIA CUDA Toolkit host when selected",
+          "AMD ROCm/HIP host when selected",
+          "SYCL implementation host when selected"
+        ],
+        "validationRecipes": [
+          "host-optional-gpu-compute-review"
+        ],
+        "notes": "Optional GPU compute review evidence is external host-owned artifact collection. Missing GPU profiler, missing stream/event proof, missing queue synchronization, missing CUDA/HIP/SYCL runtime, missing SYCL backend, or missing scalar/RHI fallback evidence must remain host-gated and must not introduce default validation, vcpkg.json, CMake, runtime dependency, broad GPU compute, async overlap, cross-vendor parity, cross-backend parity, or broad CPU/GPU/memory optimization claims."
       },
       {
         "id": "vulkan-strict",

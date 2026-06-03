@@ -23,6 +23,8 @@
     "atlasTilemapAuthoringLoops",
     "prefabScenePackageAuthoringLoops",
     "performanceBudgetEvidenceLoops",
+    "cpuProfilingMatrix",
+    "optionalGpuComputeReview",
     "packageStreamingResidencyLoops",
     "safePointPackageReplacementLoops"
   ],
@@ -415,6 +417,178 @@
         "type": "object",
         "required": ["id", "status", "owner", "summary", "orderedSteps", "requiredManifestFields", "descriptorFields", "budgetCategories", "evidenceKinds", "blockedExecution", "unsupportedClaims", "notes"]
       }
+    },
+    "cpuProfilingMatrix": {
+      "type": "object",
+      "required": [
+        "id",
+        "status",
+        "owner",
+        "summary",
+        "hostClasses",
+        "requiredCpuFields",
+        "traceRecipes",
+        "classification",
+        "beforeAfterTracePair",
+        "regressionBudget",
+        "nonGoals",
+        "officialReferences",
+        "validationRecipes",
+        "notes"
+      ],
+      "properties": {
+        "status": {
+          "enum": ["ready", "host-gated", "planned", "blocked"]
+        },
+        "hostClasses": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "status", "requiredEvidence"]
+          }
+        },
+        "requiredCpuFields": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "traceRecipes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "status", "requiredArtifacts"]
+          }
+        },
+        "classification": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "beforeAfterTracePair": {
+          "type": "object",
+          "required": ["required", "baselineArtifact", "candidateArtifact", "comparisonFields"]
+        },
+        "regressionBudget": {
+          "type": "object",
+          "required": ["required", "budgetFields"]
+        },
+        "nonGoals": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "officialReferences": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "url", "notes"]
+          }
+        },
+        "validationRecipes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "optionalGpuComputeReview": {
+      "type": "object",
+      "required": [
+        "id",
+        "status",
+        "owner",
+        "summary",
+        "classifications",
+        "requiredEvidenceFields",
+        "candidateRows",
+        "fallbackRequirements",
+        "nonGoals",
+        "officialReferences",
+        "validationRecipes",
+        "notes"
+      ],
+      "properties": {
+        "status": {
+          "enum": ["review-only", "ready", "host-gated", "planned", "blocked"]
+        },
+        "classifications": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "enum": ["rhi_compute", "offline_tool_acceleration", "cuda_hip_private_adapter_candidate", "sycl_private_adapter_candidate", "non_goal"]
+          }
+        },
+        "requiredEvidenceFields": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "candidateRows": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "classification", "status", "requiredEvidence", "notes"],
+            "properties": {
+              "classification": {
+                "enum": ["rhi_compute", "offline_tool_acceleration", "cuda_hip_private_adapter_candidate", "sycl_private_adapter_candidate", "non_goal"]
+              }
+            }
+          }
+        },
+        "fallbackRequirements": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "nonGoals": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "officialReferences": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "url", "notes"]
+          }
+        },
+        "validationRecipes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "additionalProperties": true
     },
     "packageStreamingResidencyLoops": {
       "type": "array",
