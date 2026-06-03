@@ -126,6 +126,7 @@
         "desktop-game-runtime",
         "desktop-runtime-release-target",
         "installed-d3d12-scene-gpu-smoke",
+        "desktop-runtime-sample-game-environment-fog-package",
         "installed-vulkan-scene-gpu-smoke"
       ],
       "qualityGates": [
@@ -142,6 +143,13 @@
           "recipeIds": [
             "installed-d3d12-scene-gpu-smoke",
             "installed-vulkan-scene-gpu-smoke"
+          ]
+        },
+        {
+          "id": "environment-fog-package-evidence",
+          "evidence": "The selected D3D12 environment fog package smoke reports environment_fog_status=ready, environment_fog_ready=1, environment_fog_selected_backend=d3d12, environment_fog_depth_input_ready=1, environment_fog_constant_buffer_ready=1, environment_fog_constants_binding=4, environment_fog_constants_byte_size=256, environment_fog_postprocess_passes_ok=1, postprocess_policy_fog_effect=1, and postprocess_d3d12_execution_passes_ok=1 without claiming Vulkan, Metal, volumetric fog, or broad environment_ready.",
+          "recipeIds": [
+            "desktop-runtime-sample-game-environment-fog-package"
           ]
         },
         {
@@ -178,6 +186,8 @@
         "broad-commercial-quality",
         "runtime-source-parsing",
         "renderer-rhi-residency",
+        "height-fog-vulkan-execution",
+        "broad-environment-ready",
         "metal-readiness"
       ]
     },
@@ -1483,6 +1493,10 @@
     {
       "name": "installed-d3d12-scene-gpu-smoke",
       "command": "out\\install\\desktop-runtime-release\\bin\\sample_desktop_runtime_game.exe --smoke --require-config runtime/sample_desktop_runtime_game.config --require-scene-package runtime/sample_desktop_runtime_game.geindex --require-quaternion-animation --require-d3d12-scene-shaders --require-d3d12-renderer --require-scene-gpu-bindings --require-postprocess --require-postprocess-depth-input --require-d3d12-postprocess-evidence --require-directional-shadow --require-directional-shadow-filtering --require-d3d12-shadow-cascade-policy --require-lighting-shadow-policy --require-scene-scale-policy --require-d3d12-instanced-draw-evidence --require-gpu-memory-policy --require-memory-diagnostics --require-job-scheduling-evidence --require-job-execution-foundation --require-job-execution-topology-policy --require-job-execution-work-stealing --require-job-execution-placement-policy --require-windows-cpu-set-worker-placement --require-windows-cpu-set-smt-worker-placement --require-simd-dispatch-policy --require-d3d12-gpu-memory-evidence --require-debug-profiling-policy --require-d3d12-debug-profiling-evidence --require-renderer-quality-gates --require-framegraph-multiqueue-evidence --require-d3d12-gpu-skinning-evidence --require-native-ui-overlay --require-native-ui-textured-sprite-atlas"
+    },
+    {
+      "name": "desktop-runtime-sample-game-environment-fog-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-environment-fog-evidence')\""
     },
     {
       "name": "installed-vulkan-scene-gpu-smoke",

@@ -67,6 +67,7 @@ struct DesktopRuntimeGameOptions {
     bool require_vulkan_instanced_draw_evidence{false};
     bool require_d3d12_postprocess_evidence{false};
     bool require_vulkan_postprocess_evidence{false};
+    bool require_environment_fog_evidence{false};
     bool require_gpu_memory_policy{false};
     bool require_memory_diagnostics{false};
     bool require_d3d12_gpu_memory_evidence{false};
@@ -119,6 +120,8 @@ constexpr std::string_view kRuntimePostprocessVertexShaderPath{
     "shaders/sample_desktop_runtime_game_postprocess.vs.dxil"};
 constexpr std::string_view kRuntimePostprocessFragmentShaderPath{
     "shaders/sample_desktop_runtime_game_postprocess.ps.dxil"};
+constexpr std::string_view kRuntimeEnvironmentFogFragmentShaderPath{
+    "shaders/sample_desktop_runtime_game_environment_fog.ps.dxil"};
 constexpr std::string_view kRuntimePostprocessVulkanVertexShaderPath{
     "shaders/sample_desktop_runtime_game_postprocess.vs.spv"};
 constexpr std::string_view kRuntimePostprocessVulkanFragmentShaderPath{
@@ -753,6 +756,7 @@ void print_usage() {
                  "[--require-vulkan-instanced-draw-evidence] "
                  "[--require-d3d12-postprocess-evidence] "
                  "[--require-vulkan-postprocess-evidence] "
+                 "[--require-environment-fog-evidence] "
                  "[--require-gpu-memory-policy] [--require-memory-diagnostics] [--require-d3d12-gpu-memory-evidence] "
                  "[--require-vulkan-gpu-memory-evidence] "
                  "[--require-debug-profiling-policy] [--require-d3d12-debug-profiling-evidence] "
@@ -873,6 +877,15 @@ void print_usage() {
             options.require_scene_gpu_bindings = true;
             options.require_postprocess = true;
             options.require_d3d12_postprocess_evidence = true;
+            continue;
+        }
+        if (arg == "--require-environment-fog-evidence") {
+            options.require_d3d12_renderer = true;
+            options.require_scene_gpu_bindings = true;
+            options.require_postprocess = true;
+            options.require_postprocess_depth_input = true;
+            options.require_d3d12_postprocess_evidence = true;
+            options.require_environment_fog_evidence = true;
             continue;
         }
         if (arg == "--require-vulkan-postprocess-evidence") {
@@ -2405,6 +2418,14 @@ int main(int argc, char** argv) {
             return 4;
         }
     }
+    const auto environment_fog_fragment_blob = load_packaged_single_shader_blob(
+        argc > 0 ? argv[0] : nullptr, kRuntimeEnvironmentFogFragmentShaderPath, "height_fog_ps_main");
+    if (options.require_environment_fog_evidence && !options.require_vulkan_renderer &&
+        environment_fog_fragment_blob.bytecode.empty()) {
+        std::cout << "sample_desktop_runtime_game environment_fog_shader_diagnostic=missing: "
+                  << kRuntimeEnvironmentFogFragmentShaderPath << '\n';
+        return 4;
+    }
     auto shadow_receiver_bytecode = load_packaged_d3d12_shadow_receiver_scene_shaders(argc > 0 ? argv[0] : nullptr);
     if (!shadow_receiver_bytecode.ready() && options.require_directional_shadow && !options.require_vulkan_renderer) {
         std::cout << "sample_desktop_runtime_game shadow_receiver_shader_diagnostic="
@@ -2512,6 +2533,10 @@ int main(int argc, char** argv) {
     const auto& d3d12_scene_bytecode = options.require_directional_shadow ? shadow_receiver_bytecode : shader_bytecode;
     const bool d3d12_shadow_ready = !options.require_directional_shadow || shadow_bytecode.ready();
     const bool d3d12_native_ui_overlay_ready = !options.require_native_ui_overlay || native_ui_overlay_bytecode.ready();
+    const auto* d3d12_postprocess_fragment_shader = &postprocess_bytecode.fragment_shader;
+    if (options.require_environment_fog_evidence) {
+        d3d12_postprocess_fragment_shader = &environment_fog_fragment_blob;
+    }
     if (d3d12_scene_bytecode.ready() && postprocess_bytecode.ready() && d3d12_shadow_ready &&
         d3d12_native_ui_overlay_ready && runtime_package.has_value() && packaged_scene.has_value()) {
         d3d12_scene_renderer.emplace(mirakana::Win32DesktopPresentationD3d12SceneRendererDesc{
@@ -2521,7 +2546,7 @@ int main(int argc, char** argv) {
             .skinned_scene_fragment_shader =
                 to_presentation_shader_bytecode(d3d12_skinned_shadow_receiver_fragment_blob),
             .postprocess_vertex_shader = to_presentation_shader_bytecode(postprocess_bytecode.vertex_shader),
-            .postprocess_fragment_shader = to_presentation_shader_bytecode(postprocess_bytecode.fragment_shader),
+            .postprocess_fragment_shader = to_presentation_shader_bytecode(*d3d12_postprocess_fragment_shader),
             .shadow_vertex_shader = to_presentation_shader_bytecode(shadow_bytecode.vertex_shader),
             .shadow_fragment_shader = to_presentation_shader_bytecode(shadow_bytecode.fragment_shader),
             .native_ui_overlay_vertex_shader =
@@ -2536,6 +2561,22 @@ int main(int argc, char** argv) {
             .skinned_vertex_attributes = runtime_skinned_scene_vertex_attributes(),
             .enable_postprocess = true,
             .enable_postprocess_depth_input = true,
+            .enable_environment_fog = options.require_environment_fog_evidence,
+            .environment_fog =
+                mirakana::EnvironmentFogPolicyDesc{
+                    .mode = mirakana::EnvironmentFogMode::exponential_height,
+                    .density = 0.08F,
+                    .height_falloff = 0.35F,
+                    .height_offset_m = 12.0F,
+                    .start_distance_m = 0.0F,
+                    .cutoff_distance_m = 1200.0F,
+                    .max_opacity = 0.85F,
+                    .sky_affect = 0.35F,
+                    .directional_inscattering_anisotropy = 0.25F,
+                    .inscattering_color = mirakana::Vec3{.x = 0.58F, .y = 0.68F, .z = 0.78F},
+                    .directional_inscattering_color = mirakana::Vec3{.x = 0.84F, .y = 0.78F, .z = 0.62F},
+                    .sample_step_budget = 8,
+                },
             .enable_directional_shadow_smoke = options.require_directional_shadow,
             .enable_native_ui_overlay = options.require_native_ui_overlay,
             .native_ui_overlay_atlas_asset =
@@ -2788,6 +2829,8 @@ int main(int argc, char** argv) {
     const auto postprocess_policy = mirakana::evaluate_win32_desktop_presentation_postprocess_policy(report);
     const auto d3d12_postprocess_execution = mirakana::evaluate_win32_desktop_presentation_d3d12_postprocess_execution(
         report, static_cast<std::uint64_t>(options.max_frames), options.require_d3d12_postprocess_evidence);
+    const auto environment_fog = mirakana::evaluate_win32_desktop_presentation_environment_fog(
+        report, d3d12_postprocess_execution, options.require_environment_fog_evidence);
     const auto vulkan_postprocess_execution =
         mirakana::evaluate_win32_desktop_presentation_vulkan_postprocess_execution(
             report, static_cast<std::uint64_t>(options.max_frames), options.require_vulkan_postprocess_evidence);
@@ -2901,6 +2944,7 @@ int main(int argc, char** argv) {
         << " postprocess_policy_scene_color_required=" << (postprocess_policy.scene_color_required ? 1 : 0)
         << " postprocess_policy_scene_depth_required=" << (postprocess_policy.scene_depth_required ? 1 : 0)
         << " postprocess_policy_color_grading_effect=" << (postprocess_policy.color_grading_effect ? 1 : 0)
+        << " postprocess_policy_fog_effect=" << (postprocess_policy.fog_effect ? 1 : 0)
         << " postprocess_policy_backend_shader_evidence_ready="
         << (postprocess_policy.backend_shader_evidence_ready ? 1 : 0) << " postprocess_d3d12_execution_status="
         << mirakana::win32_desktop_presentation_d3d12_postprocess_execution_status_name(
@@ -2912,6 +2956,17 @@ int main(int argc, char** argv) {
         << " postprocess_d3d12_execution_expected_passes=" << d3d12_postprocess_execution.expected_postprocess_passes
         << " postprocess_d3d12_execution_passes=" << d3d12_postprocess_execution.postprocess_passes_executed
         << " postprocess_d3d12_execution_passes_ok=" << (d3d12_postprocess_execution.postprocess_passes_current ? 1 : 0)
+        << " environment_fog_status="
+        << mirakana::win32_desktop_presentation_environment_fog_status_name(environment_fog.status)
+        << " environment_fog_ready=" << (environment_fog.ready ? 1 : 0) << " environment_fog_selected_backend="
+        << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
+        << " environment_fog_requested=" << (environment_fog.requested ? 1 : 0)
+        << " environment_fog_depth_input_ready=" << (environment_fog.postprocess_depth_input_ready ? 1 : 0)
+        << " environment_fog_constant_buffer_ready=" << (environment_fog.constant_buffer_ready ? 1 : 0)
+        << " environment_fog_constants_binding=" << environment_fog.constants_binding
+        << " environment_fog_constants_byte_size=" << environment_fog.constant_buffer_bytes
+        << " environment_fog_postprocess_passes_ok=" << (environment_fog.postprocess_passes_current ? 1 : 0)
+        << " environment_fog_diagnostics=" << environment_fog.diagnostics_count
         << " vulkan_postprocess_execution_status="
         << mirakana::win32_desktop_presentation_vulkan_postprocess_execution_status_name(
                vulkan_postprocess_execution.status)
@@ -3721,7 +3776,9 @@ int main(int argc, char** argv) {
              !postprocess_policy.ready || postprocess_policy.diagnostics_count != 0 ||
              postprocess_policy.effect_count != 1 || postprocess_policy.postprocess_pass_count != 1 ||
              postprocess_policy.framegraph_pass_count != 2 || postprocess_policy.framegraph_barrier_step_budget != 2 ||
-             !postprocess_policy.scene_color_required || !postprocess_policy.color_grading_effect ||
+             !postprocess_policy.scene_color_required ||
+             (!options.require_environment_fog_evidence && !postprocess_policy.color_grading_effect) ||
+             (options.require_environment_fog_evidence && !postprocess_policy.fog_effect) ||
              !postprocess_policy.backend_shader_evidence_ready ||
              (options.require_postprocess_depth_input && !postprocess_policy.scene_depth_required) ||
              report.framegraph_passes != expected_framegraph_passes ||
@@ -3733,6 +3790,9 @@ int main(int argc, char** argv) {
             return 3;
         }
         if (options.require_postprocess_depth_input && !report.postprocess_depth_input_ready) {
+            return 3;
+        }
+        if (options.require_environment_fog_evidence && !environment_fog.ready) {
             return 3;
         }
         if (options.require_directional_shadow &&

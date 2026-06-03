@@ -6,6 +6,7 @@
 #include "scene_gpu_binding_injecting_renderer.hpp"
 
 #include "mirakana/renderer/debug_profiling_policy.hpp"
+#include "mirakana/renderer/environment_fog_policy.hpp"
 #include "mirakana/renderer/gpu_memory_policy.hpp"
 #include "mirakana/renderer/postprocess_policy.hpp"
 #include "mirakana/renderer/rhi_directional_shadow_smoke_frame_renderer.hpp"
@@ -63,6 +64,9 @@ struct NativeRendererCreateResult {
     std::vector<Win32DesktopPresentationPostprocessDiagnostic> postprocess_diagnostics;
     bool postprocess_depth_input_requested{false};
     bool postprocess_depth_input_ready{false};
+    bool environment_fog_requested{false};
+    bool environment_fog_constant_buffer_ready{false};
+    std::uint64_t environment_fog_constant_buffer_bytes{0};
     Win32DesktopPresentationDirectionalShadowStatus directional_shadow_status{
         Win32DesktopPresentationDirectionalShadowStatus::not_requested};
     std::vector<Win32DesktopPresentationDirectionalShadowDiagnostic> directional_shadow_diagnostics;
@@ -126,6 +130,20 @@ to_presentation_filter_mode(ShadowReceiverFilterMode mode) noexcept {
 
 [[nodiscard]] bool has_shader_bytecode(const Win32DesktopPresentationShaderBytecode& shader) noexcept {
     return !shader.entry_point.empty() && !shader.bytecode.empty();
+}
+
+[[nodiscard]] rhi::BufferHandle create_environment_fog_constants_buffer(rhi::IRhiDevice& device,
+                                                                        const EnvironmentFogPolicyDesc& desc) {
+    std::array<std::uint8_t, environment_fog_constants_byte_size()> constants{};
+    pack_environment_fog_constants(constants, desc);
+    auto buffer = device.create_buffer(rhi::BufferDesc{
+        .size_bytes = static_cast<std::uint64_t>(constants.size()),
+        .usage = rhi::BufferUsage::uniform | rhi::BufferUsage::copy_source,
+    });
+    if (buffer.value != 0) {
+        device.write_buffer(buffer, 0, std::span<const std::uint8_t>{constants.data(), constants.size()});
+    }
+    return buffer;
 }
 
 void append_unique_asset(std::vector<AssetId>& assets, AssetId asset) {
@@ -1735,6 +1753,7 @@ build_scene_compute_morph_bindings(rhi::IRhiDevice& device,
         const bool postprocess_depth_input_requested = desc.d3d12_scene_renderer->enable_postprocess_depth_input;
         const bool enable_postprocess_depth_input =
             desc.d3d12_scene_renderer->enable_postprocess && postprocess_depth_input_requested;
+        const bool environment_fog_requested = desc.d3d12_scene_renderer->enable_environment_fog;
         const auto compute_morph_vertex_buffers = desc.d3d12_scene_renderer->enable_compute_morph_tangent_frame_output
                                                       ? compute_morph_tangent_frame_vertex_buffers()
                                                       : compute_morph_position_vertex_buffers();
@@ -1792,10 +1811,66 @@ build_scene_compute_morph_bindings(rhi::IRhiDevice& device,
         result.succeeded = true;
         result.failure_reason = Win32DesktopPresentationFallbackReason::none;
         result.postprocess_depth_input_requested = postprocess_depth_input_requested;
+        result.environment_fog_requested = environment_fog_requested;
         result.directional_shadow_requested = directional_shadow_requested;
         result.native_ui_overlay_requested = native_ui_overlay_requested;
         result.native_ui_texture_overlay_requested = native_ui_texture_overlay_requested;
         if (desc.d3d12_scene_renderer->enable_postprocess) {
+            rhi::BufferHandle environment_fog_constants_buffer;
+            if (environment_fog_requested) {
+                if (!enable_postprocess_depth_input || directional_shadow_requested) {
+                    result.succeeded = false;
+                    result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                    result.diagnostic =
+                        "D3D12 environment fog package evidence requires depth-aware non-shadow scene postprocess; "
+                        "using NullRenderer fallback.";
+                    result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                    result.scene_gpu_diagnostics.push_back(
+                        make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                    result.postprocess_status = Win32DesktopPresentationPostprocessStatus::failed;
+                    result.postprocess_diagnostics.push_back(
+                        make_postprocess_diagnostic(result.postprocess_status, result.diagnostic));
+                    return result;
+                }
+                auto environment_fog_desc = desc.d3d12_scene_renderer->environment_fog;
+                environment_fog_desc.scene_depth_available = enable_postprocess_depth_input;
+                environment_fog_desc.shader_contract_evidence_ready =
+                    has_shader_bytecode(desc.d3d12_scene_renderer->postprocess_fragment_shader);
+                const auto environment_fog_plan = plan_environment_fog_policy(environment_fog_desc);
+                if (!environment_fog_plan.succeeded()) {
+                    result.succeeded = false;
+                    result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                    result.diagnostic =
+                        "D3D12 environment fog package evidence failed the environment fog policy; using "
+                        "NullRenderer fallback.";
+                    result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                    result.scene_gpu_diagnostics.push_back(
+                        make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                    result.postprocess_status = Win32DesktopPresentationPostprocessStatus::failed;
+                    result.postprocess_diagnostics.push_back(
+                        make_postprocess_diagnostic(result.postprocess_status, result.diagnostic));
+                    return result;
+                }
+                environment_fog_constants_buffer =
+                    create_environment_fog_constants_buffer(*device, environment_fog_desc);
+                result.environment_fog_constant_buffer_ready = environment_fog_constants_buffer.value != 0;
+                result.environment_fog_constant_buffer_bytes =
+                    static_cast<std::uint64_t>(environment_fog_constants_byte_size());
+                if (!result.environment_fog_constant_buffer_ready) {
+                    result.succeeded = false;
+                    result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                    result.diagnostic =
+                        "D3D12 environment fog package evidence could not create the fog constant buffer; using "
+                        "NullRenderer fallback.";
+                    result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                    result.scene_gpu_diagnostics.push_back(
+                        make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                    result.postprocess_status = Win32DesktopPresentationPostprocessStatus::failed;
+                    result.postprocess_diagnostics.push_back(
+                        make_postprocess_diagnostic(result.postprocess_status, result.diagnostic));
+                    return result;
+                }
+            }
             const auto postprocess_vertex_shader = device->create_shader(rhi::ShaderDesc{
                 .stage = rhi::ShaderStage::vertex,
                 .entry_point = desc.d3d12_scene_renderer->postprocess_vertex_shader.entry_point,
@@ -1933,6 +2008,7 @@ build_scene_compute_morph_bindings(rhi::IRhiDevice& device,
                         .postprocess_vertex_shader = postprocess_vertex_shader,
                         .postprocess_fragment_stages =
                             std::vector<mirakana::rhi::ShaderHandle>{postprocess_fragment_shader},
+                        .postprocess_first_uniform_buffer = environment_fog_constants_buffer,
                         .wait_for_completion = true,
                         .enable_depth_input = enable_postprocess_depth_input,
                         .depth_format = rhi::Format::depth24_stencil8,
@@ -3579,6 +3655,9 @@ struct Win32DesktopPresentation::Impl {
         Win32DesktopPresentationPostprocessStatus::not_requested};
     bool postprocess_depth_input_requested{false};
     bool postprocess_depth_input_ready{false};
+    bool environment_fog_requested{false};
+    bool environment_fog_constant_buffer_ready{false};
+    std::uint64_t environment_fog_constant_buffer_bytes{0};
     Win32DesktopPresentationDirectionalShadowStatus directional_shadow_status{
         Win32DesktopPresentationDirectionalShadowStatus::not_requested};
     bool directional_shadow_requested{false};
@@ -3639,6 +3718,8 @@ Win32DesktopPresentation::Win32DesktopPresentation(const Win32DesktopPresentatio
             ? desc.vulkan_scene_renderer != nullptr && desc.vulkan_scene_renderer->enable_postprocess_depth_input
             : desc.prefer_d3d12 && desc.d3d12_scene_renderer != nullptr &&
                   desc.d3d12_scene_renderer->enable_postprocess_depth_input;
+    impl_->environment_fog_requested =
+        desc.prefer_d3d12 && desc.d3d12_scene_renderer != nullptr && desc.d3d12_scene_renderer->enable_environment_fog;
     impl_->directional_shadow_requested =
         desc.prefer_vulkan
             ? desc.vulkan_scene_renderer != nullptr && desc.vulkan_scene_renderer->enable_directional_shadow_smoke
@@ -3913,6 +3994,12 @@ Win32DesktopPresentation::Win32DesktopPresentation(const Win32DesktopPresentatio
                         impl_->postprocess_depth_input_requested = impl_->postprocess_depth_input_requested ||
                                                                    renderer_result.postprocess_depth_input_requested;
                         impl_->postprocess_depth_input_ready = renderer_result.postprocess_depth_input_ready;
+                        impl_->environment_fog_requested =
+                            impl_->environment_fog_requested || renderer_result.environment_fog_requested;
+                        impl_->environment_fog_constant_buffer_ready =
+                            renderer_result.environment_fog_constant_buffer_ready;
+                        impl_->environment_fog_constant_buffer_bytes =
+                            renderer_result.environment_fog_constant_buffer_bytes;
                         impl_->directional_shadow_requested =
                             impl_->directional_shadow_requested || renderer_result.directional_shadow_requested;
                         impl_->directional_shadow_status = renderer_result.directional_shadow_status;
@@ -3962,6 +4049,12 @@ Win32DesktopPresentation::Win32DesktopPresentation(const Win32DesktopPresentatio
                     impl_->postprocess_depth_input_requested =
                         impl_->postprocess_depth_input_requested || renderer_result.postprocess_depth_input_requested;
                     impl_->postprocess_depth_input_ready = renderer_result.postprocess_depth_input_ready;
+                    impl_->environment_fog_requested =
+                        impl_->environment_fog_requested || renderer_result.environment_fog_requested;
+                    impl_->environment_fog_constant_buffer_ready =
+                        renderer_result.environment_fog_constant_buffer_ready;
+                    impl_->environment_fog_constant_buffer_bytes =
+                        renderer_result.environment_fog_constant_buffer_bytes;
                     impl_->directional_shadow_requested =
                         impl_->directional_shadow_requested || renderer_result.directional_shadow_requested;
                     impl_->directional_shadow_status = renderer_result.directional_shadow_status;
@@ -4250,6 +4343,12 @@ Win32DesktopPresentation::Win32DesktopPresentation(const Win32DesktopPresentatio
                         impl_->postprocess_depth_input_requested = impl_->postprocess_depth_input_requested ||
                                                                    renderer_result.postprocess_depth_input_requested;
                         impl_->postprocess_depth_input_ready = renderer_result.postprocess_depth_input_ready;
+                        impl_->environment_fog_requested =
+                            impl_->environment_fog_requested || renderer_result.environment_fog_requested;
+                        impl_->environment_fog_constant_buffer_ready =
+                            renderer_result.environment_fog_constant_buffer_ready;
+                        impl_->environment_fog_constant_buffer_bytes =
+                            renderer_result.environment_fog_constant_buffer_bytes;
                         impl_->directional_shadow_requested =
                             impl_->directional_shadow_requested || renderer_result.directional_shadow_requested;
                         impl_->directional_shadow_status = renderer_result.directional_shadow_status;
@@ -4299,6 +4398,12 @@ Win32DesktopPresentation::Win32DesktopPresentation(const Win32DesktopPresentatio
                     impl_->postprocess_depth_input_requested =
                         impl_->postprocess_depth_input_requested || renderer_result.postprocess_depth_input_requested;
                     impl_->postprocess_depth_input_ready = renderer_result.postprocess_depth_input_ready;
+                    impl_->environment_fog_requested =
+                        impl_->environment_fog_requested || renderer_result.environment_fog_requested;
+                    impl_->environment_fog_constant_buffer_ready =
+                        renderer_result.environment_fog_constant_buffer_ready;
+                    impl_->environment_fog_constant_buffer_bytes =
+                        renderer_result.environment_fog_constant_buffer_bytes;
                     impl_->directional_shadow_requested =
                         impl_->directional_shadow_requested || renderer_result.directional_shadow_requested;
                     impl_->directional_shadow_status = renderer_result.directional_shadow_status;
@@ -4431,6 +4536,9 @@ Win32DesktopPresentationReport Win32DesktopPresentation::report() const noexcept
         .postprocess_status = impl_->postprocess_status,
         .postprocess_depth_input_requested = impl_->postprocess_depth_input_requested,
         .postprocess_depth_input_ready = impl_->postprocess_depth_input_ready,
+        .environment_fog_requested = impl_->environment_fog_requested,
+        .environment_fog_constant_buffer_ready = impl_->environment_fog_constant_buffer_ready,
+        .environment_fog_constant_buffer_bytes = impl_->environment_fog_constant_buffer_bytes,
         .directional_shadow_status = impl_->directional_shadow_status,
         .directional_shadow_requested = impl_->directional_shadow_requested,
         .directional_shadow_ready = impl_->directional_shadow_ready,
@@ -4835,6 +4943,19 @@ std::string_view win32_desktop_presentation_d3d12_postprocess_execution_status_n
     return "unknown";
 }
 
+std::string_view
+win32_desktop_presentation_environment_fog_status_name(Win32DesktopPresentationEnvironmentFogStatus status) noexcept {
+    switch (status) {
+    case Win32DesktopPresentationEnvironmentFogStatus::not_requested:
+        return "not_requested";
+    case Win32DesktopPresentationEnvironmentFogStatus::blocked:
+        return "blocked";
+    case Win32DesktopPresentationEnvironmentFogStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
 std::string_view win32_desktop_presentation_vulkan_postprocess_execution_status_name(
     Win32DesktopPresentationVulkanPostprocessExecutionStatus status) noexcept {
     switch (status) {
@@ -4869,10 +4990,12 @@ evaluate_win32_desktop_presentation_postprocess_policy(const Win32DesktopPresent
     }
 
     const bool postprocess_ready = report.postprocess_status == Win32DesktopPresentationPostprocessStatus::ready;
+    const auto postprocess_effect =
+        report.environment_fog_requested ? PostprocessEffectKind::fog : PostprocessEffectKind::color_grading;
     const std::array effects{
         PostprocessEffectDesc{
-            .kind = PostprocessEffectKind::color_grading,
-            .requires_scene_depth = report.postprocess_depth_input_requested,
+            .kind = postprocess_effect,
+            .requires_scene_depth = report.postprocess_depth_input_requested || report.environment_fog_requested,
         },
     };
     const auto plan = plan_postprocess_chain_policy(PostprocessChainPolicyDesc{
@@ -5031,6 +5154,66 @@ Win32DesktopPresentationD3d12PostprocessExecutionReport evaluate_win32_desktop_p
                         ? Win32DesktopPresentationD3d12PostprocessExecutionStatus::ready
                         : Win32DesktopPresentationD3d12PostprocessExecutionStatus::blocked;
     result.ready = result.status == Win32DesktopPresentationD3d12PostprocessExecutionStatus::ready;
+    return result;
+}
+
+Win32DesktopPresentationEnvironmentFogReport evaluate_win32_desktop_presentation_environment_fog(
+    const Win32DesktopPresentationReport& report,
+    const Win32DesktopPresentationD3d12PostprocessExecutionReport& d3d12_postprocess_execution, const bool requested) {
+    Win32DesktopPresentationEnvironmentFogReport result;
+    if (!requested) {
+        return result;
+    }
+
+    result.requested = report.environment_fog_requested;
+    result.d3d12_backend_selected = report.selected_backend == Win32DesktopPresentationBackend::d3d12;
+    result.postprocess_ready = report.postprocess_status == Win32DesktopPresentationPostprocessStatus::ready;
+    result.postprocess_depth_input_ready = report.postprocess_depth_input_ready;
+    result.d3d12_postprocess_execution_ready = d3d12_postprocess_execution.ready;
+    result.constant_buffer_ready = report.environment_fog_constant_buffer_ready;
+    result.constants_binding = environment_fog_constants_binding();
+    result.constant_buffer_bytes = report.environment_fog_constant_buffer_bytes;
+    result.expected_postprocess_passes = d3d12_postprocess_execution.expected_postprocess_passes;
+    result.postprocess_passes_executed = d3d12_postprocess_execution.postprocess_passes_executed;
+    result.postprocess_passes_current = d3d12_postprocess_execution.postprocess_passes_current;
+
+    const auto plan = plan_environment_fog_policy(EnvironmentFogPolicyDesc{
+        .mode = EnvironmentFogMode::exponential_height,
+        .density = 0.08F,
+        .height_falloff = 0.35F,
+        .height_offset_m = 12.0F,
+        .start_distance_m = 0.0F,
+        .cutoff_distance_m = 1200.0F,
+        .max_opacity = 0.85F,
+        .sky_affect = 0.35F,
+        .directional_inscattering_anisotropy = 0.25F,
+        .inscattering_color = Vec3{.x = 0.58F, .y = 0.68F, .z = 0.78F},
+        .directional_inscattering_color = Vec3{.x = 0.84F, .y = 0.78F, .z = 0.62F},
+        .sample_step_budget = 8,
+        .scene_depth_available = result.postprocess_depth_input_ready,
+        .shader_contract_evidence_ready = result.d3d12_postprocess_execution_ready,
+    });
+    result.diagnostics_count = static_cast<std::uint32_t>(plan.diagnostics.size());
+    if (!result.requested) {
+        ++result.diagnostics_count;
+    }
+    if (!result.d3d12_backend_selected) {
+        ++result.diagnostics_count;
+    }
+    if (!result.postprocess_ready) {
+        ++result.diagnostics_count;
+    }
+    if (!result.constant_buffer_ready ||
+        result.constant_buffer_bytes != static_cast<std::uint64_t>(environment_fog_constants_byte_size())) {
+        ++result.diagnostics_count;
+    }
+    if (!result.postprocess_passes_current) {
+        ++result.diagnostics_count;
+    }
+
+    result.ready = result.diagnostics_count == 0;
+    result.status = result.ready ? Win32DesktopPresentationEnvironmentFogStatus::ready
+                                 : Win32DesktopPresentationEnvironmentFogStatus::blocked;
     return result;
 }
 

@@ -23,6 +23,12 @@ int main() {
     scene_renderer.postprocess_vertex_shader.entry_point = "vs_postprocess";
     scene_renderer.postprocess_fragment_shader.entry_point = "ps_postprocess";
     scene_renderer.enable_postprocess = true;
+    scene_renderer.enable_postprocess_depth_input = true;
+    scene_renderer.enable_environment_fog = true;
+    scene_renderer.environment_fog.mode = mirakana::EnvironmentFogMode::exponential_height;
+    scene_renderer.environment_fog.density = 0.08F;
+    scene_renderer.environment_fog.scene_depth_available = true;
+    scene_renderer.environment_fog.shader_contract_evidence_ready = true;
 
     mirakana::Win32DesktopPresentationDesc presentation_desc;
     presentation_desc.prefer_d3d12 = true;
@@ -41,7 +47,7 @@ int main() {
 
     mirakana::Win32DesktopPresentationReport report;
     report.requested_backend = mirakana::Win32DesktopPresentationBackend::d3d12;
-    report.selected_backend = mirakana::Win32DesktopPresentationBackend::null_renderer;
+    report.selected_backend = mirakana::Win32DesktopPresentationBackend::d3d12;
     report.swapchain_plan = plan;
     report.scene_gpu_status = mirakana::Win32DesktopPresentationSceneGpuBindingStatus::ready;
     auto& stats = report.scene_gpu_stats;
@@ -50,7 +56,11 @@ int main() {
     stats.compute_morph_queue_waits = 1;
     stats.compute_morph_async_compute_queue_submits = 1;
     report.postprocess_status = mirakana::Win32DesktopPresentationPostprocessStatus::ready;
+    report.environment_fog_requested = true;
+    report.environment_fog_constant_buffer_ready = true;
+    report.environment_fog_constant_buffer_bytes = mirakana::environment_fog_constants_byte_size();
     report.framegraph_passes = 2;
+    report.renderer_stats.postprocess_passes_executed = 2;
     report.renderer_stats.framegraph_render_passes_recorded = 2;
     report.renderer_stats.framegraph_barrier_steps_executed = 2;
 
@@ -67,6 +77,9 @@ int main() {
     const auto quality = mirakana::evaluate_win32_desktop_presentation_quality_gate(
         report, mirakana::Win32DesktopPresentationQualityGateDesc{.require_scene_gpu_bindings = true,
                                                                   .require_postprocess = true});
+    const auto d3d12_postprocess =
+        mirakana::evaluate_win32_desktop_presentation_d3d12_postprocess_execution(report, 2, true);
+    const auto fog = mirakana::evaluate_win32_desktop_presentation_environment_fog(report, d3d12_postprocess, true);
 
     return mirakana::win32_desktop_presentation_backend_name(report.requested_backend) == "d3d12" &&
                    mirakana::win32_desktop_presentation_backend_report_status_name(backend_report.status) == "ready" &&
@@ -83,6 +96,12 @@ int main() {
                    scene_renderer.compute_morph_shader.entry_point == "cs_compute_morph_position" &&
                    scene_renderer.compute_morph_mesh_bindings.size() == 1 &&
                    scene_renderer.compute_morph_skinned_shader.entry_point == "cs_compute_morph_skinned_position" &&
+                   scene_renderer.enable_environment_fog &&
+                   scene_renderer.environment_fog.mode == mirakana::EnvironmentFogMode::exponential_height &&
+                   mirakana::win32_desktop_presentation_environment_fog_status_name(fog.status) == "ready" &&
+                   fog.ready && fog.constant_buffer_ready &&
+                   fog.constants_binding == mirakana::environment_fog_constants_binding() &&
+                   fog.constant_buffer_bytes == mirakana::environment_fog_constants_byte_size() &&
                    scene_renderer.compute_morph_skinned_mesh_bindings.size() == 1 &&
                    host_desc.d3d12_scene_renderer == &scene_renderer && presentation_desc.d3d12_renderer == &renderer &&
                    presentation_desc.d3d12_scene_renderer == &scene_renderer && quality.ready

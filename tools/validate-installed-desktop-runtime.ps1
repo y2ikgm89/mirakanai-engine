@@ -175,6 +175,7 @@ $requiresD3d12InstancedDrawEvidence = @($SmokeArgs) -contains "--require-d3d12-i
 $requiresVulkanInstancedDrawEvidence = @($SmokeArgs) -contains "--require-vulkan-instanced-draw-evidence"
 $requiresD3d12PostprocessEvidence = @($SmokeArgs) -contains "--require-d3d12-postprocess-evidence"
 $requiresVulkanPostprocessEvidence = @($SmokeArgs) -contains "--require-vulkan-postprocess-evidence"
+$requiresEnvironmentFogEvidence = @($SmokeArgs) -contains "--require-environment-fog-evidence"
 $requiresGpuMemoryPolicy = @($SmokeArgs) -contains "--require-gpu-memory-policy"
 $requiresMemoryDiagnostics = @($SmokeArgs) -contains "--require-memory-diagnostics"
 $requiresD3d12GpuMemoryEvidence = @($SmokeArgs) -contains "--require-d3d12-gpu-memory-evidence"
@@ -201,6 +202,11 @@ if ($requiresMemoryDiagnostics) {
 }
 if ($requiresD3d12DebugProfilingEvidence -or $requiresVulkanDebugProfilingEvidence) {
     $requiresDebugProfilingPolicy = $true
+}
+if ($requiresEnvironmentFogEvidence) {
+    $requiresPostprocess = $true
+    $requiresPostprocessDepthInput = $true
+    $requiresD3d12PostprocessEvidence = $true
 }
 if ($requiresWindowsCpuSetWorkerPlacement -or $requiresWindowsCpuSetSmtWorkerPlacement) {
     $requiresJobExecutionFoundation = $true
@@ -4417,6 +4423,8 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
     }
     if ($requiresPostprocess) {
         $expectedPostprocessPolicySceneDepthRequired = if ($requiresPostprocessDepthInput) { "1" } else { "0" }
+        $expectedPostprocessPolicyColorGradingEffect = if ($requiresEnvironmentFogEvidence) { "0" } else { "1" }
+        $expectedPostprocessPolicyFogEffect = if ($requiresEnvironmentFogEvidence) { "1" } else { "0" }
         $expectedPostprocessPolicyFields = @{
             "postprocess_policy_status" = "ready"
             "postprocess_policy_ready" = "1"
@@ -4427,7 +4435,8 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
             "postprocess_policy_framegraph_barrier_step_budget" = "2"
             "postprocess_policy_scene_color_required" = "1"
             "postprocess_policy_scene_depth_required" = $expectedPostprocessPolicySceneDepthRequired
-            "postprocess_policy_color_grading_effect" = "1"
+            "postprocess_policy_color_grading_effect" = $expectedPostprocessPolicyColorGradingEffect
+            "postprocess_policy_fog_effect" = $expectedPostprocessPolicyFogEffect
             "postprocess_policy_backend_shader_evidence_ready" = "1"
         }
         foreach ($field in $expectedPostprocessPolicyFields.Keys) {
@@ -4467,6 +4476,24 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 $expectedValue = [regex]::Escape($expectedVulkanPostprocessExecutionFields[$field])
                 if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
                     Write-Error "Installed desktop runtime smoke status line did not prove Vulkan postprocess execution field: $field=$($expectedVulkanPostprocessExecutionFields[$field])"
+                }
+            }
+        }
+        if ($requiresEnvironmentFogEvidence) {
+            $expectedEnvironmentFogFields = @{
+                "environment_fog_status" = "ready"
+                "environment_fog_ready" = "1"
+                "environment_fog_selected_backend" = "d3d12"
+                "environment_fog_depth_input_ready" = "1"
+                "environment_fog_constant_buffer_ready" = "1"
+                "environment_fog_constants_binding" = "4"
+                "environment_fog_constants_byte_size" = "256"
+                "environment_fog_postprocess_passes_ok" = "1"
+            }
+            foreach ($field in $expectedEnvironmentFogFields.Keys) {
+                $expectedValue = [regex]::Escape($expectedEnvironmentFogFields[$field])
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove environment fog field: $field=$($expectedEnvironmentFogFields[$field])"
                 }
             }
         }

@@ -4,6 +4,7 @@
 #pragma once
 
 #include "mirakana/platform/win32/win32_window.hpp"
+#include "mirakana/renderer/environment_fog_policy.hpp"
 #include "mirakana/renderer/renderer.hpp"
 #include "mirakana/rhi/rhi.hpp"
 
@@ -228,6 +229,9 @@ struct Win32DesktopPresentationReport {
         Win32DesktopPresentationPostprocessStatus::not_requested};
     bool postprocess_depth_input_requested{false};
     bool postprocess_depth_input_ready{false};
+    bool environment_fog_requested{false};
+    bool environment_fog_constant_buffer_ready{false};
+    std::uint64_t environment_fog_constant_buffer_bytes{0};
     Win32DesktopPresentationDirectionalShadowStatus directional_shadow_status{
         Win32DesktopPresentationDirectionalShadowStatus::not_requested};
     bool directional_shadow_requested{false};
@@ -299,6 +303,12 @@ enum class Win32DesktopPresentationSceneScalePolicyStatus : std::uint8_t {
 };
 
 enum class Win32DesktopPresentationD3d12PostprocessExecutionStatus : std::uint8_t {
+    not_requested = 0,
+    blocked,
+    ready,
+};
+
+enum class Win32DesktopPresentationEnvironmentFogStatus : std::uint8_t {
     not_requested = 0,
     blocked,
     ready,
@@ -384,6 +394,23 @@ struct Win32DesktopPresentationD3d12PostprocessExecutionReport {
     std::uint64_t framegraph_render_passes_recorded{0};
     std::uint64_t framegraph_barrier_steps_executed{0};
     bool postprocess_passes_current{false};
+};
+
+struct Win32DesktopPresentationEnvironmentFogReport {
+    Win32DesktopPresentationEnvironmentFogStatus status{Win32DesktopPresentationEnvironmentFogStatus::not_requested};
+    bool ready{false};
+    bool requested{false};
+    bool d3d12_backend_selected{false};
+    bool postprocess_ready{false};
+    bool postprocess_depth_input_ready{false};
+    bool d3d12_postprocess_execution_ready{false};
+    bool constant_buffer_ready{false};
+    std::uint32_t constants_binding{0};
+    std::uint64_t constant_buffer_bytes{0};
+    std::uint64_t expected_postprocess_passes{0};
+    std::uint64_t postprocess_passes_executed{0};
+    bool postprocess_passes_current{false};
+    std::uint32_t diagnostics_count{0};
 };
 
 enum class Win32DesktopPresentationVulkanPostprocessExecutionStatus : std::uint8_t {
@@ -735,6 +762,8 @@ struct Win32DesktopPresentationD3d12SceneRendererDesc {
     bool enable_compute_morph_tangent_frame_output{false};
     bool enable_postprocess{false};
     bool enable_postprocess_depth_input{false};
+    bool enable_environment_fog{false};
+    EnvironmentFogPolicyDesc environment_fog;
     bool enable_directional_shadow_smoke{false};
     bool enable_native_ui_overlay{false};
     AssetId native_ui_overlay_atlas_asset;
@@ -889,6 +918,11 @@ evaluate_win32_desktop_presentation_scene_scale_policy(const Win32DesktopPresent
 evaluate_win32_desktop_presentation_d3d12_postprocess_execution(const Win32DesktopPresentationReport& report,
                                                                 std::uint64_t expected_postprocess_passes,
                                                                 bool requested);
+[[nodiscard]] std::string_view
+win32_desktop_presentation_environment_fog_status_name(Win32DesktopPresentationEnvironmentFogStatus status) noexcept;
+[[nodiscard]] Win32DesktopPresentationEnvironmentFogReport evaluate_win32_desktop_presentation_environment_fog(
+    const Win32DesktopPresentationReport& report,
+    const Win32DesktopPresentationD3d12PostprocessExecutionReport& d3d12_postprocess_execution, bool requested);
 [[nodiscard]] std::string_view win32_desktop_presentation_vulkan_postprocess_execution_status_name(
     Win32DesktopPresentationVulkanPostprocessExecutionStatus status) noexcept;
 [[nodiscard]] Win32DesktopPresentationVulkanPostprocessExecutionReport

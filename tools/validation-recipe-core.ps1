@@ -136,6 +136,7 @@ function Get-DesktopRuntimePackageCommandPlan {
         [string]$ScriptPath,
         [Parameter(Mandatory = $true)]
         [string]$GameTarget,
+        [switch]$RequireD3d12Shaders,
         [switch]$RequireVulkanShaders,
         [Parameter()]
         [System.String[]]$SmokeArgs = @()
@@ -146,6 +147,9 @@ function Get-DesktopRuntimePackageCommandPlan {
     $null = $commandParts.Add((ConvertTo-PwshSingleQuotedLiteral $ScriptPath))
     $null = $commandParts.Add('-GameTarget')
     $null = $commandParts.Add((ConvertTo-PwshSingleQuotedLiteral $GameTarget))
+    if ($RequireD3d12Shaders.IsPresent) {
+        $null = $commandParts.Add('-RequireD3d12Shaders')
+    }
     if ($RequireVulkanShaders.IsPresent) {
         $null = $commandParts.Add('-RequireVulkanShaders')
     }
@@ -194,6 +198,25 @@ function Get-SampleDesktopRuntimeGameVulkanSmokeArgs {
     $list.Add('--require-native-ui-overlay') | Out-Null
     $list.Add('--require-native-ui-textured-sprite-atlas') | Out-Null
     return $list.ToArray()
+}
+
+function Get-SampleDesktopRuntimeGameEnvironmentFogSmokeArgs {
+    return @(
+        '--smoke',
+        '--max-frames',
+        '2',
+        '--require-config',
+        'runtime/sample_desktop_runtime_game.config',
+        '--require-scene-package',
+        'runtime/sample_desktop_runtime_game.geindex',
+        '--require-d3d12-scene-shaders',
+        '--require-d3d12-renderer',
+        '--require-scene-gpu-bindings',
+        '--require-postprocess',
+        '--require-postprocess-depth-input',
+        '--require-d3d12-postprocess-evidence',
+        '--require-environment-fog-evidence'
+    )
 }
 
 function Get-GeneratedMaterialShaderScaffoldPackageVulkanSmokeArgs {
