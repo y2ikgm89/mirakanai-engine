@@ -135,7 +135,7 @@ Retained sandbox-world evidence includes `genre-sandbox-world-pack-v1`, `plan_ru
 | AI engine capability handoff implementation evidence | [AI Engine Capability Handoff v1](2026-05-22-ai-engine-capability-handoff-v1.md) |
 | Historical/static-check retained literals | [99-historical-verdict-archive.md](../master-plans/production-completion-v1/99-historical-verdict-archive.md) |
 | Clean-break broad production sequencing | [Clean Break Broad Production Readiness Master Plan v1](../master-plans/2026-05-27-clean-break-broad-production-readiness-master-plan-v1.md), [Renderer Production Quality And Backend Parity v1](2026-05-27-renderer-production-quality-backend-parity-v1.md), [Runtime UI Text Platform Stack v1](2026-05-27-runtime-ui-text-platform-stack-v1.md), [Reviewed Importers Codecs And Shader Generation v1](2026-05-27-reviewed-importers-codecs-shader-generation-v1.md), and [First-Party Desktop Platform And SDL3 Removal v1](2026-05-27-first-party-desktop-platform-sdl3-removal-v1.md) |
-| Candidate environment system roadmap | [Environment System v1](2026-05-26-environment-system-v1.md) |
+| Candidate environment system roadmap | [Environment System v1](2026-05-26-environment-system-v1.md) (`environment-system-v1`; `production-candidate`, not `currentActivePlan`) |
 | Candidate long-range virtualized geometry roadmap | [Mirakana Adaptive Virtual Geometry Master Plan v1](../master-plans/2026-05-27-mirakana-adaptive-virtual-geometry-master-plan-v1.md) |
 | Recent completed implementation evidence | Search [99-historical-verdict-archive.md](../master-plans/production-completion-v1/99-historical-verdict-archive.md) and Git history; do not treat this registry as a changelog. |
 

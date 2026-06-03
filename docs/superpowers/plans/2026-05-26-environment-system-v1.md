@@ -1,6 +1,10 @@
-# Environment System v1 Implementation Plan
+# 2026-05-26 Environment System v1 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Plan ID:** `environment-system-v1`
+
+**Status:** Proposed / `production-candidate`, not `currentActivePlan`.
 
 **Goal:** Add a first-class MIRAIKANAI Environment System for sky, sun, moon, ambient lighting, reflections, fog, clouds, rain, snow, storms, time-of-day, weather presets, and quality tiers without preserving backward compatibility.
 
@@ -12,25 +16,42 @@
 
 ## Status
 
-This is a proposed implementation plan only. It is not selected as the active plan until the plan registry, roadmap, and composed agent manifest are intentionally updated in a separate planning-governance step.
+This is a proposed implementation plan only. It is registered as the `environment-system-v1` production candidate, but it is not selected as the active plan while `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` remains the production-completion master plan and `recommendedNextPlan.id = next-production-gap-selection`.
 
-No engine implementation, CMake edits, manifest edits, registry edits, or validation changes have been performed by creating this plan.
+The 2026-06-03 plan review updates documentation pointers only. No engine implementation, CMake edits, manifest edits, validation recipe changes, or ready capability claims have been performed by creating or reviewing this plan.
+
+If this plan is promoted, promote it as an active milestone rather than as many small child plans. In that same governance change, update the plan registry, roadmap, `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`, compose `engine/agent/manifest.json`, and extend static checks for the selected `recommendedNextPlan` value. Do not change `009-validationRecipes.json`, `014-gameCodeGuidance.json`, package counters, or broad environment readiness claims until the corresponding implementation evidence has landed.
+
+## 2026-06-03 Project Alignment Review
+
+- Current desktop presentation is first-party Win32 through `MK_runtime_host_win32_presentation`; removed SDL3 and other legacy desktop middleware must stay absent.
+- Current visible editor shell is first-party retained `MK_editor` / `MK_editor_core`; environment authoring must use editor-core retained models before any visible first-party editor panel claim.
+- Current production-completion state is the selection gate with `unsupportedProductionGaps = []`; this plan is a post-1.0 candidate, not a 1.0 blocker.
+- D3D12 remains the primary Windows evidence lane, strict Vulkan proof must name Vulkan validation/toolchain requirements, and Metal remains Apple-host-gated unless a focused host recipe proves the selected feature.
+- Package-visible evidence must use narrow counters such as `environment_fog_status`, `environment_cloud_layer_status`, and backend-specific evidence rows; never add a broad `environment_ready` claim.
 
 ## Official Source Baseline
 
-Before implementation, re-check the exact current documents for the APIs touched in that implementation slice. The planning baseline used these official or primary sources:
+Before implementation, re-check the exact current documents for the APIs touched in that implementation slice. The 2026-06-03 planning baseline used these official or primary sources plus Context7 checks for D3D12, Vulkan, and OpenEXR:
 
-- Unreal Engine Sky Atmosphere: <https://dev.epicgames.com/documentation/unreal-engine/sky-atmosphere-component-in-unreal-engine>
-- Unreal Engine Volumetric Clouds: <https://dev.epicgames.com/documentation/en-us/unreal-engine/volumetric-clouds-reference?application_version=4.27>
+- Unreal Engine environmental lighting with fog, clouds, sky, and atmosphere: <https://dev.epicgames.com/documentation/en-us/unreal-engine/environmental-light-with-fog-clouds-sky-and-atmosphere-in-unreal-engine>
+- Unreal Engine Sky Atmosphere: <https://dev.epicgames.com/documentation/unreal-engine/sky-atmosphere-component-in-unreal-engine?lang=en-US>
+- Unreal Engine Volumetric Cloud Component: <https://dev.epicgames.com/documentation/unreal-engine/volumetric-cloud-component-in-unreal-engine?lang=en-US>
 - Unreal Engine Sky Lights: <https://dev.epicgames.com/documentation/unreal-engine/sky-lights-in-unreal-engine?lang=en-US>
-- Unity HDRP Environment Lighting: <https://docs.unity3d.com/ja/Packages/com.unity.render-pipelines.high-definition%4010.5/manual/Environment-Lighting.html>
-- Unity HDRP clouds overview: <https://docs.unity.cn/Packages/com.unity.render-pipelines.high-definition%4017.0/manual/understand-clouds.html>
+- Unity HDRP Sky: <https://docs.unity.cn/Packages/com.unity.render-pipelines.high-definition%4017.0/manual/sky.html>
+- Unity HDRP Visual Environment: <https://docs.unity.cn/Packages/com.unity.render-pipelines.high-definition%4017.0/manual/Override-Visual-Environment.html>
+- Unity HDRP Clouds: <https://docs.unity.cn/Packages/com.unity.render-pipelines.high-definition%4017.0/manual/clouds-in-hdrp.html>
+- Unity HDRP Volumetric Clouds override: <https://docs.unity.cn/Packages/com.unity.render-pipelines.high-definition%4017.0/manual/Override-Volumetric-Clouds.html>
 - Godot Environment and post-processing: <https://docs.godotengine.org/en/stable/tutorials/3d/environment_and_post_processing.html>
-- Godot Volumetric Fog: <https://docs.godotengine.org/en/4.0/tutorials/3d/volumetric_fog.html>
+- Godot Volumetric Fog and fog volumes: <https://docs.godotengine.org/en/stable/tutorials/3d/volumetric_fog.html>
 - Hillaire 2020, "A Scalable and Production Ready Sky and Atmosphere Rendering Technique": <https://diglib.eg.org/items/8a3e5350-18b3-46bd-9274-3add5af88c75>
 - Vulkan synchronization examples: <https://docs.vulkan.org/guide/latest/synchronization_examples.html>
 - D3D12 ResourceBarrier reference: <https://learn.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12graphicscommandlist-resourcebarrier>
+- D3D12 Root Signatures overview: <https://learn.microsoft.com/en-us/windows/win32/direct3d12/root-signatures-overview>
+- D3D12 resource binding flow: <https://learn.microsoft.com/en-us/windows/win32/direct3d12/resource-binding-flow-of-control>
 - OpenEXR documentation: <https://openexr.com/>
+
+Implementation slices must treat these as design input, not as copied implementation. D3D12 descriptor heaps, root signatures, command lists, fences, and resource barriers stay backend-private. Vulkan synchronization2 image layout transitions and shader-read barriers must be proven through strict validation before Vulkan readiness. OpenEXR or KTX-class HDR environment import requires dependency, license, vcpkg feature, importer tests, and package evidence before any ready claim.
 
 ## Clean-Break Policy
 
@@ -684,7 +705,7 @@ Add an editor-core document over `GameEngine.EnvironmentProfile.v1` text IO usin
 
 - [ ] **Step 3: Add visible editor panel**
 
-Add a visible Dear ImGui panel only after editor-core model tests pass. The editor panel must not expose native renderer/RHI handles or execute package scripts.
+Add a visible first-party retained `MK_editor` panel only after editor-core model tests pass. The editor panel must use `mirakana::ui` / `MK_ui_renderer` contracts and must not expose native renderer/RHI handles, reintroduce Dear ImGui or other UI middleware, or execute package scripts.
 
 ## Task 16: Package And Validation Evidence
 
@@ -769,7 +790,7 @@ Expected: PASS, or a concrete missing-host/toolchain blocker is recorded.
 | Cloud layer | Cheap cloud layer tests, package evidence for selected sample. |
 | Rain/snow/storm | Precipitation, wetness, occlusion, and audio handoff value tests. |
 | Volumetric clouds | Raymarch quality budget tests, D3D12 proof, Vulkan strict gate. |
-| Editor | Editor-core model tests before visible Dear ImGui panel. |
+| Editor | Editor-core retained model tests before visible first-party `MK_editor` panel claims. |
 | Package | Installed validation counters for each selected feature. |
 
 ## Recommended PR Slices
