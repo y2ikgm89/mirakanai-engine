@@ -6,7 +6,9 @@
 #include "mirakana/math/vec.hpp"
 #include "mirakana/renderer/postprocess_policy.hpp"
 
+#include <cstddef>
 #include <cstdint>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -40,6 +42,22 @@ enum class EnvironmentFogDiagnosticCode : std::uint8_t {
     unsupported_native_handle_claim,
 };
 
+[[nodiscard]] constexpr std::uint32_t environment_fog_scene_depth_texture_binding() noexcept {
+    return 2;
+}
+
+[[nodiscard]] constexpr std::uint32_t environment_fog_scene_depth_sampler_binding() noexcept {
+    return 3;
+}
+
+[[nodiscard]] constexpr std::uint32_t environment_fog_constants_binding() noexcept {
+    return 4;
+}
+
+[[nodiscard]] constexpr std::size_t environment_fog_constants_byte_size() noexcept {
+    return 256;
+}
+
 struct EnvironmentFogPolicyDesc {
     EnvironmentFogMode mode{EnvironmentFogMode::unknown};
     float density{0.0F};
@@ -59,6 +77,8 @@ struct EnvironmentFogPolicyDesc {
     bool request_backend_execution{false};
     bool request_native_handle_access{false};
 };
+
+void pack_environment_fog_constants(std::span<std::uint8_t> dst, const EnvironmentFogPolicyDesc& desc);
 
 struct EnvironmentFogConstantLayoutRow {
     std::string name;

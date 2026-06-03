@@ -18,9 +18,9 @@
 
 This plan is selected as the active `environment-system-v1` milestone. `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` points to this file, `recommendedNextPlan.id = environment-system-v1`, and `unsupportedProductionGaps = []` remains unchanged.
 
-The 2026-06-03 PR1 foundation implements the `MK_environment` value contract, validation, CMake/export wiring, public API boundary coverage, and focused tests. The PR2 text IO/package-row slice adds deterministic `GameEngine.EnvironmentProfile.v1` text IO, `AssetKind::environment_profile`, source registry/import metadata planning, cooked `GameEngine.CookedEnvironmentProfile.v1` artifacts, and `.geindex` package rows without runtime source parsing. PR3 adds scene/runtime scene environment profile binding. PR4 adds value-only render packet and renderer policy planning. PR5 adds physical-sky policy and shader-contract evidence. PR6 adds first-party cooked-texture sky-lighting/IBL policy rows without new import dependencies. PR7 adds height-fog/aerial-perspective policy rows plus a reviewed depth-aware HLSL shader contract. It does not claim renderer/RHI execution, editor authoring, package counters, Vulkan readiness, Metal readiness, broad optimization, or broad `environment_ready`.
+The 2026-06-03 PR1 foundation implements the `MK_environment` value contract, validation, CMake/export wiring, public API boundary coverage, and focused tests. The PR2 text IO/package-row slice adds deterministic `GameEngine.EnvironmentProfile.v1` text IO, `AssetKind::environment_profile`, source registry/import metadata planning, cooked `GameEngine.CookedEnvironmentProfile.v1` artifacts, and `.geindex` package rows without runtime source parsing. PR3 adds scene/runtime scene environment profile binding. PR4 adds value-only render packet and renderer policy planning. PR5 adds physical-sky policy and shader-contract evidence. PR6 adds first-party cooked-texture sky-lighting/IBL policy rows without new import dependencies. PR7 adds height-fog/aerial-perspective policy rows plus a reviewed depth-aware HLSL shader contract. PR8 adds `RhiPostprocessFrameRenderer` first-stage uniform binding, height-fog constant packing, and a D3D12 WARP-safe depth-aware readback proof for the height-fog shader path. It does not claim physical-sky backend execution, height-fog Vulkan runtime proof, editor authoring, package counters, Vulkan readiness, Metal readiness, broad optimization, or broad `environment_ready`.
 
-Active execution must keep this as one milestone with reviewable PR slices. Do not change `009-validationRecipes.json`, `014-gameCodeGuidance.json`, package counters, optional OpenEXR/KTX dependency records, or broad environment readiness claims until the corresponding implementation evidence has landed.
+Active execution must keep this as one milestone with reviewable PR slices. Do not change `009-validationRecipes.json`, package counters, optional OpenEXR/KTX dependency records, or broad environment readiness claims until the corresponding implementation evidence has landed. `014-gameCodeGuidance.json` may only describe landed evidence and must preserve unsupported rows for missing package/runtime/backend proof.
 
 ## 2026-06-03 Project Alignment Review
 
@@ -567,7 +567,7 @@ The tests must prove `fog` is no longer only an enum value. Require depth input,
 
 Use existing postprocess depth input foundations. PR7 adds policy/shader-contract evidence only; package-visible `environment_fog_status=ready` must remain unreported until depth-aware runtime/package execution proof lands.
 
-- [ ] **Step 3: Add D3D12 readback proof**
+- [x] **Step 3: Add D3D12 readback proof**
 
 Add a focused D3D12 WARP-safe readback test proving fog changes at least two known depths differently. Do not use subjective screenshot comparison as the only proof.
 
@@ -576,6 +576,8 @@ Add a focused D3D12 WARP-safe readback test proving fog changes at least two kno
 Add a strict Vulkan proof guarded by explicit SPIR-V artifact environment variables and validation-layer readiness.
 
 **2026-06-03 PR7 Task 9 Evidence:** GREEN added backend-neutral `EnvironmentFogPolicyDesc`, `EnvironmentFogPolicyPlan`, `EnvironmentFogConstantLayoutRow`, `EnvironmentFogDepthInputRow`, `EnvironmentFogPassBudgetRow`, `EnvironmentFogPostprocessRow`, `plan_environment_fog_policy`, and `has_environment_fog_diagnostic`. The policy validates supported height-fog/aerial-perspective modes, finite density/falloff/height offset/distance/color values, sky affect, anisotropy, sample-step budget, scene-depth evidence, shader-contract evidence, and fail-closed volumetric-fog/backend/native-handle requests while producing exact one-pass fullscreen-triangle budget rows and `PostprocessEffectKind::fog` rows. `shaders/environment/height_fog.hlsl` and `tests/shaders/environment_height_fog.hlsl` add the reviewed depth-aware HLSL contract using `SV_VertexID`, `SV_Position`, `SV_Target0`, explicit `packoffset` constant rows, and sampled scene depth. Official context re-checked Unreal Exponential Height Fog (`https://dev.epicgames.com/documentation/unreal-engine/exponential-height-fog-in-unreal-engine?lang=en-US`), Unity HDRP Fog (`https://docs.unity.cn/Packages/com.unity.render-pipelines.high-definition%4017.0/manual/fog.html`), Godot Environment and post-processing fog guidance (`https://docs.godotengine.org/en/stable/tutorials/3d/environment_and_post_processing.html`), Microsoft HLSL semantics (`https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-semantics`), and Context7 `/khronosgroup/vulkan-docs` depth-attachment-to-fragment-shader sampled-read synchronization evidence before implementation. Focused validation passed for `MK_renderer_environment_fog_policy_tests`, `MK_renderer_environment_policy_tests`, and `MK_renderer_tests`; DXC compiled the contract to DXIL and Vulkan SPIR-V for vertex/pixel entry points, and `spirv-val --target-env vulkan1.3` passed for both SPIR-V artifacts. `tools/check-shader-toolchain.ps1` reported D3D12 DXIL and Vulkan SPIR-V ready, with Metal tools missing as diagnostic-only on this Windows host. This is height-fog policy and shader-contract evidence only; it does not add D3D12 readback proof, Vulkan runtime proof, package-visible `environment_fog_status`, renderer/RHI environment execution, volumetric fog, package counters, Vulkan readiness, Metal readiness, or broad `environment_ready`.
+
+**2026-06-04 PR8 Task 9 Evidence:** GREEN added stable height-fog postprocess descriptor constants for scene color at bindings `0/1`, scene depth at `2/3`, and first-stage uniform constants at `4`; `pack_environment_fog_constants` writes the reviewed 256-byte height-fog constant layout; and `RhiPostprocessFrameRendererDesc::postprocess_first_uniform_buffer` lets the renderer-owned postprocess path bind one optional uniform buffer without exposing native handles. `shaders/environment/height_fog.hlsl` now consumes scene color, scene depth, and the uniform row through that binding contract. A focused D3D12 WARP-safe readback test renders two known depth regions, runs the height-fog postprocess shader with packed constants, and proves fog changes near and far pixels differently while recording expected descriptor bind/write, draw, copy/readback, and buffer-write counters. Official context was re-checked for Microsoft D3D12 resource barriers (`https://learn.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12graphicscommandlist-resourcebarrier`), D3D12 root signatures (`https://learn.microsoft.com/en-us/windows/win32/direct3d12/root-signatures-overview`), D3D12 resource binding flow (`https://learn.microsoft.com/en-us/windows/win32/direct3d12/resource-binding-flow-of-control`), Microsoft HLSL semantics (`https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-semantics`), and Context7 `/khronosgroup/vulkan-docs` depth attachment write to fragment shader sampled-read synchronization. Focused validation passed for `MK_renderer_environment_fog_policy_tests`, `MK_renderer_tests`, and `MK_d3d12_rhi_tests`. This is a selected D3D12 height-fog execution/readback proof only; it does not add Vulkan runtime proof, package-visible `environment_fog_status`, physical-sky backend execution, package counters, shader package artifacts, Metal readiness, broad GPU optimization, backend parity, or broad `environment_ready`.
 
 ## Task 10: Volumetric Fog
 
@@ -826,14 +828,15 @@ Expected: PASS, or a concrete missing-host/toolchain blocker is recorded.
 5. PR 5: Physical sky policy and shader contract.
 6. PR 6: Sky lighting and IBL policy.
 7. PR 7: Height fog policy and shader contract.
-8. PR 8: Physical sky and height fog execution proof, split further if review or host gates require it.
-9. PR 9: Volumetric fog policy and first execution proof.
-10. PR 10: Cloud layer.
-11. PR 11: Weather and precipitation, including rain, snow, wetness, occlusion, and audio handoff rows.
-12. PR 12: Volumetric clouds and storm lighting.
-13. PR 13: Time-of-day and weather blending.
-14. PR 14: Editor environment authoring.
-15. PR 15: Package validation recipes, manifest, docs, and final closeout.
+8. PR 8: Height fog D3D12 execution/readback proof and postprocess constant binding.
+9. PR 9: Physical sky execution proof and height-fog Vulkan/package proof, split further if review or host gates require it.
+10. PR 10: Volumetric fog policy and first execution proof.
+11. PR 11: Cloud layer.
+12. PR 12: Weather and precipitation, including rain, snow, wetness, occlusion, and audio handoff rows.
+13. PR 13: Volumetric clouds and storm lighting.
+14. PR 14: Time-of-day and weather blending.
+15. PR 15: Editor environment authoring.
+16. PR 16: Package validation recipes, manifest, docs, and final closeout.
 
 ## Completion Definition
 

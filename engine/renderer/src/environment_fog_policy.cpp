@@ -6,6 +6,8 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstring>
+#include <stdexcept>
 #include <string_view>
 #include <utility>
 
@@ -84,11 +86,15 @@ void append_constant_layout_rows(EnvironmentFogPolicyPlan& plan) {
 
 void append_depth_input_row(EnvironmentFogPolicyPlan& plan) {
     plan.depth_input_rows.push_back(EnvironmentFogDepthInputRow{
-        .texture_binding_slot = 0U,
-        .sampler_binding_slot = 0U,
+        .texture_binding_slot = environment_fog_scene_depth_texture_binding(),
+        .sampler_binding_slot = environment_fog_scene_depth_sampler_binding(),
         .required = plan.requires_scene_depth,
         .available = plan.scene_depth_available,
     });
+}
+
+void write_f32(std::span<std::uint8_t> dst, std::size_t offset, float value) {
+    std::memcpy(dst.data() + offset, &value, sizeof(float));
 }
 
 void append_pass_budget_row(EnvironmentFogPolicyPlan& plan, std::uint32_t sample_step_budget) {
@@ -112,6 +118,28 @@ void append_postprocess_row(EnvironmentFogPolicyPlan& plan) {
 
 bool EnvironmentFogPolicyPlan::succeeded() const noexcept {
     return diagnostics.empty();
+}
+
+void pack_environment_fog_constants(std::span<std::uint8_t> dst, const EnvironmentFogPolicyDesc& desc) {
+    if (dst.size() < environment_fog_constants_byte_size()) {
+        throw std::invalid_argument("environment fog constants destination is too small");
+    }
+
+    std::ranges::fill(dst, std::uint8_t{0});
+    write_f32(dst, 0U, desc.density);
+    write_f32(dst, 4U, desc.height_falloff);
+    write_f32(dst, 8U, desc.height_offset_m);
+    write_f32(dst, 12U, desc.start_distance_m);
+    write_f32(dst, 16U, desc.cutoff_distance_m);
+    write_f32(dst, 20U, desc.max_opacity);
+    write_f32(dst, 24U, desc.sky_affect);
+    write_f32(dst, 28U, desc.directional_inscattering_anisotropy);
+    write_f32(dst, 32U, desc.inscattering_color.x);
+    write_f32(dst, 36U, desc.inscattering_color.y);
+    write_f32(dst, 40U, desc.inscattering_color.z);
+    write_f32(dst, 44U, desc.directional_inscattering_color.x);
+    write_f32(dst, 48U, desc.directional_inscattering_color.y);
+    write_f32(dst, 52U, desc.directional_inscattering_color.z);
 }
 
 EnvironmentFogPolicyPlan plan_environment_fog_policy(const EnvironmentFogPolicyDesc& desc) {

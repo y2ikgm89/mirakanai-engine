@@ -231,8 +231,10 @@ RhiPostprocessFrameRenderer::RhiPostprocessFrameRenderer(const RhiPostprocessFra
       scene_skinned_graphics_pipeline_(desc.scene_skinned_graphics_pipeline),
       scene_morph_graphics_pipeline_(desc.scene_morph_graphics_pipeline),
       postprocess_vertex_shader_(desc.postprocess_vertex_shader),
-      postprocess_fragment_stages_(desc.postprocess_fragment_stages), wait_for_completion_(desc.wait_for_completion),
-      depth_input_enabled_(desc.enable_depth_input), native_ui_overlay_enabled_(desc.enable_native_ui_overlay),
+      postprocess_fragment_stages_(desc.postprocess_fragment_stages),
+      postprocess_first_uniform_buffer_(desc.postprocess_first_uniform_buffer),
+      wait_for_completion_(desc.wait_for_completion), depth_input_enabled_(desc.enable_depth_input),
+      native_ui_overlay_enabled_(desc.enable_native_ui_overlay),
       native_ui_overlay_textures_enabled_(desc.enable_native_ui_overlay_textures) {
     if (device_ == nullptr) {
         throw std::invalid_argument("rhi postprocess renderer requires an rhi device");
@@ -321,6 +323,14 @@ RhiPostprocessFrameRenderer::RhiPostprocessFrameRenderer(const RhiPostprocessFra
         first_bindings.push_back(rhi::DescriptorBindingDesc{
             .binding = postprocess_scene_depth_sampler_binding(),
             .type = rhi::DescriptorType::sampler,
+            .count = 1,
+            .stages = rhi::ShaderStageVisibility::fragment,
+        });
+    }
+    if (postprocess_first_uniform_buffer_.value != 0) {
+        first_bindings.push_back(rhi::DescriptorBindingDesc{
+            .binding = postprocess_first_uniform_binding(),
+            .type = rhi::DescriptorType::uniform_buffer,
             .count = 1,
             .stages = rhi::ShaderStageVisibility::fragment,
         });
@@ -895,6 +905,15 @@ void RhiPostprocessFrameRenderer::update_postprocess_descriptors() {
             .binding = postprocess_scene_depth_sampler_binding(),
             .array_element = 0,
             .resources = {rhi::DescriptorResource::sampler(scene_depth_sampler_)},
+        });
+    }
+    if (postprocess_first_uniform_buffer_.value != 0) {
+        device_->update_descriptor_set(rhi::DescriptorWrite{
+            .set = postprocess_first_descriptor_set_,
+            .binding = postprocess_first_uniform_binding(),
+            .array_element = 0,
+            .resources = {rhi::DescriptorResource::buffer(rhi::DescriptorType::uniform_buffer,
+                                                          postprocess_first_uniform_buffer_)},
         });
     }
     if (postprocess_stage_count_ >= 2 && postprocess_chain_descriptor_set_.value != 0) {
