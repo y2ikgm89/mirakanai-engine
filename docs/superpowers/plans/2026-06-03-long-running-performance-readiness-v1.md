@@ -2,7 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` or focused inline execution only after an operator explicitly selects this plan for implementation. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Status:** Proposed; not selected; do not implement until the operator approves this plan and the manifest is intentionally pointed at it.
+**Plan ID:** `long-running-performance-readiness-v1-phase-1`
+
+**Status:** Active.
+
+Phase 0/1 is selected for implementation in one reviewable PR. Later phases remain planned until Phase 1 is validated and published.
 
 **Goal:** Make the engine able to run representative games for long sessions with stable frame pacing, bounded memory growth, deterministic diagnostics, and evidence-driven CPU/GPU optimization decisions without reopening Engine 1.0 blockers.
 
@@ -12,16 +16,16 @@
 
 ---
 
-## Plan ID
+## Milestone ID
 
 `long-running-performance-readiness-v1`
 
 ## Current Selection State
 
-- Current live production pointer remains `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
-- `recommendedNextPlan.id` remains `next-production-gap-selection`.
+- Current live production pointer is `docs/superpowers/plans/2026-06-03-long-running-performance-readiness-v1.md`.
+- `recommendedNextPlan.id` is `long-running-performance-readiness-v1-phase-1`.
 - `unsupportedProductionGaps` remains `[]`.
-- This plan must not change `currentActivePlan`, manifest fragments, static checks, or package recipes until the operator explicitly selects it for implementation.
+- Phase 0/1 may update manifest fragments, static checks, package recipes, docs, and composed manifest output only for the selected 2D short-soak evidence contract.
 
 ## Official References
 
@@ -49,6 +53,15 @@
 - `docs/specs/2026-06-01-engine-performance-optimization-foundation-v1.md` already orders the relevant future waves: Intel/AMD CPU Profiling Matrix v1, Parallel Command Recording v1, and Optional GPU Compute Review v1.
 - Completed slices already provide memory lifetime taxonomy, memory diagnostics, frame/thread scratch, job scheduling evidence, worker pool, topology policy, work stealing, placement policy, Windows CPU Sets worker placement, SIMD dispatch, and AVX2 reviewed target execution.
 - Existing package evidence intentionally reports zero affinity, NUMA, GPU async-overlap, CUDA, HIP, and SYCL side effects for the baseline lanes.
+
+## Resolved Planning Decisions
+
+- Phase 1 primary target is `games/sample_2d_desktop_runtime_package`, because it already owns the selected performance-budget lane, `--require-performance-baseline`, `performance_baseline_*` counters, and `installed-2d-performance-baseline-smoke`.
+- `games/sample_desktop_runtime_game` is not the Phase 1 primary target. It remains the follow-up host/backend optimization target for CPU placement, SIMD, renderer queue evidence, D3D12/Vulkan proof, and any later GPU async evidence.
+- Phase 0 and Phase 1 should be reviewed in one PR after operator approval: Phase 0 selects the plan, and Phase 1 immediately adds the first package-visible evidence contract. Do not merge a selection-only PR that leaves the active plan without fresh evidence.
+- The first implementation PR must not add Linux affinity execution, NUMA policy execution, broad SIMD expansion, GPU async overlap execution, CUDA, HIP, SYCL, PGO/LTO, or any new default validation dependency.
+- Longer soak execution is host-owned and opt-in. Default validation gets only a deterministic short smoke; a 30-minute or high-frame-count soak is a separate recipe with explicit host evidence.
+- `unsupportedProductionGaps` remains `[]` unless a concrete blocker is discovered. Missing optional host evidence is recorded as `host-gated`, not as an Engine 1.0 blocker.
 
 ## Non-Goals
 
@@ -81,11 +94,11 @@ Every phase that makes a performance or long-running claim must record these fie
 - Modify `docs/current-capabilities.md` only to add selected-plan context, not ready claims.
 - Modify static checks only if new selected-plan literals are enforced.
 
-- [ ] Confirm operator approval to select `long-running-performance-readiness-v1`.
-- [ ] Update `currentActivePlan` and `recommendedNextPlan.id` only after approval.
-- [ ] Keep `unsupportedProductionGaps = []` unless a concrete blocker is discovered and documented.
-- [ ] Add a registry row that states this is a post-1.0 long-running readiness milestone, not a reopened 1.0 gap.
-- [ ] Run:
+- [x] Confirm operator approval to select `long-running-performance-readiness-v1`.
+- [x] Update `currentActivePlan` and `recommendedNextPlan.id` only after approval.
+- [x] Keep `unsupportedProductionGaps = []` unless a concrete blocker is discovered and documented.
+- [x] Add a registry row that states this is a post-1.0 long-running readiness milestone, not a reopened 1.0 gap.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write
@@ -99,30 +112,78 @@ Expected: manifest composition and static contract checks pass with no new ready
 
 **Goal:** Define and expose a selected package smoke contract for bounded long sessions before adding low-level tuning.
 
-**Files if implemented:**
+**Files to modify during implementation:**
 
-- Modify the selected sample package executable that already owns performance budget counters.
-- Modify focused unit/package tests for the new evidence rows.
-- Modify installed package validation wrappers only when the new flag is selected.
-- Update `docs/current-capabilities.md`, `docs/roadmap.md`, plan registry, manifest fragments, and static checks for new counters.
+- Modify `games/sample_2d_desktop_runtime_package/main.cpp`.
+- Modify `tools/validate-installed-desktop-runtime.ps1`.
+- Modify `games/sample_2d_desktop_runtime_package/game.agent.json`.
+- Modify `engine/agent/manifest.fragments/009-validationRecipes.json` only if the new recipe is promoted to the shared manifest recipe list.
+- Modify `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json` and `engine/agent/manifest.fragments/014-gameCodeGuidance.json`.
+- Compose `engine/agent/manifest.json`.
+- Modify `docs/current-capabilities.md`, `docs/roadmap.md`, `docs/ai-game-development.md`, and `docs/superpowers/plans/README.md`.
+- Modify static checks in `tools/check-ai-integration-*.ps1` or `tools/check-json-contracts-*.ps1` only for literals that must remain machine-enforced.
 
-- [ ] Add a selected package flag named `--require-long-run-performance-readiness`.
-- [ ] Emit deterministic counters for `long_run_readiness_status`, `long_run_readiness_ready`, `long_run_readiness_frames`, `long_run_readiness_warmup_frames`, `long_run_readiness_p95_frame_time_us`, `long_run_readiness_p99_frame_time_us`, `long_run_readiness_max_frame_time_us`, `long_run_readiness_over_budget_frames`, `long_run_readiness_memory_high_water_bytes`, `long_run_readiness_memory_growth_bytes`, `long_run_readiness_diagnostics`, `long_run_readiness_shutdown_clean`, and zero unsupported side-effect counters.
-- [ ] Add a short default validation run that remains deterministic and cheap.
-- [ ] Add a separate host-owned soak recipe that may run longer, for example 30 minutes or a fixed high frame count, but is not required in default validation.
-- [ ] Make the package flag fail closed if counters are missing, non-finite, negative, or over budget.
-- [ ] Preserve zero side-effect counters for Linux affinity, NUMA execution, broad SIMD, GPU async overlap, CUDA, HIP, and SYCL.
+- [x] Add a selected package flag named `--require-long-run-performance-readiness`.
+- [x] Make `--require-long-run-performance-readiness` imply the same selected-package dependencies as `--require-performance-baseline`: `--require-sandbox-package-budgets`, `--require-win32-runtime-host`, `--require-win32-d3d12-presentation`, `--require-d3d12-shaders`, and `--require-d3d12-renderer`.
+- [x] Emit deterministic counters for `long_run_readiness_status=ready`, `long_run_readiness_ready=1`, `long_run_readiness_frames=<max_frames>`, `long_run_readiness_warmup_frames=0`, `long_run_readiness_p95_frame_time_us`, `long_run_readiness_p99_frame_time_us`, `long_run_readiness_max_frame_time_us`, `long_run_readiness_over_budget_frames=0`, `long_run_readiness_memory_high_water_bytes>0`, `long_run_readiness_memory_growth_bytes=0`, `long_run_readiness_diagnostics=0`, `long_run_readiness_shutdown_clean=1`, and zero unsupported side-effect counters.
+- [x] Use the existing deterministic baseline frame samples for the short smoke so p95/p99/max values stay reproducible and cheap.
+- [x] Add installed validation assertions for every `long_run_readiness_*` counter when `SmokeArgs` contains `--require-long-run-performance-readiness`.
+- [x] Add `installed-2d-long-run-readiness-smoke` to `games/sample_2d_desktop_runtime_package/game.agent.json` with the exact smoke args above.
+- [x] Add a short default validation run that remains deterministic and cheap.
+- [x] Add a separate host-owned soak recipe name, `host-2d-long-run-readiness-soak`, that may run longer, for example 30 minutes or a fixed high frame count, but is not required in default validation.
+- [x] Make the package flag fail closed if counters are missing, non-finite, negative, or over budget.
+- [x] Preserve zero side-effect counters for Linux affinity, NUMA execution, broad SIMD expansion, GPU async overlap, CUDA, HIP, SYCL, native handle exposure, and cross-backend parity.
+- [x] Do not touch `games/sample_desktop_runtime_game` in Phase 1. Add a separate follow-up phase only after the 2D package lane is green.
+
+**Required Phase 1 status-line fields:**
+
+```text
+long_run_readiness_status
+long_run_readiness_ready
+long_run_readiness_frames
+long_run_readiness_warmup_frames
+long_run_readiness_p95_frame_time_us
+long_run_readiness_p99_frame_time_us
+long_run_readiness_max_frame_time_us
+long_run_readiness_over_budget_frames
+long_run_readiness_memory_high_water_bytes
+long_run_readiness_memory_growth_bytes
+long_run_readiness_diagnostics
+long_run_readiness_shutdown_clean
+long_run_readiness_linux_affinity_applied
+long_run_readiness_numa_policy_applied
+long_run_readiness_broad_simd_applied
+long_run_readiness_gpu_async_overlap_applied
+long_run_readiness_cuda_path_used
+long_run_readiness_hip_path_used
+long_run_readiness_sycl_path_used
+long_run_readiness_native_handles_exposed
+```
 
 **Validation if implemented:**
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target sample_desktop_runtime_game
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R sample_desktop_runtime_game
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target sample_2d_desktop_runtime_package
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_2d_desktop_runtime_package
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 ```
 
-Expected: selected package counters are present, deterministic, and still make no unsupported optimization claims.
+Expected: selected 2D package counters are present, deterministic, and still make no unsupported optimization claims. Full validation is required before publication because Phase 1 changes C++ runtime/package/public contract surfaces.
+
+**Phase 1 validation evidence captured before full publication validation:**
+
+| Date | Command | Result |
+| --- | --- | --- |
+| 2026-06-03 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | Pass: `agent-config-check: ok`. |
+| 2026-06-03 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | Pass: `agent-manifest-compose: ok`, `json-contract-check: ok`. |
+| 2026-06-03 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | Pass: `ai-integration-check: ok`. |
+| 2026-06-03 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | Pass: `text-format-check: ok`, `format-check: ok`. |
+| 2026-06-03 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode DryRun -Recipe installed-2d-long-run-readiness-smoke -GameTarget sample_2d_desktop_runtime_package -StrictBackend D3D12` | Pass: command plan includes `--require-long-run-performance-readiness`. |
+| 2026-06-03 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode DryRun -Recipe host-2d-long-run-readiness-soak -GameTarget sample_2d_desktop_runtime_package -StrictBackend D3D12` | Pass: command plan includes `--max-frames 108000`, `--require-long-run-performance-readiness`, and host gates `d3d12-windows-primary`, `long-run-host-soak`. |
+| 2026-06-03 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Mode Execute -Recipe installed-2d-long-run-readiness-smoke -GameTarget sample_2d_desktop_runtime_package -StrictBackend D3D12 -HostGateAcknowledgements d3d12-windows-primary -TimeoutSeconds 300` | Pass: `status: passed`, `exitCode: 0`. |
+| 2026-06-03 | `.\bin\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-win32-runtime-host --require-win32-d3d12-presentation --require-d3d12-shaders --require-d3d12-renderer --require-sandbox-package-budgets --require-performance-baseline --require-long-run-performance-readiness` from `out/install/desktop-runtime-release` | Pass: `long_run_readiness_status=ready`, `long_run_readiness_ready=1`, `long_run_readiness_frames=3`, p95/p99/max frame time `16000`, `long_run_readiness_over_budget_frames=0`, `long_run_readiness_memory_high_water_bytes=7408`, `long_run_readiness_memory_growth_bytes=0`, `long_run_readiness_diagnostics=0`, `long_run_readiness_shutdown_clean=1`, and every unsupported side-effect counter remains `0`. |
 
 ## Phase 2: Intel/AMD CPU Profiling Matrix v1
 

@@ -80,6 +80,48 @@ function Get-ValidationRecipeCommandPlan {
         $diagPerformance = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'Selected 2D performance baseline smoke is restricted to the reviewed sample_2d_desktop_runtime_package D3D12 package lane.' -ValidationRecipe $RecipeName -HostGate 'd3d12-windows-primary'
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('d3d12-windows-primary') -RequiredAcknowledgements @('d3d12-windows-primary') -AllowedGameTargets @('sample_2d_desktop_runtime_package') -AllowedStrictBackend @('', 'D3D12') -Diagnostics @($diagPerformance)
     }
+    elseif ($RecipeName -eq 'installed-2d-long-run-readiness-smoke') {
+        $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_2d_desktop_runtime_package' } else { $SelectedGameTarget }
+        $smokeTail = @(
+            '--smoke',
+            '--require-config',
+            'runtime/sample_2d_desktop_runtime_package.config',
+            '--require-scene-package',
+            'runtime/sample_2d_desktop_runtime_package.geindex',
+            '--require-win32-runtime-host',
+            '--require-win32-d3d12-presentation',
+            '--require-d3d12-shaders',
+            '--require-d3d12-renderer',
+            '--require-sandbox-package-budgets',
+            '--require-performance-baseline',
+            '--require-long-run-performance-readiness'
+        )
+        $pwEntry = Get-DesktopRuntimePackageCommandPlan -ScriptPath $packageScript -GameTarget $target -SmokeArgs $smokeTail
+        $diagLongRun = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'Selected 2D long-run readiness smoke is restricted to the reviewed sample_2d_desktop_runtime_package D3D12 short-soak package lane and does not claim broad optimization.' -ValidationRecipe $RecipeName -HostGate 'd3d12-windows-primary'
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('d3d12-windows-primary') -RequiredAcknowledgements @('d3d12-windows-primary') -AllowedGameTargets @('sample_2d_desktop_runtime_package') -AllowedStrictBackend @('', 'D3D12') -Diagnostics @($diagLongRun)
+    }
+    elseif ($RecipeName -eq 'host-2d-long-run-readiness-soak') {
+        $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_2d_desktop_runtime_package' } else { $SelectedGameTarget }
+        $smokeTail = @(
+            '--smoke',
+            '--max-frames',
+            '108000',
+            '--require-config',
+            'runtime/sample_2d_desktop_runtime_package.config',
+            '--require-scene-package',
+            'runtime/sample_2d_desktop_runtime_package.geindex',
+            '--require-win32-runtime-host',
+            '--require-win32-d3d12-presentation',
+            '--require-d3d12-shaders',
+            '--require-d3d12-renderer',
+            '--require-sandbox-package-budgets',
+            '--require-performance-baseline',
+            '--require-long-run-performance-readiness'
+        )
+        $pwEntry = Get-DesktopRuntimePackageCommandPlan -ScriptPath $packageScript -GameTarget $target -SmokeArgs $smokeTail
+        $diagLongRunSoak = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'Host-owned 2D long-run readiness soak is opt-in, uses 108000 frames on the reviewed sample_2d_desktop_runtime_package D3D12 package lane, and is excluded from default validation.' -ValidationRecipe $RecipeName -HostGate 'd3d12-windows-primary'
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('d3d12-windows-primary', 'long-run-host-soak') -RequiredAcknowledgements @('d3d12-windows-primary', 'long-run-host-soak') -AllowedGameTargets @('sample_2d_desktop_runtime_package') -AllowedStrictBackend @('', 'D3D12') -Diagnostics @($diagLongRunSoak)
+    }
     elseif ($RecipeName -eq 'network-enet') {
         $cmdPlanEntry = Get-RepositoryToolCommandPlan -ToolScriptName 'validate-network-enet.ps1'
         $diagNetwork = New-RunnerDiagnostic -Severity 'info' -Code 'diagnostic-host-gate' -Message 'Optional ENet validation requires bootstrapped vcpkg network-enet packages and reports missing dependency state explicitly on non-ready hosts.' -ValidationRecipe $RecipeName -HostGate 'network-enet-vcpkg'

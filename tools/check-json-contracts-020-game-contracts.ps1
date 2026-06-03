@@ -605,7 +605,7 @@ if ($desktop2dRecipe.Count -ne 1) {
             Write-Error "engine manifest 2d-desktop-runtime-package recipe must allow $target"
         }
     }
-    foreach ($validationRecipe in @("desktop-game-runtime", "desktop-runtime-2d-package-proof", "installed-2d-sandbox-package-budget-smoke", "installed-2d-performance-baseline-smoke", "desktop-runtime-2d-vulkan-window-package", "shader-toolchain")) {
+    foreach ($validationRecipe in @("desktop-game-runtime", "desktop-runtime-2d-package-proof", "installed-2d-sandbox-package-budget-smoke", "installed-2d-performance-baseline-smoke", "installed-2d-long-run-readiness-smoke", "host-2d-long-run-readiness-soak", "desktop-runtime-2d-vulkan-window-package", "shader-toolchain")) {
         if (@($desktop2dRecipe[0].validationRecipes) -notcontains $validationRecipe) {
             Write-Error "engine manifest 2d-desktop-runtime-package recipe must include $validationRecipe validation"
         }

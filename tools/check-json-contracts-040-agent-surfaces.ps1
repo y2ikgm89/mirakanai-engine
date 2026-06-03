@@ -539,7 +539,7 @@ foreach ($check in @(
 $playable3dGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "3d-playable-vertical-slice" })
 if ($playable3dGap.Count -ne 0) { Write-Error "engine manifest aiOperableProductionLoop 3d-playable-vertical-slice gap must leave unsupportedProductionGaps after 1.0 closeout" }
 $recommendedText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
-if ([string]$productionLoop.recommendedNextPlan.id -notin @("general-purpose-game-production-v1", "generated-game-studio-v1", "engine-1-0-gap-matrix-v1", "next-production-gap-selection", "native-win32-editor-shell-v1", "first-party-editor-shell-v1", "first-party-ui-editor-production-stack-v1", "physics-navigation-commercial-coverage-v1", "renderer-backend-parity-metal-apple-evidence-v1", "renderer-postprocess-tone-mapping-evidence-v1", "sandbox-world-network-modding-gate-v1", "sandbox-world-package-validation-performance-budgets-v1", "ai-operable-performance-budget-and-evidence-v1", "performance-baseline-v1", "memory-lifetime-taxonomy-v1", "memory-diagnostics-v1", "frame-thread-scratch-v1", "job-scheduling-evidence-v1", "job-execution-worker-pool-v1", "job-execution-topology-policy-v1", "job-execution-work-stealing-v1", "job-execution-placement-policy-v1", "windows-cpu-set-worker-placement-v1", "windows-cpu-set-smt-worker-placement-v1", "simd-dispatch-policy-and-evidence-v1", "avx2-reviewed-target-execution-v1")) {
+if ([string]$productionLoop.recommendedNextPlan.id -notin @("general-purpose-game-production-v1", "generated-game-studio-v1", "engine-1-0-gap-matrix-v1", "next-production-gap-selection", "native-win32-editor-shell-v1", "first-party-editor-shell-v1", "first-party-ui-editor-production-stack-v1", "physics-navigation-commercial-coverage-v1", "renderer-backend-parity-metal-apple-evidence-v1", "renderer-postprocess-tone-mapping-evidence-v1", "sandbox-world-network-modding-gate-v1", "sandbox-world-package-validation-performance-budgets-v1", "ai-operable-performance-budget-and-evidence-v1", "performance-baseline-v1", "long-running-performance-readiness-v1-phase-1", "memory-lifetime-taxonomy-v1", "memory-diagnostics-v1", "frame-thread-scratch-v1", "job-scheduling-evidence-v1", "job-execution-worker-pool-v1", "job-execution-topology-policy-v1", "job-execution-work-stealing-v1", "job-execution-placement-policy-v1", "windows-cpu-set-worker-placement-v1", "windows-cpu-set-smt-worker-placement-v1", "simd-dispatch-policy-and-evidence-v1", "avx2-reviewed-target-execution-v1")) {
     foreach ($needle in @(
         "3d-playable-vertical-slice",
         "generated desktop 3D package proof",
@@ -688,6 +688,24 @@ if ([string]$productionLoop.recommendedNextPlan.id -ne "general-purpose-game-pro
             "broad CPU/GPU/memory optimization"
         )) {
             Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan performance baseline selection"
+        }
+    } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "long-running-performance-readiness-v1-phase-1") {
+        foreach ($needle in @(
+            "Long-Running Performance Readiness v1",
+            "sample_2d_desktop_runtime_package",
+            "--require-long-run-performance-readiness",
+            "long_run_readiness_status=ready",
+            "host-2d-long-run-readiness-soak",
+            "Linux affinity",
+            "NUMA",
+            "broad SIMD",
+            "GPU async overlap",
+            "CUDA",
+            "HIP",
+            "SYCL",
+            "unsupportedProductionGaps = []"
+        )) {
+            Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan long-running performance readiness selection"
         }
     } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "memory-lifetime-taxonomy-v1") { foreach ($needle in @("memory lifetime taxonomy", "ownership semantics", "raw pointers are non-owning", "std::unique_ptr", "std::span", "allocator/job/NUMA/GPU memory", "broad CPU/GPU/memory optimization")) { Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan memory lifetime taxonomy selection" } } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "memory-diagnostics-v1") { foreach ($needle in @("memory diagnostics", "memory class counters", "high-water marks", "budget pressure", "stale-generation", "use-after-safe-point", "allocator replacement", "broad CPU/GPU/memory optimization")) { Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan memory diagnostics selection" }
     } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "frame-thread-scratch-v1") { foreach ($needle in @("frame temporary", "worker scratch", "first-party frame arenas", "per-worker scratch arenas", "explicit ownership APIs", "high-water marks", "false-sharing diagnostics", "allocator replacement", "all-core CPU scheduling", "broad CPU/GPU/memory optimization")) { Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan frame/thread scratch selection" }
