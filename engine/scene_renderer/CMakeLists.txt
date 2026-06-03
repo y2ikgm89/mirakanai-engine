@@ -1,4 +1,5 @@
 add_library(mirakana_scene_renderer
+    src/environment_renderer.cpp
     src/scene_renderer.cpp
 )
 
@@ -10,6 +11,7 @@ target_include_directories(mirakana_scene_renderer
 
 target_link_libraries(mirakana_scene_renderer
     PUBLIC
+        mirakana_environment
         mirakana_renderer
         mirakana_runtime
         mirakana_runtime_scene

@@ -792,6 +792,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_renderer_tests)
     add_test(NAME MK_renderer_tests COMMAND MK_renderer_tests)
 
+    add_executable(MK_renderer_environment_policy_tests
+        tests/unit/renderer_environment_policy_tests.cpp
+    )
+    target_link_libraries(MK_renderer_environment_policy_tests PRIVATE MK_renderer)
+    target_include_directories(MK_renderer_environment_policy_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_renderer_environment_policy_tests)
+    add_test(NAME MK_renderer_environment_policy_tests COMMAND MK_renderer_environment_policy_tests)
+
     add_executable(MK_renderer_tile_chunk_renderer_tests
         tests/unit/renderer_tile_chunk_renderer_tests.cpp
     )
@@ -839,6 +847,14 @@ if(BUILD_TESTING)
     target_include_directories(MK_scene_renderer_tests PRIVATE tests)
     MK_apply_common_target_options(MK_scene_renderer_tests)
     add_test(NAME MK_scene_renderer_tests COMMAND MK_scene_renderer_tests)
+
+    add_executable(MK_scene_environment_renderer_tests
+        tests/unit/scene_environment_renderer_tests.cpp
+    )
+    target_link_libraries(MK_scene_environment_renderer_tests PRIVATE MK_scene_renderer)
+    target_include_directories(MK_scene_environment_renderer_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_scene_environment_renderer_tests)
+    add_test(NAME MK_scene_environment_renderer_tests COMMAND MK_scene_environment_renderer_tests)
 
     add_executable(MK_runtime_ui_workbench_tests
         tests/unit/runtime_ui_workbench_tests.cpp

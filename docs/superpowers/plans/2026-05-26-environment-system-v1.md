@@ -388,11 +388,11 @@ Expected: Scene and runtime scene tests pass.
 - Modify: `engine/scene_renderer/CMakeLists.txt`
 - Create: `tests/unit/scene_environment_renderer_tests.cpp`
 
-- [ ] **Step 1: Add RED packet tests**
+- [x] **Step 1: Add RED packet tests**
 
 Require `build_environment_render_packet` to combine camera, scene lights, and environment profile into deterministic render rows. Reject conflicting sun directions when a scene directional light is explicitly bound to the environment sun but points elsewhere.
 
-- [ ] **Step 2: Add packet value types**
+- [x] **Step 2: Add packet value types**
 
 Expose value rows:
 
@@ -409,20 +409,22 @@ build_environment_render_packet(const SceneRenderPacket& scene_packet,
                                 const EnvironmentProfileDesc& environment);
 ```
 
-- [ ] **Step 3: Keep renderer-free behavior**
+- [x] **Step 3: Keep renderer-free behavior**
 
 This task must not create GPU resources, compile shaders, or call `IRenderer`.
 
-- [ ] **Step 4: Focused validation**
+- [x] **Step 4: Focused validation**
 
 Run:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_scene_renderer_tests
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "scene_environment_renderer|scene_renderer"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_scene_environment_renderer_tests MK_scene_renderer_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "^(MK_scene_environment_renderer_tests|MK_scene_renderer_tests)$"
 ```
 
 Expected: Scene renderer environment tests pass.
+
+**2026-06-03 PR4 Task 5 Evidence:** RED failed on missing `mirakana/scene_renderer/environment_renderer.hpp`; GREEN added value-only `EnvironmentRenderPacket`, atmosphere/sky/fog/cloud/precipitation/celestial/scene-light rows, explicit scene-light sun/moon binding rows outside `LightComponent`, conflict diagnostics for bound sun/moon direction mismatches, and no renderer/RHI/GPU resource calls. Focused evidence passed: `tools/cmake.ps1 --build --preset dev --target MK_scene_environment_renderer_tests MK_renderer_environment_policy_tests` and `tools/ctest.ps1 --preset dev --output-on-failure -R "^(MK_scene_environment_renderer_tests|MK_renderer_environment_policy_tests)$"`.
 
 ## Task 6: Renderer Environment Policy Foundation
 
@@ -432,11 +434,11 @@ Expected: Scene renderer environment tests pass.
 - Modify: `engine/renderer/CMakeLists.txt`
 - Create: `tests/unit/renderer_environment_policy_tests.cpp`
 
-- [ ] **Step 1: Add RED policy tests**
+- [x] **Step 1: Add RED policy tests**
 
 Require fail-closed diagnostics for missing scene color, missing scene depth when fog or cloud shadowing needs it, missing backend shader evidence, excessive raymarch step budgets, unsupported backend inheritance, and public native handle claims.
 
-- [ ] **Step 2: Add policy types**
+- [x] **Step 2: Add policy types**
 
 Add:
 
@@ -449,20 +451,22 @@ struct EnvironmentPolicyPlan;
 [[nodiscard]] EnvironmentPolicyPlan plan_environment_render_policy(const EnvironmentPolicyDesc& desc);
 ```
 
-- [ ] **Step 3: Keep it backend-neutral**
+- [x] **Step 3: Keep it backend-neutral**
 
 The policy plan may mention D3D12, Vulkan, and Metal evidence rows by name, but it must not include native structs, native enums, or native handles.
 
-- [ ] **Step 4: Focused validation**
+- [x] **Step 4: Focused validation**
 
 Run:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_tests
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "renderer_environment_policy|renderer"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_environment_policy_tests MK_renderer_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "^(MK_renderer_environment_policy_tests|MK_renderer_tests)$"
 ```
 
 Expected: Renderer policy tests pass.
+
+**2026-06-03 PR4 Task 6 Evidence:** GREEN added backend-neutral `EnvironmentRenderFeature`, `EnvironmentPolicyDesc`, `EnvironmentPolicyPlan`, deterministic feature rows, and fail-closed diagnostics for missing scene color/depth, missing backend shader/validation evidence, excessive raymarch budgets, unsupported backend inheritance, and native-handle claims. This is policy planning only; it does not create PSOs, root signatures, descriptor layouts, shader artifacts, render passes, Vulkan/Metal/D3D12 backend execution, package-visible counters, or broad `environment_ready`.
 
 ## Task 7: Physical Sky And Sun Disk
 
