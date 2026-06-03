@@ -840,6 +840,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_environment_cloud_tests)
     add_test(NAME MK_environment_cloud_tests COMMAND MK_environment_cloud_tests)
 
+    add_executable(MK_environment_weather_tests
+        tests/unit/environment_weather_tests.cpp
+    )
+    target_link_libraries(MK_environment_weather_tests PRIVATE MK_environment)
+    target_include_directories(MK_environment_weather_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_environment_weather_tests)
+    add_test(NAME MK_environment_weather_tests COMMAND MK_environment_weather_tests)
+
     add_executable(MK_renderer_cloud_layer_policy_tests
         tests/unit/renderer_cloud_layer_policy_tests.cpp
     )
@@ -847,6 +855,14 @@ if(BUILD_TESTING)
     target_include_directories(MK_renderer_cloud_layer_policy_tests PRIVATE tests)
     MK_apply_common_target_options(MK_renderer_cloud_layer_policy_tests)
     add_test(NAME MK_renderer_cloud_layer_policy_tests COMMAND MK_renderer_cloud_layer_policy_tests)
+
+    add_executable(MK_renderer_precipitation_policy_tests
+        tests/unit/renderer_precipitation_policy_tests.cpp
+    )
+    target_link_libraries(MK_renderer_precipitation_policy_tests PRIVATE MK_renderer MK_environment)
+    target_include_directories(MK_renderer_precipitation_policy_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_renderer_precipitation_policy_tests)
+    add_test(NAME MK_renderer_precipitation_policy_tests COMMAND MK_renderer_precipitation_policy_tests)
 
     add_executable(MK_renderer_tile_chunk_renderer_tests
         tests/unit/renderer_tile_chunk_renderer_tests.cpp

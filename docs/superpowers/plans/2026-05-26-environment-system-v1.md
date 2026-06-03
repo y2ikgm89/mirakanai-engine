@@ -638,14 +638,15 @@ Add package status fields only when the selected sample proves the cloud layer p
 - Create: `engine/renderer/include/mirakana/renderer/precipitation_policy.hpp`
 - Create: `engine/renderer/src/precipitation_policy.cpp`
 - Create: `shaders/environment/precipitation.hlsl`
+- Create: `tests/shaders/environment_precipitation.hlsl`
 - Create: `tests/unit/environment_weather_tests.cpp`
 - Create: `tests/unit/renderer_precipitation_policy_tests.cpp`
 
-- [ ] **Step 1: Add RED weather contract tests**
+- [x] **Step 1: Add RED weather contract tests**
 
 Require deterministic plans for `clear`, `cloudy`, `rain`, `storm`, `snow`, `foggy`, `dust`, and `ash`. Reject invalid intensity, non-finite wind, unsupported precipitation kind, missing occlusion policy when rain reaches scene geometry, and backend/native handle claims.
 
-- [ ] **Step 2: Add precipitation planning**
+- [x] **Step 2: Add precipitation planning**
 
 Add value rows for rain, snow, sleet, hail, ash, and dust:
 
@@ -656,21 +657,22 @@ struct EnvironmentPrecipitationOcclusionRow;
 struct EnvironmentPrecipitationPlan;
 
 [[nodiscard]] EnvironmentPrecipitationPlan
-plan_environment_precipitation(const EnvironmentProfileDesc& environment,
-                               const EnvironmentRenderPacket& packet);
+plan_environment_precipitation(const EnvironmentPrecipitationPlanDesc& desc);
 ```
 
-- [ ] **Step 3: Add rain occlusion and wetness policy**
+- [x] **Step 3: Add rain occlusion and wetness policy**
 
 Plan camera-near precipitation, surface wetness, splash/ripple intent, and roof/indoor occlusion as explicit rows. Do not mutate materials or scene geometry in this phase.
 
-- [ ] **Step 4: Add audio handoff rows**
+- [x] **Step 4: Add audio handoff rows**
 
 Add value-only rows for rain loop, indoor muffling, thunder delay, and storm intensity handoff to `MK_audio`. Do not play audio in `MK_environment`.
 
 - [ ] **Step 5: Evidence**
 
 Promote `environment_precipitation_status=ready` only after package-visible counters prove selected rain or snow rows and zero native handle leakage.
+
+**2026-06-04 PR13 Task 12 Evidence:** GREEN adds `MK_environment` weather/precipitation value planning through `EnvironmentPrecipitationPlanDesc`, `EnvironmentWeatherRow`, `EnvironmentPrecipitationParticleRow`, `EnvironmentSurfaceWetnessRow`, `EnvironmentPrecipitationOcclusionRow`, `EnvironmentPrecipitationAudioHandoffRow`, `EnvironmentPrecipitationPlan`, `plan_environment_precipitation`, `has_environment_precipitation_diagnostic`, and `has_environment_precipitation_audio_cue`. The plan emits deterministic rows for `clear`, `cloudy`, `rain`, `storm`, `snow`, `foggy`, `dust`, and `ash`, including rain/storm wetness rows, camera-near particle intent rows, scene-geometry occlusion rows, and value-only audio handoff rows for rain loops, indoor muffling, thunder delay, storm intensity, snow, dust, and ash without invoking audio playback. `MK_renderer` adds `PrecipitationPolicyDesc`, `PrecipitationPolicyPlan`, shader/wetness/audio/quality rows, stable particle texture binding `8`, scene-depth texture binding `9`, sampler binding `8`, constants binding `7`, and fail-closed diagnostics for invalid environment plans, unsupported quality tiers, missing shader/package/execution evidence, particle-buffer upload, backend execution, native handles, material mutation, and audio playback. `shaders/environment/precipitation.hlsl` and `tests/shaders/environment_precipitation.hlsl` add a reviewed HLSL vertex/pixel shader contract for camera-near precipitation sprites and scene-depth occlusion. Official context was re-checked for Unity Visual Effect Graph particle contexts as spawn/initialize/update/output stages (`https://docs.unity3d.com/Packages/com.unity.visualeffectgraph%4017.0/manual/Contexts.html`), Unreal Niagara systems/emitters/modules/parameters and render groups (`https://dev.epicgames.com/documentation/en-us/unreal-engine/overview-of-niagara-effects-for-unreal-engine`), Unity HDRP Decal Projector bounds/material projection behavior for wet-surface intent (`https://docs.unity3d.com/Packages/com.unity.render-pipelines.high-definition%4017.0/manual/decal-projector-reference.html`), and Context7 plus Godot official docs for `GPUParticles3D` / `ParticleProcessMaterial` particle material, shader, collision, and physics properties (`https://docs.godotengine.org/en/stable/classes/class_gpuparticles3d.html`, `https://docs.godotengine.org/en/stable/classes/class_particleprocessmaterial.html`). Focused validation passed for `MK_environment_weather_tests`, `MK_renderer_precipitation_policy_tests`, `tools/check-tidy.ps1 -Files engine/environment/src/weather.cpp,engine/renderer/src/precipitation_policy.cpp,tests/unit/environment_weather_tests.cpp,tests/unit/renderer_precipitation_policy_tests.cpp`, `tools/check-format.ps1`, `tools/check-shader-toolchain.ps1` diagnostic readiness, DXC DXIL vertex/pixel compilation, DXC Vulkan SPIR-V vertex/pixel compilation, and `spirv-val`. This is weather/precipitation value planning and shader-contract evidence only; it does not upload particle buffers, mutate materials, play audio, execute renderer/RHI/audio backends, add D3D12 readback/package evidence, prove Vulkan runtime execution, prove Metal readiness, claim precipitation ready counters, claim backend parity, claim broad optimization, or claim broad `environment_ready`.
 
 ## Task 13: Volumetric Clouds And Storm Lighting
 
