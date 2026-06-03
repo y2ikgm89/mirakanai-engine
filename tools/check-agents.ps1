@@ -127,7 +127,7 @@ function Test-AgentFileSizeBudget {
 $agentsPath = Join-Path $root "AGENTS.md"
 Test-AgentFileSizeBudget `
     -Path $agentsPath `
-    -MaxBytes (32 * 1024) `
+    -MaxBytes (31 * 1024) `
     -Label "AGENTS.md" `
     -Guidance "Move long procedures to skills/docs/subagents/manifest."
 
@@ -269,6 +269,7 @@ $skillRoot = Join-Path $root ".agents/skills"
 $agentRoot = Join-Path $root ".codex/agents"
 $codexRuleRoot = Join-Path $root ".codex/rules"
 $claudeSettingsPath = Join-Path $root ".claude/settings.json"
+$claudeRuleRoot = Join-Path $root ".claude/rules"
 $claudeSkillRoot = Join-Path $root ".claude/skills"
 $claudeAgentRoot = Join-Path $root ".claude/agents"
 $cursorSkillRoot = Join-Path $root ".cursor/skills"
@@ -294,7 +295,7 @@ if (Test-Path -LiteralPath $skillRoot) {
         }
         Test-AgentFileSizeBudget `
             -Path $skillFile `
-            -MaxBytes (24 * 1024) `
+            -MaxBytes (20 * 1024) `
             -Label ".agents/skills/$($_.Name)/SKILL.md" `
             -Guidance "Keep SKILL.md as a concise trigger/router; move detailed procedures to references/*.md or docs."
         Test-SkillFrontmatter -SkillMdPath $skillFile -ExpectedName $_.Name -RequirePaths $true -ForbidGlobs $false
@@ -434,6 +435,16 @@ if (Test-Path $claudeSettingsPath) {
     }
 }
 
+if (Test-Path -LiteralPath $claudeRuleRoot) {
+    Get-ChildItem -LiteralPath $claudeRuleRoot -Filter "*.md" -File | ForEach-Object {
+        Test-AgentFileSizeBudget `
+            -Path $_.FullName `
+            -MaxBytes (8 * 1024) `
+            -Label ".claude/rules/$($_.Name)" `
+            -Guidance "Claude imports project rules at startup; keep rules scoped and move detailed workflow prose to skills/docs."
+    }
+}
+
 if (Test-Path -LiteralPath $claudeSkillRoot) {
     Get-ChildItem -LiteralPath $claudeSkillRoot -Directory | ForEach-Object {
         $skillFile = Join-Path $_.FullName "SKILL.md"
@@ -442,7 +453,7 @@ if (Test-Path -LiteralPath $claudeSkillRoot) {
         }
         Test-AgentFileSizeBudget `
             -Path $skillFile `
-            -MaxBytes (24 * 1024) `
+            -MaxBytes (20 * 1024) `
             -Label ".claude/skills/$($_.Name)/SKILL.md" `
             -Guidance "Keep SKILL.md as a concise trigger/router; move detailed procedures to references/*.md or docs."
         Test-SkillFrontmatter -SkillMdPath $skillFile -ExpectedName $_.Name -RequirePaths $true -ForbidGlobs $false

@@ -25,8 +25,8 @@ Implement a reviewed, deterministic dry-run/apply path that starts from a fail-c
 ## Official Practice Check
 
 - OpenAI Codex CLI official docs describe Codex as a local coding agent that can read, change, and run code in a selected directory, and its workflow surfaces include local code review, subagents, web search, cloud tasks, MCP, scripting, and approval modes: <https://developers.openai.com/codex/cli>.
-- Anthropic Claude Code official docs describe subagents as task-specific assistants with separate context windows and configurable tool access; project subagents live under `.claude/agents/` and can be shared with a repository: <https://code.claude.com/docs/en/sub-agents>.
-- Anthropic Claude Code settings docs state that `settings.json` is the official mechanism for configuring permissions, environment variables, and tool behavior; this slice does not broaden Claude permissions or add new arbitrary execution rights: <https://code.claude.com/docs/en/settings>.
+- Anthropic Claude Code official docs describe subagents as task-specific assistants with separate context windows and configurable tool access; project subagents live under `.claude/agents/` and can be shared with a repository: <https://docs.anthropic.com/en/docs/claude-code/sub-agents>.
+- Anthropic Claude Code settings docs state that `settings.json` is the official mechanism for configuring permissions, environment variables, and tool behavior; this slice does not broaden Claude permissions or add new arbitrary execution rights: <https://docs.anthropic.com/en/docs/claude-code/settings>.
 - Repository AI/operator command-surface guidance requires typed dry-run/apply rows, deterministic diagnostics, host-gate acknowledgement where needed, and manifest/static-check synchronization. This plan implements one reviewed PowerShell orchestrator over the existing `tools/new-game.ps1`; it does not evaluate raw manifest commands.
 
 ## Phase Checklist

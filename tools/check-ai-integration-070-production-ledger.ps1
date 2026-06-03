@@ -1725,7 +1725,10 @@ foreach ($agentIntegrationSkill in @(
     ".agents/skills/gameengine-agent-integration/SKILL.md",
     ".claude/skills/gameengine-agent-integration/SKILL.md"
 )) {
-    $agentIntegrationSkillText = Get-AgentSurfaceText $agentIntegrationSkill
+    $agentIntegrationRouterText = Get-AgentSurfaceText $agentIntegrationSkill
+    $agentIntegrationReference = $agentIntegrationSkill -replace "/SKILL\.md$", "/references/integration-change-matrix.md"
+    $agentIntegrationSkillText = "$agentIntegrationRouterText`n$(Get-AgentSurfaceText $agentIntegrationReference)"
+    Assert-ContainsText $agentIntegrationRouterText "references/integration-change-matrix.md" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "docs/README.md" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "docs/superpowers/plans/README.md" $agentIntegrationSkill
     Assert-ContainsText $agentIntegrationSkillText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1" $agentIntegrationSkill
@@ -1911,7 +1914,6 @@ foreach ($readyTaskPrSurface in @(
 }
 
 foreach ($ruleFile in @(
-    ".claude/rules/ai-agent-integration.md",
     ".claude/rules/cpp-engine.md"
 )) {
     $ruleText = Get-AgentSurfaceText $ruleFile
@@ -1929,51 +1931,27 @@ foreach ($ruleFile in @(
 }
 
 $aiAgentRuleText = Get-AgentSurfaceText ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "phase-gated milestone plan" ".claude/rules/ai-agent-integration.md"
-foreach ($planVolumeNeedle in @("live plan stack shallow", "active gap-cluster burn-down or milestone", "capability/gap-cluster/milestone", "phase behavior/API/validation boundary", "checkboxes as execution steps", "validation-only follow-up", "completed plan evidence")) {
-    Assert-ContainsText $aiAgentRuleText $planVolumeNeedle ".claude/rules/ai-agent-integration.md"
+foreach ($aiAgentRuleNeedle in @(
+        "startup-loaded router",
+        "AGENTS.md",
+        "docs/workflows.md",
+        "docs/ai-integration.md",
+        "gameengine-agent-integration",
+        ".codex/rules",
+        ".claude/settings.json",
+        "agent-surface drift check",
+        "official GitHub Flow",
+        "tools/check-publication-preflight.ps1",
+        "publication-preflight: blocked",
+        "Publication temp clones",
+        "tools/ready-task-pr.ps1",
+        "tools/remove-merged-worktree.ps1",
+        "OpenAI developer documentation MCP",
+        "official Anthropic docs",
+        "read-only"
+    )) {
+    Assert-ContainsText $aiAgentRuleText $aiAgentRuleNeedle ".claude/rules/ai-agent-integration.md"
 }
-Assert-ContainsText $aiAgentRuleText ".codex/rules" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "policy reload" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "GITHUB_TOKEN" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "credential-manager-core" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "approval-capable session" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "Codex app Worktree/Handoff" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "isolation: worktree" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/remove-merged-worktree.ps1" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ready-task-pr.ps1" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText 'fast-forward it to `-BaseRef`' ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "Windows long-path fallback" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText 'worktree-local `external/vcpkg`' ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "without following reparse points" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText ".claude/settings.json" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText ".claude/settings.local.json" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText ".mcp.json" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "AGENTS.override.md" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "specific, concise, verifiable" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "MCP connection state" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "agent-surface drift check" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "no durable guidance changed" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "PR validation cost proportional to risk" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "docs, skills, rules, settings, subagents" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "lightweight static validation" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "OpenAI developer documentation MCP" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "official Anthropic docs" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "reviewer, explorer, architect, planning, and auditor subagents read-only" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "mergeStateStatus" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText '--match-head-commit <headRefOid>' ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText 'stale `headRefOid` invalidates the merge decision' ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "Commits pushed after a PR merged need a new PR" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "final completion report must not stop after local validation" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "Rules/permissions stay narrow command gates" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "hosted PR check failure" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "HeaderFilterRegex" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "NN warnings generated." ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "Debugging Tools for Windows" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "Windows Graphics Tools" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "PIX on Windows" ".claude/rules/ai-agent-integration.md"
-Assert-ContainsText $aiAgentRuleText "Windows Performance Toolkit" ".claude/rules/ai-agent-integration.md"
 
 Get-ChildItem -LiteralPath (Resolve-RequiredAgentPath ".claude/agents") -Filter "*.md" | ForEach-Object {
     Assert-ClaudeAgentFrontmatter $_.FullName
@@ -2053,7 +2031,7 @@ foreach ($relativePath in @(
     ".codex/agents/explorer.toml"
 )) {
     $codexLightModelAgentText = Get-AgentSurfaceText $relativePath
-    Assert-ContainsText $codexLightModelAgentText 'model = "gpt-5.3-codex-spark"' $relativePath
+    Assert-ContainsText $codexLightModelAgentText 'model = "gpt-5.4-mini"' $relativePath
     Assert-ContainsText $codexLightModelAgentText 'model_reasoning_effort = "medium"' $relativePath
 }
 
@@ -2067,7 +2045,7 @@ foreach ($relativePath in @(
     ".codex/agents/rendering-auditor.toml"
 )) {
     $codexStrongModelAgentText = Get-AgentSurfaceText $relativePath
-    Assert-ContainsText $codexStrongModelAgentText 'model = "gpt-5.4"' $relativePath
+    Assert-ContainsText $codexStrongModelAgentText 'model = "gpt-5.5"' $relativePath
     Assert-ContainsText $codexStrongModelAgentText 'model_reasoning_effort = "high"' $relativePath
 }
 

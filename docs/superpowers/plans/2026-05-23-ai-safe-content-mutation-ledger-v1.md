@@ -25,8 +25,8 @@ Add a fail-closed per-game `game.agent.json.aiWorkflow.contentMutationLedger` co
 ## Official Practice Check
 
 - OpenAI Codex official docs expose Codex configuration, permissions, rules, AGENTS.md, worktrees, and subagents as explicit workflow surfaces: <https://developers.openai.com/codex/cli>. This slice records game-local mutation boundaries in repository data instead of relying on implicit agent behavior.
-- Claude Code settings docs define project-scoped `.claude/settings.json` and permission settings as shared repository configuration: <https://code.claude.com/docs/en/settings>. This slice does not broaden those permissions.
-- Claude Code subagent docs describe read-only and write-capable tool scoping and subagent tool restrictions: <https://code.claude.com/docs/en/sub-agents>. This slice keeps reviewer/explorer behavior read-only and makes game mutation scopes explicit for future write-capable game workers.
+- Claude Code settings docs define project-scoped `.claude/settings.json` and permission settings as shared repository configuration: <https://docs.anthropic.com/en/docs/claude-code/settings>. This slice does not broaden those permissions.
+- Claude Code subagent docs describe read-only and write-capable tool scoping and subagent tool restrictions: <https://docs.anthropic.com/en/docs/claude-code/sub-agents>. This slice keeps reviewer/explorer behavior read-only and makes game mutation scopes explicit for future write-capable game workers.
 
 ## Phase Checklist
 
