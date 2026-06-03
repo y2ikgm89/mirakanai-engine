@@ -3,6 +3,8 @@
 
 #include "mirakana/core/simd_dispatch.hpp"
 
+#include "simd_dispatch_detail.hpp"
+
 #include <array>
 #include <bit>
 #include <cstdint>
@@ -20,20 +22,11 @@
 #define MK_CPU_SIMD_COMPILE_SSE2 0
 #endif
 
-#if defined(__AVX2__) || (defined(_M_AVX) && _M_AVX >= 2)
-#define MK_CPU_SIMD_COMPILE_AVX2 1
-#else
-#define MK_CPU_SIMD_COMPILE_AVX2 0
-#endif
-
 #if MK_CPU_SIMD_X86_OR_X64
 #if defined(_MSC_VER)
 #include <intrin.h>
 #else
 #include <cpuid.h>
-#if MK_CPU_SIMD_COMPILE_AVX2
-#include <x86intrin.h>
-#endif
 #endif
 #endif
 
@@ -42,13 +35,35 @@
 #endif
 
 namespace mirakana {
+namespace detail {
+
+#if !defined(MK_CORE_HAS_REVIEWED_AVX2_TARGET)
+[[nodiscard]] float compute_avx2_dot_product(std::span<const float> lhs, std::span<const float> rhs) noexcept {
+    float result = 0.0F;
+    const auto count = lhs.size() < rhs.size() ? lhs.size() : rhs.size();
+    for (std::size_t index = 0; index < count; ++index) {
+        result += lhs[index] * rhs[index];
+    }
+    return result;
+}
+#endif
+
+} // namespace detail
+
 namespace {
 
 constexpr std::uint32_t kSse2EdxBit = 1U << 26U;
 constexpr std::uint32_t kAvxEcxBit = 1U << 28U;
 constexpr std::uint32_t kOsxsaveEcxBit = 1U << 27U;
 constexpr std::uint32_t kAvx2EbxBit = 1U << 5U;
-constexpr bool kReviewedAvx2DispatchLaneEnabled = false;
+
+[[nodiscard]] constexpr bool reviewed_avx2_target_available() noexcept {
+#if defined(MK_CORE_HAS_REVIEWED_AVX2_TARGET)
+    return true;
+#else
+    return false;
+#endif
+}
 
 struct CpuidRegisters {
     std::uint32_t eax{0};
@@ -83,17 +98,20 @@ struct CpuidRegisters {
     return registers;
 }
 
-[[nodiscard]] std::uint64_t query_xcr0() noexcept {
+[[nodiscard]] bool avx_register_state_enabled() noexcept {
 #if MK_CPU_SIMD_X86_OR_X64
 #if defined(_MSC_VER)
-    return _xgetbv(0);
-#elif MK_CPU_SIMD_COMPILE_AVX2
-    return _xgetbv(0);
+    const auto xcr0 = _xgetbv(0);
 #else
-    return 0;
+    std::uint32_t eax = 0;
+    std::uint32_t edx = 0;
+    __asm__ volatile("xgetbv" : "=a"(eax), "=d"(edx) : "c"(0));
+    const auto xcr0 = (static_cast<std::uint64_t>(edx) << 32U) | eax;
 #endif
+    constexpr std::uint64_t xmm_ymm_state_mask = 0x6U;
+    return (xcr0 & xmm_ymm_state_mask) == xmm_ymm_state_mask;
 #else
-    return 0;
+    return false;
 #endif
 }
 
@@ -101,8 +119,7 @@ struct CpuidRegisters {
     if ((leaf1.ecx & kOsxsaveEcxBit) == 0U || (leaf1.ecx & kAvxEcxBit) == 0U) {
         return false;
     }
-    constexpr std::uint64_t xmm_ymm_state_mask = 0x6U;
-    return (query_xcr0() & xmm_ymm_state_mask) == xmm_ymm_state_mask;
+    return avx_register_state_enabled();
 }
 
 void append_diagnostic(SimdDispatchPolicy& policy, SimdDispatchDiagnosticCode code, std::string message) {
@@ -156,13 +173,30 @@ void check_lane(SimdDispatchPolicy& policy, CpuSimdLane lane) {
         append_diagnostic(policy, SimdDispatchDiagnosticCode::runtime_lane_unavailable,
                           "requested CPU SIMD lane is not available on the current CPU at runtime");
     }
-    if (lane == CpuSimdLane::avx2 && !kReviewedAvx2DispatchLaneEnabled) {
-        append_diagnostic(policy, SimdDispatchDiagnosticCode::reviewed_target_gate_missing,
-                          "AVX2 dispatch requires a reviewed per-target compile configuration before selection");
+    if (lane == CpuSimdLane::avx2) {
+        if (!reviewed_avx2_target_available()) {
+            append_diagnostic(policy, SimdDispatchDiagnosticCode::reviewed_target_gate_missing,
+                              "AVX2 dispatch requires a reviewed per-target compile configuration before selection");
+        }
+
+        const auto observed_features = observe_cpu_simd_features();
+        if (policy.features.avx2_compile_supported && !observed_features.avx2_compile_supported &&
+            !has_diagnostic(policy, SimdDispatchDiagnosticCode::compile_lane_unavailable)) {
+            append_diagnostic(policy, SimdDispatchDiagnosticCode::compile_lane_unavailable,
+                              "requested AVX2 lane is not available in the observed compile target");
+        }
+        if (policy.features.avx2_runtime_supported && !observed_features.avx2_runtime_supported &&
+            !has_diagnostic(policy, SimdDispatchDiagnosticCode::runtime_lane_unavailable)) {
+            append_diagnostic(policy, SimdDispatchDiagnosticCode::runtime_lane_unavailable,
+                              "requested AVX2 lane is not available on the observed CPU at runtime");
+        }
     }
 }
 
 [[nodiscard]] CpuSimdLane select_auto_lane(const CpuSimdFeatureSet& features) noexcept {
+    if (features.avx2_compile_supported && features.avx2_runtime_supported) {
+        return CpuSimdLane::avx2;
+    }
     if (features.sse2_compile_supported && features.sse2_runtime_supported) {
         return CpuSimdLane::sse2;
     }
@@ -197,7 +231,7 @@ CpuSimdFeatureSet observe_cpu_simd_features() noexcept {
     CpuSimdFeatureSet features;
     features.x86_or_x64_host = MK_CPU_SIMD_X86_OR_X64 != 0;
     features.sse2_compile_supported = MK_CPU_SIMD_COMPILE_SSE2 != 0;
-    features.avx2_compile_supported = MK_CPU_SIMD_COMPILE_AVX2 != 0;
+    features.avx2_compile_supported = reviewed_avx2_target_available();
 
 #if MK_CPU_SIMD_X86_OR_X64
     const auto leaf0 = query_cpuid(0);
@@ -248,7 +282,7 @@ SimdDispatchPolicy select_simd_dispatch_policy(const SimdDispatchPolicyDesc& des
     policy.selected_lane = candidate;
     policy.scalar_fallback = candidate == CpuSimdLane::scalar;
     policy.sse2_selected = candidate == CpuSimdLane::sse2;
-    policy.avx2_selected = false;
+    policy.avx2_selected = candidate == CpuSimdLane::avx2;
     return policy;
 }
 
@@ -290,7 +324,7 @@ SimdDotProductEvidence build_simd_dot_product_evidence(std::span<const float> lh
         evidence.result = compute_sse2_dot_product(lhs, rhs);
         break;
     case CpuSimdLane::avx2:
-        evidence.result = compute_scalar_dot_product(lhs, rhs);
+        evidence.result = detail::compute_avx2_dot_product(lhs, rhs);
         break;
     }
 
