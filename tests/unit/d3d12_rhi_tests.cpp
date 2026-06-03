@@ -5,6 +5,7 @@
 
 #include "mirakana/assets/material.hpp"
 #include "mirakana/renderer/environment_fog_policy.hpp"
+#include "mirakana/renderer/physical_sky_policy.hpp"
 #include "mirakana/renderer/rhi_frame_renderer.hpp"
 #include "mirakana/renderer/rhi_postprocess_frame_renderer.hpp"
 #include "mirakana/renderer/rhi_viewport_surface.hpp"
@@ -702,6 +703,49 @@ compile_runtime_morph_position_output_slot_compute_shader(std::uint32_t output_s
         "  float depth = scene_depth_texture.Sample(scene_depth_sampler, uv);"
         "  float fog = height_fog_factor(depth);"
         "  return float4(lerp(color.rgb, height_fog_color(uv), fog), color.a);"
+        "}",
+        "ps_main", "ps_5_0");
+}
+
+[[nodiscard]] Microsoft::WRL::ComPtr<ID3DBlob> compile_physical_sky_vertex_shader() {
+    return compile_shader("struct VsOut {"
+                          "  float4 position : SV_Position;"
+                          "  float2 uv : TEXCOORD0;"
+                          "};"
+                          "VsOut vs_main(uint vertex_id : SV_VertexID) {"
+                          "  float2 positions[3] = { float2(-1.0, -1.0), float2(-1.0, 3.0), float2(3.0, -1.0) };"
+                          "  VsOut output;"
+                          "  output.position = float4(positions[vertex_id], 0.0, 1.0);"
+                          "  output.uv = positions[vertex_id] * 0.5 + float2(0.5, 0.5);"
+                          "  return output;"
+                          "}",
+                          "vs_main", "vs_5_0");
+}
+
+[[nodiscard]] Microsoft::WRL::ComPtr<ID3DBlob> compile_physical_sky_pixel_shader() {
+    return compile_shader(
+        "cbuffer PhysicalSkyConstants : register(b0) {"
+        "  float planet_radius_km;"
+        "  float atmosphere_height_km;"
+        "  float rayleigh_density_height_km;"
+        "  float mie_density_height_km;"
+        "  float mie_anisotropy;"
+        "  float ozone_density_height_km;"
+        "  float sun_angular_radius_radians;"
+        "  float solar_illuminance_lux;"
+        "};"
+        "float3 physical_sky_color(float2 uv) {"
+        "  float horizon = saturate(uv.y);"
+        "  float rayleigh = saturate(rayleigh_density_height_km / 32.0);"
+        "  float mie = saturate(mie_density_height_km / 8.0);"
+        "  float ozone = saturate(ozone_density_height_km / 64.0);"
+        "  float sun_disk = smoothstep(0.0, max(sun_angular_radius_radians, 0.0001), abs(uv.x - 0.5));"
+        "  float solar = saturate(solar_illuminance_lux / 120000.0);"
+        "  return lerp(float3(0.03, 0.08, 0.18), float3(0.35 + rayleigh, 0.45 + ozone, 0.7), "
+        "              horizon) + (1.0 - sun_disk) * solar * float3(1.0, 0.88 + mie, 0.62);"
+        "}"
+        "float4 ps_main(float4 position : SV_Position, float2 uv : TEXCOORD0) : SV_Target {"
+        "  return float4(physical_sky_color(uv), 1.0);"
         "}",
         "ps_main", "ps_5_0");
 }
@@ -5027,6 +5071,142 @@ MK_TEST("d3d12 rhi device samples scene depth in a postprocess pass readback") {
     MK_REQUIRE(device->stats().descriptor_sets_bound == 1);
     MK_REQUIRE(device->stats().draw_calls == 2);
     MK_REQUIRE(device->stats().texture_buffer_copies == 1);
+}
+
+MK_TEST("d3d12 rhi device renders physical sky from packed environment constants readback") {
+    const auto sky_vertex_bytecode = compile_physical_sky_vertex_shader();
+    const auto sky_pixel_bytecode = compile_physical_sky_pixel_shader();
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
+
+    MK_REQUIRE(device != nullptr);
+
+    const auto target = device->create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::copy_source,
+    });
+    const auto readback = device->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = 256 * 64,
+        .usage = mirakana::rhi::BufferUsage::copy_destination,
+    });
+    const auto sky_constants = device->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = mirakana::physical_sky_constants_byte_size(),
+        .usage = mirakana::rhi::BufferUsage::uniform | mirakana::rhi::BufferUsage::copy_source,
+    });
+    std::array<std::uint8_t, mirakana::physical_sky_constants_byte_size()> sky_constants_bytes{};
+    mirakana::pack_physical_sky_constants(
+        sky_constants_bytes, mirakana::PhysicalSkyPolicyDesc{
+                                 .atmosphere =
+                                     mirakana::PhysicalSkyAtmosphereDesc{
+                                         .rayleigh_density_height_km = 8.0F,
+                                         .mie_density_height_km = 1.2F,
+                                         .mie_anisotropy = 0.8F,
+                                         .ozone_density_height_km = 25.0F,
+                                         .planet_radius_km = 6360.0F,
+                                         .atmosphere_height_km = 100.0F,
+                                         .sun_angular_radius_radians = 0.00465F,
+                                         .solar_illuminance_lux = 100000.0F,
+                                     },
+                                 .sample_budget =
+                                     mirakana::PhysicalSkySampleBudgetDesc{
+                                         .transmittance_sample_count = 40,
+                                         .sky_view_sample_count = 32,
+                                         .aerial_perspective_sample_count = 16,
+                                         .multiple_scattering_sample_count = 20,
+                                     },
+                                 .aerial_perspective_mode = mirakana::PhysicalSkyAerialPerspectiveMode::froxel_volume,
+                                 .shader_contract_evidence_ready = true,
+                             });
+    device->write_buffer(sky_constants, 0, sky_constants_bytes);
+
+    const auto sky_set_layout = device->create_descriptor_set_layout(mirakana::rhi::DescriptorSetLayoutDesc{{
+        mirakana::rhi::DescriptorBindingDesc{
+            .binding = mirakana::physical_sky_constants_binding(),
+            .type = mirakana::rhi::DescriptorType::uniform_buffer,
+            .count = 1,
+            .stages = mirakana::rhi::ShaderStageVisibility::fragment,
+        },
+    }});
+    const auto sky_set = device->allocate_descriptor_set(sky_set_layout);
+    device->update_descriptor_set(mirakana::rhi::DescriptorWrite{
+        .set = sky_set,
+        .binding = mirakana::physical_sky_constants_binding(),
+        .array_element = 0,
+        .resources = {mirakana::rhi::DescriptorResource::buffer(mirakana::rhi::DescriptorType::uniform_buffer,
+                                                                sky_constants)},
+    });
+    const auto sky_layout = device->create_pipeline_layout(
+        mirakana::rhi::PipelineLayoutDesc{.descriptor_sets = {sky_set_layout}, .push_constant_bytes = 0});
+    const auto sky_vertex_shader = device->create_shader(mirakana::rhi::ShaderDesc{
+        .stage = mirakana::rhi::ShaderStage::vertex,
+        .entry_point = "vs_main",
+        .bytecode_size = sky_vertex_bytecode->GetBufferSize(),
+        .bytecode = sky_vertex_bytecode->GetBufferPointer(),
+    });
+    const auto sky_fragment_shader = device->create_shader(mirakana::rhi::ShaderDesc{
+        .stage = mirakana::rhi::ShaderStage::fragment,
+        .entry_point = "ps_main",
+        .bytecode_size = sky_pixel_bytecode->GetBufferSize(),
+        .bytecode = sky_pixel_bytecode->GetBufferPointer(),
+    });
+    const auto sky_pipeline = device->create_graphics_pipeline(mirakana::rhi::GraphicsPipelineDesc{
+        .layout = sky_layout,
+        .vertex_shader = sky_vertex_shader,
+        .fragment_shader = sky_fragment_shader,
+        .color_format = mirakana::rhi::Format::rgba8_unorm,
+        .depth_format = mirakana::rhi::Format::unknown,
+        .topology = mirakana::rhi::PrimitiveTopology::triangle_list,
+    });
+    const mirakana::rhi::BufferTextureCopyRegion readback_footprint{
+        .buffer_offset = 0,
+        .buffer_row_length = 64,
+        .buffer_image_height = 64,
+        .texture_offset = mirakana::rhi::Offset3D{.x = 0, .y = 0, .z = 0},
+        .texture_extent = mirakana::rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+    };
+
+    auto commands = device->begin_command_list(mirakana::rhi::QueueKind::graphics);
+    commands->transition_texture(target, mirakana::rhi::ResourceState::copy_source,
+                                 mirakana::rhi::ResourceState::render_target);
+    commands->begin_render_pass(mirakana::rhi::RenderPassDesc{
+        .color =
+            mirakana::rhi::RenderPassColorAttachment{
+                .texture = target,
+                .load_action = mirakana::rhi::LoadAction::clear,
+                .store_action = mirakana::rhi::StoreAction::store,
+                .swapchain_frame = mirakana::rhi::SwapchainFrameHandle{},
+                .clear_color = mirakana::rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
+            },
+    });
+    commands->bind_graphics_pipeline(sky_pipeline);
+    commands->bind_descriptor_set(sky_layout, 0, sky_set);
+    commands->draw(3, 1);
+    commands->end_render_pass();
+    commands->transition_texture(target, mirakana::rhi::ResourceState::render_target,
+                                 mirakana::rhi::ResourceState::copy_source);
+    commands->copy_texture_to_buffer(target, readback, readback_footprint);
+    commands->close();
+
+    const auto fence = device->submit(*commands);
+    device->wait(fence);
+
+    const auto bytes = device->read_buffer(readback, 0, 256 * 64);
+    const auto high_horizon_pixel = (8U * 256U) + (8U * 4U);
+    const auto low_horizon_pixel = (56U * 256U) + (8U * 4U);
+    MK_REQUIRE(bytes.size() == 256 * 64);
+    MK_REQUIRE(bytes.at(low_horizon_pixel + 0U) < 40);
+    MK_REQUIRE(bytes.at(low_horizon_pixel + 1U) < 70);
+    MK_REQUIRE(bytes.at(low_horizon_pixel + 2U) < 100);
+    MK_REQUIRE(bytes.at(high_horizon_pixel + 0U) >= 120);
+    MK_REQUIRE(bytes.at(high_horizon_pixel + 1U) >= 180);
+    MK_REQUIRE(bytes.at(high_horizon_pixel + 2U) >= 140);
+    MK_REQUIRE(bytes.at(high_horizon_pixel + 1U) > bytes.at(low_horizon_pixel + 1U));
+    MK_REQUIRE(bytes.at(high_horizon_pixel + 3U) == 255);
+    MK_REQUIRE(device->stats().descriptor_writes == 1);
+    MK_REQUIRE(device->stats().descriptor_sets_bound == 1);
+    MK_REQUIRE(device->stats().draw_calls == 1);
+    MK_REQUIRE(device->stats().texture_buffer_copies == 1);
+    MK_REQUIRE(device->stats().buffer_writes == 1);
 }
 
 MK_TEST("d3d12 rhi device applies height fog from scene depth and environment constants readback") {
