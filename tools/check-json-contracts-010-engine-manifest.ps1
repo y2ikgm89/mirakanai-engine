@@ -1020,7 +1020,7 @@ foreach ($recipe in $engine.validationRecipes) {
 }
 
 $productionLoop = $engine.aiOperableProductionLoop
-Assert-Properties $productionLoop @("schemaVersion", "design", "foundationPlan", "currentActivePlan", "recommendedNextPlan", "recipeStatusEnum", "recipes", "commandSurfaces", "authoringSurfaces", "packageSurfaces", "physicsBackendAdapterDecisions", "unsupportedProductionGaps", "hostGates", "validationRecipeMap", "reviewLoops", "resourceExecutionLoops", "materialShaderAuthoringLoops", "atlasTilemapAuthoringLoops", "performanceBudgetEvidenceLoops", "cpuProfilingMatrix", "packageStreamingResidencyLoops", "safePointPackageReplacementLoops") "engine manifest aiOperableProductionLoop"
+Assert-Properties $productionLoop @("schemaVersion", "design", "foundationPlan", "currentActivePlan", "recommendedNextPlan", "recipeStatusEnum", "recipes", "commandSurfaces", "authoringSurfaces", "packageSurfaces", "physicsBackendAdapterDecisions", "unsupportedProductionGaps", "hostGates", "validationRecipeMap", "reviewLoops", "resourceExecutionLoops", "materialShaderAuthoringLoops", "atlasTilemapAuthoringLoops", "performanceBudgetEvidenceLoops", "cpuProfilingMatrix", "optionalGpuComputeReview", "packageStreamingResidencyLoops", "safePointPackageReplacementLoops") "engine manifest aiOperableProductionLoop"
 if ($productionLoop.schemaVersion -ne 1) {
     Write-Error "engine manifest aiOperableProductionLoop.schemaVersion must be 1"
 }
@@ -1071,6 +1071,21 @@ foreach ($referenceId in @("windows-performance-recorder", "linux-perf-stat", "l
 if (@($cpuProfilingMatrix.validationRecipes) -notcontains "host-cpu-profiling-matrix") {
     Write-Error "engine manifest aiOperableProductionLoop.cpuProfilingMatrix validationRecipes missing host-cpu-profiling-matrix"
 }
+$optionalGpuComputeReview = $productionLoop.optionalGpuComputeReview
+Assert-Properties $optionalGpuComputeReview @("id", "status", "owner", "summary", "classifications", "requiredEvidenceFields", "candidateRows", "fallbackRequirements", "nonGoals", "officialReferences", "validationRecipes", "notes") "engine manifest aiOperableProductionLoop.optionalGpuComputeReview"
+if ($optionalGpuComputeReview.id -ne "long-running-performance-readiness-v1-phase-7" -or $optionalGpuComputeReview.status -ne "review-only") { Write-Error "engine manifest aiOperableProductionLoop.optionalGpuComputeReview must be Phase 7 review-only" }
+foreach ($classification in @("rhi_compute", "offline_tool_acceleration", "cuda_hip_private_adapter_candidate", "sycl_private_adapter_candidate", "non_goal")) { if (@($optionalGpuComputeReview.classifications) -notcontains $classification) { Write-Error "engine manifest aiOperableProductionLoop.optionalGpuComputeReview classifications missing: $classification" } }
+foreach ($field in @("data transfer cost", "memory residency", "synchronization", "stream/event usage", "queue/profiler visibility", "dependency burden", "scalar or RHI fallback")) { if (@($optionalGpuComputeReview.requiredEvidenceFields) -notcontains $field) { Write-Error "engine manifest aiOperableProductionLoop.optionalGpuComputeReview requiredEvidenceFields missing: $field" } }
+foreach ($candidate in @("runtime-rendering-or-simulation-rhi-compute", "offline-asset-tool-acceleration", "cuda-hip-private-adapter", "sycl-private-adapter", "default-runtime-vendor-compute")) { if (@($optionalGpuComputeReview.candidateRows | ForEach-Object { $_.id }) -notcontains $candidate) { Write-Error "engine manifest aiOperableProductionLoop.optionalGpuComputeReview candidateRows missing: $candidate" } }
+foreach ($nonGoal in @("CUDA/HIP/SYCL runtime dependency", "vcpkg.json feature", "CMake linkage", "default validation dependency", "broad GPU compute", "async overlap", "cross-vendor parity", "cross-backend parity", "broad CPU/GPU/memory optimization")) { if (@($optionalGpuComputeReview.nonGoals) -notcontains $nonGoal) { Write-Error "engine manifest aiOperableProductionLoop.optionalGpuComputeReview nonGoals missing: $nonGoal" } }
+foreach ($referenceId in @("nvidia-cuda-best-practices", "amd-hip-asynchronous", "khronos-sycl-2020", "vulkan-queues", "d3d12-multi-engine-synchronization")) { if (@($optionalGpuComputeReview.officialReferences | ForEach-Object { $_.id }) -notcontains $referenceId) { Write-Error "engine manifest aiOperableProductionLoop.optionalGpuComputeReview officialReferences missing: $referenceId" } }
+if (@($optionalGpuComputeReview.validationRecipes) -notcontains "host-optional-gpu-compute-review") { Write-Error "engine manifest aiOperableProductionLoop.optionalGpuComputeReview validationRecipes missing host-optional-gpu-compute-review" }
+$optionalGpuComputeHostGate = @($productionLoop.hostGates | Where-Object { $_.id -eq "optional-gpu-compute-review-host" })
+if ($optionalGpuComputeHostGate.Count -ne 1 -or $optionalGpuComputeHostGate[0].status -ne "host-gated") { Write-Error "engine manifest aiOperableProductionLoop must expose one host-gated optional-gpu-compute-review-host gate" }
+if (-not $validationRecipeNames.ContainsKey("host-optional-gpu-compute-review")) { Write-Error "engine manifest validationRecipes missing host-optional-gpu-compute-review" }
+Assert-ContainsText ([string]$engine.gameCodeGuidance.currentOptionalGpuComputeReview) "Optional GPU Compute Review v1" "engine manifest gameCodeGuidance.currentOptionalGpuComputeReview"
+Assert-ContainsText ([string]$engine.gameCodeGuidance.currentOptionalGpuComputeReview) "review-only evidence selection" "engine manifest gameCodeGuidance.currentOptionalGpuComputeReview"
+Assert-ContainsText ([string]$engine.gameCodeGuidance.currentOptionalGpuComputeReview) "CMake linkage" "engine manifest gameCodeGuidance.currentOptionalGpuComputeReview"
 foreach ($productionLoopDoc in @($productionLoop.design, $productionLoop.foundationPlan, $productionLoop.currentActivePlan)) {
     if (-not (Test-Path (Join-Path $root $productionLoopDoc))) {
         Write-Error "engine manifest aiOperableProductionLoop references missing document: $productionLoopDoc"
