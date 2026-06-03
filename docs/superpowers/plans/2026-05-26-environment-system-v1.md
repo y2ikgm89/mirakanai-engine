@@ -478,19 +478,19 @@ Expected: Renderer policy tests pass.
 - Modify: `tests/unit/renderer_environment_policy_tests.cpp`
 - Modify: `tools/check-shader-toolchain.ps1` only if a new shader artifact class needs validation.
 
-- [ ] **Step 1: Re-check official sky sources**
+- [x] **Step 1: Re-check official sky sources**
 
 Re-check Unreal Sky Atmosphere and Hillaire 2020 before writing shader constants. Record source URLs in the phase evidence.
 
-- [ ] **Step 2: Add RED tests for sky policy**
+- [x] **Step 2: Add RED tests for sky policy**
 
 Require deterministic validation for Rayleigh density, Mie density, Mie anisotropy, ozone density, planet radius, atmosphere height, sun disk radius, sample budget, and aerial perspective mode.
 
-- [ ] **Step 3: Implement policy and shader contract**
+- [x] **Step 3: Implement policy and shader contract**
 
 Add backend-neutral constant layout rows for transmittance, sky-view, aerial perspective, and multiple-scattering LUT intent. Do not allocate LUT textures in this task unless the same PR adds D3D12 or Vulkan readback proof.
 
-- [ ] **Step 4: Validate shader planning**
+- [x] **Step 4: Validate shader planning**
 
 Run:
 
@@ -501,6 +501,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 ```
 
 Expected: Policy tests pass; shader toolchain either reports ready or a concrete host/tool blocker.
+
+**2026-06-03 PR5 Task 7 Evidence:** GREEN added backend-neutral `PhysicalSkyPolicyDesc`, `PhysicalSkyPolicyPlan`, deterministic constant-buffer layout rows, transmittance / sky-view / aerial-perspective / multiple-scattering LUT intent rows, fail-closed diagnostics for invalid Rayleigh/Mie/ozone/planet/sun/sample/evidence/native-handle/LUT-allocation requests, and `shaders/environment/physical_sky.hlsl` plus `tests/shaders/environment_physical_sky.hlsl` shader-contract sources. The phase re-checked Epic's official Sky Atmosphere documentation (`https://dev.epicgames.com/documentation/en-us/unreal-engine/sky-atmosphere?application_version=4.27`), Sebastien Hillaire's 2020 production atmosphere paper (`https://sebh.github.io/publications/egsr2020.pdf`), Microsoft HLSL constant-buffer and semantic docs (`https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-constants`, `https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/dx-graphics-hlsl-semantics`), and Context7 `/khronosgroup/vulkan-docs` synchronization/image-layout evidence before fixing the shader contract. Focused validation passed for `MK_renderer_physical_sky_policy_tests`; DXC compiled the contract to DXIL and Vulkan SPIR-V for vertex/pixel entry points, and `spirv-val --target-env vulkan1.3` passed for both SPIR-V artifacts. `tools/check-shader-toolchain.ps1` reported D3D12 DXIL and Vulkan SPIR-V ready, with Metal tools missing as diagnostic-only on this Windows host. This is physical-sky policy and shader-contract evidence only; it does not allocate LUT textures, create PSOs, descriptor layouts, render passes, shader package artifacts, backend resources, package-visible environment counters, Vulkan readiness, Metal readiness, or broad `environment_ready`.
 
 ## Task 8: Sky Lighting And IBL
 

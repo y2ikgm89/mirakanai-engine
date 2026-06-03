@@ -3,6 +3,7 @@ add_library(mirakana_renderer
     src/frame_graph.cpp
     src/frame_graph_rhi.cpp
     src/null_renderer.cpp
+    src/physical_sky_policy.cpp
     src/postprocess_policy.cpp
     src/production_vfx_profiling.cpp
     src/renderer_quality_matrix.cpp

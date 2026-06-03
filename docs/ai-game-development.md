@@ -32,7 +32,7 @@ Current recipe ids:
 
 `planned`, `blocked`, or host-gated recipes must not be treated as ready unless the task is explicitly implementing that engine capability or the required host validation recipe has passed. Generated games must not bypass these recipes by exposing third-party windowing, Win32, D3D12, Vulkan, Metal, Dear ImGui, RHI backend handles, source asset parsers, runtime shader compilers, or game-local UI/physics/rendering systems.
 
-Environment System v1 is an active post-1.0 clean-break milestone. Current AI-operable evidence covers `MK_environment` profile validation/text IO/package rows, scene/runtime scene environment profile binding, value-only `MK_scene_renderer` environment render packets, and backend-neutral `MK_renderer` environment policy planning; generated games must not treat this as physical-sky shader execution, renderer/RHI environment execution, package-visible environment counters, editor authoring, Vulkan readiness, Metal readiness, or broad `environment_ready`.
+Environment System v1 is an active post-1.0 clean-break milestone. Current AI-operable evidence covers `MK_environment` profile validation/text IO/package rows, scene/runtime scene environment profile binding, value-only `MK_scene_renderer` environment render packets, backend-neutral `MK_renderer` environment policy planning, and physical-sky policy/shader-contract source rows; generated games must not treat this as physical-sky backend execution, LUT texture allocation, shader package artifacts, renderer/RHI environment execution, package-visible environment counters, editor authoring, Vulkan readiness, Metal readiness, or broad `environment_ready`.
 
 ## AI-Operable Optimization Readiness
 
