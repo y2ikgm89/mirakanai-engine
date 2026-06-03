@@ -1936,7 +1936,7 @@ struct SimdDispatchPolicyEvidence {
     return evidence.requested && dot.policy.ready() && dot.input_count == 8U && dot.result == 120.0F &&
            dot.span_inputs_used && !dot.raw_pointers_retained && dot.diagnostics.empty() &&
            !dot.policy.gpu_async_overlap_applied && !dot.policy.cuda_path_used && !dot.policy.hip_path_used &&
-           !dot.policy.sycl_path_used && !dot.policy.avx2_selected;
+           !dot.policy.sycl_path_used;
 }
 
 [[nodiscard]] std::string_view simd_dispatch_policy_status_name(const SimdDispatchPolicyEvidence& evidence) noexcept {
@@ -3527,6 +3527,8 @@ int main(int argc, char** argv) {
         << (simd_dispatch_policy.dot_product.policy.features.sse2_runtime_supported ? 1 : 0)
         << " simd_dispatch_policy_sse2_selected=" << (simd_dispatch_policy.dot_product.policy.sse2_selected ? 1 : 0)
         << " simd_dispatch_policy_avx2_compile_supported="
+        << (simd_dispatch_policy.dot_product.policy.features.avx2_compile_supported ? 1 : 0)
+        << " simd_dispatch_policy_reviewed_avx2_target_available="
         << (simd_dispatch_policy.dot_product.policy.features.avx2_compile_supported ? 1 : 0)
         << " simd_dispatch_policy_avx2_runtime_supported="
         << (simd_dispatch_policy.dot_product.policy.features.avx2_runtime_supported ? 1 : 0)

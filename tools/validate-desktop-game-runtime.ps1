@@ -68,4 +68,4 @@ $testPatterns = @(
     [System.Text.RegularExpressions.Regex]::Escape($_) + "(_shader_artifacts|_vulkan_shader_artifacts)?_smoke"
 })
 $ctestPattern = $testPatterns -join "|"
-Invoke-CheckedCommand $tools.CTest --preset desktop-runtime --output-on-failure -R $ctestPattern
+Invoke-CheckedCommand $tools.CTest --preset desktop-runtime -C Debug --output-on-failure -R $ctestPattern

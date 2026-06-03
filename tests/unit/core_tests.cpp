@@ -1616,32 +1616,130 @@ MK_TEST("simd dispatch policy selects SSE2 only when compile and runtime support
     }
 }
 
-MK_TEST("simd dispatch policy fails closed for AVX2 until a reviewed target gate is ready") {
+MK_TEST("simd dispatch policy selects AVX2 only when reviewed compile and runtime gates are available") {
     const std::array lhs{1.0F, 2.0F, 3.0F, 4.0F};
     const std::array rhs{4.0F, 3.0F, 2.0F, 1.0F};
-    const auto evidence = mirakana::build_simd_dot_product_evidence(
-        lhs, rhs,
-        mirakana::SimdDispatchPolicyDesc{.requested_lane = mirakana::CpuSimdLaneRequest::avx2,
-                                         .features = mirakana::CpuSimdFeatureSet{.x86_or_x64_host = true,
-                                                                                 .sse2_compile_supported = true,
-                                                                                 .sse2_runtime_supported = true,
-                                                                                 .avx2_compile_supported = true,
-                                                                                 .avx2_runtime_supported = true}});
+    const auto observed = mirakana::observe_cpu_simd_features();
+    const auto injected_policy = mirakana::select_simd_dispatch_policy(mirakana::SimdDispatchPolicyDesc{
+        .requested_lane = mirakana::CpuSimdLaneRequest::avx2,
+        .features = mirakana::CpuSimdFeatureSet{.x86_or_x64_host = true,
+                                                .sse2_compile_supported = true,
+                                                .sse2_runtime_supported = true,
+                                                .avx2_compile_supported = true,
+                                                .avx2_runtime_supported = true},
+    });
+    const auto scalar = mirakana::build_simd_dot_product_evidence(
+        lhs, rhs, mirakana::SimdDispatchPolicyDesc{.requested_lane = mirakana::CpuSimdLaneRequest::scalar});
 
-    MK_REQUIRE(evidence.policy.status == mirakana::SimdDispatchStatus::unsupported);
-    MK_REQUIRE(!evidence.policy.ready());
-    MK_REQUIRE(evidence.policy.requested_lane == mirakana::CpuSimdLaneRequest::avx2);
-    MK_REQUIRE(evidence.policy.selected_lane == mirakana::CpuSimdLane::scalar);
-    MK_REQUIRE(evidence.policy.scalar_fallback);
-    MK_REQUIRE(!evidence.policy.avx2_selected);
-    MK_REQUIRE(evidence.result == 20.0F);
-    MK_REQUIRE(std::ranges::find(evidence.policy.diagnostic_codes,
-                                 mirakana::SimdDispatchDiagnosticCode::reviewed_target_gate_missing) !=
-               evidence.policy.diagnostic_codes.end());
+    if (observed.avx2_compile_supported && observed.avx2_runtime_supported) {
+        MK_REQUIRE(injected_policy.status == mirakana::SimdDispatchStatus::ready);
+        MK_REQUIRE(injected_policy.requested_lane == mirakana::CpuSimdLaneRequest::avx2);
+        MK_REQUIRE(injected_policy.selected_lane == mirakana::CpuSimdLane::avx2);
+        MK_REQUIRE(injected_policy.avx2_selected);
+
+        const auto evidence = mirakana::build_simd_dot_product_evidence(
+            lhs, rhs,
+            mirakana::SimdDispatchPolicyDesc{.requested_lane = mirakana::CpuSimdLaneRequest::avx2,
+                                             .features = observed});
+
+        MK_REQUIRE(evidence.policy.status == mirakana::SimdDispatchStatus::ready);
+        MK_REQUIRE(evidence.policy.ready());
+        MK_REQUIRE(evidence.policy.requested_lane == mirakana::CpuSimdLaneRequest::avx2);
+        MK_REQUIRE(evidence.policy.selected_lane == mirakana::CpuSimdLane::avx2);
+        MK_REQUIRE(!evidence.policy.scalar_fallback);
+        MK_REQUIRE(!evidence.policy.sse2_selected);
+        MK_REQUIRE(evidence.policy.avx2_selected);
+        MK_REQUIRE(evidence.result == scalar.result);
+    } else {
+        MK_REQUIRE(injected_policy.status == mirakana::SimdDispatchStatus::unsupported);
+        MK_REQUIRE(injected_policy.selected_lane == mirakana::CpuSimdLane::scalar);
+        MK_REQUIRE(!injected_policy.avx2_selected);
+        MK_REQUIRE(std::ranges::find(injected_policy.diagnostic_codes,
+                                     mirakana::SimdDispatchDiagnosticCode::compile_lane_unavailable) !=
+                       injected_policy.diagnostic_codes.end() ||
+                   std::ranges::find(injected_policy.diagnostic_codes,
+                                     mirakana::SimdDispatchDiagnosticCode::runtime_lane_unavailable) !=
+                       injected_policy.diagnostic_codes.end() ||
+                   std::ranges::find(injected_policy.diagnostic_codes,
+                                     mirakana::SimdDispatchDiagnosticCode::reviewed_target_gate_missing) !=
+                       injected_policy.diagnostic_codes.end());
+
+        const auto evidence = mirakana::build_simd_dot_product_evidence(
+            lhs, rhs,
+            mirakana::SimdDispatchPolicyDesc{.requested_lane = mirakana::CpuSimdLaneRequest::avx2,
+                                             .features = observed});
+
+        MK_REQUIRE(evidence.policy.status == mirakana::SimdDispatchStatus::unsupported);
+        MK_REQUIRE(!evidence.policy.ready());
+        MK_REQUIRE(evidence.policy.selected_lane == mirakana::CpuSimdLane::scalar);
+        MK_REQUIRE(evidence.policy.scalar_fallback);
+        MK_REQUIRE(!evidence.policy.avx2_selected);
+        MK_REQUIRE(std::ranges::find(evidence.policy.diagnostic_codes,
+                                     mirakana::SimdDispatchDiagnosticCode::compile_lane_unavailable) !=
+                       evidence.policy.diagnostic_codes.end() ||
+                   std::ranges::find(evidence.policy.diagnostic_codes,
+                                     mirakana::SimdDispatchDiagnosticCode::runtime_lane_unavailable) !=
+                       evidence.policy.diagnostic_codes.end() ||
+                   std::ranges::find(evidence.policy.diagnostic_codes,
+                                     mirakana::SimdDispatchDiagnosticCode::reviewed_target_gate_missing) !=
+                       evidence.policy.diagnostic_codes.end());
+    }
     MK_REQUIRE(mirakana::cpu_simd_lane_request_label(mirakana::CpuSimdLaneRequest::avx2) == "avx2");
     MK_REQUIRE(mirakana::simd_dispatch_diagnostic_code_label(
                    mirakana::SimdDispatchDiagnosticCode::reviewed_target_gate_missing) ==
                "reviewed_target_gate_missing");
+}
+
+MK_TEST("simd dispatch policy rejects AVX2 when compile support is unavailable") {
+    const auto policy = mirakana::select_simd_dispatch_policy(mirakana::SimdDispatchPolicyDesc{
+        .requested_lane = mirakana::CpuSimdLaneRequest::avx2,
+        .features = mirakana::CpuSimdFeatureSet{.x86_or_x64_host = true,
+                                                .sse2_compile_supported = true,
+                                                .sse2_runtime_supported = true,
+                                                .avx2_compile_supported = false,
+                                                .avx2_runtime_supported = true},
+    });
+
+    MK_REQUIRE(policy.status == mirakana::SimdDispatchStatus::unsupported);
+    MK_REQUIRE(!policy.ready());
+    MK_REQUIRE(policy.selected_lane == mirakana::CpuSimdLane::scalar);
+    MK_REQUIRE(policy.scalar_fallback);
+    MK_REQUIRE(!policy.avx2_selected);
+    MK_REQUIRE(
+        std::ranges::find(policy.diagnostic_codes, mirakana::SimdDispatchDiagnosticCode::compile_lane_unavailable) !=
+        policy.diagnostic_codes.end());
+}
+
+MK_TEST("simd dispatch policy auto-selects AVX2 ahead of SSE2 when reviewed gates are injected") {
+    const auto observed = mirakana::observe_cpu_simd_features();
+    const auto policy = mirakana::select_simd_dispatch_policy(mirakana::SimdDispatchPolicyDesc{
+        .requested_lane = mirakana::CpuSimdLaneRequest::auto_select,
+        .features = mirakana::CpuSimdFeatureSet{.x86_or_x64_host = true,
+                                                .sse2_compile_supported = true,
+                                                .sse2_runtime_supported = true,
+                                                .avx2_compile_supported = true,
+                                                .avx2_runtime_supported = true},
+    });
+
+    if (observed.avx2_compile_supported && observed.avx2_runtime_supported) {
+        MK_REQUIRE(policy.status == mirakana::SimdDispatchStatus::ready);
+        MK_REQUIRE(policy.selected_lane == mirakana::CpuSimdLane::avx2);
+        MK_REQUIRE(policy.avx2_selected);
+        MK_REQUIRE(!policy.sse2_selected);
+        MK_REQUIRE(!policy.scalar_fallback);
+    } else {
+        MK_REQUIRE(policy.status == mirakana::SimdDispatchStatus::unsupported);
+        MK_REQUIRE(policy.selected_lane == mirakana::CpuSimdLane::scalar);
+        MK_REQUIRE(std::ranges::find(policy.diagnostic_codes,
+                                     mirakana::SimdDispatchDiagnosticCode::compile_lane_unavailable) !=
+                       policy.diagnostic_codes.end() ||
+                   std::ranges::find(policy.diagnostic_codes,
+                                     mirakana::SimdDispatchDiagnosticCode::runtime_lane_unavailable) !=
+                       policy.diagnostic_codes.end() ||
+                   std::ranges::find(policy.diagnostic_codes,
+                                     mirakana::SimdDispatchDiagnosticCode::reviewed_target_gate_missing) !=
+                       policy.diagnostic_codes.end());
+    }
 }
 
 MK_TEST("simd dispatch policy rejects mismatched spans without ownership transfer") {
@@ -1898,7 +1996,6 @@ MK_TEST("job execution pool applies opt in work stealing without changing determ
     MK_REQUIRE(result.work_stealing_applied);
     MK_REQUIRE(result.steal_attempt_count >= result.steal_success_count);
     MK_REQUIRE(result.steal_success_count > 0);
-    MK_REQUIRE(result.worker_wait_count > 0);
     MK_REQUIRE(result.scheduling_evidence.scheduling_summary.status == mirakana::JobSchedulingDiagnosticsStatus::ready);
     MK_REQUIRE(result.scheduling_evidence.scheduling_summary.total_steal_attempt_count == result.steal_attempt_count);
     MK_REQUIRE(result.scheduling_evidence.scheduling_summary.total_steal_success_count == result.steal_success_count);

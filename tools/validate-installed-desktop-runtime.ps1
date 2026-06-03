@@ -1280,7 +1280,6 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
             "simd_dispatch_policy_diagnostics" = "0"
             "simd_dispatch_policy_input_count" = "8"
             "simd_dispatch_policy_dot_product_result" = "120"
-            "simd_dispatch_policy_avx2_selected" = "0"
             "simd_dispatch_policy_span_inputs_used" = "1"
             "simd_dispatch_policy_raw_pointers_retained" = "0"
             "simd_dispatch_policy_native_handles_exposed" = "0"
@@ -1301,24 +1300,37 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
                 "simd_dispatch_policy_sse2_runtime_supported",
                 "simd_dispatch_policy_sse2_selected",
                 "simd_dispatch_policy_avx2_compile_supported",
+                "simd_dispatch_policy_reviewed_avx2_target_available",
                 "simd_dispatch_policy_avx2_runtime_supported",
+                "simd_dispatch_policy_avx2_selected",
                 "simd_dispatch_policy_scalar_fallback"
             )) {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[01]\b") {
                 Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove boolean SIMD dispatch policy field: $field"
             }
         }
-        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsimd_dispatch_policy_selected_lane=(scalar|sse2)\b") {
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsimd_dispatch_policy_selected_lane=(scalar|sse2|avx2)\b") {
             Write-Error "Installed sample_desktop_runtime_game smoke status line selected an unsupported SIMD dispatch lane."
         }
-        if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bsimd_dispatch_policy_selected_lane=sse2\b") {
+        if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bsimd_dispatch_policy_selected_lane=avx2\b") {
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsimd_dispatch_policy_scalar_fallback=0\b" -or
-                $smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsimd_dispatch_policy_sse2_selected=1\b") {
-                Write-Error "Installed sample_desktop_runtime_game SIMD dispatch SSE2 lane must report no scalar fallback and sse2_selected=1."
+                $smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsimd_dispatch_policy_sse2_selected=0\b" -or
+                $smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsimd_dispatch_policy_avx2_selected=1\b" -or
+                $smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsimd_dispatch_policy_avx2_compile_supported=1\b" -or
+                $smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsimd_dispatch_policy_reviewed_avx2_target_available=1\b" -or
+                $smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsimd_dispatch_policy_avx2_runtime_supported=1\b") {
+                Write-Error "Installed sample_desktop_runtime_game SIMD dispatch AVX2 lane must report reviewed compile/runtime support, no scalar fallback, and avx2_selected=1."
+            }
+        } elseif ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bsimd_dispatch_policy_selected_lane=sse2\b") {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsimd_dispatch_policy_scalar_fallback=0\b" -or
+                $smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsimd_dispatch_policy_sse2_selected=1\b" -or
+                $smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsimd_dispatch_policy_avx2_selected=0\b") {
+                Write-Error "Installed sample_desktop_runtime_game SIMD dispatch SSE2 lane must report no scalar fallback, sse2_selected=1, and avx2_selected=0."
             }
         } elseif ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsimd_dispatch_policy_scalar_fallback=1\b" -or
-            $smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsimd_dispatch_policy_sse2_selected=0\b") {
-            Write-Error "Installed sample_desktop_runtime_game SIMD dispatch scalar lane must report scalar fallback and sse2_selected=0."
+            $smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsimd_dispatch_policy_sse2_selected=0\b" -or
+            $smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bsimd_dispatch_policy_avx2_selected=0\b") {
+            Write-Error "Installed sample_desktop_runtime_game SIMD dispatch scalar lane must report scalar fallback, sse2_selected=0, and avx2_selected=0."
         }
     }
     if ($requiresD3d12GpuMemoryEvidence) {
