@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` or focused inline execution only after an operator explicitly selects this plan for implementation. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Plan ID:** `long-running-performance-readiness-v1-phase-7`
+**Plan ID:** `long-running-performance-readiness-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
-Phase 0/1 is implemented as the first review boundary and published through PR #403, which is merged. Phase 2 is implemented as a docs/manifest/schema/static-contract slice and exposes the host-gated CPU profiling matrix. Phase 7 is the current selected docs/manifest/schema/static-contract slice; it classifies optional GPU compute candidates and must not implement Linux affinity, NUMA execution, broad SIMD, PGO/LTO, GPU async, CUDA, HIP, SYCL, RHI compute changes, `vcpkg.json` features, CMake linkage, or default validation dependencies.
+Phase 0/1 is implemented as the first review boundary and published through PR #403, which is merged. Phase 2 and Phase 7 are implemented through PR #406 as docs/manifest/schema/static-contract slices. Phase 2 exposes the host-gated CPU profiling matrix; Phase 7 classifies optional GPU compute candidates. The milestone is closed back to `next-production-gap-selection` without implementing Linux affinity, NUMA execution, broad SIMD, PGO/LTO, GPU async, CUDA, HIP, SYCL, RHI compute changes, `vcpkg.json` features, CMake linkage, or default validation dependencies.
 
 **Goal:** Make the engine able to run representative games for long sessions with stable frame pacing, bounded memory growth, deterministic diagnostics, and evidence-driven CPU/GPU optimization decisions without reopening Engine 1.0 blockers.
 
@@ -22,11 +22,11 @@ Phase 0/1 is implemented as the first review boundary and published through PR #
 
 ## Current Selection State
 
-- Current live production pointer is `docs/superpowers/plans/2026-06-03-long-running-performance-readiness-v1.md`.
-- `recommendedNextPlan.id` is `long-running-performance-readiness-v1-phase-7`.
+- Current live production pointer has returned to `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`.
+- `recommendedNextPlan.id` is `next-production-gap-selection`.
 - `unsupportedProductionGaps` remains `[]`.
 - Phase 2 exposes `aiOperableProductionLoop.cpuProfilingMatrix` and `host-cpu-profiling-matrix` as the host-gated CPU profiling matrix contract.
-- Phase 7 may update docs, schemas, manifest fragments, validation recipe descriptors, static checks, and composed manifest output only for `Optional GPU Compute Review v1`, `optionalGpuComputeReview`, and `host-optional-gpu-compute-review`.
+- Phase 7 updated docs, schemas, manifest fragments, validation recipe descriptors, static checks, and composed manifest output only for `Optional GPU Compute Review v1`, `optionalGpuComputeReview`, and `host-optional-gpu-compute-review`.
 - Phase 7 does not make CUDA/HIP/SYCL, RHI compute, GPU async overlap, broad GPU compute, cross-vendor parity, cross-backend parity, or broad CPU/GPU/memory optimization ready.
 
 ## Official References
@@ -377,11 +377,11 @@ Full `tools/validate.ps1` is not required for this Phase 7 closeout because the 
 
 **Goal:** Close the milestone without broadening claims.
 
-- [ ] Update docs, plan registry, manifest fragments, composed manifest, schemas/static checks, and package validation expectations to match actual evidence.
-- [ ] Keep remaining non-claims explicit: Linux affinity, NUMA execution, broad SIMD, GPU async, CUDA/HIP/SYCL, cross-vendor parity, cross-backend parity, and broad optimization remain unclaimed unless an exact phase proves otherwise.
-- [ ] Run focused checks required by touched surfaces.
-- [ ] Run full validation only when C++/runtime/build/packaging/public-contract surfaces changed.
-- [ ] Run publication preflight before staging, push, PR, or merge.
+- [x] Update docs, plan registry, manifest fragments, composed manifest, schemas/static checks, and package validation expectations to match actual evidence.
+- [x] Keep remaining non-claims explicit: Linux affinity, NUMA execution, broad SIMD, GPU async, CUDA/HIP/SYCL, cross-vendor parity, cross-backend parity, and broad optimization remain unclaimed unless an exact phase proves otherwise.
+- [x] Run focused checks required by touched surfaces.
+- [x] Do not run full validation for the closeout pointer sync because no C++/runtime/build/packaging/public-contract surfaces changed.
+- [x] Run publication preflight before staging, push, PR, or merge.
 
 **Validation if implemented at closeout:**
 
@@ -396,13 +396,28 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.
 
 Expected: all selected evidence, docs, manifest, package counters, and remaining non-claims agree.
 
+**Phase 8 closeout evidence:**
+
+| Date | Command | Result |
+| --- | --- | --- |
+| 2026-06-03 | PR #403 | Merged: Phase 0/1 long-run short-soak evidence contract. |
+| 2026-06-03 | PR #406 | Merged: Phase 2 CPU profiling matrix and Phase 7 optional GPU compute review classifier, rebased onto `main`. |
+| 2026-06-03 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write` | Pass: composed `engine/agent/manifest.json`. |
+| 2026-06-03 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | Pass: `agent-config-check: ok`. |
+| 2026-06-03 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | Pass: `agent-manifest-compose: ok`, `json-contract-check: ok`. |
+| 2026-06-03 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | Pass: `ai-integration-check: ok`. |
+| 2026-06-03 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | Pass: `text-format-check: ok`, `format-check: ok`. |
+| 2026-06-03 | `git diff --check` | Pass: no whitespace errors. |
+
+Full `tools/validate.ps1` is not required for this Phase 8 closeout because the slice changes docs, manifest fragments, and composed manifest output only; it does not change C++ runtime, build, packaging, or public API behavior.
+
 ## Recommended Execution Order
 
 1. Phase 0 only after operator selection.
 2. Phase 1 long-run evidence contract.
 3. Phase 2 Intel/AMD CPU Profiling Matrix v1.
-4. Phase 6 GPU Async Evidence Gate if renderer traces are the current priority.
-5. Phase 7 Optional GPU Compute Review v1 if vendor compute is still being considered.
+4. After closeout, return to `next-production-gap-selection`.
+5. Phase 6 GPU Async Evidence Gate only if renderer traces prove a selected backend/workload need.
 6. Phase 3, Phase 4, or Phase 5 only when Phase 2 identifies a measured CPU-side need.
 
 ## Done When
