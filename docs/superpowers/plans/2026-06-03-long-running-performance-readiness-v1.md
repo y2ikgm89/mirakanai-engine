@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` or focused inline execution only after an operator explicitly selects this plan for implementation. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Plan ID:** `long-running-performance-readiness-v1-phase-1`
+**Plan ID:** `long-running-performance-readiness-v1-phase-2`
 
 **Status:** Active.
 
-Phase 0/1 is selected for implementation in one reviewable PR. Later phases remain planned until Phase 1 is validated and published.
+Phase 0/1 is implemented as the first review boundary and published through PR #403. Phase 2 is selected as a docs/manifest/schema/static-contract slice; it must not implement Linux affinity, NUMA execution, broad SIMD, PGO/LTO, GPU async, CUDA, HIP, or SYCL.
 
 **Goal:** Make the engine able to run representative games for long sessions with stable frame pacing, bounded memory growth, deterministic diagnostics, and evidence-driven CPU/GPU optimization decisions without reopening Engine 1.0 blockers.
 
@@ -23,9 +23,9 @@ Phase 0/1 is selected for implementation in one reviewable PR. Later phases rema
 ## Current Selection State
 
 - Current live production pointer is `docs/superpowers/plans/2026-06-03-long-running-performance-readiness-v1.md`.
-- `recommendedNextPlan.id` is `long-running-performance-readiness-v1-phase-1`.
+- `recommendedNextPlan.id` is `long-running-performance-readiness-v1-phase-2`.
 - `unsupportedProductionGaps` remains `[]`.
-- Phase 0/1 may update manifest fragments, static checks, package recipes, docs, and composed manifest output only for the selected 2D short-soak evidence contract.
+- Phase 2 may update docs, schemas, manifest fragments, validation recipe descriptors, static checks, and composed manifest output only for the host-gated CPU profiling matrix contract.
 
 ## Official References
 
@@ -45,6 +45,18 @@ Phase 0/1 is selected for implementation in one reviewable PR. Later phases rema
   <https://learn.microsoft.com/en-us/windows/win32/direct3d12/user-mode-heap-synchronization>
 - Khronos SYCL 2020 specification: queue submission returns events, SYCL objects can block in specific host-device coordination cases, and available backends/dependencies are runtime-installation dependent.
   <https://registry.khronos.org/SYCL/specs/sycl-2020/html/sycl-2020.html>
+- Windows Performance Recorder: WPR records ETW events for later WPA analysis and is part of the Windows Performance Toolkit / ADK.
+  <https://learn.microsoft.com/en-us/windows-hardware/test/wpt/windows-performance-recorder>
+- Windows WPR PMU events: WPR/Xperf PMU counter availability is host-specific and supports enumerating available PMU sources.
+  <https://learn.microsoft.com/en-us/windows-hardware/test/wpt/recording-pmu-events>
+- Linux `perf stat` and `perf record`: `perf stat` gathers performance counter statistics and `perf record` records sampled profiles for later analysis.
+  <https://man7.org/linux/man-pages/man1/perf-stat.1.html>
+  <https://man7.org/linux/man-pages/man1/perf-record.1.html>
+- Intel VTune Profiler CLI and Hotspots: VTune supports command-line collection/reporting/comparison and CPU Hotspots analysis.
+  <https://www.intel.com/content/www/us/en/docs/vtune-profiler/user-guide/2024-0/command-line-interface.html>
+  <https://www.intel.com/content/www/us/en/docs/vtune-profiler/user-guide/current/basic-hotspots-analysis.html>
+- AMD uProf Hotspots: AMD uProf supports Hotspots and CLI-oriented host profiling workflows for CPU time and hardware counter evidence.
+  <https://docs.amd.com/r/en-US/68658-uProf-getting-started-guide/AMD-uProf-Hotspots-Analysis>
 - Context7 documentation check: CUDA Toolkit, ROCm HIP, and Khronos SYCL references were resolved and queried on 2026-06-03; their results support the same stream/event/profiling/backend-dependency constraints above.
 
 ## Existing Repo Evidence
@@ -65,7 +77,7 @@ Phase 0/1 is selected for implementation in one reviewable PR. Later phases rema
 
 ## Non-Goals
 
-- Do not implement Linux affinity, manual NUMA placement, broad SIMD, AVX-512, NEON, CUDA, HIP, SYCL, PGO/LTO, GPU-driven rendering, or broad async compute in the first phase.
+- Do not implement Linux affinity, manual NUMA placement, broad SIMD, AVX-512, NEON, CUDA, HIP, SYCL, PGO/LTO, GPU-driven rendering, or broad async compute in this contract phase.
 - Do not change default validation to require vendor profilers, CUDA Toolkit, ROCm, SYCL runtimes, Linux-only tools, Apple-only tools, or GPU capture tools.
 - Do not expose native thread handles, affinity masks, NUMA masks, allocator handles, RHI handles, CUDA/HIP/SYCL handles, queues, fences, or backend objects through public gameplay APIs.
 - Do not claim "long-running ready", "all cores used", "async overlap", "cross-vendor parity", or "broad optimization" without package-visible counters, profiler evidence, host details, and regression budgets for the exact workload.
@@ -191,24 +203,45 @@ Expected: selected 2D package counters are present, deterministic, and still mak
 
 **Files if implemented:**
 
-- Add value-row APIs in `MK_core` only if current evidence models cannot represent the required fields.
-- Modify package smoke output to include host/profile references only as data, not execution side effects.
-- Update docs/manifest/static checks for evidence fields.
+- Do not add `MK_core` value-row APIs in Phase 2; existing diagnostics/trace/profiler evidence models can represent this matrix as host-owned data.
+- Do not modify package smoke output in Phase 2; package-visible host/profile references remain a later implementation only if the matrix proves a need.
+- Update `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`, `014-gameCodeGuidance.json`, `009-validationRecipes.json`, `schemas/engine-agent/ai-operable-production-loop.schema.json`, and static checks so `cpuProfilingMatrix` is schema/static-check visible.
+- Update docs/capability summaries so AVX2 is not presented as the latest CPU optimization evidence boundary after Phase 2 selection.
 
-- [ ] Define representative host classes: mainstream Intel desktop/laptop, Intel hybrid P-core/E-core, AMD Ryzen, AMD Threadripper, AMD EPYC/NPS, Linux CI host, and Windows CI host.
-- [ ] Define required CPU fields: exact model, topology, SMT, processor groups, NUMA/NPS, scheduler context, compiler/flags, selected SIMD lane, thermal/power state, profiler name/version, and counters.
-- [ ] Define trace recipes for CPU frame time, worker utilization, queue waits, cache behavior, branch misses, memory bandwidth, false sharing, and NUMA locality.
-- [ ] Classify each finding as one of: data-layout candidate, batch-size candidate, scheduler policy candidate, Linux affinity candidate, NUMA placement candidate, SIMD kernel candidate, compiler-lane candidate, or non-goal.
-- [ ] Require before/after traces and regression budgets before any follow-up implementation plan can execute CPU tuning.
+- [x] Define representative host classes: mainstream Intel desktop/laptop, Intel hybrid P-core/E-core, AMD Ryzen, AMD Threadripper, AMD EPYC/NPS, Linux CI host, and Windows CI host.
+- [x] Define required CPU fields: exact model, topology, SMT, processor groups, NUMA/NPS, scheduler context, compiler/flags, selected SIMD lane, thermal/power state, profiler name/version, and counters.
+- [x] Define trace recipes for CPU frame time, worker utilization, queue waits, cache behavior, branch misses, memory bandwidth, false sharing, and NUMA locality.
+- [x] Classify each finding as one of: data-layout candidate, batch-size candidate, scheduler policy candidate, Linux affinity candidate, NUMA placement candidate, SIMD kernel candidate, compiler-lane candidate, or non-goal.
+- [x] Require before/after traces and regression budgets before any follow-up implementation plan can execute CPU tuning.
+- [x] Add `cpuProfilingMatrix` as a manifest/schema/static-check-visible host-gated contract.
+- [x] Add `host-cpu-profiling-matrix` as a manifest validation recipe descriptor for external official-profiler artifacts, without adding default validation or runner execution.
+- [x] Keep every host-missing case `host-gated`; do not mark Linux affinity, NUMA execution, broad SIMD, PGO/LTO, data-layout work, GPU async, CUDA/HIP/SYCL, cross-vendor/backend parity, or broad CPU/GPU/memory optimization ready.
+
+**Done When:** The composed manifest exposes `aiOperableProductionLoop.cpuProfilingMatrix`, schema validation requires it, static checks assert its host classes/fields/trace recipes/classification/before-after/regression-budget/non-goals, `currentCpuProfilingMatrix` guidance is present, `host-cpu-profiling-matrix` exists as host-owned external artifact evidence, and focused checks pass.
 
 **Validation if implemented:**
 
 ```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
 ```
 
 Expected: the matrix is schema/static-check visible and all host-missing cases report host-gated evidence rather than ready claims.
+
+**Phase 2 validation evidence:**
+
+| Date | Command | Result |
+| --- | --- | --- |
+| 2026-06-03 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write` | Pass: composed `engine/agent/manifest.json`. |
+| 2026-06-03 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1` | Pass: `agent-config-check: ok`. |
+| 2026-06-03 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1` | Pass: `agent-manifest-compose: ok`, `json-contract-check: ok`. |
+| 2026-06-03 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | Pass: `text-format-check: ok`, `format-check: ok`. |
+| 2026-06-03 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1` | Pass: `ai-integration-check: ok`. |
+| 2026-06-03 | `git diff --check` | Pass: no whitespace errors. |
+
+Full `tools/validate.ps1` is not required for this Phase 2 closeout because the slice changes docs, schema, manifest fragments, composed manifest output, validation recipe descriptors, and static guards only; it does not change C++ runtime, build, packaging, or public API behavior.
 
 ## Phase 3: Linux Affinity Evidence Gate
 

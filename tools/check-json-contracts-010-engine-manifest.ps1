@@ -1020,9 +1020,56 @@ foreach ($recipe in $engine.validationRecipes) {
 }
 
 $productionLoop = $engine.aiOperableProductionLoop
-Assert-Properties $productionLoop @("schemaVersion", "design", "foundationPlan", "currentActivePlan", "recommendedNextPlan", "recipeStatusEnum", "recipes", "commandSurfaces", "authoringSurfaces", "packageSurfaces", "physicsBackendAdapterDecisions", "unsupportedProductionGaps", "hostGates", "validationRecipeMap", "reviewLoops", "resourceExecutionLoops", "materialShaderAuthoringLoops", "atlasTilemapAuthoringLoops", "performanceBudgetEvidenceLoops", "packageStreamingResidencyLoops", "safePointPackageReplacementLoops") "engine manifest aiOperableProductionLoop"
+Assert-Properties $productionLoop @("schemaVersion", "design", "foundationPlan", "currentActivePlan", "recommendedNextPlan", "recipeStatusEnum", "recipes", "commandSurfaces", "authoringSurfaces", "packageSurfaces", "physicsBackendAdapterDecisions", "unsupportedProductionGaps", "hostGates", "validationRecipeMap", "reviewLoops", "resourceExecutionLoops", "materialShaderAuthoringLoops", "atlasTilemapAuthoringLoops", "performanceBudgetEvidenceLoops", "cpuProfilingMatrix", "packageStreamingResidencyLoops", "safePointPackageReplacementLoops") "engine manifest aiOperableProductionLoop"
 if ($productionLoop.schemaVersion -ne 1) {
     Write-Error "engine manifest aiOperableProductionLoop.schemaVersion must be 1"
+}
+$cpuProfilingMatrix = $productionLoop.cpuProfilingMatrix
+Assert-Properties $cpuProfilingMatrix @("id", "status", "owner", "summary", "hostClasses", "requiredCpuFields", "traceRecipes", "classification", "beforeAfterTracePair", "regressionBudget", "nonGoals", "officialReferences", "validationRecipes", "notes") "engine manifest aiOperableProductionLoop.cpuProfilingMatrix"
+if ($cpuProfilingMatrix.id -ne "long-running-performance-readiness-v1-phase-2") {
+    Write-Error "engine manifest aiOperableProductionLoop.cpuProfilingMatrix.id must be long-running-performance-readiness-v1-phase-2"
+}
+if ($cpuProfilingMatrix.status -ne "host-gated") {
+    Write-Error "engine manifest aiOperableProductionLoop.cpuProfilingMatrix.status must remain host-gated"
+}
+foreach ($hostClassId in @("intel-mainstream-desktop-laptop", "intel-hybrid-pcore-ecore", "amd-ryzen", "amd-threadripper", "amd-epyc-nps", "linux-ci-host", "windows-ci-host")) {
+    if (@($cpuProfilingMatrix.hostClasses | ForEach-Object { $_.id }) -notcontains $hostClassId) {
+        Write-Error "engine manifest aiOperableProductionLoop.cpuProfilingMatrix hostClasses missing: $hostClassId"
+    }
+}
+foreach ($cpuField in @("exact_cpu_model", "topology", "smt_state", "processor_groups", "numa_node_count", "nps_state", "scheduler_context", "compiler_and_flags", "selected_simd_lane", "thermal_power_state", "profiler_name_version", "counter_set")) {
+    if (@($cpuProfilingMatrix.requiredCpuFields) -notcontains $cpuField) {
+        Write-Error "engine manifest aiOperableProductionLoop.cpuProfilingMatrix requiredCpuFields missing: $cpuField"
+    }
+}
+foreach ($traceRecipeId in @("cpu-frame-time", "worker-utilization", "queue-waits", "cache-behavior", "branch-misses", "memory-bandwidth", "false-sharing", "numa-locality")) {
+    if (@($cpuProfilingMatrix.traceRecipes | ForEach-Object { $_.id }) -notcontains $traceRecipeId) {
+        Write-Error "engine manifest aiOperableProductionLoop.cpuProfilingMatrix traceRecipes missing: $traceRecipeId"
+    }
+}
+foreach ($classification in @("data-layout candidate", "batch-size candidate", "scheduler policy candidate", "Linux affinity candidate", "NUMA placement candidate", "SIMD kernel candidate", "compiler-lane candidate", "non-goal")) {
+    if (@($cpuProfilingMatrix.classification) -notcontains $classification) {
+        Write-Error "engine manifest aiOperableProductionLoop.cpuProfilingMatrix classification missing: $classification"
+    }
+}
+if ($cpuProfilingMatrix.beforeAfterTracePair.required -ne $true) {
+    Write-Error "engine manifest aiOperableProductionLoop.cpuProfilingMatrix.beforeAfterTracePair.required must be true"
+}
+if ($cpuProfilingMatrix.regressionBudget.required -ne $true) {
+    Write-Error "engine manifest aiOperableProductionLoop.cpuProfilingMatrix.regressionBudget.required must be true"
+}
+foreach ($nonGoal in @("Linux affinity execution", "NUMA allocation execution", "broad SIMD expansion", "PGO/LTO flag changes", "GPU async overlap", "CUDA/HIP/SYCL execution", "broad CPU/GPU/memory optimization")) {
+    if (@($cpuProfilingMatrix.nonGoals) -notcontains $nonGoal) {
+        Write-Error "engine manifest aiOperableProductionLoop.cpuProfilingMatrix nonGoals missing: $nonGoal"
+    }
+}
+foreach ($referenceId in @("windows-performance-recorder", "linux-perf-stat", "linux-perf-record", "intel-vtune-cli", "amd-uprof-hotspots")) {
+    if (@($cpuProfilingMatrix.officialReferences | ForEach-Object { $_.id }) -notcontains $referenceId) {
+        Write-Error "engine manifest aiOperableProductionLoop.cpuProfilingMatrix officialReferences missing: $referenceId"
+    }
+}
+if (@($cpuProfilingMatrix.validationRecipes) -notcontains "host-cpu-profiling-matrix") {
+    Write-Error "engine manifest aiOperableProductionLoop.cpuProfilingMatrix validationRecipes missing host-cpu-profiling-matrix"
 }
 foreach ($productionLoopDoc in @($productionLoop.design, $productionLoop.foundationPlan, $productionLoop.currentActivePlan)) {
     if (-not (Test-Path (Join-Path $root $productionLoopDoc))) {

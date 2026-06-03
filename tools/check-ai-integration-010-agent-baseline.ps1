@@ -823,6 +823,7 @@ Assert-ContainsText $manifestRaw "materialShaderAuthoringLoops" "engine/agent/ma
 Assert-ContainsText $manifestRaw "atlasTilemapAuthoringLoops" "engine/agent/manifest.json"
 Assert-ContainsText $manifestRaw "packageStreamingResidencyLoops" "engine/agent/manifest.json"
 Assert-ContainsText $manifestRaw "performanceBudgetEvidenceLoops" "engine/agent/manifest.json"
+Assert-ContainsText $manifestRaw "cpuProfilingMatrix" "engine/agent/manifest.json"
 Assert-ContainsText $manifestRaw "prefabScenePackageAuthoringLoops" "engine/agent/manifest.json"
 Assert-ContainsText $manifestRaw "safePointPackageReplacementLoops" "engine/agent/manifest.json"
 Assert-ContainsText $currentCapabilitiesContent "runtimeSceneValidationTargets" "docs/current-capabilities.md"
@@ -831,6 +832,8 @@ Assert-ContainsText $currentCapabilitiesContent "create-material-from-graph" "do
 Assert-ContainsText $currentCapabilitiesContent "packageStreamingResidencyTargets" "docs/current-capabilities.md"
 Assert-ContainsText $currentCapabilitiesContent "performanceBudgets" "docs/current-capabilities.md"
 Assert-ContainsText $currentCapabilitiesContent "performanceBudgetEvidenceLoops" "docs/current-capabilities.md"
+Assert-ContainsText $currentCapabilitiesContent "cpuProfilingMatrix" "docs/current-capabilities.md"
+Assert-ContainsText $currentCapabilitiesContent "host-gated Intel/AMD CPU profiling contract" "docs/current-capabilities.md"
 Assert-ContainsText $currentCapabilitiesContent "installed-2d-performance-baseline.trace.json" "docs/current-capabilities.md"
 Assert-ContainsText $currentCapabilitiesContent "registeredSourceAssetCookTargets" "docs/current-capabilities.md"
 Assert-ContainsText $currentCapabilitiesContent "Safe-Point Package Unload Replacement Execution v1" "docs/current-capabilities.md"
@@ -1016,9 +1019,33 @@ Assert-ContainsText $historicalPlanEvidenceText "2026-05-06-desktop-release-pack
 Assert-ContainsText $manifestRaw "validate the current ZIP SHA-256 sidecar" "engine/agent/manifest.json"
 
 $productionLoop = $manifest.aiOperableProductionLoop
-Assert-JsonProperty $productionLoop @("schemaVersion", "design", "foundationPlan", "currentActivePlan", "recommendedNextPlan", "recipeStatusEnum", "recipes", "commandSurfaces", "authoringSurfaces", "packageSurfaces", "physicsBackendAdapterDecisions", "unsupportedProductionGaps", "hostGates", "validationRecipeMap", "performanceBudgetEvidenceLoops") "engine/agent/manifest.json aiOperableProductionLoop"
+Assert-JsonProperty $productionLoop @("schemaVersion", "design", "foundationPlan", "currentActivePlan", "recommendedNextPlan", "recipeStatusEnum", "recipes", "commandSurfaces", "authoringSurfaces", "packageSurfaces", "physicsBackendAdapterDecisions", "unsupportedProductionGaps", "hostGates", "validationRecipeMap", "performanceBudgetEvidenceLoops", "cpuProfilingMatrix") "engine/agent/manifest.json aiOperableProductionLoop"
 if ($productionLoop.schemaVersion -ne 1) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop.schemaVersion must be 1"
+}
+Assert-JsonProperty $productionLoop.cpuProfilingMatrix @("id", "status", "hostClasses", "requiredCpuFields", "traceRecipes", "classification", "beforeAfterTracePair", "regressionBudget", "nonGoals", "validationRecipes") "engine/agent/manifest.json aiOperableProductionLoop.cpuProfilingMatrix"
+if ($productionLoop.cpuProfilingMatrix.id -ne "long-running-performance-readiness-v1-phase-2") { Write-Error "engine/agent/manifest.json aiOperableProductionLoop.cpuProfilingMatrix.id must be long-running-performance-readiness-v1-phase-2" }
+if ($productionLoop.cpuProfilingMatrix.status -ne "host-gated") { Write-Error "engine/agent/manifest.json aiOperableProductionLoop.cpuProfilingMatrix.status must stay host-gated" }
+foreach ($needle in @("intel-hybrid-pcore-ecore", "amd-epyc-nps", "linux-ci-host", "windows-ci-host")) {
+    if (-not ((@($productionLoop.cpuProfilingMatrix.hostClasses | ForEach-Object { $_.id }) -join " ").Contains($needle))) {
+        Write-Error "engine/agent/manifest.json aiOperableProductionLoop.cpuProfilingMatrix hostClasses missing: $needle"
+    }
+}
+foreach ($needle in @("exact_cpu_model", "processor_groups", "numa_node_count", "nps_state", "selected_simd_lane", "profiler_name_version")) {
+    if (@($productionLoop.cpuProfilingMatrix.requiredCpuFields) -notcontains $needle) {
+        Write-Error "engine/agent/manifest.json aiOperableProductionLoop.cpuProfilingMatrix requiredCpuFields missing: $needle"
+    }
+}
+foreach ($needle in @("cpu-frame-time", "worker-utilization", "queue-waits", "cache-behavior", "branch-misses", "memory-bandwidth", "false-sharing", "numa-locality")) {
+    if (-not ((@($productionLoop.cpuProfilingMatrix.traceRecipes | ForEach-Object { $_.id }) -join " ").Contains($needle))) {
+        Write-Error "engine/agent/manifest.json aiOperableProductionLoop.cpuProfilingMatrix traceRecipes missing: $needle"
+    }
+}
+if ($productionLoop.cpuProfilingMatrix.beforeAfterTracePair.required -ne $true -or $productionLoop.cpuProfilingMatrix.regressionBudget.required -ne $true) {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop.cpuProfilingMatrix must require before/after traces and regression budgets"
+}
+if (@($productionLoop.cpuProfilingMatrix.validationRecipes) -notcontains "host-cpu-profiling-matrix") {
+    Write-Error "engine/agent/manifest.json aiOperableProductionLoop.cpuProfilingMatrix validationRecipes missing host-cpu-profiling-matrix"
 }
 Assert-ActiveProductionPlanDrift $productionLoop
 Assert-NoGameSourceRawAssetIdFromName
@@ -1816,6 +1843,7 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
         Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan performance baseline selection"
     }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "long-running-performance-readiness-v1-phase-1") { foreach ($needle in @("Long-Running Performance Readiness v1", "sample_2d_desktop_runtime_package", "--require-long-run-performance-readiness", "long_run_readiness_status=ready", "host-2d-long-run-readiness-soak", "Linux affinity", "NUMA", "broad SIMD", "GPU async overlap", "CUDA", "HIP", "SYCL", "unsupportedProductionGaps = []")) { Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan long-running performance readiness selection" }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "long-running-performance-readiness-v1-phase-2") { foreach ($needle in @("Intel/AMD CPU Profiling Matrix v1", "cpuProfilingMatrix", "host-cpu-profiling-matrix", "representative Intel/AMD host classes", "before/after trace", "regression budgets", "Linux affinity", "NUMA", "broader SIMD", "PGO/LTO", "data-layout", "host-gated", "unsupportedProductionGaps = []")) { Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan CPU profiling matrix selection" }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "memory-lifetime-taxonomy-v1") {
     foreach ($needle in @(
         "memory lifetime taxonomy",

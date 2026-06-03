@@ -23,6 +23,7 @@
     "atlasTilemapAuthoringLoops",
     "prefabScenePackageAuthoringLoops",
     "performanceBudgetEvidenceLoops",
+    "cpuProfilingMatrix",
     "packageStreamingResidencyLoops",
     "safePointPackageReplacementLoops"
   ],
@@ -415,6 +416,95 @@
         "type": "object",
         "required": ["id", "status", "owner", "summary", "orderedSteps", "requiredManifestFields", "descriptorFields", "budgetCategories", "evidenceKinds", "blockedExecution", "unsupportedClaims", "notes"]
       }
+    },
+    "cpuProfilingMatrix": {
+      "type": "object",
+      "required": [
+        "id",
+        "status",
+        "owner",
+        "summary",
+        "hostClasses",
+        "requiredCpuFields",
+        "traceRecipes",
+        "classification",
+        "beforeAfterTracePair",
+        "regressionBudget",
+        "nonGoals",
+        "officialReferences",
+        "validationRecipes",
+        "notes"
+      ],
+      "properties": {
+        "status": {
+          "enum": ["ready", "host-gated", "planned", "blocked"]
+        },
+        "hostClasses": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "status", "requiredEvidence"]
+          }
+        },
+        "requiredCpuFields": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "traceRecipes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "status", "requiredArtifacts"]
+          }
+        },
+        "classification": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "beforeAfterTracePair": {
+          "type": "object",
+          "required": ["required", "baselineArtifact", "candidateArtifact", "comparisonFields"]
+        },
+        "regressionBudget": {
+          "type": "object",
+          "required": ["required", "budgetFields"]
+        },
+        "nonGoals": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "officialReferences": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["id", "url", "notes"]
+          }
+        },
+        "validationRecipes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      },
+      "additionalProperties": true
     },
     "packageStreamingResidencyLoops": {
       "type": "array",
