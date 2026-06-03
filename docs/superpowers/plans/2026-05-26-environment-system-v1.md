@@ -708,25 +708,27 @@ Plan lightning flash intensity, lightning direction, thunder delay, cloud darken
 - Create: `engine/environment/src/time_of_day.cpp`
 - Create: `tests/unit/environment_time_of_day_tests.cpp`
 
-- [ ] **Step 1: Add RED time-of-day tests**
+- [x] **Step 1: Add RED time-of-day tests**
 
 Require deterministic sun direction, moon direction, normalized day time, profile blend weights, exposure intent, weather transition rows, and stable replay hash.
 
-- [ ] **Step 2: Implement value planning**
+- [x] **Step 2: Implement value planning**
 
 Add:
 
 ```cpp
-struct EnvironmentTimeOfDayRequest;
+struct EnvironmentTimeOfDayPlanDesc;
 struct EnvironmentTimeOfDayPlan;
 
 [[nodiscard]] EnvironmentTimeOfDayPlan
-plan_environment_time_of_day(const EnvironmentTimeOfDayRequest& request);
+plan_environment_time_of_day(const EnvironmentTimeOfDayPlanDesc& desc);
 ```
 
-- [ ] **Step 3: Keep gameplay ownership clear**
+- [x] **Step 3: Keep gameplay ownership clear**
 
 The planner returns environment values. It does not tick game state, mutate scenes, or own a scheduler.
+
+**2026-06-04 PR15 Task 14 Evidence:** GREEN adds backend-neutral `EnvironmentTimeOfDayPlanDesc`, `EnvironmentWeatherBlendLayerDesc`, `EnvironmentWeatherTransitionDesc`, `EnvironmentExposureIntentDesc`, `EnvironmentTimeOfDayPlan`, celestial sun/moon rows, profile blend rows, weather transition rows, exposure intent rows, deterministic `replay_hash`, `plan_environment_time_of_day`, and `has_environment_time_of_day_diagnostic`. The planner maps normalized day time to deterministic sun/moon atmospheric light directions, keeps sun/moon as value rows with atmosphere light indices `0/1`, normalizes profile blend weights, computes linear or smoothstep weather transition weights, records fixed/auto exposure EV100 intent, and fails closed for invalid day time, moon phase, profile rows, blend weights, transition duration/elapsed values, unsupported blend modes, invalid exposure limits/adaptation, backend execution, native-handle claims, and profile mutation. Official context was re-checked for Unreal Sky Atmosphere time-of-day and two atmospheric directional lights (`https://dev.epicgames.com/documentation/en-us/unreal-engine/sky-atmosphere?application_version=4.27`), Unreal Directional Light atmosphere/cloud sun/moon indices (`https://dev.epicgames.com/documentation/unreal-engine/directional-lights-in-unreal-engine?lang=en-US`), Unity HDRP Volume/Profile blending (`https://docs.unity.cn/Packages/com.unity.render-pipelines.high-definition%4017.0/manual/understand-volumes.html`), Unity HDRP Physically Based Sky (`https://docs.unity.cn/Packages/com.unity.render-pipelines.high-definition%4017.0/manual/create-a-physically-based-sky.html`), Unity HDRP Exposure EV100/adaptation (`https://docs.unity.cn/Packages/com.unity.render-pipelines.high-definition%4017.0/manual/reference-override-exposure.html`), and Context7 `/godotengine/godot-docs` Environment sky / ambient light / sky bake guidance. Focused validation passed for `MK_environment_time_of_day_tests`, `tools/check-tidy.ps1 -Files engine/environment/src/time_of_day.cpp,tests/unit/environment_time_of_day_tests.cpp`, and `tools/check-format.ps1`. This is time-of-day and weather-blending value planning only; it does not tick game state, mutate scenes or profiles, execute renderer/RHI/audio backends, add package-visible time/weather counters, prove D3D12/Vulkan/Metal runtime execution, claim weather-blending readiness, claim backend parity, claim broad optimization, or claim broad `environment_ready`.
 
 ## Task 15: Editor Authoring Surface
 
