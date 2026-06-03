@@ -1,6 +1,6 @@
 name = "planning-auditor"
 description = "Read-only plan lifecycle agent for GameEngine plan necessity, active plan alignment, and production gap sequencing."
-model = "gpt-5.4"
+model = "gpt-5.5"
 model_reasoning_effort = "high"
 sandbox_mode = "read-only"
 developer_instructions = """

@@ -63,6 +63,9 @@ foreach ($needle in @(".claude/settings.local.json", ".mcp.json", "AGENTS.overri
 foreach ($needle in @("Instruction Hygiene", "specific, concise, verifiable", "MCP connection state", "machine-readable capability/status claims")) {
     Assert-ContainsText $agentsContent $needle "AGENTS.md"
 }
+foreach ($forbiddenPersonalSection in @("Learned User Preferences", "Learned Workspace Facts")) {
+    Assert-DoesNotContainText $agentsContent $forbiddenPersonalSection "AGENTS.md tracked instruction hygiene"
+}
 Assert-ContainsText $agentsContent "agent-surface drift check" "AGENTS.md"
 Assert-ContainsText $agentsContent "do not broad-load every agent surface" "AGENTS.md"
 Assert-ContainsText $agentsContent 'Active editor/runtime UI uses first-party `mirakana_ui`, `mirakana::ui`, and `MK_editor`' "AGENTS.md first-party UI baseline"
@@ -300,7 +303,7 @@ Assert-ContainsText $workflowsContent "git config --show-origin --get-all creden
 Assert-ContainsText $workflowsContent "approval-capable session" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "Worktree And Parallel Agent Workflow" "docs/workflows.md"
 Assert-ContainsText $workflowsContent '`planning-auditor`: read-only plan lifecycle audit' "docs/workflows.md"
-Assert-ContainsText $workflowsContent '`planning-auditor`, and `rendering-auditor` use `gpt-5.4` with high reasoning' "docs/workflows.md"
+Assert-ContainsText $workflowsContent '`planning-auditor`, and `rendering-auditor` use `gpt-5.5` with high reasoning' "docs/workflows.md"
 Assert-ContainsText $workflowsContent 'Use `planning-auditor` only for bounded read-only plan lifecycle audits' "docs/workflows.md"
 Assert-ContainsText $workflowsContent "Codex app Worktree/Handoff" "docs/workflows.md"
 Assert-ContainsText $workflowsContent "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1" "docs/workflows.md"
