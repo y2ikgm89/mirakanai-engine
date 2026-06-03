@@ -467,6 +467,10 @@ if ($null -eq $sample2dDesktopManifestEntry) {
         "installed-2d-scripting-sandbox-policy-smoke",
         "installed-2d-networking-foundation-policy-smoke",
         "installed-2d-simulation-orchestration-smoke",
+        "installed-2d-long-run-readiness-smoke",
+        "host-2d-long-run-readiness-soak",
+        "--require-long-run-performance-readiness",
+        "long_run_readiness_status=ready",
         "public native or RHI handle access remains unsupported",
         "broad scripting/mod runtime execution remains unsupported",
         "broad multiplayer/networking readiness remains unsupported",
@@ -496,6 +500,7 @@ if ($null -eq $sample2dDesktopManifestEntry) {
         "--require-scripting-sandbox-policy",
         "--require-networking-foundation-policy",
         "--require-simulation-orchestration",
+        "--require-long-run-performance-readiness",
         "mirakana/runtime/world_region_streaming.hpp",
         "mirakana/runtime/entity_scale_culling.hpp",
         "mirakana/runtime/scripting_sandbox.hpp",
@@ -579,6 +584,8 @@ if ($null -eq $sample2dDesktopManifestEntry) {
         "simulation_orchestration_budget_limited_status=",
         "simulation_orchestration_invalid_command_diagnostics=",
         "simulation_orchestration_diagnostics=",
+        "long_run_readiness_status=",
+        "long_run_readiness_memory_growth_bytes=",
         "gameplay_authoring_review_status=", "gameplay_authoring_review_ready=",
         "gameplay_authoring_review_feature_rows=", "gameplay_authoring_review_accepted_rows=",
         "gameplay_authoring_review_mutation_ledger_rows=", "gameplay_authoring_review_remediation_rows=",
@@ -586,6 +593,7 @@ if ($null -eq $sample2dDesktopManifestEntry) {
         "gameplay_authoring_review_missing_validation_recipe_diagnostics=",
         "gameplay_authoring_review_missing_package_evidence_diagnostics=",
         "gameplay_authoring_review_unsupported_claim_diagnostics=", "gameplay_authoring_review_diagnostics=",
+        "required_long_run_performance_readiness_unavailable",
         "required_gameplay_authoring_review_unavailable",
         "required_simulation_orchestration_unavailable",
         "required_networking_foundation_policy_unavailable",
@@ -639,6 +647,8 @@ if ($null -eq $sample2dDesktopManifestEntry) {
         "--require-networking-foundation-policy",
         "--require-simulation-orchestration",
         "--require-gameplay-authoring-review",
+        "--require-long-run-performance-readiness",
+        "Assert-InstalledLongRunReadinessEvidence",
         "native_2d_sprites_status",
         "native_2d_textured_sprites_submitted",
         "native_2d_texture_binds",
@@ -717,7 +727,10 @@ if ($null -eq $sample2dDesktopManifestEntry) {
         "gameplay_authoring_review_missing_required_capability_diagnostics",
         "gameplay_authoring_review_missing_validation_recipe_diagnostics",
         "gameplay_authoring_review_missing_package_evidence_diagnostics",
-        "gameplay_authoring_review_unsupported_claim_diagnostics", "gameplay_authoring_review_diagnostics"
+        "gameplay_authoring_review_unsupported_claim_diagnostics", "gameplay_authoring_review_diagnostics",
+        "long_run_readiness_status",
+        "long_run_readiness_memory_high_water_bytes",
+        "long_run_readiness_native_handles_exposed"
     )) {
         if (-not $installedDesktopRuntimeValidationText.Contains($needle)) {
             Write-Error "tools/validate-installed-desktop-runtime.ps1 missing 2D native sprite package validation field: $needle"

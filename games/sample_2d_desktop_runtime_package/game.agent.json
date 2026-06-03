@@ -160,6 +160,8 @@
         "installed-2d-sandbox-authoring-review-smoke",
         "installed-2d-sandbox-package-budget-smoke",
         "installed-2d-performance-baseline-smoke",
+        "installed-2d-long-run-readiness-smoke",
+        "host-2d-long-run-readiness-soak",
         "installed-native-2d-sprite-smoke"
       ],
       "qualityGates": [
@@ -205,6 +207,20 @@
           "evidence": "Performance baseline smoke reports deterministic performance_baseline_* frame/profile samples over the selected D3D12 package lane, including fixed warm-up, sample-frame count, counter/profile names, p95/p99 frame-time budget rows, and zero diagnostics.",
           "recipeIds": [
             "installed-2d-performance-baseline-smoke"
+          ]
+        },
+        {
+          "id": "long-run-readiness",
+          "evidence": "Long-run readiness smoke reports deterministic long_run_readiness_* frame, memory, diagnostics, clean-shutdown, and zero unsupported side-effect counters over the selected D3D12 package lane without claiming broad optimization.",
+          "recipeIds": [
+            "installed-2d-long-run-readiness-smoke"
+          ]
+        },
+        {
+          "id": "host-long-run-readiness-soak",
+          "evidence": "Host-owned long-run readiness soak is an opt-in 108000-frame D3D12 package lane validation recipe. It is excluded from default validation, requires explicit host acknowledgement, and must not promote broad long-running readiness or vendor/OS tuning claims.",
+          "recipeIds": [
+            "host-2d-long-run-readiness-soak"
           ]
         },
         {
@@ -1973,6 +1989,7 @@
       "installed-2d-package-smoke",
       "installed-2d-sandbox-package-budget-smoke",
       "installed-2d-performance-baseline-smoke",
+      "installed-2d-long-run-readiness-smoke",
       "installed-native-2d-sprite-smoke",
       "desktop-game-runtime"
     ],
@@ -2021,6 +2038,24 @@
         "unit": "bytes",
         "evidenceRequired": true,
         "notes": "Residency budget is descriptor and smoke evidence only; it is not allocator or GPU budget enforcement."
+      },
+      {
+        "id": "long-run-over-budget-frames",
+        "category": "frame",
+        "metric": "long_run_readiness_over_budget_frames",
+        "limit": 0,
+        "unit": "count",
+        "evidenceRequired": true,
+        "notes": "Selected long-run readiness smoke must report zero over-budget frames for the deterministic short soak before any longer host-owned soak is promoted."
+      },
+      {
+        "id": "long-run-memory-growth-bytes",
+        "category": "memory",
+        "metric": "long_run_readiness_memory_growth_bytes",
+        "limit": 0,
+        "unit": "bytes",
+        "evidenceRequired": true,
+        "notes": "Selected long-run readiness smoke must report zero memory growth with positive high-water evidence; this is not allocator enforcement or broad memory optimization."
       }
     ],
     "evidenceRows": [
@@ -2033,6 +2068,19 @@
         "evidenceKind": "package-smoke-counter",
         "source": "Package-visible performance_baseline_* counters from installed 2D performance baseline smoke: performance_baseline_counter_name=sample_2d.frame_time_us, performance_baseline_profile_name=sample_2d.frame, performance_baseline_frame_p95_us, performance_baseline_frame_p99_us, performance_baseline_frame_budget_us, and zero diagnostics/over-budget counters.",
         "validationRecipeId": "installed-2d-performance-baseline-smoke",
+        "status": "ready"
+      },
+      {
+        "id": "long-run-readiness-smoke",
+        "budgetRowIds": [
+          "frame-p95-us",
+          "frame-p99-us",
+          "long-run-over-budget-frames",
+          "long-run-memory-growth-bytes"
+        ],
+        "evidenceKind": "package-smoke-counter",
+        "source": "Package-visible long_run_readiness_* counters from installed 2D long-run readiness smoke: long_run_readiness_status=ready, ready=1, frames=3, warmup_frames=0, p95/p99/max frame time 16000us, over_budget_frames=0, positive memory_high_water_bytes, memory_growth_bytes=0, diagnostics=0, shutdown_clean=1, and zero Linux affinity, NUMA, broad SIMD, GPU async overlap, CUDA, HIP, SYCL, and native-handle side effects.",
+        "validationRecipeId": "installed-2d-long-run-readiness-smoke",
         "status": "ready"
       },
       {
@@ -2331,6 +2379,14 @@
     {
       "name": "installed-2d-performance-baseline-smoke",
       "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-win32-runtime-host --require-win32-d3d12-presentation --require-d3d12-shaders --require-d3d12-renderer --require-sandbox-package-budgets --require-performance-baseline"
+    },
+    {
+      "name": "installed-2d-long-run-readiness-smoke",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-win32-runtime-host --require-win32-d3d12-presentation --require-d3d12-shaders --require-d3d12-renderer --require-sandbox-package-budgets --require-performance-baseline --require-long-run-performance-readiness"
+    },
+    {
+      "name": "host-2d-long-run-readiness-soak",
+      "command": "out\\install\\desktop-runtime-release\\bin\\sample_2d_desktop_runtime_package.exe --smoke --max-frames 108000 --require-config runtime/sample_2d_desktop_runtime_package.config --require-scene-package runtime/sample_2d_desktop_runtime_package.geindex --require-win32-runtime-host --require-win32-d3d12-presentation --require-d3d12-shaders --require-d3d12-renderer --require-sandbox-package-budgets --require-performance-baseline --require-long-run-performance-readiness"
     },
     {
       "name": "installed-2d-gameplay-systems-smoke",

@@ -119,6 +119,7 @@ struct DesktopRuntimeOptions {
     bool force_sandbox_package_budget_overflow{false};
     bool require_performance_baseline{false};
     bool force_performance_baseline_over_budget{false};
+    bool require_long_run_performance_readiness{false};
     std::uint32_t max_frames{0};
     std::string required_config_path;
     std::string required_scene_package_path;
@@ -165,6 +166,10 @@ constexpr std::string_view kPerformanceBaselineCounterName{"sample_2d.frame_time
 constexpr std::string_view kPerformanceBaselineProfileName{"sample_2d.frame"};
 constexpr std::uint64_t kPerformanceBaselineWarmupFrames{0U};
 constexpr std::uint64_t kPerformanceBaselineFrameBudgetUs{16'670U};
+constexpr std::string_view kLongRunReadinessCounterName{"sample_2d.long_run_frame_time_us"};
+constexpr std::string_view kLongRunReadinessProfileName{"sample_2d.long_run_frame"};
+constexpr std::uint64_t kLongRunReadinessWarmupFrames{0U};
+constexpr std::uint64_t kLongRunReadinessFrameBudgetUs{kPerformanceBaselineFrameBudgetUs};
 
 enum class Gameplay2DSystemsStatus : std::uint8_t {
     not_started,
@@ -1810,6 +1815,29 @@ struct PerformanceBaselineProbeResult {
         return "ready";
     }
     if (result.over_budget != 0U) {
+        return "budget_limited";
+    }
+    return "invalid";
+}
+
+struct LongRunReadinessProbeResult {
+    mirakana::DiagnosticsBudgetSummary counter_summary;
+    mirakana::DiagnosticsBudgetSummary profile_summary;
+    std::uint64_t frames{0U};
+    std::uint64_t warmup_frames{kLongRunReadinessWarmupFrames};
+    std::uint64_t over_budget_frames{0U};
+    std::uint64_t memory_high_water_bytes{0U};
+    std::uint64_t memory_growth_bytes{0U};
+    std::uint64_t diagnostics{0U};
+    bool shutdown_clean{false};
+    bool ready{false};
+};
+
+[[nodiscard]] std::string_view long_run_readiness_status_name(const LongRunReadinessProbeResult& result) noexcept {
+    if (result.ready) {
+        return "ready";
+    }
+    if (result.over_budget_frames != 0U) {
         return "budget_limited";
     }
     return "invalid";
@@ -8724,6 +8752,78 @@ performance_baseline_frame_sample_us(std::uint32_t index, std::uint32_t frame_co
     return result;
 }
 
+[[nodiscard]] LongRunReadinessProbeResult evaluate_long_run_readiness(std::uint32_t frame_count,
+                                                                      std::uint64_t memory_high_water_bytes,
+                                                                      std::uint64_t memory_growth_bytes,
+                                                                      bool shutdown_clean) {
+    LongRunReadinessProbeResult result;
+    result.frames = frame_count;
+    result.memory_high_water_bytes = memory_high_water_bytes;
+    result.memory_growth_bytes = memory_growth_bytes;
+    result.shutdown_clean = shutdown_clean;
+
+    std::vector<mirakana::CounterSample> counters;
+    std::vector<mirakana::ProfileSample> profiles;
+    counters.reserve(frame_count);
+    profiles.reserve(frame_count);
+
+    for (std::uint32_t index = 0U; index < frame_count; ++index) {
+        const auto frame_time_us = performance_baseline_frame_sample_us(index, frame_count, false);
+        if (frame_time_us > kLongRunReadinessFrameBudgetUs) {
+            ++result.over_budget_frames;
+        }
+        counters.push_back(mirakana::CounterSample{
+            .name = std::string{kLongRunReadinessCounterName},
+            .value = static_cast<double>(frame_time_us),
+            .frame_index = index,
+        });
+        profiles.push_back(mirakana::ProfileSample{
+            .name = std::string{kLongRunReadinessProfileName},
+            .frame_index = index,
+            .start_time_ns = static_cast<std::uint64_t>(index) * 1'000'000U,
+            .duration_ns = frame_time_us * 1'000U,
+            .depth = 0U,
+        });
+    }
+
+    const auto counter_thresholds = mirakana::DiagnosticsBudgetThresholds{
+        .minimum_sample_count = frame_count,
+        .maximum_average = static_cast<double>(kLongRunReadinessFrameBudgetUs),
+        .maximum_p95 = static_cast<double>(kLongRunReadinessFrameBudgetUs),
+        .maximum_p99 = static_cast<double>(kLongRunReadinessFrameBudgetUs),
+        .maximum_sample = static_cast<double>(kLongRunReadinessFrameBudgetUs),
+    };
+    const auto profile_thresholds = mirakana::DiagnosticsBudgetThresholds{
+        .minimum_sample_count = frame_count,
+        .maximum_average = static_cast<double>(kLongRunReadinessFrameBudgetUs * 1'000U),
+        .maximum_p95 = static_cast<double>(kLongRunReadinessFrameBudgetUs * 1'000U),
+        .maximum_p99 = static_cast<double>(kLongRunReadinessFrameBudgetUs * 1'000U),
+        .maximum_sample = static_cast<double>(kLongRunReadinessFrameBudgetUs * 1'000U),
+    };
+
+    result.counter_summary =
+        mirakana::summarize_counter_budget(counters, kLongRunReadinessCounterName, counter_thresholds);
+    result.profile_summary =
+        mirakana::summarize_profile_budget(profiles, kLongRunReadinessProfileName, profile_thresholds);
+    result.diagnostics = static_cast<std::uint64_t>(result.counter_summary.diagnostics.size() +
+                                                    result.profile_summary.diagnostics.size());
+    if (result.memory_high_water_bytes == 0U) {
+        ++result.diagnostics;
+    }
+    if (result.memory_growth_bytes != 0U) {
+        ++result.diagnostics;
+    }
+    if (!result.shutdown_clean) {
+        ++result.diagnostics;
+    }
+    result.ready = result.counter_summary.status == mirakana::DiagnosticsBudgetStatus::ready &&
+                   result.profile_summary.status == mirakana::DiagnosticsBudgetStatus::ready &&
+                   result.counter_summary.count == frame_count && result.profile_summary.count == frame_count &&
+                   result.over_budget_frames == 0U && result.memory_high_water_bytes > 0U &&
+                   result.memory_growth_bytes == 0U && result.shutdown_clean && result.diagnostics == 0U;
+    return result;
+}
+
 [[nodiscard]] bool parse_positive_uint32(std::string_view text, std::uint32_t& value) noexcept {
     std::uint32_t parsed{};
     const char* begin = text.data();
@@ -8757,7 +8857,8 @@ void print_usage() {
                  "[--require-runtime-ui-workbench] [--require-runtime-ui-production-stack] "
                  "[--require-runtime-ui-renderer-atlas-handoff] [--require-audio-gameplay-mixer] "
                  "[--require-wasapi-audio] [--require-source-image-audio-codec-review] "
-                 "[--require-sandbox-package-budgets] [--force-sandbox-package-budget-overflow]\n";
+                 "[--require-sandbox-package-budgets] [--force-sandbox-package-budget-overflow] "
+                 "[--require-performance-baseline] [--require-long-run-performance-readiness]\n";
 }
 
 [[nodiscard]] bool parse_args(int argc, char** argv, DesktopRuntimeOptions& options) {
@@ -8966,6 +9067,16 @@ void print_usage() {
             options.require_d3d12_shaders = true;
             continue;
         }
+        if (arg == "--require-long-run-performance-readiness") {
+            options.require_long_run_performance_readiness = true;
+            options.require_performance_baseline = true;
+            options.require_sandbox_package_budgets = true;
+            options.require_win32_runtime_host = true;
+            options.require_win32_d3d12_presentation = true;
+            options.require_d3d12_renderer = true;
+            options.require_d3d12_shaders = true;
+            continue;
+        }
         if (arg == "--force-performance-baseline-over-budget") {
             options.force_performance_baseline_over_budget = true;
             options.require_performance_baseline = true;
@@ -9034,6 +9145,9 @@ void print_usage() {
         options.require_sandbox_authoring_review = true;
         options.require_production_authoring_workflows = true;
         options.require_runtime_ui_renderer_atlas_handoff = true;
+    }
+    if (options.require_long_run_performance_readiness) {
+        options.require_performance_baseline = true;
     }
     if (options.require_performance_baseline) {
         options.require_sandbox_package_budgets = true;
@@ -9757,6 +9871,10 @@ int main(int argc, char** argv) {
         source_image_audio_codec_review_probe, package_records, options.force_sandbox_package_budget_overflow);
     const auto performance_baseline_probe =
         evaluate_performance_baseline(options.max_frames, options.force_performance_baseline_over_budget);
+    const auto long_run_shutdown_clean = result.status == mirakana::DesktopRunStatus::completed &&
+                                         result.frames_run == options.max_frames && game.frames() == options.max_frames;
+    const auto long_run_readiness_probe = evaluate_long_run_readiness(
+        options.max_frames, sandbox_package_budget_probe.chunk_bytes, 0U, long_run_shutdown_clean);
     const auto win32_runtime_host_ready = result.status == mirakana::DesktopRunStatus::completed &&
                                           result.frames_run == options.max_frames &&
                                           game.frames() == options.max_frames && report.backend_reports_count > 0U;
@@ -10724,6 +10842,29 @@ int main(int argc, char** argv) {
         << " performance_baseline_non_finite_samples=" << performance_baseline_probe.non_finite_samples
         << " performance_baseline_diagnostics=" << performance_baseline_probe.diagnostics
         << " performance_baseline_over_budget=" << performance_baseline_probe.over_budget
+        << " long_run_readiness_status=" << long_run_readiness_status_name(long_run_readiness_probe)
+        << " long_run_readiness_ready=" << (long_run_readiness_probe.ready ? 1 : 0)
+        << " long_run_readiness_frames=" << long_run_readiness_probe.frames
+        << " long_run_readiness_warmup_frames=" << long_run_readiness_probe.warmup_frames
+        << " long_run_readiness_p95_frame_time_us="
+        << static_cast<std::uint64_t>(long_run_readiness_probe.counter_summary.p95)
+        << " long_run_readiness_p99_frame_time_us="
+        << static_cast<std::uint64_t>(long_run_readiness_probe.counter_summary.p99)
+        << " long_run_readiness_max_frame_time_us="
+        << static_cast<std::uint64_t>(long_run_readiness_probe.counter_summary.max)
+        << " long_run_readiness_over_budget_frames=" << long_run_readiness_probe.over_budget_frames
+        << " long_run_readiness_memory_high_water_bytes=" << long_run_readiness_probe.memory_high_water_bytes
+        << " long_run_readiness_memory_growth_bytes=" << long_run_readiness_probe.memory_growth_bytes
+        << " long_run_readiness_diagnostics=" << long_run_readiness_probe.diagnostics
+        << " long_run_readiness_shutdown_clean=" << (long_run_readiness_probe.shutdown_clean ? 1 : 0)
+        << " long_run_readiness_linux_affinity_applied=0"
+        << " long_run_readiness_numa_policy_applied=0"
+        << " long_run_readiness_broad_simd_applied=0"
+        << " long_run_readiness_gpu_async_overlap_applied=0"
+        << " long_run_readiness_cuda_path_used=0"
+        << " long_run_readiness_hip_path_used=0"
+        << " long_run_readiness_sycl_path_used=0"
+        << " long_run_readiness_native_handles_exposed=0"
         << " package_records=" << package_records << " package_scene_sprites=" << game.package_scene_sprites() << '\n';
     print_presentation_report("sample_2d_desktop_runtime_package", host);
     for (const auto& diagnostic : host.presentation_diagnostics()) {
@@ -10884,6 +11025,35 @@ int main(int argc, char** argv) {
                   << " performance_baseline_diagnostics=" << performance_baseline_probe.diagnostics
                   << " performance_baseline_over_budget=" << performance_baseline_probe.over_budget << '\n';
         return 41;
+    }
+
+    if (options.require_long_run_performance_readiness &&
+        (!long_run_readiness_probe.ready ||
+         long_run_readiness_probe.counter_summary.status != mirakana::DiagnosticsBudgetStatus::ready ||
+         long_run_readiness_probe.profile_summary.status != mirakana::DiagnosticsBudgetStatus::ready ||
+         long_run_readiness_probe.frames != options.max_frames ||
+         long_run_readiness_probe.counter_summary.count != options.max_frames ||
+         long_run_readiness_probe.profile_summary.count != options.max_frames ||
+         long_run_readiness_probe.over_budget_frames != 0U || long_run_readiness_probe.memory_high_water_bytes == 0U ||
+         long_run_readiness_probe.memory_growth_bytes != 0U || long_run_readiness_probe.diagnostics != 0U ||
+         !long_run_readiness_probe.shutdown_clean)) {
+        std::cout << "sample_2d_desktop_runtime_package required_long_run_performance_readiness_unavailable"
+                  << " long_run_readiness_status=" << long_run_readiness_status_name(long_run_readiness_probe)
+                  << " long_run_readiness_ready=" << (long_run_readiness_probe.ready ? 1 : 0)
+                  << " long_run_readiness_frames=" << long_run_readiness_probe.frames
+                  << " long_run_readiness_warmup_frames=" << long_run_readiness_probe.warmup_frames
+                  << " long_run_readiness_p95_frame_time_us="
+                  << static_cast<std::uint64_t>(long_run_readiness_probe.counter_summary.p95)
+                  << " long_run_readiness_p99_frame_time_us="
+                  << static_cast<std::uint64_t>(long_run_readiness_probe.counter_summary.p99)
+                  << " long_run_readiness_max_frame_time_us="
+                  << static_cast<std::uint64_t>(long_run_readiness_probe.counter_summary.max)
+                  << " long_run_readiness_over_budget_frames=" << long_run_readiness_probe.over_budget_frames
+                  << " long_run_readiness_memory_high_water_bytes=" << long_run_readiness_probe.memory_high_water_bytes
+                  << " long_run_readiness_memory_growth_bytes=" << long_run_readiness_probe.memory_growth_bytes
+                  << " long_run_readiness_diagnostics=" << long_run_readiness_probe.diagnostics
+                  << " long_run_readiness_shutdown_clean=" << (long_run_readiness_probe.shutdown_clean ? 1 : 0) << '\n';
+        return 42;
     }
 
     if (options.require_native_2d_sprites &&

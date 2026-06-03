@@ -272,6 +272,7 @@ $requiresAudioProduction = @($SmokeArgs) -contains "--require-audio-production"
 $requiresWasapiAudio = @($SmokeArgs) -contains "--require-wasapi-audio"
 $requiresSandboxPackageBudgets = @($SmokeArgs) -contains "--require-sandbox-package-budgets"
 $requiresPerformanceBaseline = @($SmokeArgs) -contains "--require-performance-baseline"
+$requiresLongRunPerformanceReadiness = @($SmokeArgs) -contains "--require-long-run-performance-readiness"
 $expectedSmokeFrames = if ($GameTarget -eq "sample_2d_desktop_runtime_package") { 3 } else { 2 }
 for ($index = 0; $index -lt ($SmokeArgs.Count - 1); ++$index) {
     if ($SmokeArgs[$index] -eq "--max-frames") {
@@ -484,6 +485,20 @@ function Get-ExpectedInstalledPerformanceBaselinePercentileUs {
     }
     return 16000
 }
+function Get-ExpectedInstalledPerformanceBaselineMaxUs {
+    param(
+        [Parameter(Mandatory = $true)]
+        [int]$ExpectedFrames
+    )
+
+    if ($ExpectedFrames -le 1) {
+        return 15400
+    }
+    if ($ExpectedFrames -eq 2) {
+        return 15800
+    }
+    return 16000
+}
 function Assert-InstalledPerformanceBaselineEvidence {
     param(
         [Parameter(Mandatory = $true)]
@@ -528,8 +543,62 @@ function Assert-InstalledPerformanceBaselineEvidence {
         }
     }
 }
+function Assert-InstalledLongRunReadinessEvidence {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SmokeOutput,
+
+        [Parameter(Mandatory = $true)]
+        [string]$EscapedGameTarget,
+
+        [Parameter(Mandatory = $true)]
+        [int]$ExpectedFrames,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Context
+    )
+
+    $expectedP95Us = Get-ExpectedInstalledPerformanceBaselinePercentileUs -ExpectedFrames $ExpectedFrames
+    $expectedP99Us = $expectedP95Us
+    $expectedMaxUs = Get-ExpectedInstalledPerformanceBaselineMaxUs -ExpectedFrames $ExpectedFrames
+    foreach ($expected in @{
+            "long_run_readiness_status" = "ready"
+            "long_run_readiness_ready" = "1"
+            "long_run_readiness_frames" = [string]$ExpectedFrames
+            "long_run_readiness_warmup_frames" = "0"
+            "long_run_readiness_p95_frame_time_us" = [string]$expectedP95Us
+            "long_run_readiness_p99_frame_time_us" = [string]$expectedP99Us
+            "long_run_readiness_max_frame_time_us" = [string]$expectedMaxUs
+            "long_run_readiness_over_budget_frames" = "0"
+            "long_run_readiness_memory_growth_bytes" = "0"
+            "long_run_readiness_diagnostics" = "0"
+            "long_run_readiness_shutdown_clean" = "1"
+            "long_run_readiness_linux_affinity_applied" = "0"
+            "long_run_readiness_numa_policy_applied" = "0"
+            "long_run_readiness_broad_simd_applied" = "0"
+            "long_run_readiness_gpu_async_overlap_applied" = "0"
+            "long_run_readiness_cuda_path_used" = "0"
+            "long_run_readiness_hip_path_used" = "0"
+            "long_run_readiness_sycl_path_used" = "0"
+            "long_run_readiness_native_handles_exposed" = "0"
+        }.GetEnumerator()) {
+        if ($SmokeOutput -notmatch "(?m)^$EscapedGameTarget status=.*\b$([regex]::Escape($expected.Key))=$([regex]::Escape($expected.Value))\b") {
+            Write-Error "Installed $Context smoke status line did not prove long-run readiness field: $($expected.Key)=$($expected.Value)."
+        }
+    }
+    if ($SmokeOutput -notmatch "(?m)^$EscapedGameTarget status=.*\blong_run_readiness_memory_high_water_bytes=[1-9]\d*\b") {
+        Write-Error "Installed $Context smoke status line did not prove positive long-run readiness memory high-water bytes."
+    }
+}
 if ($requiresWin32D3d12Presentation) {
     $requiresWin32RuntimeHost = $true
+    $requiresD3d12Renderer = $true
+}
+if ($requiresLongRunPerformanceReadiness) {
+    $requiresPerformanceBaseline = $true
+    $requiresSandboxPackageBudgets = $true
+    $requiresWin32RuntimeHost = $true
+    $requiresWin32D3d12Presentation = $true
     $requiresD3d12Renderer = $true
 }
 if ($requiresPerformanceBaseline) {
@@ -1514,6 +1583,9 @@ if ($GameTarget -eq "sample_2d_desktop_runtime_package") {
     }
     if ($requiresPerformanceBaseline) {
         Assert-InstalledPerformanceBaselineEvidence -SmokeOutput $smokeOutput -EscapedGameTarget $escapedGameTarget -ExpectedFrames $expectedSmokeFrames -Context "sample_2d_desktop_runtime_package"
+    }
+    if ($requiresLongRunPerformanceReadiness) {
+        Assert-InstalledLongRunReadinessEvidence -SmokeOutput $smokeOutput -EscapedGameTarget $escapedGameTarget -ExpectedFrames $expectedSmokeFrames -Context "sample_2d_desktop_runtime_package"
     }
     foreach ($field in @(
             "sprite_batch_budget_status",

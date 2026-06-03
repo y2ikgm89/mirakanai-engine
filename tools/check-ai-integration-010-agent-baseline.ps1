@@ -1815,6 +1815,7 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     )) {
         Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan performance baseline selection"
     }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "long-running-performance-readiness-v1-phase-1") { foreach ($needle in @("Long-Running Performance Readiness v1", "sample_2d_desktop_runtime_package", "--require-long-run-performance-readiness", "long_run_readiness_status=ready", "host-2d-long-run-readiness-soak", "Linux affinity", "NUMA", "broad SIMD", "GPU async overlap", "CUDA", "HIP", "SYCL", "unsupportedProductionGaps = []")) { Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan long-running performance readiness selection" }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "memory-lifetime-taxonomy-v1") {
     foreach ($needle in @(
         "memory lifetime taxonomy",
@@ -2044,6 +2045,7 @@ foreach ($masterPlanCadenceNeedle in @("dated capability/gap-cluster/milestone p
 }
 Assert-ContainsText $masterPlanText "physics-1-0-collision-system-closeout-v1" "production completion master plan"
 Assert-ContainsText $planRegistryText "Active gap burn-down" "docs/superpowers/plans/README.md"
+Assert-ContainsText $planRegistryText "Long-Running Performance Readiness v1" "docs/superpowers/plans/README.md"
 Assert-ContainsText $historicalPlanEvidenceText "physics-jolt-adapter-gate-v1" "docs/superpowers/plans/README.md"
 Assert-ContainsText $historicalPlanEvidenceText "physics-1-0-collision-system-closeout-v1" "docs/superpowers/plans/README.md"
 Assert-ContainsText $historicalPlanEvidenceText "physics-benchmark-determinism-gates-v1" "docs/superpowers/plans/README.md"
