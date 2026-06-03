@@ -135,7 +135,7 @@ void mix_hash(std::uint64_t& hash, float value) noexcept {
         mix_hash(hash, row.fixed_exposure_ev100);
         mix_hash(hash, row.min_exposure_ev100);
         mix_hash(hash, row.max_exposure_ev100);
-        mix_hash(hash, row.auto_exposure_enabled ? 1ULL : 0ULL);
+        mix_hash(hash, row.auto_exposure_enabled ? std::uint64_t{1} : std::uint64_t{0});
         mix_hash(hash, row.adaptation_seconds);
     }
 
