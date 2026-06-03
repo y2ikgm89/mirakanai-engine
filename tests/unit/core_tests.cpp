@@ -1996,7 +1996,6 @@ MK_TEST("job execution pool applies opt in work stealing without changing determ
     MK_REQUIRE(result.work_stealing_applied);
     MK_REQUIRE(result.steal_attempt_count >= result.steal_success_count);
     MK_REQUIRE(result.steal_success_count > 0);
-    MK_REQUIRE(result.worker_wait_count > 0);
     MK_REQUIRE(result.scheduling_evidence.scheduling_summary.status == mirakana::JobSchedulingDiagnosticsStatus::ready);
     MK_REQUIRE(result.scheduling_evidence.scheduling_summary.total_steal_attempt_count == result.steal_attempt_count);
     MK_REQUIRE(result.scheduling_evidence.scheduling_summary.total_steal_success_count == result.steal_success_count);

@@ -178,14 +178,15 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 
 Expected: focused checks, package smoke, and full validation pass, with known host-gated Apple/Metal diagnostics only when applicable.
 
-- [ ] Run publication preflight:
+- [x] Run publication preflight:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1 -Branch codex/avx2-reviewed-target-dispatch-v1
 ```
 
-- [ ] Commit task-owned files with validation evidence.
-- [ ] Push branch, create PR, wait for hosted checks including `PR Gate` and `Windows MSVC`, merge with `--match-head-commit`, verify the merged head reaches `origin/main`, and run guarded worktree cleanup.
+- [x] Commit task-owned files with validation evidence.
+- [x] Push branch and create PR #397.
+- [ ] Wait for hosted checks including `PR Gate` and `Windows MSVC`, merge with `--match-head-commit`, verify the merged head reaches `origin/main`, and run guarded worktree cleanup.
 
 ## Validation Evidence
 
@@ -206,6 +207,12 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.
 - Passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1`; 18/18 selected desktop-runtime tests passed.
 - Passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game`; installed package validation reported `simd_dispatch_policy_selected_lane=avx2`, reviewed target available, AVX2 runtime supported, `simd_dispatch_policy_avx2_selected=1`, and package generation succeeded.
 - Passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`; 19 static checks passed, diagnostic-only Apple/Metal host gates were reported on Windows, build passed, tidy smoke passed, and 85/85 dev CTest tests passed.
+- Corrected: hosted PR #397 Linux Clang ASan/UBSan first run failed only `MK_core_tests` on `result.worker_wait_count > 0`; SIMD tests passed. The work-stealing test now treats idle waits as scheduler-timing dependent while preserving positive steal success and coherent published counters.
+- Passed after hosted ASan hardening: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_core_tests`
+- Passed after hosted ASan hardening: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_core_tests`
+- Passed after hosted ASan hardening: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1`
+- Passed after hosted ASan hardening: focused `tools/check-tidy.ps1` for `tests/unit/core_tests.cpp`.
+- Passed after hosted ASan hardening: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`; 19 static checks passed, diagnostic-only Apple/Metal host gates were reported on Windows, build passed, tidy smoke passed, and 85/85 dev CTest tests passed.
 
 ## Done When
 
