@@ -7,6 +7,7 @@
 #include "mirakana/core/diagnostics.hpp"
 #include "mirakana/core/job_execution.hpp"
 #include "mirakana/core/simd_dispatch.hpp"
+#include "mirakana/environment/environment_io.hpp"
 #include "mirakana/math/transform.hpp"
 #include "mirakana/platform/filesystem.hpp"
 #include "mirakana/platform/input.hpp"
@@ -71,6 +72,7 @@ struct DesktopRuntimeGameOptions {
     bool require_environment_profile{false};
     bool require_environment_fog_evidence{false};
     bool require_cloud_layer_package_evidence{false};
+    bool require_environment_precipitation_package_evidence{false};
     bool require_gpu_memory_policy{false};
     bool require_memory_diagnostics{false};
     bool require_d3d12_gpu_memory_evidence{false};
@@ -166,6 +168,31 @@ constexpr std::string_view kHudAtlasProofAssetUri{"runtime/assets/desktop_runtim
                 .ibl_contribution = 0.25F,
             },
         .quality_tier = mirakana::CloudLayerQualityTier::balanced,
+        .shader_contract_evidence_ready = true,
+        .package_evidence_ready = true,
+        .execution_evidence_ready = true,
+        .request_ready_promotion = true,
+    };
+}
+
+[[nodiscard]] mirakana::PrecipitationPolicyDesc make_sample_environment_precipitation_policy_desc() {
+    mirakana::EnvironmentProfileDesc profile{};
+    profile.id = "sample_desktop_runtime_precipitation";
+    profile.weather = mirakana::EnvironmentWeatherKind::storm;
+    profile.precipitation = mirakana::EnvironmentPrecipitationDesc{
+        .kind = mirakana::EnvironmentPrecipitationKind::rain,
+        .intensity = 0.8F,
+        .particle_radius_mm = 0.8F,
+        .fall_speed_mps = 8.5F,
+        .wind_speed_mps = 6.0F,
+    };
+    return mirakana::PrecipitationPolicyDesc{
+        .environment_plan = mirakana::plan_environment_precipitation(mirakana::EnvironmentPrecipitationPlanDesc{
+            .environment = profile,
+            .scene_geometry_occlusion_required = true,
+            .occlusion_policy_available = true,
+        }),
+        .quality_tier = mirakana::PrecipitationQualityTier::balanced,
         .shader_contract_evidence_ready = true,
         .package_evidence_ready = true,
         .execution_evidence_ready = true,
@@ -944,6 +971,7 @@ void print_usage() {
                  "[--require-environment-profile] "
                  "[--require-environment-fog-evidence] "
                  "[--require-cloud-layer-package-evidence] "
+                 "[--require-environment-precipitation-package-evidence] "
                  "[--require-gpu-memory-policy] [--require-memory-diagnostics] [--require-d3d12-gpu-memory-evidence] "
                  "[--require-vulkan-gpu-memory-evidence] "
                  "[--require-debug-profiling-policy] [--require-d3d12-debug-profiling-evidence] "
@@ -1086,6 +1114,15 @@ void print_usage() {
             options.require_postprocess_depth_input = true;
             options.require_d3d12_postprocess_evidence = true;
             options.require_cloud_layer_package_evidence = true;
+            continue;
+        }
+        if (arg == "--require-environment-precipitation-package-evidence") {
+            options.require_d3d12_renderer = true;
+            options.require_scene_gpu_bindings = true;
+            options.require_postprocess = true;
+            options.require_postprocess_depth_input = true;
+            options.require_d3d12_postprocess_evidence = true;
+            options.require_environment_precipitation_package_evidence = true;
             continue;
         }
         if (arg == "--require-vulkan-postprocess-evidence") {
@@ -2783,6 +2820,9 @@ int main(int argc, char** argv) {
                 },
             .enable_cloud_layer_package_evidence = options.require_cloud_layer_package_evidence,
             .cloud_layer = make_sample_cloud_layer_policy_desc(),
+            .enable_environment_precipitation_package_evidence =
+                options.require_environment_precipitation_package_evidence,
+            .environment_precipitation = make_sample_environment_precipitation_policy_desc(),
             .enable_directional_shadow_smoke = options.require_directional_shadow,
             .enable_native_ui_overlay = options.require_native_ui_overlay,
             .native_ui_overlay_atlas_asset =
@@ -3039,6 +3079,8 @@ int main(int argc, char** argv) {
         report, d3d12_postprocess_execution, options.require_environment_fog_evidence);
     const auto cloud_layer =
         mirakana::evaluate_win32_desktop_presentation_cloud_layer(report, options.require_cloud_layer_package_evidence);
+    const auto environment_precipitation = mirakana::evaluate_win32_desktop_presentation_environment_precipitation(
+        report, options.require_environment_precipitation_package_evidence);
     const auto environment_profile =
         evaluate_environment_profile_package(options.require_environment_profile, runtime_package);
     const auto vulkan_postprocess_execution =
@@ -3198,7 +3240,46 @@ int main(int argc, char** argv) {
         << " cloud_layer_backend_invocations=" << (cloud_layer.invokes_backend ? 1 : 0)
         << " cloud_layer_native_handle_access=" << (cloud_layer.exposes_native_handles ? 1 : 0)
         << " cloud_layer_volumetric_clouds=" << (cloud_layer.uses_volumetric_clouds ? 1 : 0)
-        << " cloud_layer_diagnostics=" << cloud_layer.diagnostics_count
+        << " cloud_layer_diagnostics=" << cloud_layer.diagnostics_count << " environment_precipitation_status="
+        << mirakana::win32_desktop_presentation_environment_precipitation_status_name(environment_precipitation.status)
+        << " environment_precipitation_ready=" << (environment_precipitation.ready ? 1 : 0)
+        << " environment_precipitation_selected_backend="
+        << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
+        << " environment_precipitation_requested=" << (environment_precipitation.requested ? 1 : 0)
+        << " environment_precipitation_weather="
+        << mirakana::environment_weather_kind_name(environment_precipitation.weather)
+        << " environment_precipitation_kind="
+        << mirakana::environment_precipitation_kind_name(environment_precipitation.kind)
+        << " environment_precipitation_shader_contract_evidence_ready="
+        << (environment_precipitation.shader_contract_evidence_ready ? 1 : 0)
+        << " environment_precipitation_package_evidence_ready="
+        << (environment_precipitation.package_evidence_ready ? 1 : 0)
+        << " environment_precipitation_execution_evidence_ready="
+        << (environment_precipitation.execution_evidence_ready ? 1 : 0)
+        << " environment_precipitation_particle_texture_binding=" << environment_precipitation.particle_texture_binding
+        << " environment_precipitation_scene_depth_texture_binding="
+        << environment_precipitation.scene_depth_texture_binding
+        << " environment_precipitation_sampler_binding=" << environment_precipitation.sampler_binding
+        << " environment_precipitation_constants_binding=" << environment_precipitation.constants_binding
+        << " environment_precipitation_uses_camera_near_particles="
+        << (environment_precipitation.uses_camera_near_particles ? 1 : 0)
+        << " environment_precipitation_uses_scene_depth_occlusion="
+        << (environment_precipitation.uses_scene_depth_occlusion ? 1 : 0)
+        << " environment_precipitation_weather_rows=" << environment_precipitation.weather_rows
+        << " environment_precipitation_particle_rows=" << environment_precipitation.particle_rows
+        << " environment_precipitation_occlusion_rows=" << environment_precipitation.occlusion_rows
+        << " environment_precipitation_wetness_rows=" << environment_precipitation.wetness_rows
+        << " environment_precipitation_audio_handoff_rows=" << environment_precipitation.audio_handoff_rows
+        << " environment_precipitation_shader_rows=" << environment_precipitation.shader_rows
+        << " environment_precipitation_quality_rows=" << environment_precipitation.quality_rows
+        << " environment_precipitation_particle_buffer_uploads="
+        << (environment_precipitation.uploads_particle_buffers ? 1 : 0)
+        << " environment_precipitation_backend_invocations=" << (environment_precipitation.invokes_backend ? 1 : 0)
+        << " environment_precipitation_native_handle_access="
+        << (environment_precipitation.exposes_native_handles ? 1 : 0)
+        << " environment_precipitation_material_mutations=" << (environment_precipitation.mutates_materials ? 1 : 0)
+        << " environment_precipitation_audio_playback=" << (environment_precipitation.plays_audio ? 1 : 0)
+        << " environment_precipitation_diagnostics=" << environment_precipitation.diagnostics_count
         << " environment_profile_status=" << environment_profile_package_status_name(environment_profile.status)
         << " environment_profile_ready=" << (environment_profile.ready ? 1 : 0)
         << " environment_profile_requested=" << (environment_profile.requested ? 1 : 0)
@@ -4042,6 +4123,9 @@ int main(int argc, char** argv) {
             return 3;
         }
         if (options.require_cloud_layer_package_evidence && !cloud_layer.ready) {
+            return 3;
+        }
+        if (options.require_environment_precipitation_package_evidence && !environment_precipitation.ready) {
             return 3;
         }
         if (options.require_directional_shadow &&

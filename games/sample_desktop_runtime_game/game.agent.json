@@ -128,6 +128,7 @@
         "runtime-ui",
         "environment-profile-package",
         "cloud-layer-package",
+        "environment-precipitation-package",
         "animation",
         "framegraph-multiqueue",
         "windows-cpu-set-worker-placement",
@@ -143,6 +144,7 @@
         "installed-d3d12-scene-gpu-smoke",
         "desktop-runtime-sample-game-environment-fog-package",
         "desktop-runtime-sample-game-cloud-layer-package",
+        "desktop-runtime-sample-game-environment-precipitation-package",
         "desktop-runtime-sample-game-environment-profile-package",
         "installed-vulkan-scene-gpu-smoke"
       ],
@@ -164,7 +166,7 @@
         },
         {
           "id": "environment-profile-package-evidence",
-          "evidence": "The selected environment profile package smoke reports environment_profile_status=ready, environment_profile_ready=1, environment_profile_package_file=1, environment_profile_package_index_entry=1, environment_profile_scene_reference=1, environment_profile_scene_required=1, environment_profile_scene_dependency=1, environment_profile_dependency_edge=1, environment_profile_source_parsing=0, and environment_profile_diagnostics=0 without renderer/RHI execution, Vulkan, Metal, rain readiness, or broad environment_ready claims.",
+          "evidence": "The selected environment profile package smoke reports environment_profile_status=ready, environment_profile_ready=1, environment_profile_package_file=1, environment_profile_package_index_entry=1, environment_profile_scene_reference=1, environment_profile_scene_required=1, environment_profile_scene_dependency=1, environment_profile_dependency_edge=1, environment_profile_source_parsing=0, and environment_profile_diagnostics=0 without renderer/RHI execution, Vulkan, Metal, package evidence beyond selected profile dependency counters, or broad environment_ready claims.",
           "recipeIds": [
             "desktop-runtime-sample-game-environment-profile-package"
           ]
@@ -181,6 +183,13 @@
           "evidence": "The selected D3D12 cloud layer package smoke reports cloud_layer_status=ready, cloud_layer_ready=1, cloud_layer_selected_backend=d3d12, cloud_layer_shader_contract_evidence_ready=1, cloud_layer_package_evidence_ready=1, cloud_layer_execution_evidence_ready=1, stable cloud-map/flow-map/sampler/constants binding slots 6/7/6/6, one shared package texture policy row, one visual/IBL/shader-contract/quality row each, LatLong shader-contract flow-map sampling intent, zero diagnostics, and zero texture upload, backend invocation, native handle, or volumetric-cloud counters without claiming a distinct flow-map package asset, Vulkan, Metal, backend parity, broad optimization, or broad environment_ready.",
           "recipeIds": [
             "desktop-runtime-sample-game-cloud-layer-package"
+          ]
+        },
+        {
+          "id": "environment-precipitation-package-evidence",
+          "evidence": "The selected D3D12 environment precipitation package smoke reports environment_precipitation_status=ready, environment_precipitation_ready=1, environment_precipitation_selected_backend=d3d12, weather=storm, kind=rain, shader-contract/package/execution evidence ready, stable particle/depth/sampler/constants binding slots 8/9/8/7, camera-near particle and scene-depth occlusion flags, one weather/particle/occlusion/wetness/shader/quality row, four audio handoff rows, zero diagnostics, and zero particle-buffer upload, backend invocation, native-handle, material-mutation, or audio-playback counters without claiming snow package readiness, renderer/RHI precipitation execution, Vulkan, Metal, backend parity, broad optimization, or broad environment_ready.",
+          "recipeIds": [
+            "desktop-runtime-sample-game-environment-precipitation-package"
           ]
         },
         {
@@ -1552,6 +1561,10 @@
     {
       "name": "desktop-runtime-sample-game-cloud-layer-package",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-cloud-layer-package-evidence')\""
+    },
+    {
+      "name": "desktop-runtime-sample-game-environment-precipitation-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-environment-precipitation-package-evidence')\""
     },
     {
       "name": "desktop-runtime-sample-game-environment-profile-package",

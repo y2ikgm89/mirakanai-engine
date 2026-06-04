@@ -238,6 +238,25 @@ function Get-SampleDesktopRuntimeGameCloudLayerSmokeArgs {
     )
 }
 
+function Get-SampleDesktopRuntimeGameEnvironmentPrecipitationSmokeArgs {
+    return @(
+        '--smoke',
+        '--max-frames',
+        '2',
+        '--require-config',
+        'runtime/sample_desktop_runtime_game.config',
+        '--require-scene-package',
+        'runtime/sample_desktop_runtime_game.geindex',
+        '--require-d3d12-scene-shaders',
+        '--require-d3d12-renderer',
+        '--require-scene-gpu-bindings',
+        '--require-postprocess',
+        '--require-postprocess-depth-input',
+        '--require-d3d12-postprocess-evidence',
+        '--require-environment-precipitation-package-evidence'
+    )
+}
+
 function Get-SampleDesktopRuntimeGameEnvironmentProfileSmokeArgs {
     return @(
         '--smoke',
