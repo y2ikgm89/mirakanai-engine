@@ -5,6 +5,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
+#include <stdexcept>
 #include <utility>
 
 namespace mirakana {
@@ -83,6 +85,14 @@ void add_diagnostic(VolumetricFogPolicyPlan& plan, VolumetricFogDiagnosticCode c
            grid.depth_slices <= max_froxel_depth_slices;
 }
 
+void write_u32(std::span<std::uint8_t> dst, std::size_t offset, std::uint32_t value) {
+    std::memcpy(dst.data() + offset, &value, sizeof(std::uint32_t));
+}
+
+void write_f32(std::span<std::uint8_t> dst, std::size_t offset, float value) {
+    std::memcpy(dst.data() + offset, &value, sizeof(float));
+}
+
 [[nodiscard]] bool valid_local_volume(const VolumetricFogLocalVolumeDesc& volume) noexcept {
     return valid_local_volume_shape(volume.shape) && finite_vec3(volume.center_m) && valid_extent(volume.extent_m) &&
            finite_in_range(volume.density_delta, -max_local_density_delta, max_local_density_delta) &&
@@ -142,6 +152,24 @@ bool VolumetricFogPolicyPlan::succeeded() const noexcept {
 
 bool VolumetricFogPolicyPlan::ready() const noexcept {
     return status == VolumetricFogPolicyStatus::ready;
+}
+
+void pack_volumetric_fog_constants(std::span<std::uint8_t> destination, const VolumetricFogPolicyDesc& desc) {
+    if (destination.size() < volumetric_fog_constants_byte_size()) {
+        throw std::invalid_argument("volumetric fog constants destination is too small");
+    }
+
+    std::ranges::fill(destination, std::uint8_t{0});
+    write_u32(destination, 0U, desc.froxel_grid.width);
+    write_u32(destination, 4U, desc.froxel_grid.height);
+    write_u32(destination, 8U, desc.froxel_grid.depth_slices);
+    write_f32(destination, 12U, desc.range_m);
+    write_f32(destination, 16U, desc.density);
+    write_f32(destination, 20U, desc.anisotropy);
+    write_f32(destination, 24U, desc.temporal.history_weight);
+    write_f32(destination, 28U, desc.albedo.x);
+    write_f32(destination, 32U, desc.albedo.y);
+    write_f32(destination, 36U, desc.albedo.z);
 }
 
 VolumetricFogPolicyPlan plan_volumetric_fog_policy(const VolumetricFogPolicyDesc& desc) {

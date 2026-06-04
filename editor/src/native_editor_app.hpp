@@ -11,6 +11,7 @@
 #include "native_viewport_surface.hpp"
 
 #include "mirakana/editor/ai_command_panel.hpp"
+#include "mirakana/editor/environment_authoring.hpp"
 #include "mirakana/editor/material_asset_preview_panel.hpp"
 #include "mirakana/editor/profiler.hpp"
 #include "mirakana/editor/project.hpp"
@@ -113,6 +114,9 @@ class NativeEditorApp {
 
     [[nodiscard]] const ProjectDocument& project() const noexcept;
     [[nodiscard]] const SceneAuthoringDocument& scene_document() const noexcept;
+    [[nodiscard]] const EnvironmentAuthoringDocument& environment_authoring_document() const noexcept;
+    [[nodiscard]] std::span<const EnvironmentAuthoringInspectorRow>
+    environment_authoring_inspector_rows() const noexcept;
     [[nodiscard]] std::span<const EditorPropertyRow> inspector_rows() const noexcept;
     [[nodiscard]] std::span<const EditorAssetListRow> asset_rows() const noexcept;
     [[nodiscard]] std::span<const EditorDiagnosticRow> console_rows() const noexcept;
