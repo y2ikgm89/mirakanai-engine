@@ -2032,6 +2032,20 @@ foreach ($needle in @("RHI Depth Attachment Contract v0", "GPU Memory Policy v1"
     Assert-ContainsText ([string]$geRendererModule[0].purpose) $needle "MK_renderer module purpose"
 }
 foreach ($needle in @("environment-gated height-fog runtime readback proof", "MK_VULKAN_TEST_HEIGHT_FOG", "VK_LAYER_KHRONOS_validation")) { Assert-ContainsText ([string]$geRhiModule[0].purpose) $needle "MK_rhi module purpose" }
+$geRendererRecentEvidenceText = @($geRendererModule[0].recentEvidence | ForEach-Object { [string]$_ }) -join " "
+foreach ($needle in @("Environment Volumetric Fog Policy v1", "volumetric_fog_constants_byte_size", "pack_volumetric_fog_constants", "froxel output storage-buffer binding 13", "RWByteAddressBuffer froxel proof output", "selected D3D12 WARP-safe compute readback proof", "Vulkan runtime/package proof", "Metal readiness")) { Assert-ContainsText $geRendererRecentEvidenceText $needle "MK_renderer recentEvidence volumetric fog evidence" }
+if (@($geRendererModule[0].publicHeaders) -notcontains "engine/renderer/include/mirakana/renderer/volumetric_fog_policy.hpp") { Write-Error "engine/agent/manifest.json MK_renderer publicHeaders must include volumetric_fog_policy.hpp" }
+foreach ($volumetricFogCheck in @(
+        @("engine/renderer/include/mirakana/renderer/volumetric_fog_policy.hpp", @("volumetric_fog_froxel_output_buffer_binding", "return 13", "volumetric_fog_constants_byte_size", "return 256", "pack_volumetric_fog_constants")),
+        @("shaders/environment/volumetric_fog.hlsl", @("RWByteAddressBuffer volumetric_fog_output_buffer : register(u13)", "SampleLevel(scene_depth_sampler", "volumetric_fog_output_buffer.Store", "SV_DispatchThreadID")),
+        @("tests/unit/d3d12_rhi_tests.cpp", @("dispatches volumetric fog compute from scene depth readback", "compile_volumetric_fog_compute_shader", "volumetric_fog_froxel_output_buffer_binding", "left_far > left_near", "right_far > right_near"))
+    )) {
+    $volumetricFogCheckText = Get-AgentSurfaceText ([string]$volumetricFogCheck[0])
+    foreach ($needle in @($volumetricFogCheck[1])) { Assert-ContainsText $volumetricFogCheckText $needle ([string]$volumetricFogCheck[0]) }
+}
+if ([string]$productionLoop.recommendedNextPlan.id -eq "environment-system-v1") {
+    foreach ($needle in @("PR19 adds selected D3D12 volumetric-fog compute execution/readback proof", "volumetric_fog_constants_byte_size", "pack_volumetric_fog_constants", "froxel output storage-buffer binding 13", "volumetric-fog Vulkan/Metal execution proof", "volumetric-fog package readiness", "unsupportedProductionGaps = []")) { Assert-ContainsText ([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence) $needle "environment-system-v1 latest closeout evidence" }
+}
 foreach ($rendererPolicyHeader in @("postprocess_policy.hpp", "gpu_memory_policy.hpp", "debug_profiling_policy.hpp", "scene_scale_policy.hpp", "tile_chunk_renderer.hpp")) { if (@($geRendererModule[0].publicHeaders) -notcontains "engine/renderer/include/mirakana/renderer/$rendererPolicyHeader") { Write-Error "engine/agent/manifest.json MK_renderer publicHeaders must include $rendererPolicyHeader" } }
 foreach ($tileChunkRendererCheck in @(
         @("engine/renderer/include/mirakana/renderer/tile_chunk_renderer.hpp", @("TileChunkCellRow", "TileChunkDirtyRegion", "TileChunkLightCellRow", "TileChunkRendererDesc", "TileChunkRendererPlan", "TileChunkSpriteRow", "TileChunkDrawRow", "TileChunkDirtyRebuildRow", "TileChunkLightmapRow", "plan_tile_chunk_renderer")),
@@ -2041,7 +2055,6 @@ foreach ($tileChunkRendererCheck in @(
     $tileChunkRendererCheckText = Get-AgentSurfaceText ([string]$tileChunkRendererCheck[0])
     foreach ($needle in @($tileChunkRendererCheck[1])) { Assert-ContainsText $tileChunkRendererCheckText $needle ([string]$tileChunkRendererCheck[0]) }
 }
-$geRendererRecentEvidenceText = @($geRendererModule[0].recentEvidence | ForEach-Object { [string]$_ }) -join " "
 foreach ($needle in @("Generic 2D Sandbox Production Tile Renderer v1", "plan_tile_chunk_renderer", "--require-production-tile-renderer", "zero backend submission/native texture ownership invocation")) { Assert-ContainsText $geRendererRecentEvidenceText $needle "MK_renderer module recentEvidence"; Assert-ContainsText ([string]$manifest.gameCodeGuidance.currentProductionTileRenderer) $needle "production tile renderer game guidance" }
 foreach ($productionTileRendererGuidance in @("docs/current-capabilities.md", "docs/ai-game-development.md", "docs/roadmap.md", "docs/testing.md", "docs/superpowers/plans/README.md", "docs/superpowers/plans/2026-05-27-generic-2d-sandbox-production-lane-v1.md", ".agents/skills/gameengine-game-development/SKILL.md", ".claude/skills/gameengine-game-development/SKILL.md", "games/sample_2d_desktop_runtime_package/README.md", "games/sample_2d_desktop_runtime_package/game.agent.json")) { foreach ($needle in @("plan_tile_chunk_renderer", "--require-production-tile-renderer", "native texture ownership")) { Assert-ContainsText (Get-AgentSurfaceText $productionTileRendererGuidance) $needle $productionTileRendererGuidance } }
 foreach ($needle in @("plan_scene_lighting_shadow_policy", "build_scene_directional_shadow_light_space_plan", "sample_and_apply_runtime_scene_render_animation_float_clip", "advance_runtime_sprite_flipbook", "sample_runtime_morph_mesh_cpu_animation_float_clip")) {
