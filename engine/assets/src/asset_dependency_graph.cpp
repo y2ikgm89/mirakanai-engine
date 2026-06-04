@@ -31,6 +31,8 @@ namespace {
     case AssetDependencyKind::sprite_animation_material:
     case AssetDependencyKind::generated_artifact:
     case AssetDependencyKind::source_file:
+    case AssetDependencyKind::mavg_source_mesh:
+    case AssetDependencyKind::mavg_material:
         return true;
     case AssetDependencyKind::unknown:
         break;

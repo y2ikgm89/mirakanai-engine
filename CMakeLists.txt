@@ -679,6 +679,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_assets_tests)
     add_test(NAME MK_assets_tests COMMAND MK_assets_tests)
 
+    add_executable(MK_mavg_cluster_graph_tests
+        tests/unit/mavg_cluster_graph_tests.cpp
+    )
+    target_link_libraries(MK_mavg_cluster_graph_tests PRIVATE MK_assets)
+    target_include_directories(MK_mavg_cluster_graph_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_mavg_cluster_graph_tests)
+    add_test(NAME MK_mavg_cluster_graph_tests COMMAND MK_mavg_cluster_graph_tests)
+
     add_executable(MK_asset_import_production_review_tests
         tests/unit/asset_import_production_review_tests.cpp
     )
@@ -975,6 +983,14 @@ if(BUILD_TESTING)
     target_include_directories(MK_tools_tests PRIVATE tests)
     MK_apply_common_target_options(MK_tools_tests)
     add_test(NAME MK_tools_tests COMMAND MK_tools_tests)
+
+    add_executable(MK_tools_mavg_cluster_cook_tests
+        tests/unit/tools_mavg_cluster_cook_tests.cpp
+    )
+    target_link_libraries(MK_tools_mavg_cluster_cook_tests PRIVATE MK_tools)
+    target_include_directories(MK_tools_mavg_cluster_cook_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_tools_mavg_cluster_cook_tests)
+    add_test(NAME MK_tools_mavg_cluster_cook_tests COMMAND MK_tools_mavg_cluster_cook_tests)
 
     add_executable(MK_tools_sandbox_world_authoring_tests
         tests/unit/tools_sandbox_world_authoring_tests.cpp

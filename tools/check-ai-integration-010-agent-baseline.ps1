@@ -2026,7 +2026,7 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
         Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan native editor shell selection"
     }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "mavg-asset-graph-v1") {
-    foreach ($needle in @("MAVG Asset Graph v1", "MAVG Phase 0 completed", "deterministic MK_assets MAVG cluster graph validation", "GameEngine.MavgClusterGraph.v1", "AssetKind::mavg_cluster_graph", "MK_tools cook/package planning", "no SDL3/Dear ImGui", "no public native handles", "no Nanite/UE compatibility", "CPU selection", "renderer execution", "streaming/residency", "unsupportedProductionGaps = []")) { Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan MAVG asset graph selection" }
+    foreach ($needle in @("MAVG Asset Graph v1", "MAVG Phase 0 completed", "deterministic MK_assets MAVG cluster graph validation", "mavg_cluster_graph.hpp", "MavgClusterGraphDocument", "GameEngine.MavgClusterGraph.v1", "AssetKind::mavg_cluster_graph", "mavg_source_mesh", "mavg_material", "MK_tools cook/package planning", "mavg_cluster_cook.hpp", "MavgClusterCookRequest", "plan_mavg_cluster_graph_cook_package", "apply_mavg_cluster_graph_cook_package", "no SDL3/Dear ImGui", "no public native handles", "no Nanite/UE compatibility", "CPU selection", "renderer execution", "streaming/residency", "unsupportedProductionGaps = []")) { Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan MAVG asset graph selection" }
 } else {
     foreach ($needle in @(
     "Frame Graph Transient Texture Alias Planning v1",
@@ -2140,6 +2140,7 @@ $coreMemoryHeaderText = Get-AgentSurfaceText "engine/core/include/mirakana/core/
 $coreTestsText = Get-AgentSurfaceText "tests/unit/core_tests.cpp"
 $tilemapMetadataSourceText = Get-AgentSurfaceText "engine/assets/src/tilemap_metadata.cpp"
 $uiAtlasMetadataSourceText = Get-AgentSurfaceText "engine/assets/src/ui_atlas_metadata.cpp"
+$mavgClusterGraphHeaderText = Get-AgentSurfaceText "engine/assets/include/mirakana/assets/mavg_cluster_graph.hpp"; $mavgClusterGraphSourceText = Get-AgentSurfaceText "engine/assets/src/mavg_cluster_graph.cpp"; $mavgClusterCookHeaderText = Get-AgentSurfaceText "engine/tools/include/mirakana/tools/mavg_cluster_cook.hpp"; $mavgClusterCookSourceText = Get-AgentSurfaceText "engine/tools/asset/mavg_cluster_cook.cpp"
 $sessionServicesSourceText = Get-AgentSurfaceText "engine/runtime/src/session_services.cpp"
 $newGameToolText = Get-AgentSurfaceText "tools/new-game.ps1"
 $newGameHelpersText = Get-AgentSurfaceText "tools/new-game-helpers.ps1"
@@ -2378,16 +2379,20 @@ foreach ($androidDocCheck in @(
     Assert-ContainsText $androidDocCheck.Text "Android Release Device Matrix v1" $androidDocCheck.Label
     Assert-ContainsText $androidDocCheck.Text "sample_headless" $androidDocCheck.Label
 }
-foreach ($portableFloatCheck in @(
-    @{ Text = $tilemapMetadataSourceText; Label = "engine/assets/src/tilemap_metadata.cpp" },
-    @{ Text = $uiAtlasMetadataSourceText; Label = "engine/assets/src/ui_atlas_metadata.cpp" },
-    @{ Text = $sessionServicesSourceText; Label = "engine/runtime/src/session_services.cpp" }
-)) {
+foreach ($portableFloatCheck in @(@{ Text = $tilemapMetadataSourceText; Label = "engine/assets/src/tilemap_metadata.cpp" }, @{ Text = $uiAtlasMetadataSourceText; Label = "engine/assets/src/ui_atlas_metadata.cpp" }, @{ Text = $mavgClusterGraphSourceText; Label = "engine/assets/src/mavg_cluster_graph.cpp" }, @{ Text = $sessionServicesSourceText; Label = "engine/runtime/src/session_services.cpp" })) {
     Assert-ContainsText $portableFloatCheck.Text "std::locale::classic()" $portableFloatCheck.Label
     if ($portableFloatCheck.Text -match "float\s+parsed\s*=\s*0\.0F;\s*const\s+auto\s+\[end,\s*error\]\s*=\s*std::from_chars") {
         Write-Error "$($portableFloatCheck.Label) must not use floating-point std::from_chars; Android NDK libc++ does not provide it."
     }
 }
+foreach ($mavgAssetNeedle in @("MavgClusterGraphDocument", "MavgClusterGraphValidationResult", "mavg_cluster_graph_format_v1", "validate_mavg_cluster_graph", "serialize_mavg_cluster_graph_document", "deserialize_mavg_cluster_graph_document")) {
+    Assert-ContainsText $mavgClusterGraphHeaderText $mavgAssetNeedle "engine/assets/include/mirakana/assets/mavg_cluster_graph.hpp"
+}
+Assert-ContainsText $mavgClusterGraphSourceText "GameEngine.MavgClusterGraph.v1" "engine/assets/src/mavg_cluster_graph.cpp"
+foreach ($mavgToolNeedle in @("MavgClusterCookRequest", "MavgClusterCookResult", "MavgClusterCookChangedFile", "plan_mavg_cluster_graph_cook_package", "apply_mavg_cluster_graph_cook_package")) {
+    Assert-ContainsText $mavgClusterCookHeaderText $mavgToolNeedle "engine/tools/include/mirakana/tools/mavg_cluster_cook.hpp"
+}
+Assert-ContainsText $mavgClusterCookSourceText "GameEngine.MavgClusterPayload.v1" "engine/tools/asset/mavg_cluster_cook.cpp"; Assert-ContainsText $mavgClusterCookSourceText "AssetKind::mavg_cluster_graph" "engine/tools/asset/mavg_cluster_cook.cpp"
 Assert-ContainsText $appleMetalIosHostEvidencePlanText "Apple Metal iOS Host Evidence v1" "Apple Metal iOS Host Evidence plan"
 Assert-ContainsText $appleMetalIosHostEvidencePlanText "**Status:** Completed" "Apple Metal iOS Host Evidence plan"
 Assert-ContainsText $appleMetalIosHostEvidencePlanText "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-apple-host-evidence.ps1" "Apple Metal iOS Host Evidence plan"

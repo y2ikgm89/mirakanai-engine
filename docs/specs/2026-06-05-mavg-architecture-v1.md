@@ -2,11 +2,11 @@
 
 ## Purpose
 
-Define the clean-room architecture baseline for Mirakana Adaptive Virtual Geometry (MAVG) before implementation starts. This document is a specification and audit record, not a ready-claim. It does not add a cooked cluster format, renderer path, package recipe, backend feature, streaming system, deformation system, ray tracing payload, or benchmark result.
+Define the clean-room architecture baseline for Mirakana Adaptive Virtual Geometry (MAVG) and the first data-only implementation boundary. This document is a specification and audit record, not a renderer/runtime ready-claim. The first implementation child adds a cooked cluster graph descriptor and package planner only; it does not add a renderer path, backend feature, streaming system, deformation system, ray tracing payload, or benchmark result.
 
 ## Status
 
-Phase 0 specification completed for `mavg-research-legal-benchmark-baseline-v1`. The active first implementation child is `mavg-asset-graph-v1`, limited to deterministic `MK_assets` graph validation and `MK_tools` cook/package planning; runtime, renderer, package streaming, deformation, ray tracing, and benchmark superiority remain unclaimed until future focused MAVG child plans add code and validation evidence.
+Phase 0 specification completed for `mavg-research-legal-benchmark-baseline-v1`. The active first implementation child is `mavg-asset-graph-v1`, limited to deterministic `MK_assets` `GameEngine.MavgClusterGraph.v1` graph validation and `MK_tools` `plan_mavg_cluster_graph_cook_package` / `apply_mavg_cluster_graph_cook_package` package planning; runtime, renderer, package streaming, deformation, ray tracing, and benchmark superiority remain unclaimed until future focused MAVG child plans add code and validation evidence.
 
 ## Current Repository Baseline
 
@@ -65,12 +65,13 @@ The first implementation files should start in `MK_assets` and `MK_tools`:
 - `engine/tools/include/mirakana/tools/mavg_cluster_cook.hpp`
 - `engine/tools/asset/mavg_cluster_cook.cpp`
 
-Responsibilities:
+Implemented v1 responsibilities:
 
-- Define deterministic cluster graph rows.
-- Validate parent/child hierarchy, material partitions, bounds, error rows, page rows, and resident fallback ancestors.
-- Produce first-party text/binary metadata suitable for package evidence.
-- Reject graphs that can create visible holes or non-deterministic output.
+- Define deterministic static cluster graph rows through `MavgClusterGraphDocument`.
+- Validate asset ids, source mesh refs, source/payload URIs, material partitions, page rows, cluster rows, bounds, child refs, duplicate ids, and package dependency edge kinds.
+- Serialize and deserialize `GameEngine.MavgClusterGraph.v1` text with canonical page/material/cluster ordering.
+- Produce first-party graph descriptor, placeholder payload evidence, changed-file rows, and `.geindex` package metadata through `MavgClusterCookRequest` / `MavgClusterCookResult`.
+- Reject invalid inputs, unsafe package paths, missing dependency package rows, and malformed graph/package rows before emitting changed files.
 
 Non-responsibilities:
 
@@ -78,6 +79,7 @@ Non-responsibilities:
 - Streaming IO execution.
 - Runtime source import.
 - Third-party simplifier ownership.
+- Parent/error/fallback hierarchy, resident fallback ancestors, CPU selection, and visible-hole prevention; those belong to future runtime selection/streaming plans.
 
 ### Runtime Selection
 

@@ -26,6 +26,8 @@ enum class AssetDependencyKind : std::uint8_t {
     sprite_animation_material,
     generated_artifact,
     source_file,
+    mavg_source_mesh,
+    mavg_material,
 };
 
 struct AssetDependencyEdge {

@@ -45,7 +45,8 @@ enum class AssetKind : std::uint8_t {
     ui_atlas,
     tilemap,
     physics_collision_scene,
-    environment_profile
+    environment_profile,
+    mavg_cluster_graph,
 };
 
 struct AssetRecord {

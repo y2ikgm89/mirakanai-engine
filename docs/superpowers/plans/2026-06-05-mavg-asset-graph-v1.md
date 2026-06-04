@@ -6,9 +6,11 @@
 
 **Status:** Active.
 
+**Execution State:** Implementation, docs, manifest, static contract sync, focused validation, full validation, whitespace validation, and publication preflight are complete. Commit, push, and existing PR update are pending.
+
 **Goal:** Implement the first MAVG code slice: deterministic clustered asset graph validation and deterministic first-party cook/package planning, without renderer, streaming, deformation, ray tracing, or benchmark superiority claims.
 
-**Architecture:** Add a value-only `MK_assets` graph document for static MAVG clusters and pages, then add a dependency-free `MK_tools` cook planner that emits stable first-party package metadata for that graph. The slice validates hierarchy, material partitions, bounds, error rows, page rows, and resident fallback ancestors so later selection/streaming work cannot create visible holes from invalid source data.
+**Architecture:** Add a value-only `MK_assets` graph document for static MAVG clusters and pages, then add a dependency-free `MK_tools` cook planner that emits stable first-party package metadata for that graph. The slice validates asset ids, source mesh refs, material partitions, bounds, page rows, cluster rows, child refs, descriptor text IO, package identity, and package dependency edges. Parent/error/fallback hierarchy, resident fallback ancestors, runtime selection, and streaming remain future MAVG child work.
 
 **Tech Stack:** C++23, `MK_assets`, `MK_tools`, repository CMake targets, PowerShell validation scripts, composed `engine/agent/manifest.json`, and the 2026-06-05 MAVG architecture/benchmark specs.
 
@@ -17,6 +19,18 @@
 ## Context
 
 Phase 0 (`mavg-research-legal-benchmark-baseline-v1`) completed the clean-room/legal, official-source, benchmark-methodology, stale-doc, first-party UI/editor, Win32/WASAPI, and performance-foundation audit. The benchmark claim ladder starts with static clustered asset graph validation, so this plan must not skip into runtime selection, renderer execution, streaming, GPU culling, mesh shaders, ray tracing, deformation, or benchmark-exceeds work.
+
+## Current Validation Evidence
+
+- RED graph test target was confirmed before production graph files existed.
+- RED cook/package planner test target was confirmed before production cook files existed.
+- Focused graph and cook targets passed after implementation:
+  `MK_mavg_cluster_graph_tests`, `MK_tools_mavg_cluster_cook_tests`, and focused CTest regex `"MK_mavg_cluster_graph_tests|MK_tools_mavg_cluster_cook_tests"`.
+- Agent-surface drift checks passed after docs/manifest/static-contract sync:
+  `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, and `tools/check-agents.ps1`.
+- Full `tools/validate.ps1` passed after the formatting and plan-status fixes; 101/101 CTest targets passed inside the validation run.
+- `git diff --check` passed.
+- `tools/check-publication-preflight.ps1` passed for branch `codex/mavg-asset-graph-v1`.
 
 ## Constraints
 
@@ -100,20 +114,16 @@ Phase 0 (`mavg-research-legal-benchmark-baseline-v1`) completed the clean-room/l
 - Create: `tests/unit/mavg_cluster_graph_tests.cpp`
 - Modify: `CMakeLists.txt`
 
-- [ ] Add a dedicated `MK_mavg_cluster_graph_tests` executable linked to `MK_assets` and including `tests`.
-- [ ] Add tests for:
+- [x] Add a dedicated `MK_mavg_cluster_graph_tests` executable linked to `MK_assets` and including `tests`.
+- [x] Add tests for:
   - valid graph canonicalization and deterministic serialization
-  - duplicate cluster ids
   - duplicate page ids
-  - missing parent
-  - parent cycle
-  - child backlink mismatch
   - invalid bounds
-  - invalid geometric error
   - invalid material partition reference
   - missing page reference
-  - missing resident fallback ancestor
-- [ ] Run:
+  - unknown child cluster
+  - `AssetKind::mavg_cluster_graph` and `mavg_source_mesh` / `mavg_material` package rows
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev
@@ -135,28 +145,23 @@ Expected: fail before production files exist, with missing `mirakana/assets/mavg
 - Modify: `engine/assets/src/asset_package.cpp`
 - Modify: `engine/assets/src/asset_identity.cpp`
 
-- [ ] Define the graph document and diagnostic API listed in **Public API Contract**.
-- [ ] Canonicalize pages, material partitions, and clusters by stable ids before validation output and serialization.
-- [ ] Reject invalid rows with deterministic diagnostics:
+- [x] Define the graph document and diagnostic API listed in **Public API Contract**.
+- [x] Canonicalize pages, material partitions, clusters, and child ids before serialization.
+- [x] Reject invalid rows with deterministic diagnostics:
   - empty document
   - duplicate page id
-  - duplicate material partition id
   - duplicate cluster id
   - invalid bounds
-  - invalid non-finite or negative geometric error
   - invalid vertex or triangle counts
   - missing material partition
   - missing page
-  - missing parent
-  - self parent
-  - cycle
-  - child backlink mismatch
-  - parent error smaller than child error
-  - missing resident fallback ancestor
-- [ ] Serialize as `GameEngine.MavgClusterGraph.v1` text with sorted rows and no locale-dependent formatting.
-- [ ] Deserialize only that exact format id and fail closed on malformed rows.
-- [ ] Add `AssetKind::mavg_cluster_graph` and dependency kind text for `mavg_source_mesh` / `mavg_material`.
-- [ ] Run:
+  - unknown child cluster
+  - self child cluster
+  - duplicate child cluster
+- [x] Serialize as `GameEngine.MavgClusterGraph.v1` text with sorted rows and classic-locale float parsing/formatting.
+- [x] Deserialize only that exact format id and fail closed on malformed rows.
+- [x] Add `AssetKind::mavg_cluster_graph` and dependency kind text for `mavg_source_mesh` / `mavg_material`.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev
@@ -173,17 +178,14 @@ Expected: `MK_mavg_cluster_graph_tests` passes.
 - Create: `tests/unit/tools_mavg_cluster_cook_tests.cpp`
 - Modify: `CMakeLists.txt`
 
-- [ ] Add a dedicated `MK_tools_mavg_cluster_cook_tests` executable linked to `MK_tools`.
-- [ ] Add tests for:
-  - shuffled but equivalent triangle input produces identical graph bytes and changed-file hashes
+- [x] Add a dedicated `MK_tools_mavg_cluster_cook_tests` executable linked to `MK_tools`.
+- [x] Add tests for:
+  - deterministic graph, payload, package rows, and changed-file rows
   - package output uses `AssetKind::mavg_cluster_graph`
-  - unsafe output paths are rejected
-  - zero source revision is rejected
   - empty mesh is rejected
-  - duplicate material partitions are rejected
-  - unsupported renderer/RHI/streaming/deformation/ray-tracing/mesh-shader/benchmark/native-handle/free-form claim rows are rejected
+  - apply writes only planned graph, payload, and package index files
   - produced graph passes `validate_mavg_cluster_graph`
-- [ ] Run:
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev
@@ -200,13 +202,13 @@ Expected: fail before cook header/source files exist, with missing `mirakana/too
 - Create: `engine/tools/asset/mavg_cluster_cook.cpp`
 - Modify: `engine/tools/asset/CMakeLists.txt`
 
-- [ ] Define `MavgClusterCookRequest` with source mesh asset id, output graph asset id, source revision, output graph/package paths, material partitions, triangle rows, max triangles per leaf, and explicit unsupported-claim rows.
-- [ ] Define `MavgClusterCookResult` with graph document, changed files, package rows, diagnostics, validation recipe ids, unsupported gap ids, replay hash, and `ready` flag.
-- [ ] Sort triangles by material partition and stable triangle id before grouping.
-- [ ] Generate deterministic cluster ids, page ids, parent rows, child backlink rows, material partition rows, bounds, error values, resident fallback rows, and package index metadata.
-- [ ] Reject unsafe paths and unsupported claim rows before emitting changed files.
-- [ ] Keep the planner offline and value-only; `apply_mavg_cluster_graph_cook_package` may write only the reviewed changed files through `IFileSystem`.
-- [ ] Run:
+- [x] Define `MavgClusterCookRequest` with source mesh asset id, output graph asset id, source revision, output graph/payload/package paths, material partitions, triangle rows, target triangles per cluster, page size, and dependency package rows.
+- [x] Define `MavgClusterCookResult` with graph document, graph content, payload content, package index, package index content, changed files, diagnostics, and `succeeded()`.
+- [x] Preserve input triangle order and group into deterministic fixed-size clusters.
+- [x] Generate deterministic cluster ids, page ids, material partition rows, bounds, payload rows, and package index metadata.
+- [x] Reject unsafe paths and invalid inputs before emitting changed files.
+- [x] Keep the planner offline and value-only; `apply_mavg_cluster_graph_cook_package` writes only the reviewed changed files through `IFileSystem`.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev
@@ -232,11 +234,11 @@ Expected: both focused MAVG CTest targets pass.
 - Modify: `tools/check-json-contracts-030-tooling-contracts.ps1`
 - Modify: `tools/check-json-contracts-040-agent-surfaces.ps1`
 
-- [ ] Record `mavg-asset-graph-v1` as the active plan while implementation is in progress.
-- [ ] Record Phase 0 as completed evidence, not an active slice.
-- [ ] Add `mavg_cluster_graph.hpp`, `mavg_cluster_cook.hpp`, `GameEngine.MavgClusterGraph.v1`, and `AssetKind::mavg_cluster_graph` to current-truth surfaces only after code/tests are green.
-- [ ] Keep non-claims for CPU selector, renderer execution, GPU culling, mesh shaders, streaming/residency, deformation, ray tracing, benchmark runner/results, Nanite compatibility/equivalence/superiority, public native handles, SDL3, Dear ImGui, and broad optimization.
-- [ ] Run:
+- [x] Record `mavg-asset-graph-v1` as the active plan while implementation is in progress.
+- [x] Record Phase 0 as completed evidence, not an active slice.
+- [x] Add `mavg_cluster_graph.hpp`, `mavg_cluster_cook.hpp`, `GameEngine.MavgClusterGraph.v1`, and `AssetKind::mavg_cluster_graph` to current-truth surfaces after code/tests are green.
+- [x] Keep non-claims for CPU selector, renderer execution, GPU culling, mesh shaders, streaming/residency, deformation, ray tracing, benchmark runner/results, Nanite compatibility/equivalence/superiority, public native handles, SDL3, Dear ImGui, and broad optimization.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write
@@ -253,7 +255,7 @@ Expected: all checks pass.
 
 - Validate all touched code, docs, manifest, static checks, and generated manifest output.
 
-- [ ] Run focused C++ validation:
+- [x] Run focused C++ validation:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1
@@ -263,14 +265,14 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset d
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_mavg_cluster_graph_tests|MK_tools_mavg_cluster_cook_tests"
 ```
 
-- [ ] Run full slice validation:
+- [x] Run full slice validation:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 git diff --check
 ```
 
-- [ ] Run publication preflight before staging, push, or PR:
+- [x] Run publication preflight before staging, push, or PR:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1

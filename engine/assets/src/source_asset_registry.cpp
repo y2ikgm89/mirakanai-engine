@@ -151,6 +151,8 @@ struct SourceAssetTextRow {
         return "physics_collision_scene";
     case AssetKind::environment_profile:
         return "environment_profile";
+    case AssetKind::mavg_cluster_graph:
+        return "mavg_cluster_graph";
     case AssetKind::unknown:
         break;
     }
@@ -203,6 +205,9 @@ struct SourceAssetTextRow {
     if (value == "environment_profile") {
         return AssetKind::environment_profile;
     }
+    if (value == "mavg_cluster_graph") {
+        return AssetKind::mavg_cluster_graph;
+    }
     return AssetKind::unknown;
 }
 
@@ -239,6 +244,8 @@ struct SourceAssetTextRow {
     case AssetDependencyKind::sprite_animation_material:
     case AssetDependencyKind::generated_artifact:
     case AssetDependencyKind::source_file:
+    case AssetDependencyKind::mavg_source_mesh:
+    case AssetDependencyKind::mavg_material:
         break;
     }
     return false;
@@ -394,6 +401,7 @@ bool is_supported_source_asset_kind_v1(AssetKind kind) noexcept {
     case AssetKind::ui_atlas:
     case AssetKind::tilemap:
     case AssetKind::physics_collision_scene:
+    case AssetKind::mavg_cluster_graph:
         break;
     }
     return false;
@@ -427,6 +435,7 @@ std::string_view expected_source_asset_format_v1(AssetKind kind) noexcept {
     case AssetKind::ui_atlas:
     case AssetKind::tilemap:
     case AssetKind::physics_collision_scene:
+    case AssetKind::mavg_cluster_graph:
         break;
     }
     return {};
@@ -452,6 +461,8 @@ std::string_view source_asset_dependency_kind_name_v1(AssetDependencyKind kind) 
     case AssetDependencyKind::sprite_animation_material:
     case AssetDependencyKind::generated_artifact:
     case AssetDependencyKind::source_file:
+    case AssetDependencyKind::mavg_source_mesh:
+    case AssetDependencyKind::mavg_material:
         break;
     }
     return "unknown";

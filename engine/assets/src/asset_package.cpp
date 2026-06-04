@@ -38,6 +38,7 @@ namespace {
     case AssetKind::tilemap:
     case AssetKind::physics_collision_scene:
     case AssetKind::environment_profile:
+    case AssetKind::mavg_cluster_graph:
         return true;
     case AssetKind::unknown:
         break;
@@ -79,6 +80,8 @@ namespace {
         return "physics_collision_scene";
     case AssetKind::environment_profile:
         return "environment_profile";
+    case AssetKind::mavg_cluster_graph:
+        return "mavg_cluster_graph";
     case AssetKind::unknown:
         break;
     }
@@ -134,6 +137,9 @@ namespace {
     if (value == "environment_profile") {
         return AssetKind::environment_profile;
     }
+    if (value == "mavg_cluster_graph") {
+        return AssetKind::mavg_cluster_graph;
+    }
     throw std::invalid_argument("asset package entry kind is unknown");
 }
 
@@ -163,6 +169,10 @@ namespace {
         return "generated_artifact";
     case AssetDependencyKind::source_file:
         return "source_file";
+    case AssetDependencyKind::mavg_source_mesh:
+        return "mavg_source_mesh";
+    case AssetDependencyKind::mavg_material:
+        return "mavg_material";
     case AssetDependencyKind::unknown:
         break;
     }
@@ -205,6 +215,12 @@ namespace {
     }
     if (value == "source_file") {
         return AssetDependencyKind::source_file;
+    }
+    if (value == "mavg_source_mesh") {
+        return AssetDependencyKind::mavg_source_mesh;
+    }
+    if (value == "mavg_material") {
+        return AssetDependencyKind::mavg_material;
     }
     throw std::invalid_argument("asset package dependency kind is unknown");
 }
