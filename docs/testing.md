@@ -107,7 +107,7 @@ Requires **`clang++`** and **Ninja** on `PATH` (the preset sets generator Ninja)
 
 Policy lives in [tools/coverage-thresholds.json](../tools/coverage-thresholds.json) (`minLineCoveragePercent`, optional `lcovRemovePatterns`). On Linux:
 
-- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-coverage.ps1` runs the **separate** `coverage` preset under `out/build/coverage`, executes CTest including `ctest -T Coverage`, runs **`lcov --capture`** / **`lcov --summary`**, and compares the reported **line %** to the minimum (warnings only unless you use strict modes below).
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-coverage.ps1` runs the **separate** `coverage` preset under `out/build/coverage`, executes CTest including `ctest -T Coverage`, runs **`lcov --capture`** / **`lcov --summary`**, and compares the reported **line %** to the minimum (warnings only unless you use strict modes below). The coverage preset compiles with `--coverage -fprofile-update=atomic` so threaded tests do not corrupt GCC profile counters before `lcov` reads `.gcda` data.
 - **`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-coverage.ps1 -Strict`** (or `./tools/check-coverage.ps1 -Strict`) **fails** if line coverage is below the minimum or if `lcov`/`gcov` is missing. CI uses **`-Strict`** in [.github/workflows/validate.yml](../.github/workflows/validate.yml).
 
 Install **`lcov`**, **`ccache`**, **`gcov`** / **`g++`**, and **Ninja** on the host; Ubuntu/Debian: `apt install lcov ccache g++ ninja-build`. Raise `minLineCoveragePercent` only when sustained CI/`lcov --summary` evidence supports it; record policy context in this file and the retained historical evidence archive when the threshold changes.
