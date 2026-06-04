@@ -24,6 +24,7 @@ add_library(mirakana_renderer
     src/sprite_batch.cpp
     src/tile_chunk_renderer.cpp
     src/volumetric_fog_policy.cpp
+    src/volumetric_cloud_policy.cpp
 )
 
 target_include_directories(mirakana_renderer

@@ -18,7 +18,7 @@
 
 This plan is selected as the active `environment-system-v1` milestone. `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` points to this file, `recommendedNextPlan.id = environment-system-v1`, and `unsupportedProductionGaps = []` remains unchanged.
 
-The 2026-06-03 PR1 foundation implements the `MK_environment` value contract, validation, CMake/export wiring, public API boundary coverage, and focused tests. The PR2 text IO/package-row slice adds deterministic `GameEngine.EnvironmentProfile.v1` text IO, `AssetKind::environment_profile`, source registry/import metadata planning, cooked `GameEngine.CookedEnvironmentProfile.v1` artifacts, and `.geindex` package rows without runtime source parsing. PR3 adds scene/runtime scene environment profile binding. PR4 adds value-only render packet and renderer policy planning. PR5 adds physical-sky policy and shader-contract evidence. PR6 adds first-party cooked-texture sky-lighting/IBL policy rows without new import dependencies. PR7 adds height-fog/aerial-perspective policy rows plus a reviewed depth-aware HLSL shader contract. PR8 adds `RhiPostprocessFrameRenderer` first-stage uniform binding, height-fog constant packing, and a D3D12 WARP-safe depth-aware readback proof for the height-fog shader path. PR9 adds physical-sky constant packing, stable D3D12 constant binding metadata, and a selected D3D12 WARP-safe fullscreen shader readback proof. PR10 adds selected D3D12 package-visible height-fog evidence through `sample_desktop_runtime_game --require-environment-fog-evidence`, `environment_fog_status=ready`, `environment_fog_constants_binding=4`, and `environment_fog_constants_byte_size=256`. It does not claim physical-sky Vulkan/package proof, height-fog Vulkan runtime proof, editor authoring, cloud/rain/volumetric fog readiness, Vulkan readiness, Metal readiness, broad optimization, or broad `environment_ready`.
+The 2026-06-03 PR1 foundation implements the `MK_environment` value contract, validation, CMake/export wiring, public API boundary coverage, and focused tests. The PR2 text IO/package-row slice adds deterministic `GameEngine.EnvironmentProfile.v1` text IO, `AssetKind::environment_profile`, source registry/import metadata planning, cooked `GameEngine.CookedEnvironmentProfile.v1` artifacts, and `.geindex` package rows without runtime source parsing. PR3 adds scene/runtime scene environment profile binding. PR4 adds value-only render packet and renderer policy planning. PR5 adds physical-sky policy and shader-contract evidence. PR6 adds first-party cooked-texture sky-lighting/IBL policy rows without new import dependencies. PR7 adds height-fog/aerial-perspective policy rows plus a reviewed depth-aware HLSL shader contract. PR8 adds `RhiPostprocessFrameRenderer` first-stage uniform binding, height-fog constant packing, and a D3D12 WARP-safe depth-aware readback proof for the height-fog shader path. PR9 adds physical-sky constant packing, stable D3D12 constant binding metadata, and a selected D3D12 WARP-safe fullscreen shader readback proof. PR10 adds selected D3D12 package-visible height-fog evidence through `sample_desktop_runtime_game --require-environment-fog-evidence`, `environment_fog_status=ready`, `environment_fog_constants_binding=4`, and `environment_fog_constants_byte_size=256`. PR18 adds strict host/toolchain/env-gated Vulkan height-fog runtime readback proof using explicit SPIR-V artifacts and `VK_LAYER_KHRONOS_validation` instance-layer readiness. PR20 adds selected D3D12 cloud-layer package evidence, and PR21 adds selected D3D12 rain precipitation package evidence. It does not claim physical-sky Vulkan/package proof, height-fog Vulkan package readiness, editor authoring beyond existing rows, renderer/RHI cloud or precipitation execution, precipitation package readiness beyond selected D3D12 rain evidence, snow package readiness, Vulkan readiness, Metal readiness, broad optimization, or broad `environment_ready`.
 
 Active execution must keep this as one milestone with reviewable PR slices. Do not change validation recipes, package counters, optional OpenEXR/KTX dependency records, or broad environment readiness claims beyond the exact implementation evidence that has landed. `014-gameCodeGuidance.json` may only describe landed evidence and must preserve unsupported rows for missing package/runtime/backend proof.
 
@@ -561,9 +561,9 @@ Expected: Dependency and legal checks pass, or dependency bootstrap records a co
 - Create: `tests/shaders/environment_height_fog.hlsl`
 - Create: `tests/unit/renderer_environment_fog_policy_tests.cpp`
 
-- [x] **Step 1: Add RED fog policy tests**
+- [x] **Step 1: Add RED height-fog/aerial-perspective policy tests**
 
-The tests must prove `fog` is no longer only an enum value. Require depth input, finite density, valid height falloff, valid sky affect, valid anisotropy, shader evidence, and exact pass budget rows.
+The tests must prove height fog/aerial perspective is no longer only an enum value. Require depth input, finite density, valid height falloff, valid sky affect, valid anisotropy, shader evidence, and exact pass budget rows.
 
 - [x] **Step 2: Implement policy**
 
@@ -573,7 +573,7 @@ Use existing postprocess depth input foundations. PR7 adds policy/shader-contrac
 
 Add a focused D3D12 WARP-safe readback test proving fog changes at least two known depths differently. Do not use subjective screenshot comparison as the only proof.
 
-- [ ] **Step 4: Add Vulkan host-gated proof**
+- [x] **Step 4: Add Vulkan host-gated proof**
 
 Add a strict Vulkan proof guarded by explicit SPIR-V artifact environment variables and validation-layer readiness.
 
@@ -583,13 +583,17 @@ Add a strict Vulkan proof guarded by explicit SPIR-V artifact environment variab
 
 **2026-06-04 PR10 Task 9/16 Evidence:** GREEN adds selected D3D12 package-visible height-fog evidence for `sample_desktop_runtime_game`. The package target now emits `shaders/sample_desktop_runtime_game_environment_fog.ps.dxil` from the reviewed `height_fog_ps_main` shader, `Win32DesktopPresentation` owns the fog constant buffer privately, `evaluate_win32_desktop_presentation_environment_fog` fail-closes missing D3D12 selection, depth input, postprocess execution, constant-buffer readiness, and pass-count evidence, and installed validation accepts `--require-environment-fog-evidence` only when `environment_fog_status=ready`, `environment_fog_ready=1`, `environment_fog_selected_backend=d3d12`, `environment_fog_depth_input_ready=1`, `environment_fog_constant_buffer_ready=1`, `environment_fog_constants_binding=4`, `environment_fog_constants_byte_size=256`, `environment_fog_postprocess_passes_ok=1`, `postprocess_policy_fog_effect=1`, and `postprocess_d3d12_execution_passes_ok=1` are present. Source-tree smoke and `tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders` with the fog smoke args passed on 2026-06-04. This is selected D3D12 height-fog package evidence only; it does not claim height-fog Vulkan execution proof, physical-sky package proof, volumetric fog, cloud/rain readiness, Metal readiness, backend parity, broad optimization, or broad `environment_ready`.
 
+**2026-06-04 PR18 Task 9 Evidence:** GREEN adds strict host/toolchain/env-gated Vulkan height-fog runtime proof without promoting a package-visible Vulkan fog claim. `VulkanInstanceCreateDesc` now has explicit required/optional instance-layer rows, `VulkanInstanceCreatePlan` reports `enabled_layers`, `VulkanRuntimeInstanceCapabilityProbeResult` reports enumerated `instance_layers`, `vkEnumerateInstanceLayerProperties` is part of global command readiness, and `VkInstanceCreateInfo::ppEnabledLayerNames` is populated from the selected plan so `enable_validation=true` requires `VK_LAYER_KHRONOS_validation` before runtime proof executes. `shaders/environment/height_fog.hlsl` adds guarded Vulkan binding annotations for the existing scene-color, scene-depth, sampler, and constant-buffer contract. `tools/compile-vulkan-height-fog-test-spirv.ps1` compiles the depth-write and height-fog HLSL fixtures to Vulkan 1.3 SPIR-V and validates them with `spirv-val`, then prints `MK_VULKAN_TEST_HEIGHT_FOG_DEPTH_VERTEX_SPV`, `MK_VULKAN_TEST_HEIGHT_FOG_DEPTH_FRAGMENT_SPV`, `MK_VULKAN_TEST_HEIGHT_FOG_VERTEX_SPV`, and `MK_VULKAN_TEST_HEIGHT_FOG_FRAGMENT_SPV` for the configured unit proof. The `MK_backend_scaffold_tests` height-fog lane writes known scene depth, transitions depth/color through the public RHI resource states, samples both inputs in the height-fog pass, reads back pixels, and asserts near/far depth fog deltas plus descriptor, sampler, draw, copy, and buffer-write counters. Official context was re-checked through Context7 `/khronosgroup/vulkan-docs` for `vkEnumerateInstanceLayerProperties`, `VkInstanceCreateInfo::enabledLayerCount` / `ppEnabledLayerNames`, `VK_LAYER_KHRONOS_validation`, and synchronization2 depth-attachment-write to fragment-shader-read barriers. This is host/toolchain/env-gated Vulkan runtime readback evidence only; it does not claim height-fog Vulkan package readiness, physical-sky Vulkan/package proof, Metal readiness, backend parity, broad Vulkan readiness, broad optimization, or broad `environment_ready`.
+
 ## Task 10: Volumetric Fog
 
 **Files:**
 - Create: `engine/renderer/include/mirakana/renderer/volumetric_fog_policy.hpp`
 - Create: `engine/renderer/src/volumetric_fog_policy.cpp`
 - Create: `shaders/environment/volumetric_fog.hlsl`
+- Create: `tests/shaders/environment_volumetric_fog.hlsl`
 - Create: `tests/unit/renderer_volumetric_fog_policy_tests.cpp`
+- Update: `tests/unit/d3d12_rhi_tests.cpp`
 
 - [x] **Step 1: Add RED volumetric fog policy tests**
 
@@ -599,11 +603,13 @@ Require froxel grid dimensions, slice count, range, density, albedo, anisotropy,
 
 Add CPU-side policy rows first. The first PR for this task may stop at value planning and validation if GPU execution is too large for one review.
 
-- [ ] **Step 3: Add execution proof**
+- [x] **Step 3: Add execution proof**
 
 Promote to ready only after D3D12 readback or package evidence proves volumetric fog output. Vulkan remains strict-gated; Metal remains Apple-host-gated.
 
 **2026-06-04 PR11 Task 10 Evidence:** GREEN adds backend-neutral `VolumetricFogPolicyDesc`, `VolumetricFogFroxelGridDesc`, `VolumetricFogTemporalDesc`, `VolumetricFogLocalVolumeDesc`, `VolumetricFogPolicyPlan`, `plan_volumetric_fog_policy`, `has_volumetric_fog_diagnostic`, stable scene-depth bindings at `2/3`, stable constant binding `5`, froxel grid rows, quality/temporal rows, depth-input rows, local fog volume rows, and fail-closed diagnostics for unsupported quality tiers, invalid froxel grids, invalid range/density/albedo/anisotropy/history-weight values, invalid local volumes, missing scene depth, missing shader-contract evidence, missing execution evidence, unsupported froxel allocation, unsupported backend execution, and native-handle claims. `shaders/environment/volumetric_fog.hlsl` and `tests/shaders/environment_volumetric_fog.hlsl` add a reviewed compute-shader contract source for density, albedo, anisotropy, froxel slice range, temporal history weight, and scene-depth binding metadata. Official context was re-checked for Unreal Volumetric Fog global/local controls, view distance and grid-size/performance controls, and temporal reprojection (`https://dev.epicgames.com/documentation/en-us/unreal-engine/volumetric-fog-in-unreal-engine`), Unity HDRP Volumetric Lighting quality/reprojection guidance (`https://docs.unity.cn/Packages/com.unity.render-pipelines.high-definition%4016.0/manual/Volumetric-Lighting.html`), and Godot Volumetric Fog/FogVolume density, albedo, anisotropy, length, froxel volume size/depth, temporal reprojection, and local volume guidance (`https://docs.godotengine.org/en/stable/tutorials/3d/volumetric_fog.html`). Focused validation passed for `MK_renderer_volumetric_fog_policy_tests`, `tools/check-tidy.ps1 -Files engine/renderer/src/volumetric_fog_policy.cpp,tests/unit/renderer_volumetric_fog_policy_tests.cpp`, `tools/check-format.ps1`, DXC DXIL compute compilation, DXC Vulkan SPIR-V compute compilation, and `spirv-val`. This is volumetric-fog value planning and shader-contract evidence only; it does not allocate froxel volumes, execute renderer/RHI backends, add D3D12 readback/package evidence, prove Vulkan runtime execution, prove Metal readiness, claim cloud/rain readiness, claim backend parity, claim broad optimization, or claim broad `environment_ready`.
+
+**2026-06-04 PR19 Task 10 Evidence:** GREEN adds `volumetric_fog_constants_byte_size`, `pack_volumetric_fog_constants`, stable froxel output storage-buffer binding `13`, and a selected D3D12 WARP-safe volumetric-fog compute readback proof. `shaders/environment/volumetric_fog.hlsl` now samples scene depth with `SampleLevel`, dispatches the reviewed compute contract through `SV_DispatchThreadID`, and writes one `uint32` proof value per froxel through `RWByteAddressBuffer volumetric_fog_output_buffer`. `MK_d3d12_rhi_tests` renders known near/far scene-depth regions, binds sampled depth, sampler, packed 256-byte constants, and storage-buffer output through compute-visible descriptor rows, dispatches the reviewed fixture, reads back the froxel buffer, and asserts both depth-region and z-slice differences. Official context was re-checked for Microsoft D3D12 root signatures and compute root signatures (`https://learn.microsoft.com/en-us/windows/win32/direct3d12/root-signatures-overview`), D3D12 descriptor/resource binding and CBV/SRV/UAV/sampler descriptor rows (`https://learn.microsoft.com/en-us/windows/win32/direct3d12/resource-binding-flow-of-control`), `ID3D12GraphicsCommandList::Dispatch` compute execution (`https://learn.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12graphicscommandlist-dispatch`), HLSL `numthreads` (`https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/sm5-attributes-numthreads`), HLSL `SV_DispatchThreadID` (`https://learn.microsoft.com/en-us/windows/win32/direct3dhlsl/sv-dispatchthreadid`), and Context7 `/microsoft/directxshadercompiler` HLSL resource register / `RWByteAddressBuffer` DXIL-SPIR-V mapping. Focused validation passed for `MK_renderer_volumetric_fog_policy_tests`, `MK_d3d12_rhi_tests`, `tools/check-shader-toolchain.ps1` diagnostic readiness, DXC DXIL compute compilation, DXC Vulkan SPIR-V compute compilation, and `spirv-val --target-env vulkan1.3`. This is selected D3D12 volumetric-fog renderer/RHI execution evidence only; it does not add package-visible volumetric-fog counters, Vulkan runtime/package proof, Metal readiness, froxel texture allocation, temporal accumulation, cloud/rain readiness, backend parity, broad optimization, or broad `environment_ready`.
 
 ## Task 11: Cloud Layer
 
@@ -624,11 +630,13 @@ Require 2D cloud coverage, opacity, altitude, wind velocity, flow-map asset refe
 
 This is the low-cost weather sky path. It should be usable without volumetric clouds and should be the default for lower quality tiers.
 
-- [ ] **Step 3: Package evidence**
+- [x] **Step 3: Package evidence**
 
 Add package status fields only when the selected sample proves the cloud layer path through a render/readback or strict smoke lane.
 
 **2026-06-04 PR12 Task 11 Evidence:** GREEN adds `MK_environment` cloud-layer value validation through `EnvironmentCloudLayerDesc`, `EnvironmentCloudLayerMode`, `EnvironmentCloudIblContributionMode`, `EnvironmentCloudLayerValidationResult`, `validate_environment_cloud_layer`, `is_valid_environment_cloud_layer`, and `has_environment_cloud_layer_diagnostic` for cheap 2D equirectangular sky clouds. `MK_renderer` adds `CloudLayerPolicyDesc`, `CloudLayerPolicyPlan`, texture/visual/IBL/shader-contract/quality rows, stable cloud-map binding `6`, flow-map binding `7`, sampler binding `6`, constants binding `6`, and fail-closed diagnostics for invalid environment rows, unsupported quality tiers, missing shader/package/execution evidence, unsupported texture upload, backend execution, native handles, and volumetric cloud claims. `shaders/environment/cloud_layer.hlsl` and `tests/shaders/environment_cloud_layer.hlsl` add a reviewed LatLong cloud-map + flow-map HLSL contract for the low-cost path. Official context was re-checked for Unity HDRP Cloud Layer as a 2D LatLong texture animated with a flowmap (`https://docs.unity.cn/Packages/com.unity.render-pipelines.high-definition%4016.0/manual/create-simple-clouds-cloud-layer`), Unreal Volumetric Cloud as a separate ray-marched 3D volume material path with quality/performance implications (`https://dev.epicgames.com/documentation/unreal-engine/volumetric-cloud-component-in-unreal-engine?lang=en-US`), and Context7 `/godotengine/godot-docs` ProceduralSkyMaterial `sky_cover` guidance for sky-layer overlays. Focused validation passed for `MK_environment_cloud_tests`, `MK_renderer_cloud_layer_policy_tests`, `tools/check-tidy.ps1 -Files engine/environment/src/cloud_layer.cpp,engine/renderer/src/cloud_layer_policy.cpp,tests/unit/environment_cloud_tests.cpp,tests/unit/renderer_cloud_layer_policy_tests.cpp`, `tools/check-format.ps1`, DXC DXIL vertex/pixel compilation, DXC Vulkan SPIR-V vertex/pixel compilation, and `spirv-val`. This is cloud-layer value planning and shader-contract evidence only; it does not upload textures, execute renderer/RHI backends, add D3D12 readback/package evidence, prove Vulkan runtime execution, prove Metal readiness, claim volumetric clouds, claim rain readiness, claim backend parity, claim broad optimization, or claim broad `environment_ready`.
+
+**2026-06-04 PR20 Task 11 Evidence:** GREEN adds selected `sample_desktop_runtime_game` D3D12 cloud-layer package evidence through `--require-cloud-layer-package-evidence`. The Win32 runtime host now exposes `evaluate_win32_desktop_presentation_cloud_layer`, `Win32DesktopPresentationCloudLayerReport`, package-visible `cloud_layer_*` report counters, and a strict package texture-ref check against the existing first-party cooked `sample/desktop-runtime/texture` package record before promoting Cloud Layer policy readiness. The installed package smoke reports `cloud_layer_status=ready`, `cloud_layer_ready=1`, `cloud_layer_selected_backend=d3d12`, shader-contract/package/execution evidence ready, stable cloud-map/flow-map/sampler/constants binding slots `6/7/6/6`, one shared package texture policy row, one visual/IBL/shader-contract/quality row each, LatLong shader-contract flow-map sampling intent, `cloud_layer_diagnostics=0`, and zero texture upload, backend invocation, native-handle, and volumetric-cloud counters. Official context was re-checked for Unity HDRP Cloud Layer as a 2D LatLong + flowmap cloud path, Unreal Volumetric Cloud as a separate 3D volume path, Context7 `/godotengine/godot-docs` sky/cloud guidance, and Microsoft D3D12 resource binding/root-signature guidance before keeping this as package-visible policy evidence rather than renderer execution. Focused validation passed for `MK_runtime_host_win32_public_api_compile`, installed `sample_desktop_runtime_game` cloud-layer smoke, and `tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders` with the Cloud Layer smoke args. This is selected D3D12 package-visible Cloud Layer evidence only; it does not prove a distinct flow-map package asset, upload cloud textures, draw clouds through renderer/RHI backends, infer Vulkan or Metal readiness, claim volumetric clouds, claim backend parity, claim broad optimization, or claim broad `environment_ready`.
 
 ## Task 12: Weather And Precipitation
 
@@ -668,11 +676,13 @@ Plan camera-near precipitation, surface wetness, splash/ripple intent, and roof/
 
 Add value-only rows for rain loop, indoor muffling, thunder delay, and storm intensity handoff to `MK_audio`. Do not play audio in `MK_environment`.
 
-- [ ] **Step 5: Evidence**
+- [x] **Step 5: Evidence**
 
 Promote `environment_precipitation_status=ready` only after package-visible counters prove selected rain or snow rows and zero native handle leakage.
 
 **2026-06-04 PR13 Task 12 Evidence:** GREEN adds `MK_environment` weather/precipitation value planning through `EnvironmentPrecipitationPlanDesc`, `EnvironmentWeatherRow`, `EnvironmentPrecipitationParticleRow`, `EnvironmentSurfaceWetnessRow`, `EnvironmentPrecipitationOcclusionRow`, `EnvironmentPrecipitationAudioHandoffRow`, `EnvironmentPrecipitationPlan`, `plan_environment_precipitation`, `has_environment_precipitation_diagnostic`, and `has_environment_precipitation_audio_cue`. The plan emits deterministic rows for `clear`, `cloudy`, `rain`, `storm`, `snow`, `foggy`, `dust`, and `ash`, including rain/storm wetness rows, camera-near particle intent rows, scene-geometry occlusion rows, and value-only audio handoff rows for rain loops, indoor muffling, thunder delay, storm intensity, snow, dust, and ash without invoking audio playback. `MK_renderer` adds `PrecipitationPolicyDesc`, `PrecipitationPolicyPlan`, shader/wetness/audio/quality rows, stable particle texture binding `8`, scene-depth texture binding `9`, sampler binding `8`, constants binding `7`, and fail-closed diagnostics for invalid environment plans, unsupported quality tiers, missing shader/package/execution evidence, particle-buffer upload, backend execution, native handles, material mutation, and audio playback. `shaders/environment/precipitation.hlsl` and `tests/shaders/environment_precipitation.hlsl` add a reviewed HLSL vertex/pixel shader contract for camera-near precipitation sprites and scene-depth occlusion. Official context was re-checked for Unity Visual Effect Graph particle contexts as spawn/initialize/update/output stages (`https://docs.unity3d.com/Packages/com.unity.visualeffectgraph%4017.0/manual/Contexts.html`), Unreal Niagara systems/emitters/modules/parameters and render groups (`https://dev.epicgames.com/documentation/en-us/unreal-engine/overview-of-niagara-effects-for-unreal-engine`), Unity HDRP Decal Projector bounds/material projection behavior for wet-surface intent (`https://docs.unity3d.com/Packages/com.unity.render-pipelines.high-definition%4017.0/manual/decal-projector-reference.html`), and Context7 plus Godot official docs for `GPUParticles3D` / `ParticleProcessMaterial` particle material, shader, collision, and physics properties (`https://docs.godotengine.org/en/stable/classes/class_gpuparticles3d.html`, `https://docs.godotengine.org/en/stable/classes/class_particleprocessmaterial.html`). Focused validation passed for `MK_environment_weather_tests`, `MK_renderer_precipitation_policy_tests`, `tools/check-tidy.ps1 -Files engine/environment/src/weather.cpp,engine/renderer/src/precipitation_policy.cpp,tests/unit/environment_weather_tests.cpp,tests/unit/renderer_precipitation_policy_tests.cpp`, `tools/check-format.ps1`, `tools/check-shader-toolchain.ps1` diagnostic readiness, DXC DXIL vertex/pixel compilation, DXC Vulkan SPIR-V vertex/pixel compilation, and `spirv-val`. This is weather/precipitation value planning and shader-contract evidence only; it does not upload particle buffers, mutate materials, play audio, execute renderer/RHI/audio backends, add D3D12 readback/package evidence, prove Vulkan runtime execution, prove Metal readiness, claim precipitation ready counters, claim backend parity, claim broad optimization, or claim broad `environment_ready`.
+
+**2026-06-04 PR21 Task 12 Evidence:** GREEN promotes only the selected `sample_desktop_runtime_game` D3D12 rain precipitation package lane through `--require-environment-precipitation-package-evidence`. The Win32 runtime host exposes `evaluate_win32_desktop_presentation_environment_precipitation`, `Win32DesktopPresentationEnvironmentPrecipitationReport`, `Win32DesktopPresentationEnvironmentPrecipitationStatus`, package-visible `environment_precipitation_*` report counters, stable precipitation binding slots `8/9/8/7`, and a strict package texture-ref check against the existing first-party cooked `sample/desktop-runtime/texture` package record before promoting policy readiness. The installed package smoke reports `environment_precipitation_status=ready`, `environment_precipitation_ready=1`, `environment_precipitation_selected_backend=d3d12`, `weather=storm`, `kind=rain`, shader-contract/package/execution evidence ready, camera-near particle and scene-depth occlusion flags, one weather/particle/occlusion/wetness/shader/quality row, four audio handoff rows, `environment_precipitation_diagnostics=0`, and zero particle-buffer upload, backend invocation, native-handle, material-mutation, and audio-playback counters. Official context was re-checked for Unity Visual Effect Graph particle contexts, Unreal Niagara systems/renderers, Unity HDRP Decal Projector wet-surface-adjacent behavior, and Context7/Godot `GPUParticles3D`, `ParticleProcessMaterial`, and RenderingServer particle/draw-pass separation before keeping this as package-visible policy evidence rather than renderer/RHI particle execution. Focused validation passed for `MK_runtime_host_win32_public_api_compile`, `sample_desktop_runtime_game`, installed `sample_desktop_runtime_game` precipitation smoke, and `tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders` with the precipitation smoke args. This is selected D3D12 package-visible rain precipitation evidence only; it does not upload particle buffers, draw particles through renderer/RHI backends, mutate materials, play audio, infer Vulkan or Metal readiness, claim snow package readiness, claim backend parity, claim broad optimization, or claim broad `environment_ready`.
 
 ## Task 13: Volumetric Clouds And Storm Lighting
 
@@ -680,23 +690,26 @@ Promote `environment_precipitation_status=ready` only after package-visible coun
 - Create: `engine/renderer/include/mirakana/renderer/volumetric_cloud_policy.hpp`
 - Create: `engine/renderer/src/volumetric_cloud_policy.cpp`
 - Create: `shaders/environment/volumetric_clouds.hlsl`
+- Create: `tests/shaders/environment_volumetric_clouds.hlsl`
 - Create: `tests/unit/renderer_volumetric_cloud_tests.cpp`
 
-- [ ] **Step 1: Re-check official cloud sources**
+- [x] **Step 1: Re-check official cloud sources**
 
 Re-check Unreal Volumetric Clouds and Unity HDRP clouds before selecting property names and quality budgets.
 
-- [ ] **Step 2: Add RED cloud policy tests**
+- [x] **Step 2: Add RED cloud policy tests**
 
 Require weather map, coverage, density, shape noise reference, erosion noise reference, altitude range, wind, lighting source count, raymarch primary steps, raymarch light steps, temporal reprojection, and cloud shadow diagnostics.
 
-- [ ] **Step 3: Implement policy rows**
+- [x] **Step 3: Implement policy rows**
 
 Add policy rows that support at most two atmospheric directional lights, matching the sun/moon structure. Reject extra atmospheric lights deterministically.
 
-- [ ] **Step 4: Add storm rows**
+- [x] **Step 4: Add storm rows**
 
 Plan lightning flash intensity, lightning direction, thunder delay, cloud darkening, precipitation boost, wind gusts, and exposure response as value rows. Renderer and audio execution remain separate adapter work within this task's evidence boundary.
+
+**2026-06-04 PR14 Task 13 Evidence:** GREEN adds backend-neutral `VolumetricCloudPolicyDesc`, `VolumetricCloudPolicyPlan`, weather-map/shape-noise/erosion-noise rows, layer rows, lighting rows, raymarch rows, temporal rows, shadow rows, shader-contract rows, quality rows, storm rows, `plan_volumetric_cloud_policy`, `has_volumetric_cloud_diagnostic`, stable weather-map binding `10`, shape-noise binding `11`, erosion-noise binding `12`, sampler binding `10`, and constants binding `8`. The plan supports at most two atmospheric directional light rows, fails closed for invalid first-party asset references, coverage/density/altitude/wind/raymarch/temporal/shadow/storm values, missing shader-contract evidence, missing execution evidence for ready promotion, unsupported volume-texture upload, backend execution, native handles, audio playback, and precipitation execution. `shaders/environment/volumetric_clouds.hlsl` and `tests/shaders/environment_volumetric_clouds.hlsl` add a reviewed HLSL vertex/pixel shader contract for weather-map, shape-noise, erosion-noise, altitude shaping, bounded raymarch, and storm-lighting response. Official context was re-checked for Unreal Volumetric Clouds (`https://dev.epicgames.com/documentation/unreal-engine/volumetric-cloud-component-in-unreal-engine?lang=en-US`), Unity HDRP Volumetric Clouds (`https://docs.unity.cn/Packages/com.unity.render-pipelines.high-definition%4017.0/manual/Override-Volumetric-Clouds.html`), Godot volumetric fog/cloud-adjacent volume controls through Context7, and Microsoft HLSL semantics/resource binding. Focused validation passed for `MK_renderer_volumetric_cloud_tests`, `tools/check-tidy.ps1 -Files engine/renderer/src/volumetric_cloud_policy.cpp,tests/unit/renderer_volumetric_cloud_tests.cpp`, `tools/check-format.ps1`, `tools/check-shader-toolchain.ps1` diagnostic readiness, DXC DXIL vertex/pixel compilation, DXC Vulkan SPIR-V vertex/pixel compilation, and `spirv-val`. This is volumetric-cloud value planning and shader-contract evidence only; it does not upload volume textures, execute renderer/RHI/audio/precipitation backends, add D3D12 readback/package evidence, prove Vulkan runtime execution, prove Metal readiness, claim volumetric-cloud ready counters, claim backend parity, claim broad optimization, or claim broad `environment_ready`.
 
 ## Task 14: Time Of Day And Weather Blending
 
@@ -705,77 +718,78 @@ Plan lightning flash intensity, lightning direction, thunder delay, cloud darken
 - Create: `engine/environment/src/time_of_day.cpp`
 - Create: `tests/unit/environment_time_of_day_tests.cpp`
 
-- [ ] **Step 1: Add RED time-of-day tests**
+- [x] **Step 1: Add RED time-of-day tests**
 
 Require deterministic sun direction, moon direction, normalized day time, profile blend weights, exposure intent, weather transition rows, and stable replay hash.
 
-- [ ] **Step 2: Implement value planning**
+- [x] **Step 2: Implement value planning**
 
 Add:
 
 ```cpp
-struct EnvironmentTimeOfDayRequest;
+struct EnvironmentTimeOfDayPlanDesc;
 struct EnvironmentTimeOfDayPlan;
 
 [[nodiscard]] EnvironmentTimeOfDayPlan
-plan_environment_time_of_day(const EnvironmentTimeOfDayRequest& request);
+plan_environment_time_of_day(const EnvironmentTimeOfDayPlanDesc& desc);
 ```
 
-- [ ] **Step 3: Keep gameplay ownership clear**
+- [x] **Step 3: Keep gameplay ownership clear**
 
 The planner returns environment values. It does not tick game state, mutate scenes, or own a scheduler.
+
+**2026-06-04 PR15 Task 14 Evidence:** GREEN adds backend-neutral `EnvironmentTimeOfDayPlanDesc`, `EnvironmentWeatherBlendLayerDesc`, `EnvironmentWeatherTransitionDesc`, `EnvironmentExposureIntentDesc`, `EnvironmentTimeOfDayPlan`, celestial sun/moon rows, profile blend rows, weather transition rows, exposure intent rows, deterministic `replay_hash`, `plan_environment_time_of_day`, and `has_environment_time_of_day_diagnostic`. The planner maps normalized day time to deterministic sun/moon atmospheric light directions, keeps sun/moon as value rows with atmosphere light indices `0/1`, normalizes profile blend weights, computes linear or smoothstep weather transition weights, records fixed/auto exposure EV100 intent, and fails closed for invalid day time, moon phase, profile rows, blend weights, transition duration/elapsed values, unsupported blend modes, invalid exposure limits/adaptation, backend execution, native-handle claims, and profile mutation. Official context was re-checked for Unreal Sky Atmosphere time-of-day and two atmospheric directional lights (`https://dev.epicgames.com/documentation/en-us/unreal-engine/sky-atmosphere?application_version=4.27`), Unreal Directional Light atmosphere/cloud sun/moon indices (`https://dev.epicgames.com/documentation/unreal-engine/directional-lights-in-unreal-engine?lang=en-US`), Unity HDRP Volume/Profile blending (`https://docs.unity.cn/Packages/com.unity.render-pipelines.high-definition%4017.0/manual/understand-volumes.html`), Unity HDRP Physically Based Sky (`https://docs.unity.cn/Packages/com.unity.render-pipelines.high-definition%4017.0/manual/create-a-physically-based-sky.html`), Unity HDRP Exposure EV100/adaptation (`https://docs.unity.cn/Packages/com.unity.render-pipelines.high-definition%4017.0/manual/reference-override-exposure.html`), and Context7 `/godotengine/godot-docs` Environment sky / ambient light / sky bake guidance. Focused validation passed for `MK_environment_time_of_day_tests`, `tools/check-tidy.ps1 -Files engine/environment/src/time_of_day.cpp,tests/unit/environment_time_of_day_tests.cpp`, and `tools/check-format.ps1`. This is time-of-day and weather-blending value planning only; it does not tick game state, mutate scenes or profiles, execute renderer/RHI/audio backends, add package-visible time/weather counters, prove D3D12/Vulkan/Metal runtime execution, claim weather-blending readiness, claim backend parity, claim broad optimization, or claim broad `environment_ready`.
 
 ## Task 15: Editor Authoring Surface
 
 **Files:**
-- Modify: `editor/core/include/mirakana/editor_core/environment_authoring.hpp`
+- Create: `editor/core/include/mirakana/editor/environment_authoring.hpp`
 - Create: `editor/core/src/environment_authoring.cpp`
-- Modify: `editor/src/editor_app.cpp`
+- Modify: `editor/src/native_editor_app.cpp`
+- Modify: `editor/src/native_editor_app.hpp`
 - Create: `tests/unit/editor_environment_tests.cpp`
 
-- [ ] **Step 1: Add editor-core model tests**
+- [x] **Step 1: Add editor-core model tests**
 
 Require deterministic inspector rows for sky, sun, moon, atmosphere, fog, cloud layer, volumetric clouds, precipitation, weather presets, and quality tier.
 
-- [ ] **Step 2: Add authoring document**
+- [x] **Step 2: Add authoring document**
 
 Add an editor-core document over `GameEngine.EnvironmentProfile.v1` text IO using `ITextStore`, undo/redo, dirty tracking, validation diagnostics, and package registration review rows.
 
-- [ ] **Step 3: Add visible editor panel**
+- [x] **Step 3: Add visible editor panel**
 
 Add a visible first-party retained `MK_editor` panel only after editor-core model tests pass. The editor panel must use `mirakana::ui` / `MK_ui_renderer` contracts and must not expose native renderer/RHI handles, reintroduce Dear ImGui or other UI middleware, or execute package scripts.
+
+**2026-06-04 PR16 Task 15 Evidence:** GREEN adds GUI-independent `MK_editor_core` environment authoring in `mirakana/editor/environment_authoring.hpp` with `EnvironmentAuthoringDocument`, deterministic `EnvironmentAuthoringInspectorModel` rows, validation diagnostics, `ITextStore` load/save over `GameEngine.EnvironmentProfile.v1`, `UndoStack` edit actions, dirty/revision tracking, environment package candidate rows, and package registration draft review rows. The native first-party shell integrates those rows into the existing Inspector rich-text/property surface through `native_editor_app`, keeping the existing panel count stable instead of adding a new dock panel. Official context was re-checked through Context7 and web docs for Unity UI Toolkit custom inspectors and `SerializedObject` data binding (`https://docs.unity.cn/2022.3/Documentation/Manual/UIE-HowTo-CreateCustomInspector.html`), Godot `EditorInspectorPlugin` / `add_inspector_plugin` (`https://docs.godotengine.org/en/4.3/tutorials/plugins/editor/inspector_plugins.html`), Unreal Environment Light Mixer (`https://dev.epicgames.com/documentation/en-us/unreal-engine/environment-light-mixer-in-unreal-engine`), and Unreal Light Mixer single-place editing (`https://dev.epicgames.com/documentation/en-us/unreal-engine/using-the-light-mixer-in-unreal-engine`). Focused validation passed for `MK_editor_environment_tests` build, `tools/ctest.ps1 --preset dev --output-on-failure -R MK_editor_environment_tests`, and `tools/check-tidy.ps1 -Files editor/core/src/environment_authoring.cpp,editor/src/native_editor_app.cpp,tests/unit/editor_environment_tests.cpp`; full `tools/validate.ps1` passed with 99/99 CTest tests. This is editor-core authoring and existing Inspector surfacing only; it does not execute renderer/RHI/audio backends, execute package scripts, mutate manifests, add new UI middleware, reintroduce Dear ImGui or SDL3, expose native handles, add package-visible environment counters, change validation recipes, claim editor productization beyond the reviewed rows, prove D3D12/Vulkan/Metal runtime execution, claim broad optimization, or claim broad `environment_ready`.
 
 ## Task 16: Package And Validation Evidence
 
 **Files:**
-- Modify: `tools/package-desktop-runtime.ps1`
 - Modify: `tools/validate-installed-desktop-runtime.ps1`
-- Modify: `tools/run-validation-recipe.ps1`
+- Modify: `tools/run-validation-recipe-plans.ps1`
+- Modify: `tools/check-validation-recipe-runner.ps1`
 - Modify: `games/sample_desktop_runtime_game/game.agent.json`
 - Modify: `games/sample_desktop_runtime_game/main.cpp`
 - Modify: `engine/agent/manifest.fragments/009-validationRecipes.json`
+- Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
 - Modify: `engine/agent/manifest.fragments/014-gameCodeGuidance.json`
 
-- [ ] **Step 1: Add smoke flags only for implemented phases**
+- [x] **Step 1: Add smoke flags only for implemented phases**
 
 Add flags such as:
 
 ```text
 --require-environment-profile
---require-environment-physical-sky
---require-environment-fog
---require-environment-cloud-layer
---require-environment-precipitation
---require-environment-volumetric-clouds
 ```
 
 Do not add a flag before its corresponding implementation and tests exist.
 
-- [ ] **Step 2: Validate installed output**
+- [x] **Step 2: Validate installed output**
 
-Installed validation must reject missing status rows, mismatched selected backend evidence, inferred Vulkan readiness, inferred Metal readiness, and broad environment-ready claims without narrow counters.
+Installed validation requires the selected environment profile package fields and rejects broad environment-ready claims without narrow counters. Selected D3D12 fog evidence remains separate from profile package evidence.
 
-- [ ] **Step 3: Compose manifest**
+- [x] **Step 3: Compose manifest**
 
 When agent-surface rows change, run:
 
@@ -785,6 +799,12 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
 ```
 
 Expected: composed manifest and AI integration checks pass.
+
+**2026-06-04 PR17 Task 16 Evidence:** GREEN targets the selected `sample_desktop_runtime_game` environment profile package boundary. The sample now ships source `GameEngine.EnvironmentProfile.v1` and cooked `GameEngine.CookedEnvironmentProfile.v1` profile rows, registers `AssetKind::environment_profile` in `source/assets/package.geassets`, references the cooked profile from the packaged runtime scene, and adds a `.geindex` `scene_environment_profile` dependency edge. The new `desktop-runtime-sample-game-environment-profile-package` recipe passes `--require-environment-profile`; installed validation expects `environment_profile_status=ready`, `environment_profile_ready=1`, package file/index-entry/scene-reference/scene-required/scene-dependency/dependency-edge counters, `environment_profile_source_parsing=0`, and zero profile diagnostics. Context7 `/microsoftdocs/powershell-docs` and Microsoft Learn `about_Pwsh` / `about_Operators` were re-checked for `pwsh -Command` plus call-operator `&` script invocation before keeping the fixed reviewed PowerShell wrapper. This is cooked package/index/scene dependency evidence only; it does not execute renderer/RHI backends, infer Vulkan or Metal readiness, claim rain/snow/storm readiness, claim package-visible environment authoring counters, claim broad optimization, or claim broad `environment_ready`.
+
+**2026-06-04 PR20 Task 16 Evidence:** GREEN registers `desktop-runtime-sample-game-cloud-layer-package` in `game.agent.json`, `engine/agent/manifest.fragments/009-validationRecipes.json`, `aiOperableProductionLoop.run-validation-recipe`, the reviewed recipe-runner argv builder, and static checks. Installed validation now recognizes `--require-cloud-layer-package-evidence` and requires exact `cloud_layer_*` counters for selected D3D12 package evidence while preserving unsupported distinct flow-map package asset, texture-upload, backend-invocation, native-handle, volumetric-cloud, Vulkan, Metal, backend-parity, broad-optimization, and broad `environment_ready` claims.
+
+**2026-06-04 PR21 Task 16 Evidence:** GREEN registers `desktop-runtime-sample-game-environment-precipitation-package` in `game.agent.json`, `engine/agent/manifest.fragments/009-validationRecipes.json`, `aiOperableProductionLoop.run-validation-recipe`, the reviewed recipe-runner argv builder, and static checks. Installed validation now recognizes `--require-environment-precipitation-package-evidence` and requires exact `environment_precipitation_*` counters for selected D3D12 rain package evidence while preserving unsupported particle-buffer upload, renderer/RHI backend invocation, material mutation, audio playback, Vulkan, Metal, snow package readiness, backend-parity, broad-optimization, and broad `environment_ready` claims.
 
 ## Task 17: Final Documentation Closeout
 
@@ -796,15 +816,15 @@ Expected: composed manifest and AI integration checks pass.
 - Modify: `docs/superpowers/plans/README.md`
 - Modify: `docs/superpowers/plans/2026-05-26-environment-system-v1.md`
 
-- [ ] **Step 1: Update current-truth docs**
+- [x] **Step 1: Update current-truth docs**
 
 Document only the phases that have actually landed. Keep host-gated and planned environment features separate from ready features.
 
-- [ ] **Step 2: Register active plan state**
+- [x] **Step 2: Register active plan state**
 
 If this plan becomes active, update the plan registry and manifest fragments in the same change. If it remains proposed, do not make it the `currentActivePlan`.
 
-- [ ] **Step 3: Run final validation**
+- [x] **Step 3: Run final validation**
 
 For C++/runtime/rendering/package changes, run:
 
@@ -813,6 +833,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 ```
 
 Expected: PASS, or a concrete missing-host/toolchain blocker is recorded.
+
+**2026-06-04 PR21 Task 17 Evidence:** Final validation passed for `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` with 19/19 independent static checks passing, diagnostic-only Metal/Apple host gates recorded, mobile packaging diagnostic-only gates recorded, build/test lanes passing, and 99/99 CTest tests passing. Focused evidence before full validation also passed for `tools/check-validation-recipe-runner.ps1`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-format.ps1`, `tools/cmake.ps1 --build --preset desktop-runtime --target MK_runtime_host_win32_public_api_compile sample_desktop_runtime_game`, `tools/ctest.ps1 --preset desktop-runtime --output-on-failure -R MK_runtime_host_win32_public_api_compile`, touched-source `tools/check-tidy.ps1 -Preset desktop-runtime -Files ...`, and the selected D3D12 precipitation package smoke with `--require-environment-precipitation-package-evidence`.
 
 ## Validation Matrix
 
@@ -825,8 +847,8 @@ Expected: PASS, or a concrete missing-host/toolchain blocker is recorded.
 | IBL | Cubemap policy tests, HDR dependency/legal checks if EXR/KTX is selected. |
 | Height fog | Depth-aware readback/package evidence, not only enum support. |
 | Volumetric fog | Froxel policy tests, D3D12 readback or package evidence. |
-| Cloud layer | Cheap cloud layer tests, package evidence for selected sample. |
-| Rain/snow/storm | Precipitation, wetness, occlusion, and audio handoff value tests. |
+| Cloud layer | Cheap cloud layer tests plus selected D3D12 package evidence for `sample_desktop_runtime_game`. |
+| Rain/snow/storm | Precipitation, wetness, occlusion, and audio handoff value tests plus selected D3D12 rain package evidence; snow and renderer/RHI execution need separate proof. |
 | Volumetric clouds | Raymarch quality budget tests, D3D12 proof, Vulkan strict gate. |
 | Editor | Editor-core retained model tests before visible first-party `MK_editor` panel claims. |
 | Package | Installed validation counters for each selected feature. |
@@ -850,6 +872,10 @@ Expected: PASS, or a concrete missing-host/toolchain blocker is recorded.
 15. PR 15: Time-of-day and weather blending.
 16. PR 16: Editor environment authoring.
 17. PR 17: Package validation recipes, manifest, docs, and final closeout.
+18. PR 18: Strict host-gated Vulkan height-fog runtime readback proof.
+19. PR 19: Selected D3D12 volumetric-fog compute/readback proof.
+20. PR 20: Selected D3D12 Cloud Layer package evidence.
+21. PR 21: Selected D3D12 rain precipitation package evidence.
 
 ## Completion Definition
 
