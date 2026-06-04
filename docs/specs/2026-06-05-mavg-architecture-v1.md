@@ -81,12 +81,14 @@ Non-responsibilities:
 - Third-party simplifier ownership.
 - Parent/error/fallback hierarchy, resident fallback ancestors, CPU selection, and visible-hole prevention; those belong to future runtime selection/streaming plans.
 
+The planned next detailed LoD milestone is `docs/superpowers/plans/2026-06-05-mavg-runtime-lod-milestone-v1.md`. It remains unselected until `mavg-asset-graph-v1` is reviewed/merged or explicitly superseded.
+
 ### Runtime Selection
 
-Future files should start in `MK_renderer`:
+The planned next files should start in `MK_renderer`:
 
-- `engine/renderer/include/mirakana/renderer/mavg_selection.hpp`
-- `engine/renderer/src/mavg_selection.cpp`
+- `engine/renderer/include/mirakana/renderer/mavg_lod_selection.hpp`
+- `engine/renderer/src/mavg_lod_selection.cpp`
 
 Responsibilities:
 
@@ -102,17 +104,20 @@ Non-responsibilities:
 
 ### Conventional Renderer Adoption
 
-Future files should start in `MK_runtime_rhi` and `MK_scene_renderer`:
+The next conventional path should avoid backend-specific GPU work and start in `MK_runtime`, `MK_runtime_rhi`, and `MK_scene_renderer` as separate reviewable steps:
 
+- `engine/runtime/include/mirakana/runtime/mavg_lod_residency.hpp`
+- `engine/runtime/src/mavg_lod_residency.cpp`
 - `engine/runtime_rhi/include/mirakana/runtime_rhi/mavg_upload.hpp`
 - `engine/runtime_rhi/src/mavg_upload.cpp`
-- `engine/scene_renderer/include/mirakana/scene_renderer/mavg_scene_renderer.hpp`
-- `engine/scene_renderer/src/mavg_scene_renderer.cpp`
+- `engine/scene_renderer/include/mirakana/scene_renderer/mavg_scene_lod.hpp`
+- `engine/scene_renderer/src/mavg_scene_lod.cpp`
 
 Responsibilities:
 
+- Convert already-reviewed resident package/catalog evidence into MAVG resident page input.
 - Upload selected cluster payloads through existing upload/frame-graph paths.
-- Submit selected clusters through conventional indexed draw fallback.
+- Submit selected clusters through range-aware conventional indexed draw fallback.
 - Report MAVG counters without mesh shader dependency.
 
 ### GPU Culling And Indirect
