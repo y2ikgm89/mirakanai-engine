@@ -35,7 +35,7 @@
 namespace mirakana::rhi::vulkan {
 namespace {
 
-inline constexpr std::string_view debug_utils_extension_name = "VK_EXT_debug_utils";
+inline constexpr std::string_view validation_layer_name = "VK_LAYER_KHRONOS_validation";
 
 void record_queue_submit(RhiStats& stats, QueueKind queue, FenceValue fence) noexcept {
     ++stats.queue_event_sequence;
@@ -109,6 +109,8 @@ inline constexpr VulkanResult vulkan_incomplete = 5;
 inline constexpr VulkanResult vulkan_suboptimal = 1000001003;
 inline constexpr VulkanResult vulkan_error_out_of_date = -1000001004;
 inline constexpr std::size_t vulkan_max_extension_name_size = 256;
+inline constexpr std::size_t vulkan_max_layer_name_size = 256;
+inline constexpr std::size_t vulkan_max_layer_description_size = 256;
 inline constexpr std::uint32_t vulkan_queue_graphics_bit = 0x00000001U;
 inline constexpr std::uint32_t vulkan_queue_compute_bit = 0x00000002U;
 inline constexpr std::uint32_t vulkan_queue_transfer_bit = 0x00000004U;
@@ -316,6 +318,13 @@ using NativeVulkanSampler = std::uint64_t;
 struct NativeVulkanExtensionProperties {
     std::array<char, vulkan_max_extension_name_size> extension_name{};
     std::uint32_t spec_version;
+};
+
+struct NativeVulkanLayerProperties {
+    std::array<char, vulkan_max_layer_name_size> layer_name{};
+    std::uint32_t spec_version;
+    std::uint32_t implementation_version;
+    std::array<char, vulkan_max_layer_description_size> description{};
 };
 
 struct NativeVulkanExtent3D {
@@ -1041,6 +1050,8 @@ struct NativeVulkanComputePipelineCreateInfo {
 using VulkanEnumerateInstanceVersion = VulkanResult(MK_VULKAN_CALL*)(std::uint32_t*);
 using VulkanEnumerateInstanceExtensionProperties = VulkanResult(MK_VULKAN_CALL*)(const char*, std::uint32_t*,
                                                                                  NativeVulkanExtensionProperties*);
+using VulkanEnumerateInstanceLayerProperties = VulkanResult(MK_VULKAN_CALL*)(std::uint32_t*,
+                                                                             NativeVulkanLayerProperties*);
 using VulkanCreateInstance = VulkanResult(MK_VULKAN_CALL*)(const NativeVulkanInstanceCreateInfo*, const void*,
                                                            NativeVulkanInstance*);
 using VulkanDestroyInstance = void(MK_VULKAN_CALL*)(NativeVulkanInstance, const void*);
@@ -1203,6 +1214,7 @@ struct VulkanRuntimeGlobalCommands {
     VulkanGetInstanceProcAddr get_instance_proc_addr{nullptr};
     VulkanEnumerateInstanceVersion enumerate_instance_version{nullptr};
     VulkanEnumerateInstanceExtensionProperties enumerate_instance_extension_properties{nullptr};
+    VulkanEnumerateInstanceLayerProperties enumerate_instance_layer_properties{nullptr};
     VulkanCreateInstance create_instance{nullptr};
 };
 
@@ -1298,6 +1310,8 @@ resolve_runtime_global_commands(VulkanGetInstanceProcAddr get_instance_proc_addr
         reinterpret_cast<VulkanEnumerateInstanceVersion>(get_instance_proc_addr(nullptr, "vkEnumerateInstanceVersion"));
     commands.enumerate_instance_extension_properties = reinterpret_cast<VulkanEnumerateInstanceExtensionProperties>(
         get_instance_proc_addr(nullptr, "vkEnumerateInstanceExtensionProperties"));
+    commands.enumerate_instance_layer_properties = reinterpret_cast<VulkanEnumerateInstanceLayerProperties>(
+        get_instance_proc_addr(nullptr, "vkEnumerateInstanceLayerProperties"));
     commands.create_instance =
         reinterpret_cast<VulkanCreateInstance>(get_instance_proc_addr(nullptr, "vkCreateInstance"));
     return commands;
@@ -1313,6 +1327,10 @@ resolve_runtime_global_commands(VulkanGetInstanceProcAddr get_instance_proc_addr
 
 [[nodiscard]] std::string extension_name_from_property(const NativeVulkanExtensionProperties& property) {
     return string_from_fixed_char_array(property.extension_name.data(), property.extension_name.size());
+}
+
+[[nodiscard]] std::string layer_name_from_property(const NativeVulkanLayerProperties& property) {
+    return string_from_fixed_char_array(property.layer_name.data(), property.layer_name.size());
 }
 
 [[nodiscard]] VulkanPhysicalDeviceType physical_device_type_from_native(std::uint32_t native_type) noexcept {
@@ -1359,6 +1377,36 @@ enumerate_instance_extensions(VulkanEnumerateInstanceExtensionProperties enumera
         }
     }
     return extensions;
+}
+
+[[nodiscard]] std::vector<std::string>
+enumerate_instance_layers(VulkanEnumerateInstanceLayerProperties enumerate_instance_layer_properties) {
+    if (enumerate_instance_layer_properties == nullptr) {
+        return {};
+    }
+
+    std::uint32_t layer_count = 0;
+    auto result = enumerate_instance_layer_properties(&layer_count, nullptr);
+    if (!is_successful_enumeration_result(result) || layer_count == 0) {
+        return {};
+    }
+
+    std::vector<NativeVulkanLayerProperties> properties(layer_count);
+    result = enumerate_instance_layer_properties(&layer_count, properties.data());
+    if (!is_successful_enumeration_result(result)) {
+        return {};
+    }
+    properties.resize(layer_count);
+
+    std::vector<std::string> layers;
+    layers.reserve(properties.size());
+    for (const auto& property : properties) {
+        auto layer_name = layer_name_from_property(property);
+        if (!layer_name.empty()) {
+            layers.push_back(std::move(layer_name));
+        }
+    }
+    return layers;
 }
 
 [[nodiscard]] VulkanQueueCapability queue_capabilities_from_flags(std::uint32_t queue_flags) noexcept {
@@ -1591,14 +1639,15 @@ instance_command_requests_for_plan(const VulkanInstanceCreatePlan& plan) {
 
 [[nodiscard]] NativeVulkanInstanceCreateInfo
 make_native_instance_create_info(const NativeVulkanApplicationInfo& application_info,
-                                 const std::vector<const char*>& enabled_extensions) noexcept {
+                                 const std::vector<const char*>& enabled_extensions,
+                                 const std::vector<const char*>& enabled_layers) noexcept {
     return NativeVulkanInstanceCreateInfo{
         .s_type = vulkan_structure_type_instance_create_info,
         .next = nullptr,
         .flags = 0,
         .application_info = &application_info,
-        .enabled_layer_count = 0,
-        .enabled_layer_names = nullptr,
+        .enabled_layer_count = static_cast<std::uint32_t>(enabled_layers.size()),
+        .enabled_layer_names = enabled_layers.empty() ? nullptr : enabled_layers.data(),
         .enabled_extension_count = static_cast<std::uint32_t>(enabled_extensions.size()),
         .enabled_extension_names = enabled_extensions.empty() ? nullptr : enabled_extensions.data(),
     };
@@ -1695,6 +1744,7 @@ void append_device_command_availability(std::vector<VulkanCommandAvailability>& 
         .supported = false,
         .api_version = desc.api_version,
         .enabled_extensions = {},
+        .enabled_layers = {},
         .validation_enabled = false,
         .diagnostic = std::string{diagnostic},
     };
@@ -1803,6 +1853,17 @@ void append_extension_once(std::vector<std::string>& enabled_extensions, std::st
         return;
     }
     enabled_extensions.emplace_back(extension);
+}
+
+[[nodiscard]] bool layer_is_enabled(const std::vector<std::string>& enabled_layers, std::string_view layer) noexcept {
+    return std::ranges::any_of(enabled_layers, [layer](const auto& enabled) { return enabled == layer; });
+}
+
+void append_layer_once(std::vector<std::string>& enabled_layers, std::string_view layer) {
+    if (layer.empty() || layer_is_enabled(enabled_layers, layer)) {
+        return;
+    }
+    enabled_layers.emplace_back(layer);
 }
 
 [[nodiscard]] VulkanInstanceCreateDesc make_surface_instance_desc(VulkanInstanceCreateDesc desc, RhiHostPlatform host) {
@@ -2623,13 +2684,15 @@ void append_global_command_availability(std::vector<VulkanCommandAvailability>& 
     }
 }
 
-template <typename AvailableExtensions>
-[[nodiscard]] VulkanInstanceCreatePlan
-build_instance_create_plan_impl(const VulkanInstanceCreateDesc& desc, const AvailableExtensions& available_extensions) {
+template <typename AvailableExtensions, typename AvailableLayers>
+[[nodiscard]] VulkanInstanceCreatePlan build_instance_create_plan_impl(const VulkanInstanceCreateDesc& desc,
+                                                                       const AvailableExtensions& available_extensions,
+                                                                       const AvailableLayers& available_layers) {
     VulkanInstanceCreatePlan plan{
         .supported = false,
         .api_version = desc.api_version,
         .enabled_extensions = {},
+        .enabled_layers = {},
         .validation_enabled = false,
         .diagnostic = {},
     };
@@ -2661,9 +2724,33 @@ build_instance_create_plan_impl(const VulkanInstanceCreateDesc& desc, const Avai
         }
     }
 
+    for (const auto& required : desc.required_layers) {
+        if (required.empty()) {
+            continue;
+        }
+        if (!extension_is_available_in(available_layers, required)) {
+            plan.diagnostic = "missing required Vulkan instance layer: " + required;
+            return plan;
+        }
+        append_layer_once(plan.enabled_layers, required);
+    }
+
+    if (desc.enable_validation) {
+        if (!extension_is_available_in(available_layers, validation_layer_name)) {
+            plan.diagnostic = "missing required Vulkan instance layer: " + std::string{validation_layer_name};
+            return plan;
+        }
+        append_layer_once(plan.enabled_layers, validation_layer_name);
+    }
+
+    for (const auto& optional : desc.optional_layers) {
+        if (extension_is_available_in(available_layers, optional)) {
+            append_layer_once(plan.enabled_layers, optional);
+        }
+    }
+
     plan.supported = true;
-    plan.validation_enabled =
-        desc.enable_validation && extension_is_enabled(plan.enabled_extensions, debug_utils_extension_name);
+    plan.validation_enabled = desc.enable_validation && layer_is_enabled(plan.enabled_layers, validation_layer_name);
     plan.diagnostic = "Vulkan instance create plan ready";
     return plan;
 }
@@ -6739,13 +6826,15 @@ VulkanDeviceSelection select_physical_device(const std::vector<VulkanPhysicalDev
 }
 
 VulkanInstanceCreatePlan build_instance_create_plan(const VulkanInstanceCreateDesc& desc,
-                                                    std::initializer_list<std::string_view> available_extensions) {
-    return build_instance_create_plan_impl(desc, available_extensions);
+                                                    std::initializer_list<std::string_view> available_extensions,
+                                                    std::initializer_list<std::string_view> available_layers) {
+    return build_instance_create_plan_impl(desc, available_extensions, available_layers);
 }
 
 VulkanInstanceCreatePlan build_instance_create_plan(const VulkanInstanceCreateDesc& desc,
-                                                    const std::vector<std::string>& available_extensions) {
-    return build_instance_create_plan_impl(desc, available_extensions);
+                                                    const std::vector<std::string>& available_extensions,
+                                                    const std::vector<std::string>& available_layers) {
+    return build_instance_create_plan_impl(desc, available_extensions, available_layers);
 }
 
 VulkanLogicalDeviceCreatePlan
@@ -7180,6 +7269,7 @@ std::vector<VulkanCommandRequest> vulkan_backend_command_requests() {
         {.name = "vkGetInstanceProcAddr", .scope = VulkanCommandScope::loader, .required = true},
         {.name = "vkEnumerateInstanceVersion", .scope = VulkanCommandScope::global, .required = true},
         {.name = "vkEnumerateInstanceExtensionProperties", .scope = VulkanCommandScope::global, .required = true},
+        {.name = "vkEnumerateInstanceLayerProperties", .scope = VulkanCommandScope::global, .required = true},
         {.name = "vkCreateInstance", .scope = VulkanCommandScope::global, .required = true},
         {.name = "vkDestroyInstance", .scope = VulkanCommandScope::instance, .required = true},
         {.name = "vkEnumeratePhysicalDevices", .scope = VulkanCommandScope::instance, .required = true},
@@ -7490,6 +7580,7 @@ probe_runtime_instance_capabilities(const VulkanLoaderProbeDesc& loader_desc,
         .global = std::move(global),
         .api_version = {},
         .instance_extensions = {},
+        .instance_layers = {},
         .instance_plan = {},
     };
 
@@ -7512,7 +7603,8 @@ probe_runtime_instance_capabilities(const VulkanLoaderProbeDesc& loader_desc,
     const auto get_instance_proc_addr = reinterpret_cast<VulkanGetInstanceProcAddr>(
         GetProcAddress(library, std::string{loader_desc.get_instance_proc_addr_symbol}.c_str()));
     const auto commands = resolve_runtime_global_commands(get_instance_proc_addr);
-    if (commands.enumerate_instance_version == nullptr || commands.enumerate_instance_extension_properties == nullptr) {
+    if (commands.enumerate_instance_version == nullptr || commands.enumerate_instance_extension_properties == nullptr ||
+        commands.enumerate_instance_layer_properties == nullptr) {
         FreeLibrary(library);
         result.instance_plan =
             make_runtime_instance_failure(instance_desc, "Vulkan runtime global commands are incomplete");
@@ -7535,7 +7627,9 @@ probe_runtime_instance_capabilities(const VulkanLoaderProbeDesc& loader_desc,
         return result;
     }
     result.instance_extensions = enumerate_instance_extensions(commands.enumerate_instance_extension_properties);
-    result.instance_plan = build_instance_create_plan(instance_desc, result.instance_extensions);
+    result.instance_layers = enumerate_instance_layers(commands.enumerate_instance_layer_properties);
+    result.instance_plan =
+        build_instance_create_plan(instance_desc, result.instance_extensions, result.instance_layers);
     FreeLibrary(library);
     return result;
 #elif defined(__linux__)
@@ -7549,7 +7643,8 @@ probe_runtime_instance_capabilities(const VulkanLoaderProbeDesc& loader_desc,
     const auto get_instance_proc_addr = reinterpret_cast<VulkanGetInstanceProcAddr>(
         dlsym(library, std::string{loader_desc.get_instance_proc_addr_symbol}.c_str()));
     const auto commands = resolve_runtime_global_commands(get_instance_proc_addr);
-    if (commands.enumerate_instance_version == nullptr || commands.enumerate_instance_extension_properties == nullptr) {
+    if (commands.enumerate_instance_version == nullptr || commands.enumerate_instance_extension_properties == nullptr ||
+        commands.enumerate_instance_layer_properties == nullptr) {
         dlclose(library);
         result.instance_plan =
             make_runtime_instance_failure(instance_desc, "Vulkan runtime global commands are incomplete");
@@ -7572,7 +7667,9 @@ probe_runtime_instance_capabilities(const VulkanLoaderProbeDesc& loader_desc,
         return result;
     }
     result.instance_extensions = enumerate_instance_extensions(commands.enumerate_instance_extension_properties);
-    result.instance_plan = build_instance_create_plan(instance_desc, result.instance_extensions);
+    result.instance_layers = enumerate_instance_layers(commands.enumerate_instance_layer_properties);
+    result.instance_plan =
+        build_instance_create_plan(instance_desc, result.instance_extensions, result.instance_layers);
     dlclose(library);
     return result;
 #else
@@ -7619,8 +7716,9 @@ VulkanRuntimeInstanceCommandProbeResult probe_runtime_instance_commands(const Vu
     }
 
     const auto extension_pointers = extension_name_pointers(result.capabilities.instance_plan.enabled_extensions);
+    const auto layer_pointers = extension_name_pointers(result.capabilities.instance_plan.enabled_layers);
     const auto application_info = make_native_application_info(instance_desc);
-    const auto create_info = make_native_instance_create_info(application_info, extension_pointers);
+    const auto create_info = make_native_instance_create_info(application_info, extension_pointers, layer_pointers);
     NativeVulkanInstance instance = nullptr;
     const auto create_result = commands.create_instance(&create_info, nullptr, &instance);
     if (create_result != vulkan_success || instance == nullptr) {
@@ -7662,8 +7760,9 @@ VulkanRuntimeInstanceCommandProbeResult probe_runtime_instance_commands(const Vu
     }
 
     const auto extension_pointers = extension_name_pointers(result.capabilities.instance_plan.enabled_extensions);
+    const auto layer_pointers = extension_name_pointers(result.capabilities.instance_plan.enabled_layers);
     const auto application_info = make_native_application_info(instance_desc);
-    const auto create_info = make_native_instance_create_info(application_info, extension_pointers);
+    const auto create_info = make_native_instance_create_info(application_info, extension_pointers, layer_pointers);
     NativeVulkanInstance instance = nullptr;
     const auto create_result = commands.create_instance(&create_info, nullptr, &instance);
     if (create_result != vulkan_success || instance == nullptr) {
@@ -7723,8 +7822,9 @@ VulkanRuntimeInstanceCreateResult create_runtime_instance(const VulkanLoaderProb
     }
 
     const auto extension_pointers = extension_name_pointers(result.probe.capabilities.instance_plan.enabled_extensions);
+    const auto layer_pointers = extension_name_pointers(result.probe.capabilities.instance_plan.enabled_layers);
     const auto application_info = make_native_application_info(instance_desc);
-    const auto create_info = make_native_instance_create_info(application_info, extension_pointers);
+    const auto create_info = make_native_instance_create_info(application_info, extension_pointers, layer_pointers);
     NativeVulkanInstance instance = nullptr;
     const auto create_result = commands.create_instance(&create_info, nullptr, &instance);
     if (create_result != vulkan_success || instance == nullptr) {
@@ -7767,8 +7867,9 @@ VulkanRuntimeInstanceCreateResult create_runtime_instance(const VulkanLoaderProb
     }
 
     const auto extension_pointers = extension_name_pointers(result.probe.capabilities.instance_plan.enabled_extensions);
+    const auto layer_pointers = extension_name_pointers(result.probe.capabilities.instance_plan.enabled_layers);
     const auto application_info = make_native_application_info(instance_desc);
-    const auto create_info = make_native_instance_create_info(application_info, extension_pointers);
+    const auto create_info = make_native_instance_create_info(application_info, extension_pointers, layer_pointers);
     NativeVulkanInstance instance = nullptr;
     const auto create_result = commands.create_instance(&create_info, nullptr, &instance);
     if (create_result != vulkan_success || instance == nullptr) {
@@ -7838,8 +7939,9 @@ probe_runtime_physical_device_count(const VulkanLoaderProbeDesc& loader_desc,
 
     const auto extension_pointers =
         extension_name_pointers(result.instance.capabilities.instance_plan.enabled_extensions);
+    const auto layer_pointers = extension_name_pointers(result.instance.capabilities.instance_plan.enabled_layers);
     const auto application_info = make_native_application_info(instance_desc);
-    const auto create_info = make_native_instance_create_info(application_info, extension_pointers);
+    const auto create_info = make_native_instance_create_info(application_info, extension_pointers, layer_pointers);
     NativeVulkanInstance instance = nullptr;
     const auto create_result = commands.create_instance(&create_info, nullptr, &instance);
     if (create_result != vulkan_success || instance == nullptr) {
@@ -7895,8 +7997,9 @@ probe_runtime_physical_device_count(const VulkanLoaderProbeDesc& loader_desc,
 
     const auto extension_pointers =
         extension_name_pointers(result.instance.capabilities.instance_plan.enabled_extensions);
+    const auto layer_pointers = extension_name_pointers(result.instance.capabilities.instance_plan.enabled_layers);
     const auto application_info = make_native_application_info(instance_desc);
-    const auto create_info = make_native_instance_create_info(application_info, extension_pointers);
+    const auto create_info = make_native_instance_create_info(application_info, extension_pointers, layer_pointers);
     NativeVulkanInstance instance = nullptr;
     const auto create_result = commands.create_instance(&create_info, nullptr, &instance);
     if (create_result != vulkan_success || instance == nullptr) {
@@ -7983,8 +8086,10 @@ probe_runtime_physical_device_snapshots(const VulkanLoaderProbeDesc& loader_desc
 
     const auto extension_pointers =
         extension_name_pointers(result.count_probe.instance.capabilities.instance_plan.enabled_extensions);
+    const auto layer_pointers =
+        extension_name_pointers(result.count_probe.instance.capabilities.instance_plan.enabled_layers);
     const auto application_info = make_native_application_info(instance_desc);
-    const auto create_info = make_native_instance_create_info(application_info, extension_pointers);
+    const auto create_info = make_native_instance_create_info(application_info, extension_pointers, layer_pointers);
     NativeVulkanInstance instance = nullptr;
     const auto create_result = commands.create_instance(&create_info, nullptr, &instance);
     if (create_result != vulkan_success || instance == nullptr) {
@@ -8064,8 +8169,10 @@ probe_runtime_physical_device_snapshots(const VulkanLoaderProbeDesc& loader_desc
 
     const auto extension_pointers =
         extension_name_pointers(result.count_probe.instance.capabilities.instance_plan.enabled_extensions);
+    const auto layer_pointers =
+        extension_name_pointers(result.count_probe.instance.capabilities.instance_plan.enabled_layers);
     const auto application_info = make_native_application_info(instance_desc);
-    const auto create_info = make_native_instance_create_info(application_info, extension_pointers);
+    const auto create_info = make_native_instance_create_info(application_info, extension_pointers, layer_pointers);
     NativeVulkanInstance instance = nullptr;
     const auto create_result = commands.create_instance(&create_info, nullptr, &instance);
     if (create_result != vulkan_success || instance == nullptr) {
@@ -8217,8 +8324,10 @@ VulkanRuntimeSurfaceSupportProbeResult probe_runtime_surface_support(const Vulka
 
     const auto extension_pointers =
         extension_name_pointers(result.snapshots.count_probe.instance.capabilities.instance_plan.enabled_extensions);
+    const auto layer_pointers =
+        extension_name_pointers(result.snapshots.count_probe.instance.capabilities.instance_plan.enabled_layers);
     const auto application_info = make_native_application_info(surface_instance_desc);
-    const auto create_info = make_native_instance_create_info(application_info, extension_pointers);
+    const auto create_info = make_native_instance_create_info(application_info, extension_pointers, layer_pointers);
     NativeVulkanInstance instance = nullptr;
     const auto create_result = commands.create_instance(&create_info, nullptr, &instance);
     if (create_result != vulkan_success || instance == nullptr) {
@@ -8392,8 +8501,10 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
 
     const auto extension_pointers = extension_name_pointers(
         result.selection_probe.snapshots.count_probe.instance.capabilities.instance_plan.enabled_extensions);
+    const auto layer_pointers = extension_name_pointers(
+        result.selection_probe.snapshots.count_probe.instance.capabilities.instance_plan.enabled_layers);
     const auto application_info = make_native_application_info(runtime_instance_desc);
-    const auto create_info = make_native_instance_create_info(application_info, extension_pointers);
+    const auto create_info = make_native_instance_create_info(application_info, extension_pointers, layer_pointers);
     NativeVulkanInstance instance = nullptr;
     const auto create_result = commands.create_instance(&create_info, nullptr, &instance);
     if (create_result != vulkan_success || instance == nullptr) {
@@ -8762,8 +8873,10 @@ VulkanRuntimeDeviceCreateResult create_runtime_device(const VulkanLoaderProbeDes
 
     const auto extension_pointers = extension_name_pointers(
         result.selection_probe.snapshots.count_probe.instance.capabilities.instance_plan.enabled_extensions);
+    const auto layer_pointers = extension_name_pointers(
+        result.selection_probe.snapshots.count_probe.instance.capabilities.instance_plan.enabled_layers);
     const auto application_info = make_native_application_info(runtime_instance_desc);
-    const auto create_info = make_native_instance_create_info(application_info, extension_pointers);
+    const auto create_info = make_native_instance_create_info(application_info, extension_pointers, layer_pointers);
     NativeVulkanInstance instance = nullptr;
     const auto create_result = commands.create_instance(&create_info, nullptr, &instance);
     if (create_result != vulkan_success || instance == nullptr) {

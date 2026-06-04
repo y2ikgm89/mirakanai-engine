@@ -727,6 +727,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_editor_core_tests)
     add_test(NAME MK_editor_core_tests COMMAND MK_editor_core_tests)
 
+    add_executable(MK_editor_environment_tests
+        tests/unit/editor_environment_tests.cpp
+    )
+    target_link_libraries(MK_editor_environment_tests PRIVATE MK_editor_shell_common MK_environment)
+    target_include_directories(MK_editor_environment_tests PRIVATE tests editor/src)
+    MK_apply_common_target_options(MK_editor_environment_tests)
+    add_test(NAME MK_editor_environment_tests COMMAND MK_editor_environment_tests)
+
     add_executable(MK_editor_native_shell_tests
         tests/unit/editor_native_shell_tests.cpp
     )
@@ -847,6 +855,14 @@ if(BUILD_TESTING)
     target_include_directories(MK_environment_weather_tests PRIVATE tests)
     MK_apply_common_target_options(MK_environment_weather_tests)
     add_test(NAME MK_environment_weather_tests COMMAND MK_environment_weather_tests)
+
+    add_executable(MK_environment_time_of_day_tests
+        tests/unit/environment_time_of_day_tests.cpp
+    )
+    target_link_libraries(MK_environment_time_of_day_tests PRIVATE MK_environment)
+    target_include_directories(MK_environment_time_of_day_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_environment_time_of_day_tests)
+    add_test(NAME MK_environment_time_of_day_tests COMMAND MK_environment_time_of_day_tests)
 
     add_executable(MK_renderer_cloud_layer_policy_tests
         tests/unit/renderer_cloud_layer_policy_tests.cpp
