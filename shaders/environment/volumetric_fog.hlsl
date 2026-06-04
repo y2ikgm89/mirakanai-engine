@@ -3,6 +3,7 @@
 
 Texture2D<float> scene_depth_texture : register(t2);
 SamplerState scene_depth_sampler : register(s3);
+RWByteAddressBuffer volumetric_fog_output_buffer : register(u13);
 
 cbuffer VolumetricFogConstants : register(b5) {
     uint froxel_width;
@@ -45,6 +46,18 @@ VolumetricFogContractSample volumetric_fog_contract_sample(uint3 froxel_id) {
     return sample;
 }
 
+float volumetric_fog_contract_scene_depth(uint3 froxel_id) {
+    const float2 dimensions = float2(max(float(froxel_width), 1.0), max(float(froxel_height), 1.0));
+    const float2 uv = (float2(froxel_id.xy) + 0.5) / dimensions;
+    return saturate(scene_depth_texture.SampleLevel(scene_depth_sampler, uv, 0.0));
+}
+
+uint volumetric_fog_contract_output_offset(uint3 froxel_id) {
+    const uint linear_index =
+        (froxel_id.z * froxel_height * froxel_width) + (froxel_id.y * froxel_width) + froxel_id.x;
+    return linear_index * 4;
+}
+
 void volumetric_fog_cs_contract(uint3 dispatch_thread_id) {
     if (dispatch_thread_id.x >= froxel_width || dispatch_thread_id.y >= froxel_height ||
         dispatch_thread_id.z >= froxel_depth_slices) {
@@ -52,9 +65,11 @@ void volumetric_fog_cs_contract(uint3 dispatch_thread_id) {
     }
 
     const VolumetricFogContractSample sample = volumetric_fog_contract_sample(dispatch_thread_id);
+    const float scene_depth = volumetric_fog_contract_scene_depth(dispatch_thread_id);
     const float history = saturate(temporal_history_weight);
-    const float contract_value = lerp(sample.density, sample.phase, history);
-    (void)contract_value;
+    const float contract_value = saturate(lerp(sample.density, sample.phase, history) * scene_depth);
+    volumetric_fog_output_buffer.Store(volumetric_fog_contract_output_offset(dispatch_thread_id),
+                                       uint(round(contract_value * 65535.0)));
 }
 
 #if defined(MK_VOLUMETRIC_FOG_COMPUTE)
