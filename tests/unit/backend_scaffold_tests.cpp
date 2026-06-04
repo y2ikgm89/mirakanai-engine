@@ -4,6 +4,7 @@
 #include "test_framework.hpp"
 
 #include "mirakana/assets/material.hpp"
+#include "mirakana/renderer/environment_fog_policy.hpp"
 #include "mirakana/renderer/rhi_frame_renderer.hpp"
 #include "mirakana/renderer/rhi_postprocess_frame_renderer.hpp"
 #include "mirakana/renderer/shadow_map.hpp"
@@ -499,7 +500,7 @@ MK_TEST("vulkan instance create plan enables required and available optional ext
     desc.enable_validation = true;
 
     const auto plan = mirakana::rhi::vulkan::build_instance_create_plan(
-        desc, {"VK_EXT_debug_utils", "VK_KHR_surface", "VK_KHR_win32_surface"});
+        desc, {"VK_EXT_debug_utils", "VK_KHR_surface", "VK_KHR_win32_surface"}, {"VK_LAYER_KHRONOS_validation"});
 
     MK_REQUIRE(plan.supported);
     MK_REQUIRE(plan.api_version.major == 1);
@@ -508,8 +509,26 @@ MK_TEST("vulkan instance create plan enables required and available optional ext
     MK_REQUIRE(plan.enabled_extensions[0] == "VK_KHR_surface");
     MK_REQUIRE(plan.enabled_extensions[1] == "VK_KHR_win32_surface");
     MK_REQUIRE(plan.enabled_extensions[2] == "VK_EXT_debug_utils");
+    MK_REQUIRE(plan.enabled_layers.size() == 1);
+    MK_REQUIRE(plan.enabled_layers[0] == "VK_LAYER_KHRONOS_validation");
     MK_REQUIRE(plan.validation_enabled);
     MK_REQUIRE(plan.diagnostic == "Vulkan instance create plan ready");
+}
+
+MK_TEST("vulkan instance create plan requires validation layer when validation is enabled") {
+    mirakana::rhi::vulkan::VulkanInstanceCreateDesc desc;
+    desc.application_name = "GameEngineEditor";
+    desc.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 3);
+    desc.required_extensions = {"VK_KHR_surface"};
+    desc.enable_validation = true;
+
+    const auto rejected =
+        mirakana::rhi::vulkan::build_instance_create_plan(desc, {"VK_KHR_surface"}, {"VK_LAYER_FAKE_overlay"});
+
+    MK_REQUIRE(!rejected.supported);
+    MK_REQUIRE(rejected.enabled_layers.empty());
+    MK_REQUIRE(!rejected.validation_enabled);
+    MK_REQUIRE(rejected.diagnostic == "missing required Vulkan instance layer: VK_LAYER_KHRONOS_validation");
 }
 
 MK_TEST("vulkan instance create plan rejects old api empty app names and missing required extensions") {
@@ -518,7 +537,7 @@ MK_TEST("vulkan instance create plan rejects old api empty app names and missing
     old_api.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 2);
     old_api.required_extensions = {"VK_KHR_surface"};
 
-    const auto rejected_api = mirakana::rhi::vulkan::build_instance_create_plan(old_api, {"VK_KHR_surface"});
+    const auto rejected_api = mirakana::rhi::vulkan::build_instance_create_plan(old_api, {"VK_KHR_surface"}, {});
 
     MK_REQUIRE(!rejected_api.supported);
     MK_REQUIRE(rejected_api.diagnostic == "Vulkan 1.3 or newer is required");
@@ -527,7 +546,7 @@ MK_TEST("vulkan instance create plan rejects old api empty app names and missing
     empty_name.application_name.clear();
     empty_name.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 3);
 
-    const auto rejected_name = mirakana::rhi::vulkan::build_instance_create_plan(empty_name, {"VK_KHR_surface"});
+    const auto rejected_name = mirakana::rhi::vulkan::build_instance_create_plan(empty_name, {"VK_KHR_surface"}, {});
 
     MK_REQUIRE(!rejected_name.supported);
     MK_REQUIRE(rejected_name.diagnostic == "Vulkan application name is required");
@@ -537,7 +556,7 @@ MK_TEST("vulkan instance create plan rejects old api empty app names and missing
     missing_extension.required_extensions = {"VK_KHR_surface", "VK_KHR_win32_surface"};
 
     const auto rejected_extension =
-        mirakana::rhi::vulkan::build_instance_create_plan(missing_extension, {"VK_KHR_surface"});
+        mirakana::rhi::vulkan::build_instance_create_plan(missing_extension, {"VK_KHR_surface"}, {});
 
     MK_REQUIRE(!rejected_extension.supported);
     MK_REQUIRE(rejected_extension.diagnostic == "missing required Vulkan instance extension: VK_KHR_win32_surface");
@@ -660,6 +679,7 @@ MK_TEST("vulkan command resolution plan accepts required loader global instance 
     std::vector<mirakana::rhi::vulkan::VulkanCommandAvailability> available;
     bool has_loader = false;
     bool has_create_instance = false;
+    bool has_layer_enumeration = false;
     bool has_swapchain = false;
     bool has_dynamic_rendering = false;
     bool has_synchronization2 = false;
@@ -677,6 +697,9 @@ MK_TEST("vulkan command resolution plan accepts required loader global instance 
         has_create_instance =
             has_create_instance ||
             (request.scope == mirakana::rhi::vulkan::VulkanCommandScope::global && request.name == "vkCreateInstance");
+        has_layer_enumeration =
+            has_layer_enumeration || (request.scope == mirakana::rhi::vulkan::VulkanCommandScope::global &&
+                                      request.name == "vkEnumerateInstanceLayerProperties");
         has_swapchain = has_swapchain || (request.scope == mirakana::rhi::vulkan::VulkanCommandScope::device &&
                                           request.name == "vkCreateSwapchainKHR");
         has_dynamic_rendering =
@@ -699,6 +722,7 @@ MK_TEST("vulkan command resolution plan accepts required loader global instance 
 
     MK_REQUIRE(has_loader);
     MK_REQUIRE(has_create_instance);
+    MK_REQUIRE(has_layer_enumeration);
     MK_REQUIRE(has_swapchain);
     MK_REQUIRE(has_dynamic_rendering);
     MK_REQUIRE(has_synchronization2);
@@ -5563,6 +5587,393 @@ MK_TEST("vulkan rhi device bridge samples scene depth in a postprocess pass when
     MK_REQUIRE(rhi->stats().draw_calls == 2);
     MK_REQUIRE(rhi->stats().indexed_draw_calls == 1);
     MK_REQUIRE(rhi->stats().texture_buffer_copies == 1);
+#endif
+}
+
+MK_TEST("vulkan rhi device bridge applies height fog from scene depth and environment constants when configured") {
+#if defined(_WIN32) || defined(__linux__)
+    const auto depth_vertex_artifact =
+        load_spirv_artifact_from_environment("MK_VULKAN_TEST_HEIGHT_FOG_DEPTH_VERTEX_SPV");
+    const auto depth_fragment_artifact =
+        load_spirv_artifact_from_environment("MK_VULKAN_TEST_HEIGHT_FOG_DEPTH_FRAGMENT_SPV");
+    const auto fog_vertex_artifact = load_spirv_artifact_from_environment("MK_VULKAN_TEST_HEIGHT_FOG_VERTEX_SPV");
+    const auto fog_fragment_artifact = load_spirv_artifact_from_environment("MK_VULKAN_TEST_HEIGHT_FOG_FRAGMENT_SPV");
+    if (!depth_vertex_artifact.configured && !depth_fragment_artifact.configured && !fog_vertex_artifact.configured &&
+        !fog_fragment_artifact.configured) {
+        return;
+    }
+
+    MK_REQUIRE(depth_vertex_artifact.configured);
+    MK_REQUIRE(depth_fragment_artifact.configured);
+    MK_REQUIRE(fog_vertex_artifact.configured);
+    MK_REQUIRE(fog_fragment_artifact.configured);
+    MK_REQUIRE(depth_vertex_artifact.diagnostic == "loaded");
+    MK_REQUIRE(depth_fragment_artifact.diagnostic == "loaded");
+    MK_REQUIRE(fog_vertex_artifact.diagnostic == "loaded");
+    MK_REQUIRE(fog_fragment_artifact.diagnostic == "loaded");
+
+    const auto depth_vertex_validation =
+        mirakana::rhi::vulkan::validate_spirv_shader_artifact(mirakana::rhi::vulkan::VulkanSpirvShaderArtifactDesc{
+            .stage = mirakana::rhi::ShaderStage::vertex,
+            .bytecode = depth_vertex_artifact.words.data(),
+            .bytecode_size = depth_vertex_artifact.words.size() * sizeof(std::uint32_t),
+        });
+    const auto depth_fragment_validation =
+        mirakana::rhi::vulkan::validate_spirv_shader_artifact(mirakana::rhi::vulkan::VulkanSpirvShaderArtifactDesc{
+            .stage = mirakana::rhi::ShaderStage::fragment,
+            .bytecode = depth_fragment_artifact.words.data(),
+            .bytecode_size = depth_fragment_artifact.words.size() * sizeof(std::uint32_t),
+        });
+    const auto fog_vertex_validation =
+        mirakana::rhi::vulkan::validate_spirv_shader_artifact(mirakana::rhi::vulkan::VulkanSpirvShaderArtifactDesc{
+            .stage = mirakana::rhi::ShaderStage::vertex,
+            .bytecode = fog_vertex_artifact.words.data(),
+            .bytecode_size = fog_vertex_artifact.words.size() * sizeof(std::uint32_t),
+        });
+    const auto fog_fragment_validation =
+        mirakana::rhi::vulkan::validate_spirv_shader_artifact(mirakana::rhi::vulkan::VulkanSpirvShaderArtifactDesc{
+            .stage = mirakana::rhi::ShaderStage::fragment,
+            .bytecode = fog_fragment_artifact.words.data(),
+            .bytecode_size = fog_fragment_artifact.words.size() * sizeof(std::uint32_t),
+        });
+    MK_REQUIRE(depth_vertex_validation.valid);
+    MK_REQUIRE(depth_fragment_validation.valid);
+    MK_REQUIRE(fog_vertex_validation.valid);
+    MK_REQUIRE(fog_fragment_validation.valid);
+
+    mirakana::rhi::vulkan::VulkanInstanceCreateDesc instance_desc;
+    instance_desc.application_name = "GameEngineVulkanRhiConfiguredHeightFog";
+    instance_desc.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 3);
+    instance_desc.optional_extensions = {"VK_EXT_debug_utils"};
+    instance_desc.enable_validation = true;
+
+    const auto loader_desc = mirakana::rhi::vulkan::VulkanLoaderProbeDesc{
+        .host = mirakana::rhi::current_rhi_host_platform(),
+    };
+    const auto instance_capabilities =
+        mirakana::rhi::vulkan::probe_runtime_instance_capabilities(loader_desc, instance_desc);
+    if (!instance_capabilities.instance_plan.supported) {
+        MK_REQUIRE(!instance_capabilities.instance_plan.diagnostic.empty());
+        return;
+    }
+    MK_REQUIRE(instance_capabilities.instance_plan.validation_enabled);
+    MK_REQUIRE(instance_capabilities.instance_plan.enabled_layers.size() == 1);
+    MK_REQUIRE(instance_capabilities.instance_plan.enabled_layers[0] == "VK_LAYER_KHRONOS_validation");
+
+#if defined(_WIN32)
+    HiddenVulkanTestWindow window;
+    if (!window.valid()) {
+        return;
+    }
+    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    auto device_result = mirakana::rhi::vulkan::create_runtime_device(loader_desc, instance_desc, {}, surface);
+#else
+    auto device_result = mirakana::rhi::vulkan::create_runtime_device(loader_desc, instance_desc, {});
+#endif
+    if (!device_result.created) {
+        MK_REQUIRE(!device_result.diagnostic.empty());
+        return;
+    }
+
+    auto rhi =
+        mirakana::rhi::vulkan::create_rhi_device(std::move(device_result.device), ready_vulkan_rhi_mapping_plan());
+    MK_REQUIRE(rhi != nullptr);
+
+    const auto upload = rhi->create_buffer(
+        mirakana::rhi::BufferDesc{.size_bytes = 1024, .usage = mirakana::rhi::BufferUsage::copy_source});
+    const auto vertices = rhi->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = 512, .usage = mirakana::rhi::BufferUsage::vertex | mirakana::rhi::BufferUsage::copy_destination});
+    const auto indices = rhi->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = 64, .usage = mirakana::rhi::BufferUsage::index | mirakana::rhi::BufferUsage::copy_destination});
+    const auto fog_constants = rhi->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = mirakana::environment_fog_constants_byte_size(),
+        .usage = mirakana::rhi::BufferUsage::uniform | mirakana::rhi::BufferUsage::copy_source,
+    });
+
+    constexpr std::array<float, 42> vertex_data{
+        -1.0F, -1.0F, 0.25F, 0.125F, 0.0F, 0.0F, 1.0F, -1.0F, 3.0F,  0.25F, 0.125F, 0.0F, 0.0F, 1.0F,
+        0.0F,  -1.0F, 0.25F, 0.125F, 0.0F, 0.0F, 1.0F, 0.0F,  -1.0F, 0.75F, 0.125F, 0.0F, 0.0F, 1.0F,
+        0.0F,  3.0F,  0.75F, 0.125F, 0.0F, 0.0F, 1.0F, 3.0F,  -1.0F, 0.75F, 0.125F, 0.0F, 0.0F, 1.0F,
+    };
+    constexpr std::array<std::uint16_t, 6> index_data{0, 1, 2, 3, 4, 5};
+    std::array<std::uint8_t, 1024> upload_bytes{};
+    const auto vertex_bytes = std::as_bytes(std::span{vertex_data});
+    const auto index_bytes = std::as_bytes(std::span{index_data});
+    auto upload_bytes_view = std::span{upload_bytes};
+    std::memcpy(upload_bytes_view.data(), vertex_bytes.data(), vertex_bytes.size());
+    std::memcpy(upload_bytes_view.subspan(vertex_bytes.size()).data(), index_bytes.data(), index_bytes.size());
+    rhi->write_buffer(upload, 0, upload_bytes);
+
+    std::array<std::uint8_t, mirakana::environment_fog_constants_byte_size()> fog_constants_bytes{};
+    mirakana::pack_environment_fog_constants(
+        fog_constants_bytes, mirakana::EnvironmentFogPolicyDesc{
+                                 .mode = mirakana::EnvironmentFogMode::exponential_height,
+                                 .density = 2.0F,
+                                 .height_falloff = 0.2F,
+                                 .height_offset_m = 0.0F,
+                                 .start_distance_m = 0.0F,
+                                 .cutoff_distance_m = 10.0F,
+                                 .max_opacity = 0.70F,
+                                 .sky_affect = 0.0F,
+                                 .directional_inscattering_anisotropy = 0.0F,
+                                 .inscattering_color = mirakana::Vec3{.x = 0.60F, .y = 0.20F, .z = 1.0F},
+                                 .directional_inscattering_color = mirakana::Vec3{.x = 1.0F, .y = 0.80F, .z = 0.40F},
+                                 .sample_step_budget = 8,
+                                 .scene_depth_available = true,
+                                 .shader_contract_evidence_ready = true,
+                             });
+    rhi->write_buffer(fog_constants, 0, fog_constants_bytes);
+
+    const auto scene_vertex_shader = rhi->create_shader(mirakana::rhi::ShaderDesc{
+        .stage = mirakana::rhi::ShaderStage::vertex,
+        .entry_point = "main",
+        .bytecode_size = depth_vertex_artifact.words.size() * sizeof(std::uint32_t),
+        .bytecode = depth_vertex_artifact.words.data(),
+    });
+    const auto scene_fragment_shader = rhi->create_shader(mirakana::rhi::ShaderDesc{
+        .stage = mirakana::rhi::ShaderStage::fragment,
+        .entry_point = "main",
+        .bytecode_size = depth_fragment_artifact.words.size() * sizeof(std::uint32_t),
+        .bytecode = depth_fragment_artifact.words.data(),
+    });
+    const auto fog_vertex_shader = rhi->create_shader(mirakana::rhi::ShaderDesc{
+        .stage = mirakana::rhi::ShaderStage::vertex,
+        .entry_point = "vs_main",
+        .bytecode_size = fog_vertex_artifact.words.size() * sizeof(std::uint32_t),
+        .bytecode = fog_vertex_artifact.words.data(),
+    });
+    const auto fog_fragment_shader = rhi->create_shader(mirakana::rhi::ShaderDesc{
+        .stage = mirakana::rhi::ShaderStage::fragment,
+        .entry_point = "ps_main",
+        .bytecode_size = fog_fragment_artifact.words.size() * sizeof(std::uint32_t),
+        .bytecode = fog_fragment_artifact.words.data(),
+    });
+
+    const auto scene_layout =
+        rhi->create_pipeline_layout(mirakana::rhi::PipelineLayoutDesc{.descriptor_sets = {}, .push_constant_bytes = 0});
+    mirakana::rhi::GraphicsPipelineDesc scene_pipeline_desc{
+        .layout = scene_layout,
+        .vertex_shader = scene_vertex_shader,
+        .fragment_shader = scene_fragment_shader,
+        .color_format = mirakana::rhi::Format::rgba8_unorm,
+        .depth_format = mirakana::rhi::Format::depth24_stencil8,
+        .topology = mirakana::rhi::PrimitiveTopology::triangle_list,
+    };
+    scene_pipeline_desc.vertex_buffers = {mirakana::rhi::VertexBufferLayoutDesc{
+        .binding = 0, .stride = 28, .input_rate = mirakana::rhi::VertexInputRate::vertex}};
+    scene_pipeline_desc.vertex_attributes = {
+        mirakana::rhi::VertexAttributeDesc{.location = 0,
+                                           .binding = 0,
+                                           .offset = 0,
+                                           .format = mirakana::rhi::VertexFormat::float32x3,
+                                           .semantic = mirakana::rhi::VertexSemantic::position,
+                                           .semantic_index = 0},
+        mirakana::rhi::VertexAttributeDesc{.location = 1,
+                                           .binding = 0,
+                                           .offset = 12,
+                                           .format = mirakana::rhi::VertexFormat::float32x4,
+                                           .semantic = mirakana::rhi::VertexSemantic::color,
+                                           .semantic_index = 0},
+    };
+    scene_pipeline_desc.depth_state = mirakana::rhi::DepthStencilStateDesc{
+        .depth_test_enabled = true, .depth_write_enabled = true, .depth_compare = mirakana::rhi::CompareOp::less_equal};
+    const auto scene_pipeline = rhi->create_graphics_pipeline(scene_pipeline_desc);
+
+    const auto postprocess_set_layout = rhi->create_descriptor_set_layout(mirakana::rhi::DescriptorSetLayoutDesc{{
+        mirakana::rhi::DescriptorBindingDesc{
+            .binding = mirakana::postprocess_scene_color_texture_binding(),
+            .type = mirakana::rhi::DescriptorType::sampled_texture,
+            .count = 1,
+            .stages = mirakana::rhi::ShaderStageVisibility::fragment,
+        },
+        mirakana::rhi::DescriptorBindingDesc{
+            .binding = mirakana::postprocess_scene_color_sampler_binding(),
+            .type = mirakana::rhi::DescriptorType::sampler,
+            .count = 1,
+            .stages = mirakana::rhi::ShaderStageVisibility::fragment,
+        },
+        mirakana::rhi::DescriptorBindingDesc{
+            .binding = mirakana::postprocess_scene_depth_texture_binding(),
+            .type = mirakana::rhi::DescriptorType::sampled_texture,
+            .count = 1,
+            .stages = mirakana::rhi::ShaderStageVisibility::fragment,
+        },
+        mirakana::rhi::DescriptorBindingDesc{
+            .binding = mirakana::postprocess_scene_depth_sampler_binding(),
+            .type = mirakana::rhi::DescriptorType::sampler,
+            .count = 1,
+            .stages = mirakana::rhi::ShaderStageVisibility::fragment,
+        },
+        mirakana::rhi::DescriptorBindingDesc{
+            .binding = mirakana::environment_fog_constants_binding(),
+            .type = mirakana::rhi::DescriptorType::uniform_buffer,
+            .count = 1,
+            .stages = mirakana::rhi::ShaderStageVisibility::fragment,
+        },
+    }});
+    const auto postprocess_layout = rhi->create_pipeline_layout(
+        mirakana::rhi::PipelineLayoutDesc{.descriptor_sets = {postprocess_set_layout}, .push_constant_bytes = 0});
+    const auto fog_pipeline = rhi->create_graphics_pipeline(mirakana::rhi::GraphicsPipelineDesc{
+        .layout = postprocess_layout,
+        .vertex_shader = fog_vertex_shader,
+        .fragment_shader = fog_fragment_shader,
+        .color_format = mirakana::rhi::Format::rgba8_unorm,
+        .depth_format = mirakana::rhi::Format::unknown,
+        .topology = mirakana::rhi::PrimitiveTopology::triangle_list,
+    });
+
+    const auto scene_color = rhi->create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::shader_resource,
+    });
+    const auto scene_depth = rhi->create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+        .format = mirakana::rhi::Format::depth24_stencil8,
+        .usage = mirakana::rhi::TextureUsage::depth_stencil | mirakana::rhi::TextureUsage::shader_resource,
+    });
+    const auto postprocess_target = rhi->create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::copy_source,
+    });
+    const auto sampler_desc = mirakana::rhi::SamplerDesc{
+        .min_filter = mirakana::rhi::SamplerFilter::nearest,
+        .mag_filter = mirakana::rhi::SamplerFilter::nearest,
+        .address_u = mirakana::rhi::SamplerAddressMode::clamp_to_edge,
+        .address_v = mirakana::rhi::SamplerAddressMode::clamp_to_edge,
+        .address_w = mirakana::rhi::SamplerAddressMode::clamp_to_edge,
+    };
+    const auto scene_color_sampler = rhi->create_sampler(sampler_desc);
+    const auto scene_depth_sampler = rhi->create_sampler(sampler_desc);
+    const auto postprocess_set = rhi->allocate_descriptor_set(postprocess_set_layout);
+    rhi->update_descriptor_set(mirakana::rhi::DescriptorWrite{
+        .set = postprocess_set,
+        .binding = mirakana::postprocess_scene_color_texture_binding(),
+        .array_element = 0,
+        .resources = {mirakana::rhi::DescriptorResource::texture(mirakana::rhi::DescriptorType::sampled_texture,
+                                                                 scene_color)},
+    });
+    rhi->update_descriptor_set(mirakana::rhi::DescriptorWrite{
+        .set = postprocess_set,
+        .binding = mirakana::postprocess_scene_color_sampler_binding(),
+        .array_element = 0,
+        .resources = {mirakana::rhi::DescriptorResource::sampler(scene_color_sampler)},
+    });
+    rhi->update_descriptor_set(mirakana::rhi::DescriptorWrite{
+        .set = postprocess_set,
+        .binding = mirakana::postprocess_scene_depth_texture_binding(),
+        .array_element = 0,
+        .resources = {mirakana::rhi::DescriptorResource::texture(mirakana::rhi::DescriptorType::sampled_texture,
+                                                                 scene_depth)},
+    });
+    rhi->update_descriptor_set(mirakana::rhi::DescriptorWrite{
+        .set = postprocess_set,
+        .binding = mirakana::postprocess_scene_depth_sampler_binding(),
+        .array_element = 0,
+        .resources = {mirakana::rhi::DescriptorResource::sampler(scene_depth_sampler)},
+    });
+    rhi->update_descriptor_set(mirakana::rhi::DescriptorWrite{
+        .set = postprocess_set,
+        .binding = mirakana::environment_fog_constants_binding(),
+        .array_element = 0,
+        .resources = {mirakana::rhi::DescriptorResource::buffer(mirakana::rhi::DescriptorType::uniform_buffer,
+                                                                fog_constants)},
+    });
+
+    const auto readback = rhi->create_buffer(
+        mirakana::rhi::BufferDesc{.size_bytes = 256 * 64, .usage = mirakana::rhi::BufferUsage::copy_destination});
+    const mirakana::rhi::BufferTextureCopyRegion readback_footprint{
+        .buffer_offset = 0,
+        .buffer_row_length = 64,
+        .buffer_image_height = 64,
+        .texture_offset = mirakana::rhi::Offset3D{.x = 0, .y = 0, .z = 0},
+        .texture_extent = mirakana::rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+    };
+
+    auto commands = rhi->begin_command_list(mirakana::rhi::QueueKind::graphics);
+    commands->copy_buffer(upload, vertices,
+                          mirakana::rhi::BufferCopyRegion{
+                              .source_offset = 0, .destination_offset = 0, .size_bytes = sizeof(vertex_data)});
+    commands->copy_buffer(upload, indices,
+                          mirakana::rhi::BufferCopyRegion{.source_offset = sizeof(vertex_data),
+                                                          .destination_offset = 0,
+                                                          .size_bytes = sizeof(index_data)});
+    commands->transition_texture(scene_color, mirakana::rhi::ResourceState::undefined,
+                                 mirakana::rhi::ResourceState::render_target);
+    commands->transition_texture(scene_depth, mirakana::rhi::ResourceState::undefined,
+                                 mirakana::rhi::ResourceState::depth_write);
+    commands->begin_render_pass(mirakana::rhi::RenderPassDesc{
+        .color =
+            mirakana::rhi::RenderPassColorAttachment{
+                .texture = scene_color,
+                .load_action = mirakana::rhi::LoadAction::clear,
+                .store_action = mirakana::rhi::StoreAction::store,
+                .swapchain_frame = mirakana::rhi::SwapchainFrameHandle{},
+                .clear_color =
+                    mirakana::rhi::ClearColorValue{.red = 0.125F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
+            },
+        .depth =
+            mirakana::rhi::RenderPassDepthAttachment{
+                .texture = scene_depth,
+                .load_action = mirakana::rhi::LoadAction::clear,
+                .store_action = mirakana::rhi::StoreAction::store,
+                .clear_depth = mirakana::rhi::ClearDepthValue{1.0F},
+            },
+    });
+    commands->bind_graphics_pipeline(scene_pipeline);
+    commands->bind_vertex_buffer(
+        mirakana::rhi::VertexBufferBinding{.buffer = vertices, .offset = 0, .stride = 28, .binding = 0});
+    commands->bind_index_buffer(mirakana::rhi::IndexBufferBinding{
+        .buffer = indices, .offset = 0, .format = mirakana::rhi::IndexFormat::uint16});
+    commands->draw_indexed(6, 1);
+    commands->end_render_pass();
+    commands->transition_texture(scene_color, mirakana::rhi::ResourceState::render_target,
+                                 mirakana::rhi::ResourceState::shader_read);
+    commands->transition_texture(scene_depth, mirakana::rhi::ResourceState::depth_write,
+                                 mirakana::rhi::ResourceState::shader_read);
+    commands->transition_texture(postprocess_target, mirakana::rhi::ResourceState::undefined,
+                                 mirakana::rhi::ResourceState::render_target);
+    commands->begin_render_pass(mirakana::rhi::RenderPassDesc{
+        .color =
+            mirakana::rhi::RenderPassColorAttachment{
+                .texture = postprocess_target,
+                .load_action = mirakana::rhi::LoadAction::clear,
+                .store_action = mirakana::rhi::StoreAction::store,
+                .swapchain_frame = mirakana::rhi::SwapchainFrameHandle{},
+                .clear_color = mirakana::rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
+            },
+    });
+    commands->bind_graphics_pipeline(fog_pipeline);
+    commands->bind_descriptor_set(postprocess_layout, 0, postprocess_set);
+    commands->draw(3, 1);
+    commands->end_render_pass();
+    commands->transition_texture(scene_depth, mirakana::rhi::ResourceState::shader_read,
+                                 mirakana::rhi::ResourceState::depth_write);
+    commands->transition_texture(postprocess_target, mirakana::rhi::ResourceState::render_target,
+                                 mirakana::rhi::ResourceState::copy_source);
+    commands->copy_texture_to_buffer(postprocess_target, readback, readback_footprint);
+    commands->close();
+
+    const auto fence = rhi->submit(*commands);
+    rhi->wait(fence);
+
+    const auto bytes = rhi->read_buffer(readback, 0, 256 * 64);
+    const auto near_pixel = (32U * 256U) + (16U * 4U);
+    const auto far_pixel = (32U * 256U) + (48U * 4U);
+    MK_REQUIRE(bytes.size() == 256 * 64);
+    MK_REQUIRE(bytes.at(far_pixel + 0U) > bytes.at(near_pixel + 0U) + 30U);
+    MK_REQUIRE(bytes.at(far_pixel + 1U) > bytes.at(near_pixel + 1U) + 10U);
+    MK_REQUIRE(bytes.at(far_pixel + 2U) > bytes.at(near_pixel + 2U) + 70U);
+    MK_REQUIRE(bytes.at(near_pixel + 3U) == 255);
+    MK_REQUIRE(bytes.at(far_pixel + 3U) == 255);
+    MK_REQUIRE(rhi->stats().samplers_created == 2);
+    MK_REQUIRE(rhi->stats().descriptor_writes == 5);
+    MK_REQUIRE(rhi->stats().descriptor_sets_bound == 1);
+    MK_REQUIRE(rhi->stats().draw_calls == 2);
+    MK_REQUIRE(rhi->stats().indexed_draw_calls == 1);
+    MK_REQUIRE(rhi->stats().texture_buffer_copies == 1);
+    MK_REQUIRE(rhi->stats().buffer_writes == 2);
 #endif
 }
 
