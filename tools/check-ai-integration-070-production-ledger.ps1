@@ -1416,10 +1416,10 @@ Assert-RegisteredSourceAssetCookTarget `
     "packaged-3d-prefab-scene" `
     "source/assets/package.geassets" `
     "runtime/sample_desktop_runtime_game.geindex" `
-    @("sample/desktop-runtime/material") `
+    @("sample/desktop-runtime/material", "sample/desktop-runtime/environment/default-outdoor") `
     "registered_source_registry_closure" `
     "registry_closure"
-foreach ($recipe in @("desktop-game-runtime", "desktop-runtime-release-target", "installed-d3d12-scene-gpu-smoke", "installed-vulkan-scene-gpu-smoke")) {
+foreach ($recipe in @("desktop-game-runtime", "desktop-runtime-release-target", "installed-d3d12-scene-gpu-smoke", "installed-vulkan-scene-gpu-smoke", "desktop-runtime-sample-game-environment-fog-package", "desktop-runtime-sample-game-cloud-layer-package", "desktop-runtime-sample-game-environment-precipitation-package", "desktop-runtime-sample-game-environment-profile-package")) {
     if (@($sample3dManifest.validationRecipes | ForEach-Object { $_.name }) -notcontains $recipe) {
         Write-Error "$sample3dManifestPath validationRecipes missing $recipe"
     }
@@ -1515,6 +1515,12 @@ foreach ($needle in @(
     "renderer_quality_postprocess_depth_input_ready=",
     "renderer_quality_directional_shadow_ready=",
     "renderer_quality_directional_shadow_filter_ready=",
+    "--require-environment-fog-evidence",
+    "environment_fog_status=",
+    "environment_fog_ready=",
+    "environment_fog_constant_buffer_ready=",
+    "environment_fog_constants_binding=",
+    "environment_fog_constants_byte_size=",
     "primary_camera_seen_",
     "hud_boxes_submitted_"
 )) {
