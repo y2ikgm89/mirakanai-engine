@@ -1,5 +1,7 @@
 format=GameEngine.Scene.v2
 scene.name=DesktopRuntimePackagedScene
+environment.profile=sample/desktop-runtime/environment/default-outdoor
+environment.required=true
 node.0.id=node/packaged-mesh
 node.0.name=PackagedMesh
 node.0.parent=

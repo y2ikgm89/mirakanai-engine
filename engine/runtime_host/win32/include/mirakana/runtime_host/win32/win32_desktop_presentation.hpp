@@ -4,6 +4,9 @@
 #pragma once
 
 #include "mirakana/platform/win32/win32_window.hpp"
+#include "mirakana/renderer/cloud_layer_policy.hpp"
+#include "mirakana/renderer/environment_fog_policy.hpp"
+#include "mirakana/renderer/precipitation_policy.hpp"
 #include "mirakana/renderer/renderer.hpp"
 #include "mirakana/rhi/rhi.hpp"
 
@@ -228,6 +231,46 @@ struct Win32DesktopPresentationReport {
         Win32DesktopPresentationPostprocessStatus::not_requested};
     bool postprocess_depth_input_requested{false};
     bool postprocess_depth_input_ready{false};
+    bool environment_fog_requested{false};
+    bool environment_fog_constant_buffer_ready{false};
+    std::uint64_t environment_fog_constant_buffer_bytes{0};
+    bool cloud_layer_requested{false};
+    bool cloud_layer_shader_contract_evidence_ready{false};
+    bool cloud_layer_package_evidence_ready{false};
+    bool cloud_layer_execution_evidence_ready{false};
+    bool cloud_layer_uploads_textures{false};
+    bool cloud_layer_invokes_backend{false};
+    bool cloud_layer_exposes_native_handles{false};
+    bool cloud_layer_uses_volumetric_clouds{false};
+    bool cloud_layer_uses_latlong_projection{false};
+    bool cloud_layer_uses_flow_map{false};
+    std::uint32_t cloud_layer_texture_rows{0};
+    std::uint32_t cloud_layer_visual_rows{0};
+    std::uint32_t cloud_layer_ibl_rows{0};
+    std::uint32_t cloud_layer_shader_contract_rows{0};
+    std::uint32_t cloud_layer_quality_rows{0};
+    std::uint32_t cloud_layer_policy_diagnostics_count{0};
+    bool environment_precipitation_requested{false};
+    EnvironmentWeatherKind environment_precipitation_weather{EnvironmentWeatherKind::clear};
+    EnvironmentPrecipitationKind environment_precipitation_kind{EnvironmentPrecipitationKind::none};
+    bool environment_precipitation_shader_contract_evidence_ready{false};
+    bool environment_precipitation_package_evidence_ready{false};
+    bool environment_precipitation_execution_evidence_ready{false};
+    bool environment_precipitation_uploads_particle_buffers{false};
+    bool environment_precipitation_invokes_backend{false};
+    bool environment_precipitation_exposes_native_handles{false};
+    bool environment_precipitation_mutates_materials{false};
+    bool environment_precipitation_plays_audio{false};
+    bool environment_precipitation_uses_camera_near_particles{false};
+    bool environment_precipitation_uses_scene_depth_occlusion{false};
+    std::uint32_t environment_precipitation_weather_rows{0};
+    std::uint32_t environment_precipitation_particle_rows{0};
+    std::uint32_t environment_precipitation_occlusion_rows{0};
+    std::uint32_t environment_precipitation_wetness_rows{0};
+    std::uint32_t environment_precipitation_audio_handoff_rows{0};
+    std::uint32_t environment_precipitation_shader_rows{0};
+    std::uint32_t environment_precipitation_quality_rows{0};
+    std::uint32_t environment_precipitation_policy_diagnostics_count{0};
     Win32DesktopPresentationDirectionalShadowStatus directional_shadow_status{
         Win32DesktopPresentationDirectionalShadowStatus::not_requested};
     bool directional_shadow_requested{false};
@@ -299,6 +342,24 @@ enum class Win32DesktopPresentationSceneScalePolicyStatus : std::uint8_t {
 };
 
 enum class Win32DesktopPresentationD3d12PostprocessExecutionStatus : std::uint8_t {
+    not_requested = 0,
+    blocked,
+    ready,
+};
+
+enum class Win32DesktopPresentationEnvironmentFogStatus : std::uint8_t {
+    not_requested = 0,
+    blocked,
+    ready,
+};
+
+enum class Win32DesktopPresentationCloudLayerStatus : std::uint8_t {
+    not_requested = 0,
+    blocked,
+    ready,
+};
+
+enum class Win32DesktopPresentationEnvironmentPrecipitationStatus : std::uint8_t {
     not_requested = 0,
     blocked,
     ready,
@@ -384,6 +445,81 @@ struct Win32DesktopPresentationD3d12PostprocessExecutionReport {
     std::uint64_t framegraph_render_passes_recorded{0};
     std::uint64_t framegraph_barrier_steps_executed{0};
     bool postprocess_passes_current{false};
+};
+
+struct Win32DesktopPresentationEnvironmentFogReport {
+    Win32DesktopPresentationEnvironmentFogStatus status{Win32DesktopPresentationEnvironmentFogStatus::not_requested};
+    bool ready{false};
+    bool requested{false};
+    bool d3d12_backend_selected{false};
+    bool postprocess_ready{false};
+    bool postprocess_depth_input_ready{false};
+    bool d3d12_postprocess_execution_ready{false};
+    bool constant_buffer_ready{false};
+    std::uint32_t constants_binding{0};
+    std::uint64_t constant_buffer_bytes{0};
+    std::uint64_t expected_postprocess_passes{0};
+    std::uint64_t postprocess_passes_executed{0};
+    bool postprocess_passes_current{false};
+    std::uint32_t diagnostics_count{0};
+};
+
+struct Win32DesktopPresentationCloudLayerReport {
+    Win32DesktopPresentationCloudLayerStatus status{Win32DesktopPresentationCloudLayerStatus::not_requested};
+    bool ready{false};
+    bool requested{false};
+    bool d3d12_backend_selected{false};
+    bool shader_contract_evidence_ready{false};
+    bool package_evidence_ready{false};
+    bool execution_evidence_ready{false};
+    std::uint32_t cloud_map_binding{0};
+    std::uint32_t flow_map_binding{0};
+    std::uint32_t sampler_binding{0};
+    std::uint32_t constants_binding{0};
+    bool uses_latlong_projection{false};
+    bool uses_flow_map{false};
+    std::uint32_t texture_rows{0};
+    std::uint32_t visual_rows{0};
+    std::uint32_t ibl_rows{0};
+    std::uint32_t shader_contract_rows{0};
+    std::uint32_t quality_rows{0};
+    bool uploads_textures{false};
+    bool invokes_backend{false};
+    bool exposes_native_handles{false};
+    bool uses_volumetric_clouds{false};
+    std::uint32_t diagnostics_count{0};
+};
+
+struct Win32DesktopPresentationEnvironmentPrecipitationReport {
+    Win32DesktopPresentationEnvironmentPrecipitationStatus status{
+        Win32DesktopPresentationEnvironmentPrecipitationStatus::not_requested};
+    bool ready{false};
+    bool requested{false};
+    bool d3d12_backend_selected{false};
+    EnvironmentWeatherKind weather{EnvironmentWeatherKind::clear};
+    EnvironmentPrecipitationKind kind{EnvironmentPrecipitationKind::none};
+    bool shader_contract_evidence_ready{false};
+    bool package_evidence_ready{false};
+    bool execution_evidence_ready{false};
+    std::uint32_t particle_texture_binding{0};
+    std::uint32_t scene_depth_texture_binding{0};
+    std::uint32_t sampler_binding{0};
+    std::uint32_t constants_binding{0};
+    bool uses_camera_near_particles{false};
+    bool uses_scene_depth_occlusion{false};
+    std::uint32_t weather_rows{0};
+    std::uint32_t particle_rows{0};
+    std::uint32_t occlusion_rows{0};
+    std::uint32_t wetness_rows{0};
+    std::uint32_t audio_handoff_rows{0};
+    std::uint32_t shader_rows{0};
+    std::uint32_t quality_rows{0};
+    bool uploads_particle_buffers{false};
+    bool invokes_backend{false};
+    bool exposes_native_handles{false};
+    bool mutates_materials{false};
+    bool plays_audio{false};
+    std::uint32_t diagnostics_count{0};
 };
 
 enum class Win32DesktopPresentationVulkanPostprocessExecutionStatus : std::uint8_t {
@@ -735,6 +871,12 @@ struct Win32DesktopPresentationD3d12SceneRendererDesc {
     bool enable_compute_morph_tangent_frame_output{false};
     bool enable_postprocess{false};
     bool enable_postprocess_depth_input{false};
+    bool enable_environment_fog{false};
+    EnvironmentFogPolicyDesc environment_fog;
+    bool enable_cloud_layer_package_evidence{false};
+    CloudLayerPolicyDesc cloud_layer;
+    bool enable_environment_precipitation_package_evidence{false};
+    PrecipitationPolicyDesc environment_precipitation;
     bool enable_directional_shadow_smoke{false};
     bool enable_native_ui_overlay{false};
     AssetId native_ui_overlay_atlas_asset;
@@ -889,6 +1031,20 @@ evaluate_win32_desktop_presentation_scene_scale_policy(const Win32DesktopPresent
 evaluate_win32_desktop_presentation_d3d12_postprocess_execution(const Win32DesktopPresentationReport& report,
                                                                 std::uint64_t expected_postprocess_passes,
                                                                 bool requested);
+[[nodiscard]] std::string_view
+win32_desktop_presentation_environment_fog_status_name(Win32DesktopPresentationEnvironmentFogStatus status) noexcept;
+[[nodiscard]] Win32DesktopPresentationEnvironmentFogReport evaluate_win32_desktop_presentation_environment_fog(
+    const Win32DesktopPresentationReport& report,
+    const Win32DesktopPresentationD3d12PostprocessExecutionReport& d3d12_postprocess_execution, bool requested);
+[[nodiscard]] std::string_view
+win32_desktop_presentation_cloud_layer_status_name(Win32DesktopPresentationCloudLayerStatus status) noexcept;
+[[nodiscard]] Win32DesktopPresentationCloudLayerReport
+evaluate_win32_desktop_presentation_cloud_layer(const Win32DesktopPresentationReport& report, bool requested);
+[[nodiscard]] std::string_view win32_desktop_presentation_environment_precipitation_status_name(
+    Win32DesktopPresentationEnvironmentPrecipitationStatus status) noexcept;
+[[nodiscard]] Win32DesktopPresentationEnvironmentPrecipitationReport
+evaluate_win32_desktop_presentation_environment_precipitation(const Win32DesktopPresentationReport& report,
+                                                              bool requested);
 [[nodiscard]] std::string_view win32_desktop_presentation_vulkan_postprocess_execution_status_name(
     Win32DesktopPresentationVulkanPostprocessExecutionStatus status) noexcept;
 [[nodiscard]] Win32DesktopPresentationVulkanPostprocessExecutionReport

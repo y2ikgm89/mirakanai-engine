@@ -5,6 +5,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -41,6 +42,14 @@ enum class PhysicalSkyDiagnosticCode : std::uint8_t {
     unsupported_backend_execution,
     unsupported_native_handle_claim,
 };
+
+[[nodiscard]] constexpr std::uint32_t physical_sky_constants_binding() noexcept {
+    return 0;
+}
+
+[[nodiscard]] constexpr std::size_t physical_sky_constants_byte_size() noexcept {
+    return 256;
+}
 
 struct PhysicalSkyAtmosphereDesc {
     float rayleigh_density_height_km{8.0F};
@@ -108,6 +117,8 @@ struct PhysicalSkyPolicyPlan {
 };
 
 [[nodiscard]] PhysicalSkyPolicyPlan plan_physical_sky_policy(const PhysicalSkyPolicyDesc& desc);
+
+void pack_physical_sky_constants(std::span<std::uint8_t> dst, const PhysicalSkyPolicyDesc& desc);
 
 [[nodiscard]] bool has_physical_sky_lut_intent(const PhysicalSkyPolicyPlan& plan, PhysicalSkyLutKind kind) noexcept;
 
