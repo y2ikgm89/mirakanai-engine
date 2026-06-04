@@ -3,7 +3,10 @@
 
 #include "test_framework.hpp"
 
+#include "mirakana/assets/asset_import_pipeline.hpp"
+#include "mirakana/assets/asset_package.hpp"
 #include "mirakana/assets/asset_source_format.hpp"
+#include "mirakana/assets/source_asset_registry.hpp"
 #include "mirakana/assets/sprite_atlas_packing.hpp"
 
 #include <algorithm>
@@ -48,6 +51,59 @@ MK_TEST("sprite atlas packing places two 1x1 sprites side by side") {
     MK_REQUIRE(out.placements[1].x == 1 && out.placements[1].y == 0);
     MK_REQUIRE(out.atlas.bytes[0] == 0xFF && out.atlas.bytes[1] == 0x00);
     MK_REQUIRE(out.atlas.bytes[4] == 0x00 && out.atlas.bytes[5] == 0xFF);
+}
+
+MK_TEST("source asset registry accepts environment profile package rows") {
+    const auto key = mirakana::AssetKeyV2{"environment/default_outdoor"};
+    mirakana::SourceAssetRegistryDocumentV1 document;
+    document.assets.push_back(mirakana::SourceAssetRegistryRowV1{
+        .key = key,
+        .kind = mirakana::AssetKind::environment_profile,
+        .source_path = "source/environment/default_outdoor.environment",
+        .source_format = "GameEngine.EnvironmentProfile.v1",
+        .imported_path = "runtime/environment/default_outdoor.environment",
+        .dependencies = {},
+    });
+
+    MK_REQUIRE(mirakana::is_supported_source_asset_kind_v1(mirakana::AssetKind::environment_profile));
+    MK_REQUIRE(mirakana::expected_source_asset_format_v1(mirakana::AssetKind::environment_profile) ==
+               "GameEngine.EnvironmentProfile.v1");
+
+    const auto serialized = mirakana::serialize_source_asset_registry_document(document);
+    MK_REQUIRE(serialized.find("asset.0.kind=environment_profile\n") != std::string::npos);
+    const auto parsed = mirakana::deserialize_source_asset_registry_document(serialized);
+    MK_REQUIRE(parsed.assets.size() == 1U);
+    MK_REQUIRE(parsed.assets[0].kind == mirakana::AssetKind::environment_profile);
+
+    const auto import_metadata = mirakana::build_source_asset_import_metadata_registry(parsed);
+    MK_REQUIRE(import_metadata.environment_profile_count() == 1U);
+    const auto plan = mirakana::build_asset_import_plan(import_metadata);
+    MK_REQUIRE(plan.actions.size() == 1U);
+    MK_REQUIRE(plan.actions[0].kind == mirakana::AssetImportActionKind::environment_profile);
+    MK_REQUIRE(plan.actions[0].output_path == "runtime/environment/default_outdoor.environment");
+}
+
+MK_TEST("cooked package index accepts environment profile assets") {
+    const auto asset = mirakana::AssetId::from_name("environment/default_outdoor");
+    std::vector<mirakana::AssetCookedArtifact> artifacts;
+    artifacts.push_back(mirakana::AssetCookedArtifact{
+        .asset = asset,
+        .kind = mirakana::AssetKind::environment_profile,
+        .path = "runtime/environment/default_outdoor.environment",
+        .content = "format=GameEngine.CookedEnvironmentProfile.v1\nasset.kind=environment_profile\n",
+        .source_revision = 1U,
+        .dependencies = {},
+    });
+
+    const auto index = mirakana::build_asset_cooked_package_index(std::move(artifacts), {});
+    MK_REQUIRE(index.entries.size() == 1U);
+    MK_REQUIRE(index.entries[0].kind == mirakana::AssetKind::environment_profile);
+
+    const auto serialized = mirakana::serialize_asset_cooked_package_index(index);
+    MK_REQUIRE(serialized.find("entry.0.kind=environment_profile\n") != std::string::npos);
+    const auto parsed = mirakana::deserialize_asset_cooked_package_index(serialized);
+    MK_REQUIRE(parsed.entries.size() == 1U);
+    MK_REQUIRE(parsed.entries[0].kind == mirakana::AssetKind::environment_profile);
 }
 
 int main() {

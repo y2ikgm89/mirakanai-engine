@@ -1050,6 +1050,28 @@ void append_le_f32(std::string& output, float value) {
     return registry;
 }
 
+[[nodiscard]] mirakana::SceneDocumentV2 make_runtime_migration_environment_scene_v2() {
+    auto scene = make_runtime_migration_scene_v2();
+    scene.environment = mirakana::SceneEnvironmentDocumentV2{
+        .profile = mirakana::AssetKeyV2{.value = "assets/environment/default_outdoor"},
+        .required = true,
+    };
+    return scene;
+}
+
+[[nodiscard]] mirakana::SourceAssetRegistryDocumentV1 make_runtime_migration_environment_source_registry() {
+    auto registry = make_runtime_migration_source_registry();
+    registry.assets.push_back(mirakana::SourceAssetRegistryRowV1{
+        .key = mirakana::AssetKeyV2{"assets/environment/default_outdoor"},
+        .kind = mirakana::AssetKind::environment_profile,
+        .source_path = "source/environment/default_outdoor.geenv",
+        .source_format = "GameEngine.EnvironmentProfile.v1",
+        .imported_path = "runtime/assets/environment/default_outdoor.geenv",
+        .dependencies = {},
+    });
+    return registry;
+}
+
 [[nodiscard]] std::string runtime_migration_package_index_content() {
     const auto mesh = mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{"assets/meshes/cube"});
     const auto material = mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{"assets/materials/base"});
@@ -1078,6 +1100,41 @@ void append_le_f32(std::string& output, float value) {
         {}));
 }
 
+[[nodiscard]] std::string runtime_migration_environment_package_index_content() {
+    const auto mesh = mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{"assets/meshes/cube"});
+    const auto material = mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{"assets/materials/base"});
+    const auto sprite = mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{"assets/textures/hero"});
+    const auto environment = mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{"assets/environment/default_outdoor"});
+    return mirakana::serialize_asset_cooked_package_index(mirakana::build_asset_cooked_package_index(
+        {
+            mirakana::AssetCookedArtifact{.asset = mesh,
+                                          .kind = mirakana::AssetKind::mesh,
+                                          .path = "runtime/assets/meshes/cube.mesh",
+                                          .content = "mesh",
+                                          .source_revision = 1,
+                                          .dependencies = {}},
+            mirakana::AssetCookedArtifact{.asset = material,
+                                          .kind = mirakana::AssetKind::material,
+                                          .path = "runtime/assets/materials/base.material",
+                                          .content = "material",
+                                          .source_revision = 1,
+                                          .dependencies = {}},
+            mirakana::AssetCookedArtifact{.asset = sprite,
+                                          .kind = mirakana::AssetKind::texture,
+                                          .path = "runtime/assets/textures/hero.texture",
+                                          .content = "sprite",
+                                          .source_revision = 1,
+                                          .dependencies = {}},
+            mirakana::AssetCookedArtifact{.asset = environment,
+                                          .kind = mirakana::AssetKind::environment_profile,
+                                          .path = "runtime/assets/environment/default_outdoor.geenv",
+                                          .content = "format=GameEngine.CookedEnvironmentProfile.v1\n",
+                                          .source_revision = 1,
+                                          .dependencies = {}},
+        },
+        {}));
+}
+
 [[nodiscard]] mirakana::SceneV2RuntimePackageMigrationRequest make_runtime_migration_request() {
     mirakana::SceneV2RuntimePackageMigrationRequest request;
     request.kind = mirakana::SceneV2RuntimePackageMigrationCommandKind::migrate_scene_v2_runtime_package;
@@ -1091,6 +1148,15 @@ void append_le_f32(std::string& output, float value) {
     request.output_scene_path = "runtime/assets/scenes/level.scene";
     request.scene_asset_key = mirakana::AssetKeyV2{"assets/scenes/level"};
     request.source_revision = 21;
+    return request;
+}
+
+[[nodiscard]] mirakana::SceneV2RuntimePackageMigrationRequest make_runtime_migration_environment_request() {
+    auto request = make_runtime_migration_request();
+    request.scene_v2_content = mirakana::serialize_scene_document_v2(make_runtime_migration_environment_scene_v2());
+    request.source_registry_content =
+        mirakana::serialize_source_asset_registry_document(make_runtime_migration_environment_source_registry());
+    request.package_index_content = runtime_migration_environment_package_index_content();
     return request;
 }
 
@@ -2710,6 +2776,39 @@ MK_TEST("asset import executor writes cooked artifacts through filesystem") {
     MK_REQUIRE(fs.read_text("assets/audio/hit.audio").find("audio.source_bytes=96000\n") != std::string::npos);
     MK_REQUIRE(fs.read_text("assets/scenes/level.scene").find("format=GameEngine.Scene.v1\n") == 0);
     MK_REQUIRE(fs.read_text("assets/scenes/level.scene").find("scene.name=Level\n") != std::string::npos);
+}
+
+MK_TEST("asset import executor cooks environment profile artifacts") {
+    mirakana::MemoryFileSystem fs;
+    const auto environment_id = mirakana::AssetId::from_name("environment/default_outdoor");
+    fs.write_text("source/environment/default_outdoor.environment", "format=GameEngine.EnvironmentProfile.v1\n"
+                                                                    "id=default_outdoor\n"
+                                                                    "sky.model=physical_atmosphere\n"
+                                                                    "weather.kind=clear\n"
+                                                                    "sun.direction=0,-1,0\n"
+                                                                    "sun.illuminance_lux=100000\n"
+                                                                    "fog.enabled=false\n"
+                                                                    "precipitation.kind=none\n");
+
+    mirakana::AssetImportPlan plan;
+    plan.actions.push_back(mirakana::AssetImportAction{
+        .id = environment_id,
+        .kind = mirakana::AssetImportActionKind::environment_profile,
+        .source_path = "source/environment/default_outdoor.environment",
+        .output_path = "runtime/environment/default_outdoor.environment",
+        .dependencies = {},
+    });
+
+    const auto result = mirakana::execute_asset_import_plan(fs, plan);
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.imported.size() == 1U);
+    const auto cooked = fs.read_text("runtime/environment/default_outdoor.environment");
+    MK_REQUIRE(cooked.find("format=GameEngine.CookedEnvironmentProfile.v1\n") == 0U);
+    MK_REQUIRE(cooked.find("asset.kind=environment_profile\n") != std::string::npos);
+    MK_REQUIRE(cooked.find("environment.source_format=GameEngine.EnvironmentProfile.v1\n") != std::string::npos);
+    MK_REQUIRE(cooked.find("profile.id=default_outdoor\n") != std::string::npos);
+    MK_REQUIRE(cooked.find("profile.precipitation.kind=none\n") != std::string::npos);
 }
 
 MK_TEST("tilemap tooling authors deterministic package data and tilemap_texture rows") {
@@ -6100,6 +6199,40 @@ MK_TEST("scene v2 runtime package migration dry-runs scene and package index cha
     std::ranges::sort(expected_dependencies,
                       [](mirakana::AssetId lhs, mirakana::AssetId rhs) { return lhs.value < rhs.value; });
     MK_REQUIRE(scene_entry->dependencies == expected_dependencies);
+}
+
+MK_TEST("scene v2 runtime package migration projects environment profile dependencies") {
+    const auto request = make_runtime_migration_environment_request();
+
+    const auto result = mirakana::plan_scene_v2_runtime_package_migration(request);
+
+    MK_REQUIRE(result.succeeded());
+    const auto environment = mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{"assets/environment/default_outdoor"});
+    MK_REQUIRE(
+        text_contains(result.scene_v1_content, "environment.profile=" + std::to_string(environment.value) + "\n"));
+    MK_REQUIRE(text_contains(result.scene_v1_content, "environment.required=true\n"));
+
+    const auto& mutation = result.model_mutations[0];
+    const auto environment_placement = std::ranges::find_if(
+        mutation.placement_rows, [](const auto& row) { return row.placement == "scene.environment.profile"; });
+    MK_REQUIRE(environment_placement != mutation.placement_rows.end());
+    MK_REQUIRE(environment_placement->key.value == "assets/environment/default_outdoor");
+    MK_REQUIRE(environment_placement->id == environment);
+    MK_REQUIRE(environment_placement->kind == mirakana::AssetKind::environment_profile);
+    MK_REQUIRE(environment_placement->source_path == "source/environment/default_outdoor.geenv");
+
+    const auto environment_dependency = std::ranges::find_if(mutation.dependency_rows, [](const auto& row) {
+        return row.kind == mirakana::AssetDependencyKind::scene_environment_profile;
+    });
+    MK_REQUIRE(environment_dependency != mutation.dependency_rows.end());
+    MK_REQUIRE(environment_dependency->key.value == "assets/environment/default_outdoor");
+
+    const auto index = mirakana::deserialize_asset_cooked_package_index(result.package_index_content);
+    const auto scene_asset = mirakana::asset_id_from_key_v2(request.scene_asset_key);
+    const auto scene_entry =
+        std::ranges::find_if(index.entries, [scene_asset](const auto& entry) { return entry.asset == scene_asset; });
+    MK_REQUIRE(scene_entry != index.entries.end());
+    MK_REQUIRE(std::ranges::find(scene_entry->dependencies, environment) != scene_entry->dependencies.end());
 }
 
 MK_TEST("scene v2 runtime package migration apply rereads validated paths and writes deterministic changed files") {

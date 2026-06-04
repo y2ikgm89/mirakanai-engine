@@ -7,6 +7,7 @@
 #include "mirakana/core/diagnostics.hpp"
 #include "mirakana/editor/editor_dock_layout.hpp"
 #include "mirakana/editor/shader_compile.hpp"
+#include "mirakana/environment/environment_profile.hpp"
 #include "mirakana/platform/clipboard.hpp"
 #include "mirakana/scene/scene.hpp"
 
@@ -55,13 +56,48 @@ namespace {
     return document;
 }
 
-[[nodiscard]] std::vector<EditorPropertyRow> make_default_inspector_rows(const ProjectDocument& project) {
-    return {
+[[nodiscard]] EnvironmentAuthoringDocument make_default_environment_authoring_document() {
+    return EnvironmentAuthoringDocument::from_profile(EnvironmentProfileDesc{},
+                                                      "assets/environment/default.environment");
+}
+
+[[nodiscard]] EnvironmentCloudLayerDesc make_default_environment_cloud_layer() {
+    return EnvironmentCloudLayerDesc{
+        .mode = EnvironmentCloudLayerMode::equirectangular_2d,
+        .coverage = 0.35F,
+        .opacity = 0.75F,
+        .altitude_m = 2400.0F,
+        .wind_velocity_mps = Vec2{.x = 2.0F, .y = 0.0F},
+        .cloud_map_asset_ref = "textures/environment/default_clouds",
+        .flow_map_asset_ref = "textures/environment/default_cloud_flow",
+        .sky_tint_response = Vec3{.x = 1.0F, .y = 1.0F, .z = 1.0F},
+        .time_of_day_response = 0.5F,
+        .ibl_contribution_mode = EnvironmentCloudIblContributionMode::sky_tint_only,
+        .ibl_contribution = 0.25F,
+    };
+}
+
+[[nodiscard]] EnvironmentAuthoringInspectorModel
+make_default_environment_authoring_inspector(const EnvironmentAuthoringDocument& document) {
+    return make_environment_authoring_inspector_model(EnvironmentAuthoringInspectorDesc{
+        .document = document,
+        .cloud_layer = make_default_environment_cloud_layer(),
+        .volumetric_clouds_policy_available = true,
+        .quality_tier = EnvironmentAuthoringQualityTier::high,
+    });
+}
+
+[[nodiscard]] std::vector<EditorPropertyRow>
+make_default_inspector_rows(const ProjectDocument& project, const EnvironmentAuthoringInspectorModel& environment) {
+    std::vector<EditorPropertyRow> rows{
         EditorPropertyRow{.id = "project", .label = "Project", .value = project.name, .editable = false},
         EditorPropertyRow{.id = "scene", .label = "Startup Scene", .value = project.startup_scene_path},
         EditorPropertyRow{.id = "asset_root", .label = "Asset Root", .value = project.asset_root},
         EditorPropertyRow{.id = "renderer", .label = "Renderer", .value = "native_win32_d3d12", .editable = false},
     };
+    auto environment_rows = make_environment_authoring_editor_property_rows(environment);
+    rows.insert(rows.end(), environment_rows.begin(), environment_rows.end());
+    return rows;
 }
 
 [[nodiscard]] std::vector<EditorAssetListRow> make_default_asset_rows() {
@@ -262,7 +298,9 @@ make_text_input_diagnostic(ui::ElementId id, ui::AdapterPayloadDiagnosticCode co
 struct NativeEditorApp::Impl {
     explicit Impl(const NativeEditorLaunchOptions& options)
         : project(make_default_project_document()), workspace(make_default_workspace(project)),
-          scene(make_default_scene_document()), inspector_rows(make_default_inspector_rows(project)),
+          scene(make_default_scene_document()), environment_authoring(make_default_environment_authoring_document()),
+          environment_authoring_inspector(make_default_environment_authoring_inspector(environment_authoring)),
+          inspector_rows(make_default_inspector_rows(project, environment_authoring_inspector)),
           asset_rows(make_default_asset_rows()), console_rows(make_default_console_rows()),
           resources(make_native_resource_panel_model(false, 0U)), ai_commands(make_default_ai_command_model()),
           profiler(make_default_profiler_model(console_rows)), timeline(make_default_timeline_model()),
@@ -287,6 +325,8 @@ struct NativeEditorApp::Impl {
     ProjectDocument project;
     Workspace workspace;
     SceneAuthoringDocument scene;
+    EnvironmentAuthoringDocument environment_authoring;
+    EnvironmentAuthoringInspectorModel environment_authoring_inspector;
     std::vector<EditorPropertyRow> inspector_rows;
     std::vector<EditorAssetListRow> asset_rows;
     std::vector<EditorDiagnosticRow> console_rows;
@@ -392,6 +432,15 @@ const ProjectDocument& NativeEditorApp::project() const noexcept {
 
 const SceneAuthoringDocument& NativeEditorApp::scene_document() const noexcept {
     return impl_->scene;
+}
+
+const EnvironmentAuthoringDocument& NativeEditorApp::environment_authoring_document() const noexcept {
+    return impl_->environment_authoring;
+}
+
+std::span<const EnvironmentAuthoringInspectorRow>
+NativeEditorApp::environment_authoring_inspector_rows() const noexcept {
+    return impl_->environment_authoring_inspector.rows;
 }
 
 std::span<const EditorPropertyRow> NativeEditorApp::inspector_rows() const noexcept {

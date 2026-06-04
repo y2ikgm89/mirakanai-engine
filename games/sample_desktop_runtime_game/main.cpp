@@ -7,6 +7,7 @@
 #include "mirakana/core/diagnostics.hpp"
 #include "mirakana/core/job_execution.hpp"
 #include "mirakana/core/simd_dispatch.hpp"
+#include "mirakana/environment/environment_io.hpp"
 #include "mirakana/math/transform.hpp"
 #include "mirakana/platform/filesystem.hpp"
 #include "mirakana/platform/input.hpp"
@@ -22,6 +23,7 @@
 #include "mirakana/ui/ui.hpp"
 #include "mirakana/ui_renderer/ui_renderer.hpp"
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <charconv>
@@ -67,6 +69,10 @@ struct DesktopRuntimeGameOptions {
     bool require_vulkan_instanced_draw_evidence{false};
     bool require_d3d12_postprocess_evidence{false};
     bool require_vulkan_postprocess_evidence{false};
+    bool require_environment_profile{false};
+    bool require_environment_fog_evidence{false};
+    bool require_cloud_layer_package_evidence{false};
+    bool require_environment_precipitation_package_evidence{false};
     bool require_gpu_memory_policy{false};
     bool require_memory_diagnostics{false};
     bool require_d3d12_gpu_memory_evidence{false};
@@ -119,6 +125,9 @@ constexpr std::string_view kRuntimePostprocessVertexShaderPath{
     "shaders/sample_desktop_runtime_game_postprocess.vs.dxil"};
 constexpr std::string_view kRuntimePostprocessFragmentShaderPath{
     "shaders/sample_desktop_runtime_game_postprocess.ps.dxil"};
+constexpr std::string_view kRuntimeEnvironmentFogFragmentShaderPath{
+    "shaders/sample_desktop_runtime_game_environment_fog.ps.dxil"};
+constexpr std::string_view kRuntimeEnvironmentProfilePath{"runtime/assets/desktop_runtime/default_outdoor.geenv"};
 constexpr std::string_view kRuntimePostprocessVulkanVertexShaderPath{
     "shaders/sample_desktop_runtime_game_postprocess.vs.spv"};
 constexpr std::string_view kRuntimePostprocessVulkanFragmentShaderPath{
@@ -142,6 +151,55 @@ constexpr std::string_view kHudAtlasProofAssetUri{"runtime/assets/desktop_runtim
     return mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{.value = std::string{key}});
 }
 
+[[nodiscard]] mirakana::CloudLayerPolicyDesc make_sample_cloud_layer_policy_desc() {
+    return mirakana::CloudLayerPolicyDesc{
+        .layer =
+            mirakana::EnvironmentCloudLayerDesc{
+                .mode = mirakana::EnvironmentCloudLayerMode::equirectangular_2d,
+                .coverage = 0.45F,
+                .opacity = 0.8F,
+                .altitude_m = 2400.0F,
+                .wind_velocity_mps = mirakana::Vec2{.x = 8.0F, .y = 1.5F},
+                .cloud_map_asset_ref = "sample/desktop-runtime/texture",
+                .flow_map_asset_ref = "sample/desktop-runtime/texture",
+                .sky_tint_response = mirakana::Vec3{.x = 0.78F, .y = 0.84F, .z = 0.92F},
+                .time_of_day_response = 0.55F,
+                .ibl_contribution_mode = mirakana::EnvironmentCloudIblContributionMode::sky_tint_only,
+                .ibl_contribution = 0.25F,
+            },
+        .quality_tier = mirakana::CloudLayerQualityTier::balanced,
+        .shader_contract_evidence_ready = true,
+        .package_evidence_ready = true,
+        .execution_evidence_ready = true,
+        .request_ready_promotion = true,
+    };
+}
+
+[[nodiscard]] mirakana::PrecipitationPolicyDesc make_sample_environment_precipitation_policy_desc() {
+    mirakana::EnvironmentProfileDesc profile{};
+    profile.id = "sample_desktop_runtime_precipitation";
+    profile.weather = mirakana::EnvironmentWeatherKind::storm;
+    profile.precipitation = mirakana::EnvironmentPrecipitationDesc{
+        .kind = mirakana::EnvironmentPrecipitationKind::rain,
+        .intensity = 0.8F,
+        .particle_radius_mm = 0.8F,
+        .fall_speed_mps = 8.5F,
+        .wind_speed_mps = 6.0F,
+    };
+    return mirakana::PrecipitationPolicyDesc{
+        .environment_plan = mirakana::plan_environment_precipitation(mirakana::EnvironmentPrecipitationPlanDesc{
+            .environment = profile,
+            .scene_geometry_occlusion_required = true,
+            .occlusion_policy_available = true,
+        }),
+        .quality_tier = mirakana::PrecipitationQualityTier::balanced,
+        .shader_contract_evidence_ready = true,
+        .package_evidence_ready = true,
+        .execution_evidence_ready = true,
+        .request_ready_promotion = true,
+    };
+}
+
 [[nodiscard]] mirakana::AssetId packaged_scene_asset_id() {
     return asset_id_from_game_asset_key("sample/desktop-runtime/scene");
 }
@@ -152,6 +210,10 @@ constexpr std::string_view kHudAtlasProofAssetUri{"runtime/assets/desktop_runtim
 
 [[nodiscard]] mirakana::AssetId packaged_quaternion_animation_asset_id() {
     return asset_id_from_game_asset_key("sample/desktop-runtime/animations/packaged-pose");
+}
+
+[[nodiscard]] mirakana::AssetId packaged_environment_profile_asset_id() {
+    return asset_id_from_game_asset_key("sample/desktop-runtime/environment/default-outdoor");
 }
 
 [[nodiscard]] mirakana::AnimationSkeleton3dDesc packaged_quaternion_animation_skeleton() {
@@ -275,6 +337,159 @@ void print_ui_atlas_metadata_diagnostics(std::string_view prefix, const UiAtlasM
         std::cout << prefix << " ui_atlas_metadata_diagnostic=" << ui_atlas_metadata_status_name(state.status) << ": "
                   << diagnostic << '\n';
     }
+}
+
+enum class EnvironmentProfilePackageStatus : std::uint8_t {
+    not_requested,
+    missing_package,
+    missing_profile_record,
+    invalid_profile_record,
+    missing_scene_reference,
+    invalid_scene_reference,
+    missing_scene_dependency,
+    missing_dependency_edge,
+    runtime_scene_validation_failed,
+    ready,
+};
+
+struct EnvironmentProfilePackageEvidence {
+    EnvironmentProfilePackageStatus status{EnvironmentProfilePackageStatus::not_requested};
+    bool requested{false};
+    bool ready{false};
+    bool package_file_present{false};
+    bool package_index_entry_present{false};
+    bool scene_reference_present{false};
+    bool scene_required{false};
+    bool scene_dependency_present{false};
+    bool dependency_edge_present{false};
+    bool runtime_source_parsing{false};
+    std::size_t diagnostics{0};
+};
+
+[[nodiscard]] std::string_view
+environment_profile_package_status_name(EnvironmentProfilePackageStatus status) noexcept {
+    switch (status) {
+    case EnvironmentProfilePackageStatus::not_requested:
+        return "not_requested";
+    case EnvironmentProfilePackageStatus::missing_package:
+        return "missing_package";
+    case EnvironmentProfilePackageStatus::missing_profile_record:
+        return "missing_profile_record";
+    case EnvironmentProfilePackageStatus::invalid_profile_record:
+        return "invalid_profile_record";
+    case EnvironmentProfilePackageStatus::missing_scene_reference:
+        return "missing_scene_reference";
+    case EnvironmentProfilePackageStatus::invalid_scene_reference:
+        return "invalid_scene_reference";
+    case EnvironmentProfilePackageStatus::missing_scene_dependency:
+        return "missing_scene_dependency";
+    case EnvironmentProfilePackageStatus::missing_dependency_edge:
+        return "missing_dependency_edge";
+    case EnvironmentProfilePackageStatus::runtime_scene_validation_failed:
+        return "runtime_scene_validation_failed";
+    case EnvironmentProfilePackageStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] bool
+has_environment_profile_dependency_edge(const mirakana::runtime::RuntimeAssetPackage& package) noexcept {
+    const auto scene_asset = packaged_scene_asset_id();
+    const auto environment_asset = packaged_environment_profile_asset_id();
+    return std::ranges::any_of(package.dependency_edges(), [scene_asset, environment_asset](const auto& edge) {
+        return edge.asset == scene_asset && edge.dependency == environment_asset &&
+               edge.kind == mirakana::AssetDependencyKind::scene_environment_profile;
+    });
+}
+
+[[nodiscard]] bool
+has_environment_profile_scene_dependency(const mirakana::runtime::RuntimeAssetPackage& package) noexcept {
+    const auto* scene_record = package.find(packaged_scene_asset_id());
+    if (scene_record == nullptr) {
+        return false;
+    }
+    const auto environment_asset = packaged_environment_profile_asset_id();
+    return std::ranges::find(scene_record->dependencies, environment_asset) != scene_record->dependencies.end();
+}
+
+[[nodiscard]] bool is_cooked_environment_profile_record(const mirakana::runtime::RuntimeAssetRecord& record) noexcept {
+    return record.kind == mirakana::AssetKind::environment_profile && record.path == kRuntimeEnvironmentProfilePath &&
+           std::string_view{record.content}.starts_with("format=GameEngine.CookedEnvironmentProfile.v1\n") &&
+           record.content.find("asset.kind=environment_profile\n") != std::string::npos &&
+           record.content.find("environment.source_format=GameEngine.EnvironmentProfile.v1\n") != std::string::npos;
+}
+
+[[nodiscard]] EnvironmentProfilePackageEvidence
+evaluate_environment_profile_package(bool requested,
+                                     const std::optional<mirakana::runtime::RuntimeAssetPackage>& runtime_package) {
+    EnvironmentProfilePackageEvidence evidence;
+    evidence.requested = requested;
+    if (!requested) {
+        return evidence;
+    }
+    if (!runtime_package.has_value()) {
+        evidence.status = EnvironmentProfilePackageStatus::missing_package;
+        evidence.diagnostics = 1;
+        return evidence;
+    }
+
+    const auto environment_asset = packaged_environment_profile_asset_id();
+    const auto* environment_record = runtime_package->find(environment_asset);
+    evidence.package_index_entry_present = environment_record != nullptr;
+    if (environment_record == nullptr) {
+        evidence.status = EnvironmentProfilePackageStatus::missing_profile_record;
+        evidence.diagnostics = 1;
+        return evidence;
+    }
+    evidence.package_file_present = is_cooked_environment_profile_record(*environment_record);
+    if (!evidence.package_file_present) {
+        evidence.status = EnvironmentProfilePackageStatus::invalid_profile_record;
+        evidence.diagnostics = 1;
+        return evidence;
+    }
+
+    const auto runtime_scene = mirakana::runtime_scene::instantiate_runtime_scene(
+        *runtime_package, packaged_scene_asset_id(),
+        mirakana::runtime_scene::RuntimeSceneLoadOptions{.validate_asset_references = true,
+                                                         .require_unique_node_names = false,
+                                                         .require_environment_profile = true});
+    evidence.diagnostics = runtime_scene.diagnostics.size();
+    if (!runtime_scene.succeeded() || !runtime_scene.instance.has_value()) {
+        evidence.status = EnvironmentProfilePackageStatus::runtime_scene_validation_failed;
+        return evidence;
+    }
+
+    const auto environment = runtime_scene.instance->scene.environment();
+    evidence.scene_reference_present = environment.has_value();
+    if (!environment.has_value()) {
+        evidence.status = EnvironmentProfilePackageStatus::missing_scene_reference;
+        evidence.diagnostics += 1;
+        return evidence;
+    }
+    evidence.scene_required = environment->required;
+    if (environment->profile != environment_asset || !environment->required) {
+        evidence.status = EnvironmentProfilePackageStatus::invalid_scene_reference;
+        evidence.diagnostics += 1;
+        return evidence;
+    }
+
+    evidence.scene_dependency_present = has_environment_profile_scene_dependency(*runtime_package);
+    if (!evidence.scene_dependency_present) {
+        evidence.status = EnvironmentProfilePackageStatus::missing_scene_dependency;
+        evidence.diagnostics += 1;
+        return evidence;
+    }
+    evidence.dependency_edge_present = has_environment_profile_dependency_edge(*runtime_package);
+    if (!evidence.dependency_edge_present) {
+        evidence.status = EnvironmentProfilePackageStatus::missing_dependency_edge;
+        evidence.diagnostics += 1;
+        return evidence;
+    }
+
+    evidence.status = EnvironmentProfilePackageStatus::ready;
+    evidence.ready = true;
+    return evidence;
 }
 
 [[nodiscard]] std::vector<mirakana::rhi::VertexBufferLayoutDesc> runtime_scene_vertex_buffers() {
@@ -753,6 +968,10 @@ void print_usage() {
                  "[--require-vulkan-instanced-draw-evidence] "
                  "[--require-d3d12-postprocess-evidence] "
                  "[--require-vulkan-postprocess-evidence] "
+                 "[--require-environment-profile] "
+                 "[--require-environment-fog-evidence] "
+                 "[--require-cloud-layer-package-evidence] "
+                 "[--require-environment-precipitation-package-evidence] "
                  "[--require-gpu-memory-policy] [--require-memory-diagnostics] [--require-d3d12-gpu-memory-evidence] "
                  "[--require-vulkan-gpu-memory-evidence] "
                  "[--require-debug-profiling-policy] [--require-d3d12-debug-profiling-evidence] "
@@ -873,6 +1092,37 @@ void print_usage() {
             options.require_scene_gpu_bindings = true;
             options.require_postprocess = true;
             options.require_d3d12_postprocess_evidence = true;
+            continue;
+        }
+        if (arg == "--require-environment-profile") {
+            options.require_environment_profile = true;
+            continue;
+        }
+        if (arg == "--require-environment-fog-evidence") {
+            options.require_d3d12_renderer = true;
+            options.require_scene_gpu_bindings = true;
+            options.require_postprocess = true;
+            options.require_postprocess_depth_input = true;
+            options.require_d3d12_postprocess_evidence = true;
+            options.require_environment_fog_evidence = true;
+            continue;
+        }
+        if (arg == "--require-cloud-layer-package-evidence") {
+            options.require_d3d12_renderer = true;
+            options.require_scene_gpu_bindings = true;
+            options.require_postprocess = true;
+            options.require_postprocess_depth_input = true;
+            options.require_d3d12_postprocess_evidence = true;
+            options.require_cloud_layer_package_evidence = true;
+            continue;
+        }
+        if (arg == "--require-environment-precipitation-package-evidence") {
+            options.require_d3d12_renderer = true;
+            options.require_scene_gpu_bindings = true;
+            options.require_postprocess = true;
+            options.require_postprocess_depth_input = true;
+            options.require_d3d12_postprocess_evidence = true;
+            options.require_environment_precipitation_package_evidence = true;
             continue;
         }
         if (arg == "--require-vulkan-postprocess-evidence") {
@@ -2359,6 +2609,10 @@ int main(int argc, char** argv) {
                                      packaged_scene, packaged_quaternion_animation_tracks)) {
         return 4;
     }
+    if (options.require_environment_profile && !runtime_package.has_value()) {
+        std::cerr << "--require-environment-profile requires --require-scene-package\n";
+        return 4;
+    }
     if (options.require_scene_gpu_bindings && (!runtime_package.has_value() || !packaged_scene.has_value())) {
         std::cerr << "--require-scene-gpu-bindings requires --require-scene-package\n";
         return 4;
@@ -2404,6 +2658,14 @@ int main(int argc, char** argv) {
         if (options.require_postprocess && !options.require_vulkan_renderer) {
             return 4;
         }
+    }
+    const auto environment_fog_fragment_blob = load_packaged_single_shader_blob(
+        argc > 0 ? argv[0] : nullptr, kRuntimeEnvironmentFogFragmentShaderPath, "height_fog_ps_main");
+    if (options.require_environment_fog_evidence && !options.require_vulkan_renderer &&
+        environment_fog_fragment_blob.bytecode.empty()) {
+        std::cout << "sample_desktop_runtime_game environment_fog_shader_diagnostic=missing: "
+                  << kRuntimeEnvironmentFogFragmentShaderPath << '\n';
+        return 4;
     }
     auto shadow_receiver_bytecode = load_packaged_d3d12_shadow_receiver_scene_shaders(argc > 0 ? argv[0] : nullptr);
     if (!shadow_receiver_bytecode.ready() && options.require_directional_shadow && !options.require_vulkan_renderer) {
@@ -2512,6 +2774,10 @@ int main(int argc, char** argv) {
     const auto& d3d12_scene_bytecode = options.require_directional_shadow ? shadow_receiver_bytecode : shader_bytecode;
     const bool d3d12_shadow_ready = !options.require_directional_shadow || shadow_bytecode.ready();
     const bool d3d12_native_ui_overlay_ready = !options.require_native_ui_overlay || native_ui_overlay_bytecode.ready();
+    const auto* d3d12_postprocess_fragment_shader = &postprocess_bytecode.fragment_shader;
+    if (options.require_environment_fog_evidence) {
+        d3d12_postprocess_fragment_shader = &environment_fog_fragment_blob;
+    }
     if (d3d12_scene_bytecode.ready() && postprocess_bytecode.ready() && d3d12_shadow_ready &&
         d3d12_native_ui_overlay_ready && runtime_package.has_value() && packaged_scene.has_value()) {
         d3d12_scene_renderer.emplace(mirakana::Win32DesktopPresentationD3d12SceneRendererDesc{
@@ -2521,7 +2787,7 @@ int main(int argc, char** argv) {
             .skinned_scene_fragment_shader =
                 to_presentation_shader_bytecode(d3d12_skinned_shadow_receiver_fragment_blob),
             .postprocess_vertex_shader = to_presentation_shader_bytecode(postprocess_bytecode.vertex_shader),
-            .postprocess_fragment_shader = to_presentation_shader_bytecode(postprocess_bytecode.fragment_shader),
+            .postprocess_fragment_shader = to_presentation_shader_bytecode(*d3d12_postprocess_fragment_shader),
             .shadow_vertex_shader = to_presentation_shader_bytecode(shadow_bytecode.vertex_shader),
             .shadow_fragment_shader = to_presentation_shader_bytecode(shadow_bytecode.fragment_shader),
             .native_ui_overlay_vertex_shader =
@@ -2536,6 +2802,27 @@ int main(int argc, char** argv) {
             .skinned_vertex_attributes = runtime_skinned_scene_vertex_attributes(),
             .enable_postprocess = true,
             .enable_postprocess_depth_input = true,
+            .enable_environment_fog = options.require_environment_fog_evidence,
+            .environment_fog =
+                mirakana::EnvironmentFogPolicyDesc{
+                    .mode = mirakana::EnvironmentFogMode::exponential_height,
+                    .density = 0.08F,
+                    .height_falloff = 0.35F,
+                    .height_offset_m = 12.0F,
+                    .start_distance_m = 0.0F,
+                    .cutoff_distance_m = 1200.0F,
+                    .max_opacity = 0.85F,
+                    .sky_affect = 0.35F,
+                    .directional_inscattering_anisotropy = 0.25F,
+                    .inscattering_color = mirakana::Vec3{.x = 0.58F, .y = 0.68F, .z = 0.78F},
+                    .directional_inscattering_color = mirakana::Vec3{.x = 0.84F, .y = 0.78F, .z = 0.62F},
+                    .sample_step_budget = 8,
+                },
+            .enable_cloud_layer_package_evidence = options.require_cloud_layer_package_evidence,
+            .cloud_layer = make_sample_cloud_layer_policy_desc(),
+            .enable_environment_precipitation_package_evidence =
+                options.require_environment_precipitation_package_evidence,
+            .environment_precipitation = make_sample_environment_precipitation_policy_desc(),
             .enable_directional_shadow_smoke = options.require_directional_shadow,
             .enable_native_ui_overlay = options.require_native_ui_overlay,
             .native_ui_overlay_atlas_asset =
@@ -2788,6 +3075,14 @@ int main(int argc, char** argv) {
     const auto postprocess_policy = mirakana::evaluate_win32_desktop_presentation_postprocess_policy(report);
     const auto d3d12_postprocess_execution = mirakana::evaluate_win32_desktop_presentation_d3d12_postprocess_execution(
         report, static_cast<std::uint64_t>(options.max_frames), options.require_d3d12_postprocess_evidence);
+    const auto environment_fog = mirakana::evaluate_win32_desktop_presentation_environment_fog(
+        report, d3d12_postprocess_execution, options.require_environment_fog_evidence);
+    const auto cloud_layer =
+        mirakana::evaluate_win32_desktop_presentation_cloud_layer(report, options.require_cloud_layer_package_evidence);
+    const auto environment_precipitation = mirakana::evaluate_win32_desktop_presentation_environment_precipitation(
+        report, options.require_environment_precipitation_package_evidence);
+    const auto environment_profile =
+        evaluate_environment_profile_package(options.require_environment_profile, runtime_package);
     const auto vulkan_postprocess_execution =
         mirakana::evaluate_win32_desktop_presentation_vulkan_postprocess_execution(
             report, static_cast<std::uint64_t>(options.max_frames), options.require_vulkan_postprocess_evidence);
@@ -2901,6 +3196,7 @@ int main(int argc, char** argv) {
         << " postprocess_policy_scene_color_required=" << (postprocess_policy.scene_color_required ? 1 : 0)
         << " postprocess_policy_scene_depth_required=" << (postprocess_policy.scene_depth_required ? 1 : 0)
         << " postprocess_policy_color_grading_effect=" << (postprocess_policy.color_grading_effect ? 1 : 0)
+        << " postprocess_policy_fog_effect=" << (postprocess_policy.fog_effect ? 1 : 0)
         << " postprocess_policy_backend_shader_evidence_ready="
         << (postprocess_policy.backend_shader_evidence_ready ? 1 : 0) << " postprocess_d3d12_execution_status="
         << mirakana::win32_desktop_presentation_d3d12_postprocess_execution_status_name(
@@ -2912,6 +3208,89 @@ int main(int argc, char** argv) {
         << " postprocess_d3d12_execution_expected_passes=" << d3d12_postprocess_execution.expected_postprocess_passes
         << " postprocess_d3d12_execution_passes=" << d3d12_postprocess_execution.postprocess_passes_executed
         << " postprocess_d3d12_execution_passes_ok=" << (d3d12_postprocess_execution.postprocess_passes_current ? 1 : 0)
+        << " environment_fog_status="
+        << mirakana::win32_desktop_presentation_environment_fog_status_name(environment_fog.status)
+        << " environment_fog_ready=" << (environment_fog.ready ? 1 : 0) << " environment_fog_selected_backend="
+        << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
+        << " environment_fog_requested=" << (environment_fog.requested ? 1 : 0)
+        << " environment_fog_depth_input_ready=" << (environment_fog.postprocess_depth_input_ready ? 1 : 0)
+        << " environment_fog_constant_buffer_ready=" << (environment_fog.constant_buffer_ready ? 1 : 0)
+        << " environment_fog_constants_binding=" << environment_fog.constants_binding
+        << " environment_fog_constants_byte_size=" << environment_fog.constant_buffer_bytes
+        << " environment_fog_postprocess_passes_ok=" << (environment_fog.postprocess_passes_current ? 1 : 0)
+        << " environment_fog_diagnostics=" << environment_fog.diagnostics_count
+        << " cloud_layer_status=" << mirakana::win32_desktop_presentation_cloud_layer_status_name(cloud_layer.status)
+        << " cloud_layer_ready=" << (cloud_layer.ready ? 1 : 0) << " cloud_layer_selected_backend="
+        << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
+        << " cloud_layer_requested=" << (cloud_layer.requested ? 1 : 0)
+        << " cloud_layer_shader_contract_evidence_ready=" << (cloud_layer.shader_contract_evidence_ready ? 1 : 0)
+        << " cloud_layer_package_evidence_ready=" << (cloud_layer.package_evidence_ready ? 1 : 0)
+        << " cloud_layer_execution_evidence_ready=" << (cloud_layer.execution_evidence_ready ? 1 : 0)
+        << " cloud_layer_cloud_map_binding=" << cloud_layer.cloud_map_binding
+        << " cloud_layer_flow_map_binding=" << cloud_layer.flow_map_binding
+        << " cloud_layer_sampler_binding=" << cloud_layer.sampler_binding
+        << " cloud_layer_constants_binding=" << cloud_layer.constants_binding
+        << " cloud_layer_uses_latlong_projection=" << (cloud_layer.uses_latlong_projection ? 1 : 0)
+        << " cloud_layer_uses_flow_map=" << (cloud_layer.uses_flow_map ? 1 : 0)
+        << " cloud_layer_texture_rows=" << cloud_layer.texture_rows
+        << " cloud_layer_visual_rows=" << cloud_layer.visual_rows << " cloud_layer_ibl_rows=" << cloud_layer.ibl_rows
+        << " cloud_layer_shader_contract_rows=" << cloud_layer.shader_contract_rows
+        << " cloud_layer_quality_rows=" << cloud_layer.quality_rows
+        << " cloud_layer_texture_uploads=" << (cloud_layer.uploads_textures ? 1 : 0)
+        << " cloud_layer_backend_invocations=" << (cloud_layer.invokes_backend ? 1 : 0)
+        << " cloud_layer_native_handle_access=" << (cloud_layer.exposes_native_handles ? 1 : 0)
+        << " cloud_layer_volumetric_clouds=" << (cloud_layer.uses_volumetric_clouds ? 1 : 0)
+        << " cloud_layer_diagnostics=" << cloud_layer.diagnostics_count << " environment_precipitation_status="
+        << mirakana::win32_desktop_presentation_environment_precipitation_status_name(environment_precipitation.status)
+        << " environment_precipitation_ready=" << (environment_precipitation.ready ? 1 : 0)
+        << " environment_precipitation_selected_backend="
+        << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
+        << " environment_precipitation_requested=" << (environment_precipitation.requested ? 1 : 0)
+        << " environment_precipitation_weather="
+        << mirakana::environment_weather_kind_name(environment_precipitation.weather)
+        << " environment_precipitation_kind="
+        << mirakana::environment_precipitation_kind_name(environment_precipitation.kind)
+        << " environment_precipitation_shader_contract_evidence_ready="
+        << (environment_precipitation.shader_contract_evidence_ready ? 1 : 0)
+        << " environment_precipitation_package_evidence_ready="
+        << (environment_precipitation.package_evidence_ready ? 1 : 0)
+        << " environment_precipitation_execution_evidence_ready="
+        << (environment_precipitation.execution_evidence_ready ? 1 : 0)
+        << " environment_precipitation_particle_texture_binding=" << environment_precipitation.particle_texture_binding
+        << " environment_precipitation_scene_depth_texture_binding="
+        << environment_precipitation.scene_depth_texture_binding
+        << " environment_precipitation_sampler_binding=" << environment_precipitation.sampler_binding
+        << " environment_precipitation_constants_binding=" << environment_precipitation.constants_binding
+        << " environment_precipitation_uses_camera_near_particles="
+        << (environment_precipitation.uses_camera_near_particles ? 1 : 0)
+        << " environment_precipitation_uses_scene_depth_occlusion="
+        << (environment_precipitation.uses_scene_depth_occlusion ? 1 : 0)
+        << " environment_precipitation_weather_rows=" << environment_precipitation.weather_rows
+        << " environment_precipitation_particle_rows=" << environment_precipitation.particle_rows
+        << " environment_precipitation_occlusion_rows=" << environment_precipitation.occlusion_rows
+        << " environment_precipitation_wetness_rows=" << environment_precipitation.wetness_rows
+        << " environment_precipitation_audio_handoff_rows=" << environment_precipitation.audio_handoff_rows
+        << " environment_precipitation_shader_rows=" << environment_precipitation.shader_rows
+        << " environment_precipitation_quality_rows=" << environment_precipitation.quality_rows
+        << " environment_precipitation_particle_buffer_uploads="
+        << (environment_precipitation.uploads_particle_buffers ? 1 : 0)
+        << " environment_precipitation_backend_invocations=" << (environment_precipitation.invokes_backend ? 1 : 0)
+        << " environment_precipitation_native_handle_access="
+        << (environment_precipitation.exposes_native_handles ? 1 : 0)
+        << " environment_precipitation_material_mutations=" << (environment_precipitation.mutates_materials ? 1 : 0)
+        << " environment_precipitation_audio_playback=" << (environment_precipitation.plays_audio ? 1 : 0)
+        << " environment_precipitation_diagnostics=" << environment_precipitation.diagnostics_count
+        << " environment_profile_status=" << environment_profile_package_status_name(environment_profile.status)
+        << " environment_profile_ready=" << (environment_profile.ready ? 1 : 0)
+        << " environment_profile_requested=" << (environment_profile.requested ? 1 : 0)
+        << " environment_profile_package_file=" << (environment_profile.package_file_present ? 1 : 0)
+        << " environment_profile_package_index_entry=" << (environment_profile.package_index_entry_present ? 1 : 0)
+        << " environment_profile_scene_reference=" << (environment_profile.scene_reference_present ? 1 : 0)
+        << " environment_profile_scene_required=" << (environment_profile.scene_required ? 1 : 0)
+        << " environment_profile_scene_dependency=" << (environment_profile.scene_dependency_present ? 1 : 0)
+        << " environment_profile_dependency_edge=" << (environment_profile.dependency_edge_present ? 1 : 0)
+        << " environment_profile_source_parsing=" << (environment_profile.runtime_source_parsing ? 1 : 0)
+        << " environment_profile_diagnostics=" << environment_profile.diagnostics
         << " vulkan_postprocess_execution_status="
         << mirakana::win32_desktop_presentation_vulkan_postprocess_execution_status_name(
                vulkan_postprocess_execution.status)
@@ -3721,7 +4100,9 @@ int main(int argc, char** argv) {
              !postprocess_policy.ready || postprocess_policy.diagnostics_count != 0 ||
              postprocess_policy.effect_count != 1 || postprocess_policy.postprocess_pass_count != 1 ||
              postprocess_policy.framegraph_pass_count != 2 || postprocess_policy.framegraph_barrier_step_budget != 2 ||
-             !postprocess_policy.scene_color_required || !postprocess_policy.color_grading_effect ||
+             !postprocess_policy.scene_color_required ||
+             (!options.require_environment_fog_evidence && !postprocess_policy.color_grading_effect) ||
+             (options.require_environment_fog_evidence && !postprocess_policy.fog_effect) ||
              !postprocess_policy.backend_shader_evidence_ready ||
              (options.require_postprocess_depth_input && !postprocess_policy.scene_depth_required) ||
              report.framegraph_passes != expected_framegraph_passes ||
@@ -3733,6 +4114,18 @@ int main(int argc, char** argv) {
             return 3;
         }
         if (options.require_postprocess_depth_input && !report.postprocess_depth_input_ready) {
+            return 3;
+        }
+        if (options.require_environment_profile && !environment_profile.ready) {
+            return 3;
+        }
+        if (options.require_environment_fog_evidence && !environment_fog.ready) {
+            return 3;
+        }
+        if (options.require_cloud_layer_package_evidence && !cloud_layer.ready) {
+            return 3;
+        }
+        if (options.require_environment_precipitation_package_evidence && !environment_precipitation.ready) {
             return 3;
         }
         if (options.require_directional_shadow &&

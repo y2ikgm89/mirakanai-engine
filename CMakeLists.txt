@@ -143,6 +143,7 @@ endmacro()
 # rhi -> runtime_rhi -> renderer -> runtime_host -> ui_renderer -> scene -> runtime_scene -> scene_renderer -> runtime_scene_rhi -> editor
 add_subdirectory(engine/math)
 add_subdirectory(engine/core)
+add_subdirectory(engine/environment)
 add_subdirectory(engine/ai)
 add_subdirectory(engine/ui)
 add_subdirectory(engine/assets)
@@ -726,6 +727,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_editor_core_tests)
     add_test(NAME MK_editor_core_tests COMMAND MK_editor_core_tests)
 
+    add_executable(MK_editor_environment_tests
+        tests/unit/editor_environment_tests.cpp
+    )
+    target_link_libraries(MK_editor_environment_tests PRIVATE MK_editor_shell_common MK_environment)
+    target_include_directories(MK_editor_environment_tests PRIVATE tests editor/src)
+    MK_apply_common_target_options(MK_editor_environment_tests)
+    add_test(NAME MK_editor_environment_tests COMMAND MK_editor_environment_tests)
+
     add_executable(MK_editor_native_shell_tests
         tests/unit/editor_native_shell_tests.cpp
     )
@@ -791,6 +800,94 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_renderer_tests)
     add_test(NAME MK_renderer_tests COMMAND MK_renderer_tests)
 
+    add_executable(MK_renderer_environment_policy_tests
+        tests/unit/renderer_environment_policy_tests.cpp
+    )
+    target_link_libraries(MK_renderer_environment_policy_tests PRIVATE MK_renderer)
+    target_include_directories(MK_renderer_environment_policy_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_renderer_environment_policy_tests)
+    add_test(NAME MK_renderer_environment_policy_tests COMMAND MK_renderer_environment_policy_tests)
+
+    add_executable(MK_renderer_physical_sky_policy_tests
+        tests/unit/renderer_physical_sky_policy_tests.cpp
+    )
+    target_link_libraries(MK_renderer_physical_sky_policy_tests PRIVATE MK_renderer)
+    target_include_directories(MK_renderer_physical_sky_policy_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_renderer_physical_sky_policy_tests)
+    add_test(NAME MK_renderer_physical_sky_policy_tests COMMAND MK_renderer_physical_sky_policy_tests)
+
+    add_executable(MK_renderer_environment_lighting_policy_tests
+        tests/unit/renderer_environment_lighting_policy_tests.cpp
+    )
+    target_link_libraries(MK_renderer_environment_lighting_policy_tests PRIVATE MK_renderer)
+    target_include_directories(MK_renderer_environment_lighting_policy_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_renderer_environment_lighting_policy_tests)
+    add_test(NAME MK_renderer_environment_lighting_policy_tests COMMAND MK_renderer_environment_lighting_policy_tests)
+
+    add_executable(MK_renderer_environment_fog_policy_tests
+        tests/unit/renderer_environment_fog_policy_tests.cpp
+    )
+    target_link_libraries(MK_renderer_environment_fog_policy_tests PRIVATE MK_renderer)
+    target_include_directories(MK_renderer_environment_fog_policy_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_renderer_environment_fog_policy_tests)
+    add_test(NAME MK_renderer_environment_fog_policy_tests COMMAND MK_renderer_environment_fog_policy_tests)
+
+    add_executable(MK_renderer_volumetric_fog_policy_tests
+        tests/unit/renderer_volumetric_fog_policy_tests.cpp
+    )
+    target_link_libraries(MK_renderer_volumetric_fog_policy_tests PRIVATE MK_renderer)
+    target_include_directories(MK_renderer_volumetric_fog_policy_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_renderer_volumetric_fog_policy_tests)
+    add_test(NAME MK_renderer_volumetric_fog_policy_tests COMMAND MK_renderer_volumetric_fog_policy_tests)
+
+    add_executable(MK_environment_cloud_tests
+        tests/unit/environment_cloud_tests.cpp
+    )
+    target_link_libraries(MK_environment_cloud_tests PRIVATE MK_environment)
+    target_include_directories(MK_environment_cloud_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_environment_cloud_tests)
+    add_test(NAME MK_environment_cloud_tests COMMAND MK_environment_cloud_tests)
+
+    add_executable(MK_environment_weather_tests
+        tests/unit/environment_weather_tests.cpp
+    )
+    target_link_libraries(MK_environment_weather_tests PRIVATE MK_environment)
+    target_include_directories(MK_environment_weather_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_environment_weather_tests)
+    add_test(NAME MK_environment_weather_tests COMMAND MK_environment_weather_tests)
+
+    add_executable(MK_environment_time_of_day_tests
+        tests/unit/environment_time_of_day_tests.cpp
+    )
+    target_link_libraries(MK_environment_time_of_day_tests PRIVATE MK_environment)
+    target_include_directories(MK_environment_time_of_day_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_environment_time_of_day_tests)
+    add_test(NAME MK_environment_time_of_day_tests COMMAND MK_environment_time_of_day_tests)
+
+    add_executable(MK_renderer_cloud_layer_policy_tests
+        tests/unit/renderer_cloud_layer_policy_tests.cpp
+    )
+    target_link_libraries(MK_renderer_cloud_layer_policy_tests PRIVATE MK_renderer MK_environment)
+    target_include_directories(MK_renderer_cloud_layer_policy_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_renderer_cloud_layer_policy_tests)
+    add_test(NAME MK_renderer_cloud_layer_policy_tests COMMAND MK_renderer_cloud_layer_policy_tests)
+
+    add_executable(MK_renderer_precipitation_policy_tests
+        tests/unit/renderer_precipitation_policy_tests.cpp
+    )
+    target_link_libraries(MK_renderer_precipitation_policy_tests PRIVATE MK_renderer MK_environment)
+    target_include_directories(MK_renderer_precipitation_policy_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_renderer_precipitation_policy_tests)
+    add_test(NAME MK_renderer_precipitation_policy_tests COMMAND MK_renderer_precipitation_policy_tests)
+
+    add_executable(MK_renderer_volumetric_cloud_tests
+        tests/unit/renderer_volumetric_cloud_tests.cpp
+    )
+    target_link_libraries(MK_renderer_volumetric_cloud_tests PRIVATE MK_renderer)
+    target_include_directories(MK_renderer_volumetric_cloud_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_renderer_volumetric_cloud_tests)
+    add_test(NAME MK_renderer_volumetric_cloud_tests COMMAND MK_renderer_volumetric_cloud_tests)
+
     add_executable(MK_renderer_tile_chunk_renderer_tests
         tests/unit/renderer_tile_chunk_renderer_tests.cpp
     )
@@ -815,6 +912,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_renderer_quality_matrix_tests)
     add_test(NAME MK_renderer_quality_matrix_tests COMMAND MK_renderer_quality_matrix_tests)
 
+    add_executable(MK_environment_tests
+        tests/unit/environment_tests.cpp
+    )
+    target_link_libraries(MK_environment_tests PRIVATE MK_environment)
+    target_include_directories(MK_environment_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_environment_tests)
+    add_test(NAME MK_environment_tests COMMAND MK_environment_tests)
+
     add_executable(MK_runtime_host_tests
         tests/unit/runtime_host_tests.cpp
     )
@@ -830,6 +935,14 @@ if(BUILD_TESTING)
     target_include_directories(MK_scene_renderer_tests PRIVATE tests)
     MK_apply_common_target_options(MK_scene_renderer_tests)
     add_test(NAME MK_scene_renderer_tests COMMAND MK_scene_renderer_tests)
+
+    add_executable(MK_scene_environment_renderer_tests
+        tests/unit/scene_environment_renderer_tests.cpp
+    )
+    target_link_libraries(MK_scene_environment_renderer_tests PRIVATE MK_scene_renderer)
+    target_include_directories(MK_scene_environment_renderer_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_scene_environment_renderer_tests)
+    add_test(NAME MK_scene_environment_renderer_tests COMMAND MK_scene_environment_renderer_tests)
 
     add_executable(MK_runtime_ui_workbench_tests
         tests/unit/runtime_ui_workbench_tests.cpp
@@ -1011,6 +1124,7 @@ MK_set_export_name(MK_ai ai)
 MK_set_export_name(MK_assets assets)
 MK_set_export_name(MK_audio audio)
 MK_set_export_name(MK_core core)
+MK_set_export_name(MK_environment environment)
 MK_set_export_name(MK_math math)
 MK_set_export_name(MK_navigation navigation)
 MK_set_export_name(MK_runtime_network_enet runtime_network_enet)
@@ -1044,6 +1158,7 @@ set(MK_LIBRARY_TARGETS
     mirakana_assets
     MK_audio
     mirakana_core
+    mirakana_environment
     mirakana_math
     mirakana_navigation
     mirakana_physics
@@ -1321,6 +1436,7 @@ install(DIRECTORY
     engine/assets/include/
     engine/audio/include/
     engine/core/include/
+    engine/environment/include/
     engine/math/include/
     engine/navigation/include/
     engine/physics/include/

@@ -45,6 +45,8 @@ namespace {
         return "tilemap";
     case AssetKind::physics_collision_scene:
         return "physics_collision_scene";
+    case AssetKind::environment_profile:
+        return "environment_profile";
     }
     return "unknown";
 }
@@ -57,6 +59,8 @@ namespace {
         return "material";
     case RuntimeSceneReferenceKind::sprite:
         return "sprite";
+    case RuntimeSceneReferenceKind::environment_profile:
+        return "environment_profile";
     }
     return "reference";
 }
@@ -183,6 +187,10 @@ void append_asset_identity_audit(RuntimeSceneAssetIdentityAudit& audit,
 }
 
 void collect_references(const Scene& scene, std::vector<RuntimeSceneReference>& references) {
+    if (scene.environment().has_value()) {
+        append_reference(references, null_scene_node, scene.environment()->profile,
+                         RuntimeSceneReferenceKind::environment_profile, AssetKind::environment_profile);
+    }
     for (const auto& node : scene.nodes()) {
         if (node.components.mesh_renderer.has_value()) {
             append_reference(references, node.id, node.components.mesh_renderer->mesh, RuntimeSceneReferenceKind::mesh,
@@ -217,10 +225,7 @@ void validate_references(const runtime::RuntimeAssetPackage& package,
                                            });
             continue;
         }
-        const bool mesh_reference_ok = reference.kind == RuntimeSceneReferenceKind::mesh &&
-                                       reference.expected_kind == AssetKind::mesh &&
-                                       (record->kind == AssetKind::mesh || record->kind == AssetKind::skinned_mesh);
-        if (!mesh_reference_ok && record->kind != reference.expected_kind) {
+        if (!reference_accepts_asset_kind(reference.kind, reference.expected_kind, record->kind)) {
             append_diagnostic(diagnostics,
                               RuntimeSceneDiagnostic{
                                   .code = RuntimeSceneDiagnosticCode::referenced_asset_kind_mismatch,
@@ -717,6 +722,12 @@ RuntimeSceneAssetIdentityAudit audit_runtime_scene_asset_identity(const Scene& s
 
     const auto lookup = make_identity_lookup(identities);
 
+    if (scene.environment().has_value()) {
+        append_asset_identity_audit(audit, lookup, "scene.environment.profile", null_scene_node,
+                                    scene.environment()->profile, RuntimeSceneReferenceKind::environment_profile,
+                                    AssetKind::environment_profile);
+    }
+
     for (const auto& node : scene.nodes()) {
         if (node.components.mesh_renderer.has_value()) {
             append_asset_identity_audit(audit, lookup, "scene.component.mesh_renderer.mesh", node.id,
@@ -772,6 +783,18 @@ RuntimeSceneLoadResult instantiate_runtime_scene(const runtime::RuntimeAssetPack
             .references = {},
         };
         collect_references(instance.scene, instance.references);
+        if (options.require_environment_profile && !instance.scene.environment().has_value()) {
+            append_diagnostic(result.diagnostics,
+                              RuntimeSceneDiagnostic{
+                                  .code = RuntimeSceneDiagnosticCode::missing_environment_profile,
+                                  .asset = scene_asset,
+                                  .node = null_scene_node,
+                                  .reference_kind = RuntimeSceneReferenceKind::environment_profile,
+                                  .expected_kind = AssetKind::environment_profile,
+                                  .actual_kind = AssetKind::unknown,
+                                  .message = "runtime scene requires an environment profile reference",
+                              });
+        }
         if (options.validate_asset_references) {
             validate_references(package, instance.references, result.diagnostics);
         }

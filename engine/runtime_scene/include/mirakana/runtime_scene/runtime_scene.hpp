@@ -28,12 +28,13 @@ enum class RuntimeSceneDiagnosticCode : std::uint8_t {
     missing_scene_asset,
     wrong_asset_kind,
     malformed_scene_payload,
+    missing_environment_profile,
     missing_referenced_asset,
     referenced_asset_kind_mismatch,
     duplicate_node_name,
 };
 
-enum class RuntimeSceneReferenceKind : std::uint8_t { mesh, material, sprite };
+enum class RuntimeSceneReferenceKind : std::uint8_t { mesh, material, sprite, environment_profile };
 
 struct RuntimeSceneReference {
     SceneNodeId node;
@@ -95,6 +96,7 @@ struct RuntimeSceneInstance {
 struct RuntimeSceneLoadOptions {
     bool validate_asset_references{true};
     bool require_unique_node_names{false};
+    bool require_environment_profile{false};
 };
 
 struct RuntimeSceneLoadResult {

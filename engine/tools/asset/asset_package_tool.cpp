@@ -30,6 +30,8 @@ using ActionByAsset = std::unordered_map<AssetId, const AssetImportAction*, Asse
         return AssetKind::scene;
     case AssetImportActionKind::audio:
         return AssetKind::audio;
+    case AssetImportActionKind::environment_profile:
+        return AssetKind::environment_profile;
     case AssetImportActionKind::unknown:
         break;
     }

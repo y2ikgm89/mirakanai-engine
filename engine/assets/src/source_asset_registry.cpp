@@ -27,6 +27,7 @@ constexpr std::string_view scene_source_format = "GameEngine.Scene.v1";
 constexpr std::string_view morph_mesh_cpu_source_format = "GameEngine.MorphMeshCpuSource.v1";
 constexpr std::string_view animation_float_clip_source_format = "GameEngine.AnimationFloatClipSource.v1";
 constexpr std::string_view animation_quaternion_clip_source_format = "GameEngine.AnimationQuaternionClipSource.v1";
+constexpr std::string_view environment_profile_source_format = "GameEngine.EnvironmentProfile.v1";
 
 struct SourceAssetTextDependencyRow {
     bool has_kind{false};
@@ -148,6 +149,8 @@ struct SourceAssetTextRow {
         return "tilemap";
     case AssetKind::physics_collision_scene:
         return "physics_collision_scene";
+    case AssetKind::environment_profile:
+        return "environment_profile";
     case AssetKind::unknown:
         break;
     }
@@ -197,6 +200,9 @@ struct SourceAssetTextRow {
     if (value == "physics_collision_scene") {
         return AssetKind::physics_collision_scene;
     }
+    if (value == "environment_profile") {
+        return AssetKind::environment_profile;
+    }
     return AssetKind::unknown;
 }
 
@@ -208,7 +214,8 @@ struct SourceAssetTextRow {
     if (asset_kind == AssetKind::scene) {
         return dependency_kind == AssetDependencyKind::scene_mesh ||
                dependency_kind == AssetDependencyKind::scene_material ||
-               dependency_kind == AssetDependencyKind::scene_sprite;
+               dependency_kind == AssetDependencyKind::scene_sprite ||
+               dependency_kind == AssetDependencyKind::scene_environment_profile;
     }
     return false;
 }
@@ -222,6 +229,8 @@ struct SourceAssetTextRow {
         return target_kind == AssetKind::mesh || target_kind == AssetKind::skinned_mesh;
     case AssetDependencyKind::scene_material:
         return target_kind == AssetKind::material;
+    case AssetDependencyKind::scene_environment_profile:
+        return target_kind == AssetKind::environment_profile;
     case AssetDependencyKind::unknown:
     case AssetDependencyKind::shader_include:
     case AssetDependencyKind::ui_atlas_texture:
@@ -375,6 +384,7 @@ bool is_supported_source_asset_kind_v1(AssetKind kind) noexcept {
     case AssetKind::audio:
     case AssetKind::material:
     case AssetKind::scene:
+    case AssetKind::environment_profile:
         return true;
     case AssetKind::unknown:
     case AssetKind::sprite_animation:
@@ -407,6 +417,8 @@ std::string_view expected_source_asset_format_v1(AssetKind kind) noexcept {
         return material_source_format;
     case AssetKind::scene:
         return scene_source_format;
+    case AssetKind::environment_profile:
+        return environment_profile_source_format;
     case AssetKind::unknown:
     case AssetKind::sprite_animation:
     case AssetKind::skinned_mesh:
@@ -430,6 +442,8 @@ std::string_view source_asset_dependency_kind_name_v1(AssetDependencyKind kind) 
         return "scene_material";
     case AssetDependencyKind::scene_sprite:
         return "scene_sprite";
+    case AssetDependencyKind::scene_environment_profile:
+        return "scene_environment_profile";
     case AssetDependencyKind::unknown:
     case AssetDependencyKind::shader_include:
     case AssetDependencyKind::ui_atlas_texture:
@@ -455,6 +469,9 @@ AssetDependencyKind parse_source_asset_dependency_kind_v1(std::string_view value
     }
     if (value == "scene_sprite") {
         return AssetDependencyKind::scene_sprite;
+    }
+    if (value == "scene_environment_profile") {
+        return AssetDependencyKind::scene_environment_profile;
     }
     return AssetDependencyKind::unknown;
 }
@@ -791,6 +808,7 @@ AssetImportMetadataRegistry build_source_asset_import_metadata_registry(const So
             std::vector<AssetId> mesh_dependencies;
             std::vector<AssetId> material_dependencies;
             std::vector<AssetId> sprite_dependencies;
+            std::vector<AssetId> environment_profile_dependencies;
             for (const auto& dependency : row.dependencies) {
                 if (dependency.kind == AssetDependencyKind::scene_mesh) {
                     mesh_dependencies.push_back(ids_by_key.at(dependency.key.value));
@@ -798,6 +816,8 @@ AssetImportMetadataRegistry build_source_asset_import_metadata_registry(const So
                     material_dependencies.push_back(ids_by_key.at(dependency.key.value));
                 } else if (dependency.kind == AssetDependencyKind::scene_sprite) {
                     sprite_dependencies.push_back(ids_by_key.at(dependency.key.value));
+                } else if (dependency.kind == AssetDependencyKind::scene_environment_profile) {
+                    environment_profile_dependencies.push_back(ids_by_key.at(dependency.key.value));
                 }
             }
             registry.add_scene(SceneImportMetadata{
@@ -807,6 +827,13 @@ AssetImportMetadataRegistry build_source_asset_import_metadata_registry(const So
                 .mesh_dependencies = std::move(mesh_dependencies),
                 .material_dependencies = std::move(material_dependencies),
                 .sprite_dependencies = std::move(sprite_dependencies),
+                .environment_profile_dependencies = std::move(environment_profile_dependencies),
+            });
+        } else if (row.kind == AssetKind::environment_profile) {
+            registry.add_environment_profile(EnvironmentProfileImportMetadata{
+                .id = id,
+                .source_path = row.source_path,
+                .imported_path = row.imported_path,
             });
         } else {
             throw std::invalid_argument("source asset registry row kind is unsupported for import metadata");

@@ -3,10 +3,12 @@
 
 #pragma once
 
+#include "mirakana/assets/asset_identity.hpp"
 #include "mirakana/math/transform.hpp"
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -52,8 +54,14 @@ struct SceneComponentPrefabSourceV2 {
     AuthoringId source_component_id;
 };
 
+struct SceneEnvironmentDocumentV2 {
+    AssetKeyV2 profile;
+    bool required{false};
+};
+
 struct SceneDocumentV2 {
     std::string name;
+    std::optional<SceneEnvironmentDocumentV2> environment;
     std::vector<SceneNodeDocumentV2> nodes;
     std::vector<SceneComponentDocumentV2> components;
     std::vector<SceneNodePrefabSourceV2> node_prefab_sources;
@@ -98,6 +106,7 @@ enum class SceneSchemaV2DiagnosticCode : std::uint8_t {
     unsupported_nested_prefab_instance,
     unsupported_local_prefab_child,
     unsupported_local_prefab_component,
+    invalid_environment_profile_reference,
 };
 
 struct SceneSchemaV2Diagnostic {

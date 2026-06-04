@@ -93,6 +93,10 @@ static_assert(std::is_same_v<decltype(&mirakana::LinuxFileWatcher::active),
                              bool (mirakana::LinuxFileWatcher::*)() const noexcept>);
 static_assert(std::is_same_v<decltype(&mirakana::MacOSFileWatcher::active),
                              bool (mirakana::MacOSFileWatcher::*)() const noexcept>);
+template <typename Component>
+concept HasEnvironmentProfileField = requires(Component component) { component.environment_profile; };
+
+static_assert(!HasEnvironmentProfileField<mirakana::LightComponent>);
 
 // Test double: public fields are intentional for assertion in MK_TEST.
 // NOLINTBEGIN(misc-non-private-member-variables-in-classes)
@@ -6523,6 +6527,41 @@ MK_TEST("scene serializes and restores hierarchy and transforms") {
     MK_REQUIRE(restored.find_node(mirakana::SceneNodeId{1})->transform.scale == (mirakana::Vec3{2.0F, 2.0F, 2.0F}));
     MK_REQUIRE(restored.find_node(mirakana::SceneNodeId{1})->transform.rotation_radians ==
                (mirakana::Vec3{0.1F, 0.2F, 0.3F}));
+}
+
+MK_TEST("scene serializes environment profile separately from lights and render packets carry the reference") {
+    mirakana::Scene scene("level-01");
+    const auto environment = mirakana::AssetId::from_name("environment/default_outdoor");
+    scene.set_environment(mirakana::SceneEnvironmentReference{.profile = environment, .required = true});
+
+    const auto light_node = scene.create_node("Sun");
+    mirakana::SceneNodeComponents light_components;
+    light_components.light = mirakana::LightComponent{
+        .type = mirakana::LightType::directional,
+        .color = mirakana::Vec3{.x = 1.0F, .y = 0.95F, .z = 0.8F},
+        .intensity = 3.0F,
+        .range = 100.0F,
+        .inner_cone_radians = 0.0F,
+        .outer_cone_radians = 0.0F,
+        .casts_shadows = true,
+    };
+    scene.set_components(light_node, light_components);
+
+    const auto serialized = mirakana::serialize_scene(scene);
+    MK_REQUIRE(serialized.contains("environment.profile=" + std::to_string(environment.value) + "\n"));
+    MK_REQUIRE(serialized.contains("environment.required=true\n"));
+    MK_REQUIRE(!serialized.contains("light.environment"));
+
+    const auto restored = mirakana::deserialize_scene(serialized);
+    MK_REQUIRE(restored.environment().has_value());
+    MK_REQUIRE(restored.environment()->profile == environment);
+    MK_REQUIRE(restored.environment()->required);
+    MK_REQUIRE(restored.find_node(light_node)->components.light.has_value());
+
+    const auto packet = mirakana::build_scene_render_packet(restored);
+    MK_REQUIRE(packet.environment.has_value());
+    MK_REQUIRE(packet.environment->profile == environment);
+    MK_REQUIRE(packet.environment->required);
 }
 
 MK_TEST("scene components validate camera lighting and renderer references") {

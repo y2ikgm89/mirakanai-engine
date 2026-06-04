@@ -6,6 +6,7 @@
 #include "mirakana/assets/material.hpp"
 #include "mirakana/renderer/backend_renderer_parity_policy.hpp"
 #include "mirakana/renderer/debug_profiling_policy.hpp"
+#include "mirakana/renderer/environment_fog_policy.hpp"
 #include "mirakana/renderer/frame_graph.hpp"
 #include "mirakana/renderer/frame_graph_rhi.hpp"
 #include "mirakana/renderer/gpu_memory_policy.hpp"
@@ -7312,6 +7313,58 @@ MK_TEST("rhi postprocess frame renderer can bind scene depth as a postprocess in
     MK_REQUIRE(rhi_stats.resource_transitions == 13);
     MK_REQUIRE(rhi_stats.draw_calls == 6);
     MK_REQUIRE(rhi_stats.present_calls == 3);
+}
+
+MK_TEST("rhi postprocess frame renderer binds first-stage uniform constants") {
+    mirakana::rhi::NullRhiDevice device;
+    const auto swapchain = device.create_swapchain(mirakana::rhi::SwapchainDesc{
+        .extent = mirakana::rhi::Extent2D{.width = 64, .height = 36},
+        .format = mirakana::rhi::Format::bgra8_unorm,
+        .buffer_count = 2,
+        .vsync = true,
+        .surface = mirakana::rhi::SurfaceHandle{1},
+    });
+    const auto scene_pipeline = create_renderer_test_pipeline(device, mirakana::rhi::Format::bgra8_unorm,
+                                                              mirakana::rhi::Format::depth24_stencil8);
+    const auto postprocess_vertex_shader = device.create_shader(mirakana::rhi::ShaderDesc{
+        .stage = mirakana::rhi::ShaderStage::vertex,
+        .entry_point = "vs_postprocess",
+        .bytecode_size = 64,
+    });
+    const auto postprocess_fragment_shader = device.create_shader(mirakana::rhi::ShaderDesc{
+        .stage = mirakana::rhi::ShaderStage::fragment,
+        .entry_point = "ps_postprocess_height_fog",
+        .bytecode_size = 64,
+    });
+    const auto constants_buffer = device.create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = mirakana::environment_fog_constants_byte_size(),
+        .usage = mirakana::rhi::BufferUsage::uniform,
+    });
+
+    mirakana::RhiPostprocessFrameRenderer renderer(mirakana::RhiPostprocessFrameRendererDesc{
+        .device = &device,
+        .extent = mirakana::Extent2D{.width = 64, .height = 36},
+        .swapchain = swapchain,
+        .color_format = mirakana::rhi::Format::bgra8_unorm,
+        .scene_graphics_pipeline = scene_pipeline,
+        .postprocess_vertex_shader = postprocess_vertex_shader,
+        .postprocess_fragment_stages = std::vector<mirakana::rhi::ShaderHandle>{postprocess_fragment_shader},
+        .postprocess_first_uniform_buffer = constants_buffer,
+        .wait_for_completion = true,
+        .enable_depth_input = true,
+        .depth_format = mirakana::rhi::Format::depth24_stencil8,
+    });
+    MK_REQUIRE(renderer.postprocess_ready());
+
+    renderer.begin_frame();
+    renderer.draw_mesh(mirakana::MeshCommand{});
+    renderer.end_frame();
+
+    const auto rhi_stats = device.stats();
+    MK_REQUIRE(rhi_stats.buffers_created == 1);
+    MK_REQUIRE(rhi_stats.descriptor_writes == 5);
+    MK_REQUIRE(rhi_stats.descriptor_sets_bound == 1);
+    MK_REQUIRE(rhi_stats.draw_calls == 2);
 }
 
 MK_TEST("rhi postprocess frame renderer records native ui overlay after postprocess") {
