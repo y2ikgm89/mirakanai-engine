@@ -88,6 +88,8 @@ struct VulkanInstanceCreateDesc {
     VulkanApiVersion api_version{.major = 1, .minor = 3};
     std::vector<std::string> required_extensions;
     std::vector<std::string> optional_extensions;
+    std::vector<std::string> required_layers;
+    std::vector<std::string> optional_layers;
     bool enable_validation{false};
 };
 
@@ -95,6 +97,7 @@ struct VulkanInstanceCreatePlan {
     bool supported{false};
     VulkanApiVersion api_version{};
     std::vector<std::string> enabled_extensions;
+    std::vector<std::string> enabled_layers;
     bool validation_enabled{false};
     std::string diagnostic;
 };
@@ -400,6 +403,7 @@ struct VulkanRuntimeInstanceCapabilityProbeResult {
     VulkanRuntimeGlobalCommandProbeResult global;
     VulkanApiVersion api_version{};
     std::vector<std::string> instance_extensions;
+    std::vector<std::string> instance_layers;
     VulkanInstanceCreatePlan instance_plan;
 };
 
@@ -1762,9 +1766,11 @@ select_physical_device(std::initializer_list<VulkanPhysicalDeviceCandidate> devi
 [[nodiscard]] VulkanDeviceSelection select_physical_device(const std::vector<VulkanPhysicalDeviceCandidate>& devices);
 [[nodiscard]] VulkanInstanceCreatePlan
 build_instance_create_plan(const VulkanInstanceCreateDesc& desc,
-                           std::initializer_list<std::string_view> available_extensions);
+                           std::initializer_list<std::string_view> available_extensions,
+                           std::initializer_list<std::string_view> available_layers);
 [[nodiscard]] VulkanInstanceCreatePlan build_instance_create_plan(const VulkanInstanceCreateDesc& desc,
-                                                                  const std::vector<std::string>& available_extensions);
+                                                                  const std::vector<std::string>& available_extensions,
+                                                                  const std::vector<std::string>& available_layers);
 [[nodiscard]] VulkanLogicalDeviceCreatePlan
 build_logical_device_create_plan(const VulkanLogicalDeviceCreateDesc& desc, const VulkanPhysicalDeviceCandidate& device,
                                  const VulkanDeviceSelection& selection,

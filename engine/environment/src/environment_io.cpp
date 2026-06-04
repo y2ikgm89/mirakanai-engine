@@ -3,14 +3,13 @@
 
 #include "mirakana/environment/environment_io.hpp"
 
-#include <charconv>
 #include <cmath>
+#include <locale>
 #include <ostream>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
-#include <system_error>
 #include <unordered_map>
 
 namespace mirakana {
@@ -107,10 +106,28 @@ using KeyValues = std::unordered_map<std::string, std::string>;
     return it == values.end() ? nullptr : &it->second;
 }
 
+[[nodiscard]] bool environment_float_character(char value) noexcept {
+    return (value >= '0' && value <= '9') || value == '+' || value == '-' || value == '.' || value == 'e' ||
+           value == 'E';
+}
+
 [[nodiscard]] float parse_float(std::string_view value, std::string_view key) {
+    if (value.empty()) {
+        throw std::invalid_argument("environment profile float value is invalid: " + std::string{key});
+    }
+    for (const char character : value) {
+        if (!environment_float_character(character)) {
+            throw std::invalid_argument("environment profile float value is invalid: " + std::string{key});
+        }
+    }
+
     float parsed = 0.0F;
-    const auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), parsed);
-    if (error != std::errc{} || end != value.data() + value.size() || !std::isfinite(parsed)) {
+    std::istringstream stream{std::string{value}};
+    stream.imbue(std::locale::classic());
+    stream >> std::noskipws >> parsed;
+
+    char trailing = '\0';
+    if (!stream || (stream >> trailing) || !std::isfinite(parsed)) {
         throw std::invalid_argument("environment profile float value is invalid: " + std::string{key});
     }
     return parsed;
