@@ -310,7 +310,10 @@ function Resolve-ClangTidyCompileDatabase {
     )
 
     $generator = Get-CMakeCacheValue -BuildDir $BuildDir -Name "CMAKE_GENERATOR"
-    if ((Test-Path -LiteralPath $CompileCommands -PathType Leaf) -and (Test-NativeCompileCommandsGenerator -Generator $generator)) {
+    if ($ReuseExistingFileApiReply.IsPresent -and
+        (Test-Path -LiteralPath $CompileCommands -PathType Leaf) -and
+        (Test-NativeCompileCommandsGenerator -Generator $generator)) {
+        Write-Host "tidy-check: reused existing native compile database for preset '$Preset' configuration '$Configuration'"
         return $true
     }
 
