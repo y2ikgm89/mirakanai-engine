@@ -4,7 +4,7 @@
 
 **Plan ID:** `mavg-research-legal-benchmark-baseline-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
 **Goal:** Select the first MAVG child candidate and lock clean-room architecture, official-source gates, benchmark methodology, stale-doc classification, and validation evidence before any MAVG code is implemented.
 
@@ -178,8 +178,8 @@ It also does not claim Nanite compatibility, Nanite equivalence, Nanite superior
 
 ## Next Plan
 
-After this plan is validated and published, the recommended implementation child is:
+After this plan is validated and published, the selected implementation child is:
 
-- `docs/superpowers/plans/YYYY-MM-DD-mavg-asset-graph-v1.md`
+- `docs/superpowers/plans/2026-06-05-mavg-asset-graph-v1.md`
 
 That plan should implement deterministic asset graph and cook validation only.

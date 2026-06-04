@@ -6,11 +6,11 @@ Define the clean-room architecture baseline for Mirakana Adaptive Virtual Geomet
 
 ## Status
 
-Active Phase 0 specification for `mavg-research-legal-benchmark-baseline-v1`. This is a docs/specification baseline only; implementation readiness remains unclaimed until future focused MAVG child plans add code and validation evidence.
+Phase 0 specification completed for `mavg-research-legal-benchmark-baseline-v1`. The active first implementation child is `mavg-asset-graph-v1`, limited to deterministic `MK_assets` graph validation and `MK_tools` cook/package planning; runtime, renderer, package streaming, deformation, ray tracing, and benchmark superiority remain unclaimed until future focused MAVG child plans add code and validation evidence.
 
 ## Current Repository Baseline
 
-- `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` selects `docs/superpowers/plans/2026-06-05-mavg-research-legal-benchmark-baseline-v1.md` while this Phase 0 candidate is active.
+- `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` selects `docs/superpowers/plans/2026-06-05-mavg-asset-graph-v1.md` while the first MAVG implementation child is active.
 - `unsupportedProductionGaps` remains `[]`; MAVG is post-1.0 clean-break research/specification work.
 - SDL3 is not an active dependency or supported runtime/editor/audio path.
 - First-party Windows desktop foundations are `MK_platform_win32`, `MK_runtime_host_win32`, `MK_runtime_host_win32_presentation`, and `MK_audio_wasapi`.
@@ -58,12 +58,12 @@ Commercial distribution gate:
 
 ### Asset And Cook
 
-Future files should start in `MK_assets` and `MK_tools`:
+The first implementation files should start in `MK_assets` and `MK_tools`:
 
 - `engine/assets/include/mirakana/assets/mavg_cluster_graph.hpp`
 - `engine/assets/src/mavg_cluster_graph.cpp`
 - `engine/tools/include/mirakana/tools/mavg_cluster_cook.hpp`
-- `engine/tools/asset/src/mavg_cluster_cook.cpp`
+- `engine/tools/asset/mavg_cluster_cook.cpp`
 
 Responsibilities:
 
@@ -208,7 +208,7 @@ Forbidden without a new architecture decision:
 
 The first implementation child after this Phase 0 baseline is:
 
-- `docs/superpowers/plans/YYYY-MM-DD-mavg-asset-graph-v1.md`
+- `docs/superpowers/plans/2026-06-05-mavg-asset-graph-v1.md`
 
 That child must implement only deterministic asset graph and cook validation. It must not add renderer execution, streaming, mesh shaders, ray tracing, deformation, or benchmark-exceeds claims.
 

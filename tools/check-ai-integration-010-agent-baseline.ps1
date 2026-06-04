@@ -2025,8 +2025,8 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     )) {
         Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan native editor shell selection"
     }
-} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "mavg-research-legal-benchmark-baseline-v1") {
-    foreach ($needle in @("MAVG Phase 0", "research/specification", "official-source checks", "clean-room/legal guardrails", "benchmark methodology", "stale-doc cleanup", "MAVG not implemented", "no SDL3/Dear ImGui", "no public native handles", "no Nanite/UE compatibility", "unsupportedProductionGaps = []")) { Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan MAVG Phase 0 selection" }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "mavg-asset-graph-v1") {
+    foreach ($needle in @("MAVG Asset Graph v1", "MAVG Phase 0 completed", "deterministic MK_assets MAVG cluster graph validation", "GameEngine.MavgClusterGraph.v1", "AssetKind::mavg_cluster_graph", "MK_tools cook/package planning", "no SDL3/Dear ImGui", "no public native handles", "no Nanite/UE compatibility", "CPU selection", "renderer execution", "streaming/residency", "unsupportedProductionGaps = []")) { Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan MAVG asset graph selection" }
 } else {
     foreach ($needle in @(
     "Frame Graph Transient Texture Alias Planning v1",
