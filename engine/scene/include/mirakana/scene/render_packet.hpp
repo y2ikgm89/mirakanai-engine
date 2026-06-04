@@ -7,6 +7,7 @@
 #include "mirakana/scene/components.hpp"
 #include "mirakana/scene/scene.hpp"
 
+#include <optional>
 #include <vector>
 
 namespace mirakana {
@@ -36,6 +37,7 @@ struct SceneRenderSprite {
 };
 
 struct SceneRenderPacket {
+    std::optional<SceneEnvironmentReference> environment;
     std::vector<SceneRenderCamera> cameras;
     std::vector<SceneRenderLight> lights;
     std::vector<SceneRenderMesh> meshes;

@@ -60,7 +60,8 @@ namespace {
     constexpr std::string_view kNativeTokens[] = {
         "ID3D", "D3D12", "Vk", "vk", "MTL", "metal::", "ComPtr",
     };
-    return std::ranges::any_of(kNativeTokens, [value](const auto token) { return value.find(token) != value.npos; });
+    return std::ranges::any_of(kNativeTokens,
+                               [value](const auto token) { return value.find(token) != std::string_view::npos; });
 }
 
 [[nodiscard]] bool is_reviewed_metal_host_validation_recipe(const std::string& recipe_id) noexcept {

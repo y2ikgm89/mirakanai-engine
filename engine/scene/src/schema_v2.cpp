@@ -38,6 +38,41 @@ constexpr std::size_t max_document_row_count = 65536U;
         value, [](const auto character) { return std::iscntrl(static_cast<unsigned char>(character)) == 0; });
 }
 
+[[nodiscard]] bool is_valid_asset_key_segment(std::string_view segment) noexcept {
+    if (segment.empty() || segment == "." || segment == "..") {
+        return false;
+    }
+    return std::ranges::all_of(segment, [](char character) {
+        return (character >= 'a' && character <= 'z') || (character >= '0' && character <= '9') || character == '.' ||
+               character == '_' || character == '-';
+    });
+}
+
+[[nodiscard]] bool is_valid_asset_key(std::string_view value) noexcept {
+    if (value.empty() || !is_line_text_value(value) || value.front() == '/' ||
+        value.find('\\') != std::string_view::npos || value.find(':') != std::string_view::npos ||
+        std::ranges::any_of(value,
+                            [](char character) { return std::isspace(static_cast<unsigned char>(character)) != 0; })) {
+        return false;
+    }
+
+    std::size_t segment_begin = 0;
+    while (segment_begin <= value.size()) {
+        const auto segment_end = value.find('/', segment_begin);
+        const auto segment =
+            value.substr(segment_begin,
+                         segment_end == std::string_view::npos ? std::string_view::npos : segment_end - segment_begin);
+        if (!is_valid_asset_key_segment(segment)) {
+            return false;
+        }
+        if (segment_end == std::string_view::npos) {
+            break;
+        }
+        segment_begin = segment_end + 1U;
+    }
+    return true;
+}
+
 [[nodiscard]] bool is_valid_component_type(std::string_view value) noexcept {
     static constexpr std::array<std::string_view, 12> supported_types = {
         "transform3d", "camera",       "light",      "mesh_renderer", "sprite_renderer", "tilemap",
@@ -483,6 +518,11 @@ std::vector<SceneSchemaV2Diagnostic> validate_scene_document_v2(const SceneDocum
         add_diagnostic(diagnostics, SceneSchemaV2DiagnosticCode::invalid_text_value, {}, {}, {}, "scene.name");
     }
 
+    if (scene.environment.has_value() && !is_valid_asset_key(scene.environment->profile.value)) {
+        add_diagnostic(diagnostics, SceneSchemaV2DiagnosticCode::invalid_environment_profile_reference, {}, {}, {},
+                       "environment.profile");
+    }
+
     std::unordered_set<std::string> node_ids;
     for (const auto& node : scene.nodes) {
         if (!is_valid_authoring_id(node.id.value)) {
@@ -592,6 +632,10 @@ std::string serialize_scene_document_v2(const SceneDocumentV2& scene) {
     std::ostringstream output;
     output << "format=GameEngine.Scene.v2\n";
     output << "scene.name=" << scene.name << '\n';
+    if (scene.environment.has_value()) {
+        output << "environment.profile=" << scene.environment->profile.value << '\n';
+        output << "environment.required=" << (scene.environment->required ? "true" : "false") << '\n';
+    }
 
     for (std::size_t index = 0; index < scene.nodes.size(); ++index) {
         const auto& node = scene.nodes[index];
@@ -633,6 +677,8 @@ std::string serialize_scene_document_v2(const SceneDocumentV2& scene) {
 
 SceneDocumentV2 deserialize_scene_document_v2(std::string_view text) {
     bool has_format = false;
+    bool has_environment_profile = false;
+    bool has_environment_required = false;
     SceneDocumentV2 scene;
     std::vector<std::unordered_map<std::size_t, PendingProperty>> pending_component_properties;
     std::vector<PendingPrefabSource> pending_node_prefab_sources;
@@ -661,6 +707,31 @@ SceneDocumentV2 deserialize_scene_document_v2(std::string_view text) {
         }
         if (key == "scene.name") {
             scene.name = std::string(value);
+            continue;
+        }
+        if (key == "environment.profile") {
+            if (has_environment_profile) {
+                throw std::invalid_argument("scene v2 environment profile is duplicated");
+            }
+            if (!scene.environment.has_value()) {
+                scene.environment = SceneEnvironmentDocumentV2{};
+            }
+            scene.environment->profile.value = std::string(value);
+            has_environment_profile = true;
+            continue;
+        }
+        if (key == "environment.required") {
+            if (has_environment_required) {
+                throw std::invalid_argument("scene v2 environment required is duplicated");
+            }
+            if (value != "true" && value != "false") {
+                throw std::invalid_argument("scene v2 environment required must be true or false");
+            }
+            if (!scene.environment.has_value()) {
+                scene.environment = SceneEnvironmentDocumentV2{};
+            }
+            scene.environment->required = value == "true";
+            has_environment_required = true;
             continue;
         }
         if (key.starts_with("node.")) {
@@ -695,6 +766,9 @@ SceneDocumentV2 deserialize_scene_document_v2(std::string_view text) {
 
     if (!has_format) {
         throw std::invalid_argument("scene v2 format is missing");
+    }
+    if (has_environment_profile != has_environment_required) {
+        throw std::invalid_argument("scene v2 environment reference is incomplete");
     }
 
     for (std::size_t node_index = 0; node_index < pending_node_prefab_sources.size(); ++node_index) {
@@ -811,7 +885,8 @@ PrefabDocumentV2 deserialize_prefab_document_v2(std::string_view text) {
             prefab.name = std::string(value);
             continue;
         }
-        if (key == "scene.name" || key.starts_with("node.") || key.starts_with("component.")) {
+        if (key == "scene.name" || key.starts_with("environment.") || key.starts_with("node.") ||
+            key.starts_with("component.")) {
             scene_text << line << '\n';
             continue;
         }

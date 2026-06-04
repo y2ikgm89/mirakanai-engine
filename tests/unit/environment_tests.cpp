@@ -3,9 +3,11 @@
 
 #include "test_framework.hpp"
 
+#include "mirakana/environment/environment_io.hpp"
 #include "mirakana/environment/environment_profile.hpp"
 
 #include <cstddef>
+#include <stdexcept>
 #include <string>
 
 namespace {
@@ -94,6 +96,53 @@ MK_TEST("environment profile validation rejects invalid enum casts") {
     MK_REQUIRE(result.status == mirakana::EnvironmentProfileValidationStatus::invalid);
     MK_REQUIRE(!result.succeeded());
     MK_REQUIRE(diagnostic_count(result, mirakana::EnvironmentProfileDiagnosticCode::invalid_enum) == 2U);
+}
+
+MK_TEST("environment profile text io round trips with stable key ordering") {
+    mirakana::EnvironmentProfileDesc desc{};
+    desc.id = "default_outdoor";
+    desc.sky_model = mirakana::EnvironmentSkyModel::physical_atmosphere;
+    desc.weather = mirakana::EnvironmentWeatherKind::clear;
+    desc.sun.direction = mirakana::Vec3{.x = 0.0F, .y = -1.0F, .z = 0.0F};
+    desc.sun.illuminance_lux = 100000.0F;
+    desc.fog.enabled = false;
+    desc.precipitation.kind = mirakana::EnvironmentPrecipitationKind::none;
+
+    const auto serialized = mirakana::serialize_environment_profile(desc);
+
+    MK_REQUIRE(serialized.find("format=GameEngine.EnvironmentProfile.v1\n") == 0U);
+    MK_REQUIRE(serialized.find("id=default_outdoor\nsky.model=physical_atmosphere\nweather.kind=clear\n") !=
+               std::string::npos);
+    MK_REQUIRE(serialized.find("sun.direction=0,-1,0\n") != std::string::npos);
+    MK_REQUIRE(serialized.find("sun.illuminance_lux=100000\n") != std::string::npos);
+    MK_REQUIRE(serialized.find("fog.enabled=false\n") != std::string::npos);
+    MK_REQUIRE(serialized.find("precipitation.kind=none\n") != std::string::npos);
+
+    const auto round_trip = mirakana::deserialize_environment_profile(serialized);
+    MK_REQUIRE(round_trip.id == "default_outdoor");
+    MK_REQUIRE(round_trip.sky_model == mirakana::EnvironmentSkyModel::physical_atmosphere);
+    MK_REQUIRE(round_trip.weather == mirakana::EnvironmentWeatherKind::clear);
+    MK_REQUIRE(round_trip.precipitation.kind == mirakana::EnvironmentPrecipitationKind::none);
+    MK_REQUIRE(mirakana::serialize_environment_profile(round_trip) == serialized);
+}
+
+MK_TEST("environment profile text io rejects malformed documents") {
+    for (const auto* document : {
+             "format=GameEngine.LegacyEnvironment.v1\nid=default_outdoor\n",
+             "format=GameEngine.EnvironmentProfile.v1\nid=default_outdoor\nid=duplicate\n",
+             "format=GameEngine.EnvironmentProfile.v1\nid=default_outdoor\nsky.model=backend_handle\n",
+             "format=GameEngine.EnvironmentProfile.v1\nid=default_outdoor\nsun.direction=nan,-1,0\n",
+             "format=GameEngine.EnvironmentProfile.v1\nid=default_outdoor\nprecipitation.intensity=-0.1\n",
+             "format=GameEngine.EnvironmentProfile.v1\nid=native_vk_editor\n",
+         }) {
+        bool threw = false;
+        try {
+            (void)mirakana::deserialize_environment_profile(document);
+        } catch (const std::invalid_argument&) {
+            threw = true;
+        }
+        MK_REQUIRE(threw);
+    }
 }
 
 int main() {

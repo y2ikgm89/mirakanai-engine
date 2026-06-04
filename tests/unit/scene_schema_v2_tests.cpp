@@ -6,6 +6,7 @@
 #include "mirakana/scene/schema_v2.hpp"
 
 #include <algorithm>
+#include <array>
 #include <limits>
 #include <string>
 #include <string_view>
@@ -159,6 +160,56 @@ MK_TEST("scene schema v2 serializes deterministic text and round trips authoring
     MK_REQUIRE(round_trip.nodes[0].id.value == "node/player");
     MK_REQUIRE(round_trip.components.size() == 1);
     MK_REQUIRE(round_trip.components[0].id.value == "component/player/mesh");
+}
+
+MK_TEST("scene schema v2 serializes environment profile references before nodes") {
+    mirakana::SceneDocumentV2 scene;
+    scene.name = "Level";
+    scene.environment = mirakana::SceneEnvironmentDocumentV2{
+        .profile = mirakana::AssetKeyV2{.value = "environment/default_outdoor"},
+        .required = true,
+    };
+    scene.nodes.push_back(mirakana::SceneNodeDocumentV2{.id = mirakana::AuthoringId{"node/root"}, .name = "Root"});
+
+    const std::string expected = "format=GameEngine.Scene.v2\n"
+                                 "scene.name=Level\n"
+                                 "environment.profile=environment/default_outdoor\n"
+                                 "environment.required=true\n"
+                                 "node.0.id=node/root\n"
+                                 "node.0.name=Root\n"
+                                 "node.0.parent=\n"
+                                 "node.0.position=0 0 0\n"
+                                 "node.0.rotation=0 0 0\n"
+                                 "node.0.scale=1 1 1\n";
+
+    MK_REQUIRE(mirakana::serialize_scene_document_v2(scene) == expected);
+    const auto round_trip = mirakana::deserialize_scene_document_v2(expected);
+    MK_REQUIRE(round_trip.environment.has_value());
+    MK_REQUIRE(round_trip.environment->profile.value == "environment/default_outdoor");
+    MK_REQUIRE(round_trip.environment->required);
+}
+
+MK_TEST("scene schema v2 rejects invalid required environment references") {
+    const std::array invalid_keys = {
+        "",
+        "C:/environment/default_outdoor",
+        R"(environment\default_outdoor)",
+    };
+
+    for (const auto* invalid_key : invalid_keys) {
+        mirakana::SceneDocumentV2 scene;
+        scene.name = "Level";
+        scene.environment = mirakana::SceneEnvironmentDocumentV2{
+            .profile = mirakana::AssetKeyV2{.value = invalid_key},
+            .required = true,
+        };
+        scene.nodes.push_back(mirakana::SceneNodeDocumentV2{.id = mirakana::AuthoringId{"node/root"}, .name = "Root"});
+
+        const auto diagnostics = mirakana::validate_scene_document_v2(scene);
+
+        MK_REQUIRE(contains_diagnostic(diagnostics,
+                                       mirakana::SceneSchemaV2DiagnosticCode::invalid_environment_profile_reference));
+    }
 }
 
 MK_TEST("scene schema v2 rejects oversized sparse indexes") {

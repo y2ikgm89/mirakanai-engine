@@ -5,9 +5,13 @@
 
 #include "scene_gpu_binding_injecting_renderer.hpp"
 
+#include "mirakana/assets/asset_identity.hpp"
+#include "mirakana/renderer/cloud_layer_policy.hpp"
 #include "mirakana/renderer/debug_profiling_policy.hpp"
+#include "mirakana/renderer/environment_fog_policy.hpp"
 #include "mirakana/renderer/gpu_memory_policy.hpp"
 #include "mirakana/renderer/postprocess_policy.hpp"
+#include "mirakana/renderer/precipitation_policy.hpp"
 #include "mirakana/renderer/rhi_directional_shadow_smoke_frame_renderer.hpp"
 #include "mirakana/renderer/rhi_frame_renderer.hpp"
 #include "mirakana/renderer/rhi_postprocess_frame_renderer.hpp"
@@ -63,6 +67,46 @@ struct NativeRendererCreateResult {
     std::vector<Win32DesktopPresentationPostprocessDiagnostic> postprocess_diagnostics;
     bool postprocess_depth_input_requested{false};
     bool postprocess_depth_input_ready{false};
+    bool environment_fog_requested{false};
+    bool environment_fog_constant_buffer_ready{false};
+    std::uint64_t environment_fog_constant_buffer_bytes{0};
+    bool cloud_layer_requested{false};
+    bool cloud_layer_shader_contract_evidence_ready{false};
+    bool cloud_layer_package_evidence_ready{false};
+    bool cloud_layer_execution_evidence_ready{false};
+    bool cloud_layer_uploads_textures{false};
+    bool cloud_layer_invokes_backend{false};
+    bool cloud_layer_exposes_native_handles{false};
+    bool cloud_layer_uses_volumetric_clouds{false};
+    bool cloud_layer_uses_latlong_projection{false};
+    bool cloud_layer_uses_flow_map{false};
+    std::uint32_t cloud_layer_texture_rows{0};
+    std::uint32_t cloud_layer_visual_rows{0};
+    std::uint32_t cloud_layer_ibl_rows{0};
+    std::uint32_t cloud_layer_shader_contract_rows{0};
+    std::uint32_t cloud_layer_quality_rows{0};
+    std::uint32_t cloud_layer_policy_diagnostics_count{0};
+    bool environment_precipitation_requested{false};
+    EnvironmentWeatherKind environment_precipitation_weather{EnvironmentWeatherKind::clear};
+    EnvironmentPrecipitationKind environment_precipitation_kind{EnvironmentPrecipitationKind::none};
+    bool environment_precipitation_shader_contract_evidence_ready{false};
+    bool environment_precipitation_package_evidence_ready{false};
+    bool environment_precipitation_execution_evidence_ready{false};
+    bool environment_precipitation_uploads_particle_buffers{false};
+    bool environment_precipitation_invokes_backend{false};
+    bool environment_precipitation_exposes_native_handles{false};
+    bool environment_precipitation_mutates_materials{false};
+    bool environment_precipitation_plays_audio{false};
+    bool environment_precipitation_uses_camera_near_particles{false};
+    bool environment_precipitation_uses_scene_depth_occlusion{false};
+    std::uint32_t environment_precipitation_weather_rows{0};
+    std::uint32_t environment_precipitation_particle_rows{0};
+    std::uint32_t environment_precipitation_occlusion_rows{0};
+    std::uint32_t environment_precipitation_wetness_rows{0};
+    std::uint32_t environment_precipitation_audio_handoff_rows{0};
+    std::uint32_t environment_precipitation_shader_rows{0};
+    std::uint32_t environment_precipitation_quality_rows{0};
+    std::uint32_t environment_precipitation_policy_diagnostics_count{0};
     Win32DesktopPresentationDirectionalShadowStatus directional_shadow_status{
         Win32DesktopPresentationDirectionalShadowStatus::not_requested};
     std::vector<Win32DesktopPresentationDirectionalShadowDiagnostic> directional_shadow_diagnostics;
@@ -126,6 +170,138 @@ to_presentation_filter_mode(ShadowReceiverFilterMode mode) noexcept {
 
 [[nodiscard]] bool has_shader_bytecode(const Win32DesktopPresentationShaderBytecode& shader) noexcept {
     return !shader.entry_point.empty() && !shader.bytecode.empty();
+}
+
+[[nodiscard]] rhi::BufferHandle create_environment_fog_constants_buffer(rhi::IRhiDevice& device,
+                                                                        const EnvironmentFogPolicyDesc& desc) {
+    std::array<std::uint8_t, environment_fog_constants_byte_size()> constants{};
+    pack_environment_fog_constants(constants, desc);
+    auto buffer = device.create_buffer(rhi::BufferDesc{
+        .size_bytes = static_cast<std::uint64_t>(constants.size()),
+        .usage = rhi::BufferUsage::uniform | rhi::BufferUsage::copy_source,
+    });
+    if (buffer.value != 0) {
+        device.write_buffer(buffer, 0, std::span<const std::uint8_t>{constants.data(), constants.size()});
+    }
+    return buffer;
+}
+
+[[nodiscard]] EnvironmentCloudLayerDesc sample_cloud_layer_package_desc() {
+    return EnvironmentCloudLayerDesc{
+        .mode = EnvironmentCloudLayerMode::equirectangular_2d,
+        .coverage = 0.45F,
+        .opacity = 0.8F,
+        .altitude_m = 2400.0F,
+        .wind_velocity_mps = Vec2{.x = 8.0F, .y = 1.5F},
+        .cloud_map_asset_ref = "sample/desktop-runtime/texture",
+        .flow_map_asset_ref = "sample/desktop-runtime/texture",
+        .sky_tint_response = Vec3{.x = 0.78F, .y = 0.84F, .z = 0.92F},
+        .time_of_day_response = 0.55F,
+        .ibl_contribution_mode = EnvironmentCloudIblContributionMode::sky_tint_only,
+        .ibl_contribution = 0.25F,
+    };
+}
+
+[[nodiscard]] bool runtime_package_has_texture_asset(const runtime::RuntimeAssetPackage* package,
+                                                     std::string_view asset_ref) {
+    if (package == nullptr) {
+        return false;
+    }
+    const auto* record = package->find(asset_id_from_key_v2(AssetKeyV2{.value = std::string{asset_ref}}));
+    return record != nullptr && record->kind == AssetKind::texture;
+}
+
+[[nodiscard]] bool cloud_layer_package_texture_evidence_ready(const runtime::RuntimeAssetPackage* package,
+                                                              const CloudLayerPolicyDesc& desc) {
+    return runtime_package_has_texture_asset(package, desc.layer.cloud_map_asset_ref) &&
+           runtime_package_has_texture_asset(package, desc.layer.flow_map_asset_ref);
+}
+
+[[nodiscard]] EnvironmentPrecipitationPlan sample_environment_precipitation_plan() {
+    EnvironmentProfileDesc profile{};
+    profile.id = "sample_desktop_runtime_precipitation";
+    profile.weather = EnvironmentWeatherKind::storm;
+    profile.precipitation = EnvironmentPrecipitationDesc{
+        .kind = EnvironmentPrecipitationKind::rain,
+        .intensity = 0.8F,
+        .particle_radius_mm = 0.8F,
+        .fall_speed_mps = 8.5F,
+        .wind_speed_mps = 6.0F,
+    };
+    return plan_environment_precipitation(EnvironmentPrecipitationPlanDesc{
+        .environment = profile,
+        .scene_geometry_occlusion_required = true,
+        .occlusion_policy_available = true,
+    });
+}
+
+[[nodiscard]] PrecipitationPolicyDesc sample_environment_precipitation_policy_desc() {
+    return PrecipitationPolicyDesc{
+        .environment_plan = sample_environment_precipitation_plan(),
+        .quality_tier = PrecipitationQualityTier::balanced,
+        .shader_contract_evidence_ready = true,
+        .package_evidence_ready = true,
+        .execution_evidence_ready = true,
+        .request_ready_promotion = true,
+    };
+}
+
+[[nodiscard]] bool
+environment_precipitation_package_texture_evidence_ready(const runtime::RuntimeAssetPackage* package) {
+    return runtime_package_has_texture_asset(package, "sample/desktop-runtime/texture");
+}
+
+void apply_cloud_layer_plan(NativeRendererCreateResult& result, const CloudLayerPolicyPlan& plan) noexcept {
+    result.cloud_layer_shader_contract_evidence_ready = plan.shader_contract_evidence_ready;
+    result.cloud_layer_package_evidence_ready = plan.package_evidence_ready;
+    result.cloud_layer_execution_evidence_ready = plan.execution_evidence_ready;
+    result.cloud_layer_uploads_textures = plan.uploads_textures;
+    result.cloud_layer_invokes_backend = plan.invokes_backend;
+    result.cloud_layer_exposes_native_handles = plan.exposes_native_handles;
+    result.cloud_layer_uses_volumetric_clouds = plan.uses_volumetric_clouds;
+    result.cloud_layer_texture_rows = static_cast<std::uint32_t>(plan.texture_rows.size());
+    result.cloud_layer_visual_rows = static_cast<std::uint32_t>(plan.visual_rows.size());
+    result.cloud_layer_ibl_rows = static_cast<std::uint32_t>(plan.ibl_rows.size());
+    result.cloud_layer_shader_contract_rows = static_cast<std::uint32_t>(plan.shader_contract_rows.size());
+    result.cloud_layer_quality_rows = static_cast<std::uint32_t>(plan.quality_rows.size());
+    result.cloud_layer_policy_diagnostics_count = static_cast<std::uint32_t>(plan.diagnostics.size());
+    if (!plan.shader_contract_rows.empty()) {
+        result.cloud_layer_uses_latlong_projection = plan.shader_contract_rows.front().uses_latlong_projection;
+        result.cloud_layer_uses_flow_map = plan.shader_contract_rows.front().uses_flow_map;
+    }
+}
+
+void apply_precipitation_plan(NativeRendererCreateResult& result, const PrecipitationPolicyDesc& desc,
+                              const PrecipitationPolicyPlan& plan) noexcept {
+    result.environment_precipitation_shader_contract_evidence_ready = plan.shader_contract_evidence_ready;
+    result.environment_precipitation_package_evidence_ready = plan.package_evidence_ready;
+    result.environment_precipitation_execution_evidence_ready = plan.execution_evidence_ready;
+    result.environment_precipitation_uploads_particle_buffers = plan.uploads_particle_buffers;
+    result.environment_precipitation_invokes_backend = plan.invokes_backend;
+    result.environment_precipitation_exposes_native_handles = plan.exposes_native_handles;
+    result.environment_precipitation_mutates_materials = plan.mutates_materials;
+    result.environment_precipitation_plays_audio = plan.plays_audio;
+    result.environment_precipitation_weather_rows =
+        static_cast<std::uint32_t>(desc.environment_plan.weather_rows.size());
+    result.environment_precipitation_particle_rows =
+        static_cast<std::uint32_t>(desc.environment_plan.particle_rows.size());
+    result.environment_precipitation_occlusion_rows =
+        static_cast<std::uint32_t>(desc.environment_plan.occlusion_rows.size());
+    result.environment_precipitation_wetness_rows = static_cast<std::uint32_t>(plan.wetness_rows.size());
+    result.environment_precipitation_audio_handoff_rows = static_cast<std::uint32_t>(plan.audio_handoff_rows.size());
+    result.environment_precipitation_shader_rows = static_cast<std::uint32_t>(plan.shader_rows.size());
+    result.environment_precipitation_quality_rows = static_cast<std::uint32_t>(plan.quality_rows.size());
+    result.environment_precipitation_policy_diagnostics_count = static_cast<std::uint32_t>(plan.diagnostics.size());
+    if (!desc.environment_plan.weather_rows.empty()) {
+        result.environment_precipitation_weather = desc.environment_plan.weather_rows.front().weather;
+        result.environment_precipitation_kind = desc.environment_plan.weather_rows.front().precipitation_kind;
+    }
+    if (!plan.shader_rows.empty()) {
+        result.environment_precipitation_uses_camera_near_particles =
+            plan.shader_rows.front().uses_camera_near_particles;
+        result.environment_precipitation_uses_scene_depth_occlusion =
+            plan.shader_rows.front().uses_scene_depth_occlusion;
+    }
 }
 
 void append_unique_asset(std::vector<AssetId>& assets, AssetId asset) {
@@ -1735,6 +1911,10 @@ build_scene_compute_morph_bindings(rhi::IRhiDevice& device,
         const bool postprocess_depth_input_requested = desc.d3d12_scene_renderer->enable_postprocess_depth_input;
         const bool enable_postprocess_depth_input =
             desc.d3d12_scene_renderer->enable_postprocess && postprocess_depth_input_requested;
+        const bool environment_fog_requested = desc.d3d12_scene_renderer->enable_environment_fog;
+        const bool cloud_layer_requested = desc.d3d12_scene_renderer->enable_cloud_layer_package_evidence;
+        const bool environment_precipitation_requested =
+            desc.d3d12_scene_renderer->enable_environment_precipitation_package_evidence;
         const auto compute_morph_vertex_buffers = desc.d3d12_scene_renderer->enable_compute_morph_tangent_frame_output
                                                       ? compute_morph_tangent_frame_vertex_buffers()
                                                       : compute_morph_position_vertex_buffers();
@@ -1792,10 +1972,105 @@ build_scene_compute_morph_bindings(rhi::IRhiDevice& device,
         result.succeeded = true;
         result.failure_reason = Win32DesktopPresentationFallbackReason::none;
         result.postprocess_depth_input_requested = postprocess_depth_input_requested;
+        result.environment_fog_requested = environment_fog_requested;
+        result.cloud_layer_requested = cloud_layer_requested;
+        result.environment_precipitation_requested = environment_precipitation_requested;
         result.directional_shadow_requested = directional_shadow_requested;
         result.native_ui_overlay_requested = native_ui_overlay_requested;
         result.native_ui_texture_overlay_requested = native_ui_texture_overlay_requested;
+        if (cloud_layer_requested) {
+            auto cloud_layer_desc = desc.d3d12_scene_renderer->cloud_layer;
+            cloud_layer_desc.package_evidence_ready =
+                cloud_layer_desc.package_evidence_ready &&
+                cloud_layer_package_texture_evidence_ready(desc.d3d12_scene_renderer->package, cloud_layer_desc);
+            const auto cloud_layer_plan = plan_cloud_layer_policy(cloud_layer_desc);
+            apply_cloud_layer_plan(result, cloud_layer_plan);
+            if (!cloud_layer_plan.ready()) {
+                result.succeeded = false;
+                result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                result.diagnostic =
+                    "D3D12 cloud layer package evidence failed the cloud layer policy; using NullRenderer fallback.";
+                result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                result.scene_gpu_diagnostics.push_back(
+                    make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                return result;
+            }
+        }
+        if (environment_precipitation_requested) {
+            auto precipitation_desc = desc.d3d12_scene_renderer->environment_precipitation;
+            precipitation_desc.package_evidence_ready =
+                precipitation_desc.package_evidence_ready &&
+                environment_precipitation_package_texture_evidence_ready(desc.d3d12_scene_renderer->package);
+            const auto precipitation_plan = plan_precipitation_policy(precipitation_desc);
+            apply_precipitation_plan(result, precipitation_desc, precipitation_plan);
+            if (!precipitation_plan.ready()) {
+                result.succeeded = false;
+                result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                result.diagnostic =
+                    "D3D12 environment precipitation package evidence failed the precipitation policy; using "
+                    "NullRenderer fallback.";
+                result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                result.scene_gpu_diagnostics.push_back(
+                    make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                return result;
+            }
+        }
         if (desc.d3d12_scene_renderer->enable_postprocess) {
+            rhi::BufferHandle environment_fog_constants_buffer;
+            if (environment_fog_requested) {
+                if (!enable_postprocess_depth_input || directional_shadow_requested) {
+                    result.succeeded = false;
+                    result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                    result.diagnostic =
+                        "D3D12 environment fog package evidence requires depth-aware non-shadow scene postprocess; "
+                        "using NullRenderer fallback.";
+                    result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                    result.scene_gpu_diagnostics.push_back(
+                        make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                    result.postprocess_status = Win32DesktopPresentationPostprocessStatus::failed;
+                    result.postprocess_diagnostics.push_back(
+                        make_postprocess_diagnostic(result.postprocess_status, result.diagnostic));
+                    return result;
+                }
+                auto environment_fog_desc = desc.d3d12_scene_renderer->environment_fog;
+                environment_fog_desc.scene_depth_available = enable_postprocess_depth_input;
+                environment_fog_desc.shader_contract_evidence_ready =
+                    has_shader_bytecode(desc.d3d12_scene_renderer->postprocess_fragment_shader);
+                const auto environment_fog_plan = plan_environment_fog_policy(environment_fog_desc);
+                if (!environment_fog_plan.succeeded()) {
+                    result.succeeded = false;
+                    result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                    result.diagnostic =
+                        "D3D12 environment fog package evidence failed the environment fog policy; using "
+                        "NullRenderer fallback.";
+                    result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                    result.scene_gpu_diagnostics.push_back(
+                        make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                    result.postprocess_status = Win32DesktopPresentationPostprocessStatus::failed;
+                    result.postprocess_diagnostics.push_back(
+                        make_postprocess_diagnostic(result.postprocess_status, result.diagnostic));
+                    return result;
+                }
+                environment_fog_constants_buffer =
+                    create_environment_fog_constants_buffer(*device, environment_fog_desc);
+                result.environment_fog_constant_buffer_ready = environment_fog_constants_buffer.value != 0;
+                result.environment_fog_constant_buffer_bytes =
+                    static_cast<std::uint64_t>(environment_fog_constants_byte_size());
+                if (!result.environment_fog_constant_buffer_ready) {
+                    result.succeeded = false;
+                    result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                    result.diagnostic =
+                        "D3D12 environment fog package evidence could not create the fog constant buffer; using "
+                        "NullRenderer fallback.";
+                    result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                    result.scene_gpu_diagnostics.push_back(
+                        make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                    result.postprocess_status = Win32DesktopPresentationPostprocessStatus::failed;
+                    result.postprocess_diagnostics.push_back(
+                        make_postprocess_diagnostic(result.postprocess_status, result.diagnostic));
+                    return result;
+                }
+            }
             const auto postprocess_vertex_shader = device->create_shader(rhi::ShaderDesc{
                 .stage = rhi::ShaderStage::vertex,
                 .entry_point = desc.d3d12_scene_renderer->postprocess_vertex_shader.entry_point,
@@ -1933,6 +2208,7 @@ build_scene_compute_morph_bindings(rhi::IRhiDevice& device,
                         .postprocess_vertex_shader = postprocess_vertex_shader,
                         .postprocess_fragment_stages =
                             std::vector<mirakana::rhi::ShaderHandle>{postprocess_fragment_shader},
+                        .postprocess_first_uniform_buffer = environment_fog_constants_buffer,
                         .wait_for_completion = true,
                         .enable_depth_input = enable_postprocess_depth_input,
                         .depth_format = rhi::Format::depth24_stencil8,
@@ -3579,6 +3855,46 @@ struct Win32DesktopPresentation::Impl {
         Win32DesktopPresentationPostprocessStatus::not_requested};
     bool postprocess_depth_input_requested{false};
     bool postprocess_depth_input_ready{false};
+    bool environment_fog_requested{false};
+    bool environment_fog_constant_buffer_ready{false};
+    std::uint64_t environment_fog_constant_buffer_bytes{0};
+    bool cloud_layer_requested{false};
+    bool cloud_layer_shader_contract_evidence_ready{false};
+    bool cloud_layer_package_evidence_ready{false};
+    bool cloud_layer_execution_evidence_ready{false};
+    bool cloud_layer_uploads_textures{false};
+    bool cloud_layer_invokes_backend{false};
+    bool cloud_layer_exposes_native_handles{false};
+    bool cloud_layer_uses_volumetric_clouds{false};
+    bool cloud_layer_uses_latlong_projection{false};
+    bool cloud_layer_uses_flow_map{false};
+    std::uint32_t cloud_layer_texture_rows{0};
+    std::uint32_t cloud_layer_visual_rows{0};
+    std::uint32_t cloud_layer_ibl_rows{0};
+    std::uint32_t cloud_layer_shader_contract_rows{0};
+    std::uint32_t cloud_layer_quality_rows{0};
+    std::uint32_t cloud_layer_policy_diagnostics_count{0};
+    bool environment_precipitation_requested{false};
+    EnvironmentWeatherKind environment_precipitation_weather{EnvironmentWeatherKind::clear};
+    EnvironmentPrecipitationKind environment_precipitation_kind{EnvironmentPrecipitationKind::none};
+    bool environment_precipitation_shader_contract_evidence_ready{false};
+    bool environment_precipitation_package_evidence_ready{false};
+    bool environment_precipitation_execution_evidence_ready{false};
+    bool environment_precipitation_uploads_particle_buffers{false};
+    bool environment_precipitation_invokes_backend{false};
+    bool environment_precipitation_exposes_native_handles{false};
+    bool environment_precipitation_mutates_materials{false};
+    bool environment_precipitation_plays_audio{false};
+    bool environment_precipitation_uses_camera_near_particles{false};
+    bool environment_precipitation_uses_scene_depth_occlusion{false};
+    std::uint32_t environment_precipitation_weather_rows{0};
+    std::uint32_t environment_precipitation_particle_rows{0};
+    std::uint32_t environment_precipitation_occlusion_rows{0};
+    std::uint32_t environment_precipitation_wetness_rows{0};
+    std::uint32_t environment_precipitation_audio_handoff_rows{0};
+    std::uint32_t environment_precipitation_shader_rows{0};
+    std::uint32_t environment_precipitation_quality_rows{0};
+    std::uint32_t environment_precipitation_policy_diagnostics_count{0};
     Win32DesktopPresentationDirectionalShadowStatus directional_shadow_status{
         Win32DesktopPresentationDirectionalShadowStatus::not_requested};
     bool directional_shadow_requested{false};
@@ -3612,6 +3928,58 @@ struct Win32DesktopPresentation::Impl {
     std::unique_ptr<rhi::IRhiDevice> device;
     std::unique_ptr<IRenderer> renderer;
     SceneGpuBindingInjectingRenderer* scene_gpu_renderer{nullptr};
+
+    void apply_cloud_layer_result(const NativeRendererCreateResult& renderer_result) noexcept {
+        cloud_layer_requested = cloud_layer_requested || renderer_result.cloud_layer_requested;
+        cloud_layer_shader_contract_evidence_ready = renderer_result.cloud_layer_shader_contract_evidence_ready;
+        cloud_layer_package_evidence_ready = renderer_result.cloud_layer_package_evidence_ready;
+        cloud_layer_execution_evidence_ready = renderer_result.cloud_layer_execution_evidence_ready;
+        cloud_layer_uploads_textures = renderer_result.cloud_layer_uploads_textures;
+        cloud_layer_invokes_backend = renderer_result.cloud_layer_invokes_backend;
+        cloud_layer_exposes_native_handles = renderer_result.cloud_layer_exposes_native_handles;
+        cloud_layer_uses_volumetric_clouds = renderer_result.cloud_layer_uses_volumetric_clouds;
+        cloud_layer_uses_latlong_projection = renderer_result.cloud_layer_uses_latlong_projection;
+        cloud_layer_uses_flow_map = renderer_result.cloud_layer_uses_flow_map;
+        cloud_layer_texture_rows = renderer_result.cloud_layer_texture_rows;
+        cloud_layer_visual_rows = renderer_result.cloud_layer_visual_rows;
+        cloud_layer_ibl_rows = renderer_result.cloud_layer_ibl_rows;
+        cloud_layer_shader_contract_rows = renderer_result.cloud_layer_shader_contract_rows;
+        cloud_layer_quality_rows = renderer_result.cloud_layer_quality_rows;
+        cloud_layer_policy_diagnostics_count = renderer_result.cloud_layer_policy_diagnostics_count;
+    }
+
+    void apply_precipitation_result(const NativeRendererCreateResult& renderer_result) noexcept {
+        environment_precipitation_requested =
+            environment_precipitation_requested || renderer_result.environment_precipitation_requested;
+        environment_precipitation_weather = renderer_result.environment_precipitation_weather;
+        environment_precipitation_kind = renderer_result.environment_precipitation_kind;
+        environment_precipitation_shader_contract_evidence_ready =
+            renderer_result.environment_precipitation_shader_contract_evidence_ready;
+        environment_precipitation_package_evidence_ready =
+            renderer_result.environment_precipitation_package_evidence_ready;
+        environment_precipitation_execution_evidence_ready =
+            renderer_result.environment_precipitation_execution_evidence_ready;
+        environment_precipitation_uploads_particle_buffers =
+            renderer_result.environment_precipitation_uploads_particle_buffers;
+        environment_precipitation_invokes_backend = renderer_result.environment_precipitation_invokes_backend;
+        environment_precipitation_exposes_native_handles =
+            renderer_result.environment_precipitation_exposes_native_handles;
+        environment_precipitation_mutates_materials = renderer_result.environment_precipitation_mutates_materials;
+        environment_precipitation_plays_audio = renderer_result.environment_precipitation_plays_audio;
+        environment_precipitation_uses_camera_near_particles =
+            renderer_result.environment_precipitation_uses_camera_near_particles;
+        environment_precipitation_uses_scene_depth_occlusion =
+            renderer_result.environment_precipitation_uses_scene_depth_occlusion;
+        environment_precipitation_weather_rows = renderer_result.environment_precipitation_weather_rows;
+        environment_precipitation_particle_rows = renderer_result.environment_precipitation_particle_rows;
+        environment_precipitation_occlusion_rows = renderer_result.environment_precipitation_occlusion_rows;
+        environment_precipitation_wetness_rows = renderer_result.environment_precipitation_wetness_rows;
+        environment_precipitation_audio_handoff_rows = renderer_result.environment_precipitation_audio_handoff_rows;
+        environment_precipitation_shader_rows = renderer_result.environment_precipitation_shader_rows;
+        environment_precipitation_quality_rows = renderer_result.environment_precipitation_quality_rows;
+        environment_precipitation_policy_diagnostics_count =
+            renderer_result.environment_precipitation_policy_diagnostics_count;
+    }
 };
 
 Win32DesktopPresentation::Win32DesktopPresentation(const Win32DesktopPresentationDesc& desc)
@@ -3639,6 +4007,13 @@ Win32DesktopPresentation::Win32DesktopPresentation(const Win32DesktopPresentatio
             ? desc.vulkan_scene_renderer != nullptr && desc.vulkan_scene_renderer->enable_postprocess_depth_input
             : desc.prefer_d3d12 && desc.d3d12_scene_renderer != nullptr &&
                   desc.d3d12_scene_renderer->enable_postprocess_depth_input;
+    impl_->environment_fog_requested =
+        desc.prefer_d3d12 && desc.d3d12_scene_renderer != nullptr && desc.d3d12_scene_renderer->enable_environment_fog;
+    impl_->cloud_layer_requested = desc.prefer_d3d12 && desc.d3d12_scene_renderer != nullptr &&
+                                   desc.d3d12_scene_renderer->enable_cloud_layer_package_evidence;
+    impl_->environment_precipitation_requested =
+        desc.prefer_d3d12 && desc.d3d12_scene_renderer != nullptr &&
+        desc.d3d12_scene_renderer->enable_environment_precipitation_package_evidence;
     impl_->directional_shadow_requested =
         desc.prefer_vulkan
             ? desc.vulkan_scene_renderer != nullptr && desc.vulkan_scene_renderer->enable_directional_shadow_smoke
@@ -3913,6 +4288,14 @@ Win32DesktopPresentation::Win32DesktopPresentation(const Win32DesktopPresentatio
                         impl_->postprocess_depth_input_requested = impl_->postprocess_depth_input_requested ||
                                                                    renderer_result.postprocess_depth_input_requested;
                         impl_->postprocess_depth_input_ready = renderer_result.postprocess_depth_input_ready;
+                        impl_->environment_fog_requested =
+                            impl_->environment_fog_requested || renderer_result.environment_fog_requested;
+                        impl_->environment_fog_constant_buffer_ready =
+                            renderer_result.environment_fog_constant_buffer_ready;
+                        impl_->environment_fog_constant_buffer_bytes =
+                            renderer_result.environment_fog_constant_buffer_bytes;
+                        impl_->apply_cloud_layer_result(renderer_result);
+                        impl_->apply_precipitation_result(renderer_result);
                         impl_->directional_shadow_requested =
                             impl_->directional_shadow_requested || renderer_result.directional_shadow_requested;
                         impl_->directional_shadow_status = renderer_result.directional_shadow_status;
@@ -3962,6 +4345,14 @@ Win32DesktopPresentation::Win32DesktopPresentation(const Win32DesktopPresentatio
                     impl_->postprocess_depth_input_requested =
                         impl_->postprocess_depth_input_requested || renderer_result.postprocess_depth_input_requested;
                     impl_->postprocess_depth_input_ready = renderer_result.postprocess_depth_input_ready;
+                    impl_->environment_fog_requested =
+                        impl_->environment_fog_requested || renderer_result.environment_fog_requested;
+                    impl_->environment_fog_constant_buffer_ready =
+                        renderer_result.environment_fog_constant_buffer_ready;
+                    impl_->environment_fog_constant_buffer_bytes =
+                        renderer_result.environment_fog_constant_buffer_bytes;
+                    impl_->apply_cloud_layer_result(renderer_result);
+                    impl_->apply_precipitation_result(renderer_result);
                     impl_->directional_shadow_requested =
                         impl_->directional_shadow_requested || renderer_result.directional_shadow_requested;
                     impl_->directional_shadow_status = renderer_result.directional_shadow_status;
@@ -4250,6 +4641,14 @@ Win32DesktopPresentation::Win32DesktopPresentation(const Win32DesktopPresentatio
                         impl_->postprocess_depth_input_requested = impl_->postprocess_depth_input_requested ||
                                                                    renderer_result.postprocess_depth_input_requested;
                         impl_->postprocess_depth_input_ready = renderer_result.postprocess_depth_input_ready;
+                        impl_->environment_fog_requested =
+                            impl_->environment_fog_requested || renderer_result.environment_fog_requested;
+                        impl_->environment_fog_constant_buffer_ready =
+                            renderer_result.environment_fog_constant_buffer_ready;
+                        impl_->environment_fog_constant_buffer_bytes =
+                            renderer_result.environment_fog_constant_buffer_bytes;
+                        impl_->apply_cloud_layer_result(renderer_result);
+                        impl_->apply_precipitation_result(renderer_result);
                         impl_->directional_shadow_requested =
                             impl_->directional_shadow_requested || renderer_result.directional_shadow_requested;
                         impl_->directional_shadow_status = renderer_result.directional_shadow_status;
@@ -4299,6 +4698,14 @@ Win32DesktopPresentation::Win32DesktopPresentation(const Win32DesktopPresentatio
                     impl_->postprocess_depth_input_requested =
                         impl_->postprocess_depth_input_requested || renderer_result.postprocess_depth_input_requested;
                     impl_->postprocess_depth_input_ready = renderer_result.postprocess_depth_input_ready;
+                    impl_->environment_fog_requested =
+                        impl_->environment_fog_requested || renderer_result.environment_fog_requested;
+                    impl_->environment_fog_constant_buffer_ready =
+                        renderer_result.environment_fog_constant_buffer_ready;
+                    impl_->environment_fog_constant_buffer_bytes =
+                        renderer_result.environment_fog_constant_buffer_bytes;
+                    impl_->apply_cloud_layer_result(renderer_result);
+                    impl_->apply_precipitation_result(renderer_result);
                     impl_->directional_shadow_requested =
                         impl_->directional_shadow_requested || renderer_result.directional_shadow_requested;
                     impl_->directional_shadow_status = renderer_result.directional_shadow_status;
@@ -4431,6 +4838,49 @@ Win32DesktopPresentationReport Win32DesktopPresentation::report() const noexcept
         .postprocess_status = impl_->postprocess_status,
         .postprocess_depth_input_requested = impl_->postprocess_depth_input_requested,
         .postprocess_depth_input_ready = impl_->postprocess_depth_input_ready,
+        .environment_fog_requested = impl_->environment_fog_requested,
+        .environment_fog_constant_buffer_ready = impl_->environment_fog_constant_buffer_ready,
+        .environment_fog_constant_buffer_bytes = impl_->environment_fog_constant_buffer_bytes,
+        .cloud_layer_requested = impl_->cloud_layer_requested,
+        .cloud_layer_shader_contract_evidence_ready = impl_->cloud_layer_shader_contract_evidence_ready,
+        .cloud_layer_package_evidence_ready = impl_->cloud_layer_package_evidence_ready,
+        .cloud_layer_execution_evidence_ready = impl_->cloud_layer_execution_evidence_ready,
+        .cloud_layer_uploads_textures = impl_->cloud_layer_uploads_textures,
+        .cloud_layer_invokes_backend = impl_->cloud_layer_invokes_backend,
+        .cloud_layer_exposes_native_handles = impl_->cloud_layer_exposes_native_handles,
+        .cloud_layer_uses_volumetric_clouds = impl_->cloud_layer_uses_volumetric_clouds,
+        .cloud_layer_uses_latlong_projection = impl_->cloud_layer_uses_latlong_projection,
+        .cloud_layer_uses_flow_map = impl_->cloud_layer_uses_flow_map,
+        .cloud_layer_texture_rows = impl_->cloud_layer_texture_rows,
+        .cloud_layer_visual_rows = impl_->cloud_layer_visual_rows,
+        .cloud_layer_ibl_rows = impl_->cloud_layer_ibl_rows,
+        .cloud_layer_shader_contract_rows = impl_->cloud_layer_shader_contract_rows,
+        .cloud_layer_quality_rows = impl_->cloud_layer_quality_rows,
+        .cloud_layer_policy_diagnostics_count = impl_->cloud_layer_policy_diagnostics_count,
+        .environment_precipitation_requested = impl_->environment_precipitation_requested,
+        .environment_precipitation_weather = impl_->environment_precipitation_weather,
+        .environment_precipitation_kind = impl_->environment_precipitation_kind,
+        .environment_precipitation_shader_contract_evidence_ready =
+            impl_->environment_precipitation_shader_contract_evidence_ready,
+        .environment_precipitation_package_evidence_ready = impl_->environment_precipitation_package_evidence_ready,
+        .environment_precipitation_execution_evidence_ready = impl_->environment_precipitation_execution_evidence_ready,
+        .environment_precipitation_uploads_particle_buffers = impl_->environment_precipitation_uploads_particle_buffers,
+        .environment_precipitation_invokes_backend = impl_->environment_precipitation_invokes_backend,
+        .environment_precipitation_exposes_native_handles = impl_->environment_precipitation_exposes_native_handles,
+        .environment_precipitation_mutates_materials = impl_->environment_precipitation_mutates_materials,
+        .environment_precipitation_plays_audio = impl_->environment_precipitation_plays_audio,
+        .environment_precipitation_uses_camera_near_particles =
+            impl_->environment_precipitation_uses_camera_near_particles,
+        .environment_precipitation_uses_scene_depth_occlusion =
+            impl_->environment_precipitation_uses_scene_depth_occlusion,
+        .environment_precipitation_weather_rows = impl_->environment_precipitation_weather_rows,
+        .environment_precipitation_particle_rows = impl_->environment_precipitation_particle_rows,
+        .environment_precipitation_occlusion_rows = impl_->environment_precipitation_occlusion_rows,
+        .environment_precipitation_wetness_rows = impl_->environment_precipitation_wetness_rows,
+        .environment_precipitation_audio_handoff_rows = impl_->environment_precipitation_audio_handoff_rows,
+        .environment_precipitation_shader_rows = impl_->environment_precipitation_shader_rows,
+        .environment_precipitation_quality_rows = impl_->environment_precipitation_quality_rows,
+        .environment_precipitation_policy_diagnostics_count = impl_->environment_precipitation_policy_diagnostics_count,
         .directional_shadow_status = impl_->directional_shadow_status,
         .directional_shadow_requested = impl_->directional_shadow_requested,
         .directional_shadow_ready = impl_->directional_shadow_ready,
@@ -4835,6 +5285,45 @@ std::string_view win32_desktop_presentation_d3d12_postprocess_execution_status_n
     return "unknown";
 }
 
+std::string_view
+win32_desktop_presentation_environment_fog_status_name(Win32DesktopPresentationEnvironmentFogStatus status) noexcept {
+    switch (status) {
+    case Win32DesktopPresentationEnvironmentFogStatus::not_requested:
+        return "not_requested";
+    case Win32DesktopPresentationEnvironmentFogStatus::blocked:
+        return "blocked";
+    case Win32DesktopPresentationEnvironmentFogStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
+std::string_view
+win32_desktop_presentation_cloud_layer_status_name(Win32DesktopPresentationCloudLayerStatus status) noexcept {
+    switch (status) {
+    case Win32DesktopPresentationCloudLayerStatus::not_requested:
+        return "not_requested";
+    case Win32DesktopPresentationCloudLayerStatus::blocked:
+        return "blocked";
+    case Win32DesktopPresentationCloudLayerStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
+std::string_view win32_desktop_presentation_environment_precipitation_status_name(
+    Win32DesktopPresentationEnvironmentPrecipitationStatus status) noexcept {
+    switch (status) {
+    case Win32DesktopPresentationEnvironmentPrecipitationStatus::not_requested:
+        return "not_requested";
+    case Win32DesktopPresentationEnvironmentPrecipitationStatus::blocked:
+        return "blocked";
+    case Win32DesktopPresentationEnvironmentPrecipitationStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
 std::string_view win32_desktop_presentation_vulkan_postprocess_execution_status_name(
     Win32DesktopPresentationVulkanPostprocessExecutionStatus status) noexcept {
     switch (status) {
@@ -4869,10 +5358,12 @@ evaluate_win32_desktop_presentation_postprocess_policy(const Win32DesktopPresent
     }
 
     const bool postprocess_ready = report.postprocess_status == Win32DesktopPresentationPostprocessStatus::ready;
+    const auto postprocess_effect =
+        report.environment_fog_requested ? PostprocessEffectKind::fog : PostprocessEffectKind::color_grading;
     const std::array effects{
         PostprocessEffectDesc{
-            .kind = PostprocessEffectKind::color_grading,
-            .requires_scene_depth = report.postprocess_depth_input_requested,
+            .kind = postprocess_effect,
+            .requires_scene_depth = report.postprocess_depth_input_requested || report.environment_fog_requested,
         },
     };
     const auto plan = plan_postprocess_chain_policy(PostprocessChainPolicyDesc{
@@ -5031,6 +5522,212 @@ Win32DesktopPresentationD3d12PostprocessExecutionReport evaluate_win32_desktop_p
                         ? Win32DesktopPresentationD3d12PostprocessExecutionStatus::ready
                         : Win32DesktopPresentationD3d12PostprocessExecutionStatus::blocked;
     result.ready = result.status == Win32DesktopPresentationD3d12PostprocessExecutionStatus::ready;
+    return result;
+}
+
+Win32DesktopPresentationEnvironmentFogReport evaluate_win32_desktop_presentation_environment_fog(
+    const Win32DesktopPresentationReport& report,
+    const Win32DesktopPresentationD3d12PostprocessExecutionReport& d3d12_postprocess_execution, const bool requested) {
+    Win32DesktopPresentationEnvironmentFogReport result;
+    if (!requested) {
+        return result;
+    }
+
+    result.requested = report.environment_fog_requested;
+    result.d3d12_backend_selected = report.selected_backend == Win32DesktopPresentationBackend::d3d12;
+    result.postprocess_ready = report.postprocess_status == Win32DesktopPresentationPostprocessStatus::ready;
+    result.postprocess_depth_input_ready = report.postprocess_depth_input_ready;
+    result.d3d12_postprocess_execution_ready = d3d12_postprocess_execution.ready;
+    result.constant_buffer_ready = report.environment_fog_constant_buffer_ready;
+    result.constants_binding = environment_fog_constants_binding();
+    result.constant_buffer_bytes = report.environment_fog_constant_buffer_bytes;
+    result.expected_postprocess_passes = d3d12_postprocess_execution.expected_postprocess_passes;
+    result.postprocess_passes_executed = d3d12_postprocess_execution.postprocess_passes_executed;
+    result.postprocess_passes_current = d3d12_postprocess_execution.postprocess_passes_current;
+
+    const auto plan = plan_environment_fog_policy(EnvironmentFogPolicyDesc{
+        .mode = EnvironmentFogMode::exponential_height,
+        .density = 0.08F,
+        .height_falloff = 0.35F,
+        .height_offset_m = 12.0F,
+        .start_distance_m = 0.0F,
+        .cutoff_distance_m = 1200.0F,
+        .max_opacity = 0.85F,
+        .sky_affect = 0.35F,
+        .directional_inscattering_anisotropy = 0.25F,
+        .inscattering_color = Vec3{.x = 0.58F, .y = 0.68F, .z = 0.78F},
+        .directional_inscattering_color = Vec3{.x = 0.84F, .y = 0.78F, .z = 0.62F},
+        .sample_step_budget = 8,
+        .scene_depth_available = result.postprocess_depth_input_ready,
+        .shader_contract_evidence_ready = result.d3d12_postprocess_execution_ready,
+    });
+    result.diagnostics_count = static_cast<std::uint32_t>(plan.diagnostics.size());
+    if (!result.requested) {
+        ++result.diagnostics_count;
+    }
+    if (!result.d3d12_backend_selected) {
+        ++result.diagnostics_count;
+    }
+    if (!result.postprocess_ready) {
+        ++result.diagnostics_count;
+    }
+    if (!result.constant_buffer_ready ||
+        result.constant_buffer_bytes != static_cast<std::uint64_t>(environment_fog_constants_byte_size())) {
+        ++result.diagnostics_count;
+    }
+    if (!result.postprocess_passes_current) {
+        ++result.diagnostics_count;
+    }
+
+    result.ready = result.diagnostics_count == 0;
+    result.status = result.ready ? Win32DesktopPresentationEnvironmentFogStatus::ready
+                                 : Win32DesktopPresentationEnvironmentFogStatus::blocked;
+    return result;
+}
+
+Win32DesktopPresentationCloudLayerReport
+evaluate_win32_desktop_presentation_cloud_layer(const Win32DesktopPresentationReport& report, const bool requested) {
+    Win32DesktopPresentationCloudLayerReport result;
+    result.cloud_map_binding = cloud_layer_cloud_map_binding();
+    result.flow_map_binding = cloud_layer_flow_map_binding();
+    result.sampler_binding = cloud_layer_sampler_binding();
+    result.constants_binding = cloud_layer_constants_binding();
+    if (!requested) {
+        return result;
+    }
+
+    result.requested = report.cloud_layer_requested;
+    result.d3d12_backend_selected = report.selected_backend == Win32DesktopPresentationBackend::d3d12;
+    result.shader_contract_evidence_ready = report.cloud_layer_shader_contract_evidence_ready;
+    result.package_evidence_ready = report.cloud_layer_package_evidence_ready;
+    result.execution_evidence_ready = report.cloud_layer_execution_evidence_ready;
+    result.uploads_textures = report.cloud_layer_uploads_textures;
+    result.invokes_backend = report.cloud_layer_invokes_backend;
+    result.exposes_native_handles = report.cloud_layer_exposes_native_handles;
+    result.uses_volumetric_clouds = report.cloud_layer_uses_volumetric_clouds;
+
+    result.uses_latlong_projection = report.cloud_layer_uses_latlong_projection;
+    result.uses_flow_map = report.cloud_layer_uses_flow_map;
+    result.texture_rows = report.cloud_layer_texture_rows;
+    result.visual_rows = report.cloud_layer_visual_rows;
+    result.ibl_rows = report.cloud_layer_ibl_rows;
+    result.shader_contract_rows = report.cloud_layer_shader_contract_rows;
+    result.quality_rows = report.cloud_layer_quality_rows;
+
+    const auto expected_plan = plan_cloud_layer_policy(CloudLayerPolicyDesc{
+        .layer = sample_cloud_layer_package_desc(),
+        .quality_tier = CloudLayerQualityTier::balanced,
+        .shader_contract_evidence_ready = result.shader_contract_evidence_ready,
+        .package_evidence_ready = result.package_evidence_ready,
+        .execution_evidence_ready = result.execution_evidence_ready,
+        .request_ready_promotion = true,
+    });
+
+    const auto expected_texture_rows = static_cast<std::uint32_t>(expected_plan.texture_rows.size());
+    const auto expected_visual_rows = static_cast<std::uint32_t>(expected_plan.visual_rows.size());
+    const auto expected_ibl_rows = static_cast<std::uint32_t>(expected_plan.ibl_rows.size());
+    const auto expected_shader_contract_rows = static_cast<std::uint32_t>(expected_plan.shader_contract_rows.size());
+    const auto expected_quality_rows = static_cast<std::uint32_t>(expected_plan.quality_rows.size());
+    bool expected_uses_latlong_projection{false};
+    bool expected_uses_flow_map{false};
+    if (!expected_plan.shader_contract_rows.empty()) {
+        expected_uses_latlong_projection = expected_plan.shader_contract_rows.front().uses_latlong_projection;
+        expected_uses_flow_map = expected_plan.shader_contract_rows.front().uses_flow_map;
+    }
+
+    result.diagnostics_count =
+        static_cast<std::uint32_t>(expected_plan.diagnostics.size()) + report.cloud_layer_policy_diagnostics_count;
+    if (!result.requested) {
+        ++result.diagnostics_count;
+    }
+    if (!result.d3d12_backend_selected) {
+        ++result.diagnostics_count;
+    }
+    if (result.texture_rows != expected_texture_rows || result.visual_rows != expected_visual_rows ||
+        result.ibl_rows != expected_ibl_rows || result.shader_contract_rows != expected_shader_contract_rows ||
+        result.quality_rows != expected_quality_rows) {
+        ++result.diagnostics_count;
+    }
+    if (result.uses_latlong_projection != expected_uses_latlong_projection ||
+        result.uses_flow_map != expected_uses_flow_map) {
+        ++result.diagnostics_count;
+    }
+    if (result.uploads_textures || result.invokes_backend || result.exposes_native_handles ||
+        result.uses_volumetric_clouds) {
+        ++result.diagnostics_count;
+    }
+
+    result.ready = result.diagnostics_count == 0;
+    result.status = result.ready ? Win32DesktopPresentationCloudLayerStatus::ready
+                                 : Win32DesktopPresentationCloudLayerStatus::blocked;
+    return result;
+}
+
+Win32DesktopPresentationEnvironmentPrecipitationReport
+evaluate_win32_desktop_presentation_environment_precipitation(const Win32DesktopPresentationReport& report,
+                                                              const bool requested) {
+    Win32DesktopPresentationEnvironmentPrecipitationReport result;
+    result.particle_texture_binding = precipitation_particle_texture_binding();
+    result.scene_depth_texture_binding = precipitation_scene_depth_texture_binding();
+    result.sampler_binding = precipitation_sampler_binding();
+    result.constants_binding = precipitation_constants_binding();
+    if (!requested) {
+        return result;
+    }
+
+    result.requested = report.environment_precipitation_requested;
+    result.d3d12_backend_selected = report.selected_backend == Win32DesktopPresentationBackend::d3d12;
+    result.weather = report.environment_precipitation_weather;
+    result.kind = report.environment_precipitation_kind;
+    result.shader_contract_evidence_ready = report.environment_precipitation_shader_contract_evidence_ready;
+    result.package_evidence_ready = report.environment_precipitation_package_evidence_ready;
+    result.execution_evidence_ready = report.environment_precipitation_execution_evidence_ready;
+    result.uploads_particle_buffers = report.environment_precipitation_uploads_particle_buffers;
+    result.invokes_backend = report.environment_precipitation_invokes_backend;
+    result.exposes_native_handles = report.environment_precipitation_exposes_native_handles;
+    result.mutates_materials = report.environment_precipitation_mutates_materials;
+    result.plays_audio = report.environment_precipitation_plays_audio;
+    result.uses_camera_near_particles = report.environment_precipitation_uses_camera_near_particles;
+    result.uses_scene_depth_occlusion = report.environment_precipitation_uses_scene_depth_occlusion;
+    result.weather_rows = report.environment_precipitation_weather_rows;
+    result.particle_rows = report.environment_precipitation_particle_rows;
+    result.occlusion_rows = report.environment_precipitation_occlusion_rows;
+    result.wetness_rows = report.environment_precipitation_wetness_rows;
+    result.audio_handoff_rows = report.environment_precipitation_audio_handoff_rows;
+    result.shader_rows = report.environment_precipitation_shader_rows;
+    result.quality_rows = report.environment_precipitation_quality_rows;
+
+    const auto expected_plan = plan_precipitation_policy(sample_environment_precipitation_policy_desc());
+    result.diagnostics_count = static_cast<std::uint32_t>(expected_plan.diagnostics.size()) +
+                               report.environment_precipitation_policy_diagnostics_count;
+    if (!result.requested) {
+        ++result.diagnostics_count;
+    }
+    if (!result.d3d12_backend_selected) {
+        ++result.diagnostics_count;
+    }
+    if (result.kind != EnvironmentPrecipitationKind::rain && result.kind != EnvironmentPrecipitationKind::snow) {
+        ++result.diagnostics_count;
+    }
+    if (!result.shader_contract_evidence_ready || !result.package_evidence_ready || !result.execution_evidence_ready) {
+        ++result.diagnostics_count;
+    }
+    if (!result.uses_camera_near_particles || !result.uses_scene_depth_occlusion) {
+        ++result.diagnostics_count;
+    }
+    if (result.weather_rows == 0 || result.particle_rows == 0 || result.occlusion_rows == 0 ||
+        result.wetness_rows == 0 || result.audio_handoff_rows == 0 || result.shader_rows == 0 ||
+        result.quality_rows == 0) {
+        ++result.diagnostics_count;
+    }
+    if (result.uploads_particle_buffers || result.invokes_backend || result.exposes_native_handles ||
+        result.mutates_materials || result.plays_audio) {
+        ++result.diagnostics_count;
+    }
+
+    result.ready = result.diagnostics_count == 0;
+    result.status = result.ready ? Win32DesktopPresentationEnvironmentPrecipitationStatus::ready
+                                 : Win32DesktopPresentationEnvironmentPrecipitationStatus::blocked;
     return result;
 }
 

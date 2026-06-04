@@ -100,6 +100,7 @@ SceneRenderPacket build_scene_render_packet(const Scene& scene) {
     std::vector<Mat4> world_matrices(nodes.size(), Mat4::identity());
 
     SceneRenderPacket packet;
+    packet.environment = scene.environment();
     packet.cameras.reserve(nodes.size());
     packet.lights.reserve(nodes.size());
     packet.meshes.reserve(nodes.size());

@@ -79,6 +79,8 @@ namespace {
         return AssetImportActionKind::material;
     case AssetKind::scene:
         return AssetImportActionKind::scene;
+    case AssetKind::environment_profile:
+        return AssetImportActionKind::environment_profile;
     case AssetKind::unknown:
     case AssetKind::script:
     case AssetKind::shader:

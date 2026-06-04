@@ -38,6 +38,7 @@ struct ProjectedScene {
     std::vector<AssetId> mesh_dependencies;
     std::vector<AssetId> material_dependencies;
     std::vector<AssetId> sprite_dependencies;
+    std::vector<AssetId> environment_profile_dependencies;
     std::vector<AssetIdentityPlacementRequestV2> placement_requests;
     std::vector<SourceAssetDependencyRowV1> dependency_rows;
     std::vector<SceneV2RuntimePackageMigrationDiagnostic> diagnostics;
@@ -49,6 +50,7 @@ struct PreparedSceneV2RuntimePackageMigration {
     std::vector<AssetId> mesh_dependencies;
     std::vector<AssetId> material_dependencies;
     std::vector<AssetId> sprite_dependencies;
+    std::vector<AssetId> environment_profile_dependencies;
     std::vector<AssetIdentityPlacementRowV2> placement_rows;
     std::vector<SourceAssetDependencyRowV1> dependency_rows;
 };
@@ -345,6 +347,16 @@ void validate_request_shape(std::vector<SceneV2RuntimePackageMigrationDiagnostic
         return "missing_override_target";
     case SceneSchemaV2DiagnosticCode::duplicate_override_path:
         return "duplicate_override_path";
+    case SceneSchemaV2DiagnosticCode::invalid_environment_profile_reference:
+        return "invalid_environment_profile_reference";
+    case SceneSchemaV2DiagnosticCode::duplicate_prefab_source_identity:
+        return "duplicate_prefab_source_identity";
+    case SceneSchemaV2DiagnosticCode::unsupported_nested_prefab_instance:
+        return "unsupported_nested_prefab_instance";
+    case SceneSchemaV2DiagnosticCode::unsupported_local_prefab_child:
+        return "unsupported_local_prefab_child";
+    case SceneSchemaV2DiagnosticCode::unsupported_local_prefab_component:
+        return "unsupported_local_prefab_component";
     }
     return "invalid_scene_v2_document";
 }
@@ -361,6 +373,8 @@ void validate_request_shape(std::vector<SceneV2RuntimePackageMigrationDiagnostic
         return "scene v2 component node is missing";
     case SceneSchemaV2DiagnosticCode::missing_parent_node:
         return "scene v2 parent node is missing";
+    case SceneSchemaV2DiagnosticCode::invalid_environment_profile_reference:
+        return "scene v2 environment profile reference is invalid";
     default:
         break;
     }
@@ -591,6 +605,8 @@ void validate_supported_properties(std::vector<SceneV2RuntimePackageMigrationDia
         return "tilemap";
     case AssetKind::physics_collision_scene:
         return "physics_collision_scene";
+    case AssetKind::environment_profile:
+        return "environment_profile";
     case AssetKind::unknown:
         break;
     }
@@ -622,6 +638,25 @@ resolve_asset_reference(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& d
                        std::string{component.type.value} + "." + std::string{property} + " must reference a " +
                            std::string{required_label} + " source asset",
                        scene_path, row->key, component.node, component.id, component.type, std::string{property});
+        return std::nullopt;
+    }
+    return ResolvedAssetReference{.key = row->key, .id = asset_id_from_key_v2(row->key)};
+}
+
+[[nodiscard]] std::optional<ResolvedAssetReference>
+resolve_environment_reference(std::vector<SceneV2RuntimePackageMigrationDiagnostic>& diagnostics,
+                              const SourceAssetRegistryDocumentV1& registry,
+                              const SceneEnvironmentDocumentV2& environment, const std::string& scene_path) {
+    const auto* row = find_source_row(registry, environment.profile.value);
+    if (row == nullptr) {
+        add_diagnostic(diagnostics, "missing_source_asset_key", "source asset key is missing", scene_path,
+                       environment.profile, {}, {}, {}, "environment.profile");
+        return std::nullopt;
+    }
+    if (row->kind != AssetKind::environment_profile) {
+        add_diagnostic(diagnostics, "wrong_source_asset_kind",
+                       "environment.profile must reference an environment_profile source asset", scene_path, row->key,
+                       {}, {}, {}, "environment.profile");
         return std::nullopt;
     }
     return ResolvedAssetReference{.key = row->key, .id = asset_id_from_key_v2(row->key)};
@@ -976,6 +1011,30 @@ void assign_sprite_renderer_component(std::vector<SceneV2RuntimePackageMigration
                                                                const std::string& scene_path) {
     ProjectedScene projected{.scene = Scene{scene.name}};
 
+    if (scene.environment.has_value()) {
+        if (const auto environment =
+                resolve_environment_reference(projected.diagnostics, registry, *scene.environment, scene_path);
+            environment.has_value()) {
+            try {
+                projected.scene.set_environment(
+                    SceneEnvironmentReference{.profile = environment->id, .required = scene.environment->required});
+            } catch (const std::exception& error) {
+                add_diagnostic(projected.diagnostics, "invalid_scene_v1_projection",
+                               std::string{"failed to assign runtime scene environment: "} + error.what(), scene_path,
+                               scene.environment->profile, {}, {}, {}, "environment.profile");
+            }
+            append_dependency(projected.environment_profile_dependencies, projected.dependency_rows, environment->id,
+                              AssetDependencyKind::scene_environment_profile, environment->key);
+            append_placement_request(projected.placement_requests, "scene.environment.profile", environment->key,
+                                     AssetKind::environment_profile);
+        }
+    }
+
+    if (!projected.diagnostics.empty()) {
+        sort_diagnostics(projected.diagnostics);
+        return projected;
+    }
+
     std::unordered_map<std::string, SceneNodeId> runtime_nodes;
     runtime_nodes.reserve(scene.nodes.size());
     for (const auto& node_doc : scene.nodes) {
@@ -1053,6 +1112,7 @@ void assign_sprite_renderer_component(std::vector<SceneV2RuntimePackageMigration
     sort_unique_asset_ids(projected.mesh_dependencies);
     sort_unique_asset_ids(projected.material_dependencies);
     sort_unique_asset_ids(projected.sprite_dependencies);
+    sort_unique_asset_ids(projected.environment_profile_dependencies);
     sort_unique_dependency_rows(projected.dependency_rows);
     sort_diagnostics(projected.diagnostics);
     return projected;
@@ -1148,6 +1208,7 @@ prepare_scene_v2_runtime_package_migration(std::vector<SceneV2RuntimePackageMigr
     prepared.mesh_dependencies = std::move(projected.mesh_dependencies);
     prepared.material_dependencies = std::move(projected.material_dependencies);
     prepared.sprite_dependencies = std::move(projected.sprite_dependencies);
+    prepared.environment_profile_dependencies = std::move(projected.environment_profile_dependencies);
     prepared.placement_rows = std::move(placement_rows);
     prepared.dependency_rows = std::move(projected.dependency_rows);
     return prepared;
@@ -1183,6 +1244,7 @@ plan_scene_v2_runtime_package_migration(const SceneV2RuntimePackageMigrationRequ
     package_request.mesh_dependencies = prepared->mesh_dependencies;
     package_request.material_dependencies = prepared->material_dependencies;
     package_request.sprite_dependencies = prepared->sprite_dependencies;
+    package_request.environment_profile_dependencies = prepared->environment_profile_dependencies;
 
     const auto package_result = plan_scene_package_update(package_request);
     if (!package_result.succeeded()) {
@@ -1240,6 +1302,7 @@ apply_scene_v2_runtime_package_migration(IFileSystem& filesystem,
     package_apply.mesh_dependencies = prepared->mesh_dependencies;
     package_apply.material_dependencies = prepared->material_dependencies;
     package_apply.sprite_dependencies = prepared->sprite_dependencies;
+    package_apply.environment_profile_dependencies = prepared->environment_profile_dependencies;
 
     const auto package_result = apply_scene_package_update(filesystem, package_apply);
     input_result.scene_v1_content = package_result.scene_content;

@@ -17,6 +17,7 @@ struct SceneDependencySet {
     std::vector<AssetId> meshes;
     std::vector<AssetId> materials;
     std::vector<AssetId> sprites;
+    std::vector<AssetId> environment_profiles;
 };
 
 void add_failure(std::vector<ScenePackageUpdateFailure>& failures, AssetId asset, std::string path,
@@ -169,6 +170,9 @@ void validate_scene_transforms(std::vector<ScenePackageUpdateFailure>& failures,
 
 [[nodiscard]] SceneDependencySet collect_scene_dependencies(const Scene& scene) {
     SceneDependencySet dependencies;
+    if (scene.environment().has_value()) {
+        dependencies.environment_profiles.push_back(scene.environment()->profile);
+    }
     for (const auto& node : scene.nodes()) {
         if (node.components.mesh_renderer.has_value()) {
             dependencies.meshes.push_back(node.components.mesh_renderer->mesh);
@@ -182,6 +186,7 @@ void validate_scene_transforms(std::vector<ScenePackageUpdateFailure>& failures,
     sort_unique_asset_ids(dependencies.meshes);
     sort_unique_asset_ids(dependencies.materials);
     sort_unique_asset_ids(dependencies.sprites);
+    sort_unique_asset_ids(dependencies.environment_profiles);
     return dependencies;
 }
 
@@ -199,13 +204,19 @@ void validate_declared_dependencies(std::vector<ScenePackageUpdateFailure>& fail
         add_failure(failures, desc.scene_asset, desc.output_path,
                     "scene sprite dependency declarations must be unique non-zero asset ids");
     }
+    if (has_invalid_or_duplicate_ids(desc.environment_profile_dependencies)) {
+        add_failure(failures, desc.scene_asset, desc.output_path,
+                    "scene environment profile dependency declarations must be unique non-zero asset ids");
+    }
 
     auto meshes = desc.mesh_dependencies;
     auto materials = desc.material_dependencies;
     auto sprites = desc.sprite_dependencies;
+    auto environment_profiles = desc.environment_profile_dependencies;
     sort_unique_asset_ids(meshes);
     sort_unique_asset_ids(materials);
     sort_unique_asset_ids(sprites);
+    sort_unique_asset_ids(environment_profiles);
 
     if (meshes != actual.meshes) {
         add_failure(failures, desc.scene_asset, desc.output_path,
@@ -218,6 +229,10 @@ void validate_declared_dependencies(std::vector<ScenePackageUpdateFailure>& fail
     if (sprites != actual.sprites) {
         add_failure(failures, desc.scene_asset, desc.output_path,
                     "scene sprite dependency declarations do not match scene payload");
+    }
+    if (environment_profiles != actual.environment_profiles) {
+        add_failure(failures, desc.scene_asset, desc.output_path,
+                    "scene environment profile dependency declarations do not match scene payload");
     }
 }
 
@@ -268,10 +283,11 @@ void validate_dependency_entry(std::vector<ScenePackageUpdateFailure>& failures,
     validate_package_relative_path(failures, dependency, entry->path,
                                    std::string{"scene "} + std::string{label} + " package entry path");
     if (entry->kind != expected_kind) {
-        const auto* const kind_name = expected_kind == AssetKind::mesh       ? "mesh"
-                                      : expected_kind == AssetKind::material ? "material"
-                                      : expected_kind == AssetKind::texture  ? "texture"
-                                                                             : "expected kind";
+        const auto* const kind_name = expected_kind == AssetKind::mesh                  ? "mesh"
+                                      : expected_kind == AssetKind::material            ? "material"
+                                      : expected_kind == AssetKind::texture             ? "texture"
+                                      : expected_kind == AssetKind::environment_profile ? "environment_profile"
+                                                                                        : "expected kind";
         add_failure(failures, dependency, entry->path,
                     std::string{"scene "} + std::string{label} + " package entry is not a " + kind_name);
     }
@@ -301,6 +317,10 @@ void validate_package_rows(std::vector<ScenePackageUpdateFailure>& failures, con
     for (const auto sprite : dependencies.sprites) {
         validate_dependency_entry(failures, index, desc.scene_asset, sprite, AssetKind::texture, "sprite");
     }
+    for (const auto environment_profile : dependencies.environment_profiles) {
+        validate_dependency_entry(failures, index, desc.scene_asset, environment_profile,
+                                  AssetKind::environment_profile, "environment profile");
+    }
 }
 
 void append_dependency_edges(AssetCookedPackageIndex& index, AssetId scene_asset,
@@ -317,10 +337,12 @@ void append_dependency_edges(AssetCookedPackageIndex& index, AssetId scene_asset
 
 [[nodiscard]] std::vector<AssetId> all_scene_dependencies(SceneDependencySet dependencies) {
     std::vector<AssetId> result;
-    result.reserve(dependencies.meshes.size() + dependencies.materials.size() + dependencies.sprites.size());
+    result.reserve(dependencies.meshes.size() + dependencies.materials.size() + dependencies.sprites.size() +
+                   dependencies.environment_profiles.size());
     result.insert(result.end(), dependencies.meshes.begin(), dependencies.meshes.end());
     result.insert(result.end(), dependencies.materials.begin(), dependencies.materials.end());
     result.insert(result.end(), dependencies.sprites.begin(), dependencies.sprites.end());
+    result.insert(result.end(), dependencies.environment_profiles.begin(), dependencies.environment_profiles.end());
     sort_unique_asset_ids(result);
     return result;
 }
@@ -337,6 +359,8 @@ void replace_scene_entry(AssetCookedPackageIndex& index, const ScenePackageUpdat
     append_dependency_edges(index, desc.scene_asset, dependencies.meshes, AssetDependencyKind::scene_mesh);
     append_dependency_edges(index, desc.scene_asset, dependencies.materials, AssetDependencyKind::scene_material);
     append_dependency_edges(index, desc.scene_asset, dependencies.sprites, AssetDependencyKind::scene_sprite);
+    append_dependency_edges(index, desc.scene_asset, dependencies.environment_profiles,
+                            AssetDependencyKind::scene_environment_profile);
 
     if (auto* entry = find_entry(index, desc.scene_asset); entry != nullptr) {
         *entry = AssetCookedPackageEntry{
@@ -453,6 +477,7 @@ ScenePackageUpdateResult apply_scene_package_update(IFileSystem& filesystem, con
         .mesh_dependencies = desc.mesh_dependencies,
         .material_dependencies = desc.material_dependencies,
         .sprite_dependencies = desc.sprite_dependencies,
+        .environment_profile_dependencies = desc.environment_profile_dependencies,
         .editor_productization = desc.editor_productization,
         .prefab_mutation = desc.prefab_mutation,
         .runtime_source_import = desc.runtime_source_import,

@@ -5,6 +5,7 @@
 
 #include "mirakana/assets/asset_source_format.hpp"
 #include "mirakana/assets/material.hpp"
+#include "mirakana/environment/environment_io.hpp"
 #include "mirakana/scene/scene.hpp"
 #include "mirakana/tools/morph_mesh_cpu_source_bridge.hpp"
 
@@ -80,6 +81,8 @@ struct PreparedImport {
         return "scene";
     case AssetImportActionKind::audio:
         return "audio";
+    case AssetImportActionKind::environment_profile:
+        return "environment_profile";
     case AssetImportActionKind::unknown:
         break;
     }
@@ -104,6 +107,8 @@ struct PreparedImport {
         return "GameEngine.Scene.v1";
     case AssetImportActionKind::audio:
         return "GameEngine.CookedAudio.v1";
+    case AssetImportActionKind::environment_profile:
+        return "GameEngine.CookedEnvironmentProfile.v1";
     case AssetImportActionKind::unknown:
         break;
     }
@@ -175,6 +180,18 @@ struct PreparedImport {
     if (!audio.samples.empty()) {
         output << "audio.data_hex=" << encode_hex_bytes(audio.samples) << '\n';
     }
+    return output.str();
+}
+
+[[nodiscard]] std::string cooked_environment_profile_artifact(const AssetImportAction& action,
+                                                              const EnvironmentProfileDesc& environment) {
+    std::ostringstream output;
+    output << "format=" << cooked_format_name(AssetImportActionKind::environment_profile) << '\n';
+    output << "asset.id=" << action.id.value << '\n';
+    output << "asset.kind=" << action_kind_name(AssetImportActionKind::environment_profile) << '\n';
+    output << "source.path=" << action.source_path << '\n';
+    output << "environment.source_format=" << environment_profile_format_v1() << '\n';
+    write_environment_profile_payload(output, environment, "profile.");
     return output.str();
 }
 
@@ -315,6 +332,11 @@ import_morph_mesh_cpu_source_document(IFileSystem& filesystem, const AssetImport
     }
 }
 
+[[nodiscard]] EnvironmentProfileDesc import_environment_profile_source_document(IFileSystem& filesystem,
+                                                                                const AssetImportAction& action) {
+    return deserialize_environment_profile(filesystem.read_text(action.source_path));
+}
+
 [[nodiscard]] PreparedImport prepare_import_action(IFileSystem& filesystem, const AssetImportAction& action,
                                                    const AssetImportExecutionOptions& options) {
     if (!is_valid_asset_import_action(action)) {
@@ -345,6 +367,9 @@ import_morph_mesh_cpu_source_document(IFileSystem& filesystem, const AssetImport
             action, import_animation_quaternion_clip_source_document(filesystem, action, options));
     } else if (action.kind == AssetImportActionKind::audio) {
         cooked_text = cooked_audio_artifact(action, import_audio_source_document(filesystem, action, options));
+    } else if (action.kind == AssetImportActionKind::environment_profile) {
+        cooked_text =
+            cooked_environment_profile_artifact(action, import_environment_profile_source_document(filesystem, action));
     } else {
         throw std::invalid_argument("asset import action kind is unsupported");
     }

@@ -435,7 +435,8 @@ void assign_node_field(PendingNode& node, std::string_view field, std::string_vi
 }
 
 void assign_scene_key(std::string_view key, std::string_view value, bool& has_format, bool& has_name, bool& has_count,
-                      std::string& scene_name, std::vector<PendingNode>& nodes) {
+                      std::string& scene_name, std::vector<PendingNode>& nodes, bool& has_environment_profile,
+                      bool& has_environment_required, SceneEnvironmentReference& environment) {
     if (key == "format") {
         if (value != "GameEngine.Scene.v1") {
             throw std::invalid_argument("unsupported scene format");
@@ -447,6 +448,22 @@ void assign_scene_key(std::string_view key, std::string_view value, bool& has_fo
         validate_text_field(value, "scene name");
         scene_name = std::string(value);
         has_name = true;
+        return;
+    }
+    if (key == "environment.profile") {
+        if (has_environment_profile) {
+            throw std::invalid_argument("scene environment profile is duplicated");
+        }
+        environment.profile = AssetId{parse_u64(value, "scene environment profile")};
+        has_environment_profile = true;
+        return;
+    }
+    if (key == "environment.required") {
+        if (has_environment_required) {
+            throw std::invalid_argument("scene environment required is duplicated");
+        }
+        environment.required = parse_bool(value, "scene environment required");
+        has_environment_required = true;
         return;
     }
     if (key == "node.count") {
@@ -566,6 +583,13 @@ std::string serialize_scene(const Scene& scene) {
     std::ostringstream output;
     output << "format=GameEngine.Scene.v1\n";
     output << "scene.name=" << scene.name() << '\n';
+    if (scene.environment().has_value()) {
+        if (!is_valid_scene_environment_reference(*scene.environment())) {
+            throw std::invalid_argument("scene environment reference is invalid");
+        }
+        output << "environment.profile=" << scene.environment()->profile.value << '\n';
+        output << "environment.required=" << (scene.environment()->required ? "true" : "false") << '\n';
+    }
     output << "node.count=" << scene.nodes().size() << '\n';
 
     for (const auto& node : scene.nodes()) {
@@ -613,8 +637,11 @@ Scene deserialize_scene(std::string_view text) {
     bool has_format = false;
     bool has_name = false;
     bool has_count = false;
+    bool has_environment_profile = false;
+    bool has_environment_required = false;
     std::string scene_name;
     std::vector<PendingNode> nodes;
+    SceneEnvironmentReference environment;
 
     std::istringstream input{std::string(text)};
     std::string line;
@@ -629,7 +656,8 @@ Scene deserialize_scene(std::string_view text) {
         }
 
         assign_scene_key(std::string_view(line).substr(0, separator), std::string_view(line).substr(separator + 1),
-                         has_format, has_name, has_count, scene_name, nodes);
+                         has_format, has_name, has_count, scene_name, nodes, has_environment_profile,
+                         has_environment_required, environment);
     }
 
     if (!has_format || !has_name || !has_count) {
@@ -637,6 +665,12 @@ Scene deserialize_scene(std::string_view text) {
     }
 
     Scene scene(scene_name);
+    if (has_environment_profile != has_environment_required) {
+        throw std::invalid_argument("scene environment reference is incomplete");
+    }
+    if (has_environment_profile) {
+        scene.set_environment(environment);
+    }
     for (std::size_t index = 0; index < nodes.size(); ++index) {
         validate_pending_node(nodes[index], index, nodes.size());
         const auto id = scene.create_node(nodes[index].name);

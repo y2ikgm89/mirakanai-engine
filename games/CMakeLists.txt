@@ -1895,7 +1895,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
         endif()
     endif()
     set_property(TARGET sample_desktop_runtime_game PROPERTY MK_DESKTOP_RUNTIME_D3D12_SHADER_ARTIFACTS
-        "shaders/sample_desktop_runtime_game_scene.vs.dxil;shaders/sample_desktop_runtime_game_scene_skinned.vs.dxil;shaders/sample_desktop_runtime_game_scene.ps.dxil;shaders/sample_desktop_runtime_game_shadow_receiver.ps.dxil;shaders/sample_desktop_runtime_game_shadow_receiver_skinned.ps.dxil;shaders/sample_desktop_runtime_game_postprocess.vs.dxil;shaders/sample_desktop_runtime_game_postprocess.ps.dxil;shaders/sample_desktop_runtime_game_shadow.vs.dxil;shaders/sample_desktop_runtime_game_shadow.ps.dxil;shaders/sample_desktop_runtime_game_ui_overlay.vs.dxil;shaders/sample_desktop_runtime_game_ui_overlay.ps.dxil"
+        "shaders/sample_desktop_runtime_game_scene.vs.dxil;shaders/sample_desktop_runtime_game_scene_skinned.vs.dxil;shaders/sample_desktop_runtime_game_scene.ps.dxil;shaders/sample_desktop_runtime_game_shadow_receiver.ps.dxil;shaders/sample_desktop_runtime_game_shadow_receiver_skinned.ps.dxil;shaders/sample_desktop_runtime_game_postprocess.vs.dxil;shaders/sample_desktop_runtime_game_postprocess.ps.dxil;shaders/sample_desktop_runtime_game_environment_fog.ps.dxil;shaders/sample_desktop_runtime_game_shadow.vs.dxil;shaders/sample_desktop_runtime_game_shadow.ps.dxil;shaders/sample_desktop_runtime_game_ui_overlay.vs.dxil;shaders/sample_desktop_runtime_game_ui_overlay.ps.dxil"
     )
     set_property(TARGET sample_desktop_runtime_game PROPERTY MK_DESKTOP_RUNTIME_VULKAN_SHADER_ARTIFACTS
         "shaders/sample_desktop_runtime_game_scene.vs.spv;shaders/sample_desktop_runtime_game_scene_skinned.vs.spv;shaders/sample_desktop_runtime_game_scene.ps.spv;shaders/sample_desktop_runtime_game_scene_mapping.cs.spv;shaders/sample_desktop_runtime_game_shadow_receiver.ps.spv;shaders/sample_desktop_runtime_game_shadow_receiver_skinned.ps.spv;shaders/sample_desktop_runtime_game_postprocess.vs.spv;shaders/sample_desktop_runtime_game_postprocess.ps.spv;shaders/sample_desktop_runtime_game_shadow.vs.spv;shaders/sample_desktop_runtime_game_shadow.ps.spv;shaders/sample_desktop_runtime_game_ui_overlay.vs.spv;shaders/sample_desktop_runtime_game_ui_overlay.ps.spv"
@@ -1943,6 +1943,9 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             )
             set(MK_SAMPLE_DESKTOP_RUNTIME_GAME_POSTPROCESS_SHADER_SOURCE
                 "${CMAKE_CURRENT_SOURCE_DIR}/sample_desktop_runtime_game/shaders/runtime_postprocess.hlsl"
+            )
+            set(MK_SAMPLE_DESKTOP_RUNTIME_GAME_ENVIRONMENT_FOG_SHADER_SOURCE
+                "${CMAKE_CURRENT_SOURCE_DIR}/../shaders/environment/height_fog.hlsl"
             )
             set(MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADOW_SHADER_SOURCE
                 "${CMAKE_CURRENT_SOURCE_DIR}/sample_desktop_runtime_game/shaders/runtime_shadow.hlsl"
@@ -1992,6 +1995,9 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             set(MK_SAMPLE_DESKTOP_RUNTIME_GAME_POSTPROCESS_FRAGMENT_SHADER_OUTPUT
                 "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADER_OUTPUT_DIR}/sample_desktop_runtime_game_postprocess.ps.dxil"
             )
+            set(MK_SAMPLE_DESKTOP_RUNTIME_GAME_ENVIRONMENT_FOG_FRAGMENT_SHADER_OUTPUT
+                "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADER_OUTPUT_DIR}/sample_desktop_runtime_game_environment_fog.ps.dxil"
+            )
             set(MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_POSTPROCESS_VERTEX_SHADER_OUTPUT
                 "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADER_OUTPUT_DIR}/sample_desktop_runtime_game_postprocess.vs.spv"
             )
@@ -2031,6 +2037,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                     "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADOW_RECEIVER_SKINNED_FRAGMENT_SHADER_OUTPUT}"
                     "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_POSTPROCESS_VERTEX_SHADER_OUTPUT}"
                     "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_POSTPROCESS_FRAGMENT_SHADER_OUTPUT}"
+                    "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_ENVIRONMENT_FOG_FRAGMENT_SHADER_OUTPUT}"
                     "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADOW_VERTEX_SHADER_OUTPUT}"
                     "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADOW_FRAGMENT_SHADER_OUTPUT}"
                     "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_UI_OVERLAY_VERTEX_SHADER_OUTPUT}"
@@ -2066,6 +2073,10 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                     -Fo "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_POSTPROCESS_FRAGMENT_SHADER_OUTPUT}"
                     "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_POSTPROCESS_SHADER_SOURCE}"
                 COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_DXC_EXECUTABLE}"
+                    -nologo -E height_fog_ps_main -T ps_6_0
+                    -Fo "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_ENVIRONMENT_FOG_FRAGMENT_SHADER_OUTPUT}"
+                    "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_ENVIRONMENT_FOG_SHADER_SOURCE}"
+                COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_DXC_EXECUTABLE}"
                     -nologo -E vs_shadow -T vs_6_0
                     -Fo "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADOW_VERTEX_SHADER_OUTPUT}"
                     "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADOW_SHADER_SOURCE}"
@@ -2084,6 +2095,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                 DEPENDS
                     "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADER_SOURCE}"
                     "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_POSTPROCESS_SHADER_SOURCE}"
+                    "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_ENVIRONMENT_FOG_SHADER_SOURCE}"
                     "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADOW_SHADER_SOURCE}"
                     "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_UI_OVERLAY_SHADER_SOURCE}"
                 COMMENT "Compiling sample_desktop_runtime_game D3D12 scene shader artifacts"
@@ -2098,6 +2110,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                     "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADOW_RECEIVER_SKINNED_FRAGMENT_SHADER_OUTPUT}"
                     "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_POSTPROCESS_VERTEX_SHADER_OUTPUT}"
                     "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_POSTPROCESS_FRAGMENT_SHADER_OUTPUT}"
+                    "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_ENVIRONMENT_FOG_FRAGMENT_SHADER_OUTPUT}"
                     "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADOW_VERTEX_SHADER_OUTPUT}"
                     "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADOW_FRAGMENT_SHADER_OUTPUT}"
                     "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_UI_OVERLAY_VERTEX_SHADER_OUTPUT}"
@@ -2235,6 +2248,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                     "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADOW_RECEIVER_SKINNED_FRAGMENT_SHADER_OUTPUT}"
                     "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_POSTPROCESS_VERTEX_SHADER_OUTPUT}"
                     "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_POSTPROCESS_FRAGMENT_SHADER_OUTPUT}"
+                    "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_ENVIRONMENT_FOG_FRAGMENT_SHADER_OUTPUT}"
                     "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADOW_VERTEX_SHADER_OUTPUT}"
                     "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADOW_FRAGMENT_SHADER_OUTPUT}"
                     "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_UI_OVERLAY_VERTEX_SHADER_OUTPUT}"
