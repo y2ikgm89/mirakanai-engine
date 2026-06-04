@@ -6,6 +6,7 @@ add_library(MK_editor_core
     core/src/content_browser.cpp
     core/src/content_browser_import_panel.cpp
     core/src/editor_dock_layout.cpp
+    core/src/environment_authoring.cpp
     core/src/editor_rich_text.cpp
     core/src/game_module_driver.cpp
     core/src/generated_game_studio.cpp
@@ -43,7 +44,7 @@ target_include_directories(MK_editor_core
         $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 
-target_link_libraries(MK_editor_core PUBLIC MK_animation MK_assets MK_core MK_platform MK_runtime MK_scene MK_tools MK_ui)
+target_link_libraries(MK_editor_core PUBLIC MK_animation MK_assets MK_core MK_environment MK_platform MK_runtime MK_scene MK_tools MK_ui)
 
 MK_apply_common_target_options(MK_editor_core)
 

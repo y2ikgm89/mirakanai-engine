@@ -5,6 +5,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
+#include <stdexcept>
 #include <utility>
 
 namespace mirakana {
@@ -55,6 +57,10 @@ void append_constant_layout_rows(PhysicalSkyPolicyPlan& plan) {
         });
         offset += scalar_size;
     }
+}
+
+void write_f32(std::span<std::uint8_t> dst, std::size_t offset, float value) {
+    std::memcpy(dst.data() + offset, &value, sizeof(float));
 }
 
 void append_lut_intent_rows(PhysicalSkyPolicyPlan& plan) {
@@ -140,6 +146,22 @@ void validate_sample_budget(PhysicalSkyPolicyPlan& plan, const PhysicalSkySample
 
 bool PhysicalSkyPolicyPlan::succeeded() const noexcept {
     return diagnostics.empty();
+}
+
+void pack_physical_sky_constants(std::span<std::uint8_t> dst, const PhysicalSkyPolicyDesc& desc) {
+    if (dst.size() < physical_sky_constants_byte_size()) {
+        throw std::invalid_argument("physical sky constants destination is too small");
+    }
+
+    std::ranges::fill(dst, std::uint8_t{0});
+    write_f32(dst, 0U, desc.atmosphere.planet_radius_km);
+    write_f32(dst, 4U, desc.atmosphere.atmosphere_height_km);
+    write_f32(dst, 8U, desc.atmosphere.rayleigh_density_height_km);
+    write_f32(dst, 12U, desc.atmosphere.mie_density_height_km);
+    write_f32(dst, 16U, desc.atmosphere.mie_anisotropy);
+    write_f32(dst, 20U, desc.atmosphere.ozone_density_height_km);
+    write_f32(dst, 24U, desc.atmosphere.sun_angular_radius_radians);
+    write_f32(dst, 28U, desc.atmosphere.solar_illuminance_lux);
 }
 
 PhysicalSkyPolicyPlan plan_physical_sky_policy(const PhysicalSkyPolicyDesc& desc) {

@@ -33,6 +33,10 @@ class RhiNativeUiOverlay;
     return 3;
 }
 
+[[nodiscard]] constexpr std::uint32_t postprocess_first_uniform_binding() noexcept {
+    return 4;
+}
+
 struct RhiPostprocessFrameRendererDesc {
     rhi::IRhiDevice* device{nullptr};
     Extent2D extent;
@@ -46,6 +50,7 @@ struct RhiPostprocessFrameRendererDesc {
     /// stage 0 writes an internal color target and the last stage writes the swapchain. Enforced to 1..2 stages in
     /// `RhiPostprocessFrameRenderer`.
     std::vector<rhi::ShaderHandle> postprocess_fragment_stages;
+    rhi::BufferHandle postprocess_first_uniform_buffer;
     bool wait_for_completion{true};
     bool enable_depth_input{false};
     rhi::Format depth_format{rhi::Format::depth24_stencil8};
@@ -101,6 +106,7 @@ class RhiPostprocessFrameRenderer final : public IRenderer {
     rhi::GraphicsPipelineHandle scene_morph_graphics_pipeline_;
     rhi::ShaderHandle postprocess_vertex_shader_;
     std::vector<rhi::ShaderHandle> postprocess_fragment_stages_;
+    rhi::BufferHandle postprocess_first_uniform_buffer_;
     std::uint32_t postprocess_stage_count_{1};
     rhi::TextureHandle scene_color_texture_;
     rhi::ResourceState scene_color_state_{rhi::ResourceState::undefined};
