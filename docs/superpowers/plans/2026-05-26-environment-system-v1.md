@@ -4,7 +4,8 @@
 
 **Plan ID:** `environment-system-v1`
 
-**Status:** Active.
+**Status:** Completed. Closed on main through PR #408-#428; no longer selected as
+`currentActivePlan`.
 
 **Goal:** Add a first-class MIRAIKANAI Environment System for sky, sun, moon, ambient lighting, reflections, fog, clouds, rain, snow, storms, time-of-day, weather presets, and quality tiers without preserving backward compatibility.
 
@@ -16,11 +17,11 @@
 
 ## Status
 
-This plan is selected as the active `environment-system-v1` milestone. `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` points to this file, `recommendedNextPlan.id = environment-system-v1`, and `unsupportedProductionGaps = []` remains unchanged.
+This plan completed as the selected `environment-system-v1` milestone. After closeout, `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` must point back to the production-completion master plan, `recommendedNextPlan.id = next-production-gap-selection`, and `unsupportedProductionGaps = []` remains unchanged.
 
-The 2026-06-03 PR1 foundation implements the `MK_environment` value contract, validation, CMake/export wiring, public API boundary coverage, and focused tests. The PR2 text IO/package-row slice adds deterministic `GameEngine.EnvironmentProfile.v1` text IO, `AssetKind::environment_profile`, source registry/import metadata planning, cooked `GameEngine.CookedEnvironmentProfile.v1` artifacts, and `.geindex` package rows without runtime source parsing. PR3 adds scene/runtime scene environment profile binding. PR4 adds value-only render packet and renderer policy planning. PR5 adds physical-sky policy and shader-contract evidence. PR6 adds first-party cooked-texture sky-lighting/IBL policy rows without new import dependencies. PR7 adds height-fog/aerial-perspective policy rows plus a reviewed depth-aware HLSL shader contract. PR8 adds `RhiPostprocessFrameRenderer` first-stage uniform binding, height-fog constant packing, and a D3D12 WARP-safe depth-aware readback proof for the height-fog shader path. PR9 adds physical-sky constant packing, stable D3D12 constant binding metadata, and a selected D3D12 WARP-safe fullscreen shader readback proof. PR10 adds selected D3D12 package-visible height-fog evidence through `sample_desktop_runtime_game --require-environment-fog-evidence`, `environment_fog_status=ready`, `environment_fog_constants_binding=4`, and `environment_fog_constants_byte_size=256`. PR18 adds strict host/toolchain/env-gated Vulkan height-fog runtime readback proof using explicit SPIR-V artifacts and `VK_LAYER_KHRONOS_validation` instance-layer readiness. PR20 adds selected D3D12 cloud-layer package evidence, and PR21 adds selected D3D12 rain precipitation package evidence. It does not claim physical-sky Vulkan/package proof, height-fog Vulkan package readiness, editor authoring beyond existing rows, renderer/RHI cloud or precipitation execution, precipitation package readiness beyond selected D3D12 rain evidence, snow package readiness, Vulkan readiness, Metal readiness, broad optimization, or broad `environment_ready`.
+The 2026-06-03 through 2026-06-04 slices implement `MK_environment` value contracts, deterministic `GameEngine.EnvironmentProfile.v1` text IO, package rows, scene/runtime scene environment binding, renderer policy planning, physical-sky and height-fog shader contracts, selected D3D12 physical-sky/height-fog/volumetric-fog execution evidence, selected D3D12 height-fog/cloud-layer/rain package evidence, strict host/toolchain/env-gated Vulkan height-fog runtime readback proof, time-of-day/weather-blending planning, and first-party `MK_editor_core` environment authoring. This milestone does not claim physical-sky Vulkan/package proof, height-fog Vulkan package readiness, renderer/RHI cloud or precipitation execution, precipitation package readiness beyond selected D3D12 rain evidence, snow package readiness, Vulkan readiness, Metal readiness, broad optimization, or broad `environment_ready`.
 
-Active execution must keep this as one milestone with reviewable PR slices. Do not change validation recipes, package counters, optional OpenEXR/KTX dependency records, or broad environment readiness claims beyond the exact implementation evidence that has landed. `014-gameCodeGuidance.json` may only describe landed evidence and must preserve unsupported rows for missing package/runtime/backend proof.
+Future environment follow-up must use a new dated focused plan. Do not change validation recipes, package counters, optional OpenEXR/KTX dependency records, or broad environment readiness claims beyond the exact implementation evidence that has landed. `014-gameCodeGuidance.json` may only describe landed evidence and must preserve unsupported rows for missing package/runtime/backend proof.
 
 ## 2026-06-03 Project Alignment Review
 
@@ -835,6 +836,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 Expected: PASS, or a concrete missing-host/toolchain blocker is recorded.
 
 **2026-06-04 PR21 Task 17 Evidence:** Final validation passed for `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` with 19/19 independent static checks passing, diagnostic-only Metal/Apple host gates recorded, mobile packaging diagnostic-only gates recorded, build/test lanes passing, and 99/99 CTest tests passing. Focused evidence before full validation also passed for `tools/check-validation-recipe-runner.ps1`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-format.ps1`, `tools/cmake.ps1 --build --preset desktop-runtime --target MK_runtime_host_win32_public_api_compile sample_desktop_runtime_game`, `tools/ctest.ps1 --preset desktop-runtime --output-on-failure -R MK_runtime_host_win32_public_api_compile`, touched-source `tools/check-tidy.ps1 -Preset desktop-runtime -Files ...`, and the selected D3D12 precipitation package smoke with `--require-environment-precipitation-package-evidence`.
+
+**2026-06-05 Closeout Pointer Sync:** The environment branch stack merged to main through PR #408-#428, ending at merge commit `a6946235`. The active execution pointer returned to the production-completion master plan with `recommendedNextPlan.id = next-production-gap-selection` and `unsupportedProductionGaps = []`. Snow package readiness, renderer/RHI precipitation execution, volumetric-cloud execution/package readiness, Vulkan/Metal parity, and broad `environment_ready` remain unclaimed follow-up work requiring separate dated plans and evidence.
 
 ## Validation Matrix
 

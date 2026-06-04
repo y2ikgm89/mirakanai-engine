@@ -15,120 +15,80 @@ paths:
 
 # CMake Build System
 
-## Rules
+## Scope
 
-- Use target-based CMake.
-- For performance flags, ISA-specific code, PGO, LTO, or release-performance presets, also use `.agents/skills/performance-optimization-change/SKILL.md`. Keep optimization flags target-local or preset-specific; do not change default validation with global compiler flags.
-- **`MK_tools`:** Keep implementation `.cpp` files under `engine/tools/{shader,gltf,asset,scene}/` as `OBJECT` targets (`MK_tools_shader`,
-  `MK_tools_gltf`, `MK_tools_asset`, `MK_tools_scene`) aggregated by the `MK_tools` `STATIC` library in `engine/tools/CMakeLists.txt`. Each
-  `OBJECT` target uses **cluster-minimal** `PUBLIC` `target_link_libraries`; **`MK_tools`** keeps the **full** `PUBLIC` `MK_*` set for
-  consumer/install link closure. Do not reintroduce a flat `engine/tools/src/`. Cluster map and rules:
-  `docs/specs/2026-05-11-directory-layout-target-v1.md`. When `.cpp` paths move, update `tools/check-json-contracts.ps1` and
-  `tools/check-ai-integration.ps1` in the same task.
-- Keep include paths scoped with `target_include_directories`.
-- Give public libraries both `$<BUILD_INTERFACE:...>` and `$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>` include paths.
-- Use `target_compile_features` for C++ standard requirements.
-- Register tests with CTest; mark only time-sensitive host-resource tests with `RUN_SERIAL` instead of disabling suite-wide parallel CTest execution.
-- For registered desktop runtime games, prefer `PACKAGE_FILES_FROM_MANIFEST` so `game.agent.json.runtimePackageFiles` is the package file source of truth; do not mix it with literal `PACKAGE_FILES`.
+Use this skill for CMake targets, presets, compiler options, tests, install/export wiring, vcpkg manifest/bootstrap policy, and build or static-analysis wrapper changes.
+
+## Build Rules
+
+- Use target-based CMake: scoped `target_include_directories`, `target_link_libraries`, `target_compile_features`, and target-local compile options/definitions.
+- Keep public libraries installable with `$<BUILD_INTERFACE:...>` and `$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>`; export SDK libraries through the `mirakana::` package namespace.
+- Use C++23. Keep `MK_CXX_STANDARD=23`, `MK_MSVC_CXX23_STANDARD_OPTION`, and project modules through `FILE_SET CXX_MODULES`; gate `import std;` on supported CMake/compiler reports.
+- For registered desktop runtime games, prefer `PACKAGE_FILES_FROM_MANIFEST` so `game.agent.json.runtimePackageFiles` is the package-file source of truth.
+- Keep `MK_tools` implementation `.cpp` files under `engine/tools/{shader,gltf,asset,scene}/` as cluster-minimal `OBJECT` targets aggregated by `MK_tools`; do not reintroduce a flat `engine/tools/src/`.
+- For performance flags, ISA-specific code, PGO, LTO, or release-performance presets, also use the performance optimization skill and keep flags target-local or preset-specific.
+
+## Toolchain Entrypoints
+
+- Diagnose wrapper CMake, CTest, CPack, clang-format, Visual Studio, and MSBuild with `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1`.
+- Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake` only when raw `cmake --preset ...` availability is the issue; otherwise prefer `tools/cmake.ps1` and `tools/ctest.ps1`.
+- Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireVcpkgToolchain` for vcpkg-backed configure gates.
+- Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1` after manual linked worktree creation so ignored local `external/vcpkg` and `vcpkg_installed/` roots are linked safely.
+- Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1` for optional vcpkg packages; CMake configure must not restore or install packages.
+- Prefer `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` / `tools/format.ps1`; raw clang-format depends on `direct-clang-format-status=ready`.
+
+## Preset And Cache Policy
+
+- Keep checked-in settings in `CMakePresets.json`; keep local overrides in ignored `CMakeUserPresets.json`.
+- Preserve hidden `normalized-configure-environment` and `normalized-build-environment`; presets inherit `PATH` and unset `Path`, while wrappers collapse parent variants into child `Path` on Windows.
 - Keep local build output under `out/`.
-- **Worktree cleanup:** Safe to delete for a clean rebuild: `out/`, Android Gradle/CXX outputs under `platform/android/` per `.gitignore`,
-  `*.log`, `imgui.ini`, and (only when followed by `tools/bootstrap-deps.ps1`) `vcpkg_installed/`. **Never delete `external/vcpkg` or the
-  entire `external/` directory as cache**—presets point `CMAKE_TOOLCHAIN_FILE` at `external/vcpkg/scripts/buildsystems/vcpkg.cmake`. Restore
-  with `git clone https://github.com/microsoft/vcpkg.git external/vcpkg`, bootstrap `vcpkg.exe`, then `pwsh -NoProfile -ExecutionPolicy
-  Bypass -File tools/cmake.ps1 --preset dev` or `tools/bootstrap-deps.ps1`.
-- **Linked worktree setup:** After manual `git worktree add`, run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1` inside the linked worktree. It verifies ignored worktree roots and links an existing local `external/vcpkg` checkout plus any existing local `vcpkg_installed/` package tree without configure-time package restore or duplicate vcpkg artifacts. Post-merge cleanup accepts standard roots from Git main worktree porcelain records, unlinks those worktree-local reparse points before Git removes the task worktree, and must not follow or delete shared targets.
-- Keep project-wide build settings in checked-in `CMakePresets.json`; keep local developer overrides in ignored `CMakeUserPresets.json`.
-- Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1` to diagnose wrapper CMake, CTest, CPack, `clang-format`, Visual Studio, and MSBuild resolution before editing around build or format failures.
-- Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake` when a task specifically depends on raw `cmake --preset ...` commands being available on `PATH`; otherwise use `tools/cmake.ps1` and `tools/ctest.ps1`.
-- Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireVcpkgToolchain` when a selected vcpkg-backed configure lane must fail fast on missing `external/vcpkg`.
-- Keep visible CMake configure/build presets inheriting hidden `normalized-configure-environment` / `normalized-build-environment`; presets inherit `PATH` and unset `Path` for raw preset commands, repository wrappers collapse parent `PATH`/`Path` variants into one child `Path` on Windows (`PATH` elsewhere), and `tools/check-toolchain.ps1` validates this plus linked-worktree `external/vcpkg` / `vcpkg_installed` readiness.
-- Do not repair generated `out/build/<preset>` trees by editing `CMakeCache.txt`, `.vcxproj`, `.sln`, or MSBuild props. Recover stale or poisoned configure state through `tools/cmake.ps1 --preset <preset>`; if a clean rebuild is required, first verify the resolved target is under `out/build/` and then remove only that disposable preset tree.
-- Raw `clang-format --dry-run ...` commands also depend on `PATH`; prefer `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` / `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1` unless `toolchain-check` reports `direct-clang-format-status=ready`.
-- Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1` for clang-tidy. It verifies `.clang-tidy`, configures the active
-  CMake preset when needed, accepts native Makefile/Ninja `compile_commands.json`, or **synthesizes** `compile_commands.json` under the
-  preset `binaryDir` from CMake File API codemodel data for the default Windows Visual Studio `dev` preset when needed; missing CMake or
-  clang-tidy remains a local tool blocker. `tools/validate.ps1` runs independent static checks through bounded parallel jobs with per-check
-  timeouts, writes complete per-script logs under ignored `out/validation-logs/`, prepares the File API query before its single `build.ps1`
-  configure/build, runs that build with automatic CMake parallelism, runs the tidy smoke with explicit reply reuse unless `-SkipTidySmoke`
-  is explicitly passed, then runs `test.ps1 -SkipBuild` with automatic CMake/CTest parallelism. Pass `-StaticJobs <N>` to
-  `tools/validate.ps1` only when a local host needs a static-check throttle, and pass `-StaticCheckTimeoutSeconds <N>` only for
-  host-specific timeout diagnostics. Hosted CI uses `-StaticOnly -StaticJobs 1 -StaticCheckTimeoutSeconds 120` for the dedicated static lane
-  and `-SkipStaticChecks -SkipTidySmoke` for the Windows MSVC lane; raw Linux, sanitizer, and macOS hosted lanes pass explicit official
-  `--parallel` job counts to CMake build and CTest. Windows vcpkg tool/package/install/build caches restore with `actions/cache/restore`,
-  fall back to clone/bootstrap/build on restore transport failures, and attempt fresh non-blocking `actions/cache/save` writes only after
-  success. Keep local slice gates on the default full path unless a narrower check is justified. Pass `-Jobs <N>` to `tools/build.ps1` or
-  `tools/test.ps1` only when a local host needs an explicit lower throttle.
-- Static analysis policy: keep `.clang-tidy` `HeaderFilterRegex` absolute-path and Windows/Linux separator aware, keep strict CI on `--warnings-as-errors=*`, use `-ShardCount` / `-ShardIndex` plus `-Jobs 0` for full hosted matrix lanes, and use `-Files` for focused local TU loops. Treat unsupported check names from config verification as toolchain-version drift to fix or remove, never as a reason to hide diagnostics; suppress only frontend summary lines like `NN warnings generated.` after preserving actionable diagnostics and exit codes.
-- Coverage gates: when editing `tools/check-coverage.ps1` or `tools/coverage-thresholds.json`, keep optional `lcovRemovePatterns` compatible with hosted `lcov` 2.x by passing `lcov --ignore-errors unused`, and update `tools/check-coverage-thresholds.ps1` if the filter contract changes.
-- Keep Windows host diagnostics separate from build-toolchain readiness: Debugging Tools for Windows, Windows Graphics Tools, PIX on Windows, and Windows Performance Toolkit are official diagnostic tools, not CMake configure requirements.
-- Keep installable SDK libraries in the root `MK_LIBRARY_TARGETS` list and export them through the `mirakana::` package namespace.
-- Keep optional C++ package-manager dependencies in `vcpkg.json` manifest features.
-- Preserve the official vcpkg `builtin-baseline` when editing dependencies; update it only as an explicit dependency-maintenance change with docs and notices.
-- Use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1` before optional vcpkg-backed lanes. It owns manifest feature selection and package install/update.
-- Keep vcpkg-enabled CMake presets configure-only: set `VCPKG_MANIFEST_INSTALL=OFF` and `VCPKG_INSTALLED_DIR=${sourceDir}/vcpkg_installed`.
-- Do not put `VCPKG_MANIFEST_FEATURES` in CMake presets; select features in `tools/bootstrap-deps.ps1` so configure cannot restore packages implicitly.
-- Keep `MK_CXX_STANDARD=23` as the required standard.
-- Keep MSVC C++23 builds centralized through `MK_MSVC_CXX23_STANDARD_OPTION`. Use `/std:c++23preview` until a stable `/std:c++23` path is available through the supported CMake generator, then switch the cache default/presets to `/std:c++23`.
-- Keep MSVC compile throughput on bounded `/MP2` plus `/Zf` through `MK_apply_common_target_options` so compiler-level parallelism helps
-  multi-TU targets without overwhelming MSBuild target-level parallelism. Keep MSVC compile PDBs target-named through
-  `COMPILE_PDB_OUTPUT_DIRECTORY` / `COMPILE_PDB_NAME`, with the output directory kept short under the build tree so long linked-worktree
-  paths do not trip C1041; do not add global `/FS` unless a measured follow-up proves it is needed. Keep long single-source test suites on
-  compact CMake target names plus descriptive CTest names so Visual Studio `$(IntDir)` and `.obj` paths stay below MSVC path limits in
-  linked worktrees. Keep MSVC linkable targets on `/INCREMENTAL:NO` through `MK_apply_common_target_options` so validation builds do not
-  depend on `.ilk` state or lock-prone Debug relinks. Keep Visual Studio builds on `tools/cmake.ps1`; the wrapper serializes overlapping
-  builds and clears stale `.tlog` directories when `.lastbuildstate` points at an older aliased build root, avoiding MSB8028 without
-  reducing MSBuild parallelism.
-- Keep `MK_ENABLE_CXX_MODULE_SCANNING=ON` for development, release, sanitizer, Linux Clang CI, and optional vcpkg-backed presets; add project modules with CMake `FILE_SET CXX_MODULES`.
-- Keep module scanning disabled for non-module executable targets such as tests, probes, samples, and games through `MK_disable_module_scanning_for_non_module_executable`; engine/library targets keep the preset-level module scan policy.
-- Keep `MK_ENABLE_IMPORT_STD=ON` for those module-scanning presets, but only rely on `import std;` in targets when CMake reports `23` in `CMAKE_CXX_COMPILER_IMPORT_STD`.
-- Keep reviewed CI exception presets explicit: `ci-linux-tidy`, `coverage`, and `ci-macos-appleclang` set module scanning/import-std `OFF` because clang-tidy should not depend on build-generated module maps and those coverage/Apple host paths do not provide supported CMake module dependency scanning.
-- Use the `cpp23-eval` presets and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/evaluate-cpp23.ps1` for C++23 verification checks. No switch, or explicit `-Debug`, runs the Debug lane; `-Release` is release/package-only; `-Debug -Release -Editor` is the full local C++23 confidence pass. The script uses automatic CMake/CTest parallelism by default; pass `-Jobs <N>` only to throttle a constrained host.
+- Do not repair generated `out/build/<preset>` trees by editing `CMakeCache.txt`, `.vcxproj`, `.sln`, or MSBuild props. Recover by rerunning `tools/cmake.ps1 --preset <preset>`; for clean rebuilds, verify the resolved target is under `out/build/` before deleting only that disposable tree.
+- Safe cleanup targets: `out/`, Android Gradle/CXX outputs under `platform/android/`, `*.log`, `imgui.ini`, and `vcpkg_installed/` only when followed by bootstrap. Never delete `external/vcpkg` or the whole `external/` directory as cache.
+
+## Static And CI Policy
+
+- `tools/validate.ps1` runs independent static checks through bounded parallel jobs, prepares CMake File API data, builds with automatic CMake/CTest parallelism, and then runs tests through `test.ps1 -SkipBuild`.
+- Pass `-StaticJobs <N>`, `-StaticCheckTimeoutSeconds <N>`, or build/test `-Jobs <N>` only for host-specific throttling; hosted lanes use explicit policy, including `-StaticOnly -StaticJobs 1 -StaticCheckTimeoutSeconds 120`, `-SkipStaticChecks`, and `-SkipTidySmoke`.
+- CI caches use `actions/cache/restore` and `actions/cache/save`; restore transport failures fall back to clone/bootstrap/build, and save is non-blocking after success.
+- clang-tidy policy: keep `HeaderFilterRegex` path-aware, keep hosted `--warnings-as-errors=*`, use `-ShardCount` / `-ShardIndex` plus `-Jobs 0` in full hosted matrix lanes, use `-Files` for focused local loops, and suppress only summary text such as `NN warnings generated.`.
+- Coverage policy: keep hosted `lcov --ignore-errors unused` compatibility for optional remove filters and update `tools/check-coverage-thresholds.ps1` when threshold/filter contracts change.
+
+## vcpkg And Dependencies
+
+- Keep optional C++ dependencies in `vcpkg.json` manifest features and preserve the official `builtin-baseline` unless doing explicit dependency maintenance with docs/notices.
+- Keep vcpkg-enabled presets configure-only with `VCPKG_MANIFEST_INSTALL=OFF` and `VCPKG_INSTALLED_DIR=${sourceDir}/vcpkg_installed`.
+- Do not put `VCPKG_MANIFEST_FEATURES` in CMake presets; feature selection belongs to `tools/bootstrap-deps.ps1`.
+
+## MSVC And Modules
+
+- Keep MSVC throughput on bounded `/MP2` plus `/Zf`, compact CMake target names for long single-source tests, `COMPILE_PDB_OUTPUT_DIRECTORY`, `COMPILE_PDB_NAME`, and `/INCREMENTAL:NO` through common target options.
+- Keep Visual Studio builds on `tools/cmake.ps1`; the wrapper serializes overlapping builds and clears stale `.tlog` roots to avoid MSB8028.
+- Keep module scanning on for development/release/sanitizer/Linux Clang/vcpkg-backed presets, off for non-module executables through the central helper, and off for reviewed exception presets such as tidy/coverage/Apple host lanes.
+
+## Host Diagnostics
+
+- Windows diagnostics are host tools, not configure requirements: Debugging Tools for Windows, Windows Graphics Tools, PIX on Windows, and Windows Performance Toolkit.
 - Use Context7 for current CMake, vcpkg, compiler, and SDK documentation before relying on memory for toolchain-specific behavior.
 
 ## Validation
 
-During implementation, prefer a focused loop for the target being changed:
+Focused loop:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target <target>
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R <test-name>
 ```
 
-For completion, run:
+Completion or relevant policy changes:
 
 ```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/prepare-worktree.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
-```
-
-For dependency changes, also run:
-
-```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-dependency-policy.ps1
-```
-
-For C++ standard policy changes, also run:
-
-```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-cpp-standard-policy.ps1
-```
-
-For static-analysis, public API boundary, or coverage changes, run the relevant command:
-
-```powershell
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-coverage.ps1
 ```
 
-If CMake or a compiler is missing, report the missing tool instead of editing around the build.
-
-## Do Not
-
-- Add global include directories.
-- Add global compiler definitions unless every target needs them.
-- Download dependencies during configure.
-- Reintroduce configure-time vcpkg restore/install to hide a sandbox bootstrap failure.
-- Remove `external/vcpkg` (or all of `external/`) while “cleaning” ignored paths; that breaks preset configure until the vcpkg clone is restored.
+If CMake, clang-format, clang-tidy, vcpkg, or a compiler is missing, report the missing tool instead of editing around the build.
