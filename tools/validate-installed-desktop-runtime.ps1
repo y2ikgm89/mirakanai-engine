@@ -175,6 +175,7 @@ $requiresD3d12InstancedDrawEvidence = @($SmokeArgs) -contains "--require-d3d12-i
 $requiresVulkanInstancedDrawEvidence = @($SmokeArgs) -contains "--require-vulkan-instanced-draw-evidence"
 $requiresD3d12PostprocessEvidence = @($SmokeArgs) -contains "--require-d3d12-postprocess-evidence"
 $requiresVulkanPostprocessEvidence = @($SmokeArgs) -contains "--require-vulkan-postprocess-evidence"
+$requiresEnvironmentProfile = @($SmokeArgs) -contains "--require-environment-profile"
 $requiresEnvironmentFogEvidence = @($SmokeArgs) -contains "--require-environment-fog-evidence"
 $requiresGpuMemoryPolicy = @($SmokeArgs) -contains "--require-gpu-memory-policy"
 $requiresMemoryDiagnostics = @($SmokeArgs) -contains "--require-memory-diagnostics"
@@ -690,6 +691,14 @@ if ($requiresNativeUiTexturedSpriteAtlas) {
 if ($requiresNativeUiTextGlyphAtlas) {
     $requiresNativeUiOverlay = $true
 }
+$requiresFramegraphExecutionEvidence = $requiresPostprocess -or
+    $requiresDirectionalShadow -or
+    $requiresRendererQualityGates -or
+    $requiresAnyFramegraphMultiqueueEvidence -or
+    $requiresD3d12GpuMemoryEvidence -or
+    $requiresVulkanGpuMemoryEvidence -or
+    $requiresD3d12DebugProfilingEvidence -or
+    $requiresVulkanDebugProfilingEvidence
 $escapedGameTarget = [regex]::Escape($GameTarget)
 $statusLinePattern = "(?m)^$escapedGameTarget status="
 if ($smokeOutput -notmatch $statusLinePattern) {
@@ -857,6 +866,30 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
     }
     if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bhud_boxes=\d+\b") {
         Write-Error "Installed sample_desktop_runtime_game smoke status line did not include HUD diagnostics."
+    }
+    if ($requiresEnvironmentProfile) {
+        $expectedEnvironmentProfileFields = @{
+            "environment_profile_status" = "ready"
+            "environment_profile_ready" = "1"
+            "environment_profile_requested" = "1"
+            "environment_profile_package_file" = "1"
+            "environment_profile_package_index_entry" = "1"
+            "environment_profile_scene_reference" = "1"
+            "environment_profile_scene_required" = "1"
+            "environment_profile_scene_dependency" = "1"
+            "environment_profile_dependency_edge" = "1"
+            "environment_profile_source_parsing" = "0"
+            "environment_profile_diagnostics" = "0"
+        }
+        foreach ($field in $expectedEnvironmentProfileFields.Keys) {
+            $expectedValue = [regex]::Escape($expectedEnvironmentProfileFields[$field])
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove environment profile package field: $field=$($expectedEnvironmentProfileFields[$field])"
+            }
+        }
+        if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=1\b") {
+            Write-Error "Installed sample_desktop_runtime_game smoke must not claim broad environment_ready from environment profile package evidence."
+        }
     }
     if ($requiresNativeUiOverlay) {
         foreach ($field in @("ui_overlay_requested", "ui_overlay_status", "ui_overlay_ready", "ui_overlay_sprites_submitted", "ui_overlay_draws")) {
@@ -4504,17 +4537,19 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
         -ExpectedFrames $expectedSmokeFrames `
         -RequiresDirectionalShadow $requiresDirectionalShadow `
         -RequiresPostprocessDepthInput $requiresPostprocessDepthInput
-    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bframegraph_passes=$expectedFramegraphPasses\b") {
-        Write-Error "Installed desktop runtime smoke status line did not prove the frame graph pass count."
-    }
-    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bframegraph_passes_executed=$expectedFramegraphPassExecutions\b") {
-        Write-Error "Installed desktop runtime smoke status line did not prove frame graph pass execution count."
-    }
-    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bframegraph_render_passes_recorded=$expectedFramegraphPassExecutions\b") {
-        Write-Error "Installed desktop runtime smoke status line did not prove frame graph render-pass envelope count."
-    }
-    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bframegraph_barrier_steps_executed=$expectedFramegraphBarrierExecutions\b") {
-        Write-Error "Installed desktop runtime smoke status line did not prove frame graph barrier-step execution count."
+    if ($requiresFramegraphExecutionEvidence) {
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bframegraph_passes=$expectedFramegraphPasses\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove the frame graph pass count."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bframegraph_passes_executed=$expectedFramegraphPassExecutions\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove frame graph pass execution count."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bframegraph_render_passes_recorded=$expectedFramegraphPassExecutions\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove frame graph render-pass envelope count."
+        }
+        if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bframegraph_barrier_steps_executed=$expectedFramegraphBarrierExecutions\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove frame graph barrier-step execution count."
+        }
     }
     if ($requiresPostprocessDepthInput -and
         $smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bpostprocess_depth_input_ready=1\b") {

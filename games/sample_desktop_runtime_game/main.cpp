@@ -22,6 +22,7 @@
 #include "mirakana/ui/ui.hpp"
 #include "mirakana/ui_renderer/ui_renderer.hpp"
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <charconv>
@@ -67,6 +68,7 @@ struct DesktopRuntimeGameOptions {
     bool require_vulkan_instanced_draw_evidence{false};
     bool require_d3d12_postprocess_evidence{false};
     bool require_vulkan_postprocess_evidence{false};
+    bool require_environment_profile{false};
     bool require_environment_fog_evidence{false};
     bool require_gpu_memory_policy{false};
     bool require_memory_diagnostics{false};
@@ -122,6 +124,7 @@ constexpr std::string_view kRuntimePostprocessFragmentShaderPath{
     "shaders/sample_desktop_runtime_game_postprocess.ps.dxil"};
 constexpr std::string_view kRuntimeEnvironmentFogFragmentShaderPath{
     "shaders/sample_desktop_runtime_game_environment_fog.ps.dxil"};
+constexpr std::string_view kRuntimeEnvironmentProfilePath{"runtime/assets/desktop_runtime/default_outdoor.geenv"};
 constexpr std::string_view kRuntimePostprocessVulkanVertexShaderPath{
     "shaders/sample_desktop_runtime_game_postprocess.vs.spv"};
 constexpr std::string_view kRuntimePostprocessVulkanFragmentShaderPath{
@@ -155,6 +158,10 @@ constexpr std::string_view kHudAtlasProofAssetUri{"runtime/assets/desktop_runtim
 
 [[nodiscard]] mirakana::AssetId packaged_quaternion_animation_asset_id() {
     return asset_id_from_game_asset_key("sample/desktop-runtime/animations/packaged-pose");
+}
+
+[[nodiscard]] mirakana::AssetId packaged_environment_profile_asset_id() {
+    return asset_id_from_game_asset_key("sample/desktop-runtime/environment/default-outdoor");
 }
 
 [[nodiscard]] mirakana::AnimationSkeleton3dDesc packaged_quaternion_animation_skeleton() {
@@ -278,6 +285,159 @@ void print_ui_atlas_metadata_diagnostics(std::string_view prefix, const UiAtlasM
         std::cout << prefix << " ui_atlas_metadata_diagnostic=" << ui_atlas_metadata_status_name(state.status) << ": "
                   << diagnostic << '\n';
     }
+}
+
+enum class EnvironmentProfilePackageStatus : std::uint8_t {
+    not_requested,
+    missing_package,
+    missing_profile_record,
+    invalid_profile_record,
+    missing_scene_reference,
+    invalid_scene_reference,
+    missing_scene_dependency,
+    missing_dependency_edge,
+    runtime_scene_validation_failed,
+    ready,
+};
+
+struct EnvironmentProfilePackageEvidence {
+    EnvironmentProfilePackageStatus status{EnvironmentProfilePackageStatus::not_requested};
+    bool requested{false};
+    bool ready{false};
+    bool package_file_present{false};
+    bool package_index_entry_present{false};
+    bool scene_reference_present{false};
+    bool scene_required{false};
+    bool scene_dependency_present{false};
+    bool dependency_edge_present{false};
+    bool runtime_source_parsing{false};
+    std::size_t diagnostics{0};
+};
+
+[[nodiscard]] std::string_view
+environment_profile_package_status_name(EnvironmentProfilePackageStatus status) noexcept {
+    switch (status) {
+    case EnvironmentProfilePackageStatus::not_requested:
+        return "not_requested";
+    case EnvironmentProfilePackageStatus::missing_package:
+        return "missing_package";
+    case EnvironmentProfilePackageStatus::missing_profile_record:
+        return "missing_profile_record";
+    case EnvironmentProfilePackageStatus::invalid_profile_record:
+        return "invalid_profile_record";
+    case EnvironmentProfilePackageStatus::missing_scene_reference:
+        return "missing_scene_reference";
+    case EnvironmentProfilePackageStatus::invalid_scene_reference:
+        return "invalid_scene_reference";
+    case EnvironmentProfilePackageStatus::missing_scene_dependency:
+        return "missing_scene_dependency";
+    case EnvironmentProfilePackageStatus::missing_dependency_edge:
+        return "missing_dependency_edge";
+    case EnvironmentProfilePackageStatus::runtime_scene_validation_failed:
+        return "runtime_scene_validation_failed";
+    case EnvironmentProfilePackageStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] bool
+has_environment_profile_dependency_edge(const mirakana::runtime::RuntimeAssetPackage& package) noexcept {
+    const auto scene_asset = packaged_scene_asset_id();
+    const auto environment_asset = packaged_environment_profile_asset_id();
+    return std::ranges::any_of(package.dependency_edges(), [scene_asset, environment_asset](const auto& edge) {
+        return edge.asset == scene_asset && edge.dependency == environment_asset &&
+               edge.kind == mirakana::AssetDependencyKind::scene_environment_profile;
+    });
+}
+
+[[nodiscard]] bool
+has_environment_profile_scene_dependency(const mirakana::runtime::RuntimeAssetPackage& package) noexcept {
+    const auto* scene_record = package.find(packaged_scene_asset_id());
+    if (scene_record == nullptr) {
+        return false;
+    }
+    const auto environment_asset = packaged_environment_profile_asset_id();
+    return std::ranges::find(scene_record->dependencies, environment_asset) != scene_record->dependencies.end();
+}
+
+[[nodiscard]] bool is_cooked_environment_profile_record(const mirakana::runtime::RuntimeAssetRecord& record) noexcept {
+    return record.kind == mirakana::AssetKind::environment_profile && record.path == kRuntimeEnvironmentProfilePath &&
+           std::string_view{record.content}.starts_with("format=GameEngine.CookedEnvironmentProfile.v1\n") &&
+           record.content.find("asset.kind=environment_profile\n") != std::string::npos &&
+           record.content.find("environment.source_format=GameEngine.EnvironmentProfile.v1\n") != std::string::npos;
+}
+
+[[nodiscard]] EnvironmentProfilePackageEvidence
+evaluate_environment_profile_package(bool requested,
+                                     const std::optional<mirakana::runtime::RuntimeAssetPackage>& runtime_package) {
+    EnvironmentProfilePackageEvidence evidence;
+    evidence.requested = requested;
+    if (!requested) {
+        return evidence;
+    }
+    if (!runtime_package.has_value()) {
+        evidence.status = EnvironmentProfilePackageStatus::missing_package;
+        evidence.diagnostics = 1;
+        return evidence;
+    }
+
+    const auto environment_asset = packaged_environment_profile_asset_id();
+    const auto* environment_record = runtime_package->find(environment_asset);
+    evidence.package_index_entry_present = environment_record != nullptr;
+    if (environment_record == nullptr) {
+        evidence.status = EnvironmentProfilePackageStatus::missing_profile_record;
+        evidence.diagnostics = 1;
+        return evidence;
+    }
+    evidence.package_file_present = is_cooked_environment_profile_record(*environment_record);
+    if (!evidence.package_file_present) {
+        evidence.status = EnvironmentProfilePackageStatus::invalid_profile_record;
+        evidence.diagnostics = 1;
+        return evidence;
+    }
+
+    const auto runtime_scene = mirakana::runtime_scene::instantiate_runtime_scene(
+        *runtime_package, packaged_scene_asset_id(),
+        mirakana::runtime_scene::RuntimeSceneLoadOptions{.validate_asset_references = true,
+                                                         .require_unique_node_names = false,
+                                                         .require_environment_profile = true});
+    evidence.diagnostics = runtime_scene.diagnostics.size();
+    if (!runtime_scene.succeeded() || !runtime_scene.instance.has_value()) {
+        evidence.status = EnvironmentProfilePackageStatus::runtime_scene_validation_failed;
+        return evidence;
+    }
+
+    const auto environment = runtime_scene.instance->scene.environment();
+    evidence.scene_reference_present = environment.has_value();
+    if (!environment.has_value()) {
+        evidence.status = EnvironmentProfilePackageStatus::missing_scene_reference;
+        evidence.diagnostics += 1;
+        return evidence;
+    }
+    evidence.scene_required = environment->required;
+    if (environment->profile != environment_asset || !environment->required) {
+        evidence.status = EnvironmentProfilePackageStatus::invalid_scene_reference;
+        evidence.diagnostics += 1;
+        return evidence;
+    }
+
+    evidence.scene_dependency_present = has_environment_profile_scene_dependency(*runtime_package);
+    if (!evidence.scene_dependency_present) {
+        evidence.status = EnvironmentProfilePackageStatus::missing_scene_dependency;
+        evidence.diagnostics += 1;
+        return evidence;
+    }
+    evidence.dependency_edge_present = has_environment_profile_dependency_edge(*runtime_package);
+    if (!evidence.dependency_edge_present) {
+        evidence.status = EnvironmentProfilePackageStatus::missing_dependency_edge;
+        evidence.diagnostics += 1;
+        return evidence;
+    }
+
+    evidence.status = EnvironmentProfilePackageStatus::ready;
+    evidence.ready = true;
+    return evidence;
 }
 
 [[nodiscard]] std::vector<mirakana::rhi::VertexBufferLayoutDesc> runtime_scene_vertex_buffers() {
@@ -756,6 +916,7 @@ void print_usage() {
                  "[--require-vulkan-instanced-draw-evidence] "
                  "[--require-d3d12-postprocess-evidence] "
                  "[--require-vulkan-postprocess-evidence] "
+                 "[--require-environment-profile] "
                  "[--require-environment-fog-evidence] "
                  "[--require-gpu-memory-policy] [--require-memory-diagnostics] [--require-d3d12-gpu-memory-evidence] "
                  "[--require-vulkan-gpu-memory-evidence] "
@@ -877,6 +1038,10 @@ void print_usage() {
             options.require_scene_gpu_bindings = true;
             options.require_postprocess = true;
             options.require_d3d12_postprocess_evidence = true;
+            continue;
+        }
+        if (arg == "--require-environment-profile") {
+            options.require_environment_profile = true;
             continue;
         }
         if (arg == "--require-environment-fog-evidence") {
@@ -2372,6 +2537,10 @@ int main(int argc, char** argv) {
                                      packaged_scene, packaged_quaternion_animation_tracks)) {
         return 4;
     }
+    if (options.require_environment_profile && !runtime_package.has_value()) {
+        std::cerr << "--require-environment-profile requires --require-scene-package\n";
+        return 4;
+    }
     if (options.require_scene_gpu_bindings && (!runtime_package.has_value() || !packaged_scene.has_value())) {
         std::cerr << "--require-scene-gpu-bindings requires --require-scene-package\n";
         return 4;
@@ -2831,6 +3000,8 @@ int main(int argc, char** argv) {
         report, static_cast<std::uint64_t>(options.max_frames), options.require_d3d12_postprocess_evidence);
     const auto environment_fog = mirakana::evaluate_win32_desktop_presentation_environment_fog(
         report, d3d12_postprocess_execution, options.require_environment_fog_evidence);
+    const auto environment_profile =
+        evaluate_environment_profile_package(options.require_environment_profile, runtime_package);
     const auto vulkan_postprocess_execution =
         mirakana::evaluate_win32_desktop_presentation_vulkan_postprocess_execution(
             report, static_cast<std::uint64_t>(options.max_frames), options.require_vulkan_postprocess_evidence);
@@ -2967,6 +3138,17 @@ int main(int argc, char** argv) {
         << " environment_fog_constants_byte_size=" << environment_fog.constant_buffer_bytes
         << " environment_fog_postprocess_passes_ok=" << (environment_fog.postprocess_passes_current ? 1 : 0)
         << " environment_fog_diagnostics=" << environment_fog.diagnostics_count
+        << " environment_profile_status=" << environment_profile_package_status_name(environment_profile.status)
+        << " environment_profile_ready=" << (environment_profile.ready ? 1 : 0)
+        << " environment_profile_requested=" << (environment_profile.requested ? 1 : 0)
+        << " environment_profile_package_file=" << (environment_profile.package_file_present ? 1 : 0)
+        << " environment_profile_package_index_entry=" << (environment_profile.package_index_entry_present ? 1 : 0)
+        << " environment_profile_scene_reference=" << (environment_profile.scene_reference_present ? 1 : 0)
+        << " environment_profile_scene_required=" << (environment_profile.scene_required ? 1 : 0)
+        << " environment_profile_scene_dependency=" << (environment_profile.scene_dependency_present ? 1 : 0)
+        << " environment_profile_dependency_edge=" << (environment_profile.dependency_edge_present ? 1 : 0)
+        << " environment_profile_source_parsing=" << (environment_profile.runtime_source_parsing ? 1 : 0)
+        << " environment_profile_diagnostics=" << environment_profile.diagnostics
         << " vulkan_postprocess_execution_status="
         << mirakana::win32_desktop_presentation_vulkan_postprocess_execution_status_name(
                vulkan_postprocess_execution.status)
@@ -3790,6 +3972,9 @@ int main(int argc, char** argv) {
             return 3;
         }
         if (options.require_postprocess_depth_input && !report.postprocess_depth_input_ready) {
+            return 3;
+        }
+        if (options.require_environment_profile && !environment_profile.ready) {
             return 3;
         }
         if (options.require_environment_fog_evidence && !environment_fog.ready) {

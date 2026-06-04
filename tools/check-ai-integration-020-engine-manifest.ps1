@@ -1521,6 +1521,7 @@ if ($validationRunnerCommand.Count -ne 1 -or $validationRunnerCommand[0].status 
             "desktop-editor",
             "desktop-runtime-sample-game-scene-gpu-package",
             "desktop-runtime-sample-game-environment-fog-package",
+            "desktop-runtime-sample-game-environment-profile-package",
             "desktop-runtime-generated-material-shader-scaffold-package",
             "desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict",
             "desktop-runtime-sample-game-vulkan-ui-atlas-metadata-package", "installed-2d-performance-baseline-smoke", "installed-2d-long-run-readiness-smoke", "host-2d-long-run-readiness-soak",
@@ -1530,7 +1531,7 @@ if ($validationRunnerCommand.Count -ne 1 -or $validationRunnerCommand[0].status 
             Write-Error "engine/agent/manifest.json run-validation-recipe validationRecipes missing allowlisted recipe: $recipe"
         }
     }
-    if (@($validationRunnerCommand[0].validationRecipes).Count -ne 16) {
+    if (@($validationRunnerCommand[0].validationRecipes).Count -ne 17) {
         Write-Error "engine/agent/manifest.json run-validation-recipe validationRecipes must be exactly the reviewed allowlist"
     }
     if (@($validationRunnerCommand[0].requestModes | Where-Object { $_.id -eq "apply" -and $_.status -eq "ready" }).Count -gt 0) {

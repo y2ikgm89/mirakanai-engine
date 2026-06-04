@@ -9,6 +9,7 @@
     "MK_core",
     "MK_animation",
     "MK_math",
+    "MK_environment",
     "MK_platform",
     "MK_platform_win32",
     "MK_renderer",
@@ -80,6 +81,12 @@
           "kind": "scene",
           "path": "runtime/assets/desktop_runtime/packaged_scene.scene",
           "purpose": "Cooked 3D scene validated by runtimeSceneValidationTargets."
+        },
+        {
+          "id": "environment-profile",
+          "kind": "environment_profile",
+          "path": "runtime/assets/desktop_runtime/default_outdoor.geenv",
+          "purpose": "Cooked environment profile referenced by the packaged scene and package dependency graph."
         }
       ],
       "assetRequests": [
@@ -106,6 +113,12 @@
           "kind": "ui-atlas",
           "purpose": "Cooked UI atlas metadata for native overlay package evidence.",
           "delivery": "runtime-package-file"
+        },
+        {
+          "id": "environment-profile",
+          "kind": "environment_profile",
+          "purpose": "Cooked environment profile fixture for package index, scene reference, and dependency-edge validation.",
+          "delivery": "runtime-package-file"
         }
       ],
       "systems": [
@@ -113,6 +126,7 @@
         "scene-rendering",
         "renderer-quality",
         "runtime-ui",
+        "environment-profile-package",
         "animation",
         "framegraph-multiqueue",
         "windows-cpu-set-worker-placement",
@@ -127,6 +141,7 @@
         "desktop-runtime-release-target",
         "installed-d3d12-scene-gpu-smoke",
         "desktop-runtime-sample-game-environment-fog-package",
+        "desktop-runtime-sample-game-environment-profile-package",
         "installed-vulkan-scene-gpu-smoke"
       ],
       "qualityGates": [
@@ -143,6 +158,13 @@
           "recipeIds": [
             "installed-d3d12-scene-gpu-smoke",
             "installed-vulkan-scene-gpu-smoke"
+          ]
+        },
+        {
+          "id": "environment-profile-package-evidence",
+          "evidence": "The selected environment profile package smoke reports environment_profile_status=ready, environment_profile_ready=1, environment_profile_package_file=1, environment_profile_package_index_entry=1, environment_profile_scene_reference=1, environment_profile_scene_required=1, environment_profile_scene_dependency=1, environment_profile_dependency_edge=1, environment_profile_source_parsing=0, and environment_profile_diagnostics=0 without renderer/RHI execution, Vulkan, Metal, rain readiness, or broad environment_ready claims.",
+          "recipeIds": [
+            "desktop-runtime-sample-game-environment-profile-package"
           ]
         },
         {
@@ -292,6 +314,13 @@
           "updatePolicy": "Regenerate or update only through reviewed game-local dry-run/apply surfaces; preserve reviewed aiWorkflow descriptors."
         },
         {
+          "id": "runtime-assets-desktop-runtime-default-outdoor-geenv",
+          "path": "games/sample_desktop_runtime_game/runtime/assets/desktop_runtime/default_outdoor.geenv",
+          "generatedBy": "environment-system-v1-package-validation",
+          "reviewedCommandSurfaceId": "create-game-recipe",
+          "updatePolicy": "Update only through reviewed game-local package validation surfaces; preserve cooked profile/index/scene dependency evidence."
+        },
+        {
           "id": "runtime-assets-desktop-runtime-triangle-mesh",
           "path": "games/sample_desktop_runtime_game/runtime/assets/desktop_runtime/triangle.mesh",
           "generatedBy": "tools/new-game.ps1",
@@ -339,6 +368,13 @@
           "generatedBy": "tools/new-game.ps1",
           "reviewedCommandSurfaceId": "create-game-recipe",
           "updatePolicy": "Regenerate or update only through reviewed game-local dry-run/apply surfaces; preserve reviewed aiWorkflow descriptors."
+        },
+        {
+          "id": "source-environment-default-outdoor-geenv",
+          "path": "games/sample_desktop_runtime_game/source/environment/default_outdoor.geenv",
+          "generatedBy": "environment-system-v1-package-validation",
+          "reviewedCommandSurfaceId": "create-game-recipe",
+          "updatePolicy": "Update only through reviewed game-local package validation surfaces; preserve source profile schema and package registration evidence."
         },
         {
           "id": "source-materials-unlit-material",
@@ -1328,6 +1364,7 @@
       "GameEngine.MeshSource.v2",
       "GameEngine.AnimationQuaternionClipSource.v1",
       "GameEngine.Material.v1",
+      "GameEngine.EnvironmentProfile.v1",
       "GameEngine.SourceAssetRegistry.v1",
       "GameEngine.Scene.v2",
       "GameEngine.Prefab.v2",
@@ -1345,6 +1382,7 @@
     "runtime/sample_desktop_runtime_game.config",
     "runtime/sample_desktop_runtime_game.geindex",
     "runtime/assets/desktop_runtime/base_color.texture.geasset",
+    "runtime/assets/desktop_runtime/default_outdoor.geenv",
     "runtime/assets/desktop_runtime/triangle.mesh",
     "runtime/assets/desktop_runtime/hud.uiatlas",
     "runtime/assets/desktop_runtime/skinned_triangle.skinned_mesh",
@@ -1431,7 +1469,8 @@
       "selectedSourceAssetKeys": [
         "sample/desktop-runtime/texture",
         "sample/desktop-runtime/mesh",
-        "sample/desktop-runtime/material"
+        "sample/desktop-runtime/material",
+        "sample/desktop-runtime/environment/default-outdoor"
       ],
       "sourceCookMode": "selected-source-registry-rows",
       "sceneMigration": "migrate-scene-v2-runtime-package",
@@ -1439,7 +1478,8 @@
       "hostGatedSmokeRecipeIds": [
         "desktop-game-runtime",
         "desktop-runtime-release-target",
-        "installed-d3d12-scene-gpu-smoke"
+        "installed-d3d12-scene-gpu-smoke",
+        "desktop-runtime-sample-game-environment-profile-package"
       ],
       "broadImporterExecution": "unsupported",
       "broadDependencyCooking": "unsupported",
@@ -1463,7 +1503,8 @@
       "sourceRegistryPath": "source/assets/package.geassets",
       "packageIndexPath": "runtime/sample_desktop_runtime_game.geindex",
       "selectedAssetKeys": [
-        "sample/desktop-runtime/material"
+        "sample/desktop-runtime/material",
+        "sample/desktop-runtime/environment/default-outdoor"
       ],
       "dependencyExpansion": "registered_source_registry_closure",
       "dependencyCooking": "registry_closure",
@@ -1497,6 +1538,10 @@
     {
       "name": "desktop-runtime-sample-game-environment-fog-package",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-environment-fog-evidence')\""
+    },
+    {
+      "name": "desktop-runtime-sample-game-environment-profile-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-environment-profile')\""
     },
     {
       "name": "installed-vulkan-scene-gpu-smoke",

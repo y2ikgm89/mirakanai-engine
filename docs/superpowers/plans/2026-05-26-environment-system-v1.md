@@ -756,34 +756,30 @@ Add a visible first-party retained `MK_editor` panel only after editor-core mode
 ## Task 16: Package And Validation Evidence
 
 **Files:**
-- Modify: `tools/package-desktop-runtime.ps1`
 - Modify: `tools/validate-installed-desktop-runtime.ps1`
-- Modify: `tools/run-validation-recipe.ps1`
+- Modify: `tools/run-validation-recipe-plans.ps1`
+- Modify: `tools/check-validation-recipe-runner.ps1`
 - Modify: `games/sample_desktop_runtime_game/game.agent.json`
 - Modify: `games/sample_desktop_runtime_game/main.cpp`
 - Modify: `engine/agent/manifest.fragments/009-validationRecipes.json`
+- Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
 - Modify: `engine/agent/manifest.fragments/014-gameCodeGuidance.json`
 
-- [ ] **Step 1: Add smoke flags only for implemented phases**
+- [x] **Step 1: Add smoke flags only for implemented phases**
 
 Add flags such as:
 
 ```text
 --require-environment-profile
---require-environment-physical-sky
---require-environment-fog
---require-environment-cloud-layer
---require-environment-precipitation
---require-environment-volumetric-clouds
 ```
 
 Do not add a flag before its corresponding implementation and tests exist.
 
-- [ ] **Step 2: Validate installed output**
+- [x] **Step 2: Validate installed output**
 
-Installed validation must reject missing status rows, mismatched selected backend evidence, inferred Vulkan readiness, inferred Metal readiness, and broad environment-ready claims without narrow counters.
+Installed validation requires the selected environment profile package fields and rejects broad environment-ready claims without narrow counters. Selected D3D12 fog evidence remains separate from profile package evidence.
 
-- [ ] **Step 3: Compose manifest**
+- [x] **Step 3: Compose manifest**
 
 When agent-surface rows change, run:
 
@@ -793,6 +789,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
 ```
 
 Expected: composed manifest and AI integration checks pass.
+
+**2026-06-04 PR17 Task 16 Evidence:** GREEN targets the selected `sample_desktop_runtime_game` environment profile package boundary. The sample now ships source `GameEngine.EnvironmentProfile.v1` and cooked `GameEngine.CookedEnvironmentProfile.v1` profile rows, registers `AssetKind::environment_profile` in `source/assets/package.geassets`, references the cooked profile from the packaged runtime scene, and adds a `.geindex` `scene_environment_profile` dependency edge. The new `desktop-runtime-sample-game-environment-profile-package` recipe passes `--require-environment-profile`; installed validation expects `environment_profile_status=ready`, `environment_profile_ready=1`, package file/index-entry/scene-reference/scene-required/scene-dependency/dependency-edge counters, `environment_profile_source_parsing=0`, and zero profile diagnostics. Context7 `/microsoftdocs/powershell-docs` and Microsoft Learn `about_Pwsh` / `about_Operators` were re-checked for `pwsh -Command` plus call-operator `&` script invocation before keeping the fixed reviewed PowerShell wrapper. This is cooked package/index/scene dependency evidence only; it does not execute renderer/RHI backends, infer Vulkan or Metal readiness, claim rain/snow/storm readiness, claim package-visible environment authoring counters, claim broad optimization, or claim broad `environment_ready`.
 
 ## Task 17: Final Documentation Closeout
 
