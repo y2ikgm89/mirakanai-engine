@@ -107,9 +107,9 @@ foreach ($presetName in @("ci-linux-tidy", "coverage", "ci-macos-appleclang")) {
 }
 
 $coverageConfigure = $presets.configurePresets | Where-Object { $_.name -eq "coverage" } | Select-Object -First 1
-if ($coverageConfigure.cacheVariables.CMAKE_CXX_FLAGS -ne "--coverage" -or
+if ($coverageConfigure.cacheVariables.CMAKE_CXX_FLAGS -ne "--coverage -fprofile-update=atomic" -or
     $coverageConfigure.cacheVariables.CMAKE_EXE_LINKER_FLAGS -ne "--coverage") {
-    Write-Error "coverage configure preset must keep GCC coverage instrumentation flags on compile and link."
+    Write-Error "coverage configure preset must keep GCC coverage instrumentation flags on compile/link and atomic profile counter updates for threaded tests."
 }
 
 $cpp23Configure = $presets.configurePresets | Where-Object { $_.name -eq "cpp23-eval" } | Select-Object -First 1

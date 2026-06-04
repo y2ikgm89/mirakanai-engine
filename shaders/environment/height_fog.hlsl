@@ -1,15 +1,29 @@
 // SPDX-FileCopyrightText: 2026 GameEngine contributors
 // SPDX-License-Identifier: LicenseRef-Proprietary
 
-Texture2D<float> scene_depth_texture : register(t0);
-SamplerState scene_depth_sampler : register(s0);
+#if defined(MK_HEIGHT_FOG_VULKAN_BINDINGS)
+[[vk::binding(0, 0)]] Texture2D<float4> scene_color_texture : register(t0, space0);
+[[vk::binding(1, 0)]] SamplerState scene_color_sampler : register(s1, space0);
+[[vk::binding(2, 0)]] Texture2D<float> scene_depth_texture : register(t2, space0);
+[[vk::binding(3, 0)]] SamplerState scene_depth_sampler : register(s3, space0);
+#else
+Texture2D<float4> scene_color_texture : register(t0);
+SamplerState scene_color_sampler : register(s1);
+Texture2D<float> scene_depth_texture : register(t2);
+SamplerState scene_depth_sampler : register(s3);
+#endif
 
 struct HeightFogVertexOutput {
     float4 position : SV_Position;
     float2 uv : TEXCOORD0;
 };
 
-cbuffer HeightFogConstants : register(b0) {
+#if defined(MK_HEIGHT_FOG_VULKAN_BINDINGS)
+[[vk::binding(4, 0)]] cbuffer HeightFogConstants : register(b4, space0)
+#else
+cbuffer HeightFogConstants : register(b4)
+#endif
+{
     float density : packoffset(c0.x);
     float height_falloff : packoffset(c0.y);
     float height_offset_m : packoffset(c0.z);
@@ -34,12 +48,11 @@ float height_fog_contract_factor(float scene_depth) {
     return saturate(min(density_term, max_opacity));
 }
 
-float3 height_fog_contract_color(float2 uv, float scene_depth) {
-    const float fog_factor = height_fog_contract_factor(scene_depth);
+float3 height_fog_contract_color(float2 uv) {
     const float directional_term = saturate((uv.y * 0.5) + (directional_inscattering_anisotropy * 0.5) + 0.5);
     const float3 inscattering = float3(inscattering_r, inscattering_g, inscattering_b);
     const float3 directional = float3(directional_inscattering_r, directional_inscattering_g, directional_inscattering_b);
-    return lerp(inscattering, directional, directional_term * sky_affect) * fog_factor;
+    return lerp(inscattering, directional, directional_term * sky_affect);
 }
 
 HeightFogVertexOutput height_fog_vs_main(uint vertex_id : SV_VertexID) {
@@ -56,8 +69,10 @@ HeightFogVertexOutput height_fog_vs_main(uint vertex_id : SV_VertexID) {
 }
 
 float4 height_fog_ps_main(HeightFogVertexOutput input) : SV_Target0 {
+    const float4 scene_color = scene_color_texture.Sample(scene_color_sampler, input.uv);
     const float scene_depth = scene_depth_texture.Sample(scene_depth_sampler, input.uv);
-    return float4(height_fog_contract_color(input.uv, scene_depth), height_fog_contract_factor(scene_depth));
+    const float fog_factor = height_fog_contract_factor(scene_depth);
+    return float4(lerp(scene_color.rgb, height_fog_contract_color(input.uv), fog_factor), scene_color.a);
 }
 
 #if defined(MK_HEIGHT_FOG_VERTEX)

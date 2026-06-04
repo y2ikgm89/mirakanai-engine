@@ -307,7 +307,7 @@
         "MK_ENABLE_CXX_MODULE_SCANNING": "OFF",
         "MK_ENABLE_IMPORT_STD": "OFF",
         "MK_MSVC_CXX23_STANDARD_OPTION": "/std:c++23preview",
-        "CMAKE_CXX_FLAGS": "--coverage",
+        "CMAKE_CXX_FLAGS": "--coverage -fprofile-update=atomic",
         "CMAKE_EXE_LINKER_FLAGS": "--coverage"
       }
     },

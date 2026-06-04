@@ -5,6 +5,9 @@
 
 #include "mirakana/renderer/physical_sky_policy.hpp"
 
+#include <array>
+#include <cstring>
+
 namespace {
 
 [[nodiscard]] mirakana::PhysicalSkyPolicyDesc make_valid_physical_sky_desc() {
@@ -31,6 +34,12 @@ namespace {
     };
 }
 
+[[nodiscard]] float read_physical_sky_constant(const std::array<std::uint8_t, 256>& bytes, std::size_t offset) {
+    float value = 0.0F;
+    std::memcpy(&value, bytes.data() + offset, sizeof(float));
+    return value;
+}
+
 } // namespace
 
 MK_TEST("renderer physical sky policy plans constant layout and LUT intent rows") {
@@ -55,6 +64,26 @@ MK_TEST("renderer physical sky policy plans constant layout and LUT intent rows"
     MK_REQUIRE(plan.lut_intent_rows[0].sample_count == 40);
     MK_REQUIRE(!plan.lut_intent_rows[0].allocates_texture);
     MK_REQUIRE(!plan.lut_intent_rows[2].allocates_texture);
+}
+
+MK_TEST("renderer physical sky policy packs D3D12 constant buffer rows") {
+    const auto desc = make_valid_physical_sky_desc();
+    std::array<std::uint8_t, mirakana::physical_sky_constants_byte_size()> bytes{};
+
+    mirakana::pack_physical_sky_constants(bytes, desc);
+
+    MK_REQUIRE(mirakana::physical_sky_constants_binding() == 0);
+    MK_REQUIRE(mirakana::physical_sky_constants_byte_size() == 256);
+    MK_REQUIRE(read_physical_sky_constant(bytes, 0) == desc.atmosphere.planet_radius_km);
+    MK_REQUIRE(read_physical_sky_constant(bytes, 4) == desc.atmosphere.atmosphere_height_km);
+    MK_REQUIRE(read_physical_sky_constant(bytes, 8) == desc.atmosphere.rayleigh_density_height_km);
+    MK_REQUIRE(read_physical_sky_constant(bytes, 12) == desc.atmosphere.mie_density_height_km);
+    MK_REQUIRE(read_physical_sky_constant(bytes, 16) == desc.atmosphere.mie_anisotropy);
+    MK_REQUIRE(read_physical_sky_constant(bytes, 20) == desc.atmosphere.ozone_density_height_km);
+    MK_REQUIRE(read_physical_sky_constant(bytes, 24) == desc.atmosphere.sun_angular_radius_radians);
+    MK_REQUIRE(read_physical_sky_constant(bytes, 28) == desc.atmosphere.solar_illuminance_lux);
+    MK_REQUIRE(bytes[32] == std::uint8_t{0});
+    MK_REQUIRE(bytes.back() == std::uint8_t{0});
 }
 
 MK_TEST("renderer physical sky policy fails closed for invalid atmosphere and unsafe claims") {

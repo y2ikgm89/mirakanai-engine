@@ -5,6 +5,9 @@
 
 #include "mirakana/renderer/environment_fog_policy.hpp"
 
+#include <array>
+#include <cstring>
+
 namespace {
 
 [[nodiscard]] mirakana::EnvironmentFogPolicyDesc make_valid_height_fog_desc() {
@@ -24,6 +27,14 @@ namespace {
         .scene_depth_available = true,
         .shader_contract_evidence_ready = true,
     };
+}
+
+[[nodiscard]] float
+read_fog_constant(const std::array<std::uint8_t, mirakana::environment_fog_constants_byte_size()>& bytes,
+                  std::size_t offset) {
+    float value = 0.0F;
+    std::memcpy(&value, bytes.data() + offset, sizeof(float));
+    return value;
 }
 
 } // namespace
@@ -48,8 +59,10 @@ MK_TEST("renderer environment fog policy plans depth-aware height fog rows") {
     MK_REQUIRE(plan.constant_layout_rows[13].offset_bytes == 52);
 
     MK_REQUIRE(plan.depth_input_rows.size() == 1);
-    MK_REQUIRE(plan.depth_input_rows[0].texture_binding_slot == 0);
-    MK_REQUIRE(plan.depth_input_rows[0].sampler_binding_slot == 0);
+    MK_REQUIRE(plan.depth_input_rows[0].texture_binding_slot ==
+               mirakana::environment_fog_scene_depth_texture_binding());
+    MK_REQUIRE(plan.depth_input_rows[0].sampler_binding_slot ==
+               mirakana::environment_fog_scene_depth_sampler_binding());
     MK_REQUIRE(plan.depth_input_rows[0].required);
     MK_REQUIRE(plan.depth_input_rows[0].available);
 
@@ -63,6 +76,29 @@ MK_TEST("renderer environment fog policy plans depth-aware height fog rows") {
     MK_REQUIRE(plan.postprocess_rows.size() == 1);
     MK_REQUIRE(plan.postprocess_rows[0].effect == mirakana::PostprocessEffectKind::fog);
     MK_REQUIRE(plan.postprocess_rows[0].uses_scene_depth);
+}
+
+MK_TEST("renderer environment fog policy packs postprocess constants for RHI execution") {
+    const auto desc = make_valid_height_fog_desc();
+    std::array<std::uint8_t, mirakana::environment_fog_constants_byte_size()> bytes{};
+
+    mirakana::pack_environment_fog_constants(bytes, desc);
+
+    MK_REQUIRE(mirakana::environment_fog_constants_binding() == 4);
+    MK_REQUIRE(read_fog_constant(bytes, 0) == desc.density);
+    MK_REQUIRE(read_fog_constant(bytes, 4) == desc.height_falloff);
+    MK_REQUIRE(read_fog_constant(bytes, 8) == desc.height_offset_m);
+    MK_REQUIRE(read_fog_constant(bytes, 12) == desc.start_distance_m);
+    MK_REQUIRE(read_fog_constant(bytes, 16) == desc.cutoff_distance_m);
+    MK_REQUIRE(read_fog_constant(bytes, 20) == desc.max_opacity);
+    MK_REQUIRE(read_fog_constant(bytes, 24) == desc.sky_affect);
+    MK_REQUIRE(read_fog_constant(bytes, 28) == desc.directional_inscattering_anisotropy);
+    MK_REQUIRE(read_fog_constant(bytes, 32) == desc.inscattering_color.x);
+    MK_REQUIRE(read_fog_constant(bytes, 36) == desc.inscattering_color.y);
+    MK_REQUIRE(read_fog_constant(bytes, 40) == desc.inscattering_color.z);
+    MK_REQUIRE(read_fog_constant(bytes, 44) == desc.directional_inscattering_color.x);
+    MK_REQUIRE(read_fog_constant(bytes, 48) == desc.directional_inscattering_color.y);
+    MK_REQUIRE(read_fog_constant(bytes, 52) == desc.directional_inscattering_color.z);
 }
 
 MK_TEST("renderer environment fog policy fails closed for invalid values and execution claims") {
