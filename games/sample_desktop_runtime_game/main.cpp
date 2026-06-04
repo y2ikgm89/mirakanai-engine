@@ -70,6 +70,7 @@ struct DesktopRuntimeGameOptions {
     bool require_vulkan_postprocess_evidence{false};
     bool require_environment_profile{false};
     bool require_environment_fog_evidence{false};
+    bool require_cloud_layer_package_evidence{false};
     bool require_gpu_memory_policy{false};
     bool require_memory_diagnostics{false};
     bool require_d3d12_gpu_memory_evidence{false};
@@ -146,6 +147,30 @@ constexpr std::string_view kHudAtlasProofAssetUri{"runtime/assets/desktop_runtim
 
 [[nodiscard]] mirakana::AssetId asset_id_from_game_asset_key(std::string_view key) {
     return mirakana::asset_id_from_key_v2(mirakana::AssetKeyV2{.value = std::string{key}});
+}
+
+[[nodiscard]] mirakana::CloudLayerPolicyDesc make_sample_cloud_layer_policy_desc() {
+    return mirakana::CloudLayerPolicyDesc{
+        .layer =
+            mirakana::EnvironmentCloudLayerDesc{
+                .mode = mirakana::EnvironmentCloudLayerMode::equirectangular_2d,
+                .coverage = 0.45F,
+                .opacity = 0.8F,
+                .altitude_m = 2400.0F,
+                .wind_velocity_mps = mirakana::Vec2{.x = 8.0F, .y = 1.5F},
+                .cloud_map_asset_ref = "sample/desktop-runtime/texture",
+                .flow_map_asset_ref = "sample/desktop-runtime/texture",
+                .sky_tint_response = mirakana::Vec3{.x = 0.78F, .y = 0.84F, .z = 0.92F},
+                .time_of_day_response = 0.55F,
+                .ibl_contribution_mode = mirakana::EnvironmentCloudIblContributionMode::sky_tint_only,
+                .ibl_contribution = 0.25F,
+            },
+        .quality_tier = mirakana::CloudLayerQualityTier::balanced,
+        .shader_contract_evidence_ready = true,
+        .package_evidence_ready = true,
+        .execution_evidence_ready = true,
+        .request_ready_promotion = true,
+    };
 }
 
 [[nodiscard]] mirakana::AssetId packaged_scene_asset_id() {
@@ -918,6 +943,7 @@ void print_usage() {
                  "[--require-vulkan-postprocess-evidence] "
                  "[--require-environment-profile] "
                  "[--require-environment-fog-evidence] "
+                 "[--require-cloud-layer-package-evidence] "
                  "[--require-gpu-memory-policy] [--require-memory-diagnostics] [--require-d3d12-gpu-memory-evidence] "
                  "[--require-vulkan-gpu-memory-evidence] "
                  "[--require-debug-profiling-policy] [--require-d3d12-debug-profiling-evidence] "
@@ -1051,6 +1077,15 @@ void print_usage() {
             options.require_postprocess_depth_input = true;
             options.require_d3d12_postprocess_evidence = true;
             options.require_environment_fog_evidence = true;
+            continue;
+        }
+        if (arg == "--require-cloud-layer-package-evidence") {
+            options.require_d3d12_renderer = true;
+            options.require_scene_gpu_bindings = true;
+            options.require_postprocess = true;
+            options.require_postprocess_depth_input = true;
+            options.require_d3d12_postprocess_evidence = true;
+            options.require_cloud_layer_package_evidence = true;
             continue;
         }
         if (arg == "--require-vulkan-postprocess-evidence") {
@@ -2746,6 +2781,8 @@ int main(int argc, char** argv) {
                     .directional_inscattering_color = mirakana::Vec3{.x = 0.84F, .y = 0.78F, .z = 0.62F},
                     .sample_step_budget = 8,
                 },
+            .enable_cloud_layer_package_evidence = options.require_cloud_layer_package_evidence,
+            .cloud_layer = make_sample_cloud_layer_policy_desc(),
             .enable_directional_shadow_smoke = options.require_directional_shadow,
             .enable_native_ui_overlay = options.require_native_ui_overlay,
             .native_ui_overlay_atlas_asset =
@@ -3000,6 +3037,8 @@ int main(int argc, char** argv) {
         report, static_cast<std::uint64_t>(options.max_frames), options.require_d3d12_postprocess_evidence);
     const auto environment_fog = mirakana::evaluate_win32_desktop_presentation_environment_fog(
         report, d3d12_postprocess_execution, options.require_environment_fog_evidence);
+    const auto cloud_layer =
+        mirakana::evaluate_win32_desktop_presentation_cloud_layer(report, options.require_cloud_layer_package_evidence);
     const auto environment_profile =
         evaluate_environment_profile_package(options.require_environment_profile, runtime_package);
     const auto vulkan_postprocess_execution =
@@ -3138,6 +3177,28 @@ int main(int argc, char** argv) {
         << " environment_fog_constants_byte_size=" << environment_fog.constant_buffer_bytes
         << " environment_fog_postprocess_passes_ok=" << (environment_fog.postprocess_passes_current ? 1 : 0)
         << " environment_fog_diagnostics=" << environment_fog.diagnostics_count
+        << " cloud_layer_status=" << mirakana::win32_desktop_presentation_cloud_layer_status_name(cloud_layer.status)
+        << " cloud_layer_ready=" << (cloud_layer.ready ? 1 : 0) << " cloud_layer_selected_backend="
+        << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
+        << " cloud_layer_requested=" << (cloud_layer.requested ? 1 : 0)
+        << " cloud_layer_shader_contract_evidence_ready=" << (cloud_layer.shader_contract_evidence_ready ? 1 : 0)
+        << " cloud_layer_package_evidence_ready=" << (cloud_layer.package_evidence_ready ? 1 : 0)
+        << " cloud_layer_execution_evidence_ready=" << (cloud_layer.execution_evidence_ready ? 1 : 0)
+        << " cloud_layer_cloud_map_binding=" << cloud_layer.cloud_map_binding
+        << " cloud_layer_flow_map_binding=" << cloud_layer.flow_map_binding
+        << " cloud_layer_sampler_binding=" << cloud_layer.sampler_binding
+        << " cloud_layer_constants_binding=" << cloud_layer.constants_binding
+        << " cloud_layer_uses_latlong_projection=" << (cloud_layer.uses_latlong_projection ? 1 : 0)
+        << " cloud_layer_uses_flow_map=" << (cloud_layer.uses_flow_map ? 1 : 0)
+        << " cloud_layer_texture_rows=" << cloud_layer.texture_rows
+        << " cloud_layer_visual_rows=" << cloud_layer.visual_rows << " cloud_layer_ibl_rows=" << cloud_layer.ibl_rows
+        << " cloud_layer_shader_contract_rows=" << cloud_layer.shader_contract_rows
+        << " cloud_layer_quality_rows=" << cloud_layer.quality_rows
+        << " cloud_layer_texture_uploads=" << (cloud_layer.uploads_textures ? 1 : 0)
+        << " cloud_layer_backend_invocations=" << (cloud_layer.invokes_backend ? 1 : 0)
+        << " cloud_layer_native_handle_access=" << (cloud_layer.exposes_native_handles ? 1 : 0)
+        << " cloud_layer_volumetric_clouds=" << (cloud_layer.uses_volumetric_clouds ? 1 : 0)
+        << " cloud_layer_diagnostics=" << cloud_layer.diagnostics_count
         << " environment_profile_status=" << environment_profile_package_status_name(environment_profile.status)
         << " environment_profile_ready=" << (environment_profile.ready ? 1 : 0)
         << " environment_profile_requested=" << (environment_profile.requested ? 1 : 0)
@@ -3978,6 +4039,9 @@ int main(int argc, char** argv) {
             return 3;
         }
         if (options.require_environment_fog_evidence && !environment_fog.ready) {
+            return 3;
+        }
+        if (options.require_cloud_layer_package_evidence && !cloud_layer.ready) {
             return 3;
         }
         if (options.require_directional_shadow &&

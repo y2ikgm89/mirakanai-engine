@@ -630,11 +630,13 @@ Require 2D cloud coverage, opacity, altitude, wind velocity, flow-map asset refe
 
 This is the low-cost weather sky path. It should be usable without volumetric clouds and should be the default for lower quality tiers.
 
-- [ ] **Step 3: Package evidence**
+- [x] **Step 3: Package evidence**
 
 Add package status fields only when the selected sample proves the cloud layer path through a render/readback or strict smoke lane.
 
 **2026-06-04 PR12 Task 11 Evidence:** GREEN adds `MK_environment` cloud-layer value validation through `EnvironmentCloudLayerDesc`, `EnvironmentCloudLayerMode`, `EnvironmentCloudIblContributionMode`, `EnvironmentCloudLayerValidationResult`, `validate_environment_cloud_layer`, `is_valid_environment_cloud_layer`, and `has_environment_cloud_layer_diagnostic` for cheap 2D equirectangular sky clouds. `MK_renderer` adds `CloudLayerPolicyDesc`, `CloudLayerPolicyPlan`, texture/visual/IBL/shader-contract/quality rows, stable cloud-map binding `6`, flow-map binding `7`, sampler binding `6`, constants binding `6`, and fail-closed diagnostics for invalid environment rows, unsupported quality tiers, missing shader/package/execution evidence, unsupported texture upload, backend execution, native handles, and volumetric cloud claims. `shaders/environment/cloud_layer.hlsl` and `tests/shaders/environment_cloud_layer.hlsl` add a reviewed LatLong cloud-map + flow-map HLSL contract for the low-cost path. Official context was re-checked for Unity HDRP Cloud Layer as a 2D LatLong texture animated with a flowmap (`https://docs.unity.cn/Packages/com.unity.render-pipelines.high-definition%4016.0/manual/create-simple-clouds-cloud-layer`), Unreal Volumetric Cloud as a separate ray-marched 3D volume material path with quality/performance implications (`https://dev.epicgames.com/documentation/unreal-engine/volumetric-cloud-component-in-unreal-engine?lang=en-US`), and Context7 `/godotengine/godot-docs` ProceduralSkyMaterial `sky_cover` guidance for sky-layer overlays. Focused validation passed for `MK_environment_cloud_tests`, `MK_renderer_cloud_layer_policy_tests`, `tools/check-tidy.ps1 -Files engine/environment/src/cloud_layer.cpp,engine/renderer/src/cloud_layer_policy.cpp,tests/unit/environment_cloud_tests.cpp,tests/unit/renderer_cloud_layer_policy_tests.cpp`, `tools/check-format.ps1`, DXC DXIL vertex/pixel compilation, DXC Vulkan SPIR-V vertex/pixel compilation, and `spirv-val`. This is cloud-layer value planning and shader-contract evidence only; it does not upload textures, execute renderer/RHI backends, add D3D12 readback/package evidence, prove Vulkan runtime execution, prove Metal readiness, claim volumetric clouds, claim rain readiness, claim backend parity, claim broad optimization, or claim broad `environment_ready`.
+
+**2026-06-04 PR20 Task 11 Evidence:** GREEN adds selected `sample_desktop_runtime_game` D3D12 cloud-layer package evidence through `--require-cloud-layer-package-evidence`. The Win32 runtime host now exposes `evaluate_win32_desktop_presentation_cloud_layer`, `Win32DesktopPresentationCloudLayerReport`, package-visible `cloud_layer_*` report counters, and a strict package texture-ref check against the existing first-party cooked `sample/desktop-runtime/texture` package record before promoting Cloud Layer policy readiness. The installed package smoke reports `cloud_layer_status=ready`, `cloud_layer_ready=1`, `cloud_layer_selected_backend=d3d12`, shader-contract/package/execution evidence ready, stable cloud-map/flow-map/sampler/constants binding slots `6/7/6/6`, one shared package texture policy row, one visual/IBL/shader-contract/quality row each, LatLong shader-contract flow-map sampling intent, `cloud_layer_diagnostics=0`, and zero texture upload, backend invocation, native-handle, and volumetric-cloud counters. Official context was re-checked for Unity HDRP Cloud Layer as a 2D LatLong + flowmap cloud path, Unreal Volumetric Cloud as a separate 3D volume path, Context7 `/godotengine/godot-docs` sky/cloud guidance, and Microsoft D3D12 resource binding/root-signature guidance before keeping this as package-visible policy evidence rather than renderer execution. Focused validation passed for `MK_runtime_host_win32_public_api_compile`, installed `sample_desktop_runtime_game` cloud-layer smoke, and `tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders` with the Cloud Layer smoke args. This is selected D3D12 package-visible Cloud Layer evidence only; it does not prove a distinct flow-map package asset, upload cloud textures, draw clouds through renderer/RHI backends, infer Vulkan or Metal readiness, claim volumetric clouds, claim backend parity, claim broad optimization, or claim broad `environment_ready`.
 
 ## Task 12: Weather And Precipitation
 
@@ -798,6 +800,8 @@ Expected: composed manifest and AI integration checks pass.
 
 **2026-06-04 PR17 Task 16 Evidence:** GREEN targets the selected `sample_desktop_runtime_game` environment profile package boundary. The sample now ships source `GameEngine.EnvironmentProfile.v1` and cooked `GameEngine.CookedEnvironmentProfile.v1` profile rows, registers `AssetKind::environment_profile` in `source/assets/package.geassets`, references the cooked profile from the packaged runtime scene, and adds a `.geindex` `scene_environment_profile` dependency edge. The new `desktop-runtime-sample-game-environment-profile-package` recipe passes `--require-environment-profile`; installed validation expects `environment_profile_status=ready`, `environment_profile_ready=1`, package file/index-entry/scene-reference/scene-required/scene-dependency/dependency-edge counters, `environment_profile_source_parsing=0`, and zero profile diagnostics. Context7 `/microsoftdocs/powershell-docs` and Microsoft Learn `about_Pwsh` / `about_Operators` were re-checked for `pwsh -Command` plus call-operator `&` script invocation before keeping the fixed reviewed PowerShell wrapper. This is cooked package/index/scene dependency evidence only; it does not execute renderer/RHI backends, infer Vulkan or Metal readiness, claim rain/snow/storm readiness, claim package-visible environment authoring counters, claim broad optimization, or claim broad `environment_ready`.
 
+**2026-06-04 PR20 Task 16 Evidence:** GREEN registers `desktop-runtime-sample-game-cloud-layer-package` in `game.agent.json`, `engine/agent/manifest.fragments/009-validationRecipes.json`, `aiOperableProductionLoop.run-validation-recipe`, the reviewed recipe-runner argv builder, and static checks. Installed validation now recognizes `--require-cloud-layer-package-evidence` and requires exact `cloud_layer_*` counters for selected D3D12 package evidence while preserving unsupported distinct flow-map package asset, texture-upload, backend-invocation, native-handle, volumetric-cloud, Vulkan, Metal, backend-parity, broad-optimization, and broad `environment_ready` claims.
+
 ## Task 17: Final Documentation Closeout
 
 **Files:**
@@ -837,7 +841,7 @@ Expected: PASS, or a concrete missing-host/toolchain blocker is recorded.
 | IBL | Cubemap policy tests, HDR dependency/legal checks if EXR/KTX is selected. |
 | Height fog | Depth-aware readback/package evidence, not only enum support. |
 | Volumetric fog | Froxel policy tests, D3D12 readback or package evidence. |
-| Cloud layer | Cheap cloud layer tests, package evidence for selected sample. |
+| Cloud layer | Cheap cloud layer tests plus selected D3D12 package evidence for `sample_desktop_runtime_game`. |
 | Rain/snow/storm | Precipitation, wetness, occlusion, and audio handoff value tests. |
 | Volumetric clouds | Raymarch quality budget tests, D3D12 proof, Vulkan strict gate. |
 | Editor | Editor-core retained model tests before visible first-party `MK_editor` panel claims. |
@@ -862,6 +866,9 @@ Expected: PASS, or a concrete missing-host/toolchain blocker is recorded.
 15. PR 15: Time-of-day and weather blending.
 16. PR 16: Editor environment authoring.
 17. PR 17: Package validation recipes, manifest, docs, and final closeout.
+18. PR 18: Strict host-gated Vulkan height-fog runtime readback proof.
+19. PR 19: Selected D3D12 volumetric-fog compute/readback proof.
+20. PR 20: Selected D3D12 Cloud Layer package evidence.
 
 ## Completion Definition
 

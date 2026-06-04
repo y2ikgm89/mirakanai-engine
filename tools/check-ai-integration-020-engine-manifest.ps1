@@ -1521,6 +1521,7 @@ if ($validationRunnerCommand.Count -ne 1 -or $validationRunnerCommand[0].status 
             "desktop-editor",
             "desktop-runtime-sample-game-scene-gpu-package",
             "desktop-runtime-sample-game-environment-fog-package",
+            "desktop-runtime-sample-game-cloud-layer-package",
             "desktop-runtime-sample-game-environment-profile-package",
             "desktop-runtime-generated-material-shader-scaffold-package",
             "desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict",
@@ -1531,8 +1532,8 @@ if ($validationRunnerCommand.Count -ne 1 -or $validationRunnerCommand[0].status 
             Write-Error "engine/agent/manifest.json run-validation-recipe validationRecipes missing allowlisted recipe: $recipe"
         }
     }
-    if (@($validationRunnerCommand[0].validationRecipes).Count -ne 17) {
-        Write-Error "engine/agent/manifest.json run-validation-recipe validationRecipes must be exactly the reviewed allowlist"
+    if (@($validationRunnerCommand[0].validationRecipes).Count -ne 18) {
+        Write-Error "engine/agent/manifest.json run-validation-recipe validationRecipes must be exactly the reviewed allowlist of 18 recipes"
     }
     if (@($validationRunnerCommand[0].requestModes | Where-Object { $_.id -eq "apply" -and $_.status -eq "ready" }).Count -gt 0) {
         Write-Error "engine/agent/manifest.json run-validation-recipe must not expose a ready apply mode"
