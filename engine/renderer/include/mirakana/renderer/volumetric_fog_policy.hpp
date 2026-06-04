@@ -5,6 +5,7 @@
 
 #include "mirakana/math/vec.hpp"
 
+#include <cstddef>
 #include <cstdint>
 #include <span>
 #include <string>
@@ -66,6 +67,14 @@ enum class VolumetricFogDiagnosticCode : std::uint8_t {
 
 [[nodiscard]] constexpr std::uint32_t volumetric_fog_constants_binding() noexcept {
     return 5;
+}
+
+[[nodiscard]] constexpr std::uint32_t volumetric_fog_froxel_output_buffer_binding() noexcept {
+    return 13;
+}
+
+[[nodiscard]] constexpr std::size_t volumetric_fog_constants_byte_size() noexcept {
+    return 256;
 }
 
 struct VolumetricFogFroxelGridDesc {
@@ -169,6 +178,8 @@ struct VolumetricFogPolicyPlan {
 };
 
 [[nodiscard]] VolumetricFogPolicyPlan plan_volumetric_fog_policy(const VolumetricFogPolicyDesc& desc);
+
+void pack_volumetric_fog_constants(std::span<std::uint8_t> destination, const VolumetricFogPolicyDesc& desc);
 
 [[nodiscard]] bool has_volumetric_fog_diagnostic(const VolumetricFogPolicyPlan& plan,
                                                  VolumetricFogDiagnosticCode code) noexcept;

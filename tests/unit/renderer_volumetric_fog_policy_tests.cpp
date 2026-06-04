@@ -6,8 +6,11 @@
 #include "mirakana/renderer/volumetric_fog_policy.hpp"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <limits>
+#include <span>
 
 namespace {
 
@@ -47,6 +50,18 @@ make_valid_volumetric_fog_desc(std::span<const mirakana::VolumetricFogLocalVolum
         .scene_depth_available = true,
         .shader_contract_evidence_ready = true,
     };
+}
+
+[[nodiscard]] std::uint32_t read_constant_u32(std::span<const std::uint8_t> bytes, std::size_t offset) {
+    std::uint32_t value = 0;
+    std::memcpy(&value, bytes.subspan(offset).data(), sizeof(value));
+    return value;
+}
+
+[[nodiscard]] float read_constant_f32(std::span<const std::uint8_t> bytes, std::size_t offset) {
+    float value = 0.0F;
+    std::memcpy(&value, bytes.subspan(offset).data(), sizeof(value));
+    return value;
 }
 
 } // namespace
@@ -104,6 +119,35 @@ MK_TEST("renderer volumetric fog policy plans froxel quality temporal and local 
     MK_REQUIRE(plan.local_volume_rows[1].shape == mirakana::VolumetricFogLocalVolumeShape::ellipsoid);
     MK_REQUIRE(plan.local_volume_rows[1].source_index == 12);
     MK_REQUIRE(plan.local_volume_rows[1].subtracts_global_density);
+}
+
+MK_TEST("renderer volumetric fog policy exposes stable compute constants and froxel output contract") {
+    auto desc = make_valid_volumetric_fog_desc(std::span<const mirakana::VolumetricFogLocalVolumeDesc>{});
+    desc.froxel_grid = mirakana::VolumetricFogFroxelGridDesc{.width = 4, .height = 2, .depth_slices = 2};
+    desc.range_m = 8.0F;
+    desc.density = 0.25F;
+    desc.albedo = mirakana::Vec3{.x = 0.60F, .y = 0.75F, .z = 0.90F};
+    desc.anisotropy = -0.20F;
+    desc.temporal.history_weight = 0.0F;
+
+    std::array<std::uint8_t, mirakana::volumetric_fog_constants_byte_size()> constants{};
+    mirakana::pack_volumetric_fog_constants(constants, desc);
+
+    MK_REQUIRE(mirakana::volumetric_fog_scene_depth_texture_binding() == 2);
+    MK_REQUIRE(mirakana::volumetric_fog_scene_depth_sampler_binding() == 3);
+    MK_REQUIRE(mirakana::volumetric_fog_constants_binding() == 5);
+    MK_REQUIRE(mirakana::volumetric_fog_froxel_output_buffer_binding() == 13);
+    MK_REQUIRE(mirakana::volumetric_fog_constants_byte_size() == 256);
+    MK_REQUIRE(read_constant_u32(constants, 0) == 4);
+    MK_REQUIRE(read_constant_u32(constants, 4) == 2);
+    MK_REQUIRE(read_constant_u32(constants, 8) == 2);
+    MK_REQUIRE(read_constant_f32(constants, 12) == 8.0F);
+    MK_REQUIRE(read_constant_f32(constants, 16) == 0.25F);
+    MK_REQUIRE(read_constant_f32(constants, 20) == -0.20F);
+    MK_REQUIRE(read_constant_f32(constants, 24) == 0.0F);
+    MK_REQUIRE(read_constant_f32(constants, 28) == 0.60F);
+    MK_REQUIRE(read_constant_f32(constants, 32) == 0.75F);
+    MK_REQUIRE(read_constant_f32(constants, 36) == 0.90F);
 }
 
 MK_TEST("renderer volumetric fog policy requires execution evidence before ready promotion") {

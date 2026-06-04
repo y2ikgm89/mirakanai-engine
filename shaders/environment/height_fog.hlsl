@@ -1,17 +1,29 @@
 // SPDX-FileCopyrightText: 2026 GameEngine contributors
 // SPDX-License-Identifier: LicenseRef-Proprietary
 
+#if defined(MK_HEIGHT_FOG_VULKAN_BINDINGS)
+[[vk::binding(0, 0)]] Texture2D<float4> scene_color_texture : register(t0, space0);
+[[vk::binding(1, 0)]] SamplerState scene_color_sampler : register(s1, space0);
+[[vk::binding(2, 0)]] Texture2D<float> scene_depth_texture : register(t2, space0);
+[[vk::binding(3, 0)]] SamplerState scene_depth_sampler : register(s3, space0);
+#else
 Texture2D<float4> scene_color_texture : register(t0);
 SamplerState scene_color_sampler : register(s1);
 Texture2D<float> scene_depth_texture : register(t2);
 SamplerState scene_depth_sampler : register(s3);
+#endif
 
 struct HeightFogVertexOutput {
     float4 position : SV_Position;
     float2 uv : TEXCOORD0;
 };
 
-cbuffer HeightFogConstants : register(b4) {
+#if defined(MK_HEIGHT_FOG_VULKAN_BINDINGS)
+[[vk::binding(4, 0)]] cbuffer HeightFogConstants : register(b4, space0)
+#else
+cbuffer HeightFogConstants : register(b4)
+#endif
+{
     float density : packoffset(c0.x);
     float height_falloff : packoffset(c0.y);
     float height_offset_m : packoffset(c0.z);
