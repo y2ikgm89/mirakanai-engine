@@ -24,7 +24,7 @@ Reasons:
 
 - The work crosses asset import/cook, renderer, RHI, runtime streaming, scene rendering, profiling, validation, package evidence, legal review, and agent-surface contracts.
 - It has multiple independently reviewable milestones that need their own API and validation boundaries.
-- It should not displace the current active post-1.0 production-quality milestone until the operator intentionally selects the first MAVG child plan.
+- It should not displace the manifest-selected active plan or production-completion selection gate until the operator intentionally selects the first MAVG child plan.
 - The "Nanite-exceeding" claim is a final integrated benchmark claim, not a useful early implementation target.
 
 Use this file as the roadmap and decision contract. Create focused child plans under `docs/superpowers/plans/YYYY-MM-DD-mavg-<phase>.md` when executing a phase.

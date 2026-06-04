@@ -1,10 +1,6 @@
 ---
 name: gameengine-cursor-baseline
-description: >-
-  Runs GameEngine work inside Cursor by prioritizing AGENTS.md, PowerShell validation wrappers
-  under tools/, and selective reads of `engine/agent/manifest.fragments/` or the composed `engine/agent/manifest.json`. Use when editing this repository's C++
-  engine (engine/), CMake presets, vcpkg policy, games/, public headers, shaders/RHI,
-  editor/, manifests/schemas, or when diagnosing validation failures on Windows/Linux/macOS lanes.
+description: Runs GameEngine work inside Cursor by routing to AGENTS.md, thin Cursor skills, PowerShell validation wrappers, and targeted manifest fragments.
 paths:
   - "**/*"
 disable-model-invocation: false
@@ -14,61 +10,38 @@ disable-model-invocation: false
 
 ## Authority
 
-1. **`AGENTS.md`** — validation recipes, dependency bootstrap rules, language policy, Done Definition.
-2. **`CLAUDE.md` / `.claude/` / `.codex/` / `.agents/skills/` / `.cursor/skills/`** — same baseline as Codex/Claude Code; **do not copy large excerpts into Cursor-only prompts**. Resolve repository conflicts by following **`AGENTS.md`** (workspace truth); if Cursor global instructions disagree with this repository's Git Workflow, align the global instruction or add a workspace override before relying on automation.
-3. **Thin `.cursor/skills/gameengine-*` topic folders** — name-aligned with `.claude/skills/`; each points at the full Claude skill plus the Codex twin (`.agents/skills/cmake-build-system`, `cpp-engine-debugging`, `editor-change`, `rendering-change`, `license-audit`, `performance-optimization-change`, or same-name `gameengine-*` where applicable).
-4. **Cursor project subagents** — `.cursor/agents/*.md` mirrors the shared roles in `.claude/agents/` and `.codex/agents/`; use them only for bounded independent work, keep read-only audit/review/explore roles on `readonly: true`, and set **`model: composer-2.5-fast`** via Cursor subagent frontmatter (parent orchestrator and Task delegations use the same default unless the operator overrides). If Cursor rejects the slug, verify the replacement in Cursor's model picker/API and update all Cursor agents plus static guards together.
+1. **`AGENTS.md`** is the shared baseline for validation, dependency bootstrap, language, Git Workflow, and Done Definition.
+2. **Cursor global instructions** must not override this repository. If they conflict, align the global instruction or add a workspace override before relying on automation.
+3. **Thin `.cursor/skills/gameengine-*` folders** name-match `.claude/skills/` and point to the Claude skill plus Codex twin; do not duplicate large shared procedures.
+4. **Cursor project subagents** live in `.cursor/agents/*.md`, mirror `.claude/agents/` and `.codex/agents/`, use bounded scopes, keep read-only audit/review/explore roles on `readonly: true`, and set **`model: composer-2.5-fast`** via Cursor subagent frontmatter.
 
 ## Cursor-first discipline
 
-- **Superpowers / hooks:** Hooks that require a Claude Code **Skill** tool do not apply verbatim in Cursor (no Skill tool). Read the matching `SKILL.md` with the **Read** tool instead; see `docs/ai-integration.md` § **Cursor vs Claude Code hooks (Superpowers)**.
-- **Rules:** Keep `.cursor/rules/*.mdc` focused, actionable, scoped, and under Cursor's recommended 500-line rule budget; use `AGENTS.md` only for root-wide plain Markdown guidance.
-- **Execute** repo wrappers (`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/<script>.ps1`) yourself when diagnosing or claiming
-  readiness; avoid dumping commands without running them when the environment allows. Tracked `tools/*.ps1` declares `#requires -Version
-  7.0` immediately followed by `#requires -PSEdition Core`—use **PowerShell 7** (`pwsh`), not Windows PowerShell 5.1.
-  `tools/check-agents.ps1` (via `validate.ps1`) enforces UTF-8 **without** BOM and the contiguous `#requires` pair. Shared helpers live in
-  `tools/common.ps1` (`Get-RepoRoot` returns a **string**—use `$root` in joins, never `$root.Path`; `Invoke-CheckedCommand`, and related).
-- **GitHub publishing:** Follow official GitHub Flow in **`AGENTS.md` -> Git Workflow** and **`docs/workflows.md` -> Commit, Push, And Pull
-  Request Workflow**; use **`gameengine-git-publication-preflight`** / `tools/check-publication-preflight.ps1` before staging/push/PR/merge.
-  Cadence is purpose/checkpoint-based, not commit-count-based: push validated checkpoints, keep one PR per focused
-  capability/gap-cluster/milestone, avoid PRs per commit/checklist item. Use guarded `tools/ready-task-pr.ps1` for draft-to-ready conversion
-  and `gh pr merge --auto --merge --match-head-commit <headRefOid>` only after validation checkpoints plus PR preflight (`state`, `isDraft`,
-  `baseRefName`, `headRefName`, `headRefOid`, `mergeable`, `mergeStateStatus`, `reviewDecision`, `statusCheckRollup`, `autoMergeRequest`,
-  and `url`; runtime/C++/build/toolchain/public-contract PRs must wait for selected hosted checks to complete and `PR Gate` to report
-  `SUCCESS`; rerun preflight after every commit or push because a stale `headRefOid` invalidates the merge decision and any guarded ready
-  decision). Never push directly to the default branch. If `publication-preflight: blocked` appears, switch session/host context. Use
-  `tools/remove-merged-worktree.ps1` for guarded post-merge cleanup with Windows long-path fallback inside the guarded script. Prompt-gated
-  PR state changes such as `gh pr edit`, raw `gh pr ready`, or immediate `gh pr merge` need GitHub Web/Desktop or an approval-capable
-  session when guarded automation blocks. docs/agent/rules/subagent-only PRs should use lightweight static validation instead of unrelated
-  Windows/MSVC, macOS, or full repository clang-tidy lanes.
-- Before changing **engine-facing APIs**, **`game.agent.json` contracts**, or **generated-game scaffolding**, skim **`pwsh -NoProfile
-  -ExecutionPolicy Bypass -File tools/agent-context.ps1`** (optional **`-ContextProfile Minimal|Standard|Full`**) or read **targeted**
-  `engine/agent/manifest.fragments/*.json` / composed `engine/agent/manifest.json` slices (avoid loading the whole canonical file unless
-  necessary). When you **author** engine manifest changes, edit fragments and run **`pwsh -NoProfile -ExecutionPolicy Bypass -File
-  tools/compose-agent-manifest.ps1 -Write`**; `tools/check-json-contracts.ps1` enforces parity. 3D desktop package manifests must keep
-  **`prefabScenePackageAuthoringTargets`** and **`registeredSourceAssetCookTargets`** rows aligned on `sourceRegistryPath` /
-  `packageIndexPath`; `schemas/game-agent.schema.json`, `tools/check-json-contracts.ps1`, and `tools/check-ai-integration.ps1` enforce
-  this—do not invent alternate cook inputs outside those descriptors.
-- After touching a **single `.cpp`**, you may run **`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files <path>`** (requires prior `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev`) to reproduce IDE `misc-include-cleaner` / clang-tidy feedback narrowly; see `AGENTS.md` Testing section. **`check-tidy.ps1 -Files` accepts only `.cc`, `.cpp`, and `.cxx`**—for a public header change, pass the **primary implementation TU** that includes it or use **clangd** diagnostics on the header.
+- Hooks that require a Claude Code Skill tool do not apply verbatim in Cursor. Read the matching `SKILL.md` with Cursor's file reader instead.
+- Keep `.cursor/rules/*.mdc` focused, actionable, scoped, and under Cursor's recommended 500-line rule budget; use `AGENTS.md` for root-wide plain Markdown guidance.
+- Execute repository wrappers yourself when claiming readiness: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/<script>.ps1`. Use PowerShell 7 (`pwsh`), not Windows PowerShell 5.1.
+- Before engine-facing API, `game.agent.json`, generated-game, manifest, or schema changes, read a targeted `engine/agent/manifest.fragments/*.json` slice or run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1 -ContextProfile Minimal|Standard`. Edit manifest fragments, then run `tools/compose-agent-manifest.ps1 -Write`.
+- After touching one `.cpp`, use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files <path>` after `tools/cmake.ps1 --preset dev`; for public headers, pass the primary implementation TU or use clangd diagnostics.
+
+## GitHub Flow
+
+- Follow official GitHub Flow in `AGENTS.md` and `docs/workflows.md`; run `tools/check-publication-preflight.ps1` before staging/push/PR/merge.
+- Cadence is purpose/checkpoint-based: push validated checkpoints, keep one PR per focused capability/gap-cluster/milestone, and avoid PRs per commit/checklist item.
+- Use `tools/ready-task-pr.ps1` for guarded draft-to-ready conversion; prompt-gated `gh pr edit`, raw `gh pr ready`, or immediate `gh pr merge` need GitHub Web/Desktop or an approval-capable session when guarded automation blocks.
+- Use `gh pr merge --auto --merge --match-head-commit <headRefOid>` only after validation checkpoints plus PR preflight. Check `state`, `isDraft`, `baseRefName`, `headRefName`, `headRefOid`, `mergeable`, `mergeStateStatus`, `reviewDecision`, `statusCheckRollup`, `autoMergeRequest`, and `url`.
+- Runtime/C++/build/toolchain/public-contract PRs must wait for selected hosted checks to complete and `PR Gate` to report `SUCCESS`.
+- Rerun preflight after every commit or push because a stale `headRefOid` invalidates the merge decision and any guarded ready decision.
+- If `publication-preflight: blocked` appears, switch session/host context. Use `tools/remove-merged-worktree.ps1` for guarded post-merge cleanup with Windows long-path fallback inside the guarded script.
+- docs/agent/rules/subagent-only PRs should use lightweight static validation instead of unrelated Windows/MSVC, macOS, or full repository clang-tidy lanes.
 
 ## Validation shorthand (details in AGENTS.md)
 
-| Situation | Start here |
-|-----------|------------|
-| Any substantive completion claim | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` (or record toolchain blocker) |
-| CMake / compiler / PATH issues | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1`; raw cmake lanes → same script with `-RequireDirectCMake` |
-| Default dev loop | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev` → `tools/cmake.ps1 --build --preset dev` → `tools/ctest.ps1 --preset dev --output-on-failure` |
-| Public headers / backend interop | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1` |
-| Shader / RHI / viewport toolchain | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-shader-toolchain.ps1` |
-| AI + Windows D3D12 capture handoff (editor vs PIX host) | `docs/ai-integration.md` § **AI-driven workflows and Windows GPU diagnostics** and § **Recommended workflow (operator PIX, AI analysis)**; optional `tools/launch-pix-host-helper.ps1` (`WinPix.exe` / legacy `PIX.exe`, `MIRAKANA_PIX_EXE`, `-SkipLaunch`) |
-| Agent surfaces / skills / `tools/*.ps1` pairs | `pwsh ... tools/check-agents.ps1`; follow **Repository consistency checklist** in `docs/workflows.md`; after new retained editor ids or `check-ai-integration.ps1` Needles, run `pwsh ... tools/check-ai-integration.ps1` |
-| Shared C++ patterns touched | `pwsh ... tools/check-tidy.ps1` or `-Files` for narrow TU runs |
-| Native first-party `MK_editor` shell | `MK_editor_core` stays in the default validation lane; `tools/build-editor.ps1`, `tools/evaluate-cpp23.ps1 -Editor`, and `MK_ENABLE_DESKTOP_EDITOR=ON` cover the dependency-free `desktop-editor` lane. Removed Dear ImGui shell implementation is historical evidence only, not a supported UI middleware lane. |
-| Other `editor/core` translation units | After substantive edits, `check-tidy.ps1 -Files editor/core/src/<file>.cpp` (after `tools/cmake.ps1 --preset dev`) and `tools/cmake.ps1 --build --preset dev --target MK_editor_core` when behavior is confined to `editor/core`; see **Editor core C++** in the shared editor skills |
-| clangd / IDE includes | Tracked `.clangd` -> `CompilationDatabase: out/build/dev` after `tools/cmake.ps1 --preset dev`; editor-local `compile_flags.txt` fallbacks were removed with the deferred visible shell, so future shell work must add any needed IDE fallback flags explicitly. |
-| Format | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` / `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1`; text-only: `tools/check-text-format.ps1` / `tools/format-text.ps1` |
-
-Optional lanes (`desktop-game-runtime`, `package-desktop-runtime`, Android/iOS) remain **host-gated**; treat missing SDKs as explicit blockers, not silent skips.
+- Completion claim: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`, or record the exact toolchain blocker.
+- CMake/compiler/PATH: `tools/check-toolchain.ps1`; raw cmake lanes add `-RequireDirectCMake`.
+- Default dev loop: `tools/cmake.ps1 --preset dev`, `tools/cmake.ps1 --build --preset dev`, then `tools/ctest.ps1 --preset dev --output-on-failure`.
+- Public API: `tools/check-public-api-boundaries.ps1`; shader/RHI: `tools/check-shader-toolchain.ps1`.
+- Agent surfaces: `tools/check-agents.ps1`, `tools/check-ai-integration.ps1`, `tools/check-json-contracts.ps1`, and `tools/check-text-format.ps1`.
+- Optional desktop runtime, package, Android, and iOS lanes are host-gated; treat missing SDKs as explicit blockers.
 
 ## Language
 
@@ -77,13 +50,8 @@ Optional lanes (`desktop-game-runtime`, `package-desktop-runtime`, Android/iOS) 
 
 ## Anti-patterns
 
-- Lowering C++ standard or adding deps without **`docs/legal-and-licensing.md`**, **`docs/dependencies.md`**, **`vcpkg.json`**, **`THIRD_PARTY_NOTICES.md`** (see AGENTS.md).
-- Installing vcpkg packages from CMake configure; use **`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1`** only.
+- Lowering C++ standard or adding deps without `docs/legal-and-licensing.md`, `docs/dependencies.md`, `vcpkg.json`, and `THIRD_PARTY_NOTICES.md`.
+- Installing vcpkg packages from CMake configure; use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1` only.
 - Committing or pushing unrelated changes, pushing directly to protected/default branches, force-pushing without explicit user request, or creating/updating PRs without a reviewed branch/remote target, task-owned staged files, and validation evidence or a recorded blocker.
-- Deleting **`external/vcpkg`** (or all of **`external/`**) while cleaning ignored files; presets require that clone for `CMAKE_TOOLCHAIN_FILE`. See **`AGENTS.md`** Repository Hygiene and **`gameengine-cmake-build-system`** skill.
-- Editing **`tests/unit/*.cpp`** while leaving outdated substring idioms (`find` + `npos`), incomplete aggregate literals, wrong
-  designated-init field order when structs gain members, split anonymous namespaces that drop internal linkage for helpers, **`main` inside
-  anonymous linkage** in huge TUs, or **public-counter** test doubles where **`class` + private + `const` getters** fit—prefer fixes in
-  **`docs/cpp-style.md`** (**Unit tests**) before broad NOLINT. Editor core coverage often lives in **`tests/unit/editor_core_tests.cpp`**
-  (`MK_editor_core_tests`); use `tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests` or `tools/ctest.ps1 --preset dev
-  --output-on-failure -R MK_editor_core_tests` for a narrow loop.
+- Deleting `external/vcpkg` while cleaning ignored files; presets require that clone for `CMAKE_TOOLCHAIN_FILE`.
+- Leaving stale test idioms in `tests/unit/*.cpp`; prefer `docs/cpp-style.md` Unit tests guidance before broad NOLINT.

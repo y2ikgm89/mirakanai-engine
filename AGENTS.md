@@ -48,13 +48,9 @@
 
 ## Repository Hygiene
 
-- Keep the source tree clean and intentional.
-- Do not leave temporary files, scratch files, dead code, dead files, or unused folders in the repository.
-- Do not create unnecessary directories, subdirectories, generated copies, or placeholder files.
-- Do not add new top-level folders or nested ownership boundaries unless the existing structure cannot fit the work.
-- Use existing build, cache, temp, or ignored output locations for transient validation artifacts.
-- Remove task-local scaffolding before reporting completion unless it is intentionally tracked and documented.
-- Do not delete files or directories that may contain user work unless the task explicitly requires it and the ownership is clear.
+- Keep the tree intentional: no temporary files, scratch output, dead code, generated copies, placeholder folders, or new ownership boundaries unless the existing structure cannot fit the work.
+- Use existing build/cache/temp/ignored output locations for transient validation artifacts, and remove task-local scaffolding before completion unless intentionally tracked and documented.
+- Do not delete files or directories that may contain user work unless the task explicitly requires it and ownership is clear.
 - Root `.gitattributes` is the LF contract (`* text=auto eol=lf`); root `.editorconfig` aligns editors, and `tools/check-agents.ps1` enforces it.
 - Cleaning ignored paths: `out/`, Android build/.gradle trees, `*.log`, and `imgui.ini` are disposable; **`external/vcpkg` is a required Microsoft vcpkg clone**, not cache. Remove `vcpkg_installed/` only when rerunning `tools/bootstrap-deps.ps1`.
 
@@ -80,32 +76,21 @@
 
 ## C++ Rules
 
-- Use C++23 as the required language level.
-- For CMake install layout, `find_package(Mirakanai)` after install, and the C++ module / `import std` matrix, read `docs/building.md`.
-- Linux line-coverage minimum for CI is enforced via `tools/coverage-thresholds.json` and `tools/check-coverage.ps1 -Strict` (see `docs/testing.md`).
-- Prefer C++23-native designs and allow C++23-only language/library features when they simplify ownership, APIs, or compile-time structure.
-- Use project C++ modules through CMake `FILE_SET CXX_MODULES`; keep public installed headers available until module export/install support is intentionally designed.
-- Use `import std;` only where the active CMake generator/toolchain reports support; keep it gated by the central CMake policy.
+- Use C++23 as the required language level. Prefer C++23-native designs and allow C++23-only features when they simplify ownership, APIs, or compile-time structure.
+- For CMake install layout, `find_package(Mirakanai)` after install, Linux line coverage (`tools/coverage-thresholds.json`, `tools/check-coverage.ps1 -Strict`), and the C++ module / `import std` matrix, read `docs/building.md` and `docs/testing.md`.
+- Use project C++ modules through CMake `FILE_SET CXX_MODULES`; keep public installed headers available until module export/install support is intentionally designed. Use `import std;` only where the active CMake generator/toolchain reports support.
 - Do not add C++20 compatibility shims or lower the engine standard without a new architecture decision.
 - MSVC: `MK_apply_common_target_options` owns `/MP2`+`/Zf`, short target-named `COMPILE_PDB_OUTPUT_DIRECTORY`, `/INCREMENTAL:NO`, and compact CMake target names for long one-source tests; wrappers serialize builds and clear stale MSVC `.tlog` roots.
-- Follow `docs/cpp-style.md` for naming, source layout, public include paths, CMake target naming, and installable package targets.
-- For test aggregates, keep designated initializers in declaration order and include empty `std::function` members (`{}`); see `docs/cpp-style.md`.
-- Prefer RAII and value types.
-- Use `std::unique_ptr` / `std::make_unique` for ownership; raw pointers are non-owning.
-- Avoid global mutable state.
-- Keep public headers minimal and stable within a single task, but do not add compatibility shims.
-- The project brand is `MIRAIKANAI` (MIRAIKANAI Engine).
-- Technical code name is `mirakana`.
-- Public C++ API names use `mirakana::` namespace.
-- `mirakana::` is the canonical C++ namespace. Avoid adding new public API in compatibility aliases unless an explicit migration plan requires temporary bridges.
+- Follow `docs/cpp-style.md` for naming, source layout, public include paths, CMake target naming, installable package targets, and test aggregate initializer ordering with empty `std::function` members (`{}`).
+- Prefer RAII, value types, `std::unique_ptr` / `std::make_unique` for ownership, raw pointers as non-owning, no global mutable state, and minimal public headers without compatibility shims.
+- The project brand is `MIRAIKANAI` (MIRAIKANAI Engine), the technical code name is `mirakana`, and `mirakana::` is the canonical public C++ namespace. Avoid new public API compatibility aliases unless an explicit migration plan requires temporary bridges.
 
 ## Testing and Validation
 
 - Default loop, clang-tidy, format, shader tools, Windows diagnostics, `CMake File API` synthesis for `dev`, editor `MK_editor` clang-tidy hygiene, coverage, and C++ preset commands: see [docs/agent-operational-reference.md](docs/agent-operational-reference.md#testing-and-validation-expanded).
-- Before production C++ behavior, add or update tests first when the environment can run them; target the smallest externally meaningful guarantee for the behavior/API/regression rather than adding tests by habit.
-- During implementation, use the smallest relevant focused loop first: targeted CMake build/test commands for the changed target, plus only the static checks that match the files touched. Avoid rerunning full `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` after every code or docs edit.
-- Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` once near the end of a coherent slice, after code, docs, manifest, and static-check updates are settled. Rerun it only if later edits can affect validated behavior or checked metadata.
-- Toolchain preflight: use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1`; use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake` only for raw `cmake --preset ...`, and `-RequireVcpkgToolchain` for vcpkg gates. Presets inherit `normalized-configure-environment` / `normalized-build-environment`; local loops use `tools/cmake.ps1` / `tools/ctest.ps1`.
+- Before production C++ behavior, add or update tests first when the environment can run them; cover the smallest externally meaningful behavior/API/regression guarantee.
+- Use focused loops first, then run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` once near slice end after code, docs, manifest, and static-check updates settle.
+- Toolchain preflight: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1`; use `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1 -RequireDirectCMake` only for raw `cmake --preset ...`, and `-RequireVcpkgToolchain` for vcpkg gates. Presets inherit `normalized-configure-environment` / `normalized-build-environment`; local loops use `tools/cmake.ps1` / `tools/ctest.ps1`.
 - Formatting: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` / `tools/format.ps1` cover C++ and tracked text; `tools/check-text-format.ps1` / `tools/format-text.ps1` are text-only. Raw `clang-format --dry-run ...` requires `direct-clang-format-status=ready`.
 - Static-analysis PR failures need root fixes: keep `HeaderFilterRegex` path aware and hosted `--warnings-as-errors=*`; suppress only `NN warnings generated.`; use `tools/check-tidy.ps1 -Files` locally and sharded `-Jobs 0` in CI. `validate.ps1` uses bounded static jobs, CMake File API reuse, `test.ps1 -SkipBuild`, CI-only static flags, and automatic CMake/CTest parallelism.
 - For hosted PR/CI failures, inspect latest PR head SHA, open the failing job log for that SHA, reproduce the narrowest local lane, fix root cause, then extend static guards when the failure exposed drift-prone contracts. Billing/spending-limit failures before checkout are hosted account blockers. Do not diagnose stale runs or loosen branch protection, Codex rules, or Claude permissions.
@@ -113,7 +98,7 @@
 - Hosted `MK_d3d12_rhi_tests` uses Microsoft WARP for CI; hardware proof needs host diagnostics/package smoke.
 - For Linux coverage policy changes, remember hosted `lcov` 2.x treats unmatched remove filters as errors. Keep optional `lcovRemovePatterns` guarded with `lcov --ignore-errors unused`, and update `tools/check-coverage-thresholds.ps1` when changing coverage filtering.
 - Windows diagnostics use official host tools: Debugging Tools for Windows, Windows Graphics Tools, PIX on Windows, and Windows Performance Toolkit. Treat them as host diagnostics, not repository runtime dependencies.
-- If CMake, `clang-format`, or a compiler is missing, report that validation is blocked by missing local tools and include the exact failing command.
+- If CMake, `clang-format`, or a compiler is missing, report the missing-tool blocker and exact failing command.
 - For C++ changes, the intended loop is `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev`, then `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure`.
 
 ## Dependency Bootstrap and vcpkg
@@ -128,10 +113,9 @@
 
 - Plan registry, manifest/agent-context workflow, skills parity, `.clangd` / `compile_flags.txt`, `MK_tools` paths, and subagent delegation: see [docs/agent-operational-reference.md](docs/agent-operational-reference.md#ai-development-workflow-expanded).
 - Start docs from `docs/README.md`; use `docs/roadmap.md` for status, `docs/superpowers/plans/README.md` before creating/editing/extending plans, and reconcile manifest pointers, the master plan, specs/ADRs, and archived historical plan evidence without bulk-rewriting ledger prose.
-- Use `docs/specs/` for feature designs and `docs/superpowers/plans/` for implementation plans. Write new or updated implementation plans in English.
-- **Dated plan and spec files:** use `YYYY-MM-DD` in filenames and first headings from the session `Today's date`, explicit operator date, or local `Get-Date -Format yyyy-MM-dd`; keep filename date and heading date identical.
+- Use `docs/specs/` for feature designs and `docs/superpowers/plans/` for implementation plans. New/updated implementation plans are English and dated `YYYY-MM-DD` in filename plus first heading from the session `Today's date`, explicit operator date, or local `Get-Date -Format yyyy-MM-dd`.
 - Keep the live plan stack shallow: one roadmap, one active gap-cluster burn-down or milestone, and at most one phase/child plan selected by `currentActivePlan`. Child plans require a distinct architecture/validation/review boundary or a phase too large for one safe context.
-- Prefer active gap/milestone or phase-gated milestone plan over tiny child plans for one architecture/API/validation/review purpose. Preserve completed plans while referenced by current docs, manifests, checks, or decisions; delete unreferenced noise in cleanup and rely on Git history. Do not append unrelated work, broaden ready claims, or weaken host gates
+- Prefer active gap/milestone or phase-gated milestone plan over tiny child plans for one architecture/API/validation/review purpose. Preserve completed plans while referenced by current docs, manifests, checks, or decisions; delete unreferenced noise in cleanup and rely on Git history. Do not append unrelated work, broaden ready claims, or weaken host gates.
 - Keep active plans concise: put detailed evidence in final validation tables, batch docs/manifest/skills synchronization after behavior is green unless those files are the behavior, and ensure each active phase still has Goal, Context, Constraints, Done When, and validation evidence.
 - Before generating game code or changing engine APIs, read `engine/agent/manifest.json`, a targeted `engine/agent/manifest.fragments/` file, or `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/agent-context.ps1`. Prefer `-ContextProfile Minimal` or `-ContextProfile Standard`; use Full only when the decision needs full manifest-shaped output.
 - Use `.agents/skills/` when a task matches them, keep overlapping `.claude/skills/` behaviorally equivalent, and keep `.cursor/skills/gameengine-*` folders as thin pointers matching `.claude/skills/` names except the intentional Cursor-only `gameengine-cursor-baseline` and `gameengine-plan-registry`.
