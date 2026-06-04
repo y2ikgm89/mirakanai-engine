@@ -1,5 +1,7 @@
 format=GameEngine.Scene.v1
 scene.name=DesktopRuntimePackagedScene
+environment.profile=10875178229362787468
+environment.required=true
 node.count=3
 node.1.name=PackagedMesh
 node.1.parent=0

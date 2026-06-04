@@ -7,6 +7,7 @@ add_library(mirakana_renderer
     src/frame_graph_rhi.cpp
     src/null_renderer.cpp
     src/physical_sky_policy.cpp
+    src/precipitation_policy.cpp
     src/postprocess_policy.cpp
     src/production_vfx_profiling.cpp
     src/renderer_quality_matrix.cpp
@@ -23,6 +24,7 @@ add_library(mirakana_renderer
     src/sprite_batch.cpp
     src/tile_chunk_renderer.cpp
     src/volumetric_fog_policy.cpp
+    src/volumetric_cloud_policy.cpp
 )
 
 target_include_directories(mirakana_renderer

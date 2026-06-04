@@ -2,6 +2,8 @@ add_library(mirakana_environment
     src/cloud_layer.cpp
     src/environment_io.cpp
     src/environment_profile.cpp
+    src/time_of_day.cpp
+    src/weather.cpp
 )
 
 target_include_directories(mirakana_environment
