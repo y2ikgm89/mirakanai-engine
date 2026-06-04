@@ -177,6 +177,8 @@ $requiresD3d12PostprocessEvidence = @($SmokeArgs) -contains "--require-d3d12-pos
 $requiresVulkanPostprocessEvidence = @($SmokeArgs) -contains "--require-vulkan-postprocess-evidence"
 $requiresEnvironmentProfile = @($SmokeArgs) -contains "--require-environment-profile"
 $requiresEnvironmentFogEvidence = @($SmokeArgs) -contains "--require-environment-fog-evidence"
+$requiresCloudLayerPackageEvidence = @($SmokeArgs) -contains "--require-cloud-layer-package-evidence"
+$requiresEnvironmentPrecipitationPackageEvidence = @($SmokeArgs) -contains "--require-environment-precipitation-package-evidence"
 $requiresGpuMemoryPolicy = @($SmokeArgs) -contains "--require-gpu-memory-policy"
 $requiresMemoryDiagnostics = @($SmokeArgs) -contains "--require-memory-diagnostics"
 $requiresD3d12GpuMemoryEvidence = @($SmokeArgs) -contains "--require-d3d12-gpu-memory-evidence"
@@ -205,6 +207,16 @@ if ($requiresD3d12DebugProfilingEvidence -or $requiresVulkanDebugProfilingEviden
     $requiresDebugProfilingPolicy = $true
 }
 if ($requiresEnvironmentFogEvidence) {
+    $requiresPostprocess = $true
+    $requiresPostprocessDepthInput = $true
+    $requiresD3d12PostprocessEvidence = $true
+}
+if ($requiresCloudLayerPackageEvidence) {
+    $requiresPostprocess = $true
+    $requiresPostprocessDepthInput = $true
+    $requiresD3d12PostprocessEvidence = $true
+}
+if ($requiresEnvironmentPrecipitationPackageEvidence) {
     $requiresPostprocess = $true
     $requiresPostprocessDepthInput = $true
     $requiresD3d12PostprocessEvidence = $true
@@ -4527,6 +4539,77 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 $expectedValue = [regex]::Escape($expectedEnvironmentFogFields[$field])
                 if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
                     Write-Error "Installed desktop runtime smoke status line did not prove environment fog field: $field=$($expectedEnvironmentFogFields[$field])"
+                }
+            }
+        }
+        if ($requiresCloudLayerPackageEvidence) {
+            $expectedCloudLayerFields = @{
+                "cloud_layer_status" = "ready"
+                "cloud_layer_ready" = "1"
+                "cloud_layer_selected_backend" = "d3d12"
+                "cloud_layer_requested" = "1"
+                "cloud_layer_shader_contract_evidence_ready" = "1"
+                "cloud_layer_package_evidence_ready" = "1"
+                "cloud_layer_execution_evidence_ready" = "1"
+                "cloud_layer_cloud_map_binding" = "6"
+                "cloud_layer_flow_map_binding" = "7"
+                "cloud_layer_sampler_binding" = "6"
+                "cloud_layer_constants_binding" = "6"
+                "cloud_layer_uses_latlong_projection" = "1"
+                "cloud_layer_uses_flow_map" = "1"
+                "cloud_layer_texture_rows" = "1"
+                "cloud_layer_visual_rows" = "1"
+                "cloud_layer_ibl_rows" = "1"
+                "cloud_layer_shader_contract_rows" = "1"
+                "cloud_layer_quality_rows" = "1"
+                "cloud_layer_texture_uploads" = "0"
+                "cloud_layer_backend_invocations" = "0"
+                "cloud_layer_native_handle_access" = "0"
+                "cloud_layer_volumetric_clouds" = "0"
+                "cloud_layer_diagnostics" = "0"
+            }
+            foreach ($field in $expectedCloudLayerFields.Keys) {
+                $expectedValue = [regex]::Escape($expectedCloudLayerFields[$field])
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove cloud layer field: $field=$($expectedCloudLayerFields[$field])"
+                }
+            }
+        }
+        if ($requiresEnvironmentPrecipitationPackageEvidence) {
+            $expectedEnvironmentPrecipitationFields = @{
+                "environment_precipitation_status" = "ready"
+                "environment_precipitation_ready" = "1"
+                "environment_precipitation_selected_backend" = "d3d12"
+                "environment_precipitation_requested" = "1"
+                "environment_precipitation_weather" = "storm"
+                "environment_precipitation_kind" = "rain"
+                "environment_precipitation_shader_contract_evidence_ready" = "1"
+                "environment_precipitation_package_evidence_ready" = "1"
+                "environment_precipitation_execution_evidence_ready" = "1"
+                "environment_precipitation_particle_texture_binding" = "8"
+                "environment_precipitation_scene_depth_texture_binding" = "9"
+                "environment_precipitation_sampler_binding" = "8"
+                "environment_precipitation_constants_binding" = "7"
+                "environment_precipitation_uses_camera_near_particles" = "1"
+                "environment_precipitation_uses_scene_depth_occlusion" = "1"
+                "environment_precipitation_weather_rows" = "1"
+                "environment_precipitation_particle_rows" = "1"
+                "environment_precipitation_occlusion_rows" = "1"
+                "environment_precipitation_wetness_rows" = "1"
+                "environment_precipitation_audio_handoff_rows" = "4"
+                "environment_precipitation_shader_rows" = "1"
+                "environment_precipitation_quality_rows" = "1"
+                "environment_precipitation_particle_buffer_uploads" = "0"
+                "environment_precipitation_backend_invocations" = "0"
+                "environment_precipitation_native_handle_access" = "0"
+                "environment_precipitation_material_mutations" = "0"
+                "environment_precipitation_audio_playback" = "0"
+                "environment_precipitation_diagnostics" = "0"
+            }
+            foreach ($field in $expectedEnvironmentPrecipitationFields.Keys) {
+                $expectedValue = [regex]::Escape($expectedEnvironmentPrecipitationFields[$field])
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove environment precipitation field: $field=$($expectedEnvironmentPrecipitationFields[$field])"
                 }
             }
         }
