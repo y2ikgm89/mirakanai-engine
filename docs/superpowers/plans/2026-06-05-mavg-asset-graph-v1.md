@@ -6,7 +6,7 @@
 
 **Status:** Active.
 
-**Execution State:** Implementation, docs, manifest, static contract sync, focused validation, full validation, whitespace validation, and publication preflight are complete. Commit, push, and existing PR update are pending.
+**Execution State:** Implementation, docs, manifest, static contract sync, focused validation, full validation, whitespace validation, publication preflight, commit, push, and existing PR update are complete. Hosted review and merge remain pending.
 
 **Goal:** Implement the first MAVG code slice: deterministic clustered asset graph validation and deterministic first-party cook/package planning, without renderer, streaming, deformation, ray tracing, or benchmark superiority claims.
 
@@ -31,6 +31,8 @@ Phase 0 (`mavg-research-legal-benchmark-baseline-v1`) completed the clean-room/l
 - Full `tools/validate.ps1` passed after the formatting and plan-status fixes; 101/101 CTest targets passed inside the validation run.
 - `git diff --check` passed.
 - `tools/check-publication-preflight.ps1` passed for branch `codex/mavg-asset-graph-v1`.
+- Commit `f6279db9` (`feat: add MAVG asset graph foundation`) was pushed to `origin/codex/mavg-asset-graph-v1`.
+- Draft PR #431 now points at head `f6279db9679db1b393ab88c750389e1c40812c10`.
 
 ## Constraints
 
