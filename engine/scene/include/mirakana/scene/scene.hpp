@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "mirakana/assets/asset_registry.hpp"
 #include "mirakana/math/transform.hpp"
 #include "mirakana/scene/components.hpp"
 
@@ -35,6 +36,11 @@ struct ScenePrefabSourceLink {
     std::string source_node_name;
 };
 
+struct SceneEnvironmentReference {
+    AssetId profile;
+    bool required{false};
+};
+
 struct SceneNode {
     SceneNodeId id;
     std::string name;
@@ -54,7 +60,10 @@ class Scene {
     [[nodiscard]] SceneNode* find_node(SceneNodeId id) noexcept;
     [[nodiscard]] const SceneNode* find_node(SceneNodeId id) const noexcept;
     [[nodiscard]] const std::vector<SceneNode>& nodes() const noexcept;
+    [[nodiscard]] const std::optional<SceneEnvironmentReference>& environment() const noexcept;
 
+    void set_environment(SceneEnvironmentReference environment);
+    void clear_environment() noexcept;
     void set_components(SceneNodeId node, SceneNodeComponents components);
     void set_parent(SceneNodeId child, SceneNodeId parent);
 
@@ -63,9 +72,11 @@ class Scene {
 
     std::string name_;
     std::vector<SceneNode> nodes_;
+    std::optional<SceneEnvironmentReference> environment_;
 };
 
 [[nodiscard]] bool is_valid_scene_prefab_source_link(const ScenePrefabSourceLink& link) noexcept;
+[[nodiscard]] bool is_valid_scene_environment_reference(const SceneEnvironmentReference& environment) noexcept;
 [[nodiscard]] std::string serialize_scene(const Scene& scene);
 [[nodiscard]] Scene deserialize_scene(std::string_view text);
 

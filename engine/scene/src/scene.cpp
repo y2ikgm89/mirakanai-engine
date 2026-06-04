@@ -117,6 +117,21 @@ const std::vector<SceneNode>& Scene::nodes() const noexcept {
     return nodes_;
 }
 
+const std::optional<SceneEnvironmentReference>& Scene::environment() const noexcept {
+    return environment_;
+}
+
+void Scene::set_environment(SceneEnvironmentReference environment) {
+    if (!is_valid_scene_environment_reference(environment)) {
+        throw std::invalid_argument("invalid scene environment reference");
+    }
+    environment_ = environment;
+}
+
+void Scene::clear_environment() noexcept {
+    environment_.reset();
+}
+
 void Scene::set_components(SceneNodeId node, SceneNodeComponents components) {
     auto* scene_node = find_node(node);
     if (scene_node == nullptr || !is_valid_scene_node_components(components)) {
@@ -156,6 +171,10 @@ std::size_t Scene::index_for(SceneNodeId id) const {
 bool is_valid_scene_prefab_source_link(const ScenePrefabSourceLink& link) noexcept {
     return valid_scene_link_text(link.prefab_name) && valid_optional_scene_link_path(link.prefab_path) &&
            link.source_node_index > 0U && valid_scene_link_text(link.source_node_name);
+}
+
+bool is_valid_scene_environment_reference(const SceneEnvironmentReference& environment) noexcept {
+    return environment.profile.value != 0;
 }
 
 } // namespace mirakana

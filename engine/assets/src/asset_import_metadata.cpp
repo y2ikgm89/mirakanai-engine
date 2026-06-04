@@ -89,7 +89,8 @@ bool is_valid_audio_import_metadata(const AudioImportMetadata& metadata) noexcep
 bool is_valid_scene_import_metadata(const SceneImportMetadata& metadata) noexcept {
     return metadata.id.value != 0 && valid_token(metadata.source_path) && valid_token(metadata.imported_path) &&
            valid_dependency_list(metadata.mesh_dependencies) && valid_dependency_list(metadata.material_dependencies) &&
-           valid_dependency_list(metadata.sprite_dependencies);
+           valid_dependency_list(metadata.sprite_dependencies) &&
+           valid_dependency_list(metadata.environment_profile_dependencies);
 }
 
 bool is_valid_environment_profile_import_metadata(const EnvironmentProfileImportMetadata& metadata) noexcept {

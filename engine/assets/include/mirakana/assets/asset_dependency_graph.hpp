@@ -19,6 +19,7 @@ enum class AssetDependencyKind : std::uint8_t {
     scene_mesh,
     scene_material,
     scene_sprite,
+    scene_environment_profile,
     ui_atlas_texture,
     tilemap_texture,
     sprite_animation_texture,

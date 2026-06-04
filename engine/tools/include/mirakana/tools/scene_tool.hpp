@@ -35,6 +35,7 @@ struct ScenePackageUpdateDesc {
     std::vector<AssetId> mesh_dependencies;
     std::vector<AssetId> material_dependencies;
     std::vector<AssetId> sprite_dependencies;
+    std::vector<AssetId> environment_profile_dependencies;
     std::string editor_productization{"unsupported"};
     std::string prefab_mutation{"unsupported"};
     std::string runtime_source_import{"unsupported"};
@@ -54,6 +55,7 @@ struct ScenePackageApplyDesc {
     std::vector<AssetId> mesh_dependencies;
     std::vector<AssetId> material_dependencies;
     std::vector<AssetId> sprite_dependencies;
+    std::vector<AssetId> environment_profile_dependencies;
     std::string editor_productization{"unsupported"};
     std::string prefab_mutation{"unsupported"};
     std::string runtime_source_import{"unsupported"};

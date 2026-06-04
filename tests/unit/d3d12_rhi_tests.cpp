@@ -4,10 +4,13 @@
 #include "test_framework.hpp"
 
 #include "mirakana/assets/material.hpp"
+#include "mirakana/renderer/environment_fog_policy.hpp"
+#include "mirakana/renderer/physical_sky_policy.hpp"
 #include "mirakana/renderer/rhi_frame_renderer.hpp"
 #include "mirakana/renderer/rhi_postprocess_frame_renderer.hpp"
 #include "mirakana/renderer/rhi_viewport_surface.hpp"
 #include "mirakana/renderer/shadow_map.hpp"
+#include "mirakana/renderer/volumetric_fog_policy.hpp"
 #include "mirakana/rhi/d3d12/d3d12_backend.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
 #include "mirakana/runtime_rhi/runtime_upload.hpp"
@@ -28,6 +31,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <filesystem>
 #include <span>
 #include <stdexcept>
 #include <string>
@@ -86,6 +90,48 @@ class HiddenTestWindow final {
                                       D3DCOMPILE_ENABLE_STRICTNESS, 0, &bytecode, &errors);
     MK_REQUIRE(SUCCEEDED(result));
     return bytecode;
+}
+
+[[nodiscard]] std::filesystem::path find_repo_file(const std::filesystem::path& relative_path) {
+    auto find_from = [&relative_path](std::filesystem::path cursor) -> std::filesystem::path {
+        while (true) {
+            const auto candidate = cursor / relative_path;
+            if (std::filesystem::exists(candidate)) {
+                return candidate;
+            }
+            const auto parent = cursor.parent_path();
+            if (parent.empty() || parent == cursor) {
+                break;
+            }
+            cursor = parent;
+        }
+        return {};
+    };
+
+    if (auto candidate = find_from(std::filesystem::current_path()); !candidate.empty()) {
+        return candidate;
+    }
+    if (auto candidate = find_from(std::filesystem::path{__FILE__}.parent_path()); !candidate.empty()) {
+        return candidate;
+    }
+
+    throw std::runtime_error("unable to locate repository file " + relative_path.generic_string());
+}
+
+[[nodiscard]] Microsoft::WRL::ComPtr<ID3DBlob> compile_shader_file(const std::filesystem::path& relative_path,
+                                                                   const char* entry_point, const char* target) {
+    const auto path = find_repo_file(relative_path);
+    Microsoft::WRL::ComPtr<ID3DBlob> bytecode;
+    Microsoft::WRL::ComPtr<ID3DBlob> errors;
+    const HRESULT result = D3DCompileFromFile(path.wstring().c_str(), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE,
+                                              entry_point, target, D3DCOMPILE_ENABLE_STRICTNESS, 0, &bytecode, &errors);
+    MK_REQUIRE(SUCCEEDED(result));
+    return bytecode;
+}
+
+[[nodiscard]] Microsoft::WRL::ComPtr<ID3DBlob> compile_volumetric_fog_compute_shader() {
+    return compile_shader_file(std::filesystem::path{"tests"} / "shaders" / "environment_volumetric_fog.hlsl",
+                               "cs_main", "cs_5_0");
 }
 
 [[nodiscard]] Microsoft::WRL::ComPtr<ID3DBlob> compile_triangle_vertex_shader() {
@@ -658,6 +704,96 @@ compile_runtime_morph_position_output_slot_compute_shader(std::uint32_t output_s
                           "ps_main", "ps_5_0");
 }
 
+[[nodiscard]] Microsoft::WRL::ComPtr<ID3DBlob> compile_height_fog_postprocess_pixel_shader() {
+    return compile_shader(
+        "Texture2D scene_color_texture : register(t0);"
+        "SamplerState scene_color_sampler : register(s1);"
+        "Texture2D<float> scene_depth_texture : register(t2);"
+        "SamplerState scene_depth_sampler : register(s3);"
+        "cbuffer HeightFogConstants : register(b4) {"
+        "  float density;"
+        "  float height_falloff;"
+        "  float height_offset_m;"
+        "  float start_distance_m;"
+        "  float cutoff_distance_m;"
+        "  float max_opacity;"
+        "  float sky_affect;"
+        "  float directional_inscattering_anisotropy;"
+        "  float inscattering_r;"
+        "  float inscattering_g;"
+        "  float inscattering_b;"
+        "  float directional_inscattering_r;"
+        "  float directional_inscattering_g;"
+        "  float directional_inscattering_b;"
+        "};"
+        "float height_fog_factor(float scene_depth) {"
+        "  float distance_m = scene_depth * cutoff_distance_m;"
+        "  float height_term = exp2(-max(height_falloff, 0.0001) * max(height_offset_m, 0.0) * 0.001);"
+        "  float distance_term = saturate((distance_m - start_distance_m) / "
+        "                               max(cutoff_distance_m - start_distance_m, 1.0));"
+        "  float density_term = 1.0 - exp2(-max(density, 0.0) * distance_term * height_term);"
+        "  return saturate(min(density_term, max_opacity));"
+        "}"
+        "float3 height_fog_color(float2 uv) {"
+        "  float directional_term = saturate((uv.y * 0.5) + "
+        "                                    (directional_inscattering_anisotropy * 0.5) + 0.5);"
+        "  float3 inscattering = float3(inscattering_r, inscattering_g, inscattering_b);"
+        "  float3 directional = float3(directional_inscattering_r, directional_inscattering_g, "
+        "                              directional_inscattering_b);"
+        "  return lerp(inscattering, directional, directional_term * sky_affect);"
+        "}"
+        "float4 ps_main(float4 position : SV_Position, float2 uv : TEXCOORD0) : SV_Target {"
+        "  float4 color = scene_color_texture.Sample(scene_color_sampler, uv);"
+        "  float depth = scene_depth_texture.Sample(scene_depth_sampler, uv);"
+        "  float fog = height_fog_factor(depth);"
+        "  return float4(lerp(color.rgb, height_fog_color(uv), fog), color.a);"
+        "}",
+        "ps_main", "ps_5_0");
+}
+
+[[nodiscard]] Microsoft::WRL::ComPtr<ID3DBlob> compile_physical_sky_vertex_shader() {
+    return compile_shader("struct VsOut {"
+                          "  float4 position : SV_Position;"
+                          "  float2 uv : TEXCOORD0;"
+                          "};"
+                          "VsOut vs_main(uint vertex_id : SV_VertexID) {"
+                          "  float2 positions[3] = { float2(-1.0, -1.0), float2(-1.0, 3.0), float2(3.0, -1.0) };"
+                          "  VsOut output;"
+                          "  output.position = float4(positions[vertex_id], 0.0, 1.0);"
+                          "  output.uv = positions[vertex_id] * 0.5 + float2(0.5, 0.5);"
+                          "  return output;"
+                          "}",
+                          "vs_main", "vs_5_0");
+}
+
+[[nodiscard]] Microsoft::WRL::ComPtr<ID3DBlob> compile_physical_sky_pixel_shader() {
+    return compile_shader(
+        "cbuffer PhysicalSkyConstants : register(b0) {"
+        "  float planet_radius_km;"
+        "  float atmosphere_height_km;"
+        "  float rayleigh_density_height_km;"
+        "  float mie_density_height_km;"
+        "  float mie_anisotropy;"
+        "  float ozone_density_height_km;"
+        "  float sun_angular_radius_radians;"
+        "  float solar_illuminance_lux;"
+        "};"
+        "float3 physical_sky_color(float2 uv) {"
+        "  float horizon = saturate(uv.y);"
+        "  float rayleigh = saturate(rayleigh_density_height_km / 32.0);"
+        "  float mie = saturate(mie_density_height_km / 8.0);"
+        "  float ozone = saturate(ozone_density_height_km / 64.0);"
+        "  float sun_disk = smoothstep(0.0, max(sun_angular_radius_radians, 0.0001), abs(uv.x - 0.5));"
+        "  float solar = saturate(solar_illuminance_lux / 120000.0);"
+        "  return lerp(float3(0.03, 0.08, 0.18), float3(0.35 + rayleigh, 0.45 + ozone, 0.7), "
+        "              horizon) + (1.0 - sun_disk) * solar * float3(1.0, 0.88 + mie, 0.62);"
+        "}"
+        "float4 ps_main(float4 position : SV_Position, float2 uv : TEXCOORD0) : SV_Target {"
+        "  return float4(physical_sky_color(uv), 1.0);"
+        "}",
+        "ps_main", "ps_5_0");
+}
+
 [[nodiscard]] Microsoft::WRL::ComPtr<ID3DBlob> compile_runtime_material_sampled_pixel_shader() {
     return compile_shader("cbuffer MaterialFactors : register(b0) {"
                           "  float4 base_color;"
@@ -702,6 +838,13 @@ void append_vec3(std::vector<std::uint8_t>& bytes, float x, float y, float z) {
     float value = 0.0F;
     const auto source = std::span<const std::uint8_t>{bytes};
     std::memcpy(&value, source.subspan(offset).data(), sizeof(float));
+    return value;
+}
+
+[[nodiscard]] std::uint32_t read_le_u32(const std::vector<std::uint8_t>& bytes, std::size_t offset) {
+    std::uint32_t value = 0;
+    const auto source = std::span<const std::uint8_t>{bytes};
+    std::memcpy(&value, source.subspan(offset).data(), sizeof(std::uint32_t));
     return value;
 }
 
@@ -4979,6 +5122,643 @@ MK_TEST("d3d12 rhi device samples scene depth in a postprocess pass readback") {
     MK_REQUIRE(device->stats().descriptor_sets_bound == 1);
     MK_REQUIRE(device->stats().draw_calls == 2);
     MK_REQUIRE(device->stats().texture_buffer_copies == 1);
+}
+
+MK_TEST("d3d12 rhi device renders physical sky from packed environment constants readback") {
+    const auto sky_vertex_bytecode = compile_physical_sky_vertex_shader();
+    const auto sky_pixel_bytecode = compile_physical_sky_pixel_shader();
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
+
+    MK_REQUIRE(device != nullptr);
+
+    const auto target = device->create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::copy_source,
+    });
+    const auto readback = device->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = 256 * 64,
+        .usage = mirakana::rhi::BufferUsage::copy_destination,
+    });
+    const auto sky_constants = device->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = mirakana::physical_sky_constants_byte_size(),
+        .usage = mirakana::rhi::BufferUsage::uniform | mirakana::rhi::BufferUsage::copy_source,
+    });
+    std::array<std::uint8_t, mirakana::physical_sky_constants_byte_size()> sky_constants_bytes{};
+    mirakana::pack_physical_sky_constants(
+        sky_constants_bytes, mirakana::PhysicalSkyPolicyDesc{
+                                 .atmosphere =
+                                     mirakana::PhysicalSkyAtmosphereDesc{
+                                         .rayleigh_density_height_km = 8.0F,
+                                         .mie_density_height_km = 1.2F,
+                                         .mie_anisotropy = 0.8F,
+                                         .ozone_density_height_km = 25.0F,
+                                         .planet_radius_km = 6360.0F,
+                                         .atmosphere_height_km = 100.0F,
+                                         .sun_angular_radius_radians = 0.00465F,
+                                         .solar_illuminance_lux = 100000.0F,
+                                     },
+                                 .sample_budget =
+                                     mirakana::PhysicalSkySampleBudgetDesc{
+                                         .transmittance_sample_count = 40,
+                                         .sky_view_sample_count = 32,
+                                         .aerial_perspective_sample_count = 16,
+                                         .multiple_scattering_sample_count = 20,
+                                     },
+                                 .aerial_perspective_mode = mirakana::PhysicalSkyAerialPerspectiveMode::froxel_volume,
+                                 .shader_contract_evidence_ready = true,
+                             });
+    device->write_buffer(sky_constants, 0, sky_constants_bytes);
+
+    const auto sky_set_layout = device->create_descriptor_set_layout(mirakana::rhi::DescriptorSetLayoutDesc{{
+        mirakana::rhi::DescriptorBindingDesc{
+            .binding = mirakana::physical_sky_constants_binding(),
+            .type = mirakana::rhi::DescriptorType::uniform_buffer,
+            .count = 1,
+            .stages = mirakana::rhi::ShaderStageVisibility::fragment,
+        },
+    }});
+    const auto sky_set = device->allocate_descriptor_set(sky_set_layout);
+    device->update_descriptor_set(mirakana::rhi::DescriptorWrite{
+        .set = sky_set,
+        .binding = mirakana::physical_sky_constants_binding(),
+        .array_element = 0,
+        .resources = {mirakana::rhi::DescriptorResource::buffer(mirakana::rhi::DescriptorType::uniform_buffer,
+                                                                sky_constants)},
+    });
+    const auto sky_layout = device->create_pipeline_layout(
+        mirakana::rhi::PipelineLayoutDesc{.descriptor_sets = {sky_set_layout}, .push_constant_bytes = 0});
+    const auto sky_vertex_shader = device->create_shader(mirakana::rhi::ShaderDesc{
+        .stage = mirakana::rhi::ShaderStage::vertex,
+        .entry_point = "vs_main",
+        .bytecode_size = sky_vertex_bytecode->GetBufferSize(),
+        .bytecode = sky_vertex_bytecode->GetBufferPointer(),
+    });
+    const auto sky_fragment_shader = device->create_shader(mirakana::rhi::ShaderDesc{
+        .stage = mirakana::rhi::ShaderStage::fragment,
+        .entry_point = "ps_main",
+        .bytecode_size = sky_pixel_bytecode->GetBufferSize(),
+        .bytecode = sky_pixel_bytecode->GetBufferPointer(),
+    });
+    const auto sky_pipeline = device->create_graphics_pipeline(mirakana::rhi::GraphicsPipelineDesc{
+        .layout = sky_layout,
+        .vertex_shader = sky_vertex_shader,
+        .fragment_shader = sky_fragment_shader,
+        .color_format = mirakana::rhi::Format::rgba8_unorm,
+        .depth_format = mirakana::rhi::Format::unknown,
+        .topology = mirakana::rhi::PrimitiveTopology::triangle_list,
+    });
+    const mirakana::rhi::BufferTextureCopyRegion readback_footprint{
+        .buffer_offset = 0,
+        .buffer_row_length = 64,
+        .buffer_image_height = 64,
+        .texture_offset = mirakana::rhi::Offset3D{.x = 0, .y = 0, .z = 0},
+        .texture_extent = mirakana::rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+    };
+
+    auto commands = device->begin_command_list(mirakana::rhi::QueueKind::graphics);
+    commands->transition_texture(target, mirakana::rhi::ResourceState::copy_source,
+                                 mirakana::rhi::ResourceState::render_target);
+    commands->begin_render_pass(mirakana::rhi::RenderPassDesc{
+        .color =
+            mirakana::rhi::RenderPassColorAttachment{
+                .texture = target,
+                .load_action = mirakana::rhi::LoadAction::clear,
+                .store_action = mirakana::rhi::StoreAction::store,
+                .swapchain_frame = mirakana::rhi::SwapchainFrameHandle{},
+                .clear_color = mirakana::rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
+            },
+    });
+    commands->bind_graphics_pipeline(sky_pipeline);
+    commands->bind_descriptor_set(sky_layout, 0, sky_set);
+    commands->draw(3, 1);
+    commands->end_render_pass();
+    commands->transition_texture(target, mirakana::rhi::ResourceState::render_target,
+                                 mirakana::rhi::ResourceState::copy_source);
+    commands->copy_texture_to_buffer(target, readback, readback_footprint);
+    commands->close();
+
+    const auto fence = device->submit(*commands);
+    device->wait(fence);
+
+    const auto bytes = device->read_buffer(readback, 0, 256 * 64);
+    const auto high_horizon_pixel = (8U * 256U) + (8U * 4U);
+    const auto low_horizon_pixel = (56U * 256U) + (8U * 4U);
+    MK_REQUIRE(bytes.size() == 256 * 64);
+    MK_REQUIRE(bytes.at(low_horizon_pixel + 0U) < 40);
+    MK_REQUIRE(bytes.at(low_horizon_pixel + 1U) < 70);
+    MK_REQUIRE(bytes.at(low_horizon_pixel + 2U) < 100);
+    MK_REQUIRE(bytes.at(high_horizon_pixel + 0U) >= 120);
+    MK_REQUIRE(bytes.at(high_horizon_pixel + 1U) >= 180);
+    MK_REQUIRE(bytes.at(high_horizon_pixel + 2U) >= 140);
+    MK_REQUIRE(bytes.at(high_horizon_pixel + 1U) > bytes.at(low_horizon_pixel + 1U));
+    MK_REQUIRE(bytes.at(high_horizon_pixel + 3U) == 255);
+    MK_REQUIRE(device->stats().descriptor_writes == 1);
+    MK_REQUIRE(device->stats().descriptor_sets_bound == 1);
+    MK_REQUIRE(device->stats().draw_calls == 1);
+    MK_REQUIRE(device->stats().texture_buffer_copies == 1);
+    MK_REQUIRE(device->stats().buffer_writes == 1);
+}
+
+MK_TEST("d3d12 rhi device applies height fog from scene depth and environment constants readback") {
+    const auto depth_vertex_bytecode = compile_vertical_split_shadow_depth_vertex_shader();
+    const auto color_pixel_bytecode = compile_triangle_pixel_shader();
+    const auto postprocess_vertex_bytecode = compile_fullscreen_textured_vertex_shader();
+    const auto postprocess_pixel_bytecode = compile_height_fog_postprocess_pixel_shader();
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
+
+    MK_REQUIRE(device != nullptr);
+
+    const auto scene_color = device->create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::shader_resource,
+    });
+    const auto scene_depth = device->create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+        .format = mirakana::rhi::Format::depth24_stencil8,
+        .usage = mirakana::rhi::TextureUsage::depth_stencil | mirakana::rhi::TextureUsage::shader_resource,
+    });
+    const auto postprocess_target = device->create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::copy_source,
+    });
+    const auto readback = device->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = 256 * 64,
+        .usage = mirakana::rhi::BufferUsage::copy_destination,
+    });
+    const auto fog_constants = device->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = mirakana::environment_fog_constants_byte_size(),
+        .usage = mirakana::rhi::BufferUsage::uniform | mirakana::rhi::BufferUsage::copy_source,
+    });
+    std::array<std::uint8_t, mirakana::environment_fog_constants_byte_size()> fog_constants_bytes{};
+    mirakana::pack_environment_fog_constants(
+        fog_constants_bytes, mirakana::EnvironmentFogPolicyDesc{
+                                 .mode = mirakana::EnvironmentFogMode::exponential_height,
+                                 .density = 2.0F,
+                                 .height_falloff = 0.2F,
+                                 .height_offset_m = 0.0F,
+                                 .start_distance_m = 0.0F,
+                                 .cutoff_distance_m = 10.0F,
+                                 .max_opacity = 0.70F,
+                                 .sky_affect = 0.0F,
+                                 .directional_inscattering_anisotropy = 0.0F,
+                                 .inscattering_color = mirakana::Vec3{.x = 0.60F, .y = 0.20F, .z = 1.0F},
+                                 .directional_inscattering_color = mirakana::Vec3{.x = 1.0F, .y = 0.80F, .z = 0.40F},
+                                 .sample_step_budget = 8,
+                                 .scene_depth_available = true,
+                                 .shader_contract_evidence_ready = true,
+                             });
+    device->write_buffer(fog_constants, 0, fog_constants_bytes);
+
+    const auto sampler_desc = mirakana::rhi::SamplerDesc{
+        .min_filter = mirakana::rhi::SamplerFilter::nearest,
+        .mag_filter = mirakana::rhi::SamplerFilter::nearest,
+        .address_u = mirakana::rhi::SamplerAddressMode::clamp_to_edge,
+        .address_v = mirakana::rhi::SamplerAddressMode::clamp_to_edge,
+        .address_w = mirakana::rhi::SamplerAddressMode::clamp_to_edge,
+    };
+    const auto scene_color_sampler = device->create_sampler(sampler_desc);
+    const auto scene_depth_sampler = device->create_sampler(sampler_desc);
+
+    const auto postprocess_set_layout = device->create_descriptor_set_layout(mirakana::rhi::DescriptorSetLayoutDesc{{
+        mirakana::rhi::DescriptorBindingDesc{
+            .binding = mirakana::postprocess_scene_color_texture_binding(),
+            .type = mirakana::rhi::DescriptorType::sampled_texture,
+            .count = 1,
+            .stages = mirakana::rhi::ShaderStageVisibility::fragment,
+        },
+        mirakana::rhi::DescriptorBindingDesc{
+            .binding = mirakana::postprocess_scene_color_sampler_binding(),
+            .type = mirakana::rhi::DescriptorType::sampler,
+            .count = 1,
+            .stages = mirakana::rhi::ShaderStageVisibility::fragment,
+        },
+        mirakana::rhi::DescriptorBindingDesc{
+            .binding = mirakana::postprocess_scene_depth_texture_binding(),
+            .type = mirakana::rhi::DescriptorType::sampled_texture,
+            .count = 1,
+            .stages = mirakana::rhi::ShaderStageVisibility::fragment,
+        },
+        mirakana::rhi::DescriptorBindingDesc{
+            .binding = mirakana::postprocess_scene_depth_sampler_binding(),
+            .type = mirakana::rhi::DescriptorType::sampler,
+            .count = 1,
+            .stages = mirakana::rhi::ShaderStageVisibility::fragment,
+        },
+        mirakana::rhi::DescriptorBindingDesc{
+            .binding = mirakana::environment_fog_constants_binding(),
+            .type = mirakana::rhi::DescriptorType::uniform_buffer,
+            .count = 1,
+            .stages = mirakana::rhi::ShaderStageVisibility::fragment,
+        },
+    }});
+    const auto postprocess_set = device->allocate_descriptor_set(postprocess_set_layout);
+    device->update_descriptor_set(mirakana::rhi::DescriptorWrite{
+        .set = postprocess_set,
+        .binding = mirakana::postprocess_scene_color_texture_binding(),
+        .array_element = 0,
+        .resources = {mirakana::rhi::DescriptorResource::texture(mirakana::rhi::DescriptorType::sampled_texture,
+                                                                 scene_color)},
+    });
+    device->update_descriptor_set(mirakana::rhi::DescriptorWrite{
+        .set = postprocess_set,
+        .binding = mirakana::postprocess_scene_color_sampler_binding(),
+        .array_element = 0,
+        .resources = {mirakana::rhi::DescriptorResource::sampler(scene_color_sampler)},
+    });
+    device->update_descriptor_set(mirakana::rhi::DescriptorWrite{
+        .set = postprocess_set,
+        .binding = mirakana::postprocess_scene_depth_texture_binding(),
+        .array_element = 0,
+        .resources = {mirakana::rhi::DescriptorResource::texture(mirakana::rhi::DescriptorType::sampled_texture,
+                                                                 scene_depth)},
+    });
+    device->update_descriptor_set(mirakana::rhi::DescriptorWrite{
+        .set = postprocess_set,
+        .binding = mirakana::postprocess_scene_depth_sampler_binding(),
+        .array_element = 0,
+        .resources = {mirakana::rhi::DescriptorResource::sampler(scene_depth_sampler)},
+    });
+    device->update_descriptor_set(mirakana::rhi::DescriptorWrite{
+        .set = postprocess_set,
+        .binding = mirakana::environment_fog_constants_binding(),
+        .array_element = 0,
+        .resources = {mirakana::rhi::DescriptorResource::buffer(mirakana::rhi::DescriptorType::uniform_buffer,
+                                                                fog_constants)},
+    });
+
+    const auto scene_layout = device->create_pipeline_layout(
+        mirakana::rhi::PipelineLayoutDesc{.descriptor_sets = {}, .push_constant_bytes = 0});
+    const auto postprocess_layout = device->create_pipeline_layout(
+        mirakana::rhi::PipelineLayoutDesc{.descriptor_sets = {postprocess_set_layout}, .push_constant_bytes = 0});
+    const auto scene_vertex_shader = device->create_shader(mirakana::rhi::ShaderDesc{
+        .stage = mirakana::rhi::ShaderStage::vertex,
+        .entry_point = "vs_main",
+        .bytecode_size = depth_vertex_bytecode->GetBufferSize(),
+        .bytecode = depth_vertex_bytecode->GetBufferPointer(),
+    });
+    const auto scene_fragment_shader = device->create_shader(mirakana::rhi::ShaderDesc{
+        .stage = mirakana::rhi::ShaderStage::fragment,
+        .entry_point = "ps_main",
+        .bytecode_size = color_pixel_bytecode->GetBufferSize(),
+        .bytecode = color_pixel_bytecode->GetBufferPointer(),
+    });
+    const auto postprocess_vertex_shader = device->create_shader(mirakana::rhi::ShaderDesc{
+        .stage = mirakana::rhi::ShaderStage::vertex,
+        .entry_point = "vs_main",
+        .bytecode_size = postprocess_vertex_bytecode->GetBufferSize(),
+        .bytecode = postprocess_vertex_bytecode->GetBufferPointer(),
+    });
+    const auto postprocess_fragment_shader = device->create_shader(mirakana::rhi::ShaderDesc{
+        .stage = mirakana::rhi::ShaderStage::fragment,
+        .entry_point = "ps_main",
+        .bytecode_size = postprocess_pixel_bytecode->GetBufferSize(),
+        .bytecode = postprocess_pixel_bytecode->GetBufferPointer(),
+    });
+
+    mirakana::rhi::GraphicsPipelineDesc scene_pipeline_desc{
+        .layout = scene_layout,
+        .vertex_shader = scene_vertex_shader,
+        .fragment_shader = scene_fragment_shader,
+        .color_format = mirakana::rhi::Format::rgba8_unorm,
+        .depth_format = mirakana::rhi::Format::depth24_stencil8,
+        .topology = mirakana::rhi::PrimitiveTopology::triangle_list,
+    };
+    scene_pipeline_desc.depth_state = mirakana::rhi::DepthStencilStateDesc{
+        .depth_test_enabled = true, .depth_write_enabled = true, .depth_compare = mirakana::rhi::CompareOp::less_equal};
+    const auto scene_pipeline = device->create_graphics_pipeline(scene_pipeline_desc);
+    const auto postprocess_pipeline = device->create_graphics_pipeline(mirakana::rhi::GraphicsPipelineDesc{
+        .layout = postprocess_layout,
+        .vertex_shader = postprocess_vertex_shader,
+        .fragment_shader = postprocess_fragment_shader,
+        .color_format = mirakana::rhi::Format::rgba8_unorm,
+        .depth_format = mirakana::rhi::Format::unknown,
+        .topology = mirakana::rhi::PrimitiveTopology::triangle_list,
+    });
+    const mirakana::rhi::BufferTextureCopyRegion readback_footprint{
+        .buffer_offset = 0,
+        .buffer_row_length = 64,
+        .buffer_image_height = 64,
+        .texture_offset = mirakana::rhi::Offset3D{.x = 0, .y = 0, .z = 0},
+        .texture_extent = mirakana::rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+    };
+
+    auto commands = device->begin_command_list(mirakana::rhi::QueueKind::graphics);
+    commands->begin_render_pass(mirakana::rhi::RenderPassDesc{
+        .color =
+            mirakana::rhi::RenderPassColorAttachment{
+                .texture = scene_color,
+                .load_action = mirakana::rhi::LoadAction::clear,
+                .store_action = mirakana::rhi::StoreAction::store,
+                .swapchain_frame = mirakana::rhi::SwapchainFrameHandle{},
+                .clear_color =
+                    mirakana::rhi::ClearColorValue{.red = 0.125F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
+            },
+        .depth =
+            mirakana::rhi::RenderPassDepthAttachment{
+                .texture = scene_depth,
+                .load_action = mirakana::rhi::LoadAction::clear,
+                .store_action = mirakana::rhi::StoreAction::store,
+                .clear_depth = mirakana::rhi::ClearDepthValue{1.0F},
+            },
+    });
+    commands->bind_graphics_pipeline(scene_pipeline);
+    commands->draw(12, 1);
+    commands->end_render_pass();
+    commands->transition_texture(scene_color, mirakana::rhi::ResourceState::render_target,
+                                 mirakana::rhi::ResourceState::shader_read);
+    commands->transition_texture(scene_depth, mirakana::rhi::ResourceState::depth_write,
+                                 mirakana::rhi::ResourceState::shader_read);
+    commands->transition_texture(postprocess_target, mirakana::rhi::ResourceState::copy_source,
+                                 mirakana::rhi::ResourceState::render_target);
+    commands->begin_render_pass(mirakana::rhi::RenderPassDesc{
+        .color =
+            mirakana::rhi::RenderPassColorAttachment{
+                .texture = postprocess_target,
+                .load_action = mirakana::rhi::LoadAction::clear,
+                .store_action = mirakana::rhi::StoreAction::store,
+                .swapchain_frame = mirakana::rhi::SwapchainFrameHandle{},
+                .clear_color = mirakana::rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
+            },
+    });
+    commands->bind_graphics_pipeline(postprocess_pipeline);
+    commands->bind_descriptor_set(postprocess_layout, 0, postprocess_set);
+    commands->draw(3, 1);
+    commands->end_render_pass();
+    commands->transition_texture(scene_depth, mirakana::rhi::ResourceState::shader_read,
+                                 mirakana::rhi::ResourceState::depth_write);
+    commands->transition_texture(postprocess_target, mirakana::rhi::ResourceState::render_target,
+                                 mirakana::rhi::ResourceState::copy_source);
+    commands->copy_texture_to_buffer(postprocess_target, readback, readback_footprint);
+    commands->close();
+
+    const auto fence = device->submit(*commands);
+    device->wait(fence);
+
+    const auto bytes = device->read_buffer(readback, 0, 256 * 64);
+    const auto near_pixel = (32U * 256U) + (16U * 4U);
+    const auto far_pixel = (32U * 256U) + (48U * 4U);
+    MK_REQUIRE(bytes.size() == 256 * 64);
+    MK_REQUIRE(bytes.at(far_pixel + 0U) > bytes.at(near_pixel + 0U) + 40U);
+    MK_REQUIRE(bytes.at(near_pixel + 1U) > bytes.at(far_pixel + 1U) + 50U);
+    MK_REQUIRE(bytes.at(far_pixel + 2U) > bytes.at(near_pixel + 2U) + 80U);
+    MK_REQUIRE(bytes.at(near_pixel + 3U) == 255);
+    MK_REQUIRE(bytes.at(far_pixel + 3U) == 255);
+    MK_REQUIRE(device->stats().descriptor_writes == 5);
+    MK_REQUIRE(device->stats().descriptor_sets_bound == 1);
+    MK_REQUIRE(device->stats().draw_calls == 2);
+    MK_REQUIRE(device->stats().texture_buffer_copies == 1);
+    MK_REQUIRE(device->stats().buffer_writes == 1);
+}
+
+MK_TEST("d3d12 rhi device dispatches volumetric fog compute from scene depth readback") {
+    const auto depth_vertex_bytecode = compile_vertical_split_shadow_depth_vertex_shader();
+    const auto color_pixel_bytecode = compile_triangle_pixel_shader();
+    const auto volumetric_fog_bytecode = compile_volumetric_fog_compute_shader();
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
+
+    MK_REQUIRE(device != nullptr);
+
+    constexpr std::uint32_t froxel_width = 4;
+    constexpr std::uint32_t froxel_height = 2;
+    constexpr std::uint32_t froxel_depth_slices = 2;
+    constexpr std::uint64_t froxel_count =
+        static_cast<std::uint64_t>(froxel_width) * froxel_height * froxel_depth_slices;
+    constexpr std::uint64_t froxel_output_bytes = froxel_count * sizeof(std::uint32_t);
+
+    const auto scene_color = device->create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target,
+    });
+    const auto scene_depth = device->create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+        .format = mirakana::rhi::Format::depth24_stencil8,
+        .usage = mirakana::rhi::TextureUsage::depth_stencil | mirakana::rhi::TextureUsage::shader_resource,
+    });
+    const auto constants = device->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = mirakana::volumetric_fog_constants_byte_size(),
+        .usage = mirakana::rhi::BufferUsage::uniform | mirakana::rhi::BufferUsage::copy_source,
+    });
+    const auto output = device->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = froxel_output_bytes,
+        .usage = mirakana::rhi::BufferUsage::storage | mirakana::rhi::BufferUsage::copy_source |
+                 mirakana::rhi::BufferUsage::copy_destination,
+    });
+    const auto initial_output = device->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = froxel_output_bytes,
+        .usage = mirakana::rhi::BufferUsage::copy_source,
+    });
+    const auto readback = device->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = froxel_output_bytes,
+        .usage = mirakana::rhi::BufferUsage::copy_destination,
+    });
+
+    std::array<std::uint8_t, mirakana::volumetric_fog_constants_byte_size()> constant_bytes{};
+    mirakana::pack_volumetric_fog_constants(constant_bytes,
+                                            mirakana::VolumetricFogPolicyDesc{
+                                                .quality_tier = mirakana::VolumetricFogQualityTier::high,
+                                                .froxel_grid =
+                                                    mirakana::VolumetricFogFroxelGridDesc{
+                                                        .width = froxel_width,
+                                                        .height = froxel_height,
+                                                        .depth_slices = froxel_depth_slices,
+                                                    },
+                                                .range_m = 8.0F,
+                                                .density = 0.25F,
+                                                .albedo = mirakana::Vec3{.x = 0.60F, .y = 0.75F, .z = 0.90F},
+                                                .anisotropy = 0.0F,
+                                                .temporal =
+                                                    mirakana::VolumetricFogTemporalDesc{
+                                                        .enabled = false,
+                                                        .history_weight = 0.0F,
+                                                    },
+                                                .raymarch_step_budget = 16,
+                                                .scene_depth_available = true,
+                                                .shader_contract_evidence_ready = true,
+                                                .execution_evidence_ready = true,
+                                            });
+    device->write_buffer(constants, 0, constant_bytes);
+
+    const std::vector<std::uint8_t> initial_bytes(froxel_output_bytes, 0);
+    device->write_buffer(initial_output, 0, initial_bytes);
+
+    const auto sampler = device->create_sampler(mirakana::rhi::SamplerDesc{
+        .min_filter = mirakana::rhi::SamplerFilter::nearest,
+        .mag_filter = mirakana::rhi::SamplerFilter::nearest,
+        .address_u = mirakana::rhi::SamplerAddressMode::clamp_to_edge,
+        .address_v = mirakana::rhi::SamplerAddressMode::clamp_to_edge,
+        .address_w = mirakana::rhi::SamplerAddressMode::clamp_to_edge,
+    });
+
+    const auto fog_set_layout = device->create_descriptor_set_layout(mirakana::rhi::DescriptorSetLayoutDesc{{
+        mirakana::rhi::DescriptorBindingDesc{
+            .binding = mirakana::volumetric_fog_scene_depth_texture_binding(),
+            .type = mirakana::rhi::DescriptorType::sampled_texture,
+            .count = 1,
+            .stages = mirakana::rhi::ShaderStageVisibility::compute,
+        },
+        mirakana::rhi::DescriptorBindingDesc{
+            .binding = mirakana::volumetric_fog_scene_depth_sampler_binding(),
+            .type = mirakana::rhi::DescriptorType::sampler,
+            .count = 1,
+            .stages = mirakana::rhi::ShaderStageVisibility::compute,
+        },
+        mirakana::rhi::DescriptorBindingDesc{
+            .binding = mirakana::volumetric_fog_constants_binding(),
+            .type = mirakana::rhi::DescriptorType::uniform_buffer,
+            .count = 1,
+            .stages = mirakana::rhi::ShaderStageVisibility::compute,
+        },
+        mirakana::rhi::DescriptorBindingDesc{
+            .binding = mirakana::volumetric_fog_froxel_output_buffer_binding(),
+            .type = mirakana::rhi::DescriptorType::storage_buffer,
+            .count = 1,
+            .stages = mirakana::rhi::ShaderStageVisibility::compute,
+        },
+    }});
+    const auto fog_set = device->allocate_descriptor_set(fog_set_layout);
+    device->update_descriptor_set(mirakana::rhi::DescriptorWrite{
+        .set = fog_set,
+        .binding = mirakana::volumetric_fog_scene_depth_texture_binding(),
+        .array_element = 0,
+        .resources = {mirakana::rhi::DescriptorResource::texture(mirakana::rhi::DescriptorType::sampled_texture,
+                                                                 scene_depth)},
+    });
+    device->update_descriptor_set(mirakana::rhi::DescriptorWrite{
+        .set = fog_set,
+        .binding = mirakana::volumetric_fog_scene_depth_sampler_binding(),
+        .array_element = 0,
+        .resources = {mirakana::rhi::DescriptorResource::sampler(sampler)},
+    });
+    device->update_descriptor_set(mirakana::rhi::DescriptorWrite{
+        .set = fog_set,
+        .binding = mirakana::volumetric_fog_constants_binding(),
+        .array_element = 0,
+        .resources = {mirakana::rhi::DescriptorResource::buffer(mirakana::rhi::DescriptorType::uniform_buffer,
+                                                                constants)},
+    });
+    device->update_descriptor_set(mirakana::rhi::DescriptorWrite{
+        .set = fog_set,
+        .binding = mirakana::volumetric_fog_froxel_output_buffer_binding(),
+        .array_element = 0,
+        .resources = {mirakana::rhi::DescriptorResource::buffer(mirakana::rhi::DescriptorType::storage_buffer, output)},
+    });
+
+    const auto scene_layout = device->create_pipeline_layout(
+        mirakana::rhi::PipelineLayoutDesc{.descriptor_sets = {}, .push_constant_bytes = 0});
+    const auto fog_layout = device->create_pipeline_layout(
+        mirakana::rhi::PipelineLayoutDesc{.descriptor_sets = {fog_set_layout}, .push_constant_bytes = 0});
+    const auto scene_vertex_shader = device->create_shader(mirakana::rhi::ShaderDesc{
+        .stage = mirakana::rhi::ShaderStage::vertex,
+        .entry_point = "vs_main",
+        .bytecode_size = depth_vertex_bytecode->GetBufferSize(),
+        .bytecode = depth_vertex_bytecode->GetBufferPointer(),
+    });
+    const auto scene_fragment_shader = device->create_shader(mirakana::rhi::ShaderDesc{
+        .stage = mirakana::rhi::ShaderStage::fragment,
+        .entry_point = "ps_main",
+        .bytecode_size = color_pixel_bytecode->GetBufferSize(),
+        .bytecode = color_pixel_bytecode->GetBufferPointer(),
+    });
+    const auto fog_shader = device->create_shader(mirakana::rhi::ShaderDesc{
+        .stage = mirakana::rhi::ShaderStage::compute,
+        .entry_point = "cs_main",
+        .bytecode_size = volumetric_fog_bytecode->GetBufferSize(),
+        .bytecode = volumetric_fog_bytecode->GetBufferPointer(),
+    });
+
+    auto scene_pipeline_desc = mirakana::rhi::GraphicsPipelineDesc{
+        .layout = scene_layout,
+        .vertex_shader = scene_vertex_shader,
+        .fragment_shader = scene_fragment_shader,
+        .color_format = mirakana::rhi::Format::rgba8_unorm,
+        .depth_format = mirakana::rhi::Format::depth24_stencil8,
+        .topology = mirakana::rhi::PrimitiveTopology::triangle_list,
+    };
+    scene_pipeline_desc.depth_state = mirakana::rhi::DepthStencilStateDesc{
+        .depth_test_enabled = true, .depth_write_enabled = true, .depth_compare = mirakana::rhi::CompareOp::less_equal};
+    const auto scene_pipeline = device->create_graphics_pipeline(scene_pipeline_desc);
+    const auto fog_pipeline = device->create_compute_pipeline(mirakana::rhi::ComputePipelineDesc{
+        .layout = fog_layout,
+        .compute_shader = fog_shader,
+    });
+
+    auto init_commands = device->begin_command_list(mirakana::rhi::QueueKind::copy);
+    init_commands->copy_buffer(initial_output, output,
+                               mirakana::rhi::BufferCopyRegion{
+                                   .source_offset = 0, .destination_offset = 0, .size_bytes = froxel_output_bytes});
+    init_commands->close();
+    const auto init_fence = device->submit(*init_commands);
+    device->wait(init_fence);
+
+    auto graphics_commands = device->begin_command_list(mirakana::rhi::QueueKind::graphics);
+    graphics_commands->begin_render_pass(mirakana::rhi::RenderPassDesc{
+        .color =
+            mirakana::rhi::RenderPassColorAttachment{
+                .texture = scene_color,
+                .load_action = mirakana::rhi::LoadAction::clear,
+                .store_action = mirakana::rhi::StoreAction::store,
+                .swapchain_frame = mirakana::rhi::SwapchainFrameHandle{},
+                .clear_color = mirakana::rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
+            },
+        .depth =
+            mirakana::rhi::RenderPassDepthAttachment{
+                .texture = scene_depth,
+                .load_action = mirakana::rhi::LoadAction::clear,
+                .store_action = mirakana::rhi::StoreAction::store,
+                .clear_depth = mirakana::rhi::ClearDepthValue{1.0F},
+            },
+    });
+    graphics_commands->bind_graphics_pipeline(scene_pipeline);
+    graphics_commands->draw(12, 1);
+    graphics_commands->end_render_pass();
+    graphics_commands->transition_texture(scene_depth, mirakana::rhi::ResourceState::depth_write,
+                                          mirakana::rhi::ResourceState::shader_read);
+    graphics_commands->close();
+    const auto graphics_fence = device->submit(*graphics_commands);
+    device->wait(graphics_fence);
+
+    auto compute_commands = device->begin_command_list(mirakana::rhi::QueueKind::compute);
+    compute_commands->bind_compute_pipeline(fog_pipeline);
+    compute_commands->bind_descriptor_set(fog_layout, 0, fog_set);
+    compute_commands->dispatch(1, 1, 1);
+    compute_commands->close();
+    const auto compute_fence = device->submit(*compute_commands);
+    device->wait(compute_fence);
+
+    auto copy_commands = device->begin_command_list(mirakana::rhi::QueueKind::copy);
+    copy_commands->copy_buffer(output, readback,
+                               mirakana::rhi::BufferCopyRegion{
+                                   .source_offset = 0, .destination_offset = 0, .size_bytes = froxel_output_bytes});
+    copy_commands->close();
+    const auto copy_fence = device->submit(*copy_commands);
+    device->wait(copy_fence);
+
+    const auto bytes = device->read_buffer(readback, 0, froxel_output_bytes);
+    const auto froxel_offset = [](std::uint32_t x, std::uint32_t y, std::uint32_t z) {
+        return static_cast<std::size_t>(((z * froxel_height * froxel_width) + (y * froxel_width) + x) *
+                                        sizeof(std::uint32_t));
+    };
+    const auto left_near = read_le_u32(bytes, froxel_offset(0, 1, 0));
+    const auto left_far = read_le_u32(bytes, froxel_offset(0, 1, 1));
+    const auto right_near = read_le_u32(bytes, froxel_offset(3, 1, 0));
+    const auto right_far = read_le_u32(bytes, froxel_offset(3, 1, 1));
+
+    MK_REQUIRE(bytes.size() == froxel_output_bytes);
+    MK_REQUIRE(left_near > 2000U);
+    MK_REQUIRE(left_far > left_near + 3000U);
+    MK_REQUIRE(right_near > left_near + 8000U);
+    MK_REQUIRE(right_far > right_near + 10000U);
+    MK_REQUIRE(device->stats().descriptor_writes == 4);
+    MK_REQUIRE(device->stats().descriptor_sets_bound == 1);
+    MK_REQUIRE(device->stats().draw_calls == 1);
+    MK_REQUIRE(device->stats().compute_dispatches == 1);
+    MK_REQUIRE(device->stats().buffer_copies == 2);
+    MK_REQUIRE(device->stats().buffer_reads == 1);
+    MK_REQUIRE(device->stats().buffer_writes == 2);
 }
 
 MK_TEST("d3d12 rhi device darkens a directional shadow receiver from sampled depth readback") {
