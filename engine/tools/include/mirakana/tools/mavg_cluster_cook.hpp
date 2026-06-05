@@ -14,7 +14,17 @@
 
 namespace mirakana {
 
+struct MavgClusterCookVertex {
+    MavgVec3f position;
+    MavgVec3f normal;
+    float u{0.0F};
+    float v{0.0F};
+};
+
 struct MavgClusterCookTriangle {
+    std::uint32_t i0{0};
+    std::uint32_t i1{0};
+    std::uint32_t i2{0};
     MavgBounds3f bounds;
 };
 
@@ -43,6 +53,7 @@ struct MavgClusterCookRequest {
     std::uint64_t source_revision{1};
     std::uint32_t target_cluster_triangles{128};
     std::uint64_t page_size_bytes{65536};
+    std::vector<MavgClusterCookVertex> vertices;
     std::vector<MavgClusterCookTriangle> triangles;
     std::vector<MavgClusterCookMaterialPartition> material_partitions;
     std::vector<MavgClusterCookPackageRow> package_rows;
