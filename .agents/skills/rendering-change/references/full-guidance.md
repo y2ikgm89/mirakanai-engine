@@ -81,6 +81,14 @@ router says the current task needs detailed API names, detailed validation lanes
   `plan_backend_renderer_parity_policy` must fail closed with `missing_host_validation_recipe` when Metal evidence omits the recipe id and
   `unreviewed_host_validation_recipe` when an arbitrary valid id is supplied, include the recipe id in replay hashes, keep `metal-apple`
   host-gated until Apple-host proof exists, and keep D3D12/Vulkan evidence backend-local.
+- For Environment Rendering Readiness v1 Task 8 / Metal environment feature work, use
+  `MetalEnvironmentFeatureHostEvidenceDesc`, `MetalEnvironmentFeatureEvidenceRequirement`, `MetalEnvironmentFeatureEvidenceRow`,
+  `MetalEnvironmentFeatureHostEvidencePlan`, `default_environment_feature_evidence_requirements`, and
+  `build_environment_feature_host_evidence_plan` in `MK_rhi_metal` for value-only physical sky, height fog, cloud layer, precipitation,
+  volumetric fog, volumetric cloud, and environment lighting/IBL host-gated rows. Keep rows `host_evidence_required` until the reviewed
+  `renderer-metal-apple-host-evidence` recipe runs on an Apple host and supplies runtime, command queue, non-empty `metallib`,
+  feature-local render/compute pipeline, render-pass, depth/particle, cube-map, and HDR texture evidence. D3D12/Vulkan proof and native
+  handles must not promote Metal environment readiness.
 - For GPU Memory Policy v1 work, keep `GpuMemoryPolicyDesc`, `GpuMemoryRequestDesc`, `GpuMemoryResidencyClass`, `GpuMemoryPolicyPlan`,
   `plan_gpu_memory_policy`, and `gpu_memory_policy_backend_evidence_ready` in the backend-neutral `MK_renderer` public contract. The planner
   may classify committed/placed/transient budget rows, declared memory budget evidence, residency pressure evidence, transient heap policy,

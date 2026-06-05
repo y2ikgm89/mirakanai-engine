@@ -4,7 +4,7 @@
 
 **Plan ID:** `environment-rendering-readiness-v1`
 
-**Status:** Active. This is a clean-break post-Environment-System follow-up, not an Engine 1.0 blocker. Tasks 1-7 now have selected D3D12 or strict host-gated evidence as recorded below; later Metal-host rows and remaining backend-local Vulkan/Metal feature proofs remain future task selections.
+**Status:** Active. This is a clean-break post-Environment-System follow-up, not an Engine 1.0 blocker. Tasks 1-7 now have selected D3D12 or strict host-gated evidence as recorded below; Task 8 now has Windows-side Metal environment feature host-gated rows, while Apple-host execution and remaining backend-local Vulkan/Metal feature proofs remain future task selections.
 
 **Goal:** Turn the completed Environment System v1 foundation into evidence-backed environment rendering readiness for snow, sky package proof, cloud and precipitation renderer execution, volumetric cloud/fog package proof, and backend-local D3D12/Vulkan/Metal claims without broad or inferred readiness.
 
@@ -61,6 +61,10 @@ Completed by Task 7:
 
 - Selected D3D12 environment lighting / IBL package-visible evidence with first-party cooked texture package records, source registry rows, explicit HDR metadata, reflection cubemap metadata, irradiance rows, radiance mip rows, HDR clamp rows, and zero renderer upload/backend invocation/runtime-capture/native-handle counters. Runtime cubemap capture, renderer/RHI cubemap upload, Vulkan, Metal, backend parity, and broad `environment_ready` remain unclaimed.
 
+Completed by Task 8 on Windows:
+
+- Metal environment feature host-gated evidence rows now exist in `MK_rhi_metal` for physical sky, height fog, cloud layer, precipitation, volumetric fog, volumetric cloud, and environment lighting/IBL. These rows stay `host_evidence_required` until the reviewed `renderer-metal-apple-host-evidence` recipe runs on an Apple host with runtime, command queue, non-empty `metallib`, feature-local render/compute pipeline, render-pass, depth/particle, cube-map, and HDR texture evidence. Apple-host execution remains unclaimed on this Windows host.
+
 ## Official Source Baseline
 
 Before executing any task, re-open the current official documents for that task. The 2026-06-05 planning audit used:
@@ -90,7 +94,7 @@ Source implications for this repo:
 - D3D12 root signatures, descriptor tables/heaps, resource states, barriers, and fences stay backend-private and must be validated with focused readback/package tests before promotion.
 - IBL package evidence is not cubemap upload evidence. Reflection cubemap metadata, irradiance coefficients, radiance mips, and HDR clamp policy can be validated as package-visible rows, but renderer upload requires a later backend-local texture-cube SRV/upload/readback proof.
 - Vulkan feature claims require synchronization2 layout transitions, descriptor updates, shader-read barriers, SPIR-V validation, `VK_LAYER_KHRONOS_validation`, and host/toolchain gates.
-- Metal claims require Apple-host pipeline/render/compute proof and feature-set availability; Windows validation cannot promote Metal.
+- Metal claims require Apple-host pipeline/render/compute proof and feature-set availability; Windows validation can define host-gated rows but cannot promote Metal readiness.
 
 ## Clean-Break Constraints
 
@@ -757,13 +761,15 @@ The ready claim is limited to selected D3D12 `sample_desktop_runtime_game` packa
 - Modify: `tests/unit/backend_scaffold_tests.cpp`
 - Modify: `docs/testing.md`
 
-- [ ] **Step 1: Re-open Apple Metal official docs**
+- [x] **Step 1: Re-open Apple Metal official docs**
 
 Use Apple render-pass configuration, render/compute pipeline state docs, and Metal Feature Set Tables.
 
 Expected: host gates name macOS, Xcode, `metal`, `metallib`, feature availability, and selected validation recipe ids.
 
-- [ ] **Step 2: Add host-gated rows**
+Evidence: Task 8 reopened Apple official render-pass configuration, `MTLRenderPipelineState`, `MTLComputePipelineState`, `MTLDevice`, `MTLRenderCommandEncoder`, and the 2026-02-05 Metal Feature Set Tables. Apple API pages are JavaScript-rendered, while the official Feature Set Tables PDF explicitly lists GPU-family feature availability for cube map texture arrays, memory barriers, read/write cube map textures, argument/resource limits, and runtime property checks. This candidate uses those sources only to define host-gated requirements, not ready claims.
+
+- [x] **Step 2: Add host-gated rows**
 
 For each selected environment feature, add rows that stay `host_evidence_required` until Apple-host validation runs:
 
@@ -777,6 +783,8 @@ For each selected environment feature, add rows that stay `host_evidence_require
 
 Expected: Windows and Vulkan evidence do not change Metal rows.
 
+Result: `MetalEnvironmentFeatureHostEvidenceDesc`, `MetalEnvironmentFeatureEvidenceRequirement`, `MetalEnvironmentFeatureEvidenceRow`, `MetalEnvironmentFeatureHostEvidencePlan`, `default_environment_feature_evidence_requirements`, and `build_environment_feature_host_evidence_plan` now live in `MK_rhi_metal`. The default requirements cover physical sky, height fog, cloud layer, precipitation, volumetric fog, volumetric cloud, and environment lighting/IBL. The plan returns `host_evidence_required` on Windows or before the reviewed `renderer-metal-apple-host-evidence` recipe supplies Apple runtime, command queue, non-empty `metallib`, render/compute pipeline, render-pass, depth/particle, cube-map, and HDR texture evidence as required by each feature. Missing feature-local proof and native-handle access fail closed.
+
 - [ ] **Step 3: Validate on Apple host**
 
 Run:
@@ -789,6 +797,18 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset ci-macos-
 ```
 
 Expected: exact feature rows can become Metal-ready only from Apple-host evidence.
+
+Current Windows-host result: host-gated. The Windows candidate validated the value contract with `MK_backend_scaffold_tests`, `tools/check-apple-host-evidence.ps1`, recipe dry-run, manifest/static checks, and full `tools/validate.ps1`; it did not run Apple-host `-RequireReady`, `ci-macos-appleclang`, or Metal native feature execution.
+
+**2026-06-05 Task 8 Windows Evidence:** GREEN/HOST-GATED:
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\cmake.ps1 --build --preset dev --target MK_backend_scaffold_tests` passed after adding the Metal environment host-gated value contract.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\ctest.ps1 --preset dev --output-on-failure -R "backend_scaffold"` passed; `MK_backend_scaffold_tests` verifies all seven selected environment feature rows stay `host_evidence_required` on Windows, require Apple host validation before ready, reject missing feature-local proof, and reject native-handle access.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\check-apple-host-evidence.ps1` exited 0 with `apple-host-evidence-check: host-gated` on this Windows host and reported missing macOS/Xcode/`xcrun`/iOS Simulator/`metal`/`metallib` blockers.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\run-validation-recipe.ps1 -Mode DryRun -Recipe renderer-metal-apple-host-evidence` passed and returned host gate `metal-apple`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\check-json-contracts.ps1`, `tools\check-ai-integration.ps1`, `tools\check-agents.ps1`, `tools\check-public-api-boundaries.ps1`, `tools\check-format.ps1`, and `git diff --check` passed after docs/manifest/skill/static-check synchronization.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -Command "& { & '.\tools\check-tidy.ps1' -Files @('engine/rhi/metal/src/metal_backend.cpp','tests/unit/backend_scaffold_tests.cpp') }"` passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\validate.ps1` passed with `validate: ok`; CTest reported `100% tests passed, 0 tests failed out of 99`. Metal shader tools and Apple host evidence remain explicit host-gated diagnostics on this Windows host.
 
 ## Task 9: First-Party Editor Environment Authoring Productization
 
