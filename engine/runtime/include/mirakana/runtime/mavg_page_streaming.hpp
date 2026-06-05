@@ -38,6 +38,13 @@ enum class RuntimeMavgPageStreamingDiagnosticCode : std::uint8_t {
     invalid_protected_mount,
     duplicate_protected_mount,
     eviction_plan_failed,
+    invalid_dispatch_row,
+    missing_dispatch_mount_ids,
+    dispatch_mount_id_count_mismatch,
+    invalid_dispatch_mount_id,
+    duplicate_dispatch_mount_id,
+    invalid_dispatch_mode,
+    unsafe_dispatch_mode,
 };
 
 struct RuntimeMavgPageStreamingDiagnostic {
@@ -114,6 +121,52 @@ struct RuntimeMavgPageStreamingDrainResult {
     }
 };
 
+enum class RuntimeMavgPageStreamingDispatchMode : std::uint8_t {
+    caller_owned_safe_point = 0,
+    caller_owned_background_queue,
+};
+
+struct RuntimeMavgPageStreamingDispatchDesc {
+    std::span<const RuntimeMavgPageStreamingPlanRow> queued_page_requests;
+    std::span<const RuntimeResidentPackageMountIdV2> mount_ids;
+    std::span<const RuntimeResidentPackageMountIdV2> eviction_candidate_unmount_order;
+    std::span<const RuntimeResidentPackageMountIdV2> protected_mount_ids;
+    RuntimeResourceResidencyBudgetV2 budget{};
+    RuntimePackageMountOverlay overlay{RuntimePackageMountOverlay::last_mount_wins};
+    RuntimeMavgPageStreamingDispatchMode mode{RuntimeMavgPageStreamingDispatchMode::caller_owned_safe_point};
+    std::size_t max_dispatch_rows{0};
+    bool require_safe_point{true};
+};
+
+struct RuntimeMavgPageStreamingDispatchRow {
+    RuntimeMavgPageStreamingDrainDesc drain_desc;
+    RuntimeMavgPageStreamingDispatchMode mode{RuntimeMavgPageStreamingDispatchMode::caller_owned_safe_point};
+    std::size_t dispatch_index{0};
+    bool safe_point_required{true};
+    bool background_worker_owned_by_caller{false};
+};
+
+struct RuntimeMavgPageStreamingDispatchPlan {
+    std::vector<RuntimeMavgPageStreamingDispatchRow> dispatch_rows;
+    std::vector<RuntimeMavgPageStreamingDiagnostic> diagnostics;
+    std::size_t input_request_count{0};
+    std::size_t dispatch_mount_id_count{0};
+    std::size_t duplicate_dispatch_mount_id_count{0};
+    std::size_t budget_dropped_request_count{0};
+    bool budget_degraded{false};
+    bool requires_safe_point{true};
+    bool caller_owned_background_queue{false};
+    bool invoked_file_io{false};
+    bool mutated_mount_set{false};
+    bool executed_streaming{false};
+    bool executed_background_worker{false};
+    bool touched_renderer_or_rhi_handles{false};
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty();
+    }
+};
+
 struct RuntimeMavgResidentPageMountRow {
     AssetId graph_asset;
     std::uint32_t page_index{0};
@@ -159,6 +212,9 @@ struct RuntimeMavgPageStreamingEvictionReviewResult {
 plan_runtime_mavg_page_streaming_requests(const RuntimeMavgPageStreamingPlanDesc& desc,
                                           std::span<const MavgLodPageRequest> page_requests,
                                           std::span<const RuntimeMavgPageStreamingCandidateRow> candidates);
+
+[[nodiscard]] RuntimeMavgPageStreamingDispatchPlan
+plan_runtime_mavg_page_streaming_dispatches(const RuntimeMavgPageStreamingDispatchDesc& desc);
 
 [[nodiscard]] RuntimeMavgPageStreamingDrainResult execute_runtime_mavg_page_streaming_request_safe_point(
     IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,

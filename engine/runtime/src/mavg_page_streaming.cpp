@@ -42,6 +42,16 @@ void add_diagnostic(RuntimeMavgPageStreamingEvictionReviewResult& result, Runtim
     });
 }
 
+void add_diagnostic(RuntimeMavgPageStreamingDispatchPlan& result, RuntimeMavgPageStreamingDiagnosticCode code,
+                    AssetId graph_asset, std::uint32_t page_index, std::string message) {
+    result.diagnostics.push_back(RuntimeMavgPageStreamingDiagnostic{
+        .code = code,
+        .graph_asset = graph_asset,
+        .page_index = page_index,
+        .message = std::move(message),
+    });
+}
+
 [[nodiscard]] bool has_page(const MavgClusterGraphDocument& graph, std::uint32_t page_index) noexcept {
     return std::ranges::any_of(
         graph.pages, [page_index](const MavgClusterGraphPage& page) { return page.page_index == page_index; });
@@ -58,6 +68,16 @@ void add_diagnostic(RuntimeMavgPageStreamingEvictionReviewResult& result, Runtim
 [[nodiscard]] bool valid_reason(const std::string& reason) noexcept {
     return !reason.empty() && reason.find('\0') == std::string::npos && reason.find('\n') == std::string::npos &&
            reason.find('\r') == std::string::npos;
+}
+
+[[nodiscard]] bool valid_dispatch_mode(RuntimeMavgPageStreamingDispatchMode mode) noexcept {
+    return mode == RuntimeMavgPageStreamingDispatchMode::caller_owned_safe_point ||
+           mode == RuntimeMavgPageStreamingDispatchMode::caller_owned_background_queue;
+}
+
+[[nodiscard]] bool valid_dispatch_row(const RuntimeMavgPageStreamingPlanRow& row) noexcept {
+    return row.graph_asset.value != 0 && std::isfinite(row.priority) && valid_reason(row.reason) &&
+           valid_candidate(row.candidate);
 }
 
 [[nodiscard]] const RuntimeMavgPageStreamingCandidateRow*
@@ -280,6 +300,106 @@ plan_runtime_mavg_page_streaming_requests(const RuntimeMavgPageStreamingPlanDesc
         coalesced.resize(desc.max_queued_pages);
     }
     result.queued_page_requests = std::move(coalesced);
+    return result;
+}
+
+RuntimeMavgPageStreamingDispatchPlan
+plan_runtime_mavg_page_streaming_dispatches(const RuntimeMavgPageStreamingDispatchDesc& desc) {
+    RuntimeMavgPageStreamingDispatchPlan result;
+    result.input_request_count = desc.queued_page_requests.size();
+    result.dispatch_mount_id_count = desc.mount_ids.size();
+    result.requires_safe_point = desc.require_safe_point;
+    result.caller_owned_background_queue =
+        desc.mode == RuntimeMavgPageStreamingDispatchMode::caller_owned_background_queue;
+    result.invoked_file_io = false;
+    result.mutated_mount_set = false;
+    result.executed_streaming = false;
+    result.executed_background_worker = false;
+    result.touched_renderer_or_rhi_handles = false;
+
+    bool invalid_inputs = false;
+    if (!valid_dispatch_mode(desc.mode)) {
+        add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::invalid_dispatch_mode, {}, 0,
+                       "MAVG page streaming dispatch mode is not supported");
+        invalid_inputs = true;
+    }
+    if (!desc.require_safe_point) {
+        add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::unsafe_dispatch_mode, {}, 0,
+                       "MAVG page streaming dispatch requires a caller-owned safe point for residency mutation");
+        invalid_inputs = true;
+    }
+    if (!desc.queued_page_requests.empty() && desc.mount_ids.empty()) {
+        add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::missing_dispatch_mount_ids, {}, 0,
+                       "MAVG page streaming dispatch requires caller-assigned mount ids");
+        invalid_inputs = true;
+    }
+    if (desc.mount_ids.size() != desc.queued_page_requests.size()) {
+        add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::dispatch_mount_id_count_mismatch, {}, 0,
+                       "MAVG page streaming dispatch mount ids must match queued page request rows");
+        invalid_inputs = true;
+    }
+
+    for (const auto& row : desc.queued_page_requests) {
+        if (!valid_dispatch_row(row)) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::invalid_dispatch_row, row.graph_asset,
+                           row.page_index,
+                           "MAVG page streaming dispatch rows must be validated queued page request rows");
+            invalid_inputs = true;
+        }
+    }
+
+    std::vector<RuntimeResidentPackageMountIdV2> seen_mount_ids;
+    for (const auto mount_id : desc.mount_ids) {
+        if (mount_id.value == 0) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::invalid_dispatch_mount_id, {}, 0,
+                           "MAVG page streaming dispatch mount ids must be non-zero");
+            invalid_inputs = true;
+            continue;
+        }
+        if (contains_mount_id(seen_mount_ids, mount_id)) {
+            ++result.duplicate_dispatch_mount_id_count;
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::duplicate_dispatch_mount_id, {}, 0,
+                           "MAVG page streaming dispatch mount ids must be unique");
+            invalid_inputs = true;
+            continue;
+        }
+        seen_mount_ids.push_back(mount_id);
+    }
+
+    if (invalid_inputs) {
+        return result;
+    }
+
+    auto dispatch_count = desc.queued_page_requests.size();
+    if (desc.max_dispatch_rows > 0 && dispatch_count > desc.max_dispatch_rows) {
+        result.budget_degraded = true;
+        result.budget_dropped_request_count = dispatch_count - desc.max_dispatch_rows;
+        dispatch_count = desc.max_dispatch_rows;
+    }
+
+    result.dispatch_rows.reserve(dispatch_count);
+    for (std::size_t row_index = 0; row_index < dispatch_count; ++row_index) {
+        std::vector<RuntimeResidentPackageMountIdV2> eviction_candidate_unmount_order(
+            desc.eviction_candidate_unmount_order.begin(), desc.eviction_candidate_unmount_order.end());
+        std::vector<RuntimeResidentPackageMountIdV2> protected_mount_ids(desc.protected_mount_ids.begin(),
+                                                                         desc.protected_mount_ids.end());
+        result.dispatch_rows.push_back(RuntimeMavgPageStreamingDispatchRow{
+            .drain_desc =
+                RuntimeMavgPageStreamingDrainDesc{
+                    .row = desc.queued_page_requests[row_index],
+                    .mount_id = desc.mount_ids[row_index],
+                    .overlay = desc.overlay,
+                    .budget = desc.budget,
+                    .eviction_candidate_unmount_order = std::move(eviction_candidate_unmount_order),
+                    .protected_mount_ids = std::move(protected_mount_ids),
+                },
+            .mode = desc.mode,
+            .dispatch_index = row_index,
+            .safe_point_required = desc.require_safe_point,
+            .background_worker_owned_by_caller =
+                desc.mode == RuntimeMavgPageStreamingDispatchMode::caller_owned_background_queue,
+        });
+    }
     return result;
 }
 

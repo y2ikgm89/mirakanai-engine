@@ -19,7 +19,12 @@ foreach ($needle in @(
         "RuntimeMavgResidentPageMountRow",
         "RuntimeMavgPageStreamingSelectedClusterRow",
         "RuntimeMavgPageStreamingEvictionReviewResult",
+        "RuntimeMavgPageStreamingDispatchMode",
+        "RuntimeMavgPageStreamingDispatchDesc",
+        "RuntimeMavgPageStreamingDispatchRow",
+        "RuntimeMavgPageStreamingDispatchPlan",
         "plan_runtime_mavg_page_streaming_requests",
+        "plan_runtime_mavg_page_streaming_dispatches",
         "review_runtime_mavg_page_streaming_evictions",
         "execute_runtime_mavg_page_streaming_request_safe_point",
         "executed_background_worker",
@@ -33,7 +38,11 @@ foreach ($needle in @(
         "selected_graph_mismatch",
         "missing_page_mount",
         "max_queued_pages",
+        "max_dispatch_rows",
         "missing_candidate",
+        "invalid_dispatch_row",
+        "duplicate_dispatch_mount_id",
+        "unsafe_dispatch_mode",
         "safe_point_failed"
     )) {
     Assert-ContainsText $runtimeMavgPageStreamingSourceText $needle "engine/runtime/src/mavg_page_streaming.cpp"
@@ -41,6 +50,9 @@ foreach ($needle in @(
 foreach ($needle in @(
         "runtime mavg page streaming planner coalesces nonresident requests deterministically",
         "runtime mavg page streaming planner applies deterministic max page budget",
+        "runtime mavg page streaming dispatch planner builds safe point rows deterministically",
+        "runtime mavg page streaming dispatch planner records caller owned background queue without executing worker",
+        "runtime mavg page streaming dispatch planner rejects unsafe no safe point mutation boundary",
         "runtime mavg page streaming eviction review protects selected pages and fallback ancestors",
         "runtime mavg page streaming eviction review rejects protected selected eviction candidate",
         "runtime mavg page streaming executes one queued row through reviewed safe point"
@@ -87,7 +99,7 @@ foreach ($surface in @(
     foreach ($needle in @("mavg_conventional_upload.hpp", "RuntimeMavgConventionalMeshUploadResult", "upload_runtime_mavg_conventional_mesh_binding", "autonomous background")) {
         Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG conventional runtime upload evidence"
     }
-    foreach ($needle in @("mavg_page_streaming.hpp", "RuntimeMavgPageStreamingPlanResult", "RuntimeMavgPageStreamingEvictionReviewResult", "review_runtime_mavg_page_streaming_evictions", "execute_runtime_mavg_page_streaming_request_safe_point", "autonomous background")) {
+    foreach ($needle in @("mavg_page_streaming.hpp", "RuntimeMavgPageStreamingPlanResult", "RuntimeMavgPageStreamingEvictionReviewResult", "RuntimeMavgPageStreamingDispatchPlan", "review_runtime_mavg_page_streaming_evictions", "plan_runtime_mavg_page_streaming_dispatches", "execute_runtime_mavg_page_streaming_request_safe_point", "autonomous background")) {
         Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG page streaming queue evidence"
     }
 }
@@ -104,11 +116,13 @@ foreach ($needle in @(
         "RuntimeMavgPageStreamingDrainResult",
         "RuntimeMavgPageStreamingEvictionReviewResult",
         "RuntimeMavgResidentPageMountRow",
-        "RuntimeMavgPageStreamingSelectedClusterRow",
-        "plan_runtime_mavg_page_streaming_requests",
-        "review_runtime_mavg_page_streaming_evictions",
-        "execute_runtime_mavg_page_streaming_request_safe_point",
-        "autonomous background"
+    "RuntimeMavgPageStreamingSelectedClusterRow",
+    "RuntimeMavgPageStreamingDispatchPlan",
+    "plan_runtime_mavg_page_streaming_requests",
+    "plan_runtime_mavg_page_streaming_dispatches",
+    "review_runtime_mavg_page_streaming_evictions",
+    "execute_runtime_mavg_page_streaming_request_safe_point",
+    "autonomous background"
     )) {
     Assert-ContainsText $runtimeManifestText $needle "engine/agent/manifest.json MK_runtime MAVG page streaming queue evidence"
 }

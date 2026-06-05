@@ -194,6 +194,16 @@ void mount_resident_page(mirakana::runtime::RuntimeResidentPackageMountSetV2& mo
     return false;
 }
 
+[[nodiscard]] bool has_diagnostic(const mirakana::runtime::RuntimeMavgPageStreamingDispatchPlan& result,
+                                  mirakana::runtime::RuntimeMavgPageStreamingDiagnosticCode code) {
+    for (const auto& diagnostic : result.diagnostics) {
+        if (diagnostic.code == code) {
+            return true;
+        }
+    }
+    return false;
+}
+
 [[nodiscard]] bool contains_mount_id(const std::vector<mirakana::runtime::RuntimeResidentPackageMountIdV2>& mount_ids,
                                      mirakana::runtime::RuntimeResidentPackageMountIdV2 mount_id) {
     for (const auto candidate : mount_ids) {
@@ -328,6 +338,235 @@ MK_TEST("runtime mavg page streaming planner rejects missing package candidates"
     MK_REQUIRE(!result.succeeded());
     MK_REQUIRE(result.missing_candidate_count == 1U);
     MK_REQUIRE(has_diagnostic(result, mirakana::runtime::RuntimeMavgPageStreamingDiagnosticCode::missing_candidate));
+}
+
+MK_TEST("runtime mavg page streaming dispatch planner builds safe point rows deterministically") {
+    const auto graph = make_page_streaming_graph();
+    const auto resident = mirakana::MavgLodResidentPageSet{.page_indices = {0}};
+    const std::vector<mirakana::MavgLodPageRequest> requests{
+        make_request(graph.asset, 1, 4.0F, "visible-left"),
+        make_request(graph.asset, 2, 8.0F, "visible-right"),
+    };
+    const std::vector<mirakana::runtime::RuntimeMavgPageStreamingCandidateRow> candidates{
+        make_streaming_candidate(graph.asset, 1),
+        make_streaming_candidate(graph.asset, 2),
+    };
+    const auto plan = mirakana::runtime::plan_runtime_mavg_page_streaming_requests(
+        mirakana::runtime::RuntimeMavgPageStreamingPlanDesc{
+            .graph_asset = graph.asset,
+            .graph = &graph,
+            .resident_pages = &resident,
+        },
+        requests, candidates);
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.queued_page_requests.size() == 2U);
+
+    const std::vector<mirakana::runtime::RuntimeResidentPackageMountIdV2> mount_ids{{.value = 42}, {.value = 43}};
+    const std::vector<mirakana::runtime::RuntimeResidentPackageMountIdV2> eviction_order{{.value = 12}};
+    const std::vector<mirakana::runtime::RuntimeResidentPackageMountIdV2> protected_mounts{{.value = 10},
+                                                                                           {.value = 11}};
+    const auto dispatch = mirakana::runtime::plan_runtime_mavg_page_streaming_dispatches(
+        mirakana::runtime::RuntimeMavgPageStreamingDispatchDesc{
+            .queued_page_requests = plan.queued_page_requests,
+            .mount_ids = mount_ids,
+            .eviction_candidate_unmount_order = eviction_order,
+            .protected_mount_ids = protected_mounts,
+            .budget = mirakana::runtime::RuntimeResourceResidencyBudgetV2{.max_resident_content_bytes = 4096},
+            .mode = mirakana::runtime::RuntimeMavgPageStreamingDispatchMode::caller_owned_safe_point,
+        });
+
+    MK_REQUIRE(dispatch.succeeded());
+    MK_REQUIRE(dispatch.input_request_count == 2U);
+    MK_REQUIRE(dispatch.dispatch_mount_id_count == 2U);
+    MK_REQUIRE(!dispatch.budget_degraded);
+    MK_REQUIRE(dispatch.dispatch_rows.size() == 2U);
+    MK_REQUIRE(dispatch.dispatch_rows[0].dispatch_index == 0U);
+    MK_REQUIRE(dispatch.dispatch_rows[0].mode ==
+               mirakana::runtime::RuntimeMavgPageStreamingDispatchMode::caller_owned_safe_point);
+    MK_REQUIRE(dispatch.dispatch_rows[0].safe_point_required);
+    MK_REQUIRE(!dispatch.dispatch_rows[0].background_worker_owned_by_caller);
+    MK_REQUIRE(dispatch.dispatch_rows[0].drain_desc.row.page_index == 2U);
+    MK_REQUIRE(dispatch.dispatch_rows[0].drain_desc.mount_id ==
+               mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 42});
+    MK_REQUIRE(dispatch.dispatch_rows[0].drain_desc.overlay ==
+               mirakana::runtime::RuntimePackageMountOverlay::last_mount_wins);
+    MK_REQUIRE(dispatch.dispatch_rows[0].drain_desc.budget.max_resident_content_bytes == 4096U);
+    MK_REQUIRE(dispatch.dispatch_rows[0].drain_desc.eviction_candidate_unmount_order.size() == 1U);
+    MK_REQUIRE(dispatch.dispatch_rows[0].drain_desc.protected_mount_ids.size() == 2U);
+    MK_REQUIRE(dispatch.dispatch_rows[1].dispatch_index == 1U);
+    MK_REQUIRE(dispatch.dispatch_rows[1].drain_desc.row.page_index == 1U);
+    MK_REQUIRE(dispatch.dispatch_rows[1].drain_desc.mount_id ==
+               mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 43});
+    MK_REQUIRE(!dispatch.invoked_file_io);
+    MK_REQUIRE(!dispatch.mutated_mount_set);
+    MK_REQUIRE(!dispatch.executed_streaming);
+    MK_REQUIRE(!dispatch.executed_background_worker);
+    MK_REQUIRE(!dispatch.touched_renderer_or_rhi_handles);
+}
+
+MK_TEST("runtime mavg page streaming dispatch planner applies deterministic max dispatch budget") {
+    const auto graph = make_page_streaming_graph();
+    const auto resident = mirakana::MavgLodResidentPageSet{.page_indices = {0}};
+    const std::vector<mirakana::MavgLodPageRequest> requests{
+        make_request(graph.asset, 1, 4.0F, "visible-left"),
+        make_request(graph.asset, 2, 8.0F, "visible-right"),
+    };
+    const std::vector<mirakana::runtime::RuntimeMavgPageStreamingCandidateRow> candidates{
+        make_streaming_candidate(graph.asset, 1),
+        make_streaming_candidate(graph.asset, 2),
+    };
+    const auto plan = mirakana::runtime::plan_runtime_mavg_page_streaming_requests(
+        mirakana::runtime::RuntimeMavgPageStreamingPlanDesc{
+            .graph_asset = graph.asset,
+            .graph = &graph,
+            .resident_pages = &resident,
+        },
+        requests, candidates);
+    MK_REQUIRE(plan.succeeded());
+    const std::vector<mirakana::runtime::RuntimeResidentPackageMountIdV2> mount_ids{{.value = 42}, {.value = 43}};
+
+    const auto dispatch = mirakana::runtime::plan_runtime_mavg_page_streaming_dispatches(
+        mirakana::runtime::RuntimeMavgPageStreamingDispatchDesc{
+            .queued_page_requests = plan.queued_page_requests,
+            .mount_ids = mount_ids,
+            .max_dispatch_rows = 1,
+        });
+
+    MK_REQUIRE(dispatch.succeeded());
+    MK_REQUIRE(dispatch.budget_degraded);
+    MK_REQUIRE(dispatch.budget_dropped_request_count == 1U);
+    MK_REQUIRE(dispatch.dispatch_rows.size() == 1U);
+    MK_REQUIRE(dispatch.dispatch_rows[0].drain_desc.row.page_index == 2U);
+    MK_REQUIRE(dispatch.dispatch_rows[0].drain_desc.mount_id ==
+               mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 42});
+    MK_REQUIRE(!dispatch.executed_streaming);
+    MK_REQUIRE(!dispatch.executed_background_worker);
+}
+
+MK_TEST("runtime mavg page streaming dispatch planner records caller owned background queue without executing worker") {
+    const auto graph = make_page_streaming_graph();
+    const auto resident = mirakana::MavgLodResidentPageSet{.page_indices = {0}};
+    const std::vector<mirakana::MavgLodPageRequest> requests{
+        make_request(graph.asset, 2, 8.0F, "visible-right"),
+    };
+    const std::vector<mirakana::runtime::RuntimeMavgPageStreamingCandidateRow> candidates{
+        make_streaming_candidate(graph.asset, 2),
+    };
+    const auto plan = mirakana::runtime::plan_runtime_mavg_page_streaming_requests(
+        mirakana::runtime::RuntimeMavgPageStreamingPlanDesc{
+            .graph_asset = graph.asset,
+            .graph = &graph,
+            .resident_pages = &resident,
+        },
+        requests, candidates);
+    MK_REQUIRE(plan.succeeded());
+    const std::vector<mirakana::runtime::RuntimeResidentPackageMountIdV2> mount_ids{{.value = 42}};
+
+    const auto dispatch = mirakana::runtime::plan_runtime_mavg_page_streaming_dispatches(
+        mirakana::runtime::RuntimeMavgPageStreamingDispatchDesc{
+            .queued_page_requests = plan.queued_page_requests,
+            .mount_ids = mount_ids,
+            .mode = mirakana::runtime::RuntimeMavgPageStreamingDispatchMode::caller_owned_background_queue,
+        });
+
+    MK_REQUIRE(dispatch.succeeded());
+    MK_REQUIRE(dispatch.caller_owned_background_queue);
+    MK_REQUIRE(dispatch.requires_safe_point);
+    MK_REQUIRE(dispatch.dispatch_rows.size() == 1U);
+    MK_REQUIRE(dispatch.dispatch_rows[0].mode ==
+               mirakana::runtime::RuntimeMavgPageStreamingDispatchMode::caller_owned_background_queue);
+    MK_REQUIRE(dispatch.dispatch_rows[0].background_worker_owned_by_caller);
+    MK_REQUIRE(dispatch.dispatch_rows[0].safe_point_required);
+    MK_REQUIRE(!dispatch.invoked_file_io);
+    MK_REQUIRE(!dispatch.mutated_mount_set);
+    MK_REQUIRE(!dispatch.executed_streaming);
+    MK_REQUIRE(!dispatch.executed_background_worker);
+    MK_REQUIRE(!dispatch.touched_renderer_or_rhi_handles);
+}
+
+MK_TEST("runtime mavg page streaming dispatch planner rejects invalid dispatch rows before side effects") {
+    const auto graph = make_page_streaming_graph();
+    auto invalid_row = mirakana::runtime::RuntimeMavgPageStreamingPlanRow{
+        .graph_asset = graph.asset,
+        .page_index = 2,
+        .priority = std::numeric_limits<float>::quiet_NaN(),
+        .reason = "",
+        .candidate = make_candidate(2),
+    };
+    const std::vector<mirakana::runtime::RuntimeMavgPageStreamingPlanRow> rows{invalid_row};
+    const std::vector<mirakana::runtime::RuntimeResidentPackageMountIdV2> invalid_mount_ids{{.value = 0}};
+
+    const auto invalid = mirakana::runtime::plan_runtime_mavg_page_streaming_dispatches(
+        mirakana::runtime::RuntimeMavgPageStreamingDispatchDesc{
+            .queued_page_requests = rows,
+            .mount_ids = invalid_mount_ids,
+        });
+
+    MK_REQUIRE(!invalid.succeeded());
+    MK_REQUIRE(invalid.dispatch_rows.empty());
+    MK_REQUIRE(
+        has_diagnostic(invalid, mirakana::runtime::RuntimeMavgPageStreamingDiagnosticCode::invalid_dispatch_row));
+    MK_REQUIRE(
+        has_diagnostic(invalid, mirakana::runtime::RuntimeMavgPageStreamingDiagnosticCode::invalid_dispatch_mount_id));
+    MK_REQUIRE(!invalid.invoked_file_io);
+    MK_REQUIRE(!invalid.mutated_mount_set);
+    MK_REQUIRE(!invalid.executed_streaming);
+    MK_REQUIRE(!invalid.executed_background_worker);
+    MK_REQUIRE(!invalid.touched_renderer_or_rhi_handles);
+
+    invalid_row.priority = 1.0F;
+    invalid_row.reason = "valid-row";
+    const std::vector<mirakana::runtime::RuntimeMavgPageStreamingPlanRow> valid_rows{invalid_row, invalid_row};
+    const std::vector<mirakana::runtime::RuntimeResidentPackageMountIdV2> duplicate_mount_ids{{.value = 42},
+                                                                                              {.value = 42}};
+    const auto duplicate = mirakana::runtime::plan_runtime_mavg_page_streaming_dispatches(
+        mirakana::runtime::RuntimeMavgPageStreamingDispatchDesc{
+            .queued_page_requests = valid_rows,
+            .mount_ids = duplicate_mount_ids,
+        });
+
+    MK_REQUIRE(!duplicate.succeeded());
+    MK_REQUIRE(duplicate.dispatch_rows.empty());
+    MK_REQUIRE(duplicate.duplicate_dispatch_mount_id_count == 1U);
+    MK_REQUIRE(has_diagnostic(duplicate,
+                              mirakana::runtime::RuntimeMavgPageStreamingDiagnosticCode::duplicate_dispatch_mount_id));
+}
+
+MK_TEST("runtime mavg page streaming dispatch planner rejects unsafe no safe point mutation boundary") {
+    const auto graph = make_page_streaming_graph();
+    const auto resident = mirakana::MavgLodResidentPageSet{.page_indices = {0}};
+    const std::vector<mirakana::MavgLodPageRequest> requests{
+        make_request(graph.asset, 2, 8.0F, "visible-right"),
+    };
+    const std::vector<mirakana::runtime::RuntimeMavgPageStreamingCandidateRow> candidates{
+        make_streaming_candidate(graph.asset, 2),
+    };
+    const auto plan = mirakana::runtime::plan_runtime_mavg_page_streaming_requests(
+        mirakana::runtime::RuntimeMavgPageStreamingPlanDesc{
+            .graph_asset = graph.asset,
+            .graph = &graph,
+            .resident_pages = &resident,
+        },
+        requests, candidates);
+    MK_REQUIRE(plan.succeeded());
+    const std::vector<mirakana::runtime::RuntimeResidentPackageMountIdV2> mount_ids{{.value = 42}};
+
+    const auto dispatch = mirakana::runtime::plan_runtime_mavg_page_streaming_dispatches(
+        mirakana::runtime::RuntimeMavgPageStreamingDispatchDesc{
+            .queued_page_requests = plan.queued_page_requests,
+            .mount_ids = mount_ids,
+            .require_safe_point = false,
+        });
+
+    MK_REQUIRE(!dispatch.succeeded());
+    MK_REQUIRE(dispatch.dispatch_rows.empty());
+    MK_REQUIRE(
+        has_diagnostic(dispatch, mirakana::runtime::RuntimeMavgPageStreamingDiagnosticCode::unsafe_dispatch_mode));
+    MK_REQUIRE(!dispatch.invoked_file_io);
+    MK_REQUIRE(!dispatch.mutated_mount_set);
+    MK_REQUIRE(!dispatch.executed_streaming);
+    MK_REQUIRE(!dispatch.executed_background_worker);
+    MK_REQUIRE(!dispatch.touched_renderer_or_rhi_handles);
 }
 
 MK_TEST("runtime mavg page streaming executes one queued row through reviewed safe point") {
