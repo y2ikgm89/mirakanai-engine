@@ -19,6 +19,8 @@ namespace {
                 .mip_count = 9,
                 .format = mirakana::EnvironmentLightingTextureFormat::rgba16_float,
                 .hdr_metadata_ready = true,
+                .package_record_ready = true,
+                .package_source_ready = true,
                 .package_evidence_ready = true,
             },
         .irradiance =
@@ -57,12 +59,18 @@ MK_TEST("renderer environment lighting policy separates visual sky from IBL rows
     MK_REQUIRE(!plan.allocates_textures);
     MK_REQUIRE(!plan.invokes_backend);
     MK_REQUIRE(!plan.exposes_native_handles);
+    MK_REQUIRE(!plan.renderer_upload_evidence_ready);
+    MK_REQUIRE(plan.texture_uploads == 0);
+    MK_REQUIRE(plan.backend_invocations == 0);
+    MK_REQUIRE(plan.runtime_captures == 0);
 
     MK_REQUIRE(plan.reflection_cubemap_rows.size() == 1);
     MK_REQUIRE(plan.reflection_cubemap_rows[0].asset == mirakana::AssetId::from_name("environment/day_ibl_cubemap"));
     MK_REQUIRE(plan.reflection_cubemap_rows[0].face_count == 6);
     MK_REQUIRE(plan.reflection_cubemap_rows[0].edge_size == 256);
     MK_REQUIRE(plan.reflection_cubemap_rows[0].mip_count == 9);
+    MK_REQUIRE(plan.reflection_cubemap_rows[0].package_record_ready);
+    MK_REQUIRE(plan.reflection_cubemap_rows[0].package_source_ready);
     MK_REQUIRE(plan.reflection_cubemap_rows[0].package_evidence_ready);
 
     MK_REQUIRE(plan.irradiance_rows.size() == 9);
@@ -79,9 +87,28 @@ MK_TEST("renderer environment lighting policy separates visual sky from IBL rows
     MK_REQUIRE(plan.radiance_mip_rows[8].roughness > 0.99F);
 
     MK_REQUIRE(plan.package_evidence_rows.size() == 1);
+    MK_REQUIRE(plan.package_evidence_rows[0].package_record_ready);
+    MK_REQUIRE(plan.package_evidence_rows[0].package_source_ready);
+    MK_REQUIRE(plan.package_evidence_rows[0].hdr_metadata_ready);
+    MK_REQUIRE(!plan.package_evidence_rows[0].renderer_upload_evidence_ready);
     MK_REQUIRE(plan.package_evidence_rows[0].ready);
     MK_REQUIRE(plan.hdr_clamp_row.enabled);
     MK_REQUIRE(plan.hdr_clamp_row.max_luminance_nits == 20000.0F);
+}
+
+MK_TEST("renderer environment lighting policy blocks policy-only package claims") {
+    auto desc = make_valid_lighting_desc();
+    desc.reflection_cubemap.package_record_ready = false;
+    desc.reflection_cubemap.package_source_ready = false;
+
+    const auto plan = mirakana::plan_environment_lighting_policy(desc);
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(plan.package_evidence_rows.empty());
+    MK_REQUIRE(mirakana::has_environment_lighting_diagnostic(
+        plan, mirakana::EnvironmentLightingDiagnosticCode::missing_package_record));
+    MK_REQUIRE(mirakana::has_environment_lighting_diagnostic(
+        plan, mirakana::EnvironmentLightingDiagnosticCode::missing_package_source));
 }
 
 MK_TEST("renderer environment lighting policy fails closed for dependency and runtime claims") {
@@ -93,6 +120,8 @@ MK_TEST("renderer environment lighting policy fails closed for dependency and ru
     desc.reflection_cubemap.edge_size = 300;
     desc.reflection_cubemap.mip_count = 0;
     desc.reflection_cubemap.hdr_metadata_ready = false;
+    desc.reflection_cubemap.package_record_ready = false;
+    desc.reflection_cubemap.package_source_ready = false;
     desc.reflection_cubemap.package_evidence_ready = false;
     desc.irradiance.spherical_harmonic_order = 4;
     desc.irradiance.coefficient_count = 6;
@@ -127,6 +156,10 @@ MK_TEST("renderer environment lighting policy fails closed for dependency and ru
         plan, mirakana::EnvironmentLightingDiagnosticCode::missing_hdr_metadata));
     MK_REQUIRE(mirakana::has_environment_lighting_diagnostic(
         plan, mirakana::EnvironmentLightingDiagnosticCode::missing_package_evidence));
+    MK_REQUIRE(mirakana::has_environment_lighting_diagnostic(
+        plan, mirakana::EnvironmentLightingDiagnosticCode::missing_package_record));
+    MK_REQUIRE(mirakana::has_environment_lighting_diagnostic(
+        plan, mirakana::EnvironmentLightingDiagnosticCode::missing_package_source));
     MK_REQUIRE(mirakana::has_environment_lighting_diagnostic(
         plan, mirakana::EnvironmentLightingDiagnosticCode::invalid_irradiance_order));
     MK_REQUIRE(mirakana::has_environment_lighting_diagnostic(

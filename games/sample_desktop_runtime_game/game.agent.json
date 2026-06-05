@@ -125,6 +125,12 @@
           "kind": "texture",
           "purpose": "Cooked flow-map texture fixture for D3D12 cloud layer renderer execution evidence.",
           "delivery": "runtime-package-file"
+        },
+        {
+          "id": "environment-ibl-cubemap",
+          "kind": "texture",
+          "purpose": "First-party cooked IBL metadata fixture for selected environment lighting package evidence without renderer cubemap upload or runtime capture.",
+          "delivery": "runtime-package-file"
         }
       ],
       "systems": [
@@ -138,6 +144,7 @@
         "environment-volumetric-fog-package",
         "environment-volumetric-cloud-package",
         "environment-volumetric-cloud-renderer-execution",
+        "environment-lighting-package",
         "cloud-layer-package",
         "cloud-layer-renderer-execution",
         "environment-precipitation-package",
@@ -162,6 +169,7 @@
         "desktop-runtime-sample-game-environment-volumetric-fog-package",
         "desktop-runtime-sample-game-volumetric-cloud-package",
         "desktop-runtime-sample-game-volumetric-cloud-renderer-execution",
+        "desktop-runtime-sample-game-environment-lighting-package",
         "desktop-runtime-sample-game-physical-sky-package",
         "desktop-runtime-sample-game-cloud-layer-package",
         "desktop-runtime-sample-game-cloud-layer-renderer-execution",
@@ -228,6 +236,13 @@
           "evidence": "The selected D3D12 volumetric cloud renderer execution smoke uses --require-volumetric-cloud-renderer-execution and reports environment_volumetric_cloud_status=ready, shader/package/execution evidence ready, stable bindings 10/11/12/10/8, positive environment_volumetric_cloud_texture_uploads, backend invocations, renderer draws, raymarch passes, readback_nonzero=1, zero diagnostics, and zero native-handle, audio, or precipitation counters without claiming Vulkan, Metal, backend parity, broad optimization, or broad environment_ready.",
           "recipeIds": [
             "desktop-runtime-sample-game-volumetric-cloud-renderer-execution"
+          ]
+        },
+        {
+          "id": "environment-lighting-package-evidence",
+          "evidence": "The selected D3D12 environment lighting package smoke uses --require-environment-lighting-package-evidence and reports environment_lighting_status=ready, first_party_cooked_texture dependency mode, physical_sky visual source, specified_cubemap lighting source, package file/index/source/HDR metadata evidence, one reflection cubemap row with 6 faces, 16 edge size, 5 mips, rgba16_float IBL metadata, 9 irradiance rows, 5 radiance mip rows, HDR clamp enabled at 20000 nits, zero renderer upload evidence, zero texture uploads, zero backend invocations, zero runtime captures, zero native-handle access, and zero diagnostics without claiming runtime cubemap capture, renderer/RHI IBL execution, Vulkan, Metal, backend parity, broad optimization, or broad environment_ready.",
+          "recipeIds": [
+            "desktop-runtime-sample-game-environment-lighting-package"
           ]
         },
         {
@@ -427,6 +442,13 @@
           "updatePolicy": "Update only through reviewed game-local package validation surfaces; preserve distinct cloud-layer flow-map package evidence."
         },
         {
+          "id": "runtime-assets-desktop-runtime-environment-ibl-texture-geasset",
+          "path": "games/sample_desktop_runtime_game/runtime/assets/desktop_runtime/environment_ibl.texture.geasset",
+          "generatedBy": "environment-rendering-readiness-v1-environment-lighting-package-evidence",
+          "reviewedCommandSurfaceId": "create-game-recipe",
+          "updatePolicy": "Update only through reviewed game-local package validation surfaces; preserve first-party IBL metadata package evidence and renderer-upload non-claim counters."
+        },
+        {
           "id": "runtime-assets-desktop-runtime-default-outdoor-geenv",
           "path": "games/sample_desktop_runtime_game/runtime/assets/desktop_runtime/default_outdoor.geenv",
           "generatedBy": "environment-system-v1-package-validation",
@@ -530,6 +552,13 @@
           "generatedBy": "environment-rendering-readiness-v1-cloud-layer-renderer-execution",
           "reviewedCommandSurfaceId": "create-game-recipe",
           "updatePolicy": "Update only through reviewed game-local package validation surfaces; preserve distinct cloud-layer flow-map source evidence."
+        },
+        {
+          "id": "source-textures-environment-ibl-texture-source",
+          "path": "games/sample_desktop_runtime_game/source/textures/environment_ibl.texture_source",
+          "generatedBy": "environment-rendering-readiness-v1-environment-lighting-package-evidence",
+          "reviewedCommandSurfaceId": "create-game-recipe",
+          "updatePolicy": "Update only through reviewed game-local package validation surfaces; preserve first-party IBL metadata source evidence without selecting an OpenEXR/KTX importer."
         },
         {
           "id": "shaders-runtime-postprocess-hlsl",
@@ -1503,6 +1532,7 @@
     "runtime/sample_desktop_runtime_game.geindex",
     "runtime/assets/desktop_runtime/base_color.texture.geasset",
     "runtime/assets/desktop_runtime/cloud_flow.texture.geasset",
+    "runtime/assets/desktop_runtime/environment_ibl.texture.geasset",
     "runtime/assets/desktop_runtime/default_outdoor.geenv",
     "runtime/assets/desktop_runtime/triangle.mesh",
     "runtime/assets/desktop_runtime/hud.uiatlas",
@@ -1592,7 +1622,8 @@
         "sample/desktop-runtime/mesh",
         "sample/desktop-runtime/material",
         "sample/desktop-runtime/environment/default-outdoor",
-        "sample/desktop-runtime/cloud-flow"
+        "sample/desktop-runtime/cloud-flow",
+        "sample/desktop-runtime/environment/ibl-cubemap"
       ],
       "sourceCookMode": "selected-source-registry-rows",
       "sceneMigration": "migrate-scene-v2-runtime-package",
@@ -1605,6 +1636,7 @@
         "desktop-runtime-sample-game-environment-volumetric-fog-package",
         "desktop-runtime-sample-game-volumetric-cloud-package",
         "desktop-runtime-sample-game-volumetric-cloud-renderer-execution",
+        "desktop-runtime-sample-game-environment-lighting-package",
         "desktop-runtime-sample-game-physical-sky-package",
         "desktop-runtime-sample-game-cloud-layer-package",
         "desktop-runtime-sample-game-cloud-layer-renderer-execution",
@@ -1634,7 +1666,8 @@
       "selectedAssetKeys": [
         "sample/desktop-runtime/material",
         "sample/desktop-runtime/environment/default-outdoor",
-        "sample/desktop-runtime/cloud-flow"
+        "sample/desktop-runtime/cloud-flow",
+        "sample/desktop-runtime/environment/ibl-cubemap"
       ],
       "dependencyExpansion": "registered_source_registry_closure",
       "dependencyCooking": "registry_closure",
@@ -1684,6 +1717,10 @@
     {
       "name": "desktop-runtime-sample-game-volumetric-cloud-renderer-execution",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-volumetric-cloud-renderer-execution')\""
+    },
+    {
+      "name": "desktop-runtime-sample-game-environment-lighting-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-environment-lighting-package-evidence')\""
     },
     {
       "name": "desktop-runtime-sample-game-physical-sky-package",

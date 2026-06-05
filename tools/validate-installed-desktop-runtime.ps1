@@ -180,6 +180,7 @@ $requiresEnvironmentFogEvidence = @($SmokeArgs) -contains "--require-environment
 $requiresEnvironmentFogVulkanPackageEvidence = @($SmokeArgs) -contains "--require-environment-fog-vulkan-package-evidence"
 $requiresPhysicalSkyPackageEvidence = @($SmokeArgs) -contains "--require-physical-sky-package-evidence"
 $requiresEnvironmentVolumetricFogPackageEvidence = @($SmokeArgs) -contains "--require-environment-volumetric-fog-package-evidence"
+$requiresEnvironmentLightingPackageEvidence = @($SmokeArgs) -contains "--require-environment-lighting-package-evidence"
 $requiresCloudLayerPackageEvidence = @($SmokeArgs) -contains "--require-cloud-layer-package-evidence"
 $requiresCloudLayerRendererExecution = @($SmokeArgs) -contains "--require-cloud-layer-renderer-execution"
 $requiresEnvironmentPrecipitationPackageEvidence = @($SmokeArgs) -contains "--require-environment-precipitation-package-evidence"
@@ -4651,6 +4652,48 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 $expectedValue = [regex]::Escape($expectedPhysicalSkyFields[$field])
                 if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
                     Write-Error "Installed desktop runtime smoke status line did not prove physical sky field: $field=$($expectedPhysicalSkyFields[$field])"
+                }
+            }
+        }
+        if ($requiresEnvironmentLightingPackageEvidence) {
+            if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
+                Write-Error "Installed desktop runtime smoke status line must not claim broad environment_ready for environment lighting package evidence."
+            }
+            $expectedEnvironmentLightingFields = @{
+                "environment_lighting_status" = "ready"
+                "environment_lighting_ready" = "1"
+                "environment_lighting_selected_backend" = "d3d12"
+                "environment_lighting_requested" = "1"
+                "environment_lighting_dependency_mode" = "first_party_cooked_texture"
+                "environment_lighting_visual_sky_source" = "physical_sky"
+                "environment_lighting_lighting_sky_source" = "specified_cubemap"
+                "environment_lighting_package_file" = "1"
+                "environment_lighting_package_index_entry" = "1"
+                "environment_lighting_package_record_ready" = "1"
+                "environment_lighting_package_source_ready" = "1"
+                "environment_lighting_hdr_metadata_ready" = "1"
+                "environment_lighting_package_evidence_ready" = "1"
+                "environment_lighting_reflection_cubemap_rows" = "1"
+                "environment_lighting_reflection_cubemap_face_count" = "6"
+                "environment_lighting_reflection_cubemap_edge_size" = "16"
+                "environment_lighting_reflection_cubemap_mip_count" = "5"
+                "environment_lighting_reflection_cubemap_format" = "rgba16_float"
+                "environment_lighting_irradiance_rows" = "9"
+                "environment_lighting_radiance_mip_rows" = "5"
+                "environment_lighting_package_evidence_rows" = "1"
+                "environment_lighting_hdr_clamp_enabled" = "1"
+                "environment_lighting_hdr_clamp_max_luminance_nits" = "20000"
+                "environment_lighting_renderer_upload_evidence_ready" = "0"
+                "environment_lighting_texture_uploads" = "0"
+                "environment_lighting_backend_invocations" = "0"
+                "environment_lighting_runtime_captures" = "0"
+                "environment_lighting_native_handle_access" = "0"
+                "environment_lighting_diagnostics" = "0"
+            }
+            foreach ($field in $expectedEnvironmentLightingFields.Keys) {
+                $expectedValue = [regex]::Escape($expectedEnvironmentLightingFields[$field])
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove environment lighting field: $field=$($expectedEnvironmentLightingFields[$field])"
                 }
             }
         }

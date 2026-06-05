@@ -43,6 +43,8 @@ enum class EnvironmentLightingDiagnosticCode : std::uint8_t {
     invalid_reflection_cubemap_mips,
     missing_hdr_metadata,
     missing_package_evidence,
+    missing_package_record,
+    missing_package_source,
     invalid_irradiance_order,
     invalid_radiance_mips,
     invalid_roughness_policy,
@@ -59,6 +61,8 @@ struct EnvironmentReflectionCubemapDesc {
     std::uint32_t mip_count{0};
     EnvironmentLightingTextureFormat format{EnvironmentLightingTextureFormat::unknown};
     bool hdr_metadata_ready{false};
+    bool package_record_ready{false};
+    bool package_source_ready{false};
     bool package_evidence_ready{false};
 };
 
@@ -101,6 +105,8 @@ struct EnvironmentReflectionCubemapRow {
     std::uint32_t mip_count{0};
     EnvironmentLightingTextureFormat format{EnvironmentLightingTextureFormat::unknown};
     bool hdr_metadata_ready{false};
+    bool package_record_ready{false};
+    bool package_source_ready{false};
     bool package_evidence_ready{false};
     bool allocates_texture{false};
 };
@@ -119,6 +125,10 @@ struct EnvironmentRadianceMipRow {
 struct EnvironmentLightingPackageEvidenceRow {
     AssetId asset;
     std::string evidence_kind;
+    bool package_record_ready{false};
+    bool package_source_ready{false};
+    bool hdr_metadata_ready{false};
+    bool renderer_upload_evidence_ready{false};
     bool ready{false};
 };
 
@@ -144,6 +154,10 @@ struct EnvironmentLightingPolicyPlan {
     bool allocates_textures{false};
     bool invokes_backend{false};
     bool exposes_native_handles{false};
+    bool renderer_upload_evidence_ready{false};
+    std::uint32_t texture_uploads{0};
+    std::uint32_t backend_invocations{0};
+    std::uint32_t runtime_captures{0};
     std::vector<EnvironmentReflectionCubemapRow> reflection_cubemap_rows;
     std::vector<EnvironmentIrradianceRow> irradiance_rows;
     std::vector<EnvironmentRadianceMipRow> radiance_mip_rows;

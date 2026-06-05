@@ -1387,6 +1387,9 @@ foreach ($packageFile in @(
     "runtime/sample_desktop_runtime_game.config",
     "runtime/sample_desktop_runtime_game.geindex",
     "runtime/assets/desktop_runtime/base_color.texture.geasset",
+    "runtime/assets/desktop_runtime/cloud_flow.texture.geasset",
+    "runtime/assets/desktop_runtime/environment_ibl.texture.geasset",
+    "runtime/assets/desktop_runtime/default_outdoor.geenv",
     "runtime/assets/desktop_runtime/triangle.mesh",
     "runtime/assets/desktop_runtime/packaged_pose.animation_quaternion_clip",
     "runtime/assets/desktop_runtime/unlit.material",
@@ -1416,10 +1419,10 @@ Assert-RegisteredSourceAssetCookTarget `
     "packaged-3d-prefab-scene" `
     "source/assets/package.geassets" `
     "runtime/sample_desktop_runtime_game.geindex" `
-    @("sample/desktop-runtime/material", "sample/desktop-runtime/environment/default-outdoor", "sample/desktop-runtime/cloud-flow") `
+    @("sample/desktop-runtime/material", "sample/desktop-runtime/environment/default-outdoor", "sample/desktop-runtime/cloud-flow", "sample/desktop-runtime/environment/ibl-cubemap") `
     "registered_source_registry_closure" `
     "registry_closure"
-foreach ($recipe in @("desktop-game-runtime", "desktop-runtime-release-target", "installed-d3d12-scene-gpu-smoke", "installed-vulkan-scene-gpu-smoke", "desktop-runtime-sample-game-environment-fog-package", "desktop-runtime-sample-game-vulkan-environment-fog-package", "desktop-runtime-sample-game-environment-volumetric-fog-package", "desktop-runtime-sample-game-cloud-layer-package", "desktop-runtime-sample-game-cloud-layer-renderer-execution", "desktop-runtime-sample-game-environment-precipitation-package", "desktop-runtime-sample-game-environment-precipitation-renderer-execution", "desktop-runtime-sample-game-environment-snow-package", "desktop-runtime-sample-game-environment-snow-renderer-execution", "desktop-runtime-sample-game-environment-profile-package")) {
+foreach ($recipe in @("desktop-game-runtime", "desktop-runtime-release-target", "installed-d3d12-scene-gpu-smoke", "installed-vulkan-scene-gpu-smoke", "desktop-runtime-sample-game-environment-fog-package", "desktop-runtime-sample-game-vulkan-environment-fog-package", "desktop-runtime-sample-game-environment-volumetric-fog-package", "desktop-runtime-sample-game-cloud-layer-package", "desktop-runtime-sample-game-cloud-layer-renderer-execution", "desktop-runtime-sample-game-environment-precipitation-package", "desktop-runtime-sample-game-environment-precipitation-renderer-execution", "desktop-runtime-sample-game-environment-snow-package", "desktop-runtime-sample-game-environment-snow-renderer-execution", "desktop-runtime-sample-game-volumetric-cloud-package", "desktop-runtime-sample-game-volumetric-cloud-renderer-execution", "desktop-runtime-sample-game-environment-lighting-package", "desktop-runtime-sample-game-environment-profile-package")) {
     if (@($sample3dManifest.validationRecipes | ForEach-Object { $_.name }) -notcontains $recipe) {
         Write-Error "$sample3dManifestPath validationRecipes missing $recipe"
     }

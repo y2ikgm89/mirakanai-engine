@@ -4,7 +4,7 @@
 
 **Plan ID:** `environment-rendering-readiness-v1`
 
-**Status:** Active. This is a clean-break post-Environment-System follow-up, not an Engine 1.0 blocker. Tasks 1-5 now have selected D3D12 or strict host-gated evidence as recorded below; later volumetric-cloud, IBL, and Metal-host rows remain future task selections.
+**Status:** Active. This is a clean-break post-Environment-System follow-up, not an Engine 1.0 blocker. Tasks 1-7 now have selected D3D12 or strict host-gated evidence as recorded below; later Metal-host rows and remaining backend-local Vulkan/Metal feature proofs remain future task selections.
 
 **Goal:** Turn the completed Environment System v1 foundation into evidence-backed environment rendering readiness for snow, sky package proof, cloud and precipitation renderer execution, volumetric cloud/fog package proof, and backend-local D3D12/Vulkan/Metal claims without broad or inferred readiness.
 
@@ -34,8 +34,8 @@ Unclaimed and selected by this plan:
 - Physical-sky Vulkan proof and package-visible physical-sky proof.
 - Cloud-layer Vulkan proof and Metal cloud proof; selected D3D12 cloud-layer renderer/RHI execution is complete through Task 4.
 - Vulkan/Metal precipitation renderer/RHI particle-buffer upload and draw execution.
-- Volumetric-cloud execution and package readiness.
-- Environment lighting/IBL upload or package proof beyond policy rows.
+- Volumetric-cloud execution and package readiness is complete for the selected D3D12 package lane through Task 6; Vulkan and Metal remain unclaimed.
+- Environment lighting/IBL package proof is complete for the selected D3D12 package-visible first-party metadata lane through Task 7; renderer cubemap upload, runtime capture, Vulkan, and Metal remain unclaimed.
 - Backend parity for environment features; each backend remains feature-local and evidence-local.
 - Broad optimization, broad renderer quality, broad `environment_ready`, and inferred Vulkan/Metal readiness.
 
@@ -53,6 +53,14 @@ Completed by Task 5:
 
 - Selected D3D12 rain and snow precipitation renderer/RHI execution with target-specific precipitation DXIL artifacts, cooked particle texture upload, backend invocation, renderer draw counters, and depth-occlusion readback evidence. Vulkan and Metal precipitation execution remain unclaimed until backend-local proof runs.
 
+Completed by Task 6:
+
+- Selected D3D12 volumetric-cloud package evidence and renderer/RHI execution with target-specific DXIL artifacts, first-party weather/shape/erosion package evidence, positive texture upload/backend invocation/draw/raymarch/readback counters for execution, and zero native-handle/audio/precipitation counters. Vulkan and Metal volumetric-cloud execution remain unclaimed until backend-local proof runs.
+
+Completed by Task 7:
+
+- Selected D3D12 environment lighting / IBL package-visible evidence with first-party cooked texture package records, source registry rows, explicit HDR metadata, reflection cubemap metadata, irradiance rows, radiance mip rows, HDR clamp rows, and zero renderer upload/backend invocation/runtime-capture/native-handle counters. Runtime cubemap capture, renderer/RHI cubemap upload, Vulkan, Metal, backend parity, and broad `environment_ready` remain unclaimed.
+
 ## Official Source Baseline
 
 Before executing any task, re-open the current official documents for that task. The 2026-06-05 planning audit used:
@@ -66,10 +74,12 @@ Before executing any task, re-open the current official documents for that task.
 - Microsoft Direct3D 12 Root Signatures overview: <https://learn.microsoft.com/en-us/windows/win32/direct3d12/root-signatures-overview>
 - Microsoft Direct3D 12 resource binding overview: <https://learn.microsoft.com/en-us/windows/win32/direct3d12/resource-binding-flow-of-control>
 - Microsoft Direct3D 12 `ResourceBarrier`: <https://learn.microsoft.com/en-us/windows/win32/api/d3d12/nf-d3d12-id3d12graphicscommandlist-resourcebarrier>
+- Microsoft Direct3D 12 `D3D12_TEXCUBE_SRV` / texture subresource upload documentation for future cubemap upload proof.
 - Apple Metal render pass configuration: <https://developer.apple.com/documentation/metal/render-pass-configuration>
 - Apple Metal Feature Set Tables: <https://developer.apple.com/metal/capabilities/>
 - Context7 `/khronosgroup/vulkan-docs` for Vulkan 1.3 synchronization2 image barriers, shader-read transitions, render/compute ordering, and validation-layer evidence.
 - Context7 `/godotengine/godot-docs` for Environment fog, volumetric fog, `GPUParticles3D`, and `ParticleProcessMaterial` capability separation.
+- Context7 `/godotengine/godot-docs` for sky radiance and irradiance separation, sky bake panorama/cubemap cache behavior, and ambient/reflection lighting terminology.
 - Context7 `/microsoft/directxshadercompiler` for DXC DXIL/SPIR-V target profiles, `-spirv`, `-fspv-target-env`, and CI shader evidence.
 
 Source implications for this repo:
@@ -78,6 +88,7 @@ Source implications for this repo:
 - Rain and snow must be treated as particle lifecycle plus render-output execution, not only weather value rows.
 - Fog and volumetric fog need explicit density/scattering, temporal, lighting, and depth/volume-resource evidence.
 - D3D12 root signatures, descriptor tables/heaps, resource states, barriers, and fences stay backend-private and must be validated with focused readback/package tests before promotion.
+- IBL package evidence is not cubemap upload evidence. Reflection cubemap metadata, irradiance coefficients, radiance mips, and HDR clamp policy can be validated as package-visible rows, but renderer upload requires a later backend-local texture-cube SRV/upload/readback proof.
 - Vulkan feature claims require synchronization2 layout transitions, descriptor updates, shader-read barriers, SPIR-V validation, `VK_LAYER_KHRONOS_validation`, and host/toolchain gates.
 - Metal claims require Apple-host pipeline/render/compute proof and feature-set availability; Windows validation cannot promote Metal.
 
@@ -104,8 +115,8 @@ Source implications for this repo:
 | precipitation renderer/RHI execution | Ready for selected D3D12 rain and snow package renderer execution only; Vulkan and Metal remain unclaimed. | Keep positive D3D12 package counters for particle-buffer upload, backend invocation, renderer draw, and depth-occlusion readback over rain and snow lanes; add Vulkan strict proof and Metal host proof separately if selected. |
 | snow package readiness | Ready for selected D3D12 package-visible policy evidence only. | Keep `environment_precipitation_weather=snow`, `environment_precipitation_kind=snow`, zero wetness rows, one audio handoff row, and zero particle-buffer upload/backend invocation/material mutation/audio playback counters. |
 | volumetric fog package | Ready for selected D3D12 package through `environment_volumetric_fog_status=ready` and positive `environment_volumetric_fog_compute_dispatches`. | Add Vulkan/Metal volumetric-fog lanes only after backend-local proof; do not infer volumetric-cloud readiness. |
-| volumetric clouds | Unclaimed. | Weather map, shape noise, erosion noise, raymarch, temporal, shadow, lighting, and package counters with backend-local proof. |
-| environment lighting/IBL | Policy only. | First-party cooked HDR/cubemap/irradiance/radiance package rows or explicitly dependency-gated importer plan; renderer upload proof before ready. |
+| volumetric clouds | Ready for selected D3D12 package-visible evidence and selected D3D12 renderer/RHI execution only; Vulkan and Metal remain unclaimed. | Keep Task 6 package and execution recipe counters separate; add Vulkan/Metal lanes only after backend-local proof. |
+| environment lighting/IBL | Ready for selected D3D12 package-visible first-party IBL metadata evidence only; renderer cubemap upload/runtime capture remain unclaimed. | Keep first-party cooked texture package record/source/HDR metadata rows, reflection cubemap face/edge/mip/format rows, irradiance/radiance rows, HDR clamp rows, and zero upload/backend/runtime-capture counters; add renderer upload proof in a separate backend-local task. |
 | environment backend parity | Unclaimed. | Backend-local matrix rows for each feature; no single backend can promote another. |
 | broad optimization | Unclaimed. | Separate profiling/budget plan with before/after traces and budgets. |
 | broad `environment_ready` | Unclaimed. | Only after all rows above are ready and an aggregate static contract is accepted. |
@@ -673,30 +684,39 @@ The ready claim is limited to selected D3D12 `sample_desktop_runtime_game` packa
 - Modify: `engine/renderer/include/mirakana/renderer/environment_lighting_policy.hpp`
 - Modify: `engine/renderer/src/environment_lighting_policy.cpp`
 - Modify: `tests/unit/renderer_environment_lighting_policy_tests.cpp`
-- Modify: `engine/assets/include/mirakana/assets/*`
-- Modify: `engine/tools/src/*`
+- Modify: `games/sample_desktop_runtime_game/main.cpp`
+- Modify: `games/sample_desktop_runtime_game/game.agent.json`
+- Modify: `games/sample_desktop_runtime_game/source/assets/package.geassets`
+- Modify: `games/sample_desktop_runtime_game/runtime/sample_desktop_runtime_game.geindex`
+- Create: `games/sample_desktop_runtime_game/source/textures/environment_ibl.texture_source`
+- Create: `games/sample_desktop_runtime_game/runtime/assets/desktop_runtime/environment_ibl.texture.geasset`
 - Modify: `tools/validate-installed-desktop-runtime.ps1`
-- Modify: `docs/dependencies.md`
-- Modify: `docs/legal-and-licensing.md`
-- Modify: `THIRD_PARTY_NOTICES.md`
-- Modify: `vcpkg.json` only if a new importer dependency is selected
+- Modify: `tools/validation-recipe-core.ps1`
+- Modify: `tools/run-validation-recipe-plans.ps1`
+- Modify: `engine/agent/manifest.fragments/009-validationRecipes.json`
+- Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
+- Modify: `engine/agent/manifest.fragments/014-gameCodeGuidance.json`
+- Modify: `docs/current-capabilities.md`
+- Modify: `docs/roadmap.md`
+- Modify: `docs/ai-game-development.md`
+- Generate: `engine/agent/manifest.json`
 
-- [ ] **Step 1: Decide no-new-dependency versus importer-backed path**
+- [x] **Step 1: Decide no-new-dependency versus importer-backed path**
 
 Choose one path:
 
 - First-party cooked texture payloads only, using existing texture/package records.
 - Optional OpenEXR/KTX-class importer, with vcpkg feature, legal records, dependency docs, package tests, and license notices.
 
-Expected: the plan records the path; both paths cannot be half-selected.
+Result: Task 7 selects the first-party cooked texture payload path only. No OpenEXR/KTX/Basis importer dependency, vcpkg feature, dependency/legal document change, or third-party license notice is selected in this candidate. The selected package file is a first-party `GameEngine.CookedTexture.v1` fixture with explicit `GameEngine.FirstPartyIblMetadata.v1` rows for reflection-cubemap role, 6 faces, 16 edge size, 5 mips, `rgba16_float` IBL metadata, 9 irradiance coefficients, 5 radiance mip rows, and HDR clamp metadata.
 
-- [ ] **Step 2: Add RED IBL package tests**
+- [x] **Step 2: Add RED IBL package tests**
 
 Require reflection cubemap, irradiance, radiance mip rows, HDR clamp policy, package source, renderer upload evidence if ready, and dependency-gated rows if not ready.
 
-Expected: policy-only rows cannot claim `environment_lighting_status=ready`.
+Result: `MK_renderer_environment_lighting_policy_tests` now requires package record/source/HDR metadata fields and diagnostics before package evidence can become ready. Policy-only rows cannot claim package-ready status. `sample_desktop_runtime_game --require-environment-lighting-package-evidence` reports package-visible IBL evidence only: renderer upload evidence, texture uploads, backend invocations, runtime captures, and native-handle access all remain zero.
 
-- [ ] **Step 3: Validate**
+- [x] **Step 3: Validate**
 
 Run focused tests plus dependency/legal checks if the importer-backed path is selected:
 
@@ -707,6 +727,25 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
 ```
 
 Expected: IBL package evidence is exact; runtime cubemap capture remains unclaimed unless a separate execution task proves it.
+
+**2026-06-05 Task 7 Evidence:** GREEN:
+
+- Context7 `/godotengine/godot-docs` rechecked sky radiance/reflection and irradiance/ambient-light separation plus sky bake/cubemap cache behavior. Microsoft Direct3D 12 documentation rechecked texture subresource upload and `D3D12_TEXCUBE_SRV` implications. This candidate intentionally stops at package-visible first-party IBL metadata evidence and does not claim renderer cubemap upload.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\cmake.ps1 --build --preset dev --target MK_renderer_environment_lighting_policy_tests` passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\ctest.ps1 --preset dev --output-on-failure -R "environment_lighting"` passed with 1/1 tests.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\cmake.ps1 --preset desktop-runtime-release -DMK_DESKTOP_RUNTIME_PACKAGE_GAME_TARGET=sample_desktop_runtime_game -DMK_REQUIRE_DESKTOP_RUNTIME_DXIL=ON` passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\cmake.ps1 --build --preset desktop-runtime-release --target sample_desktop_runtime_game` passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -Command "& { & '.\tools\package-desktop-runtime.ps1' -GameTarget 'sample_desktop_runtime_game' -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-environment-lighting-package-evidence') }"` passed with `installed-desktop-runtime-validation: ok (sample_desktop_runtime_game)` and `desktop-runtime-package: ok (sample_desktop_runtime_game)`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\run-validation-recipe.ps1 -Recipe desktop-runtime-sample-game-environment-lighting-package -Mode DryRun` passed with the expected `d3d12-windows-primary` host gate and package-only command plan.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\check-json-contracts.ps1` passed after the content mutation ledger, validation recipe, and manifest fragment updates.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\check-ai-integration.ps1` passed after static contract needles were updated to distinguish IBL package proof from later renderer upload/runtime-capture proof.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\check-public-api-boundaries.ps1` passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\check-format.ps1` passed after formatting the touched C++ and text files.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -Command "& { & '.\tools\check-tidy.ps1' -Files @('engine/renderer/src/environment_lighting_policy.cpp','tests/unit/renderer_environment_lighting_policy_tests.cpp') }"` passed. `games/sample_desktop_runtime_game/main.cpp` is not present in the dev preset compile database and is covered by the desktop-runtime-release build and package smoke above.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\check-agents.ps1` passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\validate.ps1` passed with `validate: ok`; CTest reported `100% tests passed, 0 tests failed out of 99`. Metal and Apple checks remain explicit host-gated diagnostics on this Windows host.
+
+The ready claim is limited to selected D3D12 `sample_desktop_runtime_game` package-visible first-party IBL metadata evidence. Runtime cubemap capture, renderer/RHI cubemap upload, D3D12 texture-cube SRV execution, Vulkan IBL proof, Metal IBL proof, backend parity, broad optimization, broad lighting readiness, and broad `environment_ready` remain unclaimed.
 
 ## Task 8: Metal Host Evidence For Selected Environment Features
 
