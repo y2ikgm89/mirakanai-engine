@@ -182,14 +182,11 @@ foreach ($needle in @(
 }
 
 $productionLoop = $manifest.aiOperableProductionLoop
-if ([string]$productionLoop.currentActivePlan -ne "docs/superpowers/plans/2026-06-06-mavg-directstorage-sdk-dependency-gate-v1.md") {
-    Write-Error "engine/agent/manifest.json currentActivePlan must select MAVG DirectStorage SDK Dependency Gate v1"
-}
-if ([string]$productionLoop.recommendedNextPlan.id -ne "mavg-directstorage-sdk-dependency-gate-v1") {
-    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must select mavg-directstorage-sdk-dependency-gate-v1"
-}
 if (@($productionLoop.recommendedNextPlan.retainedCompletedPlanPaths) -notcontains "docs/superpowers/plans/2026-06-06-mavg-win32-iocp-file-io-worker-v1.md") {
     Write-Error "engine/agent/manifest.json retainedCompletedPlanPaths must retain MAVG Win32 IOCP File IO Worker v1"
+}
+if (@($productionLoop.recommendedNextPlan.retainedCompletedPlanPaths) -notcontains "docs/superpowers/plans/2026-06-06-mavg-directstorage-sdk-dependency-gate-v1.md") {
+    Write-Error "engine/agent/manifest.json retainedCompletedPlanPaths must retain MAVG DirectStorage SDK Dependency Gate v1"
 }
 
 $commandSurface = $manifest.commands

@@ -5,7 +5,9 @@
 
 #include <algorithm>
 #include <cmath>
+#include <exception>
 #include <string>
+#include <thread>
 #include <utility>
 #include <vector>
 
@@ -52,6 +54,16 @@ void add_diagnostic(RuntimeMavgPageStreamingDispatchPlan& result, RuntimeMavgPag
     });
 }
 
+void add_diagnostic(RuntimeMavgPageStreamingWorkerResult& result, RuntimeMavgPageStreamingDiagnosticCode code,
+                    AssetId graph_asset, std::uint32_t page_index, std::string message) {
+    result.diagnostics.push_back(RuntimeMavgPageStreamingDiagnostic{
+        .code = code,
+        .graph_asset = graph_asset,
+        .page_index = page_index,
+        .message = std::move(message),
+    });
+}
+
 [[nodiscard]] bool has_page(const MavgClusterGraphDocument& graph, std::uint32_t page_index) noexcept {
     return std::ranges::any_of(
         graph.pages, [page_index](const MavgClusterGraphPage& page) { return page.page_index == page_index; });
@@ -72,7 +84,8 @@ void add_diagnostic(RuntimeMavgPageStreamingDispatchPlan& result, RuntimeMavgPag
 
 [[nodiscard]] bool valid_dispatch_mode(RuntimeMavgPageStreamingDispatchMode mode) noexcept {
     return mode == RuntimeMavgPageStreamingDispatchMode::caller_owned_safe_point ||
-           mode == RuntimeMavgPageStreamingDispatchMode::caller_owned_background_queue;
+           mode == RuntimeMavgPageStreamingDispatchMode::caller_owned_background_queue ||
+           mode == RuntimeMavgPageStreamingDispatchMode::engine_owned_background_worker;
 }
 
 [[nodiscard]] bool valid_dispatch_row(const RuntimeMavgPageStreamingPlanRow& row) noexcept {
@@ -311,6 +324,8 @@ plan_runtime_mavg_page_streaming_dispatches(const RuntimeMavgPageStreamingDispat
     result.requires_safe_point = desc.require_safe_point;
     result.caller_owned_background_queue =
         desc.mode == RuntimeMavgPageStreamingDispatchMode::caller_owned_background_queue;
+    result.engine_owned_background_worker =
+        desc.mode == RuntimeMavgPageStreamingDispatchMode::engine_owned_background_worker;
     result.invoked_file_io = false;
     result.mutated_mount_set = false;
     result.executed_streaming = false;
@@ -398,8 +413,104 @@ plan_runtime_mavg_page_streaming_dispatches(const RuntimeMavgPageStreamingDispat
             .safe_point_required = desc.require_safe_point,
             .background_worker_owned_by_caller =
                 desc.mode == RuntimeMavgPageStreamingDispatchMode::caller_owned_background_queue,
+            .background_worker_owned_by_engine =
+                desc.mode == RuntimeMavgPageStreamingDispatchMode::engine_owned_background_worker,
         });
     }
+    return result;
+}
+
+RuntimeMavgPageStreamingWorkerResult
+execute_runtime_mavg_page_streaming_worker(const RuntimeMavgPageStreamingWorkerDesc& desc,
+                                           const RuntimeMavgPageStreamingDispatchPlan& dispatch_plan) {
+    RuntimeMavgPageStreamingWorkerResult result;
+    result.input_dispatch_row_count = dispatch_plan.dispatch_rows.size();
+
+    bool invalid_inputs = false;
+    if (desc.filesystem == nullptr) {
+        add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::missing_worker_filesystem, {}, 0,
+                       "MAVG page streaming worker requires a filesystem");
+        invalid_inputs = true;
+    }
+    if (desc.mount_set == nullptr) {
+        add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::missing_worker_mount_set, {}, 0,
+                       "MAVG page streaming worker requires a resident package mount set");
+        invalid_inputs = true;
+    }
+    if (desc.catalog_cache == nullptr) {
+        add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::missing_worker_catalog_cache, {}, 0,
+                       "MAVG page streaming worker requires a resident catalog cache");
+        invalid_inputs = true;
+    }
+    if (!dispatch_plan.succeeded()) {
+        add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::invalid_worker_dispatch_plan, {}, 0,
+                       "MAVG page streaming worker requires a successful dispatch plan");
+        invalid_inputs = true;
+    }
+    if (dispatch_plan.dispatch_rows.empty()) {
+        add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::empty_worker_dispatch_plan, {}, 0,
+                       "MAVG page streaming worker requires at least one dispatch row");
+        invalid_inputs = true;
+    }
+    if (!dispatch_plan.engine_owned_background_worker) {
+        add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::unsupported_worker_dispatch_mode, {}, 0,
+                       "MAVG page streaming worker only executes engine-owned background worker dispatch plans");
+        invalid_inputs = true;
+    }
+    for (const auto& row : dispatch_plan.dispatch_rows) {
+        if (row.mode != RuntimeMavgPageStreamingDispatchMode::engine_owned_background_worker ||
+            !row.background_worker_owned_by_engine || !row.safe_point_required) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::unsupported_worker_dispatch_mode,
+                           row.drain_desc.row.graph_asset, row.drain_desc.row.page_index,
+                           "MAVG page streaming worker dispatch rows must be engine-owned safe-point rows");
+            invalid_inputs = true;
+        }
+    }
+    if (invalid_inputs) {
+        return result;
+    }
+
+    auto worker_rows = dispatch_plan.dispatch_rows;
+    auto row_count = worker_rows.size();
+    if (desc.max_worker_rows > 0 && row_count > desc.max_worker_rows) {
+        result.budget_degraded = true;
+        result.budget_dropped_row_count = row_count - desc.max_worker_rows;
+        row_count = desc.max_worker_rows;
+        worker_rows.resize(row_count);
+    }
+
+    try {
+        std::thread worker([&result, &worker_rows, row_count, &desc]() {
+            result.executed_background_worker = true;
+            result.drain_results.reserve(row_count);
+            for (std::size_t row_index = 0; row_index < row_count; ++row_index) {
+                auto drain = execute_runtime_mavg_page_streaming_request_safe_point(
+                    *desc.filesystem, *desc.mount_set, *desc.catalog_cache,
+                    std::move(worker_rows[row_index].drain_desc));
+                drain.executed_background_worker = true;
+                result.invoked_file_io = result.invoked_file_io || drain.invoked_candidate_load;
+                result.mutated_mount_set = result.mutated_mount_set || drain.committed;
+                result.executed_streaming = result.executed_streaming || drain.committed;
+                result.touched_renderer_or_rhi_handles =
+                    result.touched_renderer_or_rhi_handles || drain.touched_renderer_or_rhi_handles;
+                ++result.executed_row_count;
+                if (drain.succeeded() && drain.committed) {
+                    ++result.committed_row_count;
+                } else {
+                    ++result.failed_row_count;
+                    add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::worker_row_failed,
+                                   drain.row.graph_asset, drain.row.page_index,
+                                   drain.diagnostics.empty() ? "MAVG page streaming worker row failed"
+                                                             : drain.diagnostics.front().message);
+                }
+                result.drain_results.push_back(std::move(drain));
+            }
+        });
+        worker.join();
+    } catch (const std::exception& error) {
+        add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::worker_start_failed, {}, 0, error.what());
+    }
+
     return result;
 }
 

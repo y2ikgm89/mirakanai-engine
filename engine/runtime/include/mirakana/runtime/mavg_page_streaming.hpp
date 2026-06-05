@@ -45,6 +45,14 @@ enum class RuntimeMavgPageStreamingDiagnosticCode : std::uint8_t {
     duplicate_dispatch_mount_id,
     invalid_dispatch_mode,
     unsafe_dispatch_mode,
+    missing_worker_filesystem,
+    missing_worker_mount_set,
+    missing_worker_catalog_cache,
+    invalid_worker_dispatch_plan,
+    empty_worker_dispatch_plan,
+    unsupported_worker_dispatch_mode,
+    worker_row_failed,
+    worker_start_failed,
 };
 
 struct RuntimeMavgPageStreamingDiagnostic {
@@ -124,6 +132,7 @@ struct RuntimeMavgPageStreamingDrainResult {
 enum class RuntimeMavgPageStreamingDispatchMode : std::uint8_t {
     caller_owned_safe_point = 0,
     caller_owned_background_queue,
+    engine_owned_background_worker,
 };
 
 struct RuntimeMavgPageStreamingDispatchDesc {
@@ -144,6 +153,7 @@ struct RuntimeMavgPageStreamingDispatchRow {
     std::size_t dispatch_index{0};
     bool safe_point_required{true};
     bool background_worker_owned_by_caller{false};
+    bool background_worker_owned_by_engine{false};
 };
 
 struct RuntimeMavgPageStreamingDispatchPlan {
@@ -156,6 +166,7 @@ struct RuntimeMavgPageStreamingDispatchPlan {
     bool budget_degraded{false};
     bool requires_safe_point{true};
     bool caller_owned_background_queue{false};
+    bool engine_owned_background_worker{false};
     bool invoked_file_io{false};
     bool mutated_mount_set{false};
     bool executed_streaming{false};
@@ -164,6 +175,33 @@ struct RuntimeMavgPageStreamingDispatchPlan {
 
     [[nodiscard]] bool succeeded() const noexcept {
         return diagnostics.empty();
+    }
+};
+
+struct RuntimeMavgPageStreamingWorkerDesc {
+    IFileSystem* filesystem{nullptr};
+    RuntimeResidentPackageMountSetV2* mount_set{nullptr};
+    RuntimeResidentCatalogCacheV2* catalog_cache{nullptr};
+    std::size_t max_worker_rows{0};
+};
+
+struct RuntimeMavgPageStreamingWorkerResult {
+    std::vector<RuntimeMavgPageStreamingDrainResult> drain_results;
+    std::vector<RuntimeMavgPageStreamingDiagnostic> diagnostics;
+    std::size_t input_dispatch_row_count{0};
+    std::size_t executed_row_count{0};
+    std::size_t committed_row_count{0};
+    std::size_t failed_row_count{0};
+    std::size_t budget_dropped_row_count{0};
+    bool budget_degraded{false};
+    bool invoked_file_io{false};
+    bool mutated_mount_set{false};
+    bool executed_streaming{false};
+    bool executed_background_worker{false};
+    bool touched_renderer_or_rhi_handles{false};
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty() && failed_row_count == 0;
     }
 };
 
@@ -215,6 +253,10 @@ plan_runtime_mavg_page_streaming_requests(const RuntimeMavgPageStreamingPlanDesc
 
 [[nodiscard]] RuntimeMavgPageStreamingDispatchPlan
 plan_runtime_mavg_page_streaming_dispatches(const RuntimeMavgPageStreamingDispatchDesc& desc);
+
+[[nodiscard]] RuntimeMavgPageStreamingWorkerResult
+execute_runtime_mavg_page_streaming_worker(const RuntimeMavgPageStreamingWorkerDesc& desc,
+                                           const RuntimeMavgPageStreamingDispatchPlan& dispatch_plan);
 
 [[nodiscard]] RuntimeMavgPageStreamingDrainResult execute_runtime_mavg_page_streaming_request_safe_point(
     IFileSystem& filesystem, RuntimeResidentPackageMountSetV2& mount_set, RuntimeResidentCatalogCacheV2& catalog_cache,

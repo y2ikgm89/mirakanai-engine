@@ -4,7 +4,7 @@
 
 **Plan ID:** `mavg-directstorage-sdk-dependency-gate-v1`
 
-**Status:** Active.
+**Status:** Completed/published as draft PR #469.
 
 Focused child over `mavg-runtime-lod-milestone-v1`, stacked after draft PR #466 (`mavg-win32-iocp-file-io-worker-v1`).
 
@@ -102,7 +102,7 @@ Evidence: `tools/bootstrap-deps.ps1` is command-policy approval-gated in this no
 - [x] Run focused policy/static validation: `tools/check-dependency-policy.ps1`, `tools/check-native-desktop-contracts.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, formatting, and `git diff --check`.
 - [x] Run full `tools/validate.ps1` unless a concrete host/tool blocker is found after focused checks.
 
-Evidence: `tools/check-dependency-policy.ps1`, `tools/check-native-desktop-contracts.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/format.ps1`, `tools/check-format.ps1`, and `git diff --check` passed after agent-surface sync. Full `tools/validate.ps1` passed on 2026-06-06 with 109/109 CTest tests passing. The optional `tools/validate-directstorage-sdk.ps1` lane remains blocked until `tools/bootstrap-deps.ps1` can run in an approval-capable session and install vcpkg `dstorage`.
+Evidence: `tools/check-dependency-policy.ps1`, `tools/check-native-desktop-contracts.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/format.ps1`, `tools/check-format.ps1`, and `git diff --check` passed after agent-surface sync. Full `tools/validate.ps1` passed on 2026-06-06 with 109/109 CTest tests passing. The optional `tools/validate-directstorage-sdk.ps1` lane remains blocked until `tools/bootstrap-deps.ps1` can run in an approval-capable session and install vcpkg `dstorage`. Published as stacked draft PR #469 (`https://github.com/y2ikgm89/mirakanai-engine/pull/469`) on branch `codex/mavg-directstorage-sdk-dependency-gate-v1`.
 
 ## Done When
 
