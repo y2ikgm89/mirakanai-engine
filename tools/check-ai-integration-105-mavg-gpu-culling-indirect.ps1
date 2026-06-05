@@ -66,8 +66,8 @@ foreach ($surface in @(
 foreach ($needle in @(
         "mavg-gpu-culling-indirect-v1",
         "docs/superpowers/plans/2026-06-05-mavg-gpu-culling-indirect-v1.md",
-        "actual GPU culling dispatch",
-        "D3D12 ExecuteIndirect",
+        "generic GPU culling frameworks",
+        "ExecuteIndirect",
         "Vulkan indirect draw execution"
     )) {
     Assert-ContainsText $aiLoopFragmentText $needle "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json"
@@ -76,7 +76,7 @@ foreach ($needle in @(
 foreach ($needle in @(
         "mavg-gpu-culling-indirect-v1",
         "completed stacked child for value-only packed indexed indirect command planning",
-        "actual compute dispatch and backend indirect execution remain follow-up"
+        "later stacked children own selected D3D12 backend indirect execution"
     )) {
     Assert-ContainsText $mavgRuntimeLodPlanText $needle "docs/superpowers/plans/2026-06-05-mavg-runtime-lod-milestone-v1.md"
 }

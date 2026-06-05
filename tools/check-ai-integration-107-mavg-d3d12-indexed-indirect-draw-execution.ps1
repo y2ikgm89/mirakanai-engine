@@ -63,7 +63,7 @@ foreach ($surface in @(
     }
     foreach ($needle in @(
             "Vulkan indirect draw execution",
-            "actual GPU culling dispatch",
+            "generic GPU culling frameworks",
             "Nanite"
         )) {
         Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG D3D12 indexed indirect non-claim evidence"

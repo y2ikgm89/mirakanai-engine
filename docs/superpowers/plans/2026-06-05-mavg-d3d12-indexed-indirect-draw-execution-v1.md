@@ -58,7 +58,7 @@ Out of scope:
 - Public buffer resource-state tracking.
 - Vulkan `vkCmdDrawIndexedIndirect` / `vkCmdDrawIndexedIndirectCount`.
 - Metal indirect command buffers.
-- actual GPU culling dispatch.
+- generic GPU culling frameworks beyond the selected D3D12 proof lane.
 - Mesh shaders, Work Graphs, deformation, ray tracing, Metal readiness, benchmark superiority, or Nanite compatibility/equivalence/superiority.
 
 ## Files
