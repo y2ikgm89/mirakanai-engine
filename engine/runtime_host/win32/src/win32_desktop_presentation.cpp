@@ -10,6 +10,7 @@
 #include "mirakana/renderer/debug_profiling_policy.hpp"
 #include "mirakana/renderer/environment_fog_policy.hpp"
 #include "mirakana/renderer/gpu_memory_policy.hpp"
+#include "mirakana/renderer/physical_sky_policy.hpp"
 #include "mirakana/renderer/postprocess_policy.hpp"
 #include "mirakana/renderer/precipitation_policy.hpp"
 #include "mirakana/renderer/rhi_directional_shadow_smoke_frame_renderer.hpp"
@@ -70,6 +71,18 @@ struct NativeRendererCreateResult {
     bool environment_fog_requested{false};
     bool environment_fog_constant_buffer_ready{false};
     std::uint64_t environment_fog_constant_buffer_bytes{0};
+    bool physical_sky_requested{false};
+    bool physical_sky_shader_contract_evidence_ready{false};
+    bool physical_sky_package_evidence_ready{false};
+    bool physical_sky_execution_evidence_ready{false};
+    bool physical_sky_constant_buffer_ready{false};
+    std::uint64_t physical_sky_constant_buffer_bytes{0};
+    bool physical_sky_allocates_lut_textures{false};
+    bool physical_sky_invokes_backend{false};
+    bool physical_sky_exposes_native_handles{false};
+    std::uint32_t physical_sky_constant_layout_rows{0};
+    std::uint32_t physical_sky_lut_intent_rows{0};
+    std::uint32_t physical_sky_policy_diagnostics_count{0};
     bool cloud_layer_requested{false};
     bool cloud_layer_shader_contract_evidence_ready{false};
     bool cloud_layer_package_evidence_ready{false};
@@ -186,6 +199,29 @@ to_presentation_filter_mode(ShadowReceiverFilterMode mode) noexcept {
     return buffer;
 }
 
+[[nodiscard]] rhi::BufferHandle create_physical_sky_constants_buffer(rhi::IRhiDevice& device,
+                                                                     const PhysicalSkyPolicyDesc& desc) {
+    std::array<std::uint8_t, physical_sky_constants_byte_size()> constants{};
+    pack_physical_sky_constants(constants, desc);
+    auto buffer = device.create_buffer(rhi::BufferDesc{
+        .size_bytes = static_cast<std::uint64_t>(constants.size()),
+        .usage = rhi::BufferUsage::uniform | rhi::BufferUsage::copy_source,
+    });
+    if (buffer.value != 0) {
+        device.write_buffer(buffer, 0, std::span<const std::uint8_t>{constants.data(), constants.size()});
+    }
+    return buffer;
+}
+
+[[nodiscard]] PhysicalSkyPolicyDesc sample_physical_sky_policy_desc() {
+    return PhysicalSkyPolicyDesc{
+        .shader_contract_evidence_ready = true,
+        .package_evidence_ready = true,
+        .execution_evidence_ready = true,
+        .request_ready_promotion = true,
+    };
+}
+
 [[nodiscard]] EnvironmentCloudLayerDesc sample_cloud_layer_package_desc() {
     return EnvironmentCloudLayerDesc{
         .mode = EnvironmentCloudLayerMode::equirectangular_2d,
@@ -269,6 +305,18 @@ void apply_cloud_layer_plan(NativeRendererCreateResult& result, const CloudLayer
         result.cloud_layer_uses_latlong_projection = plan.shader_contract_rows.front().uses_latlong_projection;
         result.cloud_layer_uses_flow_map = plan.shader_contract_rows.front().uses_flow_map;
     }
+}
+
+void apply_physical_sky_plan(NativeRendererCreateResult& result, const PhysicalSkyPolicyPlan& plan) noexcept {
+    result.physical_sky_shader_contract_evidence_ready = plan.shader_contract_evidence_ready;
+    result.physical_sky_package_evidence_ready = plan.package_evidence_ready;
+    result.physical_sky_execution_evidence_ready = plan.execution_evidence_ready;
+    result.physical_sky_allocates_lut_textures = plan.allocates_lut_textures;
+    result.physical_sky_invokes_backend = plan.invokes_backend;
+    result.physical_sky_exposes_native_handles = plan.exposes_native_handles;
+    result.physical_sky_constant_layout_rows = static_cast<std::uint32_t>(plan.constant_layout_rows.size());
+    result.physical_sky_lut_intent_rows = static_cast<std::uint32_t>(plan.lut_intent_rows.size());
+    result.physical_sky_policy_diagnostics_count = static_cast<std::uint32_t>(plan.diagnostics.size());
 }
 
 void apply_precipitation_plan(NativeRendererCreateResult& result, const PrecipitationPolicyDesc& desc,
@@ -1912,6 +1960,7 @@ build_scene_compute_morph_bindings(rhi::IRhiDevice& device,
         const bool enable_postprocess_depth_input =
             desc.d3d12_scene_renderer->enable_postprocess && postprocess_depth_input_requested;
         const bool environment_fog_requested = desc.d3d12_scene_renderer->enable_environment_fog;
+        const bool physical_sky_requested = desc.d3d12_scene_renderer->enable_physical_sky_package_evidence;
         const bool cloud_layer_requested = desc.d3d12_scene_renderer->enable_cloud_layer_package_evidence;
         const bool environment_precipitation_requested =
             desc.d3d12_scene_renderer->enable_environment_precipitation_package_evidence;
@@ -1973,11 +2022,41 @@ build_scene_compute_morph_bindings(rhi::IRhiDevice& device,
         result.failure_reason = Win32DesktopPresentationFallbackReason::none;
         result.postprocess_depth_input_requested = postprocess_depth_input_requested;
         result.environment_fog_requested = environment_fog_requested;
+        result.physical_sky_requested = physical_sky_requested;
         result.cloud_layer_requested = cloud_layer_requested;
         result.environment_precipitation_requested = environment_precipitation_requested;
         result.directional_shadow_requested = directional_shadow_requested;
         result.native_ui_overlay_requested = native_ui_overlay_requested;
         result.native_ui_texture_overlay_requested = native_ui_texture_overlay_requested;
+        if (physical_sky_requested) {
+            auto physical_sky_desc = desc.d3d12_scene_renderer->physical_sky;
+            physical_sky_desc.package_evidence_ready =
+                physical_sky_desc.package_evidence_ready && desc.d3d12_scene_renderer->package != nullptr;
+            const auto physical_sky_plan = plan_physical_sky_policy(physical_sky_desc);
+            apply_physical_sky_plan(result, physical_sky_plan);
+            if (!physical_sky_plan.ready()) {
+                result.succeeded = false;
+                result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                result.diagnostic =
+                    "D3D12 physical sky package evidence failed the physical sky policy; using NullRenderer fallback.";
+                result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                result.scene_gpu_diagnostics.push_back(
+                    make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                return result;
+            }
+            const auto physical_sky_constants_buffer = create_physical_sky_constants_buffer(*device, physical_sky_desc);
+            result.physical_sky_constant_buffer_ready = physical_sky_constants_buffer.value != 0;
+            result.physical_sky_constant_buffer_bytes = static_cast<std::uint64_t>(physical_sky_constants_byte_size());
+            if (!result.physical_sky_constant_buffer_ready) {
+                result.succeeded = false;
+                result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                result.diagnostic = "D3D12 physical sky constants buffer creation failed; using NullRenderer fallback.";
+                result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                result.scene_gpu_diagnostics.push_back(
+                    make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                return result;
+            }
+        }
         if (cloud_layer_requested) {
             auto cloud_layer_desc = desc.d3d12_scene_renderer->cloud_layer;
             cloud_layer_desc.package_evidence_ready =
@@ -3858,6 +3937,18 @@ struct Win32DesktopPresentation::Impl {
     bool environment_fog_requested{false};
     bool environment_fog_constant_buffer_ready{false};
     std::uint64_t environment_fog_constant_buffer_bytes{0};
+    bool physical_sky_requested{false};
+    bool physical_sky_shader_contract_evidence_ready{false};
+    bool physical_sky_package_evidence_ready{false};
+    bool physical_sky_execution_evidence_ready{false};
+    bool physical_sky_constant_buffer_ready{false};
+    std::uint64_t physical_sky_constant_buffer_bytes{0};
+    bool physical_sky_allocates_lut_textures{false};
+    bool physical_sky_invokes_backend{false};
+    bool physical_sky_exposes_native_handles{false};
+    std::uint32_t physical_sky_constant_layout_rows{0};
+    std::uint32_t physical_sky_lut_intent_rows{0};
+    std::uint32_t physical_sky_policy_diagnostics_count{0};
     bool cloud_layer_requested{false};
     bool cloud_layer_shader_contract_evidence_ready{false};
     bool cloud_layer_package_evidence_ready{false};
@@ -3928,6 +4019,21 @@ struct Win32DesktopPresentation::Impl {
     std::unique_ptr<rhi::IRhiDevice> device;
     std::unique_ptr<IRenderer> renderer;
     SceneGpuBindingInjectingRenderer* scene_gpu_renderer{nullptr};
+
+    void apply_physical_sky_result(const NativeRendererCreateResult& renderer_result) noexcept {
+        physical_sky_requested = physical_sky_requested || renderer_result.physical_sky_requested;
+        physical_sky_shader_contract_evidence_ready = renderer_result.physical_sky_shader_contract_evidence_ready;
+        physical_sky_package_evidence_ready = renderer_result.physical_sky_package_evidence_ready;
+        physical_sky_execution_evidence_ready = renderer_result.physical_sky_execution_evidence_ready;
+        physical_sky_constant_buffer_ready = renderer_result.physical_sky_constant_buffer_ready;
+        physical_sky_constant_buffer_bytes = renderer_result.physical_sky_constant_buffer_bytes;
+        physical_sky_allocates_lut_textures = renderer_result.physical_sky_allocates_lut_textures;
+        physical_sky_invokes_backend = renderer_result.physical_sky_invokes_backend;
+        physical_sky_exposes_native_handles = renderer_result.physical_sky_exposes_native_handles;
+        physical_sky_constant_layout_rows = renderer_result.physical_sky_constant_layout_rows;
+        physical_sky_lut_intent_rows = renderer_result.physical_sky_lut_intent_rows;
+        physical_sky_policy_diagnostics_count = renderer_result.physical_sky_policy_diagnostics_count;
+    }
 
     void apply_cloud_layer_result(const NativeRendererCreateResult& renderer_result) noexcept {
         cloud_layer_requested = cloud_layer_requested || renderer_result.cloud_layer_requested;
@@ -4294,6 +4400,7 @@ Win32DesktopPresentation::Win32DesktopPresentation(const Win32DesktopPresentatio
                             renderer_result.environment_fog_constant_buffer_ready;
                         impl_->environment_fog_constant_buffer_bytes =
                             renderer_result.environment_fog_constant_buffer_bytes;
+                        impl_->apply_physical_sky_result(renderer_result);
                         impl_->apply_cloud_layer_result(renderer_result);
                         impl_->apply_precipitation_result(renderer_result);
                         impl_->directional_shadow_requested =
@@ -4351,6 +4458,7 @@ Win32DesktopPresentation::Win32DesktopPresentation(const Win32DesktopPresentatio
                         renderer_result.environment_fog_constant_buffer_ready;
                     impl_->environment_fog_constant_buffer_bytes =
                         renderer_result.environment_fog_constant_buffer_bytes;
+                    impl_->apply_physical_sky_result(renderer_result);
                     impl_->apply_cloud_layer_result(renderer_result);
                     impl_->apply_precipitation_result(renderer_result);
                     impl_->directional_shadow_requested =
@@ -4647,6 +4755,7 @@ Win32DesktopPresentation::Win32DesktopPresentation(const Win32DesktopPresentatio
                             renderer_result.environment_fog_constant_buffer_ready;
                         impl_->environment_fog_constant_buffer_bytes =
                             renderer_result.environment_fog_constant_buffer_bytes;
+                        impl_->apply_physical_sky_result(renderer_result);
                         impl_->apply_cloud_layer_result(renderer_result);
                         impl_->apply_precipitation_result(renderer_result);
                         impl_->directional_shadow_requested =
@@ -4704,6 +4813,7 @@ Win32DesktopPresentation::Win32DesktopPresentation(const Win32DesktopPresentatio
                         renderer_result.environment_fog_constant_buffer_ready;
                     impl_->environment_fog_constant_buffer_bytes =
                         renderer_result.environment_fog_constant_buffer_bytes;
+                    impl_->apply_physical_sky_result(renderer_result);
                     impl_->apply_cloud_layer_result(renderer_result);
                     impl_->apply_precipitation_result(renderer_result);
                     impl_->directional_shadow_requested =
@@ -4841,6 +4951,18 @@ Win32DesktopPresentationReport Win32DesktopPresentation::report() const noexcept
         .environment_fog_requested = impl_->environment_fog_requested,
         .environment_fog_constant_buffer_ready = impl_->environment_fog_constant_buffer_ready,
         .environment_fog_constant_buffer_bytes = impl_->environment_fog_constant_buffer_bytes,
+        .physical_sky_requested = impl_->physical_sky_requested,
+        .physical_sky_shader_contract_evidence_ready = impl_->physical_sky_shader_contract_evidence_ready,
+        .physical_sky_package_evidence_ready = impl_->physical_sky_package_evidence_ready,
+        .physical_sky_execution_evidence_ready = impl_->physical_sky_execution_evidence_ready,
+        .physical_sky_constant_buffer_ready = impl_->physical_sky_constant_buffer_ready,
+        .physical_sky_constant_buffer_bytes = impl_->physical_sky_constant_buffer_bytes,
+        .physical_sky_allocates_lut_textures = impl_->physical_sky_allocates_lut_textures,
+        .physical_sky_invokes_backend = impl_->physical_sky_invokes_backend,
+        .physical_sky_exposes_native_handles = impl_->physical_sky_exposes_native_handles,
+        .physical_sky_constant_layout_rows = impl_->physical_sky_constant_layout_rows,
+        .physical_sky_lut_intent_rows = impl_->physical_sky_lut_intent_rows,
+        .physical_sky_policy_diagnostics_count = impl_->physical_sky_policy_diagnostics_count,
         .cloud_layer_requested = impl_->cloud_layer_requested,
         .cloud_layer_shader_contract_evidence_ready = impl_->cloud_layer_shader_contract_evidence_ready,
         .cloud_layer_package_evidence_ready = impl_->cloud_layer_package_evidence_ready,
@@ -5299,6 +5421,19 @@ win32_desktop_presentation_environment_fog_status_name(Win32DesktopPresentationE
 }
 
 std::string_view
+win32_desktop_presentation_physical_sky_status_name(Win32DesktopPresentationPhysicalSkyStatus status) noexcept {
+    switch (status) {
+    case Win32DesktopPresentationPhysicalSkyStatus::not_requested:
+        return "not_requested";
+    case Win32DesktopPresentationPhysicalSkyStatus::blocked:
+        return "blocked";
+    case Win32DesktopPresentationPhysicalSkyStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
+std::string_view
 win32_desktop_presentation_cloud_layer_status_name(Win32DesktopPresentationCloudLayerStatus status) noexcept {
     switch (status) {
     case Win32DesktopPresentationCloudLayerStatus::not_requested:
@@ -5582,6 +5717,57 @@ Win32DesktopPresentationEnvironmentFogReport evaluate_win32_desktop_presentation
     result.ready = result.diagnostics_count == 0;
     result.status = result.ready ? Win32DesktopPresentationEnvironmentFogStatus::ready
                                  : Win32DesktopPresentationEnvironmentFogStatus::blocked;
+    return result;
+}
+
+Win32DesktopPresentationPhysicalSkyReport
+evaluate_win32_desktop_presentation_physical_sky(const Win32DesktopPresentationReport& report, const bool requested) {
+    Win32DesktopPresentationPhysicalSkyReport result;
+    result.constants_binding = physical_sky_constants_binding();
+    if (!requested) {
+        return result;
+    }
+
+    result.requested = report.physical_sky_requested;
+    result.d3d12_backend_selected = report.selected_backend == Win32DesktopPresentationBackend::d3d12;
+    result.shader_contract_evidence_ready = report.physical_sky_shader_contract_evidence_ready;
+    result.package_evidence_ready = report.physical_sky_package_evidence_ready;
+    result.execution_evidence_ready = report.physical_sky_execution_evidence_ready;
+    result.constant_buffer_ready = report.physical_sky_constant_buffer_ready;
+    result.constant_buffer_bytes = report.physical_sky_constant_buffer_bytes;
+    result.allocates_lut_textures = report.physical_sky_allocates_lut_textures;
+    result.invokes_backend = report.physical_sky_invokes_backend;
+    result.exposes_native_handles = report.physical_sky_exposes_native_handles;
+    result.constant_layout_rows = report.physical_sky_constant_layout_rows;
+    result.lut_intent_rows = report.physical_sky_lut_intent_rows;
+
+    const auto expected_plan = plan_physical_sky_policy(sample_physical_sky_policy_desc());
+    result.diagnostics_count =
+        static_cast<std::uint32_t>(expected_plan.diagnostics.size()) + report.physical_sky_policy_diagnostics_count;
+    if (!result.requested) {
+        ++result.diagnostics_count;
+    }
+    if (!result.d3d12_backend_selected) {
+        ++result.diagnostics_count;
+    }
+    if (!result.shader_contract_evidence_ready || !result.package_evidence_ready || !result.execution_evidence_ready) {
+        ++result.diagnostics_count;
+    }
+    if (!result.constant_buffer_ready ||
+        result.constant_buffer_bytes != static_cast<std::uint64_t>(physical_sky_constants_byte_size())) {
+        ++result.diagnostics_count;
+    }
+    if (result.constant_layout_rows != static_cast<std::uint32_t>(expected_plan.constant_layout_rows.size()) ||
+        result.lut_intent_rows != static_cast<std::uint32_t>(expected_plan.lut_intent_rows.size())) {
+        ++result.diagnostics_count;
+    }
+    if (result.allocates_lut_textures || result.invokes_backend || result.exposes_native_handles) {
+        ++result.diagnostics_count;
+    }
+
+    result.ready = result.diagnostics_count == 0;
+    result.status = result.ready ? Win32DesktopPresentationPhysicalSkyStatus::ready
+                                 : Win32DesktopPresentationPhysicalSkyStatus::blocked;
     return result;
 }
 

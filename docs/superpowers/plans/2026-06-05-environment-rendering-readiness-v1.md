@@ -208,13 +208,15 @@ Task 0 evidence recorded on 2026-06-05:
 - Modify: `docs/ai-game-development.md`
 - Modify: `docs/current-capabilities.md`
 
-- [ ] **Step 1: Re-open official sources**
+- [x] **Step 1: Re-open official sources**
 
 Re-open Unreal Sky Atmosphere, the Hillaire paper link retained by Environment System v1, Microsoft D3D12 root/resource/barrier docs, Context7 `/khronosgroup/vulkan-docs`, and Context7 `/microsoft/directxshadercompiler`.
 
 Expected: task notes name the exact official URLs and the DXC/Vulkan validation requirements used.
 
-- [ ] **Step 2: Add RED package tests**
+Evidence: Task 1 reopened Unreal Sky Atmosphere official documentation (`https://dev.epicgames.com/documentation/en-us/unreal-engine/sky-atmosphere?application_version=4.27`), the Hillaire/Hosek-style production atmosphere reference retained by the plan (`https://diglib.eg.org/items/8a3e5350-18b3-46bd-9274-3add5af88c75`), Microsoft D3D12 resource binding / root signature / barrier documentation, Context7 `/khronosgroup/vulkan-docs` for synchronization2 image barriers, validation layer, fence wait, and non-coherent readback requirements, and Context7 `/microsoft/directxshadercompiler` for DXC `-spirv`, `-fspv-target-env`, and target profile requirements.
+
+- [x] **Step 2: Add RED package tests**
 
 Add tests that require physical-sky package counters:
 
@@ -236,19 +238,43 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 
 Expected: RED fails on missing package promotion fields or missing Vulkan proof rows, not on unrelated compile errors.
 
-- [ ] **Step 3: Promote D3D12 package proof only**
+Evidence: RED tests were added in `tests/unit/renderer_physical_sky_policy_tests.cpp` and `tests/unit/runtime_host_win32_public_api_compile.cpp`. The first focused build failed on missing physical-sky package promotion fields (`request_ready_promotion`, package/execution evidence fields, `ready()` diagnostics, and runtime-host report/evaluator fields), then passed after the policy/runtime host API was implemented.
+
+- [x] **Step 3: Promote D3D12 package proof only**
 
 Add the smallest D3D12 package-visible physical-sky lane using the existing packed-constants fullscreen readback evidence. Keep Vulkan and Metal fields host-gated or unclaimed.
 
 Expected: installed package smoke reports physical-sky fields and still reports no broad `environment_ready`.
 
-- [ ] **Step 4: Add strict Vulkan runtime proof**
+Evidence: focused configure/build/CTest passed after enabling the desktop runtime lane:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev -DMK_ENABLE_DESKTOP_RUNTIME=ON
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_physical_sky_policy_tests MK_runtime_host_win32_public_api_compile
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "physical_sky|runtime_host_win32_public_api_compile"
+```
+
+The selected D3D12 package smoke passed through `tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders` with `--require-physical-sky-package-evidence`, proving `environment_physical_sky_status=ready`, `environment_physical_sky_ready=1`, D3D12 selected backend, shader-contract/package/execution evidence, constants binding `0`, constants byte size `256`, eight constant-layout rows, four LUT-intent rows, zero diagnostics, zero LUT texture allocation/backend invocation/native-handle counters, and no broad `environment_ready` row.
+
+- [x] **Step 4: Add strict Vulkan runtime proof**
 
 Compile target-specific SPIR-V from the physical-sky shader contract, validate with `spirv-val --target-env vulkan1.3`, and add an env-gated Vulkan readback test with synchronization2 barriers and `VK_LAYER_KHRONOS_validation`.
 
 Expected: Vulkan proof is a separate row such as `environment_physical_sky_vulkan_runtime_status=ready` only when env vars and host gates are satisfied.
 
-- [ ] **Step 5: Validate**
+Evidence: `shaders/environment/physical_sky.hlsl` now carries explicit Vulkan binding metadata for the physical-sky constants buffer. `tools/compile-vulkan-physical-sky-test-spirv.ps1` generated `MK_VULKAN_TEST_PHYSICAL_SKY_VERTEX_SPV` / `MK_VULKAN_TEST_PHYSICAL_SKY_FRAGMENT_SPV` artifacts with DXC `-spirv -fspv-target-env=vulkan1.3`, and `spirv-val --target-env vulkan1.3` passed. `MK_backend_scaffold_tests` now contains a host/toolchain/env-gated Vulkan readback proof that requires real SPIR-V artifacts, `VK_LAYER_KHRONOS_validation` instance-layer readiness, private synchronization2 command submission/barriers through the Vulkan RHI bridge, physical-sky constants binding `0`, and CPU readback assertions. This is a runtime proof only; Vulkan package readiness remains unclaimed.
+
+Validation passed:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compile-vulkan-physical-sky-test-spirv.ps1
+$env:MK_VULKAN_TEST_PHYSICAL_SKY_VERTEX_SPV = "<repo>\\out\\vulkan-physical-sky-test-artifacts\\environment_physical_sky.vs.spv"
+$env:MK_VULKAN_TEST_PHYSICAL_SKY_FRAGMENT_SPV = "<repo>\\out\\vulkan-physical-sky-test-artifacts\\environment_physical_sky.fs.spv"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_backend_scaffold_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "backend_scaffold"
+```
+
+- [x] **Step 5: Validate**
 
 Run:
 
@@ -259,6 +285,18 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
 ```
 
 Expected: D3D12 physical-sky package passes; Vulkan package remains unclaimed unless an explicit strict Vulkan package recipe also passes.
+
+Evidence: final Task 1 validation passed on 2026-06-05:
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-shader-toolchain.ps1` exited 0 with D3D12 DXIL ready, Vulkan SPIR-V ready, DXC SPIR-V CodeGen ready, and Metal diagnostic-only host gates on Windows.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compile-vulkan-physical-sky-test-spirv.ps1` regenerated the physical-sky VS/FS SPIR-V artifacts and `spirv-val` passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_physical_sky_policy_tests MK_runtime_host_win32_public_api_compile MK_backend_scaffold_tests` passed.
+- With `MK_VULKAN_TEST_PHYSICAL_SKY_VERTEX_SPV` and `MK_VULKAN_TEST_PHYSICAL_SKY_FRAGMENT_SPV` pointing at the regenerated artifacts, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "physical_sky|runtime_host_win32_public_api_compile|backend_scaffold"` passed 3/3.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -Recipe desktop-runtime-sample-game-physical-sky-package -Mode Execute -HostGateAcknowledgements d3d12-windows-primary -TimeoutSeconds 900` returned `status=passed`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-format.ps1`, and `tools/check-public-api-boundaries.ps1` passed after docs/manifest/static-check sync.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed with `validate: ok`; CTest reported `100% tests passed, 0 tests failed out of 115`.
+
+Task 1 promotes selected D3D12 package-visible physical-sky evidence and strict env-gated Vulkan physical-sky runtime readback evidence only. It does not claim Vulkan physical-sky package readiness, Metal readiness, backend parity, broad optimization, broad sky readiness, or broad `environment_ready`.
 
 ## Task 2: Height Fog Vulkan Package And Volumetric Fog Package
 

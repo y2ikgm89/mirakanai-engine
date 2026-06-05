@@ -71,6 +71,7 @@ struct DesktopRuntimeGameOptions {
     bool require_vulkan_postprocess_evidence{false};
     bool require_environment_profile{false};
     bool require_environment_fog_evidence{false};
+    bool require_physical_sky_package_evidence{false};
     bool require_cloud_layer_package_evidence{false};
     bool require_environment_precipitation_package_evidence{false};
     bool require_gpu_memory_policy{false};
@@ -168,6 +169,15 @@ constexpr std::string_view kHudAtlasProofAssetUri{"runtime/assets/desktop_runtim
                 .ibl_contribution = 0.25F,
             },
         .quality_tier = mirakana::CloudLayerQualityTier::balanced,
+        .shader_contract_evidence_ready = true,
+        .package_evidence_ready = true,
+        .execution_evidence_ready = true,
+        .request_ready_promotion = true,
+    };
+}
+
+[[nodiscard]] mirakana::PhysicalSkyPolicyDesc make_sample_physical_sky_policy_desc() {
+    return mirakana::PhysicalSkyPolicyDesc{
         .shader_contract_evidence_ready = true,
         .package_evidence_ready = true,
         .execution_evidence_ready = true,
@@ -970,6 +980,7 @@ void print_usage() {
                  "[--require-vulkan-postprocess-evidence] "
                  "[--require-environment-profile] "
                  "[--require-environment-fog-evidence] "
+                 "[--require-physical-sky-package-evidence] "
                  "[--require-cloud-layer-package-evidence] "
                  "[--require-environment-precipitation-package-evidence] "
                  "[--require-gpu-memory-policy] [--require-memory-diagnostics] [--require-d3d12-gpu-memory-evidence] "
@@ -1105,6 +1116,15 @@ void print_usage() {
             options.require_postprocess_depth_input = true;
             options.require_d3d12_postprocess_evidence = true;
             options.require_environment_fog_evidence = true;
+            continue;
+        }
+        if (arg == "--require-physical-sky-package-evidence") {
+            options.require_d3d12_renderer = true;
+            options.require_scene_gpu_bindings = true;
+            options.require_postprocess = true;
+            options.require_postprocess_depth_input = true;
+            options.require_d3d12_postprocess_evidence = true;
+            options.require_physical_sky_package_evidence = true;
             continue;
         }
         if (arg == "--require-cloud-layer-package-evidence") {
@@ -2818,6 +2838,8 @@ int main(int argc, char** argv) {
                     .directional_inscattering_color = mirakana::Vec3{.x = 0.84F, .y = 0.78F, .z = 0.62F},
                     .sample_step_budget = 8,
                 },
+            .enable_physical_sky_package_evidence = options.require_physical_sky_package_evidence,
+            .physical_sky = make_sample_physical_sky_policy_desc(),
             .enable_cloud_layer_package_evidence = options.require_cloud_layer_package_evidence,
             .cloud_layer = make_sample_cloud_layer_policy_desc(),
             .enable_environment_precipitation_package_evidence =
@@ -3077,6 +3099,8 @@ int main(int argc, char** argv) {
         report, static_cast<std::uint64_t>(options.max_frames), options.require_d3d12_postprocess_evidence);
     const auto environment_fog = mirakana::evaluate_win32_desktop_presentation_environment_fog(
         report, d3d12_postprocess_execution, options.require_environment_fog_evidence);
+    const auto physical_sky = mirakana::evaluate_win32_desktop_presentation_physical_sky(
+        report, options.require_physical_sky_package_evidence);
     const auto cloud_layer =
         mirakana::evaluate_win32_desktop_presentation_cloud_layer(report, options.require_cloud_layer_package_evidence);
     const auto environment_precipitation = mirakana::evaluate_win32_desktop_presentation_environment_precipitation(
@@ -3218,7 +3242,25 @@ int main(int argc, char** argv) {
         << " environment_fog_constants_binding=" << environment_fog.constants_binding
         << " environment_fog_constants_byte_size=" << environment_fog.constant_buffer_bytes
         << " environment_fog_postprocess_passes_ok=" << (environment_fog.postprocess_passes_current ? 1 : 0)
-        << " environment_fog_diagnostics=" << environment_fog.diagnostics_count
+        << " environment_fog_diagnostics=" << environment_fog.diagnostics_count << " environment_physical_sky_status="
+        << mirakana::win32_desktop_presentation_physical_sky_status_name(physical_sky.status)
+        << " environment_physical_sky_ready=" << (physical_sky.ready ? 1 : 0)
+        << " environment_physical_sky_selected_backend="
+        << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
+        << " environment_physical_sky_requested=" << (physical_sky.requested ? 1 : 0)
+        << " environment_physical_sky_shader_contract_evidence_ready="
+        << (physical_sky.shader_contract_evidence_ready ? 1 : 0)
+        << " environment_physical_sky_package_evidence_ready=" << (physical_sky.package_evidence_ready ? 1 : 0)
+        << " environment_physical_sky_execution_evidence_ready=" << (physical_sky.execution_evidence_ready ? 1 : 0)
+        << " environment_physical_sky_constant_buffer_ready=" << (physical_sky.constant_buffer_ready ? 1 : 0)
+        << " environment_physical_sky_constants_binding=" << physical_sky.constants_binding
+        << " environment_physical_sky_constants_byte_size=" << physical_sky.constant_buffer_bytes
+        << " environment_physical_sky_constant_layout_rows=" << physical_sky.constant_layout_rows
+        << " environment_physical_sky_lut_intent_rows=" << physical_sky.lut_intent_rows
+        << " environment_physical_sky_lut_texture_allocations=" << (physical_sky.allocates_lut_textures ? 1 : 0)
+        << " environment_physical_sky_backend_invocations=" << (physical_sky.invokes_backend ? 1 : 0)
+        << " environment_physical_sky_native_handle_access=" << (physical_sky.exposes_native_handles ? 1 : 0)
+        << " environment_physical_sky_diagnostics=" << physical_sky.diagnostics_count
         << " cloud_layer_status=" << mirakana::win32_desktop_presentation_cloud_layer_status_name(cloud_layer.status)
         << " cloud_layer_ready=" << (cloud_layer.ready ? 1 : 0) << " cloud_layer_selected_backend="
         << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
@@ -4120,6 +4162,9 @@ int main(int argc, char** argv) {
             return 3;
         }
         if (options.require_environment_fog_evidence && !environment_fog.ready) {
+            return 3;
+        }
+        if (options.require_physical_sky_package_evidence && !physical_sky.ready) {
             return 3;
         }
         if (options.require_cloud_layer_package_evidence && !cloud_layer.ready) {

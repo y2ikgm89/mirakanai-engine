@@ -6,6 +6,7 @@
 #include "mirakana/platform/win32/win32_window.hpp"
 #include "mirakana/renderer/cloud_layer_policy.hpp"
 #include "mirakana/renderer/environment_fog_policy.hpp"
+#include "mirakana/renderer/physical_sky_policy.hpp"
 #include "mirakana/renderer/precipitation_policy.hpp"
 #include "mirakana/renderer/renderer.hpp"
 #include "mirakana/rhi/rhi.hpp"
@@ -234,6 +235,18 @@ struct Win32DesktopPresentationReport {
     bool environment_fog_requested{false};
     bool environment_fog_constant_buffer_ready{false};
     std::uint64_t environment_fog_constant_buffer_bytes{0};
+    bool physical_sky_requested{false};
+    bool physical_sky_shader_contract_evidence_ready{false};
+    bool physical_sky_package_evidence_ready{false};
+    bool physical_sky_execution_evidence_ready{false};
+    bool physical_sky_constant_buffer_ready{false};
+    std::uint64_t physical_sky_constant_buffer_bytes{0};
+    bool physical_sky_allocates_lut_textures{false};
+    bool physical_sky_invokes_backend{false};
+    bool physical_sky_exposes_native_handles{false};
+    std::uint32_t physical_sky_constant_layout_rows{0};
+    std::uint32_t physical_sky_lut_intent_rows{0};
+    std::uint32_t physical_sky_policy_diagnostics_count{0};
     bool cloud_layer_requested{false};
     bool cloud_layer_shader_contract_evidence_ready{false};
     bool cloud_layer_package_evidence_ready{false};
@@ -353,6 +366,12 @@ enum class Win32DesktopPresentationEnvironmentFogStatus : std::uint8_t {
     ready,
 };
 
+enum class Win32DesktopPresentationPhysicalSkyStatus : std::uint8_t {
+    not_requested = 0,
+    blocked,
+    ready,
+};
+
 enum class Win32DesktopPresentationCloudLayerStatus : std::uint8_t {
     not_requested = 0,
     blocked,
@@ -461,6 +480,25 @@ struct Win32DesktopPresentationEnvironmentFogReport {
     std::uint64_t expected_postprocess_passes{0};
     std::uint64_t postprocess_passes_executed{0};
     bool postprocess_passes_current{false};
+    std::uint32_t diagnostics_count{0};
+};
+
+struct Win32DesktopPresentationPhysicalSkyReport {
+    Win32DesktopPresentationPhysicalSkyStatus status{Win32DesktopPresentationPhysicalSkyStatus::not_requested};
+    bool ready{false};
+    bool requested{false};
+    bool d3d12_backend_selected{false};
+    bool shader_contract_evidence_ready{false};
+    bool package_evidence_ready{false};
+    bool execution_evidence_ready{false};
+    bool constant_buffer_ready{false};
+    std::uint32_t constants_binding{0};
+    std::uint64_t constant_buffer_bytes{0};
+    std::uint32_t constant_layout_rows{0};
+    std::uint32_t lut_intent_rows{0};
+    bool allocates_lut_textures{false};
+    bool invokes_backend{false};
+    bool exposes_native_handles{false};
     std::uint32_t diagnostics_count{0};
 };
 
@@ -873,6 +911,8 @@ struct Win32DesktopPresentationD3d12SceneRendererDesc {
     bool enable_postprocess_depth_input{false};
     bool enable_environment_fog{false};
     EnvironmentFogPolicyDesc environment_fog;
+    bool enable_physical_sky_package_evidence{false};
+    PhysicalSkyPolicyDesc physical_sky;
     bool enable_cloud_layer_package_evidence{false};
     CloudLayerPolicyDesc cloud_layer;
     bool enable_environment_precipitation_package_evidence{false};
@@ -1036,6 +1076,10 @@ win32_desktop_presentation_environment_fog_status_name(Win32DesktopPresentationE
 [[nodiscard]] Win32DesktopPresentationEnvironmentFogReport evaluate_win32_desktop_presentation_environment_fog(
     const Win32DesktopPresentationReport& report,
     const Win32DesktopPresentationD3d12PostprocessExecutionReport& d3d12_postprocess_execution, bool requested);
+[[nodiscard]] std::string_view
+win32_desktop_presentation_physical_sky_status_name(Win32DesktopPresentationPhysicalSkyStatus status) noexcept;
+[[nodiscard]] Win32DesktopPresentationPhysicalSkyReport
+evaluate_win32_desktop_presentation_physical_sky(const Win32DesktopPresentationReport& report, bool requested);
 [[nodiscard]] std::string_view
 win32_desktop_presentation_cloud_layer_status_name(Win32DesktopPresentationCloudLayerStatus status) noexcept;
 [[nodiscard]] Win32DesktopPresentationCloudLayerReport
