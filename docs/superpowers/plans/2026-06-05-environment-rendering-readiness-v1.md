@@ -32,7 +32,7 @@ Proven today before this plan:
 Unclaimed and selected by this plan:
 
 - Physical-sky Vulkan proof and package-visible physical-sky proof.
-- Cloud-layer renderer/RHI backend drawing, distinct flow-map package asset proof, Vulkan cloud proof, and Metal cloud proof.
+- Cloud-layer Vulkan proof and Metal cloud proof; selected D3D12 cloud-layer renderer/RHI execution is complete through Task 4.
 - Precipitation renderer/RHI particle-buffer upload and draw execution.
 - Volumetric-cloud execution and package readiness.
 - Environment lighting/IBL upload or package proof beyond policy rows.
@@ -44,6 +44,10 @@ Completed by Task 3:
 - Strict host/toolchain-gated Vulkan height-fog package readiness.
 - Selected D3D12 volumetric-fog package readiness.
 - Selected D3D12 snow precipitation package readiness, separate from the rain lane and still without renderer/RHI particle-buffer upload, material mutation, or audio playback.
+
+Completed by Task 4:
+
+- Selected D3D12 cloud-layer renderer/RHI execution with package cloud-map upload, a distinct flow-map package asset, backend-private descriptors/root signatures, positive renderer draw counters, and zero native-handle access. Vulkan and Metal cloud-layer execution remain unclaimed until backend-local proof runs.
 
 ## Official Source Baseline
 
@@ -92,7 +96,7 @@ Source implications for this repo:
 | `environment_fog_status=ready` | Ready for selected D3D12 height-fog package; strict host/toolchain-gated Vulkan package lane is ready through `environment_fog_vulkan_package_status=ready`. | Keep Metal host-gated and do not infer backend parity. |
 | physical sky package | Unclaimed. | D3D12 package smoke with shader artifact, constants, readback/package counters, and no broad sky readiness. |
 | physical sky Vulkan | Unclaimed. | Strict Vulkan runtime readback with SPIR-V artifacts, synchronization2 barriers, validation layer, and package recipe only after runtime proof. |
-| cloud layer renderer/RHI execution | Unclaimed. | D3D12 draw/readback over package cloud-map and distinct flow-map assets, zero native handle leakage, Vulkan strict proof, Metal host proof if selected. |
+| cloud layer renderer/RHI execution | Ready for selected D3D12 package renderer execution only; Vulkan and Metal remain unclaimed. | Keep positive D3D12 package counters for texture upload/backend invocation/renderer draw over package cloud-map and distinct flow-map assets with zero native handle leakage; add Vulkan strict proof and Metal host proof separately if selected. |
 | precipitation renderer/RHI execution | Unclaimed. | Particle-buffer upload, camera-near draw, depth occlusion readback, D3D12 package smoke, Vulkan strict proof, Metal host proof if selected. |
 | snow package readiness | Ready for selected D3D12 package-visible policy evidence only. | Keep `environment_precipitation_weather=snow`, `environment_precipitation_kind=snow`, zero wetness rows, one audio handoff row, and zero particle-buffer upload/backend invocation/material mutation/audio playback counters. |
 | volumetric fog package | Ready for selected D3D12 package through `environment_volumetric_fog_status=ready` and positive `environment_volumetric_fog_compute_dispatches`. | Add Vulkan/Metal volumetric-fog lanes only after backend-local proof; do not infer volumetric-cloud readiness. |
@@ -458,7 +462,7 @@ Evidence: Context7 `/godotengine/godot-docs` re-checked `GPUParticles3D` / `Part
 - Modify: `tests/shaders/environment_cloud_layer.hlsl`
 - Modify: `tools/validate-installed-desktop-runtime.ps1`
 
-- [ ] **Step 1: Add RED execution tests**
+- [x] **Step 1: Add RED execution tests**
 
 Require cloud-map SRV, distinct flow-map SRV, sampler, constants, fullscreen or sky-pass draw, and readback evidence. Assert package counters move from policy-only:
 
@@ -468,21 +472,21 @@ Require cloud-map SRV, distinct flow-map SRV, sampler, constants, fullscreen or 
 - `cloud_layer_native_handle_access=0`
 - `cloud_layer_volumetric_clouds=0`
 
-Expected: RED fails because current counters are `texture_uploads=0` and `backend_invocations=0`.
+Expected: RED fails because the package-only counters are `texture_uploads=0`, `backend_invocations=0`, and `renderer_draws=0`.
 
-- [ ] **Step 2: Implement D3D12 execution behind RHI**
+- [x] **Step 2: Implement D3D12 execution behind RHI**
 
 Route cloud layer drawing through backend-private descriptors/root signatures/resource barriers. Keep public APIs on `CloudLayerPolicyPlan` and renderer packets.
 
-Expected: D3D12 readback or package smoke proves a visible non-zero contribution from the cloud shader.
+Expected: D3D12 package smoke proves positive texture-upload, backend-invocation, and renderer-draw counters from the cloud-layer shader path.
 
 - [ ] **Step 3: Add strict Vulkan proof**
 
 Add SPIR-V fixtures and a Vulkan env-gated readback using synchronization2 transitions for color/depth reads as required by the pass.
 
-Expected: `cloud_layer_vulkan_runtime_status=ready` only when strict host/toolchain gates pass.
+Expected: `cloud_layer_vulkan_runtime_status=ready` only when strict host/toolchain gates pass. The current candidate does not claim this row.
 
-- [ ] **Step 4: Validate**
+- [x] **Step 4: Validate**
 
 Run:
 
@@ -490,10 +494,19 @@ Run:
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-shader-toolchain.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_cloud_layer_policy_tests MK_d3d12_rhi_tests MK_backend_scaffold_tests
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "cloud_layer|d3d12_rhi|backend_scaffold"
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-renderer','--require-cloud-layer-renderer-execution')
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-cloud-layer-renderer-execution')
 ```
 
 Expected: cloud-layer renderer execution is D3D12-ready only; Vulkan/Metal rows stay feature-local.
+
+Evidence recorded on 2026-06-05:
+
+- Context7 `/websites/learn_microsoft_en-us_windows_win32_direct3d12` rechecked Microsoft Learn render-pass and graphics PSO format contracts. The selected D3D12 fix keeps the cloud-layer PSO depth format compatible with the active scene render pass when `--require-postprocess-depth-input` is enabled.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\check-shader-toolchain.ps1` passed as diagnostic-only with `d3d12_dxil=ready`, `vulkan_spirv=ready`, and Windows-host Metal toolchain blockers (`metal` / `metallib` missing).
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\cmake.ps1 --build --preset dev --target MK_renderer_cloud_layer_policy_tests MK_d3d12_rhi_tests MK_backend_scaffold_tests` passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\ctest.ps1 --preset dev --output-on-failure -R "cloud_layer|d3d12_rhi|backend_scaffold"` passed with 3/3 tests.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-cloud-layer-renderer-execution')` passed.
+- Direct installed smoke with the same renderer-execution flags exited 0 and reported `cloud_layer_texture_uploads=1`, `cloud_layer_backend_invocations=1`, and `cloud_layer_renderer_draws=2`.
 
 ## Task 5: Precipitation Renderer/RHI Execution For Rain And Snow
 

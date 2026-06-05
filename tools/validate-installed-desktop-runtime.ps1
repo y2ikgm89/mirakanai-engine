@@ -181,6 +181,7 @@ $requiresEnvironmentFogVulkanPackageEvidence = @($SmokeArgs) -contains "--requir
 $requiresPhysicalSkyPackageEvidence = @($SmokeArgs) -contains "--require-physical-sky-package-evidence"
 $requiresEnvironmentVolumetricFogPackageEvidence = @($SmokeArgs) -contains "--require-environment-volumetric-fog-package-evidence"
 $requiresCloudLayerPackageEvidence = @($SmokeArgs) -contains "--require-cloud-layer-package-evidence"
+$requiresCloudLayerRendererExecution = @($SmokeArgs) -contains "--require-cloud-layer-renderer-execution"
 $requiresEnvironmentPrecipitationPackageEvidence = @($SmokeArgs) -contains "--require-environment-precipitation-package-evidence"
 $requiresEnvironmentSnowPackageEvidence = @($SmokeArgs) -contains "--require-environment-snow-package-evidence"
 $requiresGpuMemoryPolicy = @($SmokeArgs) -contains "--require-gpu-memory-policy"
@@ -229,6 +230,12 @@ if ($requiresPhysicalSkyPackageEvidence) {
     $requiresD3d12PostprocessEvidence = $true
 }
 if ($requiresCloudLayerPackageEvidence) {
+    $requiresPostprocess = $true
+    $requiresPostprocessDepthInput = $true
+    $requiresD3d12PostprocessEvidence = $true
+}
+if ($requiresCloudLayerRendererExecution) {
+    $requiresCloudLayerPackageEvidence = $true
     $requiresPostprocess = $true
     $requiresPostprocessDepthInput = $true
     $requiresD3d12PostprocessEvidence = $true
@@ -4665,8 +4672,6 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 "cloud_layer_ibl_rows" = "1"
                 "cloud_layer_shader_contract_rows" = "1"
                 "cloud_layer_quality_rows" = "1"
-                "cloud_layer_texture_uploads" = "0"
-                "cloud_layer_backend_invocations" = "0"
                 "cloud_layer_native_handle_access" = "0"
                 "cloud_layer_volumetric_clouds" = "0"
                 "cloud_layer_diagnostics" = "0"
@@ -4675,6 +4680,29 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 $expectedValue = [regex]::Escape($expectedCloudLayerFields[$field])
                 if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
                     Write-Error "Installed desktop runtime smoke status line did not prove cloud layer field: $field=$($expectedCloudLayerFields[$field])"
+                }
+            }
+            if ($requiresCloudLayerRendererExecution) {
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bcloud_layer_texture_uploads=([1-9][0-9]*)\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove positive cloud layer renderer execution field: cloud_layer_texture_uploads"
+                }
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bcloud_layer_backend_invocations=([1-9][0-9]*)\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove positive cloud layer renderer execution field: cloud_layer_backend_invocations"
+                }
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bcloud_layer_renderer_draws=([1-9][0-9]*)\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove positive cloud layer renderer execution field: cloud_layer_renderer_draws"
+                }
+            } else {
+                $expectedCloudLayerPackageOnlyFields = @{
+                    "cloud_layer_texture_uploads" = "0"
+                    "cloud_layer_backend_invocations" = "0"
+                    "cloud_layer_renderer_draws" = "0"
+                }
+                foreach ($field in $expectedCloudLayerPackageOnlyFields.Keys) {
+                    $expectedValue = [regex]::Escape($expectedCloudLayerPackageOnlyFields[$field])
+                    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                        Write-Error "Installed desktop runtime smoke status line did not prove package-only cloud layer field: $field=$($expectedCloudLayerPackageOnlyFields[$field])"
+                    }
                 }
             }
         }

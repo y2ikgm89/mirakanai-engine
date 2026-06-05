@@ -104,6 +104,7 @@ struct NativeRendererCreateResult {
     std::uint32_t cloud_layer_shader_contract_rows{0};
     std::uint32_t cloud_layer_quality_rows{0};
     std::uint32_t cloud_layer_policy_diagnostics_count{0};
+    std::uint64_t cloud_layer_renderer_draws{0};
     bool environment_precipitation_requested{false};
     EnvironmentWeatherKind environment_precipitation_weather{EnvironmentWeatherKind::clear};
     EnvironmentPrecipitationKind environment_precipitation_kind{EnvironmentPrecipitationKind::none};
@@ -168,6 +169,20 @@ struct SceneRendererRequestValidation {
     std::string diagnostic;
 };
 
+struct CloudLayerRuntimeBinding {
+    rhi::DescriptorSetLayoutHandle descriptor_set_layout;
+    rhi::PipelineLayoutHandle pipeline_layout;
+    rhi::DescriptorSetHandle descriptor_set;
+    rhi::GraphicsPipelineHandle pipeline;
+    std::uint64_t texture_uploads{0};
+    std::string diagnostic;
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostic.empty() && descriptor_set_layout.value != 0 && pipeline_layout.value != 0 &&
+               descriptor_set.value != 0 && pipeline.value != 0;
+    }
+};
+
 [[nodiscard]] Win32DesktopPresentationDirectionalShadowDiagnostic
 make_directional_shadow_diagnostic(Win32DesktopPresentationDirectionalShadowStatus status, std::string message);
 [[nodiscard]] Win32DesktopPresentationNativeUiOverlayDiagnostic
@@ -227,6 +242,187 @@ to_presentation_filter_mode(ShadowReceiverFilterMode mode) noexcept {
     return buffer;
 }
 
+[[nodiscard]] rhi::BufferHandle create_cloud_layer_constants_buffer(rhi::IRhiDevice& device,
+                                                                    const CloudLayerPolicyDesc& desc) {
+    std::array<std::uint8_t, cloud_layer_constants_byte_size()> constants{};
+    pack_cloud_layer_constants(constants, desc);
+    auto buffer = device.create_buffer(rhi::BufferDesc{
+        .size_bytes = static_cast<std::uint64_t>(constants.size()),
+        .usage = rhi::BufferUsage::uniform | rhi::BufferUsage::copy_source,
+    });
+    if (buffer.value != 0) {
+        device.write_buffer(buffer, 0, std::span<const std::uint8_t>{constants.data(), constants.size()});
+    }
+    return buffer;
+}
+
+[[nodiscard]] runtime_rhi::RuntimeTextureUploadResult
+upload_cloud_layer_texture(rhi::IRhiDevice& device, const runtime::RuntimeAssetPackage& package,
+                           std::string_view asset_ref, std::string_view backend_name) {
+    const auto* record = package.find(asset_id_from_key_v2(AssetKeyV2{.value = std::string{asset_ref}}));
+    if (record == nullptr) {
+        return runtime_rhi::RuntimeTextureUploadResult{
+            .diagnostic =
+                std::string{backend_name} + " cloud layer texture asset is missing: " + std::string{asset_ref},
+        };
+    }
+    if (record->kind != AssetKind::texture) {
+        return runtime_rhi::RuntimeTextureUploadResult{
+            .diagnostic = std::string{backend_name} +
+                          " cloud layer asset is not a cooked texture payload: " + std::string{asset_ref},
+        };
+    }
+
+    const auto payload = runtime::runtime_texture_payload(*record);
+    if (!payload.succeeded()) {
+        return runtime_rhi::RuntimeTextureUploadResult{
+            .diagnostic = std::string{backend_name} + " cloud layer texture payload is invalid: " + payload.diagnostic,
+        };
+    }
+
+    auto upload = runtime_rhi::upload_runtime_texture(device, payload.payload);
+    if (!upload.succeeded()) {
+        upload.diagnostic = std::string{backend_name} + " cloud layer texture upload failed: " + upload.diagnostic;
+    }
+    return upload;
+}
+
+[[nodiscard]] CloudLayerRuntimeBinding
+create_cloud_layer_runtime_binding(rhi::IRhiDevice& device, const runtime::RuntimeAssetPackage& package,
+                                   const CloudLayerPolicyDesc& desc,
+                                   const Win32DesktopPresentationShaderBytecode& vertex_shader_bytecode,
+                                   const Win32DesktopPresentationShaderBytecode& fragment_shader_bytecode,
+                                   rhi::Format color_format, rhi::Format depth_format, std::string_view backend_name) {
+    try {
+        if (!has_shader_bytecode(vertex_shader_bytecode) || !has_shader_bytecode(fragment_shader_bytecode)) {
+            return CloudLayerRuntimeBinding{
+                .diagnostic = std::string{backend_name} +
+                              " cloud layer renderer execution requires vertex and fragment shader bytecode",
+            };
+        }
+
+        const auto cloud_upload =
+            upload_cloud_layer_texture(device, package, desc.layer.cloud_map_asset_ref, backend_name);
+        if (!cloud_upload.succeeded() || cloud_upload.texture.value == 0) {
+            return CloudLayerRuntimeBinding{.diagnostic = cloud_upload.diagnostic};
+        }
+        const auto flow_upload =
+            upload_cloud_layer_texture(device, package, desc.layer.flow_map_asset_ref, backend_name);
+        if (!flow_upload.succeeded() || flow_upload.texture.value == 0) {
+            return CloudLayerRuntimeBinding{.diagnostic = flow_upload.diagnostic};
+        }
+
+        const auto constants = create_cloud_layer_constants_buffer(device, desc);
+        if (constants.value == 0) {
+            return CloudLayerRuntimeBinding{
+                .diagnostic = std::string{backend_name} + " cloud layer constants buffer creation failed",
+            };
+        }
+
+        const auto sampler = device.create_sampler(rhi::SamplerDesc{
+            .min_filter = rhi::SamplerFilter::linear,
+            .mag_filter = rhi::SamplerFilter::linear,
+            .address_u = rhi::SamplerAddressMode::repeat,
+            .address_v = rhi::SamplerAddressMode::repeat,
+            .address_w = rhi::SamplerAddressMode::repeat,
+        });
+        if (sampler.value == 0) {
+            return CloudLayerRuntimeBinding{
+                .diagnostic = std::string{backend_name} + " cloud layer sampler creation failed",
+            };
+        }
+
+        const auto descriptor_set_layout = device.create_descriptor_set_layout(rhi::DescriptorSetLayoutDesc{{
+            rhi::DescriptorBindingDesc{
+                .binding = cloud_layer_cloud_map_binding(),
+                .type = rhi::DescriptorType::sampled_texture,
+                .count = 1,
+                .stages = rhi::ShaderStageVisibility::fragment,
+            },
+            rhi::DescriptorBindingDesc{
+                .binding = cloud_layer_flow_map_binding(),
+                .type = rhi::DescriptorType::sampled_texture,
+                .count = 1,
+                .stages = rhi::ShaderStageVisibility::fragment,
+            },
+            rhi::DescriptorBindingDesc{
+                .binding = cloud_layer_sampler_binding(),
+                .type = rhi::DescriptorType::sampler,
+                .count = 1,
+                .stages = rhi::ShaderStageVisibility::fragment,
+            },
+            rhi::DescriptorBindingDesc{
+                .binding = cloud_layer_constants_binding(),
+                .type = rhi::DescriptorType::uniform_buffer,
+                .count = 1,
+                .stages = rhi::ShaderStageVisibility::fragment,
+            },
+        }});
+        const auto descriptor_set = device.allocate_descriptor_set(descriptor_set_layout);
+        device.update_descriptor_set(rhi::DescriptorWrite{
+            .set = descriptor_set,
+            .binding = cloud_layer_cloud_map_binding(),
+            .array_element = 0,
+            .resources = {rhi::DescriptorResource::texture(rhi::DescriptorType::sampled_texture, cloud_upload.texture)},
+        });
+        device.update_descriptor_set(rhi::DescriptorWrite{
+            .set = descriptor_set,
+            .binding = cloud_layer_flow_map_binding(),
+            .array_element = 0,
+            .resources = {rhi::DescriptorResource::texture(rhi::DescriptorType::sampled_texture, flow_upload.texture)},
+        });
+        device.update_descriptor_set(rhi::DescriptorWrite{
+            .set = descriptor_set,
+            .binding = cloud_layer_sampler_binding(),
+            .array_element = 0,
+            .resources = {rhi::DescriptorResource::sampler(sampler)},
+        });
+        device.update_descriptor_set(rhi::DescriptorWrite{
+            .set = descriptor_set,
+            .binding = cloud_layer_constants_binding(),
+            .array_element = 0,
+            .resources = {rhi::DescriptorResource::buffer(rhi::DescriptorType::uniform_buffer, constants)},
+        });
+
+        const auto pipeline_layout = device.create_pipeline_layout(
+            rhi::PipelineLayoutDesc{.descriptor_sets = {descriptor_set_layout}, .push_constant_bytes = 0});
+        const auto vertex_shader = device.create_shader(rhi::ShaderDesc{
+            .stage = rhi::ShaderStage::vertex,
+            .entry_point = vertex_shader_bytecode.entry_point,
+            .bytecode_size = vertex_shader_bytecode.bytecode.size(),
+            .bytecode = vertex_shader_bytecode.bytecode.data(),
+        });
+        const auto fragment_shader = device.create_shader(rhi::ShaderDesc{
+            .stage = rhi::ShaderStage::fragment,
+            .entry_point = fragment_shader_bytecode.entry_point,
+            .bytecode_size = fragment_shader_bytecode.bytecode.size(),
+            .bytecode = fragment_shader_bytecode.bytecode.data(),
+        });
+        const auto pipeline = device.create_graphics_pipeline(rhi::GraphicsPipelineDesc{
+            .layout = pipeline_layout,
+            .vertex_shader = vertex_shader,
+            .fragment_shader = fragment_shader,
+            .color_format = color_format,
+            .depth_format = depth_format,
+            .topology = rhi::PrimitiveTopology::triangle_list,
+        });
+
+        return CloudLayerRuntimeBinding{
+            .descriptor_set_layout = descriptor_set_layout,
+            .pipeline_layout = pipeline_layout,
+            .descriptor_set = descriptor_set,
+            .pipeline = pipeline,
+            .texture_uploads = (cloud_upload.copy_recorded ? 1U : 0U) + (flow_upload.copy_recorded ? 1U : 0U),
+            .diagnostic = {},
+        };
+    } catch (const std::exception& exception) {
+        return CloudLayerRuntimeBinding{
+            .diagnostic =
+                std::string{backend_name} + " cloud layer runtime binding creation failed: " + exception.what(),
+        };
+    }
+}
+
 [[nodiscard]] PhysicalSkyPolicyDesc sample_physical_sky_policy_desc() {
     return PhysicalSkyPolicyDesc{
         .shader_contract_evidence_ready = true,
@@ -244,7 +440,7 @@ to_presentation_filter_mode(ShadowReceiverFilterMode mode) noexcept {
         .altitude_m = 2400.0F,
         .wind_velocity_mps = Vec2{.x = 8.0F, .y = 1.5F},
         .cloud_map_asset_ref = "sample/desktop-runtime/texture",
-        .flow_map_asset_ref = "sample/desktop-runtime/texture",
+        .flow_map_asset_ref = "sample/desktop-runtime/cloud-flow",
         .sky_tint_response = Vec3{.x = 0.78F, .y = 0.84F, .z = 0.92F},
         .time_of_day_response = 0.55F,
         .ibl_contribution_mode = EnvironmentCloudIblContributionMode::sky_tint_only,
@@ -315,6 +511,7 @@ void apply_cloud_layer_plan(NativeRendererCreateResult& result, const CloudLayer
     result.cloud_layer_shader_contract_rows = static_cast<std::uint32_t>(plan.shader_contract_rows.size());
     result.cloud_layer_quality_rows = static_cast<std::uint32_t>(plan.quality_rows.size());
     result.cloud_layer_policy_diagnostics_count = static_cast<std::uint32_t>(plan.diagnostics.size());
+    result.cloud_layer_renderer_draws = plan.renderer_draws;
     if (!plan.shader_contract_rows.empty()) {
         result.cloud_layer_uses_latlong_projection = plan.shader_contract_rows.front().uses_latlong_projection;
         result.cloud_layer_uses_flow_map = plan.shader_contract_rows.front().uses_flow_map;
@@ -798,6 +995,11 @@ valid_d3d12_scene_renderer_request(const Win32DesktopPresentationD3d12SceneRende
     if (!desc->compute_morph_mesh_bindings.empty() &&
         (!has_shader_bytecode(desc->compute_morph_vertex_shader) || !has_shader_bytecode(desc->compute_morph_shader) ||
          desc->enable_directional_shadow_smoke)) {
+        return false;
+    }
+    if (desc->enable_cloud_layer_renderer_execution &&
+        (!has_shader_bytecode(desc->cloud_layer_vertex_shader) ||
+         !has_shader_bytecode(desc->cloud_layer_fragment_shader) || desc->enable_directional_shadow_smoke)) {
         return false;
     }
     return true;
@@ -1988,7 +2190,10 @@ build_scene_compute_morph_bindings(rhi::IRhiDevice& device,
             desc.d3d12_scene_renderer->enable_postprocess && postprocess_depth_input_requested;
         const bool environment_fog_requested = desc.d3d12_scene_renderer->enable_environment_fog;
         const bool physical_sky_requested = desc.d3d12_scene_renderer->enable_physical_sky_package_evidence;
-        const bool cloud_layer_requested = desc.d3d12_scene_renderer->enable_cloud_layer_package_evidence;
+        const bool cloud_layer_renderer_execution_requested =
+            desc.d3d12_scene_renderer->enable_cloud_layer_renderer_execution;
+        const bool cloud_layer_requested =
+            desc.d3d12_scene_renderer->enable_cloud_layer_package_evidence || cloud_layer_renderer_execution_requested;
         const bool environment_precipitation_requested =
             desc.d3d12_scene_renderer->enable_environment_precipitation_package_evidence;
         const bool environment_volumetric_fog_requested =
@@ -2058,6 +2263,7 @@ build_scene_compute_morph_bindings(rhi::IRhiDevice& device,
         result.directional_shadow_requested = directional_shadow_requested;
         result.native_ui_overlay_requested = native_ui_overlay_requested;
         result.native_ui_texture_overlay_requested = native_ui_texture_overlay_requested;
+        CloudLayerRuntimeBinding cloud_layer_binding;
         if (physical_sky_requested) {
             auto physical_sky_desc = desc.d3d12_scene_renderer->physical_sky;
             physical_sky_desc.package_evidence_ready =
@@ -2092,6 +2298,10 @@ build_scene_compute_morph_bindings(rhi::IRhiDevice& device,
             cloud_layer_desc.package_evidence_ready =
                 cloud_layer_desc.package_evidence_ready &&
                 cloud_layer_package_texture_evidence_ready(desc.d3d12_scene_renderer->package, cloud_layer_desc);
+            cloud_layer_desc.request_texture_upload =
+                cloud_layer_desc.request_texture_upload || cloud_layer_renderer_execution_requested;
+            cloud_layer_desc.request_backend_execution =
+                cloud_layer_desc.request_backend_execution || cloud_layer_renderer_execution_requested;
             const auto cloud_layer_plan = plan_cloud_layer_policy(cloud_layer_desc);
             apply_cloud_layer_plan(result, cloud_layer_plan);
             if (!cloud_layer_plan.ready()) {
@@ -2103,6 +2313,24 @@ build_scene_compute_morph_bindings(rhi::IRhiDevice& device,
                 result.scene_gpu_diagnostics.push_back(
                     make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
                 return result;
+            }
+            if (cloud_layer_renderer_execution_requested) {
+                cloud_layer_binding = create_cloud_layer_runtime_binding(
+                    *device, *desc.d3d12_scene_renderer->package, cloud_layer_desc,
+                    desc.d3d12_scene_renderer->cloud_layer_vertex_shader,
+                    desc.d3d12_scene_renderer->cloud_layer_fragment_shader, rhi::Format::bgra8_unorm,
+                    postprocess_scene_depth_format(enable_postprocess_depth_input), "D3D12");
+                if (!cloud_layer_binding.succeeded()) {
+                    result.succeeded = false;
+                    result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                    result.diagnostic = cloud_layer_binding.diagnostic + "; using NullRenderer fallback.";
+                    result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                    result.scene_gpu_diagnostics.push_back(
+                        make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                    return result;
+                }
+                result.cloud_layer_uploads_textures = cloud_layer_binding.texture_uploads > 0;
+                result.cloud_layer_invokes_backend = true;
             }
         }
         if (environment_precipitation_requested) {
@@ -2353,6 +2581,10 @@ build_scene_compute_morph_bindings(rhi::IRhiDevice& device,
                         .native_ui_overlay_atlas = native_ui_overlay_atlas,
                         .enable_native_ui_overlay = native_ui_overlay_requested,
                         .enable_native_ui_overlay_textures = native_ui_texture_overlay_requested,
+                        .cloud_layer_graphics_pipeline = cloud_layer_binding.pipeline,
+                        .cloud_layer_pipeline_layout = cloud_layer_binding.pipeline_layout,
+                        .cloud_layer_descriptor_set = cloud_layer_binding.descriptor_set,
+                        .enable_cloud_layer = cloud_layer_renderer_execution_requested,
                     });
                 if (native_ui_overlay_requested) {
                     result.native_ui_overlay_status = Win32DesktopPresentationNativeUiOverlayStatus::ready;
@@ -2380,6 +2612,10 @@ build_scene_compute_morph_bindings(rhi::IRhiDevice& device,
                 .wait_for_completion = true,
                 .skinned_graphics_pipeline = skinned_scene_graphics_pipeline,
                 .morph_graphics_pipeline = morph_scene_graphics_pipeline,
+                .cloud_layer_graphics_pipeline = cloud_layer_binding.pipeline,
+                .cloud_layer_pipeline_layout = cloud_layer_binding.pipeline_layout,
+                .cloud_layer_descriptor_set = cloud_layer_binding.descriptor_set,
+                .enable_cloud_layer = cloud_layer_renderer_execution_requested,
             });
         }
         auto scene_renderer = std::make_unique<SceneGpuBindingInjectingRenderer>(
@@ -4094,6 +4330,7 @@ struct Win32DesktopPresentation::Impl {
     std::uint32_t cloud_layer_shader_contract_rows{0};
     std::uint32_t cloud_layer_quality_rows{0};
     std::uint32_t cloud_layer_policy_diagnostics_count{0};
+    std::uint64_t cloud_layer_renderer_draws{0};
     bool environment_precipitation_requested{false};
     EnvironmentWeatherKind environment_precipitation_weather{EnvironmentWeatherKind::clear};
     EnvironmentPrecipitationKind environment_precipitation_kind{EnvironmentPrecipitationKind::none};
@@ -4205,6 +4442,7 @@ struct Win32DesktopPresentation::Impl {
         cloud_layer_shader_contract_rows = renderer_result.cloud_layer_shader_contract_rows;
         cloud_layer_quality_rows = renderer_result.cloud_layer_quality_rows;
         cloud_layer_policy_diagnostics_count = renderer_result.cloud_layer_policy_diagnostics_count;
+        cloud_layer_renderer_draws = renderer_result.cloud_layer_renderer_draws;
     }
 
     void apply_precipitation_result(const NativeRendererCreateResult& renderer_result) noexcept {
@@ -4291,7 +4529,8 @@ Win32DesktopPresentation::Win32DesktopPresentation(const Win32DesktopPresentatio
     impl_->environment_fog_vulkan_package_requested = desc.prefer_vulkan && desc.vulkan_scene_renderer != nullptr &&
                                                       desc.vulkan_scene_renderer->enable_environment_fog;
     impl_->cloud_layer_requested = desc.prefer_d3d12 && desc.d3d12_scene_renderer != nullptr &&
-                                   desc.d3d12_scene_renderer->enable_cloud_layer_package_evidence;
+                                   (desc.d3d12_scene_renderer->enable_cloud_layer_package_evidence ||
+                                    desc.d3d12_scene_renderer->enable_cloud_layer_renderer_execution);
     impl_->environment_precipitation_requested =
         desc.prefer_d3d12 && desc.d3d12_scene_renderer != nullptr &&
         desc.d3d12_scene_renderer->enable_environment_precipitation_package_evidence;
@@ -5149,6 +5388,7 @@ Win32DesktopPresentationReport Win32DesktopPresentation::report() const noexcept
         .cloud_layer_shader_contract_rows = impl_->cloud_layer_shader_contract_rows,
         .cloud_layer_quality_rows = impl_->cloud_layer_quality_rows,
         .cloud_layer_policy_diagnostics_count = impl_->cloud_layer_policy_diagnostics_count,
+        .cloud_layer_renderer_draws = renderer_stats.cloud_layer_draws,
         .environment_precipitation_requested = impl_->environment_precipitation_requested,
         .environment_precipitation_weather = impl_->environment_precipitation_weather,
         .environment_precipitation_kind = impl_->environment_precipitation_kind,
@@ -6057,7 +6297,8 @@ evaluate_win32_desktop_presentation_physical_sky(const Win32DesktopPresentationR
 }
 
 Win32DesktopPresentationCloudLayerReport
-evaluate_win32_desktop_presentation_cloud_layer(const Win32DesktopPresentationReport& report, const bool requested) {
+evaluate_win32_desktop_presentation_cloud_layer(const Win32DesktopPresentationReport& report, const bool requested,
+                                                const bool require_renderer_execution) {
     Win32DesktopPresentationCloudLayerReport result;
     result.cloud_map_binding = cloud_layer_cloud_map_binding();
     result.flow_map_binding = cloud_layer_flow_map_binding();
@@ -6074,6 +6315,7 @@ evaluate_win32_desktop_presentation_cloud_layer(const Win32DesktopPresentationRe
     result.execution_evidence_ready = report.cloud_layer_execution_evidence_ready;
     result.uploads_textures = report.cloud_layer_uploads_textures;
     result.invokes_backend = report.cloud_layer_invokes_backend;
+    result.renderer_draws = report.cloud_layer_renderer_draws;
     result.exposes_native_handles = report.cloud_layer_exposes_native_handles;
     result.uses_volumetric_clouds = report.cloud_layer_uses_volumetric_clouds;
 
@@ -6092,6 +6334,8 @@ evaluate_win32_desktop_presentation_cloud_layer(const Win32DesktopPresentationRe
         .package_evidence_ready = result.package_evidence_ready,
         .execution_evidence_ready = result.execution_evidence_ready,
         .request_ready_promotion = true,
+        .request_texture_upload = require_renderer_execution,
+        .request_backend_execution = require_renderer_execution,
     });
 
     const auto expected_texture_rows = static_cast<std::uint32_t>(expected_plan.texture_rows.size());
@@ -6123,8 +6367,14 @@ evaluate_win32_desktop_presentation_cloud_layer(const Win32DesktopPresentationRe
         result.uses_flow_map != expected_uses_flow_map) {
         ++result.diagnostics_count;
     }
-    if (result.uploads_textures || result.invokes_backend || result.exposes_native_handles ||
-        result.uses_volumetric_clouds) {
+    if (require_renderer_execution) {
+        if (!result.uploads_textures || !result.invokes_backend || result.renderer_draws == 0) {
+            ++result.diagnostics_count;
+        }
+    } else if (result.uploads_textures || result.invokes_backend || result.renderer_draws != 0) {
+        ++result.diagnostics_count;
+    }
+    if (result.exposes_native_handles || result.uses_volumetric_clouds) {
         ++result.diagnostics_count;
     }
 
