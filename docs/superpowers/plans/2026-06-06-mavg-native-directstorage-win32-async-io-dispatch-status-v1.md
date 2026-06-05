@@ -186,20 +186,26 @@ Evidence: Full validation passed on 2026-06-06 with `validate: ok`; static check
 
 **Files:** Git/GitHub only.
 
-- [ ] Run publication preflight:
+- [x] Run publication preflight:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1
 ```
 
-- [ ] Commit validated candidate:
+Evidence: Passed on 2026-06-06 for branch `codex/mavg-native-directstorage-win32-async-io-status-v1` with remote head present, GitHub network reachable, and `gh` auth ok.
+
+- [x] Commit validated candidate:
 
 ```powershell
 git add <task-owned files>
 git commit -m "Add MAVG native IO status boundary"
 ```
 
-- [ ] Push and create a draft PR with base `codex/mavg-directstorage-request-plan-v1` and head `codex/mavg-native-directstorage-win32-async-io-status-v1`.
+Evidence: Commit `010768c0 Add MAVG native IO status boundary`.
+
+- [x] Push and create a draft PR with base `codex/mavg-directstorage-request-plan-v1` and head `codex/mavg-native-directstorage-win32-async-io-status-v1`.
+
+Evidence: Pushed branch `codex/mavg-native-directstorage-win32-async-io-status-v1` and opened draft PR `https://github.com/y2ikgm89/mirakanai-engine/pull/462` stacked on PR #460.
 
 ## Done When
 
