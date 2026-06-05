@@ -235,13 +235,29 @@ $sampleEnvironmentFogDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sampl
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireD3d12Shaders", "-SmokeArgs @(", "--require-environment-fog-evidence", "runtime/sample_desktop_runtime_game.geindex")) {
     Assert-ArgvContainsText -Result $sampleEnvironmentFogDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-fog-package"
 }
+$sampleVulkanEnvironmentFogDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-vulkan-environment-fog-package" -ExpectedArgv @("-Command")
+foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireVulkanShaders", "-SmokeArgs @(", "--require-environment-fog-vulkan-package-evidence", "runtime/sample_desktop_runtime_game.geindex")) {
+    Assert-ArgvContainsText -Result $sampleVulkanEnvironmentFogDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-vulkan-environment-fog-package"
+}
+$sampleEnvironmentVolumetricFogDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-environment-volumetric-fog-package" -ExpectedArgv @("-Command")
+foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireD3d12Shaders", "-SmokeArgs @(", "--require-environment-volumetric-fog-package-evidence", "runtime/sample_desktop_runtime_game.geindex")) {
+    Assert-ArgvContainsText -Result $sampleEnvironmentVolumetricFogDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-volumetric-fog-package"
+}
 $sampleCloudLayerDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-cloud-layer-package" -ExpectedArgv @("-Command")
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireD3d12Shaders", "-SmokeArgs @(", "--require-cloud-layer-package-evidence", "runtime/sample_desktop_runtime_game.geindex")) {
     Assert-ArgvContainsText -Result $sampleCloudLayerDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-cloud-layer-package"
 }
+$sampleCloudLayerRendererExecutionDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-cloud-layer-renderer-execution" -ExpectedArgv @("-Command")
+foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireD3d12Shaders", "-SmokeArgs @(", "--require-cloud-layer-renderer-execution", "runtime/sample_desktop_runtime_game.geindex")) {
+    Assert-ArgvContainsText -Result $sampleCloudLayerRendererExecutionDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-cloud-layer-renderer-execution"
+}
 $sampleEnvironmentPrecipitationDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-environment-precipitation-package" -ExpectedArgv @("-Command")
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireD3d12Shaders", "-SmokeArgs @(", "--require-environment-precipitation-package-evidence", "runtime/sample_desktop_runtime_game.geindex")) {
     Assert-ArgvContainsText -Result $sampleEnvironmentPrecipitationDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-precipitation-package"
+}
+$sampleEnvironmentSnowDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-environment-snow-package" -ExpectedArgv @("-Command")
+foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireD3d12Shaders", "-SmokeArgs @(", "--require-environment-snow-package-evidence", "runtime/sample_desktop_runtime_game.geindex")) {
+    Assert-ArgvContainsText -Result $sampleEnvironmentSnowDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-snow-package"
 }
 $sampleEnvironmentProfileDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-environment-profile-package" -ExpectedArgv @("-Command")
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-SmokeArgs @(", "--require-environment-profile", "runtime/sample_desktop_runtime_game.geindex")) {

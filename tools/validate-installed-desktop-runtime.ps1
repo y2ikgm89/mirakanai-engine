@@ -177,9 +177,13 @@ $requiresD3d12PostprocessEvidence = @($SmokeArgs) -contains "--require-d3d12-pos
 $requiresVulkanPostprocessEvidence = @($SmokeArgs) -contains "--require-vulkan-postprocess-evidence"
 $requiresEnvironmentProfile = @($SmokeArgs) -contains "--require-environment-profile"
 $requiresEnvironmentFogEvidence = @($SmokeArgs) -contains "--require-environment-fog-evidence"
+$requiresEnvironmentFogVulkanPackageEvidence = @($SmokeArgs) -contains "--require-environment-fog-vulkan-package-evidence"
 $requiresPhysicalSkyPackageEvidence = @($SmokeArgs) -contains "--require-physical-sky-package-evidence"
+$requiresEnvironmentVolumetricFogPackageEvidence = @($SmokeArgs) -contains "--require-environment-volumetric-fog-package-evidence"
 $requiresCloudLayerPackageEvidence = @($SmokeArgs) -contains "--require-cloud-layer-package-evidence"
+$requiresCloudLayerRendererExecution = @($SmokeArgs) -contains "--require-cloud-layer-renderer-execution"
 $requiresEnvironmentPrecipitationPackageEvidence = @($SmokeArgs) -contains "--require-environment-precipitation-package-evidence"
+$requiresEnvironmentSnowPackageEvidence = @($SmokeArgs) -contains "--require-environment-snow-package-evidence"
 $requiresGpuMemoryPolicy = @($SmokeArgs) -contains "--require-gpu-memory-policy"
 $requiresMemoryDiagnostics = @($SmokeArgs) -contains "--require-memory-diagnostics"
 $requiresD3d12GpuMemoryEvidence = @($SmokeArgs) -contains "--require-d3d12-gpu-memory-evidence"
@@ -212,12 +216,26 @@ if ($requiresEnvironmentFogEvidence) {
     $requiresPostprocessDepthInput = $true
     $requiresD3d12PostprocessEvidence = $true
 }
+if ($requiresEnvironmentFogVulkanPackageEvidence) {
+    $requiresPostprocess = $true
+    $requiresPostprocessDepthInput = $true
+    $requiresVulkanPostprocessEvidence = $true
+}
+if ($requiresEnvironmentVolumetricFogPackageEvidence) {
+    $requiresD3d12Renderer = $true
+}
 if ($requiresPhysicalSkyPackageEvidence) {
     $requiresPostprocess = $true
     $requiresPostprocessDepthInput = $true
     $requiresD3d12PostprocessEvidence = $true
 }
 if ($requiresCloudLayerPackageEvidence) {
+    $requiresPostprocess = $true
+    $requiresPostprocessDepthInput = $true
+    $requiresD3d12PostprocessEvidence = $true
+}
+if ($requiresCloudLayerRendererExecution) {
+    $requiresCloudLayerPackageEvidence = $true
     $requiresPostprocess = $true
     $requiresPostprocessDepthInput = $true
     $requiresD3d12PostprocessEvidence = $true
@@ -4474,8 +4492,9 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
     }
     if ($requiresPostprocess) {
         $expectedPostprocessPolicySceneDepthRequired = if ($requiresPostprocessDepthInput) { "1" } else { "0" }
-        $expectedPostprocessPolicyColorGradingEffect = if ($requiresEnvironmentFogEvidence) { "0" } else { "1" }
-        $expectedPostprocessPolicyFogEffect = if ($requiresEnvironmentFogEvidence) { "1" } else { "0" }
+        $requiresAnyEnvironmentFogPostprocess = $requiresEnvironmentFogEvidence -or $requiresEnvironmentFogVulkanPackageEvidence
+        $expectedPostprocessPolicyColorGradingEffect = if ($requiresAnyEnvironmentFogPostprocess) { "0" } else { "1" }
+        $expectedPostprocessPolicyFogEffect = if ($requiresAnyEnvironmentFogPostprocess) { "1" } else { "0" }
         $expectedPostprocessPolicyFields = @{
             "postprocess_policy_status" = "ready"
             "postprocess_policy_ready" = "1"
@@ -4548,6 +4567,32 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 }
             }
         }
+        if ($requiresEnvironmentFogVulkanPackageEvidence) {
+            if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
+                Write-Error "Installed desktop runtime smoke status line must not claim broad environment_ready for Vulkan environment fog package evidence."
+            }
+            $expectedEnvironmentFogVulkanFields = @{
+                "environment_fog_vulkan_package_status" = "ready"
+                "environment_fog_vulkan_package_ready" = "1"
+                "environment_fog_vulkan_selected_backend" = "vulkan"
+                "environment_fog_vulkan_requested" = "1"
+                "environment_fog_vulkan_depth_input_ready" = "1"
+                "environment_fog_vulkan_shader_contract_evidence_ready" = "1"
+                "environment_fog_vulkan_package_evidence_ready" = "1"
+                "environment_fog_vulkan_constant_buffer_ready" = "1"
+                "environment_fog_vulkan_constants_binding" = "4"
+                "environment_fog_vulkan_constants_byte_size" = "256"
+                "environment_fog_vulkan_postprocess_passes_ok" = "1"
+                "environment_fog_vulkan_native_handle_access" = "0"
+                "environment_fog_vulkan_diagnostics" = "0"
+            }
+            foreach ($field in $expectedEnvironmentFogVulkanFields.Keys) {
+                $expectedValue = [regex]::Escape($expectedEnvironmentFogVulkanFields[$field])
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove Vulkan environment fog package field: $field=$($expectedEnvironmentFogVulkanFields[$field])"
+                }
+            }
+        }
         if ($requiresPhysicalSkyPackageEvidence) {
             if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
                 Write-Error "Installed desktop runtime smoke status line must not claim broad environment_ready for physical sky package evidence."
@@ -4577,6 +4622,36 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 }
             }
         }
+        if ($requiresEnvironmentVolumetricFogPackageEvidence) {
+            if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
+                Write-Error "Installed desktop runtime smoke status line must not claim broad environment_ready for volumetric fog package evidence."
+            }
+            $expectedEnvironmentVolumetricFogFields = @{
+                "environment_volumetric_fog_status" = "ready"
+                "environment_volumetric_fog_ready" = "1"
+                "environment_volumetric_fog_selected_backend" = "d3d12"
+                "environment_volumetric_fog_requested" = "1"
+                "environment_volumetric_fog_shader_contract_evidence_ready" = "1"
+                "environment_volumetric_fog_package_evidence_ready" = "1"
+                "environment_volumetric_fog_execution_evidence_ready" = "1"
+                "environment_volumetric_fog_froxel_output_ready" = "1"
+                "environment_volumetric_fog_scene_depth_ready" = "1"
+                "environment_volumetric_fog_constants_binding" = "5"
+                "environment_volumetric_fog_constants_byte_size" = "256"
+                "environment_volumetric_fog_froxel_output_binding" = "13"
+                "environment_volumetric_fog_native_handle_access" = "0"
+                "environment_volumetric_fog_diagnostics" = "0"
+            }
+            foreach ($field in $expectedEnvironmentVolumetricFogFields.Keys) {
+                $expectedValue = [regex]::Escape($expectedEnvironmentVolumetricFogFields[$field])
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove environment volumetric fog field: $field=$($expectedEnvironmentVolumetricFogFields[$field])"
+                }
+            }
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_volumetric_fog_compute_dispatches=([1-9][0-9]*)\b") {
+                Write-Error "Installed desktop runtime smoke status line did not prove positive environment_volumetric_fog_compute_dispatches."
+            }
+        }
         if ($requiresCloudLayerPackageEvidence) {
             $expectedCloudLayerFields = @{
                 "cloud_layer_status" = "ready"
@@ -4597,8 +4672,6 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 "cloud_layer_ibl_rows" = "1"
                 "cloud_layer_shader_contract_rows" = "1"
                 "cloud_layer_quality_rows" = "1"
-                "cloud_layer_texture_uploads" = "0"
-                "cloud_layer_backend_invocations" = "0"
                 "cloud_layer_native_handle_access" = "0"
                 "cloud_layer_volumetric_clouds" = "0"
                 "cloud_layer_diagnostics" = "0"
@@ -4607,6 +4680,29 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 $expectedValue = [regex]::Escape($expectedCloudLayerFields[$field])
                 if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
                     Write-Error "Installed desktop runtime smoke status line did not prove cloud layer field: $field=$($expectedCloudLayerFields[$field])"
+                }
+            }
+            if ($requiresCloudLayerRendererExecution) {
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bcloud_layer_texture_uploads=([1-9][0-9]*)\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove positive cloud layer renderer execution field: cloud_layer_texture_uploads"
+                }
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bcloud_layer_backend_invocations=([1-9][0-9]*)\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove positive cloud layer renderer execution field: cloud_layer_backend_invocations"
+                }
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bcloud_layer_renderer_draws=([1-9][0-9]*)\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove positive cloud layer renderer execution field: cloud_layer_renderer_draws"
+                }
+            } else {
+                $expectedCloudLayerPackageOnlyFields = @{
+                    "cloud_layer_texture_uploads" = "0"
+                    "cloud_layer_backend_invocations" = "0"
+                    "cloud_layer_renderer_draws" = "0"
+                }
+                foreach ($field in $expectedCloudLayerPackageOnlyFields.Keys) {
+                    $expectedValue = [regex]::Escape($expectedCloudLayerPackageOnlyFields[$field])
+                    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                        Write-Error "Installed desktop runtime smoke status line did not prove package-only cloud layer field: $field=$($expectedCloudLayerPackageOnlyFields[$field])"
+                    }
                 }
             }
         }
@@ -4645,6 +4741,44 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 $expectedValue = [regex]::Escape($expectedEnvironmentPrecipitationFields[$field])
                 if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
                     Write-Error "Installed desktop runtime smoke status line did not prove environment precipitation field: $field=$($expectedEnvironmentPrecipitationFields[$field])"
+                }
+            }
+        }
+        if ($requiresEnvironmentSnowPackageEvidence) {
+            $expectedEnvironmentSnowFields = @{
+                "environment_precipitation_status" = "ready"
+                "environment_precipitation_ready" = "1"
+                "environment_precipitation_selected_backend" = "d3d12"
+                "environment_precipitation_requested" = "1"
+                "environment_precipitation_weather" = "snow"
+                "environment_precipitation_kind" = "snow"
+                "environment_precipitation_shader_contract_evidence_ready" = "1"
+                "environment_precipitation_package_evidence_ready" = "1"
+                "environment_precipitation_execution_evidence_ready" = "1"
+                "environment_precipitation_particle_texture_binding" = "8"
+                "environment_precipitation_scene_depth_texture_binding" = "9"
+                "environment_precipitation_sampler_binding" = "8"
+                "environment_precipitation_constants_binding" = "7"
+                "environment_precipitation_uses_camera_near_particles" = "1"
+                "environment_precipitation_uses_scene_depth_occlusion" = "1"
+                "environment_precipitation_weather_rows" = "1"
+                "environment_precipitation_particle_rows" = "1"
+                "environment_precipitation_occlusion_rows" = "1"
+                "environment_precipitation_wetness_rows" = "0"
+                "environment_precipitation_audio_handoff_rows" = "1"
+                "environment_precipitation_shader_rows" = "1"
+                "environment_precipitation_quality_rows" = "1"
+                "environment_precipitation_particle_buffer_uploads" = "0"
+                "environment_precipitation_backend_invocations" = "0"
+                "environment_precipitation_native_handle_access" = "0"
+                "environment_precipitation_material_mutations" = "0"
+                "environment_precipitation_audio_playback" = "0"
+                "environment_precipitation_diagnostics" = "0"
+            }
+            foreach ($field in $expectedEnvironmentSnowFields.Keys) {
+                $expectedValue = [regex]::Escape($expectedEnvironmentSnowFields[$field])
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove environment snow field: $field=$($expectedEnvironmentSnowFields[$field])"
                 }
             }
         }

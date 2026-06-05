@@ -25,20 +25,29 @@ Proven today before this plan:
 - Selected D3D12 height-fog package evidence exists through `desktop-runtime-sample-game-environment-fog-package` and `--require-environment-fog-evidence`.
 - Selected D3D12 cloud-layer package evidence exists through `desktop-runtime-sample-game-cloud-layer-package` and `--require-cloud-layer-package-evidence`, but it is package-visible policy evidence only.
 - Selected D3D12 rain precipitation package evidence exists through `desktop-runtime-sample-game-environment-precipitation-package` and `--require-environment-precipitation-package-evidence`, but it is rain package-visible policy evidence only.
+- Selected D3D12 snow precipitation package evidence exists through `desktop-runtime-sample-game-environment-snow-package` and `--require-environment-snow-package-evidence`, but it is snow package-visible policy evidence only.
 - Strict host/toolchain/env-gated Vulkan height-fog runtime readback proof exists.
 - Dear ImGui and SDL3 are not active environment/editor/runtime dependencies and must remain absent.
 
 Unclaimed and selected by this plan:
 
 - Physical-sky Vulkan proof and package-visible physical-sky proof.
-- Height-fog Vulkan package readiness and volumetric-fog package readiness.
-- Cloud-layer renderer/RHI backend drawing, distinct flow-map package asset proof, Vulkan cloud proof, and Metal cloud proof.
+- Cloud-layer Vulkan proof and Metal cloud proof; selected D3D12 cloud-layer renderer/RHI execution is complete through Task 4.
 - Precipitation renderer/RHI particle-buffer upload and draw execution.
-- Snow package readiness, including selected snow package counters separate from the existing rain lane.
 - Volumetric-cloud execution and package readiness.
 - Environment lighting/IBL upload or package proof beyond policy rows.
 - Backend parity for environment features; each backend remains feature-local and evidence-local.
 - Broad optimization, broad renderer quality, broad `environment_ready`, and inferred Vulkan/Metal readiness.
+
+Completed by Task 3:
+
+- Strict host/toolchain-gated Vulkan height-fog package readiness.
+- Selected D3D12 volumetric-fog package readiness.
+- Selected D3D12 snow precipitation package readiness, separate from the rain lane and still without renderer/RHI particle-buffer upload, material mutation, or audio playback.
+
+Completed by Task 4:
+
+- Selected D3D12 cloud-layer renderer/RHI execution with package cloud-map upload, a distinct flow-map package asset, backend-private descriptors/root signatures, positive renderer draw counters, and zero native-handle access. Vulkan and Metal cloud-layer execution remain unclaimed until backend-local proof runs.
 
 ## Official Source Baseline
 
@@ -84,13 +93,13 @@ Source implications for this repo:
 | Claim | Current state | Required promotion evidence |
 | --- | --- | --- |
 | `environment_profile_status=ready` | Ready for selected cooked profile package rows. | Keep existing profile counters; no new broad claim. |
-| `environment_fog_status=ready` | Ready for selected D3D12 height-fog package. | Add Vulkan package lane before `environment_fog_vulkan_status=ready`; keep Metal host-gated. |
+| `environment_fog_status=ready` | Ready for selected D3D12 height-fog package; strict host/toolchain-gated Vulkan package lane is ready through `environment_fog_vulkan_package_status=ready`. | Keep Metal host-gated and do not infer backend parity. |
 | physical sky package | Unclaimed. | D3D12 package smoke with shader artifact, constants, readback/package counters, and no broad sky readiness. |
 | physical sky Vulkan | Unclaimed. | Strict Vulkan runtime readback with SPIR-V artifacts, synchronization2 barriers, validation layer, and package recipe only after runtime proof. |
-| cloud layer renderer/RHI execution | Unclaimed. | D3D12 draw/readback over package cloud-map and distinct flow-map assets, zero native handle leakage, Vulkan strict proof, Metal host proof if selected. |
+| cloud layer renderer/RHI execution | Ready for selected D3D12 package renderer execution only; Vulkan and Metal remain unclaimed. | Keep positive D3D12 package counters for texture upload/backend invocation/renderer draw over package cloud-map and distinct flow-map assets with zero native handle leakage; add Vulkan strict proof and Metal host proof separately if selected. |
 | precipitation renderer/RHI execution | Unclaimed. | Particle-buffer upload, camera-near draw, depth occlusion readback, D3D12 package smoke, Vulkan strict proof, Metal host proof if selected. |
-| snow package readiness | Unclaimed. | Snow-specific package smoke with `environment_precipitation_kind=snow`, snow texture/ref rows, snow audio handoff rows, no material mutation/audio playback. |
-| volumetric fog package | Unclaimed. | Package-visible froxel/compute evidence over existing D3D12 compute proof plus strict non-claims for Vulkan/Metal until proven. |
+| snow package readiness | Ready for selected D3D12 package-visible policy evidence only. | Keep `environment_precipitation_weather=snow`, `environment_precipitation_kind=snow`, zero wetness rows, one audio handoff row, and zero particle-buffer upload/backend invocation/material mutation/audio playback counters. |
+| volumetric fog package | Ready for selected D3D12 package through `environment_volumetric_fog_status=ready` and positive `environment_volumetric_fog_compute_dispatches`. | Add Vulkan/Metal volumetric-fog lanes only after backend-local proof; do not infer volumetric-cloud readiness. |
 | volumetric clouds | Unclaimed. | Weather map, shape noise, erosion noise, raymarch, temporal, shadow, lighting, and package counters with backend-local proof. |
 | environment lighting/IBL | Policy only. | First-party cooked HDR/cubemap/irradiance/radiance package rows or explicitly dependency-gated importer plan; renderer upload proof before ready. |
 | environment backend parity | Unclaimed. | Backend-local matrix rows for each feature; no single backend can promote another. |
@@ -314,13 +323,19 @@ Task 1 promotes selected D3D12 package-visible physical-sky evidence and strict 
 - Modify: `engine/agent/manifest.fragments/009-validationRecipes.json`
 - Modify: `docs/testing.md`
 
-- [ ] **Step 1: Add RED Vulkan package assertions**
+- [x] **Step 1: Add RED Vulkan package assertions**
 
 Require a strict package recipe that names the existing height-fog Vulkan SPIR-V env vars and fails closed when `spirv-val`, DXC SPIR-V CodeGen, Vulkan runtime, or `VK_LAYER_KHRONOS_validation` is unavailable.
 
 Expected: `environment_fog_vulkan_package_status=host_evidence_required` on unsupported hosts and `ready` only after strict smoke.
 
-- [ ] **Step 2: Add volumetric fog package counters**
+Evidence: Task 2 added public runtime-host compile assertions and installed validator expectations for `environment_fog_vulkan_package_status=ready`, `environment_fog_vulkan_package_ready=1`, `environment_fog_vulkan_selected_backend=vulkan`, shader-contract/package/depth/postprocess evidence, stable constants binding `4`, constants byte size `256`, zero diagnostics, and zero native-handle counters. The strict package smoke passed with:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -Command "& .\tools\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireVulkanShaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-vulkan-scene-shaders','--require-vulkan-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-vulkan-postprocess-evidence','--require-environment-fog-vulkan-package-evidence')"
+```
+
+- [x] **Step 2: Add volumetric fog package counters**
 
 Promote existing D3D12 volumetric-fog compute readback into package-visible counters:
 
@@ -333,7 +348,15 @@ Promote existing D3D12 volumetric-fog compute readback into package-visible coun
 
 Expected: this does not claim Vulkan or Metal volumetric fog.
 
-- [ ] **Step 3: Validate**
+Evidence: Task 2 promoted selected D3D12 volumetric-fog package counters only. The installed smoke passed with:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -Command "& .\tools\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-environment-volumetric-fog-package-evidence')"
+```
+
+The ready claim is limited to `environment_volumetric_fog_status=ready`, `environment_volumetric_fog_selected_backend=d3d12`, froxel output and scene-depth evidence, positive `environment_volumetric_fog_compute_dispatches`, stable constants binding `5`, froxel output binding `13`, zero diagnostics, and zero native-handle counters.
+
+- [x] **Step 3: Validate**
 
 Run:
 
@@ -344,6 +367,18 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
 ```
 
 Expected: D3D12 volumetric fog and host-gated Vulkan height-fog package rows are exact and narrow.
+
+Evidence: focused validation passed for:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools\cmake.ps1 --build --preset dev --target MK_renderer_environment_fog_policy_tests MK_renderer_volumetric_fog_policy_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools\ctest.ps1 --preset dev --output-on-failure -R "environment_fog|volumetric_fog"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools\cmake.ps1 --preset desktop-runtime
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools\cmake.ps1 --build --preset desktop-runtime --target sample_desktop_runtime_game MK_runtime_host_win32_public_api_compile
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools\ctest.ps1 --preset desktop-runtime --output-on-failure -R "MK_runtime_host_win32_public_api_compile"
+```
+
+Final docs/manifest/static validation for Task 2 is recorded in this candidate's closeout checklist after manifest compose and `tools/validate.ps1`.
 
 ## Task 3: Snow Package Readiness
 
@@ -358,15 +393,20 @@ Expected: D3D12 volumetric fog and host-gated Vulkan height-fog package rows are
 - Modify: `tools/validation-recipe-core.ps1`
 - Modify: `tools/run-validation-recipe-plans.ps1`
 - Modify: `engine/agent/manifest.fragments/009-validationRecipes.json`
+- Modify: `engine/runtime_host/win32/include/mirakana/runtime_host/win32/win32_desktop_presentation.hpp`
+- Modify: `engine/runtime_host/win32/src/win32_desktop_presentation.cpp`
+- Modify: `games/sample_desktop_runtime_game/main.cpp`
+- Modify: `games/sample_desktop_runtime_game/game.agent.json`
+- Modify: `games/sample_desktop_runtime_game/README.md`
 - Modify: `docs/ai-game-development.md`
 
-- [ ] **Step 1: Re-open official particle/VFX sources**
+- [x] **Step 1: Re-open official particle/VFX sources**
 
 Re-open Unity VFX Graph Contexts, Unreal Niagara Overview, Godot `GPUParticles3D` / `ParticleProcessMaterial`, and existing Context7 Godot particle notes.
 
 Expected: the snow package keeps particle lifecycle, render policy, material mutation, and audio playback separated.
 
-- [ ] **Step 2: Add RED snow package tests**
+- [x] **Step 2: Add RED snow package tests**
 
 Require a selected package smoke for snow:
 
@@ -384,23 +424,25 @@ Require a selected package smoke for snow:
 
 Expected: RED fails because the current package lane proves only storm/rain.
 
-- [ ] **Step 3: Add snow package lane**
+- [x] **Step 3: Add snow package lane**
 
 Add a package-visible snow lane with snow texture/reference rows and separate smoke args such as `--require-environment-snow-package-evidence`. Reuse existing weather value rows and avoid material accumulation.
 
 Expected: snow becomes package-ready while renderer/RHI precipitation execution remains unclaimed.
 
-- [ ] **Step 4: Validate**
+- [x] **Step 4: Validate**
 
 Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_environment_weather_tests MK_renderer_precipitation_policy_tests
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "environment_weather|precipitation_policy"
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-renderer','--require-environment-snow-package-evidence')
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-environment-snow-package-evidence')
 ```
 
 Expected: snow package evidence passes and rain evidence still passes.
+
+Evidence: Context7 `/godotengine/godot-docs` re-checked `GPUParticles3D` / `ParticleProcessMaterial` emitter-vs-process separation. `MK_environment_weather_tests`, `MK_renderer_precipitation_policy_tests`, and `MK_runtime_host_win32_public_api_compile` passed. `tools/package-desktop-runtime.ps1` passed both selected D3D12 snow `--require-environment-snow-package-evidence` and rain `--require-environment-precipitation-package-evidence` package smokes. `tools/check-json-contracts.ps1`, `tools/check-validation-recipe-runner.ps1`, `tools/check-ai-integration.ps1`, `tools/check-format.ps1`, `tools/check-agents.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-native-desktop-contracts.ps1`, and full `tools/validate.ps1` passed on 2026-06-05.
 
 ## Task 4: Cloud Layer Renderer/RHI Execution
 
@@ -420,7 +462,7 @@ Expected: snow package evidence passes and rain evidence still passes.
 - Modify: `tests/shaders/environment_cloud_layer.hlsl`
 - Modify: `tools/validate-installed-desktop-runtime.ps1`
 
-- [ ] **Step 1: Add RED execution tests**
+- [x] **Step 1: Add RED execution tests**
 
 Require cloud-map SRV, distinct flow-map SRV, sampler, constants, fullscreen or sky-pass draw, and readback evidence. Assert package counters move from policy-only:
 
@@ -430,21 +472,21 @@ Require cloud-map SRV, distinct flow-map SRV, sampler, constants, fullscreen or 
 - `cloud_layer_native_handle_access=0`
 - `cloud_layer_volumetric_clouds=0`
 
-Expected: RED fails because current counters are `texture_uploads=0` and `backend_invocations=0`.
+Expected: RED fails because the package-only counters are `texture_uploads=0`, `backend_invocations=0`, and `renderer_draws=0`.
 
-- [ ] **Step 2: Implement D3D12 execution behind RHI**
+- [x] **Step 2: Implement D3D12 execution behind RHI**
 
 Route cloud layer drawing through backend-private descriptors/root signatures/resource barriers. Keep public APIs on `CloudLayerPolicyPlan` and renderer packets.
 
-Expected: D3D12 readback or package smoke proves a visible non-zero contribution from the cloud shader.
+Expected: D3D12 package smoke proves positive texture-upload, backend-invocation, and renderer-draw counters from the cloud-layer shader path.
 
 - [ ] **Step 3: Add strict Vulkan proof**
 
 Add SPIR-V fixtures and a Vulkan env-gated readback using synchronization2 transitions for color/depth reads as required by the pass.
 
-Expected: `cloud_layer_vulkan_runtime_status=ready` only when strict host/toolchain gates pass.
+Expected: `cloud_layer_vulkan_runtime_status=ready` only when strict host/toolchain gates pass. The current candidate does not claim this row.
 
-- [ ] **Step 4: Validate**
+- [x] **Step 4: Validate**
 
 Run:
 
@@ -452,10 +494,19 @@ Run:
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-shader-toolchain.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_renderer_cloud_layer_policy_tests MK_d3d12_rhi_tests MK_backend_scaffold_tests
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "cloud_layer|d3d12_rhi|backend_scaffold"
-pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-renderer','--require-cloud-layer-renderer-execution')
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-cloud-layer-renderer-execution')
 ```
 
 Expected: cloud-layer renderer execution is D3D12-ready only; Vulkan/Metal rows stay feature-local.
+
+Evidence recorded on 2026-06-05:
+
+- Context7 `/websites/learn_microsoft_en-us_windows_win32_direct3d12` rechecked Microsoft Learn render-pass and graphics PSO format contracts. The selected D3D12 fix keeps the cloud-layer PSO depth format compatible with the active scene render pass when `--require-postprocess-depth-input` is enabled.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\check-shader-toolchain.ps1` passed as diagnostic-only with `d3d12_dxil=ready`, `vulkan_spirv=ready`, and Windows-host Metal toolchain blockers (`metal` / `metallib` missing).
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\cmake.ps1 --build --preset dev --target MK_renderer_cloud_layer_policy_tests MK_d3d12_rhi_tests MK_backend_scaffold_tests` passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\ctest.ps1 --preset dev --output-on-failure -R "cloud_layer|d3d12_rhi|backend_scaffold"` passed with 3/3 tests.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-cloud-layer-renderer-execution')` passed.
+- Direct installed smoke with the same renderer-execution flags exited 0 and reported `cloud_layer_texture_uploads=1`, `cloud_layer_backend_invocations=1`, and `cloud_layer_renderer_draws=2`.
 
 ## Task 5: Precipitation Renderer/RHI Execution For Rain And Snow
 

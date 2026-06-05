@@ -119,6 +119,12 @@
           "kind": "environment_profile",
           "purpose": "Cooked environment profile fixture for package index, scene reference, and dependency-edge validation.",
           "delivery": "runtime-package-file"
+        },
+        {
+          "id": "cloud-layer-flow-map",
+          "kind": "texture",
+          "purpose": "Cooked flow-map texture fixture for D3D12 cloud layer renderer execution evidence.",
+          "delivery": "runtime-package-file"
         }
       ],
       "systems": [
@@ -128,8 +134,12 @@
         "runtime-ui",
         "environment-profile-package",
         "physical-sky-package",
+        "environment-fog-vulkan-package",
+        "environment-volumetric-fog-package",
         "cloud-layer-package",
+        "cloud-layer-renderer-execution",
         "environment-precipitation-package",
+        "environment-snow-package",
         "animation",
         "framegraph-multiqueue",
         "windows-cpu-set-worker-placement",
@@ -144,9 +154,13 @@
         "desktop-runtime-release-target",
         "installed-d3d12-scene-gpu-smoke",
         "desktop-runtime-sample-game-environment-fog-package",
+        "desktop-runtime-sample-game-vulkan-environment-fog-package",
+        "desktop-runtime-sample-game-environment-volumetric-fog-package",
         "desktop-runtime-sample-game-physical-sky-package",
         "desktop-runtime-sample-game-cloud-layer-package",
+        "desktop-runtime-sample-game-cloud-layer-renderer-execution",
         "desktop-runtime-sample-game-environment-precipitation-package",
+        "desktop-runtime-sample-game-environment-snow-package",
         "desktop-runtime-sample-game-environment-profile-package",
         "installed-vulkan-scene-gpu-smoke"
       ],
@@ -181,6 +195,20 @@
           ]
         },
         {
+          "id": "environment-fog-vulkan-package-evidence",
+          "evidence": "The strict Vulkan environment fog package smoke reports environment_fog_vulkan_package_status=ready, environment_fog_vulkan_package_ready=1, environment_fog_vulkan_selected_backend=vulkan, environment_fog_vulkan_requested=1, environment_fog_vulkan_depth_input_ready=1, shader-contract/package evidence, stable constants binding 4, constants byte size 256, postprocess pass evidence, zero diagnostics, and zero native-handle counters through target-specific SPIR-V artifacts validated by the package lane without claiming Metal, volumetric fog, backend parity, broad optimization, or broad environment_ready.",
+          "recipeIds": [
+            "desktop-runtime-sample-game-vulkan-environment-fog-package"
+          ]
+        },
+        {
+          "id": "environment-volumetric-fog-package-evidence",
+          "evidence": "The selected D3D12 environment volumetric fog package smoke reports environment_volumetric_fog_status=ready, environment_volumetric_fog_ready=1, environment_volumetric_fog_selected_backend=d3d12, shader-contract/package/execution evidence, froxel output and scene-depth readiness, stable constants binding 5, constants byte size 256, froxel output binding 13, positive environment_volumetric_fog_compute_dispatches, zero diagnostics, and zero native-handle counters without claiming Vulkan, Metal, volumetric clouds, backend parity, broad optimization, or broad environment_ready.",
+          "recipeIds": [
+            "desktop-runtime-sample-game-environment-volumetric-fog-package"
+          ]
+        },
+        {
           "id": "physical-sky-package-evidence",
           "evidence": "The selected D3D12 physical sky package smoke reports environment_physical_sky_status=ready, environment_physical_sky_ready=1, environment_physical_sky_selected_backend=d3d12, environment_physical_sky_shader_contract_evidence_ready=1, environment_physical_sky_package_evidence_ready=1, environment_physical_sky_execution_evidence_ready=1, environment_physical_sky_constant_buffer_ready=1, environment_physical_sky_constants_binding=0, environment_physical_sky_constants_byte_size=256, environment_physical_sky_constant_layout_rows=8, environment_physical_sky_lut_intent_rows=4, environment_physical_sky_diagnostics=0, and zero LUT texture allocation, backend invocation, or native-handle counters without claiming Vulkan, Metal, backend parity, broad optimization, or broad environment_ready.",
           "recipeIds": [
@@ -189,16 +217,30 @@
         },
         {
           "id": "cloud-layer-package-evidence",
-          "evidence": "The selected D3D12 cloud layer package smoke reports cloud_layer_status=ready, cloud_layer_ready=1, cloud_layer_selected_backend=d3d12, cloud_layer_shader_contract_evidence_ready=1, cloud_layer_package_evidence_ready=1, cloud_layer_execution_evidence_ready=1, stable cloud-map/flow-map/sampler/constants binding slots 6/7/6/6, one shared package texture policy row, one visual/IBL/shader-contract/quality row each, LatLong shader-contract flow-map sampling intent, zero diagnostics, and zero texture upload, backend invocation, native handle, or volumetric-cloud counters without claiming a distinct flow-map package asset, Vulkan, Metal, backend parity, broad optimization, or broad environment_ready.",
+          "evidence": "The selected D3D12 cloud layer package smoke reports cloud_layer_status=ready, cloud_layer_ready=1, cloud_layer_selected_backend=d3d12, cloud_layer_shader_contract_evidence_ready=1, cloud_layer_package_evidence_ready=1, cloud_layer_execution_evidence_ready=1, stable cloud-map/flow-map/sampler/constants binding slots 6/7/6/6, one shared package texture policy row, one visual/IBL/shader-contract/quality row each, LatLong shader-contract flow-map sampling intent, zero diagnostics, and zero texture upload, backend invocation, renderer draw, native handle, or volumetric-cloud counters while the manifest declares the distinct cooked flow-map package asset without claiming renderer/RHI cloud drawing, Vulkan, Metal, backend parity, broad optimization, or broad environment_ready.",
           "recipeIds": [
             "desktop-runtime-sample-game-cloud-layer-package"
           ]
         },
         {
+          "id": "cloud-layer-renderer-execution-evidence",
+          "evidence": "The selected D3D12 cloud layer renderer execution smoke uses --require-cloud-layer-renderer-execution and reports cloud_layer_status=ready, cloud_layer_ready=1, cloud_layer_selected_backend=d3d12, shader-contract/package/execution evidence ready, stable cloud-map/flow-map/sampler/constants binding slots 6/7/6/6, a distinct cooked flow-map package asset, positive cloud_layer_texture_uploads, positive cloud_layer_backend_invocations, positive cloud_layer_renderer_draws, zero diagnostics, zero native-handle access, and zero volumetric-cloud counters without claiming Vulkan, Metal, backend parity, broad optimization, or broad environment_ready.",
+          "recipeIds": [
+            "desktop-runtime-sample-game-cloud-layer-renderer-execution"
+          ]
+        },
+        {
           "id": "environment-precipitation-package-evidence",
-          "evidence": "The selected D3D12 environment precipitation package smoke reports environment_precipitation_status=ready, environment_precipitation_ready=1, environment_precipitation_selected_backend=d3d12, weather=storm, kind=rain, shader-contract/package/execution evidence ready, stable particle/depth/sampler/constants binding slots 8/9/8/7, camera-near particle and scene-depth occlusion flags, one weather/particle/occlusion/wetness/shader/quality row, four audio handoff rows, zero diagnostics, and zero particle-buffer upload, backend invocation, native-handle, material-mutation, or audio-playback counters without claiming snow package readiness, renderer/RHI precipitation execution, Vulkan, Metal, backend parity, broad optimization, or broad environment_ready.",
+          "evidence": "The selected D3D12 environment precipitation package smoke reports environment_precipitation_status=ready, environment_precipitation_ready=1, environment_precipitation_selected_backend=d3d12, weather=storm, kind=rain, shader-contract/package/execution evidence ready, stable particle/depth/sampler/constants binding slots 8/9/8/7, camera-near particle and scene-depth occlusion flags, one weather/particle/occlusion/wetness/shader/quality row, four audio handoff rows, zero diagnostics, and zero particle-buffer upload, backend invocation, native-handle, material-mutation, or audio-playback counters without claiming renderer/RHI precipitation execution, Vulkan, Metal, backend parity, broad optimization, or broad environment_ready.",
           "recipeIds": [
             "desktop-runtime-sample-game-environment-precipitation-package"
+          ]
+        },
+        {
+          "id": "environment-snow-package-evidence",
+          "evidence": "The selected D3D12 environment snow package smoke reports environment_precipitation_status=ready, environment_precipitation_ready=1, environment_precipitation_selected_backend=d3d12, weather=snow, kind=snow, shader-contract/package/execution evidence ready, stable particle/depth/sampler/constants binding slots 8/9/8/7, camera-near particle and scene-depth occlusion flags, one weather/particle/occlusion/shader/quality row, zero wetness rows, one audio handoff row, zero diagnostics, and zero particle-buffer upload, backend invocation, native-handle, material-mutation, or audio-playback counters without claiming renderer/RHI precipitation execution, rain readiness, Vulkan, Metal, backend parity, broad optimization, or broad environment_ready.",
+          "recipeIds": [
+            "desktop-runtime-sample-game-environment-snow-package"
           ]
         },
         {
@@ -235,7 +277,8 @@
         "broad-commercial-quality",
         "runtime-source-parsing",
         "renderer-rhi-residency",
-        "height-fog-vulkan-execution",
+        "volumetric-fog-vulkan-execution",
+        "environment-backend-parity",
         "broad-environment-ready",
         "metal-readiness"
       ]
@@ -341,6 +384,13 @@
           "updatePolicy": "Regenerate or update only through reviewed game-local dry-run/apply surfaces; preserve reviewed aiWorkflow descriptors."
         },
         {
+          "id": "runtime-assets-desktop-runtime-cloud-flow-texture-geasset",
+          "path": "games/sample_desktop_runtime_game/runtime/assets/desktop_runtime/cloud_flow.texture.geasset",
+          "generatedBy": "environment-rendering-readiness-v1-cloud-layer-renderer-execution",
+          "reviewedCommandSurfaceId": "create-game-recipe",
+          "updatePolicy": "Update only through reviewed game-local package validation surfaces; preserve distinct cloud-layer flow-map package evidence."
+        },
+        {
           "id": "runtime-assets-desktop-runtime-default-outdoor-geenv",
           "path": "games/sample_desktop_runtime_game/runtime/assets/desktop_runtime/default_outdoor.geenv",
           "generatedBy": "environment-system-v1-package-validation",
@@ -437,6 +487,13 @@
           "generatedBy": "tools/new-game.ps1",
           "reviewedCommandSurfaceId": "create-game-recipe",
           "updatePolicy": "Regenerate or update only through reviewed game-local dry-run/apply surfaces; preserve reviewed aiWorkflow descriptors."
+        },
+        {
+          "id": "source-textures-cloud-flow-texture-source",
+          "path": "games/sample_desktop_runtime_game/source/textures/cloud_flow.texture_source",
+          "generatedBy": "environment-rendering-readiness-v1-cloud-layer-renderer-execution",
+          "reviewedCommandSurfaceId": "create-game-recipe",
+          "updatePolicy": "Update only through reviewed game-local package validation surfaces; preserve distinct cloud-layer flow-map source evidence."
         },
         {
           "id": "shaders-runtime-postprocess-hlsl",
@@ -1409,6 +1466,7 @@
     "runtime/sample_desktop_runtime_game.config",
     "runtime/sample_desktop_runtime_game.geindex",
     "runtime/assets/desktop_runtime/base_color.texture.geasset",
+    "runtime/assets/desktop_runtime/cloud_flow.texture.geasset",
     "runtime/assets/desktop_runtime/default_outdoor.geenv",
     "runtime/assets/desktop_runtime/triangle.mesh",
     "runtime/assets/desktop_runtime/hud.uiatlas",
@@ -1497,7 +1555,8 @@
         "sample/desktop-runtime/texture",
         "sample/desktop-runtime/mesh",
         "sample/desktop-runtime/material",
-        "sample/desktop-runtime/environment/default-outdoor"
+        "sample/desktop-runtime/environment/default-outdoor",
+        "sample/desktop-runtime/cloud-flow"
       ],
       "sourceCookMode": "selected-source-registry-rows",
       "sceneMigration": "migrate-scene-v2-runtime-package",
@@ -1506,8 +1565,11 @@
         "desktop-game-runtime",
         "desktop-runtime-release-target",
         "installed-d3d12-scene-gpu-smoke",
+        "desktop-runtime-sample-game-vulkan-environment-fog-package",
+        "desktop-runtime-sample-game-environment-volumetric-fog-package",
         "desktop-runtime-sample-game-physical-sky-package",
         "desktop-runtime-sample-game-cloud-layer-package",
+        "desktop-runtime-sample-game-cloud-layer-renderer-execution",
         "desktop-runtime-sample-game-environment-profile-package"
       ],
       "broadImporterExecution": "unsupported",
@@ -1533,7 +1595,8 @@
       "packageIndexPath": "runtime/sample_desktop_runtime_game.geindex",
       "selectedAssetKeys": [
         "sample/desktop-runtime/material",
-        "sample/desktop-runtime/environment/default-outdoor"
+        "sample/desktop-runtime/environment/default-outdoor",
+        "sample/desktop-runtime/cloud-flow"
       ],
       "dependencyExpansion": "registered_source_registry_closure",
       "dependencyCooking": "registry_closure",
@@ -1569,6 +1632,14 @@
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-environment-fog-evidence')\""
     },
     {
+      "name": "desktop-runtime-sample-game-vulkan-environment-fog-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireVulkanShaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-vulkan-scene-shaders','--require-vulkan-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-vulkan-postprocess-evidence','--require-environment-fog-vulkan-package-evidence')\""
+    },
+    {
+      "name": "desktop-runtime-sample-game-environment-volumetric-fog-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-environment-volumetric-fog-package-evidence')\""
+    },
+    {
       "name": "desktop-runtime-sample-game-physical-sky-package",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-physical-sky-package-evidence')\""
     },
@@ -1577,8 +1648,16 @@
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-cloud-layer-package-evidence')\""
     },
     {
+      "name": "desktop-runtime-sample-game-cloud-layer-renderer-execution",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-cloud-layer-renderer-execution')\""
+    },
+    {
       "name": "desktop-runtime-sample-game-environment-precipitation-package",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-environment-precipitation-package-evidence')\""
+    },
+    {
+      "name": "desktop-runtime-sample-game-environment-snow-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-environment-snow-package-evidence')\""
     },
     {
       "name": "desktop-runtime-sample-game-environment-profile-package",
