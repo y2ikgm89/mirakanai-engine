@@ -16,7 +16,7 @@
 
 **Date:** 2026-05-27
 
-**Latest audit:** 2026-06-05. This audit keeps the plan as a candidate master roadmap and updates the clean-break baseline after first-party desktop platform, first-party UI/editor, environment, and performance-foundation work landed.
+**Latest audit:** 2026-06-06. This audit keeps the plan as a candidate master roadmap and updates the clean-break baseline after first-party desktop platform, first-party UI/editor, environment, performance-foundation work, MAVG runtime LOD closeout, autonomous page streaming worker proof, and deterministic automatic eviction candidate ordering landed.
 
 ## Master Plan Decision
 
@@ -103,6 +103,7 @@ Existing usable foundations:
 - `MK_editor_core`, `mirakana::ui`, `MK_ui`, and `MK_ui_renderer` are the active first-party UI/editor foundations. MAVG editor-facing diagnostics must use retained first-party rows and private native adapters.
 - `MK_environment` provides profile validation/text IO/package rows, scene/runtime environment profile binding, renderer policy planning, selected D3D12 sky/fog/cloud/rain evidence, and host-gated Vulkan height-fog proof. MAVG benchmark content should include environment load but avoid broad environment-ready claims.
 - Performance foundation rows exist for performance budget evidence, memory diagnostics, scratch arenas, job execution, CPU placement, SIMD/AVX2 dispatch, long-running readiness, CPU profiling matrix, and optional GPU compute review. MAVG readiness claims must cite or extend these rows rather than inventing parallel diagnostics.
+- MAVG runtime streaming foundations now include reviewed page request planning, selected visible/fallback ancestor protection, safe-point/background dispatch planning, a joined engine-owned page streaming worker boundary, and deterministic resident-page automatic eviction candidate ordering through `plan_runtime_mavg_page_streaming_automatic_evictions`.
 - `engine/runtime/include/mirakana/runtime/entity_scale_culling.hpp` has value-only LOD band, visibility, draw/update cost, and budget planning.
 - `engine/renderer/include/mirakana/renderer/scene_scale_policy.hpp` has backend-neutral scene scale, culling, batching, and LOD policy rows.
 - `engine/runtime_rhi/include/mirakana/runtime_rhi/runtime_upload.hpp` has runtime mesh, skinned mesh, morph mesh, and texture upload evidence.
@@ -118,7 +119,7 @@ Important gaps:
 - No cluster simplification/error metric.
 - No GPU cluster traversal or visibility buffer.
 - No mesh shader or indirect clustered geometry path.
-- No cluster page streaming/residency.
+- No full production cluster page streaming/residency service beyond the current reviewed request planning, joined worker boundary, and deterministic resident-page automatic eviction candidate ordering.
 - No unified raster/ray tracing cluster payload.
 - No deformation-safe cluster bounds or dynamic update policy.
 - No benchmark harness capable of supporting a "beyond Nanite-like LOD" claim.

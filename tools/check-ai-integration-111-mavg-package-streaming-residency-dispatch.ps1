@@ -75,12 +75,16 @@ foreach ($surface in @(
     foreach ($needle in @(
             "autonomous background",
             "async",
-            "automatic eviction policy",
             "partial",
             "GPU memory pressure",
             "Nanite"
         )) {
         Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG package streaming residency dispatch non-claims"
+    }
+    if ($surface.Label -eq "docs/superpowers/plans/2026-06-05-mavg-package-streaming-residency-dispatch-v1.md") {
+        Assert-ContainsText $surface.Text "automatic eviction policy" "$($surface.Label) MAVG package streaming residency dispatch historical non-claims"
+    } else {
+        Assert-ContainsText $surface.Text "LRU/recency/frequency" "$($surface.Label) MAVG package streaming residency dispatch remaining eviction non-claims"
     }
 }
 
