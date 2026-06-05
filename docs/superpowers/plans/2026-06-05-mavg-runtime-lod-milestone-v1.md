@@ -29,6 +29,7 @@
 - `MeshCommand` now exposes `MeshIndexedDrawRange`, and `rhi::IRhiCommandList::draw_indexed` now accepts `first_index`, `vertex_offset`, and `first_instance` so conventional renderers can draw only selected clusters.
 - `MK_scene_renderer` already converts `SceneRenderPacket` meshes into `MeshCommand` rows and submits them through `IRenderer::draw_mesh`.
 - `MK_runtime_rhi` already uploads conventional mesh payloads with known vertex layouts and index buffers through `RuntimeMeshUploadResult`.
+- `MK_runtime_rhi` now also exposes `mavg_conventional_upload.hpp`, `RuntimeMavgConventionalMeshUploadResult`, and `upload_runtime_mavg_conventional_mesh_binding` for package-visible conventional MAVG mesh binding upload evidence through existing `upload_runtime_mesh`.
 - `MK_rhi` has backend capability profiles and selected D3D12/Vulkan/Metal host gates, but no MAVG-specific indirect draw, mesh shader, or GPU cluster traversal API.
 
 ## Official Source Audit
