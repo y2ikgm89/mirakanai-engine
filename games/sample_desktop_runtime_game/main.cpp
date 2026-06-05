@@ -12,6 +12,7 @@
 #include "mirakana/platform/filesystem.hpp"
 #include "mirakana/platform/input.hpp"
 #include "mirakana/platform/win32/win32_cpu_sets.hpp"
+#include "mirakana/renderer/environment_lighting_policy.hpp"
 #include "mirakana/renderer/frame_graph_rhi.hpp"
 #include "mirakana/renderer/renderer.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
@@ -74,6 +75,7 @@ struct DesktopRuntimeGameOptions {
     bool require_environment_fog_vulkan_package_evidence{false};
     bool require_physical_sky_package_evidence{false};
     bool require_environment_volumetric_fog_package_evidence{false};
+    bool require_environment_lighting_package_evidence{false};
     bool require_cloud_layer_package_evidence{false};
     bool require_cloud_layer_renderer_execution{false};
     bool require_environment_precipitation_package_evidence{false};
@@ -155,6 +157,8 @@ constexpr std::string_view kRuntimeEnvironmentVolumetricCloudVertexShaderPath{
 constexpr std::string_view kRuntimeEnvironmentVolumetricCloudFragmentShaderPath{
     "shaders/sample_desktop_runtime_game_environment_volumetric_cloud.ps.dxil"};
 constexpr std::string_view kRuntimeEnvironmentProfilePath{"runtime/assets/desktop_runtime/default_outdoor.geenv"};
+constexpr std::string_view kRuntimeEnvironmentIblCubemapPath{
+    "runtime/assets/desktop_runtime/environment_ibl.texture.geasset"};
 constexpr std::string_view kRuntimePostprocessVulkanVertexShaderPath{
     "shaders/sample_desktop_runtime_game_postprocess.vs.spv"};
 constexpr std::string_view kRuntimePostprocessVulkanFragmentShaderPath{
@@ -210,6 +214,45 @@ constexpr std::string_view kHudAtlasProofAssetUri{"runtime/assets/desktop_runtim
         .package_evidence_ready = true,
         .execution_evidence_ready = true,
         .request_ready_promotion = true,
+    };
+}
+
+[[nodiscard]] mirakana::EnvironmentLightingPolicyDesc
+make_sample_environment_lighting_policy_desc(bool package_record_ready, bool package_source_ready,
+                                             bool hdr_metadata_ready) {
+    return mirakana::EnvironmentLightingPolicyDesc{
+        .dependency_mode = mirakana::EnvironmentLightingDependencyMode::first_party_cooked_texture,
+        .visual_sky_source = mirakana::EnvironmentLightingSkySource::physical_sky,
+        .lighting_sky_source = mirakana::EnvironmentLightingSkySource::specified_cubemap,
+        .reflection_cubemap =
+            mirakana::EnvironmentReflectionCubemapDesc{
+                .asset = asset_id_from_game_asset_key("sample/desktop-runtime/environment/ibl-cubemap"),
+                .edge_size = 16,
+                .mip_count = 5,
+                .format = mirakana::EnvironmentLightingTextureFormat::rgba16_float,
+                .hdr_metadata_ready = hdr_metadata_ready,
+                .package_record_ready = package_record_ready,
+                .package_source_ready = package_source_ready,
+                .package_evidence_ready = package_record_ready && package_source_ready && hdr_metadata_ready,
+            },
+        .irradiance =
+            mirakana::EnvironmentIrradianceDesc{
+                .spherical_harmonic_order = 3,
+                .coefficient_count = 9,
+            },
+        .radiance =
+            mirakana::EnvironmentRadianceDesc{
+                .mip_count = 5,
+                .roughness_mip_count = 5,
+                .max_roughness = 1.0F,
+            },
+        .hdr_clamp =
+            mirakana::EnvironmentHdrClampPolicyDesc{
+                .enabled = true,
+                .max_luminance_nits = 20000.0F,
+                .exposure_bias = 0.0F,
+            },
+        .visual_sky_visible_in_main_camera = true,
     };
 }
 
@@ -376,6 +419,10 @@ sample_environment_volumetric_cloud_lights() noexcept {
 
 [[nodiscard]] mirakana::AssetId packaged_environment_profile_asset_id() {
     return asset_id_from_game_asset_key("sample/desktop-runtime/environment/default-outdoor");
+}
+
+[[nodiscard]] mirakana::AssetId packaged_environment_ibl_cubemap_asset_id() {
+    return asset_id_from_game_asset_key("sample/desktop-runtime/environment/ibl-cubemap");
 }
 
 [[nodiscard]] mirakana::AnimationSkeleton3dDesc packaged_quaternion_animation_skeleton() {
@@ -651,6 +698,174 @@ evaluate_environment_profile_package(bool requested,
 
     evidence.status = EnvironmentProfilePackageStatus::ready;
     evidence.ready = true;
+    return evidence;
+}
+
+enum class EnvironmentLightingPackageStatus : std::uint8_t {
+    not_requested,
+    missing_package,
+    missing_package_record,
+    invalid_package_record,
+    policy_failed,
+    ready,
+};
+
+struct EnvironmentLightingPackageEvidence {
+    EnvironmentLightingPackageStatus status{EnvironmentLightingPackageStatus::not_requested};
+    bool requested{false};
+    bool ready{false};
+    bool package_file_present{false};
+    bool package_index_entry_present{false};
+    bool package_record_ready{false};
+    bool package_source_ready{false};
+    bool hdr_metadata_ready{false};
+    bool package_evidence_ready{false};
+    bool renderer_upload_evidence_ready{false};
+    bool exposes_native_handles{false};
+    std::uint32_t reflection_cubemap_rows{0};
+    std::uint32_t reflection_cubemap_face_count{0};
+    std::uint32_t reflection_cubemap_edge_size{0};
+    std::uint32_t reflection_cubemap_mip_count{0};
+    mirakana::EnvironmentLightingTextureFormat reflection_cubemap_format{
+        mirakana::EnvironmentLightingTextureFormat::unknown};
+    std::uint32_t irradiance_rows{0};
+    std::uint32_t radiance_mip_rows{0};
+    std::uint32_t package_evidence_rows{0};
+    bool hdr_clamp_enabled{false};
+    float hdr_clamp_max_luminance_nits{0.0F};
+    std::uint32_t texture_uploads{0};
+    std::uint32_t backend_invocations{0};
+    std::uint32_t runtime_captures{0};
+    std::uint32_t diagnostics{0};
+};
+
+[[nodiscard]] std::string_view
+environment_lighting_package_status_name(EnvironmentLightingPackageStatus status) noexcept {
+    switch (status) {
+    case EnvironmentLightingPackageStatus::not_requested:
+        return "not_requested";
+    case EnvironmentLightingPackageStatus::missing_package:
+        return "missing_package";
+    case EnvironmentLightingPackageStatus::missing_package_record:
+        return "missing_package_record";
+    case EnvironmentLightingPackageStatus::invalid_package_record:
+        return "invalid_package_record";
+    case EnvironmentLightingPackageStatus::policy_failed:
+        return "policy_failed";
+    case EnvironmentLightingPackageStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view
+environment_lighting_texture_format_name(mirakana::EnvironmentLightingTextureFormat format) noexcept {
+    switch (format) {
+    case mirakana::EnvironmentLightingTextureFormat::rgba16_float:
+        return "rgba16_float";
+    case mirakana::EnvironmentLightingTextureFormat::rgba32_float:
+        return "rgba32_float";
+    case mirakana::EnvironmentLightingTextureFormat::rgbe9995:
+        return "rgbe9995";
+    case mirakana::EnvironmentLightingTextureFormat::rgba8_unorm:
+        return "rgba8_unorm";
+    case mirakana::EnvironmentLightingTextureFormat::unknown:
+        return "unknown";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] bool contains_payload_row(const mirakana::runtime::RuntimeAssetRecord& record,
+                                        std::string_view row) noexcept {
+    return record.content.find(row) != std::string::npos;
+}
+
+[[nodiscard]] bool is_cooked_environment_ibl_record(const mirakana::runtime::RuntimeAssetRecord& record) noexcept {
+    return record.kind == mirakana::AssetKind::texture && record.path == kRuntimeEnvironmentIblCubemapPath &&
+           std::string_view{record.content}.starts_with("format=GameEngine.CookedTexture.v1\n") &&
+           contains_payload_row(record, "asset.kind=texture\n") &&
+           contains_payload_row(record, "texture.ibl.role=reflection_cubemap\n") &&
+           contains_payload_row(record, "texture.ibl.source_format=GameEngine.FirstPartyIblMetadata.v1\n") &&
+           contains_payload_row(record, "texture.ibl.format=rgba16_float\n") &&
+           contains_payload_row(record, "texture.ibl.face_count=6\n") &&
+           contains_payload_row(record, "texture.ibl.edge_size=16\n") &&
+           contains_payload_row(record, "texture.ibl.mip_count=5\n") &&
+           contains_payload_row(record, "texture.ibl.irradiance_order=3\n") &&
+           contains_payload_row(record, "texture.ibl.irradiance_coefficients=9\n") &&
+           contains_payload_row(record, "texture.ibl.radiance_mip_count=5\n") &&
+           contains_payload_row(record, "texture.ibl.hdr_metadata=ready\n") &&
+           contains_payload_row(record, "texture.ibl.hdr_clamp_nits=20000\n");
+}
+
+[[nodiscard]] EnvironmentLightingPackageEvidence
+evaluate_environment_lighting_package(bool requested,
+                                      const std::optional<mirakana::runtime::RuntimeAssetPackage>& runtime_package) {
+    EnvironmentLightingPackageEvidence evidence;
+    evidence.requested = requested;
+    if (!requested) {
+        return evidence;
+    }
+    if (!runtime_package.has_value()) {
+        evidence.status = EnvironmentLightingPackageStatus::missing_package;
+        evidence.diagnostics = 1;
+        return evidence;
+    }
+
+    const auto ibl_asset = packaged_environment_ibl_cubemap_asset_id();
+    const auto* ibl_record = runtime_package->find(ibl_asset);
+    evidence.package_index_entry_present = ibl_record != nullptr;
+    if (ibl_record == nullptr) {
+        evidence.status = EnvironmentLightingPackageStatus::missing_package_record;
+        evidence.diagnostics = 1;
+        return evidence;
+    }
+
+    evidence.package_file_present = is_cooked_environment_ibl_record(*ibl_record);
+    evidence.package_record_ready = evidence.package_index_entry_present && evidence.package_file_present;
+    evidence.package_source_ready =
+        evidence.package_file_present &&
+        contains_payload_row(*ibl_record, "texture.ibl.source_format=GameEngine.FirstPartyIblMetadata.v1\n");
+    evidence.hdr_metadata_ready =
+        evidence.package_file_present && contains_payload_row(*ibl_record, "texture.ibl.hdr_metadata=ready\n");
+    if (!evidence.package_file_present) {
+        evidence.status = EnvironmentLightingPackageStatus::invalid_package_record;
+        evidence.diagnostics = 1;
+        return evidence;
+    }
+
+    const auto policy = mirakana::plan_environment_lighting_policy(make_sample_environment_lighting_policy_desc(
+        evidence.package_record_ready, evidence.package_source_ready, evidence.hdr_metadata_ready));
+    evidence.diagnostics = static_cast<std::uint32_t>(policy.diagnostics.size());
+    if (!policy.succeeded()) {
+        evidence.status = EnvironmentLightingPackageStatus::policy_failed;
+        evidence.diagnostics = std::max(evidence.diagnostics, 1U);
+        return evidence;
+    }
+
+    evidence.package_evidence_ready = !policy.package_evidence_rows.empty() && policy.package_evidence_rows[0].ready;
+    evidence.renderer_upload_evidence_ready = policy.renderer_upload_evidence_ready;
+    evidence.exposes_native_handles = policy.exposes_native_handles;
+    evidence.reflection_cubemap_rows = static_cast<std::uint32_t>(policy.reflection_cubemap_rows.size());
+    if (!policy.reflection_cubemap_rows.empty()) {
+        evidence.reflection_cubemap_face_count = policy.reflection_cubemap_rows[0].face_count;
+        evidence.reflection_cubemap_edge_size = policy.reflection_cubemap_rows[0].edge_size;
+        evidence.reflection_cubemap_mip_count = policy.reflection_cubemap_rows[0].mip_count;
+        evidence.reflection_cubemap_format = policy.reflection_cubemap_rows[0].format;
+    }
+    evidence.irradiance_rows = static_cast<std::uint32_t>(policy.irradiance_rows.size());
+    evidence.radiance_mip_rows = static_cast<std::uint32_t>(policy.radiance_mip_rows.size());
+    evidence.package_evidence_rows = static_cast<std::uint32_t>(policy.package_evidence_rows.size());
+    evidence.hdr_clamp_enabled = policy.hdr_clamp_row.enabled;
+    evidence.hdr_clamp_max_luminance_nits = policy.hdr_clamp_row.max_luminance_nits;
+    evidence.texture_uploads = policy.texture_uploads;
+    evidence.backend_invocations = policy.backend_invocations;
+    evidence.runtime_captures = policy.runtime_captures;
+    evidence.ready = evidence.package_evidence_ready && !evidence.renderer_upload_evidence_ready &&
+                     !evidence.exposes_native_handles && evidence.texture_uploads == 0U &&
+                     evidence.backend_invocations == 0U && evidence.runtime_captures == 0U;
+    evidence.status =
+        evidence.ready ? EnvironmentLightingPackageStatus::ready : EnvironmentLightingPackageStatus::policy_failed;
+    evidence.diagnostics = evidence.ready ? 0U : std::max(evidence.diagnostics, 1U);
     return evidence;
 }
 
@@ -1135,6 +1350,7 @@ void print_usage() {
                  "[--require-environment-fog-vulkan-package-evidence] "
                  "[--require-physical-sky-package-evidence] "
                  "[--require-environment-volumetric-fog-package-evidence] "
+                 "[--require-environment-lighting-package-evidence] "
                  "[--require-cloud-layer-package-evidence] [--require-cloud-layer-renderer-execution] "
                  "[--require-environment-precipitation-package-evidence] "
                  "[--require-environment-precipitation-renderer-execution] "
@@ -1301,6 +1517,15 @@ void print_usage() {
             options.require_postprocess_depth_input = true;
             options.require_d3d12_postprocess_evidence = true;
             options.require_physical_sky_package_evidence = true;
+            continue;
+        }
+        if (arg == "--require-environment-lighting-package-evidence") {
+            options.require_d3d12_renderer = true;
+            options.require_scene_gpu_bindings = true;
+            options.require_postprocess = true;
+            options.require_postprocess_depth_input = true;
+            options.require_d3d12_postprocess_evidence = true;
+            options.require_environment_lighting_package_evidence = true;
             continue;
         }
         if (arg == "--require-cloud-layer-package-evidence") {
@@ -3472,6 +3697,8 @@ int main(int argc, char** argv) {
             options.require_environment_volumetric_cloud_renderer_execution);
     const auto environment_profile =
         evaluate_environment_profile_package(options.require_environment_profile, runtime_package);
+    const auto environment_lighting =
+        evaluate_environment_lighting_package(options.require_environment_lighting_package_evidence, runtime_package);
     const auto vulkan_postprocess_execution =
         mirakana::evaluate_win32_desktop_presentation_vulkan_postprocess_execution(
             report, static_cast<std::uint64_t>(options.max_frames), options.require_vulkan_postprocess_evidence);
@@ -3652,6 +3879,38 @@ int main(int argc, char** argv) {
         << " environment_physical_sky_backend_invocations=" << (physical_sky.invokes_backend ? 1 : 0)
         << " environment_physical_sky_native_handle_access=" << (physical_sky.exposes_native_handles ? 1 : 0)
         << " environment_physical_sky_diagnostics=" << physical_sky.diagnostics_count
+        << " environment_lighting_status=" << environment_lighting_package_status_name(environment_lighting.status)
+        << " environment_lighting_ready=" << (environment_lighting.ready ? 1 : 0)
+        << " environment_lighting_selected_backend="
+        << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
+        << " environment_lighting_requested=" << (environment_lighting.requested ? 1 : 0)
+        << " environment_lighting_dependency_mode=first_party_cooked_texture"
+        << " environment_lighting_visual_sky_source=physical_sky"
+        << " environment_lighting_lighting_sky_source=specified_cubemap"
+        << " environment_lighting_package_file=" << (environment_lighting.package_file_present ? 1 : 0)
+        << " environment_lighting_package_index_entry=" << (environment_lighting.package_index_entry_present ? 1 : 0)
+        << " environment_lighting_package_record_ready=" << (environment_lighting.package_record_ready ? 1 : 0)
+        << " environment_lighting_package_source_ready=" << (environment_lighting.package_source_ready ? 1 : 0)
+        << " environment_lighting_hdr_metadata_ready=" << (environment_lighting.hdr_metadata_ready ? 1 : 0)
+        << " environment_lighting_package_evidence_ready=" << (environment_lighting.package_evidence_ready ? 1 : 0)
+        << " environment_lighting_reflection_cubemap_rows=" << environment_lighting.reflection_cubemap_rows
+        << " environment_lighting_reflection_cubemap_face_count=" << environment_lighting.reflection_cubemap_face_count
+        << " environment_lighting_reflection_cubemap_edge_size=" << environment_lighting.reflection_cubemap_edge_size
+        << " environment_lighting_reflection_cubemap_mip_count=" << environment_lighting.reflection_cubemap_mip_count
+        << " environment_lighting_reflection_cubemap_format="
+        << environment_lighting_texture_format_name(environment_lighting.reflection_cubemap_format)
+        << " environment_lighting_irradiance_rows=" << environment_lighting.irradiance_rows
+        << " environment_lighting_radiance_mip_rows=" << environment_lighting.radiance_mip_rows
+        << " environment_lighting_package_evidence_rows=" << environment_lighting.package_evidence_rows
+        << " environment_lighting_hdr_clamp_enabled=" << (environment_lighting.hdr_clamp_enabled ? 1 : 0)
+        << " environment_lighting_hdr_clamp_max_luminance_nits=" << environment_lighting.hdr_clamp_max_luminance_nits
+        << " environment_lighting_renderer_upload_evidence_ready="
+        << (environment_lighting.renderer_upload_evidence_ready ? 1 : 0)
+        << " environment_lighting_texture_uploads=" << environment_lighting.texture_uploads
+        << " environment_lighting_backend_invocations=" << environment_lighting.backend_invocations
+        << " environment_lighting_runtime_captures=" << environment_lighting.runtime_captures
+        << " environment_lighting_native_handle_access=" << (environment_lighting.exposes_native_handles ? 1 : 0)
+        << " environment_lighting_diagnostics=" << environment_lighting.diagnostics
         << " cloud_layer_status=" << mirakana::win32_desktop_presentation_cloud_layer_status_name(cloud_layer.status)
         << " cloud_layer_ready=" << (cloud_layer.ready ? 1 : 0) << " cloud_layer_selected_backend="
         << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
@@ -4636,6 +4895,9 @@ int main(int argc, char** argv) {
             return 3;
         }
         if (options.require_physical_sky_package_evidence && !physical_sky.ready) {
+            return 3;
+        }
+        if (options.require_environment_lighting_package_evidence && !environment_lighting.ready) {
             return 3;
         }
         if (options.require_environment_volumetric_fog_package_evidence && !environment_volumetric_fog.ready) {

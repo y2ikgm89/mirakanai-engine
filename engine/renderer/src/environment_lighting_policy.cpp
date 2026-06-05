@@ -103,6 +103,16 @@ void validate_reflection_cubemap(EnvironmentLightingPolicyPlan& plan, const Envi
                        "reflection_cubemap.package_evidence_ready",
                        "environment lighting requires package-visible cooked texture evidence");
     }
+    if (!cubemap.package_record_ready) {
+        add_diagnostic(plan, EnvironmentLightingDiagnosticCode::missing_package_record,
+                       "reflection_cubemap.package_record_ready",
+                       "environment lighting requires a cooked package index texture record for IBL inputs");
+    }
+    if (!cubemap.package_source_ready) {
+        add_diagnostic(plan, EnvironmentLightingDiagnosticCode::missing_package_source,
+                       "reflection_cubemap.package_source_ready",
+                       "environment lighting requires first-party cooked texture source metadata for IBL inputs");
+    }
 }
 
 void validate_irradiance(EnvironmentLightingPolicyPlan& plan, const EnvironmentIrradianceDesc& irradiance) {
@@ -147,6 +157,8 @@ void append_reflection_cubemap_row(EnvironmentLightingPolicyPlan& plan,
         .mip_count = cubemap.mip_count,
         .format = cubemap.format,
         .hdr_metadata_ready = cubemap.hdr_metadata_ready,
+        .package_record_ready = cubemap.package_record_ready,
+        .package_source_ready = cubemap.package_source_ready,
         .package_evidence_ready = cubemap.package_evidence_ready,
     });
 }
@@ -180,7 +192,11 @@ void append_package_evidence_row(EnvironmentLightingPolicyPlan& plan, const Envi
     plan.package_evidence_rows.push_back(EnvironmentLightingPackageEvidenceRow{
         .asset = cubemap.asset,
         .evidence_kind = "first_party_cooked_texture_hdr_metadata",
-        .ready = cubemap.package_evidence_ready && cubemap.hdr_metadata_ready,
+        .package_record_ready = cubemap.package_record_ready,
+        .package_source_ready = cubemap.package_source_ready,
+        .hdr_metadata_ready = cubemap.hdr_metadata_ready,
+        .ready = cubemap.package_evidence_ready && cubemap.package_record_ready && cubemap.package_source_ready &&
+                 cubemap.hdr_metadata_ready,
     });
 }
 
