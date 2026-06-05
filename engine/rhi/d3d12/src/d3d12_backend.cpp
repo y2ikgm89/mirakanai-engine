@@ -353,13 +353,28 @@ void validate_buffer_texture_region(const TextureDesc& texture, const BufferText
                            "d3d12 rhi indexed indirect draw argument range overflowed");
 }
 
-[[nodiscard]] std::vector<IndexedIndirectDrawCommand>
-decode_indexed_indirect_draw_commands(std::span<const std::uint8_t> argument_bytes,
-                                      const IndexedIndirectDrawDesc& desc) {
-    std::vector<IndexedIndirectDrawCommand> commands;
-    commands.reserve(desc.max_draw_count);
+[[nodiscard]] std::uint64_t indexed_indirect_count_range_end(const IndexedIndirectDrawDesc& desc) {
+    if (!has_indexed_indirect_count_buffer(desc)) {
+        throw std::invalid_argument("d3d12 rhi indexed indirect draw count buffer handle is required");
+    }
+    if (!is_aligned_to(desc.count_buffer_offset, indexed_indirect_draw_offset_alignment_bytes)) {
+        throw std::invalid_argument("d3d12 rhi indexed indirect draw count buffer offset must be 4-byte aligned");
+    }
+    return checked_add_u64(desc.count_buffer_offset, indexed_indirect_draw_count_buffer_size_bytes,
+                           "d3d12 rhi indexed indirect draw count buffer range overflowed");
+}
 
-    for (std::uint32_t draw_index = 0; draw_index < desc.max_draw_count; ++draw_index) {
+[[nodiscard]] std::vector<IndexedIndirectDrawCommand>
+decode_indexed_indirect_draw_commands(std::span<const std::uint8_t> argument_bytes, const IndexedIndirectDrawDesc& desc,
+                                      std::uint32_t command_count) {
+    if (command_count > desc.max_draw_count) {
+        throw std::invalid_argument("d3d12 rhi indexed indirect draw executed count exceeds max draw count");
+    }
+
+    std::vector<IndexedIndirectDrawCommand> commands;
+    commands.reserve(command_count);
+
+    for (std::uint32_t draw_index = 0; draw_index < command_count; ++draw_index) {
         const auto command_offset =
             checked_add_u64(desc.argument_buffer_offset,
                             checked_mul_u64(static_cast<std::uint64_t>(desc.command_stride_bytes), draw_index,
@@ -377,7 +392,8 @@ decode_indexed_indirect_draw_commands(std::span<const std::uint8_t> argument_byt
 }
 
 [[nodiscard]] std::vector<IndexedIndirectDrawCommand>
-read_indexed_indirect_draw_commands(ID3D12Resource& resource, const IndexedIndirectDrawDesc& desc) {
+read_indexed_indirect_draw_commands(ID3D12Resource& resource, const IndexedIndirectDrawDesc& desc,
+                                    std::uint32_t command_count) {
     const auto range_end = indexed_indirect_argument_range_end(desc);
     const D3D12_RANGE read_range{static_cast<SIZE_T>(desc.argument_buffer_offset), static_cast<SIZE_T>(range_end)};
     void* mapped = nullptr;
@@ -389,7 +405,7 @@ read_indexed_indirect_draw_commands(ID3D12Resource& resource, const IndexedIndir
         std::span<const std::uint8_t>{static_cast<const std::uint8_t*>(mapped), static_cast<std::size_t>(range_end)};
     std::vector<IndexedIndirectDrawCommand> commands;
     try {
-        commands = decode_indexed_indirect_draw_commands(mapped_bytes, desc);
+        commands = decode_indexed_indirect_draw_commands(mapped_bytes, desc, command_count);
     } catch (...) {
         resource.Unmap(0, nullptr);
         throw;
@@ -399,13 +415,36 @@ read_indexed_indirect_draw_commands(ID3D12Resource& resource, const IndexedIndir
     return commands;
 }
 
+[[nodiscard]] std::uint32_t read_indexed_indirect_count_value(ID3D12Resource& resource,
+                                                              const IndexedIndirectDrawDesc& desc) {
+    const auto range_end = indexed_indirect_count_range_end(desc);
+    const D3D12_RANGE read_range{static_cast<SIZE_T>(desc.count_buffer_offset), static_cast<SIZE_T>(range_end)};
+    void* mapped = nullptr;
+    if (FAILED(resource.Map(0, &read_range, &mapped)) || mapped == nullptr) {
+        throw std::logic_error("d3d12 rhi indexed indirect draw count buffer mapping failed");
+    }
+
+    std::uint32_t count = 0;
+    const auto mapped_bytes =
+        std::span<const std::uint8_t>{static_cast<const std::uint8_t*>(mapped), static_cast<std::size_t>(range_end)};
+    std::memcpy(&count, mapped_bytes.subspan(static_cast<std::size_t>(desc.count_buffer_offset), sizeof(count)).data(),
+                sizeof(count));
+    const D3D12_RANGE written_range{0, 0};
+    resource.Unmap(0, &written_range);
+    return count;
+}
+
 template <typename Stats>
 void record_indexed_indirect_draw_stats(Stats& stats, std::span<const IndexedIndirectDrawCommand> commands,
-                                        const IndexedIndirectDrawDesc& desc) noexcept {
+                                        const IndexedIndirectDrawDesc& desc, std::uint32_t count_buffer_value,
+                                        bool count_buffer_read) noexcept {
     ++stats.indexed_indirect_draw_calls;
+    if (count_buffer_read) {
+        ++stats.indexed_indirect_count_buffer_reads;
+    }
     stats.last_indexed_indirect_max_draw_count = desc.max_draw_count;
     stats.last_indexed_indirect_executed_draw_count = static_cast<std::uint32_t>(commands.size());
-    stats.last_indexed_indirect_count_buffer_value = desc.max_draw_count;
+    stats.last_indexed_indirect_count_buffer_value = count_buffer_value;
 
     for (const auto& command : commands) {
         ++stats.draw_calls;
@@ -3510,23 +3549,28 @@ bool DeviceContext::draw_indexed(NativeCommandListHandle commands, std::uint32_t
 }
 
 bool DeviceContext::draw_indexed_indirect(NativeCommandListHandle commands, NativeResourceHandle argument_buffer,
-                                          const IndexedIndirectDrawDesc& desc) {
-    if (!valid() || has_indexed_indirect_count_buffer(desc)) {
+                                          NativeResourceHandle count_buffer, const IndexedIndirectDrawDesc& desc) {
+    if (!valid()) {
         return false;
     }
 
+    const bool uses_count_buffer = has_indexed_indirect_count_buffer(desc);
     CommandListRecord* command_record = impl_->command_list(commands);
     ID3D12Resource* argument_resource = impl_->resource_record(argument_buffer);
+    ID3D12Resource* count_resource = uses_count_buffer ? impl_->resource_record(count_buffer) : nullptr;
     if (command_record == nullptr || argument_resource == nullptr || command_record->closed ||
         command_record->queue != QueueKind::graphics) {
+        return false;
+    }
+    if (uses_count_buffer && count_resource == nullptr) {
         return false;
     }
     if (command_record->graphics_pipeline.value == 0 || !command_record->render_target_set) {
         return false;
     }
 
-    const auto resource_desc = argument_resource->GetDesc();
-    if (resource_desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER) {
+    const auto argument_resource_desc = argument_resource->GetDesc();
+    if (argument_resource_desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER) {
         return false;
     }
     std::uint64_t argument_range_end = 0;
@@ -3535,13 +3579,37 @@ bool DeviceContext::draw_indexed_indirect(NativeCommandListHandle commands, Nati
     } catch (const std::exception&) {
         return false;
     }
-    if (argument_range_end > resource_desc.Width) {
+    if (argument_range_end > argument_resource_desc.Width) {
         return false;
+    }
+
+    std::uint32_t count_buffer_value = desc.max_draw_count;
+    std::uint32_t executed_draw_count = desc.max_draw_count;
+    if (uses_count_buffer) {
+        const auto count_resource_desc = count_resource->GetDesc();
+        if (count_resource_desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER) {
+            return false;
+        }
+        std::uint64_t count_range_end = 0;
+        try {
+            count_range_end = indexed_indirect_count_range_end(desc);
+        } catch (const std::exception&) {
+            return false;
+        }
+        if (count_range_end > count_resource_desc.Width) {
+            return false;
+        }
+        try {
+            count_buffer_value = read_indexed_indirect_count_value(*count_resource, desc);
+        } catch (const std::exception&) {
+            return false;
+        }
+        executed_draw_count = std::min(count_buffer_value, desc.max_draw_count);
     }
 
     std::vector<IndexedIndirectDrawCommand> decoded_commands;
     try {
-        decoded_commands = read_indexed_indirect_draw_commands(*argument_resource, desc);
+        decoded_commands = read_indexed_indirect_draw_commands(*argument_resource, desc, executed_draw_count);
     } catch (const std::exception&) {
         return false;
     }
@@ -3552,8 +3620,9 @@ bool DeviceContext::draw_indexed_indirect(NativeCommandListHandle commands, Nati
     }
 
     command_record->list->ExecuteIndirect(signature, desc.max_draw_count, argument_resource,
-                                          desc.argument_buffer_offset, nullptr, 0);
-    record_indexed_indirect_draw_stats(impl_->stats, decoded_commands, desc);
+                                          desc.argument_buffer_offset, count_resource,
+                                          uses_count_buffer ? desc.count_buffer_offset : 0);
+    record_indexed_indirect_draw_stats(impl_->stats, decoded_commands, desc, count_buffer_value, uses_count_buffer);
     return true;
 }
 
@@ -5598,9 +5667,6 @@ class D3d12RhiCommandList final : public IRhiCommandList {
         if (!index_buffer_bound_) {
             throw std::logic_error("d3d12 rhi indexed indirect draw requires an index buffer");
         }
-        if (has_indexed_indirect_count_buffer(desc)) {
-            throw std::logic_error("d3d12 rhi indexed indirect count buffer execution is not implemented");
-        }
 
         const auto& argument_desc = buffer_desc(desc.argument_buffer);
         if (!has_flag(argument_desc.usage, BufferUsage::indirect)) {
@@ -5618,19 +5684,51 @@ class D3d12RhiCommandList final : public IRhiCommandList {
                 "d3d12 rhi indexed indirect draw argument range is outside the argument buffer");
         }
 
+        const bool uses_count_buffer = has_indexed_indirect_count_buffer(desc);
+        std::uint32_t count_buffer_value = desc.max_draw_count;
+        std::uint32_t executed_draw_count = desc.max_draw_count;
+        NativeResourceHandle native_count_buffer{};
+        if (uses_count_buffer) {
+            const auto& count_desc = buffer_desc(desc.count_buffer);
+            if (!has_flag(count_desc.usage, BufferUsage::indirect)) {
+                throw std::invalid_argument("d3d12 rhi indexed indirect draw count buffer requires indirect usage");
+            }
+            if (!has_flag(count_desc.usage, BufferUsage::copy_source)) {
+                throw std::invalid_argument(
+                    "d3d12 rhi indexed indirect draw count buffer requires copy_source upload usage in v1");
+            }
+
+            const auto count_range_end = indexed_indirect_count_range_end(desc);
+            if (count_range_end > count_desc.size_bytes) {
+                throw std::invalid_argument("d3d12 rhi indexed indirect draw count range is outside the count buffer");
+            }
+
+            native_count_buffer = native_buffer(desc.count_buffer);
+            const auto count_bytes = context_->read_buffer(native_count_buffer, desc.count_buffer_offset,
+                                                           indexed_indirect_draw_count_buffer_size_bytes);
+            if (count_bytes.size() != indexed_indirect_draw_count_buffer_size_bytes) {
+                throw std::logic_error("d3d12 rhi indexed indirect draw count buffer readback failed");
+            }
+            std::memcpy(&count_buffer_value, count_bytes.data(), sizeof(count_buffer_value));
+            executed_draw_count = std::min(count_buffer_value, desc.max_draw_count);
+        }
+
         const auto native_argument_buffer = native_buffer(desc.argument_buffer);
         const auto argument_bytes = context_->read_buffer(native_argument_buffer, 0, argument_range_end);
         if (argument_bytes.size() != static_cast<std::size_t>(argument_range_end)) {
             throw std::logic_error("d3d12 rhi indexed indirect draw argument buffer readback failed");
         }
-        const auto decoded_commands = decode_indexed_indirect_draw_commands(argument_bytes, desc);
+        const auto decoded_commands = decode_indexed_indirect_draw_commands(argument_bytes, desc, executed_draw_count);
 
         observe_buffer(desc.argument_buffer);
-        if (!context_->draw_indexed_indirect(native_, native_argument_buffer, desc)) {
+        if (uses_count_buffer) {
+            observe_buffer(desc.count_buffer);
+        }
+        if (!context_->draw_indexed_indirect(native_, native_argument_buffer, native_count_buffer, desc)) {
             throw std::logic_error("d3d12 rhi indexed indirect draw failed");
         }
 
-        record_indexed_indirect_draw_stats(*stats_, decoded_commands, desc);
+        record_indexed_indirect_draw_stats(*stats_, decoded_commands, desc, count_buffer_value, uses_count_buffer);
         vertex_buffer_bound_ = false;
         index_buffer_bound_ = false;
     }

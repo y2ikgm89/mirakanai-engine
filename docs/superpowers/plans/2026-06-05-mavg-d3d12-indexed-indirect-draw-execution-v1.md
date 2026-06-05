@@ -4,9 +4,9 @@
 
 **Plan ID:** `mavg-d3d12-indexed-indirect-draw-execution-v1`
 
-**Status:** Active.
+**Status:** Completed stacked prerequisite.
 
-**Execution State:** Stacked on the completed `mavg-rhi-indirect-draw-v1` public RHI/Null-RHI prerequisite. This child promotes only the D3D12 CPU-generated no-count indexed indirect draw execution path from unsupported to selected WARP-backed execution evidence.
+**Execution State:** Stacked on the completed `mavg-rhi-indirect-draw-v1` public RHI/Null-RHI prerequisite. This child promotes only the D3D12 CPU-generated no-count indexed indirect draw execution path from unsupported to selected WARP-backed execution evidence. The active follow-up is `mavg-d3d12-indexed-indirect-count-buffer-execution-v1`.
 
 **Goal:** Implement a clean D3D12 `ExecuteIndirect` execution path for `IRhiCommandList::draw_indexed_indirect` when the caller supplies a CPU-generated upload argument buffer and no count buffer, then prove visible indexed indirect rendering through WARP-backed D3D12 RHI tests without claiming GPU culling dispatch, count-buffer execution, Vulkan, Metal, mesh shaders, Nanite equivalence/superiority, or broad optimization.
 
@@ -86,7 +86,7 @@ Out of scope:
 - [x] Update D3D12 RHI stats from decoded CPU-generated argument bytes.
 - [x] Synchronize docs, plan registry, architecture spec, manifest fragments, composed manifest, and static checks.
 - [x] Run focused validation plus full `tools/validate.ps1`.
-- [ ] Publish a validated stacked PR over `codex/mavg-rhi-indirect-draw-v1`.
+- [x] Publish a validated stacked PR over `codex/mavg-rhi-indirect-draw-v1`.
 
 ## Validation Evidence
 

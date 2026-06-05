@@ -29,7 +29,6 @@ foreach ($needle in @(
         "CreateCommandSignature",
         "ExecuteIndirect",
         "D3D12.IndexedIndirectDrawSignature",
-        "d3d12 rhi indexed indirect count buffer execution is not implemented",
         "d3d12 rhi indexed indirect draw argument buffer requires copy_source upload usage in v1",
         "record_indexed_indirect_draw_stats"
     )) {
@@ -38,7 +37,6 @@ foreach ($needle in @(
 
 foreach ($needle in @(
         "d3d12 rhi device executes indexed indirect draw into texture readback bytes",
-        "d3d12 rhi device rejects indexed indirect count buffer execution until feature gate lands",
         "draw_indexed_indirect",
         "indexed_indirect_commands_executed",
         "indexed_indirect_count_buffer_reads"
@@ -85,7 +83,7 @@ foreach ($needle in @(
         "docs/superpowers/plans/2026-06-05-mavg-d3d12-indexed-indirect-draw-execution-v1.md",
         "D3D12 ExecuteIndirect execution",
         "D3D12_INDIRECT_ARGUMENT_TYPE_DRAW_INDEXED",
-        "count-buffer execution",
+        "mavg-d3d12-indexed-indirect-count-buffer-execution-v1",
         "Vulkan indirect draw execution"
     )) {
     Assert-ContainsText $aiLoopFragmentText $needle "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json active MAVG D3D12 indirect draw evidence"
@@ -114,9 +112,9 @@ foreach ($needle in @(
     Assert-ContainsText $rhiManifestText $needle "engine/agent/manifest.json MK_rhi D3D12 indexed indirect draw evidence"
 }
 
-if ($manifest.aiOperableProductionLoop.currentActivePlan -ne "docs/superpowers/plans/2026-06-05-mavg-d3d12-indexed-indirect-draw-execution-v1.md") {
-    Write-Error "engine/agent/manifest.json currentActivePlan must point at mavg-d3d12-indexed-indirect-draw-execution-v1"
+if ($manifest.aiOperableProductionLoop.currentActivePlan -ne "docs/superpowers/plans/2026-06-05-mavg-d3d12-indexed-indirect-count-buffer-execution-v1.md") {
+    Write-Error "engine/agent/manifest.json currentActivePlan must point at mavg-d3d12-indexed-indirect-count-buffer-execution-v1"
 }
-if ($manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "mavg-d3d12-indexed-indirect-draw-execution-v1") {
-    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must be mavg-d3d12-indexed-indirect-draw-execution-v1"
+if ($manifest.aiOperableProductionLoop.recommendedNextPlan.completedContext -notlike "*mavg-d3d12-indexed-indirect-draw-execution-v1*") {
+    Write-Error "engine/agent/manifest.json recommendedNextPlan.completedContext must retain mavg-d3d12-indexed-indirect-draw-execution-v1 prerequisite evidence"
 }

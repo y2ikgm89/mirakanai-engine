@@ -506,7 +506,7 @@ class DeviceContext final {
                                     std::uint32_t instance_count, std::uint32_t first_index, std::int32_t vertex_offset,
                                     std::uint32_t first_instance);
     [[nodiscard]] bool draw_indexed_indirect(NativeCommandListHandle commands, NativeResourceHandle argument_buffer,
-                                             const IndexedIndirectDrawDesc& desc);
+                                             NativeResourceHandle count_buffer, const IndexedIndirectDrawDesc& desc);
     [[nodiscard]] bool dispatch(NativeCommandListHandle commands, std::uint32_t group_count_x,
                                 std::uint32_t group_count_y, std::uint32_t group_count_z);
     [[nodiscard]] bool set_viewport(NativeCommandListHandle commands, const mirakana::rhi::ViewportDesc& viewport);
