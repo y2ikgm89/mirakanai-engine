@@ -4,9 +4,9 @@
 
 **Plan ID:** `mavg-d3d12-gpu-culling-execution-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
-**Execution State:** Stacked on `mavg-d3d12-compute-generated-indirect-execution-v1`. This child promotes only the selected D3D12 WARP-backed MAVG GPU-culling dispatch lane from non-claim to execution evidence.
+**Execution State:** Stacked on `mavg-d3d12-compute-generated-indirect-execution-v1`. This child promotes only the selected D3D12 WARP-backed MAVG GPU-culling dispatch lane from non-claim to execution evidence and is published as stacked draft PR #452.
 
 **Goal:** Prove that a D3D12 compute shader can consume selected MAVG cluster command rows plus culling visibility rows, compact only visible clusters into a GPU-generated indexed indirect argument/count buffer, and execute that compacted buffer with `ExecuteIndirect`.
 
@@ -66,7 +66,7 @@ Out of scope:
 - [x] Update docs, plan registry, architecture spec, manifest fragments, composed manifest, and static guards.
 - [x] Run focused D3D12/MAVG validation.
 - [x] Run full `tools/validate.ps1`.
-- [ ] Publish a validated stacked draft PR over `codex/mavg-d3d12-compute-generated-indirect-execution-v1`.
+- [x] Publish a validated stacked draft PR over `codex/mavg-d3d12-compute-generated-indirect-execution-v1`.
 
 ## Validation Plan
 
@@ -83,6 +83,7 @@ Out of scope:
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | Passed on 2026-06-05; C++ and tracked text formatting are clean. |
 | `git diff --check` | Passed on 2026-06-05; whitespace is clean. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed on 2026-06-05; static checks, build, generated C++23 check, tidy smoke, and 107/107 tests passed. Apple/Metal lanes remain diagnostic host-gated on Windows. |
+| `gh pr create --draft --base codex/mavg-d3d12-compute-generated-indirect-execution-v1 --head codex/mavg-d3d12-gpu-culling-execution-v1` | Published stacked draft PR #452: `https://github.com/y2ikgm89/mirakanai-engine/pull/452`. |
 
 ## Non-Claims
 

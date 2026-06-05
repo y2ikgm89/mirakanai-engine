@@ -76,7 +76,7 @@ foreach ($needle in @(
 foreach ($needle in @(
         "mavg-gpu-culling-indirect-v1",
         "completed stacked child for value-only packed indexed indirect command planning",
-        "later stacked children own selected D3D12 backend indirect execution"
+        "selected D3D12 backend indirect execution and selected D3D12 MAVG visibility compaction proof are now completed"
     )) {
     Assert-ContainsText $mavgRuntimeLodPlanText $needle "docs/superpowers/plans/2026-06-05-mavg-runtime-lod-milestone-v1.md"
 }

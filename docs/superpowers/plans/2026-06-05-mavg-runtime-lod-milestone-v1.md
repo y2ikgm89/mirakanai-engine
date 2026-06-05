@@ -4,7 +4,9 @@
 
 **Plan ID:** `mavg-runtime-lod-milestone-v1`
 
-**Status:** Parent milestone for the active `mavg-rhi-indirect-draw-v1` child.
+**Status:** Active.
+
+**Execution State:** Active parent milestone after the completed `mavg-d3d12-gpu-culling-execution-v1` child.
 
 **Execution State:** Parent milestone in the stacked MAVG implementation branch after explicit LoD supersession. `mavg-asset-graph-v1` remains the prerequisite foundation branch; `mavg-gpu-culling-indirect-v1`, `mavg-rhi-indirect-draw-v1`, `mavg-d3d12-indexed-indirect-draw-execution-v1`, `mavg-d3d12-indexed-indirect-count-buffer-execution-v1`, and `mavg-d3d12-compute-generated-indirect-execution-v1` are completed stacked children. `mavg-d3d12-gpu-culling-execution-v1` is the active child for the selected D3D12 WARP-backed MAVG visibility compaction and indexed indirect execution proof. This milestone remains the conventional static LoD evidence record and must not claim broad GPU culling frameworks, Vulkan/Metal backend indirect execution, or Nanite equivalence/superiority.
 
@@ -1084,8 +1086,8 @@ Evidence: docs/manifest/static validation passed on 2026-06-05 after `tools/comp
 
 After this milestone lands:
 
-- `mavg-gpu-culling-indirect-v1`: completed stacked child for value-only packed indexed indirect command planning, reviewed culling bounds, and D3D12/Vulkan synchronization requirement rows; later stacked children own selected D3D12 backend indirect execution and selected D3D12 MAVG visibility compaction proof, while broad GPU culling frameworks plus Vulkan/Metal backend execution remain follow-up.
-- `mavg-rhi-indirect-draw-v1`: active child for `indirect_draw.hpp`, `IndexedIndirectDrawCommand`, `IndexedIndirectDrawDesc`, `BufferUsage::indirect`, `IRhiCommandList::draw_indexed_indirect`, Null RHI argument/count-buffer execution counters, and Vulkan indirect-buffer usage mapping; D3D12 `ExecuteIndirect` and Vulkan indirect draw execution remain future backend work.
+- `mavg-gpu-culling-indirect-v1`: completed stacked child for value-only packed indexed indirect command planning, reviewed culling bounds, and D3D12/Vulkan synchronization requirement rows; selected D3D12 backend indirect execution and selected D3D12 MAVG visibility compaction proof are now completed through stacked children, while broad GPU culling frameworks plus Vulkan/Metal backend execution remain follow-up.
+- `mavg-rhi-indirect-draw-v1`: completed child for `indirect_draw.hpp`, `IndexedIndirectDrawCommand`, `IndexedIndirectDrawDesc`, `BufferUsage::indirect`, `IRhiCommandList::draw_indexed_indirect`, Null RHI argument/count-buffer execution counters, and Vulkan indirect-buffer usage mapping; selected D3D12 `ExecuteIndirect`, count-buffer, compute-generated indirect, and MAVG GPU culling proof lanes are now completed through stacked children, while Vulkan indirect draw execution remains future backend work.
 - `mavg-package-streaming-residency-v1`: now starts with caller-reviewed page request planning, selected/fallback ancestor eviction protection, and one-row safe-point drain; remaining follow-up is autonomous/background dispatch policy, partial payload page schema, automatic eviction policy, and GPU memory pressure integration.
 - `mavg-mesh-shader-backends-v1`: D3D12 mesh/amplification shader path, Vulkan `VK_EXT_mesh_shader` path, strict feature gates, fallback preservation.
 - `mavg-deformable-clusters-v1`: rigid, skinned, morph, and dynamic update tiers.

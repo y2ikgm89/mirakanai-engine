@@ -106,10 +106,3 @@ foreach ($needle in @(
     )) {
     Assert-ContainsText $rhiManifestText $needle "engine/agent/manifest.json MK_rhi MAVG D3D12 GPU culling evidence"
 }
-
-if ($manifest.aiOperableProductionLoop.currentActivePlan -ne "docs/superpowers/plans/2026-06-05-mavg-d3d12-gpu-culling-execution-v1.md") {
-    Write-Error "engine/agent/manifest.json currentActivePlan must point at mavg-d3d12-gpu-culling-execution-v1"
-}
-if ($manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "mavg-d3d12-gpu-culling-execution-v1") {
-    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must be mavg-d3d12-gpu-culling-execution-v1"
-}
