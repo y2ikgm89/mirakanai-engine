@@ -6134,9 +6134,9 @@ evaluate_win32_desktop_presentation_cloud_layer(const Win32DesktopPresentationRe
     return result;
 }
 
-Win32DesktopPresentationEnvironmentPrecipitationReport
-evaluate_win32_desktop_presentation_environment_precipitation(const Win32DesktopPresentationReport& report,
-                                                              const bool requested) {
+Win32DesktopPresentationEnvironmentPrecipitationReport evaluate_win32_desktop_presentation_environment_precipitation(
+    const Win32DesktopPresentationReport& report, const bool requested,
+    const Win32DesktopPresentationEnvironmentPrecipitationExpectation expectation) {
     Win32DesktopPresentationEnvironmentPrecipitationReport result;
     result.particle_texture_binding = precipitation_particle_texture_binding();
     result.scene_depth_texture_binding = precipitation_scene_depth_texture_binding();
@@ -6168,16 +6168,14 @@ evaluate_win32_desktop_presentation_environment_precipitation(const Win32Desktop
     result.shader_rows = report.environment_precipitation_shader_rows;
     result.quality_rows = report.environment_precipitation_quality_rows;
 
-    const auto expected_plan = plan_precipitation_policy(sample_environment_precipitation_policy_desc());
-    result.diagnostics_count = static_cast<std::uint32_t>(expected_plan.diagnostics.size()) +
-                               report.environment_precipitation_policy_diagnostics_count;
+    result.diagnostics_count = report.environment_precipitation_policy_diagnostics_count;
     if (!result.requested) {
         ++result.diagnostics_count;
     }
     if (!result.d3d12_backend_selected) {
         ++result.diagnostics_count;
     }
-    if (result.kind != EnvironmentPrecipitationKind::rain && result.kind != EnvironmentPrecipitationKind::snow) {
+    if (result.weather != expectation.weather || result.kind != expectation.kind) {
         ++result.diagnostics_count;
     }
     if (!result.shader_contract_evidence_ready || !result.package_evidence_ready || !result.execution_evidence_ready) {
@@ -6186,9 +6184,10 @@ evaluate_win32_desktop_presentation_environment_precipitation(const Win32Desktop
     if (!result.uses_camera_near_particles || !result.uses_scene_depth_occlusion) {
         ++result.diagnostics_count;
     }
-    if (result.weather_rows == 0 || result.particle_rows == 0 || result.occlusion_rows == 0 ||
-        result.wetness_rows == 0 || result.audio_handoff_rows == 0 || result.shader_rows == 0 ||
-        result.quality_rows == 0) {
+    if (result.weather_rows != 1 || result.particle_rows != 1 || result.occlusion_rows != 1 ||
+        result.wetness_rows != expectation.wetness_rows ||
+        result.audio_handoff_rows < expectation.minimum_audio_handoff_rows || result.shader_rows != 1 ||
+        result.quality_rows != 1) {
         ++result.diagnostics_count;
     }
     if (result.uploads_particle_buffers || result.invokes_backend || result.exposes_native_handles ||

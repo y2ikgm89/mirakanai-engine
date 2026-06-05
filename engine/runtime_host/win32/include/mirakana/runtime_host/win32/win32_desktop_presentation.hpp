@@ -609,6 +609,13 @@ struct Win32DesktopPresentationEnvironmentPrecipitationReport {
     std::uint32_t diagnostics_count{0};
 };
 
+struct Win32DesktopPresentationEnvironmentPrecipitationExpectation {
+    EnvironmentWeatherKind weather{EnvironmentWeatherKind::storm};
+    EnvironmentPrecipitationKind kind{EnvironmentPrecipitationKind::rain};
+    std::uint32_t wetness_rows{1};
+    std::uint32_t minimum_audio_handoff_rows{1};
+};
+
 struct Win32DesktopPresentationEnvironmentVolumetricFogReport {
     Win32DesktopPresentationEnvironmentVolumetricFogStatus status{
         Win32DesktopPresentationEnvironmentVolumetricFogStatus::not_requested};
@@ -1165,8 +1172,9 @@ evaluate_win32_desktop_presentation_cloud_layer(const Win32DesktopPresentationRe
 [[nodiscard]] std::string_view win32_desktop_presentation_environment_precipitation_status_name(
     Win32DesktopPresentationEnvironmentPrecipitationStatus status) noexcept;
 [[nodiscard]] Win32DesktopPresentationEnvironmentPrecipitationReport
-evaluate_win32_desktop_presentation_environment_precipitation(const Win32DesktopPresentationReport& report,
-                                                              bool requested);
+evaluate_win32_desktop_presentation_environment_precipitation(
+    const Win32DesktopPresentationReport& report, bool requested,
+    Win32DesktopPresentationEnvironmentPrecipitationExpectation expectation);
 [[nodiscard]] std::string_view win32_desktop_presentation_environment_volumetric_fog_status_name(
     Win32DesktopPresentationEnvironmentVolumetricFogStatus status) noexcept;
 [[nodiscard]] Win32DesktopPresentationEnvironmentVolumetricFogReport

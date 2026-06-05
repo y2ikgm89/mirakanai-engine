@@ -227,11 +227,18 @@ int main() {
     missing_cloud_layer_rows_report.cloud_layer_quality_rows = 0;
     const auto missing_cloud_layer_rows =
         mirakana::evaluate_win32_desktop_presentation_cloud_layer(missing_cloud_layer_rows_report, true);
-    const auto precipitation = mirakana::evaluate_win32_desktop_presentation_environment_precipitation(report, true);
+    const auto rain_precipitation_expectation = mirakana::Win32DesktopPresentationEnvironmentPrecipitationExpectation{
+        .weather = mirakana::EnvironmentWeatherKind::storm,
+        .kind = mirakana::EnvironmentPrecipitationKind::rain,
+        .wetness_rows = 1,
+        .minimum_audio_handoff_rows = 1,
+    };
+    const auto precipitation = mirakana::evaluate_win32_desktop_presentation_environment_precipitation(
+        report, true, rain_precipitation_expectation);
     auto missing_precipitation_package_report = report;
     missing_precipitation_package_report.environment_precipitation_package_evidence_ready = false;
     const auto missing_precipitation_package = mirakana::evaluate_win32_desktop_presentation_environment_precipitation(
-        missing_precipitation_package_report, true);
+        missing_precipitation_package_report, true, rain_precipitation_expectation);
     auto missing_precipitation_rows_report = report;
     missing_precipitation_rows_report.environment_precipitation_weather_rows = 0;
     missing_precipitation_rows_report.environment_precipitation_particle_rows = 0;
@@ -241,7 +248,20 @@ int main() {
     missing_precipitation_rows_report.environment_precipitation_shader_rows = 0;
     missing_precipitation_rows_report.environment_precipitation_quality_rows = 0;
     const auto missing_precipitation_rows = mirakana::evaluate_win32_desktop_presentation_environment_precipitation(
-        missing_precipitation_rows_report, true);
+        missing_precipitation_rows_report, true, rain_precipitation_expectation);
+    auto snow_precipitation_report = report;
+    snow_precipitation_report.environment_precipitation_weather = mirakana::EnvironmentWeatherKind::snow;
+    snow_precipitation_report.environment_precipitation_kind = mirakana::EnvironmentPrecipitationKind::snow;
+    snow_precipitation_report.environment_precipitation_wetness_rows = 0;
+    snow_precipitation_report.environment_precipitation_audio_handoff_rows = 1;
+    const auto snow_precipitation_expectation = mirakana::Win32DesktopPresentationEnvironmentPrecipitationExpectation{
+        .weather = mirakana::EnvironmentWeatherKind::snow,
+        .kind = mirakana::EnvironmentPrecipitationKind::snow,
+        .wetness_rows = 0,
+        .minimum_audio_handoff_rows = 1,
+    };
+    const auto snow_precipitation = mirakana::evaluate_win32_desktop_presentation_environment_precipitation(
+        snow_precipitation_report, true, snow_precipitation_expectation);
     const auto volumetric_fog = mirakana::evaluate_win32_desktop_presentation_environment_volumetric_fog(report, true);
     auto missing_volumetric_package_report = report;
     missing_volumetric_package_report.environment_volumetric_fog_package_evidence_ready = false;
@@ -350,6 +370,14 @@ int main() {
                    missing_precipitation_rows.wetness_rows == 0 && missing_precipitation_rows.audio_handoff_rows == 0 &&
                    missing_precipitation_rows.shader_rows == 0 && missing_precipitation_rows.quality_rows == 0 &&
                    missing_precipitation_rows.diagnostics_count > 0 &&
+                   mirakana::win32_desktop_presentation_environment_precipitation_status_name(
+                       snow_precipitation.status) == "ready" &&
+                   snow_precipitation.ready && snow_precipitation.weather == mirakana::EnvironmentWeatherKind::snow &&
+                   snow_precipitation.kind == mirakana::EnvironmentPrecipitationKind::snow &&
+                   snow_precipitation.particle_rows == 1 && snow_precipitation.wetness_rows == 0 &&
+                   snow_precipitation.audio_handoff_rows >= 1 && !snow_precipitation.uploads_particle_buffers &&
+                   !snow_precipitation.invokes_backend && !snow_precipitation.mutates_materials &&
+                   !snow_precipitation.plays_audio && snow_precipitation.diagnostics_count == 0 &&
                    mirakana::win32_desktop_presentation_environment_volumetric_fog_status_name(volumetric_fog.status) ==
                        "ready" &&
                    volumetric_fog.ready && volumetric_fog.d3d12_backend_selected && volumetric_fog.scene_depth_ready &&

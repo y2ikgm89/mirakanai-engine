@@ -182,6 +182,7 @@ $requiresPhysicalSkyPackageEvidence = @($SmokeArgs) -contains "--require-physica
 $requiresEnvironmentVolumetricFogPackageEvidence = @($SmokeArgs) -contains "--require-environment-volumetric-fog-package-evidence"
 $requiresCloudLayerPackageEvidence = @($SmokeArgs) -contains "--require-cloud-layer-package-evidence"
 $requiresEnvironmentPrecipitationPackageEvidence = @($SmokeArgs) -contains "--require-environment-precipitation-package-evidence"
+$requiresEnvironmentSnowPackageEvidence = @($SmokeArgs) -contains "--require-environment-snow-package-evidence"
 $requiresGpuMemoryPolicy = @($SmokeArgs) -contains "--require-gpu-memory-policy"
 $requiresMemoryDiagnostics = @($SmokeArgs) -contains "--require-memory-diagnostics"
 $requiresD3d12GpuMemoryEvidence = @($SmokeArgs) -contains "--require-d3d12-gpu-memory-evidence"
@@ -4712,6 +4713,44 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 $expectedValue = [regex]::Escape($expectedEnvironmentPrecipitationFields[$field])
                 if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
                     Write-Error "Installed desktop runtime smoke status line did not prove environment precipitation field: $field=$($expectedEnvironmentPrecipitationFields[$field])"
+                }
+            }
+        }
+        if ($requiresEnvironmentSnowPackageEvidence) {
+            $expectedEnvironmentSnowFields = @{
+                "environment_precipitation_status" = "ready"
+                "environment_precipitation_ready" = "1"
+                "environment_precipitation_selected_backend" = "d3d12"
+                "environment_precipitation_requested" = "1"
+                "environment_precipitation_weather" = "snow"
+                "environment_precipitation_kind" = "snow"
+                "environment_precipitation_shader_contract_evidence_ready" = "1"
+                "environment_precipitation_package_evidence_ready" = "1"
+                "environment_precipitation_execution_evidence_ready" = "1"
+                "environment_precipitation_particle_texture_binding" = "8"
+                "environment_precipitation_scene_depth_texture_binding" = "9"
+                "environment_precipitation_sampler_binding" = "8"
+                "environment_precipitation_constants_binding" = "7"
+                "environment_precipitation_uses_camera_near_particles" = "1"
+                "environment_precipitation_uses_scene_depth_occlusion" = "1"
+                "environment_precipitation_weather_rows" = "1"
+                "environment_precipitation_particle_rows" = "1"
+                "environment_precipitation_occlusion_rows" = "1"
+                "environment_precipitation_wetness_rows" = "0"
+                "environment_precipitation_audio_handoff_rows" = "1"
+                "environment_precipitation_shader_rows" = "1"
+                "environment_precipitation_quality_rows" = "1"
+                "environment_precipitation_particle_buffer_uploads" = "0"
+                "environment_precipitation_backend_invocations" = "0"
+                "environment_precipitation_native_handle_access" = "0"
+                "environment_precipitation_material_mutations" = "0"
+                "environment_precipitation_audio_playback" = "0"
+                "environment_precipitation_diagnostics" = "0"
+            }
+            foreach ($field in $expectedEnvironmentSnowFields.Keys) {
+                $expectedValue = [regex]::Escape($expectedEnvironmentSnowFields[$field])
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove environment snow field: $field=$($expectedEnvironmentSnowFields[$field])"
                 }
             }
         }
