@@ -129,7 +129,7 @@ Null RHI execution mirrors direct indexed draw semantics after validation: each 
 - [x] Add Vulkan buffer usage mapping evidence for indirect argument buffers.
 - [x] Synchronize docs, plan registry, architecture spec, manifest fragments, composed manifest, and static checks.
 - [x] Run focused validation plus full `tools/validate.ps1`.
-- [ ] Publish a validated stacked PR over `codex/mavg-gpu-culling-indirect-v1`.
+- [x] Publish a validated stacked PR over `codex/mavg-gpu-culling-indirect-v1` as draft PR #447.
 
 ## Validation Evidence
 
