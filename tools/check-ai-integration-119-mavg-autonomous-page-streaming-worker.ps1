@@ -103,14 +103,43 @@ foreach ($needle in @(
 }
 
 $productionLoop = $manifest.aiOperableProductionLoop
-if ([string]$productionLoop.currentActivePlan -ne "docs/superpowers/plans/2026-06-06-mavg-autonomous-page-streaming-worker-v1.md") {
-    Write-Error "engine/agent/manifest.json currentActivePlan must select MAVG Autonomous Page Streaming Worker v1"
-}
-if ([string]$productionLoop.recommendedNextPlan.id -ne "mavg-autonomous-page-streaming-worker-v1") {
-    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must select mavg-autonomous-page-streaming-worker-v1"
-}
-if (@($productionLoop.recommendedNextPlan.retainedCompletedPlanPaths) -notcontains "docs/superpowers/plans/2026-06-06-mavg-directstorage-sdk-dependency-gate-v1.md") {
-    Write-Error "engine/agent/manifest.json retainedCompletedPlanPaths must retain MAVG DirectStorage SDK Dependency Gate v1"
+$recommendedPlanId = [string]$productionLoop.recommendedNextPlan.id
+$recommendedPlanText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
+if ($recommendedPlanId -eq "mavg-autonomous-page-streaming-worker-v1") {
+    if ([string]$productionLoop.currentActivePlan -ne "docs/superpowers/plans/2026-06-06-mavg-autonomous-page-streaming-worker-v1.md") {
+        Write-Error "engine/agent/manifest.json currentActivePlan must select MAVG Autonomous Page Streaming Worker v1 while that child is active"
+    }
+    if (@($productionLoop.recommendedNextPlan.retainedCompletedPlanPaths) -notcontains "docs/superpowers/plans/2026-06-06-mavg-directstorage-sdk-dependency-gate-v1.md") {
+        Write-Error "engine/agent/manifest.json retainedCompletedPlanPaths must retain MAVG DirectStorage SDK Dependency Gate v1"
+    }
+} elseif ($recommendedPlanId -eq "next-production-gap-selection") {
+    if ([string]$productionLoop.currentActivePlan -ne "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md") {
+        Write-Error "engine/agent/manifest.json currentActivePlan must return to the production master plan after MAVG Autonomous Page Streaming Worker closeout"
+    }
+    foreach ($needle in @(
+            "MAVG Runtime LOD Milestone v1",
+            "MAVG Autonomous Page Streaming Worker v1",
+            "draft PR #471",
+            "RuntimeMavgPageStreamingDispatchMode::engine_owned_background_worker",
+            "RuntimeMavgPageStreamingWorkerDesc",
+            "RuntimeMavgPageStreamingWorkerResult",
+            "execute_runtime_mavg_page_streaming_worker",
+            "no DirectStorage file IO",
+            "no automatic eviction policy",
+            "no GPU memory pressure integration",
+            "no renderer/RHI handles",
+            "no async-overlap/performance claim",
+            "no Nanite compatibility/equivalence/superiority claim",
+            "selection gate",
+            "unsupportedProductionGaps = []"
+        )) {
+        Assert-ContainsText $recommendedPlanText $needle "engine/agent/manifest.json MAVG autonomous worker closeout evidence"
+    }
+    if (@($productionLoop.recommendedNextPlan.retainedCompletedPlanPaths) -notcontains "docs/superpowers/plans/2026-06-06-mavg-autonomous-page-streaming-worker-v1.md") {
+        Write-Error "engine/agent/manifest.json retainedCompletedPlanPaths must retain MAVG Autonomous Page Streaming Worker v1 after closeout"
+    }
+} else {
+    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must select mavg-autonomous-page-streaming-worker-v1 or next-production-gap-selection"
 }
 
 $runtimeModule = @($manifest.modules | Where-Object { $_.name -eq "MK_runtime" })

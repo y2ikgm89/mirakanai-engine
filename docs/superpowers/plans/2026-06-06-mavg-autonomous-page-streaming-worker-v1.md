@@ -4,9 +4,9 @@
 
 **Plan ID:** `mavg-autonomous-page-streaming-worker-v1`
 
-**Status:** Active.
+**Status:** Completed stacked child.
 
-Focused child over `mavg-runtime-lod-milestone-v1`, stacked after draft PR #469 (`mavg-directstorage-sdk-dependency-gate-v1`).
+Completed child over `mavg-runtime-lod-milestone-v1`, stacked after draft PR #469 (`mavg-directstorage-sdk-dependency-gate-v1`) and published as stacked draft PR #471. This closeout returns the composed manifest to `recommendedNextPlan.id = next-production-gap-selection`.
 
 **Goal:** Add the first engine-owned MAVG page streaming worker execution boundary so already-reviewed `RuntimeMavgPageStreamingDispatchPlan` rows can commit package pages through the existing safe-point drain on a private worker thread without DirectStorage native queue execution, automatic eviction policy, renderer/RHI ownership, or async-overlap/performance claims.
 
@@ -79,7 +79,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 ### Task 2: Sync Docs, Manifest, Static Checks, And Validate
 
 - [x] Mark MAVG DirectStorage SDK Dependency Gate v1 completed/published as draft PR #469 with optional `dstorage` validation still command-policy/bootstrap blocked in this no-approval session.
-- [x] Select `mavg-autonomous-page-streaming-worker-v1` as the active child.
+- [x] Select `mavg-autonomous-page-streaming-worker-v1` as the active child while implementing it, then close it as stacked draft PR #471 and return the manifest to the production selection gate.
 - [x] Record only narrow engine-owned page streaming worker execution; keep DirectStorage native queues, automatic eviction policy, GPU memory pressure, renderer/RHI ownership, async-overlap/performance, mesh shaders, Nanite, and broad optimization unclaimed.
 - [x] Compose manifest and run focused validation plus full `tools/validate.ps1`.
 
