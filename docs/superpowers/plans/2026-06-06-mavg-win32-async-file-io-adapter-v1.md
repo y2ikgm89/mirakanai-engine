@@ -226,20 +226,24 @@ Evidence: `tools/validate.ps1` passed on 2026-06-06 after code, docs, manifest, 
 
 **Files:** Git/GitHub only.
 
-- [ ] Run publication preflight:
+- [x] Run publication preflight:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1
 ```
 
-- [ ] Commit validated candidate:
+Evidence: Passed on 2026-06-06 for branch `codex/mavg-win32-async-file-io-adapter-v1` with remote missing before push, GitHub network reachable, and `gh` auth ok.
+
+- [x] Commit validated candidate:
 
 ```powershell
 git add <task-owned files>
 git commit -m "Add MAVG Win32 async file IO adapter"
 ```
 
-- [ ] Push and create a draft PR with base `codex/mavg-native-directstorage-win32-async-io-status-v1` and head `codex/mavg-win32-async-file-io-adapter-v1`.
+- [x] Push and create a draft PR with base `codex/mavg-native-directstorage-win32-async-io-status-v1` and head `codex/mavg-win32-async-file-io-adapter-v1`.
+
+Evidence: Created commit `4ca3aea2` (`Add MAVG Win32 async file IO adapter`), pushed `codex/mavg-win32-async-file-io-adapter-v1`, and opened draft PR `https://github.com/y2ikgm89/mirakanai-engine/pull/463` stacked on PR #462.
 
 ## Done When
 
