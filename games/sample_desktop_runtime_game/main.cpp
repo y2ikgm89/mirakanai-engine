@@ -80,6 +80,8 @@ struct DesktopRuntimeGameOptions {
     bool require_environment_precipitation_renderer_execution{false};
     bool require_environment_snow_package_evidence{false};
     bool require_environment_snow_renderer_execution{false};
+    bool require_environment_volumetric_cloud_package_evidence{false};
+    bool require_environment_volumetric_cloud_renderer_execution{false};
     bool require_gpu_memory_policy{false};
     bool require_memory_diagnostics{false};
     bool require_d3d12_gpu_memory_evidence{false};
@@ -148,6 +150,10 @@ constexpr std::string_view kRuntimePrecipitationVertexShaderPath{
     "shaders/sample_desktop_runtime_game_precipitation.vs.dxil"};
 constexpr std::string_view kRuntimePrecipitationFragmentShaderPath{
     "shaders/sample_desktop_runtime_game_precipitation.ps.dxil"};
+constexpr std::string_view kRuntimeEnvironmentVolumetricCloudVertexShaderPath{
+    "shaders/sample_desktop_runtime_game_environment_volumetric_cloud.vs.dxil"};
+constexpr std::string_view kRuntimeEnvironmentVolumetricCloudFragmentShaderPath{
+    "shaders/sample_desktop_runtime_game_environment_volumetric_cloud.ps.dxil"};
 constexpr std::string_view kRuntimeEnvironmentProfilePath{"runtime/assets/desktop_runtime/default_outdoor.geenv"};
 constexpr std::string_view kRuntimePostprocessVulkanVertexShaderPath{
     "shaders/sample_desktop_runtime_game_postprocess.vs.spv"};
@@ -294,6 +300,61 @@ make_sample_environment_volumetric_fog_policy_desc(bool package_evidence_ready) 
             .occlusion_policy_available = true,
         }),
         .quality_tier = mirakana::PrecipitationQualityTier::balanced,
+        .shader_contract_evidence_ready = true,
+        .package_evidence_ready = true,
+        .execution_evidence_ready = true,
+        .request_ready_promotion = true,
+    };
+}
+
+[[nodiscard]] std::span<const mirakana::VolumetricCloudAtmosphericLightDesc>
+sample_environment_volumetric_cloud_lights() noexcept {
+    static constexpr std::array lights{
+        mirakana::VolumetricCloudAtmosphericLightDesc{
+            .direction = mirakana::Vec3{.x = 0.3F, .y = -1.0F, .z = 0.1F},
+            .color = mirakana::Vec3{.x = 1.0F, .y = 0.95F, .z = 0.85F},
+            .illuminance_lux = 100000.0F,
+            .casts_cloud_shadows = true,
+            .source_index = 0U,
+        },
+    };
+    return lights;
+}
+
+[[nodiscard]] mirakana::VolumetricCloudPolicyDesc make_sample_environment_volumetric_cloud_policy_desc() {
+    return mirakana::VolumetricCloudPolicyDesc{
+        .layer =
+            mirakana::VolumetricCloudLayerDesc{
+                .weather_map_asset_ref = "sample/desktop-runtime/texture",
+                .shape_noise_asset_ref = "sample/desktop-runtime/volumetric-cloud-shape-noise-3d",
+                .erosion_noise_asset_ref = "sample/desktop-runtime/volumetric-cloud-erosion-noise-3d",
+                .coverage = 0.82F,
+                .density = 0.92F,
+                .altitude_min_m = 1000.0F,
+                .altitude_max_m = 4000.0F,
+                .wind_velocity_mps = mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+            },
+        .quality_tier = mirakana::VolumetricCloudQualityTier::balanced,
+        .raymarch =
+            mirakana::VolumetricCloudRaymarchBudgetDesc{
+                .primary_steps = 48U,
+                .light_steps = 8U,
+                .shadow_mode = mirakana::VolumetricCloudShadowMode::beer_shadow_map_intent,
+                .temporal_reprojection_enabled = true,
+                .temporal_history_weight = 0.9F,
+            },
+        .atmospheric_lights = sample_environment_volumetric_cloud_lights(),
+        .storm =
+            mirakana::VolumetricCloudStormDesc{
+                .enabled = true,
+                .lightning_flash_intensity = 10000.0F,
+                .lightning_direction = mirakana::Vec3{.x = 0.0F, .y = -1.0F, .z = 0.0F},
+                .thunder_delay_seconds = 0.0F,
+                .cloud_darkening = 0.05F,
+                .precipitation_boost = 0.2F,
+                .wind_gust_mps = 0.0F,
+                .exposure_response = 0.2F,
+            },
         .shader_contract_evidence_ready = true,
         .package_evidence_ready = true,
         .execution_evidence_ready = true,
@@ -1079,6 +1140,8 @@ void print_usage() {
                  "[--require-environment-precipitation-renderer-execution] "
                  "[--require-environment-snow-package-evidence] "
                  "[--require-environment-snow-renderer-execution] "
+                 "[--require-volumetric-cloud-package-evidence] "
+                 "[--require-volumetric-cloud-renderer-execution] "
                  "[--require-gpu-memory-policy] [--require-memory-diagnostics] [--require-d3d12-gpu-memory-evidence] "
                  "[--require-vulkan-gpu-memory-evidence] "
                  "[--require-debug-profiling-policy] [--require-d3d12-debug-profiling-evidence] "
@@ -1298,6 +1361,26 @@ void print_usage() {
             options.require_d3d12_postprocess_evidence = true;
             options.require_environment_snow_package_evidence = true;
             options.require_environment_snow_renderer_execution = true;
+            continue;
+        }
+        if (arg == "--require-volumetric-cloud-package-evidence") {
+            options.require_d3d12_renderer = true;
+            options.require_scene_gpu_bindings = true;
+            options.require_postprocess = true;
+            options.require_postprocess_depth_input = true;
+            options.require_d3d12_postprocess_evidence = true;
+            options.require_environment_volumetric_cloud_package_evidence = true;
+            continue;
+        }
+        if (arg == "--require-volumetric-cloud-renderer-execution") {
+            options.require_d3d12_scene_shaders = true;
+            options.require_d3d12_renderer = true;
+            options.require_scene_gpu_bindings = true;
+            options.require_postprocess = true;
+            options.require_postprocess_depth_input = true;
+            options.require_d3d12_postprocess_evidence = true;
+            options.require_environment_volumetric_cloud_package_evidence = true;
+            options.require_environment_volumetric_cloud_renderer_execution = true;
             continue;
         }
         if (arg == "--require-vulkan-postprocess-evidence") {
@@ -2572,6 +2655,18 @@ load_packaged_d3d12_precipitation_shaders(const char* executable_path) {
 }
 
 [[nodiscard]] mirakana::DesktopShaderBytecodeLoadResult
+load_packaged_d3d12_volumetric_cloud_shaders(const char* executable_path) {
+    mirakana::RootedFileSystem filesystem(executable_directory(executable_path));
+    return mirakana::load_desktop_shader_bytecode_pair(mirakana::DesktopShaderBytecodeLoadDesc{
+        .filesystem = &filesystem,
+        .vertex_path = std::string{kRuntimeEnvironmentVolumetricCloudVertexShaderPath},
+        .fragment_path = std::string{kRuntimeEnvironmentVolumetricCloudFragmentShaderPath},
+        .vertex_entry_point = "main_vs",
+        .fragment_entry_point = "main_ps",
+    });
+}
+
+[[nodiscard]] mirakana::DesktopShaderBytecodeLoadResult
 load_packaged_vulkan_postprocess_shaders(const char* executable_path) {
     mirakana::RootedFileSystem filesystem(executable_directory(executable_path));
     return mirakana::load_desktop_shader_bytecode_pair(mirakana::DesktopShaderBytecodeLoadDesc{
@@ -2893,6 +2988,13 @@ int main(int argc, char** argv) {
                   << precipitation_bytecode.diagnostic << '\n';
         return 4;
     }
+    auto volumetric_cloud_bytecode = load_packaged_d3d12_volumetric_cloud_shaders(argc > 0 ? argv[0] : nullptr);
+    if (!volumetric_cloud_bytecode.ready() && options.require_environment_volumetric_cloud_renderer_execution) {
+        std::cout << "sample_desktop_runtime_game d3d12_volumetric_cloud_shader_diagnostic="
+                  << mirakana::desktop_shader_bytecode_load_status_name(volumetric_cloud_bytecode.status) << ": "
+                  << volumetric_cloud_bytecode.diagnostic << '\n';
+        return 4;
+    }
     const auto environment_fog_fragment_blob = load_packaged_single_shader_blob(
         argc > 0 ? argv[0] : nullptr, kRuntimeEnvironmentFogFragmentShaderPath, "height_fog_ps_main");
     if (options.require_environment_fog_evidence && !options.require_vulkan_renderer &&
@@ -3025,6 +3127,8 @@ int main(int argc, char** argv) {
     const bool require_environment_precipitation_renderer_execution =
         options.require_environment_precipitation_renderer_execution ||
         options.require_environment_snow_renderer_execution;
+    const bool require_environment_volumetric_cloud = options.require_environment_volumetric_cloud_package_evidence ||
+                                                      options.require_environment_volumetric_cloud_renderer_execution;
     const mirakana::Win32DesktopPresentationEnvironmentPrecipitationExpectation environment_precipitation_expectation{
         .weather = require_environment_snow_precipitation ? mirakana::EnvironmentWeatherKind::snow
                                                           : mirakana::EnvironmentWeatherKind::storm,
@@ -3062,6 +3166,9 @@ int main(int argc, char** argv) {
             .cloud_layer_fragment_shader = to_presentation_shader_bytecode(cloud_layer_bytecode.fragment_shader),
             .precipitation_vertex_shader = to_presentation_shader_bytecode(precipitation_bytecode.vertex_shader),
             .precipitation_fragment_shader = to_presentation_shader_bytecode(precipitation_bytecode.fragment_shader),
+            .volumetric_cloud_vertex_shader = to_presentation_shader_bytecode(volumetric_cloud_bytecode.vertex_shader),
+            .volumetric_cloud_fragment_shader =
+                to_presentation_shader_bytecode(volumetric_cloud_bytecode.fragment_shader),
             .package = &*runtime_package,
             .packet = &packaged_scene->render_packet,
             .vertex_buffers = runtime_scene_vertex_buffers(),
@@ -3086,6 +3193,10 @@ int main(int argc, char** argv) {
                 options.require_environment_volumetric_fog_package_evidence,
             .environment_volumetric_fog = make_sample_environment_volumetric_fog_policy_desc(
                 !environment_volumetric_fog_compute_blob.bytecode.empty()),
+            .enable_environment_volumetric_cloud_package_evidence = require_environment_volumetric_cloud,
+            .enable_environment_volumetric_cloud_renderer_execution =
+                options.require_environment_volumetric_cloud_renderer_execution,
+            .environment_volumetric_cloud = make_sample_environment_volumetric_cloud_policy_desc(),
             .enable_directional_shadow_smoke = options.require_directional_shadow,
             .enable_native_ui_overlay = options.require_native_ui_overlay,
             .native_ui_overlay_atlas_asset =
@@ -3355,6 +3466,10 @@ int main(int argc, char** argv) {
         report, require_environment_any_precipitation_package_evidence, environment_precipitation_expectation);
     const auto environment_volumetric_fog = mirakana::evaluate_win32_desktop_presentation_environment_volumetric_fog(
         report, options.require_environment_volumetric_fog_package_evidence);
+    const auto environment_volumetric_cloud =
+        mirakana::evaluate_win32_desktop_presentation_environment_volumetric_cloud(
+            report, require_environment_volumetric_cloud,
+            options.require_environment_volumetric_cloud_renderer_execution);
     const auto environment_profile =
         evaluate_environment_profile_package(options.require_environment_profile, runtime_package);
     const auto vulkan_postprocess_execution =
@@ -3626,6 +3741,53 @@ int main(int argc, char** argv) {
         << " environment_volumetric_fog_native_handle_access="
         << (environment_volumetric_fog.exposes_native_handles ? 1 : 0)
         << " environment_volumetric_fog_diagnostics=" << environment_volumetric_fog.diagnostics_count
+        << " environment_volumetric_cloud_status="
+        << mirakana::win32_desktop_presentation_environment_volumetric_cloud_status_name(
+               environment_volumetric_cloud.status)
+        << " environment_volumetric_cloud_ready=" << (environment_volumetric_cloud.ready ? 1 : 0)
+        << " environment_volumetric_cloud_selected_backend="
+        << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
+        << " environment_volumetric_cloud_requested=" << (environment_volumetric_cloud.requested ? 1 : 0)
+        << " environment_volumetric_cloud_shader_contract_evidence_ready="
+        << (environment_volumetric_cloud.shader_contract_evidence_ready ? 1 : 0)
+        << " environment_volumetric_cloud_package_evidence_ready="
+        << (environment_volumetric_cloud.package_evidence_ready ? 1 : 0)
+        << " environment_volumetric_cloud_execution_evidence_ready="
+        << (environment_volumetric_cloud.execution_evidence_ready ? 1 : 0)
+        << " environment_volumetric_cloud_weather_map_binding=" << environment_volumetric_cloud.weather_map_binding
+        << " environment_volumetric_cloud_shape_noise_binding=" << environment_volumetric_cloud.shape_noise_binding
+        << " environment_volumetric_cloud_erosion_noise_binding=" << environment_volumetric_cloud.erosion_noise_binding
+        << " environment_volumetric_cloud_sampler_binding=" << environment_volumetric_cloud.sampler_binding
+        << " environment_volumetric_cloud_constants_binding=" << environment_volumetric_cloud.constants_binding
+        << " environment_volumetric_cloud_constants_byte_size=" << environment_volumetric_cloud.constant_buffer_bytes
+        << " environment_volumetric_cloud_weather_map_ready="
+        << (environment_volumetric_cloud.weather_map_ready ? 1 : 0)
+        << " environment_volumetric_cloud_shape_noise_ready="
+        << (environment_volumetric_cloud.shape_noise_ready ? 1 : 0)
+        << " environment_volumetric_cloud_erosion_noise_ready="
+        << (environment_volumetric_cloud.erosion_noise_ready ? 1 : 0)
+        << " environment_volumetric_cloud_map_rows=" << environment_volumetric_cloud.map_rows
+        << " environment_volumetric_cloud_layer_rows=" << environment_volumetric_cloud.layer_rows
+        << " environment_volumetric_cloud_lighting_rows=" << environment_volumetric_cloud.lighting_rows
+        << " environment_volumetric_cloud_raymarch_rows=" << environment_volumetric_cloud.raymarch_rows
+        << " environment_volumetric_cloud_temporal_rows=" << environment_volumetric_cloud.temporal_rows
+        << " environment_volumetric_cloud_shadow_rows=" << environment_volumetric_cloud.shadow_rows
+        << " environment_volumetric_cloud_storm_rows=" << environment_volumetric_cloud.storm_rows
+        << " environment_volumetric_cloud_shader_contract_rows=" << environment_volumetric_cloud.shader_contract_rows
+        << " environment_volumetric_cloud_quality_rows=" << environment_volumetric_cloud.quality_rows
+        << " environment_volumetric_cloud_texture_uploads="
+        << (environment_volumetric_cloud.uploads_volume_textures ? 1 : 0)
+        << " environment_volumetric_cloud_backend_invocations="
+        << (environment_volumetric_cloud.invokes_backend ? 1 : 0)
+        << " environment_volumetric_cloud_renderer_draws=" << environment_volumetric_cloud.renderer_draws
+        << " environment_volumetric_cloud_raymarch_passes=" << environment_volumetric_cloud.raymarch_passes
+        << " environment_volumetric_cloud_readback_nonzero=" << (environment_volumetric_cloud.readback_nonzero ? 1 : 0)
+        << " environment_volumetric_cloud_native_handle_access="
+        << (environment_volumetric_cloud.exposes_native_handles ? 1 : 0)
+        << " environment_volumetric_cloud_audio_playback=" << (environment_volumetric_cloud.plays_audio ? 1 : 0)
+        << " environment_volumetric_cloud_precipitation_execution="
+        << (environment_volumetric_cloud.executes_precipitation ? 1 : 0)
+        << " environment_volumetric_cloud_diagnostics=" << environment_volumetric_cloud.diagnostics_count
         << " environment_profile_status=" << environment_profile_package_status_name(environment_profile.status)
         << " environment_profile_ready=" << (environment_profile.ready ? 1 : 0)
         << " environment_profile_requested=" << (environment_profile.requested ? 1 : 0)
@@ -4477,6 +4639,9 @@ int main(int argc, char** argv) {
             return 3;
         }
         if (options.require_environment_volumetric_fog_package_evidence && !environment_volumetric_fog.ready) {
+            return 3;
+        }
+        if (require_environment_volumetric_cloud && !environment_volumetric_cloud.ready) {
             return 3;
         }
         if (options.require_cloud_layer_package_evidence && !cloud_layer.ready) {

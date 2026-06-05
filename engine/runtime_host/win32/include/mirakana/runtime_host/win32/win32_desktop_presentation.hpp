@@ -9,6 +9,7 @@
 #include "mirakana/renderer/physical_sky_policy.hpp"
 #include "mirakana/renderer/precipitation_policy.hpp"
 #include "mirakana/renderer/renderer.hpp"
+#include "mirakana/renderer/volumetric_cloud_policy.hpp"
 #include "mirakana/renderer/volumetric_fog_policy.hpp"
 #include "mirakana/rhi/rhi.hpp"
 
@@ -302,6 +303,31 @@ struct Win32DesktopPresentationReport {
     std::uint64_t environment_volumetric_fog_compute_dispatches{0};
     bool environment_volumetric_fog_exposes_native_handles{false};
     std::uint32_t environment_volumetric_fog_policy_diagnostics_count{0};
+    bool environment_volumetric_cloud_requested{false};
+    bool environment_volumetric_cloud_shader_contract_evidence_ready{false};
+    bool environment_volumetric_cloud_package_evidence_ready{false};
+    bool environment_volumetric_cloud_execution_evidence_ready{false};
+    bool environment_volumetric_cloud_weather_map_ready{false};
+    bool environment_volumetric_cloud_shape_noise_ready{false};
+    bool environment_volumetric_cloud_erosion_noise_ready{false};
+    bool environment_volumetric_cloud_uploads_volume_textures{false};
+    bool environment_volumetric_cloud_invokes_backend{false};
+    std::uint64_t environment_volumetric_cloud_renderer_draws{0};
+    std::uint64_t environment_volumetric_cloud_raymarch_passes{0};
+    bool environment_volumetric_cloud_readback_nonzero{false};
+    bool environment_volumetric_cloud_exposes_native_handles{false};
+    bool environment_volumetric_cloud_plays_audio{false};
+    bool environment_volumetric_cloud_executes_precipitation{false};
+    std::uint32_t environment_volumetric_cloud_map_rows{0};
+    std::uint32_t environment_volumetric_cloud_layer_rows{0};
+    std::uint32_t environment_volumetric_cloud_lighting_rows{0};
+    std::uint32_t environment_volumetric_cloud_raymarch_rows{0};
+    std::uint32_t environment_volumetric_cloud_temporal_rows{0};
+    std::uint32_t environment_volumetric_cloud_shadow_rows{0};
+    std::uint32_t environment_volumetric_cloud_storm_rows{0};
+    std::uint32_t environment_volumetric_cloud_shader_contract_rows{0};
+    std::uint32_t environment_volumetric_cloud_quality_rows{0};
+    std::uint32_t environment_volumetric_cloud_policy_diagnostics_count{0};
     Win32DesktopPresentationDirectionalShadowStatus directional_shadow_status{
         Win32DesktopPresentationDirectionalShadowStatus::not_requested};
     bool directional_shadow_requested{false};
@@ -410,6 +436,12 @@ enum class Win32DesktopPresentationEnvironmentPrecipitationStatus : std::uint8_t
 };
 
 enum class Win32DesktopPresentationEnvironmentVolumetricFogStatus : std::uint8_t {
+    not_requested = 0,
+    blocked,
+    ready,
+};
+
+enum class Win32DesktopPresentationEnvironmentVolumetricCloudStatus : std::uint8_t {
     not_requested = 0,
     blocked,
     ready,
@@ -639,6 +671,44 @@ struct Win32DesktopPresentationEnvironmentVolumetricFogReport {
     std::uint64_t constant_buffer_bytes{0};
     std::uint32_t froxel_output_buffer_binding{0};
     bool exposes_native_handles{false};
+    std::uint32_t diagnostics_count{0};
+};
+
+struct Win32DesktopPresentationEnvironmentVolumetricCloudReport {
+    Win32DesktopPresentationEnvironmentVolumetricCloudStatus status{
+        Win32DesktopPresentationEnvironmentVolumetricCloudStatus::not_requested};
+    bool ready{false};
+    bool requested{false};
+    bool d3d12_backend_selected{false};
+    bool shader_contract_evidence_ready{false};
+    bool package_evidence_ready{false};
+    bool execution_evidence_ready{false};
+    std::uint32_t weather_map_binding{0};
+    std::uint32_t shape_noise_binding{0};
+    std::uint32_t erosion_noise_binding{0};
+    std::uint32_t sampler_binding{0};
+    std::uint32_t constants_binding{0};
+    std::uint64_t constant_buffer_bytes{0};
+    bool weather_map_ready{false};
+    bool shape_noise_ready{false};
+    bool erosion_noise_ready{false};
+    bool uploads_volume_textures{false};
+    bool invokes_backend{false};
+    std::uint64_t renderer_draws{0};
+    std::uint64_t raymarch_passes{0};
+    bool readback_nonzero{false};
+    bool exposes_native_handles{false};
+    bool plays_audio{false};
+    bool executes_precipitation{false};
+    std::uint32_t map_rows{0};
+    std::uint32_t layer_rows{0};
+    std::uint32_t lighting_rows{0};
+    std::uint32_t raymarch_rows{0};
+    std::uint32_t temporal_rows{0};
+    std::uint32_t shadow_rows{0};
+    std::uint32_t storm_rows{0};
+    std::uint32_t shader_contract_rows{0};
+    std::uint32_t quality_rows{0};
     std::uint32_t diagnostics_count{0};
 };
 
@@ -981,6 +1051,8 @@ struct Win32DesktopPresentationD3d12SceneRendererDesc {
     Win32DesktopPresentationShaderBytecode cloud_layer_fragment_shader;
     Win32DesktopPresentationShaderBytecode precipitation_vertex_shader;
     Win32DesktopPresentationShaderBytecode precipitation_fragment_shader;
+    Win32DesktopPresentationShaderBytecode volumetric_cloud_vertex_shader;
+    Win32DesktopPresentationShaderBytecode volumetric_cloud_fragment_shader;
     const runtime::RuntimeAssetPackage* package{nullptr};
     const SceneRenderPacket* packet{nullptr};
     rhi::PrimitiveTopology topology{rhi::PrimitiveTopology::triangle_list};
@@ -1007,6 +1079,9 @@ struct Win32DesktopPresentationD3d12SceneRendererDesc {
     PrecipitationPolicyDesc environment_precipitation;
     bool enable_environment_volumetric_fog_package_evidence{false};
     VolumetricFogPolicyDesc environment_volumetric_fog;
+    bool enable_environment_volumetric_cloud_package_evidence{false};
+    bool enable_environment_volumetric_cloud_renderer_execution{false};
+    VolumetricCloudPolicyDesc environment_volumetric_cloud;
     bool enable_directional_shadow_smoke{false};
     bool enable_native_ui_overlay{false};
     AssetId native_ui_overlay_atlas_asset;
@@ -1194,6 +1269,11 @@ evaluate_win32_desktop_presentation_environment_precipitation(
 [[nodiscard]] Win32DesktopPresentationEnvironmentVolumetricFogReport
 evaluate_win32_desktop_presentation_environment_volumetric_fog(const Win32DesktopPresentationReport& report,
                                                                bool requested);
+[[nodiscard]] std::string_view win32_desktop_presentation_environment_volumetric_cloud_status_name(
+    Win32DesktopPresentationEnvironmentVolumetricCloudStatus status) noexcept;
+[[nodiscard]] Win32DesktopPresentationEnvironmentVolumetricCloudReport
+evaluate_win32_desktop_presentation_environment_volumetric_cloud(const Win32DesktopPresentationReport& report,
+                                                                 bool requested, bool require_renderer_execution);
 [[nodiscard]] std::string_view win32_desktop_presentation_vulkan_postprocess_execution_status_name(
     Win32DesktopPresentationVulkanPostprocessExecutionStatus status) noexcept;
 [[nodiscard]] Win32DesktopPresentationVulkanPostprocessExecutionReport
