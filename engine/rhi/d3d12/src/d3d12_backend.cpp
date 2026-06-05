@@ -3338,7 +3338,8 @@ bool DeviceContext::draw(NativeCommandListHandle commands, std::uint32_t vertex_
 }
 
 bool DeviceContext::draw_indexed(NativeCommandListHandle commands, std::uint32_t index_count,
-                                 std::uint32_t instance_count) {
+                                 std::uint32_t instance_count, std::uint32_t first_index, std::int32_t vertex_offset,
+                                 std::uint32_t first_instance) {
     if (!valid() || index_count == 0 || instance_count == 0) {
         return false;
     }
@@ -3351,7 +3352,7 @@ bool DeviceContext::draw_indexed(NativeCommandListHandle commands, std::uint32_t
         return false;
     }
 
-    command_record->list->DrawIndexedInstanced(index_count, instance_count, 0, 0, 0);
+    command_record->list->DrawIndexedInstanced(index_count, instance_count, first_index, vertex_offset, first_instance);
     ++impl_->stats.draw_calls;
     ++impl_->stats.indexed_draw_calls;
     if (instance_count > 1) {
@@ -3360,6 +3361,11 @@ bool DeviceContext::draw_indexed(NativeCommandListHandle commands, std::uint32_t
         impl_->stats.instanced_instances_submitted += instance_count;
     }
     impl_->stats.indices_submitted += static_cast<std::uint64_t>(index_count) * instance_count;
+    impl_->stats.last_indexed_draw_index_count = index_count;
+    impl_->stats.last_indexed_draw_instance_count = instance_count;
+    impl_->stats.last_indexed_draw_first_index = first_index;
+    impl_->stats.last_indexed_draw_vertex_offset = vertex_offset;
+    impl_->stats.last_indexed_draw_first_instance = first_instance;
     return true;
 }
 
@@ -5360,7 +5366,8 @@ class D3d12RhiCommandList final : public IRhiCommandList {
         stats_->vertices_submitted += static_cast<std::uint64_t>(vertex_count) * instance_count;
     }
 
-    void draw_indexed(std::uint32_t index_count, std::uint32_t instance_count) override {
+    void draw_indexed(std::uint32_t index_count, std::uint32_t instance_count, std::uint32_t first_index,
+                      std::int32_t vertex_offset, std::uint32_t first_instance) override {
         require_open();
         if (!render_pass_active_) {
             throw std::logic_error("d3d12 rhi indexed draw requires an active render pass");
@@ -5371,7 +5378,7 @@ class D3d12RhiCommandList final : public IRhiCommandList {
         if (!index_buffer_bound_) {
             throw std::logic_error("d3d12 rhi indexed draw requires an index buffer");
         }
-        if (!context_->draw_indexed(native_, index_count, instance_count)) {
+        if (!context_->draw_indexed(native_, index_count, instance_count, first_index, vertex_offset, first_instance)) {
             throw std::logic_error("d3d12 rhi indexed draw failed");
         }
         ++stats_->draw_calls;
@@ -5382,6 +5389,11 @@ class D3d12RhiCommandList final : public IRhiCommandList {
             stats_->instanced_instances_submitted += instance_count;
         }
         stats_->indices_submitted += static_cast<std::uint64_t>(index_count) * instance_count;
+        stats_->last_indexed_draw_index_count = index_count;
+        stats_->last_indexed_draw_instance_count = instance_count;
+        stats_->last_indexed_draw_first_index = first_index;
+        stats_->last_indexed_draw_vertex_offset = vertex_offset;
+        stats_->last_indexed_draw_first_instance = first_instance;
     }
 
     void dispatch(std::uint32_t group_count_x, std::uint32_t group_count_y, std::uint32_t group_count_z) override {

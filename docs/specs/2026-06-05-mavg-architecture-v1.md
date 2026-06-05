@@ -77,13 +77,13 @@ Implemented v1 responsibilities:
 
 Non-responsibilities:
 
-- Renderer backend execution.
+- MAVG renderer scene submission and package-visible backend execution.
 - Streaming IO execution.
 - Runtime source import.
 - Third-party simplifier ownership.
-- Renderer submission and backend execution; CPU selection now belongs to the `MK_renderer` selector checkpoint and resident-page evidence now belongs to the `MK_runtime` bridge checkpoint in the active LoD milestone.
+- MAVG scene submission; CPU selection now belongs to the `MK_renderer` selector checkpoint, resident-page evidence belongs to the `MK_runtime` bridge checkpoint, and range-aware conventional indexed draw execution belongs to the RHI/renderer checkpoint in the active LoD milestone.
 
-The active detailed LoD milestone is `docs/superpowers/plans/2026-06-05-mavg-runtime-lod-milestone-v1.md`. Its graph, draw-ready static cook payload, CPU selector, and runtime resident-page evidence checkpoints are implemented; range-aware conventional indexed draws and scene submission remain pending tasks.
+The active detailed LoD milestone is `docs/superpowers/plans/2026-06-05-mavg-runtime-lod-milestone-v1.md`. Its graph, draw-ready static cook payload, CPU selector, runtime resident-page evidence, and range-aware conventional indexed draw checkpoints are implemented; scene submission remains a pending task.
 
 ### Runtime Selection
 

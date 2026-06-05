@@ -867,7 +867,8 @@ class NullRhiCommandList final : public IRhiCommandList {
         device_.stats_.vertices_submitted += static_cast<std::uint64_t>(vertex_count) * instance_count;
     }
 
-    void draw_indexed(std::uint32_t index_count, std::uint32_t instance_count) override {
+    void draw_indexed(std::uint32_t index_count, std::uint32_t instance_count, std::uint32_t first_index,
+                      std::int32_t vertex_offset, std::uint32_t first_instance) override {
         require_recording();
         if (!render_pass_active_) {
             throw std::logic_error("rhi indexed draw must be recorded inside a render pass");
@@ -892,6 +893,11 @@ class NullRhiCommandList final : public IRhiCommandList {
             device_.stats_.instanced_instances_submitted += instance_count;
         }
         device_.stats_.indices_submitted += static_cast<std::uint64_t>(index_count) * instance_count;
+        device_.stats_.last_indexed_draw_index_count = index_count;
+        device_.stats_.last_indexed_draw_instance_count = instance_count;
+        device_.stats_.last_indexed_draw_first_index = first_index;
+        device_.stats_.last_indexed_draw_vertex_offset = vertex_offset;
+        device_.stats_.last_indexed_draw_first_instance = first_instance;
     }
 
     void dispatch(std::uint32_t group_count_x, std::uint32_t group_count_y, std::uint32_t group_count_z) override {

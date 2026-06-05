@@ -4756,7 +4756,7 @@ MK_TEST("vulkan rhi device bridge proves depth ordered draw readback with config
         0.8F,  -0.8F, 0.25F, 0.0F, 1.0F, 0.0F, 1.0F, -0.8F, -0.8F, 0.75F, 1.0F, 0.0F, 0.0F, 1.0F,
         0.0F,  0.8F,  0.75F, 1.0F, 0.0F, 0.0F, 1.0F, 0.8F,  -0.8F, 0.75F, 1.0F, 0.0F, 0.0F, 1.0F,
     };
-    constexpr std::array<std::uint16_t, 6> index_data{0, 1, 2, 3, 4, 5};
+    constexpr std::array<std::uint16_t, 6> index_data{0, 1, 2, 0, 1, 2};
     std::array<std::uint8_t, 512> upload_bytes{};
     const auto vertex_bytes = std::as_bytes(std::span{vertex_data});
     const auto index_bytes = std::as_bytes(std::span{index_data});
@@ -4925,7 +4925,7 @@ MK_TEST("vulkan rhi device bridge proves depth ordered draw readback with config
         mirakana::rhi::VertexBufferBinding{.buffer = vertices, .offset = 0, .stride = 28, .binding = 0});
     commands->bind_index_buffer(mirakana::rhi::IndexBufferBinding{
         .buffer = indices, .offset = 0, .format = mirakana::rhi::IndexFormat::uint16});
-    commands->draw_indexed(6, 1);
+    commands->draw_indexed(3, 1, 3, 3, 9);
     commands->end_render_pass();
     commands->transition_texture(target, mirakana::rhi::ResourceState::render_target,
                                  mirakana::rhi::ResourceState::copy_source);
@@ -4937,11 +4937,16 @@ MK_TEST("vulkan rhi device bridge proves depth ordered draw readback with config
 
     const auto bytes = rhi->read_buffer(readback, 0, 8 * 8 * 4);
     const auto center_pixel = (4U * 8U * 4U) + (4U * 4U);
-    MK_REQUIRE(bytes.at(center_pixel + 0U) <= 80);
-    MK_REQUIRE(bytes.at(center_pixel + 1U) >= 120);
+    MK_REQUIRE(bytes.at(center_pixel + 0U) >= 120);
+    MK_REQUIRE(bytes.at(center_pixel + 1U) <= 80);
     MK_REQUIRE(bytes.at(center_pixel + 2U) <= 80);
     MK_REQUIRE(rhi->stats().draw_calls == 1);
     MK_REQUIRE(rhi->stats().indexed_draw_calls == 1);
+    MK_REQUIRE(rhi->stats().last_indexed_draw_index_count == 3);
+    MK_REQUIRE(rhi->stats().last_indexed_draw_instance_count == 1);
+    MK_REQUIRE(rhi->stats().last_indexed_draw_first_index == 3);
+    MK_REQUIRE(rhi->stats().last_indexed_draw_vertex_offset == 3);
+    MK_REQUIRE(rhi->stats().last_indexed_draw_first_instance == 9);
     MK_REQUIRE(rhi->stats().texture_buffer_copies == 1);
 #endif
 }
@@ -5203,7 +5208,7 @@ MK_TEST("vulkan rhi device bridge visibly samples depth textures after depth wri
         mirakana::rhi::VertexBufferBinding{.buffer = vertices, .offset = 0, .stride = 28, .binding = 0});
     depth_commands->bind_index_buffer(mirakana::rhi::IndexBufferBinding{
         .buffer = indices, .offset = 0, .format = mirakana::rhi::IndexFormat::uint16});
-    depth_commands->draw_indexed(6, 1);
+    depth_commands->draw_indexed(6, 1, 0, 0, 0);
     depth_commands->end_render_pass();
     depth_commands->transition_texture(sampled_depth, mirakana::rhi::ResourceState::depth_write,
                                        mirakana::rhi::ResourceState::shader_read);
@@ -5538,7 +5543,7 @@ MK_TEST("vulkan rhi device bridge samples scene depth in a postprocess pass when
         mirakana::rhi::VertexBufferBinding{.buffer = vertices, .offset = 0, .stride = 28, .binding = 0});
     commands->bind_index_buffer(mirakana::rhi::IndexBufferBinding{
         .buffer = indices, .offset = 0, .format = mirakana::rhi::IndexFormat::uint16});
-    commands->draw_indexed(3, 1);
+    commands->draw_indexed(3, 1, 0, 0, 0);
     commands->end_render_pass();
     commands->transition_texture(scene_color, mirakana::rhi::ResourceState::render_target,
                                  mirakana::rhi::ResourceState::shader_read);
@@ -5926,7 +5931,7 @@ MK_TEST("vulkan rhi device bridge applies height fog from scene depth and enviro
         mirakana::rhi::VertexBufferBinding{.buffer = vertices, .offset = 0, .stride = 28, .binding = 0});
     commands->bind_index_buffer(mirakana::rhi::IndexBufferBinding{
         .buffer = indices, .offset = 0, .format = mirakana::rhi::IndexFormat::uint16});
-    commands->draw_indexed(6, 1);
+    commands->draw_indexed(6, 1, 0, 0, 0);
     commands->end_render_pass();
     commands->transition_texture(scene_color, mirakana::rhi::ResourceState::render_target,
                                  mirakana::rhi::ResourceState::shader_read);
@@ -6248,7 +6253,7 @@ MK_TEST("vulkan rhi device bridge darkens a directional shadow receiver when con
         mirakana::rhi::VertexBufferBinding{.buffer = vertices, .offset = 0, .stride = 28, .binding = 0});
     depth_commands->bind_index_buffer(mirakana::rhi::IndexBufferBinding{
         .buffer = indices, .offset = 0, .format = mirakana::rhi::IndexFormat::uint16});
-    depth_commands->draw_indexed(6, 1);
+    depth_commands->draw_indexed(6, 1, 0, 0, 0);
     depth_commands->end_render_pass();
     depth_commands->transition_texture(shadow_depth, mirakana::rhi::ResourceState::depth_write,
                                        mirakana::rhi::ResourceState::shader_read);

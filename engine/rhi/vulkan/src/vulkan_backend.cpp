@@ -5098,7 +5098,8 @@ class VulkanRhiCommandList final : public IRhiCommandList {
         device_->stats_.vertices_submitted += static_cast<std::uint64_t>(vertex_count) * instance_count;
     }
 
-    void draw_indexed(std::uint32_t index_count, std::uint32_t instance_count) override {
+    void draw_indexed(std::uint32_t index_count, std::uint32_t instance_count, std::uint32_t first_index,
+                      std::int32_t vertex_offset, std::uint32_t first_instance) override {
         require_open();
         if (!render_pass_active_) {
             throw std::logic_error("vulkan rhi indexed draw requires an active render pass");
@@ -5136,6 +5137,8 @@ class VulkanRhiCommandList final : public IRhiCommandList {
                     .index_buffer_offset = bound_index_buffer_.offset,
                     .index_format = bound_index_buffer_.format,
                     .index_count = index_count,
+                    .first_index = first_index,
+                    .vertex_offset = vertex_offset,
                     .color_load_action = color_load_action,
                     .color_store_action = active_render_pass_.color.store_action,
                     .clear_color = active_render_pass_.color.clear_color,
@@ -5163,6 +5166,8 @@ class VulkanRhiCommandList final : public IRhiCommandList {
                     .index_buffer_offset = bound_index_buffer_.offset,
                     .index_format = bound_index_buffer_.format,
                     .index_count = index_count,
+                    .first_index = first_index,
+                    .vertex_offset = vertex_offset,
                     .color_load_action = color_load_action,
                     .color_store_action = active_render_pass_.color.store_action,
                     .clear_color = active_render_pass_.color.clear_color,
@@ -5185,6 +5190,11 @@ class VulkanRhiCommandList final : public IRhiCommandList {
             device_->stats_.instanced_instances_submitted += instance_count;
         }
         device_->stats_.indices_submitted += static_cast<std::uint64_t>(index_count) * instance_count;
+        device_->stats_.last_indexed_draw_index_count = index_count;
+        device_->stats_.last_indexed_draw_instance_count = instance_count;
+        device_->stats_.last_indexed_draw_first_index = first_index;
+        device_->stats_.last_indexed_draw_vertex_offset = vertex_offset;
+        device_->stats_.last_indexed_draw_first_instance = first_instance;
     }
 
     void dispatch(std::uint32_t group_count_x, std::uint32_t group_count_y, std::uint32_t group_count_z) override {
@@ -11640,8 +11650,8 @@ record_runtime_texture_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntime
     if (indexed_draw) {
         device.impl_->cmd_bind_index_buffer(command_buffer, desc.index_buffer->impl_->buffer, desc.index_buffer_offset,
                                             native_vulkan_index_type(desc.index_format));
-        device.impl_->cmd_draw_indexed(command_buffer, desc.index_count, desc.instance_count, 0, 0,
-                                       desc.first_instance);
+        device.impl_->cmd_draw_indexed(command_buffer, desc.index_count, desc.instance_count, desc.first_index,
+                                       desc.vertex_offset, desc.first_instance);
     } else {
         device.impl_->cmd_draw(command_buffer, desc.vertex_count, desc.instance_count, desc.first_vertex,
                                desc.first_instance);
@@ -11892,8 +11902,8 @@ record_runtime_dynamic_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntime
     if (indexed_draw) {
         device.impl_->cmd_bind_index_buffer(command_buffer, desc.index_buffer->impl_->buffer, desc.index_buffer_offset,
                                             native_vulkan_index_type(desc.index_format));
-        device.impl_->cmd_draw_indexed(command_buffer, desc.index_count, desc.instance_count, 0, 0,
-                                       desc.first_instance);
+        device.impl_->cmd_draw_indexed(command_buffer, desc.index_count, desc.instance_count, desc.first_index,
+                                       desc.vertex_offset, desc.first_instance);
     } else {
         device.impl_->cmd_draw(command_buffer, desc.vertex_count, desc.instance_count, desc.first_vertex,
                                desc.first_instance);

@@ -13,6 +13,7 @@
 #include <cmath>
 #include <span>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -94,6 +95,37 @@ void validate_mesh_gpu_binding(const MeshGpuBinding& binding, const rhi::IRhiDev
         (binding.tangent_vertex_buffer.value != 0) != (binding.tangent_vertex_stride != 0)) {
         throw std::invalid_argument("rhi shadow smoke renderer mesh command has inconsistent optional vertex streams");
     }
+}
+
+struct MeshIndexedDrawArgs {
+    std::uint32_t index_count{0};
+    std::uint32_t first_index{0};
+    std::int32_t vertex_offset{0};
+    std::uint32_t first_instance{0};
+};
+
+void validate_indexed_draw_range(const MeshIndexedDrawRange& range, const MeshGpuBinding& binding,
+                                 std::string_view context) {
+    if (!range.enabled) {
+        return;
+    }
+    if (range.index_count == 0) {
+        throw std::invalid_argument(std::string{context} + " indexed range requires index count");
+    }
+    if (range.first_index >= binding.index_count || range.index_count > binding.index_count - range.first_index) {
+        throw std::invalid_argument(std::string{context} + " indexed range exceeds mesh index count");
+    }
+}
+
+[[nodiscard]] MeshIndexedDrawArgs make_indexed_draw_args(const MeshIndexedDrawRange& range,
+                                                         const MeshGpuBinding& binding) noexcept {
+    if (!range.enabled) {
+        return MeshIndexedDrawArgs{.index_count = binding.index_count};
+    }
+    return MeshIndexedDrawArgs{.index_count = range.index_count,
+                               .first_index = range.first_index,
+                               .vertex_offset = range.vertex_base,
+                               .first_instance = range.first_instance};
 }
 
 void bind_mesh_vertex_buffers(rhi::IRhiCommandList& commands, const MeshGpuBinding& binding) {
@@ -543,13 +575,21 @@ void RhiDirectionalShadowSmokeFrameRenderer::draw_mesh(const MeshCommand& comman
             throw std::invalid_argument("rhi shadow smoke renderer morph mesh command requires a morph scene pipeline");
         }
         validate_material_gpu_binding(command.material_binding, *device_, scene_pipeline_layout_);
+        validate_mesh_gpu_binding(command.mesh_binding, *device_);
         validate_morph_mesh_gpu_binding(command.morph_mesh, *device_, command.mesh_binding.vertex_count);
+        validate_indexed_draw_range(command.indexed_range, command.mesh_binding,
+                                    "rhi shadow smoke renderer morph mesh");
     }
     if (command.gpu_skinning) {
         validate_material_gpu_binding(command.material_binding, *device_, scene_pipeline_layout_);
         validate_skinned_mesh_gpu_binding(command.skinned_mesh, *device_);
+        validate_indexed_draw_range(command.indexed_range, command.skinned_mesh.mesh,
+                                    "rhi shadow smoke renderer skinned mesh");
     } else if (has_mesh_gpu_binding(command.mesh_binding)) {
         validate_mesh_gpu_binding(command.mesh_binding, *device_);
+        validate_indexed_draw_range(command.indexed_range, command.mesh_binding, "rhi shadow smoke renderer mesh");
+    } else if (command.indexed_range.enabled) {
+        throw std::invalid_argument("rhi shadow smoke renderer indexed range requires mesh gpu binding");
     }
     if (has_material_gpu_binding(command.material_binding)) {
         validate_material_gpu_binding(command.material_binding, *device_, scene_pipeline_layout_);
@@ -915,7 +955,9 @@ void RhiDirectionalShadowSmokeFrameRenderer::record_shadow_mesh_draw(const MeshC
             .offset = command.mesh_binding.index_offset,
             .format = command.mesh_binding.index_format,
         });
-        commands_->draw_indexed(command.mesh_binding.index_count, command.instance_count);
+        const auto draw_args = make_indexed_draw_args(command.indexed_range, command.mesh_binding);
+        commands_->draw_indexed(draw_args.index_count, command.instance_count, draw_args.first_index,
+                                draw_args.vertex_offset, draw_args.first_instance);
         return;
     }
     commands_->draw(3, command.instance_count);
@@ -939,7 +981,9 @@ void RhiDirectionalShadowSmokeFrameRenderer::record_scene_mesh_draw(const MeshCo
             .offset = command.skinned_mesh.mesh.index_offset,
             .format = command.skinned_mesh.mesh.index_format,
         });
-        commands_->draw_indexed(command.skinned_mesh.mesh.index_count, command.instance_count);
+        const auto draw_args = make_indexed_draw_args(command.indexed_range, command.skinned_mesh.mesh);
+        commands_->draw_indexed(draw_args.index_count, command.instance_count, draw_args.first_index,
+                                draw_args.vertex_offset, draw_args.first_instance);
         ++stats_.gpu_skinning_draws;
         ++stats_.skinned_palette_descriptor_binds;
         commands_->bind_graphics_pipeline(scene_graphics_pipeline_);
@@ -964,7 +1008,9 @@ void RhiDirectionalShadowSmokeFrameRenderer::record_scene_mesh_draw(const MeshCo
             .offset = command.mesh_binding.index_offset,
             .format = command.mesh_binding.index_format,
         });
-        commands_->draw_indexed(command.mesh_binding.index_count, command.instance_count);
+        const auto draw_args = make_indexed_draw_args(command.indexed_range, command.mesh_binding);
+        commands_->draw_indexed(draw_args.index_count, command.instance_count, draw_args.first_index,
+                                draw_args.vertex_offset, draw_args.first_instance);
         ++stats_.gpu_morph_draws;
         ++stats_.morph_descriptor_binds;
         commands_->bind_graphics_pipeline(scene_graphics_pipeline_);
@@ -982,7 +1028,9 @@ void RhiDirectionalShadowSmokeFrameRenderer::record_scene_mesh_draw(const MeshCo
             .offset = command.mesh_binding.index_offset,
             .format = command.mesh_binding.index_format,
         });
-        commands_->draw_indexed(command.mesh_binding.index_count, command.instance_count);
+        const auto draw_args = make_indexed_draw_args(command.indexed_range, command.mesh_binding);
+        commands_->draw_indexed(draw_args.index_count, command.instance_count, draw_args.first_index,
+                                draw_args.vertex_offset, draw_args.first_instance);
         return;
     }
     commands_->draw(3, command.instance_count);
