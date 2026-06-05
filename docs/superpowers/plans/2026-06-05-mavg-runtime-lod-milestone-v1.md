@@ -4,9 +4,9 @@
 
 **Plan ID:** `mavg-runtime-lod-milestone-v1`
 
-**Status:** Active.
+**Status:** Parent milestone for the active `mavg-gpu-culling-indirect-v1` child.
 
-**Execution State:** Active milestone in the stacked `mavg-runtime-lod-graph-v1` implementation branch after explicit LoD supersession. `mavg-asset-graph-v1` remains the prerequisite foundation branch; this milestone must stay reviewable as a follow-on PR and must not claim full runtime LoD until all tasks and validation gates below are complete.
+**Execution State:** Parent milestone in the stacked MAVG implementation branch after explicit LoD supersession. `mavg-asset-graph-v1` remains the prerequisite foundation branch; `mavg-gpu-culling-indirect-v1` is the active child for value-only GPU culling/indirect command planning. This milestone remains the conventional static LoD evidence record and must not claim backend GPU culling execution.
 
 **Goal:** Implement the first visible static MAVG LOD path: deterministic hierarchy/error/fallback graph rows, deterministic CPU LOD selection, package-resident page awareness, conventional indexed draw-range support, and conventional renderer submission without GPU culling, mesh shaders, streaming IO execution, deformation, ray tracing, or Nanite-equivalence claims.
 
@@ -1084,7 +1084,7 @@ Evidence: docs/manifest/static validation passed on 2026-06-05 after `tools/comp
 
 After this milestone lands:
 
-- `mavg-gpu-culling-indirect-v1`: compute culling, indirect command buffers, D3D12/Vulkan synchronization evidence.
+- `mavg-gpu-culling-indirect-v1`: active child for value-only packed indexed indirect command planning, reviewed culling bounds, and D3D12/Vulkan synchronization requirement rows; actual compute dispatch and backend indirect execution remain follow-up.
 - `mavg-package-streaming-residency-v1`: now starts with caller-reviewed page request planning, selected/fallback ancestor eviction protection, and one-row safe-point drain; remaining follow-up is autonomous/background dispatch policy, partial payload page schema, automatic eviction policy, and GPU memory pressure integration.
 - `mavg-mesh-shader-backends-v1`: D3D12 mesh/amplification shader path, Vulkan `VK_EXT_mesh_shader` path, strict feature gates, fallback preservation.
 - `mavg-deformable-clusters-v1`: rigid, skinned, morph, and dynamic update tiers.

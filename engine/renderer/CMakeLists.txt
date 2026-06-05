@@ -19,6 +19,7 @@ add_library(mirakana_renderer
     src/backend_renderer_parity_policy.cpp
     src/debug_profiling_policy.cpp
     src/gpu_memory_policy.cpp
+    src/mavg_gpu_culling.cpp
     src/mavg_lod_selection.cpp
     src/scene_scale_policy.cpp
     src/shadow_map.cpp

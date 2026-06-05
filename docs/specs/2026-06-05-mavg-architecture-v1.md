@@ -6,11 +6,11 @@ Define the clean-room architecture baseline for Mirakana Adaptive Virtual Geomet
 
 ## Status
 
-Phase 0 specification completed for `mavg-research-legal-benchmark-baseline-v1`. The active stacked implementation milestone is now `mavg-runtime-lod-milestone-v1` over the `mavg-asset-graph-v1` foundation. The first LoD checkpoints implement deterministic `MK_assets` `GameEngine.MavgClusterGraph.v1` hierarchy/error/fallback/draw-range graph validation, `MK_tools` static `GameEngine.MavgClusterPayload.v1` vertex/index payload rows through `MavgClusterCookVertex`, `vertex.data_hex`, `index.data_hex`, per-material root/leaf fallback clusters, `MK_renderer` CPU reference selection through `mavg_lod_selection.hpp` / `select_mavg_lod_clusters`, `MK_runtime` resident-page evidence through `mavg_lod_residency.hpp` / `build_runtime_mavg_lod_residency`, `MK_runtime` caller-reviewed page request streaming planning, selected-visible/fallback-ancestor eviction protection, and one-row safe-point drain through `mavg_page_streaming.hpp` / `plan_runtime_mavg_page_streaming_requests` / `review_runtime_mavg_page_streaming_evictions` / `execute_runtime_mavg_page_streaming_request_safe_point`, range-aware conventional indexed draw execution, `MK_scene_renderer` conventional `MeshCommand` planning through `mavg_scene_lod.hpp` / `plan_mavg_scene_lod_mesh_commands`, and `MK_runtime_rhi` conventional package-visible MAVG mesh binding upload evidence through `mavg_conventional_upload.hpp` / `upload_runtime_mavg_conventional_mesh_binding`; autonomous background workers, async-overlap/performance, automatic eviction policy, partial `.mavgpayload` byte-range page loading/schema, GPU memory pressure integration, GPU culling, indirect draw execution, mesh shaders, deformation, ray tracing, and benchmark superiority remain unclaimed until later focused tasks add code and validation evidence.
+Phase 0 specification completed for `mavg-research-legal-benchmark-baseline-v1`. The parent stacked implementation milestone is `mavg-runtime-lod-milestone-v1` over the `mavg-asset-graph-v1` foundation, and the active child is `mavg-gpu-culling-indirect-v1`. The first LoD checkpoints implement deterministic `MK_assets` `GameEngine.MavgClusterGraph.v1` hierarchy/error/fallback/draw-range graph validation, `MK_tools` static `GameEngine.MavgClusterPayload.v1` vertex/index payload rows through `MavgClusterCookVertex`, `vertex.data_hex`, `index.data_hex`, per-material root/leaf fallback clusters, `MK_renderer` CPU reference selection through `mavg_lod_selection.hpp` / `select_mavg_lod_clusters`, `MK_runtime` resident-page evidence through `mavg_lod_residency.hpp` / `build_runtime_mavg_lod_residency`, `MK_runtime` caller-reviewed page request streaming planning, selected-visible/fallback-ancestor eviction protection, and one-row safe-point drain through `mavg_page_streaming.hpp` / `plan_runtime_mavg_page_streaming_requests` / `review_runtime_mavg_page_streaming_evictions` / `execute_runtime_mavg_page_streaming_request_safe_point`, range-aware conventional indexed draw execution, `MK_scene_renderer` conventional `MeshCommand` planning through `mavg_scene_lod.hpp` / `plan_mavg_scene_lod_mesh_commands`, and `MK_runtime_rhi` conventional package-visible MAVG mesh binding upload evidence through `mavg_conventional_upload.hpp` / `upload_runtime_mavg_conventional_mesh_binding`. The active child adds `MK_renderer` value-only GPU culling/indirect command planning through `mavg_gpu_culling.hpp` / `plan_mavg_gpu_culling_indirect_commands`, packed indexed indirect command rows, reviewed culling bounds, fail-closed diagnostics, and D3D12/Vulkan synchronization requirement rows; autonomous background workers, async-overlap/performance, automatic eviction policy, partial `.mavgpayload` byte-range page loading/schema, GPU memory pressure integration, actual GPU culling dispatch, D3D12 `ExecuteIndirect`, Vulkan indirect draw execution, mesh shaders, deformation, ray tracing, and benchmark superiority remain unclaimed until later focused tasks add code and validation evidence.
 
 ## Current Repository Baseline
 
-- `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` selects `docs/superpowers/plans/2026-06-05-mavg-runtime-lod-milestone-v1.md` while the stacked LoD milestone is active.
+- `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` selects `docs/superpowers/plans/2026-06-05-mavg-gpu-culling-indirect-v1.md` while the stacked GPU/indirect child is active.
 - `unsupportedProductionGaps` remains `[]`; MAVG is post-1.0 clean-break research/specification work.
 - SDL3 is not an active dependency or supported runtime/editor/audio path.
 - First-party Windows desktop foundations are `MK_platform_win32`, `MK_runtime_host_win32`, `MK_runtime_host_win32_presentation`, and `MK_audio_wasapi`.
@@ -148,18 +148,30 @@ Future responsibilities:
 
 ### GPU Culling And Indirect
 
-Future files should start in `MK_rhi` and `MK_renderer`:
+The first value-only implementation files live in `MK_renderer`:
+
+- `engine/renderer/include/mirakana/renderer/mavg_gpu_culling.hpp`
+- `engine/renderer/src/mavg_gpu_culling.cpp`
+
+Implemented responsibilities:
+
+- Expose `MavgGpuCullingClusterBoundsRow`, `MavgGpuCullingIndirectCommand`, `MavgGpuCullingIndirectCommandLayout`, `MavgGpuCullingSyncRequirement`, `MavgGpuCullingIndirectDesc`, `MavgGpuCullingIndirectPlan`, and `plan_mavg_gpu_culling_indirect_commands`.
+- Convert successful `MavgLodSelectionResult` rows plus reviewed culling bounds into deterministic packed indexed indirect command rows using the current conventional `draw_indexed` field order.
+- Record 20-byte five-field argument layout, 4-byte count-buffer size/value, selected/visible/culled counters, fallback-substitution provenance, and fail-closed diagnostics.
+- Return D3D12 and Vulkan compute-write-to-indirect-read synchronization requirement rows when the command producer is `compute_shader`.
+- Keep `executed_gpu_culling`, `executed_indirect_draw`, `executed_mesh_shader`, and `touched_native_handles` false.
+
+Future files should start in `MK_rhi`, `MK_renderer`, and backend-local implementations:
 
 - `engine/rhi/include/mirakana/rhi/indirect_draw.hpp`
-- `engine/renderer/include/mirakana/renderer/mavg_gpu_culling.hpp`
 - backend-local implementation files under `engine/rhi/d3d12` and `engine/rhi/vulkan`.
 
-Responsibilities:
+Future responsibilities:
 
-- Backend-neutral indirect command rows.
-- Compute culling buffer contracts.
-- D3D12 and Vulkan synchronization evidence.
-- Null RHI deterministic counters.
+- Actual compute culling dispatch and command/count buffer writes.
+- D3D12 command signatures, resource state transitions, and `ExecuteIndirect`.
+- Vulkan indirect draw/count execution, usage flags, feature gates, and synchronization commands.
+- Null RHI deterministic execution counters.
 
 ### Mesh Shader Backends
 
