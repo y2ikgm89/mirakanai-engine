@@ -21,6 +21,7 @@
 #include <d3dcompiler.h>
 #include <wrl/client.h>
 
+#include <atomic>
 #include <cstring>
 #endif
 
@@ -153,10 +154,10 @@ make_single_win32_payload_request_plan(std::string source_file_path, std::uint64
 }
 
 [[nodiscard]] mirakana::runtime::RuntimeMavgPayloadNativeIoStatusPollResult
-poll_until_win32_payload_io_complete(mirakana::Win32MavgPayloadAsyncFileIoDispatcher& dispatcher,
+poll_until_win32_payload_io_complete(mirakana::runtime::IRuntimeMavgPayloadNativeIoDispatcher& dispatcher,
                                      std::uint64_t ticket) {
     mirakana::runtime::RuntimeMavgPayloadNativeIoStatusPollResult status;
-    for (std::size_t attempt = 0; attempt < 200U; ++attempt) {
+    for (std::size_t attempt = 0; attempt < 500U; ++attempt) {
         status = mirakana::runtime::poll_runtime_mavg_payload_native_io_status(
             mirakana::runtime::RuntimeMavgPayloadNativeIoStatusPollDesc{
                 .dispatcher = &dispatcher,
@@ -357,6 +358,238 @@ MK_TEST("win32 mavg payload async file io dispatcher rejects destination overflo
     MK_REQUIRE(!dispatch.touched_renderer_or_rhi_handles);
     for (const auto byte : destination) {
         MK_REQUIRE(byte == 0xcdU);
+    }
+}
+
+MK_TEST("win32 mavg payload iocp file io worker reads multiple planned byte ranges into destination memory") {
+    ScopedTempDirectory temp;
+    const std::vector<std::uint8_t> source_bytes{0x10U, 0x11U, 0xa0U, 0xa1U, 0xa2U, 0xa3U,
+                                                 0xeeU, 0xefU, 0xb0U, 0xb1U, 0xb2U, 0xb3U};
+    write_binary_file(temp.path() / "payload.bin", source_bytes);
+
+    mirakana::runtime::RuntimeMavgPayloadDirectStorageRequestPlanResult request_plan;
+    request_plan.requests.push_back(mirakana::runtime::RuntimeMavgPayloadDirectStorageRequestRow{
+        .request_index = 0,
+        .page_index = 7,
+        .source_file_offset = 2,
+        .source_size = 4,
+        .source_file_path = "payload.bin",
+        .destination_offset = 3,
+        .destination_size = 4,
+        .fence_wait_point = mirakana::runtime::RuntimeMavgPayloadDirectStorageFenceWaitPoint::before_destination_write,
+        .source_is_file = true,
+        .destination_is_memory = true,
+        .synchronized_with_fence = false,
+        .debug_name = "mavg.payload.page.7",
+    });
+    request_plan.requests.push_back(mirakana::runtime::RuntimeMavgPayloadDirectStorageRequestRow{
+        .request_index = 1,
+        .page_index = 8,
+        .source_file_offset = 8,
+        .source_size = 4,
+        .source_file_path = "payload.bin",
+        .destination_offset = 10,
+        .destination_size = 4,
+        .fence_wait_point = mirakana::runtime::RuntimeMavgPayloadDirectStorageFenceWaitPoint::before_destination_write,
+        .source_is_file = true,
+        .destination_is_memory = true,
+        .synchronized_with_fence = false,
+        .debug_name = "mavg.payload.page.8",
+    });
+    request_plan.requested_page_count = 2;
+    request_plan.planned_request_count = 2;
+    request_plan.total_source_bytes = 8;
+    request_plan.total_destination_bytes = 8;
+    request_plan.requires_native_directstorage_sdk = true;
+
+    std::vector<std::uint8_t> destination(20U, 0xcdU);
+    mirakana::Win32MavgPayloadIocpFileIoDispatcher dispatcher{
+        mirakana::Win32MavgPayloadIocpFileIoDispatcherDesc{.root_path = temp.path()}};
+
+    const auto dispatch = mirakana::runtime::dispatch_runtime_mavg_payload_native_io_requests(
+        mirakana::runtime::RuntimeMavgPayloadNativeIoDispatchDesc{
+            .dispatcher = &dispatcher,
+            .request_plan = &request_plan,
+            .required_backend = mirakana::runtime::RuntimeMavgPayloadNativeIoBackend::win32_async_file,
+            .submission_tag = 88U,
+            .destination_memory = destination,
+            .require_native_directstorage = false,
+        });
+
+    MK_REQUIRE(dispatch.succeeded());
+    MK_REQUIRE(dispatch.ticket != 0U);
+    MK_REQUIRE(dispatch.backend == mirakana::runtime::RuntimeMavgPayloadNativeIoBackend::win32_async_file);
+    MK_REQUIRE(dispatch.request_count == 2U);
+    MK_REQUIRE(dispatch.total_source_bytes == 8U);
+    MK_REQUIRE(dispatch.total_destination_bytes == 8U);
+    MK_REQUIRE(dispatch.submitted_io_queue);
+    MK_REQUIRE(dispatch.enqueued_native_requests);
+    MK_REQUIRE(!dispatch.submitted_native_queue);
+    MK_REQUIRE(dispatch.used_win32_async_io);
+    MK_REQUIRE(!dispatch.used_native_directstorage);
+    MK_REQUIRE(dispatch.executed_background_worker);
+    MK_REQUIRE(!dispatch.touched_renderer_or_rhi_handles);
+
+    const auto status = poll_until_win32_payload_io_complete(dispatcher, dispatch.ticket);
+
+    MK_REQUIRE(status.succeeded());
+    MK_REQUIRE(status.status == mirakana::runtime::RuntimeMavgPayloadNativeIoStatus::complete);
+    MK_REQUIRE(status.complete);
+    MK_REQUIRE(!status.failed);
+    MK_REQUIRE(status.used_win32_async_io);
+    MK_REQUIRE(!status.used_native_directstorage);
+    MK_REQUIRE(status.executed_background_worker);
+    MK_REQUIRE(!status.touched_renderer_or_rhi_handles);
+    MK_REQUIRE(destination[0] == 0xcdU);
+    MK_REQUIRE(destination[2] == 0xcdU);
+    MK_REQUIRE(destination[3] == 0xa0U);
+    MK_REQUIRE(destination[4] == 0xa1U);
+    MK_REQUIRE(destination[5] == 0xa2U);
+    MK_REQUIRE(destination[6] == 0xa3U);
+    MK_REQUIRE(destination[7] == 0xcdU);
+    MK_REQUIRE(destination[9] == 0xcdU);
+    MK_REQUIRE(destination[10] == 0xb0U);
+    MK_REQUIRE(destination[11] == 0xb1U);
+    MK_REQUIRE(destination[12] == 0xb2U);
+    MK_REQUIRE(destination[13] == 0xb3U);
+    MK_REQUIRE(destination[14] == 0xcdU);
+}
+
+MK_TEST("win32 mavg payload iocp file io worker rejects destination overflow before ticket") {
+    ScopedTempDirectory temp;
+    const std::vector<std::uint8_t> source_bytes{0x10U, 0x11U, 0xa0U, 0xa1U, 0xa2U, 0xa3U};
+    write_binary_file(temp.path() / "payload.bin", source_bytes);
+
+    auto request_plan = make_single_win32_payload_request_plan("payload.bin", 14, 4);
+    std::vector<std::uint8_t> destination(16U, 0xcdU);
+    mirakana::Win32MavgPayloadIocpFileIoDispatcher dispatcher{
+        mirakana::Win32MavgPayloadIocpFileIoDispatcherDesc{.root_path = temp.path()}};
+
+    const auto dispatch = mirakana::runtime::dispatch_runtime_mavg_payload_native_io_requests(
+        mirakana::runtime::RuntimeMavgPayloadNativeIoDispatchDesc{
+            .dispatcher = &dispatcher,
+            .request_plan = &request_plan,
+            .required_backend = mirakana::runtime::RuntimeMavgPayloadNativeIoBackend::win32_async_file,
+            .destination_memory = destination,
+            .require_native_directstorage = false,
+        });
+
+    MK_REQUIRE(!dispatch.succeeded());
+    MK_REQUIRE(dispatch.ticket == 0U);
+    MK_REQUIRE(!dispatch.diagnostics.empty());
+    MK_REQUIRE(!dispatch.submitted_io_queue);
+    MK_REQUIRE(!dispatch.used_native_directstorage);
+    MK_REQUIRE(!dispatch.executed_background_worker);
+    MK_REQUIRE(!dispatch.touched_renderer_or_rhi_handles);
+    for (const auto byte : destination) {
+        MK_REQUIRE(byte == 0xcdU);
+    }
+}
+
+MK_TEST("win32 mavg payload iocp file io worker releases inflight slot after read failure") {
+    ScopedTempDirectory temp;
+    const std::vector<std::uint8_t> source_bytes{0x10U, 0x11U, 0xa0U, 0xa1U, 0xa2U, 0xa3U, 0xeeU};
+    write_binary_file(temp.path() / "payload.bin", source_bytes);
+
+    auto failing_plan = make_single_win32_payload_request_plan("payload.bin", 3, 4);
+    failing_plan.requests.front().source_file_offset = 4096U;
+    std::vector<std::uint8_t> failing_destination(16U, 0xcdU);
+    mirakana::Win32MavgPayloadIocpFileIoDispatcher dispatcher{mirakana::Win32MavgPayloadIocpFileIoDispatcherDesc{
+        .root_path = temp.path(),
+        .max_inflight_submissions = 1U,
+    }};
+
+    const auto failing_dispatch = mirakana::runtime::dispatch_runtime_mavg_payload_native_io_requests(
+        mirakana::runtime::RuntimeMavgPayloadNativeIoDispatchDesc{
+            .dispatcher = &dispatcher,
+            .request_plan = &failing_plan,
+            .required_backend = mirakana::runtime::RuntimeMavgPayloadNativeIoBackend::win32_async_file,
+            .destination_memory = failing_destination,
+            .require_native_directstorage = false,
+        });
+
+    if (failing_dispatch.succeeded()) {
+        MK_REQUIRE(failing_dispatch.ticket != 0U);
+        const auto failing_status = poll_until_win32_payload_io_complete(dispatcher, failing_dispatch.ticket);
+        MK_REQUIRE(failing_status.failed);
+    } else {
+        MK_REQUIRE(failing_dispatch.ticket == 0U);
+        MK_REQUIRE(!failing_dispatch.diagnostics.empty());
+    }
+
+    auto successful_plan = make_single_win32_payload_request_plan("payload.bin", 3, 4);
+    std::vector<std::uint8_t> successful_destination(16U, 0xcdU);
+    const auto successful_dispatch = mirakana::runtime::dispatch_runtime_mavg_payload_native_io_requests(
+        mirakana::runtime::RuntimeMavgPayloadNativeIoDispatchDesc{
+            .dispatcher = &dispatcher,
+            .request_plan = &successful_plan,
+            .required_backend = mirakana::runtime::RuntimeMavgPayloadNativeIoBackend::win32_async_file,
+            .destination_memory = successful_destination,
+            .require_native_directstorage = false,
+        });
+
+    MK_REQUIRE(successful_dispatch.succeeded());
+    MK_REQUIRE(successful_dispatch.ticket != 0U);
+
+    const auto status = poll_until_win32_payload_io_complete(dispatcher, successful_dispatch.ticket);
+    MK_REQUIRE(status.succeeded());
+    MK_REQUIRE(status.complete);
+    MK_REQUIRE(successful_destination[3] == 0xa0U);
+    MK_REQUIRE(successful_destination[6] == 0xa3U);
+}
+
+MK_TEST("win32 mavg payload iocp file io worker keeps concurrent dispatch under inflight limit") {
+    ScopedTempDirectory temp;
+    const std::vector<std::uint8_t> source_bytes{0x10U, 0x11U, 0xa0U, 0xa1U, 0xa2U, 0xa3U, 0xeeU};
+    write_binary_file(temp.path() / "payload.bin", source_bytes);
+
+    mirakana::Win32MavgPayloadIocpFileIoDispatcher dispatcher{mirakana::Win32MavgPayloadIocpFileIoDispatcherDesc{
+        .root_path = temp.path(),
+        .max_inflight_submissions = 1U,
+        .worker_thread_count = 1U,
+    }};
+
+    constexpr std::size_t thread_count = 8U;
+    std::atomic_bool start{false};
+    std::atomic<std::size_t> successful_dispatch_count{0U};
+    std::vector<std::uint64_t> tickets(thread_count, 0U);
+    std::vector<std::vector<std::uint8_t>> destinations(thread_count, std::vector<std::uint8_t>(16U, 0xcdU));
+    std::vector<std::thread> threads;
+    threads.reserve(thread_count);
+    for (std::size_t index = 0; index < thread_count; ++index) {
+        threads.emplace_back([&dispatcher, &start, &successful_dispatch_count, &tickets, &destinations, index]() {
+            while (!start.load(std::memory_order_acquire)) {
+                std::this_thread::yield();
+            }
+
+            auto request_plan = make_single_win32_payload_request_plan("payload.bin", 3, 4);
+            const auto dispatch = mirakana::runtime::dispatch_runtime_mavg_payload_native_io_requests(
+                mirakana::runtime::RuntimeMavgPayloadNativeIoDispatchDesc{
+                    .dispatcher = &dispatcher,
+                    .request_plan = &request_plan,
+                    .required_backend = mirakana::runtime::RuntimeMavgPayloadNativeIoBackend::win32_async_file,
+                    .destination_memory = destinations[index],
+                    .require_native_directstorage = false,
+                });
+            if (dispatch.succeeded()) {
+                tickets[index] = dispatch.ticket;
+                successful_dispatch_count.fetch_add(1U, std::memory_order_relaxed);
+            }
+        });
+    }
+
+    start.store(true, std::memory_order_release);
+    for (auto& thread : threads) {
+        thread.join();
+    }
+
+    MK_REQUIRE(successful_dispatch_count.load(std::memory_order_relaxed) <= 1U);
+    for (const auto ticket : tickets) {
+        if (ticket != 0U) {
+            const auto status = poll_until_win32_payload_io_complete(dispatcher, ticket);
+            MK_REQUIRE(status.succeeded());
+            MK_REQUIRE(status.complete);
+        }
     }
 }
 

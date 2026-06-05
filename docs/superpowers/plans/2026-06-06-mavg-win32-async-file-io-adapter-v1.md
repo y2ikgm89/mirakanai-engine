@@ -4,7 +4,7 @@
 
 **Plan ID:** `mavg-win32-async-file-io-adapter-v1`
 
-**Status:** Active.
+**Status:** Completed/published as draft PR #463; retained by active `mavg-win32-iocp-file-io-worker-v1`.
 
 Focused child over `mavg-runtime-lod-milestone-v1`, stacked after draft PR #462 (`mavg-native-directstorage-win32-async-io-dispatch-status-v1`).
 

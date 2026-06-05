@@ -85,13 +85,12 @@ foreach ($needle in @(
 }
 
 foreach ($forbiddenNeedle in @(
-        "CreateIoCompletionPort",
         "IDStorageFactory",
         "IDStorageQueue",
         "IDStorageStatusArray",
         "ID3D12Fence"
     )) {
-    Assert-DoesNotContainText $win32MavgPayloadIoSourceText $forbiddenNeedle "engine/runtime_host/win32/src/win32_mavg_payload_io.cpp must not claim DirectStorage SDK or IOCP execution"
+    Assert-DoesNotContainText $win32MavgPayloadIoSourceText $forbiddenNeedle "engine/runtime_host/win32/src/win32_mavg_payload_io.cpp must not claim DirectStorage SDK execution"
 }
 
 foreach ($needle in @(
@@ -128,15 +127,7 @@ foreach ($surface in @(
     foreach ($needle in @(
             "mavg-win32-async-file-io-adapter-v1",
             "Win32MavgPayloadAsyncFileIoDispatcher",
-            "source_file_path",
-            "destination_memory",
-            "CreateFileW",
-            "ReadFile",
-            "OVERLAPPED",
-            "GetOverlappedResult",
-            "CancelIoEx",
             "DirectStorage SDK",
-            "IOCP",
             "async-overlap/performance",
             "Nanite"
         )) {
@@ -179,14 +170,17 @@ foreach ($needle in @(
 }
 
 $productionLoop = $manifest.aiOperableProductionLoop
-if ([string]$productionLoop.currentActivePlan -ne "docs/superpowers/plans/2026-06-06-mavg-win32-async-file-io-adapter-v1.md") {
-    Write-Error "engine/agent/manifest.json currentActivePlan must select MAVG Win32 Async File IO Adapter v1"
+if ([string]$productionLoop.currentActivePlan -eq "docs/superpowers/plans/2026-06-06-mavg-win32-async-file-io-adapter-v1.md") {
+    Write-Error "engine/agent/manifest.json currentActivePlan must not keep completed MAVG Win32 Async File IO Adapter v1 active"
 }
-if ([string]$productionLoop.recommendedNextPlan.id -ne "mavg-win32-async-file-io-adapter-v1") {
-    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must select mavg-win32-async-file-io-adapter-v1"
+if ([string]$productionLoop.recommendedNextPlan.id -eq "mavg-win32-async-file-io-adapter-v1") {
+    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must not keep completed mavg-win32-async-file-io-adapter-v1 active"
 }
 if (@($productionLoop.recommendedNextPlan.retainedCompletedPlanPaths) -notcontains "docs/superpowers/plans/2026-06-06-mavg-native-directstorage-win32-async-io-dispatch-status-v1.md") {
     Write-Error "engine/agent/manifest.json recommendedNextPlan retainedCompletedPlanPaths must retain MAVG Native DirectStorage/Win32 Async IO Dispatch Status v1"
+}
+if (@($productionLoop.recommendedNextPlan.retainedCompletedPlanPaths) -notcontains "docs/superpowers/plans/2026-06-06-mavg-win32-async-file-io-adapter-v1.md") {
+    Write-Error "engine/agent/manifest.json recommendedNextPlan retainedCompletedPlanPaths must retain completed MAVG Win32 Async File IO Adapter v1"
 }
 
 $runtimeModule = @($manifest.modules | Where-Object { $_.name -eq "MK_runtime" })

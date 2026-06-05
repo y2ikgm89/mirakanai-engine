@@ -40,4 +40,33 @@ class Win32MavgPayloadAsyncFileIoDispatcher final : public runtime::IRuntimeMavg
     std::unique_ptr<Impl> impl_;
 };
 
+struct Win32MavgPayloadIocpFileIoDispatcherDesc {
+    std::filesystem::path root_path;
+    std::size_t max_inflight_submissions{64};
+    std::size_t worker_thread_count{1};
+};
+
+class Win32MavgPayloadIocpFileIoDispatcher final : public runtime::IRuntimeMavgPayloadNativeIoDispatcher {
+  public:
+    explicit Win32MavgPayloadIocpFileIoDispatcher(Win32MavgPayloadIocpFileIoDispatcherDesc desc);
+    ~Win32MavgPayloadIocpFileIoDispatcher() override;
+
+    Win32MavgPayloadIocpFileIoDispatcher(const Win32MavgPayloadIocpFileIoDispatcher&) = delete;
+    Win32MavgPayloadIocpFileIoDispatcher& operator=(const Win32MavgPayloadIocpFileIoDispatcher&) = delete;
+    Win32MavgPayloadIocpFileIoDispatcher(Win32MavgPayloadIocpFileIoDispatcher&&) noexcept;
+    Win32MavgPayloadIocpFileIoDispatcher& operator=(Win32MavgPayloadIocpFileIoDispatcher&&) noexcept;
+
+    [[nodiscard]] runtime::RuntimeMavgPayloadNativeIoBackend backend() const noexcept override;
+
+    [[nodiscard]] runtime::RuntimeMavgPayloadNativeIoDispatchBackendResult
+    dispatch(std::span<const runtime::RuntimeMavgPayloadDirectStorageRequestRow> requests,
+             const runtime::RuntimeMavgPayloadNativeIoDispatchBackendDesc& desc) override;
+
+    [[nodiscard]] runtime::RuntimeMavgPayloadNativeIoStatusBackendResult poll_status(std::uint64_t ticket) override;
+
+  private:
+    struct Impl;
+    std::unique_ptr<Impl> impl_;
+};
+
 } // namespace mirakana
