@@ -29,13 +29,25 @@ namespace {
         .triangles =
             {
                 mirakana::MavgClusterCookTriangle{
-                    .bounds = mirakana::MavgBounds3f{.min = {0.0F, 0.0F, 0.0F}, .max = {1.0F, 1.0F, 1.0F}},
+                    .bounds =
+                        mirakana::MavgBounds3f{
+                            .min = {.x = 0.0F, .y = 0.0F, .z = 0.0F},
+                            .max = {.x = 1.0F, .y = 1.0F, .z = 1.0F},
+                        },
                 },
                 mirakana::MavgClusterCookTriangle{
-                    .bounds = mirakana::MavgBounds3f{.min = {1.0F, 0.0F, 0.0F}, .max = {2.0F, 1.0F, 1.0F}},
+                    .bounds =
+                        mirakana::MavgBounds3f{
+                            .min = {.x = 1.0F, .y = 0.0F, .z = 0.0F},
+                            .max = {.x = 2.0F, .y = 1.0F, .z = 1.0F},
+                        },
                 },
                 mirakana::MavgClusterCookTriangle{
-                    .bounds = mirakana::MavgBounds3f{.min = {2.0F, 0.0F, 0.0F}, .max = {3.0F, 1.0F, 1.0F}},
+                    .bounds =
+                        mirakana::MavgBounds3f{
+                            .min = {.x = 2.0F, .y = 0.0F, .z = 0.0F},
+                            .max = {.x = 3.0F, .y = 1.0F, .z = 1.0F},
+                        },
                 },
             },
         .material_partitions =
@@ -87,7 +99,17 @@ MK_TEST("mavg cluster cook planner produces deterministic graph payload and pack
     MK_REQUIRE(result.graph.clusters.size() == 2U);
     MK_REQUIRE(result.graph.pages.size() == 1U);
     MK_REQUIRE(result.graph.material_partitions.size() == 2U);
+    MK_REQUIRE(result.graph.clusters[0].resident_fallback_cluster_index == 0U);
+    MK_REQUIRE(result.graph.clusters[0].first_index == 0U);
+    MK_REQUIRE(result.graph.clusters[0].index_count == 6U);
+    MK_REQUIRE(result.graph.clusters[0].vertex_base == 0);
+    MK_REQUIRE(result.graph.clusters[1].resident_fallback_cluster_index == 1U);
+    MK_REQUIRE(result.graph.clusters[1].first_index == 6U);
+    MK_REQUIRE(result.graph.clusters[1].index_count == 3U);
+    MK_REQUIRE(result.graph.clusters[1].vertex_base == 6);
     MK_REQUIRE(result.graph_content.find("format=GameEngine.MavgClusterGraph.v1\n") != std::string::npos);
+    MK_REQUIRE(result.graph_content.find("cluster.0.resident_fallback=0\n") != std::string::npos);
+    MK_REQUIRE(result.graph_content.find("cluster.1.resident_fallback=1\n") != std::string::npos);
     MK_REQUIRE(result.payload_content.find("format=GameEngine.MavgClusterPayload.v1\n") != std::string::npos);
     MK_REQUIRE(result.package_index_content.find("mavg_cluster_graph") != std::string::npos);
     MK_REQUIRE(result.changed_files.size() == 3U);

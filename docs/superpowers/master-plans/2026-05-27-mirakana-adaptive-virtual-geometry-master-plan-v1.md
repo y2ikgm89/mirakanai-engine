@@ -37,8 +37,8 @@ This addendum is the current execution baseline for any future MAVG child plan.
 
 Repository state checked during this audit:
 
-- `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` now selects the first implementation child, `docs/superpowers/plans/2026-06-05-mavg-asset-graph-v1.md`, with `recommendedNextPlan.id = mavg-asset-graph-v1` and `unsupportedProductionGaps = []`.
-- MAVG remains a long-range roadmap. The active child is limited to deterministic asset graph and cook/package planning; runtime selection, renderer execution, streaming, deformation, ray tracing, and benchmark superiority remain unimplemented and unclaimed.
+- `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` now selects the stacked LoD milestone, `docs/superpowers/plans/2026-06-05-mavg-runtime-lod-milestone-v1.md`, with `recommendedNextPlan.id = mavg-runtime-lod-milestone-v1` and `unsupportedProductionGaps = []`.
+- MAVG remains a long-range roadmap. The active milestone has implemented only the hierarchy/error/fallback/draw-range graph checkpoint so far; cook payload rows, CPU selection, renderer execution, streaming, deformation, ray tracing, and benchmark superiority remain unimplemented and unclaimed.
 - SDL3 is not an active dependency or supported runtime/editor/audio path. The completed first-party desktop platform milestone replaced SDL3 surfaces with `MK_platform_win32`, `MK_runtime_host_win32`, `MK_runtime_host_win32_presentation`, and `MK_audio_wasapi`.
 - The active visible editor shell is first-party retained UI over private Win32, Direct3D 12, DirectWrite, TSF, and UIA adapters. Dear ImGui, SDL3, Qt, Slint, RmlUi, and UI middleware must not be reintroduced for MAVG tools or benchmark UI.
 - `MK_environment` is now a renderer and scene-renderer dependency. MAVG benchmark scenes must account for selected sky, fog, cloud, rain, time-of-day, and weather-blending evidence without implying broad `environment_ready`, snow package readiness, volumetric-cloud package readiness, Vulkan/Metal parity, or broad environment optimization.

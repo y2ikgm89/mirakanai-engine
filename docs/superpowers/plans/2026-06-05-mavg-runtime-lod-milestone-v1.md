@@ -4,7 +4,9 @@
 
 **Plan ID:** `mavg-runtime-lod-milestone-v1`
 
-**Status:** Planned next milestone. Do not select as `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` until `mavg-asset-graph-v1` is reviewed, merged, or explicitly superseded.
+**Status:** Active.
+
+**Execution State:** Active milestone in the stacked `mavg-runtime-lod-graph-v1` implementation branch after explicit LoD supersession. `mavg-asset-graph-v1` remains the prerequisite foundation branch; this milestone must stay reviewable as a follow-on PR and must not claim full runtime LoD until all tasks and validation gates below are complete.
 
 **Goal:** Implement the first visible static MAVG LOD path: deterministic hierarchy/error/fallback graph rows, deterministic CPU LOD selection, package-resident page awareness, conventional indexed draw-range support, and conventional renderer submission without GPU culling, mesh shaders, streaming IO execution, deformation, ray tracing, or Nanite-equivalence claims.
 
@@ -21,7 +23,7 @@
 - `engine/assets/include/mirakana/assets/mavg_cluster_graph.hpp` exposes `MavgClusterGraphDocument`, `MavgClusterGraphCluster::lod_level`, page rows, material partitions, child ids, validation, canonicalization, text serialization, and text deserialization.
 - `engine/tools/include/mirakana/tools/mavg_cluster_cook.hpp` exposes `MavgClusterCookRequest`, `plan_mavg_cluster_graph_cook_package`, and `apply_mavg_cluster_graph_cook_package`.
 - The cook request currently receives triangle bounds only through `MavgClusterCookTriangle`; it does not carry draw-ready vertex/index payloads.
-- The graph does not yet encode parent ids, geometric error, screen-space error thresholds, resident fallback ancestors, cluster draw ranges, or payload vertex/index byte ranges.
+- This milestone's first implementation checkpoint now adds graph parent ids, geometric error, resident fallback ancestors, and cluster draw ranges to `MavgClusterGraphCluster`. Screen-space selection thresholds, payload vertex/index byte ranges, runtime selection, renderer submission, and package streaming execution remain future tasks in this same milestone.
 - `MK_runtime` already has resident package mount sets, resident catalog caches, byte/record budget checks, selected safe-point package streaming, and reviewed eviction-assisted commit helpers.
 - `MK_renderer` already has `MeshCommand`, `MeshGpuBinding`, `RendererStats`, `NullRenderer`, frame graph/RHI policies, GPU memory policy rows, and renderer quality evidence surfaces.
 - `MeshCommand` and `rhi::IRhiCommandList::draw_indexed` do not yet expose a selected index range, so a visible conventional MAVG LOD path must add range-aware indexed draw support before scene submission can draw only selected clusters.
@@ -324,24 +326,24 @@ virtual void draw_indexed(std::uint32_t index_count, std::uint32_t instance_coun
 - Modify: `tests/unit/mavg_cluster_graph_tests.cpp`
 - Modify: `CMakeLists.txt`
 
-- [ ] Add failing tests for:
+- [x] Add failing tests for:
   - valid parent/child hierarchy with one root and two child clusters
   - parent cycle rejection
   - parent geometric error smaller than child rejection
   - missing resident fallback rejection
   - fallback cluster that is not an ancestor rejection
   - invalid zero `index_count` rejection for drawable clusters
-  - invalid draw range exceeding payload index count rejection
+  - invalid draw range exceeding graph-local triangle-count/uint32 bounds invariants; payload byte-length rejection is deferred to Task 3/4 when payload rows exist
   - serialization round trip preserves `parent_cluster_index`, `has_parent`, `resident_fallback_cluster_index`, `geometric_error`, `first_index`, `index_count`, and `vertex_base`
 
-- [ ] Run:
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_mavg_cluster_graph_tests
 ```
 
-Expected: fail before production fields and validators exist.
+Evidence: baseline passed before RED; RED failed because `MavgClusterGraphCluster` fields and hierarchy diagnostics were missing.
 
 ### Task 2: Implement Graph Hierarchy/Error/Fallback Contract
 
@@ -351,8 +353,8 @@ Expected: fail before production fields and validators exist.
 - Modify: `engine/assets/src/mavg_cluster_graph.cpp`
 - Modify: `tests/unit/mavg_cluster_graph_tests.cpp`
 
-- [ ] Add the clean-break fields shown in **Public API Contract**.
-- [ ] Add diagnostics:
+- [x] Add the clean-break fields shown in **Public API Contract**.
+- [x] Add diagnostics:
   - `missing_root_cluster`
   - `missing_parent_cluster`
   - `parent_cycle`
@@ -361,17 +363,17 @@ Expected: fail before production fields and validators exist.
   - `fallback_not_ancestor`
   - `invalid_cluster_draw_range`
   - `invalid_cluster_geometric_error`
-- [ ] Canonicalize by page, material partition, cluster id, then sorted children.
-- [ ] Serialize the expanded rows under `GameEngine.MavgClusterGraph.v1`; do not add a compatibility reader for old rows.
-- [ ] Deserialize only the expanded row grammar.
-- [ ] Run:
+- [x] Canonicalize by page, material partition, cluster id, then sorted children.
+- [x] Serialize the expanded rows under `GameEngine.MavgClusterGraph.v1`; do not add a compatibility reader for old rows.
+- [x] Deserialize only the expanded row grammar.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_mavg_cluster_graph_tests
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_mavg_cluster_graph_tests
 ```
 
-Expected: `MK_mavg_cluster_graph_tests` passes.
+Evidence: `MK_mavg_cluster_graph_tests` passes after implementation. Additional focused checks passed: `tools/check-format.ps1`, `tools/check-public-api-boundaries.ps1`, and `tools/check-tidy.ps1 -Files engine/assets/src/mavg_cluster_graph.cpp,tests/unit/mavg_cluster_graph_tests.cpp -ReuseExistingFileApiReply`.
 
 ### Task 3: Expand Cook Tests For Draw-Ready Static Payloads
 

@@ -4,9 +4,9 @@
 
 **Plan ID:** `mavg-asset-graph-v1`
 
-**Status:** Active.
+**Status:** Stacked prerequisite.
 
-**Execution State:** Implementation, docs, manifest, static contract sync, focused validation, full validation, whitespace validation, publication preflight, commit, push, and existing PR update are complete. Hosted review and merge remain pending.
+**Execution State:** Implementation, docs, manifest, static contract sync, focused validation, full validation, whitespace validation, publication preflight, commit, push, and existing PR update are complete. Hosted review and merge remain pending; the stacked LoD follow-on branch now owns `currentActivePlan`.
 
 **Goal:** Implement the first MAVG code slice: deterministic clustered asset graph validation and deterministic first-party cook/package planning, without renderer, streaming, deformation, ray tracing, or benchmark superiority claims.
 
