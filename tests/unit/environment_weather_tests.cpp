@@ -162,7 +162,7 @@ MK_TEST("environment weather planning emits snow package rows without wetness or
     MK_REQUIRE(plan.particle_rows.size() == 1);
     MK_REQUIRE(plan.particle_rows[0].kind == mirakana::EnvironmentPrecipitationKind::snow);
     MK_REQUIRE(plan.wetness_rows.empty());
-    MK_REQUIRE(plan.audio_handoff_rows.size() >= 1);
+    MK_REQUIRE(!plan.audio_handoff_rows.empty());
     MK_REQUIRE(mirakana::has_environment_precipitation_audio_cue(
         plan, mirakana::EnvironmentPrecipitationAudioCueKind::snow_loop));
     MK_REQUIRE(!plan.invokes_backend);

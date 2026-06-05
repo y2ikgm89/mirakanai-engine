@@ -110,7 +110,7 @@ MK_TEST("renderer precipitation policy keeps snow package evidence value-only wi
     MK_REQUIRE(plan.shader_rows[0].uses_camera_near_particles);
     MK_REQUIRE(plan.shader_rows[0].uses_scene_depth_occlusion);
     MK_REQUIRE(plan.wetness_rows.empty());
-    MK_REQUIRE(plan.audio_handoff_rows.size() >= 1);
+    MK_REQUIRE(!plan.audio_handoff_rows.empty());
     MK_REQUIRE(!plan.uploads_particle_buffers);
     MK_REQUIRE(!plan.invokes_backend);
     MK_REQUIRE(!plan.exposes_native_handles);
