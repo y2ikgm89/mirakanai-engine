@@ -33,6 +33,20 @@ constexpr std::string_view mavg_cluster_graph_format = "GameEngine.MavgClusterGr
            bounds.min.x <= bounds.max.x && bounds.min.y <= bounds.max.y && bounds.min.z <= bounds.max.z;
 }
 
+[[nodiscard]] bool valid_geometric_error(float geometric_error) noexcept {
+    return std::isfinite(geometric_error) && geometric_error >= 0.0F;
+}
+
+[[nodiscard]] bool valid_cluster_draw_range(const MavgClusterGraphCluster& cluster) noexcept {
+    if (cluster.index_count == 0U ||
+        cluster.first_index > std::numeric_limits<std::uint32_t>::max() - cluster.index_count) {
+        return false;
+    }
+    const auto expected_index_count = static_cast<std::uint64_t>(cluster.triangle_count) * 3ULL;
+    return expected_index_count <= std::numeric_limits<std::uint32_t>::max() &&
+           cluster.index_count == static_cast<std::uint32_t>(expected_index_count);
+}
+
 void add_diagnostic(std::vector<MavgClusterGraphDiagnostic>& diagnostics, MavgClusterGraphDiagnosticCode code,
                     AssetId asset, std::string field, std::string message) {
     diagnostics.push_back(MavgClusterGraphDiagnostic{
@@ -48,6 +62,15 @@ cluster_index_set(const std::vector<MavgClusterGraphCluster>& clusters) {
     std::unordered_set<std::uint32_t> result;
     for (const auto& cluster : clusters) {
         result.insert(cluster.cluster_index);
+    }
+    return result;
+}
+
+[[nodiscard]] std::unordered_map<std::uint32_t, const MavgClusterGraphCluster*>
+cluster_pointer_map(const std::vector<MavgClusterGraphCluster>& clusters) {
+    std::unordered_map<std::uint32_t, const MavgClusterGraphCluster*> result;
+    for (const auto& cluster : clusters) {
+        result.emplace(cluster.cluster_index, &cluster);
     }
     return result;
 }
@@ -96,6 +119,49 @@ page_map(const std::vector<MavgClusterGraphPage>& pages) {
     return false;
 }
 
+[[nodiscard]] bool
+cluster_has_parent_cycle(const MavgClusterGraphCluster& cluster,
+                         const std::unordered_map<std::uint32_t, const MavgClusterGraphCluster*>& clusters_by_index) {
+    std::unordered_set<std::uint32_t> visited;
+    const auto* current = &cluster;
+    while (current->has_parent) {
+        if (!visited.insert(current->cluster_index).second) {
+            return true;
+        }
+        const auto parent = clusters_by_index.find(current->parent_cluster_index);
+        if (parent == clusters_by_index.end()) {
+            return false;
+        }
+        current = parent->second;
+    }
+    return false;
+}
+
+[[nodiscard]] bool fallback_is_ancestor_or_root_self(
+    const MavgClusterGraphCluster& cluster, std::uint32_t fallback_cluster_index,
+    const std::unordered_map<std::uint32_t, const MavgClusterGraphCluster*>& clusters_by_index) {
+    if (fallback_cluster_index == cluster.cluster_index) {
+        return !cluster.has_parent;
+    }
+
+    std::unordered_set<std::uint32_t> visited;
+    const auto* current = &cluster;
+    while (current->has_parent) {
+        if (!visited.insert(current->cluster_index).second) {
+            return false;
+        }
+        if (current->parent_cluster_index == fallback_cluster_index) {
+            return true;
+        }
+        const auto parent = clusters_by_index.find(current->parent_cluster_index);
+        if (parent == clusters_by_index.end()) {
+            return false;
+        }
+        current = parent->second;
+    }
+    return false;
+}
+
 [[nodiscard]] std::uint64_t parse_u64(std::string_view value, std::string_view context) {
     std::uint64_t parsed = 0;
     const auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), parsed);
@@ -111,6 +177,25 @@ page_map(const std::vector<MavgClusterGraphPage>& pages) {
         throw std::invalid_argument(std::string(context) + " is out of range");
     }
     return static_cast<std::uint32_t>(parsed);
+}
+
+[[nodiscard]] std::int32_t parse_i32(std::string_view value, std::string_view context) {
+    std::int32_t parsed = 0;
+    const auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), parsed);
+    if (error != std::errc{} || end != value.data() + value.size()) {
+        throw std::invalid_argument(std::string(context) + " is invalid");
+    }
+    return parsed;
+}
+
+[[nodiscard]] bool parse_bool(std::string_view value, std::string_view context) {
+    if (value == "0") {
+        return false;
+    }
+    if (value == "1") {
+        return true;
+    }
+    throw std::invalid_argument(std::string(context) + " is invalid");
 }
 
 [[nodiscard]] float parse_float(std::string_view value, std::string_view context) {
@@ -285,6 +370,16 @@ MavgClusterGraphValidationResult validate_mavg_cluster_graph(const MavgClusterGr
     }
 
     const auto pages_by_index = page_map(document.pages);
+    const auto clusters_by_index = cluster_pointer_map(document.clusters);
+    bool found_root_cluster = false;
+    for (const auto& cluster : document.clusters) {
+        found_root_cluster = found_root_cluster || !cluster.has_parent;
+    }
+    if (!document.clusters.empty() && !found_root_cluster) {
+        add_diagnostic(diagnostics, MavgClusterGraphDiagnosticCode::missing_root_cluster, document.asset,
+                       "cluster.parent", "mavg cluster graph must contain at least one root cluster");
+    }
+
     std::unordered_set<std::uint32_t> seen_clusters;
     for (const auto& cluster : document.clusters) {
         if (!seen_clusters.insert(cluster.cluster_index).second) {
@@ -314,6 +409,46 @@ MavgClusterGraphValidationResult validate_mavg_cluster_graph(const MavgClusterGr
         if (cluster.material_partition >= document.material_partitions.size()) {
             add_diagnostic(diagnostics, MavgClusterGraphDiagnosticCode::unknown_material_partition, document.asset,
                            "cluster.material_partition", "mavg cluster graph material partition is unknown");
+        }
+        if (!valid_geometric_error(cluster.geometric_error)) {
+            add_diagnostic(diagnostics, MavgClusterGraphDiagnosticCode::invalid_cluster_geometric_error, document.asset,
+                           "cluster.geometric_error",
+                           "mavg cluster graph geometric error must be finite and non-negative");
+        }
+        if (!valid_cluster_draw_range(cluster)) {
+            add_diagnostic(diagnostics, MavgClusterGraphDiagnosticCode::invalid_cluster_draw_range, document.asset,
+                           "cluster.draw_range",
+                           "mavg cluster graph draw range must map exactly to the cluster triangle count");
+        }
+
+        const auto parent_cycle = cluster_has_parent_cycle(cluster, clusters_by_index);
+        if (parent_cycle) {
+            add_diagnostic(diagnostics, MavgClusterGraphDiagnosticCode::parent_cycle, document.asset, "cluster.parent",
+                           "mavg cluster graph parent hierarchy contains a cycle");
+        }
+        if (cluster.has_parent) {
+            const auto parent = clusters_by_index.find(cluster.parent_cluster_index);
+            if (parent == clusters_by_index.end()) {
+                add_diagnostic(diagnostics, MavgClusterGraphDiagnosticCode::missing_parent_cluster, document.asset,
+                               "cluster.parent", "mavg cluster graph parent cluster is unknown");
+            } else if (valid_geometric_error(parent->second->geometric_error) &&
+                       valid_geometric_error(cluster.geometric_error) &&
+                       parent->second->geometric_error < cluster.geometric_error) {
+                add_diagnostic(diagnostics, MavgClusterGraphDiagnosticCode::parent_error_less_than_child,
+                               document.asset, "cluster.geometric_error",
+                               "mavg cluster graph parent geometric error cannot be smaller than child error");
+            }
+        }
+
+        const auto fallback = clusters_by_index.find(cluster.resident_fallback_cluster_index);
+        if (fallback == clusters_by_index.end()) {
+            add_diagnostic(diagnostics, MavgClusterGraphDiagnosticCode::missing_resident_fallback, document.asset,
+                           "cluster.resident_fallback", "mavg cluster graph resident fallback cluster is unknown");
+        } else if (!parent_cycle && !fallback_is_ancestor_or_root_self(cluster, cluster.resident_fallback_cluster_index,
+                                                                       clusters_by_index)) {
+            add_diagnostic(diagnostics, MavgClusterGraphDiagnosticCode::fallback_not_ancestor, document.asset,
+                           "cluster.resident_fallback",
+                           "mavg cluster graph resident fallback must be the root itself or a parent ancestor");
         }
         for (const auto child : cluster.children) {
             if (child == cluster.cluster_index) {
@@ -425,6 +560,13 @@ std::string serialize_mavg_cluster_graph_document(const MavgClusterGraphDocument
         output << "cluster." << index << ".bounds_max=" << cluster.bounds.max.x << ',' << cluster.bounds.max.y << ','
                << cluster.bounds.max.z << '\n';
         output << "cluster." << index << ".material_partition=" << cluster.material_partition << '\n';
+        output << "cluster." << index << ".parent=" << cluster.parent_cluster_index << '\n';
+        output << "cluster." << index << ".has_parent=" << (cluster.has_parent ? 1 : 0) << '\n';
+        output << "cluster." << index << ".resident_fallback=" << cluster.resident_fallback_cluster_index << '\n';
+        output << "cluster." << index << ".geometric_error=" << cluster.geometric_error << '\n';
+        output << "cluster." << index << ".first_index=" << cluster.first_index << '\n';
+        output << "cluster." << index << ".index_count=" << cluster.index_count << '\n';
+        output << "cluster." << index << ".vertex_base=" << cluster.vertex_base << '\n';
         output << "cluster." << index << ".children=";
         for (std::size_t child = 0; child < cluster.children.size(); ++child) {
             if (child != 0U) {
@@ -505,6 +647,15 @@ MavgClusterGraphDocument deserialize_mavg_cluster_graph_document(std::string_vie
                 },
             .material_partition =
                 parse_u32(required_value(values, prefix + "material_partition"), "mavg cluster material partition"),
+            .parent_cluster_index = parse_u32(required_value(values, prefix + "parent"), "mavg cluster parent"),
+            .has_parent = parse_bool(required_value(values, prefix + "has_parent"), "mavg cluster has parent"),
+            .resident_fallback_cluster_index =
+                parse_u32(required_value(values, prefix + "resident_fallback"), "mavg cluster resident fallback"),
+            .geometric_error =
+                parse_float(required_value(values, prefix + "geometric_error"), "mavg cluster geometric error"),
+            .first_index = parse_u32(required_value(values, prefix + "first_index"), "mavg cluster first index"),
+            .index_count = parse_u32(required_value(values, prefix + "index_count"), "mavg cluster index count"),
+            .vertex_base = parse_i32(required_value(values, prefix + "vertex_base"), "mavg cluster vertex base"),
             .children = parse_child_list(required_value(values, prefix + "children")),
         });
     }

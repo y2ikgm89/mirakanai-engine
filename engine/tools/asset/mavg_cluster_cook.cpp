@@ -173,6 +173,8 @@ void validate_request(const MavgClusterCookRequest& request, std::vector<MavgClu
         for (std::uint32_t offset = 1; offset < triangle_count; ++offset) {
             bounds = merge_bounds(bounds, request.triangles[first_triangle + offset].bounds);
         }
+        const auto first_index = first_triangle * 3U;
+        const auto index_count = triangle_count * 3U;
         clusters.push_back(MavgClusterGraphCluster{
             .cluster_index = cluster_index,
             .page_index = cluster_index / clusters_per_page,
@@ -182,6 +184,13 @@ void validate_request(const MavgClusterCookRequest& request, std::vector<MavgClu
             .vertex_count = triangle_count * 3U,
             .bounds = bounds,
             .material_partition = find_material_partition_for_triangle(request, first_triangle),
+            .parent_cluster_index = cluster_index,
+            .has_parent = false,
+            .resident_fallback_cluster_index = cluster_index,
+            .geometric_error = 0.0F,
+            .first_index = first_index,
+            .index_count = index_count,
+            .vertex_base = static_cast<std::int32_t>(first_index),
             .children = {},
         });
     }
