@@ -1552,6 +1552,8 @@ struct VulkanRuntimeDynamicRenderingDrawDesc {
     std::uint64_t index_buffer_offset{0};
     IndexFormat index_format{IndexFormat::unknown};
     std::uint32_t index_count{0};
+    std::uint32_t first_index{0};
+    std::int32_t vertex_offset{0};
     LoadAction color_load_action{LoadAction::clear};
     StoreAction color_store_action{StoreAction::store};
     ClearColorValue clear_color;
@@ -1609,6 +1611,8 @@ struct VulkanRuntimeTextureRenderingDrawDesc {
     std::uint64_t index_buffer_offset{0};
     IndexFormat index_format{IndexFormat::unknown};
     std::uint32_t index_count{0};
+    std::uint32_t first_index{0};
+    std::int32_t vertex_offset{0};
     LoadAction color_load_action{LoadAction::clear};
     StoreAction color_store_action{StoreAction::store};
     ClearColorValue clear_color;

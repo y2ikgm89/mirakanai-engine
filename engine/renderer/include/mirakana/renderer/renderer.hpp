@@ -103,6 +103,14 @@ struct MeshGpuBinding {
     std::uint32_t tangent_vertex_stride{0};
 };
 
+struct MeshIndexedDrawRange {
+    bool enabled{false};
+    std::uint32_t first_index{0};
+    std::uint32_t index_count{0};
+    std::int32_t vertex_base{0};
+    std::uint32_t first_instance{0};
+};
+
 /// GPU resources for linear blend skinning: interleaved skinned vertices + indices in `mesh`, joint palette
 /// matrices in `joint_palette_buffer` (256-byte aligned constant buffer allocation).
 struct SkinnedMeshGpuBinding {
@@ -156,6 +164,7 @@ struct MeshCommand {
     MeshGpuBinding mesh_binding;
     MaterialGpuBinding material_binding;
     std::uint32_t instance_count{1};
+    MeshIndexedDrawRange indexed_range;
     /// When true, `skinned_mesh` carries vertex/index buffers plus joint palette; static path uses `mesh_binding`
     /// only.
     bool gpu_skinning{false};
