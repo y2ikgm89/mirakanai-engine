@@ -457,7 +457,6 @@ Evidence: Context7 `/godotengine/godot-docs` re-checked `GPUParticles3D` / `Part
 - Modify: `engine/renderer/src/cloud_layer_policy.cpp`
 - Modify: `engine/renderer/src/rhi_frame_renderer*`
 - Modify: `engine/rhi_d3d12/*`
-- Modify: `engine/rhi_vulkan/*`
 - Modify: `tests/unit/environment_cloud_tests.cpp`
 - Modify: `tests/unit/renderer_cloud_layer_policy_tests.cpp`
 - Modify: `tests/unit/d3d12_rhi_tests.cpp`
@@ -586,48 +585,87 @@ Evidence recorded on 2026-06-05:
 **Files:**
 - Modify: `engine/renderer/include/mirakana/renderer/volumetric_cloud_policy.hpp`
 - Modify: `engine/renderer/src/volumetric_cloud_policy.cpp`
-- Modify: `engine/renderer/src/rhi_frame_renderer*`
 - Modify: `engine/rhi_d3d12/*`
+- Modify: `engine/runtime_host/win32/include/mirakana/runtime_host/win32/win32_desktop_presentation.hpp`
+- Modify: `engine/runtime_host/win32/src/win32_desktop_presentation.cpp`
+- Modify: `games/CMakeLists.txt`
+- Modify: `games/sample_desktop_runtime_game/main.cpp`
 - Modify: `engine/rhi_vulkan/*`
 - Modify: `tests/unit/renderer_volumetric_cloud_tests.cpp`
 - Modify: `tests/unit/d3d12_rhi_tests.cpp`
-- Modify: `tests/unit/backend_scaffold_tests.cpp`
 - Modify: `shaders/environment/volumetric_clouds.hlsl`
-- Modify: `tests/shaders/environment_volumetric_clouds.hlsl`
 - Modify: `tools/validate-installed-desktop-runtime.ps1`
+- Modify: `tools/validation-recipe-core.ps1`
+- Modify: `tools/run-validation-recipe-plans.ps1`
+- Modify: `engine/agent/manifest.fragments/009-validationRecipes.json`
 - Modify: `games/sample_desktop_runtime_game/game.agent.json`
 
-- [ ] **Step 1: Add RED volumetric-cloud asset and execution tests**
+- [x] **Step 1: Add RED volumetric-cloud package and D3D12 execution tests**
 
 Require package references for weather map, shape noise, erosion noise, sampler, constants, raymarch step budget, lighting rows, temporal settings, and shadow rows.
 
-Expected: RED fails because current volumetric-cloud evidence is policy and shader contract only.
+Result: renderer policy tests now require package evidence before ready promotion, reject execution claims without concrete upload/backend/raymarch/readback counters, and verify the exact 256-byte constant layout. `MK_d3d12_rhi_tests` adds public Texture3D upload/readback proof plus a D3D12 WARP-safe volumetric cloud draw/readback proof using weather, shape-noise, and erosion-noise descriptors.
 
-- [ ] **Step 2: Add D3D12 raymarch execution**
+- [x] **Step 2: Add selected D3D12 raymarch execution**
 
 Implement the smallest D3D12 renderer/RHI path that samples weather/shape/erosion textures, applies bounded raymarching, and produces readback evidence. Use quality tiers to cap primary and light steps.
 
-Expected: D3D12 readback proves non-zero cloud contribution and diagnostics prove no precipitation/audio execution.
+Result: D3D12 now supports Texture3D sampled descriptors and buffer/Texture3D copies. The selected Win32 desktop runtime D3D12 package lane creates shape/erosion 3D textures, uploads package weather-map data, packs volumetric-cloud constants, renders the target-specific DXIL full-screen raymarch pass, reads back the target, and only reports renderer execution ready when upload/backend/draw/raymarch counters are positive and readback is non-zero. Native handle, audio, and precipitation counters remain zero.
 
-- [ ] **Step 3: Add package smoke**
+- [x] **Step 3: Add package and renderer-execution smokes**
 
-Add `--require-volumetric-cloud-package-evidence` with counters:
+Add `--require-volumetric-cloud-package-evidence` with package-only counters:
 
 - `environment_volumetric_cloud_status=ready`
 - `environment_volumetric_cloud_selected_backend=d3d12`
 - `environment_volumetric_cloud_weather_map_ready=1`
 - `environment_volumetric_cloud_shape_noise_ready=1`
 - `environment_volumetric_cloud_erosion_noise_ready=1`
-- `environment_volumetric_cloud_raymarch_passes>0`
+- `environment_volumetric_cloud_texture_uploads=0`
+- `environment_volumetric_cloud_backend_invocations=0`
+- `environment_volumetric_cloud_renderer_draws=0`
+- `environment_volumetric_cloud_raymarch_passes=0`
+- `environment_volumetric_cloud_readback_nonzero=0`
 - `environment_volumetric_cloud_native_handle_access=0`
 
-Expected: cloud layer and volumetric cloud counters remain distinct.
+Add `--require-volumetric-cloud-renderer-execution` with execution counters:
 
-- [ ] **Step 4: Add strict Vulkan and Metal gates**
+- `environment_volumetric_cloud_texture_uploads>0`
+- `environment_volumetric_cloud_backend_invocations>0`
+- `environment_volumetric_cloud_renderer_draws>0`
+- `environment_volumetric_cloud_raymarch_passes>0`
+- `environment_volumetric_cloud_readback_nonzero=1`
+- `environment_volumetric_cloud_native_handle_access=0`
+- `environment_volumetric_cloud_audio_playback=0`
+- `environment_volumetric_cloud_precipitation_execution=0`
+
+Result: cloud-layer and volumetric-cloud counters remain distinct, and the selected recipes are registered as `desktop-runtime-sample-game-volumetric-cloud-package` and `desktop-runtime-sample-game-volumetric-cloud-renderer-execution`.
+
+- [x] **Step 4: Preserve strict Vulkan and Metal non-claims**
 
 Add Vulkan proof only with SPIR-V validation and synchronization2 evidence. Add Metal proof only through `renderer-metal-apple-host-evidence` or a new reviewed Apple-host recipe.
 
-Expected: no cross-backend inference.
+Result: this candidate does not promote Vulkan or Metal volumetric-cloud readiness. Vulkan/Metal volumetric-cloud execution remains a later backend-local proof and cannot be inferred from the selected D3D12 package lane.
+
+**2026-06-05 Task 6 Evidence:** GREEN:
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\check-json-contracts.ps1` passed after manifest fragment updates and compose output regeneration.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\run-validation-recipe.ps1 -Recipe desktop-runtime-sample-game-volumetric-cloud-package -Mode DryRun` passed with the expected `d3d12-windows-primary` host gate and package-only command plan.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\run-validation-recipe.ps1 -Recipe desktop-runtime-sample-game-volumetric-cloud-renderer-execution -Mode DryRun` passed with the expected `d3d12-windows-primary` host gate and renderer-execution command plan.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\check-ai-integration.ps1` passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\check-public-api-boundaries.ps1` passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\check-format.ps1` passed after formatting the touched C++/text files.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -Command "& { & '.\tools\check-tidy.ps1' -Files @('engine/renderer/src/volumetric_cloud_policy.cpp','engine/rhi/d3d12/src/d3d12_backend.cpp','tests/unit/d3d12_rhi_tests.cpp','tests/unit/renderer_volumetric_cloud_tests.cpp') }"` passed for the dev preset sources in the compile database; runtime-host/sample sources are covered by the desktop-runtime-release build and package smoke below.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\cmake.ps1 --preset dev` passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\cmake.ps1 --build --preset dev --target MK_renderer_volumetric_cloud_tests MK_d3d12_rhi_tests` passed for the available dev targets; `sample_desktop_runtime_game` is intentionally absent from the dev preset because it requires the desktop-runtime lane.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\ctest.ps1 --preset dev --output-on-failure -R "MK_renderer_volumetric_cloud_tests|MK_d3d12_rhi_tests"` passed with 2/2 tests.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\cmake.ps1 --preset desktop-runtime-release -DMK_DESKTOP_RUNTIME_PACKAGE_GAME_TARGET=sample_desktop_runtime_game -DMK_REQUIRE_DESKTOP_RUNTIME_DXIL=ON` passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\cmake.ps1 --build --preset desktop-runtime-release --target sample_desktop_runtime_game` passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -Command "& { & '.\tools\package-desktop-runtime.ps1' -GameTarget 'sample_desktop_runtime_game' -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-volumetric-cloud-renderer-execution') }"` passed with `installed-desktop-runtime-validation: ok (sample_desktop_runtime_game)` and `desktop-runtime-package: ok (sample_desktop_runtime_game)`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -Command "& { & '.\tools\validate-installed-desktop-runtime.ps1' -InstallPrefix '.\out\install\desktop-runtime-release' -GameTarget 'sample_desktop_runtime_game' -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-volumetric-cloud-package-evidence') }"` passed and reported package-only `environment_volumetric_cloud_*` rows with zero upload/backend/draw/raymarch/readback counters.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\validate.ps1` passed after the C++/runtime/package/agent surface updates; Metal and Apple checks remain diagnostic host-gated on this Windows host.
+
+The ready claim is limited to selected D3D12 `sample_desktop_runtime_game` package-visible volumetric-cloud evidence and selected D3D12 renderer execution evidence. Vulkan volumetric-cloud execution, Metal volumetric-cloud execution, backend parity, broad optimization, broad cloud/weather readiness, and broad `environment_ready` remain unclaimed.
 
 ## Task 7: Environment Lighting And IBL Package Evidence
 

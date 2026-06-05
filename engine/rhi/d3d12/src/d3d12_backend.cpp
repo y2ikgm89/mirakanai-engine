@@ -254,14 +254,14 @@ namespace {
     return to_dxgi_format(format);
 }
 
-[[nodiscard]] D3D12_RESOURCE_DESC texture_resource_desc(Extent2D extent, Format format,
+[[nodiscard]] D3D12_RESOURCE_DESC texture_resource_desc(Extent3D extent, Format format,
                                                         TextureUsage usage = TextureUsage::none) noexcept {
     D3D12_RESOURCE_DESC desc{};
-    desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    desc.Dimension = extent.depth > 1U ? D3D12_RESOURCE_DIMENSION_TEXTURE3D : D3D12_RESOURCE_DIMENSION_TEXTURE2D;
     desc.Alignment = 0;
     desc.Width = extent.width;
     desc.Height = extent.height;
-    desc.DepthOrArraySize = 1;
+    desc.DepthOrArraySize = static_cast<UINT16>(extent.depth);
     desc.MipLevels = 1;
     desc.Format = d3d12_texture_resource_format(format, usage);
     desc.SampleDesc.Count = 1;
@@ -269,6 +269,11 @@ namespace {
     desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
     desc.Flags = D3D12_RESOURCE_FLAG_NONE;
     return desc;
+}
+
+[[nodiscard]] D3D12_RESOURCE_DESC texture_resource_desc(Extent2D extent, Format format,
+                                                        TextureUsage usage = TextureUsage::none) noexcept {
+    return texture_resource_desc(Extent3D{.width = extent.width, .height = extent.height, .depth = 1}, format, usage);
 }
 
 [[nodiscard]] bool valid_resource_ownership_desc(const ResourceOwnershipDesc& desc) noexcept {
@@ -379,7 +384,13 @@ struct D3d12LinearTextureFootprint {
 
 [[nodiscard]] bool valid_texture_desc(const TextureDesc& desc) noexcept {
     if (desc.extent.width == 0 || desc.extent.height == 0 || desc.extent.depth == 0 || desc.format == Format::unknown ||
+        desc.extent.depth > static_cast<std::uint32_t>((std::numeric_limits<UINT16>::max)()) ||
         desc.usage == TextureUsage::none || to_dxgi_format(desc.format) == DXGI_FORMAT_UNKNOWN) {
+        return false;
+    }
+    if (desc.extent.depth > 1U &&
+        (has_flag(desc.usage, TextureUsage::render_target) || has_flag(desc.usage, TextureUsage::depth_stencil) ||
+         has_flag(desc.usage, TextureUsage::present) || has_flag(desc.usage, TextureUsage::shared))) {
         return false;
     }
     if (has_flag(desc.usage, TextureUsage::render_target) && !is_d3d12_color_render_format(desc.format)) {
@@ -1832,9 +1843,7 @@ NativeResourceHandle DeviceContext::create_committed_texture(const TextureDesc& 
         return NativeResourceHandle{};
     }
 
-    auto resource_desc = texture_resource_desc(Extent2D{.width = desc.extent.width, .height = desc.extent.height},
-                                               desc.format, desc.usage);
-    resource_desc.DepthOrArraySize = static_cast<UINT16>(desc.extent.depth);
+    auto resource_desc = texture_resource_desc(desc.extent, desc.format, desc.usage);
     resource_desc.Flags = committed_texture_flags(desc.usage);
     const auto heap = heap_properties(D3D12_HEAP_TYPE_DEFAULT);
     D3D12_CLEAR_VALUE clear_value{};
@@ -1885,9 +1894,7 @@ NativeResourceHandle DeviceContext::create_placed_texture(const TextureDesc& des
         return NativeResourceHandle{};
     }
 
-    auto resource_desc = texture_resource_desc(Extent2D{.width = desc.extent.width, .height = desc.extent.height},
-                                               desc.format, desc.usage);
-    resource_desc.DepthOrArraySize = static_cast<UINT16>(desc.extent.depth);
+    auto resource_desc = texture_resource_desc(desc.extent, desc.format, desc.usage);
     resource_desc.Flags = committed_texture_flags(desc.usage);
 
     const D3D12_RESOURCE_ALLOCATION_INFO allocation = impl_->device->GetResourceAllocationInfo(0, 1, &resource_desc);
@@ -1963,9 +1970,7 @@ std::vector<NativeResourceHandle> DeviceContext::create_placed_texture_alias_gro
         return {};
     }
 
-    auto resource_desc = texture_resource_desc(Extent2D{.width = desc.extent.width, .height = desc.extent.height},
-                                               desc.format, desc.usage);
-    resource_desc.DepthOrArraySize = static_cast<UINT16>(desc.extent.depth);
+    auto resource_desc = texture_resource_desc(desc.extent, desc.format, desc.usage);
     resource_desc.Flags = committed_texture_flags(desc.usage);
 
     const D3D12_RESOURCE_ALLOCATION_INFO allocation = impl_->device->GetResourceAllocationInfo(0, 1, &resource_desc);
@@ -2343,18 +2348,29 @@ bool DeviceContext::write_descriptor(const NativeDescriptorWriteDesc& desc) {
         const bool color_srv = is_d3d12_color_render_format(from_dxgi_format(resource_desc.Format));
         const bool sampled_depth_srv = resource_desc.Format == DXGI_FORMAT_R24G8_TYPELESS &&
                                        (resource_desc.Flags & D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL) != 0;
-        if (resource_desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D || (!color_srv && !sampled_depth_srv)) {
+        const bool sampled_texture_2d =
+            resource_desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE2D && (color_srv || sampled_depth_srv);
+        const bool sampled_texture_3d =
+            resource_desc.Dimension == D3D12_RESOURCE_DIMENSION_TEXTURE3D && color_srv && !sampled_depth_srv;
+        if (!sampled_texture_2d && !sampled_texture_3d) {
             return false;
         }
 
         D3D12_SHADER_RESOURCE_VIEW_DESC view{};
         view.Format = sampled_depth_srv ? DXGI_FORMAT_R24_UNORM_X8_TYPELESS : resource_desc.Format;
-        view.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
         view.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
-        view.Texture2D.MostDetailedMip = 0;
-        view.Texture2D.MipLevels = resource_desc.MipLevels;
-        view.Texture2D.PlaneSlice = 0;
-        view.Texture2D.ResourceMinLODClamp = 0.0F;
+        if (sampled_texture_3d) {
+            view.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE3D;
+            view.Texture3D.MostDetailedMip = 0;
+            view.Texture3D.MipLevels = resource_desc.MipLevels;
+            view.Texture3D.ResourceMinLODClamp = 0.0F;
+        } else {
+            view.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
+            view.Texture2D.MostDetailedMip = 0;
+            view.Texture2D.MipLevels = resource_desc.MipLevels;
+            view.Texture2D.PlaneSlice = 0;
+            view.Texture2D.ResourceMinLODClamp = 0.0F;
+        }
         impl_->device->CreateShaderResourceView(resource, &view, destination);
         break;
     }
@@ -3490,7 +3506,8 @@ bool DeviceContext::copy_buffer_to_texture(NativeCommandListHandle commands, Nat
     const auto source_desc = source_resource->GetDesc();
     const auto destination_desc = destination_resource->GetDesc();
     if (source_desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER ||
-        destination_desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D) {
+        (destination_desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D &&
+         destination_desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE3D)) {
         return false;
     }
     if (!activate_placed_texture(commands, destination)) {
@@ -3534,7 +3551,8 @@ bool DeviceContext::copy_texture_to_buffer(NativeCommandListHandle commands, Nat
 
     const auto source_desc = source_resource->GetDesc();
     const auto destination_desc = destination_resource->GetDesc();
-    if (source_desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D ||
+    if ((source_desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE2D &&
+         source_desc.Dimension != D3D12_RESOURCE_DIMENSION_TEXTURE3D) ||
         destination_desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER) {
         return false;
     }
@@ -4770,7 +4788,7 @@ struct D3d12DescriptorSetResourceRefs {
     return root_parameter != D3d12DescriptorSetRootTables::invalid_root_parameter;
 }
 
-void add_unique_handle(std::vector<BufferHandle>& handles, BufferHandle handle) {
+static void add_unique_handle(std::vector<BufferHandle>& handles, BufferHandle handle) {
     const auto found =
         std::ranges::find_if(handles, [handle](BufferHandle observed) { return observed.value == handle.value; });
     if (found == handles.end()) {
@@ -4778,7 +4796,7 @@ void add_unique_handle(std::vector<BufferHandle>& handles, BufferHandle handle) 
     }
 }
 
-void add_unique_handle(std::vector<TextureHandle>& handles, TextureHandle handle) {
+static void add_unique_handle(std::vector<TextureHandle>& handles, TextureHandle handle) {
     const auto found =
         std::ranges::find_if(handles, [handle](TextureHandle observed) { return observed.value == handle.value; });
     if (found == handles.end()) {

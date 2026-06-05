@@ -12,6 +12,7 @@
 #include "mirakana/renderer/rhi_postprocess_frame_renderer.hpp"
 #include "mirakana/renderer/rhi_viewport_surface.hpp"
 #include "mirakana/renderer/shadow_map.hpp"
+#include "mirakana/renderer/volumetric_cloud_policy.hpp"
 #include "mirakana/renderer/volumetric_fog_policy.hpp"
 #include "mirakana/rhi/d3d12/d3d12_backend.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
@@ -814,6 +815,16 @@ compile_runtime_morph_position_output_slot_compute_shader(std::uint32_t output_s
 [[nodiscard]] Microsoft::WRL::ComPtr<ID3DBlob> compile_precipitation_pixel_shader() {
     return compile_shader_file(std::filesystem::path{"tests"} / "shaders" / "environment_precipitation.hlsl",
                                "precipitation_ps_main", "ps_5_0");
+}
+
+[[nodiscard]] Microsoft::WRL::ComPtr<ID3DBlob> compile_volumetric_cloud_vertex_shader() {
+    return compile_shader_file(std::filesystem::path{"tests"} / "shaders" / "environment_volumetric_clouds.hlsl",
+                               "volumetric_cloud_vs_main", "vs_5_0");
+}
+
+[[nodiscard]] Microsoft::WRL::ComPtr<ID3DBlob> compile_volumetric_cloud_pixel_shader() {
+    return compile_shader_file(std::filesystem::path{"tests"} / "shaders" / "environment_volumetric_clouds.hlsl",
+                               "volumetric_cloud_ps_main", "ps_5_0");
 }
 
 [[nodiscard]] Microsoft::WRL::ComPtr<ID3DBlob> compile_runtime_material_sampled_pixel_shader() {
@@ -5907,6 +5918,292 @@ MK_TEST("d3d12 rhi frame renderer draws cloud layer from cloud and flow map desc
     MK_REQUIRE(device->stats().draw_calls == 2);
 }
 
+MK_TEST("d3d12 rhi device draws volumetric clouds from weather map and 3d noise descriptors") {
+    const auto cloud_vertex_bytecode = compile_volumetric_cloud_vertex_shader();
+    const auto cloud_pixel_bytecode = compile_volumetric_cloud_pixel_shader();
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
+
+    MK_REQUIRE(device != nullptr);
+
+    const auto weather_upload = device->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = 256,
+        .usage = mirakana::rhi::BufferUsage::copy_source,
+    });
+    const auto shape_upload = device->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = 4096,
+        .usage = mirakana::rhi::BufferUsage::copy_source,
+    });
+    const auto erosion_upload = device->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = 4096,
+        .usage = mirakana::rhi::BufferUsage::copy_source,
+    });
+    const auto weather_texture = device->create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 1, .height = 1, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::copy_destination | mirakana::rhi::TextureUsage::shader_resource,
+    });
+    const auto shape_texture = device->create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 4, .height = 4, .depth = 4},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::copy_destination | mirakana::rhi::TextureUsage::shader_resource,
+    });
+    const auto erosion_texture = device->create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 4, .height = 4, .depth = 4},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::copy_destination | mirakana::rhi::TextureUsage::shader_resource,
+    });
+    const auto constants = device->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = mirakana::volumetric_cloud_constants_byte_size(),
+        .usage = mirakana::rhi::BufferUsage::uniform | mirakana::rhi::BufferUsage::copy_source,
+    });
+    const auto target = device->create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::copy_source,
+    });
+    const auto readback = device->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = 256 * 64,
+        .usage = mirakana::rhi::BufferUsage::copy_destination,
+    });
+    const auto sampler = device->create_sampler(mirakana::rhi::SamplerDesc{
+        .min_filter = mirakana::rhi::SamplerFilter::nearest,
+        .mag_filter = mirakana::rhi::SamplerFilter::nearest,
+        .address_u = mirakana::rhi::SamplerAddressMode::clamp_to_edge,
+        .address_v = mirakana::rhi::SamplerAddressMode::clamp_to_edge,
+        .address_w = mirakana::rhi::SamplerAddressMode::clamp_to_edge,
+    });
+
+    std::array<std::uint8_t, 256> weather_bytes{};
+    weather_bytes[0] = 255U;
+    weather_bytes[1] = 255U;
+    weather_bytes[2] = 255U;
+    weather_bytes[3] = 255U;
+    std::array<std::uint8_t, 4096> shape_bytes{};
+    for (std::size_t offset = 0; offset < shape_bytes.size(); offset += 4U) {
+        shape_bytes[offset + 0U] = 255U;
+        shape_bytes[offset + 1U] = 255U;
+        shape_bytes[offset + 2U] = 255U;
+        shape_bytes[offset + 3U] = 255U;
+    }
+    std::array<std::uint8_t, 4096> erosion_bytes{};
+    for (std::size_t offset = 0; offset < erosion_bytes.size(); offset += 4U) {
+        erosion_bytes[offset + 3U] = 255U;
+    }
+    device->write_buffer(weather_upload, 0, weather_bytes);
+    device->write_buffer(shape_upload, 0, shape_bytes);
+    device->write_buffer(erosion_upload, 0, erosion_bytes);
+
+    const std::array lights = {
+        mirakana::VolumetricCloudAtmosphericLightDesc{
+            .direction = mirakana::Vec3{.x = 0.3F, .y = -1.0F, .z = 0.1F},
+            .color = mirakana::Vec3{.x = 1.0F, .y = 0.95F, .z = 0.85F},
+            .illuminance_lux = 100000.0F,
+            .casts_cloud_shadows = true,
+            .source_index = 0U,
+        },
+    };
+    const auto cloud_desc = mirakana::VolumetricCloudPolicyDesc{
+        .layer =
+            mirakana::VolumetricCloudLayerDesc{
+                .weather_map_asset_ref = "tests/volumetric-cloud/weather",
+                .shape_noise_asset_ref = "tests/volumetric-cloud/shape-noise",
+                .erosion_noise_asset_ref = "tests/volumetric-cloud/erosion-noise",
+                .coverage = 0.82F,
+                .density = 0.92F,
+                .altitude_min_m = 1000.0F,
+                .altitude_max_m = 4000.0F,
+                .wind_velocity_mps = mirakana::Vec2{.x = 0.0F, .y = 0.0F},
+            },
+        .quality_tier = mirakana::VolumetricCloudQualityTier::balanced,
+        .raymarch =
+            mirakana::VolumetricCloudRaymarchBudgetDesc{
+                .primary_steps = 48U,
+                .light_steps = 8U,
+                .shadow_mode = mirakana::VolumetricCloudShadowMode::beer_shadow_map_intent,
+                .temporal_reprojection_enabled = true,
+                .temporal_history_weight = 0.9F,
+            },
+        .atmospheric_lights = lights,
+        .storm =
+            mirakana::VolumetricCloudStormDesc{
+                .enabled = true,
+                .lightning_flash_intensity = 10000.0F,
+                .lightning_direction = mirakana::Vec3{.x = 0.0F, .y = -1.0F, .z = 0.0F},
+                .thunder_delay_seconds = 0.0F,
+                .cloud_darkening = 0.05F,
+                .precipitation_boost = 0.2F,
+                .wind_gust_mps = 0.0F,
+                .exposure_response = 0.2F,
+            },
+        .shader_contract_evidence_ready = true,
+        .package_evidence_ready = true,
+        .execution_evidence_ready = true,
+    };
+    std::array<std::uint8_t, mirakana::volumetric_cloud_constants_byte_size()> constant_bytes{};
+    mirakana::pack_volumetric_cloud_constants(constant_bytes, cloud_desc);
+    device->write_buffer(constants, 0, constant_bytes);
+
+    const auto set_layout = device->create_descriptor_set_layout(mirakana::rhi::DescriptorSetLayoutDesc{{
+        mirakana::rhi::DescriptorBindingDesc{
+            .binding = mirakana::volumetric_cloud_weather_map_binding(),
+            .type = mirakana::rhi::DescriptorType::sampled_texture,
+            .count = 1,
+            .stages = mirakana::rhi::ShaderStageVisibility::fragment,
+        },
+        mirakana::rhi::DescriptorBindingDesc{
+            .binding = mirakana::volumetric_cloud_shape_noise_binding(),
+            .type = mirakana::rhi::DescriptorType::sampled_texture,
+            .count = 1,
+            .stages = mirakana::rhi::ShaderStageVisibility::fragment,
+        },
+        mirakana::rhi::DescriptorBindingDesc{
+            .binding = mirakana::volumetric_cloud_erosion_noise_binding(),
+            .type = mirakana::rhi::DescriptorType::sampled_texture,
+            .count = 1,
+            .stages = mirakana::rhi::ShaderStageVisibility::fragment,
+        },
+        mirakana::rhi::DescriptorBindingDesc{
+            .binding = mirakana::volumetric_cloud_sampler_binding(),
+            .type = mirakana::rhi::DescriptorType::sampler,
+            .count = 1,
+            .stages = mirakana::rhi::ShaderStageVisibility::fragment,
+        },
+        mirakana::rhi::DescriptorBindingDesc{
+            .binding = mirakana::volumetric_cloud_constants_binding(),
+            .type = mirakana::rhi::DescriptorType::uniform_buffer,
+            .count = 1,
+            .stages = mirakana::rhi::ShaderStageVisibility::fragment,
+        },
+    }});
+    const auto set = device->allocate_descriptor_set(set_layout);
+    device->update_descriptor_set(mirakana::rhi::DescriptorWrite{
+        .set = set,
+        .binding = mirakana::volumetric_cloud_weather_map_binding(),
+        .array_element = 0,
+        .resources = {mirakana::rhi::DescriptorResource::texture(mirakana::rhi::DescriptorType::sampled_texture,
+                                                                 weather_texture)},
+    });
+    device->update_descriptor_set(mirakana::rhi::DescriptorWrite{
+        .set = set,
+        .binding = mirakana::volumetric_cloud_shape_noise_binding(),
+        .array_element = 0,
+        .resources = {mirakana::rhi::DescriptorResource::texture(mirakana::rhi::DescriptorType::sampled_texture,
+                                                                 shape_texture)},
+    });
+    device->update_descriptor_set(mirakana::rhi::DescriptorWrite{
+        .set = set,
+        .binding = mirakana::volumetric_cloud_erosion_noise_binding(),
+        .array_element = 0,
+        .resources = {mirakana::rhi::DescriptorResource::texture(mirakana::rhi::DescriptorType::sampled_texture,
+                                                                 erosion_texture)},
+    });
+    device->update_descriptor_set(mirakana::rhi::DescriptorWrite{
+        .set = set,
+        .binding = mirakana::volumetric_cloud_sampler_binding(),
+        .array_element = 0,
+        .resources = {mirakana::rhi::DescriptorResource::sampler(sampler)},
+    });
+    device->update_descriptor_set(mirakana::rhi::DescriptorWrite{
+        .set = set,
+        .binding = mirakana::volumetric_cloud_constants_binding(),
+        .array_element = 0,
+        .resources = {mirakana::rhi::DescriptorResource::buffer(mirakana::rhi::DescriptorType::uniform_buffer,
+                                                                constants)},
+    });
+
+    const auto layout =
+        device->create_pipeline_layout(mirakana::rhi::PipelineLayoutDesc{.descriptor_sets = {set_layout}});
+    const auto vertex_shader = device->create_shader(mirakana::rhi::ShaderDesc{
+        .stage = mirakana::rhi::ShaderStage::vertex,
+        .entry_point = "volumetric_cloud_vs_main",
+        .bytecode_size = cloud_vertex_bytecode->GetBufferSize(),
+        .bytecode = cloud_vertex_bytecode->GetBufferPointer(),
+    });
+    const auto fragment_shader = device->create_shader(mirakana::rhi::ShaderDesc{
+        .stage = mirakana::rhi::ShaderStage::fragment,
+        .entry_point = "volumetric_cloud_ps_main",
+        .bytecode_size = cloud_pixel_bytecode->GetBufferSize(),
+        .bytecode = cloud_pixel_bytecode->GetBufferPointer(),
+    });
+    const auto pipeline = device->create_graphics_pipeline(mirakana::rhi::GraphicsPipelineDesc{
+        .layout = layout,
+        .vertex_shader = vertex_shader,
+        .fragment_shader = fragment_shader,
+        .color_format = mirakana::rhi::Format::rgba8_unorm,
+        .depth_format = mirakana::rhi::Format::unknown,
+        .topology = mirakana::rhi::PrimitiveTopology::triangle_list,
+    });
+    MK_REQUIRE(pipeline.value != 0);
+
+    const mirakana::rhi::BufferTextureCopyRegion weather_footprint{
+        .buffer_offset = 0,
+        .buffer_row_length = 64,
+        .buffer_image_height = 1,
+        .texture_offset = mirakana::rhi::Offset3D{.x = 0, .y = 0, .z = 0},
+        .texture_extent = mirakana::rhi::Extent3D{.width = 1, .height = 1, .depth = 1},
+    };
+    const mirakana::rhi::BufferTextureCopyRegion volume_footprint{
+        .buffer_offset = 0,
+        .buffer_row_length = 64,
+        .buffer_image_height = 4,
+        .texture_offset = mirakana::rhi::Offset3D{.x = 0, .y = 0, .z = 0},
+        .texture_extent = mirakana::rhi::Extent3D{.width = 4, .height = 4, .depth = 4},
+    };
+    const mirakana::rhi::BufferTextureCopyRegion readback_footprint{
+        .buffer_offset = 0,
+        .buffer_row_length = 64,
+        .buffer_image_height = 64,
+        .texture_offset = mirakana::rhi::Offset3D{.x = 0, .y = 0, .z = 0},
+        .texture_extent = mirakana::rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+    };
+
+    auto commands = device->begin_command_list(mirakana::rhi::QueueKind::graphics);
+    commands->copy_buffer_to_texture(weather_upload, weather_texture, weather_footprint);
+    commands->copy_buffer_to_texture(shape_upload, shape_texture, volume_footprint);
+    commands->copy_buffer_to_texture(erosion_upload, erosion_texture, volume_footprint);
+    commands->transition_texture(weather_texture, mirakana::rhi::ResourceState::copy_destination,
+                                 mirakana::rhi::ResourceState::shader_read);
+    commands->transition_texture(shape_texture, mirakana::rhi::ResourceState::copy_destination,
+                                 mirakana::rhi::ResourceState::shader_read);
+    commands->transition_texture(erosion_texture, mirakana::rhi::ResourceState::copy_destination,
+                                 mirakana::rhi::ResourceState::shader_read);
+    commands->transition_texture(target, mirakana::rhi::ResourceState::copy_source,
+                                 mirakana::rhi::ResourceState::render_target);
+    commands->begin_render_pass(mirakana::rhi::RenderPassDesc{
+        .color =
+            mirakana::rhi::RenderPassColorAttachment{
+                .texture = target,
+                .load_action = mirakana::rhi::LoadAction::clear,
+                .store_action = mirakana::rhi::StoreAction::store,
+                .clear_color = mirakana::rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 0.0F},
+            },
+    });
+    commands->bind_graphics_pipeline(pipeline);
+    commands->bind_descriptor_set(layout, 0, set);
+    commands->draw(3, 1);
+    commands->end_render_pass();
+    commands->transition_texture(target, mirakana::rhi::ResourceState::render_target,
+                                 mirakana::rhi::ResourceState::copy_source);
+    commands->copy_texture_to_buffer(target, readback, readback_footprint);
+    commands->close();
+
+    const auto fence = device->submit(*commands);
+    device->wait(fence);
+
+    const auto bytes = device->read_buffer(readback, 0, 256 * 64);
+    const auto center_pixel = (32U * 256U) + (32U * 4U);
+    MK_REQUIRE(bytes.size() == 256 * 64);
+    MK_REQUIRE(bytes.at(center_pixel + 0U) > 12U);
+    MK_REQUIRE(bytes.at(center_pixel + 1U) > 12U);
+    MK_REQUIRE(bytes.at(center_pixel + 2U) > 12U);
+    MK_REQUIRE(bytes.at(center_pixel + 3U) > 12U);
+    MK_REQUIRE(device->stats().buffer_texture_copies == 3);
+    MK_REQUIRE(device->stats().texture_buffer_copies == 1);
+    MK_REQUIRE(device->stats().descriptor_writes == 5);
+    MK_REQUIRE(device->stats().descriptor_sets_bound == 1);
+    MK_REQUIRE(device->stats().draw_calls == 1);
+}
+
 MK_TEST("d3d12 rhi device applies height fog from scene depth and environment constants readback") {
     const auto depth_vertex_bytecode = compile_vertical_split_shadow_depth_vertex_shader();
     const auto color_pixel_bytecode = compile_triangle_pixel_shader();
@@ -8193,6 +8490,7 @@ MK_TEST("d3d12 rhi device rejects invalid descriptor layouts pipeline layouts an
         }});
         accepted_register_type_overload = overloaded_layout.value != 0;
     } catch (const std::invalid_argument&) {
+        accepted_register_type_overload = false;
     }
 
     bool rejected_duplicate_binding_type = false;
@@ -9140,6 +9438,68 @@ MK_TEST("d3d12 rhi device records buffer texture copies with aligned footprints"
     MK_REQUIRE(device->stats().buffer_texture_copies == 1);
     MK_REQUIRE(device->stats().texture_buffer_copies == 1);
     MK_REQUIRE(device->stats().command_lists_submitted == 1);
+}
+
+MK_TEST("d3d12 rhi device copies rgba8 texture3d data through public buffer footprints") {
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
+
+    MK_REQUIRE(device != nullptr);
+
+    const auto upload = device->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = 4096,
+        .usage = mirakana::rhi::BufferUsage::copy_source,
+    });
+    const auto readback = device->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = 4096,
+        .usage = mirakana::rhi::BufferUsage::copy_destination,
+    });
+    const auto texture = device->create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 4, .height = 4, .depth = 4},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::copy_destination | mirakana::rhi::TextureUsage::copy_source |
+                 mirakana::rhi::TextureUsage::shader_resource,
+    });
+
+    std::array<std::uint8_t, 4096> upload_bytes{};
+    for (std::uint32_t z = 0; z < 4U; ++z) {
+        const auto offset = z * 1024U;
+        upload_bytes.at(offset + 0U) = static_cast<std::uint8_t>(40U + (z * 20U));
+        upload_bytes.at(offset + 1U) = static_cast<std::uint8_t>(90U + (z * 10U));
+        upload_bytes.at(offset + 2U) = static_cast<std::uint8_t>(140U + (z * 5U));
+        upload_bytes.at(offset + 3U) = 255U;
+    }
+    device->write_buffer(upload, 0, upload_bytes);
+
+    const mirakana::rhi::BufferTextureCopyRegion footprint{
+        .buffer_offset = 0,
+        .buffer_row_length = 64,
+        .buffer_image_height = 4,
+        .texture_offset = mirakana::rhi::Offset3D{.x = 0, .y = 0, .z = 0},
+        .texture_extent = mirakana::rhi::Extent3D{.width = 4, .height = 4, .depth = 4},
+    };
+
+    auto commands = device->begin_command_list(mirakana::rhi::QueueKind::graphics);
+    commands->copy_buffer_to_texture(upload, texture, footprint);
+    commands->transition_texture(texture, mirakana::rhi::ResourceState::copy_destination,
+                                 mirakana::rhi::ResourceState::copy_source);
+    commands->copy_texture_to_buffer(texture, readback, footprint);
+    commands->close();
+
+    const auto fence = device->submit(*commands);
+    device->wait(fence);
+
+    const auto bytes = device->read_buffer(readback, 0, 4096);
+    MK_REQUIRE(bytes.size() == 4096);
+    for (std::uint32_t z = 0; z < 4U; ++z) {
+        const auto offset = z * 1024U;
+        MK_REQUIRE(bytes.at(offset + 0U) == static_cast<std::uint8_t>(40U + (z * 20U)));
+        MK_REQUIRE(bytes.at(offset + 1U) == static_cast<std::uint8_t>(90U + (z * 10U)));
+        MK_REQUIRE(bytes.at(offset + 2U) == static_cast<std::uint8_t>(140U + (z * 5U)));
+        MK_REQUIRE(bytes.at(offset + 3U) == 255U);
+    }
+    MK_REQUIRE(device->stats().buffer_texture_copies == 1);
+    MK_REQUIRE(device->stats().texture_buffer_copies == 1);
+    MK_REQUIRE(device->stats().resource_transitions == 1);
 }
 
 MK_TEST("d3d12 rhi device reads copy destination buffer ranges") {
