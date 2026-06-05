@@ -1,5 +1,6 @@
 add_library(MK_runtime_host_win32
     src/win32_desktop_event_pump.cpp
+    src/win32_mavg_payload_io.cpp
 )
 
 target_include_directories(MK_runtime_host_win32
@@ -10,6 +11,7 @@ target_include_directories(MK_runtime_host_win32
 
 target_link_libraries(MK_runtime_host_win32
     PUBLIC
+        MK_runtime
         MK_runtime_host
         MK_platform_win32
 )

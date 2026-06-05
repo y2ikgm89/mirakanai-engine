@@ -148,9 +148,19 @@ foreach ($needle in @(
 }
 
 $productionLoop = $manifest.aiOperableProductionLoop
-if ([string]$productionLoop.currentActivePlan -ne "docs/superpowers/plans/2026-06-06-mavg-native-directstorage-win32-async-io-dispatch-status-v1.md") {
-    Write-Error "engine/agent/manifest.json currentActivePlan must select MAVG Native DirectStorage/Win32 Async IO Dispatch Status v1"
+if (@($productionLoop.recommendedNextPlan.retainedCompletedPlanPaths) -notcontains "docs/superpowers/plans/2026-06-06-mavg-native-directstorage-win32-async-io-dispatch-status-v1.md") {
+    Write-Error "engine/agent/manifest.json recommendedNextPlan retainedCompletedPlanPaths must retain MAVG Native DirectStorage/Win32 Async IO Dispatch Status v1"
 }
-if ([string]$productionLoop.recommendedNextPlan.id -ne "mavg-native-directstorage-win32-async-io-dispatch-status-v1") {
-    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must select mavg-native-directstorage-win32-async-io-dispatch-status-v1"
+$recommendedText = ($productionLoop.recommendedNextPlan | ConvertTo-Json -Depth 20)
+foreach ($needle in @(
+        "MAVG Native DirectStorage/Win32 Async IO Dispatch Status v1",
+        "RuntimeMavgPayloadNativeIoBackend",
+        "IRuntimeMavgPayloadNativeIoDispatcher",
+        "RuntimeMavgPayloadNativeIoDispatchResult",
+        "RuntimeMavgPayloadNativeIoStatusPollResult",
+        "dispatch_runtime_mavg_payload_native_io_requests",
+        "poll_runtime_mavg_payload_native_io_status",
+        "draft PR #462"
+    )) {
+    Assert-ContainsText $recommendedText $needle "engine/agent/manifest.json recommendedNextPlan retained MAVG native IO status evidence"
 }

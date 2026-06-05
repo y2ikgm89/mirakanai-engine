@@ -195,6 +195,7 @@ class RecordingNativeIoDispatcher final : public mirakana::runtime::IRuntimeMavg
         ++dispatch_call_count;
         last_request_count = requests.size();
         last_submission_tag = desc.submission_tag;
+        last_destination_memory_bytes = desc.destination_memory.size();
         mirakana::runtime::RuntimeMavgPayloadNativeIoDispatchBackendResult result{
             .ticket = next_ticket++,
             .backend = backend_,
@@ -283,6 +284,7 @@ class RecordingNativeIoDispatcher final : public mirakana::runtime::IRuntimeMavg
     std::size_t dispatch_call_count{0};
     std::size_t status_call_count{0};
     std::size_t last_request_count{0};
+    std::size_t last_destination_memory_bytes{0};
     std::uint64_t last_submission_tag{0};
     bool fail_dispatch{false};
     bool fail_status{false};
@@ -464,6 +466,7 @@ MK_TEST("runtime mavg payload directstorage requests plan selected page ranges w
     MK_REQUIRE(result.requests[0].page_index == 1U);
     MK_REQUIRE(result.requests[0].source_file_offset == 64U);
     MK_REQUIRE(result.requests[0].source_size == 64U);
+    MK_REQUIRE(result.requests[0].source_file_path == "runtime/mavg/runtime-page-addressable.pages");
     MK_REQUIRE(result.requests[0].destination_offset == 4096U);
     MK_REQUIRE(result.requests[0].destination_size == 64U);
     MK_REQUIRE(result.requests[0].source_is_file);
@@ -476,6 +479,7 @@ MK_TEST("runtime mavg payload directstorage requests plan selected page ranges w
     MK_REQUIRE(result.requests[1].page_index == 0U);
     MK_REQUIRE(result.requests[1].source_file_offset == 0U);
     MK_REQUIRE(result.requests[1].source_size == 64U);
+    MK_REQUIRE(result.requests[1].source_file_path == "runtime/mavg/runtime-page-addressable.pages");
     MK_REQUIRE(result.requests[1].destination_offset == 4160U);
     MK_REQUIRE(result.requests[1].destination_size == 64U);
     MK_REQUIRE(!result.invoked_file_io);
@@ -546,6 +550,7 @@ MK_TEST("runtime mavg payload native io dispatch submits request plan through ca
     const auto graph = make_payload_graph();
     const auto payload_text = make_payload_text(graph);
     const auto request_plan = make_directstorage_request_plan(graph, payload_text);
+    std::vector<std::uint8_t> destination_memory(4096U + 128U);
     RecordingNativeIoDispatcher dispatcher{mirakana::runtime::RuntimeMavgPayloadNativeIoBackend::test_adapter};
 
     const auto result = mirakana::runtime::dispatch_runtime_mavg_payload_native_io_requests(
@@ -554,6 +559,7 @@ MK_TEST("runtime mavg payload native io dispatch submits request plan through ca
             .request_plan = &request_plan,
             .required_backend = mirakana::runtime::RuntimeMavgPayloadNativeIoBackend::test_adapter,
             .submission_tag = 42U,
+            .destination_memory = destination_memory,
             .require_native_directstorage = false,
             .enqueue_status_after_requests = true,
             .signal_fence_after_requests = true,
@@ -577,6 +583,7 @@ MK_TEST("runtime mavg payload native io dispatch submits request plan through ca
     MK_REQUIRE(!result.touched_renderer_or_rhi_handles);
     MK_REQUIRE(dispatcher.dispatch_call_count == 1U);
     MK_REQUIRE(dispatcher.last_request_count == 2U);
+    MK_REQUIRE(dispatcher.last_destination_memory_bytes == destination_memory.size());
     MK_REQUIRE(dispatcher.last_submission_tag == 42U);
 }
 

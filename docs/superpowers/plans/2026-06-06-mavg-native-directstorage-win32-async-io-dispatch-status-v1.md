@@ -4,9 +4,11 @@
 
 **Plan ID:** `mavg-native-directstorage-win32-async-io-dispatch-status-v1`
 
-**Status:** Active.
+**Status:** Completed stacked child.
 
 Focused child over `mavg-runtime-lod-milestone-v1`, stacked after `mavg-directstorage-request-plan-v1`.
+
+**Successor:** `mavg-win32-async-file-io-adapter-v1` adds `RuntimeMavgPayloadDirectStorageRequestRow::source_file_path`, caller-owned `destination_memory`, and `Win32MavgPayloadAsyncFileIoDispatcher` using private Win32 `CreateFileW`, `ReadFile`, `OVERLAPPED`, `GetOverlappedResult`, and `CancelIoEx` handling while keeping DirectStorage SDK, IOCP, async-overlap/performance, and Nanite claims unclaimed.
 
 **Goal:** Add the first runtime MAVG native/async IO dispatch-status boundary so validated DirectStorage-shaped page request plans can be submitted through a caller-owned backend adapter and polled for completion evidence without hard-linking the DirectStorage SDK in default validation.
 

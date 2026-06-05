@@ -5,6 +5,7 @@
 
 #include "mirakana/runtime_host/win32/win32_desktop_game_host.hpp"
 #include "mirakana/runtime_host/win32/win32_desktop_presentation.hpp"
+#include "mirakana/runtime_host/win32/win32_mavg_payload_io.hpp"
 
 #if defined(_WIN32)
 #include "mirakana/rhi/d3d12/d3d12_backend.hpp"
@@ -23,8 +24,15 @@
 #include <cstring>
 #endif
 
+#include <chrono>
 #include <cstdint>
+#include <filesystem>
+#include <fstream>
+#include <span>
 #include <string_view>
+#include <thread>
+#include <utility>
+#include <vector>
 
 namespace {
 
@@ -79,6 +87,87 @@ class OneFrameWin32App final : public mirakana::GameApp {
                           "  return float4(0.1, 0.2, 0.3, 1.0);"
                           "}",
                           "ps_main", "ps_5_0");
+}
+#endif
+
+#if defined(_WIN32)
+class ScopedTempDirectory final {
+  public:
+    ScopedTempDirectory() {
+        path_ = std::filesystem::temp_directory_path() /
+                ("mirakanai_mavg_win32_async_io_" + std::to_string(GetCurrentProcessId()) + "_" +
+                 std::to_string(GetTickCount64()));
+        std::filesystem::create_directories(path_);
+    }
+
+    ~ScopedTempDirectory() {
+        std::error_code error;
+        std::filesystem::remove_all(path_, error);
+    }
+
+    ScopedTempDirectory(const ScopedTempDirectory&) = delete;
+    ScopedTempDirectory& operator=(const ScopedTempDirectory&) = delete;
+    ScopedTempDirectory(ScopedTempDirectory&&) = delete;
+    ScopedTempDirectory& operator=(ScopedTempDirectory&&) = delete;
+
+    [[nodiscard]] const std::filesystem::path& path() const noexcept {
+        return path_;
+    }
+
+  private:
+    std::filesystem::path path_;
+};
+
+void write_binary_file(const std::filesystem::path& path, std::span<const std::uint8_t> bytes) {
+    std::ofstream output(path, std::ios::binary | std::ios::trunc);
+    MK_REQUIRE(output.good());
+    output.write(reinterpret_cast<const char*>(bytes.data()), static_cast<std::streamsize>(bytes.size()));
+    output.close();
+    MK_REQUIRE(output.good());
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeMavgPayloadDirectStorageRequestPlanResult
+make_single_win32_payload_request_plan(std::string source_file_path, std::uint64_t destination_offset,
+                                       std::uint32_t destination_size) {
+    mirakana::runtime::RuntimeMavgPayloadDirectStorageRequestPlanResult result;
+    result.requests.push_back(mirakana::runtime::RuntimeMavgPayloadDirectStorageRequestRow{
+        .request_index = 0,
+        .page_index = 7,
+        .source_file_offset = 2,
+        .source_size = 4,
+        .source_file_path = std::move(source_file_path),
+        .destination_offset = destination_offset,
+        .destination_size = destination_size,
+        .fence_wait_point = mirakana::runtime::RuntimeMavgPayloadDirectStorageFenceWaitPoint::before_destination_write,
+        .source_is_file = true,
+        .destination_is_memory = true,
+        .synchronized_with_fence = false,
+        .debug_name = "mavg.payload.page.7",
+    });
+    result.requested_page_count = 1;
+    result.planned_request_count = 1;
+    result.total_source_bytes = 4;
+    result.total_destination_bytes = destination_size;
+    result.requires_native_directstorage_sdk = true;
+    return result;
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeMavgPayloadNativeIoStatusPollResult
+poll_until_win32_payload_io_complete(mirakana::Win32MavgPayloadAsyncFileIoDispatcher& dispatcher,
+                                     std::uint64_t ticket) {
+    mirakana::runtime::RuntimeMavgPayloadNativeIoStatusPollResult status;
+    for (std::size_t attempt = 0; attempt < 200U; ++attempt) {
+        status = mirakana::runtime::poll_runtime_mavg_payload_native_io_status(
+            mirakana::runtime::RuntimeMavgPayloadNativeIoStatusPollDesc{
+                .dispatcher = &dispatcher,
+                .ticket = ticket,
+            });
+        if (status.complete || status.failed) {
+            return status;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    return status;
 }
 #endif
 
@@ -185,6 +274,90 @@ MK_TEST("win32 desktop presentation public compute morph rows stay backend neutr
     MK_REQUIRE(stats.compute_morph_queue_waits == 1);
     MK_REQUIRE(stats.compute_morph_async_compute_queue_submits == 1);
     MK_REQUIRE(stats.compute_morph_async_last_graphics_submitted_fence_value == graphics_fence.value);
+}
+
+MK_TEST("win32 mavg payload async file io dispatcher reads planned byte ranges into destination memory") {
+    ScopedTempDirectory temp;
+    const std::vector<std::uint8_t> source_bytes{0x10U, 0x11U, 0xa0U, 0xa1U, 0xa2U, 0xa3U, 0xeeU};
+    write_binary_file(temp.path() / "payload.bin", source_bytes);
+
+    auto request_plan = make_single_win32_payload_request_plan("payload.bin", 3, 4);
+    std::vector<std::uint8_t> destination(16U, 0xcdU);
+    mirakana::Win32MavgPayloadAsyncFileIoDispatcher dispatcher{
+        mirakana::Win32MavgPayloadAsyncFileIoDispatcherDesc{.root_path = temp.path()}};
+
+    const auto dispatch = mirakana::runtime::dispatch_runtime_mavg_payload_native_io_requests(
+        mirakana::runtime::RuntimeMavgPayloadNativeIoDispatchDesc{
+            .dispatcher = &dispatcher,
+            .request_plan = &request_plan,
+            .required_backend = mirakana::runtime::RuntimeMavgPayloadNativeIoBackend::win32_async_file,
+            .submission_tag = 77U,
+            .destination_memory = destination,
+            .require_native_directstorage = false,
+        });
+
+    MK_REQUIRE(dispatch.succeeded());
+    MK_REQUIRE(dispatch.ticket != 0U);
+    MK_REQUIRE(dispatch.backend == mirakana::runtime::RuntimeMavgPayloadNativeIoBackend::win32_async_file);
+    MK_REQUIRE(dispatch.request_count == 1U);
+    MK_REQUIRE(dispatch.total_source_bytes == 4U);
+    MK_REQUIRE(dispatch.total_destination_bytes == 4U);
+    MK_REQUIRE(dispatch.submitted_io_queue);
+    MK_REQUIRE(dispatch.enqueued_native_requests);
+    MK_REQUIRE(!dispatch.submitted_native_queue);
+    MK_REQUIRE(dispatch.used_win32_async_io);
+    MK_REQUIRE(!dispatch.used_native_directstorage);
+    MK_REQUIRE(!dispatch.executed_background_worker);
+    MK_REQUIRE(!dispatch.touched_renderer_or_rhi_handles);
+
+    const auto status = poll_until_win32_payload_io_complete(dispatcher, dispatch.ticket);
+
+    MK_REQUIRE(status.succeeded());
+    MK_REQUIRE(status.status == mirakana::runtime::RuntimeMavgPayloadNativeIoStatus::complete);
+    MK_REQUIRE(status.complete);
+    MK_REQUIRE(!status.failed);
+    MK_REQUIRE(status.used_win32_async_io);
+    MK_REQUIRE(!status.used_native_directstorage);
+    MK_REQUIRE(!status.executed_background_worker);
+    MK_REQUIRE(!status.touched_renderer_or_rhi_handles);
+    MK_REQUIRE(destination[0] == 0xcdU);
+    MK_REQUIRE(destination[2] == 0xcdU);
+    MK_REQUIRE(destination[3] == 0xa0U);
+    MK_REQUIRE(destination[4] == 0xa1U);
+    MK_REQUIRE(destination[5] == 0xa2U);
+    MK_REQUIRE(destination[6] == 0xa3U);
+    MK_REQUIRE(destination[7] == 0xcdU);
+}
+
+MK_TEST("win32 mavg payload async file io dispatcher rejects destination overflow before ticket") {
+    ScopedTempDirectory temp;
+    const std::vector<std::uint8_t> source_bytes{0x10U, 0x11U, 0xa0U, 0xa1U, 0xa2U, 0xa3U};
+    write_binary_file(temp.path() / "payload.bin", source_bytes);
+
+    auto request_plan = make_single_win32_payload_request_plan("payload.bin", 14, 4);
+    std::vector<std::uint8_t> destination(16U, 0xcdU);
+    mirakana::Win32MavgPayloadAsyncFileIoDispatcher dispatcher{
+        mirakana::Win32MavgPayloadAsyncFileIoDispatcherDesc{.root_path = temp.path()}};
+
+    const auto dispatch = mirakana::runtime::dispatch_runtime_mavg_payload_native_io_requests(
+        mirakana::runtime::RuntimeMavgPayloadNativeIoDispatchDesc{
+            .dispatcher = &dispatcher,
+            .request_plan = &request_plan,
+            .required_backend = mirakana::runtime::RuntimeMavgPayloadNativeIoBackend::win32_async_file,
+            .destination_memory = destination,
+            .require_native_directstorage = false,
+        });
+
+    MK_REQUIRE(!dispatch.succeeded());
+    MK_REQUIRE(dispatch.ticket == 0U);
+    MK_REQUIRE(!dispatch.diagnostics.empty());
+    MK_REQUIRE(!dispatch.submitted_io_queue);
+    MK_REQUIRE(!dispatch.used_native_directstorage);
+    MK_REQUIRE(!dispatch.executed_background_worker);
+    MK_REQUIRE(!dispatch.touched_renderer_or_rhi_handles);
+    for (const auto byte : destination) {
+        MK_REQUIRE(byte == 0xcdU);
+    }
 }
 
 MK_TEST("win32 desktop presentation can create d3d12 rhi frame renderer when shader bytecode is supplied") {

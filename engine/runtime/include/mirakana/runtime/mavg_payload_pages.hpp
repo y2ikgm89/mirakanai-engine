@@ -134,6 +134,7 @@ struct RuntimeMavgPayloadDirectStorageRequestPlanDesc {
 struct RuntimeMavgPayloadNativeIoDispatchBackendDesc {
     RuntimeMavgPayloadNativeIoBackend required_backend{RuntimeMavgPayloadNativeIoBackend::directstorage};
     std::uint64_t submission_tag{0};
+    std::span<std::uint8_t> destination_memory;
     bool require_native_directstorage{true};
     bool enqueue_status_after_requests{true};
     bool signal_fence_after_requests{false};
@@ -194,6 +195,7 @@ struct RuntimeMavgPayloadDirectStorageRequestRow {
     std::uint32_t page_index{0};
     std::uint64_t source_file_offset{0};
     std::uint32_t source_size{0};
+    std::string source_file_path;
     std::uint64_t destination_offset{0};
     std::uint32_t destination_size{0};
     RuntimeMavgPayloadDirectStorageFenceWaitPoint fence_wait_point{
@@ -284,6 +286,7 @@ struct RuntimeMavgPayloadNativeIoDispatchDesc {
     const RuntimeMavgPayloadDirectStorageRequestPlanResult* request_plan{nullptr};
     RuntimeMavgPayloadNativeIoBackend required_backend{RuntimeMavgPayloadNativeIoBackend::directstorage};
     std::uint64_t submission_tag{0};
+    std::span<std::uint8_t> destination_memory;
     bool require_native_directstorage{true};
     bool enqueue_status_after_requests{true};
     bool signal_fence_after_requests{false};

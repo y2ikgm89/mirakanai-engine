@@ -399,6 +399,7 @@ plan_runtime_mavg_payload_directstorage_requests(const RuntimeMavgPayloadDirectS
             .page_index = page->page_index,
             .source_file_offset = page->byte_offset,
             .source_size = request_size,
+            .source_file_path = std::string(desc.payload_blob_path),
             .destination_offset = destination_offset,
             .destination_size = request_size,
             .fence_wait_point = desc.fence_wait_point,
@@ -463,6 +464,7 @@ dispatch_runtime_mavg_payload_native_io_requests(const RuntimeMavgPayloadNativeI
             desc.request_plan->requests, RuntimeMavgPayloadNativeIoDispatchBackendDesc{
                                              .required_backend = desc.required_backend,
                                              .submission_tag = desc.submission_tag,
+                                             .destination_memory = desc.destination_memory,
                                              .require_native_directstorage = desc.require_native_directstorage,
                                              .enqueue_status_after_requests = desc.enqueue_status_after_requests,
                                              .signal_fence_after_requests = desc.signal_fence_after_requests,
