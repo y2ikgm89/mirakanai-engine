@@ -74,7 +74,7 @@ Out of scope:
 - [x] Update docs, plan registry, architecture spec, manifest fragments, composed manifest, and static guards.
 - [x] Run focused D3D12 build/test/static validation.
 - [x] Run full `tools/validate.ps1`.
-- [ ] Publish a validated stacked draft PR over `codex/mavg-d3d12-indexed-indirect-count-buffer-execution-v1`.
+- [x] Publish a validated stacked draft PR over `codex/mavg-d3d12-indexed-indirect-count-buffer-execution-v1`.
 
 ## Validation Plan
 
@@ -93,6 +93,7 @@ Out of scope:
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_rhi_tests MK_backend_scaffold_tests MK_d3d12_rhi_tests` | Passed; focused RHI/D3D12 targets built. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "^(MK_rhi_tests|MK_backend_scaffold_tests|MK_d3d12_rhi_tests)$"` | Passed 3/3 focused tests. |
 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed; full slice gate ended with `validate: ok`, 107/107 CTest tests passed, Apple/Metal diagnostics remained expected host-gated rows on Windows. |
+| `gh pr create --draft --base codex/mavg-d3d12-indexed-indirect-count-buffer-execution-v1 --head codex/mavg-d3d12-compute-generated-indirect-execution-v1` | Published stacked draft PR #451: `https://github.com/y2ikgm89/mirakanai-engine/pull/451`. |
 
 ## Non-Claims
 
