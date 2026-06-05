@@ -21,8 +21,10 @@ The visible `MK_editor` shell is active through the dependency-free `desktop-edi
 Prefer first-party editor documents, stable `mirakana::ui` ids, semantic roles, and private shell adapters; do not adapt editor work to Dear ImGui or UI middleware.
 
 AI operation status stays in first-party value rows such as `EditorAiOperationSnapshot.status_rows`, including `editor.ai.ime.session`.
-Reviewed rich-text commands use `<rich_text_document_id>.copy_selection_plain_text`; keep the exact row ids, dock contracts, and native
-shell evidence in the Claude/Codex editor skills.
+Reviewed rich-text commands keep read-only copy rows such as `<rich_text_document_id>.copy_selection_plain_text`; editable documents may
+also expose `.insert_text`, `.delete_selection`, `.replace_selection`, `.toggle_bold`, `.toggle_italic`, `.copy_rich_text`,
+`.cut_selection`, `.paste_plain_text`, and `.paste_rich_text`. Keep the exact row ids, dock contracts, and native shell evidence in the
+Claude/Codex editor skills.
 
 When selecting a future editor text/accessibility milestone, start with first-party editable-rich-text core and AI-operable text commands before GPU upload, custom IME candidate UI, or full UIA parity. Own the editor document, command, semantic, and adapter contracts in `MK_editor_core`; keep Unicode shaping, bidi, font fallback/rasterization, TSF/IME protocol, accessibility bridges, and platform rendering details behind official SDK or audited-dependency adapters.
 

@@ -436,7 +436,7 @@ MK_TEST("editor first party document composes ai commands as read only rich text
     MK_REQUIRE(ai_status->text.label == "ready");
 }
 
-MK_TEST("editor first party document composes inspector as read only rich text") {
+MK_TEST("editor first party document composes inspector editable rich text controls only for editable rows") {
     mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
 
     const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
@@ -444,12 +444,23 @@ MK_TEST("editor first party document composes inspector as read only rich text")
         shell_document.document.find(mirakana::ui::ElementId{.value = "editor.panel.inspector.rich_text"});
     const auto* project_value = shell_document.document.find(
         mirakana::ui::ElementId{.value = "editor.panel.inspector.rich_text.paragraph.property.project.span.value"});
+    const auto* inspector_insert = shell_document.document.find(
+        mirakana::ui::ElementId{.value = "editor.panel.inspector.rich_text.command.insert_text"});
+    const auto* console_insert = shell_document.document.find(
+        mirakana::ui::ElementId{.value = "editor.panel.console.rich_text.command.insert_text"});
+    const auto* ai_insert = shell_document.document.find(
+        mirakana::ui::ElementId{.value = "editor.panel.ai_commands.rich_text.command.insert_text"});
 
     MK_REQUIRE(inspector_root != nullptr);
     MK_REQUIRE(inspector_root->role == mirakana::ui::SemanticRole::root);
     MK_REQUIRE(inspector_root->parent.value == "editor.panel.inspector");
     MK_REQUIRE(project_value != nullptr);
     MK_REQUIRE(project_value->text.label == "MIRAIKANAI Editor");
+    MK_REQUIRE(inspector_insert != nullptr);
+    MK_REQUIRE(inspector_insert->role == mirakana::ui::SemanticRole::button);
+    MK_REQUIRE(inspector_insert->enabled);
+    MK_REQUIRE(console_insert == nullptr);
+    MK_REQUIRE(ai_insert == nullptr);
     MK_REQUIRE(std::ranges::any_of(shell_document.renderer_submission.text_runs, [](const auto& run) {
         return run.id.value == "editor.panel.inspector.rich_text.paragraph.property.project.span.value" &&
                run.text.label == "MIRAIKANAI Editor";
@@ -628,6 +639,12 @@ MK_TEST("editor first party shell smoke counters report imgui disabled and multi
     MK_REQUIRE(counters.dock_window_merge_command_count == 1U);
     MK_REQUIRE(counters.workspace_v3_status == "ready");
     MK_REQUIRE(!counters.multi_window_native_handles_exposed);
+    MK_REQUIRE(counters.rich_text_edit_status == "ready");
+    MK_REQUIRE(counters.rich_text_editable_documents == 1U);
+    MK_REQUIRE(counters.rich_text_command_rows >= 9U);
+    MK_REQUIRE(counters.rich_text_clipboard_plain_ready);
+    MK_REQUIRE(counters.rich_text_clipboard_rich_ready);
+    MK_REQUIRE(!counters.rich_text_native_handles_exposed);
 }
 
 MK_TEST("editor first party shell smoke counters copy UI performance budget rows") {

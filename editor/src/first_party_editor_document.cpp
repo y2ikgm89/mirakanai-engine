@@ -181,6 +181,34 @@ void append_rich_text_document(ui::UiDocument& document, const ui::ElementId& pa
     for (const auto& element : model.document.traverse()) {
         add_or_throw(document, clone_element_desc(element, parent));
     }
+    if (!rich_text.editable) {
+        return;
+    }
+
+    const ui::ElementId rich_text_root = element_id(rich_text.id);
+    ui::ElementDesc command_bar = child(rich_text.id + ".commands", rich_text_root, ui::SemanticRole::list);
+    command_bar.accessibility_label = "Rich text edit commands";
+    command_bar.style.layout = ui::LayoutMode::row;
+    command_bar.style.gap = 2.0F;
+    add_or_throw(document, std::move(command_bar));
+
+    const ui::ElementId command_bar_id = element_id(rich_text.id + ".commands");
+    const std::array commands{
+        std::pair{".insert_text", "Insert"},         std::pair{".delete_selection", "Delete"},
+        std::pair{".replace_selection", "Replace"},  std::pair{".toggle_bold", "Bold"},
+        std::pair{".toggle_italic", "Italic"},       std::pair{".copy_rich_text", "Copy Rich"},
+        std::pair{".cut_selection", "Cut"},          std::pair{".paste_plain_text", "Paste Plain"},
+        std::pair{".paste_rich_text", "Paste Rich"},
+    };
+    for (const auto& [suffix, label] : commands) {
+        ui::ElementDesc button =
+            child(rich_text.id + ".command" + std::string{suffix}, command_bar_id, ui::SemanticRole::button);
+        button.text = text(label);
+        button.accessibility_label = button.text.label;
+        button.enabled = true;
+        button.bounds = ui::Rect{.width = 96.0F, .height = 24.0F};
+        add_or_throw(document, std::move(button));
+    }
 }
 
 void append_panel_status(ui::UiDocument& document, const NativeEditorApp& app, std::string_view panel_id,
@@ -456,6 +484,14 @@ make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const F
                             [](const auto& capability) { return capability.native_handles_public; });
     const bool multi_window_ready = multi_window_validation.valid && tear_off_plan.accepted && merge_plan.accepted &&
                                     workspace_v3_ready && !multi_window_handles_exposed;
+    const auto rich_text_documents = make_first_party_editor_rich_text_documents(app);
+    const auto rich_text_editable_documents = static_cast<std::uint32_t>(std::ranges::count_if(
+        rich_text_documents, [](const EditorRichTextDocument& rich_text) { return rich_text.editable; }));
+    const bool rich_text_native_handles_exposed = std::ranges::any_of(rich_text_documents, [](const auto& rich_text) {
+        return std::ranges::any_of(rich_text.unsupported_capabilities,
+                                   [](const auto& capability) { return capability.native_handles_public; });
+    });
+    constexpr std::uint32_t rich_text_commands_per_editable_document = 9U;
     return FirstPartyEditorShellSmokeCounters{
         .ui = "first_party",
         .backend = "d3d12",
@@ -512,6 +548,13 @@ make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const F
         .dock_window_merge_command_count = merge_plan.accepted ? 1U : 0U,
         .workspace_v3_status = workspace_v3_ready ? "ready" : "not_ready",
         .multi_window_native_handles_exposed = multi_window_handles_exposed,
+        .rich_text_edit_status =
+            rich_text_editable_documents > 0U && !rich_text_native_handles_exposed ? "ready" : "not_ready",
+        .rich_text_editable_documents = rich_text_editable_documents,
+        .rich_text_command_rows = rich_text_editable_documents * rich_text_commands_per_editable_document,
+        .rich_text_clipboard_plain_ready = rich_text_editable_documents > 0U,
+        .rich_text_clipboard_rich_ready = rich_text_editable_documents > 0U,
+        .rich_text_native_handles_exposed = rich_text_native_handles_exposed,
         .ui_performance_budget_status = std::string(editor_ui_performance_budget_status_id(performance.status)),
         .ui_performance_layout_us_p95 = performance.layout_us_p95,
         .ui_performance_document_build_us_p95 = performance.document_build_us_p95,

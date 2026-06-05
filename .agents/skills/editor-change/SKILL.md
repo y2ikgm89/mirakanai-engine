@@ -25,14 +25,18 @@ Use this skill for editor/core models, native visible editor shell boundaries, p
 - AI operation status stays in first-party value rows: `EditorAiOperationSnapshot.status_rows` uses exact ids
   `editor.ai.dock.selected_panel`, `editor.ai.rich_text.documents`, `editor.ai.text_input.focused_target`, `editor.ai.adapter.text_font`,
   `editor.ai.ime.session`, `editor.ai.accessibility.uia_provider`, `editor.ai.viewport.display`, and `editor.ai.material_preview.display`;
-  reviewed rich-text commands use `<rich_text_document_id>.copy_plain_text` and `<rich_text_document_id>.copy_selection_plain_text` only,
-  reject stale revisions/native handles/shell execution/validation-recipe execution/screen coordinates, and do not mutate state.
+  reviewed rich-text commands always include read-only copy rows `<rich_text_document_id>.copy_plain_text` and
+  `<rich_text_document_id>.copy_selection_plain_text`; editable documents may additionally expose
+  `<rich_text_document_id>.insert_text`, `.delete_selection`, `.replace_selection`, `.toggle_bold`, `.toggle_italic`,
+  `.copy_rich_text`, `.cut_selection`, `.paste_plain_text`, and `.paste_rich_text`. These rows reject stale revisions,
+  native handles, shell execution, validation-recipe execution, screen coordinates, unsupported markup, unsafe tokens,
+  invalid UTF-8, and unknown or disabled commands.
 - Dock command planning lives in `MK_editor_core` as `EditorDockCommandKind`, `EditorDockCommandRequest`, `EditorDockCommandPlan`,
   `plan_editor_dock_command`, and `apply_editor_dock_command`; AI operation overloads expose reviewed dock layout rows, rich-text
   `rich_text_rows`, and show/hide/activate/move/split/reset command rows, workspace v2 persists core dock layouts, and the native shell
   renders single-window dock tab headers/gutters, active/focused panel state, hidden-tab disabled commands, keyboard focus traversal over
-  dock tabs, Console diagnostics, AI Commands status/command/evidence rows, and Inspector property rows as read-only `EditorRichText*`
-  spans, docking smoke counters, private Windows DirectWrite text-layout/glyph-raster adapter validation, selected editor text atlas handoff
+  dock tabs, Console diagnostics, AI Commands status/command/evidence rows as read-only `EditorRichText*` spans, and Inspector property
+  rows with visible edit command controls only for editable `EditorRichText*` documents, docking smoke counters, private Windows DirectWrite text-layout/glyph-raster adapter validation, selected editor text atlas handoff
   evidence, private Windows TSF text-input/IME session selection through existing `MK_ui` platform text-input, IME composition, and
   committed-text contracts with `editor_shell_ime_status=win32_tsf_selected`, private Windows UIA provider publication with
   `editor_shell_accessibility_status=uia_provider_ready`, screen-space bounds, hosted-root null runtime ids, and child `UiaAppendRuntimeId`
@@ -45,8 +49,13 @@ Use this skill for editor/core models, native visible editor shell boundaries, p
   `editor.dock.window.create`, `editor.dock.window.close`, `editor.dock.panel.tear_off`, `editor.dock.panel.move_to_window`,
   `editor.dock.window.merge`, and `editor.dock.window.reset_all`, and smoke rows
   `editor_shell_multi_window_docking_status=ready`, `editor_shell_workspace_v3_status=ready`, and
-  `editor_shell_multi_window_native_handles_exposed=0` without native handle exposure. Visible OS-level multi-window drag/drop
-  shell restoration, help rich text, broad editable rich text, Direct2D GPU text rendering/upload, broad shaping/bidi/fallback, full app-owned `ITextStoreACP`
+  `editor_shell_multi_window_native_handles_exposed=0` without native handle exposure, plus first-party editable rich-text
+  document command/history/clipboard contracts through `EditorRichTextEditCommandKind`, `EditorRichTextEditRequest`,
+  `EditorRichTextEditResult`, `EditorRichTextClipboardPayload`, `editor_rich_text_revision`,
+  `normalize_editor_rich_text_selection`, `apply_editor_rich_text_edit_command`, and smoke rows
+  `editor_rich_text_edit_status=ready`, `editor_rich_text_clipboard_plain_ready=1`,
+  `editor_rich_text_clipboard_rich_ready=1`, and `editor_rich_text_native_handles_exposed=0`. Visible OS-level multi-window drag/drop
+  shell restoration, help rich text, Direct2D GPU text rendering/upload, broad shaping/bidi/fallback, full app-owned `ITextStoreACP`
   callback coverage, native IME candidate UI, reconversion, full UIA control pattern/event parity, Vulkan/Metal editor texture-display
   parity, broader material-preview GPU parity, cross-platform accessibility parity, and cross-platform font adapters remain future phases.
 - When selecting a future editor text/accessibility milestone, start with first-party editable-rich-text core and AI-operable text commands before GPU upload, custom IME candidate UI, or full UIA parity. Own the editor document, command, semantic, and adapter contracts in `MK_editor_core`; keep Unicode shaping, bidi, font fallback/rasterization, TSF/IME protocol, accessibility bridges, and platform rendering details behind official SDK or audited-dependency adapters.

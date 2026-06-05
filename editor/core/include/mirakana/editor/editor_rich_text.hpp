@@ -51,6 +51,11 @@ struct EditorRichTextSelection {
     std::size_t end_byte_offset{0U};
 };
 
+struct EditorRichTextDocumentState {
+    std::vector<EditorRichTextParagraph> paragraphs;
+    EditorRichTextSelection selection;
+};
+
 struct EditorRichTextUnsupportedCapability {
     std::string id;
     std::string official_boundary;
@@ -63,6 +68,10 @@ struct EditorRichTextDocument {
     std::vector<EditorRichTextParagraph> paragraphs;
     EditorRichTextSelection selection;
     std::vector<EditorRichTextUnsupportedCapability> unsupported_capabilities;
+    bool editable{false};
+    std::uint64_t revision{1};
+    std::vector<EditorRichTextDocumentState> undo_stack;
+    std::vector<EditorRichTextDocumentState> redo_stack;
 };
 
 struct EditorRichTextDiagnostic {
@@ -79,6 +88,53 @@ struct EditorRichTextCopyResult {
     bool valid{false};
     std::string text;
     std::vector<EditorRichTextDiagnostic> diagnostics;
+};
+
+enum class EditorRichTextEditCommandKind : std::uint8_t {
+    insert_text,
+    delete_selection,
+    replace_selection,
+    toggle_bold,
+    toggle_italic,
+    move_cursor_backward,
+    move_cursor_forward,
+    undo,
+    redo,
+    copy_plain_text,
+    copy_selection_plain_text,
+    copy_rich_text,
+    cut_selection,
+    paste_plain_text,
+    paste_rich_text,
+};
+
+struct EditorRichTextClipboardPayload {
+    bool has_plain_text{false};
+    bool has_rich_text{false};
+    std::string plain_text;
+    std::vector<EditorRichTextParagraph> rich_paragraphs;
+};
+
+struct EditorRichTextEditRequest {
+    EditorRichTextEditCommandKind kind{EditorRichTextEditCommandKind::insert_text};
+    std::string document_id;
+    std::uint64_t expected_revision{0};
+    std::string text;
+    EditorRichTextClipboardPayload clipboard;
+    bool use_selection_override{false};
+    EditorRichTextSelection selection_override;
+};
+
+struct EditorRichTextEditResult {
+    bool accepted{false};
+    bool applied{false};
+    EditorRichTextDocument document;
+    EditorRichTextClipboardPayload clipboard;
+    std::uint64_t before_revision{0};
+    std::uint64_t after_revision{0};
+    std::vector<EditorRichTextDiagnostic> diagnostics;
+    std::string output_text;
+    std::string output_mime_type;
 };
 
 struct EditorRichTextViewport {
@@ -113,6 +169,7 @@ struct EditorRichTextAiRow {
     bool visible{true};
     bool selected{false};
     bool copyable{false};
+    bool editable{false};
 };
 
 struct EditorRichTextAiSnapshot {
@@ -142,9 +199,14 @@ make_editor_ai_command_panel_rich_text_document(const EditorAiCommandPanelModel&
 make_editor_inspector_rich_text_document(std::span<const EditorPropertyRow> rows,
                                          std::string document_id = "editor.rich_text.inspector");
 [[nodiscard]] EditorRichTextValidation validate_editor_rich_text_document(const EditorRichTextDocument& document);
+[[nodiscard]] std::uint64_t editor_rich_text_revision(const EditorRichTextDocument& document) noexcept;
+[[nodiscard]] EditorRichTextSelection normalize_editor_rich_text_selection(const EditorRichTextDocument& document,
+                                                                           EditorRichTextSelection selection);
 [[nodiscard]] EditorRichTextCopyResult copy_editor_rich_text_plain_text(const EditorRichTextDocument& document);
 [[nodiscard]] EditorRichTextCopyResult
 copy_editor_rich_text_selection_plain_text(const EditorRichTextDocument& document);
+[[nodiscard]] EditorRichTextEditResult apply_editor_rich_text_edit_command(const EditorRichTextDocument& document,
+                                                                           const EditorRichTextEditRequest& request);
 [[nodiscard]] EditorRichTextUiModel make_editor_rich_text_view_model(const EditorRichTextDocument& document,
                                                                      EditorRichTextViewport viewport = {});
 [[nodiscard]] EditorRichTextAiSnapshot make_editor_rich_text_ai_snapshot(const EditorRichTextDocument& document,

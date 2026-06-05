@@ -124,9 +124,20 @@ constexpr std::string_view panel_parameter = "panel_id";
 constexpr std::string_view monitor_parameter = "monitor_id";
 constexpr std::string_view window_bounds_parameter = "bounds";
 constexpr std::string_view dpi_scale_parameter = "dpi_scale";
+constexpr std::string_view rich_text_insert_suffix = ".insert_text";
+constexpr std::string_view rich_text_delete_selection_suffix = ".delete_selection";
+constexpr std::string_view rich_text_replace_selection_suffix = ".replace_selection";
+constexpr std::string_view rich_text_toggle_bold_suffix = ".toggle_bold";
+constexpr std::string_view rich_text_toggle_italic_suffix = ".toggle_italic";
 constexpr std::string_view rich_text_copy_plain_suffix = ".copy_plain_text";
 constexpr std::string_view rich_text_copy_selection_suffix = ".copy_selection_plain_text";
+constexpr std::string_view rich_text_copy_rich_suffix = ".copy_rich_text";
+constexpr std::string_view rich_text_cut_selection_suffix = ".cut_selection";
+constexpr std::string_view rich_text_paste_plain_suffix = ".paste_plain_text";
+constexpr std::string_view rich_text_paste_rich_suffix = ".paste_rich_text";
 constexpr std::string_view plain_text_mime_type = "text/plain;charset=utf-8";
+constexpr std::string_view rich_text_mime_type = "application/vnd.mirakanai.rich-text+json";
+constexpr std::string_view rich_text_text_parameter = "text";
 
 [[nodiscard]] std::string panel_element_id(PanelId panel) {
     return "editor.panel." + std::string{panel_id_to_string(panel)};
@@ -162,6 +173,10 @@ constexpr std::string_view plain_text_mime_type = "text/plain;charset=utf-8";
 
 [[nodiscard]] std::string rich_text_copy_selection_command_id(std::string_view document_id) {
     return std::string{document_id} + std::string{rich_text_copy_selection_suffix};
+}
+
+[[nodiscard]] std::string rich_text_command_id(std::string_view document_id, std::string_view suffix) {
+    return std::string{document_id} + std::string{suffix};
 }
 
 [[nodiscard]] std::uint64_t workspace_operation_revision(const Workspace& workspace) noexcept {
@@ -201,21 +216,70 @@ constexpr std::string_view plain_text_mime_type = "text/plain;charset=utf-8";
 }
 
 [[nodiscard]] bool is_rich_text_ai_command(std::string_view command_id) noexcept {
-    return command_id.ends_with(rich_text_copy_plain_suffix) || command_id.ends_with(rich_text_copy_selection_suffix);
+    return command_id.ends_with(rich_text_insert_suffix) || command_id.ends_with(rich_text_delete_selection_suffix) ||
+           command_id.ends_with(rich_text_replace_selection_suffix) ||
+           command_id.ends_with(rich_text_toggle_bold_suffix) || command_id.ends_with(rich_text_toggle_italic_suffix) ||
+           command_id.ends_with(rich_text_copy_plain_suffix) || command_id.ends_with(rich_text_copy_selection_suffix) ||
+           command_id.ends_with(rich_text_copy_rich_suffix) || command_id.ends_with(rich_text_cut_selection_suffix) ||
+           command_id.ends_with(rich_text_paste_plain_suffix) || command_id.ends_with(rich_text_paste_rich_suffix);
 }
 
 [[nodiscard]] std::string_view rich_text_document_id_from_command(std::string_view command_id) noexcept {
-    if (command_id.ends_with(rich_text_copy_selection_suffix)) {
-        return command_id.substr(0U, command_id.size() - rich_text_copy_selection_suffix.size());
-    }
-    if (command_id.ends_with(rich_text_copy_plain_suffix)) {
-        return command_id.substr(0U, command_id.size() - rich_text_copy_plain_suffix.size());
+    for (const auto suffix :
+         std::array{rich_text_insert_suffix, rich_text_delete_selection_suffix, rich_text_replace_selection_suffix,
+                    rich_text_toggle_bold_suffix, rich_text_toggle_italic_suffix, rich_text_copy_plain_suffix,
+                    rich_text_copy_selection_suffix, rich_text_copy_rich_suffix, rich_text_cut_selection_suffix,
+                    rich_text_paste_plain_suffix, rich_text_paste_rich_suffix}) {
+        if (command_id.ends_with(suffix)) {
+            return command_id.substr(0U, command_id.size() - suffix.size());
+        }
     }
     return {};
 }
 
-[[nodiscard]] bool rich_text_command_copies_selection(std::string_view command_id) noexcept {
-    return command_id.ends_with(rich_text_copy_selection_suffix);
+[[nodiscard]] EditorRichTextEditCommandKind rich_text_edit_kind_from_command(std::string_view command_id) noexcept {
+    if (command_id.ends_with(rich_text_insert_suffix)) {
+        return EditorRichTextEditCommandKind::insert_text;
+    }
+    if (command_id.ends_with(rich_text_delete_selection_suffix)) {
+        return EditorRichTextEditCommandKind::delete_selection;
+    }
+    if (command_id.ends_with(rich_text_replace_selection_suffix)) {
+        return EditorRichTextEditCommandKind::replace_selection;
+    }
+    if (command_id.ends_with(rich_text_toggle_bold_suffix)) {
+        return EditorRichTextEditCommandKind::toggle_bold;
+    }
+    if (command_id.ends_with(rich_text_toggle_italic_suffix)) {
+        return EditorRichTextEditCommandKind::toggle_italic;
+    }
+    if (command_id.ends_with(rich_text_copy_selection_suffix)) {
+        return EditorRichTextEditCommandKind::copy_selection_plain_text;
+    }
+    if (command_id.ends_with(rich_text_copy_plain_suffix)) {
+        return EditorRichTextEditCommandKind::copy_plain_text;
+    }
+    if (command_id.ends_with(rich_text_copy_rich_suffix)) {
+        return EditorRichTextEditCommandKind::copy_rich_text;
+    }
+    if (command_id.ends_with(rich_text_cut_selection_suffix)) {
+        return EditorRichTextEditCommandKind::cut_selection;
+    }
+    if (command_id.ends_with(rich_text_paste_plain_suffix)) {
+        return EditorRichTextEditCommandKind::paste_plain_text;
+    }
+    if (command_id.ends_with(rich_text_paste_rich_suffix)) {
+        return EditorRichTextEditCommandKind::paste_rich_text;
+    }
+    return EditorRichTextEditCommandKind::copy_plain_text;
+}
+
+[[nodiscard]] bool rich_text_command_mutates(std::string_view command_id) noexcept {
+    return command_id.ends_with(rich_text_insert_suffix) || command_id.ends_with(rich_text_delete_selection_suffix) ||
+           command_id.ends_with(rich_text_replace_selection_suffix) ||
+           command_id.ends_with(rich_text_toggle_bold_suffix) || command_id.ends_with(rich_text_toggle_italic_suffix) ||
+           command_id.ends_with(rich_text_cut_selection_suffix) || command_id.ends_with(rich_text_paste_plain_suffix) ||
+           command_id.ends_with(rich_text_paste_rich_suffix);
 }
 
 [[nodiscard]] bool contains_tab(const EditorDockNode& node, std::string_view panel_id) noexcept {
@@ -612,6 +676,16 @@ constexpr std::string_view plain_text_mime_type = "text/plain;charset=utf-8";
 [[nodiscard]] const EditorRichTextDocument* find_rich_text_document(std::span<const EditorRichTextDocument> documents,
                                                                     std::string_view document_id) noexcept {
     for (const auto& document : documents) {
+        if (document.id == document_id) {
+            return &document;
+        }
+    }
+    return nullptr;
+}
+
+[[nodiscard]] EditorRichTextDocument* find_rich_text_document(std::span<EditorRichTextDocument> documents,
+                                                              std::string_view document_id) noexcept {
+    for (auto& document : documents) {
         if (document.id == document_id) {
             return &document;
         }
@@ -1192,6 +1266,36 @@ EditorAiCommandCatalog make_editor_ai_command_catalog(const Workspace& workspace
             .mutates_state = false,
             .requires_confirmation = false,
         });
+        catalog.commands.push_back(EditorAiCommandRow{
+            .id = rich_text_command_id(document.id, rich_text_copy_rich_suffix),
+            .label = "Copy Rich Text",
+            .target_element_id = document.id,
+            .enabled = validation.valid && selected_text.valid && !selected_text.text.empty(),
+            .mutates_state = false,
+            .requires_confirmation = false,
+        });
+
+        if (document.editable && validation.valid) {
+            const auto append_edit_command = [&catalog, &document](std::string_view suffix, std::string label,
+                                                                   bool requires_selection) {
+                catalog.commands.push_back(EditorAiCommandRow{
+                    .id = rich_text_command_id(document.id, suffix),
+                    .label = std::move(label),
+                    .target_element_id = document.id,
+                    .enabled = !requires_selection || document.selection.active,
+                    .mutates_state = true,
+                    .requires_confirmation = false,
+                });
+            };
+            append_edit_command(rich_text_insert_suffix, "Insert Rich Text", false);
+            append_edit_command(rich_text_delete_selection_suffix, "Delete Rich Text Selection", true);
+            append_edit_command(rich_text_replace_selection_suffix, "Replace Rich Text Selection", true);
+            append_edit_command(rich_text_toggle_bold_suffix, "Toggle Rich Text Bold", true);
+            append_edit_command(rich_text_toggle_italic_suffix, "Toggle Rich Text Italic", true);
+            append_edit_command(rich_text_cut_selection_suffix, "Cut Rich Text Selection", true);
+            append_edit_command(rich_text_paste_plain_suffix, "Paste Rich Text Plain Text", false);
+            append_edit_command(rich_text_paste_rich_suffix, "Paste Rich Text", false);
+        }
     }
 
     return catalog;
@@ -1372,11 +1476,6 @@ EditorAiCommandDryRunResult dry_run_editor_ai_command(const Workspace& workspace
             diagnostic("target_mismatch", "AI editor command target does not match the catalog row"));
         return result;
     }
-    if (!request.parameters.empty()) {
-        result.diagnostics.push_back(
-            diagnostic("unsupported_parameters", "AI editor rich text copy commands do not accept parameters"));
-        return result;
-    }
     if (!command->enabled) {
         result.diagnostics.push_back(diagnostic("command_disabled", "AI editor command is disabled for this revision"));
         return result;
@@ -1390,21 +1489,66 @@ EditorAiCommandDryRunResult dry_run_editor_ai_command(const Workspace& workspace
         return result;
     }
 
-    const auto copy_result = rich_text_command_copies_selection(request.command_id)
-                                 ? copy_editor_rich_text_selection_plain_text(*document)
-                                 : copy_editor_rich_text_plain_text(*document);
-    if (!copy_result.valid) {
-        for (const auto& item : copy_result.diagnostics) {
+    const auto kind = rich_text_edit_kind_from_command(request.command_id);
+    EditorRichTextEditRequest edit_request{
+        .kind = kind,
+        .document_id = document->id,
+        .expected_revision = editor_rich_text_revision(*document),
+    };
+    const auto text_parameter = find_parameter(request, rich_text_text_parameter);
+    const bool command_needs_text = kind == EditorRichTextEditCommandKind::insert_text ||
+                                    kind == EditorRichTextEditCommandKind::replace_selection ||
+                                    kind == EditorRichTextEditCommandKind::paste_plain_text ||
+                                    kind == EditorRichTextEditCommandKind::paste_rich_text;
+    if (command_needs_text) {
+        if (request.parameters.size() != 1U || !text_parameter.has_value()) {
+            result.diagnostics.push_back(
+                diagnostic("missing_parameter", "AI editor rich text command requires text parameter only"));
+            return result;
+        }
+        if (kind == EditorRichTextEditCommandKind::paste_plain_text) {
+            edit_request.clipboard.has_plain_text = true;
+            edit_request.clipboard.plain_text = std::string{*text_parameter};
+        } else if (kind == EditorRichTextEditCommandKind::paste_rich_text) {
+            edit_request.clipboard.has_plain_text = true;
+            edit_request.clipboard.has_rich_text = true;
+            edit_request.clipboard.plain_text = std::string{*text_parameter};
+            edit_request.clipboard.rich_paragraphs.push_back(EditorRichTextParagraph{
+                .id = "ai_paste",
+                .spans =
+                    {
+                        EditorRichTextSpan{
+                            .id = "body",
+                            .style_token = "editor.text",
+                            .text = std::string{*text_parameter},
+                        },
+                    },
+            });
+        } else {
+            edit_request.text = std::string{*text_parameter};
+        }
+    } else if (!request.parameters.empty()) {
+        result.diagnostics.push_back(
+            diagnostic("unsupported_parameters", "AI editor rich text command does not accept parameters"));
+        return result;
+    }
+
+    const auto edit = apply_editor_rich_text_edit_command(*document, edit_request);
+    if (!edit.accepted) {
+        for (const auto& item : edit.diagnostics) {
             result.diagnostics.push_back(diagnostic(item.code, item.message));
         }
         return result;
     }
 
     result.accepted = true;
-    result.would_mutate = false;
+    result.would_mutate = rich_text_command_mutates(request.command_id);
     result.requires_confirmation = false;
-    result.output_text = copy_result.text;
-    result.output_mime_type = std::string{plain_text_mime_type};
+    result.output_text = edit.output_text;
+    result.output_mime_type = edit.output_mime_type.empty() ? (kind == EditorRichTextEditCommandKind::copy_rich_text
+                                                                   ? std::string{rich_text_mime_type}
+                                                                   : std::string{plain_text_mime_type})
+                                                            : edit.output_mime_type;
     return result;
 }
 
@@ -1579,6 +1723,93 @@ EditorAiCommandApplyResult apply_editor_ai_command(const Workspace& workspace, c
     result.applied = false;
     result.output_text = dry_run.output_text;
     result.output_mime_type = dry_run.output_mime_type;
+    return result;
+}
+
+EditorAiCommandApplyResult apply_editor_ai_command(const Workspace& workspace, const EditorDockLayout& dock_layout,
+                                                   std::span<EditorRichTextDocument> rich_text_documents,
+                                                   const EditorAiCommandCatalog& catalog,
+                                                   const EditorAiCommandRequest& request) {
+    EditorAiCommandApplyResult result;
+    result.before_revision = catalog.revision;
+    result.after_revision = result.before_revision;
+
+    const auto dry_run = dry_run_editor_ai_command(
+        workspace, dock_layout,
+        std::span<const EditorRichTextDocument>{rich_text_documents.data(), rich_text_documents.size()}, catalog,
+        request);
+    if (!dry_run.accepted) {
+        result.diagnostics = dry_run.diagnostics;
+        return result;
+    }
+    if (dry_run.requires_confirmation && !request.user_confirmed) {
+        result.diagnostics.push_back(
+            diagnostic("confirmation_required", "AI editor command requires explicit user confirmation"));
+        return result;
+    }
+
+    if (!rich_text_command_mutates(request.command_id)) {
+        result.accepted = true;
+        result.completed = true;
+        result.applied = false;
+        result.output_text = dry_run.output_text;
+        result.output_mime_type = dry_run.output_mime_type;
+        return result;
+    }
+
+    const auto document_id = rich_text_document_id_from_command(request.command_id);
+    auto* document = find_rich_text_document(rich_text_documents, document_id);
+    if (document == nullptr) {
+        result.diagnostics.push_back(
+            diagnostic("missing_rich_text_document", "AI editor rich text command target document is unavailable"));
+        return result;
+    }
+
+    const auto kind = rich_text_edit_kind_from_command(request.command_id);
+    EditorRichTextEditRequest edit_request{
+        .kind = kind,
+        .document_id = document->id,
+        .expected_revision = editor_rich_text_revision(*document),
+    };
+    if (const auto text_parameter = find_parameter(request, rich_text_text_parameter); text_parameter.has_value()) {
+        if (kind == EditorRichTextEditCommandKind::paste_plain_text) {
+            edit_request.clipboard.has_plain_text = true;
+            edit_request.clipboard.plain_text = std::string{*text_parameter};
+        } else if (kind == EditorRichTextEditCommandKind::paste_rich_text) {
+            edit_request.clipboard.has_plain_text = true;
+            edit_request.clipboard.has_rich_text = true;
+            edit_request.clipboard.plain_text = std::string{*text_parameter};
+            edit_request.clipboard.rich_paragraphs.push_back(EditorRichTextParagraph{
+                .id = "ai_paste",
+                .spans =
+                    {
+                        EditorRichTextSpan{
+                            .id = "body",
+                            .style_token = "editor.text",
+                            .text = std::string{*text_parameter},
+                        },
+                    },
+            });
+        } else {
+            edit_request.text = std::string{*text_parameter};
+        }
+    }
+
+    const auto edit = apply_editor_rich_text_edit_command(*document, edit_request);
+    if (!edit.accepted) {
+        for (const auto& item : edit.diagnostics) {
+            result.diagnostics.push_back(diagnostic(item.code, item.message));
+        }
+        return result;
+    }
+
+    *document = edit.document;
+    result.accepted = true;
+    result.completed = true;
+    result.applied = edit.applied;
+    result.output_text = edit.output_text;
+    result.output_mime_type = edit.output_mime_type;
+    result.after_revision = combine_revision_value(catalog.revision, editor_rich_text_revision(*document));
     return result;
 }
 

@@ -1453,6 +1453,294 @@ MK_TEST("editor core rich text console view model virtualizes diagnostics and pr
     }));
 }
 
+MK_TEST("editor core editable rich text applies scalar safe edits styles clipboard and history") {
+    mirakana::editor::EditorRichTextDocument document{
+        .id = "editor.rich_text.editable_note",
+        .paragraphs =
+            {
+                mirakana::editor::EditorRichTextParagraph{
+                    .id = "p0",
+                    .spans =
+                        {
+                            mirakana::editor::EditorRichTextSpan{
+                                .id = "body",
+                                .style_token = "editor.text",
+                                .text = "Alpha beta",
+                                .inline_objects =
+                                    {
+                                        mirakana::editor::EditorRichTextInlineObject{
+                                            .id = "open",
+                                            .kind = mirakana::editor::EditorRichTextInlineObjectKind::command_link,
+                                            .command_id = "editor.panel.assets.show",
+                                            .resource_id = {},
+                                            .accessibility_label = "Open Assets",
+                                        },
+                                    },
+                            },
+                        },
+                },
+            },
+        .selection =
+            mirakana::editor::EditorRichTextSelection{
+                .active = true,
+                .start_paragraph_id = "p0",
+                .start_span_id = "body",
+                .start_byte_offset = 6U,
+                .end_paragraph_id = "p0",
+                .end_span_id = "body",
+                .end_byte_offset = 10U,
+            },
+        .unsupported_capabilities = mirakana::editor::make_editor_rich_text_low_level_unsupported_capabilities(),
+        .editable = true,
+    };
+
+    const auto replaced = mirakana::editor::apply_editor_rich_text_edit_command(
+        document, mirakana::editor::EditorRichTextEditRequest{
+                      .kind = mirakana::editor::EditorRichTextEditCommandKind::replace_selection,
+                      .document_id = document.id,
+                      .expected_revision = mirakana::editor::editor_rich_text_revision(document),
+                      .text = "gamma",
+                  });
+    MK_REQUIRE(replaced.accepted);
+    MK_REQUIRE(replaced.applied);
+    MK_REQUIRE(replaced.document.paragraphs[0].spans[0].text == "Alpha gamma");
+    MK_REQUIRE(replaced.document.paragraphs[0].spans[0].inline_objects.size() == 1U);
+    MK_REQUIRE(replaced.document.undo_stack.size() == 1U);
+    MK_REQUIRE(replaced.before_revision != replaced.after_revision);
+
+    auto paragraph_insert = replaced.document;
+    paragraph_insert.selection = mirakana::editor::EditorRichTextSelection{
+        .active = true,
+        .start_paragraph_id = "p0",
+        .start_span_id = "body",
+        .start_byte_offset = 6U,
+        .end_paragraph_id = "p0",
+        .end_span_id = "body",
+        .end_byte_offset = 6U,
+    };
+    const auto inserted = mirakana::editor::apply_editor_rich_text_edit_command(
+        paragraph_insert, mirakana::editor::EditorRichTextEditRequest{
+                              .kind = mirakana::editor::EditorRichTextEditCommandKind::insert_text,
+                              .document_id = paragraph_insert.id,
+                              .expected_revision = mirakana::editor::editor_rich_text_revision(paragraph_insert),
+                              .text = "line\nNext ",
+                          });
+    MK_REQUIRE(inserted.accepted);
+    MK_REQUIRE(inserted.applied);
+    MK_REQUIRE(inserted.document.paragraphs.size() == 2U);
+    MK_REQUIRE(inserted.document.paragraphs[0].spans[0].text == "Alpha line");
+    MK_REQUIRE(inserted.document.paragraphs[1].spans[0].text == "Next gamma");
+
+    auto styled = inserted.document;
+    styled.selection = mirakana::editor::EditorRichTextSelection{
+        .active = true,
+        .start_paragraph_id = "p0",
+        .start_span_id = "body",
+        .start_byte_offset = 0U,
+        .end_paragraph_id = "p0",
+        .end_span_id = "body",
+        .end_byte_offset = 5U,
+    };
+    const auto bold = mirakana::editor::apply_editor_rich_text_edit_command(
+        styled, mirakana::editor::EditorRichTextEditRequest{
+                    .kind = mirakana::editor::EditorRichTextEditCommandKind::toggle_bold,
+                    .document_id = styled.id,
+                    .expected_revision = mirakana::editor::editor_rich_text_revision(styled),
+                });
+    MK_REQUIRE(bold.accepted);
+    MK_REQUIRE(bold.document.paragraphs[0].spans[0].style_token == "editor.bold");
+    MK_REQUIRE(bold.document.paragraphs[0].spans[0].inline_objects.size() == 1U);
+
+    const auto undo = mirakana::editor::apply_editor_rich_text_edit_command(
+        bold.document, mirakana::editor::EditorRichTextEditRequest{
+                           .kind = mirakana::editor::EditorRichTextEditCommandKind::undo,
+                           .document_id = bold.document.id,
+                           .expected_revision = mirakana::editor::editor_rich_text_revision(bold.document),
+                       });
+    MK_REQUIRE(undo.accepted);
+    MK_REQUIRE(undo.applied);
+    MK_REQUIRE(undo.document.paragraphs[0].spans[0].style_token == "editor.text");
+
+    const auto redo = mirakana::editor::apply_editor_rich_text_edit_command(
+        undo.document, mirakana::editor::EditorRichTextEditRequest{
+                           .kind = mirakana::editor::EditorRichTextEditCommandKind::redo,
+                           .document_id = undo.document.id,
+                           .expected_revision = mirakana::editor::editor_rich_text_revision(undo.document),
+                       });
+    MK_REQUIRE(redo.accepted);
+    MK_REQUIRE(redo.applied);
+    MK_REQUIRE(redo.document.paragraphs[0].spans[0].style_token == "editor.bold");
+
+    const auto plain_copy = mirakana::editor::apply_editor_rich_text_edit_command(
+        redo.document, mirakana::editor::EditorRichTextEditRequest{
+                           .kind = mirakana::editor::EditorRichTextEditCommandKind::copy_selection_plain_text,
+                           .document_id = redo.document.id,
+                           .expected_revision = mirakana::editor::editor_rich_text_revision(redo.document),
+                       });
+    const auto rich_copy = mirakana::editor::apply_editor_rich_text_edit_command(
+        redo.document, mirakana::editor::EditorRichTextEditRequest{
+                           .kind = mirakana::editor::EditorRichTextEditCommandKind::copy_rich_text,
+                           .document_id = redo.document.id,
+                           .expected_revision = mirakana::editor::editor_rich_text_revision(redo.document),
+                       });
+    MK_REQUIRE(plain_copy.accepted);
+    MK_REQUIRE(!plain_copy.applied);
+    MK_REQUIRE(plain_copy.clipboard.has_plain_text);
+    MK_REQUIRE(!plain_copy.clipboard.has_rich_text);
+    MK_REQUIRE(plain_copy.clipboard.plain_text == "Alpha");
+    MK_REQUIRE(rich_copy.accepted);
+    MK_REQUIRE(rich_copy.clipboard.has_plain_text);
+    MK_REQUIRE(rich_copy.clipboard.has_rich_text);
+    MK_REQUIRE(rich_copy.clipboard.rich_paragraphs.size() == 1U);
+    MK_REQUIRE(rich_copy.clipboard.rich_paragraphs[0].spans[0].style_token == "editor.bold");
+    MK_REQUIRE(rich_copy.clipboard.rich_paragraphs[0].spans[0].inline_objects.size() == 1U);
+
+    auto pasted = redo.document;
+    pasted.selection = mirakana::editor::EditorRichTextSelection{
+        .active = true,
+        .start_paragraph_id = "p0",
+        .start_span_id = "body",
+        .start_byte_offset = 5U,
+        .end_paragraph_id = "p0",
+        .end_span_id = "body",
+        .end_byte_offset = 5U,
+    };
+    const auto paste_plain = mirakana::editor::apply_editor_rich_text_edit_command(
+        pasted, mirakana::editor::EditorRichTextEditRequest{
+                    .kind = mirakana::editor::EditorRichTextEditCommandKind::paste_plain_text,
+                    .document_id = pasted.id,
+                    .expected_revision = mirakana::editor::editor_rich_text_revision(pasted),
+                    .clipboard = plain_copy.clipboard,
+                });
+    MK_REQUIRE(paste_plain.accepted);
+    MK_REQUIRE(paste_plain.applied);
+    MK_REQUIRE(paste_plain.document.paragraphs[0].spans[0].text.contains("AlphaAlpha"));
+
+    auto cursor = paste_plain.document;
+    cursor.paragraphs[0].spans[0].text = "A\xF0\x9F\x8C\xB8"
+                                         "B";
+    cursor.selection = mirakana::editor::EditorRichTextSelection{
+        .active = true,
+        .start_paragraph_id = "p0",
+        .start_span_id = "body",
+        .start_byte_offset = 5U,
+        .end_paragraph_id = "p0",
+        .end_span_id = "body",
+        .end_byte_offset = 5U,
+    };
+    const auto moved_backward = mirakana::editor::apply_editor_rich_text_edit_command(
+        cursor, mirakana::editor::EditorRichTextEditRequest{
+                    .kind = mirakana::editor::EditorRichTextEditCommandKind::move_cursor_backward,
+                    .document_id = cursor.id,
+                    .expected_revision = mirakana::editor::editor_rich_text_revision(cursor),
+                });
+    MK_REQUIRE(moved_backward.accepted);
+    MK_REQUIRE(moved_backward.document.selection.start_byte_offset == 1U);
+
+    auto cut_source = redo.document;
+    cut_source.selection = mirakana::editor::EditorRichTextSelection{
+        .active = true,
+        .start_paragraph_id = "p0",
+        .start_span_id = "body",
+        .start_byte_offset = 0U,
+        .end_paragraph_id = "p0",
+        .end_span_id = "body",
+        .end_byte_offset = 5U,
+    };
+    const auto cut = mirakana::editor::apply_editor_rich_text_edit_command(
+        cut_source, mirakana::editor::EditorRichTextEditRequest{
+                        .kind = mirakana::editor::EditorRichTextEditCommandKind::cut_selection,
+                        .document_id = cut_source.id,
+                        .expected_revision = mirakana::editor::editor_rich_text_revision(cut_source),
+                    });
+    MK_REQUIRE(cut.accepted);
+    MK_REQUIRE(cut.applied);
+    MK_REQUIRE(cut.clipboard.has_plain_text);
+    MK_REQUIRE(cut.clipboard.has_rich_text);
+    MK_REQUIRE(cut.clipboard.plain_text == "Alpha");
+    MK_REQUIRE(cut.document.paragraphs[0].spans[0].text.starts_with(" line"));
+}
+
+MK_TEST("editor core editable rich text rejects invalid utf8 markup unsafe tokens and stale revisions") {
+    mirakana::editor::EditorRichTextDocument document{
+        .id = "editor.rich_text.editable_note",
+        .paragraphs =
+            {
+                mirakana::editor::EditorRichTextParagraph{
+                    .id = "p0",
+                    .spans =
+                        {
+                            mirakana::editor::EditorRichTextSpan{
+                                .id = "body",
+                                .style_token = "editor.text",
+                                .text = "Alpha",
+                            },
+                        },
+                },
+            },
+        .selection =
+            mirakana::editor::EditorRichTextSelection{
+                .active = true,
+                .start_paragraph_id = "p0",
+                .start_span_id = "body",
+                .start_byte_offset = 5U,
+                .end_paragraph_id = "p0",
+                .end_span_id = "body",
+                .end_byte_offset = 5U,
+            },
+        .unsupported_capabilities = mirakana::editor::make_editor_rich_text_low_level_unsupported_capabilities(),
+        .editable = true,
+    };
+
+    const std::string invalid_utf8{"\xC0\xAF", 2};
+    const auto invalid = mirakana::editor::apply_editor_rich_text_edit_command(
+        document, mirakana::editor::EditorRichTextEditRequest{
+                      .kind = mirakana::editor::EditorRichTextEditCommandKind::insert_text,
+                      .document_id = document.id,
+                      .expected_revision = mirakana::editor::editor_rich_text_revision(document),
+                      .text = invalid_utf8,
+                  });
+    const auto markup = mirakana::editor::apply_editor_rich_text_edit_command(
+        document, mirakana::editor::EditorRichTextEditRequest{
+                      .kind = mirakana::editor::EditorRichTextEditCommandKind::insert_text,
+                      .document_id = document.id,
+                      .expected_revision = mirakana::editor::editor_rich_text_revision(document),
+                      .text = "<b>bad</b>",
+                  });
+    const auto native_handle = mirakana::editor::apply_editor_rich_text_edit_command(
+        document, mirakana::editor::EditorRichTextEditRequest{
+                      .kind = mirakana::editor::EditorRichTextEditCommandKind::insert_text,
+                      .document_id = document.id,
+                      .expected_revision = mirakana::editor::editor_rich_text_revision(document),
+                      .text = "native_handle",
+                  });
+    const auto shell = mirakana::editor::apply_editor_rich_text_edit_command(
+        document, mirakana::editor::EditorRichTextEditRequest{
+                      .kind = mirakana::editor::EditorRichTextEditCommandKind::insert_text,
+                      .document_id = document.id,
+                      .expected_revision = mirakana::editor::editor_rich_text_revision(document),
+                      .text = "shell.execute",
+                  });
+    const auto stale = mirakana::editor::apply_editor_rich_text_edit_command(
+        document, mirakana::editor::EditorRichTextEditRequest{
+                      .kind = mirakana::editor::EditorRichTextEditCommandKind::insert_text,
+                      .document_id = document.id,
+                      .expected_revision = mirakana::editor::editor_rich_text_revision(document) + 1U,
+                      .text = "fresh",
+                  });
+
+    MK_REQUIRE(!invalid.accepted);
+    MK_REQUIRE(invalid.diagnostics.front().code == "invalid_utf8");
+    MK_REQUIRE(!markup.accepted);
+    MK_REQUIRE(markup.diagnostics.front().code == "unsupported_markup");
+    MK_REQUIRE(!native_handle.accepted);
+    MK_REQUIRE(native_handle.diagnostics.front().code == "unsafe_token");
+    MK_REQUIRE(!shell.accepted);
+    MK_REQUIRE(shell.diagnostics.front().code == "shell_execution_unsupported");
+    MK_REQUIRE(!stale.accepted);
+    MK_REQUIRE(stale.diagnostics.front().code == "stale_revision");
+}
+
 MK_TEST("editor core rich text builds ai command panel document") {
     mirakana::editor::EditorAiCommandPanelModel ai_model;
     ai_model.status_label = "host_gated";
@@ -1514,10 +1802,13 @@ MK_TEST("editor core rich text builds inspector property document") {
         find_rich_text_ai_row(snapshot, "editor.rich_text.inspector.paragraph.property.project.span.value");
     const auto* state =
         find_rich_text_ai_row(snapshot, "editor.rich_text.inspector.paragraph.property.asset_root.span.state");
+    const auto* document_row = find_rich_text_ai_row(snapshot, "editor.rich_text.inspector");
 
     MK_REQUIRE(snapshot.diagnostics.size() >= inspector.unsupported_capabilities.size());
     MK_REQUIRE(snapshot.copyable_plain_text.contains("Project: MIRAIKANAI Editor readonly"));
     MK_REQUIRE(snapshot.copyable_plain_text.contains("Asset Root: assets editable"));
+    MK_REQUIRE(document_row != nullptr);
+    MK_REQUIRE(document_row->editable);
     MK_REQUIRE(label != nullptr);
     MK_REQUIRE(label->text == "Project: ");
     MK_REQUIRE(value != nullptr);
@@ -1525,6 +1816,7 @@ MK_TEST("editor core rich text builds inspector property document") {
     MK_REQUIRE(value->text == "MIRAIKANAI Editor");
     MK_REQUIRE(state != nullptr);
     MK_REQUIRE(state->text == " editable");
+    MK_REQUIRE(state->editable);
 }
 
 MK_TEST("editor core rich text ai snapshot exposes rows diagnostics and operation surface") {
@@ -1955,6 +2247,101 @@ MK_TEST("editor ai command catalog exposes reviewed rich text copy commands") {
     MK_REQUIRE(applied.before_revision == applied.after_revision);
     MK_REQUIRE(applied.output_text == "Open");
     MK_REQUIRE(applied.output_mime_type == "text/plain;charset=utf-8");
+}
+
+MK_TEST("editor ai command catalog exposes editable rich text mutation commands") {
+    const auto workspace = mirakana::editor::Workspace::create_default(
+        mirakana::editor::ProjectInfo{.name = "sample", .root_path = "games/sample"});
+    const auto layout = mirakana::editor::make_default_editor_dock_layout();
+    mirakana::editor::EditorRichTextDocument editable{
+        .id = "editor.rich_text.editable_note",
+        .paragraphs =
+            {
+                mirakana::editor::EditorRichTextParagraph{
+                    .id = "p0",
+                    .spans =
+                        {
+                            mirakana::editor::EditorRichTextSpan{
+                                .id = "body",
+                                .style_token = "editor.text",
+                                .text = "Alpha",
+                            },
+                        },
+                },
+            },
+        .selection =
+            mirakana::editor::EditorRichTextSelection{
+                .active = true,
+                .start_paragraph_id = "p0",
+                .start_span_id = "body",
+                .start_byte_offset = 5U,
+                .end_paragraph_id = "p0",
+                .end_span_id = "body",
+                .end_byte_offset = 5U,
+            },
+        .editable = true,
+    };
+    const mirakana::editor::EditorRichTextDocument readonly{
+        .id = "editor.rich_text.readonly_log",
+        .paragraphs =
+            {
+                mirakana::editor::EditorRichTextParagraph{
+                    .id = "p0",
+                    .spans =
+                        {
+                            mirakana::editor::EditorRichTextSpan{
+                                .id = "body",
+                                .style_token = "editor.text",
+                                .text = "Read only",
+                            },
+                        },
+                },
+            },
+    };
+    std::vector documents{editable, readonly};
+    const auto catalog = mirakana::editor::make_editor_ai_command_catalog(workspace, layout, documents);
+
+    const auto* insert = find_ai_command(catalog, "editor.rich_text.editable_note.insert_text");
+    const auto* replace = find_ai_command(catalog, "editor.rich_text.editable_note.replace_selection");
+    const auto* delete_selection = find_ai_command(catalog, "editor.rich_text.editable_note.delete_selection");
+    const auto* toggle_bold = find_ai_command(catalog, "editor.rich_text.editable_note.toggle_bold");
+    const auto* toggle_italic = find_ai_command(catalog, "editor.rich_text.editable_note.toggle_italic");
+    const auto* copy_rich = find_ai_command(catalog, "editor.rich_text.editable_note.copy_rich_text");
+    const auto* cut = find_ai_command(catalog, "editor.rich_text.editable_note.cut_selection");
+    const auto* paste_plain = find_ai_command(catalog, "editor.rich_text.editable_note.paste_plain_text");
+    const auto* paste_rich = find_ai_command(catalog, "editor.rich_text.editable_note.paste_rich_text");
+    const auto* readonly_insert = find_ai_command(catalog, "editor.rich_text.readonly_log.insert_text");
+    const auto* readonly_copy = find_ai_command(catalog, "editor.rich_text.readonly_log.copy_plain_text");
+    const auto apply = mirakana::editor::apply_editor_ai_command(
+        workspace, layout, std::span<mirakana::editor::EditorRichTextDocument>{documents}, catalog,
+        mirakana::editor::EditorAiCommandRequest{
+            .command_id = "editor.rich_text.editable_note.insert_text",
+            .target_element_id = "editor.rich_text.editable_note",
+            .parameters =
+                {
+                    mirakana::editor::EditorAiCommandParameter{.key = "text", .value = " beta"},
+                },
+            .expected_revision = catalog.revision,
+        });
+
+    MK_REQUIRE(insert != nullptr);
+    MK_REQUIRE(insert->enabled);
+    MK_REQUIRE(insert->mutates_state);
+    MK_REQUIRE(replace != nullptr);
+    MK_REQUIRE(delete_selection != nullptr);
+    MK_REQUIRE(toggle_bold != nullptr);
+    MK_REQUIRE(toggle_italic != nullptr);
+    MK_REQUIRE(copy_rich != nullptr);
+    MK_REQUIRE(cut != nullptr);
+    MK_REQUIRE(paste_plain != nullptr);
+    MK_REQUIRE(paste_rich != nullptr);
+    MK_REQUIRE(readonly_insert == nullptr);
+    MK_REQUIRE(readonly_copy != nullptr);
+    MK_REQUIRE(apply.accepted);
+    MK_REQUIRE(apply.completed);
+    MK_REQUIRE(apply.applied);
+    MK_REQUIRE(documents[0].paragraphs[0].spans[0].text == "Alpha beta");
+    MK_REQUIRE(apply.before_revision != apply.after_revision);
 }
 
 MK_TEST("editor ai command dry run rejects unknown command") {

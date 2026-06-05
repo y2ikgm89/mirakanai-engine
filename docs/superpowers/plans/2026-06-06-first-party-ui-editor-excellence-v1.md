@@ -211,7 +211,7 @@ Expected: clean task-owned tree, `currentActivePlan` points to the production-co
 
 - [x] Select this plan in `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`.
 - [x] Preserve `unsupportedProductionGaps = []`.
-- [x] State explicitly that broad optimization, visible OS-level multi-window drag/drop shell restoration, complete editable rich text, Vulkan/Metal texture parity, cross-platform shell parity, broad text/font/IME/accessibility parity, and broad `first_party_editor_excellence` remain unclaimed until exact phase gates pass.
+- [x] State explicitly that broad optimization, visible OS-level multi-window drag/drop shell restoration, Vulkan/Metal texture parity, cross-platform shell parity, broad text/font/IME/accessibility parity, and broad `first_party_editor_excellence` remain unclaimed until exact phase gates pass.
 - [x] Compose and check:
 
 ```powershell
@@ -369,9 +369,9 @@ Evidence:
 
 **Files:** `editor/core/include/mirakana/editor/editor_rich_text.hpp`, `editor/core/src/editor_rich_text.cpp`, `editor/core/src/ai_operation_surface.cpp`, `editor/src/first_party_editor_document.*`, `editor/src/native_editor_app.*`, tests.
 
-- [ ] Add RED tests for paragraph/span insertion, deletion, replacement, style toggles, inline object preservation, selection normalization, scalar-boundary cursor movement, undo/redo, copy, cut, paste, and plain/rich clipboard separation.
-- [ ] Add RED tests for rejecting invalid UTF-8, unsupported inline markup, native handle tokens, shell execution tokens, and stale document revisions.
-- [ ] Add command ids:
+- [x] Add RED tests for paragraph/span insertion, deletion, replacement, style toggles, inline object preservation, selection normalization, scalar-boundary cursor movement, undo/redo, copy, cut, paste, and plain/rich clipboard separation.
+- [x] Add RED tests for rejecting invalid UTF-8, unsupported inline markup, native handle tokens, shell execution tokens, and stale document revisions.
+- [x] Add command ids:
 
 ```text
 <rich_text_document_id>.insert_text
@@ -382,12 +382,13 @@ Evidence:
 <rich_text_document_id>.copy_plain_text
 <rich_text_document_id>.copy_selection_plain_text
 <rich_text_document_id>.copy_rich_text
+<rich_text_document_id>.cut_selection
 <rich_text_document_id>.paste_plain_text
 <rich_text_document_id>.paste_rich_text
 ```
 
-- [ ] Add visible shell edit controls for selected editable documents only; Console, AI Commands, and diagnostic Inspector sections remain read-only unless the model marks a row editable.
-- [ ] Add counters:
+- [x] Add visible shell edit controls for selected editable documents only; Console, AI Commands, and diagnostic Inspector sections remain read-only unless the model marks a row editable.
+- [x] Add counters:
 
 ```text
 editor_rich_text_edit_status=ready
@@ -399,6 +400,8 @@ editor_rich_text_native_handles_exposed=0
 ```
 
 Expected: rich text editing is complete at the first-party document level before broad shaping/font/IME/accessibility parity is claimed.
+
+**Phase 4 Evidence:** Candidate `codex/first-party-ui-editor-excellence-phase4` adds `EditorRichTextDocument.editable`, `EditorRichTextDocumentState`, undo/redo history stacks, `EditorRichTextEditCommandKind`, `EditorRichTextClipboardPayload`, `EditorRichTextEditRequest`, `EditorRichTextEditResult`, public `editor_rich_text_revision`, `normalize_editor_rich_text_selection`, and `apply_editor_rich_text_edit_command` in `MK_editor_core`. The editable contract supports paragraph/newline insertion, deletion, replacement, bold/italic style toggles, inline-object preservation, scalar-boundary cursor movement, copy/cut/paste, plain/rich clipboard payload separation, undo/redo, strict UTF-8 validation, unsupported markup rejection, native-handle/shell-token rejection, and stale document revision rejection. `EditorAiCommandCatalog` now exposes editable rich-text commands only for editable documents: `<rich_text_document_id>.insert_text`, `.delete_selection`, `.replace_selection`, `.toggle_bold`, `.toggle_italic`, `.copy_plain_text`, `.copy_selection_plain_text`, `.copy_rich_text`, `.cut_selection`, `.paste_plain_text`, and `.paste_rich_text`; read-only rich-text documents keep copy rows only. The first-party shell renders visible edit command buttons only for editable rich-text documents and keeps Console/AI Commands read-only, while `MK_editor_smoke` reports `editor_rich_text_edit_status=ready`, positive `editor_rich_text_editable_documents`, positive `editor_rich_text_command_rows`, `editor_rich_text_clipboard_plain_ready=1`, `editor_rich_text_clipboard_rich_ready=1`, and `editor_rich_text_native_handles_exposed=0`. RED/GREEN evidence covered `MK_editor_core_tests` and `MK_editor_native_shell_tests`; focused validation passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests MK_editor_native_shell_tests` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_editor_core_tests|MK_editor_native_shell_tests"`. This completes editable rich text at the first-party document/AI command/shell-control level only; broad shaping/font fallback/glyph atlas, full IME parity, full accessibility parity, and cross-platform text/editor parity remain later phases.
 
 ## Phase 5: Broad Text Shaping, Font Fallback, Glyph Atlas, And Licensing Gates
 

@@ -136,6 +136,12 @@ int main(int argc, char** argv) {
             << "editor_shell_workspace_v3_status=" << counters.workspace_v3_status << '\n'
             << "editor_shell_multi_window_native_handles_exposed="
             << (counters.multi_window_native_handles_exposed ? 1 : 0) << '\n'
+            << "editor_rich_text_edit_status=" << counters.rich_text_edit_status << '\n'
+            << "editor_rich_text_editable_documents=" << counters.rich_text_editable_documents << '\n'
+            << "editor_rich_text_command_rows=" << counters.rich_text_command_rows << '\n'
+            << "editor_rich_text_clipboard_plain_ready=" << (counters.rich_text_clipboard_plain_ready ? 1 : 0) << '\n'
+            << "editor_rich_text_clipboard_rich_ready=" << (counters.rich_text_clipboard_rich_ready ? 1 : 0) << '\n'
+            << "editor_rich_text_native_handles_exposed=" << (counters.rich_text_native_handles_exposed ? 1 : 0) << '\n'
             << "editor_shell_resizes=" << result.resize_count << '\n'
             << "editor_shell_adapter=" << adapter_name(result.adapter_kind) << '\n'
             << "editor_shell_renderer_boxes_submitted=" << result.renderer_boxes_submitted << '\n'

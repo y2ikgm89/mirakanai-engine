@@ -197,5 +197,10 @@ dry_run_editor_ai_command(const Workspace& workspace, const EditorDockLayout& do
 apply_editor_ai_command(const Workspace& workspace, const EditorDockLayout& dock_layout,
                         std::span<const EditorRichTextDocument> rich_text_documents,
                         const EditorAiCommandCatalog& catalog, const EditorAiCommandRequest& request);
+[[nodiscard]] EditorAiCommandApplyResult apply_editor_ai_command(const Workspace& workspace,
+                                                                 const EditorDockLayout& dock_layout,
+                                                                 std::span<EditorRichTextDocument> rich_text_documents,
+                                                                 const EditorAiCommandCatalog& catalog,
+                                                                 const EditorAiCommandRequest& request);
 
 } // namespace mirakana::editor
