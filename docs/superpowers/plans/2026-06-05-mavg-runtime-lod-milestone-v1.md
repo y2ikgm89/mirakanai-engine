@@ -419,7 +419,7 @@ Evidence: RED failed before `MavgClusterCookVertex`, triangle index rows, and `M
 - Modify: `engine/tools/asset/mavg_cluster_cook.cpp`
 - Modify: `tests/unit/tools_mavg_cluster_cook_tests.cpp`
 
-- [ ] Add cook input rows:
+- [x] Add cook input rows:
 
 ```cpp
 struct MavgClusterCookVertex {
@@ -469,7 +469,7 @@ Evidence: `tools/cmake.ps1 --build --preset dev --target MK_tools_mavg_cluster_c
   - invalid view rows return diagnostics and no selected rows
   - invalid graph returns diagnostics and no selected rows
 
-- [ ] Run:
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_mavg_lod_selection_tests
@@ -496,7 +496,7 @@ Evidence: RED failed before `mavg_lod_selection.hpp` existed with `fatal error C
 - [x] Sort output rows by `material_partition`, `page_index`, then `cluster_index`.
 - [x] Preserve deterministic budget degradation by replacing highest-cost child groups with fallback ancestors until `max_selected_clusters` is satisfied.
 - [x] Apply hysteresis only when previous rows are valid and within `hysteresis_pixels`.
-- [ ] Run:
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_mavg_lod_selection_tests
