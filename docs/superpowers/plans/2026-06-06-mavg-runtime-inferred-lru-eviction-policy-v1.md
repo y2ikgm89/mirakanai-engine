@@ -4,7 +4,7 @@
 
 **Plan ID:** `mavg-runtime-inferred-lru-eviction-policy-v1`
 
-**Status:** Completed validated candidate pending stacked draft PR publication.
+**Status:** Completed candidate published as stacked draft PR #481.
 
 ## Goal
 
@@ -37,7 +37,7 @@ Context7 `/websites/cppreference` was checked for the C++23 API shape: `std::spa
 - [x] Add focused unit tests for oldest-first ordering, cold-page ordering, and non-monotonic fail-closed behavior.
 - [x] Update docs, plan registry, manifest fragments, composed manifest, and static checks.
 - [x] Run focused and full validation.
-- [ ] Publish as a stacked draft PR over `codex/mavg-runtime-inferred-page-use-generation-v1`.
+- [x] Publish as stacked draft PR #481 over `codex/mavg-runtime-inferred-page-use-generation-v1`.
 
 ## Validation Evidence
 
