@@ -231,9 +231,15 @@ foreach ($needle in @(
 }
 
 $productionLoop = $manifest.aiOperableProductionLoop
-if ([string]$productionLoop.currentActivePlan -ne "docs/superpowers/plans/2026-06-05-mavg-page-addressable-payload-schema-v1.md") {
-    Write-Error "engine/agent/manifest.json currentActivePlan must select MAVG Page-Addressable Payload Schema v1"
-}
-if ([string]$productionLoop.recommendedNextPlan.id -ne "mavg-page-addressable-payload-schema-v1") {
-    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must select mavg-page-addressable-payload-schema-v1"
+$productionLoopText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence),
+    ([string]$productionLoop.recommendedNextPlan.completedContext),
+    ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
+foreach ($needle in @(
+        "MAVG Page-Addressable Payload Schema v1",
+        "mavg-page-addressable-payload-schema-v1",
+        "RuntimeMavgPayloadPageSliceResult",
+        "extract_runtime_mavg_payload_page_slices",
+        "page.data_hex"
+    )) {
+    Assert-ContainsText $productionLoopText $needle "engine/agent/manifest.json retained MAVG page-addressable payload prerequisite"
 }

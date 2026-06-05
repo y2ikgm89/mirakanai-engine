@@ -3,7 +3,9 @@
 
 #pragma once
 
+#include <cstdint>
 #include <filesystem>
+#include <span>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -18,9 +20,13 @@ class IFileSystem {
     [[nodiscard]] virtual bool exists(std::string_view path) const = 0;
     [[nodiscard]] virtual bool is_directory(std::string_view path) const = 0;
     [[nodiscard]] virtual std::string read_text(std::string_view path) const = 0;
+    [[nodiscard]] virtual std::vector<std::uint8_t> read_bytes(std::string_view path) const;
+    [[nodiscard]] virtual std::vector<std::uint8_t> read_byte_range(std::string_view path, std::uint64_t byte_offset,
+                                                                    std::uint64_t byte_size) const;
     [[nodiscard]] virtual std::vector<std::string> list_files(std::string_view root) const = 0;
 
     virtual void write_text(std::string_view path, std::string_view text) = 0;
+    virtual void write_bytes(std::string_view path, std::span<const std::uint8_t> bytes);
     virtual void remove(std::string_view path) = 0;
     virtual void remove_empty_directory(std::string_view path) = 0;
 };
@@ -30,9 +36,13 @@ class MemoryFileSystem final : public IFileSystem {
     [[nodiscard]] bool exists(std::string_view path) const override;
     [[nodiscard]] bool is_directory(std::string_view path) const override;
     [[nodiscard]] std::string read_text(std::string_view path) const override;
+    [[nodiscard]] std::vector<std::uint8_t> read_bytes(std::string_view path) const override;
+    [[nodiscard]] std::vector<std::uint8_t> read_byte_range(std::string_view path, std::uint64_t byte_offset,
+                                                            std::uint64_t byte_size) const override;
     [[nodiscard]] std::vector<std::string> list_files(std::string_view root) const override;
 
     void write_text(std::string_view path, std::string_view text) override;
+    void write_bytes(std::string_view path, std::span<const std::uint8_t> bytes) override;
     void remove(std::string_view path) override;
     void remove_empty_directory(std::string_view path) override;
 
@@ -47,9 +57,13 @@ class RootedFileSystem final : public IFileSystem {
     [[nodiscard]] bool exists(std::string_view path) const override;
     [[nodiscard]] bool is_directory(std::string_view path) const override;
     [[nodiscard]] std::string read_text(std::string_view path) const override;
+    [[nodiscard]] std::vector<std::uint8_t> read_bytes(std::string_view path) const override;
+    [[nodiscard]] std::vector<std::uint8_t> read_byte_range(std::string_view path, std::uint64_t byte_offset,
+                                                            std::uint64_t byte_size) const override;
     [[nodiscard]] std::vector<std::string> list_files(std::string_view root) const override;
 
     void write_text(std::string_view path, std::string_view text) override;
+    void write_bytes(std::string_view path, std::span<const std::uint8_t> bytes) override;
     void remove(std::string_view path) override;
     void remove_empty_directory(std::string_view path) override;
 

@@ -4,9 +4,9 @@
 
 **Plan ID:** `mavg-page-addressable-payload-schema-v1`
 
-**Status:** Active.
+**Status:** Completed stacked prerequisite for `mavg-payload-byte-range-file-io-v1`.
 
-**Execution State:** Stacked on `mavg-package-streaming-residency-dispatch-v1` / draft PR #454. This child promotes only deterministic `.mavgpayload` page table validation and caller-owned payload slice extraction from future work to implementation evidence.
+**Execution State:** Completed through stacked draft PR #456. The next active child is `mavg-payload-byte-range-file-io-v1`, which builds first-party byte-range file IO on top of this payload page table evidence.
 
 **Goal:** Add a page-addressable `GameEngine.MavgClusterPayload.v1` schema so cooked MAVG payloads publish deterministic page byte ranges and runtime code can validate/extract selected page slices from caller-supplied payload text without file IO, worker ownership, renderer/RHI residency, or async-overlap claims.
 

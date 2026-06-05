@@ -3996,6 +3996,26 @@ MK_TEST("memory filesystem stores reads and lists text files") {
     MK_REQUIRE(!fs.exists("assets/player.meta"));
 }
 
+MK_TEST("memory filesystem reads exact binary byte ranges") {
+    mirakana::MemoryFileSystem fs;
+    const std::vector<std::uint8_t> bytes{0x00U, 0x10U, 0xffU, 0x20U, 0x30U};
+
+    fs.write_bytes("runtime/blob.bin", bytes);
+
+    const auto all = fs.read_bytes("runtime/blob.bin");
+    const auto range = fs.read_byte_range("runtime/blob.bin", 1, 3);
+    MK_REQUIRE(all == bytes);
+    MK_REQUIRE((range == std::vector<std::uint8_t>{0x10U, 0xffU, 0x20U}));
+
+    bool rejected_out_of_range = false;
+    try {
+        (void)fs.read_byte_range("runtime/blob.bin", 4, 2);
+    } catch (const std::out_of_range&) {
+        rejected_out_of_range = true;
+    }
+    MK_REQUIRE(rejected_out_of_range);
+}
+
 MK_TEST("file watcher backend selection prefers native and falls back to polling") {
     const auto native_choice = mirakana::choose_file_watch_backend(
         mirakana::FileWatchBackendKind::automatic,
@@ -4163,6 +4183,30 @@ MK_TEST("rooted filesystem stores reads and lists text files under a root") {
     MK_REQUIRE(files.size() == 2);
     MK_REQUIRE(files[0] == "assets/nested/enemy.meta");
     MK_REQUIRE(files[1] == "assets/player.meta");
+
+    std::filesystem::remove_all(root);
+}
+
+MK_TEST("rooted filesystem reads exact binary byte ranges under a root") {
+    const auto root = std::filesystem::current_path() / "ge-rooted-filesystem-byte-range-test";
+    std::filesystem::remove_all(root);
+
+    mirakana::RootedFileSystem fs(root);
+    const std::vector<std::uint8_t> bytes{0x41U, 0x00U, 0x42U, 0xffU, 0x43U, 0x44U};
+    fs.write_bytes("runtime/blob.bin", bytes);
+
+    const auto all = fs.read_bytes("runtime/blob.bin");
+    const auto range = fs.read_byte_range("runtime/blob.bin", 2, 3);
+    MK_REQUIRE(all == bytes);
+    MK_REQUIRE((range == std::vector<std::uint8_t>{0x42U, 0xffU, 0x43U}));
+
+    bool rejected_out_of_range = false;
+    try {
+        (void)fs.read_byte_range("runtime/blob.bin", 5, 2);
+    } catch (const std::out_of_range&) {
+        rejected_out_of_range = true;
+    }
+    MK_REQUIRE(rejected_out_of_range);
 
     std::filesystem::remove_all(root);
 }

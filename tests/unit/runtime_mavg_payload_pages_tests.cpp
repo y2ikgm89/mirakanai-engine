@@ -5,6 +5,7 @@
 
 #include "mirakana/assets/mavg_cluster_graph.hpp"
 #include "mirakana/assets/mavg_cluster_payload.hpp"
+#include "mirakana/platform/filesystem.hpp"
 #include "mirakana/runtime/mavg_payload_pages.hpp"
 
 #include <cstdint>
@@ -129,6 +130,17 @@ has_diagnostic(const std::vector<mirakana::runtime::RuntimeMavgPayloadPageSliceD
     return false;
 }
 
+[[nodiscard]] bool
+has_diagnostic(const std::vector<mirakana::runtime::RuntimeMavgPayloadPageFileLoadDiagnostic>& diagnostics,
+               mirakana::runtime::RuntimeMavgPayloadPageFileLoadDiagnosticCode code) {
+    for (const auto& diagnostic : diagnostics) {
+        if (diagnostic.code == code) {
+            return true;
+        }
+    }
+    return false;
+}
+
 } // namespace
 
 MK_TEST("runtime mavg payload page slices extract requested decoded bytes in request order") {
@@ -206,6 +218,72 @@ MK_TEST("runtime mavg payload page slices reject invalid payload schema before e
     MK_REQUIRE(has_diagnostic(result.diagnostics,
                               mirakana::runtime::RuntimeMavgPayloadPageSliceDiagnosticCode::invalid_payload));
     MK_REQUIRE(!result.invoked_file_io);
+    MK_REQUIRE(!result.mutated_mount_set);
+    MK_REQUIRE(!result.executed_background_worker);
+    MK_REQUIRE(!result.touched_renderer_or_rhi_handles);
+}
+
+MK_TEST("runtime mavg payload file pages read selected byte ranges from a filesystem blob") {
+    const auto graph = make_payload_graph();
+    const auto payload_text = make_payload_text(graph);
+    mirakana::MemoryFileSystem filesystem;
+    std::vector<std::uint8_t> blob(128U, 0U);
+    std::fill(blob.begin(), blob.begin() + 64, static_cast<std::uint8_t>(0x51U));
+    std::fill(blob.begin() + 64, blob.end(), static_cast<std::uint8_t>(0x62U));
+    filesystem.write_bytes("runtime/mavg/runtime-page-addressable.pages", blob);
+    const std::vector<std::uint32_t> page_indices{1, 0};
+
+    const auto result =
+        mirakana::runtime::load_runtime_mavg_payload_file_pages(mirakana::runtime::RuntimeMavgPayloadPageFileLoadDesc{
+            .filesystem = &filesystem,
+            .graph = &graph,
+            .payload_text = payload_text,
+            .payload_blob_path = "runtime/mavg/runtime-page-addressable.pages",
+            .page_indices = page_indices,
+        });
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.requested_page_count == 2U);
+    MK_REQUIRE(result.loaded_page_count == 2U);
+    MK_REQUIRE(result.pages.size() == 2U);
+    MK_REQUIRE(result.pages[0].page_index == 1U);
+    MK_REQUIRE(result.pages[0].byte_offset == 64U);
+    MK_REQUIRE(result.pages[0].payload_bytes.size() == 64U);
+    MK_REQUIRE(result.pages[0].payload_bytes[0] == 0x62U);
+    MK_REQUIRE(result.pages[1].page_index == 0U);
+    MK_REQUIRE(result.pages[1].byte_offset == 0U);
+    MK_REQUIRE(result.pages[1].payload_bytes.size() == 64U);
+    MK_REQUIRE(result.pages[1].payload_bytes[0] == 0x51U);
+    MK_REQUIRE(result.invoked_file_io);
+    MK_REQUIRE(!result.used_native_directstorage);
+    MK_REQUIRE(!result.mutated_mount_set);
+    MK_REQUIRE(!result.executed_background_worker);
+    MK_REQUIRE(!result.touched_renderer_or_rhi_handles);
+}
+
+MK_TEST("runtime mavg payload file pages fail closed when blob byte range is unavailable") {
+    const auto graph = make_payload_graph();
+    const auto payload_text = make_payload_text(graph);
+    mirakana::MemoryFileSystem filesystem;
+    filesystem.write_bytes("runtime/mavg/runtime-page-addressable.pages", std::vector<std::uint8_t>(80U, 0x7aU));
+    const std::vector<std::uint32_t> page_indices{1};
+
+    const auto result =
+        mirakana::runtime::load_runtime_mavg_payload_file_pages(mirakana::runtime::RuntimeMavgPayloadPageFileLoadDesc{
+            .filesystem = &filesystem,
+            .graph = &graph,
+            .payload_text = payload_text,
+            .payload_blob_path = "runtime/mavg/runtime-page-addressable.pages",
+            .page_indices = page_indices,
+        });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.pages.empty());
+    MK_REQUIRE(result.requested_page_count == 1U);
+    MK_REQUIRE(has_diagnostic(
+        result.diagnostics, mirakana::runtime::RuntimeMavgPayloadPageFileLoadDiagnosticCode::payload_file_read_failed));
+    MK_REQUIRE(result.invoked_file_io);
+    MK_REQUIRE(!result.used_native_directstorage);
     MK_REQUIRE(!result.mutated_mount_set);
     MK_REQUIRE(!result.executed_background_worker);
     MK_REQUIRE(!result.touched_renderer_or_rhi_handles);

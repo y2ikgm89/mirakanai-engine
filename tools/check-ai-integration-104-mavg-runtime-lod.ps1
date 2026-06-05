@@ -77,7 +77,10 @@ foreach ($needle in @(
         "RuntimeMavgPayloadPageSliceResult",
         "payload_bytes",
         "extract_runtime_mavg_payload_page_slices",
+        "RuntimeMavgPayloadPageFileLoadResult",
+        "load_runtime_mavg_payload_file_pages",
         "invoked_file_io",
+        "used_native_directstorage",
         "mutated_mount_set",
         "executed_background_worker",
         "touched_renderer_or_rhi_handles"
@@ -87,7 +90,9 @@ foreach ($needle in @(
 foreach ($needle in @(
         "runtime mavg payload page slices extract requested decoded bytes in request order",
         "runtime mavg payload page slices reject duplicate and unknown page requests before extraction",
-        "runtime mavg payload page slices reject invalid payload schema before extraction"
+        "runtime mavg payload page slices reject invalid payload schema before extraction",
+        "runtime mavg payload file pages read selected byte ranges from a filesystem blob",
+        "runtime mavg payload file pages fail closed when blob byte range is unavailable"
     )) {
     Assert-ContainsText $runtimeMavgPayloadPagesTestsText $needle "tests/unit/runtime_mavg_payload_pages_tests.cpp"
 }
@@ -134,7 +139,7 @@ foreach ($surface in @(
     foreach ($needle in @("mavg_page_streaming.hpp", "RuntimeMavgPageStreamingPlanResult", "RuntimeMavgPageStreamingEvictionReviewResult", "RuntimeMavgPageStreamingDispatchPlan", "review_runtime_mavg_page_streaming_evictions", "plan_runtime_mavg_page_streaming_dispatches", "execute_runtime_mavg_page_streaming_request_safe_point", "autonomous background")) {
         Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG page streaming queue evidence"
     }
-    foreach ($needle in @("mavg_cluster_payload.hpp", "MavgClusterPayloadDocument", "page.data_hex", "mavg_payload_pages.hpp", "RuntimeMavgPayloadPageSliceResult", "extract_runtime_mavg_payload_page_slices", "DirectStorage/Win32")) {
+    foreach ($needle in @("mavg_cluster_payload.hpp", "MavgClusterPayloadDocument", "page.data_hex", "mavg_payload_pages.hpp", "RuntimeMavgPayloadPageSliceResult", "extract_runtime_mavg_payload_page_slices", "RuntimeMavgPayloadPageFileLoadResult", "load_runtime_mavg_payload_file_pages", "read_byte_range", "used_native_directstorage", "DirectStorage/Win32")) {
         Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG page-addressable payload schema evidence"
     }
 }
@@ -169,7 +174,11 @@ foreach ($needle in @(
         "mavg_payload_pages.hpp",
         "RuntimeMavgPayloadPageSliceResult",
         "extract_runtime_mavg_payload_page_slices",
+        "RuntimeMavgPayloadPageFileLoadResult",
+        "load_runtime_mavg_payload_file_pages",
         "payload_bytes",
+        "read_byte_range",
+        "used_native_directstorage=false",
         "DirectStorage/Win32 async IO"
     )) {
     Assert-ContainsText $runtimeManifestText $needle "engine/agent/manifest.json MK_runtime MAVG payload schema evidence"
