@@ -129,6 +129,13 @@ int main(int argc, char** argv) {
             << "editor_shell_dock_split_gutters=" << app.dock_split_gutters_last_frame() << '\n'
             << "editor_shell_dock_active_panels=" << app.dock_active_panels_last_frame() << '\n'
             << "editor_shell_dock_focusable_controls=" << app.dock_focusable_controls_last_frame() << '\n'
+            << "editor_shell_multi_window_docking_status=" << counters.multi_window_docking_status << '\n'
+            << "editor_shell_dock_windows=" << counters.dock_window_count << '\n'
+            << "editor_shell_dock_tear_off_commands=" << counters.dock_tear_off_command_count << '\n'
+            << "editor_shell_dock_window_merge_commands=" << counters.dock_window_merge_command_count << '\n'
+            << "editor_shell_workspace_v3_status=" << counters.workspace_v3_status << '\n'
+            << "editor_shell_multi_window_native_handles_exposed="
+            << (counters.multi_window_native_handles_exposed ? 1 : 0) << '\n'
             << "editor_shell_resizes=" << result.resize_count << '\n'
             << "editor_shell_adapter=" << adapter_name(result.adapter_kind) << '\n'
             << "editor_shell_renderer_boxes_submitted=" << result.renderer_boxes_submitted << '\n'

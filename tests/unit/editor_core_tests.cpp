@@ -897,6 +897,190 @@ MK_TEST("editor workspace persists split dock layout through reviewed workspace 
     MK_REQUIRE(mirakana::editor::validate_editor_dock_layout(restored.dock_layout()).valid);
 }
 
+MK_TEST("editor workspace v3 persists multi window dock roots monitor dpi and focused rows") {
+    auto workspace = mirakana::editor::Workspace::create_default(
+        mirakana::editor::ProjectInfo{.name = "sample", .root_path = "games/sample"});
+    auto layout = mirakana::editor::make_default_editor_dock_multi_window_layout();
+
+    const auto tear_off = mirakana::editor::apply_editor_dock_window_command(
+        layout,
+        mirakana::editor::EditorDockWindowCommandRequest{
+            .kind = mirakana::editor::EditorDockWindowCommandKind::tear_off_panel,
+            .window_id = "window.main",
+            .new_window_id = "window.assets",
+            .panel_id = "assets",
+            .source_stack_id = "dock.left_stack",
+            .monitor_id = "monitor.side",
+            .bounds =
+                mirakana::editor::EditorDockWindowBounds{.x = 100.0F, .y = 120.0F, .width = 640.0F, .height = 480.0F},
+            .dpi_scale = 1.5F,
+        });
+    MK_REQUIRE(tear_off.accepted);
+    MK_REQUIRE(layout.windows.size() == 2U);
+    MK_REQUIRE(layout.focused_window_id == "window.assets");
+    workspace.set_multi_window_dock_layout(layout);
+
+    const auto serialized = mirakana::editor::serialize_workspace_v3(workspace);
+    MK_REQUIRE(serialized.contains("format=GameEngine.Workspace.v3"));
+    MK_REQUIRE(serialized.contains("dock.window.focus=window.assets"));
+    MK_REQUIRE(serialized.contains("dock.window.1.id=window.assets"));
+    MK_REQUIRE(serialized.contains("dock.window.1.monitor=monitor.side"));
+    MK_REQUIRE(serialized.contains("dock.window.1.dpi=1.5"));
+    MK_REQUIRE(serialized.contains("dock.window.1.bounds=100,120,640,480"));
+    MK_REQUIRE(serialized.contains("dock.window.1.root=dock.window.assets.stack"));
+    MK_REQUIRE(serialized.contains("dock.window.1.focus=assets"));
+
+    const auto restored = mirakana::editor::deserialize_workspace_v3(serialized);
+    MK_REQUIRE(restored.project().name == "sample");
+    MK_REQUIRE(restored.multi_window_dock_layout().focused_window_id == "window.assets");
+    MK_REQUIRE(restored.multi_window_dock_layout().windows.size() == 2U);
+    MK_REQUIRE(mirakana::editor::validate_editor_dock_multi_window_layout(restored.multi_window_dock_layout()).valid);
+}
+
+MK_TEST("editor core multi window dock commands tear off move merge close and reset") {
+    auto layout = mirakana::editor::make_default_editor_dock_multi_window_layout();
+
+    const auto tear_off = mirakana::editor::plan_editor_dock_window_command(
+        layout,
+        mirakana::editor::EditorDockWindowCommandRequest{
+            .kind = mirakana::editor::EditorDockWindowCommandKind::tear_off_panel,
+            .window_id = "window.main",
+            .new_window_id = "window.assets",
+            .panel_id = "assets",
+            .source_stack_id = "dock.left_stack",
+            .monitor_id = "monitor.side",
+            .bounds =
+                mirakana::editor::EditorDockWindowBounds{.x = 64.0F, .y = 96.0F, .width = 720.0F, .height = 540.0F},
+            .dpi_scale = 1.25F,
+        });
+    MK_REQUIRE(tear_off.accepted);
+    MK_REQUIRE(tear_off.would_mutate);
+    MK_REQUIRE(tear_off.before_revision == 1U);
+    MK_REQUIRE(tear_off.after_revision == 2U);
+    MK_REQUIRE(layout.windows.size() == 1U);
+
+    layout = tear_off.result_layout;
+    const auto* detached = mirakana::editor::find_editor_dock_window(layout, "window.assets");
+    const auto* detached_stack = mirakana::editor::find_editor_dock_node(layout, "dock.window.assets.stack");
+    const auto* left_stack = mirakana::editor::find_editor_dock_node(layout, "dock.left_stack");
+    MK_REQUIRE(detached != nullptr);
+    MK_REQUIRE(detached_stack != nullptr);
+    MK_REQUIRE(left_stack != nullptr);
+    MK_REQUIRE(detached->root_id == "dock.window.assets.stack");
+    MK_REQUIRE(detached->monitor_id == "monitor.side");
+    MK_REQUIRE(detached->dpi_scale == 1.25F);
+    MK_REQUIRE(detached_stack->tabs.size() == 1U);
+    MK_REQUIRE(detached_stack->tabs.front() == "assets");
+    MK_REQUIRE(std::ranges::find(left_stack->tabs, "assets") == left_stack->tabs.end());
+
+    const auto move_back = mirakana::editor::apply_editor_dock_window_command(
+        layout, mirakana::editor::EditorDockWindowCommandRequest{
+                    .kind = mirakana::editor::EditorDockWindowCommandKind::move_panel_to_window,
+                    .window_id = "window.assets",
+                    .target_window_id = "window.main",
+                    .panel_id = "assets",
+                    .target_stack_id = "dock.right_stack",
+                });
+    MK_REQUIRE(move_back.accepted);
+    MK_REQUIRE(layout.windows.size() == 1U);
+    MK_REQUIRE(mirakana::editor::find_editor_dock_window(layout, "window.assets") == nullptr);
+    const auto* right_stack = mirakana::editor::find_editor_dock_node(layout, "dock.right_stack");
+    MK_REQUIRE(right_stack != nullptr);
+    MK_REQUIRE(std::ranges::find(right_stack->tabs, "assets") != right_stack->tabs.end());
+
+    const auto tear_off_console = mirakana::editor::apply_editor_dock_window_command(
+        layout,
+        mirakana::editor::EditorDockWindowCommandRequest{
+            .kind = mirakana::editor::EditorDockWindowCommandKind::tear_off_panel,
+            .window_id = "window.main",
+            .new_window_id = "window.console",
+            .panel_id = "console",
+            .source_stack_id = "dock.bottom_stack",
+            .monitor_id = "monitor.side",
+            .bounds =
+                mirakana::editor::EditorDockWindowBounds{.x = 80.0F, .y = 120.0F, .width = 720.0F, .height = 360.0F},
+            .dpi_scale = 1.25F,
+        });
+    MK_REQUIRE(tear_off_console.accepted);
+    const auto close_console = mirakana::editor::apply_editor_dock_window_command(
+        layout, mirakana::editor::EditorDockWindowCommandRequest{
+                    .kind = mirakana::editor::EditorDockWindowCommandKind::close_window,
+                    .window_id = "window.console",
+                });
+    MK_REQUIRE(close_console.accepted);
+    MK_REQUIRE(layout.windows.size() == 1U);
+    MK_REQUIRE(mirakana::editor::find_editor_dock_window(layout, "window.console") == nullptr);
+
+    const auto tear_off_profiler = mirakana::editor::apply_editor_dock_window_command(
+        layout,
+        mirakana::editor::EditorDockWindowCommandRequest{
+            .kind = mirakana::editor::EditorDockWindowCommandKind::tear_off_panel,
+            .window_id = "window.main",
+            .new_window_id = "window.profiler",
+            .panel_id = "profiler",
+            .source_stack_id = "dock.bottom_stack",
+            .monitor_id = "monitor.side",
+            .bounds =
+                mirakana::editor::EditorDockWindowBounds{.x = 90.0F, .y = 140.0F, .width = 640.0F, .height = 420.0F},
+            .dpi_scale = 1.25F,
+        });
+    MK_REQUIRE(tear_off_profiler.accepted);
+    const auto merge_profiler = mirakana::editor::apply_editor_dock_window_command(
+        layout, mirakana::editor::EditorDockWindowCommandRequest{
+                    .kind = mirakana::editor::EditorDockWindowCommandKind::merge_window,
+                    .window_id = "window.profiler",
+                    .target_window_id = "window.main",
+                    .target_stack_id = "dock.right_stack",
+                });
+    MK_REQUIRE(merge_profiler.accepted);
+    MK_REQUIRE(mirakana::editor::find_editor_dock_window(layout, "window.profiler") == nullptr);
+    right_stack = mirakana::editor::find_editor_dock_node(layout, "dock.right_stack");
+    MK_REQUIRE(right_stack != nullptr);
+    MK_REQUIRE(std::ranges::find(right_stack->tabs, "profiler") != right_stack->tabs.end());
+
+    const auto reset = mirakana::editor::apply_editor_dock_window_command(
+        layout, mirakana::editor::EditorDockWindowCommandRequest{
+                    .kind = mirakana::editor::EditorDockWindowCommandKind::reset_all_windows,
+                    .user_confirmed = true,
+                });
+    MK_REQUIRE(reset.accepted);
+    MK_REQUIRE(reset.requires_confirmation);
+    MK_REQUIRE(layout.windows.size() == 1U);
+    MK_REQUIRE(layout.focused_window_id == "window.main");
+    MK_REQUIRE(mirakana::editor::validate_editor_dock_multi_window_layout(layout).valid);
+}
+
+MK_TEST("editor core multi window layout rejects invalid workspace v3 state") {
+    auto duplicate_panel = mirakana::editor::make_default_editor_dock_multi_window_layout();
+    auto* right_stack = mirakana::editor::find_editor_dock_node(duplicate_panel, "dock.right_stack");
+    MK_REQUIRE(right_stack != nullptr);
+    right_stack->tabs.push_back("assets");
+    const auto duplicate_validation = mirakana::editor::validate_editor_dock_multi_window_layout(duplicate_panel);
+    MK_REQUIRE(!duplicate_validation.valid);
+    MK_REQUIRE(std::ranges::any_of(duplicate_validation.diagnostics,
+                                   [](const auto& diagnostic) { return diagnostic.code == "duplicate_dock_tab"; }));
+
+    auto orphan_window = mirakana::editor::make_default_editor_dock_multi_window_layout();
+    orphan_window.windows.front().root_id = "dock.missing";
+    const auto orphan_validation = mirakana::editor::validate_editor_dock_multi_window_layout(orphan_window);
+    MK_REQUIRE(!orphan_validation.valid);
+    MK_REQUIRE(std::ranges::any_of(orphan_validation.diagnostics,
+                                   [](const auto& diagnostic) { return diagnostic.code == "missing_window_root"; }));
+
+    auto invalid_monitor = mirakana::editor::make_default_editor_dock_multi_window_layout();
+    invalid_monitor.windows.front().monitor_id = "native_handle.monitor";
+    invalid_monitor.windows.front().dpi_scale = 0.0F;
+    invalid_monitor.windows.front().bounds.width = 0.0F;
+    const auto monitor_validation = mirakana::editor::validate_editor_dock_multi_window_layout(invalid_monitor);
+    MK_REQUIRE(!monitor_validation.valid);
+    MK_REQUIRE(std::ranges::any_of(monitor_validation.diagnostics,
+                                   [](const auto& diagnostic) { return diagnostic.code == "unsafe_token"; }));
+    MK_REQUIRE(std::ranges::any_of(monitor_validation.diagnostics,
+                                   [](const auto& diagnostic) { return diagnostic.code == "invalid_window_dpi"; }));
+    MK_REQUIRE(std::ranges::any_of(monitor_validation.diagnostics,
+                                   [](const auto& diagnostic) { return diagnostic.code == "invalid_window_bounds"; }));
+}
+
 MK_TEST("editor core dock command hides active panel with fallback focus") {
     auto layout = mirakana::editor::make_default_editor_dock_layout();
     layout.focused_panel_id = "console";
@@ -1624,6 +1808,87 @@ MK_TEST("editor ai command catalog exposes dock commands") {
     MK_REQUIRE(reset_layout->enabled);
     MK_REQUIRE(reset_layout->mutates_state);
     MK_REQUIRE(reset_layout->requires_confirmation);
+}
+
+MK_TEST("editor ai command catalog exposes multi window dock commands") {
+    auto workspace = mirakana::editor::Workspace::create_default(
+        mirakana::editor::ProjectInfo{.name = "sample", .root_path = "games/sample"});
+    auto layout = mirakana::editor::make_default_editor_dock_multi_window_layout();
+
+    const auto snapshot = mirakana::editor::make_editor_ai_operation_snapshot(workspace, layout);
+    const auto catalog = mirakana::editor::make_editor_ai_command_catalog(workspace, layout);
+    const auto* create_window = find_ai_command(catalog, "editor.dock.window.create");
+    const auto* close_window = find_ai_command(catalog, "editor.dock.window.close");
+    const auto* tear_off = find_ai_command(catalog, "editor.dock.panel.tear_off");
+    const auto* move_to_window = find_ai_command(catalog, "editor.dock.panel.move_to_window");
+    const auto* merge_window = find_ai_command(catalog, "editor.dock.window.merge");
+    const auto* reset_all = find_ai_command(catalog, "editor.dock.window.reset_all");
+
+    MK_REQUIRE(std::ranges::any_of(snapshot.elements, [](const auto& element) {
+        return element.id == "editor.dock.windows" && element.role == "dock_windows";
+    }));
+    MK_REQUIRE(std::ranges::any_of(snapshot.status_rows, [](const auto& row) {
+        return row.id == "editor.ai.dock.workspace_v3" && row.status == "ready" && row.count == 1U;
+    }));
+    MK_REQUIRE(create_window != nullptr);
+    MK_REQUIRE(create_window->target_element_id == "editor.dock.windows");
+    MK_REQUIRE(close_window != nullptr);
+    MK_REQUIRE(close_window->target_element_id == "editor.dock.windows");
+    MK_REQUIRE(tear_off != nullptr);
+    MK_REQUIRE(tear_off->target_element_id == "editor.dock.panel");
+    MK_REQUIRE(move_to_window != nullptr);
+    MK_REQUIRE(move_to_window->target_element_id == "editor.dock.panel");
+    MK_REQUIRE(merge_window != nullptr);
+    MK_REQUIRE(merge_window->target_element_id == "editor.dock.windows");
+    MK_REQUIRE(reset_all != nullptr);
+    MK_REQUIRE(reset_all->target_element_id == "editor.dock.windows");
+    MK_REQUIRE(reset_all->requires_confirmation);
+
+    const mirakana::editor::EditorAiCommandRequest tear_off_request{
+        .command_id = "editor.dock.panel.tear_off",
+        .target_element_id = "editor.dock.panel",
+        .parameters =
+            {
+                mirakana::editor::EditorAiCommandParameter{.key = "window_id", .value = "window.main"},
+                mirakana::editor::EditorAiCommandParameter{.key = "new_window_id", .value = "window.assets"},
+                mirakana::editor::EditorAiCommandParameter{.key = "panel_id", .value = "assets"},
+                mirakana::editor::EditorAiCommandParameter{.key = "source_stack_id", .value = "dock.left_stack"},
+                mirakana::editor::EditorAiCommandParameter{.key = "monitor_id", .value = "monitor.side"},
+                mirakana::editor::EditorAiCommandParameter{.key = "bounds", .value = "100,120,640,480"},
+                mirakana::editor::EditorAiCommandParameter{.key = "dpi_scale", .value = "1.5"},
+            },
+        .expected_revision = catalog.revision,
+    };
+    const auto dry_run = mirakana::editor::dry_run_editor_ai_command(workspace, layout, catalog, tear_off_request);
+    const auto applied = mirakana::editor::apply_editor_ai_command(workspace, layout, catalog, tear_off_request);
+
+    MK_REQUIRE(dry_run.accepted);
+    MK_REQUIRE(dry_run.would_mutate);
+    MK_REQUIRE(applied.accepted);
+    MK_REQUIRE(applied.completed);
+    MK_REQUIRE(applied.applied);
+    MK_REQUIRE(layout.windows.size() == 2U);
+    MK_REQUIRE(mirakana::editor::find_editor_dock_window(layout, "window.assets") != nullptr);
+
+    const auto merged_catalog = mirakana::editor::make_editor_ai_command_catalog(workspace, layout);
+    const mirakana::editor::EditorAiCommandRequest merge_request{
+        .command_id = "editor.dock.window.merge",
+        .target_element_id = "editor.dock.windows",
+        .parameters =
+            {
+                mirakana::editor::EditorAiCommandParameter{.key = "window_id", .value = "window.assets"},
+                mirakana::editor::EditorAiCommandParameter{.key = "target_window_id", .value = "window.main"},
+                mirakana::editor::EditorAiCommandParameter{.key = "target_stack_id", .value = "dock.right_stack"},
+            },
+        .expected_revision = merged_catalog.revision,
+    };
+    const auto merged = mirakana::editor::apply_editor_ai_command(workspace, layout, merged_catalog, merge_request);
+
+    MK_REQUIRE(merged.accepted);
+    MK_REQUIRE(merged.completed);
+    MK_REQUIRE(merged.applied);
+    MK_REQUIRE(layout.windows.size() == 1U);
+    MK_REQUIRE(mirakana::editor::find_editor_dock_window(layout, "window.assets") == nullptr);
 }
 
 MK_TEST("editor ai command catalog exposes reviewed rich text copy commands") {

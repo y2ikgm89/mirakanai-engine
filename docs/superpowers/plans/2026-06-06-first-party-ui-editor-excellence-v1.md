@@ -211,7 +211,7 @@ Expected: clean task-owned tree, `currentActivePlan` points to the production-co
 
 - [x] Select this plan in `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`.
 - [x] Preserve `unsupportedProductionGaps = []`.
-- [x] State explicitly that broad optimization, multi-window docking, complete editable rich text, Vulkan/Metal texture parity, cross-platform shell parity, broad text/font/IME/accessibility parity, and broad `first_party_editor_excellence` remain unclaimed until exact phase gates pass.
+- [x] State explicitly that broad optimization, visible OS-level multi-window drag/drop shell restoration, complete editable rich text, Vulkan/Metal texture parity, cross-platform shell parity, broad text/font/IME/accessibility parity, and broad `first_party_editor_excellence` remain unclaimed until exact phase gates pass.
 - [x] Compose and check:
 
 ```powershell
@@ -324,10 +324,10 @@ Phase 2 validation evidence:
 
 **Files:** `editor/core/include/mirakana/editor/editor_dock_layout.hpp`, `editor/core/include/mirakana/editor/workspace.hpp`, matching `editor/core/src/*.cpp`, `editor/src/first_party_editor_document.*`, `editor/src/native_editor_app.*`, `tests/unit/editor_core_tests.cpp`, `tests/unit/editor_native_shell_tests.cpp`, docs/manifest/static checks.
 
-- [ ] Add RED tests for `GameEngine.Workspace.v3` read/write with stable window ids, monitor ids, DPI scale rows, bounds rows, dock roots per window, focused window, and active panel rows.
-- [ ] Add RED tests for tear-off, move-to-window, merge-window, close-window, restore-window, and reset-all-windows command planning.
-- [ ] Add RED tests rejecting duplicate panel residency, orphan windows, cycles, invalid monitor/DPI values, empty window roots, native-handle tokens, and UI middleware tokens.
-- [ ] Add AI command ids:
+- [x] Add RED tests for `GameEngine.Workspace.v3` read/write with stable window ids, monitor ids, DPI scale rows, bounds rows, dock roots per window, focused window, and active panel rows.
+- [x] Add RED tests for create-window, tear-off, move-to-window, merge-window, close-window, and reset-all-windows command planning.
+- [x] Add RED tests rejecting duplicate panel residency, orphan windows, cycles, invalid monitor/DPI values, empty window roots, native-handle tokens, and UI middleware tokens.
+- [x] Add AI command ids:
 
 ```text
 editor.dock.window.create
@@ -338,7 +338,7 @@ editor.dock.window.merge
 editor.dock.window.reset_all
 ```
 
-- [ ] Add smoke counters:
+- [x] Add smoke counters:
 
 ```text
 editor_shell_multi_window_docking_status=ready
@@ -349,10 +349,19 @@ editor_shell_workspace_v3_status=ready
 editor_shell_multi_window_native_handles_exposed=0
 ```
 
-- [ ] Implement editor-core model first; wire visible Win32 windows only after model tests pass.
-- [ ] Run editor-core/native-shell tests and `tools/build-editor.ps1`.
+- [x] Implement editor-core model first; wire visible Win32 windows only after model tests pass.
+- [x] Run editor-core/native-shell tests and `tools/build-editor.ps1`.
 
-Expected: multi-window docking is usable, persistent, AI-operable, and does not require Dear ImGui or SDL3.
+Expected: core-owned multi-window docking is usable, persistent, AI-operable, and does not require Dear ImGui or SDL3; visible OS-level multi-window drag/drop shell restoration remains a later private shell adapter phase.
+
+Evidence:
+
+- RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests` failed before implementation because `make_default_editor_dock_multi_window_layout`, `EditorDockWindowCommandRequest`, `EditorDockWindowBounds`, `serialize_workspace_v3`, `deserialize_workspace_v3`, and related workspace v3 APIs were missing.
+- Implemented evidence: `MK_editor_core` now exposes `EditorDockMultiWindowLayout`, `EditorDockWindowRow`, `EditorDockWindowBounds`, `EditorDockWindowCommandKind`, `EditorDockWindowCommandRequest`, `EditorDockWindowCommandPlan`, `make_default_editor_dock_multi_window_layout`, `validate_editor_dock_multi_window_layout`, `plan_editor_dock_window_command`, `apply_editor_dock_window_command`, `Workspace::multi_window_dock_layout`, `serialize_workspace_v3`, and `deserialize_workspace_v3`.
+- AI-operable evidence: `EditorAiCommandCatalog` now exposes `editor.dock.window.create`, `editor.dock.window.close`, `editor.dock.panel.tear_off`, `editor.dock.panel.move_to_window`, `editor.dock.window.merge`, and `editor.dock.window.reset_all`, with dry-run/apply overloads over `EditorDockMultiWindowLayout` and no native handle exposure.
+- Smoke evidence: `MK_editor_smoke` now requires `editor_shell_multi_window_docking_status=ready`, `editor_shell_dock_windows=1`, `editor_shell_dock_tear_off_commands=1`, `editor_shell_dock_window_merge_commands=1`, `editor_shell_workspace_v3_status=ready`, and `editor_shell_multi_window_native_handles_exposed=0`.
+- Boundary evidence: Phase 3 proves the value/core model, workspace v3 persistence, AI command surface, and smoke planning counters; it does not claim visible OS-level multi-window drag/drop shell restoration.
+- Validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_editor_core_tests|MK_editor_native_shell_tests"` passed; `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1` passed the `desktop-editor` lane with 100/100 tests including `MK_editor_smoke`.
 
 ## Phase 4: Complete Editable Rich Text Core
 

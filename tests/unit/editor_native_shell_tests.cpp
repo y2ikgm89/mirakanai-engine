@@ -604,7 +604,7 @@ MK_TEST("editor native UIA provider diagnoses incomplete accessibility rows") {
     MK_REQUIRE(state.diagnostics.size() == 3U);
 }
 
-MK_TEST("editor first party shell smoke counters report imgui disabled") {
+MK_TEST("editor first party shell smoke counters report imgui disabled and multi window dock workspace rows") {
     mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
     const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
 
@@ -622,6 +622,12 @@ MK_TEST("editor first party shell smoke counters report imgui disabled") {
     MK_REQUIRE(counters.dock_split_gutter_count == 3U);
     MK_REQUIRE(counters.dock_active_panel_count == 4U);
     MK_REQUIRE(counters.dock_focusable_control_count == 11U);
+    MK_REQUIRE(counters.multi_window_docking_status == "ready");
+    MK_REQUIRE(counters.dock_window_count == 1U);
+    MK_REQUIRE(counters.dock_tear_off_command_count == 1U);
+    MK_REQUIRE(counters.dock_window_merge_command_count == 1U);
+    MK_REQUIRE(counters.workspace_v3_status == "ready");
+    MK_REQUIRE(!counters.multi_window_native_handles_exposed);
 }
 
 MK_TEST("editor first party shell smoke counters copy UI performance budget rows") {

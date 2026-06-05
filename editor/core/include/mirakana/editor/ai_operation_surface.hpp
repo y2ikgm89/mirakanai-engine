@@ -147,6 +147,8 @@ make_editor_ai_operation_ux_status_rows(const EditorAiOperationUxStatusDesc& des
 [[nodiscard]] EditorAiOperationSnapshot make_editor_ai_operation_snapshot(const Workspace& workspace,
                                                                           const EditorDockLayout& dock_layout);
 [[nodiscard]] EditorAiOperationSnapshot
+make_editor_ai_operation_snapshot(const Workspace& workspace, const EditorDockMultiWindowLayout& dock_layout);
+[[nodiscard]] EditorAiOperationSnapshot
 make_editor_ai_operation_snapshot(const Workspace& workspace, const EditorDockLayout& dock_layout,
                                   std::span<const EditorRichTextDocument> rich_text_documents,
                                   EditorRichTextViewport viewport = {});
@@ -159,6 +161,8 @@ make_editor_ai_operation_snapshot(const Workspace& workspace, const EditorDockLa
 [[nodiscard]] EditorAiCommandCatalog make_editor_ai_command_catalog(const Workspace& workspace);
 [[nodiscard]] EditorAiCommandCatalog make_editor_ai_command_catalog(const Workspace& workspace,
                                                                     const EditorDockLayout& dock_layout);
+[[nodiscard]] EditorAiCommandCatalog make_editor_ai_command_catalog(const Workspace& workspace,
+                                                                    const EditorDockMultiWindowLayout& dock_layout);
 [[nodiscard]] EditorAiCommandCatalog
 make_editor_ai_command_catalog(const Workspace& workspace, const EditorDockLayout& dock_layout,
                                std::span<const EditorRichTextDocument> rich_text_documents);
@@ -170,6 +174,10 @@ make_editor_ai_command_catalog(const Workspace& workspace, const EditorDockLayou
                                                                     const EditorDockLayout& dock_layout,
                                                                     const EditorAiCommandCatalog& catalog,
                                                                     const EditorAiCommandRequest& request);
+[[nodiscard]] EditorAiCommandDryRunResult dry_run_editor_ai_command(const Workspace& workspace,
+                                                                    const EditorDockMultiWindowLayout& dock_layout,
+                                                                    const EditorAiCommandCatalog& catalog,
+                                                                    const EditorAiCommandRequest& request);
 [[nodiscard]] EditorAiCommandDryRunResult
 dry_run_editor_ai_command(const Workspace& workspace, const EditorDockLayout& dock_layout,
                           std::span<const EditorRichTextDocument> rich_text_documents,
@@ -179,6 +187,10 @@ dry_run_editor_ai_command(const Workspace& workspace, const EditorDockLayout& do
                                                                  const EditorAiCommandCatalog& catalog,
                                                                  const EditorAiCommandRequest& request);
 [[nodiscard]] EditorAiCommandApplyResult apply_editor_ai_command(Workspace& workspace, EditorDockLayout& dock_layout,
+                                                                 const EditorAiCommandCatalog& catalog,
+                                                                 const EditorAiCommandRequest& request);
+[[nodiscard]] EditorAiCommandApplyResult apply_editor_ai_command(Workspace& workspace,
+                                                                 EditorDockMultiWindowLayout& dock_layout,
                                                                  const EditorAiCommandCatalog& catalog,
                                                                  const EditorAiCommandRequest& request);
 [[nodiscard]] EditorAiCommandApplyResult

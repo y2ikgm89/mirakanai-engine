@@ -80,6 +80,12 @@ struct FirstPartyEditorShellSmokeCounters {
     std::uint32_t dock_split_gutter_count{0};
     std::uint32_t dock_active_panel_count{0};
     std::uint32_t dock_focusable_control_count{0};
+    std::string multi_window_docking_status{"not_ready"};
+    std::uint32_t dock_window_count{0};
+    std::uint32_t dock_tear_off_command_count{0};
+    std::uint32_t dock_window_merge_command_count{0};
+    std::string workspace_v3_status{"not_ready"};
+    bool multi_window_native_handles_exposed{false};
     std::string ui_performance_budget_status{"missing_samples"};
     double ui_performance_layout_us_p95{0.0};
     double ui_performance_document_build_us_p95{0.0};

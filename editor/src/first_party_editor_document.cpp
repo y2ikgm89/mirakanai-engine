@@ -13,6 +13,7 @@
 #include <array>
 #include <chrono>
 #include <cstddef>
+#include <exception>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -417,6 +418,44 @@ make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const F
     const auto& material_preview_display = app.material_preview_display();
     const auto& retained_diff = app.retained_ui_diff();
     const auto performance = summarize_first_party_editor_ui_performance(app, document);
+    const auto& multi_window_layout = app.workspace().multi_window_dock_layout();
+    const auto multi_window_validation = validate_editor_dock_multi_window_layout(multi_window_layout);
+    auto tear_off_layout = multi_window_layout;
+    const auto tear_off_plan = plan_editor_dock_window_command(
+        tear_off_layout,
+        EditorDockWindowCommandRequest{
+            .kind = EditorDockWindowCommandKind::tear_off_panel,
+            .window_id = "window.main",
+            .new_window_id = "window.assets",
+            .panel_id = "assets",
+            .source_stack_id = "dock.left_stack",
+            .monitor_id = "monitor.side",
+            .bounds = EditorDockWindowBounds{.x = 100.0F, .y = 120.0F, .width = 640.0F, .height = 480.0F},
+            .dpi_scale = 1.5F,
+        });
+    if (tear_off_plan.accepted) {
+        tear_off_layout = tear_off_plan.result_layout;
+    }
+    const auto merge_plan =
+        plan_editor_dock_window_command(tear_off_layout, EditorDockWindowCommandRequest{
+                                                             .kind = EditorDockWindowCommandKind::merge_window,
+                                                             .window_id = "window.assets",
+                                                             .target_window_id = "window.main",
+                                                             .target_stack_id = "dock.right_stack",
+                                                         });
+    bool workspace_v3_ready = false;
+    try {
+        const auto round_trip = deserialize_workspace_v3(serialize_workspace_v3(app.workspace()));
+        workspace_v3_ready = validate_editor_dock_multi_window_layout(round_trip.multi_window_dock_layout()).valid;
+    } catch (const std::exception&) {
+        workspace_v3_ready = false;
+    }
+    const bool multi_window_handles_exposed =
+        multi_window_layout.native_handles_public ||
+        std::ranges::any_of(multi_window_layout.unsupported_capabilities,
+                            [](const auto& capability) { return capability.native_handles_public; });
+    const bool multi_window_ready = multi_window_validation.valid && tear_off_plan.accepted && merge_plan.accepted &&
+                                    workspace_v3_ready && !multi_window_handles_exposed;
     return FirstPartyEditorShellSmokeCounters{
         .ui = "first_party",
         .backend = "d3d12",
@@ -467,6 +506,12 @@ make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const F
         .dock_split_gutter_count = document.split_gutter_count,
         .dock_active_panel_count = document.active_panel_count,
         .dock_focusable_control_count = document.focusable_dock_control_count,
+        .multi_window_docking_status = multi_window_ready ? "ready" : "not_ready",
+        .dock_window_count = static_cast<std::uint32_t>(multi_window_layout.windows.size()),
+        .dock_tear_off_command_count = tear_off_plan.accepted ? 1U : 0U,
+        .dock_window_merge_command_count = merge_plan.accepted ? 1U : 0U,
+        .workspace_v3_status = workspace_v3_ready ? "ready" : "not_ready",
+        .multi_window_native_handles_exposed = multi_window_handles_exposed,
         .ui_performance_budget_status = std::string(editor_ui_performance_budget_status_id(performance.status)),
         .ui_performance_layout_us_p95 = performance.layout_us_p95,
         .ui_performance_document_build_us_p95 = performance.document_build_us_p95,

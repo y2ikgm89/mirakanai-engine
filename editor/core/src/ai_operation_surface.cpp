@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <array>
+#include <initializer_list>
 #include <optional>
 #include <stdexcept>
 #include <string_view>
@@ -83,14 +84,46 @@ struct ParsedDockParameters {
     std::vector<EditorAiOperationDiagnostic> diagnostics;
 };
 
+struct ParsedDockWindowCommand {
+    bool recognized{false};
+    EditorDockWindowCommandKind kind{EditorDockWindowCommandKind::tear_off_panel};
+};
+
+struct ParsedDockWindowParameters {
+    bool accepted{false};
+    std::string window_id;
+    std::string target_window_id;
+    std::string new_window_id;
+    std::string panel_id;
+    std::string source_stack_id;
+    std::string target_stack_id;
+    std::string monitor_id;
+    EditorDockWindowBounds bounds;
+    float dpi_scale{1.0F};
+    std::vector<EditorAiOperationDiagnostic> diagnostics;
+};
+
 constexpr std::string_view dock_command_prefix = "editor.dock.";
 constexpr std::string_view dock_panel_command_prefix = "editor.dock.panel.";
 constexpr std::string_view dock_layout_reset_command = "editor.dock.layout.reset";
+constexpr std::string_view dock_window_create_command = "editor.dock.window.create";
+constexpr std::string_view dock_window_close_command = "editor.dock.window.close";
+constexpr std::string_view dock_panel_tear_off_command = "editor.dock.panel.tear_off";
+constexpr std::string_view dock_panel_move_to_window_command = "editor.dock.panel.move_to_window";
+constexpr std::string_view dock_window_merge_command = "editor.dock.window.merge";
+constexpr std::string_view dock_window_reset_all_command = "editor.dock.window.reset_all";
 constexpr std::string_view target_stack_parameter = "target_stack_id";
 constexpr std::string_view source_stack_parameter = "source_stack_id";
 constexpr std::string_view new_stack_parameter = "new_stack_id";
 constexpr std::string_view split_axis_parameter = "split_axis";
 constexpr std::string_view split_ratio_parameter = "split_ratio";
+constexpr std::string_view window_parameter = "window_id";
+constexpr std::string_view target_window_parameter = "target_window_id";
+constexpr std::string_view new_window_parameter = "new_window_id";
+constexpr std::string_view panel_parameter = "panel_id";
+constexpr std::string_view monitor_parameter = "monitor_id";
+constexpr std::string_view window_bounds_parameter = "bounds";
+constexpr std::string_view dpi_scale_parameter = "dpi_scale";
 constexpr std::string_view rich_text_copy_plain_suffix = ".copy_plain_text";
 constexpr std::string_view rich_text_copy_selection_suffix = ".copy_selection_plain_text";
 constexpr std::string_view plain_text_mime_type = "text/plain;charset=utf-8";
@@ -101,6 +134,18 @@ constexpr std::string_view plain_text_mime_type = "text/plain;charset=utf-8";
 
 [[nodiscard]] std::string dock_layout_element_id() {
     return "editor.dock.layout";
+}
+
+[[nodiscard]] std::string dock_windows_element_id() {
+    return "editor.dock.windows";
+}
+
+[[nodiscard]] std::string dock_window_element_id(std::string_view window_id) {
+    return "editor.dock.window." + std::string{window_id};
+}
+
+[[nodiscard]] std::string dock_panel_window_command_element_id() {
+    return "editor.dock.panel";
 }
 
 [[nodiscard]] std::string dock_stack_element_id(std::string_view stack_id) {
@@ -132,6 +177,11 @@ constexpr std::string_view plain_text_mime_type = "text/plain;charset=utf-8";
 
 [[nodiscard]] std::uint64_t combined_operation_revision(const Workspace& workspace,
                                                         const EditorDockLayout& dock_layout) noexcept {
+    return (workspace_operation_revision(workspace) * 131U) + dock_layout.layout_revision;
+}
+
+[[nodiscard]] std::uint64_t combined_operation_revision(const Workspace& workspace,
+                                                        const EditorDockMultiWindowLayout& dock_layout) noexcept {
     return (workspace_operation_revision(workspace) * 131U) + dock_layout.layout_revision;
 }
 
@@ -180,7 +230,20 @@ constexpr std::string_view plain_text_mime_type = "text/plain;charset=utf-8";
     return it == layout.nodes.end() ? nullptr : &(*it);
 }
 
+[[nodiscard]] const EditorDockNode* find_dock_stack_containing_panel(const EditorDockMultiWindowLayout& layout,
+                                                                     std::string_view panel_id) noexcept {
+    const auto it = std::ranges::find_if(layout.nodes, [panel_id](const EditorDockNode& node) {
+        return node.kind == EditorDockNodeKind::tab_stack && contains_tab(node, panel_id);
+    });
+    return it == layout.nodes.end() ? nullptr : &(*it);
+}
+
 [[nodiscard]] bool dock_panel_is_visible(const EditorDockLayout& layout, std::string_view panel_id) noexcept {
+    return find_dock_stack_containing_panel(layout, panel_id) != nullptr;
+}
+
+[[nodiscard]] bool dock_panel_is_visible(const EditorDockMultiWindowLayout& layout,
+                                         std::string_view panel_id) noexcept {
     return find_dock_stack_containing_panel(layout, panel_id) != nullptr;
 }
 
@@ -227,6 +290,47 @@ constexpr std::string_view plain_text_mime_type = "text/plain;charset=utf-8";
         throw std::invalid_argument("AI editor dock split ratio must be a float");
     }
     return parsed;
+}
+
+[[nodiscard]] float parse_dock_float(std::string_view value, std::string_view label) {
+    std::size_t consumed = 0;
+    const auto parsed = std::stof(std::string{value}, &consumed);
+    if (consumed != value.size()) {
+        throw std::invalid_argument("AI editor dock " + std::string{label} + " must be a float");
+    }
+    return parsed;
+}
+
+[[nodiscard]] std::vector<std::string_view> split_comma_values(std::string_view value) {
+    std::vector<std::string_view> tokens;
+    std::size_t begin = 0U;
+    while (begin <= value.size()) {
+        const auto separator = value.find(',', begin);
+        const auto end = separator == std::string_view::npos ? value.size() : separator;
+        const auto token = value.substr(begin, end - begin);
+        if (token.empty()) {
+            throw std::invalid_argument("AI editor dock comma-separated value must not contain empty entries");
+        }
+        tokens.push_back(token);
+        if (separator == std::string_view::npos) {
+            break;
+        }
+        begin = separator + 1U;
+    }
+    return tokens;
+}
+
+[[nodiscard]] EditorDockWindowBounds parse_dock_window_bounds(std::string_view value) {
+    const auto tokens = split_comma_values(value);
+    if (tokens.size() != 4U) {
+        throw std::invalid_argument("AI editor dock window bounds must be x,y,width,height");
+    }
+    return EditorDockWindowBounds{
+        .x = parse_dock_float(tokens[0], "window bounds x"),
+        .y = parse_dock_float(tokens[1], "window bounds y"),
+        .width = parse_dock_float(tokens[2], "window bounds width"),
+        .height = parse_dock_float(tokens[3], "window bounds height"),
+    };
 }
 
 [[nodiscard]] ParsedDockCommand parse_dock_command(std::string_view command_id) {
@@ -332,6 +436,139 @@ constexpr std::string_view plain_text_mime_type = "text/plain;charset=utf-8";
     return result;
 }
 
+[[nodiscard]] ParsedDockWindowCommand parse_dock_window_command(std::string_view command_id) {
+    if (command_id == dock_window_create_command) {
+        return ParsedDockWindowCommand{.recognized = true, .kind = EditorDockWindowCommandKind::create_window};
+    }
+    if (command_id == dock_window_close_command) {
+        return ParsedDockWindowCommand{.recognized = true, .kind = EditorDockWindowCommandKind::close_window};
+    }
+    if (command_id == dock_panel_tear_off_command) {
+        return ParsedDockWindowCommand{.recognized = true, .kind = EditorDockWindowCommandKind::tear_off_panel};
+    }
+    if (command_id == dock_panel_move_to_window_command) {
+        return ParsedDockWindowCommand{.recognized = true, .kind = EditorDockWindowCommandKind::move_panel_to_window};
+    }
+    if (command_id == dock_window_merge_command) {
+        return ParsedDockWindowCommand{.recognized = true, .kind = EditorDockWindowCommandKind::merge_window};
+    }
+    if (command_id == dock_window_reset_all_command) {
+        return ParsedDockWindowCommand{.recognized = true, .kind = EditorDockWindowCommandKind::reset_all_windows};
+    }
+    return {};
+}
+
+[[nodiscard]] bool has_only_parameters(const EditorAiCommandRequest& request,
+                                       std::initializer_list<std::string_view> allowed_keys) noexcept {
+    return std::ranges::all_of(request.parameters, [allowed_keys](const EditorAiCommandParameter& parameter) {
+        return std::ranges::any_of(allowed_keys,
+                                   [&parameter](std::string_view allowed_key) { return parameter.key == allowed_key; });
+    });
+}
+
+[[nodiscard]] std::string required_parameter(ParsedDockWindowParameters& result, const EditorAiCommandRequest& request,
+                                             std::string_view key) {
+    const auto value = find_parameter(request, key);
+    if (!value.has_value() || value->empty()) {
+        result.diagnostics.push_back(
+            diagnostic("missing_parameter", "AI editor dock window command requires parameter: " + std::string{key}));
+        return {};
+    }
+    return std::string{*value};
+}
+
+[[nodiscard]] ParsedDockWindowParameters parse_dock_window_parameters(const ParsedDockWindowCommand& parsed,
+                                                                      const EditorAiCommandRequest& request) {
+    ParsedDockWindowParameters result;
+    const auto parse_common_window_creation = [&]() {
+        if (!has_only_parameters(request,
+                                 {window_parameter, new_window_parameter, panel_parameter, source_stack_parameter,
+                                  monitor_parameter, window_bounds_parameter, dpi_scale_parameter})) {
+            result.diagnostics.push_back(
+                diagnostic("unsupported_parameters",
+                           "AI editor dock window create/tear-off command accepts window_id, new_window_id, panel_id, "
+                           "source_stack_id, monitor_id, bounds, and dpi_scale"));
+            return false;
+        }
+        result.window_id = required_parameter(result, request, window_parameter);
+        result.new_window_id = required_parameter(result, request, new_window_parameter);
+        result.panel_id = required_parameter(result, request, panel_parameter);
+        result.source_stack_id = required_parameter(result, request, source_stack_parameter);
+        result.monitor_id = required_parameter(result, request, monitor_parameter);
+        const auto bounds = find_parameter(request, window_bounds_parameter);
+        if (!bounds.has_value() || bounds->empty()) {
+            result.diagnostics.push_back(
+                diagnostic("missing_parameter", "AI editor dock window command requires bounds"));
+            return false;
+        }
+        try {
+            result.bounds = parse_dock_window_bounds(*bounds);
+            if (const auto dpi = find_parameter(request, dpi_scale_parameter); dpi.has_value()) {
+                result.dpi_scale = parse_dock_float(*dpi, "window dpi_scale");
+            }
+        } catch (const std::invalid_argument& error) {
+            result.diagnostics.push_back(diagnostic("invalid_parameter", error.what()));
+            return false;
+        }
+        return result.diagnostics.empty();
+    };
+
+    switch (parsed.kind) {
+    case EditorDockWindowCommandKind::create_window:
+    case EditorDockWindowCommandKind::tear_off_panel:
+        if (!parse_common_window_creation()) {
+            return result;
+        }
+        break;
+    case EditorDockWindowCommandKind::move_panel_to_window:
+        if (!has_only_parameters(
+                request, {window_parameter, target_window_parameter, panel_parameter, target_stack_parameter})) {
+            result.diagnostics.push_back(diagnostic(
+                "unsupported_parameters",
+                "AI editor dock panel move-to-window command accepts window_id, target_window_id, panel_id, and "
+                "target_stack_id"));
+            return result;
+        }
+        result.window_id = required_parameter(result, request, window_parameter);
+        result.target_window_id = required_parameter(result, request, target_window_parameter);
+        result.panel_id = required_parameter(result, request, panel_parameter);
+        result.target_stack_id = required_parameter(result, request, target_stack_parameter);
+        break;
+    case EditorDockWindowCommandKind::merge_window:
+        if (!has_only_parameters(request, {window_parameter, target_window_parameter, target_stack_parameter})) {
+            result.diagnostics.push_back(diagnostic(
+                "unsupported_parameters",
+                "AI editor dock window merge command accepts window_id, target_window_id, and target_stack_id"));
+            return result;
+        }
+        result.window_id = required_parameter(result, request, window_parameter);
+        result.target_window_id = required_parameter(result, request, target_window_parameter);
+        result.target_stack_id = required_parameter(result, request, target_stack_parameter);
+        break;
+    case EditorDockWindowCommandKind::close_window:
+        if (!has_only_parameters(request, {window_parameter})) {
+            result.diagnostics.push_back(
+                diagnostic("unsupported_parameters", "AI editor dock window close command accepts window_id only"));
+            return result;
+        }
+        result.window_id = required_parameter(result, request, window_parameter);
+        break;
+    case EditorDockWindowCommandKind::reset_all_windows:
+        if (!request.parameters.empty()) {
+            result.diagnostics.push_back(diagnostic(
+                "unsupported_parameters", "AI editor dock window reset-all command does not accept parameters"));
+            return result;
+        }
+        break;
+    }
+
+    if (!result.diagnostics.empty()) {
+        return result;
+    }
+    result.accepted = true;
+    return result;
+}
+
 [[nodiscard]] EditorDockCommandRequest make_dock_request(const ParsedDockCommand& parsed,
                                                          const ParsedDockParameters& parameters, bool user_confirmed) {
     return EditorDockCommandRequest{.kind = parsed.kind,
@@ -342,6 +579,24 @@ constexpr std::string_view plain_text_mime_type = "text/plain;charset=utf-8";
                                     .split_axis = parameters.split_axis,
                                     .split_ratio = parameters.split_ratio,
                                     .user_confirmed = user_confirmed};
+}
+
+[[nodiscard]] EditorDockWindowCommandRequest make_dock_window_request(const ParsedDockWindowCommand& parsed,
+                                                                      const ParsedDockWindowParameters& parameters,
+                                                                      bool user_confirmed) {
+    return EditorDockWindowCommandRequest{
+        .kind = parsed.kind,
+        .window_id = parameters.window_id,
+        .target_window_id = parameters.target_window_id,
+        .new_window_id = parameters.new_window_id,
+        .panel_id = parameters.panel_id,
+        .source_stack_id = parameters.source_stack_id,
+        .target_stack_id = parameters.target_stack_id,
+        .monitor_id = parameters.monitor_id,
+        .bounds = parameters.bounds,
+        .dpi_scale = parameters.dpi_scale,
+        .user_confirmed = user_confirmed,
+    };
 }
 
 [[nodiscard]] const EditorAiCommandRow* find_command(const EditorAiCommandCatalog& catalog,
@@ -442,7 +697,19 @@ void append_dock_command_diagnostics(EditorAiCommandDryRunResult& result, const 
     }
 }
 
+void append_dock_command_diagnostics(EditorAiCommandDryRunResult& result, const EditorDockWindowCommandPlan& plan) {
+    for (const auto& item : plan.diagnostics) {
+        result.diagnostics.push_back(diagnostic(item.code, item.message));
+    }
+}
+
 void append_dock_command_diagnostics(EditorAiCommandApplyResult& result, const EditorDockCommandPlan& plan) {
+    for (const auto& item : plan.diagnostics) {
+        result.diagnostics.push_back(diagnostic(item.code, item.message));
+    }
+}
+
+void append_dock_command_diagnostics(EditorAiCommandApplyResult& result, const EditorDockWindowCommandPlan& plan) {
     for (const auto& item : plan.diagnostics) {
         result.diagnostics.push_back(diagnostic(item.code, item.message));
     }
@@ -656,6 +923,66 @@ EditorAiOperationSnapshot make_editor_ai_operation_snapshot(const Workspace& wor
 }
 
 EditorAiOperationSnapshot make_editor_ai_operation_snapshot(const Workspace& workspace,
+                                                            const EditorDockMultiWindowLayout& dock_layout) {
+    auto snapshot = make_editor_ai_operation_snapshot(workspace);
+    snapshot.revision = combined_operation_revision(workspace, dock_layout);
+
+    const auto validation = validate_editor_dock_multi_window_layout(dock_layout);
+    append_dock_layout_diagnostics(snapshot, validation);
+
+    snapshot.elements.push_back(EditorAiOperationElementRow{
+        .id = dock_windows_element_id(),
+        .role = "dock_windows",
+        .label = "Dock Windows",
+        .visible = true,
+        .enabled = validation.valid,
+    });
+    for (const auto& window : dock_layout.windows) {
+        snapshot.elements.push_back(EditorAiOperationElementRow{
+            .id = dock_window_element_id(window.id),
+            .role = "dock_window",
+            .label = window.title.empty() ? window.id : window.title,
+            .visible = true,
+            .enabled = validation.valid,
+        });
+    }
+    for (const auto& node : dock_layout.nodes) {
+        if (node.kind == EditorDockNodeKind::tab_stack) {
+            snapshot.elements.push_back(EditorAiOperationElementRow{
+                .id = dock_stack_element_id(node.id),
+                .role = "dock_stack",
+                .label = node.id,
+                .visible = true,
+                .enabled = validation.valid,
+            });
+        }
+    }
+    for (const auto& panel : editor_dock_panel_catalog()) {
+        if (!panel.native_shell_panel) {
+            continue;
+        }
+        snapshot.elements.push_back(EditorAiOperationElementRow{
+            .id = dock_panel_element_id(panel.id),
+            .role = "dock_panel",
+            .label = panel.label,
+            .visible = dock_panel_is_visible(dock_layout, panel.id),
+            .enabled = validation.valid,
+        });
+    }
+    snapshot.status_rows.push_back(EditorAiOperationStatusRow{
+        .id = "editor.ai.dock.workspace_v3",
+        .role = "workspace_v3",
+        .label = "Workspace v3",
+        .target_element_id = dock_windows_element_id(),
+        .status = validation.valid ? "ready" : "invalid",
+        .count = dock_layout.windows.size(),
+        .ready = validation.valid,
+        .native_handles_public = dock_layout.native_handles_public,
+    });
+    return snapshot;
+}
+
+EditorAiOperationSnapshot make_editor_ai_operation_snapshot(const Workspace& workspace,
                                                             const EditorDockLayout& dock_layout,
                                                             std::span<const EditorRichTextDocument> rich_text_documents,
                                                             EditorRichTextViewport viewport) {
@@ -779,6 +1106,65 @@ EditorAiCommandCatalog make_editor_ai_command_catalog(const Workspace& workspace
     return catalog;
 }
 
+EditorAiCommandCatalog make_editor_ai_command_catalog(const Workspace& workspace,
+                                                      const EditorDockMultiWindowLayout& dock_layout) {
+    auto catalog = make_editor_ai_command_catalog(workspace);
+    const auto validation = validate_editor_dock_multi_window_layout(dock_layout);
+    catalog.revision = combined_operation_revision(workspace, dock_layout);
+    const bool enabled = validation.valid;
+
+    catalog.commands.push_back(EditorAiCommandRow{
+        .id = std::string{dock_window_create_command},
+        .label = "Create Dock Window",
+        .target_element_id = dock_windows_element_id(),
+        .enabled = enabled,
+        .mutates_state = true,
+        .requires_confirmation = false,
+    });
+    catalog.commands.push_back(EditorAiCommandRow{
+        .id = std::string{dock_window_close_command},
+        .label = "Close Dock Window",
+        .target_element_id = dock_windows_element_id(),
+        .enabled = enabled,
+        .mutates_state = true,
+        .requires_confirmation = false,
+    });
+    catalog.commands.push_back(EditorAiCommandRow{
+        .id = std::string{dock_panel_tear_off_command},
+        .label = "Tear Off Dock Panel",
+        .target_element_id = dock_panel_window_command_element_id(),
+        .enabled = enabled,
+        .mutates_state = true,
+        .requires_confirmation = false,
+    });
+    catalog.commands.push_back(EditorAiCommandRow{
+        .id = std::string{dock_panel_move_to_window_command},
+        .label = "Move Dock Panel To Window",
+        .target_element_id = dock_panel_window_command_element_id(),
+        .enabled = enabled,
+        .mutates_state = true,
+        .requires_confirmation = false,
+    });
+    catalog.commands.push_back(EditorAiCommandRow{
+        .id = std::string{dock_window_merge_command},
+        .label = "Merge Dock Window",
+        .target_element_id = dock_windows_element_id(),
+        .enabled = enabled,
+        .mutates_state = true,
+        .requires_confirmation = false,
+    });
+    catalog.commands.push_back(EditorAiCommandRow{
+        .id = std::string{dock_window_reset_all_command},
+        .label = "Reset All Dock Windows",
+        .target_element_id = dock_windows_element_id(),
+        .enabled = true,
+        .mutates_state = true,
+        .requires_confirmation = true,
+    });
+
+    return catalog;
+}
+
 EditorAiCommandCatalog make_editor_ai_command_catalog(const Workspace& workspace, const EditorDockLayout& dock_layout,
                                                       std::span<const EditorRichTextDocument> rich_text_documents) {
     auto catalog = make_editor_ai_command_catalog(workspace, dock_layout);
@@ -892,6 +1278,64 @@ EditorAiCommandDryRunResult dry_run_editor_ai_command(const Workspace& workspace
     }
 
     const auto plan = plan_editor_dock_command(dock_layout, dock_request);
+    if (!plan.accepted) {
+        append_dock_command_diagnostics(result, plan);
+        return result;
+    }
+
+    result.accepted = true;
+    result.would_mutate = plan.would_mutate;
+    result.requires_confirmation = command->requires_confirmation || plan.requires_confirmation;
+    return result;
+}
+
+EditorAiCommandDryRunResult dry_run_editor_ai_command(const Workspace& workspace,
+                                                      const EditorDockMultiWindowLayout& dock_layout,
+                                                      const EditorAiCommandCatalog& catalog,
+                                                      const EditorAiCommandRequest& request) {
+    if (const auto rejected = reject_invalid_command_request(catalog, request); rejected.has_value()) {
+        EditorAiCommandDryRunResult result;
+        result.diagnostics.push_back(*rejected);
+        return result;
+    }
+    if (!is_dock_ai_command(request.command_id)) {
+        return dry_run_editor_ai_command(workspace, catalog, request);
+    }
+
+    EditorAiCommandDryRunResult result;
+    const EditorAiCommandRow* command = find_command(catalog, request.command_id);
+    if (command == nullptr) {
+        result.diagnostics.push_back(diagnostic("unknown_command", "AI editor command id is not in the catalog"));
+        return result;
+    }
+    if (command->target_element_id != request.target_element_id) {
+        result.diagnostics.push_back(
+            diagnostic("target_mismatch", "AI editor command target does not match the catalog row"));
+        return result;
+    }
+
+    const auto parsed = parse_dock_window_command(request.command_id);
+    if (!parsed.recognized) {
+        result.diagnostics.push_back(
+            diagnostic("unknown_command", "AI editor dock window command id is not implemented"));
+        return result;
+    }
+    auto parsed_parameters = parse_dock_window_parameters(parsed, request);
+    if (!parsed_parameters.accepted) {
+        result.diagnostics = std::move(parsed_parameters.diagnostics);
+        return result;
+    }
+
+    if (!command->enabled) {
+        result.diagnostics.push_back(diagnostic("command_disabled", "AI editor command is disabled for this revision"));
+        return result;
+    }
+
+    auto dock_request = make_dock_window_request(parsed, parsed_parameters, request.user_confirmed);
+    if (parsed.kind == EditorDockWindowCommandKind::reset_all_windows) {
+        dock_request.user_confirmed = true;
+    }
+    const auto plan = plan_editor_dock_window_command(dock_layout, dock_request);
     if (!plan.accepted) {
         append_dock_command_diagnostics(result, plan);
         return result;
@@ -1040,6 +1484,65 @@ EditorAiCommandApplyResult apply_editor_ai_command(Workspace& workspace, EditorD
     }
 
     const auto plan = apply_editor_dock_command(dock_layout, make_dock_request(parsed, parsed_parameters, true));
+    if (!plan.accepted) {
+        append_dock_command_diagnostics(result, plan);
+        return result;
+    }
+
+    result.after_revision = combined_operation_revision(workspace, dock_layout);
+    result.accepted = true;
+    result.completed = true;
+    result.applied = result.before_revision != result.after_revision;
+    return result;
+}
+
+EditorAiCommandApplyResult apply_editor_ai_command(Workspace& workspace, EditorDockMultiWindowLayout& dock_layout,
+                                                   const EditorAiCommandCatalog& catalog,
+                                                   const EditorAiCommandRequest& request) {
+    EditorAiCommandApplyResult result;
+    result.before_revision = combined_operation_revision(workspace, dock_layout);
+    result.after_revision = result.before_revision;
+
+    const auto dry_run = dry_run_editor_ai_command(workspace, dock_layout, catalog, request);
+    if (!dry_run.accepted) {
+        result.diagnostics = dry_run.diagnostics;
+        return result;
+    }
+    if (dry_run.requires_confirmation && !request.user_confirmed) {
+        result.diagnostics.push_back(
+            diagnostic("confirmation_required", "AI editor command requires explicit user confirmation"));
+        return result;
+    }
+
+    if (!is_dock_ai_command(request.command_id)) {
+        const PanelCommandInfo* command = find_panel_command(request.command_id);
+        if (command == nullptr) {
+            result.diagnostics.push_back(diagnostic("unknown_command", "AI editor command id is not implemented"));
+            return result;
+        }
+        workspace.set_panel_visible(command->panel, command->target_visible);
+        result.after_revision = combined_operation_revision(workspace, dock_layout);
+        result.accepted = true;
+        result.completed = true;
+        result.applied = result.before_revision != result.after_revision;
+        return result;
+    }
+
+    const auto parsed = parse_dock_window_command(request.command_id);
+    if (!parsed.recognized) {
+        result.diagnostics.push_back(
+            diagnostic("unknown_command", "AI editor dock window command id is not implemented"));
+        return result;
+    }
+
+    auto parsed_parameters = parse_dock_window_parameters(parsed, request);
+    if (!parsed_parameters.accepted) {
+        result.diagnostics = std::move(parsed_parameters.diagnostics);
+        return result;
+    }
+
+    const auto plan =
+        apply_editor_dock_window_command(dock_layout, make_dock_window_request(parsed, parsed_parameters, true));
     if (!plan.accepted) {
         append_dock_command_diagnostics(result, plan);
         return result;

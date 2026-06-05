@@ -117,6 +117,7 @@ if ($rootCmakeContent.Contains("if(MK_ENABLE_DESKTOP_EDITOR)`r`n    set(MK_DESKT
     Write-Error "MK_ENABLE_DESKTOP_EDITOR must not imply the removed SDL3 desktop runtime lane"
 }
 $editorDockingSmokeNeedles = @("editor_shell_docking_status=single_window_ready", "editor_shell_dock_tab_headers=11", "editor_shell_dock_split_gutters=3", "editor_shell_dock_active_panels=4", "editor_shell_dock_focusable_controls=11")
+$editorMultiWindowDockingSmokeNeedles = @("editor_shell_multi_window_docking_status=ready", "editor_shell_dock_windows=1", "editor_shell_dock_tear_off_commands=1", "editor_shell_dock_window_merge_commands=1", "editor_shell_workspace_v3_status=ready", "editor_shell_multi_window_native_handles_exposed=0")
 $editorNativeVisibleTextureSmokeNeedles = @("editor_shell_viewport_status=d3d12_texture_ready", "editor_shell_viewport_visible_texture_composites", "editor_shell_viewport_native_handles_exposed=0", "editor_shell_material_preview_status=d3d12_texture_ready", "editor_shell_material_preview_visible_texture_composites", "editor_shell_material_preview_native_handles_exposed=0")
 $editorTextAtlasSmokeNeedles = @("editor_shell_text_atlas_handoff_status=glyphs_ready_atlas_handoff_host_gated", "editor_shell_text_font_adapter_invoked=1", "editor_shell_text_font_glyphs_ready=1", "editor_shell_text_font_fallback_used=0", "editor_shell_text_atlas_handoff_host_gated_rows=1", "editor_shell_text_atlas_handoff_unsupported_rows=1", "editor_shell_text_font_native_handles_exposed=0")
 $editorImeSmokeNeedles = @("editor_shell_text_input_service=win32_tsf", "editor_shell_ime_service=win32_tsf", "editor_shell_ime_status=win32_tsf_selected", "editor_shell_ime_caret_rect_rows=1", "editor_shell_ime_surrounding_text_rows=1", "editor_shell_ime_native_handles_exposed=0")
@@ -131,7 +132,7 @@ foreach ($requiredNeedle in @(
         "editor_shell_backend=d3d12",
         "editor_shell_imgui=0",
         "editor_shell_panels=11"
-    ) + $editorDockingSmokeNeedles + @(
+    ) + $editorDockingSmokeNeedles + $editorMultiWindowDockingSmokeNeedles + @(
         "editor_shell_sdl3=0"
     ) + $editorNativeVisibleTextureSmokeNeedles + $editorTextAtlasSmokeNeedles + $editorImeSmokeNeedles + $editorAccessibilitySmokeNeedles + $editorUiPerformanceSmokeNeedles + @(
         "editor_shell_renderer_boxes_submitted",
@@ -174,7 +175,7 @@ foreach ($requiredNeedle in @(
         "editor_shell_backend=d3d12",
         "editor_shell_imgui=0",
         "editor_shell_panels=11"
-    ) + $editorDockingSmokeNeedles + $editorNativeVisibleTextureSmokeNeedles + $editorTextAtlasSmokeNeedles + $editorImeSmokeNeedles + $editorAccessibilitySmokeNeedles + $editorUiPerformanceSmokeNeedles + @(
+    ) + $editorDockingSmokeNeedles + $editorMultiWindowDockingSmokeNeedles + $editorNativeVisibleTextureSmokeNeedles + $editorTextAtlasSmokeNeedles + $editorImeSmokeNeedles + $editorAccessibilitySmokeNeedles + $editorUiPerformanceSmokeNeedles + @(
         "editor_shell_renderer_boxes_submitted",
         "editor_shell_renderer_text_runs_available", "Windows SDK DirectWrite text-layout/glyph-raster",
         "private Windows TSF text-input/IME session adapter",
@@ -205,7 +206,7 @@ foreach ($requiredNeedle in @(
         "editor_shell_backend=d3d12",
         "editor_shell_imgui=0",
         "editor_shell_panels=11"
-    ) + $editorDockingSmokeNeedles + $editorNativeVisibleTextureSmokeNeedles + $editorTextAtlasSmokeNeedles + $editorImeSmokeNeedles + $editorAccessibilitySmokeNeedles + $editorUiPerformanceSmokeNeedles + @(
+    ) + $editorDockingSmokeNeedles + $editorMultiWindowDockingSmokeNeedles + $editorNativeVisibleTextureSmokeNeedles + $editorTextAtlasSmokeNeedles + $editorImeSmokeNeedles + $editorAccessibilitySmokeNeedles + $editorUiPerformanceSmokeNeedles + @(
         "editor_shell_renderer_boxes_submitted",
         "editor_shell_renderer_text_runs_available",
         "SDL3-free"
@@ -1516,7 +1517,7 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "environment-system-v1") { foreach ($needle in @("Environment System v1", "MK_environment", "EnvironmentProfileDesc", "validate_environment_profile", "official docs/Context7", "sky", "sun/moon", "fog", "clouds", "rain/snow/storm", "time-of-day", "quality tiers", "D3D12", "strict Vulkan", "Metal host-gated", "unsupportedProductionGaps = []", "broad environment_ready", "native handles", "Dear ImGui", "SDL3", "OpenEXR/KTX")) { if (-not $recommendedText.Contains($needle)) { Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe environment system selection: $needle" } }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "environment-rendering-readiness-v1") { foreach ($needle in @("Environment Rendering Readiness v1", "Environment System v1", "official docs/Context7", "snow package readiness", "physical-sky package/Vulkan proof", "cloud/precipitation renderer execution", "volumetric-cloud execution/package readiness", "height/volumetric-fog package proof", "environment lighting/IBL package proof", "later renderer upload/runtime-capture proof", "D3D12", "strict Vulkan", "Metal host-gated", "broad optimization", "broad environment_ready", "native handles", "Dear ImGui", "SDL3", "unsupportedProductionGaps = []")) { if (-not $recommendedText.Contains($needle)) { Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe environment rendering readiness selection: $needle" } }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "first-party-ui-editor-excellence-v1") {
-    foreach ($needle in @("First-Party UI Editor Excellence v1", "MK_editor", "MK_editor_core", "mirakana::ui", "MK_ui_renderer", "evidence-first editor/UI optimization", "EditorUiPerformanceBudget", "editor_ui_performance_budget_status=ready", "editor_ui_performance_diagnostics=0", "editor_ui_performance_broad_optimization_claimed=0", "multi-window docking", "GameEngine.Workspace.v3", "complete editable rich text", "text shaping", "font fallback", "glyph atlas", "IME parity", "accessibility parity", "Vulkan editor texture parity", "Metal editor texture parity", "cross-platform editor shell adapters", "AI-operable command expansion", "Official docs and Context7", "license-audit", "THIRD_PARTY_NOTICES.md", "unsupportedProductionGaps = []", "no Dear ImGui", "no SDL3", "no UI middleware", "no native handle exposure", "no broad optimization claim", "no broad first_party_editor_excellence claim")) { if (-not $recommendedText.Contains($needle)) { Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe first-party UI editor excellence selection: $needle" } }
+    foreach ($needle in @("First-Party UI Editor Excellence v1", "MK_editor", "MK_editor_core", "mirakana::ui", "MK_ui_renderer", "evidence-first editor/UI optimization", "EditorUiPerformanceBudget", "editor_ui_performance_budget_status=ready", "editor_ui_performance_diagnostics=0", "editor_ui_performance_broad_optimization_claimed=0", "multi-window docking", "GameEngine.Workspace.v3", "EditorDockMultiWindowLayout", "editor_shell_multi_window_docking_status=ready", "editor.ai.dock.workspace_v3", "visible OS-level multi-window drag/drop shell restoration", "complete editable rich text", "text shaping", "font fallback", "glyph atlas", "IME parity", "accessibility parity", "Vulkan editor texture parity", "Metal editor texture parity", "cross-platform editor shell adapters", "AI-operable command expansion", "Official docs and Context7", "license-audit", "THIRD_PARTY_NOTICES.md", "unsupportedProductionGaps = []", "no Dear ImGui", "no SDL3", "no UI middleware", "no native handle exposure", "no broad optimization claim", "no broad first_party_editor_excellence claim")) { if (-not $recommendedText.Contains($needle)) { Write-Error "engine manifest aiOperableProductionLoop recommendedNextPlan must describe first-party UI editor excellence selection: $needle" } }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "first-party-ui-editor-production-stack-v1") {
     foreach ($needle in @("First-Party UI Editor Production Stack v1", "MK_editor", "MK_editor_core", "desktop-editor", "mirakana::ui", "MK_ui_renderer", "dock graph", "rich text", "DirectWrite", "Text Services Framework", "UI Automation", "D3D12 viewport/material texture display", "AI-operable", "compatibility shims", "unsupportedProductionGaps = []", "SDL3", "native handles", "Dear ImGui")) {
         if (-not $recommendedText.Contains($needle)) {

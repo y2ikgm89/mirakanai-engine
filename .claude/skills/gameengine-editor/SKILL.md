@@ -39,9 +39,14 @@ Use this skill for editor/core models, native visible editor shell boundaries, p
   rows, native viewport/material preview lifecycle gates, private `native_texture_display_adapter.*` RHI evidence, and private
   `native_editor_visible_texture_compositor.*` presentation for requested private D3D12 texture display, offscreen targets, descriptor
   updates, resource-barrier, fence readiness, viewport resize-safe teardown, visible-compositor consumption, positive visible texture
-  composite smoke counters, material-preview host-private frame preparation, and retained `ui_retained_*` diff/cache smoke rows
-  (`ui_retained_diff_status=ready`, zero dirty/miss/rebuild/native-handle rows) without native handle exposure. Multi-window drag/tear-off,
-  help rich text, broad editable rich text, Direct2D GPU text rendering/upload, broad shaping/bidi/fallback, full app-owned `ITextStoreACP`
+  composite smoke counters, material-preview host-private frame preparation, retained `ui_retained_*` diff/cache smoke rows
+  (`ui_retained_diff_status=ready`, zero dirty/miss/rebuild/native-handle rows), first-party `EditorDockMultiWindowLayout` /
+  `EditorDockWindowCommandPlan` planning, clean-break `GameEngine.Workspace.v3` persistence, AI command ids
+  `editor.dock.window.create`, `editor.dock.window.close`, `editor.dock.panel.tear_off`, `editor.dock.panel.move_to_window`,
+  `editor.dock.window.merge`, and `editor.dock.window.reset_all`, and smoke rows
+  `editor_shell_multi_window_docking_status=ready`, `editor_shell_workspace_v3_status=ready`, and
+  `editor_shell_multi_window_native_handles_exposed=0` without native handle exposure. Visible OS-level multi-window drag/drop
+  shell restoration, help rich text, broad editable rich text, Direct2D GPU text rendering/upload, broad shaping/bidi/fallback, full app-owned `ITextStoreACP`
   callback coverage, native IME candidate UI, reconversion, full UIA control pattern/event parity, Vulkan/Metal editor texture-display
   parity, broader material-preview GPU parity, cross-platform accessibility parity, and cross-platform font adapters remain future phases.
 - When selecting a future editor text/accessibility milestone, start with first-party editable-rich-text core and AI-operable text commands before GPU upload, custom IME candidate UI, or full UIA parity. Own the editor document, command, semantic, and adapter contracts in `MK_editor_core`; keep Unicode shaping, bidi, font fallback/rasterization, TSF/IME protocol, accessibility bridges, and platform rendering details behind official SDK or audited-dependency adapters.
