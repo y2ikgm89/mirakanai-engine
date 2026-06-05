@@ -6,11 +6,11 @@ Define the clean-room architecture baseline for Mirakana Adaptive Virtual Geomet
 
 ## Status
 
-Phase 0 specification completed for `mavg-research-legal-benchmark-baseline-v1`. The stacked implementation milestone `mavg-runtime-lod-milestone-v1` is now completed over the `mavg-asset-graph-v1` foundation. The completed LoD path implements deterministic `MK_assets` `GameEngine.MavgClusterGraph.v1` hierarchy/error/fallback/draw-range graph validation, `MK_tools` static `GameEngine.MavgClusterPayload.v1` vertex/index payload rows through `MavgClusterCookVertex`, `vertex.data_hex`, `index.data_hex`, per-material root/leaf fallback clusters, `MK_renderer` CPU reference selection through `mavg_lod_selection.hpp` / `select_mavg_lod_clusters`, `MK_runtime` resident-page evidence through `mavg_lod_residency.hpp` / `build_runtime_mavg_lod_residency`, range-aware conventional indexed draws through `MeshIndexedDrawRange` and the clean-break 5-argument `rhi::IRhiCommandList::draw_indexed`, and `MK_scene_renderer` conventional `MeshCommand` planning through `mavg_scene_lod.hpp` / `plan_mavg_scene_lod_mesh_commands`. Package streaming execution, GPU culling, indirect draw execution, mesh shaders, deformation, ray tracing, Metal readiness, benchmark superiority, and Nanite compatibility/equivalence/superiority remain unclaimed until later focused tasks add code and validation evidence.
+Phase 0 specification completed for `mavg-research-legal-benchmark-baseline-v1`. The stacked implementation milestone `mavg-runtime-lod-milestone-v1` is now completed over the `mavg-asset-graph-v1` foundation, and `mavg-page-streaming-queue-v1` adds the first caller-reviewed page request queue evidence without reopening that completed milestone. The completed LoD path implements deterministic `MK_assets` `GameEngine.MavgClusterGraph.v1` hierarchy/error/fallback/draw-range graph validation, `MK_tools` static `GameEngine.MavgClusterPayload.v1` vertex/index payload rows through `MavgClusterCookVertex`, `vertex.data_hex`, `index.data_hex`, per-material root/leaf fallback clusters, `MK_renderer` CPU reference selection through `mavg_lod_selection.hpp` / `select_mavg_lod_clusters`, `MK_runtime` resident-page evidence through `mavg_lod_residency.hpp` / `build_runtime_mavg_lod_residency`, `MK_runtime` caller-reviewed page request planning and one-row safe-point drain through `mavg_page_streaming.hpp` / `plan_runtime_mavg_page_streaming_requests` / `execute_runtime_mavg_page_streaming_request_safe_point`, range-aware conventional indexed draws through `MeshIndexedDrawRange` and the clean-break 5-argument `rhi::IRhiCommandList::draw_indexed`, and `MK_scene_renderer` conventional `MeshCommand` planning through `mavg_scene_lod.hpp` / `plan_mavg_scene_lod_mesh_commands`. Autonomous/background package streaming execution, automatic eviction policy, partial `.mavgpayload` byte-range page loading/schema, GPU memory pressure integration, GPU culling, indirect draw execution, mesh shaders, deformation, ray tracing, Metal readiness, benchmark superiority, and Nanite compatibility/equivalence/superiority remain unclaimed until later focused tasks add code and validation evidence.
 
 ## Current Repository Baseline
 
-- `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` selects `docs/superpowers/plans/2026-06-05-mavg-runtime-lod-milestone-v1.md` while the stacked LoD milestone is active.
+- `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` selects `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`; the stacked LoD milestone is completed and follow-up MAVG slices are recorded as separate implementation plans.
 - `unsupportedProductionGaps` remains `[]`; MAVG is post-1.0 clean-break research/specification work.
 - SDL3 is not an active dependency or supported runtime/editor/audio path.
 - First-party Windows desktop foundations are `MK_platform_win32`, `MK_runtime_host_win32`, `MK_runtime_host_win32_presentation`, and `MK_audio_wasapi`.
@@ -83,7 +83,7 @@ Non-responsibilities:
 - Third-party simplifier ownership.
 - Renderer submission and backend execution; CPU selection now belongs to the `MK_renderer` selector checkpoint and resident-page evidence now belongs to the `MK_runtime` bridge checkpoint in the active LoD milestone.
 
-The detailed LoD milestone `docs/superpowers/plans/2026-06-05-mavg-runtime-lod-milestone-v1.md` is completed for graph, draw-ready static cook payload, CPU selector, runtime resident-page evidence, range-aware conventional indexed draws, and conventional scene submission planning.
+The detailed LoD milestone `docs/superpowers/plans/2026-06-05-mavg-runtime-lod-milestone-v1.md` is completed for graph, draw-ready static cook payload, CPU selector, runtime resident-page evidence, range-aware conventional indexed draws, and conventional scene submission planning. `docs/superpowers/plans/2026-06-06-mavg-page-streaming-queue-v1.md` records the first post-milestone package-streaming follow-up slice.
 
 ### Runtime Selection
 
@@ -123,6 +123,31 @@ Non-responsibilities:
 - Loading package files or parsing runtime sources.
 - Background streaming or automatic eviction.
 - Renderer/RHI upload, residency, or native handle ownership.
+
+### Runtime Page Streaming Queue
+
+The implemented caller-reviewed page streaming queue files live in `MK_runtime` and use existing runtime package safe-point helpers:
+
+- `engine/runtime/include/mirakana/runtime/mavg_page_streaming.hpp`
+- `engine/runtime/src/mavg_page_streaming.cpp`
+
+Implemented v1 responsibilities:
+
+- Expose `RuntimeMavgPageStreamingCandidateRow`, `RuntimeMavgPageStreamingPlanResult`, and `RuntimeMavgPageStreamingDrainResult` as the public value/evidence rows for planning and safe-point drain results.
+- Convert reviewed selector `MavgLodPageRequest` rows into deterministic `RuntimeMavgPageStreamingPlanRow` package candidate rows.
+- Validate graph asset ids, graph/page membership, finite priorities, non-empty reasons, candidate graph matches, duplicate candidates, and missing candidates before any file IO.
+- Coalesce duplicate page requests by highest priority, sort queued rows deterministically by priority then page index, and report `max_queued_pages` degradation.
+- Drain one queued row at a caller-owned safe point through `commit_runtime_package_candidate_resident_mount_with_reviewed_evictions_v2`.
+- Preserve live mount/catalog state when the delegated safe point rejects invalid mount ids, package load, eviction plan, budget, or catalog refresh.
+- Report explicit side-effect flags proving planner file IO, planner mount mutation, planner streaming execution, background worker execution, and renderer/RHI handle access remain false.
+
+Non-responsibilities:
+
+- autonomous/background package streaming workers.
+- Automatic eviction policy.
+- Partial `.mavgpayload` byte-range page loading/schema.
+- GPU memory pressure integration.
+- Renderer/RHI upload, GPU culling, indirect draws, mesh shaders, or native handle ownership.
 
 ### Conventional Renderer Adoption
 

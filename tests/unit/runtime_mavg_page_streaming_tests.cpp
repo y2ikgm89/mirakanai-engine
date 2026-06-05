@@ -1,0 +1,374 @@
+// SPDX-FileCopyrightText: 2026 GameEngine contributors
+// SPDX-License-Identifier: LicenseRef-Proprietary
+
+#include "test_framework.hpp"
+
+#include "mirakana/assets/asset_package.hpp"
+#include "mirakana/assets/mavg_cluster_graph.hpp"
+#include "mirakana/runtime/mavg_page_streaming.hpp"
+
+#include <limits>
+#include <string>
+#include <string_view>
+#include <vector>
+
+namespace {
+
+[[nodiscard]] mirakana::MavgClusterGraphDocument make_page_streaming_graph() {
+    const auto graph_asset = mirakana::AssetId::from_name("mavg/page-streaming");
+    const auto source_mesh = mirakana::AssetId::from_name("meshes/page-streaming-source");
+    const auto material = mirakana::AssetId::from_name("materials/page-streaming-material");
+
+    return mirakana::MavgClusterGraphDocument{
+        .asset = graph_asset,
+        .source_mesh = source_mesh,
+        .source_mesh_uri = "source/page-streaming.glb",
+        .cluster_payload_uri = "runtime/page-streaming.mavg_payload",
+        .target_cluster_triangles = 2,
+        .page_size_bytes = 4096,
+        .pages =
+            {
+                mirakana::MavgClusterGraphPage{
+                    .page_index = 0, .byte_offset = 0, .byte_size = 256, .first_cluster = 0, .cluster_count = 1},
+                mirakana::MavgClusterGraphPage{
+                    .page_index = 1, .byte_offset = 256, .byte_size = 256, .first_cluster = 1, .cluster_count = 1},
+                mirakana::MavgClusterGraphPage{
+                    .page_index = 2, .byte_offset = 512, .byte_size = 256, .first_cluster = 2, .cluster_count = 1},
+            },
+        .material_partitions =
+            {
+                mirakana::MavgClusterGraphMaterialPartition{
+                    .material = material, .first_cluster = 0, .cluster_count = 3},
+            },
+        .clusters =
+            {
+                mirakana::MavgClusterGraphCluster{
+                    .cluster_index = 0,
+                    .page_index = 0,
+                    .local_cluster_index = 0,
+                    .lod_level = 0,
+                    .triangle_count = 2,
+                    .vertex_count = 4,
+                    .bounds = mirakana::MavgBounds3f{.min = mirakana::MavgVec3f{.x = -1.0F, .y = -1.0F, .z = -1.0F},
+                                                     .max = mirakana::MavgVec3f{.x = 1.0F, .y = 1.0F, .z = 1.0F}},
+                    .material_partition = 0,
+                    .parent_cluster_index = 0,
+                    .has_parent = false,
+                    .resident_fallback_cluster_index = 0,
+                    .geometric_error = 8.0F,
+                    .first_index = 0,
+                    .index_count = 6,
+                    .vertex_base = 0,
+                    .children = {1, 2},
+                },
+                mirakana::MavgClusterGraphCluster{
+                    .cluster_index = 1,
+                    .page_index = 1,
+                    .local_cluster_index = 0,
+                    .lod_level = 1,
+                    .triangle_count = 1,
+                    .vertex_count = 3,
+                    .bounds = mirakana::MavgBounds3f{.min = mirakana::MavgVec3f{.x = -1.0F, .y = -1.0F, .z = 0.0F},
+                                                     .max = mirakana::MavgVec3f{.x = 0.0F, .y = 1.0F, .z = 1.0F}},
+                    .material_partition = 0,
+                    .parent_cluster_index = 0,
+                    .has_parent = true,
+                    .resident_fallback_cluster_index = 0,
+                    .geometric_error = 1.0F,
+                    .first_index = 6,
+                    .index_count = 3,
+                    .vertex_base = 4,
+                    .children = {},
+                },
+                mirakana::MavgClusterGraphCluster{
+                    .cluster_index = 2,
+                    .page_index = 2,
+                    .local_cluster_index = 0,
+                    .lod_level = 1,
+                    .triangle_count = 1,
+                    .vertex_count = 3,
+                    .bounds = mirakana::MavgBounds3f{.min = mirakana::MavgVec3f{.x = 0.0F, .y = -1.0F, .z = 0.0F},
+                                                     .max = mirakana::MavgVec3f{.x = 1.0F, .y = 1.0F, .z = 1.0F}},
+                    .material_partition = 0,
+                    .parent_cluster_index = 0,
+                    .has_parent = true,
+                    .resident_fallback_cluster_index = 0,
+                    .geometric_error = 1.0F,
+                    .first_index = 9,
+                    .index_count = 3,
+                    .vertex_base = 7,
+                    .children = {},
+                },
+            },
+    };
+}
+
+[[nodiscard]] mirakana::MavgLodPageRequest make_request(mirakana::AssetId graph_asset, std::uint32_t page_index,
+                                                        float priority, std::string_view reason) {
+    return mirakana::MavgLodPageRequest{
+        .graph_asset = graph_asset,
+        .page_index = page_index,
+        .priority = priority,
+        .reason = std::string(reason),
+    };
+}
+
+[[nodiscard]] mirakana::runtime::RuntimePackageIndexDiscoveryCandidateV2 make_candidate(std::uint32_t page_index) {
+    return mirakana::runtime::RuntimePackageIndexDiscoveryCandidateV2{
+        .package_index_path = "runtime/mavg/page" + std::to_string(page_index) + ".geindex",
+        .content_root = "runtime/mavg",
+        .label = "mavg-page-" + std::to_string(page_index),
+    };
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeMavgPageStreamingCandidateRow
+make_streaming_candidate(mirakana::AssetId graph_asset, std::uint32_t page_index) {
+    return mirakana::runtime::RuntimeMavgPageStreamingCandidateRow{
+        .graph_asset = graph_asset,
+        .page_index = page_index,
+        .candidate = make_candidate(page_index),
+    };
+}
+
+void write_page_package(mirakana::MemoryFileSystem& filesystem, std::uint32_t page_index, mirakana::AssetId asset,
+                        mirakana::AssetKind kind, std::string_view content) {
+    const auto package_path = "page" + std::to_string(page_index) + ".payload";
+    const auto index = mirakana::build_asset_cooked_package_index({mirakana::AssetCookedArtifact{
+                                                                      .asset = asset,
+                                                                      .kind = kind,
+                                                                      .path = package_path,
+                                                                      .content = std::string(content),
+                                                                      .source_revision = page_index + 1U,
+                                                                      .dependencies = {},
+                                                                  }},
+                                                                  {});
+    filesystem.write_text("runtime/mavg/page" + std::to_string(page_index) + ".geindex",
+                          mirakana::serialize_asset_cooked_package_index(index));
+    filesystem.write_text("runtime/mavg/" + package_path, content);
+}
+
+[[nodiscard]] bool has_diagnostic(const mirakana::runtime::RuntimeMavgPageStreamingPlanResult& result,
+                                  mirakana::runtime::RuntimeMavgPageStreamingDiagnosticCode code) {
+    for (const auto& diagnostic : result.diagnostics) {
+        if (diagnostic.code == code) {
+            return true;
+        }
+    }
+    return false;
+}
+
+} // namespace
+
+MK_TEST("runtime mavg page streaming planner coalesces nonresident requests deterministically") {
+    const auto graph = make_page_streaming_graph();
+    const auto resident = mirakana::MavgLodResidentPageSet{.page_indices = {0}};
+    const std::vector<mirakana::MavgLodPageRequest> requests{
+        make_request(graph.asset, 0, 10.0F, "already-resident"),
+        make_request(graph.asset, 2, 2.0F, "prefetch-low"),
+        make_request(graph.asset, 1, 4.0F, "visible-missing"),
+        make_request(graph.asset, 2, 8.0F, "visible-near"),
+    };
+    const std::vector<mirakana::runtime::RuntimeMavgPageStreamingCandidateRow> candidates{
+        make_streaming_candidate(graph.asset, 1),
+        make_streaming_candidate(graph.asset, 2),
+    };
+
+    const auto result = mirakana::runtime::plan_runtime_mavg_page_streaming_requests(
+        mirakana::runtime::RuntimeMavgPageStreamingPlanDesc{
+            .graph_asset = graph.asset,
+            .graph = &graph,
+            .resident_pages = &resident,
+        },
+        requests, candidates);
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.input_request_count == requests.size());
+    MK_REQUIRE(result.resident_skip_count == 1U);
+    MK_REQUIRE(result.duplicate_request_count == 1U);
+    MK_REQUIRE(!result.budget_degraded);
+    MK_REQUIRE(result.queued_page_requests.size() == 2U);
+    MK_REQUIRE(result.queued_page_requests[0].page_index == 2U);
+    MK_REQUIRE(result.queued_page_requests[0].priority == 8.0F);
+    MK_REQUIRE(result.queued_page_requests[0].reason == "visible-near");
+    MK_REQUIRE(result.queued_page_requests[0].duplicate_count == 1U);
+    MK_REQUIRE(result.queued_page_requests[0].candidate.package_index_path == "runtime/mavg/page2.geindex");
+    MK_REQUIRE(result.queued_page_requests[1].page_index == 1U);
+    MK_REQUIRE(result.queued_page_requests[1].priority == 4.0F);
+    MK_REQUIRE(!result.invoked_file_io);
+    MK_REQUIRE(!result.mutated_mount_set);
+    MK_REQUIRE(!result.executed_streaming);
+    MK_REQUIRE(!result.touched_renderer_or_rhi_handles);
+}
+
+MK_TEST("runtime mavg page streaming planner applies deterministic max page budget") {
+    const auto graph = make_page_streaming_graph();
+    const auto resident = mirakana::MavgLodResidentPageSet{.page_indices = {0}};
+    const std::vector<mirakana::MavgLodPageRequest> requests{
+        make_request(graph.asset, 1, 4.0F, "visible-missing"),
+        make_request(graph.asset, 2, 8.0F, "visible-near"),
+    };
+    const std::vector<mirakana::runtime::RuntimeMavgPageStreamingCandidateRow> candidates{
+        make_streaming_candidate(graph.asset, 1),
+        make_streaming_candidate(graph.asset, 2),
+    };
+
+    const auto result = mirakana::runtime::plan_runtime_mavg_page_streaming_requests(
+        mirakana::runtime::RuntimeMavgPageStreamingPlanDesc{
+            .graph_asset = graph.asset,
+            .graph = &graph,
+            .resident_pages = &resident,
+            .max_queued_pages = 1,
+        },
+        requests, candidates);
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.budget_degraded);
+    MK_REQUIRE(result.budget_dropped_request_count == 1U);
+    MK_REQUIRE(result.queued_page_requests.size() == 1U);
+    MK_REQUIRE(result.queued_page_requests[0].page_index == 2U);
+}
+
+MK_TEST("runtime mavg page streaming planner rejects invalid request rows without side effects") {
+    const auto graph = make_page_streaming_graph();
+    const auto resident = mirakana::MavgLodResidentPageSet{.page_indices = {0}};
+    const auto other_graph = mirakana::AssetId::from_name("mavg/other");
+    const std::vector<mirakana::MavgLodPageRequest> requests{
+        make_request(other_graph, 1, 4.0F, "wrong-graph"),
+        make_request(graph.asset, 99, 5.0F, "unknown-page"),
+        make_request(graph.asset, 2, std::numeric_limits<float>::quiet_NaN(), "invalid-priority"),
+        make_request(graph.asset, 2, 3.0F, ""),
+    };
+    const std::vector<mirakana::runtime::RuntimeMavgPageStreamingCandidateRow> candidates{
+        make_streaming_candidate(graph.asset, 2),
+    };
+
+    const auto result = mirakana::runtime::plan_runtime_mavg_page_streaming_requests(
+        mirakana::runtime::RuntimeMavgPageStreamingPlanDesc{
+            .graph_asset = graph.asset,
+            .graph = &graph,
+            .resident_pages = &resident,
+        },
+        requests, candidates);
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.queued_page_requests.empty());
+    MK_REQUIRE(
+        has_diagnostic(result, mirakana::runtime::RuntimeMavgPageStreamingDiagnosticCode::request_graph_mismatch));
+    MK_REQUIRE(has_diagnostic(result, mirakana::runtime::RuntimeMavgPageStreamingDiagnosticCode::unknown_page));
+    MK_REQUIRE(has_diagnostic(result, mirakana::runtime::RuntimeMavgPageStreamingDiagnosticCode::invalid_priority));
+    MK_REQUIRE(has_diagnostic(result, mirakana::runtime::RuntimeMavgPageStreamingDiagnosticCode::invalid_reason));
+    MK_REQUIRE(!result.invoked_file_io);
+    MK_REQUIRE(!result.mutated_mount_set);
+    MK_REQUIRE(!result.executed_streaming);
+    MK_REQUIRE(!result.touched_renderer_or_rhi_handles);
+}
+
+MK_TEST("runtime mavg page streaming planner rejects missing package candidates") {
+    const auto graph = make_page_streaming_graph();
+    const auto resident = mirakana::MavgLodResidentPageSet{.page_indices = {0}};
+    const std::vector<mirakana::MavgLodPageRequest> requests{
+        make_request(graph.asset, 1, 4.0F, "visible-missing"),
+    };
+
+    const auto result = mirakana::runtime::plan_runtime_mavg_page_streaming_requests(
+        mirakana::runtime::RuntimeMavgPageStreamingPlanDesc{
+            .graph_asset = graph.asset,
+            .graph = &graph,
+            .resident_pages = &resident,
+        },
+        requests, {});
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.missing_candidate_count == 1U);
+    MK_REQUIRE(has_diagnostic(result, mirakana::runtime::RuntimeMavgPageStreamingDiagnosticCode::missing_candidate));
+}
+
+MK_TEST("runtime mavg page streaming executes one queued row through reviewed safe point") {
+    const auto graph = make_page_streaming_graph();
+    const auto resident = mirakana::MavgLodResidentPageSet{.page_indices = {0}};
+    const auto streamed_asset = mirakana::AssetId::from_name("mavg/page-streaming/page-2-payload");
+    const std::vector<mirakana::MavgLodPageRequest> requests{
+        make_request(graph.asset, 2, 8.0F, "visible-near"),
+    };
+    const std::vector<mirakana::runtime::RuntimeMavgPageStreamingCandidateRow> candidates{
+        make_streaming_candidate(graph.asset, 2),
+    };
+    auto filesystem = mirakana::MemoryFileSystem{};
+    write_page_package(filesystem, 2, streamed_asset, mirakana::AssetKind::mesh, "page two payload");
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    mirakana::runtime::RuntimeResidentCatalogCacheV2 catalog_cache;
+
+    const auto plan = mirakana::runtime::plan_runtime_mavg_page_streaming_requests(
+        mirakana::runtime::RuntimeMavgPageStreamingPlanDesc{
+            .graph_asset = graph.asset,
+            .graph = &graph,
+            .resident_pages = &resident,
+        },
+        requests, candidates);
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.queued_page_requests.size() == 1U);
+
+    const auto drain = mirakana::runtime::execute_runtime_mavg_page_streaming_request_safe_point(
+        filesystem, mount_set, catalog_cache,
+        mirakana::runtime::RuntimeMavgPageStreamingDrainDesc{
+            .row = plan.queued_page_requests[0],
+            .mount_id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 42},
+            .budget = mirakana::runtime::RuntimeResourceResidencyBudgetV2{.max_resident_content_bytes = 4096},
+        });
+
+    MK_REQUIRE(drain.succeeded());
+    MK_REQUIRE(drain.committed);
+    MK_REQUIRE(drain.executed_safe_point);
+    MK_REQUIRE(drain.invoked_candidate_load);
+    MK_REQUIRE(drain.invoked_catalog_refresh);
+    MK_REQUIRE(!drain.executed_background_worker);
+    MK_REQUIRE(!drain.touched_renderer_or_rhi_handles);
+    MK_REQUIRE(mount_set.mounts().size() == 1U);
+    MK_REQUIRE(catalog_cache.has_value());
+    MK_REQUIRE(mirakana::runtime::find_runtime_resource_v2(catalog_cache.catalog(), streamed_asset).has_value());
+}
+
+MK_TEST("runtime mavg page streaming drain rejects invalid mount id before mutation") {
+    const auto graph = make_page_streaming_graph();
+    const auto resident = mirakana::MavgLodResidentPageSet{.page_indices = {0}};
+    const std::vector<mirakana::MavgLodPageRequest> requests{
+        make_request(graph.asset, 2, 8.0F, "visible-near"),
+    };
+    const std::vector<mirakana::runtime::RuntimeMavgPageStreamingCandidateRow> candidates{
+        make_streaming_candidate(graph.asset, 2),
+    };
+    auto filesystem = mirakana::MemoryFileSystem{};
+    write_page_package(filesystem, 2, mirakana::AssetId::from_name("mavg/page-streaming/page-2-payload"),
+                       mirakana::AssetKind::mesh, "page two payload");
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    mirakana::runtime::RuntimeResidentCatalogCacheV2 catalog_cache;
+    const auto plan = mirakana::runtime::plan_runtime_mavg_page_streaming_requests(
+        mirakana::runtime::RuntimeMavgPageStreamingPlanDesc{
+            .graph_asset = graph.asset,
+            .graph = &graph,
+            .resident_pages = &resident,
+        },
+        requests, candidates);
+    MK_REQUIRE(plan.succeeded());
+
+    const auto drain = mirakana::runtime::execute_runtime_mavg_page_streaming_request_safe_point(
+        filesystem, mount_set, catalog_cache,
+        mirakana::runtime::RuntimeMavgPageStreamingDrainDesc{
+            .row = plan.queued_page_requests[0],
+            .mount_id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 0},
+            .budget = mirakana::runtime::RuntimeResourceResidencyBudgetV2{.max_resident_content_bytes = 4096},
+        });
+
+    MK_REQUIRE(!drain.succeeded());
+    MK_REQUIRE(!drain.committed);
+    MK_REQUIRE(drain.executed_safe_point);
+    MK_REQUIRE(drain.invoked_candidate_load == false);
+    MK_REQUIRE(mount_set.mounts().empty());
+    MK_REQUIRE(!catalog_cache.has_value());
+    MK_REQUIRE(!drain.executed_background_worker);
+    MK_REQUIRE(!drain.touched_renderer_or_rhi_handles);
+}
+
+int main() {
+    return mirakana::test::run_all();
+}
