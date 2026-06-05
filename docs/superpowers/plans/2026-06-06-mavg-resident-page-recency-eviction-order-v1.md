@@ -20,7 +20,7 @@ MAVG Automatic Eviction Policy v1 already produces a deterministic reviewed evic
 - Require caller-supplied recency rows to match the same graph asset, page index, and resident mount id as existing resident page mount rows.
 - Fail closed for invalid, duplicate, mismatched, or missing recency rows before invoking eviction planning.
 - Use deterministic tie-breaks after recency: descending page index, then ascending mount id.
-- Do not add a runtime-inferred LRU/frequency or GPU memory pressure policy.
+- Do not add a runtime-inferred frequency or GPU memory pressure policy; the later MAVG Runtime-Inferred LRU Eviction Policy v1 child owns `runtime_inferred_lru`.
 - Do not execute DirectStorage native queues/file IO, mutate live mounts, touch renderer/RHI handles, or claim async-overlap/performance.
 - Do not claim Nanite compatibility/equivalence/superiority or benchmark superiority.
 
@@ -52,7 +52,7 @@ MAVG Automatic Eviction Policy v1 already produces a deterministic reviewed evic
 
 ## Non-Claims
 
-- No runtime-inferred LRU/frequency eviction policy.
+- No runtime-inferred frequency eviction policy.
 - No GPU memory pressure integration or allocator enforcement.
 - No DirectStorage native queue/file IO execution.
 - No sustained async-overlap or performance benchmark claim.

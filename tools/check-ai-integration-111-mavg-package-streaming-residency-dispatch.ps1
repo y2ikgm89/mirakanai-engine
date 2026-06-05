@@ -84,7 +84,7 @@ foreach ($surface in @(
     if ($surface.Label -eq "docs/superpowers/plans/2026-06-05-mavg-package-streaming-residency-dispatch-v1.md") {
         Assert-ContainsText $surface.Text "automatic eviction policy" "$($surface.Label) MAVG package streaming residency dispatch historical non-claims"
     } else {
-        Assert-ContainsText $surface.Text "runtime-inferred LRU/frequency" "$($surface.Label) MAVG package streaming residency dispatch remaining eviction non-claims"
+        Assert-ContainsText $surface.Text "runtime-inferred frequency" "$($surface.Label) MAVG package streaming residency dispatch remaining eviction non-claims"
     }
 }
 

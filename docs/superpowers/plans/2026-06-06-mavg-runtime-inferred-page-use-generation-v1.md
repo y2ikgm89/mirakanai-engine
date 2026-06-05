@@ -4,7 +4,7 @@
 
 **Plan ID:** `mavg-runtime-inferred-page-use-generation-v1`
 
-**Status:** Completed candidate pending publication.
+**Status:** Completed candidate published as stacked draft PR #480.
 
 ## Goal
 
@@ -14,6 +14,8 @@ Add a value-only runtime helper that infers resident MAVG page last-use generati
 
 MAVG Resident Page Recency Eviction Order v1 lets a host provide `RuntimeMavgPageStreamingRecencyRow` evidence to order unprotected eviction candidates by older `resident_page_last_used_generation` first. This child adds the next narrow step: runtime can derive those rows from current selected resident pages without introducing a hidden clock, background residency service, GPU memory pressure integration, or a broad LRU/frequency eviction policy.
 
+Follow-up child MAVG Runtime-Inferred LRU Eviction Policy v1 (`mavg-runtime-inferred-lru-eviction-policy-v1`) consumes this generated evidence through `RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::runtime_inferred_lru`, `inferred_lru_eviction_policy`, and `runtime_inferred_lru_eviction_candidate_count` while runtime-inferred frequency eviction policy, GPU memory pressure, DirectStorage execution, and Nanite claims remain out of scope.
+
 ## Constraints
 
 - Keep inference value-only and side-effect-free: no file IO, mount-set mutation, renderer/RHI handle access, or background worker ownership.
@@ -22,7 +24,7 @@ MAVG Resident Page Recency Eviction Order v1 lets a host provide `RuntimeMavgPag
 - Carry previous matching generations for unselected resident pages, initialize new resident pages to cold generation `0`, and drop nonresident previous rows with a counter instead of failing.
 - Fail closed for invalid graph inputs, invalid or duplicate resident page mounts, invalid selected clusters, invalid or duplicate previous recency rows, and non-monotonic retained generations.
 - Preserve the existing caller-supplied recency eviction ordering and do not set `inferred_eviction_policy`.
-- Do not claim runtime-inferred LRU/frequency eviction policy, GPU memory pressure integration, DirectStorage execution, async overlap/performance, Nanite compatibility/equivalence/superiority, or benchmark superiority.
+- Do not claim runtime-inferred frequency eviction policy, GPU memory pressure integration, DirectStorage execution, async overlap/performance, Nanite compatibility/equivalence/superiority, or benchmark superiority.
 
 ## Implementation
 
@@ -40,7 +42,8 @@ MAVG Resident Page Recency Eviction Order v1 lets a host provide `RuntimeMavgPag
 - RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_mavg_page_streaming_tests` failed before implementation because `infer_runtime_mavg_resident_page_use_generations`, `RuntimeMavgResidentPageUseGenerationDesc`, and `non_monotonic_use_generation` were not declared.
 - GREEN focused build: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_mavg_page_streaming_tests` passed after implementation.
 - GREEN focused CTest: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_mavg_page_streaming_tests` passed 1/1 after implementation.
-- Slice-closing static/API/full validation is pending in this branch.
+- Static/API validation: `tools/check-tidy.ps1 -Files engine/runtime/src/mavg_page_streaming.cpp,tests/unit/runtime_mavg_page_streaming_tests.cpp -ReuseExistingFileApiReply`, `tools/check-format.ps1`, `tools/check-agents.ps1`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-public-api-boundaries.ps1`, and `git diff --check` passed.
+- Slice-closing full validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed on Windows; Apple/Metal checks were diagnostic host-gated on that Windows host.
 
 ## Done When
 
@@ -51,7 +54,7 @@ MAVG Resident Page Recency Eviction Order v1 lets a host provide `RuntimeMavgPag
 
 ## Non-Claims
 
-- No runtime-inferred LRU/frequency eviction policy.
+- No runtime-inferred frequency eviction policy.
 - No GPU memory pressure integration or allocator enforcement.
 - No DirectStorage native queue/file IO execution.
 - No sustained async-overlap or performance benchmark claim.

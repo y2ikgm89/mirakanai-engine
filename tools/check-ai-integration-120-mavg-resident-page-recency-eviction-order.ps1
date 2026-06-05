@@ -79,7 +79,7 @@ foreach ($surface in @(
         Assert-ContainsText $surface.Text $needle "$($surface.Label) recency eviction evidence"
     }
     foreach ($needle in @(
-            "runtime-inferred LRU/frequency",
+            "runtime-inferred frequency",
             "GPU memory pressure",
             "DirectStorage",
             "Nanite"
@@ -95,7 +95,7 @@ foreach ($needle in @(
         "resident_page_last_used_generation",
         "duplicate_recency_row_count",
         "missing_recency_row_count",
-        "no runtime-inferred LRU/frequency policy"
+        "no runtime-inferred frequency policy"
     )) {
     Assert-ContainsText $modulesFragmentText $needle "engine/agent/manifest.fragments/004-modules.json recency eviction module evidence"
     Assert-ContainsText $aiLoopFragmentText $needle "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json recency eviction plan evidence"
@@ -114,7 +114,7 @@ foreach ($needle in @(
         "resident_page_last_used_generation",
         "duplicate_recency_row_count",
         "missing_recency_row_count",
-        "runtime-inferred LRU/frequency eviction policy",
+        "runtime-inferred frequency eviction policy",
         "unsupportedProductionGaps = []"
     )) {
     Assert-ContainsText $recommendedPlanText $needle "engine/agent/manifest.json recommendedNextPlan recency eviction evidence"
@@ -130,7 +130,7 @@ foreach ($needle in @(
         "resident_page_last_used_generation",
         "duplicate_recency_row",
         "missing_recency_row",
-        "no runtime-inferred LRU/frequency policy"
+        "no runtime-inferred frequency policy"
     )) {
     Assert-ContainsText $runtimeManifestText $needle "engine/agent/manifest.json MK_runtime recency eviction evidence"
 }

@@ -197,6 +197,12 @@ find_recency_row(std::span<const RuntimeMavgPageStreamingRecencyRow> recency_row
     return &*found;
 }
 
+[[nodiscard]] bool
+uses_recency_eviction_order(RuntimeMavgPageStreamingAutomaticEvictionPolicyKind policy_kind) noexcept {
+    return policy_kind == RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::caller_supplied_recency ||
+           policy_kind == RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::runtime_inferred_lru;
+}
+
 void add_unique_protected_mount(RuntimeMavgPageStreamingEvictionReviewResult& result,
                                 RuntimeResidentPackageMountIdV2 mount_id) {
     if (contains_mount_id(result.protected_mount_ids, mount_id)) {
@@ -226,6 +232,19 @@ void copy_mount_diagnostics(RuntimeMavgPageStreamingDrainResult& result) {
         add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::safe_point_failed, result.row.graph_asset,
                        result.row.page_index, "MAVG page streaming safe point failed");
     }
+}
+
+void copy_use_generation_evidence(RuntimeMavgPageStreamingEvictionReviewResult& result,
+                                  const RuntimeMavgResidentPageUseGenerationResult& use_generations) {
+    result.touched_resident_page_count = use_generations.touched_resident_page_count;
+    result.carried_recency_row_count = use_generations.carried_recency_row_count;
+    result.new_resident_page_count = use_generations.new_resident_page_count;
+    result.dropped_nonresident_recency_row_count = use_generations.dropped_nonresident_recency_row_count;
+    result.duplicate_recency_row_count = use_generations.duplicate_recency_row_count;
+    result.missing_recency_row_count = use_generations.missing_page_mount_count;
+    result.inferred_resident_page_use_generation = use_generations.inferred_resident_page_use_generation;
+    result.diagnostics.insert(result.diagnostics.end(), use_generations.diagnostics.begin(),
+                              use_generations.diagnostics.end());
 }
 
 [[nodiscard]] bool
@@ -1001,6 +1020,38 @@ plan_runtime_mavg_page_streaming_automatic_evictions(const RuntimeResidentPackag
         }
         result.applied_caller_supplied_recency_policy = true;
         result.recency_eviction_candidate_count = eviction_candidates.size();
+    } else if (desc.policy_kind == RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::runtime_inferred_lru) {
+        auto use_generations = infer_runtime_mavg_resident_page_use_generations(
+            mount_set, RuntimeMavgResidentPageUseGenerationDesc{
+                           .graph_asset = desc.graph_asset,
+                           .graph = desc.graph,
+                           .selected_clusters = desc.selected_clusters,
+                           .resident_page_mounts = desc.resident_page_mounts,
+                           .previous_recency_rows = desc.previous_recency_rows,
+                           .current_use_generation = desc.current_use_generation,
+                       });
+        copy_use_generation_evidence(result, use_generations);
+        if (!use_generations.succeeded()) {
+            return result;
+        }
+        for (auto& candidate : eviction_candidates) {
+            const auto* const recency = find_recency_row(use_generations.recency_rows, candidate.page_mount);
+            if (recency == nullptr) {
+                ++result.missing_recency_row_count;
+                add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::missing_recency_row, desc.graph_asset,
+                               candidate.page_mount.page_index,
+                               "MAVG runtime-inferred LRU policy requires inferred recency for each candidate");
+                continue;
+            }
+            candidate.resident_page_last_used_generation = recency->resident_page_last_used_generation;
+        }
+        if (!result.diagnostics.empty()) {
+            return result;
+        }
+        result.inferred_eviction_policy = true;
+        result.inferred_lru_eviction_policy = true;
+        result.recency_eviction_candidate_count = eviction_candidates.size();
+        result.runtime_inferred_lru_eviction_candidate_count = eviction_candidates.size();
     } else if (desc.policy_kind != RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::deterministic_page_index) {
         add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::invalid_recency_row, desc.graph_asset, 0,
                        "MAVG automatic eviction policy kind is not supported");
@@ -1008,7 +1059,7 @@ plan_runtime_mavg_page_streaming_automatic_evictions(const RuntimeResidentPackag
     }
 
     std::ranges::sort(eviction_candidates, [&desc](const EvictionCandidate& lhs, const EvictionCandidate& rhs) {
-        if (desc.policy_kind == RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::caller_supplied_recency &&
+        if (uses_recency_eviction_order(desc.policy_kind) &&
             lhs.resident_page_last_used_generation != rhs.resident_page_last_used_generation) {
             return lhs.resident_page_last_used_generation < rhs.resident_page_last_used_generation;
         }

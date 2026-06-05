@@ -1390,6 +1390,180 @@ MK_TEST("runtime mavg page streaming generated use generations feed recency evic
                mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 11});
 }
 
+MK_TEST("runtime mavg page streaming runtime inferred lru policy orders older unprotected pages first") {
+    const auto graph = make_page_streaming_graph();
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    mount_resident_page(mount_set, 10, mirakana::AssetId::from_name("mavg/page-streaming/page-0"), "root");
+    mount_resident_page(mount_set, 11, mirakana::AssetId::from_name("mavg/page-streaming/page-1"), "warm");
+    mount_resident_page(mount_set, 12, mirakana::AssetId::from_name("mavg/page-streaming/page-2"), "old");
+
+    const std::vector<mirakana::runtime::RuntimeMavgResidentPageMountRow> page_mounts{
+        {.graph_asset = graph.asset, .page_index = 0, .mount_id = {.value = 10}},
+        {.graph_asset = graph.asset, .page_index = 1, .mount_id = {.value = 11}},
+        {.graph_asset = graph.asset, .page_index = 2, .mount_id = {.value = 12}},
+    };
+    const std::vector<mirakana::runtime::RuntimeMavgPageStreamingSelectedClusterRow> selected_clusters{
+        {.graph_asset = graph.asset, .cluster_index = 0},
+    };
+    const std::vector<mirakana::runtime::RuntimeMavgPageStreamingRecencyRow> previous_recency_rows{
+        {.graph_asset = graph.asset,
+         .page_index = 0,
+         .mount_id = {.value = 10},
+         .resident_page_last_used_generation = 4},
+        {.graph_asset = graph.asset,
+         .page_index = 1,
+         .mount_id = {.value = 11},
+         .resident_page_last_used_generation = 6},
+        {.graph_asset = graph.asset,
+         .page_index = 2,
+         .mount_id = {.value = 12},
+         .resident_page_last_used_generation = 2},
+    };
+
+    const auto result = mirakana::runtime::plan_runtime_mavg_page_streaming_automatic_evictions(
+        mount_set,
+        mirakana::runtime::RuntimeMavgPageStreamingAutomaticEvictionPlanDesc{
+            .graph_asset = graph.asset,
+            .graph = &graph,
+            .selected_clusters = selected_clusters,
+            .resident_page_mounts = page_mounts,
+            .policy_kind = mirakana::runtime::RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::runtime_inferred_lru,
+            .previous_recency_rows = previous_recency_rows,
+            .current_use_generation = 8,
+            .target_budget =
+                mirakana::runtime::RuntimeResourceResidencyBudgetV2{
+                    .max_resident_content_bytes = 4,
+                },
+        });
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.planned_automatic_eviction_policy);
+    MK_REQUIRE(result.inferred_eviction_policy);
+    MK_REQUIRE(result.inferred_lru_eviction_policy);
+    MK_REQUIRE(!result.applied_caller_supplied_recency_policy);
+    MK_REQUIRE(result.inferred_resident_page_use_generation);
+    MK_REQUIRE(result.touched_resident_page_count == 1U);
+    MK_REQUIRE(result.carried_recency_row_count == 2U);
+    MK_REQUIRE(result.new_resident_page_count == 0U);
+    MK_REQUIRE(result.dropped_nonresident_recency_row_count == 0U);
+    MK_REQUIRE(result.protected_visible_page_count == 1U);
+    MK_REQUIRE(result.protected_eviction_candidate_skip_count == 1U);
+    MK_REQUIRE(result.runtime_inferred_lru_eviction_candidate_count == 2U);
+    MK_REQUIRE(result.recency_eviction_candidate_count == 2U);
+    MK_REQUIRE(result.eviction_candidate_unmount_order.size() == 2U);
+    MK_REQUIRE(result.eviction_candidate_unmount_order[0] ==
+               mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 12});
+    MK_REQUIRE(result.eviction_candidate_unmount_order[1] ==
+               mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 11});
+    MK_REQUIRE(!result.invoked_file_io);
+    MK_REQUIRE(!result.mutated_mount_set);
+    MK_REQUIRE(!result.touched_renderer_or_rhi_handles);
+    MK_REQUIRE(mount_set.mounts().size() == 3U);
+}
+
+MK_TEST("runtime mavg page streaming runtime inferred lru policy evicts cold residents first") {
+    const auto graph = make_page_streaming_graph();
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    mount_resident_page(mount_set, 10, mirakana::AssetId::from_name("mavg/page-streaming/page-0"), "root");
+    mount_resident_page(mount_set, 11, mirakana::AssetId::from_name("mavg/page-streaming/page-1"), "new");
+    mount_resident_page(mount_set, 12, mirakana::AssetId::from_name("mavg/page-streaming/page-2"), "old");
+
+    const std::vector<mirakana::runtime::RuntimeMavgResidentPageMountRow> page_mounts{
+        {.graph_asset = graph.asset, .page_index = 0, .mount_id = {.value = 10}},
+        {.graph_asset = graph.asset, .page_index = 1, .mount_id = {.value = 11}},
+        {.graph_asset = graph.asset, .page_index = 2, .mount_id = {.value = 12}},
+    };
+    const std::vector<mirakana::runtime::RuntimeMavgPageStreamingSelectedClusterRow> selected_clusters{
+        {.graph_asset = graph.asset, .cluster_index = 0},
+    };
+    const std::vector<mirakana::runtime::RuntimeMavgPageStreamingRecencyRow> previous_recency_rows{
+        {.graph_asset = graph.asset,
+         .page_index = 0,
+         .mount_id = {.value = 10},
+         .resident_page_last_used_generation = 4},
+        {.graph_asset = graph.asset,
+         .page_index = 2,
+         .mount_id = {.value = 12},
+         .resident_page_last_used_generation = 3},
+    };
+
+    const auto result = mirakana::runtime::plan_runtime_mavg_page_streaming_automatic_evictions(
+        mount_set,
+        mirakana::runtime::RuntimeMavgPageStreamingAutomaticEvictionPlanDesc{
+            .graph_asset = graph.asset,
+            .graph = &graph,
+            .selected_clusters = selected_clusters,
+            .resident_page_mounts = page_mounts,
+            .policy_kind = mirakana::runtime::RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::runtime_inferred_lru,
+            .previous_recency_rows = previous_recency_rows,
+            .current_use_generation = 8,
+            .target_budget =
+                mirakana::runtime::RuntimeResourceResidencyBudgetV2{
+                    .max_resident_content_bytes = 4,
+                },
+        });
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.inferred_lru_eviction_policy);
+    MK_REQUIRE(result.new_resident_page_count == 1U);
+    MK_REQUIRE(result.carried_recency_row_count == 1U);
+    MK_REQUIRE(result.eviction_candidate_unmount_order.size() == 2U);
+    MK_REQUIRE(result.eviction_candidate_unmount_order[0] ==
+               mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 11});
+    MK_REQUIRE(result.eviction_candidate_unmount_order[1] ==
+               mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 12});
+}
+
+MK_TEST("runtime mavg page streaming runtime inferred lru policy rejects nonmonotonic generations") {
+    const auto graph = make_page_streaming_graph();
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    mount_resident_page(mount_set, 10, mirakana::AssetId::from_name("mavg/page-streaming/page-0"), "root");
+    mount_resident_page(mount_set, 11, mirakana::AssetId::from_name("mavg/page-streaming/page-1"), "new");
+
+    const std::vector<mirakana::runtime::RuntimeMavgResidentPageMountRow> page_mounts{
+        {.graph_asset = graph.asset, .page_index = 0, .mount_id = {.value = 10}},
+        {.graph_asset = graph.asset, .page_index = 1, .mount_id = {.value = 11}},
+    };
+    const std::vector<mirakana::runtime::RuntimeMavgPageStreamingSelectedClusterRow> selected_clusters{
+        {.graph_asset = graph.asset, .cluster_index = 0},
+    };
+    const std::vector<mirakana::runtime::RuntimeMavgPageStreamingRecencyRow> previous_recency_rows{
+        {.graph_asset = graph.asset,
+         .page_index = 1,
+         .mount_id = {.value = 11},
+         .resident_page_last_used_generation = 9},
+    };
+
+    const auto result = mirakana::runtime::plan_runtime_mavg_page_streaming_automatic_evictions(
+        mount_set,
+        mirakana::runtime::RuntimeMavgPageStreamingAutomaticEvictionPlanDesc{
+            .graph_asset = graph.asset,
+            .graph = &graph,
+            .selected_clusters = selected_clusters,
+            .resident_page_mounts = page_mounts,
+            .policy_kind = mirakana::runtime::RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::runtime_inferred_lru,
+            .previous_recency_rows = previous_recency_rows,
+            .current_use_generation = 7,
+            .target_budget =
+                mirakana::runtime::RuntimeResourceResidencyBudgetV2{
+                    .max_resident_content_bytes = 4,
+                },
+        });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(!result.planned_automatic_eviction_policy);
+    MK_REQUIRE(!result.inferred_eviction_policy);
+    MK_REQUIRE(!result.inferred_lru_eviction_policy);
+    MK_REQUIRE(!result.inferred_resident_page_use_generation);
+    MK_REQUIRE(!result.invoked_eviction_plan);
+    MK_REQUIRE(has_diagnostic(result,
+                              mirakana::runtime::RuntimeMavgPageStreamingDiagnosticCode::non_monotonic_use_generation));
+    MK_REQUIRE(!result.invoked_file_io);
+    MK_REQUIRE(!result.mutated_mount_set);
+    MK_REQUIRE(!result.touched_renderer_or_rhi_handles);
+    MK_REQUIRE(mount_set.mounts().size() == 2U);
+}
+
 MK_TEST("runtime mavg page streaming use generation inference drops nonresident rows and initializes cold pages") {
     const auto graph = make_page_streaming_graph();
     mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;

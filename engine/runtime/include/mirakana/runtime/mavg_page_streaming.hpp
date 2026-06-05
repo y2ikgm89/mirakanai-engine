@@ -224,6 +224,7 @@ struct RuntimeMavgPageStreamingSelectedClusterRow {
 enum class RuntimeMavgPageStreamingAutomaticEvictionPolicyKind : std::uint8_t {
     deterministic_page_index = 0,
     caller_supplied_recency,
+    runtime_inferred_lru,
 };
 
 struct RuntimeMavgPageStreamingRecencyRow {
@@ -283,6 +284,8 @@ struct RuntimeMavgPageStreamingAutomaticEvictionPlanDesc {
     RuntimeMavgPageStreamingAutomaticEvictionPolicyKind policy_kind{
         RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::deterministic_page_index};
     std::span<const RuntimeMavgPageStreamingRecencyRow> recency_rows;
+    std::span<const RuntimeMavgPageStreamingRecencyRow> previous_recency_rows;
+    std::uint64_t current_use_generation{0};
     std::span<const RuntimeResidentPackageMountIdV2> caller_protected_mount_ids;
     RuntimeResourceResidencyBudgetV2 target_budget{};
     RuntimePackageMountOverlay overlay{RuntimePackageMountOverlay::last_mount_wins};
@@ -299,10 +302,17 @@ struct RuntimeMavgPageStreamingEvictionReviewResult {
     std::size_t protected_eviction_candidate_skip_count{0};
     std::size_t automatic_eviction_candidate_count{0};
     std::size_t recency_eviction_candidate_count{0};
+    std::size_t runtime_inferred_lru_eviction_candidate_count{0};
+    std::size_t touched_resident_page_count{0};
+    std::size_t carried_recency_row_count{0};
+    std::size_t new_resident_page_count{0};
+    std::size_t dropped_nonresident_recency_row_count{0};
     std::size_t missing_recency_row_count{0};
     std::size_t duplicate_recency_row_count{0};
     bool invoked_eviction_plan{false};
     bool inferred_eviction_policy{false};
+    bool inferred_lru_eviction_policy{false};
+    bool inferred_resident_page_use_generation{false};
     bool planned_automatic_eviction_policy{false};
     bool applied_caller_supplied_recency_policy{false};
     bool invoked_file_io{false};
