@@ -907,6 +907,7 @@ if ($validationRunnerCommand.Count -ne 1 -or $validationRunnerCommand[0].status 
             "desktop-runtime-sample-game-environment-precipitation-renderer-execution",
             "desktop-runtime-sample-game-environment-snow-package",
             "desktop-runtime-sample-game-environment-snow-renderer-execution",
+            "desktop-runtime-sample-game-environment-material-weathering",
             "desktop-runtime-sample-game-environment-ibl-renderer-execution",
             "desktop-runtime-sample-game-environment-profile-package",
             "desktop-runtime-generated-material-shader-scaffold-package",
@@ -921,8 +922,8 @@ if ($validationRunnerCommand.Count -ne 1 -or $validationRunnerCommand[0].status 
             Write-Error "engine manifest run-validation-recipe validationRecipes missing allowlisted recipe: $recipe"
         }
     }
-    if (@($validationRunnerCommand[0].validationRecipes).Count -ne 26) {
-        Write-Error "engine manifest run-validation-recipe validationRecipes must be exactly the reviewed allowlist of 26 recipes"
+    if (@($validationRunnerCommand[0].validationRecipes).Count -ne 27) {
+        Write-Error "engine manifest run-validation-recipe validationRecipes must be exactly the reviewed allowlist of 27 recipes"
     }
     if (@($validationRunnerCommand[0].requestModes | Where-Object { $_.id -eq "apply" -and $_.status -eq "ready" }).Count -gt 0) {
         Write-Error "engine manifest run-validation-recipe must not expose a ready apply mode"

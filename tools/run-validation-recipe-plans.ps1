@@ -237,6 +237,13 @@ function Get-ValidationRecipeCommandPlan {
         $diagD3dSnowExecution = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'D3D12 snow precipitation renderer execution validation is restricted to the reviewed sample_desktop_runtime_game D3D12 package lane and proves snow particle-buffer upload, backend invocation, renderer draw, and scene-depth occlusion readback counters while keeping zero wetness mutation and no audio playback without claiming Vulkan, Metal, rain readiness, backend parity, broad optimization, or broad environment readiness.' -ValidationRecipe $RecipeName -HostGate 'd3d12-windows-primary'
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('d3d12-windows-primary') -RequiredAcknowledgements @('d3d12-windows-primary') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12') -Diagnostics @($diagD3dSnowExecution)
     }
+    elseif ($RecipeName -eq 'desktop-runtime-sample-game-environment-material-weathering') {
+        $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
+        $smokeTail = @(Get-SampleDesktopRuntimeGameEnvironmentMaterialWeatheringSmokeArgs)
+        $pwEntry = Get-DesktopRuntimePackageCommandPlan -ScriptPath $packageScript -GameTarget $target -RequireD3d12Shaders -SmokeArgs $smokeTail
+        $diagD3dMaterialWeathering = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'D3D12 material weathering validation is restricted to the reviewed sample_desktop_runtime_game D3D12 material-parameter package lane and proves wet/snow material response rows, positive material binding/upload counters, zero source-material mutation, and zero native-handle counters without claiming Vulkan, Metal, backend parity, broad optimization, or broad environment_ready.' -ValidationRecipe $RecipeName -HostGate 'd3d12-windows-primary'
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('d3d12-windows-primary') -RequiredAcknowledgements @('d3d12-windows-primary') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12') -Diagnostics @($diagD3dMaterialWeathering)
+    }
     elseif ($RecipeName -eq 'desktop-runtime-sample-game-environment-profile-package') {
         $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
         $smokeTail = @(Get-SampleDesktopRuntimeGameEnvironmentProfileSmokeArgs)

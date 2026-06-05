@@ -152,6 +152,7 @@
         "environment-precipitation-renderer-execution",
         "environment-snow-package",
         "environment-snow-renderer-execution",
+        "environment-material-weathering",
         "environment-quality-budget-evidence",
         "animation",
         "framegraph-multiqueue",
@@ -180,6 +181,7 @@
         "desktop-runtime-sample-game-environment-precipitation-renderer-execution",
         "desktop-runtime-sample-game-environment-snow-package",
         "desktop-runtime-sample-game-environment-snow-renderer-execution",
+        "desktop-runtime-sample-game-environment-material-weathering",
         "desktop-runtime-sample-game-environment-profile-package",
         "installed-vulkan-scene-gpu-smoke"
       ],
@@ -305,8 +307,15 @@
           ]
         },
         {
+          "id": "environment-material-weathering-evidence",
+          "evidence": "The selected D3D12 material weathering smoke uses --require-environment-material-weathering and reports environment_material_weathering_status=ready, mixed wet/snow/ice rows, constants binding 14, constants byte size 256, positive material parameter binding/upload/backend counters, source material mutations=0, native handle access=0, and zero diagnostics without claiming precipitation particle execution, Vulkan, Metal, backend parity, broad optimization, or broad environment_ready.",
+          "recipeIds": [
+            "desktop-runtime-sample-game-environment-material-weathering"
+          ]
+        },
+        {
           "id": "environment-quality-budget-evidence",
-          "evidence": "Selected sample_desktop_runtime_game environment package smokes that request environment profile, physical sky, fog, volumetric fog, cloud layer, volumetric cloud, precipitation, snow, or environment lighting evidence also report environment_quality_budget_status=ready, environment_quality_budget_ready=1, environment_quality_budget_requested=1, selected feature rows and diagnostics, bounded constant-buffer bytes, physical-sky sample budget, fog/cloud raymarch step budgets, particle rows, upload bytes, renderer draw/dispatch/raymarch/IBL budgets, transient GPU byte estimates, framegraph pass/barrier expected and executed counters, native-handle access=0, and environment_quality_budget_broad_environment_ready_claimed=0 without claiming broad optimization or broad environment_ready.",
+          "evidence": "Selected sample_desktop_runtime_game environment package smokes that request environment profile, physical sky, fog, volumetric fog, cloud layer, volumetric cloud, precipitation, snow, material weathering, or environment lighting evidence also report environment_quality_budget_status=ready, environment_quality_budget_ready=1, environment_quality_budget_requested=1, selected feature rows and diagnostics, bounded constant-buffer bytes, physical-sky sample budget, fog/cloud raymarch step budgets, particle rows, upload bytes, renderer draw/dispatch/raymarch/IBL budgets, transient GPU byte estimates, framegraph pass/barrier expected and executed counters, native-handle access=0, and environment_quality_budget_broad_environment_ready_claimed=0 without claiming broad optimization or broad environment_ready.",
           "recipeIds": [
             "desktop-runtime-sample-game-environment-profile-package",
             "desktop-runtime-sample-game-physical-sky-package",
@@ -321,6 +330,7 @@
             "desktop-runtime-sample-game-environment-precipitation-renderer-execution",
             "desktop-runtime-sample-game-environment-snow-package",
             "desktop-runtime-sample-game-environment-snow-renderer-execution",
+            "desktop-runtime-sample-game-environment-material-weathering",
             "desktop-runtime-sample-game-environment-lighting-package",
             "desktop-runtime-sample-game-environment-ibl-renderer-execution"
           ]
@@ -1792,6 +1802,10 @@
     {
       "name": "desktop-runtime-sample-game-environment-snow-renderer-execution",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-environment-snow-renderer-execution')\""
+    },
+    {
+      "name": "desktop-runtime-sample-game-environment-material-weathering",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-environment-material-weathering')\""
     },
     {
       "name": "desktop-runtime-sample-game-environment-profile-package",
