@@ -1589,6 +1589,7 @@ MK_TEST("null rhi rejects invalid descriptor layouts writes and incompatible bin
         }});
         accepted_register_type_overload = overloaded_layout.value != 0;
     } catch (const std::invalid_argument&) {
+        accepted_register_type_overload = false;
     }
 
     bool rejected_duplicate_binding_type = false;
