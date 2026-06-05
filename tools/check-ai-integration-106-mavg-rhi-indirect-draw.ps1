@@ -155,9 +155,9 @@ foreach ($needle in @(
     Assert-ContainsText $rhiManifestText $needle "engine/agent/manifest.json MK_rhi MAVG RHI indirect draw evidence"
 }
 
-if ($manifest.aiOperableProductionLoop.currentActivePlan -ne "docs/superpowers/plans/2026-06-05-mavg-rhi-indirect-draw-v1.md") {
-    Write-Error "engine/agent/manifest.json currentActivePlan must point at mavg-rhi-indirect-draw-v1"
+if ($manifest.aiOperableProductionLoop.currentActivePlan -ne "docs/superpowers/plans/2026-06-05-mavg-d3d12-indexed-indirect-draw-execution-v1.md") {
+    Write-Error "engine/agent/manifest.json currentActivePlan must point at the active MAVG D3D12 indirect draw follow-up"
 }
-if ($manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "mavg-rhi-indirect-draw-v1") {
-    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must be mavg-rhi-indirect-draw-v1"
+if ($manifest.aiOperableProductionLoop.recommendedNextPlan.completedContext -notlike "*mavg-rhi-indirect-draw-v1*") {
+    Write-Error "engine/agent/manifest.json recommendedNextPlan.completedContext must retain mavg-rhi-indirect-draw-v1 prerequisite evidence"
 }
