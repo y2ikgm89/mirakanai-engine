@@ -23,7 +23,7 @@ if (-not (Test-Path -LiteralPath $vcpkgExe -PathType Leaf)) {
 
 Push-Location $root
 try {
-    Invoke-CheckedCommand $vcpkgExe install --x-feature=desktop-runtime --x-feature=asset-importers --x-feature=physics-jolt --x-feature=network-enet --triplet $triplet --disable-metrics
+    Invoke-CheckedCommand $vcpkgExe install --x-feature=desktop-runtime --x-feature=directstorage-sdk --x-feature=asset-importers --x-feature=physics-jolt --x-feature=network-enet --triplet $triplet --disable-metrics
 } finally {
     Pop-Location
 }

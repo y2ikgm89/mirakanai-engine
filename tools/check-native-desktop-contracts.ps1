@@ -9,8 +9,8 @@ $root = Get-RepoRoot
 
 $forbiddenPatterns = @(
     @{
-        Pattern = '#\s*include\s*[<"](?:Windows|windows|windef|winuser|handleapi|unknwn|objidl|combaseapi|guiddef|propidl|propvarutil|audioclient|audiopolicy|mmdeviceapi|endpointvolume|xinput|gameinput|d3d12|dxgi|dxgi1_\d+|wrl/client)\.h[>"]'
-        Label = "native Windows, COM, WASAPI, controller, D3D12, or DXGI header include"
+        Pattern = '#\s*include\s*[<"](?:Windows|windows|windef|winuser|handleapi|unknwn|objidl|combaseapi|guiddef|propidl|propvarutil|audioclient|audiopolicy|mmdeviceapi|endpointvolume|xinput|gameinput|d3d12|dxgi|dxgi1_\d+|dstorage|dstorageerr|wrl/client)\.h[>"]'
+        Label = "native Windows, COM, WASAPI, controller, D3D12, DXGI, or DirectStorage header include"
     },
     @{
         Pattern = '\b(?:HWND|HINSTANCE|HMODULE|HMONITOR|HCURSOR|HRAWINPUT|HANDLE|LRESULT|WPARAM|LPARAM|WNDPROC|WNDCLASSW|WNDCLASSEXW|RAWINPUT|MSG|POINT|RECT)\b'
@@ -19,6 +19,10 @@ $forbiddenPatterns = @(
     @{
         Pattern = '\b(?:ID3D12[A-Za-z0-9_]*|IDXGI[A-Za-z0-9_]*|D3D12_[A-Z0-9_]+|DXGI_[A-Z0-9_]+|D3D_ROOT_SIGNATURE_VERSION)\b'
         Label = "native D3D12 or DXGI symbol"
+    },
+    @{
+        Pattern = '\b(?:IDStorage[A-Za-z0-9_]*|DSTORAGE_[A-Z0-9_]+|DStorage[A-Za-z0-9_]*)\b'
+        Label = "native DirectStorage symbol"
     },
     @{
         Pattern = '\b(?:IAudioClient|IAudioRenderClient|IAudioClock|IMMDevice[A-Za-z0-9_]*|WAVEFORMATEX|REFERENCE_TIME)\b'

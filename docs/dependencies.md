@@ -28,7 +28,7 @@ On Windows, the default validation build uses Windows SDK system libraries for t
 
 These are official platform SDK libraries and are not bundled in the repository.
 
-The optional desktop runtime, asset importer, native physics middleware adapter, and network transport adapter lanes use vcpkg manifest features so optional package dependencies remain isolated from the default build and from system-wide package locations. The current `desktop-runtime` feature is dependency-free and uses host SDK libraries. The native `desktop-editor` lane is also dependency-free: it is a CMake preset/tooling lane for the first-party Win32/D3D12/DirectWrite editor shell, not a vcpkg feature and not a UI middleware dependency path.
+The optional desktop runtime, DirectStorage SDK, asset importer, native physics middleware adapter, and network transport adapter lanes use vcpkg manifest features so optional package dependencies remain isolated from the default build and from system-wide package locations. The current `desktop-runtime` feature is dependency-free and uses host SDK libraries. The native `desktop-editor` lane is also dependency-free: it is a CMake preset/tooling lane for the first-party Win32/D3D12/DirectWrite editor shell, not a vcpkg feature and not a UI middleware dependency path.
 
 Run the optional vcpkg dependency bootstrap with:
 
@@ -38,7 +38,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/bootstrap-deps.ps1
 
 The repository PowerShell wrappers configure vcpkg through official process environment variables before optional dependency steps. `VCPKG_DOWNLOADS` points at `out/vcpkg/downloads`, `VCPKG_DEFAULT_BINARY_CACHE` points at `out/vcpkg/binary-cache`, and `VCPKG_BINARY_SOURCES` is set to a file provider over that binary cache. This keeps optional dependency downloads and binary packages out of user-global locations and avoids relying on sandbox-inherited cache state.
 
-`bootstrap-deps` is the only wrapper that runs `vcpkg install`. It installs the `desktop-runtime`, `asset-importers`, `physics-jolt`, and `network-enet` manifest features into the repository root `vcpkg_installed` tree. Optional CMake presets set `VCPKG_MANIFEST_INSTALL=OFF` and `VCPKG_INSTALLED_DIR=${sourceDir}/vcpkg_installed`, so CMake configure consumes the already-bootstrapped manifest install tree instead of downloading, extracting tools, or running vcpkg during configure.
+`bootstrap-deps` is the only wrapper that runs `vcpkg install`. It installs the `desktop-runtime`, `directstorage-sdk`, `asset-importers`, `physics-jolt`, and `network-enet` manifest features into the repository root `vcpkg_installed` tree. Optional CMake presets set `VCPKG_MANIFEST_INSTALL=OFF` and `VCPKG_INSTALLED_DIR=${sourceDir}/vcpkg_installed`, so CMake configure consumes the already-bootstrapped manifest install tree instead of downloading, extracting tools, or running vcpkg during configure.
 
 GitHub Actions restores the gitignored `external/vcpkg` tool checkout before calling `bootstrap-deps`, then checks out the `vcpkg.json` `builtin-baseline` commit. Local hosts must still provide or restore `external/vcpkg` before running optional vcpkg-backed lanes.
 
@@ -75,6 +75,18 @@ Apply ADK servicing patches only when they match installed ADK features. Do not 
 ## Optional Features
 
 `desktop-runtime` in `vcpkg.json` is currently a dependency-free feature. It enables the Windows-native platform/audio/runtime host lane through `MK_ENABLE_DESKTOP_RUNTIME=ON` while relying on host SDK libraries such as Win32, WASAPI, DXGI, and D3D12. It is intentionally separate from `desktop-editor` so windowed games can be validated and packaged without `MK_editor`.
+
+`directstorage-sdk` in `vcpkg.json` declares:
+
+- `dstorage`
+
+This feature is the optional Windows DirectStorage SDK dependency gate. It builds only when `MK_ENABLE_DIRECTSTORAGE_SDK=ON` through the `directstorage-sdk` CMake preset, finds the official vcpkg `dstorage` config package, links the imported `Microsoft::DirectStorage` target, copies the DirectStorage runtime DLLs next to the smoke executable, and runs `MK_runtime_host_win32_directstorage_sdk_tests`. It proves `dstorage.h` / `dstorageerr.h` compile, the import library links, and redistributable DLL copy/run wiring is available. It does not execute `DStorageGetFactory`, create `IDStorageFactory`, create queues/status arrays, use `ID3D12Fence`, enqueue requests, perform file IO, mutate resident mounts, touch renderer/RHI resources, claim async-overlap/performance, or make DirectStorage part of the default build or installed Mirakanai SDK.
+
+Validate the optional DirectStorage SDK gate with:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-directstorage-sdk.ps1
+```
 
 `desktop-editor` is not a `vcpkg.json` feature. It is a dependency-free CMake preset that enables the Windows-native first-party `MK_editor` shell through `MK_ENABLE_DESKTOP_EDITOR=ON` while relying on host SDK libraries and first-party `mirakana::ui` / `MK_ui_renderer` contracts. `MK_editor_core` remains the supported editor logic target, and the native visible editor shell must keep Win32, D3D12, DXGI, DirectWrite, COM, and native handles in private editor implementation files rather than public engine, gameplay, runtime UI, or editor-core APIs.
 
@@ -176,6 +188,7 @@ Validated local package versions:
 | OpenGL Registry | 2026-01-26 | Optional `MK_tools` build output through KTX Software |
 | EGL Registry | 2025-05-27 | Optional `MK_tools` build output through KTX Software |
 | miniaudio | vcpkg baseline selected | Optional `MK_tools` WAV/MP3/FLAC source importer |
+| Microsoft DirectStorage SDK | 1.3.0 | Optional `directstorage-sdk` compile/link/package-copy smoke |
 | Jolt Physics | 5.5.0 | Optional `MK_physics_jolt` native physics middleware adapter |
 | ENet | 1.3.18 | Optional `MK_runtime_network_enet` loopback network transport adapter |
 | Android Gradle Plugin | 9.1.0 | Toolchain-gated Android package template |
@@ -187,13 +200,15 @@ Validated local package versions:
 | vcpkg-cmake | 2024-04-23 | vcpkg CMake helper |
 | vcpkg-cmake-config | 2024-05-23 | vcpkg CMake config helper |
 
-`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` includes `tools/check-dependency-policy.ps1`, which verifies that the default build has no third-party dependencies, optional `desktop-runtime`, `asset-importers`, `physics-jolt`, and `network-enet` features keep their dependency shapes, the removed `desktop-gui` / `imgui` dependency path stays absent, `builtin-baseline` is present, notices exist, optional CMake presets disable configure-time vcpkg manifest install and use the root install tree, `bootstrap-deps` installs all optional feature dependency sets, and `tools/validate-physics-jolt.ps1` / `tools/validate-network-enet.ps1` remain the dedicated optional adapter build/test/install wrappers.
+`pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` includes `tools/check-dependency-policy.ps1`, which verifies that the default build has no third-party dependencies, optional `desktop-runtime`, `directstorage-sdk`, `asset-importers`, `physics-jolt`, and `network-enet` features keep their dependency shapes, the removed `desktop-gui` / `imgui` dependency path stays absent, `builtin-baseline` is present, notices exist, optional CMake presets disable configure-time vcpkg manifest install and use the root install tree, `bootstrap-deps` installs all optional feature dependency sets, and `tools/validate-directstorage-sdk.ps1`, `tools/validate-physics-jolt.ps1`, and `tools/validate-network-enet.ps1` remain the dedicated optional dependency/adapter build/test wrappers.
 
 ## Official References
 
 - vcpkg manifest mode: https://learn.microsoft.com/en-us/vcpkg/concepts/manifest-mode
 - vcpkg CMake integration: https://learn.microsoft.com/en-us/vcpkg/users/buildsystems/cmake-integration
 - Windows Core Audio / WASAPI: https://learn.microsoft.com/en-us/windows/win32/coreaudio/wasapi
+- Microsoft DirectStorage SDK NuGet package: https://www.nuget.org/packages/Microsoft.Direct3D.DirectStorage/1.3.0
+- DirectStorage API reference: https://learn.microsoft.com/en-us/windows/win32/dstorage/dstorage-api-reference
 - DirectWrite: https://learn.microsoft.com/en-us/windows/win32/directwrite/direct-write-portal
 - Text Rendering with Direct2D and DirectWrite: https://learn.microsoft.com/en-us/windows/win32/direct2d/direct2d-and-directwrite
 - libspng: https://libspng.org/
@@ -236,6 +251,7 @@ Validated local package versions:
 - Khronos OpenGL/EGL registry files use per-file license comments and are pulled through KTX Software.
 - miniaudio is public domain or MIT No Attribution.
 - The `desktop-editor` developer/editor shell lane is first-party and dependency-free; any future UI, font, text, or platform adapter dependency must be added through `license-audit`, `vcpkg.json`, this document, and `THIRD_PARTY_NOTICES.md` before use.
+- Microsoft DirectStorage SDK 1.3.0 is distributed by Microsoft through NuGet/vcpkg `dstorage`; `native/bin` uses `LicenseRef-Microsoft-DirectStorage-SDK`, and `native/include` headers are MIT through `LICENSE-CODE.txt`.
 - Jolt Physics is MIT licensed and isolated to the optional `physics-jolt` adapter lane.
 - ENet is MIT licensed and isolated to the optional `network-enet` adapter lane.
 - Android Gradle Plugin, AndroidX AppCompat, AndroidX Core, and AndroidX Games Activity are Apache-2.0 licensed Android toolchain/template dependencies and are not part of the default build.

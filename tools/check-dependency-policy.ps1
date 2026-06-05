@@ -70,6 +70,11 @@ if (-not $desktopRuntime) {
     Write-Error "vcpkg manifest must keep optional desktop-runtime feature"
 }
 
+$directStorageSdk = $manifest.features.'directstorage-sdk'
+if (-not $directStorageSdk) {
+    Write-Error "vcpkg manifest must keep optional directstorage-sdk feature"
+}
+
 if (Test-JsonProperty -Object $manifest.features -Property "desktop-gui") {
     Write-Error "vcpkg manifest must not keep removed desktop-gui feature"
 }
@@ -108,6 +113,19 @@ foreach ($dependencyName in @("sdl3", "imgui")) {
 
 if ($desktopRuntimeDependencyNames.Count -ne 0) {
     Write-Error "desktop-runtime feature uses host SDKs and must not declare vcpkg package dependencies"
+}
+
+$directStorageDependencyNames = @()
+foreach ($dependency in $directStorageSdk.dependencies) {
+    if ($dependency -is [string]) {
+        $directStorageDependencyNames += $dependency
+    } else {
+        $directStorageDependencyNames += $dependency.name
+    }
+}
+
+if ($directStorageDependencyNames.Count -ne 1 -or $directStorageDependencyNames -notcontains "dstorage") {
+    Write-Error "directstorage-sdk feature must declare only the official vcpkg dstorage dependency"
 }
 
 $assetImporterDependencyNames = @()
@@ -172,20 +190,26 @@ if ((Get-Content -LiteralPath (Join-Path $root "THIRD_PARTY_NOTICES.md") -Raw) -
 }
 Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| Jolt Physics \|" "third-party notices"
 Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| ENet \|" "third-party notices"
+Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| Microsoft DirectStorage SDK \|" "third-party notices"
 Assert-TextContains "THIRD_PARTY_NOTICES.md" "\| KTX Software \|" "third-party notices"
 Assert-TextContains "docs/dependencies.md" "builtin-baseline" "dependency docs"
 Assert-TextContains "docs/dependencies.md" "Foundation" "dependency docs"
+Assert-TextContains "docs/dependencies.md" "directstorage-sdk" "dependency docs"
 Assert-TextContains "docs/dependencies.md" "physics-jolt" "dependency docs"
 Assert-TextContains "docs/dependencies.md" "network-enet" "dependency docs"
 Assert-TextContains "docs/dependencies.md" "KTX Software" "dependency docs"
 Assert-TextContains "docs/legal-and-licensing.md" "Foundation" "legal dependency docs"
+Assert-TextContains "docs/legal-and-licensing.md" "Microsoft DirectStorage SDK" "legal dependency docs"
 Assert-TextContains "docs/legal-and-licensing.md" "Jolt Physics" "legal dependency docs"
 Assert-TextContains "docs/legal-and-licensing.md" "ENet" "legal dependency docs"
 Assert-TextContains "docs/legal-and-licensing.md" "KTX Software" "legal dependency docs"
 Assert-TextContains "CMakePresets.json" "desktop-runtime" "CMake presets"
+Assert-TextContains "CMakePresets.json" "directstorage-sdk" "CMake presets"
 Assert-TextContains "CMakePresets.json" "asset-importers" "CMake presets"
 Assert-TextContains "CMakePresets.json" "physics-jolt" "CMake presets"
 Assert-TextContains "CMakePresets.json" "network-enet" "CMake presets"
+Assert-TextContains "tools/validate-directstorage-sdk.ps1" "directstorage-sdk" "DirectStorage SDK validation wrapper"
+Assert-TextContains "tools/validate-directstorage-sdk.ps1" "MK_runtime_host_win32_directstorage_sdk_tests" "DirectStorage SDK validation wrapper"
 Assert-TextContains "tools/validate-physics-jolt.ps1" "physics-jolt" "Jolt validation wrapper"
 Assert-TextContains "tools/validate-physics-jolt.ps1" "validate-installed-sdk.ps1" "Jolt validation wrapper"
 Assert-TextContains "tools/validate-network-enet.ps1" "network-enet" "ENet validation wrapper"
@@ -193,6 +217,7 @@ Assert-TextContains "tools/validate-network-enet.ps1" "validate-installed-sdk.ps
 Assert-TextContains "tools/validate-network-enet.ps1" "mirakana_rhi_d3d12" "ENet validation wrapper install target closure"
 Assert-TextContains "tools/validate-network-enet.ps1" "MK_editor_core" "ENet validation wrapper install target closure"
 Assert-TextContains "tools/check-native-desktop-contracts.ps1" "IAudioClient" "native desktop public API guard"
+Assert-TextContains "tools/check-native-desktop-contracts.ps1" "IDStorage" "native desktop public API guard"
 Assert-TextContains "tools/check-native-desktop-contracts.ps1" "XINPUT_STATE" "native desktop public API guard"
 Assert-TextContains "tools/check-native-desktop-contracts.ps1" "SDL3/" "native desktop public API guard"
 Assert-TextContains "tools/check-native-desktop-contracts.ps1" "IUnknown" "native desktop public API guard"
@@ -224,6 +249,7 @@ foreach ($preset in $vcpkgPresets) {
 }
 
 Assert-TextContains "tools/bootstrap-deps.ps1" "--x-feature=desktop-runtime" "bootstrap dependencies"
+Assert-TextContains "tools/bootstrap-deps.ps1" "--x-feature=directstorage-sdk" "bootstrap dependencies"
 Assert-TextDoesNotContain "tools/bootstrap-deps.ps1" "--x-feature=desktop-gui" "bootstrap dependencies"
 Assert-TextContains "tools/bootstrap-deps.ps1" "--x-feature=asset-importers" "bootstrap dependencies"
 Assert-TextContains "tools/bootstrap-deps.ps1" "--x-feature=physics-jolt" "bootstrap dependencies"

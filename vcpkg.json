@@ -20,6 +20,12 @@
       "description": "Optional Windows native desktop game runtime lane. Win32, WASAPI, DXGI, and D3D12 integration uses the host SDK and declares no vcpkg package dependency.",
       "dependencies": []
     },
+    "directstorage-sdk": {
+      "description": "Optional Windows DirectStorage SDK dependency gate for MAVG compile/link/package-copy validation through the official vcpkg dstorage port.",
+      "dependencies": [
+        "dstorage"
+      ]
+    },
     "physics-jolt": {
       "description": "Optional native 3D physics middleware adapter dependency for Jolt Physics.",
       "dependencies": [

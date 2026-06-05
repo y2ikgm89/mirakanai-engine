@@ -104,6 +104,27 @@
       }
     },
     {
+      "name": "directstorage-sdk",
+      "displayName": "DirectStorage SDK dependency gate build",
+      "binaryDir": "${sourceDir}/out/build/directstorage-sdk",
+      "inherits": "normalized-configure-environment",
+      "cacheVariables": {
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "BUILD_TESTING": "ON",
+        "MK_CXX_STANDARD": "23",
+        "MK_ENABLE_CXX_MODULE_SCANNING": "ON",
+        "MK_ENABLE_IMPORT_STD": "ON",
+        "MK_MSVC_CXX23_STANDARD_OPTION": "/std:c++23preview",
+        "MK_ENABLE_DESKTOP_RUNTIME": "ON",
+        "MK_ENABLE_DESKTOP_EDITOR": "OFF",
+        "MK_ENABLE_DIRECTSTORAGE_SDK": "ON",
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/external/vcpkg/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_TARGET_TRIPLET": "x64-windows",
+        "VCPKG_MANIFEST_INSTALL": "OFF",
+        "VCPKG_INSTALLED_DIR": "${sourceDir}/vcpkg_installed"
+      }
+    },
+    {
       "name": "desktop-editor",
       "displayName": "Desktop editor build",
       "binaryDir": "${sourceDir}/out/build/desktop-editor",
@@ -367,6 +388,12 @@
       "configuration": "Debug"
     },
     {
+      "name": "directstorage-sdk",
+      "inherits": "normalized-build-environment",
+      "configurePreset": "directstorage-sdk",
+      "configuration": "Debug"
+    },
+    {
       "name": "desktop-editor",
       "inherits": "normalized-build-environment",
       "configurePreset": "desktop-editor",
@@ -467,6 +494,14 @@
     {
       "name": "desktop-runtime",
       "configurePreset": "desktop-runtime",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "directstorage-sdk",
+      "configurePreset": "directstorage-sdk",
       "configuration": "Debug",
       "output": {
         "outputOnFailure": true

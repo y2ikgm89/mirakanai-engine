@@ -16,6 +16,7 @@ option(MK_ENABLE_SANITIZERS "Enable compiler sanitizer instrumentation where sup
 option(MK_ENABLE_CXX_MODULE_SCANNING "Enable CMake C++ module dependency scanning for targets" ON)
 option(MK_ENABLE_IMPORT_STD "Enable CMake-managed import std support when the active toolchain and generator support it" ON)
 option(MK_ENABLE_ASSET_IMPORTERS "Build optional libspng/fastgltf/miniaudio source asset importer adapters" OFF)
+option(MK_ENABLE_DIRECTSTORAGE_SDK "Build optional DirectStorage SDK compile/link/package-copy smoke target" OFF)
 option(MK_ENABLE_PHYSICS_JOLT "Build optional Jolt Physics native middleware adapter" OFF)
 option(MK_ENABLE_NETWORK_ENET "Build optional ENet loopback network transport adapter" OFF)
 option(MK_REQUIRE_DESKTOP_RUNTIME_DXIL "Require sample_desktop_runtime_shell DXIL artifacts when packaging the desktop runtime shell" OFF)
@@ -170,6 +171,13 @@ add_subdirectory(engine/runtime_scene)
 add_subdirectory(engine/scene_renderer)
 add_subdirectory(engine/runtime_scene_rhi)
 add_subdirectory(editor)
+
+if(MK_ENABLE_DIRECTSTORAGE_SDK)
+    if(NOT WIN32)
+        message(FATAL_ERROR "MK_ENABLE_DIRECTSTORAGE_SDK is Windows-only")
+    endif()
+    find_package(dstorage CONFIG REQUIRED)
+endif()
 
 add_executable(MK_sandbox examples/sandbox/main.cpp)
 target_link_libraries(MK_sandbox PRIVATE
@@ -1176,6 +1184,26 @@ if(BUILD_TESTING)
             target_link_libraries(MK_runtime_host_win32_public_api_compile PRIVATE MK_runtime_host_win32_presentation)
             MK_apply_common_target_options(MK_runtime_host_win32_public_api_compile)
             add_test(NAME MK_runtime_host_win32_public_api_compile COMMAND MK_runtime_host_win32_public_api_compile)
+        endif()
+
+        if(MK_ENABLE_DIRECTSTORAGE_SDK)
+            add_executable(MK_runtime_host_win32_directstorage_sdk_tests
+                tests/unit/runtime_host_win32_directstorage_sdk_tests.cpp
+            )
+            target_link_libraries(MK_runtime_host_win32_directstorage_sdk_tests PRIVATE Microsoft::DirectStorage)
+            MK_apply_common_target_options(MK_runtime_host_win32_directstorage_sdk_tests)
+            MK_disable_module_scanning_for_non_module_executable(MK_runtime_host_win32_directstorage_sdk_tests)
+            foreach(MK_DIRECTSTORAGE_RUNTIME_TARGET IN ITEMS Microsoft::DirectStorage Microsoft::DirectStorageCore)
+                if(TARGET ${MK_DIRECTSTORAGE_RUNTIME_TARGET})
+                    add_custom_command(TARGET MK_runtime_host_win32_directstorage_sdk_tests POST_BUILD
+                        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                            "$<TARGET_FILE:${MK_DIRECTSTORAGE_RUNTIME_TARGET}>"
+                            "$<TARGET_FILE_DIR:MK_runtime_host_win32_directstorage_sdk_tests>"
+                    )
+                endif()
+            endforeach()
+            add_test(NAME MK_runtime_host_win32_directstorage_sdk_tests
+                COMMAND MK_runtime_host_win32_directstorage_sdk_tests)
         endif()
     endif()
 

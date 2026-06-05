@@ -11,6 +11,7 @@
     "buildEditor": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1",
     "desktopGameRuntime": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-desktop-game-runtime.ps1",
     "buildAssetImporters": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-asset-importers.ps1",
+    "validateDirectStorageSdk": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-directstorage-sdk.ps1",
     "validatePhysicsJolt": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-physics-jolt.ps1",
     "validateNetworkEnet": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-network-enet.ps1",
     "package": "pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package.ps1",

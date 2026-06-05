@@ -115,6 +115,7 @@ foreach ($needle in @(
         "GetQueuedCompletionStatus",
         "PostQueuedCompletionStatus",
         "executed_background_worker=true",
+        "draft PR #466",
         "mavg-win32-async-file-io-adapter-v1",
         "draft PR #463",
         "unsupportedProductionGaps = []"
@@ -136,11 +137,11 @@ foreach ($needle in @(
 }
 
 $productionLoop = $manifest.aiOperableProductionLoop
-if ([string]$productionLoop.currentActivePlan -ne "docs/superpowers/plans/2026-06-06-mavg-win32-iocp-file-io-worker-v1.md") {
-    Write-Error "engine/agent/manifest.json currentActivePlan must select MAVG Win32 IOCP File IO Worker v1"
+if ([string]$productionLoop.currentActivePlan -eq "docs/superpowers/plans/2026-06-06-mavg-win32-iocp-file-io-worker-v1.md") {
+    Write-Error "engine/agent/manifest.json currentActivePlan must not keep completed MAVG Win32 IOCP File IO Worker v1 active"
 }
-if ([string]$productionLoop.recommendedNextPlan.id -ne "mavg-win32-iocp-file-io-worker-v1") {
-    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must select mavg-win32-iocp-file-io-worker-v1"
+if (@($productionLoop.recommendedNextPlan.retainedCompletedPlanPaths) -notcontains "docs/superpowers/plans/2026-06-06-mavg-win32-iocp-file-io-worker-v1.md") {
+    Write-Error "engine/agent/manifest.json recommendedNextPlan retainedCompletedPlanPaths must retain MAVG Win32 IOCP File IO Worker v1"
 }
 if (@($productionLoop.recommendedNextPlan.retainedCompletedPlanPaths) -notcontains "docs/superpowers/plans/2026-06-06-mavg-win32-async-file-io-adapter-v1.md") {
     Write-Error "engine/agent/manifest.json recommendedNextPlan retainedCompletedPlanPaths must retain MAVG Win32 Async File IO Adapter v1"

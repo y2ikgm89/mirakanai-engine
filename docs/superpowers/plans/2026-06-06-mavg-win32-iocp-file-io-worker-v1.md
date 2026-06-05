@@ -4,9 +4,9 @@
 
 **Plan ID:** `mavg-win32-iocp-file-io-worker-v1`
 
-**Status:** Active.
+**Status:** Completed/published as draft PR #466.
 
-Focused child over `mavg-runtime-lod-milestone-v1`, stacked after draft PR #463 (`mavg-win32-async-file-io-adapter-v1`).
+Focused child over `mavg-runtime-lod-milestone-v1`, stacked after draft PR #463 (`mavg-win32-async-file-io-adapter-v1`) and retained by active child `mavg-directstorage-sdk-dependency-gate-v1`.
 
 **Goal:** Add a concrete Windows IO completion port worker adapter for MAVG payload page requests so successful DirectStorage-shaped file-to-memory requests can complete through an engine-owned Win32 background worker without adding the DirectStorage SDK or exposing native handles.
 
