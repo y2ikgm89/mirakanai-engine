@@ -2535,6 +2535,7 @@ $editorAiUxOperationChecks = @(
             "editor.ai.text_input.focused_target",
             "editor.ai.adapter.text_font",
             "editor.ai.ime.session",
+            "editor.ai.ime.parity", "editor.ai.ime.candidate_selection", "editor.ai.ime.reconversion", "editor.ai.ime.platform_host_gates",
             "editor.ai.accessibility.uia_provider",
             "editor.ai.viewport.display",
             "editor.ai.material_preview.display",
@@ -2552,7 +2553,8 @@ $editorAiUxOperationChecks = @(
         Needles = @(
             "make_first_party_editor_ai_operation_ux_status_desc",
             "make_first_party_editor_ai_operation_snapshot",
-            "make_editor_ai_operation_ux_status_rows"
+            "make_editor_ai_operation_ux_status_rows",
+            "ime_parity_status", "ime_windows_tsf_status"
         )
     },
     @{
@@ -2567,7 +2569,8 @@ $editorAiUxOperationChecks = @(
         Path = "tests/unit/editor_native_shell_tests.cpp"
         Needles = @(
             "editor first party shell exposes AI operation UX rows from native readiness",
-            "editor.ai.validation_recipe.execution"
+            "editor.ai.validation_recipe.execution",
+            "editor first party shell smoke counters promote selected TSF to Windows IME parity only"
         )
     },
     @{
@@ -2599,6 +2602,7 @@ $editorAiUxOperationChecks = @(
         Needles = @(
             "EditorAiOperationSnapshot.status_rows",
             "editor.ai.ime.session",
+            "editor.ai.ime.parity",
             "<rich_text_document_id>.copy_selection_plain_text"
         )
     },
@@ -2607,6 +2611,7 @@ $editorAiUxOperationChecks = @(
         Needles = @(
             "EditorAiOperationSnapshot.status_rows",
             "editor.ai.ime.session",
+            "editor.ai.ime.parity",
             "<rich_text_document_id>.copy_selection_plain_text"
         )
     },
@@ -2615,6 +2620,7 @@ $editorAiUxOperationChecks = @(
         Needles = @(
             "EditorAiOperationSnapshot.status_rows",
             "editor.ai.ime.session",
+            "editor.ai.ime.parity",
             "<rich_text_document_id>.copy_selection_plain_text"
         )
     },
@@ -2623,6 +2629,7 @@ $editorAiUxOperationChecks = @(
         Needles = @(
             "editor.ai.dock.selected_panel",
             "editor.ai.material_preview.display",
+            "editor.ai.ime.parity",
             ".copy_selection_plain_text",
             "validation-recipe execution"
         )

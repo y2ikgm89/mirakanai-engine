@@ -516,6 +516,10 @@ enum class AdapterPayloadDiagnosticCode : std::uint8_t {
     mismatched_text_edit_clipboard_command_target,
     invalid_text_edit_cursor,
     invalid_text_edit_selection,
+    invalid_text_input_boundary_evidence,
+    invalid_ime_composition_range,
+    invalid_ime_candidate_selection,
+    invalid_ime_reconversion_request,
     invalid_committed_text,
     invalid_text_edit_command,
     invalid_text_edit_clipboard_command,
@@ -529,6 +533,7 @@ enum class AdapterPayloadDiagnosticCode : std::uint8_t {
     invalid_text_layout_policy,
     text_layout_clipped,
     unsupported_text_direction,
+    native_handle_access_requested,
 };
 
 struct AdapterPayloadDiagnostic {
@@ -559,6 +564,51 @@ struct TextEditState {
 struct CommittedTextInput {
     ElementId target;
     std::string text;
+};
+
+struct TextInputCandidateSelection {
+    ElementId target;
+    std::vector<std::string> candidates;
+    std::size_t selected_index{0};
+    bool candidate_ui_host_owned{true};
+};
+
+struct TextInputReconversionRequest {
+    ElementId target;
+    std::size_t start_byte_offset{0};
+    std::size_t byte_length{0};
+};
+
+struct TextInputParityEvidenceRequest {
+    TextEditState edit_state;
+    std::vector<TextBoundaryEvidence> grapheme_boundaries;
+    ImeComposition composition;
+    std::size_t composition_start_byte_offset{0};
+    std::size_t composition_byte_length{0};
+    CommittedTextInput committed_text;
+    PlatformTextInputRequest platform_request;
+    TextInputCandidateSelection candidate_selection;
+    TextInputReconversionRequest reconversion_request;
+    Rect caret_rect;
+    bool requested_native_handle_access{false};
+};
+
+struct TextInputParityEvidenceSummary {
+    std::string status{"not_ready"};
+    std::uint32_t grapheme_boundary_rows{0};
+    std::uint32_t grapheme_cursor_rows{0};
+    std::uint32_t grapheme_selection_rows{0};
+    std::uint32_t composition_range_rows{0};
+    std::uint32_t committed_text_rows{0};
+    std::uint32_t candidate_selection_rows{0};
+    std::uint32_t reconversion_request_rows{0};
+    std::uint32_t surrounding_text_rows{0};
+    std::uint32_t caret_rect_rows{0};
+    bool candidate_ui_host_owned{true};
+    bool native_handles_exposed{false};
+    std::vector<AdapterPayloadDiagnostic> diagnostics;
+
+    [[nodiscard]] bool ready() const noexcept;
 };
 
 // Host-independent edit commands. Host key mapping, key repeat, clipboard,
@@ -870,6 +920,8 @@ class IClipboardTextAdapter {
 [[nodiscard]] TextEditCommitPlan plan_committed_text_input(const TextEditState& state, const CommittedTextInput& input);
 [[nodiscard]] TextEditCommitResult apply_committed_text_input(const TextEditState& state,
                                                               const CommittedTextInput& input);
+[[nodiscard]] TextInputParityEvidenceSummary
+plan_text_input_parity_evidence(const TextInputParityEvidenceRequest& request);
 // Movement clears selection and collapses backward/forward selections to their
 // start/end. Deletion removes selection before scalar fallback. Valid no-ops set applied=true.
 [[nodiscard]] TextEditCommandPlan plan_text_edit_command(const TextEditState& state, const TextEditCommand& command);

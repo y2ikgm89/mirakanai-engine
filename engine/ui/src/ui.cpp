@@ -2440,6 +2440,157 @@ TextEditCommitResult apply_committed_text_input(const TextEditState& state, cons
     return result;
 }
 
+bool TextInputParityEvidenceSummary::ready() const noexcept {
+    return status == "ready" && diagnostics.empty();
+}
+
+TextInputParityEvidenceSummary plan_text_input_parity_evidence(const TextInputParityEvidenceRequest& request) {
+    TextInputParityEvidenceSummary summary;
+    summary.candidate_ui_host_owned = request.candidate_selection.candidate_ui_host_owned;
+    summary.native_handles_exposed = request.requested_native_handle_access;
+
+    const auto target = request.edit_state.target;
+    const auto append_diagnostics = [&summary](const std::vector<AdapterPayloadDiagnostic>& diagnostics) {
+        summary.diagnostics.insert(summary.diagnostics.end(), diagnostics.begin(), diagnostics.end());
+    };
+    const auto append_diagnostic = [&summary](ElementId id, AdapterPayloadDiagnosticCode code, std::string message) {
+        summary.diagnostics.push_back(AdapterPayloadDiagnostic{
+            .id = std::move(id),
+            .code = code,
+            .message = std::move(message),
+        });
+    };
+
+    const bool state_text_valid = is_strict_utf8(request.edit_state.text);
+    const auto cursor_end = request.edit_state.cursor_byte_offset + request.edit_state.selection_byte_length;
+    const bool state_selection_fits = request.edit_state.cursor_byte_offset <= request.edit_state.text.size() &&
+                                      request.edit_state.selection_byte_length <=
+                                          request.edit_state.text.size() - request.edit_state.cursor_byte_offset;
+
+    std::vector<std::size_t> grapheme_positions;
+    if (state_text_valid) {
+        grapheme_positions.push_back(0U);
+        grapheme_positions.push_back(request.edit_state.text.size());
+    }
+
+    bool has_invalid_boundary = false;
+    for (const auto& boundary : request.grapheme_boundaries) {
+        if (boundary.kind != TextBoundaryEvidenceKind::grapheme_cluster ||
+            !is_valid_text_boundary(boundary, request.edit_state.text)) {
+            has_invalid_boundary = true;
+            continue;
+        }
+        ++summary.grapheme_boundary_rows;
+        grapheme_positions.push_back(boundary.start_byte);
+        grapheme_positions.push_back(boundary.end_byte);
+    }
+    std::ranges::sort(grapheme_positions);
+    const auto unique_end = std::ranges::unique(grapheme_positions);
+    grapheme_positions.erase(unique_end.begin(), unique_end.end());
+
+    const auto has_grapheme_position = [&grapheme_positions](std::size_t offset) noexcept {
+        return std::ranges::binary_search(grapheme_positions, offset);
+    };
+
+    if (has_invalid_boundary || summary.grapheme_boundary_rows == 0U) {
+        append_diagnostic(target, AdapterPayloadDiagnosticCode::invalid_text_input_boundary_evidence,
+                          "text input parity requires valid grapheme cluster boundary evidence rows");
+    }
+    if (!state_text_valid || !state_selection_fits || !has_grapheme_position(request.edit_state.cursor_byte_offset)) {
+        append_diagnostic(target, AdapterPayloadDiagnosticCode::invalid_text_input_boundary_evidence,
+                          "text input cursor must align with grapheme boundary evidence");
+    } else {
+        summary.grapheme_cursor_rows = 1U;
+    }
+    if (!state_text_valid || !state_selection_fits || !has_grapheme_position(cursor_end)) {
+        append_diagnostic(target, AdapterPayloadDiagnosticCode::invalid_text_input_boundary_evidence,
+                          "text input selection must align with grapheme boundary evidence");
+    } else {
+        summary.grapheme_selection_rows = 1U;
+    }
+
+    auto composition_plan = plan_ime_composition_update(request.composition);
+    append_diagnostics(composition_plan.diagnostics);
+    const auto composition_end = request.composition_start_byte_offset + request.composition_byte_length;
+    const bool composition_fits =
+        request.composition_start_byte_offset <= request.edit_state.text.size() &&
+        request.composition_byte_length <= request.edit_state.text.size() - request.composition_start_byte_offset;
+    if (request.composition.target != target || request.composition_byte_length == 0U || !composition_fits ||
+        !has_grapheme_position(request.composition_start_byte_offset) || !has_grapheme_position(composition_end) ||
+        !composition_plan.ready()) {
+        append_diagnostic(target, AdapterPayloadDiagnosticCode::invalid_ime_composition_range,
+                          "IME composition must target the text state and use a grapheme-aligned range");
+    } else {
+        summary.composition_range_rows = 1U;
+    }
+
+    const auto commit_plan = plan_committed_text_input(request.edit_state, request.committed_text);
+    append_diagnostics(commit_plan.diagnostics);
+    if (commit_plan.ready()) {
+        summary.committed_text_rows = 1U;
+    }
+
+    const auto platform_plan = plan_platform_text_input_session(request.platform_request);
+    append_diagnostics(platform_plan.diagnostics);
+    if (request.platform_request.target != target ||
+        request.platform_request.surrounding_text != request.edit_state.text) {
+        append_diagnostic(request.platform_request.target,
+                          AdapterPayloadDiagnosticCode::invalid_platform_text_input_target,
+                          "platform text input evidence must match the text edit target and surrounding text");
+    } else if (platform_plan.ready()) {
+        summary.surrounding_text_rows = 1U;
+    }
+
+    const bool candidate_index_available =
+        request.candidate_selection.selected_index < request.candidate_selection.candidates.size();
+    const bool selected_candidate_valid =
+        candidate_index_available &&
+        !request.candidate_selection.candidates[request.candidate_selection.selected_index].empty() &&
+        is_strict_utf8(request.candidate_selection.candidates[request.candidate_selection.selected_index]);
+    const bool candidate_rows_valid =
+        request.candidate_selection.target == target && candidate_index_available && selected_candidate_valid &&
+        request.candidate_selection.candidate_ui_host_owned &&
+        std::ranges::all_of(request.candidate_selection.candidates, [](const std::string& candidate) {
+            return !candidate.empty() && is_strict_utf8(candidate);
+        });
+    if (!candidate_rows_valid) {
+        append_diagnostic(request.candidate_selection.target,
+                          AdapterPayloadDiagnosticCode::invalid_ime_candidate_selection,
+                          "IME candidate selection requires host-owned valid UTF-8 candidate rows");
+    } else {
+        summary.candidate_selection_rows = 1U;
+    }
+
+    const auto reconversion_end =
+        request.reconversion_request.start_byte_offset + request.reconversion_request.byte_length;
+    const bool reconversion_fits = request.reconversion_request.start_byte_offset <= request.edit_state.text.size() &&
+                                   request.reconversion_request.byte_length <=
+                                       request.edit_state.text.size() - request.reconversion_request.start_byte_offset;
+    if (request.reconversion_request.target != target || request.reconversion_request.byte_length == 0U ||
+        !reconversion_fits || !has_grapheme_position(request.reconversion_request.start_byte_offset) ||
+        !has_grapheme_position(reconversion_end)) {
+        append_diagnostic(request.reconversion_request.target,
+                          AdapterPayloadDiagnosticCode::invalid_ime_reconversion_request,
+                          "IME reconversion request must target a grapheme-aligned non-empty range");
+    } else {
+        summary.reconversion_request_rows = 1U;
+    }
+
+    if (!is_positive_rect(request.caret_rect)) {
+        append_diagnostic(target, AdapterPayloadDiagnosticCode::invalid_platform_text_input_bounds,
+                          "text input caret rectangle evidence must be finite and positive");
+    } else {
+        summary.caret_rect_rows = 1U;
+    }
+    if (request.requested_native_handle_access) {
+        append_diagnostic(target, AdapterPayloadDiagnosticCode::native_handle_access_requested,
+                          "text input parity evidence must not expose native handles");
+    }
+
+    summary.status = summary.diagnostics.empty() ? "ready" : "not_ready";
+    return summary;
+}
+
 bool TextEditCommandPlan::ready() const noexcept {
     return diagnostics.empty();
 }

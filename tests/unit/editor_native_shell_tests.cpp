@@ -960,6 +960,23 @@ MK_TEST("editor private TSF text services adapter tracks platform request rows w
     MK_REQUIRE(adapter->active_request()->cursor_byte_offset == 10U);
     MK_REQUIRE(adapter->tsf_thread_manager_ready());
     MK_REQUIRE(adapter->tsf_document_manager_ready());
+    const auto evidence = adapter->tsf_text_store_evidence();
+    MK_REQUIRE(evidence.status == "ready");
+    MK_REQUIRE(evidence.text_store_ready);
+    MK_REQUIRE(evidence.sink_advisory_rows == 1U);
+    MK_REQUIRE(evidence.document_lock_rows == 1U);
+    MK_REQUIRE(evidence.request_lock_rows == 1U);
+    MK_REQUIRE(evidence.selection_read_rows == 1U);
+    MK_REQUIRE(evidence.selection_write_rows == 1U);
+    MK_REQUIRE(evidence.text_read_rows == 1U);
+    MK_REQUIRE(evidence.text_replace_rows == 1U);
+    MK_REQUIRE(evidence.insert_text_at_selection_rows == 1U);
+    MK_REQUIRE(evidence.text_ext_rows == 1U);
+    MK_REQUIRE(evidence.screen_ext_rows == 1U);
+    MK_REQUIRE(evidence.candidate_ui_host_owned);
+    MK_REQUIRE(evidence.reconversion_diagnostic_rows == 1U);
+    MK_REQUIRE(!evidence.native_handles_exposed);
+    MK_REQUIRE(evidence.diagnostics.empty());
 
     adapter->end_text_input(request.target);
 
@@ -1259,6 +1276,19 @@ MK_TEST("editor first party shell smoke counters expose value IME controller rea
     MK_REQUIRE(counters.ime_caret_rect_rows == 1U);
     MK_REQUIRE(counters.ime_surrounding_text_rows == 1U);
     MK_REQUIRE(counters.ime_candidate_ui_host_owned);
+    MK_REQUIRE(counters.ime_parity_status == "ready");
+    MK_REQUIRE(counters.ime_windows_tsf_status == "host_gated");
+    MK_REQUIRE(counters.ime_macos_status == "host_gated");
+    MK_REQUIRE(counters.ime_linux_ibus_status == "host_gated");
+    MK_REQUIRE(counters.ime_linux_fcitx_status == "host_gated");
+    MK_REQUIRE(counters.ime_android_status == "host_gated");
+    MK_REQUIRE(counters.ime_ios_status == "host_gated");
+    MK_REQUIRE(counters.ime_grapheme_boundary_rows >= 1U);
+    MK_REQUIRE(counters.ime_grapheme_cursor_rows == 1U);
+    MK_REQUIRE(counters.ime_grapheme_selection_rows == 1U);
+    MK_REQUIRE(counters.ime_composition_range_rows == 1U);
+    MK_REQUIRE(counters.ime_candidate_selection_rows == 1U);
+    MK_REQUIRE(counters.ime_reconversion_request_rows == 1U);
     MK_REQUIRE(!counters.ime_native_handles_exposed);
 
     RecordingPlatformTextInputAdapter platform_text_input;
@@ -1278,6 +1308,31 @@ MK_TEST("editor first party shell smoke counters expose value IME controller rea
     MK_REQUIRE(committed_counters.ime_status == "value_text_input_commit_applied");
     MK_REQUIRE(committed_counters.ime_text_input_session_rows == 1U);
     MK_REQUIRE(committed_counters.ime_committed_text_rows == 1U);
+    MK_REQUIRE(committed_counters.ime_parity_status == "ready");
+}
+
+MK_TEST("editor first party shell smoke counters promote selected TSF to Windows IME parity only") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    RecordingPlatformTextInputAdapter platform_text_input;
+    RecordingImeAdapter ime;
+    app.bind_native_services(mirakana::editor::NativeEditorServiceBindings{
+        .platform_text_input_adapter = &platform_text_input,
+        .ime_adapter = &ime,
+        .platform_text_input_service_id = "win32_tsf",
+        .ime_service_id = "win32_tsf",
+    });
+
+    const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
+    const auto counters = mirakana::editor::make_first_party_editor_shell_smoke_counters(app, shell_document);
+
+    MK_REQUIRE(counters.ime_parity_status == "ready");
+    MK_REQUIRE(counters.ime_windows_tsf_status == "ready");
+    MK_REQUIRE(counters.ime_macos_status == "host_gated");
+    MK_REQUIRE(counters.ime_linux_ibus_status == "host_gated");
+    MK_REQUIRE(counters.ime_linux_fcitx_status == "host_gated");
+    MK_REQUIRE(counters.ime_android_status == "host_gated");
+    MK_REQUIRE(counters.ime_ios_status == "host_gated");
+    MK_REQUIRE(!counters.ime_native_handles_exposed);
 }
 
 MK_TEST("editor native shell app records deterministic panel smoke counters") {

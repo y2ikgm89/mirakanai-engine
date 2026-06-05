@@ -848,7 +848,7 @@ void append_status_row(std::vector<EditorAiOperationStatusRow>& rows, EditorAiOp
 std::vector<EditorAiOperationStatusRow>
 make_editor_ai_operation_ux_status_rows(const EditorAiOperationUxStatusDesc& desc) {
     std::vector<EditorAiOperationStatusRow> rows;
-    rows.reserve(14U);
+    rows.reserve(18U);
 
     if (!desc.selected_dock_panel_id.empty()) {
         append_status_row(rows, EditorAiOperationStatusRow{
@@ -965,6 +965,58 @@ make_editor_ai_operation_ux_status_rows(const EditorAiOperationUxStatusDesc& des
                                 .host_gated = !desc.ime_candidate_ui_host_owned,
                                 .native_handles_public = desc.ime_native_handles_exposed,
                             });
+    append_status_row(rows, EditorAiOperationStatusRow{
+                                .id = "editor.ai.ime.parity",
+                                .role = "ime_parity_status",
+                                .label = "IME Parity",
+                                .target_element_id = desc.focused_text_target_id,
+                                .status = desc.ime_parity_status.empty() ? "not_ready" : desc.ime_parity_status,
+                                .count = desc.ime_grapheme_boundary_rows,
+                                .ready = desc.ime_parity_status == "ready" && desc.ime_grapheme_cursor_rows > 0U &&
+                                         desc.ime_grapheme_selection_rows > 0U && desc.ime_composition_range_rows > 0U,
+                                .native_handles_public = desc.ime_native_handles_exposed,
+                            });
+    append_status_row(rows, EditorAiOperationStatusRow{
+                                .id = "editor.ai.ime.candidate_selection",
+                                .role = "ime_candidate_selection_status",
+                                .label = "IME Candidate Selection",
+                                .target_element_id = desc.focused_text_target_id,
+                                .status = desc.ime_candidate_selection_rows > 0U ? "ready" : "not_ready",
+                                .count = desc.ime_candidate_selection_rows,
+                                .ready = desc.ime_candidate_selection_rows > 0U && desc.ime_candidate_ui_host_owned,
+                                .host_gated = !desc.ime_candidate_ui_host_owned,
+                                .native_handles_public = desc.ime_native_handles_exposed,
+                            });
+    append_status_row(rows, EditorAiOperationStatusRow{
+                                .id = "editor.ai.ime.reconversion",
+                                .role = "ime_reconversion_status",
+                                .label = "IME Reconversion",
+                                .target_element_id = desc.focused_text_target_id,
+                                .status = desc.ime_reconversion_request_rows > 0U ? "ready" : "not_ready",
+                                .count = desc.ime_reconversion_request_rows,
+                                .ready = desc.ime_reconversion_request_rows > 0U,
+                                .native_handles_public = desc.ime_native_handles_exposed,
+                            });
+    append_status_row(
+        rows,
+        EditorAiOperationStatusRow{
+            .id = "editor.ai.ime.platform_host_gates",
+            .role = "ime_platform_host_gate_status",
+            .label = "IME Platform Host Gates",
+            .target_element_id = "editor.ime.platform_host_gates",
+            .status =
+                "macos:" + (desc.ime_macos_status.empty() ? std::string{"host_gated"} : desc.ime_macos_status) +
+                ";linux_ibus:" +
+                (desc.ime_linux_ibus_status.empty() ? std::string{"host_gated"} : desc.ime_linux_ibus_status) +
+                ";linux_fcitx:" +
+                (desc.ime_linux_fcitx_status.empty() ? std::string{"host_gated"} : desc.ime_linux_fcitx_status) +
+                ";android:" + (desc.ime_android_status.empty() ? std::string{"host_gated"} : desc.ime_android_status) +
+                ";ios:" + (desc.ime_ios_status.empty() ? std::string{"host_gated"} : desc.ime_ios_status),
+            .count = 5U,
+            .ready = false,
+            .host_gated = true,
+            .native_handles_public = desc.ime_native_handles_exposed,
+        });
     append_status_row(
         rows, EditorAiOperationStatusRow{
                   .id = "editor.ai.accessibility.uia_provider",

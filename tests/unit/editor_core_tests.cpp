@@ -1971,6 +1971,19 @@ MK_TEST("editor ai operation snapshot exposes UX status rows without native hand
         .ime_caret_rect_rows = 1U,
         .ime_surrounding_text_rows = 1U,
         .ime_candidate_ui_host_owned = true,
+        .ime_parity_status = "ready",
+        .ime_windows_tsf_status = "ready",
+        .ime_macos_status = "host_gated",
+        .ime_linux_ibus_status = "host_gated",
+        .ime_linux_fcitx_status = "host_gated",
+        .ime_android_status = "host_gated",
+        .ime_ios_status = "host_gated",
+        .ime_grapheme_boundary_rows = 4U,
+        .ime_grapheme_cursor_rows = 1U,
+        .ime_grapheme_selection_rows = 1U,
+        .ime_composition_range_rows = 1U,
+        .ime_candidate_selection_rows = 1U,
+        .ime_reconversion_request_rows = 1U,
         .ime_native_handles_exposed = false,
         .text_atlas_handoff_status = "glyphs_ready_atlas_handoff_host_gated",
         .text_font_adapter_invoked = true,
@@ -2035,6 +2048,10 @@ MK_TEST("editor ai operation snapshot exposes UX status rows without native hand
     const auto* text_line_break = find_ai_operation_status_row(snapshot, "editor.ai.text.line_break");
     const auto* text_licenses = find_ai_operation_status_row(snapshot, "editor.ai.text_dependency.licenses");
     const auto* ime = find_ai_operation_status_row(snapshot, "editor.ai.ime.session");
+    const auto* ime_parity = find_ai_operation_status_row(snapshot, "editor.ai.ime.parity");
+    const auto* ime_candidate = find_ai_operation_status_row(snapshot, "editor.ai.ime.candidate_selection");
+    const auto* ime_reconversion = find_ai_operation_status_row(snapshot, "editor.ai.ime.reconversion");
+    const auto* ime_platforms = find_ai_operation_status_row(snapshot, "editor.ai.ime.platform_host_gates");
     const auto* accessibility = find_ai_operation_status_row(snapshot, "editor.ai.accessibility.uia_provider");
     const auto* viewport = find_ai_operation_status_row(snapshot, "editor.ai.viewport.display");
     const auto* material = find_ai_operation_status_row(snapshot, "editor.ai.material_preview.display");
@@ -2076,6 +2093,24 @@ MK_TEST("editor ai operation snapshot exposes UX status rows without native hand
     MK_REQUIRE(ime->status == "win32_tsf_selected");
     MK_REQUIRE(ime->count == 1U);
     MK_REQUIRE(!ime->native_handles_public);
+    MK_REQUIRE(ime_parity != nullptr);
+    MK_REQUIRE(ime_parity->status == "ready");
+    MK_REQUIRE(ime_parity->ready);
+    MK_REQUIRE(ime_parity->count == 4U);
+    MK_REQUIRE(!ime_parity->native_handles_public);
+    MK_REQUIRE(ime_candidate != nullptr);
+    MK_REQUIRE(ime_candidate->status == "ready");
+    MK_REQUIRE(ime_candidate->ready);
+    MK_REQUIRE(ime_candidate->count == 1U);
+    MK_REQUIRE(!ime_candidate->host_gated);
+    MK_REQUIRE(ime_reconversion != nullptr);
+    MK_REQUIRE(ime_reconversion->status == "ready");
+    MK_REQUIRE(ime_reconversion->ready);
+    MK_REQUIRE(ime_reconversion->count == 1U);
+    MK_REQUIRE(ime_platforms != nullptr);
+    MK_REQUIRE(ime_platforms->status ==
+               "macos:host_gated;linux_ibus:host_gated;linux_fcitx:host_gated;android:host_gated;ios:host_gated");
+    MK_REQUIRE(ime_platforms->host_gated);
     MK_REQUIRE(accessibility != nullptr);
     MK_REQUIRE(accessibility->status == "uia_provider_ready");
     MK_REQUIRE(accessibility->ready);

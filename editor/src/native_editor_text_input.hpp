@@ -31,6 +31,7 @@ struct NativeEditorTextInputState {
     bool candidate_ui_host_owned{true};
     bool tsf_adapter_selected{false};
     bool native_handles_exposed{false};
+    ui::TextInputParityEvidenceSummary parity_evidence;
 };
 
 struct NativeEditorTextInputFocusPlan {
@@ -82,6 +83,9 @@ make_native_editor_project_name_text_input_target(std::string_view project_name)
 
 [[nodiscard]] NativeEditorTextInputState
 make_native_editor_text_input_state(const NativeEditorTextInputTargetDesc& target);
+
+[[nodiscard]] ui::TextInputParityEvidenceSummary
+make_native_editor_text_input_parity_evidence(const ui::TextEditState& edit_state, ui::Rect caret_bounds);
 
 [[nodiscard]] NativeEditorTextInputFocusPlan
 plan_native_editor_text_input_focus_change(const NativeEditorTextInputState& current,

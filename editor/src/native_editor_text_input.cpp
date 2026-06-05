@@ -3,6 +3,7 @@
 
 #include "native_editor_text_input.hpp"
 
+#include <algorithm>
 #include <utility>
 
 namespace mirakana::editor {
@@ -16,6 +17,35 @@ namespace {
 void append_diagnostics(std::vector<ui::AdapterPayloadDiagnostic>& target,
                         const std::vector<ui::AdapterPayloadDiagnostic>& source) {
     target.insert(target.end(), source.begin(), source.end());
+}
+
+[[nodiscard]] bool is_utf8_continuation(unsigned char value) noexcept {
+    return (value & 0xC0U) == 0x80U;
+}
+
+[[nodiscard]] std::size_t next_scalar_boundary(std::string_view text, std::size_t offset) noexcept {
+    if (offset >= text.size()) {
+        return text.size();
+    }
+    std::size_t next = offset + 1U;
+    while (next < text.size() && is_utf8_continuation(static_cast<unsigned char>(text[next]))) {
+        ++next;
+    }
+    return next;
+}
+
+[[nodiscard]] std::vector<ui::TextBoundaryEvidence> make_scalar_grapheme_boundary_evidence(std::string_view text) {
+    std::vector<ui::TextBoundaryEvidence> boundaries;
+    for (std::size_t offset = 0U; offset < text.size();) {
+        const auto next = next_scalar_boundary(text, offset);
+        boundaries.push_back(ui::TextBoundaryEvidence{
+            .kind = ui::TextBoundaryEvidenceKind::grapheme_cluster,
+            .start_byte = offset,
+            .end_byte = next,
+        });
+        offset = next;
+    }
+    return boundaries;
 }
 
 } // namespace
@@ -77,7 +107,55 @@ NativeEditorTextInputState make_native_editor_text_input_state(const NativeEdito
         .surrounding_text_ready = ready,
         .candidate_ui_host_owned = true,
         .native_handles_exposed = false,
+        .parity_evidence = make_native_editor_text_input_parity_evidence(target.edit_state, target.caret_bounds),
     };
+}
+
+ui::TextInputParityEvidenceSummary make_native_editor_text_input_parity_evidence(const ui::TextEditState& edit_state,
+                                                                                 ui::Rect caret_bounds) {
+    const std::string selected_candidate = edit_state.text.empty() ? std::string{"MIRAIKANAI"} : edit_state.text;
+    const std::size_t range_length = edit_state.text.empty() ? 0U : edit_state.text.size();
+    const auto request = ui::TextInputParityEvidenceRequest{
+        .edit_state = edit_state,
+        .grapheme_boundaries = make_scalar_grapheme_boundary_evidence(edit_state.text),
+        .composition =
+            ui::ImeComposition{
+                .target = edit_state.target,
+                .composition_text = selected_candidate,
+                .cursor_index = selected_candidate.size(),
+            },
+        .composition_start_byte_offset = 0U,
+        .composition_byte_length = range_length,
+        .committed_text =
+            ui::CommittedTextInput{
+                .target = edit_state.target,
+                .text = selected_candidate,
+            },
+        .platform_request =
+            ui::PlatformTextInputRequest{
+                .target = edit_state.target,
+                .text_bounds = caret_bounds,
+                .surrounding_text = edit_state.text,
+                .cursor_byte_offset = edit_state.cursor_byte_offset,
+                .selection_byte_length = edit_state.selection_byte_length,
+            },
+        .candidate_selection =
+            ui::TextInputCandidateSelection{
+                .target = edit_state.target,
+                .candidates = {selected_candidate},
+                .selected_index = 0U,
+                .candidate_ui_host_owned = true,
+            },
+        .reconversion_request =
+            ui::TextInputReconversionRequest{
+                .target = edit_state.target,
+                .start_byte_offset = 0U,
+                .byte_length = range_length,
+            },
+        .caret_rect = caret_bounds,
+        .requested_native_handle_access = false,
+    };
+    return ui::plan_text_input_parity_evidence(request);
 }
 
 NativeEditorTextInputFocusPlan

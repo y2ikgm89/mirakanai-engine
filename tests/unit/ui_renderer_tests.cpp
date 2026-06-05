@@ -1569,6 +1569,155 @@ MK_TEST("ui ime composition publish plan blocks invalid composition before adapt
     MK_REQUIRE(adapter.published_composition.target.value.empty());
 }
 
+MK_TEST("ui text input parity evidence requires grapheme composition candidate reconversion rows") {
+    const std::string text = "e\xCC\x81"
+                             "x";
+    const mirakana::ui::TextInputParityEvidenceRequest request{
+        .edit_state =
+            mirakana::ui::TextEditState{
+                .target = mirakana::ui::ElementId{"chat.input"},
+                .text = text,
+                .cursor_byte_offset = 3U,
+                .selection_byte_length = 1U,
+            },
+        .grapheme_boundaries =
+            {
+                mirakana::ui::TextBoundaryEvidence{
+                    .kind = mirakana::ui::TextBoundaryEvidenceKind::grapheme_cluster,
+                    .start_byte = 0U,
+                    .end_byte = 3U,
+                },
+                mirakana::ui::TextBoundaryEvidence{
+                    .kind = mirakana::ui::TextBoundaryEvidenceKind::grapheme_cluster,
+                    .start_byte = 3U,
+                    .end_byte = 4U,
+                },
+            },
+        .composition =
+            mirakana::ui::ImeComposition{
+                .target = mirakana::ui::ElementId{"chat.input"},
+                .composition_text = "e\xCC\x81",
+                .cursor_index = 3U,
+            },
+        .composition_start_byte_offset = 0U,
+        .composition_byte_length = 3U,
+        .committed_text =
+            mirakana::ui::CommittedTextInput{
+                .target = mirakana::ui::ElementId{"chat.input"},
+                .text = "\xC3\xA9",
+            },
+        .platform_request =
+            mirakana::ui::PlatformTextInputRequest{
+                .target = mirakana::ui::ElementId{"chat.input"},
+                .text_bounds = mirakana::ui::Rect{.x = 8.0F, .y = 10.0F, .width = 180.0F, .height = 24.0F},
+                .surrounding_text = text,
+                .cursor_byte_offset = 3U,
+                .selection_byte_length = 1U,
+            },
+        .candidate_selection =
+            mirakana::ui::TextInputCandidateSelection{
+                .target = mirakana::ui::ElementId{"chat.input"},
+                .candidates = {"e\xCC\x81", "\xC3\xA9"},
+                .selected_index = 1U,
+                .candidate_ui_host_owned = true,
+            },
+        .reconversion_request =
+            mirakana::ui::TextInputReconversionRequest{
+                .target = mirakana::ui::ElementId{"chat.input"},
+                .start_byte_offset = 0U,
+                .byte_length = 3U,
+            },
+        .caret_rect = mirakana::ui::Rect{.x = 32.0F, .y = 10.0F, .width = 1.0F, .height = 24.0F},
+        .requested_native_handle_access = false,
+    };
+
+    const auto summary = mirakana::ui::plan_text_input_parity_evidence(request);
+
+    MK_REQUIRE(summary.ready());
+    MK_REQUIRE(summary.status == "ready");
+    MK_REQUIRE(summary.grapheme_boundary_rows == 2U);
+    MK_REQUIRE(summary.grapheme_cursor_rows == 1U);
+    MK_REQUIRE(summary.grapheme_selection_rows == 1U);
+    MK_REQUIRE(summary.composition_range_rows == 1U);
+    MK_REQUIRE(summary.committed_text_rows == 1U);
+    MK_REQUIRE(summary.candidate_selection_rows == 1U);
+    MK_REQUIRE(summary.reconversion_request_rows == 1U);
+    MK_REQUIRE(summary.surrounding_text_rows == 1U);
+    MK_REQUIRE(summary.caret_rect_rows == 1U);
+    MK_REQUIRE(summary.candidate_ui_host_owned);
+    MK_REQUIRE(!summary.native_handles_exposed);
+    MK_REQUIRE(summary.diagnostics.empty());
+}
+
+MK_TEST("ui text input parity evidence fails closed for missing rows and native handles") {
+    const mirakana::ui::TextInputParityEvidenceRequest request{
+        .edit_state =
+            mirakana::ui::TextEditState{
+                .target = mirakana::ui::ElementId{"chat.input"},
+                .text = "e\xCC\x81",
+                .cursor_byte_offset = 1U,
+                .selection_byte_length = 0U,
+            },
+        .composition =
+            mirakana::ui::ImeComposition{
+                .target = mirakana::ui::ElementId{"other.input"},
+                .composition_text = "e",
+                .cursor_index = 1U,
+            },
+        .committed_text =
+            mirakana::ui::CommittedTextInput{
+                .target = mirakana::ui::ElementId{"chat.input"},
+                .text = "",
+            },
+        .platform_request =
+            mirakana::ui::PlatformTextInputRequest{
+                .target = mirakana::ui::ElementId{"chat.input"},
+                .text_bounds = mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 0.0F, .height = 24.0F},
+                .surrounding_text = "e\xCC\x81",
+                .cursor_byte_offset = 1U,
+                .selection_byte_length = 0U,
+            },
+        .candidate_selection =
+            mirakana::ui::TextInputCandidateSelection{
+                .target = mirakana::ui::ElementId{"chat.input"},
+                .candidates = {},
+                .selected_index = 0U,
+                .candidate_ui_host_owned = false,
+            },
+        .reconversion_request =
+            mirakana::ui::TextInputReconversionRequest{
+                .target = mirakana::ui::ElementId{"chat.input"},
+                .start_byte_offset = 1U,
+                .byte_length = 1U,
+            },
+        .caret_rect = mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 0.0F, .height = 24.0F},
+        .requested_native_handle_access = true,
+    };
+
+    const auto summary = mirakana::ui::plan_text_input_parity_evidence(request);
+
+    MK_REQUIRE(!summary.ready());
+    MK_REQUIRE(summary.status == "not_ready");
+    MK_REQUIRE(summary.grapheme_boundary_rows == 0U);
+    MK_REQUIRE(!summary.candidate_ui_host_owned);
+    MK_REQUIRE(summary.native_handles_exposed);
+    MK_REQUIRE(std::ranges::any_of(summary.diagnostics, [](const auto& diagnostic) {
+        return diagnostic.code == mirakana::ui::AdapterPayloadDiagnosticCode::invalid_text_input_boundary_evidence;
+    }));
+    MK_REQUIRE(std::ranges::any_of(summary.diagnostics, [](const auto& diagnostic) {
+        return diagnostic.code == mirakana::ui::AdapterPayloadDiagnosticCode::invalid_ime_composition_range;
+    }));
+    MK_REQUIRE(std::ranges::any_of(summary.diagnostics, [](const auto& diagnostic) {
+        return diagnostic.code == mirakana::ui::AdapterPayloadDiagnosticCode::invalid_ime_candidate_selection;
+    }));
+    MK_REQUIRE(std::ranges::any_of(summary.diagnostics, [](const auto& diagnostic) {
+        return diagnostic.code == mirakana::ui::AdapterPayloadDiagnosticCode::invalid_ime_reconversion_request;
+    }));
+    MK_REQUIRE(std::ranges::any_of(summary.diagnostics, [](const auto& diagnostic) {
+        return diagnostic.code == mirakana::ui::AdapterPayloadDiagnosticCode::native_handle_access_requested;
+    }));
+}
+
 MK_TEST("ui committed text input inserts at cursor and advances cursor") {
     const mirakana::ui::TextEditState state{
         .target = mirakana::ui::ElementId{"chat.input"},

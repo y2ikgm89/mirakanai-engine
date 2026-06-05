@@ -691,6 +691,8 @@ NativeEditorTextInputCommitResult NativeEditorApp::commit_text_input(ui::Committ
     impl_->text_input_state.composition = ui::ImeComposition{.target = commit_result.state.target};
     impl_->text_input_state.composition_active = false;
     impl_->text_input_state.commit_applied = true;
+    impl_->text_input_state.parity_evidence =
+        make_native_editor_text_input_parity_evidence(commit_result.state, impl_->text_input_state.caret_bounds);
     result.accepted = true;
     result.committed = true;
     ++impl_->service_status.committed_text_inputs;
