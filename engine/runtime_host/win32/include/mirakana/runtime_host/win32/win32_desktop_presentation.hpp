@@ -281,6 +281,8 @@ struct Win32DesktopPresentationReport {
     bool environment_precipitation_exposes_native_handles{false};
     bool environment_precipitation_mutates_materials{false};
     bool environment_precipitation_plays_audio{false};
+    std::uint64_t environment_precipitation_renderer_draws{0};
+    bool environment_precipitation_depth_occlusion_readback{false};
     bool environment_precipitation_uses_camera_near_particles{false};
     bool environment_precipitation_uses_scene_depth_occlusion{false};
     std::uint32_t environment_precipitation_weather_rows{0};
@@ -605,6 +607,8 @@ struct Win32DesktopPresentationEnvironmentPrecipitationReport {
     std::uint32_t quality_rows{0};
     bool uploads_particle_buffers{false};
     bool invokes_backend{false};
+    std::uint64_t renderer_draws{0};
+    bool depth_occlusion_readback{false};
     bool exposes_native_handles{false};
     bool mutates_materials{false};
     bool plays_audio{false};
@@ -616,6 +620,7 @@ struct Win32DesktopPresentationEnvironmentPrecipitationExpectation {
     EnvironmentPrecipitationKind kind{EnvironmentPrecipitationKind::rain};
     std::uint32_t wetness_rows{1};
     std::uint32_t minimum_audio_handoff_rows{1};
+    bool require_renderer_execution{false};
 };
 
 struct Win32DesktopPresentationEnvironmentVolumetricFogReport {
@@ -974,6 +979,8 @@ struct Win32DesktopPresentationD3d12SceneRendererDesc {
     Win32DesktopPresentationShaderBytecode native_ui_overlay_fragment_shader;
     Win32DesktopPresentationShaderBytecode cloud_layer_vertex_shader;
     Win32DesktopPresentationShaderBytecode cloud_layer_fragment_shader;
+    Win32DesktopPresentationShaderBytecode precipitation_vertex_shader;
+    Win32DesktopPresentationShaderBytecode precipitation_fragment_shader;
     const runtime::RuntimeAssetPackage* package{nullptr};
     const SceneRenderPacket* packet{nullptr};
     rhi::PrimitiveTopology topology{rhi::PrimitiveTopology::triangle_list};
@@ -996,6 +1003,7 @@ struct Win32DesktopPresentationD3d12SceneRendererDesc {
     bool enable_cloud_layer_renderer_execution{false};
     CloudLayerPolicyDesc cloud_layer;
     bool enable_environment_precipitation_package_evidence{false};
+    bool enable_environment_precipitation_renderer_execution{false};
     PrecipitationPolicyDesc environment_precipitation;
     bool enable_environment_volumetric_fog_package_evidence{false};
     VolumetricFogPolicyDesc environment_volumetric_fog;

@@ -183,7 +183,9 @@ $requiresEnvironmentVolumetricFogPackageEvidence = @($SmokeArgs) -contains "--re
 $requiresCloudLayerPackageEvidence = @($SmokeArgs) -contains "--require-cloud-layer-package-evidence"
 $requiresCloudLayerRendererExecution = @($SmokeArgs) -contains "--require-cloud-layer-renderer-execution"
 $requiresEnvironmentPrecipitationPackageEvidence = @($SmokeArgs) -contains "--require-environment-precipitation-package-evidence"
+$requiresEnvironmentPrecipitationRendererExecution = @($SmokeArgs) -contains "--require-environment-precipitation-renderer-execution"
 $requiresEnvironmentSnowPackageEvidence = @($SmokeArgs) -contains "--require-environment-snow-package-evidence"
+$requiresEnvironmentSnowRendererExecution = @($SmokeArgs) -contains "--require-environment-snow-renderer-execution"
 $requiresGpuMemoryPolicy = @($SmokeArgs) -contains "--require-gpu-memory-policy"
 $requiresMemoryDiagnostics = @($SmokeArgs) -contains "--require-memory-diagnostics"
 $requiresD3d12GpuMemoryEvidence = @($SmokeArgs) -contains "--require-d3d12-gpu-memory-evidence"
@@ -241,6 +243,23 @@ if ($requiresCloudLayerRendererExecution) {
     $requiresD3d12PostprocessEvidence = $true
 }
 if ($requiresEnvironmentPrecipitationPackageEvidence) {
+    $requiresPostprocess = $true
+    $requiresPostprocessDepthInput = $true
+    $requiresD3d12PostprocessEvidence = $true
+}
+if ($requiresEnvironmentSnowPackageEvidence) {
+    $requiresPostprocess = $true
+    $requiresPostprocessDepthInput = $true
+    $requiresD3d12PostprocessEvidence = $true
+}
+if ($requiresEnvironmentPrecipitationRendererExecution) {
+    $requiresEnvironmentPrecipitationPackageEvidence = $true
+    $requiresPostprocess = $true
+    $requiresPostprocessDepthInput = $true
+    $requiresD3d12PostprocessEvidence = $true
+}
+if ($requiresEnvironmentSnowRendererExecution) {
+    $requiresEnvironmentSnowPackageEvidence = $true
     $requiresPostprocess = $true
     $requiresPostprocessDepthInput = $true
     $requiresD3d12PostprocessEvidence = $true
@@ -4730,8 +4749,6 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 "environment_precipitation_audio_handoff_rows" = "4"
                 "environment_precipitation_shader_rows" = "1"
                 "environment_precipitation_quality_rows" = "1"
-                "environment_precipitation_particle_buffer_uploads" = "0"
-                "environment_precipitation_backend_invocations" = "0"
                 "environment_precipitation_native_handle_access" = "0"
                 "environment_precipitation_material_mutations" = "0"
                 "environment_precipitation_audio_playback" = "0"
@@ -4741,6 +4758,32 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 $expectedValue = [regex]::Escape($expectedEnvironmentPrecipitationFields[$field])
                 if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
                     Write-Error "Installed desktop runtime smoke status line did not prove environment precipitation field: $field=$($expectedEnvironmentPrecipitationFields[$field])"
+                }
+            }
+            if ($requiresEnvironmentPrecipitationRendererExecution) {
+                foreach ($field in @(
+                        "environment_precipitation_particle_buffer_uploads",
+                        "environment_precipitation_backend_invocations",
+                        "environment_precipitation_renderer_draws")) {
+                    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=([1-9][0-9]*)\b") {
+                        Write-Error "Installed desktop runtime smoke status line did not prove positive environment precipitation renderer execution field: $field"
+                    }
+                }
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_precipitation_depth_occlusion_readback=1\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove environment precipitation depth occlusion readback."
+                }
+            } else {
+                $expectedEnvironmentPrecipitationPackageOnlyFields = @{
+                    "environment_precipitation_particle_buffer_uploads" = "0"
+                    "environment_precipitation_backend_invocations" = "0"
+                    "environment_precipitation_renderer_draws" = "0"
+                    "environment_precipitation_depth_occlusion_readback" = "0"
+                }
+                foreach ($field in $expectedEnvironmentPrecipitationPackageOnlyFields.Keys) {
+                    $expectedValue = [regex]::Escape($expectedEnvironmentPrecipitationPackageOnlyFields[$field])
+                    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                        Write-Error "Installed desktop runtime smoke status line did not prove package-only environment precipitation field: $field=$($expectedEnvironmentPrecipitationPackageOnlyFields[$field])"
+                    }
                 }
             }
         }
@@ -4768,8 +4811,6 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 "environment_precipitation_audio_handoff_rows" = "1"
                 "environment_precipitation_shader_rows" = "1"
                 "environment_precipitation_quality_rows" = "1"
-                "environment_precipitation_particle_buffer_uploads" = "0"
-                "environment_precipitation_backend_invocations" = "0"
                 "environment_precipitation_native_handle_access" = "0"
                 "environment_precipitation_material_mutations" = "0"
                 "environment_precipitation_audio_playback" = "0"
@@ -4779,6 +4820,32 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 $expectedValue = [regex]::Escape($expectedEnvironmentSnowFields[$field])
                 if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
                     Write-Error "Installed desktop runtime smoke status line did not prove environment snow field: $field=$($expectedEnvironmentSnowFields[$field])"
+                }
+            }
+            if ($requiresEnvironmentSnowRendererExecution) {
+                foreach ($field in @(
+                        "environment_precipitation_particle_buffer_uploads",
+                        "environment_precipitation_backend_invocations",
+                        "environment_precipitation_renderer_draws")) {
+                    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=([1-9][0-9]*)\b") {
+                        Write-Error "Installed desktop runtime smoke status line did not prove positive environment snow renderer execution field: $field"
+                    }
+                }
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_precipitation_depth_occlusion_readback=1\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove environment snow depth occlusion readback."
+                }
+            } else {
+                $expectedEnvironmentSnowPackageOnlyFields = @{
+                    "environment_precipitation_particle_buffer_uploads" = "0"
+                    "environment_precipitation_backend_invocations" = "0"
+                    "environment_precipitation_renderer_draws" = "0"
+                    "environment_precipitation_depth_occlusion_readback" = "0"
+                }
+                foreach ($field in $expectedEnvironmentSnowPackageOnlyFields.Keys) {
+                    $expectedValue = [regex]::Escape($expectedEnvironmentSnowPackageOnlyFields[$field])
+                    if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                        Write-Error "Installed desktop runtime smoke status line did not prove package-only environment snow field: $field=$($expectedEnvironmentSnowPackageOnlyFields[$field])"
+                    }
                 }
             }
         }

@@ -34,6 +34,7 @@
 #include <algorithm>
 #include <array>
 #include <cstdint>
+#include <cstring>
 #include <exception>
 #include <limits>
 #include <span>
@@ -116,6 +117,8 @@ struct NativeRendererCreateResult {
     bool environment_precipitation_exposes_native_handles{false};
     bool environment_precipitation_mutates_materials{false};
     bool environment_precipitation_plays_audio{false};
+    std::uint64_t environment_precipitation_renderer_draws{0};
+    bool environment_precipitation_depth_occlusion_readback{false};
     bool environment_precipitation_uses_camera_near_particles{false};
     bool environment_precipitation_uses_scene_depth_occlusion{false};
     std::uint32_t environment_precipitation_weather_rows{0};
@@ -180,6 +183,19 @@ struct CloudLayerRuntimeBinding {
     [[nodiscard]] bool succeeded() const noexcept {
         return diagnostic.empty() && descriptor_set_layout.value != 0 && pipeline_layout.value != 0 &&
                descriptor_set.value != 0 && pipeline.value != 0;
+    }
+};
+
+struct PrecipitationRuntimeProbeResult {
+    std::uint64_t particle_buffer_uploads{0};
+    std::uint64_t backend_invocations{0};
+    std::uint64_t renderer_draws{0};
+    bool depth_occlusion_readback{false};
+    std::string diagnostic;
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostic.empty() && particle_buffer_uploads > 0 && backend_invocations > 0 && renderer_draws > 0 &&
+               depth_occlusion_readback;
     }
 };
 
@@ -256,35 +272,63 @@ to_presentation_filter_mode(ShadowReceiverFilterMode mode) noexcept {
     return buffer;
 }
 
+[[nodiscard]] rhi::BufferHandle create_precipitation_constants_buffer(rhi::IRhiDevice& device,
+                                                                      const PrecipitationPolicyDesc& desc) {
+    std::array<std::uint8_t, precipitation_constants_byte_size()> constants{};
+    pack_precipitation_constants(constants, desc);
+    auto buffer = device.create_buffer(rhi::BufferDesc{
+        .size_bytes = static_cast<std::uint64_t>(constants.size()),
+        .usage = rhi::BufferUsage::uniform | rhi::BufferUsage::copy_source,
+    });
+    if (buffer.value != 0) {
+        device.write_buffer(buffer, 0, std::span<const std::uint8_t>{constants.data(), constants.size()});
+    }
+    return buffer;
+}
+
+void append_f32_le(std::vector<std::uint8_t>& bytes, float value) {
+    std::array<std::uint8_t, sizeof(float)> storage{};
+    std::memcpy(storage.data(), &value, sizeof(float));
+    bytes.insert(bytes.end(), storage.begin(), storage.end());
+}
+
 [[nodiscard]] runtime_rhi::RuntimeTextureUploadResult
-upload_cloud_layer_texture(rhi::IRhiDevice& device, const runtime::RuntimeAssetPackage& package,
-                           std::string_view asset_ref, std::string_view backend_name) {
+upload_runtime_texture_asset(rhi::IRhiDevice& device, const runtime::RuntimeAssetPackage& package,
+                             std::string_view asset_ref, std::string_view backend_name, std::string_view feature_name) {
     const auto* record = package.find(asset_id_from_key_v2(AssetKeyV2{.value = std::string{asset_ref}}));
     if (record == nullptr) {
         return runtime_rhi::RuntimeTextureUploadResult{
-            .diagnostic =
-                std::string{backend_name} + " cloud layer texture asset is missing: " + std::string{asset_ref},
+            .diagnostic = std::string{backend_name} + " " + std::string{feature_name} +
+                          " texture asset is missing: " + std::string{asset_ref},
         };
     }
     if (record->kind != AssetKind::texture) {
         return runtime_rhi::RuntimeTextureUploadResult{
-            .diagnostic = std::string{backend_name} +
-                          " cloud layer asset is not a cooked texture payload: " + std::string{asset_ref},
+            .diagnostic = std::string{backend_name} + " " + std::string{feature_name} +
+                          " asset is not a cooked texture payload: " + std::string{asset_ref},
         };
     }
 
     const auto payload = runtime::runtime_texture_payload(*record);
     if (!payload.succeeded()) {
         return runtime_rhi::RuntimeTextureUploadResult{
-            .diagnostic = std::string{backend_name} + " cloud layer texture payload is invalid: " + payload.diagnostic,
+            .diagnostic = std::string{backend_name} + " " + std::string{feature_name} +
+                          " texture payload is invalid: " + payload.diagnostic,
         };
     }
 
     auto upload = runtime_rhi::upload_runtime_texture(device, payload.payload);
     if (!upload.succeeded()) {
-        upload.diagnostic = std::string{backend_name} + " cloud layer texture upload failed: " + upload.diagnostic;
+        upload.diagnostic = std::string{backend_name} + " " + std::string{feature_name} +
+                            " texture upload failed: " + upload.diagnostic;
     }
     return upload;
+}
+
+[[nodiscard]] runtime_rhi::RuntimeTextureUploadResult
+upload_cloud_layer_texture(rhi::IRhiDevice& device, const runtime::RuntimeAssetPackage& package,
+                           std::string_view asset_ref, std::string_view backend_name) {
+    return upload_runtime_texture_asset(device, package, asset_ref, backend_name, "cloud layer");
 }
 
 [[nodiscard]] CloudLayerRuntimeBinding
@@ -423,6 +467,328 @@ create_cloud_layer_runtime_binding(rhi::IRhiDevice& device, const runtime::Runti
     }
 }
 
+[[nodiscard]] PrecipitationRuntimeProbeResult execute_precipitation_runtime_probe(
+    rhi::IRhiDevice& device, const runtime::RuntimeAssetPackage& package, const PrecipitationPolicyDesc& desc,
+    const Win32DesktopPresentationShaderBytecode& vertex_shader_bytecode,
+    const Win32DesktopPresentationShaderBytecode& fragment_shader_bytecode, std::string_view backend_name) {
+    try {
+        if (!has_shader_bytecode(vertex_shader_bytecode) || !has_shader_bytecode(fragment_shader_bytecode)) {
+            return PrecipitationRuntimeProbeResult{
+                .diagnostic = std::string{backend_name} +
+                              " precipitation renderer execution requires vertex and fragment shader bytecode",
+            };
+        }
+
+        const auto particle_upload = upload_runtime_texture_asset(device, package, "sample/desktop-runtime/texture",
+                                                                  backend_name, "environment precipitation");
+        if (!particle_upload.succeeded() || particle_upload.texture.value == 0) {
+            return PrecipitationRuntimeProbeResult{.diagnostic = particle_upload.diagnostic};
+        }
+
+        const auto scene_color = device.create_texture(rhi::TextureDesc{
+            .extent = rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+            .format = rhi::Format::rgba8_unorm,
+            .usage = rhi::TextureUsage::render_target,
+        });
+        const auto unoccluded_depth = device.create_texture(rhi::TextureDesc{
+            .extent = rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+            .format = rhi::Format::depth24_stencil8,
+            .usage = rhi::TextureUsage::depth_stencil | rhi::TextureUsage::shader_resource,
+        });
+        const auto occluded_depth = device.create_texture(rhi::TextureDesc{
+            .extent = rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+            .format = rhi::Format::depth24_stencil8,
+            .usage = rhi::TextureUsage::depth_stencil | rhi::TextureUsage::shader_resource,
+        });
+        const auto unoccluded_target = device.create_texture(rhi::TextureDesc{
+            .extent = rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+            .format = rhi::Format::rgba8_unorm,
+            .usage = rhi::TextureUsage::render_target | rhi::TextureUsage::copy_source,
+        });
+        const auto occluded_target = device.create_texture(rhi::TextureDesc{
+            .extent = rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+            .format = rhi::Format::rgba8_unorm,
+            .usage = rhi::TextureUsage::render_target | rhi::TextureUsage::copy_source,
+        });
+        const auto constants = create_precipitation_constants_buffer(device, desc);
+        const auto quad_vertices = device.create_buffer(rhi::BufferDesc{
+            .size_bytes = 6U * 16U,
+            .usage = rhi::BufferUsage::vertex | rhi::BufferUsage::copy_source,
+        });
+        const auto instances = device.create_buffer(rhi::BufferDesc{
+            .size_bytes = 32U,
+            .usage = rhi::BufferUsage::vertex | rhi::BufferUsage::copy_source,
+        });
+        const auto unoccluded_readback = device.create_buffer(rhi::BufferDesc{
+            .size_bytes = 256U * 64U,
+            .usage = rhi::BufferUsage::copy_destination,
+        });
+        const auto occluded_readback = device.create_buffer(rhi::BufferDesc{
+            .size_bytes = 256U * 64U,
+            .usage = rhi::BufferUsage::copy_destination,
+        });
+        const auto sampler = device.create_sampler(rhi::SamplerDesc{
+            .min_filter = rhi::SamplerFilter::nearest,
+            .mag_filter = rhi::SamplerFilter::nearest,
+            .address_u = rhi::SamplerAddressMode::clamp_to_edge,
+            .address_v = rhi::SamplerAddressMode::clamp_to_edge,
+            .address_w = rhi::SamplerAddressMode::clamp_to_edge,
+        });
+        if (scene_color.value == 0 || unoccluded_depth.value == 0 || occluded_depth.value == 0 ||
+            unoccluded_target.value == 0 || occluded_target.value == 0 || constants.value == 0 ||
+            quad_vertices.value == 0 || instances.value == 0 || unoccluded_readback.value == 0 ||
+            occluded_readback.value == 0 || sampler.value == 0) {
+            return PrecipitationRuntimeProbeResult{
+                .diagnostic = std::string{backend_name} + " precipitation probe resource creation failed",
+            };
+        }
+
+        std::vector<std::uint8_t> quad_bytes;
+        quad_bytes.reserve(6U * 16U);
+        for (const auto& row : std::array<std::array<float, 4>, 6>{{
+                 {{-1.0F, -1.0F, 0.0F, 1.0F}},
+                 {{-1.0F, 1.0F, 0.0F, 0.0F}},
+                 {{1.0F, -1.0F, 1.0F, 1.0F}},
+                 {{1.0F, -1.0F, 1.0F, 1.0F}},
+                 {{-1.0F, 1.0F, 0.0F, 0.0F}},
+                 {{1.0F, 1.0F, 1.0F, 0.0F}},
+             }}) {
+            for (const float value : row) {
+                append_f32_le(quad_bytes, value);
+            }
+        }
+        std::vector<std::uint8_t> instance_bytes;
+        instance_bytes.reserve(32U);
+        for (const float value : std::array<float, 8>{0.0F, 0.0F, 0.0F, 40.0F, 0.0F, 0.0F, 0.0F, 1.0F}) {
+            append_f32_le(instance_bytes, value);
+        }
+        device.write_buffer(quad_vertices, 0, quad_bytes);
+        device.write_buffer(instances, 0, instance_bytes);
+
+        const auto descriptor_set_layout = device.create_descriptor_set_layout(rhi::DescriptorSetLayoutDesc{{
+            rhi::DescriptorBindingDesc{
+                .binding = precipitation_particle_texture_binding(),
+                .type = rhi::DescriptorType::sampled_texture,
+                .count = 1,
+                .stages = rhi::ShaderStageVisibility::fragment,
+            },
+            rhi::DescriptorBindingDesc{
+                .binding = precipitation_scene_depth_texture_binding(),
+                .type = rhi::DescriptorType::sampled_texture,
+                .count = 1,
+                .stages = rhi::ShaderStageVisibility::fragment,
+            },
+            rhi::DescriptorBindingDesc{
+                .binding = precipitation_sampler_binding(),
+                .type = rhi::DescriptorType::sampler,
+                .count = 1,
+                .stages = rhi::ShaderStageVisibility::fragment,
+            },
+            rhi::DescriptorBindingDesc{
+                .binding = precipitation_constants_binding(),
+                .type = rhi::DescriptorType::uniform_buffer,
+                .count = 1,
+                .stages = rhi::ShaderStageVisibility::vertex | rhi::ShaderStageVisibility::fragment,
+            },
+        }});
+        const auto unoccluded_descriptor_set = device.allocate_descriptor_set(descriptor_set_layout);
+        const auto occluded_descriptor_set = device.allocate_descriptor_set(descriptor_set_layout);
+        const auto update_precipitation_descriptor_set = [&](const rhi::DescriptorSetHandle set,
+                                                             const rhi::TextureHandle depth_texture) {
+            device.update_descriptor_set(rhi::DescriptorWrite{
+                .set = set,
+                .binding = precipitation_particle_texture_binding(),
+                .array_element = 0,
+                .resources = {rhi::DescriptorResource::texture(rhi::DescriptorType::sampled_texture,
+                                                               particle_upload.texture)},
+            });
+            device.update_descriptor_set(rhi::DescriptorWrite{
+                .set = set,
+                .binding = precipitation_scene_depth_texture_binding(),
+                .array_element = 0,
+                .resources = {rhi::DescriptorResource::texture(rhi::DescriptorType::sampled_texture, depth_texture)},
+            });
+            device.update_descriptor_set(rhi::DescriptorWrite{
+                .set = set,
+                .binding = precipitation_sampler_binding(),
+                .array_element = 0,
+                .resources = {rhi::DescriptorResource::sampler(sampler)},
+            });
+            device.update_descriptor_set(rhi::DescriptorWrite{
+                .set = set,
+                .binding = precipitation_constants_binding(),
+                .array_element = 0,
+                .resources = {rhi::DescriptorResource::buffer(rhi::DescriptorType::uniform_buffer, constants)},
+            });
+        };
+        update_precipitation_descriptor_set(unoccluded_descriptor_set, unoccluded_depth);
+        update_precipitation_descriptor_set(occluded_descriptor_set, occluded_depth);
+
+        const auto pipeline_layout =
+            device.create_pipeline_layout(rhi::PipelineLayoutDesc{.descriptor_sets = {descriptor_set_layout}});
+        const auto vertex_shader = device.create_shader(rhi::ShaderDesc{
+            .stage = rhi::ShaderStage::vertex,
+            .entry_point = vertex_shader_bytecode.entry_point,
+            .bytecode_size = vertex_shader_bytecode.bytecode.size(),
+            .bytecode = vertex_shader_bytecode.bytecode.data(),
+        });
+        const auto fragment_shader = device.create_shader(rhi::ShaderDesc{
+            .stage = rhi::ShaderStage::fragment,
+            .entry_point = fragment_shader_bytecode.entry_point,
+            .bytecode_size = fragment_shader_bytecode.bytecode.size(),
+            .bytecode = fragment_shader_bytecode.bytecode.data(),
+        });
+        const auto pipeline = device.create_graphics_pipeline(rhi::GraphicsPipelineDesc{
+            .layout = pipeline_layout,
+            .vertex_shader = vertex_shader,
+            .fragment_shader = fragment_shader,
+            .color_format = rhi::Format::rgba8_unorm,
+            .depth_format = rhi::Format::unknown,
+            .topology = rhi::PrimitiveTopology::triangle_list,
+            .vertex_buffers =
+                {rhi::VertexBufferLayoutDesc{.binding = 0, .stride = 16, .input_rate = rhi::VertexInputRate::vertex},
+                 rhi::VertexBufferLayoutDesc{.binding = 1, .stride = 32, .input_rate = rhi::VertexInputRate::instance}},
+            .vertex_attributes = {rhi::VertexAttributeDesc{.location = 0,
+                                                           .binding = 0,
+                                                           .offset = 0,
+                                                           .format = rhi::VertexFormat::float32x2,
+                                                           .semantic = rhi::VertexSemantic::position,
+                                                           .semantic_index = 0},
+                                  rhi::VertexAttributeDesc{.location = 1,
+                                                           .binding = 0,
+                                                           .offset = 8,
+                                                           .format = rhi::VertexFormat::float32x2,
+                                                           .semantic = rhi::VertexSemantic::texcoord,
+                                                           .semantic_index = 0},
+                                  rhi::VertexAttributeDesc{.location = 2,
+                                                           .binding = 1,
+                                                           .offset = 0,
+                                                           .format = rhi::VertexFormat::float32x4,
+                                                           .semantic = rhi::VertexSemantic::texcoord,
+                                                           .semantic_index = 1},
+                                  rhi::VertexAttributeDesc{.location = 3,
+                                                           .binding = 1,
+                                                           .offset = 16,
+                                                           .format = rhi::VertexFormat::float32x4,
+                                                           .semantic = rhi::VertexSemantic::texcoord,
+                                                           .semantic_index = 2}},
+        });
+        if (descriptor_set_layout.value == 0 || unoccluded_descriptor_set.value == 0 ||
+            occluded_descriptor_set.value == 0 || pipeline_layout.value == 0 || vertex_shader.value == 0 ||
+            fragment_shader.value == 0 || pipeline.value == 0) {
+            return PrecipitationRuntimeProbeResult{
+                .diagnostic = std::string{backend_name} + " precipitation probe pipeline creation failed",
+            };
+        }
+
+        const rhi::BufferTextureCopyRegion readback_region{
+            .buffer_offset = 0,
+            .buffer_row_length = 64,
+            .buffer_image_height = 64,
+            .texture_offset = rhi::Offset3D{.x = 0, .y = 0, .z = 0},
+            .texture_extent = rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+        };
+
+        const auto before_stats = device.stats();
+        auto commands = device.begin_command_list(rhi::QueueKind::graphics);
+        const auto clear_depth_for_sampling = [&](const rhi::TextureHandle depth_texture, const float depth_value) {
+            commands->begin_render_pass(rhi::RenderPassDesc{
+                .color =
+                    rhi::RenderPassColorAttachment{
+                        .texture = scene_color,
+                        .load_action = rhi::LoadAction::clear,
+                        .store_action = rhi::StoreAction::store,
+                        .swapchain_frame = rhi::SwapchainFrameHandle{},
+                        .clear_color = rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
+                    },
+                .depth =
+                    rhi::RenderPassDepthAttachment{
+                        .texture = depth_texture,
+                        .load_action = rhi::LoadAction::clear,
+                        .store_action = rhi::StoreAction::store,
+                        .clear_depth = rhi::ClearDepthValue{depth_value},
+                    },
+            });
+            commands->end_render_pass();
+            commands->transition_texture(depth_texture, rhi::ResourceState::depth_write,
+                                         rhi::ResourceState::shader_read);
+        };
+        const auto render_precipitation_probe = [&](const rhi::TextureHandle target,
+                                                    const rhi::DescriptorSetHandle descriptor_set) {
+            commands->transition_texture(target, rhi::ResourceState::copy_source, rhi::ResourceState::render_target);
+            commands->begin_render_pass(rhi::RenderPassDesc{
+                .color =
+                    rhi::RenderPassColorAttachment{
+                        .texture = target,
+                        .load_action = rhi::LoadAction::clear,
+                        .store_action = rhi::StoreAction::store,
+                        .swapchain_frame = rhi::SwapchainFrameHandle{},
+                        .clear_color = rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
+                    },
+            });
+            commands->bind_graphics_pipeline(pipeline);
+            commands->bind_descriptor_set(pipeline_layout, 0, descriptor_set);
+            commands->bind_vertex_buffer(
+                rhi::VertexBufferBinding{.buffer = quad_vertices, .offset = 0, .stride = 16, .binding = 0});
+            commands->bind_vertex_buffer(
+                rhi::VertexBufferBinding{.buffer = instances, .offset = 0, .stride = 32, .binding = 1});
+            commands->draw(6, 1);
+            commands->end_render_pass();
+            commands->transition_texture(target, rhi::ResourceState::render_target, rhi::ResourceState::copy_source);
+        };
+
+        clear_depth_for_sampling(unoccluded_depth, 1.0F);
+        clear_depth_for_sampling(occluded_depth, 0.0F);
+        render_precipitation_probe(unoccluded_target, unoccluded_descriptor_set);
+        render_precipitation_probe(occluded_target, occluded_descriptor_set);
+        commands->copy_texture_to_buffer(unoccluded_target, unoccluded_readback, readback_region);
+        commands->copy_texture_to_buffer(occluded_target, occluded_readback, readback_region);
+        commands->close();
+
+        const auto fence = device.submit(*commands);
+        device.wait(fence);
+        const auto unoccluded_bytes = device.read_buffer(unoccluded_readback, 0, 256U * 64U);
+        const auto occluded_bytes = device.read_buffer(occluded_readback, 0, 256U * 64U);
+        const auto center_pixel = (32U * 256U) + (32U * 4U);
+        if (unoccluded_bytes.size() < center_pixel + 4U || occluded_bytes.size() < center_pixel + 4U) {
+            return PrecipitationRuntimeProbeResult{
+                .diagnostic = std::string{backend_name} + " precipitation probe readback was incomplete",
+            };
+        }
+        const auto unoccluded_alpha = unoccluded_bytes[center_pixel + 3U];
+        const auto occluded_alpha = occluded_bytes[center_pixel + 3U];
+        if (unoccluded_alpha < 128U ||
+            (unoccluded_bytes[center_pixel] == 0U && unoccluded_bytes[center_pixel + 1U] == 0U &&
+             unoccluded_bytes[center_pixel + 2U] == 0U)) {
+            return PrecipitationRuntimeProbeResult{
+                .diagnostic =
+                    std::string{backend_name} + " precipitation probe readback did not contain an unoccluded particle",
+            };
+        }
+        if (occluded_alpha > 8U || occluded_alpha >= unoccluded_alpha) {
+            return PrecipitationRuntimeProbeResult{
+                .diagnostic =
+                    std::string{backend_name} + " precipitation probe readback did not prove scene-depth occlusion",
+            };
+        }
+
+        const auto after_stats = device.stats();
+        const auto renderer_draws =
+            after_stats.draw_calls > before_stats.draw_calls ? after_stats.draw_calls - before_stats.draw_calls : 0U;
+        return PrecipitationRuntimeProbeResult{
+            .particle_buffer_uploads = 1U,
+            .backend_invocations = 1U,
+            .renderer_draws = renderer_draws,
+            .depth_occlusion_readback = true,
+            .diagnostic = {},
+        };
+    } catch (const std::exception& exception) {
+        return PrecipitationRuntimeProbeResult{
+            .diagnostic = std::string{backend_name} + " precipitation runtime probe failed: " + exception.what(),
+        };
+    }
+}
+
 [[nodiscard]] PhysicalSkyPolicyDesc sample_physical_sky_policy_desc() {
     return PhysicalSkyPolicyDesc{
         .shader_contract_evidence_ready = true,
@@ -540,6 +906,8 @@ void apply_precipitation_plan(NativeRendererCreateResult& result, const Precipit
     result.environment_precipitation_exposes_native_handles = plan.exposes_native_handles;
     result.environment_precipitation_mutates_materials = plan.mutates_materials;
     result.environment_precipitation_plays_audio = plan.plays_audio;
+    result.environment_precipitation_renderer_draws = plan.renderer_draws;
+    result.environment_precipitation_depth_occlusion_readback = plan.depth_occlusion_readback;
     result.environment_precipitation_weather_rows =
         static_cast<std::uint32_t>(desc.environment_plan.weather_rows.size());
     result.environment_precipitation_particle_rows =
@@ -2194,8 +2562,11 @@ build_scene_compute_morph_bindings(rhi::IRhiDevice& device,
             desc.d3d12_scene_renderer->enable_cloud_layer_renderer_execution;
         const bool cloud_layer_requested =
             desc.d3d12_scene_renderer->enable_cloud_layer_package_evidence || cloud_layer_renderer_execution_requested;
+        const bool environment_precipitation_renderer_execution_requested =
+            desc.d3d12_scene_renderer->enable_environment_precipitation_renderer_execution;
         const bool environment_precipitation_requested =
-            desc.d3d12_scene_renderer->enable_environment_precipitation_package_evidence;
+            desc.d3d12_scene_renderer->enable_environment_precipitation_package_evidence ||
+            environment_precipitation_renderer_execution_requested;
         const bool environment_volumetric_fog_requested =
             desc.d3d12_scene_renderer->enable_environment_volumetric_fog_package_evidence;
         const auto compute_morph_vertex_buffers = desc.d3d12_scene_renderer->enable_compute_morph_tangent_frame_output
@@ -2338,6 +2709,27 @@ build_scene_compute_morph_bindings(rhi::IRhiDevice& device,
             precipitation_desc.package_evidence_ready =
                 precipitation_desc.package_evidence_ready &&
                 environment_precipitation_package_texture_evidence_ready(desc.d3d12_scene_renderer->package);
+            if (environment_precipitation_renderer_execution_requested) {
+                const auto precipitation_probe = execute_precipitation_runtime_probe(
+                    *device, *desc.d3d12_scene_renderer->package, precipitation_desc,
+                    desc.d3d12_scene_renderer->precipitation_vertex_shader,
+                    desc.d3d12_scene_renderer->precipitation_fragment_shader, "D3D12");
+                if (!precipitation_probe.succeeded()) {
+                    result.succeeded = false;
+                    result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                    result.diagnostic = precipitation_probe.diagnostic + "; using NullRenderer fallback.";
+                    result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                    result.scene_gpu_diagnostics.push_back(
+                        make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                    return result;
+                }
+                precipitation_desc.request_particle_buffer_upload = true;
+                precipitation_desc.request_backend_execution = true;
+                precipitation_desc.particle_buffer_upload_count = precipitation_probe.particle_buffer_uploads;
+                precipitation_desc.backend_invocation_count = precipitation_probe.backend_invocations;
+                precipitation_desc.renderer_draw_count = precipitation_probe.renderer_draws;
+                precipitation_desc.depth_occlusion_readback_proven = precipitation_probe.depth_occlusion_readback;
+            }
             const auto precipitation_plan = plan_precipitation_policy(precipitation_desc);
             apply_precipitation_plan(result, precipitation_desc, precipitation_plan);
             if (!precipitation_plan.ready()) {
@@ -4342,6 +4734,8 @@ struct Win32DesktopPresentation::Impl {
     bool environment_precipitation_exposes_native_handles{false};
     bool environment_precipitation_mutates_materials{false};
     bool environment_precipitation_plays_audio{false};
+    std::uint64_t environment_precipitation_renderer_draws{0};
+    bool environment_precipitation_depth_occlusion_readback{false};
     bool environment_precipitation_uses_camera_near_particles{false};
     bool environment_precipitation_uses_scene_depth_occlusion{false};
     std::uint32_t environment_precipitation_weather_rows{0};
@@ -4463,6 +4857,9 @@ struct Win32DesktopPresentation::Impl {
             renderer_result.environment_precipitation_exposes_native_handles;
         environment_precipitation_mutates_materials = renderer_result.environment_precipitation_mutates_materials;
         environment_precipitation_plays_audio = renderer_result.environment_precipitation_plays_audio;
+        environment_precipitation_renderer_draws = renderer_result.environment_precipitation_renderer_draws;
+        environment_precipitation_depth_occlusion_readback =
+            renderer_result.environment_precipitation_depth_occlusion_readback;
         environment_precipitation_uses_camera_near_particles =
             renderer_result.environment_precipitation_uses_camera_near_particles;
         environment_precipitation_uses_scene_depth_occlusion =
@@ -4533,7 +4930,8 @@ Win32DesktopPresentation::Win32DesktopPresentation(const Win32DesktopPresentatio
                                     desc.d3d12_scene_renderer->enable_cloud_layer_renderer_execution);
     impl_->environment_precipitation_requested =
         desc.prefer_d3d12 && desc.d3d12_scene_renderer != nullptr &&
-        desc.d3d12_scene_renderer->enable_environment_precipitation_package_evidence;
+        (desc.d3d12_scene_renderer->enable_environment_precipitation_package_evidence ||
+         desc.d3d12_scene_renderer->enable_environment_precipitation_renderer_execution);
     impl_->environment_volumetric_fog_requested =
         desc.prefer_d3d12 && desc.d3d12_scene_renderer != nullptr &&
         desc.d3d12_scene_renderer->enable_environment_volumetric_fog_package_evidence;
@@ -5401,6 +5799,8 @@ Win32DesktopPresentationReport Win32DesktopPresentation::report() const noexcept
         .environment_precipitation_exposes_native_handles = impl_->environment_precipitation_exposes_native_handles,
         .environment_precipitation_mutates_materials = impl_->environment_precipitation_mutates_materials,
         .environment_precipitation_plays_audio = impl_->environment_precipitation_plays_audio,
+        .environment_precipitation_renderer_draws = impl_->environment_precipitation_renderer_draws,
+        .environment_precipitation_depth_occlusion_readback = impl_->environment_precipitation_depth_occlusion_readback,
         .environment_precipitation_uses_camera_near_particles =
             impl_->environment_precipitation_uses_camera_near_particles,
         .environment_precipitation_uses_scene_depth_occlusion =
@@ -6405,6 +6805,8 @@ Win32DesktopPresentationEnvironmentPrecipitationReport evaluate_win32_desktop_pr
     result.execution_evidence_ready = report.environment_precipitation_execution_evidence_ready;
     result.uploads_particle_buffers = report.environment_precipitation_uploads_particle_buffers;
     result.invokes_backend = report.environment_precipitation_invokes_backend;
+    result.renderer_draws = report.environment_precipitation_renderer_draws;
+    result.depth_occlusion_readback = report.environment_precipitation_depth_occlusion_readback;
     result.exposes_native_handles = report.environment_precipitation_exposes_native_handles;
     result.mutates_materials = report.environment_precipitation_mutates_materials;
     result.plays_audio = report.environment_precipitation_plays_audio;
@@ -6440,8 +6842,16 @@ Win32DesktopPresentationEnvironmentPrecipitationReport evaluate_win32_desktop_pr
         result.quality_rows != 1) {
         ++result.diagnostics_count;
     }
-    if (result.uploads_particle_buffers || result.invokes_backend || result.exposes_native_handles ||
-        result.mutates_materials || result.plays_audio) {
+    if (expectation.require_renderer_execution) {
+        if (!result.uploads_particle_buffers || !result.invokes_backend || result.renderer_draws == 0 ||
+            !result.depth_occlusion_readback) {
+            ++result.diagnostics_count;
+        }
+    } else if (result.uploads_particle_buffers || result.invokes_backend || result.renderer_draws != 0 ||
+               result.depth_occlusion_readback) {
+        ++result.diagnostics_count;
+    }
+    if (result.exposes_native_handles || result.mutates_materials || result.plays_audio) {
         ++result.diagnostics_count;
     }
 

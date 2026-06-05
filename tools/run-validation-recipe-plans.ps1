@@ -188,12 +188,26 @@ function Get-ValidationRecipeCommandPlan {
         $diagD3dPrecipitation = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'D3D12 environment precipitation package validation is restricted to the reviewed sample_desktop_runtime_game D3D12 rain package lane and does not claim particle-buffer upload, renderer/RHI backend invocation, material mutation, audio playback, Vulkan, Metal, or broad environment readiness.' -ValidationRecipe $RecipeName -HostGate 'd3d12-windows-primary'
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('d3d12-windows-primary') -RequiredAcknowledgements @('d3d12-windows-primary') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12') -Diagnostics @($diagD3dPrecipitation)
     }
+    elseif ($RecipeName -eq 'desktop-runtime-sample-game-environment-precipitation-renderer-execution') {
+        $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
+        $smokeTail = @(Get-SampleDesktopRuntimeGameEnvironmentPrecipitationRendererExecutionSmokeArgs)
+        $pwEntry = Get-DesktopRuntimePackageCommandPlan -ScriptPath $packageScript -GameTarget $target -RequireD3d12Shaders -SmokeArgs $smokeTail
+        $diagD3dPrecipitationExecution = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'D3D12 rain precipitation renderer execution validation is restricted to the reviewed sample_desktop_runtime_game D3D12 package lane and proves particle-buffer upload, backend invocation, renderer draw, and scene-depth occlusion readback counters without claiming Vulkan, Metal, material wetness mutation, audio playback, backend parity, broad optimization, or broad environment readiness.' -ValidationRecipe $RecipeName -HostGate 'd3d12-windows-primary'
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('d3d12-windows-primary') -RequiredAcknowledgements @('d3d12-windows-primary') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12') -Diagnostics @($diagD3dPrecipitationExecution)
+    }
     elseif ($RecipeName -eq 'desktop-runtime-sample-game-environment-snow-package') {
         $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
         $smokeTail = @(Get-SampleDesktopRuntimeGameEnvironmentSnowSmokeArgs)
         $pwEntry = Get-DesktopRuntimePackageCommandPlan -ScriptPath $packageScript -GameTarget $target -RequireD3d12Shaders -SmokeArgs $smokeTail
         $diagD3dSnow = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'D3D12 environment snow package validation is restricted to the reviewed sample_desktop_runtime_game D3D12 snow package lane and does not claim particle-buffer upload, renderer/RHI backend invocation, material mutation, audio playback, Vulkan, Metal, rain readiness, or broad environment readiness.' -ValidationRecipe $RecipeName -HostGate 'd3d12-windows-primary'
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('d3d12-windows-primary') -RequiredAcknowledgements @('d3d12-windows-primary') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12') -Diagnostics @($diagD3dSnow)
+    }
+    elseif ($RecipeName -eq 'desktop-runtime-sample-game-environment-snow-renderer-execution') {
+        $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
+        $smokeTail = @(Get-SampleDesktopRuntimeGameEnvironmentSnowRendererExecutionSmokeArgs)
+        $pwEntry = Get-DesktopRuntimePackageCommandPlan -ScriptPath $packageScript -GameTarget $target -RequireD3d12Shaders -SmokeArgs $smokeTail
+        $diagD3dSnowExecution = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'D3D12 snow precipitation renderer execution validation is restricted to the reviewed sample_desktop_runtime_game D3D12 package lane and proves snow particle-buffer upload, backend invocation, renderer draw, and scene-depth occlusion readback counters while keeping zero wetness mutation and no audio playback without claiming Vulkan, Metal, rain readiness, backend parity, broad optimization, or broad environment readiness.' -ValidationRecipe $RecipeName -HostGate 'd3d12-windows-primary'
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('d3d12-windows-primary') -RequiredAcknowledgements @('d3d12-windows-primary') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12') -Diagnostics @($diagD3dSnowExecution)
     }
     elseif ($RecipeName -eq 'desktop-runtime-sample-game-environment-profile-package') {
         $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
