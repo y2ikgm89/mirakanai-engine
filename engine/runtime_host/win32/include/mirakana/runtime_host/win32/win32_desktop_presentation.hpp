@@ -9,6 +9,7 @@
 #include "mirakana/renderer/physical_sky_policy.hpp"
 #include "mirakana/renderer/precipitation_policy.hpp"
 #include "mirakana/renderer/renderer.hpp"
+#include "mirakana/renderer/volumetric_fog_policy.hpp"
 #include "mirakana/rhi/rhi.hpp"
 
 #include <cstddef>
@@ -235,6 +236,11 @@ struct Win32DesktopPresentationReport {
     bool environment_fog_requested{false};
     bool environment_fog_constant_buffer_ready{false};
     std::uint64_t environment_fog_constant_buffer_bytes{0};
+    bool environment_fog_vulkan_package_requested{false};
+    bool environment_fog_vulkan_package_shader_contract_evidence_ready{false};
+    bool environment_fog_vulkan_package_evidence_ready{false};
+    bool environment_fog_vulkan_package_constant_buffer_ready{false};
+    std::uint64_t environment_fog_vulkan_package_constant_buffer_bytes{0};
     bool physical_sky_requested{false};
     bool physical_sky_shader_contract_evidence_ready{false};
     bool physical_sky_package_evidence_ready{false};
@@ -284,6 +290,15 @@ struct Win32DesktopPresentationReport {
     std::uint32_t environment_precipitation_shader_rows{0};
     std::uint32_t environment_precipitation_quality_rows{0};
     std::uint32_t environment_precipitation_policy_diagnostics_count{0};
+    bool environment_volumetric_fog_requested{false};
+    bool environment_volumetric_fog_shader_contract_evidence_ready{false};
+    bool environment_volumetric_fog_package_evidence_ready{false};
+    bool environment_volumetric_fog_execution_evidence_ready{false};
+    bool environment_volumetric_fog_froxel_output_ready{false};
+    bool environment_volumetric_fog_scene_depth_ready{false};
+    std::uint64_t environment_volumetric_fog_compute_dispatches{0};
+    bool environment_volumetric_fog_exposes_native_handles{false};
+    std::uint32_t environment_volumetric_fog_policy_diagnostics_count{0};
     Win32DesktopPresentationDirectionalShadowStatus directional_shadow_status{
         Win32DesktopPresentationDirectionalShadowStatus::not_requested};
     bool directional_shadow_requested{false};
@@ -366,6 +381,13 @@ enum class Win32DesktopPresentationEnvironmentFogStatus : std::uint8_t {
     ready,
 };
 
+enum class Win32DesktopPresentationVulkanEnvironmentFogPackageStatus : std::uint8_t {
+    not_requested = 0,
+    host_evidence_required,
+    blocked,
+    ready,
+};
+
 enum class Win32DesktopPresentationPhysicalSkyStatus : std::uint8_t {
     not_requested = 0,
     blocked,
@@ -379,6 +401,12 @@ enum class Win32DesktopPresentationCloudLayerStatus : std::uint8_t {
 };
 
 enum class Win32DesktopPresentationEnvironmentPrecipitationStatus : std::uint8_t {
+    not_requested = 0,
+    blocked,
+    ready,
+};
+
+enum class Win32DesktopPresentationEnvironmentVolumetricFogStatus : std::uint8_t {
     not_requested = 0,
     blocked,
     ready,
@@ -483,6 +511,27 @@ struct Win32DesktopPresentationEnvironmentFogReport {
     std::uint32_t diagnostics_count{0};
 };
 
+struct Win32DesktopPresentationVulkanEnvironmentFogPackageReport {
+    Win32DesktopPresentationVulkanEnvironmentFogPackageStatus status{
+        Win32DesktopPresentationVulkanEnvironmentFogPackageStatus::not_requested};
+    bool ready{false};
+    bool requested{false};
+    bool vulkan_backend_selected{false};
+    bool postprocess_ready{false};
+    bool postprocess_depth_input_ready{false};
+    bool vulkan_postprocess_execution_ready{false};
+    bool shader_contract_evidence_ready{false};
+    bool package_evidence_ready{false};
+    bool constant_buffer_ready{false};
+    std::uint32_t constants_binding{0};
+    std::uint64_t constant_buffer_bytes{0};
+    std::uint64_t expected_postprocess_passes{0};
+    std::uint64_t postprocess_passes_executed{0};
+    bool postprocess_passes_current{false};
+    bool exposes_native_handles{false};
+    std::uint32_t diagnostics_count{0};
+};
+
 struct Win32DesktopPresentationPhysicalSkyReport {
     Win32DesktopPresentationPhysicalSkyStatus status{Win32DesktopPresentationPhysicalSkyStatus::not_requested};
     bool ready{false};
@@ -557,6 +606,25 @@ struct Win32DesktopPresentationEnvironmentPrecipitationReport {
     bool exposes_native_handles{false};
     bool mutates_materials{false};
     bool plays_audio{false};
+    std::uint32_t diagnostics_count{0};
+};
+
+struct Win32DesktopPresentationEnvironmentVolumetricFogReport {
+    Win32DesktopPresentationEnvironmentVolumetricFogStatus status{
+        Win32DesktopPresentationEnvironmentVolumetricFogStatus::not_requested};
+    bool ready{false};
+    bool requested{false};
+    bool d3d12_backend_selected{false};
+    bool scene_depth_ready{false};
+    bool shader_contract_evidence_ready{false};
+    bool package_evidence_ready{false};
+    bool execution_evidence_ready{false};
+    bool froxel_output_ready{false};
+    std::uint64_t compute_dispatches{0};
+    std::uint32_t constants_binding{0};
+    std::uint64_t constant_buffer_bytes{0};
+    std::uint32_t froxel_output_buffer_binding{0};
+    bool exposes_native_handles{false};
     std::uint32_t diagnostics_count{0};
 };
 
@@ -917,6 +985,8 @@ struct Win32DesktopPresentationD3d12SceneRendererDesc {
     CloudLayerPolicyDesc cloud_layer;
     bool enable_environment_precipitation_package_evidence{false};
     PrecipitationPolicyDesc environment_precipitation;
+    bool enable_environment_volumetric_fog_package_evidence{false};
+    VolumetricFogPolicyDesc environment_volumetric_fog;
     bool enable_directional_shadow_smoke{false};
     bool enable_native_ui_overlay{false};
     AssetId native_ui_overlay_atlas_asset;
@@ -959,6 +1029,8 @@ struct Win32DesktopPresentationVulkanSceneRendererDesc {
     bool enable_compute_morph_tangent_frame_output{false};
     bool enable_postprocess{false};
     bool enable_postprocess_depth_input{false};
+    bool enable_environment_fog{false};
+    EnvironmentFogPolicyDesc environment_fog;
     bool enable_directional_shadow_smoke{false};
     bool enable_native_ui_overlay{false};
     AssetId native_ui_overlay_atlas_asset;
@@ -1076,6 +1148,12 @@ win32_desktop_presentation_environment_fog_status_name(Win32DesktopPresentationE
 [[nodiscard]] Win32DesktopPresentationEnvironmentFogReport evaluate_win32_desktop_presentation_environment_fog(
     const Win32DesktopPresentationReport& report,
     const Win32DesktopPresentationD3d12PostprocessExecutionReport& d3d12_postprocess_execution, bool requested);
+[[nodiscard]] std::string_view win32_desktop_presentation_vulkan_environment_fog_package_status_name(
+    Win32DesktopPresentationVulkanEnvironmentFogPackageStatus status) noexcept;
+[[nodiscard]] Win32DesktopPresentationVulkanEnvironmentFogPackageReport
+evaluate_win32_desktop_presentation_vulkan_environment_fog_package(
+    const Win32DesktopPresentationReport& report,
+    const Win32DesktopPresentationVulkanPostprocessExecutionReport& vulkan_postprocess_execution, bool requested);
 [[nodiscard]] std::string_view
 win32_desktop_presentation_physical_sky_status_name(Win32DesktopPresentationPhysicalSkyStatus status) noexcept;
 [[nodiscard]] Win32DesktopPresentationPhysicalSkyReport
@@ -1089,6 +1167,11 @@ evaluate_win32_desktop_presentation_cloud_layer(const Win32DesktopPresentationRe
 [[nodiscard]] Win32DesktopPresentationEnvironmentPrecipitationReport
 evaluate_win32_desktop_presentation_environment_precipitation(const Win32DesktopPresentationReport& report,
                                                               bool requested);
+[[nodiscard]] std::string_view win32_desktop_presentation_environment_volumetric_fog_status_name(
+    Win32DesktopPresentationEnvironmentVolumetricFogStatus status) noexcept;
+[[nodiscard]] Win32DesktopPresentationEnvironmentVolumetricFogReport
+evaluate_win32_desktop_presentation_environment_volumetric_fog(const Win32DesktopPresentationReport& report,
+                                                               bool requested);
 [[nodiscard]] std::string_view win32_desktop_presentation_vulkan_postprocess_execution_status_name(
     Win32DesktopPresentationVulkanPostprocessExecutionStatus status) noexcept;
 [[nodiscard]] Win32DesktopPresentationVulkanPostprocessExecutionReport

@@ -31,7 +31,6 @@ Proven today before this plan:
 Unclaimed and selected by this plan:
 
 - Physical-sky Vulkan proof and package-visible physical-sky proof.
-- Height-fog Vulkan package readiness and volumetric-fog package readiness.
 - Cloud-layer renderer/RHI backend drawing, distinct flow-map package asset proof, Vulkan cloud proof, and Metal cloud proof.
 - Precipitation renderer/RHI particle-buffer upload and draw execution.
 - Snow package readiness, including selected snow package counters separate from the existing rain lane.
@@ -39,6 +38,11 @@ Unclaimed and selected by this plan:
 - Environment lighting/IBL upload or package proof beyond policy rows.
 - Backend parity for environment features; each backend remains feature-local and evidence-local.
 - Broad optimization, broad renderer quality, broad `environment_ready`, and inferred Vulkan/Metal readiness.
+
+Completed by Task 2:
+
+- Strict host/toolchain-gated Vulkan height-fog package readiness.
+- Selected D3D12 volumetric-fog package readiness.
 
 ## Official Source Baseline
 
@@ -84,13 +88,13 @@ Source implications for this repo:
 | Claim | Current state | Required promotion evidence |
 | --- | --- | --- |
 | `environment_profile_status=ready` | Ready for selected cooked profile package rows. | Keep existing profile counters; no new broad claim. |
-| `environment_fog_status=ready` | Ready for selected D3D12 height-fog package. | Add Vulkan package lane before `environment_fog_vulkan_status=ready`; keep Metal host-gated. |
+| `environment_fog_status=ready` | Ready for selected D3D12 height-fog package; strict host/toolchain-gated Vulkan package lane is ready through `environment_fog_vulkan_package_status=ready`. | Keep Metal host-gated and do not infer backend parity. |
 | physical sky package | Unclaimed. | D3D12 package smoke with shader artifact, constants, readback/package counters, and no broad sky readiness. |
 | physical sky Vulkan | Unclaimed. | Strict Vulkan runtime readback with SPIR-V artifacts, synchronization2 barriers, validation layer, and package recipe only after runtime proof. |
 | cloud layer renderer/RHI execution | Unclaimed. | D3D12 draw/readback over package cloud-map and distinct flow-map assets, zero native handle leakage, Vulkan strict proof, Metal host proof if selected. |
 | precipitation renderer/RHI execution | Unclaimed. | Particle-buffer upload, camera-near draw, depth occlusion readback, D3D12 package smoke, Vulkan strict proof, Metal host proof if selected. |
 | snow package readiness | Unclaimed. | Snow-specific package smoke with `environment_precipitation_kind=snow`, snow texture/ref rows, snow audio handoff rows, no material mutation/audio playback. |
-| volumetric fog package | Unclaimed. | Package-visible froxel/compute evidence over existing D3D12 compute proof plus strict non-claims for Vulkan/Metal until proven. |
+| volumetric fog package | Ready for selected D3D12 package through `environment_volumetric_fog_status=ready` and positive `environment_volumetric_fog_compute_dispatches`. | Add Vulkan/Metal volumetric-fog lanes only after backend-local proof; do not infer volumetric-cloud readiness. |
 | volumetric clouds | Unclaimed. | Weather map, shape noise, erosion noise, raymarch, temporal, shadow, lighting, and package counters with backend-local proof. |
 | environment lighting/IBL | Policy only. | First-party cooked HDR/cubemap/irradiance/radiance package rows or explicitly dependency-gated importer plan; renderer upload proof before ready. |
 | environment backend parity | Unclaimed. | Backend-local matrix rows for each feature; no single backend can promote another. |
@@ -314,13 +318,19 @@ Task 1 promotes selected D3D12 package-visible physical-sky evidence and strict 
 - Modify: `engine/agent/manifest.fragments/009-validationRecipes.json`
 - Modify: `docs/testing.md`
 
-- [ ] **Step 1: Add RED Vulkan package assertions**
+- [x] **Step 1: Add RED Vulkan package assertions**
 
 Require a strict package recipe that names the existing height-fog Vulkan SPIR-V env vars and fails closed when `spirv-val`, DXC SPIR-V CodeGen, Vulkan runtime, or `VK_LAYER_KHRONOS_validation` is unavailable.
 
 Expected: `environment_fog_vulkan_package_status=host_evidence_required` on unsupported hosts and `ready` only after strict smoke.
 
-- [ ] **Step 2: Add volumetric fog package counters**
+Evidence: Task 2 added public runtime-host compile assertions and installed validator expectations for `environment_fog_vulkan_package_status=ready`, `environment_fog_vulkan_package_ready=1`, `environment_fog_vulkan_selected_backend=vulkan`, shader-contract/package/depth/postprocess evidence, stable constants binding `4`, constants byte size `256`, zero diagnostics, and zero native-handle counters. The strict package smoke passed with:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -Command "& .\tools\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireVulkanShaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-vulkan-scene-shaders','--require-vulkan-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-vulkan-postprocess-evidence','--require-environment-fog-vulkan-package-evidence')"
+```
+
+- [x] **Step 2: Add volumetric fog package counters**
 
 Promote existing D3D12 volumetric-fog compute readback into package-visible counters:
 
@@ -333,7 +343,15 @@ Promote existing D3D12 volumetric-fog compute readback into package-visible coun
 
 Expected: this does not claim Vulkan or Metal volumetric fog.
 
-- [ ] **Step 3: Validate**
+Evidence: Task 2 promoted selected D3D12 volumetric-fog package counters only. The installed smoke passed with:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -Command "& .\tools\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-environment-volumetric-fog-package-evidence')"
+```
+
+The ready claim is limited to `environment_volumetric_fog_status=ready`, `environment_volumetric_fog_selected_backend=d3d12`, froxel output and scene-depth evidence, positive `environment_volumetric_fog_compute_dispatches`, stable constants binding `5`, froxel output binding `13`, zero diagnostics, and zero native-handle counters.
+
+- [x] **Step 3: Validate**
 
 Run:
 
@@ -344,6 +362,18 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
 ```
 
 Expected: D3D12 volumetric fog and host-gated Vulkan height-fog package rows are exact and narrow.
+
+Evidence: focused validation passed for:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools\cmake.ps1 --build --preset dev --target MK_renderer_environment_fog_policy_tests MK_renderer_volumetric_fog_policy_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools\ctest.ps1 --preset dev --output-on-failure -R "environment_fog|volumetric_fog"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools\cmake.ps1 --preset desktop-runtime
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools\cmake.ps1 --build --preset desktop-runtime --target sample_desktop_runtime_game MK_runtime_host_win32_public_api_compile
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools\ctest.ps1 --preset desktop-runtime --output-on-failure -R "MK_runtime_host_win32_public_api_compile"
+```
+
+Final docs/manifest/static validation for Task 2 is recorded in this candidate's closeout checklist after manifest compose and `tools/validate.ps1`.
 
 ## Task 3: Snow Package Readiness
 

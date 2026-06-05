@@ -150,7 +150,7 @@ MK_TEST("renderer volumetric fog policy exposes stable compute constants and fro
     MK_REQUIRE(read_constant_f32(constants, 36) == 0.90F);
 }
 
-MK_TEST("renderer volumetric fog policy requires execution evidence before ready promotion") {
+MK_TEST("renderer volumetric fog policy requires execution and package evidence before ready promotion") {
     const std::array local_volumes = {
         make_valid_local_volume(1),
     };
@@ -164,14 +164,28 @@ MK_TEST("renderer volumetric fog policy requires execution evidence before ready
     MK_REQUIRE(!blocked_plan.ready());
     MK_REQUIRE(mirakana::has_volumetric_fog_diagnostic(
         blocked_plan, mirakana::VolumetricFogDiagnosticCode::missing_execution_evidence));
+    MK_REQUIRE(mirakana::has_volumetric_fog_diagnostic(
+        blocked_plan, mirakana::VolumetricFogDiagnosticCode::missing_package_evidence));
 
     desc.execution_evidence_ready = true;
+    const auto missing_package_plan = mirakana::plan_volumetric_fog_policy(desc);
+
+    MK_REQUIRE(!missing_package_plan.succeeded());
+    MK_REQUIRE(missing_package_plan.status == mirakana::VolumetricFogPolicyStatus::blocked);
+    MK_REQUIRE(!missing_package_plan.ready());
+    MK_REQUIRE(!mirakana::has_volumetric_fog_diagnostic(
+        missing_package_plan, mirakana::VolumetricFogDiagnosticCode::missing_execution_evidence));
+    MK_REQUIRE(mirakana::has_volumetric_fog_diagnostic(
+        missing_package_plan, mirakana::VolumetricFogDiagnosticCode::missing_package_evidence));
+
+    desc.package_evidence_ready = true;
     const auto ready_plan = mirakana::plan_volumetric_fog_policy(desc);
 
     MK_REQUIRE(ready_plan.succeeded());
     MK_REQUIRE(ready_plan.status == mirakana::VolumetricFogPolicyStatus::ready);
     MK_REQUIRE(ready_plan.ready());
     MK_REQUIRE(ready_plan.execution_evidence_ready);
+    MK_REQUIRE(ready_plan.package_evidence_ready);
     MK_REQUIRE(ready_plan.quality_rows[0].ready);
 }
 
