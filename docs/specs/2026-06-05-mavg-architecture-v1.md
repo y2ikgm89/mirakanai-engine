@@ -6,7 +6,7 @@ Define the clean-room architecture baseline for Mirakana Adaptive Virtual Geomet
 
 ## Status
 
-Phase 0 specification completed for `mavg-research-legal-benchmark-baseline-v1`. The active stacked implementation milestone is now `mavg-runtime-lod-milestone-v1` over the `mavg-asset-graph-v1` foundation. The first LoD checkpoint implements deterministic `MK_assets` `GameEngine.MavgClusterGraph.v1` hierarchy/error/fallback/draw-range graph validation only; CPU selection, renderer execution, package streaming, deformation, ray tracing, and benchmark superiority remain unclaimed until later focused tasks add code and validation evidence.
+Phase 0 specification completed for `mavg-research-legal-benchmark-baseline-v1`. The active stacked implementation milestone is now `mavg-runtime-lod-milestone-v1` over the `mavg-asset-graph-v1` foundation. The first LoD checkpoints implement deterministic `MK_assets` `GameEngine.MavgClusterGraph.v1` hierarchy/error/fallback/draw-range graph validation plus `MK_tools` static `GameEngine.MavgClusterPayload.v1` vertex/index payload rows through `MavgClusterCookVertex`, `vertex.data_hex`, `index.data_hex`, and per-material root/leaf fallback clusters; CPU selection, renderer execution, package streaming, deformation, ray tracing, and benchmark superiority remain unclaimed until later focused tasks add code and validation evidence.
 
 ## Current Repository Baseline
 
@@ -70,7 +70,9 @@ Implemented v1 responsibilities:
 - Define deterministic static cluster graph rows through `MavgClusterGraphDocument`.
 - Validate asset ids, source mesh refs, source/payload URIs, material partitions, page rows, cluster rows, bounds, child refs, parent/root hierarchy, geometric error monotonicity, resident fallback ancestry, draw ranges, duplicate ids, and package dependency edge kinds.
 - Serialize and deserialize `GameEngine.MavgClusterGraph.v1` text with canonical page/material/cluster ordering.
-- Produce first-party graph descriptor, placeholder payload evidence, changed-file rows, and `.geindex` package metadata through `MavgClusterCookRequest` / `MavgClusterCookResult`.
+- Produce first-party graph descriptor, deterministic static payload evidence, changed-file rows, and `.geindex` package metadata through `MavgClusterCookRequest` / `MavgClusterCookResult`.
+- Emit `MavgClusterCookVertex` position/normal/UV rows and indexed `MavgClusterCookTriangle` rows into `GameEngine.MavgClusterPayload.v1` `vertex.data_hex` / `index.data_hex` little-endian payload rows.
+- Build simple per-material root/leaf fallback clusters whose parent/root geometric error stays monotonic.
 - Reject invalid inputs, unsafe package paths, missing dependency package rows, and malformed graph/package rows before emitting changed files.
 
 Non-responsibilities:
@@ -81,7 +83,7 @@ Non-responsibilities:
 - Third-party simplifier ownership.
 - CPU selection and visible-hole prevention at runtime; those belong to the selector and residency tasks in the active LoD milestone.
 
-The active detailed LoD milestone is `docs/superpowers/plans/2026-06-05-mavg-runtime-lod-milestone-v1.md`. Its first graph checkpoint is implemented; draw-ready cook payloads, CPU selection, runtime resident-page evidence, range-aware conventional indexed draws, and scene submission remain pending tasks.
+The active detailed LoD milestone is `docs/superpowers/plans/2026-06-05-mavg-runtime-lod-milestone-v1.md`. Its graph and draw-ready static cook payload checkpoints are implemented; CPU selection, runtime resident-page evidence, range-aware conventional indexed draws, and scene submission remain pending tasks.
 
 ### Runtime Selection
 

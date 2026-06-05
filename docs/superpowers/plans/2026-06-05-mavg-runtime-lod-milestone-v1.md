@@ -22,8 +22,8 @@
 
 - `engine/assets/include/mirakana/assets/mavg_cluster_graph.hpp` exposes `MavgClusterGraphDocument`, `MavgClusterGraphCluster::lod_level`, page rows, material partitions, child ids, validation, canonicalization, text serialization, and text deserialization.
 - `engine/tools/include/mirakana/tools/mavg_cluster_cook.hpp` exposes `MavgClusterCookRequest`, `plan_mavg_cluster_graph_cook_package`, and `apply_mavg_cluster_graph_cook_package`.
-- The cook request currently receives triangle bounds only through `MavgClusterCookTriangle`; it does not carry draw-ready vertex/index payloads.
-- This milestone's first implementation checkpoint now adds graph parent ids, geometric error, resident fallback ancestors, and cluster draw ranges to `MavgClusterGraphCluster`. Screen-space selection thresholds, payload vertex/index byte ranges, runtime selection, renderer submission, and package streaming execution remain future tasks in this same milestone.
+- The cook request now carries static `MavgClusterCookVertex` rows plus indexed `MavgClusterCookTriangle` rows and emits deterministic `GameEngine.MavgClusterPayload.v1` `vertex.data_hex` / `index.data_hex` rows.
+- This milestone's first two implementation checkpoints now add graph parent ids, geometric error, resident fallback ancestors, cluster draw ranges, and draw-ready static cook payload rows. Screen-space selection thresholds, runtime selection, renderer submission, and package streaming execution remain future tasks in this same milestone.
 - `MK_runtime` already has resident package mount sets, resident catalog caches, byte/record budget checks, selected safe-point package streaming, and reviewed eviction-assisted commit helpers.
 - `MK_renderer` already has `MeshCommand`, `MeshGpuBinding`, `RendererStats`, `NullRenderer`, frame graph/RHI policies, GPU memory policy rows, and renderer quality evidence surfaces.
 - `MeshCommand` and `rhi::IRhiCommandList::draw_indexed` do not yet expose a selected index range, so a visible conventional MAVG LOD path must add range-aware indexed draw support before scene submission can draw only selected clusters.
@@ -381,7 +381,7 @@ Evidence: `MK_mavg_cluster_graph_tests` passes after implementation. Additional 
 
 - Modify: `tests/unit/tools_mavg_cluster_cook_tests.cpp`
 
-- [ ] Add failing tests for:
+- [x] Add failing tests for:
   - deterministic vertex/index payload bytes from a small static mesh
   - deterministic cluster draw ranges
   - root fallback cluster and child fallback ancestry
@@ -390,13 +390,13 @@ Evidence: `MK_mavg_cluster_graph_tests` passes after implementation. Additional 
   - invalid vertex/index reference
   - produced graph passes expanded `validate_mavg_cluster_graph`
 
-- [ ] Run:
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_tools_mavg_cluster_cook_tests
 ```
 
-Expected: fail before cook request/payload rows are expanded.
+Evidence: RED failed before `MavgClusterCookVertex`, triangle index rows, and `MavgClusterCookRequest::vertices` existed. The focused green loop passed after implementation with `MK_tools_mavg_cluster_cook_tests`.
 
 ### Task 4: Implement Static MAVG Cook Payload v1
 
@@ -424,19 +424,19 @@ struct MavgClusterCookTriangle {
 };
 ```
 
-- [ ] Add `std::vector<MavgClusterCookVertex> vertices` to `MavgClusterCookRequest`.
-- [ ] Emit deterministic payload bytes with little-endian float32 rows and uint32 index rows.
-- [ ] Assign `first_index`, `index_count`, and `vertex_base` per cluster.
-- [ ] Build a simple root/leaf hierarchy: root cluster is resident fallback; leaf clusters point at root until a later simplifier plan replaces this with multi-level hierarchy.
-- [ ] Compute `geometric_error` conservatively from cluster/root bounds radius so parent error is never smaller than child error.
-- [ ] Run:
+- [x] Add `std::vector<MavgClusterCookVertex> vertices` to `MavgClusterCookRequest`.
+- [x] Emit deterministic payload bytes with little-endian float32 rows and uint32 index rows.
+- [x] Assign `first_index`, `index_count`, and `vertex_base` per cluster.
+- [x] Build a simple per-material root/leaf hierarchy: each material root cluster is resident fallback; leaf clusters point at that root until a later simplifier plan replaces this with multi-level hierarchy.
+- [x] Compute `geometric_error` conservatively from cluster/root bounds radius so parent error is never smaller than child error.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_tools_mavg_cluster_cook_tests
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_mavg_cluster_graph_tests|MK_tools_mavg_cluster_cook_tests"
 ```
 
-Expected: graph and cook tests pass.
+Evidence: `tools/cmake.ps1 --build --preset dev --target MK_tools_mavg_cluster_cook_tests`, `tools/ctest.ps1 --preset dev --output-on-failure -R "MK_(mavg_cluster_graph|tools_mavg_cluster_cook)_tests"`, `tools/check-tidy.ps1 -Files engine/tools/asset/mavg_cluster_cook.cpp,tests/unit/tools_mavg_cluster_cook_tests.cpp -ReuseExistingFileApiReply`, `tools/check-public-api-boundaries.ps1`, `tools/format.ps1`, and `git diff --check` passed for the static cook payload checkpoint.
 
 ### Task 5: Add Failing CPU LOD Selector Tests
 

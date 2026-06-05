@@ -4,6 +4,8 @@
 #include "mirakana/tools/mavg_cluster_cook.hpp"
 
 #include <algorithm>
+#include <bit>
+#include <cmath>
 #include <limits>
 #include <sstream>
 #include <stdexcept>
@@ -16,6 +18,7 @@ namespace mirakana {
 namespace {
 
 constexpr std::uint64_t cluster_payload_stride_bytes = 64U;
+constexpr std::uint32_t mavg_payload_vertex_stride_bytes = 32U;
 
 [[nodiscard]] bool valid_token(std::string_view value) noexcept {
     return !value.empty() && value.find('\n') == std::string_view::npos && value.find('\r') == std::string_view::npos &&
@@ -68,20 +71,29 @@ void add_failure(std::vector<MavgClusterCookFailure>& failures, AssetId asset, s
     };
 }
 
-[[nodiscard]] bool valid_bounds(const MavgBounds3f& bounds) noexcept {
-    return bounds.min.x <= bounds.max.x && bounds.min.y <= bounds.max.y && bounds.min.z <= bounds.max.z;
+[[nodiscard]] bool valid_vec3(const MavgVec3f& value) noexcept {
+    return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
 }
 
-[[nodiscard]] std::uint32_t find_material_partition_for_triangle(const MavgClusterCookRequest& request,
-                                                                 std::uint32_t triangle_index) noexcept {
-    for (std::uint32_t index = 0; index < request.material_partitions.size(); ++index) {
-        const auto& partition = request.material_partitions[index];
-        if (triangle_index >= partition.first_triangle &&
-            triangle_index < partition.first_triangle + partition.triangle_count) {
-            return index;
-        }
-    }
-    return std::numeric_limits<std::uint32_t>::max();
+[[nodiscard]] bool valid_bounds(const MavgBounds3f& bounds) noexcept {
+    return valid_vec3(bounds.min) && valid_vec3(bounds.max) && bounds.min.x <= bounds.max.x &&
+           bounds.min.y <= bounds.max.y && bounds.min.z <= bounds.max.z;
+}
+
+[[nodiscard]] bool valid_vertex(const MavgClusterCookVertex& vertex) noexcept {
+    return valid_vec3(vertex.position) && valid_vec3(vertex.normal) && std::isfinite(vertex.u) &&
+           std::isfinite(vertex.v);
+}
+
+[[nodiscard]] bool valid_triangle_indices(const MavgClusterCookTriangle& triangle, std::size_t vertex_count) noexcept {
+    return triangle.i0 < vertex_count && triangle.i1 < vertex_count && triangle.i2 < vertex_count;
+}
+
+[[nodiscard]] float bounds_radius(const MavgBounds3f& bounds) noexcept {
+    const auto x = bounds.max.x - bounds.min.x;
+    const auto y = bounds.max.y - bounds.min.y;
+    const auto z = bounds.max.z - bounds.min.z;
+    return std::sqrt((x * x) + (y * y) + (z * z)) * 0.5F;
 }
 
 [[nodiscard]] bool package_row_exists(const MavgClusterCookRequest& request, AssetId asset) noexcept {
@@ -133,9 +145,20 @@ void validate_request(const MavgClusterCookRequest& request, std::vector<MavgClu
     if (request.triangles.empty()) {
         add_failure(failures, request.graph_asset, request.graph_output_path, "mavg triangle input is empty");
     }
+    if (request.vertices.empty()) {
+        add_failure(failures, request.graph_asset, request.graph_output_path, "mavg vertex input is empty");
+    }
+    for (const auto& vertex : request.vertices) {
+        if (!valid_vertex(vertex)) {
+            add_failure(failures, request.graph_asset, request.graph_output_path, "mavg vertex input is invalid");
+        }
+    }
     for (const auto& triangle : request.triangles) {
         if (!valid_bounds(triangle.bounds)) {
             add_failure(failures, request.graph_asset, request.graph_output_path, "mavg triangle bounds are invalid");
+        }
+        if (!valid_triangle_indices(triangle, request.vertices.size())) {
+            add_failure(failures, request.graph_asset, request.graph_output_path, "mavg triangle index is invalid");
         }
     }
     if (request.material_partitions.empty()) {
@@ -158,43 +181,97 @@ void validate_request(const MavgClusterCookRequest& request, std::vector<MavgClu
     }
 }
 
-[[nodiscard]] std::vector<MavgClusterGraphCluster> build_clusters(const MavgClusterCookRequest& request) {
+struct MavgClusterBuildResult {
     std::vector<MavgClusterGraphCluster> clusters;
-    const auto cluster_count = static_cast<std::uint32_t>(
-        (request.triangles.size() + request.target_cluster_triangles - 1U) / request.target_cluster_triangles);
-    clusters.reserve(cluster_count);
+    std::vector<MavgClusterGraphMaterialPartition> material_partitions;
+};
+
+[[nodiscard]] MavgBounds3f merge_triangle_range_bounds(const MavgClusterCookRequest& request,
+                                                       std::uint32_t first_triangle,
+                                                       std::uint32_t triangle_count) noexcept {
+    auto bounds = request.triangles[first_triangle].bounds;
+    for (std::uint32_t offset = 1; offset < triangle_count; ++offset) {
+        bounds = merge_bounds(bounds, request.triangles[first_triangle + offset].bounds);
+    }
+    return bounds;
+}
+
+[[nodiscard]] std::uint32_t cluster_page(std::uint32_t cluster_index, std::uint32_t clusters_per_page) noexcept {
+    return cluster_index / clusters_per_page;
+}
+
+[[nodiscard]] std::uint32_t local_cluster_index(std::uint32_t cluster_index, std::uint32_t clusters_per_page) noexcept {
+    return cluster_index % clusters_per_page;
+}
+
+[[nodiscard]] MavgClusterBuildResult build_clusters(const MavgClusterCookRequest& request) {
+    MavgClusterBuildResult result;
     const auto clusters_per_page =
         static_cast<std::uint32_t>(std::max<std::uint64_t>(1U, request.page_size_bytes / cluster_payload_stride_bytes));
-    for (std::uint32_t cluster_index = 0; cluster_index < cluster_count; ++cluster_index) {
-        const auto first_triangle = cluster_index * request.target_cluster_triangles;
-        const auto remaining = static_cast<std::uint32_t>(request.triangles.size() - first_triangle);
-        const auto triangle_count = std::min(request.target_cluster_triangles, remaining);
-        auto bounds = request.triangles[first_triangle].bounds;
-        for (std::uint32_t offset = 1; offset < triangle_count; ++offset) {
-            bounds = merge_bounds(bounds, request.triangles[first_triangle + offset].bounds);
+    for (std::uint32_t partition_index = 0; partition_index < request.material_partitions.size(); ++partition_index) {
+        const auto& partition = request.material_partitions[partition_index];
+        const auto root_cluster_index = static_cast<std::uint32_t>(result.clusters.size());
+        const auto leaf_count =
+            (partition.triangle_count + request.target_cluster_triangles - 1U) / request.target_cluster_triangles;
+        std::vector<std::uint32_t> children;
+        children.reserve(leaf_count);
+        for (std::uint32_t leaf = 0; leaf < leaf_count; ++leaf) {
+            children.push_back(root_cluster_index + leaf + 1U);
         }
-        const auto first_index = first_triangle * 3U;
-        const auto index_count = triangle_count * 3U;
-        clusters.push_back(MavgClusterGraphCluster{
-            .cluster_index = cluster_index,
-            .page_index = cluster_index / clusters_per_page,
-            .local_cluster_index = cluster_index % clusters_per_page,
-            .lod_level = 0U,
-            .triangle_count = triangle_count,
-            .vertex_count = triangle_count * 3U,
-            .bounds = bounds,
-            .material_partition = find_material_partition_for_triangle(request, first_triangle),
-            .parent_cluster_index = cluster_index,
-            .has_parent = false,
-            .resident_fallback_cluster_index = cluster_index,
-            .geometric_error = 0.0F,
-            .first_index = first_index,
-            .index_count = index_count,
-            .vertex_base = static_cast<std::int32_t>(first_index),
-            .children = {},
+
+        const auto root_bounds =
+            merge_triangle_range_bounds(request, partition.first_triangle, partition.triangle_count);
+        result.material_partitions.push_back(MavgClusterGraphMaterialPartition{
+            .material = partition.material,
+            .first_cluster = root_cluster_index,
+            .cluster_count = leaf_count + 1U,
         });
+        result.clusters.push_back(MavgClusterGraphCluster{
+            .cluster_index = root_cluster_index,
+            .page_index = cluster_page(root_cluster_index, clusters_per_page),
+            .local_cluster_index = local_cluster_index(root_cluster_index, clusters_per_page),
+            .lod_level = 0U,
+            .triangle_count = partition.triangle_count,
+            .vertex_count = static_cast<std::uint32_t>(request.vertices.size()),
+            .bounds = root_bounds,
+            .material_partition = partition_index,
+            .parent_cluster_index = root_cluster_index,
+            .has_parent = false,
+            .resident_fallback_cluster_index = root_cluster_index,
+            .geometric_error = bounds_radius(root_bounds),
+            .first_index = partition.first_triangle * 3U,
+            .index_count = partition.triangle_count * 3U,
+            .vertex_base = 0,
+            .children = std::move(children),
+        });
+
+        for (std::uint32_t leaf = 0; leaf < leaf_count; ++leaf) {
+            const auto leaf_cluster_index = static_cast<std::uint32_t>(result.clusters.size());
+            const auto first_triangle = partition.first_triangle + (leaf * request.target_cluster_triangles);
+            const auto remaining = partition.triangle_count - (leaf * request.target_cluster_triangles);
+            const auto triangle_count = std::min(request.target_cluster_triangles, remaining);
+            const auto bounds = merge_triangle_range_bounds(request, first_triangle, triangle_count);
+            result.clusters.push_back(MavgClusterGraphCluster{
+                .cluster_index = leaf_cluster_index,
+                .page_index = cluster_page(leaf_cluster_index, clusters_per_page),
+                .local_cluster_index = local_cluster_index(leaf_cluster_index, clusters_per_page),
+                .lod_level = 1U,
+                .triangle_count = triangle_count,
+                .vertex_count = triangle_count * 3U,
+                .bounds = bounds,
+                .material_partition = partition_index,
+                .parent_cluster_index = root_cluster_index,
+                .has_parent = true,
+                .resident_fallback_cluster_index = root_cluster_index,
+                .geometric_error = 0.0F,
+                .first_index = first_triangle * 3U,
+                .index_count = triangle_count * 3U,
+                .vertex_base = 0,
+                .children = {},
+            });
+        }
     }
-    return clusters;
+    return result;
 }
 
 [[nodiscard]] std::vector<MavgClusterGraphPage> build_pages(std::uint32_t cluster_count,
@@ -217,25 +294,8 @@ void validate_request(const MavgClusterCookRequest& request, std::vector<MavgClu
     return pages;
 }
 
-[[nodiscard]] std::vector<MavgClusterGraphMaterialPartition>
-build_material_partitions(const MavgClusterCookRequest& request) {
-    std::vector<MavgClusterGraphMaterialPartition> partitions;
-    partitions.reserve(request.material_partitions.size());
-    for (const auto& partition : request.material_partitions) {
-        const auto first_cluster = partition.first_triangle / request.target_cluster_triangles;
-        const auto last_cluster =
-            (partition.first_triangle + partition.triangle_count - 1U) / request.target_cluster_triangles;
-        partitions.push_back(MavgClusterGraphMaterialPartition{
-            .material = partition.material,
-            .first_cluster = first_cluster,
-            .cluster_count = last_cluster - first_cluster + 1U,
-        });
-    }
-    return partitions;
-}
-
 [[nodiscard]] MavgClusterGraphDocument build_graph_document(const MavgClusterCookRequest& request) {
-    auto clusters = build_clusters(request);
+    auto built = build_clusters(request);
     return canonicalize_mavg_cluster_graph(MavgClusterGraphDocument{
         .asset = request.graph_asset,
         .source_mesh = request.source_mesh,
@@ -243,20 +303,83 @@ build_material_partitions(const MavgClusterCookRequest& request) {
         .cluster_payload_uri = request.payload_output_path,
         .target_cluster_triangles = request.target_cluster_triangles,
         .page_size_bytes = request.page_size_bytes,
-        .pages = build_pages(static_cast<std::uint32_t>(clusters.size()), request.page_size_bytes),
-        .material_partitions = build_material_partitions(request),
-        .clusters = std::move(clusters),
+        .pages = build_pages(static_cast<std::uint32_t>(built.clusters.size()), request.page_size_bytes),
+        .material_partitions = std::move(built.material_partitions),
+        .clusters = std::move(built.clusters),
     });
 }
 
-[[nodiscard]] std::string serialize_payload(AssetId graph_asset, const MavgClusterGraphDocument& graph) {
+void append_le_u32(std::vector<std::uint8_t>& bytes, std::uint32_t value) {
+    bytes.push_back(static_cast<std::uint8_t>(value & 0xffU));
+    bytes.push_back(static_cast<std::uint8_t>((value >> 8U) & 0xffU));
+    bytes.push_back(static_cast<std::uint8_t>((value >> 16U) & 0xffU));
+    bytes.push_back(static_cast<std::uint8_t>((value >> 24U) & 0xffU));
+}
+
+void append_le_f32(std::vector<std::uint8_t>& bytes, float value) {
+    append_le_u32(bytes, std::bit_cast<std::uint32_t>(value));
+}
+
+void append_vertex(std::vector<std::uint8_t>& bytes, const MavgClusterCookVertex& vertex) {
+    append_le_f32(bytes, vertex.position.x);
+    append_le_f32(bytes, vertex.position.y);
+    append_le_f32(bytes, vertex.position.z);
+    append_le_f32(bytes, vertex.normal.x);
+    append_le_f32(bytes, vertex.normal.y);
+    append_le_f32(bytes, vertex.normal.z);
+    append_le_f32(bytes, vertex.u);
+    append_le_f32(bytes, vertex.v);
+}
+
+[[nodiscard]] std::string hex_encode(const std::vector<std::uint8_t>& bytes) {
+    constexpr char digits[] = "0123456789abcdef";
+    std::string encoded;
+    encoded.reserve(bytes.size() * 2U);
+    for (const auto byte : bytes) {
+        encoded.push_back(digits[(byte >> 4U) & 0x0fU]);
+        encoded.push_back(digits[byte & 0x0fU]);
+    }
+    return encoded;
+}
+
+[[nodiscard]] std::string vertex_data_hex(const MavgClusterCookRequest& request) {
+    std::vector<std::uint8_t> bytes;
+    bytes.reserve(request.vertices.size() * mavg_payload_vertex_stride_bytes);
+    for (const auto& vertex : request.vertices) {
+        append_vertex(bytes, vertex);
+    }
+    return hex_encode(bytes);
+}
+
+[[nodiscard]] std::string index_data_hex(const MavgClusterCookRequest& request) {
+    std::vector<std::uint8_t> bytes;
+    bytes.reserve(request.triangles.size() * 3U * sizeof(std::uint32_t));
+    for (const auto& triangle : request.triangles) {
+        append_le_u32(bytes, triangle.i0);
+        append_le_u32(bytes, triangle.i1);
+        append_le_u32(bytes, triangle.i2);
+    }
+    return hex_encode(bytes);
+}
+
+[[nodiscard]] std::string serialize_payload(AssetId graph_asset, const MavgClusterGraphDocument& graph,
+                                            const MavgClusterCookRequest& request) {
     std::ostringstream output;
     output << "format=GameEngine.MavgClusterPayload.v1\n";
     output << "asset.id=" << graph_asset.value << '\n';
+    output << "vertex.count=" << request.vertices.size() << '\n';
+    output << "vertex.stride_bytes=" << mavg_payload_vertex_stride_bytes << '\n';
+    output << "vertex.data_hex=" << vertex_data_hex(request) << '\n';
+    output << "index.count=" << (request.triangles.size() * 3U) << '\n';
+    output << "index.format=uint32\n";
+    output << "index.data_hex=" << index_data_hex(request) << '\n';
     output << "cluster.count=" << graph.clusters.size() << '\n';
     for (std::size_t index = 0; index < graph.clusters.size(); ++index) {
         output << "cluster." << index << ".index=" << graph.clusters[index].cluster_index << '\n';
         output << "cluster." << index << ".triangles=" << graph.clusters[index].triangle_count << '\n';
+        output << "cluster." << index << ".first_index=" << graph.clusters[index].first_index << '\n';
+        output << "cluster." << index << ".index_count=" << graph.clusters[index].index_count << '\n';
+        output << "cluster." << index << ".vertex_base=" << graph.clusters[index].vertex_base << '\n';
     }
     return output.str();
 }
@@ -350,7 +473,7 @@ MavgClusterCookResult plan_mavg_cluster_graph_cook_package(const MavgClusterCook
             return result;
         }
         result.graph_content = serialize_mavg_cluster_graph_document(result.graph);
-        result.payload_content = serialize_payload(request.graph_asset, result.graph);
+        result.payload_content = serialize_payload(request.graph_asset, result.graph, request);
         result.package_index = build_package_index(request, result.graph_content);
         result.package_index_content = serialize_asset_cooked_package_index(result.package_index);
         result.changed_files.push_back(changed_file(request.graph_output_path, result.graph_content));
