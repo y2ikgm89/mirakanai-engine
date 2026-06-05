@@ -16,7 +16,7 @@
 
 **Date:** 2026-05-27
 
-**Latest audit:** 2026-06-06. This audit keeps the plan as a candidate master roadmap and updates the clean-break baseline after first-party desktop platform, first-party UI/editor, environment, performance-foundation work, MAVG runtime LOD closeout, autonomous page streaming worker proof, and deterministic automatic eviction candidate ordering landed.
+**Latest audit:** 2026-06-06. This audit keeps the plan as a candidate master roadmap and updates the clean-break baseline after first-party desktop platform, first-party UI/editor, environment, performance-foundation work, MAVG runtime LOD closeout, autonomous page streaming worker proof, deterministic automatic eviction candidate ordering, and caller-supplied recency ordering landed.
 
 ## Master Plan Decision
 
@@ -37,8 +37,8 @@ This addendum is the current execution baseline for any future MAVG child plan.
 
 Repository state checked during this audit:
 
-- `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` now selects the stacked LoD milestone, `docs/superpowers/plans/2026-06-05-mavg-runtime-lod-milestone-v1.md`, with `recommendedNextPlan.id = mavg-runtime-lod-milestone-v1` and `unsupportedProductionGaps = []`.
-- MAVG remains a long-range roadmap. The active milestone has implemented only the hierarchy/error/fallback/draw-range graph checkpoint so far; cook payload rows, CPU selection, renderer execution, streaming, deformation, ray tracing, and benchmark superiority remain unimplemented and unclaimed.
+- `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` now returns to `docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`, with `recommendedNextPlan.id = next-production-gap-selection` and `unsupportedProductionGaps = []`, after the stacked LoD milestone plus follow-up automatic eviction and caller-supplied recency child `mavg-resident-page-recency-eviction-order-v1`.
+- MAVG remains a long-range roadmap. The completed stacked LoD work has implemented graph/payload/selection/page-streaming/conventional-renderer evidence, selected D3D12 indirect/GPU-culling proof rows, a joined page streaming worker boundary, deterministic automatic eviction candidate ordering, and caller-supplied recency ordering; runtime-inferred LRU/frequency, full production streaming/residency services, DirectStorage native queue/file IO execution, deformation, ray tracing, and benchmark superiority remain unimplemented and unclaimed.
 - SDL3 is not an active dependency or supported runtime/editor/audio path. The completed first-party desktop platform milestone replaced SDL3 surfaces with `MK_platform_win32`, `MK_runtime_host_win32`, `MK_runtime_host_win32_presentation`, and `MK_audio_wasapi`.
 - The active visible editor shell is first-party retained UI over private Win32, Direct3D 12, DirectWrite, TSF, and UIA adapters. Dear ImGui, SDL3, Qt, Slint, RmlUi, and UI middleware must not be reintroduced for MAVG tools or benchmark UI.
 - `MK_environment` is now a renderer and scene-renderer dependency. MAVG benchmark scenes must account for selected sky, fog, cloud, rain, time-of-day, and weather-blending evidence without implying broad `environment_ready`, snow package readiness, volumetric-cloud package readiness, Vulkan/Metal parity, or broad environment optimization.
@@ -103,7 +103,7 @@ Existing usable foundations:
 - `MK_editor_core`, `mirakana::ui`, `MK_ui`, and `MK_ui_renderer` are the active first-party UI/editor foundations. MAVG editor-facing diagnostics must use retained first-party rows and private native adapters.
 - `MK_environment` provides profile validation/text IO/package rows, scene/runtime environment profile binding, renderer policy planning, selected D3D12 sky/fog/cloud/rain evidence, and host-gated Vulkan height-fog proof. MAVG benchmark content should include environment load but avoid broad environment-ready claims.
 - Performance foundation rows exist for performance budget evidence, memory diagnostics, scratch arenas, job execution, CPU placement, SIMD/AVX2 dispatch, long-running readiness, CPU profiling matrix, and optional GPU compute review. MAVG readiness claims must cite or extend these rows rather than inventing parallel diagnostics.
-- MAVG runtime streaming foundations now include reviewed page request planning, selected visible/fallback ancestor protection, safe-point/background dispatch planning, a joined engine-owned page streaming worker boundary, and deterministic resident-page automatic eviction candidate ordering through `plan_runtime_mavg_page_streaming_automatic_evictions`.
+- MAVG runtime streaming foundations now include reviewed page request planning, selected visible/fallback ancestor protection, safe-point/background dispatch planning, a joined engine-owned page streaming worker boundary, deterministic resident-page automatic eviction candidate ordering through `plan_runtime_mavg_page_streaming_automatic_evictions`, and caller-supplied recency ordering through `RuntimeMavgPageStreamingRecencyRow`, `RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::caller_supplied_recency`, and `resident_page_last_used_generation`.
 - `engine/runtime/include/mirakana/runtime/entity_scale_culling.hpp` has value-only LOD band, visibility, draw/update cost, and budget planning.
 - `engine/renderer/include/mirakana/renderer/scene_scale_policy.hpp` has backend-neutral scene scale, culling, batching, and LOD policy rows.
 - `engine/runtime_rhi/include/mirakana/runtime_rhi/runtime_upload.hpp` has runtime mesh, skinned mesh, morph mesh, and texture upload evidence.
@@ -119,7 +119,7 @@ Important gaps:
 - No cluster simplification/error metric.
 - No GPU cluster traversal or visibility buffer.
 - No mesh shader or indirect clustered geometry path.
-- No full production cluster page streaming/residency service beyond the current reviewed request planning, joined worker boundary, and deterministic resident-page automatic eviction candidate ordering.
+- No full production cluster page streaming/residency service beyond the current reviewed request planning, joined worker boundary, deterministic resident-page automatic eviction candidate ordering, and caller-supplied recency ordering; runtime-inferred LRU/frequency and GPU memory pressure integration remain future work.
 - No unified raster/ray tracing cluster payload.
 - No deformation-safe cluster bounds or dynamic update policy.
 - No benchmark harness capable of supporting a "beyond Nanite-like LOD" claim.

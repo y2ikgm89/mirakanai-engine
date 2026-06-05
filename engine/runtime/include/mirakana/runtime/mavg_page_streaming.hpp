@@ -53,6 +53,10 @@ enum class RuntimeMavgPageStreamingDiagnosticCode : std::uint8_t {
     unsupported_worker_dispatch_mode,
     worker_row_failed,
     worker_start_failed,
+    recency_graph_mismatch,
+    invalid_recency_row,
+    duplicate_recency_row,
+    missing_recency_row,
 };
 
 struct RuntimeMavgPageStreamingDiagnostic {
@@ -216,6 +220,18 @@ struct RuntimeMavgPageStreamingSelectedClusterRow {
     std::uint32_t cluster_index{0};
 };
 
+enum class RuntimeMavgPageStreamingAutomaticEvictionPolicyKind : std::uint8_t {
+    deterministic_page_index = 0,
+    caller_supplied_recency,
+};
+
+struct RuntimeMavgPageStreamingRecencyRow {
+    AssetId graph_asset;
+    std::uint32_t page_index{0};
+    RuntimeResidentPackageMountIdV2 mount_id;
+    std::uint64_t resident_page_last_used_generation{0};
+};
+
 struct RuntimeMavgPageStreamingEvictionReviewDesc {
     AssetId graph_asset;
     const MavgClusterGraphDocument* graph{nullptr};
@@ -232,6 +248,9 @@ struct RuntimeMavgPageStreamingAutomaticEvictionPlanDesc {
     const MavgClusterGraphDocument* graph{nullptr};
     std::span<const RuntimeMavgPageStreamingSelectedClusterRow> selected_clusters;
     std::span<const RuntimeMavgResidentPageMountRow> resident_page_mounts;
+    RuntimeMavgPageStreamingAutomaticEvictionPolicyKind policy_kind{
+        RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::deterministic_page_index};
+    std::span<const RuntimeMavgPageStreamingRecencyRow> recency_rows;
     std::span<const RuntimeResidentPackageMountIdV2> caller_protected_mount_ids;
     RuntimeResourceResidencyBudgetV2 target_budget{};
     RuntimePackageMountOverlay overlay{RuntimePackageMountOverlay::last_mount_wins};
@@ -247,9 +266,13 @@ struct RuntimeMavgPageStreamingEvictionReviewResult {
     std::size_t duplicate_protected_mount_count{0};
     std::size_t protected_eviction_candidate_skip_count{0};
     std::size_t automatic_eviction_candidate_count{0};
+    std::size_t recency_eviction_candidate_count{0};
+    std::size_t missing_recency_row_count{0};
+    std::size_t duplicate_recency_row_count{0};
     bool invoked_eviction_plan{false};
     bool inferred_eviction_policy{false};
     bool planned_automatic_eviction_policy{false};
+    bool applied_caller_supplied_recency_policy{false};
     bool invoked_file_io{false};
     bool mutated_mount_set{false};
     bool touched_renderer_or_rhi_handles{false};
