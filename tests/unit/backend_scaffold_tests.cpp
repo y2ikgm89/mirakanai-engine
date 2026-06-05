@@ -5,6 +5,7 @@
 
 #include "mirakana/assets/material.hpp"
 #include "mirakana/renderer/environment_fog_policy.hpp"
+#include "mirakana/renderer/physical_sky_policy.hpp"
 #include "mirakana/renderer/rhi_frame_renderer.hpp"
 #include "mirakana/renderer/rhi_postprocess_frame_renderer.hpp"
 #include "mirakana/renderer/shadow_map.hpp"
@@ -5974,6 +5975,195 @@ MK_TEST("vulkan rhi device bridge applies height fog from scene depth and enviro
     MK_REQUIRE(rhi->stats().indexed_draw_calls == 1);
     MK_REQUIRE(rhi->stats().texture_buffer_copies == 1);
     MK_REQUIRE(rhi->stats().buffer_writes == 2);
+#endif
+}
+
+MK_TEST("vulkan rhi device bridge applies physical sky constants when configured") {
+#if defined(_WIN32) || defined(__linux__)
+    const auto sky_vertex_artifact = load_spirv_artifact_from_environment("MK_VULKAN_TEST_PHYSICAL_SKY_VERTEX_SPV");
+    const auto sky_fragment_artifact = load_spirv_artifact_from_environment("MK_VULKAN_TEST_PHYSICAL_SKY_FRAGMENT_SPV");
+    if (!sky_vertex_artifact.configured && !sky_fragment_artifact.configured) {
+        return;
+    }
+
+    MK_REQUIRE(sky_vertex_artifact.configured);
+    MK_REQUIRE(sky_fragment_artifact.configured);
+    MK_REQUIRE(sky_vertex_artifact.diagnostic == "loaded");
+    MK_REQUIRE(sky_fragment_artifact.diagnostic == "loaded");
+
+    const auto sky_vertex_validation =
+        mirakana::rhi::vulkan::validate_spirv_shader_artifact(mirakana::rhi::vulkan::VulkanSpirvShaderArtifactDesc{
+            .stage = mirakana::rhi::ShaderStage::vertex,
+            .bytecode = sky_vertex_artifact.words.data(),
+            .bytecode_size = sky_vertex_artifact.words.size() * sizeof(std::uint32_t),
+        });
+    const auto sky_fragment_validation =
+        mirakana::rhi::vulkan::validate_spirv_shader_artifact(mirakana::rhi::vulkan::VulkanSpirvShaderArtifactDesc{
+            .stage = mirakana::rhi::ShaderStage::fragment,
+            .bytecode = sky_fragment_artifact.words.data(),
+            .bytecode_size = sky_fragment_artifact.words.size() * sizeof(std::uint32_t),
+        });
+    MK_REQUIRE(sky_vertex_validation.valid);
+    MK_REQUIRE(sky_fragment_validation.valid);
+
+    mirakana::rhi::vulkan::VulkanInstanceCreateDesc instance_desc;
+    instance_desc.application_name = "GameEngineVulkanRhiConfiguredPhysicalSky";
+    instance_desc.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 3);
+    instance_desc.optional_extensions = {"VK_EXT_debug_utils"};
+    instance_desc.enable_validation = true;
+
+    const auto loader_desc = mirakana::rhi::vulkan::VulkanLoaderProbeDesc{
+        .host = mirakana::rhi::current_rhi_host_platform(),
+    };
+    const auto instance_capabilities =
+        mirakana::rhi::vulkan::probe_runtime_instance_capabilities(loader_desc, instance_desc);
+    if (!instance_capabilities.instance_plan.supported) {
+        MK_REQUIRE(!instance_capabilities.instance_plan.diagnostic.empty());
+        return;
+    }
+    MK_REQUIRE(instance_capabilities.instance_plan.validation_enabled);
+    MK_REQUIRE(instance_capabilities.instance_plan.enabled_layers.size() == 1);
+    MK_REQUIRE(instance_capabilities.instance_plan.enabled_layers[0] == "VK_LAYER_KHRONOS_validation");
+
+#if defined(_WIN32)
+    HiddenVulkanTestWindow window;
+    if (!window.valid()) {
+        return;
+    }
+    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    auto device_result = mirakana::rhi::vulkan::create_runtime_device(loader_desc, instance_desc, {}, surface);
+#else
+    auto device_result = mirakana::rhi::vulkan::create_runtime_device(loader_desc, instance_desc, {});
+#endif
+    if (!device_result.created) {
+        MK_REQUIRE(!device_result.diagnostic.empty());
+        return;
+    }
+
+    auto rhi =
+        mirakana::rhi::vulkan::create_rhi_device(std::move(device_result.device), ready_vulkan_rhi_mapping_plan());
+    MK_REQUIRE(rhi != nullptr);
+
+    const auto sky_constants = rhi->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = mirakana::physical_sky_constants_byte_size(),
+        .usage = mirakana::rhi::BufferUsage::uniform | mirakana::rhi::BufferUsage::copy_source,
+    });
+
+    mirakana::PhysicalSkyPolicyDesc sky_desc;
+    sky_desc.atmosphere.rayleigh_density_height_km = 4.0F;
+    sky_desc.atmosphere.mie_density_height_km = 1.0F;
+    sky_desc.atmosphere.mie_anisotropy = 0.25F;
+    sky_desc.atmosphere.ozone_density_height_km = 16.0F;
+    sky_desc.atmosphere.sun_angular_radius_radians = 0.00465F;
+    sky_desc.atmosphere.solar_illuminance_lux = 20000.0F;
+    sky_desc.shader_contract_evidence_ready = true;
+    sky_desc.package_evidence_ready = true;
+    sky_desc.execution_evidence_ready = true;
+    sky_desc.request_ready_promotion = true;
+    const auto sky_plan = mirakana::plan_physical_sky_policy(sky_desc);
+    MK_REQUIRE(sky_plan.ready());
+
+    std::array<std::uint8_t, mirakana::physical_sky_constants_byte_size()> sky_constants_bytes{};
+    mirakana::pack_physical_sky_constants(sky_constants_bytes, sky_desc);
+    rhi->write_buffer(sky_constants, 0, sky_constants_bytes);
+
+    const auto sky_vertex_shader = rhi->create_shader(mirakana::rhi::ShaderDesc{
+        .stage = mirakana::rhi::ShaderStage::vertex,
+        .entry_point = "vs_main",
+        .bytecode_size = sky_vertex_artifact.words.size() * sizeof(std::uint32_t),
+        .bytecode = sky_vertex_artifact.words.data(),
+    });
+    const auto sky_fragment_shader = rhi->create_shader(mirakana::rhi::ShaderDesc{
+        .stage = mirakana::rhi::ShaderStage::fragment,
+        .entry_point = "ps_main",
+        .bytecode_size = sky_fragment_artifact.words.size() * sizeof(std::uint32_t),
+        .bytecode = sky_fragment_artifact.words.data(),
+    });
+
+    const auto sky_set_layout = rhi->create_descriptor_set_layout(mirakana::rhi::DescriptorSetLayoutDesc{{
+        mirakana::rhi::DescriptorBindingDesc{
+            .binding = mirakana::physical_sky_constants_binding(),
+            .type = mirakana::rhi::DescriptorType::uniform_buffer,
+            .count = 1,
+            .stages = mirakana::rhi::ShaderStageVisibility::fragment,
+        },
+    }});
+    const auto sky_pipeline_layout = rhi->create_pipeline_layout(
+        mirakana::rhi::PipelineLayoutDesc{.descriptor_sets = {sky_set_layout}, .push_constant_bytes = 0});
+    const auto sky_pipeline = rhi->create_graphics_pipeline(mirakana::rhi::GraphicsPipelineDesc{
+        .layout = sky_pipeline_layout,
+        .vertex_shader = sky_vertex_shader,
+        .fragment_shader = sky_fragment_shader,
+        .color_format = mirakana::rhi::Format::rgba8_unorm,
+        .depth_format = mirakana::rhi::Format::unknown,
+        .topology = mirakana::rhi::PrimitiveTopology::triangle_list,
+    });
+
+    const auto sky_target = rhi->create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::copy_source,
+    });
+    const auto sky_set = rhi->allocate_descriptor_set(sky_set_layout);
+    rhi->update_descriptor_set(mirakana::rhi::DescriptorWrite{
+        .set = sky_set,
+        .binding = mirakana::physical_sky_constants_binding(),
+        .array_element = 0,
+        .resources = {mirakana::rhi::DescriptorResource::buffer(mirakana::rhi::DescriptorType::uniform_buffer,
+                                                                sky_constants)},
+    });
+
+    const auto readback = rhi->create_buffer(
+        mirakana::rhi::BufferDesc{.size_bytes = 256 * 64, .usage = mirakana::rhi::BufferUsage::copy_destination});
+    const mirakana::rhi::BufferTextureCopyRegion readback_footprint{
+        .buffer_offset = 0,
+        .buffer_row_length = 64,
+        .buffer_image_height = 64,
+        .texture_offset = mirakana::rhi::Offset3D{.x = 0, .y = 0, .z = 0},
+        .texture_extent = mirakana::rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+    };
+
+    auto commands = rhi->begin_command_list(mirakana::rhi::QueueKind::graphics);
+    commands->transition_texture(sky_target, mirakana::rhi::ResourceState::undefined,
+                                 mirakana::rhi::ResourceState::render_target);
+    commands->begin_render_pass(mirakana::rhi::RenderPassDesc{
+        .color =
+            mirakana::rhi::RenderPassColorAttachment{
+                .texture = sky_target,
+                .load_action = mirakana::rhi::LoadAction::clear,
+                .store_action = mirakana::rhi::StoreAction::store,
+                .swapchain_frame = mirakana::rhi::SwapchainFrameHandle{},
+                .clear_color = mirakana::rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
+            },
+    });
+    commands->bind_graphics_pipeline(sky_pipeline);
+    commands->bind_descriptor_set(sky_pipeline_layout, 0, sky_set);
+    commands->draw(3, 1);
+    commands->end_render_pass();
+    commands->transition_texture(sky_target, mirakana::rhi::ResourceState::render_target,
+                                 mirakana::rhi::ResourceState::copy_source);
+    commands->copy_texture_to_buffer(sky_target, readback, readback_footprint);
+    commands->close();
+
+    const auto fence = rhi->submit(*commands);
+    rhi->wait(fence);
+
+    const auto bytes = rhi->read_buffer(readback, 0, 256 * 64);
+    const auto center_pixel = (32U * 256U) + (32U * 4U);
+    const auto horizon_pixel = (48U * 256U) + (32U * 4U);
+    MK_REQUIRE(bytes.size() == 256 * 64);
+    MK_REQUIRE(bytes.at(center_pixel + 0U) >= 55U);
+    MK_REQUIRE(bytes.at(center_pixel + 1U) >= 95U);
+    MK_REQUIRE(bytes.at(center_pixel + 2U) >= 95U);
+    MK_REQUIRE(bytes.at(center_pixel + 3U) == 255U);
+    MK_REQUIRE(bytes.at(horizon_pixel + 1U) >= bytes.at(center_pixel + 1U));
+    MK_REQUIRE(bytes.at(horizon_pixel + 2U) >= bytes.at(center_pixel + 2U));
+    MK_REQUIRE(bytes.at(horizon_pixel + 3U) == 255U);
+    MK_REQUIRE(rhi->stats().descriptor_writes == 1);
+    MK_REQUIRE(rhi->stats().descriptor_sets_bound == 1);
+    MK_REQUIRE(rhi->stats().draw_calls == 1);
+    MK_REQUIRE(rhi->stats().texture_buffer_copies == 1);
+    MK_REQUIRE(rhi->stats().buffer_writes == 1);
 #endif
 }
 

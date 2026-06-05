@@ -29,6 +29,11 @@ int main() {
     scene_renderer.environment_fog.density = 0.08F;
     scene_renderer.environment_fog.scene_depth_available = true;
     scene_renderer.environment_fog.shader_contract_evidence_ready = true;
+    scene_renderer.enable_physical_sky_package_evidence = true;
+    scene_renderer.physical_sky.shader_contract_evidence_ready = true;
+    scene_renderer.physical_sky.package_evidence_ready = true;
+    scene_renderer.physical_sky.execution_evidence_ready = true;
+    scene_renderer.physical_sky.request_ready_promotion = true;
     scene_renderer.enable_cloud_layer_package_evidence = true;
     scene_renderer.cloud_layer.layer.coverage = 0.45F;
     scene_renderer.cloud_layer.layer.opacity = 0.8F;
@@ -122,6 +127,14 @@ int main() {
     report.environment_fog_requested = true;
     report.environment_fog_constant_buffer_ready = true;
     report.environment_fog_constant_buffer_bytes = mirakana::environment_fog_constants_byte_size();
+    report.physical_sky_requested = true;
+    report.physical_sky_shader_contract_evidence_ready = true;
+    report.physical_sky_package_evidence_ready = true;
+    report.physical_sky_execution_evidence_ready = true;
+    report.physical_sky_constant_buffer_ready = true;
+    report.physical_sky_constant_buffer_bytes = mirakana::physical_sky_constants_byte_size();
+    report.physical_sky_constant_layout_rows = 8;
+    report.physical_sky_lut_intent_rows = 4;
     report.cloud_layer_requested = true;
     report.cloud_layer_shader_contract_evidence_ready = true;
     report.cloud_layer_package_evidence_ready = true;
@@ -169,6 +182,16 @@ int main() {
     const auto d3d12_postprocess =
         mirakana::evaluate_win32_desktop_presentation_d3d12_postprocess_execution(report, 2, true);
     const auto fog = mirakana::evaluate_win32_desktop_presentation_environment_fog(report, d3d12_postprocess, true);
+    const auto physical_sky = mirakana::evaluate_win32_desktop_presentation_physical_sky(report, true);
+    auto missing_physical_sky_package_report = report;
+    missing_physical_sky_package_report.physical_sky_package_evidence_ready = false;
+    const auto missing_physical_sky_package =
+        mirakana::evaluate_win32_desktop_presentation_physical_sky(missing_physical_sky_package_report, true);
+    auto missing_physical_sky_rows_report = report;
+    missing_physical_sky_rows_report.physical_sky_constant_layout_rows = 0;
+    missing_physical_sky_rows_report.physical_sky_lut_intent_rows = 0;
+    const auto missing_physical_sky_rows =
+        mirakana::evaluate_win32_desktop_presentation_physical_sky(missing_physical_sky_rows_report, true);
     const auto cloud_layer = mirakana::evaluate_win32_desktop_presentation_cloud_layer(report, true);
     auto missing_cloud_layer_package_report = report;
     missing_cloud_layer_package_report.cloud_layer_package_evidence_ready = false;
@@ -221,6 +244,24 @@ int main() {
                    fog.ready && fog.constant_buffer_ready &&
                    fog.constants_binding == mirakana::environment_fog_constants_binding() &&
                    fog.constant_buffer_bytes == mirakana::environment_fog_constants_byte_size() &&
+                   scene_renderer.enable_physical_sky_package_evidence &&
+                   mirakana::win32_desktop_presentation_physical_sky_status_name(physical_sky.status) == "ready" &&
+                   physical_sky.ready && physical_sky.package_evidence_ready &&
+                   physical_sky.shader_contract_evidence_ready && physical_sky.execution_evidence_ready &&
+                   physical_sky.constant_buffer_ready &&
+                   physical_sky.constants_binding == mirakana::physical_sky_constants_binding() &&
+                   physical_sky.constant_buffer_bytes == mirakana::physical_sky_constants_byte_size() &&
+                   physical_sky.constant_layout_rows == 8 && physical_sky.lut_intent_rows == 4 &&
+                   !physical_sky.allocates_lut_textures && !physical_sky.invokes_backend &&
+                   !physical_sky.exposes_native_handles && physical_sky.diagnostics_count == 0 &&
+                   mirakana::win32_desktop_presentation_physical_sky_status_name(missing_physical_sky_package.status) ==
+                       "blocked" &&
+                   !missing_physical_sky_package.ready && !missing_physical_sky_package.package_evidence_ready &&
+                   missing_physical_sky_package.diagnostics_count > 0 &&
+                   mirakana::win32_desktop_presentation_physical_sky_status_name(missing_physical_sky_rows.status) ==
+                       "blocked" &&
+                   !missing_physical_sky_rows.ready && missing_physical_sky_rows.constant_layout_rows == 0 &&
+                   missing_physical_sky_rows.lut_intent_rows == 0 && missing_physical_sky_rows.diagnostics_count > 0 &&
                    scene_renderer.enable_cloud_layer_package_evidence &&
                    scene_renderer.cloud_layer.layer.mode == mirakana::EnvironmentCloudLayerMode::equirectangular_2d &&
                    mirakana::win32_desktop_presentation_cloud_layer_status_name(cloud_layer.status) == "ready" &&

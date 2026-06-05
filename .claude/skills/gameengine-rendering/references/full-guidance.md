@@ -43,6 +43,9 @@ counters.
   compilers, write shader artifacts, expose native PSO/Vulkan/Metal cache blobs, or claim renderer/RHI residency.
 - Generate Vulkan SPIR-V through DXC executable-plus-argument vectors with `-spirv` and `-fspv-target-env=vulkan1.3`; do not use shell
   strings or omit the target environment.
+- For physical-sky Vulkan runtime proof, regenerate SPIR-V with `tools/compile-vulkan-physical-sky-test-spirv.ps1`, set
+  `MK_VULKAN_TEST_PHYSICAL_SKY_VERTEX_SPV` and `MK_VULKAN_TEST_PHYSICAL_SKY_FRAGMENT_SPV`, and keep this as runtime readback evidence
+  rather than Vulkan package readiness.
 - Disable shader artifact marker writes for real compiler-backed runs so missing bytecode artifacts fail instead of being faked.
 
 ## Backend-Specific Checks
@@ -206,7 +209,8 @@ counters.
   proof when `MK_VULKAN_TEST_DEPTH_VERTEX_SPV`, `MK_VULKAN_TEST_DEPTH_FRAGMENT_SPV`, `MK_VULKAN_TEST_DEPTH_SAMPLE_VERTEX_SPV`, and
   `MK_VULKAN_TEST_DEPTH_SAMPLE_FRAGMENT_SPV` SPIR-V artifacts are configured, environment-gated postprocess-depth readback proof when those
   depth-write artifacts plus `MK_VULKAN_TEST_POSTPROCESS_DEPTH_VERTEX_SPV` and `MK_VULKAN_TEST_POSTPROCESS_DEPTH_FRAGMENT_SPV` are
-  configured, and environment-gated directional shadow receiver readback proof when those depth-write artifacts plus
+  configured, environment-gated physical-sky runtime readback proof when `MK_VULKAN_TEST_PHYSICAL_SKY_VERTEX_SPV` and
+  `MK_VULKAN_TEST_PHYSICAL_SKY_FRAGMENT_SPV` are configured with `VK_LAYER_KHRONOS_validation`, and environment-gated directional shadow receiver readback proof when those depth-write artifacts plus
   `MK_VULKAN_TEST_SHADOW_RECEIVER_VERTEX_SPV` and `MK_VULKAN_TEST_SHADOW_RECEIVER_FRAGMENT_SPV` are configured. Both must keep native
   descriptors, resource states, COM/Vk objects, layouts, and backend details private. Metal native depth recording/sampling, Metal
   postprocess depth, broader postprocess effects, and production shadow quality remain separate backend slices until proven.

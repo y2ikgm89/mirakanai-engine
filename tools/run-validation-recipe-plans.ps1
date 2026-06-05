@@ -146,6 +146,13 @@ function Get-ValidationRecipeCommandPlan {
         $diagD3dFog = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'D3D12 environment fog package validation is restricted to the reviewed sample_desktop_runtime_game D3D12 height-fog package lane and does not claim Vulkan, Metal, or broad environment readiness.' -ValidationRecipe $RecipeName -HostGate 'd3d12-windows-primary'
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('d3d12-windows-primary') -RequiredAcknowledgements @('d3d12-windows-primary') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12') -Diagnostics @($diagD3dFog)
     }
+    elseif ($RecipeName -eq 'desktop-runtime-sample-game-physical-sky-package') {
+        $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
+        $smokeTail = @(Get-SampleDesktopRuntimeGamePhysicalSkySmokeArgs)
+        $pwEntry = Get-DesktopRuntimePackageCommandPlan -ScriptPath $packageScript -GameTarget $target -RequireD3d12Shaders -SmokeArgs $smokeTail
+        $diagD3dPhysicalSky = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'D3D12 physical sky package validation is restricted to the reviewed sample_desktop_runtime_game D3D12 physical-sky package lane and proves package-visible shader-contract, constants, LUT-intent, and zero native-handle counters without claiming Vulkan, Metal, or broad environment_ready.' -ValidationRecipe $RecipeName -HostGate 'd3d12-windows-primary'
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('d3d12-windows-primary') -RequiredAcknowledgements @('d3d12-windows-primary') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12') -Diagnostics @($diagD3dPhysicalSky)
+    }
     elseif ($RecipeName -eq 'desktop-runtime-sample-game-cloud-layer-package') {
         $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
         $smokeTail = @(Get-SampleDesktopRuntimeGameCloudLayerSmokeArgs)

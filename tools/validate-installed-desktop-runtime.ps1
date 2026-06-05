@@ -177,6 +177,7 @@ $requiresD3d12PostprocessEvidence = @($SmokeArgs) -contains "--require-d3d12-pos
 $requiresVulkanPostprocessEvidence = @($SmokeArgs) -contains "--require-vulkan-postprocess-evidence"
 $requiresEnvironmentProfile = @($SmokeArgs) -contains "--require-environment-profile"
 $requiresEnvironmentFogEvidence = @($SmokeArgs) -contains "--require-environment-fog-evidence"
+$requiresPhysicalSkyPackageEvidence = @($SmokeArgs) -contains "--require-physical-sky-package-evidence"
 $requiresCloudLayerPackageEvidence = @($SmokeArgs) -contains "--require-cloud-layer-package-evidence"
 $requiresEnvironmentPrecipitationPackageEvidence = @($SmokeArgs) -contains "--require-environment-precipitation-package-evidence"
 $requiresGpuMemoryPolicy = @($SmokeArgs) -contains "--require-gpu-memory-policy"
@@ -207,6 +208,11 @@ if ($requiresD3d12DebugProfilingEvidence -or $requiresVulkanDebugProfilingEviden
     $requiresDebugProfilingPolicy = $true
 }
 if ($requiresEnvironmentFogEvidence) {
+    $requiresPostprocess = $true
+    $requiresPostprocessDepthInput = $true
+    $requiresD3d12PostprocessEvidence = $true
+}
+if ($requiresPhysicalSkyPackageEvidence) {
     $requiresPostprocess = $true
     $requiresPostprocessDepthInput = $true
     $requiresD3d12PostprocessEvidence = $true
@@ -4539,6 +4545,35 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 $expectedValue = [regex]::Escape($expectedEnvironmentFogFields[$field])
                 if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
                     Write-Error "Installed desktop runtime smoke status line did not prove environment fog field: $field=$($expectedEnvironmentFogFields[$field])"
+                }
+            }
+        }
+        if ($requiresPhysicalSkyPackageEvidence) {
+            if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
+                Write-Error "Installed desktop runtime smoke status line must not claim broad environment_ready for physical sky package evidence."
+            }
+            $expectedPhysicalSkyFields = @{
+                "environment_physical_sky_status" = "ready"
+                "environment_physical_sky_ready" = "1"
+                "environment_physical_sky_selected_backend" = "d3d12"
+                "environment_physical_sky_requested" = "1"
+                "environment_physical_sky_shader_contract_evidence_ready" = "1"
+                "environment_physical_sky_package_evidence_ready" = "1"
+                "environment_physical_sky_execution_evidence_ready" = "1"
+                "environment_physical_sky_constant_buffer_ready" = "1"
+                "environment_physical_sky_constants_binding" = "0"
+                "environment_physical_sky_constants_byte_size" = "256"
+                "environment_physical_sky_constant_layout_rows" = "8"
+                "environment_physical_sky_lut_intent_rows" = "4"
+                "environment_physical_sky_lut_texture_allocations" = "0"
+                "environment_physical_sky_backend_invocations" = "0"
+                "environment_physical_sky_native_handle_access" = "0"
+                "environment_physical_sky_diagnostics" = "0"
+            }
+            foreach ($field in $expectedPhysicalSkyFields.Keys) {
+                $expectedValue = [regex]::Escape($expectedPhysicalSkyFields[$field])
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove physical sky field: $field=$($expectedPhysicalSkyFields[$field])"
                 }
             }
         }
