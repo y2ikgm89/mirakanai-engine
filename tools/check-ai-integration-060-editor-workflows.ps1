@@ -2438,6 +2438,89 @@ foreach ($check in $nativeEditorMaterialPreviewChecks) {
     }
 }
 
+$nativeEditorUiPerformanceBudgetChecks = @(
+    @{
+        Path = "editor/core/include/mirakana/editor/editor_ui_performance.hpp"
+        Needles = @(
+            "EditorUiPerformanceBudget",
+            "EditorUiPerformanceSample",
+            "EditorUiPerformanceSummary",
+            "make_default_editor_ui_performance_budgets",
+            "summarize_editor_ui_performance",
+            "broad_optimization_claimed"
+        )
+    },
+    @{
+        Path = "editor/core/src/editor_ui_performance.cpp"
+        Needles = @(
+            "nearest_rank_p95",
+            "editor_ui_performance_metric_id",
+            "budget_violations",
+            "EditorUiPerformanceBudgetStatus::ready",
+            "summary.broad_optimization_claimed = false"
+        )
+    },
+    @{
+        Path = "editor/src/first_party_editor_document.cpp"
+        Needles = @(
+            "summarize_first_party_editor_ui_performance",
+            "make_default_editor_ui_performance_budgets",
+            "editor_ui_performance_budget_status_id",
+            "document.layout_us",
+            "document.document_build_us",
+            ".ui_performance_budget_status",
+            ".ui_performance_diagnostics",
+            ".ui_performance_broad_optimization_claimed"
+        )
+    },
+    @{
+        Path = "editor/src/main.cpp"
+        Needles = @(
+            "editor_ui_performance_budget_status=",
+            "editor_ui_performance_layout_us_p95=",
+            "editor_ui_performance_document_build_us_p95=",
+            "editor_ui_performance_renderer_submission_us_p95=",
+            "editor_ui_performance_text_runs=",
+            "editor_ui_performance_renderer_boxes=",
+            "editor_ui_performance_visible_texture_composites=",
+            "editor_ui_performance_memory_high_water_bytes=",
+            "editor_ui_performance_budget_violations=",
+            "editor_ui_performance_diagnostics=",
+            "editor_ui_performance_broad_optimization_claimed="
+        )
+    },
+    @{
+        Path = "tests/unit/editor_core_tests.cpp"
+        Needles = @(
+            "editor UI performance summary reports ready budget rows without broad optimization claim",
+            "editor UI performance summary fails closed on budget violations",
+            "editor UI performance summary fails closed without budget rows",
+            "editor UI performance summary checks memory high water budget"
+        )
+    },
+    @{
+        Path = "tests/unit/editor_native_shell_tests.cpp"
+        Needles = @(
+            "editor first party shell smoke counters copy UI performance budget rows",
+            'ui_performance_budget_status == "ready"',
+            "ui_performance_budget_violations == 0U",
+            "ui_performance_diagnostics == 0U"
+        )
+    }
+)
+foreach ($check in $nativeEditorUiPerformanceBudgetChecks) {
+    $fileText = Get-AgentSurfaceText $check.Path
+    $missingNeedles = @()
+    foreach ($needle in $check.Needles) {
+        if (-not (Test-AgentSurfaceContainsText -Text $fileText -Needle $needle)) {
+            $missingNeedles += $needle
+        }
+    }
+    if ($missingNeedles.Count -gt 0) {
+        Write-Error "ai-integration-check: $($check.Path) missing native editor UI performance budget contract: $($missingNeedles -join ', ')"
+    }
+}
+
 $editorAiUxOperationChecks = @(
     @{
         Path = "editor/core/include/mirakana/editor/ai_operation_surface.hpp"

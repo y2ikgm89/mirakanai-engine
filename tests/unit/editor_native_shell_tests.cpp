@@ -624,6 +624,49 @@ MK_TEST("editor first party shell smoke counters report imgui disabled") {
     MK_REQUIRE(counters.dock_focusable_control_count == 11U);
 }
 
+MK_TEST("editor first party shell smoke counters copy UI performance budget rows") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    const auto viewport_plan =
+        mirakana::editor::plan_native_viewport_display(mirakana::editor::NativeViewportDisplayDesc{
+            .d3d12_host_available = true,
+            .renderer_output_available = true,
+            .texture_display_requested = true,
+            .texture_adapter_available = true,
+            .offscreen_target_available = true,
+            .descriptor_lease_available = true,
+            .resource_barriers_recorded = true,
+            .fence_lifecycle_ready = true,
+            .visible_panel_available = true,
+            .visible_texture_composite_recorded = true,
+            .visible_texture_composites = 1U,
+            .extent = mirakana::editor::ViewportExtent{.width = 1280, .height = 720},
+            .frame_index = 31U,
+            .backend_id = "d3d12",
+        });
+    app.record_native_viewport_texture_display(viewport_plan);
+
+    const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
+    const auto counters = mirakana::editor::make_first_party_editor_shell_smoke_counters(app, shell_document);
+
+    MK_REQUIRE(counters.ui_performance_budget_status == "ready");
+    MK_REQUIRE(shell_document.layout_us > 0.0);
+    MK_REQUIRE(shell_document.document_build_us > 0.0);
+    MK_REQUIRE(shell_document.renderer_submission_us > 0.0);
+    MK_REQUIRE(counters.ui_performance_layout_us_p95 == shell_document.layout_us);
+    MK_REQUIRE(counters.ui_performance_document_build_us_p95 == shell_document.document_build_us);
+    MK_REQUIRE(counters.ui_performance_renderer_submission_us_p95 == shell_document.renderer_submission_us);
+    MK_REQUIRE(counters.ui_performance_text_runs ==
+               static_cast<std::uint64_t>(shell_document.renderer_submission.text_runs.size()));
+    MK_REQUIRE(counters.ui_performance_renderer_boxes ==
+               static_cast<std::uint64_t>(shell_document.renderer_submission.boxes.size()));
+    MK_REQUIRE(counters.ui_performance_visible_texture_composites == 1U);
+    MK_REQUIRE(counters.ui_performance_memory_high_water_bytes == shell_document.retained_memory_high_water_bytes);
+    MK_REQUIRE(counters.ui_performance_memory_high_water_bytes > 0U);
+    MK_REQUIRE(counters.ui_performance_budget_violations == 0U);
+    MK_REQUIRE(counters.ui_performance_diagnostics == 0U);
+    MK_REQUIRE(!counters.ui_performance_broad_optimization_claimed);
+}
+
 MK_TEST("editor first party win32 host result defaults to explicit no backend") {
     mirakana::editor::Win32FirstPartyEditorRunResult result;
 

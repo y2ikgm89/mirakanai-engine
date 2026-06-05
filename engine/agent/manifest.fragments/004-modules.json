@@ -658,6 +658,7 @@
         "editor/core/include/mirakana/editor/editor_dock_layout.hpp",
         "editor/core/include/mirakana/editor/editor_panel.hpp",
         "editor/core/include/mirakana/editor/editor_rich_text.hpp",
+        "editor/core/include/mirakana/editor/editor_ui_performance.hpp",
         "editor/core/include/mirakana/editor/environment_authoring.hpp",
         "editor/core/include/mirakana/editor/gltf_mesh_catalog.hpp",
         "editor/core/include/mirakana/editor/history.hpp",
@@ -683,6 +684,7 @@
         "editor/core/include/mirakana/editor/workspace.hpp"
       ],
       "recentEvidence": [
+        "First-Party UI Editor Excellence v1 Phase 1 adds EditorUiPerformanceMetric, EditorUiPerformanceBudgetStatus, EditorUiPerformanceBudget, EditorUiPerformanceSample, EditorUiPerformanceSummary, make_default_editor_ui_performance_budgets, editor_ui_performance_metric_id, editor_ui_performance_budget_status_id, and summarize_editor_ui_performance for value-only editor/UI p95 budget summaries over layout, document build, renderer submission, text-run, renderer-box, visible-texture-composite, and memory high-water rows. It reports ready/violation/invalid/missing-sample status, budget_violations diagnostics, and broad_optimization_claimed=false without native handles, backend objects, UI middleware, or broad optimization claims.",
         "Environment System v1 PR16 adds GUI-independent MK_editor_core environment authoring through EnvironmentAuthoringDocument, EnvironmentAuthoringInspectorModel, EnvironmentAuthoringValidationModel, EnvironmentPackageCandidateRow, EnvironmentPackageRegistrationDraftRow, load_environment_authoring_document, save_environment_authoring_document, make_environment_authoring_profile_edit_action, make_environment_authoring_inspector_model, make_environment_authoring_editor_property_rows, make_environment_authoring_ui_model, make_environment_package_candidate_rows, and make_environment_package_registration_draft_rows. The native first-party MK_editor shell surfaces those rows in the existing Inspector rich-text/property flow without a new panel, package script execution, renderer/RHI backend execution, Dear ImGui, SDL3, UI middleware, or native-handle exposure.",
         "First-Party UI Editor Production Stack v1 Phase 3c adds make_editor_inspector_rich_text_document for read-only Inspector property label/value/editability paragraphs with stable rich-text ids, selected/copyable plain UTF-8 text, AI-visible rich_text_rows, and unsupported low-level text/font/IME/accessibility/rich-clipboard diagnostics without native handles or UI middleware dependencies.",
         "First-Party UI Editor Production Stack v1 Phase 3b adds make_editor_ai_command_panel_rich_text_document for read-only AI Commands status/operator-handoff/evidence/command/diagnostic paragraphs with stable rich-text ids, selected/copyable plain UTF-8 text, AI-visible rich_text_rows, and unsupported low-level text/font/IME/accessibility/rich-clipboard diagnostics without native handles or UI middleware dependencies.",

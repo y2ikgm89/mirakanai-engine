@@ -50,6 +50,8 @@ The native `MK_editor` shell uses first-party retained `mirakana::ui` documents 
 
 The visible `MK_editor` shell keeps Win32, D3D12, DXGI, swapchains, descriptor heaps, fences, and message bridging in private `editor/src` implementation files. Durable panel state remains in `editor/core`; high-complexity panels should be modeled through `mirakana_editor_ui` first, then rendered by a first-party platform/rendering adapter.
 
+Editor/UI performance evidence is currently baseline telemetry: `MK_editor_core` exposes value-only `EditorUiPerformanceBudget` / `EditorUiPerformanceSample` summaries, and the native shell smoke reports `editor_ui_performance_budget_status=ready`, measured p95 layout/document-build/renderer-submission rows, text/render/visible-texture/memory rows, `editor_ui_performance_budget_violations=0`, `editor_ui_performance_diagnostics=0`, and `editor_ui_performance_broad_optimization_claimed=0`. Retained diff/caching and broad editor/UI optimization remain later exact gates.
+
 ## Middleware Policy
 
 Qt, NoesisGUI, Slint, RmlUi, or similar frameworks are optional adapter candidates. They must not become the core `mirakana_ui` public API, and generated games must not depend on their headers or object models directly.

@@ -17,6 +17,10 @@ struct FirstPartyEditorDocument {
     ui::UiDocument document;
     ui::LayoutResult layout;
     ui::RendererSubmission renderer_submission;
+    double document_build_us{0.0};
+    double layout_us{0.0};
+    double renderer_submission_us{0.0};
+    std::uint64_t retained_memory_high_water_bytes{0};
     std::string docking_status{"not_rendered"};
     ui::ElementId focused_element;
     std::uint32_t panel_root_count{0};
@@ -76,6 +80,17 @@ struct FirstPartyEditorShellSmokeCounters {
     std::uint32_t dock_split_gutter_count{0};
     std::uint32_t dock_active_panel_count{0};
     std::uint32_t dock_focusable_control_count{0};
+    std::string ui_performance_budget_status{"missing_samples"};
+    double ui_performance_layout_us_p95{0.0};
+    double ui_performance_document_build_us_p95{0.0};
+    double ui_performance_renderer_submission_us_p95{0.0};
+    std::uint64_t ui_performance_text_runs{0};
+    std::uint64_t ui_performance_renderer_boxes{0};
+    std::uint64_t ui_performance_visible_texture_composites{0};
+    std::uint64_t ui_performance_memory_high_water_bytes{0};
+    std::uint32_t ui_performance_budget_violations{0};
+    std::uint32_t ui_performance_diagnostics{0};
+    bool ui_performance_broad_optimization_claimed{false};
 };
 
 [[nodiscard]] FirstPartyEditorDocument make_first_party_editor_document(const NativeEditorApp& app);

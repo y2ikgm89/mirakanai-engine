@@ -26,7 +26,7 @@ Audit sources used on 2026-06-06:
 - `engine/agent/manifest.fragments/005-applications.json`
 - `engine/agent/manifest.fragments/004-modules.json`
 - Targeted `rg` scans over `editor`, `engine/ui`, `engine/ui_renderer`, `engine/platform`, `engine/rhi`, `engine/agent`, `tools`, `CMakeLists.txt`, and `CMakePresets.json`
-- Current manifest summary: `unsupportedProductionGaps = 0`, `validationRecipes = 69`, `modules = 32`, `currentActivePlan = docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md`, `recommendedNextPlan.id = next-production-gap-selection`
+- Current manifest summary: `unsupportedProductionGaps = 0`, `validationRecipes = 69`, `modules = 32`, `currentActivePlan = docs/superpowers/plans/2026-06-06-first-party-ui-editor-excellence-v1.md`, `recommendedNextPlan.id = first-party-ui-editor-excellence-v1`
 
 Current proven state:
 
@@ -240,9 +240,9 @@ Phase 0 validation evidence:
 
 **Files:** `editor/src/first_party_editor_document.*`, `editor/src/native_editor_app.*`, `editor/core/include/mirakana/editor/editor_ui_performance.hpp`, `editor/core/src/editor_ui_performance.cpp`, `tests/unit/editor_core_tests.cpp`, `tests/unit/editor_native_shell_tests.cpp`, docs/manifest/static checks.
 
-- [ ] Add RED editor-core tests for `EditorUiPerformanceBudget`, `EditorUiPerformanceSample`, and `summarize_editor_ui_performance`.
-- [ ] Add RED native-shell tests for budget rows copied into `FirstPartyEditorShellSmokeCounters`.
-- [ ] Track at least these counters:
+- [x] Add RED editor-core tests for `EditorUiPerformanceBudget`, `EditorUiPerformanceSample`, and `summarize_editor_ui_performance`.
+- [x] Add RED native-shell tests for budget rows copied into `FirstPartyEditorShellSmokeCounters`.
+- [x] Track at least these counters:
 
 ```text
 editor_ui_performance_budget_status=ready
@@ -254,12 +254,14 @@ editor_ui_performance_renderer_boxes
 editor_ui_performance_visible_texture_composites
 editor_ui_performance_memory_high_water_bytes
 editor_ui_performance_budget_violations=0
+editor_ui_performance_diagnostics=0
 editor_ui_performance_broad_optimization_claimed=0
 ```
 
-- [ ] Implement value-only budget summarization in `MK_editor_core`.
-- [ ] Populate smoke counters from the visible shell without exposing native handles.
-- [ ] Run:
+- [x] Implement value-only budget summarization in `MK_editor_core`.
+- [x] Capture measured first-party shell document-build, layout, and renderer-submission timing samples before reporting p95 rows.
+- [x] Populate smoke counters from the visible shell without exposing native handles.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev
@@ -269,6 +271,14 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1
 ```
 
 Expected: budget rows are ready, broad optimization remains explicitly unclaimed, and editor smoke still reports `editor_shell_imgui=0` and `editor_shell_sdl3=0`.
+
+Phase 1 validation evidence:
+
+- RED: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests MK_editor_native_shell_tests` failed before implementation because `mirakana/editor/editor_ui_performance.hpp` was missing.
+- GREEN focused loop: `tools/cmake.ps1 --preset dev`, `tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests MK_editor_native_shell_tests`, and `tools/ctest.ps1 --preset dev --output-on-failure -R "MK_editor_core_tests|MK_editor_native_shell_tests"` passed; 2/2 focused editor tests passed.
+- Editor lane: `tools/build-editor.ps1` passed after the repository mutex wait; `desktop-editor` built, `MK_editor_smoke` ran, and 100/100 tests passed.
+- Agent surface sync: docs, manifest fragments, composed manifest, CTest smoke regex, `check-ai-integration`, and `check-json-contracts` now require `editor_ui_performance_budget_status=ready`, positive measured p95/row counters, `editor_ui_performance_budget_violations=0`, `editor_ui_performance_diagnostics=0`, and `editor_ui_performance_broad_optimization_claimed=0`.
+- Source refresh: Phase 1 did not touch SDK/library adapter behavior; the official-source and Context7 baseline recorded in this plan remains the active constraint for later SDK/library phases.
 
 ## Phase 2: Retained UI Diff, Cache, And Submission Optimization
 

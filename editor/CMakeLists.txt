@@ -8,6 +8,7 @@ add_library(MK_editor_core
     core/src/editor_dock_layout.cpp
     core/src/environment_authoring.cpp
     core/src/editor_rich_text.cpp
+    core/src/editor_ui_performance.cpp
     core/src/game_module_driver.cpp
     core/src/generated_game_studio.cpp
     core/src/gltf_mesh_catalog.cpp

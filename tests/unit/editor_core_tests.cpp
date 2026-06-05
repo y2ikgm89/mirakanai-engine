@@ -14,6 +14,7 @@
 #include "mirakana/editor/content_browser_import_panel.hpp"
 #include "mirakana/editor/editor_dock_layout.hpp"
 #include "mirakana/editor/editor_rich_text.hpp"
+#include "mirakana/editor/editor_ui_performance.hpp"
 #include "mirakana/editor/game_module_driver.hpp"
 #include "mirakana/editor/generated_game_studio.hpp"
 #include "mirakana/editor/gltf_mesh_catalog.hpp"
@@ -64,6 +65,7 @@
 #include "mirakana/runtime/sprite_collision_hitbox.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cstring>
 #include <filesystem>
 #include <limits>
@@ -394,6 +396,146 @@ find_ai_command(const mirakana::editor::EditorAiCommandCatalog& catalog, std::st
     const auto it = std::ranges::find_if(
         catalog.commands, [id](const mirakana::editor::EditorAiCommandRow& row) { return row.id == id; });
     return it == catalog.commands.end() ? nullptr : &(*it);
+}
+
+MK_TEST("editor UI performance summary reports ready budget rows without broad optimization claim") {
+    const std::array<mirakana::editor::EditorUiPerformanceBudget, 6> budgets{
+        mirakana::editor::EditorUiPerformanceBudget{
+            .metric = mirakana::editor::EditorUiPerformanceMetric::layout_us,
+            .p95_limit = 2000.0,
+        },
+        mirakana::editor::EditorUiPerformanceBudget{
+            .metric = mirakana::editor::EditorUiPerformanceMetric::document_build_us,
+            .p95_limit = 2500.0,
+        },
+        mirakana::editor::EditorUiPerformanceBudget{
+            .metric = mirakana::editor::EditorUiPerformanceMetric::renderer_submission_us,
+            .p95_limit = 3000.0,
+        },
+        mirakana::editor::EditorUiPerformanceBudget{
+            .metric = mirakana::editor::EditorUiPerformanceMetric::text_runs,
+            .p95_limit = 64.0,
+        },
+        mirakana::editor::EditorUiPerformanceBudget{
+            .metric = mirakana::editor::EditorUiPerformanceMetric::renderer_boxes,
+            .p95_limit = 256.0,
+        },
+        mirakana::editor::EditorUiPerformanceBudget{
+            .metric = mirakana::editor::EditorUiPerformanceMetric::visible_texture_composites,
+            .p95_limit = 8.0,
+        },
+    };
+    const std::array<mirakana::editor::EditorUiPerformanceSample, 2> samples{
+        mirakana::editor::EditorUiPerformanceSample{
+            .layout_us = 1100.0,
+            .document_build_us = 1200.0,
+            .renderer_submission_us = 1300.0,
+            .text_runs = 12U,
+            .renderer_boxes = 48U,
+            .visible_texture_composites = 2U,
+            .memory_high_water_bytes = 16384U,
+        },
+        mirakana::editor::EditorUiPerformanceSample{
+            .layout_us = 1500.0,
+            .document_build_us = 1600.0,
+            .renderer_submission_us = 1700.0,
+            .text_runs = 14U,
+            .renderer_boxes = 52U,
+            .visible_texture_composites = 3U,
+            .memory_high_water_bytes = 24576U,
+        },
+    };
+
+    const auto summary = mirakana::editor::summarize_editor_ui_performance(samples, budgets);
+
+    MK_REQUIRE(summary.status == mirakana::editor::EditorUiPerformanceBudgetStatus::ready);
+    MK_REQUIRE(summary.layout_us_p95 == 1500.0);
+    MK_REQUIRE(summary.document_build_us_p95 == 1600.0);
+    MK_REQUIRE(summary.renderer_submission_us_p95 == 1700.0);
+    MK_REQUIRE(summary.text_runs_p95 == 14U);
+    MK_REQUIRE(summary.renderer_boxes_p95 == 52U);
+    MK_REQUIRE(summary.visible_texture_composites_p95 == 3U);
+    MK_REQUIRE(summary.memory_high_water_bytes == 24576U);
+    MK_REQUIRE(summary.budget_violations == 0U);
+    MK_REQUIRE(!summary.broad_optimization_claimed);
+    MK_REQUIRE(summary.diagnostics.empty());
+}
+
+MK_TEST("editor UI performance summary fails closed on budget violations") {
+    const std::array<mirakana::editor::EditorUiPerformanceBudget, 1> budgets{
+        mirakana::editor::EditorUiPerformanceBudget{
+            .metric = mirakana::editor::EditorUiPerformanceMetric::layout_us,
+            .p95_limit = 1000.0,
+        },
+    };
+    const std::array<mirakana::editor::EditorUiPerformanceSample, 1> samples{
+        mirakana::editor::EditorUiPerformanceSample{
+            .layout_us = 1500.0,
+            .document_build_us = 500.0,
+            .renderer_submission_us = 500.0,
+            .memory_high_water_bytes = 1024U,
+        },
+    };
+
+    const auto summary = mirakana::editor::summarize_editor_ui_performance(samples, budgets);
+
+    MK_REQUIRE(summary.status == mirakana::editor::EditorUiPerformanceBudgetStatus::violations);
+    MK_REQUIRE(summary.budget_violations == 1U);
+    MK_REQUIRE(!summary.broad_optimization_claimed);
+    MK_REQUIRE(std::ranges::any_of(summary.diagnostics,
+                                   [](const std::string& diagnostic) { return diagnostic.contains("layout_us"); }));
+}
+
+MK_TEST("editor UI performance summary fails closed without budget rows") {
+    const std::array<mirakana::editor::EditorUiPerformanceBudget, 0> budgets{};
+    const std::array<mirakana::editor::EditorUiPerformanceSample, 1> samples{
+        mirakana::editor::EditorUiPerformanceSample{
+            .layout_us = 100.0,
+            .document_build_us = 100.0,
+            .renderer_submission_us = 100.0,
+            .memory_high_water_bytes = 1024U,
+        },
+    };
+
+    const auto summary = mirakana::editor::summarize_editor_ui_performance(samples, budgets);
+
+    MK_REQUIRE(summary.status == mirakana::editor::EditorUiPerformanceBudgetStatus::invalid_budget);
+    MK_REQUIRE(summary.budget_violations == 0U);
+    MK_REQUIRE(!summary.broad_optimization_claimed);
+    MK_REQUIRE(std::ranges::any_of(summary.diagnostics,
+                                   [](const std::string& diagnostic) { return diagnostic.contains("budget row"); }));
+}
+
+MK_TEST("editor UI performance summary checks memory high water budget") {
+    const std::array<mirakana::editor::EditorUiPerformanceBudget, 1> budgets{
+        mirakana::editor::EditorUiPerformanceBudget{
+            .metric = mirakana::editor::EditorUiPerformanceMetric::memory_high_water_bytes,
+            .p95_limit = 4096.0,
+        },
+    };
+    const std::array<mirakana::editor::EditorUiPerformanceSample, 2> samples{
+        mirakana::editor::EditorUiPerformanceSample{
+            .layout_us = 100.0,
+            .document_build_us = 100.0,
+            .renderer_submission_us = 100.0,
+            .memory_high_water_bytes = 2048U,
+        },
+        mirakana::editor::EditorUiPerformanceSample{
+            .layout_us = 100.0,
+            .document_build_us = 100.0,
+            .renderer_submission_us = 100.0,
+            .memory_high_water_bytes = 8192U,
+        },
+    };
+
+    const auto summary = mirakana::editor::summarize_editor_ui_performance(samples, budgets);
+
+    MK_REQUIRE(summary.status == mirakana::editor::EditorUiPerformanceBudgetStatus::violations);
+    MK_REQUIRE(summary.memory_high_water_bytes == 8192U);
+    MK_REQUIRE(summary.budget_violations == 1U);
+    MK_REQUIRE(std::ranges::any_of(summary.diagnostics, [](const std::string& diagnostic) {
+        return diagnostic.contains("memory_high_water_bytes");
+    }));
 }
 
 MK_TEST("editor workspace creates required default panels") {

@@ -7,7 +7,11 @@
 
 #include "mirakana/editor/editor_dock_layout.hpp"
 #include "mirakana/editor/editor_rich_text.hpp"
+#include "mirakana/editor/editor_ui_performance.hpp"
 
+#include <algorithm>
+#include <array>
+#include <chrono>
 #include <cstddef>
 #include <stdexcept>
 #include <string>
@@ -17,6 +21,8 @@
 
 namespace mirakana::editor {
 namespace {
+
+using EditorUiPerformanceClock = std::chrono::steady_clock;
 
 [[nodiscard]] ui::ElementId element_id(std::string value) {
     return ui::ElementId{.value = std::move(value)};
@@ -38,6 +44,52 @@ namespace {
     desc.style.background_token = "editor.panel.background";
     desc.style.foreground_token = "editor.text";
     return desc;
+}
+
+[[nodiscard]] std::uint64_t count_to_u64(std::size_t value) noexcept {
+    return static_cast<std::uint64_t>(value);
+}
+
+[[nodiscard]] double elapsed_us(EditorUiPerformanceClock::time_point begin,
+                                EditorUiPerformanceClock::time_point end) noexcept {
+    const auto value = std::chrono::duration<double, std::micro>(end - begin).count();
+    return value > 0.0 ? value : 1.0;
+}
+
+[[nodiscard]] std::uint64_t payload_bytes(std::size_t count, std::size_t element_size) noexcept {
+    return static_cast<std::uint64_t>(count) * static_cast<std::uint64_t>(element_size);
+}
+
+[[nodiscard]] std::uint64_t retained_payload_high_water_bytes(const FirstPartyEditorDocument& document) noexcept {
+    return payload_bytes(document.document.size(), sizeof(ui::Element)) +
+           payload_bytes(document.layout.elements.size(), sizeof(ui::ElementLayout)) +
+           payload_bytes(document.renderer_submission.elements.size(), sizeof(ui::Element)) +
+           payload_bytes(document.renderer_submission.layouts.size(), sizeof(ui::ElementLayout)) +
+           payload_bytes(document.renderer_submission.boxes.size(), sizeof(ui::RendererBox)) +
+           payload_bytes(document.renderer_submission.text_runs.size(), sizeof(ui::RendererTextRun)) +
+           payload_bytes(document.renderer_submission.image_placeholders.size(), sizeof(ui::RendererImagePlaceholder)) +
+           payload_bytes(document.renderer_submission.accessibility_nodes.size(), sizeof(ui::AccessibilityNode));
+}
+
+[[nodiscard]] EditorUiPerformanceSummary
+summarize_first_party_editor_ui_performance(const NativeEditorApp& app, const FirstPartyEditorDocument& document) {
+    const auto text_run_count = count_to_u64(document.renderer_submission.text_runs.size());
+    const auto renderer_box_count = count_to_u64(document.renderer_submission.boxes.size());
+    const auto visible_texture_composites =
+        app.viewport_display().visible_texture_composites + app.material_preview_display().visible_texture_composites;
+    const std::array samples{
+        EditorUiPerformanceSample{
+            .layout_us = document.layout_us,
+            .document_build_us = document.document_build_us,
+            .renderer_submission_us = document.renderer_submission_us,
+            .text_runs = text_run_count,
+            .renderer_boxes = renderer_box_count,
+            .visible_texture_composites = visible_texture_composites,
+            .memory_high_water_bytes = document.retained_memory_high_water_bytes,
+        },
+    };
+    const auto budgets = make_default_editor_ui_performance_budgets();
+    return summarize_editor_ui_performance(samples, budgets);
 }
 
 [[nodiscard]] ui::ElementDesc child(std::string id, const ui::ElementId& parent, ui::SemanticRole role) {
@@ -302,6 +354,7 @@ void append_dock_node(ui::UiDocument& document, const NativeEditorApp& app, cons
 } // namespace
 
 FirstPartyEditorDocument make_first_party_editor_document(const NativeEditorApp& app) {
+    const auto document_build_begin = EditorUiPerformanceClock::now();
     FirstPartyEditorDocument result;
     ui::UiDocument& document = result.document;
 
@@ -339,8 +392,19 @@ FirstPartyEditorDocument make_first_party_editor_document(const NativeEditorApp&
         }
     }
 
+    const auto document_build_end = EditorUiPerformanceClock::now();
+    result.document_build_us = elapsed_us(document_build_begin, document_build_end);
+
+    const auto layout_begin = EditorUiPerformanceClock::now();
     result.layout = ui::solve_layout(document, root_id, root_bounds);
+    const auto layout_end = EditorUiPerformanceClock::now();
+    result.layout_us = elapsed_us(layout_begin, layout_end);
+
+    const auto renderer_submission_begin = EditorUiPerformanceClock::now();
     result.renderer_submission = ui::build_renderer_submission(document, result.layout);
+    const auto renderer_submission_end = EditorUiPerformanceClock::now();
+    result.renderer_submission_us = elapsed_us(renderer_submission_begin, renderer_submission_end);
+    result.retained_memory_high_water_bytes = retained_payload_high_water_bytes(result);
     return result;
 }
 
@@ -351,6 +415,7 @@ make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const F
     const auto& accessibility = app.accessibility_state();
     const auto& viewport_display = app.viewport_display();
     const auto& material_preview_display = app.material_preview_display();
+    const auto performance = summarize_first_party_editor_ui_performance(app, document);
     return FirstPartyEditorShellSmokeCounters{
         .ui = "first_party",
         .backend = "d3d12",
@@ -401,6 +466,17 @@ make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const F
         .dock_split_gutter_count = document.split_gutter_count,
         .dock_active_panel_count = document.active_panel_count,
         .dock_focusable_control_count = document.focusable_dock_control_count,
+        .ui_performance_budget_status = std::string(editor_ui_performance_budget_status_id(performance.status)),
+        .ui_performance_layout_us_p95 = performance.layout_us_p95,
+        .ui_performance_document_build_us_p95 = performance.document_build_us_p95,
+        .ui_performance_renderer_submission_us_p95 = performance.renderer_submission_us_p95,
+        .ui_performance_text_runs = performance.text_runs_p95,
+        .ui_performance_renderer_boxes = performance.renderer_boxes_p95,
+        .ui_performance_visible_texture_composites = performance.visible_texture_composites_p95,
+        .ui_performance_memory_high_water_bytes = performance.memory_high_water_bytes,
+        .ui_performance_budget_violations = performance.budget_violations,
+        .ui_performance_diagnostics = static_cast<std::uint32_t>(performance.diagnostics.size()),
+        .ui_performance_broad_optimization_claimed = performance.broad_optimization_claimed,
     };
 }
 
