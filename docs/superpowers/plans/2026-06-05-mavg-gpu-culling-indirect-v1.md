@@ -99,7 +99,7 @@ Out of scope:
 - [x] Run focused build and CTest for `MK_mavg_gpu_culling_tests`.
 - [x] Run adjacent renderer/RHI focused tests as needed.
 - [x] Run `tools/check-public-api-boundaries.ps1`, targeted tidy, docs/manifest/static checks, formatting, `git diff --check`, and full `tools/validate.ps1`.
-- [ ] Commit the candidate and open a draft PR stacked on `codex/mavg-page-streaming-eviction-review-v1`.
+- [x] Commit the candidate and open draft PR #445 stacked on `codex/mavg-page-streaming-eviction-review-v1`.
 
 ## Validation Commands
 
