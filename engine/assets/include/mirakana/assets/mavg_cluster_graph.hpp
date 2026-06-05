@@ -68,6 +68,17 @@ struct MavgClusterGraphDocument {
     std::vector<MavgClusterGraphCluster> clusters;
 };
 
+struct MavgLodResidentPageSet {
+    std::vector<std::uint32_t> page_indices;
+};
+
+struct MavgLodPageRequest {
+    AssetId graph_asset;
+    std::uint32_t page_index{0};
+    float priority{0.0F};
+    std::string reason;
+};
+
 enum class MavgClusterGraphDiagnosticCode : std::uint8_t {
     invalid_asset,
     invalid_source_mesh,
