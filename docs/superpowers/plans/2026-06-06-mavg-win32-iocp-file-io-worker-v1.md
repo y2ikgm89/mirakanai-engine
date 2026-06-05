@@ -206,20 +206,24 @@ Evidence: Passed on 2026-06-06. `tools/validate.ps1` completed with static check
 
 **Files:** Git/GitHub only.
 
-- [ ] Run publication preflight:
+- [x] Run publication preflight:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1
 ```
 
-- [ ] Commit validated candidate:
+Evidence: Passed on 2026-06-06 before commit, before push, and before PR creation for branch `codex/mavg-win32-iocp-file-io-worker-v1`.
+
+- [x] Commit validated candidate:
 
 ```powershell
 git add <task-owned files>
 git commit -m "Add MAVG Win32 IOCP file IO worker"
 ```
 
-- [ ] Push and create a draft PR with base `codex/mavg-win32-async-file-io-adapter-v1` and head `codex/mavg-win32-iocp-file-io-worker-v1`.
+- [x] Push and create a draft PR with base `codex/mavg-win32-async-file-io-adapter-v1` and head `codex/mavg-win32-iocp-file-io-worker-v1`.
+
+Evidence: Created commit `0ff59cae` (`Add MAVG Win32 IOCP file IO worker`), pushed `codex/mavg-win32-iocp-file-io-worker-v1`, and opened draft PR `https://github.com/y2ikgm89/mirakanai-engine/pull/466` stacked on PR #463.
 
 ## Done When
 
