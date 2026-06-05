@@ -5,9 +5,12 @@
 
 #include "mirakana/rhi/backend_capabilities.hpp"
 #include "mirakana/rhi/gpu_debug.hpp"
+#include "mirakana/rhi/indirect_draw.hpp"
 #include "mirakana/rhi/rhi.hpp"
 
+#include <array>
 #include <string>
+#include <vector>
 
 MK_TEST("rhi backend capabilities describe shader formats and native presentation support") {
     const auto null_caps = mirakana::rhi::default_backend_capabilities(mirakana::rhi::BackendKind::null);
@@ -2013,6 +2016,216 @@ MK_TEST("null rhi binds vertex and index buffers before indexed draw") {
     MK_REQUIRE(stats.last_indexed_draw_first_index == 5);
     MK_REQUIRE(stats.last_indexed_draw_vertex_offset == -2);
     MK_REQUIRE(stats.last_indexed_draw_first_instance == 7);
+}
+
+MK_TEST("null rhi executes indexed indirect draw from argument and count buffers") {
+    mirakana::rhi::NullRhiDevice device;
+    const auto target = device.create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 32, .height = 32, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target,
+    });
+    const auto vertices =
+        device.create_buffer(mirakana::rhi::BufferDesc{.size_bytes = 96, .usage = mirakana::rhi::BufferUsage::vertex});
+    const auto indices =
+        device.create_buffer(mirakana::rhi::BufferDesc{.size_bytes = 48, .usage = mirakana::rhi::BufferUsage::index});
+    const auto argument_buffer = device.create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = mirakana::rhi::indexed_indirect_draw_command_stride_bytes * 3U,
+        .usage = mirakana::rhi::BufferUsage::indirect | mirakana::rhi::BufferUsage::copy_source,
+    });
+    const auto count_buffer = device.create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = sizeof(std::uint32_t),
+        .usage = mirakana::rhi::BufferUsage::indirect | mirakana::rhi::BufferUsage::copy_source,
+    });
+
+    const auto first = mirakana::rhi::encode_indexed_indirect_draw_command(mirakana::rhi::IndexedIndirectDrawCommand{
+        .index_count_per_instance = 3,
+        .instance_count = 2,
+        .first_index = 5,
+        .vertex_offset = -1,
+        .first_instance = 7,
+    });
+    const auto second = mirakana::rhi::encode_indexed_indirect_draw_command(mirakana::rhi::IndexedIndirectDrawCommand{
+        .index_count_per_instance = 4,
+        .instance_count = 1,
+        .first_index = 9,
+        .vertex_offset = 2,
+        .first_instance = 11,
+    });
+    std::vector<std::uint8_t> argument_bytes;
+    argument_bytes.insert(argument_bytes.end(), first.begin(), first.end());
+    argument_bytes.insert(argument_bytes.end(), second.begin(), second.end());
+    argument_bytes.resize(mirakana::rhi::indexed_indirect_draw_command_stride_bytes * 3U);
+    const std::array<std::uint8_t, 4> count_bytes{2, 0, 0, 0};
+    device.write_buffer(argument_buffer, 0, argument_bytes);
+    device.write_buffer(count_buffer, 0, count_bytes);
+
+    const auto vertex_shader = device.create_shader(mirakana::rhi::ShaderDesc{
+        .stage = mirakana::rhi::ShaderStage::vertex,
+        .entry_point = "vs_main",
+        .bytecode_size = 64,
+    });
+    const auto fragment_shader = device.create_shader(mirakana::rhi::ShaderDesc{
+        .stage = mirakana::rhi::ShaderStage::fragment,
+        .entry_point = "fs_main",
+        .bytecode_size = 64,
+    });
+    const auto layout = device.create_pipeline_layout(
+        mirakana::rhi::PipelineLayoutDesc{.descriptor_sets = {}, .push_constant_bytes = 0});
+    const auto pipeline = device.create_graphics_pipeline(mirakana::rhi::GraphicsPipelineDesc{
+        .layout = layout,
+        .vertex_shader = vertex_shader,
+        .fragment_shader = fragment_shader,
+        .color_format = mirakana::rhi::Format::rgba8_unorm,
+        .depth_format = mirakana::rhi::Format::unknown,
+        .topology = mirakana::rhi::PrimitiveTopology::triangle_list,
+    });
+
+    auto commands = device.begin_command_list(mirakana::rhi::QueueKind::graphics);
+    commands->begin_render_pass(mirakana::rhi::RenderPassDesc{
+        .color =
+            mirakana::rhi::RenderPassColorAttachment{
+                .texture = target,
+                .load_action = mirakana::rhi::LoadAction::clear,
+                .store_action = mirakana::rhi::StoreAction::store,
+            },
+    });
+    commands->bind_graphics_pipeline(pipeline);
+    commands->bind_vertex_buffer(mirakana::rhi::VertexBufferBinding{.buffer = vertices, .offset = 0, .stride = 32});
+    commands->bind_index_buffer(mirakana::rhi::IndexBufferBinding{
+        .buffer = indices, .offset = 0, .format = mirakana::rhi::IndexFormat::uint32});
+    commands->draw_indexed_indirect(mirakana::rhi::IndexedIndirectDrawDesc{
+        .argument_buffer = argument_buffer,
+        .argument_buffer_offset = 0,
+        .command_stride_bytes = mirakana::rhi::indexed_indirect_draw_command_stride_bytes,
+        .max_draw_count = 3,
+        .count_buffer = count_buffer,
+        .count_buffer_offset = 0,
+    });
+    commands->end_render_pass();
+    commands->close();
+    (void)device.submit(*commands);
+
+    const auto stats = device.stats();
+    MK_REQUIRE(stats.indexed_indirect_draw_calls == 1);
+    MK_REQUIRE(stats.indexed_indirect_commands_executed == 2);
+    MK_REQUIRE(stats.indexed_indirect_count_buffer_reads == 1);
+    MK_REQUIRE(stats.indexed_draw_calls == 2);
+    MK_REQUIRE(stats.draw_calls == 2);
+    MK_REQUIRE(stats.instanced_draw_calls == 1);
+    MK_REQUIRE(stats.instanced_indexed_draw_calls == 1);
+    MK_REQUIRE(stats.instanced_instances_submitted == 2);
+    MK_REQUIRE(stats.indices_submitted == 10);
+    MK_REQUIRE(stats.last_indexed_indirect_max_draw_count == 3);
+    MK_REQUIRE(stats.last_indexed_indirect_executed_draw_count == 2);
+    MK_REQUIRE(stats.last_indexed_indirect_count_buffer_value == 2);
+    MK_REQUIRE(stats.last_indexed_draw_index_count == 4);
+    MK_REQUIRE(stats.last_indexed_draw_instance_count == 1);
+    MK_REQUIRE(stats.last_indexed_draw_first_index == 9);
+    MK_REQUIRE(stats.last_indexed_draw_vertex_offset == 2);
+    MK_REQUIRE(stats.last_indexed_draw_first_instance == 11);
+}
+
+MK_TEST("null rhi rejects indexed indirect draw buffers with invalid usage or range") {
+    mirakana::rhi::NullRhiDevice device;
+    const auto target = device.create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 16, .height = 16, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target,
+    });
+    const auto vertices =
+        device.create_buffer(mirakana::rhi::BufferDesc{.size_bytes = 96, .usage = mirakana::rhi::BufferUsage::vertex});
+    const auto indices =
+        device.create_buffer(mirakana::rhi::BufferDesc{.size_bytes = 48, .usage = mirakana::rhi::BufferUsage::index});
+    const auto missing_indirect_usage = device.create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = mirakana::rhi::indexed_indirect_draw_command_stride_bytes,
+        .usage = mirakana::rhi::BufferUsage::copy_source,
+    });
+    const auto too_small_argument_buffer = device.create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = mirakana::rhi::indexed_indirect_draw_command_stride_bytes,
+        .usage = mirakana::rhi::BufferUsage::indirect | mirakana::rhi::BufferUsage::copy_source,
+    });
+    const auto count_buffer = device.create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = sizeof(std::uint32_t),
+        .usage = mirakana::rhi::BufferUsage::indirect | mirakana::rhi::BufferUsage::copy_source,
+    });
+    const auto command = mirakana::rhi::encode_indexed_indirect_draw_command(mirakana::rhi::IndexedIndirectDrawCommand{
+        .index_count_per_instance = 3,
+        .instance_count = 1,
+        .first_index = 0,
+        .vertex_offset = 0,
+        .first_instance = 0,
+    });
+    device.write_buffer(missing_indirect_usage, 0, command);
+    device.write_buffer(too_small_argument_buffer, 0, command);
+    const std::array<std::uint8_t, 4> count_bytes{1, 0, 0, 0};
+    device.write_buffer(count_buffer, 0, count_bytes);
+
+    const auto vertex_shader = device.create_shader(mirakana::rhi::ShaderDesc{
+        .stage = mirakana::rhi::ShaderStage::vertex,
+        .entry_point = "vs_main",
+        .bytecode_size = 64,
+    });
+    const auto fragment_shader = device.create_shader(mirakana::rhi::ShaderDesc{
+        .stage = mirakana::rhi::ShaderStage::fragment,
+        .entry_point = "fs_main",
+        .bytecode_size = 64,
+    });
+    const auto layout = device.create_pipeline_layout(
+        mirakana::rhi::PipelineLayoutDesc{.descriptor_sets = {}, .push_constant_bytes = 0});
+    const auto pipeline = device.create_graphics_pipeline(mirakana::rhi::GraphicsPipelineDesc{
+        .layout = layout,
+        .vertex_shader = vertex_shader,
+        .fragment_shader = fragment_shader,
+        .color_format = mirakana::rhi::Format::rgba8_unorm,
+        .depth_format = mirakana::rhi::Format::unknown,
+        .topology = mirakana::rhi::PrimitiveTopology::triangle_list,
+    });
+
+    auto commands = device.begin_command_list(mirakana::rhi::QueueKind::graphics);
+    commands->begin_render_pass(mirakana::rhi::RenderPassDesc{
+        .color =
+            mirakana::rhi::RenderPassColorAttachment{
+                .texture = target,
+                .load_action = mirakana::rhi::LoadAction::clear,
+                .store_action = mirakana::rhi::StoreAction::store,
+            },
+    });
+    commands->bind_graphics_pipeline(pipeline);
+    commands->bind_vertex_buffer(mirakana::rhi::VertexBufferBinding{.buffer = vertices, .offset = 0, .stride = 32});
+    commands->bind_index_buffer(mirakana::rhi::IndexBufferBinding{
+        .buffer = indices, .offset = 0, .format = mirakana::rhi::IndexFormat::uint32});
+
+    bool rejected_usage = false;
+    try {
+        commands->draw_indexed_indirect(mirakana::rhi::IndexedIndirectDrawDesc{
+            .argument_buffer = missing_indirect_usage,
+            .argument_buffer_offset = 0,
+            .command_stride_bytes = mirakana::rhi::indexed_indirect_draw_command_stride_bytes,
+            .max_draw_count = 1,
+        });
+    } catch (const std::invalid_argument&) {
+        rejected_usage = true;
+    }
+
+    bool rejected_range = false;
+    try {
+        commands->draw_indexed_indirect(mirakana::rhi::IndexedIndirectDrawDesc{
+            .argument_buffer = too_small_argument_buffer,
+            .argument_buffer_offset = 0,
+            .command_stride_bytes = mirakana::rhi::indexed_indirect_draw_command_stride_bytes,
+            .max_draw_count = 2,
+            .count_buffer = count_buffer,
+            .count_buffer_offset = 0,
+        });
+    } catch (const std::invalid_argument&) {
+        rejected_range = true;
+    }
+
+    MK_REQUIRE(rejected_usage);
+    MK_REQUIRE(rejected_range);
+    MK_REQUIRE(device.stats().indexed_indirect_draw_calls == 0);
+    MK_REQUIRE(device.stats().indexed_indirect_commands_executed == 0);
 }
 
 MK_TEST("null rhi rejects invalid shader and pipeline descriptions") {

@@ -314,6 +314,7 @@ struct VulkanBufferUsagePlan {
     bool index{false};
     bool uniform{false};
     bool storage{false};
+    bool indirect{false};
 };
 
 struct VulkanBufferMemoryPlan {

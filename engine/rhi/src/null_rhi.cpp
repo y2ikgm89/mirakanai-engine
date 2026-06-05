@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: LicenseRef-Proprietary
 
 #include "mirakana/rhi/gpu_debug.hpp"
+#include "mirakana/rhi/indirect_draw.hpp"
 #include "mirakana/rhi/rhi.hpp"
 
 #include <algorithm>
@@ -23,6 +24,38 @@ using BufferByteDifference = std::vector<std::uint8_t>::difference_type;
         throw std::invalid_argument("rhi byte offset is too large for host iterator arithmetic");
     }
     return static_cast<BufferByteDifference>(value);
+}
+
+[[nodiscard]] bool is_aligned_to(std::uint64_t value, std::uint64_t alignment) noexcept {
+    return alignment != 0U && value % alignment == 0U;
+}
+
+[[nodiscard]] std::uint64_t checked_add(std::uint64_t lhs, std::uint64_t rhs, const char* message);
+[[nodiscard]] std::uint64_t checked_mul(std::uint64_t lhs, std::uint64_t rhs, const char* message);
+
+[[nodiscard]] std::uint64_t indexed_indirect_argument_range_end(const IndexedIndirectDrawDesc& desc) {
+    if (desc.max_draw_count == 0) {
+        throw std::invalid_argument("rhi indexed indirect draw max_draw_count must be non-zero");
+    }
+    if (!is_aligned_to(desc.argument_buffer_offset, indexed_indirect_draw_offset_alignment_bytes)) {
+        throw std::invalid_argument("rhi indexed indirect draw argument offset must be 4-byte aligned");
+    }
+    if (desc.command_stride_bytes < indexed_indirect_draw_command_size_bytes ||
+        desc.command_stride_bytes % indexed_indirect_draw_offset_alignment_bytes != 0U) {
+        throw std::invalid_argument("rhi indexed indirect draw command stride must be 4-byte aligned and at least 20");
+    }
+
+    const auto last_stride_offset =
+        checked_mul(static_cast<std::uint64_t>(desc.command_stride_bytes), desc.max_draw_count - 1U,
+                    "rhi indexed indirect draw argument range overflowed");
+    return checked_add(checked_add(desc.argument_buffer_offset, last_stride_offset,
+                                   "rhi indexed indirect draw argument range overflowed"),
+                       indexed_indirect_draw_command_size_bytes, "rhi indexed indirect draw argument range overflowed");
+}
+
+[[nodiscard]] std::uint32_t read_u32_le(std::span<const std::uint8_t> bytes) noexcept {
+    return static_cast<std::uint32_t>(bytes[0]) | (static_cast<std::uint32_t>(bytes[1]) << 8U) |
+           (static_cast<std::uint32_t>(bytes[2]) << 16U) | (static_cast<std::uint32_t>(bytes[3]) << 24U);
 }
 
 void validate_buffer_desc(const BufferDesc& desc) {
@@ -898,6 +931,103 @@ class NullRhiCommandList final : public IRhiCommandList {
         device_.stats_.last_indexed_draw_first_index = first_index;
         device_.stats_.last_indexed_draw_vertex_offset = vertex_offset;
         device_.stats_.last_indexed_draw_first_instance = first_instance;
+    }
+
+    void draw_indexed_indirect(const IndexedIndirectDrawDesc& desc) override {
+        require_recording();
+        if (!render_pass_active_) {
+            throw std::logic_error("rhi indexed indirect draw must be recorded inside a render pass");
+        }
+        if (!graphics_pipeline_bound_) {
+            throw std::logic_error("rhi indexed indirect draw requires a graphics pipeline");
+        }
+        if (!vertex_buffer_bound_) {
+            throw std::logic_error("rhi indexed indirect draw requires a vertex buffer");
+        }
+        if (!index_buffer_bound_) {
+            throw std::logic_error("rhi indexed indirect draw requires an index buffer");
+        }
+        if (!device_.owns_buffer(desc.argument_buffer)) {
+            throw std::invalid_argument("rhi indexed indirect draw argument buffer must belong to this device");
+        }
+
+        const auto& argument_desc = device_.buffer_desc(desc.argument_buffer);
+        if (!has_flag(argument_desc.usage, BufferUsage::indirect)) {
+            throw std::invalid_argument("rhi indexed indirect draw argument buffer requires indirect usage");
+        }
+        const auto argument_range_end = indexed_indirect_argument_range_end(desc);
+        if (argument_range_end > argument_desc.size_bytes) {
+            throw std::invalid_argument("rhi indexed indirect draw argument range is outside the argument buffer");
+        }
+
+        std::uint32_t count_buffer_value = desc.max_draw_count;
+        std::uint32_t draw_count = desc.max_draw_count;
+        const bool count_buffer_used = has_indexed_indirect_count_buffer(desc);
+        if (count_buffer_used) {
+            if (!device_.owns_buffer(desc.count_buffer)) {
+                throw std::invalid_argument("rhi indexed indirect draw count buffer must belong to this device");
+            }
+            if (!is_aligned_to(desc.count_buffer_offset, indexed_indirect_draw_offset_alignment_bytes)) {
+                throw std::invalid_argument("rhi indexed indirect draw count buffer offset must be 4-byte aligned");
+            }
+            const auto& count_desc = device_.buffer_desc(desc.count_buffer);
+            if (!has_flag(count_desc.usage, BufferUsage::indirect)) {
+                throw std::invalid_argument("rhi indexed indirect draw count buffer requires indirect usage");
+            }
+            if (desc.count_buffer_offset > count_desc.size_bytes ||
+                indexed_indirect_draw_count_buffer_size_bytes > count_desc.size_bytes - desc.count_buffer_offset) {
+                throw std::invalid_argument("rhi indexed indirect draw count range is outside the count buffer");
+            }
+            const auto& count_storage = device_.buffer_bytes_.at(desc.count_buffer.value - 1U);
+            const auto count_offset = checked_buffer_byte_difference(desc.count_buffer_offset);
+            count_buffer_value = read_u32_le(std::span<const std::uint8_t>{
+                count_storage.data() + count_offset, indexed_indirect_draw_count_buffer_size_bytes});
+            draw_count = std::min(count_buffer_value, desc.max_draw_count);
+        }
+
+        std::vector<IndexedIndirectDrawCommand> commands;
+        commands.reserve(draw_count);
+        const auto& argument_storage = device_.buffer_bytes_.at(desc.argument_buffer.value - 1U);
+        for (std::uint32_t draw_index = 0; draw_index < draw_count; ++draw_index) {
+            const auto command_offset =
+                checked_add(desc.argument_buffer_offset,
+                            checked_mul(static_cast<std::uint64_t>(desc.command_stride_bytes), draw_index,
+                                        "rhi indexed indirect draw command offset overflowed"),
+                            "rhi indexed indirect draw command offset overflowed");
+            const auto host_offset = checked_buffer_byte_difference(command_offset);
+            auto command = decode_indexed_indirect_draw_command(std::span<const std::uint8_t>{
+                argument_storage.data() + host_offset, indexed_indirect_draw_command_size_bytes});
+            if (command.index_count_per_instance == 0 || command.instance_count == 0) {
+                throw std::invalid_argument("rhi indexed indirect draw commands must have non-zero draw counts");
+            }
+            commands.push_back(command);
+        }
+
+        ++device_.stats_.indexed_indirect_draw_calls;
+        if (count_buffer_used) {
+            ++device_.stats_.indexed_indirect_count_buffer_reads;
+        }
+        device_.stats_.last_indexed_indirect_max_draw_count = desc.max_draw_count;
+        device_.stats_.last_indexed_indirect_executed_draw_count = draw_count;
+        device_.stats_.last_indexed_indirect_count_buffer_value = count_buffer_value;
+
+        for (const auto& command : commands) {
+            ++device_.stats_.draw_calls;
+            ++device_.stats_.indexed_draw_calls;
+            ++device_.stats_.indexed_indirect_commands_executed;
+            if (command.instance_count > 1) {
+                ++device_.stats_.instanced_draw_calls;
+                ++device_.stats_.instanced_indexed_draw_calls;
+                device_.stats_.instanced_instances_submitted += command.instance_count;
+            }
+            device_.stats_.indices_submitted +=
+                static_cast<std::uint64_t>(command.index_count_per_instance) * command.instance_count;
+            device_.stats_.last_indexed_draw_index_count = command.index_count_per_instance;
+            device_.stats_.last_indexed_draw_instance_count = command.instance_count;
+            device_.stats_.last_indexed_draw_first_index = command.first_index;
+            device_.stats_.last_indexed_draw_vertex_offset = command.vertex_offset;
+            device_.stats_.last_indexed_draw_first_instance = command.first_instance;
+        }
     }
 
     void dispatch(std::uint32_t group_count_x, std::uint32_t group_count_y, std::uint32_t group_count_z) override {

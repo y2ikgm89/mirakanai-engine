@@ -4,7 +4,7 @@
 
 **Plan ID:** `mavg-gpu-culling-indirect-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
 **Execution State:** Stacked on `mavg-runtime-lod-milestone-v1` after the conventional static MAVG LoD path. This child is the first GPU-driven step and must stay reviewable without claiming backend execution.
 

@@ -75,7 +75,7 @@ foreach ($needle in @(
 
 foreach ($needle in @(
         "mavg-gpu-culling-indirect-v1",
-        "active child for value-only packed indexed indirect command planning",
+        "completed stacked child for value-only packed indexed indirect command planning",
         "actual compute dispatch and backend indirect execution remain follow-up"
     )) {
     Assert-ContainsText $mavgRuntimeLodPlanText $needle "docs/superpowers/plans/2026-06-05-mavg-runtime-lod-milestone-v1.md"
@@ -97,11 +97,4 @@ foreach ($needle in @(
         "without executing GPU culling"
     )) {
     Assert-ContainsText $rendererManifestText $needle "engine/agent/manifest.json MK_renderer MAVG GPU culling indirect planning evidence"
-}
-
-if ($manifest.aiOperableProductionLoop.currentActivePlan -ne "docs/superpowers/plans/2026-06-05-mavg-gpu-culling-indirect-v1.md") {
-    Write-Error "engine/agent/manifest.json currentActivePlan must point at mavg-gpu-culling-indirect-v1"
-}
-if ($manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "mavg-gpu-culling-indirect-v1") {
-    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must be mavg-gpu-culling-indirect-v1"
 }
