@@ -863,6 +863,28 @@ MK_TEST("editor DirectWrite text atlas handoff evidence separates adapter glyph 
     MK_REQUIRE(evidence.fallback_used_rows == 0U);
     MK_REQUIRE(evidence.fallback_not_used_rows >= 1U);
     MK_REQUIRE(!evidence.fallback_used);
+    MK_REQUIRE(evidence.text_shaping_status == "ready");
+    MK_REQUIRE(evidence.font_fallback_status == "ready");
+    MK_REQUIRE(evidence.glyph_atlas_status == "ready");
+    MK_REQUIRE(evidence.bidi_status == "ready");
+    MK_REQUIRE(evidence.line_break_status == "ready");
+    MK_REQUIRE(evidence.dependency_license_records_status == "ready");
+    MK_REQUIRE(evidence.harf_buzz_dependency_status == "dependency_gated");
+    MK_REQUIRE(evidence.free_type_dependency_status == "dependency_gated");
+    MK_REQUIRE(evidence.icu_dependency_status == "dependency_gated");
+    MK_REQUIRE(evidence.shaping_segment_rows >= 1U);
+    MK_REQUIRE(evidence.shaping_direction_script_language_rows >= 1U);
+    MK_REQUIRE(evidence.glyph_cluster_rows >= evidence.shaped_glyph_count);
+    MK_REQUIRE(evidence.glyph_advance_offset_rows >= evidence.shaped_glyph_count);
+    MK_REQUIRE(evidence.bidi_boundary_rows >= 1U);
+    MK_REQUIRE(evidence.word_boundary_rows >= 1U);
+    MK_REQUIRE(evidence.line_break_boundary_rows >= 1U);
+    MK_REQUIRE(evidence.font_face_rows >= 1U);
+    MK_REQUIRE(evidence.glyph_index_lookup_rows >= evidence.rasterized_glyph_count);
+    MK_REQUIRE(evidence.glyph_metric_rows >= evidence.rasterized_glyph_count);
+    MK_REQUIRE(evidence.glyph_bitmap_format_rows >= evidence.rasterized_glyph_count);
+    MK_REQUIRE(evidence.glyph_atlas_allocation_rows >= evidence.rasterized_glyph_count);
+    MK_REQUIRE(evidence.font_license_provenance_rows >= 1U);
     MK_REQUIRE(evidence.host_gated_rows == 1U);
     MK_REQUIRE(evidence.unsupported_rows == 1U);
     MK_REQUIRE(!evidence.atlas_handoff_ready);
@@ -874,6 +896,34 @@ MK_TEST("editor DirectWrite text atlas handoff evidence separates adapter glyph 
     }));
     MK_REQUIRE(std::ranges::any_of(evidence.rows, [](const auto& row) {
         return row.id == "editor.text_atlas.glyphs.ready" && row.status == "ready" && row.glyphs_ready;
+    }));
+    MK_REQUIRE(std::ranges::any_of(evidence.rows, [](const auto& row) {
+        return row.id == "editor.text_shaping.direction_script_language" && row.status == "ready" &&
+               row.direction_script_language_ready;
+    }));
+    MK_REQUIRE(std::ranges::any_of(evidence.rows, [](const auto& row) {
+        return row.id == "editor.text_shaping.glyph_clusters" && row.status == "ready" && row.glyph_clusters_ready &&
+               row.glyph_advances_offsets_ready;
+    }));
+    MK_REQUIRE(std::ranges::any_of(evidence.rows, [](const auto& row) {
+        return row.id == "editor.text_shaping.boundaries" && row.status == "ready" && row.bidi_boundaries_ready &&
+               row.word_boundaries_ready && row.line_break_boundaries_ready;
+    }));
+    MK_REQUIRE(std::ranges::any_of(evidence.rows, [](const auto& row) {
+        return row.id == "editor.text_font.glyph_metrics" && row.status == "ready" && row.font_face_ready &&
+               row.glyph_metrics_ready && row.bitmap_format_ready;
+    }));
+    MK_REQUIRE(std::ranges::any_of(evidence.rows, [](const auto& row) {
+        return row.id == "editor.text_font.license_provenance" && row.status == "ready" && row.license_provenance_ready;
+    }));
+    MK_REQUIRE(std::ranges::any_of(evidence.rows, [](const auto& row) {
+        return row.id == "editor.text_dependency.harfbuzz" && row.status == "dependency_gated" && row.dependency_gated;
+    }));
+    MK_REQUIRE(std::ranges::any_of(evidence.rows, [](const auto& row) {
+        return row.id == "editor.text_dependency.freetype" && row.status == "dependency_gated" && row.dependency_gated;
+    }));
+    MK_REQUIRE(std::ranges::any_of(evidence.rows, [](const auto& row) {
+        return row.id == "editor.text_dependency.icu" && row.status == "dependency_gated" && row.dependency_gated;
     }));
     MK_REQUIRE(std::ranges::any_of(evidence.rows, [](const auto& row) {
         return row.id == "editor.text_atlas.font_fallback" && row.status == "not_used" && !row.fallback_used;
@@ -976,11 +1026,34 @@ MK_TEST("editor first party shell smoke counters expose text atlas handoff evide
         .fallback_used = false,
         .atlas_handoff_ready = false,
         .native_handles_exposed = false,
+        .text_shaping_status = "ready",
+        .font_fallback_status = "ready",
+        .glyph_atlas_status = "ready",
+        .bidi_status = "ready",
+        .line_break_status = "ready",
+        .dependency_license_records_status = "ready",
+        .harf_buzz_dependency_status = "dependency_gated",
+        .free_type_dependency_status = "dependency_gated",
+        .icu_dependency_status = "dependency_gated",
         .adapter_invoked_rows = 2U,
         .glyphs_ready_rows = 1U,
         .fallback_rows = 1U,
         .fallback_used_rows = 0U,
         .fallback_not_used_rows = 1U,
+        .shaping_segment_rows = 1U,
+        .shaping_direction_script_language_rows = 1U,
+        .glyph_cluster_rows = 9U,
+        .glyph_advance_offset_rows = 9U,
+        .bidi_boundary_rows = 1U,
+        .word_boundary_rows = 1U,
+        .line_break_boundary_rows = 1U,
+        .font_face_rows = 1U,
+        .glyph_index_lookup_rows = 9U,
+        .glyph_metric_rows = 9U,
+        .glyph_bitmap_format_rows = 9U,
+        .glyph_atlas_allocation_rows = 9U,
+        .font_license_provenance_rows = 1U,
+        .dependency_gated_rows = 3U,
         .host_gated_rows = 1U,
         .unsupported_rows = 1U,
         .shaped_glyph_count = 9U,
@@ -1000,6 +1073,28 @@ MK_TEST("editor first party shell smoke counters expose text atlas handoff evide
     MK_REQUIRE(counters.text_atlas_handoff_unsupported_rows == 1U);
     MK_REQUIRE(!counters.text_atlas_handoff_ready);
     MK_REQUIRE(!counters.text_font_native_handles_exposed);
+    MK_REQUIRE(counters.text_shaping_status == "ready");
+    MK_REQUIRE(counters.text_font_fallback_status == "ready");
+    MK_REQUIRE(counters.text_glyph_atlas_status == "ready");
+    MK_REQUIRE(counters.text_bidi_status == "ready");
+    MK_REQUIRE(counters.text_line_break_status == "ready");
+    MK_REQUIRE(counters.text_dependency_license_records == "ready");
+    MK_REQUIRE(counters.text_harfbuzz_dependency_status == "dependency_gated");
+    MK_REQUIRE(counters.text_freetype_dependency_status == "dependency_gated");
+    MK_REQUIRE(counters.text_icu_dependency_status == "dependency_gated");
+    MK_REQUIRE(counters.text_shaping_segment_rows >= 1U);
+    MK_REQUIRE(counters.text_glyph_cluster_rows >= 1U);
+    MK_REQUIRE(counters.text_glyph_advance_offset_rows >= 1U);
+    MK_REQUIRE(counters.text_bidi_boundary_rows >= 1U);
+    MK_REQUIRE(counters.text_word_boundary_rows >= 1U);
+    MK_REQUIRE(counters.text_line_break_boundary_rows >= 1U);
+    MK_REQUIRE(counters.text_font_face_rows >= 1U);
+    MK_REQUIRE(counters.text_glyph_metric_rows >= 1U);
+    MK_REQUIRE(counters.text_glyph_bitmap_format_rows >= 1U);
+    MK_REQUIRE(counters.text_glyph_atlas_allocation_rows >= 1U);
+    MK_REQUIRE(counters.text_font_license_provenance_rows >= 1U);
+    MK_REQUIRE(counters.text_dependency_gated_rows == 3U);
+    MK_REQUIRE(!counters.text_native_handles_exposed);
 }
 
 MK_TEST("editor native shell first party IME controller routes focused text target sessions") {

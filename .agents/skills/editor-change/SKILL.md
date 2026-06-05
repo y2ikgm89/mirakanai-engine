@@ -37,7 +37,9 @@ Use this skill for editor/core models, native visible editor shell boundaries, p
   renders single-window dock tab headers/gutters, active/focused panel state, hidden-tab disabled commands, keyboard focus traversal over
   dock tabs, Console diagnostics, AI Commands status/command/evidence rows as read-only `EditorRichText*` spans, and Inspector property
   rows with visible edit command controls only for editable `EditorRichText*` documents, docking smoke counters, private Windows DirectWrite text-layout/glyph-raster adapter validation, selected editor text atlas handoff
-  evidence, private Windows TSF text-input/IME session selection through existing `MK_ui` platform text-input, IME composition, and
+  evidence rows including `editor_text_shaping_status=ready`, `editor_text_font_fallback_status=ready`, `editor_text_glyph_atlas_status=ready`,
+  `editor_text_dependency_license_records=ready`, `editor_text_dependency_gated_rows=3`, and `editor_text_native_handles_exposed=0`, private
+  Windows TSF text-input/IME session selection through existing `MK_ui` platform text-input, IME composition, and
   committed-text contracts with `editor_shell_ime_status=win32_tsf_selected`, private Windows UIA provider publication with
   `editor_shell_accessibility_status=uia_provider_ready`, screen-space bounds, hosted-root null runtime ids, and child `UiaAppendRuntimeId`
   rows, native viewport/material preview lifecycle gates, private `native_texture_display_adapter.*` RHI evidence, and private
@@ -59,7 +61,11 @@ Use this skill for editor/core models, native visible editor shell boundaries, p
   callback coverage, native IME candidate UI, reconversion, full UIA control pattern/event parity, Vulkan/Metal editor texture-display
   parity, broader material-preview GPU parity, cross-platform accessibility parity, and cross-platform font adapters remain future phases.
 - When selecting a future editor text/accessibility milestone, start with first-party editable-rich-text core and AI-operable text commands before GPU upload, custom IME candidate UI, or full UIA parity. Own the editor document, command, semantic, and adapter contracts in `MK_editor_core`; keep Unicode shaping, bidi, font fallback/rasterization, TSF/IME protocol, accessibility bridges, and platform rendering details behind official SDK or audited-dependency adapters.
-- Cross-platform editor adapter work is future-gated with `editor.cross_platform.adapter.*` rows: macOS Core Text/InputMethodKit/NSAccessibility, Linux AT-SPI/IBus/Fcitx, Android InputMethodService/accessibility, iOS UITextInput/UIAccessibility, and HarfBuzz/FreeType/ICU-class adapters must not be claimed from Windows DirectWrite/TSF/UIA evidence; generated games and runtime UI stay on public `mirakana::ui`, and new text/font/image dependencies require `license-audit`, `vcpkg.json`, `docs/dependencies.md`, and `THIRD_PARTY_NOTICES.md`.
+- Cross-platform editor adapter work is future-gated with `editor.cross_platform.adapter.*` rows: macOS Core Text/InputMethodKit/NSAccessibility,
+  Linux AT-SPI/IBus/Fcitx, Android InputMethodService/accessibility, iOS UITextInput/UIAccessibility, and HarfBuzz/FreeType/ICU-class adapters
+  must not be claimed from Windows DirectWrite/TSF/UIA evidence. HarfBuzz, FreeType, ICU, and font packages stay `dependency_gated` until
+  selected by a license/dependency slice; generated games and runtime UI stay on public `mirakana::ui`, and new text/font/image dependencies
+  require `license-audit`, `vcpkg.json`, `docs/dependencies.md`, and `THIRD_PARTY_NOTICES.md`.
 - Environment authoring readiness rows such as `environment.readiness.physical_sky.package_status`, `environment.readiness.backend.metal_status`, and `environment.readiness.unsupported.environment_ready` are non-editable Inspector diagnostics from `make_environment_authoring_inspector_model`; do not treat them as backend/package execution, public handle exposure, or broad `environment_ready`.
 - Read `references/full-guidance.md` only when detailed retained row ids, panel contracts, visible-shell boundary rules, or detailed validation lanes are needed.
 - Prefer focused `MK_editor_core_tests` or `check-tidy.ps1 -Files` loops while iterating, then `tools/validate.ps1` at the slice gate.

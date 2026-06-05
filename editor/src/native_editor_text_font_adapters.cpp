@@ -332,6 +332,11 @@ class NativeEditorDirectWriteTextShapingAdapter final : public ui::ITextShapingA
             .end_byte = request.text.size(),
         });
         run.boundaries.push_back(ui::TextBoundaryEvidence{
+            .kind = ui::TextBoundaryEvidenceKind::word,
+            .start_byte = 0U,
+            .end_byte = request.text.size(),
+        });
+        run.boundaries.push_back(ui::TextBoundaryEvidence{
             .kind = ui::TextBoundaryEvidenceKind::line_break,
             .start_byte = 0U,
             .end_byte = request.text.size(),

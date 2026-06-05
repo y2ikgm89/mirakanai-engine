@@ -848,7 +848,7 @@ void append_status_row(std::vector<EditorAiOperationStatusRow>& rows, EditorAiOp
 std::vector<EditorAiOperationStatusRow>
 make_editor_ai_operation_ux_status_rows(const EditorAiOperationUxStatusDesc& desc) {
     std::vector<EditorAiOperationStatusRow> rows;
-    rows.reserve(8U);
+    rows.reserve(14U);
 
     if (!desc.selected_dock_panel_id.empty()) {
         append_status_row(rows, EditorAiOperationStatusRow{
@@ -890,6 +890,69 @@ make_editor_ai_operation_ux_status_rows(const EditorAiOperationUxStatusDesc& des
                                 .ready = desc.text_font_adapter_invoked && desc.text_font_glyphs_ready,
                                 .host_gated = desc.text_atlas_handoff_host_gated_rows > 0U,
                                 .native_handles_public = desc.text_font_native_handles_exposed,
+                            });
+    append_status_row(rows, EditorAiOperationStatusRow{
+                                .id = "editor.ai.text.shaping",
+                                .role = "text_shaping_status",
+                                .label = "Text Shaping",
+                                .target_element_id = "editor.text.shaping",
+                                .status = desc.text_shaping_status,
+                                .count = desc.text_shaping_segment_rows,
+                                .ready = desc.text_shaping_status == "ready" && desc.text_glyph_cluster_rows > 0U &&
+                                         desc.text_glyph_advance_offset_rows > 0U,
+                                .native_handles_public = desc.text_native_handles_exposed,
+                            });
+    append_status_row(rows, EditorAiOperationStatusRow{
+                                .id = "editor.ai.text.font_fallback",
+                                .role = "text_font_fallback_status",
+                                .label = "Text Font Fallback",
+                                .target_element_id = "editor.text.font_fallback",
+                                .status = desc.text_font_fallback_status,
+                                .count = desc.text_font_face_rows,
+                                .ready = desc.text_font_fallback_status == "ready",
+                                .native_handles_public = desc.text_native_handles_exposed,
+                            });
+    append_status_row(rows, EditorAiOperationStatusRow{
+                                .id = "editor.ai.text.glyph_atlas",
+                                .role = "text_glyph_atlas_status",
+                                .label = "Text Glyph Atlas",
+                                .target_element_id = "editor.text.glyph_atlas",
+                                .status = desc.text_glyph_atlas_status,
+                                .count = desc.text_glyph_atlas_allocation_rows,
+                                .ready = desc.text_glyph_atlas_status == "ready" &&
+                                         desc.text_glyph_bitmap_format_rows > 0U && desc.text_glyph_metric_rows > 0U,
+                                .native_handles_public = desc.text_native_handles_exposed,
+                            });
+    append_status_row(rows, EditorAiOperationStatusRow{
+                                .id = "editor.ai.text.bidi",
+                                .role = "text_bidi_status",
+                                .label = "Text Bidi",
+                                .target_element_id = "editor.text.bidi",
+                                .status = desc.text_bidi_status,
+                                .count = desc.text_bidi_boundary_rows,
+                                .ready = desc.text_bidi_status == "ready",
+                                .native_handles_public = desc.text_native_handles_exposed,
+                            });
+    append_status_row(rows, EditorAiOperationStatusRow{
+                                .id = "editor.ai.text.line_break",
+                                .role = "text_line_break_status",
+                                .label = "Text Line Break",
+                                .target_element_id = "editor.text.line_break",
+                                .status = desc.text_line_break_status,
+                                .count = desc.text_line_break_boundary_rows,
+                                .ready = desc.text_line_break_status == "ready",
+                                .native_handles_public = desc.text_native_handles_exposed,
+                            });
+    append_status_row(rows, EditorAiOperationStatusRow{
+                                .id = "editor.ai.text_dependency.licenses",
+                                .role = "text_dependency_license_status",
+                                .label = "Text Dependency Licenses",
+                                .target_element_id = "editor.text_dependency.licenses",
+                                .status = desc.text_dependency_license_records,
+                                .count = desc.text_font_license_provenance_rows,
+                                .ready = desc.text_dependency_license_records == "ready",
+                                .host_gated = desc.text_dependency_gated_rows > 0U,
+                                .native_handles_public = desc.text_native_handles_exposed,
                             });
     append_status_row(rows, EditorAiOperationStatusRow{
                                 .id = "editor.ai.ime.session",

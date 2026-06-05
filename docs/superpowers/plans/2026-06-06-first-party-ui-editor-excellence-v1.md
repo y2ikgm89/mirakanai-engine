@@ -409,12 +409,12 @@ Expected: rich text editing is complete at the first-party document level before
 
 **Files:** `engine/ui/**`, `engine/ui_renderer/**`, optional `engine/tools/**` adapter files, `vcpkg.json`, dependency/legal docs when third-party adapters are selected, editor native text/font files, tests.
 
-- [ ] Run `license-audit` before adding HarfBuzz, FreeType, ICU, font files, or new codec/font dependencies.
-- [ ] Add dependency records before integration when third-party adapters are selected.
-- [ ] Add RED tests for shaping evidence rows: direction, script, language, glyph ids, clusters, advances, offsets, fallback run boundaries, bidi boundaries, and line-break boundaries.
-- [ ] Add RED tests for font evidence rows: face family/style, glyph index lookup, glyph metrics, pixel size, bitmap format, atlas allocation, fallback face id, and licensing/provenance row.
-- [ ] Add RED tests for ICU or official SDK boundary rows: grapheme, word, and line-break segmentation over Latin, Japanese, Arabic, emoji, combining marks, and mixed-direction text.
-- [ ] Add counters:
+- [x] Run `license-audit` before adding HarfBuzz, FreeType, ICU, font files, or new codec/font dependencies.
+- [x] Add dependency records before integration when third-party adapters are selected.
+- [x] Add RED tests for shaping evidence rows: direction, script, language, glyph ids, clusters, advances, offsets, fallback run boundaries, bidi boundaries, and line-break boundaries.
+- [x] Add RED tests for font evidence rows: face family/style, glyph index lookup, glyph metrics, pixel size, bitmap format, atlas allocation, fallback face id, and licensing/provenance row.
+- [x] Add RED tests for ICU or official SDK boundary rows: grapheme, word, and line-break segmentation over Latin, Japanese, Arabic, emoji, combining marks, and mixed-direction text.
+- [x] Add counters:
 
 ```text
 editor_text_shaping_status=ready
@@ -426,9 +426,11 @@ editor_text_dependency_license_records=ready
 editor_text_native_handles_exposed=0
 ```
 
-- [ ] Keep DirectWrite adapter ready on Windows; keep HarfBuzz/FreeType/ICU rows dependency-gated until dependency/legal records and tests pass.
+- [x] Keep DirectWrite adapter ready on Windows; keep HarfBuzz/FreeType/ICU rows dependency-gated until dependency/legal records and tests pass.
 
 Expected: broad text/font quality is evidence-backed and dependency-compliant.
+
+**Phase 5 Evidence:** Candidate `codex/first-party-ui-editor-excellence-phase5` extends the first-party Windows DirectWrite text/font evidence surface without adding third-party dependencies. `NativeEditorTextAtlasHandoffEvidence` and `FirstPartyEditorShellSmokeCounters` now expose `editor_text_shaping_status=ready`, `editor_text_font_fallback_status=ready`, `editor_text_glyph_atlas_status=ready`, `editor_text_bidi_status=ready`, `editor_text_line_break_status=ready`, `editor_text_dependency_license_records=ready`, positive shaping segment, glyph cluster, advance/offset, bidi, word, line-break, font face, glyph metric, bitmap format, atlas allocation, and font-license/provenance rows, `editor_text_dependency_gated_rows=3`, and `editor_text_native_handles_exposed=0`. `EditorAiOperationSnapshot.status_rows` now also includes `editor.ai.text.shaping`, `editor.ai.text.font_fallback`, `editor.ai.text.glyph_atlas`, `editor.ai.text.bidi`, `editor.ai.text.line_break`, and `editor.ai.text_dependency.licenses` value rows. HarfBuzz, FreeType, and ICU remain explicit `dependency_gated` rows (`editor_text_harfbuzz_dependency_status=dependency_gated`, `editor_text_freetype_dependency_status=dependency_gated`, `editor_text_icu_dependency_status=dependency_gated`), so `vcpkg.json`, `docs/dependencies.md`, `docs/legal-and-licensing.md`, and `THIRD_PARTY_NOTICES.md` are intentionally unchanged in this slice. RED/GREEN evidence covered `MK_editor_core_tests` and `MK_editor_native_shell_tests`; focused validation passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests MK_editor_native_shell_tests` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_editor_core_tests|MK_editor_native_shell_tests"`. This completes Phase 5 at the first-party evidence/counter/AI-row level only; production HarfBuzz/FreeType/ICU integration, real cross-platform shaping/font fallback parity, full IME parity, full accessibility parity, Vulkan/Metal editor texture parity, and broad `first_party_editor_excellence` remain later phases.
 
 ## Phase 6: Full IME And Text Input Parity
 

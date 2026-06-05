@@ -1980,6 +1980,28 @@ MK_TEST("editor ai operation snapshot exposes UX status rows without native hand
         .text_font_native_handles_exposed = false,
         .text_atlas_handoff_host_gated_rows = 1U,
         .text_atlas_handoff_unsupported_rows = 1U,
+        .text_shaping_status = "ready",
+        .text_font_fallback_status = "ready",
+        .text_glyph_atlas_status = "ready",
+        .text_bidi_status = "ready",
+        .text_line_break_status = "ready",
+        .text_dependency_license_records = "ready",
+        .text_harfbuzz_dependency_status = "dependency_gated",
+        .text_freetype_dependency_status = "dependency_gated",
+        .text_icu_dependency_status = "dependency_gated",
+        .text_shaping_segment_rows = 1U,
+        .text_glyph_cluster_rows = 9U,
+        .text_glyph_advance_offset_rows = 9U,
+        .text_bidi_boundary_rows = 1U,
+        .text_word_boundary_rows = 1U,
+        .text_line_break_boundary_rows = 1U,
+        .text_font_face_rows = 1U,
+        .text_glyph_metric_rows = 9U,
+        .text_glyph_bitmap_format_rows = 9U,
+        .text_glyph_atlas_allocation_rows = 9U,
+        .text_font_license_provenance_rows = 1U,
+        .text_dependency_gated_rows = 3U,
+        .text_native_handles_exposed = false,
         .accessibility_status = "uia_provider_ready",
         .accessibility_nodes = 12U,
         .accessibility_role_rows = 12U,
@@ -2006,6 +2028,12 @@ MK_TEST("editor ai operation snapshot exposes UX status rows without native hand
     const auto* selected_dock = find_ai_operation_status_row(snapshot, "editor.ai.dock.selected_panel");
     const auto* text_input = find_ai_operation_status_row(snapshot, "editor.ai.text_input.focused_target");
     const auto* text_font = find_ai_operation_status_row(snapshot, "editor.ai.adapter.text_font");
+    const auto* text_shaping = find_ai_operation_status_row(snapshot, "editor.ai.text.shaping");
+    const auto* text_fallback = find_ai_operation_status_row(snapshot, "editor.ai.text.font_fallback");
+    const auto* text_glyph_atlas = find_ai_operation_status_row(snapshot, "editor.ai.text.glyph_atlas");
+    const auto* text_bidi = find_ai_operation_status_row(snapshot, "editor.ai.text.bidi");
+    const auto* text_line_break = find_ai_operation_status_row(snapshot, "editor.ai.text.line_break");
+    const auto* text_licenses = find_ai_operation_status_row(snapshot, "editor.ai.text_dependency.licenses");
     const auto* ime = find_ai_operation_status_row(snapshot, "editor.ai.ime.session");
     const auto* accessibility = find_ai_operation_status_row(snapshot, "editor.ai.accessibility.uia_provider");
     const auto* viewport = find_ai_operation_status_row(snapshot, "editor.ai.viewport.display");
@@ -2022,6 +2050,28 @@ MK_TEST("editor ai operation snapshot exposes UX status rows without native hand
     MK_REQUIRE(text_font->ready);
     MK_REQUIRE(text_font->count == 1U);
     MK_REQUIRE(!text_font->native_handles_public);
+    MK_REQUIRE(text_shaping != nullptr);
+    MK_REQUIRE(text_shaping->status == "ready");
+    MK_REQUIRE(text_shaping->ready);
+    MK_REQUIRE(text_shaping->count == 1U);
+    MK_REQUIRE(!text_shaping->native_handles_public);
+    MK_REQUIRE(text_fallback != nullptr);
+    MK_REQUIRE(text_fallback->ready);
+    MK_REQUIRE(text_fallback->count == 1U);
+    MK_REQUIRE(text_glyph_atlas != nullptr);
+    MK_REQUIRE(text_glyph_atlas->ready);
+    MK_REQUIRE(text_glyph_atlas->count == 9U);
+    MK_REQUIRE(text_bidi != nullptr);
+    MK_REQUIRE(text_bidi->ready);
+    MK_REQUIRE(text_bidi->count == 1U);
+    MK_REQUIRE(text_line_break != nullptr);
+    MK_REQUIRE(text_line_break->ready);
+    MK_REQUIRE(text_line_break->count == 1U);
+    MK_REQUIRE(text_licenses != nullptr);
+    MK_REQUIRE(text_licenses->status == "ready");
+    MK_REQUIRE(text_licenses->ready);
+    MK_REQUIRE(text_licenses->host_gated);
+    MK_REQUIRE(text_licenses->count == 1U);
     MK_REQUIRE(ime != nullptr);
     MK_REQUIRE(ime->status == "win32_tsf_selected");
     MK_REQUIRE(ime->count == 1U);
