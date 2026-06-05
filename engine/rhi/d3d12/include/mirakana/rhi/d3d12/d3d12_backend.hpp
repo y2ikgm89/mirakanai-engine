@@ -59,6 +59,46 @@ struct ResourceOwnershipResult {
     std::uint64_t texture_allocation_size_bytes{0};
 };
 
+enum class D3d12EnvironmentIblTextureFormat : std::uint8_t {
+    unknown = 0,
+    rgba16_float,
+};
+
+enum class D3d12EnvironmentIblSrvDimension : std::uint8_t {
+    unknown = 0,
+    texture_cube,
+};
+
+struct D3d12EnvironmentIblRendererUploadDesc {
+    DeviceBootstrapDesc device;
+    std::uint32_t edge_size{0};
+    std::uint32_t mip_count{0};
+    D3d12EnvironmentIblTextureFormat format{D3d12EnvironmentIblTextureFormat::unknown};
+    bool require_shader_sampling{false};
+    bool require_runtime_capture{false};
+    std::span<const std::uint8_t> sampling_vertex_shader;
+    std::span<const std::uint8_t> sampling_fragment_shader;
+    bool request_native_handle_access{false};
+};
+
+struct D3d12EnvironmentIblRendererUploadResult {
+    bool succeeded{false};
+    std::uint32_t texture_cube_uploads{0};
+    std::uint32_t texture_cube_faces{0};
+    std::uint32_t texture_cube_edge_size{0};
+    std::uint32_t radiance_mips{0};
+    std::uint32_t irradiance_rows{0};
+    D3d12EnvironmentIblSrvDimension srv_dimension{D3d12EnvironmentIblSrvDimension::unknown};
+    bool shader_sampling_proven{false};
+    bool shader_sample_readback_nonzero{false};
+    std::uint32_t runtime_capture_faces{0};
+    bool runtime_capture_readback_nonzero{false};
+    std::uint64_t readback_checksum{0};
+    std::uint32_t resource_barriers_recorded{0};
+    std::uint32_t native_handle_access{0};
+    std::uint32_t diagnostics{0};
+};
+
 struct NativeResourceHandle {
     std::uint32_t value{0};
 };
@@ -531,6 +571,8 @@ class DeviceContext final {
     [[nodiscard]] QueueClockCalibration calibrate_queue_clock(QueueKind queue);
     [[nodiscard]] QueueCalibratedTiming measure_calibrated_queue_timing(QueueKind queue);
     [[nodiscard]] SubmittedCommandCalibratedTiming read_submitted_command_calibrated_timing(FenceValue fence);
+    [[nodiscard]] D3d12EnvironmentIblRendererUploadResult
+    execute_environment_ibl_renderer_upload(const D3d12EnvironmentIblRendererUploadDesc& desc);
 
     void unwind_gpu_debug_events(NativeCommandListHandle handle) noexcept;
     [[nodiscard]] bool begin_gpu_debug_event(NativeCommandListHandle handle, std::string_view name);
@@ -554,6 +596,8 @@ class DeviceContext final {
 [[nodiscard]] RuntimeProbe probe_runtime() noexcept;
 [[nodiscard]] DeviceBootstrapResult bootstrap_device(const DeviceBootstrapDesc& desc) noexcept;
 [[nodiscard]] ResourceOwnershipResult bootstrap_resource_ownership(const ResourceOwnershipDesc& desc) noexcept;
+[[nodiscard]] D3d12EnvironmentIblRendererUploadResult
+execute_environment_ibl_renderer_upload(const D3d12EnvironmentIblRendererUploadDesc& desc) noexcept;
 [[nodiscard]] std::unique_ptr<IRhiDevice> create_rhi_device(const DeviceBootstrapDesc& desc);
 [[nodiscard]] QueueCalibratedTiming measure_rhi_device_calibrated_queue_timing(IRhiDevice& device, QueueKind queue);
 [[nodiscard]] SubmittedCommandCalibratedTiming read_rhi_device_submitted_command_calibrated_timing(IRhiDevice& device,

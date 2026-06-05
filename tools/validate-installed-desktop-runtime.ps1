@@ -181,6 +181,7 @@ $requiresEnvironmentFogVulkanPackageEvidence = @($SmokeArgs) -contains "--requir
 $requiresPhysicalSkyPackageEvidence = @($SmokeArgs) -contains "--require-physical-sky-package-evidence"
 $requiresEnvironmentVolumetricFogPackageEvidence = @($SmokeArgs) -contains "--require-environment-volumetric-fog-package-evidence"
 $requiresEnvironmentLightingPackageEvidence = @($SmokeArgs) -contains "--require-environment-lighting-package-evidence"
+$requiresEnvironmentLightingRendererExecution = @($SmokeArgs) -contains "--require-environment-lighting-renderer-execution"
 $requiresCloudLayerPackageEvidence = @($SmokeArgs) -contains "--require-cloud-layer-package-evidence"
 $requiresCloudLayerRendererExecution = @($SmokeArgs) -contains "--require-cloud-layer-renderer-execution"
 $requiresEnvironmentPrecipitationPackageEvidence = @($SmokeArgs) -contains "--require-environment-precipitation-package-evidence"
@@ -230,6 +231,12 @@ if ($requiresEnvironmentVolumetricFogPackageEvidence) {
     $requiresD3d12Renderer = $true
 }
 if ($requiresPhysicalSkyPackageEvidence) {
+    $requiresPostprocess = $true
+    $requiresPostprocessDepthInput = $true
+    $requiresD3d12PostprocessEvidence = $true
+}
+if ($requiresEnvironmentLightingRendererExecution) {
+    $requiresEnvironmentLightingPackageEvidence = $true
     $requiresPostprocess = $true
     $requiresPostprocessDepthInput = $true
     $requiresD3d12PostprocessEvidence = $true
@@ -284,6 +291,7 @@ $requiresAnyEnvironmentQualityBudget = $requiresEnvironmentProfile -or
     $requiresPhysicalSkyPackageEvidence -or
     $requiresEnvironmentVolumetricFogPackageEvidence -or
     $requiresEnvironmentLightingPackageEvidence -or
+    $requiresEnvironmentLightingRendererExecution -or
     $requiresCloudLayerPackageEvidence -or
     $requiresCloudLayerRendererExecution -or
     $requiresEnvironmentPrecipitationPackageEvidence -or
@@ -4705,6 +4713,40 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
             if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
                 Write-Error "Installed desktop runtime smoke status line must not claim broad environment_ready for environment lighting package evidence."
             }
+            $expectedEnvironmentLightingRendererUploadStatus = "not_requested"
+            $expectedEnvironmentLightingRendererExecutionStatus = "not_requested"
+            $expectedEnvironmentLightingRendererUploadReady = "0"
+            $expectedEnvironmentLightingRuntimeCaptureReady = "0"
+            $expectedEnvironmentLightingTextureUploads = "0"
+            $expectedEnvironmentLightingTextureCubeUploads = "0"
+            $expectedEnvironmentLightingTextureCubeFaces = "0"
+            $expectedEnvironmentLightingTextureCubeEdgeSize = "0"
+            $expectedEnvironmentLightingRadianceMips = "0"
+            $expectedEnvironmentLightingRendererIrradianceRows = "0"
+            $expectedEnvironmentLightingShaderSampling = "0"
+            $expectedEnvironmentLightingShaderReadback = "0"
+            $expectedEnvironmentLightingBackendInvocations = "0"
+            $expectedEnvironmentLightingRuntimeCaptures = "0"
+            $expectedEnvironmentLightingRuntimeCaptureFaces = "0"
+            $expectedEnvironmentLightingRuntimeCaptureReadback = "0"
+            if ($requiresEnvironmentLightingRendererExecution) {
+                $expectedEnvironmentLightingRendererUploadStatus = "ready"
+                $expectedEnvironmentLightingRendererExecutionStatus = "ready"
+                $expectedEnvironmentLightingRendererUploadReady = "1"
+                $expectedEnvironmentLightingRuntimeCaptureReady = "1"
+                $expectedEnvironmentLightingTextureUploads = "1"
+                $expectedEnvironmentLightingTextureCubeUploads = "1"
+                $expectedEnvironmentLightingTextureCubeFaces = "6"
+                $expectedEnvironmentLightingTextureCubeEdgeSize = "16"
+                $expectedEnvironmentLightingRadianceMips = "5"
+                $expectedEnvironmentLightingRendererIrradianceRows = "9"
+                $expectedEnvironmentLightingShaderSampling = "1"
+                $expectedEnvironmentLightingShaderReadback = "1"
+                $expectedEnvironmentLightingBackendInvocations = "1"
+                $expectedEnvironmentLightingRuntimeCaptures = "1"
+                $expectedEnvironmentLightingRuntimeCaptureFaces = "6"
+                $expectedEnvironmentLightingRuntimeCaptureReadback = "1"
+            }
             $expectedEnvironmentLightingFields = @{
                 "environment_lighting_status" = "ready"
                 "environment_lighting_ready" = "1"
@@ -4729,10 +4771,22 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 "environment_lighting_package_evidence_rows" = "1"
                 "environment_lighting_hdr_clamp_enabled" = "1"
                 "environment_lighting_hdr_clamp_max_luminance_nits" = "20000"
-                "environment_lighting_renderer_upload_evidence_ready" = "0"
-                "environment_lighting_texture_uploads" = "0"
-                "environment_lighting_backend_invocations" = "0"
-                "environment_lighting_runtime_captures" = "0"
+                "environment_lighting_renderer_upload_status" = $expectedEnvironmentLightingRendererUploadStatus
+                "environment_lighting_renderer_execution_status" = $expectedEnvironmentLightingRendererExecutionStatus
+                "environment_lighting_renderer_upload_evidence_ready" = $expectedEnvironmentLightingRendererUploadReady
+                "environment_lighting_runtime_capture_evidence_ready" = $expectedEnvironmentLightingRuntimeCaptureReady
+                "environment_lighting_texture_uploads" = $expectedEnvironmentLightingTextureUploads
+                "environment_lighting_texture_cube_uploads" = $expectedEnvironmentLightingTextureCubeUploads
+                "environment_lighting_texture_cube_faces" = $expectedEnvironmentLightingTextureCubeFaces
+                "environment_lighting_texture_cube_edge_size" = $expectedEnvironmentLightingTextureCubeEdgeSize
+                "environment_lighting_radiance_mips" = $expectedEnvironmentLightingRadianceMips
+                "environment_lighting_renderer_irradiance_rows" = $expectedEnvironmentLightingRendererIrradianceRows
+                "environment_lighting_shader_sampling_proven" = $expectedEnvironmentLightingShaderSampling
+                "environment_lighting_shader_sample_readback_nonzero" = $expectedEnvironmentLightingShaderReadback
+                "environment_lighting_backend_invocations" = $expectedEnvironmentLightingBackendInvocations
+                "environment_lighting_runtime_captures" = $expectedEnvironmentLightingRuntimeCaptures
+                "environment_lighting_runtime_capture_faces" = $expectedEnvironmentLightingRuntimeCaptureFaces
+                "environment_lighting_runtime_capture_readback_nonzero" = $expectedEnvironmentLightingRuntimeCaptureReadback
                 "environment_lighting_native_handle_access" = "0"
                 "environment_lighting_diagnostics" = "0"
             }
@@ -4741,6 +4795,14 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
                     Write-Error "Installed desktop runtime smoke status line did not prove environment lighting field: $field=$($expectedEnvironmentLightingFields[$field])"
                 }
+            }
+            if (-not $requiresEnvironmentLightingRendererExecution -and
+                $smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_lighting_runtime_capture_readback_checksum=0\b") {
+                Write-Error "Installed desktop runtime smoke status line did not prove zero environment_lighting_runtime_capture_readback_checksum for package-only lighting evidence."
+            }
+            if ($requiresEnvironmentLightingRendererExecution -and
+                $smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_lighting_runtime_capture_readback_checksum=([1-9][0-9]*)\b") {
+                Write-Error "Installed desktop runtime smoke status line did not prove positive environment_lighting_runtime_capture_readback_checksum."
             }
         }
         if ($requiresEnvironmentVolumetricFogPackageEvidence) {

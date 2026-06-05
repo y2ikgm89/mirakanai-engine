@@ -96,6 +96,64 @@ MK_TEST("renderer environment lighting policy separates visual sky from IBL rows
     MK_REQUIRE(plan.hdr_clamp_row.max_luminance_nits == 20000.0F);
 }
 
+MK_TEST("renderer environment lighting policy promotes D3D12 renderer upload and runtime capture evidence") {
+    auto desc = make_valid_lighting_desc();
+    desc.request_backend_execution = true;
+    desc.request_runtime_capture = true;
+    desc.renderer_upload = mirakana::EnvironmentLightingRendererUploadEvidenceDesc{
+        .evidence_ready = true,
+        .texture_cube_uploads = 1,
+        .texture_cube_faces = 6,
+        .texture_cube_edge_size = 256,
+        .radiance_mips = 9,
+        .irradiance_rows = 9,
+        .shader_sampling_proven = true,
+        .shader_sample_readback_nonzero = true,
+    };
+    desc.runtime_capture = mirakana::EnvironmentLightingRuntimeCaptureEvidenceDesc{
+        .evidence_ready = true,
+        .capture_faces = 6,
+        .readback_nonzero = true,
+        .readback_checksum = 0xC0FFEEU,
+    };
+
+    const auto plan = mirakana::plan_environment_lighting_policy(desc);
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.invokes_backend);
+    MK_REQUIRE(!plan.exposes_native_handles);
+    MK_REQUIRE(plan.renderer_upload_evidence_ready);
+    MK_REQUIRE(plan.runtime_capture_evidence_ready);
+    MK_REQUIRE(plan.texture_uploads == 1);
+    MK_REQUIRE(plan.texture_cube_faces == 6);
+    MK_REQUIRE(plan.texture_cube_edge_size == 256);
+    MK_REQUIRE(plan.backend_invocations == 1);
+    MK_REQUIRE(plan.runtime_captures == 1);
+    MK_REQUIRE(plan.runtime_capture_faces == 6);
+    MK_REQUIRE(plan.runtime_capture_readback_nonzero);
+    MK_REQUIRE(plan.runtime_capture_readback_checksum == 0xC0FFEEU);
+    MK_REQUIRE(plan.package_evidence_rows.size() == 1);
+    MK_REQUIRE(plan.package_evidence_rows[0].renderer_upload_evidence_ready);
+}
+
+MK_TEST("renderer environment lighting policy requires concrete renderer evidence for backend claims") {
+    auto desc = make_valid_lighting_desc();
+    desc.request_backend_execution = true;
+    desc.request_runtime_capture = true;
+
+    const auto plan = mirakana::plan_environment_lighting_policy(desc);
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(!plan.renderer_upload_evidence_ready);
+    MK_REQUIRE(!plan.runtime_capture_evidence_ready);
+    MK_REQUIRE(plan.texture_uploads == 0);
+    MK_REQUIRE(plan.runtime_captures == 0);
+    MK_REQUIRE(mirakana::has_environment_lighting_diagnostic(
+        plan, mirakana::EnvironmentLightingDiagnosticCode::missing_renderer_upload_evidence));
+    MK_REQUIRE(mirakana::has_environment_lighting_diagnostic(
+        plan, mirakana::EnvironmentLightingDiagnosticCode::missing_runtime_capture_evidence));
+}
+
 MK_TEST("renderer environment lighting policy blocks policy-only package claims") {
     auto desc = make_valid_lighting_desc();
     desc.reflection_cubemap.package_record_ready = false;
@@ -171,9 +229,9 @@ MK_TEST("renderer environment lighting policy fails closed for dependency and ru
     MK_REQUIRE(mirakana::has_environment_lighting_diagnostic(
         plan, mirakana::EnvironmentLightingDiagnosticCode::unsupported_visual_lighting_coupling));
     MK_REQUIRE(mirakana::has_environment_lighting_diagnostic(
-        plan, mirakana::EnvironmentLightingDiagnosticCode::unsupported_runtime_capture));
+        plan, mirakana::EnvironmentLightingDiagnosticCode::missing_renderer_upload_evidence));
     MK_REQUIRE(mirakana::has_environment_lighting_diagnostic(
-        plan, mirakana::EnvironmentLightingDiagnosticCode::unsupported_backend_execution));
+        plan, mirakana::EnvironmentLightingDiagnosticCode::missing_runtime_capture_evidence));
     MK_REQUIRE(mirakana::has_environment_lighting_diagnostic(
         plan, mirakana::EnvironmentLightingDiagnosticCode::unsupported_native_handle_claim));
 }

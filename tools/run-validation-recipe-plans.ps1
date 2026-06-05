@@ -181,6 +181,13 @@ function Get-ValidationRecipeCommandPlan {
         $diagD3dEnvironmentLighting = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'D3D12 environment lighting package validation is restricted to the reviewed sample_desktop_runtime_game first-party IBL metadata package lane and proves reflection cubemap, irradiance, radiance mip, HDR metadata, and package-source counters without claiming renderer cubemap upload, runtime capture, Vulkan, Metal, backend parity, broad optimization, or broad environment_ready.' -ValidationRecipe $RecipeName -HostGate 'd3d12-windows-primary'
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('d3d12-windows-primary') -RequiredAcknowledgements @('d3d12-windows-primary') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12') -Diagnostics @($diagD3dEnvironmentLighting)
     }
+    elseif ($RecipeName -eq 'desktop-runtime-sample-game-environment-ibl-renderer-execution') {
+        $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
+        $smokeTail = @(Get-SampleDesktopRuntimeGameEnvironmentLightingRendererExecutionSmokeArgs)
+        $pwEntry = Get-DesktopRuntimePackageCommandPlan -ScriptPath $packageScript -GameTarget $target -RequireD3d12Shaders -SmokeArgs $smokeTail
+        $diagD3dEnvironmentLightingExecution = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'D3D12 environment IBL renderer execution validation is restricted to the reviewed sample_desktop_runtime_game D3D12 package lane and proves TextureCube upload, renderer backend invocation, runtime cubemap capture readback, and zero native-handle counters without claiming Vulkan, Metal, backend parity, broad optimization, or broad environment_ready.' -ValidationRecipe $RecipeName -HostGate 'd3d12-windows-primary'
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('d3d12-windows-primary') -RequiredAcknowledgements @('d3d12-windows-primary') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12') -Diagnostics @($diagD3dEnvironmentLightingExecution)
+    }
     elseif ($RecipeName -eq 'desktop-runtime-sample-game-physical-sky-package') {
         $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
         $smokeTail = @(Get-SampleDesktopRuntimeGamePhysicalSkySmokeArgs)

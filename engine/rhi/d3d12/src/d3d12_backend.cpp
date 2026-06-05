@@ -1148,6 +1148,234 @@ static void d3d12_set_object_name_fmt(ID3D12Object* object, const wchar_t* forma
     (void)object->SetName(buffer.data());
 }
 
+namespace {
+
+constexpr std::uint32_t k_environment_ibl_cube_faces = 6U;
+constexpr std::uint32_t k_environment_ibl_irradiance_rows = 9U;
+
+[[nodiscard]] bool d3d12_environment_ibl_power_of_two(std::uint32_t value) noexcept {
+    return value > 0U && (value & (value - 1U)) == 0U;
+}
+
+[[nodiscard]] std::uint32_t d3d12_environment_ibl_full_mip_count(std::uint32_t edge_size) noexcept {
+    std::uint32_t count = 0;
+    for (std::uint32_t size = edge_size; size > 0U; size >>= 1U) {
+        ++count;
+    }
+    return count;
+}
+
+[[nodiscard]] std::uint32_t d3d12_environment_ibl_subresource(std::uint32_t face_index, std::uint32_t mip_index,
+                                                              std::uint32_t mip_count) noexcept {
+    return (face_index * mip_count) + mip_index;
+}
+
+[[nodiscard]] DXGI_FORMAT to_d3d12_environment_ibl_format(D3d12EnvironmentIblTextureFormat format) noexcept {
+    switch (format) {
+    case D3d12EnvironmentIblTextureFormat::rgba16_float:
+        return DXGI_FORMAT_R16G16B16A16_FLOAT;
+    case D3d12EnvironmentIblTextureFormat::unknown:
+        break;
+    }
+    return DXGI_FORMAT_UNKNOWN;
+}
+
+[[nodiscard]] bool valid_environment_ibl_upload_desc(const D3d12EnvironmentIblRendererUploadDesc& desc) noexcept {
+    return d3d12_environment_ibl_power_of_two(desc.edge_size) && desc.edge_size >= 16U && desc.edge_size <= 8192U &&
+           desc.mip_count > 0U && desc.mip_count <= d3d12_environment_ibl_full_mip_count(desc.edge_size) &&
+           to_d3d12_environment_ibl_format(desc.format) != DXGI_FORMAT_UNKNOWN &&
+           (!desc.require_shader_sampling ||
+            (!desc.sampling_vertex_shader.empty() && !desc.sampling_fragment_shader.empty())) &&
+           !desc.request_native_handle_access;
+}
+
+[[nodiscard]] bool format_supports_environment_ibl(ID3D12Device* device, DXGI_FORMAT format) noexcept {
+    if (device == nullptr || format == DXGI_FORMAT_UNKNOWN) {
+        return false;
+    }
+
+    D3D12_FEATURE_DATA_FORMAT_SUPPORT support{};
+    support.Format = format;
+    if (FAILED(device->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT, &support, sizeof(support)))) {
+        return false;
+    }
+
+    constexpr D3D12_FORMAT_SUPPORT1 required_support =
+        D3D12_FORMAT_SUPPORT1_TEXTURE2D | D3D12_FORMAT_SUPPORT1_RENDER_TARGET | D3D12_FORMAT_SUPPORT1_SHADER_SAMPLE;
+    return (support.Support1 & required_support) == required_support;
+}
+
+[[nodiscard]] D3D12_RESOURCE_DESC environment_ibl_cube_resource_desc(std::uint32_t edge_size, std::uint32_t mip_count,
+                                                                     DXGI_FORMAT format) noexcept {
+    D3D12_RESOURCE_DESC desc{};
+    desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    desc.Alignment = 0;
+    desc.Width = edge_size;
+    desc.Height = edge_size;
+    desc.DepthOrArraySize = static_cast<UINT16>(k_environment_ibl_cube_faces);
+    desc.MipLevels = static_cast<UINT16>(mip_count);
+    desc.Format = format;
+    desc.SampleDesc.Count = 1;
+    desc.SampleDesc.Quality = 0;
+    desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+    desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+    return desc;
+}
+
+[[nodiscard]] D3D12_RESOURCE_DESC environment_ibl_sample_resource_desc() noexcept {
+    D3D12_RESOURCE_DESC desc{};
+    desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    desc.Alignment = 0;
+    desc.Width = 1;
+    desc.Height = 1;
+    desc.DepthOrArraySize = 1;
+    desc.MipLevels = 1;
+    desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+    desc.SampleDesc.Count = 1;
+    desc.SampleDesc.Quality = 0;
+    desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+    desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
+    return desc;
+}
+
+[[nodiscard]] D3D12_RESOURCE_BARRIER environment_ibl_transition(ID3D12Resource* resource, D3D12_RESOURCE_STATES before,
+                                                                D3D12_RESOURCE_STATES after) noexcept {
+    D3D12_RESOURCE_BARRIER barrier{};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+    barrier.Transition.pResource = resource;
+    barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+    barrier.Transition.StateBefore = before;
+    barrier.Transition.StateAfter = after;
+    return barrier;
+}
+
+[[nodiscard]] bool
+create_environment_ibl_sampling_root_signature(ID3D12Device* device,
+                                               Microsoft::WRL::ComPtr<ID3D12RootSignature>& root_signature) noexcept {
+    if (device == nullptr) {
+        return false;
+    }
+
+    D3D12_DESCRIPTOR_RANGE srv_range{};
+    srv_range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+    srv_range.NumDescriptors = 1;
+    srv_range.BaseShaderRegister = 0;
+    srv_range.RegisterSpace = 0;
+    srv_range.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+
+    D3D12_ROOT_PARAMETER root_parameter{};
+    root_parameter.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+    root_parameter.DescriptorTable.NumDescriptorRanges = 1;
+    root_parameter.DescriptorTable.pDescriptorRanges = &srv_range;
+    root_parameter.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+    D3D12_STATIC_SAMPLER_DESC sampler{};
+    sampler.Filter = D3D12_FILTER_MIN_MAG_MIP_POINT;
+    sampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    sampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    sampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+    sampler.MipLODBias = 0.0F;
+    sampler.MaxAnisotropy = 1;
+    sampler.ComparisonFunc = D3D12_COMPARISON_FUNC_NEVER;
+    sampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
+    sampler.MinLOD = 0.0F;
+    sampler.MaxLOD = (std::numeric_limits<float>::max)();
+    sampler.ShaderRegister = 0;
+    sampler.RegisterSpace = 0;
+    sampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+    D3D12_ROOT_SIGNATURE_DESC root_desc{};
+    root_desc.NumParameters = 1;
+    root_desc.pParameters = &root_parameter;
+    root_desc.NumStaticSamplers = 1;
+    root_desc.pStaticSamplers = &sampler;
+    root_desc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
+                      D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
+                      D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
+                      D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
+
+    Microsoft::WRL::ComPtr<ID3DBlob> serialized;
+    Microsoft::WRL::ComPtr<ID3DBlob> errors;
+    if (FAILED(D3D12SerializeRootSignature(&root_desc, D3D_ROOT_SIGNATURE_VERSION_1, &serialized, &errors))) {
+        return false;
+    }
+
+    return SUCCEEDED(device->CreateRootSignature(0, serialized->GetBufferPointer(), serialized->GetBufferSize(),
+                                                 IID_PPV_ARGS(&root_signature)));
+}
+
+[[nodiscard]] bool
+create_environment_ibl_sampling_pipeline(ID3D12Device* device, ID3D12RootSignature* root_signature,
+                                         std::span<const std::uint8_t> vertex_shader,
+                                         std::span<const std::uint8_t> fragment_shader,
+                                         Microsoft::WRL::ComPtr<ID3D12PipelineState>& pipeline_state) noexcept {
+    if (device == nullptr || root_signature == nullptr || vertex_shader.empty() || fragment_shader.empty()) {
+        return false;
+    }
+
+    D3D12_DEPTH_STENCIL_DESC depth_stencil{};
+    depth_stencil.DepthEnable = FALSE;
+    depth_stencil.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+    depth_stencil.DepthFunc = D3D12_COMPARISON_FUNC_ALWAYS;
+    depth_stencil.StencilEnable = FALSE;
+
+    D3D12_GRAPHICS_PIPELINE_STATE_DESC pipeline_desc{};
+    pipeline_desc.pRootSignature = root_signature;
+    pipeline_desc.VS = D3D12_SHADER_BYTECODE{vertex_shader.data(), vertex_shader.size()};
+    pipeline_desc.PS = D3D12_SHADER_BYTECODE{fragment_shader.data(), fragment_shader.size()};
+    pipeline_desc.BlendState = default_blend_desc();
+    pipeline_desc.SampleMask = (std::numeric_limits<UINT>::max)();
+    pipeline_desc.RasterizerState = default_rasterizer_desc();
+    pipeline_desc.DepthStencilState = depth_stencil;
+    pipeline_desc.InputLayout = D3D12_INPUT_LAYOUT_DESC{nullptr, 0};
+    pipeline_desc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+    pipeline_desc.NumRenderTargets = 1;
+    pipeline_desc.RTVFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM;
+    pipeline_desc.SampleDesc.Count = 1;
+    pipeline_desc.SampleDesc.Quality = 0;
+    pipeline_desc.NodeMask = 0;
+    pipeline_desc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+
+    return SUCCEEDED(device->CreateGraphicsPipelineState(&pipeline_desc, IID_PPV_ARGS(&pipeline_state)));
+}
+
+[[nodiscard]] bool append_valid_footprint_bytes(std::vector<std::uint8_t>& output, const std::uint8_t* mapped_bytes,
+                                                UINT64 mapped_size, const D3D12_PLACED_SUBRESOURCE_FOOTPRINT& footprint,
+                                                UINT row_count, UINT64 row_size_bytes) {
+    if (mapped_bytes == nullptr || row_count == 0 || row_size_bytes == 0 ||
+        row_size_bytes > static_cast<UINT64>((std::numeric_limits<std::size_t>::max)())) {
+        return false;
+    }
+
+    const auto row_pitch = static_cast<UINT64>(footprint.Footprint.RowPitch);
+    if (row_size_bytes > row_pitch || footprint.Offset >= mapped_size) {
+        return false;
+    }
+    const auto last_row_offset = footprint.Offset + (static_cast<UINT64>(row_count - 1U) * row_pitch);
+    if (last_row_offset < footprint.Offset || last_row_offset + row_size_bytes > mapped_size) {
+        return false;
+    }
+
+    for (UINT row = 0; row < row_count; ++row) {
+        const auto row_offset = footprint.Offset + (static_cast<UINT64>(row) * row_pitch);
+        const auto* row_begin = mapped_bytes + static_cast<std::size_t>(row_offset);
+        output.insert(output.end(), row_begin, row_begin + static_cast<std::size_t>(row_size_bytes));
+    }
+    return true;
+}
+
+[[nodiscard]] std::uint64_t checksum_bytes(std::span<const std::uint8_t> bytes) noexcept {
+    std::uint64_t checksum = 1469598103934665603ULL;
+    for (const auto byte : bytes) {
+        checksum ^= byte;
+        checksum *= 1099511628211ULL;
+    }
+    return checksum;
+}
+
+} // namespace
+
 struct PlacedResourceStateUpdate {
     NativeResourceHandle before;
     NativeResourceHandle after;
@@ -3947,6 +4175,370 @@ FenceValue DeviceContext::execute_command_list(NativeCommandListHandle handle) {
     impl_->stats.last_submitted_fence_value = next_fence;
     record_queue_submit(impl_->stats, record->queue, record->submitted_fence);
     return record->submitted_fence;
+}
+
+D3d12EnvironmentIblRendererUploadResult
+DeviceContext::execute_environment_ibl_renderer_upload(const D3d12EnvironmentIblRendererUploadDesc& desc) {
+    D3d12EnvironmentIblRendererUploadResult result{};
+    result.native_handle_access = desc.request_native_handle_access ? 1U : 0U;
+    if (!valid() || !valid_environment_ibl_upload_desc(desc)) {
+        result.diagnostics = 1U;
+        return result;
+    }
+
+    const auto format = to_d3d12_environment_ibl_format(desc.format);
+    if (!format_supports_environment_ibl(impl_->device.Get(), format)) {
+        result.diagnostics = 1U;
+        return result;
+    }
+
+    const auto cube_desc = environment_ibl_cube_resource_desc(desc.edge_size, desc.mip_count, format);
+    const auto default_heap = heap_properties(D3D12_HEAP_TYPE_DEFAULT);
+    D3D12_CLEAR_VALUE clear_value{};
+    clear_value.Format = format;
+    clear_value.Color[0] = 0.25F;
+    clear_value.Color[1] = 0.5F;
+    clear_value.Color[2] = 1.0F;
+    clear_value.Color[3] = 1.0F;
+
+    Microsoft::WRL::ComPtr<ID3D12Resource> cube_texture;
+    if (FAILED(impl_->device->CreateCommittedResource(&default_heap, D3D12_HEAP_FLAG_NONE, &cube_desc,
+                                                      D3D12_RESOURCE_STATE_RENDER_TARGET, &clear_value,
+                                                      IID_PPV_ARGS(&cube_texture)))) {
+        result.diagnostics = 1U;
+        return result;
+    }
+    d3d12_set_object_name(cube_texture.Get(), L"GameEngine.RHI.D3D12.EnvironmentIblCube");
+
+    const auto cube_subresource_count = k_environment_ibl_cube_faces * desc.mip_count;
+    std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> readback_footprints(cube_subresource_count);
+    std::vector<UINT> readback_rows(cube_subresource_count);
+    std::vector<UINT64> readback_row_size_bytes(cube_subresource_count);
+    UINT64 readback_total_bytes = 0;
+    impl_->device->GetCopyableFootprints(&cube_desc, 0, cube_subresource_count, 0, readback_footprints.data(),
+                                         readback_rows.data(), readback_row_size_bytes.data(), &readback_total_bytes);
+    if (readback_total_bytes == 0 ||
+        readback_total_bytes > static_cast<UINT64>((std::numeric_limits<std::size_t>::max)())) {
+        result.diagnostics = 1U;
+        return result;
+    }
+
+    const auto readback_heap_props = heap_properties(D3D12_HEAP_TYPE_READBACK);
+    const auto readback_desc = buffer_resource_desc(readback_total_bytes);
+    Microsoft::WRL::ComPtr<ID3D12Resource> readback_buffer;
+    if (FAILED(impl_->device->CreateCommittedResource(&readback_heap_props, D3D12_HEAP_FLAG_NONE, &readback_desc,
+                                                      D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
+                                                      IID_PPV_ARGS(&readback_buffer)))) {
+        result.diagnostics = 1U;
+        return result;
+    }
+    d3d12_set_object_name(readback_buffer.Get(), L"GameEngine.RHI.D3D12.EnvironmentIblCubeReadback");
+
+    D3D12_DESCRIPTOR_HEAP_DESC srv_heap_desc{};
+    srv_heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
+    srv_heap_desc.NumDescriptors = 1;
+    srv_heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+    srv_heap_desc.NodeMask = 0;
+    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> srv_heap;
+    if (FAILED(impl_->device->CreateDescriptorHeap(&srv_heap_desc, IID_PPV_ARGS(&srv_heap)))) {
+        result.diagnostics = 1U;
+        return result;
+    }
+    d3d12_set_object_name(srv_heap.Get(), L"GameEngine.RHI.D3D12.EnvironmentIblCubeSrvHeap");
+
+    D3D12_SHADER_RESOURCE_VIEW_DESC srv_desc{};
+    srv_desc.Format = format;
+    srv_desc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+    srv_desc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+    srv_desc.TextureCube.MostDetailedMip = 0;
+    srv_desc.TextureCube.MipLevels = desc.mip_count;
+    srv_desc.TextureCube.ResourceMinLODClamp = 0.0F;
+    impl_->device->CreateShaderResourceView(cube_texture.Get(), &srv_desc,
+                                            srv_heap->GetCPUDescriptorHandleForHeapStart());
+
+    D3D12_DESCRIPTOR_HEAP_DESC rtv_heap_desc{};
+    rtv_heap_desc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
+    rtv_heap_desc.NumDescriptors = cube_subresource_count + (desc.require_shader_sampling ? 1U : 0U);
+    rtv_heap_desc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+    rtv_heap_desc.NodeMask = 0;
+    Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> rtv_heap;
+    if (FAILED(impl_->device->CreateDescriptorHeap(&rtv_heap_desc, IID_PPV_ARGS(&rtv_heap)))) {
+        result.diagnostics = 1U;
+        return result;
+    }
+    d3d12_set_object_name(rtv_heap.Get(), L"GameEngine.RHI.D3D12.EnvironmentIblCubeRtvHeap");
+
+    const auto rtv_descriptor_size = impl_->device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+    const auto rtv_handle_at = [&](std::uint32_t descriptor_index) noexcept {
+        D3D12_CPU_DESCRIPTOR_HANDLE rtv_handle = rtv_heap->GetCPUDescriptorHandleForHeapStart();
+        rtv_handle.ptr += static_cast<SIZE_T>(descriptor_index) * static_cast<SIZE_T>(rtv_descriptor_size);
+        return rtv_handle;
+    };
+    for (std::uint32_t face_index = 0; face_index < k_environment_ibl_cube_faces; ++face_index) {
+        for (std::uint32_t mip_index = 0; mip_index < desc.mip_count; ++mip_index) {
+            D3D12_RENDER_TARGET_VIEW_DESC rtv_desc{};
+            rtv_desc.Format = format;
+            rtv_desc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DARRAY;
+            rtv_desc.Texture2DArray.MipSlice = mip_index;
+            rtv_desc.Texture2DArray.FirstArraySlice = face_index;
+            rtv_desc.Texture2DArray.ArraySize = 1;
+            rtv_desc.Texture2DArray.PlaneSlice = 0;
+
+            const auto descriptor_index = d3d12_environment_ibl_subresource(face_index, mip_index, desc.mip_count);
+            impl_->device->CreateRenderTargetView(cube_texture.Get(), &rtv_desc, rtv_handle_at(descriptor_index));
+        }
+    }
+
+    Microsoft::WRL::ComPtr<ID3D12Resource> sample_texture;
+    Microsoft::WRL::ComPtr<ID3D12Resource> sample_readback_buffer;
+    D3D12_PLACED_SUBRESOURCE_FOOTPRINT sample_readback_footprint{};
+    UINT sample_readback_rows = 0;
+    UINT64 sample_readback_row_size_bytes = 0;
+    UINT64 sample_readback_total_bytes = 0;
+    Microsoft::WRL::ComPtr<ID3D12RootSignature> sampling_root_signature;
+    Microsoft::WRL::ComPtr<ID3D12PipelineState> sampling_pipeline;
+    const auto sample_rtv_index = cube_subresource_count;
+    if (desc.require_shader_sampling) {
+        D3D12_CLEAR_VALUE sample_clear{};
+        sample_clear.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+        sample_clear.Color[0] = 0.0F;
+        sample_clear.Color[1] = 0.0F;
+        sample_clear.Color[2] = 0.0F;
+        sample_clear.Color[3] = 1.0F;
+
+        const auto sample_desc = environment_ibl_sample_resource_desc();
+        if (FAILED(impl_->device->CreateCommittedResource(&default_heap, D3D12_HEAP_FLAG_NONE, &sample_desc,
+                                                          D3D12_RESOURCE_STATE_RENDER_TARGET, &sample_clear,
+                                                          IID_PPV_ARGS(&sample_texture)))) {
+            result.diagnostics = 1U;
+            return result;
+        }
+        d3d12_set_object_name(sample_texture.Get(), L"GameEngine.RHI.D3D12.EnvironmentIblSampleTarget");
+        impl_->device->CreateRenderTargetView(sample_texture.Get(), nullptr, rtv_handle_at(sample_rtv_index));
+
+        impl_->device->GetCopyableFootprints(&sample_desc, 0, 1, 0, &sample_readback_footprint, &sample_readback_rows,
+                                             &sample_readback_row_size_bytes, &sample_readback_total_bytes);
+        if (sample_readback_rows == 0 || sample_readback_total_bytes == 0 ||
+            sample_readback_total_bytes > static_cast<UINT64>((std::numeric_limits<std::size_t>::max)())) {
+            result.diagnostics = 1U;
+            return result;
+        }
+        const auto sample_readback_desc = buffer_resource_desc(sample_readback_total_bytes);
+        if (FAILED(impl_->device->CreateCommittedResource(&readback_heap_props, D3D12_HEAP_FLAG_NONE,
+                                                          &sample_readback_desc, D3D12_RESOURCE_STATE_COPY_DEST,
+                                                          nullptr, IID_PPV_ARGS(&sample_readback_buffer)))) {
+            result.diagnostics = 1U;
+            return result;
+        }
+        d3d12_set_object_name(sample_readback_buffer.Get(), L"GameEngine.RHI.D3D12.EnvironmentIblSampleReadback");
+
+        if (!create_environment_ibl_sampling_root_signature(impl_->device.Get(), sampling_root_signature) ||
+            !create_environment_ibl_sampling_pipeline(impl_->device.Get(), sampling_root_signature.Get(),
+                                                      desc.sampling_vertex_shader, desc.sampling_fragment_shader,
+                                                      sampling_pipeline)) {
+            result.diagnostics = 1U;
+            return result;
+        }
+        d3d12_set_object_name(sampling_root_signature.Get(),
+                              L"GameEngine.RHI.D3D12.EnvironmentIblSamplingRootSignature");
+        d3d12_set_object_name(sampling_pipeline.Get(), L"GameEngine.RHI.D3D12.EnvironmentIblSamplingPipeline");
+    }
+
+    Microsoft::WRL::ComPtr<ID3D12CommandAllocator> allocator;
+    if (FAILED(impl_->device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&allocator)))) {
+        result.diagnostics = 1U;
+        return result;
+    }
+    d3d12_set_object_name(allocator.Get(), L"GameEngine.RHI.D3D12.EnvironmentIblProofAllocator");
+
+    Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> command_list;
+    if (FAILED(impl_->device->CreateCommandList(0, D3D12_COMMAND_LIST_TYPE_DIRECT, allocator.Get(), nullptr,
+                                                IID_PPV_ARGS(&command_list)))) {
+        result.diagnostics = 1U;
+        return result;
+    }
+    d3d12_set_object_name(command_list.Get(), L"GameEngine.RHI.D3D12.EnvironmentIblProofCommandList");
+
+    for (std::uint32_t face_index = 0; face_index < k_environment_ibl_cube_faces; ++face_index) {
+        for (std::uint32_t mip_index = 0; mip_index < desc.mip_count; ++mip_index) {
+            const auto descriptor_index = d3d12_environment_ibl_subresource(face_index, mip_index, desc.mip_count);
+            const std::array<float, 4> face_color{
+                (static_cast<float>(face_index) + 1.0F) / 8.0F,
+                (static_cast<float>(mip_index) + 1.0F) / static_cast<float>(desc.mip_count + 1U),
+                1.0F - ((static_cast<float>(face_index) + 1.0F) / 16.0F),
+                1.0F,
+            };
+            command_list->ClearRenderTargetView(rtv_handle_at(descriptor_index), face_color.data(), 0, nullptr);
+        }
+    }
+
+    auto barrier = environment_ibl_transition(cube_texture.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET,
+                                              desc.require_shader_sampling ? D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE
+                                                                           : D3D12_RESOURCE_STATE_COPY_SOURCE);
+    command_list->ResourceBarrier(1, &barrier);
+    ++result.resource_barriers_recorded;
+
+    if (desc.require_shader_sampling) {
+        command_list->SetGraphicsRootSignature(sampling_root_signature.Get());
+        command_list->SetPipelineState(sampling_pipeline.Get());
+        std::array<ID3D12DescriptorHeap*, 1> heaps{srv_heap.Get()};
+        command_list->SetDescriptorHeaps(static_cast<UINT>(heaps.size()), heaps.data());
+        command_list->SetGraphicsRootDescriptorTable(0, srv_heap->GetGPUDescriptorHandleForHeapStart());
+        const D3D12_VIEWPORT viewport{0.0F, 0.0F, 1.0F, 1.0F, 0.0F, 1.0F};
+        const D3D12_RECT scissor{0, 0, 1, 1};
+        command_list->RSSetViewports(1, &viewport);
+        command_list->RSSetScissorRects(1, &scissor);
+        auto sample_rtv = rtv_handle_at(sample_rtv_index);
+        const std::array<float, 4> sample_clear{0.0F, 0.0F, 0.0F, 1.0F};
+        command_list->ClearRenderTargetView(sample_rtv, sample_clear.data(), 0, nullptr);
+        command_list->OMSetRenderTargets(1, &sample_rtv, FALSE, nullptr);
+        command_list->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+        command_list->DrawInstanced(3, 1, 0, 0);
+
+        barrier = environment_ibl_transition(sample_texture.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET,
+                                             D3D12_RESOURCE_STATE_COPY_SOURCE);
+        command_list->ResourceBarrier(1, &barrier);
+        ++result.resource_barriers_recorded;
+
+        D3D12_TEXTURE_COPY_LOCATION sample_source{};
+        sample_source.pResource = sample_texture.Get();
+        sample_source.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+        sample_source.SubresourceIndex = 0;
+
+        D3D12_TEXTURE_COPY_LOCATION sample_destination{};
+        sample_destination.pResource = sample_readback_buffer.Get();
+        sample_destination.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+        sample_destination.PlacedFootprint = sample_readback_footprint;
+        command_list->CopyTextureRegion(&sample_destination, 0, 0, 0, &sample_source, nullptr);
+
+        barrier = environment_ibl_transition(cube_texture.Get(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+                                             D3D12_RESOURCE_STATE_COPY_SOURCE);
+        command_list->ResourceBarrier(1, &barrier);
+        ++result.resource_barriers_recorded;
+    }
+
+    for (std::uint32_t face_index = 0; face_index < k_environment_ibl_cube_faces; ++face_index) {
+        const auto subresource = d3d12_environment_ibl_subresource(face_index, 0, desc.mip_count);
+        D3D12_TEXTURE_COPY_LOCATION source_location{};
+        source_location.pResource = cube_texture.Get();
+        source_location.Type = D3D12_TEXTURE_COPY_TYPE_SUBRESOURCE_INDEX;
+        source_location.SubresourceIndex = subresource;
+
+        D3D12_TEXTURE_COPY_LOCATION destination_location{};
+        destination_location.pResource = readback_buffer.Get();
+        destination_location.Type = D3D12_TEXTURE_COPY_TYPE_PLACED_FOOTPRINT;
+        destination_location.PlacedFootprint = readback_footprints.at(subresource);
+        command_list->CopyTextureRegion(&destination_location, 0, 0, 0, &source_location, nullptr);
+    }
+
+    if (FAILED(command_list->Close())) {
+        result.diagnostics = 1U;
+        return result;
+    }
+
+    std::array<ID3D12CommandList*, 1> lists{command_list.Get()};
+    impl_->command_queue->ExecuteCommandLists(1, lists.data());
+
+    std::uint64_t& next_fence_value =
+        DeviceContext::Impl::queue_fence_value(impl_->next_queue_fence_values, QueueKind::graphics);
+    const auto submitted_fence_value = next_fence_value + 1U;
+    if (FAILED(impl_->command_queue->Signal(impl_->fence.Get(), submitted_fence_value))) {
+        result.diagnostics = 1U;
+        return result;
+    }
+    next_fence_value = submitted_fence_value;
+    impl_->next_fence_value = std::max(impl_->next_fence_value, submitted_fence_value);
+    impl_->last_submitted_fence = FenceValue{.value = submitted_fence_value, .queue = QueueKind::graphics};
+    ++impl_->stats.fence_signals;
+    impl_->stats.last_submitted_fence_value = submitted_fence_value;
+    record_queue_submit(impl_->stats, QueueKind::graphics, impl_->last_submitted_fence);
+    ++impl_->stats.command_lists_executed;
+
+    const Win32Event event;
+    if (event.get() == nullptr || FAILED(impl_->fence->SetEventOnCompletion(submitted_fence_value, event.get())) ||
+        WaitForSingleObject(event.get(), INFINITE) != WAIT_OBJECT_0) {
+        result.diagnostics = 1U;
+        return result;
+    }
+    ++impl_->stats.fence_waits;
+
+    bool shader_sample_readback_nonzero = !desc.require_shader_sampling;
+    if (desc.require_shader_sampling) {
+        const D3D12_RANGE sample_read_range{0, static_cast<SIZE_T>(sample_readback_total_bytes)};
+        void* mapped_sample = nullptr;
+        if (FAILED(sample_readback_buffer->Map(0, &sample_read_range, &mapped_sample)) || mapped_sample == nullptr) {
+            result.diagnostics = 1U;
+            return result;
+        }
+        std::vector<std::uint8_t> sample_bytes;
+        const bool sample_bytes_ready = append_valid_footprint_bytes(
+            sample_bytes, static_cast<const std::uint8_t*>(mapped_sample), sample_readback_total_bytes,
+            sample_readback_footprint, sample_readback_rows, sample_readback_row_size_bytes);
+        const D3D12_RANGE written_range{0, 0};
+        sample_readback_buffer->Unmap(0, &written_range);
+        if (!sample_bytes_ready || sample_bytes.empty()) {
+            result.diagnostics = 1U;
+            return result;
+        }
+        shader_sample_readback_nonzero =
+            std::ranges::any_of(sample_bytes, [](std::uint8_t byte) noexcept { return byte != 0U; });
+    }
+
+    const D3D12_RANGE read_range{0, static_cast<SIZE_T>(readback_total_bytes)};
+    void* mapped = nullptr;
+    if (FAILED(readback_buffer->Map(0, &read_range, &mapped)) || mapped == nullptr) {
+        result.diagnostics = 1U;
+        return result;
+    }
+
+    const auto* mapped_bytes = static_cast<const std::uint8_t*>(mapped);
+    std::vector<std::uint8_t> runtime_capture_bytes;
+    std::uint32_t nonzero_face_count = 0;
+    for (std::uint32_t face_index = 0; face_index < k_environment_ibl_cube_faces; ++face_index) {
+        const auto subresource = d3d12_environment_ibl_subresource(face_index, 0, desc.mip_count);
+        std::vector<std::uint8_t> face_bytes;
+        if (!append_valid_footprint_bytes(face_bytes, mapped_bytes, readback_total_bytes,
+                                          readback_footprints.at(subresource), readback_rows.at(subresource),
+                                          readback_row_size_bytes.at(subresource))) {
+            const D3D12_RANGE written_range{0, 0};
+            readback_buffer->Unmap(0, &written_range);
+            result.diagnostics = 1U;
+            return result;
+        }
+        if (std::ranges::any_of(face_bytes, [](std::uint8_t byte) noexcept { return byte != 0U; })) {
+            ++nonzero_face_count;
+        }
+        runtime_capture_bytes.insert(runtime_capture_bytes.end(), face_bytes.begin(), face_bytes.end());
+    }
+    const D3D12_RANGE written_range{0, 0};
+    readback_buffer->Unmap(0, &written_range);
+    if (runtime_capture_bytes.empty()) {
+        result.diagnostics = 1U;
+        return result;
+    }
+
+    const bool runtime_capture_readback_nonzero = nonzero_face_count == k_environment_ibl_cube_faces;
+    result.readback_checksum = checksum_bytes(runtime_capture_bytes);
+
+    result.texture_cube_uploads = 1U;
+    result.texture_cube_faces = k_environment_ibl_cube_faces;
+    result.texture_cube_edge_size = desc.edge_size;
+    result.radiance_mips = desc.mip_count;
+    result.irradiance_rows = k_environment_ibl_irradiance_rows;
+    result.srv_dimension = D3d12EnvironmentIblSrvDimension::texture_cube;
+    result.shader_sampling_proven = !desc.require_shader_sampling || shader_sample_readback_nonzero;
+    result.shader_sample_readback_nonzero = shader_sample_readback_nonzero;
+    if (desc.require_runtime_capture) {
+        result.runtime_capture_faces = nonzero_face_count;
+        result.runtime_capture_readback_nonzero = runtime_capture_readback_nonzero;
+    }
+    result.succeeded =
+        result.native_handle_access == 0U && result.shader_sampling_proven && result.shader_sample_readback_nonzero &&
+        (!desc.require_runtime_capture || result.runtime_capture_readback_nonzero) && result.readback_checksum != 0U;
+    if (!result.succeeded) {
+        result.diagnostics = 1U;
+    }
+    return result;
 }
 
 void DeviceContext::unwind_gpu_debug_events(NativeCommandListHandle handle) noexcept {
@@ -7432,6 +8024,19 @@ std::unique_ptr<IRhiDevice> create_rhi_device(const DeviceBootstrapDesc& desc) {
     }
 
     return std::make_unique<D3d12RhiDevice>(std::move(context));
+}
+
+D3d12EnvironmentIblRendererUploadResult
+execute_environment_ibl_renderer_upload(const D3d12EnvironmentIblRendererUploadDesc& desc) noexcept {
+    auto context = DeviceContext::create(desc.device);
+    if (context == nullptr || !context->valid()) {
+        D3d12EnvironmentIblRendererUploadResult result{};
+        result.native_handle_access = desc.request_native_handle_access ? 1U : 0U;
+        result.diagnostics = 1U;
+        return result;
+    }
+
+    return context->execute_environment_ibl_renderer_upload(desc);
 }
 
 QueueCalibratedTiming measure_rhi_device_calibrated_queue_timing(IRhiDevice& device, QueueKind queue) {

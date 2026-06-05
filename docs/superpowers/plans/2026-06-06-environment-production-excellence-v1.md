@@ -262,26 +262,30 @@ Phase 1 focused validation evidence on 2026-06-06:
 
 **Files:** `environment_lighting_policy`, `upload_staging`, D3D12 backend, Win32 desktop presentation, sample package, D3D12 tests, shaders if capture needs a fixture shader.
 
-- [ ] Add RED D3D12 tests for texture-cube upload with 6 faces, positive edge size, positive mip count, supported HDR format, SRV type `TextureCube`, shader sampling, and CPU readback checksum.
-- [ ] Add RED policy tests separating reflection cubemap upload, irradiance rows, radiance mip rows, runtime capture, and HDR clamp rows.
-- [ ] Add RED package smoke assertions for:
+- [x] Add RED D3D12 tests for texture-cube upload with 6 faces, positive edge size, positive mip count, supported HDR format, SRV type `TextureCube`, shader sampling, and CPU readback checksum.
+- [x] Add RED policy tests separating reflection cubemap upload, irradiance rows, radiance mip rows, runtime capture, and HDR clamp rows.
+- [x] Add RED package smoke assertions for:
 
 ```text
 environment_lighting_renderer_upload_status=ready
+environment_lighting_renderer_execution_status=ready
 environment_lighting_texture_cube_uploads>0
 environment_lighting_texture_cube_faces=6
 environment_lighting_radiance_mips>=5
 environment_lighting_irradiance_rows=9
+environment_lighting_shader_sampling_proven=1
+environment_lighting_shader_sample_readback_nonzero=1
 environment_lighting_backend_invocations>0
 environment_lighting_runtime_captures>0
 environment_lighting_runtime_capture_faces=6
 environment_lighting_runtime_capture_readback_nonzero=1
+environment_lighting_runtime_capture_readback_checksum>0
 environment_lighting_native_handle_access=0
 ```
 
-- [ ] Implement backend-private D3D12 upload, SRV, framegraph capture pass, and readback proof.
-- [ ] Add validation recipe `desktop-runtime-sample-game-environment-ibl-renderer-execution`.
-- [ ] Run:
+- [x] Implement backend-private D3D12 upload, `TextureCube` SRV, shader sampling draw, six-face capture readback, and checksum proof.
+- [x] Add validation recipe `desktop-runtime-sample-game-environment-ibl-renderer-execution`.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset desktop-runtime
@@ -291,6 +295,19 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/package-desktop-runtime.ps1 
 ```
 
 Expected: D3D12 IBL renderer upload and runtime cubemap capture are ready for the selected package lane only.
+
+Phase 2 focused validation evidence on 2026-06-06:
+
+- `tools/cmake.ps1 --build --preset dev --target MK_runtime_host MK_d3d12_rhi_tests`: pass.
+- `tools/ctest.ps1 --preset dev --output-on-failure -R "^(MK_d3d12_rhi_tests|MK_renderer_environment_lighting_policy_tests)$"`: pass, 2/2 tests.
+- `tools/check-json-contracts.ps1`: pass.
+- `tools/check-ai-integration.ps1`: pass.
+- `tools/check-public-api-boundaries.ps1`: pass.
+- `tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-environment-lighting-renderer-execution')`: pass.
+- Installed sample counter extraction reports `environment_lighting_renderer_upload_status=ready`, `environment_lighting_renderer_execution_status=ready`, `environment_lighting_texture_cube_uploads=1`, `environment_lighting_texture_cube_faces=6`, `environment_lighting_texture_cube_edge_size=16`, `environment_lighting_radiance_mips=5`, `environment_lighting_renderer_irradiance_rows=9`, `environment_lighting_shader_sampling_proven=1`, `environment_lighting_shader_sample_readback_nonzero=1`, `environment_lighting_runtime_capture_faces=6`, `environment_lighting_runtime_capture_readback_nonzero=1`, `environment_lighting_runtime_capture_readback_checksum=6633441143888650627`, `environment_lighting_native_handle_access=0`, and `environment_lighting_diagnostics=0`.
+- `tools/validate.ps1`: pass. Static guards passed, `build.ps1` passed, `check-tidy.ps1 -MaxFiles 1 -ReuseExistingFileApiReply` passed, and `test.ps1 -SkipBuild` passed with 99/99 tests.
+
+Phase 2 closeout: the selected D3D12 package lane now proves IBL renderer upload, `TextureCube` SRV shader sampling, six-face runtime cubemap capture readback, and exact package-visible counters through runtime-host ownership. This remains a selected D3D12 evidence row only. Vulkan IBL proof, Metal IBL proof, backend parity, importer expansion, material weathering, weather audio playback, broad optimization, and broad `environment_ready` remain unclaimed until their explicit phase gates pass.
 
 ## Phase 3: Material Wetness And Snow Accumulation
 
