@@ -77,7 +77,9 @@ struct DesktopRuntimeGameOptions {
     bool require_cloud_layer_package_evidence{false};
     bool require_cloud_layer_renderer_execution{false};
     bool require_environment_precipitation_package_evidence{false};
+    bool require_environment_precipitation_renderer_execution{false};
     bool require_environment_snow_package_evidence{false};
+    bool require_environment_snow_renderer_execution{false};
     bool require_gpu_memory_policy{false};
     bool require_memory_diagnostics{false};
     bool require_d3d12_gpu_memory_evidence{false};
@@ -142,6 +144,10 @@ constexpr std::string_view kRuntimeCloudLayerVertexShaderPath{
     "shaders/sample_desktop_runtime_game_cloud_layer.vs.dxil"};
 constexpr std::string_view kRuntimeCloudLayerFragmentShaderPath{
     "shaders/sample_desktop_runtime_game_cloud_layer.ps.dxil"};
+constexpr std::string_view kRuntimePrecipitationVertexShaderPath{
+    "shaders/sample_desktop_runtime_game_precipitation.vs.dxil"};
+constexpr std::string_view kRuntimePrecipitationFragmentShaderPath{
+    "shaders/sample_desktop_runtime_game_precipitation.ps.dxil"};
 constexpr std::string_view kRuntimeEnvironmentProfilePath{"runtime/assets/desktop_runtime/default_outdoor.geenv"};
 constexpr std::string_view kRuntimePostprocessVulkanVertexShaderPath{
     "shaders/sample_desktop_runtime_game_postprocess.vs.spv"};
@@ -1070,7 +1076,9 @@ void print_usage() {
                  "[--require-environment-volumetric-fog-package-evidence] "
                  "[--require-cloud-layer-package-evidence] [--require-cloud-layer-renderer-execution] "
                  "[--require-environment-precipitation-package-evidence] "
+                 "[--require-environment-precipitation-renderer-execution] "
                  "[--require-environment-snow-package-evidence] "
+                 "[--require-environment-snow-renderer-execution] "
                  "[--require-gpu-memory-policy] [--require-memory-diagnostics] [--require-d3d12-gpu-memory-evidence] "
                  "[--require-vulkan-gpu-memory-evidence] "
                  "[--require-debug-profiling-policy] [--require-d3d12-debug-profiling-evidence] "
@@ -1261,6 +1269,17 @@ void print_usage() {
             options.require_environment_precipitation_package_evidence = true;
             continue;
         }
+        if (arg == "--require-environment-precipitation-renderer-execution") {
+            options.require_d3d12_scene_shaders = true;
+            options.require_d3d12_renderer = true;
+            options.require_scene_gpu_bindings = true;
+            options.require_postprocess = true;
+            options.require_postprocess_depth_input = true;
+            options.require_d3d12_postprocess_evidence = true;
+            options.require_environment_precipitation_package_evidence = true;
+            options.require_environment_precipitation_renderer_execution = true;
+            continue;
+        }
         if (arg == "--require-environment-snow-package-evidence") {
             options.require_d3d12_renderer = true;
             options.require_scene_gpu_bindings = true;
@@ -1268,6 +1287,17 @@ void print_usage() {
             options.require_postprocess_depth_input = true;
             options.require_d3d12_postprocess_evidence = true;
             options.require_environment_snow_package_evidence = true;
+            continue;
+        }
+        if (arg == "--require-environment-snow-renderer-execution") {
+            options.require_d3d12_scene_shaders = true;
+            options.require_d3d12_renderer = true;
+            options.require_scene_gpu_bindings = true;
+            options.require_postprocess = true;
+            options.require_postprocess_depth_input = true;
+            options.require_d3d12_postprocess_evidence = true;
+            options.require_environment_snow_package_evidence = true;
+            options.require_environment_snow_renderer_execution = true;
             continue;
         }
         if (arg == "--require-vulkan-postprocess-evidence") {
@@ -2530,6 +2560,18 @@ load_packaged_d3d12_cloud_layer_shaders(const char* executable_path) {
 }
 
 [[nodiscard]] mirakana::DesktopShaderBytecodeLoadResult
+load_packaged_d3d12_precipitation_shaders(const char* executable_path) {
+    mirakana::RootedFileSystem filesystem(executable_directory(executable_path));
+    return mirakana::load_desktop_shader_bytecode_pair(mirakana::DesktopShaderBytecodeLoadDesc{
+        .filesystem = &filesystem,
+        .vertex_path = std::string{kRuntimePrecipitationVertexShaderPath},
+        .fragment_path = std::string{kRuntimePrecipitationFragmentShaderPath},
+        .vertex_entry_point = "main_vs",
+        .fragment_entry_point = "main_ps",
+    });
+}
+
+[[nodiscard]] mirakana::DesktopShaderBytecodeLoadResult
 load_packaged_vulkan_postprocess_shaders(const char* executable_path) {
     mirakana::RootedFileSystem filesystem(executable_directory(executable_path));
     return mirakana::load_desktop_shader_bytecode_pair(mirakana::DesktopShaderBytecodeLoadDesc{
@@ -2768,8 +2810,11 @@ int main(int argc, char** argv) {
         print_usage();
         return 0;
     }
-    if (options.require_environment_precipitation_package_evidence &&
-        options.require_environment_snow_package_evidence) {
+    const bool require_environment_rain = options.require_environment_precipitation_package_evidence ||
+                                          options.require_environment_precipitation_renderer_execution;
+    const bool require_environment_snow =
+        options.require_environment_snow_package_evidence || options.require_environment_snow_renderer_execution;
+    if (require_environment_rain && require_environment_snow) {
         print_usage();
         return 2;
     }
@@ -2838,6 +2883,14 @@ int main(int argc, char** argv) {
         std::cout << "sample_desktop_runtime_game d3d12_cloud_layer_shader_diagnostic="
                   << mirakana::desktop_shader_bytecode_load_status_name(cloud_layer_bytecode.status) << ": "
                   << cloud_layer_bytecode.diagnostic << '\n';
+        return 4;
+    }
+    auto precipitation_bytecode = load_packaged_d3d12_precipitation_shaders(argc > 0 ? argv[0] : nullptr);
+    if (!precipitation_bytecode.ready() && (options.require_environment_precipitation_renderer_execution ||
+                                            options.require_environment_snow_renderer_execution)) {
+        std::cout << "sample_desktop_runtime_game d3d12_precipitation_shader_diagnostic="
+                  << mirakana::desktop_shader_bytecode_load_status_name(precipitation_bytecode.status) << ": "
+                  << precipitation_bytecode.diagnostic << '\n';
         return 4;
     }
     const auto environment_fog_fragment_blob = load_packaged_single_shader_blob(
@@ -2963,14 +3016,23 @@ int main(int argc, char** argv) {
     }
 
     const bool require_environment_any_precipitation_package_evidence =
-        options.require_environment_precipitation_package_evidence || options.require_environment_snow_package_evidence;
+        options.require_environment_precipitation_package_evidence ||
+        options.require_environment_snow_package_evidence ||
+        options.require_environment_precipitation_renderer_execution ||
+        options.require_environment_snow_renderer_execution;
+    const bool require_environment_snow_precipitation =
+        options.require_environment_snow_package_evidence || options.require_environment_snow_renderer_execution;
+    const bool require_environment_precipitation_renderer_execution =
+        options.require_environment_precipitation_renderer_execution ||
+        options.require_environment_snow_renderer_execution;
     const mirakana::Win32DesktopPresentationEnvironmentPrecipitationExpectation environment_precipitation_expectation{
-        .weather = options.require_environment_snow_package_evidence ? mirakana::EnvironmentWeatherKind::snow
-                                                                     : mirakana::EnvironmentWeatherKind::storm,
-        .kind = options.require_environment_snow_package_evidence ? mirakana::EnvironmentPrecipitationKind::snow
-                                                                  : mirakana::EnvironmentPrecipitationKind::rain,
-        .wetness_rows = options.require_environment_snow_package_evidence ? 0U : 1U,
-        .minimum_audio_handoff_rows = options.require_environment_snow_package_evidence ? 1U : 4U,
+        .weather = require_environment_snow_precipitation ? mirakana::EnvironmentWeatherKind::snow
+                                                          : mirakana::EnvironmentWeatherKind::storm,
+        .kind = require_environment_snow_precipitation ? mirakana::EnvironmentPrecipitationKind::snow
+                                                       : mirakana::EnvironmentPrecipitationKind::rain,
+        .wetness_rows = require_environment_snow_precipitation ? 0U : 1U,
+        .minimum_audio_handoff_rows = require_environment_snow_precipitation ? 1U : 4U,
+        .require_renderer_execution = require_environment_precipitation_renderer_execution,
     };
     std::optional<mirakana::Win32DesktopPresentationD3d12SceneRendererDesc> d3d12_scene_renderer;
     const auto& d3d12_scene_bytecode = options.require_directional_shadow ? shadow_receiver_bytecode : shader_bytecode;
@@ -2998,6 +3060,8 @@ int main(int argc, char** argv) {
                 to_presentation_shader_bytecode(native_ui_overlay_bytecode.fragment_shader),
             .cloud_layer_vertex_shader = to_presentation_shader_bytecode(cloud_layer_bytecode.vertex_shader),
             .cloud_layer_fragment_shader = to_presentation_shader_bytecode(cloud_layer_bytecode.fragment_shader),
+            .precipitation_vertex_shader = to_presentation_shader_bytecode(precipitation_bytecode.vertex_shader),
+            .precipitation_fragment_shader = to_presentation_shader_bytecode(precipitation_bytecode.fragment_shader),
             .package = &*runtime_package,
             .packet = &packaged_scene->render_packet,
             .vertex_buffers = runtime_scene_vertex_buffers(),
@@ -3014,7 +3078,8 @@ int main(int argc, char** argv) {
             .enable_cloud_layer_renderer_execution = options.require_cloud_layer_renderer_execution,
             .cloud_layer = make_sample_cloud_layer_policy_desc(options.require_cloud_layer_renderer_execution),
             .enable_environment_precipitation_package_evidence = require_environment_any_precipitation_package_evidence,
-            .environment_precipitation = options.require_environment_snow_package_evidence
+            .enable_environment_precipitation_renderer_execution = require_environment_precipitation_renderer_execution,
+            .environment_precipitation = require_environment_snow_precipitation
                                              ? make_sample_environment_snow_policy_desc()
                                              : make_sample_environment_precipitation_policy_desc(),
             .enable_environment_volumetric_fog_package_evidence =
@@ -3529,6 +3594,9 @@ int main(int argc, char** argv) {
         << " environment_precipitation_particle_buffer_uploads="
         << (environment_precipitation.uploads_particle_buffers ? 1 : 0)
         << " environment_precipitation_backend_invocations=" << (environment_precipitation.invokes_backend ? 1 : 0)
+        << " environment_precipitation_renderer_draws=" << environment_precipitation.renderer_draws
+        << " environment_precipitation_depth_occlusion_readback="
+        << (environment_precipitation.depth_occlusion_readback ? 1 : 0)
         << " environment_precipitation_native_handle_access="
         << (environment_precipitation.exposes_native_handles ? 1 : 0)
         << " environment_precipitation_material_mutations=" << (environment_precipitation.mutates_materials ? 1 : 0)

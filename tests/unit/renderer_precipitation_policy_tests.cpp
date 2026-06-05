@@ -138,6 +138,60 @@ MK_TEST("renderer precipitation policy requires execution evidence before ready 
     MK_REQUIRE(ready_plan.ready());
 }
 
+MK_TEST("renderer precipitation policy promotes rain renderer execution counters") {
+    auto desc = make_precipitation_policy_desc();
+    desc.execution_evidence_ready = true;
+    desc.request_ready_promotion = true;
+    desc.request_particle_buffer_upload = true;
+    desc.request_backend_execution = true;
+    desc.particle_buffer_upload_count = 1;
+    desc.backend_invocation_count = 1;
+    desc.renderer_draw_count = 2;
+    desc.depth_occlusion_readback_proven = true;
+
+    const auto plan = mirakana::plan_precipitation_policy(desc);
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.ready());
+    MK_REQUIRE(plan.uploads_particle_buffers);
+    MK_REQUIRE(plan.invokes_backend);
+    MK_REQUIRE(plan.renderer_draws == 2);
+    MK_REQUIRE(plan.depth_occlusion_readback);
+    MK_REQUIRE(!plan.exposes_native_handles);
+    MK_REQUIRE(!plan.mutates_materials);
+    MK_REQUIRE(!plan.plays_audio);
+}
+
+MK_TEST("renderer precipitation policy promotes snow renderer execution without wetness mutation") {
+    const auto plan = mirakana::plan_precipitation_policy(mirakana::PrecipitationPolicyDesc{
+        .environment_plan = make_snow_environment_plan(),
+        .quality_tier = mirakana::PrecipitationQualityTier::balanced,
+        .shader_contract_evidence_ready = true,
+        .package_evidence_ready = true,
+        .execution_evidence_ready = true,
+        .request_ready_promotion = true,
+        .request_particle_buffer_upload = true,
+        .request_backend_execution = true,
+        .particle_buffer_upload_count = 1,
+        .backend_invocation_count = 1,
+        .renderer_draw_count = 2,
+        .depth_occlusion_readback_proven = true,
+    });
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.ready());
+    MK_REQUIRE(plan.shader_rows.size() == 1);
+    MK_REQUIRE(plan.shader_rows[0].kind == mirakana::EnvironmentPrecipitationKind::snow);
+    MK_REQUIRE(plan.wetness_rows.empty());
+    MK_REQUIRE(plan.uploads_particle_buffers);
+    MK_REQUIRE(plan.invokes_backend);
+    MK_REQUIRE(plan.renderer_draws == 2);
+    MK_REQUIRE(plan.depth_occlusion_readback);
+    MK_REQUIRE(!plan.exposes_native_handles);
+    MK_REQUIRE(!plan.mutates_materials);
+    MK_REQUIRE(!plan.plays_audio);
+}
+
 MK_TEST("renderer precipitation policy fails closed for invalid plans and unsupported claims") {
     auto desc = make_precipitation_policy_desc();
     desc.environment_plan.diagnostics.push_back(mirakana::EnvironmentPrecipitationDiagnostic{
