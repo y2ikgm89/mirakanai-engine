@@ -14,7 +14,7 @@
 
 **Status:** Active.
 
-Focused implementation, agent-surface validation, and full slice validation are green; publication is pending.
+Focused implementation, agent-surface validation, and full slice validation are green; published as stacked draft PR #459.
 
 Active candidate over `mavg-runtime-lod-milestone-v1`, stacked on `mavg-page-addressable-payload-schema-v1` / draft PR #456.
 
@@ -104,7 +104,7 @@ load_runtime_mavg_payload_file_pages(const RuntimeMavgPayloadPageFileLoadDesc& d
 - [x] Run focused build and CTest for `MK_core_tests` and `MK_runtime_mavg_payload_pages_tests`.
 - [x] Run public API boundary, targeted tidy, format, JSON/AI/agent checks, and `git diff --check`.
 - [x] Run full `tools/validate.ps1`.
-- [ ] Publish a validated stacked draft PR over `codex/mavg-page-addressable-payload-schema-v1`.
+- [x] Publish a validated stacked draft PR over `codex/mavg-page-addressable-payload-schema-v1`.
 
 ## Validation Plan
 
@@ -138,6 +138,7 @@ load_runtime_mavg_payload_file_pages(const RuntimeMavgPayloadPageFileLoadDesc& d
 | 2026-06-05 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | Passed: `format-check: ok`. |
 | 2026-06-05 | `git diff --check` | Passed with no whitespace errors. |
 | 2026-06-05 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed: `validate: ok`; Apple/Metal checks remained diagnostic/host-gated on the Windows host as expected. |
+| 2026-06-05 | `gh pr create --draft --base codex/mavg-page-addressable-payload-schema-v1 --head codex/mavg-directstorage-byte-range-io-v1` | Published stacked draft PR #459. |
 
 ## Non-Claims
 
