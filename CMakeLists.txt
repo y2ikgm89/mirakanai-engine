@@ -960,6 +960,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_scene_renderer_tests)
     add_test(NAME MK_scene_renderer_tests COMMAND MK_scene_renderer_tests)
 
+    add_executable(MK_scene_renderer_mavg_lod_tests
+        tests/unit/scene_renderer_mavg_lod_tests.cpp
+    )
+    target_link_libraries(MK_scene_renderer_mavg_lod_tests PRIVATE MK_scene_renderer)
+    target_include_directories(MK_scene_renderer_mavg_lod_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_scene_renderer_mavg_lod_tests)
+    add_test(NAME MK_scene_renderer_mavg_lod_tests COMMAND MK_scene_renderer_mavg_lod_tests)
+
     add_executable(MK_scene_environment_renderer_tests
         tests/unit/scene_environment_renderer_tests.cpp
     )

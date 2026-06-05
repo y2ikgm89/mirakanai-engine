@@ -23,11 +23,11 @@
 - `engine/assets/include/mirakana/assets/mavg_cluster_graph.hpp` exposes `MavgClusterGraphDocument`, `MavgClusterGraphCluster::lod_level`, page rows, material partitions, child ids, validation, canonicalization, text serialization, and text deserialization.
 - `engine/tools/include/mirakana/tools/mavg_cluster_cook.hpp` exposes `MavgClusterCookRequest`, `plan_mavg_cluster_graph_cook_package`, and `apply_mavg_cluster_graph_cook_package`.
 - The cook request now carries static `MavgClusterCookVertex` rows plus indexed `MavgClusterCookTriangle` rows and emits deterministic `GameEngine.MavgClusterPayload.v1` `vertex.data_hex` / `index.data_hex` rows.
-- This milestone's first four implementation checkpoints now add graph parent ids, geometric error, resident fallback ancestors, cluster draw ranges, draw-ready static cook payload rows, a deterministic value-only `MK_renderer` CPU selector, and an `MK_runtime` resident-page evidence bridge. Renderer submission and package streaming execution remain future tasks in this same milestone.
+- This milestone's implementation checkpoints now add graph parent ids, geometric error, resident fallback ancestors, cluster draw ranges, draw-ready static cook payload rows, a deterministic value-only `MK_renderer` CPU selector, an `MK_runtime` resident-page evidence bridge, range-aware conventional indexed draw execution, and `MK_scene_renderer` conventional `MeshCommand` planning. Package streaming execution remains future work.
 - `MK_runtime` already has resident package mount sets, resident catalog caches, byte/record budget checks, selected safe-point package streaming, and reviewed eviction-assisted commit helpers.
 - `MK_renderer` already has `MeshCommand`, `MeshGpuBinding`, `RendererStats`, `NullRenderer`, frame graph/RHI policies, GPU memory policy rows, and renderer quality evidence surfaces.
-- `MeshCommand` and `rhi::IRhiCommandList::draw_indexed` do not yet expose a selected index range, so a visible conventional MAVG LOD path must add range-aware indexed draw support before scene submission can draw only selected clusters.
-- `MK_scene_renderer` already converts `SceneRenderPacket` meshes into `MeshCommand` rows and submits them through `IRenderer::draw_mesh`.
+- `MeshCommand` and `rhi::IRhiCommandList::draw_indexed` now expose selected index ranges, so a visible conventional MAVG LOD path can submit selected clusters through the existing indexed mesh path.
+- `MK_scene_renderer` converts `SceneRenderPacket` meshes into `MeshCommand` rows and submits them through `IRenderer::draw_mesh`; `mavg_scene_lod.hpp` now plans selected MAVG cluster rows into conventional range-aware `MeshCommand` rows without extending `SceneRenderPacket`.
 - `MK_runtime_rhi` already uploads conventional mesh payloads with known vertex layouts and index buffers through `RuntimeMeshUploadResult`.
 - `MK_rhi` has backend capability profiles and selected D3D12/Vulkan/Metal host gates, but no MAVG-specific indirect draw, mesh shader, or GPU cluster traversal API.
 
@@ -629,8 +629,8 @@ Evidence: GREEN confirmed on 2026-06-05 after implementation with `tools/cmake.p
 - Create: `tests/unit/scene_renderer_mavg_lod_tests.cpp`
 - Modify: `CMakeLists.txt`
 
-- [ ] Add `MK_scene_renderer_mavg_lod_tests` linked to `MK_scene_renderer`.
-- [ ] Add tests for:
+- [x] Add `MK_scene_renderer_mavg_lod_tests` linked to `MK_scene_renderer`.
+- [x] Add tests for:
   - selected clusters produce `MeshCommand` rows using existing `MeshGpuBinding`
   - selected clusters enable `MeshIndexedDrawRange` with cluster `first_index`, `index_count`, and `vertex_base`
   - missing material binding uses fallback color and diagnostic
@@ -638,13 +638,15 @@ Evidence: GREEN confirmed on 2026-06-05 after implementation with `tools/cmake.p
   - no native/RHI handles are exposed beyond existing opaque bindings
   - `NullRenderer` can receive planned commands through existing `draw_mesh`
 
-- [ ] Run:
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_scene_renderer_mavg_lod_tests
 ```
 
 Expected: fail before scene-renderer MAVG LOD submission exists.
+
+Evidence: RED confirmed on 2026-06-05 with `tools/cmake.ps1 --build --preset dev --target MK_scene_renderer_mavg_lod_tests`; after configuring the new worktree, the build failed because `mirakana/scene_renderer/mavg_scene_lod.hpp` did not exist.
 
 ### Task 12: Implement Conventional Scene Submission
 
@@ -655,13 +657,13 @@ Expected: fail before scene-renderer MAVG LOD submission exists.
 - Create: `engine/scene_renderer/src/mavg_scene_lod.cpp`
 - Modify: `tests/unit/scene_renderer_mavg_lod_tests.cpp`
 
-- [ ] Implement `plan_mavg_scene_lod_mesh_commands`.
-- [ ] Reuse existing `MeshCommand`, `MeshGpuBinding`, and `MaterialGpuBinding`.
-- [ ] Set `MeshCommand::mesh` to the MAVG graph asset and `MeshCommand::material` from the selected material partition.
-- [ ] Set `MeshCommand::indexed_range` from cluster `first_index`, `index_count`, and `vertex_base`.
-- [ ] Leave `MeshGpuBinding` ownership and buffer handles unchanged.
-- [ ] Keep renderer submission conventional: no `ExecuteIndirect`, no mesh shader dispatch, no backend-specific command signatures.
-- [ ] Run:
+- [x] Implement `plan_mavg_scene_lod_mesh_commands`.
+- [x] Reuse existing `MeshCommand`, `MeshGpuBinding`, and `MaterialGpuBinding`.
+- [x] Set `MeshCommand::mesh` to the MAVG graph asset and `MeshCommand::material` from the selected material partition.
+- [x] Set `MeshCommand::indexed_range` from cluster `first_index`, `index_count`, and `vertex_base`.
+- [x] Leave `MeshGpuBinding` ownership and buffer handles unchanged.
+- [x] Keep renderer submission conventional: no `ExecuteIndirect`, no mesh shader dispatch, no backend-specific command signatures.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_scene_renderer_mavg_lod_tests
@@ -669,6 +671,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 ```
 
 Expected: selector, residency bridge, and scene submission tests pass.
+
+Evidence: GREEN confirmed on 2026-06-05 with `tools/cmake.ps1 --build --preset dev --target MK_scene_renderer_mavg_lod_tests`, `tools/cmake.ps1 --build --preset dev --target MK_scene_renderer_mavg_lod_tests MK_scene_renderer_tests MK_mavg_lod_selection_tests MK_runtime_mavg_lod_residency_tests`, and `tools/ctest.ps1 --preset dev --output-on-failure -R "MK_mavg_lod_selection_tests|MK_runtime_mavg_lod_residency_tests|MK_scene_renderer_mavg_lod_tests|MK_scene_renderer_tests"`. The first CTest attempt in the fresh worktree failed only because related test executables had not been built yet; after building them, all 4 selected tests passed.
 
 ### Task 13: Sync Docs, Manifest, And Static Contracts
 
@@ -686,7 +690,7 @@ Expected: selector, residency bridge, and scene submission tests pass.
 - Modify: `tools/check-json-contracts-030-tooling-contracts.ps1`
 - Modify: `tools/check-json-contracts-040-agent-surfaces.ps1`
 
-- [ ] Record implemented surfaces:
+- [x] Record implemented surfaces:
   - `mavg_lod_selection.hpp`
   - `MavgLodViewDesc`
   - `MavgLodResidentPageSet`
@@ -697,7 +701,7 @@ Expected: selector, residency bridge, and scene submission tests pass.
   - `plan_mavg_scene_lod_mesh_commands`
   - `MeshIndexedDrawRange`
   - range-aware `rhi::IRhiCommandList::draw_indexed`
-- [ ] Keep non-claims:
+- [x] Keep non-claims:
   - GPU culling
   - indirect draw execution
   - mesh shaders
@@ -707,13 +711,13 @@ Expected: selector, residency bridge, and scene submission tests pass.
   - Metal readiness
   - Nanite compatibility/equivalence/superiority
   - broad CPU/GPU/memory optimization
-- [ ] Compose manifest:
+- [x] Compose manifest:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write
 ```
 
-- [ ] Run drift checks:
+- [x] Run drift checks:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
@@ -723,13 +727,15 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1
 
 Expected: all checks pass.
 
+Evidence: Docs, plan registry, `engine/agent/manifest.fragments/004-modules.json`, `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`, and static MAVG needles were updated for `mavg_scene_lod.hpp`, `MavgSceneLodSubmitDesc`, `MavgSceneLodSubmitResult`, `plan_mavg_scene_lod_mesh_commands`, and `MK_scene_renderer_mavg_lod_tests`; `tools/compose-agent-manifest.ps1 -Write`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, and `tools/check-agents.ps1` passed on 2026-06-05.
+
 ### Task 14: Slice Validation And Publication
 
 **Files:**
 
 - Validate all touched C++ code, tests, docs, manifest fragments, composed manifest, and static checks.
 
-- [ ] Run focused C++ validation:
+- [x] Run focused C++ validation:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1
@@ -745,18 +751,24 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset d
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_mavg_cluster_graph_tests|MK_tools_mavg_cluster_cook_tests|MK_rhi_tests|MK_backend_scaffold_tests|MK_renderer_tests|MK_mavg_lod_selection_tests|MK_runtime_mavg_lod_residency_tests|MK_scene_renderer_mavg_lod_tests"
 ```
 
-- [ ] Run full validation:
+Evidence: `tools/cmake.ps1 --preset dev` configured the fresh worktree after the RED include failure; `tools/cmake.ps1 --build --preset dev --target MK_scene_renderer_mavg_lod_tests` passed after implementation; `tools/cmake.ps1 --build --preset dev --target MK_mavg_lod_selection_tests MK_runtime_mavg_lod_residency_tests MK_scene_renderer_tests MK_scene_renderer_mavg_lod_tests` passed; and `tools/ctest.ps1 --preset dev --output-on-failure -R "MK_mavg_lod_selection_tests|MK_runtime_mavg_lod_residency_tests|MK_scene_renderer_mavg_lod_tests|MK_scene_renderer_tests"` passed 4/4 on 2026-06-05. Broader graph, cook, RHI, backend, renderer, and runtime tests were then covered by full validation.
+
+- [x] Run full validation:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 git diff --check
 ```
 
-- [ ] Run publication preflight:
+Evidence: `tools/format.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-json-contracts.ps1`, `tools/check-tidy.ps1 -Files engine/scene_renderer/src/mavg_scene_lod.cpp,tests/unit/scene_renderer_mavg_lod_tests.cpp -ReuseExistingFileApiReply`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-format.ps1`, and `git diff --check` passed before the full gate. `tools/validate.ps1` passed on 2026-06-05 with static checks ok, build ok, and 104/104 CTest tests passed, including `MK_scene_renderer_mavg_lod_tests`; Windows Metal shader tools and Apple packaging remained diagnostic host gates, not failures.
+
+- [x] Run publication preflight:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1
 ```
+
+Evidence: `tools/check-publication-preflight.ps1 -Branch codex/mavg-scene-lod-submission-v1` passed on 2026-06-05 with GitHub network reachability, readable `gh` config, and `gh-auth=ok`; the remote head was missing as expected before the first push of this candidate branch.
 
 Expected: focused tests, full validation, whitespace check, and publication preflight pass or record a concrete host/tool blocker.
 
