@@ -123,6 +123,10 @@ struct UiRenderSubmitResult {
     std::size_t accessibility_nodes_available{0};
     std::size_t adapter_diagnostics_available{0};
     std::size_t theme_colors_resolved{0};
+    std::size_t glyph_atlas_binding_reuse_rows{0};
+    std::size_t image_binding_reuse_rows{0};
+    std::uint64_t renderer_submission_order_key{0};
+    bool cache_native_handle_access{false};
 };
 
 enum class UiRendererAtlasHandoffStatus : std::uint8_t {

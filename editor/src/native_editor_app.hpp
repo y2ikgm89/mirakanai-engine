@@ -133,6 +133,7 @@ class NativeEditorApp {
     [[nodiscard]] const NativeEditorUiaProviderState& accessibility_state() const noexcept;
     [[nodiscard]] const EditorMaterialAssetPreviewPanelModel& material_preview() const noexcept;
     [[nodiscard]] const NativeMaterialPreviewDisplayPlan& material_preview_display() const noexcept;
+    [[nodiscard]] const ui::RetainedUiDiffSummary& retained_ui_diff() const noexcept;
 
     void bind_native_services(NativeEditorServiceBindings services);
     [[nodiscard]] NativeEditorTextInputFocusResult focus_text_input_target(NativeEditorTextInputTargetDesc target);
@@ -162,6 +163,7 @@ class NativeEditorApp {
     void record_native_viewport_texture_display(NativeViewportDisplayPlan plan);
     void record_native_material_preview_texture_display(NativeMaterialPreviewDisplayPlan plan);
     void record_native_text_atlas_handoff_evidence(NativeEditorTextAtlasHandoffEvidence evidence);
+    void record_native_retained_ui_diff(ui::RetainedUiDiffSummary summary);
 
   private:
     NativeEditorLaunchOptions options_;

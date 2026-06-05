@@ -353,6 +353,7 @@ struct NativeEditorApp::Impl {
     ui::IImeAdapter* ime_adapter{nullptr};
     ui::IAccessibilityAdapter* accessibility_adapter{nullptr};
     NativeEditorUiaProviderState accessibility_state;
+    ui::RetainedUiDiffSummary retained_ui_diff;
     NativeEditorServiceStatus service_status;
     std::string docking_status_last_frame{"not_rendered"};
     std::uint32_t dock_tab_headers_last_frame{0};
@@ -505,6 +506,10 @@ const EditorMaterialAssetPreviewPanelModel& NativeEditorApp::material_preview() 
 
 const NativeMaterialPreviewDisplayPlan& NativeEditorApp::material_preview_display() const noexcept {
     return impl_->material_preview_display;
+}
+
+const ui::RetainedUiDiffSummary& NativeEditorApp::retained_ui_diff() const noexcept {
+    return impl_->retained_ui_diff;
 }
 
 void NativeEditorApp::bind_native_services(NativeEditorServiceBindings services) {
@@ -892,6 +897,10 @@ void NativeEditorApp::record_native_material_preview_texture_display(NativeMater
 
 void NativeEditorApp::record_native_text_atlas_handoff_evidence(NativeEditorTextAtlasHandoffEvidence evidence) {
     impl_->text_atlas_handoff_evidence = std::move(evidence);
+}
+
+void NativeEditorApp::record_native_retained_ui_diff(ui::RetainedUiDiffSummary summary) {
+    impl_->retained_ui_diff = std::move(summary);
 }
 
 } // namespace mirakana::editor

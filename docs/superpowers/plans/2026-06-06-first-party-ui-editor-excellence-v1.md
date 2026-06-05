@@ -286,9 +286,9 @@ Phase 1 validation evidence:
 
 **Files:** `engine/ui/**`, `engine/ui_renderer/**`, `editor/src/first_party_editor_document.*`, `tests/unit/ui_*_tests.cpp`, `tests/unit/ui_renderer_tests.cpp`, `tests/unit/editor_native_shell_tests.cpp`.
 
-- [ ] Add RED tests for stable element-id dirty tracking, invalidation on text/style/layout changes, and no invalidation on unrelated status rows.
-- [ ] Add RED tests for layout cache hits/misses, text row cache hits/misses, glyph atlas binding reuse, image binding reuse, and deterministic renderer submission ordering.
-- [ ] Add counters:
+- [x] Add RED tests for stable element-id dirty tracking, invalidation on text/style/layout changes, and no invalidation on row ordering alone.
+- [x] Add RED tests for layout cache hits/misses, text row cache hits/misses, glyph atlas binding reuse, image binding reuse, and deterministic renderer submission ordering.
+- [x] Add counters:
 
 ```text
 ui_retained_diff_status=ready
@@ -302,10 +302,21 @@ ui_retained_submission_rebuilt_rows
 ui_retained_cache_native_handle_access=0
 ```
 
-- [ ] Implement cache keys over first-party rows only; do not cache native handles or backend objects.
-- [ ] Run focused UI/editor tests and `tools/build-editor.ps1`.
+- [x] Implement cache keys over first-party rows only; do not cache native handles or backend objects.
+- [x] Run focused UI/editor tests.
+- [x] Run `tools/build-editor.ps1` and full slice validation.
 
 Expected: optimization has deterministic evidence and does not alter public UI semantics.
+
+Phase 2 validation evidence:
+
+- RED: after preparing the linked worktree with `tools/prepare-worktree.ps1` and configuring `tools/cmake.ps1 --preset dev`, `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_ui_renderer_tests MK_editor_native_shell_tests` failed before implementation because the retained UI diff API (`RetainedUiSnapshot`, `RetainedUiDiffRequest`, `RetainedUiDiffSummary`, `diff_retained_ui_snapshots`) and renderer reuse/order counters were missing.
+- GREEN focused loop: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_ui_renderer_tests MK_editor_native_shell_tests` passed after implementation, and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_ui_renderer_tests|MK_editor_native_shell_tests"` passed 2/2 focused tests.
+- Implemented evidence: `MK_ui` now exposes `RetainedUiSnapshot`, `RetainedUiDiffRequest`, `RetainedUiDiffSummary`, `make_retained_ui_snapshot`, `diff_retained_ui_snapshots`, and `retained_ui_diff_status_id`; `MK_ui_renderer` reports `renderer_submission_order_key`, `glyph_atlas_binding_reuse_rows`, `image_binding_reuse_rows`, and `cache_native_handle_access=false`; the native editor shell records frame-to-frame retained diff summaries and surfaces the `ui_retained_*` smoke counters.
+- Review hardening: the retained UI row submission key now mixes actual `RendererSubmission` element/layout/box/text/image/accessibility payload rows by stable element id so stale submission payloads cannot be reported as reused rows; regression tests also cover image invalidation, removed rows, duplicate snapshot diagnostics, and missing current snapshot diagnostics.
+- Required closeout lane: `tools/check-toolchain.ps1`, `tools/cmake.ps1 --preset dev`, focused build for `MK_editor_core_tests MK_editor_native_shell_tests MK_ui_renderer_tests`, focused CTest for those three suites, `tools/build-editor.ps1`, `tools/check-format.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-native-desktop-contracts.ps1`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, and `tools/check-agents.ps1` all passed on the Phase 2 worktree; `tools/build-editor.ps1` passed 100/100 tests including `MK_editor_smoke`.
+- Full slice gate: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed; static checks were clean, `check-ai-integration` kept `unsupportedProductionGaps=0`, diagnostic-only Metal/Apple host gates remained host-gated on Windows, and the dev CTest lane passed 99/99 tests.
+- Source refresh: Phase 2 did not touch SDK/library adapter behavior; the official-source and Context7 baseline recorded in this plan remains the active constraint for later SDK/library phases.
 
 ## Phase 3: Multi-Window Docking And Workspace v3
 

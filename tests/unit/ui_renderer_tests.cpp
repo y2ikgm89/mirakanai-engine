@@ -8,6 +8,7 @@
 #include "mirakana/ui/ui.hpp"
 #include "mirakana/ui_renderer/ui_renderer.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <limits>
 #include <string>
@@ -417,7 +418,226 @@ make_runtime_record(mirakana::runtime::RuntimeAssetHandle handle, mirakana::Asse
            "glyph.1.color=0.9,0.9,0.9,1\n";
 }
 
+[[nodiscard]] mirakana::ui::UiDocument
+make_retained_ui_menu_document(std::string title_label, std::string panel_background, mirakana::ui::Rect title_bounds) {
+    mirakana::ui::UiDocument document;
+
+    mirakana::ui::ElementDesc root;
+    root.id = mirakana::ui::ElementId{"root"};
+    root.role = mirakana::ui::SemanticRole::root;
+    root.style.layout = mirakana::ui::LayoutMode::column;
+    root.style.padding = mirakana::ui::EdgeInsets{.top = 8.0F, .right = 8.0F, .bottom = 8.0F, .left = 8.0F};
+    root.style.gap = 4.0F;
+    MK_REQUIRE(document.try_add_element(root));
+
+    mirakana::ui::ElementDesc panel;
+    panel.id = mirakana::ui::ElementId{"panel"};
+    panel.parent = root.id;
+    panel.role = mirakana::ui::SemanticRole::panel;
+    panel.bounds = mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 160.0F, .height = 96.0F};
+    panel.style.background_token = std::move(panel_background);
+    MK_REQUIRE(document.try_add_element(panel));
+
+    mirakana::ui::ElementDesc title;
+    title.id = mirakana::ui::ElementId{"title"};
+    title.parent = panel.id;
+    title.role = mirakana::ui::SemanticRole::label;
+    title.bounds = title_bounds;
+    title.text.label = std::move(title_label);
+    title.text.font_family = "ui/body";
+    title.style.foreground_token = "text.primary";
+    MK_REQUIRE(document.try_add_element(title));
+
+    return document;
+}
+
+[[nodiscard]] mirakana::ui::RetainedUiSnapshot
+make_retained_ui_menu_snapshot(const mirakana::ui::UiDocument& document) {
+    const auto layout =
+        mirakana::ui::solve_layout(document, mirakana::ui::ElementId{"root"},
+                                   mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 240.0F, .height = 160.0F});
+    const auto submission = mirakana::ui::build_renderer_submission(document, layout);
+    return mirakana::ui::make_retained_ui_snapshot(document, layout, submission);
+}
+
+[[nodiscard]] mirakana::ui::RetainedUiSnapshot
+make_retained_ui_menu_snapshot_with_submission(const mirakana::ui::UiDocument& document,
+                                               const mirakana::ui::RendererSubmission& submission) {
+    const auto layout =
+        mirakana::ui::solve_layout(document, mirakana::ui::ElementId{"root"},
+                                   mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 240.0F, .height = 160.0F});
+    return mirakana::ui::make_retained_ui_snapshot(document, layout, submission);
+}
+
+[[nodiscard]] mirakana::ui::UiDocument make_retained_ui_image_document(std::string resource_id) {
+    auto document = make_retained_ui_menu_document(
+        "Start", "panel.background", mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 96.0F, .height = 24.0F});
+
+    mirakana::ui::ElementDesc icon;
+    icon.id = mirakana::ui::ElementId{"icon"};
+    icon.parent = mirakana::ui::ElementId{"panel"};
+    icon.role = mirakana::ui::SemanticRole::image;
+    icon.bounds = mirakana::ui::Rect{.x = 0.0F, .y = 28.0F, .width = 32.0F, .height = 32.0F};
+    icon.image.resource_id = std::move(resource_id);
+    MK_REQUIRE(document.try_add_element(icon));
+    return document;
+}
+
 } // namespace
+
+MK_TEST("ui retained diff tracks stable ids and cache invalidation without native handles") {
+    const auto base_document = make_retained_ui_menu_document(
+        "Start", "panel.background", mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 96.0F, .height = 24.0F});
+    const auto base_snapshot = make_retained_ui_menu_snapshot(base_document);
+
+    auto reordered_previous = base_snapshot;
+    std::ranges::reverse(reordered_previous.rows);
+    const auto stable = mirakana::ui::diff_retained_ui_snapshots(mirakana::ui::RetainedUiDiffRequest{
+        .has_previous = true,
+        .previous = reordered_previous,
+        .current = base_snapshot,
+    });
+
+    MK_REQUIRE(stable.status == mirakana::ui::RetainedUiDiffStatus::ready);
+    MK_REQUIRE(mirakana::ui::retained_ui_diff_status_id(stable.status) == "ready");
+    MK_REQUIRE(stable.dirty_rows == 0U);
+    MK_REQUIRE(stable.layout_cache_hits == base_snapshot.rows.size());
+    MK_REQUIRE(stable.layout_cache_misses == 0U);
+    MK_REQUIRE(stable.text_cache_hits == 1U);
+    MK_REQUIRE(stable.text_cache_misses == 0U);
+    MK_REQUIRE(stable.submission_reused_rows == base_snapshot.rows.size());
+    MK_REQUIRE(stable.submission_rebuilt_rows == 0U);
+    MK_REQUIRE(!stable.native_handle_access);
+
+    const auto text_document = make_retained_ui_menu_document(
+        "Continue", "panel.background", mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 96.0F, .height = 24.0F});
+    const auto text_changed = mirakana::ui::diff_retained_ui_snapshots(mirakana::ui::RetainedUiDiffRequest{
+        .has_previous = true,
+        .previous = base_snapshot,
+        .current = make_retained_ui_menu_snapshot(text_document),
+    });
+    MK_REQUIRE(text_changed.dirty_rows == 1U);
+    MK_REQUIRE(text_changed.text_cache_misses == 1U);
+    MK_REQUIRE(text_changed.submission_rebuilt_rows == 1U);
+
+    const auto style_document = make_retained_ui_menu_document(
+        "Start", "panel.highlighted", mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 96.0F, .height = 24.0F});
+    const auto style_changed = mirakana::ui::diff_retained_ui_snapshots(mirakana::ui::RetainedUiDiffRequest{
+        .has_previous = true,
+        .previous = base_snapshot,
+        .current = make_retained_ui_menu_snapshot(style_document),
+    });
+    MK_REQUIRE(style_changed.dirty_rows == 1U);
+    MK_REQUIRE(style_changed.layout_cache_hits == base_snapshot.rows.size());
+    MK_REQUIRE(style_changed.submission_rebuilt_rows == 1U);
+
+    const auto layout_document = make_retained_ui_menu_document(
+        "Start", "panel.background", mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 128.0F, .height = 24.0F});
+    const auto layout_changed = mirakana::ui::diff_retained_ui_snapshots(mirakana::ui::RetainedUiDiffRequest{
+        .has_previous = true,
+        .previous = base_snapshot,
+        .current = make_retained_ui_menu_snapshot(layout_document),
+    });
+    MK_REQUIRE(layout_changed.dirty_rows == 1U);
+    MK_REQUIRE(layout_changed.layout_cache_misses == 1U);
+    MK_REQUIRE(layout_changed.submission_rebuilt_rows == 1U);
+
+    const auto blocked = mirakana::ui::diff_retained_ui_snapshots(mirakana::ui::RetainedUiDiffRequest{
+        .has_previous = true,
+        .previous = base_snapshot,
+        .current = base_snapshot,
+        .requested_native_handle_access = true,
+    });
+    MK_REQUIRE(blocked.status == mirakana::ui::RetainedUiDiffStatus::invalid_request);
+    MK_REQUIRE(blocked.native_handle_access);
+    MK_REQUIRE(!blocked.diagnostics.empty());
+}
+
+MK_TEST("ui retained diff includes renderer submission payload in row reuse keys") {
+    const auto document = make_retained_ui_menu_document(
+        "Start", "panel.background", mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 96.0F, .height = 24.0F});
+    const auto layout =
+        mirakana::ui::solve_layout(document, mirakana::ui::ElementId{"root"},
+                                   mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 240.0F, .height = 160.0F});
+    const auto submission = mirakana::ui::build_renderer_submission(document, layout);
+    const auto previous = mirakana::ui::make_retained_ui_snapshot(document, layout, submission);
+
+    auto stale_submission = submission;
+    auto title_run = std::ranges::find_if(stale_submission.text_runs, [](const mirakana::ui::RendererTextRun& run) {
+        return run.id == mirakana::ui::ElementId{"title"};
+    });
+    MK_REQUIRE(title_run != stale_submission.text_runs.end());
+    title_run->text.label = "Stale";
+
+    const auto current = mirakana::ui::make_retained_ui_snapshot(document, layout, stale_submission);
+    const auto diff = mirakana::ui::diff_retained_ui_snapshots(mirakana::ui::RetainedUiDiffRequest{
+        .has_previous = true,
+        .previous = previous,
+        .current = current,
+    });
+
+    MK_REQUIRE(diff.status == mirakana::ui::RetainedUiDiffStatus::ready);
+    MK_REQUIRE(diff.text_cache_hits == 1U);
+    MK_REQUIRE(diff.text_cache_misses == 0U);
+    MK_REQUIRE(diff.submission_rebuilt_rows == 1U);
+    MK_REQUIRE(diff.submission_reused_rows == previous.rows.size() - 1U);
+}
+
+MK_TEST("ui retained diff reports image invalidation removed rows and diagnostics") {
+    const auto image_document = make_retained_ui_image_document("atlas/icon_a");
+    const auto image_snapshot = make_retained_ui_menu_snapshot(image_document);
+    const auto changed_image_snapshot = make_retained_ui_menu_snapshot(make_retained_ui_image_document("atlas/icon_b"));
+    const auto image_changed = mirakana::ui::diff_retained_ui_snapshots(mirakana::ui::RetainedUiDiffRequest{
+        .has_previous = true,
+        .previous = image_snapshot,
+        .current = changed_image_snapshot,
+    });
+    MK_REQUIRE(image_changed.status == mirakana::ui::RetainedUiDiffStatus::ready);
+    MK_REQUIRE(image_changed.image_cache_hits == 0U);
+    MK_REQUIRE(image_changed.image_cache_misses == 1U);
+    MK_REQUIRE(image_changed.submission_rebuilt_rows == 1U);
+
+    auto removed_current = image_snapshot;
+    const auto title =
+        std::ranges::find_if(removed_current.rows, [](const mirakana::ui::RetainedUiElementCacheRow& row) {
+            return row.id == mirakana::ui::ElementId{"title"};
+        });
+    MK_REQUIRE(title != removed_current.rows.end());
+    removed_current.rows.erase(title);
+    const auto removed = mirakana::ui::diff_retained_ui_snapshots(mirakana::ui::RetainedUiDiffRequest{
+        .has_previous = true,
+        .previous = image_snapshot,
+        .current = removed_current,
+    });
+    MK_REQUIRE(removed.status == mirakana::ui::RetainedUiDiffStatus::ready);
+    MK_REQUIRE(removed.removed_rows == 1U);
+
+    const auto missing_current = mirakana::ui::diff_retained_ui_snapshots(mirakana::ui::RetainedUiDiffRequest{});
+    MK_REQUIRE(missing_current.status == mirakana::ui::RetainedUiDiffStatus::invalid_request);
+    MK_REQUIRE(!missing_current.diagnostics.empty());
+    MK_REQUIRE(missing_current.diagnostics.front().code ==
+               mirakana::ui::RetainedUiDiffDiagnosticCode::missing_current_snapshot);
+
+    auto duplicate_current = image_snapshot;
+    duplicate_current.rows.push_back(duplicate_current.rows.front());
+    const auto current_duplicate = mirakana::ui::diff_retained_ui_snapshots(mirakana::ui::RetainedUiDiffRequest{
+        .current = duplicate_current,
+    });
+    MK_REQUIRE(current_duplicate.status == mirakana::ui::RetainedUiDiffStatus::invalid_request);
+    MK_REQUIRE(current_duplicate.diagnostics.front().code ==
+               mirakana::ui::RetainedUiDiffDiagnosticCode::duplicate_current_id);
+
+    auto duplicate_previous = image_snapshot;
+    duplicate_previous.rows.push_back(duplicate_previous.rows.front());
+    const auto previous_duplicate = mirakana::ui::diff_retained_ui_snapshots(mirakana::ui::RetainedUiDiffRequest{
+        .has_previous = true,
+        .previous = duplicate_previous,
+        .current = image_snapshot,
+    });
+    MK_REQUIRE(previous_duplicate.status == mirakana::ui::RetainedUiDiffStatus::invalid_request);
+    MK_REQUIRE(previous_duplicate.diagnostics.front().code ==
+               mirakana::ui::RetainedUiDiffDiagnosticCode::duplicate_previous_id);
+}
 
 MK_TEST("ui renderer converts styled ui boxes into sprite commands") {
     mirakana::ui::RendererBox box;
@@ -586,6 +806,72 @@ MK_TEST("ui renderer submits monospace text glyphs through glyph atlas palette")
     MK_REQUIRE(renderer.sprites[0].texture.uv_rect.u1 == 0.25F);
     MK_REQUIRE(renderer.sprites[0].transform.position == (mirakana::Vec2{8.0F, 11.0F}));
     MK_REQUIRE(renderer.stats().sprites_submitted == 4);
+}
+
+MK_TEST("ui renderer reports atlas binding reuse and deterministic submission ordering") {
+    const auto atlas_page = mirakana::AssetId::from_name("ui/font-atlas/body");
+
+    mirakana::ui::RendererSubmission submission;
+    mirakana::ui::RendererBox box;
+    box.id = mirakana::ui::ElementId{"panel"};
+    box.bounds = mirakana::ui::Rect{.x = 0.0F, .y = 0.0F, .width = 96.0F, .height = 48.0F};
+    box.background_token = "panel.background";
+    submission.boxes.push_back(box);
+
+    mirakana::ui::RendererTextRun text;
+    text.id = mirakana::ui::ElementId{"title"};
+    text.bounds = mirakana::ui::Rect{.x = 4.0F, .y = 4.0F, .width = 32.0F, .height = 12.0F};
+    text.text.label = "AB";
+    text.text.font_family = "ui/body";
+    submission.text_runs.push_back(text);
+
+    mirakana::ui::RendererImagePlaceholder image;
+    image.id = mirakana::ui::ElementId{"icon"};
+    image.bounds = mirakana::ui::Rect{.x = 4.0F, .y = 20.0F, .width = 16.0F, .height = 16.0F};
+    image.image.resource_id = "ui/icon";
+    image.image.asset_uri = "assets/ui/icon.texture";
+    submission.image_placeholders.push_back(image);
+
+    mirakana::UiRendererTheme theme;
+    MK_REQUIRE(theme.try_add(mirakana::UiThemeColor{"panel.background", mirakana::Color{0.1F, 0.1F, 0.12F, 1.0F}}));
+
+    mirakana::UiRendererImagePalette image_palette;
+    MK_REQUIRE(image_palette.try_add(
+        mirakana::UiRendererImageBinding{"ui/icon", "assets/ui/icon.texture", mirakana::Color{0.7F, 0.8F, 0.9F, 1.0F},
+                                         atlas_page, mirakana::SpriteUvRect{0.0F, 0.0F, 0.5F, 0.5F}}));
+
+    mirakana::UiRendererGlyphAtlasPalette glyph_atlas;
+    MK_REQUIRE(glyph_atlas.try_add(mirakana::UiRendererGlyphAtlasBinding{
+        "ui/body", static_cast<std::uint32_t>('A'), mirakana::Color{1.0F, 1.0F, 1.0F, 1.0F}, atlas_page,
+        mirakana::SpriteUvRect{0.0F, 0.0F, 0.25F, 0.25F}}));
+    MK_REQUIRE(glyph_atlas.try_add(mirakana::UiRendererGlyphAtlasBinding{
+        "ui/body", static_cast<std::uint32_t>('B'), mirakana::Color{1.0F, 1.0F, 1.0F, 1.0F}, atlas_page,
+        mirakana::SpriteUvRect{0.25F, 0.0F, 0.5F, 0.25F}}));
+
+    mirakana::UiRenderSubmitDesc desc;
+    desc.theme = &theme;
+    desc.image_palette = &image_palette;
+    desc.glyph_atlas = &glyph_atlas;
+    desc.text_layout_policy = mirakana::ui::MonospaceTextLayoutPolicy{
+        .glyph_advance = 8.0F, .whitespace_advance = 4.0F, .line_height = 10.0F};
+
+    CaptureRenderer first_renderer(mirakana::Extent2D{.width = 96, .height = 48});
+    first_renderer.begin_frame();
+    const auto first = mirakana::submit_ui_renderer_submission(first_renderer, submission, desc);
+    first_renderer.end_frame();
+
+    CaptureRenderer second_renderer(mirakana::Extent2D{.width = 96, .height = 48});
+    second_renderer.begin_frame();
+    const auto second = mirakana::submit_ui_renderer_submission(second_renderer, submission, desc);
+    second_renderer.end_frame();
+
+    MK_REQUIRE(first.renderer_submission_order_key != 0U);
+    MK_REQUIRE(second.renderer_submission_order_key == first.renderer_submission_order_key);
+    MK_REQUIRE(first.glyph_atlas_binding_reuse_rows == 2U);
+    MK_REQUIRE(first.image_binding_reuse_rows == 1U);
+    MK_REQUIRE(!first.cache_native_handle_access);
+    MK_REQUIRE(first_renderer.sprites.size() == second_renderer.sprites.size());
+    MK_REQUIRE(first_renderer.sprites.size() == 4U);
 }
 
 MK_TEST("ui renderer reports missing glyph atlas bindings without fake sprites") {

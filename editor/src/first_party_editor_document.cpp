@@ -415,6 +415,7 @@ make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const F
     const auto& accessibility = app.accessibility_state();
     const auto& viewport_display = app.viewport_display();
     const auto& material_preview_display = app.material_preview_display();
+    const auto& retained_diff = app.retained_ui_diff();
     const auto performance = summarize_first_party_editor_ui_performance(app, document);
     return FirstPartyEditorShellSmokeCounters{
         .ui = "first_party",
@@ -477,6 +478,15 @@ make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const F
         .ui_performance_budget_violations = performance.budget_violations,
         .ui_performance_diagnostics = static_cast<std::uint32_t>(performance.diagnostics.size()),
         .ui_performance_broad_optimization_claimed = performance.broad_optimization_claimed,
+        .ui_retained_diff_status = std::string(ui::retained_ui_diff_status_id(retained_diff.status)),
+        .ui_retained_dirty_rows = count_to_u64(retained_diff.dirty_rows),
+        .ui_retained_layout_cache_hits = count_to_u64(retained_diff.layout_cache_hits),
+        .ui_retained_layout_cache_misses = count_to_u64(retained_diff.layout_cache_misses),
+        .ui_retained_text_cache_hits = count_to_u64(retained_diff.text_cache_hits),
+        .ui_retained_text_cache_misses = count_to_u64(retained_diff.text_cache_misses),
+        .ui_retained_submission_reused_rows = count_to_u64(retained_diff.submission_reused_rows),
+        .ui_retained_submission_rebuilt_rows = count_to_u64(retained_diff.submission_rebuilt_rows),
+        .ui_retained_cache_native_handle_access = retained_diff.native_handle_access,
     };
 }
 

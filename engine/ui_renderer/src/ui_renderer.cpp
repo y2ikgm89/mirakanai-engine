@@ -83,6 +83,45 @@ void hash_atlas_handoff_string(std::uint64_t& hash, std::string_view value) noex
     return hash == 0U ? 1U : hash;
 }
 
+void hash_ui_renderer_float(std::uint64_t& hash, float value) noexcept {
+    const auto scaled = static_cast<std::int64_t>(value * 1000.0F);
+    hash_atlas_handoff_u64(hash, static_cast<std::uint64_t>(scaled));
+}
+
+void hash_ui_renderer_rect(std::uint64_t& hash, ui::Rect rect) noexcept {
+    hash_ui_renderer_float(hash, rect.x);
+    hash_ui_renderer_float(hash, rect.y);
+    hash_ui_renderer_float(hash, rect.width);
+    hash_ui_renderer_float(hash, rect.height);
+}
+
+[[nodiscard]] std::uint64_t
+compute_ui_renderer_submission_order_key(const ui::RendererSubmission& submission) noexcept {
+    auto hash = kAtlasHandoffFnvOffset;
+    hash_atlas_handoff_string(hash, "boxes");
+    for (const auto& box : submission.boxes) {
+        hash_atlas_handoff_string(hash, box.id.value);
+        hash_atlas_handoff_string(hash, box.background_token);
+        hash_ui_renderer_rect(hash, box.bounds);
+    }
+    hash_atlas_handoff_string(hash, "text");
+    for (const auto& text : submission.text_runs) {
+        hash_atlas_handoff_string(hash, text.id.value);
+        hash_atlas_handoff_string(hash, text.text.label);
+        hash_atlas_handoff_string(hash, text.text.localization_key);
+        hash_atlas_handoff_string(hash, text.text.font_family);
+        hash_ui_renderer_rect(hash, text.bounds);
+    }
+    hash_atlas_handoff_string(hash, "images");
+    for (const auto& image : submission.image_placeholders) {
+        hash_atlas_handoff_string(hash, image.id.value);
+        hash_atlas_handoff_string(hash, image.image.resource_id);
+        hash_atlas_handoff_string(hash, image.image.asset_uri);
+        hash_ui_renderer_rect(hash, image.bounds);
+    }
+    return hash == 0U ? 1U : hash;
+}
+
 } // namespace
 
 bool UiRendererTheme::try_add(UiThemeColor color) {
@@ -579,6 +618,7 @@ UiRendererAtlasHandoffPlan review_ui_renderer_atlas_handoff(const UiRendererAtla
 UiRenderSubmitResult submit_ui_renderer_submission(IRenderer& renderer, const ui::RendererSubmission& submission,
                                                    UiRenderSubmitDesc desc) {
     UiRenderSubmitResult result;
+    result.renderer_submission_order_key = compute_ui_renderer_submission_order_key(submission);
     const auto text_payload = desc.glyph_atlas == nullptr
                                   ? ui::build_text_adapter_payload(submission)
                                   : ui::build_text_adapter_payload(submission, desc.text_layout_policy);
@@ -617,6 +657,7 @@ UiRenderSubmitResult submit_ui_renderer_submission(IRenderer& renderer, const ui
                         ++result.text_glyphs_missing;
                         continue;
                     }
+                    ++result.glyph_atlas_binding_reuse_rows;
                     renderer.draw_sprite(make_ui_text_glyph_sprite_command(glyph, *binding));
                     ++result.text_glyphs_resolved;
                     ++result.text_glyph_sprites_submitted;
@@ -634,6 +675,7 @@ UiRenderSubmitResult submit_ui_renderer_submission(IRenderer& renderer, const ui
             ++result.image_resources_missing;
             continue;
         }
+        ++result.image_binding_reuse_rows;
         renderer.draw_sprite(make_ui_image_sprite_command(image, *binding));
         ++result.image_resources_resolved;
         ++result.image_sprites_submitted;

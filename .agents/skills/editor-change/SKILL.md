@@ -39,7 +39,8 @@ Use this skill for editor/core models, native visible editor shell boundaries, p
   rows, native viewport/material preview lifecycle gates, private `native_texture_display_adapter.*` RHI evidence, and private
   `native_editor_visible_texture_compositor.*` presentation for requested private D3D12 texture display, offscreen targets, descriptor
   updates, resource-barrier, fence readiness, viewport resize-safe teardown, visible-compositor consumption, positive visible texture
-  composite smoke counters, and material-preview host-private frame preparation without native handle exposure. Multi-window drag/tear-off,
+  composite smoke counters, material-preview host-private frame preparation, and retained `ui_retained_*` diff/cache smoke rows
+  (`ui_retained_diff_status=ready`, zero dirty/miss/rebuild/native-handle rows) without native handle exposure. Multi-window drag/tear-off,
   help rich text, broad editable rich text, Direct2D GPU text rendering/upload, broad shaping/bidi/fallback, full app-owned `ITextStoreACP`
   callback coverage, native IME candidate UI, reconversion, full UIA control pattern/event parity, Vulkan/Metal editor texture-display
   parity, broader material-preview GPU parity, cross-platform accessibility parity, and cross-platform font adapters remain future phases.

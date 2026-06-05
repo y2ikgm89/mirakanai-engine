@@ -4,6 +4,7 @@
 #include "mirakana/ui/ui.hpp"
 
 #include <algorithm>
+#include <bit>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -18,6 +19,9 @@
 namespace mirakana::ui {
 
 namespace {
+
+constexpr std::uint64_t kRetainedUiFnvOffset{14695981039346656037ULL};
+constexpr std::uint64_t kRetainedUiFnvPrime{1099511628211ULL};
 
 [[nodiscard]] bool is_finite_nonnegative(float value) noexcept {
     return std::isfinite(value) && value >= 0.0F;
@@ -1023,6 +1027,351 @@ void append_layout(const UiDocument& document, const Element& element, Rect boun
     }
 }
 
+void hash_retained_ui_byte(std::uint64_t& hash, std::uint8_t value) noexcept {
+    hash ^= value;
+    hash *= kRetainedUiFnvPrime;
+}
+
+void hash_retained_ui_bool(std::uint64_t& hash, bool value) noexcept {
+    hash_retained_ui_byte(hash, value ? 1U : 0U);
+}
+
+void hash_retained_ui_u64(std::uint64_t& hash, std::uint64_t value) noexcept {
+    for (std::size_t shift = 0U; shift < 64U; shift += 8U) {
+        hash_retained_ui_byte(hash, static_cast<std::uint8_t>((value >> shift) & 0xffU));
+    }
+}
+
+void hash_retained_ui_i32(std::uint64_t& hash, std::int32_t value) noexcept {
+    hash_retained_ui_u64(hash, static_cast<std::uint32_t>(value));
+}
+
+void hash_retained_ui_float(std::uint64_t& hash, float value) noexcept {
+    hash_retained_ui_u64(hash, std::bit_cast<std::uint32_t>(value));
+}
+
+void hash_retained_ui_string(std::uint64_t& hash, std::string_view value) noexcept {
+    for (const unsigned char character : value) {
+        hash_retained_ui_byte(hash, character);
+    }
+    hash_retained_ui_byte(hash, 0xffU);
+}
+
+void hash_retained_ui_id(std::uint64_t& hash, const ElementId& id) noexcept {
+    hash_retained_ui_string(hash, id.value);
+}
+
+void hash_retained_ui_rect(std::uint64_t& hash, Rect rect) noexcept {
+    hash_retained_ui_float(hash, rect.x);
+    hash_retained_ui_float(hash, rect.y);
+    hash_retained_ui_float(hash, rect.width);
+    hash_retained_ui_float(hash, rect.height);
+}
+
+void hash_retained_ui_edge_insets(std::uint64_t& hash, EdgeInsets insets) noexcept {
+    hash_retained_ui_float(hash, insets.top);
+    hash_retained_ui_float(hash, insets.right);
+    hash_retained_ui_float(hash, insets.bottom);
+    hash_retained_ui_float(hash, insets.left);
+}
+
+void hash_retained_ui_size_constraints(std::uint64_t& hash, SizeConstraints constraints) noexcept {
+    hash_retained_ui_float(hash, constraints.min_width);
+    hash_retained_ui_float(hash, constraints.min_height);
+    hash_retained_ui_float(hash, constraints.max_width);
+    hash_retained_ui_float(hash, constraints.max_height);
+}
+
+void hash_retained_ui_text(std::uint64_t& hash, const TextContent& text) noexcept {
+    hash_retained_ui_string(hash, text.label);
+    hash_retained_ui_string(hash, text.localization_key);
+    hash_retained_ui_string(hash, text.font_family);
+    hash_retained_ui_i32(hash, static_cast<std::int32_t>(text.direction));
+    hash_retained_ui_i32(hash, static_cast<std::int32_t>(text.wrap));
+}
+
+void hash_retained_ui_image(std::uint64_t& hash, const ImageContent& image) noexcept {
+    hash_retained_ui_string(hash, image.resource_id);
+    hash_retained_ui_string(hash, image.asset_uri);
+    hash_retained_ui_string(hash, image.tint_token);
+}
+
+void hash_retained_ui_style(std::uint64_t& hash, const Style& style) noexcept {
+    hash_retained_ui_i32(hash, static_cast<std::int32_t>(style.layout));
+    hash_retained_ui_i32(hash, static_cast<std::int32_t>(style.anchor));
+    hash_retained_ui_edge_insets(hash, style.margin);
+    hash_retained_ui_edge_insets(hash, style.padding);
+    hash_retained_ui_float(hash, style.gap);
+    hash_retained_ui_size_constraints(hash, style.size);
+    hash_retained_ui_float(hash, style.dpi_scale);
+    hash_retained_ui_string(hash, style.background_token);
+    hash_retained_ui_string(hash, style.foreground_token);
+}
+
+[[nodiscard]] std::uint64_t finish_retained_ui_hash(std::uint64_t hash) noexcept {
+    return hash == 0U ? 1U : hash;
+}
+
+[[nodiscard]] const RetainedUiElementCacheRow* find_retained_ui_row(const std::vector<RetainedUiElementCacheRow>& rows,
+                                                                    const ElementId& id) noexcept {
+    const auto it = std::ranges::find_if(rows, [&id](const RetainedUiElementCacheRow& row) { return row.id == id; });
+    return it == rows.end() ? nullptr : &(*it);
+}
+
+[[nodiscard]] bool has_duplicate_retained_ui_ids(const std::vector<RetainedUiElementCacheRow>& rows,
+                                                 ElementId& duplicate) {
+    std::vector<std::string> ids;
+    ids.reserve(rows.size());
+    for (const auto& row : rows) {
+        if (contains_runtime_ui_row_id(ids, row.id.value)) {
+            duplicate = row.id;
+            return true;
+        }
+        ids.push_back(row.id.value);
+    }
+    return false;
+}
+
+[[nodiscard]] std::uint64_t make_retained_ui_row_key(const RetainedUiElementCacheRow& row) noexcept {
+    auto row_hash = kRetainedUiFnvOffset;
+    hash_retained_ui_u64(row_hash, row.layout_key);
+    hash_retained_ui_u64(row_hash, row.text_key);
+    hash_retained_ui_u64(row_hash, row.style_key);
+    hash_retained_ui_u64(row_hash, row.image_key);
+    hash_retained_ui_u64(row_hash, row.submission_key);
+    return finish_retained_ui_hash(row_hash);
+}
+
+[[nodiscard]] const Element* find_submission_element(const RendererSubmission& submission,
+                                                     const ElementId& id) noexcept {
+    const auto it =
+        std::ranges::find_if(submission.elements, [&id](const Element& element) { return element.id == id; });
+    return it == submission.elements.end() ? nullptr : &(*it);
+}
+
+[[nodiscard]] const ElementLayout* find_submission_layout(const RendererSubmission& submission,
+                                                          const ElementId& id) noexcept {
+    const auto it =
+        std::ranges::find_if(submission.layouts, [&id](const ElementLayout& layout) { return layout.id == id; });
+    return it == submission.layouts.end() ? nullptr : &(*it);
+}
+
+[[nodiscard]] const RendererBox* find_submission_box(const RendererSubmission& submission,
+                                                     const ElementId& id) noexcept {
+    const auto it = std::ranges::find_if(submission.boxes, [&id](const RendererBox& box) { return box.id == id; });
+    return it == submission.boxes.end() ? nullptr : &(*it);
+}
+
+[[nodiscard]] const RendererTextRun* find_submission_text_run(const RendererSubmission& submission,
+                                                              const ElementId& id) noexcept {
+    const auto it =
+        std::ranges::find_if(submission.text_runs, [&id](const RendererTextRun& run) { return run.id == id; });
+    return it == submission.text_runs.end() ? nullptr : &(*it);
+}
+
+[[nodiscard]] const RendererImagePlaceholder* find_submission_image_placeholder(const RendererSubmission& submission,
+                                                                                const ElementId& id) noexcept {
+    const auto it = std::ranges::find_if(submission.image_placeholders,
+                                         [&id](const RendererImagePlaceholder& image) { return image.id == id; });
+    return it == submission.image_placeholders.end() ? nullptr : &(*it);
+}
+
+[[nodiscard]] const AccessibilityNode* find_submission_accessibility_node(const RendererSubmission& submission,
+                                                                          const ElementId& id) noexcept {
+    const auto it = std::ranges::find_if(submission.accessibility_nodes,
+                                         [&id](const AccessibilityNode& node) { return node.id == id; });
+    return it == submission.accessibility_nodes.end() ? nullptr : &(*it);
+}
+
+void hash_retained_ui_element(std::uint64_t& hash, const Element& element) noexcept {
+    hash_retained_ui_id(hash, element.id);
+    hash_retained_ui_id(hash, element.parent);
+    hash_retained_ui_i32(hash, static_cast<std::int32_t>(element.role));
+    hash_retained_ui_rect(hash, element.bounds);
+    hash_retained_ui_bool(hash, element.visible);
+    hash_retained_ui_bool(hash, element.enabled);
+    hash_retained_ui_text(hash, element.text);
+    hash_retained_ui_image(hash, element.image);
+    hash_retained_ui_string(hash, element.accessibility_label);
+    hash_retained_ui_style(hash, element.style);
+    hash_retained_ui_u64(hash, element.children.size());
+    for (const auto& child : element.children) {
+        hash_retained_ui_id(hash, child);
+    }
+}
+
+void hash_retained_ui_layout_row(std::uint64_t& hash, const ElementLayout& layout) noexcept {
+    hash_retained_ui_id(hash, layout.id);
+    hash_retained_ui_id(hash, layout.parent);
+    hash_retained_ui_i32(hash, static_cast<std::int32_t>(layout.role));
+    hash_retained_ui_rect(hash, layout.bounds);
+    hash_retained_ui_bool(hash, layout.visible);
+}
+
+void hash_retained_ui_renderer_box(std::uint64_t& hash, const RendererBox& box) noexcept {
+    hash_retained_ui_id(hash, box.id);
+    hash_retained_ui_i32(hash, static_cast<std::int32_t>(box.role));
+    hash_retained_ui_rect(hash, box.bounds);
+    hash_retained_ui_string(hash, box.background_token);
+    hash_retained_ui_string(hash, box.foreground_token);
+    hash_retained_ui_bool(hash, box.enabled);
+}
+
+void hash_retained_ui_renderer_text_run(std::uint64_t& hash, const RendererTextRun& run) noexcept {
+    hash_retained_ui_id(hash, run.id);
+    hash_retained_ui_rect(hash, run.bounds);
+    hash_retained_ui_text(hash, run.text);
+    hash_retained_ui_string(hash, run.foreground_token);
+    hash_retained_ui_bool(hash, run.enabled);
+}
+
+void hash_retained_ui_renderer_image_placeholder(std::uint64_t& hash, const RendererImagePlaceholder& image) noexcept {
+    hash_retained_ui_id(hash, image.id);
+    hash_retained_ui_rect(hash, image.bounds);
+    hash_retained_ui_image(hash, image.image);
+    hash_retained_ui_bool(hash, image.enabled);
+}
+
+void hash_retained_ui_accessibility_node(std::uint64_t& hash, const AccessibilityNode& node) noexcept {
+    hash_retained_ui_id(hash, node.id);
+    hash_retained_ui_i32(hash, static_cast<std::int32_t>(node.role));
+    hash_retained_ui_string(hash, node.label);
+    hash_retained_ui_rect(hash, node.bounds);
+    hash_retained_ui_string(hash, node.localization_key);
+    hash_retained_ui_bool(hash, node.enabled);
+    hash_retained_ui_bool(hash, node.focusable);
+    hash_retained_ui_id(hash, node.parent);
+    hash_retained_ui_u64(hash, node.depth);
+}
+
+void hash_optional_submission_payload(std::uint64_t& hash, bool present) noexcept {
+    hash_retained_ui_bool(hash, present);
+}
+
+void hash_retained_ui_submission_payload(std::uint64_t& hash, const ElementId& id,
+                                         const RendererSubmission& submission) noexcept {
+    if (const auto* element = find_submission_element(submission, id); element != nullptr) {
+        hash_optional_submission_payload(hash, true);
+        hash_retained_ui_element(hash, *element);
+    } else {
+        hash_optional_submission_payload(hash, false);
+    }
+
+    if (const auto* layout = find_submission_layout(submission, id); layout != nullptr) {
+        hash_optional_submission_payload(hash, true);
+        hash_retained_ui_layout_row(hash, *layout);
+    } else {
+        hash_optional_submission_payload(hash, false);
+    }
+
+    if (const auto* box = find_submission_box(submission, id); box != nullptr) {
+        hash_optional_submission_payload(hash, true);
+        hash_retained_ui_renderer_box(hash, *box);
+    } else {
+        hash_optional_submission_payload(hash, false);
+    }
+
+    if (const auto* text_run = find_submission_text_run(submission, id); text_run != nullptr) {
+        hash_optional_submission_payload(hash, true);
+        hash_retained_ui_renderer_text_run(hash, *text_run);
+    } else {
+        hash_optional_submission_payload(hash, false);
+    }
+
+    if (const auto* image = find_submission_image_placeholder(submission, id); image != nullptr) {
+        hash_optional_submission_payload(hash, true);
+        hash_retained_ui_renderer_image_placeholder(hash, *image);
+    } else {
+        hash_optional_submission_payload(hash, false);
+    }
+
+    if (const auto* accessibility = find_submission_accessibility_node(submission, id); accessibility != nullptr) {
+        hash_optional_submission_payload(hash, true);
+        hash_retained_ui_accessibility_node(hash, *accessibility);
+    } else {
+        hash_optional_submission_payload(hash, false);
+    }
+}
+
+void mix_retained_ui_submission_payload(RetainedUiElementCacheRow& row, const RendererSubmission& submission) noexcept {
+    auto submission_hash = kRetainedUiFnvOffset;
+    hash_retained_ui_u64(submission_hash, row.submission_key);
+    hash_retained_ui_submission_payload(submission_hash, row.id, submission);
+    row.submission_key = finish_retained_ui_hash(submission_hash);
+    row.row_key = make_retained_ui_row_key(row);
+}
+
+[[nodiscard]] RetainedUiElementCacheRow make_retained_ui_cache_row(const Element& element,
+                                                                   const ElementLayout* layout) noexcept {
+    RetainedUiElementCacheRow row;
+    row.id = element.id;
+    row.has_layout_row = layout != nullptr;
+    row.has_text_row = has_text_run(element);
+    row.has_image_row = has_image_placeholder(element);
+
+    auto layout_hash = kRetainedUiFnvOffset;
+    hash_retained_ui_id(layout_hash, element.id);
+    hash_retained_ui_id(layout_hash, element.parent);
+    hash_retained_ui_i32(layout_hash, static_cast<std::int32_t>(element.role));
+    hash_retained_ui_bool(layout_hash, element.visible);
+    hash_retained_ui_rect(layout_hash, element.bounds);
+    if (layout != nullptr) {
+        hash_retained_ui_rect(layout_hash, layout->bounds);
+        hash_retained_ui_bool(layout_hash, layout->visible);
+    }
+    hash_retained_ui_i32(layout_hash, static_cast<std::int32_t>(element.style.layout));
+    hash_retained_ui_i32(layout_hash, static_cast<std::int32_t>(element.style.anchor));
+    hash_retained_ui_edge_insets(layout_hash, element.style.margin);
+    hash_retained_ui_edge_insets(layout_hash, element.style.padding);
+    hash_retained_ui_float(layout_hash, element.style.gap);
+    hash_retained_ui_size_constraints(layout_hash, element.style.size);
+    hash_retained_ui_float(layout_hash, element.style.dpi_scale);
+    row.layout_key = finish_retained_ui_hash(layout_hash);
+
+    auto text_hash = kRetainedUiFnvOffset;
+    hash_retained_ui_id(text_hash, element.id);
+    hash_retained_ui_text(text_hash, element.text);
+    if (layout != nullptr) {
+        hash_retained_ui_rect(text_hash, layout->bounds);
+    }
+    hash_retained_ui_string(text_hash, element.style.foreground_token);
+    row.text_key = finish_retained_ui_hash(text_hash);
+
+    auto style_hash = kRetainedUiFnvOffset;
+    hash_retained_ui_id(style_hash, element.id);
+    hash_retained_ui_style(style_hash, element.style);
+    row.style_key = finish_retained_ui_hash(style_hash);
+
+    auto image_hash = kRetainedUiFnvOffset;
+    hash_retained_ui_id(image_hash, element.id);
+    hash_retained_ui_image(image_hash, element.image);
+    if (layout != nullptr) {
+        hash_retained_ui_rect(image_hash, layout->bounds);
+    }
+    row.image_key = finish_retained_ui_hash(image_hash);
+
+    auto submission_hash = kRetainedUiFnvOffset;
+    hash_retained_ui_id(submission_hash, element.id);
+    hash_retained_ui_id(submission_hash, element.parent);
+    hash_retained_ui_i32(submission_hash, static_cast<std::int32_t>(element.role));
+    hash_retained_ui_bool(submission_hash, element.visible);
+    hash_retained_ui_bool(submission_hash, element.enabled);
+    if (layout != nullptr) {
+        hash_retained_ui_rect(submission_hash, layout->bounds);
+    } else {
+        hash_retained_ui_rect(submission_hash, element.bounds);
+    }
+    hash_retained_ui_text(submission_hash, element.text);
+    hash_retained_ui_image(submission_hash, element.image);
+    hash_retained_ui_string(submission_hash, element.accessibility_label);
+    hash_retained_ui_string(submission_hash, element.style.background_token);
+    hash_retained_ui_string(submission_hash, element.style.foreground_token);
+    row.submission_key = finish_retained_ui_hash(submission_hash);
+
+    row.row_key = make_retained_ui_row_key(row);
+    return row;
+}
+
 } // namespace
 
 bool empty(const ElementId& id) noexcept {
@@ -1398,6 +1747,153 @@ RendererSubmission build_renderer_submission(const UiDocument& document, const L
     }
 
     return submission;
+}
+
+bool RetainedUiDiffSummary::ready() const noexcept {
+    return status == RetainedUiDiffStatus::ready && diagnostics.empty() && !native_handle_access;
+}
+
+std::string_view retained_ui_diff_status_id(RetainedUiDiffStatus status) noexcept {
+    switch (status) {
+    case RetainedUiDiffStatus::ready:
+        return "ready";
+    case RetainedUiDiffStatus::invalid_request:
+        return "invalid_request";
+    }
+    return "invalid_request";
+}
+
+RetainedUiSnapshot make_retained_ui_snapshot(const UiDocument& document, const LayoutResult& layout,
+                                             const RendererSubmission& submission) {
+    RetainedUiSnapshot snapshot;
+    snapshot.rows.reserve(document.size());
+    for (const auto& element : document.traverse()) {
+        snapshot.rows.push_back(make_retained_ui_cache_row(element, find_layout(layout, element.id)));
+    }
+    for (auto& row : snapshot.rows) {
+        mix_retained_ui_submission_payload(row, submission);
+    }
+
+    auto document_hash = kRetainedUiFnvOffset;
+    auto layout_hash = kRetainedUiFnvOffset;
+    auto text_hash = kRetainedUiFnvOffset;
+    auto image_hash = kRetainedUiFnvOffset;
+    auto submission_hash = kRetainedUiFnvOffset;
+    for (const auto& row : snapshot.rows) {
+        hash_retained_ui_id(document_hash, row.id);
+        hash_retained_ui_u64(document_hash, row.row_key);
+        hash_retained_ui_u64(layout_hash, row.layout_key);
+        if (row.has_text_row) {
+            hash_retained_ui_u64(text_hash, row.text_key);
+        }
+        if (row.has_image_row) {
+            hash_retained_ui_u64(image_hash, row.image_key);
+        }
+        hash_retained_ui_u64(submission_hash, row.submission_key);
+    }
+    hash_retained_ui_u64(layout_hash, layout.elements.size());
+    hash_retained_ui_u64(text_hash, submission.text_runs.size());
+    hash_retained_ui_u64(image_hash, submission.image_placeholders.size());
+    hash_retained_ui_u64(submission_hash, submission.elements.size());
+    hash_retained_ui_u64(submission_hash, submission.boxes.size());
+    hash_retained_ui_u64(submission_hash, submission.text_runs.size());
+    hash_retained_ui_u64(submission_hash, submission.image_placeholders.size());
+    hash_retained_ui_u64(submission_hash, submission.accessibility_nodes.size());
+
+    snapshot.document_key = finish_retained_ui_hash(document_hash);
+    snapshot.layout_key = finish_retained_ui_hash(layout_hash);
+    snapshot.text_key = finish_retained_ui_hash(text_hash);
+    snapshot.image_key = finish_retained_ui_hash(image_hash);
+    snapshot.submission_key = finish_retained_ui_hash(submission_hash);
+    return snapshot;
+}
+
+RetainedUiDiffSummary diff_retained_ui_snapshots(const RetainedUiDiffRequest& request) {
+    RetainedUiDiffSummary summary;
+    summary.native_handle_access = request.requested_native_handle_access;
+
+    if (request.current.rows.empty()) {
+        summary.diagnostics.push_back(RetainedUiDiffDiagnostic{
+            .code = RetainedUiDiffDiagnosticCode::missing_current_snapshot,
+            .id = {},
+            .message = "retained UI diff requires a current snapshot",
+        });
+    }
+    ElementId duplicate;
+    if (has_duplicate_retained_ui_ids(request.current.rows, duplicate)) {
+        summary.diagnostics.push_back(RetainedUiDiffDiagnostic{
+            .code = RetainedUiDiffDiagnosticCode::duplicate_current_id,
+            .id = duplicate,
+            .message = "retained UI current snapshot ids must be unique",
+        });
+    }
+    if (request.has_previous && has_duplicate_retained_ui_ids(request.previous.rows, duplicate)) {
+        summary.diagnostics.push_back(RetainedUiDiffDiagnostic{
+            .code = RetainedUiDiffDiagnosticCode::duplicate_previous_id,
+            .id = duplicate,
+            .message = "retained UI previous snapshot ids must be unique",
+        });
+    }
+    if (request.requested_native_handle_access) {
+        summary.diagnostics.push_back(RetainedUiDiffDiagnostic{
+            .code = RetainedUiDiffDiagnosticCode::native_handle_access_requested,
+            .id = {},
+            .message = "retained UI cache keys must not request native, backend, renderer, or RHI handles",
+        });
+    }
+    if (!summary.diagnostics.empty()) {
+        summary.status = RetainedUiDiffStatus::invalid_request;
+        return summary;
+    }
+
+    for (const auto& current : request.current.rows) {
+        const auto* previous = request.has_previous ? find_retained_ui_row(request.previous.rows, current.id) : nullptr;
+        if (previous == nullptr || previous->row_key != current.row_key) {
+            ++summary.dirty_rows;
+            summary.dirty_ids.push_back(current.id);
+        }
+
+        if (previous != nullptr && previous->layout_key == current.layout_key) {
+            ++summary.layout_cache_hits;
+        } else {
+            ++summary.layout_cache_misses;
+        }
+
+        if (current.has_text_row) {
+            if (previous != nullptr && previous->has_text_row && previous->text_key == current.text_key) {
+                ++summary.text_cache_hits;
+            } else {
+                ++summary.text_cache_misses;
+            }
+        }
+
+        if (current.has_image_row) {
+            if (previous != nullptr && previous->has_image_row && previous->image_key == current.image_key) {
+                ++summary.image_cache_hits;
+            } else {
+                ++summary.image_cache_misses;
+            }
+        }
+
+        if (previous != nullptr && previous->submission_key == current.submission_key) {
+            ++summary.submission_reused_rows;
+        } else {
+            ++summary.submission_rebuilt_rows;
+        }
+    }
+
+    if (request.has_previous) {
+        for (const auto& previous : request.previous.rows) {
+            if (find_retained_ui_row(request.current.rows, previous.id) == nullptr) {
+                ++summary.dirty_rows;
+                ++summary.removed_rows;
+                summary.dirty_ids.push_back(previous.id);
+            }
+        }
+    }
+
+    summary.status = RetainedUiDiffStatus::ready;
+    return summary;
 }
 
 TextAdapterPayload build_text_adapter_payload(const RendererSubmission& submission) {

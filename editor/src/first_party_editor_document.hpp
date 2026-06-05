@@ -91,6 +91,15 @@ struct FirstPartyEditorShellSmokeCounters {
     std::uint32_t ui_performance_budget_violations{0};
     std::uint32_t ui_performance_diagnostics{0};
     bool ui_performance_broad_optimization_claimed{false};
+    std::string ui_retained_diff_status{"invalid_request"};
+    std::uint64_t ui_retained_dirty_rows{0};
+    std::uint64_t ui_retained_layout_cache_hits{0};
+    std::uint64_t ui_retained_layout_cache_misses{0};
+    std::uint64_t ui_retained_text_cache_hits{0};
+    std::uint64_t ui_retained_text_cache_misses{0};
+    std::uint64_t ui_retained_submission_reused_rows{0};
+    std::uint64_t ui_retained_submission_rebuilt_rows{0};
+    bool ui_retained_cache_native_handle_access{false};
 };
 
 [[nodiscard]] FirstPartyEditorDocument make_first_party_editor_document(const NativeEditorApp& app);

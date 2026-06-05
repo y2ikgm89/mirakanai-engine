@@ -147,7 +147,17 @@ int main(int argc, char** argv) {
             << "editor_ui_performance_budget_violations=" << counters.ui_performance_budget_violations << '\n'
             << "editor_ui_performance_diagnostics=" << counters.ui_performance_diagnostics << '\n'
             << "editor_ui_performance_broad_optimization_claimed="
-            << (counters.ui_performance_broad_optimization_claimed ? 1 : 0) << '\n';
+            << (counters.ui_performance_broad_optimization_claimed ? 1 : 0) << '\n'
+            << "ui_retained_diff_status=" << counters.ui_retained_diff_status << '\n'
+            << "ui_retained_dirty_rows=" << counters.ui_retained_dirty_rows << '\n'
+            << "ui_retained_layout_cache_hits=" << counters.ui_retained_layout_cache_hits << '\n'
+            << "ui_retained_layout_cache_misses=" << counters.ui_retained_layout_cache_misses << '\n'
+            << "ui_retained_text_cache_hits=" << counters.ui_retained_text_cache_hits << '\n'
+            << "ui_retained_text_cache_misses=" << counters.ui_retained_text_cache_misses << '\n'
+            << "ui_retained_submission_reused_rows=" << counters.ui_retained_submission_reused_rows << '\n'
+            << "ui_retained_submission_rebuilt_rows=" << counters.ui_retained_submission_rebuilt_rows << '\n'
+            << "ui_retained_cache_native_handle_access=" << (counters.ui_retained_cache_native_handle_access ? 1 : 0)
+            << '\n';
     }
     if (!result.succeeded && !result.diagnostic.empty()) {
         std::cerr << result.diagnostic << '\n';

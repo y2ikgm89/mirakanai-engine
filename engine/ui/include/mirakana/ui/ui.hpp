@@ -421,6 +421,77 @@ struct RendererSubmission {
 
 [[nodiscard]] RendererSubmission build_renderer_submission(const UiDocument& document, const LayoutResult& layout);
 
+enum class RetainedUiDiffStatus : std::uint8_t {
+    ready,
+    invalid_request,
+};
+
+enum class RetainedUiDiffDiagnosticCode : std::uint8_t {
+    missing_current_snapshot,
+    duplicate_previous_id,
+    duplicate_current_id,
+    native_handle_access_requested,
+};
+
+struct RetainedUiElementCacheRow {
+    ElementId id;
+    std::uint64_t layout_key{0};
+    std::uint64_t text_key{0};
+    std::uint64_t style_key{0};
+    std::uint64_t image_key{0};
+    std::uint64_t submission_key{0};
+    std::uint64_t row_key{0};
+    bool has_layout_row{false};
+    bool has_text_row{false};
+    bool has_image_row{false};
+};
+
+struct RetainedUiSnapshot {
+    std::vector<RetainedUiElementCacheRow> rows;
+    std::uint64_t document_key{0};
+    std::uint64_t layout_key{0};
+    std::uint64_t text_key{0};
+    std::uint64_t image_key{0};
+    std::uint64_t submission_key{0};
+};
+
+struct RetainedUiDiffDiagnostic {
+    RetainedUiDiffDiagnosticCode code{RetainedUiDiffDiagnosticCode::missing_current_snapshot};
+    ElementId id;
+    std::string message;
+};
+
+struct RetainedUiDiffRequest {
+    bool has_previous{false};
+    RetainedUiSnapshot previous;
+    RetainedUiSnapshot current;
+    bool requested_native_handle_access{false};
+};
+
+struct RetainedUiDiffSummary {
+    RetainedUiDiffStatus status{RetainedUiDiffStatus::invalid_request};
+    std::size_t dirty_rows{0};
+    std::size_t removed_rows{0};
+    std::size_t layout_cache_hits{0};
+    std::size_t layout_cache_misses{0};
+    std::size_t text_cache_hits{0};
+    std::size_t text_cache_misses{0};
+    std::size_t image_cache_hits{0};
+    std::size_t image_cache_misses{0};
+    std::size_t submission_reused_rows{0};
+    std::size_t submission_rebuilt_rows{0};
+    bool native_handle_access{false};
+    std::vector<ElementId> dirty_ids;
+    std::vector<RetainedUiDiffDiagnostic> diagnostics;
+
+    [[nodiscard]] bool ready() const noexcept;
+};
+
+[[nodiscard]] std::string_view retained_ui_diff_status_id(RetainedUiDiffStatus status) noexcept;
+[[nodiscard]] RetainedUiSnapshot make_retained_ui_snapshot(const UiDocument& document, const LayoutResult& layout,
+                                                           const RendererSubmission& submission);
+[[nodiscard]] RetainedUiDiffSummary diff_retained_ui_snapshots(const RetainedUiDiffRequest& request);
+
 enum class AdapterPayloadDiagnosticCode : std::uint8_t {
     invalid_text_bounds,
     unresolved_text_localization_key,

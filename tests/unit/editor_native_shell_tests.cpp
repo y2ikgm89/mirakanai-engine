@@ -667,6 +667,33 @@ MK_TEST("editor first party shell smoke counters copy UI performance budget rows
     MK_REQUIRE(!counters.ui_performance_broad_optimization_claimed);
 }
 
+MK_TEST("editor first party shell smoke counters copy retained UI diff cache rows") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
+    const auto snapshot = mirakana::ui::make_retained_ui_snapshot(shell_document.document, shell_document.layout,
+                                                                  shell_document.renderer_submission);
+    const auto diff = mirakana::ui::diff_retained_ui_snapshots(mirakana::ui::RetainedUiDiffRequest{
+        .has_previous = true,
+        .previous = snapshot,
+        .current = snapshot,
+    });
+    app.record_native_retained_ui_diff(diff);
+
+    const auto counters = mirakana::editor::make_first_party_editor_shell_smoke_counters(app, shell_document);
+    const auto retained_text_rows = static_cast<std::uint64_t>(
+        std::ranges::count_if(snapshot.rows, [](const auto& row) { return row.has_text_row; }));
+
+    MK_REQUIRE(counters.ui_retained_diff_status == "ready");
+    MK_REQUIRE(counters.ui_retained_dirty_rows == 0U);
+    MK_REQUIRE(counters.ui_retained_layout_cache_hits == snapshot.rows.size());
+    MK_REQUIRE(counters.ui_retained_layout_cache_misses == 0U);
+    MK_REQUIRE(counters.ui_retained_text_cache_hits == retained_text_rows);
+    MK_REQUIRE(counters.ui_retained_text_cache_misses == 0U);
+    MK_REQUIRE(counters.ui_retained_submission_reused_rows == snapshot.rows.size());
+    MK_REQUIRE(counters.ui_retained_submission_rebuilt_rows == 0U);
+    MK_REQUIRE(!counters.ui_retained_cache_native_handle_access);
+}
+
 MK_TEST("editor first party win32 host result defaults to explicit no backend") {
     mirakana::editor::Win32FirstPartyEditorRunResult result;
 

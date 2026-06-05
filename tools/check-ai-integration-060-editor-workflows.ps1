@@ -1,8 +1,6 @@
 #requires -Version 7.0
 #requires -PSEdition Core
-
 # Chapter 6 for check-ai-integration.ps1 static contracts.
-
 $editorInputRebindingProfilePanelChecks = @(
     @{
         Path = "editor/core/include/mirakana/editor/input_rebinding.hpp"
@@ -237,7 +235,6 @@ foreach ($check in $editorInputRebindingProfilePanelChecks) {
         Write-Error "ai-integration-check: $($check.Path) missing editor input rebinding profile panel contract: $($missingNeedles -join ', ')"
     }
 }
-
 $editorAiPackageDiagnosticsChecks = @(
     @{
         Path = "editor/core/include/mirakana/editor/playtest_package_review.hpp"
@@ -302,7 +299,6 @@ foreach ($check in $editorAiPackageDiagnosticsChecks) {
         Write-Error "ai-integration-check: $($check.Path) missing editor AI package diagnostics contract: $($missingNeedles -join ', ')"
     }
 }
-
 $editorAiValidationRecipePreflightChecks = @(
     @{
         Path = "editor/core/include/mirakana/editor/playtest_package_review.hpp"
@@ -400,7 +396,6 @@ foreach ($check in $editorAiValidationRecipePreflightChecks) {
         Write-Error "ai-integration-check: $($check.Path) missing editor AI validation recipe preflight contract: $($missingNeedles -join ', ')"
     }
 }
-
 $editorAiPlaytestReadinessReportChecks = @(
     @{
         Path = "editor/core/include/mirakana/editor/playtest_package_review.hpp"
@@ -496,7 +491,6 @@ foreach ($check in $editorAiPlaytestReadinessReportChecks) {
         Write-Error "ai-integration-check: $($check.Path) missing editor AI playtest readiness report contract: $($missingNeedles -join ', ')"
     }
 }
-
 $editorAiPlaytestOperatorHandoffChecks = @(
     @{
         Path = "editor/core/include/mirakana/editor/playtest_package_review.hpp"
@@ -589,7 +583,6 @@ foreach ($check in $editorAiPlaytestOperatorHandoffChecks) {
         Write-Error "ai-integration-check: $($check.Path) missing editor AI playtest operator handoff contract: $($missingNeedles -join ', ')"
     }
 }
-
 $editorAiPlaytestEvidenceSummaryChecks = @(
     @{
         Path = "editor/core/include/mirakana/editor/playtest_package_review.hpp"
@@ -686,7 +679,6 @@ foreach ($check in $editorAiPlaytestEvidenceSummaryChecks) {
         Write-Error "ai-integration-check: $($check.Path) missing editor AI playtest evidence summary contract: $($missingNeedles -join ', ')"
     }
 }
-
 $editorAiPlaytestRemediationQueueChecks = @(
     @{
         Path = "editor/core/include/mirakana/editor/playtest_package_review.hpp"
@@ -779,7 +771,6 @@ foreach ($check in $editorAiPlaytestRemediationQueueChecks) {
         Write-Error "ai-integration-check: $($check.Path) missing editor AI playtest remediation queue contract: $($missingNeedles -join ', ')"
     }
 }
-
 $editorAiPlaytestRemediationHandoffChecks = @(
     @{
         Path = "editor/core/include/mirakana/editor/playtest_package_review.hpp"
@@ -873,7 +864,6 @@ foreach ($check in $editorAiPlaytestRemediationHandoffChecks) {
         Write-Error "ai-integration-check: $($check.Path) missing editor AI playtest remediation handoff contract: $($missingNeedles -join ', ')"
     }
 }
-
 $editorAiPlaytestOperatorWorkflowLoop = @($productionLoop.reviewLoops | Where-Object { $_.id -eq "editor-ai-playtest-operator-workflow" })
 if ($editorAiPlaytestOperatorWorkflowLoop.Count -ne 1) {
     Write-Error "engine/agent/manifest.json aiOperableProductionLoop must expose one editor-ai-playtest-operator-workflow review loop"
@@ -957,7 +947,6 @@ if ($editorAiPlaytestOperatorWorkflowLoop.Count -eq 1) {
         }
     }
 }
-
 $editorAiPlaytestOperatorWorkflowChecks = @(
     @{
         Path = "docs/editor.md"
@@ -1067,7 +1056,6 @@ foreach ($check in $editorAiPlaytestOperatorWorkflowChecks) {
         Write-Error "ai-integration-check: $($check.Path) missing consolidated editor AI playtest operator workflow contract: $($missingNeedles -join ', ')"
     }
 }
-
 $prefabVariantAuthoringChecks = @(
     @{
         Path = "engine/scene/include/mirakana/scene/scene.hpp"
@@ -1456,7 +1444,6 @@ foreach ($check in $prefabVariantAuthoringChecks) {
         Write-Error "ai-integration-check: $($check.Path) missing prefab variant authoring contract: $($missingNeedles -join ', ')"
     }
 }
-
 $visiblePrefabVariantGuiChecks = @(
     @{
         Path = "editor/CMakeLists.txt"
@@ -1484,7 +1471,6 @@ foreach ($check in $visiblePrefabVariantGuiChecks) {
         Assert-MatchesText $fileText "if\s*\(\s*!\s*prefab_variant_document_->model\s*\(\s*assets_\s*\)\.valid\s*\(\s*\)\s*\)\s*\{[^}]*Prefab variant has unresolved diagnostics[^}]*return\s*;\s*\}\s*auto\s+composed\s*=\s*prefab_variant_document_->composed_prefab\s*\(\s*\)" "visible prefab variant GUI registry-diagnostic instantiate gate"
     }
 }
-
 $editorSceneNativeDialogChecks = @(
     @{
         Path = "editor/core/include/mirakana/editor/scene_authoring.hpp"
@@ -1681,7 +1667,6 @@ foreach ($check in $editorSceneNativeDialogChecks) {
         Write-Error "ai-integration-check: $($check.Path) missing editor scene native dialog contract: $($missingNeedles -join ', ')"
     }
 }
-
 $editorCoreDockCommandChecks = @(
     @{
         Path = "editor/core/include/mirakana/editor/editor_dock_layout.hpp"
@@ -1836,7 +1821,6 @@ foreach ($check in $editorCoreDockCommandChecks) {
         Write-Error "ai-integration-check: $($check.Path) missing editor core dock command contract: $($missingNeedles -join ', ')"
     }
 }
-
 $nativeEditorServiceChecks = @(
     @{
         Path = "editor/src/native_editor_app.hpp"
@@ -1985,7 +1969,6 @@ foreach ($check in $nativeEditorServiceChecks) {
         Write-Error "ai-integration-check: $($check.Path) missing native editor service contract: $($missingNeedles -join ', ')"
     }
 }
-
 $nativeEditorViewportChecks = @(
     @{
         Path = "editor/src/native_viewport_surface.hpp"
@@ -2263,7 +2246,6 @@ foreach ($check in $nativeEditorViewportChecks) {
         Write-Error "ai-integration-check: $($check.Path) missing native editor viewport contract: $($missingNeedles -join ', ')"
     }
 }
-
 $nativeEditorMaterialPreviewChecks = @(
     @{
         Path = "editor/src/native_material_preview_cache.hpp"
@@ -2437,7 +2419,6 @@ foreach ($check in $nativeEditorMaterialPreviewChecks) {
         Write-Error "ai-integration-check: $($check.Path) missing native editor material preview contract: $($missingNeedles -join ', ')"
     }
 }
-
 $nativeEditorUiPerformanceBudgetChecks = @(
     @{
         Path = "editor/core/include/mirakana/editor/editor_ui_performance.hpp"
@@ -2506,7 +2487,15 @@ $nativeEditorUiPerformanceBudgetChecks = @(
             "ui_performance_budget_violations == 0U",
             "ui_performance_diagnostics == 0U"
         )
-    }
+    },
+    @{ Path = "engine/ui/include/mirakana/ui/ui.hpp"; Needles = @("RetainedUiSnapshot", "RetainedUiDiffRequest", "RetainedUiDiffSummary", "make_retained_ui_snapshot", "diff_retained_ui_snapshots", "retained_ui_diff_status_id") },
+    @{ Path = "engine/ui_renderer/include/mirakana/ui_renderer/ui_renderer.hpp"; Needles = @("renderer_submission_order_key", "glyph_atlas_binding_reuse_rows", "image_binding_reuse_rows", "cache_native_handle_access") },
+    @{ Path = "editor/src/first_party_editor_document.cpp"; Needles = @("ui_retained_diff_status", "ui_retained_layout_cache_hits", "ui_retained_text_cache_hits", "ui_retained_submission_reused_rows", "ui_retained_cache_native_handle_access") },
+    @{ Path = "editor/src/win32_first_party_editor_host.cpp"; Needles = @("previous_retained_ui_snapshot", "make_retained_ui_snapshot", "diff_retained_ui_snapshots", "record_native_retained_ui_diff") },
+    @{ Path = "editor/src/main.cpp"; Needles = @("ui_retained_diff_status=", "ui_retained_dirty_rows=", "ui_retained_layout_cache_hits=", "ui_retained_text_cache_hits=", "ui_retained_submission_reused_rows=", "ui_retained_cache_native_handle_access=") },
+    @{ Path = "CMakeLists.txt"; Needles = @("ui_retained_diff_status=ready", "ui_retained_dirty_rows=0", "ui_retained_layout_cache_misses=0", "ui_retained_text_cache_misses=0", "ui_retained_submission_rebuilt_rows=0", "ui_retained_cache_native_handle_access=0") },
+    @{ Path = "tests/unit/ui_renderer_tests.cpp"; Needles = @("ui retained diff tracks stable ids and cache invalidation without native handles", "ui retained diff includes renderer submission payload in row reuse keys", "ui retained diff reports image invalidation removed rows and diagnostics", "ui renderer reports atlas binding reuse and deterministic submission ordering", "renderer_submission_order_key", "glyph_atlas_binding_reuse_rows", "image_binding_reuse_rows") },
+    @{ Path = "tests/unit/editor_native_shell_tests.cpp"; Needles = @("editor first party shell smoke counters copy retained UI diff cache rows", "ui_retained_diff_status", "ui_retained_layout_cache_hits", "ui_retained_submission_reused_rows", "ui_retained_cache_native_handle_access") }
 )
 foreach ($check in $nativeEditorUiPerformanceBudgetChecks) {
     $fileText = Get-AgentSurfaceText $check.Path
@@ -2520,7 +2509,6 @@ foreach ($check in $nativeEditorUiPerformanceBudgetChecks) {
         Write-Error "ai-integration-check: $($check.Path) missing native editor UI performance budget contract: $($missingNeedles -join ', ')"
     }
 }
-
 $editorAiUxOperationChecks = @(
     @{
         Path = "editor/core/include/mirakana/editor/ai_operation_surface.hpp"
@@ -2645,7 +2633,6 @@ foreach ($check in $editorAiUxOperationChecks) {
         Write-Error "ai-integration-check: $($check.Path) missing editor AI UX operation contract: $($missingNeedles -join ', ')"
     }
 }
-
 $editorCrossPlatformAdapterGateChecks = @(
     @{ Path = "docs/superpowers/plans/2026-05-31-first-party-ui-editor-production-stack-v1.md"; Needles = @("Core Text", "InputMethodKit", "NSAccessibility", "AT-SPI", "IBus/Fcitx", "InputMethodService", "UITextInput", "HarfBuzz", "FreeType", "ICU", "editor.cross_platform.adapter.macos.core_text", "editor.cross_platform.adapter.linux.at_spi", "editor.cross_platform.adapter.android.input_method_service", "editor.cross_platform.adapter.ios.uitextinput", "editor.cross_platform.adapter.dependency.harfbuzz", "license-audit", "THIRD_PARTY_NOTICES.md") },
     @{ Path = "docs/current-capabilities.md"; Needles = @("editor.cross_platform.adapter.macos.core_text", "editor.cross_platform.adapter.linux.ibus", "editor.cross_platform.adapter.android.accessibility", "editor.cross_platform.adapter.ios.uiaccessibility", "editor.cross_platform.adapter.dependency.freetype", "Generated games and runtime UI remain on public") },
@@ -2673,7 +2660,6 @@ foreach ($check in $editorCrossPlatformAdapterGateChecks) {
         Write-Error "ai-integration-check: $($check.Path) missing editor cross-platform adapter gate contract: $($missingNeedles -join ', ')"
     }
 }
-
 $materialPreviewCoreText = Get-AgentSurfaceText "editor/core/src/material_asset_preview_panel.cpp"
 if ($materialPreviewCoreText.Contains("d3d12-shared-texture")) {
     Write-Error "ai-integration-check: material preview core display path contract must stay backend-neutral"

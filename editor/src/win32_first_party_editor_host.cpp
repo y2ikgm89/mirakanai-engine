@@ -37,6 +37,7 @@
 #include <iterator>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -174,6 +175,7 @@ struct Win32FirstPartyEditorHost::Impl {
     std::unique_ptr<NativeTextureDisplayAdapter> viewport_texture_adapter;
     std::unique_ptr<NativeTextureDisplayAdapter> material_preview_texture_adapter;
     std::unique_ptr<NativeEditorVisibleTextureCompositor> visible_texture_compositor;
+    std::optional<mirakana::ui::RetainedUiSnapshot> previous_retained_ui_snapshot;
     mirakana::win32::Win32EventPump event_pump;
     HWND hwnd{nullptr};
     bool smoke_resize_completed{false};
@@ -184,6 +186,7 @@ struct Win32FirstPartyEditorHost::Impl {
             return;
         }
         result = Win32FirstPartyEditorRunResult{};
+        previous_retained_ui_snapshot.reset();
         create_window(app);
         create_renderer_probe();
         initialized = true;
@@ -372,6 +375,17 @@ struct Win32FirstPartyEditorHost::Impl {
         }
 
         const auto document = make_first_party_editor_document(app);
+        auto retained_ui_snapshot =
+            mirakana::ui::make_retained_ui_snapshot(document.document, document.layout, document.renderer_submission);
+        mirakana::ui::RetainedUiDiffRequest retained_ui_diff_request;
+        retained_ui_diff_request.has_previous = previous_retained_ui_snapshot.has_value();
+        if (previous_retained_ui_snapshot.has_value()) {
+            retained_ui_diff_request.previous = *previous_retained_ui_snapshot;
+        }
+        retained_ui_diff_request.current = retained_ui_snapshot;
+        app.record_native_retained_ui_diff(mirakana::ui::diff_retained_ui_snapshots(retained_ui_diff_request));
+        previous_retained_ui_snapshot = std::move(retained_ui_snapshot);
+
         app.record_native_panels_rendered(document.panel_root_count);
         app.record_native_docking_frame(document.docking_status, document.tab_header_count, document.split_gutter_count,
                                         document.active_panel_count, document.focusable_dock_control_count);
