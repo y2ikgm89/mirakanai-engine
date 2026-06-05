@@ -271,6 +271,10 @@ $sampleEnvironmentMaterialWeatheringDryRun = Assert-DryRunRecipe -Recipe "deskto
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireD3d12Shaders", "-SmokeArgs @(", "--require-environment-material-weathering", "runtime/sample_desktop_runtime_game.geindex")) {
     Assert-ArgvContainsText -Result $sampleEnvironmentMaterialWeatheringDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-material-weathering"
 }
+$sampleEnvironmentAudioPlaybackDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-environment-audio-playback" -ExpectedArgv @("-Command")
+foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireD3d12Shaders", "-SmokeArgs @(", "--require-environment-audio-playback", "runtime/sample_desktop_runtime_game.geindex")) {
+    Assert-ArgvContainsText -Result $sampleEnvironmentAudioPlaybackDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-audio-playback"
+}
 $sampleEnvironmentProfileDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-environment-profile-package" -ExpectedArgv @("-Command")
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-SmokeArgs @(", "--require-environment-profile", "runtime/sample_desktop_runtime_game.geindex")) {
     Assert-ArgvContainsText -Result $sampleEnvironmentProfileDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-profile-package"

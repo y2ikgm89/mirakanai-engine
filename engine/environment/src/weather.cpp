@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <span>
 #include <utility>
 
 namespace mirakana {
@@ -19,8 +20,21 @@ void add_diagnostic(EnvironmentPrecipitationPlan& plan, EnvironmentPrecipitation
     });
 }
 
+void add_diagnostic(EnvironmentWeatherAudioPlaybackPlan& plan, EnvironmentWeatherAudioDiagnosticCode code,
+                    std::string field, std::string message) {
+    plan.diagnostics.push_back(EnvironmentWeatherAudioDiagnostic{
+        .code = code,
+        .field = std::move(field),
+        .message = std::move(message),
+    });
+}
+
 [[nodiscard]] bool finite_in_range(float value, float minimum, float maximum) noexcept {
     return std::isfinite(value) && value >= minimum && value <= maximum;
+}
+
+[[nodiscard]] bool valid_audio_token(std::string_view value) noexcept {
+    return !value.empty() && value.find_first_of("\r\n=") == std::string_view::npos;
 }
 
 [[nodiscard]] bool valid_weather_kind(EnvironmentWeatherKind value) noexcept {
@@ -232,10 +246,109 @@ void append_audio_rows(EnvironmentPrecipitationPlan& plan, EnvironmentWeatherKin
             .handoff_only = true,
         });
         plan.audio_handoff_rows.push_back(EnvironmentPrecipitationAudioHandoffRow{
-            .cue = EnvironmentPrecipitationAudioCueKind::storm_intensity,
+            .cue = EnvironmentPrecipitationAudioCueKind::wind_loop,
             .intensity = intensity,
             .delay_seconds = 0.0F,
             .handoff_only = true,
+        });
+    }
+}
+
+[[nodiscard]] bool valid_audio_cue(EnvironmentPrecipitationAudioCueKind cue) noexcept {
+    switch (cue) {
+    case EnvironmentPrecipitationAudioCueKind::rain_loop:
+    case EnvironmentPrecipitationAudioCueKind::snow_loop:
+    case EnvironmentPrecipitationAudioCueKind::indoor_muffling:
+    case EnvironmentPrecipitationAudioCueKind::thunder_delay:
+    case EnvironmentPrecipitationAudioCueKind::storm_intensity:
+    case EnvironmentPrecipitationAudioCueKind::wind_loop:
+    case EnvironmentPrecipitationAudioCueKind::dust_wind:
+    case EnvironmentPrecipitationAudioCueKind::ash_fall:
+        return true;
+    case EnvironmentPrecipitationAudioCueKind::unknown:
+        return false;
+    }
+    return false;
+}
+
+[[nodiscard]] const EnvironmentWeatherAudioCueBinding*
+find_audio_cue_binding(std::span<const EnvironmentWeatherAudioCueBinding> bindings,
+                       EnvironmentPrecipitationAudioCueKind cue) noexcept {
+    const auto it = std::ranges::find_if(bindings, [cue](const auto& binding) { return binding.cue == cue; });
+    return it == bindings.end() ? nullptr : &*it;
+}
+
+void validate_weather_audio_desc(EnvironmentWeatherAudioPlaybackPlan& plan,
+                                 const EnvironmentWeatherAudioPlaybackDesc& desc) {
+    if (desc.handoff_rows.empty()) {
+        add_diagnostic(plan, EnvironmentWeatherAudioDiagnosticCode::missing_handoff_rows, "handoff_rows",
+                       "weather audio playback planning requires precipitation audio handoff rows");
+    }
+    if (desc.request_runtime_backend_execution) {
+        add_diagnostic(plan, EnvironmentWeatherAudioDiagnosticCode::unsupported_runtime_backend_execution,
+                       "request_runtime_backend_execution",
+                       "environment weather audio planning must not execute runtime, audio, or host backends");
+    }
+    if (desc.request_environment_audio_device_ownership) {
+        add_diagnostic(plan, EnvironmentWeatherAudioDiagnosticCode::unsupported_audio_device_ownership,
+                       "request_environment_audio_device_ownership",
+                       "MK_environment emits value rows and must not own audio devices");
+    }
+    if (desc.request_native_handle_access) {
+        add_diagnostic(plan, EnvironmentWeatherAudioDiagnosticCode::unsupported_native_handle_access,
+                       "request_native_handle_access",
+                       "MK_environment weather audio planning must not expose native audio handles");
+    }
+
+    for (auto lhs = desc.cue_bindings.begin(); lhs != desc.cue_bindings.end(); ++lhs) {
+        if (!valid_audio_cue(lhs->cue) || !valid_audio_token(lhs->cue_id) || !valid_audio_token(lhs->clip_asset_ref) ||
+            !valid_audio_token(lhs->bus) || !finite_in_range(lhs->base_gain, 0.0F, 16.0F)) {
+            add_diagnostic(plan, EnvironmentWeatherAudioDiagnosticCode::invalid_cue_binding, "cue_bindings",
+                           "weather audio cue bindings require supported cue ids, asset refs, buses, and finite gain");
+        }
+        for (auto rhs = lhs + 1; rhs != desc.cue_bindings.end(); ++rhs) {
+            if (lhs->cue == rhs->cue) {
+                add_diagnostic(plan, EnvironmentWeatherAudioDiagnosticCode::duplicate_cue_binding, "cue_bindings",
+                               "weather audio cue bindings must not duplicate a cue kind");
+            }
+        }
+    }
+
+    for (const auto& handoff : desc.handoff_rows) {
+        if (!valid_audio_cue(handoff.cue)) {
+            add_diagnostic(plan, EnvironmentWeatherAudioDiagnosticCode::unsupported_audio_cue, "handoff_rows.cue",
+                           "weather audio handoff rows require a supported cue kind");
+        }
+        if (!finite_in_range(handoff.intensity, 0.0F, 1.0F)) {
+            add_diagnostic(plan, EnvironmentWeatherAudioDiagnosticCode::invalid_handoff_intensity,
+                           "handoff_rows.intensity", "weather audio handoff intensity must be finite and in [0, 1]");
+        }
+        if (find_audio_cue_binding(desc.cue_bindings, handoff.cue) == nullptr) {
+            add_diagnostic(plan, EnvironmentWeatherAudioDiagnosticCode::missing_cue_binding, "cue_bindings",
+                           "weather audio handoff rows require a matching cue binding");
+        }
+    }
+}
+
+void append_weather_audio_trigger_rows(EnvironmentWeatherAudioPlaybackPlan& plan,
+                                       const EnvironmentWeatherAudioPlaybackDesc& desc) {
+    plan.trigger_rows.reserve(desc.handoff_rows.size());
+    for (const auto& handoff : desc.handoff_rows) {
+        const auto* binding = find_audio_cue_binding(desc.cue_bindings, handoff.cue);
+        if (binding == nullptr) {
+            continue;
+        }
+        plan.trigger_rows.push_back(EnvironmentWeatherAudioTriggerRow{
+            .cue = handoff.cue,
+            .cue_id = binding->cue_id,
+            .clip_asset_ref = binding->clip_asset_ref,
+            .bus = binding->bus,
+            .gain = std::clamp(handoff.intensity * binding->base_gain, 0.0F, 16.0F),
+            .delay_seconds = handoff.delay_seconds,
+            .looping = binding->looping,
+            .one_shot = binding->one_shot,
+            .device_owned_by_environment = false,
+            .native_handle_access = false,
         });
     }
 }
@@ -296,6 +409,10 @@ bool EnvironmentPrecipitationPlan::succeeded() const noexcept {
     return diagnostics.empty();
 }
 
+bool EnvironmentWeatherAudioPlaybackPlan::succeeded() const noexcept {
+    return diagnostics.empty();
+}
+
 EnvironmentPrecipitationPlan plan_environment_precipitation(const EnvironmentPrecipitationPlanDesc& desc) {
     EnvironmentPrecipitationPlan plan{
         .status = EnvironmentPrecipitationPlanStatus::planned,
@@ -312,6 +429,104 @@ EnvironmentPrecipitationPlan plan_environment_precipitation(const EnvironmentPre
     return plan;
 }
 
+std::vector<EnvironmentWeatherAudioCueBinding> default_environment_weather_audio_cue_bindings() {
+    return {
+        EnvironmentWeatherAudioCueBinding{
+            .cue = EnvironmentPrecipitationAudioCueKind::rain_loop,
+            .cue_id = "environment.weather.rain.loop",
+            .clip_asset_ref = "audio/environment/rain_loop",
+            .bus = "environment.weather",
+            .base_gain = 1.0F,
+            .looping = true,
+            .one_shot = false,
+        },
+        EnvironmentWeatherAudioCueBinding{
+            .cue = EnvironmentPrecipitationAudioCueKind::snow_loop,
+            .cue_id = "environment.weather.snow.ambience",
+            .clip_asset_ref = "audio/environment/snow_ambience",
+            .bus = "environment.weather",
+            .base_gain = 0.85F,
+            .looping = true,
+            .one_shot = false,
+        },
+        EnvironmentWeatherAudioCueBinding{
+            .cue = EnvironmentPrecipitationAudioCueKind::indoor_muffling,
+            .cue_id = "environment.weather.indoor_muffle",
+            .clip_asset_ref = "audio/environment/indoor_muffle",
+            .bus = "environment.weather",
+            .base_gain = 0.35F,
+            .looping = true,
+            .one_shot = false,
+        },
+        EnvironmentWeatherAudioCueBinding{
+            .cue = EnvironmentPrecipitationAudioCueKind::thunder_delay,
+            .cue_id = "environment.weather.thunder.one_shot",
+            .clip_asset_ref = "audio/environment/thunder_one_shot",
+            .bus = "environment.weather",
+            .base_gain = 1.0F,
+            .looping = false,
+            .one_shot = true,
+        },
+        EnvironmentWeatherAudioCueBinding{
+            .cue = EnvironmentPrecipitationAudioCueKind::storm_intensity,
+            .cue_id = "environment.weather.storm.intensity",
+            .clip_asset_ref = "audio/environment/storm_intensity",
+            .bus = "environment.weather",
+            .base_gain = 0.75F,
+            .looping = true,
+            .one_shot = false,
+        },
+        EnvironmentWeatherAudioCueBinding{
+            .cue = EnvironmentPrecipitationAudioCueKind::wind_loop,
+            .cue_id = "environment.weather.wind.loop",
+            .clip_asset_ref = "audio/environment/wind_loop",
+            .bus = "environment.weather",
+            .base_gain = 0.7F,
+            .looping = true,
+            .one_shot = false,
+        },
+        EnvironmentWeatherAudioCueBinding{
+            .cue = EnvironmentPrecipitationAudioCueKind::dust_wind,
+            .cue_id = "environment.weather.dust.wind",
+            .clip_asset_ref = "audio/environment/dust_wind",
+            .bus = "environment.weather",
+            .base_gain = 0.65F,
+            .looping = true,
+            .one_shot = false,
+        },
+        EnvironmentWeatherAudioCueBinding{
+            .cue = EnvironmentPrecipitationAudioCueKind::ash_fall,
+            .cue_id = "environment.weather.ash.fall",
+            .clip_asset_ref = "audio/environment/ash_fall",
+            .bus = "environment.weather",
+            .base_gain = 0.55F,
+            .looping = true,
+            .one_shot = false,
+        },
+    };
+}
+
+EnvironmentWeatherAudioPlaybackPlan
+plan_environment_weather_audio_playback(const EnvironmentWeatherAudioPlaybackDesc& desc) {
+    EnvironmentWeatherAudioPlaybackPlan plan{
+        .status = EnvironmentWeatherAudioPlaybackPlanStatus::planned,
+    };
+
+    validate_weather_audio_desc(plan, desc);
+    if (!plan.succeeded()) {
+        plan.status = EnvironmentWeatherAudioPlaybackPlanStatus::blocked;
+        return plan;
+    }
+
+    append_weather_audio_trigger_rows(plan, desc);
+    if (plan.trigger_rows.empty()) {
+        add_diagnostic(plan, EnvironmentWeatherAudioDiagnosticCode::missing_handoff_rows, "trigger_rows",
+                       "weather audio playback planning requires at least one trigger row");
+        plan.status = EnvironmentWeatherAudioPlaybackPlanStatus::blocked;
+    }
+    return plan;
+}
+
 bool has_environment_precipitation_diagnostic(const EnvironmentPrecipitationPlan& plan,
                                               EnvironmentPrecipitationDiagnosticCode code) noexcept {
     return std::ranges::any_of(plan.diagnostics, [code](const auto& diagnostic) { return diagnostic.code == code; });
@@ -320,6 +535,16 @@ bool has_environment_precipitation_diagnostic(const EnvironmentPrecipitationPlan
 bool has_environment_precipitation_audio_cue(const EnvironmentPrecipitationPlan& plan,
                                              EnvironmentPrecipitationAudioCueKind cue) noexcept {
     return std::ranges::any_of(plan.audio_handoff_rows, [cue](const auto& row) { return row.cue == cue; });
+}
+
+bool has_environment_weather_audio_diagnostic(const EnvironmentWeatherAudioPlaybackPlan& plan,
+                                              EnvironmentWeatherAudioDiagnosticCode code) noexcept {
+    return std::ranges::any_of(plan.diagnostics, [code](const auto& diagnostic) { return diagnostic.code == code; });
+}
+
+bool has_environment_weather_audio_trigger(const EnvironmentWeatherAudioPlaybackPlan& plan,
+                                           EnvironmentPrecipitationAudioCueKind cue) noexcept {
+    return std::ranges::any_of(plan.trigger_rows, [cue](const auto& row) { return row.cue == cue; });
 }
 
 } // namespace mirakana
