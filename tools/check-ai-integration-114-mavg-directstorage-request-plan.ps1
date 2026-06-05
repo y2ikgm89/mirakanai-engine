@@ -138,9 +138,9 @@ foreach ($needle in @(
 }
 
 $productionLoop = $manifest.aiOperableProductionLoop
-if ([string]$productionLoop.currentActivePlan -ne "docs/superpowers/plans/2026-06-05-mavg-directstorage-request-plan-v1.md") {
-    Write-Error "engine/agent/manifest.json currentActivePlan must select MAVG DirectStorage Request Plan v1"
+if (@($productionLoop.recommendedNextPlan.retainedCompletedPlanPaths) -notcontains "docs/superpowers/plans/2026-06-05-mavg-directstorage-request-plan-v1.md") {
+    Write-Error "engine/agent/manifest.json recommendedNextPlan retainedCompletedPlanPaths must retain MAVG DirectStorage Request Plan v1"
 }
-if ([string]$productionLoop.recommendedNextPlan.id -ne "mavg-directstorage-request-plan-v1") {
-    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must select mavg-directstorage-request-plan-v1"
+if (-not ([string]$productionLoop.recommendedNextPlan.retainedCompletedPlanEvidence).Contains("MAVG DirectStorage Request Plan v1")) {
+    Write-Error "engine/agent/manifest.json recommendedNextPlan retainedCompletedPlanEvidence must retain MAVG DirectStorage Request Plan v1"
 }

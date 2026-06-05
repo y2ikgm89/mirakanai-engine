@@ -43,6 +43,27 @@ void add_diagnostic(RuntimeMavgPayloadDirectStorageRequestPlanResult& result,
     });
 }
 
+void add_diagnostic(RuntimeMavgPayloadNativeIoDispatchResult& result, RuntimeMavgPayloadNativeIoDiagnosticCode code,
+                    std::uint32_t request_index, std::uint64_t ticket, std::int32_t hresult, std::string message) {
+    result.diagnostics.push_back(RuntimeMavgPayloadNativeIoDiagnostic{
+        .code = code,
+        .request_index = request_index,
+        .ticket = ticket,
+        .hresult = hresult,
+        .message = std::move(message),
+    });
+}
+
+void add_diagnostic(RuntimeMavgPayloadNativeIoStatusPollResult& result, RuntimeMavgPayloadNativeIoDiagnosticCode code,
+                    std::uint64_t ticket, std::int32_t hresult, std::string message) {
+    result.diagnostics.push_back(RuntimeMavgPayloadNativeIoDiagnostic{
+        .code = code,
+        .ticket = ticket,
+        .hresult = hresult,
+        .message = std::move(message),
+    });
+}
+
 [[nodiscard]] std::uint8_t hex_value(char value) {
     if (value >= '0' && value <= '9') {
         return static_cast<std::uint8_t>(value - '0');
@@ -397,6 +418,132 @@ plan_runtime_mavg_payload_directstorage_requests(const RuntimeMavgPayloadDirectS
     result.total_source_bytes = total_source_bytes;
     result.total_destination_bytes = total_destination_bytes;
     result.requires_native_directstorage_sdk = true;
+    return result;
+}
+
+RuntimeMavgPayloadNativeIoDispatchResult
+dispatch_runtime_mavg_payload_native_io_requests(const RuntimeMavgPayloadNativeIoDispatchDesc& desc) {
+    RuntimeMavgPayloadNativeIoDispatchResult result;
+    result.backend = desc.required_backend;
+    result.mutated_mount_set = false;
+    result.executed_background_worker = false;
+    result.touched_renderer_or_rhi_handles = false;
+
+    if (desc.dispatcher == nullptr) {
+        add_diagnostic(result, RuntimeMavgPayloadNativeIoDiagnosticCode::missing_dispatcher, 0, 0, 0,
+                       "MAVG payload native IO dispatch requires a caller-owned dispatcher");
+        return result;
+    }
+    result.backend = desc.dispatcher->backend();
+
+    if (desc.request_plan == nullptr) {
+        add_diagnostic(result, RuntimeMavgPayloadNativeIoDiagnosticCode::missing_request_plan, 0, 0, 0,
+                       "MAVG payload native IO dispatch requires a request plan");
+        return result;
+    }
+    if (!desc.request_plan->succeeded()) {
+        add_diagnostic(result, RuntimeMavgPayloadNativeIoDiagnosticCode::invalid_request_plan, 0, 0, 0,
+                       "MAVG payload native IO dispatch requires a successful request plan");
+        return result;
+    }
+    if (desc.request_plan->requests.empty()) {
+        add_diagnostic(result, RuntimeMavgPayloadNativeIoDiagnosticCode::empty_request_plan, 0, 0, 0,
+                       "MAVG payload native IO dispatch requires at least one planned request");
+        return result;
+    }
+    if (desc.dispatcher->backend() != desc.required_backend) {
+        add_diagnostic(result, RuntimeMavgPayloadNativeIoDiagnosticCode::unsupported_backend, 0, 0, 0,
+                       "MAVG payload native IO dispatcher backend does not match the required backend");
+        return result;
+    }
+
+    RuntimeMavgPayloadNativeIoDispatchBackendResult backend_result;
+    try {
+        backend_result = desc.dispatcher->dispatch(
+            desc.request_plan->requests, RuntimeMavgPayloadNativeIoDispatchBackendDesc{
+                                             .required_backend = desc.required_backend,
+                                             .submission_tag = desc.submission_tag,
+                                             .require_native_directstorage = desc.require_native_directstorage,
+                                             .enqueue_status_after_requests = desc.enqueue_status_after_requests,
+                                             .signal_fence_after_requests = desc.signal_fence_after_requests,
+                                         });
+    } catch (const std::exception& error) {
+        add_diagnostic(result, RuntimeMavgPayloadNativeIoDiagnosticCode::dispatch_failed, 0, 0, 0, error.what());
+        return result;
+    }
+
+    result.diagnostics = std::move(backend_result.diagnostics);
+    result.ticket = backend_result.ticket;
+    result.backend = backend_result.backend;
+    result.request_count = backend_result.enqueued_request_count;
+    result.total_source_bytes = backend_result.submitted_source_bytes;
+    result.total_destination_bytes = backend_result.submitted_destination_bytes;
+    result.submitted_io_queue = backend_result.submitted_io_queue;
+    result.enqueued_native_requests = backend_result.enqueued_native_requests;
+    result.submitted_native_queue = backend_result.submitted_native_queue;
+    result.enqueued_status_write = backend_result.enqueued_status_write;
+    result.signaled_native_fence = backend_result.signaled_native_fence;
+    result.used_native_directstorage = backend_result.used_native_directstorage;
+    result.used_win32_async_io = backend_result.used_win32_async_io;
+    result.executed_background_worker = backend_result.executed_background_worker;
+    result.touched_renderer_or_rhi_handles = backend_result.touched_renderer_or_rhi_handles;
+
+    if (desc.require_native_directstorage && !backend_result.used_native_directstorage) {
+        add_diagnostic(result, RuntimeMavgPayloadNativeIoDiagnosticCode::unsupported_backend, 0, result.ticket, 0,
+                       "MAVG payload native IO dispatch required a native DirectStorage backend");
+    }
+    if (!backend_result.submitted_io_queue && result.diagnostics.empty()) {
+        add_diagnostic(result, RuntimeMavgPayloadNativeIoDiagnosticCode::dispatch_failed, 0, result.ticket, 0,
+                       "MAVG payload native IO dispatcher did not submit the IO queue");
+    }
+    return result;
+}
+
+RuntimeMavgPayloadNativeIoStatusPollResult
+poll_runtime_mavg_payload_native_io_status(const RuntimeMavgPayloadNativeIoStatusPollDesc& desc) {
+    RuntimeMavgPayloadNativeIoStatusPollResult result;
+    result.ticket = desc.ticket;
+    result.mutated_mount_set = false;
+    result.executed_background_worker = false;
+    result.touched_renderer_or_rhi_handles = false;
+
+    if (desc.dispatcher == nullptr) {
+        add_diagnostic(result, RuntimeMavgPayloadNativeIoDiagnosticCode::missing_dispatcher, 0, 0,
+                       "MAVG payload native IO status polling requires a caller-owned dispatcher");
+        return result;
+    }
+    if (desc.ticket == 0U) {
+        add_diagnostic(result, RuntimeMavgPayloadNativeIoDiagnosticCode::missing_ticket, 0, 0,
+                       "MAVG payload native IO status polling requires a non-zero ticket");
+        return result;
+    }
+
+    RuntimeMavgPayloadNativeIoStatusBackendResult backend_result;
+    try {
+        backend_result = desc.dispatcher->poll_status(desc.ticket);
+    } catch (const std::exception& error) {
+        add_diagnostic(result, RuntimeMavgPayloadNativeIoDiagnosticCode::status_failed, desc.ticket, 0, error.what());
+        result.failed = true;
+        result.status = RuntimeMavgPayloadNativeIoStatus::failed;
+        return result;
+    }
+
+    result.diagnostics = std::move(backend_result.diagnostics);
+    result.ticket = backend_result.ticket;
+    result.status = backend_result.status;
+    result.hresult = backend_result.hresult;
+    result.complete = backend_result.complete;
+    result.failed = backend_result.failed;
+    result.used_native_directstorage = backend_result.used_native_directstorage;
+    result.used_win32_async_io = backend_result.used_win32_async_io;
+    result.signaled_native_fence = backend_result.signaled_native_fence;
+    result.executed_background_worker = backend_result.executed_background_worker;
+    result.touched_renderer_or_rhi_handles = backend_result.touched_renderer_or_rhi_handles;
+
+    if (backend_result.failed && result.diagnostics.empty()) {
+        add_diagnostic(result, RuntimeMavgPayloadNativeIoDiagnosticCode::status_failed, result.ticket,
+                       backend_result.hresult, "MAVG payload native IO backend reported failed status");
+    }
     return result;
 }
 

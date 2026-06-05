@@ -12,9 +12,9 @@
 
 **Plan ID:** `mavg-directstorage-request-plan-v1`
 
-**Status:** Active.
+**Status:** Completed stacked child.
 
-Focused child over `mavg-runtime-lod-milestone-v1`, stacked on `mavg-payload-byte-range-file-io-v1` / draft PR #459.
+Focused child over `mavg-runtime-lod-milestone-v1`, stacked on `mavg-payload-byte-range-file-io-v1` / draft PR #459, and published as draft PR #460.
 
 ## Official Source Audit
 
@@ -103,7 +103,7 @@ Successful plans report `requires_native_directstorage_sdk=true` and `used_nativ
 - [x] Update docs/spec/registry/parent milestone/manifest fragments/static guards and compose manifest.
 - [x] Run public API boundary, targeted tidy, format, JSON/AI/agent checks, and `git diff --check`.
 - [x] Run full `tools/validate.ps1`.
-- [ ] Publish a validated stacked draft PR from `codex/mavg-directstorage-request-plan-v1` with base `codex/mavg-directstorage-byte-range-io-v1`.
+- [x] Publish a validated stacked draft PR from `codex/mavg-directstorage-request-plan-v1` with base `codex/mavg-directstorage-byte-range-io-v1`.
 
 ## Validation Plan
 
@@ -138,6 +138,7 @@ Successful plans report `requires_native_directstorage_sdk=true` and `used_nativ
 | 2026-06-06 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | Passed: `format-check: ok`. |
 | 2026-06-06 | `git diff --check` | Passed with no whitespace diagnostics. |
 | 2026-06-06 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed: `validate: ok`, including 109/109 CTest targets. |
+| 2026-06-06 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1`; `git push -u origin codex/mavg-directstorage-request-plan-v1`; `gh pr create --draft --base codex/mavg-directstorage-byte-range-io-v1 --head codex/mavg-directstorage-request-plan-v1` | Passed; published draft PR #460 at `https://github.com/y2ikgm89/mirakanai-engine/pull/460` with head `24274498ce4b2bf7709b1704f67b4f4ca9408f00`. |
 
 ## Non-Claims
 

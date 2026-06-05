@@ -55,6 +55,30 @@ enum class RuntimeMavgPayloadDirectStorageFenceWaitPoint : std::uint8_t {
     before_source_access,
 };
 
+enum class RuntimeMavgPayloadNativeIoBackend : std::uint8_t {
+    directstorage = 0,
+    win32_async_file,
+    test_adapter,
+};
+
+enum class RuntimeMavgPayloadNativeIoStatus : std::uint8_t {
+    submitted = 0,
+    complete,
+    failed,
+};
+
+enum class RuntimeMavgPayloadNativeIoDiagnosticCode : std::uint8_t {
+    missing_dispatcher = 0,
+    missing_request_plan,
+    invalid_request_plan,
+    empty_request_plan,
+    unsupported_backend,
+    dispatch_failed,
+    missing_ticket,
+    unknown_ticket,
+    status_failed,
+};
+
 struct RuntimeMavgPayloadPageSliceDiagnostic {
     RuntimeMavgPayloadPageSliceDiagnosticCode code{RuntimeMavgPayloadPageSliceDiagnosticCode::missing_graph};
     std::uint32_t page_index{0};
@@ -71,6 +95,14 @@ struct RuntimeMavgPayloadDirectStorageRequestPlanDiagnostic {
     RuntimeMavgPayloadDirectStorageRequestPlanDiagnosticCode code{
         RuntimeMavgPayloadDirectStorageRequestPlanDiagnosticCode::missing_graph};
     std::uint32_t page_index{0};
+    std::string message;
+};
+
+struct RuntimeMavgPayloadNativeIoDiagnostic {
+    RuntimeMavgPayloadNativeIoDiagnosticCode code{RuntimeMavgPayloadNativeIoDiagnosticCode::missing_dispatcher};
+    std::uint32_t request_index{0};
+    std::uint64_t ticket{0};
+    std::int32_t hresult{0};
     std::string message;
 };
 
@@ -98,6 +130,19 @@ struct RuntimeMavgPayloadDirectStorageRequestPlanDesc {
         RuntimeMavgPayloadDirectStorageFenceWaitPoint::before_destination_write};
     bool synchronize_with_fence{false};
 };
+
+struct RuntimeMavgPayloadNativeIoDispatchBackendDesc {
+    RuntimeMavgPayloadNativeIoBackend required_backend{RuntimeMavgPayloadNativeIoBackend::directstorage};
+    std::uint64_t submission_tag{0};
+    bool require_native_directstorage{true};
+    bool enqueue_status_after_requests{true};
+    bool signal_fence_after_requests{false};
+};
+
+struct RuntimeMavgPayloadNativeIoDispatchDesc;
+struct RuntimeMavgPayloadNativeIoStatusPollDesc;
+struct RuntimeMavgPayloadNativeIoDispatchBackendResult;
+struct RuntimeMavgPayloadNativeIoStatusBackendResult;
 
 struct RuntimeMavgPayloadPageSliceRow {
     std::uint32_t page_index{0};
@@ -181,6 +226,116 @@ struct RuntimeMavgPayloadDirectStorageRequestPlanResult {
     }
 };
 
+struct RuntimeMavgPayloadNativeIoDispatchBackendResult {
+    std::vector<RuntimeMavgPayloadNativeIoDiagnostic> diagnostics;
+    std::uint64_t ticket{0};
+    RuntimeMavgPayloadNativeIoBackend backend{RuntimeMavgPayloadNativeIoBackend::directstorage};
+    std::size_t enqueued_request_count{0};
+    std::uint64_t submitted_source_bytes{0};
+    std::uint64_t submitted_destination_bytes{0};
+    bool submitted_io_queue{false};
+    bool enqueued_native_requests{false};
+    bool submitted_native_queue{false};
+    bool enqueued_status_write{false};
+    bool signaled_native_fence{false};
+    bool used_native_directstorage{false};
+    bool used_win32_async_io{false};
+    bool executed_background_worker{false};
+    bool touched_renderer_or_rhi_handles{false};
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty() && submitted_io_queue;
+    }
+};
+
+struct RuntimeMavgPayloadNativeIoStatusBackendResult {
+    std::vector<RuntimeMavgPayloadNativeIoDiagnostic> diagnostics;
+    std::uint64_t ticket{0};
+    RuntimeMavgPayloadNativeIoStatus status{RuntimeMavgPayloadNativeIoStatus::submitted};
+    std::int32_t hresult{0};
+    bool complete{false};
+    bool failed{false};
+    bool used_native_directstorage{false};
+    bool used_win32_async_io{false};
+    bool signaled_native_fence{false};
+    bool executed_background_worker{false};
+    bool touched_renderer_or_rhi_handles{false};
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty() && !failed;
+    }
+};
+
+class IRuntimeMavgPayloadNativeIoDispatcher {
+  public:
+    virtual ~IRuntimeMavgPayloadNativeIoDispatcher() = default;
+
+    [[nodiscard]] virtual RuntimeMavgPayloadNativeIoBackend backend() const noexcept = 0;
+
+    [[nodiscard]] virtual RuntimeMavgPayloadNativeIoDispatchBackendResult
+    dispatch(std::span<const RuntimeMavgPayloadDirectStorageRequestRow> requests,
+             const RuntimeMavgPayloadNativeIoDispatchBackendDesc& desc) = 0;
+
+    [[nodiscard]] virtual RuntimeMavgPayloadNativeIoStatusBackendResult poll_status(std::uint64_t ticket) = 0;
+};
+
+struct RuntimeMavgPayloadNativeIoDispatchDesc {
+    IRuntimeMavgPayloadNativeIoDispatcher* dispatcher{nullptr};
+    const RuntimeMavgPayloadDirectStorageRequestPlanResult* request_plan{nullptr};
+    RuntimeMavgPayloadNativeIoBackend required_backend{RuntimeMavgPayloadNativeIoBackend::directstorage};
+    std::uint64_t submission_tag{0};
+    bool require_native_directstorage{true};
+    bool enqueue_status_after_requests{true};
+    bool signal_fence_after_requests{false};
+};
+
+struct RuntimeMavgPayloadNativeIoDispatchResult {
+    std::vector<RuntimeMavgPayloadNativeIoDiagnostic> diagnostics;
+    std::uint64_t ticket{0};
+    RuntimeMavgPayloadNativeIoBackend backend{RuntimeMavgPayloadNativeIoBackend::directstorage};
+    std::size_t request_count{0};
+    std::uint64_t total_source_bytes{0};
+    std::uint64_t total_destination_bytes{0};
+    bool submitted_io_queue{false};
+    bool enqueued_native_requests{false};
+    bool submitted_native_queue{false};
+    bool enqueued_status_write{false};
+    bool signaled_native_fence{false};
+    bool used_native_directstorage{false};
+    bool used_win32_async_io{false};
+    bool mutated_mount_set{false};
+    bool executed_background_worker{false};
+    bool touched_renderer_or_rhi_handles{false};
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty() && submitted_io_queue;
+    }
+};
+
+struct RuntimeMavgPayloadNativeIoStatusPollDesc {
+    IRuntimeMavgPayloadNativeIoDispatcher* dispatcher{nullptr};
+    std::uint64_t ticket{0};
+};
+
+struct RuntimeMavgPayloadNativeIoStatusPollResult {
+    std::vector<RuntimeMavgPayloadNativeIoDiagnostic> diagnostics;
+    std::uint64_t ticket{0};
+    RuntimeMavgPayloadNativeIoStatus status{RuntimeMavgPayloadNativeIoStatus::submitted};
+    std::int32_t hresult{0};
+    bool complete{false};
+    bool failed{false};
+    bool used_native_directstorage{false};
+    bool used_win32_async_io{false};
+    bool signaled_native_fence{false};
+    bool mutated_mount_set{false};
+    bool executed_background_worker{false};
+    bool touched_renderer_or_rhi_handles{false};
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty() && !failed;
+    }
+};
+
 [[nodiscard]] RuntimeMavgPayloadPageSliceResult
 extract_runtime_mavg_payload_page_slices(const RuntimeMavgPayloadPageSliceDesc& desc);
 
@@ -189,5 +344,11 @@ load_runtime_mavg_payload_file_pages(const RuntimeMavgPayloadPageFileLoadDesc& d
 
 [[nodiscard]] RuntimeMavgPayloadDirectStorageRequestPlanResult
 plan_runtime_mavg_payload_directstorage_requests(const RuntimeMavgPayloadDirectStorageRequestPlanDesc& desc);
+
+[[nodiscard]] RuntimeMavgPayloadNativeIoDispatchResult
+dispatch_runtime_mavg_payload_native_io_requests(const RuntimeMavgPayloadNativeIoDispatchDesc& desc);
+
+[[nodiscard]] RuntimeMavgPayloadNativeIoStatusPollResult
+poll_runtime_mavg_payload_native_io_status(const RuntimeMavgPayloadNativeIoStatusPollDesc& desc);
 
 } // namespace mirakana::runtime

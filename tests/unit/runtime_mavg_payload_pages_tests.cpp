@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <limits>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -152,6 +153,142 @@ has_diagnostic(const std::vector<mirakana::runtime::RuntimeMavgPayloadDirectStor
     }
     return false;
 }
+
+[[nodiscard]] bool
+has_diagnostic(const std::vector<mirakana::runtime::RuntimeMavgPayloadNativeIoDiagnostic>& diagnostics,
+               mirakana::runtime::RuntimeMavgPayloadNativeIoDiagnosticCode code) {
+    for (const auto& diagnostic : diagnostics) {
+        if (diagnostic.code == code) {
+            return true;
+        }
+    }
+    return false;
+}
+
+[[nodiscard]] mirakana::runtime::RuntimeMavgPayloadDirectStorageRequestPlanResult
+make_directstorage_request_plan(const mirakana::MavgClusterGraphDocument& graph, const std::string& payload_text) {
+    const std::vector<std::uint32_t> page_indices{1, 0};
+    return mirakana::runtime::plan_runtime_mavg_payload_directstorage_requests(
+        mirakana::runtime::RuntimeMavgPayloadDirectStorageRequestPlanDesc{
+            .graph = &graph,
+            .payload_text = payload_text,
+            .payload_blob_path = "runtime/mavg/runtime-page-addressable.pages",
+            .page_indices = page_indices,
+            .destination_base_offset = 4096U,
+            .fence_wait_point = mirakana::runtime::RuntimeMavgPayloadDirectStorageFenceWaitPoint::before_source_access,
+            .synchronize_with_fence = true,
+        });
+}
+
+class RecordingNativeIoDispatcher final : public mirakana::runtime::IRuntimeMavgPayloadNativeIoDispatcher {
+  public:
+    explicit RecordingNativeIoDispatcher(mirakana::runtime::RuntimeMavgPayloadNativeIoBackend backend)
+        : backend_(backend) {}
+
+    [[nodiscard]] mirakana::runtime::RuntimeMavgPayloadNativeIoBackend backend() const noexcept override {
+        return backend_;
+    }
+
+    [[nodiscard]] mirakana::runtime::RuntimeMavgPayloadNativeIoDispatchBackendResult
+    dispatch(std::span<const mirakana::runtime::RuntimeMavgPayloadDirectStorageRequestRow> requests,
+             const mirakana::runtime::RuntimeMavgPayloadNativeIoDispatchBackendDesc& desc) override {
+        ++dispatch_call_count;
+        last_request_count = requests.size();
+        last_submission_tag = desc.submission_tag;
+        mirakana::runtime::RuntimeMavgPayloadNativeIoDispatchBackendResult result{
+            .ticket = next_ticket++,
+            .backend = backend_,
+            .enqueued_request_count = requests.size(),
+            .submitted_source_bytes = 0,
+            .submitted_destination_bytes = 0,
+            .submitted_io_queue = true,
+            .enqueued_native_requests = false,
+            .submitted_native_queue = false,
+            .enqueued_status_write = desc.enqueue_status_after_requests,
+            .signaled_native_fence = desc.signal_fence_after_requests,
+            .used_native_directstorage = false,
+            .used_win32_async_io = false,
+            .executed_background_worker = false,
+            .touched_renderer_or_rhi_handles = false,
+        };
+        if (fail_dispatch) {
+            result.submitted_io_queue = false;
+            result.diagnostics.push_back(mirakana::runtime::RuntimeMavgPayloadNativeIoDiagnostic{
+                .code = mirakana::runtime::RuntimeMavgPayloadNativeIoDiagnosticCode::dispatch_failed,
+                .message = "simulated dispatch failure",
+            });
+            return result;
+        }
+        for (const auto& request : requests) {
+            result.submitted_source_bytes += request.source_size;
+            result.submitted_destination_bytes += request.destination_size;
+        }
+        status_rows.push_back(mirakana::runtime::RuntimeMavgPayloadNativeIoStatusBackendResult{
+            .ticket = result.ticket,
+            .status = mirakana::runtime::RuntimeMavgPayloadNativeIoStatus::submitted,
+            .complete = false,
+        });
+        status_rows.push_back(mirakana::runtime::RuntimeMavgPayloadNativeIoStatusBackendResult{
+            .ticket = result.ticket,
+            .status = mirakana::runtime::RuntimeMavgPayloadNativeIoStatus::complete,
+            .complete = true,
+        });
+        return result;
+    }
+
+    [[nodiscard]] mirakana::runtime::RuntimeMavgPayloadNativeIoStatusBackendResult
+    poll_status(std::uint64_t ticket) override {
+        ++status_call_count;
+        if (fail_status) {
+            return mirakana::runtime::RuntimeMavgPayloadNativeIoStatusBackendResult{
+                .diagnostics =
+                    {
+                        mirakana::runtime::RuntimeMavgPayloadNativeIoDiagnostic{
+                            .code = mirakana::runtime::RuntimeMavgPayloadNativeIoDiagnosticCode::status_failed,
+                            .ticket = ticket,
+                            .message = "simulated status failure",
+                        },
+                    },
+                .ticket = ticket,
+                .status = mirakana::runtime::RuntimeMavgPayloadNativeIoStatus::failed,
+                .hresult = -1,
+                .complete = true,
+                .failed = true,
+            };
+        }
+        while (next_status_index < status_rows.size()) {
+            const auto status = status_rows[next_status_index++];
+            if (status.ticket == ticket) {
+                return status;
+            }
+        }
+        return mirakana::runtime::RuntimeMavgPayloadNativeIoStatusBackendResult{
+            .diagnostics =
+                {
+                    mirakana::runtime::RuntimeMavgPayloadNativeIoDiagnostic{
+                        .code = mirakana::runtime::RuntimeMavgPayloadNativeIoDiagnosticCode::unknown_ticket,
+                        .ticket = ticket,
+                        .message = "unknown ticket",
+                    },
+                },
+            .ticket = ticket,
+            .status = mirakana::runtime::RuntimeMavgPayloadNativeIoStatus::failed,
+            .failed = true,
+        };
+    }
+
+    mirakana::runtime::RuntimeMavgPayloadNativeIoBackend backend_{
+        mirakana::runtime::RuntimeMavgPayloadNativeIoBackend::test_adapter};
+    std::uint64_t next_ticket{700};
+    std::size_t dispatch_call_count{0};
+    std::size_t status_call_count{0};
+    std::size_t last_request_count{0};
+    std::uint64_t last_submission_tag{0};
+    bool fail_dispatch{false};
+    bool fail_status{false};
+    std::size_t next_status_index{0};
+    std::vector<mirakana::runtime::RuntimeMavgPayloadNativeIoStatusBackendResult> status_rows;
+};
 
 } // namespace
 
@@ -403,6 +540,138 @@ MK_TEST("runtime mavg payload directstorage request planning rejects overflowing
     MK_REQUIRE(!result.enqueued_native_requests);
     MK_REQUIRE(!result.submitted_native_queue);
     MK_REQUIRE(!result.signaled_native_fence);
+}
+
+MK_TEST("runtime mavg payload native io dispatch submits request plan through caller adapter") {
+    const auto graph = make_payload_graph();
+    const auto payload_text = make_payload_text(graph);
+    const auto request_plan = make_directstorage_request_plan(graph, payload_text);
+    RecordingNativeIoDispatcher dispatcher{mirakana::runtime::RuntimeMavgPayloadNativeIoBackend::test_adapter};
+
+    const auto result = mirakana::runtime::dispatch_runtime_mavg_payload_native_io_requests(
+        mirakana::runtime::RuntimeMavgPayloadNativeIoDispatchDesc{
+            .dispatcher = &dispatcher,
+            .request_plan = &request_plan,
+            .required_backend = mirakana::runtime::RuntimeMavgPayloadNativeIoBackend::test_adapter,
+            .submission_tag = 42U,
+            .require_native_directstorage = false,
+            .enqueue_status_after_requests = true,
+            .signal_fence_after_requests = true,
+        });
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.ticket == 700U);
+    MK_REQUIRE(result.backend == mirakana::runtime::RuntimeMavgPayloadNativeIoBackend::test_adapter);
+    MK_REQUIRE(result.request_count == 2U);
+    MK_REQUIRE(result.total_source_bytes == 128U);
+    MK_REQUIRE(result.total_destination_bytes == 128U);
+    MK_REQUIRE(result.submitted_io_queue);
+    MK_REQUIRE(!result.enqueued_native_requests);
+    MK_REQUIRE(!result.submitted_native_queue);
+    MK_REQUIRE(result.enqueued_status_write);
+    MK_REQUIRE(result.signaled_native_fence);
+    MK_REQUIRE(!result.used_native_directstorage);
+    MK_REQUIRE(!result.used_win32_async_io);
+    MK_REQUIRE(!result.mutated_mount_set);
+    MK_REQUIRE(!result.executed_background_worker);
+    MK_REQUIRE(!result.touched_renderer_or_rhi_handles);
+    MK_REQUIRE(dispatcher.dispatch_call_count == 1U);
+    MK_REQUIRE(dispatcher.last_request_count == 2U);
+    MK_REQUIRE(dispatcher.last_submission_tag == 42U);
+}
+
+MK_TEST("runtime mavg payload native io dispatch rejects invalid inputs before adapter calls") {
+    const auto graph = make_payload_graph();
+    const auto payload_text = make_payload_text(graph);
+    const std::vector<std::uint32_t> duplicate_pages{1, 1};
+    const auto failed_plan = mirakana::runtime::plan_runtime_mavg_payload_directstorage_requests(
+        mirakana::runtime::RuntimeMavgPayloadDirectStorageRequestPlanDesc{
+            .graph = &graph,
+            .payload_text = payload_text,
+            .payload_blob_path = "runtime/mavg/runtime-page-addressable.pages",
+            .page_indices = duplicate_pages,
+        });
+    RecordingNativeIoDispatcher dispatcher{mirakana::runtime::RuntimeMavgPayloadNativeIoBackend::test_adapter};
+
+    const auto missing_dispatcher = mirakana::runtime::dispatch_runtime_mavg_payload_native_io_requests(
+        mirakana::runtime::RuntimeMavgPayloadNativeIoDispatchDesc{
+            .dispatcher = nullptr,
+            .request_plan = &failed_plan,
+            .required_backend = mirakana::runtime::RuntimeMavgPayloadNativeIoBackend::test_adapter,
+            .require_native_directstorage = false,
+        });
+    const auto invalid_plan = mirakana::runtime::dispatch_runtime_mavg_payload_native_io_requests(
+        mirakana::runtime::RuntimeMavgPayloadNativeIoDispatchDesc{
+            .dispatcher = &dispatcher,
+            .request_plan = &failed_plan,
+            .required_backend = mirakana::runtime::RuntimeMavgPayloadNativeIoBackend::test_adapter,
+            .require_native_directstorage = false,
+        });
+
+    MK_REQUIRE(!missing_dispatcher.succeeded());
+    MK_REQUIRE(has_diagnostic(missing_dispatcher.diagnostics,
+                              mirakana::runtime::RuntimeMavgPayloadNativeIoDiagnosticCode::missing_dispatcher));
+    MK_REQUIRE(!invalid_plan.succeeded());
+    MK_REQUIRE(has_diagnostic(invalid_plan.diagnostics,
+                              mirakana::runtime::RuntimeMavgPayloadNativeIoDiagnosticCode::invalid_request_plan));
+    MK_REQUIRE(dispatcher.dispatch_call_count == 0U);
+}
+
+MK_TEST("runtime mavg payload native io status polling reports submitted then complete") {
+    const auto graph = make_payload_graph();
+    const auto payload_text = make_payload_text(graph);
+    const auto request_plan = make_directstorage_request_plan(graph, payload_text);
+    RecordingNativeIoDispatcher dispatcher{mirakana::runtime::RuntimeMavgPayloadNativeIoBackend::test_adapter};
+    const auto dispatch = mirakana::runtime::dispatch_runtime_mavg_payload_native_io_requests(
+        mirakana::runtime::RuntimeMavgPayloadNativeIoDispatchDesc{
+            .dispatcher = &dispatcher,
+            .request_plan = &request_plan,
+            .required_backend = mirakana::runtime::RuntimeMavgPayloadNativeIoBackend::test_adapter,
+            .require_native_directstorage = false,
+        });
+
+    const auto submitted = mirakana::runtime::poll_runtime_mavg_payload_native_io_status(
+        mirakana::runtime::RuntimeMavgPayloadNativeIoStatusPollDesc{
+            .dispatcher = &dispatcher,
+            .ticket = dispatch.ticket,
+        });
+    const auto complete = mirakana::runtime::poll_runtime_mavg_payload_native_io_status(
+        mirakana::runtime::RuntimeMavgPayloadNativeIoStatusPollDesc{
+            .dispatcher = &dispatcher,
+            .ticket = dispatch.ticket,
+        });
+
+    MK_REQUIRE(dispatch.succeeded());
+    MK_REQUIRE(submitted.succeeded());
+    MK_REQUIRE(submitted.status == mirakana::runtime::RuntimeMavgPayloadNativeIoStatus::submitted);
+    MK_REQUIRE(!submitted.complete);
+    MK_REQUIRE(!submitted.failed);
+    MK_REQUIRE(complete.succeeded());
+    MK_REQUIRE(complete.status == mirakana::runtime::RuntimeMavgPayloadNativeIoStatus::complete);
+    MK_REQUIRE(complete.complete);
+    MK_REQUIRE(!complete.failed);
+    MK_REQUIRE(dispatcher.status_call_count == 2U);
+}
+
+MK_TEST("runtime mavg payload native io status polling reports backend failures") {
+    RecordingNativeIoDispatcher dispatcher{mirakana::runtime::RuntimeMavgPayloadNativeIoBackend::test_adapter};
+    dispatcher.fail_status = true;
+
+    const auto result = mirakana::runtime::poll_runtime_mavg_payload_native_io_status(
+        mirakana::runtime::RuntimeMavgPayloadNativeIoStatusPollDesc{
+            .dispatcher = &dispatcher,
+            .ticket = 99U,
+        });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.status == mirakana::runtime::RuntimeMavgPayloadNativeIoStatus::failed);
+    MK_REQUIRE(result.failed);
+    MK_REQUIRE(result.hresult == -1);
+    MK_REQUIRE(
+        has_diagnostic(result.diagnostics, mirakana::runtime::RuntimeMavgPayloadNativeIoDiagnosticCode::status_failed));
+    MK_REQUIRE(!result.mutated_mount_set);
+    MK_REQUIRE(!result.executed_background_worker);
+    MK_REQUIRE(!result.touched_renderer_or_rhi_handles);
 }
 
 int main() {
