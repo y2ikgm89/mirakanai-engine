@@ -127,6 +127,11 @@ editor logic target.
   edits, package streaming, renderer/RHI work, native handles, or dynamic game-module Play-In-Editor.
 - Use `mirakana::editor::make_editor_material_preview` for material preview data; it exposes material factors, material uniform byte size,
   and sampled texture/sampler binding rows without making `editor/core` depend on GUI or RHI backends.
+- Use `mirakana::editor::make_environment_authoring_inspector_model` for GUI-independent environment authoring and readiness visibility. It
+  emits retained, non-editable Inspector diagnostics such as `environment.readiness.physical_sky.package_status`,
+  `environment.readiness.backend.metal_status`, and `environment.readiness.unsupported.environment_ready`; the visible shell projects them
+  through the existing first-party Inspector rich-text document. Keep backend execution, package scripts, renderer/RHI/audio work, Dear
+  ImGui, SDL3, UI middleware, public backend handles, backend parity, and broad `environment_ready` claims out of this editor-core surface.
 - Use `mirakana::editor::MaterialAuthoringDocument` for source material authoring. It owns first-party `MaterialDefinition` factor edits,
   fixed texture-slot rows, registry-backed texture validation, dirty/staged state, text-store save/load, deterministic texture dependencies,
   and `UndoStack` actions without making `editor/core` depend on Dear ImGui, SDL3, renderer, RHI, or runtime game APIs. Prefer

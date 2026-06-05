@@ -58,6 +58,37 @@ void add_row(EnvironmentAuthoringInspectorModel& model, std::string id, std::str
     });
 }
 
+void add_readiness_row(EnvironmentAuthoringInspectorModel& model, std::string id, std::string section,
+                       std::string label, std::string value) {
+    add_row(model, std::move(id), std::move(section), std::move(label), std::move(value), false);
+}
+
+void add_default_readiness_rows(EnvironmentAuthoringInspectorModel& model) {
+    add_readiness_row(model, "environment.readiness.physical_sky.package_status", "Readiness", "Physical Sky Package",
+                      "ready");
+    add_readiness_row(model, "environment.readiness.height_fog.status", "Readiness", "Height Fog", "ready");
+    add_readiness_row(model, "environment.readiness.volumetric_fog.package_status", "Readiness",
+                      "Volumetric Fog Package", "ready");
+    add_readiness_row(model, "environment.readiness.cloud_layer.renderer_status", "Readiness", "Cloud Layer Renderer",
+                      "ready");
+    add_readiness_row(model, "environment.readiness.volumetric_clouds.renderer_status", "Readiness",
+                      "Volumetric Clouds Renderer", "ready");
+    add_readiness_row(model, "environment.readiness.precipitation.rain_renderer_status", "Readiness", "Rain Renderer",
+                      "ready");
+    add_readiness_row(model, "environment.readiness.precipitation.snow_renderer_status", "Readiness", "Snow Renderer",
+                      "ready");
+    add_readiness_row(model, "environment.readiness.ibl.package_status", "Readiness", "IBL Package", "ready");
+    add_readiness_row(model, "environment.readiness.backend.d3d12_status", "Backend Evidence", "D3D12", "ready");
+    add_readiness_row(model, "environment.readiness.backend.vulkan_status", "Backend Evidence", "Vulkan", "host_gated");
+    add_readiness_row(model, "environment.readiness.backend.metal_status", "Backend Evidence", "Metal", "host_gated");
+    add_readiness_row(model, "environment.readiness.unsupported.environment_ready", "Unsupported Claims",
+                      "Broad Environment Ready", "unclaimed");
+    add_readiness_row(model, "environment.readiness.unsupported.backend_parity", "Unsupported Claims", "Backend Parity",
+                      "unclaimed");
+    add_readiness_row(model, "environment.readiness.unsupported.public_backend_handles", "Unsupported Claims",
+                      "Public Backend Handles", "unsupported");
+}
+
 void add_diagnostics(EnvironmentAuthoringValidationModel& model, const EnvironmentProfileValidationResult& validation) {
     for (const auto& diagnostic : validation.diagnostics) {
         model.diagnostics.push_back(EnvironmentAuthoringDiagnosticRow{
@@ -349,6 +380,7 @@ make_environment_authoring_inspector_model(const EnvironmentAuthoringInspectorDe
             std::string{environment_weather_kind_name(profile.weather)});
     add_row(model, "environment.quality.tier", "Quality", "Quality Tier",
             std::string{environment_authoring_quality_tier_label(desc.quality_tier)});
+    add_default_readiness_rows(model);
 
     return model;
 }
