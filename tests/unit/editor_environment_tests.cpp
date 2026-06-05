@@ -107,6 +107,86 @@ MK_TEST("editor environment authoring emits deterministic inspector rows") {
     MK_REQUIRE(contains_element(ui, "environment_authoring.inspector.rows.environment.quality.tier.value"));
 }
 
+MK_TEST("editor environment authoring exposes readiness and unsupported claim rows") {
+    const auto document = mirakana::editor::EnvironmentAuthoringDocument::from_profile(
+        make_editor_environment_profile(), "assets/environment/outdoor.environment");
+
+    const auto model = mirakana::editor::make_environment_authoring_inspector_model(
+        mirakana::editor::EnvironmentAuthoringInspectorDesc{
+            .document = document,
+            .cloud_layer =
+                mirakana::EnvironmentCloudLayerDesc{
+                    .mode = mirakana::EnvironmentCloudLayerMode::equirectangular_2d,
+                    .coverage = 0.7F,
+                    .opacity = 0.85F,
+                    .altitude_m = 2200.0F,
+                    .wind_velocity_mps = mirakana::Vec2{.x = 4.0F, .y = 1.0F},
+                    .cloud_map_asset_ref = "textures/clouds/storm_latlong",
+                    .flow_map_asset_ref = "textures/clouds/storm_flow",
+                },
+            .volumetric_clouds_policy_available = true,
+            .quality_tier = mirakana::editor::EnvironmentAuthoringQualityTier::high,
+        });
+
+    const auto* physical_sky = find_environment_row(model, "environment.readiness.physical_sky.package_status");
+    const auto* height_fog = find_environment_row(model, "environment.readiness.height_fog.status");
+    const auto* volumetric_fog = find_environment_row(model, "environment.readiness.volumetric_fog.package_status");
+    const auto* cloud_layer = find_environment_row(model, "environment.readiness.cloud_layer.renderer_status");
+    const auto* volumetric_clouds =
+        find_environment_row(model, "environment.readiness.volumetric_clouds.renderer_status");
+    const auto* rain = find_environment_row(model, "environment.readiness.precipitation.rain_renderer_status");
+    const auto* snow = find_environment_row(model, "environment.readiness.precipitation.snow_renderer_status");
+    const auto* ibl = find_environment_row(model, "environment.readiness.ibl.package_status");
+    const auto* d3d12 = find_environment_row(model, "environment.readiness.backend.d3d12_status");
+    const auto* vulkan = find_environment_row(model, "environment.readiness.backend.vulkan_status");
+    const auto* metal = find_environment_row(model, "environment.readiness.backend.metal_status");
+    const auto* unsupported_ready = find_environment_row(model, "environment.readiness.unsupported.environment_ready");
+    const auto* unsupported_native_handles =
+        find_environment_row(model, "environment.readiness.unsupported.public_backend_handles");
+
+    MK_REQUIRE(physical_sky != nullptr);
+    MK_REQUIRE(height_fog != nullptr);
+    MK_REQUIRE(volumetric_fog != nullptr);
+    MK_REQUIRE(cloud_layer != nullptr);
+    MK_REQUIRE(volumetric_clouds != nullptr);
+    MK_REQUIRE(rain != nullptr);
+    MK_REQUIRE(snow != nullptr);
+    MK_REQUIRE(ibl != nullptr);
+    MK_REQUIRE(d3d12 != nullptr);
+    MK_REQUIRE(vulkan != nullptr);
+    MK_REQUIRE(metal != nullptr);
+    MK_REQUIRE(unsupported_ready != nullptr);
+    MK_REQUIRE(unsupported_native_handles != nullptr);
+
+    MK_REQUIRE(physical_sky->value == "ready");
+    MK_REQUIRE(height_fog->value == "ready");
+    MK_REQUIRE(volumetric_fog->value == "ready");
+    MK_REQUIRE(cloud_layer->value == "ready");
+    MK_REQUIRE(volumetric_clouds->value == "ready");
+    MK_REQUIRE(rain->value == "ready");
+    MK_REQUIRE(snow->value == "ready");
+    MK_REQUIRE(ibl->value == "ready");
+    MK_REQUIRE(d3d12->value == "ready");
+    MK_REQUIRE(vulkan->value == "host_gated");
+    MK_REQUIRE(metal->value == "host_gated");
+    MK_REQUIRE(unsupported_ready->value == "unclaimed");
+    MK_REQUIRE(unsupported_native_handles->value == "unsupported");
+
+    MK_REQUIRE(!physical_sky->editable);
+    MK_REQUIRE(!unsupported_ready->editable);
+    MK_REQUIRE(!model.invokes_backend);
+    MK_REQUIRE(!model.exposes_native_handles);
+    MK_REQUIRE(!model.executes_package_scripts);
+
+    const auto ui = mirakana::editor::make_environment_authoring_ui_model(model);
+    MK_REQUIRE(contains_element(
+        ui, "environment_authoring.inspector.rows.environment.readiness.physical_sky.package_status.value"));
+    MK_REQUIRE(
+        contains_element(ui, "environment_authoring.inspector.rows.environment.readiness.backend.metal_status.value"));
+    MK_REQUIRE(contains_element(
+        ui, "environment_authoring.inspector.rows.environment.readiness.unsupported.environment_ready.value"));
+}
+
 MK_TEST("editor environment authoring document uses text store undo dirty and validation rows") {
     constexpr std::string_view path{"assets/environment/outdoor.environment"};
     mirakana::editor::MemoryTextStore store;
@@ -211,6 +291,12 @@ MK_TEST("native editor inspector surfaces environment authoring without middlewa
                                 "editor.panel.inspector.rich_text.paragraph.property.environment.sky.model"));
     MK_REQUIRE(contains_element(shell_document.document,
                                 "editor.panel.inspector.rich_text.paragraph.property.environment.weather.preset"));
+    MK_REQUIRE(contains_element(
+        shell_document.document,
+        "editor.panel.inspector.rich_text.paragraph.property.environment.readiness.physical_sky.package_status"));
+    MK_REQUIRE(contains_element(
+        shell_document.document,
+        "editor.panel.inspector.rich_text.paragraph.property.environment.readiness.unsupported.environment_ready"));
 
     const auto counters = mirakana::editor::make_first_party_editor_shell_smoke_counters(app, shell_document);
     MK_REQUIRE(!counters.imgui_enabled);

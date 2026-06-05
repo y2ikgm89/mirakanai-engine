@@ -4,7 +4,7 @@
 
 **Plan ID:** `environment-rendering-readiness-v1`
 
-**Status:** Active. This is a clean-break post-Environment-System follow-up, not an Engine 1.0 blocker. Tasks 1-7 now have selected D3D12 or strict host-gated evidence as recorded below; Task 8 now has Windows-side Metal environment feature host-gated rows, while Apple-host execution and remaining backend-local Vulkan/Metal feature proofs remain future task selections.
+**Status:** Active. This is a clean-break post-Environment-System follow-up, not an Engine 1.0 blocker. Tasks 1-7 now have selected D3D12 or strict host-gated evidence as recorded below; Task 8 now has Windows-side Metal environment feature host-gated rows; Task 9 now has first-party editor Inspector readiness rows for the selected environment feature claims, while Apple-host execution, quality-budget closeout, and remaining backend-local Vulkan/Metal feature proofs remain future task selections.
 
 **Goal:** Turn the completed Environment System v1 foundation into evidence-backed environment rendering readiness for snow, sky package proof, cloud and precipitation renderer execution, volumetric cloud/fog package proof, and backend-local D3D12/Vulkan/Metal claims without broad or inferred readiness.
 
@@ -64,6 +64,10 @@ Completed by Task 7:
 Completed by Task 8 on Windows:
 
 - Metal environment feature host-gated evidence rows now exist in `MK_rhi_metal` for physical sky, height fog, cloud layer, precipitation, volumetric fog, volumetric cloud, and environment lighting/IBL. These rows stay `host_evidence_required` until the reviewed `renderer-metal-apple-host-evidence` recipe runs on an Apple host with runtime, command queue, non-empty `metallib`, feature-local render/compute pipeline, render-pass, depth/particle, cube-map, and HDR texture evidence. Apple-host execution remains unclaimed on this Windows host.
+
+Completed by Task 9:
+
+- First-party `MK_editor_core` environment authoring now emits non-editable retained Inspector readiness rows for physical-sky package status, height fog, volumetric fog package status, cloud-layer renderer status, volumetric-cloud renderer status, rain renderer status, snow renderer status, IBL package status, D3D12/Vulkan/Metal backend evidence status, broad `environment_ready` non-claim, backend parity non-claim, and public backend-handle unsupported diagnostics. The visible first-party `MK_editor` shell surfaces these rows through the existing Inspector rich-text panel without adding Dear ImGui, SDL3, UI middleware, backend execution, package-script execution, or public handle exposure.
 
 ## Official Source Baseline
 
@@ -815,25 +819,29 @@ Current Windows-host result: host-gated. The Windows candidate validated the val
 **Files:**
 - Modify: `editor/core/include/mirakana/editor/environment_authoring.hpp`
 - Modify: `editor/core/src/environment_authoring.cpp`
-- Modify: `editor/src/native_editor_app.cpp`
-- Modify: `editor/src/native_editor_app.hpp`
+- Use existing: `editor/src/first_party_editor_document.cpp` Inspector rich-text projection
 - Modify: `tests/unit/editor_environment_tests.cpp`
 - Modify: `docs/editor.md` if present or the current editor docs surface
 - Modify: `engine/agent/manifest.fragments/014-gameCodeGuidance.json`
+- Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
+- Modify: `.agents/skills/editor-change/**` and `.claude/skills/gameengine-editor/**`
+- Modify: `tools/check-ai-integration-030-runtime-rendering.ps1`
 
-- [ ] **Step 1: Add RED editor-core review tests**
+- [x] **Step 1: Add RED editor-core review tests**
 
 Require retained rows for physical sky package status, fog, volumetric fog, cloud layer, volumetric clouds, rain, snow, IBL, backend evidence status, and unsupported claim diagnostics.
 
 Expected: editor-core remains GUI-independent and no native handles are exposed.
 
-- [ ] **Step 2: Add visible first-party panel only after core rows pass**
+- [x] **Step 2: Add visible first-party panel only after core rows pass**
 
 Use `mirakana::ui` / `MK_editor` retained UI patterns. Do not add Dear ImGui, SDL3, or UI middleware.
 
 Expected: visible authoring is a first-party shell feature backed by the existing editor-core model.
 
-- [ ] **Step 3: Validate**
+Result: Task 9 reuses the existing first-party Inspector rich-text panel and keeps the panel count stable. It adds retained rows from editor core before visible shell projection, including `environment.readiness.physical_sky.package_status`, `environment.readiness.height_fog.status`, `environment.readiness.volumetric_fog.package_status`, `environment.readiness.cloud_layer.renderer_status`, `environment.readiness.volumetric_clouds.renderer_status`, `environment.readiness.precipitation.rain_renderer_status`, `environment.readiness.precipitation.snow_renderer_status`, `environment.readiness.ibl.package_status`, `environment.readiness.backend.d3d12_status`, `environment.readiness.backend.vulkan_status`, `environment.readiness.backend.metal_status`, `environment.readiness.unsupported.environment_ready`, `environment.readiness.unsupported.backend_parity`, and `environment.readiness.unsupported.public_backend_handles`.
+
+- [x] **Step 3: Validate**
 
 Run:
 
@@ -844,6 +852,15 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
 ```
 
 Expected: environment authoring surfaces show exact readiness rows and unsupported claims.
+
+**2026-06-05 Task 9 Evidence:** GREEN:
+
+- RED was observed with `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\ctest.ps1 --preset dev --output-on-failure -R "editor_environment"` failing on missing `environment.readiness.physical_sky.package_status`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\cmake.ps1 --build --preset dev --target MK_editor_environment_tests` passed after adding the editor-core readiness rows.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\ctest.ps1 --preset dev --output-on-failure -R "editor_environment"` passed after the rows surfaced through the first-party Inspector rich-text panel.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\check-json-contracts.ps1`, `tools\check-agents.ps1`, `tools\check-ai-integration.ps1`, and `tools\check-format.ps1` passed after docs, manifest, skill, and static-guard sync.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\check-tidy.ps1 -Files editor/core/src/environment_authoring.cpp,tests/unit/editor_environment_tests.cpp` passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\validate.ps1` passed with 99/99 CTest in `out\validation-logs\validate-20260605-231808-31496`; Apple/Metal host diagnostics remained host-gated on Windows as expected.
 
 ## Task 10: Quality Budgets, Profiling, And Closeout
 
