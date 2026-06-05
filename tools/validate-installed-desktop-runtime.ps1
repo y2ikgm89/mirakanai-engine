@@ -190,6 +190,7 @@ $requiresEnvironmentSnowPackageEvidence = @($SmokeArgs) -contains "--require-env
 $requiresEnvironmentSnowRendererExecution = @($SmokeArgs) -contains "--require-environment-snow-renderer-execution"
 $requiresEnvironmentVolumetricCloudPackageEvidence = @($SmokeArgs) -contains "--require-volumetric-cloud-package-evidence"
 $requiresEnvironmentVolumetricCloudRendererExecution = @($SmokeArgs) -contains "--require-volumetric-cloud-renderer-execution"
+$requiresEnvironmentMaterialWeathering = @($SmokeArgs) -contains "--require-environment-material-weathering"
 $requiresGpuMemoryPolicy = @($SmokeArgs) -contains "--require-gpu-memory-policy"
 $requiresMemoryDiagnostics = @($SmokeArgs) -contains "--require-memory-diagnostics"
 $requiresD3d12GpuMemoryEvidence = @($SmokeArgs) -contains "--require-d3d12-gpu-memory-evidence"
@@ -285,6 +286,11 @@ if ($requiresEnvironmentVolumetricCloudRendererExecution) {
     $requiresPostprocessDepthInput = $true
     $requiresD3d12PostprocessEvidence = $true
 }
+if ($requiresEnvironmentMaterialWeathering) {
+    $requiresPostprocess = $true
+    $requiresPostprocessDepthInput = $true
+    $requiresD3d12PostprocessEvidence = $true
+}
 $requiresAnyEnvironmentQualityBudget = $requiresEnvironmentProfile -or
     $requiresEnvironmentFogEvidence -or
     $requiresEnvironmentFogVulkanPackageEvidence -or
@@ -299,7 +305,8 @@ $requiresAnyEnvironmentQualityBudget = $requiresEnvironmentProfile -or
     $requiresEnvironmentSnowPackageEvidence -or
     $requiresEnvironmentSnowRendererExecution -or
     $requiresEnvironmentVolumetricCloudPackageEvidence -or
-    $requiresEnvironmentVolumetricCloudRendererExecution
+    $requiresEnvironmentVolumetricCloudRendererExecution -or
+    $requiresEnvironmentMaterialWeathering
 if ($requiresWindowsCpuSetWorkerPlacement -or $requiresWindowsCpuSetSmtWorkerPlacement) {
     $requiresJobExecutionFoundation = $true
     $requiresJobExecutionTopologyPolicy = $true
@@ -5083,6 +5090,45 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 }
             }
         }
+        if ($requiresEnvironmentMaterialWeathering) {
+            if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
+                Write-Error "Installed desktop runtime smoke status line must not claim broad environment_ready for material weathering evidence."
+            }
+            $expectedEnvironmentMaterialWeatheringFields = @{
+                "environment_material_weathering_status" = "ready"
+                "environment_material_weathering_ready" = "1"
+                "environment_material_weathering_selected_backend" = "d3d12"
+                "environment_material_weathering_requested" = "1"
+                "environment_material_weathering_state" = "mixed"
+                "environment_material_weathering_shader_contract_evidence_ready" = "1"
+                "environment_material_weathering_package_evidence_ready" = "1"
+                "environment_material_weathering_execution_evidence_ready" = "1"
+                "environment_material_weathering_constants_binding" = "14"
+                "environment_material_weathering_constants_byte_size" = "256"
+                "environment_material_weathering_constant_rows" = "1"
+                "environment_material_weathering_wet_rows" = "1"
+                "environment_material_weathering_snow_rows" = "1"
+                "environment_material_weathering_ice_rows" = "1"
+                "environment_material_weathering_quality_rows" = "1"
+                "environment_material_weathering_source_material_mutations" = "0"
+                "environment_material_weathering_native_handle_access" = "0"
+                "environment_material_weathering_diagnostics" = "0"
+            }
+            foreach ($field in $expectedEnvironmentMaterialWeatheringFields.Keys) {
+                $expectedValue = [regex]::Escape($expectedEnvironmentMaterialWeatheringFields[$field])
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove environment material weathering field: $field=$($expectedEnvironmentMaterialWeatheringFields[$field])"
+                }
+            }
+            foreach ($field in @(
+                    "environment_material_weathering_material_parameter_bindings",
+                    "environment_material_weathering_material_constant_bytes",
+                    "environment_material_weathering_backend_invocations")) {
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=([1-9][0-9]*)\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove positive environment material weathering field: $field"
+                }
+            }
+        }
     }
     $expectedFramegraphPasses = if ($requiresDirectionalShadow) { 3 } else { 2 }
     $expectedFramegraphPassExecutions = $expectedSmokeFrames * $expectedFramegraphPasses
@@ -5138,6 +5184,10 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
             ++$expectedEnvironmentQualityBudgetRows
             $expectedEnvironmentQualityBudgetIblFaces = 6
             $expectedEnvironmentQualityBudgetIblMips = 5
+        }
+        if ($requiresEnvironmentMaterialWeathering) {
+            ++$expectedEnvironmentQualityBudgetRows
+            $expectedEnvironmentQualityBudgetConstantBytes += 256
         }
         if ($requiresCloudLayerPackageEvidence) {
             ++$expectedEnvironmentQualityBudgetRows

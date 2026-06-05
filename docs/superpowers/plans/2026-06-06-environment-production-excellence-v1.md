@@ -4,7 +4,7 @@
 
 **Plan ID:** `environment-production-excellence-v1`
 
-**Status:** Active. Selected milestone. Phase 0 selects this plan in `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`; runtime implementation has not started.
+**Status:** Active. Selected milestone. Phases 0-3 are complete; the next exact gates are weather audio playback, strict Vulkan/Metal feature evidence, first-party editor authoring expansion, quality budgets, and aggregate `environment_ready`.
 
 **Goal:** Promote the completed environment foundation into a production-grade, backend-evidence-backed environment settings system for sky, atmosphere, fog, volumetrics, clouds, rain, snow, storms, IBL, runtime cubemap capture, local volumes, material weathering, audio cues, editor authoring, quality budgets, and exact `environment_ready` aggregation.
 
@@ -49,7 +49,7 @@ Unclaimed by design:
 - Vulkan/Metal volumetric fog and volumetric cloud execution.
 - Vulkan/Metal IBL proof.
 - Metal actual environment readiness without Apple-host execution.
-- Material wetness and snow accumulation mutation.
+- Broad material weathering beyond the selected D3D12 package-visible material wetness/snow accumulation evidence row.
 - Audio playback execution for weather; existing rows are handoff or zero-playback evidence.
 - OpenEXR/KTX/Basis/source-image dependencies for environment assets.
 
@@ -136,8 +136,8 @@ These items are included in this plan as explicit future gates so they are not m
 | Renderer cubemap upload | Unclaimed | D3D12 texture-cube upload/SRV/sampling proof with reflection, irradiance, radiance mip metadata, debug-layer clean run, and readback. |
 | IBL Vulkan proof | Unclaimed | Strict Vulkan cube image/view/sampler/upload/readback proof with synchronization2 layout transitions and `spirv-val` artifacts. |
 | IBL Metal proof | Host-gated | Apple-host texture cube/HDR/pipeline proof through `renderer-metal-apple-host-evidence`. |
-| Material wetness | Unclaimed | First-party material-weathering rows, renderer material parameter binding, package counters, zero source-material mutation unless explicitly authored. |
-| Snow accumulation | Unclaimed | First-party snow mask/depth/coverage rows, material parameter binding, package counters, and separate precipitation particle evidence. |
+| Material wetness | Selected D3D12 package evidence ready | First-party material-weathering rows, renderer material parameter binding, package counters, zero source-material mutation unless explicitly authored. Broad backend parity remains unclaimed. |
+| Snow accumulation | Selected D3D12 package evidence ready | First-party snow/ice coverage rows, material parameter binding, package counters, and separate precipitation particle evidence. Broad backend parity remains unclaimed. |
 | Weather audio playback | Handoff only | Audio trigger rows consumed by runtime/audio lane with WASAPI package counters and no direct environment audio-device ownership. |
 | Vulkan precipitation | Unclaimed | Strict particle texture/buffer upload, descriptor, depth-occlusion, draw/readback proof with validation layers. |
 | Vulkan volumetric cloud/fog | Unclaimed | Strict compute/render paths with synchronization2 barriers, package recipes, positive dispatch/raymarch/readback counters. |
@@ -307,7 +307,7 @@ Phase 2 focused validation evidence on 2026-06-06:
 - Installed sample counter extraction reports `environment_lighting_renderer_upload_status=ready`, `environment_lighting_renderer_execution_status=ready`, `environment_lighting_texture_cube_uploads=1`, `environment_lighting_texture_cube_faces=6`, `environment_lighting_texture_cube_edge_size=16`, `environment_lighting_radiance_mips=5`, `environment_lighting_renderer_irradiance_rows=9`, `environment_lighting_shader_sampling_proven=1`, `environment_lighting_shader_sample_readback_nonzero=1`, `environment_lighting_runtime_capture_faces=6`, `environment_lighting_runtime_capture_readback_nonzero=1`, `environment_lighting_runtime_capture_readback_checksum=6633441143888650627`, `environment_lighting_native_handle_access=0`, and `environment_lighting_diagnostics=0`.
 - `tools/validate.ps1`: pass. Static guards passed, `build.ps1` passed, `check-tidy.ps1 -MaxFiles 1 -ReuseExistingFileApiReply` passed, and `test.ps1 -SkipBuild` passed with 99/99 tests.
 
-Phase 2 closeout: the selected D3D12 package lane now proves IBL renderer upload, `TextureCube` SRV shader sampling, six-face runtime cubemap capture readback, and exact package-visible counters through runtime-host ownership. This remains a selected D3D12 evidence row only. Vulkan IBL proof, Metal IBL proof, backend parity, importer expansion, material weathering, weather audio playback, broad optimization, and broad `environment_ready` remain unclaimed until their explicit phase gates pass.
+Phase 2 closeout: the selected D3D12 package lane now proves IBL renderer upload, `TextureCube` SRV shader sampling, six-face runtime cubemap capture readback, and exact package-visible counters through runtime-host ownership. This remains a selected D3D12 evidence row only. Vulkan IBL proof, Metal IBL proof, backend parity, importer expansion, weather audio playback, broad optimization, and broad `environment_ready` remain unclaimed until their explicit phase gates pass.
 
 ## Phase 3: Material Wetness And Snow Accumulation
 
@@ -315,10 +315,10 @@ Phase 2 closeout: the selected D3D12 package lane now proves IBL renderer upload
 
 **Files:** `MK_environment`, `MK_renderer` material/environment policy files, sample runtime package, material tests, renderer tests, package validation.
 
-- [ ] Add RED tests for material-weathering policy rows: `dry`, `wet`, `snow_covered`, `icy`, and `mixed`.
-- [ ] Add RED tests that source `.material` content is not rewritten by runtime weather.
-- [ ] Add RED renderer policy tests for weathering constant rows and material parameter binding.
-- [ ] Add package counters:
+- [x] Add RED tests for material-weathering policy rows: `dry`, `wet`, `snow_covered`, `icy`, and `mixed`.
+- [x] Add RED tests that source `.material` content is not rewritten by runtime weather.
+- [x] Add RED renderer policy tests for weathering constant rows and material parameter binding.
+- [x] Add package counters:
 
 ```text
 environment_material_weathering_status=ready
@@ -330,11 +330,21 @@ environment_material_weathering_backend_invocations>0
 environment_material_weathering_native_handle_access=0
 ```
 
-- [ ] Implement value-only `MK_environment` weathering inputs, renderer policy rows, and selected D3D12 material parameter binding evidence.
-- [ ] Keep precipitation particle execution and snow surface accumulation as separate counters.
-- [ ] Run focused renderer/material tests and the selected package smoke.
+- [x] Implement value-only `MK_environment` weathering inputs, renderer policy rows, and selected D3D12 material parameter binding evidence.
+- [x] Keep precipitation particle execution and snow surface accumulation as separate counters.
+- [x] Run focused renderer/material tests and the selected package smoke.
 
 Expected: wetness and snow accumulation are renderer material state evidence, not source asset mutation.
+
+Phase 3 focused validation evidence on 2026-06-06:
+
+- `tools/cmake.ps1 --build --preset dev --target MK_environment_material_weathering_tests MK_renderer_material_weathering_policy_tests`: pass.
+- `tools/ctest.ps1 --preset dev --output-on-failure -R "^(MK_environment_material_weathering_tests|MK_renderer_material_weathering_policy_tests)$"`: pass, 2/2 tests.
+- Validation recipe id: `desktop-runtime-sample-game-environment-material-weathering`.
+- `tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-environment-material-weathering')`: pass.
+- Installed sample counter extraction reports `environment_material_weathering_status=ready`, `environment_material_weathering_ready=1`, `environment_material_weathering_state=mixed`, constants binding `14`, constants byte size `256`, one wet row, one snow row, one ice row, positive material parameter binding/upload/backend counters, `environment_material_weathering_source_material_mutations=0`, `environment_material_weathering_native_handle_access=0`, and `environment_material_weathering_diagnostics=0`.
+
+Phase 3 closeout: the selected D3D12 package lane now proves material wetness and snow accumulation as renderer material state evidence without rewriting source `.material` documents. This remains a selected D3D12 material-weathering evidence row only. Precipitation particle execution, weather audio playback, Vulkan/Metal material-weathering execution, backend parity, broad optimization, and broad `environment_ready` remain unclaimed until their explicit phase gates pass.
 
 ## Phase 4: Weather Audio Playback Execution
 

@@ -14,6 +14,7 @@
 #include "mirakana/platform/win32/win32_cpu_sets.hpp"
 #include "mirakana/renderer/environment_lighting_policy.hpp"
 #include "mirakana/renderer/frame_graph_rhi.hpp"
+#include "mirakana/renderer/material_weathering_policy.hpp"
 #include "mirakana/renderer/renderer.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
 #include "mirakana/runtime_host/shader_bytecode.hpp"
@@ -85,6 +86,7 @@ struct DesktopRuntimeGameOptions {
     bool require_environment_snow_renderer_execution{false};
     bool require_environment_volumetric_cloud_package_evidence{false};
     bool require_environment_volumetric_cloud_renderer_execution{false};
+    bool require_environment_material_weathering{false};
     bool require_gpu_memory_policy{false};
     bool require_memory_diagnostics{false};
     bool require_d3d12_gpu_memory_evidence{false};
@@ -355,6 +357,40 @@ make_sample_environment_volumetric_fog_policy_desc(bool package_evidence_ready) 
     };
 }
 
+[[nodiscard]] mirakana::MaterialWeatheringPolicyDesc make_sample_environment_material_weathering_policy_desc(
+    bool request_ready_promotion, std::uint64_t material_parameter_bindings, std::uint64_t material_constant_bytes,
+    std::uint64_t backend_invocations) {
+    mirakana::EnvironmentProfileDesc profile{};
+    profile.id = "sample_desktop_runtime_material_weathering";
+    profile.weather = mirakana::EnvironmentWeatherKind::storm;
+    profile.precipitation = mirakana::EnvironmentPrecipitationDesc{
+        .kind = mirakana::EnvironmentPrecipitationKind::rain,
+        .intensity = 0.75F,
+        .particle_radius_mm = 0.8F,
+        .fall_speed_mps = 8.5F,
+        .wind_speed_mps = 6.0F,
+    };
+    const bool execution_ready = request_ready_promotion && material_parameter_bindings > 0U &&
+                                 material_constant_bytes > 0U && backend_invocations > 0U;
+    return mirakana::MaterialWeatheringPolicyDesc{
+        .environment_plan = mirakana::plan_environment_material_weathering(mirakana::EnvironmentMaterialWeatheringDesc{
+            .environment = profile,
+            .snow_accumulation = 0.5F,
+            .ice_intensity = 0.2F,
+        }),
+        .quality_tier = mirakana::MaterialWeatheringQualityTier::balanced,
+        .shader_contract_evidence_ready = true,
+        .package_evidence_ready = true,
+        .execution_evidence_ready = execution_ready,
+        .request_ready_promotion = request_ready_promotion,
+        .request_material_parameter_binding = request_ready_promotion,
+        .request_backend_execution = request_ready_promotion,
+        .material_parameter_binding_count = material_parameter_bindings,
+        .material_constant_bytes_uploaded = material_constant_bytes,
+        .backend_invocation_count = backend_invocations,
+    };
+}
+
 [[nodiscard]] std::span<const mirakana::VolumetricCloudAtmosphericLightDesc>
 sample_environment_volumetric_cloud_lights() noexcept {
     static constexpr std::array lights{
@@ -428,6 +464,10 @@ sample_environment_volumetric_cloud_lights() noexcept {
 
 [[nodiscard]] mirakana::AssetId packaged_environment_ibl_cubemap_asset_id() {
     return asset_id_from_game_asset_key("sample/desktop-runtime/environment/ibl-cubemap");
+}
+
+[[nodiscard]] mirakana::AssetId packaged_material_asset_id() {
+    return asset_id_from_game_asset_key("sample/desktop-runtime/material");
 }
 
 [[nodiscard]] mirakana::AnimationSkeleton3dDesc packaged_quaternion_animation_skeleton() {
@@ -800,6 +840,39 @@ struct EnvironmentLightingPackageEvidence {
     std::uint32_t diagnostics{0};
 };
 
+enum class EnvironmentMaterialWeatheringStatus : std::uint8_t {
+    not_requested,
+    missing_package,
+    missing_material_record,
+    invalid_material_record,
+    policy_failed,
+    ready,
+};
+
+struct EnvironmentMaterialWeatheringEvidence {
+    EnvironmentMaterialWeatheringStatus status{EnvironmentMaterialWeatheringStatus::not_requested};
+    bool requested{false};
+    bool ready{false};
+    bool package_record_ready{false};
+    bool package_evidence_ready{false};
+    bool shader_contract_evidence_ready{false};
+    bool execution_evidence_ready{false};
+    mirakana::EnvironmentMaterialWeatheringState state{mirakana::EnvironmentMaterialWeatheringState::dry};
+    std::uint32_t constant_rows{0};
+    std::uint32_t wet_rows{0};
+    std::uint32_t snow_rows{0};
+    std::uint32_t ice_rows{0};
+    std::uint32_t quality_rows{0};
+    std::uint32_t constants_binding{0};
+    std::uint64_t constant_layout_bytes{0};
+    std::uint64_t material_parameter_bindings{0};
+    std::uint64_t material_constant_bytes{0};
+    std::uint64_t backend_invocations{0};
+    bool source_material_mutations{false};
+    bool native_handle_access{false};
+    std::uint32_t diagnostics{0};
+};
+
 enum class EnvironmentQualityBudgetStatus : std::uint8_t {
     not_requested,
     blocked,
@@ -863,6 +936,42 @@ environment_lighting_renderer_upload_status_name(const EnvironmentLightingPackag
     return evidence.renderer_upload_evidence_ready ? "ready" : "blocked";
 }
 
+[[nodiscard]] std::string_view
+environment_material_weathering_status_name(EnvironmentMaterialWeatheringStatus status) noexcept {
+    switch (status) {
+    case EnvironmentMaterialWeatheringStatus::not_requested:
+        return "not_requested";
+    case EnvironmentMaterialWeatheringStatus::missing_package:
+        return "missing_package";
+    case EnvironmentMaterialWeatheringStatus::missing_material_record:
+        return "missing_material_record";
+    case EnvironmentMaterialWeatheringStatus::invalid_material_record:
+        return "invalid_material_record";
+    case EnvironmentMaterialWeatheringStatus::policy_failed:
+        return "policy_failed";
+    case EnvironmentMaterialWeatheringStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] std::string_view
+environment_material_weathering_state_name(mirakana::EnvironmentMaterialWeatheringState state) noexcept {
+    switch (state) {
+    case mirakana::EnvironmentMaterialWeatheringState::dry:
+        return "dry";
+    case mirakana::EnvironmentMaterialWeatheringState::wet:
+        return "wet";
+    case mirakana::EnvironmentMaterialWeatheringState::snow_covered:
+        return "snow_covered";
+    case mirakana::EnvironmentMaterialWeatheringState::icy:
+        return "icy";
+    case mirakana::EnvironmentMaterialWeatheringState::mixed:
+        return "mixed";
+    }
+    return "unknown";
+}
+
 [[nodiscard]] std::string_view environment_quality_budget_status_name(EnvironmentQualityBudgetStatus status) noexcept {
     switch (status) {
     case EnvironmentQualityBudgetStatus::not_requested:
@@ -886,7 +995,8 @@ environment_lighting_renderer_upload_status_name(const EnvironmentLightingPackag
            options.require_environment_precipitation_renderer_execution ||
            options.require_environment_snow_package_evidence || options.require_environment_snow_renderer_execution ||
            options.require_environment_volumetric_cloud_package_evidence ||
-           options.require_environment_volumetric_cloud_renderer_execution;
+           options.require_environment_volumetric_cloud_renderer_execution ||
+           options.require_environment_material_weathering;
 }
 
 [[nodiscard]] std::uint32_t total_physical_sky_sample_budget(mirakana::PhysicalSkySampleBudgetDesc budget) noexcept {
@@ -1067,12 +1177,99 @@ environment_lighting_texture_format_name(mirakana::EnvironmentLightingTextureFor
     return evidence;
 }
 
+[[nodiscard]] bool is_sample_material_record(const mirakana::runtime::RuntimeAssetRecord& record) noexcept {
+    return record.kind == mirakana::AssetKind::material &&
+           record.path == "runtime/assets/desktop_runtime/unlit.material" &&
+           std::string_view{record.content}.starts_with("format=GameEngine.Material.v1\n") &&
+           contains_payload_row(record, "material.shading=lit\n") &&
+           contains_payload_row(record, "factor.roughness=1\n") &&
+           contains_payload_row(record, "texture.1.slot=base_color\n");
+}
+
+[[nodiscard]] bool
+material_record_has_weathering_source_mutation(const mirakana::runtime::RuntimeAssetRecord& record) noexcept {
+    const auto content = std::string_view{record.content};
+    return content.find("material.weathering") != std::string_view::npos ||
+           content.find("environment_material_weathering") != std::string_view::npos ||
+           content.find("weathering.source_material_mutation") != std::string_view::npos;
+}
+
+[[nodiscard]] EnvironmentMaterialWeatheringEvidence
+evaluate_environment_material_weathering(bool requested, const mirakana::Win32DesktopPresentationReport& report,
+                                         const std::optional<mirakana::runtime::RuntimeAssetPackage>& runtime_package) {
+    EnvironmentMaterialWeatheringEvidence evidence;
+    evidence.requested = requested;
+    if (!requested) {
+        return evidence;
+    }
+    if (!runtime_package.has_value()) {
+        evidence.status = EnvironmentMaterialWeatheringStatus::missing_package;
+        evidence.diagnostics = 1;
+        return evidence;
+    }
+
+    const auto* material_record = runtime_package->find(packaged_material_asset_id());
+    if (material_record == nullptr) {
+        evidence.status = EnvironmentMaterialWeatheringStatus::missing_material_record;
+        evidence.diagnostics = 1;
+        return evidence;
+    }
+    evidence.package_record_ready = is_sample_material_record(*material_record);
+    evidence.source_material_mutations = material_record_has_weathering_source_mutation(*material_record);
+    if (!evidence.package_record_ready || evidence.source_material_mutations) {
+        evidence.status = EnvironmentMaterialWeatheringStatus::invalid_material_record;
+        evidence.diagnostics = 1;
+        return evidence;
+    }
+
+    const auto material_parameter_bindings = static_cast<std::uint64_t>(report.scene_gpu_stats.material_bindings);
+    const auto material_constant_bytes =
+        static_cast<std::uint64_t>(report.scene_gpu_stats.uploaded_material_factor_bytes);
+    const auto backend_invocations = static_cast<std::uint64_t>(report.scene_gpu_stats.material_uploads);
+    const auto policy =
+        mirakana::plan_material_weathering_policy(make_sample_environment_material_weathering_policy_desc(
+            report.selected_backend == mirakana::Win32DesktopPresentationBackend::d3d12, material_parameter_bindings,
+            material_constant_bytes, backend_invocations));
+
+    evidence.shader_contract_evidence_ready = policy.shader_contract_evidence_ready;
+    evidence.package_evidence_ready = policy.package_evidence_ready && evidence.package_record_ready;
+    evidence.execution_evidence_ready = policy.execution_evidence_ready;
+    evidence.material_parameter_bindings = policy.material_parameter_bindings;
+    evidence.material_constant_bytes = policy.material_constant_bytes_uploaded;
+    evidence.backend_invocations = policy.backend_invocations;
+    evidence.native_handle_access = policy.exposes_native_handles;
+    evidence.source_material_mutations = evidence.source_material_mutations || policy.mutates_source_materials;
+    evidence.constant_rows = static_cast<std::uint32_t>(policy.constant_rows.size());
+    evidence.wet_rows = static_cast<std::uint32_t>(policy.wet_rows.size());
+    evidence.snow_rows = static_cast<std::uint32_t>(policy.snow_rows.size());
+    evidence.ice_rows = static_cast<std::uint32_t>(policy.ice_rows.size());
+    evidence.quality_rows = static_cast<std::uint32_t>(policy.quality_rows.size());
+    if (!policy.constant_rows.empty()) {
+        evidence.state = policy.constant_rows[0].state;
+        evidence.constants_binding = policy.constant_rows[0].constants_binding_slot;
+        evidence.constant_layout_bytes = policy.constant_rows[0].constant_bytes;
+    }
+    evidence.diagnostics = static_cast<std::uint32_t>(policy.diagnostics.size());
+    evidence.ready = policy.ready() && evidence.package_evidence_ready && evidence.execution_evidence_ready &&
+                     evidence.constant_rows == 1U && evidence.wet_rows > 0U && evidence.snow_rows > 0U &&
+                     evidence.material_parameter_bindings > 0U && evidence.material_constant_bytes > 0U &&
+                     evidence.backend_invocations > 0U && !evidence.native_handle_access &&
+                     !evidence.source_material_mutations && evidence.diagnostics == 0U;
+    evidence.status = evidence.ready ? EnvironmentMaterialWeatheringStatus::ready
+                                     : EnvironmentMaterialWeatheringStatus::policy_failed;
+    if (!evidence.ready) {
+        evidence.diagnostics = std::max(evidence.diagnostics, 1U);
+    }
+    return evidence;
+}
+
 [[nodiscard]] EnvironmentQualityBudgetEvidence build_environment_quality_budget_evidence(
     const DesktopRuntimeGameOptions& options, const mirakana::Win32DesktopPresentationReport& report,
     const mirakana::Win32DesktopPresentationEnvironmentFogReport& environment_fog,
     const mirakana::Win32DesktopPresentationVulkanEnvironmentFogPackageReport& environment_fog_vulkan_package,
     const mirakana::Win32DesktopPresentationPhysicalSkyReport& physical_sky,
     const EnvironmentLightingPackageEvidence& environment_lighting,
+    const EnvironmentMaterialWeatheringEvidence& environment_material_weathering,
     const mirakana::Win32DesktopPresentationCloudLayerReport& cloud_layer,
     const mirakana::Win32DesktopPresentationEnvironmentPrecipitationReport& environment_precipitation,
     const mirakana::Win32DesktopPresentationEnvironmentVolumetricFogReport& environment_volumetric_fog,
@@ -1105,6 +1302,7 @@ environment_lighting_texture_format_name(mirakana::EnvironmentLightingTextureFor
     add_feature(options.require_environment_fog_vulkan_package_evidence, environment_fog_vulkan_package.ready);
     add_feature(options.require_environment_volumetric_fog_package_evidence, environment_volumetric_fog.ready);
     add_feature(options.require_environment_lighting_package_evidence, environment_lighting.ready);
+    add_feature(options.require_environment_material_weathering, environment_material_weathering.ready);
     add_feature(options.require_cloud_layer_package_evidence || options.require_cloud_layer_renderer_execution,
                 cloud_layer.ready);
     add_feature(options.require_environment_precipitation_package_evidence ||
@@ -1165,6 +1363,9 @@ environment_lighting_texture_format_name(mirakana::EnvironmentLightingTextureFor
         evidence.ibl_reflection_face_budget = environment_lighting.reflection_cubemap_face_count;
         evidence.ibl_radiance_mip_budget = environment_lighting.radiance_mip_rows;
     }
+    if (options.require_environment_material_weathering) {
+        evidence.constant_buffer_bytes += mirakana::material_weathering_constants_byte_size();
+    }
 
     evidence.transient_gpu_byte_estimate = transient_gpu_byte_estimate(report);
     evidence.transient_heap_allocations = report.rhi_transient_heap_allocations;
@@ -1176,7 +1377,7 @@ environment_lighting_texture_format_name(mirakana::EnvironmentLightingTextureFor
         physical_sky.exposes_native_handles || environment_fog_vulkan_package.exposes_native_handles ||
         environment_lighting.exposes_native_handles || cloud_layer.exposes_native_handles ||
         environment_precipitation.exposes_native_handles || environment_volumetric_fog.exposes_native_handles ||
-        environment_volumetric_cloud.exposes_native_handles;
+        environment_volumetric_cloud.exposes_native_handles || environment_material_weathering.native_handle_access;
 
     if (evidence.feature_rows == 0) {
         ++evidence.diagnostics;
@@ -1681,6 +1882,7 @@ void print_usage() {
                  "[--require-environment-snow-renderer-execution] "
                  "[--require-volumetric-cloud-package-evidence] "
                  "[--require-volumetric-cloud-renderer-execution] "
+                 "[--require-environment-material-weathering] "
                  "[--require-gpu-memory-policy] [--require-memory-diagnostics] [--require-d3d12-gpu-memory-evidence] "
                  "[--require-vulkan-gpu-memory-evidence] "
                  "[--require-debug-profiling-policy] [--require-d3d12-debug-profiling-evidence] "
@@ -1940,6 +2142,16 @@ void print_usage() {
             options.require_d3d12_postprocess_evidence = true;
             options.require_environment_volumetric_cloud_package_evidence = true;
             options.require_environment_volumetric_cloud_renderer_execution = true;
+            continue;
+        }
+        if (arg == "--require-environment-material-weathering") {
+            options.require_d3d12_scene_shaders = true;
+            options.require_d3d12_renderer = true;
+            options.require_scene_gpu_bindings = true;
+            options.require_postprocess = true;
+            options.require_postprocess_depth_input = true;
+            options.require_d3d12_postprocess_evidence = true;
+            options.require_environment_material_weathering = true;
             continue;
         }
         if (arg == "--require-vulkan-postprocess-evidence") {
@@ -4066,6 +4278,8 @@ int main(int argc, char** argv) {
     const auto environment_lighting = evaluate_environment_lighting_package(
         options.require_environment_lighting_package_evidence, options.require_environment_lighting_renderer_execution,
         environment_ibl_renderer_execution, runtime_package);
+    const auto environment_material_weathering = evaluate_environment_material_weathering(
+        options.require_environment_material_weathering, report, runtime_package);
     const auto vulkan_postprocess_execution =
         mirakana::evaluate_win32_desktop_presentation_vulkan_postprocess_execution(
             report, static_cast<std::uint64_t>(options.max_frames), options.require_vulkan_postprocess_evidence);
@@ -4131,8 +4345,9 @@ int main(int argc, char** argv) {
         options.require_environment_fog_evidence || options.require_environment_fog_vulkan_package_evidence;
     const auto environment_quality_budget = build_environment_quality_budget_evidence(
         options, report, environment_fog, environment_fog_vulkan_package, physical_sky, environment_lighting,
-        cloud_layer, environment_precipitation, environment_volumetric_fog, environment_volumetric_cloud,
-        environment_profile, options.require_postprocess ? expected_framegraph_barrier_steps : 0U);
+        environment_material_weathering, cloud_layer, environment_precipitation, environment_volumetric_fog,
+        environment_volumetric_cloud, environment_profile,
+        options.require_postprocess ? expected_framegraph_barrier_steps : 0U);
 
     std::cout
         << "sample_desktop_runtime_game status=" << status_name(result.status)
@@ -4376,6 +4591,39 @@ int main(int argc, char** argv) {
         << " environment_precipitation_material_mutations=" << (environment_precipitation.mutates_materials ? 1 : 0)
         << " environment_precipitation_audio_playback=" << (environment_precipitation.plays_audio ? 1 : 0)
         << " environment_precipitation_diagnostics=" << environment_precipitation.diagnostics_count
+        << " environment_material_weathering_status="
+        << environment_material_weathering_status_name(environment_material_weathering.status)
+        << " environment_material_weathering_ready=" << (environment_material_weathering.ready ? 1 : 0)
+        << " environment_material_weathering_selected_backend="
+        << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
+        << " environment_material_weathering_requested=" << (environment_material_weathering.requested ? 1 : 0)
+        << " environment_material_weathering_state="
+        << environment_material_weathering_state_name(environment_material_weathering.state)
+        << " environment_material_weathering_shader_contract_evidence_ready="
+        << (environment_material_weathering.shader_contract_evidence_ready ? 1 : 0)
+        << " environment_material_weathering_package_evidence_ready="
+        << (environment_material_weathering.package_evidence_ready ? 1 : 0)
+        << " environment_material_weathering_execution_evidence_ready="
+        << (environment_material_weathering.execution_evidence_ready ? 1 : 0)
+        << " environment_material_weathering_constants_binding=" << environment_material_weathering.constants_binding
+        << " environment_material_weathering_constants_byte_size="
+        << environment_material_weathering.constant_layout_bytes
+        << " environment_material_weathering_constant_rows=" << environment_material_weathering.constant_rows
+        << " environment_material_weathering_wet_rows=" << environment_material_weathering.wet_rows
+        << " environment_material_weathering_snow_rows=" << environment_material_weathering.snow_rows
+        << " environment_material_weathering_ice_rows=" << environment_material_weathering.ice_rows
+        << " environment_material_weathering_quality_rows=" << environment_material_weathering.quality_rows
+        << " environment_material_weathering_material_parameter_bindings="
+        << environment_material_weathering.material_parameter_bindings
+        << " environment_material_weathering_material_constant_bytes="
+        << environment_material_weathering.material_constant_bytes
+        << " environment_material_weathering_backend_invocations="
+        << environment_material_weathering.backend_invocations
+        << " environment_material_weathering_source_material_mutations="
+        << (environment_material_weathering.source_material_mutations ? 1 : 0)
+        << " environment_material_weathering_native_handle_access="
+        << (environment_material_weathering.native_handle_access ? 1 : 0)
+        << " environment_material_weathering_diagnostics=" << environment_material_weathering.diagnostics
         << " environment_volumetric_fog_status="
         << mirakana::win32_desktop_presentation_environment_volumetric_fog_status_name(
                environment_volumetric_fog.status)
@@ -5342,6 +5590,9 @@ int main(int argc, char** argv) {
             return 3;
         }
         if (options.require_environment_lighting_package_evidence && !environment_lighting.ready) {
+            return 3;
+        }
+        if (options.require_environment_material_weathering && !environment_material_weathering.ready) {
             return 3;
         }
         if (options.require_environment_volumetric_fog_package_evidence && !environment_volumetric_fog.ready) {
