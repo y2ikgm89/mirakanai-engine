@@ -187,7 +187,7 @@ extract_runtime_mavg_payload_page_slices(const RuntimeMavgPayloadPageSliceDesc& 
 - [x] Register new source files and tests in CMake.
 - [x] Update docs, parent milestone, registry, manifest fragments, composed manifest, and static guards.
 - [x] Run focused C++ build, focused CTest, public API boundary, tidy, format, JSON/AI/agent checks, `git diff --check`, then full `tools/validate.ps1`.
-- [ ] Publish a validated stacked draft PR over `codex/mavg-package-streaming-residency-dispatch-v1`.
+- [x] Publish a validated stacked draft PR over `codex/mavg-package-streaming-residency-dispatch-v1`.
 
 ## Validation Plan
 
@@ -224,6 +224,7 @@ extract_runtime_mavg_payload_page_slices(const RuntimeMavgPayloadPageSliceDesc& 
 | 2026-06-05 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_mavg_cluster_payload_tests|MK_tools_mavg_cluster_cook_tests|MK_runtime_mavg_payload_pages_tests"` | Passed after formatting; 3/3 focused MAVG payload tests passed. |
 | 2026-06-05 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/assets/src/mavg_cluster_payload.cpp,engine/tools/asset/mavg_cluster_cook.cpp,engine/runtime/src/mavg_payload_pages.cpp,tests/unit/mavg_cluster_payload_tests.cpp,tests/unit/runtime_mavg_payload_pages_tests.cpp -ReuseExistingFileApiReply` | Passed; clang-tidy checked 5 files. |
 | 2026-06-05 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed; static checks, build, tidy smoke, and 109/109 tests passed. |
+| 2026-06-05 | `gh pr create --draft --base codex/mavg-package-streaming-residency-dispatch-v1 --head codex/mavg-page-addressable-payload-schema-v1` | Created stacked draft PR #456. |
 
 ## Non-Claims
 
