@@ -427,7 +427,6 @@ foreach ($needle in @(
         '"unsupportedProductionGaps": []',
         "genre-simulation-management-pack-v1",
         "production-network-replication-v1",
-        "production-rendering-vfx-profiling-v1",
         "engine/runtime/include/mirakana/runtime/genre_sandbox_world.hpp",
         "engine/runtime/include/mirakana/runtime/sandbox_world_runtime.hpp",
         "engine/runtime/include/mirakana/runtime/sandbox_world_persistence.hpp",

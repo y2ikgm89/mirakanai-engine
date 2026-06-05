@@ -233,7 +233,6 @@ foreach ($docSurface in @(
 }
 
 foreach ($needle in @(
-        "production-rendering-vfx-profiling-v1",
         '"unsupportedProductionGaps": []',
         "engine/renderer/include/mirakana/renderer/production_vfx_profiling.hpp",
         "RendererProductionBackendEvidenceRow",

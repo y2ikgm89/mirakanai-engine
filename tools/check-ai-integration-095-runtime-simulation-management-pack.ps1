@@ -169,7 +169,6 @@ foreach ($needle in @(
         "genre-simulation-management-pack-v1",
         '"unsupportedProductionGaps": []',
         "production-network-replication-v1",
-        "production-rendering-vfx-profiling-v1",
         "engine/runtime/include/mirakana/runtime/genre_simulation_management.hpp",
         "RuntimeSimulationResourceRow",
         "RuntimeSimulationManagementPlan",

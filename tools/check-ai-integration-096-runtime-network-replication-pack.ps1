@@ -239,7 +239,6 @@ foreach ($needle in @(
         "production-network-replication-v1",
         "sandbox-world-network-modding-gate-v1",
         '"unsupportedProductionGaps": []',
-        "production-rendering-vfx-profiling-v1",
         "engine/runtime/include/mirakana/runtime/production_network_replication.hpp",
         "RuntimeNetworkReplicationSessionDesc",
         "RuntimeNetworkReplicationPlan",
