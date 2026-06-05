@@ -28,6 +28,25 @@ namespace {
     });
 }
 
+[[nodiscard]] mirakana::EnvironmentPrecipitationPlan make_snow_environment_plan() {
+    mirakana::EnvironmentProfileDesc profile{};
+    profile.id = "renderer_precipitation_snow";
+    profile.weather = mirakana::EnvironmentWeatherKind::snow;
+    profile.precipitation = mirakana::EnvironmentPrecipitationDesc{
+        .kind = mirakana::EnvironmentPrecipitationKind::snow,
+        .intensity = 0.55F,
+        .particle_radius_mm = 1.1F,
+        .fall_speed_mps = 1.4F,
+        .wind_speed_mps = 2.0F,
+    };
+
+    return mirakana::plan_environment_precipitation(mirakana::EnvironmentPrecipitationPlanDesc{
+        .environment = profile,
+        .scene_geometry_occlusion_required = true,
+        .occlusion_policy_available = true,
+    });
+}
+
 [[nodiscard]] mirakana::PrecipitationPolicyDesc make_precipitation_policy_desc() {
     return mirakana::PrecipitationPolicyDesc{
         .environment_plan = make_environment_plan(),
@@ -72,6 +91,31 @@ MK_TEST("renderer precipitation policy plans shader wetness occlusion and audio 
     MK_REQUIRE(plan.audio_handoff_rows.size() >= 3);
     MK_REQUIRE(plan.quality_rows.size() == 1);
     MK_REQUIRE(plan.quality_rows[0].tier == mirakana::PrecipitationQualityTier::balanced);
+}
+
+MK_TEST("renderer precipitation policy keeps snow package evidence value-only without wetness rows") {
+    const auto plan = mirakana::plan_precipitation_policy(mirakana::PrecipitationPolicyDesc{
+        .environment_plan = make_snow_environment_plan(),
+        .quality_tier = mirakana::PrecipitationQualityTier::balanced,
+        .shader_contract_evidence_ready = true,
+        .package_evidence_ready = true,
+        .execution_evidence_ready = true,
+        .request_ready_promotion = true,
+    });
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.ready());
+    MK_REQUIRE(plan.shader_rows.size() == 1);
+    MK_REQUIRE(plan.shader_rows[0].kind == mirakana::EnvironmentPrecipitationKind::snow);
+    MK_REQUIRE(plan.shader_rows[0].uses_camera_near_particles);
+    MK_REQUIRE(plan.shader_rows[0].uses_scene_depth_occlusion);
+    MK_REQUIRE(plan.wetness_rows.empty());
+    MK_REQUIRE(plan.audio_handoff_rows.size() >= 1);
+    MK_REQUIRE(!plan.uploads_particle_buffers);
+    MK_REQUIRE(!plan.invokes_backend);
+    MK_REQUIRE(!plan.exposes_native_handles);
+    MK_REQUIRE(!plan.mutates_materials);
+    MK_REQUIRE(!plan.plays_audio);
 }
 
 MK_TEST("renderer precipitation policy requires execution evidence before ready promotion") {

@@ -76,6 +76,7 @@ struct DesktopRuntimeGameOptions {
     bool require_environment_volumetric_fog_package_evidence{false};
     bool require_cloud_layer_package_evidence{false};
     bool require_environment_precipitation_package_evidence{false};
+    bool require_environment_snow_package_evidence{false};
     bool require_gpu_memory_policy{false};
     bool require_memory_diagnostics{false};
     bool require_d3d12_gpu_memory_evidence{false};
@@ -247,6 +248,31 @@ make_sample_environment_volumetric_fog_policy_desc(bool package_evidence_ready) 
         .particle_radius_mm = 0.8F,
         .fall_speed_mps = 8.5F,
         .wind_speed_mps = 6.0F,
+    };
+    return mirakana::PrecipitationPolicyDesc{
+        .environment_plan = mirakana::plan_environment_precipitation(mirakana::EnvironmentPrecipitationPlanDesc{
+            .environment = profile,
+            .scene_geometry_occlusion_required = true,
+            .occlusion_policy_available = true,
+        }),
+        .quality_tier = mirakana::PrecipitationQualityTier::balanced,
+        .shader_contract_evidence_ready = true,
+        .package_evidence_ready = true,
+        .execution_evidence_ready = true,
+        .request_ready_promotion = true,
+    };
+}
+
+[[nodiscard]] mirakana::PrecipitationPolicyDesc make_sample_environment_snow_policy_desc() {
+    mirakana::EnvironmentProfileDesc profile{};
+    profile.id = "sample_desktop_runtime_snow";
+    profile.weather = mirakana::EnvironmentWeatherKind::snow;
+    profile.precipitation = mirakana::EnvironmentPrecipitationDesc{
+        .kind = mirakana::EnvironmentPrecipitationKind::snow,
+        .intensity = 0.55F,
+        .particle_radius_mm = 1.1F,
+        .fall_speed_mps = 1.4F,
+        .wind_speed_mps = 2.0F,
     };
     return mirakana::PrecipitationPolicyDesc{
         .environment_plan = mirakana::plan_environment_precipitation(mirakana::EnvironmentPrecipitationPlanDesc{
@@ -1037,6 +1063,7 @@ void print_usage() {
                  "[--require-environment-volumetric-fog-package-evidence] "
                  "[--require-cloud-layer-package-evidence] "
                  "[--require-environment-precipitation-package-evidence] "
+                 "[--require-environment-snow-package-evidence] "
                  "[--require-gpu-memory-policy] [--require-memory-diagnostics] [--require-d3d12-gpu-memory-evidence] "
                  "[--require-vulkan-gpu-memory-evidence] "
                  "[--require-debug-profiling-policy] [--require-d3d12-debug-profiling-evidence] "
@@ -1214,6 +1241,15 @@ void print_usage() {
             options.require_postprocess_depth_input = true;
             options.require_d3d12_postprocess_evidence = true;
             options.require_environment_precipitation_package_evidence = true;
+            continue;
+        }
+        if (arg == "--require-environment-snow-package-evidence") {
+            options.require_d3d12_renderer = true;
+            options.require_scene_gpu_bindings = true;
+            options.require_postprocess = true;
+            options.require_postprocess_depth_input = true;
+            options.require_d3d12_postprocess_evidence = true;
+            options.require_environment_snow_package_evidence = true;
             continue;
         }
         if (arg == "--require-vulkan-postprocess-evidence") {
@@ -2702,6 +2738,11 @@ int main(int argc, char** argv) {
         print_usage();
         return 0;
     }
+    if (options.require_environment_precipitation_package_evidence &&
+        options.require_environment_snow_package_evidence) {
+        print_usage();
+        return 2;
+    }
     if (!verify_required_config(argc > 0 ? argv[0] : nullptr, options.required_config_path)) {
         return 4;
     }
@@ -2884,6 +2925,16 @@ int main(int argc, char** argv) {
         return 6;
     }
 
+    const bool require_environment_any_precipitation_package_evidence =
+        options.require_environment_precipitation_package_evidence || options.require_environment_snow_package_evidence;
+    const mirakana::Win32DesktopPresentationEnvironmentPrecipitationExpectation environment_precipitation_expectation{
+        .weather = options.require_environment_snow_package_evidence ? mirakana::EnvironmentWeatherKind::snow
+                                                                     : mirakana::EnvironmentWeatherKind::storm,
+        .kind = options.require_environment_snow_package_evidence ? mirakana::EnvironmentPrecipitationKind::snow
+                                                                  : mirakana::EnvironmentPrecipitationKind::rain,
+        .wetness_rows = options.require_environment_snow_package_evidence ? 0U : 1U,
+        .minimum_audio_handoff_rows = options.require_environment_snow_package_evidence ? 1U : 4U,
+    };
     std::optional<mirakana::Win32DesktopPresentationD3d12SceneRendererDesc> d3d12_scene_renderer;
     const auto& d3d12_scene_bytecode = options.require_directional_shadow ? shadow_receiver_bytecode : shader_bytecode;
     const bool d3d12_shadow_ready = !options.require_directional_shadow || shadow_bytecode.ready();
@@ -2922,9 +2973,10 @@ int main(int argc, char** argv) {
             .physical_sky = make_sample_physical_sky_policy_desc(),
             .enable_cloud_layer_package_evidence = options.require_cloud_layer_package_evidence,
             .cloud_layer = make_sample_cloud_layer_policy_desc(),
-            .enable_environment_precipitation_package_evidence =
-                options.require_environment_precipitation_package_evidence,
-            .environment_precipitation = make_sample_environment_precipitation_policy_desc(),
+            .enable_environment_precipitation_package_evidence = require_environment_any_precipitation_package_evidence,
+            .environment_precipitation = options.require_environment_snow_package_evidence
+                                             ? make_sample_environment_snow_policy_desc()
+                                             : make_sample_environment_precipitation_policy_desc(),
             .enable_environment_volumetric_fog_package_evidence =
                 options.require_environment_volumetric_fog_package_evidence,
             .environment_volumetric_fog = make_sample_environment_volumetric_fog_policy_desc(
@@ -3195,7 +3247,7 @@ int main(int argc, char** argv) {
     const auto cloud_layer =
         mirakana::evaluate_win32_desktop_presentation_cloud_layer(report, options.require_cloud_layer_package_evidence);
     const auto environment_precipitation = mirakana::evaluate_win32_desktop_presentation_environment_precipitation(
-        report, options.require_environment_precipitation_package_evidence);
+        report, require_environment_any_precipitation_package_evidence, environment_precipitation_expectation);
     const auto environment_volumetric_fog = mirakana::evaluate_win32_desktop_presentation_environment_volumetric_fog(
         report, options.require_environment_volumetric_fog_package_evidence);
     const auto environment_profile =
@@ -4321,7 +4373,7 @@ int main(int argc, char** argv) {
         if (options.require_cloud_layer_package_evidence && !cloud_layer.ready) {
             return 3;
         }
-        if (options.require_environment_precipitation_package_evidence && !environment_precipitation.ready) {
+        if (require_environment_any_precipitation_package_evidence && !environment_precipitation.ready) {
             return 3;
         }
         if (options.require_directional_shadow &&

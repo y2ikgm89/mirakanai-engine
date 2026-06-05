@@ -132,6 +132,7 @@
         "environment-volumetric-fog-package",
         "cloud-layer-package",
         "environment-precipitation-package",
+        "environment-snow-package",
         "animation",
         "framegraph-multiqueue",
         "windows-cpu-set-worker-placement",
@@ -151,6 +152,7 @@
         "desktop-runtime-sample-game-physical-sky-package",
         "desktop-runtime-sample-game-cloud-layer-package",
         "desktop-runtime-sample-game-environment-precipitation-package",
+        "desktop-runtime-sample-game-environment-snow-package",
         "desktop-runtime-sample-game-environment-profile-package",
         "installed-vulkan-scene-gpu-smoke"
       ],
@@ -214,9 +216,16 @@
         },
         {
           "id": "environment-precipitation-package-evidence",
-          "evidence": "The selected D3D12 environment precipitation package smoke reports environment_precipitation_status=ready, environment_precipitation_ready=1, environment_precipitation_selected_backend=d3d12, weather=storm, kind=rain, shader-contract/package/execution evidence ready, stable particle/depth/sampler/constants binding slots 8/9/8/7, camera-near particle and scene-depth occlusion flags, one weather/particle/occlusion/wetness/shader/quality row, four audio handoff rows, zero diagnostics, and zero particle-buffer upload, backend invocation, native-handle, material-mutation, or audio-playback counters without claiming snow package readiness, renderer/RHI precipitation execution, Vulkan, Metal, backend parity, broad optimization, or broad environment_ready.",
+          "evidence": "The selected D3D12 environment precipitation package smoke reports environment_precipitation_status=ready, environment_precipitation_ready=1, environment_precipitation_selected_backend=d3d12, weather=storm, kind=rain, shader-contract/package/execution evidence ready, stable particle/depth/sampler/constants binding slots 8/9/8/7, camera-near particle and scene-depth occlusion flags, one weather/particle/occlusion/wetness/shader/quality row, four audio handoff rows, zero diagnostics, and zero particle-buffer upload, backend invocation, native-handle, material-mutation, or audio-playback counters without claiming renderer/RHI precipitation execution, Vulkan, Metal, backend parity, broad optimization, or broad environment_ready.",
           "recipeIds": [
             "desktop-runtime-sample-game-environment-precipitation-package"
+          ]
+        },
+        {
+          "id": "environment-snow-package-evidence",
+          "evidence": "The selected D3D12 environment snow package smoke reports environment_precipitation_status=ready, environment_precipitation_ready=1, environment_precipitation_selected_backend=d3d12, weather=snow, kind=snow, shader-contract/package/execution evidence ready, stable particle/depth/sampler/constants binding slots 8/9/8/7, camera-near particle and scene-depth occlusion flags, one weather/particle/occlusion/shader/quality row, zero wetness rows, one audio handoff row, zero diagnostics, and zero particle-buffer upload, backend invocation, native-handle, material-mutation, or audio-playback counters without claiming renderer/RHI precipitation execution, rain readiness, Vulkan, Metal, backend parity, broad optimization, or broad environment_ready.",
+          "recipeIds": [
+            "desktop-runtime-sample-game-environment-snow-package"
           ]
         },
         {
@@ -1608,6 +1617,10 @@
     {
       "name": "desktop-runtime-sample-game-environment-precipitation-package",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-environment-precipitation-package-evidence')\""
+    },
+    {
+      "name": "desktop-runtime-sample-game-environment-snow-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-environment-snow-package-evidence')\""
     },
     {
       "name": "desktop-runtime-sample-game-environment-profile-package",
