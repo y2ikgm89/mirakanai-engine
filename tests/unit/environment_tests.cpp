@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 namespace {
 
@@ -143,6 +144,149 @@ MK_TEST("environment profile text io rejects malformed documents") {
         }
         MK_REQUIRE(threw);
     }
+}
+
+MK_TEST("environment profile v2 text io round trips local volumes weather timeline and quality preset") {
+    mirakana::EnvironmentProfileDocumentV2 document{};
+    document.global_profile.id = "default_outdoor";
+    document.global_profile.weather = mirakana::EnvironmentWeatherKind::rain;
+    document.quality_preset = mirakana::EnvironmentQualityPreset::high;
+    document.volumes.push_back(mirakana::EnvironmentVolumeDesc{
+        .id = "mist_valley",
+        .shape = mirakana::EnvironmentVolumeShape::box,
+        .center_m = mirakana::Vec3{.x = 10.0F, .y = 2.0F, .z = -4.0F},
+        .extents_m = mirakana::Vec3{.x = 30.0F, .y = 8.0F, .z = 20.0F},
+        .radius_m = 0.0F,
+        .priority = 20,
+        .blend_weight = 0.75F,
+        .fade_distance_m = 12.0F,
+        .blend_mode = mirakana::EnvironmentVolumeBlendMode::weighted_override,
+        .profile =
+            mirakana::EnvironmentProfileDesc{
+                .id = "mist_valley_profile",
+                .weather = mirakana::EnvironmentWeatherKind::foggy,
+                .fog =
+                    mirakana::EnvironmentFogDesc{
+                        .enabled = true,
+                        .density = 0.35F,
+                        .height_falloff = 0.45F,
+                        .albedo = mirakana::Vec3{.x = 0.82F, .y = 0.88F, .z = 0.94F},
+                        .anisotropy = 0.2F,
+                    },
+            },
+    });
+    document.weather_timeline.push_back(mirakana::EnvironmentWeatherKeyframeDesc{
+        .time_of_day_hours = 6.0F,
+        .weather = mirakana::EnvironmentWeatherKind::clear,
+        .precipitation = mirakana::EnvironmentPrecipitationKind::none,
+        .storm_intensity = 0.0F,
+        .cloud_coverage = 0.2F,
+        .fog_density = 0.05F,
+        .quality_preset = mirakana::EnvironmentQualityPreset::medium,
+    });
+    document.weather_timeline.push_back(mirakana::EnvironmentWeatherKeyframeDesc{
+        .time_of_day_hours = 18.0F,
+        .weather = mirakana::EnvironmentWeatherKind::storm,
+        .precipitation = mirakana::EnvironmentPrecipitationKind::rain,
+        .storm_intensity = 0.8F,
+        .cloud_coverage = 0.9F,
+        .fog_density = 0.25F,
+        .quality_preset = mirakana::EnvironmentQualityPreset::high,
+    });
+
+    const auto serialized = mirakana::serialize_environment_profile_v2(document);
+
+    MK_REQUIRE(serialized.starts_with("format=GameEngine.EnvironmentProfile.v2\n"));
+    MK_REQUIRE(serialized.contains("quality.preset=high\n"));
+    MK_REQUIRE(serialized.contains("volume.0.id=mist_valley\n"));
+    MK_REQUIRE(serialized.contains("volume.0.shape=box\n"));
+    MK_REQUIRE(serialized.contains("volume.0.priority=20\n"));
+    MK_REQUIRE(serialized.contains("volume.0.fade_distance_m=12\n"));
+    MK_REQUIRE(serialized.contains("weather_keyframe.1.weather=storm\n"));
+    MK_REQUIRE(serialized.contains("weather_keyframe.1.precipitation=rain\n"));
+
+    const auto round_trip = mirakana::deserialize_environment_profile_v2(serialized);
+    MK_REQUIRE(round_trip.global_profile.id == "default_outdoor");
+    MK_REQUIRE(round_trip.quality_preset == mirakana::EnvironmentQualityPreset::high);
+    MK_REQUIRE(round_trip.volumes.size() == 1U);
+    MK_REQUIRE(round_trip.volumes[0].id == "mist_valley");
+    MK_REQUIRE(round_trip.volumes[0].shape == mirakana::EnvironmentVolumeShape::box);
+    MK_REQUIRE(round_trip.volumes[0].priority == 20);
+    MK_REQUIRE(round_trip.weather_timeline.size() == 2U);
+    MK_REQUIRE(round_trip.weather_timeline[1].weather == mirakana::EnvironmentWeatherKind::storm);
+    MK_REQUIRE(mirakana::serialize_environment_profile_v2(round_trip) == serialized);
+}
+
+MK_TEST("environment profile v2 text io rejects legacy v1 documents") {
+    bool threw = false;
+    try {
+        (void)mirakana::deserialize_environment_profile_v2("format=GameEngine.EnvironmentProfile.v1\n"
+                                                           "id=default_outdoor\n");
+    } catch (const std::invalid_argument&) {
+        threw = true;
+    }
+    MK_REQUIRE(threw);
+}
+
+MK_TEST("environment profile v2 volumes validate supported shapes deterministic order and blend hash") {
+    mirakana::EnvironmentProfileDocumentV2 document{};
+    document.global_profile.id = "default_outdoor";
+    document.volumes = {
+        mirakana::EnvironmentVolumeDesc{
+            .id = "beta",
+            .shape = mirakana::EnvironmentVolumeShape::sphere,
+            .center_m = mirakana::Vec3{.x = 0.0F, .y = 0.0F, .z = 0.0F},
+            .radius_m = 10.0F,
+            .priority = 3,
+            .blend_weight = 1.0F,
+            .fade_distance_m = 2.0F,
+        },
+        mirakana::EnvironmentVolumeDesc{
+            .id = "alpha",
+            .shape = mirakana::EnvironmentVolumeShape::global,
+            .priority = 3,
+            .blend_weight = 0.5F,
+        },
+        mirakana::EnvironmentVolumeDesc{
+            .id = "storm_peak",
+            .shape = mirakana::EnvironmentVolumeShape::box,
+            .extents_m = mirakana::Vec3{.x = 4.0F, .y = 6.0F, .z = 8.0F},
+            .priority = 40,
+            .blend_weight = 0.9F,
+            .fade_distance_m = 1.0F,
+        },
+    };
+
+    const auto validation = mirakana::validate_environment_profile_v2(document);
+    const auto sorted = mirakana::sorted_environment_volume_rows(document);
+    const auto first_hash = mirakana::environment_volume_blend_hash(sorted);
+    const auto second_hash = mirakana::environment_volume_blend_hash(sorted);
+
+    MK_REQUIRE(validation.succeeded());
+    MK_REQUIRE(sorted.size() == 3U);
+    MK_REQUIRE(sorted[0].id == "storm_peak");
+    MK_REQUIRE(sorted[1].id == "alpha");
+    MK_REQUIRE(sorted[2].id == "beta");
+    MK_REQUIRE(first_hash != 0U);
+    MK_REQUIRE(first_hash == second_hash);
+}
+
+MK_TEST("environment profile v2 validation rejects invalid local volume shape and fade distance") {
+    mirakana::EnvironmentProfileDocumentV2 document{};
+    document.global_profile.id = "default_outdoor";
+    document.volumes.push_back(mirakana::EnvironmentVolumeDesc{
+        .id = "bad_volume",
+        .shape = static_cast<mirakana::EnvironmentVolumeShape>(255U),
+        .fade_distance_m = -1.0F,
+    });
+
+    const auto validation = mirakana::validate_environment_profile_v2(document);
+
+    MK_REQUIRE(!validation.succeeded());
+    MK_REQUIRE(mirakana::has_environment_profile_diagnostic(
+        validation, mirakana::EnvironmentProfileDiagnosticCode::invalid_volume_shape));
+    MK_REQUIRE(mirakana::has_environment_profile_diagnostic(
+        validation, mirakana::EnvironmentProfileDiagnosticCode::invalid_volume_fade));
 }
 
 int main() {

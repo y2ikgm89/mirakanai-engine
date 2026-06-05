@@ -199,7 +199,7 @@
         },
         {
           "id": "environment-profile-package-evidence",
-          "evidence": "The selected environment profile package smoke reports environment_profile_status=ready, environment_profile_ready=1, environment_profile_package_file=1, environment_profile_package_index_entry=1, environment_profile_scene_reference=1, environment_profile_scene_required=1, environment_profile_scene_dependency=1, environment_profile_dependency_edge=1, environment_profile_source_parsing=0, and environment_profile_diagnostics=0 without renderer/RHI execution, Vulkan, Metal, package evidence beyond selected profile dependency counters, or broad environment_ready claims.",
+          "evidence": "The selected environment profile package smoke reports environment_profile_v2_status=ready, environment_profile_v2_ready=1, positive environment_profile_v2_volume_rows, positive environment_profile_v2_weather_keyframes, environment_profile_v2_quality_preset=high, environment_profile_v2_diagnostics=0, environment_profile_v2_legacy_v1_accepted=0, package file/index-entry/scene-reference/scene-required/scene-dependency/dependency-edge counters, environment_profile_source_parsing=0, and no broad environment_ready claim without renderer/RHI execution, Vulkan, Metal, package evidence beyond selected profile dependency counters, backend parity, or broad optimization.",
           "recipeIds": [
             "desktop-runtime-sample-game-environment-profile-package"
           ]
@@ -1534,7 +1534,7 @@
       "GameEngine.MeshSource.v2",
       "GameEngine.AnimationQuaternionClipSource.v1",
       "GameEngine.Material.v1",
-      "GameEngine.EnvironmentProfile.v1",
+      "GameEngine.EnvironmentProfile.v2",
       "GameEngine.SourceAssetRegistry.v1",
       "GameEngine.Scene.v2",
       "GameEngine.Prefab.v2",

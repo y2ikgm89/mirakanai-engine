@@ -572,6 +572,10 @@ struct EnvironmentProfilePackageEvidence {
     bool scene_dependency_present{false};
     bool dependency_edge_present{false};
     bool runtime_source_parsing{false};
+    bool legacy_v1_accepted{false};
+    std::size_t volume_rows{0};
+    std::size_t weather_keyframes{0};
+    std::string quality_preset{"unknown"};
     std::size_t diagnostics{0};
 };
 
@@ -624,9 +628,39 @@ has_environment_profile_scene_dependency(const mirakana::runtime::RuntimeAssetPa
 
 [[nodiscard]] bool is_cooked_environment_profile_record(const mirakana::runtime::RuntimeAssetRecord& record) noexcept {
     return record.kind == mirakana::AssetKind::environment_profile && record.path == kRuntimeEnvironmentProfilePath &&
-           std::string_view{record.content}.starts_with("format=GameEngine.CookedEnvironmentProfile.v1\n") &&
+           std::string_view{record.content}.starts_with("format=GameEngine.CookedEnvironmentProfile.v2\n") &&
            record.content.find("asset.kind=environment_profile\n") != std::string::npos &&
-           record.content.find("environment.source_format=GameEngine.EnvironmentProfile.v1\n") != std::string::npos;
+           record.content.find("environment.source_format=GameEngine.EnvironmentProfile.v2\n") != std::string::npos &&
+           record.content.find("profile_v2.global.id=default_outdoor\n") != std::string::npos;
+}
+
+[[nodiscard]] std::size_t count_environment_profile_rows(std::string_view content,
+                                                         std::string_view row_prefix) noexcept {
+    std::size_t count{0};
+    for (;;) {
+        const auto key = std::string{"profile_v2."} + std::string{row_prefix} + "." + std::to_string(count) + ".";
+        if (content.find(key) == std::string_view::npos) {
+            return count;
+        }
+        ++count;
+    }
+}
+
+[[nodiscard]] std::string environment_profile_quality_preset(std::string_view content) {
+    constexpr std::string_view key{"profile_v2.quality.preset="};
+    const auto begin = content.find(key);
+    if (begin == std::string_view::npos) {
+        return "missing";
+    }
+    const auto value_begin = begin + key.size();
+    const auto value_end = content.find('\n', value_begin);
+    return std::string{
+        content.substr(value_begin, value_end == std::string_view::npos ? value_end : value_end - value_begin)};
+}
+
+[[nodiscard]] bool accepts_legacy_environment_profile_v1(std::string_view content) noexcept {
+    return content.starts_with("format=GameEngine.CookedEnvironmentProfile.v1\n") ||
+           content.find("environment.source_format=GameEngine.EnvironmentProfile.v1\n") != std::string_view::npos;
 }
 
 [[nodiscard]] EnvironmentProfilePackageEvidence
@@ -653,6 +687,16 @@ evaluate_environment_profile_package(bool requested,
     }
     evidence.package_file_present = is_cooked_environment_profile_record(*environment_record);
     if (!evidence.package_file_present) {
+        evidence.status = EnvironmentProfilePackageStatus::invalid_profile_record;
+        evidence.diagnostics = 1;
+        return evidence;
+    }
+    evidence.volume_rows = count_environment_profile_rows(environment_record->content, "volume");
+    evidence.weather_keyframes = count_environment_profile_rows(environment_record->content, "weather_keyframe");
+    evidence.quality_preset = environment_profile_quality_preset(environment_record->content);
+    evidence.legacy_v1_accepted = accepts_legacy_environment_profile_v1(environment_record->content);
+    if (evidence.volume_rows == 0U || evidence.weather_keyframes == 0U || evidence.quality_preset == "missing" ||
+        evidence.legacy_v1_accepted) {
         evidence.status = EnvironmentProfilePackageStatus::invalid_profile_record;
         evidence.diagnostics = 1;
         return evidence;
@@ -4272,6 +4316,13 @@ int main(int argc, char** argv) {
         << " environment_profile_dependency_edge=" << (environment_profile.dependency_edge_present ? 1 : 0)
         << " environment_profile_source_parsing=" << (environment_profile.runtime_source_parsing ? 1 : 0)
         << " environment_profile_diagnostics=" << environment_profile.diagnostics
+        << " environment_profile_v2_status=" << environment_profile_package_status_name(environment_profile.status)
+        << " environment_profile_v2_ready=" << (environment_profile.ready ? 1 : 0)
+        << " environment_profile_v2_volume_rows=" << environment_profile.volume_rows
+        << " environment_profile_v2_weather_keyframes=" << environment_profile.weather_keyframes
+        << " environment_profile_v2_quality_preset=" << environment_profile.quality_preset
+        << " environment_profile_v2_diagnostics=" << environment_profile.diagnostics
+        << " environment_profile_v2_legacy_v1_accepted=" << (environment_profile.legacy_v1_accepted ? 1 : 0)
         << " environment_quality_budget_status="
         << environment_quality_budget_status_name(environment_quality_budget.status)
         << " environment_quality_budget_ready=" << (environment_quality_budget.ready ? 1 : 0)

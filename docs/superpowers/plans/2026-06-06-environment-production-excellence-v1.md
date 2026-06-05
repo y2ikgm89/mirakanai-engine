@@ -217,16 +217,16 @@ Phase 0 validation evidence on 2026-06-06:
 
 **Goal:** Replace selected sample environment profile usage with `GameEngine.EnvironmentProfile.v2`, including global settings, local volumes, deterministic blending, weather timeline, and quality presets.
 
-**Files:** Environment values/IO, sample package assets, environment tests, editor-core tests, docs/manifest/static checks.
+**Files:** Environment values/IO, sample package assets, environment tests, package/runtime-scene/tool tests, docs/manifest/static checks. First-party editor authoring remains Phase 7.
 
-- [ ] Add RED tests for `GameEngine.EnvironmentProfile.v2` parse/serialize round trip.
-- [ ] Add RED tests for volume sorting: higher priority first, stable id tie-breaker, invalid shape diagnostics, invalid fade diagnostics, and deterministic blend hash.
-- [ ] Add RED tests for supported volume shapes: `global`, `box`, and `sphere`.
-- [ ] Add RED tests for weather timeline blending: time-of-day keyframes, weather preset keyframes, storm intensity, precipitation kind, cloud coverage, fog density, and quality preset selection.
-- [ ] Implement v2 profile value rows in `MK_environment`.
-- [ ] Replace selected sample `default_outdoor.geenv` source/runtime files with v2 text.
-- [ ] Remove active selected-package reliance on v1 profile parsing for this sample lane. Do not add a v1 compatibility parser.
-- [ ] Add package-visible counters:
+- [x] Add RED tests for `GameEngine.EnvironmentProfile.v2` parse/serialize round trip.
+- [x] Add RED tests for volume sorting: higher priority first, stable id tie-breaker, invalid shape diagnostics, invalid fade diagnostics, and deterministic blend hash.
+- [x] Add RED tests for supported volume shapes: `global`, `box`, and `sphere`.
+- [x] Add RED tests for weather timeline blending: time-of-day keyframes, weather preset keyframes, storm intensity, precipitation kind, cloud coverage, fog density, and quality preset selection.
+- [x] Implement v2 profile value rows in `MK_environment`.
+- [x] Replace selected sample `default_outdoor.geenv` source/runtime files with v2 text.
+- [x] Remove active selected-package reliance on v1 profile parsing for this sample lane. Do not add a v1 compatibility parser.
+- [x] Add package-visible counters:
 
 ```text
 environment_profile_v2_status=ready
@@ -238,7 +238,7 @@ environment_profile_v2_diagnostics=0
 environment_profile_v2_legacy_v1_accepted=0
 ```
 
-- [ ] Run focused tests:
+- [x] Run focused tests:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev
@@ -246,7 +246,15 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset d
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "environment"
 ```
 
-Expected: environment and editor-core tests pass; package smoke still rejects missing v2 evidence when required.
+Expected: environment, asset, runtime-scene, and tool tests pass; selected package smoke proves v2 evidence and rejects legacy v1 acceptance. Editor authoring remains a Phase 7 claim.
+
+Phase 1 focused validation evidence on 2026-06-06:
+
+- `tools/cmake.ps1 --build --preset dev --target MK_environment_tests MK_assets_tests MK_runtime_scene_tests MK_tools_tests`: pass for all test targets; `sample_desktop_runtime_game` is not a `dev` preset target.
+- `tools/ctest.ps1 --preset dev --output-on-failure -R "^(MK_environment_tests|MK_assets_tests|MK_runtime_scene_tests|MK_tools_tests)$"`: pass, 4/4 tests.
+- `tools/cmake.ps1 --preset desktop-runtime`: pass.
+- `tools/cmake.ps1 --build --preset desktop-runtime --target sample_desktop_runtime_game`: pass.
+- `tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-environment-profile')`: pass; smoke reports `environment_profile_v2_status=ready`, `environment_profile_v2_ready=1`, `environment_profile_v2_volume_rows=2`, `environment_profile_v2_weather_keyframes=3`, `environment_profile_v2_quality_preset=high`, `environment_profile_v2_diagnostics=0`, and `environment_profile_v2_legacy_v1_accepted=0`.
 
 ## Phase 2: D3D12 IBL Renderer Upload And Runtime Cubemap Capture
 

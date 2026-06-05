@@ -985,11 +985,21 @@ if ($GameTarget -eq "sample_desktop_runtime_game") {
             "environment_profile_dependency_edge" = "1"
             "environment_profile_source_parsing" = "0"
             "environment_profile_diagnostics" = "0"
+            "environment_profile_v2_status" = "ready"
+            "environment_profile_v2_ready" = "1"
+            "environment_profile_v2_quality_preset" = "high"
+            "environment_profile_v2_diagnostics" = "0"
+            "environment_profile_v2_legacy_v1_accepted" = "0"
         }
         foreach ($field in $expectedEnvironmentProfileFields.Keys) {
             $expectedValue = [regex]::Escape($expectedEnvironmentProfileFields[$field])
             if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
                 Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove environment profile package field: $field=$($expectedEnvironmentProfileFields[$field])"
+            }
+        }
+        foreach ($field in @("environment_profile_v2_volume_rows", "environment_profile_v2_weather_keyframes")) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[1-9]\d*\b") {
+                Write-Error "Installed sample_desktop_runtime_game smoke status line did not prove environment profile v2 positive count: $field"
             }
         }
         if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=1\b") {
@@ -5127,10 +5137,16 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 "environment_quality_budget_ibl_radiance_mip_budget" = [string]$expectedEnvironmentQualityBudgetIblMips
                 "environment_quality_budget_transient_placed_resources_alive" = "0"
                 "environment_quality_budget_framegraph_barrier_step_budget" = [string]$expectedEnvironmentQualityBudgetFramegraphBarriers
-                "environment_quality_budget_framegraph_barrier_steps_executed" = [string]$expectedEnvironmentQualityBudgetFramegraphBarriers
                 "environment_quality_budget_native_handle_access" = "0"
                 "environment_quality_budget_broad_environment_ready_claimed" = "0"
             }
+        if ($requiresPostprocess) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_quality_budget_framegraph_barrier_steps_executed=$expectedFramegraphBarrierExecutions\b") {
+                Write-Error "Installed desktop runtime smoke status line did not prove exact environment quality budget framegraph barrier execution count."
+            }
+        } elseif ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_quality_budget_framegraph_barrier_steps_executed=[0-9]+\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove non-negative environment quality budget framegraph barrier execution count."
+        }
         foreach ($field in @(
                 "environment_quality_budget_transient_gpu_byte_estimate",
                 "environment_quality_budget_transient_heap_allocations",
