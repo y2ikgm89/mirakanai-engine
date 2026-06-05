@@ -703,8 +703,9 @@ struct D3d12LinearTextureFootprint {
         if (!valid_descriptor_type(binding.type) || binding.count == 0 || !has_stage_visibility(binding.stages)) {
             return false;
         }
-        const auto duplicates = std::ranges::count_if(
-            desc.bindings, [&binding](const DescriptorBindingDesc& other) { return other.binding == binding.binding; });
+        const auto duplicates = std::ranges::count_if(desc.bindings, [&binding](const DescriptorBindingDesc& other) {
+            return other.binding == binding.binding && other.type == binding.type;
+        });
         if (duplicates > 1) {
             return false;
         }
@@ -6503,7 +6504,7 @@ class D3d12RhiDevice final : public IRhiDevice {
 
         const auto layout = descriptor_set_layout_for_set(write.set);
         const auto& layout_desc = descriptor_set_layouts_.at(layout.value - 1U);
-        const auto& binding = descriptor_binding(layout_desc, write.binding);
+        const auto& binding = descriptor_binding(layout_desc, write.binding, write.resources.front().type);
         const auto resource_count = static_cast<std::uint32_t>(write.resources.size());
         if (write.array_element >= binding.count || resource_count > binding.count - write.array_element) {
             throw std::invalid_argument("d3d12 rhi descriptor write exceeds binding range");
@@ -6512,7 +6513,7 @@ class D3d12RhiDevice final : public IRhiDevice {
         const auto& set_record = descriptor_sets_.at(write.set.value - 1U);
         auto& set_resource_refs = descriptor_set_resource_refs_.at(write.set.value - 1U);
         const auto heap_kind = descriptor_heap_kind_for_type(binding.type);
-        const auto binding_offset = descriptor_binding_offset(layout_desc, write.binding, heap_kind);
+        const auto binding_offset = descriptor_binding_offset(layout_desc, write.binding, binding.type, heap_kind);
         for (std::uint32_t index = 0; index < resource_count; ++index) {
             const auto& resource = write.resources.at(index);
             if (resource.type != binding.type) {
@@ -6963,11 +6964,11 @@ class D3d12RhiDevice final : public IRhiDevice {
         return heap;
     }
 
-    [[nodiscard]] static const DescriptorBindingDesc& descriptor_binding(const DescriptorSetLayoutDesc& layout,
-                                                                         std::uint32_t binding_index) {
+    [[nodiscard]] static const DescriptorBindingDesc&
+    descriptor_binding(const DescriptorSetLayoutDesc& layout, std::uint32_t binding_index, DescriptorType type) {
         const auto found =
-            std::ranges::find_if(layout.bindings, [binding_index](const DescriptorBindingDesc& candidate) {
-                return candidate.binding == binding_index;
+            std::ranges::find_if(layout.bindings, [binding_index, type](const DescriptorBindingDesc& candidate) {
+                return candidate.binding == binding_index && candidate.type == type;
             });
         if (found == layout.bindings.end()) {
             throw std::invalid_argument("d3d12 rhi descriptor binding is not declared by the set layout");
@@ -6976,11 +6977,11 @@ class D3d12RhiDevice final : public IRhiDevice {
     }
 
     [[nodiscard]] static std::uint32_t descriptor_binding_offset(const DescriptorSetLayoutDesc& layout,
-                                                                 std::uint32_t binding_index,
+                                                                 std::uint32_t binding_index, DescriptorType type,
                                                                  NativeDescriptorHeapKind kind) {
         std::uint32_t offset = 0;
         for (const auto& binding : layout.bindings) {
-            if (binding.binding == binding_index) {
+            if (binding.binding == binding_index && binding.type == type) {
                 return offset;
             }
             if (descriptor_type_matches_heap(binding.type, kind)) {

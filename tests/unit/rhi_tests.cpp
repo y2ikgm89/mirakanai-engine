@@ -1575,9 +1575,9 @@ MK_TEST("null rhi accepts sampled depth textures and preserves depth attachment 
 MK_TEST("null rhi rejects invalid descriptor layouts writes and incompatible bindings") {
     mirakana::rhi::NullRhiDevice device;
 
-    bool rejected_duplicate_binding = false;
+    bool accepted_register_type_overload = false;
     try {
-        (void)device.create_descriptor_set_layout(mirakana::rhi::DescriptorSetLayoutDesc{{
+        const auto overloaded_layout = device.create_descriptor_set_layout(mirakana::rhi::DescriptorSetLayoutDesc{{
             mirakana::rhi::DescriptorBindingDesc{.binding = 0,
                                                  .type = mirakana::rhi::DescriptorType::uniform_buffer,
                                                  .count = 1,
@@ -1587,8 +1587,24 @@ MK_TEST("null rhi rejects invalid descriptor layouts writes and incompatible bin
                                                  .count = 1,
                                                  .stages = mirakana::rhi::ShaderStageVisibility::fragment},
         }});
+        accepted_register_type_overload = overloaded_layout.value != 0;
     } catch (const std::invalid_argument&) {
-        rejected_duplicate_binding = true;
+    }
+
+    bool rejected_duplicate_binding_type = false;
+    try {
+        (void)device.create_descriptor_set_layout(mirakana::rhi::DescriptorSetLayoutDesc{{
+            mirakana::rhi::DescriptorBindingDesc{.binding = 0,
+                                                 .type = mirakana::rhi::DescriptorType::uniform_buffer,
+                                                 .count = 1,
+                                                 .stages = mirakana::rhi::ShaderStageVisibility::vertex},
+            mirakana::rhi::DescriptorBindingDesc{.binding = 0,
+                                                 .type = mirakana::rhi::DescriptorType::uniform_buffer,
+                                                 .count = 1,
+                                                 .stages = mirakana::rhi::ShaderStageVisibility::fragment},
+        }});
+    } catch (const std::invalid_argument&) {
+        rejected_duplicate_binding_type = true;
     }
 
     bool rejected_empty_visibility = false;
@@ -1666,7 +1682,8 @@ MK_TEST("null rhi rejects invalid descriptor layouts writes and incompatible bin
         rejected_incompatible_set = true;
     }
 
-    MK_REQUIRE(rejected_duplicate_binding);
+    MK_REQUIRE(accepted_register_type_overload);
+    MK_REQUIRE(rejected_duplicate_binding_type);
     MK_REQUIRE(rejected_empty_visibility);
     MK_REQUIRE(rejected_wrong_usage);
     MK_REQUIRE(rejected_incompatible_set);

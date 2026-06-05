@@ -269,6 +269,7 @@ struct Win32DesktopPresentationReport {
     std::uint32_t cloud_layer_shader_contract_rows{0};
     std::uint32_t cloud_layer_quality_rows{0};
     std::uint32_t cloud_layer_policy_diagnostics_count{0};
+    std::uint64_t cloud_layer_renderer_draws{0};
     bool environment_precipitation_requested{false};
     EnvironmentWeatherKind environment_precipitation_weather{EnvironmentWeatherKind::clear};
     EnvironmentPrecipitationKind environment_precipitation_kind{EnvironmentPrecipitationKind::none};
@@ -572,6 +573,7 @@ struct Win32DesktopPresentationCloudLayerReport {
     std::uint32_t quality_rows{0};
     bool uploads_textures{false};
     bool invokes_backend{false};
+    std::uint64_t renderer_draws{0};
     bool exposes_native_handles{false};
     bool uses_volumetric_clouds{false};
     std::uint32_t diagnostics_count{0};
@@ -970,6 +972,8 @@ struct Win32DesktopPresentationD3d12SceneRendererDesc {
     Win32DesktopPresentationShaderBytecode shadow_fragment_shader;
     Win32DesktopPresentationShaderBytecode native_ui_overlay_vertex_shader;
     Win32DesktopPresentationShaderBytecode native_ui_overlay_fragment_shader;
+    Win32DesktopPresentationShaderBytecode cloud_layer_vertex_shader;
+    Win32DesktopPresentationShaderBytecode cloud_layer_fragment_shader;
     const runtime::RuntimeAssetPackage* package{nullptr};
     const SceneRenderPacket* packet{nullptr};
     rhi::PrimitiveTopology topology{rhi::PrimitiveTopology::triangle_list};
@@ -989,6 +993,7 @@ struct Win32DesktopPresentationD3d12SceneRendererDesc {
     bool enable_physical_sky_package_evidence{false};
     PhysicalSkyPolicyDesc physical_sky;
     bool enable_cloud_layer_package_evidence{false};
+    bool enable_cloud_layer_renderer_execution{false};
     CloudLayerPolicyDesc cloud_layer;
     bool enable_environment_precipitation_package_evidence{false};
     PrecipitationPolicyDesc environment_precipitation;
@@ -1168,7 +1173,8 @@ evaluate_win32_desktop_presentation_physical_sky(const Win32DesktopPresentationR
 [[nodiscard]] std::string_view
 win32_desktop_presentation_cloud_layer_status_name(Win32DesktopPresentationCloudLayerStatus status) noexcept;
 [[nodiscard]] Win32DesktopPresentationCloudLayerReport
-evaluate_win32_desktop_presentation_cloud_layer(const Win32DesktopPresentationReport& report, bool requested);
+evaluate_win32_desktop_presentation_cloud_layer(const Win32DesktopPresentationReport& report, bool requested,
+                                                bool require_renderer_execution = false);
 [[nodiscard]] std::string_view win32_desktop_presentation_environment_precipitation_status_name(
     Win32DesktopPresentationEnvironmentPrecipitationStatus status) noexcept;
 [[nodiscard]] Win32DesktopPresentationEnvironmentPrecipitationReport
