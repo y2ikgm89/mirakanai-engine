@@ -4,7 +4,7 @@
 
 **Plan ID:** `mavg-d3d12-indexed-indirect-count-buffer-execution-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
 **Execution State:** Stacked on `mavg-d3d12-indexed-indirect-draw-execution-v1`. This child promotes only the D3D12 CPU-generated upload count-buffer execution lane for indexed indirect draws from unsupported to WARP-backed execution evidence.
 

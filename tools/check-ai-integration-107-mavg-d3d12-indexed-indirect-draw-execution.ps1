@@ -29,7 +29,7 @@ foreach ($needle in @(
         "CreateCommandSignature",
         "ExecuteIndirect",
         "D3D12.IndexedIndirectDrawSignature",
-        "d3d12 rhi indexed indirect draw argument buffer requires copy_source upload usage in v1",
+        "d3d12 rhi indexed indirect draw argument buffer requires copy_source upload or storage usage",
         "record_indexed_indirect_draw_stats"
     )) {
     Assert-ContainsText $d3d12BackendSourceText $needle "engine/rhi/d3d12/src/d3d12_backend.cpp D3D12 ExecuteIndirect evidence"
@@ -112,9 +112,6 @@ foreach ($needle in @(
     Assert-ContainsText $rhiManifestText $needle "engine/agent/manifest.json MK_rhi D3D12 indexed indirect draw evidence"
 }
 
-if ($manifest.aiOperableProductionLoop.currentActivePlan -ne "docs/superpowers/plans/2026-06-05-mavg-d3d12-indexed-indirect-count-buffer-execution-v1.md") {
-    Write-Error "engine/agent/manifest.json currentActivePlan must point at mavg-d3d12-indexed-indirect-count-buffer-execution-v1"
-}
 if ($manifest.aiOperableProductionLoop.recommendedNextPlan.completedContext -notlike "*mavg-d3d12-indexed-indirect-draw-execution-v1*") {
     Write-Error "engine/agent/manifest.json recommendedNextPlan.completedContext must retain mavg-d3d12-indexed-indirect-draw-execution-v1 prerequisite evidence"
 }

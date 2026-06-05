@@ -228,6 +228,10 @@ struct DeviceContextStats {
     std::uint64_t render_target_views_created{0};
     std::uint64_t swapchain_back_buffer_transitions{0};
     std::uint64_t texture_transitions{0};
+    std::uint64_t buffer_transitions{0};
+    std::uint64_t storage_buffer_uav_write_marks{0};
+    std::uint64_t storage_buffer_uav_transitions{0};
+    std::uint64_t storage_buffer_uav_barriers{0};
     std::uint64_t texture_aliasing_barriers{0};
     std::uint64_t null_resource_aliasing_barriers{0};
     std::uint64_t swapchain_back_buffer_clears{0};
@@ -257,6 +261,9 @@ struct DeviceContextStats {
     std::uint64_t indexed_indirect_draw_calls{0};
     std::uint64_t indexed_indirect_commands_executed{0};
     std::uint64_t indexed_indirect_count_buffer_reads{0};
+    std::uint64_t indexed_indirect_gpu_generated_draw_calls{0};
+    std::uint64_t indexed_indirect_gpu_generated_count_buffer_uses{0};
+    std::uint64_t indexed_indirect_argument_buffer_transitions{0};
     std::uint64_t instanced_draw_calls{0};
     std::uint64_t instanced_indexed_draw_calls{0};
     std::uint64_t compute_dispatches{0};
@@ -469,6 +476,7 @@ class DeviceContext final {
                                                         ResourceState after);
     [[nodiscard]] bool transition_texture(NativeCommandListHandle commands, NativeResourceHandle texture,
                                           ResourceState before, ResourceState after);
+    [[nodiscard]] bool prepare_storage_buffer_uav_write(NativeCommandListHandle commands, NativeResourceHandle buffer);
     [[nodiscard]] bool texture_aliasing_barrier(NativeCommandListHandle commands, NativeResourceHandle before,
                                                 NativeResourceHandle after);
     [[nodiscard]] bool clear_swapchain_back_buffer(NativeCommandListHandle commands, NativeSwapchainHandle swapchain,
@@ -506,7 +514,8 @@ class DeviceContext final {
                                     std::uint32_t instance_count, std::uint32_t first_index, std::int32_t vertex_offset,
                                     std::uint32_t first_instance);
     [[nodiscard]] bool draw_indexed_indirect(NativeCommandListHandle commands, NativeResourceHandle argument_buffer,
-                                             NativeResourceHandle count_buffer, const IndexedIndirectDrawDesc& desc);
+                                             NativeResourceHandle count_buffer, const IndexedIndirectDrawDesc& desc,
+                                             bool gpu_generated_buffers);
     [[nodiscard]] bool dispatch(NativeCommandListHandle commands, std::uint32_t group_count_x,
                                 std::uint32_t group_count_y, std::uint32_t group_count_z);
     [[nodiscard]] bool set_viewport(NativeCommandListHandle commands, const mirakana::rhi::ViewportDesc& viewport);
@@ -558,6 +567,10 @@ class DeviceContext final {
     struct Impl;
 
     explicit DeviceContext(std::unique_ptr<Impl> impl) noexcept;
+    [[nodiscard]] bool transition_buffer_state(NativeCommandListHandle commands, NativeResourceHandle buffer,
+                                               std::uint32_t after_state, std::uint64_t* specific_counter);
+    [[nodiscard]] bool prepare_indirect_buffer_for_execute_indirect(NativeCommandListHandle commands,
+                                                                    NativeResourceHandle buffer);
 
     std::unique_ptr<Impl> impl_;
 };
@@ -569,6 +582,7 @@ class DeviceContext final {
 [[nodiscard]] DeviceBootstrapResult bootstrap_device(const DeviceBootstrapDesc& desc) noexcept;
 [[nodiscard]] ResourceOwnershipResult bootstrap_resource_ownership(const ResourceOwnershipDesc& desc) noexcept;
 [[nodiscard]] std::unique_ptr<IRhiDevice> create_rhi_device(const DeviceBootstrapDesc& desc);
+[[nodiscard]] DeviceContextStats device_context_stats(IRhiDevice& device) noexcept;
 [[nodiscard]] QueueCalibratedTiming measure_rhi_device_calibrated_queue_timing(IRhiDevice& device, QueueKind queue);
 [[nodiscard]] SubmittedCommandCalibratedTiming read_rhi_device_submitted_command_calibrated_timing(IRhiDevice& device,
                                                                                                    FenceValue fence);

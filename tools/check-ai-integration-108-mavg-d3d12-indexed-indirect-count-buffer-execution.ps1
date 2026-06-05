@@ -28,7 +28,7 @@ foreach ($needle in @(
         "ExecuteIndirect(signature, desc.max_draw_count",
         "desc.count_buffer_offset",
         "d3d12 rhi indexed indirect draw count buffer requires indirect usage",
-        "d3d12 rhi indexed indirect draw count buffer requires copy_source upload usage in v1",
+        "d3d12 rhi indexed indirect draw count buffer requires copy_source upload or storage usage",
         "d3d12 rhi indexed indirect draw count range is outside the count buffer"
     )) {
     Assert-ContainsText $d3d12BackendSourceText $needle "engine/rhi/d3d12/src/d3d12_backend.cpp D3D12 count-buffer ExecuteIndirect evidence"
@@ -63,15 +63,12 @@ foreach ($surface in @(
             "ExecuteIndirect",
             "count-buffer execution",
             "CPU-generated upload",
-            "zero-count execution",
-            "min(count, MaxCommandCount)",
-            "fail-closed count-buffer"
+            "zero-count",
+            "clamp"
         )) {
         Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG D3D12 indexed indirect count-buffer evidence"
     }
     foreach ($needle in @(
-            "GPU-generated count buffers",
-            "compute-generated indirect buffers",
             "Vulkan indirect draw execution",
             "Nanite"
         )) {
@@ -85,7 +82,7 @@ foreach ($needle in @(
         "D3D12 ExecuteIndirect count-buffer execution",
         "zero-count execution",
         "min(count, MaxCommandCount)",
-        "GPU-generated count buffers",
+        "generic GPU-generated count-buffer systems",
         "Vulkan indirect draw execution"
     )) {
     Assert-ContainsText $aiLoopFragmentText $needle "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json active MAVG D3D12 count-buffer evidence"
@@ -114,11 +111,4 @@ foreach ($needle in @(
         "Vulkan indirect draw execution"
     )) {
     Assert-ContainsText $rhiManifestText $needle "engine/agent/manifest.json MK_rhi D3D12 indexed indirect count-buffer evidence"
-}
-
-if ($manifest.aiOperableProductionLoop.currentActivePlan -ne "docs/superpowers/plans/2026-06-05-mavg-d3d12-indexed-indirect-count-buffer-execution-v1.md") {
-    Write-Error "engine/agent/manifest.json currentActivePlan must point at mavg-d3d12-indexed-indirect-count-buffer-execution-v1"
-}
-if ($manifest.aiOperableProductionLoop.recommendedNextPlan.id -ne "mavg-d3d12-indexed-indirect-count-buffer-execution-v1") {
-    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must be mavg-d3d12-indexed-indirect-count-buffer-execution-v1"
 }

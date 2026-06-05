@@ -465,6 +465,21 @@ void record_indexed_indirect_draw_stats(Stats& stats, std::span<const IndexedInd
     }
 }
 
+template <typename Stats>
+void record_indexed_indirect_gpu_generated_draw_stats(Stats& stats, const IndexedIndirectDrawDesc& desc,
+                                                      bool uses_count_buffer) noexcept {
+    ++stats.indexed_indirect_draw_calls;
+    stats.last_indexed_indirect_max_draw_count = desc.max_draw_count;
+    stats.last_indexed_indirect_executed_draw_count = 0;
+    stats.last_indexed_indirect_count_buffer_value = 0;
+    if constexpr (requires(Stats& target) { target.indexed_indirect_gpu_generated_draw_calls; }) {
+        ++stats.indexed_indirect_gpu_generated_draw_calls;
+        if (uses_count_buffer) {
+            ++stats.indexed_indirect_gpu_generated_count_buffer_uses;
+        }
+    }
+}
+
 struct D3d12LinearTextureFootprint {
     D3D12_PLACED_SUBRESOURCE_FOOTPRINT placed{};
     std::uint64_t required_bytes{0};
@@ -1416,6 +1431,7 @@ struct DeviceContext::Impl {
     Microsoft::WRL::ComPtr<ID3D12Fence> fence;
     std::array<Microsoft::WRL::ComPtr<ID3D12Fence>, 3> queue_fences;
     std::vector<Microsoft::WRL::ComPtr<ID3D12Resource>> resources;
+    std::vector<D3D12_RESOURCE_STATES> resource_states;
     std::vector<Microsoft::WRL::ComPtr<ID3D12Heap>> resource_heaps;
     std::vector<std::uint64_t> resource_alias_group_ids;
     std::vector<bool> resource_placed_active;
@@ -1983,11 +1999,11 @@ NativeResourceHandle DeviceContext::create_committed_buffer(const BufferDesc& de
     const auto heap_type = committed_buffer_heap_type(desc.usage);
     const auto heap = heap_properties(heap_type);
     const auto resource_desc = buffer_resource_desc(desc.size_bytes, committed_buffer_flags(desc.usage));
+    const auto initial_state = committed_buffer_initial_state(heap_type);
 
     Microsoft::WRL::ComPtr<ID3D12Resource> resource;
-    if (FAILED(impl_->device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &resource_desc,
-                                                      committed_buffer_initial_state(heap_type), nullptr,
-                                                      IID_PPV_ARGS(&resource)))) {
+    if (FAILED(impl_->device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &resource_desc, initial_state,
+                                                      nullptr, IID_PPV_ARGS(&resource)))) {
         return NativeResourceHandle{};
     }
 
@@ -1995,6 +2011,7 @@ NativeResourceHandle DeviceContext::create_committed_buffer(const BufferDesc& de
                               static_cast<unsigned>(impl_->resources.size() + 1U));
 
     impl_->resources.push_back(resource);
+    impl_->resource_states.push_back(initial_state);
     impl_->resource_heaps.emplace_back();
     impl_->resource_alias_group_ids.push_back(0);
     impl_->resource_placed_active.push_back(true);
@@ -2014,6 +2031,7 @@ NativeResourceHandle DeviceContext::create_committed_texture(const TextureDesc& 
                                                desc.format, desc.usage);
     resource_desc.DepthOrArraySize = static_cast<UINT16>(desc.extent.depth);
     resource_desc.Flags = committed_texture_flags(desc.usage);
+    const auto initial_state = committed_texture_initial_state(desc.usage);
     const auto heap = heap_properties(D3D12_HEAP_TYPE_DEFAULT);
     D3D12_CLEAR_VALUE clear_value{};
     const D3D12_CLEAR_VALUE* optimized_clear_value = nullptr;
@@ -2026,8 +2044,7 @@ NativeResourceHandle DeviceContext::create_committed_texture(const TextureDesc& 
 
     Microsoft::WRL::ComPtr<ID3D12Resource> resource;
     if (FAILED(impl_->device->CreateCommittedResource(&heap, committed_texture_heap_flags(desc.usage), &resource_desc,
-                                                      committed_texture_initial_state(desc.usage),
-                                                      optimized_clear_value, IID_PPV_ARGS(&resource)))) {
+                                                      initial_state, optimized_clear_value, IID_PPV_ARGS(&resource)))) {
         return NativeResourceHandle{};
     }
 
@@ -2047,6 +2064,7 @@ NativeResourceHandle DeviceContext::create_committed_texture(const TextureDesc& 
     }
 
     impl_->resources.push_back(resource);
+    impl_->resource_states.push_back(initial_state);
     impl_->resource_heaps.emplace_back();
     impl_->resource_alias_group_ids.push_back(0);
     impl_->resource_placed_active.push_back(true);
@@ -2067,6 +2085,7 @@ NativeResourceHandle DeviceContext::create_placed_texture(const TextureDesc& des
                                                desc.format, desc.usage);
     resource_desc.DepthOrArraySize = static_cast<UINT16>(desc.extent.depth);
     resource_desc.Flags = committed_texture_flags(desc.usage);
+    const auto initial_state = committed_texture_initial_state(desc.usage);
 
     const D3D12_RESOURCE_ALLOCATION_INFO allocation = impl_->device->GetResourceAllocationInfo(0, 1, &resource_desc);
     if (allocation.SizeInBytes == 0 || allocation.SizeInBytes == (std::numeric_limits<std::uint64_t>::max)()) {
@@ -2094,8 +2113,7 @@ NativeResourceHandle DeviceContext::create_placed_texture(const TextureDesc& des
     }
 
     Microsoft::WRL::ComPtr<ID3D12Resource> resource;
-    if (FAILED(impl_->device->CreatePlacedResource(heap.Get(), 0, &resource_desc,
-                                                   committed_texture_initial_state(desc.usage), optimized_clear_value,
+    if (FAILED(impl_->device->CreatePlacedResource(heap.Get(), 0, &resource_desc, initial_state, optimized_clear_value,
                                                    IID_PPV_ARGS(&resource)))) {
         return NativeResourceHandle{};
     }
@@ -2118,6 +2136,7 @@ NativeResourceHandle DeviceContext::create_placed_texture(const TextureDesc& des
     }
 
     impl_->resources.push_back(resource);
+    impl_->resource_states.push_back(initial_state);
     impl_->resource_heaps.push_back(std::move(heap));
     impl_->resource_alias_group_ids.push_back(0);
     impl_->resource_placed_active.push_back(false);
@@ -2145,6 +2164,7 @@ std::vector<NativeResourceHandle> DeviceContext::create_placed_texture_alias_gro
                                                desc.format, desc.usage);
     resource_desc.DepthOrArraySize = static_cast<UINT16>(desc.extent.depth);
     resource_desc.Flags = committed_texture_flags(desc.usage);
+    const auto initial_state = committed_texture_initial_state(desc.usage);
 
     const D3D12_RESOURCE_ALLOCATION_INFO allocation = impl_->device->GetResourceAllocationInfo(0, 1, &resource_desc);
     if (allocation.SizeInBytes == 0 || allocation.SizeInBytes == (std::numeric_limits<std::uint64_t>::max)()) {
@@ -2180,8 +2200,7 @@ std::vector<NativeResourceHandle> DeviceContext::create_placed_texture_alias_gro
 
     for (std::size_t i = 0; i < texture_count; ++i) {
         Microsoft::WRL::ComPtr<ID3D12Resource> resource;
-        if (FAILED(impl_->device->CreatePlacedResource(heap.Get(), 0, &resource_desc,
-                                                       committed_texture_initial_state(desc.usage),
+        if (FAILED(impl_->device->CreatePlacedResource(heap.Get(), 0, &resource_desc, initial_state,
                                                        optimized_clear_value, IID_PPV_ARGS(&resource)))) {
             return {};
         }
@@ -2213,6 +2232,7 @@ std::vector<NativeResourceHandle> DeviceContext::create_placed_texture_alias_gro
         d3d12_set_object_name_fmt(resources[i].Get(), L"GameEngine.RHI.D3D12.PlacedAliasTexture%u",
                                   static_cast<unsigned>(impl_->resources.size() + 1U));
         impl_->resources.push_back(std::move(resources[i]));
+        impl_->resource_states.push_back(initial_state);
         impl_->resource_heaps.push_back(heap);
         impl_->resource_alias_group_ids.push_back(alias_group_id);
         impl_->resource_placed_active.push_back(false);
@@ -2930,6 +2950,83 @@ bool DeviceContext::transition_texture(NativeCommandListHandle commands, NativeR
     return true;
 }
 
+bool DeviceContext::transition_buffer_state(NativeCommandListHandle commands, NativeResourceHandle buffer,
+                                            std::uint32_t after_state, std::uint64_t* specific_counter) {
+    if (!valid()) {
+        return false;
+    }
+
+    CommandListRecord* command_record = impl_->command_list(commands);
+    ID3D12Resource* buffer_resource = impl_->resource_record(buffer);
+    if (command_record == nullptr || buffer_resource == nullptr || command_record->closed) {
+        return false;
+    }
+
+    const auto desc = buffer_resource->GetDesc();
+    if (desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER || buffer.value == 0 ||
+        buffer.value > impl_->resource_states.size()) {
+        return false;
+    }
+
+    const auto after = static_cast<D3D12_RESOURCE_STATES>(after_state);
+    auto& before = impl_->resource_states.at(buffer.value - 1U);
+    if (before == after || (before == D3D12_RESOURCE_STATE_GENERIC_READ && after == D3D12_RESOURCE_STATE_COPY_SOURCE)) {
+        return true;
+    }
+
+    D3D12_RESOURCE_BARRIER barrier{};
+    barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+    barrier.Transition.pResource = buffer_resource;
+    barrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+    barrier.Transition.StateBefore = before;
+    barrier.Transition.StateAfter = after;
+
+    command_record->list->ResourceBarrier(1, &barrier);
+    before = after;
+    ++impl_->stats.buffer_transitions;
+    if (specific_counter != nullptr) {
+        ++(*specific_counter);
+    }
+    return true;
+}
+
+bool DeviceContext::prepare_storage_buffer_uav_write(NativeCommandListHandle commands, NativeResourceHandle buffer) {
+    if (!valid()) {
+        return false;
+    }
+    ++impl_->stats.storage_buffer_uav_write_marks;
+    return transition_buffer_state(commands, buffer, static_cast<std::uint32_t>(D3D12_RESOURCE_STATE_UNORDERED_ACCESS),
+                                   &impl_->stats.storage_buffer_uav_transitions);
+}
+
+bool DeviceContext::prepare_indirect_buffer_for_execute_indirect(NativeCommandListHandle commands,
+                                                                 NativeResourceHandle buffer) {
+    if (!valid()) {
+        return false;
+    }
+
+    CommandListRecord* command_record = impl_->command_list(commands);
+    ID3D12Resource* buffer_resource = impl_->resource_record(buffer);
+    if (command_record == nullptr || buffer_resource == nullptr || command_record->closed || buffer.value == 0 ||
+        buffer.value > impl_->resource_states.size()) {
+        return false;
+    }
+
+    auto& before = impl_->resource_states.at(buffer.value - 1U);
+    if (before == D3D12_RESOURCE_STATE_UNORDERED_ACCESS) {
+        D3D12_RESOURCE_BARRIER barrier{};
+        barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+        barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+        barrier.UAV.pResource = buffer_resource;
+        command_record->list->ResourceBarrier(1, &barrier);
+        ++impl_->stats.storage_buffer_uav_barriers;
+    }
+
+    return transition_buffer_state(commands, buffer, static_cast<std::uint32_t>(D3D12_RESOURCE_STATE_INDIRECT_ARGUMENT),
+                                   &impl_->stats.indexed_indirect_argument_buffer_transitions);
+}
+
 bool DeviceContext::texture_aliasing_barrier(NativeCommandListHandle commands, NativeResourceHandle before,
                                              NativeResourceHandle after) {
     if (!valid() || (before.value != 0 && before.value == after.value)) {
@@ -3549,7 +3646,8 @@ bool DeviceContext::draw_indexed(NativeCommandListHandle commands, std::uint32_t
 }
 
 bool DeviceContext::draw_indexed_indirect(NativeCommandListHandle commands, NativeResourceHandle argument_buffer,
-                                          NativeResourceHandle count_buffer, const IndexedIndirectDrawDesc& desc) {
+                                          NativeResourceHandle count_buffer, const IndexedIndirectDrawDesc& desc,
+                                          bool gpu_generated_buffers) {
     if (!valid()) {
         return false;
     }
@@ -3599,19 +3697,23 @@ bool DeviceContext::draw_indexed_indirect(NativeCommandListHandle commands, Nati
         if (count_range_end > count_resource_desc.Width) {
             return false;
         }
-        try {
-            count_buffer_value = read_indexed_indirect_count_value(*count_resource, desc);
-        } catch (const std::exception&) {
-            return false;
+        if (!gpu_generated_buffers) {
+            try {
+                count_buffer_value = read_indexed_indirect_count_value(*count_resource, desc);
+            } catch (const std::exception&) {
+                return false;
+            }
+            executed_draw_count = std::min(count_buffer_value, desc.max_draw_count);
         }
-        executed_draw_count = std::min(count_buffer_value, desc.max_draw_count);
     }
 
     std::vector<IndexedIndirectDrawCommand> decoded_commands;
-    try {
-        decoded_commands = read_indexed_indirect_draw_commands(*argument_resource, desc, executed_draw_count);
-    } catch (const std::exception&) {
-        return false;
+    if (!gpu_generated_buffers) {
+        try {
+            decoded_commands = read_indexed_indirect_draw_commands(*argument_resource, desc, executed_draw_count);
+        } catch (const std::exception&) {
+            return false;
+        }
     }
 
     ID3D12CommandSignature* signature = impl_->ensure_indexed_indirect_draw_signature(desc.command_stride_bytes);
@@ -3619,10 +3721,24 @@ bool DeviceContext::draw_indexed_indirect(NativeCommandListHandle commands, Nati
         return false;
     }
 
+    if (gpu_generated_buffers) {
+        if (!prepare_indirect_buffer_for_execute_indirect(commands, argument_buffer)) {
+            return false;
+        }
+        if (uses_count_buffer && count_buffer.value != argument_buffer.value &&
+            !prepare_indirect_buffer_for_execute_indirect(commands, count_buffer)) {
+            return false;
+        }
+    }
+
     command_record->list->ExecuteIndirect(signature, desc.max_draw_count, argument_resource,
                                           desc.argument_buffer_offset, count_resource,
                                           uses_count_buffer ? desc.count_buffer_offset : 0);
-    record_indexed_indirect_draw_stats(impl_->stats, decoded_commands, desc, count_buffer_value, uses_count_buffer);
+    if (gpu_generated_buffers) {
+        record_indexed_indirect_gpu_generated_draw_stats(impl_->stats, desc, uses_count_buffer);
+    } else {
+        record_indexed_indirect_draw_stats(impl_->stats, decoded_commands, desc, count_buffer_value, uses_count_buffer);
+    }
     return true;
 }
 
@@ -3725,6 +3841,12 @@ bool DeviceContext::copy_buffer(NativeCommandListHandle commands, NativeResource
         region.size_bytes > source_desc.Width - region.source_offset ||
         region.destination_offset > destination_desc.Width ||
         region.size_bytes > destination_desc.Width - region.destination_offset) {
+        return false;
+    }
+    if (!transition_buffer_state(commands, source, static_cast<std::uint32_t>(D3D12_RESOURCE_STATE_COPY_SOURCE),
+                                 nullptr) ||
+        !transition_buffer_state(commands, destination, static_cast<std::uint32_t>(D3D12_RESOURCE_STATE_COPY_DEST),
+                                 nullptr)) {
         return false;
     }
 
@@ -4389,6 +4511,9 @@ void DeviceContext::destroy_committed_resource(NativeResourceHandle handle) noex
     impl_->resource_dsvs.at(index).heap.Reset();
     impl_->resource_dsvs.at(index).descriptor_size = 0;
     resource.Reset();
+    if (index < impl_->resource_states.size()) {
+        impl_->resource_states.at(index) = D3D12_RESOURCE_STATE_COMMON;
+    }
     if (placed) {
         impl_->resource_heaps.at(index).Reset();
         impl_->set_resource_placed_active(handle, false);
@@ -5025,6 +5150,7 @@ struct D3d12DescriptorSetRootTables {
 
 struct D3d12DescriptorSetResourceRefs {
     std::vector<BufferHandle> buffers;
+    std::vector<BufferHandle> storage_buffers;
     std::vector<TextureHandle> textures;
 };
 
@@ -5032,7 +5158,7 @@ struct D3d12DescriptorSetResourceRefs {
     return root_parameter != D3d12DescriptorSetRootTables::invalid_root_parameter;
 }
 
-void add_unique_handle(std::vector<BufferHandle>& handles, BufferHandle handle) {
+static void add_unique_handle(std::vector<BufferHandle>& handles, BufferHandle handle) {
     const auto found =
         std::ranges::find_if(handles, [handle](BufferHandle observed) { return observed.value == handle.value; });
     if (found == handles.end()) {
@@ -5040,7 +5166,7 @@ void add_unique_handle(std::vector<BufferHandle>& handles, BufferHandle handle) 
     }
 }
 
-void add_unique_handle(std::vector<TextureHandle>& handles, TextureHandle handle) {
+static void add_unique_handle(std::vector<TextureHandle>& handles, TextureHandle handle) {
     const auto found =
         std::ranges::find_if(handles, [handle](TextureHandle observed) { return observed.value == handle.value; });
     if (found == handles.end()) {
@@ -5497,6 +5623,7 @@ class D3d12RhiCommandList final : public IRhiCommandList {
         }
         active_compute_root_signature_ = root_signature;
         bound_compute_pipeline_layout_ = public_pipeline_layout_for_compute_pipeline(pipeline);
+        bound_compute_storage_buffers_.clear();
         compute_pipeline_bound_ = true;
         ++stats_->compute_pipelines_bound;
     }
@@ -5551,6 +5678,9 @@ class D3d12RhiCommandList final : public IRhiCommandList {
             throw std::logic_error("d3d12 rhi sampler descriptor set bind failed");
         }
         observe_descriptor_set_resources(set);
+        if (!render_pass_active_) {
+            observe_compute_storage_descriptor_buffers(set);
+        }
         ++stats_->descriptor_sets_bound;
     }
 
@@ -5672,9 +5802,12 @@ class D3d12RhiCommandList final : public IRhiCommandList {
         if (!has_flag(argument_desc.usage, BufferUsage::indirect)) {
             throw std::invalid_argument("d3d12 rhi indexed indirect draw argument buffer requires indirect usage");
         }
-        if (!has_flag(argument_desc.usage, BufferUsage::copy_source)) {
+        const bool argument_gpu_generated = has_flag(argument_desc.usage, BufferUsage::storage);
+        const bool argument_cpu_upload =
+            has_flag(argument_desc.usage, BufferUsage::copy_source) && !argument_gpu_generated;
+        if (!argument_cpu_upload && !argument_gpu_generated) {
             throw std::invalid_argument(
-                "d3d12 rhi indexed indirect draw argument buffer requires copy_source upload usage in v1");
+                "d3d12 rhi indexed indirect draw argument buffer requires copy_source upload or storage usage");
         }
 
         const auto argument_range_end = indexed_indirect_argument_range_end(desc);
@@ -5693,9 +5826,15 @@ class D3d12RhiCommandList final : public IRhiCommandList {
             if (!has_flag(count_desc.usage, BufferUsage::indirect)) {
                 throw std::invalid_argument("d3d12 rhi indexed indirect draw count buffer requires indirect usage");
             }
-            if (!has_flag(count_desc.usage, BufferUsage::copy_source)) {
+            const bool count_gpu_generated = has_flag(count_desc.usage, BufferUsage::storage);
+            const bool count_cpu_upload = has_flag(count_desc.usage, BufferUsage::copy_source) && !count_gpu_generated;
+            if (!count_cpu_upload && !count_gpu_generated) {
                 throw std::invalid_argument(
-                    "d3d12 rhi indexed indirect draw count buffer requires copy_source upload usage in v1");
+                    "d3d12 rhi indexed indirect draw count buffer requires copy_source upload or storage usage");
+            }
+            if (count_gpu_generated != argument_gpu_generated) {
+                throw std::invalid_argument(
+                    "d3d12 rhi indexed indirect draw argument and count buffers must use the same generation path");
             }
 
             const auto count_range_end = indexed_indirect_count_range_end(desc);
@@ -5704,31 +5843,41 @@ class D3d12RhiCommandList final : public IRhiCommandList {
             }
 
             native_count_buffer = native_buffer(desc.count_buffer);
-            const auto count_bytes = context_->read_buffer(native_count_buffer, desc.count_buffer_offset,
-                                                           indexed_indirect_draw_count_buffer_size_bytes);
-            if (count_bytes.size() != indexed_indirect_draw_count_buffer_size_bytes) {
-                throw std::logic_error("d3d12 rhi indexed indirect draw count buffer readback failed");
+            if (!argument_gpu_generated) {
+                const auto count_bytes = context_->read_buffer(native_count_buffer, desc.count_buffer_offset,
+                                                               indexed_indirect_draw_count_buffer_size_bytes);
+                if (count_bytes.size() != indexed_indirect_draw_count_buffer_size_bytes) {
+                    throw std::logic_error("d3d12 rhi indexed indirect draw count buffer readback failed");
+                }
+                std::memcpy(&count_buffer_value, count_bytes.data(), sizeof(count_buffer_value));
+                executed_draw_count = std::min(count_buffer_value, desc.max_draw_count);
             }
-            std::memcpy(&count_buffer_value, count_bytes.data(), sizeof(count_buffer_value));
-            executed_draw_count = std::min(count_buffer_value, desc.max_draw_count);
         }
 
         const auto native_argument_buffer = native_buffer(desc.argument_buffer);
-        const auto argument_bytes = context_->read_buffer(native_argument_buffer, 0, argument_range_end);
-        if (argument_bytes.size() != static_cast<std::size_t>(argument_range_end)) {
-            throw std::logic_error("d3d12 rhi indexed indirect draw argument buffer readback failed");
+        std::vector<IndexedIndirectDrawCommand> decoded_commands;
+        if (!argument_gpu_generated) {
+            const auto argument_bytes = context_->read_buffer(native_argument_buffer, 0, argument_range_end);
+            if (argument_bytes.size() != static_cast<std::size_t>(argument_range_end)) {
+                throw std::logic_error("d3d12 rhi indexed indirect draw argument buffer readback failed");
+            }
+            decoded_commands = decode_indexed_indirect_draw_commands(argument_bytes, desc, executed_draw_count);
         }
-        const auto decoded_commands = decode_indexed_indirect_draw_commands(argument_bytes, desc, executed_draw_count);
 
         observe_buffer(desc.argument_buffer);
         if (uses_count_buffer) {
             observe_buffer(desc.count_buffer);
         }
-        if (!context_->draw_indexed_indirect(native_, native_argument_buffer, native_count_buffer, desc)) {
+        if (!context_->draw_indexed_indirect(native_, native_argument_buffer, native_count_buffer, desc,
+                                             argument_gpu_generated)) {
             throw std::logic_error("d3d12 rhi indexed indirect draw failed");
         }
 
-        record_indexed_indirect_draw_stats(*stats_, decoded_commands, desc, count_buffer_value, uses_count_buffer);
+        if (argument_gpu_generated) {
+            record_indexed_indirect_gpu_generated_draw_stats(*stats_, desc, uses_count_buffer);
+        } else {
+            record_indexed_indirect_draw_stats(*stats_, decoded_commands, desc, count_buffer_value, uses_count_buffer);
+        }
         vertex_buffer_bound_ = false;
         index_buffer_bound_ = false;
     }
@@ -5746,6 +5895,11 @@ class D3d12RhiCommandList final : public IRhiCommandList {
         }
         if (group_count_x == 0 || group_count_y == 0 || group_count_z == 0) {
             throw std::invalid_argument("d3d12 rhi dispatch workgroup counts must be non-zero");
+        }
+        for (const auto buffer : bound_compute_storage_buffers_) {
+            if (!context_->prepare_storage_buffer_uav_write(native_, native_buffer(buffer))) {
+                throw std::logic_error("d3d12 rhi storage buffer uav transition failed");
+            }
         }
         if (!context_->dispatch(native_, group_count_x, group_count_y, group_count_z)) {
             throw std::logic_error("d3d12 rhi dispatch failed");
@@ -6089,6 +6243,21 @@ class D3d12RhiCommandList final : public IRhiCommandList {
         }
     }
 
+    void observe_compute_storage_descriptor_buffers(DescriptorSetHandle handle) {
+        if (descriptor_set_resource_refs_ == nullptr || handle.value == 0 ||
+            handle.value > descriptor_set_resource_refs_->size()) {
+            throw std::invalid_argument("d3d12 rhi descriptor set handle is unknown");
+        }
+
+        const auto& refs = descriptor_set_resource_refs_->at(handle.value - 1U);
+        for (const auto buffer : refs.storage_buffers) {
+            const auto& desc = buffer_desc(buffer);
+            if (has_flag(desc.usage, BufferUsage::indirect)) {
+                add_unique_handle(bound_compute_storage_buffers_, buffer);
+            }
+        }
+    }
+
     [[nodiscard]] NativeDescriptorHeapHandle
     native_cbv_srv_uav_descriptor_heap_for_set(DescriptorSetHandle handle) const {
         if (descriptor_set_cbv_srv_uav_heaps_ == nullptr || descriptor_set_active_ == nullptr || handle.value == 0 ||
@@ -6247,6 +6416,7 @@ class D3d12RhiCommandList final : public IRhiCommandList {
     std::vector<ResourceState> texture_states_;
     std::vector<ResourceState> initial_texture_states_;
     std::vector<BufferHandle> observed_buffers_;
+    std::vector<BufferHandle> bound_compute_storage_buffers_;
     std::vector<TextureHandle> observed_textures_;
     const std::vector<NativeDescriptorHeapHandle>* descriptor_set_cbv_srv_uav_heaps_{nullptr};
     const std::vector<std::uint32_t>* descriptor_set_cbv_srv_uav_base_descriptors_{nullptr};
@@ -6343,6 +6513,13 @@ class D3d12RhiDevice final : public IRhiDevice {
 
     [[nodiscard]] RhiStats stats() const noexcept override {
         return stats_;
+    }
+
+    [[nodiscard]] DeviceContextStats device_context_stats() const noexcept {
+        if (!context_) {
+            return DeviceContextStats{};
+        }
+        return context_->stats();
     }
 
     [[nodiscard]] std::uint64_t gpu_timestamp_ticks_per_second() const noexcept override {
@@ -6889,6 +7066,9 @@ class D3d12RhiDevice final : public IRhiDevice {
             }
             if (is_buffer_descriptor(binding.type)) {
                 add_unique_handle(set_resource_refs.buffers, resource.buffer_handle);
+                if (binding.type == DescriptorType::storage_buffer) {
+                    add_unique_handle(set_resource_refs.storage_buffers, resource.buffer_handle);
+                }
             } else if (is_texture_descriptor(binding.type)) {
                 add_unique_handle(set_resource_refs.textures, resource.texture_handle);
             }
@@ -7762,6 +7942,15 @@ std::unique_ptr<IRhiDevice> create_rhi_device(const DeviceBootstrapDesc& desc) {
     }
 
     return std::make_unique<D3d12RhiDevice>(std::move(context));
+}
+
+DeviceContextStats device_context_stats(IRhiDevice& device) noexcept {
+    auto* d3d12_device = dynamic_cast<D3d12RhiDevice*>(&device);
+    if (d3d12_device == nullptr) {
+        return DeviceContextStats{};
+    }
+
+    return d3d12_device->device_context_stats();
 }
 
 QueueCalibratedTiming measure_rhi_device_calibrated_queue_timing(IRhiDevice& device, QueueKind queue) {
