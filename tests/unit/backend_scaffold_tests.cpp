@@ -7352,6 +7352,123 @@ MK_TEST("metal platform availability diagnostics remain sdk independent") {
     MK_REQUIRE(apple_ready.diagnostic == "Metal native backend can compile and must probe runtime availability");
 }
 
+MK_TEST("metal environment feature evidence keeps selected rows host gated on Windows") {
+    const auto plan = mirakana::rhi::metal::build_environment_feature_host_evidence_plan(
+        mirakana::rhi::metal::MetalEnvironmentFeatureHostEvidenceDesc{
+            .host = mirakana::rhi::RhiHostPlatform::windows,
+        });
+
+    MK_REQUIRE(plan.status == mirakana::rhi::metal::MetalEnvironmentFeatureEvidenceStatus::host_evidence_required);
+    MK_REQUIRE(plan.rows.size() == 7U);
+    MK_REQUIRE(plan.host_gated_row_count == 7U);
+    MK_REQUIRE(plan.ready_row_count == 0U);
+    MK_REQUIRE(plan.blocked_row_count == 0U);
+    MK_REQUIRE(plan.native_handle_access_count == 0U);
+    MK_REQUIRE(plan.diagnostic == "Metal environment feature evidence requires Apple host validation");
+    for (const auto& row : plan.rows) {
+        MK_REQUIRE(row.status == mirakana::rhi::metal::MetalEnvironmentFeatureEvidenceStatus::host_evidence_required);
+        MK_REQUIRE(row.host_evidence_required);
+        MK_REQUIRE(!row.host_supported);
+        MK_REQUIRE(!row.host_evidence_available);
+        MK_REQUIRE(row.host_validation_recipe_id == "renderer-metal-apple-host-evidence");
+        MK_REQUIRE(!row.native_handle_access);
+        MK_REQUIRE(row.diagnostic.find("Metal environment feature requires Apple host validation") !=
+                   std::string::npos);
+    }
+}
+
+MK_TEST("metal environment feature evidence requires Apple host validation before ready") {
+    auto desc = mirakana::rhi::metal::MetalEnvironmentFeatureHostEvidenceDesc{
+        .host = mirakana::rhi::RhiHostPlatform::macos,
+        .apple_host_validation_available = false,
+        .runtime_ready = true,
+        .command_queue_ready = true,
+        .shader_library_ready = true,
+        .render_pass_ready = true,
+        .render_pipeline_ready = true,
+        .compute_pipeline_ready = true,
+        .depth_texture_ready = true,
+        .particle_buffer_ready = true,
+        .cube_map_texture_feature_available = true,
+        .hdr_texture_feature_available = true,
+    };
+
+    const auto host_gated = mirakana::rhi::metal::build_environment_feature_host_evidence_plan(desc);
+    MK_REQUIRE(host_gated.status ==
+               mirakana::rhi::metal::MetalEnvironmentFeatureEvidenceStatus::host_evidence_required);
+    MK_REQUIRE(host_gated.host_gated_row_count == 7U);
+    MK_REQUIRE(host_gated.ready_row_count == 0U);
+
+    desc.apple_host_validation_available = true;
+    const auto ready = mirakana::rhi::metal::build_environment_feature_host_evidence_plan(desc);
+    MK_REQUIRE(ready.status == mirakana::rhi::metal::MetalEnvironmentFeatureEvidenceStatus::ready);
+    MK_REQUIRE(ready.host_gated_row_count == 0U);
+    MK_REQUIRE(ready.ready_row_count == 7U);
+    MK_REQUIRE(ready.blocked_row_count == 0U);
+    MK_REQUIRE(ready.rows.back().feature ==
+               mirakana::rhi::metal::MetalEnvironmentFeatureKind::environment_lighting_ibl);
+    MK_REQUIRE(ready.rows.back().cube_map_texture_feature_available);
+    MK_REQUIRE(ready.rows.back().hdr_texture_feature_available);
+}
+
+MK_TEST("metal environment feature evidence rejects missing feature proof and native handles") {
+    const auto missing_compute = mirakana::rhi::metal::build_environment_feature_host_evidence_plan(
+        mirakana::rhi::metal::MetalEnvironmentFeatureHostEvidenceDesc{
+            .host = mirakana::rhi::RhiHostPlatform::ios,
+            .apple_host_validation_available = true,
+            .runtime_ready = true,
+            .command_queue_ready = true,
+            .shader_library_ready = true,
+            .render_pass_ready = true,
+            .render_pipeline_ready = true,
+            .compute_pipeline_ready = false,
+            .depth_texture_ready = true,
+            .requirements = {mirakana::rhi::metal::MetalEnvironmentFeatureEvidenceRequirement{
+                .feature = mirakana::rhi::metal::MetalEnvironmentFeatureKind::volumetric_fog,
+                .selected = true,
+                .compute_pipeline_required = true,
+                .depth_texture_required = true,
+            }},
+        });
+    MK_REQUIRE(missing_compute.status == mirakana::rhi::metal::MetalEnvironmentFeatureEvidenceStatus::blocked);
+    MK_REQUIRE(missing_compute.blocked_row_count == 1U);
+    MK_REQUIRE(missing_compute.rows[0].diagnostic ==
+               "Metal environment feature is missing feature-local pipeline or texture proof: volumetric_fog");
+
+    const auto native_handle = mirakana::rhi::metal::build_environment_feature_host_evidence_plan(
+        mirakana::rhi::metal::MetalEnvironmentFeatureHostEvidenceDesc{
+            .host = mirakana::rhi::RhiHostPlatform::macos,
+            .native_handles_exposed = true,
+            .requirements = {mirakana::rhi::metal::MetalEnvironmentFeatureEvidenceRequirement{
+                .feature = mirakana::rhi::metal::MetalEnvironmentFeatureKind::physical_sky,
+                .selected = true,
+                .render_pass_required = true,
+                .render_pipeline_required = true,
+            }},
+        });
+    MK_REQUIRE(native_handle.status == mirakana::rhi::metal::MetalEnvironmentFeatureEvidenceStatus::blocked);
+    MK_REQUIRE(native_handle.native_handle_access_count == 1U);
+    MK_REQUIRE(native_handle.rows[0].diagnostic ==
+               "Metal environment feature evidence must not expose native handles: physical_sky");
+}
+
+MK_TEST("metal environment feature evidence labels every selected environment feature") {
+    const auto requirements = mirakana::rhi::metal::default_environment_feature_evidence_requirements();
+    MK_REQUIRE(requirements.size() == 7U);
+    MK_REQUIRE(mirakana::rhi::metal::metal_environment_feature_kind_label(requirements[0].feature) == "physical_sky");
+    MK_REQUIRE(mirakana::rhi::metal::metal_environment_feature_kind_label(requirements[1].feature) == "height_fog");
+    MK_REQUIRE(mirakana::rhi::metal::metal_environment_feature_kind_label(requirements[2].feature) == "cloud_layer");
+    MK_REQUIRE(mirakana::rhi::metal::metal_environment_feature_kind_label(requirements[3].feature) == "precipitation");
+    MK_REQUIRE(mirakana::rhi::metal::metal_environment_feature_kind_label(requirements[4].feature) == "volumetric_fog");
+    MK_REQUIRE(mirakana::rhi::metal::metal_environment_feature_kind_label(requirements[5].feature) ==
+               "volumetric_cloud");
+    MK_REQUIRE(mirakana::rhi::metal::metal_environment_feature_kind_label(requirements[6].feature) ==
+               "environment_lighting_ibl");
+    MK_REQUIRE(mirakana::rhi::metal::metal_environment_feature_evidence_status_label(
+                   mirakana::rhi::metal::MetalEnvironmentFeatureEvidenceStatus::host_evidence_required) ==
+               "host_evidence_required");
+}
+
 MK_TEST("metal native device queue and command buffer ownership stays host gated") {
     const auto unsupported = mirakana::rhi::metal::create_native_device_and_command_queue(
         mirakana::rhi::metal::MetalNativeDeviceQueueDesc{mirakana::rhi::RhiHostPlatform::windows});
