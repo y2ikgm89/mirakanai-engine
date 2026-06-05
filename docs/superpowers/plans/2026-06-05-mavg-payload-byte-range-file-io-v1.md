@@ -12,11 +12,11 @@
 
 **Plan ID:** `mavg-payload-byte-range-file-io-v1`
 
-**Status:** Active.
+**Status:** Completed stacked child.
 
 Focused implementation, agent-surface validation, and full slice validation are green; published as stacked draft PR #459.
 
-Active candidate over `mavg-runtime-lod-milestone-v1`, stacked on `mavg-page-addressable-payload-schema-v1` / draft PR #456.
+Completed candidate over `mavg-runtime-lod-milestone-v1`, stacked on `mavg-page-addressable-payload-schema-v1` / draft PR #456. The next active child is `mavg-directstorage-request-plan-v1`.
 
 ## Official Source Audit
 

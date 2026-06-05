@@ -182,9 +182,6 @@ foreach ($needle in @(
 }
 
 $productionLoop = $manifest.aiOperableProductionLoop
-if ([string]$productionLoop.currentActivePlan -ne "docs/superpowers/plans/2026-06-05-mavg-payload-byte-range-file-io-v1.md") {
-    Write-Error "engine/agent/manifest.json currentActivePlan must select MAVG Payload Byte-Range File IO v1"
-}
-if ([string]$productionLoop.recommendedNextPlan.id -ne "mavg-payload-byte-range-file-io-v1") {
-    Write-Error "engine/agent/manifest.json recommendedNextPlan.id must select mavg-payload-byte-range-file-io-v1"
+if (@($productionLoop.recommendedNextPlan.retainedCompletedPlanPaths) -notcontains "docs/superpowers/plans/2026-06-05-mavg-payload-byte-range-file-io-v1.md") {
+    Write-Error "engine/agent/manifest.json retainedCompletedPlanPaths must retain MAVG Payload Byte-Range File IO v1"
 }

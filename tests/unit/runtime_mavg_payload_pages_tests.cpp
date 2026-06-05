@@ -9,6 +9,7 @@
 #include "mirakana/runtime/mavg_payload_pages.hpp"
 
 #include <cstdint>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -133,6 +134,17 @@ has_diagnostic(const std::vector<mirakana::runtime::RuntimeMavgPayloadPageSliceD
 [[nodiscard]] bool
 has_diagnostic(const std::vector<mirakana::runtime::RuntimeMavgPayloadPageFileLoadDiagnostic>& diagnostics,
                mirakana::runtime::RuntimeMavgPayloadPageFileLoadDiagnosticCode code) {
+    for (const auto& diagnostic : diagnostics) {
+        if (diagnostic.code == code) {
+            return true;
+        }
+    }
+    return false;
+}
+
+[[nodiscard]] bool
+has_diagnostic(const std::vector<mirakana::runtime::RuntimeMavgPayloadDirectStorageRequestPlanDiagnostic>& diagnostics,
+               mirakana::runtime::RuntimeMavgPayloadDirectStorageRequestPlanDiagnosticCode code) {
     for (const auto& diagnostic : diagnostics) {
         if (diagnostic.code == code) {
             return true;
@@ -287,6 +299,110 @@ MK_TEST("runtime mavg payload file pages fail closed when blob byte range is una
     MK_REQUIRE(!result.mutated_mount_set);
     MK_REQUIRE(!result.executed_background_worker);
     MK_REQUIRE(!result.touched_renderer_or_rhi_handles);
+}
+
+MK_TEST("runtime mavg payload directstorage requests plan selected page ranges without executing io") {
+    const auto graph = make_payload_graph();
+    const auto payload_text = make_payload_text(graph);
+    const std::vector<std::uint32_t> page_indices{1, 0};
+
+    const auto result = mirakana::runtime::plan_runtime_mavg_payload_directstorage_requests(
+        mirakana::runtime::RuntimeMavgPayloadDirectStorageRequestPlanDesc{
+            .graph = &graph,
+            .payload_text = payload_text,
+            .payload_blob_path = "runtime/mavg/runtime-page-addressable.pages",
+            .page_indices = page_indices,
+            .destination_base_offset = 4096U,
+            .fence_wait_point = mirakana::runtime::RuntimeMavgPayloadDirectStorageFenceWaitPoint::before_source_access,
+            .synchronize_with_fence = true,
+        });
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.requested_page_count == 2U);
+    MK_REQUIRE(result.planned_request_count == 2U);
+    MK_REQUIRE(result.total_source_bytes == 128U);
+    MK_REQUIRE(result.total_destination_bytes == 128U);
+    MK_REQUIRE(result.requests.size() == 2U);
+    MK_REQUIRE(result.requests[0].request_index == 0U);
+    MK_REQUIRE(result.requests[0].page_index == 1U);
+    MK_REQUIRE(result.requests[0].source_file_offset == 64U);
+    MK_REQUIRE(result.requests[0].source_size == 64U);
+    MK_REQUIRE(result.requests[0].destination_offset == 4096U);
+    MK_REQUIRE(result.requests[0].destination_size == 64U);
+    MK_REQUIRE(result.requests[0].source_is_file);
+    MK_REQUIRE(result.requests[0].destination_is_memory);
+    MK_REQUIRE(result.requests[0].synchronized_with_fence);
+    MK_REQUIRE(result.requests[0].fence_wait_point ==
+               mirakana::runtime::RuntimeMavgPayloadDirectStorageFenceWaitPoint::before_source_access);
+    MK_REQUIRE(result.requests[0].debug_name == "mavg.payload.page.1");
+    MK_REQUIRE(result.requests[1].request_index == 1U);
+    MK_REQUIRE(result.requests[1].page_index == 0U);
+    MK_REQUIRE(result.requests[1].source_file_offset == 0U);
+    MK_REQUIRE(result.requests[1].source_size == 64U);
+    MK_REQUIRE(result.requests[1].destination_offset == 4160U);
+    MK_REQUIRE(result.requests[1].destination_size == 64U);
+    MK_REQUIRE(!result.invoked_file_io);
+    MK_REQUIRE(!result.used_native_directstorage);
+    MK_REQUIRE(result.requires_native_directstorage_sdk);
+    MK_REQUIRE(!result.enqueued_native_requests);
+    MK_REQUIRE(!result.submitted_native_queue);
+    MK_REQUIRE(!result.signaled_native_fence);
+    MK_REQUIRE(!result.mutated_mount_set);
+    MK_REQUIRE(!result.executed_background_worker);
+    MK_REQUIRE(!result.touched_renderer_or_rhi_handles);
+}
+
+MK_TEST("runtime mavg payload directstorage request planning rejects duplicate pages before io") {
+    const auto graph = make_payload_graph();
+    const auto payload_text = make_payload_text(graph);
+    const std::vector<std::uint32_t> page_indices{1, 1};
+
+    const auto result = mirakana::runtime::plan_runtime_mavg_payload_directstorage_requests(
+        mirakana::runtime::RuntimeMavgPayloadDirectStorageRequestPlanDesc{
+            .graph = &graph,
+            .payload_text = payload_text,
+            .payload_blob_path = "runtime/mavg/runtime-page-addressable.pages",
+            .page_indices = page_indices,
+        });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.requests.empty());
+    MK_REQUIRE(result.requested_page_count == 2U);
+    MK_REQUIRE(has_diagnostic(
+        result.diagnostics,
+        mirakana::runtime::RuntimeMavgPayloadDirectStorageRequestPlanDiagnosticCode::duplicate_requested_page));
+    MK_REQUIRE(!result.invoked_file_io);
+    MK_REQUIRE(!result.used_native_directstorage);
+    MK_REQUIRE(!result.enqueued_native_requests);
+    MK_REQUIRE(!result.submitted_native_queue);
+    MK_REQUIRE(!result.signaled_native_fence);
+}
+
+MK_TEST("runtime mavg payload directstorage request planning rejects overflowing destination ranges") {
+    const auto graph = make_payload_graph();
+    const auto payload_text = make_payload_text(graph);
+    const std::vector<std::uint32_t> page_indices{0, 1};
+
+    const auto result = mirakana::runtime::plan_runtime_mavg_payload_directstorage_requests(
+        mirakana::runtime::RuntimeMavgPayloadDirectStorageRequestPlanDesc{
+            .graph = &graph,
+            .payload_text = payload_text,
+            .payload_blob_path = "runtime/mavg/runtime-page-addressable.pages",
+            .page_indices = page_indices,
+            .destination_base_offset = std::numeric_limits<std::uint64_t>::max() - 32U,
+        });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.requests.empty());
+    MK_REQUIRE(result.requested_page_count == 2U);
+    MK_REQUIRE(has_diagnostic(
+        result.diagnostics,
+        mirakana::runtime::RuntimeMavgPayloadDirectStorageRequestPlanDiagnosticCode::destination_range_overflow));
+    MK_REQUIRE(!result.invoked_file_io);
+    MK_REQUIRE(!result.used_native_directstorage);
+    MK_REQUIRE(!result.enqueued_native_requests);
+    MK_REQUIRE(!result.submitted_native_queue);
+    MK_REQUIRE(!result.signaled_native_fence);
 }
 
 int main() {

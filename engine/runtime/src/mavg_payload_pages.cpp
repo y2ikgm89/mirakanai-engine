@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cstddef>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <unordered_set>
@@ -26,6 +27,16 @@ void add_diagnostic(RuntimeMavgPayloadPageSliceResult& result, RuntimeMavgPayloa
 void add_diagnostic(RuntimeMavgPayloadPageFileLoadResult& result, RuntimeMavgPayloadPageFileLoadDiagnosticCode code,
                     std::uint32_t page_index, std::string message) {
     result.diagnostics.push_back(RuntimeMavgPayloadPageFileLoadDiagnostic{
+        .code = code,
+        .page_index = page_index,
+        .message = std::move(message),
+    });
+}
+
+void add_diagnostic(RuntimeMavgPayloadDirectStorageRequestPlanResult& result,
+                    RuntimeMavgPayloadDirectStorageRequestPlanDiagnosticCode code, std::uint32_t page_index,
+                    std::string message) {
+    result.diagnostics.push_back(RuntimeMavgPayloadDirectStorageRequestPlanDiagnostic{
         .code = code,
         .page_index = page_index,
         .message = std::move(message),
@@ -70,6 +81,14 @@ void add_diagnostic(RuntimeMavgPayloadPageFileLoadResult& result, RuntimeMavgPay
 [[nodiscard]] bool has_graph_page(const MavgClusterGraphDocument& graph, std::uint32_t page_index) noexcept {
     return std::ranges::any_of(
         graph.pages, [page_index](const MavgClusterGraphPage& page) { return page.page_index == page_index; });
+}
+
+[[nodiscard]] bool fits_directstorage_request_size(std::uint64_t byte_size) noexcept {
+    return byte_size <= std::numeric_limits<std::uint32_t>::max();
+}
+
+[[nodiscard]] bool range_overflows(std::uint64_t offset, std::uint64_t byte_size) noexcept {
+    return offset > std::numeric_limits<std::uint64_t>::max() - byte_size;
 }
 
 } // namespace
@@ -257,6 +276,127 @@ load_runtime_mavg_payload_file_pages(const RuntimeMavgPayloadPageFileLoadDesc& d
 
     result.pages = std::move(loaded_pages);
     result.loaded_page_count = result.pages.size();
+    return result;
+}
+
+RuntimeMavgPayloadDirectStorageRequestPlanResult
+plan_runtime_mavg_payload_directstorage_requests(const RuntimeMavgPayloadDirectStorageRequestPlanDesc& desc) {
+    RuntimeMavgPayloadDirectStorageRequestPlanResult result;
+    result.requested_page_count = desc.page_indices.size();
+    result.invoked_file_io = false;
+    result.used_native_directstorage = false;
+    result.requires_native_directstorage_sdk = false;
+    result.enqueued_native_requests = false;
+    result.submitted_native_queue = false;
+    result.signaled_native_fence = false;
+    result.mutated_mount_set = false;
+    result.executed_background_worker = false;
+    result.touched_renderer_or_rhi_handles = false;
+
+    if (desc.graph == nullptr) {
+        add_diagnostic(result, RuntimeMavgPayloadDirectStorageRequestPlanDiagnosticCode::missing_graph, 0,
+                       "MAVG payload DirectStorage request planning requires a graph document");
+        return result;
+    }
+    if (desc.payload_blob_path.empty()) {
+        add_diagnostic(result, RuntimeMavgPayloadDirectStorageRequestPlanDiagnosticCode::missing_payload_blob_path, 0,
+                       "MAVG payload DirectStorage request planning requires a payload blob path");
+        return result;
+    }
+
+    const auto graph_validation = validate_mavg_cluster_graph(*desc.graph);
+    if (!graph_validation.valid()) {
+        add_diagnostic(result, RuntimeMavgPayloadDirectStorageRequestPlanDiagnosticCode::invalid_graph, 0,
+                       "MAVG payload DirectStorage request planning graph validation failed");
+        return result;
+    }
+
+    MavgClusterPayloadDocument payload;
+    try {
+        payload = deserialize_mavg_cluster_payload_document(desc.payload_text);
+    } catch (const std::exception& error) {
+        add_diagnostic(result, RuntimeMavgPayloadDirectStorageRequestPlanDiagnosticCode::invalid_payload, 0,
+                       error.what());
+        return result;
+    }
+
+    const auto payload_validation = validate_mavg_cluster_payload(payload, *desc.graph);
+    if (!payload_validation.valid()) {
+        add_diagnostic(result, RuntimeMavgPayloadDirectStorageRequestPlanDiagnosticCode::invalid_payload, 0,
+                       "MAVG payload DirectStorage request planning payload validation failed");
+        return result;
+    }
+
+    std::unordered_set<std::uint32_t> requested_pages;
+    for (const auto page_index : desc.page_indices) {
+        if (!requested_pages.insert(page_index).second) {
+            add_diagnostic(result, RuntimeMavgPayloadDirectStorageRequestPlanDiagnosticCode::duplicate_requested_page,
+                           page_index, "MAVG payload DirectStorage request page appears more than once");
+        }
+        if (!has_graph_page(*desc.graph, page_index)) {
+            add_diagnostic(result, RuntimeMavgPayloadDirectStorageRequestPlanDiagnosticCode::unknown_page, page_index,
+                           "MAVG payload DirectStorage request references an unknown graph page");
+        }
+        if (find_payload_page(payload, page_index) == nullptr) {
+            add_diagnostic(result, RuntimeMavgPayloadDirectStorageRequestPlanDiagnosticCode::missing_payload_page,
+                           page_index, "MAVG payload DirectStorage request page is missing from the payload");
+        }
+    }
+    if (!result.diagnostics.empty()) {
+        return result;
+    }
+
+    std::vector<RuntimeMavgPayloadDirectStorageRequestRow> planned_requests;
+    planned_requests.reserve(desc.page_indices.size());
+    auto destination_offset = desc.destination_base_offset;
+    std::uint64_t total_source_bytes = 0;
+    std::uint64_t total_destination_bytes = 0;
+    for (std::size_t request_index = 0; request_index < desc.page_indices.size(); ++request_index) {
+        const auto page_index = desc.page_indices[request_index];
+        const auto* const page = find_payload_page(payload, page_index);
+        if (page == nullptr) {
+            add_diagnostic(result, RuntimeMavgPayloadDirectStorageRequestPlanDiagnosticCode::missing_payload_page,
+                           page_index, "MAVG payload DirectStorage request page is missing from the payload");
+            return result;
+        }
+        if (!fits_directstorage_request_size(page->byte_size)) {
+            add_diagnostic(result, RuntimeMavgPayloadDirectStorageRequestPlanDiagnosticCode::page_request_too_large,
+                           page_index, "MAVG payload DirectStorage request size must fit UINT32 request fields");
+            return result;
+        }
+        if (range_overflows(destination_offset, page->byte_size) ||
+            range_overflows(total_source_bytes, page->byte_size) ||
+            range_overflows(total_destination_bytes, page->byte_size)) {
+            add_diagnostic(result, RuntimeMavgPayloadDirectStorageRequestPlanDiagnosticCode::destination_range_overflow,
+                           page_index, "MAVG payload DirectStorage request destination range overflows");
+            return result;
+        }
+
+        const auto request_size = static_cast<std::uint32_t>(page->byte_size);
+        planned_requests.push_back(RuntimeMavgPayloadDirectStorageRequestRow{
+            .request_index = static_cast<std::uint32_t>(request_index),
+            .page_index = page->page_index,
+            .source_file_offset = page->byte_offset,
+            .source_size = request_size,
+            .destination_offset = destination_offset,
+            .destination_size = request_size,
+            .fence_wait_point = desc.fence_wait_point,
+            .source_is_file = true,
+            .destination_is_memory = true,
+            .synchronized_with_fence = desc.synchronize_with_fence,
+            .debug_name = "mavg.payload.page." + std::to_string(page->page_index),
+        });
+
+        destination_offset += page->byte_size;
+        total_source_bytes += page->byte_size;
+        total_destination_bytes += page->byte_size;
+    }
+
+    result.requests = std::move(planned_requests);
+    result.planned_request_count = result.requests.size();
+    result.total_source_bytes = total_source_bytes;
+    result.total_destination_bytes = total_destination_bytes;
+    result.requires_native_directstorage_sdk = true;
     return result;
 }
 

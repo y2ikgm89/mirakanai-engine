@@ -37,6 +37,24 @@ enum class RuntimeMavgPayloadPageFileLoadDiagnosticCode : std::uint8_t {
     payload_file_read_failed,
 };
 
+enum class RuntimeMavgPayloadDirectStorageRequestPlanDiagnosticCode : std::uint8_t {
+    missing_graph = 0,
+    missing_payload_blob_path,
+    invalid_graph,
+    invalid_payload,
+    unknown_page,
+    duplicate_requested_page,
+    missing_payload_page,
+    page_request_too_large,
+    destination_range_overflow,
+};
+
+enum class RuntimeMavgPayloadDirectStorageFenceWaitPoint : std::uint8_t {
+    before_destination_write = 0,
+    before_gpu_work,
+    before_source_access,
+};
+
 struct RuntimeMavgPayloadPageSliceDiagnostic {
     RuntimeMavgPayloadPageSliceDiagnosticCode code{RuntimeMavgPayloadPageSliceDiagnosticCode::missing_graph};
     std::uint32_t page_index{0};
@@ -45,6 +63,13 @@ struct RuntimeMavgPayloadPageSliceDiagnostic {
 
 struct RuntimeMavgPayloadPageFileLoadDiagnostic {
     RuntimeMavgPayloadPageFileLoadDiagnosticCode code{RuntimeMavgPayloadPageFileLoadDiagnosticCode::missing_filesystem};
+    std::uint32_t page_index{0};
+    std::string message;
+};
+
+struct RuntimeMavgPayloadDirectStorageRequestPlanDiagnostic {
+    RuntimeMavgPayloadDirectStorageRequestPlanDiagnosticCode code{
+        RuntimeMavgPayloadDirectStorageRequestPlanDiagnosticCode::missing_graph};
     std::uint32_t page_index{0};
     std::string message;
 };
@@ -61,6 +86,17 @@ struct RuntimeMavgPayloadPageFileLoadDesc {
     std::string_view payload_text;
     std::string_view payload_blob_path;
     std::span<const std::uint32_t> page_indices;
+};
+
+struct RuntimeMavgPayloadDirectStorageRequestPlanDesc {
+    const MavgClusterGraphDocument* graph{nullptr};
+    std::string_view payload_text;
+    std::string_view payload_blob_path;
+    std::span<const std::uint32_t> page_indices;
+    std::uint64_t destination_base_offset{0};
+    RuntimeMavgPayloadDirectStorageFenceWaitPoint fence_wait_point{
+        RuntimeMavgPayloadDirectStorageFenceWaitPoint::before_destination_write};
+    bool synchronize_with_fence{false};
 };
 
 struct RuntimeMavgPayloadPageSliceRow {
@@ -108,10 +144,50 @@ struct RuntimeMavgPayloadPageFileLoadResult {
     }
 };
 
+struct RuntimeMavgPayloadDirectStorageRequestRow {
+    std::uint32_t request_index{0};
+    std::uint32_t page_index{0};
+    std::uint64_t source_file_offset{0};
+    std::uint32_t source_size{0};
+    std::uint64_t destination_offset{0};
+    std::uint32_t destination_size{0};
+    RuntimeMavgPayloadDirectStorageFenceWaitPoint fence_wait_point{
+        RuntimeMavgPayloadDirectStorageFenceWaitPoint::before_destination_write};
+    bool source_is_file{true};
+    bool destination_is_memory{true};
+    bool synchronized_with_fence{false};
+    std::string debug_name;
+};
+
+struct RuntimeMavgPayloadDirectStorageRequestPlanResult {
+    std::vector<RuntimeMavgPayloadDirectStorageRequestRow> requests;
+    std::vector<RuntimeMavgPayloadDirectStorageRequestPlanDiagnostic> diagnostics;
+    std::size_t requested_page_count{0};
+    std::size_t planned_request_count{0};
+    std::uint64_t total_source_bytes{0};
+    std::uint64_t total_destination_bytes{0};
+    bool invoked_file_io{false};
+    bool used_native_directstorage{false};
+    bool requires_native_directstorage_sdk{false};
+    bool enqueued_native_requests{false};
+    bool submitted_native_queue{false};
+    bool signaled_native_fence{false};
+    bool mutated_mount_set{false};
+    bool executed_background_worker{false};
+    bool touched_renderer_or_rhi_handles{false};
+
+    [[nodiscard]] bool succeeded() const noexcept {
+        return diagnostics.empty();
+    }
+};
+
 [[nodiscard]] RuntimeMavgPayloadPageSliceResult
 extract_runtime_mavg_payload_page_slices(const RuntimeMavgPayloadPageSliceDesc& desc);
 
 [[nodiscard]] RuntimeMavgPayloadPageFileLoadResult
 load_runtime_mavg_payload_file_pages(const RuntimeMavgPayloadPageFileLoadDesc& desc);
+
+[[nodiscard]] RuntimeMavgPayloadDirectStorageRequestPlanResult
+plan_runtime_mavg_payload_directstorage_requests(const RuntimeMavgPayloadDirectStorageRequestPlanDesc& desc);
 
 } // namespace mirakana::runtime
