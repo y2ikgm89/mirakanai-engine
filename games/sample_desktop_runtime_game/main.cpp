@@ -739,6 +739,42 @@ struct EnvironmentLightingPackageEvidence {
     std::uint32_t diagnostics{0};
 };
 
+enum class EnvironmentQualityBudgetStatus : std::uint8_t {
+    not_requested,
+    blocked,
+    ready,
+};
+
+struct EnvironmentQualityBudgetEvidence {
+    EnvironmentQualityBudgetStatus status{EnvironmentQualityBudgetStatus::not_requested};
+    bool requested{false};
+    bool ready{false};
+    std::uint32_t feature_rows{0};
+    std::uint32_t diagnostics{0};
+    std::uint64_t constant_buffer_bytes{0};
+    std::uint32_t physical_sky_sample_budget{0};
+    std::uint32_t height_fog_sample_step_budget{0};
+    std::uint32_t volumetric_fog_raymarch_step_budget{0};
+    std::uint32_t volumetric_cloud_primary_step_budget{0};
+    std::uint32_t volumetric_cloud_light_step_budget{0};
+    std::uint32_t particle_rows{0};
+    std::uint64_t texture_upload_budget{0};
+    std::uint64_t particle_buffer_upload_budget{0};
+    std::uint64_t renderer_draw_budget{0};
+    std::uint64_t compute_dispatch_budget{0};
+    std::uint64_t raymarch_pass_budget{0};
+    std::uint32_t ibl_reflection_face_budget{0};
+    std::uint32_t ibl_radiance_mip_budget{0};
+    std::uint64_t transient_gpu_byte_estimate{0};
+    std::uint64_t transient_heap_allocations{0};
+    std::uint64_t transient_placed_allocations{0};
+    std::uint64_t transient_placed_resources_alive{0};
+    std::uint64_t framegraph_barrier_step_budget{0};
+    std::uint64_t framegraph_barrier_steps_executed{0};
+    bool native_handle_access{false};
+    bool broad_environment_ready_claimed{false};
+};
+
 [[nodiscard]] std::string_view
 environment_lighting_package_status_name(EnvironmentLightingPackageStatus status) noexcept {
     switch (status) {
@@ -756,6 +792,47 @@ environment_lighting_package_status_name(EnvironmentLightingPackageStatus status
         return "ready";
     }
     return "unknown";
+}
+
+[[nodiscard]] std::string_view environment_quality_budget_status_name(EnvironmentQualityBudgetStatus status) noexcept {
+    switch (status) {
+    case EnvironmentQualityBudgetStatus::not_requested:
+        return "not_requested";
+    case EnvironmentQualityBudgetStatus::blocked:
+        return "blocked";
+    case EnvironmentQualityBudgetStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] bool environment_quality_budget_requested(const DesktopRuntimeGameOptions& options) noexcept {
+    return options.require_environment_profile || options.require_environment_fog_evidence ||
+           options.require_environment_fog_vulkan_package_evidence || options.require_physical_sky_package_evidence ||
+           options.require_environment_volumetric_fog_package_evidence ||
+           options.require_environment_lighting_package_evidence || options.require_cloud_layer_package_evidence ||
+           options.require_cloud_layer_renderer_execution ||
+           options.require_environment_precipitation_package_evidence ||
+           options.require_environment_precipitation_renderer_execution ||
+           options.require_environment_snow_package_evidence || options.require_environment_snow_renderer_execution ||
+           options.require_environment_volumetric_cloud_package_evidence ||
+           options.require_environment_volumetric_cloud_renderer_execution;
+}
+
+[[nodiscard]] std::uint32_t total_physical_sky_sample_budget(mirakana::PhysicalSkySampleBudgetDesc budget) noexcept {
+    return budget.transmittance_sample_count + budget.sky_view_sample_count + budget.aerial_perspective_sample_count +
+           budget.multiple_scattering_sample_count;
+}
+
+[[nodiscard]] std::uint64_t
+transient_gpu_byte_estimate(const mirakana::Win32DesktopPresentationReport& report) noexcept {
+    if (report.rhi_transient_heap_allocations > 0) {
+        return report.rhi_transient_heap_allocations * 1024ULL * 1024ULL;
+    }
+    if (report.rhi_transient_placed_allocations > 0) {
+        return report.rhi_transient_placed_allocations * 1024ULL * 1024ULL;
+    }
+    return 0;
 }
 
 [[nodiscard]] std::string_view
@@ -866,6 +943,130 @@ evaluate_environment_lighting_package(bool requested,
     evidence.status =
         evidence.ready ? EnvironmentLightingPackageStatus::ready : EnvironmentLightingPackageStatus::policy_failed;
     evidence.diagnostics = evidence.ready ? 0U : std::max(evidence.diagnostics, 1U);
+    return evidence;
+}
+
+[[nodiscard]] EnvironmentQualityBudgetEvidence build_environment_quality_budget_evidence(
+    const DesktopRuntimeGameOptions& options, const mirakana::Win32DesktopPresentationReport& report,
+    const mirakana::Win32DesktopPresentationEnvironmentFogReport& environment_fog,
+    const mirakana::Win32DesktopPresentationVulkanEnvironmentFogPackageReport& environment_fog_vulkan_package,
+    const mirakana::Win32DesktopPresentationPhysicalSkyReport& physical_sky,
+    const EnvironmentLightingPackageEvidence& environment_lighting,
+    const mirakana::Win32DesktopPresentationCloudLayerReport& cloud_layer,
+    const mirakana::Win32DesktopPresentationEnvironmentPrecipitationReport& environment_precipitation,
+    const mirakana::Win32DesktopPresentationEnvironmentVolumetricFogReport& environment_volumetric_fog,
+    const mirakana::Win32DesktopPresentationEnvironmentVolumetricCloudReport& environment_volumetric_cloud,
+    const EnvironmentProfilePackageEvidence& environment_profile, std::uint64_t expected_framegraph_barrier_steps) {
+    EnvironmentQualityBudgetEvidence evidence;
+    evidence.requested = environment_quality_budget_requested(options);
+    if (!evidence.requested) {
+        return evidence;
+    }
+
+    auto add_feature = [&](const bool selected, const bool ready) {
+        if (!selected) {
+            return;
+        }
+        ++evidence.feature_rows;
+        if (!ready) {
+            ++evidence.diagnostics;
+        }
+    };
+
+    const auto physical_sky_desc = make_sample_physical_sky_policy_desc();
+    const auto fog_desc = make_sample_environment_fog_policy_desc();
+    const auto volumetric_fog_desc = make_sample_environment_volumetric_fog_policy_desc(true);
+    const auto volumetric_cloud_desc = make_sample_environment_volumetric_cloud_policy_desc();
+
+    add_feature(options.require_environment_profile, environment_profile.ready);
+    add_feature(options.require_physical_sky_package_evidence, physical_sky.ready);
+    add_feature(options.require_environment_fog_evidence, environment_fog.ready);
+    add_feature(options.require_environment_fog_vulkan_package_evidence, environment_fog_vulkan_package.ready);
+    add_feature(options.require_environment_volumetric_fog_package_evidence, environment_volumetric_fog.ready);
+    add_feature(options.require_environment_lighting_package_evidence, environment_lighting.ready);
+    add_feature(options.require_cloud_layer_package_evidence || options.require_cloud_layer_renderer_execution,
+                cloud_layer.ready);
+    add_feature(options.require_environment_precipitation_package_evidence ||
+                    options.require_environment_precipitation_renderer_execution ||
+                    options.require_environment_snow_package_evidence ||
+                    options.require_environment_snow_renderer_execution,
+                environment_precipitation.ready);
+    add_feature(options.require_environment_volumetric_cloud_package_evidence ||
+                    options.require_environment_volumetric_cloud_renderer_execution,
+                environment_volumetric_cloud.ready);
+
+    if (options.require_physical_sky_package_evidence) {
+        evidence.constant_buffer_bytes += physical_sky.constant_buffer_bytes;
+        evidence.physical_sky_sample_budget = total_physical_sky_sample_budget(physical_sky_desc.sample_budget);
+    }
+    if (options.require_environment_fog_evidence) {
+        evidence.constant_buffer_bytes += environment_fog.constant_buffer_bytes;
+        evidence.height_fog_sample_step_budget = fog_desc.sample_step_budget;
+    }
+    if (options.require_environment_fog_vulkan_package_evidence) {
+        evidence.constant_buffer_bytes += environment_fog_vulkan_package.constant_buffer_bytes;
+        evidence.height_fog_sample_step_budget = fog_desc.sample_step_budget;
+    }
+    if (options.require_environment_volumetric_fog_package_evidence) {
+        evidence.constant_buffer_bytes += environment_volumetric_fog.constant_buffer_bytes;
+        evidence.volumetric_fog_raymarch_step_budget = volumetric_fog_desc.raymarch_step_budget;
+        evidence.compute_dispatch_budget = 1;
+    }
+    if (options.require_cloud_layer_package_evidence || options.require_cloud_layer_renderer_execution) {
+        evidence.constant_buffer_bytes += mirakana::cloud_layer_constants_byte_size();
+        evidence.texture_upload_budget += options.require_cloud_layer_renderer_execution ? 1U : 0U;
+        evidence.renderer_draw_budget += options.require_cloud_layer_renderer_execution ? 1U : 0U;
+    }
+    if (options.require_environment_precipitation_package_evidence ||
+        options.require_environment_precipitation_renderer_execution ||
+        options.require_environment_snow_package_evidence || options.require_environment_snow_renderer_execution) {
+        evidence.constant_buffer_bytes += mirakana::precipitation_constants_byte_size();
+        evidence.particle_rows += environment_precipitation.particle_rows;
+        evidence.particle_buffer_upload_budget += (options.require_environment_precipitation_renderer_execution ||
+                                                   options.require_environment_snow_renderer_execution)
+                                                      ? 1U
+                                                      : 0U;
+        evidence.renderer_draw_budget += (options.require_environment_precipitation_renderer_execution ||
+                                          options.require_environment_snow_renderer_execution)
+                                             ? 1U
+                                             : 0U;
+    }
+    if (options.require_environment_volumetric_cloud_package_evidence ||
+        options.require_environment_volumetric_cloud_renderer_execution) {
+        evidence.constant_buffer_bytes += environment_volumetric_cloud.constant_buffer_bytes;
+        evidence.volumetric_cloud_primary_step_budget = volumetric_cloud_desc.raymarch.primary_steps;
+        evidence.volumetric_cloud_light_step_budget = volumetric_cloud_desc.raymarch.light_steps;
+        evidence.texture_upload_budget += options.require_environment_volumetric_cloud_renderer_execution ? 3U : 0U;
+        evidence.renderer_draw_budget += options.require_environment_volumetric_cloud_renderer_execution ? 1U : 0U;
+        evidence.raymarch_pass_budget += options.require_environment_volumetric_cloud_renderer_execution ? 1U : 0U;
+    }
+    if (options.require_environment_lighting_package_evidence) {
+        evidence.ibl_reflection_face_budget = environment_lighting.reflection_cubemap_face_count;
+        evidence.ibl_radiance_mip_budget = environment_lighting.radiance_mip_rows;
+    }
+
+    evidence.transient_gpu_byte_estimate = transient_gpu_byte_estimate(report);
+    evidence.transient_heap_allocations = report.rhi_transient_heap_allocations;
+    evidence.transient_placed_allocations = report.rhi_transient_placed_allocations;
+    evidence.transient_placed_resources_alive = report.rhi_transient_placed_resources_alive;
+    evidence.framegraph_barrier_step_budget = expected_framegraph_barrier_steps;
+    evidence.framegraph_barrier_steps_executed = report.renderer_stats.framegraph_barrier_steps_executed;
+    evidence.native_handle_access =
+        physical_sky.exposes_native_handles || environment_fog_vulkan_package.exposes_native_handles ||
+        environment_lighting.exposes_native_handles || cloud_layer.exposes_native_handles ||
+        environment_precipitation.exposes_native_handles || environment_volumetric_fog.exposes_native_handles ||
+        environment_volumetric_cloud.exposes_native_handles;
+
+    if (evidence.feature_rows == 0) {
+        ++evidence.diagnostics;
+    }
+    if (evidence.native_handle_access || evidence.broad_environment_ready_claimed ||
+        evidence.transient_placed_resources_alive != 0U) {
+        ++evidence.diagnostics;
+    }
+
+    evidence.ready = evidence.diagnostics == 0U;
+    evidence.status = evidence.ready ? EnvironmentQualityBudgetStatus::ready : EnvironmentQualityBudgetStatus::blocked;
     return evidence;
 }
 
@@ -3753,6 +3954,19 @@ int main(int argc, char** argv) {
                                            ? run_frame_graph_multi_queue_package_evidence(host.presentation())
                                            : mirakana::FrameGraphRhiMultiQueuePackageEvidence{};
     const bool lighting_shadow_policy_ready = game.lighting_shadow_policy_passed(options.max_frames);
+    const std::uint32_t expected_framegraph_passes = options.require_directional_shadow ? 3U : 2U;
+    const auto expected_frames = static_cast<std::uint64_t>(options.max_frames);
+    const auto expected_framegraph_render_passes = expected_frames * expected_framegraph_passes;
+    const std::uint64_t expected_framegraph_barrier_steps =
+        options.require_directional_shadow        ? (expected_frames == 0 ? 0 : 9 + ((expected_frames - 1) * 6))
+        : options.require_postprocess_depth_input ? (expected_frames == 0 ? 0 : 1 + (expected_frames * 4))
+                                                  : expected_frames * 2;
+    const bool requires_any_environment_fog_postprocess =
+        options.require_environment_fog_evidence || options.require_environment_fog_vulkan_package_evidence;
+    const auto environment_quality_budget = build_environment_quality_budget_evidence(
+        options, report, environment_fog, environment_fog_vulkan_package, physical_sky, environment_lighting,
+        cloud_layer, environment_precipitation, environment_volumetric_fog, environment_volumetric_cloud,
+        environment_profile, options.require_postprocess ? expected_framegraph_barrier_steps : 0U);
 
     std::cout
         << "sample_desktop_runtime_game status=" << status_name(result.status)
@@ -4058,6 +4272,49 @@ int main(int argc, char** argv) {
         << " environment_profile_dependency_edge=" << (environment_profile.dependency_edge_present ? 1 : 0)
         << " environment_profile_source_parsing=" << (environment_profile.runtime_source_parsing ? 1 : 0)
         << " environment_profile_diagnostics=" << environment_profile.diagnostics
+        << " environment_quality_budget_status="
+        << environment_quality_budget_status_name(environment_quality_budget.status)
+        << " environment_quality_budget_ready=" << (environment_quality_budget.ready ? 1 : 0)
+        << " environment_quality_budget_requested=" << (environment_quality_budget.requested ? 1 : 0)
+        << " environment_quality_budget_rows=" << environment_quality_budget.feature_rows
+        << " environment_quality_budget_diagnostics=" << environment_quality_budget.diagnostics
+        << " environment_quality_budget_constant_buffer_bytes=" << environment_quality_budget.constant_buffer_bytes
+        << " environment_quality_budget_physical_sky_sample_budget="
+        << environment_quality_budget.physical_sky_sample_budget
+        << " environment_quality_budget_height_fog_sample_step_budget="
+        << environment_quality_budget.height_fog_sample_step_budget
+        << " environment_quality_budget_volumetric_fog_raymarch_step_budget="
+        << environment_quality_budget.volumetric_fog_raymarch_step_budget
+        << " environment_quality_budget_volumetric_cloud_primary_step_budget="
+        << environment_quality_budget.volumetric_cloud_primary_step_budget
+        << " environment_quality_budget_volumetric_cloud_light_step_budget="
+        << environment_quality_budget.volumetric_cloud_light_step_budget
+        << " environment_quality_budget_particle_rows=" << environment_quality_budget.particle_rows
+        << " environment_quality_budget_texture_upload_budget=" << environment_quality_budget.texture_upload_budget
+        << " environment_quality_budget_particle_buffer_upload_budget="
+        << environment_quality_budget.particle_buffer_upload_budget
+        << " environment_quality_budget_renderer_draw_budget=" << environment_quality_budget.renderer_draw_budget
+        << " environment_quality_budget_compute_dispatch_budget=" << environment_quality_budget.compute_dispatch_budget
+        << " environment_quality_budget_raymarch_pass_budget=" << environment_quality_budget.raymarch_pass_budget
+        << " environment_quality_budget_ibl_reflection_face_budget="
+        << environment_quality_budget.ibl_reflection_face_budget
+        << " environment_quality_budget_ibl_radiance_mip_budget=" << environment_quality_budget.ibl_radiance_mip_budget
+        << " environment_quality_budget_transient_gpu_byte_estimate="
+        << environment_quality_budget.transient_gpu_byte_estimate
+        << " environment_quality_budget_transient_heap_allocations="
+        << environment_quality_budget.transient_heap_allocations
+        << " environment_quality_budget_transient_placed_allocations="
+        << environment_quality_budget.transient_placed_allocations
+        << " environment_quality_budget_transient_placed_resources_alive="
+        << environment_quality_budget.transient_placed_resources_alive
+        << " environment_quality_budget_framegraph_barrier_step_budget="
+        << environment_quality_budget.framegraph_barrier_step_budget
+        << " environment_quality_budget_framegraph_barrier_steps_executed="
+        << environment_quality_budget.framegraph_barrier_steps_executed
+        << " environment_quality_budget_native_handle_access="
+        << (environment_quality_budget.native_handle_access ? 1 : 0)
+        << " environment_quality_budget_broad_environment_ready_claimed="
+        << (environment_quality_budget.broad_environment_ready_claimed ? 1 : 0)
         << " vulkan_postprocess_execution_status="
         << mirakana::win32_desktop_presentation_vulkan_postprocess_execution_status_name(
                vulkan_postprocess_execution.status)
@@ -4855,15 +5112,9 @@ int main(int argc, char** argv) {
             !vulkan_gpu_skinning_evidence_ready(report, options.max_frames)) {
             return 3;
         }
-        const std::uint32_t expected_framegraph_passes = options.require_directional_shadow ? 3U : 2U;
-        const auto expected_frames = static_cast<std::uint64_t>(options.max_frames);
-        const auto expected_framegraph_render_passes = expected_frames * expected_framegraph_passes;
-        const std::uint64_t expected_framegraph_barrier_steps =
-            options.require_directional_shadow        ? (expected_frames == 0 ? 0 : 9 + ((expected_frames - 1) * 6))
-            : options.require_postprocess_depth_input ? (expected_frames == 0 ? 0 : 1 + (expected_frames * 4))
-                                                      : expected_frames * 2;
-        const bool requires_any_environment_fog_postprocess =
-            options.require_environment_fog_evidence || options.require_environment_fog_vulkan_package_evidence;
+        if (environment_quality_budget.requested && !environment_quality_budget.ready) {
+            return 3;
+        }
         if (options.require_postprocess &&
             (report.postprocess_status != mirakana::Win32DesktopPresentationPostprocessStatus::ready ||
              !postprocess_policy.ready || postprocess_policy.diagnostics_count != 0 ||
