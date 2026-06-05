@@ -8,6 +8,9 @@ $runtimeRhiMavgConventionalTestsText = Get-AgentSurfaceText "tests/unit/runtime_
 $runtimeMavgPageStreamingHeaderText = Get-AgentSurfaceText "engine/runtime/include/mirakana/runtime/mavg_page_streaming.hpp"
 $runtimeMavgPageStreamingSourceText = Get-AgentSurfaceText "engine/runtime/src/mavg_page_streaming.cpp"
 $runtimeMavgPageStreamingTestsText = Get-AgentSurfaceText "tests/unit/runtime_mavg_page_streaming_tests.cpp"
+$assetsMavgPayloadHeaderText = Get-AgentSurfaceText "engine/assets/include/mirakana/assets/mavg_cluster_payload.hpp"
+$runtimeMavgPayloadPagesHeaderText = Get-AgentSurfaceText "engine/runtime/include/mirakana/runtime/mavg_payload_pages.hpp"
+$runtimeMavgPayloadPagesTestsText = Get-AgentSurfaceText "tests/unit/runtime_mavg_payload_pages_tests.cpp"
 $mavgArchitectureSpecText = Get-AgentSurfaceText "docs/specs/2026-06-05-mavg-architecture-v1.md"
 $mavgRuntimeLodPlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-05-mavg-runtime-lod-milestone-v1.md"
 $planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
@@ -61,6 +64,35 @@ foreach ($needle in @(
 }
 
 foreach ($needle in @(
+        "MavgClusterPayloadDocument",
+        "MavgClusterPayloadPage",
+        "MavgClusterPayloadCluster",
+        "page_data_hex",
+        "mavg_cluster_payload_format_v1",
+        "validate_mavg_cluster_payload"
+    )) {
+    Assert-ContainsText $assetsMavgPayloadHeaderText $needle "engine/assets/include/mirakana/assets/mavg_cluster_payload.hpp"
+}
+foreach ($needle in @(
+        "RuntimeMavgPayloadPageSliceResult",
+        "payload_bytes",
+        "extract_runtime_mavg_payload_page_slices",
+        "invoked_file_io",
+        "mutated_mount_set",
+        "executed_background_worker",
+        "touched_renderer_or_rhi_handles"
+    )) {
+    Assert-ContainsText $runtimeMavgPayloadPagesHeaderText $needle "engine/runtime/include/mirakana/runtime/mavg_payload_pages.hpp"
+}
+foreach ($needle in @(
+        "runtime mavg payload page slices extract requested decoded bytes in request order",
+        "runtime mavg payload page slices reject duplicate and unknown page requests before extraction",
+        "runtime mavg payload page slices reject invalid payload schema before extraction"
+    )) {
+    Assert-ContainsText $runtimeMavgPayloadPagesTestsText $needle "tests/unit/runtime_mavg_payload_pages_tests.cpp"
+}
+
+foreach ($needle in @(
         "RuntimeMavgConventionalMeshUploadDesc",
         "RuntimeMavgConventionalMeshBinding",
         "RuntimeMavgConventionalMeshUploadResult",
@@ -102,11 +134,17 @@ foreach ($surface in @(
     foreach ($needle in @("mavg_page_streaming.hpp", "RuntimeMavgPageStreamingPlanResult", "RuntimeMavgPageStreamingEvictionReviewResult", "RuntimeMavgPageStreamingDispatchPlan", "review_runtime_mavg_page_streaming_evictions", "plan_runtime_mavg_page_streaming_dispatches", "execute_runtime_mavg_page_streaming_request_safe_point", "autonomous background")) {
         Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG page streaming queue evidence"
     }
+    foreach ($needle in @("mavg_cluster_payload.hpp", "MavgClusterPayloadDocument", "page.data_hex", "mavg_payload_pages.hpp", "RuntimeMavgPayloadPageSliceResult", "extract_runtime_mavg_payload_page_slices", "DirectStorage/Win32")) {
+        Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG page-addressable payload schema evidence"
+    }
 }
 $runtimeModule = @($manifest.modules | Where-Object { $_.name -eq "MK_runtime" })
 if ($runtimeModule.Count -ne 1) { Write-Error "engine/agent/manifest.json must expose exactly one MK_runtime module" }
 if (@($runtimeModule[0].publicHeaders) -notcontains "engine/runtime/include/mirakana/runtime/mavg_page_streaming.hpp") {
     Write-Error "engine/agent/manifest.json MK_runtime publicHeaders missing mavg_page_streaming.hpp"
+}
+if (@($runtimeModule[0].publicHeaders) -notcontains "engine/runtime/include/mirakana/runtime/mavg_payload_pages.hpp") {
+    Write-Error "engine/agent/manifest.json MK_runtime publicHeaders missing mavg_payload_pages.hpp"
 }
 $runtimeManifestText = ((@($runtimeModule[0].recentEvidence) -join " "), [string]$runtimeModule[0].purpose) -join " "
 foreach ($needle in @(
@@ -125,6 +163,16 @@ foreach ($needle in @(
     "autonomous background"
     )) {
     Assert-ContainsText $runtimeManifestText $needle "engine/agent/manifest.json MK_runtime MAVG page streaming queue evidence"
+}
+foreach ($needle in @(
+        "MAVG Page-Addressable Payload Schema v1",
+        "mavg_payload_pages.hpp",
+        "RuntimeMavgPayloadPageSliceResult",
+        "extract_runtime_mavg_payload_page_slices",
+        "payload_bytes",
+        "DirectStorage/Win32 async IO"
+    )) {
+    Assert-ContainsText $runtimeManifestText $needle "engine/agent/manifest.json MK_runtime MAVG payload schema evidence"
 }
 $runtimeRhiModule = @($manifest.modules | Where-Object { $_.name -eq "MK_runtime_rhi" })
 if ($runtimeRhiModule.Count -ne 1) { Write-Error "engine/agent/manifest.json must expose exactly one MK_runtime_rhi module" }

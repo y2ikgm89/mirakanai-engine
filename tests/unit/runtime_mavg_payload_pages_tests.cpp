@@ -1,0 +1,216 @@
+// SPDX-FileCopyrightText: 2026 GameEngine contributors
+// SPDX-License-Identifier: LicenseRef-Proprietary
+
+#include "test_framework.hpp"
+
+#include "mirakana/assets/mavg_cluster_graph.hpp"
+#include "mirakana/assets/mavg_cluster_payload.hpp"
+#include "mirakana/runtime/mavg_payload_pages.hpp"
+
+#include <cstdint>
+#include <string>
+#include <vector>
+
+namespace {
+
+[[nodiscard]] std::string repeated_hex_byte(std::uint8_t value, std::size_t count) {
+    constexpr char digits[] = "0123456789abcdef";
+    std::string result;
+    result.reserve(count * 2U);
+    for (std::size_t index = 0; index < count; ++index) {
+        result.push_back(digits[(value >> 4U) & 0x0fU]);
+        result.push_back(digits[value & 0x0fU]);
+    }
+    return result;
+}
+
+[[nodiscard]] mirakana::MavgClusterGraphDocument make_payload_graph() {
+    const auto graph_asset = mirakana::AssetId::from_name("mavg/runtime-page-addressable");
+    const auto source_mesh = mirakana::AssetId::from_name("meshes/runtime-page-addressable-source");
+    const auto material = mirakana::AssetId::from_name("materials/runtime-page-addressable-material");
+    return mirakana::MavgClusterGraphDocument{
+        .asset = graph_asset,
+        .source_mesh = source_mesh,
+        .source_mesh_uri = "source/runtime-page-addressable.glb",
+        .cluster_payload_uri = "runtime/mavg/runtime-page-addressable.mavgpayload",
+        .target_cluster_triangles = 2,
+        .page_size_bytes = 64,
+        .pages =
+            {
+                mirakana::MavgClusterGraphPage{
+                    .page_index = 0, .byte_offset = 0, .byte_size = 64, .first_cluster = 0, .cluster_count = 1},
+                mirakana::MavgClusterGraphPage{
+                    .page_index = 1, .byte_offset = 64, .byte_size = 64, .first_cluster = 1, .cluster_count = 1},
+            },
+        .material_partitions =
+            {
+                mirakana::MavgClusterGraphMaterialPartition{
+                    .material = material, .first_cluster = 0, .cluster_count = 2},
+            },
+        .clusters =
+            {
+                mirakana::MavgClusterGraphCluster{
+                    .cluster_index = 0,
+                    .page_index = 0,
+                    .local_cluster_index = 0,
+                    .lod_level = 0,
+                    .triangle_count = 2,
+                    .vertex_count = 4,
+                    .bounds = mirakana::MavgBounds3f{.min = mirakana::MavgVec3f{.x = -1.0F, .y = -1.0F, .z = -1.0F},
+                                                     .max = mirakana::MavgVec3f{.x = 1.0F, .y = 1.0F, .z = 1.0F}},
+                    .material_partition = 0,
+                    .parent_cluster_index = 0,
+                    .has_parent = false,
+                    .resident_fallback_cluster_index = 0,
+                    .geometric_error = 8.0F,
+                    .first_index = 0,
+                    .index_count = 6,
+                    .vertex_base = 0,
+                    .children = {1},
+                },
+                mirakana::MavgClusterGraphCluster{
+                    .cluster_index = 1,
+                    .page_index = 1,
+                    .local_cluster_index = 0,
+                    .lod_level = 1,
+                    .triangle_count = 1,
+                    .vertex_count = 3,
+                    .bounds = mirakana::MavgBounds3f{.min = mirakana::MavgVec3f{.x = -1.0F, .y = 0.0F, .z = 0.0F},
+                                                     .max = mirakana::MavgVec3f{.x = 0.0F, .y = 1.0F, .z = 1.0F}},
+                    .material_partition = 0,
+                    .parent_cluster_index = 0,
+                    .has_parent = true,
+                    .resident_fallback_cluster_index = 0,
+                    .geometric_error = 1.0F,
+                    .first_index = 6,
+                    .index_count = 3,
+                    .vertex_base = 4,
+                    .children = {},
+                },
+            },
+    };
+}
+
+[[nodiscard]] std::string make_payload_text(const mirakana::MavgClusterGraphDocument& graph) {
+    return mirakana::serialize_mavg_cluster_payload_document(mirakana::MavgClusterPayloadDocument{
+        .asset = graph.asset,
+        .vertex_count = 4,
+        .vertex_stride_bytes = 32,
+        .vertex_data_hex = repeated_hex_byte(0x11U, 4U * 32U),
+        .index_count = 9,
+        .index_format = "uint32",
+        .index_data_hex = repeated_hex_byte(0x22U, 9U * 4U),
+        .page_data_hex = repeated_hex_byte(0x30U, 64U) + repeated_hex_byte(0x40U, 64U),
+        .pages =
+            {
+                mirakana::MavgClusterPayloadPage{
+                    .page_index = 0, .byte_offset = 0, .byte_size = 64, .first_cluster = 0, .cluster_count = 1},
+                mirakana::MavgClusterPayloadPage{
+                    .page_index = 1, .byte_offset = 64, .byte_size = 64, .first_cluster = 1, .cluster_count = 1},
+            },
+        .clusters =
+            {
+                mirakana::MavgClusterPayloadCluster{
+                    .cluster_index = 0, .page_index = 0, .first_index = 0, .index_count = 6, .vertex_base = 0},
+                mirakana::MavgClusterPayloadCluster{
+                    .cluster_index = 1, .page_index = 1, .first_index = 6, .index_count = 3, .vertex_base = 4},
+            },
+    });
+}
+
+[[nodiscard]] bool
+has_diagnostic(const std::vector<mirakana::runtime::RuntimeMavgPayloadPageSliceDiagnostic>& diagnostics,
+               mirakana::runtime::RuntimeMavgPayloadPageSliceDiagnosticCode code) {
+    for (const auto& diagnostic : diagnostics) {
+        if (diagnostic.code == code) {
+            return true;
+        }
+    }
+    return false;
+}
+
+} // namespace
+
+MK_TEST("runtime mavg payload page slices extract requested decoded bytes in request order") {
+    const auto graph = make_payload_graph();
+    const auto payload_text = make_payload_text(graph);
+    const std::vector<std::uint32_t> page_indices{1, 0};
+
+    const auto result =
+        mirakana::runtime::extract_runtime_mavg_payload_page_slices(mirakana::runtime::RuntimeMavgPayloadPageSliceDesc{
+            .graph = &graph,
+            .payload_text = payload_text,
+            .page_indices = page_indices,
+        });
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.requested_page_count == 2U);
+    MK_REQUIRE(result.extracted_page_count == 2U);
+    MK_REQUIRE(result.pages.size() == 2U);
+    MK_REQUIRE(result.pages[0].page_index == 1U);
+    MK_REQUIRE(result.pages[0].byte_offset == 64U);
+    MK_REQUIRE(result.pages[0].payload_bytes.size() == 64U);
+    MK_REQUIRE(result.pages[0].payload_bytes[0] == 0x40U);
+    MK_REQUIRE(result.pages[1].page_index == 0U);
+    MK_REQUIRE(result.pages[1].byte_offset == 0U);
+    MK_REQUIRE(result.pages[1].payload_bytes.size() == 64U);
+    MK_REQUIRE(result.pages[1].payload_bytes[0] == 0x30U);
+    MK_REQUIRE(!result.invoked_file_io);
+    MK_REQUIRE(!result.mutated_mount_set);
+    MK_REQUIRE(!result.executed_background_worker);
+    MK_REQUIRE(!result.touched_renderer_or_rhi_handles);
+}
+
+MK_TEST("runtime mavg payload page slices reject duplicate and unknown page requests before extraction") {
+    const auto graph = make_payload_graph();
+    const auto payload_text = make_payload_text(graph);
+    const std::vector<std::uint32_t> page_indices{1, 1, 99};
+
+    const auto result =
+        mirakana::runtime::extract_runtime_mavg_payload_page_slices(mirakana::runtime::RuntimeMavgPayloadPageSliceDesc{
+            .graph = &graph,
+            .payload_text = payload_text,
+            .page_indices = page_indices,
+        });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.pages.empty());
+    MK_REQUIRE(result.requested_page_count == 3U);
+    MK_REQUIRE(has_diagnostic(result.diagnostics,
+                              mirakana::runtime::RuntimeMavgPayloadPageSliceDiagnosticCode::duplicate_requested_page));
+    MK_REQUIRE(
+        has_diagnostic(result.diagnostics, mirakana::runtime::RuntimeMavgPayloadPageSliceDiagnosticCode::unknown_page));
+    MK_REQUIRE(!result.invoked_file_io);
+    MK_REQUIRE(!result.mutated_mount_set);
+    MK_REQUIRE(!result.executed_background_worker);
+    MK_REQUIRE(!result.touched_renderer_or_rhi_handles);
+}
+
+MK_TEST("runtime mavg payload page slices reject invalid payload schema before extraction") {
+    const auto graph = make_payload_graph();
+    auto payload_text = make_payload_text(graph);
+    const auto offset = payload_text.find("page.1.byte_offset=64\n");
+    MK_REQUIRE(offset != std::string::npos);
+    payload_text.replace(offset, std::string{"page.1.byte_offset=64\n"}.size(), "page.1.byte_offset=32\n");
+    const std::vector<std::uint32_t> page_indices{1};
+
+    const auto result =
+        mirakana::runtime::extract_runtime_mavg_payload_page_slices(mirakana::runtime::RuntimeMavgPayloadPageSliceDesc{
+            .graph = &graph,
+            .payload_text = payload_text,
+            .page_indices = page_indices,
+        });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.pages.empty());
+    MK_REQUIRE(has_diagnostic(result.diagnostics,
+                              mirakana::runtime::RuntimeMavgPayloadPageSliceDiagnosticCode::invalid_payload));
+    MK_REQUIRE(!result.invoked_file_io);
+    MK_REQUIRE(!result.mutated_mount_set);
+    MK_REQUIRE(!result.executed_background_worker);
+    MK_REQUIRE(!result.touched_renderer_or_rhi_handles);
+}
+
+int main() {
+    return mirakana::test::run_all();
+}

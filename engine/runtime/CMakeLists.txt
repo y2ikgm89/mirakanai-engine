@@ -10,6 +10,7 @@ add_library(mirakana_runtime
     src/inventory_items.cpp
     src/mavg_lod_residency.cpp
     src/mavg_page_streaming.cpp
+    src/mavg_payload_pages.cpp
     src/networking_foundation.cpp
     src/network_production_security.cpp
     src/network_transport.cpp

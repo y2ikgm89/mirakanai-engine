@@ -3,6 +3,8 @@
 
 #include "mirakana/tools/mavg_cluster_cook.hpp"
 
+#include "mirakana/assets/mavg_cluster_payload.hpp"
+
 #include <algorithm>
 #include <bit>
 #include <cmath>
@@ -320,6 +322,10 @@ void append_le_f32(std::vector<std::uint8_t>& bytes, float value) {
     append_le_u32(bytes, std::bit_cast<std::uint32_t>(value));
 }
 
+void append_le_i32(std::vector<std::uint8_t>& bytes, std::int32_t value) {
+    append_le_u32(bytes, std::bit_cast<std::uint32_t>(value));
+}
+
 void append_vertex(std::vector<std::uint8_t>& bytes, const MavgClusterCookVertex& vertex) {
     append_le_f32(bytes, vertex.position.x);
     append_le_f32(bytes, vertex.position.y);
@@ -362,26 +368,72 @@ void append_vertex(std::vector<std::uint8_t>& bytes, const MavgClusterCookVertex
     return hex_encode(bytes);
 }
 
+void append_cluster_page_record(std::vector<std::uint8_t>& bytes, const MavgClusterGraphCluster& cluster) {
+    const auto record_begin = bytes.size();
+    append_le_u32(bytes, cluster.cluster_index);
+    append_le_u32(bytes, cluster.page_index);
+    append_le_u32(bytes, cluster.local_cluster_index);
+    append_le_u32(bytes, cluster.lod_level);
+    append_le_u32(bytes, cluster.triangle_count);
+    append_le_u32(bytes, cluster.vertex_count);
+    append_le_u32(bytes, cluster.first_index);
+    append_le_u32(bytes, cluster.index_count);
+    append_le_i32(bytes, cluster.vertex_base);
+    append_le_u32(bytes, cluster.resident_fallback_cluster_index);
+    append_le_u32(bytes, cluster.has_parent ? cluster.parent_cluster_index : cluster.cluster_index);
+    append_le_f32(bytes, cluster.geometric_error);
+    while (bytes.size() - record_begin < cluster_payload_stride_bytes) {
+        bytes.push_back(0U);
+    }
+}
+
+[[nodiscard]] std::string page_data_hex(const MavgClusterGraphDocument& graph) {
+    std::vector<std::uint8_t> bytes;
+    bytes.reserve(graph.clusters.size() * cluster_payload_stride_bytes);
+    for (const auto& cluster : graph.clusters) {
+        append_cluster_page_record(bytes, cluster);
+    }
+    return hex_encode(bytes);
+}
+
 [[nodiscard]] std::string serialize_payload(AssetId graph_asset, const MavgClusterGraphDocument& graph,
                                             const MavgClusterCookRequest& request) {
-    std::ostringstream output;
-    output << "format=GameEngine.MavgClusterPayload.v1\n";
-    output << "asset.id=" << graph_asset.value << '\n';
-    output << "vertex.count=" << request.vertices.size() << '\n';
-    output << "vertex.stride_bytes=" << mavg_payload_vertex_stride_bytes << '\n';
-    output << "vertex.data_hex=" << vertex_data_hex(request) << '\n';
-    output << "index.count=" << (request.triangles.size() * 3U) << '\n';
-    output << "index.format=uint32\n";
-    output << "index.data_hex=" << index_data_hex(request) << '\n';
-    output << "cluster.count=" << graph.clusters.size() << '\n';
-    for (std::size_t index = 0; index < graph.clusters.size(); ++index) {
-        output << "cluster." << index << ".index=" << graph.clusters[index].cluster_index << '\n';
-        output << "cluster." << index << ".triangles=" << graph.clusters[index].triangle_count << '\n';
-        output << "cluster." << index << ".first_index=" << graph.clusters[index].first_index << '\n';
-        output << "cluster." << index << ".index_count=" << graph.clusters[index].index_count << '\n';
-        output << "cluster." << index << ".vertex_base=" << graph.clusters[index].vertex_base << '\n';
+    std::vector<MavgClusterPayloadPage> pages;
+    pages.reserve(graph.pages.size());
+    for (const auto& page : graph.pages) {
+        pages.push_back(MavgClusterPayloadPage{
+            .page_index = page.page_index,
+            .byte_offset = page.byte_offset,
+            .byte_size = page.byte_size,
+            .first_cluster = page.first_cluster,
+            .cluster_count = page.cluster_count,
+        });
     }
-    return output.str();
+
+    std::vector<MavgClusterPayloadCluster> clusters;
+    clusters.reserve(graph.clusters.size());
+    for (const auto& cluster : graph.clusters) {
+        clusters.push_back(MavgClusterPayloadCluster{
+            .cluster_index = cluster.cluster_index,
+            .page_index = cluster.page_index,
+            .first_index = cluster.first_index,
+            .index_count = cluster.index_count,
+            .vertex_base = cluster.vertex_base,
+        });
+    }
+
+    return serialize_mavg_cluster_payload_document(MavgClusterPayloadDocument{
+        .asset = graph_asset,
+        .vertex_count = static_cast<std::uint32_t>(request.vertices.size()),
+        .vertex_stride_bytes = mavg_payload_vertex_stride_bytes,
+        .vertex_data_hex = vertex_data_hex(request),
+        .index_count = static_cast<std::uint32_t>(request.triangles.size() * 3U),
+        .index_format = "uint32",
+        .index_data_hex = index_data_hex(request),
+        .page_data_hex = page_data_hex(graph),
+        .pages = std::move(pages),
+        .clusters = std::move(clusters),
+    });
 }
 
 [[nodiscard]] std::vector<AssetId> graph_dependencies(const MavgClusterCookRequest& request) {

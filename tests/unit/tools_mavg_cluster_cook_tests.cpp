@@ -266,6 +266,22 @@ MK_TEST("mavg cluster cook planner produces deterministic graph payload and pack
     MK_REQUIRE(result.payload_content.find("index.count=9\n") != std::string::npos);
     MK_REQUIRE(result.payload_content.find("index.format=uint32\n") != std::string::npos);
     MK_REQUIRE(result.payload_content.find("index.data_hex=" + expected_index_data_hex() + "\n") != std::string::npos);
+    MK_REQUIRE(result.payload_content.find("page.count=2\n") != std::string::npos);
+    MK_REQUIRE(result.payload_content.find("page.data_hex=") != std::string::npos);
+    MK_REQUIRE(result.payload_content.find("page.0.index=0\n") != std::string::npos);
+    MK_REQUIRE(result.payload_content.find("page.0.byte_offset=0\n") != std::string::npos);
+    MK_REQUIRE(result.payload_content.find("page.0.byte_size=128\n") != std::string::npos);
+    MK_REQUIRE(result.payload_content.find("page.0.first_cluster=0\n") != std::string::npos);
+    MK_REQUIRE(result.payload_content.find("page.0.cluster_count=2\n") != std::string::npos);
+    MK_REQUIRE(result.payload_content.find("page.1.index=1\n") != std::string::npos);
+    MK_REQUIRE(result.payload_content.find("page.1.byte_offset=128\n") != std::string::npos);
+    MK_REQUIRE(result.payload_content.find("page.1.byte_size=128\n") != std::string::npos);
+    MK_REQUIRE(result.payload_content.find("page.1.first_cluster=2\n") != std::string::npos);
+    MK_REQUIRE(result.payload_content.find("page.1.cluster_count=2\n") != std::string::npos);
+    MK_REQUIRE(result.payload_content.find("cluster.0.page=0\n") != std::string::npos);
+    MK_REQUIRE(result.payload_content.find("cluster.1.page=0\n") != std::string::npos);
+    MK_REQUIRE(result.payload_content.find("cluster.2.page=1\n") != std::string::npos);
+    MK_REQUIRE(result.payload_content.find("cluster.3.page=1\n") != std::string::npos);
     MK_REQUIRE(result.package_index_content.find("mavg_cluster_graph") != std::string::npos);
     MK_REQUIRE(result.changed_files.size() == 3U);
 
