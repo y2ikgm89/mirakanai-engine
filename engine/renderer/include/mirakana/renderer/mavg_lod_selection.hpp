@@ -9,7 +9,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <string>
 #include <vector>
 
 namespace mirakana {
@@ -33,10 +32,6 @@ struct MavgLodViewDesc {
     std::uint32_t max_selected_clusters{0};
 };
 
-struct MavgLodResidentPageSet {
-    std::vector<std::uint32_t> page_indices;
-};
-
 struct MavgLodPreviousSelection {
     std::vector<std::uint32_t> cluster_indices;
 };
@@ -51,13 +46,6 @@ struct MavgLodSelectedCluster {
     std::uint32_t index_count{0};
     std::int32_t vertex_base{0};
     bool fallback_substitution{false};
-};
-
-struct MavgLodPageRequest {
-    AssetId graph_asset;
-    std::uint32_t page_index{0};
-    float priority{0.0F};
-    std::string reason;
 };
 
 struct MavgLodSelectionDiagnostic {

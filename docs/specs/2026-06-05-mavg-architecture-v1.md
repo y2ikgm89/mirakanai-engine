@@ -6,7 +6,7 @@ Define the clean-room architecture baseline for Mirakana Adaptive Virtual Geomet
 
 ## Status
 
-Phase 0 specification completed for `mavg-research-legal-benchmark-baseline-v1`. The active stacked implementation milestone is now `mavg-runtime-lod-milestone-v1` over the `mavg-asset-graph-v1` foundation. The first LoD checkpoints implement deterministic `MK_assets` `GameEngine.MavgClusterGraph.v1` hierarchy/error/fallback/draw-range graph validation, `MK_tools` static `GameEngine.MavgClusterPayload.v1` vertex/index payload rows through `MavgClusterCookVertex`, `vertex.data_hex`, `index.data_hex`, and per-material root/leaf fallback clusters, plus `MK_renderer` CPU reference selection through `mavg_lod_selection.hpp` / `select_mavg_lod_clusters`; runtime resident-page bridge execution, renderer submission, package streaming, deformation, ray tracing, and benchmark superiority remain unclaimed until later focused tasks add code and validation evidence.
+Phase 0 specification completed for `mavg-research-legal-benchmark-baseline-v1`. The active stacked implementation milestone is now `mavg-runtime-lod-milestone-v1` over the `mavg-asset-graph-v1` foundation. The first LoD checkpoints implement deterministic `MK_assets` `GameEngine.MavgClusterGraph.v1` hierarchy/error/fallback/draw-range graph validation, `MK_tools` static `GameEngine.MavgClusterPayload.v1` vertex/index payload rows through `MavgClusterCookVertex`, `vertex.data_hex`, `index.data_hex`, per-material root/leaf fallback clusters, `MK_renderer` CPU reference selection through `mavg_lod_selection.hpp` / `select_mavg_lod_clusters`, and `MK_runtime` resident-page evidence through `mavg_lod_residency.hpp` / `build_runtime_mavg_lod_residency`; renderer submission, package streaming execution, deformation, ray tracing, and benchmark superiority remain unclaimed until later focused tasks add code and validation evidence.
 
 ## Current Repository Baseline
 
@@ -81,9 +81,9 @@ Non-responsibilities:
 - Streaming IO execution.
 - Runtime source import.
 - Third-party simplifier ownership.
-- Runtime resident-page bridge execution, renderer submission, and backend execution; CPU selection now belongs to the `MK_renderer` selector checkpoint in the active LoD milestone.
+- Renderer submission and backend execution; CPU selection now belongs to the `MK_renderer` selector checkpoint and resident-page evidence now belongs to the `MK_runtime` bridge checkpoint in the active LoD milestone.
 
-The active detailed LoD milestone is `docs/superpowers/plans/2026-06-05-mavg-runtime-lod-milestone-v1.md`. Its graph, draw-ready static cook payload, and CPU selector checkpoints are implemented; runtime resident-page evidence, range-aware conventional indexed draws, and scene submission remain pending tasks.
+The active detailed LoD milestone is `docs/superpowers/plans/2026-06-05-mavg-runtime-lod-milestone-v1.md`. Its graph, draw-ready static cook payload, CPU selector, and runtime resident-page evidence checkpoints are implemented; range-aware conventional indexed draws and scene submission remain pending tasks.
 
 ### Runtime Selection
 
@@ -104,20 +104,37 @@ Non-responsibilities:
 - Backend resource allocation.
 - Package streaming.
 
-### Conventional Renderer Adoption
+### Runtime Resident Page Evidence
 
-The next conventional path should avoid backend-specific GPU work and start in `MK_runtime`, `MK_runtime_rhi`, and `MK_scene_renderer` as separate reviewable steps:
+The implemented resident-page bridge files live in `MK_runtime` while shared page-set/request rows live in `MK_assets`:
 
+- `engine/assets/include/mirakana/assets/mavg_cluster_graph.hpp`
 - `engine/runtime/include/mirakana/runtime/mavg_lod_residency.hpp`
 - `engine/runtime/src/mavg_lod_residency.cpp`
+
+Implemented v1 responsibilities:
+
+- Convert already-reviewed `RuntimeResourceCatalogV2` `AssetKind::mavg_cluster_graph` rows plus a caller-owned `MavgClusterGraphDocument` observer into `MavgLodResidentPageSet` rows.
+- Preserve selector `MavgLodPageRequest` rows as reviewed page requests for a later streaming plan.
+- Report missing catalog/graph/catalog-kind evidence without reading package files, mutating resident mount sets, executing streaming, or touching renderer/RHI handles.
+
+Non-responsibilities:
+
+- Loading package files or parsing runtime sources.
+- Background streaming or automatic eviction.
+- Renderer/RHI upload, residency, or native handle ownership.
+
+### Conventional Renderer Adoption
+
+The next conventional path should avoid backend-specific GPU work and continue in `MK_runtime_rhi` and `MK_scene_renderer` as separate reviewable steps:
+
 - `engine/runtime_rhi/include/mirakana/runtime_rhi/mavg_upload.hpp`
 - `engine/runtime_rhi/src/mavg_upload.cpp`
 - `engine/scene_renderer/include/mirakana/scene_renderer/mavg_scene_lod.hpp`
 - `engine/scene_renderer/src/mavg_scene_lod.cpp`
 
-Responsibilities:
+Future responsibilities:
 
-- Convert already-reviewed resident package/catalog evidence into MAVG resident page input.
 - Upload selected cluster payloads through existing upload/frame-graph paths.
 - Submit selected clusters through range-aware conventional indexed draw fallback.
 - Report MAVG counters without mesh shader dependency.

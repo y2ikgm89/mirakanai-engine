@@ -23,7 +23,7 @@
 - `engine/assets/include/mirakana/assets/mavg_cluster_graph.hpp` exposes `MavgClusterGraphDocument`, `MavgClusterGraphCluster::lod_level`, page rows, material partitions, child ids, validation, canonicalization, text serialization, and text deserialization.
 - `engine/tools/include/mirakana/tools/mavg_cluster_cook.hpp` exposes `MavgClusterCookRequest`, `plan_mavg_cluster_graph_cook_package`, and `apply_mavg_cluster_graph_cook_package`.
 - The cook request now carries static `MavgClusterCookVertex` rows plus indexed `MavgClusterCookTriangle` rows and emits deterministic `GameEngine.MavgClusterPayload.v1` `vertex.data_hex` / `index.data_hex` rows.
-- This milestone's first three implementation checkpoints now add graph parent ids, geometric error, resident fallback ancestors, cluster draw ranges, draw-ready static cook payload rows, and a deterministic value-only `MK_renderer` CPU selector. Runtime resident-page bridge evidence, renderer submission, and package streaming execution remain future tasks in this same milestone.
+- This milestone's first four implementation checkpoints now add graph parent ids, geometric error, resident fallback ancestors, cluster draw ranges, draw-ready static cook payload rows, a deterministic value-only `MK_renderer` CPU selector, and an `MK_runtime` resident-page evidence bridge. Renderer submission and package streaming execution remain future tasks in this same milestone.
 - `MK_runtime` already has resident package mount sets, resident catalog caches, byte/record budget checks, selected safe-point package streaming, and reviewed eviction-assisted commit helpers.
 - `MK_renderer` already has `MeshCommand`, `MeshGpuBinding`, `RendererStats`, `NullRenderer`, frame graph/RHI policies, GPU memory policy rows, and renderer quality evidence surfaces.
 - `MeshCommand` and `rhi::IRhiCommandList::draw_indexed` do not yet expose a selected index range, so a visible conventional MAVG LOD path must add range-aware indexed draw support before scene submission can draw only selected clusters.
@@ -143,6 +143,25 @@ struct MavgClusterGraphCluster {
 };
 ```
 
+`engine/assets/include/mirakana/assets/mavg_cluster_graph.hpp` owns shared selector/residency rows used by both `MK_renderer` and `MK_runtime` without introducing a runtime-to-renderer dependency:
+
+```cpp
+namespace mirakana {
+
+struct MavgLodResidentPageSet {
+    std::vector<std::uint32_t> page_indices;
+};
+
+struct MavgLodPageRequest {
+    AssetId graph_asset;
+    std::uint32_t page_index{0};
+    float priority{0.0F};
+    std::string reason;
+};
+
+} // namespace mirakana
+```
+
 `engine/renderer/include/mirakana/renderer/mavg_lod_selection.hpp` owns the value-only selector:
 
 ```cpp
@@ -167,10 +186,6 @@ struct MavgLodViewDesc {
     std::uint32_t max_selected_clusters{0};
 };
 
-struct MavgLodResidentPageSet {
-    std::vector<std::uint32_t> page_indices;
-};
-
 struct MavgLodPreviousSelection {
     std::vector<std::uint32_t> cluster_indices;
 };
@@ -185,13 +200,6 @@ struct MavgLodSelectedCluster {
     std::uint32_t index_count{0};
     std::int32_t vertex_base{0};
     bool fallback_substitution{false};
-};
-
-struct MavgLodPageRequest {
-    AssetId graph_asset;
-    std::uint32_t page_index{0};
-    float priority{0.0F};
-    std::string reason;
 };
 
 struct MavgLodSelectionDiagnostic {
@@ -227,6 +235,7 @@ namespace mirakana::runtime {
 
 struct RuntimeMavgLodResidencyDesc {
     AssetId graph_asset;
+    const MavgClusterGraphDocument* graph{nullptr};
     const RuntimeResourceCatalogV2* catalog{nullptr};
 };
 
@@ -234,6 +243,10 @@ struct RuntimeMavgLodResidencyResult {
     MavgLodResidentPageSet resident_pages;
     std::vector<MavgLodPageRequest> reviewed_page_requests;
     std::vector<std::string> diagnostics;
+    bool invoked_file_io{false};
+    bool mutated_mount_set{false};
+    bool executed_streaming{false};
+    bool touched_renderer_or_rhi_handles{false};
 
     [[nodiscard]] bool succeeded() const noexcept;
 };
@@ -501,20 +514,22 @@ Evidence: `tools/cmake.ps1 --build --preset dev --target MK_mavg_lod_selection_t
 - Create: `tests/unit/runtime_mavg_lod_residency_tests.cpp`
 - Modify: `CMakeLists.txt`
 
-- [ ] Add `MK_runtime_mavg_lod_residency_tests` linked to `MK_runtime`.
-- [ ] Add tests for:
-  - package catalog rows with `AssetKind::mavg_cluster_graph` produce resident page ids from graph package records
-  - missing catalog produces diagnostics
+- [x] Add `MK_runtime_mavg_lod_residency_tests` linked to `MK_runtime`.
+- [x] Add tests for:
+  - package catalog rows with `AssetKind::mavg_cluster_graph` plus caller-owned graph rows produce resident page ids
+  - missing catalog evidence produces diagnostics
   - page requests are preserved as reviewed page requests
   - bridge does not load files, mutate mount sets, execute streaming, or touch renderer/RHI handles
 
-- [ ] Run:
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_mavg_lod_residency_tests
 ```
 
 Expected: fail before runtime bridge exists.
+
+Evidence: RED confirmed with `tools/cmake.ps1 --build --preset dev --target MK_runtime_mavg_lod_residency_tests`; compile failed on missing `mirakana/runtime/mavg_lod_residency.hpp` before production code existed.
 
 ### Task 8: Implement Runtime Resident Page Bridge
 
@@ -525,11 +540,13 @@ Expected: fail before runtime bridge exists.
 - Create: `engine/runtime/src/mavg_lod_residency.cpp`
 - Modify: `tests/unit/runtime_mavg_lod_residency_tests.cpp`
 
-- [ ] Implement `build_runtime_mavg_lod_residency`.
-- [ ] Treat runtime catalog rows as already-reviewed resident evidence only.
-- [ ] Do not read package files or mutate `RuntimeResidentPackageMountSetV2`.
-- [ ] Keep page requests as explicit review rows for a later package streaming child plan.
-- [ ] Run:
+- [x] Implement `build_runtime_mavg_lod_residency`.
+- [x] Treat runtime catalog rows as already-reviewed resident evidence only.
+- [x] Use a caller-owned `MavgClusterGraphDocument` observer because `RuntimeResourceCatalogV2` has resident resource rows, not page payload contents.
+- [x] Keep `MavgLodResidentPageSet` and `MavgLodPageRequest` in `MK_assets` shared graph headers so `MK_runtime` does not depend on `MK_renderer`.
+- [x] Do not read package files or mutate `RuntimeResidentPackageMountSetV2`.
+- [x] Keep page requests as explicit review rows for a later package streaming child plan.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_mavg_lod_residency_tests
@@ -537,6 +554,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 ```
 
 Expected: runtime residency bridge tests pass.
+
+Evidence: `tools/cmake.ps1 --build --preset dev --target MK_runtime_mavg_lod_residency_tests`, `tools/ctest.ps1 --preset dev --output-on-failure -R "MK_(mavg_cluster_graph|tools_mavg_cluster_cook|mavg_lod_selection|runtime_mavg_lod_residency)_tests"`, `tools/check-tidy.ps1 -Files engine/runtime/src/mavg_lod_residency.cpp,tests/unit/runtime_mavg_lod_residency_tests.cpp,engine/renderer/src/mavg_lod_selection.cpp -ReuseExistingFileApiReply`, and `tools/check-public-api-boundaries.ps1` passed for the runtime residency bridge checkpoint.
 
 ### Task 9: Add Conventional Indexed Draw Range Tests
 
