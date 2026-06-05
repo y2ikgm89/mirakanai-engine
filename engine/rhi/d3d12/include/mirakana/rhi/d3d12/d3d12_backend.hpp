@@ -294,6 +294,9 @@ struct DeviceContextStats {
     std::uint64_t index_buffer_bindings{0};
     std::uint64_t draw_calls{0};
     std::uint64_t indexed_draw_calls{0};
+    std::uint64_t indexed_indirect_draw_calls{0};
+    std::uint64_t indexed_indirect_commands_executed{0};
+    std::uint64_t indexed_indirect_count_buffer_reads{0};
     std::uint64_t instanced_draw_calls{0};
     std::uint64_t instanced_indexed_draw_calls{0};
     std::uint64_t compute_dispatches{0};
@@ -305,6 +308,9 @@ struct DeviceContextStats {
     std::uint32_t last_indexed_draw_first_index{0};
     std::int32_t last_indexed_draw_vertex_offset{0};
     std::uint32_t last_indexed_draw_first_instance{0};
+    std::uint32_t last_indexed_indirect_max_draw_count{0};
+    std::uint32_t last_indexed_indirect_executed_draw_count{0};
+    std::uint32_t last_indexed_indirect_count_buffer_value{0};
     std::uint64_t compute_workgroups_x{0};
     std::uint64_t compute_workgroups_y{0};
     std::uint64_t compute_workgroups_z{0};
@@ -539,6 +545,8 @@ class DeviceContext final {
     [[nodiscard]] bool draw_indexed(NativeCommandListHandle commands, std::uint32_t index_count,
                                     std::uint32_t instance_count, std::uint32_t first_index, std::int32_t vertex_offset,
                                     std::uint32_t first_instance);
+    [[nodiscard]] bool draw_indexed_indirect(NativeCommandListHandle commands, NativeResourceHandle argument_buffer,
+                                             const IndexedIndirectDrawDesc& desc);
     [[nodiscard]] bool dispatch(NativeCommandListHandle commands, std::uint32_t group_count_x,
                                 std::uint32_t group_count_y, std::uint32_t group_count_z);
     [[nodiscard]] bool set_viewport(NativeCommandListHandle commands, const mirakana::rhi::ViewportDesc& viewport);
