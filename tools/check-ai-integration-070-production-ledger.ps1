@@ -1419,7 +1419,7 @@ Assert-RegisteredSourceAssetCookTarget `
     @("sample/desktop-runtime/material", "sample/desktop-runtime/environment/default-outdoor") `
     "registered_source_registry_closure" `
     "registry_closure"
-foreach ($recipe in @("desktop-game-runtime", "desktop-runtime-release-target", "installed-d3d12-scene-gpu-smoke", "installed-vulkan-scene-gpu-smoke", "desktop-runtime-sample-game-environment-fog-package", "desktop-runtime-sample-game-cloud-layer-package", "desktop-runtime-sample-game-environment-precipitation-package", "desktop-runtime-sample-game-environment-profile-package")) {
+foreach ($recipe in @("desktop-game-runtime", "desktop-runtime-release-target", "installed-d3d12-scene-gpu-smoke", "installed-vulkan-scene-gpu-smoke", "desktop-runtime-sample-game-environment-fog-package", "desktop-runtime-sample-game-vulkan-environment-fog-package", "desktop-runtime-sample-game-environment-volumetric-fog-package", "desktop-runtime-sample-game-cloud-layer-package", "desktop-runtime-sample-game-environment-precipitation-package", "desktop-runtime-sample-game-environment-profile-package")) {
     if (@($sample3dManifest.validationRecipes | ForEach-Object { $_.name }) -notcontains $recipe) {
         Write-Error "$sample3dManifestPath validationRecipes missing $recipe"
     }

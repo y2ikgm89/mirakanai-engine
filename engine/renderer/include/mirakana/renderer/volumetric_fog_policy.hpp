@@ -52,6 +52,7 @@ enum class VolumetricFogDiagnosticCode : std::uint8_t {
     missing_scene_depth,
     missing_shader_contract_evidence,
     missing_execution_evidence,
+    missing_package_evidence,
     unsupported_froxel_allocation,
     unsupported_backend_execution,
     unsupported_native_handle_claim,
@@ -111,6 +112,7 @@ struct VolumetricFogPolicyDesc {
     bool scene_depth_available{false};
     bool shader_contract_evidence_ready{false};
     bool execution_evidence_ready{false};
+    bool package_evidence_ready{false};
     bool request_ready_promotion{false};
     bool request_froxel_allocation{false};
     bool request_backend_execution{false};
@@ -164,6 +166,7 @@ struct VolumetricFogPolicyPlan {
     bool requires_shader_contract_evidence{true};
     bool shader_contract_evidence_ready{false};
     bool execution_evidence_ready{false};
+    bool package_evidence_ready{false};
     bool allocates_froxel_volume{false};
     bool invokes_backend{false};
     bool exposes_native_handles{false};

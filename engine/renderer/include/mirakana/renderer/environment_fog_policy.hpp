@@ -22,6 +22,12 @@ enum class EnvironmentFogMode : std::uint8_t {
     exponential_height_with_aerial_perspective,
 };
 
+enum class EnvironmentFogPolicyStatus : std::uint8_t {
+    blocked = 0,
+    planned,
+    ready,
+};
+
 enum class EnvironmentFogDiagnosticCode : std::uint8_t {
     none = 0,
     unsupported_mode,
@@ -37,6 +43,8 @@ enum class EnvironmentFogDiagnosticCode : std::uint8_t {
     invalid_sample_budget,
     missing_scene_depth,
     missing_shader_contract_evidence,
+    missing_execution_evidence,
+    missing_package_evidence,
     unsupported_volumetric_fog,
     unsupported_backend_execution,
     unsupported_native_handle_claim,
@@ -73,6 +81,9 @@ struct EnvironmentFogPolicyDesc {
     std::uint32_t sample_step_budget{8};
     bool scene_depth_available{false};
     bool shader_contract_evidence_ready{false};
+    bool execution_evidence_ready{false};
+    bool package_evidence_ready{false};
+    bool request_ready_promotion{false};
     bool request_volumetric_fog{false};
     bool request_backend_execution{false};
     bool request_native_handle_access{false};
@@ -113,11 +124,14 @@ struct EnvironmentFogDiagnostic {
 };
 
 struct EnvironmentFogPolicyPlan {
+    EnvironmentFogPolicyStatus status{EnvironmentFogPolicyStatus::blocked};
     EnvironmentFogMode mode{EnvironmentFogMode::unknown};
     bool requires_scene_depth{false};
     bool scene_depth_available{false};
     bool requires_shader_contract_evidence{false};
     bool shader_contract_evidence_ready{false};
+    bool execution_evidence_ready{false};
+    bool package_evidence_ready{false};
     bool allocates_froxel_volume{false};
     bool invokes_backend{false};
     bool exposes_native_handles{false};
@@ -128,6 +142,7 @@ struct EnvironmentFogPolicyPlan {
     std::vector<EnvironmentFogDiagnostic> diagnostics;
 
     [[nodiscard]] bool succeeded() const noexcept;
+    [[nodiscard]] bool ready() const noexcept;
 };
 
 [[nodiscard]] EnvironmentFogPolicyPlan plan_environment_fog_policy(const EnvironmentFogPolicyDesc& desc);
