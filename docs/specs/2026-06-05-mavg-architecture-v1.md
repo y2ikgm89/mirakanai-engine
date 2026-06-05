@@ -6,7 +6,7 @@ Define the clean-room architecture baseline for Mirakana Adaptive Virtual Geomet
 
 ## Status
 
-Phase 0 specification completed for `mavg-research-legal-benchmark-baseline-v1`. The active stacked implementation milestone is now `mavg-runtime-lod-milestone-v1` over the `mavg-asset-graph-v1` foundation. The first LoD checkpoints implement deterministic `MK_assets` `GameEngine.MavgClusterGraph.v1` hierarchy/error/fallback/draw-range graph validation, `MK_tools` static `GameEngine.MavgClusterPayload.v1` vertex/index payload rows through `MavgClusterCookVertex`, `vertex.data_hex`, `index.data_hex`, per-material root/leaf fallback clusters, `MK_renderer` CPU reference selection through `mavg_lod_selection.hpp` / `select_mavg_lod_clusters`, `MK_runtime` resident-page evidence through `mavg_lod_residency.hpp` / `build_runtime_mavg_lod_residency`, range-aware conventional indexed draw execution, and `MK_scene_renderer` conventional `MeshCommand` planning through `mavg_scene_lod.hpp` / `plan_mavg_scene_lod_mesh_commands`; package streaming execution, GPU culling, indirect draw execution, mesh shaders, deformation, ray tracing, and benchmark superiority remain unclaimed until later focused tasks add code and validation evidence.
+Phase 0 specification completed for `mavg-research-legal-benchmark-baseline-v1`. The active stacked implementation milestone is now `mavg-runtime-lod-milestone-v1` over the `mavg-asset-graph-v1` foundation. The first LoD checkpoints implement deterministic `MK_assets` `GameEngine.MavgClusterGraph.v1` hierarchy/error/fallback/draw-range graph validation, `MK_tools` static `GameEngine.MavgClusterPayload.v1` vertex/index payload rows through `MavgClusterCookVertex`, `vertex.data_hex`, `index.data_hex`, per-material root/leaf fallback clusters, `MK_renderer` CPU reference selection through `mavg_lod_selection.hpp` / `select_mavg_lod_clusters`, `MK_runtime` resident-page evidence through `mavg_lod_residency.hpp` / `build_runtime_mavg_lod_residency`, range-aware conventional indexed draw execution, `MK_scene_renderer` conventional `MeshCommand` planning through `mavg_scene_lod.hpp` / `plan_mavg_scene_lod_mesh_commands`, and `MK_runtime_rhi` conventional package-visible MAVG mesh binding upload evidence through `mavg_conventional_upload.hpp` / `upload_runtime_mavg_conventional_mesh_binding`; background/page package streaming execution, GPU culling, indirect draw execution, mesh shaders, deformation, ray tracing, and benchmark superiority remain unclaimed until later focused tasks add code and validation evidence.
 
 ## Current Repository Baseline
 
@@ -126,22 +126,25 @@ Non-responsibilities:
 
 ### Conventional Renderer Adoption
 
-The conventional path avoids backend-specific GPU work. The selected-cluster submission planner now lives in `MK_scene_renderer`; runtime upload/package-visible execution remains future work:
+The conventional path avoids backend-specific GPU work. The selected-cluster submission planner lives in `MK_scene_renderer`; package-visible conventional upload evidence lives in `MK_runtime_rhi` and consumes already-committed package streaming/catalog state without executing streaming:
 
-- `engine/runtime_rhi/include/mirakana/runtime_rhi/mavg_upload.hpp`
-- `engine/runtime_rhi/src/mavg_upload.cpp`
+- `engine/runtime_rhi/include/mirakana/runtime_rhi/mavg_conventional_upload.hpp`
+- `engine/runtime_rhi/src/mavg_conventional_upload.cpp`
 - `engine/scene_renderer/include/mirakana/scene_renderer/mavg_scene_lod.hpp`
 - `engine/scene_renderer/src/mavg_scene_lod.cpp`
 
 Implemented responsibilities:
 
+- Expose `RuntimeMavgConventionalMeshUploadDesc`, `RuntimeMavgConventionalMeshUploadResult`, and `upload_runtime_mavg_conventional_mesh_binding` as the narrow runtime-RHI MAVG conventional upload contract.
+- Validate committed package streaming evidence, live `AssetKind::mavg_cluster_graph` catalog rows, caller-owned graph documents, payload asset/handle identity, and graph draw ranges before upload side effects.
+- Upload the static MAVG payload through existing `upload_runtime_mesh` and return a renderer `MeshGpuBinding` with package-visible counters, submitted fences, and explicit non-claim flags for GPU culling, indirect draws, mesh shaders, and native handles.
 - Submit selected clusters through range-aware conventional `MeshCommand` planning using existing `MeshGpuBinding` and `MaterialGpuBinding` payloads.
 - Preserve fallback-substitution counters and missing-material fallback-color diagnostics without exposing native handles.
 
 Future responsibilities:
 
-- Upload selected cluster payloads through existing upload/frame-graph paths.
-- Report MAVG counters without mesh shader dependency.
+- Background/page package streaming execution and async page residency execution.
+- GPU culling, indirect command buffers, and mesh shader paths.
 
 ### GPU Culling And Indirect
 

@@ -23,7 +23,7 @@
 - `engine/assets/include/mirakana/assets/mavg_cluster_graph.hpp` exposes `MavgClusterGraphDocument`, `MavgClusterGraphCluster::lod_level`, page rows, material partitions, child ids, validation, canonicalization, text serialization, and text deserialization.
 - `engine/tools/include/mirakana/tools/mavg_cluster_cook.hpp` exposes `MavgClusterCookRequest`, `plan_mavg_cluster_graph_cook_package`, and `apply_mavg_cluster_graph_cook_package`.
 - The cook request now carries static `MavgClusterCookVertex` rows plus indexed `MavgClusterCookTriangle` rows and emits deterministic `GameEngine.MavgClusterPayload.v1` `vertex.data_hex` / `index.data_hex` rows.
-- This milestone's implementation checkpoints now add graph parent ids, geometric error, resident fallback ancestors, cluster draw ranges, draw-ready static cook payload rows, a deterministic value-only `MK_renderer` CPU selector, an `MK_runtime` resident-page evidence bridge, range-aware conventional indexed draw execution, and `MK_scene_renderer` conventional `MeshCommand` planning. Package streaming execution remains future work.
+- This milestone's implementation checkpoints now add graph parent ids, geometric error, resident fallback ancestors, cluster draw ranges, draw-ready static cook payload rows, a deterministic value-only `MK_renderer` CPU selector, an `MK_runtime` resident-page evidence bridge, range-aware conventional indexed draw execution, `MK_scene_renderer` conventional `MeshCommand` planning, and `MK_runtime_rhi` conventional package-visible MAVG mesh binding upload evidence. Background/page package streaming execution remains future work.
 - `MK_runtime` already has resident package mount sets, resident catalog caches, byte/record budget checks, selected safe-point package streaming, and reviewed eviction-assisted commit helpers.
 - `MK_renderer` already has `MeshCommand`, `MeshGpuBinding`, `RendererStats`, `NullRenderer`, frame graph/RHI policies, GPU memory policy rows, and renderer quality evidence surfaces.
 - `MeshCommand` and `rhi::IRhiCommandList::draw_indexed` now expose selected index ranges, so a visible conventional MAVG LOD path can submit selected clusters through the existing indexed mesh path.
@@ -772,6 +772,125 @@ Evidence: `tools/check-publication-preflight.ps1 -Branch codex/mavg-scene-lod-su
 
 Expected: focused tests, full validation, whitespace check, and publication preflight pass or record a concrete host/tool blocker.
 
+### Task 15: Add Conventional Runtime Upload Tests
+
+**Files:**
+
+- Modify: `CMakeLists.txt`
+- Create: `tests/unit/runtime_rhi_mavg_conventional_upload_tests.cpp`
+
+- [x] Add `MK_runtime_rhi_mavg_conventional_upload_tests` linked to `MK_runtime_rhi` and `MK_scene_renderer`.
+- [x] Prove committed package/catalog state plus a `RuntimeMeshPayload` can publish a package-visible MAVG conventional `MeshGpuBinding`.
+- [x] Prove the returned binding can feed `plan_mavg_scene_lod_mesh_commands`.
+- [x] Prove fail-closed pre-upload diagnostics for non-committed streaming, wrong catalog kind, handle mismatch, and graph draw range overflow.
+- [x] Run RED:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_rhi_mavg_conventional_upload_tests
+```
+
+Evidence: RED confirmed on 2026-06-05 after adding the test target; `tools/cmake.ps1 --build --preset dev --target MK_runtime_rhi_mavg_conventional_upload_tests` failed with MSVC C1083 because `mirakana/runtime_rhi/mavg_conventional_upload.hpp` did not exist.
+
+### Task 16: Implement Conventional Runtime Upload
+
+**Files:**
+
+- Modify: `engine/runtime_rhi/CMakeLists.txt`
+- Create: `engine/runtime_rhi/include/mirakana/runtime_rhi/mavg_conventional_upload.hpp`
+- Create: `engine/runtime_rhi/src/mavg_conventional_upload.cpp`
+- Modify: `tests/unit/runtime_rhi_mavg_conventional_upload_tests.cpp`
+
+- [x] Add `RuntimeMavgConventionalMeshUploadDesc`, `RuntimeMavgConventionalMeshBinding`, `RuntimeMavgConventionalMeshUploadDiagnostic`, and `RuntimeMavgConventionalMeshUploadResult`.
+- [x] Add `upload_runtime_mavg_conventional_mesh_binding`.
+- [x] Validate committed streaming evidence, live `AssetKind::mavg_cluster_graph` catalog rows, graph/payload asset and handle identity, graph validation, and cluster draw ranges before upload side effects.
+- [x] Reuse `upload_runtime_mesh`, `wait_for_runtime_uploads_on_queue`, and `make_runtime_mesh_gpu_binding`.
+- [x] Return package-visible counters, uploaded bytes, submitted fences, graph/payload counts, and explicit false flags for GPU culling, indirect draw, mesh shader, and native handle claims.
+- [x] Run GREEN:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_rhi_mavg_conventional_upload_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_rhi_mavg_conventional_upload_tests
+```
+
+Evidence: GREEN confirmed on 2026-06-05 with `tools/cmake.ps1 --build --preset dev --target MK_runtime_rhi_mavg_conventional_upload_tests` and `tools/ctest.ps1 --preset dev --output-on-failure -R MK_runtime_rhi_mavg_conventional_upload_tests`; the selected test target passed 1/1.
+
+### Task 17: Sync Docs, Manifest, And Static Contracts For Runtime Upload Evidence
+
+**Files:**
+
+- Modify: `docs/specs/2026-06-05-mavg-architecture-v1.md`
+- Modify: `docs/current-capabilities.md`
+- Modify: `docs/roadmap.md`
+- Modify: `docs/superpowers/plans/README.md`
+- Modify: `engine/agent/manifest.fragments/004-modules.json`
+- Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
+- Compose: `engine/agent/manifest.json`
+- Add: `tools/check-ai-integration-104-mavg-runtime-lod.ps1`
+
+- [x] Record implemented runtime RHI MAVG conventional upload surfaces:
+  - `mavg_conventional_upload.hpp`
+  - `RuntimeMavgConventionalMeshUploadDesc`
+  - `RuntimeMavgConventionalMeshUploadResult`
+  - `upload_runtime_mavg_conventional_mesh_binding`
+  - `MK_runtime_rhi_mavg_conventional_upload_tests`
+- [x] Keep non-claims:
+  - GPU culling
+  - indirect draw execution
+  - mesh shaders
+  - background/page package streaming execution
+  - deformation
+  - ray tracing
+  - Metal readiness
+  - Nanite compatibility/equivalence/superiority
+  - broad CPU/GPU/memory optimization
+- [x] Compose manifest and run drift checks.
+
+Expected: docs, manifest fragments, composed manifest, and static checks describe exactly the implemented conventional runtime upload/package-visible evidence scope.
+
+Evidence: docs, `engine/agent/manifest.fragments/004-modules.json`, `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`, composed `engine/agent/manifest.json`, and `tools/check-ai-integration-104-mavg-runtime-lod.ps1` were synchronized on 2026-06-05. `tools/compose-agent-manifest.ps1 -Write`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, and `tools/check-agents.ps1` passed.
+
+### Task 18: Conventional Runtime Upload Slice Validation And Publication
+
+**Files:**
+
+- Validate all touched C++ code, tests, docs, manifest fragments, composed manifest, and static checks.
+
+- [x] Run focused C++ validation:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-toolchain.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --preset dev
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_rhi_mavg_conventional_upload_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_rhi_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_scene_renderer_mavg_lod_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_rhi_mavg_conventional_upload_tests|MK_runtime_rhi_tests|MK_scene_renderer_mavg_lod_tests"
+```
+
+- [x] Run static and full validation:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/runtime_rhi/src/mavg_conventional_upload.cpp,tests/unit/runtime_rhi_mavg_conventional_upload_tests.cpp -ReuseExistingFileApiReply
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1
+git diff --check
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
+```
+
+- [x] Run publication preflight:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1 -Branch codex/mavg-conventional-runtime-package-evidence-v1
+```
+
+Expected: focused tests, full validation, whitespace check, and publication preflight pass or record a concrete host/tool blocker.
+
+Evidence: focused validation passed on 2026-06-05 with `tools/check-toolchain.ps1`, targeted builds for `MK_runtime_rhi_mavg_conventional_upload_tests`, `MK_runtime_rhi_tests`, and `MK_scene_renderer_mavg_lod_tests`, and targeted CTest for those three tests. Static validation passed with `tools/format.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-json-contracts.ps1`, targeted `tools/check-tidy.ps1 -Files engine/runtime_rhi/src/mavg_conventional_upload.cpp,tests/unit/runtime_rhi_mavg_conventional_upload_tests.cpp -ReuseExistingFileApiReply`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-format.ps1`, and `git diff --check`. Full `tools/validate.ps1` passed after docs/manifest/static evidence settled with `validate: ok` and CTest `105/105` passing. Publication preflight passed with `tools/check-publication-preflight.ps1 -Branch codex/mavg-conventional-runtime-package-evidence-v1`.
+
 ## Done When
 
 - The graph contract validates hierarchy, geometric error, draw ranges, and resident fallback ancestry.
@@ -780,6 +899,7 @@ Expected: focused tests, full validation, whitespace check, and publication pref
 - Runtime resident page bridge converts existing resident package/catalog evidence into selector input without executing streaming.
 - RHI and renderer conventional draw paths support explicit indexed draw ranges.
 - Scene renderer planning can produce range-aware conventional `MeshCommand` rows for selected clusters using existing opaque GPU bindings.
+- Runtime RHI can publish a package-visible conventional MAVG `MeshGpuBinding` from a committed streaming result, live `AssetKind::mavg_cluster_graph` catalog row, caller-owned graph document, and matching runtime mesh payload without executing package streaming or backend-specific LoD work.
 - Docs, plans, registry, manifest fragments, composed manifest, and static checks describe exactly the implemented static conventional LOD scope.
 - Full `tools/validate.ps1` passes or records a concrete host/tool blocker.
 
