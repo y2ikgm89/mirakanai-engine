@@ -278,6 +278,20 @@ if ($requiresEnvironmentVolumetricCloudRendererExecution) {
     $requiresPostprocessDepthInput = $true
     $requiresD3d12PostprocessEvidence = $true
 }
+$requiresAnyEnvironmentQualityBudget = $requiresEnvironmentProfile -or
+    $requiresEnvironmentFogEvidence -or
+    $requiresEnvironmentFogVulkanPackageEvidence -or
+    $requiresPhysicalSkyPackageEvidence -or
+    $requiresEnvironmentVolumetricFogPackageEvidence -or
+    $requiresEnvironmentLightingPackageEvidence -or
+    $requiresCloudLayerPackageEvidence -or
+    $requiresCloudLayerRendererExecution -or
+    $requiresEnvironmentPrecipitationPackageEvidence -or
+    $requiresEnvironmentPrecipitationRendererExecution -or
+    $requiresEnvironmentSnowPackageEvidence -or
+    $requiresEnvironmentSnowRendererExecution -or
+    $requiresEnvironmentVolumetricCloudPackageEvidence -or
+    $requiresEnvironmentVolumetricCloudRendererExecution
 if ($requiresWindowsCpuSetWorkerPlacement -or $requiresWindowsCpuSetSmtWorkerPlacement) {
     $requiresJobExecutionFoundation = $true
     $requiresJobExecutionTopologyPolicy = $true
@@ -381,6 +395,28 @@ function Get-ExpectedInstalledFramegraphBarrierExecutions {
         return [int64](1 + ($ExpectedFrames * 4))
     }
     return [int64]($ExpectedFrames * 2)
+}
+function Assert-InstalledDesktopRuntimeStatusFields {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SmokeOutput,
+
+        [Parameter(Mandatory = $true)]
+        [string]$EscapedGameTarget,
+
+        [Parameter(Mandatory = $true)]
+        [hashtable]$ExpectedFields,
+
+        [Parameter(Mandatory = $true)]
+        [string]$Context
+    )
+
+    foreach ($field in $ExpectedFields.Keys) {
+        $expectedValue = [regex]::Escape([string]$ExpectedFields[$field])
+        if ($SmokeOutput -notmatch "(?m)^$EscapedGameTarget status=.*\b$field=$expectedValue\b") {
+            Write-Error "Installed desktop runtime smoke status line did not prove $Context field: $field=$($ExpectedFields[$field])"
+        }
+    }
 }
 function Assert-InstalledAudioProductionEvidence {
     param(
@@ -4982,6 +5018,128 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
         -ExpectedFrames $expectedSmokeFrames `
         -RequiresDirectionalShadow $requiresDirectionalShadow `
         -RequiresPostprocessDepthInput $requiresPostprocessDepthInput
+    if ($requiresAnyEnvironmentQualityBudget) {
+        if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
+            Write-Error "Installed desktop runtime smoke status line must not claim broad environment_ready for environment quality budget evidence."
+        }
+        $expectedEnvironmentQualityBudgetRows = 0
+        $expectedEnvironmentQualityBudgetConstantBytes = 0
+        $expectedEnvironmentQualityBudgetPhysicalSkySamples = 0
+        $expectedEnvironmentQualityBudgetHeightFogSamples = 0
+        $expectedEnvironmentQualityBudgetVolumetricFogRaymarch = 0
+        $expectedEnvironmentQualityBudgetVolumetricCloudPrimary = 0
+        $expectedEnvironmentQualityBudgetVolumetricCloudLight = 0
+        $expectedEnvironmentQualityBudgetParticleRows = 0
+        $expectedEnvironmentQualityBudgetTextureUploads = 0
+        $expectedEnvironmentQualityBudgetParticleBufferUploads = 0
+        $expectedEnvironmentQualityBudgetRendererDraws = 0
+        $expectedEnvironmentQualityBudgetComputeDispatches = 0
+        $expectedEnvironmentQualityBudgetRaymarchPasses = 0
+        $expectedEnvironmentQualityBudgetIblFaces = 0
+        $expectedEnvironmentQualityBudgetIblMips = 0
+
+        if ($requiresEnvironmentProfile) {
+            ++$expectedEnvironmentQualityBudgetRows
+        }
+        if ($requiresPhysicalSkyPackageEvidence) {
+            ++$expectedEnvironmentQualityBudgetRows
+            $expectedEnvironmentQualityBudgetConstantBytes += 256
+            $expectedEnvironmentQualityBudgetPhysicalSkySamples = 108
+        }
+        if ($requiresEnvironmentFogEvidence) {
+            ++$expectedEnvironmentQualityBudgetRows
+            $expectedEnvironmentQualityBudgetConstantBytes += 256
+            $expectedEnvironmentQualityBudgetHeightFogSamples = 8
+        }
+        if ($requiresEnvironmentFogVulkanPackageEvidence) {
+            ++$expectedEnvironmentQualityBudgetRows
+            $expectedEnvironmentQualityBudgetConstantBytes += 256
+            $expectedEnvironmentQualityBudgetHeightFogSamples = 8
+        }
+        if ($requiresEnvironmentVolumetricFogPackageEvidence) {
+            ++$expectedEnvironmentQualityBudgetRows
+            $expectedEnvironmentQualityBudgetConstantBytes += 256
+            $expectedEnvironmentQualityBudgetVolumetricFogRaymarch = 48
+            $expectedEnvironmentQualityBudgetComputeDispatches = 1
+        }
+        if ($requiresEnvironmentLightingPackageEvidence) {
+            ++$expectedEnvironmentQualityBudgetRows
+            $expectedEnvironmentQualityBudgetIblFaces = 6
+            $expectedEnvironmentQualityBudgetIblMips = 5
+        }
+        if ($requiresCloudLayerPackageEvidence) {
+            ++$expectedEnvironmentQualityBudgetRows
+            $expectedEnvironmentQualityBudgetConstantBytes += 256
+            if ($requiresCloudLayerRendererExecution) {
+                ++$expectedEnvironmentQualityBudgetTextureUploads
+                ++$expectedEnvironmentQualityBudgetRendererDraws
+            }
+        }
+        if ($requiresEnvironmentPrecipitationPackageEvidence -or $requiresEnvironmentSnowPackageEvidence) {
+            ++$expectedEnvironmentQualityBudgetRows
+            $expectedEnvironmentQualityBudgetConstantBytes += 256
+            $expectedEnvironmentQualityBudgetParticleRows = 1
+            if ($requiresEnvironmentPrecipitationRendererExecution -or $requiresEnvironmentSnowRendererExecution) {
+                ++$expectedEnvironmentQualityBudgetParticleBufferUploads
+                ++$expectedEnvironmentQualityBudgetRendererDraws
+            }
+        }
+        if ($requiresEnvironmentVolumetricCloudPackageEvidence) {
+            ++$expectedEnvironmentQualityBudgetRows
+            $expectedEnvironmentQualityBudgetConstantBytes += 256
+            $expectedEnvironmentQualityBudgetVolumetricCloudPrimary = 48
+            $expectedEnvironmentQualityBudgetVolumetricCloudLight = 8
+            if ($requiresEnvironmentVolumetricCloudRendererExecution) {
+                $expectedEnvironmentQualityBudgetTextureUploads += 3
+                ++$expectedEnvironmentQualityBudgetRendererDraws
+                ++$expectedEnvironmentQualityBudgetRaymarchPasses
+            }
+        }
+
+        $expectedEnvironmentQualityBudgetFramegraphBarriers = if ($requiresPostprocess) {
+            $expectedFramegraphBarrierExecutions
+        } else {
+            0
+        }
+        Assert-InstalledDesktopRuntimeStatusFields `
+            -SmokeOutput $smokeOutput `
+            -EscapedGameTarget $escapedGameTarget `
+            -Context "environment quality budget" `
+            -ExpectedFields @{
+                "environment_quality_budget_status" = "ready"
+                "environment_quality_budget_ready" = "1"
+                "environment_quality_budget_requested" = "1"
+                "environment_quality_budget_rows" = [string]$expectedEnvironmentQualityBudgetRows
+                "environment_quality_budget_diagnostics" = "0"
+                "environment_quality_budget_constant_buffer_bytes" = [string]$expectedEnvironmentQualityBudgetConstantBytes
+                "environment_quality_budget_physical_sky_sample_budget" = [string]$expectedEnvironmentQualityBudgetPhysicalSkySamples
+                "environment_quality_budget_height_fog_sample_step_budget" = [string]$expectedEnvironmentQualityBudgetHeightFogSamples
+                "environment_quality_budget_volumetric_fog_raymarch_step_budget" = [string]$expectedEnvironmentQualityBudgetVolumetricFogRaymarch
+                "environment_quality_budget_volumetric_cloud_primary_step_budget" = [string]$expectedEnvironmentQualityBudgetVolumetricCloudPrimary
+                "environment_quality_budget_volumetric_cloud_light_step_budget" = [string]$expectedEnvironmentQualityBudgetVolumetricCloudLight
+                "environment_quality_budget_particle_rows" = [string]$expectedEnvironmentQualityBudgetParticleRows
+                "environment_quality_budget_texture_upload_budget" = [string]$expectedEnvironmentQualityBudgetTextureUploads
+                "environment_quality_budget_particle_buffer_upload_budget" = [string]$expectedEnvironmentQualityBudgetParticleBufferUploads
+                "environment_quality_budget_renderer_draw_budget" = [string]$expectedEnvironmentQualityBudgetRendererDraws
+                "environment_quality_budget_compute_dispatch_budget" = [string]$expectedEnvironmentQualityBudgetComputeDispatches
+                "environment_quality_budget_raymarch_pass_budget" = [string]$expectedEnvironmentQualityBudgetRaymarchPasses
+                "environment_quality_budget_ibl_reflection_face_budget" = [string]$expectedEnvironmentQualityBudgetIblFaces
+                "environment_quality_budget_ibl_radiance_mip_budget" = [string]$expectedEnvironmentQualityBudgetIblMips
+                "environment_quality_budget_transient_placed_resources_alive" = "0"
+                "environment_quality_budget_framegraph_barrier_step_budget" = [string]$expectedEnvironmentQualityBudgetFramegraphBarriers
+                "environment_quality_budget_framegraph_barrier_steps_executed" = [string]$expectedEnvironmentQualityBudgetFramegraphBarriers
+                "environment_quality_budget_native_handle_access" = "0"
+                "environment_quality_budget_broad_environment_ready_claimed" = "0"
+            }
+        foreach ($field in @(
+                "environment_quality_budget_transient_gpu_byte_estimate",
+                "environment_quality_budget_transient_heap_allocations",
+                "environment_quality_budget_transient_placed_allocations")) {
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=[0-9]+\b") {
+                Write-Error "Installed desktop runtime smoke status line did not prove non-negative environment quality budget field: $field"
+            }
+        }
+    }
     if ($requiresFramegraphExecutionEvidence) {
         if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\bframegraph_passes=$expectedFramegraphPasses\b") {
             Write-Error "Installed desktop runtime smoke status line did not prove the frame graph pass count."

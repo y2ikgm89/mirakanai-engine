@@ -4,7 +4,7 @@
 
 **Plan ID:** `environment-rendering-readiness-v1`
 
-**Status:** Active. This is a clean-break post-Environment-System follow-up, not an Engine 1.0 blocker. Tasks 1-7 now have selected D3D12 or strict host-gated evidence as recorded below; Task 8 now has Windows-side Metal environment feature host-gated rows; Task 9 now has first-party editor Inspector readiness rows for the selected environment feature claims, while Apple-host execution, quality-budget closeout, and remaining backend-local Vulkan/Metal feature proofs remain future task selections.
+**Status:** Completed. This clean-break post-Environment-System follow-up is closed through Task 10. Selected D3D12, strict host/toolchain-gated Vulkan, Windows-side Metal host-gated rows, first-party editor Inspector readiness rows, and package-visible `environment_quality_budget_*` closeout counters are recorded below; Apple-host execution and remaining backend-local Vulkan/Metal feature proofs remain future task selections.
 
 **Goal:** Turn the completed Environment System v1 foundation into evidence-backed environment rendering readiness for snow, sky package proof, cloud and precipitation renderer execution, volumetric cloud/fog package proof, and backend-local D3D12/Vulkan/Metal claims without broad or inferred readiness.
 
@@ -69,6 +69,10 @@ Completed by Task 9:
 
 - First-party `MK_editor_core` environment authoring now emits non-editable retained Inspector readiness rows for physical-sky package status, height fog, volumetric fog package status, cloud-layer renderer status, volumetric-cloud renderer status, rain renderer status, snow renderer status, IBL package status, D3D12/Vulkan/Metal backend evidence status, broad `environment_ready` non-claim, backend parity non-claim, and public backend-handle unsupported diagnostics. The visible first-party `MK_editor` shell surfaces these rows through the existing Inspector rich-text panel without adding Dear ImGui, SDL3, UI middleware, backend execution, package-script execution, or public handle exposure.
 
+Completed by Task 10:
+
+- Selected `sample_desktop_runtime_game` package smokes that request environment profile, physical sky, fog, volumetric fog, cloud layer, volumetric cloud, precipitation, snow, or environment lighting evidence now also emit package-visible `environment_quality_budget_*` counters. The counters prove bounded feature rows, diagnostics, constant-buffer bytes, physical-sky sample budget, fog/cloud raymarch step budgets, particle rows, upload bytes, draw/dispatch/raymarch/IBL budgets, transient GPU byte estimates, framegraph pass/barrier expected and executed counts, native-handle access `0`, and `environment_quality_budget_broad_environment_ready_claimed=0`. These are evidence counters only, not broad optimization or broad `environment_ready` claims.
+
 ## Official Source Baseline
 
 Before executing any task, re-open the current official documents for that task. The 2026-06-05 planning audit used:
@@ -126,6 +130,7 @@ Source implications for this repo:
 | volumetric clouds | Ready for selected D3D12 package-visible evidence and selected D3D12 renderer/RHI execution only; Vulkan and Metal remain unclaimed. | Keep Task 6 package and execution recipe counters separate; add Vulkan/Metal lanes only after backend-local proof. |
 | environment lighting/IBL | Ready for selected D3D12 package-visible first-party IBL metadata evidence only; renderer cubemap upload/runtime capture remain unclaimed. | Keep first-party cooked texture package record/source/HDR metadata rows, reflection cubemap face/edge/mip/format rows, irradiance/radiance rows, HDR clamp rows, and zero upload/backend/runtime-capture counters; add renderer upload proof in a separate backend-local task. |
 | environment backend parity | Unclaimed. | Backend-local matrix rows for each feature; no single backend can promote another. |
+| environment quality budget evidence | Ready for selected package smokes only. | Keep `environment_quality_budget_status=ready`, selected bounded budgets, transient byte estimate, framegraph pass/barrier counters, native-handle access `0`, and `environment_quality_budget_broad_environment_ready_claimed=0` without broad optimization or backend parity claims. |
 | broad optimization | Unclaimed. | Separate profiling/budget plan with before/after traces and budgets. |
 | broad `environment_ready` | Unclaimed. | Only after all rows above are ready and an aggregate static contract is accepted. |
 
@@ -875,13 +880,13 @@ Expected: environment authoring surfaces show exact readiness rows and unsupport
 - Modify: `engine/agent/manifest.fragments/*.json`
 - Modify: static checks under `tools/check-*.ps1` when they enforce new durable rows
 
-- [ ] **Step 1: Add environment quality budget rows**
+- [x] **Step 1: Add environment quality budget rows**
 
 For each implemented feature, add package-visible budgets or diagnostics that prove bounded sample counts, particle counts, draw/dispatch counts, transient bytes, and framegraph barrier counts where applicable.
 
 Expected: these are evidence counters, not broad optimization claims.
 
-- [ ] **Step 2: Run full closeout validation**
+- [x] **Step 2: Run full closeout validation**
 
 Run focused recipes first, then:
 
@@ -893,11 +898,31 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.
 
 Expected: full validation passes before any completion claim or PR publication.
 
-- [ ] **Step 3: Close the plan**
+- [x] **Step 3: Close the plan**
 
 Update registry, master plan, backlog, current capabilities, roadmap, manifest fragments, composed manifest, static checks, and docs so this plan is no longer active after completion.
 
 Expected: `currentActivePlan` returns to the production-completion selection gate or a newly selected dated plan, `recommendedNextPlan` is not stale, `unsupportedProductionGaps = []` remains true unless a concrete documented blocker is discovered, and broad `environment_ready` remains absent unless every aggregate prerequisite is proven.
+
+**2026-06-05 Task 10 Evidence:** GREEN:
+
+- `sample_desktop_runtime_game` now reports `environment_quality_budget_status`, `environment_quality_budget_ready`, `environment_quality_budget_requested`, selected row/diagnostic/budget counters, transient GPU byte estimate, framegraph expected/executed counters, native-handle access, and `environment_quality_budget_broad_environment_ready_claimed` on selected environment smokes.
+- `tools/validate-installed-desktop-runtime.ps1` validates those counters fail-closed for selected environment package smokes and rejects any broad `environment_ready=` field.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\cmake.ps1 --preset desktop-runtime` passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\cmake.ps1 --build --preset desktop-runtime --target sample_desktop_runtime_game` passed after rerun; the first attempt timed out without a lingering build process.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\ctest.ps1 --preset desktop-runtime --output-on-failure -R "sample_desktop_runtime_game.*smoke"` passed.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -Command "& .\tools\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-physical-sky-package-evidence')"` passed with `installed-desktop-runtime-validation: ok`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -Command "& .\tools\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-environment-snow-renderer-execution')"` passed with `installed-desktop-runtime-validation: ok`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -Command "& .\tools\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-volumetric-cloud-renderer-execution')"` passed with `installed-desktop-runtime-validation: ok`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\check-json-contracts.ps1` passed with `json-contract-check: ok`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\check-ai-integration.ps1` passed with `ai-integration-check: ok`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\check-agents.ps1` passed with `agent-config-check: ok`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\check-format.ps1` passed with `format-check: ok`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\check-tidy.ps1 -Preset desktop-runtime -Files games/sample_desktop_runtime_game/main.cpp` passed with `tidy-check: ok (1 files)`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\check-toolchain.ps1` passed with `toolchain-check: ok`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\validate.ps1` passed with `validate: ok`; CTest reported `100% tests passed, 0 tests failed out of 99`; validation logs were written to `out\validation-logs\validate-20260606-003043-10864`; Apple/Metal diagnostics remained host-gated on this Windows host.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools\check-publication-preflight.ps1` passed with `publication-preflight: ok`.
+- Closeout docs, plan registry, master plan, backlog, game manifest, manifest fragments, composed manifest, and static checks are synchronized so `currentActivePlan` returns to the production-completion selection gate, `recommendedNextPlan.id = next-production-gap-selection`, and `unsupportedProductionGaps = []` remains true.
 
 ## Final Done When
 
