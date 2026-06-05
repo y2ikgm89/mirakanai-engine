@@ -1,5 +1,6 @@
 add_library(mirakana_scene_renderer
     src/environment_renderer.cpp
+    src/mavg_scene_lod.cpp
     src/scene_renderer.cpp
 )
 
