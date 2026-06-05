@@ -81,7 +81,7 @@ Out of scope:
 - [x] Update docs, architecture spec, parent milestone, plan registry, master plan, manifest fragments, composed manifest, and static guards.
 - [x] Run focused runtime/MAVG validation.
 - [x] Run full `tools/validate.ps1`.
-- [ ] Publish a validated stacked draft PR over `codex/mavg-d3d12-gpu-culling-execution-v1`.
+- [x] Publish a validated stacked draft PR over `codex/mavg-d3d12-gpu-culling-execution-v1`.
 
 ## Validation Plan
 
@@ -116,6 +116,7 @@ Out of scope:
 | 2026-06-05 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` | Passed after `tools/format.ps1`. |
 | 2026-06-05 | `git diff --check` | Passed; whitespace clean. |
 | 2026-06-05 | `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` | Passed; 19 static checks, full build, targeted tidy smoke, and 107/107 CTest tests passed. Metal/Apple lanes remained diagnostic-only host-gated on Windows. |
+| 2026-06-05 | Draft PR #454 | Published stacked draft PR over `codex/mavg-d3d12-gpu-culling-execution-v1`: `https://github.com/y2ikgm89/mirakanai-engine/pull/454`. |
 
 ## Non-Claims
 
