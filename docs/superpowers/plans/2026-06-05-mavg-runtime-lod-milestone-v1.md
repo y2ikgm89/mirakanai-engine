@@ -891,12 +891,105 @@ Expected: focused tests, full validation, whitespace check, and publication pref
 
 Evidence: focused validation passed on 2026-06-05 with `tools/check-toolchain.ps1`, targeted builds for `MK_runtime_rhi_mavg_conventional_upload_tests`, `MK_runtime_rhi_tests`, and `MK_scene_renderer_mavg_lod_tests`, and targeted CTest for those three tests. Static validation passed with `tools/format.ps1`, `tools/check-public-api-boundaries.ps1`, `tools/check-json-contracts.ps1`, targeted `tools/check-tidy.ps1 -Files engine/runtime_rhi/src/mavg_conventional_upload.cpp,tests/unit/runtime_rhi_mavg_conventional_upload_tests.cpp -ReuseExistingFileApiReply`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-format.ps1`, and `git diff --check`. Full `tools/validate.ps1` passed after docs/manifest/static evidence settled with `validate: ok` and CTest `105/105` passing. Publication preflight passed with `tools/check-publication-preflight.ps1 -Branch codex/mavg-conventional-runtime-package-evidence-v1`.
 
+### Task 19: Add Failing MAVG Page Streaming Planner And Safe-Point Drain Tests
+
+**Files:**
+
+- Add: `tests/unit/runtime_mavg_page_streaming_tests.cpp`
+- Modify: `CMakeLists.txt`
+
+- [x] Add `MK_runtime_mavg_page_streaming_tests` linked to `MK_runtime`.
+- [x] Add planner tests for:
+  - resident page skip
+  - duplicate page request coalescing by highest priority
+  - deterministic priority/page ordering
+  - deterministic `max_queued_pages` degradation
+  - invalid graph/request rows with zero file IO, mount mutation, streaming execution, and renderer/RHI handles
+  - missing page package candidate diagnostics
+- [x] Add safe-point drain tests for:
+  - one queued row delegates to reviewed resident package candidate mount and refreshes the resident catalog
+  - invalid mount id rejects before mount/cache mutation and before candidate load
+- [x] Run RED:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_mavg_page_streaming_tests
+```
+
+Evidence: RED failed before `mavg_page_streaming.hpp` existed with `fatal error C1083: cannot open include file 'mirakana/runtime/mavg_page_streaming.hpp'`.
+
+### Task 20: Implement MAVG Page Streaming Planner And One-Row Safe-Point Drain
+
+**Files:**
+
+- Modify: `engine/runtime/CMakeLists.txt`
+- Add: `engine/runtime/include/mirakana/runtime/mavg_page_streaming.hpp`
+- Add: `engine/runtime/src/mavg_page_streaming.cpp`
+- Modify: `tests/unit/runtime_mavg_page_streaming_tests.cpp`
+
+- [x] Add `RuntimeMavgPageStreamingCandidateRow`, `RuntimeMavgPageStreamingPlanDesc`, `RuntimeMavgPageStreamingPlanRow`, `RuntimeMavgPageStreamingPlanResult`, `RuntimeMavgPageStreamingDrainDesc`, and `RuntimeMavgPageStreamingDrainResult`.
+- [x] Add `plan_runtime_mavg_page_streaming_requests` as a pure planner over caller-reviewed `MavgLodPageRequest` rows and package index discovery candidates.
+- [x] Add `execute_runtime_mavg_page_streaming_request_safe_point` as a one-row safe-point drain through `commit_runtime_package_candidate_resident_mount_with_reviewed_evictions_v2`.
+- [x] Keep non-claims for autonomous background workers, async overlap/performance, automatic eviction policy, partial `.mavgpayload` byte-range page loading/schema, GPU memory pressure enforcement, renderer/RHI handles, GPU culling, indirect draws, mesh shaders, and backend parity.
+- [x] Run GREEN:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_mavg_page_streaming_tests MK_runtime_mavg_lod_residency_tests MK_runtime_package_streaming_resident_mount_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_mavg_page_streaming_tests|MK_runtime_mavg_lod_residency_tests|MK_runtime_package_streaming_resident_mount_tests"
+```
+
+Evidence: GREEN confirmed on 2026-06-05. The first CTest attempt failed only because existing related executables had not been built in the fresh worktree; after building `MK_runtime_mavg_lod_residency_tests` and `MK_runtime_package_streaming_resident_mount_tests`, the selected CTest passed 3/3.
+
+### Task 21: Sync MAVG Page Streaming Docs, Manifest, Static Checks, And Validate
+
+**Files:**
+
+- Modify: `docs/current-capabilities.md`
+- Modify: `docs/roadmap.md`
+- Modify: `docs/specs/2026-06-05-mavg-architecture-v1.md`
+- Modify: `docs/superpowers/plans/README.md`
+- Modify: `engine/agent/manifest.fragments/004-modules.json`
+- Modify: `engine/agent/manifest.fragments/010-aiOperableProductionLoop.json`
+- Generated: `engine/agent/manifest.json`
+- Modify: `tools/check-ai-integration-104-mavg-runtime-lod.ps1`
+
+- [x] Describe `mavg_page_streaming.hpp`, `RuntimeMavgPageStreamingPlanResult`, `RuntimeMavgPageStreamingDrainResult`, `plan_runtime_mavg_page_streaming_requests`, and `execute_runtime_mavg_page_streaming_request_safe_point` in current capabilities, roadmap, architecture spec, active plan registry, manifest fragments, composed manifest, and static checks.
+- [x] Keep non-claims explicit for autonomous background package streaming workers, async-overlap/performance, automatic eviction policy, partial `.mavgpayload` byte-range page loading/schema, GPU memory pressure integration, GPU culling, indirect draws, mesh shaders, deformation, ray tracing, Metal readiness, Nanite equivalence/superiority, and broad optimization.
+- [x] Run docs/manifest/static validation:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/compose-agent-manifest.ps1 -Write
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-json-contracts.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/format.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1
+```
+
+- [x] Run focused C++ validation:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-public-api-boundaries.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_runtime_mavg_page_streaming_tests MK_runtime_mavg_lod_residency_tests MK_runtime_package_streaming_resident_mount_tests
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_mavg_page_streaming_tests|MK_runtime_mavg_lod_residency_tests|MK_runtime_package_streaming_resident_mount_tests"
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-tidy.ps1 -Files engine/runtime/src/mavg_page_streaming.cpp,tests/unit/runtime_mavg_page_streaming_tests.cpp -ReuseExistingFileApiReply
+git diff --check
+```
+
+- [x] Run full slice validation:
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
+```
+
+Evidence: docs/manifest/static validation passed on 2026-06-05 after `tools/compose-agent-manifest.ps1 -Write`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/format.ps1`, and `tools/check-format.ps1`. Focused C++ validation passed with `tools/check-public-api-boundaries.ps1`, the targeted build for `MK_runtime_mavg_page_streaming_tests`, `MK_runtime_mavg_lod_residency_tests`, and `MK_runtime_package_streaming_resident_mount_tests`, targeted CTest passing 3/3, targeted `tools/check-tidy.ps1 -Files engine/runtime/src/mavg_page_streaming.cpp,tests/unit/runtime_mavg_page_streaming_tests.cpp -ReuseExistingFileApiReply`, and `git diff --check`. Full `tools/validate.ps1` passed with `validate: ok` and CTest `106/106` passing.
+
 ## Done When
 
 - The graph contract validates hierarchy, geometric error, draw ranges, and resident fallback ancestry.
 - The cook planner emits deterministic static draw payloads and expanded graph rows.
 - CPU LOD selection is deterministic, budget-aware, hysteresis-aware, and never creates holes when a resident fallback ancestor exists.
 - Runtime resident page bridge converts existing resident package/catalog evidence into selector input without executing streaming.
+- Runtime page streaming planning converts reviewed selector page requests into deterministic package candidate rows and can drain one row through reviewed safe-point resident mount execution without autonomous background workers or renderer/RHI handles.
 - RHI and renderer conventional draw paths support explicit indexed draw ranges.
 - Scene renderer planning can produce range-aware conventional `MeshCommand` rows for selected clusters using existing opaque GPU bindings.
 - Runtime RHI can publish a package-visible conventional MAVG `MeshGpuBinding` from a committed streaming result, live `AssetKind::mavg_cluster_graph` catalog row, caller-owned graph document, and matching runtime mesh payload without executing package streaming or backend-specific LoD work.
@@ -908,7 +1001,7 @@ Evidence: focused validation passed on 2026-06-05 with `tools/check-toolchain.ps
 - No GPU culling.
 - No D3D12 `ExecuteIndirect` or Vulkan indirect draw execution.
 - No mesh/task/amplification shader readiness.
-- No background package streaming execution.
+- No autonomous background package streaming worker, thread ownership, async overlap/performance claim, automatic eviction policy, partial `.mavgpayload` byte-range page loader/schema, or GPU memory pressure integration.
 - No GPU memory residency enforcement beyond existing value/evidence rows.
 - No skinned, morph, displacement, destruction, or dynamic cluster support.
 - No ray tracing payload or BLAS/TLAS integration.
@@ -920,7 +1013,7 @@ Evidence: focused validation passed on 2026-06-05 with `tools/check-toolchain.ps
 After this milestone lands:
 
 - `mavg-gpu-culling-indirect-v1`: compute culling, indirect command buffers, D3D12/Vulkan synchronization evidence.
-- `mavg-package-streaming-residency-v1`: background/async page request execution, reviewed eviction policy, GPU memory pressure integration.
+- `mavg-package-streaming-residency-v1`: now starts with caller-reviewed page request planning and one-row safe-point drain; remaining follow-up is autonomous/background dispatch policy, partial payload page schema, reviewed eviction policy expansion, and GPU memory pressure integration.
 - `mavg-mesh-shader-backends-v1`: D3D12 mesh/amplification shader path, Vulkan `VK_EXT_mesh_shader` path, strict feature gates, fallback preservation.
 - `mavg-deformable-clusters-v1`: rigid, skinned, morph, and dynamic update tiers.
 - `mavg-ray-tracing-consistency-v1`: raster/RT payload consistency and backend-local acceleration structure evidence.
