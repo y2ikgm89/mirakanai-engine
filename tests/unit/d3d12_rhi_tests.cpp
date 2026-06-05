@@ -797,6 +797,30 @@ compile_runtime_morph_position_output_slot_compute_shader(std::uint32_t output_s
         "ps_main", "ps_5_0");
 }
 
+[[nodiscard]] Microsoft::WRL::ComPtr<ID3DBlob> compile_environment_ibl_sample_vertex_shader() {
+    return compile_shader("struct VsOut {"
+                          "  float4 position : SV_Position;"
+                          "  float3 direction : TEXCOORD0;"
+                          "};"
+                          "VsOut vs_main(uint vertex_id : SV_VertexID) {"
+                          "  float2 positions[3] = { float2(-1.0, -1.0), float2(-1.0, 3.0), float2(3.0, -1.0) };"
+                          "  VsOut output;"
+                          "  output.position = float4(positions[vertex_id], 0.0, 1.0);"
+                          "  output.direction = float3(1.0, 0.0, 0.0);"
+                          "  return output;"
+                          "}",
+                          "vs_main", "vs_5_0");
+}
+
+[[nodiscard]] Microsoft::WRL::ComPtr<ID3DBlob> compile_environment_ibl_sample_pixel_shader() {
+    return compile_shader("TextureCube<float4> environment_ibl : register(t0);"
+                          "SamplerState environment_sampler : register(s0);"
+                          "float4 ps_main(float4 position : SV_Position, float3 direction : TEXCOORD0) : SV_Target {"
+                          "  return environment_ibl.SampleLevel(environment_sampler, normalize(direction), 0.0);"
+                          "}",
+                          "ps_main", "ps_5_0");
+}
+
 [[nodiscard]] Microsoft::WRL::ComPtr<ID3DBlob> compile_cloud_layer_vertex_shader() {
     return compile_shader_file(std::filesystem::path{"tests"} / "shaders" / "environment_cloud_layer.hlsl",
                                "cloud_layer_vs_main", "vs_5_0");
@@ -5640,6 +5664,55 @@ MK_TEST("d3d12 rhi device renders physical sky from packed environment constants
     MK_REQUIRE(device->stats().draw_calls == 1);
     MK_REQUIRE(device->stats().texture_buffer_copies == 1);
     MK_REQUIRE(device->stats().buffer_writes == 1);
+}
+
+MK_TEST("d3d12 environment ibl renderer upload proves texture cube sampling and runtime capture readback") {
+    const auto missing_sampling_shaders = mirakana::rhi::d3d12::execute_environment_ibl_renderer_upload(
+        mirakana::rhi::d3d12::D3d12EnvironmentIblRendererUploadDesc{
+            .device = d3d12_test_device_desc(),
+            .edge_size = 16,
+            .mip_count = 5,
+            .format = mirakana::rhi::d3d12::D3d12EnvironmentIblTextureFormat::rgba16_float,
+            .require_shader_sampling = true,
+            .require_runtime_capture = true,
+        });
+    MK_REQUIRE(!missing_sampling_shaders.succeeded);
+    MK_REQUIRE(!missing_sampling_shaders.shader_sampling_proven);
+    MK_REQUIRE(missing_sampling_shaders.diagnostics > 0);
+
+    const auto sample_vertex = compile_environment_ibl_sample_vertex_shader();
+    const auto sample_pixel = compile_environment_ibl_sample_pixel_shader();
+    const auto proof = mirakana::rhi::d3d12::execute_environment_ibl_renderer_upload(
+        mirakana::rhi::d3d12::D3d12EnvironmentIblRendererUploadDesc{
+            .device = d3d12_test_device_desc(),
+            .edge_size = 16,
+            .mip_count = 5,
+            .format = mirakana::rhi::d3d12::D3d12EnvironmentIblTextureFormat::rgba16_float,
+            .require_shader_sampling = true,
+            .require_runtime_capture = true,
+            .sampling_vertex_shader =
+                std::span<const std::uint8_t>{static_cast<const std::uint8_t*>(sample_vertex->GetBufferPointer()),
+                                              sample_vertex->GetBufferSize()},
+            .sampling_fragment_shader =
+                std::span<const std::uint8_t>{static_cast<const std::uint8_t*>(sample_pixel->GetBufferPointer()),
+                                              sample_pixel->GetBufferSize()},
+        });
+
+    MK_REQUIRE(proof.texture_cube_uploads == 1);
+    MK_REQUIRE(proof.texture_cube_faces == 6);
+    MK_REQUIRE(proof.texture_cube_edge_size == 16);
+    MK_REQUIRE(proof.radiance_mips == 5);
+    MK_REQUIRE(proof.irradiance_rows == 9);
+    MK_REQUIRE(proof.srv_dimension == mirakana::rhi::d3d12::D3d12EnvironmentIblSrvDimension::texture_cube);
+    MK_REQUIRE(proof.shader_sampling_proven);
+    MK_REQUIRE(proof.shader_sample_readback_nonzero);
+    MK_REQUIRE(proof.runtime_capture_faces == 6);
+    MK_REQUIRE(proof.runtime_capture_readback_nonzero);
+    MK_REQUIRE(proof.readback_checksum != 0);
+    MK_REQUIRE(proof.resource_barriers_recorded >= 2);
+    MK_REQUIRE(proof.native_handle_access == 0);
+    MK_REQUIRE(proof.diagnostics == 0);
+    MK_REQUIRE(proof.succeeded);
 }
 
 MK_TEST("d3d12 rhi frame renderer draws cloud layer from cloud and flow map descriptors") {

@@ -108,7 +108,7 @@ struct PreparedImport {
     case AssetImportActionKind::audio:
         return "GameEngine.CookedAudio.v1";
     case AssetImportActionKind::environment_profile:
-        return "GameEngine.CookedEnvironmentProfile.v1";
+        return "GameEngine.CookedEnvironmentProfile.v2";
     case AssetImportActionKind::unknown:
         break;
     }
@@ -184,14 +184,14 @@ struct PreparedImport {
 }
 
 [[nodiscard]] std::string cooked_environment_profile_artifact(const AssetImportAction& action,
-                                                              const EnvironmentProfileDesc& environment) {
+                                                              const EnvironmentProfileDocumentV2& environment) {
     std::ostringstream output;
     output << "format=" << cooked_format_name(AssetImportActionKind::environment_profile) << '\n';
     output << "asset.id=" << action.id.value << '\n';
     output << "asset.kind=" << action_kind_name(AssetImportActionKind::environment_profile) << '\n';
     output << "source.path=" << action.source_path << '\n';
-    output << "environment.source_format=" << environment_profile_format_v1() << '\n';
-    write_environment_profile_payload(output, environment, "profile.");
+    output << "environment.source_format=" << environment_profile_format_v2() << '\n';
+    write_environment_profile_v2_payload(output, environment, "profile_v2.");
     return output.str();
 }
 
@@ -332,9 +332,9 @@ import_morph_mesh_cpu_source_document(IFileSystem& filesystem, const AssetImport
     }
 }
 
-[[nodiscard]] EnvironmentProfileDesc import_environment_profile_source_document(IFileSystem& filesystem,
-                                                                                const AssetImportAction& action) {
-    return deserialize_environment_profile(filesystem.read_text(action.source_path));
+[[nodiscard]] EnvironmentProfileDocumentV2 import_environment_profile_source_document(IFileSystem& filesystem,
+                                                                                      const AssetImportAction& action) {
+    return deserialize_environment_profile_v2(filesystem.read_text(action.source_path));
 }
 
 [[nodiscard]] PreparedImport prepare_import_action(IFileSystem& filesystem, const AssetImportAction& action,
