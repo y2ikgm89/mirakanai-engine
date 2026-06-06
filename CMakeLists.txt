@@ -823,6 +823,13 @@ if(BUILD_TESTING)
     target_include_directories(MK_backend_scaffold_tests PRIVATE tests)
     MK_apply_common_target_options(MK_backend_scaffold_tests)
     add_test(NAME MK_backend_scaffold_tests COMMAND MK_backend_scaffold_tests)
+    if(APPLE AND TARGET MK_metal_environment_evidence_metallib)
+        add_dependencies(MK_backend_scaffold_tests MK_metal_environment_evidence_metallib)
+        get_property(MK_METAL_ENVIRONMENT_EVIDENCE_METALLIB GLOBAL PROPERTY MK_METAL_ENVIRONMENT_EVIDENCE_METALLIB)
+        set_tests_properties(MK_backend_scaffold_tests PROPERTIES
+            ENVIRONMENT "MK_METAL_ENVIRONMENT_EVIDENCE_METALLIB=${MK_METAL_ENVIRONMENT_EVIDENCE_METALLIB}"
+        )
+    endif()
 
     add_executable(MK_renderer_tests
         tests/unit/renderer_rhi_tests.cpp
@@ -896,6 +903,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_environment_weather_tests)
     add_test(NAME MK_environment_weather_tests COMMAND MK_environment_weather_tests)
 
+    add_executable(MK_environment_material_weathering_tests
+        tests/unit/environment_material_weathering_tests.cpp
+    )
+    target_link_libraries(MK_environment_material_weathering_tests PRIVATE MK_environment)
+    target_include_directories(MK_environment_material_weathering_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_environment_material_weathering_tests)
+    add_test(NAME MK_environment_material_weathering_tests COMMAND MK_environment_material_weathering_tests)
+
     add_executable(MK_environment_time_of_day_tests
         tests/unit/environment_time_of_day_tests.cpp
     )
@@ -919,6 +934,14 @@ if(BUILD_TESTING)
     target_include_directories(MK_renderer_precipitation_policy_tests PRIVATE tests)
     MK_apply_common_target_options(MK_renderer_precipitation_policy_tests)
     add_test(NAME MK_renderer_precipitation_policy_tests COMMAND MK_renderer_precipitation_policy_tests)
+
+    add_executable(MK_renderer_material_weathering_policy_tests
+        tests/unit/renderer_material_weathering_policy_tests.cpp
+    )
+    target_link_libraries(MK_renderer_material_weathering_policy_tests PRIVATE MK_renderer MK_environment)
+    target_include_directories(MK_renderer_material_weathering_policy_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_renderer_material_weathering_policy_tests)
+    add_test(NAME MK_renderer_material_weathering_policy_tests COMMAND MK_renderer_material_weathering_policy_tests)
 
     add_executable(MK_renderer_volumetric_cloud_tests
         tests/unit/renderer_volumetric_cloud_tests.cpp

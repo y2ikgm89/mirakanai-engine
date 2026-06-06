@@ -178,6 +178,7 @@ VolumetricFogPolicyPlan plan_volumetric_fog_policy(const VolumetricFogPolicyDesc
         .scene_depth_available = desc.scene_depth_available,
         .shader_contract_evidence_ready = desc.shader_contract_evidence_ready,
         .execution_evidence_ready = desc.execution_evidence_ready,
+        .package_evidence_ready = desc.package_evidence_ready,
     };
 
     if (!valid_quality_tier(desc.quality_tier)) {
@@ -225,6 +226,10 @@ VolumetricFogPolicyPlan plan_volumetric_fog_policy(const VolumetricFogPolicyDesc
         add_diagnostic(plan, VolumetricFogDiagnosticCode::missing_execution_evidence, "execution_evidence_ready", 0,
                        "volumetric fog ready promotion requires D3D12 readback or package execution evidence");
     }
+    if (desc.request_ready_promotion && !desc.package_evidence_ready) {
+        add_diagnostic(plan, VolumetricFogDiagnosticCode::missing_package_evidence, "package_evidence_ready", 0,
+                       "volumetric fog ready promotion requires package-visible smoke evidence");
+    }
     if (desc.request_froxel_allocation) {
         add_diagnostic(plan, VolumetricFogDiagnosticCode::unsupported_froxel_allocation, "request_froxel_allocation", 0,
                        "volumetric fog policy planning must not allocate froxel textures in this slice");
@@ -250,7 +255,7 @@ VolumetricFogPolicyPlan plan_volumetric_fog_policy(const VolumetricFogPolicyDesc
 
     if (!plan.succeeded()) {
         plan.status = VolumetricFogPolicyStatus::blocked;
-    } else if (desc.request_ready_promotion && desc.execution_evidence_ready) {
+    } else if (desc.request_ready_promotion && desc.execution_evidence_ready && desc.package_evidence_ready) {
         plan.status = VolumetricFogPolicyStatus::ready;
     }
 
