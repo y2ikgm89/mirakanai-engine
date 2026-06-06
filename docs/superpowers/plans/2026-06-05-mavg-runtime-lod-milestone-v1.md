@@ -23,7 +23,7 @@
 - `engine/assets/include/mirakana/assets/mavg_cluster_graph.hpp` exposes `MavgClusterGraphDocument`, `MavgClusterGraphCluster::lod_level`, page rows, material partitions, child ids, validation, canonicalization, text serialization, and text deserialization.
 - `engine/tools/include/mirakana/tools/mavg_cluster_cook.hpp` exposes `MavgClusterCookRequest`, `plan_mavg_cluster_graph_cook_package`, and `apply_mavg_cluster_graph_cook_package`.
 - The cook request now carries static `MavgClusterCookVertex` rows plus indexed `MavgClusterCookTriangle` rows and emits deterministic `GameEngine.MavgClusterPayload.v1` `vertex.data_hex` / `index.data_hex` rows.
-- This milestone's first two implementation checkpoints now add graph parent ids, geometric error, resident fallback ancestors, cluster draw ranges, and draw-ready static cook payload rows. Screen-space selection thresholds, runtime selection, renderer submission, and package streaming execution remain future tasks in this same milestone.
+- This milestone's first three implementation checkpoints now add graph parent ids, geometric error, resident fallback ancestors, cluster draw ranges, draw-ready static cook payload rows, and a deterministic value-only `MK_renderer` CPU selector. Runtime resident-page bridge evidence, renderer submission, and package streaming execution remain future tasks in this same milestone.
 - `MK_runtime` already has resident package mount sets, resident catalog caches, byte/record budget checks, selected safe-point package streaming, and reviewed eviction-assisted commit helpers.
 - `MK_renderer` already has `MeshCommand`, `MeshGpuBinding`, `RendererStats`, `NullRenderer`, frame graph/RHI policies, GPU memory policy rows, and renderer quality evidence surfaces.
 - `MeshCommand` and `rhi::IRhiCommandList::draw_indexed` do not yet expose a selected index range, so a visible conventional MAVG LOD path must add range-aware indexed draw support before scene submission can draw only selected clusters.
@@ -155,11 +155,11 @@ enum class MavgLodSelectionDiagnosticCode : std::uint8_t {
     missing_resident_fallback,
     missing_page,
     budget_degraded,
+    budget_unsatisfied,
     hysteresis_reused_previous,
 };
 
 struct MavgLodViewDesc {
-    Mat4 clip_from_world{Mat4::identity()};
     Vec3 camera_world_position{};
     float viewport_height_pixels{0.0F};
     float target_error_pixels{1.0F};
@@ -446,15 +446,18 @@ Evidence: `tools/cmake.ps1 --build --preset dev --target MK_tools_mavg_cluster_c
 - Create: `tests/unit/mavg_lod_selection_tests.cpp`
 - Modify: `CMakeLists.txt`
 
-- [ ] Add `MK_mavg_lod_selection_tests` linked to `MK_renderer`.
-- [ ] Add tests for:
+- [x] Add `MK_mavg_lod_selection_tests` linked to `MK_renderer`.
+- [x] Add tests for:
   - near camera selects child clusters
   - far camera selects root fallback cluster
   - nonresident child page selects resident fallback and emits page request
   - nonresident child with missing fallback reports diagnostic
   - `max_selected_clusters` degrades selection deterministically
   - previous selection plus hysteresis keeps stable output near the threshold
+  - invalid view rows return diagnostics and no selected rows
   - invalid graph returns diagnostics and no selected rows
+  - mixed-residency child pages collapse to one resident fallback cover without overlapping sibling rows
+  - impossible `max_selected_clusters` budgets return an explicit unsatisfied-budget diagnostic instead of over-budget success
 
 - [ ] Run:
 
@@ -463,6 +466,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset d
 ```
 
 Expected: fail before `mavg_lod_selection.hpp` exists.
+
+Evidence: RED failed before `mavg_lod_selection.hpp` existed with `fatal error C1083: cannot open include file 'mirakana/renderer/mavg_lod_selection.hpp'`.
 
 ### Task 6: Implement CPU LOD Selector
 
@@ -473,14 +478,14 @@ Expected: fail before `mavg_lod_selection.hpp` exists.
 - Create: `engine/renderer/src/mavg_lod_selection.cpp`
 - Modify: `tests/unit/mavg_lod_selection_tests.cpp`
 
-- [ ] Implement `select_mavg_lod_clusters`.
-- [ ] Use finite view parameters only; reject zero/negative viewport height and target error.
-- [ ] Estimate screen error as `geometric_error * viewport_height_pixels / max(distance_to_bounds_center, epsilon)`.
-- [ ] Traverse from roots to children while resident and above target error.
-- [ ] If a selected fine cluster page is missing, substitute `resident_fallback_cluster_index` and emit a page request for the missing page.
-- [ ] Sort output rows by `material_partition`, `page_index`, then `cluster_index`.
-- [ ] Preserve deterministic budget degradation by replacing highest-cost child groups with fallback ancestors until `max_selected_clusters` is satisfied.
-- [ ] Apply hysteresis only when previous rows are valid and within `hysteresis_pixels`.
+- [x] Implement `select_mavg_lod_clusters`.
+- [x] Use finite view parameters only; reject zero/negative viewport height and target error.
+- [x] Estimate screen error as `geometric_error * viewport_height_pixels / max(distance_to_bounds_center, epsilon)`.
+- [x] Traverse from roots to children while resident and above target error.
+- [x] If a selected fine cluster page is missing, substitute `resident_fallback_cluster_index` and emit a page request for the missing page.
+- [x] Sort output rows by `material_partition`, `page_index`, then `cluster_index`.
+- [x] Preserve deterministic budget degradation by replacing highest-cost child groups with resident fallback ancestors until `max_selected_clusters` is satisfied, or return an explicit unsatisfied-budget diagnostic when the graph cannot be reduced without dropping root coverage.
+- [x] Apply hysteresis only when previous rows are valid and within `hysteresis_pixels`.
 - [ ] Run:
 
 ```powershell
@@ -489,6 +494,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 ```
 
 Expected: selector tests pass.
+
+Evidence: `tools/cmake.ps1 --build --preset dev --target MK_mavg_lod_selection_tests`, `tools/ctest.ps1 --preset dev --output-on-failure -R "MK_(mavg_cluster_graph|tools_mavg_cluster_cook|mavg_lod_selection)_tests"`, `tools/check-tidy.ps1 -Files engine/renderer/src/mavg_lod_selection.cpp,tests/unit/mavg_lod_selection_tests.cpp -ReuseExistingFileApiReply`, `tools/check-public-api-boundaries.ps1`, `tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, and `tools/check-ai-integration.ps1` passed for the CPU selector checkpoint.
 
 ### Task 7: Add Runtime Resident Page Bridge Tests
 
