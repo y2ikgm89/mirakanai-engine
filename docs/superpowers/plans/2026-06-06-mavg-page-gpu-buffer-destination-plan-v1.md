@@ -116,7 +116,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1
 ```
 
-- [ ] Commit, push, and open a stacked draft PR against `codex/mavg-directstorage-rhi-resource-destination-v1`.
+- [x] Commit, push, and open a stacked draft PR against `codex/mavg-directstorage-rhi-resource-destination-v1`.
 
 ## Done When
 
@@ -143,3 +143,4 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` passed.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed. Static checks all passed, `production-readiness-audit` reported `unsupported_gaps=0`, diagnostic-only Metal/Apple/mobile host gates remained host-gated as expected on this Windows host, build passed, clang-tidy smoke passed, and CTest passed `111/111` including `MK_runtime_rhi_mavg_page_gpu_buffer_destination_tests`.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1` passed with branch `codex/mavg-page-gpu-buffer-destination-plan-v1`, GitHub auth/network ready, and remote head missing as expected before first push.
+- Commit `c049ffe2` added MAVG Page GPU Buffer Destination Plan v1, was pushed to `origin/codex/mavg-page-gpu-buffer-destination-plan-v1`, and opened as stacked draft PR #504 against `codex/mavg-directstorage-rhi-resource-destination-v1`.
