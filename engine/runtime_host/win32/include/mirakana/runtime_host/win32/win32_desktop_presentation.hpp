@@ -242,6 +242,18 @@ struct Win32DesktopPresentationReport {
     bool environment_fog_vulkan_package_evidence_ready{false};
     bool environment_fog_vulkan_package_constant_buffer_ready{false};
     std::uint64_t environment_fog_vulkan_package_constant_buffer_bytes{0};
+    bool physical_sky_vulkan_package_requested{false};
+    bool physical_sky_vulkan_package_shader_contract_evidence_ready{false};
+    bool physical_sky_vulkan_package_evidence_ready{false};
+    bool physical_sky_vulkan_package_execution_evidence_ready{false};
+    bool physical_sky_vulkan_package_constant_buffer_ready{false};
+    std::uint64_t physical_sky_vulkan_package_constant_buffer_bytes{0};
+    bool physical_sky_vulkan_package_allocates_lut_textures{false};
+    bool physical_sky_vulkan_package_invokes_backend{false};
+    bool physical_sky_vulkan_package_exposes_native_handles{false};
+    std::uint32_t physical_sky_vulkan_package_constant_layout_rows{0};
+    std::uint32_t physical_sky_vulkan_package_lut_intent_rows{0};
+    std::uint32_t physical_sky_vulkan_package_policy_diagnostics_count{0};
     bool physical_sky_requested{false};
     bool physical_sky_shader_contract_evidence_ready{false};
     bool physical_sky_package_evidence_ready{false};
@@ -442,6 +454,13 @@ enum class Win32DesktopPresentationVulkanEnvironmentFogPackageStatus : std::uint
     ready,
 };
 
+enum class Win32DesktopPresentationVulkanPhysicalSkyPackageStatus : std::uint8_t {
+    not_requested = 0,
+    host_evidence_required,
+    blocked,
+    ready,
+};
+
 enum class Win32DesktopPresentationPhysicalSkyStatus : std::uint8_t {
     not_requested = 0,
     blocked,
@@ -610,6 +629,26 @@ struct Win32DesktopPresentationPhysicalSkyReport {
     bool ready{false};
     bool requested{false};
     bool d3d12_backend_selected{false};
+    bool shader_contract_evidence_ready{false};
+    bool package_evidence_ready{false};
+    bool execution_evidence_ready{false};
+    bool constant_buffer_ready{false};
+    std::uint32_t constants_binding{0};
+    std::uint64_t constant_buffer_bytes{0};
+    std::uint32_t constant_layout_rows{0};
+    std::uint32_t lut_intent_rows{0};
+    bool allocates_lut_textures{false};
+    bool invokes_backend{false};
+    bool exposes_native_handles{false};
+    std::uint32_t diagnostics_count{0};
+};
+
+struct Win32DesktopPresentationVulkanPhysicalSkyPackageReport {
+    Win32DesktopPresentationVulkanPhysicalSkyPackageStatus status{
+        Win32DesktopPresentationVulkanPhysicalSkyPackageStatus::not_requested};
+    bool ready{false};
+    bool requested{false};
+    bool vulkan_backend_selected{false};
     bool shader_contract_evidence_ready{false};
     bool package_evidence_ready{false};
     bool execution_evidence_ready{false};
@@ -1231,6 +1270,8 @@ struct Win32DesktopPresentationVulkanSceneRendererDesc {
     bool enable_postprocess_depth_input{false};
     bool enable_environment_fog{false};
     EnvironmentFogPolicyDesc environment_fog;
+    bool enable_physical_sky_package_evidence{false};
+    PhysicalSkyPolicyDesc physical_sky;
     bool enable_environment_precipitation_package_evidence{false};
     bool enable_environment_precipitation_renderer_execution{false};
     PrecipitationPolicyDesc environment_precipitation;
@@ -1361,6 +1402,11 @@ evaluate_win32_desktop_presentation_vulkan_environment_fog_package(
 win32_desktop_presentation_physical_sky_status_name(Win32DesktopPresentationPhysicalSkyStatus status) noexcept;
 [[nodiscard]] Win32DesktopPresentationPhysicalSkyReport
 evaluate_win32_desktop_presentation_physical_sky(const Win32DesktopPresentationReport& report, bool requested);
+[[nodiscard]] std::string_view win32_desktop_presentation_vulkan_physical_sky_package_status_name(
+    Win32DesktopPresentationVulkanPhysicalSkyPackageStatus status) noexcept;
+[[nodiscard]] Win32DesktopPresentationVulkanPhysicalSkyPackageReport
+evaluate_win32_desktop_presentation_vulkan_physical_sky_package(const Win32DesktopPresentationReport& report,
+                                                                bool requested);
 [[nodiscard]] std::string_view
 win32_desktop_presentation_cloud_layer_status_name(Win32DesktopPresentationCloudLayerStatus status) noexcept;
 [[nodiscard]] Win32DesktopPresentationCloudLayerReport

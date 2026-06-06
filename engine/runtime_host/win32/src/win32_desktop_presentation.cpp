@@ -82,6 +82,18 @@ struct NativeRendererCreateResult {
     bool environment_fog_vulkan_package_evidence_ready{false};
     bool environment_fog_vulkan_package_constant_buffer_ready{false};
     std::uint64_t environment_fog_vulkan_package_constant_buffer_bytes{0};
+    bool physical_sky_vulkan_package_requested{false};
+    bool physical_sky_vulkan_package_shader_contract_evidence_ready{false};
+    bool physical_sky_vulkan_package_evidence_ready{false};
+    bool physical_sky_vulkan_package_execution_evidence_ready{false};
+    bool physical_sky_vulkan_package_constant_buffer_ready{false};
+    std::uint64_t physical_sky_vulkan_package_constant_buffer_bytes{0};
+    bool physical_sky_vulkan_package_allocates_lut_textures{false};
+    bool physical_sky_vulkan_package_invokes_backend{false};
+    bool physical_sky_vulkan_package_exposes_native_handles{false};
+    std::uint32_t physical_sky_vulkan_package_constant_layout_rows{0};
+    std::uint32_t physical_sky_vulkan_package_lut_intent_rows{0};
+    std::uint32_t physical_sky_vulkan_package_policy_diagnostics_count{0};
     bool physical_sky_requested{false};
     bool physical_sky_shader_contract_evidence_ready{false};
     bool physical_sky_package_evidence_ready{false};
@@ -1314,6 +1326,20 @@ void apply_physical_sky_plan(NativeRendererCreateResult& result, const PhysicalS
     result.physical_sky_constant_layout_rows = static_cast<std::uint32_t>(plan.constant_layout_rows.size());
     result.physical_sky_lut_intent_rows = static_cast<std::uint32_t>(plan.lut_intent_rows.size());
     result.physical_sky_policy_diagnostics_count = static_cast<std::uint32_t>(plan.diagnostics.size());
+}
+
+void apply_vulkan_physical_sky_package_plan(NativeRendererCreateResult& result,
+                                            const PhysicalSkyPolicyPlan& plan) noexcept {
+    result.physical_sky_vulkan_package_shader_contract_evidence_ready = plan.shader_contract_evidence_ready;
+    result.physical_sky_vulkan_package_evidence_ready = plan.package_evidence_ready;
+    result.physical_sky_vulkan_package_execution_evidence_ready = plan.execution_evidence_ready;
+    result.physical_sky_vulkan_package_allocates_lut_textures = plan.allocates_lut_textures;
+    result.physical_sky_vulkan_package_invokes_backend = plan.invokes_backend;
+    result.physical_sky_vulkan_package_exposes_native_handles = plan.exposes_native_handles;
+    result.physical_sky_vulkan_package_constant_layout_rows =
+        static_cast<std::uint32_t>(plan.constant_layout_rows.size());
+    result.physical_sky_vulkan_package_lut_intent_rows = static_cast<std::uint32_t>(plan.lut_intent_rows.size());
+    result.physical_sky_vulkan_package_policy_diagnostics_count = static_cast<std::uint32_t>(plan.diagnostics.size());
 }
 
 void apply_precipitation_plan(NativeRendererCreateResult& result, const PrecipitationPolicyDesc& desc,
@@ -4717,6 +4743,8 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
         const bool enable_postprocess_depth_input =
             desc.vulkan_scene_renderer->enable_postprocess && postprocess_depth_input_requested;
         const bool environment_fog_requested = desc.vulkan_scene_renderer->enable_environment_fog;
+        const bool physical_sky_vulkan_package_requested =
+            desc.vulkan_scene_renderer->enable_physical_sky_package_evidence;
         const bool environment_precipitation_vulkan_renderer_execution_requested =
             desc.vulkan_scene_renderer->enable_environment_precipitation_renderer_execution;
         const bool environment_precipitation_vulkan_requested =
@@ -4775,10 +4803,47 @@ make_vulkan_presentation_frame_synchronization_plan(rhi::vulkan::VulkanRuntimeDe
         result.postprocess_depth_input_requested = postprocess_depth_input_requested;
         result.environment_fog_requested = environment_fog_requested;
         result.environment_fog_vulkan_package_requested = environment_fog_requested;
+        result.physical_sky_vulkan_package_requested = physical_sky_vulkan_package_requested;
         result.environment_precipitation_vulkan_requested = environment_precipitation_vulkan_requested;
         result.directional_shadow_requested = directional_shadow_requested;
         result.native_ui_overlay_requested = native_ui_overlay_requested;
         result.native_ui_texture_overlay_requested = native_ui_texture_overlay_requested;
+        if (physical_sky_vulkan_package_requested) {
+            auto physical_sky_desc = desc.vulkan_scene_renderer->physical_sky;
+            physical_sky_desc.shader_contract_evidence_ready = physical_sky_desc.shader_contract_evidence_ready &&
+                                                               vertex_validation.valid && fragment_validation.valid;
+            physical_sky_desc.package_evidence_ready =
+                physical_sky_desc.package_evidence_ready && desc.vulkan_scene_renderer->package != nullptr;
+            physical_sky_desc.execution_evidence_ready =
+                physical_sky_desc.execution_evidence_ready && pipeline.value != 0;
+            const auto physical_sky_plan = plan_physical_sky_policy(physical_sky_desc);
+            apply_vulkan_physical_sky_package_plan(result, physical_sky_plan);
+            if (!physical_sky_plan.ready()) {
+                result.succeeded = false;
+                result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                result.diagnostic =
+                    "Vulkan physical sky package evidence failed the physical sky policy; using NullRenderer fallback.";
+                result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                result.scene_gpu_diagnostics.push_back(
+                    make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                return result;
+            }
+            const auto physical_sky_constants_buffer = create_physical_sky_constants_buffer(*device, physical_sky_desc);
+            result.physical_sky_vulkan_package_constant_buffer_ready = physical_sky_constants_buffer.value != 0;
+            result.physical_sky_vulkan_package_constant_buffer_bytes =
+                static_cast<std::uint64_t>(physical_sky_constants_byte_size());
+            if (!result.physical_sky_vulkan_package_constant_buffer_ready) {
+                result.succeeded = false;
+                result.failure_reason = Win32DesktopPresentationFallbackReason::runtime_pipeline_unavailable;
+                result.diagnostic =
+                    "Vulkan physical sky package evidence could not create the physical sky constant buffer; using "
+                    "NullRenderer fallback.";
+                result.scene_gpu_status = Win32DesktopPresentationSceneGpuBindingStatus::failed;
+                result.scene_gpu_diagnostics.push_back(
+                    make_scene_gpu_diagnostic(result.scene_gpu_status, result.diagnostic));
+                return result;
+            }
+        }
         if (desc.vulkan_scene_renderer->enable_postprocess) {
             rhi::BufferHandle environment_fog_constants_buffer;
             if (environment_fog_requested) {
@@ -5351,6 +5416,18 @@ struct Win32DesktopPresentation::Impl {
     bool environment_fog_vulkan_package_evidence_ready{false};
     bool environment_fog_vulkan_package_constant_buffer_ready{false};
     std::uint64_t environment_fog_vulkan_package_constant_buffer_bytes{0};
+    bool physical_sky_vulkan_package_requested{false};
+    bool physical_sky_vulkan_package_shader_contract_evidence_ready{false};
+    bool physical_sky_vulkan_package_evidence_ready{false};
+    bool physical_sky_vulkan_package_execution_evidence_ready{false};
+    bool physical_sky_vulkan_package_constant_buffer_ready{false};
+    std::uint64_t physical_sky_vulkan_package_constant_buffer_bytes{0};
+    bool physical_sky_vulkan_package_allocates_lut_textures{false};
+    bool physical_sky_vulkan_package_invokes_backend{false};
+    bool physical_sky_vulkan_package_exposes_native_handles{false};
+    std::uint32_t physical_sky_vulkan_package_constant_layout_rows{0};
+    std::uint32_t physical_sky_vulkan_package_lut_intent_rows{0};
+    std::uint32_t physical_sky_vulkan_package_policy_diagnostics_count{0};
     bool physical_sky_requested{false};
     bool physical_sky_shader_contract_evidence_ready{false};
     bool physical_sky_package_evidence_ready{false};
@@ -5512,6 +5589,27 @@ struct Win32DesktopPresentation::Impl {
     }
 
     void apply_physical_sky_result(const NativeRendererCreateResult& renderer_result) noexcept {
+        physical_sky_vulkan_package_requested =
+            physical_sky_vulkan_package_requested || renderer_result.physical_sky_vulkan_package_requested;
+        physical_sky_vulkan_package_shader_contract_evidence_ready =
+            renderer_result.physical_sky_vulkan_package_shader_contract_evidence_ready;
+        physical_sky_vulkan_package_evidence_ready = renderer_result.physical_sky_vulkan_package_evidence_ready;
+        physical_sky_vulkan_package_execution_evidence_ready =
+            renderer_result.physical_sky_vulkan_package_execution_evidence_ready;
+        physical_sky_vulkan_package_constant_buffer_ready =
+            renderer_result.physical_sky_vulkan_package_constant_buffer_ready;
+        physical_sky_vulkan_package_constant_buffer_bytes =
+            renderer_result.physical_sky_vulkan_package_constant_buffer_bytes;
+        physical_sky_vulkan_package_allocates_lut_textures =
+            renderer_result.physical_sky_vulkan_package_allocates_lut_textures;
+        physical_sky_vulkan_package_invokes_backend = renderer_result.physical_sky_vulkan_package_invokes_backend;
+        physical_sky_vulkan_package_exposes_native_handles =
+            renderer_result.physical_sky_vulkan_package_exposes_native_handles;
+        physical_sky_vulkan_package_constant_layout_rows =
+            renderer_result.physical_sky_vulkan_package_constant_layout_rows;
+        physical_sky_vulkan_package_lut_intent_rows = renderer_result.physical_sky_vulkan_package_lut_intent_rows;
+        physical_sky_vulkan_package_policy_diagnostics_count =
+            renderer_result.physical_sky_vulkan_package_policy_diagnostics_count;
         physical_sky_requested = physical_sky_requested || renderer_result.physical_sky_requested;
         physical_sky_shader_contract_evidence_ready = renderer_result.physical_sky_shader_contract_evidence_ready;
         physical_sky_package_evidence_ready = renderer_result.physical_sky_package_evidence_ready;
@@ -6564,6 +6662,21 @@ Win32DesktopPresentationReport Win32DesktopPresentation::report() const noexcept
             impl_->environment_fog_vulkan_package_constant_buffer_ready,
         .environment_fog_vulkan_package_constant_buffer_bytes =
             impl_->environment_fog_vulkan_package_constant_buffer_bytes,
+        .physical_sky_vulkan_package_requested = impl_->physical_sky_vulkan_package_requested,
+        .physical_sky_vulkan_package_shader_contract_evidence_ready =
+            impl_->physical_sky_vulkan_package_shader_contract_evidence_ready,
+        .physical_sky_vulkan_package_evidence_ready = impl_->physical_sky_vulkan_package_evidence_ready,
+        .physical_sky_vulkan_package_execution_evidence_ready =
+            impl_->physical_sky_vulkan_package_execution_evidence_ready,
+        .physical_sky_vulkan_package_constant_buffer_ready = impl_->physical_sky_vulkan_package_constant_buffer_ready,
+        .physical_sky_vulkan_package_constant_buffer_bytes = impl_->physical_sky_vulkan_package_constant_buffer_bytes,
+        .physical_sky_vulkan_package_allocates_lut_textures = impl_->physical_sky_vulkan_package_allocates_lut_textures,
+        .physical_sky_vulkan_package_invokes_backend = impl_->physical_sky_vulkan_package_invokes_backend,
+        .physical_sky_vulkan_package_exposes_native_handles = impl_->physical_sky_vulkan_package_exposes_native_handles,
+        .physical_sky_vulkan_package_constant_layout_rows = impl_->physical_sky_vulkan_package_constant_layout_rows,
+        .physical_sky_vulkan_package_lut_intent_rows = impl_->physical_sky_vulkan_package_lut_intent_rows,
+        .physical_sky_vulkan_package_policy_diagnostics_count =
+            impl_->physical_sky_vulkan_package_policy_diagnostics_count,
         .physical_sky_requested = impl_->physical_sky_requested,
         .physical_sky_shader_contract_evidence_ready = impl_->physical_sky_shader_contract_evidence_ready,
         .physical_sky_package_evidence_ready = impl_->physical_sky_package_evidence_ready,
@@ -7146,6 +7259,21 @@ win32_desktop_presentation_physical_sky_status_name(Win32DesktopPresentationPhys
     return "unknown";
 }
 
+std::string_view win32_desktop_presentation_vulkan_physical_sky_package_status_name(
+    const Win32DesktopPresentationVulkanPhysicalSkyPackageStatus status) noexcept {
+    switch (status) {
+    case Win32DesktopPresentationVulkanPhysicalSkyPackageStatus::not_requested:
+        return "not_requested";
+    case Win32DesktopPresentationVulkanPhysicalSkyPackageStatus::host_evidence_required:
+        return "host_evidence_required";
+    case Win32DesktopPresentationVulkanPhysicalSkyPackageStatus::blocked:
+        return "blocked";
+    case Win32DesktopPresentationVulkanPhysicalSkyPackageStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
 std::string_view
 win32_desktop_presentation_cloud_layer_status_name(Win32DesktopPresentationCloudLayerStatus status) noexcept {
     switch (status) {
@@ -7610,6 +7738,62 @@ evaluate_win32_desktop_presentation_physical_sky(const Win32DesktopPresentationR
     result.ready = result.diagnostics_count == 0;
     result.status = result.ready ? Win32DesktopPresentationPhysicalSkyStatus::ready
                                  : Win32DesktopPresentationPhysicalSkyStatus::blocked;
+    return result;
+}
+
+Win32DesktopPresentationVulkanPhysicalSkyPackageReport
+evaluate_win32_desktop_presentation_vulkan_physical_sky_package(const Win32DesktopPresentationReport& report,
+                                                                const bool requested) {
+    Win32DesktopPresentationVulkanPhysicalSkyPackageReport result;
+    result.constants_binding = physical_sky_constants_binding();
+    if (!requested) {
+        return result;
+    }
+
+    result.requested = report.physical_sky_vulkan_package_requested;
+    result.vulkan_backend_selected = report.selected_backend == Win32DesktopPresentationBackend::vulkan;
+    result.shader_contract_evidence_ready = report.physical_sky_vulkan_package_shader_contract_evidence_ready;
+    result.package_evidence_ready = report.physical_sky_vulkan_package_evidence_ready;
+    result.execution_evidence_ready = report.physical_sky_vulkan_package_execution_evidence_ready;
+    result.constant_buffer_ready = report.physical_sky_vulkan_package_constant_buffer_ready;
+    result.constant_buffer_bytes = report.physical_sky_vulkan_package_constant_buffer_bytes;
+    result.allocates_lut_textures = report.physical_sky_vulkan_package_allocates_lut_textures;
+    result.invokes_backend = report.physical_sky_vulkan_package_invokes_backend;
+    result.exposes_native_handles = report.physical_sky_vulkan_package_exposes_native_handles;
+    result.constant_layout_rows = report.physical_sky_vulkan_package_constant_layout_rows;
+    result.lut_intent_rows = report.physical_sky_vulkan_package_lut_intent_rows;
+
+    const auto expected_plan = plan_physical_sky_policy(sample_physical_sky_policy_desc());
+    result.diagnostics_count = static_cast<std::uint32_t>(expected_plan.diagnostics.size()) +
+                               report.physical_sky_vulkan_package_policy_diagnostics_count;
+    if (!result.requested) {
+        ++result.diagnostics_count;
+    }
+    if (!result.vulkan_backend_selected) {
+        ++result.diagnostics_count;
+    }
+    if (!result.shader_contract_evidence_ready || !result.package_evidence_ready || !result.execution_evidence_ready) {
+        ++result.diagnostics_count;
+    }
+    if (!result.constant_buffer_ready ||
+        result.constant_buffer_bytes != static_cast<std::uint64_t>(physical_sky_constants_byte_size())) {
+        ++result.diagnostics_count;
+    }
+    if (result.constant_layout_rows != static_cast<std::uint32_t>(expected_plan.constant_layout_rows.size()) ||
+        result.lut_intent_rows != static_cast<std::uint32_t>(expected_plan.lut_intent_rows.size())) {
+        ++result.diagnostics_count;
+    }
+    if (result.allocates_lut_textures || result.invokes_backend || result.exposes_native_handles) {
+        ++result.diagnostics_count;
+    }
+
+    if (!result.vulkan_backend_selected) {
+        result.status = Win32DesktopPresentationVulkanPhysicalSkyPackageStatus::host_evidence_required;
+    } else {
+        result.ready = result.diagnostics_count == 0;
+        result.status = result.ready ? Win32DesktopPresentationVulkanPhysicalSkyPackageStatus::ready
+                                     : Win32DesktopPresentationVulkanPhysicalSkyPackageStatus::blocked;
+    }
     return result;
 }
 

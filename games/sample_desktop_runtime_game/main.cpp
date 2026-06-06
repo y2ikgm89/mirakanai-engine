@@ -76,6 +76,7 @@ struct DesktopRuntimeGameOptions {
     bool require_environment_fog_evidence{false};
     bool require_environment_fog_vulkan_package_evidence{false};
     bool require_physical_sky_package_evidence{false};
+    bool require_physical_sky_vulkan_package_evidence{false};
     bool require_environment_volumetric_fog_package_evidence{false};
     bool require_environment_lighting_package_evidence{false};
     bool require_environment_lighting_renderer_execution{false};
@@ -1032,6 +1033,7 @@ environment_material_weathering_state_name(mirakana::EnvironmentMaterialWeatheri
 [[nodiscard]] bool environment_quality_budget_requested(const DesktopRuntimeGameOptions& options) noexcept {
     return options.require_environment_profile || options.require_environment_fog_evidence ||
            options.require_environment_fog_vulkan_package_evidence || options.require_physical_sky_package_evidence ||
+           options.require_physical_sky_vulkan_package_evidence ||
            options.require_environment_volumetric_fog_package_evidence ||
            options.require_environment_lighting_package_evidence ||
            options.require_environment_lighting_renderer_execution || options.require_cloud_layer_package_evidence ||
@@ -1470,6 +1472,7 @@ evaluate_environment_material_weathering(bool requested, const mirakana::Win32De
     const mirakana::Win32DesktopPresentationEnvironmentFogReport& environment_fog,
     const mirakana::Win32DesktopPresentationVulkanEnvironmentFogPackageReport& environment_fog_vulkan_package,
     const mirakana::Win32DesktopPresentationPhysicalSkyReport& physical_sky,
+    const mirakana::Win32DesktopPresentationVulkanPhysicalSkyPackageReport& physical_sky_vulkan_package,
     const EnvironmentLightingPackageEvidence& environment_lighting,
     const EnvironmentMaterialWeatheringEvidence& environment_material_weathering,
     const mirakana::Win32DesktopPresentationCloudLayerReport& cloud_layer,
@@ -1501,6 +1504,7 @@ evaluate_environment_material_weathering(bool requested, const mirakana::Win32De
 
     add_feature(options.require_environment_profile, environment_profile.ready);
     add_feature(options.require_physical_sky_package_evidence, physical_sky.ready);
+    add_feature(options.require_physical_sky_vulkan_package_evidence, physical_sky_vulkan_package.ready);
     add_feature(options.require_environment_fog_evidence, environment_fog.ready);
     add_feature(options.require_environment_fog_vulkan_package_evidence, environment_fog_vulkan_package.ready);
     add_feature(options.require_environment_volumetric_fog_package_evidence, environment_volumetric_fog.ready);
@@ -1521,6 +1525,10 @@ evaluate_environment_material_weathering(bool requested, const mirakana::Win32De
 
     if (options.require_physical_sky_package_evidence) {
         evidence.constant_buffer_bytes += physical_sky.constant_buffer_bytes;
+        evidence.physical_sky_sample_budget = total_physical_sky_sample_budget(physical_sky_desc.sample_budget);
+    }
+    if (options.require_physical_sky_vulkan_package_evidence) {
+        evidence.constant_buffer_bytes += physical_sky_vulkan_package.constant_buffer_bytes;
         evidence.physical_sky_sample_budget = total_physical_sky_sample_budget(physical_sky_desc.sample_budget);
     }
     if (options.require_environment_fog_evidence) {
@@ -1585,11 +1593,11 @@ evaluate_environment_material_weathering(bool requested, const mirakana::Win32De
     evidence.framegraph_barrier_step_budget = expected_framegraph_barrier_steps;
     evidence.framegraph_barrier_steps_executed = report.renderer_stats.framegraph_barrier_steps_executed;
     evidence.native_handle_access =
-        physical_sky.exposes_native_handles || environment_fog_vulkan_package.exposes_native_handles ||
-        environment_lighting.exposes_native_handles || cloud_layer.exposes_native_handles ||
-        environment_precipitation.exposes_native_handles || environment_precipitation_vulkan.exposes_native_handles ||
-        environment_volumetric_fog.exposes_native_handles || environment_volumetric_cloud.exposes_native_handles ||
-        environment_material_weathering.native_handle_access;
+        physical_sky.exposes_native_handles || physical_sky_vulkan_package.exposes_native_handles ||
+        environment_fog_vulkan_package.exposes_native_handles || environment_lighting.exposes_native_handles ||
+        cloud_layer.exposes_native_handles || environment_precipitation.exposes_native_handles ||
+        environment_precipitation_vulkan.exposes_native_handles || environment_volumetric_fog.exposes_native_handles ||
+        environment_volumetric_cloud.exposes_native_handles || environment_material_weathering.native_handle_access;
 
     if (evidence.feature_rows == 0) {
         ++evidence.diagnostics;
@@ -2256,6 +2264,13 @@ void print_usage() {
             options.require_postprocess_depth_input = true;
             options.require_d3d12_postprocess_evidence = true;
             options.require_physical_sky_package_evidence = true;
+            continue;
+        }
+        if (arg == "--require-physical-sky-vulkan-package-evidence") {
+            options.require_vulkan_scene_shaders = true;
+            options.require_vulkan_renderer = true;
+            options.require_scene_gpu_bindings = true;
+            options.require_physical_sky_vulkan_package_evidence = true;
             continue;
         }
         if (arg == "--require-environment-lighting-package-evidence") {
@@ -4300,6 +4315,8 @@ int main(int argc, char** argv) {
                     desc.package_evidence_ready = true;
                     return desc;
                 }(),
+            .enable_physical_sky_package_evidence = options.require_physical_sky_vulkan_package_evidence,
+            .physical_sky = make_sample_physical_sky_policy_desc(),
             .enable_environment_precipitation_package_evidence =
                 options.require_environment_precipitation_vulkan_renderer_execution,
             .enable_environment_precipitation_renderer_execution =
@@ -4520,6 +4537,8 @@ int main(int argc, char** argv) {
         report, d3d12_postprocess_execution, options.require_environment_fog_evidence);
     const auto physical_sky = mirakana::evaluate_win32_desktop_presentation_physical_sky(
         report, options.require_physical_sky_package_evidence);
+    const auto physical_sky_vulkan_package = mirakana::evaluate_win32_desktop_presentation_vulkan_physical_sky_package(
+        report, options.require_physical_sky_vulkan_package_evidence);
     const auto cloud_layer = mirakana::evaluate_win32_desktop_presentation_cloud_layer(
         report, options.require_cloud_layer_package_evidence, options.require_cloud_layer_renderer_execution);
     const auto environment_precipitation = mirakana::evaluate_win32_desktop_presentation_environment_precipitation(
@@ -4619,9 +4638,9 @@ int main(int argc, char** argv) {
     const bool requires_any_environment_fog_postprocess =
         options.require_environment_fog_evidence || options.require_environment_fog_vulkan_package_evidence;
     const auto environment_quality_budget = build_environment_quality_budget_evidence(
-        options, report, environment_fog, environment_fog_vulkan_package, physical_sky, environment_lighting,
-        environment_material_weathering, cloud_layer, environment_precipitation, environment_precipitation_vulkan,
-        environment_volumetric_fog, environment_volumetric_cloud, environment_profile,
+        options, report, environment_fog, environment_fog_vulkan_package, physical_sky, physical_sky_vulkan_package,
+        environment_lighting, environment_material_weathering, cloud_layer, environment_precipitation,
+        environment_precipitation_vulkan, environment_volumetric_fog, environment_volumetric_cloud, environment_profile,
         options.require_postprocess ? expected_framegraph_barrier_steps : 0U);
 
     std::cout
@@ -4749,6 +4768,32 @@ int main(int argc, char** argv) {
         << " environment_physical_sky_backend_invocations=" << (physical_sky.invokes_backend ? 1 : 0)
         << " environment_physical_sky_native_handle_access=" << (physical_sky.exposes_native_handles ? 1 : 0)
         << " environment_physical_sky_diagnostics=" << physical_sky.diagnostics_count
+        << " environment_physical_sky_vulkan_status="
+        << mirakana::win32_desktop_presentation_vulkan_physical_sky_package_status_name(
+               physical_sky_vulkan_package.status)
+        << " environment_physical_sky_vulkan_ready=" << (physical_sky_vulkan_package.ready ? 1 : 0)
+        << " environment_physical_sky_vulkan_selected_backend="
+        << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
+        << " environment_physical_sky_vulkan_requested=" << (physical_sky_vulkan_package.requested ? 1 : 0)
+        << " environment_physical_sky_vulkan_shader_contract_evidence_ready="
+        << (physical_sky_vulkan_package.shader_contract_evidence_ready ? 1 : 0)
+        << " environment_physical_sky_vulkan_package_evidence_ready="
+        << (physical_sky_vulkan_package.package_evidence_ready ? 1 : 0)
+        << " environment_physical_sky_vulkan_execution_evidence_ready="
+        << (physical_sky_vulkan_package.execution_evidence_ready ? 1 : 0)
+        << " environment_physical_sky_vulkan_constant_buffer_ready="
+        << (physical_sky_vulkan_package.constant_buffer_ready ? 1 : 0)
+        << " environment_physical_sky_vulkan_constants_binding=" << physical_sky_vulkan_package.constants_binding
+        << " environment_physical_sky_vulkan_constants_byte_size=" << physical_sky_vulkan_package.constant_buffer_bytes
+        << " environment_physical_sky_vulkan_constant_layout_rows=" << physical_sky_vulkan_package.constant_layout_rows
+        << " environment_physical_sky_vulkan_lut_intent_rows=" << physical_sky_vulkan_package.lut_intent_rows
+        << " environment_physical_sky_vulkan_lut_texture_allocations="
+        << (physical_sky_vulkan_package.allocates_lut_textures ? 1 : 0)
+        << " environment_physical_sky_vulkan_backend_invocations="
+        << (physical_sky_vulkan_package.invokes_backend ? 1 : 0)
+        << " environment_physical_sky_vulkan_native_handle_access="
+        << (physical_sky_vulkan_package.exposes_native_handles ? 1 : 0)
+        << " environment_physical_sky_vulkan_diagnostics=" << physical_sky_vulkan_package.diagnostics_count
         << " environment_lighting_status=" << environment_lighting_package_status_name(environment_lighting.status)
         << " environment_lighting_ready=" << (environment_lighting.ready ? 1 : 0)
         << " environment_lighting_selected_backend="
@@ -5931,6 +5976,9 @@ int main(int argc, char** argv) {
             return 3;
         }
         if (options.require_physical_sky_package_evidence && !physical_sky.ready) {
+            return 3;
+        }
+        if (options.require_physical_sky_vulkan_package_evidence && !physical_sky_vulkan_package.ready) {
             return 3;
         }
         if (options.require_environment_lighting_package_evidence && !environment_lighting.ready) {
