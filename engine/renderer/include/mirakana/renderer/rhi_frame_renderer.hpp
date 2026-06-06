@@ -33,6 +33,11 @@ struct RhiFrameRendererDesc {
     rhi::GraphicsPipelineHandle skinned_graphics_pipeline;
     /// Optional morph mesh pipeline (root signature includes morph descriptor set after material set 0).
     rhi::GraphicsPipelineHandle morph_graphics_pipeline;
+    /// Optional cloud-layer fullscreen pipeline and descriptor set owned by the same RHI device as `device`.
+    rhi::GraphicsPipelineHandle cloud_layer_graphics_pipeline;
+    rhi::PipelineLayoutHandle cloud_layer_pipeline_layout;
+    rhi::DescriptorSetHandle cloud_layer_descriptor_set;
+    bool enable_cloud_layer{false};
     rhi::ResourceState color_texture_state{rhi::ResourceState::render_target};
     rhi::ResourceState depth_texture_state{rhi::ResourceState::depth_write};
 };
@@ -78,6 +83,10 @@ class RhiFrameRenderer final : public IRenderer {
     rhi::GraphicsPipelineHandle graphics_pipeline_;
     rhi::GraphicsPipelineHandle skinned_graphics_pipeline_;
     rhi::GraphicsPipelineHandle morph_graphics_pipeline_;
+    rhi::GraphicsPipelineHandle cloud_layer_graphics_pipeline_;
+    rhi::PipelineLayoutHandle cloud_layer_pipeline_layout_;
+    rhi::DescriptorSetHandle cloud_layer_descriptor_set_;
+    bool enable_cloud_layer_{false};
     rhi::TextureHandle depth_texture_;
     rhi::ResourceState color_texture_state_{rhi::ResourceState::render_target};
     rhi::ResourceState depth_texture_state_{rhi::ResourceState::depth_write};

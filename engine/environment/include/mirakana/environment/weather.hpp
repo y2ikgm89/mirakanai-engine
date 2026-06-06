@@ -7,6 +7,7 @@
 
 #include <cstdint>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace mirakana {
@@ -39,8 +40,27 @@ enum class EnvironmentPrecipitationAudioCueKind : std::uint8_t {
     indoor_muffling,
     thunder_delay,
     storm_intensity,
+    wind_loop,
     dust_wind,
     ash_fall,
+};
+
+enum class EnvironmentWeatherAudioPlaybackPlanStatus : std::uint8_t {
+    blocked = 0,
+    planned,
+};
+
+enum class EnvironmentWeatherAudioDiagnosticCode : std::uint8_t {
+    none = 0,
+    missing_handoff_rows,
+    unsupported_audio_cue,
+    missing_cue_binding,
+    duplicate_cue_binding,
+    invalid_cue_binding,
+    invalid_handoff_intensity,
+    unsupported_runtime_backend_execution,
+    unsupported_audio_device_ownership,
+    unsupported_native_handle_access,
 };
 
 struct EnvironmentPrecipitationPlanDesc {
@@ -95,6 +115,54 @@ struct EnvironmentPrecipitationAudioHandoffRow {
     bool handoff_only{true};
 };
 
+struct EnvironmentWeatherAudioCueBinding {
+    EnvironmentPrecipitationAudioCueKind cue{EnvironmentPrecipitationAudioCueKind::unknown};
+    std::string cue_id;
+    std::string clip_asset_ref;
+    std::string bus{"environment.weather"};
+    float base_gain{1.0F};
+    bool looping{true};
+    bool one_shot{false};
+};
+
+struct EnvironmentWeatherAudioPlaybackDesc {
+    std::vector<EnvironmentPrecipitationAudioHandoffRow> handoff_rows;
+    std::vector<EnvironmentWeatherAudioCueBinding> cue_bindings;
+    bool request_runtime_backend_execution{false};
+    bool request_environment_audio_device_ownership{false};
+    bool request_native_handle_access{false};
+};
+
+struct EnvironmentWeatherAudioTriggerRow {
+    EnvironmentPrecipitationAudioCueKind cue{EnvironmentPrecipitationAudioCueKind::unknown};
+    std::string cue_id;
+    std::string clip_asset_ref;
+    std::string bus{"environment.weather"};
+    float gain{1.0F};
+    float delay_seconds{0.0F};
+    bool looping{true};
+    bool one_shot{false};
+    bool device_owned_by_environment{false};
+    bool native_handle_access{false};
+};
+
+struct EnvironmentWeatherAudioDiagnostic {
+    EnvironmentWeatherAudioDiagnosticCode code{EnvironmentWeatherAudioDiagnosticCode::none};
+    std::string field;
+    std::string message;
+};
+
+struct EnvironmentWeatherAudioPlaybackPlan {
+    EnvironmentWeatherAudioPlaybackPlanStatus status{EnvironmentWeatherAudioPlaybackPlanStatus::blocked};
+    bool owns_audio_device{false};
+    bool exposes_native_handles{false};
+    bool invokes_backend{false};
+    std::vector<EnvironmentWeatherAudioTriggerRow> trigger_rows;
+    std::vector<EnvironmentWeatherAudioDiagnostic> diagnostics;
+
+    [[nodiscard]] bool succeeded() const noexcept;
+};
+
 struct EnvironmentPrecipitationDiagnostic {
     EnvironmentPrecipitationDiagnosticCode code{EnvironmentPrecipitationDiagnosticCode::none};
     std::string field;
@@ -119,10 +187,21 @@ struct EnvironmentPrecipitationPlan {
 
 [[nodiscard]] EnvironmentPrecipitationPlan plan_environment_precipitation(const EnvironmentPrecipitationPlanDesc& desc);
 
+[[nodiscard]] std::vector<EnvironmentWeatherAudioCueBinding> default_environment_weather_audio_cue_bindings();
+
+[[nodiscard]] EnvironmentWeatherAudioPlaybackPlan
+plan_environment_weather_audio_playback(const EnvironmentWeatherAudioPlaybackDesc& desc);
+
 [[nodiscard]] bool has_environment_precipitation_diagnostic(const EnvironmentPrecipitationPlan& plan,
                                                             EnvironmentPrecipitationDiagnosticCode code) noexcept;
 
 [[nodiscard]] bool has_environment_precipitation_audio_cue(const EnvironmentPrecipitationPlan& plan,
                                                            EnvironmentPrecipitationAudioCueKind cue) noexcept;
+
+[[nodiscard]] bool has_environment_weather_audio_diagnostic(const EnvironmentWeatherAudioPlaybackPlan& plan,
+                                                            EnvironmentWeatherAudioDiagnosticCode code) noexcept;
+
+[[nodiscard]] bool has_environment_weather_audio_trigger(const EnvironmentWeatherAudioPlaybackPlan& plan,
+                                                         EnvironmentPrecipitationAudioCueKind cue) noexcept;
 
 } // namespace mirakana

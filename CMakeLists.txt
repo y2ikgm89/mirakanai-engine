@@ -864,6 +864,14 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_environment_weather_tests)
     add_test(NAME MK_environment_weather_tests COMMAND MK_environment_weather_tests)
 
+    add_executable(MK_environment_material_weathering_tests
+        tests/unit/environment_material_weathering_tests.cpp
+    )
+    target_link_libraries(MK_environment_material_weathering_tests PRIVATE MK_environment)
+    target_include_directories(MK_environment_material_weathering_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_environment_material_weathering_tests)
+    add_test(NAME MK_environment_material_weathering_tests COMMAND MK_environment_material_weathering_tests)
+
     add_executable(MK_environment_time_of_day_tests
         tests/unit/environment_time_of_day_tests.cpp
     )
@@ -887,6 +895,14 @@ if(BUILD_TESTING)
     target_include_directories(MK_renderer_precipitation_policy_tests PRIVATE tests)
     MK_apply_common_target_options(MK_renderer_precipitation_policy_tests)
     add_test(NAME MK_renderer_precipitation_policy_tests COMMAND MK_renderer_precipitation_policy_tests)
+
+    add_executable(MK_renderer_material_weathering_policy_tests
+        tests/unit/renderer_material_weathering_policy_tests.cpp
+    )
+    target_link_libraries(MK_renderer_material_weathering_policy_tests PRIVATE MK_renderer MK_environment)
+    target_include_directories(MK_renderer_material_weathering_policy_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_renderer_material_weathering_policy_tests)
+    add_test(NAME MK_renderer_material_weathering_policy_tests COMMAND MK_renderer_material_weathering_policy_tests)
 
     add_executable(MK_renderer_volumetric_cloud_tests
         tests/unit/renderer_volumetric_cloud_tests.cpp
