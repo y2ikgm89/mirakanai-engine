@@ -37,12 +37,13 @@ void add_diagnostic(RuntimeMavgGpuVisibilityBufferResourceResult& result,
 RuntimeMavgGpuVisibilityBufferResourceResult
 create_runtime_mavg_gpu_visibility_buffer_resource(const RuntimeMavgGpuVisibilityBufferResourceDesc& desc) {
     RuntimeMavgGpuVisibilityBufferResourceResult result;
-    if (desc.device != nullptr) {
-        result.device_buffers_created_before = desc.device->stats().buffers_created;
+    auto* const device = desc.device;
+    if (device != nullptr) {
+        result.device_buffers_created_before = device->stats().buffers_created;
         result.device_buffers_created_after = result.device_buffers_created_before;
     }
 
-    if (desc.device == nullptr) {
+    if (device == nullptr) {
         add_diagnostic(result, RuntimeMavgGpuVisibilityBufferResourceDiagnosticCode::missing_rhi_device, {},
                        "MAVG GPU visibility-buffer RHI allocation requires an RHI device");
     }
@@ -51,6 +52,9 @@ create_runtime_mavg_gpu_visibility_buffer_resource(const RuntimeMavgGpuVisibilit
     if (layout == nullptr) {
         add_diagnostic(result, RuntimeMavgGpuVisibilityBufferResourceDiagnosticCode::missing_layout_plan, {},
                        "MAVG GPU visibility-buffer RHI allocation requires a visibility-buffer layout plan");
+        return result;
+    }
+    if (device == nullptr) {
         return result;
     }
 
@@ -106,10 +110,10 @@ create_runtime_mavg_gpu_visibility_buffer_resource(const RuntimeMavgGpuVisibilit
 
     rhi::BufferHandle visibility_buffer;
     try {
-        visibility_buffer = desc.device->create_buffer(buffer_desc);
-        result.device_buffers_created_after = desc.device->stats().buffers_created;
+        visibility_buffer = device->create_buffer(buffer_desc);
+        result.device_buffers_created_after = device->stats().buffers_created;
     } catch (const std::exception& error) {
-        result.device_buffers_created_after = desc.device->stats().buffers_created;
+        result.device_buffers_created_after = device->stats().buffers_created;
         add_diagnostic(result, RuntimeMavgGpuVisibilityBufferResourceDiagnosticCode::rhi_allocation_failed, graph_asset,
                        std::string{"MAVG GPU visibility-buffer RHI allocation failed: "} + error.what());
         return result;
