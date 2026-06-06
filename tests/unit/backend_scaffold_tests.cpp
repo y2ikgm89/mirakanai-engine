@@ -630,6 +630,40 @@ MK_TEST("vulkan logical device create plan preserves separate graphics and prese
     MK_REQUIRE(plan.queue_families[1].queue_family == 3);
 }
 
+MK_TEST("vulkan logical device create plan supports offscreen graphics queues without present or swapchain") {
+    mirakana::rhi::vulkan::VulkanPhysicalDeviceCandidate device;
+    device.name = "Offscreen";
+    device.type = mirakana::rhi::vulkan::VulkanPhysicalDeviceType::integrated_gpu;
+    device.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 3);
+    device.supports_swapchain_extension = false;
+    device.supports_dynamic_rendering = true;
+    device.supports_synchronization2 = true;
+    device.queue_families.push_back(mirakana::rhi::vulkan::VulkanQueueFamilyCandidate{
+        .index = 7,
+        .queue_count = 1,
+        .capabilities = mirakana::rhi::vulkan::VulkanQueueCapability::graphics |
+                        mirakana::rhi::vulkan::VulkanQueueCapability::compute,
+        .supports_present = false,
+    });
+
+    mirakana::rhi::vulkan::VulkanLogicalDeviceCreateDesc desc;
+    desc.required_extensions.clear();
+    desc.require_present_queue = false;
+
+    const auto selection = mirakana::rhi::vulkan::select_physical_device(desc, {device});
+    const auto plan = mirakana::rhi::vulkan::build_logical_device_create_plan(desc, device, selection, {});
+
+    MK_REQUIRE(selection.suitable);
+    MK_REQUIRE(selection.graphics_queue_family == 7);
+    MK_REQUIRE(selection.present_queue_family == mirakana::rhi::vulkan::invalid_vulkan_queue_family);
+    MK_REQUIRE(plan.supported);
+    MK_REQUIRE(plan.queue_families.size() == 1);
+    MK_REQUIRE(plan.queue_families[0].queue_family == 7);
+    MK_REQUIRE(plan.enabled_extensions.empty());
+    MK_REQUIRE(plan.dynamic_rendering_enabled);
+    MK_REQUIRE(plan.synchronization2_enabled);
+}
+
 MK_TEST("vulkan logical device create plan rejects unsuitable selections missing extensions and features") {
     mirakana::rhi::vulkan::VulkanPhysicalDeviceCandidate device;
     device.name = "Candidate";
@@ -6164,6 +6198,73 @@ MK_TEST("vulkan rhi device bridge applies physical sky constants when configured
     MK_REQUIRE(rhi->stats().draw_calls == 1);
     MK_REQUIRE(rhi->stats().texture_buffer_copies == 1);
     MK_REQUIRE(rhi->stats().buffer_writes == 1);
+#endif
+}
+
+MK_TEST("vulkan backend proves environment ibl texture cube sampling when configured") {
+#if defined(_WIN32) || defined(__linux__)
+    const auto ibl_vertex_artifact = load_spirv_artifact_from_environment("MK_VULKAN_TEST_ENVIRONMENT_IBL_VERTEX_SPV");
+    const auto ibl_fragment_artifact =
+        load_spirv_artifact_from_environment("MK_VULKAN_TEST_ENVIRONMENT_IBL_FRAGMENT_SPV");
+    if (!ibl_vertex_artifact.configured && !ibl_fragment_artifact.configured) {
+        return;
+    }
+
+    MK_REQUIRE(ibl_vertex_artifact.configured);
+    MK_REQUIRE(ibl_fragment_artifact.configured);
+    MK_REQUIRE(ibl_vertex_artifact.diagnostic == "loaded");
+    MK_REQUIRE(ibl_fragment_artifact.diagnostic == "loaded");
+
+    const auto ibl_vertex_validation =
+        mirakana::rhi::vulkan::validate_spirv_shader_artifact(mirakana::rhi::vulkan::VulkanSpirvShaderArtifactDesc{
+            .stage = mirakana::rhi::ShaderStage::vertex,
+            .bytecode = ibl_vertex_artifact.words.data(),
+            .bytecode_size = ibl_vertex_artifact.words.size() * sizeof(std::uint32_t),
+        });
+    const auto ibl_fragment_validation =
+        mirakana::rhi::vulkan::validate_spirv_shader_artifact(mirakana::rhi::vulkan::VulkanSpirvShaderArtifactDesc{
+            .stage = mirakana::rhi::ShaderStage::fragment,
+            .bytecode = ibl_fragment_artifact.words.data(),
+            .bytecode_size = ibl_fragment_artifact.words.size() * sizeof(std::uint32_t),
+        });
+    MK_REQUIRE(ibl_vertex_validation.valid);
+    MK_REQUIRE(ibl_fragment_validation.valid);
+
+    const auto proof = mirakana::rhi::vulkan::execute_environment_ibl_renderer_upload(
+        mirakana::rhi::vulkan::VulkanEnvironmentIblRendererUploadDesc{
+            .edge_size = 16,
+            .mip_count = 5,
+            .format = mirakana::rhi::vulkan::VulkanEnvironmentIblTextureFormat::rgba16_float,
+            .require_shader_sampling = true,
+            .require_runtime_capture = true,
+            .sampling_vertex_shader =
+                std::span<const std::uint8_t>{reinterpret_cast<const std::uint8_t*>(ibl_vertex_artifact.words.data()),
+                                              ibl_vertex_artifact.words.size() * sizeof(std::uint32_t)},
+            .sampling_fragment_shader =
+                std::span<const std::uint8_t>{reinterpret_cast<const std::uint8_t*>(ibl_fragment_artifact.words.data()),
+                                              ibl_fragment_artifact.words.size() * sizeof(std::uint32_t)},
+            .sampling_vertex_entry_point = "vs_environment_ibl_sample",
+            .sampling_fragment_entry_point = "ps_environment_ibl_sample",
+        });
+
+    MK_REQUIRE(proof.succeeded);
+    MK_REQUIRE(proof.texture_cube_uploads == 1);
+    MK_REQUIRE(proof.texture_cube_faces == 6);
+    MK_REQUIRE(proof.texture_cube_edge_size == 16);
+    MK_REQUIRE(proof.radiance_mips == 5);
+    MK_REQUIRE(proof.irradiance_rows == 9);
+    MK_REQUIRE(proof.cube_compatible_image_created);
+    MK_REQUIRE(proof.cube_image_view_created);
+    MK_REQUIRE(proof.sampler_created);
+    MK_REQUIRE(proof.descriptor_set_bindings == 2);
+    MK_REQUIRE(proof.synchronization2_barriers > 0);
+    MK_REQUIRE(proof.shader_sampling_proven);
+    MK_REQUIRE(proof.shader_sample_readback_nonzero);
+    MK_REQUIRE(proof.runtime_capture_faces == 6);
+    MK_REQUIRE(proof.runtime_capture_readback_nonzero);
+    MK_REQUIRE(proof.readback_checksum != 0);
+    MK_REQUIRE(proof.native_handle_access == 0);
+    MK_REQUIRE(proof.diagnostics == 0);
 #endif
 }
 

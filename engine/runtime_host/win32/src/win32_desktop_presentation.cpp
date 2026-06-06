@@ -8182,6 +8182,21 @@ std::string_view win32_desktop_presentation_environment_ibl_renderer_execution_s
     return "unknown";
 }
 
+std::string_view win32_desktop_presentation_vulkan_environment_ibl_renderer_execution_status_name(
+    const Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionStatus status) noexcept {
+    switch (status) {
+    case Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionStatus::not_requested:
+        return "not_requested";
+    case Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionStatus::host_evidence_required:
+        return "host_evidence_required";
+    case Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionStatus::blocked:
+        return "blocked";
+    case Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionStatus::ready:
+        return "ready";
+    }
+    return "unknown";
+}
+
 std::string_view win32_desktop_presentation_vulkan_postprocess_execution_status_name(
     Win32DesktopPresentationVulkanPostprocessExecutionStatus status) noexcept {
     switch (status) {
@@ -9283,6 +9298,80 @@ evaluate_win32_desktop_presentation_environment_ibl_renderer_execution(
 #else
     result.status = Win32DesktopPresentationEnvironmentIblRendererExecutionStatus::blocked;
     result.diagnostics_count = 1U;
+#endif
+    return result;
+}
+
+Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionReport
+evaluate_win32_desktop_presentation_vulkan_environment_ibl_renderer_execution(
+    const Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionDesc& desc) {
+    Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionReport result;
+    result.requested = desc.requested;
+    result.vulkan_backend_selected = desc.vulkan_backend_selected;
+    result.texture_cube_edge_size = desc.edge_size;
+    result.radiance_mips = desc.mip_count;
+    if (!desc.requested) {
+        return result;
+    }
+
+    if (!desc.vulkan_backend_selected) {
+        result.status = Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionStatus::host_evidence_required;
+        result.diagnostics_count = 1U;
+        result.diagnostic = "Vulkan environment IBL renderer execution requires the Vulkan backend";
+        return result;
+    }
+    if (!has_shader_bytecode(desc.sampling_vertex_shader) || !has_shader_bytecode(desc.sampling_fragment_shader)) {
+        result.status = Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionStatus::blocked;
+        result.diagnostics_count = 1U;
+        result.diagnostic = "Vulkan environment IBL renderer execution requires packaged SPIR-V shaders";
+        return result;
+    }
+
+#if defined(MK_RUNTIME_HOST_WIN32_PRESENTATION_HAS_VULKAN)
+    const auto proof =
+        rhi::vulkan::execute_environment_ibl_renderer_upload(rhi::vulkan::VulkanEnvironmentIblRendererUploadDesc{
+            .edge_size = desc.edge_size,
+            .mip_count = desc.mip_count,
+            .format = rhi::vulkan::VulkanEnvironmentIblTextureFormat::rgba16_float,
+            .require_shader_sampling = true,
+            .require_runtime_capture = true,
+            .sampling_vertex_shader = desc.sampling_vertex_shader.bytecode,
+            .sampling_fragment_shader = desc.sampling_fragment_shader.bytecode,
+            .sampling_vertex_entry_point = desc.sampling_vertex_shader.entry_point,
+            .sampling_fragment_entry_point = desc.sampling_fragment_shader.entry_point,
+        });
+
+    result.texture_cube_uploads = proof.texture_cube_uploads;
+    result.texture_cube_faces = proof.texture_cube_faces;
+    result.texture_cube_edge_size = proof.texture_cube_edge_size;
+    result.radiance_mips = proof.radiance_mips;
+    result.irradiance_rows = proof.irradiance_rows;
+    result.cube_compatible_image_created = proof.cube_compatible_image_created;
+    result.cube_image_view_created = proof.cube_image_view_created;
+    result.sampler_created = proof.sampler_created;
+    result.descriptor_set_bindings = proof.descriptor_set_bindings;
+    result.synchronization2_barriers = proof.synchronization2_barriers;
+    result.shader_sampling_proven = proof.shader_sampling_proven;
+    result.shader_sample_readback_nonzero = proof.shader_sample_readback_nonzero;
+    result.runtime_capture_faces = proof.runtime_capture_faces;
+    result.runtime_capture_readback_nonzero = proof.runtime_capture_readback_nonzero;
+    result.runtime_capture_readback_checksum = proof.readback_checksum;
+    result.native_handle_access = proof.native_handle_access;
+    result.diagnostic = proof.diagnostic;
+    result.ready =
+        proof.succeeded && proof.native_handle_access == 0U && proof.texture_cube_uploads > 0U &&
+        proof.texture_cube_faces == 6U && proof.texture_cube_edge_size == desc.edge_size &&
+        proof.radiance_mips == desc.mip_count && proof.irradiance_rows == 9U && proof.cube_compatible_image_created &&
+        proof.cube_image_view_created && proof.sampler_created && proof.descriptor_set_bindings == 2U &&
+        proof.synchronization2_barriers > 0U && proof.shader_sampling_proven && proof.shader_sample_readback_nonzero &&
+        proof.runtime_capture_faces == 6U && proof.runtime_capture_readback_nonzero && proof.readback_checksum != 0U;
+    result.diagnostics_count = proof.diagnostics + (result.ready ? 0U : 1U);
+    result.status = result.ready ? Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionStatus::ready
+                                 : Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionStatus::blocked;
+#else
+    result.status = Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionStatus::host_evidence_required;
+    result.diagnostics_count = 1U;
+    result.diagnostic = "Vulkan runtime-host presentation support is unavailable";
 #endif
     return result;
 }

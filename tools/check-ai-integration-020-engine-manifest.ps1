@@ -1525,9 +1525,8 @@ if ($validationRunnerCommand.Count -ne 1 -or $validationRunnerCommand[0].status 
             "desktop-runtime-sample-game-environment-volumetric-fog-package",
             "desktop-runtime-sample-game-vulkan-physical-sky-package",
             "desktop-runtime-sample-game-cloud-layer-package", "desktop-runtime-sample-game-cloud-layer-renderer-execution", "desktop-runtime-sample-game-environment-precipitation-package", "desktop-runtime-sample-game-environment-precipitation-renderer-execution", "desktop-runtime-sample-game-vulkan-environment-precipitation-renderer-execution",
-            "desktop-runtime-sample-game-environment-snow-package", "desktop-runtime-sample-game-environment-snow-renderer-execution", "desktop-runtime-sample-game-environment-material-weathering", "desktop-runtime-sample-game-environment-ibl-renderer-execution", "desktop-runtime-sample-game-environment-profile-package",
-            "desktop-runtime-generated-material-shader-scaffold-package",
-            "desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict",
+            "desktop-runtime-sample-game-environment-snow-package", "desktop-runtime-sample-game-environment-snow-renderer-execution", "desktop-runtime-sample-game-environment-material-weathering", "desktop-runtime-sample-game-environment-ibl-renderer-execution", "desktop-runtime-sample-game-vulkan-environment-ibl-renderer-execution", "desktop-runtime-sample-game-environment-profile-package",
+            "desktop-runtime-generated-material-shader-scaffold-package", "desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict",
             "desktop-runtime-sample-game-vulkan-ui-atlas-metadata-package", "installed-2d-performance-baseline-smoke", "installed-2d-long-run-readiness-smoke", "host-2d-long-run-readiness-soak",
             "dev-windows-editor-game-module-driver-load-tests"
         )) {
@@ -1535,8 +1534,8 @@ if ($validationRunnerCommand.Count -ne 1 -or $validationRunnerCommand[0].status 
             Write-Error "engine/agent/manifest.json run-validation-recipe validationRecipes missing allowlisted recipe: $recipe"
         }
     }
-    if (@($validationRunnerCommand[0].validationRecipes).Count -ne 29) {
-        Write-Error "engine/agent/manifest.json run-validation-recipe validationRecipes must be exactly the reviewed allowlist of 29 recipes"
+    if (@($validationRunnerCommand[0].validationRecipes).Count -ne 30) {
+        Write-Error "engine/agent/manifest.json run-validation-recipe validationRecipes must be exactly the reviewed allowlist of 30 recipes"
     }
     if (@($validationRunnerCommand[0].requestModes | Where-Object { $_.id -eq "apply" -and $_.status -eq "ready" }).Count -gt 0) {
         Write-Error "engine/agent/manifest.json run-validation-recipe must not expose a ready apply mode"
@@ -1552,7 +1551,9 @@ if ($validationRunnerCommand.Count -ne 1 -or $validationRunnerCommand[0].status 
         Assert-ContainsText $runnerCoreText $needle "tools/validation-recipe-core.ps1"
     }
     Assert-ContainsText $runnerCoreText "Get-SampleDesktopRuntimeGameEnvironmentLightingRendererExecutionSmokeArgs" "tools/validation-recipe-core.ps1"
+    Assert-ContainsText $runnerCoreText "Get-SampleDesktopRuntimeGameVulkanEnvironmentIblRendererExecutionSmokeArgs" "tools/validation-recipe-core.ps1"
     Assert-ContainsText (Get-Content -LiteralPath (Resolve-RequiredAgentPath "tools/run-validation-recipe-plans.ps1") -Raw) "desktop-runtime-sample-game-environment-ibl-renderer-execution" "tools/run-validation-recipe-plans.ps1"
+    Assert-ContainsText (Get-Content -LiteralPath (Resolve-RequiredAgentPath "tools/run-validation-recipe-plans.ps1") -Raw) "desktop-runtime-sample-game-vulkan-environment-ibl-renderer-execution" "tools/run-validation-recipe-plans.ps1"
     foreach ($forbiddenRunnerPattern in @(
         "\bInvoke-Expression\b",
         "\biex\b",

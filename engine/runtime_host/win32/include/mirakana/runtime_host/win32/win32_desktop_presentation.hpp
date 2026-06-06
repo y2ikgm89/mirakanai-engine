@@ -557,6 +557,13 @@ enum class Win32DesktopPresentationEnvironmentIblRendererExecutionStatus : std::
     ready,
 };
 
+enum class Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionStatus : std::uint8_t {
+    not_requested = 0,
+    host_evidence_required,
+    blocked,
+    ready,
+};
+
 enum class Win32DesktopPresentationD3d12InstancedDrawExecutionStatus : std::uint8_t {
     not_requested = 0,
     blocked,
@@ -1249,6 +1256,41 @@ struct Win32DesktopPresentationEnvironmentIblRendererExecutionReport {
     std::uint32_t diagnostics_count{0};
 };
 
+struct Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionDesc {
+    bool requested{false};
+    bool vulkan_backend_selected{false};
+    Win32DesktopPresentationShaderBytecode sampling_vertex_shader;
+    Win32DesktopPresentationShaderBytecode sampling_fragment_shader;
+    std::uint32_t edge_size{16};
+    std::uint32_t mip_count{5};
+};
+
+struct Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionReport {
+    Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionStatus status{
+        Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionStatus::not_requested};
+    bool ready{false};
+    bool requested{false};
+    bool vulkan_backend_selected{false};
+    std::uint32_t texture_cube_uploads{0};
+    std::uint32_t texture_cube_faces{0};
+    std::uint32_t texture_cube_edge_size{0};
+    std::uint32_t radiance_mips{0};
+    std::uint32_t irradiance_rows{0};
+    bool cube_compatible_image_created{false};
+    bool cube_image_view_created{false};
+    bool sampler_created{false};
+    std::uint32_t descriptor_set_bindings{0};
+    std::uint32_t synchronization2_barriers{0};
+    bool shader_sampling_proven{false};
+    bool shader_sample_readback_nonzero{false};
+    std::uint32_t runtime_capture_faces{0};
+    bool runtime_capture_readback_nonzero{false};
+    std::uint64_t runtime_capture_readback_checksum{0};
+    std::uint32_t native_handle_access{0};
+    std::uint32_t diagnostics_count{0};
+    std::string diagnostic;
+};
+
 struct Win32DesktopPresentationSceneMorphMeshBinding {
     AssetId mesh;
     AssetId morph_mesh;
@@ -1570,9 +1612,14 @@ evaluate_win32_desktop_presentation_vulkan_environment_volumetric_cloud(const Wi
                                                                         bool requested);
 [[nodiscard]] std::string_view win32_desktop_presentation_environment_ibl_renderer_execution_status_name(
     Win32DesktopPresentationEnvironmentIblRendererExecutionStatus status) noexcept;
+[[nodiscard]] std::string_view win32_desktop_presentation_vulkan_environment_ibl_renderer_execution_status_name(
+    Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionStatus status) noexcept;
 [[nodiscard]] Win32DesktopPresentationEnvironmentIblRendererExecutionReport
 evaluate_win32_desktop_presentation_environment_ibl_renderer_execution(
     const Win32DesktopPresentationEnvironmentIblRendererExecutionDesc& desc);
+[[nodiscard]] Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionReport
+evaluate_win32_desktop_presentation_vulkan_environment_ibl_renderer_execution(
+    const Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionDesc& desc);
 [[nodiscard]] std::string_view win32_desktop_presentation_vulkan_postprocess_execution_status_name(
     Win32DesktopPresentationVulkanPostprocessExecutionStatus status) noexcept;
 [[nodiscard]] Win32DesktopPresentationVulkanPostprocessExecutionReport

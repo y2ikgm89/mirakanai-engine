@@ -149,6 +149,7 @@
         "environment-volumetric-cloud-vulkan-renderer-execution",
         "environment-lighting-package",
         "environment-lighting-renderer-execution",
+        "environment-lighting-vulkan-renderer-execution",
         "cloud-layer-package",
         "cloud-layer-renderer-execution",
         "environment-precipitation-package",
@@ -181,6 +182,7 @@
         "desktop-runtime-sample-game-vulkan-volumetric-cloud-renderer-execution",
         "desktop-runtime-sample-game-environment-lighting-package",
         "desktop-runtime-sample-game-environment-ibl-renderer-execution",
+        "desktop-runtime-sample-game-vulkan-environment-ibl-renderer-execution",
         "desktop-runtime-sample-game-environment-audio-playback",
         "desktop-runtime-sample-game-physical-sky-package",
         "desktop-runtime-sample-game-vulkan-physical-sky-package",
@@ -280,6 +282,13 @@
           "evidence": "The selected D3D12 environment lighting renderer execution smoke uses --require-environment-lighting-renderer-execution and reports environment_lighting_status=ready, environment_lighting_renderer_upload_status=ready, environment_lighting_renderer_execution_status=ready, positive environment_lighting_texture_cube_uploads, environment_lighting_texture_cube_faces=6, environment_lighting_texture_cube_edge_size=16, environment_lighting_radiance_mips=5, environment_lighting_renderer_irradiance_rows=9, environment_lighting_shader_sampling_proven=1, environment_lighting_shader_sample_readback_nonzero=1, positive backend invocations, positive runtime captures, environment_lighting_runtime_capture_faces=6, environment_lighting_runtime_capture_readback_nonzero=1, positive environment_lighting_runtime_capture_readback_checksum, zero native-handle access, and zero diagnostics without claiming Vulkan, Metal, backend parity, broad optimization, or broad environment_ready.",
           "recipeIds": [
             "desktop-runtime-sample-game-environment-ibl-renderer-execution"
+          ]
+        },
+        {
+          "id": "environment-lighting-vulkan-renderer-execution-evidence",
+          "evidence": "The strict Vulkan environment lighting renderer execution smoke uses desktop-runtime-sample-game-vulkan-environment-ibl-renderer-execution / --require-environment-lighting-vulkan-renderer-execution and reports environment_lighting_vulkan_status=ready, environment_lighting_vulkan_ready=1, environment_lighting_vulkan_selected_backend=vulkan, target-specific SPIR-V IBL sample shaders, environment_lighting_vulkan_cube_compatible_image_created=1, environment_lighting_vulkan_cube_image_view_created=1, environment_lighting_vulkan_sampler_created=1, environment_lighting_vulkan_descriptor_set_bindings=2, positive environment_lighting_vulkan_synchronization2_barriers, environment_lighting_vulkan_texture_cube_uploads=1, environment_lighting_vulkan_texture_cube_faces=6, environment_lighting_vulkan_texture_cube_edge_size=16, environment_lighting_vulkan_radiance_mips=5, environment_lighting_vulkan_renderer_irradiance_rows=9, environment_lighting_vulkan_shader_sampling_proven=1, environment_lighting_vulkan_shader_sample_readback_nonzero=1, positive environment_lighting_vulkan_runtime_capture_readback_checksum, environment_lighting_vulkan_native_handle_access=0, and environment_lighting_vulkan_diagnostics=0 without claiming D3D12 by inference, Metal, backend parity, broad optimization, or broad environment_ready.",
+          "recipeIds": [
+            "desktop-runtime-sample-game-vulkan-environment-ibl-renderer-execution"
           ]
         },
         {
@@ -383,7 +392,8 @@
             "desktop-runtime-sample-game-environment-material-weathering",
             "desktop-runtime-sample-game-environment-audio-playback",
             "desktop-runtime-sample-game-environment-lighting-package",
-            "desktop-runtime-sample-game-environment-ibl-renderer-execution"
+            "desktop-runtime-sample-game-environment-ibl-renderer-execution",
+            "desktop-runtime-sample-game-vulkan-environment-ibl-renderer-execution"
           ]
         },
         {
@@ -664,7 +674,7 @@
           "path": "games/sample_desktop_runtime_game/shaders/runtime_environment_ibl_sample.hlsl",
           "generatedBy": "environment-rendering-readiness-v1-environment-lighting-renderer-execution",
           "reviewedCommandSurfaceId": "create-game-recipe",
-          "updatePolicy": "Update only through reviewed game-local package validation surfaces; preserve TextureCube shader sampling proof evidence."
+          "updatePolicy": "Update only through reviewed game-local package validation surfaces; preserve TextureCube shader sampling and readback proof evidence."
         },
         {
           "id": "shaders-runtime-scene-hlsl",
@@ -1837,6 +1847,10 @@
     {
       "name": "desktop-runtime-sample-game-environment-ibl-renderer-execution",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-environment-lighting-renderer-execution')\""
+    },
+    {
+      "name": "desktop-runtime-sample-game-vulkan-environment-ibl-renderer-execution",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireVulkanShaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-vulkan-scene-shaders','--require-vulkan-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-vulkan-postprocess-evidence','--require-environment-lighting-vulkan-renderer-execution')\""
     },
     {
       "name": "desktop-runtime-sample-game-physical-sky-package",

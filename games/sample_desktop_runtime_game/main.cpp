@@ -82,6 +82,7 @@ struct DesktopRuntimeGameOptions {
     bool require_environment_volumetric_fog_vulkan_renderer_execution{false};
     bool require_environment_lighting_package_evidence{false};
     bool require_environment_lighting_renderer_execution{false};
+    bool require_environment_lighting_vulkan_renderer_execution{false};
     bool require_cloud_layer_package_evidence{false};
     bool require_cloud_layer_renderer_execution{false};
     bool require_environment_precipitation_package_evidence{false};
@@ -183,6 +184,10 @@ constexpr std::string_view kRuntimeEnvironmentIblSampleVertexShaderPath{
     "shaders/sample_desktop_runtime_game_environment_ibl_sample.vs.dxil"};
 constexpr std::string_view kRuntimeEnvironmentIblSampleFragmentShaderPath{
     "shaders/sample_desktop_runtime_game_environment_ibl_sample.ps.dxil"};
+constexpr std::string_view kRuntimeEnvironmentIblSampleVulkanVertexShaderPath{
+    "shaders/sample_desktop_runtime_game_environment_ibl_sample.vs.spv"};
+constexpr std::string_view kRuntimeEnvironmentIblSampleVulkanFragmentShaderPath{
+    "shaders/sample_desktop_runtime_game_environment_ibl_sample.ps.spv"};
 constexpr std::string_view kRuntimePostprocessVulkanVertexShaderPath{
     "shaders/sample_desktop_runtime_game_postprocess.vs.spv"};
 constexpr std::string_view kRuntimePostprocessVulkanFragmentShaderPath{
@@ -1046,8 +1051,9 @@ environment_material_weathering_state_name(mirakana::EnvironmentMaterialWeatheri
            options.require_environment_volumetric_fog_package_evidence ||
            options.require_environment_volumetric_fog_vulkan_renderer_execution ||
            options.require_environment_lighting_package_evidence ||
-           options.require_environment_lighting_renderer_execution || options.require_cloud_layer_package_evidence ||
-           options.require_cloud_layer_renderer_execution ||
+           options.require_environment_lighting_renderer_execution ||
+           options.require_environment_lighting_vulkan_renderer_execution ||
+           options.require_cloud_layer_package_evidence || options.require_cloud_layer_renderer_execution ||
            options.require_environment_precipitation_package_evidence ||
            options.require_environment_precipitation_renderer_execution ||
            options.require_environment_precipitation_vulkan_renderer_execution ||
@@ -1485,6 +1491,8 @@ evaluate_environment_material_weathering(bool requested, const mirakana::Win32De
     const mirakana::Win32DesktopPresentationPhysicalSkyReport& physical_sky,
     const mirakana::Win32DesktopPresentationVulkanPhysicalSkyPackageReport& physical_sky_vulkan_package,
     const EnvironmentLightingPackageEvidence& environment_lighting,
+    const mirakana::Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionReport&
+        environment_ibl_vulkan_renderer_execution,
     const EnvironmentMaterialWeatheringEvidence& environment_material_weathering,
     const mirakana::Win32DesktopPresentationCloudLayerReport& cloud_layer,
     const mirakana::Win32DesktopPresentationEnvironmentPrecipitationReport& environment_precipitation,
@@ -1526,6 +1534,8 @@ evaluate_environment_material_weathering(bool requested, const mirakana::Win32De
                     ? environment_volumetric_fog_vulkan.ready
                     : environment_volumetric_fog.ready);
     add_feature(options.require_environment_lighting_package_evidence, environment_lighting.ready);
+    add_feature(options.require_environment_lighting_vulkan_renderer_execution,
+                environment_ibl_vulkan_renderer_execution.ready);
     add_feature(options.require_environment_material_weathering, environment_material_weathering.ready);
     add_feature(options.require_cloud_layer_package_evidence || options.require_cloud_layer_renderer_execution,
                 cloud_layer.ready);
@@ -1614,6 +1624,11 @@ evaluate_environment_material_weathering(bool requested, const mirakana::Win32De
         evidence.ibl_reflection_face_budget = environment_lighting.reflection_cubemap_face_count;
         evidence.ibl_radiance_mip_budget = environment_lighting.radiance_mip_rows;
     }
+    if (options.require_environment_lighting_vulkan_renderer_execution) {
+        evidence.ibl_reflection_face_budget = environment_ibl_vulkan_renderer_execution.texture_cube_faces;
+        evidence.ibl_radiance_mip_budget = environment_ibl_vulkan_renderer_execution.radiance_mips;
+        evidence.texture_upload_budget += environment_ibl_vulkan_renderer_execution.texture_cube_uploads > 0U ? 1U : 0U;
+    }
     if (options.require_environment_material_weathering) {
         evidence.constant_buffer_bytes += mirakana::material_weathering_constants_byte_size();
     }
@@ -1627,9 +1642,9 @@ evaluate_environment_material_weathering(bool requested, const mirakana::Win32De
     evidence.native_handle_access =
         physical_sky.exposes_native_handles || physical_sky_vulkan_package.exposes_native_handles ||
         environment_fog_vulkan_package.exposes_native_handles || environment_lighting.exposes_native_handles ||
-        cloud_layer.exposes_native_handles || environment_precipitation.exposes_native_handles ||
-        environment_precipitation_vulkan.exposes_native_handles || environment_volumetric_fog.exposes_native_handles ||
-        environment_volumetric_cloud.exposes_native_handles ||
+        environment_ibl_vulkan_renderer_execution.native_handle_access != 0U || cloud_layer.exposes_native_handles ||
+        environment_precipitation.exposes_native_handles || environment_precipitation_vulkan.exposes_native_handles ||
+        environment_volumetric_fog.exposes_native_handles || environment_volumetric_cloud.exposes_native_handles ||
         environment_volumetric_cloud_vulkan.exposes_native_handles ||
         environment_material_weathering.native_handle_access;
 
@@ -2129,6 +2144,7 @@ void print_usage() {
                  "[--require-environment-volumetric-fog-package-evidence] "
                  "[--require-environment-lighting-package-evidence] "
                  "[--require-environment-lighting-renderer-execution] "
+                 "[--require-environment-lighting-vulkan-renderer-execution] "
                  "[--require-cloud-layer-package-evidence] [--require-cloud-layer-renderer-execution] "
                  "[--require-environment-precipitation-package-evidence] "
                  "[--require-environment-precipitation-renderer-execution] "
@@ -2336,6 +2352,16 @@ void print_usage() {
             options.require_d3d12_postprocess_evidence = true;
             options.require_environment_lighting_package_evidence = true;
             options.require_environment_lighting_renderer_execution = true;
+            continue;
+        }
+        if (arg == "--require-environment-lighting-vulkan-renderer-execution") {
+            options.require_vulkan_scene_shaders = true;
+            options.require_vulkan_renderer = true;
+            options.require_scene_gpu_bindings = true;
+            options.require_postprocess = true;
+            options.require_postprocess_depth_input = true;
+            options.require_vulkan_postprocess_evidence = true;
+            options.require_environment_lighting_vulkan_renderer_execution = true;
             continue;
         }
         if (arg == "--require-cloud-layer-package-evidence") {
@@ -3718,6 +3744,18 @@ load_packaged_d3d12_environment_ibl_sample_shaders(const char* executable_path) 
 }
 
 [[nodiscard]] mirakana::DesktopShaderBytecodeLoadResult
+load_packaged_vulkan_environment_ibl_sample_shaders(const char* executable_path) {
+    mirakana::RootedFileSystem filesystem(executable_directory(executable_path));
+    return mirakana::load_desktop_shader_bytecode_pair(mirakana::DesktopShaderBytecodeLoadDesc{
+        .filesystem = &filesystem,
+        .vertex_path = std::string{kRuntimeEnvironmentIblSampleVulkanVertexShaderPath},
+        .fragment_path = std::string{kRuntimeEnvironmentIblSampleVulkanFragmentShaderPath},
+        .vertex_entry_point = "vs_environment_ibl_sample",
+        .fragment_entry_point = "ps_environment_ibl_sample",
+    });
+}
+
+[[nodiscard]] mirakana::DesktopShaderBytecodeLoadResult
 load_packaged_d3d12_cloud_layer_shaders(const char* executable_path) {
     mirakana::RootedFileSystem filesystem(executable_directory(executable_path));
     return mirakana::load_desktop_shader_bytecode_pair(mirakana::DesktopShaderBytecodeLoadDesc{
@@ -4090,6 +4128,15 @@ int main(int argc, char** argv) {
         std::cout << "sample_desktop_runtime_game d3d12_environment_ibl_sample_shader_diagnostic="
                   << mirakana::desktop_shader_bytecode_load_status_name(environment_ibl_sample_bytecode.status) << ": "
                   << environment_ibl_sample_bytecode.diagnostic << '\n';
+        return 4;
+    }
+    auto environment_ibl_sample_vulkan_bytecode =
+        load_packaged_vulkan_environment_ibl_sample_shaders(argc > 0 ? argv[0] : nullptr);
+    if (!environment_ibl_sample_vulkan_bytecode.ready() &&
+        options.require_environment_lighting_vulkan_renderer_execution) {
+        std::cout << "sample_desktop_runtime_game vulkan_environment_ibl_sample_shader_diagnostic="
+                  << mirakana::desktop_shader_bytecode_load_status_name(environment_ibl_sample_vulkan_bytecode.status)
+                  << ": " << environment_ibl_sample_vulkan_bytecode.diagnostic << '\n';
         return 4;
     }
     auto cloud_layer_bytecode = load_packaged_d3d12_cloud_layer_shaders(argc > 0 ? argv[0] : nullptr);
@@ -4672,6 +4719,18 @@ int main(int argc, char** argv) {
                 .edge_size = 16,
                 .mip_count = 5,
             });
+    const auto environment_ibl_vulkan_renderer_execution =
+        mirakana::evaluate_win32_desktop_presentation_vulkan_environment_ibl_renderer_execution(
+            mirakana::Win32DesktopPresentationVulkanEnvironmentIblRendererExecutionDesc{
+                .requested = options.require_environment_lighting_vulkan_renderer_execution,
+                .vulkan_backend_selected = report.selected_backend == mirakana::Win32DesktopPresentationBackend::vulkan,
+                .sampling_vertex_shader =
+                    to_presentation_shader_bytecode(environment_ibl_sample_vulkan_bytecode.vertex_shader),
+                .sampling_fragment_shader =
+                    to_presentation_shader_bytecode(environment_ibl_sample_vulkan_bytecode.fragment_shader),
+                .edge_size = 16,
+                .mip_count = 5,
+            });
     const auto environment_lighting = evaluate_environment_lighting_package(
         options.require_environment_lighting_package_evidence, options.require_environment_lighting_renderer_execution,
         environment_ibl_renderer_execution, runtime_package);
@@ -4744,10 +4803,10 @@ int main(int argc, char** argv) {
         options.require_environment_fog_evidence || options.require_environment_fog_vulkan_package_evidence;
     const auto environment_quality_budget = build_environment_quality_budget_evidence(
         options, report, environment_fog, environment_fog_vulkan_package, physical_sky, physical_sky_vulkan_package,
-        environment_lighting, environment_material_weathering, cloud_layer, environment_precipitation,
-        environment_precipitation_vulkan, environment_volumetric_fog, environment_volumetric_fog_vulkan,
-        environment_volumetric_cloud, environment_volumetric_cloud_vulkan, environment_profile,
-        options.require_postprocess ? expected_framegraph_barrier_steps : 0U);
+        environment_lighting, environment_ibl_vulkan_renderer_execution, environment_material_weathering, cloud_layer,
+        environment_precipitation, environment_precipitation_vulkan, environment_volumetric_fog,
+        environment_volumetric_fog_vulkan, environment_volumetric_cloud, environment_volumetric_cloud_vulkan,
+        environment_profile, options.require_postprocess ? expected_framegraph_barrier_steps : 0U);
 
     std::cout
         << "sample_desktop_runtime_game status=" << status_name(result.status)
@@ -4952,6 +5011,55 @@ int main(int argc, char** argv) {
         << environment_lighting.runtime_capture_readback_checksum
         << " environment_lighting_native_handle_access=" << (environment_lighting.exposes_native_handles ? 1 : 0)
         << " environment_lighting_diagnostics=" << environment_lighting.diagnostics
+        << " environment_lighting_vulkan_status="
+        << mirakana::win32_desktop_presentation_vulkan_environment_ibl_renderer_execution_status_name(
+               environment_ibl_vulkan_renderer_execution.status)
+        << " environment_lighting_vulkan_ready=" << (environment_ibl_vulkan_renderer_execution.ready ? 1 : 0)
+        << " environment_lighting_vulkan_selected_backend="
+        << (environment_ibl_vulkan_renderer_execution.vulkan_backend_selected ? "vulkan" : "not_vulkan")
+        << " environment_lighting_vulkan_requested=" << (environment_ibl_vulkan_renderer_execution.requested ? 1 : 0)
+        << " environment_lighting_vulkan_renderer_upload_status="
+        << mirakana::win32_desktop_presentation_vulkan_environment_ibl_renderer_execution_status_name(
+               environment_ibl_vulkan_renderer_execution.status)
+        << " environment_lighting_vulkan_renderer_execution_status="
+        << mirakana::win32_desktop_presentation_vulkan_environment_ibl_renderer_execution_status_name(
+               environment_ibl_vulkan_renderer_execution.status)
+        << " environment_lighting_vulkan_texture_cube_uploads="
+        << environment_ibl_vulkan_renderer_execution.texture_cube_uploads
+        << " environment_lighting_vulkan_texture_cube_faces="
+        << environment_ibl_vulkan_renderer_execution.texture_cube_faces
+        << " environment_lighting_vulkan_texture_cube_edge_size="
+        << environment_ibl_vulkan_renderer_execution.texture_cube_edge_size
+        << " environment_lighting_vulkan_radiance_mips=" << environment_ibl_vulkan_renderer_execution.radiance_mips
+        << " environment_lighting_vulkan_renderer_irradiance_rows="
+        << environment_ibl_vulkan_renderer_execution.irradiance_rows
+        << " environment_lighting_vulkan_cube_compatible_image_created="
+        << (environment_ibl_vulkan_renderer_execution.cube_compatible_image_created ? 1 : 0)
+        << " environment_lighting_vulkan_cube_image_view_created="
+        << (environment_ibl_vulkan_renderer_execution.cube_image_view_created ? 1 : 0)
+        << " environment_lighting_vulkan_sampler_created="
+        << (environment_ibl_vulkan_renderer_execution.sampler_created ? 1 : 0)
+        << " environment_lighting_vulkan_descriptor_set_bindings="
+        << environment_ibl_vulkan_renderer_execution.descriptor_set_bindings
+        << " environment_lighting_vulkan_synchronization2_barriers="
+        << environment_ibl_vulkan_renderer_execution.synchronization2_barriers
+        << " environment_lighting_vulkan_shader_sampling_proven="
+        << (environment_ibl_vulkan_renderer_execution.shader_sampling_proven ? 1 : 0)
+        << " environment_lighting_vulkan_shader_sample_readback_nonzero="
+        << (environment_ibl_vulkan_renderer_execution.shader_sample_readback_nonzero ? 1 : 0)
+        << " environment_lighting_vulkan_backend_invocations="
+        << (environment_ibl_vulkan_renderer_execution.texture_cube_uploads > 0U ? 1 : 0)
+        << " environment_lighting_vulkan_runtime_captures="
+        << (environment_ibl_vulkan_renderer_execution.runtime_capture_faces > 0U ? 1 : 0)
+        << " environment_lighting_vulkan_runtime_capture_faces="
+        << environment_ibl_vulkan_renderer_execution.runtime_capture_faces
+        << " environment_lighting_vulkan_runtime_capture_readback_nonzero="
+        << (environment_ibl_vulkan_renderer_execution.runtime_capture_readback_nonzero ? 1 : 0)
+        << " environment_lighting_vulkan_runtime_capture_readback_checksum="
+        << environment_ibl_vulkan_renderer_execution.runtime_capture_readback_checksum
+        << " environment_lighting_vulkan_native_handle_access="
+        << environment_ibl_vulkan_renderer_execution.native_handle_access
+        << " environment_lighting_vulkan_diagnostics=" << environment_ibl_vulkan_renderer_execution.diagnostics_count
         << " cloud_layer_status=" << mirakana::win32_desktop_presentation_cloud_layer_status_name(cloud_layer.status)
         << " cloud_layer_ready=" << (cloud_layer.ready ? 1 : 0) << " cloud_layer_selected_backend="
         << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
@@ -6113,6 +6221,12 @@ int main(int argc, char** argv) {
     for (const auto& diagnostic : framegraph_multiqueue.diagnostics) {
         std::cout << "sample_desktop_runtime_game framegraph_multiqueue_diagnostic=" << diagnostic.message << '\n';
     }
+    if (options.require_environment_lighting_vulkan_renderer_execution &&
+        !environment_ibl_vulkan_renderer_execution.ready &&
+        !environment_ibl_vulkan_renderer_execution.diagnostic.empty()) {
+        std::cout << "sample_desktop_runtime_game vulkan_environment_ibl_renderer_diagnostic="
+                  << environment_ibl_vulkan_renderer_execution.diagnostic << '\n';
+    }
 
     if (options.smoke) {
         if (result.status != mirakana::DesktopRunStatus::completed || result.frames_run != options.max_frames ||
@@ -6187,6 +6301,10 @@ int main(int argc, char** argv) {
             return 3;
         }
         if (options.require_environment_lighting_package_evidence && !environment_lighting.ready) {
+            return 3;
+        }
+        if (options.require_environment_lighting_vulkan_renderer_execution &&
+            !environment_ibl_vulkan_renderer_execution.ready) {
             return 3;
         }
         if (options.require_environment_material_weathering && !environment_material_weathering.ready) {
