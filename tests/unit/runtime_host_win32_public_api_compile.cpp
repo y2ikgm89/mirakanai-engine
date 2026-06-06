@@ -166,6 +166,27 @@ int main() {
     report.environment_precipitation_audio_handoff_rows = 1;
     report.environment_precipitation_shader_rows = 1;
     report.environment_precipitation_quality_rows = 1;
+    report.environment_precipitation_vulkan_requested = true;
+    report.environment_precipitation_vulkan_weather = mirakana::EnvironmentWeatherKind::storm;
+    report.environment_precipitation_vulkan_kind = mirakana::EnvironmentPrecipitationKind::rain;
+    report.environment_precipitation_vulkan_shader_contract_evidence_ready = true;
+    report.environment_precipitation_vulkan_package_evidence_ready = true;
+    report.environment_precipitation_vulkan_execution_evidence_ready = true;
+    report.environment_precipitation_vulkan_uses_camera_near_particles = true;
+    report.environment_precipitation_vulkan_uses_scene_depth_occlusion = true;
+    report.environment_precipitation_vulkan_weather_rows = 1;
+    report.environment_precipitation_vulkan_particle_rows = 1;
+    report.environment_precipitation_vulkan_occlusion_rows = 1;
+    report.environment_precipitation_vulkan_wetness_rows = 1;
+    report.environment_precipitation_vulkan_audio_handoff_rows = 1;
+    report.environment_precipitation_vulkan_shader_rows = 1;
+    report.environment_precipitation_vulkan_quality_rows = 1;
+    report.environment_precipitation_vulkan_particle_buffer_uploads = 1;
+    report.environment_precipitation_vulkan_backend_invocations = 1;
+    report.environment_precipitation_vulkan_renderer_draws = 1;
+    report.environment_precipitation_vulkan_depth_occlusion_readback = true;
+    report.environment_precipitation_vulkan_descriptor_set_bindings = 4;
+    report.environment_precipitation_vulkan_synchronization2_barriers = 1;
     report.environment_volumetric_fog_requested = true;
     report.environment_volumetric_fog_shader_contract_evidence_ready = true;
     report.environment_volumetric_fog_package_evidence_ready = true;
@@ -235,6 +256,16 @@ int main() {
     };
     const auto precipitation = mirakana::evaluate_win32_desktop_presentation_environment_precipitation(
         report, true, rain_precipitation_expectation);
+    const auto vulkan_rain_precipitation_expectation =
+        mirakana::Win32DesktopPresentationEnvironmentPrecipitationExpectation{
+            .weather = mirakana::EnvironmentWeatherKind::storm,
+            .kind = mirakana::EnvironmentPrecipitationKind::rain,
+            .wetness_rows = 1,
+            .minimum_audio_handoff_rows = 1,
+            .require_renderer_execution = true,
+        };
+    const auto vulkan_precipitation = mirakana::evaluate_win32_desktop_presentation_vulkan_environment_precipitation(
+        vulkan_report, true, vulkan_rain_precipitation_expectation);
     auto missing_precipitation_package_report = report;
     missing_precipitation_package_report.environment_precipitation_package_evidence_ready = false;
     const auto missing_precipitation_package = mirakana::evaluate_win32_desktop_presentation_environment_precipitation(
@@ -359,6 +390,25 @@ int main() {
                    !precipitation.invokes_backend && !precipitation.exposes_native_handles &&
                    !precipitation.mutates_materials && !precipitation.plays_audio &&
                    precipitation.diagnostics_count == 0 &&
+                   mirakana::win32_desktop_presentation_vulkan_environment_precipitation_status_name(
+                       vulkan_precipitation.status) == "ready" &&
+                   vulkan_precipitation.ready && vulkan_precipitation.vulkan_backend_selected &&
+                   vulkan_precipitation.weather == mirakana::EnvironmentWeatherKind::storm &&
+                   vulkan_precipitation.kind == mirakana::EnvironmentPrecipitationKind::rain &&
+                   vulkan_precipitation.package_evidence_ready && vulkan_precipitation.shader_contract_evidence_ready &&
+                   vulkan_precipitation.execution_evidence_ready &&
+                   vulkan_precipitation.particle_texture_binding ==
+                       mirakana::precipitation_particle_texture_binding() &&
+                   vulkan_precipitation.scene_depth_texture_binding ==
+                       mirakana::precipitation_scene_depth_texture_binding() &&
+                   vulkan_precipitation.sampler_binding == mirakana::precipitation_sampler_binding() + 20U &&
+                   vulkan_precipitation.constants_binding == mirakana::precipitation_constants_binding() + 40U &&
+                   vulkan_precipitation.descriptor_set_bindings == 4 &&
+                   vulkan_precipitation.synchronization2_barriers > 0 &&
+                   vulkan_precipitation.uploads_particle_buffers && vulkan_precipitation.invokes_backend &&
+                   vulkan_precipitation.renderer_draws > 0 && vulkan_precipitation.depth_occlusion_readback &&
+                   !vulkan_precipitation.exposes_native_handles && !vulkan_precipitation.mutates_materials &&
+                   !vulkan_precipitation.plays_audio && vulkan_precipitation.diagnostics_count == 0 &&
                    mirakana::win32_desktop_presentation_environment_precipitation_status_name(
                        missing_precipitation_package.status) == "blocked" &&
                    !missing_precipitation_package.ready && !missing_precipitation_package.package_evidence_ready &&

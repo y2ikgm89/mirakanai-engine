@@ -150,6 +150,7 @@
         "cloud-layer-renderer-execution",
         "environment-precipitation-package",
         "environment-precipitation-renderer-execution",
+        "environment-precipitation-vulkan-renderer-execution",
         "environment-snow-package",
         "environment-snow-renderer-execution",
         "environment-material-weathering",
@@ -181,6 +182,7 @@
         "desktop-runtime-sample-game-cloud-layer-renderer-execution",
         "desktop-runtime-sample-game-environment-precipitation-package",
         "desktop-runtime-sample-game-environment-precipitation-renderer-execution",
+        "desktop-runtime-sample-game-vulkan-environment-precipitation-renderer-execution",
         "desktop-runtime-sample-game-environment-snow-package",
         "desktop-runtime-sample-game-environment-snow-renderer-execution",
         "desktop-runtime-sample-game-environment-material-weathering",
@@ -296,6 +298,13 @@
           ]
         },
         {
+          "id": "environment-precipitation-vulkan-renderer-execution-evidence",
+          "evidence": "The strict Vulkan rain precipitation renderer execution smoke uses --require-environment-precipitation-vulkan-renderer-execution and reports environment_precipitation_vulkan_status=ready, environment_precipitation_vulkan_ready=1, environment_precipitation_vulkan_selected_backend=vulkan, weather=storm, kind=rain, shader-contract/package/execution evidence ready, effective Vulkan particle/depth/sampler/constants binding slots 8/9/28/47, descriptor_set_bindings=4, positive synchronization2 barriers, camera-near particle and scene-depth occlusion flags, one weather/particle/occlusion/wetness/shader/quality row, four audio handoff rows, positive environment_precipitation_vulkan_particle_buffer_uploads, positive environment_precipitation_vulkan_backend_invocations, positive environment_precipitation_vulkan_renderer_draws, environment_precipitation_vulkan_depth_occlusion_readback=1, zero diagnostics, zero native-handle access, zero material mutation, and zero audio playback without claiming D3D12 by inference, snow readiness, Metal, backend parity, broad optimization, or broad environment_ready.",
+          "recipeIds": [
+            "desktop-runtime-sample-game-vulkan-environment-precipitation-renderer-execution"
+          ]
+        },
+        {
           "id": "environment-snow-package-evidence",
           "evidence": "The selected D3D12 environment snow package smoke reports environment_precipitation_status=ready, environment_precipitation_ready=1, environment_precipitation_selected_backend=d3d12, weather=snow, kind=snow, shader-contract/package/execution evidence ready, stable particle/depth/sampler/constants binding slots 8/9/8/7, camera-near particle and scene-depth occlusion flags, one weather/particle/occlusion/shader/quality row, zero wetness rows, one audio handoff row, zero diagnostics, and zero particle-buffer upload, backend invocation, native-handle, material-mutation, or audio-playback counters without claiming renderer/RHI precipitation execution, rain readiness, Vulkan, Metal, backend parity, broad optimization, or broad environment_ready.",
           "recipeIds": [
@@ -338,6 +347,7 @@
             "desktop-runtime-sample-game-volumetric-cloud-renderer-execution",
             "desktop-runtime-sample-game-environment-precipitation-package",
             "desktop-runtime-sample-game-environment-precipitation-renderer-execution",
+            "desktop-runtime-sample-game-vulkan-environment-precipitation-renderer-execution",
             "desktop-runtime-sample-game-environment-snow-package",
             "desktop-runtime-sample-game-environment-snow-renderer-execution",
             "desktop-runtime-sample-game-environment-material-weathering",
@@ -1697,6 +1707,7 @@
         "desktop-runtime-sample-game-volumetric-cloud-renderer-execution",
         "desktop-runtime-sample-game-environment-lighting-package",
         "desktop-runtime-sample-game-environment-ibl-renderer-execution",
+        "desktop-runtime-sample-game-vulkan-environment-precipitation-renderer-execution",
         "desktop-runtime-sample-game-physical-sky-package",
         "desktop-runtime-sample-game-cloud-layer-package",
         "desktop-runtime-sample-game-cloud-layer-renderer-execution",
@@ -1805,6 +1816,10 @@
     {
       "name": "desktop-runtime-sample-game-environment-precipitation-renderer-execution",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-environment-precipitation-renderer-execution')\""
+    },
+    {
+      "name": "desktop-runtime-sample-game-vulkan-environment-precipitation-renderer-execution",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireVulkanShaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-vulkan-scene-shaders','--require-vulkan-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-vulkan-postprocess-evidence','--require-environment-precipitation-vulkan-renderer-execution')\""
     },
     {
       "name": "desktop-runtime-sample-game-environment-snow-package",

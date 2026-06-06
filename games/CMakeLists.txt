@@ -1899,7 +1899,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
         "shaders/sample_desktop_runtime_game_scene.vs.dxil;shaders/sample_desktop_runtime_game_scene_skinned.vs.dxil;shaders/sample_desktop_runtime_game_scene.ps.dxil;shaders/sample_desktop_runtime_game_shadow_receiver.ps.dxil;shaders/sample_desktop_runtime_game_shadow_receiver_skinned.ps.dxil;shaders/sample_desktop_runtime_game_postprocess.vs.dxil;shaders/sample_desktop_runtime_game_postprocess.ps.dxil;shaders/sample_desktop_runtime_game_environment_fog.ps.dxil;shaders/sample_desktop_runtime_game_environment_volumetric_fog.cs.dxil;shaders/sample_desktop_runtime_game_environment_ibl_sample.vs.dxil;shaders/sample_desktop_runtime_game_environment_ibl_sample.ps.dxil;shaders/sample_desktop_runtime_game_environment_volumetric_cloud.vs.dxil;shaders/sample_desktop_runtime_game_environment_volumetric_cloud.ps.dxil;shaders/sample_desktop_runtime_game_cloud_layer.vs.dxil;shaders/sample_desktop_runtime_game_cloud_layer.ps.dxil;shaders/sample_desktop_runtime_game_precipitation.vs.dxil;shaders/sample_desktop_runtime_game_precipitation.ps.dxil;shaders/sample_desktop_runtime_game_shadow.vs.dxil;shaders/sample_desktop_runtime_game_shadow.ps.dxil;shaders/sample_desktop_runtime_game_ui_overlay.vs.dxil;shaders/sample_desktop_runtime_game_ui_overlay.ps.dxil"
     )
     set_property(TARGET sample_desktop_runtime_game PROPERTY MK_DESKTOP_RUNTIME_VULKAN_SHADER_ARTIFACTS
-        "shaders/sample_desktop_runtime_game_scene.vs.spv;shaders/sample_desktop_runtime_game_scene_skinned.vs.spv;shaders/sample_desktop_runtime_game_scene.ps.spv;shaders/sample_desktop_runtime_game_scene_mapping.cs.spv;shaders/sample_desktop_runtime_game_shadow_receiver.ps.spv;shaders/sample_desktop_runtime_game_shadow_receiver_skinned.ps.spv;shaders/sample_desktop_runtime_game_postprocess.vs.spv;shaders/sample_desktop_runtime_game_postprocess.ps.spv;shaders/sample_desktop_runtime_game_environment_fog.vs.spv;shaders/sample_desktop_runtime_game_environment_fog.ps.spv;shaders/sample_desktop_runtime_game_cloud_layer.vs.spv;shaders/sample_desktop_runtime_game_cloud_layer.ps.spv;shaders/sample_desktop_runtime_game_shadow.vs.spv;shaders/sample_desktop_runtime_game_shadow.ps.spv;shaders/sample_desktop_runtime_game_ui_overlay.vs.spv;shaders/sample_desktop_runtime_game_ui_overlay.ps.spv"
+        "shaders/sample_desktop_runtime_game_scene.vs.spv;shaders/sample_desktop_runtime_game_scene_skinned.vs.spv;shaders/sample_desktop_runtime_game_scene.ps.spv;shaders/sample_desktop_runtime_game_scene_mapping.cs.spv;shaders/sample_desktop_runtime_game_shadow_receiver.ps.spv;shaders/sample_desktop_runtime_game_shadow_receiver_skinned.ps.spv;shaders/sample_desktop_runtime_game_postprocess.vs.spv;shaders/sample_desktop_runtime_game_postprocess.ps.spv;shaders/sample_desktop_runtime_game_environment_fog.vs.spv;shaders/sample_desktop_runtime_game_environment_fog.ps.spv;shaders/sample_desktop_runtime_game_cloud_layer.vs.spv;shaders/sample_desktop_runtime_game_cloud_layer.ps.spv;shaders/sample_desktop_runtime_game_precipitation.vs.spv;shaders/sample_desktop_runtime_game_precipitation.ps.spv;shaders/sample_desktop_runtime_game_shadow.vs.spv;shaders/sample_desktop_runtime_game_shadow.ps.spv;shaders/sample_desktop_runtime_game_ui_overlay.vs.spv;shaders/sample_desktop_runtime_game_ui_overlay.ps.spv"
     )
 
     if(WIN32)
@@ -2058,6 +2058,12 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
             )
             set(MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_CLOUD_LAYER_FRAGMENT_SHADER_OUTPUT
                 "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADER_OUTPUT_DIR}/sample_desktop_runtime_game_cloud_layer.ps.spv"
+            )
+            set(MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_PRECIPITATION_VERTEX_SHADER_OUTPUT
+                "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADER_OUTPUT_DIR}/sample_desktop_runtime_game_precipitation.vs.spv"
+            )
+            set(MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_PRECIPITATION_FRAGMENT_SHADER_OUTPUT
+                "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADER_OUTPUT_DIR}/sample_desktop_runtime_game_precipitation.ps.spv"
             )
             set(MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADOW_VERTEX_SHADER_OUTPUT
                 "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADER_OUTPUT_DIR}/sample_desktop_runtime_game_shadow.vs.dxil"
@@ -2245,6 +2251,8 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                         "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_ENVIRONMENT_FOG_FRAGMENT_SHADER_OUTPUT}"
                         "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_CLOUD_LAYER_VERTEX_SHADER_OUTPUT}"
                         "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_CLOUD_LAYER_FRAGMENT_SHADER_OUTPUT}"
+                        "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_PRECIPITATION_VERTEX_SHADER_OUTPUT}"
+                        "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_PRECIPITATION_FRAGMENT_SHADER_OUTPUT}"
                         "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_SHADOW_VERTEX_SHADER_OUTPUT}"
                         "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_SHADOW_FRAGMENT_SHADER_OUTPUT}"
                         "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_UI_OVERLAY_VERTEX_SHADER_OUTPUT}"
@@ -2305,6 +2313,16 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                         -Fo "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_CLOUD_LAYER_FRAGMENT_SHADER_OUTPUT}"
                         "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_CLOUD_LAYER_SHADER_SOURCE}"
                     COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_DXC_EXECUTABLE}"
+                        -nologo -DMK_PRECIPITATION_SHADER=1 -E main_vs -T vs_6_0 -spirv
+                        -fspv-target-env=vulkan1.3 -fvk-s-shift 20 0 -fvk-b-shift 40 0
+                        -Fo "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_PRECIPITATION_VERTEX_SHADER_OUTPUT}"
+                        "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_PRECIPITATION_SHADER_SOURCE}"
+                    COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_DXC_EXECUTABLE}"
+                        -nologo -DMK_PRECIPITATION_SHADER=1 -E main_ps -T ps_6_0 -spirv
+                        -fspv-target-env=vulkan1.3 -fvk-s-shift 20 0 -fvk-b-shift 40 0
+                        -Fo "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_PRECIPITATION_FRAGMENT_SHADER_OUTPUT}"
+                        "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_PRECIPITATION_SHADER_SOURCE}"
+                    COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_DXC_EXECUTABLE}"
                         -nologo -E vs_shadow -T vs_6_0 -spirv -fspv-target-env=vulkan1.3
                         -Fo "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_SHADOW_VERTEX_SHADER_OUTPUT}"
                         "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADOW_SHADER_SOURCE}"
@@ -2325,6 +2343,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                         "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_POSTPROCESS_SHADER_SOURCE}"
                         "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_ENVIRONMENT_FOG_SHADER_SOURCE}"
                         "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_CLOUD_LAYER_SHADER_SOURCE}"
+                        "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_PRECIPITATION_SHADER_SOURCE}"
                         "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_SHADOW_SHADER_SOURCE}"
                         "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_UI_OVERLAY_SHADER_SOURCE}"
                     COMMENT "Compiling sample_desktop_runtime_game Vulkan scene SPIR-V shader artifacts"
@@ -2344,6 +2363,8 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                         "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_ENVIRONMENT_FOG_FRAGMENT_SHADER_OUTPUT}"
                         "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_CLOUD_LAYER_VERTEX_SHADER_OUTPUT}"
                         "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_CLOUD_LAYER_FRAGMENT_SHADER_OUTPUT}"
+                        "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_PRECIPITATION_VERTEX_SHADER_OUTPUT}"
+                        "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_PRECIPITATION_FRAGMENT_SHADER_OUTPUT}"
                         "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_SHADOW_VERTEX_SHADER_OUTPUT}"
                         "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_SHADOW_FRAGMENT_SHADER_OUTPUT}"
                         "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_UI_OVERLAY_VERTEX_SHADER_OUTPUT}"
@@ -2375,6 +2396,10 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                             "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_CLOUD_LAYER_VERTEX_SHADER_OUTPUT}"
                         COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
                             "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_CLOUD_LAYER_FRAGMENT_SHADER_OUTPUT}"
+                        COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                            "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_PRECIPITATION_VERTEX_SHADER_OUTPUT}"
+                        COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
+                            "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_PRECIPITATION_FRAGMENT_SHADER_OUTPUT}"
                         COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
                             "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_SHADOW_VERTEX_SHADER_OUTPUT}"
                         COMMAND "${MK_SAMPLE_DESKTOP_RUNTIME_SPIRV_VAL_EXECUTABLE}"
@@ -2435,6 +2460,8 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
                         "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_ENVIRONMENT_FOG_FRAGMENT_SHADER_OUTPUT}"
                         "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_CLOUD_LAYER_VERTEX_SHADER_OUTPUT}"
                         "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_CLOUD_LAYER_FRAGMENT_SHADER_OUTPUT}"
+                        "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_PRECIPITATION_VERTEX_SHADER_OUTPUT}"
+                        "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_PRECIPITATION_FRAGMENT_SHADER_OUTPUT}"
                         "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_SHADOW_VERTEX_SHADER_OUTPUT}"
                         "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_SHADOW_FRAGMENT_SHADER_OUTPUT}"
                         "${MK_SAMPLE_DESKTOP_RUNTIME_GAME_VULKAN_UI_OVERLAY_VERTEX_SHADER_OUTPUT}"

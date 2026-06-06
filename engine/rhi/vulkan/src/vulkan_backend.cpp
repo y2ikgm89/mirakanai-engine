@@ -2296,6 +2296,23 @@ template <typename AvailableDeviceExtensions>
     return true;
 }
 
+[[nodiscard]] std::vector<VulkanRuntimeVertexBufferBindingDesc>
+sorted_vertex_buffer_bindings(std::span<const VulkanRuntimeVertexBufferBindingDesc> bindings) {
+    std::vector<VulkanRuntimeVertexBufferBindingDesc> sorted{bindings.begin(), bindings.end()};
+    std::ranges::sort(sorted, {}, &VulkanRuntimeVertexBufferBindingDesc::binding);
+    return sorted;
+}
+
+[[nodiscard]] bool
+has_duplicate_vertex_buffer_bindings(std::span<const VulkanRuntimeVertexBufferBindingDesc> bindings) noexcept {
+    for (std::size_t index = 1; index < bindings.size(); ++index) {
+        if (bindings[index - 1U].binding == bindings[index].binding) {
+            return true;
+        }
+    }
+    return false;
+}
+
 [[nodiscard]] std::uint32_t native_vulkan_topology(PrimitiveTopology topology) noexcept {
     switch (topology) {
     case PrimitiveTopology::triangle_list:
@@ -4766,9 +4783,8 @@ class VulkanRhiCommandList final : public IRhiCommandList {
             render_pass_active_ = true;
             rendering_recorded_ = false;
             bound_graphics_pipeline_ = GraphicsPipelineHandle{};
-            vertex_buffer_bound_ = false;
             index_buffer_bound_ = false;
-            bound_vertex_buffer_ = VertexBufferBinding{};
+            bound_vertex_buffers_.clear();
             bound_index_buffer_ = IndexBufferBinding{};
             recorded_work_ = true;
             ++device_->stats_.render_passes_begun;
@@ -4807,9 +4823,8 @@ class VulkanRhiCommandList final : public IRhiCommandList {
         render_pass_active_ = true;
         rendering_recorded_ = false;
         bound_graphics_pipeline_ = GraphicsPipelineHandle{};
-        vertex_buffer_bound_ = false;
         index_buffer_bound_ = false;
-        bound_vertex_buffer_ = VertexBufferBinding{};
+        bound_vertex_buffers_.clear();
         bound_index_buffer_ = IndexBufferBinding{};
         track_swapchain_frame(desc.color.swapchain_frame);
         if (desc.depth.texture.value != 0) {
@@ -4836,9 +4851,8 @@ class VulkanRhiCommandList final : public IRhiCommandList {
             render_pass_active_ = false;
             rendering_recorded_ = false;
             bound_graphics_pipeline_ = GraphicsPipelineHandle{};
-            vertex_buffer_bound_ = false;
             index_buffer_bound_ = false;
-            bound_vertex_buffer_ = VertexBufferBinding{};
+            bound_vertex_buffers_.clear();
             bound_index_buffer_ = IndexBufferBinding{};
             return;
         }
@@ -4862,9 +4876,8 @@ class VulkanRhiCommandList final : public IRhiCommandList {
         render_pass_active_ = false;
         rendering_recorded_ = false;
         bound_graphics_pipeline_ = GraphicsPipelineHandle{};
-        vertex_buffer_bound_ = false;
         index_buffer_bound_ = false;
-        bound_vertex_buffer_ = VertexBufferBinding{};
+        bound_vertex_buffers_.clear();
         bound_index_buffer_ = IndexBufferBinding{};
         ++device_->stats_.resource_transitions;
     }
@@ -4884,9 +4897,8 @@ class VulkanRhiCommandList final : public IRhiCommandList {
         }
 
         bound_graphics_pipeline_ = pipeline;
-        vertex_buffer_bound_ = false;
         index_buffer_bound_ = false;
-        bound_vertex_buffer_ = VertexBufferBinding{};
+        bound_vertex_buffers_.clear();
         bound_index_buffer_ = IndexBufferBinding{};
         ++device_->stats_.graphics_pipelines_bound;
     }
@@ -4984,8 +4996,14 @@ class VulkanRhiCommandList final : public IRhiCommandList {
         if (binding.offset >= desc.size_bytes) {
             throw std::invalid_argument("vulkan rhi vertex buffer offset is outside the buffer");
         }
-        vertex_buffer_bound_ = true;
-        bound_vertex_buffer_ = binding;
+        const auto existing = std::ranges::find_if(bound_vertex_buffers_, [&binding](const VertexBufferBinding& item) {
+            return item.binding == binding.binding;
+        });
+        if (existing == bound_vertex_buffers_.end()) {
+            bound_vertex_buffers_.push_back(binding);
+        } else {
+            *existing = binding;
+        }
         ++device_->stats_.vertex_buffer_bindings;
     }
 
@@ -5029,8 +5047,15 @@ class VulkanRhiCommandList final : public IRhiCommandList {
         const auto dynamic_plan = make_dynamic_rendering_plan();
         const auto color_load_action = color_load_action_for_next_draw();
         const auto depth_load_action = depth_load_action_for_next_draw();
-        auto* vertex_buffer =
-            vertex_buffer_bound_ ? &device_->buffers_.at(bound_vertex_buffer_.buffer.value - 1U) : nullptr;
+        std::vector<VulkanRuntimeVertexBufferBindingDesc> vertex_buffers;
+        vertex_buffers.reserve(bound_vertex_buffers_.size());
+        for (const auto& binding : bound_vertex_buffers_) {
+            vertex_buffers.push_back(VulkanRuntimeVertexBufferBindingDesc{
+                .buffer = &device_->buffers_.at(binding.buffer.value - 1U),
+                .offset = binding.offset,
+                .binding = binding.binding,
+            });
+        }
         VulkanRuntimeDynamicRenderingDrawResult result;
         if (active_texture_.value != 0) {
             result = record_runtime_texture_rendering_draw(
@@ -5042,9 +5067,7 @@ class VulkanRhiCommandList final : public IRhiCommandList {
                     .instance_count = instance_count,
                     .first_vertex = 0,
                     .first_instance = 0,
-                    .vertex_buffer = vertex_buffer,
-                    .vertex_buffer_offset = vertex_buffer_bound_ ? bound_vertex_buffer_.offset : 0,
-                    .vertex_buffer_binding = vertex_buffer_bound_ ? bound_vertex_buffer_.binding : 0,
+                    .vertex_buffers = vertex_buffers,
                     .index_buffer = nullptr,
                     .index_buffer_offset = 0,
                     .index_format = IndexFormat::unknown,
@@ -5069,9 +5092,7 @@ class VulkanRhiCommandList final : public IRhiCommandList {
                     .instance_count = instance_count,
                     .first_vertex = 0,
                     .first_instance = 0,
-                    .vertex_buffer = vertex_buffer,
-                    .vertex_buffer_offset = vertex_buffer_bound_ ? bound_vertex_buffer_.offset : 0,
-                    .vertex_buffer_binding = vertex_buffer_bound_ ? bound_vertex_buffer_.binding : 0,
+                    .vertex_buffers = vertex_buffers,
                     .index_buffer = nullptr,
                     .index_buffer_offset = 0,
                     .index_format = IndexFormat::unknown,
@@ -5106,7 +5127,7 @@ class VulkanRhiCommandList final : public IRhiCommandList {
         if (!device_->owns_graphics_pipeline(bound_graphics_pipeline_)) {
             throw std::logic_error("vulkan rhi indexed draw requires a bound graphics pipeline");
         }
-        if (!vertex_buffer_bound_) {
+        if (bound_vertex_buffers_.empty()) {
             throw std::logic_error("vulkan rhi indexed draw requires a vertex buffer");
         }
         if (!index_buffer_bound_) {
@@ -5118,6 +5139,15 @@ class VulkanRhiCommandList final : public IRhiCommandList {
         const auto dynamic_plan = make_dynamic_rendering_plan();
         const auto color_load_action = color_load_action_for_next_draw();
         const auto depth_load_action = depth_load_action_for_next_draw();
+        std::vector<VulkanRuntimeVertexBufferBindingDesc> vertex_buffers;
+        vertex_buffers.reserve(bound_vertex_buffers_.size());
+        for (const auto& binding : bound_vertex_buffers_) {
+            vertex_buffers.push_back(VulkanRuntimeVertexBufferBindingDesc{
+                .buffer = &device_->buffers_.at(binding.buffer.value - 1U),
+                .offset = binding.offset,
+                .binding = binding.binding,
+            });
+        }
         VulkanRuntimeDynamicRenderingDrawResult result;
         if (active_texture_.value != 0) {
             result = record_runtime_texture_rendering_draw(
@@ -5129,9 +5159,7 @@ class VulkanRhiCommandList final : public IRhiCommandList {
                     .instance_count = instance_count,
                     .first_vertex = 0,
                     .first_instance = 0,
-                    .vertex_buffer = &device_->buffers_.at(bound_vertex_buffer_.buffer.value - 1U),
-                    .vertex_buffer_offset = bound_vertex_buffer_.offset,
-                    .vertex_buffer_binding = bound_vertex_buffer_.binding,
+                    .vertex_buffers = vertex_buffers,
                     .index_buffer = &device_->buffers_.at(bound_index_buffer_.buffer.value - 1U),
                     .index_buffer_offset = bound_index_buffer_.offset,
                     .index_format = bound_index_buffer_.format,
@@ -5156,9 +5184,7 @@ class VulkanRhiCommandList final : public IRhiCommandList {
                     .instance_count = instance_count,
                     .first_vertex = 0,
                     .first_instance = 0,
-                    .vertex_buffer = &device_->buffers_.at(bound_vertex_buffer_.buffer.value - 1U),
-                    .vertex_buffer_offset = bound_vertex_buffer_.offset,
-                    .vertex_buffer_binding = bound_vertex_buffer_.binding,
+                    .vertex_buffers = vertex_buffers,
                     .index_buffer = &device_->buffers_.at(bound_index_buffer_.buffer.value - 1U),
                     .index_buffer_offset = bound_index_buffer_.offset,
                     .index_format = bound_index_buffer_.format,
@@ -5562,7 +5588,6 @@ class VulkanRhiCommandList final : public IRhiCommandList {
     bool render_pass_active_{false};
     bool rendering_recorded_{false};
     bool recorded_work_{false};
-    bool vertex_buffer_bound_{false};
     bool index_buffer_bound_{false};
     RenderPassDesc active_render_pass_;
     SwapchainHandle active_swapchain_;
@@ -5570,7 +5595,7 @@ class VulkanRhiCommandList final : public IRhiCommandList {
     TextureHandle active_texture_;
     GraphicsPipelineHandle bound_graphics_pipeline_;
     ComputePipelineHandle bound_compute_pipeline_;
-    VertexBufferBinding bound_vertex_buffer_;
+    std::vector<VertexBufferBinding> bound_vertex_buffers_;
     IndexBufferBinding bound_index_buffer_;
     std::vector<SwapchainFrameHandle> reserved_swapchain_frames_;
     std::vector<SwapchainFrameHandle> presentable_swapchain_frames_;
@@ -11466,24 +11491,31 @@ record_runtime_texture_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntime
         result.diagnostic = "Vulkan draw counts are required";
         return result;
     }
-    const auto uses_vertex_buffer = desc.vertex_buffer != nullptr;
+    const auto uses_vertex_buffer = !desc.vertex_buffers.empty();
     const auto indexed_draw = desc.index_count > 0;
+    auto sorted_vertex_buffers = sorted_vertex_buffer_bindings(desc.vertex_buffers);
+    if (has_duplicate_vertex_buffer_bindings(sorted_vertex_buffers)) {
+        result.diagnostic = "Vulkan vertex buffer bindings must be unique";
+        return result;
+    }
     if (uses_vertex_buffer) {
-        if (!desc.vertex_buffer->owns_buffer()) {
-            result.diagnostic = "Vulkan vertex buffer draw requires a vertex buffer";
-            return result;
-        }
-        if (desc.vertex_buffer->impl_->device_owner != device.impl_) {
-            result.diagnostic = "Vulkan vertex buffer draw buffers must share one runtime device";
-            return result;
-        }
-        if (!has_flag(desc.vertex_buffer->usage(), BufferUsage::vertex)) {
-            result.diagnostic = "Vulkan vertex buffer draw buffers must use vertex usage";
-            return result;
-        }
-        if (desc.vertex_buffer_offset >= desc.vertex_buffer->byte_size()) {
-            result.diagnostic = "Vulkan vertex buffer draw buffer offset is out of range";
-            return result;
+        for (const auto& binding : sorted_vertex_buffers) {
+            if (binding.buffer == nullptr || !binding.buffer->owns_buffer()) {
+                result.diagnostic = "Vulkan vertex buffer draw requires a vertex buffer";
+                return result;
+            }
+            if (binding.buffer->impl_->device_owner != device.impl_) {
+                result.diagnostic = "Vulkan vertex buffer draw buffers must share one runtime device";
+                return result;
+            }
+            if (!has_flag(binding.buffer->usage(), BufferUsage::vertex)) {
+                result.diagnostic = "Vulkan vertex buffer draw buffers must use vertex usage";
+                return result;
+            }
+            if (binding.offset >= binding.buffer->byte_size()) {
+                result.diagnostic = "Vulkan vertex buffer draw buffer offset is out of range";
+                return result;
+            }
         }
     }
     if (indexed_draw) {
@@ -11632,10 +11664,27 @@ record_runtime_texture_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntime
     device.impl_->cmd_bind_pipeline(command_buffer, vulkan_pipeline_bind_point_graphics, pipeline.impl_->pipeline);
     result.bound_pipeline = true;
     if (uses_vertex_buffer) {
-        const NativeVulkanBuffer vertex_buffer = desc.vertex_buffer->impl_->buffer;
-        const std::uint64_t vertex_offset = desc.vertex_buffer_offset;
-        device.impl_->cmd_bind_vertex_buffers(command_buffer, desc.vertex_buffer_binding, 1, &vertex_buffer,
-                                              &vertex_offset);
+        std::size_t range_begin = 0;
+        while (range_begin < sorted_vertex_buffers.size()) {
+            std::size_t range_end = range_begin + 1U;
+            while (range_end < sorted_vertex_buffers.size() &&
+                   sorted_vertex_buffers[range_end].binding == sorted_vertex_buffers[range_end - 1U].binding + 1U) {
+                ++range_end;
+            }
+
+            std::vector<NativeVulkanBuffer> vertex_buffers;
+            std::vector<std::uint64_t> vertex_offsets;
+            vertex_buffers.reserve(range_end - range_begin);
+            vertex_offsets.reserve(range_end - range_begin);
+            for (std::size_t index = range_begin; index < range_end; ++index) {
+                vertex_buffers.push_back(sorted_vertex_buffers[index].buffer->impl_->buffer);
+                vertex_offsets.push_back(sorted_vertex_buffers[index].offset);
+            }
+            device.impl_->cmd_bind_vertex_buffers(command_buffer, sorted_vertex_buffers[range_begin].binding,
+                                                  static_cast<std::uint32_t>(vertex_buffers.size()),
+                                                  vertex_buffers.data(), vertex_offsets.data());
+            range_begin = range_end;
+        }
     }
     if (indexed_draw) {
         device.impl_->cmd_bind_index_buffer(command_buffer, desc.index_buffer->impl_->buffer, desc.index_buffer_offset,
@@ -11718,24 +11767,31 @@ record_runtime_dynamic_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntime
         result.diagnostic = "Vulkan draw counts are required";
         return result;
     }
-    const auto uses_vertex_buffer = desc.vertex_buffer != nullptr;
+    const auto uses_vertex_buffer = !desc.vertex_buffers.empty();
     const auto indexed_draw = desc.index_count > 0;
+    auto sorted_vertex_buffers = sorted_vertex_buffer_bindings(desc.vertex_buffers);
+    if (has_duplicate_vertex_buffer_bindings(sorted_vertex_buffers)) {
+        result.diagnostic = "Vulkan vertex buffer bindings must be unique";
+        return result;
+    }
     if (uses_vertex_buffer) {
-        if (!desc.vertex_buffer->owns_buffer()) {
-            result.diagnostic = "Vulkan vertex buffer draw requires a vertex buffer";
-            return result;
-        }
-        if (desc.vertex_buffer->impl_->device_owner != device.impl_) {
-            result.diagnostic = "Vulkan vertex buffer draw buffers must share one runtime device";
-            return result;
-        }
-        if (!has_flag(desc.vertex_buffer->usage(), BufferUsage::vertex)) {
-            result.diagnostic = "Vulkan vertex buffer draw buffers must use vertex usage";
-            return result;
-        }
-        if (desc.vertex_buffer_offset >= desc.vertex_buffer->byte_size()) {
-            result.diagnostic = "Vulkan vertex buffer draw buffer offset is out of range";
-            return result;
+        for (const auto& binding : sorted_vertex_buffers) {
+            if (binding.buffer == nullptr || !binding.buffer->owns_buffer()) {
+                result.diagnostic = "Vulkan vertex buffer draw requires a vertex buffer";
+                return result;
+            }
+            if (binding.buffer->impl_->device_owner != device.impl_) {
+                result.diagnostic = "Vulkan vertex buffer draw buffers must share one runtime device";
+                return result;
+            }
+            if (!has_flag(binding.buffer->usage(), BufferUsage::vertex)) {
+                result.diagnostic = "Vulkan vertex buffer draw buffers must use vertex usage";
+                return result;
+            }
+            if (binding.offset >= binding.buffer->byte_size()) {
+                result.diagnostic = "Vulkan vertex buffer draw buffer offset is out of range";
+                return result;
+            }
         }
     }
     if (indexed_draw) {
@@ -11884,10 +11940,27 @@ record_runtime_dynamic_rendering_draw(VulkanRuntimeDevice& device, VulkanRuntime
     device.impl_->cmd_bind_pipeline(command_buffer, vulkan_pipeline_bind_point_graphics, pipeline.impl_->pipeline);
     result.bound_pipeline = true;
     if (uses_vertex_buffer) {
-        const NativeVulkanBuffer vertex_buffer = desc.vertex_buffer->impl_->buffer;
-        const std::uint64_t vertex_offset = desc.vertex_buffer_offset;
-        device.impl_->cmd_bind_vertex_buffers(command_buffer, desc.vertex_buffer_binding, 1, &vertex_buffer,
-                                              &vertex_offset);
+        std::size_t range_begin = 0;
+        while (range_begin < sorted_vertex_buffers.size()) {
+            std::size_t range_end = range_begin + 1U;
+            while (range_end < sorted_vertex_buffers.size() &&
+                   sorted_vertex_buffers[range_end].binding == sorted_vertex_buffers[range_end - 1U].binding + 1U) {
+                ++range_end;
+            }
+
+            std::vector<NativeVulkanBuffer> vertex_buffers;
+            std::vector<std::uint64_t> vertex_offsets;
+            vertex_buffers.reserve(range_end - range_begin);
+            vertex_offsets.reserve(range_end - range_begin);
+            for (std::size_t index = range_begin; index < range_end; ++index) {
+                vertex_buffers.push_back(sorted_vertex_buffers[index].buffer->impl_->buffer);
+                vertex_offsets.push_back(sorted_vertex_buffers[index].offset);
+            }
+            device.impl_->cmd_bind_vertex_buffers(command_buffer, sorted_vertex_buffers[range_begin].binding,
+                                                  static_cast<std::uint32_t>(vertex_buffers.size()),
+                                                  vertex_buffers.data(), vertex_offsets.data());
+            range_begin = range_end;
+        }
     }
     if (indexed_draw) {
         device.impl_->cmd_bind_index_buffer(command_buffer, desc.index_buffer->impl_->buffer, desc.index_buffer_offset,

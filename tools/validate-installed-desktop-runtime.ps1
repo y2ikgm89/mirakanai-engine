@@ -186,6 +186,7 @@ $requiresCloudLayerPackageEvidence = @($SmokeArgs) -contains "--require-cloud-la
 $requiresCloudLayerRendererExecution = @($SmokeArgs) -contains "--require-cloud-layer-renderer-execution"
 $requiresEnvironmentPrecipitationPackageEvidence = @($SmokeArgs) -contains "--require-environment-precipitation-package-evidence"
 $requiresEnvironmentPrecipitationRendererExecution = @($SmokeArgs) -contains "--require-environment-precipitation-renderer-execution"
+$requiresEnvironmentPrecipitationVulkanRendererExecution = @($SmokeArgs) -contains "--require-environment-precipitation-vulkan-renderer-execution"
 $requiresEnvironmentSnowPackageEvidence = @($SmokeArgs) -contains "--require-environment-snow-package-evidence"
 $requiresEnvironmentSnowRendererExecution = @($SmokeArgs) -contains "--require-environment-snow-renderer-execution"
 $requiresEnvironmentVolumetricCloudPackageEvidence = @($SmokeArgs) -contains "--require-volumetric-cloud-package-evidence"
@@ -276,6 +277,11 @@ if ($requiresEnvironmentPrecipitationRendererExecution) {
     $requiresPostprocessDepthInput = $true
     $requiresD3d12PostprocessEvidence = $true
 }
+if ($requiresEnvironmentPrecipitationVulkanRendererExecution) {
+    $requiresPostprocess = $true
+    $requiresPostprocessDepthInput = $true
+    $requiresVulkanPostprocessEvidence = $true
+}
 if ($requiresEnvironmentSnowRendererExecution) {
     $requiresEnvironmentSnowPackageEvidence = $true
     $requiresPostprocess = $true
@@ -309,6 +315,7 @@ $requiresAnyEnvironmentQualityBudget = $requiresEnvironmentProfile -or
     $requiresCloudLayerRendererExecution -or
     $requiresEnvironmentPrecipitationPackageEvidence -or
     $requiresEnvironmentPrecipitationRendererExecution -or
+    $requiresEnvironmentPrecipitationVulkanRendererExecution -or
     $requiresEnvironmentSnowPackageEvidence -or
     $requiresEnvironmentSnowRendererExecution -or
     $requiresEnvironmentVolumetricCloudPackageEvidence -or
@@ -5035,6 +5042,56 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 }
             }
         }
+        if ($requiresEnvironmentPrecipitationVulkanRendererExecution) {
+            if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
+                Write-Error "Installed desktop runtime smoke status line must not claim broad environment_ready for Vulkan environment precipitation renderer execution evidence."
+            }
+            $expectedEnvironmentPrecipitationVulkanFields = @{
+                "environment_precipitation_vulkan_status" = "ready"
+                "environment_precipitation_vulkan_ready" = "1"
+                "environment_precipitation_vulkan_selected_backend" = "vulkan"
+                "environment_precipitation_vulkan_requested" = "1"
+                "environment_precipitation_vulkan_weather" = "storm"
+                "environment_precipitation_vulkan_kind" = "rain"
+                "environment_precipitation_vulkan_shader_contract_evidence_ready" = "1"
+                "environment_precipitation_vulkan_package_evidence_ready" = "1"
+                "environment_precipitation_vulkan_execution_evidence_ready" = "1"
+                "environment_precipitation_vulkan_particle_texture_binding" = "8"
+                "environment_precipitation_vulkan_scene_depth_texture_binding" = "9"
+                "environment_precipitation_vulkan_sampler_binding" = "28"
+                "environment_precipitation_vulkan_constants_binding" = "47"
+                "environment_precipitation_vulkan_uses_camera_near_particles" = "1"
+                "environment_precipitation_vulkan_uses_scene_depth_occlusion" = "1"
+                "environment_precipitation_vulkan_weather_rows" = "1"
+                "environment_precipitation_vulkan_particle_rows" = "1"
+                "environment_precipitation_vulkan_occlusion_rows" = "1"
+                "environment_precipitation_vulkan_wetness_rows" = "1"
+                "environment_precipitation_vulkan_audio_handoff_rows" = "4"
+                "environment_precipitation_vulkan_shader_rows" = "1"
+                "environment_precipitation_vulkan_quality_rows" = "1"
+                "environment_precipitation_vulkan_depth_occlusion_readback" = "1"
+                "environment_precipitation_vulkan_descriptor_set_bindings" = "4"
+                "environment_precipitation_vulkan_native_handle_access" = "0"
+                "environment_precipitation_vulkan_material_mutations" = "0"
+                "environment_precipitation_vulkan_audio_playback" = "0"
+                "environment_precipitation_vulkan_diagnostics" = "0"
+            }
+            foreach ($field in $expectedEnvironmentPrecipitationVulkanFields.Keys) {
+                $expectedValue = [regex]::Escape($expectedEnvironmentPrecipitationVulkanFields[$field])
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove Vulkan environment precipitation renderer execution field: $field=$($expectedEnvironmentPrecipitationVulkanFields[$field])"
+                }
+            }
+            foreach ($field in @(
+                    "environment_precipitation_vulkan_particle_buffer_uploads",
+                    "environment_precipitation_vulkan_backend_invocations",
+                    "environment_precipitation_vulkan_renderer_draws",
+                    "environment_precipitation_vulkan_synchronization2_barriers")) {
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=([1-9][0-9]*)\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove positive Vulkan environment precipitation renderer execution field: $field"
+                }
+            }
+        }
         if ($requiresEnvironmentAudioPlayback) {
             if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
                 Write-Error "Installed desktop runtime smoke status line must not claim broad environment_ready for environment audio playback evidence."
@@ -5239,11 +5296,16 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 ++$expectedEnvironmentQualityBudgetRendererDraws
             }
         }
-        if ($requiresEnvironmentPrecipitationPackageEvidence -or $requiresEnvironmentSnowPackageEvidence) {
+        if ($requiresEnvironmentPrecipitationPackageEvidence -or $requiresEnvironmentPrecipitationVulkanRendererExecution -or
+            $requiresEnvironmentSnowPackageEvidence) {
             ++$expectedEnvironmentQualityBudgetRows
             $expectedEnvironmentQualityBudgetConstantBytes += 256
             $expectedEnvironmentQualityBudgetParticleRows = 1
             if ($requiresEnvironmentPrecipitationRendererExecution -or $requiresEnvironmentSnowRendererExecution) {
+                ++$expectedEnvironmentQualityBudgetParticleBufferUploads
+                ++$expectedEnvironmentQualityBudgetRendererDraws
+            }
+            if ($requiresEnvironmentPrecipitationVulkanRendererExecution) {
                 ++$expectedEnvironmentQualityBudgetParticleBufferUploads
                 ++$expectedEnvironmentQualityBudgetRendererDraws
             }
