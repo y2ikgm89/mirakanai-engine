@@ -67,7 +67,7 @@ float4 volumetric_cloud_ps_contract(VolumetricCloudVertexOut input) : SV_Target0
     for (uint step = 0U; step < bounded_primary_steps; ++step) {
         const float step_fraction = ((float)step + 0.5) / (float)bounded_primary_steps;
         const float altitude = lerp(altitude_min_m, altitude_max_m, step_fraction);
-        const float3 sample_position = float3(input.uv, altitude * 0.0001 + step_fraction);
+        const float3 sample_position = float3(input.uv, altitude);
         const float sample_density = volumetric_cloud_density_contract(sample_position);
         const float light_factor = saturate(1.0 - cloud_darkening + (lightning_flash_intensity * 0.00001));
         scattering += transmittance * sample_density * light_factor;

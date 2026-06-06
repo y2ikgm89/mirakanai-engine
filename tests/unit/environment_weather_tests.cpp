@@ -5,6 +5,7 @@
 
 #include "mirakana/environment/weather.hpp"
 
+#include <algorithm>
 #include <array>
 #include <limits>
 
@@ -147,6 +148,105 @@ MK_TEST("environment weather planning emits audio handoff rows without playing a
         plan, mirakana::EnvironmentPrecipitationAudioCueKind::indoor_muffling));
     MK_REQUIRE(mirakana::has_environment_precipitation_audio_cue(
         plan, mirakana::EnvironmentPrecipitationAudioCueKind::thunder_delay));
+    MK_REQUIRE(mirakana::has_environment_precipitation_audio_cue(
+        plan, mirakana::EnvironmentPrecipitationAudioCueKind::wind_loop));
+}
+
+MK_TEST("environment weather planning emits snow package rows without wetness or side effects") {
+    const auto plan = mirakana::plan_environment_precipitation(
+        make_precipitation_desc(mirakana::EnvironmentWeatherKind::snow, mirakana::EnvironmentPrecipitationKind::snow));
+
+    MK_REQUIRE(plan.succeeded());
+    MK_REQUIRE(plan.weather_rows.size() == 1);
+    MK_REQUIRE(plan.weather_rows[0].weather == mirakana::EnvironmentWeatherKind::snow);
+    MK_REQUIRE(plan.weather_rows[0].precipitation_kind == mirakana::EnvironmentPrecipitationKind::snow);
+    MK_REQUIRE(plan.weather_rows[0].precipitation_enabled);
+    MK_REQUIRE(!plan.weather_rows[0].wet_surface_enabled);
+    MK_REQUIRE(plan.particle_rows.size() == 1);
+    MK_REQUIRE(plan.particle_rows[0].kind == mirakana::EnvironmentPrecipitationKind::snow);
+    MK_REQUIRE(plan.wetness_rows.empty());
+    MK_REQUIRE(!plan.audio_handoff_rows.empty());
+    MK_REQUIRE(mirakana::has_environment_precipitation_audio_cue(
+        plan, mirakana::EnvironmentPrecipitationAudioCueKind::snow_loop));
+    MK_REQUIRE(!plan.invokes_backend);
+    MK_REQUIRE(!plan.exposes_native_handles);
+    MK_REQUIRE(!plan.mutates_materials);
+    MK_REQUIRE(!plan.plays_audio);
+}
+
+MK_TEST("environment weather audio planning emits value-only runtime trigger rows") {
+    const auto precipitation = mirakana::plan_environment_precipitation(
+        make_precipitation_desc(mirakana::EnvironmentWeatherKind::storm, mirakana::EnvironmentPrecipitationKind::rain));
+    const auto audio = mirakana::plan_environment_weather_audio_playback(mirakana::EnvironmentWeatherAudioPlaybackDesc{
+        .handoff_rows = precipitation.audio_handoff_rows,
+        .cue_bindings = mirakana::default_environment_weather_audio_cue_bindings(),
+    });
+
+    MK_REQUIRE(audio.succeeded());
+    MK_REQUIRE(audio.status == mirakana::EnvironmentWeatherAudioPlaybackPlanStatus::planned);
+    MK_REQUIRE(!audio.owns_audio_device);
+    MK_REQUIRE(!audio.exposes_native_handles);
+    MK_REQUIRE(!audio.invokes_backend);
+    MK_REQUIRE(audio.trigger_rows.size() == 4U);
+    MK_REQUIRE(mirakana::has_environment_weather_audio_trigger(
+        audio, mirakana::EnvironmentPrecipitationAudioCueKind::rain_loop));
+    MK_REQUIRE(mirakana::has_environment_weather_audio_trigger(
+        audio, mirakana::EnvironmentPrecipitationAudioCueKind::indoor_muffling));
+    MK_REQUIRE(mirakana::has_environment_weather_audio_trigger(
+        audio, mirakana::EnvironmentPrecipitationAudioCueKind::thunder_delay));
+    MK_REQUIRE(mirakana::has_environment_weather_audio_trigger(
+        audio, mirakana::EnvironmentPrecipitationAudioCueKind::wind_loop));
+
+    const auto thunder = std::ranges::find_if(audio.trigger_rows, [](const auto& row) {
+        return row.cue == mirakana::EnvironmentPrecipitationAudioCueKind::thunder_delay;
+    });
+    MK_REQUIRE(thunder != audio.trigger_rows.end());
+    MK_REQUIRE(!thunder->looping);
+    MK_REQUIRE(thunder->one_shot);
+    MK_REQUIRE(thunder->delay_seconds > 0.0F);
+}
+
+MK_TEST("environment weather audio planning supports snow ambience without device ownership") {
+    const auto precipitation = mirakana::plan_environment_precipitation(
+        make_precipitation_desc(mirakana::EnvironmentWeatherKind::snow, mirakana::EnvironmentPrecipitationKind::snow));
+    const auto audio = mirakana::plan_environment_weather_audio_playback(mirakana::EnvironmentWeatherAudioPlaybackDesc{
+        .handoff_rows = precipitation.audio_handoff_rows,
+        .cue_bindings = mirakana::default_environment_weather_audio_cue_bindings(),
+    });
+
+    MK_REQUIRE(audio.succeeded());
+    MK_REQUIRE(audio.trigger_rows.size() == 1U);
+    MK_REQUIRE(mirakana::has_environment_weather_audio_trigger(
+        audio, mirakana::EnvironmentPrecipitationAudioCueKind::snow_loop));
+    MK_REQUIRE(audio.trigger_rows[0].cue_id == "environment.weather.snow.ambience");
+    MK_REQUIRE(audio.trigger_rows[0].looping);
+    MK_REQUIRE(!audio.owns_audio_device);
+    MK_REQUIRE(!audio.exposes_native_handles);
+    MK_REQUIRE(!audio.invokes_backend);
+}
+
+MK_TEST("environment weather audio planning rejects backend device and native handle side effects") {
+    const auto precipitation = mirakana::plan_environment_precipitation(
+        make_precipitation_desc(mirakana::EnvironmentWeatherKind::storm, mirakana::EnvironmentPrecipitationKind::rain));
+    const auto audio = mirakana::plan_environment_weather_audio_playback(mirakana::EnvironmentWeatherAudioPlaybackDesc{
+        .handoff_rows = precipitation.audio_handoff_rows,
+        .cue_bindings = mirakana::default_environment_weather_audio_cue_bindings(),
+        .request_runtime_backend_execution = true,
+        .request_environment_audio_device_ownership = true,
+        .request_native_handle_access = true,
+    });
+
+    MK_REQUIRE(!audio.succeeded());
+    MK_REQUIRE(audio.status == mirakana::EnvironmentWeatherAudioPlaybackPlanStatus::blocked);
+    MK_REQUIRE(!audio.owns_audio_device);
+    MK_REQUIRE(!audio.exposes_native_handles);
+    MK_REQUIRE(!audio.invokes_backend);
+    MK_REQUIRE(mirakana::has_environment_weather_audio_diagnostic(
+        audio, mirakana::EnvironmentWeatherAudioDiagnosticCode::unsupported_runtime_backend_execution));
+    MK_REQUIRE(mirakana::has_environment_weather_audio_diagnostic(
+        audio, mirakana::EnvironmentWeatherAudioDiagnosticCode::unsupported_audio_device_ownership));
+    MK_REQUIRE(mirakana::has_environment_weather_audio_diagnostic(
+        audio, mirakana::EnvironmentWeatherAudioDiagnosticCode::unsupported_native_handle_access));
 }
 
 MK_TEST("environment weather planning fails closed for invalid values and unsupported side effects") {

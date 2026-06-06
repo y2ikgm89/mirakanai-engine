@@ -148,6 +148,11 @@ bool PhysicalSkyPolicyPlan::succeeded() const noexcept {
     return diagnostics.empty();
 }
 
+bool PhysicalSkyPolicyPlan::ready() const noexcept {
+    return succeeded() && shader_contract_evidence_ready && package_evidence_ready && execution_evidence_ready &&
+           !allocates_lut_textures && !invokes_backend && !exposes_native_handles;
+}
+
 void pack_physical_sky_constants(std::span<std::uint8_t> dst, const PhysicalSkyPolicyDesc& desc) {
     if (dst.size() < physical_sky_constants_byte_size()) {
         throw std::invalid_argument("physical sky constants destination is too small");
@@ -170,6 +175,8 @@ PhysicalSkyPolicyPlan plan_physical_sky_policy(const PhysicalSkyPolicyDesc& desc
         .sample_budget = desc.sample_budget,
         .aerial_perspective_mode = desc.aerial_perspective_mode,
         .shader_contract_evidence_ready = desc.shader_contract_evidence_ready,
+        .package_evidence_ready = desc.package_evidence_ready,
+        .execution_evidence_ready = desc.execution_evidence_ready,
     };
 
     validate_atmosphere(plan, desc.atmosphere);
@@ -182,6 +189,14 @@ PhysicalSkyPolicyPlan plan_physical_sky_policy(const PhysicalSkyPolicyDesc& desc
         add_diagnostic(plan, PhysicalSkyDiagnosticCode::missing_shader_contract_evidence,
                        "shader_contract_evidence_ready",
                        "physical sky requires reviewed shader contract evidence before readiness");
+    }
+    if (desc.request_ready_promotion && !desc.package_evidence_ready) {
+        add_diagnostic(plan, PhysicalSkyDiagnosticCode::missing_package_evidence, "package_evidence_ready",
+                       "physical sky ready promotion requires package-visible shader, constants, and LUT evidence");
+    }
+    if (desc.request_ready_promotion && !desc.execution_evidence_ready) {
+        add_diagnostic(plan, PhysicalSkyDiagnosticCode::missing_execution_evidence, "execution_evidence_ready",
+                       "physical sky ready promotion requires D3D12 readback or package execution evidence");
     }
     if (desc.request_lut_texture_allocation) {
         add_diagnostic(plan, PhysicalSkyDiagnosticCode::unsupported_lut_texture_allocation,
