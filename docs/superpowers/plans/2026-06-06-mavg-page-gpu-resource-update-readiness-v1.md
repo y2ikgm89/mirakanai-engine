@@ -242,7 +242,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1
 ```
 
-- [ ] Commit, push, and open a stacked draft PR against `codex/mavg-page-gpu-buffer-destination-plan-v1`.
+- [x] Commit, push, and open a stacked draft PR against `codex/mavg-page-gpu-buffer-destination-plan-v1`.
 
 ## Done When
 
@@ -265,3 +265,5 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.
 - Focused related tests: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_runtime_rhi_mavg_page_gpu_resource_update_tests|MK_runtime_rhi_mavg_page_gpu_buffer_destination_tests|MK_runtime_rhi_mavg_residency_tests"` passed, 3/3 tests.
 - Full validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed, including 112/112 CTest tests. Metal/Apple checks remain host-gated or diagnostic-only on this Windows host, as expected.
 - Publication preflight: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1` passed.
+- Publication: stacked draft PR #505 opened against `codex/mavg-page-gpu-buffer-destination-plan-v1`.
+- PR evidence sync: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed after PR #505 evidence was added to the plan registry, MAVG master plan, and manifest fragments.
