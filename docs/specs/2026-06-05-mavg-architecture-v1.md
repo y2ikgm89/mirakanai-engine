@@ -6,7 +6,7 @@ Define the clean-room architecture baseline for Mirakana Adaptive Virtual Geomet
 
 ## Status
 
-Phase 0 specification completed for `mavg-research-legal-benchmark-baseline-v1`. The active stacked implementation milestone is now `mavg-runtime-lod-milestone-v1` over the `mavg-asset-graph-v1` foundation. The first LoD checkpoints implement deterministic `MK_assets` `GameEngine.MavgClusterGraph.v1` hierarchy/error/fallback/draw-range graph validation plus `MK_tools` static `GameEngine.MavgClusterPayload.v1` vertex/index payload rows through `MavgClusterCookVertex`, `vertex.data_hex`, `index.data_hex`, and per-material root/leaf fallback clusters; CPU selection, renderer execution, package streaming, deformation, ray tracing, and benchmark superiority remain unclaimed until later focused tasks add code and validation evidence.
+Phase 0 specification completed for `mavg-research-legal-benchmark-baseline-v1`. The active stacked implementation milestone is now `mavg-runtime-lod-milestone-v1` over the `mavg-asset-graph-v1` foundation. The first LoD checkpoints implement deterministic `MK_assets` `GameEngine.MavgClusterGraph.v1` hierarchy/error/fallback/draw-range graph validation, `MK_tools` static `GameEngine.MavgClusterPayload.v1` vertex/index payload rows through `MavgClusterCookVertex`, `vertex.data_hex`, `index.data_hex`, and per-material root/leaf fallback clusters, plus `MK_renderer` CPU reference selection through `mavg_lod_selection.hpp` / `select_mavg_lod_clusters`; runtime resident-page bridge execution, renderer submission, package streaming, deformation, ray tracing, and benchmark superiority remain unclaimed until later focused tasks add code and validation evidence.
 
 ## Current Repository Baseline
 
@@ -81,20 +81,20 @@ Non-responsibilities:
 - Streaming IO execution.
 - Runtime source import.
 - Third-party simplifier ownership.
-- CPU selection and visible-hole prevention at runtime; those belong to the selector and residency tasks in the active LoD milestone.
+- Runtime resident-page bridge execution, renderer submission, and backend execution; CPU selection now belongs to the `MK_renderer` selector checkpoint in the active LoD milestone.
 
-The active detailed LoD milestone is `docs/superpowers/plans/2026-06-05-mavg-runtime-lod-milestone-v1.md`. Its graph and draw-ready static cook payload checkpoints are implemented; CPU selection, runtime resident-page evidence, range-aware conventional indexed draws, and scene submission remain pending tasks.
+The active detailed LoD milestone is `docs/superpowers/plans/2026-06-05-mavg-runtime-lod-milestone-v1.md`. Its graph, draw-ready static cook payload, and CPU selector checkpoints are implemented; runtime resident-page evidence, range-aware conventional indexed draws, and scene submission remain pending tasks.
 
 ### Runtime Selection
 
-The planned next files should start in `MK_renderer`:
+The implemented CPU reference selector files live in `MK_renderer`:
 
 - `engine/renderer/include/mirakana/renderer/mavg_lod_selection.hpp`
 - `engine/renderer/src/mavg_lod_selection.cpp`
 
-Responsibilities:
+Implemented v1 responsibilities:
 
-- CPU reference selection over frustum, screen-space error, resident fallback, budget degradation, and temporal hysteresis.
+- CPU reference selection over finite view rows, screen-space error, resident fallback, budget degradation, and temporal hysteresis.
 - Value-only selected cluster rows, missing page rows, fallback substitution rows, and quality diagnostics.
 - Deterministic behavior under incomplete residency.
 
