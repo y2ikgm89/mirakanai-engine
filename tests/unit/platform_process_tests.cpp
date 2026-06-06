@@ -129,6 +129,23 @@ MK_TEST("windows file watcher reports native file changes without exposing handl
     std::filesystem::remove_all(root);
 }
 
+MK_TEST("windows file watcher stops native read loop without file changes") {
+    const auto root = std::filesystem::current_path() / "ge-windows-file-watcher-idle-stop-test";
+    std::filesystem::remove_all(root);
+    std::filesystem::create_directories(root);
+
+    {
+        mirakana::WindowsFileWatcher watcher(mirakana::WindowsFileWatcherDesc{
+            .directory = root,
+            .path_prefix = "assets",
+            .recursive = true,
+        });
+        MK_REQUIRE(watcher.active());
+    }
+
+    std::filesystem::remove_all(root);
+}
+
 MK_TEST("dynamic library loads absolute module and resolves symbol") {
     auto result = mirakana::load_dynamic_library(std::filesystem::path{MK_DYNAMIC_LIBRARY_PROBE_PATH});
 

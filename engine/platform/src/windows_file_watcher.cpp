@@ -227,7 +227,7 @@ struct WindowsFileWatcher::Impl {
         auto wide_directory = directory_path.wstring();
         HANDLE raw_directory = CreateFileW(wide_directory.c_str(), FILE_LIST_DIRECTORY,
                                            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
-                                           OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
+                                           OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, nullptr);
         if (raw_directory == INVALID_HANDLE_VALUE) {
             diagnostic = last_error_message("CreateFileW");
             return;
@@ -316,6 +316,11 @@ struct WindowsFileWatcher::Impl {
     void run() {
         constexpr DWORD filter = FILE_NOTIFY_CHANGE_FILE_NAME | FILE_NOTIFY_CHANGE_DIR_NAME |
                                  FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_SIZE;
+        UniqueHandle read_event(CreateEventW(nullptr, TRUE, FALSE, nullptr));
+        if (!read_event.valid()) {
+            set_failure(last_error_message("CreateEventW"));
+            return;
+        }
 
         {
             std::lock_guard lock(mutex);
@@ -324,18 +329,44 @@ struct WindowsFileWatcher::Impl {
         ready_cv.notify_all();
 
         while (!should_stop()) {
-            DWORD bytes_returned = 0;
-            const auto ok = ReadDirectoryChangesW(directory.get(), buffer_data(), buffer_size(),
-                                                  recursive ? TRUE : FALSE, filter, &bytes_returned, nullptr, nullptr);
-            if (ok == 0) {
-                if (should_stop()) {
+            ResetEvent(read_event.get());
+            OVERLAPPED overlapped{};
+            overlapped.hEvent = read_event.get();
+
+            DWORD submitted = 0;
+            {
+                std::lock_guard lock(mutex);
+                if (stop_requested) {
                     return;
                 }
-                const auto error = GetLastError();
-                if (error == ERROR_OPERATION_ABORTED) {
+                submitted = ReadDirectoryChangesW(directory.get(), buffer_data(), buffer_size(),
+                                                  recursive ? TRUE : FALSE, filter, nullptr, &overlapped, nullptr);
+            }
+            auto error = submitted == 0 ? GetLastError() : ERROR_SUCCESS;
+            if (submitted == 0 && error != ERROR_IO_PENDING) {
+                if (should_stop() || error == ERROR_OPERATION_ABORTED) {
                     return;
                 }
                 set_failure(last_error_message("ReadDirectoryChangesW", error));
+                return;
+            }
+
+            const auto wait_result = WaitForSingleObject(read_event.get(), INFINITE);
+            if (wait_result != WAIT_OBJECT_0) {
+                if (should_stop()) {
+                    return;
+                }
+                set_failure(last_error_message("WaitForSingleObject"));
+                return;
+            }
+
+            DWORD bytes_returned = 0;
+            if (GetOverlappedResult(directory.get(), &overlapped, &bytes_returned, FALSE) == 0) {
+                error = GetLastError();
+                if (should_stop() || error == ERROR_OPERATION_ABORTED) {
+                    return;
+                }
+                set_failure(last_error_message("GetOverlappedResult", error));
                 return;
             }
 
