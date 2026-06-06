@@ -14,6 +14,7 @@ $currentCapabilitiesText = Get-AgentSurfaceText "docs/current-capabilities.md"
 $roadmapText = Get-AgentSurfaceText "docs/roadmap.md"
 $planRegistryText = Get-AgentSurfaceText "docs/superpowers/plans/README.md"
 $mavgDirectStorageNativePlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-06-mavg-directstorage-native-execution-v1.md"
+$mavgDirectStorageFencePlanText = Get-AgentSurfaceText "docs/superpowers/plans/2026-06-06-mavg-directstorage-native-fence-signal-v1.md"
 $mavgArchitectureSpecText = Get-AgentSurfaceText "docs/specs/2026-06-05-mavg-architecture-v1.md"
 $mavgMasterPlanText = Get-AgentSurfaceText "docs/superpowers/master-plans/2026-05-27-mirakana-adaptive-virtual-geometry-master-plan-v1.md"
 $productionMasterPlanText = Get-AgentSurfaceText "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md"
@@ -50,26 +51,36 @@ foreach ($needle in @(
 
 foreach ($needle in @(
         "#include <windows.h>",
+        "#include <d3d12.h>",
         "#include <dstorage.h>",
         "#include <dstorageerr.h>",
+        "#include <dxgi1_6.h>",
         "DStorageGetFactory(IID_PPV_ARGS",
         "Microsoft::WRL::ComPtr<IDStorageFactory>",
         "Microsoft::WRL::ComPtr<IDStorageQueue>",
+        "Microsoft::WRL::ComPtr<ID3D12Fence>",
         "CreateQueue",
         "OpenFile",
         "CreateStatusArray",
         "queue->Close();",
         "EnqueueRequest",
+        "EnqueueSignal",
         "EnqueueStatus",
         "Submit()",
         "IDStorageStatusArray",
         "IsComplete",
         "GetHResult",
+        "D3D12CreateDevice",
+        "CreateDXGIFactory2",
+        "EnumWarpAdapter",
+        "CreateFence",
         "reserve_pending_submission",
         "SubmissionReservation",
         "has_root_name()",
         "has_root_directory()",
         "signal_fence_after_requests",
+        "native_fence_signal_value",
+        "native_fence_completed_value",
         "used_native_directstorage = true",
         "enqueued_native_requests = true",
         "submitted_native_queue = true",
@@ -90,6 +101,8 @@ foreach ($needle in @(
         "src/win32_mavg_directstorage_payload_io.cpp",
         "MK_ENABLE_DIRECTSTORAGE_SDK",
         "Microsoft::DirectStorage",
+        "d3d12",
+        "dxgi",
         "MK_RUNTIME_HOST_WIN32_ENABLE_DIRECTSTORAGE_SDK=1"
     )) {
     Assert-ContainsText $runtimeHostWin32CmakeText $needle "engine/runtime_host/win32/CMakeLists.txt optional DirectStorage target"
@@ -118,7 +131,7 @@ foreach ($needle in @(
         "#include <dstorageerr.h>",
         "&DStorageGetFactory",
         "run_directstorage_file_to_memory_queue_status_execution_test",
-        "run_directstorage_fence_request_fails_closed_test",
+        "run_directstorage_fence_signal_execution_test",
         "run_directstorage_rejects_unsafe_source_paths_before_factory_test",
         "Win32MavgPayloadDirectStorageDispatcher",
         "used_native_directstorage",
@@ -126,6 +139,8 @@ foreach ($needle in @(
         "submitted_native_queue",
         "enqueued_status_write",
         "signal_fence_after_requests = true",
+        "native_fence_signal_value",
+        "native_fence_completed_value",
         "C:payload.bin",
         "payload.bin"
     )) {
@@ -146,6 +161,7 @@ foreach ($surface in @(
         @{ Text = $roadmapText; Label = "docs/roadmap.md" },
         @{ Text = $planRegistryText; Label = "docs/superpowers/plans/README.md" },
         @{ Text = $mavgDirectStorageNativePlanText; Label = "docs/superpowers/plans/2026-06-06-mavg-directstorage-native-execution-v1.md" },
+        @{ Text = $mavgDirectStorageFencePlanText; Label = "docs/superpowers/plans/2026-06-06-mavg-directstorage-native-fence-signal-v1.md" },
         @{ Text = $mavgArchitectureSpecText; Label = "docs/specs/2026-06-05-mavg-architecture-v1.md" },
         @{ Text = $mavgMasterPlanText; Label = "docs/superpowers/master-plans/2026-05-27-mirakana-adaptive-virtual-geometry-master-plan-v1.md" },
         @{ Text = $productionMasterPlanText; Label = "docs/superpowers/master-plans/2026-05-03-production-completion-master-plan-v1.md" }
@@ -158,7 +174,6 @@ foreach ($surface in @(
         Assert-ContainsText $surface.Text $needle "$($surface.Label) DirectStorage native execution evidence"
     }
     foreach ($needle in @(
-            "native fence",
             "D3D12 resource",
             "GPU decompression",
             "Nanite"
@@ -181,6 +196,8 @@ foreach ($needle in @(
         "submitted_native_queue",
         "enqueued_status_write",
         "signal_fence_after_requests",
+        "native_fence_signal_value",
+        "native_fence_completed_value",
         "no default DirectStorage dependency",
         "no public native handles",
         "no D3D12 resource destination",
@@ -195,7 +212,7 @@ foreach ($needle in @(
         '"name": "mavg-directstorage-native-execution"',
         "tools/validate-directstorage-sdk.ps1",
         "used_native_directstorage=true",
-        "fail-closed signal_fence_after_requests",
+        "native_fence_signal_value",
         "unsafe source-path rejection",
         "no D3D12 resource destination",
         "no GPU decompression"
@@ -207,15 +224,20 @@ $productionLoop = $manifest.aiOperableProductionLoop
 if (@($productionLoop.recommendedNextPlan.retainedCompletedPlanPaths) -notcontains "docs/superpowers/plans/2026-06-06-mavg-directstorage-native-execution-v1.md") {
     Write-Error "engine/agent/manifest.json retainedCompletedPlanPaths must retain MAVG DirectStorage Native Execution v1"
 }
+if (@($productionLoop.recommendedNextPlan.retainedCompletedPlanPaths) -notcontains "docs/superpowers/plans/2026-06-06-mavg-directstorage-native-fence-signal-v1.md") {
+    Write-Error "engine/agent/manifest.json retainedCompletedPlanPaths must retain MAVG DirectStorage Native Fence Signal v1"
+}
 
 $recommendedPlanText = (([string]$productionLoop.recommendedNextPlan.retainedCompletedPlanEvidence), ([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
 foreach ($needle in @(
         "MAVG DirectStorage Native Execution v1",
+        "MAVG DirectStorage Native Fence Signal v1",
         "MK_runtime_host_win32_directstorage",
         "Win32MavgPayloadDirectStorageDispatcher",
         "DStorageGetFactory",
         "used_native_directstorage=true",
         "signal_fence_after_requests",
+        "native_fence_signal_value",
         "no public native handles",
         "no D3D12 resource destination",
         "no GPU decompression",
@@ -232,6 +254,7 @@ foreach ($needle in @(
         "no dstorage.h",
         "used_native_directstorage=true",
         "enqueued_native_requests",
+        "native_fence_signal_value",
         "no default DirectStorage SDK dependency",
         "no D3D12 resource-destination IO",
         "no GPU decompression"
@@ -250,6 +273,8 @@ foreach ($needle in @(
         "IDStorageFactory::OpenFile",
         "used_native_directstorage=true",
         "signal_fence_after_requests",
+        "IDStorageQueue::EnqueueSignal",
+        "native_fence_signal_value",
         "no public native handles",
         "no D3D12 resource destination",
         "no GPU decompression"
@@ -271,10 +296,12 @@ foreach ($needle in @(
         "enqueued_native_requests",
         "submitted_native_queue",
         "enqueued_status_write",
+        "IDStorageQueue::EnqueueSignal",
+        "native_fence_signal_value",
         "not a default dependency",
         "not D3D12 resource-destination IO",
         "not GPU decompression",
-        "not native fence signaling"
+        "private DirectStorage fence signal"
     )) {
     Assert-ContainsText $directStorageManifestText $needle "engine/agent/manifest.json MK_runtime_host_win32_directstorage optional module"
 }

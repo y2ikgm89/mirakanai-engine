@@ -172,7 +172,7 @@ void run_directstorage_file_to_memory_queue_status_execution_test() {
     require(destination[14] == 0xcdU);
 }
 
-void run_directstorage_fence_request_fails_closed_test() {
+void run_directstorage_fence_signal_execution_test() {
     ScopedTempDirectory temp;
     const std::vector<std::uint8_t> source_bytes{0x10U, 0x11U, 0xa0U, 0xa1U, 0xa2U, 0xa3U};
     write_binary_file(temp.path / "payload.bin", source_bytes);
@@ -198,17 +198,33 @@ void run_directstorage_fence_request_fails_closed_test() {
             .signal_fence_after_requests = true,
         });
 
-    require(!dispatch.succeeded());
-    require(dispatch.ticket == 0U);
-    require(!dispatch.diagnostics.empty());
-    require(!dispatch.submitted_io_queue);
-    require(!dispatch.enqueued_native_requests);
-    require(!dispatch.submitted_native_queue);
-    require(!dispatch.signaled_native_fence);
+    require(dispatch.succeeded());
+    require(dispatch.ticket != 0U);
+    require(dispatch.diagnostics.empty());
+    require(dispatch.submitted_io_queue);
+    require(dispatch.enqueued_native_requests);
+    require(dispatch.submitted_native_queue);
+    require(dispatch.enqueued_status_write);
+    require(dispatch.signaled_native_fence);
+    require(dispatch.native_fence_signal_value != 0U);
+    require(dispatch.native_fence_completed_value <= dispatch.native_fence_signal_value);
     require(!dispatch.touched_renderer_or_rhi_handles);
-    for (const auto byte : destination) {
-        require(byte == 0xcdU);
-    }
+
+    const auto status = poll_until_complete(dispatcher, dispatch.ticket);
+
+    require(status.succeeded());
+    require(status.status == mirakana::runtime::RuntimeMavgPayloadNativeIoStatus::complete);
+    require(status.complete);
+    require(!status.failed);
+    require(status.used_native_directstorage);
+    require(status.signaled_native_fence);
+    require(status.native_fence_signal_value == dispatch.native_fence_signal_value);
+    require(status.native_fence_completed_value >= status.native_fence_signal_value);
+    require(!status.touched_renderer_or_rhi_handles);
+    require(destination[3] == 0xa0U);
+    require(destination[4] == 0xa1U);
+    require(destination[5] == 0xa2U);
+    require(destination[6] == 0xa3U);
 }
 
 void run_directstorage_rejects_unsafe_source_paths_before_factory_test() {
@@ -266,7 +282,7 @@ int main() {
     require(factory_entry != nullptr);
 
     run_directstorage_file_to_memory_queue_status_execution_test();
-    run_directstorage_fence_request_fails_closed_test();
+    run_directstorage_fence_signal_execution_test();
     run_directstorage_rejects_unsafe_source_paths_before_factory_test();
     return 0;
 }

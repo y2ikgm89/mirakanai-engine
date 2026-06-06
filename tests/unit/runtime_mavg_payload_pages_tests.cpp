@@ -207,6 +207,8 @@ class RecordingNativeIoDispatcher final : public mirakana::runtime::IRuntimeMavg
             .submitted_native_queue = false,
             .enqueued_status_write = desc.enqueue_status_after_requests,
             .signaled_native_fence = desc.signal_fence_after_requests,
+            .native_fence_signal_value = desc.signal_fence_after_requests ? 19U : 0U,
+            .native_fence_completed_value = 0U,
             .used_native_directstorage = false,
             .used_win32_async_io = false,
             .executed_background_worker = false,
@@ -228,11 +230,17 @@ class RecordingNativeIoDispatcher final : public mirakana::runtime::IRuntimeMavg
             .ticket = result.ticket,
             .status = mirakana::runtime::RuntimeMavgPayloadNativeIoStatus::submitted,
             .complete = false,
+            .signaled_native_fence = result.signaled_native_fence,
+            .native_fence_signal_value = result.native_fence_signal_value,
+            .native_fence_completed_value = 0U,
         });
         status_rows.push_back(mirakana::runtime::RuntimeMavgPayloadNativeIoStatusBackendResult{
             .ticket = result.ticket,
             .status = mirakana::runtime::RuntimeMavgPayloadNativeIoStatus::complete,
             .complete = true,
+            .signaled_native_fence = result.signaled_native_fence,
+            .native_fence_signal_value = result.native_fence_signal_value,
+            .native_fence_completed_value = result.native_fence_signal_value,
         });
         return result;
     }
@@ -576,6 +584,8 @@ MK_TEST("runtime mavg payload native io dispatch submits request plan through ca
     MK_REQUIRE(!result.submitted_native_queue);
     MK_REQUIRE(result.enqueued_status_write);
     MK_REQUIRE(result.signaled_native_fence);
+    MK_REQUIRE(result.native_fence_signal_value == 19U);
+    MK_REQUIRE(result.native_fence_completed_value == 0U);
     MK_REQUIRE(!result.used_native_directstorage);
     MK_REQUIRE(!result.used_win32_async_io);
     MK_REQUIRE(!result.mutated_mount_set);
@@ -585,6 +595,22 @@ MK_TEST("runtime mavg payload native io dispatch submits request plan through ca
     MK_REQUIRE(dispatcher.last_request_count == 2U);
     MK_REQUIRE(dispatcher.last_destination_memory_bytes == destination_memory.size());
     MK_REQUIRE(dispatcher.last_submission_tag == 42U);
+
+    (void)mirakana::runtime::poll_runtime_mavg_payload_native_io_status(
+        mirakana::runtime::RuntimeMavgPayloadNativeIoStatusPollDesc{
+            .dispatcher = &dispatcher,
+            .ticket = result.ticket,
+        });
+    const auto complete = mirakana::runtime::poll_runtime_mavg_payload_native_io_status(
+        mirakana::runtime::RuntimeMavgPayloadNativeIoStatusPollDesc{
+            .dispatcher = &dispatcher,
+            .ticket = result.ticket,
+        });
+    MK_REQUIRE(complete.succeeded());
+    MK_REQUIRE(complete.complete);
+    MK_REQUIRE(complete.signaled_native_fence);
+    MK_REQUIRE(complete.native_fence_signal_value == result.native_fence_signal_value);
+    MK_REQUIRE(complete.native_fence_completed_value == result.native_fence_signal_value);
 }
 
 MK_TEST("runtime mavg payload native io dispatch rejects invalid inputs before adapter calls") {
@@ -653,10 +679,16 @@ MK_TEST("runtime mavg payload native io status polling reports submitted then co
     MK_REQUIRE(submitted.status == mirakana::runtime::RuntimeMavgPayloadNativeIoStatus::submitted);
     MK_REQUIRE(!submitted.complete);
     MK_REQUIRE(!submitted.failed);
+    MK_REQUIRE(!submitted.signaled_native_fence);
+    MK_REQUIRE(submitted.native_fence_signal_value == 0U);
+    MK_REQUIRE(submitted.native_fence_completed_value == 0U);
     MK_REQUIRE(complete.succeeded());
     MK_REQUIRE(complete.status == mirakana::runtime::RuntimeMavgPayloadNativeIoStatus::complete);
     MK_REQUIRE(complete.complete);
     MK_REQUIRE(!complete.failed);
+    MK_REQUIRE(!complete.signaled_native_fence);
+    MK_REQUIRE(complete.native_fence_signal_value == 0U);
+    MK_REQUIRE(complete.native_fence_completed_value == 0U);
     MK_REQUIRE(dispatcher.status_call_count == 2U);
 }
 

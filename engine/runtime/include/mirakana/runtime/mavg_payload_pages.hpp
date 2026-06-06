@@ -240,6 +240,8 @@ struct RuntimeMavgPayloadNativeIoDispatchBackendResult {
     bool submitted_native_queue{false};
     bool enqueued_status_write{false};
     bool signaled_native_fence{false};
+    std::uint64_t native_fence_signal_value{0};
+    std::uint64_t native_fence_completed_value{0};
     bool used_native_directstorage{false};
     bool used_win32_async_io{false};
     bool executed_background_worker{false};
@@ -260,6 +262,8 @@ struct RuntimeMavgPayloadNativeIoStatusBackendResult {
     bool used_native_directstorage{false};
     bool used_win32_async_io{false};
     bool signaled_native_fence{false};
+    std::uint64_t native_fence_signal_value{0};
+    std::uint64_t native_fence_completed_value{0};
     bool executed_background_worker{false};
     bool touched_renderer_or_rhi_handles{false};
 
@@ -304,6 +308,8 @@ struct RuntimeMavgPayloadNativeIoDispatchResult {
     bool submitted_native_queue{false};
     bool enqueued_status_write{false};
     bool signaled_native_fence{false};
+    std::uint64_t native_fence_signal_value{0};
+    std::uint64_t native_fence_completed_value{0};
     bool used_native_directstorage{false};
     bool used_win32_async_io{false};
     bool mutated_mount_set{false};
@@ -330,6 +336,8 @@ struct RuntimeMavgPayloadNativeIoStatusPollResult {
     bool used_native_directstorage{false};
     bool used_win32_async_io{false};
     bool signaled_native_fence{false};
+    std::uint64_t native_fence_signal_value{0};
+    std::uint64_t native_fence_completed_value{0};
     bool mutated_mount_set{false};
     bool executed_background_worker{false};
     bool touched_renderer_or_rhi_handles{false};

@@ -34,6 +34,8 @@ if(MK_ENABLE_DIRECTSTORAGE_SDK)
             MK_runtime_host_win32
         PRIVATE
             Microsoft::DirectStorage
+            d3d12
+            dxgi
     )
     target_compile_definitions(MK_runtime_host_win32_directstorage
         PUBLIC

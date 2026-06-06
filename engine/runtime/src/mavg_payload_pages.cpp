@@ -485,6 +485,8 @@ dispatch_runtime_mavg_payload_native_io_requests(const RuntimeMavgPayloadNativeI
     result.submitted_native_queue = backend_result.submitted_native_queue;
     result.enqueued_status_write = backend_result.enqueued_status_write;
     result.signaled_native_fence = backend_result.signaled_native_fence;
+    result.native_fence_signal_value = backend_result.native_fence_signal_value;
+    result.native_fence_completed_value = backend_result.native_fence_completed_value;
     result.used_native_directstorage = backend_result.used_native_directstorage;
     result.used_win32_async_io = backend_result.used_win32_async_io;
     result.executed_background_worker = backend_result.executed_background_worker;
@@ -539,6 +541,8 @@ poll_runtime_mavg_payload_native_io_status(const RuntimeMavgPayloadNativeIoStatu
     result.used_native_directstorage = backend_result.used_native_directstorage;
     result.used_win32_async_io = backend_result.used_win32_async_io;
     result.signaled_native_fence = backend_result.signaled_native_fence;
+    result.native_fence_signal_value = backend_result.native_fence_signal_value;
+    result.native_fence_completed_value = backend_result.native_fence_completed_value;
     result.executed_background_worker = backend_result.executed_background_worker;
     result.touched_renderer_or_rhi_handles = backend_result.touched_renderer_or_rhi_handles;
 

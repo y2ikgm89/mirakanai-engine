@@ -11,8 +11,10 @@
 #endif
 #include <windows.h>
 
+#include <d3d12.h>
 #include <dstorage.h>
 #include <dstorageerr.h>
+#include <dxgi1_6.h>
 #include <wrl/client.h>
 
 #include <algorithm>
@@ -108,8 +110,10 @@ void add_diagnostic(runtime::RuntimeMavgPayloadNativeIoStatusBackendResult& resu
 struct DirectStoragePendingSubmission {
     Microsoft::WRL::ComPtr<IDStorageQueue> queue;
     Microsoft::WRL::ComPtr<IDStorageStatusArray> status_array;
+    Microsoft::WRL::ComPtr<ID3D12Fence> completion_fence;
     std::vector<Microsoft::WRL::ComPtr<IDStorageFile>> files;
     std::vector<std::string> request_names;
+    std::uint64_t native_fence_signal_value{0};
 };
 
 } // namespace
@@ -173,12 +177,6 @@ struct Win32MavgPayloadDirectStorageDispatcher::Impl {
                            "DirectStorage MAVG IO requires a status write for polling");
             return result;
         }
-        if (backend_desc.signal_fence_after_requests) {
-            add_diagnostic(result, runtime::RuntimeMavgPayloadNativeIoDiagnosticCode::dispatch_failed, 0, E_NOTIMPL,
-                           "DirectStorage MAVG IO native fence signaling requires a private D3D12 fence handoff");
-            return result;
-        }
-
         for (const auto& request : requests) {
             if (!request.source_is_file || !request.destination_is_memory || request.source_size == 0U ||
                 request.destination_size != request.source_size) {
@@ -202,6 +200,11 @@ struct Win32MavgPayloadDirectStorageDispatcher::Impl {
             }
         }
 
+        Microsoft::WRL::ComPtr<ID3D12Fence> completion_fence;
+        if (backend_desc.signal_fence_after_requests && !create_completion_fence(result, completion_fence)) {
+            return result;
+        }
+
         if (!ensure_factory(result)) {
             return result;
         }
@@ -217,6 +220,10 @@ struct Win32MavgPayloadDirectStorageDispatcher::Impl {
         DirectStoragePendingSubmission submission;
         submission.files.reserve(requests.size());
         submission.request_names.reserve(requests.size());
+        submission.completion_fence = std::move(completion_fence);
+        if (submission.completion_fence.Get() != nullptr) {
+            submission.native_fence_signal_value = 1U;
+        }
 
         DSTORAGE_QUEUE_DESC queue_desc{};
         queue_desc.SourceType = DSTORAGE_REQUEST_SOURCE_FILE;
@@ -271,7 +278,13 @@ struct Win32MavgPayloadDirectStorageDispatcher::Impl {
             result.submitted_destination_bytes += request.destination_size;
         }
 
+        if (submission.completion_fence.Get() != nullptr) {
+            submission.queue->EnqueueSignal(submission.completion_fence.Get(), submission.native_fence_signal_value);
+        }
         submission.queue->EnqueueStatus(submission.status_array.Get(), 0U);
+        const auto native_fence_signal_value = submission.native_fence_signal_value;
+        const auto native_fence_completed_value =
+            submission.completion_fence.Get() != nullptr ? submission.completion_fence->GetCompletedValue() : 0U;
 
         {
             std::lock_guard lock(mutex);
@@ -292,7 +305,9 @@ struct Win32MavgPayloadDirectStorageDispatcher::Impl {
         result.enqueued_native_requests = true;
         result.submitted_native_queue = true;
         result.enqueued_status_write = true;
-        result.signaled_native_fence = false;
+        result.signaled_native_fence = native_fence_signal_value != 0U;
+        result.native_fence_signal_value = native_fence_signal_value;
+        result.native_fence_completed_value = native_fence_completed_value;
         result.used_native_directstorage = true;
         result.used_win32_async_io = false;
         return result;
@@ -320,6 +335,12 @@ struct Win32MavgPayloadDirectStorageDispatcher::Impl {
         }
 
         auto& submission = found->second;
+        result.signaled_native_fence = submission.native_fence_signal_value != 0U;
+        result.native_fence_signal_value = submission.native_fence_signal_value;
+        if (submission.completion_fence.Get() != nullptr) {
+            result.native_fence_completed_value = submission.completion_fence->GetCompletedValue();
+        }
+
         if (!submission.status_array->IsComplete(0U)) {
             return result;
         }
@@ -337,8 +358,65 @@ struct Win32MavgPayloadDirectStorageDispatcher::Impl {
         }
 
         result.status = runtime::RuntimeMavgPayloadNativeIoStatus::complete;
+        if (submission.completion_fence.Get() != nullptr) {
+            result.native_fence_completed_value = submission.completion_fence->GetCompletedValue();
+        }
         submissions.erase(found);
         return result;
+    }
+
+    [[nodiscard]] bool create_completion_fence(runtime::RuntimeMavgPayloadNativeIoDispatchBackendResult& result,
+                                               Microsoft::WRL::ComPtr<ID3D12Fence>& completion_fence) {
+        if (!ensure_fence_device(result)) {
+            return false;
+        }
+
+        const auto hresult = fence_device->CreateFence(0U, D3D12_FENCE_FLAG_NONE,
+                                                       IID_PPV_ARGS(completion_fence.ReleaseAndGetAddressOf()));
+        if (FAILED(hresult)) {
+            add_diagnostic(result, runtime::RuntimeMavgPayloadNativeIoDiagnosticCode::dispatch_failed, 0, hresult,
+                           "DirectStorage MAVG IO failed to create private D3D12 completion fence");
+            return false;
+        }
+        return true;
+    }
+
+    [[nodiscard]] bool ensure_fence_device(runtime::RuntimeMavgPayloadNativeIoDispatchBackendResult& result) {
+        std::lock_guard lock(mutex);
+        if (fence_device.Get() != nullptr) {
+            return true;
+        }
+
+        HRESULT hresult =
+            D3D12CreateDevice(nullptr, D3D_FEATURE_LEVEL_11_0, IID_PPV_ARGS(fence_device.ReleaseAndGetAddressOf()));
+        if (SUCCEEDED(hresult)) {
+            return true;
+        }
+
+        Microsoft::WRL::ComPtr<IDXGIFactory6> dxgi_factory;
+        hresult = CreateDXGIFactory2(0U, IID_PPV_ARGS(dxgi_factory.ReleaseAndGetAddressOf()));
+        if (FAILED(hresult)) {
+            add_diagnostic(result, runtime::RuntimeMavgPayloadNativeIoDiagnosticCode::dispatch_failed, 0, hresult,
+                           "DirectStorage MAVG IO failed to create a DXGI factory for private fence fallback");
+            return false;
+        }
+
+        Microsoft::WRL::ComPtr<IDXGIAdapter> warp_adapter;
+        hresult = dxgi_factory->EnumWarpAdapter(IID_PPV_ARGS(warp_adapter.ReleaseAndGetAddressOf()));
+        if (FAILED(hresult)) {
+            add_diagnostic(result, runtime::RuntimeMavgPayloadNativeIoDiagnosticCode::dispatch_failed, 0, hresult,
+                           "DirectStorage MAVG IO failed to select WARP for private fence fallback");
+            return false;
+        }
+
+        hresult = D3D12CreateDevice(warp_adapter.Get(), D3D_FEATURE_LEVEL_11_0,
+                                    IID_PPV_ARGS(fence_device.ReleaseAndGetAddressOf()));
+        if (FAILED(hresult)) {
+            add_diagnostic(result, runtime::RuntimeMavgPayloadNativeIoDiagnosticCode::dispatch_failed, 0, hresult,
+                           "DirectStorage MAVG IO failed to create a private D3D12 fence device");
+            return false;
+        }
+        return true;
     }
 
     [[nodiscard]] bool ensure_factory(runtime::RuntimeMavgPayloadNativeIoDispatchBackendResult& result) {
@@ -399,6 +477,7 @@ struct Win32MavgPayloadDirectStorageDispatcher::Impl {
 
     Win32MavgPayloadDirectStorageDispatcherDesc desc;
     Microsoft::WRL::ComPtr<IDStorageFactory> factory;
+    Microsoft::WRL::ComPtr<ID3D12Device> fence_device;
     std::mutex mutex;
     std::uint64_t next_ticket{1};
     std::unordered_map<std::uint64_t, DirectStoragePendingSubmission> submissions;
