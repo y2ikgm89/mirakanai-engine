@@ -255,6 +255,10 @@ $sampleVulkanEnvironmentVolumetricCloudRendererExecutionDryRun = Assert-DryRunRe
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireVulkanShaders", "-SmokeArgs @(", "--require-environment-volumetric-cloud-vulkan-renderer-execution", "runtime/sample_desktop_runtime_game.geindex")) {
     Assert-ArgvContainsText -Result $sampleVulkanEnvironmentVolumetricCloudRendererExecutionDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-vulkan-volumetric-cloud-renderer-execution"
 }
+$sampleVulkanEnvironmentIblRendererExecutionDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-vulkan-environment-ibl-renderer-execution" -ExpectedArgv @("-Command")
+foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireVulkanShaders", "-SmokeArgs @(", "--require-environment-lighting-vulkan-renderer-execution", "runtime/sample_desktop_runtime_game.geindex")) {
+    Assert-ArgvContainsText -Result $sampleVulkanEnvironmentIblRendererExecutionDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-vulkan-environment-ibl-renderer-execution"
+}
 $sampleCloudLayerDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-cloud-layer-package" -ExpectedArgv @("-Command")
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireD3d12Shaders", "-SmokeArgs @(", "--require-cloud-layer-package-evidence", "runtime/sample_desktop_runtime_game.geindex")) {
     Assert-ArgvContainsText -Result $sampleCloudLayerDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-cloud-layer-package"
@@ -344,6 +348,11 @@ if ($missingVulkanPrecipitationGate.status -ne "rejected" -or @($missingVulkanPr
 $missingVulkanVolumetricFogGate = Invoke-RunnerJson -Arguments @("-Mode", "Execute", "-Recipe", "desktop-runtime-sample-game-vulkan-volumetric-fog-renderer-execution") -ExpectedExitCode 2
 if ($missingVulkanVolumetricFogGate.status -ne "rejected" -or @($missingVulkanVolumetricFogGate.diagnostics | Where-Object { $_.code -eq "missing-host-gate-acknowledgement" }).Count -ne 1) {
     Write-Error "strict Vulkan volumetric fog renderer execution recipe must require vulkan-strict acknowledgement before execute"
+}
+
+$missingVulkanIblGate = Invoke-RunnerJson -Arguments @("-Mode", "Execute", "-Recipe", "desktop-runtime-sample-game-vulkan-environment-ibl-renderer-execution") -ExpectedExitCode 2
+if ($missingVulkanIblGate.status -ne "rejected" -or @($missingVulkanIblGate.diagnostics | Where-Object { $_.code -eq "missing-host-gate-acknowledgement" }).Count -ne 1) {
+    Write-Error "strict Vulkan IBL renderer execution recipe must require vulkan-strict acknowledgement before execute"
 }
 
 $missingMaterialVulkanGate = Invoke-RunnerJson -Arguments @("-Mode", "Execute", "-Recipe", "desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict") -ExpectedExitCode 2

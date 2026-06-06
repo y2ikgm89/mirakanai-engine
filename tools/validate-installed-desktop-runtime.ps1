@@ -184,6 +184,7 @@ $requiresEnvironmentVolumetricFogPackageEvidence = @($SmokeArgs) -contains "--re
 $requiresEnvironmentVolumetricFogVulkanRendererExecution = @($SmokeArgs) -contains "--require-environment-volumetric-fog-vulkan-renderer-execution"
 $requiresEnvironmentLightingPackageEvidence = @($SmokeArgs) -contains "--require-environment-lighting-package-evidence"
 $requiresEnvironmentLightingRendererExecution = @($SmokeArgs) -contains "--require-environment-lighting-renderer-execution"
+$requiresEnvironmentLightingVulkanRendererExecution = @($SmokeArgs) -contains "--require-environment-lighting-vulkan-renderer-execution"
 $requiresCloudLayerPackageEvidence = @($SmokeArgs) -contains "--require-cloud-layer-package-evidence"
 $requiresCloudLayerRendererExecution = @($SmokeArgs) -contains "--require-cloud-layer-renderer-execution"
 $requiresEnvironmentPrecipitationPackageEvidence = @($SmokeArgs) -contains "--require-environment-precipitation-package-evidence"
@@ -4867,6 +4868,48 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
             if ($requiresEnvironmentLightingRendererExecution -and
                 $smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_lighting_runtime_capture_readback_checksum=([1-9][0-9]*)\b") {
                 Write-Error "Installed desktop runtime smoke status line did not prove positive environment_lighting_runtime_capture_readback_checksum."
+            }
+        }
+        if ($requiresEnvironmentLightingVulkanRendererExecution) {
+            if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
+                Write-Error "Installed desktop runtime smoke status line must not claim broad environment_ready for Vulkan environment IBL renderer execution evidence."
+            }
+            $expectedEnvironmentLightingVulkanFields = @{
+                "environment_lighting_vulkan_status" = "ready"
+                "environment_lighting_vulkan_ready" = "1"
+                "environment_lighting_vulkan_selected_backend" = "vulkan"
+                "environment_lighting_vulkan_requested" = "1"
+                "environment_lighting_vulkan_renderer_upload_status" = "ready"
+                "environment_lighting_vulkan_renderer_execution_status" = "ready"
+                "environment_lighting_vulkan_texture_cube_uploads" = "1"
+                "environment_lighting_vulkan_texture_cube_faces" = "6"
+                "environment_lighting_vulkan_texture_cube_edge_size" = "16"
+                "environment_lighting_vulkan_radiance_mips" = "5"
+                "environment_lighting_vulkan_renderer_irradiance_rows" = "9"
+                "environment_lighting_vulkan_cube_compatible_image_created" = "1"
+                "environment_lighting_vulkan_cube_image_view_created" = "1"
+                "environment_lighting_vulkan_sampler_created" = "1"
+                "environment_lighting_vulkan_descriptor_set_bindings" = "2"
+                "environment_lighting_vulkan_shader_sampling_proven" = "1"
+                "environment_lighting_vulkan_shader_sample_readback_nonzero" = "1"
+                "environment_lighting_vulkan_backend_invocations" = "1"
+                "environment_lighting_vulkan_runtime_captures" = "1"
+                "environment_lighting_vulkan_runtime_capture_faces" = "6"
+                "environment_lighting_vulkan_runtime_capture_readback_nonzero" = "1"
+                "environment_lighting_vulkan_native_handle_access" = "0"
+                "environment_lighting_vulkan_diagnostics" = "0"
+            }
+            foreach ($field in $expectedEnvironmentLightingVulkanFields.Keys) {
+                $expectedValue = [regex]::Escape($expectedEnvironmentLightingVulkanFields[$field])
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove Vulkan environment lighting field: $field=$($expectedEnvironmentLightingVulkanFields[$field])"
+                }
+            }
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_lighting_vulkan_synchronization2_barriers=([1-9][0-9]*)\b") {
+                Write-Error "Installed desktop runtime smoke status line did not prove positive environment_lighting_vulkan_synchronization2_barriers."
+            }
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_lighting_vulkan_runtime_capture_readback_checksum=([1-9][0-9]*)\b") {
+                Write-Error "Installed desktop runtime smoke status line did not prove positive environment_lighting_vulkan_runtime_capture_readback_checksum."
             }
         }
         if ($requiresEnvironmentVolumetricFogPackageEvidence) {
