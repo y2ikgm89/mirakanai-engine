@@ -4,7 +4,7 @@
 
 **Plan ID:** `environment-production-excellence-v1`
 
-**Status:** Retained evidence. Superseded as the active selected milestone by `mavg-research-legal-benchmark-baseline-v1` in this branch. Phases 0-4 are complete; Phase 5 has completed strict Vulkan rain precipitation renderer execution, strict Vulkan physical-sky package, strict Vulkan volumetric-fog renderer execution, strict Vulkan volumetric-cloud renderer execution, and strict Vulkan IBL renderer execution candidates. Later exact gates remain future environment follow-up and are not active in this MAVG branch.
+**Status:** Retained evidence. Superseded as the active selected milestone by `mavg-research-legal-benchmark-baseline-v1` in this branch. Phases 0-5, 7, and 8 are complete; Phase 5 has completed strict Vulkan rain precipitation renderer execution, strict Vulkan physical-sky package, strict Vulkan volumetric-fog renderer execution, strict Vulkan volumetric-cloud renderer execution, and strict Vulkan IBL renderer execution candidates; Phase 8 completed fail-closed `MK_environment` quality-budget enforcement with `environment_quality_preset`, `environment_quality_budget_violations`, and `environment_quality_budget_broad_optimization_claimed` package counters. Later exact gates remain future environment follow-up and are not active in this MAVG branch.
 
 **Goal:** Promote the completed environment foundation into a production-grade, backend-evidence-backed environment settings system for sky, atmosphere, fog, volumetrics, clouds, rain, snow, storms, IBL, runtime cubemap capture, local volumes, material weathering, audio cues, editor authoring, quality budgets, and exact `environment_ready` aggregation.
 
@@ -144,7 +144,7 @@ These items are included in this plan as explicit future gates so they are not m
 | Vulkan volumetric cloud | Selected strict renderer execution ready | Strict compute/render path with synchronization2 barriers, package recipe, positive raymarch/readback counters, and zero native-handle access. Broad cloud readiness and Metal remain unclaimed. |
 | Metal environment execution | Host-gated rows only | Apple-host feature-local render/compute pipeline, texture, cube/HDR, and synchronization evidence for selected features. |
 | Editor environment authoring | Read-only readiness rows | First-party authoring panels for profile v2, volume stack, weather timeline, quality presets, and readiness reports without backend execution from editor core. |
-| Quality budgets | Selected package counters | Profile-driven quality presets with fail-closed budgets for samples, raymarch steps, particles, transient GPU bytes, framegraph passes, barriers, and diagnostics. |
+| Quality budgets | Selected Phase 8 ready | Profile-driven `MK_environment` quality presets with fail-closed budgets for samples, raymarch steps, particles, transient GPU bytes, framegraph passes, barriers, texture uploads, draws, compute dispatches, diagnostics, native-handle access, and broad optimization claims. |
 | Broad `environment_ready` | Unclaimed | Aggregate recipe only after all selected exact rows pass and static checks enforce the aggregate definition. |
 
 ## File Responsibility Map
@@ -537,10 +537,10 @@ Phase 7 result: `EnvironmentAuthoringDocument` now loads/saves clean-break `Game
 
 **Files:** Environment quality policy, renderer policies, package validation, performance docs/manifest rows.
 
-- [ ] Add quality preset rows: `low`, `medium`, `high`, `ultra`, `custom`.
-- [ ] Add per-preset budgets for physical-sky samples, fog raymarch steps, cloud raymarch steps, precipitation particles, transient GPU bytes, framegraph passes, barrier steps, texture uploads, draw calls, compute dispatches, and diagnostics.
-- [ ] Add RED tests for budget failure diagnostics and package smoke rejection.
-- [ ] Add package counters:
+- [x] Add quality preset rows: `low`, `medium`, `high`, `ultra`, `custom`.
+- [x] Add per-preset budgets for physical-sky samples, height-fog sample steps, volumetric-fog raymarch steps, volumetric-cloud primary/light raymarch steps, precipitation particles, transient GPU bytes, framegraph passes, barrier steps, texture uploads, draw calls, compute dispatches, and diagnostics.
+- [x] Add RED tests for budget failure diagnostics and explicit custom-limit rejection.
+- [x] Add package counters:
 
 ```text
 environment_quality_preset=<low|medium|high|ultra|custom>
@@ -550,10 +550,22 @@ environment_quality_budget_violations=0
 environment_quality_budget_broad_optimization_claimed=0
 ```
 
-- [ ] Attach D3D12/Vulkan/Metal timing or profiler evidence only through backend-specific rows when the host supports it.
-- [ ] Do not claim broad optimization or cross-backend performance parity.
+- [x] Attach D3D12/Vulkan/Metal timing or profiler evidence only through backend-specific rows when the host supports it.
+- [x] Do not claim broad optimization or cross-backend performance parity.
 
 Expected: quality presets are enforceable budgets, not marketing labels.
+
+Phase 8 focused validation evidence on 2026-06-06:
+
+- `tools/cmake.ps1 --build --preset dev --target MK_environment_tests`: pass.
+- `tools/ctest.ps1 --preset dev --output-on-failure -R "MK_environment_tests"`: pass.
+- `tools/check-text-format.ps1`: pass.
+- `tools/cmake.ps1 --preset desktop-runtime`: pass.
+- `tools/cmake.ps1 --build --preset desktop-runtime --target sample_desktop_runtime_game`: pass.
+- `tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-environment-profile')`: pass; installed validation reports `environment_quality_preset=high`, `environment_quality_budget_status=ready`, `environment_quality_budget_ready=1`, `environment_quality_budget_requested=1`, `environment_quality_budget_violations=0`, and `environment_quality_budget_broad_optimization_claimed=0`.
+- `tools/run-validation-recipe.ps1 -Mode Execute -Recipe desktop-runtime-sample-game-environment-audio-playback -HostGateAcknowledgements d3d12-windows-primary`: pass; audio playback rows plus precipitation package evidence report two selected quality-budget rows and zero violations.
+
+Phase 8 result: `MK_environment` now exposes `EnvironmentQualityBudgetLimitsDesc`, `EnvironmentQualityBudgetUsageDesc`, `EnvironmentQualityBudgetRequest`, `EnvironmentQualityBudgetPlan`, `environment_quality_budget_preset_limits`, `evaluate_environment_quality_budget`, and `has_environment_quality_budget_diagnostic`. Presets are fail-closed budget contracts, `custom` requires explicit positive limits, selected runtime package smokes import `EnvironmentProfile.v2` quality preset selection into `environment_quality_budget_*` counters, and validation rejects native-handle access, diagnostics, budget overflow, and broad optimization claims. Backend-specific GPU timing/profiler evidence remains separate from this phase, and broad optimization, backend parity, and broad `environment_ready` remain unclaimed.
 
 ## Phase 9: Exact `environment_ready` Aggregate
 

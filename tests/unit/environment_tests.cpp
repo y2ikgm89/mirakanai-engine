@@ -5,6 +5,7 @@
 
 #include "mirakana/environment/environment_io.hpp"
 #include "mirakana/environment/environment_profile.hpp"
+#include "mirakana/environment/environment_quality_budget.hpp"
 
 #include <cstddef>
 #include <stdexcept>
@@ -36,6 +37,132 @@ MK_TEST("environment profile validation accepts clean first party defaults") {
     MK_REQUIRE(result.succeeded());
     MK_REQUIRE(result.diagnostics.empty());
     MK_REQUIRE(mirakana::is_valid_environment_profile(desc));
+}
+
+MK_TEST("environment quality budgets expand presets and pass selected high usage") {
+    const auto limits = mirakana::environment_quality_budget_preset_limits(mirakana::EnvironmentQualityPreset::high);
+
+    MK_REQUIRE(limits.physical_sky_sample_budget == 108U);
+    MK_REQUIRE(limits.height_fog_sample_step_budget == 48U);
+    MK_REQUIRE(limits.volumetric_fog_raymarch_step_budget == 64U);
+    MK_REQUIRE(limits.volumetric_cloud_primary_step_budget == 64U);
+    MK_REQUIRE(limits.volumetric_cloud_light_step_budget == 8U);
+    MK_REQUIRE(limits.precipitation_particle_budget == 1U);
+    MK_REQUIRE(limits.transient_gpu_byte_budget == 32ULL * 1024ULL * 1024ULL);
+    MK_REQUIRE(limits.framegraph_pass_budget == 8U);
+    MK_REQUIRE(limits.framegraph_barrier_step_budget == 24U);
+    MK_REQUIRE(limits.texture_upload_budget == 6U);
+    MK_REQUIRE(limits.renderer_draw_budget == 6U);
+    MK_REQUIRE(limits.compute_dispatch_budget == 2U);
+
+    const auto plan = mirakana::evaluate_environment_quality_budget(mirakana::EnvironmentQualityBudgetRequest{
+        .preset = mirakana::EnvironmentQualityPreset::high,
+        .usage =
+            mirakana::EnvironmentQualityBudgetUsageDesc{
+                .physical_sky_sample_budget = 108U,
+                .height_fog_sample_step_budget = 48U,
+                .volumetric_fog_raymarch_step_budget = 48U,
+                .volumetric_cloud_primary_step_budget = 48U,
+                .volumetric_cloud_light_step_budget = 8U,
+                .precipitation_particle_rows = 1U,
+                .transient_gpu_byte_estimate = 2ULL * 1024ULL * 1024ULL,
+                .framegraph_passes = 4U,
+                .framegraph_barrier_steps = 15U,
+                .texture_uploads = 4U,
+                .renderer_draws = 3U,
+                .compute_dispatches = 1U,
+            },
+    });
+
+    MK_REQUIRE(plan.status == mirakana::EnvironmentQualityBudgetStatus::ready);
+    MK_REQUIRE(plan.ready);
+    MK_REQUIRE(plan.diagnostics.empty());
+    MK_REQUIRE(plan.limits.physical_sky_sample_budget == 108U);
+}
+
+MK_TEST("environment quality budgets reject budget violations and broad optimization claims") {
+    const auto plan = mirakana::evaluate_environment_quality_budget(mirakana::EnvironmentQualityBudgetRequest{
+        .preset = mirakana::EnvironmentQualityPreset::low,
+        .usage =
+            mirakana::EnvironmentQualityBudgetUsageDesc{
+                .physical_sky_sample_budget = 64U,
+                .height_fog_sample_step_budget = 20U,
+                .volumetric_fog_raymarch_step_budget = 24U,
+                .volumetric_cloud_primary_step_budget = 32U,
+                .volumetric_cloud_light_step_budget = 4U,
+                .precipitation_particle_rows = 1U,
+                .transient_gpu_byte_estimate = 9ULL * 1024ULL * 1024ULL,
+                .framegraph_passes = 4U,
+                .framegraph_barrier_steps = 13U,
+                .texture_uploads = 4U,
+                .renderer_draws = 4U,
+                .compute_dispatches = 1U,
+                .broad_optimization_claimed = true,
+            },
+    });
+
+    MK_REQUIRE(plan.status == mirakana::EnvironmentQualityBudgetStatus::budget_exceeded);
+    MK_REQUIRE(!plan.ready);
+    MK_REQUIRE(mirakana::has_environment_quality_budget_diagnostic(
+        plan, mirakana::EnvironmentQualityBudgetDiagnosticCode::physical_sky_sample_budget_exceeded));
+    MK_REQUIRE(mirakana::has_environment_quality_budget_diagnostic(
+        plan, mirakana::EnvironmentQualityBudgetDiagnosticCode::height_fog_sample_step_budget_exceeded));
+    MK_REQUIRE(mirakana::has_environment_quality_budget_diagnostic(
+        plan, mirakana::EnvironmentQualityBudgetDiagnosticCode::transient_gpu_byte_budget_exceeded));
+    MK_REQUIRE(mirakana::has_environment_quality_budget_diagnostic(
+        plan, mirakana::EnvironmentQualityBudgetDiagnosticCode::framegraph_barrier_step_budget_exceeded));
+    MK_REQUIRE(mirakana::has_environment_quality_budget_diagnostic(
+        plan, mirakana::EnvironmentQualityBudgetDiagnosticCode::broad_optimization_claimed));
+}
+
+MK_TEST("environment quality budgets require explicit custom limits") {
+    const auto missing_custom = mirakana::evaluate_environment_quality_budget(mirakana::EnvironmentQualityBudgetRequest{
+        .preset = mirakana::EnvironmentQualityPreset::custom,
+        .usage = mirakana::EnvironmentQualityBudgetUsageDesc{},
+    });
+
+    MK_REQUIRE(missing_custom.status == mirakana::EnvironmentQualityBudgetStatus::invalid_request);
+    MK_REQUIRE(mirakana::has_environment_quality_budget_diagnostic(
+        missing_custom, mirakana::EnvironmentQualityBudgetDiagnosticCode::missing_custom_limits));
+
+    const auto custom = mirakana::evaluate_environment_quality_budget(mirakana::EnvironmentQualityBudgetRequest{
+        .preset = mirakana::EnvironmentQualityPreset::custom,
+        .usage =
+            mirakana::EnvironmentQualityBudgetUsageDesc{
+                .physical_sky_sample_budget = 2U,
+                .height_fog_sample_step_budget = 2U,
+                .volumetric_fog_raymarch_step_budget = 2U,
+                .volumetric_cloud_primary_step_budget = 2U,
+                .volumetric_cloud_light_step_budget = 1U,
+                .precipitation_particle_rows = 1U,
+                .transient_gpu_byte_estimate = 1024U,
+                .framegraph_passes = 1U,
+                .framegraph_barrier_steps = 1U,
+                .texture_uploads = 1U,
+                .renderer_draws = 1U,
+                .compute_dispatches = 1U,
+            },
+        .custom_limits =
+            mirakana::EnvironmentQualityBudgetLimitsDesc{
+                .physical_sky_sample_budget = 2U,
+                .height_fog_sample_step_budget = 2U,
+                .volumetric_fog_raymarch_step_budget = 2U,
+                .volumetric_cloud_primary_step_budget = 2U,
+                .volumetric_cloud_light_step_budget = 1U,
+                .precipitation_particle_budget = 1U,
+                .transient_gpu_byte_budget = 1024U,
+                .framegraph_pass_budget = 1U,
+                .framegraph_barrier_step_budget = 1U,
+                .texture_upload_budget = 1U,
+                .renderer_draw_budget = 1U,
+                .compute_dispatch_budget = 1U,
+            },
+        .custom_limits_provided = true,
+    });
+
+    MK_REQUIRE(custom.status == mirakana::EnvironmentQualityBudgetStatus::ready);
+    MK_REQUIRE(custom.ready);
+    MK_REQUIRE(custom.diagnostics.empty());
 }
 
 MK_TEST("environment profile validation rejects native backend and editor tokens") {
