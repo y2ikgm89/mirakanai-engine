@@ -11,6 +11,7 @@ add_library(mirakana_assets
     src/material.cpp
     src/material_graph.cpp
     src/material_graph_shader_export.cpp
+    src/mavg_cluster_graph.cpp
     src/shader_metadata.cpp
     src/shader_pipeline.cpp
     src/source_asset_registry.cpp

@@ -15,6 +15,7 @@ add_library(MK_tools_asset OBJECT
     gameplay_authoring_tool.cpp
     placeholder_asset_tool.cpp
     production_authoring_workflows.cpp
+    mavg_cluster_cook.cpp
     ui_atlas_tool.cpp
 )
 
