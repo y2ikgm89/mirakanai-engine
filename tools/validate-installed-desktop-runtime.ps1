@@ -337,7 +337,8 @@ $requiresAnyEnvironmentQualityBudget = $requiresEnvironmentProfile -or
     $requiresEnvironmentVolumetricCloudPackageEvidence -or
     $requiresEnvironmentVolumetricCloudRendererExecution -or
     $requiresEnvironmentVolumetricCloudVulkanRendererExecution -or
-    $requiresEnvironmentMaterialWeathering
+    $requiresEnvironmentMaterialWeathering -or
+    $requiresEnvironmentAudioPlayback
 if ($requiresWindowsCpuSetWorkerPlacement -or $requiresWindowsCpuSetSmtWorkerPlacement) {
     $requiresJobExecutionFoundation = $true
     $requiresJobExecutionTopologyPolicy = $true
@@ -5477,6 +5478,9 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
             ++$expectedEnvironmentQualityBudgetRows
             $expectedEnvironmentQualityBudgetConstantBytes += 256
         }
+        if ($requiresEnvironmentAudioPlayback) {
+            ++$expectedEnvironmentQualityBudgetRows
+        }
         if ($requiresCloudLayerPackageEvidence) {
             ++$expectedEnvironmentQualityBudgetRows
             $expectedEnvironmentQualityBudgetConstantBytes += 256
@@ -5522,10 +5526,12 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
             -Context "environment quality budget" `
             -ExpectedFields @{
                 "environment_quality_budget_status" = "ready"
+                "environment_quality_preset" = "high"
                 "environment_quality_budget_ready" = "1"
                 "environment_quality_budget_requested" = "1"
                 "environment_quality_budget_rows" = [string]$expectedEnvironmentQualityBudgetRows
                 "environment_quality_budget_diagnostics" = "0"
+                "environment_quality_budget_violations" = "0"
                 "environment_quality_budget_constant_buffer_bytes" = [string]$expectedEnvironmentQualityBudgetConstantBytes
                 "environment_quality_budget_physical_sky_sample_budget" = [string]$expectedEnvironmentQualityBudgetPhysicalSkySamples
                 "environment_quality_budget_height_fog_sample_step_budget" = [string]$expectedEnvironmentQualityBudgetHeightFogSamples
@@ -5543,6 +5549,7 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 "environment_quality_budget_transient_placed_resources_alive" = "0"
                 "environment_quality_budget_framegraph_barrier_step_budget" = [string]$expectedEnvironmentQualityBudgetFramegraphBarriers
                 "environment_quality_budget_native_handle_access" = "0"
+                "environment_quality_budget_broad_optimization_claimed" = "0"
                 "environment_quality_budget_broad_environment_ready_claimed" = "0"
             }
         if ($requiresPostprocess) {
