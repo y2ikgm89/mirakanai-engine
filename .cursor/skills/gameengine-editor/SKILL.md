@@ -20,8 +20,8 @@ The visible `MK_editor` shell is active through the dependency-free `desktop-edi
 
 Prefer first-party editor documents, stable `mirakana::ui` ids, semantic roles, and private shell adapters; do not adapt editor work to Dear ImGui or UI middleware.
 
-AI operation status stays in first-party value rows such as `EditorAiOperationSnapshot.status_rows`, including `editor.ai.ime.session`, `editor.ai.ime.parity`, `editor.ai.accessibility.uia_provider`, and `editor.ai.accessibility.parity`.
-Reviewed rich-text commands keep read-only copy rows such as `<rich_text_document_id>.copy_selection_plain_text`; editable documents may expose the edit/copy/paste rows documented in Claude/Codex skills.
+AI operation status stays in first-party value rows such as `EditorAiOperationSnapshot.status_rows`, including `editor.ai.ime.session`, `editor.ai.ime.parity`, `editor.ai.accessibility.uia_provider`, `editor.ai.accessibility.parity`, `editor.ai.viewport.backend_parity`, and `editor.ai.operation.excellence`.
+Reviewed rich-text commands keep read-only copy rows such as `<rich_text_document_id>.copy_selection_plain_text`; editable documents may expose the edit/copy/paste rows documented in Claude/Codex skills. Reviewed diagnostics/refresh commands include `editor.text_font.diagnostics.copy`, `editor.accessibility.diagnostics.copy`, `editor.viewport.backend_readiness.refresh`, and `editor.material_preview.backend_readiness.refresh`; every mutating AI command requires `expected_revision`.
 
 Selected Windows DirectWrite/TSF/UIA rows are first-party smoke evidence only: `editor_text_shaping_status=ready`, `editor_ime_parity_status=ready`, `NativeEditorTsfTextStoreEvidence`, `NativeEditorUiaProviderState`, `editor_accessibility_parity_status=ready`, `editor_accessibility_windows_uia_patterns_ready=1`, `editor_accessibility_windows_uia_events_ready=1`, non-Windows `editor_ime_*_status=host_gated` and `editor_accessibility_*_status=host_gated`, and zero native-handle rows.
 

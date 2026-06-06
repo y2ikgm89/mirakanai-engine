@@ -213,6 +213,13 @@ int main(int argc, char** argv) {
             << "editor_rich_text_clipboard_plain_ready=" << (counters.rich_text_clipboard_plain_ready ? 1 : 0) << '\n'
             << "editor_rich_text_clipboard_rich_ready=" << (counters.rich_text_clipboard_rich_ready ? 1 : 0) << '\n'
             << "editor_rich_text_native_handles_exposed=" << (counters.rich_text_native_handles_exposed ? 1 : 0) << '\n'
+            << "editor_ai_operation_excellence_status=" << counters.ai_operation_excellence_status << '\n'
+            << "editor_ai_operation_snapshot_rows=" << counters.ai_operation_snapshot_rows << '\n'
+            << "editor_ai_operation_command_rows=" << counters.ai_operation_command_rows << '\n'
+            << "editor_ai_operation_mutating_commands_revision_checked="
+            << (counters.ai_operation_mutating_commands_revision_checked ? 1 : 0) << '\n'
+            << "editor_ai_operation_native_handles_exposed=" << (counters.ai_operation_native_handles_exposed ? 1 : 0)
+            << '\n'
             << "editor_shell_resizes=" << result.resize_count << '\n'
             << "editor_shell_adapter=" << adapter_name(result.adapter_kind) << '\n'
             << "editor_shell_renderer_boxes_submitted=" << result.renderer_boxes_submitted << '\n'

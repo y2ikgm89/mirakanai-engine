@@ -593,7 +593,7 @@ Expected: cross-platform shell work is exact, host-gated, and does not dilute Wi
 
 **Files:** `editor/core/include/mirakana/editor/ai_operation_surface.hpp`, `editor/core/src/ai_operation_surface.cpp`, `editor/src/first_party_editor_document.*`, tests, manifest/docs.
 
-- [ ] Add AI snapshot rows:
+- [x] Add AI snapshot rows:
 
 ```text
 editor.ai.window.layout
@@ -608,10 +608,10 @@ editor.ai.material_preview.backend_parity
 editor.ai.performance.budgets
 ```
 
-- [ ] Add reviewed command catalog entries for multi-window dock commands, editable rich text commands, text/font diagnostics copy, accessibility diagnostics copy, and backend readiness refresh requests.
-- [ ] Require `expected_revision` for every mutating command.
-- [ ] Reject native handles, shell/process execution, validation recipe execution, package script execution, screen coordinates, arbitrary file mutation, stale revisions, disabled commands, and unsupported parameters.
-- [ ] Add counters:
+- [x] Add reviewed command catalog entries for multi-window dock commands, editable rich text commands, text/font diagnostics copy, accessibility diagnostics copy, and backend readiness refresh requests.
+- [x] Require `expected_revision` for every mutating command.
+- [x] Reject native handles, shell/process execution, validation recipe execution, package script execution, screen coordinates, arbitrary file mutation, stale revisions, disabled commands, and unsupported parameters.
+- [x] Add counters:
 
 ```text
 editor_ai_operation_excellence_status=ready
@@ -622,6 +622,8 @@ editor_ai_operation_native_handles_exposed=0
 ```
 
 Expected: AI can operate the advanced editor through first-party structures, not screen automation.
+
+**Phase 11 Evidence:** Candidate `codex/first-party-ui-editor-excellence-phase11` extends the first-party AI operation surface with `editor.ai.window.layout`, `editor.ai.dock.multi_window`, `editor.ai.rich_text.editable_documents`, `editor.ai.viewport.backend_parity`, `editor.ai.material_preview.backend_parity`, `editor.ai.performance.budgets`, and `editor.ai.operation.excellence` rows while preserving existing text shaping, font fallback, IME parity, and accessibility parity rows. `EditorAiCommandCatalog` now includes non-mutating `editor.text_font.diagnostics.copy`, `editor.accessibility.diagnostics.copy`, `editor.viewport.backend_readiness.refresh`, and `editor.material_preview.backend_readiness.refresh` commands alongside existing multi-window dock and editable rich-text commands. Every mutating AI command requires `expected_revision`; native handles, shell/process execution, validation recipe execution, package script execution, screen coordinates, arbitrary file mutation, stale revisions, disabled commands, and unsupported parameters fail closed. The native shell smoke counter surface now reports `editor_ai_operation_excellence_status=ready`, positive `editor_ai_operation_snapshot_rows`, positive `editor_ai_operation_command_rows`, `editor_ai_operation_mutating_commands_revision_checked=1`, and `editor_ai_operation_native_handles_exposed=0`. RED/GREEN evidence covered `MK_editor_core_tests` and `MK_editor_native_shell_tests`; focused validation passed with `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests MK_editor_native_shell_tests` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_editor_core_tests|MK_editor_native_shell_tests"`. This completes AI-operable command expansion only; Phase 12 aggregate `first_party_editor_excellence` remains unclaimed.
 
 ## Phase 12: Aggregate Excellence Gate And Closeout
 

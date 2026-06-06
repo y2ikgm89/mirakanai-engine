@@ -159,6 +159,11 @@ struct FirstPartyEditorShellSmokeCounters {
     bool rich_text_clipboard_plain_ready{false};
     bool rich_text_clipboard_rich_ready{false};
     bool rich_text_native_handles_exposed{false};
+    std::string ai_operation_excellence_status{"not_ready"};
+    std::uint32_t ai_operation_snapshot_rows{0};
+    std::uint32_t ai_operation_command_rows{0};
+    bool ai_operation_mutating_commands_revision_checked{false};
+    bool ai_operation_native_handles_exposed{false};
     std::string cross_platform_shell_status{"host_gated"};
     std::string macos_shell_status{"host_gated"};
     std::string linux_shell_status{"host_gated"};

@@ -2577,63 +2577,18 @@ foreach ($check in $nativeEditorUiPerformanceBudgetChecks) {
     }
 }
 $editorAiUxOperationChecks = @(
-    @{
-        Path = "editor/core/include/mirakana/editor/ai_operation_surface.hpp"
-        Needles = @(
-            "EditorAiOperationStatusRow",
-            "EditorAiOperationUxStatusDesc",
-            "std::vector<EditorAiOperationStatusRow> status_rows",
-            "expected_revision",
-            "output_mime_type"
-        )
-    },
-    @{
-        Path = "editor/core/src/ai_operation_surface.cpp"
-        Needles = @(
-            "editor.ai.dock.selected_panel",
-            "editor.ai.rich_text.documents",
-            "editor.ai.text_input.focused_target",
-            "editor.ai.adapter.text_font",
-            "editor.ai.ime.session",
-            "editor.ai.ime.parity", "editor.ai.ime.candidate_selection", "editor.ai.ime.reconversion", "editor.ai.ime.platform_host_gates",
-            "editor.ai.accessibility.uia_provider", "editor.ai.accessibility.parity",
-            "editor.ai.viewport.display",
-            "editor.ai.material_preview.display",
-            ".copy_plain_text",
-            ".copy_selection_plain_text",
-            "native_handle_unsupported",
-            "shell_execution_unsupported",
-            "validation_recipe_execution_unsupported",
-            "screen_coordinates_unsupported",
-            "stale_revision"
-        )
-    },
-    @{
-        Path = "editor/src/first_party_editor_document.cpp"
-        Needles = @(
-            "make_first_party_editor_ai_operation_ux_status_desc",
-            "make_first_party_editor_ai_operation_snapshot",
-            "make_editor_ai_operation_ux_status_rows",
-            "ime_parity_status", "ime_windows_tsf_status",
-            "accessibility_parity_status", "accessibility_windows_uia_patterns_ready"
-        )
-    },
-    @{ Path = "tests/unit/editor_core_tests.cpp"; Needles = @("editor ai operation snapshot exposes UX status rows without native handles", "editor ai command catalog exposes reviewed rich text copy commands", "editor ai command surface rejects stale revisions native handles shell and validation execution") },
-    @{ Path = "tests/unit/editor_native_shell_tests.cpp"; Needles = @("editor first party shell exposes AI operation UX rows from native readiness", "editor.ai.validation_recipe.execution", "editor first party shell smoke counters promote selected TSF to Windows IME parity only", "editor.ai.accessibility.parity") },
-    @{
-        Path = "docs/superpowers/plans/2026-05-31-first-party-ui-editor-production-stack-v1.md"
-        Needles = @(
-            "editor.ai.accessibility.uia_provider",
-            "<rich_text_document_id>.copy_selection_plain_text",
-            "validation-recipe execution"
-        )
-    },
-    @{ Path = "docs/current-capabilities.md"; Needles = @("editor.ai.material_preview.display", "editor.ai.accessibility.parity", "<rich_text_document_id>.copy_plain_text", "screen coordinates") },
-    @{ Path = "docs/editor.md"; Needles = @("EditorAiOperationSnapshot.status_rows", "editor.ai.viewport.display", "editor.ai.accessibility.parity", "validation-recipe execution") },
-    @{ Path = ".agents/skills/editor-change/SKILL.md"; Needles = @("EditorAiOperationSnapshot.status_rows", "editor.ai.ime.session", "editor.ai.ime.parity", "editor.ai.accessibility.parity", "<rich_text_document_id>.copy_selection_plain_text") },
-    @{ Path = ".claude/skills/gameengine-editor/SKILL.md"; Needles = @("EditorAiOperationSnapshot.status_rows", "editor.ai.ime.session", "editor.ai.ime.parity", "editor.ai.accessibility.parity", "<rich_text_document_id>.copy_selection_plain_text") },
-    @{ Path = ".cursor/skills/gameengine-editor/SKILL.md"; Needles = @("EditorAiOperationSnapshot.status_rows", "editor.ai.ime.session", "editor.ai.ime.parity", "editor.ai.accessibility.parity", "<rich_text_document_id>.copy_selection_plain_text") },
-    @{ Path = "engine/agent/manifest.json"; Needles = @("editor.ai.dock.selected_panel", "editor.ai.material_preview.display", "editor.ai.ime.parity", "editor.ai.accessibility.parity", ".copy_selection_plain_text", "validation-recipe execution") }
+    @{ Path = "editor/core/include/mirakana/editor/ai_operation_surface.hpp"; Needles = @("EditorAiOperationStatusRow", "EditorAiOperationUxStatusDesc", "std::vector<EditorAiOperationStatusRow> status_rows", "expected_revision", "output_mime_type", "ai_operation_excellence_status") },
+    @{ Path = "editor/core/src/ai_operation_surface.cpp"; Needles = @("editor.ai.dock.selected_panel", "editor.ai.window.layout", "editor.ai.dock.multi_window", "editor.ai.rich_text.documents", "editor.ai.rich_text.editable_documents", "editor.ai.text_input.focused_target", "editor.ai.adapter.text_font", "editor.ai.ime.session", "editor.ai.ime.parity", "editor.ai.ime.candidate_selection", "editor.ai.ime.reconversion", "editor.ai.ime.platform_host_gates", "editor.ai.accessibility.uia_provider", "editor.ai.accessibility.parity", "editor.ai.viewport.display", "editor.ai.viewport.backend_parity", "editor.ai.material_preview.display", "editor.ai.material_preview.backend_parity", "editor.ai.performance.budgets", "editor.ai.operation.excellence", "editor.text_font.diagnostics.copy", "editor.accessibility.diagnostics.copy", "editor.viewport.backend_readiness.refresh", "editor.material_preview.backend_readiness.refresh", ".copy_plain_text", ".copy_selection_plain_text", "native_handle_unsupported", "shell_execution_unsupported", "validation_recipe_execution_unsupported", "package_script_execution_unsupported", "file_mutation_unsupported", "screen_coordinates_unsupported", "missing_expected_revision", "stale_revision") },
+    @{ Path = "editor/src/first_party_editor_document.cpp"; Needles = @("make_first_party_editor_ai_operation_ux_status_desc", "make_first_party_editor_ai_operation_snapshot", "make_editor_ai_operation_ux_status_rows", "ime_parity_status", "ime_windows_tsf_status", "accessibility_parity_status", "accessibility_windows_uia_patterns_ready", "ai_operation_excellence_status") },
+    @{ Path = "tests/unit/editor_core_tests.cpp"; Needles = @("editor ai operation snapshot exposes UX status rows without native handles", "editor ai command catalog exposes reviewed rich text copy commands", "editor ai command catalog exposes excellence diagnostics and refresh requests", "editor ai command surface requires expected revision for every mutating command", "editor ai command surface rejects stale revisions native handles shell and validation execution") },
+    @{ Path = "tests/unit/editor_native_shell_tests.cpp"; Needles = @("editor first party shell exposes AI operation UX rows from native readiness", "editor.ai.validation_recipe.execution", "editor first party shell smoke counters promote selected TSF to Windows IME parity only", "editor.ai.accessibility.parity", "editor.ai.operation.excellence") },
+    @{ Path = "docs/superpowers/plans/2026-05-31-first-party-ui-editor-production-stack-v1.md"; Needles = @("editor.ai.accessibility.uia_provider", "<rich_text_document_id>.copy_selection_plain_text", "validation-recipe execution") },
+    @{ Path = "docs/current-capabilities.md"; Needles = @("editor.ai.material_preview.display", "editor.ai.viewport.backend_parity", "editor.ai.operation.excellence", "editor.text_font.diagnostics.copy", "editor.ai.accessibility.parity", "<rich_text_document_id>.copy_plain_text", "missing_expected_revision", "screen coordinates") },
+    @{ Path = "docs/editor.md"; Needles = @("EditorAiOperationSnapshot.status_rows", "editor.ai.viewport.display", "editor.ai.viewport.backend_parity", "editor.ai.operation.excellence", "editor.text_font.diagnostics.copy", "missing_expected_revision", "editor.ai.accessibility.parity", "validation-recipe execution") },
+    @{ Path = ".agents/skills/editor-change/SKILL.md"; Needles = @("EditorAiOperationSnapshot.status_rows", "editor.ai.ime.session", "editor.ai.ime.parity", "editor.ai.accessibility.parity", "editor.ai.operation.excellence", "editor.text_font.diagnostics.copy", "<rich_text_document_id>.copy_selection_plain_text") },
+    @{ Path = ".claude/skills/gameengine-editor/SKILL.md"; Needles = @("EditorAiOperationSnapshot.status_rows", "editor.ai.ime.session", "editor.ai.ime.parity", "editor.ai.accessibility.parity", "editor.ai.operation.excellence", "editor.text_font.diagnostics.copy", "<rich_text_document_id>.copy_selection_plain_text") },
+    @{ Path = ".cursor/skills/gameengine-editor/SKILL.md"; Needles = @("EditorAiOperationSnapshot.status_rows", "editor.ai.ime.session", "editor.ai.ime.parity", "editor.ai.accessibility.parity", "editor.ai.operation.excellence", "editor.text_font.diagnostics.copy", "<rich_text_document_id>.copy_selection_plain_text") },
+    @{ Path = "engine/agent/manifest.json"; Needles = @("editor.ai.dock.selected_panel", "editor.ai.material_preview.display", "editor.ai.viewport.backend_parity", "editor.ai.operation.excellence", "editor.ai.ime.parity", "editor.ai.accessibility.parity", "editor.text_font.diagnostics.copy", ".copy_selection_plain_text", "validation-recipe execution", "missing_expected_revision") }
 )
 foreach ($check in $editorAiUxOperationChecks) {
     $fileText = Get-AgentSurfaceText $check.Path

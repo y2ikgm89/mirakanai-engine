@@ -74,7 +74,15 @@ Use this skill for editor/core models, native visible editor shell boundaries, p
   `EditorRichTextEditResult`, `EditorRichTextClipboardPayload`, `editor_rich_text_revision`,
   `normalize_editor_rich_text_selection`, `apply_editor_rich_text_edit_command`, and smoke rows
   `editor_rich_text_edit_status=ready`, `editor_rich_text_clipboard_plain_ready=1`,
-  `editor_rich_text_clipboard_rich_ready=1`, and `editor_rich_text_native_handles_exposed=0`. Visible OS-level multi-window drag/drop
+  `editor_rich_text_clipboard_rich_ready=1`, and `editor_rich_text_native_handles_exposed=0`. Phase 11 AI operation rows include
+  `editor.ai.window.layout`, `editor.ai.dock.multi_window`, `editor.ai.rich_text.editable_documents`,
+  `editor.ai.viewport.backend_parity`, `editor.ai.material_preview.backend_parity`, `editor.ai.performance.budgets`, and
+  `editor.ai.operation.excellence`; reviewed non-mutating commands include `editor.text_font.diagnostics.copy`,
+  `editor.accessibility.diagnostics.copy`, `editor.viewport.backend_readiness.refresh`, and
+  `editor.material_preview.backend_readiness.refresh`, and smoke rows include `editor_ai_operation_excellence_status=ready`,
+  `editor_ai_operation_mutating_commands_revision_checked=1`, and `editor_ai_operation_native_handles_exposed=0`. Every mutating
+  AI command requires `expected_revision`; package scripts, file mutation, validation recipes, shell/process execution, screen
+  coordinates, and native-handle requests fail closed. Visible OS-level multi-window drag/drop
   shell restoration, help rich text, Direct2D GPU text rendering/upload, broad shaping/bidi/fallback, custom native IME candidate UI,
   non-Windows IME execution, external OS accessibility-tool execution beyond first-party evidence,
   default visible-shell Vulkan or Metal backend selection, broader material-preview GPU parity, cross-platform accessibility parity, and

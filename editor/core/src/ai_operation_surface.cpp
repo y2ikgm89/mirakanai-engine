@@ -138,6 +138,40 @@ constexpr std::string_view rich_text_paste_rich_suffix = ".paste_rich_text";
 constexpr std::string_view plain_text_mime_type = "text/plain;charset=utf-8";
 constexpr std::string_view rich_text_mime_type = "application/vnd.mirakanai.rich-text+json";
 constexpr std::string_view rich_text_text_parameter = "text";
+constexpr std::string_view text_font_diagnostics_copy_command = "editor.text_font.diagnostics.copy";
+constexpr std::string_view accessibility_diagnostics_copy_command = "editor.accessibility.diagnostics.copy";
+constexpr std::string_view viewport_backend_refresh_command = "editor.viewport.backend_readiness.refresh";
+constexpr std::string_view material_preview_backend_refresh_command =
+    "editor.material_preview.backend_readiness.refresh";
+
+struct ReadOnlyAiCommandInfo {
+    std::string_view id;
+    std::string_view label;
+    std::string_view target_element_id;
+    std::string_view output_text;
+};
+
+constexpr std::array<ReadOnlyAiCommandInfo, 4> readonly_ai_commands{{
+    ReadOnlyAiCommandInfo{.id = text_font_diagnostics_copy_command,
+                          .label = "Copy Text Font Diagnostics",
+                          .target_element_id = "editor.ai.text.shaping",
+                          .output_text = "editor.ai.text.shaping editor.ai.text.font_fallback "
+                                         "editor.ai.text.glyph_atlas editor.ai.text_dependency.licenses"},
+    ReadOnlyAiCommandInfo{.id = accessibility_diagnostics_copy_command,
+                          .label = "Copy Accessibility Diagnostics",
+                          .target_element_id = "editor.ai.accessibility.parity",
+                          .output_text = "editor.ai.accessibility.uia_provider editor.ai.accessibility.parity"},
+    ReadOnlyAiCommandInfo{.id = viewport_backend_refresh_command,
+                          .label = "Request Viewport Backend Readiness Refresh",
+                          .target_element_id = "editor.ai.viewport.backend_parity",
+                          .output_text = "Viewport backend readiness refresh request recorded through AI rows; "
+                                         "validation recipes and package scripts are not executed."},
+    ReadOnlyAiCommandInfo{.id = material_preview_backend_refresh_command,
+                          .label = "Request Material Preview Backend Readiness Refresh",
+                          .target_element_id = "editor.ai.material_preview.backend_parity",
+                          .output_text = "Material preview backend readiness refresh request recorded through AI rows; "
+                                         "validation recipes and package scripts are not executed."},
+}};
 
 [[nodiscard]] std::string panel_element_id(PanelId panel) {
     return "editor.panel." + std::string{panel_id_to_string(panel)};
@@ -673,6 +707,15 @@ constexpr std::string_view rich_text_text_parameter = "text";
     return nullptr;
 }
 
+[[nodiscard]] const ReadOnlyAiCommandInfo* find_readonly_ai_command(std::string_view command_id) noexcept {
+    for (const auto& command : readonly_ai_commands) {
+        if (command.id == command_id) {
+            return &command;
+        }
+    }
+    return nullptr;
+}
+
 [[nodiscard]] const EditorRichTextDocument* find_rich_text_document(std::span<const EditorRichTextDocument> documents,
                                                                     std::string_view document_id) noexcept {
     for (const auto& document : documents) {
@@ -730,10 +773,19 @@ reject_forbidden_command_surface(const EditorAiCommandRequest& request) {
         return diagnostic("shell_execution_unsupported",
                           "AI editor operation surface does not execute shell or process commands");
     }
+    if (has_token("package_script") || has_token("package.script") || has_token("package.ps1")) {
+        return diagnostic("package_script_execution_unsupported",
+                          "AI editor operation surface cannot execute package scripts");
+    }
     if (contains_forbidden_token(request.command_id, "validation.recipe") ||
         contains_forbidden_token(request.target_element_id, "validation.recipe")) {
         return diagnostic("validation_recipe_execution_unsupported",
                           "AI editor operation surface cannot execute validation recipes from editor core");
+    }
+    if (request.command_id.starts_with("editor.file.") || has_token("file_path") || has_token("filesystem") ||
+        has_token("write_file")) {
+        return diagnostic("file_mutation_unsupported",
+                          "AI editor commands must not mutate arbitrary files from editor core");
     }
     if (has_token("screen_x") || has_token("screen_y") || has_token("screen_coordinate")) {
         return diagnostic("screen_coordinates_unsupported",
@@ -757,6 +809,43 @@ reject_invalid_command_request(const EditorAiCommandCatalog& catalog, const Edit
         return forbidden;
     }
     return reject_stale_revision(catalog, request);
+}
+
+[[nodiscard]] std::optional<EditorAiOperationDiagnostic>
+reject_missing_mutating_revision(const EditorAiCommandRow& command, const EditorAiCommandRequest& request) {
+    if (command.mutates_state && request.expected_revision == 0U) {
+        return diagnostic("missing_expected_revision",
+                          "AI editor mutating commands require expected_revision for the catalog revision");
+    }
+    return std::nullopt;
+}
+
+void append_readonly_ai_commands(EditorAiCommandCatalog& catalog) {
+    for (const auto& command : readonly_ai_commands) {
+        catalog.commands.push_back(EditorAiCommandRow{
+            .id = std::string{command.id},
+            .label = std::string{command.label},
+            .target_element_id = std::string{command.target_element_id},
+            .enabled = true,
+            .mutates_state = false,
+            .requires_confirmation = false,
+        });
+    }
+}
+
+[[nodiscard]] std::optional<EditorAiCommandDryRunResult>
+make_readonly_ai_command_dry_run(const EditorAiCommandRequest& request) {
+    const auto* command = find_readonly_ai_command(request.command_id);
+    if (command == nullptr) {
+        return std::nullopt;
+    }
+    EditorAiCommandDryRunResult result;
+    result.accepted = true;
+    result.would_mutate = false;
+    result.requires_confirmation = false;
+    result.output_text = std::string{command->output_text};
+    result.output_mime_type = std::string{plain_text_mime_type};
+    return result;
 }
 
 void append_dock_layout_diagnostics(EditorAiOperationSnapshot& snapshot, const EditorDockLayoutValidation& validation) {
@@ -848,7 +937,26 @@ void append_status_row(std::vector<EditorAiOperationStatusRow>& rows, EditorAiOp
 std::vector<EditorAiOperationStatusRow>
 make_editor_ai_operation_ux_status_rows(const EditorAiOperationUxStatusDesc& desc) {
     std::vector<EditorAiOperationStatusRow> rows;
-    rows.reserve(20U);
+    rows.reserve(32U);
+
+    const std::string window_layout_status =
+        desc.docking_status.empty() ? std::string{"not_ready"} : desc.docking_status;
+    const std::string multi_window_status =
+        desc.multi_window_docking_status.empty() ? std::string{"not_ready"} : desc.multi_window_docking_status;
+    const std::string rich_text_edit_status =
+        desc.rich_text_edit_status.empty() ? std::string{"not_ready"} : desc.rich_text_edit_status;
+    const std::string viewport_vulkan_status =
+        desc.viewport_vulkan_status.empty() ? std::string{"host_gated"} : desc.viewport_vulkan_status;
+    const std::string viewport_metal_status =
+        desc.viewport_metal_status.empty() ? std::string{"host_gated"} : desc.viewport_metal_status;
+    const std::string material_preview_vulkan_status =
+        desc.material_preview_vulkan_status.empty() ? std::string{"host_gated"} : desc.material_preview_vulkan_status;
+    const std::string material_preview_metal_status =
+        desc.material_preview_metal_status.empty() ? std::string{"host_gated"} : desc.material_preview_metal_status;
+    const std::string performance_status =
+        desc.ui_performance_budget_status.empty() ? std::string{"missing_samples"} : desc.ui_performance_budget_status;
+    const std::string operation_excellence_status =
+        desc.ai_operation_excellence_status.empty() ? std::string{"not_ready"} : desc.ai_operation_excellence_status;
 
     if (!desc.selected_dock_panel_id.empty()) {
         append_status_row(rows, EditorAiOperationStatusRow{
@@ -869,6 +977,42 @@ make_editor_ai_operation_ux_status_rows(const EditorAiOperationUxStatusDesc& des
                                 .status = desc.rich_text_document_count > 0U ? "ready" : "not_available",
                                 .count = desc.rich_text_document_count,
                                 .ready = desc.rich_text_document_count > 0U,
+                            });
+    append_status_row(rows,
+                      EditorAiOperationStatusRow{
+                          .id = "editor.ai.window.layout",
+                          .role = "window_layout_status",
+                          .label = "Editor Window Layout",
+                          .target_element_id = dock_layout_element_id(),
+                          .status = window_layout_status,
+                          .count = desc.dock_tab_header_count,
+                          .ready = window_layout_status == "single_window_ready" ||
+                                   window_layout_status == "multi_window_ready" || window_layout_status == "ready",
+                          .native_handles_public = desc.multi_window_native_handles_exposed,
+                      });
+    append_status_row(rows,
+                      EditorAiOperationStatusRow{
+                          .id = "editor.ai.dock.multi_window",
+                          .role = "multi_window_docking_status",
+                          .label = "Multi-Window Docking",
+                          .target_element_id = dock_windows_element_id(),
+                          .status = multi_window_status,
+                          .count = desc.dock_window_count,
+                          .ready = multi_window_status == "ready" && desc.workspace_v3_status == "ready" &&
+                                   desc.dock_tear_off_command_count > 0U && desc.dock_window_merge_command_count > 0U &&
+                                   !desc.multi_window_native_handles_exposed,
+                          .native_handles_public = desc.multi_window_native_handles_exposed,
+                      });
+    append_status_row(rows, EditorAiOperationStatusRow{
+                                .id = "editor.ai.rich_text.editable_documents",
+                                .role = "editable_rich_text_status",
+                                .label = "Editable Rich Text Documents",
+                                .target_element_id = "editor.rich_text.editable_documents",
+                                .status = rich_text_edit_status,
+                                .count = desc.rich_text_editable_documents,
+                                .ready = rich_text_edit_status == "ready" && desc.rich_text_editable_documents > 0U &&
+                                         desc.rich_text_command_rows > 0U && !desc.rich_text_native_handles_exposed,
+                                .native_handles_public = desc.rich_text_native_handles_exposed,
                             });
     append_status_row(rows, EditorAiOperationStatusRow{
                                 .id = "editor.ai.text_input.focused_target",
@@ -1055,6 +1199,24 @@ make_editor_ai_operation_ux_status_rows(const EditorAiOperationUxStatusDesc& des
                                 .ready = status_is_ready(desc.viewport_status),
                                 .native_handles_public = desc.viewport_native_handles_exposed,
                             });
+    append_status_row(
+        rows, EditorAiOperationStatusRow{
+                  .id = "editor.ai.viewport.backend_parity",
+                  .role = "viewport_backend_parity_status",
+                  .label = "Viewport Backend Parity",
+                  .target_element_id = "editor.ai.viewport.backend_parity",
+                  .status = "d3d12:" +
+                            (desc.viewport_status.empty() ? std::string{"host_unavailable"} : desc.viewport_status) +
+                            ";vulkan:" + viewport_vulkan_status + ";metal:" + viewport_metal_status,
+                  .count = desc.viewport_visible_texture_composites + desc.viewport_vulkan_visible_texture_composites +
+                           desc.viewport_metal_visible_texture_composites,
+                  .ready = status_is_ready(desc.viewport_status) && status_is_ready(viewport_vulkan_status) &&
+                           status_is_ready(viewport_metal_status) && !desc.viewport_native_handles_exposed &&
+                           !desc.vulkan_native_handles_exposed && !desc.metal_native_handles_exposed,
+                  .host_gated = viewport_vulkan_status == "host_gated" || viewport_metal_status == "host_gated",
+                  .native_handles_public = desc.viewport_native_handles_exposed || desc.vulkan_native_handles_exposed ||
+                                           desc.metal_native_handles_exposed,
+              });
     append_status_row(rows, EditorAiOperationStatusRow{
                                 .id = "editor.ai.material_preview.display",
                                 .role = "material_preview_display_status",
@@ -1065,6 +1227,28 @@ make_editor_ai_operation_ux_status_rows(const EditorAiOperationUxStatusDesc& des
                                 .ready = status_is_ready(desc.material_preview_status),
                                 .native_handles_public = desc.material_preview_native_handles_exposed,
                             });
+    append_status_row(
+        rows,
+        EditorAiOperationStatusRow{
+            .id = "editor.ai.material_preview.backend_parity",
+            .role = "material_preview_backend_parity_status",
+            .label = "Material Preview Backend Parity",
+            .target_element_id = "editor.ai.material_preview.backend_parity",
+            .status = "d3d12:" +
+                      (desc.material_preview_status.empty() ? std::string{"host_unavailable"}
+                                                            : desc.material_preview_status) +
+                      ";vulkan:" + material_preview_vulkan_status + ";metal:" + material_preview_metal_status,
+            .count = desc.material_preview_visible_texture_composites +
+                     desc.material_preview_vulkan_visible_texture_composites +
+                     desc.material_preview_metal_visible_texture_composites,
+            .ready = status_is_ready(desc.material_preview_status) && status_is_ready(material_preview_vulkan_status) &&
+                     status_is_ready(material_preview_metal_status) && !desc.material_preview_native_handles_exposed &&
+                     !desc.vulkan_native_handles_exposed && !desc.metal_native_handles_exposed,
+            .host_gated =
+                material_preview_vulkan_status == "host_gated" || material_preview_metal_status == "host_gated",
+            .native_handles_public = desc.material_preview_native_handles_exposed ||
+                                     desc.vulkan_native_handles_exposed || desc.metal_native_handles_exposed,
+        });
     append_status_row(
         rows,
         EditorAiOperationStatusRow{
@@ -1086,6 +1270,31 @@ make_editor_ai_operation_ux_status_rows(const EditorAiOperationUxStatusDesc& des
                 desc.macos_shell_status == "host_gated" || desc.linux_shell_status == "host_gated",
             .native_handles_public = desc.cross_platform_shell_native_handles_exposed,
         });
+    append_status_row(rows, EditorAiOperationStatusRow{
+                                .id = "editor.ai.performance.budgets",
+                                .role = "performance_budget_status",
+                                .label = "Editor Performance Budgets",
+                                .target_element_id = "editor.performance.budgets",
+                                .status = performance_status,
+                                .count = desc.ui_performance_budget_violations,
+                                .ready = performance_status == "ready" && desc.ui_performance_budget_violations == 0U &&
+                                         desc.ui_performance_diagnostics == 0U &&
+                                         !desc.ui_performance_broad_optimization_claimed,
+                            });
+    append_status_row(rows,
+                      EditorAiOperationStatusRow{
+                          .id = "editor.ai.operation.excellence",
+                          .role = "ai_operation_excellence_status",
+                          .label = "AI Operation Excellence",
+                          .target_element_id = "editor.ai.operation",
+                          .status = operation_excellence_status,
+                          .count = desc.ai_operation_snapshot_rows,
+                          .ready = operation_excellence_status == "ready" && desc.ai_operation_snapshot_rows >= 10U &&
+                                   desc.ai_operation_command_rows > 0U &&
+                                   desc.ai_operation_mutating_commands_revision_checked &&
+                                   !desc.ai_operation_native_handles_exposed,
+                          .native_handles_public = desc.ai_operation_native_handles_exposed,
+                      });
 
     return rows;
 }
@@ -1329,6 +1538,7 @@ EditorAiCommandCatalog make_editor_ai_command_catalog(const Workspace& workspace
         .mutates_state = true,
         .requires_confirmation = true,
     });
+    append_readonly_ai_commands(catalog);
 
     return catalog;
 }
@@ -1388,6 +1598,7 @@ EditorAiCommandCatalog make_editor_ai_command_catalog(const Workspace& workspace
         .mutates_state = true,
         .requires_confirmation = true,
     });
+    append_readonly_ai_commands(catalog);
 
     return catalog;
 }
@@ -1472,6 +1683,10 @@ EditorAiCommandDryRunResult dry_run_editor_ai_command(const Workspace& workspace
             diagnostic("target_mismatch", "AI editor command target does not match the catalog row"));
         return result;
     }
+    if (const auto rejected = reject_missing_mutating_revision(*command, request); rejected.has_value()) {
+        result.diagnostics.push_back(*rejected);
+        return result;
+    }
     if (!request.parameters.empty()) {
         result.diagnostics.push_back(
             diagnostic("unsupported_parameters", "AI editor panel visibility commands do not accept parameters"));
@@ -1485,6 +1700,9 @@ EditorAiCommandDryRunResult dry_run_editor_ai_command(const Workspace& workspace
     result.accepted = true;
     result.would_mutate = command->mutates_state;
     result.requires_confirmation = command->requires_confirmation;
+    if (auto readonly = make_readonly_ai_command_dry_run(request); readonly.has_value()) {
+        return *readonly;
+    }
     return result;
 }
 
@@ -1509,6 +1727,10 @@ EditorAiCommandDryRunResult dry_run_editor_ai_command(const Workspace& workspace
     if (command->target_element_id != request.target_element_id) {
         result.diagnostics.push_back(
             diagnostic("target_mismatch", "AI editor command target does not match the catalog row"));
+        return result;
+    }
+    if (const auto rejected = reject_missing_mutating_revision(*command, request); rejected.has_value()) {
+        result.diagnostics.push_back(*rejected);
         return result;
     }
 
@@ -1570,6 +1792,10 @@ EditorAiCommandDryRunResult dry_run_editor_ai_command(const Workspace& workspace
             diagnostic("target_mismatch", "AI editor command target does not match the catalog row"));
         return result;
     }
+    if (const auto rejected = reject_missing_mutating_revision(*command, request); rejected.has_value()) {
+        result.diagnostics.push_back(*rejected);
+        return result;
+    }
 
     const auto parsed = parse_dock_window_command(request.command_id);
     if (!parsed.recognized) {
@@ -1627,6 +1853,10 @@ EditorAiCommandDryRunResult dry_run_editor_ai_command(const Workspace& workspace
     if (command->target_element_id != request.target_element_id) {
         result.diagnostics.push_back(
             diagnostic("target_mismatch", "AI editor command target does not match the catalog row"));
+        return result;
+    }
+    if (const auto rejected = reject_missing_mutating_revision(*command, request); rejected.has_value()) {
+        result.diagnostics.push_back(*rejected);
         return result;
     }
     if (!command->enabled) {
@@ -1721,6 +1951,14 @@ EditorAiCommandApplyResult apply_editor_ai_command(Workspace& workspace, const E
             diagnostic("confirmation_required", "AI editor command requires explicit user confirmation"));
         return result;
     }
+    if (!dry_run.would_mutate) {
+        result.accepted = true;
+        result.completed = true;
+        result.applied = false;
+        result.output_text = dry_run.output_text;
+        result.output_mime_type = dry_run.output_mime_type;
+        return result;
+    }
 
     const PanelCommandInfo* command = find_panel_command(request.command_id);
     if (command == nullptr) {
@@ -1751,6 +1989,14 @@ EditorAiCommandApplyResult apply_editor_ai_command(Workspace& workspace, EditorD
     if (dry_run.requires_confirmation && !request.user_confirmed) {
         result.diagnostics.push_back(
             diagnostic("confirmation_required", "AI editor command requires explicit user confirmation"));
+        return result;
+    }
+    if (!dry_run.would_mutate) {
+        result.accepted = true;
+        result.completed = true;
+        result.applied = false;
+        result.output_text = dry_run.output_text;
+        result.output_mime_type = dry_run.output_mime_type;
         return result;
     }
 
@@ -1808,6 +2054,14 @@ EditorAiCommandApplyResult apply_editor_ai_command(Workspace& workspace, EditorD
     if (dry_run.requires_confirmation && !request.user_confirmed) {
         result.diagnostics.push_back(
             diagnostic("confirmation_required", "AI editor command requires explicit user confirmation"));
+        return result;
+    }
+    if (!dry_run.would_mutate) {
+        result.accepted = true;
+        result.completed = true;
+        result.applied = false;
+        result.output_text = dry_run.output_text;
+        result.output_mime_type = dry_run.output_mime_type;
         return result;
     }
 
@@ -1901,7 +2155,7 @@ EditorAiCommandApplyResult apply_editor_ai_command(const Workspace& workspace, c
         return result;
     }
 
-    if (!rich_text_command_mutates(request.command_id)) {
+    if (!dry_run.would_mutate) {
         result.accepted = true;
         result.completed = true;
         result.applied = false;

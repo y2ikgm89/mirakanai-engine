@@ -124,6 +124,7 @@ $editorImeSmokeNeedles = @("editor_shell_text_input_service=win32_tsf", "editor_
 $editorAccessibilitySmokeNeedles = @("editor_shell_accessibility_service=win32_uia", "editor_shell_accessibility_status=uia_provider_ready", "editor_shell_accessibility_nodes", "editor_shell_accessibility_role_rows", "editor_shell_accessibility_name_rows", "editor_shell_accessibility_state_rows", "editor_shell_accessibility_focus_rows=1", "editor_shell_accessibility_action_rows", "editor_shell_accessibility_relationship_rows", "editor_shell_accessibility_tree_navigation_rows", "editor_shell_accessibility_diagnostics=0", "editor_shell_accessibility_missing_name_diagnostics=0", "editor_shell_accessibility_missing_role_diagnostics=0", "editor_shell_accessibility_invalid_bounds_diagnostics=0", "editor_shell_accessibility_hidden_nodes=0", "editor_shell_accessibility_unsupported_pattern_diagnostics=0", "editor_shell_accessibility_native_handles_exposed=0")
 $editorUiPerformanceSmokeNeedles = @("editor_ui_performance_budget_status=ready", "editor_ui_performance_layout_us_p95", "editor_ui_performance_document_build_us_p95", "editor_ui_performance_renderer_submission_us_p95", "editor_ui_performance_text_runs", "editor_ui_performance_renderer_boxes", "editor_ui_performance_visible_texture_composites", "editor_ui_performance_memory_high_water_bytes", "editor_ui_performance_budget_violations=0", "editor_ui_performance_diagnostics=0", "editor_ui_performance_broad_optimization_claimed=0")
 $editorRichTextEditSmokeNeedles = @("editor_rich_text_edit_status=ready", "editor_rich_text_editable_documents", "editor_rich_text_command_rows", "editor_rich_text_clipboard_plain_ready=1", "editor_rich_text_clipboard_rich_ready=1", "editor_rich_text_native_handles_exposed=0")
+$editorAiOperationSmokeNeedles = @("editor_ai_operation_excellence_status=ready", "editor_ai_operation_snapshot_rows", "editor_ai_operation_command_rows", "editor_ai_operation_mutating_commands_revision_checked=1", "editor_ai_operation_native_handles_exposed=0")
 foreach ($requiredNeedle in @(
         "MK_editor_native_shell_tests",
         "MK_editor_smoke",
@@ -135,7 +136,7 @@ foreach ($requiredNeedle in @(
         "editor_shell_panels=11"
     ) + $editorDockingSmokeNeedles + $editorMultiWindowDockingSmokeNeedles + @(
         "editor_shell_sdl3=0"
-    ) + $editorRichTextEditSmokeNeedles + $editorNativeVisibleTextureSmokeNeedles + $editorTextAtlasSmokeNeedles + $editorImeSmokeNeedles + $editorAccessibilitySmokeNeedles + $editorUiPerformanceSmokeNeedles + @(
+    ) + $editorRichTextEditSmokeNeedles + $editorAiOperationSmokeNeedles + $editorNativeVisibleTextureSmokeNeedles + $editorTextAtlasSmokeNeedles + $editorImeSmokeNeedles + $editorAccessibilitySmokeNeedles + $editorUiPerformanceSmokeNeedles + @(
         "editor_shell_renderer_boxes_submitted",
         "editor_shell_renderer_text_runs_available",
         "tests/unit/editor_native_shell_tests.cpp",
@@ -176,7 +177,7 @@ foreach ($requiredNeedle in @(
         "editor_shell_backend=d3d12",
         "editor_shell_imgui=0",
         "editor_shell_panels=11"
-    ) + $editorDockingSmokeNeedles + $editorMultiWindowDockingSmokeNeedles + $editorRichTextEditSmokeNeedles + $editorNativeVisibleTextureSmokeNeedles + $editorTextAtlasSmokeNeedles + $editorImeSmokeNeedles + $editorAccessibilitySmokeNeedles + $editorUiPerformanceSmokeNeedles + @(
+    ) + $editorDockingSmokeNeedles + $editorMultiWindowDockingSmokeNeedles + $editorRichTextEditSmokeNeedles + $editorAiOperationSmokeNeedles + $editorNativeVisibleTextureSmokeNeedles + $editorTextAtlasSmokeNeedles + $editorImeSmokeNeedles + $editorAccessibilitySmokeNeedles + $editorUiPerformanceSmokeNeedles + @(
         "editor_shell_renderer_boxes_submitted",
         "editor_shell_renderer_text_runs_available", "Windows SDK DirectWrite text-layout/glyph-raster",
         "EditorRichTextEditCommandKind", "apply_editor_rich_text_edit_command", "<rich_text_document_id>.insert_text",
@@ -207,7 +208,7 @@ foreach ($requiredNeedle in @(
         "editor_shell_backend=d3d12",
         "editor_shell_imgui=0",
         "editor_shell_panels=11"
-    ) + $editorDockingSmokeNeedles + $editorMultiWindowDockingSmokeNeedles + $editorRichTextEditSmokeNeedles + $editorNativeVisibleTextureSmokeNeedles + $editorTextAtlasSmokeNeedles + $editorImeSmokeNeedles + $editorAccessibilitySmokeNeedles + $editorUiPerformanceSmokeNeedles + @(
+    ) + $editorDockingSmokeNeedles + $editorMultiWindowDockingSmokeNeedles + $editorRichTextEditSmokeNeedles + $editorAiOperationSmokeNeedles + $editorNativeVisibleTextureSmokeNeedles + $editorTextAtlasSmokeNeedles + $editorImeSmokeNeedles + $editorAccessibilitySmokeNeedles + $editorUiPerformanceSmokeNeedles + @(
         "editor_shell_renderer_boxes_submitted",
         "editor_shell_renderer_text_runs_available",
         "SDL3-free"

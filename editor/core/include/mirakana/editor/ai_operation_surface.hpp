@@ -44,6 +44,21 @@ struct EditorAiOperationStatusRow {
 struct EditorAiOperationUxStatusDesc {
     std::string selected_dock_panel_id;
     std::uint64_t rich_text_document_count{0};
+    std::string docking_status;
+    std::uint32_t dock_tab_header_count{0};
+    std::uint32_t dock_split_gutter_count{0};
+    std::uint32_t dock_active_panel_count{0};
+    std::uint32_t dock_focusable_control_count{0};
+    std::string multi_window_docking_status;
+    std::uint32_t dock_window_count{0};
+    std::uint32_t dock_tear_off_command_count{0};
+    std::uint32_t dock_window_merge_command_count{0};
+    std::string workspace_v3_status;
+    bool multi_window_native_handles_exposed{false};
+    std::string rich_text_edit_status;
+    std::uint32_t rich_text_editable_documents{0};
+    std::uint32_t rich_text_command_rows{0};
+    bool rich_text_native_handles_exposed{false};
     std::string focused_text_target_id;
     std::string text_input_status;
     std::string ime_service_id;
@@ -123,15 +138,34 @@ struct EditorAiOperationUxStatusDesc {
     std::string viewport_status;
     std::uint64_t viewport_visible_texture_composites{0};
     bool viewport_native_handles_exposed{false};
+    std::string viewport_vulkan_status;
+    std::uint64_t viewport_vulkan_visible_texture_composites{0};
+    std::string viewport_metal_status;
+    std::uint64_t viewport_metal_visible_texture_composites{0};
     std::string material_preview_status;
     std::uint64_t material_preview_visible_texture_composites{0};
     bool material_preview_native_handles_exposed{false};
+    std::string material_preview_vulkan_status;
+    std::uint64_t material_preview_vulkan_visible_texture_composites{0};
+    std::string material_preview_metal_status;
+    std::uint64_t material_preview_metal_visible_texture_composites{0};
+    bool vulkan_native_handles_exposed{false};
+    bool metal_native_handles_exposed{false};
     std::string cross_platform_shell_status;
     std::string macos_shell_status;
     std::string linux_shell_status;
     std::string android_shell_status;
     std::string ios_shell_status;
     bool cross_platform_shell_native_handles_exposed{false};
+    std::string ui_performance_budget_status;
+    std::uint32_t ui_performance_budget_violations{0};
+    std::uint32_t ui_performance_diagnostics{0};
+    bool ui_performance_broad_optimization_claimed{false};
+    std::string ai_operation_excellence_status;
+    std::uint32_t ai_operation_snapshot_rows{0};
+    std::uint32_t ai_operation_command_rows{0};
+    bool ai_operation_mutating_commands_revision_checked{false};
+    bool ai_operation_native_handles_exposed{false};
 };
 
 struct EditorAiOperationSnapshot {

@@ -749,6 +749,11 @@ MK_TEST("editor first party shell smoke counters report imgui disabled and multi
     MK_REQUIRE(counters.rich_text_clipboard_plain_ready);
     MK_REQUIRE(counters.rich_text_clipboard_rich_ready);
     MK_REQUIRE(!counters.rich_text_native_handles_exposed);
+    MK_REQUIRE(counters.ai_operation_excellence_status == "ready");
+    MK_REQUIRE(counters.ai_operation_snapshot_rows >= 10U);
+    MK_REQUIRE(counters.ai_operation_command_rows >= 20U);
+    MK_REQUIRE(counters.ai_operation_mutating_commands_revision_checked);
+    MK_REQUIRE(!counters.ai_operation_native_handles_exposed);
 }
 
 MK_TEST("editor first party shell smoke counters copy UI performance budget rows") {
@@ -1777,8 +1782,11 @@ MK_TEST("editor first party shell exposes AI operation UX rows from native readi
     const auto* accessibility_row = find_ai_operation_status_row(snapshot, "editor.ai.accessibility.uia_provider");
     const auto* accessibility_parity = find_ai_operation_status_row(snapshot, "editor.ai.accessibility.parity");
     const auto* viewport = find_ai_operation_status_row(snapshot, "editor.ai.viewport.display");
+    const auto* viewport_backend = find_ai_operation_status_row(snapshot, "editor.ai.viewport.backend_parity");
     const auto* material = find_ai_operation_status_row(snapshot, "editor.ai.material_preview.display");
+    const auto* material_backend = find_ai_operation_status_row(snapshot, "editor.ai.material_preview.backend_parity");
     const auto* cross_platform_shell = find_ai_operation_status_row(snapshot, "editor.ai.shell.cross_platform");
+    const auto* operation_excellence = find_ai_operation_status_row(snapshot, "editor.ai.operation.excellence");
 
     MK_REQUIRE(text_input != nullptr);
     MK_REQUIRE(text_input->status == "win32_tsf_selected");
@@ -1799,15 +1807,28 @@ MK_TEST("editor first party shell exposes AI operation UX rows from native readi
     MK_REQUIRE(viewport->status == "d3d12_texture_ready");
     MK_REQUIRE(viewport->count == 3U);
     MK_REQUIRE(!viewport->native_handles_public);
+    MK_REQUIRE(viewport_backend != nullptr);
+    MK_REQUIRE(viewport_backend->status == "d3d12:d3d12_texture_ready;vulkan:host_gated;metal:host_gated");
+    MK_REQUIRE(viewport_backend->host_gated);
+    MK_REQUIRE(!viewport_backend->native_handles_public);
     MK_REQUIRE(material != nullptr);
     MK_REQUIRE(material->status == "d3d12_texture_ready");
     MK_REQUIRE(material->count == 3U);
     MK_REQUIRE(!material->native_handles_public);
+    MK_REQUIRE(material_backend != nullptr);
+    MK_REQUIRE(material_backend->status == "d3d12:d3d12_texture_ready;vulkan:host_gated;metal:host_gated");
+    MK_REQUIRE(material_backend->host_gated);
+    MK_REQUIRE(!material_backend->native_handles_public);
     MK_REQUIRE(cross_platform_shell != nullptr);
     MK_REQUIRE(cross_platform_shell->status == "macos:host_gated;linux:host_gated;android:unsupported;ios:unsupported");
     MK_REQUIRE(cross_platform_shell->host_gated);
     MK_REQUIRE(!cross_platform_shell->ready);
     MK_REQUIRE(!cross_platform_shell->native_handles_public);
+    MK_REQUIRE(operation_excellence != nullptr);
+    MK_REQUIRE(operation_excellence->status == "ready");
+    MK_REQUIRE(operation_excellence->ready);
+    MK_REQUIRE(operation_excellence->count >= 10U);
+    MK_REQUIRE(!operation_excellence->native_handles_public);
     MK_REQUIRE(find_ai_operation_status_row(snapshot, "editor.ai.validation_recipe.execution") == nullptr);
 }
 

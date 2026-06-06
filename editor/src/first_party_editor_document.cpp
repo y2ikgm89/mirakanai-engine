@@ -546,6 +546,22 @@ make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const F
         (material_preview_metal_selected && material_preview_display.native_texture_handles_exposed);
     const auto cross_platform_shell = make_editor_cross_platform_shell_adapter_plan(
         EditorCrossPlatformShellAdapterDesc{.native_handles_exposed = document.native_handles_exposed});
+    const auto ai_command_catalog =
+        make_editor_ai_command_catalog(app.workspace(), app.workspace().dock_layout(), rich_text_documents);
+    constexpr std::uint32_t ai_operation_snapshot_rows = 10U;
+    const bool ai_operation_has_mutating_commands = std::ranges::any_of(
+        ai_command_catalog.commands, [](const EditorAiCommandRow& command) { return command.mutates_state; });
+    const bool ai_operation_mutating_commands_revision_checked =
+        ai_command_catalog.revision > 0U && ai_operation_has_mutating_commands;
+    const bool ai_operation_native_handles_exposed =
+        document.native_handles_exposed || multi_window_handles_exposed || rich_text_native_handles_exposed ||
+        viewport_display.native_texture_handles_exposed || material_preview_display.native_texture_handles_exposed ||
+        vulkan_native_handles_exposed || metal_native_handles_exposed || text_atlas.native_handles_exposed ||
+        text_input.native_handles_exposed || accessibility.native_handles_exposed ||
+        cross_platform_shell.native_handles_exposed;
+    const bool ai_operation_excellence_ready =
+        ai_operation_snapshot_rows >= 10U && !ai_command_catalog.commands.empty() &&
+        ai_operation_mutating_commands_revision_checked && !ai_operation_native_handles_exposed;
     return FirstPartyEditorShellSmokeCounters{
         .ui = "first_party",
         .backend = "d3d12",
@@ -709,6 +725,11 @@ make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const F
         .rich_text_clipboard_plain_ready = rich_text_editable_documents > 0U,
         .rich_text_clipboard_rich_ready = rich_text_editable_documents > 0U,
         .rich_text_native_handles_exposed = rich_text_native_handles_exposed,
+        .ai_operation_excellence_status = ai_operation_excellence_ready ? "ready" : "not_ready",
+        .ai_operation_snapshot_rows = ai_operation_snapshot_rows,
+        .ai_operation_command_rows = static_cast<std::uint32_t>(ai_command_catalog.commands.size()),
+        .ai_operation_mutating_commands_revision_checked = ai_operation_mutating_commands_revision_checked,
+        .ai_operation_native_handles_exposed = ai_operation_native_handles_exposed,
         .cross_platform_shell_status = cross_platform_shell.cross_platform_status,
         .macos_shell_status = cross_platform_shell.macos_status,
         .linux_shell_status = cross_platform_shell.linux_status,
@@ -748,6 +769,21 @@ make_first_party_editor_ai_operation_ux_status_desc(const NativeEditorApp& app,
     return EditorAiOperationUxStatusDesc{
         .selected_dock_panel_id = app.workspace().dock_layout().focused_panel_id,
         .rich_text_document_count = make_first_party_editor_rich_text_documents(app).size(),
+        .docking_status = counters.docking_status,
+        .dock_tab_header_count = counters.dock_tab_header_count,
+        .dock_split_gutter_count = counters.dock_split_gutter_count,
+        .dock_active_panel_count = counters.dock_active_panel_count,
+        .dock_focusable_control_count = counters.dock_focusable_control_count,
+        .multi_window_docking_status = counters.multi_window_docking_status,
+        .dock_window_count = counters.dock_window_count,
+        .dock_tear_off_command_count = counters.dock_tear_off_command_count,
+        .dock_window_merge_command_count = counters.dock_window_merge_command_count,
+        .workspace_v3_status = counters.workspace_v3_status,
+        .multi_window_native_handles_exposed = counters.multi_window_native_handles_exposed,
+        .rich_text_edit_status = counters.rich_text_edit_status,
+        .rich_text_editable_documents = counters.rich_text_editable_documents,
+        .rich_text_command_rows = counters.rich_text_command_rows,
+        .rich_text_native_handles_exposed = counters.rich_text_native_handles_exposed,
         .focused_text_target_id = app.text_input_state().edit_state.target.value,
         .text_input_status = counters.ime_status,
         .ime_service_id = app.services().ime_service_id,
@@ -827,15 +863,35 @@ make_first_party_editor_ai_operation_ux_status_desc(const NativeEditorApp& app,
         .viewport_status = counters.viewport_status,
         .viewport_visible_texture_composites = counters.viewport_visible_texture_composites,
         .viewport_native_handles_exposed = counters.viewport_native_handles_exposed,
+        .viewport_vulkan_status = counters.viewport_vulkan_status,
+        .viewport_vulkan_visible_texture_composites = counters.viewport_vulkan_visible_texture_composites,
+        .viewport_metal_status = counters.viewport_metal_status,
+        .viewport_metal_visible_texture_composites = counters.viewport_metal_visible_texture_composites,
         .material_preview_status = counters.material_preview_status,
         .material_preview_visible_texture_composites = counters.material_preview_visible_texture_composites,
         .material_preview_native_handles_exposed = counters.material_preview_native_handles_exposed,
+        .material_preview_vulkan_status = counters.material_preview_vulkan_status,
+        .material_preview_vulkan_visible_texture_composites =
+            counters.material_preview_vulkan_visible_texture_composites,
+        .material_preview_metal_status = counters.material_preview_metal_status,
+        .material_preview_metal_visible_texture_composites = counters.material_preview_metal_visible_texture_composites,
+        .vulkan_native_handles_exposed = counters.vulkan_native_handles_exposed,
+        .metal_native_handles_exposed = counters.metal_native_handles_exposed,
         .cross_platform_shell_status = counters.cross_platform_shell_status,
         .macos_shell_status = counters.macos_shell_status,
         .linux_shell_status = counters.linux_shell_status,
         .android_shell_status = counters.android_shell_status,
         .ios_shell_status = counters.ios_shell_status,
         .cross_platform_shell_native_handles_exposed = counters.cross_platform_shell_native_handles_exposed,
+        .ui_performance_budget_status = counters.ui_performance_budget_status,
+        .ui_performance_budget_violations = counters.ui_performance_budget_violations,
+        .ui_performance_diagnostics = counters.ui_performance_diagnostics,
+        .ui_performance_broad_optimization_claimed = counters.ui_performance_broad_optimization_claimed,
+        .ai_operation_excellence_status = counters.ai_operation_excellence_status,
+        .ai_operation_snapshot_rows = counters.ai_operation_snapshot_rows,
+        .ai_operation_command_rows = counters.ai_operation_command_rows,
+        .ai_operation_mutating_commands_revision_checked = counters.ai_operation_mutating_commands_revision_checked,
+        .ai_operation_native_handles_exposed = counters.ai_operation_native_handles_exposed,
     };
 }
 
