@@ -139,7 +139,7 @@ These items are included in this plan as explicit future gates so they are not m
 | Material wetness | Selected D3D12 package evidence ready | First-party material-weathering rows, renderer material parameter binding, package counters, zero source-material mutation unless explicitly authored. Broad backend parity remains unclaimed. |
 | Snow accumulation | Selected D3D12 package evidence ready | First-party snow/ice coverage rows, material parameter binding, package counters, and separate precipitation particle evidence. Broad backend parity remains unclaimed. |
 | Weather audio playback | Selected D3D12 package evidence ready | Audio trigger rows consumed by the selected runtime/audio lane through `MK_audio` mixer/render counters, with no direct environment audio-device ownership, no physical endpoint playback claim, and no native-handle access. |
-| Vulkan precipitation | Unclaimed | Strict particle texture/buffer upload, descriptor, depth-occlusion, draw/readback proof with validation layers. |
+| Vulkan precipitation | Selected strict rain renderer execution ready | Strict particle texture/buffer upload, descriptor, depth-occlusion, draw/readback proof with validation layers for the selected rain lane. Vulkan snow precipitation and broader parity remain unclaimed. |
 | Vulkan volumetric cloud/fog | Unclaimed | Strict compute/render paths with synchronization2 barriers, package recipes, positive dispatch/raymarch/readback counters. |
 | Metal environment execution | Host-gated rows only | Apple-host feature-local render/compute pipeline, texture, cube/HDR, and synchronization evidence for selected features. |
 | Editor environment authoring | Read-only readiness rows | First-party authoring panels for profile v2, volume stack, weather timeline, quality presets, and readiness reports without backend execution from editor core. |
@@ -418,6 +418,16 @@ desktop-runtime-sample-game-vulkan-environment-ibl-renderer-execution
 - [ ] Preserve Metal and broad backend parity non-claims.
 
 Expected: Vulkan rows become ready only when strict Vulkan host/toolchain/package proof passes.
+
+Phase 5 precipitation candidate closeout:
+
+- `desktop-runtime-sample-game-vulkan-environment-precipitation-renderer-execution` is added as a strict `vulkan-strict` host/toolchain-gated recipe.
+- The selected sample package lane uses target-specific precipitation SPIR-V artifacts, `--require-vulkan-scene-shaders`, `--require-vulkan-renderer`, `--require-vulkan-postprocess-evidence`, and `--require-environment-precipitation-vulkan-renderer-execution`.
+- Installed package validation requires `environment_precipitation_vulkan_status=ready`, `environment_precipitation_vulkan_ready=1`, `environment_precipitation_vulkan_selected_backend=vulkan`, storm/rain rows, effective Vulkan particle/depth/sampler/constants binding slots `8/9/28/47`, `environment_precipitation_vulkan_descriptor_set_bindings=4`, positive `environment_precipitation_vulkan_synchronization2_barriers`, positive particle-buffer upload/backend invocation/renderer draw counters, `environment_precipitation_vulkan_depth_occlusion_readback=1`, zero diagnostics, zero native-handle access, zero material mutation, and zero audio playback.
+- Vulkan RHI command-list vertex-buffer binding now retains multiple binding slots and records contiguous `vkCmdBindVertexBuffers` ranges so the precipitation quad and instance buffers are both bound according to the official Vulkan `firstBinding + i` binding update rule.
+- Focused validation evidence before docs/static closeout: `tools/run-validation-recipe.ps1 -Mode Execute -Recipe desktop-runtime-sample-game-vulkan-environment-precipitation-renderer-execution -HostGateAcknowledgements vulkan-strict -TimeoutSeconds 300` passed on the local strict Vulkan host.
+
+This is a selected strict Vulkan rain precipitation renderer execution row only. The rest of Phase 5 remains open for Vulkan volumetric fog, Vulkan volumetric cloud, and Vulkan IBL; Metal precipitation, backend parity, broad optimization, and broad `environment_ready` remain unclaimed.
 
 ## Phase 6: Apple Metal Host Evidence Execution
 

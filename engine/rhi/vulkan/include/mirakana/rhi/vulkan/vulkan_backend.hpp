@@ -1491,6 +1491,12 @@ struct VulkanRuntimeSwapchainPresentResult {
     std::string diagnostic;
 };
 
+struct VulkanRuntimeVertexBufferBindingDesc {
+    VulkanRuntimeBuffer* buffer{nullptr};
+    std::uint64_t offset{0};
+    std::uint32_t binding{0};
+};
+
 struct VulkanRuntimeDynamicRenderingDrawDesc {
     VulkanDynamicRenderingPlan dynamic_rendering;
     std::uint32_t image_index{0};
@@ -1498,9 +1504,7 @@ struct VulkanRuntimeDynamicRenderingDrawDesc {
     std::uint32_t instance_count{1};
     std::uint32_t first_vertex{0};
     std::uint32_t first_instance{0};
-    VulkanRuntimeBuffer* vertex_buffer{nullptr};
-    std::uint64_t vertex_buffer_offset{0};
-    std::uint32_t vertex_buffer_binding{0};
+    std::vector<VulkanRuntimeVertexBufferBindingDesc> vertex_buffers;
     VulkanRuntimeBuffer* index_buffer{nullptr};
     std::uint64_t index_buffer_offset{0};
     IndexFormat index_format{IndexFormat::unknown};
@@ -1557,9 +1561,7 @@ struct VulkanRuntimeTextureRenderingDrawDesc {
     std::uint32_t instance_count{1};
     std::uint32_t first_vertex{0};
     std::uint32_t first_instance{0};
-    VulkanRuntimeBuffer* vertex_buffer{nullptr};
-    std::uint64_t vertex_buffer_offset{0};
-    std::uint32_t vertex_buffer_binding{0};
+    std::vector<VulkanRuntimeVertexBufferBindingDesc> vertex_buffers;
     VulkanRuntimeBuffer* index_buffer{nullptr};
     std::uint64_t index_buffer_offset{0};
     IndexFormat index_format{IndexFormat::unknown};
