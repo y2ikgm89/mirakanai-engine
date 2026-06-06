@@ -181,6 +181,7 @@ $requiresEnvironmentFogVulkanPackageEvidence = @($SmokeArgs) -contains "--requir
 $requiresPhysicalSkyPackageEvidence = @($SmokeArgs) -contains "--require-physical-sky-package-evidence"
 $requiresPhysicalSkyVulkanPackageEvidence = @($SmokeArgs) -contains "--require-physical-sky-vulkan-package-evidence"
 $requiresEnvironmentVolumetricFogPackageEvidence = @($SmokeArgs) -contains "--require-environment-volumetric-fog-package-evidence"
+$requiresEnvironmentVolumetricFogVulkanRendererExecution = @($SmokeArgs) -contains "--require-environment-volumetric-fog-vulkan-renderer-execution"
 $requiresEnvironmentLightingPackageEvidence = @($SmokeArgs) -contains "--require-environment-lighting-package-evidence"
 $requiresEnvironmentLightingRendererExecution = @($SmokeArgs) -contains "--require-environment-lighting-renderer-execution"
 $requiresCloudLayerPackageEvidence = @($SmokeArgs) -contains "--require-cloud-layer-package-evidence"
@@ -239,6 +240,11 @@ if ($requiresEnvironmentFogVulkanPackageEvidence) {
 }
 if ($requiresEnvironmentVolumetricFogPackageEvidence) {
     $requiresD3d12Renderer = $true
+}
+if ($requiresEnvironmentVolumetricFogVulkanRendererExecution) {
+    $requiresPostprocess = $true
+    $requiresPostprocessDepthInput = $true
+    $requiresVulkanPostprocessEvidence = $true
 }
 if ($requiresPhysicalSkyPackageEvidence) {
     $requiresPostprocess = $true
@@ -311,6 +317,7 @@ $requiresAnyEnvironmentQualityBudget = $requiresEnvironmentProfile -or
     $requiresPhysicalSkyPackageEvidence -or
     $requiresPhysicalSkyVulkanPackageEvidence -or
     $requiresEnvironmentVolumetricFogPackageEvidence -or
+    $requiresEnvironmentVolumetricFogVulkanRendererExecution -or
     $requiresEnvironmentLightingPackageEvidence -or
     $requiresEnvironmentLightingRendererExecution -or
     $requiresCloudLayerPackageEvidence -or
@@ -4885,6 +4892,44 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 Write-Error "Installed desktop runtime smoke status line did not prove positive environment_volumetric_fog_compute_dispatches."
             }
         }
+        if ($requiresEnvironmentVolumetricFogVulkanRendererExecution) {
+            if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
+                Write-Error "Installed desktop runtime smoke status line must not claim broad environment_ready for Vulkan volumetric fog renderer execution evidence."
+            }
+            $expectedEnvironmentVolumetricFogVulkanFields = @{
+                "environment_volumetric_fog_vulkan_status" = "ready"
+                "environment_volumetric_fog_vulkan_ready" = "1"
+                "environment_volumetric_fog_vulkan_selected_backend" = "vulkan"
+                "environment_volumetric_fog_vulkan_requested" = "1"
+                "environment_volumetric_fog_vulkan_shader_contract_evidence_ready" = "1"
+                "environment_volumetric_fog_vulkan_package_evidence_ready" = "1"
+                "environment_volumetric_fog_vulkan_execution_evidence_ready" = "1"
+                "environment_volumetric_fog_vulkan_froxel_output_ready" = "1"
+                "environment_volumetric_fog_vulkan_scene_depth_ready" = "1"
+                "environment_volumetric_fog_vulkan_descriptor_set_bindings" = "4"
+                "environment_volumetric_fog_vulkan_froxel_readback_nonzero" = "1"
+                "environment_volumetric_fog_vulkan_scene_depth_texture_binding" = "2"
+                "environment_volumetric_fog_vulkan_scene_depth_sampler_binding" = "3"
+                "environment_volumetric_fog_vulkan_constants_binding" = "5"
+                "environment_volumetric_fog_vulkan_constants_byte_size" = "256"
+                "environment_volumetric_fog_vulkan_froxel_output_storage_buffer_binding" = "13"
+                "environment_volumetric_fog_vulkan_native_handle_access" = "0"
+                "environment_volumetric_fog_vulkan_diagnostics" = "0"
+            }
+            foreach ($field in $expectedEnvironmentVolumetricFogVulkanFields.Keys) {
+                $expectedValue = [regex]::Escape($expectedEnvironmentVolumetricFogVulkanFields[$field])
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove Vulkan environment volumetric fog renderer execution field: $field=$($expectedEnvironmentVolumetricFogVulkanFields[$field])"
+                }
+            }
+            foreach ($field in @(
+                    "environment_volumetric_fog_vulkan_compute_dispatches",
+                    "environment_volumetric_fog_vulkan_synchronization2_barriers")) {
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=([1-9][0-9]*)\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove positive Vulkan environment volumetric fog renderer execution field: $field"
+                }
+            }
+        }
         if ($requiresEnvironmentVolumetricCloudPackageEvidence) {
             if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
                 Write-Error "Installed desktop runtime smoke status line must not claim broad environment_ready for volumetric cloud package evidence."
@@ -5308,6 +5353,12 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
             $expectedEnvironmentQualityBudgetHeightFogSamples = 8
         }
         if ($requiresEnvironmentVolumetricFogPackageEvidence) {
+            ++$expectedEnvironmentQualityBudgetRows
+            $expectedEnvironmentQualityBudgetConstantBytes += 256
+            $expectedEnvironmentQualityBudgetVolumetricFogRaymarch = 48
+            $expectedEnvironmentQualityBudgetComputeDispatches = 1
+        }
+        if ($requiresEnvironmentVolumetricFogVulkanRendererExecution) {
             ++$expectedEnvironmentQualityBudgetRows
             $expectedEnvironmentQualityBudgetConstantBytes += 256
             $expectedEnvironmentQualityBudgetVolumetricFogRaymarch = 48

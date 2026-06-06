@@ -247,6 +247,10 @@ $sampleEnvironmentVolumetricFogDryRun = Assert-DryRunRecipe -Recipe "desktop-run
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireD3d12Shaders", "-SmokeArgs @(", "--require-environment-volumetric-fog-package-evidence", "runtime/sample_desktop_runtime_game.geindex")) {
     Assert-ArgvContainsText -Result $sampleEnvironmentVolumetricFogDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-volumetric-fog-package"
 }
+$sampleVulkanEnvironmentVolumetricFogRendererExecutionDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-vulkan-volumetric-fog-renderer-execution" -ExpectedArgv @("-Command")
+foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireVulkanShaders", "-SmokeArgs @(", "--require-environment-volumetric-fog-vulkan-renderer-execution", "runtime/sample_desktop_runtime_game.geindex")) {
+    Assert-ArgvContainsText -Result $sampleVulkanEnvironmentVolumetricFogRendererExecutionDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-vulkan-volumetric-fog-renderer-execution"
+}
 $sampleCloudLayerDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-cloud-layer-package" -ExpectedArgv @("-Command")
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireD3d12Shaders", "-SmokeArgs @(", "--require-cloud-layer-package-evidence", "runtime/sample_desktop_runtime_game.geindex")) {
     Assert-ArgvContainsText -Result $sampleCloudLayerDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-cloud-layer-package"
@@ -331,6 +335,11 @@ if ($missingGate.status -ne "rejected" -or @($missingGate.diagnostics | Where-Ob
 $missingVulkanPrecipitationGate = Invoke-RunnerJson -Arguments @("-Mode", "Execute", "-Recipe", "desktop-runtime-sample-game-vulkan-environment-precipitation-renderer-execution") -ExpectedExitCode 2
 if ($missingVulkanPrecipitationGate.status -ne "rejected" -or @($missingVulkanPrecipitationGate.diagnostics | Where-Object { $_.code -eq "missing-host-gate-acknowledgement" }).Count -ne 1) {
     Write-Error "strict Vulkan precipitation renderer execution recipe must require vulkan-strict acknowledgement before execute"
+}
+
+$missingVulkanVolumetricFogGate = Invoke-RunnerJson -Arguments @("-Mode", "Execute", "-Recipe", "desktop-runtime-sample-game-vulkan-volumetric-fog-renderer-execution") -ExpectedExitCode 2
+if ($missingVulkanVolumetricFogGate.status -ne "rejected" -or @($missingVulkanVolumetricFogGate.diagnostics | Where-Object { $_.code -eq "missing-host-gate-acknowledgement" }).Count -ne 1) {
+    Write-Error "strict Vulkan volumetric fog renderer execution recipe must require vulkan-strict acknowledgement before execute"
 }
 
 $missingMaterialVulkanGate = Invoke-RunnerJson -Arguments @("-Mode", "Execute", "-Recipe", "desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict") -ExpectedExitCode 2

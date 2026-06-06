@@ -257,6 +257,25 @@ function Get-SampleDesktopRuntimeGameEnvironmentVolumetricFogSmokeArgs {
     )
 }
 
+function Get-SampleDesktopRuntimeGameVulkanEnvironmentVolumetricFogRendererExecutionSmokeArgs {
+    return @(
+        '--smoke',
+        '--max-frames',
+        '2',
+        '--require-config',
+        'runtime/sample_desktop_runtime_game.config',
+        '--require-scene-package',
+        'runtime/sample_desktop_runtime_game.geindex',
+        '--require-vulkan-scene-shaders',
+        '--require-vulkan-renderer',
+        '--require-scene-gpu-bindings',
+        '--require-postprocess',
+        '--require-postprocess-depth-input',
+        '--require-vulkan-postprocess-evidence',
+        '--require-environment-volumetric-fog-vulkan-renderer-execution'
+    )
+}
+
 function Get-SampleDesktopRuntimeGameVolumetricCloudSmokeArgs {
     return @(
         '--smoke',

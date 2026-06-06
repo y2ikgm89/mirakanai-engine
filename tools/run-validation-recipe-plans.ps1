@@ -160,6 +160,13 @@ function Get-ValidationRecipeCommandPlan {
         $diagD3dVolumetricFog = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'D3D12 volumetric fog package validation is restricted to the reviewed sample_desktop_runtime_game D3D12 froxel compute package lane and does not claim Vulkan, Metal, volumetric clouds, backend parity, or broad environment_ready.' -ValidationRecipe $RecipeName -HostGate 'd3d12-windows-primary'
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('d3d12-windows-primary') -RequiredAcknowledgements @('d3d12-windows-primary') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12') -Diagnostics @($diagD3dVolumetricFog)
     }
+    elseif ($RecipeName -eq 'desktop-runtime-sample-game-vulkan-volumetric-fog-renderer-execution') {
+        $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
+        $smokeTail = @(Get-SampleDesktopRuntimeGameVulkanEnvironmentVolumetricFogRendererExecutionSmokeArgs)
+        $pwEntry = Get-DesktopRuntimePackageCommandPlan -ScriptPath $packageScript -GameTarget $target -RequireVulkanShaders -SmokeArgs $smokeTail
+        $diagVulkanVolumetricFogExecution = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'Strict Vulkan volumetric fog renderer execution validation is restricted to the reviewed sample_desktop_runtime_game Vulkan package lane with --require-environment-volumetric-fog-vulkan-renderer-execution and proves SPIR-V compute shader artifacts, storage-buffer froxel output binding, descriptor-set binding evidence, compute dispatch, synchronization2 memory barrier evidence, froxel readback, and zero native-handle counters without claiming D3D12 by inference, Metal, backend parity, broad optimization, or broad environment_ready.' -ValidationRecipe $RecipeName -HostGate 'vulkan-strict'
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('vulkan-strict') -RequiredAcknowledgements @('vulkan-strict') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'Vulkan') -Diagnostics @($diagVulkanVolumetricFogExecution)
+    }
     elseif ($RecipeName -eq 'desktop-runtime-sample-game-volumetric-cloud-package') {
         $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
         $smokeTail = @(Get-SampleDesktopRuntimeGameVolumetricCloudSmokeArgs)
