@@ -16,6 +16,8 @@
 
 **Date:** 2026-05-27
 
+**Latest audit:** 2026-06-05. This audit keeps the plan as a candidate master roadmap and updates the clean-break baseline after first-party desktop platform, first-party UI/editor, environment, and performance-foundation work landed.
+
 ## Master Plan Decision
 
 This should be a master plan, not a single active dated implementation plan.
@@ -28,6 +30,32 @@ Reasons:
 - The "Nanite-exceeding" claim is a final integrated benchmark claim, not a useful early implementation target.
 
 Use this file as the roadmap and decision contract. Create focused child plans under `docs/superpowers/plans/YYYY-MM-DD-mavg-<phase>.md` when executing a phase.
+
+## 2026-06-05 Full Project Audit Addendum
+
+This addendum is the current execution baseline for any future MAVG child plan.
+
+Repository state checked during this audit:
+
+- `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` points to the Production Completion Master Plan selection gate, `recommendedNextPlan.id = next-production-gap-selection`, and `unsupportedProductionGaps = []`.
+- MAVG is still a candidate long-range roadmap; there is no MAVG implementation, cooked cluster asset format, or active manifest row yet.
+- SDL3 is not an active dependency or supported runtime/editor/audio path. The completed first-party desktop platform milestone replaced SDL3 surfaces with `MK_platform_win32`, `MK_runtime_host_win32`, `MK_runtime_host_win32_presentation`, and `MK_audio_wasapi`.
+- The active visible editor shell is first-party retained UI over private Win32, Direct3D 12, DirectWrite, TSF, and UIA adapters. Dear ImGui, SDL3, Qt, Slint, RmlUi, and UI middleware must not be reintroduced for MAVG tools or benchmark UI.
+- `MK_environment` is now a renderer and scene-renderer dependency. MAVG benchmark scenes must account for selected sky, fog, cloud, rain, time-of-day, and weather-blending evidence without implying broad `environment_ready`, snow package readiness, volumetric-cloud package readiness, Vulkan/Metal parity, or broad environment optimization.
+- Performance foundation work has landed for performance budgets/evidence, memory diagnostics, frame/thread scratch, job scheduling, worker pools, work stealing, topology and placement policy, Windows CPU Sets worker placement, SIMD dispatch, AVX2 reviewed target execution, CPU profiling matrix, optional GPU compute review, and long-running readiness gates. MAVG must build on these rows before making CPU/GPU/memory optimization claims.
+- Current `vcpkg.json` has no default dependencies. Optional features remain explicit and reviewed; MAVG must not add dependencies without `vcpkg.json`, `docs/dependencies.md`, `docs/legal-and-licensing.md`, and `THIRD_PARTY_NOTICES.md` updates in the same child plan.
+
+Audit conclusions:
+
+- Keep this file as the master plan. Do not create a second MAVG master plan unless this one is formally superseded.
+- First executable work should be a dated Phase 0 child plan that refreshes official-source checks, cleans stale planning assumptions, and locks benchmark methodology before code.
+- MAVG code and tools must stay clean-break: no backward-compatibility aliases, no old SDL3/Dear ImGui lane, no public native backend handles, and no UE/Nanite compatibility.
+- The near-term claim should be "static clustered geometry with deterministic fallback and package evidence." "Exceeds Nanite-like LOD" remains a measured final claim across selected axes only.
+
+Audit-detected documentation drift to reconcile before implementation:
+
+- Historical docs may still mention earlier Dear ImGui/desktop-gui guidance. Child plans must treat `docs/current-capabilities.md`, `docs/superpowers/plans/README.md`, `engine/agent/manifest.json`, and `docs/agent-operational-reference.md` as current truth, then update stale durable docs if the child plan relies on them.
+- Any child plan that touches editor shell, native desktop, renderer, package, validation, or agent contracts must run an agent-surface drift check and update the owning docs/manifest/static checks rather than copying historical claims forward.
 
 ## Clean-Room And Legal Guardrails
 
@@ -50,13 +78,31 @@ Use current official documentation before implementing each child phase. Re-chec
 - AMD GPUOpen meshlet compression guidance: `https://gpuopen.com/learn/mesh_shaders/mesh_shaders-meshlet_compression/`
 - Garland and Heckbert, quadric error metrics: `https://publications.ri.cmu.edu/surface-simplification-using-quadric-error-metrics`
 - Hoppe, progressive meshes: `https://hhoppe.com/proj/pm/`
+- CMake presets, install/export, package config, and CXX module file-set guidance: `https://cmake.org/cmake/help/latest/manual/cmake-presets.7.html`, `https://cmake.org/cmake/help/latest/command/install.html`, `https://cmake.org/cmake/help/latest/command/export.html`, `https://cmake.org/cmake/help/latest/manual/cmake-cxxmodules.7.html`
+- Microsoft Win32 Raw Input: `https://learn.microsoft.com/en-us/windows/win32/inputdev/about-raw-input`
+- Microsoft WASAPI/Core Audio: `https://learn.microsoft.com/en-us/windows/win32/coreaudio/wasapi`
+- Microsoft DirectWrite: `https://learn.microsoft.com/en-us/windows/win32/directwrite/direct-write-portal`
+- Microsoft Text Services Framework: `https://learn.microsoft.com/en-us/windows/win32/tsf/text-services-framework`
+- Microsoft UI Automation provider/client specifications: `https://learn.microsoft.com/en-us/windows/win32/winauto/ui-automation-specification`
+- Apple Metal feature set tables and mesh/object shader documentation: `https://developer.apple.com/metal/capabilities/`, `https://developer.apple.com/documentation/metal/mesh-and-object-shader-resource-preparation-commands`
 
 Use official SDK docs as constraints, not as copied implementation. Use the research papers for algorithmic ideas and write original implementations.
+
+Source-use rules from the 2026-06-05 audit:
+
+- Use Context7 for live CMake and Vulkan documentation checks during child-plan authoring.
+- Use official Microsoft, Khronos, Apple, Epic, NVIDIA, and AMD documentation for API constraints and capability gates.
+- Treat vendor blog guidance as design input only; do not add vendor-only APIs to the default path.
+- Treat Epic Nanite documentation as a feature taxonomy and support-boundary reference only. Do not use UE source, shaders, internal tools, cooked data, or private presentations.
 
 ## Current Engine Anchors
 
 Existing usable foundations:
 
+- `MK_platform_win32`, `MK_runtime_host_win32`, `MK_runtime_host_win32_presentation`, and `MK_audio_wasapi` are the active Windows desktop/runtime/audio host foundations. MAVG sample and benchmark UI must target these first-party host lanes, not SDL3.
+- `MK_editor_core`, `mirakana::ui`, `MK_ui`, and `MK_ui_renderer` are the active first-party UI/editor foundations. MAVG editor-facing diagnostics must use retained first-party rows and private native adapters.
+- `MK_environment` provides profile validation/text IO/package rows, scene/runtime environment profile binding, renderer policy planning, selected D3D12 sky/fog/cloud/rain evidence, and host-gated Vulkan height-fog proof. MAVG benchmark content should include environment load but avoid broad environment-ready claims.
+- Performance foundation rows exist for performance budget evidence, memory diagnostics, scratch arenas, job execution, CPU placement, SIMD/AVX2 dispatch, long-running readiness, CPU profiling matrix, and optional GPU compute review. MAVG readiness claims must cite or extend these rows rather than inventing parallel diagnostics.
 - `engine/runtime/include/mirakana/runtime/entity_scale_culling.hpp` has value-only LOD band, visibility, draw/update cost, and budget planning.
 - `engine/renderer/include/mirakana/renderer/scene_scale_policy.hpp` has backend-neutral scene scale, culling, batching, and LOD policy rows.
 - `engine/runtime_rhi/include/mirakana/runtime_rhi/runtime_upload.hpp` has runtime mesh, skinned mesh, morph mesh, and texture upload evidence.
@@ -76,6 +122,7 @@ Important gaps:
 - No unified raster/ray tracing cluster payload.
 - No deformation-safe cluster bounds or dynamic update policy.
 - No benchmark harness capable of supporting a "beyond Nanite-like LOD" claim.
+- No MAVG-specific first-party editor/benchmark panel, diagnostic row family, package recipe, manifest row, or validation recipe.
 
 ## Success Criteria
 
@@ -103,17 +150,19 @@ MAVG can be called production-ready only when all of these are true:
 
 This is the most defensible estimate with current information. It assumes senior engineers familiar with modern rendering, C++23, D3D12/Vulkan, asset cooking, and GPU profiling.
 
+The 2026-06-05 audit improves confidence for platform/UI/performance foundations but does not shorten the hardest MAVG work: original hierarchy generation, streaming, backend execution, RT consistency, deformation quality, and benchmark proof still dominate the schedule.
+
 | Scope | Solo senior engineer | 3 senior engineers | Confidence |
 | --- | ---: | ---: | --- |
-| Static cluster asset graph plus CPU selection prototype | 4-6 months | 2-3 months | Medium |
-| Static GPU clustered renderer with D3D12 and Vulkan evidence | 9-14 months | 5-8 months | Medium-low |
-| Streaming, graceful degradation, profiling, and package proof | 14-22 months | 8-12 months | Medium-low |
-| Deformable clusters plus RT integration | 22-36 months | 12-20 months | Low |
-| Integrated "exceeds Nanite-like LOD on selected axes" benchmark claim | 30-48 months | 18-30 months | Low |
+| Static cluster asset graph plus CPU selection prototype | 3-5 months | 2-3 months | Medium |
+| Static GPU clustered renderer with D3D12 and Vulkan evidence | 7-12 months | 4-7 months | Medium-low |
+| Streaming, graceful degradation, profiling, environment-aware package proof, and benchmark scenes | 12-20 months | 7-11 months | Medium-low |
+| Deformable clusters plus raster/RT consistency integration | 22-34 months | 12-20 months | Low |
+| Integrated "exceeds Nanite-like LOD on selected axes" benchmark claim | 24-42 months | 14-24 months | Low |
 
-Minimum useful production-facing v1: 8-12 person-months.
+Minimum useful production-facing v1: 6-10 person-months.
 
-Credible flagship system across all requested axes: 48-72 person-months, plus host validation and legal/FTO review.
+Credible flagship system across all requested axes: 42-72 person-months, plus host validation and legal/FTO review.
 
 Main uncertainty drivers:
 
@@ -181,6 +230,13 @@ GPU execution should progress in layers:
 
 Do not make mesh shaders mandatory for package consumption. The default production path must have a compute/indirect fallback until backend coverage is proven.
 
+GPU synchronization rules:
+
+- D3D12 and Vulkan paths must record explicit transitions/barriers from compute shader writes to indirect command reads and draw/mesh shader reads.
+- Vulkan child plans must use synchronization2-era reasoning and strict validation-layer evidence where the host/toolchain supports it.
+- D3D12 mesh shader paths must query mesh shader and mesh shader pipeline statistics support before relying on those counters.
+- Work Graphs are research-gated until the conventional compute/indirect and mesh shader paths have measured evidence.
+
 ### Streaming And Residency
 
 Cluster pages are explicit runtime resources.
@@ -226,18 +282,21 @@ Rules:
 
 **Files:**
 
-- Create: `docs/specs/2026-05-27-mavg-architecture-v1.md`
-- Create: `docs/specs/2026-05-27-mavg-benchmark-methodology-v1.md`
+- Create if Phase 0 starts on the current audit date: `docs/specs/2026-06-05-mavg-architecture-v1.md`
+- Create if Phase 0 starts on the current audit date: `docs/specs/2026-06-05-mavg-benchmark-methodology-v1.md`
+- If Phase 0 starts later, use the actual child-plan authoring date per `docs/superpowers/plans/README.md`.
 - Modify: `docs/dependencies.md`
 - Modify: `docs/legal-and-licensing.md`
 - Modify: `THIRD_PARTY_NOTICES.md` only if a dependency or dataset is selected.
+- Modify stale durable guidance only when the Phase 0 spec relies on it, including `docs/architecture-directory-verification.md`, `docs/cpp-standard.md`, `docs/current-capabilities.md`, and `docs/roadmap.md`.
 
 **Deliverables:**
 
-- Official-doc check matrix for D3D12, Vulkan, Metal, and ray tracing features.
+- Official-doc check matrix for D3D12, Vulkan, Metal, ray tracing, CMake/CXX modules, Win32 input/audio/text/accessibility, and first-party UI/editor constraints.
 - Clean-room record: what public sources are allowed, what is forbidden, and who reviewed it.
 - Benchmark scenes selected from first-party/generated assets only.
-- Baseline counters for conventional static mesh, skinned mesh, morph mesh, package streaming, memory, frame graph, and renderer quality.
+- Baseline counters for conventional static mesh, skinned mesh, morph mesh, package streaming, memory, frame graph, renderer quality, environment rendering, job execution, and long-run readiness.
+- Updated stale-doc inventory so historical Dear ImGui/desktop-gui/SDL3 references are classified as historical, corrected, or removed from active guidance.
 - First child plan selection.
 
 **Validation:**
@@ -245,6 +304,7 @@ Rules:
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-text-format.ps1
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-ai-integration.ps1
+pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-agents.ps1
 git diff --check
 ```
 
@@ -299,7 +359,7 @@ git diff --check
 
 ### Phase 3 - Conventional Render Adoption v1
 
-**Estimate:** 8-12 weeks solo, 4-6 weeks with 3 engineers.
+**Estimate:** 7-11 weeks solo, 4-6 weeks with 3 engineers.
 
 **Files:**
 
@@ -318,6 +378,7 @@ git diff --check
 - Submit selected clusters through the existing draw/indexed draw path.
 - Report MAVG draw counters without mesh shader dependency.
 - Package sample smoke for a selected first-party static clustered mesh.
+- Include selected environment scene load in benchmark/package evidence without promoting broad `environment_ready`.
 
 **Done when:**
 
@@ -325,7 +386,7 @@ git diff --check
 
 ### Phase 4 - GPU Culling And Indirect Draw v1
 
-**Estimate:** 10-16 weeks solo, 6-9 weeks with 3 engineers.
+**Estimate:** 9-15 weeks solo, 5-8 weeks with 3 engineers.
 
 **Files:**
 
@@ -346,6 +407,7 @@ git diff --check
 - Synchronization rows for compute-write to indirect-read and draw-read.
 - D3D12 and Vulkan backend-local evidence.
 - Null RHI deterministic counters.
+- Vulkan synchronization2 and D3D12 barrier evidence for compute/indirect/draw resource transitions.
 
 **Done when:**
 
@@ -378,7 +440,7 @@ git diff --check
 
 ### Phase 6 - Mesh Shader Backend v1
 
-**Estimate:** 10-16 weeks solo, 6-10 weeks with 3 engineers.
+**Estimate:** 9-15 weeks solo, 5-9 weeks with 3 engineers.
 
 **Files:**
 
@@ -396,6 +458,7 @@ git diff --check
 - Vulkan `VK_EXT_mesh_shader` path when toolchain and device support exist.
 - Compute/indirect fallback remains the default when mesh shaders are unavailable.
 - Shader validation and package counters are exact per backend.
+- Mesh shader output limits, payload limits, pipeline statistics feature queries, and fallback diagnostics are represented as first-party rows.
 
 **Done when:**
 
@@ -492,12 +555,15 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 
 Additional phase gates:
 
+- Docs/agent-only phases: `tools/check-text-format.ps1`, `tools/check-ai-integration.ps1`, `tools/check-agents.ps1`, `tools/check-json-contracts.ps1` if manifest fragments are touched, and `git diff --check`.
+- Native desktop/editor phases: `tools/check-native-desktop-contracts.ps1` plus `tools/build-editor.ps1` when visible editor shell evidence is affected.
 - Shader phases: `tools/check-shader-toolchain.ps1` plus DXIL/SPIR-V validation.
 - Package phases: `tools/package-desktop-runtime.ps1` and installed runtime validation.
 - Dependency phases: `tools/bootstrap-deps.ps1`, `tools/check-dependency-policy.ps1`, legal docs, and notices.
 - Vulkan phases: strict validation-layer evidence and SPIR-V evidence.
 - Metal phases: Apple-host evidence only.
 - Benchmark phases: repeatable runs with raw output stored outside source or as intentionally tracked summarized evidence.
+- Public API phases: `tools/check-public-api-boundaries.ps1` and targeted tests before full `tools/validate.ps1`.
 
 ## Agent-Surface Drift Policy
 
@@ -513,8 +579,11 @@ Likely affected surfaces:
 - `schemas/engine-agent.schema.json`
 - `schemas/game-agent.schema.json`
 - `.agents/skills/rendering-change/SKILL.md`
+- `.agents/skills/performance-optimization-change/SKILL.md`
 - `.claude/skills/gameengine-rendering/SKILL.md`
+- `.claude/skills/gameengine-performance-optimization/SKILL.md`
 - `.cursor/skills/gameengine-rendering/SKILL.md`
+- `.cursor/skills/gameengine-performance-optimization/SKILL.md`
 - `tools/check-ai-integration*.ps1`
 - Package sample `game.agent.json` files.
 
@@ -527,6 +596,8 @@ Do not update all surfaces mechanically. Update only the surfaces whose durable 
 | Patent/FTO issue around virtualized geometry | High | Clean-room design, avoid UE source, counsel review before commercial claim. |
 | Scope explosion | High | Master plan plus focused child plans; no single child plan spans more than one API/validation boundary. |
 | Mesh shader availability gaps | High | Keep compute/indirect fallback as production path until backend evidence exists. |
+| Reintroducing removed UI/platform middleware | High | MAVG tools and benchmarks use first-party UI/editor and Win32/WASAPI host lanes; SDL3, Dear ImGui, Qt, Slint, RmlUi, and UI middleware stay out unless a new architecture decision explicitly reverses policy. |
+| Stale historical docs leaking into implementation | High | Phase 0 reconciles active truth against manifest/current-capabilities/plan registry and updates stale durable docs before code depends on them. |
 | Streaming holes or popping | High | Resident fallback ancestor invariant and temporal quality governor are hard requirements. |
 | Deformation bounds too conservative | Medium-high | Tiered deformation support with quality diagnostics and fallback to conventional rendering for unsupported tiers. |
 | RT update cost too high | Medium-high | BLAS/refit/rebuild policy rows and selected benchmark gates before readiness claims. |

@@ -20,9 +20,9 @@ This document records a structured assessment of the repository’s top-level la
 | --- | --- | --- |
 | Runtime modules | `engine/<module>/` (`core`, `math`, `scene`, `renderer`, `rhi`, …) | Feature libraries; `include/mirakana/...` + `src/` |
 | GPU backends | `engine/rhi/<backend>/` | Isolated RHI implementations |
-| Platform | `engine/platform/` (+ optional `sdl3`) | OS APIs behind contracts |
+| Platform | `engine/platform/` plus first-party `win32` adapters | OS APIs behind contracts |
 | Bridge layers | `runtime_rhi`, `runtime_scene`, `runtime_scene_rhi`, `runtime_host`, … | Prevent dependency inversion; see [architecture.md](architecture.md) |
-| Editor | `editor/core/` (GUI-independent), `editor/src/` (Dear ImGui shell) | Testable core vs. shell |
+| Editor | `editor/core/` (GUI-independent), `editor/src/` (first-party Win32/Direct3D 12 retained shell) | Testable core vs. shell |
 | Games | `games/` | Products and samples |
 | Package templates | `platform/android/`, `platform/ios/` | App packaging separate from engine modules |
 | Verification | `tests/unit/`, `tests/fixtures/` | Centralized tests |
@@ -60,6 +60,8 @@ flowchart TB
 - **`find_package(Mirakanai)` uses `ExactVersion`** ([building.md](building.md)): strict for consumers, not “loose” semver compatibility.
 
 **Note:** A clean **directory** layout is not the same as **production completeness** of every subsystem. [architecture.md](architecture.md) lists many follow-ups per module; **architectural direction can be strong while feature maturity follows the roadmap**.
+
+**2026-06-05 active-shell note:** earlier SDL3 and Dear ImGui wording in historical plans is not active guidance. The current desktop/runtime/editor baseline is first-party Win32/WASAPI host adapters plus first-party retained UI/editor shell code with private native handles.
 
 ## Split vs. merge of folders and files
 
