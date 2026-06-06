@@ -5,6 +5,7 @@
 
 #include "mirakana/assets/material.hpp"
 #include "mirakana/renderer/environment_fog_policy.hpp"
+#include "mirakana/renderer/physical_sky_policy.hpp"
 #include "mirakana/renderer/rhi_frame_renderer.hpp"
 #include "mirakana/renderer/rhi_postprocess_frame_renderer.hpp"
 #include "mirakana/renderer/shadow_map.hpp"
@@ -627,6 +628,40 @@ MK_TEST("vulkan logical device create plan preserves separate graphics and prese
     MK_REQUIRE(plan.queue_families.size() == 2);
     MK_REQUIRE(plan.queue_families[0].queue_family == 2);
     MK_REQUIRE(plan.queue_families[1].queue_family == 3);
+}
+
+MK_TEST("vulkan logical device create plan supports offscreen graphics queues without present or swapchain") {
+    mirakana::rhi::vulkan::VulkanPhysicalDeviceCandidate device;
+    device.name = "Offscreen";
+    device.type = mirakana::rhi::vulkan::VulkanPhysicalDeviceType::integrated_gpu;
+    device.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 3);
+    device.supports_swapchain_extension = false;
+    device.supports_dynamic_rendering = true;
+    device.supports_synchronization2 = true;
+    device.queue_families.push_back(mirakana::rhi::vulkan::VulkanQueueFamilyCandidate{
+        .index = 7,
+        .queue_count = 1,
+        .capabilities = mirakana::rhi::vulkan::VulkanQueueCapability::graphics |
+                        mirakana::rhi::vulkan::VulkanQueueCapability::compute,
+        .supports_present = false,
+    });
+
+    mirakana::rhi::vulkan::VulkanLogicalDeviceCreateDesc desc;
+    desc.required_extensions.clear();
+    desc.require_present_queue = false;
+
+    const auto selection = mirakana::rhi::vulkan::select_physical_device(desc, {device});
+    const auto plan = mirakana::rhi::vulkan::build_logical_device_create_plan(desc, device, selection, {});
+
+    MK_REQUIRE(selection.suitable);
+    MK_REQUIRE(selection.graphics_queue_family == 7);
+    MK_REQUIRE(selection.present_queue_family == mirakana::rhi::vulkan::invalid_vulkan_queue_family);
+    MK_REQUIRE(plan.supported);
+    MK_REQUIRE(plan.queue_families.size() == 1);
+    MK_REQUIRE(plan.queue_families[0].queue_family == 7);
+    MK_REQUIRE(plan.enabled_extensions.empty());
+    MK_REQUIRE(plan.dynamic_rendering_enabled);
+    MK_REQUIRE(plan.synchronization2_enabled);
 }
 
 MK_TEST("vulkan logical device create plan rejects unsuitable selections missing extensions and features") {
@@ -5982,6 +6017,262 @@ MK_TEST("vulkan rhi device bridge applies height fog from scene depth and enviro
 #endif
 }
 
+MK_TEST("vulkan rhi device bridge applies physical sky constants when configured") {
+#if defined(_WIN32) || defined(__linux__)
+    const auto sky_vertex_artifact = load_spirv_artifact_from_environment("MK_VULKAN_TEST_PHYSICAL_SKY_VERTEX_SPV");
+    const auto sky_fragment_artifact = load_spirv_artifact_from_environment("MK_VULKAN_TEST_PHYSICAL_SKY_FRAGMENT_SPV");
+    if (!sky_vertex_artifact.configured && !sky_fragment_artifact.configured) {
+        return;
+    }
+
+    MK_REQUIRE(sky_vertex_artifact.configured);
+    MK_REQUIRE(sky_fragment_artifact.configured);
+    MK_REQUIRE(sky_vertex_artifact.diagnostic == "loaded");
+    MK_REQUIRE(sky_fragment_artifact.diagnostic == "loaded");
+
+    const auto sky_vertex_validation =
+        mirakana::rhi::vulkan::validate_spirv_shader_artifact(mirakana::rhi::vulkan::VulkanSpirvShaderArtifactDesc{
+            .stage = mirakana::rhi::ShaderStage::vertex,
+            .bytecode = sky_vertex_artifact.words.data(),
+            .bytecode_size = sky_vertex_artifact.words.size() * sizeof(std::uint32_t),
+        });
+    const auto sky_fragment_validation =
+        mirakana::rhi::vulkan::validate_spirv_shader_artifact(mirakana::rhi::vulkan::VulkanSpirvShaderArtifactDesc{
+            .stage = mirakana::rhi::ShaderStage::fragment,
+            .bytecode = sky_fragment_artifact.words.data(),
+            .bytecode_size = sky_fragment_artifact.words.size() * sizeof(std::uint32_t),
+        });
+    MK_REQUIRE(sky_vertex_validation.valid);
+    MK_REQUIRE(sky_fragment_validation.valid);
+
+    mirakana::rhi::vulkan::VulkanInstanceCreateDesc instance_desc;
+    instance_desc.application_name = "GameEngineVulkanRhiConfiguredPhysicalSky";
+    instance_desc.api_version = mirakana::rhi::vulkan::make_vulkan_api_version(1, 3);
+    instance_desc.optional_extensions = {"VK_EXT_debug_utils"};
+    instance_desc.enable_validation = true;
+
+    const auto loader_desc = mirakana::rhi::vulkan::VulkanLoaderProbeDesc{
+        .host = mirakana::rhi::current_rhi_host_platform(),
+    };
+    const auto instance_capabilities =
+        mirakana::rhi::vulkan::probe_runtime_instance_capabilities(loader_desc, instance_desc);
+    if (!instance_capabilities.instance_plan.supported) {
+        MK_REQUIRE(!instance_capabilities.instance_plan.diagnostic.empty());
+        return;
+    }
+    MK_REQUIRE(instance_capabilities.instance_plan.validation_enabled);
+    MK_REQUIRE(instance_capabilities.instance_plan.enabled_layers.size() == 1);
+    MK_REQUIRE(instance_capabilities.instance_plan.enabled_layers[0] == "VK_LAYER_KHRONOS_validation");
+
+#if defined(_WIN32)
+    HiddenVulkanTestWindow window;
+    if (!window.valid()) {
+        return;
+    }
+    const mirakana::rhi::SurfaceHandle surface{reinterpret_cast<std::uintptr_t>(window.hwnd())};
+    auto device_result = mirakana::rhi::vulkan::create_runtime_device(loader_desc, instance_desc, {}, surface);
+#else
+    auto device_result = mirakana::rhi::vulkan::create_runtime_device(loader_desc, instance_desc, {});
+#endif
+    if (!device_result.created) {
+        MK_REQUIRE(!device_result.diagnostic.empty());
+        return;
+    }
+
+    auto rhi =
+        mirakana::rhi::vulkan::create_rhi_device(std::move(device_result.device), ready_vulkan_rhi_mapping_plan());
+    MK_REQUIRE(rhi != nullptr);
+
+    const auto sky_constants = rhi->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = mirakana::physical_sky_constants_byte_size(),
+        .usage = mirakana::rhi::BufferUsage::uniform | mirakana::rhi::BufferUsage::copy_source,
+    });
+
+    mirakana::PhysicalSkyPolicyDesc sky_desc;
+    sky_desc.atmosphere.rayleigh_density_height_km = 4.0F;
+    sky_desc.atmosphere.mie_density_height_km = 1.0F;
+    sky_desc.atmosphere.mie_anisotropy = 0.25F;
+    sky_desc.atmosphere.ozone_density_height_km = 16.0F;
+    sky_desc.atmosphere.sun_angular_radius_radians = 0.00465F;
+    sky_desc.atmosphere.solar_illuminance_lux = 20000.0F;
+    sky_desc.shader_contract_evidence_ready = true;
+    sky_desc.package_evidence_ready = true;
+    sky_desc.execution_evidence_ready = true;
+    sky_desc.request_ready_promotion = true;
+    const auto sky_plan = mirakana::plan_physical_sky_policy(sky_desc);
+    MK_REQUIRE(sky_plan.ready());
+
+    std::array<std::uint8_t, mirakana::physical_sky_constants_byte_size()> sky_constants_bytes{};
+    mirakana::pack_physical_sky_constants(sky_constants_bytes, sky_desc);
+    rhi->write_buffer(sky_constants, 0, sky_constants_bytes);
+
+    const auto sky_vertex_shader = rhi->create_shader(mirakana::rhi::ShaderDesc{
+        .stage = mirakana::rhi::ShaderStage::vertex,
+        .entry_point = "vs_main",
+        .bytecode_size = sky_vertex_artifact.words.size() * sizeof(std::uint32_t),
+        .bytecode = sky_vertex_artifact.words.data(),
+    });
+    const auto sky_fragment_shader = rhi->create_shader(mirakana::rhi::ShaderDesc{
+        .stage = mirakana::rhi::ShaderStage::fragment,
+        .entry_point = "ps_main",
+        .bytecode_size = sky_fragment_artifact.words.size() * sizeof(std::uint32_t),
+        .bytecode = sky_fragment_artifact.words.data(),
+    });
+
+    const auto sky_set_layout = rhi->create_descriptor_set_layout(mirakana::rhi::DescriptorSetLayoutDesc{{
+        mirakana::rhi::DescriptorBindingDesc{
+            .binding = mirakana::physical_sky_constants_binding(),
+            .type = mirakana::rhi::DescriptorType::uniform_buffer,
+            .count = 1,
+            .stages = mirakana::rhi::ShaderStageVisibility::fragment,
+        },
+    }});
+    const auto sky_pipeline_layout = rhi->create_pipeline_layout(
+        mirakana::rhi::PipelineLayoutDesc{.descriptor_sets = {sky_set_layout}, .push_constant_bytes = 0});
+    const auto sky_pipeline = rhi->create_graphics_pipeline(mirakana::rhi::GraphicsPipelineDesc{
+        .layout = sky_pipeline_layout,
+        .vertex_shader = sky_vertex_shader,
+        .fragment_shader = sky_fragment_shader,
+        .color_format = mirakana::rhi::Format::rgba8_unorm,
+        .depth_format = mirakana::rhi::Format::unknown,
+        .topology = mirakana::rhi::PrimitiveTopology::triangle_list,
+    });
+
+    const auto sky_target = rhi->create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::copy_source,
+    });
+    const auto sky_set = rhi->allocate_descriptor_set(sky_set_layout);
+    rhi->update_descriptor_set(mirakana::rhi::DescriptorWrite{
+        .set = sky_set,
+        .binding = mirakana::physical_sky_constants_binding(),
+        .array_element = 0,
+        .resources = {mirakana::rhi::DescriptorResource::buffer(mirakana::rhi::DescriptorType::uniform_buffer,
+                                                                sky_constants)},
+    });
+
+    const auto readback = rhi->create_buffer(
+        mirakana::rhi::BufferDesc{.size_bytes = 256 * 64, .usage = mirakana::rhi::BufferUsage::copy_destination});
+    const mirakana::rhi::BufferTextureCopyRegion readback_footprint{
+        .buffer_offset = 0,
+        .buffer_row_length = 64,
+        .buffer_image_height = 64,
+        .texture_offset = mirakana::rhi::Offset3D{.x = 0, .y = 0, .z = 0},
+        .texture_extent = mirakana::rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+    };
+
+    auto commands = rhi->begin_command_list(mirakana::rhi::QueueKind::graphics);
+    commands->transition_texture(sky_target, mirakana::rhi::ResourceState::undefined,
+                                 mirakana::rhi::ResourceState::render_target);
+    commands->begin_render_pass(mirakana::rhi::RenderPassDesc{
+        .color =
+            mirakana::rhi::RenderPassColorAttachment{
+                .texture = sky_target,
+                .load_action = mirakana::rhi::LoadAction::clear,
+                .store_action = mirakana::rhi::StoreAction::store,
+                .swapchain_frame = mirakana::rhi::SwapchainFrameHandle{},
+                .clear_color = mirakana::rhi::ClearColorValue{.red = 0.0F, .green = 0.0F, .blue = 0.0F, .alpha = 1.0F},
+            },
+    });
+    commands->bind_graphics_pipeline(sky_pipeline);
+    commands->bind_descriptor_set(sky_pipeline_layout, 0, sky_set);
+    commands->draw(3, 1);
+    commands->end_render_pass();
+    commands->transition_texture(sky_target, mirakana::rhi::ResourceState::render_target,
+                                 mirakana::rhi::ResourceState::copy_source);
+    commands->copy_texture_to_buffer(sky_target, readback, readback_footprint);
+    commands->close();
+
+    const auto fence = rhi->submit(*commands);
+    rhi->wait(fence);
+
+    const auto bytes = rhi->read_buffer(readback, 0, 256 * 64);
+    const auto center_pixel = (32U * 256U) + (32U * 4U);
+    const auto horizon_pixel = (48U * 256U) + (32U * 4U);
+    MK_REQUIRE(bytes.size() == 256 * 64);
+    MK_REQUIRE(bytes.at(center_pixel + 0U) >= 55U);
+    MK_REQUIRE(bytes.at(center_pixel + 1U) >= 95U);
+    MK_REQUIRE(bytes.at(center_pixel + 2U) >= 95U);
+    MK_REQUIRE(bytes.at(center_pixel + 3U) == 255U);
+    MK_REQUIRE(bytes.at(horizon_pixel + 1U) >= bytes.at(center_pixel + 1U));
+    MK_REQUIRE(bytes.at(horizon_pixel + 2U) >= bytes.at(center_pixel + 2U));
+    MK_REQUIRE(bytes.at(horizon_pixel + 3U) == 255U);
+    MK_REQUIRE(rhi->stats().descriptor_writes == 1);
+    MK_REQUIRE(rhi->stats().descriptor_sets_bound == 1);
+    MK_REQUIRE(rhi->stats().draw_calls == 1);
+    MK_REQUIRE(rhi->stats().texture_buffer_copies == 1);
+    MK_REQUIRE(rhi->stats().buffer_writes == 1);
+#endif
+}
+
+MK_TEST("vulkan backend proves environment ibl texture cube sampling when configured") {
+#if defined(_WIN32) || defined(__linux__)
+    const auto ibl_vertex_artifact = load_spirv_artifact_from_environment("MK_VULKAN_TEST_ENVIRONMENT_IBL_VERTEX_SPV");
+    const auto ibl_fragment_artifact =
+        load_spirv_artifact_from_environment("MK_VULKAN_TEST_ENVIRONMENT_IBL_FRAGMENT_SPV");
+    if (!ibl_vertex_artifact.configured && !ibl_fragment_artifact.configured) {
+        return;
+    }
+
+    MK_REQUIRE(ibl_vertex_artifact.configured);
+    MK_REQUIRE(ibl_fragment_artifact.configured);
+    MK_REQUIRE(ibl_vertex_artifact.diagnostic == "loaded");
+    MK_REQUIRE(ibl_fragment_artifact.diagnostic == "loaded");
+
+    const auto ibl_vertex_validation =
+        mirakana::rhi::vulkan::validate_spirv_shader_artifact(mirakana::rhi::vulkan::VulkanSpirvShaderArtifactDesc{
+            .stage = mirakana::rhi::ShaderStage::vertex,
+            .bytecode = ibl_vertex_artifact.words.data(),
+            .bytecode_size = ibl_vertex_artifact.words.size() * sizeof(std::uint32_t),
+        });
+    const auto ibl_fragment_validation =
+        mirakana::rhi::vulkan::validate_spirv_shader_artifact(mirakana::rhi::vulkan::VulkanSpirvShaderArtifactDesc{
+            .stage = mirakana::rhi::ShaderStage::fragment,
+            .bytecode = ibl_fragment_artifact.words.data(),
+            .bytecode_size = ibl_fragment_artifact.words.size() * sizeof(std::uint32_t),
+        });
+    MK_REQUIRE(ibl_vertex_validation.valid);
+    MK_REQUIRE(ibl_fragment_validation.valid);
+
+    const auto proof = mirakana::rhi::vulkan::execute_environment_ibl_renderer_upload(
+        mirakana::rhi::vulkan::VulkanEnvironmentIblRendererUploadDesc{
+            .edge_size = 16,
+            .mip_count = 5,
+            .format = mirakana::rhi::vulkan::VulkanEnvironmentIblTextureFormat::rgba16_float,
+            .require_shader_sampling = true,
+            .require_runtime_capture = true,
+            .sampling_vertex_shader =
+                std::span<const std::uint8_t>{reinterpret_cast<const std::uint8_t*>(ibl_vertex_artifact.words.data()),
+                                              ibl_vertex_artifact.words.size() * sizeof(std::uint32_t)},
+            .sampling_fragment_shader =
+                std::span<const std::uint8_t>{reinterpret_cast<const std::uint8_t*>(ibl_fragment_artifact.words.data()),
+                                              ibl_fragment_artifact.words.size() * sizeof(std::uint32_t)},
+            .sampling_vertex_entry_point = "vs_environment_ibl_sample",
+            .sampling_fragment_entry_point = "ps_environment_ibl_sample",
+        });
+
+    MK_REQUIRE(proof.succeeded);
+    MK_REQUIRE(proof.texture_cube_uploads == 1);
+    MK_REQUIRE(proof.texture_cube_faces == 6);
+    MK_REQUIRE(proof.texture_cube_edge_size == 16);
+    MK_REQUIRE(proof.radiance_mips == 5);
+    MK_REQUIRE(proof.irradiance_rows == 9);
+    MK_REQUIRE(proof.cube_compatible_image_created);
+    MK_REQUIRE(proof.cube_image_view_created);
+    MK_REQUIRE(proof.sampler_created);
+    MK_REQUIRE(proof.descriptor_set_bindings == 2);
+    MK_REQUIRE(proof.synchronization2_barriers > 0);
+    MK_REQUIRE(proof.shader_sampling_proven);
+    MK_REQUIRE(proof.shader_sample_readback_nonzero);
+    MK_REQUIRE(proof.runtime_capture_faces == 6);
+    MK_REQUIRE(proof.runtime_capture_readback_nonzero);
+    MK_REQUIRE(proof.readback_checksum != 0);
+    MK_REQUIRE(proof.native_handle_access == 0);
+    MK_REQUIRE(proof.diagnostics == 0);
+#endif
+}
+
 MK_TEST("vulkan rhi device bridge darkens a directional shadow receiver when configured") {
 #if defined(_WIN32) || defined(__linux__)
     const auto depth_vertex_artifact = load_spirv_artifact_from_environment("MK_VULKAN_TEST_DEPTH_VERTEX_SPV");
@@ -7165,6 +7456,233 @@ MK_TEST("metal platform availability diagnostics remain sdk independent") {
     MK_REQUIRE(apple_ready.can_compile_native_sources);
     MK_REQUIRE(apple_ready.runtime_probe_required);
     MK_REQUIRE(apple_ready.diagnostic == "Metal native backend can compile and must probe runtime availability");
+}
+
+MK_TEST("metal environment feature evidence keeps selected rows host gated on Windows") {
+    const auto plan = mirakana::rhi::metal::build_environment_feature_host_evidence_plan(
+        mirakana::rhi::metal::MetalEnvironmentFeatureHostEvidenceDesc{
+            .host = mirakana::rhi::RhiHostPlatform::windows,
+        });
+
+    MK_REQUIRE(plan.status == mirakana::rhi::metal::MetalEnvironmentFeatureEvidenceStatus::host_evidence_required);
+    MK_REQUIRE(plan.rows.size() == 7U);
+    MK_REQUIRE(plan.host_gated_row_count == 7U);
+    MK_REQUIRE(plan.ready_row_count == 0U);
+    MK_REQUIRE(plan.blocked_row_count == 0U);
+    MK_REQUIRE(plan.native_handle_access_count == 0U);
+    MK_REQUIRE(plan.diagnostic == "Metal environment feature evidence requires Apple host validation");
+    for (const auto& row : plan.rows) {
+        MK_REQUIRE(row.status == mirakana::rhi::metal::MetalEnvironmentFeatureEvidenceStatus::host_evidence_required);
+        MK_REQUIRE(row.host_evidence_required);
+        MK_REQUIRE(!row.host_supported);
+        MK_REQUIRE(!row.host_evidence_available);
+        MK_REQUIRE(row.host_validation_recipe_id == "renderer-metal-apple-host-evidence");
+        MK_REQUIRE(!row.native_handle_access);
+        MK_REQUIRE(row.diagnostic.find("Metal environment feature requires Apple host validation") !=
+                   std::string::npos);
+    }
+}
+
+MK_TEST("metal environment feature evidence requires Apple host validation before ready") {
+    auto desc = mirakana::rhi::metal::MetalEnvironmentFeatureHostEvidenceDesc{
+        .host = mirakana::rhi::RhiHostPlatform::macos,
+        .apple_host_validation_available = false,
+        .runtime_ready = true,
+        .command_queue_ready = true,
+        .shader_library_ready = true,
+        .render_pass_ready = true,
+        .render_pipeline_ready = true,
+        .compute_pipeline_ready = true,
+        .depth_texture_ready = true,
+        .particle_buffer_ready = true,
+        .cube_map_texture_feature_available = true,
+        .hdr_texture_feature_available = true,
+        .synchronization_evidence_ready = true,
+    };
+
+    const auto host_gated = mirakana::rhi::metal::build_environment_feature_host_evidence_plan(desc);
+    MK_REQUIRE(host_gated.status ==
+               mirakana::rhi::metal::MetalEnvironmentFeatureEvidenceStatus::host_evidence_required);
+    MK_REQUIRE(host_gated.host_gated_row_count == 7U);
+    MK_REQUIRE(host_gated.ready_row_count == 0U);
+
+    desc.apple_host_validation_available = true;
+    const auto ready = mirakana::rhi::metal::build_environment_feature_host_evidence_plan(desc);
+    MK_REQUIRE(ready.status == mirakana::rhi::metal::MetalEnvironmentFeatureEvidenceStatus::ready);
+    MK_REQUIRE(ready.host_gated_row_count == 0U);
+    MK_REQUIRE(ready.ready_row_count == 7U);
+    MK_REQUIRE(ready.blocked_row_count == 0U);
+    MK_REQUIRE(ready.rows.back().feature ==
+               mirakana::rhi::metal::MetalEnvironmentFeatureKind::environment_lighting_ibl);
+    MK_REQUIRE(ready.rows.back().cube_map_texture_feature_available);
+    MK_REQUIRE(ready.rows.back().hdr_texture_feature_available);
+}
+
+MK_TEST("metal environment feature evidence rejects missing feature proof and native handles") {
+    const auto missing_compute = mirakana::rhi::metal::build_environment_feature_host_evidence_plan(
+        mirakana::rhi::metal::MetalEnvironmentFeatureHostEvidenceDesc{
+            .host = mirakana::rhi::RhiHostPlatform::ios,
+            .apple_host_validation_available = true,
+            .runtime_ready = true,
+            .command_queue_ready = true,
+            .shader_library_ready = true,
+            .render_pass_ready = true,
+            .render_pipeline_ready = true,
+            .compute_pipeline_ready = false,
+            .depth_texture_ready = true,
+            .synchronization_evidence_ready = true,
+            .requirements = {mirakana::rhi::metal::MetalEnvironmentFeatureEvidenceRequirement{
+                .feature = mirakana::rhi::metal::MetalEnvironmentFeatureKind::volumetric_fog,
+                .selected = true,
+                .compute_pipeline_required = true,
+                .depth_texture_required = true,
+                .synchronization_evidence_required = true,
+            }},
+        });
+    MK_REQUIRE(missing_compute.status == mirakana::rhi::metal::MetalEnvironmentFeatureEvidenceStatus::blocked);
+    MK_REQUIRE(missing_compute.blocked_row_count == 1U);
+    MK_REQUIRE(missing_compute.rows[0].diagnostic ==
+               "Metal environment feature is missing feature-local pipeline, texture, or synchronization proof: "
+               "volumetric_fog");
+
+    const auto native_handle = mirakana::rhi::metal::build_environment_feature_host_evidence_plan(
+        mirakana::rhi::metal::MetalEnvironmentFeatureHostEvidenceDesc{
+            .host = mirakana::rhi::RhiHostPlatform::macos,
+            .native_handles_exposed = true,
+            .requirements = {mirakana::rhi::metal::MetalEnvironmentFeatureEvidenceRequirement{
+                .feature = mirakana::rhi::metal::MetalEnvironmentFeatureKind::physical_sky,
+                .selected = true,
+                .render_pass_required = true,
+                .render_pipeline_required = true,
+            }},
+        });
+    MK_REQUIRE(native_handle.status == mirakana::rhi::metal::MetalEnvironmentFeatureEvidenceStatus::blocked);
+    MK_REQUIRE(native_handle.native_handle_access_count == 1U);
+    MK_REQUIRE(native_handle.rows[0].diagnostic ==
+               "Metal environment feature evidence must not expose native handles: physical_sky");
+}
+
+MK_TEST("metal environment feature evidence labels every selected environment feature") {
+    const auto requirements = mirakana::rhi::metal::default_environment_feature_evidence_requirements();
+    MK_REQUIRE(requirements.size() == 7U);
+    for (const auto& requirement : requirements) {
+        MK_REQUIRE(requirement.synchronization_evidence_required);
+    }
+    MK_REQUIRE(mirakana::rhi::metal::metal_environment_feature_kind_label(requirements[0].feature) == "physical_sky");
+    MK_REQUIRE(mirakana::rhi::metal::metal_environment_feature_kind_label(requirements[1].feature) == "height_fog");
+    MK_REQUIRE(mirakana::rhi::metal::metal_environment_feature_kind_label(requirements[2].feature) == "cloud_layer");
+    MK_REQUIRE(mirakana::rhi::metal::metal_environment_feature_kind_label(requirements[3].feature) == "precipitation");
+    MK_REQUIRE(mirakana::rhi::metal::metal_environment_feature_kind_label(requirements[4].feature) == "volumetric_fog");
+    MK_REQUIRE(mirakana::rhi::metal::metal_environment_feature_kind_label(requirements[5].feature) ==
+               "volumetric_cloud");
+    MK_REQUIRE(mirakana::rhi::metal::metal_environment_feature_kind_label(requirements[6].feature) ==
+               "environment_lighting_ibl");
+    MK_REQUIRE(mirakana::rhi::metal::metal_environment_feature_evidence_status_label(
+                   mirakana::rhi::metal::MetalEnvironmentFeatureEvidenceStatus::host_evidence_required) ==
+               "host_evidence_required");
+}
+
+MK_TEST("metal environment feature evidence requires synchronization proof and emits counters") {
+    auto desc = mirakana::rhi::metal::MetalEnvironmentFeatureHostEvidenceDesc{
+        .host = mirakana::rhi::RhiHostPlatform::macos,
+        .apple_host_validation_available = true,
+        .runtime_ready = true,
+        .command_queue_ready = true,
+        .shader_library_ready = true,
+        .render_pass_ready = true,
+        .render_pipeline_ready = true,
+        .compute_pipeline_ready = true,
+        .depth_texture_ready = true,
+        .particle_buffer_ready = true,
+        .cube_map_texture_feature_available = true,
+        .hdr_texture_feature_available = true,
+        .synchronization_evidence_ready = false,
+    };
+
+    const auto missing_synchronization = mirakana::rhi::metal::build_environment_feature_host_evidence_plan(desc);
+    MK_REQUIRE(missing_synchronization.status == mirakana::rhi::metal::MetalEnvironmentFeatureEvidenceStatus::blocked);
+    MK_REQUIRE(missing_synchronization.blocked_row_count == 7U);
+    MK_REQUIRE(missing_synchronization.rows[0].diagnostic ==
+               "Metal environment feature is missing feature-local pipeline, texture, or synchronization proof: "
+               "physical_sky");
+
+    desc.synchronization_evidence_ready = true;
+    const auto ready = mirakana::rhi::metal::build_environment_feature_host_evidence_plan(desc);
+    MK_REQUIRE(ready.status == mirakana::rhi::metal::MetalEnvironmentFeatureEvidenceStatus::ready);
+    for (const auto& row : ready.rows) {
+        MK_REQUIRE(row.synchronization_evidence_ready);
+    }
+
+    const auto status_line = mirakana::rhi::metal::metal_environment_feature_host_evidence_status_line(ready);
+    MK_REQUIRE(status_line.find("metal_environment_status=ready") != std::string::npos);
+    MK_REQUIRE(status_line.find("metal_environment_ready_rows=7") != std::string::npos);
+    MK_REQUIRE(status_line.find("metal_environment_host_gated_rows=0") != std::string::npos);
+    MK_REQUIRE(status_line.find("metal_environment_blocked_rows=0") != std::string::npos);
+    MK_REQUIRE(status_line.find("metal_environment_physical_sky_status=ready") != std::string::npos);
+    MK_REQUIRE(status_line.find("metal_environment_height_fog_status=ready") != std::string::npos);
+    MK_REQUIRE(status_line.find("metal_environment_cloud_layer_status=ready") != std::string::npos);
+    MK_REQUIRE(status_line.find("metal_environment_precipitation_status=ready") != std::string::npos);
+    MK_REQUIRE(status_line.find("metal_environment_volumetric_fog_status=ready") != std::string::npos);
+    MK_REQUIRE(status_line.find("metal_environment_volumetric_cloud_status=ready") != std::string::npos);
+    MK_REQUIRE(status_line.find("metal_environment_lighting_ibl_status=ready") != std::string::npos);
+    MK_REQUIRE(status_line.find("metal_environment_native_handle_access=0") != std::string::npos);
+}
+
+MK_TEST("metal environment native feature evidence promotes only on Apple host execution") {
+    const auto unsupported = mirakana::rhi::metal::create_native_environment_feature_host_evidence(
+        mirakana::rhi::metal::MetalNativeEnvironmentFeatureHostEvidenceDesc{
+            .host = mirakana::rhi::RhiHostPlatform::windows,
+            .metallib_path = "missing.metallib",
+        });
+    MK_REQUIRE(!unsupported.ready);
+    MK_REQUIRE(unsupported.diagnostic == "Metal environment native feature evidence requires an Apple host");
+
+#if defined(__APPLE__)
+    const auto metallib_path = environment_variable_value("MK_METAL_ENVIRONMENT_EVIDENCE_METALLIB");
+    MK_REQUIRE(!metallib_path.empty());
+
+    const auto native = mirakana::rhi::metal::create_native_environment_feature_host_evidence(
+        mirakana::rhi::metal::MetalNativeEnvironmentFeatureHostEvidenceDesc{
+            .host = mirakana::rhi::current_rhi_host_platform(),
+            .metallib_path = metallib_path,
+        });
+    MK_REQUIRE(native.ready);
+    MK_REQUIRE(native.runtime_ready);
+    MK_REQUIRE(native.command_queue_ready);
+    MK_REQUIRE(native.shader_library_ready);
+    MK_REQUIRE(native.render_pass_ready);
+    MK_REQUIRE(native.render_pipeline_ready);
+    MK_REQUIRE(native.compute_pipeline_ready);
+    MK_REQUIRE(native.depth_texture_ready);
+    MK_REQUIRE(native.particle_buffer_ready);
+    MK_REQUIRE(native.cube_map_texture_feature_available);
+    MK_REQUIRE(native.hdr_texture_feature_available);
+    MK_REQUIRE(native.synchronization_evidence_ready);
+    MK_REQUIRE(native.render_readback_nonzero);
+    MK_REQUIRE(native.compute_readback_nonzero);
+    MK_REQUIRE(!native.native_handle_access);
+
+    const auto plan = mirakana::rhi::metal::build_environment_feature_host_evidence_plan(
+        mirakana::rhi::metal::MetalEnvironmentFeatureHostEvidenceDesc{
+            .host = mirakana::rhi::current_rhi_host_platform(),
+            .apple_host_validation_available = true,
+            .runtime_ready = native.runtime_ready,
+            .command_queue_ready = native.command_queue_ready,
+            .shader_library_ready = native.shader_library_ready,
+            .render_pass_ready = native.render_pass_ready,
+            .render_pipeline_ready = native.render_pipeline_ready,
+            .compute_pipeline_ready = native.compute_pipeline_ready,
+            .depth_texture_ready = native.depth_texture_ready,
+            .particle_buffer_ready = native.particle_buffer_ready,
+            .cube_map_texture_feature_available = native.cube_map_texture_feature_available,
+            .hdr_texture_feature_available = native.hdr_texture_feature_available,
+            .synchronization_evidence_ready = native.synchronization_evidence_ready,
+            .native_handles_exposed = native.native_handle_access,
+        });
+    MK_REQUIRE(plan.status == mirakana::rhi::metal::MetalEnvironmentFeatureEvidenceStatus::ready);
+    MK_REQUIRE(plan.ready_row_count == 7U);
+    MK_REQUIRE(plan.native_handle_access_count == 0U);
+#endif
 }
 
 MK_TEST("metal native device queue and command buffer ownership stays host gated") {

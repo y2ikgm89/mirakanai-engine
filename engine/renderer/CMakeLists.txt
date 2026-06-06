@@ -5,6 +5,7 @@ add_library(mirakana_renderer
     src/environment_policy.cpp
     src/frame_graph.cpp
     src/frame_graph_rhi.cpp
+    src/material_weathering_policy.cpp
     src/null_renderer.cpp
     src/physical_sky_policy.cpp
     src/precipitation_policy.cpp

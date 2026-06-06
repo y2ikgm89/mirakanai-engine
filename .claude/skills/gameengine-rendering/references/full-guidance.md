@@ -43,6 +43,9 @@ counters.
   compilers, write shader artifacts, expose native PSO/Vulkan/Metal cache blobs, or claim renderer/RHI residency.
 - Generate Vulkan SPIR-V through DXC executable-plus-argument vectors with `-spirv` and `-fspv-target-env=vulkan1.3`; do not use shell
   strings or omit the target environment.
+- For physical-sky Vulkan runtime proof, regenerate SPIR-V with `tools/compile-vulkan-physical-sky-test-spirv.ps1`, set
+  `MK_VULKAN_TEST_PHYSICAL_SKY_VERTEX_SPV` and `MK_VULKAN_TEST_PHYSICAL_SKY_FRAGMENT_SPV`, and keep this as runtime readback evidence
+  rather than Vulkan package readiness.
 - Disable shader artifact marker writes for real compiler-backed runs so missing bytecode artifacts fail instead of being faked.
 
 ## Backend-Specific Checks
@@ -79,6 +82,16 @@ counters.
   `plan_backend_renderer_parity_policy` must fail closed with `missing_host_validation_recipe` when Metal evidence omits the recipe id and
   `unreviewed_host_validation_recipe` when an arbitrary valid id is supplied, include the recipe id in replay hashes, keep `metal-apple`
   host-gated until Apple-host proof exists, and keep D3D12/Vulkan evidence backend-local.
+- For Environment Rendering Readiness v1 Task 8 / Metal environment feature work, use
+  `MetalEnvironmentFeatureHostEvidenceDesc`, `MetalEnvironmentFeatureEvidenceRequirement`, `MetalEnvironmentFeatureEvidenceRow`,
+  `MetalEnvironmentFeatureHostEvidencePlan`, `default_environment_feature_evidence_requirements`, and
+  `build_environment_feature_host_evidence_plan` in `MK_rhi_metal` for physical sky, height fog, cloud layer, precipitation,
+  volumetric fog, volumetric cloud, and environment lighting/IBL host-gated rows; each default row requires synchronization evidence and
+  can be summarized with `metal_environment_feature_host_evidence_status_line`. The reviewed `renderer-metal-apple-host-evidence` recipe
+  must build generated `environment_feature_evidence.metallib`, run Apple-only private `create_native_environment_feature_host_evidence`,
+  and emit selected `metal_environment_*` counters for runtime, command queue, metallib, render/compute pipeline, render pass, cube HDR,
+  depth texture, particle buffer, synchronization/readback, seven ready rows, and zero native-handle access. D3D12/Vulkan proof and native
+  handles must not promote Metal environment readiness, and this recipe does not claim broad backend parity or broad `environment_ready`.
 - For GPU Memory Policy v1 work, keep `GpuMemoryPolicyDesc`, `GpuMemoryRequestDesc`, `GpuMemoryResidencyClass`, `GpuMemoryPolicyPlan`,
   `plan_gpu_memory_policy`, and `gpu_memory_policy_backend_evidence_ready` in the backend-neutral `MK_renderer` public contract. The planner
   may classify committed/placed/transient budget rows, declared memory budget evidence, residency pressure evidence, transient heap policy,
@@ -206,7 +219,8 @@ counters.
   proof when `MK_VULKAN_TEST_DEPTH_VERTEX_SPV`, `MK_VULKAN_TEST_DEPTH_FRAGMENT_SPV`, `MK_VULKAN_TEST_DEPTH_SAMPLE_VERTEX_SPV`, and
   `MK_VULKAN_TEST_DEPTH_SAMPLE_FRAGMENT_SPV` SPIR-V artifacts are configured, environment-gated postprocess-depth readback proof when those
   depth-write artifacts plus `MK_VULKAN_TEST_POSTPROCESS_DEPTH_VERTEX_SPV` and `MK_VULKAN_TEST_POSTPROCESS_DEPTH_FRAGMENT_SPV` are
-  configured, and environment-gated directional shadow receiver readback proof when those depth-write artifacts plus
+  configured, environment-gated physical-sky runtime readback proof when `MK_VULKAN_TEST_PHYSICAL_SKY_VERTEX_SPV` and
+  `MK_VULKAN_TEST_PHYSICAL_SKY_FRAGMENT_SPV` are configured with `VK_LAYER_KHRONOS_validation`, and environment-gated directional shadow receiver readback proof when those depth-write artifacts plus
   `MK_VULKAN_TEST_SHADOW_RECEIVER_VERTEX_SPV` and `MK_VULKAN_TEST_SHADOW_RECEIVER_FRAGMENT_SPV` are configured. Both must keep native
   descriptors, resource states, COM/Vk objects, layouts, and backend details private. Metal native depth recording/sampling, Metal
   postprocess depth, broader postprocess effects, and production shadow quality remain separate backend slices until proven.

@@ -3,7 +3,10 @@
 
 #include "mirakana/environment/environment_io.hpp"
 
+#include <algorithm>
+#include <charconv>
 #include <cmath>
+#include <cstdint>
 #include <locale>
 #include <ostream>
 #include <sstream>
@@ -16,6 +19,7 @@ namespace mirakana {
 namespace {
 
 constexpr std::string_view environment_profile_format = "GameEngine.EnvironmentProfile.v1";
+constexpr std::string_view environment_profile_format_v2_value = "GameEngine.EnvironmentProfile.v2";
 
 using KeyValues = std::unordered_map<std::string, std::string>;
 
@@ -93,6 +97,32 @@ using KeyValues = std::unordered_map<std::string, std::string>;
     return values;
 }
 
+[[nodiscard]] KeyValues parse_key_values_unrestricted(std::string_view text) {
+    KeyValues values;
+    std::size_t begin = 0;
+    while (begin < text.size()) {
+        const auto end = text.find('\n', begin);
+        const auto line = text.substr(begin, end == std::string_view::npos ? text.size() - begin : end - begin);
+        begin = end == std::string_view::npos ? text.size() : end + 1U;
+        if (line.empty()) {
+            continue;
+        }
+        if (line.find('\r') != std::string_view::npos) {
+            throw std::invalid_argument("environment profile line contains carriage return");
+        }
+        const auto separator = line.find('=');
+        if (separator == std::string_view::npos || separator == 0U) {
+            throw std::invalid_argument("environment profile line is missing '='");
+        }
+        const auto key = line.substr(0, separator);
+        auto [_, inserted] = values.emplace(std::string{key}, std::string{line.substr(separator + 1U)});
+        if (!inserted) {
+            throw std::invalid_argument("environment profile contains duplicate keys");
+        }
+    }
+    return values;
+}
+
 [[nodiscard]] const std::string& required_value(const KeyValues& values, const std::string& key) {
     const auto it = values.find(key);
     if (it == values.end()) {
@@ -109,6 +139,10 @@ using KeyValues = std::unordered_map<std::string, std::string>;
 [[nodiscard]] bool environment_float_character(char value) noexcept {
     return (value >= '0' && value <= '9') || value == '+' || value == '-' || value == '.' || value == 'e' ||
            value == 'E';
+}
+
+[[nodiscard]] bool starts_with(std::string_view value, std::string_view prefix) noexcept {
+    return value.size() >= prefix.size() && value.substr(0, prefix.size()) == prefix;
 }
 
 [[nodiscard]] float parse_float(std::string_view value, std::string_view key) {
@@ -129,6 +163,24 @@ using KeyValues = std::unordered_map<std::string, std::string>;
     char trailing = '\0';
     if (!stream || (stream >> trailing) || !std::isfinite(parsed)) {
         throw std::invalid_argument("environment profile float value is invalid: " + std::string{key});
+    }
+    return parsed;
+}
+
+[[nodiscard]] std::int32_t parse_i32(std::string_view value, std::string_view key) {
+    std::int32_t parsed{0};
+    const auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), parsed);
+    if (error != std::errc{} || end != value.data() + value.size()) {
+        throw std::invalid_argument("environment profile integer value is invalid: " + std::string{key});
+    }
+    return parsed;
+}
+
+[[nodiscard]] std::size_t parse_ordinal(std::string_view value, std::string_view key) {
+    std::size_t parsed{0U};
+    const auto [end, error] = std::from_chars(value.data(), value.data() + value.size(), parsed);
+    if (error != std::errc{} || end != value.data() + value.size()) {
+        throw std::invalid_argument("environment profile ordinal value is invalid: " + std::string{key});
     }
     return parsed;
 }
@@ -217,6 +269,10 @@ void write_sun_moon(std::ostream& output, const EnvironmentSunMoonDesc& desc, st
 
 std::string_view environment_profile_format_v1() noexcept {
     return environment_profile_format;
+}
+
+std::string_view environment_profile_format_v2() noexcept {
+    return environment_profile_format_v2_value;
 }
 
 std::string_view environment_sky_model_name(EnvironmentSkyModel value) noexcept {
@@ -349,6 +405,91 @@ EnvironmentPrecipitationKind parse_environment_precipitation_kind(std::string_vi
     throw std::invalid_argument("environment precipitation kind is unsupported");
 }
 
+std::string_view environment_quality_preset_name(EnvironmentQualityPreset value) noexcept {
+    switch (value) {
+    case EnvironmentQualityPreset::low:
+        return "low";
+    case EnvironmentQualityPreset::medium:
+        return "medium";
+    case EnvironmentQualityPreset::high:
+        return "high";
+    case EnvironmentQualityPreset::ultra:
+        return "ultra";
+    case EnvironmentQualityPreset::custom:
+        return "custom";
+    }
+    return "unknown";
+}
+
+EnvironmentQualityPreset parse_environment_quality_preset(std::string_view value) {
+    if (value == "low") {
+        return EnvironmentQualityPreset::low;
+    }
+    if (value == "medium") {
+        return EnvironmentQualityPreset::medium;
+    }
+    if (value == "high") {
+        return EnvironmentQualityPreset::high;
+    }
+    if (value == "ultra") {
+        return EnvironmentQualityPreset::ultra;
+    }
+    if (value == "custom") {
+        return EnvironmentQualityPreset::custom;
+    }
+    throw std::invalid_argument("environment quality preset is unsupported");
+}
+
+std::string_view environment_volume_shape_name(EnvironmentVolumeShape value) noexcept {
+    switch (value) {
+    case EnvironmentVolumeShape::global:
+        return "global";
+    case EnvironmentVolumeShape::box:
+        return "box";
+    case EnvironmentVolumeShape::sphere:
+        return "sphere";
+    }
+    return "unknown";
+}
+
+EnvironmentVolumeShape parse_environment_volume_shape(std::string_view value) {
+    if (value == "global") {
+        return EnvironmentVolumeShape::global;
+    }
+    if (value == "box") {
+        return EnvironmentVolumeShape::box;
+    }
+    if (value == "sphere") {
+        return EnvironmentVolumeShape::sphere;
+    }
+    throw std::invalid_argument("environment volume shape is unsupported");
+}
+
+std::string_view environment_volume_blend_mode_name(EnvironmentVolumeBlendMode value) noexcept {
+    switch (value) {
+    case EnvironmentVolumeBlendMode::weighted_override:
+        return "weighted_override";
+    case EnvironmentVolumeBlendMode::additive_density:
+        return "additive_density";
+    case EnvironmentVolumeBlendMode::subtractive_density:
+        return "subtractive_density";
+    }
+    return "unknown";
+}
+
+EnvironmentVolumeBlendMode parse_environment_volume_blend_mode(std::string_view value) {
+    if (value == "weighted_override") {
+        return EnvironmentVolumeBlendMode::weighted_override;
+    }
+    if (value == "additive_density") {
+        return EnvironmentVolumeBlendMode::additive_density;
+    }
+    if (value == "subtractive_density") {
+        return EnvironmentVolumeBlendMode::subtractive_density;
+    }
+    throw std::invalid_argument("environment volume blend mode is unsupported");
+}
+
 void write_environment_profile_payload(std::ostream& output, const EnvironmentProfileDesc& desc,
                                        std::string_view key_prefix) {
     const auto validation = validate_environment_profile(desc);
@@ -387,10 +528,57 @@ void write_environment_profile_payload(std::ostream& output, const EnvironmentPr
     output << key_prefix << "precipitation.wind_speed_mps=" << desc.precipitation.wind_speed_mps << '\n';
 }
 
+void write_environment_profile_v2_payload(std::ostream& output, const EnvironmentProfileDocumentV2& desc,
+                                          std::string_view key_prefix) {
+    const auto validation = validate_environment_profile_v2(desc);
+    if (!validation.succeeded()) {
+        throw std::invalid_argument("environment profile v2 document is invalid");
+    }
+
+    write_environment_profile_payload(output, desc.global_profile, std::string{key_prefix} + "global.");
+    output << key_prefix << "quality.preset=" << environment_quality_preset_name(desc.quality_preset) << '\n';
+    for (std::size_t index = 0U; index < desc.volumes.size(); ++index) {
+        const auto& volume = desc.volumes[index];
+        const auto prefix = std::string{key_prefix} + "volume." + std::to_string(index) + ".";
+        output << prefix << "id=" << volume.id << '\n';
+        output << prefix << "shape=" << environment_volume_shape_name(volume.shape) << '\n';
+        output << prefix << "center_m=";
+        write_vec3(output, volume.center_m);
+        output << '\n';
+        output << prefix << "extents_m=";
+        write_vec3(output, volume.extents_m);
+        output << '\n';
+        output << prefix << "radius_m=" << volume.radius_m << '\n';
+        output << prefix << "priority=" << volume.priority << '\n';
+        output << prefix << "blend_weight=" << volume.blend_weight << '\n';
+        output << prefix << "fade_distance_m=" << volume.fade_distance_m << '\n';
+        output << prefix << "blend_mode=" << environment_volume_blend_mode_name(volume.blend_mode) << '\n';
+        write_environment_profile_payload(output, volume.profile, prefix + "profile.");
+    }
+    for (std::size_t index = 0U; index < desc.weather_timeline.size(); ++index) {
+        const auto& keyframe = desc.weather_timeline[index];
+        const auto prefix = std::string{key_prefix} + "weather_keyframe." + std::to_string(index) + ".";
+        output << prefix << "time_of_day_hours=" << keyframe.time_of_day_hours << '\n';
+        output << prefix << "weather=" << environment_weather_kind_name(keyframe.weather) << '\n';
+        output << prefix << "precipitation=" << environment_precipitation_kind_name(keyframe.precipitation) << '\n';
+        output << prefix << "storm_intensity=" << keyframe.storm_intensity << '\n';
+        output << prefix << "cloud_coverage=" << keyframe.cloud_coverage << '\n';
+        output << prefix << "fog_density=" << keyframe.fog_density << '\n';
+        output << prefix << "quality_preset=" << environment_quality_preset_name(keyframe.quality_preset) << '\n';
+    }
+}
+
 std::string serialize_environment_profile(const EnvironmentProfileDesc& desc) {
     std::ostringstream output;
     output << "format=" << environment_profile_format << '\n';
     write_environment_profile_payload(output, desc);
+    return output.str();
+}
+
+std::string serialize_environment_profile_v2(const EnvironmentProfileDocumentV2& desc) {
+    std::ostringstream output;
+    output << "format=" << environment_profile_format_v2_value << '\n';
+    write_environment_profile_v2_payload(output, desc);
     return output.str();
 }
 
@@ -432,6 +620,152 @@ EnvironmentProfileDesc deserialize_environment_profile(std::string_view text) {
         throw std::invalid_argument("environment profile document is invalid");
     }
     return desc;
+}
+
+EnvironmentProfileDocumentV2 deserialize_environment_profile_v2(std::string_view text) {
+    struct VolumeTextRow {
+        EnvironmentVolumeDesc desc{};
+        std::ostringstream profile_payload;
+        bool has_profile_payload{false};
+    };
+    struct WeatherKeyframeTextRow {
+        EnvironmentWeatherKeyframeDesc desc{};
+    };
+
+    const auto values = parse_key_values_unrestricted(text);
+    if (required_value(values, "format") != environment_profile_format_v2_value) {
+        throw std::invalid_argument("environment profile v2 format is unsupported");
+    }
+
+    EnvironmentProfileDocumentV2 document{};
+    std::ostringstream global_payload;
+    global_payload << "format=" << environment_profile_format << '\n';
+    bool has_global_payload{false};
+    std::unordered_map<std::size_t, VolumeTextRow> volume_rows;
+    std::unordered_map<std::size_t, WeatherKeyframeTextRow> keyframe_rows;
+
+    auto parse_volume_field = [&](std::string_view key, std::string_view suffix, std::string_view value) {
+        const auto separator = suffix.find('.');
+        if (separator == std::string_view::npos) {
+            throw std::invalid_argument("environment profile v2 volume key is malformed");
+        }
+        const auto ordinal = parse_ordinal(suffix.substr(0, separator), key);
+        const auto field = suffix.substr(separator + 1U);
+        auto& row = volume_rows[ordinal];
+        if (field == "id") {
+            row.desc.id = std::string{value};
+        } else if (field == "shape") {
+            row.desc.shape = parse_environment_volume_shape(value);
+        } else if (field == "center_m") {
+            row.desc.center_m = parse_vec3(value, key);
+        } else if (field == "extents_m") {
+            row.desc.extents_m = parse_vec3(value, key);
+        } else if (field == "radius_m") {
+            row.desc.radius_m = parse_float(value, key);
+        } else if (field == "priority") {
+            row.desc.priority = parse_i32(value, key);
+        } else if (field == "blend_weight") {
+            row.desc.blend_weight = parse_float(value, key);
+        } else if (field == "fade_distance_m") {
+            row.desc.fade_distance_m = parse_float(value, key);
+        } else if (field == "blend_mode") {
+            row.desc.blend_mode = parse_environment_volume_blend_mode(value);
+        } else if (starts_with(field, "profile.")) {
+            row.has_profile_payload = true;
+            row.profile_payload << field.substr(std::string_view{"profile."}.size()) << '=' << value << '\n';
+        } else {
+            throw std::invalid_argument("environment profile v2 volume field is unsupported");
+        }
+    };
+
+    auto parse_keyframe_field = [&](std::string_view key, std::string_view suffix, std::string_view value) {
+        const auto separator = suffix.find('.');
+        if (separator == std::string_view::npos) {
+            throw std::invalid_argument("environment profile v2 weather keyframe key is malformed");
+        }
+        const auto ordinal = parse_ordinal(suffix.substr(0, separator), key);
+        const auto field = suffix.substr(separator + 1U);
+        auto& row = keyframe_rows[ordinal];
+        if (field == "time_of_day_hours") {
+            row.desc.time_of_day_hours = parse_float(value, key);
+        } else if (field == "weather") {
+            row.desc.weather = parse_environment_weather_kind(value);
+        } else if (field == "precipitation") {
+            row.desc.precipitation = parse_environment_precipitation_kind(value);
+        } else if (field == "storm_intensity") {
+            row.desc.storm_intensity = parse_float(value, key);
+        } else if (field == "cloud_coverage") {
+            row.desc.cloud_coverage = parse_float(value, key);
+        } else if (field == "fog_density") {
+            row.desc.fog_density = parse_float(value, key);
+        } else if (field == "quality_preset") {
+            row.desc.quality_preset = parse_environment_quality_preset(value);
+        } else {
+            throw std::invalid_argument("environment profile v2 weather keyframe field is unsupported");
+        }
+    };
+
+    for (const auto& [key, value] : values) {
+        const std::string_view key_view{key};
+        if (key_view == "format") {
+            continue;
+        }
+        if (key_view == "quality.preset") {
+            document.quality_preset = parse_environment_quality_preset(value);
+        } else if (starts_with(key_view, "global.")) {
+            has_global_payload = true;
+            global_payload << key_view.substr(std::string_view{"global."}.size()) << '=' << value << '\n';
+        } else if (starts_with(key_view, "volume.")) {
+            parse_volume_field(key_view, key_view.substr(std::string_view{"volume."}.size()), value);
+        } else if (starts_with(key_view, "weather_keyframe.")) {
+            parse_keyframe_field(key_view, key_view.substr(std::string_view{"weather_keyframe."}.size()), value);
+        } else {
+            throw std::invalid_argument("environment profile v2 key is unsupported");
+        }
+    }
+
+    if (!has_global_payload) {
+        throw std::invalid_argument("environment profile v2 global profile is missing");
+    }
+    document.global_profile = deserialize_environment_profile(global_payload.str());
+
+    std::vector<std::size_t> volume_ordinals;
+    volume_ordinals.reserve(volume_rows.size());
+    for (const auto& [ordinal, _] : volume_rows) {
+        volume_ordinals.push_back(ordinal);
+    }
+    std::ranges::sort(volume_ordinals);
+    for (std::size_t expected = 0U; expected < volume_ordinals.size(); ++expected) {
+        if (volume_ordinals[expected] != expected) {
+            throw std::invalid_argument("environment profile v2 volume ordinals are not contiguous");
+        }
+        auto& row = volume_rows.at(expected);
+        if (row.has_profile_payload) {
+            document.volumes.push_back(row.desc);
+            document.volumes.back().profile = deserialize_environment_profile(
+                "format=GameEngine.EnvironmentProfile.v1\n" + row.profile_payload.str());
+        } else {
+            document.volumes.push_back(row.desc);
+        }
+    }
+
+    std::vector<std::size_t> keyframe_ordinals;
+    keyframe_ordinals.reserve(keyframe_rows.size());
+    for (const auto& [ordinal, _] : keyframe_rows) {
+        keyframe_ordinals.push_back(ordinal);
+    }
+    std::ranges::sort(keyframe_ordinals);
+    for (std::size_t expected = 0U; expected < keyframe_ordinals.size(); ++expected) {
+        if (keyframe_ordinals[expected] != expected) {
+            throw std::invalid_argument("environment profile v2 weather keyframe ordinals are not contiguous");
+        }
+        document.weather_timeline.push_back(keyframe_rows.at(expected).desc);
+    }
+
+    if (!validate_environment_profile_v2(document).succeeded()) {
+        throw std::invalid_argument("environment profile v2 document is invalid");
+    }
+    return document;
 }
 
 } // namespace mirakana

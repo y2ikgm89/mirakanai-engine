@@ -1,0 +1,9 @@
+format=GameEngine.CookedTexture.v1
+asset.id=12521020522077983386
+asset.kind=texture
+source.path=source/desktop_runtime/cloud_flow.texture
+texture.width=1
+texture.height=1
+texture.pixel_format=rgba8_unorm
+texture.source_bytes=4
+texture.data_hex=808000ff
