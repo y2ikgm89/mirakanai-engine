@@ -239,7 +239,9 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 Evidence: Passed full `tools/validate.ps1`. Static checks, build, and all 110 CTest tests passed; Apple/Metal checks remained host-gated/diagnostic-only on Windows as expected.
 
 - [x] Commit only task-owned files after validation passes.
-- [ ] Run publication preflight, push, and open a stacked draft PR against `codex/mavg-directstorage-native-execution-v1`.
+- [x] Run publication preflight, push, and open a stacked draft PR against `codex/mavg-directstorage-native-execution-v1`.
+
+Evidence: Created commit `e8e3deb1` (`Add MAVG runtime RHI page residency actions`), pushed `codex/mavg-runtime-rhi-page-residency-actions-v1`, and opened stacked draft PR `https://github.com/y2ikgm89/mirakanai-engine/pull/498` against `codex/mavg-directstorage-native-execution-v1`.
 
 ## Done When
 
