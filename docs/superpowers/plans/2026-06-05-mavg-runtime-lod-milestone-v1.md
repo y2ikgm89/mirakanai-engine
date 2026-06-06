@@ -459,7 +459,7 @@ Evidence: `tools/cmake.ps1 --build --preset dev --target MK_tools_mavg_cluster_c
   - mixed-residency child pages collapse to one resident fallback cover without overlapping sibling rows
   - impossible `max_selected_clusters` budgets return an explicit unsatisfied-budget diagnostic instead of over-budget success
 
-- [ ] Run:
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_mavg_lod_selection_tests
@@ -486,7 +486,7 @@ Evidence: RED failed before `mavg_lod_selection.hpp` existed with `fatal error C
 - [x] Sort output rows by `material_partition`, `page_index`, then `cluster_index`.
 - [x] Preserve deterministic budget degradation by replacing highest-cost child groups with resident fallback ancestors until `max_selected_clusters` is satisfied, or return an explicit unsatisfied-budget diagnostic when the graph cannot be reduced without dropping root coverage.
 - [x] Apply hysteresis only when previous rows are valid and within `hysteresis_pixels`.
-- [ ] Run:
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_mavg_lod_selection_tests
@@ -495,7 +495,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 
 Expected: selector tests pass.
 
-Evidence: `tools/cmake.ps1 --build --preset dev --target MK_mavg_lod_selection_tests`, `tools/ctest.ps1 --preset dev --output-on-failure -R "MK_(mavg_cluster_graph|tools_mavg_cluster_cook|mavg_lod_selection)_tests"`, `tools/check-tidy.ps1 -Files engine/renderer/src/mavg_lod_selection.cpp,tests/unit/mavg_lod_selection_tests.cpp -ReuseExistingFileApiReply`, `tools/check-public-api-boundaries.ps1`, `tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, and `tools/check-ai-integration.ps1` passed for the CPU selector checkpoint.
+Evidence: `tools/cmake.ps1 --build --preset dev --target MK_mavg_lod_selection_tests`, `tools/ctest.ps1 --preset dev --output-on-failure -R "MK_(mavg_cluster_graph|tools_mavg_cluster_cook|mavg_lod_selection)_tests"`, `tools/check-tidy.ps1 -Files engine/renderer/src/mavg_lod_selection.cpp,tests/unit/mavg_lod_selection_tests.cpp -ReuseExistingFileApiReply`, `tools/check-public-api-boundaries.ps1`, `tools/check-format.ps1`, `tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, `tools/check-ai-integration.ps1`, and full `tools/validate.ps1` passed with 104/104 CTest targets for the CPU selector checkpoint on 2026-06-07.
 
 ### Task 7: Add Runtime Resident Page Bridge Tests
 
