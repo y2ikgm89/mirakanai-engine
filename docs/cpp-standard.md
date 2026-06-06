@@ -70,7 +70,7 @@ The `-Release` lane is release-only: it configures/builds/tests `cpp23-release-e
 
 The C++23 presets keep CMake module scanning enabled for engine/library targets, but non-module executable targets such as tests, probes, samples, and games explicitly set `CXX_SCAN_FOR_MODULES OFF`. That follows CMake's target-level scan property and avoids unnecessary MSVC module dependency scan work in the Release lane without weakening module coverage for targets that can own `FILE_SET CXX_MODULES`.
 
-For the optional Windows-native Dear ImGui editor path:
+For the optional Windows-native first-party editor path:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/evaluate-cpp23.ps1 -Gui
@@ -94,7 +94,7 @@ Evaluated on 2026-04-26 with:
 Results:
 
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`: passed, 12/12 default tests.
-- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/evaluate-cpp23.ps1 -Release -Gui` passed before the 2026-05-20 explicit `-Debug` lane split: 12/12 Debug tests, 12/12 Release tests, generated `Mirakanai-0.1.0-Windows-AMD64.zip`, and passed 13/13 historical SDL3/Dear ImGui GUI tests. The current equivalent full command is `-Debug -Release -Gui`, with `-Gui` now targeting the native Win32/Dear ImGui/D3D12 lane without SDL3.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/evaluate-cpp23.ps1 -Release -Gui` passed before the 2026-05-20 explicit `-Debug` lane split: 12/12 Debug tests, 12/12 Release tests, generated `Mirakanai-0.1.0-Windows-AMD64.zip`, and passed 13/13 historical SDL3/Dear ImGui GUI tests. The current equivalent full command is `-Debug -Release -Gui`, with `-Gui` now targeting the first-party Win32/retained UI/D3D12 editor lane without SDL3 or Dear ImGui.
 - CMake generated Visual Studio projects with the configured `MK_MSVC_CXX23_STANDARD_OPTION` in target options, or an equivalent C++23-only Visual Studio `LanguageStandard` representation, and no `stdcpplatest` language standard entries in the checked default build.
 - MSVC targets explicitly use `/EHsc` so C++ exception unwinding stays enabled.
 
