@@ -96,7 +96,7 @@
 - [x] Run focused optional DirectStorage configure/build/test wrapper when the SDK dependency is installed, or record the exact SDK/bootstrap blocker.
 - [x] Run agent-surface/static contract checks touched by docs/manifest/static guard edits.
 - [x] Run `tools/validate.ps1` for the C++/runtime/static slice before publication.
-- [ ] Run publication preflight, commit the validated candidate, push, and open a stacked draft PR.
+- [x] Run publication preflight, commit the validated candidate, push, and open stacked draft PR #501.
 
 ## Done When
 
