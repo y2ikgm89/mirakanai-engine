@@ -14,7 +14,7 @@
 
 **Plan ID:** `mavg-d3d12-residency-action-execution-v1`
 
-**Status:** Validated candidate stacked on `mavg-dxgi-gpu-memory-pressure-evidence-v1`; publication remains pending.
+**Status:** Published as stacked draft PR #491 over `mavg-dxgi-gpu-memory-pressure-evidence-v1`.
 
 ## Context
 
@@ -226,9 +226,15 @@ Validation evidence on 2026-06-06:
 - `git diff --check` passed.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed; all 109 CTest tests passed.
 
-- [ ] **Step 10: Publish stacked PR.**
+- [x] **Step 10: Publish stacked PR.**
 
 Run publication preflight, commit the candidate, push `codex/mavg-d3d12-residency-action-execution-v1`, and create a draft PR over `codex/mavg-dxgi-gpu-memory-pressure-evidence-v1`.
+
+Publication evidence:
+
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1` passed.
+- Commit `0d77d6f6` (`Add MAVG D3D12 residency action execution`) was pushed to `origin/codex/mavg-d3d12-residency-action-execution-v1`.
+- Draft PR #491 was created over `codex/mavg-dxgi-gpu-memory-pressure-evidence-v1`.
 
 ## Done When
 
