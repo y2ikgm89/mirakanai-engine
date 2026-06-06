@@ -5,6 +5,7 @@
 
 #include "native_editor_app.hpp"
 
+#include "mirakana/editor/editor_cross_platform_shell.hpp"
 #include "mirakana/editor/editor_dock_layout.hpp"
 #include "mirakana/editor/editor_rich_text.hpp"
 #include "mirakana/editor/editor_ui_performance.hpp"
@@ -543,6 +544,8 @@ make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const F
     const bool metal_native_handles_exposed =
         (viewport_metal_selected && viewport_display.native_texture_handles_exposed) ||
         (material_preview_metal_selected && material_preview_display.native_texture_handles_exposed);
+    const auto cross_platform_shell = make_editor_cross_platform_shell_adapter_plan(
+        EditorCrossPlatformShellAdapterDesc{.native_handles_exposed = document.native_handles_exposed});
     return FirstPartyEditorShellSmokeCounters{
         .ui = "first_party",
         .backend = "d3d12",
@@ -706,6 +709,15 @@ make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const F
         .rich_text_clipboard_plain_ready = rich_text_editable_documents > 0U,
         .rich_text_clipboard_rich_ready = rich_text_editable_documents > 0U,
         .rich_text_native_handles_exposed = rich_text_native_handles_exposed,
+        .cross_platform_shell_status = cross_platform_shell.cross_platform_status,
+        .macos_shell_status = cross_platform_shell.macos_status,
+        .linux_shell_status = cross_platform_shell.linux_status,
+        .android_shell_status = cross_platform_shell.android_status,
+        .ios_shell_status = cross_platform_shell.ios_status,
+        .cross_platform_shell_core_contract_rows = cross_platform_shell.core_contract_rows,
+        .cross_platform_shell_macos_adapter_rows = cross_platform_shell.macos_adapter_rows,
+        .cross_platform_shell_linux_adapter_rows = cross_platform_shell.linux_adapter_rows,
+        .cross_platform_shell_native_handles_exposed = cross_platform_shell.native_handles_exposed,
         .ui_performance_budget_status = std::string(editor_ui_performance_budget_status_id(performance.status)),
         .ui_performance_layout_us_p95 = performance.layout_us_p95,
         .ui_performance_document_build_us_p95 = performance.document_build_us_p95,
@@ -818,6 +830,12 @@ make_first_party_editor_ai_operation_ux_status_desc(const NativeEditorApp& app,
         .material_preview_status = counters.material_preview_status,
         .material_preview_visible_texture_composites = counters.material_preview_visible_texture_composites,
         .material_preview_native_handles_exposed = counters.material_preview_native_handles_exposed,
+        .cross_platform_shell_status = counters.cross_platform_shell_status,
+        .macos_shell_status = counters.macos_shell_status,
+        .linux_shell_status = counters.linux_shell_status,
+        .android_shell_status = counters.android_shell_status,
+        .ios_shell_status = counters.ios_shell_status,
+        .cross_platform_shell_native_handles_exposed = counters.cross_platform_shell_native_handles_exposed,
     };
 }
 

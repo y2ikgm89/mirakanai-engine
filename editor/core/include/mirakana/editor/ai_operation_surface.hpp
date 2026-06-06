@@ -126,6 +126,12 @@ struct EditorAiOperationUxStatusDesc {
     std::string material_preview_status;
     std::uint64_t material_preview_visible_texture_composites{0};
     bool material_preview_native_handles_exposed{false};
+    std::string cross_platform_shell_status;
+    std::string macos_shell_status;
+    std::string linux_shell_status;
+    std::string android_shell_status;
+    std::string ios_shell_status;
+    bool cross_platform_shell_native_handles_exposed{false};
 };
 
 struct EditorAiOperationSnapshot {

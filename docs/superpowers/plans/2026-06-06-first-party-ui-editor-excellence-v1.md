@@ -567,10 +567,10 @@ Expected: Metal editor texture parity is promoted only by Apple-host execution e
 
 **Files:** future selected `editor/src/*macos*`, `editor/src/*linux*`, `engine/platform/macos/**`, `engine/platform/linux/**`, CMake presets, validation recipes, docs/manifest/static checks.
 
-- [ ] Add core shell abstraction tests proving window lifecycle, DPI scale, monitor rows, pointer/keyboard event rows, clipboard rows, file dialog rows, text input rows, accessibility rows, and renderer presentation rows are first-party and host-gated.
-- [ ] Add macOS adapter rows for AppKit windowing, Core Text, `NSTextInputClient`, `NSAccessibilityProtocol`, Metal presentation, and private native handle boundaries.
-- [ ] Add Linux adapter rows for X11/Wayland selection, AT-SPI2, IBus, Fcitx, Vulkan presentation, and private native handle boundaries.
-- [ ] Add counters:
+- [x] Add core shell abstraction tests proving window lifecycle, DPI scale, monitor rows, pointer/keyboard event rows, clipboard rows, file dialog rows, text input rows, accessibility rows, and renderer presentation rows are first-party and host-gated.
+- [x] Add macOS adapter rows for AppKit windowing, Core Text, `NSTextInputClient`, `NSAccessibilityProtocol`, Metal presentation, and private native handle boundaries.
+- [x] Add Linux adapter rows for X11/Wayland selection, AT-SPI2, IBus, Fcitx, Vulkan presentation, and private native handle boundaries.
+- [x] Add counters:
 
 ```text
 editor_shell_cross_platform_status=host_gated
@@ -581,9 +581,11 @@ editor_shell_ios_status=unsupported
 editor_shell_cross_platform_native_handles_exposed=0
 ```
 
-- [ ] Keep Android/iOS visible editor shells unsupported unless a separate selected product requirement accepts them.
+- [x] Keep Android/iOS visible editor shells unsupported unless a separate selected product requirement accepts them.
 
 Expected: cross-platform shell work is exact, host-gated, and does not dilute Windows evidence.
+
+**Phase 10 Evidence:** Candidate `codex/first-party-ui-editor-excellence-phase10` adds dependency-free `EditorCrossPlatformShellAdapterPlan` / `EditorCrossPlatformShellAdapterRow` in `MK_editor_core` with first-party host-gated rows for core shell abstraction contracts, macOS AppKit/Core Text/`NSTextInputClient`/`NSAccessibilityProtocol`/Metal presentation adapters, Linux X11-or-Wayland/AT-SPI2/IBus/Fcitx/Vulkan presentation adapters, unsupported Android/iOS visible editor shell rows, and fail-closed native-handle exposure diagnostics. `FirstPartyEditorShellSmokeCounters`, `MK_editor_smoke`, and `EditorAiOperationSnapshot.status_rows` now expose `editor_shell_cross_platform_status=host_gated`, `editor_shell_macos_status=host_gated`, `editor_shell_linux_status=host_gated`, `editor_shell_android_status=unsupported`, `editor_shell_ios_status=unsupported`, positive core/macOS/Linux adapter row counters, `editor_shell_cross_platform_native_handles_exposed=0`, and `editor.ai.shell.cross_platform`. RED/GREEN evidence covered `MK_editor_core_tests` and `MK_editor_native_shell_tests`; focused validation passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_core_tests MK_editor_native_shell_tests` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_editor_core_tests|MK_editor_native_shell_tests"`. Full slice validation passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`, with static checks clean, diagnostic-only Metal/Apple host gates on this Windows host, and dev CTest passing 99/99 tests. This completes Phase 10 as a first-party value-contract and smoke-counter surface only; actual macOS/Linux visible-shell execution, Android/iOS editor shells, visible OS-level multi-window drag/drop restoration, default visible-shell Vulkan/Metal backend selection, external OS accessibility-tool execution, and broad `first_party_editor_excellence` remain unclaimed.
 
 ## Phase 11: AI-Operable Editor Command Expansion
 

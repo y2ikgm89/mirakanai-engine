@@ -78,12 +78,15 @@ Use this skill for editor/core models, native visible editor shell boundaries, p
   shell restoration, help rich text, Direct2D GPU text rendering/upload, broad shaping/bidi/fallback, custom native IME candidate UI,
   non-Windows IME execution, external OS accessibility-tool execution beyond first-party evidence,
   default visible-shell Vulkan or Metal backend selection, broader material-preview GPU parity, cross-platform accessibility parity, and
-  cross-platform font adapters remain future phases. Do not infer Metal readiness from D3D12 or Vulkan evidence; `metal_texture_ready`
+  cross-platform font adapters remain future phases. `EditorCrossPlatformShellAdapterPlan` / `editor.ai.shell.cross_platform` /
+  `editor_shell_cross_platform_status=host_gated` record first-party host-gated macOS/Linux shell adapter contracts only, with
+  `editor_shell_android_status=unsupported`, `editor_shell_ios_status=unsupported`, and
+  `editor_shell_cross_platform_native_handles_exposed=0`; do not treat those rows as actual macOS/Linux shell execution. Do not infer Metal readiness from D3D12 or Vulkan evidence; `metal_texture_ready`
   requires the reviewed `renderer-metal-apple-host-evidence` Apple-host recipe and no native handle exposure.
 - When selecting a future editor text/accessibility milestone, start with first-party editable-rich-text core and AI-operable text commands before GPU upload, custom IME candidate UI, non-Windows IME execution, or external accessibility-tool execution. Own the editor document, command, semantic, and adapter contracts in `MK_editor_core`; keep Unicode shaping, bidi, font fallback/rasterization, TSF/IME protocol, accessibility bridges, and platform rendering details behind official SDK or audited-dependency adapters.
-- Cross-platform editor adapter work is future-gated with `editor.cross_platform.adapter.*` rows: macOS Core Text/InputMethodKit/NSAccessibility,
-  Linux AT-SPI/IBus/Fcitx, Android InputMethodService/accessibility, iOS UITextInput/UIAccessibility, and HarfBuzz/FreeType/ICU-class adapters
-  must not be claimed from Windows DirectWrite/TSF/UIA evidence. HarfBuzz, FreeType, ICU, and font packages stay `dependency_gated` until
+- Cross-platform editor adapter work is future-gated for dependency-backed parity and host-gated with first-party shell rows plus legacy `editor.cross_platform.adapter.*` dependency rows: macOS AppKit/Core Text/`NSTextInputClient`/`NSAccessibilityProtocol`/Metal presentation,
+  Linux X11-or-Wayland/AT-SPI2/IBus/Fcitx/Vulkan presentation, Android/iOS visible editor shells, and HarfBuzz/FreeType/ICU-class adapters
+  must not be claimed from Windows DirectWrite/TSF/UIA/D3D12 evidence. HarfBuzz, FreeType, ICU, and font packages stay `dependency_gated` until
   selected by a license/dependency slice; generated games and runtime UI stay on public `mirakana::ui`, and new text/font/image dependencies
   require `license-audit`, `vcpkg.json`, `docs/dependencies.md`, and `THIRD_PARTY_NOTICES.md`.
 - Environment authoring readiness rows such as `environment.readiness.physical_sky.package_status`, `environment.readiness.backend.metal_status`, and `environment.readiness.unsupported.environment_ready` are non-editable Inspector diagnostics from `make_environment_authoring_inspector_model`; do not treat them as backend/package execution, public handle exposure, or broad `environment_ready`.

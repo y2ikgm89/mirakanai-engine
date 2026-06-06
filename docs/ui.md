@@ -58,6 +58,8 @@ Editor/UI performance evidence is currently narrow baseline telemetry plus deter
 
 Editor multi-window evidence is core-owned and value-first: `MK_editor_core` exposes `EditorDockMultiWindowLayout`, `EditorDockWindowCommandPlan`, reviewed AI command rows, and clean-break `GameEngine.Workspace.v3` persistence, while the native shell smoke reports `editor_shell_multi_window_docking_status=ready`, `editor_shell_workspace_v3_status=ready`, and `editor_shell_multi_window_native_handles_exposed=0`. Visible OS-level multi-window drag/drop restoration remains private shell adapter work until a focused phase proves it.
 
+Cross-platform editor shell evidence is also core-owned and value-first. `MK_editor_core` exposes `EditorCrossPlatformShellAdapterPlan` rows for first-party shell contracts and host-gated macOS/Linux adapter surfaces, and the native shell smoke reports `editor_shell_cross_platform_status=host_gated`, `editor_shell_macos_status=host_gated`, `editor_shell_linux_status=host_gated`, `editor_shell_android_status=unsupported`, `editor_shell_ios_status=unsupported`, positive core/macOS/Linux adapter row counters, and `editor_shell_cross_platform_native_handles_exposed=0`. These rows preserve the first-party `mirakana::ui` contract while keeping AppKit, Core Text, `NSTextInputClient`, `NSAccessibilityProtocol`, X11/Wayland, AT-SPI2, IBus, Fcitx, Vulkan, and Metal details behind private adapters. They do not execute non-Windows shells or make Android/iOS editor shells ready.
+
 ## Middleware Policy
 
 Qt, NoesisGUI, Slint, RmlUi, or similar frameworks are optional adapter candidates. They must not become the core `mirakana_ui` public API, and generated games must not depend on their headers or object models directly.

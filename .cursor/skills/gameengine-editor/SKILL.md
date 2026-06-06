@@ -36,7 +36,9 @@ selection and broader material-preview GPU parity remain future focused phases.
 
 When selecting a future editor text/accessibility milestone, start with first-party editable-rich-text core and AI-operable text commands before GPU upload, custom IME candidate UI, non-Windows IME execution, or external accessibility-tool execution. Own the editor document, command, semantic, and adapter contracts in `MK_editor_core`; keep Unicode shaping, bidi, font fallback/rasterization, TSF/IME protocol, accessibility bridges, and platform rendering details behind official SDK or audited-dependency adapters.
 
-Cross-platform editor adapter work is future-gated with `editor.cross_platform.adapter.*` rows. Do not claim HarfBuzz/FreeType/ICU-class
-adapter readiness from Windows-only evidence; HarfBuzz, FreeType, ICU, and font packages stay `dependency_gated` until dependency additions
-go through license and dependency-record updates.
+Cross-platform editor adapter work is future-gated for dependency-backed parity and host-gated with first-party shell rows such as `EditorCrossPlatformShellAdapterPlan`,
+`editor.ai.shell.cross_platform`, and `editor_shell_cross_platform_status=host_gated`, plus legacy `editor.cross_platform.adapter.*`
+dependency rows. Do not claim macOS/Linux shell execution, Android/iOS editor shells, or HarfBuzz/FreeType/ICU-class adapter readiness
+from Windows-only evidence; HarfBuzz, FreeType, ICU, and font packages stay `dependency_gated` until dependency additions go through
+license and dependency-record updates.
 Validation: focused `MK_editor_core_tests` / `check-tidy.ps1 -Files` loops while iterating, then `tools/validate.ps1` at the slice gate per `AGENTS.md`.

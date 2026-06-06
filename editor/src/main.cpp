@@ -194,6 +194,19 @@ int main(int argc, char** argv) {
             << "editor_shell_workspace_v3_status=" << counters.workspace_v3_status << '\n'
             << "editor_shell_multi_window_native_handles_exposed="
             << (counters.multi_window_native_handles_exposed ? 1 : 0) << '\n'
+            << "editor_shell_cross_platform_status=" << counters.cross_platform_shell_status << '\n'
+            << "editor_shell_macos_status=" << counters.macos_shell_status << '\n'
+            << "editor_shell_linux_status=" << counters.linux_shell_status << '\n'
+            << "editor_shell_android_status=" << counters.android_shell_status << '\n'
+            << "editor_shell_ios_status=" << counters.ios_shell_status << '\n'
+            << "editor_shell_cross_platform_core_contract_rows=" << counters.cross_platform_shell_core_contract_rows
+            << '\n'
+            << "editor_shell_cross_platform_macos_adapter_rows=" << counters.cross_platform_shell_macos_adapter_rows
+            << '\n'
+            << "editor_shell_cross_platform_linux_adapter_rows=" << counters.cross_platform_shell_linux_adapter_rows
+            << '\n'
+            << "editor_shell_cross_platform_native_handles_exposed="
+            << (counters.cross_platform_shell_native_handles_exposed ? 1 : 0) << '\n'
             << "editor_rich_text_edit_status=" << counters.rich_text_edit_status << '\n'
             << "editor_rich_text_editable_documents=" << counters.rich_text_editable_documents << '\n'
             << "editor_rich_text_command_rows=" << counters.rich_text_command_rows << '\n'

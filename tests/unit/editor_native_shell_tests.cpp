@@ -1688,6 +1688,23 @@ MK_TEST("editor first party shell smoke counters expose metal texture display pa
     MK_REQUIRE(!counters.metal_native_handles_exposed);
 }
 
+MK_TEST("editor first party shell smoke counters expose cross platform shell host gates") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+
+    const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
+    const auto counters = mirakana::editor::make_first_party_editor_shell_smoke_counters(app, shell_document);
+
+    MK_REQUIRE(counters.cross_platform_shell_status == "host_gated");
+    MK_REQUIRE(counters.macos_shell_status == "host_gated");
+    MK_REQUIRE(counters.linux_shell_status == "host_gated");
+    MK_REQUIRE(counters.android_shell_status == "unsupported");
+    MK_REQUIRE(counters.ios_shell_status == "unsupported");
+    MK_REQUIRE(counters.cross_platform_shell_core_contract_rows == 9U);
+    MK_REQUIRE(counters.cross_platform_shell_macos_adapter_rows == 5U);
+    MK_REQUIRE(counters.cross_platform_shell_linux_adapter_rows == 5U);
+    MK_REQUIRE(!counters.cross_platform_shell_native_handles_exposed);
+}
+
 MK_TEST("editor first party shell exposes AI operation UX rows from native readiness") {
     mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
     RecordingPlatformTextInputAdapter platform_text_input;
@@ -1761,6 +1778,7 @@ MK_TEST("editor first party shell exposes AI operation UX rows from native readi
     const auto* accessibility_parity = find_ai_operation_status_row(snapshot, "editor.ai.accessibility.parity");
     const auto* viewport = find_ai_operation_status_row(snapshot, "editor.ai.viewport.display");
     const auto* material = find_ai_operation_status_row(snapshot, "editor.ai.material_preview.display");
+    const auto* cross_platform_shell = find_ai_operation_status_row(snapshot, "editor.ai.shell.cross_platform");
 
     MK_REQUIRE(text_input != nullptr);
     MK_REQUIRE(text_input->status == "win32_tsf_selected");
@@ -1785,6 +1803,11 @@ MK_TEST("editor first party shell exposes AI operation UX rows from native readi
     MK_REQUIRE(material->status == "d3d12_texture_ready");
     MK_REQUIRE(material->count == 3U);
     MK_REQUIRE(!material->native_handles_public);
+    MK_REQUIRE(cross_platform_shell != nullptr);
+    MK_REQUIRE(cross_platform_shell->status == "macos:host_gated;linux:host_gated;android:unsupported;ios:unsupported");
+    MK_REQUIRE(cross_platform_shell->host_gated);
+    MK_REQUIRE(!cross_platform_shell->ready);
+    MK_REQUIRE(!cross_platform_shell->native_handles_public);
     MK_REQUIRE(find_ai_operation_status_row(snapshot, "editor.ai.validation_recipe.execution") == nullptr);
 }
 

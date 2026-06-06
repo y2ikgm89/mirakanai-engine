@@ -848,7 +848,7 @@ void append_status_row(std::vector<EditorAiOperationStatusRow>& rows, EditorAiOp
 std::vector<EditorAiOperationStatusRow>
 make_editor_ai_operation_ux_status_rows(const EditorAiOperationUxStatusDesc& desc) {
     std::vector<EditorAiOperationStatusRow> rows;
-    rows.reserve(19U);
+    rows.reserve(20U);
 
     if (!desc.selected_dock_panel_id.empty()) {
         append_status_row(rows, EditorAiOperationStatusRow{
@@ -1065,6 +1065,27 @@ make_editor_ai_operation_ux_status_rows(const EditorAiOperationUxStatusDesc& des
                                 .ready = status_is_ready(desc.material_preview_status),
                                 .native_handles_public = desc.material_preview_native_handles_exposed,
                             });
+    append_status_row(
+        rows,
+        EditorAiOperationStatusRow{
+            .id = "editor.ai.shell.cross_platform",
+            .role = "cross_platform_editor_shell_status",
+            .label = "Cross-Platform Editor Shell",
+            .target_element_id = "editor.shell.cross_platform",
+            .status =
+                "macos:" + (desc.macos_shell_status.empty() ? std::string{"host_gated"} : desc.macos_shell_status) +
+                ";linux:" + (desc.linux_shell_status.empty() ? std::string{"host_gated"} : desc.linux_shell_status) +
+                ";android:" +
+                (desc.android_shell_status.empty() ? std::string{"unsupported"} : desc.android_shell_status) +
+                ";ios:" + (desc.ios_shell_status.empty() ? std::string{"unsupported"} : desc.ios_shell_status),
+            .count = 4U,
+            .ready = false,
+            .host_gated =
+                (desc.cross_platform_shell_status.empty() ? std::string{"host_gated"}
+                                                          : desc.cross_platform_shell_status) == "host_gated" ||
+                desc.macos_shell_status == "host_gated" || desc.linux_shell_status == "host_gated",
+            .native_handles_public = desc.cross_platform_shell_native_handles_exposed,
+        });
 
     return rows;
 }

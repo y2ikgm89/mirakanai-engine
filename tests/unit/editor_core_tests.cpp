@@ -12,6 +12,7 @@
 #include "mirakana/editor/command.hpp"
 #include "mirakana/editor/content_browser.hpp"
 #include "mirakana/editor/content_browser_import_panel.hpp"
+#include "mirakana/editor/editor_cross_platform_shell.hpp"
 #include "mirakana/editor/editor_dock_layout.hpp"
 #include "mirakana/editor/editor_rich_text.hpp"
 #include "mirakana/editor/editor_ui_performance.hpp"
@@ -2039,6 +2040,12 @@ MK_TEST("editor ai operation snapshot exposes UX status rows without native hand
         .material_preview_status = "d3d12_texture_ready",
         .material_preview_visible_texture_composites = 2U,
         .material_preview_native_handles_exposed = false,
+        .cross_platform_shell_status = "host_gated",
+        .macos_shell_status = "host_gated",
+        .linux_shell_status = "host_gated",
+        .android_shell_status = "unsupported",
+        .ios_shell_status = "unsupported",
+        .cross_platform_shell_native_handles_exposed = false,
     };
 
     const auto rows = mirakana::editor::make_editor_ai_operation_ux_status_rows(ux_status);
@@ -2063,6 +2070,7 @@ MK_TEST("editor ai operation snapshot exposes UX status rows without native hand
     const auto* accessibility_parity = find_ai_operation_status_row(snapshot, "editor.ai.accessibility.parity");
     const auto* viewport = find_ai_operation_status_row(snapshot, "editor.ai.viewport.display");
     const auto* material = find_ai_operation_status_row(snapshot, "editor.ai.material_preview.display");
+    const auto* cross_platform_shell = find_ai_operation_status_row(snapshot, "editor.ai.shell.cross_platform");
 
     MK_REQUIRE(selected_dock != nullptr);
     MK_REQUIRE(selected_dock->role == "selected_dock_panel");
@@ -2141,6 +2149,71 @@ MK_TEST("editor ai operation snapshot exposes UX status rows without native hand
     MK_REQUIRE(material->ready);
     MK_REQUIRE(material->count == 2U);
     MK_REQUIRE(!material->native_handles_public);
+    MK_REQUIRE(cross_platform_shell != nullptr);
+    MK_REQUIRE(cross_platform_shell->role == "cross_platform_editor_shell_status");
+    MK_REQUIRE(cross_platform_shell->status == "macos:host_gated;linux:host_gated;android:unsupported;ios:unsupported");
+    MK_REQUIRE(cross_platform_shell->host_gated);
+    MK_REQUIRE(!cross_platform_shell->ready);
+    MK_REQUIRE(!cross_platform_shell->native_handles_public);
+}
+
+MK_TEST("editor cross platform shell adapter plan keeps first party rows host gated") {
+    const auto plan = mirakana::editor::make_editor_cross_platform_shell_adapter_plan();
+
+    MK_REQUIRE(plan.cross_platform_status == "host_gated");
+    MK_REQUIRE(plan.macos_status == "host_gated");
+    MK_REQUIRE(plan.linux_status == "host_gated");
+    MK_REQUIRE(plan.android_status == "unsupported");
+    MK_REQUIRE(plan.ios_status == "unsupported");
+    MK_REQUIRE(!plan.native_handles_exposed);
+    MK_REQUIRE(plan.core_contract_rows == 9U);
+    MK_REQUIRE(plan.macos_adapter_rows == 5U);
+    MK_REQUIRE(plan.linux_adapter_rows == 5U);
+
+    const auto require_row = [&](std::string_view id, std::string_view status, bool host_gated) {
+        const auto* row = mirakana::editor::find_editor_cross_platform_shell_adapter_row(plan.rows, id);
+        MK_REQUIRE(row != nullptr);
+        MK_REQUIRE(row->id == id);
+        MK_REQUIRE(row->status == status);
+        MK_REQUIRE(row->first_party);
+        MK_REQUIRE(row->host_gated == host_gated);
+        MK_REQUIRE(!row->native_handles_public);
+    };
+
+    require_row("editor.shell.core.window_lifecycle", "host_gated", true);
+    require_row("editor.shell.core.dpi_scale", "host_gated", true);
+    require_row("editor.shell.core.monitor_rows", "host_gated", true);
+    require_row("editor.shell.core.pointer_keyboard_events", "host_gated", true);
+    require_row("editor.shell.core.clipboard", "host_gated", true);
+    require_row("editor.shell.core.file_dialog", "host_gated", true);
+    require_row("editor.shell.core.text_input", "host_gated", true);
+    require_row("editor.shell.core.accessibility", "host_gated", true);
+    require_row("editor.shell.core.renderer_presentation", "host_gated", true);
+    require_row("editor.shell.macos.appkit_windowing", "host_gated", true);
+    require_row("editor.shell.macos.core_text", "host_gated", true);
+    require_row("editor.shell.macos.nstextinputclient", "host_gated", true);
+    require_row("editor.shell.macos.nsaccessibility_protocol", "host_gated", true);
+    require_row("editor.shell.macos.metal_presentation", "host_gated", true);
+    require_row("editor.shell.linux.x11_wayland_selection", "host_gated", true);
+    require_row("editor.shell.linux.at_spi2", "host_gated", true);
+    require_row("editor.shell.linux.ibus", "host_gated", true);
+    require_row("editor.shell.linux.fcitx", "host_gated", true);
+    require_row("editor.shell.linux.vulkan_presentation", "host_gated", true);
+    require_row("editor.shell.android.visible_editor_shell", "unsupported", false);
+    require_row("editor.shell.ios.visible_editor_shell", "unsupported", false);
+}
+
+MK_TEST("editor cross platform shell adapter plan fails closed on native handle exposure") {
+    const auto plan = mirakana::editor::make_editor_cross_platform_shell_adapter_plan(
+        mirakana::editor::EditorCrossPlatformShellAdapterDesc{.native_handles_exposed = true});
+
+    MK_REQUIRE(plan.cross_platform_status == "blocked_native_handles");
+    MK_REQUIRE(plan.native_handles_exposed);
+    MK_REQUIRE(plan.native_handle_blocked_rows == plan.rows.size());
+    for (const auto& row : plan.rows) {
+        MK_REQUIRE(row.native_handles_public);
+        MK_REQUIRE(row.status == "blocked_native_handles" || row.status == "unsupported");
+    }
 }
 
 MK_TEST("editor ai command catalog exposes stable panel visibility commands") {

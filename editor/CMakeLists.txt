@@ -5,6 +5,7 @@ add_library(MK_editor_core
     core/src/command.cpp
     core/src/content_browser.cpp
     core/src/content_browser_import_panel.cpp
+    core/src/editor_cross_platform_shell.cpp
     core/src/editor_dock_layout.cpp
     core/src/environment_authoring.cpp
     core/src/editor_rich_text.cpp
