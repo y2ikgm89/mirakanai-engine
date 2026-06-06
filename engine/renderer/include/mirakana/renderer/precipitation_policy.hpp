@@ -5,7 +5,9 @@
 
 #include "mirakana/environment/weather.hpp"
 
+#include <cstddef>
 #include <cstdint>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -55,6 +57,10 @@ enum class PrecipitationPolicyDiagnosticCode : std::uint8_t {
     return 7;
 }
 
+[[nodiscard]] constexpr std::size_t precipitation_constants_byte_size() noexcept {
+    return 256;
+}
+
 struct PrecipitationPolicyDesc {
     EnvironmentPrecipitationPlan environment_plan;
     PrecipitationQualityTier quality_tier{PrecipitationQualityTier::balanced};
@@ -64,6 +70,10 @@ struct PrecipitationPolicyDesc {
     bool request_ready_promotion{false};
     bool request_particle_buffer_upload{false};
     bool request_backend_execution{false};
+    std::uint64_t particle_buffer_upload_count{0};
+    std::uint64_t backend_invocation_count{0};
+    std::uint64_t renderer_draw_count{0};
+    bool depth_occlusion_readback_proven{false};
     bool request_native_handle_access{false};
     bool request_material_mutation{false};
     bool request_audio_playback{false};
@@ -115,6 +125,8 @@ struct PrecipitationPolicyPlan {
     bool execution_evidence_ready{false};
     bool uploads_particle_buffers{false};
     bool invokes_backend{false};
+    std::uint64_t renderer_draws{0};
+    bool depth_occlusion_readback{false};
     bool exposes_native_handles{false};
     bool mutates_materials{false};
     bool plays_audio{false};
@@ -129,6 +141,8 @@ struct PrecipitationPolicyPlan {
 };
 
 [[nodiscard]] PrecipitationPolicyPlan plan_precipitation_policy(const PrecipitationPolicyDesc& desc);
+
+void pack_precipitation_constants(std::span<std::uint8_t> destination, const PrecipitationPolicyDesc& desc);
 
 [[nodiscard]] bool has_precipitation_policy_diagnostic(const PrecipitationPolicyPlan& plan,
                                                        PrecipitationPolicyDiagnosticCode code) noexcept;

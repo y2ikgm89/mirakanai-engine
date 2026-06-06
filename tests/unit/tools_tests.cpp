@@ -1065,7 +1065,7 @@ void append_le_f32(std::string& output, float value) {
         .key = mirakana::AssetKeyV2{"assets/environment/default_outdoor"},
         .kind = mirakana::AssetKind::environment_profile,
         .source_path = "source/environment/default_outdoor.geenv",
-        .source_format = "GameEngine.EnvironmentProfile.v1",
+        .source_format = "GameEngine.EnvironmentProfile.v2",
         .imported_path = "runtime/assets/environment/default_outdoor.geenv",
         .dependencies = {},
     });
@@ -1128,7 +1128,7 @@ void append_le_f32(std::string& output, float value) {
             mirakana::AssetCookedArtifact{.asset = environment,
                                           .kind = mirakana::AssetKind::environment_profile,
                                           .path = "runtime/assets/environment/default_outdoor.geenv",
-                                          .content = "format=GameEngine.CookedEnvironmentProfile.v1\n",
+                                          .content = "format=GameEngine.CookedEnvironmentProfile.v2\n",
                                           .source_revision = 1,
                                           .dependencies = {}},
         },
@@ -2781,14 +2781,27 @@ MK_TEST("asset import executor writes cooked artifacts through filesystem") {
 MK_TEST("asset import executor cooks environment profile artifacts") {
     mirakana::MemoryFileSystem fs;
     const auto environment_id = mirakana::AssetId::from_name("environment/default_outdoor");
-    fs.write_text("source/environment/default_outdoor.environment", "format=GameEngine.EnvironmentProfile.v1\n"
-                                                                    "id=default_outdoor\n"
-                                                                    "sky.model=physical_atmosphere\n"
-                                                                    "weather.kind=clear\n"
-                                                                    "sun.direction=0,-1,0\n"
-                                                                    "sun.illuminance_lux=100000\n"
-                                                                    "fog.enabled=false\n"
-                                                                    "precipitation.kind=none\n");
+    fs.write_text("source/environment/default_outdoor.environment", "format=GameEngine.EnvironmentProfile.v2\n"
+                                                                    "global.id=default_outdoor\n"
+                                                                    "global.sky.model=physical_atmosphere\n"
+                                                                    "global.weather.kind=clear\n"
+                                                                    "quality.preset=high\n"
+                                                                    "volume.0.id=mist_valley\n"
+                                                                    "volume.0.shape=box\n"
+                                                                    "volume.0.priority=20\n"
+                                                                    "volume.0.blend_weight=0.75\n"
+                                                                    "volume.0.fade_distance_m=12\n"
+                                                                    "volume.0.profile.id=mist_valley_profile\n"
+                                                                    "volume.0.profile.weather.kind=foggy\n"
+                                                                    "volume.0.profile.fog.enabled=true\n"
+                                                                    "volume.0.profile.fog.density=0.35\n"
+                                                                    "weather_keyframe.0.time_of_day_hours=18\n"
+                                                                    "weather_keyframe.0.weather=storm\n"
+                                                                    "weather_keyframe.0.precipitation=rain\n"
+                                                                    "weather_keyframe.0.storm_intensity=0.8\n"
+                                                                    "weather_keyframe.0.cloud_coverage=0.9\n"
+                                                                    "weather_keyframe.0.fog_density=0.25\n"
+                                                                    "weather_keyframe.0.quality_preset=high\n");
 
     mirakana::AssetImportPlan plan;
     plan.actions.push_back(mirakana::AssetImportAction{
@@ -2804,11 +2817,13 @@ MK_TEST("asset import executor cooks environment profile artifacts") {
     MK_REQUIRE(result.succeeded());
     MK_REQUIRE(result.imported.size() == 1U);
     const auto cooked = fs.read_text("runtime/environment/default_outdoor.environment");
-    MK_REQUIRE(cooked.find("format=GameEngine.CookedEnvironmentProfile.v1\n") == 0U);
-    MK_REQUIRE(cooked.find("asset.kind=environment_profile\n") != std::string::npos);
-    MK_REQUIRE(cooked.find("environment.source_format=GameEngine.EnvironmentProfile.v1\n") != std::string::npos);
-    MK_REQUIRE(cooked.find("profile.id=default_outdoor\n") != std::string::npos);
-    MK_REQUIRE(cooked.find("profile.precipitation.kind=none\n") != std::string::npos);
+    MK_REQUIRE(cooked.starts_with("format=GameEngine.CookedEnvironmentProfile.v2\n"));
+    MK_REQUIRE(cooked.contains("asset.kind=environment_profile\n"));
+    MK_REQUIRE(cooked.contains("environment.source_format=GameEngine.EnvironmentProfile.v2\n"));
+    MK_REQUIRE(cooked.contains("profile_v2.global.id=default_outdoor\n"));
+    MK_REQUIRE(cooked.contains("profile_v2.quality.preset=high\n"));
+    MK_REQUIRE(cooked.contains("profile_v2.volume.0.id=mist_valley\n"));
+    MK_REQUIRE(cooked.contains("profile_v2.weather_keyframe.0.weather=storm\n"));
 }
 
 MK_TEST("tilemap tooling authors deterministic package data and tilemap_texture rows") {

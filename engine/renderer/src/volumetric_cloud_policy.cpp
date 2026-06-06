@@ -5,6 +5,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
+#include <stdexcept>
 #include <string_view>
 #include <utility>
 
@@ -112,6 +114,28 @@ void add_diagnostic(VolumetricCloudPolicyPlan& plan, VolumetricCloudDiagnosticCo
            finite_in_range(storm.exposure_response, 0.0F, 1.0F);
 }
 
+void write_f32(std::span<std::uint8_t> destination, std::size_t offset, float value) {
+    std::memcpy(destination.data() + offset, &value, sizeof(float));
+}
+
+void write_u32(std::span<std::uint8_t> destination, std::size_t offset, std::uint32_t value) {
+    std::memcpy(destination.data() + offset, &value, sizeof(std::uint32_t));
+}
+
+[[nodiscard]] std::uint32_t shader_shadow_mode(VolumetricCloudShadowMode mode) noexcept {
+    switch (mode) {
+    case VolumetricCloudShadowMode::none:
+        return 0U;
+    case VolumetricCloudShadowMode::beer_shadow_map_intent:
+        return 1U;
+    case VolumetricCloudShadowMode::raymarched_secondary:
+        return 2U;
+    case VolumetricCloudShadowMode::unknown:
+        return 0U;
+    }
+    return 0U;
+}
+
 void validate_desc(VolumetricCloudPolicyPlan& plan, const VolumetricCloudPolicyDesc& desc) {
     if (!valid_asset_reference(desc.layer.weather_map_asset_ref)) {
         add_diagnostic(plan, VolumetricCloudDiagnosticCode::invalid_weather_map_reference,
@@ -185,18 +209,28 @@ void validate_desc(VolumetricCloudPolicyPlan& plan, const VolumetricCloudPolicyD
                        "shader_contract_evidence_ready", 0U,
                        "volumetric cloud policy requires validated shader contract evidence");
     }
-    if (desc.request_ready_promotion && !desc.execution_evidence_ready) {
+    if (!desc.package_evidence_ready) {
+        add_diagnostic(plan, VolumetricCloudDiagnosticCode::missing_package_evidence, "package_evidence_ready", 0U,
+                       "volumetric cloud policy requires package evidence for weather, shape, and erosion textures");
+    }
+    const bool requires_execution_evidence =
+        desc.request_ready_promotion || desc.request_volume_texture_upload || desc.request_backend_execution;
+    if (requires_execution_evidence && !desc.execution_evidence_ready) {
         add_diagnostic(plan, VolumetricCloudDiagnosticCode::missing_execution_evidence, "execution_evidence_ready", 0U,
                        "volumetric cloud ready promotion requires backend or package execution evidence");
     }
-    if (desc.request_volume_texture_upload) {
+    if (desc.request_volume_texture_upload &&
+        (!desc.execution_evidence_ready || desc.weather_map_upload_count == 0U || desc.shape_noise_upload_count == 0U ||
+         desc.erosion_noise_upload_count == 0U)) {
         add_diagnostic(plan, VolumetricCloudDiagnosticCode::unsupported_volume_texture_upload,
                        "request_volume_texture_upload", 0U,
-                       "volumetric cloud policy planning must not upload textures in this slice");
+                       "volumetric cloud texture upload requires positive weather, shape, and erosion upload counters");
     }
-    if (desc.request_backend_execution) {
+    if (desc.request_backend_execution && (!desc.execution_evidence_ready || desc.backend_invocation_count == 0U ||
+                                           desc.raymarch_pass_count == 0U || !desc.readback_nonzero_proven)) {
         add_diagnostic(plan, VolumetricCloudDiagnosticCode::unsupported_backend_execution, "request_backend_execution",
-                       0U, "volumetric cloud policy planning must not invoke renderer or RHI backends in this slice");
+                       0U,
+                       "volumetric cloud backend execution requires positive backend, raymarch, and readback counters");
     }
     if (desc.request_native_handle_access) {
         add_diagnostic(plan, VolumetricCloudDiagnosticCode::unsupported_native_handle_claim,
@@ -222,6 +256,11 @@ void append_rows(VolumetricCloudPolicyPlan& plan, const VolumetricCloudPolicyDes
         .weather_map_binding_slot = volumetric_cloud_weather_map_binding(),
         .shape_noise_binding_slot = volumetric_cloud_shape_noise_binding(),
         .erosion_noise_binding_slot = volumetric_cloud_erosion_noise_binding(),
+        .sampler_binding_slot = volumetric_cloud_sampler_binding(),
+        .package_evidence_ready = desc.package_evidence_ready,
+        .weather_map_ready = desc.package_evidence_ready,
+        .shape_noise_ready = desc.package_evidence_ready,
+        .erosion_noise_ready = desc.package_evidence_ready,
     });
     plan.layer_rows.push_back(VolumetricCloudLayerRow{
         .coverage = desc.layer.coverage,
@@ -243,6 +282,8 @@ void append_rows(VolumetricCloudPolicyPlan& plan, const VolumetricCloudPolicyDes
         .primary_steps = desc.raymarch.primary_steps,
         .light_steps = desc.raymarch.light_steps,
         .shadow_mode = desc.raymarch.shadow_mode,
+        .raymarch_passes = plan.raymarch_passes,
+        .readback_nonzero = plan.readback_nonzero,
     });
     plan.temporal_rows.push_back(VolumetricCloudTemporalRow{
         .enabled = desc.raymarch.temporal_reprojection_enabled,
@@ -295,6 +336,7 @@ VolumetricCloudPolicyPlan plan_volumetric_cloud_policy(const VolumetricCloudPoli
         .status = VolumetricCloudPolicyStatus::planned,
         .uses_volumetric_clouds = true,
         .shader_contract_evidence_ready = desc.shader_contract_evidence_ready,
+        .package_evidence_ready = desc.package_evidence_ready,
         .execution_evidence_ready = desc.execution_evidence_ready,
     };
 
@@ -304,6 +346,14 @@ VolumetricCloudPolicyPlan plan_volumetric_cloud_policy(const VolumetricCloudPoli
         plan.status = VolumetricCloudPolicyStatus::blocked;
     } else if (desc.request_ready_promotion && desc.execution_evidence_ready) {
         plan.status = VolumetricCloudPolicyStatus::ready;
+        if (desc.request_volume_texture_upload) {
+            plan.uploads_volume_textures = true;
+        }
+        if (desc.request_backend_execution) {
+            plan.invokes_backend = true;
+            plan.raymarch_passes = desc.raymarch_pass_count;
+            plan.readback_nonzero = desc.readback_nonzero_proven;
+        }
     }
 
     if (plan.succeeded()) {
@@ -311,6 +361,29 @@ VolumetricCloudPolicyPlan plan_volumetric_cloud_policy(const VolumetricCloudPoli
     }
 
     return plan;
+}
+
+void pack_volumetric_cloud_constants(std::span<std::uint8_t> destination, const VolumetricCloudPolicyDesc& desc) {
+    if (destination.size() < volumetric_cloud_constants_byte_size()) {
+        throw std::invalid_argument("volumetric cloud constants destination is too small");
+    }
+
+    std::ranges::fill(destination, std::uint8_t{0});
+    write_f32(destination, 0U, desc.layer.coverage);
+    write_f32(destination, 4U, desc.layer.density);
+    write_f32(destination, 8U, desc.layer.altitude_min_m);
+    write_f32(destination, 12U, desc.layer.altitude_max_m);
+    write_f32(destination, 16U, desc.layer.wind_velocity_mps.x);
+    write_f32(destination, 20U, desc.layer.wind_velocity_mps.y);
+    write_f32(destination, 24U, 0.0F);
+    write_f32(destination, 28U, desc.raymarch.temporal_history_weight);
+    write_f32(destination, 32U, desc.storm.enabled ? desc.storm.cloud_darkening : 0.0F);
+    write_f32(destination, 36U, desc.storm.enabled ? desc.storm.lightning_flash_intensity : 0.0F);
+    write_f32(destination, 40U, desc.storm.enabled ? desc.storm.precipitation_boost : 0.0F);
+    write_f32(destination, 44U, desc.storm.enabled ? desc.storm.exposure_response : 0.0F);
+    write_u32(destination, 48U, desc.raymarch.primary_steps);
+    write_u32(destination, 52U, desc.raymarch.light_steps);
+    write_u32(destination, 56U, shader_shadow_mode(desc.raymarch.shadow_mode));
 }
 
 bool has_volumetric_cloud_diagnostic(const VolumetricCloudPolicyPlan& plan,

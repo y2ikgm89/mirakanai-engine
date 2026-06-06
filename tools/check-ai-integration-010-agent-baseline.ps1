@@ -560,6 +560,9 @@ Assert-ContainsText $planRegistryContent "Active milestone" "docs/superpowers/pl
 foreach ($planVolumeNeedle in @("Plan Volume Policy", "live execution stack", "capability/gap-cluster/milestone", "Plan width is wider than PR width", "phase behavior/API/validation boundary", "Distinguish plan files from execution steps", "validation-only follow-up", "Git history", "Historical/static-check retained literals")) {
     Assert-ContainsText $planRegistryContent $planVolumeNeedle "docs/superpowers/plans/README.md"
 }
+foreach ($environmentAudioPlaybackNeedle in @("desktop-runtime-sample-game-environment-audio-playback", "environment_audio_playback_status=ready", "environment_precipitation_audio_playback=0", "no physical WASAPI endpoint playback claim")) {
+    Assert-ContainsText $planRegistryContent $environmentAudioPlaybackNeedle "docs/superpowers/plans/README.md"
+}
 Assert-ProductionCompletionCorpus
 Assert-SpecStatusSection
 
@@ -1700,6 +1703,8 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
         Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan selection gate closeout"
     }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "environment-system-v1") { foreach ($needle in @("Environment System v1", "MK_environment", "EnvironmentProfileDesc", "validate_environment_profile", "official docs/Context7", "sky", "sun/moon", "fog", "clouds", "rain/snow/storm", "time-of-day", "quality tiers", "D3D12", "strict Vulkan", "Metal host-gated", "unsupportedProductionGaps = []", "broad environment_ready", "native handles", "Dear ImGui", "SDL3", "OpenEXR/KTX")) { Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan environment system selection" }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "environment-rendering-readiness-v1") { foreach ($needle in @("Environment Rendering Readiness v1", "Environment System v1", "official docs/Context7", "snow package readiness", "physical-sky package/Vulkan proof", "cloud/precipitation renderer execution", "volumetric-cloud execution/package readiness", "height/volumetric-fog package proof", "environment lighting/IBL package proof", "later renderer upload/runtime-capture proof", "D3D12", "strict Vulkan", "Metal host-gated", "broad optimization", "broad environment_ready", "native handles", "Dear ImGui", "SDL3", "unsupportedProductionGaps = []")) { Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan environment rendering readiness selection" }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "environment-production-excellence-v1") { foreach ($needle in @("Environment Production Excellence v1", "Phase 2 is complete", "EnvironmentProfile.v2", "local environment volumes", "runtime cubemap capture", "renderer IBL upload", "material wetness", "snow accumulation", "weather audio playback", "strict Vulkan", "Apple-host Metal", "quality budgets", "exact environment_ready", "official docs/Context7", "OpenEXR/KTX/Basis asset pipeline", "broad renderer quality", "broad CPU/GPU/memory optimization", "all-platform unconditional parity", "unsupportedProductionGaps = []", "Dear ImGui", "SDL3", "public native handles", "no inferred Vulkan/Metal readiness", "no broad optimization", "no broad environment_ready")) { Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan environment production excellence selection" }
 } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "first-party-ui-editor-production-stack-v1") {
     foreach ($needle in @(
         "First-Party UI Editor Production Stack v1",
@@ -2010,25 +2015,12 @@ if ([string]$productionLoop.recommendedNextPlan.id -eq "general-purpose-game-pro
     )) {
         Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan first-party editor shell selection"
     }
-} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "native-win32-editor-shell-v1") {
-    foreach ($needle in @(
-        "Native Win32 Editor Shell v1",
-        "MK_editor",
-        "Dear ImGui",
-        "Direct3D 12",
-        "desktop-gui",
-        "PR #316",
-        "unsupportedProductionGaps = []",
-        "SDL3",
-        "native handles",
-        "editor/developer-shell"
-    )) {
-        Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan native editor shell selection"
-    }
-} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "mavg-asset-graph-v1") {
-    foreach ($needle in @("MAVG Asset Graph v1", "MAVG Phase 0 completed", "deterministic MK_assets MAVG cluster graph validation", "mavg_cluster_graph.hpp", "MavgClusterGraphDocument", "GameEngine.MavgClusterGraph.v1", "AssetKind::mavg_cluster_graph", "mavg_source_mesh", "mavg_material", "MK_tools cook/package planning", "mavg_cluster_cook.hpp", "MavgClusterCookRequest", "plan_mavg_cluster_graph_cook_package", "apply_mavg_cluster_graph_cook_package", "no SDL3/Dear ImGui", "no public native handles", "no Nanite/UE compatibility", "CPU selection", "renderer execution", "streaming/residency", "unsupportedProductionGaps = []")) { Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan MAVG asset graph selection" }
-} else {
-    foreach ($needle in @(
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "native-win32-editor-shell-v1") { foreach ($needle in @("Native Win32 Editor Shell v1", "MK_editor", "Dear ImGui", "Direct3D 12", "desktop-gui", "PR #316", "unsupportedProductionGaps = []", "SDL3", "native handles", "editor/developer-shell")) { Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan native editor shell selection" }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "mavg-asset-graph-v1") { foreach ($needle in @("MAVG Asset Graph v1", "MAVG Phase 0 completed", "deterministic MK_assets MAVG cluster graph validation", "mavg_cluster_graph.hpp", "MavgClusterGraphDocument", "GameEngine.MavgClusterGraph.v1", "AssetKind::mavg_cluster_graph", "mavg_source_mesh", "mavg_material", "MK_tools cook/package planning", "mavg_cluster_cook.hpp", "MavgClusterCookRequest", "plan_mavg_cluster_graph_cook_package", "apply_mavg_cluster_graph_cook_package", "no SDL3/Dear ImGui", "no public native handles", "no Nanite/UE compatibility", "CPU selection", "renderer execution", "streaming/residency", "unsupportedProductionGaps = []")) { Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan MAVG asset graph selection" }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "mavg-research-legal-benchmark-baseline-v1") { foreach ($needle in @("MAVG Phase 0", "research/specification", "official-source checks", "clean-room/legal guardrails", "benchmark methodology", "stale-doc cleanup", "MAVG not implemented", "no SDL3/Dear ImGui", "no public native handles", "no Nanite/UE compatibility", "unsupportedProductionGaps = []")) { Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan MAVG Phase 0 selection" }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "environment-rendering-readiness-v1") { foreach ($needle in @("Environment Rendering Readiness v1", "Environment System v1", "official docs/Context7", "snow package readiness", "physical-sky package/Vulkan proof", "cloud/precipitation renderer execution", "volumetric-cloud execution/package readiness", "height/volumetric-fog package proof", "environment lighting/IBL package proof", "later renderer upload/runtime-capture proof", "D3D12", "strict Vulkan", "Metal host-gated", "broad optimization", "broad environment_ready", "native handles", "Dear ImGui", "SDL3", "unsupportedProductionGaps = []")) { Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan environment rendering readiness selection" }
+} elseif ([string]$productionLoop.recommendedNextPlan.id -eq "environment-production-excellence-v1") { foreach ($needle in @("Environment Production Excellence v1", "EnvironmentProfile.v2", "local environment volumes", "runtime cubemap capture", "renderer IBL upload", "material wetness", "snow accumulation", "weather audio playback", "strict Vulkan", "Apple-host Metal", "quality budgets", "exact environment_ready", "official docs/Context7", "Dear ImGui", "SDL3", "public native handles", "no inferred Vulkan/Metal readiness", "no broad optimization", "no broad environment_ready", "unsupportedProductionGaps = []")) { Assert-ContainsText $recommendedNextPlanText $needle "engine/agent/manifest.json aiOperableProductionLoop recommendedNextPlan environment production excellence selection" }
+} else { foreach ($needle in @(
     "Frame Graph Transient Texture Alias Planning v1",
     "FrameGraphTransientTextureAliasPlan",
     "plan_frame_graph_transient_texture_aliases",

@@ -6,7 +6,12 @@ struct PhysicalSkyVertexOutput {
     float2 uv : TEXCOORD0;
 };
 
-cbuffer PhysicalSkyConstants : register(b0) {
+#if defined(MK_PHYSICAL_SKY_VULKAN_BINDINGS)
+[[vk::binding(0, 0)]] cbuffer PhysicalSkyConstants : register(b0, space0)
+#else
+cbuffer PhysicalSkyConstants : register(b0)
+#endif
+{
     float planet_radius_km : packoffset(c0.x);
     float atmosphere_height_km : packoffset(c0.y);
     float rayleigh_density_height_km : packoffset(c0.z);

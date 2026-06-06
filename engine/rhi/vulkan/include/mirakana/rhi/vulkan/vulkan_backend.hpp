@@ -113,6 +113,7 @@ struct VulkanLogicalDeviceCreateDesc {
     std::vector<std::string> optional_extensions;
     bool require_dynamic_rendering{true};
     bool require_synchronization2{true};
+    bool require_present_queue{true};
 };
 
 struct VulkanLogicalDeviceCreatePlan {
@@ -567,6 +568,46 @@ struct VulkanRuntimePhysicalDeviceSelectionProbeResult {
     std::string diagnostic;
 };
 
+enum class VulkanEnvironmentIblTextureFormat : std::uint8_t {
+    unknown = 0,
+    rgba16_float,
+};
+
+struct VulkanEnvironmentIblRendererUploadDesc {
+    std::uint32_t edge_size{0};
+    std::uint32_t mip_count{0};
+    VulkanEnvironmentIblTextureFormat format{VulkanEnvironmentIblTextureFormat::unknown};
+    bool require_shader_sampling{false};
+    bool require_runtime_capture{false};
+    std::span<const std::uint8_t> sampling_vertex_shader;
+    std::span<const std::uint8_t> sampling_fragment_shader;
+    std::string_view sampling_vertex_entry_point;
+    std::string_view sampling_fragment_entry_point;
+    bool request_native_handle_access{false};
+};
+
+struct VulkanEnvironmentIblRendererUploadResult {
+    bool succeeded{false};
+    std::uint32_t texture_cube_uploads{0};
+    std::uint32_t texture_cube_faces{0};
+    std::uint32_t texture_cube_edge_size{0};
+    std::uint32_t radiance_mips{0};
+    std::uint32_t irradiance_rows{0};
+    bool cube_compatible_image_created{false};
+    bool cube_image_view_created{false};
+    bool sampler_created{false};
+    std::uint32_t descriptor_set_bindings{0};
+    std::uint32_t synchronization2_barriers{0};
+    bool shader_sampling_proven{false};
+    bool shader_sample_readback_nonzero{false};
+    std::uint32_t runtime_capture_faces{0};
+    bool runtime_capture_readback_nonzero{false};
+    std::uint64_t readback_checksum{0};
+    std::uint32_t native_handle_access{0};
+    std::uint32_t diagnostics{0};
+    std::string diagnostic;
+};
+
 class VulkanRuntimeDevice {
   public:
     VulkanRuntimeDevice() noexcept;
@@ -714,6 +755,8 @@ class VulkanRuntimeDevice {
                                           VulkanRuntimePipelineLayout& pipeline_layout,
                                           VulkanRuntimeDescriptorSet& descriptor_set,
                                           const VulkanRuntimeDescriptorSetBindDesc& desc);
+    friend VulkanEnvironmentIblRendererUploadResult
+    execute_environment_ibl_renderer_upload(const VulkanEnvironmentIblRendererUploadDesc& desc) noexcept;
     friend class VulkanRuntimeCommandPool;
     friend class VulkanRuntimeShaderModule;
     friend class VulkanRuntimeDescriptorSetLayout;
@@ -1491,6 +1534,12 @@ struct VulkanRuntimeSwapchainPresentResult {
     std::string diagnostic;
 };
 
+struct VulkanRuntimeVertexBufferBindingDesc {
+    VulkanRuntimeBuffer* buffer{nullptr};
+    std::uint64_t offset{0};
+    std::uint32_t binding{0};
+};
+
 struct VulkanRuntimeDynamicRenderingDrawDesc {
     VulkanDynamicRenderingPlan dynamic_rendering;
     std::uint32_t image_index{0};
@@ -1498,9 +1547,7 @@ struct VulkanRuntimeDynamicRenderingDrawDesc {
     std::uint32_t instance_count{1};
     std::uint32_t first_vertex{0};
     std::uint32_t first_instance{0};
-    VulkanRuntimeBuffer* vertex_buffer{nullptr};
-    std::uint64_t vertex_buffer_offset{0};
-    std::uint32_t vertex_buffer_binding{0};
+    std::vector<VulkanRuntimeVertexBufferBindingDesc> vertex_buffers;
     VulkanRuntimeBuffer* index_buffer{nullptr};
     std::uint64_t index_buffer_offset{0};
     IndexFormat index_format{IndexFormat::unknown};
@@ -1557,9 +1604,7 @@ struct VulkanRuntimeTextureRenderingDrawDesc {
     std::uint32_t instance_count{1};
     std::uint32_t first_vertex{0};
     std::uint32_t first_instance{0};
-    VulkanRuntimeBuffer* vertex_buffer{nullptr};
-    std::uint64_t vertex_buffer_offset{0};
-    std::uint32_t vertex_buffer_binding{0};
+    std::vector<VulkanRuntimeVertexBufferBindingDesc> vertex_buffers;
     VulkanRuntimeBuffer* index_buffer{nullptr};
     std::uint64_t index_buffer_offset{0};
     IndexFormat index_format{IndexFormat::unknown};
@@ -1764,6 +1809,11 @@ struct VulkanRuntimeSurfaceSupportProbeResult {
 [[nodiscard]] VulkanDeviceSelection
 select_physical_device(std::initializer_list<VulkanPhysicalDeviceCandidate> devices);
 [[nodiscard]] VulkanDeviceSelection select_physical_device(const std::vector<VulkanPhysicalDeviceCandidate>& devices);
+[[nodiscard]] VulkanDeviceSelection
+select_physical_device(const VulkanLogicalDeviceCreateDesc& desc,
+                       std::initializer_list<VulkanPhysicalDeviceCandidate> devices);
+[[nodiscard]] VulkanDeviceSelection select_physical_device(const VulkanLogicalDeviceCreateDesc& desc,
+                                                           const std::vector<VulkanPhysicalDeviceCandidate>& devices);
 [[nodiscard]] VulkanInstanceCreatePlan
 build_instance_create_plan(const VulkanInstanceCreateDesc& desc,
                            std::initializer_list<std::string_view> available_extensions,
@@ -1833,6 +1883,8 @@ probe_runtime_physical_device_selection(const VulkanLoaderProbeDesc& loader_desc
 [[nodiscard]] VulkanRuntimeDeviceCreateResult
 create_runtime_device(const VulkanLoaderProbeDesc& loader_desc = {}, const VulkanInstanceCreateDesc& instance_desc = {},
                       const VulkanLogicalDeviceCreateDesc& device_desc = {}, SurfaceHandle surface = {});
+[[nodiscard]] VulkanEnvironmentIblRendererUploadResult
+execute_environment_ibl_renderer_upload(const VulkanEnvironmentIblRendererUploadDesc& desc) noexcept;
 [[nodiscard]] std::unique_ptr<IRhiDevice> create_rhi_device(VulkanRuntimeDevice device,
                                                             const VulkanRhiDeviceMappingPlan& mapping_plan);
 [[nodiscard]] VulkanRuntimeCommandPoolCreateResult
