@@ -217,13 +217,13 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-directstorage-sdk.p
 
 Expected: PASS on a host with installed `dstorage`; if blocked by missing `dstorageConfig.cmake`, record the exact blocker in this plan and PR body.
 
-- [ ] Run publication preflight:
+- [x] Run publication preflight:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1
 ```
 
-- [ ] Commit, push, and open a stacked draft PR against `codex/mavg-directstorage-d3d12-buffer-destination-v1`.
+- [x] Commit, push, and open stacked draft PR #503 against `codex/mavg-directstorage-d3d12-buffer-destination-v1`.
 
 ## Done When
 
@@ -248,3 +248,5 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-format.ps1` passed.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed, including all 110 CTest tests.
 - `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate-directstorage-sdk.ps1` is host/dependency-blocked on this machine because CMake cannot find `dstorage.cps`, `dstorageConfig.cmake`, or `dstorage-config.cmake`.
+- `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1` passed.
+- Published as stacked draft PR #503 against `codex/mavg-directstorage-d3d12-buffer-destination-v1`.
