@@ -80,44 +80,45 @@ MavgGpuClusterFormatPlan plan_mavg_gpu_cluster_format_rows(const MavgGpuClusterF
     plan.vulkan_mesh_shader_limit_triangles = desc.max_meshlet_triangles;
     plan.vulkan_mesh_shader_limit_vertices = desc.max_meshlet_vertices;
 
-    if (desc.graph == nullptr) {
+    const auto* const graph = desc.graph;
+    const auto* const payload = desc.payload;
+    if (graph == nullptr) {
         add_diagnostic(plan, MavgGpuClusterFormatDiagnosticCode::invalid_graph, AssetId{}, 0,
                        "MAVG GPU cluster format planning requires a graph document");
     }
-    if (desc.payload == nullptr) {
+    if (payload == nullptr) {
         add_diagnostic(plan, MavgGpuClusterFormatDiagnosticCode::invalid_payload, AssetId{}, 0,
                        "MAVG GPU cluster format planning requires a payload document");
     }
-    if (!plan.diagnostics.empty()) {
+    if (graph == nullptr || payload == nullptr) {
         fail_closed(plan);
         return plan;
     }
 
-    const auto graph_validation = validate_mavg_cluster_graph(*desc.graph);
+    const auto graph_validation = validate_mavg_cluster_graph(*graph);
     if (!graph_validation.valid()) {
-        add_diagnostic(plan, MavgGpuClusterFormatDiagnosticCode::invalid_graph, desc.graph->asset, 0,
+        add_diagnostic(plan, MavgGpuClusterFormatDiagnosticCode::invalid_graph, graph->asset, 0,
                        "MAVG GPU cluster format planning requires a valid cluster graph");
     }
 
-    const auto payload_validation = validate_mavg_cluster_payload(*desc.payload, *desc.graph);
+    const auto payload_validation = validate_mavg_cluster_payload(*payload, *graph);
     if (!payload_validation.valid()) {
-        add_diagnostic(plan, MavgGpuClusterFormatDiagnosticCode::invalid_payload, desc.graph->asset, 0,
+        add_diagnostic(plan, MavgGpuClusterFormatDiagnosticCode::invalid_payload, graph->asset, 0,
                        "MAVG GPU cluster format planning requires a valid cluster payload");
     }
-    if (desc.payload->vertex_stride_bytes != supported_position_normal_uv_stride_bytes) {
-        add_diagnostic(plan, MavgGpuClusterFormatDiagnosticCode::unsupported_vertex_stride, desc.graph->asset, 0,
+    if (payload->vertex_stride_bytes != supported_position_normal_uv_stride_bytes) {
+        add_diagnostic(plan, MavgGpuClusterFormatDiagnosticCode::unsupported_vertex_stride, graph->asset, 0,
                        "MAVG GPU cluster format rows currently support only 32-byte position/normal/uv vertices");
     }
-    if (desc.payload->index_format != "uint32") {
-        add_diagnostic(plan, MavgGpuClusterFormatDiagnosticCode::unsupported_index_format, desc.graph->asset, 0,
+    if (payload->index_format != "uint32") {
+        add_diagnostic(plan, MavgGpuClusterFormatDiagnosticCode::unsupported_index_format, graph->asset, 0,
                        "MAVG GPU cluster format rows currently support only uint32 indices");
     }
 
-    for (const auto& cluster : desc.graph->clusters) {
-        if (!cluster_draw_range_fits_payload(cluster, desc.payload->index_count)) {
-            add_diagnostic(plan, MavgGpuClusterFormatDiagnosticCode::cluster_draw_range_out_of_payload,
-                           desc.graph->asset, cluster.cluster_index,
-                           "MAVG GPU cluster draw range is outside the payload index buffer");
+    for (const auto& cluster : graph->clusters) {
+        if (!cluster_draw_range_fits_payload(cluster, payload->index_count)) {
+            add_diagnostic(plan, MavgGpuClusterFormatDiagnosticCode::cluster_draw_range_out_of_payload, graph->asset,
+                           cluster.cluster_index, "MAVG GPU cluster draw range is outside the payload index buffer");
         }
     }
 
@@ -126,14 +127,14 @@ MavgGpuClusterFormatPlan plan_mavg_gpu_cluster_format_rows(const MavgGpuClusterF
         return plan;
     }
 
-    plan.vertex_stride_bytes = desc.payload->vertex_stride_bytes;
+    plan.vertex_stride_bytes = payload->vertex_stride_bytes;
     plan.index_stride_bytes = supported_uint32_index_stride_bytes;
     plan.index_format_uint32 = true;
 
-    auto canonical_graph = canonicalize_mavg_cluster_graph(*desc.graph);
+    auto canonical_graph = canonicalize_mavg_cluster_graph(*graph);
     plan.rows.reserve(canonical_graph.clusters.size());
     for (const auto& cluster : canonical_graph.clusters) {
-        const auto* const payload_page = find_payload_page(*desc.payload, cluster.page_index);
+        const auto* const payload_page = find_payload_page(*payload, cluster.page_index);
         const auto meshlet_ready =
             cluster.triangle_count <= desc.max_meshlet_triangles && cluster.vertex_count <= desc.max_meshlet_vertices;
         if (meshlet_ready) {
