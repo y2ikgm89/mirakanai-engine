@@ -25,12 +25,20 @@ namespace {
     return rhi::FenceValue{.value = stats.last_submitted_fence_value, .queue = stats.last_submitted_fence_queue};
 }
 
+[[nodiscard]] bool vulkan_backend(std::string_view backend_id) noexcept {
+    return backend_id == "vulkan";
+}
+
 } // namespace
 
 struct NativeTextureDisplayAdapter::Impl {
     explicit Impl(NativeTextureDisplayAdapterDesc adapter_desc)
         : device(adapter_desc.device), extent(adapter_desc.extent),
           d3d12_host_available(adapter_desc.d3d12_host_available),
+          vulkan_host_available(adapter_desc.vulkan_host_available),
+          vulkan_validation_layer_ready(adapter_desc.vulkan_validation_layer_ready),
+          vulkan_spirv_artifacts_available(adapter_desc.vulkan_spirv_artifacts_available),
+          vulkan_synchronization2_ready(adapter_desc.vulkan_synchronization2_ready),
           renderer_output_available(adapter_desc.renderer_output_available),
           shader_artifacts_available(adapter_desc.shader_artifacts_available),
           gpu_payload_available(adapter_desc.gpu_payload_available), backend_id(adapter_desc.backend_id) {}
@@ -38,6 +46,10 @@ struct NativeTextureDisplayAdapter::Impl {
     rhi::IRhiDevice* device{nullptr};
     ViewportExtent extent{.width = 1280, .height = 720};
     bool d3d12_host_available{false};
+    bool vulkan_host_available{false};
+    bool vulkan_validation_layer_ready{false};
+    bool vulkan_spirv_artifacts_available{false};
+    bool vulkan_synchronization2_ready{false};
     bool renderer_output_available{true};
     bool shader_artifacts_available{true};
     bool gpu_payload_available{true};
@@ -119,9 +131,16 @@ struct NativeTextureDisplayAdapter::Impl {
         };
         display_frame = NativeTextureDisplayFrame{};
 
-        if (!d3d12_host_available || device == nullptr || !valid_extent(extent)) {
+        const bool is_vulkan = vulkan_backend(backend_id);
+        const bool backend_host_available = is_vulkan ? vulkan_host_available : d3d12_host_available;
+        const bool backend_gates_ready =
+            !is_vulkan ||
+            (vulkan_validation_layer_ready && vulkan_spirv_artifacts_available && vulkan_synchronization2_ready);
+        if (!backend_host_available || !backend_gates_ready || device == nullptr || !valid_extent(extent)) {
             evidence.diagnostic =
-                "native texture display adapter requires a D3D12 host, RHI device, and non-zero extent";
+                is_vulkan ? "native texture display adapter requires a Vulkan host, validation layer, SPIR-V "
+                            "artifacts, synchronization2, RHI device, and non-zero extent"
+                          : "native texture display adapter requires a D3D12 host, RHI device, and non-zero extent";
             return false;
         }
 
@@ -176,6 +195,10 @@ struct NativeTextureDisplayAdapter::Impl {
         const bool prepared = prepare_frame(frame_index);
         return plan_native_viewport_display(NativeViewportDisplayDesc{
             .d3d12_host_available = d3d12_host_available,
+            .vulkan_host_available = vulkan_host_available,
+            .vulkan_validation_layer_ready = vulkan_validation_layer_ready,
+            .vulkan_spirv_artifacts_available = vulkan_spirv_artifacts_available,
+            .vulkan_synchronization2_ready = vulkan_synchronization2_ready,
             .renderer_output_available = renderer_output_available && prepared,
             .texture_display_requested = true,
             .texture_adapter_available = evidence.texture_adapter_available,
@@ -195,6 +218,10 @@ struct NativeTextureDisplayAdapter::Impl {
         const bool prepared = prepare_frame(frame_index);
         return plan_native_material_preview_display(NativeMaterialPreviewDisplayDesc{
             .d3d12_host_available = d3d12_host_available,
+            .vulkan_host_available = vulkan_host_available,
+            .vulkan_validation_layer_ready = vulkan_validation_layer_ready,
+            .vulkan_spirv_artifacts_available = vulkan_spirv_artifacts_available,
+            .vulkan_synchronization2_ready = vulkan_synchronization2_ready,
             .shader_artifacts_available = shader_artifacts_available,
             .gpu_payload_available = gpu_payload_available,
             .texture_display_requested = true,

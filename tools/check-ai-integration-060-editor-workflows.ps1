@@ -1976,6 +1976,8 @@ $nativeEditorViewportChecks = @(
             "NativeViewportDisplayDesc",
             "NativeViewportDisplayPlan",
             "d3d12_host_available",
+            "vulkan_host_available", "vulkan_validation_layer_ready", "vulkan_spirv_artifacts_available",
+            "vulkan_synchronization2_ready",
             "renderer_output_available",
             "texture_display_requested",
             "visible_panel_available",
@@ -2001,8 +2003,10 @@ $nativeEditorViewportChecks = @(
             "visible_composite_pending",
             "presentation_pending",
             "d3d12_texture_ready",
+            "vulkan_texture_ready", "vulkan_validation_layer_unavailable", "vulkan_spirv_artifacts_missing",
+            "vulkan_synchronization2_unavailable", "VK_LAYER_KHRONOS_validation",
             "renderer output unavailable",
-            "native D3D12 texture display adapter is private"
+            "texture display adapter is private and not bound"
         )
     },
     @{
@@ -2015,6 +2019,7 @@ $nativeEditorViewportChecks = @(
             "render_viewport_frame",
             "render_material_preview_frame",
             "display_frame",
+            "vulkan_validation_layer_ready", "vulkan_spirv_artifacts_available", "vulkan_synchronization2_ready",
             "native_texture_handles_exposed"
         )
     },
@@ -2028,6 +2033,7 @@ $nativeEditorViewportChecks = @(
             "resource_transitions",
             "fence_waits",
             "wait(fence)",
+            "vulkan_spirv_artifacts_available", "synchronization2",
             "display_frame",
             "plan_native_viewport_display",
             "plan_native_material_preview_display"
@@ -2058,6 +2064,7 @@ $nativeEditorViewportChecks = @(
             "present",
             "wait(fence)",
             "plan_native_viewport_display",
+            "vulkan_validation_layer_ready", "vulkan_spirv_artifacts_available", "vulkan_synchronization2_ready",
             "plan_native_material_preview_display"
         )
     },
@@ -2106,7 +2113,10 @@ $nativeEditorViewportChecks = @(
             "focused_element",
             "tab_header_count",
             "split_gutter_count",
-            "focusable_dock_control_count"
+            "focusable_dock_control_count",
+            "viewport_vulkan_status",
+            "material_preview_vulkan_status",
+            "vulkan_validation_layer_ready"
         )
     },
     @{
@@ -2124,7 +2134,11 @@ $nativeEditorViewportChecks = @(
         Needles = @(
             "editor_shell_viewport_status=",
             "editor_shell_viewport_visible_texture_composites=",
-            "editor_shell_viewport_native_handles_exposed="
+            "editor_shell_viewport_native_handles_exposed=",
+            "editor_shell_viewport_vulkan_status=",
+            "editor_shell_viewport_vulkan_visible_texture_composites=",
+            "editor_shell_vulkan_validation_layer_ready=",
+            "editor_shell_vulkan_native_handles_exposed="
         )
     },
     @{
@@ -2138,7 +2152,11 @@ $nativeEditorViewportChecks = @(
             "editor_shell_dock_focusable_controls=11",
             "editor_shell_viewport_status=d3d12_texture_ready",
             "editor_shell_viewport_visible_texture_composites",
-            "editor_shell_viewport_native_handles_exposed=0"
+            "editor_shell_viewport_native_handles_exposed=0",
+            "editor_shell_viewport_vulkan_status=host_gated",
+            "editor_shell_viewport_vulkan_visible_texture_composites=0",
+            "editor_shell_vulkan_validation_layer_ready=0",
+            "editor_shell_vulkan_native_handles_exposed=0"
         )
     },
     @{
@@ -2160,7 +2178,9 @@ $nativeEditorViewportChecks = @(
             "editor native viewport display plan waits for requested texture adapter",
             "editor native viewport display plan waits for resize-safe teardown",
             "editor native viewport display plan reports private d3d12 texture readiness",
+            "editor native viewport display plan reports private vulkan texture readiness",
             "editor native texture display adapter prepares viewport display frame through rhi descriptors",
+            "editor visible texture compositor samples vulkan viewport texture with sampler descriptors",
             "editor visible texture compositor samples viewport texture into swapchain before readiness",
             "editor native texture display adapter waits before resize replacement",
             "editor native viewport display plan does not expose native texture handles",
@@ -2180,6 +2200,9 @@ $nativeEditorViewportChecks = @(
             "editor_shell_viewport_status=d3d12_texture_ready",
             "editor_shell_viewport_visible_texture_composites",
             "editor_shell_viewport_native_handles_exposed=0",
+            "editor_shell_viewport_vulkan_status",
+            "editor_shell_viewport_vulkan_visible_texture_composites",
+            "editor_shell_vulkan_native_handles_exposed=0",
             "native_editor_visible_texture_compositor"
         )
     },
@@ -2196,6 +2219,9 @@ $nativeEditorViewportChecks = @(
             "editor_shell_viewport_status=d3d12_texture_ready",
             "editor_shell_viewport_visible_texture_composites",
             "editor_shell_viewport_native_handles_exposed=0",
+            "editor_shell_viewport_vulkan_status",
+            "editor_shell_viewport_vulkan_visible_texture_composites",
+            "editor_shell_vulkan_native_handles_exposed=0",
             "native_editor_visible_texture_compositor"
         )
     },
@@ -2212,6 +2238,9 @@ $nativeEditorViewportChecks = @(
             "editor_shell_viewport_status=d3d12_texture_ready",
             "editor_shell_viewport_visible_texture_composites",
             "editor_shell_viewport_native_handles_exposed=0",
+            "editor_shell_viewport_vulkan_status",
+            "editor_shell_viewport_vulkan_visible_texture_composites",
+            "editor_shell_vulkan_native_handles_exposed=0",
             "visible compositor presentation"
         )
     },
@@ -2228,6 +2257,10 @@ $nativeEditorViewportChecks = @(
             "editor_shell_viewport_status=d3d12_texture_ready",
             "editor_shell_viewport_visible_texture_composites",
             "editor_shell_viewport_native_handles_exposed=0",
+            "editor_shell_viewport_vulkan_status",
+            "editor_shell_viewport_vulkan_visible_texture_composites",
+            "editor_shell_vulkan_validation_layer_ready",
+            "editor_shell_vulkan_native_handles_exposed=0",
             "private D3D12 texture adapter",
             "native_texture_display_adapter",
             "native_editor_visible_texture_compositor"
@@ -2253,6 +2286,10 @@ $nativeEditorMaterialPreviewChecks = @(
             "NativeMaterialPreviewDisplayDesc",
             "NativeMaterialPreviewDisplayPlan",
             "shader_artifacts_available",
+            "vulkan_host_available",
+            "vulkan_validation_layer_ready",
+            "vulkan_spirv_artifacts_available",
+            "vulkan_synchronization2_ready",
             "gpu_payload_available",
             "texture_display_requested",
             "visible_panel_available",
@@ -2280,6 +2317,11 @@ $nativeEditorMaterialPreviewChecks = @(
             "visible_composite_pending",
             "presentation_pending",
             "d3d12_texture_ready",
+            "vulkan_texture_ready",
+            "vulkan_validation_layer_unavailable",
+            "vulkan_spirv_artifacts_missing",
+            "vulkan_synchronization2_unavailable",
+            "VK_LAYER_KHRONOS_validation",
             "host-private-native",
             "GPU payload unavailable",
             "native material preview texture display adapter is private",
@@ -2330,6 +2372,8 @@ $nativeEditorMaterialPreviewChecks = @(
             ".material_preview_native_handles_exposed",
             "app.material_preview_display().native_texture_handles_exposed",
             "make_first_party_editor_shell_smoke_counters",
+            "material_preview_vulkan_status",
+            "vulkan_validation_layer_ready",
             "renderer_submission",
             "editor_dock_panel_catalog"
         )
@@ -2346,7 +2390,9 @@ $nativeEditorMaterialPreviewChecks = @(
         Needles = @(
             "editor_shell_material_preview_status=",
             "editor_shell_material_preview_visible_texture_composites=",
-            "editor_shell_material_preview_native_handles_exposed="
+            "editor_shell_material_preview_native_handles_exposed=",
+            "editor_shell_material_preview_vulkan_status=",
+            "editor_shell_material_preview_vulkan_visible_texture_composites="
         )
     },
     @{
@@ -2354,7 +2400,9 @@ $nativeEditorMaterialPreviewChecks = @(
         Needles = @(
             "editor_shell_material_preview_status=d3d12_texture_ready",
             "editor_shell_material_preview_visible_texture_composites",
-            "editor_shell_material_preview_native_handles_exposed=0"
+            "editor_shell_material_preview_native_handles_exposed=0",
+            "editor_shell_material_preview_vulkan_status=host_gated",
+            "editor_shell_material_preview_vulkan_visible_texture_composites=0"
         )
     },
     @{
@@ -2373,6 +2421,7 @@ $nativeEditorMaterialPreviewChecks = @(
             "editor native material preview plan waits for requested texture adapter",
             "editor native material preview plan waits for descriptor and fence lifecycle",
             "editor native material preview plan reports private d3d12 texture readiness",
+            "editor native material preview plan reports private vulkan texture readiness",
             "editor native texture display adapter prepares material preview execution evidence",
             "editor visible texture compositor promotes material preview only after visible panel composite",
             "editor native material preview plan keeps d3d12 handles private"
@@ -2392,6 +2441,9 @@ $nativeEditorMaterialPreviewChecks = @(
             "editor_shell_material_preview_status=d3d12_texture_ready",
             "editor_shell_material_preview_visible_texture_composites",
             "editor_shell_material_preview_native_handles_exposed=0",
+            "editor_shell_material_preview_vulkan_status",
+            "editor_shell_material_preview_vulkan_visible_texture_composites",
+            "editor_shell_vulkan_native_handles_exposed=0",
             "host-private-native",
             "broader material-preview GPU parity"
         )
@@ -2402,6 +2454,9 @@ $nativeEditorMaterialPreviewChecks = @(
             "editor_shell_material_preview_status=d3d12_texture_ready",
             "editor_shell_material_preview_visible_texture_composites",
             "editor_shell_material_preview_native_handles_exposed=0",
+            "editor_shell_material_preview_vulkan_status",
+            "editor_shell_material_preview_vulkan_visible_texture_composites",
+            "editor_shell_vulkan_native_handles_exposed=0",
             "host-private-native",
             "broader material-preview GPU parity"
         )

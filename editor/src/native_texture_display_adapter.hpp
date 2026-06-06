@@ -23,6 +23,10 @@ struct NativeTextureDisplayAdapterDesc {
     rhi::IRhiDevice* device{nullptr};
     ViewportExtent extent{.width = 1280, .height = 720};
     bool d3d12_host_available{false};
+    bool vulkan_host_available{false};
+    bool vulkan_validation_layer_ready{false};
+    bool vulkan_spirv_artifacts_available{false};
+    bool vulkan_synchronization2_ready{false};
     bool renderer_output_available{true};
     bool shader_artifacts_available{true};
     bool gpu_payload_available{true};

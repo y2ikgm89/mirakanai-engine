@@ -55,9 +55,12 @@ Use this skill for editor/core models, native visible editor shell boundaries, p
   `editor_accessibility_android_status=host_gated`, `editor_accessibility_ios_status=host_gated`,
   positive live-region/pattern/event rows, and `editor_accessibility_native_handles_exposed=0`, native viewport/material preview
   lifecycle gates, private `native_texture_display_adapter.*` RHI evidence, and private
-  `native_editor_visible_texture_compositor.*` presentation for requested private D3D12 texture display, offscreen targets, descriptor
-  updates, resource-barrier, fence readiness, viewport resize-safe teardown, visible-compositor consumption, positive visible texture
-  composite smoke counters, material-preview host-private frame preparation, retained `ui_retained_*` diff/cache smoke rows
+  `native_editor_visible_texture_compositor.*` presentation for requested private D3D12 texture display plus host/toolchain-gated
+  private Vulkan texture-display rows, offscreen targets, descriptor updates, resource-barrier and synchronization2 evidence, fence
+  readiness, viewport resize-safe teardown, visible-compositor consumption, positive visible texture composite smoke counters,
+  material-preview host-private frame preparation, `editor_shell_viewport_vulkan_status`,
+  `editor_shell_material_preview_vulkan_status`, `editor_shell_vulkan_validation_layer_ready`, and
+  `editor_shell_vulkan_native_handles_exposed=0`, retained `ui_retained_*` diff/cache smoke rows
   (`ui_retained_diff_status=ready`, zero dirty/miss/rebuild/native-handle rows), first-party `EditorDockMultiWindowLayout` /
   `EditorDockWindowCommandPlan` planning, clean-break `GameEngine.Workspace.v3` persistence, AI command ids
   `editor.dock.window.create`, `editor.dock.window.close`, `editor.dock.panel.tear_off`, `editor.dock.panel.move_to_window`,
@@ -70,8 +73,9 @@ Use this skill for editor/core models, native visible editor shell boundaries, p
   `editor_rich_text_edit_status=ready`, `editor_rich_text_clipboard_plain_ready=1`,
   `editor_rich_text_clipboard_rich_ready=1`, and `editor_rich_text_native_handles_exposed=0`. Visible OS-level multi-window drag/drop
   shell restoration, help rich text, Direct2D GPU text rendering/upload, broad shaping/bidi/fallback, custom native IME candidate UI,
-  non-Windows IME execution, external OS accessibility-tool execution beyond first-party evidence, Vulkan/Metal editor texture-display
-  parity, broader material-preview GPU parity, cross-platform accessibility parity, and cross-platform font adapters remain future phases.
+  non-Windows IME execution, external OS accessibility-tool execution beyond first-party evidence, Metal editor texture-display parity,
+  default visible-shell Vulkan backend selection, broader material-preview GPU parity, cross-platform accessibility parity, and
+  cross-platform font adapters remain future phases.
 - When selecting a future editor text/accessibility milestone, start with first-party editable-rich-text core and AI-operable text commands before GPU upload, custom IME candidate UI, non-Windows IME execution, or external accessibility-tool execution. Own the editor document, command, semantic, and adapter contracts in `MK_editor_core`; keep Unicode shaping, bidi, font fallback/rasterization, TSF/IME protocol, accessibility bridges, and platform rendering details behind official SDK or audited-dependency adapters.
 - Cross-platform editor adapter work is future-gated with `editor.cross_platform.adapter.*` rows: macOS Core Text/InputMethodKit/NSAccessibility,
   Linux AT-SPI/IBus/Fcitx, Android InputMethodService/accessibility, iOS UITextInput/UIAccessibility, and HarfBuzz/FreeType/ICU-class adapters

@@ -84,6 +84,14 @@ int main(int argc, char** argv) {
             << material_preview_display.visible_texture_composites << '\n'
             << "editor_shell_material_preview_native_handles_exposed="
             << (material_preview_display.native_texture_handles_exposed ? 1 : 0) << '\n'
+            << "editor_shell_viewport_vulkan_status=" << counters.viewport_vulkan_status << '\n'
+            << "editor_shell_viewport_vulkan_visible_texture_composites="
+            << counters.viewport_vulkan_visible_texture_composites << '\n'
+            << "editor_shell_material_preview_vulkan_status=" << counters.material_preview_vulkan_status << '\n'
+            << "editor_shell_material_preview_vulkan_visible_texture_composites="
+            << counters.material_preview_vulkan_visible_texture_composites << '\n'
+            << "editor_shell_vulkan_validation_layer_ready=" << (counters.vulkan_validation_layer_ready ? 1 : 0) << '\n'
+            << "editor_shell_vulkan_native_handles_exposed=" << (counters.vulkan_native_handles_exposed ? 1 : 0) << '\n'
             << "editor_shell_text_atlas_handoff_status=" << text_atlas.status << '\n'
             << "editor_shell_text_font_adapter_invoked="
             << (text_atlas.text_shaping_adapter_invoked && text_atlas.font_rasterizer_adapter_invoked ? 1 : 0) << '\n'

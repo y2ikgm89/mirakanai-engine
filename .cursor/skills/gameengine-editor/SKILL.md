@@ -25,6 +25,12 @@ Reviewed rich-text commands keep read-only copy rows such as `<rich_text_documen
 
 Selected Windows DirectWrite/TSF/UIA rows are first-party smoke evidence only: `editor_text_shaping_status=ready`, `editor_ime_parity_status=ready`, `NativeEditorTsfTextStoreEvidence`, `NativeEditorUiaProviderState`, `editor_accessibility_parity_status=ready`, `editor_accessibility_windows_uia_patterns_ready=1`, `editor_accessibility_windows_uia_events_ready=1`, non-Windows `editor_ime_*_status=host_gated` and `editor_accessibility_*_status=host_gated`, and zero native-handle rows.
 
+Selected editor texture-display rows include D3D12 visible readiness plus host/toolchain-gated Vulkan counter evidence:
+`editor_shell_viewport_vulkan_status`, `editor_shell_material_preview_vulkan_status`,
+`editor_shell_vulkan_validation_layer_ready`, and `editor_shell_vulkan_native_handles_exposed=0`.
+Metal texture-display parity, default visible-shell Vulkan backend selection, and broader material-preview GPU parity remain future
+focused phases.
+
 When selecting a future editor text/accessibility milestone, start with first-party editable-rich-text core and AI-operable text commands before GPU upload, custom IME candidate UI, non-Windows IME execution, or external accessibility-tool execution. Own the editor document, command, semantic, and adapter contracts in `MK_editor_core`; keep Unicode shaping, bidi, font fallback/rasterization, TSF/IME protocol, accessibility bridges, and platform rendering details behind official SDK or audited-dependency adapters.
 
 Cross-platform editor adapter work is future-gated with `editor.cross_platform.adapter.*` rows. Do not claim HarfBuzz/FreeType/ICU-class

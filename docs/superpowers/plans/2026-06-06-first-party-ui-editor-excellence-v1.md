@@ -501,10 +501,10 @@ Expected: accessibility parity becomes explicit evidence, not a generic provider
 
 **Files:** `editor/src/native_texture_display_adapter.*`, optional private Vulkan adapter files, `engine/rhi/vulkan/**`, `tests/unit/backend_scaffold_tests.cpp`, `tests/unit/editor_native_shell_tests.cpp`, shader fixture tools and docs.
 
-- [ ] Add RED tests for Vulkan offscreen color texture creation, descriptor image updates, sampler rows, shader-read layout transition, visible compositor draw, presentation, fence wait, resize-safe teardown, and no native handle exposure.
-- [ ] Require DXC SPIR-V artifacts, `spirv-val`, Vulkan runtime, Vulkan 1.3 synchronization2, and validation layers before ready.
-- [ ] Use synchronization2 barriers for color attachment write to shader read and transfer write to shader read.
-- [ ] Add counters:
+- [x] Add RED tests for Vulkan offscreen color texture creation, descriptor image updates, sampler rows, shader-read layout transition, visible compositor draw, presentation, fence wait, resize-safe teardown, and no native handle exposure.
+- [x] Require DXC SPIR-V artifacts, `spirv-val`, Vulkan runtime, Vulkan 1.3 synchronization2, and validation layers before ready.
+- [x] Use synchronization2 barriers for color attachment write to shader read and transfer write to shader read.
+- [x] Add counters:
 
 ```text
 editor_shell_viewport_vulkan_status=vulkan_texture_ready
@@ -515,9 +515,11 @@ editor_shell_vulkan_validation_layer_ready=1
 editor_shell_vulkan_native_handles_exposed=0
 ```
 
-- [ ] Keep D3D12 and Metal claims separate.
+- [x] Keep D3D12 and Metal claims separate.
 
 Expected: Vulkan editor texture display is backend-local and host/toolchain-gated.
+
+**Phase 8 Evidence:** Candidate `codex/first-party-ui-editor-excellence-phase8` extends the private editor texture-display contract with backend-local Vulkan readiness rows while keeping the default visible Windows editor shell on D3D12. `NativeViewportDisplayPlan`, `NativeMaterialPreviewDisplayPlan`, `NativeTextureDisplayAdapter`, and `NativeEditorVisibleTextureCompositor` now carry `vulkan_host_available`, `vulkan_validation_layer_ready`, `vulkan_spirv_artifacts_available`, and `vulkan_synchronization2_ready` gates before reporting `vulkan_texture_ready`; missing Vulkan validation layer, SPIR-V artifact, or synchronization2 evidence remains fail-closed. `FirstPartyEditorShellSmokeCounters` and `MK_editor_smoke` expose `editor_shell_viewport_vulkan_status`, `editor_shell_viewport_vulkan_visible_texture_composites`, `editor_shell_material_preview_vulkan_status`, `editor_shell_material_preview_vulkan_visible_texture_composites`, `editor_shell_vulkan_validation_layer_ready`, and `editor_shell_vulkan_native_handles_exposed=0`. `MK_backend_scaffold_tests` locks Vulkan color-attachment-write to shader-read and transfer-write to shader-read synchronization2 barrier mapping, and `MK_editor_native_shell_tests` covers private Vulkan viewport/material readiness and visible compositor sampling without native handle exposure. Context7 `/khronosgroup/vulkan-docs` was refreshed on 2026-06-06 for synchronization2 image barriers, shader-read layout transitions, descriptor sampling, and validation-layer implications. This completes Phase 8 for host/toolchain-gated Vulkan counter and private adapter evidence only; Metal editor texture-display parity, default visible-shell Vulkan backend selection, broader material-preview GPU parity, visible OS-level multi-window drag/drop shell restoration, cross-platform visible editor shells, and broad `first_party_editor_excellence` remain later phases.
 
 ## Phase 9: Metal Editor Texture Display Parity
 

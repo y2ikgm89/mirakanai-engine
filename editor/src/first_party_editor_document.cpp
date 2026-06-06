@@ -129,6 +129,10 @@ summarize_first_party_editor_ui_performance(const NativeEditorApp& app, const Fi
     return panel == nullptr || !panel->workspace_panel || app.is_panel_visible(panel->workspace_id);
 }
 
+[[nodiscard]] bool vulkan_backend(std::string_view backend_id) noexcept {
+    return backend_id == "vulkan";
+}
+
 void add_or_throw(ui::UiDocument& document, ui::ElementDesc desc) {
     if (!document.try_add_element(std::move(desc))) {
         throw std::invalid_argument("first-party editor document element is invalid or duplicated");
@@ -525,6 +529,11 @@ make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const F
                                    [](const auto& capability) { return capability.native_handles_public; });
     });
     constexpr std::uint32_t rich_text_commands_per_editable_document = 9U;
+    const bool viewport_vulkan_selected = vulkan_backend(viewport_display.backend_id);
+    const bool material_preview_vulkan_selected = vulkan_backend(material_preview_display.backend_id);
+    const bool vulkan_native_handles_exposed =
+        (viewport_vulkan_selected && viewport_display.native_texture_handles_exposed) ||
+        (material_preview_vulkan_selected && material_preview_display.native_texture_handles_exposed);
     return FirstPartyEditorShellSmokeCounters{
         .ui = "first_party",
         .backend = "d3d12",
@@ -534,9 +543,20 @@ make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const F
         .viewport_status = viewport_display.status_id,
         .viewport_visible_texture_composites = viewport_display.visible_texture_composites,
         .viewport_native_handles_exposed = viewport_display.native_texture_handles_exposed,
+        .viewport_vulkan_status = viewport_vulkan_selected ? viewport_display.status_id : "host_gated",
+        .viewport_vulkan_visible_texture_composites =
+            viewport_vulkan_selected ? viewport_display.visible_texture_composites : 0U,
         .material_preview_status = material_preview_display.status_id,
         .material_preview_visible_texture_composites = material_preview_display.visible_texture_composites,
         .material_preview_native_handles_exposed = app.material_preview_display().native_texture_handles_exposed,
+        .material_preview_vulkan_status =
+            material_preview_vulkan_selected ? material_preview_display.status_id : "host_gated",
+        .material_preview_vulkan_visible_texture_composites =
+            material_preview_vulkan_selected ? material_preview_display.visible_texture_composites : 0U,
+        .vulkan_validation_layer_ready = viewport_vulkan_selected && material_preview_vulkan_selected &&
+                                         viewport_display.vulkan_validation_layer_ready &&
+                                         material_preview_display.vulkan_validation_layer_ready,
+        .vulkan_native_handles_exposed = vulkan_native_handles_exposed,
         .text_atlas_handoff_status = text_atlas.status,
         .text_font_adapter_invoked =
             text_atlas.text_shaping_adapter_invoked && text_atlas.font_rasterizer_adapter_invoked,

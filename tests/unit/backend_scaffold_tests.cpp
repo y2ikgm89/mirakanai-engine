@@ -2170,6 +2170,19 @@ MK_TEST("vulkan frame synchronization2 plan orders acquire render readback and p
 }
 
 MK_TEST("vulkan texture transition barrier maps shader read to shader access hazards") {
+    const auto color_to_sample = mirakana::rhi::vulkan::build_texture_transition_barrier(
+        mirakana::rhi::ResourceState::render_target, mirakana::rhi::ResourceState::shader_read);
+
+    MK_REQUIRE(color_to_sample.supported);
+    MK_REQUIRE(color_to_sample.barrier.before == mirakana::rhi::ResourceState::render_target);
+    MK_REQUIRE(color_to_sample.barrier.after == mirakana::rhi::ResourceState::shader_read);
+    MK_REQUIRE(color_to_sample.barrier.src_stage ==
+               mirakana::rhi::vulkan::VulkanSynchronizationStage::color_attachment_output);
+    MK_REQUIRE(color_to_sample.barrier.src_access ==
+               mirakana::rhi::vulkan::VulkanSynchronizationAccess::color_attachment_write);
+    MK_REQUIRE(color_to_sample.barrier.dst_stage == mirakana::rhi::vulkan::VulkanSynchronizationStage::shader);
+    MK_REQUIRE(color_to_sample.barrier.dst_access == mirakana::rhi::vulkan::VulkanSynchronizationAccess::shader_read);
+
     const auto upload_to_sample = mirakana::rhi::vulkan::build_texture_transition_barrier(
         mirakana::rhi::ResourceState::copy_destination, mirakana::rhi::ResourceState::shader_read);
 

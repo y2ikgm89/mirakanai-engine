@@ -256,6 +256,10 @@ struct NativeEditorVisibleTextureCompositor::Impl {
         const bool composited = prepared.accepted && composite(adapter.display_frame());
         return plan_native_viewport_display(NativeViewportDisplayDesc{
             .d3d12_host_available = prepared.d3d12_host_available,
+            .vulkan_host_available = prepared.vulkan_host_available,
+            .vulkan_validation_layer_ready = prepared.vulkan_validation_layer_ready,
+            .vulkan_spirv_artifacts_available = prepared.vulkan_spirv_artifacts_available,
+            .vulkan_synchronization2_ready = prepared.vulkan_synchronization2_ready,
             .renderer_output_available = prepared.renderer_output_available,
             .texture_display_requested = prepared.texture_display_requested,
             .texture_adapter_available = adapter_evidence.texture_adapter_available,
@@ -282,6 +286,10 @@ struct NativeEditorVisibleTextureCompositor::Impl {
         const bool composited = prepared.accepted && composite(adapter.display_frame());
         return plan_native_material_preview_display(NativeMaterialPreviewDisplayDesc{
             .d3d12_host_available = prepared.d3d12_host_available,
+            .vulkan_host_available = prepared.vulkan_host_available,
+            .vulkan_validation_layer_ready = prepared.vulkan_validation_layer_ready,
+            .vulkan_spirv_artifacts_available = prepared.vulkan_spirv_artifacts_available,
+            .vulkan_synchronization2_ready = prepared.vulkan_synchronization2_ready,
             .shader_artifacts_available = prepared.shader_artifacts_available,
             .gpu_payload_available = prepared.gpu_payload_available,
             .texture_display_requested = prepared.texture_display_requested,

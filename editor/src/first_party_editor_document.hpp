@@ -40,9 +40,15 @@ struct FirstPartyEditorShellSmokeCounters {
     std::string viewport_status{"host_unavailable"};
     std::uint64_t viewport_visible_texture_composites{0};
     bool viewport_native_handles_exposed{false};
+    std::string viewport_vulkan_status{"host_gated"};
+    std::uint64_t viewport_vulkan_visible_texture_composites{0};
     std::string material_preview_status{"host_unavailable"};
     std::uint64_t material_preview_visible_texture_composites{0};
     bool material_preview_native_handles_exposed{false};
+    std::string material_preview_vulkan_status{"host_gated"};
+    std::uint64_t material_preview_vulkan_visible_texture_composites{0};
+    bool vulkan_validation_layer_ready{false};
+    bool vulkan_native_handles_exposed{false};
     std::string text_atlas_handoff_status{"not_evaluated"};
     bool text_font_adapter_invoked{false};
     bool text_font_glyphs_ready{false};

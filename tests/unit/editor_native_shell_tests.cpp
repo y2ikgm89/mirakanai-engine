@@ -1540,6 +1540,67 @@ MK_TEST("editor first party shell smoke counters expose visible texture readines
     MK_REQUIRE(!counters.material_preview_native_handles_exposed);
 }
 
+MK_TEST("editor first party shell smoke counters expose vulkan texture display parity rows") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    const auto viewport_plan =
+        mirakana::editor::plan_native_viewport_display(mirakana::editor::NativeViewportDisplayDesc{
+            .d3d12_host_available = false,
+            .vulkan_host_available = true,
+            .vulkan_validation_layer_ready = true,
+            .vulkan_spirv_artifacts_available = true,
+            .vulkan_synchronization2_ready = true,
+            .renderer_output_available = true,
+            .texture_display_requested = true,
+            .texture_adapter_available = true,
+            .offscreen_target_available = true,
+            .descriptor_lease_available = true,
+            .resource_barriers_recorded = true,
+            .fence_lifecycle_ready = true,
+            .visible_panel_available = true,
+            .visible_texture_composite_recorded = true,
+            .visible_texture_composites = 2U,
+            .extent = mirakana::editor::ViewportExtent{.width = 1280, .height = 720},
+            .frame_index = 29U,
+            .backend_id = "vulkan",
+        });
+    const auto material_plan =
+        mirakana::editor::plan_native_material_preview_display(mirakana::editor::NativeMaterialPreviewDisplayDesc{
+            .d3d12_host_available = false,
+            .vulkan_host_available = true,
+            .vulkan_validation_layer_ready = true,
+            .vulkan_spirv_artifacts_available = true,
+            .vulkan_synchronization2_ready = true,
+            .shader_artifacts_available = true,
+            .gpu_payload_available = true,
+            .texture_display_requested = true,
+            .texture_adapter_available = true,
+            .offscreen_target_available = true,
+            .descriptor_lease_available = true,
+            .resource_barriers_recorded = true,
+            .fence_lifecycle_ready = true,
+            .visible_panel_available = true,
+            .visible_texture_composite_recorded = true,
+            .visible_texture_composites = 2U,
+            .frame_index = 29U,
+            .backend_id = "vulkan",
+            .frames_rendered = 2U,
+            .executes = true,
+        });
+
+    app.record_native_viewport_texture_display(viewport_plan);
+    app.record_native_material_preview_texture_display(material_plan);
+
+    const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
+    const auto counters = mirakana::editor::make_first_party_editor_shell_smoke_counters(app, shell_document);
+
+    MK_REQUIRE(counters.viewport_vulkan_status == "vulkan_texture_ready");
+    MK_REQUIRE(counters.viewport_vulkan_visible_texture_composites == 2U);
+    MK_REQUIRE(counters.material_preview_vulkan_status == "vulkan_texture_ready");
+    MK_REQUIRE(counters.material_preview_vulkan_visible_texture_composites == 2U);
+    MK_REQUIRE(counters.vulkan_validation_layer_ready);
+    MK_REQUIRE(!counters.vulkan_native_handles_exposed);
+}
+
 MK_TEST("editor first party shell exposes AI operation UX rows from native readiness") {
     mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
     RecordingPlatformTextInputAdapter platform_text_input;
@@ -1786,6 +1847,45 @@ MK_TEST("editor native viewport display plan reports private d3d12 texture readi
     MK_REQUIRE(plan.native_texture_handle_policy == "private");
 }
 
+MK_TEST("editor native viewport display plan reports private vulkan texture readiness") {
+    const auto plan = mirakana::editor::plan_native_viewport_display(mirakana::editor::NativeViewportDisplayDesc{
+        .d3d12_host_available = false,
+        .vulkan_host_available = true,
+        .vulkan_validation_layer_ready = true,
+        .vulkan_spirv_artifacts_available = true,
+        .vulkan_synchronization2_ready = true,
+        .renderer_output_available = true,
+        .texture_display_requested = true,
+        .texture_adapter_available = true,
+        .offscreen_target_available = true,
+        .descriptor_lease_available = true,
+        .resource_barriers_recorded = true,
+        .fence_lifecycle_ready = true,
+        .resize_safe_teardown_completed = true,
+        .visible_texture_composite_recorded = true,
+        .visible_texture_composites = 1U,
+        .extent = mirakana::editor::ViewportExtent{.width = 1280, .height = 720},
+        .frame_index = 30,
+        .backend_id = "vulkan",
+    });
+
+    MK_REQUIRE(plan.accepted);
+    MK_REQUIRE(plan.status_id == "vulkan_texture_ready");
+    MK_REQUIRE(plan.texture_display_ready);
+    MK_REQUIRE(plan.vulkan_host_available);
+    MK_REQUIRE(plan.vulkan_validation_layer_ready);
+    MK_REQUIRE(plan.vulkan_spirv_artifacts_available);
+    MK_REQUIRE(plan.vulkan_synchronization2_ready);
+    MK_REQUIRE(plan.texture_adapter_available);
+    MK_REQUIRE(plan.offscreen_target_available);
+    MK_REQUIRE(plan.descriptor_lease_available);
+    MK_REQUIRE(plan.resource_barriers_recorded);
+    MK_REQUIRE(plan.fence_lifecycle_ready);
+    MK_REQUIRE(plan.lifecycle_status == "ready");
+    MK_REQUIRE(!plan.native_texture_handles_exposed);
+    MK_REQUIRE(plan.native_texture_handle_policy == "private");
+}
+
 MK_TEST("editor native viewport display plan waits for visible compositor consumption") {
     const auto plan = mirakana::editor::plan_native_viewport_display(mirakana::editor::NativeViewportDisplayDesc{
         .d3d12_host_available = true,
@@ -1996,6 +2096,62 @@ MK_TEST("editor visible texture compositor samples viewport texture into swapcha
     MK_REQUIRE(device.stats().present_calls >= 1U);
 }
 
+MK_TEST("editor visible texture compositor samples vulkan viewport texture with sampler descriptors") {
+    mirakana::rhi::NullRhiDevice device;
+    const auto swapchain = device.create_swapchain(mirakana::rhi::SwapchainDesc{
+        .extent = mirakana::rhi::Extent2D{.width = 64, .height = 36},
+        .format = mirakana::rhi::Format::bgra8_unorm,
+        .buffer_count = 2,
+        .vsync = false,
+        .surface = mirakana::rhi::SurfaceHandle{.value = 3U},
+    });
+    constexpr std::array<std::uint8_t, 4> spirv_bytecode{0x03, 0x02, 0x23, 0x07};
+    mirakana::editor::NativeTextureDisplayAdapter adapter(mirakana::editor::NativeTextureDisplayAdapterDesc{
+        .device = &device,
+        .extent = mirakana::editor::ViewportExtent{.width = 64, .height = 36},
+        .d3d12_host_available = false,
+        .vulkan_host_available = true,
+        .vulkan_validation_layer_ready = true,
+        .vulkan_spirv_artifacts_available = true,
+        .vulkan_synchronization2_ready = true,
+        .renderer_output_available = true,
+        .backend_id = "vulkan",
+    });
+    mirakana::editor::NativeEditorVisibleTextureCompositor compositor(
+        mirakana::editor::NativeEditorVisibleTextureCompositorDesc{
+            .device = &device,
+            .swapchain = swapchain,
+            .extent = mirakana::editor::ViewportExtent{.width = 64, .height = 36},
+            .vertex_shader_entry_point = "vs_native_editor_visible_texture",
+            .vertex_shader_bytecode = spirv_bytecode,
+            .fragment_shader_entry_point = "ps_native_editor_visible_texture",
+            .fragment_shader_bytecode = spirv_bytecode,
+            .backend_id = "vulkan",
+        });
+
+    const auto plan = compositor.render_viewport_frame(adapter, 31U);
+    const auto& evidence = compositor.evidence();
+
+    MK_REQUIRE(plan.accepted);
+    MK_REQUIRE(plan.status_id == "vulkan_texture_ready");
+    MK_REQUIRE(plan.texture_display_ready);
+    MK_REQUIRE(plan.visible_panel_available);
+    MK_REQUIRE(plan.visible_texture_composite_recorded);
+    MK_REQUIRE(plan.visible_texture_composites == 1U);
+    MK_REQUIRE(plan.frame_index == 31U);
+    MK_REQUIRE(!plan.native_texture_handles_exposed);
+    MK_REQUIRE(evidence.swapchain_frame_acquired);
+    MK_REQUIRE(evidence.sampled_texture_descriptor_bound);
+    MK_REQUIRE(evidence.render_pass_recorded);
+    MK_REQUIRE(evidence.draw_recorded);
+    MK_REQUIRE(evidence.present_recorded);
+    MK_REQUIRE(evidence.fence_waited);
+    MK_REQUIRE(device.stats().samplers_created >= 1U);
+    MK_REQUIRE(device.stats().descriptor_writes >= 2U);
+    MK_REQUIRE(device.stats().resource_transitions >= 1U);
+    MK_REQUIRE(device.stats().present_calls >= 1U);
+}
+
 MK_TEST("editor visible texture compositor promotes material preview only after visible panel composite") {
     mirakana::rhi::NullRhiDevice device;
     const auto swapchain = device.create_swapchain(mirakana::rhi::SwapchainDesc{
@@ -2175,6 +2331,53 @@ MK_TEST("editor native material preview plan reports private d3d12 texture readi
     MK_REQUIRE(model.gpu_execution_frames_rendered == 1U);
     MK_REQUIRE(!model.executes);
     MK_REQUIRE(!model.exposes_native_handles);
+}
+
+MK_TEST("editor native material preview plan reports private vulkan texture readiness") {
+    const auto plan =
+        mirakana::editor::plan_native_material_preview_display(mirakana::editor::NativeMaterialPreviewDisplayDesc{
+            .d3d12_host_available = false,
+            .vulkan_host_available = true,
+            .vulkan_validation_layer_ready = true,
+            .vulkan_spirv_artifacts_available = true,
+            .vulkan_synchronization2_ready = true,
+            .shader_artifacts_available = true,
+            .gpu_payload_available = true,
+            .texture_display_requested = true,
+            .texture_adapter_available = true,
+            .offscreen_target_available = true,
+            .descriptor_lease_available = true,
+            .resource_barriers_recorded = true,
+            .fence_lifecycle_ready = true,
+            .visible_panel_available = true,
+            .visible_texture_composite_recorded = true,
+            .visible_texture_composites = 1U,
+            .frame_index = 32,
+            .backend_id = "vulkan",
+            .frames_rendered = 1U,
+            .executes = true,
+        });
+
+    MK_REQUIRE(plan.accepted);
+    MK_REQUIRE(plan.status_id == "vulkan_texture_ready");
+    MK_REQUIRE(plan.texture_display_ready);
+    MK_REQUIRE(plan.vulkan_host_available);
+    MK_REQUIRE(plan.vulkan_validation_layer_ready);
+    MK_REQUIRE(plan.vulkan_spirv_artifacts_available);
+    MK_REQUIRE(plan.vulkan_synchronization2_ready);
+    MK_REQUIRE(plan.texture_adapter_available);
+    MK_REQUIRE(plan.offscreen_target_available);
+    MK_REQUIRE(plan.descriptor_lease_available);
+    MK_REQUIRE(plan.resource_barriers_recorded);
+    MK_REQUIRE(plan.fence_lifecycle_ready);
+    MK_REQUIRE(plan.lifecycle_status == "ready");
+    MK_REQUIRE(!plan.native_texture_handles_exposed);
+    MK_REQUIRE(plan.native_texture_handle_policy == "private");
+    MK_REQUIRE(plan.execution_snapshot.status == mirakana::editor::EditorMaterialGpuPreviewStatus::ready);
+    MK_REQUIRE(plan.execution_snapshot.backend_label == "Vulkan");
+    MK_REQUIRE(plan.execution_snapshot.frames_rendered == 1U);
+    MK_REQUIRE(plan.execution_snapshot.executes);
+    MK_REQUIRE(!plan.execution_snapshot.exposes_native_handles);
 }
 
 MK_TEST("editor native material preview plan waits for visible preview panel before texture readiness") {

@@ -13,6 +13,10 @@ namespace mirakana::editor {
 
 struct NativeMaterialPreviewDisplayDesc {
     bool d3d12_host_available{false};
+    bool vulkan_host_available{false};
+    bool vulkan_validation_layer_ready{false};
+    bool vulkan_spirv_artifacts_available{false};
+    bool vulkan_synchronization2_ready{false};
     bool shader_artifacts_available{false};
     bool gpu_payload_available{false};
     bool texture_display_requested{false};
@@ -34,6 +38,10 @@ struct NativeMaterialPreviewDisplayPlan {
     bool accepted{false};
     std::string status_id{"host_unavailable"};
     bool d3d12_host_available{false};
+    bool vulkan_host_available{false};
+    bool vulkan_validation_layer_ready{false};
+    bool vulkan_spirv_artifacts_available{false};
+    bool vulkan_synchronization2_ready{false};
     bool shader_artifacts_available{false};
     bool gpu_payload_available{false};
     bool texture_display_requested{false};

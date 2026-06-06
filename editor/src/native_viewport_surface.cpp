@@ -12,6 +12,22 @@ namespace {
            desc.resize_recreate_required || !desc.resize_safe_teardown_completed;
 }
 
+[[nodiscard]] bool vulkan_backend(std::string_view backend_id) noexcept {
+    return backend_id == "vulkan";
+}
+
+[[nodiscard]] bool backend_host_available(const NativeViewportDisplayDesc& desc) noexcept {
+    return vulkan_backend(desc.backend_id) ? desc.vulkan_host_available : desc.d3d12_host_available;
+}
+
+[[nodiscard]] std::string_view backend_display_name(std::string_view backend_id) noexcept {
+    return vulkan_backend(backend_id) ? "Vulkan" : "D3D12";
+}
+
+[[nodiscard]] std::string_view ready_status_id(std::string_view backend_id) noexcept {
+    return vulkan_backend(backend_id) ? "vulkan_texture_ready" : "d3d12_texture_ready";
+}
+
 } // namespace
 
 NativeViewportDisplayPlan plan_native_viewport_display(NativeViewportDisplayDesc desc) {
@@ -19,6 +35,10 @@ NativeViewportDisplayPlan plan_native_viewport_display(NativeViewportDisplayDesc
         .accepted = false,
         .status_id = "host_unavailable",
         .d3d12_host_available = desc.d3d12_host_available,
+        .vulkan_host_available = desc.vulkan_host_available,
+        .vulkan_validation_layer_ready = desc.vulkan_validation_layer_ready,
+        .vulkan_spirv_artifacts_available = desc.vulkan_spirv_artifacts_available,
+        .vulkan_synchronization2_ready = desc.vulkan_synchronization2_ready,
         .renderer_output_available = desc.renderer_output_available,
         .texture_display_requested = desc.texture_display_requested,
         .texture_adapter_available = desc.texture_adapter_available,
@@ -48,38 +68,64 @@ NativeViewportDisplayPlan plan_native_viewport_display(NativeViewportDisplayDesc
         return plan;
     }
 
-    if (!desc.d3d12_host_available) {
+    const bool is_vulkan = vulkan_backend(desc.backend_id);
+    const auto backend_name = backend_display_name(desc.backend_id);
+    if (!backend_host_available(desc)) {
         plan.status_id = "host_unavailable";
         plan.lifecycle_status = "host_unavailable";
-        plan.diagnostic = "native viewport display requires an initialized D3D12 host";
+        plan.diagnostic = "native viewport display requires an initialized " + std::string{backend_name} + " host";
         return plan;
     }
 
     plan.accepted = true;
     plan.status_id = "diagnostic_only";
     plan.lifecycle_status = "diagnostic_only";
+
+    if (is_vulkan && !desc.vulkan_validation_layer_ready) {
+        plan.status_id = "vulkan_validation_layer_unavailable";
+        plan.lifecycle_status = "validation_pending";
+        plan.diagnostic = "native viewport Vulkan display requires VK_LAYER_KHRONOS_validation evidence";
+        return plan;
+    }
+
+    if (is_vulkan && !desc.vulkan_spirv_artifacts_available) {
+        plan.status_id = "vulkan_spirv_artifacts_missing";
+        plan.lifecycle_status = "shader_pending";
+        plan.diagnostic = "native viewport Vulkan display requires validated SPIR-V shader artifacts";
+        return plan;
+    }
+
+    if (is_vulkan && !desc.vulkan_synchronization2_ready) {
+        plan.status_id = "vulkan_synchronization2_unavailable";
+        plan.lifecycle_status = "barrier_pending";
+        plan.diagnostic = "native viewport Vulkan display requires synchronization2 barrier evidence";
+        return plan;
+    }
+
     if (!desc.renderer_output_available) {
         plan.diagnostic = "renderer output unavailable; showing diagnostic-only native viewport";
         return plan;
     }
 
     if (!texture_display_attempted(desc)) {
-        plan.diagnostic =
-            "native D3D12 texture display adapter is private and not bound; showing diagnostic-only viewport";
+        plan.diagnostic = "native " + std::string{backend_name} +
+                          " texture display adapter is private and not bound; showing diagnostic-only viewport";
         return plan;
     }
 
     if (!desc.texture_adapter_available) {
         plan.status_id = "texture_adapter_unavailable";
         plan.lifecycle_status = "adapter_pending";
-        plan.diagnostic = "native viewport display requires a private D3D12 texture adapter";
+        plan.diagnostic =
+            "native viewport display requires a private " + std::string{backend_name} + " texture adapter";
         return plan;
     }
 
     if (!desc.offscreen_target_available) {
         plan.status_id = "offscreen_target_unavailable";
         plan.lifecycle_status = "target_pending";
-        plan.diagnostic = "native viewport display requires a private offscreen D3D12 render target";
+        plan.diagnostic =
+            "native viewport display requires a private offscreen " + std::string{backend_name} + " render target";
         return plan;
     }
 
@@ -94,7 +140,8 @@ NativeViewportDisplayPlan plan_native_viewport_display(NativeViewportDisplayDesc
     if (!desc.descriptor_lease_available) {
         plan.status_id = "descriptor_lease_unavailable";
         plan.lifecycle_status = "descriptor_pending";
-        plan.diagnostic = "native viewport display requires a private D3D12 shader-resource descriptor lease";
+        plan.diagnostic = "native viewport display requires a private " + std::string{backend_name} +
+                          " shader-resource descriptor lease";
         return plan;
     }
 
@@ -122,15 +169,16 @@ NativeViewportDisplayPlan plan_native_viewport_display(NativeViewportDisplayDesc
     if (!desc.visible_texture_composite_recorded || desc.visible_texture_composites == 0U) {
         plan.status_id = "visible_composite_pending";
         plan.lifecycle_status = "presentation_pending";
-        plan.diagnostic =
-            "native viewport display requires a visible compositor pass sampling the private D3D12 texture";
+        plan.diagnostic = "native viewport display requires a visible compositor pass sampling the private " +
+                          std::string{backend_name} + " texture";
         return plan;
     }
 
-    plan.status_id = "d3d12_texture_ready";
+    plan.status_id = std::string{ready_status_id(desc.backend_id)};
     plan.lifecycle_status = "ready";
     plan.texture_display_ready = true;
-    plan.diagnostic = "native viewport private D3D12 texture display is ready without exposing native texture handles";
+    plan.diagnostic = "native viewport private " + std::string{backend_name} +
+                      " texture display is ready without exposing native texture handles";
     return plan;
 }
 
