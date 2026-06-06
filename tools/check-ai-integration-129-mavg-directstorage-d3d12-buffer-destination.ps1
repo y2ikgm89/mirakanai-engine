@@ -42,7 +42,7 @@ foreach ($needle in @(
 
 foreach ($needle in @(
         "Microsoft::WRL::ComPtr<ID3D12Resource>",
-        "create_resource_destination",
+        "create_private_resource_destination",
         "CreateCommittedResource",
         "D3D12_RESOURCE_STATE_COPY_DEST",
         "use_directstorage_d3d12_buffer_destination",

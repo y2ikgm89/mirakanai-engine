@@ -3,6 +3,8 @@
 
 #include "mirakana/runtime_host/win32/win32_mavg_payload_io.hpp"
 
+#include "d3d12_directstorage_private.hpp"
+
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -120,12 +122,14 @@ void add_diagnostic(runtime::RuntimeMavgPayloadNativeIoStatusBackendResult& resu
 struct DirectStoragePendingSubmission {
     Microsoft::WRL::ComPtr<IDStorageQueue> queue;
     Microsoft::WRL::ComPtr<IDStorageStatusArray> status_array;
+    Microsoft::WRL::ComPtr<ID3D12Device> resource_destination_device;
     Microsoft::WRL::ComPtr<ID3D12Fence> completion_fence;
     Microsoft::WRL::ComPtr<ID3D12Resource> resource_destination;
     std::vector<Microsoft::WRL::ComPtr<IDStorageFile>> files;
     std::vector<std::string> request_names;
     std::uint64_t native_fence_signal_value{0};
     bool used_directstorage_resource_destination{false};
+    bool used_directstorage_caller_owned_rhi_resource_destination{false};
     std::size_t directstorage_resource_destination_request_count{0};
     std::uint64_t directstorage_resource_destination_bytes{0};
 };
@@ -236,13 +240,26 @@ struct Win32MavgPayloadDirectStorageDispatcher::Impl {
             return result;
         }
 
+        Microsoft::WRL::ComPtr<ID3D12Device> resource_destination_device;
         Microsoft::WRL::ComPtr<ID3D12Resource> resource_destination;
-        if (use_resource_destination &&
-            !create_resource_destination(result, required_resource_destination_bytes, resource_destination)) {
-            return result;
+        bool used_caller_owned_rhi_resource_destination = false;
+        if (use_resource_destination) {
+            const auto has_caller_owned_rhi_destination =
+                desc.directstorage_rhi_device != nullptr || desc.directstorage_rhi_destination_buffer.value != 0U;
+            if (has_caller_owned_rhi_destination) {
+                if (!resolve_caller_owned_rhi_resource_destination(result, required_resource_destination_bytes,
+                                                                   resource_destination_device, resource_destination)) {
+                    return result;
+                }
+                used_caller_owned_rhi_resource_destination = true;
+            } else if (!create_private_resource_destination(result, required_resource_destination_bytes,
+                                                            resource_destination_device, resource_destination)) {
+                return result;
+            }
         }
         Microsoft::WRL::ComPtr<ID3D12Fence> completion_fence;
-        if (backend_desc.signal_fence_after_requests && !create_completion_fence(result, completion_fence)) {
+        if (backend_desc.signal_fence_after_requests &&
+            !create_completion_fence(result, resource_destination_device.Get(), completion_fence)) {
             return result;
         }
 
@@ -261,9 +278,12 @@ struct Win32MavgPayloadDirectStorageDispatcher::Impl {
         DirectStoragePendingSubmission submission;
         submission.files.reserve(requests.size());
         submission.request_names.reserve(requests.size());
+        submission.resource_destination_device = std::move(resource_destination_device);
         submission.completion_fence = std::move(completion_fence);
         submission.resource_destination = std::move(resource_destination);
         submission.used_directstorage_resource_destination = use_resource_destination;
+        submission.used_directstorage_caller_owned_rhi_resource_destination =
+            used_caller_owned_rhi_resource_destination;
         if (submission.completion_fence.Get() != nullptr) {
             submission.native_fence_signal_value = 1U;
         }
@@ -272,9 +292,11 @@ struct Win32MavgPayloadDirectStorageDispatcher::Impl {
         queue_desc.SourceType = DSTORAGE_REQUEST_SOURCE_FILE;
         queue_desc.Capacity = static_cast<UINT16>(desc.queue_capacity);
         queue_desc.Priority = DSTORAGE_PRIORITY_NORMAL;
-        queue_desc.Name = use_resource_destination ? "mirakana.mavg.directstorage.file_to_d3d12_buffer"
-                                                   : "mirakana.mavg.directstorage.file_to_memory";
-        queue_desc.Device = use_resource_destination ? fence_device.Get() : nullptr;
+        queue_desc.Name = used_caller_owned_rhi_resource_destination
+                              ? "mirakana.mavg.directstorage.file_to_caller_owned_rhi_buffer"
+                          : use_resource_destination ? "mirakana.mavg.directstorage.file_to_d3d12_buffer"
+                                                     : "mirakana.mavg.directstorage.file_to_memory";
+        queue_desc.Device = use_resource_destination ? submission.resource_destination_device.Get() : nullptr;
         HRESULT hresult = factory->CreateQueue(&queue_desc, IID_PPV_ARGS(submission.queue.ReleaseAndGetAddressOf()));
         if (FAILED(hresult)) {
             add_diagnostic(result, runtime::RuntimeMavgPayloadNativeIoDiagnosticCode::dispatch_failed, 0, hresult,
@@ -333,7 +355,10 @@ struct Win32MavgPayloadDirectStorageDispatcher::Impl {
         }
         if (use_resource_destination) {
             result.used_directstorage_resource_destination = true;
+            result.used_directstorage_caller_owned_rhi_resource_destination =
+                used_caller_owned_rhi_resource_destination;
             result.directstorage_resource_destination_bytes = result.submitted_destination_bytes;
+            result.touched_renderer_or_rhi_handles = used_caller_owned_rhi_resource_destination;
             submission.directstorage_resource_destination_request_count =
                 result.directstorage_resource_destination_request_count;
             submission.directstorage_resource_destination_bytes = result.directstorage_resource_destination_bytes;
@@ -399,9 +424,12 @@ struct Win32MavgPayloadDirectStorageDispatcher::Impl {
         result.signaled_native_fence = submission.native_fence_signal_value != 0U;
         result.native_fence_signal_value = submission.native_fence_signal_value;
         result.used_directstorage_resource_destination = submission.used_directstorage_resource_destination;
+        result.used_directstorage_caller_owned_rhi_resource_destination =
+            submission.used_directstorage_caller_owned_rhi_resource_destination;
         result.directstorage_resource_destination_request_count =
             submission.directstorage_resource_destination_request_count;
         result.directstorage_resource_destination_bytes = submission.directstorage_resource_destination_bytes;
+        result.touched_renderer_or_rhi_handles = submission.used_directstorage_caller_owned_rhi_resource_destination;
         if (submission.completion_fence.Get() != nullptr) {
             result.native_fence_completed_value = submission.completion_fence->GetCompletedValue();
         }
@@ -430,12 +458,44 @@ struct Win32MavgPayloadDirectStorageDispatcher::Impl {
         return result;
     }
 
-    [[nodiscard]] bool create_resource_destination(runtime::RuntimeMavgPayloadNativeIoDispatchBackendResult& result,
-                                                   std::uint64_t byte_size,
-                                                   Microsoft::WRL::ComPtr<ID3D12Resource>& resource_destination) {
+    [[nodiscard]] bool
+    resolve_caller_owned_rhi_resource_destination(runtime::RuntimeMavgPayloadNativeIoDispatchBackendResult& result,
+                                                  std::uint64_t required_byte_size,
+                                                  Microsoft::WRL::ComPtr<ID3D12Device>& resource_destination_device,
+                                                  Microsoft::WRL::ComPtr<ID3D12Resource>& resource_destination) {
+        if (desc.directstorage_rhi_device == nullptr || desc.directstorage_rhi_destination_buffer.value == 0U) {
+            add_diagnostic(result, runtime::RuntimeMavgPayloadNativeIoDiagnosticCode::dispatch_failed, 0, E_INVALIDARG,
+                           "DirectStorage MAVG IO caller-owned RHI buffer destination requires a device and buffer");
+            return false;
+        }
+
+        auto resolved = rhi::d3d12::native::resolve_directstorage_buffer_destination(
+            *desc.directstorage_rhi_device, desc.directstorage_rhi_destination_buffer);
+        if (!resolved.succeeded()) {
+            add_diagnostic(result, runtime::RuntimeMavgPayloadNativeIoDiagnosticCode::dispatch_failed, 0, E_INVALIDARG,
+                           std::string{resolved.diagnostic});
+            return false;
+        }
+        if (resolved.size_bytes < required_byte_size) {
+            add_diagnostic(result, runtime::RuntimeMavgPayloadNativeIoDiagnosticCode::dispatch_failed, 0, E_INVALIDARG,
+                           "DirectStorage MAVG IO caller-owned RHI buffer destination is too small");
+            return false;
+        }
+
+        resource_destination_device = std::move(resolved.device);
+        resource_destination = std::move(resolved.resource);
+        return true;
+    }
+
+    [[nodiscard]] bool
+    create_private_resource_destination(runtime::RuntimeMavgPayloadNativeIoDispatchBackendResult& result,
+                                        std::uint64_t byte_size,
+                                        Microsoft::WRL::ComPtr<ID3D12Device>& resource_destination_device,
+                                        Microsoft::WRL::ComPtr<ID3D12Resource>& resource_destination) {
         if (!ensure_fence_device(result)) {
             return false;
         }
+        resource_destination_device = fence_device;
 
         D3D12_HEAP_PROPERTIES heap_properties{};
         heap_properties.Type = D3D12_HEAP_TYPE_DEFAULT;
@@ -452,7 +512,7 @@ struct Win32MavgPayloadDirectStorageDispatcher::Impl {
         resource_desc.SampleDesc.Count = 1U;
         resource_desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
 
-        const auto hresult = fence_device->CreateCommittedResource(
+        const auto hresult = resource_destination_device->CreateCommittedResource(
             &heap_properties, D3D12_HEAP_FLAG_NONE, &resource_desc, D3D12_RESOURCE_STATE_COPY_DEST, nullptr,
             IID_PPV_ARGS(resource_destination.ReleaseAndGetAddressOf()));
         if (FAILED(hresult)) {
@@ -464,13 +524,17 @@ struct Win32MavgPayloadDirectStorageDispatcher::Impl {
     }
 
     [[nodiscard]] bool create_completion_fence(runtime::RuntimeMavgPayloadNativeIoDispatchBackendResult& result,
+                                               ID3D12Device* device,
                                                Microsoft::WRL::ComPtr<ID3D12Fence>& completion_fence) {
-        if (!ensure_fence_device(result)) {
-            return false;
+        if (device == nullptr) {
+            if (!ensure_fence_device(result)) {
+                return false;
+            }
+            device = fence_device.Get();
         }
 
-        const auto hresult = fence_device->CreateFence(0U, D3D12_FENCE_FLAG_NONE,
-                                                       IID_PPV_ARGS(completion_fence.ReleaseAndGetAddressOf()));
+        const auto hresult =
+            device->CreateFence(0U, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(completion_fence.ReleaseAndGetAddressOf()));
         if (FAILED(hresult)) {
             add_diagnostic(result, runtime::RuntimeMavgPayloadNativeIoDiagnosticCode::dispatch_failed, 0, hresult,
                            "DirectStorage MAVG IO failed to create private D3D12 completion fence");

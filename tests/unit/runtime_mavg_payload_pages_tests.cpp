@@ -211,12 +211,14 @@ class RecordingNativeIoDispatcher final : public mirakana::runtime::IRuntimeMavg
             .native_fence_signal_value = desc.signal_fence_after_requests ? 19U : 0U,
             .native_fence_completed_value = 0U,
             .used_directstorage_resource_destination = desc.use_directstorage_d3d12_buffer_destination,
+            .used_directstorage_caller_owned_rhi_resource_destination =
+                desc.use_directstorage_d3d12_buffer_destination && simulate_caller_owned_rhi_resource_destination,
             .directstorage_resource_destination_request_count =
                 desc.use_directstorage_d3d12_buffer_destination ? requests.size() : 0U,
             .used_native_directstorage = false,
             .used_win32_async_io = false,
             .executed_background_worker = false,
-            .touched_renderer_or_rhi_handles = false,
+            .touched_renderer_or_rhi_handles = simulate_caller_owned_rhi_resource_destination,
         };
         if (fail_dispatch) {
             result.submitted_io_queue = false;
@@ -241,8 +243,11 @@ class RecordingNativeIoDispatcher final : public mirakana::runtime::IRuntimeMavg
             .native_fence_signal_value = result.native_fence_signal_value,
             .native_fence_completed_value = 0U,
             .used_directstorage_resource_destination = result.used_directstorage_resource_destination,
+            .used_directstorage_caller_owned_rhi_resource_destination =
+                result.used_directstorage_caller_owned_rhi_resource_destination,
             .directstorage_resource_destination_request_count = result.directstorage_resource_destination_request_count,
             .directstorage_resource_destination_bytes = result.directstorage_resource_destination_bytes,
+            .touched_renderer_or_rhi_handles = result.touched_renderer_or_rhi_handles,
         });
         status_rows.push_back(mirakana::runtime::RuntimeMavgPayloadNativeIoStatusBackendResult{
             .ticket = result.ticket,
@@ -252,8 +257,11 @@ class RecordingNativeIoDispatcher final : public mirakana::runtime::IRuntimeMavg
             .native_fence_signal_value = result.native_fence_signal_value,
             .native_fence_completed_value = result.native_fence_signal_value,
             .used_directstorage_resource_destination = result.used_directstorage_resource_destination,
+            .used_directstorage_caller_owned_rhi_resource_destination =
+                result.used_directstorage_caller_owned_rhi_resource_destination,
             .directstorage_resource_destination_request_count = result.directstorage_resource_destination_request_count,
             .directstorage_resource_destination_bytes = result.directstorage_resource_destination_bytes,
+            .touched_renderer_or_rhi_handles = result.touched_renderer_or_rhi_handles,
         });
         return result;
     }
@@ -308,6 +316,7 @@ class RecordingNativeIoDispatcher final : public mirakana::runtime::IRuntimeMavg
     std::size_t last_destination_memory_bytes{0};
     std::uint64_t last_submission_tag{0};
     bool last_use_directstorage_d3d12_buffer_destination{false};
+    bool simulate_caller_owned_rhi_resource_destination{false};
     bool fail_dispatch{false};
     bool fail_status{false};
     std::size_t next_status_index{0};
@@ -694,6 +703,64 @@ MK_TEST("runtime mavg payload native io dispatch propagates directstorage d3d12 
     MK_REQUIRE(complete.native_fence_signal_value == result.native_fence_signal_value);
     MK_REQUIRE(complete.native_fence_completed_value == result.native_fence_signal_value);
     MK_REQUIRE(!complete.touched_renderer_or_rhi_handles);
+}
+
+MK_TEST("runtime mavg payload native io dispatch propagates caller owned rhi destination evidence") {
+    const auto graph = make_payload_graph();
+    const auto payload_text = make_payload_text(graph);
+    const auto request_plan = make_directstorage_request_plan(graph, payload_text);
+    RecordingNativeIoDispatcher dispatcher{mirakana::runtime::RuntimeMavgPayloadNativeIoBackend::test_adapter};
+    dispatcher.simulate_caller_owned_rhi_resource_destination = true;
+
+    const auto result = mirakana::runtime::dispatch_runtime_mavg_payload_native_io_requests(
+        mirakana::runtime::RuntimeMavgPayloadNativeIoDispatchDesc{
+            .dispatcher = &dispatcher,
+            .request_plan = &request_plan,
+            .required_backend = mirakana::runtime::RuntimeMavgPayloadNativeIoBackend::test_adapter,
+            .submission_tag = 44U,
+            .require_native_directstorage = false,
+            .enqueue_status_after_requests = true,
+            .signal_fence_after_requests = true,
+            .use_directstorage_d3d12_buffer_destination = true,
+        });
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.ticket == 700U);
+    MK_REQUIRE(result.request_count == 2U);
+    MK_REQUIRE(result.used_directstorage_resource_destination);
+    MK_REQUIRE(result.used_directstorage_caller_owned_rhi_resource_destination);
+    MK_REQUIRE(result.directstorage_resource_destination_request_count == 2U);
+    MK_REQUIRE(result.directstorage_resource_destination_bytes == 128U);
+    MK_REQUIRE(result.touched_renderer_or_rhi_handles);
+    MK_REQUIRE(!result.mutated_mount_set);
+    MK_REQUIRE(!result.executed_background_worker);
+    MK_REQUIRE(dispatcher.dispatch_call_count == 1U);
+    MK_REQUIRE(dispatcher.last_request_count == 2U);
+    MK_REQUIRE(dispatcher.last_destination_memory_bytes == 0U);
+    MK_REQUIRE(dispatcher.last_submission_tag == 44U);
+    MK_REQUIRE(dispatcher.last_use_directstorage_d3d12_buffer_destination);
+
+    (void)mirakana::runtime::poll_runtime_mavg_payload_native_io_status(
+        mirakana::runtime::RuntimeMavgPayloadNativeIoStatusPollDesc{
+            .dispatcher = &dispatcher,
+            .ticket = result.ticket,
+        });
+    const auto complete = mirakana::runtime::poll_runtime_mavg_payload_native_io_status(
+        mirakana::runtime::RuntimeMavgPayloadNativeIoStatusPollDesc{
+            .dispatcher = &dispatcher,
+            .ticket = result.ticket,
+        });
+
+    MK_REQUIRE(complete.succeeded());
+    MK_REQUIRE(complete.complete);
+    MK_REQUIRE(complete.used_directstorage_resource_destination);
+    MK_REQUIRE(complete.used_directstorage_caller_owned_rhi_resource_destination);
+    MK_REQUIRE(complete.directstorage_resource_destination_request_count == 2U);
+    MK_REQUIRE(complete.directstorage_resource_destination_bytes == 128U);
+    MK_REQUIRE(complete.touched_renderer_or_rhi_handles);
+    MK_REQUIRE(complete.signaled_native_fence);
+    MK_REQUIRE(complete.native_fence_signal_value == result.native_fence_signal_value);
+    MK_REQUIRE(complete.native_fence_completed_value == result.native_fence_signal_value);
 }
 
 MK_TEST("runtime mavg payload native io dispatch rejects invalid inputs before adapter calls") {

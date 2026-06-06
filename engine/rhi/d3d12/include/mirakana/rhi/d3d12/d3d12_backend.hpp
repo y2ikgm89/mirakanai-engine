@@ -110,6 +110,15 @@ struct D3d12SharedTextureExportResult {
     Format format{Format::unknown};
 };
 
+class DeviceContext;
+
+namespace native {
+struct D3d12DirectStorageBufferDestination;
+[[nodiscard]] D3d12DirectStorageBufferDestination
+resolve_directstorage_device_context_buffer_destination(const DeviceContext& context, NativeResourceHandle resource,
+                                                        BufferHandle buffer, const BufferDesc& desc) noexcept;
+} // namespace native
+
 enum class NativeDescriptorHeapKind : std::uint8_t { cbv_srv_uav = 0, sampler };
 
 struct NativeSwapchainDesc {
@@ -569,6 +578,10 @@ class DeviceContext final {
     struct Impl;
 
     explicit DeviceContext(std::unique_ptr<Impl> impl) noexcept;
+    friend native::D3d12DirectStorageBufferDestination
+    native::resolve_directstorage_device_context_buffer_destination(const DeviceContext& context,
+                                                                    NativeResourceHandle resource, BufferHandle buffer,
+                                                                    const BufferDesc& desc) noexcept;
     [[nodiscard]] bool transition_buffer_state(NativeCommandListHandle commands, NativeResourceHandle buffer,
                                                std::uint32_t after_state, std::uint64_t* specific_counter);
     [[nodiscard]] bool prepare_indirect_buffer_for_execute_indirect(NativeCommandListHandle commands,

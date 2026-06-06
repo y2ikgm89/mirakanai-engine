@@ -244,6 +244,7 @@ struct RuntimeMavgPayloadNativeIoDispatchBackendResult {
     std::uint64_t native_fence_signal_value{0};
     std::uint64_t native_fence_completed_value{0};
     bool used_directstorage_resource_destination{false};
+    bool used_directstorage_caller_owned_rhi_resource_destination{false};
     std::size_t directstorage_resource_destination_request_count{0};
     std::uint64_t directstorage_resource_destination_bytes{0};
     bool used_native_directstorage{false};
@@ -269,6 +270,7 @@ struct RuntimeMavgPayloadNativeIoStatusBackendResult {
     std::uint64_t native_fence_signal_value{0};
     std::uint64_t native_fence_completed_value{0};
     bool used_directstorage_resource_destination{false};
+    bool used_directstorage_caller_owned_rhi_resource_destination{false};
     std::size_t directstorage_resource_destination_request_count{0};
     std::uint64_t directstorage_resource_destination_bytes{0};
     bool executed_background_worker{false};
@@ -319,6 +321,7 @@ struct RuntimeMavgPayloadNativeIoDispatchResult {
     std::uint64_t native_fence_signal_value{0};
     std::uint64_t native_fence_completed_value{0};
     bool used_directstorage_resource_destination{false};
+    bool used_directstorage_caller_owned_rhi_resource_destination{false};
     std::size_t directstorage_resource_destination_request_count{0};
     std::uint64_t directstorage_resource_destination_bytes{0};
     bool used_native_directstorage{false};
@@ -350,6 +353,7 @@ struct RuntimeMavgPayloadNativeIoStatusPollResult {
     std::uint64_t native_fence_signal_value{0};
     std::uint64_t native_fence_completed_value{0};
     bool used_directstorage_resource_destination{false};
+    bool used_directstorage_caller_owned_rhi_resource_destination{false};
     std::size_t directstorage_resource_destination_request_count{0};
     std::uint64_t directstorage_resource_destination_bytes{0};
     bool mutated_mount_set{false};

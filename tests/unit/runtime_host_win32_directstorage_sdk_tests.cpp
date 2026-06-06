@@ -3,6 +3,8 @@
 
 #include "mirakana/runtime_host/win32/win32_mavg_payload_io.hpp"
 
+#include "mirakana/rhi/d3d12/d3d12_backend.hpp"
+
 #include <dstorage.h>
 #include <dstorageerr.h>
 
@@ -299,6 +301,200 @@ void run_directstorage_d3d12_buffer_destination_execution_test() {
     require(!status.touched_renderer_or_rhi_handles);
 }
 
+void run_directstorage_caller_owned_rhi_buffer_destination_execution_test() {
+    ScopedTempDirectory temp;
+    const std::vector<std::uint8_t> source_bytes{0x10U, 0x11U, 0xa0U, 0xa1U, 0xa2U, 0xa3U,
+                                                 0xeeU, 0xefU, 0xb0U, 0xb1U, 0xb2U, 0xb3U};
+    write_binary_file(temp.path / "payload.bin", source_bytes);
+
+    auto device =
+        mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{.prefer_warp = true});
+    require(device != nullptr);
+
+    const auto destination = device->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = 20,
+        .usage = mirakana::rhi::BufferUsage::storage | mirakana::rhi::BufferUsage::copy_source |
+                 mirakana::rhi::BufferUsage::copy_destination,
+    });
+    const auto readback = device->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = 20,
+        .usage = mirakana::rhi::BufferUsage::copy_destination,
+    });
+
+    auto request_plan = make_directstorage_request_plan();
+    mirakana::Win32MavgPayloadDirectStorageDispatcher dispatcher{mirakana::Win32MavgPayloadDirectStorageDispatcherDesc{
+        .root_path = temp.path,
+        .directstorage_rhi_device = device.get(),
+        .directstorage_rhi_destination_buffer = destination,
+    }};
+
+    const auto dispatch = mirakana::runtime::dispatch_runtime_mavg_payload_native_io_requests(
+        mirakana::runtime::RuntimeMavgPayloadNativeIoDispatchDesc{
+            .dispatcher = &dispatcher,
+            .request_plan = &request_plan,
+            .required_backend = mirakana::runtime::RuntimeMavgPayloadNativeIoBackend::directstorage,
+            .submission_tag = 104U,
+            .require_native_directstorage = true,
+            .enqueue_status_after_requests = true,
+            .signal_fence_after_requests = true,
+            .use_directstorage_d3d12_buffer_destination = true,
+        });
+
+    require(dispatch.succeeded());
+    require(dispatch.ticket != 0U);
+    require(dispatch.used_directstorage_resource_destination);
+    require(dispatch.used_directstorage_caller_owned_rhi_resource_destination);
+    require(dispatch.directstorage_resource_destination_request_count == 2U);
+    require(dispatch.directstorage_resource_destination_bytes == 8U);
+    require(dispatch.signaled_native_fence);
+    require(dispatch.touched_renderer_or_rhi_handles);
+
+    const auto status = poll_until_complete(dispatcher, dispatch.ticket);
+
+    require(status.succeeded());
+    require(status.status == mirakana::runtime::RuntimeMavgPayloadNativeIoStatus::complete);
+    require(status.complete);
+    require(status.used_directstorage_resource_destination);
+    require(status.used_directstorage_caller_owned_rhi_resource_destination);
+    require(status.signaled_native_fence);
+    require(status.native_fence_signal_value == dispatch.native_fence_signal_value);
+    require(status.native_fence_completed_value >= status.native_fence_signal_value);
+    require(status.touched_renderer_or_rhi_handles);
+
+    auto commands = device->begin_command_list(mirakana::rhi::QueueKind::copy);
+    require(commands != nullptr);
+    commands->copy_buffer(
+        destination, readback,
+        mirakana::rhi::BufferCopyRegion{.source_offset = 0, .destination_offset = 0, .size_bytes = 20});
+    commands->close();
+    const auto copy_fence = device->submit(*commands);
+    require(copy_fence.value != 0U);
+    device->wait(copy_fence);
+    const auto copied = device->read_buffer(readback, 0, 20);
+
+    require(copied[3] == 0xa0U);
+    require(copied[4] == 0xa1U);
+    require(copied[5] == 0xa2U);
+    require(copied[6] == 0xa3U);
+    require(copied[10] == 0xb0U);
+    require(copied[11] == 0xb1U);
+    require(copied[12] == 0xb2U);
+    require(copied[13] == 0xb3U);
+}
+
+void run_directstorage_caller_owned_rhi_buffer_destination_rejection_test() {
+    auto request_plan = make_directstorage_request_plan();
+
+    {
+        ScopedTempDirectory temp;
+        mirakana::Win32MavgPayloadDirectStorageDispatcher dispatcher{
+            mirakana::Win32MavgPayloadDirectStorageDispatcherDesc{
+                .root_path = temp.path,
+                .directstorage_rhi_destination_buffer = mirakana::rhi::BufferHandle{1},
+            }};
+
+        const auto dispatch = mirakana::runtime::dispatch_runtime_mavg_payload_native_io_requests(
+            mirakana::runtime::RuntimeMavgPayloadNativeIoDispatchDesc{
+                .dispatcher = &dispatcher,
+                .request_plan = &request_plan,
+                .required_backend = mirakana::runtime::RuntimeMavgPayloadNativeIoBackend::directstorage,
+                .require_native_directstorage = true,
+                .enqueue_status_after_requests = true,
+                .use_directstorage_d3d12_buffer_destination = true,
+            });
+
+        require(!dispatch.succeeded());
+        require(dispatch.ticket == 0U);
+        require(!dispatch.diagnostics.empty());
+        require(!dispatch.submitted_io_queue);
+    }
+
+    {
+        ScopedTempDirectory temp;
+        mirakana::rhi::NullRhiDevice null_device;
+        mirakana::Win32MavgPayloadDirectStorageDispatcher dispatcher{
+            mirakana::Win32MavgPayloadDirectStorageDispatcherDesc{
+                .root_path = temp.path,
+                .directstorage_rhi_device = &null_device,
+                .directstorage_rhi_destination_buffer = mirakana::rhi::BufferHandle{1},
+            }};
+
+        const auto dispatch = mirakana::runtime::dispatch_runtime_mavg_payload_native_io_requests(
+            mirakana::runtime::RuntimeMavgPayloadNativeIoDispatchDesc{
+                .dispatcher = &dispatcher,
+                .request_plan = &request_plan,
+                .required_backend = mirakana::runtime::RuntimeMavgPayloadNativeIoBackend::directstorage,
+                .require_native_directstorage = true,
+                .enqueue_status_after_requests = true,
+                .use_directstorage_d3d12_buffer_destination = true,
+            });
+
+        require(!dispatch.succeeded());
+        require(dispatch.ticket == 0U);
+        require(!dispatch.diagnostics.empty());
+        require(!dispatch.submitted_io_queue);
+    }
+
+    auto device =
+        mirakana::rhi::d3d12::create_rhi_device(mirakana::rhi::d3d12::DeviceBootstrapDesc{.prefer_warp = true});
+    require(device != nullptr);
+
+    {
+        ScopedTempDirectory temp;
+        mirakana::Win32MavgPayloadDirectStorageDispatcher dispatcher{
+            mirakana::Win32MavgPayloadDirectStorageDispatcherDesc{
+                .root_path = temp.path,
+                .directstorage_rhi_device = device.get(),
+                .directstorage_rhi_destination_buffer = mirakana::rhi::BufferHandle{999},
+            }};
+
+        const auto dispatch = mirakana::runtime::dispatch_runtime_mavg_payload_native_io_requests(
+            mirakana::runtime::RuntimeMavgPayloadNativeIoDispatchDesc{
+                .dispatcher = &dispatcher,
+                .request_plan = &request_plan,
+                .required_backend = mirakana::runtime::RuntimeMavgPayloadNativeIoBackend::directstorage,
+                .require_native_directstorage = true,
+                .enqueue_status_after_requests = true,
+                .use_directstorage_d3d12_buffer_destination = true,
+            });
+
+        require(!dispatch.succeeded());
+        require(dispatch.ticket == 0U);
+        require(!dispatch.diagnostics.empty());
+        require(!dispatch.submitted_io_queue);
+    }
+
+    {
+        ScopedTempDirectory temp;
+        const auto too_small = device->create_buffer(mirakana::rhi::BufferDesc{
+            .size_bytes = 8,
+            .usage = mirakana::rhi::BufferUsage::storage | mirakana::rhi::BufferUsage::copy_source |
+                     mirakana::rhi::BufferUsage::copy_destination,
+        });
+        mirakana::Win32MavgPayloadDirectStorageDispatcher dispatcher{
+            mirakana::Win32MavgPayloadDirectStorageDispatcherDesc{
+                .root_path = temp.path,
+                .directstorage_rhi_device = device.get(),
+                .directstorage_rhi_destination_buffer = too_small,
+            }};
+
+        const auto dispatch = mirakana::runtime::dispatch_runtime_mavg_payload_native_io_requests(
+            mirakana::runtime::RuntimeMavgPayloadNativeIoDispatchDesc{
+                .dispatcher = &dispatcher,
+                .request_plan = &request_plan,
+                .required_backend = mirakana::runtime::RuntimeMavgPayloadNativeIoBackend::directstorage,
+                .require_native_directstorage = true,
+                .enqueue_status_after_requests = true,
+                .use_directstorage_d3d12_buffer_destination = true,
+            });
+
+        require(!dispatch.succeeded());
+        require(dispatch.ticket == 0U);
+        require(!dispatch.diagnostics.empty());
+        require(!dispatch.submitted_io_queue);
+    }
+}
+
 void run_directstorage_rejects_unsafe_source_paths_before_factory_test() {
     const std::vector<std::string> unsafe_paths{
         "C:payload.bin",
@@ -356,6 +552,8 @@ int main() {
     run_directstorage_file_to_memory_queue_status_execution_test();
     run_directstorage_fence_signal_execution_test();
     run_directstorage_d3d12_buffer_destination_execution_test();
+    run_directstorage_caller_owned_rhi_buffer_destination_execution_test();
+    run_directstorage_caller_owned_rhi_buffer_destination_rejection_test();
     run_directstorage_rejects_unsafe_source_paths_before_factory_test();
     return 0;
 }

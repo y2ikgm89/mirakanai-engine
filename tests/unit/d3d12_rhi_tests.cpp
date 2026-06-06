@@ -23,6 +23,8 @@
 #include "mirakana/scene/scene.hpp"
 #include "mirakana/scene_renderer/scene_renderer.hpp"
 
+#include "d3d12_directstorage_private.hpp"
+
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -2243,6 +2245,68 @@ MK_TEST("d3d12 rhi mavg page residency adapter invokes native residency actions"
     MK_REQUIRE(!result.mutated_mount_set);
     MK_REQUIRE(!result.used_directstorage_resource_destination);
     MK_REQUIRE(!result.used_gpu_decompression);
+}
+
+MK_TEST("d3d12 directstorage private resolver exposes caller owned buffer destination internally") {
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
+    MK_REQUIRE(device != nullptr);
+
+    const auto destination = device->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = 4096,
+        .usage = mirakana::rhi::BufferUsage::storage | mirakana::rhi::BufferUsage::copy_source |
+                 mirakana::rhi::BufferUsage::copy_destination,
+    });
+
+    const auto resolved = mirakana::rhi::d3d12::native::resolve_directstorage_buffer_destination(*device, destination);
+
+    MK_REQUIRE(resolved.succeeded());
+    MK_REQUIRE(resolved.status == mirakana::rhi::d3d12::native::D3d12DirectStorageBufferDestinationStatus::ready);
+    MK_REQUIRE(resolved.backend == mirakana::rhi::BackendKind::d3d12);
+    MK_REQUIRE(resolved.buffer.value == destination.value);
+    MK_REQUIRE(resolved.size_bytes == 4096U);
+    MK_REQUIRE(resolved.desc.size_bytes == 4096U);
+    MK_REQUIRE(mirakana::rhi::has_flag(resolved.desc.usage, mirakana::rhi::BufferUsage::copy_destination));
+    MK_REQUIRE(resolved.device.Get() != nullptr);
+    MK_REQUIRE(resolved.resource.Get() != nullptr);
+    MK_REQUIRE(resolved.copy_destination_compatible);
+    MK_REQUIRE(resolved.default_heap_resource);
+    MK_REQUIRE(!resolved.exposed_native_handles);
+}
+
+MK_TEST("d3d12 directstorage private resolver rejects unsupported unknown and incompatible buffers") {
+    mirakana::rhi::NullRhiDevice null_device;
+    const auto unsupported = mirakana::rhi::d3d12::native::resolve_directstorage_buffer_destination(
+        null_device, mirakana::rhi::BufferHandle{1});
+    MK_REQUIRE(!unsupported.succeeded());
+    MK_REQUIRE(unsupported.status ==
+               mirakana::rhi::d3d12::native::D3d12DirectStorageBufferDestinationStatus::unsupported_backend);
+    MK_REQUIRE(unsupported.resource.Get() == nullptr);
+    MK_REQUIRE(unsupported.device.Get() == nullptr);
+    MK_REQUIRE(!unsupported.exposed_native_handles);
+
+    auto device = mirakana::rhi::d3d12::create_rhi_device(d3d12_test_device_desc());
+    MK_REQUIRE(device != nullptr);
+    const auto unknown = mirakana::rhi::d3d12::native::resolve_directstorage_buffer_destination(
+        *device, mirakana::rhi::BufferHandle{999});
+    MK_REQUIRE(!unknown.succeeded());
+    MK_REQUIRE(unknown.status ==
+               mirakana::rhi::d3d12::native::D3d12DirectStorageBufferDestinationStatus::invalid_buffer);
+    MK_REQUIRE(unknown.resource.Get() == nullptr);
+    MK_REQUIRE(unknown.device.Get() == nullptr);
+    MK_REQUIRE(!unknown.exposed_native_handles);
+
+    const auto readback_only = device->create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = 256,
+        .usage = mirakana::rhi::BufferUsage::copy_destination,
+    });
+    const auto incompatible =
+        mirakana::rhi::d3d12::native::resolve_directstorage_buffer_destination(*device, readback_only);
+    MK_REQUIRE(!incompatible.succeeded());
+    MK_REQUIRE(incompatible.status ==
+               mirakana::rhi::d3d12::native::D3d12DirectStorageBufferDestinationStatus::incompatible_buffer);
+    MK_REQUIRE(incompatible.resource.Get() == nullptr);
+    MK_REQUIRE(incompatible.device.Get() == nullptr);
+    MK_REQUIRE(!incompatible.exposed_native_handles);
 }
 
 MK_TEST("d3d12 rhi residency action rejects unknown resources before native calls") {

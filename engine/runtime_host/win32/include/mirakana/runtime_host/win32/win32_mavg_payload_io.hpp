@@ -5,6 +5,10 @@
 
 #include "mirakana/runtime/mavg_payload_pages.hpp"
 
+#if defined(MK_RUNTIME_HOST_WIN32_ENABLE_DIRECTSTORAGE_SDK)
+#include "mirakana/rhi/rhi.hpp"
+#endif
+
 #include <cstddef>
 #include <filesystem>
 #include <memory>
@@ -74,6 +78,8 @@ struct Win32MavgPayloadDirectStorageDispatcherDesc {
     std::filesystem::path root_path;
     std::size_t max_inflight_submissions{64};
     std::size_t queue_capacity{128};
+    rhi::IRhiDevice* directstorage_rhi_device{nullptr};
+    rhi::BufferHandle directstorage_rhi_destination_buffer;
 };
 
 class Win32MavgPayloadDirectStorageDispatcher final : public runtime::IRuntimeMavgPayloadNativeIoDispatcher {

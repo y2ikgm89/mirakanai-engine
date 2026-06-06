@@ -490,6 +490,8 @@ dispatch_runtime_mavg_payload_native_io_requests(const RuntimeMavgPayloadNativeI
     result.native_fence_signal_value = backend_result.native_fence_signal_value;
     result.native_fence_completed_value = backend_result.native_fence_completed_value;
     result.used_directstorage_resource_destination = backend_result.used_directstorage_resource_destination;
+    result.used_directstorage_caller_owned_rhi_resource_destination =
+        backend_result.used_directstorage_caller_owned_rhi_resource_destination;
     result.directstorage_resource_destination_request_count =
         backend_result.directstorage_resource_destination_request_count;
     result.directstorage_resource_destination_bytes = backend_result.directstorage_resource_destination_bytes;
@@ -550,6 +552,8 @@ poll_runtime_mavg_payload_native_io_status(const RuntimeMavgPayloadNativeIoStatu
     result.native_fence_signal_value = backend_result.native_fence_signal_value;
     result.native_fence_completed_value = backend_result.native_fence_completed_value;
     result.used_directstorage_resource_destination = backend_result.used_directstorage_resource_destination;
+    result.used_directstorage_caller_owned_rhi_resource_destination =
+        backend_result.used_directstorage_caller_owned_rhi_resource_destination;
     result.directstorage_resource_destination_request_count =
         backend_result.directstorage_resource_destination_request_count;
     result.directstorage_resource_destination_bytes = backend_result.directstorage_resource_destination_bytes;

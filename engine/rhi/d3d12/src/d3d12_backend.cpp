@@ -7,6 +7,8 @@
 #include "mirakana/rhi/indirect_draw.hpp"
 #include "mirakana/rhi/memory_diagnostics.hpp"
 
+#include "d3d12_directstorage_private.hpp"
+
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -1998,6 +2000,88 @@ DeviceContextStats DeviceContext::stats() const noexcept {
         return DeviceContextStats{};
     }
     return impl_->stats;
+}
+
+native::D3d12DirectStorageBufferDestination
+native::resolve_directstorage_device_context_buffer_destination(const DeviceContext& context,
+                                                                NativeResourceHandle resource_handle,
+                                                                BufferHandle buffer, const BufferDesc& desc) noexcept {
+    D3d12DirectStorageBufferDestination result{};
+    result.backend = BackendKind::d3d12;
+    result.buffer = buffer;
+    result.desc = desc;
+    result.size_bytes = desc.size_bytes;
+
+    if (!context.valid() || context.impl_ == nullptr || resource_handle.value == 0) {
+        result.status = D3d12DirectStorageBufferDestinationStatus::resource_unavailable;
+        result.diagnostic = "d3d12 directstorage buffer destination context or resource is unavailable";
+        return result;
+    }
+
+    if (!has_flag(desc.usage, BufferUsage::copy_destination) ||
+        committed_buffer_heap_type(desc.usage) != D3D12_HEAP_TYPE_DEFAULT) {
+        result.status = D3d12DirectStorageBufferDestinationStatus::incompatible_buffer;
+        result.diagnostic = "d3d12 directstorage buffer destination requires a default-heap copy destination buffer";
+        return result;
+    }
+
+    ID3D12Resource* resource = context.impl_->resource_record(resource_handle);
+    if (resource == nullptr) {
+        result.status = D3d12DirectStorageBufferDestinationStatus::resource_unavailable;
+        result.diagnostic = "d3d12 directstorage buffer destination resource is unavailable";
+        return result;
+    }
+
+    if (context.impl_->resource_is_placed(resource_handle)) {
+        result.status = D3d12DirectStorageBufferDestinationStatus::incompatible_buffer;
+        result.diagnostic = "d3d12 directstorage buffer destination does not accept placed-resource aliases";
+        return result;
+    }
+
+    const auto resource_desc = resource->GetDesc();
+    if (resource_desc.Dimension != D3D12_RESOURCE_DIMENSION_BUFFER || resource_desc.Width < desc.size_bytes) {
+        result.status = D3d12DirectStorageBufferDestinationStatus::incompatible_buffer;
+        result.diagnostic = "d3d12 directstorage destination must resolve to a buffer resource with enough bytes";
+        return result;
+    }
+
+    D3D12_HEAP_PROPERTIES heap_properties{};
+    D3D12_HEAP_FLAGS heap_flags{};
+    if (FAILED(resource->GetHeapProperties(&heap_properties, &heap_flags))) {
+        result.status = D3d12DirectStorageBufferDestinationStatus::resource_unavailable;
+        result.diagnostic = "d3d12 directstorage destination heap properties are unavailable";
+        return result;
+    }
+
+    result.default_heap_resource = heap_properties.Type == D3D12_HEAP_TYPE_DEFAULT;
+    result.copy_destination_compatible = result.default_heap_resource;
+    if (!result.default_heap_resource) {
+        result.status = D3d12DirectStorageBufferDestinationStatus::incompatible_buffer;
+        result.diagnostic = "d3d12 directstorage buffer destination resource is not on the default heap";
+        result.resource.Reset();
+        result.device.Reset();
+        return result;
+    }
+
+    if (FAILED(resource->GetDevice(IID_PPV_ARGS(result.device.ReleaseAndGetAddressOf())))) {
+        result.status = D3d12DirectStorageBufferDestinationStatus::resource_unavailable;
+        result.diagnostic = "d3d12 directstorage destination device is unavailable";
+        result.resource.Reset();
+        result.device.Reset();
+        return result;
+    }
+
+    if (FAILED(resource->QueryInterface(IID_PPV_ARGS(result.resource.ReleaseAndGetAddressOf())))) {
+        result.status = D3d12DirectStorageBufferDestinationStatus::resource_unavailable;
+        result.diagnostic = "d3d12 directstorage destination resource reference is unavailable";
+        result.resource.Reset();
+        result.device.Reset();
+        return result;
+    }
+
+    result.status = D3d12DirectStorageBufferDestinationStatus::ready;
+    result.diagnostic = "d3d12 directstorage buffer destination resolved";
+    return result;
 }
 
 NativeResourceHandle DeviceContext::create_committed_buffer(const BufferDesc& desc) {
@@ -7589,6 +7673,9 @@ class D3d12RhiDevice final : public IRhiDevice {
                handle.value <= descriptor_set_active_.size() && descriptor_set_active_.at(handle.value - 1U);
     }
 
+    friend native::D3d12DirectStorageBufferDestination
+    native::resolve_directstorage_buffer_destination(IRhiDevice& device, BufferHandle buffer) noexcept;
+
     [[nodiscard]] bool owns_buffer(BufferHandle handle) const noexcept {
         return handle.value > 0 && handle.value <= buffer_handles_.size() && handle.value <= buffer_active_.size() &&
                buffer_active_.at(handle.value - 1U);
@@ -7634,6 +7721,36 @@ class D3d12RhiDevice final : public IRhiDevice {
     [[nodiscard]] bool buffer_last_use_completed(BufferHandle handle) const noexcept {
         return handle.value > 0 && handle.value <= buffer_last_used_fences_.size() &&
                resource_last_use_completed(buffer_last_used_fences_.at(handle.value - 1U));
+    }
+
+    [[nodiscard]] native::D3d12DirectStorageBufferDestination
+    resolve_directstorage_buffer_destination(BufferHandle buffer) const noexcept {
+        native::D3d12DirectStorageBufferDestination result{};
+        result.backend = BackendKind::d3d12;
+        result.buffer = buffer;
+
+        if (!owns_buffer(buffer)) {
+            result.status = native::D3d12DirectStorageBufferDestinationStatus::invalid_buffer;
+            result.diagnostic = "d3d12 directstorage destination buffer is unknown";
+            return result;
+        }
+
+        const auto index = buffer.value - 1U;
+        result.desc = buffer_descs_.at(index);
+        result.size_bytes = result.desc.size_bytes;
+        if (!buffer_resident(buffer)) {
+            result.status = native::D3d12DirectStorageBufferDestinationStatus::resource_unavailable;
+            result.diagnostic = "d3d12 directstorage destination buffer is not resident";
+            return result;
+        }
+        if (!buffer_last_use_completed(buffer)) {
+            result.status = native::D3d12DirectStorageBufferDestinationStatus::resource_unavailable;
+            result.diagnostic = "d3d12 directstorage destination buffer is still in use by submitted GPU work";
+            return result;
+        }
+
+        return native::resolve_directstorage_device_context_buffer_destination(*context_, buffer_handles_.at(index),
+                                                                               buffer, result.desc);
     }
 
     [[nodiscard]] bool texture_last_use_completed(TextureHandle handle) const noexcept {
@@ -8127,6 +8244,24 @@ void D3d12RhiDevice::retire_deferred_committed_resources(
 
     (void)resource_lifetime_.retire_released_resources(completed_fences);
 }
+
+namespace native {
+
+D3d12DirectStorageBufferDestination resolve_directstorage_buffer_destination(IRhiDevice& device,
+                                                                             BufferHandle buffer) noexcept {
+    if (auto* d3d12_device = dynamic_cast<D3d12RhiDevice*>(&device); d3d12_device != nullptr) {
+        return d3d12_device->resolve_directstorage_buffer_destination(buffer);
+    }
+
+    D3d12DirectStorageBufferDestination result{};
+    result.backend = device.backend_kind();
+    result.buffer = buffer;
+    result.status = D3d12DirectStorageBufferDestinationStatus::unsupported_backend;
+    result.diagnostic = "directstorage d3d12 buffer destination requires a d3d12 rhi device";
+    return result;
+}
+
+} // namespace native
 
 D3d12RhiDevice::~D3d12RhiDevice() {
     if (!context_ || !context_->valid()) {

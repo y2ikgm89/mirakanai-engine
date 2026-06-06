@@ -1134,7 +1134,7 @@ if(BUILD_TESTING)
             tests/unit/d3d12_rhi_tests.cpp
         )
         target_link_libraries(MK_d3d12_rhi_tests PRIVATE MK_runtime_scene_rhi MK_runtime_rhi MK_rhi_d3d12 MK_renderer d3dcompiler)
-        target_include_directories(MK_d3d12_rhi_tests PRIVATE tests)
+        target_include_directories(MK_d3d12_rhi_tests PRIVATE tests engine/rhi/d3d12/src)
         MK_apply_common_target_options(MK_d3d12_rhi_tests)
         add_test(NAME MK_d3d12_rhi_tests COMMAND MK_d3d12_rhi_tests)
         set_tests_properties(MK_d3d12_rhi_tests PROPERTIES RUN_SERIAL TRUE)
@@ -1199,6 +1199,7 @@ if(BUILD_TESTING)
             )
             target_link_libraries(MK_runtime_host_win32_directstorage_sdk_tests PRIVATE
                 MK_runtime_host_win32_directstorage
+                MK_rhi_d3d12
                 Microsoft::DirectStorage
             )
             MK_apply_common_target_options(MK_runtime_host_win32_directstorage_sdk_tests)

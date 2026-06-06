@@ -27,12 +27,16 @@ if(MK_ENABLE_DIRECTSTORAGE_SDK)
         PUBLIC
             $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
             $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
+        PRIVATE
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../rhi/d3d12/src>
     )
 
     target_link_libraries(MK_runtime_host_win32_directstorage
         PUBLIC
             MK_runtime_host_win32
+            MK_rhi
         PRIVATE
+            MK_rhi_d3d12
             Microsoft::DirectStorage
             d3d12
             dxgi
