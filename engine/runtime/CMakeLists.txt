@@ -8,6 +8,7 @@ add_library(mirakana_runtime
     src/gameplay_runtime_scheduler.cpp
     src/gameplay_interaction.cpp
     src/inventory_items.cpp
+    src/mavg_lod_residency.cpp
     src/networking_foundation.cpp
     src/network_production_security.cpp
     src/network_transport.cpp
