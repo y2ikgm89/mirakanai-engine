@@ -8,7 +8,9 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <cstddef>
 #include <iomanip>
+#include <iterator>
 #include <sstream>
 #include <stdexcept>
 #include <string_view>
@@ -45,6 +47,10 @@ namespace {
 
 [[nodiscard]] std::string format_vec3(Vec3 value) {
     return format_float(value.x) + "," + format_float(value.y) + "," + format_float(value.z);
+}
+
+[[nodiscard]] std::string format_uint(std::size_t value) {
+    return std::to_string(value);
 }
 
 void add_row(EnvironmentAuthoringInspectorModel& model, std::string id, std::string section, std::string label,
@@ -195,6 +201,104 @@ void append_label(mirakana::ui::UiDocument& document, const mirakana::ui::Elemen
     return lower_ascii(normalize_path(path));
 }
 
+void add_command_diagnostic(EnvironmentAuthoringCommandPlan& plan, std::string code, std::string message) {
+    plan.diagnostics.push_back(EnvironmentAuthoringCommandDiagnosticRow{
+        .code = std::move(code),
+        .message = std::move(message),
+    });
+}
+
+void accept_command(EnvironmentAuthoringCommandPlan& plan) noexcept {
+    plan.status = EnvironmentAuthoringCommandStatus::accepted;
+}
+
+[[nodiscard]] std::size_t find_volume_index_by_id(const EnvironmentProfileDocumentV2& document,
+                                                  std::string_view volume_id) {
+    const auto it = std::ranges::find_if(
+        document.volumes, [volume_id](const EnvironmentVolumeDesc& volume) { return volume.id == volume_id; });
+    return it == document.volumes.end() ? document.volumes.size()
+                                        : static_cast<std::size_t>(std::distance(document.volumes.begin(), it));
+}
+
+[[nodiscard]] bool volume_id_exists(const EnvironmentProfileDocumentV2& document, std::string_view volume_id) {
+    return find_volume_index_by_id(document, volume_id) != document.volumes.size();
+}
+
+[[nodiscard]] std::string command_label(const EnvironmentAuthoringCommandRequest& request) {
+    if (!request.label.empty()) {
+        return request.label;
+    }
+    switch (request.kind) {
+    case EnvironmentAuthoringCommandKind::add_volume:
+        return "Add Environment Volume";
+    case EnvironmentAuthoringCommandKind::remove_volume:
+        return "Remove Environment Volume";
+    case EnvironmentAuthoringCommandKind::reorder_volume:
+        return "Reorder Environment Volume";
+    case EnvironmentAuthoringCommandKind::edit_weather_keyframe:
+        return "Edit Weather Keyframe";
+    case EnvironmentAuthoringCommandKind::select_quality_preset:
+        return "Select Environment Quality";
+    case EnvironmentAuthoringCommandKind::request_cubemap_capture:
+        return "Request Environment Cubemap Capture";
+    }
+    return "Edit Environment";
+}
+
+[[nodiscard]] std::string command_id(EnvironmentAuthoringCommandKind kind) {
+    switch (kind) {
+    case EnvironmentAuthoringCommandKind::add_volume:
+        return "environment.command.volume.add";
+    case EnvironmentAuthoringCommandKind::remove_volume:
+        return "environment.command.volume.remove";
+    case EnvironmentAuthoringCommandKind::reorder_volume:
+        return "environment.command.volume.reorder";
+    case EnvironmentAuthoringCommandKind::edit_weather_keyframe:
+        return "environment.command.weather_keyframe.edit";
+    case EnvironmentAuthoringCommandKind::select_quality_preset:
+        return "environment.command.quality_preset.select";
+    case EnvironmentAuthoringCommandKind::request_cubemap_capture:
+        return "environment.command.capture.cubemap.request";
+    }
+    return "environment.command.invalid";
+}
+
+void apply_command(EnvironmentProfileDocumentV2& document, const EnvironmentAuthoringCommandRequest& request) {
+    switch (request.kind) {
+    case EnvironmentAuthoringCommandKind::add_volume:
+        document.volumes.push_back(request.volume);
+        return;
+    case EnvironmentAuthoringCommandKind::remove_volume: {
+        const auto index = find_volume_index_by_id(document, request.volume_id);
+        if (index < document.volumes.size()) {
+            document.volumes.erase(document.volumes.begin() + static_cast<std::ptrdiff_t>(index));
+        }
+        return;
+    }
+    case EnvironmentAuthoringCommandKind::reorder_volume: {
+        const auto source = static_cast<std::size_t>(request.source_index);
+        const auto target = static_cast<std::size_t>(request.target_index);
+        if (source >= document.volumes.size() || target >= document.volumes.size() || source == target) {
+            return;
+        }
+        auto row = document.volumes[source];
+        document.volumes.erase(document.volumes.begin() + static_cast<std::ptrdiff_t>(source));
+        document.volumes.insert(document.volumes.begin() + static_cast<std::ptrdiff_t>(target), std::move(row));
+        return;
+    }
+    case EnvironmentAuthoringCommandKind::edit_weather_keyframe:
+        if (request.weather_keyframe_index < document.weather_timeline.size()) {
+            document.weather_timeline[request.weather_keyframe_index] = request.weather_keyframe;
+        }
+        return;
+    case EnvironmentAuthoringCommandKind::select_quality_preset:
+        document.quality_preset = request.quality_preset;
+        return;
+    case EnvironmentAuthoringCommandKind::request_cubemap_capture:
+        return;
+    }
+}
+
 } // namespace
 
 bool EnvironmentAuthoringValidationModel::succeeded() const noexcept {
@@ -203,6 +307,13 @@ bool EnvironmentAuthoringValidationModel::succeeded() const noexcept {
 
 EnvironmentAuthoringDocument EnvironmentAuthoringDocument::from_profile(EnvironmentProfileDesc profile,
                                                                         std::string path) {
+    EnvironmentProfileDocumentV2 document;
+    document.global_profile = std::move(profile);
+    return from_profile_document_v2(std::move(document), std::move(path));
+}
+
+EnvironmentAuthoringDocument
+EnvironmentAuthoringDocument::from_profile_document_v2(EnvironmentProfileDocumentV2 profile, std::string path) {
     EnvironmentAuthoringDocument document;
     document.profile_ = std::move(profile);
     document.path_ = std::move(path);
@@ -211,6 +322,10 @@ EnvironmentAuthoringDocument EnvironmentAuthoringDocument::from_profile(Environm
 }
 
 const EnvironmentProfileDesc& EnvironmentAuthoringDocument::profile() const noexcept {
+    return profile_.global_profile;
+}
+
+const EnvironmentProfileDocumentV2& EnvironmentAuthoringDocument::profile_document_v2() const noexcept {
     return profile_;
 }
 
@@ -240,6 +355,11 @@ void EnvironmentAuthoringDocument::restore(Snapshot snapshot) {
 }
 
 void EnvironmentAuthoringDocument::replace_profile(EnvironmentProfileDesc profile) {
+    profile_.global_profile = std::move(profile);
+    dirty_.mark_dirty();
+}
+
+void EnvironmentAuthoringDocument::replace_profile_document_v2(EnvironmentProfileDocumentV2 profile) {
     profile_ = std::move(profile);
     dirty_.mark_dirty();
 }
@@ -250,20 +370,6 @@ void EnvironmentAuthoringDocument::mark_saved() noexcept {
 
 void EnvironmentAuthoringDocument::set_path(std::string path) {
     path_ = std::move(path);
-}
-
-std::string_view environment_authoring_quality_tier_label(EnvironmentAuthoringQualityTier tier) noexcept {
-    switch (tier) {
-    case EnvironmentAuthoringQualityTier::low:
-        return "low";
-    case EnvironmentAuthoringQualityTier::medium:
-        return "medium";
-    case EnvironmentAuthoringQualityTier::high:
-        return "high";
-    case EnvironmentAuthoringQualityTier::cinematic:
-        return "cinematic";
-    }
-    return "high";
 }
 
 std::string_view environment_package_candidate_kind_label(EnvironmentPackageCandidateKind kind) noexcept {
@@ -296,13 +402,13 @@ environment_package_registration_draft_status_label(EnvironmentPackageRegistrati
 }
 
 EnvironmentAuthoringDocument load_environment_authoring_document(ITextStore& store, std::string_view path) {
-    return EnvironmentAuthoringDocument::from_profile(deserialize_environment_profile(store.read_text(path)),
-                                                      std::string{path});
+    return EnvironmentAuthoringDocument::from_profile_document_v2(
+        deserialize_environment_profile_v2(store.read_text(path)), std::string{path});
 }
 
 void save_environment_authoring_document(ITextStore& store, std::string_view path,
                                          EnvironmentAuthoringDocument& document) {
-    store.write_text(path, serialize_environment_profile(document.profile_));
+    store.write_text(path, serialize_environment_profile_v2(document.profile_));
     document.set_path(std::string{path});
     document.mark_saved();
 }
@@ -325,10 +431,131 @@ UndoableAction make_environment_authoring_profile_edit_action(EnvironmentAuthori
     };
 }
 
+EnvironmentAuthoringCommandPlan plan_environment_authoring_command(const EnvironmentAuthoringDocument& document,
+                                                                   const EnvironmentAuthoringCommandRequest& request) {
+    EnvironmentAuthoringCommandPlan plan{
+        .command_id = command_id(request.kind),
+        .label = command_label(request),
+    };
+
+    if (request.request_backend_execution || request.request_package_script_execution ||
+        request.request_native_handle_access) {
+        plan.status = EnvironmentAuthoringCommandStatus::rejected_unsafe_execution;
+        add_command_diagnostic(
+            plan, "unsafe_execution",
+            "environment authoring commands cannot execute backend work, package scripts, or native handle access");
+        return plan;
+    }
+
+    const auto& profile = document.profile_document_v2();
+    switch (request.kind) {
+    case EnvironmentAuthoringCommandKind::add_volume: {
+        plan.mutates_document = true;
+        if (request.volume.id.empty()) {
+            plan.status = EnvironmentAuthoringCommandStatus::rejected_invalid_request;
+            add_command_diagnostic(plan, "empty_volume_id", "environment volume id must not be empty");
+        } else if (volume_id_exists(profile, request.volume.id)) {
+            plan.status = EnvironmentAuthoringCommandStatus::rejected_invalid_request;
+            add_command_diagnostic(plan, "duplicate_volume_id", "environment volume id already exists");
+        } else {
+            auto copy = profile;
+            copy.volumes.push_back(request.volume);
+            const auto validation = validate_environment_profile_v2(copy);
+            if (validation.succeeded()) {
+                accept_command(plan);
+            } else {
+                plan.status = EnvironmentAuthoringCommandStatus::rejected_invalid_request;
+                add_command_diagnostic(plan, "invalid_profile_v2", "environment profile v2 validation failed");
+            }
+        }
+        return plan;
+    }
+    case EnvironmentAuthoringCommandKind::remove_volume:
+        plan.mutates_document = true;
+        if (!volume_id_exists(profile, request.volume_id)) {
+            plan.status = EnvironmentAuthoringCommandStatus::rejected_not_found;
+            add_command_diagnostic(plan, "volume_not_found", "environment volume id was not found");
+        } else {
+            accept_command(plan);
+        }
+        return plan;
+    case EnvironmentAuthoringCommandKind::reorder_volume:
+        plan.mutates_document = true;
+        if (request.source_index >= profile.volumes.size() || request.target_index >= profile.volumes.size()) {
+            plan.status = EnvironmentAuthoringCommandStatus::rejected_not_found;
+            add_command_diagnostic(plan, "volume_index_not_found", "environment volume reorder index was not found");
+        } else if (request.source_index == request.target_index) {
+            plan.mutates_document = false;
+            plan.status = EnvironmentAuthoringCommandStatus::rejected_invalid_request;
+            add_command_diagnostic(plan, "volume_reorder_noop", "environment volume reorder requires distinct indexes");
+        } else {
+            accept_command(plan);
+        }
+        return plan;
+    case EnvironmentAuthoringCommandKind::edit_weather_keyframe:
+        plan.mutates_document = true;
+        if (request.weather_keyframe_index >= profile.weather_timeline.size()) {
+            plan.status = EnvironmentAuthoringCommandStatus::rejected_not_found;
+            add_command_diagnostic(plan, "weather_keyframe_not_found", "weather keyframe index was not found");
+        } else {
+            auto copy = profile;
+            copy.weather_timeline[request.weather_keyframe_index] = request.weather_keyframe;
+            const auto validation = validate_environment_profile_v2(copy);
+            if (validation.succeeded()) {
+                accept_command(plan);
+            } else {
+                plan.status = EnvironmentAuthoringCommandStatus::rejected_invalid_request;
+                add_command_diagnostic(plan, "invalid_weather_keyframe", "weather keyframe validation failed");
+            }
+        }
+        return plan;
+    case EnvironmentAuthoringCommandKind::select_quality_preset: {
+        plan.mutates_document = true;
+        auto copy = profile;
+        copy.quality_preset = request.quality_preset;
+        const auto validation = validate_environment_profile_v2(copy);
+        if (validation.succeeded()) {
+            accept_command(plan);
+        } else {
+            plan.status = EnvironmentAuthoringCommandStatus::rejected_invalid_request;
+            add_command_diagnostic(plan, "invalid_quality_preset", "environment quality preset validation failed");
+        }
+        return plan;
+    }
+    case EnvironmentAuthoringCommandKind::request_cubemap_capture:
+        plan.requests_cubemap_capture = true;
+        accept_command(plan);
+        return plan;
+    }
+
+    return plan;
+}
+
+UndoableAction make_environment_authoring_command_action(EnvironmentAuthoringDocument& document,
+                                                         const EnvironmentAuthoringCommandRequest& request) {
+    const auto plan = plan_environment_authoring_command(document, request);
+    if (plan.status != EnvironmentAuthoringCommandStatus::accepted || !plan.mutates_document) {
+        return empty_action();
+    }
+
+    const auto before = document.snapshot();
+    auto next_profile = before.profile;
+    apply_command(next_profile, request);
+    EnvironmentAuthoringDocument after_document = document;
+    after_document.replace_profile_document_v2(std::move(next_profile));
+    const auto after = after_document.snapshot();
+
+    return UndoableAction{
+        .label = plan.label,
+        .redo = [&document, after]() { document.restore(after); },
+        .undo = [&document, before]() { document.restore(before); },
+    };
+}
+
 EnvironmentAuthoringValidationModel
 make_environment_authoring_validation_model(const EnvironmentAuthoringDocument& document) {
     EnvironmentAuthoringValidationModel model{.status = EnvironmentAuthoringStatus::ready};
-    add_diagnostics(model, validate_environment_profile(document.profile()));
+    add_diagnostics(model, validate_environment_profile_v2(document.profile_document_v2()));
     if (!model.succeeded()) {
         model.status = EnvironmentAuthoringStatus::blocked;
     }
@@ -379,7 +606,42 @@ make_environment_authoring_inspector_model(const EnvironmentAuthoringInspectorDe
     add_row(model, "environment.weather.preset", "Weather", "Weather Preset",
             std::string{environment_weather_kind_name(profile.weather)});
     add_row(model, "environment.quality.tier", "Quality", "Quality Tier",
-            std::string{environment_authoring_quality_tier_label(desc.quality_tier)});
+            std::string{environment_quality_preset_name(desc.document.profile_document_v2().quality_preset)});
+
+    const auto& profile_v2 = desc.document.profile_document_v2();
+    add_row(model, "environment.profile_v2.volume_count", "Profile V2", "Volume Count",
+            format_uint(profile_v2.volumes.size()), false);
+    add_row(model, "environment.profile_v2.weather_keyframes", "Profile V2", "Weather Keyframes",
+            format_uint(profile_v2.weather_timeline.size()), false);
+    for (std::size_t index = 0U; index < profile_v2.volumes.size(); ++index) {
+        const auto& volume = profile_v2.volumes[index];
+        const auto prefix = std::string{"environment.volume."} + std::to_string(index) + ".";
+        add_row(model, prefix + "id", "Volumes", "Volume " + std::to_string(index) + " Id", volume.id);
+        add_row(model, prefix + "shape", "Volumes", "Volume " + std::to_string(index) + " Shape",
+                std::string{environment_volume_shape_name(volume.shape)});
+        add_row(model, prefix + "priority", "Volumes", "Volume " + std::to_string(index) + " Priority",
+                std::to_string(volume.priority));
+        add_row(model, prefix + "blend_weight", "Volumes", "Volume " + std::to_string(index) + " Blend Weight",
+                format_float(volume.blend_weight));
+        add_row(model, prefix + "fade_distance_m", "Volumes", "Volume " + std::to_string(index) + " Fade",
+                format_float(volume.fade_distance_m));
+    }
+    for (std::size_t index = 0U; index < profile_v2.weather_timeline.size(); ++index) {
+        const auto& keyframe = profile_v2.weather_timeline[index];
+        const auto prefix = std::string{"environment.weather_keyframe."} + std::to_string(index) + ".";
+        add_row(model, prefix + "time_of_day_hours", "Weather Timeline",
+                "Weather Keyframe " + std::to_string(index) + " Time", format_float(keyframe.time_of_day_hours));
+        add_row(model, prefix + "weather", "Weather Timeline", "Weather Keyframe " + std::to_string(index) + " Weather",
+                std::string{environment_weather_kind_name(keyframe.weather)});
+        add_row(model, prefix + "precipitation", "Weather Timeline",
+                "Weather Keyframe " + std::to_string(index) + " Precipitation",
+                std::string{environment_precipitation_kind_name(keyframe.precipitation)});
+        add_row(model, prefix + "quality_preset", "Weather Timeline",
+                "Weather Keyframe " + std::to_string(index) + " Quality",
+                std::string{environment_quality_preset_name(keyframe.quality_preset)});
+    }
+    add_row(model, "environment.capture.cubemap.request_status", "Capture", "Cubemap Capture Request", "available",
+            false);
     add_default_readiness_rows(model);
 
     return model;

@@ -513,13 +513,23 @@ Expected: Metal readiness is promoted only by Apple-host evidence.
 
 **Files:** `editor/core/include/mirakana/editor/environment_authoring.hpp`, `editor/core/src/environment_authoring.cpp`, `tests/unit/editor_environment_tests.cpp`, visible `MK_editor` Inspector/Project Settings surfaces after core rows pass.
 
-- [ ] Add RED editor-core tests for profile v2 rows, volume stack rows, weather timeline rows, quality preset rows, backend readiness rows, and aggregate non-claim rows.
-- [ ] Add explicit reviewed commands for add/remove/reorder volume rows, edit weather keyframes, select quality preset, and request cubemap capture.
-- [ ] Keep package-script execution, validation recipe execution, backend execution, and native handles outside editor core.
-- [ ] Surface visible controls through first-party `MK_editor` only after editor-core model tests pass.
-- [ ] Keep `editor_shell_imgui=0` and `editor_shell_sdl3=0` evidence intact.
+- [x] Add RED editor-core tests for profile v2 rows, volume stack rows, weather timeline rows, quality preset rows, backend readiness rows, and aggregate non-claim rows.
+- [x] Add explicit reviewed commands for add/remove/reorder volume rows, edit weather keyframes, select quality preset, and request cubemap capture.
+- [x] Keep package-script execution, validation recipe execution, backend execution, and native handles outside editor core.
+- [x] Surface visible controls through first-party `MK_editor` only after editor-core model tests pass.
+- [x] Keep `editor_shell_imgui=0` and `editor_shell_sdl3=0` evidence intact.
 
 Expected: editor authoring is usable and AI-operable without reintroducing middleware or backend handles.
+
+Phase 7 focused validation evidence on 2026-06-06:
+
+- `tools/check-format.ps1`: pass.
+- `tools/check-public-api-boundaries.ps1`: pass.
+- `tools/cmake.ps1 --build --preset dev --target MK_editor_environment_tests`: pass.
+- `tools/check-tidy.ps1 -Files editor/core/src/environment_authoring.cpp,editor/src/native_editor_app.cpp,tests/unit/editor_environment_tests.cpp`: pass.
+- `tools/ctest.ps1 --preset dev --output-on-failure -R "MK_editor_environment_tests"`: pass.
+
+Phase 7 result: `EnvironmentAuthoringDocument` now loads/saves clean-break `GameEngine.EnvironmentProfile.v2`, exposes retained rows `environment.profile_v2.volume_count`, `environment.profile_v2.weather_keyframes`, `environment.volume.<index>.id`, `environment.volume.<index>.shape`, `environment.volume.<index>.priority`, `environment.volume.<index>.blend_weight`, `environment.volume.<index>.fade_distance_m`, `environment.weather_keyframe.<index>.time_of_day_hours`, `environment.weather_keyframe.<index>.weather`, `environment.weather_keyframe.<index>.precipitation`, `environment.weather_keyframe.<index>.quality_preset`, `environment.quality.tier`, `environment.capture.cubemap.request_status`, and retained readiness/non-claim rows through first-party Inspector projection, and adds reviewed commands `environment.command.volume.add`, `environment.command.volume.remove`, `environment.command.volume.reorder`, `environment.command.weather_keyframe.edit`, `environment.command.quality_preset.select`, and `environment.command.capture.cubemap.request`. Mutating commands are undoable editor-core document changes only; cubemap capture is a reviewed request row only. Editor core still reports zero backend execution, package-script execution, validation-recipe execution, public native-handle exposure, Dear ImGui, SDL3, backend parity, and broad `environment_ready` claims.
 
 ## Phase 8: Environment Quality Budgets And Profiling Evidence
 
