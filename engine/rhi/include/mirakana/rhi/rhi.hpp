@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <memory>
 #include <span>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -416,6 +417,80 @@ struct TransientTextureAliasGroup {
 
 enum class TransientResourceKind : std::uint8_t { buffer = 0, texture };
 
+enum class RhiResidencyActionKind : std::uint8_t { make_resident = 0, evict };
+
+enum class RhiResidencyResourceKind : std::uint8_t { buffer = 0, texture };
+
+enum class RhiResidencyActionStatus : std::uint8_t {
+    succeeded = 0,
+    unsupported_backend,
+    invalid_request,
+    invalid_resource,
+    native_call_failed
+};
+
+struct RhiResidencyResourceRef {
+    RhiResidencyResourceKind kind{RhiResidencyResourceKind::buffer};
+    BufferHandle buffer;
+    TextureHandle texture;
+};
+
+struct RhiResidencyActionDesc {
+    RhiResidencyActionKind action{RhiResidencyActionKind::make_resident};
+    std::span<const RhiResidencyResourceRef> resources;
+};
+
+struct RhiResidencyActionResult {
+    RhiResidencyActionStatus status{RhiResidencyActionStatus::invalid_request};
+    BackendKind backend{BackendKind::null};
+    RhiResidencyActionKind action{RhiResidencyActionKind::make_resident};
+    std::uint32_t requested_resource_count{0};
+    std::uint32_t acted_resource_count{0};
+    std::uint32_t invalid_resource_count{0};
+    bool invoked_native_make_resident{false};
+    bool invoked_native_evict{false};
+    bool exposed_native_handles{false};
+    bool enforced_allocator_budget{false};
+    std::uint32_t native_error_code{0};
+    std::string diagnostic;
+};
+
+[[nodiscard]] constexpr std::string_view rhi_residency_action_kind_id(RhiResidencyActionKind kind) noexcept {
+    switch (kind) {
+    case RhiResidencyActionKind::make_resident:
+        return "make_resident";
+    case RhiResidencyActionKind::evict:
+        return "evict";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] constexpr std::string_view rhi_residency_resource_kind_id(RhiResidencyResourceKind kind) noexcept {
+    switch (kind) {
+    case RhiResidencyResourceKind::buffer:
+        return "buffer";
+    case RhiResidencyResourceKind::texture:
+        return "texture";
+    }
+    return "unknown";
+}
+
+[[nodiscard]] constexpr std::string_view rhi_residency_action_status_id(RhiResidencyActionStatus status) noexcept {
+    switch (status) {
+    case RhiResidencyActionStatus::succeeded:
+        return "succeeded";
+    case RhiResidencyActionStatus::unsupported_backend:
+        return "unsupported_backend";
+    case RhiResidencyActionStatus::invalid_request:
+        return "invalid_request";
+    case RhiResidencyActionStatus::invalid_resource:
+        return "invalid_resource";
+    case RhiResidencyActionStatus::native_call_failed:
+        return "native_call_failed";
+    }
+    return "unknown";
+}
+
 struct RhiStats {
     std::uint64_t buffers_created{0};
     std::uint64_t textures_created{0};
@@ -630,6 +705,18 @@ class IRhiDevice {
     /// resource byte estimates). Callers must not treat this as an allocator contract or eviction signal.
     [[nodiscard]] virtual RhiDeviceMemoryDiagnostics memory_diagnostics() const = 0;
 
+    /// Executes a reviewed residency action over first-party RHI handles. Backends that cannot prove a native action
+    /// return `unsupported_backend`; implementations must not expose native objects or enforce allocator budgets here.
+    [[nodiscard]] virtual RhiResidencyActionResult execute_residency_action(const RhiResidencyActionDesc& desc) {
+        RhiResidencyActionResult result{};
+        result.status = RhiResidencyActionStatus::unsupported_backend;
+        result.backend = backend_kind();
+        result.action = desc.action;
+        result.requested_resource_count = static_cast<std::uint32_t>(desc.resources.size());
+        result.diagnostic = "rhi residency action is unsupported by this backend";
+        return result;
+    }
+
     /// Optional per-device lifetime ledger (`NullRhiDevice`, D3D12, Vulkan). Other backends return `nullptr`.
     [[nodiscard]] virtual const RhiResourceLifetimeRegistry* resource_lifetime_registry() const noexcept {
         return nullptr;
@@ -676,6 +763,7 @@ class NullRhiDevice final : public IRhiDevice {
     [[nodiscard]] RhiStats stats() const noexcept override;
     [[nodiscard]] std::uint64_t gpu_timestamp_ticks_per_second() const noexcept override;
     [[nodiscard]] RhiDeviceMemoryDiagnostics memory_diagnostics() const override;
+    [[nodiscard]] RhiResidencyActionResult execute_residency_action(const RhiResidencyActionDesc& desc) override;
     [[nodiscard]] FenceValue completed_fence() const noexcept;
 
     [[nodiscard]] BufferHandle create_buffer(const BufferDesc& desc) override;

@@ -118,6 +118,81 @@ MK_TEST("null rhi creates buffers and textures with stable handles") {
     MK_REQUIRE(device.stats().textures_created == 1);
 }
 
+MK_TEST("null rhi residency action validates buffer and texture rows") {
+    mirakana::rhi::NullRhiDevice device;
+
+    const auto vertex_buffer = device.create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = 1024,
+        .usage = mirakana::rhi::BufferUsage::vertex | mirakana::rhi::BufferUsage::copy_destination,
+    });
+    const auto color_texture = device.create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 16, .height = 16, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target | mirakana::rhi::TextureUsage::shader_resource,
+    });
+    const std::array rows{
+        mirakana::rhi::RhiResidencyResourceRef{
+            .kind = mirakana::rhi::RhiResidencyResourceKind::buffer,
+            .buffer = vertex_buffer,
+        },
+        mirakana::rhi::RhiResidencyResourceRef{
+            .kind = mirakana::rhi::RhiResidencyResourceKind::texture,
+            .texture = color_texture,
+        },
+    };
+
+    const auto result = device.execute_residency_action(mirakana::rhi::RhiResidencyActionDesc{
+        .action = mirakana::rhi::RhiResidencyActionKind::make_resident,
+        .resources = rows,
+    });
+
+    MK_REQUIRE(result.status == mirakana::rhi::RhiResidencyActionStatus::succeeded);
+    MK_REQUIRE(result.backend == mirakana::rhi::BackendKind::null);
+    MK_REQUIRE(result.action == mirakana::rhi::RhiResidencyActionKind::make_resident);
+    MK_REQUIRE(result.requested_resource_count == 2U);
+    MK_REQUIRE(result.acted_resource_count == 2U);
+    MK_REQUIRE(result.invalid_resource_count == 0U);
+    MK_REQUIRE(!result.invoked_native_make_resident);
+    MK_REQUIRE(!result.invoked_native_evict);
+    MK_REQUIRE(!result.exposed_native_handles);
+    MK_REQUIRE(!result.enforced_allocator_budget);
+}
+
+MK_TEST("null rhi residency action rejects invalid resource rows before action") {
+    mirakana::rhi::NullRhiDevice device;
+
+    const auto vertex_buffer = device.create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = 1024,
+        .usage = mirakana::rhi::BufferUsage::vertex,
+    });
+    const std::array rows{
+        mirakana::rhi::RhiResidencyResourceRef{
+            .kind = mirakana::rhi::RhiResidencyResourceKind::buffer,
+            .buffer = vertex_buffer,
+        },
+        mirakana::rhi::RhiResidencyResourceRef{
+            .kind = mirakana::rhi::RhiResidencyResourceKind::texture,
+            .texture = mirakana::rhi::TextureHandle{999},
+        },
+    };
+
+    const auto result = device.execute_residency_action(mirakana::rhi::RhiResidencyActionDesc{
+        .action = mirakana::rhi::RhiResidencyActionKind::evict,
+        .resources = rows,
+    });
+
+    MK_REQUIRE(result.status == mirakana::rhi::RhiResidencyActionStatus::invalid_resource);
+    MK_REQUIRE(result.backend == mirakana::rhi::BackendKind::null);
+    MK_REQUIRE(result.action == mirakana::rhi::RhiResidencyActionKind::evict);
+    MK_REQUIRE(result.requested_resource_count == 2U);
+    MK_REQUIRE(result.acted_resource_count == 0U);
+    MK_REQUIRE(result.invalid_resource_count == 1U);
+    MK_REQUIRE(!result.invoked_native_make_resident);
+    MK_REQUIRE(!result.invoked_native_evict);
+    MK_REQUIRE(!result.exposed_native_handles);
+    MK_REQUIRE(!result.enforced_allocator_budget);
+}
+
 MK_TEST("null rhi mirrors buffer and texture teardown into resource lifetime registry") {
     mirakana::rhi::NullRhiDevice device;
 

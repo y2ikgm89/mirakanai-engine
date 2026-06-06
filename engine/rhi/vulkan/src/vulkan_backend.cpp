@@ -3563,6 +3563,12 @@ class VulkanRhiDevice final : public IRhiDevice {
         return diagnostics;
     }
 
+    [[nodiscard]] RhiResidencyActionResult execute_residency_action(const RhiResidencyActionDesc& desc) override {
+        auto result = IRhiDevice::execute_residency_action(desc);
+        result.diagnostic = "vulkan rhi residency action is unsupported until backend-local parity lands";
+        return result;
+    }
+
     [[nodiscard]] const VulkanRuntimeDevice& vulkan_runtime_device() const noexcept {
         return device_;
     }

@@ -118,6 +118,15 @@ void validate_swapchain_extent(Extent2D extent) {
     return false;
 }
 
+[[nodiscard]] bool valid_residency_action_kind(RhiResidencyActionKind action) noexcept {
+    switch (action) {
+    case RhiResidencyActionKind::make_resident:
+    case RhiResidencyActionKind::evict:
+        return true;
+    }
+    return false;
+}
+
 [[nodiscard]] std::size_t queue_index(QueueKind queue) noexcept {
     switch (queue) {
     case QueueKind::graphics:
@@ -1339,6 +1348,53 @@ RhiDeviceMemoryDiagnostics NullRhiDevice::memory_diagnostics() const {
     diagnostics.committed_resources_byte_estimate = total;
     diagnostics.committed_resources_byte_estimate_available = true;
     return diagnostics;
+}
+
+RhiResidencyActionResult NullRhiDevice::execute_residency_action(const RhiResidencyActionDesc& desc) {
+    RhiResidencyActionResult result{};
+    result.backend = BackendKind::null;
+    result.action = desc.action;
+    result.requested_resource_count = static_cast<std::uint32_t>(desc.resources.size());
+
+    if (!valid_residency_action_kind(desc.action)) {
+        result.status = RhiResidencyActionStatus::invalid_request;
+        result.diagnostic = "null rhi residency action kind is invalid";
+        return result;
+    }
+    if (desc.resources.empty()) {
+        result.status = RhiResidencyActionStatus::invalid_request;
+        result.diagnostic = "null rhi residency action requires at least one resource";
+        return result;
+    }
+
+    for (const auto& resource : desc.resources) {
+        switch (resource.kind) {
+        case RhiResidencyResourceKind::buffer:
+            if (resource.texture.value != 0 || !owns_buffer(resource.buffer)) {
+                ++result.invalid_resource_count;
+            }
+            break;
+        case RhiResidencyResourceKind::texture:
+            if (resource.buffer.value != 0 || !owns_texture(resource.texture)) {
+                ++result.invalid_resource_count;
+            }
+            break;
+        default:
+            ++result.invalid_resource_count;
+            break;
+        }
+    }
+
+    if (result.invalid_resource_count > 0) {
+        result.status = RhiResidencyActionStatus::invalid_resource;
+        result.diagnostic = "null rhi residency action contains invalid resource rows";
+        return result;
+    }
+
+    result.status = RhiResidencyActionStatus::succeeded;
+    result.acted_resource_count = result.requested_resource_count;
+    result.diagnostic = "null rhi residency action validated";
+    return result;
 }
 
 FenceValue NullRhiDevice::completed_fence() const noexcept {

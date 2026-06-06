@@ -1077,6 +1077,15 @@ struct D3d12LinearTextureFootprint {
     return false;
 }
 
+[[nodiscard]] bool valid_residency_action_kind(RhiResidencyActionKind action) noexcept {
+    switch (action) {
+    case RhiResidencyActionKind::make_resident:
+    case RhiResidencyActionKind::evict:
+        return true;
+    }
+    return false;
+}
+
 [[nodiscard]] RhiResourceLifetimeQueue lifetime_queue(QueueKind queue) noexcept {
     switch (queue) {
     case QueueKind::graphics:
@@ -4445,6 +4454,73 @@ RhiDeviceMemoryDiagnostics DeviceContext::memory_diagnostics() const {
     return diagnostics;
 }
 
+RhiResidencyActionResult DeviceContext::execute_residency_action(RhiResidencyActionKind action,
+                                                                 std::span<const NativeResourceHandle> resources) {
+    RhiResidencyActionResult result{};
+    result.backend = BackendKind::d3d12;
+    result.action = action;
+    result.requested_resource_count = static_cast<std::uint32_t>(resources.size());
+
+    if (!valid() || !valid_residency_action_kind(action) || resources.empty() ||
+        resources.size() > static_cast<std::size_t>((std::numeric_limits<UINT>::max)())) {
+        result.status = RhiResidencyActionStatus::invalid_request;
+        result.diagnostic = "d3d12 residency action request is invalid";
+        return result;
+    }
+
+    std::vector<Microsoft::WRL::ComPtr<ID3D12Pageable>> pageables;
+    std::vector<ID3D12Pageable*> pageable_pointers;
+    pageables.reserve(resources.size());
+    pageable_pointers.reserve(resources.size());
+
+    for (const auto resource_handle : resources) {
+        ID3D12Resource* resource = impl_->resource_record(resource_handle);
+        if (resource == nullptr || impl_->resource_is_placed(resource_handle)) {
+            ++result.invalid_resource_count;
+            continue;
+        }
+
+        Microsoft::WRL::ComPtr<ID3D12Pageable> pageable;
+        if (FAILED(resource->QueryInterface(IID_PPV_ARGS(&pageable)))) {
+            ++result.invalid_resource_count;
+            continue;
+        }
+        pageable_pointers.push_back(pageable.Get());
+        pageables.push_back(std::move(pageable));
+    }
+
+    if (result.invalid_resource_count > 0) {
+        result.status = RhiResidencyActionStatus::invalid_resource;
+        result.diagnostic = "d3d12 residency action contains invalid resource rows";
+        return result;
+    }
+
+    HRESULT native_result = S_OK;
+    switch (action) {
+    case RhiResidencyActionKind::make_resident:
+        result.invoked_native_make_resident = true;
+        native_result =
+            impl_->device->MakeResident(static_cast<UINT>(pageable_pointers.size()), pageable_pointers.data());
+        break;
+    case RhiResidencyActionKind::evict:
+        result.invoked_native_evict = true;
+        native_result = impl_->device->Evict(static_cast<UINT>(pageable_pointers.size()), pageable_pointers.data());
+        break;
+    }
+
+    if (FAILED(native_result)) {
+        result.status = RhiResidencyActionStatus::native_call_failed;
+        result.native_error_code = static_cast<std::uint32_t>(native_result);
+        result.diagnostic = "d3d12 native residency action failed";
+        return result;
+    }
+
+    result.status = RhiResidencyActionStatus::succeeded;
+    result.acted_resource_count = result.requested_resource_count;
+    result.diagnostic = "d3d12 native residency action executed";
+    return result;
+}
+
 FenceValue DeviceContext::completed_fence() const noexcept {
     if (!valid() || impl_->last_submitted_fence.value == 0) {
         return FenceValue{};
@@ -6557,6 +6633,51 @@ class D3d12RhiDevice final : public IRhiDevice {
             return RhiDeviceMemoryDiagnostics{};
         }
         return context_->memory_diagnostics();
+    }
+
+    [[nodiscard]] RhiResidencyActionResult execute_residency_action(const RhiResidencyActionDesc& desc) override {
+        RhiResidencyActionResult result{};
+        result.backend = BackendKind::d3d12;
+        result.action = desc.action;
+        result.requested_resource_count = static_cast<std::uint32_t>(desc.resources.size());
+
+        if (!context_ || !valid_residency_action_kind(desc.action) || desc.resources.empty()) {
+            result.status = RhiResidencyActionStatus::invalid_request;
+            result.diagnostic = "d3d12 rhi residency action request is invalid";
+            return result;
+        }
+
+        std::vector<NativeResourceHandle> native_resources;
+        native_resources.reserve(desc.resources.size());
+        for (const auto& resource : desc.resources) {
+            switch (resource.kind) {
+            case RhiResidencyResourceKind::buffer:
+                if (resource.texture.value != 0 || !owns_buffer(resource.buffer)) {
+                    ++result.invalid_resource_count;
+                    break;
+                }
+                native_resources.push_back(buffer_handles_.at(resource.buffer.value - 1U));
+                break;
+            case RhiResidencyResourceKind::texture:
+                if (resource.buffer.value != 0 || !owns_texture(resource.texture)) {
+                    ++result.invalid_resource_count;
+                    break;
+                }
+                native_resources.push_back(texture_handles_.at(resource.texture.value - 1U));
+                break;
+            default:
+                ++result.invalid_resource_count;
+                break;
+            }
+        }
+
+        if (result.invalid_resource_count > 0) {
+            result.status = RhiResidencyActionStatus::invalid_resource;
+            result.diagnostic = "d3d12 rhi residency action contains invalid resource rows";
+            return result;
+        }
+
+        return context_->execute_residency_action(desc.action, native_resources);
     }
 
     [[nodiscard]] const RhiResourceLifetimeRegistry* resource_lifetime_registry() const noexcept override {

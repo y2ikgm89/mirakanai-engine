@@ -562,6 +562,8 @@ class DeviceContext final {
     [[nodiscard]] std::uint32_t gpu_debug_scope_depth(NativeCommandListHandle handle) noexcept;
     [[nodiscard]] std::uint64_t gpu_timestamp_ticks_per_second() const noexcept;
     [[nodiscard]] RhiDeviceMemoryDiagnostics memory_diagnostics() const;
+    [[nodiscard]] RhiResidencyActionResult execute_residency_action(RhiResidencyActionKind action,
+                                                                    std::span<const NativeResourceHandle> resources);
 
   private:
     struct Impl;
