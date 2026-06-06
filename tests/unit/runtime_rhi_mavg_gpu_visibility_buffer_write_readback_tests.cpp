@@ -116,7 +116,7 @@ has_diagnostic(const mirakana::runtime_rhi::RuntimeMavgGpuVisibilityBufferWriteR
 
 class FaultingRhiDevice final : public mirakana::rhi::IRhiDevice {
   public:
-    enum class Mode { submit_fails, readback_fails, readback_mismatch };
+    enum class Mode : std::uint8_t { submit_fails, readback_fails, readback_mismatch };
 
     explicit FaultingRhiDevice(Mode mode) : mode_{mode} {}
 
