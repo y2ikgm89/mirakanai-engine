@@ -758,6 +758,15 @@ if(BUILD_TESTING)
     MK_apply_common_target_options(MK_runtime_rhi_mavg_residency_tests)
     add_test(NAME MK_runtime_rhi_mavg_residency_tests COMMAND MK_runtime_rhi_mavg_residency_tests)
 
+    add_executable(MK_runtime_rhi_mavg_page_gpu_buffer_destination_tests
+        tests/unit/runtime_rhi_mavg_page_gpu_buffer_destination_tests.cpp
+    )
+    target_link_libraries(MK_runtime_rhi_mavg_page_gpu_buffer_destination_tests PRIVATE MK_runtime_rhi)
+    target_include_directories(MK_runtime_rhi_mavg_page_gpu_buffer_destination_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_runtime_rhi_mavg_page_gpu_buffer_destination_tests)
+    add_test(NAME MK_runtime_rhi_mavg_page_gpu_buffer_destination_tests
+        COMMAND MK_runtime_rhi_mavg_page_gpu_buffer_destination_tests)
+
     add_executable(MK_runtime_scene_rhi_tests
         tests/unit/runtime_scene_rhi_tests.cpp
     )
