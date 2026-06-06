@@ -4,9 +4,9 @@
 
 **Plan ID:** `mavg-asset-graph-v1`
 
-**Status:** Active.
+**Status:** Completed.
 
-**Execution State:** Implementation, docs, manifest, static contract sync, focused validation, full validation, whitespace validation, publication preflight, commit, push, and existing PR update are complete. Hosted review and merge remain pending.
+**Execution State:** Implementation, docs, manifest, static contract sync, focused validation, full validation, whitespace validation, publication preflight, hosted review, main-targeted PR publication, and merge are complete. PR #516 merged through merge commit `9c3b6ad51caa48f4d872cef6e046de5045ab3c09`; old stacked PR #431 is superseded by the main-targeted publication route.
 
 **Goal:** Implement the first MAVG code slice: deterministic clustered asset graph validation and deterministic first-party cook/package planning, without renderer, streaming, deformation, ray tracing, or benchmark superiority claims.
 
@@ -28,11 +28,11 @@ Phase 0 (`mavg-research-legal-benchmark-baseline-v1`) completed the clean-room/l
   `MK_mavg_cluster_graph_tests`, `MK_tools_mavg_cluster_cook_tests`, and focused CTest regex `"MK_mavg_cluster_graph_tests|MK_tools_mavg_cluster_cook_tests"`.
 - Agent-surface drift checks passed after docs/manifest/static-contract sync:
   `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, and `tools/check-agents.ps1`.
-- Full `tools/validate.ps1` passed after the formatting and plan-status fixes; 101/101 CTest targets passed inside the validation run.
+- Full `tools/validate.ps1` passed after the formatting, plan-status fixes, and `origin/main` merge; 103/103 CTest targets passed inside the validation run.
 - `git diff --check` passed.
 - `tools/check-publication-preflight.ps1` passed for branch `codex/mavg-asset-graph-v1`.
 - Commit `f6279db9` (`feat: add MAVG asset graph foundation`) was pushed to `origin/codex/mavg-asset-graph-v1`.
-- Draft PR #431 now points at head `f6279db9679db1b393ab88c750389e1c40812c10`.
+- Main-targeted draft PR #516 was created from `codex/mavg-asset-graph-main-v1`, converted ready through `tools/ready-task-pr.ps1`, passed hosted `PR Gate`, `Windows MSVC`, Linux, macOS Metal CMake, iOS Simulator smoke, static-analysis, and CodeQL checks, then merged as `9c3b6ad51caa48f4d872cef6e046de5045ab3c09`.
 
 ## Constraints
 
