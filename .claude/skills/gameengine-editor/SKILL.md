@@ -45,6 +45,18 @@ Use this skill for editor/core models, native visible editor shell boundaries, p
   parity, broader material-preview GPU parity, cross-platform accessibility parity, and cross-platform font adapters remain future phases.
 - When selecting a future editor text/accessibility milestone, start with first-party editable-rich-text core and AI-operable text commands before GPU upload, custom IME candidate UI, or full UIA parity. Own the editor document, command, semantic, and adapter contracts in `MK_editor_core`; keep Unicode shaping, bidi, font fallback/rasterization, TSF/IME protocol, accessibility bridges, and platform rendering details behind official SDK or audited-dependency adapters.
 - Cross-platform editor adapter work is future-gated with `editor.cross_platform.adapter.*` rows: macOS Core Text/InputMethodKit/NSAccessibility, Linux AT-SPI/IBus/Fcitx, Android InputMethodService/accessibility, iOS UITextInput/UIAccessibility, and HarfBuzz/FreeType/ICU-class adapters must not be claimed from Windows DirectWrite/TSF/UIA evidence; generated games and runtime UI stay on public `mirakana::ui`, and new text/font/image dependencies require `license-audit`, `vcpkg.json`, `docs/dependencies.md`, and `THIRD_PARTY_NOTICES.md`.
+- Environment authoring uses clean-break `GameEngine.EnvironmentProfile.v2` editor documents. Retained rows include
+  `environment.profile_v2.volume_count`, `environment.profile_v2.weather_keyframes`, `environment.volume.<index>.id`,
+  `environment.volume.<index>.shape`, `environment.volume.<index>.priority`, `environment.volume.<index>.blend_weight`,
+  `environment.volume.<index>.fade_distance_m`, `environment.weather_keyframe.<index>.time_of_day_hours`,
+  `environment.weather_keyframe.<index>.weather`, `environment.weather_keyframe.<index>.precipitation`,
+  `environment.weather_keyframe.<index>.quality_preset`, `environment.quality.tier`, `environment.capture.cubemap.request_status`,
+  `environment.readiness.physical_sky.package_status`, `environment.readiness.backend.metal_status`, and
+  `environment.readiness.unsupported.environment_ready` from `make_environment_authoring_inspector_model`; reviewed command ids
+  `environment.command.volume.add`, `environment.command.volume.remove`, `environment.command.volume.reorder`,
+  `environment.command.weather_keyframe.edit`, `environment.command.quality_preset.select`, and
+  `environment.command.capture.cubemap.request` are editor-core value rows only. Do not treat them as backend/package/validation
+  execution, public handle exposure, or broad `environment_ready`.
 - Read `references/full-guidance.md` only when detailed retained row ids, panel contracts, visible-shell boundary rules, or detailed validation lanes are needed.
 - Prefer focused `MK_editor_core_tests` or `check-tidy.ps1 -Files` loops while iterating, then `tools/validate.ps1` at the slice gate.
 - When adding retained UI ids or CMake target literals enforced by `check-ai-integration.ps1`, update Needles and Codex/Claude skill twins together.

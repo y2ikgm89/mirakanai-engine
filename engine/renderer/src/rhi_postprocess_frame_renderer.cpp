@@ -267,7 +267,10 @@ RhiPostprocessFrameRenderer::RhiPostprocessFrameRenderer(const RhiPostprocessFra
       postprocess_first_uniform_buffer_(desc.postprocess_first_uniform_buffer),
       wait_for_completion_(desc.wait_for_completion), depth_input_enabled_(desc.enable_depth_input),
       native_ui_overlay_enabled_(desc.enable_native_ui_overlay),
-      native_ui_overlay_textures_enabled_(desc.enable_native_ui_overlay_textures) {
+      native_ui_overlay_textures_enabled_(desc.enable_native_ui_overlay_textures),
+      enable_cloud_layer_(desc.enable_cloud_layer), cloud_layer_graphics_pipeline_(desc.cloud_layer_graphics_pipeline),
+      cloud_layer_pipeline_layout_(desc.cloud_layer_pipeline_layout),
+      cloud_layer_descriptor_set_(desc.cloud_layer_descriptor_set) {
     if (device_ == nullptr) {
         throw std::invalid_argument("rhi postprocess renderer requires an rhi device");
     }
@@ -304,6 +307,11 @@ RhiPostprocessFrameRenderer::RhiPostprocessFrameRenderer(const RhiPostprocessFra
     }
     if (native_ui_overlay_textures_enabled_ && !native_ui_overlay_enabled_) {
         throw std::invalid_argument("rhi postprocess renderer textured native ui overlay requires native ui overlay");
+    }
+    if (enable_cloud_layer_ && (cloud_layer_graphics_pipeline_.value == 0 || cloud_layer_pipeline_layout_.value == 0 ||
+                                cloud_layer_descriptor_set_.value == 0)) {
+        throw std::invalid_argument(
+            "rhi postprocess renderer cloud layer requires pipeline, layout, and descriptor set");
     }
 
     const auto postprocess_frame_graph_desc =
@@ -659,6 +667,13 @@ void RhiPostprocessFrameRenderer::record_scene_pass_body() {
     commands_->bind_graphics_pipeline(scene_graphics_pipeline_);
     skinned_scene_pipeline_bound_ = false;
     morph_scene_pipeline_bound_ = false;
+    if (enable_cloud_layer_) {
+        commands_->bind_graphics_pipeline(cloud_layer_graphics_pipeline_);
+        commands_->bind_descriptor_set(cloud_layer_pipeline_layout_, 0, cloud_layer_descriptor_set_);
+        commands_->draw(3, 1);
+        ++stats_.cloud_layer_draws;
+        commands_->bind_graphics_pipeline(scene_graphics_pipeline_);
+    }
     for (const auto& mesh : pending_meshes_) {
         record_scene_mesh_command(mesh);
     }

@@ -5,6 +5,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
+#include <stdexcept>
 #include <utility>
 
 namespace mirakana {
@@ -36,6 +38,37 @@ void add_diagnostic(PrecipitationPolicyPlan& plan, PrecipitationPolicyDiagnostic
     return false;
 }
 
+void write_f32(std::span<std::uint8_t> destination, std::size_t offset, float value) {
+    std::memcpy(destination.data() + offset, &value, sizeof(float));
+}
+
+[[nodiscard]] float precipitation_kind_id(EnvironmentPrecipitationKind kind) noexcept {
+    switch (kind) {
+    case EnvironmentPrecipitationKind::none:
+        return 0.0F;
+    case EnvironmentPrecipitationKind::rain:
+        return 1.0F;
+    case EnvironmentPrecipitationKind::snow:
+        return 2.0F;
+    case EnvironmentPrecipitationKind::sleet:
+        return 3.0F;
+    case EnvironmentPrecipitationKind::hail:
+        return 4.0F;
+    case EnvironmentPrecipitationKind::dust:
+        return 5.0F;
+    case EnvironmentPrecipitationKind::ash:
+        return 6.0F;
+    }
+    return 0.0F;
+}
+
+[[nodiscard]] float first_wetness_intensity(const EnvironmentPrecipitationPlan& environment_plan) noexcept {
+    if (environment_plan.wetness_rows.empty()) {
+        return 0.0F;
+    }
+    return environment_plan.wetness_rows.front().intensity;
+}
+
 [[nodiscard]] bool valid_environment_particle_rows(const EnvironmentPrecipitationPlan& environment_plan) noexcept {
     return std::ranges::all_of(environment_plan.particle_rows, [](const auto& row) {
         return row.kind != EnvironmentPrecipitationKind::none && finite_in_range(row.intensity, 0.0F, 1.0F) &&
@@ -58,11 +91,15 @@ void add_diagnostic(PrecipitationPolicyPlan& plan, PrecipitationPolicyDiagnostic
            !environment_plan.mutates_materials && !environment_plan.plays_audio;
 }
 
+[[nodiscard]] bool requires_scene_depth_occlusion_readback(const EnvironmentPrecipitationPlan& environment_plan) {
+    return std::ranges::any_of(environment_plan.occlusion_rows, [](const auto& row) {
+        return row.required && row.available && row.uses_scene_geometry_depth_mask;
+    });
+}
+
 void append_shader_rows(PrecipitationPolicyPlan& plan, const PrecipitationPolicyDesc& desc) {
     for (const auto& particle : desc.environment_plan.particle_rows) {
-        const bool uses_depth = std::ranges::any_of(desc.environment_plan.occlusion_rows, [](const auto& row) {
-            return row.required && row.available && row.uses_scene_geometry_depth_mask;
-        });
+        const bool uses_depth = requires_scene_depth_occlusion_readback(desc.environment_plan);
         plan.shader_rows.push_back(PrecipitationShaderRow{
             .kind = particle.kind,
             .constants_binding_slot = precipitation_constants_binding(),
@@ -120,6 +157,27 @@ bool PrecipitationPolicyPlan::ready() const noexcept {
     return status == PrecipitationPolicyStatus::ready;
 }
 
+void pack_precipitation_constants(std::span<std::uint8_t> destination, const PrecipitationPolicyDesc& desc) {
+    if (destination.size() < precipitation_constants_byte_size()) {
+        throw std::invalid_argument("precipitation constants destination is too small");
+    }
+
+    std::ranges::fill(destination, std::uint8_t{0});
+    if (desc.environment_plan.particle_rows.empty()) {
+        return;
+    }
+
+    const auto& particle = desc.environment_plan.particle_rows.front();
+    write_f32(destination, 0U, particle.intensity);
+    write_f32(destination, 4U, particle.fall_speed_mps);
+    write_f32(destination, 8U, particle.wind_speed_mps);
+    write_f32(destination, 12U, particle.particle_radius_mm);
+    write_f32(destination, 16U, 0.0F);
+    write_f32(destination, 20U, first_wetness_intensity(desc.environment_plan));
+    write_f32(destination, 24U, 0.25F);
+    write_f32(destination, 28U, precipitation_kind_id(particle.kind));
+}
+
 PrecipitationPolicyPlan plan_precipitation_policy(const PrecipitationPolicyDesc& desc) {
     PrecipitationPolicyPlan plan{
         .status = PrecipitationPolicyStatus::planned,
@@ -149,15 +207,23 @@ PrecipitationPolicyPlan plan_precipitation_policy(const PrecipitationPolicyDesc&
         add_diagnostic(plan, PrecipitationPolicyDiagnosticCode::missing_execution_evidence, "execution_evidence_ready",
                        "precipitation ready promotion requires D3D12 readback or package execution evidence");
     }
-    if (desc.request_particle_buffer_upload) {
+    if (desc.request_particle_buffer_upload &&
+        (!desc.execution_evidence_ready || desc.particle_buffer_upload_count == 0U)) {
         add_diagnostic(plan, PrecipitationPolicyDiagnosticCode::unsupported_particle_buffer_upload,
                        "request_particle_buffer_upload",
-                       "precipitation policy planning must not upload particle buffers in this slice");
+                       "precipitation particle buffer upload requires positive execution evidence counters");
     }
-    if (desc.request_backend_execution) {
+    if (desc.request_backend_execution &&
+        (!desc.execution_evidence_ready || desc.backend_invocation_count == 0U || desc.renderer_draw_count == 0U)) {
+        add_diagnostic(
+            plan, PrecipitationPolicyDiagnosticCode::unsupported_backend_execution, "request_backend_execution",
+            "precipitation backend execution requires positive backend invocation and renderer draw counters");
+    }
+    if (desc.request_backend_execution && requires_scene_depth_occlusion_readback(desc.environment_plan) &&
+        !desc.depth_occlusion_readback_proven) {
         add_diagnostic(plan, PrecipitationPolicyDiagnosticCode::unsupported_backend_execution,
-                       "request_backend_execution",
-                       "precipitation policy planning must not invoke renderer or RHI backends in this slice");
+                       "depth_occlusion_readback_proven",
+                       "precipitation backend execution requires scene-depth occlusion color readback evidence");
     }
     if (desc.request_native_handle_access) {
         add_diagnostic(plan, PrecipitationPolicyDiagnosticCode::unsupported_native_handle_claim,
@@ -178,6 +244,14 @@ PrecipitationPolicyPlan plan_precipitation_policy(const PrecipitationPolicyDesc&
         plan.status = PrecipitationPolicyStatus::blocked;
     } else if (desc.request_ready_promotion && desc.execution_evidence_ready) {
         plan.status = PrecipitationPolicyStatus::ready;
+        if (desc.request_particle_buffer_upload) {
+            plan.uploads_particle_buffers = true;
+        }
+        if (desc.request_backend_execution) {
+            plan.invokes_backend = true;
+            plan.renderer_draws = desc.renderer_draw_count;
+            plan.depth_occlusion_readback = desc.depth_occlusion_readback_proven;
+        }
     }
 
     if (valid_environment_plan(desc.environment_plan)) {

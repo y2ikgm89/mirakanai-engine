@@ -235,13 +235,65 @@ $sampleEnvironmentFogDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sampl
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireD3d12Shaders", "-SmokeArgs @(", "--require-environment-fog-evidence", "runtime/sample_desktop_runtime_game.geindex")) {
     Assert-ArgvContainsText -Result $sampleEnvironmentFogDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-fog-package"
 }
+$sampleVulkanEnvironmentFogDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-vulkan-environment-fog-package" -ExpectedArgv @("-Command")
+foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireVulkanShaders", "-SmokeArgs @(", "--require-environment-fog-vulkan-package-evidence", "runtime/sample_desktop_runtime_game.geindex")) {
+    Assert-ArgvContainsText -Result $sampleVulkanEnvironmentFogDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-vulkan-environment-fog-package"
+}
+$sampleVulkanPhysicalSkyDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-vulkan-physical-sky-package" -ExpectedArgv @("-Command")
+foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireVulkanShaders", "-SmokeArgs @(", "--require-physical-sky-vulkan-package-evidence", "runtime/sample_desktop_runtime_game.geindex")) {
+    Assert-ArgvContainsText -Result $sampleVulkanPhysicalSkyDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-vulkan-physical-sky-package"
+}
+$sampleEnvironmentVolumetricFogDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-environment-volumetric-fog-package" -ExpectedArgv @("-Command")
+foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireD3d12Shaders", "-SmokeArgs @(", "--require-environment-volumetric-fog-package-evidence", "runtime/sample_desktop_runtime_game.geindex")) {
+    Assert-ArgvContainsText -Result $sampleEnvironmentVolumetricFogDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-volumetric-fog-package"
+}
+$sampleVulkanEnvironmentVolumetricFogRendererExecutionDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-vulkan-volumetric-fog-renderer-execution" -ExpectedArgv @("-Command")
+foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireVulkanShaders", "-SmokeArgs @(", "--require-environment-volumetric-fog-vulkan-renderer-execution", "runtime/sample_desktop_runtime_game.geindex")) {
+    Assert-ArgvContainsText -Result $sampleVulkanEnvironmentVolumetricFogRendererExecutionDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-vulkan-volumetric-fog-renderer-execution"
+}
+$sampleVulkanEnvironmentVolumetricCloudRendererExecutionDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-vulkan-volumetric-cloud-renderer-execution" -ExpectedArgv @("-Command")
+foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireVulkanShaders", "-SmokeArgs @(", "--require-environment-volumetric-cloud-vulkan-renderer-execution", "runtime/sample_desktop_runtime_game.geindex")) {
+    Assert-ArgvContainsText -Result $sampleVulkanEnvironmentVolumetricCloudRendererExecutionDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-vulkan-volumetric-cloud-renderer-execution"
+}
+$sampleVulkanEnvironmentIblRendererExecutionDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-vulkan-environment-ibl-renderer-execution" -ExpectedArgv @("-Command")
+foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireVulkanShaders", "-SmokeArgs @(", "--require-environment-lighting-vulkan-renderer-execution", "runtime/sample_desktop_runtime_game.geindex")) {
+    Assert-ArgvContainsText -Result $sampleVulkanEnvironmentIblRendererExecutionDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-vulkan-environment-ibl-renderer-execution"
+}
 $sampleCloudLayerDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-cloud-layer-package" -ExpectedArgv @("-Command")
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireD3d12Shaders", "-SmokeArgs @(", "--require-cloud-layer-package-evidence", "runtime/sample_desktop_runtime_game.geindex")) {
     Assert-ArgvContainsText -Result $sampleCloudLayerDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-cloud-layer-package"
 }
+$sampleCloudLayerRendererExecutionDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-cloud-layer-renderer-execution" -ExpectedArgv @("-Command")
+foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireD3d12Shaders", "-SmokeArgs @(", "--require-cloud-layer-renderer-execution", "runtime/sample_desktop_runtime_game.geindex")) {
+    Assert-ArgvContainsText -Result $sampleCloudLayerRendererExecutionDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-cloud-layer-renderer-execution"
+}
 $sampleEnvironmentPrecipitationDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-environment-precipitation-package" -ExpectedArgv @("-Command")
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireD3d12Shaders", "-SmokeArgs @(", "--require-environment-precipitation-package-evidence", "runtime/sample_desktop_runtime_game.geindex")) {
     Assert-ArgvContainsText -Result $sampleEnvironmentPrecipitationDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-precipitation-package"
+}
+$sampleEnvironmentPrecipitationRendererExecutionDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-environment-precipitation-renderer-execution" -ExpectedArgv @("-Command")
+foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireD3d12Shaders", "-SmokeArgs @(", "--require-environment-precipitation-renderer-execution", "runtime/sample_desktop_runtime_game.geindex")) {
+    Assert-ArgvContainsText -Result $sampleEnvironmentPrecipitationRendererExecutionDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-precipitation-renderer-execution"
+}
+$sampleVulkanEnvironmentPrecipitationRendererExecutionDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-vulkan-environment-precipitation-renderer-execution" -ExpectedArgv @("-Command")
+foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireVulkanShaders", "-SmokeArgs @(", "--require-environment-precipitation-vulkan-renderer-execution", "runtime/sample_desktop_runtime_game.geindex")) {
+    Assert-ArgvContainsText -Result $sampleVulkanEnvironmentPrecipitationRendererExecutionDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-vulkan-environment-precipitation-renderer-execution"
+}
+$sampleEnvironmentSnowDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-environment-snow-package" -ExpectedArgv @("-Command")
+foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireD3d12Shaders", "-SmokeArgs @(", "--require-environment-snow-package-evidence", "runtime/sample_desktop_runtime_game.geindex")) {
+    Assert-ArgvContainsText -Result $sampleEnvironmentSnowDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-snow-package"
+}
+$sampleEnvironmentSnowRendererExecutionDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-environment-snow-renderer-execution" -ExpectedArgv @("-Command")
+foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireD3d12Shaders", "-SmokeArgs @(", "--require-environment-snow-renderer-execution", "runtime/sample_desktop_runtime_game.geindex")) {
+    Assert-ArgvContainsText -Result $sampleEnvironmentSnowRendererExecutionDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-snow-renderer-execution"
+}
+$sampleEnvironmentMaterialWeatheringDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-environment-material-weathering" -ExpectedArgv @("-Command")
+foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireD3d12Shaders", "-SmokeArgs @(", "--require-environment-material-weathering", "runtime/sample_desktop_runtime_game.geindex")) {
+    Assert-ArgvContainsText -Result $sampleEnvironmentMaterialWeatheringDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-material-weathering"
+}
+$sampleEnvironmentAudioPlaybackDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-environment-audio-playback" -ExpectedArgv @("-Command")
+foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireD3d12Shaders", "-SmokeArgs @(", "--require-environment-audio-playback", "runtime/sample_desktop_runtime_game.geindex")) {
+    Assert-ArgvContainsText -Result $sampleEnvironmentAudioPlaybackDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-environment-audio-playback"
 }
 $sampleEnvironmentProfileDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-environment-profile-package" -ExpectedArgv @("-Command")
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-SmokeArgs @(", "--require-environment-profile", "runtime/sample_desktop_runtime_game.geindex")) {
@@ -286,6 +338,21 @@ if ($unsupportedArgs.status -ne "rejected" -or @($unsupportedArgs.diagnostics | 
 $missingGate = Invoke-RunnerJson -Arguments @("-Mode", "Execute", "-Recipe", "desktop-runtime-sample-game-vulkan-ui-atlas-metadata-package") -ExpectedExitCode 2
 if ($missingGate.status -ne "rejected" -or @($missingGate.diagnostics | Where-Object { $_.code -eq "missing-host-gate-acknowledgement" }).Count -ne 1) {
     Write-Error "missing host-gate acknowledgement must be rejected with diagnostic code missing-host-gate-acknowledgement"
+}
+
+$missingVulkanPrecipitationGate = Invoke-RunnerJson -Arguments @("-Mode", "Execute", "-Recipe", "desktop-runtime-sample-game-vulkan-environment-precipitation-renderer-execution") -ExpectedExitCode 2
+if ($missingVulkanPrecipitationGate.status -ne "rejected" -or @($missingVulkanPrecipitationGate.diagnostics | Where-Object { $_.code -eq "missing-host-gate-acknowledgement" }).Count -ne 1) {
+    Write-Error "strict Vulkan precipitation renderer execution recipe must require vulkan-strict acknowledgement before execute"
+}
+
+$missingVulkanVolumetricFogGate = Invoke-RunnerJson -Arguments @("-Mode", "Execute", "-Recipe", "desktop-runtime-sample-game-vulkan-volumetric-fog-renderer-execution") -ExpectedExitCode 2
+if ($missingVulkanVolumetricFogGate.status -ne "rejected" -or @($missingVulkanVolumetricFogGate.diagnostics | Where-Object { $_.code -eq "missing-host-gate-acknowledgement" }).Count -ne 1) {
+    Write-Error "strict Vulkan volumetric fog renderer execution recipe must require vulkan-strict acknowledgement before execute"
+}
+
+$missingVulkanIblGate = Invoke-RunnerJson -Arguments @("-Mode", "Execute", "-Recipe", "desktop-runtime-sample-game-vulkan-environment-ibl-renderer-execution") -ExpectedExitCode 2
+if ($missingVulkanIblGate.status -ne "rejected" -or @($missingVulkanIblGate.diagnostics | Where-Object { $_.code -eq "missing-host-gate-acknowledgement" }).Count -ne 1) {
+    Write-Error "strict Vulkan IBL renderer execution recipe must require vulkan-strict acknowledgement before execute"
 }
 
 $missingMaterialVulkanGate = Invoke-RunnerJson -Arguments @("-Mode", "Execute", "-Recipe", "desktop-runtime-generated-material-shader-scaffold-package-vulkan-strict") -ExpectedExitCode 2

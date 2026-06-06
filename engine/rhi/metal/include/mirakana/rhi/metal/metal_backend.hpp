@@ -6,6 +6,7 @@
 #include "mirakana/rhi/backend_capabilities.hpp"
 #include "mirakana/rhi/rhi.hpp"
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -30,6 +31,22 @@ enum class MetalSynchronizationStep : std::uint8_t {
     begin_render_encoder,
     begin_blit_encoder,
     present_drawable,
+};
+
+enum class MetalEnvironmentFeatureKind : std::uint8_t {
+    physical_sky,
+    height_fog,
+    cloud_layer,
+    precipitation,
+    volumetric_fog,
+    volumetric_cloud,
+    environment_lighting_ibl,
+};
+
+enum class MetalEnvironmentFeatureEvidenceStatus : std::uint8_t {
+    blocked,
+    host_evidence_required,
+    ready,
 };
 
 struct MetalShaderLibraryArtifactDesc {
@@ -86,6 +103,68 @@ struct MetalPlatformAvailabilityDiagnostics {
     bool objcxx_enabled{false};
     bool runtime_probe_required{false};
     bool can_compile_native_sources{false};
+    std::string diagnostic;
+};
+
+struct MetalEnvironmentFeatureEvidenceRequirement {
+    MetalEnvironmentFeatureKind feature{MetalEnvironmentFeatureKind::physical_sky};
+    bool selected{true};
+    bool render_pass_required{false};
+    bool render_pipeline_required{false};
+    bool compute_pipeline_required{false};
+    bool depth_texture_required{false};
+    bool particle_buffer_required{false};
+    bool cube_map_texture_required{false};
+    bool hdr_texture_required{false};
+};
+
+struct MetalEnvironmentFeatureHostEvidenceDesc {
+    RhiHostPlatform host{RhiHostPlatform::unknown};
+    std::string host_validation_recipe_id{"renderer-metal-apple-host-evidence"};
+    bool apple_host_validation_available{false};
+    bool runtime_ready{false};
+    bool command_queue_ready{false};
+    bool shader_library_ready{false};
+    bool render_pass_ready{false};
+    bool render_pipeline_ready{false};
+    bool compute_pipeline_ready{false};
+    bool depth_texture_ready{false};
+    bool particle_buffer_ready{false};
+    bool cube_map_texture_feature_available{false};
+    bool hdr_texture_feature_available{false};
+    bool native_handles_exposed{false};
+    std::vector<MetalEnvironmentFeatureEvidenceRequirement> requirements;
+};
+
+struct MetalEnvironmentFeatureEvidenceRow {
+    MetalEnvironmentFeatureKind feature{MetalEnvironmentFeatureKind::physical_sky};
+    MetalEnvironmentFeatureEvidenceStatus status{MetalEnvironmentFeatureEvidenceStatus::blocked};
+    bool selected{false};
+    bool host_supported{false};
+    bool host_evidence_required{false};
+    bool host_evidence_available{false};
+    bool runtime_ready{false};
+    bool command_queue_ready{false};
+    bool shader_library_ready{false};
+    bool render_pass_ready{false};
+    bool render_pipeline_ready{false};
+    bool compute_pipeline_ready{false};
+    bool depth_texture_ready{false};
+    bool particle_buffer_ready{false};
+    bool cube_map_texture_feature_available{false};
+    bool hdr_texture_feature_available{false};
+    bool native_handle_access{false};
+    std::string host_validation_recipe_id;
+    std::string diagnostic;
+};
+
+struct MetalEnvironmentFeatureHostEvidencePlan {
+    MetalEnvironmentFeatureEvidenceStatus status{MetalEnvironmentFeatureEvidenceStatus::blocked};
+    std::vector<MetalEnvironmentFeatureEvidenceRow> rows;
+    std::size_t host_gated_row_count{0U};
+    std::size_t ready_row_count{0U};
+    std::size_t blocked_row_count{0U};
+    std::size_t native_handle_access_count{0U};
     std::string diagnostic;
 };
 
@@ -377,6 +456,13 @@ validate_shader_library_artifact(const MetalShaderLibraryArtifactDesc& desc);
 build_texture_synchronization_plan(const MetalTextureSynchronizationDesc& desc);
 [[nodiscard]] MetalPlatformAvailabilityDiagnostics diagnose_platform_availability(RhiHostPlatform host,
                                                                                   bool objcxx_enabled);
+[[nodiscard]] std::vector<MetalEnvironmentFeatureEvidenceRequirement>
+default_environment_feature_evidence_requirements();
+[[nodiscard]] std::string_view metal_environment_feature_kind_label(MetalEnvironmentFeatureKind feature) noexcept;
+[[nodiscard]] std::string_view
+metal_environment_feature_evidence_status_label(MetalEnvironmentFeatureEvidenceStatus status) noexcept;
+[[nodiscard]] MetalEnvironmentFeatureHostEvidencePlan
+build_environment_feature_host_evidence_plan(const MetalEnvironmentFeatureHostEvidenceDesc& desc);
 [[nodiscard]] MetalRuntimeDeviceQueueCreateResult
 create_native_device_and_command_queue(const MetalNativeDeviceQueueDesc& desc = {});
 [[nodiscard]] MetalRuntimeCommandBufferCreateResult create_native_command_buffer(MetalRuntimeDevice& device);
