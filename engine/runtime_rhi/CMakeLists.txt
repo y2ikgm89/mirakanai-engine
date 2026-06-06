@@ -1,5 +1,6 @@
 add_library(mirakana_runtime_rhi
     src/mavg_conventional_upload.cpp
+    src/mavg_gpu_visibility_buffer_resource.cpp
     src/mavg_gpu_memory_pressure.cpp
     src/mavg_page_gpu_buffer_destination.cpp
     src/mavg_page_gpu_resource_residency_execution.cpp
