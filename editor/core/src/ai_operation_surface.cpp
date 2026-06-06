@@ -833,10 +833,10 @@ void append_dock_command_diagnostics(EditorAiCommandApplyResult& result, const E
 }
 
 [[nodiscard]] bool status_is_ready(std::string_view status) noexcept {
-    return status == "ready" || status == "d3d12_texture_ready" || status == "uia_provider_ready" ||
-           status == "win32_tsf_selected" || status == "win32_tsf_session_active" ||
-           status == "value_text_input_controller_ready" || status == "value_text_input_session_active" ||
-           status == "value_text_input_commit_applied";
+    return status == "ready" || status == "d3d12_texture_ready" || status == "vulkan_texture_ready" ||
+           status == "metal_texture_ready" || status == "uia_provider_ready" || status == "win32_tsf_selected" ||
+           status == "win32_tsf_session_active" || status == "value_text_input_controller_ready" ||
+           status == "value_text_input_session_active" || status == "value_text_input_commit_applied";
 }
 
 void append_status_row(std::vector<EditorAiOperationStatusRow>& rows, EditorAiOperationStatusRow row) {
@@ -1052,7 +1052,7 @@ make_editor_ai_operation_ux_status_rows(const EditorAiOperationUxStatusDesc& des
                                 .target_element_id = "editor.dock.panel.viewport",
                                 .status = desc.viewport_status,
                                 .count = desc.viewport_visible_texture_composites,
-                                .ready = desc.viewport_status == "d3d12_texture_ready",
+                                .ready = status_is_ready(desc.viewport_status),
                                 .native_handles_public = desc.viewport_native_handles_exposed,
                             });
     append_status_row(rows, EditorAiOperationStatusRow{
@@ -1062,7 +1062,7 @@ make_editor_ai_operation_ux_status_rows(const EditorAiOperationUxStatusDesc& des
                                 .target_element_id = "editor.ai.material_preview.display",
                                 .status = desc.material_preview_status,
                                 .count = desc.material_preview_visible_texture_composites,
-                                .ready = desc.material_preview_status == "d3d12_texture_ready",
+                                .ready = status_is_ready(desc.material_preview_status),
                                 .native_handles_public = desc.material_preview_native_handles_exposed,
                             });
 

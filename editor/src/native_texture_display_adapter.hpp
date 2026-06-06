@@ -27,6 +27,17 @@ struct NativeTextureDisplayAdapterDesc {
     bool vulkan_validation_layer_ready{false};
     bool vulkan_spirv_artifacts_available{false};
     bool vulkan_synchronization2_ready{false};
+    bool metal_host_available{false};
+    bool metal_command_queue_ready{false};
+    bool metal_feature_set_ready{false};
+    bool metal_shader_library_ready{false};
+    bool metal_render_pipeline_ready{false};
+    bool metal_texture_render_target_ready{false};
+    bool metal_texture_shader_read_ready{false};
+    bool metal_sampler_state_ready{false};
+    bool metal_render_pass_ready{false};
+    bool metal_drawable_present_ready{false};
+    bool metal_command_buffer_completed{false};
     bool renderer_output_available{true};
     bool shader_artifacts_available{true};
     bool gpu_payload_available{true};

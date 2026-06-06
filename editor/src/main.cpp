@@ -228,7 +228,28 @@ int main(int argc, char** argv) {
             << "ui_retained_submission_reused_rows=" << counters.ui_retained_submission_reused_rows << '\n'
             << "ui_retained_submission_rebuilt_rows=" << counters.ui_retained_submission_rebuilt_rows << '\n'
             << "ui_retained_cache_native_handle_access=" << (counters.ui_retained_cache_native_handle_access ? 1 : 0)
-            << '\n';
+            << '\n'
+            << "editor_shell_viewport_metal_status=" << counters.viewport_metal_status << '\n'
+            << "editor_shell_viewport_metal_visible_texture_composites="
+            << counters.viewport_metal_visible_texture_composites << '\n'
+            << "editor_shell_material_preview_metal_status=" << counters.material_preview_metal_status << '\n'
+            << "editor_shell_material_preview_metal_visible_texture_composites="
+            << counters.material_preview_metal_visible_texture_composites << '\n'
+            << "editor_shell_metal_command_queue_ready=" << (counters.metal_command_queue_ready ? 1 : 0) << '\n'
+            << "editor_shell_metal_metallib_ready=" << (counters.metal_metallib_ready ? 1 : 0) << '\n'
+            << "editor_shell_metal_feature_set_ready=" << (counters.metal_feature_set_ready ? 1 : 0) << '\n'
+            << "editor_shell_metal_feature_family_ready=" << (counters.metal_feature_family_ready ? 1 : 0) << '\n'
+            << "editor_shell_metal_render_pipeline_ready=" << (counters.metal_render_pipeline_ready ? 1 : 0) << '\n'
+            << "editor_shell_metal_render_pass_ready=" << (counters.metal_render_pass_ready ? 1 : 0) << '\n'
+            << "editor_shell_metal_texture_render_target_ready=" << (counters.metal_texture_render_target_ready ? 1 : 0)
+            << '\n'
+            << "editor_shell_metal_shader_read_sampling_ready=" << (counters.metal_shader_read_sampling_ready ? 1 : 0)
+            << '\n'
+            << "editor_shell_metal_sampler_state_ready=" << (counters.metal_sampler_state_ready ? 1 : 0) << '\n'
+            << "editor_shell_metal_drawable_present_ready=" << (counters.metal_drawable_present_ready ? 1 : 0) << '\n'
+            << "editor_shell_metal_command_buffer_completed=" << (counters.metal_command_buffer_completed ? 1 : 0)
+            << '\n'
+            << "editor_shell_metal_native_handles_exposed=" << (counters.metal_native_handles_exposed ? 1 : 0) << '\n';
     }
     if (!result.succeeded && !result.diagnostic.empty()) {
         std::cerr << result.diagnostic << '\n';

@@ -1601,6 +1601,93 @@ MK_TEST("editor first party shell smoke counters expose vulkan texture display p
     MK_REQUIRE(!counters.vulkan_native_handles_exposed);
 }
 
+MK_TEST("editor first party shell smoke counters expose metal texture display parity rows") {
+    mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
+    const auto viewport_plan =
+        mirakana::editor::plan_native_viewport_display(mirakana::editor::NativeViewportDisplayDesc{
+            .d3d12_host_available = false,
+            .vulkan_host_available = false,
+            .metal_host_available = true,
+            .metal_command_queue_ready = true,
+            .metal_feature_set_ready = true,
+            .metal_shader_library_ready = true,
+            .metal_render_pipeline_ready = true,
+            .metal_texture_render_target_ready = true,
+            .metal_texture_shader_read_ready = true,
+            .metal_sampler_state_ready = true,
+            .metal_render_pass_ready = true,
+            .metal_drawable_present_ready = true,
+            .metal_command_buffer_completed = true,
+            .renderer_output_available = true,
+            .texture_display_requested = true,
+            .texture_adapter_available = true,
+            .offscreen_target_available = true,
+            .descriptor_lease_available = true,
+            .resource_barriers_recorded = true,
+            .fence_lifecycle_ready = true,
+            .visible_panel_available = true,
+            .visible_texture_composite_recorded = true,
+            .visible_texture_composites = 2U,
+            .extent = mirakana::editor::ViewportExtent{.width = 1280, .height = 720},
+            .frame_index = 33U,
+            .backend_id = "metal",
+        });
+    const auto material_plan =
+        mirakana::editor::plan_native_material_preview_display(mirakana::editor::NativeMaterialPreviewDisplayDesc{
+            .d3d12_host_available = false,
+            .vulkan_host_available = false,
+            .metal_host_available = true,
+            .metal_command_queue_ready = true,
+            .metal_feature_set_ready = true,
+            .metal_shader_library_ready = true,
+            .metal_render_pipeline_ready = true,
+            .metal_texture_render_target_ready = true,
+            .metal_texture_shader_read_ready = true,
+            .metal_sampler_state_ready = true,
+            .metal_render_pass_ready = true,
+            .metal_drawable_present_ready = true,
+            .metal_command_buffer_completed = true,
+            .shader_artifacts_available = true,
+            .gpu_payload_available = true,
+            .texture_display_requested = true,
+            .texture_adapter_available = true,
+            .offscreen_target_available = true,
+            .descriptor_lease_available = true,
+            .resource_barriers_recorded = true,
+            .fence_lifecycle_ready = true,
+            .visible_panel_available = true,
+            .visible_texture_composite_recorded = true,
+            .visible_texture_composites = 2U,
+            .frame_index = 33U,
+            .backend_id = "metal",
+            .frames_rendered = 2U,
+            .executes = true,
+        });
+
+    app.record_native_viewport_texture_display(viewport_plan);
+    app.record_native_material_preview_texture_display(material_plan);
+
+    const auto shell_document = mirakana::editor::make_first_party_editor_document(app);
+    const auto counters = mirakana::editor::make_first_party_editor_shell_smoke_counters(app, shell_document);
+
+    MK_REQUIRE(counters.viewport_metal_status == "metal_texture_ready");
+    MK_REQUIRE(counters.viewport_metal_visible_texture_composites == 2U);
+    MK_REQUIRE(counters.material_preview_metal_status == "metal_texture_ready");
+    MK_REQUIRE(counters.material_preview_metal_visible_texture_composites == 2U);
+    MK_REQUIRE(counters.metal_command_queue_ready);
+    MK_REQUIRE(counters.metal_metallib_ready);
+    MK_REQUIRE(counters.metal_feature_set_ready);
+    MK_REQUIRE(counters.metal_feature_family_ready);
+    MK_REQUIRE(counters.metal_render_pipeline_ready);
+    MK_REQUIRE(counters.metal_render_pass_ready);
+    MK_REQUIRE(counters.metal_texture_render_target_ready);
+    MK_REQUIRE(counters.metal_shader_read_sampling_ready);
+    MK_REQUIRE(counters.metal_sampler_state_ready);
+    MK_REQUIRE(counters.metal_drawable_present_ready);
+    MK_REQUIRE(counters.metal_command_buffer_completed);
+    MK_REQUIRE(!counters.metal_native_handles_exposed);
+}
+
 MK_TEST("editor first party shell exposes AI operation UX rows from native readiness") {
     mirakana::editor::NativeEditorApp app{mirakana::editor::NativeEditorLaunchOptions{}};
     RecordingPlatformTextInputAdapter platform_text_input;
@@ -1886,6 +1973,102 @@ MK_TEST("editor native viewport display plan reports private vulkan texture read
     MK_REQUIRE(plan.native_texture_handle_policy == "private");
 }
 
+MK_TEST("editor native viewport display plan reports private metal texture readiness") {
+    const auto plan = mirakana::editor::plan_native_viewport_display(mirakana::editor::NativeViewportDisplayDesc{
+        .d3d12_host_available = false,
+        .vulkan_host_available = false,
+        .metal_host_available = true,
+        .metal_command_queue_ready = true,
+        .metal_feature_set_ready = true,
+        .metal_shader_library_ready = true,
+        .metal_render_pipeline_ready = true,
+        .metal_texture_render_target_ready = true,
+        .metal_texture_shader_read_ready = true,
+        .metal_sampler_state_ready = true,
+        .metal_render_pass_ready = true,
+        .metal_drawable_present_ready = true,
+        .metal_command_buffer_completed = true,
+        .renderer_output_available = true,
+        .texture_display_requested = true,
+        .texture_adapter_available = true,
+        .offscreen_target_available = true,
+        .descriptor_lease_available = true,
+        .resource_barriers_recorded = true,
+        .fence_lifecycle_ready = true,
+        .resize_safe_teardown_completed = true,
+        .visible_texture_composite_recorded = true,
+        .visible_texture_composites = 1U,
+        .extent = mirakana::editor::ViewportExtent{.width = 1280, .height = 720},
+        .frame_index = 34,
+        .backend_id = "metal",
+    });
+
+    MK_REQUIRE(plan.accepted);
+    MK_REQUIRE(plan.status_id == "metal_texture_ready");
+    MK_REQUIRE(plan.texture_display_ready);
+    MK_REQUIRE(plan.metal_host_available);
+    MK_REQUIRE(plan.metal_command_queue_ready);
+    MK_REQUIRE(plan.metal_feature_set_ready);
+    MK_REQUIRE(plan.metal_shader_library_ready);
+    MK_REQUIRE(plan.metal_render_pipeline_ready);
+    MK_REQUIRE(plan.metal_texture_render_target_ready);
+    MK_REQUIRE(plan.metal_texture_shader_read_ready);
+    MK_REQUIRE(plan.metal_sampler_state_ready);
+    MK_REQUIRE(plan.metal_render_pass_ready);
+    MK_REQUIRE(plan.metal_drawable_present_ready);
+    MK_REQUIRE(plan.metal_command_buffer_completed);
+    MK_REQUIRE(plan.texture_adapter_available);
+    MK_REQUIRE(plan.offscreen_target_available);
+    MK_REQUIRE(plan.descriptor_lease_available);
+    MK_REQUIRE(plan.resource_barriers_recorded);
+    MK_REQUIRE(plan.fence_lifecycle_ready);
+    MK_REQUIRE(plan.lifecycle_status == "ready");
+    MK_REQUIRE(!plan.native_texture_handles_exposed);
+    MK_REQUIRE(plan.native_texture_handle_policy == "private");
+}
+
+MK_TEST("editor native viewport display plan keeps metal host evidence fail closed") {
+    const auto missing_feature_set =
+        mirakana::editor::plan_native_viewport_display(mirakana::editor::NativeViewportDisplayDesc{
+            .d3d12_host_available = false,
+            .vulkan_host_available = false,
+            .metal_host_available = true,
+            .metal_command_queue_ready = true,
+            .metal_feature_set_ready = false,
+            .metal_shader_library_ready = true,
+            .renderer_output_available = true,
+            .texture_display_requested = true,
+            .extent = mirakana::editor::ViewportExtent{.width = 1280, .height = 720},
+            .backend_id = "metal",
+        });
+
+    MK_REQUIRE(missing_feature_set.accepted);
+    MK_REQUIRE(missing_feature_set.status_id == "metal_feature_set_unavailable");
+    MK_REQUIRE(missing_feature_set.lifecycle_status == "feature_set_pending");
+    MK_REQUIRE(!missing_feature_set.texture_display_ready);
+    MK_REQUIRE(!missing_feature_set.native_texture_handles_exposed);
+
+    const auto missing_shader_library =
+        mirakana::editor::plan_native_viewport_display(mirakana::editor::NativeViewportDisplayDesc{
+            .d3d12_host_available = false,
+            .vulkan_host_available = false,
+            .metal_host_available = true,
+            .metal_command_queue_ready = true,
+            .metal_feature_set_ready = true,
+            .metal_shader_library_ready = false,
+            .renderer_output_available = true,
+            .texture_display_requested = true,
+            .extent = mirakana::editor::ViewportExtent{.width = 1280, .height = 720},
+            .backend_id = "metal",
+        });
+
+    MK_REQUIRE(missing_shader_library.accepted);
+    MK_REQUIRE(missing_shader_library.status_id == "metal_shader_library_missing");
+    MK_REQUIRE(missing_shader_library.lifecycle_status == "shader_pending");
+    MK_REQUIRE(!missing_shader_library.texture_display_ready);
+    MK_REQUIRE(!missing_shader_library.native_texture_handles_exposed);
+}
+
 MK_TEST("editor native viewport display plan waits for visible compositor consumption") {
     const auto plan = mirakana::editor::plan_native_viewport_display(mirakana::editor::NativeViewportDisplayDesc{
         .d3d12_host_available = true,
@@ -2152,6 +2335,79 @@ MK_TEST("editor visible texture compositor samples vulkan viewport texture with 
     MK_REQUIRE(device.stats().present_calls >= 1U);
 }
 
+MK_TEST("editor visible texture compositor samples metal viewport texture with sampler descriptors") {
+    mirakana::rhi::NullRhiDevice device;
+    const auto swapchain = device.create_swapchain(mirakana::rhi::SwapchainDesc{
+        .extent = mirakana::rhi::Extent2D{.width = 64, .height = 36},
+        .format = mirakana::rhi::Format::bgra8_unorm,
+        .buffer_count = 2,
+        .vsync = false,
+        .surface = mirakana::rhi::SurfaceHandle{.value = 4U},
+    });
+    constexpr std::array<std::uint8_t, 4> metallib_bytecode{0x4d, 0x54, 0x4c, 0x42};
+    mirakana::editor::NativeTextureDisplayAdapter adapter(mirakana::editor::NativeTextureDisplayAdapterDesc{
+        .device = &device,
+        .extent = mirakana::editor::ViewportExtent{.width = 64, .height = 36},
+        .d3d12_host_available = false,
+        .vulkan_host_available = false,
+        .metal_host_available = true,
+        .metal_command_queue_ready = true,
+        .metal_feature_set_ready = true,
+        .metal_shader_library_ready = true,
+        .metal_render_pipeline_ready = true,
+        .metal_texture_render_target_ready = true,
+        .metal_texture_shader_read_ready = true,
+        .metal_sampler_state_ready = true,
+        .metal_render_pass_ready = true,
+        .metal_drawable_present_ready = true,
+        .metal_command_buffer_completed = true,
+        .renderer_output_available = true,
+        .backend_id = "metal",
+    });
+    mirakana::editor::NativeEditorVisibleTextureCompositor compositor(
+        mirakana::editor::NativeEditorVisibleTextureCompositorDesc{
+            .device = &device,
+            .swapchain = swapchain,
+            .extent = mirakana::editor::ViewportExtent{.width = 64, .height = 36},
+            .vertex_shader_entry_point = "vs_native_editor_visible_texture",
+            .vertex_shader_bytecode = metallib_bytecode,
+            .fragment_shader_entry_point = "ps_native_editor_visible_texture",
+            .fragment_shader_bytecode = metallib_bytecode,
+            .backend_id = "metal",
+        });
+
+    const auto plan = compositor.render_viewport_frame(adapter, 35U);
+    const auto& evidence = compositor.evidence();
+
+    MK_REQUIRE(plan.accepted);
+    MK_REQUIRE(plan.status_id == "metal_texture_ready");
+    MK_REQUIRE(plan.texture_display_ready);
+    MK_REQUIRE(plan.metal_command_queue_ready);
+    MK_REQUIRE(plan.metal_feature_set_ready);
+    MK_REQUIRE(plan.metal_shader_library_ready);
+    MK_REQUIRE(plan.metal_render_pipeline_ready);
+    MK_REQUIRE(plan.metal_texture_render_target_ready);
+    MK_REQUIRE(plan.metal_texture_shader_read_ready);
+    MK_REQUIRE(plan.metal_sampler_state_ready);
+    MK_REQUIRE(plan.metal_render_pass_ready);
+    MK_REQUIRE(plan.metal_drawable_present_ready);
+    MK_REQUIRE(plan.metal_command_buffer_completed);
+    MK_REQUIRE(plan.visible_panel_available);
+    MK_REQUIRE(plan.visible_texture_composite_recorded);
+    MK_REQUIRE(plan.visible_texture_composites == 1U);
+    MK_REQUIRE(!plan.native_texture_handles_exposed);
+    MK_REQUIRE(evidence.swapchain_frame_acquired);
+    MK_REQUIRE(evidence.sampled_texture_descriptor_bound);
+    MK_REQUIRE(evidence.render_pass_recorded);
+    MK_REQUIRE(evidence.draw_recorded);
+    MK_REQUIRE(evidence.present_recorded);
+    MK_REQUIRE(evidence.fence_waited);
+    MK_REQUIRE(device.stats().samplers_created >= 1U);
+    MK_REQUIRE(device.stats().descriptor_writes >= 2U);
+    MK_REQUIRE(device.stats().resource_transitions >= 1U);
+    MK_REQUIRE(device.stats().present_calls >= 1U);
+}
+
 MK_TEST("editor visible texture compositor promotes material preview only after visible panel composite") {
     mirakana::rhi::NullRhiDevice device;
     const auto swapchain = device.create_swapchain(mirakana::rhi::SwapchainDesc{
@@ -2375,6 +2631,68 @@ MK_TEST("editor native material preview plan reports private vulkan texture read
     MK_REQUIRE(plan.native_texture_handle_policy == "private");
     MK_REQUIRE(plan.execution_snapshot.status == mirakana::editor::EditorMaterialGpuPreviewStatus::ready);
     MK_REQUIRE(plan.execution_snapshot.backend_label == "Vulkan");
+    MK_REQUIRE(plan.execution_snapshot.frames_rendered == 1U);
+    MK_REQUIRE(plan.execution_snapshot.executes);
+    MK_REQUIRE(!plan.execution_snapshot.exposes_native_handles);
+}
+
+MK_TEST("editor native material preview plan reports private metal texture readiness") {
+    const auto plan =
+        mirakana::editor::plan_native_material_preview_display(mirakana::editor::NativeMaterialPreviewDisplayDesc{
+            .d3d12_host_available = false,
+            .vulkan_host_available = false,
+            .metal_host_available = true,
+            .metal_command_queue_ready = true,
+            .metal_feature_set_ready = true,
+            .metal_shader_library_ready = true,
+            .metal_render_pipeline_ready = true,
+            .metal_texture_render_target_ready = true,
+            .metal_texture_shader_read_ready = true,
+            .metal_sampler_state_ready = true,
+            .metal_render_pass_ready = true,
+            .metal_drawable_present_ready = true,
+            .metal_command_buffer_completed = true,
+            .shader_artifacts_available = true,
+            .gpu_payload_available = true,
+            .texture_display_requested = true,
+            .texture_adapter_available = true,
+            .offscreen_target_available = true,
+            .descriptor_lease_available = true,
+            .resource_barriers_recorded = true,
+            .fence_lifecycle_ready = true,
+            .visible_panel_available = true,
+            .visible_texture_composite_recorded = true,
+            .visible_texture_composites = 1U,
+            .frame_index = 36,
+            .backend_id = "metal",
+            .frames_rendered = 1U,
+            .executes = true,
+        });
+
+    MK_REQUIRE(plan.accepted);
+    MK_REQUIRE(plan.status_id == "metal_texture_ready");
+    MK_REQUIRE(plan.texture_display_ready);
+    MK_REQUIRE(plan.metal_host_available);
+    MK_REQUIRE(plan.metal_command_queue_ready);
+    MK_REQUIRE(plan.metal_feature_set_ready);
+    MK_REQUIRE(plan.metal_shader_library_ready);
+    MK_REQUIRE(plan.metal_render_pipeline_ready);
+    MK_REQUIRE(plan.metal_texture_render_target_ready);
+    MK_REQUIRE(plan.metal_texture_shader_read_ready);
+    MK_REQUIRE(plan.metal_sampler_state_ready);
+    MK_REQUIRE(plan.metal_render_pass_ready);
+    MK_REQUIRE(plan.metal_drawable_present_ready);
+    MK_REQUIRE(plan.metal_command_buffer_completed);
+    MK_REQUIRE(plan.texture_adapter_available);
+    MK_REQUIRE(plan.offscreen_target_available);
+    MK_REQUIRE(plan.descriptor_lease_available);
+    MK_REQUIRE(plan.resource_barriers_recorded);
+    MK_REQUIRE(plan.fence_lifecycle_ready);
+    MK_REQUIRE(plan.lifecycle_status == "ready");
+    MK_REQUIRE(!plan.native_texture_handles_exposed);
+    MK_REQUIRE(plan.native_texture_handle_policy == "private");
+    MK_REQUIRE(plan.execution_snapshot.status == mirakana::editor::EditorMaterialGpuPreviewStatus::ready);
+    MK_REQUIRE(plan.execution_snapshot.backend_label == "Metal");
     MK_REQUIRE(plan.execution_snapshot.frames_rendered == 1U);
     MK_REQUIRE(plan.execution_snapshot.executes);
     MK_REQUIRE(!plan.execution_snapshot.exposes_native_handles);

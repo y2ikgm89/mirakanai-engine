@@ -527,15 +527,25 @@ Expected: Vulkan editor texture display is backend-local and host/toolchain-gate
 
 **Files:** Apple-host Metal backend files, private editor Metal texture display files, `tests/unit/backend_scaffold_tests.cpp`, editor native tests, hosted macOS workflow/recipe files if needed.
 
-- [ ] Add host-gated RED tests for `MTLCommandQueue`, non-empty metallib, render pipeline, texture render target, shader-read texture sampling, sampler state, render pass, presentable drawable, command buffer completion, and no native handle exposure.
-- [ ] Add counters:
+- [x] Add host-gated RED tests for `MTLCommandQueue`, non-empty metallib, feature family/set, render pipeline, texture render target, shader-read texture sampling, sampler state, render pass, presentable drawable, command buffer completion, and no native handle exposure.
+- [x] Add counters:
 
 ```text
 editor_shell_viewport_metal_status=metal_texture_ready
 editor_shell_viewport_metal_visible_texture_composites
 editor_shell_material_preview_metal_status=metal_texture_ready
 editor_shell_material_preview_metal_visible_texture_composites
+editor_shell_metal_command_queue_ready=1
+editor_shell_metal_metallib_ready=1
 editor_shell_metal_feature_set_ready=1
+editor_shell_metal_feature_family_ready=1
+editor_shell_metal_render_pipeline_ready=1
+editor_shell_metal_render_pass_ready=1
+editor_shell_metal_texture_render_target_ready=1
+editor_shell_metal_shader_read_sampling_ready=1
+editor_shell_metal_sampler_state_ready=1
+editor_shell_metal_drawable_present_ready=1
+editor_shell_metal_command_buffer_completed=1
 editor_shell_metal_native_handles_exposed=0
 ```
 
@@ -548,6 +558,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1
 ```
 
 Expected: Metal editor texture parity is promoted only by Apple-host execution evidence.
+
+**Phase 9 Evidence:** Candidate `codex/first-party-ui-editor-excellence-phase9` adds Apple-host-gated Metal editor texture-display contract rows while the default visible Windows shell remains D3D12. `NativeViewportDisplayPlan`, `NativeMaterialPreviewDisplayPlan`, `NativeTextureDisplayAdapter`, and `NativeEditorVisibleTextureCompositor` now classify `backend_id` as D3D12, Vulkan, Metal, or unsupported, require Metal host evidence, command queue, non-empty metallib, feature family/set, render pipeline, render target, shader-read sampling, sampler state, render pass, drawable present, command-buffer completion, private visible compositor consumption, and no native handle exposure before `metal_texture_ready`, and keep Windows/non-Apple rows `host_gated`/`0`. `MK_rhi_metal` exposes value-only `MetalEditorTextureDisplayEvidenceDesc` / `build_editor_texture_display_host_evidence_plan` and fails closed unless the reviewed `renderer-metal-apple-host-evidence` recipe supplies Apple-host evidence. Apple Metal documentation and Context7 Metal Shading Language notes were refreshed on 2026-06-06 for texture usage/sampling, shader library/pipeline requirements, render passes, command queues/buffers, drawable present, and completion evidence. RED/GREEN evidence covered `MK_editor_native_shell_tests` and `MK_backend_scaffold_tests`; focused validation passed: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_editor_native_shell_tests MK_backend_scaffold_tests` and `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --output-on-failure -R "MK_editor_native_shell_tests|MK_backend_scaffold_tests"`. Slice validation also passed `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/build-editor.ps1` with 100/100 desktop-editor tests and full `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`, whose Apple and Metal shader-toolchain rows remained host-gated/diagnostic-only on this Windows host. Apple-host execution remains a host-gated PR/CI lane until `tools/check-apple-host-evidence.ps1 -RequireReady`, `renderer-metal-apple-host-evidence`, and `tools/build-editor.ps1` pass on an Apple host; default visible-shell Vulkan/Metal selection, broader material-preview GPU parity, cross-platform visible editor shells, visible OS-level multi-window drag/drop shell restoration, and broad `first_party_editor_excellence` remain unclaimed.
 
 ## Phase 10: Cross-Platform Editor Shell Adapters
 

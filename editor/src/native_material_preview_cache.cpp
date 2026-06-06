@@ -6,6 +6,13 @@
 namespace mirakana::editor {
 namespace {
 
+enum class NativeTextureDisplayBackend : std::uint8_t {
+    d3d12,
+    vulkan,
+    metal,
+    unsupported,
+};
+
 [[nodiscard]] EditorMaterialGpuPreviewExecutionSnapshot
 make_diagnostic_execution_snapshot(std::string_view backend_label, std::string_view diagnostic) {
     return EditorMaterialGpuPreviewExecutionSnapshot{
@@ -37,26 +44,67 @@ make_ready_execution_snapshot(std::uint64_t frames_rendered, bool executes, std:
            desc.descriptor_lease_available || desc.resource_barriers_recorded || desc.fence_lifecycle_ready;
 }
 
-[[nodiscard]] bool vulkan_backend(std::string_view backend_id) noexcept {
-    return backend_id == "vulkan";
+[[nodiscard]] NativeTextureDisplayBackend native_texture_display_backend(std::string_view backend_id) noexcept {
+    if (backend_id == "d3d12") {
+        return NativeTextureDisplayBackend::d3d12;
+    }
+    if (backend_id == "vulkan") {
+        return NativeTextureDisplayBackend::vulkan;
+    }
+    if (backend_id == "metal") {
+        return NativeTextureDisplayBackend::metal;
+    }
+    return NativeTextureDisplayBackend::unsupported;
 }
 
 [[nodiscard]] bool backend_host_available(const NativeMaterialPreviewDisplayDesc& desc) noexcept {
-    return vulkan_backend(desc.backend_id) ? desc.vulkan_host_available : desc.d3d12_host_available;
+    switch (native_texture_display_backend(desc.backend_id)) {
+    case NativeTextureDisplayBackend::d3d12:
+        return desc.d3d12_host_available;
+    case NativeTextureDisplayBackend::vulkan:
+        return desc.vulkan_host_available;
+    case NativeTextureDisplayBackend::metal:
+        return desc.metal_host_available;
+    case NativeTextureDisplayBackend::unsupported:
+        break;
+    }
+    return false;
 }
 
 [[nodiscard]] std::string_view backend_display_name(std::string_view backend_id) noexcept {
-    return vulkan_backend(backend_id) ? "Vulkan" : "D3D12";
+    switch (native_texture_display_backend(backend_id)) {
+    case NativeTextureDisplayBackend::d3d12:
+        return "D3D12";
+    case NativeTextureDisplayBackend::vulkan:
+        return "Vulkan";
+    case NativeTextureDisplayBackend::metal:
+        return "Metal";
+    case NativeTextureDisplayBackend::unsupported:
+        break;
+    }
+    return "unsupported backend";
 }
 
 [[nodiscard]] std::string_view ready_status_id(std::string_view backend_id) noexcept {
-    return vulkan_backend(backend_id) ? "vulkan_texture_ready" : "d3d12_texture_ready";
+    switch (native_texture_display_backend(backend_id)) {
+    case NativeTextureDisplayBackend::d3d12:
+        return "d3d12_texture_ready";
+    case NativeTextureDisplayBackend::vulkan:
+        return "vulkan_texture_ready";
+    case NativeTextureDisplayBackend::metal:
+        return "metal_texture_ready";
+    case NativeTextureDisplayBackend::unsupported:
+        break;
+    }
+    return "unsupported_backend";
 }
 
 } // namespace
 
 NativeMaterialPreviewDisplayPlan plan_native_material_preview_display(NativeMaterialPreviewDisplayDesc desc) {
-    const bool is_vulkan = vulkan_backend(desc.backend_id);
+    const auto backend = native_texture_display_backend(desc.backend_id);
+    const bool is_vulkan = backend == NativeTextureDisplayBackend::vulkan;
+    const bool is_metal = backend == NativeTextureDisplayBackend::metal;
     const auto backend_name = backend_display_name(desc.backend_id);
     NativeMaterialPreviewDisplayPlan plan{
         .accepted = false,
@@ -66,6 +114,17 @@ NativeMaterialPreviewDisplayPlan plan_native_material_preview_display(NativeMate
         .vulkan_validation_layer_ready = desc.vulkan_validation_layer_ready,
         .vulkan_spirv_artifacts_available = desc.vulkan_spirv_artifacts_available,
         .vulkan_synchronization2_ready = desc.vulkan_synchronization2_ready,
+        .metal_host_available = desc.metal_host_available,
+        .metal_command_queue_ready = desc.metal_command_queue_ready,
+        .metal_feature_set_ready = desc.metal_feature_set_ready,
+        .metal_shader_library_ready = desc.metal_shader_library_ready,
+        .metal_render_pipeline_ready = desc.metal_render_pipeline_ready,
+        .metal_texture_render_target_ready = desc.metal_texture_render_target_ready,
+        .metal_texture_shader_read_ready = desc.metal_texture_shader_read_ready,
+        .metal_sampler_state_ready = desc.metal_sampler_state_ready,
+        .metal_render_pass_ready = desc.metal_render_pass_ready,
+        .metal_drawable_present_ready = desc.metal_drawable_present_ready,
+        .metal_command_buffer_completed = desc.metal_command_buffer_completed,
         .shader_artifacts_available = desc.shader_artifacts_available,
         .gpu_payload_available = desc.gpu_payload_available,
         .texture_display_requested = desc.texture_display_requested,
@@ -88,11 +147,99 @@ NativeMaterialPreviewDisplayPlan plan_native_material_preview_display(NativeMate
             make_diagnostic_execution_snapshot(backend_name, "native material preview host unavailable"),
     };
 
+    if (backend == NativeTextureDisplayBackend::unsupported) {
+        plan.status_id = "unsupported_backend";
+        plan.lifecycle_status = "host_unavailable";
+        plan.diagnostic = "native material preview display requires a supported private backend";
+        plan.execution_snapshot = make_diagnostic_execution_snapshot(backend_name, plan.diagnostic);
+        return plan;
+    }
+
     if (!backend_host_available(desc)) {
         plan.status_id = "host_unavailable";
         plan.lifecycle_status = "host_unavailable";
         plan.diagnostic =
             "native material preview display requires an initialized " + std::string{backend_name} + " host";
+        plan.execution_snapshot = make_diagnostic_execution_snapshot(backend_name, plan.diagnostic);
+        return plan;
+    }
+
+    if (is_metal && !desc.metal_command_queue_ready) {
+        plan.status_id = "metal_command_queue_unavailable";
+        plan.lifecycle_status = "queue_pending";
+        plan.diagnostic = "native material preview Metal display requires command queue evidence";
+        plan.execution_snapshot = make_diagnostic_execution_snapshot(backend_name, plan.diagnostic);
+        return plan;
+    }
+
+    if (is_metal && !desc.metal_feature_set_ready) {
+        plan.status_id = "metal_feature_set_unavailable";
+        plan.lifecycle_status = "feature_set_pending";
+        plan.diagnostic = "native material preview Metal display requires Apple feature family evidence";
+        plan.execution_snapshot = make_diagnostic_execution_snapshot(backend_name, plan.diagnostic);
+        return plan;
+    }
+
+    if (is_metal && !desc.metal_shader_library_ready) {
+        plan.status_id = "metal_shader_library_missing";
+        plan.lifecycle_status = "shader_pending";
+        plan.diagnostic = "native material preview Metal display requires a non-empty metallib shader library";
+        plan.execution_snapshot = make_diagnostic_execution_snapshot(backend_name, plan.diagnostic);
+        return plan;
+    }
+
+    if (is_metal && !desc.metal_render_pipeline_ready) {
+        plan.status_id = "metal_render_pipeline_unavailable";
+        plan.lifecycle_status = "pipeline_pending";
+        plan.diagnostic = "native material preview Metal display requires render pipeline evidence";
+        plan.execution_snapshot = make_diagnostic_execution_snapshot(backend_name, plan.diagnostic);
+        return plan;
+    }
+
+    if (is_metal && !desc.metal_texture_render_target_ready) {
+        plan.status_id = "metal_texture_render_target_unavailable";
+        plan.lifecycle_status = "target_pending";
+        plan.diagnostic = "native material preview Metal display requires a render-target texture";
+        plan.execution_snapshot = make_diagnostic_execution_snapshot(backend_name, plan.diagnostic);
+        return plan;
+    }
+
+    if (is_metal && !desc.metal_texture_shader_read_ready) {
+        plan.status_id = "metal_shader_read_sampling_unavailable";
+        plan.lifecycle_status = "sampling_pending";
+        plan.diagnostic = "native material preview Metal display requires shader-read texture sampling evidence";
+        plan.execution_snapshot = make_diagnostic_execution_snapshot(backend_name, plan.diagnostic);
+        return plan;
+    }
+
+    if (is_metal && !desc.metal_sampler_state_ready) {
+        plan.status_id = "metal_sampler_state_unavailable";
+        plan.lifecycle_status = "sampler_pending";
+        plan.diagnostic = "native material preview Metal display requires sampler state evidence";
+        plan.execution_snapshot = make_diagnostic_execution_snapshot(backend_name, plan.diagnostic);
+        return plan;
+    }
+
+    if (is_metal && !desc.metal_render_pass_ready) {
+        plan.status_id = "metal_render_pass_unavailable";
+        plan.lifecycle_status = "render_pass_pending";
+        plan.diagnostic = "native material preview Metal display requires render pass evidence";
+        plan.execution_snapshot = make_diagnostic_execution_snapshot(backend_name, plan.diagnostic);
+        return plan;
+    }
+
+    if (is_metal && !desc.metal_drawable_present_ready) {
+        plan.status_id = "metal_drawable_present_unavailable";
+        plan.lifecycle_status = "present_pending";
+        plan.diagnostic = "native material preview Metal display requires drawable present evidence";
+        plan.execution_snapshot = make_diagnostic_execution_snapshot(backend_name, plan.diagnostic);
+        return plan;
+    }
+
+    if (is_metal && !desc.metal_command_buffer_completed) {
+        plan.status_id = "metal_command_buffer_incomplete";
+        plan.lifecycle_status = "completion_pending";
+        plan.diagnostic = "native material preview Metal display requires completed command-buffer evidence";
         plan.execution_snapshot = make_diagnostic_execution_snapshot(backend_name, plan.diagnostic);
         return plan;
     }

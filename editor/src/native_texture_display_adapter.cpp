@@ -13,6 +13,13 @@
 namespace mirakana::editor {
 namespace {
 
+enum class NativeTextureDisplayBackend : std::uint8_t {
+    d3d12,
+    vulkan,
+    metal,
+    unsupported,
+};
+
 [[nodiscard]] Extent2D to_rhi_extent(ViewportExtent extent) noexcept {
     return Extent2D{.width = extent.width, .height = extent.height};
 }
@@ -25,8 +32,17 @@ namespace {
     return rhi::FenceValue{.value = stats.last_submitted_fence_value, .queue = stats.last_submitted_fence_queue};
 }
 
-[[nodiscard]] bool vulkan_backend(std::string_view backend_id) noexcept {
-    return backend_id == "vulkan";
+[[nodiscard]] NativeTextureDisplayBackend native_texture_display_backend(std::string_view backend_id) noexcept {
+    if (backend_id == "d3d12") {
+        return NativeTextureDisplayBackend::d3d12;
+    }
+    if (backend_id == "vulkan") {
+        return NativeTextureDisplayBackend::vulkan;
+    }
+    if (backend_id == "metal") {
+        return NativeTextureDisplayBackend::metal;
+    }
+    return NativeTextureDisplayBackend::unsupported;
 }
 
 } // namespace
@@ -39,6 +55,17 @@ struct NativeTextureDisplayAdapter::Impl {
           vulkan_validation_layer_ready(adapter_desc.vulkan_validation_layer_ready),
           vulkan_spirv_artifacts_available(adapter_desc.vulkan_spirv_artifacts_available),
           vulkan_synchronization2_ready(adapter_desc.vulkan_synchronization2_ready),
+          metal_host_available(adapter_desc.metal_host_available),
+          metal_command_queue_ready(adapter_desc.metal_command_queue_ready),
+          metal_feature_set_ready(adapter_desc.metal_feature_set_ready),
+          metal_shader_library_ready(adapter_desc.metal_shader_library_ready),
+          metal_render_pipeline_ready(adapter_desc.metal_render_pipeline_ready),
+          metal_texture_render_target_ready(adapter_desc.metal_texture_render_target_ready),
+          metal_texture_shader_read_ready(adapter_desc.metal_texture_shader_read_ready),
+          metal_sampler_state_ready(adapter_desc.metal_sampler_state_ready),
+          metal_render_pass_ready(adapter_desc.metal_render_pass_ready),
+          metal_drawable_present_ready(adapter_desc.metal_drawable_present_ready),
+          metal_command_buffer_completed(adapter_desc.metal_command_buffer_completed),
           renderer_output_available(adapter_desc.renderer_output_available),
           shader_artifacts_available(adapter_desc.shader_artifacts_available),
           gpu_payload_available(adapter_desc.gpu_payload_available), backend_id(adapter_desc.backend_id) {}
@@ -50,6 +77,17 @@ struct NativeTextureDisplayAdapter::Impl {
     bool vulkan_validation_layer_ready{false};
     bool vulkan_spirv_artifacts_available{false};
     bool vulkan_synchronization2_ready{false};
+    bool metal_host_available{false};
+    bool metal_command_queue_ready{false};
+    bool metal_feature_set_ready{false};
+    bool metal_shader_library_ready{false};
+    bool metal_render_pipeline_ready{false};
+    bool metal_texture_render_target_ready{false};
+    bool metal_texture_shader_read_ready{false};
+    bool metal_sampler_state_ready{false};
+    bool metal_render_pass_ready{false};
+    bool metal_drawable_present_ready{false};
+    bool metal_command_buffer_completed{false};
     bool renderer_output_available{true};
     bool shader_artifacts_available{true};
     bool gpu_payload_available{true};
@@ -131,16 +169,35 @@ struct NativeTextureDisplayAdapter::Impl {
         };
         display_frame = NativeTextureDisplayFrame{};
 
-        const bool is_vulkan = vulkan_backend(backend_id);
-        const bool backend_host_available = is_vulkan ? vulkan_host_available : d3d12_host_available;
-        const bool backend_gates_ready =
+        const auto backend = native_texture_display_backend(backend_id);
+        const bool is_vulkan = backend == NativeTextureDisplayBackend::vulkan;
+        const bool is_metal = backend == NativeTextureDisplayBackend::metal;
+        const bool backend_host_available =
+            is_vulkan ? vulkan_host_available : (is_metal ? metal_host_available : d3d12_host_available);
+        const bool vulkan_gates_ready =
             !is_vulkan ||
             (vulkan_validation_layer_ready && vulkan_spirv_artifacts_available && vulkan_synchronization2_ready);
+        const bool metal_gates_ready =
+            !is_metal || (metal_command_queue_ready && metal_feature_set_ready && metal_shader_library_ready &&
+                          metal_render_pipeline_ready && metal_texture_render_target_ready &&
+                          metal_texture_shader_read_ready && metal_sampler_state_ready && metal_render_pass_ready &&
+                          metal_drawable_present_ready && metal_command_buffer_completed);
+        const bool supported_backend = backend != NativeTextureDisplayBackend::unsupported;
+        const bool backend_gates_ready = supported_backend && vulkan_gates_ready && metal_gates_ready;
         if (!backend_host_available || !backend_gates_ready || device == nullptr || !valid_extent(extent)) {
-            evidence.diagnostic =
-                is_vulkan ? "native texture display adapter requires a Vulkan host, validation layer, SPIR-V "
-                            "artifacts, synchronization2, RHI device, and non-zero extent"
-                          : "native texture display adapter requires a D3D12 host, RHI device, and non-zero extent";
+            if (is_vulkan) {
+                evidence.diagnostic = "native texture display adapter requires a Vulkan host, validation layer, SPIR-V "
+                                      "artifacts, synchronization2, RHI device, and non-zero extent";
+            } else if (is_metal) {
+                evidence.diagnostic = "native texture display adapter requires a Metal host, command queue, metallib, "
+                                      "feature family, render pipeline, texture sampling, drawable present, command "
+                                      "buffer completion, RHI device, and non-zero extent";
+            } else if (!supported_backend) {
+                evidence.diagnostic = "native texture display adapter requires a supported private backend";
+            } else {
+                evidence.diagnostic =
+                    "native texture display adapter requires a D3D12 host, RHI device, and non-zero extent";
+            }
             return false;
         }
 
@@ -199,6 +256,17 @@ struct NativeTextureDisplayAdapter::Impl {
             .vulkan_validation_layer_ready = vulkan_validation_layer_ready,
             .vulkan_spirv_artifacts_available = vulkan_spirv_artifacts_available,
             .vulkan_synchronization2_ready = vulkan_synchronization2_ready,
+            .metal_host_available = metal_host_available,
+            .metal_command_queue_ready = metal_command_queue_ready,
+            .metal_feature_set_ready = metal_feature_set_ready,
+            .metal_shader_library_ready = metal_shader_library_ready,
+            .metal_render_pipeline_ready = metal_render_pipeline_ready,
+            .metal_texture_render_target_ready = metal_texture_render_target_ready,
+            .metal_texture_shader_read_ready = metal_texture_shader_read_ready,
+            .metal_sampler_state_ready = metal_sampler_state_ready,
+            .metal_render_pass_ready = metal_render_pass_ready,
+            .metal_drawable_present_ready = metal_drawable_present_ready,
+            .metal_command_buffer_completed = metal_command_buffer_completed,
             .renderer_output_available = renderer_output_available && prepared,
             .texture_display_requested = true,
             .texture_adapter_available = evidence.texture_adapter_available,
@@ -222,6 +290,17 @@ struct NativeTextureDisplayAdapter::Impl {
             .vulkan_validation_layer_ready = vulkan_validation_layer_ready,
             .vulkan_spirv_artifacts_available = vulkan_spirv_artifacts_available,
             .vulkan_synchronization2_ready = vulkan_synchronization2_ready,
+            .metal_host_available = metal_host_available,
+            .metal_command_queue_ready = metal_command_queue_ready,
+            .metal_feature_set_ready = metal_feature_set_ready,
+            .metal_shader_library_ready = metal_shader_library_ready,
+            .metal_render_pipeline_ready = metal_render_pipeline_ready,
+            .metal_texture_render_target_ready = metal_texture_render_target_ready,
+            .metal_texture_shader_read_ready = metal_texture_shader_read_ready,
+            .metal_sampler_state_ready = metal_sampler_state_ready,
+            .metal_render_pass_ready = metal_render_pass_ready,
+            .metal_drawable_present_ready = metal_drawable_present_ready,
+            .metal_command_buffer_completed = metal_command_buffer_completed,
             .shader_artifacts_available = shader_artifacts_available,
             .gpu_payload_available = gpu_payload_available,
             .texture_display_requested = true,

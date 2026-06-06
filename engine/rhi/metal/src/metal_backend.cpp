@@ -324,6 +324,10 @@ namespace {
     return recipe_id == "renderer-metal-apple-host-evidence";
 }
 
+[[nodiscard]] bool is_reviewed_metal_editor_texture_display_host_recipe(std::string_view recipe_id) noexcept {
+    return recipe_id == "renderer-metal-apple-host-evidence";
+}
+
 [[nodiscard]] bool has_required_feature_evidence(const MetalEnvironmentFeatureHostEvidenceDesc& desc,
                                                  const MetalEnvironmentFeatureEvidenceRequirement& requirement) {
     return (!requirement.render_pass_required || desc.render_pass_ready) &&
@@ -446,6 +450,63 @@ build_environment_feature_host_evidence_plan(const MetalEnvironmentFeatureHostEv
 
     plan.status = MetalEnvironmentFeatureEvidenceStatus::ready;
     plan.diagnostic = "Metal environment feature evidence ready";
+    return plan;
+}
+
+MetalEditorTextureDisplayEvidencePlan
+build_editor_texture_display_host_evidence_plan(const MetalEditorTextureDisplayEvidenceDesc& desc) {
+    MetalEditorTextureDisplayEvidencePlan plan;
+    plan.host_supported = supports_host(desc.host);
+    plan.host_evidence_available = desc.apple_host_validation_available;
+    plan.runtime_ready = desc.runtime_ready;
+    plan.command_queue_ready = desc.command_queue_ready;
+    plan.shader_library_ready = desc.shader_library_ready;
+    plan.feature_set_ready = desc.feature_set_ready;
+    plan.render_pipeline_ready = desc.render_pipeline_ready;
+    plan.texture_render_target_ready = desc.texture_render_target_ready;
+    plan.texture_shader_read_ready = desc.texture_shader_read_ready;
+    plan.sampler_state_ready = desc.sampler_state_ready;
+    plan.render_pass_ready = desc.render_pass_ready;
+    plan.drawable_present_ready = desc.drawable_present_ready;
+    plan.command_buffer_completed = desc.command_buffer_completed;
+    plan.native_handle_access = desc.native_handles_exposed;
+    plan.host_validation_recipe_id = desc.host_validation_recipe_id;
+
+    if (desc.native_handles_exposed) {
+        plan.status = MetalEditorTextureDisplayEvidenceStatus::blocked;
+        plan.diagnostic = "Metal editor texture display evidence must not expose native handles";
+        return plan;
+    }
+
+    if (!is_reviewed_metal_editor_texture_display_host_recipe(desc.host_validation_recipe_id)) {
+        plan.status = MetalEditorTextureDisplayEvidenceStatus::blocked;
+        plan.diagnostic = "Metal editor texture display evidence requires reviewed Apple host recipe";
+        return plan;
+    }
+
+    const bool host_ready = plan.host_supported && desc.apple_host_validation_available && desc.runtime_ready &&
+                            desc.command_queue_ready && desc.shader_library_ready;
+    if (!host_ready) {
+        plan.status = MetalEditorTextureDisplayEvidenceStatus::host_evidence_required;
+        plan.host_evidence_required = true;
+        plan.diagnostic = "Metal editor texture display requires Apple host validation";
+        return plan;
+    }
+
+    const bool feature_evidence_ready = desc.feature_set_ready && desc.render_pipeline_ready &&
+                                        desc.texture_render_target_ready && desc.texture_shader_read_ready &&
+                                        desc.sampler_state_ready && desc.render_pass_ready &&
+                                        desc.drawable_present_ready && desc.command_buffer_completed;
+    if (!feature_evidence_ready) {
+        plan.status = MetalEditorTextureDisplayEvidenceStatus::blocked;
+        plan.diagnostic =
+            "Metal editor texture display is missing feature-local render, sampling, present, or completion proof";
+        return plan;
+    }
+
+    plan.status = MetalEditorTextureDisplayEvidenceStatus::ready;
+    plan.ready = true;
+    plan.diagnostic = "Metal editor texture display evidence ready";
     return plan;
 }
 

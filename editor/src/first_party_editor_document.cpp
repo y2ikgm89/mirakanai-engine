@@ -133,6 +133,10 @@ summarize_first_party_editor_ui_performance(const NativeEditorApp& app, const Fi
     return backend_id == "vulkan";
 }
 
+[[nodiscard]] bool metal_backend(std::string_view backend_id) noexcept {
+    return backend_id == "metal";
+}
+
 void add_or_throw(ui::UiDocument& document, ui::ElementDesc desc) {
     if (!document.try_add_element(std::move(desc))) {
         throw std::invalid_argument("first-party editor document element is invalid or duplicated");
@@ -531,9 +535,14 @@ make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const F
     constexpr std::uint32_t rich_text_commands_per_editable_document = 9U;
     const bool viewport_vulkan_selected = vulkan_backend(viewport_display.backend_id);
     const bool material_preview_vulkan_selected = vulkan_backend(material_preview_display.backend_id);
+    const bool viewport_metal_selected = metal_backend(viewport_display.backend_id);
+    const bool material_preview_metal_selected = metal_backend(material_preview_display.backend_id);
     const bool vulkan_native_handles_exposed =
         (viewport_vulkan_selected && viewport_display.native_texture_handles_exposed) ||
         (material_preview_vulkan_selected && material_preview_display.native_texture_handles_exposed);
+    const bool metal_native_handles_exposed =
+        (viewport_metal_selected && viewport_display.native_texture_handles_exposed) ||
+        (material_preview_metal_selected && material_preview_display.native_texture_handles_exposed);
     return FirstPartyEditorShellSmokeCounters{
         .ui = "first_party",
         .backend = "d3d12",
@@ -546,6 +555,9 @@ make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const F
         .viewport_vulkan_status = viewport_vulkan_selected ? viewport_display.status_id : "host_gated",
         .viewport_vulkan_visible_texture_composites =
             viewport_vulkan_selected ? viewport_display.visible_texture_composites : 0U,
+        .viewport_metal_status = viewport_metal_selected ? viewport_display.status_id : "host_gated",
+        .viewport_metal_visible_texture_composites =
+            viewport_metal_selected ? viewport_display.visible_texture_composites : 0U,
         .material_preview_status = material_preview_display.status_id,
         .material_preview_visible_texture_composites = material_preview_display.visible_texture_composites,
         .material_preview_native_handles_exposed = app.material_preview_display().native_texture_handles_exposed,
@@ -553,10 +565,48 @@ make_first_party_editor_shell_smoke_counters(const NativeEditorApp& app, const F
             material_preview_vulkan_selected ? material_preview_display.status_id : "host_gated",
         .material_preview_vulkan_visible_texture_composites =
             material_preview_vulkan_selected ? material_preview_display.visible_texture_composites : 0U,
+        .material_preview_metal_status =
+            material_preview_metal_selected ? material_preview_display.status_id : "host_gated",
+        .material_preview_metal_visible_texture_composites =
+            material_preview_metal_selected ? material_preview_display.visible_texture_composites : 0U,
         .vulkan_validation_layer_ready = viewport_vulkan_selected && material_preview_vulkan_selected &&
                                          viewport_display.vulkan_validation_layer_ready &&
                                          material_preview_display.vulkan_validation_layer_ready,
         .vulkan_native_handles_exposed = vulkan_native_handles_exposed,
+        .metal_command_queue_ready = viewport_metal_selected && material_preview_metal_selected &&
+                                     viewport_display.metal_command_queue_ready &&
+                                     material_preview_display.metal_command_queue_ready,
+        .metal_metallib_ready = viewport_metal_selected && material_preview_metal_selected &&
+                                viewport_display.metal_shader_library_ready &&
+                                material_preview_display.metal_shader_library_ready,
+        .metal_feature_set_ready = viewport_metal_selected && material_preview_metal_selected &&
+                                   viewport_display.metal_feature_set_ready &&
+                                   material_preview_display.metal_feature_set_ready,
+        .metal_feature_family_ready = viewport_metal_selected && material_preview_metal_selected &&
+                                      viewport_display.metal_feature_set_ready &&
+                                      material_preview_display.metal_feature_set_ready,
+        .metal_render_pipeline_ready = viewport_metal_selected && material_preview_metal_selected &&
+                                       viewport_display.metal_render_pipeline_ready &&
+                                       material_preview_display.metal_render_pipeline_ready,
+        .metal_render_pass_ready = viewport_metal_selected && material_preview_metal_selected &&
+                                   viewport_display.metal_render_pass_ready &&
+                                   material_preview_display.metal_render_pass_ready,
+        .metal_texture_render_target_ready = viewport_metal_selected && material_preview_metal_selected &&
+                                             viewport_display.metal_texture_render_target_ready &&
+                                             material_preview_display.metal_texture_render_target_ready,
+        .metal_shader_read_sampling_ready = viewport_metal_selected && material_preview_metal_selected &&
+                                            viewport_display.metal_texture_shader_read_ready &&
+                                            material_preview_display.metal_texture_shader_read_ready,
+        .metal_sampler_state_ready = viewport_metal_selected && material_preview_metal_selected &&
+                                     viewport_display.metal_sampler_state_ready &&
+                                     material_preview_display.metal_sampler_state_ready,
+        .metal_drawable_present_ready = viewport_metal_selected && material_preview_metal_selected &&
+                                        viewport_display.metal_drawable_present_ready &&
+                                        material_preview_display.metal_drawable_present_ready,
+        .metal_command_buffer_completed = viewport_metal_selected && material_preview_metal_selected &&
+                                          viewport_display.metal_command_buffer_completed &&
+                                          material_preview_display.metal_command_buffer_completed,
+        .metal_native_handles_exposed = metal_native_handles_exposed,
         .text_atlas_handoff_status = text_atlas.status,
         .text_font_adapter_invoked =
             text_atlas.text_shaping_adapter_invoked && text_atlas.font_rasterizer_adapter_invoked,

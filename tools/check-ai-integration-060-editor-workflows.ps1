@@ -1978,6 +1978,7 @@ $nativeEditorViewportChecks = @(
             "d3d12_host_available",
             "vulkan_host_available", "vulkan_validation_layer_ready", "vulkan_spirv_artifacts_available",
             "vulkan_synchronization2_ready",
+            "metal_host_available", "metal_command_queue_ready", "metal_feature_set_ready", "metal_command_buffer_completed",
             "renderer_output_available",
             "texture_display_requested",
             "visible_panel_available",
@@ -2005,6 +2006,7 @@ $nativeEditorViewportChecks = @(
             "d3d12_texture_ready",
             "vulkan_texture_ready", "vulkan_validation_layer_unavailable", "vulkan_spirv_artifacts_missing",
             "vulkan_synchronization2_unavailable", "VK_LAYER_KHRONOS_validation",
+            "metal_texture_ready", "metal_command_queue_unavailable", "metal_feature_set_unavailable", "metal_command_buffer_incomplete",
             "renderer output unavailable",
             "texture display adapter is private and not bound"
         )
@@ -2020,6 +2022,7 @@ $nativeEditorViewportChecks = @(
             "render_material_preview_frame",
             "display_frame",
             "vulkan_validation_layer_ready", "vulkan_spirv_artifacts_available", "vulkan_synchronization2_ready",
+            "metal_command_queue_ready", "metal_feature_set_ready", "metal_command_buffer_completed",
             "native_texture_handles_exposed"
         )
     },
@@ -2034,6 +2037,7 @@ $nativeEditorViewportChecks = @(
             "fence_waits",
             "wait(fence)",
             "vulkan_spirv_artifacts_available", "synchronization2",
+            "metal_texture_render_target_ready", "metal_command_buffer_completed",
             "display_frame",
             "plan_native_viewport_display",
             "plan_native_material_preview_display"
@@ -2065,6 +2069,7 @@ $nativeEditorViewportChecks = @(
             "wait(fence)",
             "plan_native_viewport_display",
             "vulkan_validation_layer_ready", "vulkan_spirv_artifacts_available", "vulkan_synchronization2_ready",
+            "metal_command_queue_ready", "metal_feature_set_ready", "metal_command_buffer_completed",
             "plan_native_material_preview_display"
         )
     },
@@ -2116,7 +2121,11 @@ $nativeEditorViewportChecks = @(
             "focusable_dock_control_count",
             "viewport_vulkan_status",
             "material_preview_vulkan_status",
-            "vulkan_validation_layer_ready"
+            "vulkan_validation_layer_ready",
+            "viewport_metal_status",
+            "material_preview_metal_status",
+            "metal_command_queue_ready",
+            "metal_native_handles_exposed"
         )
     },
     @{
@@ -2138,7 +2147,11 @@ $nativeEditorViewportChecks = @(
             "editor_shell_viewport_vulkan_status=",
             "editor_shell_viewport_vulkan_visible_texture_composites=",
             "editor_shell_vulkan_validation_layer_ready=",
-            "editor_shell_vulkan_native_handles_exposed="
+            "editor_shell_vulkan_native_handles_exposed=",
+            "editor_shell_viewport_metal_status=",
+            "editor_shell_viewport_metal_visible_texture_composites=",
+            "editor_shell_metal_feature_set_ready=",
+            "editor_shell_metal_native_handles_exposed="
         )
     },
     @{
@@ -2179,8 +2192,11 @@ $nativeEditorViewportChecks = @(
             "editor native viewport display plan waits for resize-safe teardown",
             "editor native viewport display plan reports private d3d12 texture readiness",
             "editor native viewport display plan reports private vulkan texture readiness",
+            "editor native viewport display plan reports private metal texture readiness",
+            "editor native viewport display plan keeps metal host evidence fail closed",
             "editor native texture display adapter prepares viewport display frame through rhi descriptors",
             "editor visible texture compositor samples vulkan viewport texture with sampler descriptors",
+            "editor visible texture compositor samples metal viewport texture with sampler descriptors",
             "editor visible texture compositor samples viewport texture into swapchain before readiness",
             "editor native texture display adapter waits before resize replacement",
             "editor native viewport display plan does not expose native texture handles",
@@ -2203,6 +2219,7 @@ $nativeEditorViewportChecks = @(
             "editor_shell_viewport_vulkan_status",
             "editor_shell_viewport_vulkan_visible_texture_composites",
             "editor_shell_vulkan_native_handles_exposed=0",
+            "editor_shell_viewport_metal_status", "editor_shell_metal_feature_set_ready", "editor_shell_metal_native_handles_exposed=0", "renderer-metal-apple-host-evidence",
             "native_editor_visible_texture_compositor"
         )
     },
@@ -2222,6 +2239,7 @@ $nativeEditorViewportChecks = @(
             "editor_shell_viewport_vulkan_status",
             "editor_shell_viewport_vulkan_visible_texture_composites",
             "editor_shell_vulkan_native_handles_exposed=0",
+            "editor_shell_viewport_metal_status", "editor_shell_metal_feature_set_ready", "editor_shell_metal_native_handles_exposed=0", "renderer-metal-apple-host-evidence",
             "native_editor_visible_texture_compositor"
         )
     },
@@ -2241,6 +2259,7 @@ $nativeEditorViewportChecks = @(
             "editor_shell_viewport_vulkan_status",
             "editor_shell_viewport_vulkan_visible_texture_composites",
             "editor_shell_vulkan_native_handles_exposed=0",
+            "editor_shell_viewport_metal_status", "editor_shell_metal_feature_set_ready", "editor_shell_metal_native_handles_exposed=0", "renderer-metal-apple-host-evidence",
             "visible compositor presentation"
         )
     },
@@ -2261,6 +2280,7 @@ $nativeEditorViewportChecks = @(
             "editor_shell_viewport_vulkan_visible_texture_composites",
             "editor_shell_vulkan_validation_layer_ready",
             "editor_shell_vulkan_native_handles_exposed=0",
+            "editor_shell_viewport_metal_status", "editor_shell_metal_feature_set_ready", "editor_shell_metal_native_handles_exposed=0", "renderer-metal-apple-host-evidence",
             "private D3D12 texture adapter",
             "native_texture_display_adapter",
             "native_editor_visible_texture_compositor"
@@ -2290,6 +2310,7 @@ $nativeEditorMaterialPreviewChecks = @(
             "vulkan_validation_layer_ready",
             "vulkan_spirv_artifacts_available",
             "vulkan_synchronization2_ready",
+            "metal_host_available", "metal_command_queue_ready", "metal_feature_set_ready", "metal_command_buffer_completed",
             "gpu_payload_available",
             "texture_display_requested",
             "visible_panel_available",
@@ -2322,6 +2343,7 @@ $nativeEditorMaterialPreviewChecks = @(
             "vulkan_spirv_artifacts_missing",
             "vulkan_synchronization2_unavailable",
             "VK_LAYER_KHRONOS_validation",
+            "metal_texture_ready", "metal_command_queue_unavailable", "metal_feature_set_unavailable", "metal_command_buffer_incomplete",
             "host-private-native",
             "GPU payload unavailable",
             "native material preview texture display adapter is private",
@@ -2374,6 +2396,9 @@ $nativeEditorMaterialPreviewChecks = @(
             "make_first_party_editor_shell_smoke_counters",
             "material_preview_vulkan_status",
             "vulkan_validation_layer_ready",
+            "material_preview_metal_status",
+            "metal_command_queue_ready",
+            "metal_native_handles_exposed",
             "renderer_submission",
             "editor_dock_panel_catalog"
         )
@@ -2392,7 +2417,9 @@ $nativeEditorMaterialPreviewChecks = @(
             "editor_shell_material_preview_visible_texture_composites=",
             "editor_shell_material_preview_native_handles_exposed=",
             "editor_shell_material_preview_vulkan_status=",
-            "editor_shell_material_preview_vulkan_visible_texture_composites="
+            "editor_shell_material_preview_vulkan_visible_texture_composites=",
+            "editor_shell_material_preview_metal_status=",
+            "editor_shell_material_preview_metal_visible_texture_composites="
         )
     },
     @{
@@ -2422,6 +2449,7 @@ $nativeEditorMaterialPreviewChecks = @(
             "editor native material preview plan waits for descriptor and fence lifecycle",
             "editor native material preview plan reports private d3d12 texture readiness",
             "editor native material preview plan reports private vulkan texture readiness",
+            "editor native material preview plan reports private metal texture readiness",
             "editor native texture display adapter prepares material preview execution evidence",
             "editor visible texture compositor promotes material preview only after visible panel composite",
             "editor native material preview plan keeps d3d12 handles private"
@@ -2444,6 +2472,7 @@ $nativeEditorMaterialPreviewChecks = @(
             "editor_shell_material_preview_vulkan_status",
             "editor_shell_material_preview_vulkan_visible_texture_composites",
             "editor_shell_vulkan_native_handles_exposed=0",
+            "editor_shell_material_preview_metal_status", "editor_shell_metal_native_handles_exposed=0", "metal_texture_ready",
             "host-private-native",
             "broader material-preview GPU parity"
         )
@@ -2457,6 +2486,7 @@ $nativeEditorMaterialPreviewChecks = @(
             "editor_shell_material_preview_vulkan_status",
             "editor_shell_material_preview_vulkan_visible_texture_composites",
             "editor_shell_vulkan_native_handles_exposed=0",
+            "editor_shell_material_preview_metal_status", "editor_shell_metal_native_handles_exposed=0", "metal_texture_ready",
             "host-private-native",
             "broader material-preview GPU parity"
         )
@@ -2474,6 +2504,12 @@ foreach ($check in $nativeEditorMaterialPreviewChecks) {
         Write-Error "ai-integration-check: $($check.Path) missing native editor material preview contract: $($missingNeedles -join ', ')"
     }
 }
+$nativeEditorMetalTextureDisplayChecks = @(
+    @{ Path = "engine/rhi/metal/include/mirakana/rhi/metal/metal_backend.hpp"; Needles = @("MetalEditorTextureDisplayEvidenceDesc", "MetalEditorTextureDisplayEvidencePlan", "MetalEditorTextureDisplayEvidenceStatus", "command_queue_ready", "shader_library_ready", "feature_set_ready", "render_pipeline_ready", "texture_render_target_ready", "texture_shader_read_ready", "sampler_state_ready", "render_pass_ready", "drawable_present_ready", "command_buffer_completed", "native_handles_exposed", "build_editor_texture_display_host_evidence_plan") },
+    @{ Path = "engine/rhi/metal/src/metal_backend.cpp"; Needles = @("renderer-metal-apple-host-evidence", "Metal editor texture display evidence requires reviewed Apple host recipe", "Metal editor texture display requires Apple host validation", "Metal editor texture display is missing feature-local render, sampling, present, or completion proof", "Metal editor texture display evidence must not expose native handles", "Metal editor texture display evidence ready") },
+    @{ Path = "tests/unit/backend_scaffold_tests.cpp"; Needles = @("metal editor texture display evidence requires apple host feature and presentation proof", "metal editor texture display evidence rejects missing feature proof and native handles", "renderer-metal-apple-host-evidence", "MetalEditorTextureDisplayEvidenceStatus::ready") }
+)
+foreach ($check in $nativeEditorMetalTextureDisplayChecks) { $fileText = Get-AgentSurfaceText $check.Path; $missingNeedles = @(); foreach ($needle in $check.Needles) { if (-not (Test-AgentSurfaceContainsText -Text $fileText -Needle $needle)) { $missingNeedles += $needle } }; if ($missingNeedles.Count -gt 0) { Write-Error "ai-integration-check: $($check.Path) missing native editor Metal texture-display contract: $($missingNeedles -join ', ')" } }
 $nativeEditorUiPerformanceBudgetChecks = @(
     @{
         Path = "editor/core/include/mirakana/editor/editor_ui_performance.hpp"
@@ -2498,50 +2534,19 @@ $nativeEditorUiPerformanceBudgetChecks = @(
     },
     @{
         Path = "editor/src/first_party_editor_document.cpp"
-        Needles = @(
-            "summarize_first_party_editor_ui_performance",
-            "make_default_editor_ui_performance_budgets",
-            "editor_ui_performance_budget_status_id",
-            "document.layout_us",
-            "document.document_build_us",
-            ".ui_performance_budget_status",
-            ".ui_performance_diagnostics",
-            ".ui_performance_broad_optimization_claimed"
-        )
+        Needles = @("summarize_first_party_editor_ui_performance", "make_default_editor_ui_performance_budgets", "editor_ui_performance_budget_status_id", "document.layout_us", "document.document_build_us", ".ui_performance_budget_status", ".ui_performance_diagnostics", ".ui_performance_broad_optimization_claimed")
     },
     @{
         Path = "editor/src/main.cpp"
-        Needles = @(
-            "editor_ui_performance_budget_status=",
-            "editor_ui_performance_layout_us_p95=",
-            "editor_ui_performance_document_build_us_p95=",
-            "editor_ui_performance_renderer_submission_us_p95=",
-            "editor_ui_performance_text_runs=",
-            "editor_ui_performance_renderer_boxes=",
-            "editor_ui_performance_visible_texture_composites=",
-            "editor_ui_performance_memory_high_water_bytes=",
-            "editor_ui_performance_budget_violations=",
-            "editor_ui_performance_diagnostics=",
-            "editor_ui_performance_broad_optimization_claimed="
-        )
+        Needles = @("editor_ui_performance_budget_status=", "editor_ui_performance_layout_us_p95=", "editor_ui_performance_document_build_us_p95=", "editor_ui_performance_renderer_submission_us_p95=", "editor_ui_performance_text_runs=", "editor_ui_performance_renderer_boxes=", "editor_ui_performance_visible_texture_composites=", "editor_ui_performance_memory_high_water_bytes=", "editor_ui_performance_budget_violations=", "editor_ui_performance_diagnostics=", "editor_ui_performance_broad_optimization_claimed=")
     },
     @{
         Path = "tests/unit/editor_core_tests.cpp"
-        Needles = @(
-            "editor UI performance summary reports ready budget rows without broad optimization claim",
-            "editor UI performance summary fails closed on budget violations",
-            "editor UI performance summary fails closed without budget rows",
-            "editor UI performance summary checks memory high water budget"
-        )
+        Needles = @("editor UI performance summary reports ready budget rows without broad optimization claim", "editor UI performance summary fails closed on budget violations", "editor UI performance summary fails closed without budget rows", "editor UI performance summary checks memory high water budget")
     },
     @{
         Path = "tests/unit/editor_native_shell_tests.cpp"
-        Needles = @(
-            "editor first party shell smoke counters copy UI performance budget rows",
-            'ui_performance_budget_status == "ready"',
-            "ui_performance_budget_violations == 0U",
-            "ui_performance_diagnostics == 0U"
-        )
+        Needles = @("editor first party shell smoke counters copy UI performance budget rows", 'ui_performance_budget_status == "ready"', "ui_performance_budget_violations == 0U", "ui_performance_diagnostics == 0U")
     },
     @{ Path = "engine/ui/include/mirakana/ui/ui.hpp"; Needles = @("RetainedUiSnapshot", "RetainedUiDiffRequest", "RetainedUiDiffSummary", "make_retained_ui_snapshot", "diff_retained_ui_snapshots", "retained_ui_diff_status_id") },
     @{ Path = "engine/ui_renderer/include/mirakana/ui_renderer/ui_renderer.hpp"; Needles = @("renderer_submission_order_key", "glyph_atlas_binding_reuse_rows", "image_binding_reuse_rows", "cache_native_handle_access") },

@@ -7342,6 +7342,85 @@ MK_TEST("metal texture synchronization plan rejects usage and drawable mismatche
     MK_REQUIRE(present_plan.steps[1] == mirakana::rhi::metal::MetalSynchronizationStep::present_drawable);
 }
 
+MK_TEST("metal editor texture display evidence requires apple host feature and presentation proof") {
+    auto desc = mirakana::rhi::metal::MetalEditorTextureDisplayEvidenceDesc{
+        .host = mirakana::rhi::RhiHostPlatform::windows,
+    };
+    const auto windows = mirakana::rhi::metal::build_editor_texture_display_host_evidence_plan(desc);
+    MK_REQUIRE(windows.status == mirakana::rhi::metal::MetalEditorTextureDisplayEvidenceStatus::host_evidence_required);
+    MK_REQUIRE(windows.host_evidence_required);
+    MK_REQUIRE(!windows.host_supported);
+    MK_REQUIRE(!windows.ready);
+    MK_REQUIRE(!windows.native_handle_access);
+    MK_REQUIRE(windows.host_validation_recipe_id == "renderer-metal-apple-host-evidence");
+    MK_REQUIRE(windows.diagnostic == "Metal editor texture display requires Apple host validation");
+
+    desc.host = mirakana::rhi::RhiHostPlatform::macos;
+    desc.apple_host_validation_available = true;
+    desc.runtime_ready = true;
+    desc.command_queue_ready = true;
+    desc.shader_library_ready = true;
+    desc.feature_set_ready = true;
+    desc.render_pipeline_ready = true;
+    desc.texture_render_target_ready = true;
+    desc.texture_shader_read_ready = true;
+    desc.sampler_state_ready = true;
+    desc.render_pass_ready = true;
+    desc.drawable_present_ready = true;
+    desc.command_buffer_completed = true;
+    const auto ready = mirakana::rhi::metal::build_editor_texture_display_host_evidence_plan(desc);
+    MK_REQUIRE(ready.status == mirakana::rhi::metal::MetalEditorTextureDisplayEvidenceStatus::ready);
+    MK_REQUIRE(ready.ready);
+    MK_REQUIRE(ready.host_supported);
+    MK_REQUIRE(ready.host_evidence_available);
+    MK_REQUIRE(ready.runtime_ready);
+    MK_REQUIRE(ready.command_queue_ready);
+    MK_REQUIRE(ready.shader_library_ready);
+    MK_REQUIRE(ready.feature_set_ready);
+    MK_REQUIRE(ready.render_pipeline_ready);
+    MK_REQUIRE(ready.texture_render_target_ready);
+    MK_REQUIRE(ready.texture_shader_read_ready);
+    MK_REQUIRE(ready.sampler_state_ready);
+    MK_REQUIRE(ready.render_pass_ready);
+    MK_REQUIRE(ready.drawable_present_ready);
+    MK_REQUIRE(ready.command_buffer_completed);
+    MK_REQUIRE(!ready.native_handle_access);
+    MK_REQUIRE(ready.diagnostic == "Metal editor texture display evidence ready");
+}
+
+MK_TEST("metal editor texture display evidence rejects missing feature proof and native handles") {
+    const auto missing_sampler = mirakana::rhi::metal::build_editor_texture_display_host_evidence_plan(
+        mirakana::rhi::metal::MetalEditorTextureDisplayEvidenceDesc{
+            .host = mirakana::rhi::RhiHostPlatform::ios,
+            .apple_host_validation_available = true,
+            .runtime_ready = true,
+            .command_queue_ready = true,
+            .shader_library_ready = true,
+            .feature_set_ready = true,
+            .render_pipeline_ready = true,
+            .texture_render_target_ready = true,
+            .texture_shader_read_ready = true,
+            .sampler_state_ready = false,
+            .render_pass_ready = true,
+            .drawable_present_ready = true,
+            .command_buffer_completed = true,
+        });
+    MK_REQUIRE(missing_sampler.status == mirakana::rhi::metal::MetalEditorTextureDisplayEvidenceStatus::blocked);
+    MK_REQUIRE(!missing_sampler.ready);
+    MK_REQUIRE(missing_sampler.diagnostic ==
+               "Metal editor texture display is missing feature-local render, sampling, present, or completion proof");
+
+    const auto native_handle = mirakana::rhi::metal::build_editor_texture_display_host_evidence_plan(
+        mirakana::rhi::metal::MetalEditorTextureDisplayEvidenceDesc{
+            .host = mirakana::rhi::RhiHostPlatform::macos,
+            .apple_host_validation_available = true,
+            .native_handles_exposed = true,
+        });
+    MK_REQUIRE(native_handle.status == mirakana::rhi::metal::MetalEditorTextureDisplayEvidenceStatus::blocked);
+    MK_REQUIRE(native_handle.native_handle_access);
+    MK_REQUIRE(native_handle.diagnostic == "Metal editor texture display evidence must not expose native handles");
+}
+
 MK_TEST("metal platform availability diagnostics remain sdk independent") {
     const auto unsupported =
         mirakana::rhi::metal::diagnose_platform_availability(mirakana::rhi::RhiHostPlatform::windows, false);

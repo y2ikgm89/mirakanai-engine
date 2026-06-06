@@ -49,6 +49,12 @@ enum class MetalEnvironmentFeatureEvidenceStatus : std::uint8_t {
     ready,
 };
 
+enum class MetalEditorTextureDisplayEvidenceStatus : std::uint8_t {
+    blocked,
+    host_evidence_required,
+    ready,
+};
+
 struct MetalShaderLibraryArtifactDesc {
     const void* bytecode{nullptr};
     std::uint64_t bytecode_size{0};
@@ -165,6 +171,46 @@ struct MetalEnvironmentFeatureHostEvidencePlan {
     std::size_t ready_row_count{0U};
     std::size_t blocked_row_count{0U};
     std::size_t native_handle_access_count{0U};
+    std::string diagnostic;
+};
+
+struct MetalEditorTextureDisplayEvidenceDesc {
+    RhiHostPlatform host{RhiHostPlatform::unknown};
+    std::string host_validation_recipe_id{"renderer-metal-apple-host-evidence"};
+    bool apple_host_validation_available{false};
+    bool runtime_ready{false};
+    bool command_queue_ready{false};
+    bool shader_library_ready{false};
+    bool feature_set_ready{false};
+    bool render_pipeline_ready{false};
+    bool texture_render_target_ready{false};
+    bool texture_shader_read_ready{false};
+    bool sampler_state_ready{false};
+    bool render_pass_ready{false};
+    bool drawable_present_ready{false};
+    bool command_buffer_completed{false};
+    bool native_handles_exposed{false};
+};
+
+struct MetalEditorTextureDisplayEvidencePlan {
+    MetalEditorTextureDisplayEvidenceStatus status{MetalEditorTextureDisplayEvidenceStatus::blocked};
+    bool ready{false};
+    bool host_supported{false};
+    bool host_evidence_required{false};
+    bool host_evidence_available{false};
+    bool runtime_ready{false};
+    bool command_queue_ready{false};
+    bool shader_library_ready{false};
+    bool feature_set_ready{false};
+    bool render_pipeline_ready{false};
+    bool texture_render_target_ready{false};
+    bool texture_shader_read_ready{false};
+    bool sampler_state_ready{false};
+    bool render_pass_ready{false};
+    bool drawable_present_ready{false};
+    bool command_buffer_completed{false};
+    bool native_handle_access{false};
+    std::string host_validation_recipe_id;
     std::string diagnostic;
 };
 
@@ -463,6 +509,8 @@ default_environment_feature_evidence_requirements();
 metal_environment_feature_evidence_status_label(MetalEnvironmentFeatureEvidenceStatus status) noexcept;
 [[nodiscard]] MetalEnvironmentFeatureHostEvidencePlan
 build_environment_feature_host_evidence_plan(const MetalEnvironmentFeatureHostEvidenceDesc& desc);
+[[nodiscard]] MetalEditorTextureDisplayEvidencePlan
+build_editor_texture_display_host_evidence_plan(const MetalEditorTextureDisplayEvidenceDesc& desc);
 [[nodiscard]] MetalRuntimeDeviceQueueCreateResult
 create_native_device_and_command_queue(const MetalNativeDeviceQueueDesc& desc = {});
 [[nodiscard]] MetalRuntimeCommandBufferCreateResult create_native_command_buffer(MetalRuntimeDevice& device);
