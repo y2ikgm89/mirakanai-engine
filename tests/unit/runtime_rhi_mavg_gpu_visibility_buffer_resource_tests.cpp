@@ -242,6 +242,7 @@ MK_TEST("runtime rhi mavg visibility buffer resource allocates null rhi storage 
     MK_REQUIRE(result.device_buffers_created_after == buffers_before + 1U);
     MK_REQUIRE(result.resource_rows[0].visibility_buffer.value != 0U);
     MK_REQUIRE(result.resource_rows[0].buffer_desc.size_bytes == layout.slot_buffer_size_bytes);
+    MK_REQUIRE(result.resource_rows[0].owner_device == &device);
     MK_REQUIRE(mirakana::rhi::has_flag(result.resource_rows[0].buffer_desc.usage, mirakana::rhi::BufferUsage::storage));
     MK_REQUIRE(
         mirakana::rhi::has_flag(result.resource_rows[0].buffer_desc.usage, mirakana::rhi::BufferUsage::copy_source));
@@ -251,6 +252,7 @@ MK_TEST("runtime rhi mavg visibility buffer resource allocates null rhi storage 
     MK_REQUIRE(result.resource_rows[0].storage_usage_ready);
     MK_REQUIRE(result.resource_rows[0].copy_source_usage_ready);
     MK_REQUIRE(result.allocated_rhi_resources);
+    MK_REQUIRE(result.owner_device == &device);
     MK_REQUIRE(result.ready_for_readback_proof);
     MK_REQUIRE(!result.wrote_gpu_visibility_buffer);
     MK_REQUIRE(!result.created_descriptor_bindings);

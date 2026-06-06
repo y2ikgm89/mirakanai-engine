@@ -818,6 +818,15 @@ if(BUILD_TESTING)
     add_test(NAME MK_runtime_rhi_mavg_gpu_visibility_buffer_resource_tests
         COMMAND MK_runtime_rhi_mavg_gpu_visibility_buffer_resource_tests)
 
+    add_executable(MK_runtime_rhi_mavg_gpu_visibility_buffer_write_readback_tests
+        tests/unit/runtime_rhi_mavg_gpu_visibility_buffer_write_readback_tests.cpp
+    )
+    target_link_libraries(MK_runtime_rhi_mavg_gpu_visibility_buffer_write_readback_tests PRIVATE MK_runtime_rhi)
+    target_include_directories(MK_runtime_rhi_mavg_gpu_visibility_buffer_write_readback_tests PRIVATE tests)
+    MK_apply_common_target_options(MK_runtime_rhi_mavg_gpu_visibility_buffer_write_readback_tests)
+    add_test(NAME MK_runtime_rhi_mavg_gpu_visibility_buffer_write_readback_tests
+        COMMAND MK_runtime_rhi_mavg_gpu_visibility_buffer_write_readback_tests)
+
     add_executable(MK_runtime_scene_rhi_tests
         tests/unit/runtime_scene_rhi_tests.cpp
     )

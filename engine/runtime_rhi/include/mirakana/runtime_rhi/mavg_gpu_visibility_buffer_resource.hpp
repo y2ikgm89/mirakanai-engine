@@ -45,6 +45,7 @@ struct RuntimeMavgGpuVisibilityBufferResourceRow {
     AssetId graph_asset;
     rhi::BufferHandle visibility_buffer;
     rhi::BufferDesc buffer_desc;
+    const rhi::IRhiDevice* owner_device{nullptr};
     std::uint32_t slot_count{0};
     std::uint32_t byte_range_count{0};
     std::uint64_t slot_buffer_size_bytes{0};
@@ -62,6 +63,7 @@ struct RuntimeMavgGpuVisibilityBufferResourceResult {
     std::uint64_t allocated_buffer_size_bytes{0};
     std::uint64_t device_buffers_created_before{0};
     std::uint64_t device_buffers_created_after{0};
+    const rhi::IRhiDevice* owner_device{nullptr};
     bool allocated_rhi_resources{false};
     bool ready_for_readback_proof{false};
     bool wrote_gpu_visibility_buffer{false};

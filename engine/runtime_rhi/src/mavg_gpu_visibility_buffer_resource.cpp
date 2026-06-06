@@ -40,6 +40,7 @@ create_runtime_mavg_gpu_visibility_buffer_resource(const RuntimeMavgGpuVisibilit
     if (desc.device != nullptr) {
         result.device_buffers_created_before = desc.device->stats().buffers_created;
         result.device_buffers_created_after = result.device_buffers_created_before;
+        result.owner_device = desc.device;
     }
 
     if (desc.device == nullptr) {
@@ -125,6 +126,7 @@ create_runtime_mavg_gpu_visibility_buffer_resource(const RuntimeMavgGpuVisibilit
         .graph_asset = graph_asset,
         .visibility_buffer = visibility_buffer,
         .buffer_desc = buffer_desc,
+        .owner_device = desc.device,
         .slot_count = layout->slot_count,
         .byte_range_count = layout->byte_range_count,
         .slot_buffer_size_bytes = layout->slot_buffer_size_bytes,
