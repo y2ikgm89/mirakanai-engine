@@ -27,7 +27,7 @@ constexpr std::string_view scene_source_format = "GameEngine.Scene.v1";
 constexpr std::string_view morph_mesh_cpu_source_format = "GameEngine.MorphMeshCpuSource.v1";
 constexpr std::string_view animation_float_clip_source_format = "GameEngine.AnimationFloatClipSource.v1";
 constexpr std::string_view animation_quaternion_clip_source_format = "GameEngine.AnimationQuaternionClipSource.v1";
-constexpr std::string_view environment_profile_source_format = "GameEngine.EnvironmentProfile.v1";
+constexpr std::string_view environment_profile_source_format = "GameEngine.EnvironmentProfile.v2";
 
 struct SourceAssetTextDependencyRow {
     bool has_kind{false};
