@@ -202,6 +202,12 @@ find_page_mount(std::span<const RuntimeMavgResidentPageMountRow> page_mounts, st
            page_mount.mount_id == frequency_row.mount_id;
 }
 
+[[nodiscard]] bool matches_page_mount(const RuntimeMavgResidentPageMountRow& page_mount,
+                                      const RuntimeMavgPageStreamingGpuMemoryPressureRow& pressure_row) noexcept {
+    return page_mount.graph_asset == pressure_row.graph_asset && page_mount.page_index == pressure_row.page_index &&
+           page_mount.mount_id == pressure_row.mount_id;
+}
+
 [[nodiscard]] const RuntimeMavgPageStreamingRecencyRow*
 find_recency_row(std::span<const RuntimeMavgPageStreamingRecencyRow> recency_rows,
                  const RuntimeMavgResidentPageMountRow& page_mount) noexcept {
@@ -227,6 +233,19 @@ find_frequency_row(std::span<const RuntimeMavgPageStreamingFrequencyRow> frequen
     return &*found;
 }
 
+[[nodiscard]] const RuntimeMavgPageStreamingGpuMemoryPressureRow*
+find_gpu_memory_pressure_row(std::span<const RuntimeMavgPageStreamingGpuMemoryPressureRow> pressure_rows,
+                             const RuntimeMavgResidentPageMountRow& page_mount) noexcept {
+    const auto found =
+        std::ranges::find_if(pressure_rows, [&page_mount](const RuntimeMavgPageStreamingGpuMemoryPressureRow& row) {
+            return matches_page_mount(page_mount, row);
+        });
+    if (found == pressure_rows.end()) {
+        return nullptr;
+    }
+    return &*found;
+}
+
 [[nodiscard]] bool
 uses_recency_eviction_order(RuntimeMavgPageStreamingAutomaticEvictionPolicyKind policy_kind) noexcept {
     return policy_kind == RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::caller_supplied_recency ||
@@ -236,6 +255,11 @@ uses_recency_eviction_order(RuntimeMavgPageStreamingAutomaticEvictionPolicyKind 
 [[nodiscard]] bool
 uses_frequency_eviction_order(RuntimeMavgPageStreamingAutomaticEvictionPolicyKind policy_kind) noexcept {
     return policy_kind == RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::runtime_inferred_frequency;
+}
+
+[[nodiscard]] bool
+uses_gpu_memory_pressure_eviction_order(RuntimeMavgPageStreamingAutomaticEvictionPolicyKind policy_kind) noexcept {
+    return policy_kind == RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::caller_supplied_gpu_memory_pressure;
 }
 
 void add_unique_protected_mount(RuntimeMavgPageStreamingEvictionReviewResult& result,
@@ -1213,6 +1237,59 @@ infer_runtime_mavg_resident_page_frequencies(const RuntimeResidentPackageMountSe
     return result.diagnostics.empty();
 }
 
+[[nodiscard]] static bool add_gpu_memory_pressure_estimated_bytes(RuntimeMavgPageStreamingEvictionReviewResult& result,
+                                                                  AssetId graph_asset, std::uint32_t page_index,
+                                                                  std::uint64_t bytes, std::uint64_t& total) {
+    if (total > std::numeric_limits<std::uint64_t>::max() - bytes) {
+        add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::gpu_memory_pressure_counter_overflow,
+                       graph_asset, page_index, "MAVG GPU memory pressure estimated byte aggregation overflowed");
+        return false;
+    }
+    total += bytes;
+    return true;
+}
+
+[[nodiscard]] static bool
+validate_gpu_memory_pressure_rows(RuntimeMavgPageStreamingEvictionReviewResult& result, AssetId graph_asset,
+                                  std::span<const RuntimeMavgResidentPageMountRow> page_mounts,
+                                  std::span<const RuntimeMavgPageStreamingGpuMemoryPressureRow> pressure_rows) {
+    std::vector<std::uint32_t> seen_page_indices;
+    std::vector<RuntimeResidentPackageMountIdV2> seen_mount_ids;
+    for (const auto& row : pressure_rows) {
+        if (row.graph_asset != graph_asset) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::gpu_memory_pressure_graph_mismatch,
+                           row.graph_asset, row.page_index,
+                           "MAVG GPU memory pressure row graph asset does not match the review graph");
+            continue;
+        }
+        if (row.mount_id.value == 0) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::invalid_gpu_memory_pressure_row, graph_asset,
+                           row.page_index, "MAVG GPU memory pressure row mount id must be non-zero");
+            continue;
+        }
+        if (std::ranges::find(seen_page_indices, row.page_index) != seen_page_indices.end() ||
+            contains_mount_id(seen_mount_ids, row.mount_id)) {
+            ++result.duplicate_gpu_memory_pressure_row_count;
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::duplicate_gpu_memory_pressure_row,
+                           graph_asset, row.page_index,
+                           "MAVG GPU memory pressure rows must be unique by page and mount id");
+            continue;
+        }
+        const auto page_mount_matches =
+            std::ranges::any_of(page_mounts, [&row](const RuntimeMavgResidentPageMountRow& page_mount) {
+                return matches_page_mount(page_mount, row);
+            });
+        if (!page_mount_matches) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::invalid_gpu_memory_pressure_row, graph_asset,
+                           row.page_index, "MAVG GPU memory pressure row must match a resident page mount row");
+            continue;
+        }
+        seen_page_indices.push_back(row.page_index);
+        seen_mount_ids.push_back(row.mount_id);
+    }
+    return result.diagnostics.empty();
+}
+
 RuntimeMavgPageStreamingEvictionReviewResult
 plan_runtime_mavg_page_streaming_automatic_evictions(const RuntimeResidentPackageMountSetV2& mount_set,
                                                      const RuntimeMavgPageStreamingAutomaticEvictionPlanDesc& desc) {
@@ -1226,6 +1303,8 @@ plan_runtime_mavg_page_streaming_automatic_evictions(const RuntimeResidentPackag
         RuntimeMavgResidentPageMountRow page_mount;
         std::uint64_t resident_page_last_used_generation{0};
         std::uint64_t resident_page_selection_count{0};
+        std::uint64_t gpu_memory_eviction_pressure_score{0};
+        std::uint64_t gpu_memory_estimated_resident_bytes{0};
     };
 
     std::vector<EvictionCandidate> eviction_candidates;
@@ -1320,6 +1399,44 @@ plan_runtime_mavg_page_streaming_automatic_evictions(const RuntimeResidentPackag
         result.inferred_eviction_policy = true;
         result.inferred_frequency_eviction_policy = true;
         result.runtime_inferred_frequency_eviction_candidate_count = eviction_candidates.size();
+    } else if (desc.policy_kind ==
+               RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::caller_supplied_gpu_memory_pressure) {
+        if (!validate_gpu_memory_pressure_rows(result, desc.graph_asset, desc.resident_page_mounts,
+                                               desc.gpu_memory_pressure_rows)) {
+            return result;
+        }
+        for (const auto& row : desc.gpu_memory_pressure_rows) {
+            if (contains_mount_id(result.protected_mount_ids, row.mount_id) &&
+                !add_gpu_memory_pressure_estimated_bytes(result, desc.graph_asset, row.page_index,
+                                                         row.estimated_gpu_resident_bytes,
+                                                         result.gpu_memory_pressure_protected_estimated_bytes)) {
+                return result;
+            }
+        }
+        for (auto& candidate : eviction_candidates) {
+            const auto* const pressure =
+                find_gpu_memory_pressure_row(desc.gpu_memory_pressure_rows, candidate.page_mount);
+            if (pressure == nullptr) {
+                ++result.missing_gpu_memory_pressure_row_count;
+                add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::missing_gpu_memory_pressure_row,
+                               desc.graph_asset, candidate.page_mount.page_index,
+                               "MAVG GPU memory pressure policy requires one row for each candidate");
+                continue;
+            }
+            candidate.gpu_memory_eviction_pressure_score = pressure->eviction_pressure_score;
+            candidate.gpu_memory_estimated_resident_bytes = pressure->estimated_gpu_resident_bytes;
+            if (!add_gpu_memory_pressure_estimated_bytes(result, desc.graph_asset, candidate.page_mount.page_index,
+                                                         pressure->estimated_gpu_resident_bytes,
+                                                         result.gpu_memory_pressure_candidate_estimated_bytes)) {
+                continue;
+            }
+        }
+        if (!result.diagnostics.empty()) {
+            return result;
+        }
+        result.applied_caller_supplied_gpu_memory_pressure_policy = true;
+        result.planned_gpu_memory_pressure_eviction_policy = true;
+        result.gpu_memory_pressure_eviction_candidate_count = eviction_candidates.size();
     } else if (desc.policy_kind != RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::deterministic_page_index) {
         add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::invalid_recency_row, desc.graph_asset, 0,
                        "MAVG automatic eviction policy kind is not supported");
@@ -1327,6 +1444,14 @@ plan_runtime_mavg_page_streaming_automatic_evictions(const RuntimeResidentPackag
     }
 
     std::ranges::sort(eviction_candidates, [&desc](const EvictionCandidate& lhs, const EvictionCandidate& rhs) {
+        if (uses_gpu_memory_pressure_eviction_order(desc.policy_kind) &&
+            lhs.gpu_memory_eviction_pressure_score != rhs.gpu_memory_eviction_pressure_score) {
+            return lhs.gpu_memory_eviction_pressure_score > rhs.gpu_memory_eviction_pressure_score;
+        }
+        if (uses_gpu_memory_pressure_eviction_order(desc.policy_kind) &&
+            lhs.gpu_memory_estimated_resident_bytes != rhs.gpu_memory_estimated_resident_bytes) {
+            return lhs.gpu_memory_estimated_resident_bytes > rhs.gpu_memory_estimated_resident_bytes;
+        }
         if (uses_frequency_eviction_order(desc.policy_kind) &&
             lhs.resident_page_selection_count != rhs.resident_page_selection_count) {
             return lhs.resident_page_selection_count < rhs.resident_page_selection_count;

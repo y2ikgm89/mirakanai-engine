@@ -63,6 +63,11 @@ enum class RuntimeMavgPageStreamingDiagnosticCode : std::uint8_t {
     duplicate_frequency_row,
     missing_frequency_row,
     frequency_counter_overflow,
+    gpu_memory_pressure_graph_mismatch,
+    invalid_gpu_memory_pressure_row,
+    duplicate_gpu_memory_pressure_row,
+    missing_gpu_memory_pressure_row,
+    gpu_memory_pressure_counter_overflow,
 };
 
 struct RuntimeMavgPageStreamingDiagnostic {
@@ -231,6 +236,7 @@ enum class RuntimeMavgPageStreamingAutomaticEvictionPolicyKind : std::uint8_t {
     caller_supplied_recency,
     runtime_inferred_lru,
     runtime_inferred_frequency,
+    caller_supplied_gpu_memory_pressure,
 };
 
 struct RuntimeMavgPageStreamingRecencyRow {
@@ -245,6 +251,14 @@ struct RuntimeMavgPageStreamingFrequencyRow {
     std::uint32_t page_index{0};
     RuntimeResidentPackageMountIdV2 mount_id;
     std::uint64_t resident_page_selection_count{0};
+};
+
+struct RuntimeMavgPageStreamingGpuMemoryPressureRow {
+    AssetId graph_asset;
+    std::uint32_t page_index{0};
+    RuntimeResidentPackageMountIdV2 mount_id;
+    std::uint64_t eviction_pressure_score{0};
+    std::uint64_t estimated_gpu_resident_bytes{0};
 };
 
 struct RuntimeMavgResidentPageUseGenerationDesc {
@@ -329,6 +343,7 @@ struct RuntimeMavgPageStreamingAutomaticEvictionPlanDesc {
     std::span<const RuntimeMavgPageStreamingRecencyRow> recency_rows;
     std::span<const RuntimeMavgPageStreamingRecencyRow> previous_recency_rows;
     std::span<const RuntimeMavgPageStreamingFrequencyRow> previous_frequency_rows;
+    std::span<const RuntimeMavgPageStreamingGpuMemoryPressureRow> gpu_memory_pressure_rows;
     std::uint64_t current_use_generation{0};
     std::span<const RuntimeResidentPackageMountIdV2> caller_protected_mount_ids;
     RuntimeResourceResidencyBudgetV2 target_budget{};
@@ -348,6 +363,7 @@ struct RuntimeMavgPageStreamingEvictionReviewResult {
     std::size_t recency_eviction_candidate_count{0};
     std::size_t runtime_inferred_lru_eviction_candidate_count{0};
     std::size_t runtime_inferred_frequency_eviction_candidate_count{0};
+    std::size_t gpu_memory_pressure_eviction_candidate_count{0};
     std::size_t touched_resident_page_count{0};
     std::size_t carried_recency_row_count{0};
     std::size_t carried_frequency_row_count{0};
@@ -356,8 +372,12 @@ struct RuntimeMavgPageStreamingEvictionReviewResult {
     std::size_t dropped_nonresident_frequency_row_count{0};
     std::size_t missing_recency_row_count{0};
     std::size_t missing_frequency_row_count{0};
+    std::size_t missing_gpu_memory_pressure_row_count{0};
     std::size_t duplicate_recency_row_count{0};
     std::size_t duplicate_frequency_row_count{0};
+    std::size_t duplicate_gpu_memory_pressure_row_count{0};
+    std::uint64_t gpu_memory_pressure_candidate_estimated_bytes{0};
+    std::uint64_t gpu_memory_pressure_protected_estimated_bytes{0};
     bool invoked_eviction_plan{false};
     bool inferred_eviction_policy{false};
     bool inferred_lru_eviction_policy{false};
@@ -365,7 +385,9 @@ struct RuntimeMavgPageStreamingEvictionReviewResult {
     bool inferred_resident_page_use_generation{false};
     bool inferred_resident_page_frequency{false};
     bool planned_automatic_eviction_policy{false};
+    bool planned_gpu_memory_pressure_eviction_policy{false};
     bool applied_caller_supplied_recency_policy{false};
+    bool applied_caller_supplied_gpu_memory_pressure_policy{false};
     bool invoked_file_io{false};
     bool mutated_mount_set{false};
     bool touched_renderer_or_rhi_handles{false};

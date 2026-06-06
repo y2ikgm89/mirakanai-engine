@@ -1732,6 +1732,298 @@ MK_TEST("runtime mavg page streaming runtime inferred frequency policy rejects c
     MK_REQUIRE(mount_set.mounts().size() == 2U);
 }
 
+MK_TEST(
+    "runtime mavg page streaming caller supplied gpu memory pressure orders high pressure unprotected pages first") {
+    const auto graph = make_page_streaming_graph();
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    mount_resident_page(mount_set, 10, mirakana::AssetId::from_name("mavg/page-streaming/page-0"), "root");
+    mount_resident_page(mount_set, 11, mirakana::AssetId::from_name("mavg/page-streaming/page-1"), "warm");
+    mount_resident_page(mount_set, 12, mirakana::AssetId::from_name("mavg/page-streaming/page-2"), "pressure");
+
+    const std::vector<mirakana::runtime::RuntimeMavgResidentPageMountRow> page_mounts{
+        {.graph_asset = graph.asset, .page_index = 0, .mount_id = {.value = 10}},
+        {.graph_asset = graph.asset, .page_index = 1, .mount_id = {.value = 11}},
+        {.graph_asset = graph.asset, .page_index = 2, .mount_id = {.value = 12}},
+    };
+    const std::vector<mirakana::runtime::RuntimeMavgPageStreamingSelectedClusterRow> selected_clusters{
+        {.graph_asset = graph.asset, .cluster_index = 0},
+    };
+    const std::vector<mirakana::runtime::RuntimeMavgPageStreamingGpuMemoryPressureRow> gpu_memory_pressure_rows{
+        {.graph_asset = graph.asset,
+         .page_index = 0,
+         .mount_id = {.value = 10},
+         .eviction_pressure_score = 1,
+         .estimated_gpu_resident_bytes = 256},
+        {.graph_asset = graph.asset,
+         .page_index = 1,
+         .mount_id = {.value = 11},
+         .eviction_pressure_score = 10,
+         .estimated_gpu_resident_bytes = 64},
+        {.graph_asset = graph.asset,
+         .page_index = 2,
+         .mount_id = {.value = 12},
+         .eviction_pressure_score = 20,
+         .estimated_gpu_resident_bytes = 32},
+    };
+
+    const auto result = mirakana::runtime::plan_runtime_mavg_page_streaming_automatic_evictions(
+        mount_set, mirakana::runtime::RuntimeMavgPageStreamingAutomaticEvictionPlanDesc{
+                       .graph_asset = graph.asset,
+                       .graph = &graph,
+                       .selected_clusters = selected_clusters,
+                       .resident_page_mounts = page_mounts,
+                       .policy_kind = mirakana::runtime::RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::
+                           caller_supplied_gpu_memory_pressure,
+                       .gpu_memory_pressure_rows = gpu_memory_pressure_rows,
+                       .target_budget =
+                           mirakana::runtime::RuntimeResourceResidencyBudgetV2{
+                               .max_resident_content_bytes = 4,
+                           },
+                   });
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.planned_automatic_eviction_policy);
+    MK_REQUIRE(result.applied_caller_supplied_gpu_memory_pressure_policy);
+    MK_REQUIRE(result.gpu_memory_pressure_eviction_candidate_count == 2U);
+    MK_REQUIRE(result.gpu_memory_pressure_candidate_estimated_bytes == 96U);
+    MK_REQUIRE(result.gpu_memory_pressure_protected_estimated_bytes == 256U);
+    MK_REQUIRE(result.protected_visible_page_count == 1U);
+    MK_REQUIRE(result.protected_eviction_candidate_skip_count == 1U);
+    MK_REQUIRE(result.eviction_candidate_unmount_order.size() == 2U);
+    MK_REQUIRE(result.eviction_candidate_unmount_order[0] ==
+               mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 12});
+    MK_REQUIRE(result.eviction_candidate_unmount_order[1] ==
+               mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 11});
+    MK_REQUIRE(!result.invoked_file_io);
+    MK_REQUIRE(!result.mutated_mount_set);
+    MK_REQUIRE(!result.touched_renderer_or_rhi_handles);
+    MK_REQUIRE(mount_set.mounts().size() == 3U);
+}
+
+MK_TEST("runtime mavg page streaming caller supplied gpu memory pressure uses estimated bytes tie breaker") {
+    const auto graph = make_page_streaming_graph();
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    mount_resident_page(mount_set, 10, mirakana::AssetId::from_name("mavg/page-streaming/page-0"), "root");
+    mount_resident_page(mount_set, 11, mirakana::AssetId::from_name("mavg/page-streaming/page-1"), "small");
+    mount_resident_page(mount_set, 12, mirakana::AssetId::from_name("mavg/page-streaming/page-2"), "large");
+
+    const std::vector<mirakana::runtime::RuntimeMavgResidentPageMountRow> page_mounts{
+        {.graph_asset = graph.asset, .page_index = 0, .mount_id = {.value = 10}},
+        {.graph_asset = graph.asset, .page_index = 1, .mount_id = {.value = 11}},
+        {.graph_asset = graph.asset, .page_index = 2, .mount_id = {.value = 12}},
+    };
+    const std::vector<mirakana::runtime::RuntimeMavgPageStreamingSelectedClusterRow> selected_clusters{
+        {.graph_asset = graph.asset, .cluster_index = 0},
+    };
+    const std::vector<mirakana::runtime::RuntimeMavgPageStreamingGpuMemoryPressureRow> gpu_memory_pressure_rows{
+        {.graph_asset = graph.asset,
+         .page_index = 1,
+         .mount_id = {.value = 11},
+         .eviction_pressure_score = 7,
+         .estimated_gpu_resident_bytes = 100},
+        {.graph_asset = graph.asset,
+         .page_index = 2,
+         .mount_id = {.value = 12},
+         .eviction_pressure_score = 7,
+         .estimated_gpu_resident_bytes = 300},
+    };
+
+    const auto result = mirakana::runtime::plan_runtime_mavg_page_streaming_automatic_evictions(
+        mount_set, mirakana::runtime::RuntimeMavgPageStreamingAutomaticEvictionPlanDesc{
+                       .graph_asset = graph.asset,
+                       .graph = &graph,
+                       .selected_clusters = selected_clusters,
+                       .resident_page_mounts = page_mounts,
+                       .policy_kind = mirakana::runtime::RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::
+                           caller_supplied_gpu_memory_pressure,
+                       .gpu_memory_pressure_rows = gpu_memory_pressure_rows,
+                       .target_budget =
+                           mirakana::runtime::RuntimeResourceResidencyBudgetV2{
+                               .max_resident_content_bytes = 4,
+                           },
+                   });
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.applied_caller_supplied_gpu_memory_pressure_policy);
+    MK_REQUIRE(result.gpu_memory_pressure_eviction_candidate_count == 2U);
+    MK_REQUIRE(result.gpu_memory_pressure_candidate_estimated_bytes == 400U);
+    MK_REQUIRE(result.eviction_candidate_unmount_order.size() == 2U);
+    MK_REQUIRE(result.eviction_candidate_unmount_order[0] ==
+               mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 12});
+    MK_REQUIRE(result.eviction_candidate_unmount_order[1] ==
+               mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 11});
+    MK_REQUIRE(!result.invoked_file_io);
+    MK_REQUIRE(!result.mutated_mount_set);
+    MK_REQUIRE(!result.touched_renderer_or_rhi_handles);
+}
+
+MK_TEST("runtime mavg page streaming caller supplied gpu memory pressure rejects missing candidate row") {
+    const auto graph = make_page_streaming_graph();
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    mount_resident_page(mount_set, 10, mirakana::AssetId::from_name("mavg/page-streaming/page-0"), "root");
+    mount_resident_page(mount_set, 11, mirakana::AssetId::from_name("mavg/page-streaming/page-1"), "warm");
+    mount_resident_page(mount_set, 12, mirakana::AssetId::from_name("mavg/page-streaming/page-2"), "missing");
+
+    const std::vector<mirakana::runtime::RuntimeMavgResidentPageMountRow> page_mounts{
+        {.graph_asset = graph.asset, .page_index = 0, .mount_id = {.value = 10}},
+        {.graph_asset = graph.asset, .page_index = 1, .mount_id = {.value = 11}},
+        {.graph_asset = graph.asset, .page_index = 2, .mount_id = {.value = 12}},
+    };
+    const std::vector<mirakana::runtime::RuntimeMavgPageStreamingSelectedClusterRow> selected_clusters{
+        {.graph_asset = graph.asset, .cluster_index = 0},
+    };
+    const std::vector<mirakana::runtime::RuntimeMavgPageStreamingGpuMemoryPressureRow> gpu_memory_pressure_rows{
+        {.graph_asset = graph.asset,
+         .page_index = 1,
+         .mount_id = {.value = 11},
+         .eviction_pressure_score = 10,
+         .estimated_gpu_resident_bytes = 64},
+    };
+
+    const auto result = mirakana::runtime::plan_runtime_mavg_page_streaming_automatic_evictions(
+        mount_set, mirakana::runtime::RuntimeMavgPageStreamingAutomaticEvictionPlanDesc{
+                       .graph_asset = graph.asset,
+                       .graph = &graph,
+                       .selected_clusters = selected_clusters,
+                       .resident_page_mounts = page_mounts,
+                       .policy_kind = mirakana::runtime::RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::
+                           caller_supplied_gpu_memory_pressure,
+                       .gpu_memory_pressure_rows = gpu_memory_pressure_rows,
+                       .target_budget =
+                           mirakana::runtime::RuntimeResourceResidencyBudgetV2{
+                               .max_resident_content_bytes = 4,
+                           },
+                   });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(!result.planned_automatic_eviction_policy);
+    MK_REQUIRE(!result.applied_caller_supplied_gpu_memory_pressure_policy);
+    MK_REQUIRE(!result.invoked_eviction_plan);
+    MK_REQUIRE(result.missing_gpu_memory_pressure_row_count == 1U);
+    MK_REQUIRE(has_diagnostic(
+        result, mirakana::runtime::RuntimeMavgPageStreamingDiagnosticCode::missing_gpu_memory_pressure_row));
+    MK_REQUIRE(!result.invoked_file_io);
+    MK_REQUIRE(!result.mutated_mount_set);
+    MK_REQUIRE(!result.touched_renderer_or_rhi_handles);
+    MK_REQUIRE(mount_set.mounts().size() == 3U);
+}
+
+MK_TEST("runtime mavg page streaming caller supplied gpu memory pressure rejects duplicate rows") {
+    const auto graph = make_page_streaming_graph();
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    mount_resident_page(mount_set, 10, mirakana::AssetId::from_name("mavg/page-streaming/page-0"), "root");
+    mount_resident_page(mount_set, 11, mirakana::AssetId::from_name("mavg/page-streaming/page-1"), "duplicate");
+    mount_resident_page(mount_set, 12, mirakana::AssetId::from_name("mavg/page-streaming/page-2"), "other");
+
+    const std::vector<mirakana::runtime::RuntimeMavgResidentPageMountRow> page_mounts{
+        {.graph_asset = graph.asset, .page_index = 0, .mount_id = {.value = 10}},
+        {.graph_asset = graph.asset, .page_index = 1, .mount_id = {.value = 11}},
+        {.graph_asset = graph.asset, .page_index = 2, .mount_id = {.value = 12}},
+    };
+    const std::vector<mirakana::runtime::RuntimeMavgPageStreamingSelectedClusterRow> selected_clusters{
+        {.graph_asset = graph.asset, .cluster_index = 0},
+    };
+    const std::vector<mirakana::runtime::RuntimeMavgPageStreamingGpuMemoryPressureRow> gpu_memory_pressure_rows{
+        {.graph_asset = graph.asset,
+         .page_index = 1,
+         .mount_id = {.value = 11},
+         .eviction_pressure_score = 10,
+         .estimated_gpu_resident_bytes = 64},
+        {.graph_asset = graph.asset,
+         .page_index = 1,
+         .mount_id = {.value = 11},
+         .eviction_pressure_score = 20,
+         .estimated_gpu_resident_bytes = 128},
+        {.graph_asset = graph.asset,
+         .page_index = 2,
+         .mount_id = {.value = 12},
+         .eviction_pressure_score = 1,
+         .estimated_gpu_resident_bytes = 8},
+    };
+
+    const auto result = mirakana::runtime::plan_runtime_mavg_page_streaming_automatic_evictions(
+        mount_set, mirakana::runtime::RuntimeMavgPageStreamingAutomaticEvictionPlanDesc{
+                       .graph_asset = graph.asset,
+                       .graph = &graph,
+                       .selected_clusters = selected_clusters,
+                       .resident_page_mounts = page_mounts,
+                       .policy_kind = mirakana::runtime::RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::
+                           caller_supplied_gpu_memory_pressure,
+                       .gpu_memory_pressure_rows = gpu_memory_pressure_rows,
+                       .target_budget =
+                           mirakana::runtime::RuntimeResourceResidencyBudgetV2{
+                               .max_resident_content_bytes = 4,
+                           },
+                   });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(!result.planned_automatic_eviction_policy);
+    MK_REQUIRE(!result.applied_caller_supplied_gpu_memory_pressure_policy);
+    MK_REQUIRE(!result.invoked_eviction_plan);
+    MK_REQUIRE(result.duplicate_gpu_memory_pressure_row_count == 1U);
+    MK_REQUIRE(has_diagnostic(
+        result, mirakana::runtime::RuntimeMavgPageStreamingDiagnosticCode::duplicate_gpu_memory_pressure_row));
+    MK_REQUIRE(!result.invoked_file_io);
+    MK_REQUIRE(!result.mutated_mount_set);
+    MK_REQUIRE(!result.touched_renderer_or_rhi_handles);
+    MK_REQUIRE(mount_set.mounts().size() == 3U);
+}
+
+MK_TEST("runtime mavg page streaming caller supplied gpu memory pressure rejects estimated byte overflow") {
+    const auto graph = make_page_streaming_graph();
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    mount_resident_page(mount_set, 10, mirakana::AssetId::from_name("mavg/page-streaming/page-0"), "root");
+    mount_resident_page(mount_set, 11, mirakana::AssetId::from_name("mavg/page-streaming/page-1"), "max");
+    mount_resident_page(mount_set, 12, mirakana::AssetId::from_name("mavg/page-streaming/page-2"), "one");
+
+    const std::vector<mirakana::runtime::RuntimeMavgResidentPageMountRow> page_mounts{
+        {.graph_asset = graph.asset, .page_index = 0, .mount_id = {.value = 10}},
+        {.graph_asset = graph.asset, .page_index = 1, .mount_id = {.value = 11}},
+        {.graph_asset = graph.asset, .page_index = 2, .mount_id = {.value = 12}},
+    };
+    const std::vector<mirakana::runtime::RuntimeMavgPageStreamingSelectedClusterRow> selected_clusters{
+        {.graph_asset = graph.asset, .cluster_index = 0},
+    };
+    const std::vector<mirakana::runtime::RuntimeMavgPageStreamingGpuMemoryPressureRow> gpu_memory_pressure_rows{
+        {.graph_asset = graph.asset,
+         .page_index = 1,
+         .mount_id = {.value = 11},
+         .eviction_pressure_score = 10,
+         .estimated_gpu_resident_bytes = std::numeric_limits<std::uint64_t>::max()},
+        {.graph_asset = graph.asset,
+         .page_index = 2,
+         .mount_id = {.value = 12},
+         .eviction_pressure_score = 20,
+         .estimated_gpu_resident_bytes = 1},
+    };
+
+    const auto result = mirakana::runtime::plan_runtime_mavg_page_streaming_automatic_evictions(
+        mount_set, mirakana::runtime::RuntimeMavgPageStreamingAutomaticEvictionPlanDesc{
+                       .graph_asset = graph.asset,
+                       .graph = &graph,
+                       .selected_clusters = selected_clusters,
+                       .resident_page_mounts = page_mounts,
+                       .policy_kind = mirakana::runtime::RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::
+                           caller_supplied_gpu_memory_pressure,
+                       .gpu_memory_pressure_rows = gpu_memory_pressure_rows,
+                       .target_budget =
+                           mirakana::runtime::RuntimeResourceResidencyBudgetV2{
+                               .max_resident_content_bytes = 4,
+                           },
+                   });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(!result.planned_automatic_eviction_policy);
+    MK_REQUIRE(!result.applied_caller_supplied_gpu_memory_pressure_policy);
+    MK_REQUIRE(!result.invoked_eviction_plan);
+    MK_REQUIRE(has_diagnostic(
+        result, mirakana::runtime::RuntimeMavgPageStreamingDiagnosticCode::gpu_memory_pressure_counter_overflow));
+    MK_REQUIRE(!result.invoked_file_io);
+    MK_REQUIRE(!result.mutated_mount_set);
+    MK_REQUIRE(!result.touched_renderer_or_rhi_handles);
+    MK_REQUIRE(mount_set.mounts().size() == 3U);
+}
+
 MK_TEST("runtime mavg page streaming use generation inference drops nonresident rows and initializes cold pages") {
     const auto graph = make_page_streaming_graph();
     mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;

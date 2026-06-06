@@ -65,6 +65,21 @@ foreach ($needle in @(
     Assert-ContainsText $runtimeMavgPageStreamingHeaderText $needle "engine/runtime/include/mirakana/runtime/mavg_page_streaming.hpp MAVG runtime-inferred frequency evidence"
 }
 foreach ($needle in @(
+        "caller_supplied_gpu_memory_pressure",
+        "RuntimeMavgPageStreamingGpuMemoryPressureRow",
+        "gpu_memory_pressure_rows",
+        "planned_gpu_memory_pressure_eviction_policy",
+        "applied_caller_supplied_gpu_memory_pressure_policy",
+        "gpu_memory_pressure_eviction_candidate_count",
+        "gpu_memory_pressure_candidate_estimated_bytes",
+        "gpu_memory_pressure_protected_estimated_bytes",
+        "missing_gpu_memory_pressure_row_count",
+        "duplicate_gpu_memory_pressure_row_count",
+        "gpu_memory_pressure_counter_overflow"
+    )) {
+    Assert-ContainsText $runtimeMavgPageStreamingHeaderText $needle "engine/runtime/include/mirakana/runtime/mavg_page_streaming.hpp MAVG GPU memory pressure evidence"
+}
+foreach ($needle in @(
         "uses_frequency_eviction_order",
         "RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::runtime_inferred_frequency",
         "copy_frequency_evidence",
@@ -74,6 +89,19 @@ foreach ($needle in @(
         "RuntimeMavgPageStreamingDiagnosticCode::frequency_counter_overflow"
     )) {
     Assert-ContainsText $runtimeMavgPageStreamingSourceText $needle "engine/runtime/src/mavg_page_streaming.cpp MAVG runtime-inferred frequency evidence"
+}
+foreach ($needle in @(
+        "uses_gpu_memory_pressure_eviction_order",
+        "RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::caller_supplied_gpu_memory_pressure",
+        "find_gpu_memory_pressure_row",
+        "validate_gpu_memory_pressure_rows",
+        "add_gpu_memory_pressure_estimated_bytes",
+        "result.applied_caller_supplied_gpu_memory_pressure_policy = true",
+        "result.planned_gpu_memory_pressure_eviction_policy = true",
+        "result.gpu_memory_pressure_eviction_candidate_count = eviction_candidates.size()",
+        "RuntimeMavgPageStreamingDiagnosticCode::gpu_memory_pressure_counter_overflow"
+    )) {
+    Assert-ContainsText $runtimeMavgPageStreamingSourceText $needle "engine/runtime/src/mavg_page_streaming.cpp MAVG GPU memory pressure evidence"
 }
 foreach ($needle in @(
         "runtime mavg page streaming planner coalesces nonresident requests deterministically",
@@ -95,6 +123,15 @@ foreach ($needle in @(
         "runtime mavg page streaming frequency inference rejects duplicate previous rows"
     )) {
     Assert-ContainsText $runtimeMavgPageStreamingTestsText $needle "tests/unit/runtime_mavg_page_streaming_tests.cpp MAVG runtime-inferred frequency coverage"
+}
+foreach ($needle in @(
+        "runtime mavg page streaming caller supplied gpu memory pressure orders high pressure unprotected pages first",
+        "runtime mavg page streaming caller supplied gpu memory pressure uses estimated bytes tie breaker",
+        "runtime mavg page streaming caller supplied gpu memory pressure rejects missing candidate row",
+        "runtime mavg page streaming caller supplied gpu memory pressure rejects duplicate rows",
+        "runtime mavg page streaming caller supplied gpu memory pressure rejects estimated byte overflow"
+    )) {
+    Assert-ContainsText $runtimeMavgPageStreamingTestsText $needle "tests/unit/runtime_mavg_page_streaming_tests.cpp MAVG GPU memory pressure coverage"
 }
 
 foreach ($needle in @(
