@@ -202,7 +202,7 @@
   pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1
   ```
 
-- [ ] **Step 3: Commit, push, and open stacked draft PR**
+- [x] **Step 3: Commit, push, and open stacked draft PR**
 
   Base branch:
 
@@ -232,3 +232,4 @@
 - Agent-surface checks: `tools/compose-agent-manifest.ps1 -Write`, `tools/check-json-contracts.ps1`, `tools/check-ai-integration.ps1`, `tools/check-public-api-boundaries.ps1`, and `tools/check-format.ps1` passed after adding `tools/check-ai-integration-135-mavg-gpu-visible-cluster-packets.ps1`.
 - Full validation: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed, including 19 static checks, build, tidy, and 115/115 CTests. Metal and Apple evidence remained diagnostic-only / host-gated on this Windows host.
 - Publication preflight: `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-publication-preflight.ps1` passed on branch `codex/mavg-gpu-visible-cluster-packets-v1`.
+- Publication: commit `6eebe0a5` was pushed to `origin/codex/mavg-gpu-visible-cluster-packets-v1` and opened as stacked draft PR #509: `https://github.com/y2ikgm89/mirakanai-engine/pull/509`.
