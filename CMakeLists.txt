@@ -807,6 +807,13 @@ if(BUILD_TESTING)
     target_include_directories(MK_backend_scaffold_tests PRIVATE tests)
     MK_apply_common_target_options(MK_backend_scaffold_tests)
     add_test(NAME MK_backend_scaffold_tests COMMAND MK_backend_scaffold_tests)
+    if(APPLE AND TARGET MK_metal_environment_evidence_metallib)
+        add_dependencies(MK_backend_scaffold_tests MK_metal_environment_evidence_metallib)
+        get_property(MK_METAL_ENVIRONMENT_EVIDENCE_METALLIB GLOBAL PROPERTY MK_METAL_ENVIRONMENT_EVIDENCE_METALLIB)
+        set_tests_properties(MK_backend_scaffold_tests PROPERTIES
+            ENVIRONMENT "MK_METAL_ENVIRONMENT_EVIDENCE_METALLIB=${MK_METAL_ENVIRONMENT_EVIDENCE_METALLIB}"
+        )
+    endif()
 
     add_executable(MK_renderer_tests
         tests/unit/renderer_rhi_tests.cpp

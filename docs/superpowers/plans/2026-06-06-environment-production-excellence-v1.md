@@ -4,7 +4,7 @@
 
 **Plan ID:** `environment-production-excellence-v1`
 
-**Status:** Retained evidence. Superseded as the active selected milestone by `mavg-research-legal-benchmark-baseline-v1` in this branch. Phases 0-5, 7, and 8 are complete; Phase 5 has completed strict Vulkan rain precipitation renderer execution, strict Vulkan physical-sky package, strict Vulkan volumetric-fog renderer execution, strict Vulkan volumetric-cloud renderer execution, and strict Vulkan IBL renderer execution candidates; Phase 8 completed fail-closed `MK_environment` quality-budget enforcement with `environment_quality_preset`, `environment_quality_budget_violations`, and `environment_quality_budget_broad_optimization_claimed` package counters. Later exact gates remain future environment follow-up and are not active in this MAVG branch.
+**Status:** Retained evidence. Superseded as the active selected milestone by `mavg-research-legal-benchmark-baseline-v1` in this branch. Phases 0-8 are complete; Phase 5 has completed strict Vulkan rain precipitation renderer execution, strict Vulkan physical-sky package, strict Vulkan volumetric-fog renderer execution, strict Vulkan volumetric-cloud renderer execution, and strict Vulkan IBL renderer execution candidates; Phase 6 completed selected Apple-host Metal environment feature evidence through `renderer-metal-apple-host-evidence` with generated `environment_feature_evidence.metallib`, selected `metal_environment_*` counters, seven ready feature rows, and zero native-handle access; Phase 8 completed fail-closed `MK_environment` quality-budget enforcement with `environment_quality_preset`, `environment_quality_budget_violations`, and `environment_quality_budget_broad_optimization_claimed` package counters. Later exact gates remain future environment follow-up and are not active in this MAVG branch.
 
 **Goal:** Promote the completed environment foundation into a production-grade, backend-evidence-backed environment settings system for sky, atmosphere, fog, volumetrics, clouds, rain, snow, storms, IBL, runtime cubemap capture, local volumes, material weathering, audio cues, editor authoring, quality budgets, and exact `environment_ready` aggregation.
 
@@ -35,7 +35,7 @@ Pre-Phase-0 audit proven state:
 - `MK_environment` owns profile validation, text IO, package rows, scene/runtime binding, time-of-day, weather, sky, fog, cloud, precipitation, volumetric, and quality value foundations.
 - Selected D3D12 environment package or renderer evidence exists for physical sky, height fog, volumetric fog, cloud layer, rain precipitation, snow precipitation, volumetric clouds, and package-visible IBL metadata.
 - Strict host/toolchain-gated Vulkan physical-sky runtime, physical-sky package, height-fog package, rain precipitation renderer execution, volumetric-fog renderer execution, volumetric-cloud renderer execution, and IBL renderer execution evidence exists, but broad volumetric-fog/cloud/IBL readiness beyond the selected strict lanes remains unclaimed.
-- Metal environment rows exist as Apple-host evidence requirements only; Windows validation does not promote Metal readiness.
+- Metal environment rows now have an Apple-host-only recipe path through `renderer-metal-apple-host-evidence`; Windows validation still does not promote Metal readiness.
 - First-party editor Inspector rows expose selected environment ready/non-ready state without Dear ImGui, SDL3, UI middleware, backend execution, package-script execution, or public backend handles.
 - Selected package smokes emit `environment_quality_budget_*` counters and keep `environment_quality_budget_broad_environment_ready_claimed=0`.
 
@@ -47,8 +47,7 @@ Unclaimed by design:
 - Renderer cubemap upload and runtime cubemap capture.
 - Vulkan/Metal precipitation execution.
 - Vulkan volumetric fog/cloud execution beyond the selected strict package lanes, Metal volumetric fog, and Metal volumetric cloud execution.
-- Metal IBL proof and any Vulkan IBL proof beyond the selected strict package lane.
-- Metal actual environment readiness without Apple-host execution.
+- Metal actual environment readiness without Apple-host execution or the reviewed `renderer-metal-apple-host-evidence` counters.
 - Broad material weathering beyond the selected D3D12 package-visible material wetness/snow accumulation evidence row.
 - Physical endpoint playback execution for weather remains unclaimed; Phase 4 proves only selected `MK_environment` trigger rows consumed by the `MK_audio` mixer/render lane with zero environment-owned device, device IO, or native-handle access.
 - OpenEXR/KTX/Basis/source-image dependencies for environment assets.
@@ -135,14 +134,14 @@ These items are included in this plan as explicit future gates so they are not m
 | Runtime cubemap capture | Unclaimed | D3D12 primary offscreen six-face capture path with framegraph passes, readback checksum, zero native handle leakage, and package-visible counters. |
 | Renderer cubemap upload | Unclaimed | D3D12 texture-cube upload/SRV/sampling proof with reflection, irradiance, radiance mip metadata, debug-layer clean run, and readback. |
 | IBL Vulkan proof | Selected strict renderer execution ready | Strict Vulkan cube image/view/sampler/upload/readback proof with synchronization2 layout transitions, `spirv-val` artifacts, shader sampling/readback, runtime cubemap capture readback checksum, zero diagnostics, and zero native-handle access for the selected sample lane. Broader Vulkan IBL readiness remains unclaimed. |
-| IBL Metal proof | Host-gated | Apple-host texture cube/HDR/pipeline proof through `renderer-metal-apple-host-evidence`. |
+| IBL Metal proof | Selected Apple-host recipe evidence ready | Apple-host texture cube/HDR/pipeline proof through `renderer-metal-apple-host-evidence`; broader Metal/backend parity remains unclaimed. |
 | Material wetness | Selected D3D12 package evidence ready | First-party material-weathering rows, renderer material parameter binding, package counters, zero source-material mutation unless explicitly authored. Broad backend parity remains unclaimed. |
 | Snow accumulation | Selected D3D12 package evidence ready | First-party snow/ice coverage rows, material parameter binding, package counters, and separate precipitation particle evidence. Broad backend parity remains unclaimed. |
 | Weather audio playback | Selected D3D12 package evidence ready | Audio trigger rows consumed by the selected runtime/audio lane through `MK_audio` mixer/render counters, with no direct environment audio-device ownership, no physical endpoint playback claim, and no native-handle access. |
 | Vulkan precipitation | Selected strict rain renderer execution ready | Strict particle texture/buffer upload, descriptor, depth-occlusion, draw/readback proof with validation layers for the selected rain lane. Vulkan snow precipitation and broader parity remain unclaimed. |
 | Vulkan volumetric fog | Selected strict renderer execution ready | Strict compute storage-buffer path with synchronization2 barrier evidence, package recipe, positive dispatch/readback counters, and zero native-handle access for the selected sample lane. Broader Vulkan volumetric-fog readiness remains unclaimed. |
 | Vulkan volumetric cloud | Selected strict renderer execution ready | Strict compute/render path with synchronization2 barriers, package recipe, positive raymarch/readback counters, and zero native-handle access. Broad cloud readiness and Metal remain unclaimed. |
-| Metal environment execution | Host-gated rows only | Apple-host feature-local render/compute pipeline, texture, cube/HDR, and synchronization evidence for selected features. |
+| Metal environment execution | Selected Apple-host recipe evidence ready | Apple-host feature-local render/compute pipeline, texture, cube/HDR, and synchronization/readback evidence for selected features through `renderer-metal-apple-host-evidence`; Windows evidence still cannot promote Metal. |
 | Editor environment authoring | Read-only readiness rows | First-party authoring panels for profile v2, volume stack, weather timeline, quality presets, and readiness reports without backend execution from editor core. |
 | Quality budgets | Selected Phase 8 ready | Profile-driven `MK_environment` quality presets with fail-closed budgets for samples, raymarch steps, particles, transient GPU bytes, framegraph passes, barriers, texture uploads, draws, compute dispatches, diagnostics, native-handle access, and broad optimization claims. |
 | Broad `environment_ready` | Unclaimed | Aggregate recipe only after all selected exact rows pass and static checks enforce the aggregate definition. |
@@ -481,9 +480,9 @@ Focused validation evidence before docs/static closeout:
 
 **Files:** Metal backend, Metal native implementation, Apple host validation scripts, manifest recipes, docs/static checks.
 
-- [ ] Extend `renderer-metal-apple-host-evidence` to cover selected environment features one at a time.
-- [ ] Require Apple host evidence for `MTLCommandQueue`, non-empty MSL/metallib, render pipeline, compute pipeline where needed, cube/HDR texture, render target or shader-read usage, and synchronization proof.
-- [ ] Add feature-local counters:
+- [x] Extend `renderer-metal-apple-host-evidence` to cover selected environment features one at a time.
+- [x] Require Apple host evidence for `MTLCommandQueue`, non-empty MSL/metallib, render pipeline, compute pipeline where needed, cube/HDR texture, render target or shader-read usage, and synchronization proof.
+- [x] Add feature-local counters:
 
 ```text
 metal_environment_physical_sky_status
@@ -493,11 +492,18 @@ metal_environment_precipitation_status
 metal_environment_volumetric_fog_status
 metal_environment_volumetric_cloud_status
 metal_environment_lighting_ibl_status
+metal_environment_render_pipeline_ready=1
+metal_environment_compute_pipeline_ready=1
+metal_environment_cube_texture_ready=1
+metal_environment_hdr_texture_ready=1
+metal_environment_synchronization_evidence_ready=1
+metal_environment_render_readback_nonzero=1
+metal_environment_compute_readback_nonzero=1
 metal_environment_native_handle_access=0
 ```
 
-- [ ] Keep each missing feature as `host_evidence_required` with a concrete blocker string.
-- [ ] Run on Apple host:
+- [x] Keep each missing feature as `host_evidence_required` with a concrete blocker string.
+- [x] Run on Apple host:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/check-apple-host-evidence.ps1 -RequireReady
@@ -506,6 +512,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/run-validation-recipe.ps1 -M
 ```
 
 Expected: Metal readiness is promoted only by Apple-host evidence.
+
+Phase 6 result: `MK_rhi_metal` now requires synchronization evidence on every selected Metal environment feature row, exposes `metal_environment_feature_host_evidence_status_line`, and adds Apple-only `create_native_environment_feature_host_evidence` behind private Objective-C++ implementation. The macOS `renderer-metal-apple-host-evidence` recipe builds a generated `environment_feature_evidence.metallib` from reviewed MSL using `xcrun --sdk macosx metal` and `metallib`, runs `MK_backend_scaffold_tests`, and emits `metal_environment_*` counters only after actual Apple-host render/compute pipeline, cube HDR texture, render target, command-buffer completion, blit readback, compute readback, and zero-native-handle evidence pass. This does not promote backend parity, broad Metal readiness outside the selected recipe, broad optimization, or broad `environment_ready`.
 
 ## Phase 7: First-Party Editor Environment Authoring
 
