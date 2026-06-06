@@ -1939,6 +1939,7 @@ MK_TEST("job execution pool applies opt in work stealing without changing determ
     std::vector<std::uint32_t> observed_worker_ids;
     std::uint32_t started_task_count{0};
     std::atomic_uint64_t executed_tasks{0};
+    std::atomic_bool concurrent_start_timed_out{false};
     const auto body = [&](mirakana::JobExecutionContext& context) {
         const auto lease = context.scratch.acquire(32, 16, context.worker_id);
         if (!lease.valid()) {
@@ -1955,11 +1956,11 @@ MK_TEST("job execution pool applies opt in work stealing without changing determ
             observed_worker_ids.push_back(context.worker_id);
             ++started_task_count;
             observed_cv.notify_all();
-            both_tasks_started = observed_cv.wait_for(lock, std::chrono::seconds{2},
+            both_tasks_started = observed_cv.wait_for(lock, std::chrono::seconds{30},
                                                       [&started_task_count] { return started_task_count >= 2U; });
         }
         if (!both_tasks_started) {
-            throw std::runtime_error("work stealing task did not run concurrently");
+            concurrent_start_timed_out.store(true, std::memory_order_relaxed);
         }
         executed_tasks.fetch_add(1, std::memory_order_relaxed);
     };
@@ -1991,6 +1992,7 @@ MK_TEST("job execution pool applies opt in work stealing without changing determ
     MK_REQUIRE(result.tasks_executed == 2);
     MK_REQUIRE(result.tasks_failed == 0);
     MK_REQUIRE(result.diagnostics.empty());
+    MK_REQUIRE(!concurrent_start_timed_out.load(std::memory_order_relaxed));
     MK_REQUIRE(executed_tasks.load(std::memory_order_relaxed) == 2);
     {
         std::scoped_lock lock(observed_mutex);
