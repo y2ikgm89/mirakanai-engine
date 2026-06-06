@@ -390,6 +390,22 @@ function Get-SampleDesktopRuntimeGamePhysicalSkySmokeArgs {
     )
 }
 
+function Get-SampleDesktopRuntimeGameVulkanPhysicalSkySmokeArgs {
+    return @(
+        '--smoke',
+        '--max-frames',
+        '2',
+        '--require-config',
+        'runtime/sample_desktop_runtime_game.config',
+        '--require-scene-package',
+        'runtime/sample_desktop_runtime_game.geindex',
+        '--require-vulkan-scene-shaders',
+        '--require-vulkan-renderer',
+        '--require-scene-gpu-bindings',
+        '--require-physical-sky-vulkan-package-evidence'
+    )
+}
+
 function Get-SampleDesktopRuntimeGameEnvironmentPrecipitationSmokeArgs {
     return @(
         '--smoke',

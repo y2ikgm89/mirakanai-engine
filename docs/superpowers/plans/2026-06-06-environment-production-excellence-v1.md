@@ -4,7 +4,7 @@
 
 **Plan ID:** `environment-production-excellence-v1`
 
-**Status:** Active. Selected milestone. Phases 0-4 are complete; the next exact gates are strict Vulkan/Metal feature evidence, first-party editor authoring expansion, quality budgets, and aggregate `environment_ready`.
+**Status:** Active. Selected milestone. Phases 0-4 are complete; Phase 5 has completed strict Vulkan rain precipitation renderer execution and strict Vulkan physical-sky package candidates. The next exact gates are remaining strict Vulkan/Metal feature evidence, first-party editor authoring expansion, quality budgets, and aggregate `environment_ready`.
 
 **Goal:** Promote the completed environment foundation into a production-grade, backend-evidence-backed environment settings system for sky, atmosphere, fog, volumetrics, clouds, rain, snow, storms, IBL, runtime cubemap capture, local volumes, material weathering, audio cues, editor authoring, quality budgets, and exact `environment_ready` aggregation.
 
@@ -34,7 +34,7 @@ Pre-Phase-0 audit proven state:
 - Environment System v1 and Environment Rendering Readiness v1 are completed.
 - `MK_environment` owns profile validation, text IO, package rows, scene/runtime binding, time-of-day, weather, sky, fog, cloud, precipitation, volumetric, and quality value foundations.
 - Selected D3D12 environment package or renderer evidence exists for physical sky, height fog, volumetric fog, cloud layer, rain precipitation, snow precipitation, volumetric clouds, and package-visible IBL metadata.
-- Strict host/toolchain-gated Vulkan physical-sky runtime and height-fog package evidence exists, but Vulkan precipitation, volumetric cloud, volumetric fog broad readiness, and IBL proof remain unclaimed.
+- Strict host/toolchain-gated Vulkan physical-sky runtime, physical-sky package, height-fog package, and rain precipitation renderer execution evidence exists, but Vulkan volumetric cloud, volumetric fog broad readiness, and IBL proof remain unclaimed.
 - Metal environment rows exist as Apple-host evidence requirements only; Windows validation does not promote Metal readiness.
 - First-party editor Inspector rows expose selected environment ready/non-ready state without Dear ImGui, SDL3, UI middleware, backend execution, package-script execution, or public backend handles.
 - Selected package smokes emit `environment_quality_budget_*` counters and keep `environment_quality_budget_broad_environment_ready_claimed=0`.
@@ -409,6 +409,7 @@ Phase 4 closeout: the selected D3D12 package lane now proves `MK_environment` we
 
 ```text
 desktop-runtime-sample-game-vulkan-environment-precipitation-renderer-execution
+desktop-runtime-sample-game-vulkan-physical-sky-package
 desktop-runtime-sample-game-vulkan-volumetric-fog-renderer-execution
 desktop-runtime-sample-game-vulkan-volumetric-cloud-renderer-execution
 desktop-runtime-sample-game-vulkan-environment-ibl-renderer-execution
@@ -428,6 +429,15 @@ Phase 5 precipitation candidate closeout:
 - Focused validation evidence before docs/static closeout: `tools/run-validation-recipe.ps1 -Mode Execute -Recipe desktop-runtime-sample-game-vulkan-environment-precipitation-renderer-execution -HostGateAcknowledgements vulkan-strict -TimeoutSeconds 300` passed on the local strict Vulkan host.
 
 This is a selected strict Vulkan rain precipitation renderer execution row only. The rest of Phase 5 remains open for Vulkan volumetric fog, Vulkan volumetric cloud, and Vulkan IBL; Metal precipitation, backend parity, broad optimization, and broad `environment_ready` remain unclaimed.
+
+Phase 5 physical-sky package candidate closeout:
+
+- `desktop-runtime-sample-game-vulkan-physical-sky-package` is added as a strict `vulkan-strict` host/toolchain-gated recipe.
+- The selected sample package lane uses `--require-vulkan-scene-shaders`, `--require-vulkan-renderer`, `--require-scene-gpu-bindings`, and `--require-physical-sky-vulkan-package-evidence`.
+- Installed package validation requires `environment_physical_sky_vulkan_status=ready`, `environment_physical_sky_vulkan_ready=1`, `environment_physical_sky_vulkan_selected_backend=vulkan`, shader-contract/package/execution evidence, `environment_physical_sky_vulkan_constant_buffer_ready=1`, constants binding `0`, constants byte size `256`, eight constant-layout rows, four LUT-intent rows, zero diagnostics, zero LUT texture allocations, zero backend invocations, and zero native-handle access.
+- Vulkan package evidence is selected strict Vulkan physical-sky package-visible evidence only. It does not infer D3D12 proof, Metal readiness, backend parity, broad optimization, or broad `environment_ready`.
+
+This is a selected strict Vulkan physical-sky package row only. The rest of Phase 5 remains open for Vulkan volumetric fog, Vulkan volumetric cloud, and Vulkan IBL; Metal precipitation, backend parity, broad optimization, and broad `environment_ready` remain unclaimed.
 
 ## Phase 6: Apple Metal Host Evidence Execution
 

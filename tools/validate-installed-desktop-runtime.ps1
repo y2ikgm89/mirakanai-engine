@@ -179,6 +179,7 @@ $requiresEnvironmentProfile = @($SmokeArgs) -contains "--require-environment-pro
 $requiresEnvironmentFogEvidence = @($SmokeArgs) -contains "--require-environment-fog-evidence"
 $requiresEnvironmentFogVulkanPackageEvidence = @($SmokeArgs) -contains "--require-environment-fog-vulkan-package-evidence"
 $requiresPhysicalSkyPackageEvidence = @($SmokeArgs) -contains "--require-physical-sky-package-evidence"
+$requiresPhysicalSkyVulkanPackageEvidence = @($SmokeArgs) -contains "--require-physical-sky-vulkan-package-evidence"
 $requiresEnvironmentVolumetricFogPackageEvidence = @($SmokeArgs) -contains "--require-environment-volumetric-fog-package-evidence"
 $requiresEnvironmentLightingPackageEvidence = @($SmokeArgs) -contains "--require-environment-lighting-package-evidence"
 $requiresEnvironmentLightingRendererExecution = @($SmokeArgs) -contains "--require-environment-lighting-renderer-execution"
@@ -308,6 +309,7 @@ $requiresAnyEnvironmentQualityBudget = $requiresEnvironmentProfile -or
     $requiresEnvironmentFogEvidence -or
     $requiresEnvironmentFogVulkanPackageEvidence -or
     $requiresPhysicalSkyPackageEvidence -or
+    $requiresPhysicalSkyVulkanPackageEvidence -or
     $requiresEnvironmentVolumetricFogPackageEvidence -or
     $requiresEnvironmentLightingPackageEvidence -or
     $requiresEnvironmentLightingRendererExecution -or
@@ -4730,6 +4732,33 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 }
             }
         }
+        if ($requiresPhysicalSkyVulkanPackageEvidence) {
+            if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
+                Write-Error "Installed desktop runtime smoke status line must not claim broad environment_ready for Vulkan physical sky package evidence."
+            }
+            Assert-InstalledDesktopRuntimeStatusFields `
+                -SmokeOutput $smokeOutput `
+                -EscapedGameTarget $escapedGameTarget `
+                -Context "Vulkan physical sky package" `
+                -ExpectedFields @{
+                    "environment_physical_sky_vulkan_status" = "ready"
+                    "environment_physical_sky_vulkan_ready" = "1"
+                    "environment_physical_sky_vulkan_selected_backend" = "vulkan"
+                    "environment_physical_sky_vulkan_requested" = "1"
+                    "environment_physical_sky_vulkan_shader_contract_evidence_ready" = "1"
+                    "environment_physical_sky_vulkan_package_evidence_ready" = "1"
+                    "environment_physical_sky_vulkan_execution_evidence_ready" = "1"
+                    "environment_physical_sky_vulkan_constant_buffer_ready" = "1"
+                    "environment_physical_sky_vulkan_constants_binding" = "0"
+                    "environment_physical_sky_vulkan_constants_byte_size" = "256"
+                    "environment_physical_sky_vulkan_constant_layout_rows" = "8"
+                    "environment_physical_sky_vulkan_lut_intent_rows" = "4"
+                    "environment_physical_sky_vulkan_lut_texture_allocations" = "0"
+                    "environment_physical_sky_vulkan_backend_invocations" = "0"
+                    "environment_physical_sky_vulkan_native_handle_access" = "0"
+                    "environment_physical_sky_vulkan_diagnostics" = "0"
+                }
+        }
         if ($requiresEnvironmentLightingPackageEvidence) {
             if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
                 Write-Error "Installed desktop runtime smoke status line must not claim broad environment_ready for environment lighting package evidence."
@@ -5259,6 +5288,11 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
             ++$expectedEnvironmentQualityBudgetRows
         }
         if ($requiresPhysicalSkyPackageEvidence) {
+            ++$expectedEnvironmentQualityBudgetRows
+            $expectedEnvironmentQualityBudgetConstantBytes += 256
+            $expectedEnvironmentQualityBudgetPhysicalSkySamples = 108
+        }
+        if ($requiresPhysicalSkyVulkanPackageEvidence) {
             ++$expectedEnvironmentQualityBudgetRows
             $expectedEnvironmentQualityBudgetConstantBytes += 256
             $expectedEnvironmentQualityBudgetPhysicalSkySamples = 108

@@ -140,6 +140,7 @@
         "runtime-ui",
         "environment-profile-package",
         "physical-sky-package",
+        "physical-sky-vulkan-package",
         "environment-fog-vulkan-package",
         "environment-volumetric-fog-package",
         "environment-volumetric-cloud-package",
@@ -178,6 +179,7 @@
         "desktop-runtime-sample-game-environment-ibl-renderer-execution",
         "desktop-runtime-sample-game-environment-audio-playback",
         "desktop-runtime-sample-game-physical-sky-package",
+        "desktop-runtime-sample-game-vulkan-physical-sky-package",
         "desktop-runtime-sample-game-cloud-layer-package",
         "desktop-runtime-sample-game-cloud-layer-renderer-execution",
         "desktop-runtime-sample-game-environment-precipitation-package",
@@ -270,6 +272,13 @@
           ]
         },
         {
+          "id": "physical-sky-vulkan-package-evidence",
+          "evidence": "The strict Vulkan physical sky package smoke reports environment_physical_sky_vulkan_status=ready, environment_physical_sky_vulkan_ready=1, environment_physical_sky_vulkan_selected_backend=vulkan, environment_physical_sky_vulkan_shader_contract_evidence_ready=1, environment_physical_sky_vulkan_package_evidence_ready=1, environment_physical_sky_vulkan_execution_evidence_ready=1, environment_physical_sky_vulkan_constant_buffer_ready=1, environment_physical_sky_vulkan_constants_binding=0, environment_physical_sky_vulkan_constants_byte_size=256, environment_physical_sky_vulkan_constant_layout_rows=8, environment_physical_sky_vulkan_lut_intent_rows=4, environment_physical_sky_vulkan_diagnostics=0, environment_physical_sky_vulkan_lut_texture_allocations=0, environment_physical_sky_vulkan_backend_invocations=0, and environment_physical_sky_vulkan_native_handle_access=0 through target-specific SPIR-V artifacts without claiming D3D12 by inference, Metal, backend parity, broad optimization, or broad environment_ready.",
+          "recipeIds": [
+            "desktop-runtime-sample-game-vulkan-physical-sky-package"
+          ]
+        },
+        {
           "id": "cloud-layer-package-evidence",
           "evidence": "The selected D3D12 cloud layer package smoke reports cloud_layer_status=ready, cloud_layer_ready=1, cloud_layer_selected_backend=d3d12, cloud_layer_shader_contract_evidence_ready=1, cloud_layer_package_evidence_ready=1, cloud_layer_execution_evidence_ready=1, stable cloud-map/flow-map/sampler/constants binding slots 6/7/6/6, one shared package texture policy row, one visual/IBL/shader-contract/quality row each, LatLong shader-contract flow-map sampling intent, zero diagnostics, and zero texture upload, backend invocation, renderer draw, native handle, or volumetric-cloud counters while the manifest declares the distinct cooked flow-map package asset without claiming renderer/RHI cloud drawing, Vulkan, Metal, backend parity, broad optimization, or broad environment_ready.",
           "recipeIds": [
@@ -338,6 +347,7 @@
           "recipeIds": [
             "desktop-runtime-sample-game-environment-profile-package",
             "desktop-runtime-sample-game-physical-sky-package",
+            "desktop-runtime-sample-game-vulkan-physical-sky-package",
             "desktop-runtime-sample-game-environment-fog-package",
             "desktop-runtime-sample-game-vulkan-environment-fog-package",
             "desktop-runtime-sample-game-environment-volumetric-fog-package",
@@ -1709,6 +1719,7 @@
         "desktop-runtime-sample-game-environment-ibl-renderer-execution",
         "desktop-runtime-sample-game-vulkan-environment-precipitation-renderer-execution",
         "desktop-runtime-sample-game-physical-sky-package",
+        "desktop-runtime-sample-game-vulkan-physical-sky-package",
         "desktop-runtime-sample-game-cloud-layer-package",
         "desktop-runtime-sample-game-cloud-layer-renderer-execution",
         "desktop-runtime-sample-game-environment-profile-package"
@@ -1800,6 +1811,10 @@
     {
       "name": "desktop-runtime-sample-game-physical-sky-package",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-physical-sky-package-evidence')\""
+    },
+    {
+      "name": "desktop-runtime-sample-game-vulkan-physical-sky-package",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireVulkanShaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-vulkan-scene-shaders','--require-vulkan-renderer','--require-scene-gpu-bindings','--require-physical-sky-vulkan-package-evidence')\""
     },
     {
       "name": "desktop-runtime-sample-game-cloud-layer-package",

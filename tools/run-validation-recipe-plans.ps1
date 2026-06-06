@@ -195,6 +195,13 @@ function Get-ValidationRecipeCommandPlan {
         $diagD3dPhysicalSky = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'D3D12 physical sky package validation is restricted to the reviewed sample_desktop_runtime_game D3D12 physical-sky package lane and proves package-visible shader-contract, constants, LUT-intent, and zero native-handle counters without claiming Vulkan, Metal, or broad environment_ready.' -ValidationRecipe $RecipeName -HostGate 'd3d12-windows-primary'
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('d3d12-windows-primary') -RequiredAcknowledgements @('d3d12-windows-primary') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12') -Diagnostics @($diagD3dPhysicalSky)
     }
+    elseif ($RecipeName -eq 'desktop-runtime-sample-game-vulkan-physical-sky-package') {
+        $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
+        $smokeTail = @(Get-SampleDesktopRuntimeGameVulkanPhysicalSkySmokeArgs)
+        $pwEntry = Get-DesktopRuntimePackageCommandPlan -ScriptPath $packageScript -GameTarget $target -RequireVulkanShaders -SmokeArgs $smokeTail
+        $diagVulkanPhysicalSky = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'Strict Vulkan physical sky package validation is restricted to the reviewed sample_desktop_runtime_game Vulkan package lane with --require-physical-sky-vulkan-package-evidence and proves Vulkan scene SPIR-V artifacts, package-visible shader-contract, constants, LUT-intent, selected Vulkan backend evidence, and zero native-handle counters without claiming D3D12 by inference, Metal, backend parity, broad optimization, broad sky readiness, or broad environment_ready.' -ValidationRecipe $RecipeName -HostGate 'vulkan-strict'
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('vulkan-strict') -RequiredAcknowledgements @('vulkan-strict') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'Vulkan') -Diagnostics @($diagVulkanPhysicalSky)
+    }
     elseif ($RecipeName -eq 'desktop-runtime-sample-game-cloud-layer-package') {
         $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
         $smokeTail = @(Get-SampleDesktopRuntimeGameCloudLayerSmokeArgs)
