@@ -347,7 +347,7 @@ MavgClusterGraphDocument canonicalize_mavg_cluster_graph(MavgClusterGraphDocumen
     std::vector<std::pair<std::uint32_t, MavgClusterGraphMaterialPartition>> material_partitions;
     material_partitions.reserve(document.material_partitions.size());
     for (std::uint32_t index = 0; index < document.material_partitions.size(); ++index) {
-        material_partitions.emplace_back(index, std::move(document.material_partitions[index]));
+        material_partitions.emplace_back(index, document.material_partitions[index]);
     }
     std::ranges::sort(material_partitions, [](const auto& lhs, const auto& rhs) {
         if (lhs.second.first_cluster != rhs.second.first_cluster) {
@@ -364,7 +364,7 @@ MavgClusterGraphDocument canonicalize_mavg_cluster_graph(MavgClusterGraphDocumen
     document.material_partitions.reserve(material_partitions.size());
     for (std::uint32_t index = 0; index < material_partitions.size(); ++index) {
         material_partition_remap[material_partitions[index].first] = index;
-        document.material_partitions.push_back(std::move(material_partitions[index].second));
+        document.material_partitions.push_back(material_partitions[index].second);
     }
 
     for (auto& cluster : document.clusters) {
