@@ -143,6 +143,7 @@
         "physical-sky-vulkan-package",
         "environment-fog-vulkan-package",
         "environment-volumetric-fog-package",
+        "environment-volumetric-fog-vulkan-renderer-execution",
         "environment-volumetric-cloud-package",
         "environment-volumetric-cloud-renderer-execution",
         "environment-lighting-package",
@@ -173,6 +174,7 @@
         "desktop-runtime-sample-game-environment-fog-package",
         "desktop-runtime-sample-game-vulkan-environment-fog-package",
         "desktop-runtime-sample-game-environment-volumetric-fog-package",
+        "desktop-runtime-sample-game-vulkan-volumetric-fog-renderer-execution",
         "desktop-runtime-sample-game-volumetric-cloud-package",
         "desktop-runtime-sample-game-volumetric-cloud-renderer-execution",
         "desktop-runtime-sample-game-environment-lighting-package",
@@ -234,6 +236,13 @@
           "evidence": "The selected D3D12 environment volumetric fog package smoke reports environment_volumetric_fog_status=ready, environment_volumetric_fog_ready=1, environment_volumetric_fog_selected_backend=d3d12, shader-contract/package/execution evidence, froxel output and scene-depth readiness, stable constants binding 5, constants byte size 256, froxel output binding 13, positive environment_volumetric_fog_compute_dispatches, zero diagnostics, and zero native-handle counters without claiming Vulkan, Metal, volumetric clouds, backend parity, broad optimization, or broad environment_ready.",
           "recipeIds": [
             "desktop-runtime-sample-game-environment-volumetric-fog-package"
+          ]
+        },
+        {
+          "id": "environment-volumetric-fog-vulkan-renderer-execution-evidence",
+          "evidence": "The strict Vulkan environment volumetric fog renderer execution smoke uses --require-environment-volumetric-fog-vulkan-renderer-execution and reports environment_volumetric_fog_vulkan_status=ready, environment_volumetric_fog_vulkan_ready=1, environment_volumetric_fog_vulkan_selected_backend=vulkan, shader-contract/package/execution evidence ready, scene-depth and froxel storage-buffer output readiness, stable scene-depth texture/sampler/constants/froxel-output binding slots 2/3/5/13, descriptor_set_bindings=4, positive compute dispatches, positive synchronization2 memory barriers, froxel_readback_nonzero=1, zero diagnostics, and zero native-handle access without claiming D3D12 by inference, Metal, volumetric clouds, backend parity, broad optimization, or broad environment_ready.",
+          "recipeIds": [
+            "desktop-runtime-sample-game-vulkan-volumetric-fog-renderer-execution"
           ]
         },
         {
@@ -343,7 +352,7 @@
         },
         {
           "id": "environment-quality-budget-evidence",
-          "evidence": "Selected sample_desktop_runtime_game environment package smokes that request environment profile, physical sky, fog, volumetric fog, cloud layer, volumetric cloud, precipitation, snow, material weathering, weather audio playback, or environment lighting evidence also report environment_quality_budget_status=ready, environment_quality_budget_ready=1, environment_quality_budget_requested=1, selected feature rows and diagnostics, bounded constant-buffer bytes, physical-sky sample budget, fog/cloud raymarch step budgets, particle rows, upload bytes, renderer draw/dispatch/raymarch/IBL budgets, transient GPU byte estimates, framegraph pass/barrier expected and executed counters, native-handle access=0, and environment_quality_budget_broad_environment_ready_claimed=0 without claiming broad optimization or broad environment_ready.",
+          "evidence": "Selected sample_desktop_runtime_game environment package smokes that request environment profile, physical sky, fog, volumetric fog, strict Vulkan volumetric fog, cloud layer, volumetric cloud, precipitation, snow, material weathering, weather audio playback, or environment lighting evidence also report environment_quality_budget_status=ready, environment_quality_budget_ready=1, environment_quality_budget_requested=1, selected feature rows and diagnostics, bounded constant-buffer bytes, physical-sky sample budget, fog/cloud raymarch step budgets, particle rows, upload bytes, renderer draw/dispatch/raymarch/IBL budgets, transient GPU byte estimates, framegraph pass/barrier expected and executed counters, native-handle access=0, and environment_quality_budget_broad_environment_ready_claimed=0 without claiming broad optimization or broad environment_ready.",
           "recipeIds": [
             "desktop-runtime-sample-game-environment-profile-package",
             "desktop-runtime-sample-game-physical-sky-package",
@@ -351,6 +360,7 @@
             "desktop-runtime-sample-game-environment-fog-package",
             "desktop-runtime-sample-game-vulkan-environment-fog-package",
             "desktop-runtime-sample-game-environment-volumetric-fog-package",
+            "desktop-runtime-sample-game-vulkan-volumetric-fog-renderer-execution",
             "desktop-runtime-sample-game-cloud-layer-package",
             "desktop-runtime-sample-game-cloud-layer-renderer-execution",
             "desktop-runtime-sample-game-volumetric-cloud-package",
@@ -1713,6 +1723,7 @@
         "installed-d3d12-scene-gpu-smoke",
         "desktop-runtime-sample-game-vulkan-environment-fog-package",
         "desktop-runtime-sample-game-environment-volumetric-fog-package",
+        "desktop-runtime-sample-game-vulkan-volumetric-fog-renderer-execution",
         "desktop-runtime-sample-game-volumetric-cloud-package",
         "desktop-runtime-sample-game-volumetric-cloud-renderer-execution",
         "desktop-runtime-sample-game-environment-lighting-package",
@@ -1791,6 +1802,10 @@
     {
       "name": "desktop-runtime-sample-game-environment-volumetric-fog-package",
       "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-environment-volumetric-fog-package-evidence')\""
+    },
+    {
+      "name": "desktop-runtime-sample-game-vulkan-volumetric-fog-renderer-execution",
+      "command": "pwsh -NoProfile -ExecutionPolicy Bypass -Command \"& .\\tools\\package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireVulkanShaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-vulkan-scene-shaders','--require-vulkan-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-vulkan-postprocess-evidence','--require-environment-volumetric-fog-vulkan-renderer-execution')\""
     },
     {
       "name": "desktop-runtime-sample-game-volumetric-cloud-package",

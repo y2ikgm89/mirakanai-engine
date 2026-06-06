@@ -340,6 +340,18 @@ struct Win32DesktopPresentationReport {
     std::uint64_t environment_volumetric_fog_compute_dispatches{0};
     bool environment_volumetric_fog_exposes_native_handles{false};
     std::uint32_t environment_volumetric_fog_policy_diagnostics_count{0};
+    bool environment_volumetric_fog_vulkan_requested{false};
+    bool environment_volumetric_fog_vulkan_shader_contract_evidence_ready{false};
+    bool environment_volumetric_fog_vulkan_package_evidence_ready{false};
+    bool environment_volumetric_fog_vulkan_execution_evidence_ready{false};
+    bool environment_volumetric_fog_vulkan_froxel_output_ready{false};
+    bool environment_volumetric_fog_vulkan_scene_depth_ready{false};
+    std::uint64_t environment_volumetric_fog_vulkan_compute_dispatches{0};
+    std::uint32_t environment_volumetric_fog_vulkan_descriptor_set_bindings{0};
+    std::uint32_t environment_volumetric_fog_vulkan_synchronization2_barriers{0};
+    bool environment_volumetric_fog_vulkan_froxel_readback_nonzero{false};
+    bool environment_volumetric_fog_vulkan_exposes_native_handles{false};
+    std::uint32_t environment_volumetric_fog_vulkan_policy_diagnostics_count{0};
     bool environment_volumetric_cloud_requested{false};
     bool environment_volumetric_cloud_shader_contract_evidence_ready{false};
     bool environment_volumetric_cloud_package_evidence_ready{false};
@@ -488,6 +500,13 @@ enum class Win32DesktopPresentationVulkanEnvironmentPrecipitationStatus : std::u
 
 enum class Win32DesktopPresentationEnvironmentVolumetricFogStatus : std::uint8_t {
     not_requested = 0,
+    blocked,
+    ready,
+};
+
+enum class Win32DesktopPresentationVulkanEnvironmentVolumetricFogStatus : std::uint8_t {
+    not_requested = 0,
+    host_evidence_required,
     blocked,
     ready,
 };
@@ -780,6 +799,30 @@ struct Win32DesktopPresentationEnvironmentVolumetricFogReport {
     bool execution_evidence_ready{false};
     bool froxel_output_ready{false};
     std::uint64_t compute_dispatches{0};
+    std::uint32_t constants_binding{0};
+    std::uint64_t constant_buffer_bytes{0};
+    std::uint32_t froxel_output_buffer_binding{0};
+    bool exposes_native_handles{false};
+    std::uint32_t diagnostics_count{0};
+};
+
+struct Win32DesktopPresentationVulkanEnvironmentVolumetricFogReport {
+    Win32DesktopPresentationVulkanEnvironmentVolumetricFogStatus status{
+        Win32DesktopPresentationVulkanEnvironmentVolumetricFogStatus::not_requested};
+    bool ready{false};
+    bool requested{false};
+    bool vulkan_backend_selected{false};
+    bool scene_depth_ready{false};
+    bool shader_contract_evidence_ready{false};
+    bool package_evidence_ready{false};
+    bool execution_evidence_ready{false};
+    bool froxel_output_ready{false};
+    std::uint64_t compute_dispatches{0};
+    std::uint32_t descriptor_set_bindings{0};
+    std::uint32_t synchronization2_barriers{0};
+    bool froxel_readback_nonzero{false};
+    std::uint32_t scene_depth_texture_binding{0};
+    std::uint32_t scene_depth_sampler_binding{0};
     std::uint32_t constants_binding{0};
     std::uint64_t constant_buffer_bytes{0};
     std::uint32_t froxel_output_buffer_binding{0};
@@ -1254,6 +1297,7 @@ struct Win32DesktopPresentationVulkanSceneRendererDesc {
     Win32DesktopPresentationShaderBytecode native_ui_overlay_fragment_shader;
     Win32DesktopPresentationShaderBytecode precipitation_vertex_shader;
     Win32DesktopPresentationShaderBytecode precipitation_fragment_shader;
+    Win32DesktopPresentationShaderBytecode volumetric_fog_compute_shader;
     const runtime::RuntimeAssetPackage* package{nullptr};
     const SceneRenderPacket* packet{nullptr};
     rhi::PrimitiveTopology topology{rhi::PrimitiveTopology::triangle_list};
@@ -1275,6 +1319,8 @@ struct Win32DesktopPresentationVulkanSceneRendererDesc {
     bool enable_environment_precipitation_package_evidence{false};
     bool enable_environment_precipitation_renderer_execution{false};
     PrecipitationPolicyDesc environment_precipitation;
+    bool enable_environment_volumetric_fog_renderer_execution{false};
+    VolumetricFogPolicyDesc environment_volumetric_fog;
     bool enable_directional_shadow_smoke{false};
     bool enable_native_ui_overlay{false};
     AssetId native_ui_overlay_atlas_asset;
@@ -1429,6 +1475,11 @@ evaluate_win32_desktop_presentation_vulkan_environment_precipitation(
 [[nodiscard]] Win32DesktopPresentationEnvironmentVolumetricFogReport
 evaluate_win32_desktop_presentation_environment_volumetric_fog(const Win32DesktopPresentationReport& report,
                                                                bool requested);
+[[nodiscard]] std::string_view win32_desktop_presentation_vulkan_environment_volumetric_fog_status_name(
+    Win32DesktopPresentationVulkanEnvironmentVolumetricFogStatus status) noexcept;
+[[nodiscard]] Win32DesktopPresentationVulkanEnvironmentVolumetricFogReport
+evaluate_win32_desktop_presentation_vulkan_environment_volumetric_fog(const Win32DesktopPresentationReport& report,
+                                                                      bool requested);
 [[nodiscard]] std::string_view win32_desktop_presentation_environment_volumetric_cloud_status_name(
     Win32DesktopPresentationEnvironmentVolumetricCloudStatus status) noexcept;
 [[nodiscard]] Win32DesktopPresentationEnvironmentVolumetricCloudReport

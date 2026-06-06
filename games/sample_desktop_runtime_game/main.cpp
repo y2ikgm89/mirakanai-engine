@@ -38,6 +38,7 @@
 #include <exception>
 #include <filesystem>
 #include <iostream>
+#include <limits>
 #include <mutex>
 #include <optional>
 #include <span>
@@ -78,6 +79,7 @@ struct DesktopRuntimeGameOptions {
     bool require_physical_sky_package_evidence{false};
     bool require_physical_sky_vulkan_package_evidence{false};
     bool require_environment_volumetric_fog_package_evidence{false};
+    bool require_environment_volumetric_fog_vulkan_renderer_execution{false};
     bool require_environment_lighting_package_evidence{false};
     bool require_environment_lighting_renderer_execution{false};
     bool require_cloud_layer_package_evidence{false};
@@ -151,6 +153,8 @@ constexpr std::string_view kRuntimeEnvironmentFogVulkanFragmentShaderPath{
     "shaders/sample_desktop_runtime_game_environment_fog.ps.spv"};
 constexpr std::string_view kRuntimeEnvironmentVolumetricFogComputeShaderPath{
     "shaders/sample_desktop_runtime_game_environment_volumetric_fog.cs.dxil"};
+constexpr std::string_view kRuntimeEnvironmentVolumetricFogVulkanComputeShaderPath{
+    "shaders/sample_desktop_runtime_game_environment_volumetric_fog.cs.spv"};
 constexpr std::string_view kRuntimeCloudLayerVertexShaderPath{
     "shaders/sample_desktop_runtime_game_cloud_layer.vs.dxil"};
 constexpr std::string_view kRuntimeCloudLayerFragmentShaderPath{
@@ -1035,6 +1039,7 @@ environment_material_weathering_state_name(mirakana::EnvironmentMaterialWeatheri
            options.require_environment_fog_vulkan_package_evidence || options.require_physical_sky_package_evidence ||
            options.require_physical_sky_vulkan_package_evidence ||
            options.require_environment_volumetric_fog_package_evidence ||
+           options.require_environment_volumetric_fog_vulkan_renderer_execution ||
            options.require_environment_lighting_package_evidence ||
            options.require_environment_lighting_renderer_execution || options.require_cloud_layer_package_evidence ||
            options.require_cloud_layer_renderer_execution ||
@@ -1479,6 +1484,7 @@ evaluate_environment_material_weathering(bool requested, const mirakana::Win32De
     const mirakana::Win32DesktopPresentationEnvironmentPrecipitationReport& environment_precipitation,
     const mirakana::Win32DesktopPresentationVulkanEnvironmentPrecipitationReport& environment_precipitation_vulkan,
     const mirakana::Win32DesktopPresentationEnvironmentVolumetricFogReport& environment_volumetric_fog,
+    const mirakana::Win32DesktopPresentationVulkanEnvironmentVolumetricFogReport& environment_volumetric_fog_vulkan,
     const mirakana::Win32DesktopPresentationEnvironmentVolumetricCloudReport& environment_volumetric_cloud,
     const EnvironmentProfilePackageEvidence& environment_profile, std::uint64_t expected_framegraph_barrier_steps) {
     EnvironmentQualityBudgetEvidence evidence;
@@ -1507,7 +1513,11 @@ evaluate_environment_material_weathering(bool requested, const mirakana::Win32De
     add_feature(options.require_physical_sky_vulkan_package_evidence, physical_sky_vulkan_package.ready);
     add_feature(options.require_environment_fog_evidence, environment_fog.ready);
     add_feature(options.require_environment_fog_vulkan_package_evidence, environment_fog_vulkan_package.ready);
-    add_feature(options.require_environment_volumetric_fog_package_evidence, environment_volumetric_fog.ready);
+    add_feature(options.require_environment_volumetric_fog_package_evidence ||
+                    options.require_environment_volumetric_fog_vulkan_renderer_execution,
+                options.require_environment_volumetric_fog_vulkan_renderer_execution
+                    ? environment_volumetric_fog_vulkan.ready
+                    : environment_volumetric_fog.ready);
     add_feature(options.require_environment_lighting_package_evidence, environment_lighting.ready);
     add_feature(options.require_environment_material_weathering, environment_material_weathering.ready);
     add_feature(options.require_cloud_layer_package_evidence || options.require_cloud_layer_renderer_execution,
@@ -1543,6 +1553,12 @@ evaluate_environment_material_weathering(bool requested, const mirakana::Win32De
         evidence.constant_buffer_bytes += environment_volumetric_fog.constant_buffer_bytes;
         evidence.volumetric_fog_raymarch_step_budget = volumetric_fog_desc.raymarch_step_budget;
         evidence.compute_dispatch_budget = 1;
+    }
+    if (options.require_environment_volumetric_fog_vulkan_renderer_execution) {
+        evidence.constant_buffer_bytes += environment_volumetric_fog_vulkan.constant_buffer_bytes;
+        evidence.volumetric_fog_raymarch_step_budget = volumetric_fog_desc.raymarch_step_budget;
+        evidence.compute_dispatch_budget = static_cast<std::uint32_t>(std::min<std::uint64_t>(
+            environment_volumetric_fog_vulkan.compute_dispatches, std::numeric_limits<std::uint32_t>::max()));
     }
     if (options.require_cloud_layer_package_evidence || options.require_cloud_layer_renderer_execution) {
         evidence.constant_buffer_bytes += mirakana::cloud_layer_constants_byte_size();
@@ -2255,6 +2271,16 @@ void print_usage() {
             options.require_postprocess = true;
             options.require_postprocess_depth_input = true;
             options.require_environment_volumetric_fog_package_evidence = true;
+            continue;
+        }
+        if (arg == "--require-environment-volumetric-fog-vulkan-renderer-execution") {
+            options.require_vulkan_scene_shaders = true;
+            options.require_vulkan_renderer = true;
+            options.require_scene_gpu_bindings = true;
+            options.require_postprocess = true;
+            options.require_postprocess_depth_input = true;
+            options.require_vulkan_postprocess_evidence = true;
+            options.require_environment_volumetric_fog_vulkan_renderer_execution = true;
             continue;
         }
         if (arg == "--require-physical-sky-package-evidence") {
@@ -4175,6 +4201,14 @@ int main(int argc, char** argv) {
                   << kRuntimeSceneVulkanComputeMappingShaderPath << '\n';
         return 6;
     }
+    const auto environment_volumetric_fog_vulkan_compute_blob = load_packaged_single_shader_blob(
+        argc > 0 ? argv[0] : nullptr, kRuntimeEnvironmentVolumetricFogVulkanComputeShaderPath, "main");
+    if (options.require_environment_volumetric_fog_vulkan_renderer_execution &&
+        environment_volumetric_fog_vulkan_compute_blob.bytecode.empty()) {
+        std::cout << "sample_desktop_runtime_game vulkan_environment_volumetric_fog_shader_diagnostic=missing: "
+                  << kRuntimeEnvironmentVolumetricFogVulkanComputeShaderPath << '\n';
+        return 6;
+    }
 
     const bool require_environment_any_precipitation_package_evidence =
         options.require_environment_precipitation_package_evidence ||
@@ -4300,6 +4334,8 @@ int main(int argc, char** argv) {
             .precipitation_vertex_shader = to_presentation_shader_bytecode(vulkan_precipitation_bytecode.vertex_shader),
             .precipitation_fragment_shader =
                 to_presentation_shader_bytecode(vulkan_precipitation_bytecode.fragment_shader),
+            .volumetric_fog_compute_shader =
+                to_presentation_shader_bytecode(environment_volumetric_fog_vulkan_compute_blob),
             .package = &*runtime_package,
             .packet = &packaged_scene->render_packet,
             .vertex_buffers = runtime_scene_vertex_buffers(),
@@ -4322,6 +4358,10 @@ int main(int argc, char** argv) {
             .enable_environment_precipitation_renderer_execution =
                 options.require_environment_precipitation_vulkan_renderer_execution,
             .environment_precipitation = make_sample_environment_precipitation_policy_desc(),
+            .enable_environment_volumetric_fog_renderer_execution =
+                options.require_environment_volumetric_fog_vulkan_renderer_execution,
+            .environment_volumetric_fog = make_sample_environment_volumetric_fog_policy_desc(
+                !environment_volumetric_fog_vulkan_compute_blob.bytecode.empty()),
             .enable_directional_shadow_smoke = options.require_directional_shadow,
             .enable_native_ui_overlay = options.require_native_ui_overlay,
             .native_ui_overlay_atlas_asset =
@@ -4549,6 +4589,9 @@ int main(int argc, char** argv) {
             environment_precipitation_vulkan_expectation);
     const auto environment_volumetric_fog = mirakana::evaluate_win32_desktop_presentation_environment_volumetric_fog(
         report, options.require_environment_volumetric_fog_package_evidence);
+    const auto environment_volumetric_fog_vulkan =
+        mirakana::evaluate_win32_desktop_presentation_vulkan_environment_volumetric_fog(
+            report, options.require_environment_volumetric_fog_vulkan_renderer_execution);
     const auto environment_volumetric_cloud =
         mirakana::evaluate_win32_desktop_presentation_environment_volumetric_cloud(
             report, require_environment_volumetric_cloud,
@@ -4640,7 +4683,8 @@ int main(int argc, char** argv) {
     const auto environment_quality_budget = build_environment_quality_budget_evidence(
         options, report, environment_fog, environment_fog_vulkan_package, physical_sky, physical_sky_vulkan_package,
         environment_lighting, environment_material_weathering, cloud_layer, environment_precipitation,
-        environment_precipitation_vulkan, environment_volumetric_fog, environment_volumetric_cloud, environment_profile,
+        environment_precipitation_vulkan, environment_volumetric_fog, environment_volumetric_fog_vulkan,
+        environment_volumetric_cloud, environment_profile,
         options.require_postprocess ? expected_framegraph_barrier_steps : 0U);
 
     std::cout
@@ -5037,6 +5081,44 @@ int main(int argc, char** argv) {
         << " environment_volumetric_fog_native_handle_access="
         << (environment_volumetric_fog.exposes_native_handles ? 1 : 0)
         << " environment_volumetric_fog_diagnostics=" << environment_volumetric_fog.diagnostics_count
+        << " environment_volumetric_fog_vulkan_status="
+        << mirakana::win32_desktop_presentation_vulkan_environment_volumetric_fog_status_name(
+               environment_volumetric_fog_vulkan.status)
+        << " environment_volumetric_fog_vulkan_ready=" << (environment_volumetric_fog_vulkan.ready ? 1 : 0)
+        << " environment_volumetric_fog_vulkan_selected_backend="
+        << mirakana::win32_desktop_presentation_backend_name(report.selected_backend)
+        << " environment_volumetric_fog_vulkan_requested=" << (environment_volumetric_fog_vulkan.requested ? 1 : 0)
+        << " environment_volumetric_fog_vulkan_shader_contract_evidence_ready="
+        << (environment_volumetric_fog_vulkan.shader_contract_evidence_ready ? 1 : 0)
+        << " environment_volumetric_fog_vulkan_package_evidence_ready="
+        << (environment_volumetric_fog_vulkan.package_evidence_ready ? 1 : 0)
+        << " environment_volumetric_fog_vulkan_execution_evidence_ready="
+        << (environment_volumetric_fog_vulkan.execution_evidence_ready ? 1 : 0)
+        << " environment_volumetric_fog_vulkan_froxel_output_ready="
+        << (environment_volumetric_fog_vulkan.froxel_output_ready ? 1 : 0)
+        << " environment_volumetric_fog_vulkan_scene_depth_ready="
+        << (environment_volumetric_fog_vulkan.scene_depth_ready ? 1 : 0)
+        << " environment_volumetric_fog_vulkan_compute_dispatches="
+        << environment_volumetric_fog_vulkan.compute_dispatches
+        << " environment_volumetric_fog_vulkan_descriptor_set_bindings="
+        << environment_volumetric_fog_vulkan.descriptor_set_bindings
+        << " environment_volumetric_fog_vulkan_synchronization2_barriers="
+        << environment_volumetric_fog_vulkan.synchronization2_barriers
+        << " environment_volumetric_fog_vulkan_froxel_readback_nonzero="
+        << (environment_volumetric_fog_vulkan.froxel_readback_nonzero ? 1 : 0)
+        << " environment_volumetric_fog_vulkan_scene_depth_texture_binding="
+        << environment_volumetric_fog_vulkan.scene_depth_texture_binding
+        << " environment_volumetric_fog_vulkan_scene_depth_sampler_binding="
+        << environment_volumetric_fog_vulkan.scene_depth_sampler_binding
+        << " environment_volumetric_fog_vulkan_constants_binding="
+        << environment_volumetric_fog_vulkan.constants_binding
+        << " environment_volumetric_fog_vulkan_constants_byte_size="
+        << environment_volumetric_fog_vulkan.constant_buffer_bytes
+        << " environment_volumetric_fog_vulkan_froxel_output_storage_buffer_binding="
+        << environment_volumetric_fog_vulkan.froxel_output_buffer_binding
+        << " environment_volumetric_fog_vulkan_native_handle_access="
+        << (environment_volumetric_fog_vulkan.exposes_native_handles ? 1 : 0)
+        << " environment_volumetric_fog_vulkan_diagnostics=" << environment_volumetric_fog_vulkan.diagnostics_count
         << " environment_volumetric_cloud_status="
         << mirakana::win32_desktop_presentation_environment_volumetric_cloud_status_name(
                environment_volumetric_cloud.status)
@@ -5991,6 +6073,10 @@ int main(int argc, char** argv) {
             return 3;
         }
         if (options.require_environment_volumetric_fog_package_evidence && !environment_volumetric_fog.ready) {
+            return 3;
+        }
+        if (options.require_environment_volumetric_fog_vulkan_renderer_execution &&
+            !environment_volumetric_fog_vulkan.ready) {
             return 3;
         }
         if (require_environment_volumetric_cloud && !environment_volumetric_cloud.ready) {

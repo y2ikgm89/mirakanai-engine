@@ -34,7 +34,7 @@ Pre-Phase-0 audit proven state:
 - Environment System v1 and Environment Rendering Readiness v1 are completed.
 - `MK_environment` owns profile validation, text IO, package rows, scene/runtime binding, time-of-day, weather, sky, fog, cloud, precipitation, volumetric, and quality value foundations.
 - Selected D3D12 environment package or renderer evidence exists for physical sky, height fog, volumetric fog, cloud layer, rain precipitation, snow precipitation, volumetric clouds, and package-visible IBL metadata.
-- Strict host/toolchain-gated Vulkan physical-sky runtime, physical-sky package, height-fog package, and rain precipitation renderer execution evidence exists, but Vulkan volumetric cloud, volumetric fog broad readiness, and IBL proof remain unclaimed.
+- Strict host/toolchain-gated Vulkan physical-sky runtime, physical-sky package, height-fog package, rain precipitation renderer execution, and volumetric-fog renderer execution evidence exists, but Vulkan volumetric cloud, broad volumetric-fog readiness beyond the selected strict lane, and IBL proof remain unclaimed.
 - Metal environment rows exist as Apple-host evidence requirements only; Windows validation does not promote Metal readiness.
 - First-party editor Inspector rows expose selected environment ready/non-ready state without Dear ImGui, SDL3, UI middleware, backend execution, package-script execution, or public backend handles.
 - Selected package smokes emit `environment_quality_budget_*` counters and keep `environment_quality_budget_broad_environment_ready_claimed=0`.
@@ -46,7 +46,7 @@ Unclaimed by design:
 - Broad CPU/GPU/memory optimization.
 - Renderer cubemap upload and runtime cubemap capture.
 - Vulkan/Metal precipitation execution.
-- Vulkan/Metal volumetric fog and volumetric cloud execution.
+- Vulkan volumetric fog execution beyond the selected strict package lane, Metal volumetric fog, and Vulkan/Metal volumetric cloud execution.
 - Vulkan/Metal IBL proof.
 - Metal actual environment readiness without Apple-host execution.
 - Broad material weathering beyond the selected D3D12 package-visible material wetness/snow accumulation evidence row.
@@ -140,7 +140,8 @@ These items are included in this plan as explicit future gates so they are not m
 | Snow accumulation | Selected D3D12 package evidence ready | First-party snow/ice coverage rows, material parameter binding, package counters, and separate precipitation particle evidence. Broad backend parity remains unclaimed. |
 | Weather audio playback | Selected D3D12 package evidence ready | Audio trigger rows consumed by the selected runtime/audio lane through `MK_audio` mixer/render counters, with no direct environment audio-device ownership, no physical endpoint playback claim, and no native-handle access. |
 | Vulkan precipitation | Selected strict rain renderer execution ready | Strict particle texture/buffer upload, descriptor, depth-occlusion, draw/readback proof with validation layers for the selected rain lane. Vulkan snow precipitation and broader parity remain unclaimed. |
-| Vulkan volumetric cloud/fog | Unclaimed | Strict compute/render paths with synchronization2 barriers, package recipes, positive dispatch/raymarch/readback counters. |
+| Vulkan volumetric fog | Selected strict renderer execution ready | Strict compute storage-buffer path with synchronization2 barrier evidence, package recipe, positive dispatch/readback counters, and zero native-handle access for the selected sample lane. Broader Vulkan volumetric-fog readiness remains unclaimed. |
+| Vulkan volumetric cloud | Unclaimed | Strict compute/render path with synchronization2 barriers, package recipe, positive raymarch/readback counters, and zero native-handle access. |
 | Metal environment execution | Host-gated rows only | Apple-host feature-local render/compute pipeline, texture, cube/HDR, and synchronization evidence for selected features. |
 | Editor environment authoring | Read-only readiness rows | First-party authoring panels for profile v2, volume stack, weather timeline, quality presets, and readiness reports without backend execution from editor core. |
 | Quality budgets | Selected package counters | Profile-driven quality presets with fail-closed budgets for samples, raymarch steps, particles, transient GPU bytes, framegraph passes, barriers, and diagnostics. |
@@ -188,7 +189,7 @@ Expected files for implementation phases:
 - [x] Set `currentActivePlan` to `docs/superpowers/plans/2026-06-06-environment-production-excellence-v1.md`.
 - [x] Set `recommendedNextPlan.id` to `environment-production-excellence-v1`.
 - [x] Preserve `unsupportedProductionGaps = []`.
-- [x] State explicitly that broad `environment_ready`, backend parity, broad optimization, material weathering, runtime cubemap capture, renderer cubemap upload, Vulkan/Metal precipitation, Vulkan/Metal volumetrics, and Metal readiness remain unclaimed.
+- [x] State explicitly that broad `environment_ready`, backend parity, broad optimization, material weathering, runtime cubemap capture, renderer cubemap upload, Vulkan/Metal precipitation beyond selected strict lanes, Vulkan volumetric fog beyond the selected strict lane, Vulkan/Metal volumetric clouds, Metal volumetric fog, and Metal readiness remain unclaimed.
 - [x] Run:
 
 ```powershell
@@ -428,7 +429,7 @@ Phase 5 precipitation candidate closeout:
 - Vulkan RHI command-list vertex-buffer binding now retains multiple binding slots and records contiguous `vkCmdBindVertexBuffers` ranges so the precipitation quad and instance buffers are both bound according to the official Vulkan `firstBinding + i` binding update rule.
 - Focused validation evidence before docs/static closeout: `tools/run-validation-recipe.ps1 -Mode Execute -Recipe desktop-runtime-sample-game-vulkan-environment-precipitation-renderer-execution -HostGateAcknowledgements vulkan-strict -TimeoutSeconds 300` passed on the local strict Vulkan host.
 
-This is a selected strict Vulkan rain precipitation renderer execution row only. The rest of Phase 5 remains open for Vulkan volumetric fog, Vulkan volumetric cloud, and Vulkan IBL; Metal precipitation, backend parity, broad optimization, and broad `environment_ready` remain unclaimed.
+This is a selected strict Vulkan rain precipitation renderer execution row only. Later Phase 5 work handles the selected Vulkan volumetric-fog candidate, while Vulkan volumetric cloud and Vulkan IBL remain open; Metal precipitation, backend parity, broad optimization, and broad `environment_ready` remain unclaimed.
 
 Phase 5 physical-sky package candidate closeout:
 
@@ -437,7 +438,16 @@ Phase 5 physical-sky package candidate closeout:
 - Installed package validation requires `environment_physical_sky_vulkan_status=ready`, `environment_physical_sky_vulkan_ready=1`, `environment_physical_sky_vulkan_selected_backend=vulkan`, shader-contract/package/execution evidence, `environment_physical_sky_vulkan_constant_buffer_ready=1`, constants binding `0`, constants byte size `256`, eight constant-layout rows, four LUT-intent rows, zero diagnostics, zero LUT texture allocations, zero backend invocations, and zero native-handle access.
 - Vulkan package evidence is selected strict Vulkan physical-sky package-visible evidence only. It does not infer D3D12 proof, Metal readiness, backend parity, broad optimization, or broad `environment_ready`.
 
-This is a selected strict Vulkan physical-sky package row only. The rest of Phase 5 remains open for Vulkan volumetric fog, Vulkan volumetric cloud, and Vulkan IBL; Metal precipitation, backend parity, broad optimization, and broad `environment_ready` remain unclaimed.
+This is a selected strict Vulkan physical-sky package row only. Later Phase 5 work handles the selected Vulkan volumetric-fog candidate, while Vulkan volumetric cloud and Vulkan IBL remain open; Metal precipitation, backend parity, broad optimization, and broad `environment_ready` remain unclaimed.
+
+Phase 5 volumetric-fog renderer execution candidate closeout:
+
+- `desktop-runtime-sample-game-vulkan-volumetric-fog-renderer-execution` is added as a strict `vulkan-strict` host/toolchain-gated recipe.
+- The selected sample package lane uses `--require-vulkan-scene-shaders`, `--require-vulkan-renderer`, `--require-scene-gpu-bindings`, `--require-postprocess`, `--require-postprocess-depth-input`, `--require-vulkan-postprocess-evidence`, and `--require-environment-volumetric-fog-vulkan-renderer-execution`.
+- Installed package validation requires `environment_volumetric_fog_vulkan_status=ready`, `environment_volumetric_fog_vulkan_ready=1`, `environment_volumetric_fog_vulkan_selected_backend=vulkan`, shader-contract/package/execution evidence, scene-depth and froxel storage-buffer output readiness, binding slots `2/3/5/13`, `environment_volumetric_fog_vulkan_descriptor_set_bindings=4`, positive `environment_volumetric_fog_vulkan_compute_dispatches`, positive `environment_volumetric_fog_vulkan_synchronization2_barriers`, `environment_volumetric_fog_vulkan_froxel_readback_nonzero=1`, zero diagnostics, and zero native-handle access.
+- Vulkan volumetric-fog evidence is selected strict Vulkan renderer execution only. It does not infer D3D12 proof, Metal readiness, Vulkan volumetric-cloud readiness, Vulkan IBL readiness, backend parity, broad optimization, or broad `environment_ready`.
+
+This is a selected strict Vulkan volumetric-fog renderer execution row only. The rest of Phase 5 remains open for Vulkan volumetric cloud and Vulkan IBL; Metal precipitation, Metal volumetrics, backend parity, broad optimization, and broad `environment_ready` remain unclaimed.
 
 ## Phase 6: Apple Metal Host Evidence Execution
 
