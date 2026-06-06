@@ -190,7 +190,7 @@ git diff --check
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1
 ```
 
-- [ ] **Step 8: Publish stacked PR.**
+- [x] **Step 8: Publish stacked PR.**
 
 Run publication preflight, commit the candidate, push `codex/mavg-dxgi-gpu-memory-pressure-evidence-v1`, and create a draft PR over `codex/mavg-gpu-memory-pressure-eviction-policy-v1`.
 
@@ -213,6 +213,8 @@ Run publication preflight, commit the candidate, push `codex/mavg-dxgi-gpu-memor
   `tools/check-public-api-boundaries.ps1`, `tools/check-ai-integration.ps1`, `tools/check-json-contracts.ps1`, `tools/check-agents.ps1`, `tools/check-format.ps1`, targeted `tools/check-tidy.ps1 -Files engine/runtime_rhi/src/mavg_gpu_memory_pressure.cpp,tests/unit/runtime_rhi_tests.cpp,tests/unit/d3d12_rhi_tests.cpp -ReuseExistingFileApiReply`, and `git diff --check` passed.
 - Full validation:
   `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1` passed. Static checks passed; build passed; `ctest` passed 109/109 tests, including `MK_runtime_rhi_tests` and `MK_d3d12_rhi_tests`.
+- Publication:
+  Created commit `f9fff3ba` (`Add MAVG DXGI GPU memory pressure evidence`), pushed `codex/mavg-dxgi-gpu-memory-pressure-evidence-v1`, and opened draft PR `https://github.com/y2ikgm89/mirakanai-engine/pull/488` over `codex/mavg-gpu-memory-pressure-eviction-policy-v1`.
 
 ## Done When
 
