@@ -4,6 +4,8 @@
 #include "mirakana/renderer/cloud_layer_policy.hpp"
 
 #include <algorithm>
+#include <cstring>
+#include <stdexcept>
 #include <utility>
 
 namespace mirakana {
@@ -30,6 +32,10 @@ void add_diagnostic(CloudLayerPolicyPlan& plan, CloudLayerDiagnosticCode code, s
     return false;
 }
 
+void write_f32(std::span<std::uint8_t> destination, std::size_t offset, float value) {
+    std::memcpy(destination.data() + offset, &value, sizeof(float));
+}
+
 void append_rows(CloudLayerPolicyPlan& plan, const CloudLayerPolicyDesc& desc) {
     plan.texture_rows.push_back(CloudLayerTextureRow{
         .cloud_map_asset_ref = desc.layer.cloud_map_asset_ref,
@@ -38,7 +44,7 @@ void append_rows(CloudLayerPolicyPlan& plan, const CloudLayerPolicyDesc& desc) {
         .flow_map_binding_slot = cloud_layer_flow_map_binding(),
         .sampler_binding_slot = cloud_layer_sampler_binding(),
         .package_evidence_ready = desc.package_evidence_ready,
-        .uploads_texture = false,
+        .uploads_texture = plan.uploads_textures,
     });
     plan.visual_rows.push_back(CloudLayerVisualRow{
         .coverage = desc.layer.coverage,
@@ -75,6 +81,24 @@ bool CloudLayerPolicyPlan::ready() const noexcept {
     return status == CloudLayerPolicyStatus::ready;
 }
 
+void pack_cloud_layer_constants(std::span<std::uint8_t> destination, const CloudLayerPolicyDesc& desc) {
+    if (destination.size() < cloud_layer_constants_byte_size()) {
+        throw std::invalid_argument("cloud layer constants destination is too small");
+    }
+
+    std::ranges::fill(destination, std::uint8_t{0});
+    write_f32(destination, 0U, desc.layer.coverage);
+    write_f32(destination, 4U, desc.layer.opacity);
+    write_f32(destination, 8U, desc.layer.altitude_m);
+    write_f32(destination, 12U, desc.layer.wind_velocity_mps.x);
+    write_f32(destination, 16U, desc.layer.wind_velocity_mps.y);
+    write_f32(destination, 20U, 0.0F);
+    write_f32(destination, 24U, desc.layer.sky_tint_response.x);
+    write_f32(destination, 28U, desc.layer.sky_tint_response.y);
+    write_f32(destination, 32U, desc.layer.sky_tint_response.z);
+    write_f32(destination, 36U, desc.layer.time_of_day_response);
+}
+
 CloudLayerPolicyPlan plan_cloud_layer_policy(const CloudLayerPolicyDesc& desc) {
     const auto environment_result = validate_environment_cloud_layer(desc.layer);
     CloudLayerPolicyPlan plan{
@@ -102,17 +126,11 @@ CloudLayerPolicyPlan plan_cloud_layer_policy(const CloudLayerPolicyDesc& desc) {
         add_diagnostic(plan, CloudLayerDiagnosticCode::missing_package_evidence, "package_evidence_ready",
                        "cloud layer policy requires package evidence for referenced cloud textures");
     }
-    if (desc.request_ready_promotion && !desc.execution_evidence_ready) {
+    const bool requires_execution_evidence =
+        desc.request_ready_promotion || desc.request_texture_upload || desc.request_backend_execution;
+    if (requires_execution_evidence && !desc.execution_evidence_ready) {
         add_diagnostic(plan, CloudLayerDiagnosticCode::missing_execution_evidence, "execution_evidence_ready",
-                       "cloud layer ready promotion requires D3D12 readback or package execution evidence");
-    }
-    if (desc.request_texture_upload) {
-        add_diagnostic(plan, CloudLayerDiagnosticCode::unsupported_texture_upload, "request_texture_upload",
-                       "cloud layer policy planning must not upload textures in this slice");
-    }
-    if (desc.request_backend_execution) {
-        add_diagnostic(plan, CloudLayerDiagnosticCode::unsupported_backend_execution, "request_backend_execution",
-                       "cloud layer policy planning must not invoke renderer or RHI backends in this slice");
+                       "cloud layer execution requires D3D12 readback or package execution evidence");
     }
     if (desc.request_native_handle_access) {
         add_diagnostic(plan, CloudLayerDiagnosticCode::unsupported_native_handle_claim, "request_native_handle_access",
@@ -122,6 +140,12 @@ CloudLayerPolicyPlan plan_cloud_layer_policy(const CloudLayerPolicyDesc& desc) {
         desc.layer.mode == EnvironmentCloudLayerMode::volumetric) {
         add_diagnostic(plan, CloudLayerDiagnosticCode::unsupported_volumetric_clouds, "request_volumetric_clouds",
                        "cloud layer v1 does not claim volumetric cloud execution");
+    }
+
+    if (plan.succeeded()) {
+        plan.uploads_textures = desc.request_texture_upload;
+        plan.invokes_backend = desc.request_backend_execution;
+        plan.renderer_draws = desc.request_backend_execution ? 1U : 0U;
     }
 
     if (!plan.succeeded()) {

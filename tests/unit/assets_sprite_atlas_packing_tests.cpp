@@ -60,14 +60,14 @@ MK_TEST("source asset registry accepts environment profile package rows") {
         .key = key,
         .kind = mirakana::AssetKind::environment_profile,
         .source_path = "source/environment/default_outdoor.environment",
-        .source_format = "GameEngine.EnvironmentProfile.v1",
+        .source_format = "GameEngine.EnvironmentProfile.v2",
         .imported_path = "runtime/environment/default_outdoor.environment",
         .dependencies = {},
     });
 
     MK_REQUIRE(mirakana::is_supported_source_asset_kind_v1(mirakana::AssetKind::environment_profile));
     MK_REQUIRE(mirakana::expected_source_asset_format_v1(mirakana::AssetKind::environment_profile) ==
-               "GameEngine.EnvironmentProfile.v1");
+               "GameEngine.EnvironmentProfile.v2");
 
     const auto serialized = mirakana::serialize_source_asset_registry_document(document);
     MK_REQUIRE(serialized.find("asset.0.kind=environment_profile\n") != std::string::npos);
@@ -90,7 +90,7 @@ MK_TEST("cooked package index accepts environment profile assets") {
         .asset = asset,
         .kind = mirakana::AssetKind::environment_profile,
         .path = "runtime/environment/default_outdoor.environment",
-        .content = "format=GameEngine.CookedEnvironmentProfile.v1\nasset.kind=environment_profile\n",
+        .content = "format=GameEngine.CookedEnvironmentProfile.v2\nasset.kind=environment_profile\n",
         .source_revision = 1U,
         .dependencies = {},
     });

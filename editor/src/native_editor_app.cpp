@@ -57,8 +57,11 @@ namespace {
 }
 
 [[nodiscard]] EnvironmentAuthoringDocument make_default_environment_authoring_document() {
-    return EnvironmentAuthoringDocument::from_profile(EnvironmentProfileDesc{},
-                                                      "assets/environment/default.environment");
+    EnvironmentProfileDocumentV2 document;
+    document.global_profile = EnvironmentProfileDesc{};
+    document.quality_preset = EnvironmentQualityPreset::high;
+    return EnvironmentAuthoringDocument::from_profile_document_v2(std::move(document),
+                                                                  "assets/environment/default.environment");
 }
 
 [[nodiscard]] EnvironmentCloudLayerDesc make_default_environment_cloud_layer() {
@@ -83,7 +86,6 @@ make_default_environment_authoring_inspector(const EnvironmentAuthoringDocument&
         .document = document,
         .cloud_layer = make_default_environment_cloud_layer(),
         .volumetric_clouds_policy_available = true,
-        .quality_tier = EnvironmentAuthoringQualityTier::high,
     });
 }
 

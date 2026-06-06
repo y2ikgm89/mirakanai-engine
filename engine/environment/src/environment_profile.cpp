@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <string>
 #include <string_view>
 
@@ -68,6 +69,38 @@ namespace {
     case EnvironmentPrecipitationKind::hail:
     case EnvironmentPrecipitationKind::ash:
     case EnvironmentPrecipitationKind::dust:
+        return true;
+    }
+    return false;
+}
+
+[[nodiscard]] bool quality_preset_valid(EnvironmentQualityPreset value) noexcept {
+    switch (value) {
+    case EnvironmentQualityPreset::low:
+    case EnvironmentQualityPreset::medium:
+    case EnvironmentQualityPreset::high:
+    case EnvironmentQualityPreset::ultra:
+    case EnvironmentQualityPreset::custom:
+        return true;
+    }
+    return false;
+}
+
+[[nodiscard]] bool volume_shape_valid(EnvironmentVolumeShape value) noexcept {
+    switch (value) {
+    case EnvironmentVolumeShape::global:
+    case EnvironmentVolumeShape::box:
+    case EnvironmentVolumeShape::sphere:
+        return true;
+    }
+    return false;
+}
+
+[[nodiscard]] bool volume_blend_mode_valid(EnvironmentVolumeBlendMode value) noexcept {
+    switch (value) {
+    case EnvironmentVolumeBlendMode::weighted_override:
+    case EnvironmentVolumeBlendMode::additive_density:
+    case EnvironmentVolumeBlendMode::subtractive_density:
         return true;
     }
     return false;
@@ -223,6 +256,75 @@ void validate_profile_fields(EnvironmentProfileValidationResult& result, const E
     }
 }
 
+void validate_volume_fields(EnvironmentProfileValidationResult& result, const EnvironmentVolumeDesc& volume,
+                            std::uint32_t volume_index) {
+    const auto field_prefix = std::string{"volume."} + std::to_string(volume_index);
+    if (volume.id.empty()) {
+        add_diagnostic(result, EnvironmentProfileDiagnosticCode::empty_profile_id, volume_index, field_prefix + ".id",
+                       volume.id, "environment volume id must not be empty");
+    } else if (has_forbidden_profile_token(volume.id)) {
+        add_diagnostic(result, EnvironmentProfileDiagnosticCode::forbidden_profile_id_token, volume_index,
+                       field_prefix + ".id", volume.id,
+                       "environment volume id must not contain native, backend, editor, or middleware tokens");
+    }
+
+    if (!volume_shape_valid(volume.shape)) {
+        add_diagnostic(result, EnvironmentProfileDiagnosticCode::invalid_volume_shape, volume_index,
+                       field_prefix + ".shape", volume.id, "environment volume shape is unsupported");
+    }
+    if (!volume_blend_mode_valid(volume.blend_mode)) {
+        add_diagnostic(result, EnvironmentProfileDiagnosticCode::invalid_enum, volume_index,
+                       field_prefix + ".blend_mode", volume.id, "environment volume blend mode is unsupported");
+    }
+    if (!scalar_in_range(volume.blend_weight, 0.0F, 1.0F)) {
+        add_diagnostic(result, EnvironmentProfileDiagnosticCode::invalid_scalar, volume_index,
+                       field_prefix + ".blend_weight", volume.id,
+                       "environment volume blend weight must be finite and in [0, 1]");
+    }
+    if (!finite(volume.fade_distance_m) || volume.fade_distance_m < 0.0F) {
+        add_diagnostic(result, EnvironmentProfileDiagnosticCode::invalid_volume_fade, volume_index,
+                       field_prefix + ".fade_distance_m", volume.id,
+                       "environment volume fade distance must be finite and non-negative");
+    }
+    if (volume.shape == EnvironmentVolumeShape::box &&
+        (!finite(volume.extents_m.x) || volume.extents_m.x <= 0.0F || !finite(volume.extents_m.y) ||
+         volume.extents_m.y <= 0.0F || !finite(volume.extents_m.z) || volume.extents_m.z <= 0.0F)) {
+        add_diagnostic(result, EnvironmentProfileDiagnosticCode::invalid_scalar, volume_index,
+                       field_prefix + ".extents_m", volume.id,
+                       "environment box volume extents must be finite and positive");
+    }
+    if (volume.shape == EnvironmentVolumeShape::sphere && (!finite(volume.radius_m) || volume.radius_m <= 0.0F)) {
+        add_diagnostic(result, EnvironmentProfileDiagnosticCode::invalid_scalar, volume_index,
+                       field_prefix + ".radius_m", volume.id,
+                       "environment sphere volume radius must be finite and positive");
+    }
+    if (!finite(volume.center_m.x) || !finite(volume.center_m.y) || !finite(volume.center_m.z)) {
+        add_diagnostic(result, EnvironmentProfileDiagnosticCode::invalid_scalar, volume_index,
+                       field_prefix + ".center_m", volume.id, "environment volume center must be finite");
+    }
+    validate_profile_fields(result, volume.profile, volume_index);
+}
+
+void validate_weather_keyframe(EnvironmentProfileValidationResult& result, const EnvironmentWeatherKeyframeDesc& row,
+                               std::uint32_t keyframe_index) {
+    const auto field_prefix = std::string{"weather_keyframe."} + std::to_string(keyframe_index);
+    if (!scalar_in_range(row.time_of_day_hours, 0.0F, 24.0F)) {
+        add_diagnostic(result, EnvironmentProfileDiagnosticCode::invalid_scalar, keyframe_index,
+                       field_prefix + ".time_of_day_hours", {},
+                       "environment weather keyframe time must be finite and in [0, 24]");
+    }
+    if (!weather_kind_valid(row.weather) || !precipitation_kind_valid(row.precipitation) ||
+        !quality_preset_valid(row.quality_preset)) {
+        add_diagnostic(result, EnvironmentProfileDiagnosticCode::invalid_enum, keyframe_index, field_prefix, {},
+                       "environment weather keyframe enum values must be supported");
+    }
+    if (!scalar_in_range(row.storm_intensity, 0.0F, 1.0F) || !scalar_in_range(row.cloud_coverage, 0.0F, 1.0F) ||
+        !scalar_in_range(row.fog_density, 0.0F, 1.0F)) {
+        add_diagnostic(result, EnvironmentProfileDiagnosticCode::invalid_scalar, keyframe_index, field_prefix, {},
+                       "environment weather keyframe scalar values must be finite and in [0, 1]");
+    }
+}
+
 void validate_duplicate_ids(EnvironmentProfileValidationResult& result,
                             std::span<const EnvironmentProfileDesc> profiles) {
     for (std::size_t index = 0U; index < profiles.size(); ++index) {
@@ -262,6 +364,24 @@ bool EnvironmentProfileValidationResult::succeeded() const noexcept {
     return status == EnvironmentProfileValidationStatus::valid && diagnostics.empty();
 }
 
+EnvironmentProfileValidationResult validate_environment_profile_v2(const EnvironmentProfileDocumentV2& desc) {
+    EnvironmentProfileValidationResult result{};
+    validate_profile_fields(result, desc.global_profile, 0U);
+    if (!quality_preset_valid(desc.quality_preset)) {
+        add_diagnostic(result, EnvironmentProfileDiagnosticCode::invalid_enum, 0U, "quality.preset", {},
+                       "environment profile v2 quality preset is unsupported");
+    }
+    for (std::size_t index = 0U; index < desc.volumes.size(); ++index) {
+        validate_volume_fields(result, desc.volumes[index], static_cast<std::uint32_t>(index));
+    }
+    for (std::size_t index = 0U; index < desc.weather_timeline.size(); ++index) {
+        validate_weather_keyframe(result, desc.weather_timeline[index], static_cast<std::uint32_t>(index));
+    }
+    result.status = result.diagnostics.empty() ? EnvironmentProfileValidationStatus::valid
+                                               : EnvironmentProfileValidationStatus::invalid;
+    return result;
+}
+
 EnvironmentProfileValidationResult validate_environment_profile(const EnvironmentProfileDesc& desc) {
     const EnvironmentProfileDesc profiles[] = {desc};
     return validate_environment_profiles(profiles);
@@ -280,6 +400,52 @@ EnvironmentProfileValidationResult validate_environment_profiles(std::span<const
 
 bool is_valid_environment_profile(const EnvironmentProfileDesc& desc) noexcept {
     return profile_fields_valid_noexcept(desc);
+}
+
+std::vector<EnvironmentVolumeDesc> sorted_environment_volume_rows(const EnvironmentProfileDocumentV2& desc) {
+    auto rows = desc.volumes;
+    std::ranges::sort(rows, [](const EnvironmentVolumeDesc& lhs, const EnvironmentVolumeDesc& rhs) {
+        if (lhs.priority != rhs.priority) {
+            return lhs.priority > rhs.priority;
+        }
+        return lhs.id < rhs.id;
+    });
+    return rows;
+}
+
+std::uint64_t environment_volume_blend_hash(std::span<const EnvironmentVolumeDesc> volumes) noexcept {
+    std::uint64_t hash{1469598103934665603ULL};
+    auto mix = [&hash](std::uint64_t value) noexcept {
+        hash ^= value;
+        hash *= 1099511628211ULL;
+    };
+    auto mix_text = [&mix](std::string_view value) noexcept {
+        for (const auto ch : value) {
+            mix(static_cast<unsigned char>(ch));
+        }
+        mix(0xffU);
+    };
+    auto mix_float = [&mix](float value) noexcept {
+        if (!std::isfinite(value)) {
+            mix(0U);
+            return;
+        }
+        mix(static_cast<std::uint64_t>(value * 10000.0F));
+    };
+
+    for (const auto& volume : volumes) {
+        mix_text(volume.id);
+        mix(static_cast<std::uint64_t>(volume.shape));
+        mix(static_cast<std::uint64_t>(volume.blend_mode));
+        mix(static_cast<std::uint64_t>(volume.priority));
+        mix_float(volume.blend_weight);
+        mix_float(volume.fade_distance_m);
+        mix_float(volume.radius_m);
+        mix_float(volume.extents_m.x);
+        mix_float(volume.extents_m.y);
+        mix_float(volume.extents_m.z);
+    }
+    return hash;
 }
 
 bool has_environment_profile_diagnostic(const EnvironmentProfileValidationResult& result,

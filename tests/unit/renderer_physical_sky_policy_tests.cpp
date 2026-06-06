@@ -86,6 +86,39 @@ MK_TEST("renderer physical sky policy packs D3D12 constant buffer rows") {
     MK_REQUIRE(bytes.back() == std::uint8_t{0});
 }
 
+MK_TEST("renderer physical sky policy requires package and execution evidence before ready promotion") {
+    auto desc = make_valid_physical_sky_desc();
+    desc.request_ready_promotion = true;
+
+    const auto missing_package_plan = mirakana::plan_physical_sky_policy(desc);
+
+    MK_REQUIRE(!missing_package_plan.succeeded());
+    MK_REQUIRE(!missing_package_plan.ready());
+    MK_REQUIRE(mirakana::has_physical_sky_diagnostic(missing_package_plan,
+                                                     mirakana::PhysicalSkyDiagnosticCode::missing_package_evidence));
+
+    desc.package_evidence_ready = true;
+    const auto missing_execution_plan = mirakana::plan_physical_sky_policy(desc);
+
+    MK_REQUIRE(!missing_execution_plan.succeeded());
+    MK_REQUIRE(!missing_execution_plan.ready());
+    MK_REQUIRE(mirakana::has_physical_sky_diagnostic(missing_execution_plan,
+                                                     mirakana::PhysicalSkyDiagnosticCode::missing_execution_evidence));
+
+    desc.execution_evidence_ready = true;
+    const auto ready_plan = mirakana::plan_physical_sky_policy(desc);
+
+    MK_REQUIRE(ready_plan.succeeded());
+    MK_REQUIRE(ready_plan.ready());
+    MK_REQUIRE(ready_plan.package_evidence_ready);
+    MK_REQUIRE(ready_plan.execution_evidence_ready);
+    MK_REQUIRE(ready_plan.constant_layout_rows.size() == 8);
+    MK_REQUIRE(ready_plan.lut_intent_rows.size() == 4);
+    MK_REQUIRE(!ready_plan.allocates_lut_textures);
+    MK_REQUIRE(!ready_plan.invokes_backend);
+    MK_REQUIRE(!ready_plan.exposes_native_handles);
+}
+
 MK_TEST("renderer physical sky policy fails closed for invalid atmosphere and unsafe claims") {
     auto desc = make_valid_physical_sky_desc();
     desc.atmosphere.rayleigh_density_height_km = 0.0F;

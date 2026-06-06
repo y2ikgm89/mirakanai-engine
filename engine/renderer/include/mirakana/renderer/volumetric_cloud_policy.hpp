@@ -5,6 +5,7 @@
 
 #include "mirakana/math/vec.hpp"
 
+#include <cstddef>
 #include <cstdint>
 #include <span>
 #include <string>
@@ -51,6 +52,7 @@ enum class VolumetricCloudDiagnosticCode : std::uint8_t {
     invalid_cloud_shadow,
     invalid_storm_lightning,
     missing_shader_contract_evidence,
+    missing_package_evidence,
     missing_execution_evidence,
     unsupported_volume_texture_upload,
     unsupported_backend_execution,
@@ -77,6 +79,10 @@ enum class VolumetricCloudDiagnosticCode : std::uint8_t {
 
 [[nodiscard]] constexpr std::uint32_t volumetric_cloud_constants_binding() noexcept {
     return 8;
+}
+
+[[nodiscard]] constexpr std::size_t volumetric_cloud_constants_byte_size() noexcept {
+    return 256;
 }
 
 struct VolumetricCloudLayerDesc {
@@ -124,10 +130,17 @@ struct VolumetricCloudPolicyDesc {
     std::span<const VolumetricCloudAtmosphericLightDesc> atmospheric_lights;
     VolumetricCloudStormDesc storm;
     bool shader_contract_evidence_ready{false};
+    bool package_evidence_ready{false};
     bool execution_evidence_ready{false};
     bool request_ready_promotion{false};
     bool request_volume_texture_upload{false};
     bool request_backend_execution{false};
+    std::uint64_t weather_map_upload_count{0};
+    std::uint64_t shape_noise_upload_count{0};
+    std::uint64_t erosion_noise_upload_count{0};
+    std::uint64_t backend_invocation_count{0};
+    std::uint64_t raymarch_pass_count{0};
+    bool readback_nonzero_proven{false};
     bool request_native_handle_access{false};
     bool request_audio_playback{false};
     bool request_precipitation_execution{false};
@@ -140,6 +153,11 @@ struct VolumetricCloudMapRow {
     std::uint32_t weather_map_binding_slot{0};
     std::uint32_t shape_noise_binding_slot{0};
     std::uint32_t erosion_noise_binding_slot{0};
+    std::uint32_t sampler_binding_slot{0};
+    bool package_evidence_ready{false};
+    bool weather_map_ready{false};
+    bool shape_noise_ready{false};
+    bool erosion_noise_ready{false};
 };
 
 struct VolumetricCloudLayerRow {
@@ -162,6 +180,8 @@ struct VolumetricCloudRaymarchRow {
     std::uint32_t primary_steps{0};
     std::uint32_t light_steps{0};
     VolumetricCloudShadowMode shadow_mode{VolumetricCloudShadowMode::unknown};
+    std::uint64_t raymarch_passes{0};
+    bool readback_nonzero{false};
 };
 
 struct VolumetricCloudTemporalRow {
@@ -212,9 +232,12 @@ struct VolumetricCloudPolicyPlan {
     VolumetricCloudPolicyStatus status{VolumetricCloudPolicyStatus::blocked};
     bool uses_volumetric_clouds{false};
     bool shader_contract_evidence_ready{false};
+    bool package_evidence_ready{false};
     bool execution_evidence_ready{false};
     bool uploads_volume_textures{false};
     bool invokes_backend{false};
+    std::uint64_t raymarch_passes{0};
+    bool readback_nonzero{false};
     bool exposes_native_handles{false};
     bool plays_audio{false};
     bool executes_precipitation{false};
@@ -234,6 +257,8 @@ struct VolumetricCloudPolicyPlan {
 };
 
 [[nodiscard]] VolumetricCloudPolicyPlan plan_volumetric_cloud_policy(const VolumetricCloudPolicyDesc& desc);
+
+void pack_volumetric_cloud_constants(std::span<std::uint8_t> destination, const VolumetricCloudPolicyDesc& desc);
 
 [[nodiscard]] bool has_volumetric_cloud_diagnostic(const VolumetricCloudPolicyPlan& plan,
                                                    VolumetricCloudDiagnosticCode code) noexcept;

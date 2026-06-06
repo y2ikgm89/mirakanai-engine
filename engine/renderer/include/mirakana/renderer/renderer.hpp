@@ -45,6 +45,8 @@ struct RendererStats {
     /// execution).
     std::uint64_t framegraph_barrier_steps_executed{0};
     std::uint64_t postprocess_passes_executed{0};
+    /// Count of renderer-owned full-screen cloud-layer draws recorded inside the primary color pass.
+    std::uint64_t cloud_layer_draws{0};
     std::uint64_t native_ui_overlay_sprites_submitted{0};
     std::uint64_t native_ui_overlay_textured_sprites_submitted{0};
     std::uint64_t native_ui_overlay_texture_binds{0};

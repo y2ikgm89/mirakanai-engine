@@ -6,6 +6,7 @@
 #include "mirakana/renderer/volumetric_cloud_policy.hpp"
 
 #include <array>
+#include <cstring>
 #include <limits>
 #include <span>
 
@@ -58,7 +59,22 @@ make_valid_cloud_desc(std::span<const mirakana::VolumetricCloudAtmosphericLightD
                 .exposure_response = 0.6F,
             },
         .shader_contract_evidence_ready = true,
+        .package_evidence_ready = true,
     };
+}
+
+[[nodiscard]] float read_f32(const std::array<std::uint8_t, mirakana::volumetric_cloud_constants_byte_size()>& bytes,
+                             std::size_t offset) {
+    float value = 0.0F;
+    std::memcpy(&value, bytes.data() + offset, sizeof(float));
+    return value;
+}
+
+[[nodiscard]] std::uint32_t
+read_u32(const std::array<std::uint8_t, mirakana::volumetric_cloud_constants_byte_size()>& bytes, std::size_t offset) {
+    std::uint32_t value = 0U;
+    std::memcpy(&value, bytes.data() + offset, sizeof(std::uint32_t));
+    return value;
 }
 
 } // namespace
@@ -76,9 +92,12 @@ MK_TEST("renderer volumetric cloud policy plans maps volume lighting raymarch an
     MK_REQUIRE(!plan.ready());
     MK_REQUIRE(plan.uses_volumetric_clouds);
     MK_REQUIRE(plan.shader_contract_evidence_ready);
+    MK_REQUIRE(plan.package_evidence_ready);
     MK_REQUIRE(!plan.execution_evidence_ready);
     MK_REQUIRE(!plan.uploads_volume_textures);
     MK_REQUIRE(!plan.invokes_backend);
+    MK_REQUIRE(plan.raymarch_passes == 0U);
+    MK_REQUIRE(!plan.readback_nonzero);
     MK_REQUIRE(!plan.exposes_native_handles);
     MK_REQUIRE(!plan.plays_audio);
     MK_REQUIRE(!plan.executes_precipitation);
@@ -90,6 +109,11 @@ MK_TEST("renderer volumetric cloud policy plans maps volume lighting raymarch an
     MK_REQUIRE(plan.map_rows[0].weather_map_binding_slot == mirakana::volumetric_cloud_weather_map_binding());
     MK_REQUIRE(plan.map_rows[0].shape_noise_binding_slot == mirakana::volumetric_cloud_shape_noise_binding());
     MK_REQUIRE(plan.map_rows[0].erosion_noise_binding_slot == mirakana::volumetric_cloud_erosion_noise_binding());
+    MK_REQUIRE(plan.map_rows[0].sampler_binding_slot == mirakana::volumetric_cloud_sampler_binding());
+    MK_REQUIRE(plan.map_rows[0].package_evidence_ready);
+    MK_REQUIRE(plan.map_rows[0].weather_map_ready);
+    MK_REQUIRE(plan.map_rows[0].shape_noise_ready);
+    MK_REQUIRE(plan.map_rows[0].erosion_noise_ready);
 
     MK_REQUIRE(plan.layer_rows.size() == 1);
     MK_REQUIRE(plan.layer_rows[0].coverage == 0.68F);
@@ -107,6 +131,8 @@ MK_TEST("renderer volumetric cloud policy plans maps volume lighting raymarch an
     MK_REQUIRE(plan.raymarch_rows[0].primary_steps == 96U);
     MK_REQUIRE(plan.raymarch_rows[0].light_steps == 16U);
     MK_REQUIRE(plan.raymarch_rows[0].shadow_mode == mirakana::VolumetricCloudShadowMode::beer_shadow_map_intent);
+    MK_REQUIRE(plan.raymarch_rows[0].raymarch_passes == 0U);
+    MK_REQUIRE(!plan.raymarch_rows[0].readback_nonzero);
 
     MK_REQUIRE(plan.temporal_rows.size() == 1);
     MK_REQUIRE(plan.temporal_rows[0].enabled);
@@ -153,12 +179,72 @@ MK_TEST("renderer volumetric cloud policy requires execution evidence before rea
         blocked_plan, mirakana::VolumetricCloudDiagnosticCode::missing_execution_evidence));
 
     desc.execution_evidence_ready = true;
+    desc.request_volume_texture_upload = true;
+    desc.request_backend_execution = true;
+    desc.weather_map_upload_count = 1U;
+    desc.shape_noise_upload_count = 1U;
+    desc.erosion_noise_upload_count = 1U;
+    desc.backend_invocation_count = 1U;
+    desc.raymarch_pass_count = 1U;
+    desc.readback_nonzero_proven = true;
     const auto ready_plan = mirakana::plan_volumetric_cloud_policy(desc);
 
     MK_REQUIRE(ready_plan.succeeded());
     MK_REQUIRE(ready_plan.status == mirakana::VolumetricCloudPolicyStatus::ready);
     MK_REQUIRE(ready_plan.ready());
     MK_REQUIRE(ready_plan.execution_evidence_ready);
+    MK_REQUIRE(ready_plan.uploads_volume_textures);
+    MK_REQUIRE(ready_plan.invokes_backend);
+    MK_REQUIRE(ready_plan.raymarch_passes == 1U);
+    MK_REQUIRE(ready_plan.readback_nonzero);
+    MK_REQUIRE(ready_plan.map_rows[0].weather_map_ready);
+    MK_REQUIRE(ready_plan.raymarch_rows[0].raymarch_passes == 1U);
+}
+
+MK_TEST("renderer volumetric cloud policy rejects execution claims without concrete counters") {
+    const std::array lights = {
+        make_light(mirakana::Vec3{.x = 0.25F, .y = -1.0F, .z = 0.1F}, 0U),
+    };
+    auto desc = make_valid_cloud_desc(lights);
+    desc.request_ready_promotion = true;
+    desc.request_volume_texture_upload = true;
+    desc.request_backend_execution = true;
+    desc.execution_evidence_ready = true;
+
+    const auto plan = mirakana::plan_volumetric_cloud_policy(desc);
+
+    MK_REQUIRE(!plan.succeeded());
+    MK_REQUIRE(!plan.uploads_volume_textures);
+    MK_REQUIRE(!plan.invokes_backend);
+    MK_REQUIRE(mirakana::has_volumetric_cloud_diagnostic(
+        plan, mirakana::VolumetricCloudDiagnosticCode::unsupported_volume_texture_upload));
+    MK_REQUIRE(mirakana::has_volumetric_cloud_diagnostic(
+        plan, mirakana::VolumetricCloudDiagnosticCode::unsupported_backend_execution));
+}
+
+MK_TEST("renderer volumetric cloud constants match shader register layout") {
+    const std::array lights = {
+        make_light(mirakana::Vec3{.x = 0.25F, .y = -1.0F, .z = 0.1F}, 0U),
+    };
+    const auto desc = make_valid_cloud_desc(lights);
+    std::array<std::uint8_t, mirakana::volumetric_cloud_constants_byte_size()> bytes{};
+
+    mirakana::pack_volumetric_cloud_constants(bytes, desc);
+
+    MK_REQUIRE(read_f32(bytes, 0U) == 0.68F);
+    MK_REQUIRE(read_f32(bytes, 4U) == 0.42F);
+    MK_REQUIRE(read_f32(bytes, 8U) == 1600.0F);
+    MK_REQUIRE(read_f32(bytes, 12U) == 7200.0F);
+    MK_REQUIRE(read_f32(bytes, 16U) == 18.0F);
+    MK_REQUIRE(read_f32(bytes, 20U) == -3.0F);
+    MK_REQUIRE(read_f32(bytes, 28U) == 0.88F);
+    MK_REQUIRE(read_f32(bytes, 32U) == 0.35F);
+    MK_REQUIRE(read_f32(bytes, 36U) == 42000.0F);
+    MK_REQUIRE(read_f32(bytes, 40U) == 0.45F);
+    MK_REQUIRE(read_f32(bytes, 44U) == 0.6F);
+    MK_REQUIRE(read_u32(bytes, 48U) == 96U);
+    MK_REQUIRE(read_u32(bytes, 52U) == 16U);
+    MK_REQUIRE(read_u32(bytes, 56U) == 1U);
 }
 
 MK_TEST("renderer volumetric cloud policy fails closed for invalid rows and unsupported claims") {
@@ -195,6 +281,7 @@ MK_TEST("renderer volumetric cloud policy fails closed for invalid rows and unsu
     desc.storm.wind_gust_mps = std::numeric_limits<float>::infinity();
     desc.storm.exposure_response = -0.1F;
     desc.shader_contract_evidence_ready = false;
+    desc.package_evidence_ready = false;
     desc.request_volume_texture_upload = true;
     desc.request_backend_execution = true;
     desc.request_native_handle_access = true;
@@ -239,6 +326,8 @@ MK_TEST("renderer volumetric cloud policy fails closed for invalid rows and unsu
         plan, mirakana::VolumetricCloudDiagnosticCode::invalid_storm_lightning));
     MK_REQUIRE(mirakana::has_volumetric_cloud_diagnostic(
         plan, mirakana::VolumetricCloudDiagnosticCode::missing_shader_contract_evidence));
+    MK_REQUIRE(mirakana::has_volumetric_cloud_diagnostic(
+        plan, mirakana::VolumetricCloudDiagnosticCode::missing_package_evidence));
     MK_REQUIRE(mirakana::has_volumetric_cloud_diagnostic(
         plan, mirakana::VolumetricCloudDiagnosticCode::unsupported_volume_texture_upload));
     MK_REQUIRE(mirakana::has_volumetric_cloud_diagnostic(
