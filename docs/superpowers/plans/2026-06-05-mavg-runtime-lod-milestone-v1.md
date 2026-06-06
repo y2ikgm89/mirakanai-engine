@@ -4,7 +4,9 @@
 
 **Plan ID:** `mavg-runtime-lod-milestone-v1`
 
-**Status:** Planned next milestone. Do not select as `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` until `mavg-asset-graph-v1` is reviewed, merged, or explicitly superseded.
+**Status:** Active.
+
+**Execution State:** Selected as `engine/agent/manifest.json.aiOperableProductionLoop.currentActivePlan` after `mavg-asset-graph-v1` merged to `main` through PR #516 / merge commit `9c3b6ad51caa48f4d872cef6e046de5045ab3c09`. Implementation tasks remain open and must proceed phase-by-phase with focused validation and no broad MAVG/Nanite/backend readiness claims.
 
 **Goal:** Implement the first visible static MAVG LOD path: deterministic hierarchy/error/fallback graph rows, deterministic CPU LOD selection, package-resident page awareness, conventional indexed draw-range support, and conventional renderer submission without GPU culling, mesh shaders, streaming IO execution, deformation, ray tracing, or Nanite-equivalence claims.
 

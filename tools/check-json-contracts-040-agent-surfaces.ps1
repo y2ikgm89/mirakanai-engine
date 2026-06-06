@@ -12,13 +12,11 @@ function Assert-UniqueStringArray {
     if ($strings.Count -eq 0) {
         Write-Error "$Label must not be empty"
     }
-
     $duplicates = @($strings | Group-Object | Where-Object { $_.Count -gt 1 } | ForEach-Object { $_.Name })
     if ($duplicates.Count -gt 0) {
         Write-Error "$Label must not contain duplicate entries: $($duplicates -join ', ')"
     }
 }
-
 function Assert-StringSetEquals {
     param(
         [Parameter(Mandatory = $true)][object[]]$Actual,
@@ -32,7 +30,6 @@ function Assert-StringSetEquals {
         Write-Error "$Label mismatch. actual=[$($actualSet -join ', ')] expected=[$($expectedSet -join ', ')]"
     }
 }
-
 function Assert-StringArrayContains {
     param(
         [Parameter(Mandatory = $true)][object[]]$Values,
@@ -538,7 +535,7 @@ foreach ($check in @(
 }
 $playable3dGap = @($productionLoop.unsupportedProductionGaps | Where-Object { $_.id -eq "3d-playable-vertical-slice" }); if ($playable3dGap.Count -ne 0) { Write-Error "engine manifest aiOperableProductionLoop 3d-playable-vertical-slice gap must leave unsupportedProductionGaps after 1.0 closeout" }
 $recommendedText = (([string]$productionLoop.recommendedNextPlan.latestCloseoutEvidence), ([string]$productionLoop.recommendedNextPlan.completedContext), ([string]$productionLoop.recommendedNextPlan.reason)) -join " "
-if ([string]$productionLoop.recommendedNextPlan.id -notin @("general-purpose-game-production-v1", "generated-game-studio-v1", "engine-1-0-gap-matrix-v1", "next-production-gap-selection", "native-win32-editor-shell-v1", "first-party-editor-shell-v1", "first-party-ui-editor-production-stack-v1", "physics-navigation-commercial-coverage-v1", "renderer-backend-parity-metal-apple-evidence-v1", "renderer-postprocess-tone-mapping-evidence-v1", "sandbox-world-network-modding-gate-v1", "sandbox-world-package-validation-performance-budgets-v1", "ai-operable-performance-budget-and-evidence-v1", "performance-baseline-v1", "long-running-performance-readiness-v1-phase-1", "long-running-performance-readiness-v1-phase-2", "long-running-performance-readiness-v1-phase-7", "memory-lifetime-taxonomy-v1", "memory-diagnostics-v1", "frame-thread-scratch-v1", "job-scheduling-evidence-v1", "job-execution-worker-pool-v1", "job-execution-topology-policy-v1", "job-execution-work-stealing-v1", "job-execution-placement-policy-v1", "windows-cpu-set-worker-placement-v1", "windows-cpu-set-smt-worker-placement-v1", "simd-dispatch-policy-and-evidence-v1", "avx2-reviewed-target-execution-v1", "environment-system-v1", "environment-rendering-readiness-v1", "environment-production-excellence-v1", "mavg-research-legal-benchmark-baseline-v1", "mavg-asset-graph-v1")) {
+if ([string]$productionLoop.recommendedNextPlan.id -notin @("general-purpose-game-production-v1", "generated-game-studio-v1", "engine-1-0-gap-matrix-v1", "next-production-gap-selection", "native-win32-editor-shell-v1", "first-party-editor-shell-v1", "first-party-ui-editor-production-stack-v1", "physics-navigation-commercial-coverage-v1", "renderer-backend-parity-metal-apple-evidence-v1", "renderer-postprocess-tone-mapping-evidence-v1", "sandbox-world-network-modding-gate-v1", "sandbox-world-package-validation-performance-budgets-v1", "ai-operable-performance-budget-and-evidence-v1", "performance-baseline-v1", "long-running-performance-readiness-v1-phase-1", "long-running-performance-readiness-v1-phase-2", "long-running-performance-readiness-v1-phase-7", "memory-lifetime-taxonomy-v1", "memory-diagnostics-v1", "frame-thread-scratch-v1", "job-scheduling-evidence-v1", "job-execution-worker-pool-v1", "job-execution-topology-policy-v1", "job-execution-work-stealing-v1", "job-execution-placement-policy-v1", "windows-cpu-set-worker-placement-v1", "windows-cpu-set-smt-worker-placement-v1", "simd-dispatch-policy-and-evidence-v1", "avx2-reviewed-target-execution-v1", "environment-system-v1", "environment-rendering-readiness-v1", "environment-production-excellence-v1", "mavg-research-legal-benchmark-baseline-v1", "mavg-asset-graph-v1", "mavg-runtime-lod-milestone-v1")) {
     foreach ($needle in @(
         "3d-playable-vertical-slice",
         "generated desktop 3D package proof",
@@ -597,6 +594,8 @@ if ([string]$productionLoop.recommendedNextPlan.id -ne "general-purpose-game-pro
         }
     } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "mavg-asset-graph-v1") {
         foreach ($needle in @("MAVG Asset Graph v1", "MAVG Phase 0 completed", "deterministic MK_assets MAVG cluster graph validation", "mavg_cluster_graph.hpp", "MavgClusterGraphDocument", "GameEngine.MavgClusterGraph.v1", "AssetKind::mavg_cluster_graph", "mavg_source_mesh", "mavg_material", "MK_tools cook/package planning", "mavg_cluster_cook.hpp", "MavgClusterCookRequest", "plan_mavg_cluster_graph_cook_package", "apply_mavg_cluster_graph_cook_package", "no SDL3/Dear ImGui", "no public native handles", "no Nanite/UE compatibility", "CPU selection", "renderer execution", "streaming/residency", "unsupportedProductionGaps = []")) { Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan MAVG asset graph selection" }
+    } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "mavg-runtime-lod-milestone-v1") {
+        foreach ($needle in @("MAVG Runtime LOD Milestone v1", "MAVG Asset Graph v1 merged through PR #516", "hierarchy/error/fallback graph rows", "draw-ready static payload rows", "CPU select_mavg_lod_clusters", "mavg_lod_selection.hpp", "MavgLodViewDesc", "MavgLodResidentPageSet", "runtime resident-page evidence", "mavg_lod_residency.hpp", "build_runtime_mavg_lod_residency", "range-aware conventional indexed draws", "MeshIndexedDrawRange", "rhi::IRhiCommandList::draw_indexed", "MeshCommand submission", "mavg_scene_lod.hpp", "plan_mavg_scene_lod_mesh_commands", "GPU culling", "indirect draw execution", "mesh shaders", "package streaming execution", "deformation", "ray tracing", "Metal readiness", "Nanite compatibility/equivalence/superiority", "broad CPU/GPU/memory optimization", "unsupportedProductionGaps = []")) { Assert-ContainsText $recommendedText $needle "engine manifest aiOperableProductionLoop recommendedNextPlan MAVG runtime LOD selection" }
     } elseif ([string]$productionLoop.recommendedNextPlan.id -eq "physics-navigation-commercial-coverage-v1") {
         foreach ($needle in @(
             "Physics Navigation Commercial Coverage v1",
