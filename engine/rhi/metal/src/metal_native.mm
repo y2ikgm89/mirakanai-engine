@@ -580,8 +580,14 @@ create_native_environment_feature_host_evidence(const MetalNativeEnvironmentFeat
         return result;
     }
 
+    NSURL* metallib_url = [NSURL fileURLWithPath:metallib_path];
+    if (metallib_url == nil) {
+        result.diagnostic = "Metal environment native feature evidence metallib URL creation failed";
+        return result;
+    }
+
     NSError* error = nil;
-    id<MTLLibrary> library = [metal_device newLibraryWithFile:metallib_path error:&error];
+    id<MTLLibrary> library = [metal_device newLibraryWithURL:metallib_url error:&error];
     if (library == nil) {
         result.diagnostic = metal_error_message(error, "Metal environment metallib load failed");
         return result;

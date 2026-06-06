@@ -268,6 +268,8 @@ class MetalRuntimeDevice {
                                                                      const MetalDrawableAcquireDesc& desc);
     friend MetalRuntimeTextureReadbackResult read_native_texture_bytes(MetalRuntimeDevice& device,
                                                                        MetalRuntimeTexture& texture);
+    friend MetalNativeEnvironmentFeatureHostEvidenceResult
+    create_native_environment_feature_host_evidence(const MetalNativeEnvironmentFeatureHostEvidenceDesc& desc);
 };
 
 class MetalRuntimeCommandBuffer {
