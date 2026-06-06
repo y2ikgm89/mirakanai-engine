@@ -87,21 +87,23 @@ bool MavgGpuVisibleClusterPacketPlan::succeeded() const noexcept {
 MavgGpuVisibleClusterPacketPlan plan_mavg_gpu_visible_cluster_packets(const MavgGpuVisibleClusterPacketDesc& desc) {
     MavgGpuVisibleClusterPacketPlan plan;
 
-    if (desc.cluster_format_plan == nullptr) {
+    const auto* const cluster_format_plan = desc.cluster_format_plan;
+    const auto* const culling_plan = desc.culling_plan;
+    if (cluster_format_plan == nullptr) {
         add_diagnostic(plan, MavgGpuVisibleClusterPacketDiagnosticCode::missing_cluster_format_plan, AssetId{}, 0,
                        "MAVG visible cluster packet planning requires a cluster format plan");
     }
-    if (desc.culling_plan == nullptr) {
+    if (culling_plan == nullptr) {
         add_diagnostic(plan, MavgGpuVisibleClusterPacketDiagnosticCode::missing_culling_plan, AssetId{}, 0,
                        "MAVG visible cluster packet planning requires a culling plan");
     }
-    if (!plan.diagnostics.empty()) {
+    if (cluster_format_plan == nullptr || culling_plan == nullptr) {
         fail_closed(plan);
         return plan;
     }
 
-    const auto& format = *desc.cluster_format_plan;
-    const auto& culling = *desc.culling_plan;
+    const auto& format = *cluster_format_plan;
+    const auto& culling = *culling_plan;
     const auto visible_command_count = static_cast<std::uint64_t>(culling.commands.size());
     plan.source_cluster_row_count = static_cast<std::uint32_t>(format.rows.size());
     plan.source_visible_command_count = static_cast<std::uint32_t>(culling.commands.size());
