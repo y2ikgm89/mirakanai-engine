@@ -9,6 +9,7 @@
 #include "mirakana/core/job_execution.hpp"
 #include "mirakana/core/simd_dispatch.hpp"
 #include "mirakana/environment/environment_io.hpp"
+#include "mirakana/environment/environment_quality_budget.hpp"
 #include "mirakana/math/transform.hpp"
 #include "mirakana/platform/filesystem.hpp"
 #include "mirakana/platform/input.hpp"
@@ -929,8 +930,10 @@ struct EnvironmentQualityBudgetEvidence {
     EnvironmentQualityBudgetStatus status{EnvironmentQualityBudgetStatus::not_requested};
     bool requested{false};
     bool ready{false};
+    std::string quality_preset{"unknown"};
     std::uint32_t feature_rows{0};
     std::uint32_t diagnostics{0};
+    std::uint32_t violations{0};
     std::uint64_t constant_buffer_bytes{0};
     std::uint32_t physical_sky_sample_budget{0};
     std::uint32_t height_fog_sample_step_budget{0};
@@ -952,6 +955,7 @@ struct EnvironmentQualityBudgetEvidence {
     std::uint64_t framegraph_barrier_step_budget{0};
     std::uint64_t framegraph_barrier_steps_executed{0};
     bool native_handle_access{false};
+    bool broad_optimization_claimed{false};
     bool broad_environment_ready_claimed{false};
 };
 
@@ -1061,7 +1065,7 @@ environment_material_weathering_state_name(mirakana::EnvironmentMaterialWeatheri
            options.require_environment_volumetric_cloud_package_evidence ||
            options.require_environment_volumetric_cloud_renderer_execution ||
            options.require_environment_volumetric_cloud_vulkan_renderer_execution ||
-           options.require_environment_material_weathering;
+           options.require_environment_material_weathering || options.require_environment_audio_playback;
 }
 
 [[nodiscard]] std::uint32_t total_physical_sky_sample_budget(mirakana::PhysicalSkySampleBudgetDesc budget) noexcept {
@@ -1501,12 +1505,15 @@ evaluate_environment_material_weathering(bool requested, const mirakana::Win32De
     const mirakana::Win32DesktopPresentationVulkanEnvironmentVolumetricFogReport& environment_volumetric_fog_vulkan,
     const mirakana::Win32DesktopPresentationEnvironmentVolumetricCloudReport& environment_volumetric_cloud,
     const mirakana::Win32DesktopPresentationVulkanEnvironmentVolumetricCloudReport& environment_volumetric_cloud_vulkan,
-    const EnvironmentProfilePackageEvidence& environment_profile, std::uint64_t expected_framegraph_barrier_steps) {
+    const EnvironmentProfilePackageEvidence& environment_profile,
+    const EnvironmentAudioPlaybackEvidence& environment_audio_playback,
+    std::uint64_t expected_framegraph_barrier_steps) {
     EnvironmentQualityBudgetEvidence evidence;
     evidence.requested = environment_quality_budget_requested(options);
     if (!evidence.requested) {
         return evidence;
     }
+    evidence.quality_preset = environment_profile.quality_preset;
 
     auto add_feature = [&](const bool selected, const bool ready) {
         if (!selected) {
@@ -1537,6 +1544,7 @@ evaluate_environment_material_weathering(bool requested, const mirakana::Win32De
     add_feature(options.require_environment_lighting_vulkan_renderer_execution,
                 environment_ibl_vulkan_renderer_execution.ready);
     add_feature(options.require_environment_material_weathering, environment_material_weathering.ready);
+    add_feature(options.require_environment_audio_playback, environment_audio_playback.ready);
     add_feature(options.require_cloud_layer_package_evidence || options.require_cloud_layer_renderer_execution,
                 cloud_layer.ready);
     add_feature(
@@ -1646,7 +1654,7 @@ evaluate_environment_material_weathering(bool requested, const mirakana::Win32De
         environment_precipitation.exposes_native_handles || environment_precipitation_vulkan.exposes_native_handles ||
         environment_volumetric_fog.exposes_native_handles || environment_volumetric_cloud.exposes_native_handles ||
         environment_volumetric_cloud_vulkan.exposes_native_handles ||
-        environment_material_weathering.native_handle_access;
+        environment_material_weathering.native_handle_access || environment_audio_playback.native_handle_access;
 
     if (evidence.feature_rows == 0) {
         ++evidence.diagnostics;
@@ -1656,7 +1664,53 @@ evaluate_environment_material_weathering(bool requested, const mirakana::Win32De
         ++evidence.diagnostics;
     }
 
-    evidence.ready = evidence.diagnostics == 0U;
+    mirakana::EnvironmentQualityPreset selected_preset{mirakana::EnvironmentQualityPreset::medium};
+    try {
+        selected_preset = mirakana::parse_environment_quality_preset(evidence.quality_preset);
+    } catch (const std::invalid_argument&) {
+        ++evidence.diagnostics;
+    }
+    const auto budget_plan =
+        mirakana::evaluate_environment_quality_budget(
+            mirakana::EnvironmentQualityBudgetRequest{
+                .preset = selected_preset,
+                .usage =
+                    mirakana::EnvironmentQualityBudgetUsageDesc{
+                        .physical_sky_sample_budget = evidence.physical_sky_sample_budget,
+                        .height_fog_sample_step_budget = evidence.height_fog_sample_step_budget,
+                        .volumetric_fog_raymarch_step_budget = evidence.volumetric_fog_raymarch_step_budget,
+                        .volumetric_cloud_primary_step_budget = evidence.volumetric_cloud_primary_step_budget,
+                        .volumetric_cloud_light_step_budget = evidence.volumetric_cloud_light_step_budget,
+                        .precipitation_particle_rows = evidence.particle_rows,
+                        .transient_gpu_byte_estimate = evidence.transient_gpu_byte_estimate,
+                        .framegraph_passes = static_cast<std::uint32_t>(
+                            std::min<std::uint64_t>(report.renderer_stats.framegraph_passes_executed,
+                                                    std::numeric_limits<std::uint32_t>::max())),
+                        .framegraph_barrier_steps = static_cast<std::uint32_t>(
+                            std::min<std::uint64_t>(std::max(evidence.framegraph_barrier_step_budget,
+                                                             evidence.framegraph_barrier_steps_executed),
+                                                    std::numeric_limits<std::uint32_t>::max())),
+                        .texture_uploads =
+                            static_cast<std::uint32_t>(
+                                std::min<std::uint64_t>(evidence.texture_upload_budget, std::numeric_limits<
+                                                                                            std::uint32_t>::max())),
+                        .renderer_draws =
+                            static_cast<std::uint32_t>(
+                                std::min<std::uint64_t>(evidence.renderer_draw_budget,
+                                                        std::numeric_limits<std::uint32_t>::max())),
+                        .compute_dispatches =
+                            static_cast<std::uint32_t>(
+                                std::min<std::uint64_t>(evidence.compute_dispatch_budget,
+                                                        std::numeric_limits<std::uint32_t>::max())),
+                        .diagnostics = evidence.diagnostics,
+                        .native_handle_access = evidence.native_handle_access,
+                        .broad_optimization_claimed = evidence.broad_optimization_claimed,
+                    },
+            });
+    evidence.violations = static_cast<std::uint32_t>(
+        std::min<std::size_t>(budget_plan.diagnostics.size(), std::numeric_limits<std::uint32_t>::max()));
+    evidence.diagnostics += evidence.violations;
+    evidence.ready = evidence.diagnostics == 0U && budget_plan.ready;
     evidence.status = evidence.ready ? EnvironmentQualityBudgetStatus::ready : EnvironmentQualityBudgetStatus::blocked;
     return evidence;
 }
@@ -4705,8 +4759,9 @@ int main(int argc, char** argv) {
     const auto environment_volumetric_cloud_vulkan =
         mirakana::evaluate_win32_desktop_presentation_vulkan_environment_volumetric_cloud(
             report, options.require_environment_volumetric_cloud_vulkan_renderer_execution);
-    const auto environment_profile =
-        evaluate_environment_profile_package(options.require_environment_profile, runtime_package);
+    const bool environment_quality_budget_required = environment_quality_budget_requested(options);
+    const auto environment_profile = evaluate_environment_profile_package(
+        options.require_environment_profile || environment_quality_budget_required, runtime_package);
     const auto environment_ibl_renderer_execution =
         mirakana::evaluate_win32_desktop_presentation_environment_ibl_renderer_execution(
             mirakana::Win32DesktopPresentationEnvironmentIblRendererExecutionDesc{
@@ -4806,7 +4861,8 @@ int main(int argc, char** argv) {
         environment_lighting, environment_ibl_vulkan_renderer_execution, environment_material_weathering, cloud_layer,
         environment_precipitation, environment_precipitation_vulkan, environment_volumetric_fog,
         environment_volumetric_fog_vulkan, environment_volumetric_cloud, environment_volumetric_cloud_vulkan,
-        environment_profile, options.require_postprocess ? expected_framegraph_barrier_steps : 0U);
+        environment_profile, environment_audio_playback,
+        options.require_postprocess ? expected_framegraph_barrier_steps : 0U);
 
     std::cout
         << "sample_desktop_runtime_game status=" << status_name(result.status)
@@ -5417,10 +5473,12 @@ int main(int argc, char** argv) {
         << " environment_profile_v2_legacy_v1_accepted=" << (environment_profile.legacy_v1_accepted ? 1 : 0)
         << " environment_quality_budget_status="
         << environment_quality_budget_status_name(environment_quality_budget.status)
+        << " environment_quality_preset=" << environment_quality_budget.quality_preset
         << " environment_quality_budget_ready=" << (environment_quality_budget.ready ? 1 : 0)
         << " environment_quality_budget_requested=" << (environment_quality_budget.requested ? 1 : 0)
         << " environment_quality_budget_rows=" << environment_quality_budget.feature_rows
         << " environment_quality_budget_diagnostics=" << environment_quality_budget.diagnostics
+        << " environment_quality_budget_violations=" << environment_quality_budget.violations
         << " environment_quality_budget_constant_buffer_bytes=" << environment_quality_budget.constant_buffer_bytes
         << " environment_quality_budget_physical_sky_sample_budget="
         << environment_quality_budget.physical_sky_sample_budget
@@ -5456,6 +5514,8 @@ int main(int argc, char** argv) {
         << environment_quality_budget.framegraph_barrier_steps_executed
         << " environment_quality_budget_native_handle_access="
         << (environment_quality_budget.native_handle_access ? 1 : 0)
+        << " environment_quality_budget_broad_optimization_claimed="
+        << (environment_quality_budget.broad_optimization_claimed ? 1 : 0)
         << " environment_quality_budget_broad_environment_ready_claimed="
         << (environment_quality_budget.broad_environment_ready_claimed ? 1 : 0)
         << " vulkan_postprocess_execution_status="
