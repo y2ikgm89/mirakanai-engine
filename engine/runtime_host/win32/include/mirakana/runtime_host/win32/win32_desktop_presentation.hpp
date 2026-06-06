@@ -352,6 +352,33 @@ struct Win32DesktopPresentationReport {
     bool environment_volumetric_fog_vulkan_froxel_readback_nonzero{false};
     bool environment_volumetric_fog_vulkan_exposes_native_handles{false};
     std::uint32_t environment_volumetric_fog_vulkan_policy_diagnostics_count{0};
+    bool environment_volumetric_cloud_vulkan_requested{false};
+    bool environment_volumetric_cloud_vulkan_shader_contract_evidence_ready{false};
+    bool environment_volumetric_cloud_vulkan_package_evidence_ready{false};
+    bool environment_volumetric_cloud_vulkan_execution_evidence_ready{false};
+    bool environment_volumetric_cloud_vulkan_weather_map_ready{false};
+    bool environment_volumetric_cloud_vulkan_shape_noise_ready{false};
+    bool environment_volumetric_cloud_vulkan_erosion_noise_ready{false};
+    bool environment_volumetric_cloud_vulkan_uploads_volume_textures{false};
+    bool environment_volumetric_cloud_vulkan_invokes_backend{false};
+    std::uint64_t environment_volumetric_cloud_vulkan_renderer_draws{0};
+    std::uint64_t environment_volumetric_cloud_vulkan_raymarch_passes{0};
+    std::uint32_t environment_volumetric_cloud_vulkan_descriptor_set_bindings{0};
+    std::uint32_t environment_volumetric_cloud_vulkan_synchronization2_barriers{0};
+    bool environment_volumetric_cloud_vulkan_readback_nonzero{false};
+    bool environment_volumetric_cloud_vulkan_exposes_native_handles{false};
+    bool environment_volumetric_cloud_vulkan_plays_audio{false};
+    bool environment_volumetric_cloud_vulkan_executes_precipitation{false};
+    std::uint32_t environment_volumetric_cloud_vulkan_map_rows{0};
+    std::uint32_t environment_volumetric_cloud_vulkan_layer_rows{0};
+    std::uint32_t environment_volumetric_cloud_vulkan_lighting_rows{0};
+    std::uint32_t environment_volumetric_cloud_vulkan_raymarch_rows{0};
+    std::uint32_t environment_volumetric_cloud_vulkan_temporal_rows{0};
+    std::uint32_t environment_volumetric_cloud_vulkan_shadow_rows{0};
+    std::uint32_t environment_volumetric_cloud_vulkan_storm_rows{0};
+    std::uint32_t environment_volumetric_cloud_vulkan_shader_contract_rows{0};
+    std::uint32_t environment_volumetric_cloud_vulkan_quality_rows{0};
+    std::uint32_t environment_volumetric_cloud_vulkan_policy_diagnostics_count{0};
     bool environment_volumetric_cloud_requested{false};
     bool environment_volumetric_cloud_shader_contract_evidence_ready{false};
     bool environment_volumetric_cloud_package_evidence_ready{false};
@@ -513,6 +540,13 @@ enum class Win32DesktopPresentationVulkanEnvironmentVolumetricFogStatus : std::u
 
 enum class Win32DesktopPresentationEnvironmentVolumetricCloudStatus : std::uint8_t {
     not_requested = 0,
+    blocked,
+    ready,
+};
+
+enum class Win32DesktopPresentationVulkanEnvironmentVolumetricCloudStatus : std::uint8_t {
+    not_requested = 0,
+    host_evidence_required,
     blocked,
     ready,
 };
@@ -852,6 +886,46 @@ struct Win32DesktopPresentationEnvironmentVolumetricCloudReport {
     bool invokes_backend{false};
     std::uint64_t renderer_draws{0};
     std::uint64_t raymarch_passes{0};
+    bool readback_nonzero{false};
+    bool exposes_native_handles{false};
+    bool plays_audio{false};
+    bool executes_precipitation{false};
+    std::uint32_t map_rows{0};
+    std::uint32_t layer_rows{0};
+    std::uint32_t lighting_rows{0};
+    std::uint32_t raymarch_rows{0};
+    std::uint32_t temporal_rows{0};
+    std::uint32_t shadow_rows{0};
+    std::uint32_t storm_rows{0};
+    std::uint32_t shader_contract_rows{0};
+    std::uint32_t quality_rows{0};
+    std::uint32_t diagnostics_count{0};
+};
+
+struct Win32DesktopPresentationVulkanEnvironmentVolumetricCloudReport {
+    Win32DesktopPresentationVulkanEnvironmentVolumetricCloudStatus status{
+        Win32DesktopPresentationVulkanEnvironmentVolumetricCloudStatus::not_requested};
+    bool ready{false};
+    bool requested{false};
+    bool vulkan_backend_selected{false};
+    bool shader_contract_evidence_ready{false};
+    bool package_evidence_ready{false};
+    bool execution_evidence_ready{false};
+    std::uint32_t weather_map_binding{0};
+    std::uint32_t shape_noise_binding{0};
+    std::uint32_t erosion_noise_binding{0};
+    std::uint32_t sampler_binding{0};
+    std::uint32_t constants_binding{0};
+    std::uint64_t constant_buffer_bytes{0};
+    bool weather_map_ready{false};
+    bool shape_noise_ready{false};
+    bool erosion_noise_ready{false};
+    bool uploads_volume_textures{false};
+    bool invokes_backend{false};
+    std::uint64_t renderer_draws{0};
+    std::uint64_t raymarch_passes{0};
+    std::uint32_t descriptor_set_bindings{0};
+    std::uint32_t synchronization2_barriers{0};
     bool readback_nonzero{false};
     bool exposes_native_handles{false};
     bool plays_audio{false};
@@ -1298,6 +1372,8 @@ struct Win32DesktopPresentationVulkanSceneRendererDesc {
     Win32DesktopPresentationShaderBytecode precipitation_vertex_shader;
     Win32DesktopPresentationShaderBytecode precipitation_fragment_shader;
     Win32DesktopPresentationShaderBytecode volumetric_fog_compute_shader;
+    Win32DesktopPresentationShaderBytecode volumetric_cloud_vertex_shader;
+    Win32DesktopPresentationShaderBytecode volumetric_cloud_fragment_shader;
     const runtime::RuntimeAssetPackage* package{nullptr};
     const SceneRenderPacket* packet{nullptr};
     rhi::PrimitiveTopology topology{rhi::PrimitiveTopology::triangle_list};
@@ -1321,6 +1397,8 @@ struct Win32DesktopPresentationVulkanSceneRendererDesc {
     PrecipitationPolicyDesc environment_precipitation;
     bool enable_environment_volumetric_fog_renderer_execution{false};
     VolumetricFogPolicyDesc environment_volumetric_fog;
+    bool enable_environment_volumetric_cloud_renderer_execution{false};
+    VolumetricCloudPolicyDesc environment_volumetric_cloud;
     bool enable_directional_shadow_smoke{false};
     bool enable_native_ui_overlay{false};
     AssetId native_ui_overlay_atlas_asset;
@@ -1485,6 +1563,11 @@ evaluate_win32_desktop_presentation_vulkan_environment_volumetric_fog(const Win3
 [[nodiscard]] Win32DesktopPresentationEnvironmentVolumetricCloudReport
 evaluate_win32_desktop_presentation_environment_volumetric_cloud(const Win32DesktopPresentationReport& report,
                                                                  bool requested, bool require_renderer_execution);
+[[nodiscard]] std::string_view win32_desktop_presentation_vulkan_environment_volumetric_cloud_status_name(
+    Win32DesktopPresentationVulkanEnvironmentVolumetricCloudStatus status) noexcept;
+[[nodiscard]] Win32DesktopPresentationVulkanEnvironmentVolumetricCloudReport
+evaluate_win32_desktop_presentation_vulkan_environment_volumetric_cloud(const Win32DesktopPresentationReport& report,
+                                                                        bool requested);
 [[nodiscard]] std::string_view win32_desktop_presentation_environment_ibl_renderer_execution_status_name(
     Win32DesktopPresentationEnvironmentIblRendererExecutionStatus status) noexcept;
 [[nodiscard]] Win32DesktopPresentationEnvironmentIblRendererExecutionReport

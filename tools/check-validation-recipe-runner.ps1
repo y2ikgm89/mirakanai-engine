@@ -251,6 +251,10 @@ $sampleVulkanEnvironmentVolumetricFogRendererExecutionDryRun = Assert-DryRunReci
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireVulkanShaders", "-SmokeArgs @(", "--require-environment-volumetric-fog-vulkan-renderer-execution", "runtime/sample_desktop_runtime_game.geindex")) {
     Assert-ArgvContainsText -Result $sampleVulkanEnvironmentVolumetricFogRendererExecutionDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-vulkan-volumetric-fog-renderer-execution"
 }
+$sampleVulkanEnvironmentVolumetricCloudRendererExecutionDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-vulkan-volumetric-cloud-renderer-execution" -ExpectedArgv @("-Command")
+foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireVulkanShaders", "-SmokeArgs @(", "--require-environment-volumetric-cloud-vulkan-renderer-execution", "runtime/sample_desktop_runtime_game.geindex")) {
+    Assert-ArgvContainsText -Result $sampleVulkanEnvironmentVolumetricCloudRendererExecutionDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-vulkan-volumetric-cloud-renderer-execution"
+}
 $sampleCloudLayerDryRun = Assert-DryRunRecipe -Recipe "desktop-runtime-sample-game-cloud-layer-package" -ExpectedArgv @("-Command")
 foreach ($needle in @("tools/package-desktop-runtime.ps1", "-RequireD3d12Shaders", "-SmokeArgs @(", "--require-cloud-layer-package-evidence", "runtime/sample_desktop_runtime_game.geindex")) {
     Assert-ArgvContainsText -Result $sampleCloudLayerDryRun -Expected $needle -Label "dry-run argv for desktop-runtime-sample-game-cloud-layer-package"

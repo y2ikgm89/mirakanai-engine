@@ -193,6 +193,7 @@ $requiresEnvironmentSnowPackageEvidence = @($SmokeArgs) -contains "--require-env
 $requiresEnvironmentSnowRendererExecution = @($SmokeArgs) -contains "--require-environment-snow-renderer-execution"
 $requiresEnvironmentVolumetricCloudPackageEvidence = @($SmokeArgs) -contains "--require-volumetric-cloud-package-evidence"
 $requiresEnvironmentVolumetricCloudRendererExecution = @($SmokeArgs) -contains "--require-volumetric-cloud-renderer-execution"
+$requiresEnvironmentVolumetricCloudVulkanRendererExecution = @($SmokeArgs) -contains "--require-environment-volumetric-cloud-vulkan-renderer-execution"
 $requiresEnvironmentMaterialWeathering = @($SmokeArgs) -contains "--require-environment-material-weathering"
 $requiresEnvironmentAudioPlayback = @($SmokeArgs) -contains "--require-environment-audio-playback"
 $requiresGpuMemoryPolicy = @($SmokeArgs) -contains "--require-gpu-memory-policy"
@@ -306,6 +307,11 @@ if ($requiresEnvironmentVolumetricCloudRendererExecution) {
     $requiresPostprocessDepthInput = $true
     $requiresD3d12PostprocessEvidence = $true
 }
+if ($requiresEnvironmentVolumetricCloudVulkanRendererExecution) {
+    $requiresPostprocess = $true
+    $requiresPostprocessDepthInput = $true
+    $requiresVulkanPostprocessEvidence = $true
+}
 if ($requiresEnvironmentMaterialWeathering) {
     $requiresPostprocess = $true
     $requiresPostprocessDepthInput = $true
@@ -329,6 +335,7 @@ $requiresAnyEnvironmentQualityBudget = $requiresEnvironmentProfile -or
     $requiresEnvironmentSnowRendererExecution -or
     $requiresEnvironmentVolumetricCloudPackageEvidence -or
     $requiresEnvironmentVolumetricCloudRendererExecution -or
+    $requiresEnvironmentVolumetricCloudVulkanRendererExecution -or
     $requiresEnvironmentMaterialWeathering
 if ($requiresWindowsCpuSetWorkerPlacement -or $requiresWindowsCpuSetSmtWorkerPlacement) {
     $requiresJobExecutionFoundation = $true
@@ -5000,6 +5007,60 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 }
             }
         }
+        if ($requiresEnvironmentVolumetricCloudVulkanRendererExecution) {
+            if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
+                Write-Error "Installed desktop runtime smoke status line must not claim broad environment_ready for Vulkan volumetric cloud renderer execution."
+            }
+            $expectedEnvironmentVolumetricCloudVulkanFields = @{
+                "environment_volumetric_cloud_vulkan_status" = "ready"
+                "environment_volumetric_cloud_vulkan_ready" = "1"
+                "environment_volumetric_cloud_vulkan_selected_backend" = "vulkan"
+                "environment_volumetric_cloud_vulkan_requested" = "1"
+                "environment_volumetric_cloud_vulkan_shader_contract_evidence_ready" = "1"
+                "environment_volumetric_cloud_vulkan_package_evidence_ready" = "1"
+                "environment_volumetric_cloud_vulkan_execution_evidence_ready" = "1"
+                "environment_volumetric_cloud_vulkan_weather_map_binding" = "10"
+                "environment_volumetric_cloud_vulkan_shape_noise_binding" = "11"
+                "environment_volumetric_cloud_vulkan_erosion_noise_binding" = "12"
+                "environment_volumetric_cloud_vulkan_sampler_binding" = "30"
+                "environment_volumetric_cloud_vulkan_constants_binding" = "48"
+                "environment_volumetric_cloud_vulkan_constants_byte_size" = "256"
+                "environment_volumetric_cloud_vulkan_weather_map_ready" = "1"
+                "environment_volumetric_cloud_vulkan_shape_noise_ready" = "1"
+                "environment_volumetric_cloud_vulkan_erosion_noise_ready" = "1"
+                "environment_volumetric_cloud_vulkan_map_rows" = "1"
+                "environment_volumetric_cloud_vulkan_layer_rows" = "1"
+                "environment_volumetric_cloud_vulkan_lighting_rows" = "1"
+                "environment_volumetric_cloud_vulkan_raymarch_rows" = "1"
+                "environment_volumetric_cloud_vulkan_temporal_rows" = "1"
+                "environment_volumetric_cloud_vulkan_shadow_rows" = "1"
+                "environment_volumetric_cloud_vulkan_storm_rows" = "1"
+                "environment_volumetric_cloud_vulkan_shader_contract_rows" = "1"
+                "environment_volumetric_cloud_vulkan_quality_rows" = "1"
+                "environment_volumetric_cloud_vulkan_descriptor_set_bindings" = "5"
+                "environment_volumetric_cloud_vulkan_readback_nonzero" = "1"
+                "environment_volumetric_cloud_vulkan_native_handle_access" = "0"
+                "environment_volumetric_cloud_vulkan_audio_playback" = "0"
+                "environment_volumetric_cloud_vulkan_precipitation_execution" = "0"
+                "environment_volumetric_cloud_vulkan_diagnostics" = "0"
+            }
+            foreach ($field in $expectedEnvironmentVolumetricCloudVulkanFields.Keys) {
+                $expectedValue = [regex]::Escape($expectedEnvironmentVolumetricCloudVulkanFields[$field])
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove Vulkan environment volumetric cloud renderer execution field: $field=$($expectedEnvironmentVolumetricCloudVulkanFields[$field])"
+                }
+            }
+            foreach ($field in @(
+                    "environment_volumetric_cloud_vulkan_texture_uploads",
+                    "environment_volumetric_cloud_vulkan_backend_invocations",
+                    "environment_volumetric_cloud_vulkan_renderer_draws",
+                    "environment_volumetric_cloud_vulkan_raymarch_passes",
+                    "environment_volumetric_cloud_vulkan_synchronization2_barriers")) {
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=([1-9][0-9]*)\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove positive Vulkan environment volumetric cloud renderer execution field: $field"
+                }
+            }
+        }
         if ($requiresCloudLayerPackageEvidence) {
             $expectedCloudLayerFields = @{
                 "cloud_layer_status" = "ready"
@@ -5395,12 +5456,12 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                 ++$expectedEnvironmentQualityBudgetRendererDraws
             }
         }
-        if ($requiresEnvironmentVolumetricCloudPackageEvidence) {
+        if ($requiresEnvironmentVolumetricCloudPackageEvidence -or $requiresEnvironmentVolumetricCloudVulkanRendererExecution) {
             ++$expectedEnvironmentQualityBudgetRows
             $expectedEnvironmentQualityBudgetConstantBytes += 256
             $expectedEnvironmentQualityBudgetVolumetricCloudPrimary = 48
             $expectedEnvironmentQualityBudgetVolumetricCloudLight = 8
-            if ($requiresEnvironmentVolumetricCloudRendererExecution) {
+            if ($requiresEnvironmentVolumetricCloudRendererExecution -or $requiresEnvironmentVolumetricCloudVulkanRendererExecution) {
                 $expectedEnvironmentQualityBudgetTextureUploads += 3
                 ++$expectedEnvironmentQualityBudgetRendererDraws
                 ++$expectedEnvironmentQualityBudgetRaymarchPasses
