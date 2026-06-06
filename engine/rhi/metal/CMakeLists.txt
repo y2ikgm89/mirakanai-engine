@@ -12,6 +12,22 @@ target_link_libraries(MK_rhi_metal PUBLIC MK_rhi)
 
 if(APPLE)
     enable_language(OBJCXX)
+    find_program(MK_APPLE_XCRUN xcrun REQUIRED)
+    set(MK_METAL_ENVIRONMENT_EVIDENCE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/shaders/environment_feature_evidence.metal")
+    set(MK_METAL_ENVIRONMENT_EVIDENCE_AIR "${CMAKE_CURRENT_BINARY_DIR}/environment_feature_evidence.air")
+    set(MK_METAL_ENVIRONMENT_EVIDENCE_METALLIB "${CMAKE_CURRENT_BINARY_DIR}/environment_feature_evidence.metallib")
+    add_custom_command(
+        OUTPUT "${MK_METAL_ENVIRONMENT_EVIDENCE_METALLIB}"
+        COMMAND "${MK_APPLE_XCRUN}" --sdk macosx metal -c "${MK_METAL_ENVIRONMENT_EVIDENCE_SOURCE}" -o "${MK_METAL_ENVIRONMENT_EVIDENCE_AIR}"
+        COMMAND "${MK_APPLE_XCRUN}" --sdk macosx metallib "${MK_METAL_ENVIRONMENT_EVIDENCE_AIR}" -o "${MK_METAL_ENVIRONMENT_EVIDENCE_METALLIB}"
+        DEPENDS "${MK_METAL_ENVIRONMENT_EVIDENCE_SOURCE}"
+        BYPRODUCTS "${MK_METAL_ENVIRONMENT_EVIDENCE_AIR}"
+        VERBATIM
+    )
+    add_custom_target(MK_metal_environment_evidence_metallib
+        DEPENDS "${MK_METAL_ENVIRONMENT_EVIDENCE_METALLIB}"
+    )
+    set_property(GLOBAL PROPERTY MK_METAL_ENVIRONMENT_EVIDENCE_METALLIB "${MK_METAL_ENVIRONMENT_EVIDENCE_METALLIB}")
     target_sources(MK_rhi_metal PRIVATE
         src/metal_native.mm
     )
