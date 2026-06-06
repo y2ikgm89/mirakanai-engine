@@ -85,11 +85,13 @@ counters.
 - For Environment Rendering Readiness v1 Task 8 / Metal environment feature work, use
   `MetalEnvironmentFeatureHostEvidenceDesc`, `MetalEnvironmentFeatureEvidenceRequirement`, `MetalEnvironmentFeatureEvidenceRow`,
   `MetalEnvironmentFeatureHostEvidencePlan`, `default_environment_feature_evidence_requirements`, and
-  `build_environment_feature_host_evidence_plan` in `MK_rhi_metal` for value-only physical sky, height fog, cloud layer, precipitation,
-  volumetric fog, volumetric cloud, and environment lighting/IBL host-gated rows. Keep rows `host_evidence_required` until the reviewed
-  `renderer-metal-apple-host-evidence` recipe runs on an Apple host and supplies runtime, command queue, non-empty `metallib`,
-  feature-local render/compute pipeline, render-pass, depth/particle, cube-map, and HDR texture evidence. D3D12/Vulkan proof and native
-  handles must not promote Metal environment readiness.
+  `build_environment_feature_host_evidence_plan` in `MK_rhi_metal` for physical sky, height fog, cloud layer, precipitation,
+  volumetric fog, volumetric cloud, and environment lighting/IBL host-gated rows; each default row requires synchronization evidence and
+  can be summarized with `metal_environment_feature_host_evidence_status_line`. The reviewed `renderer-metal-apple-host-evidence` recipe
+  must build generated `environment_feature_evidence.metallib`, run Apple-only private `create_native_environment_feature_host_evidence`,
+  and emit selected `metal_environment_*` counters for runtime, command queue, metallib, render/compute pipeline, render pass, cube HDR,
+  depth texture, particle buffer, synchronization/readback, seven ready rows, and zero native-handle access. D3D12/Vulkan proof and native
+  handles must not promote Metal environment readiness, and this recipe does not claim broad backend parity or broad `environment_ready`.
 - For GPU Memory Policy v1 work, keep `GpuMemoryPolicyDesc`, `GpuMemoryRequestDesc`, `GpuMemoryResidencyClass`, `GpuMemoryPolicyPlan`,
   `plan_gpu_memory_policy`, and `gpu_memory_policy_backend_evidence_ready` in the backend-neutral `MK_renderer` public contract. The planner
   may classify committed/placed/transient budget rows, declared memory budget evidence, residency pressure evidence, transient heap policy,

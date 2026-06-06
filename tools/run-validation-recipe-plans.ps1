@@ -36,7 +36,7 @@ function Get-ValidationRecipeCommandPlan {
     }
     elseif ($RecipeName -eq 'renderer-metal-apple-host-evidence') {
         $cmdPlanEntry = Get-RepositoryToolCommandPlan -ToolScriptName 'validate-renderer-metal-apple.ps1'
-        $diagMetal = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'Renderer Metal Apple host evidence requires macOS with full Xcode/Metal tools, then runs the ci-macos-appleclang configure/build/CTest path for MK_backend_scaffold_tests and MK_renderer_quality_matrix_tests without marking Metal or broad renderer quality ready.' -ValidationRecipe $RecipeName -HostGate 'metal-apple'
+        $diagMetal = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'Renderer Metal Apple host evidence requires macOS with full Xcode/Metal tools, then runs the ci-macos-appleclang configure/build/CTest path for MK_backend_scaffold_tests and MK_renderer_quality_matrix_tests. The recipe builds generated environment_feature_evidence.metallib, requires feature-local render/compute pipeline, cube/HDR texture, synchronization/readback proof, and emits metal_environment_* counters without marking backend parity, broad Metal readiness, broad renderer quality, or broad environment_ready ready by inference.' -ValidationRecipe $RecipeName -HostGate 'metal-apple'
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($cmdPlanEntry) -HostGates @('metal-apple') -RequiredAcknowledgements @('metal-apple') -AllowedGameTargets @() -AllowedStrictBackend @() -Diagnostics @($diagMetal)
     }
     elseif ($RecipeName -eq 'desktop-game-runtime') {
