@@ -9405,13 +9405,13 @@ execute_environment_ibl_renderer_upload(const VulkanEnvironmentIblRendererUpload
         upload_bytes[static_cast<std::size_t>(offset + 1U)] = static_cast<std::uint8_t>((value >> 8U) & 0xffU);
     };
     for (const auto& upload : uploads) {
-        const std::uint16_t red = static_cast<std::uint16_t>(0x3000U + ((upload.face + 1U) * 0x0200U));
-        const std::uint16_t green = static_cast<std::uint16_t>(0x3400U + (upload.mip * 0x0100U));
-        const std::uint16_t blue = static_cast<std::uint16_t>(0x3800U + ((upload.face % 3U) * 0x0100U));
+        const auto red = static_cast<std::uint16_t>(0x3000U + ((upload.face + 1U) * 0x0200U));
+        const auto green = static_cast<std::uint16_t>(0x3400U + (upload.mip * 0x0100U));
+        const auto blue = static_cast<std::uint16_t>(0x3800U + ((upload.face % 3U) * 0x0100U));
         constexpr std::uint16_t alpha = 0x3c00U;
         const auto pixel_count = static_cast<std::uint64_t>(upload.width) * static_cast<std::uint64_t>(upload.height);
         for (std::uint64_t pixel = 0; pixel < pixel_count; ++pixel) {
-            const auto pixel_offset = upload.offset + pixel * bytes_per_rgba16_float_pixel;
+            const auto pixel_offset = upload.offset + (pixel * bytes_per_rgba16_float_pixel);
             write_half(pixel_offset + 0U, red);
             write_half(pixel_offset + 2U, green);
             write_half(pixel_offset + 4U, blue);

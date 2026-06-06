@@ -568,7 +568,7 @@ struct VulkanRuntimePhysicalDeviceSelectionProbeResult {
     std::string diagnostic;
 };
 
-enum class VulkanEnvironmentIblTextureFormat {
+enum class VulkanEnvironmentIblTextureFormat : std::uint8_t {
     unknown = 0,
     rgba16_float,
 };
