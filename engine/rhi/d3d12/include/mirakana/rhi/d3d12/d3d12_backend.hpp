@@ -300,6 +300,11 @@ struct DeviceContextStats {
     std::uint64_t vertices_submitted{0};
     std::uint64_t indices_submitted{0};
     std::uint64_t instanced_instances_submitted{0};
+    std::uint32_t last_indexed_draw_index_count{0};
+    std::uint32_t last_indexed_draw_instance_count{0};
+    std::uint32_t last_indexed_draw_first_index{0};
+    std::int32_t last_indexed_draw_vertex_offset{0};
+    std::uint32_t last_indexed_draw_first_instance{0};
     std::uint64_t compute_workgroups_x{0};
     std::uint64_t compute_workgroups_y{0};
     std::uint64_t compute_workgroups_z{0};
@@ -532,7 +537,8 @@ class DeviceContext final {
                                          std::uint64_t offset, IndexFormat format);
     [[nodiscard]] bool draw(NativeCommandListHandle commands, std::uint32_t vertex_count, std::uint32_t instance_count);
     [[nodiscard]] bool draw_indexed(NativeCommandListHandle commands, std::uint32_t index_count,
-                                    std::uint32_t instance_count);
+                                    std::uint32_t instance_count, std::uint32_t first_index, std::int32_t vertex_offset,
+                                    std::uint32_t first_instance);
     [[nodiscard]] bool dispatch(NativeCommandListHandle commands, std::uint32_t group_count_x,
                                 std::uint32_t group_count_y, std::uint32_t group_count_z);
     [[nodiscard]] bool set_viewport(NativeCommandListHandle commands, const mirakana::rhi::ViewportDesc& viewport);

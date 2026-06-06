@@ -569,14 +569,14 @@ Evidence: `tools/cmake.ps1 --build --preset dev --target MK_runtime_mavg_lod_res
 - Modify: `tests/unit/backend_scaffold_tests.cpp`
 - Modify: `tests/unit/renderer_rhi_tests.cpp`
 
-- [ ] Add failing tests for:
+- [x] Add failing tests for:
   - Null RHI records `first_index`, `vertex_offset`, and `first_instance`
   - D3D12 backend uses `DrawIndexedInstanced(index_count, instance_count, first_index, vertex_offset, first_instance)`
   - Vulkan backend uses `vkCmdDrawIndexed(index_count, instance_count, first_index, vertex_offset, first_instance)`
   - `RhiFrameRenderer`, `RhiPostprocessFrameRenderer`, and `RhiDirectionalShadowSmokeFrameRenderer` use `MeshCommand::indexed_range` when enabled
   - default disabled range preserves existing full-mesh draw behavior
 
-- [ ] Run:
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_rhi_tests
@@ -585,6 +585,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset d
 ```
 
 Expected: fail before range-aware draw APIs exist.
+
+Evidence: RED confirmed on 2026-06-05 with expected compile failures before implementation: `tools/cmake.ps1 --build --preset dev --target MK_rhi_tests` failed because `IRhiCommandList::draw_indexed` did not accept `first_index`, `vertex_offset`, and `first_instance`, and `RhiStats` did not expose last indexed draw range rows; `tools/cmake.ps1 --build --preset dev --target MK_backend_scaffold_tests` failed for the same missing RHI range API/stat rows; `tools/cmake.ps1 --build --preset dev --target MK_renderer_tests` failed because `MeshIndexedDrawRange` and `MeshCommand::indexed_range` did not exist.
 
 ### Task 10: Implement Conventional Indexed Draw Range
 
@@ -602,15 +604,15 @@ Expected: fail before range-aware draw APIs exist.
 - Modify: `engine/renderer/src/rhi_directional_shadow_smoke_frame_renderer.cpp`
 - Modify: `engine/renderer/src/null_renderer.cpp`
 
-- [ ] Add `MeshIndexedDrawRange` and `MeshCommand::indexed_range`.
-- [ ] Change `rhi::IRhiCommandList::draw_indexed` to accept `first_index`, `vertex_offset`, and `first_instance`.
-- [ ] Update Null RHI, D3D12, and Vulkan implementations to pass the range to the backend-native indexed draw call.
-- [ ] In renderer implementations, choose:
+- [x] Add `MeshIndexedDrawRange` and `MeshCommand::indexed_range`.
+- [x] Change `rhi::IRhiCommandList::draw_indexed` to accept `first_index`, `vertex_offset`, and `first_instance`.
+- [x] Update Null RHI, D3D12, and Vulkan implementations to pass the range to the backend-native indexed draw call.
+- [x] In renderer implementations, choose:
   - range disabled: existing binding index count and zero offsets
   - range enabled: range `index_count`, `first_index`, `vertex_base`, and `first_instance`
-- [ ] Reject enabled ranges with zero `index_count`.
-- [ ] Do not add indirect draw, command signatures, mesh shader dispatch, or public native handles.
-- [ ] Run:
+- [x] Reject enabled ranges with zero `index_count`.
+- [x] Do not add indirect draw, command signatures, mesh shader dispatch, or public native handles.
+- [x] Run:
 
 ```powershell
 pwsh -NoProfile -ExecutionPolicy Bypass -File tools/cmake.ps1 --build --preset dev --target MK_rhi_tests
@@ -620,6 +622,8 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File tools/ctest.ps1 --preset dev --out
 ```
 
 Expected: RHI and renderer range tests pass.
+
+Evidence: GREEN confirmed on 2026-06-05 after implementation with `tools/cmake.ps1 --build --preset dev --target MK_rhi_tests`, `tools/cmake.ps1 --build --preset dev --target MK_backend_scaffold_tests`, `tools/cmake.ps1 --build --preset dev --target MK_renderer_tests`, `tools/ctest.ps1 --preset dev --output-on-failure -R "MK_rhi_tests|MK_backend_scaffold_tests|MK_renderer_tests"`, `tools/cmake.ps1 --build --preset dev --target MK_d3d12_rhi_tests`, and `tools/ctest.ps1 --preset dev --output-on-failure -R MK_d3d12_rhi_tests`. Official API context was re-checked against Microsoft Learn `ID3D12GraphicsCommandList::DrawIndexedInstanced(IndexCountPerInstance, InstanceCount, StartIndexLocation, BaseVertexLocation, StartInstanceLocation)` and Context7 `/khronosgroup/vulkan-docs` `vkCmdDrawIndexed(indexCount, instanceCount, firstIndex, vertexOffset, firstInstance)`.
 
 ### Task 11: Add Scene Renderer Conventional Submission Tests
 

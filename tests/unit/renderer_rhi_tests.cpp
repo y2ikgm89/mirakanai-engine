@@ -271,8 +271,9 @@ class ThrowingTransitionCommandList final : public mirakana::rhi::IRhiCommandLis
         inner_->draw(vertex_count, instance_count);
     }
 
-    void draw_indexed(std::uint32_t index_count, std::uint32_t instance_count) override {
-        inner_->draw_indexed(index_count, instance_count);
+    void draw_indexed(std::uint32_t index_count, std::uint32_t instance_count, std::uint32_t first_index,
+                      std::int32_t vertex_offset, std::uint32_t first_instance) override {
+        inner_->draw_indexed(index_count, instance_count, first_index, vertex_offset, first_instance);
     }
 
     void dispatch(std::uint32_t group_count_x, std::uint32_t group_count_y, std::uint32_t group_count_z) override {
@@ -387,6 +388,30 @@ create_renderer_test_pipeline(mirakana::rhi::IRhiDevice& device, mirakana::rhi::
         .depth_format = depth_format,
         .topology = mirakana::rhi::PrimitiveTopology::triangle_list,
     });
+}
+
+[[nodiscard]] mirakana::MeshGpuBinding create_renderer_test_mesh_binding(mirakana::rhi::IRhiDevice& device,
+                                                                         std::uint32_t vertex_count = 6,
+                                                                         std::uint32_t index_count = 6) {
+    const auto vertex_buffer = device.create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = static_cast<std::uint64_t>(std::max(vertex_count, 1U)) * 32U,
+        .usage = mirakana::rhi::BufferUsage::vertex,
+    });
+    const auto index_buffer = device.create_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = static_cast<std::uint64_t>(std::max(index_count, 1U)) * sizeof(std::uint32_t),
+        .usage = mirakana::rhi::BufferUsage::index,
+    });
+    return mirakana::MeshGpuBinding{
+        .vertex_buffer = vertex_buffer,
+        .index_buffer = index_buffer,
+        .vertex_count = vertex_count,
+        .index_count = index_count,
+        .vertex_offset = 0,
+        .index_offset = 0,
+        .vertex_stride = 32,
+        .index_format = mirakana::rhi::IndexFormat::uint32,
+        .owner_device = &device,
+    };
 }
 
 [[nodiscard]] mirakana::RhiDirectionalShadowSmokeFrameRendererDesc
@@ -7180,6 +7205,62 @@ MK_TEST("rhi postprocess frame renderer records morph scene draws") {
     MK_REQUIRE(renderer_stats.morph_descriptor_binds == 1);
 }
 
+MK_TEST("rhi postprocess frame renderer records mesh indexed ranges") {
+    mirakana::rhi::NullRhiDevice device;
+    const auto swapchain = device.create_swapchain(mirakana::rhi::SwapchainDesc{
+        .extent = mirakana::rhi::Extent2D{.width = 64, .height = 36},
+        .format = mirakana::rhi::Format::bgra8_unorm,
+        .buffer_count = 2,
+        .vsync = true,
+        .surface = mirakana::rhi::SurfaceHandle{1},
+    });
+    const auto scene_pipeline = create_renderer_test_pipeline(device, mirakana::rhi::Format::bgra8_unorm);
+    const auto postprocess_vertex_shader = device.create_shader(mirakana::rhi::ShaderDesc{
+        .stage = mirakana::rhi::ShaderStage::vertex,
+        .entry_point = "vs_postprocess",
+        .bytecode_size = 64,
+    });
+    const auto postprocess_fragment_shader = device.create_shader(mirakana::rhi::ShaderDesc{
+        .stage = mirakana::rhi::ShaderStage::fragment,
+        .entry_point = "ps_postprocess",
+        .bytecode_size = 64,
+    });
+    const auto mesh_binding = create_renderer_test_mesh_binding(device, 8, 8);
+
+    mirakana::RhiPostprocessFrameRenderer renderer(mirakana::RhiPostprocessFrameRendererDesc{
+        .device = &device,
+        .extent = mirakana::Extent2D{.width = 64, .height = 36},
+        .swapchain = swapchain,
+        .color_format = mirakana::rhi::Format::bgra8_unorm,
+        .scene_graphics_pipeline = scene_pipeline,
+        .postprocess_vertex_shader = postprocess_vertex_shader,
+        .postprocess_fragment_stages = std::vector<mirakana::rhi::ShaderHandle>{postprocess_fragment_shader},
+        .wait_for_completion = true,
+    });
+
+    renderer.begin_frame();
+    renderer.draw_mesh(mirakana::MeshCommand{
+        .mesh_binding = mesh_binding,
+        .indexed_range =
+            mirakana::MeshIndexedDrawRange{
+                .enabled = true,
+                .first_index = 1,
+                .index_count = 4,
+                .vertex_base = 2,
+                .first_instance = 3,
+            },
+    });
+    renderer.end_frame();
+
+    const auto rhi_stats = device.stats();
+    MK_REQUIRE(rhi_stats.indexed_draw_calls == 1);
+    MK_REQUIRE(rhi_stats.last_indexed_draw_index_count == 4);
+    MK_REQUIRE(rhi_stats.last_indexed_draw_instance_count == 1);
+    MK_REQUIRE(rhi_stats.last_indexed_draw_first_index == 1);
+    MK_REQUIRE(rhi_stats.last_indexed_draw_vertex_offset == 2);
+    MK_REQUIRE(rhi_stats.last_indexed_draw_first_instance == 3);
+}
+
 MK_TEST("rhi postprocess frame renderer two-stage chain uses three frame graph passes and two postprocess draws") {
     mirakana::rhi::NullRhiDevice device;
     const auto swapchain = device.create_swapchain(mirakana::rhi::SwapchainDesc{
@@ -8028,6 +8109,42 @@ MK_TEST("rhi directional shadow smoke frame renderer records native ui overlay a
     MK_REQUIRE(rhi_stats.present_calls == 1);
 }
 
+MK_TEST("rhi directional shadow smoke frame renderer records mesh indexed ranges") {
+    mirakana::rhi::NullRhiDevice device;
+    const auto swapchain = device.create_swapchain(mirakana::rhi::SwapchainDesc{
+        .extent = mirakana::rhi::Extent2D{.width = 64, .height = 36},
+        .format = mirakana::rhi::Format::bgra8_unorm,
+        .buffer_count = 2,
+        .vsync = true,
+        .surface = mirakana::rhi::SurfaceHandle{1},
+    });
+    const auto mesh_binding = create_renderer_test_mesh_binding(device, 8, 8);
+    auto desc = create_directional_shadow_smoke_test_desc(device, swapchain);
+
+    mirakana::RhiDirectionalShadowSmokeFrameRenderer renderer(desc);
+    renderer.begin_frame();
+    renderer.draw_mesh(mirakana::MeshCommand{
+        .mesh_binding = mesh_binding,
+        .indexed_range =
+            mirakana::MeshIndexedDrawRange{
+                .enabled = true,
+                .first_index = 2,
+                .index_count = 4,
+                .vertex_base = -2,
+                .first_instance = 6,
+            },
+    });
+    renderer.end_frame();
+
+    const auto rhi_stats = device.stats();
+    MK_REQUIRE(rhi_stats.indexed_draw_calls == 2);
+    MK_REQUIRE(rhi_stats.last_indexed_draw_index_count == 4);
+    MK_REQUIRE(rhi_stats.last_indexed_draw_instance_count == 1);
+    MK_REQUIRE(rhi_stats.last_indexed_draw_first_index == 2);
+    MK_REQUIRE(rhi_stats.last_indexed_draw_vertex_offset == -2);
+    MK_REQUIRE(rhi_stats.last_indexed_draw_first_instance == 6);
+}
+
 MK_TEST("rhi directional shadow smoke frame renderer reports shadow color target prep failure from executor") {
     ThrowingTransitionRhiDevice device;
     device.throw_on_submit = false;
@@ -8519,6 +8636,126 @@ MK_TEST("rhi frame renderer submits a texture frame through an rhi device") {
     MK_REQUIRE(rhi_stats.vertices_submitted == 6);
     MK_REQUIRE(rhi_stats.command_lists_submitted == 1);
     MK_REQUIRE(rhi_stats.fences_signaled == 1);
+}
+
+MK_TEST("rhi frame renderer records mesh indexed ranges") {
+    mirakana::rhi::NullRhiDevice device;
+    const auto target = device.create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target,
+    });
+    const auto pipeline = create_renderer_test_pipeline(device, mirakana::rhi::Format::rgba8_unorm);
+    const auto mesh_binding = create_renderer_test_mesh_binding(device, 8, 8);
+
+    mirakana::RhiFrameRenderer renderer(mirakana::RhiFrameRendererDesc{
+        .device = &device,
+        .extent = mirakana::Extent2D{.width = 64, .height = 64},
+        .color_texture = target,
+        .swapchain = mirakana::rhi::SwapchainHandle{},
+        .graphics_pipeline = pipeline,
+        .wait_for_completion = true,
+    });
+
+    renderer.begin_frame();
+    renderer.draw_mesh(mirakana::MeshCommand{
+        .mesh_binding = mesh_binding,
+        .indexed_range =
+            mirakana::MeshIndexedDrawRange{
+                .enabled = true,
+                .first_index = 2,
+                .index_count = 3,
+                .vertex_base = -1,
+                .first_instance = 4,
+            },
+    });
+    renderer.end_frame();
+
+    const auto rhi_stats = device.stats();
+    MK_REQUIRE(rhi_stats.indexed_draw_calls == 1);
+    MK_REQUIRE(rhi_stats.indices_submitted == 3);
+    MK_REQUIRE(rhi_stats.last_indexed_draw_index_count == 3);
+    MK_REQUIRE(rhi_stats.last_indexed_draw_instance_count == 1);
+    MK_REQUIRE(rhi_stats.last_indexed_draw_first_index == 2);
+    MK_REQUIRE(rhi_stats.last_indexed_draw_vertex_offset == -1);
+    MK_REQUIRE(rhi_stats.last_indexed_draw_first_instance == 4);
+}
+
+MK_TEST("rhi frame renderer keeps full mesh draw when indexed range is disabled") {
+    mirakana::rhi::NullRhiDevice device;
+    const auto target = device.create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target,
+    });
+    const auto pipeline = create_renderer_test_pipeline(device, mirakana::rhi::Format::rgba8_unorm);
+    const auto mesh_binding = create_renderer_test_mesh_binding(device, 8, 5);
+
+    mirakana::RhiFrameRenderer renderer(mirakana::RhiFrameRendererDesc{
+        .device = &device,
+        .extent = mirakana::Extent2D{.width = 64, .height = 64},
+        .color_texture = target,
+        .swapchain = mirakana::rhi::SwapchainHandle{},
+        .graphics_pipeline = pipeline,
+        .wait_for_completion = true,
+    });
+
+    renderer.begin_frame();
+    renderer.draw_mesh(mirakana::MeshCommand{
+        .mesh_binding = mesh_binding,
+    });
+    renderer.end_frame();
+
+    const auto rhi_stats = device.stats();
+    MK_REQUIRE(rhi_stats.indexed_draw_calls == 1);
+    MK_REQUIRE(rhi_stats.indices_submitted == 5);
+    MK_REQUIRE(rhi_stats.last_indexed_draw_index_count == 5);
+    MK_REQUIRE(rhi_stats.last_indexed_draw_instance_count == 1);
+    MK_REQUIRE(rhi_stats.last_indexed_draw_first_index == 0);
+    MK_REQUIRE(rhi_stats.last_indexed_draw_vertex_offset == 0);
+    MK_REQUIRE(rhi_stats.last_indexed_draw_first_instance == 0);
+}
+
+MK_TEST("rhi frame renderer rejects enabled indexed range with zero indices") {
+    mirakana::rhi::NullRhiDevice device;
+    const auto target = device.create_texture(mirakana::rhi::TextureDesc{
+        .extent = mirakana::rhi::Extent3D{.width = 64, .height = 64, .depth = 1},
+        .format = mirakana::rhi::Format::rgba8_unorm,
+        .usage = mirakana::rhi::TextureUsage::render_target,
+    });
+    const auto pipeline = create_renderer_test_pipeline(device, mirakana::rhi::Format::rgba8_unorm);
+    const auto mesh_binding = create_renderer_test_mesh_binding(device, 8, 5);
+
+    mirakana::RhiFrameRenderer renderer(mirakana::RhiFrameRendererDesc{
+        .device = &device,
+        .extent = mirakana::Extent2D{.width = 64, .height = 64},
+        .color_texture = target,
+        .swapchain = mirakana::rhi::SwapchainHandle{},
+        .graphics_pipeline = pipeline,
+        .wait_for_completion = true,
+    });
+
+    bool rejected = false;
+    renderer.begin_frame();
+    try {
+        renderer.draw_mesh(mirakana::MeshCommand{
+            .mesh_binding = mesh_binding,
+            .indexed_range =
+                mirakana::MeshIndexedDrawRange{
+                    .enabled = true,
+                    .first_index = 1,
+                    .index_count = 0,
+                    .vertex_base = 0,
+                    .first_instance = 0,
+                },
+        });
+    } catch (const std::invalid_argument&) {
+        rejected = true;
+    }
+    renderer.end_frame();
+
+    MK_REQUIRE(rejected);
+    MK_REQUIRE(device.stats().draw_calls == 0);
 }
 
 MK_TEST("rhi frame renderer carries primary target state across texture frames") {

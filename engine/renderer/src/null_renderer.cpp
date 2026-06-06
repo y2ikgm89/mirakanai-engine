@@ -63,6 +63,9 @@ void NullRenderer::draw_mesh(const MeshCommand& command) {
     if (!frame_active_) {
         throw std::logic_error("renderer frame is not active");
     }
+    if (command.indexed_range.enabled && command.indexed_range.index_count == 0) {
+        throw std::invalid_argument("renderer mesh indexed range requires index count");
+    }
     if (command.gpu_skinning) {
         ++stats_.gpu_skinning_draws;
     }

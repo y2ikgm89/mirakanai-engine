@@ -2396,6 +2396,84 @@ MK_TEST("d3d12 device context records first triangle draw to hwnd swapchain") {
     MK_REQUIRE(context->stats().vertices_submitted == 3);
 }
 
+MK_TEST("d3d12 device context records indexed draw range arguments") {
+    HiddenTestWindow window;
+    MK_REQUIRE(window.valid());
+
+    auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
+
+    MK_REQUIRE(context != nullptr);
+
+    const auto vertex_bytecode = compile_triangle_vertex_shader();
+    const auto pixel_bytecode = compile_triangle_pixel_shader();
+    const auto swapchain = context->create_swapchain_for_window(mirakana::rhi::d3d12::NativeSwapchainDesc{
+        .window = mirakana::rhi::d3d12::NativeWindowHandle{window.hwnd()},
+        .swapchain =
+            mirakana::rhi::SwapchainDesc{
+                .extent = mirakana::rhi::Extent2D{.width = 64, .height = 64},
+                .format = mirakana::rhi::Format::bgra8_unorm,
+                .buffer_count = 2,
+                .vsync = false,
+            },
+    });
+    const auto vertex_buffer = context->create_committed_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = 96,
+        .usage = mirakana::rhi::BufferUsage::vertex,
+    });
+    const auto index_buffer = context->create_committed_buffer(mirakana::rhi::BufferDesc{
+        .size_bytes = 32,
+        .usage = mirakana::rhi::BufferUsage::index,
+    });
+    const auto root_signature = context->create_root_signature(
+        mirakana::rhi::d3d12::NativeRootSignatureDesc{.descriptor_sets = {}, .push_constant_bytes = 0});
+    const auto vertex_shader = context->create_shader_module(mirakana::rhi::d3d12::NativeShaderBytecodeDesc{
+        .stage = mirakana::rhi::ShaderStage::vertex,
+        .bytecode = vertex_bytecode->GetBufferPointer(),
+        .bytecode_size = vertex_bytecode->GetBufferSize(),
+    });
+    const auto pixel_shader = context->create_shader_module(mirakana::rhi::d3d12::NativeShaderBytecodeDesc{
+        .stage = mirakana::rhi::ShaderStage::fragment,
+        .bytecode = pixel_bytecode->GetBufferPointer(),
+        .bytecode_size = pixel_bytecode->GetBufferSize(),
+    });
+    const auto pipeline = context->create_graphics_pipeline(mirakana::rhi::d3d12::NativeGraphicsPipelineDesc{
+        .root_signature = root_signature,
+        .vertex_shader = vertex_shader,
+        .fragment_shader = pixel_shader,
+        .color_format = mirakana::rhi::Format::bgra8_unorm,
+        .depth_format = mirakana::rhi::Format::unknown,
+        .topology = mirakana::rhi::PrimitiveTopology::triangle_list,
+    });
+    const auto commands = context->create_command_list(mirakana::rhi::QueueKind::graphics);
+
+    MK_REQUIRE(swapchain.value == 1);
+    MK_REQUIRE(vertex_buffer.value != 0);
+    MK_REQUIRE(index_buffer.value != 0);
+    MK_REQUIRE(root_signature.value == 1);
+    MK_REQUIRE(pipeline.value == 1);
+    MK_REQUIRE(commands.value == 1);
+    MK_REQUIRE(context->transition_swapchain_back_buffer(commands, swapchain, mirakana::rhi::ResourceState::present,
+                                                         mirakana::rhi::ResourceState::render_target));
+    MK_REQUIRE(context->set_swapchain_render_target(commands, swapchain));
+    MK_REQUIRE(context->set_graphics_root_signature(commands, root_signature));
+    MK_REQUIRE(context->bind_graphics_pipeline(commands, pipeline));
+    MK_REQUIRE(context->bind_vertex_buffer(commands, vertex_buffer, 0, 32));
+    MK_REQUIRE(context->bind_index_buffer(commands, index_buffer, 0, mirakana::rhi::IndexFormat::uint32));
+    MK_REQUIRE(context->draw_indexed(commands, 4, 2, 3, -1, 5));
+
+    const auto stats = context->stats();
+    MK_REQUIRE(stats.draw_calls == 1);
+    MK_REQUIRE(stats.indexed_draw_calls == 1);
+    MK_REQUIRE(stats.instanced_draw_calls == 1);
+    MK_REQUIRE(stats.instanced_indexed_draw_calls == 1);
+    MK_REQUIRE(stats.indices_submitted == 8);
+    MK_REQUIRE(stats.last_indexed_draw_index_count == 4);
+    MK_REQUIRE(stats.last_indexed_draw_instance_count == 2);
+    MK_REQUIRE(stats.last_indexed_draw_first_index == 3);
+    MK_REQUIRE(stats.last_indexed_draw_vertex_offset == -1);
+    MK_REQUIRE(stats.last_indexed_draw_first_instance == 5);
+}
+
 MK_TEST("d3d12 device context rejects invalid graphics pipeline and draw work") {
     auto context = mirakana::rhi::d3d12::DeviceContext::create(d3d12_test_device_desc());
 
