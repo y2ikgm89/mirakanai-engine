@@ -79,7 +79,7 @@ foreach ($surface in @(
         Assert-ContainsText $surface.Text $needle "$($surface.Label) runtime-inferred LRU evidence"
     }
     foreach ($needle in @(
-            "runtime-inferred frequency eviction policy",
+            "runtime-inferred frequency",
             "GPU memory pressure",
             "DirectStorage",
             "Nanite"
@@ -97,7 +97,7 @@ foreach ($needle in @(
         "runtime_inferred_lru_eviction_candidate_count",
         "older unprotected resident page ordering",
         "cold resident page ordering",
-        "no runtime-inferred frequency eviction policy"
+        "runtime-inferred frequency eviction policy was out of scope for that child"
     )) {
     Assert-ContainsText $modulesFragmentText $needle "engine/agent/manifest.fragments/004-modules.json runtime-inferred LRU module evidence"
     Assert-ContainsText $aiLoopFragmentText $needle "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json runtime-inferred LRU plan evidence"
@@ -116,7 +116,7 @@ foreach ($needle in @(
         "inferred_lru_eviction_policy",
         "runtime_inferred_lru_eviction_candidate_count",
         "runtime-inferred LRU candidate ordering",
-        "runtime-inferred frequency eviction policy",
+        "MAVG Runtime-Inferred Frequency Eviction Policy v1",
         "unsupportedProductionGaps = []"
     )) {
     Assert-ContainsText $recommendedPlanText $needle "engine/agent/manifest.json recommendedNextPlan runtime-inferred LRU evidence"
@@ -130,7 +130,7 @@ foreach ($needle in @(
         "RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::runtime_inferred_lru",
         "inferred_lru_eviction_policy",
         "runtime_inferred_lru_eviction_candidate_count",
-        "no runtime-inferred frequency eviction policy"
+        "runtime-inferred frequency eviction policy was out of scope for that child"
     )) {
     Assert-ContainsText $runtimeManifestText $needle "engine/agent/manifest.json MK_runtime runtime-inferred LRU evidence"
 }

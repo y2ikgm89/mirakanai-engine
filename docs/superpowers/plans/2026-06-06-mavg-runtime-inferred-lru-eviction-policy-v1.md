@@ -59,7 +59,7 @@ Context7 `/websites/cppreference` was checked for the C++23 API shape: `std::spa
 
 ## Non-Claims
 
-- No runtime-inferred frequency eviction policy.
+- The runtime-inferred frequency eviction policy was out of scope for this child.
 - No GPU memory pressure integration or allocator enforcement.
 - No DirectStorage native queue/status/fence/file IO execution.
 - No sustained async-overlap or performance benchmark claim.

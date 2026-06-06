@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cmath>
 #include <exception>
+#include <limits>
 #include <string>
 #include <thread>
 #include <utility>
@@ -65,6 +66,16 @@ void add_diagnostic(RuntimeMavgPageStreamingWorkerResult& result, RuntimeMavgPag
 }
 
 void add_diagnostic(RuntimeMavgResidentPageUseGenerationResult& result, RuntimeMavgPageStreamingDiagnosticCode code,
+                    AssetId graph_asset, std::uint32_t page_index, std::string message) {
+    result.diagnostics.push_back(RuntimeMavgPageStreamingDiagnostic{
+        .code = code,
+        .graph_asset = graph_asset,
+        .page_index = page_index,
+        .message = std::move(message),
+    });
+}
+
+void add_diagnostic(RuntimeMavgResidentPageFrequencyResult& result, RuntimeMavgPageStreamingDiagnosticCode code,
                     AssetId graph_asset, std::uint32_t page_index, std::string message) {
     result.diagnostics.push_back(RuntimeMavgPageStreamingDiagnostic{
         .code = code,
@@ -185,6 +196,12 @@ find_page_mount(std::span<const RuntimeMavgResidentPageMountRow> page_mounts, st
            page_mount.mount_id == recency_row.mount_id;
 }
 
+[[nodiscard]] bool matches_page_mount(const RuntimeMavgResidentPageMountRow& page_mount,
+                                      const RuntimeMavgPageStreamingFrequencyRow& frequency_row) noexcept {
+    return page_mount.graph_asset == frequency_row.graph_asset && page_mount.page_index == frequency_row.page_index &&
+           page_mount.mount_id == frequency_row.mount_id;
+}
+
 [[nodiscard]] const RuntimeMavgPageStreamingRecencyRow*
 find_recency_row(std::span<const RuntimeMavgPageStreamingRecencyRow> recency_rows,
                  const RuntimeMavgResidentPageMountRow& page_mount) noexcept {
@@ -197,10 +214,28 @@ find_recency_row(std::span<const RuntimeMavgPageStreamingRecencyRow> recency_row
     return &*found;
 }
 
+[[nodiscard]] const RuntimeMavgPageStreamingFrequencyRow*
+find_frequency_row(std::span<const RuntimeMavgPageStreamingFrequencyRow> frequency_rows,
+                   const RuntimeMavgResidentPageMountRow& page_mount) noexcept {
+    const auto found =
+        std::ranges::find_if(frequency_rows, [&page_mount](const RuntimeMavgPageStreamingFrequencyRow& row) {
+            return matches_page_mount(page_mount, row);
+        });
+    if (found == frequency_rows.end()) {
+        return nullptr;
+    }
+    return &*found;
+}
+
 [[nodiscard]] bool
 uses_recency_eviction_order(RuntimeMavgPageStreamingAutomaticEvictionPolicyKind policy_kind) noexcept {
     return policy_kind == RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::caller_supplied_recency ||
            policy_kind == RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::runtime_inferred_lru;
+}
+
+[[nodiscard]] bool
+uses_frequency_eviction_order(RuntimeMavgPageStreamingAutomaticEvictionPolicyKind policy_kind) noexcept {
+    return policy_kind == RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::runtime_inferred_frequency;
 }
 
 void add_unique_protected_mount(RuntimeMavgPageStreamingEvictionReviewResult& result,
@@ -245,6 +280,18 @@ void copy_use_generation_evidence(RuntimeMavgPageStreamingEvictionReviewResult& 
     result.inferred_resident_page_use_generation = use_generations.inferred_resident_page_use_generation;
     result.diagnostics.insert(result.diagnostics.end(), use_generations.diagnostics.begin(),
                               use_generations.diagnostics.end());
+}
+
+void copy_frequency_evidence(RuntimeMavgPageStreamingEvictionReviewResult& result,
+                             const RuntimeMavgResidentPageFrequencyResult& frequencies) {
+    result.touched_resident_page_count = frequencies.touched_resident_page_count;
+    result.carried_frequency_row_count = frequencies.carried_frequency_row_count;
+    result.new_resident_page_count = frequencies.new_resident_page_count;
+    result.dropped_nonresident_frequency_row_count = frequencies.dropped_nonresident_frequency_row_count;
+    result.duplicate_frequency_row_count = frequencies.duplicate_frequency_row_count;
+    result.missing_frequency_row_count = frequencies.missing_page_mount_count;
+    result.inferred_resident_page_frequency = frequencies.inferred_resident_page_frequency;
+    result.diagnostics.insert(result.diagnostics.end(), frequencies.diagnostics.begin(), frequencies.diagnostics.end());
 }
 
 [[nodiscard]] bool
@@ -937,6 +984,196 @@ infer_runtime_mavg_resident_page_use_generations(const RuntimeResidentPackageMou
     return result;
 }
 
+RuntimeMavgResidentPageFrequencyResult
+infer_runtime_mavg_resident_page_frequencies(const RuntimeResidentPackageMountSetV2& mount_set,
+                                             const RuntimeMavgResidentPageFrequencyDesc& desc) {
+    RuntimeMavgResidentPageFrequencyResult result;
+    result.input_resident_page_mount_count = desc.resident_page_mounts.size();
+    result.input_selected_cluster_count = desc.selected_clusters.size();
+
+    bool invalid_inputs = false;
+    if (desc.graph_asset.value == 0) {
+        add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::invalid_graph_asset, desc.graph_asset, 0,
+                       "MAVG resident page frequency graph asset id must be non-zero");
+        invalid_inputs = true;
+    }
+    if (desc.graph == nullptr) {
+        add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::missing_graph, desc.graph_asset, 0,
+                       "MAVG resident page frequency graph document is required");
+        invalid_inputs = true;
+    }
+    if (invalid_inputs) {
+        return result;
+    }
+
+    const auto& graph = *desc.graph;
+    if (graph.asset != desc.graph_asset) {
+        add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::graph_asset_mismatch, desc.graph_asset, 0,
+                       "MAVG resident page frequency graph document asset must match the requested graph asset");
+        invalid_inputs = true;
+    }
+    const auto validation = validate_mavg_cluster_graph(graph);
+    if (!validation.valid()) {
+        add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::invalid_graph, desc.graph_asset, 0,
+                       "MAVG resident page frequency graph validation failed");
+        invalid_inputs = true;
+    }
+
+    std::vector<std::uint32_t> resident_page_indices;
+    std::vector<RuntimeResidentPackageMountIdV2> resident_mount_ids;
+    for (const auto& row : desc.resident_page_mounts) {
+        if (row.graph_asset != desc.graph_asset) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::page_mount_graph_mismatch, row.graph_asset,
+                           row.page_index,
+                           "MAVG resident page frequency mount graph asset does not match the requested graph");
+            invalid_inputs = true;
+            continue;
+        }
+        if (!has_page(graph, row.page_index)) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::unknown_page, desc.graph_asset,
+                           row.page_index, "MAVG resident page frequency row references an unknown graph page");
+            invalid_inputs = true;
+            continue;
+        }
+        if (row.mount_id.value == 0) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::invalid_page_mount, desc.graph_asset,
+                           row.page_index, "MAVG resident page frequency mount id must be non-zero");
+            invalid_inputs = true;
+            continue;
+        }
+        if (contains_page_index(resident_page_indices, row.page_index) ||
+            contains_mount_id(resident_mount_ids, row.mount_id)) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::duplicate_page_mount, desc.graph_asset,
+                           row.page_index,
+                           "MAVG resident page frequency mount rows must be unique by page and mount id");
+            invalid_inputs = true;
+            continue;
+        }
+        if (!contains_mount_id(mount_set, row.mount_id)) {
+            ++result.missing_page_mount_count;
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::missing_page_mount, desc.graph_asset,
+                           row.page_index, "MAVG resident page frequency mount id is not mounted");
+            invalid_inputs = true;
+            continue;
+        }
+        resident_page_indices.push_back(row.page_index);
+        resident_mount_ids.push_back(row.mount_id);
+    }
+
+    std::vector<std::uint32_t> selected_page_indices;
+    for (const auto& selected : desc.selected_clusters) {
+        if (selected.graph_asset != desc.graph_asset) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::selected_graph_mismatch,
+                           selected.graph_asset, 0,
+                           "MAVG resident page frequency selected cluster graph asset does not match");
+            invalid_inputs = true;
+            continue;
+        }
+        const auto* const cluster = find_cluster(graph, selected.cluster_index);
+        if (cluster == nullptr) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::unknown_cluster, desc.graph_asset, 0,
+                           "MAVG resident page frequency selected cluster references an unknown graph cluster");
+            invalid_inputs = true;
+            continue;
+        }
+        if (!contains_page_index(resident_page_indices, cluster->page_index)) {
+            ++result.missing_page_mount_count;
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::missing_page_mount, desc.graph_asset,
+                           cluster->page_index, "MAVG resident page frequency selected cluster page is not resident");
+            invalid_inputs = true;
+            continue;
+        }
+        if (!contains_page_index(selected_page_indices, cluster->page_index)) {
+            selected_page_indices.push_back(cluster->page_index);
+        }
+    }
+    if (invalid_inputs) {
+        return result;
+    }
+
+    std::vector<std::uint32_t> previous_page_indices;
+    std::vector<RuntimeResidentPackageMountIdV2> previous_mount_ids;
+    bool invalid_frequency = false;
+    for (const auto& row : desc.previous_frequency_rows) {
+        if (row.graph_asset != desc.graph_asset) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::frequency_graph_mismatch, row.graph_asset,
+                           row.page_index, "MAVG resident page frequency previous row graph asset does not match");
+            invalid_frequency = true;
+            continue;
+        }
+        if (row.mount_id.value == 0) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::invalid_frequency_row, desc.graph_asset,
+                           row.page_index, "MAVG resident page frequency previous row mount id must be non-zero");
+            invalid_frequency = true;
+            continue;
+        }
+        if (contains_page_index(previous_page_indices, row.page_index) ||
+            contains_mount_id(previous_mount_ids, row.mount_id)) {
+            ++result.duplicate_frequency_row_count;
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::duplicate_frequency_row, desc.graph_asset,
+                           row.page_index, "MAVG resident page frequency previous rows must be unique");
+            invalid_frequency = true;
+            continue;
+        }
+        previous_page_indices.push_back(row.page_index);
+        previous_mount_ids.push_back(row.mount_id);
+
+        const auto* const current_mount = find_page_mount(desc.resident_page_mounts, row.page_index);
+        if (current_mount == nullptr || !matches_page_mount(*current_mount, row)) {
+            ++result.dropped_nonresident_frequency_row_count;
+            continue;
+        }
+        if (contains_page_index(selected_page_indices, row.page_index) &&
+            row.resident_page_selection_count == std::numeric_limits<std::uint64_t>::max()) {
+            add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::frequency_counter_overflow, desc.graph_asset,
+                           row.page_index,
+                           "MAVG resident page frequency cannot increment a saturated selection counter");
+            invalid_frequency = true;
+        }
+    }
+    if (invalid_frequency) {
+        return result;
+    }
+
+    std::vector<RuntimeMavgResidentPageMountRow> ordered_mounts(desc.resident_page_mounts.begin(),
+                                                                desc.resident_page_mounts.end());
+    std::ranges::sort(ordered_mounts,
+                      [](const RuntimeMavgResidentPageMountRow& lhs, const RuntimeMavgResidentPageMountRow& rhs) {
+                          if (lhs.page_index != rhs.page_index) {
+                              return lhs.page_index < rhs.page_index;
+                          }
+                          return lhs.mount_id.value < rhs.mount_id.value;
+                      });
+
+    result.frequency_rows.reserve(ordered_mounts.size());
+    for (const auto& mount : ordered_mounts) {
+        auto selection_count = std::uint64_t{0};
+        const auto* const previous = find_frequency_row(desc.previous_frequency_rows, mount);
+        if (contains_page_index(selected_page_indices, mount.page_index)) {
+            selection_count = previous == nullptr ? std::uint64_t{1} : previous->resident_page_selection_count + 1;
+            ++result.touched_resident_page_count;
+            if (previous == nullptr) {
+                ++result.new_resident_page_count;
+            }
+        } else if (previous != nullptr) {
+            selection_count = previous->resident_page_selection_count;
+            ++result.carried_frequency_row_count;
+        } else {
+            ++result.new_resident_page_count;
+        }
+
+        result.frequency_rows.push_back(RuntimeMavgPageStreamingFrequencyRow{
+            .graph_asset = mount.graph_asset,
+            .page_index = mount.page_index,
+            .mount_id = mount.mount_id,
+            .resident_page_selection_count = selection_count,
+        });
+    }
+    result.output_frequency_row_count = result.frequency_rows.size();
+    result.inferred_resident_page_frequency = true;
+    return result;
+}
+
 [[nodiscard]] static bool validate_recency_rows(RuntimeMavgPageStreamingEvictionReviewResult& result,
                                                 AssetId graph_asset,
                                                 std::span<const RuntimeMavgResidentPageMountRow> page_mounts,
@@ -988,6 +1225,7 @@ plan_runtime_mavg_page_streaming_automatic_evictions(const RuntimeResidentPackag
     struct EvictionCandidate {
         RuntimeMavgResidentPageMountRow page_mount;
         std::uint64_t resident_page_last_used_generation{0};
+        std::uint64_t resident_page_selection_count{0};
     };
 
     std::vector<EvictionCandidate> eviction_candidates;
@@ -1052,6 +1290,36 @@ plan_runtime_mavg_page_streaming_automatic_evictions(const RuntimeResidentPackag
         result.inferred_lru_eviction_policy = true;
         result.recency_eviction_candidate_count = eviction_candidates.size();
         result.runtime_inferred_lru_eviction_candidate_count = eviction_candidates.size();
+    } else if (desc.policy_kind == RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::runtime_inferred_frequency) {
+        auto frequencies = infer_runtime_mavg_resident_page_frequencies(
+            mount_set, RuntimeMavgResidentPageFrequencyDesc{
+                           .graph_asset = desc.graph_asset,
+                           .graph = desc.graph,
+                           .selected_clusters = desc.selected_clusters,
+                           .resident_page_mounts = desc.resident_page_mounts,
+                           .previous_frequency_rows = desc.previous_frequency_rows,
+                       });
+        copy_frequency_evidence(result, frequencies);
+        if (!frequencies.succeeded()) {
+            return result;
+        }
+        for (auto& candidate : eviction_candidates) {
+            const auto* const frequency = find_frequency_row(frequencies.frequency_rows, candidate.page_mount);
+            if (frequency == nullptr) {
+                ++result.missing_frequency_row_count;
+                add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::missing_frequency_row, desc.graph_asset,
+                               candidate.page_mount.page_index,
+                               "MAVG runtime-inferred frequency policy requires inferred frequency for each candidate");
+                continue;
+            }
+            candidate.resident_page_selection_count = frequency->resident_page_selection_count;
+        }
+        if (!result.diagnostics.empty()) {
+            return result;
+        }
+        result.inferred_eviction_policy = true;
+        result.inferred_frequency_eviction_policy = true;
+        result.runtime_inferred_frequency_eviction_candidate_count = eviction_candidates.size();
     } else if (desc.policy_kind != RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::deterministic_page_index) {
         add_diagnostic(result, RuntimeMavgPageStreamingDiagnosticCode::invalid_recency_row, desc.graph_asset, 0,
                        "MAVG automatic eviction policy kind is not supported");
@@ -1059,6 +1327,10 @@ plan_runtime_mavg_page_streaming_automatic_evictions(const RuntimeResidentPackag
     }
 
     std::ranges::sort(eviction_candidates, [&desc](const EvictionCandidate& lhs, const EvictionCandidate& rhs) {
+        if (uses_frequency_eviction_order(desc.policy_kind) &&
+            lhs.resident_page_selection_count != rhs.resident_page_selection_count) {
+            return lhs.resident_page_selection_count < rhs.resident_page_selection_count;
+        }
         if (uses_recency_eviction_order(desc.policy_kind) &&
             lhs.resident_page_last_used_generation != rhs.resident_page_last_used_generation) {
             return lhs.resident_page_last_used_generation < rhs.resident_page_last_used_generation;

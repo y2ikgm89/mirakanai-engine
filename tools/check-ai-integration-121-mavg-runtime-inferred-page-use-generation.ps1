@@ -81,7 +81,7 @@ foreach ($surface in @(
         Assert-ContainsText $surface.Text $needle "$($surface.Label) use-generation evidence"
     }
     foreach ($needle in @(
-            "runtime-inferred frequency eviction policy",
+            "runtime-inferred frequency",
             "GPU memory pressure",
             "DirectStorage",
             "Nanite"
@@ -98,7 +98,7 @@ foreach ($needle in @(
         "inferred_resident_page_use_generation",
         "dropped_nonresident_recency_row_count",
         "non_monotonic_use_generation",
-        "no runtime-inferred frequency eviction policy"
+        "runtime-inferred frequency eviction policy was out of scope for that child"
     )) {
     Assert-ContainsText $modulesFragmentText $needle "engine/agent/manifest.fragments/004-modules.json use-generation module evidence"
     Assert-ContainsText $aiLoopFragmentText $needle "engine/agent/manifest.fragments/010-aiOperableProductionLoop.json use-generation plan evidence"
@@ -117,7 +117,7 @@ foreach ($needle in @(
         "infer_runtime_mavg_resident_page_use_generations",
         "inferred_resident_page_use_generation",
         "non_monotonic_use_generation",
-        "runtime-inferred frequency eviction policy",
+        "MAVG Runtime-Inferred Frequency Eviction Policy v1",
         "unsupportedProductionGaps = []"
     )) {
     Assert-ContainsText $recommendedPlanText $needle "engine/agent/manifest.json recommendedNextPlan use-generation evidence"
@@ -133,7 +133,7 @@ foreach ($needle in @(
         "infer_runtime_mavg_resident_page_use_generations",
         "inferred_resident_page_use_generation",
         "non_monotonic_use_generation",
-        "no runtime-inferred frequency eviction policy"
+        "runtime-inferred frequency eviction policy was out of scope for that child"
     )) {
     Assert-ContainsText $runtimeManifestText $needle "engine/agent/manifest.json MK_runtime use-generation evidence"
 }

@@ -51,6 +51,31 @@ foreach ($needle in @(
     Assert-ContainsText $runtimeMavgPageStreamingSourceText $needle "engine/runtime/src/mavg_page_streaming.cpp"
 }
 foreach ($needle in @(
+        "runtime_inferred_frequency",
+        "RuntimeMavgPageStreamingFrequencyRow",
+        "RuntimeMavgResidentPageFrequencyDesc",
+        "RuntimeMavgResidentPageFrequencyResult",
+        "infer_runtime_mavg_resident_page_frequencies",
+        "inferred_resident_page_frequency",
+        "runtime_inferred_frequency_eviction_candidate_count",
+        "inferred_frequency_eviction_policy",
+        "previous_frequency_rows",
+        "frequency_counter_overflow"
+    )) {
+    Assert-ContainsText $runtimeMavgPageStreamingHeaderText $needle "engine/runtime/include/mirakana/runtime/mavg_page_streaming.hpp MAVG runtime-inferred frequency evidence"
+}
+foreach ($needle in @(
+        "uses_frequency_eviction_order",
+        "RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::runtime_inferred_frequency",
+        "copy_frequency_evidence",
+        "find_frequency_row",
+        "result.inferred_frequency_eviction_policy = true",
+        "result.runtime_inferred_frequency_eviction_candidate_count = eviction_candidates.size()",
+        "RuntimeMavgPageStreamingDiagnosticCode::frequency_counter_overflow"
+    )) {
+    Assert-ContainsText $runtimeMavgPageStreamingSourceText $needle "engine/runtime/src/mavg_page_streaming.cpp MAVG runtime-inferred frequency evidence"
+}
+foreach ($needle in @(
         "runtime mavg page streaming planner coalesces nonresident requests deterministically",
         "runtime mavg page streaming planner applies deterministic max page budget",
         "runtime mavg page streaming dispatch planner builds safe point rows deterministically",
@@ -61,6 +86,15 @@ foreach ($needle in @(
         "runtime mavg page streaming executes one queued row through reviewed safe point"
     )) {
     Assert-ContainsText $runtimeMavgPageStreamingTestsText $needle "tests/unit/runtime_mavg_page_streaming_tests.cpp"
+}
+foreach ($needle in @(
+        "runtime mavg page streaming runtime inferred frequency policy orders least selected unprotected pages first",
+        "runtime mavg page streaming runtime inferred frequency policy evicts cold residents first",
+        "runtime mavg page streaming runtime inferred frequency policy rejects counter overflow",
+        "runtime mavg page streaming frequency inference drops nonresident rows and deduplicates selected pages",
+        "runtime mavg page streaming frequency inference rejects duplicate previous rows"
+    )) {
+    Assert-ContainsText $runtimeMavgPageStreamingTestsText $needle "tests/unit/runtime_mavg_page_streaming_tests.cpp MAVG runtime-inferred frequency coverage"
 }
 
 foreach ($needle in @(
@@ -139,6 +173,9 @@ foreach ($surface in @(
     foreach ($needle in @("mavg_page_streaming.hpp", "RuntimeMavgPageStreamingPlanResult", "RuntimeMavgPageStreamingEvictionReviewResult", "RuntimeMavgPageStreamingDispatchPlan", "review_runtime_mavg_page_streaming_evictions", "plan_runtime_mavg_page_streaming_dispatches", "execute_runtime_mavg_page_streaming_request_safe_point", "autonomous background")) {
         Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG page streaming queue evidence"
     }
+    foreach ($needle in @("mavg-runtime-inferred-frequency-eviction-policy-v1", "RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::runtime_inferred_frequency", "RuntimeMavgPageStreamingFrequencyRow", "RuntimeMavgResidentPageFrequencyDesc", "RuntimeMavgResidentPageFrequencyResult", "infer_runtime_mavg_resident_page_frequencies", "inferred_frequency_eviction_policy", "runtime_inferred_frequency_eviction_candidate_count", "frequency_counter_overflow")) {
+        Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG runtime-inferred frequency evidence"
+    }
     foreach ($needle in @("mavg_cluster_payload.hpp", "MavgClusterPayloadDocument", "page.data_hex", "mavg_payload_pages.hpp", "RuntimeMavgPayloadPageSliceResult", "extract_runtime_mavg_payload_page_slices", "RuntimeMavgPayloadPageFileLoadResult", "load_runtime_mavg_payload_file_pages", "read_byte_range", "used_native_directstorage", "DirectStorage/Win32")) {
         Assert-ContainsText $surface.Text $needle "$($surface.Label) MAVG page-addressable payload schema evidence"
     }
@@ -165,6 +202,15 @@ foreach ($needle in @(
     "plan_runtime_mavg_page_streaming_dispatches",
     "review_runtime_mavg_page_streaming_evictions",
     "execute_runtime_mavg_page_streaming_request_safe_point",
+    "MAVG Runtime-Inferred Frequency Eviction Policy v1",
+    "RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::runtime_inferred_frequency",
+    "RuntimeMavgPageStreamingFrequencyRow",
+    "RuntimeMavgResidentPageFrequencyDesc",
+    "RuntimeMavgResidentPageFrequencyResult",
+    "infer_runtime_mavg_resident_page_frequencies",
+    "inferred_frequency_eviction_policy",
+    "runtime_inferred_frequency_eviction_candidate_count",
+    "frequency_counter_overflow",
     "autonomous background"
     )) {
     Assert-ContainsText $runtimeManifestText $needle "engine/agent/manifest.json MK_runtime MAVG page streaming queue evidence"
