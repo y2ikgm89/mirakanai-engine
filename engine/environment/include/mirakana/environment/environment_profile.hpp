@@ -41,6 +41,26 @@ enum class EnvironmentPrecipitationKind : std::uint8_t {
     dust,
 };
 
+enum class EnvironmentQualityPreset : std::uint8_t {
+    low = 0,
+    medium,
+    high,
+    ultra,
+    custom,
+};
+
+enum class EnvironmentVolumeShape : std::uint8_t {
+    global = 0,
+    box,
+    sphere,
+};
+
+enum class EnvironmentVolumeBlendMode : std::uint8_t {
+    weighted_override = 0,
+    additive_density,
+    subtractive_density,
+};
+
 enum class EnvironmentProfileValidationStatus : std::uint8_t {
     valid = 0,
     invalid,
@@ -55,6 +75,8 @@ enum class EnvironmentProfileDiagnosticCode : std::uint8_t {
     invalid_direction,
     invalid_scalar,
     invalid_color,
+    invalid_volume_shape,
+    invalid_volume_fade,
 };
 
 struct EnvironmentSunMoonDesc {
@@ -112,6 +134,36 @@ struct EnvironmentProfileDesc {
     EnvironmentPrecipitationDesc precipitation{};
 };
 
+struct EnvironmentVolumeDesc {
+    std::string id;
+    EnvironmentVolumeShape shape{EnvironmentVolumeShape::global};
+    Vec3 center_m{.x = 0.0F, .y = 0.0F, .z = 0.0F};
+    Vec3 extents_m{.x = 1.0F, .y = 1.0F, .z = 1.0F};
+    float radius_m{1.0F};
+    std::int32_t priority{0};
+    float blend_weight{1.0F};
+    float fade_distance_m{0.0F};
+    EnvironmentVolumeBlendMode blend_mode{EnvironmentVolumeBlendMode::weighted_override};
+    EnvironmentProfileDesc profile{};
+};
+
+struct EnvironmentWeatherKeyframeDesc {
+    float time_of_day_hours{0.0F};
+    EnvironmentWeatherKind weather{EnvironmentWeatherKind::clear};
+    EnvironmentPrecipitationKind precipitation{EnvironmentPrecipitationKind::none};
+    float storm_intensity{0.0F};
+    float cloud_coverage{0.0F};
+    float fog_density{0.0F};
+    EnvironmentQualityPreset quality_preset{EnvironmentQualityPreset::medium};
+};
+
+struct EnvironmentProfileDocumentV2 {
+    EnvironmentProfileDesc global_profile{};
+    std::vector<EnvironmentVolumeDesc> volumes;
+    std::vector<EnvironmentWeatherKeyframeDesc> weather_timeline;
+    EnvironmentQualityPreset quality_preset{EnvironmentQualityPreset::medium};
+};
+
 struct EnvironmentProfileDiagnostic {
     EnvironmentProfileDiagnosticCode code{EnvironmentProfileDiagnosticCode::none};
     std::uint32_t profile_index{0U};
@@ -128,11 +180,17 @@ struct EnvironmentProfileValidationResult {
 };
 
 [[nodiscard]] EnvironmentProfileValidationResult validate_environment_profile(const EnvironmentProfileDesc& desc);
+[[nodiscard]] EnvironmentProfileValidationResult
+validate_environment_profile_v2(const EnvironmentProfileDocumentV2& desc);
 
 [[nodiscard]] EnvironmentProfileValidationResult
 validate_environment_profiles(std::span<const EnvironmentProfileDesc> profiles);
 
 [[nodiscard]] bool is_valid_environment_profile(const EnvironmentProfileDesc& desc) noexcept;
+
+[[nodiscard]] std::vector<EnvironmentVolumeDesc>
+sorted_environment_volume_rows(const EnvironmentProfileDocumentV2& desc);
+[[nodiscard]] std::uint64_t environment_volume_blend_hash(std::span<const EnvironmentVolumeDesc> volumes) noexcept;
 
 [[nodiscard]] bool has_environment_profile_diagnostic(const EnvironmentProfileValidationResult& result,
                                                       EnvironmentProfileDiagnosticCode code) noexcept;

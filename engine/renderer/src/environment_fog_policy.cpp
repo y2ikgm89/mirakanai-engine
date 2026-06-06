@@ -120,6 +120,10 @@ bool EnvironmentFogPolicyPlan::succeeded() const noexcept {
     return diagnostics.empty();
 }
 
+bool EnvironmentFogPolicyPlan::ready() const noexcept {
+    return status == EnvironmentFogPolicyStatus::ready;
+}
+
 void pack_environment_fog_constants(std::span<std::uint8_t> dst, const EnvironmentFogPolicyDesc& desc) {
     if (dst.size() < environment_fog_constants_byte_size()) {
         throw std::invalid_argument("environment fog constants destination is too small");
@@ -144,11 +148,14 @@ void pack_environment_fog_constants(std::span<std::uint8_t> dst, const Environme
 
 EnvironmentFogPolicyPlan plan_environment_fog_policy(const EnvironmentFogPolicyDesc& desc) {
     EnvironmentFogPolicyPlan plan{
+        .status = EnvironmentFogPolicyStatus::planned,
         .mode = desc.mode,
         .requires_scene_depth = is_active_fog_mode(desc.mode),
         .scene_depth_available = desc.scene_depth_available,
         .requires_shader_contract_evidence = is_active_fog_mode(desc.mode),
         .shader_contract_evidence_ready = desc.shader_contract_evidence_ready,
+        .execution_evidence_ready = desc.execution_evidence_ready,
+        .package_evidence_ready = desc.package_evidence_ready,
     };
 
     if (!is_supported_mode(desc.mode)) {
@@ -204,6 +211,14 @@ EnvironmentFogPolicyPlan plan_environment_fog_policy(const EnvironmentFogPolicyD
         add_diagnostic(plan, EnvironmentFogDiagnosticCode::missing_shader_contract_evidence,
                        "shader_contract_evidence_ready", "environment fog requires validated shader contract evidence");
     }
+    if (desc.request_ready_promotion && !desc.execution_evidence_ready) {
+        add_diagnostic(plan, EnvironmentFogDiagnosticCode::missing_execution_evidence, "execution_evidence_ready",
+                       "environment fog ready promotion requires selected backend execution evidence");
+    }
+    if (desc.request_ready_promotion && !desc.package_evidence_ready) {
+        add_diagnostic(plan, EnvironmentFogDiagnosticCode::missing_package_evidence, "package_evidence_ready",
+                       "environment fog ready promotion requires packaged shader/runtime smoke evidence");
+    }
     if (desc.request_volumetric_fog) {
         add_diagnostic(plan, EnvironmentFogDiagnosticCode::unsupported_volumetric_fog, "request_volumetric_fog",
                        "environment fog policy does not allocate froxel or volumetric fog resources in this slice");
@@ -216,6 +231,12 @@ EnvironmentFogPolicyPlan plan_environment_fog_policy(const EnvironmentFogPolicyD
         add_diagnostic(plan, EnvironmentFogDiagnosticCode::unsupported_native_handle_claim,
                        "request_native_handle_access",
                        "environment fog policy planning must not expose native renderer or RHI handles");
+    }
+
+    if (!plan.succeeded()) {
+        plan.status = EnvironmentFogPolicyStatus::blocked;
+    } else if (desc.request_ready_promotion && desc.execution_evidence_ready && desc.package_evidence_ready) {
+        plan.status = EnvironmentFogPolicyStatus::ready;
     }
 
     if (plan.requires_shader_contract_evidence) {

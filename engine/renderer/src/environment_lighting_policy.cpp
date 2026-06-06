@@ -103,6 +103,16 @@ void validate_reflection_cubemap(EnvironmentLightingPolicyPlan& plan, const Envi
                        "reflection_cubemap.package_evidence_ready",
                        "environment lighting requires package-visible cooked texture evidence");
     }
+    if (!cubemap.package_record_ready) {
+        add_diagnostic(plan, EnvironmentLightingDiagnosticCode::missing_package_record,
+                       "reflection_cubemap.package_record_ready",
+                       "environment lighting requires a cooked package index texture record for IBL inputs");
+    }
+    if (!cubemap.package_source_ready) {
+        add_diagnostic(plan, EnvironmentLightingDiagnosticCode::missing_package_source,
+                       "reflection_cubemap.package_source_ready",
+                       "environment lighting requires first-party cooked texture source metadata for IBL inputs");
+    }
 }
 
 void validate_irradiance(EnvironmentLightingPolicyPlan& plan, const EnvironmentIrradianceDesc& irradiance) {
@@ -138,6 +148,44 @@ void validate_hdr_clamp(EnvironmentLightingPolicyPlan& plan, const EnvironmentHd
     }
 }
 
+[[nodiscard]] bool valid_renderer_upload_evidence(const EnvironmentLightingRendererUploadEvidenceDesc& evidence,
+                                                  const EnvironmentReflectionCubemapDesc& cubemap,
+                                                  const EnvironmentRadianceDesc& radiance,
+                                                  const EnvironmentIrradianceDesc& irradiance) noexcept {
+    return evidence.evidence_ready && evidence.texture_cube_uploads > 0U &&
+           evidence.texture_cube_faces == cubemap_face_count && evidence.texture_cube_edge_size == cubemap.edge_size &&
+           evidence.radiance_mips == radiance.mip_count && evidence.irradiance_rows == irradiance.coefficient_count &&
+           evidence.shader_sampling_proven && evidence.shader_sample_readback_nonzero;
+}
+
+void validate_renderer_upload_evidence(EnvironmentLightingPolicyPlan& plan, const EnvironmentLightingPolicyDesc& desc) {
+    if (!desc.request_backend_execution) {
+        return;
+    }
+    if (!valid_renderer_upload_evidence(desc.renderer_upload, desc.reflection_cubemap, desc.radiance,
+                                        desc.irradiance)) {
+        add_diagnostic(plan, EnvironmentLightingDiagnosticCode::missing_renderer_upload_evidence, "renderer_upload",
+                       "environment lighting backend execution requires texture cube upload, TextureCube SRV, "
+                       "radiance, irradiance, and shader-readable readback evidence");
+    }
+}
+
+[[nodiscard]] bool
+valid_runtime_capture_evidence(const EnvironmentLightingRuntimeCaptureEvidenceDesc& evidence) noexcept {
+    return evidence.evidence_ready && evidence.capture_faces == cubemap_face_count && evidence.readback_nonzero &&
+           evidence.readback_checksum != 0U;
+}
+
+void validate_runtime_capture_evidence(EnvironmentLightingPolicyPlan& plan, const EnvironmentLightingPolicyDesc& desc) {
+    if (!desc.request_runtime_capture) {
+        return;
+    }
+    if (!valid_runtime_capture_evidence(desc.runtime_capture)) {
+        add_diagnostic(plan, EnvironmentLightingDiagnosticCode::missing_runtime_capture_evidence, "runtime_capture",
+                       "environment lighting runtime capture requires six-face capture and non-zero readback evidence");
+    }
+}
+
 void append_reflection_cubemap_row(EnvironmentLightingPolicyPlan& plan,
                                    const EnvironmentReflectionCubemapDesc& cubemap) {
     plan.reflection_cubemap_rows.push_back(EnvironmentReflectionCubemapRow{
@@ -147,6 +195,8 @@ void append_reflection_cubemap_row(EnvironmentLightingPolicyPlan& plan,
         .mip_count = cubemap.mip_count,
         .format = cubemap.format,
         .hdr_metadata_ready = cubemap.hdr_metadata_ready,
+        .package_record_ready = cubemap.package_record_ready,
+        .package_source_ready = cubemap.package_source_ready,
         .package_evidence_ready = cubemap.package_evidence_ready,
     });
 }
@@ -180,7 +230,12 @@ void append_package_evidence_row(EnvironmentLightingPolicyPlan& plan, const Envi
     plan.package_evidence_rows.push_back(EnvironmentLightingPackageEvidenceRow{
         .asset = cubemap.asset,
         .evidence_kind = "first_party_cooked_texture_hdr_metadata",
-        .ready = cubemap.package_evidence_ready && cubemap.hdr_metadata_ready,
+        .package_record_ready = cubemap.package_record_ready,
+        .package_source_ready = cubemap.package_source_ready,
+        .hdr_metadata_ready = cubemap.hdr_metadata_ready,
+        .renderer_upload_evidence_ready = plan.renderer_upload_evidence_ready,
+        .ready = cubemap.package_evidence_ready && cubemap.package_record_ready && cubemap.package_source_ready &&
+                 cubemap.hdr_metadata_ready,
     });
 }
 
@@ -217,20 +272,13 @@ EnvironmentLightingPolicyPlan plan_environment_lighting_policy(const Environment
     validate_irradiance(plan, desc.irradiance);
     validate_radiance(plan, desc.radiance, desc.reflection_cubemap);
     validate_hdr_clamp(plan, desc.hdr_clamp);
+    validate_renderer_upload_evidence(plan, desc);
+    validate_runtime_capture_evidence(plan, desc);
 
     if (desc.request_coupled_visual_and_lighting_sky) {
         add_diagnostic(plan, EnvironmentLightingDiagnosticCode::unsupported_visual_lighting_coupling,
                        "request_coupled_visual_and_lighting_sky",
                        "environment lighting keeps visual sky and lighting source independently declared");
-    }
-    if (desc.request_runtime_capture) {
-        add_diagnostic(plan, EnvironmentLightingDiagnosticCode::unsupported_runtime_capture, "request_runtime_capture",
-                       "environment lighting policy planning must not capture cubemaps at runtime in this slice");
-    }
-    if (desc.request_backend_execution) {
-        add_diagnostic(plan, EnvironmentLightingDiagnosticCode::unsupported_backend_execution,
-                       "request_backend_execution",
-                       "environment lighting policy planning must not invoke renderer or RHI backends in this slice");
     }
     if (desc.request_native_handle_access) {
         add_diagnostic(plan, EnvironmentLightingDiagnosticCode::unsupported_native_handle_claim,
@@ -239,6 +287,31 @@ EnvironmentLightingPolicyPlan plan_environment_lighting_policy(const Environment
     }
 
     if (plan.succeeded()) {
+        if (desc.request_backend_execution) {
+            plan.allocates_textures = true;
+            plan.invokes_backend = true;
+            plan.renderer_upload_evidence_ready = true;
+            plan.texture_uploads = desc.renderer_upload.texture_cube_uploads;
+            plan.texture_cube_uploads = desc.renderer_upload.texture_cube_uploads;
+            plan.texture_cube_faces = desc.renderer_upload.texture_cube_faces;
+            plan.texture_cube_edge_size = desc.renderer_upload.texture_cube_edge_size;
+            plan.renderer_radiance_mips = desc.renderer_upload.radiance_mips;
+            plan.renderer_irradiance_rows = desc.renderer_upload.irradiance_rows;
+            plan.shader_sampling_proven = desc.renderer_upload.shader_sampling_proven;
+            plan.shader_sample_readback_nonzero = desc.renderer_upload.shader_sample_readback_nonzero;
+            plan.backend_invocations = 1U;
+        }
+        if (desc.request_runtime_capture) {
+            plan.invokes_backend = true;
+            plan.runtime_capture_evidence_ready = true;
+            plan.runtime_captures = 1U;
+            plan.runtime_capture_faces = desc.runtime_capture.capture_faces;
+            plan.runtime_capture_readback_nonzero = desc.runtime_capture.readback_nonzero;
+            plan.runtime_capture_readback_checksum = desc.runtime_capture.readback_checksum;
+            if (plan.backend_invocations == 0U) {
+                plan.backend_invocations = 1U;
+            }
+        }
         append_reflection_cubemap_row(plan, desc.reflection_cubemap);
         append_irradiance_rows(plan, desc.irradiance);
         append_radiance_rows(plan, desc.radiance, desc.reflection_cubemap);
