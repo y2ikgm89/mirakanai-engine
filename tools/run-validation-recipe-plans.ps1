@@ -181,6 +181,13 @@ function Get-ValidationRecipeCommandPlan {
         $diagD3dVolumetricCloudExecution = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'D3D12 volumetric cloud renderer execution validation is restricted to the reviewed sample_desktop_runtime_game D3D12 package lane and proves volume texture upload, backend invocation, renderer draw, raymarch, and readback counters without claiming Vulkan, Metal, backend parity, broad optimization, or broad environment_ready.' -ValidationRecipe $RecipeName -HostGate 'd3d12-windows-primary'
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('d3d12-windows-primary') -RequiredAcknowledgements @('d3d12-windows-primary') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12') -Diagnostics @($diagD3dVolumetricCloudExecution)
     }
+    elseif ($RecipeName -eq 'desktop-runtime-sample-game-vulkan-volumetric-cloud-renderer-execution') {
+        $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
+        $smokeTail = @(Get-SampleDesktopRuntimeGameVulkanVolumetricCloudRendererExecutionSmokeArgs)
+        $pwEntry = Get-DesktopRuntimePackageCommandPlan -ScriptPath $packageScript -GameTarget $target -RequireVulkanShaders -SmokeArgs $smokeTail
+        $diagVulkanVolumetricCloudExecution = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'Strict Vulkan volumetric cloud renderer execution validation is restricted to the reviewed sample_desktop_runtime_game Vulkan package lane with --require-environment-volumetric-cloud-vulkan-renderer-execution and proves SPIR-V vertex/fragment shader artifacts, shifted descriptor bindings, descriptor-set binding evidence, synchronization2 image-barrier evidence, volume texture uploads, renderer draw, raymarch, readback, and zero native-handle/audio/precipitation counters without claiming D3D12 by inference, Metal, backend parity, broad optimization, or broad environment_ready.' -ValidationRecipe $RecipeName -HostGate 'vulkan-strict'
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('vulkan-strict') -RequiredAcknowledgements @('vulkan-strict') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'Vulkan') -Diagnostics @($diagVulkanVolumetricCloudExecution)
+    }
     elseif ($RecipeName -eq 'desktop-runtime-sample-game-environment-lighting-package') {
         $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
         $smokeTail = @(Get-SampleDesktopRuntimeGameEnvironmentLightingSmokeArgs)
