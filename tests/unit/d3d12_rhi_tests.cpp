@@ -10010,6 +10010,9 @@ MK_TEST("d3d12 rhi memory diagnostics reports committed resource bytes and optio
     const auto mem = device->memory_diagnostics();
     MK_REQUIRE(mem.committed_resources_byte_estimate_available);
     MK_REQUIRE(mem.committed_resources_byte_estimate >= 2048U);
+    if (mem.os_video_memory_budget_available) {
+        MK_REQUIRE(mem.local_video_memory_budget_bytes > 0U);
+    }
 }
 
 int main() {

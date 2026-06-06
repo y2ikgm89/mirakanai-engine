@@ -4,13 +4,16 @@
 #include "test_framework.hpp"
 
 #include "mirakana/assets/material.hpp"
+#include "mirakana/assets/mavg_cluster_graph.hpp"
 #include "mirakana/renderer/frame_graph.hpp"
 #include "mirakana/renderer/frame_graph_rhi.hpp"
 #include "mirakana/rhi/rhi.hpp"
 #include "mirakana/rhi/upload_staging.hpp"
 #include "mirakana/runtime/asset_runtime.hpp"
+#include "mirakana/runtime/mavg_page_streaming.hpp"
 #include "mirakana/runtime/package_streaming.hpp"
 #include "mirakana/runtime/resource_runtime.hpp"
+#include "mirakana/runtime_rhi/mavg_gpu_memory_pressure.hpp"
 #include "mirakana/runtime_rhi/package_streaming_frame_graph.hpp"
 #include "mirakana/runtime_rhi/runtime_upload.hpp"
 
@@ -214,7 +217,385 @@ make_runtime_morph_mesh_payload(mirakana::AssetId morph_asset, mirakana::runtime
     };
 }
 
+[[nodiscard]] mirakana::MavgClusterGraphDocument make_mavg_pressure_graph() {
+    const auto graph_asset = mirakana::AssetId::from_name("mavg/runtime-rhi-pressure");
+    const auto source_mesh = mirakana::AssetId::from_name("meshes/runtime-rhi-pressure-source");
+    const auto material = mirakana::AssetId::from_name("materials/runtime-rhi-pressure-material");
+
+    return mirakana::MavgClusterGraphDocument{
+        .asset = graph_asset,
+        .source_mesh = source_mesh,
+        .source_mesh_uri = "source/runtime-rhi-pressure.glb",
+        .cluster_payload_uri = "runtime/runtime-rhi-pressure.mavg_payload",
+        .target_cluster_triangles = 2,
+        .page_size_bytes = 4096,
+        .pages =
+            {
+                mirakana::MavgClusterGraphPage{
+                    .page_index = 0, .byte_offset = 0, .byte_size = 256, .first_cluster = 0, .cluster_count = 1},
+                mirakana::MavgClusterGraphPage{
+                    .page_index = 1, .byte_offset = 256, .byte_size = 256, .first_cluster = 1, .cluster_count = 1},
+                mirakana::MavgClusterGraphPage{
+                    .page_index = 2, .byte_offset = 512, .byte_size = 256, .first_cluster = 2, .cluster_count = 1},
+            },
+        .material_partitions =
+            {
+                mirakana::MavgClusterGraphMaterialPartition{
+                    .material = material, .first_cluster = 0, .cluster_count = 3},
+            },
+        .clusters =
+            {
+                mirakana::MavgClusterGraphCluster{
+                    .cluster_index = 0,
+                    .page_index = 0,
+                    .local_cluster_index = 0,
+                    .lod_level = 0,
+                    .triangle_count = 2,
+                    .vertex_count = 4,
+                    .bounds = mirakana::MavgBounds3f{.min = mirakana::MavgVec3f{.x = -1.0F, .y = -1.0F, .z = -1.0F},
+                                                     .max = mirakana::MavgVec3f{.x = 1.0F, .y = 1.0F, .z = 1.0F}},
+                    .material_partition = 0,
+                    .parent_cluster_index = 0,
+                    .has_parent = false,
+                    .resident_fallback_cluster_index = 0,
+                    .geometric_error = 8.0F,
+                    .first_index = 0,
+                    .index_count = 6,
+                    .vertex_base = 0,
+                    .children = {1, 2},
+                },
+                mirakana::MavgClusterGraphCluster{
+                    .cluster_index = 1,
+                    .page_index = 1,
+                    .local_cluster_index = 0,
+                    .lod_level = 1,
+                    .triangle_count = 1,
+                    .vertex_count = 3,
+                    .bounds = mirakana::MavgBounds3f{.min = mirakana::MavgVec3f{.x = -1.0F, .y = -1.0F, .z = 0.0F},
+                                                     .max = mirakana::MavgVec3f{.x = 0.0F, .y = 1.0F, .z = 1.0F}},
+                    .material_partition = 0,
+                    .parent_cluster_index = 0,
+                    .has_parent = true,
+                    .resident_fallback_cluster_index = 0,
+                    .geometric_error = 1.0F,
+                    .first_index = 6,
+                    .index_count = 3,
+                    .vertex_base = 4,
+                    .children = {},
+                },
+                mirakana::MavgClusterGraphCluster{
+                    .cluster_index = 2,
+                    .page_index = 2,
+                    .local_cluster_index = 0,
+                    .lod_level = 1,
+                    .triangle_count = 1,
+                    .vertex_count = 3,
+                    .bounds = mirakana::MavgBounds3f{.min = mirakana::MavgVec3f{.x = 0.0F, .y = -1.0F, .z = 0.0F},
+                                                     .max = mirakana::MavgVec3f{.x = 1.0F, .y = 1.0F, .z = 1.0F}},
+                    .material_partition = 0,
+                    .parent_cluster_index = 0,
+                    .has_parent = true,
+                    .resident_fallback_cluster_index = 0,
+                    .geometric_error = 1.0F,
+                    .first_index = 9,
+                    .index_count = 3,
+                    .vertex_base = 7,
+                    .children = {},
+                },
+            },
+    };
+}
+
+void mount_mavg_pressure_page(mirakana::runtime::RuntimeResidentPackageMountSetV2& mount_set, std::uint32_t mount_id,
+                              mirakana::AssetId asset, std::string_view content) {
+    MK_REQUIRE(mount_set
+                   .mount(mirakana::runtime::RuntimeResidentPackageMountRecordV2{
+                       .id = mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = mount_id},
+                       .label = "mavg-pressure-page-" + std::to_string(mount_id),
+                       .package = mirakana::runtime::RuntimeAssetPackage({mirakana::runtime::RuntimeAssetRecord{
+                           .handle = mirakana::runtime::RuntimeAssetHandle{.value = mount_id},
+                           .asset = asset,
+                           .kind = mirakana::AssetKind::mesh,
+                           .path = "runtime/mavg/pressure-" + std::to_string(mount_id) + ".geasset",
+                           .content_hash = asset.value + mount_id,
+                           .source_revision = mount_id,
+                           .dependencies = {},
+                           .content = std::string(content),
+                       }}),
+                   })
+                   .succeeded());
+}
+
+[[nodiscard]] bool has_diagnostic(const mirakana::runtime_rhi::RuntimeMavgDxgiGpuMemoryPressureEvidenceResult& result,
+                                  mirakana::runtime_rhi::RuntimeMavgGpuMemoryPressureEvidenceDiagnosticCode code) {
+    for (const auto& diagnostic : result.diagnostics) {
+        if (diagnostic.code == code) {
+            return true;
+        }
+    }
+    return false;
+}
+
 } // namespace
+
+MK_TEST("runtime rhi mavg dxgi gpu memory pressure builds rows from d3d12 budget evidence") {
+    const auto graph = make_mavg_pressure_graph();
+    const std::vector<mirakana::runtime::RuntimeMavgResidentPageMountRow> page_mounts{
+        {.graph_asset = graph.asset, .page_index = 2, .mount_id = {.value = 12}},
+        {.graph_asset = graph.asset, .page_index = 0, .mount_id = {.value = 10}},
+        {.graph_asset = graph.asset, .page_index = 1, .mount_id = {.value = 11}},
+    };
+    const std::vector<mirakana::runtime_rhi::RuntimeMavgResidentPageGpuMemoryEstimateRow> estimates{
+        {.graph_asset = graph.asset, .page_index = 0, .mount_id = {.value = 10}, .estimated_gpu_resident_bytes = 256},
+        {.graph_asset = graph.asset, .page_index = 1, .mount_id = {.value = 11}, .estimated_gpu_resident_bytes = 768},
+        {.graph_asset = graph.asset, .page_index = 2, .mount_id = {.value = 12}, .estimated_gpu_resident_bytes = 512},
+    };
+    const mirakana::rhi::RhiDeviceMemoryDiagnostics memory{
+        .os_video_memory_budget_available = true,
+        .local_video_memory_budget_bytes = 1000,
+        .local_video_memory_usage_bytes = 875,
+        .non_local_video_memory_budget_bytes = 2000,
+        .non_local_video_memory_usage_bytes = 250,
+        .committed_resources_byte_estimate_available = true,
+        .committed_resources_byte_estimate = 1536,
+    };
+
+    const auto result = mirakana::runtime_rhi::build_runtime_mavg_dxgi_gpu_memory_pressure_rows(
+        mirakana::runtime_rhi::RuntimeMavgDxgiGpuMemoryPressureEvidenceDesc{
+            .graph_asset = graph.asset,
+            .backend = mirakana::rhi::BackendKind::d3d12,
+            .memory = memory,
+            .resident_page_mounts = page_mounts,
+            .estimated_pages = estimates,
+        });
+
+    MK_REQUIRE(result.succeeded());
+    MK_REQUIRE(result.used_dxgi_video_memory_budget_evidence);
+    MK_REQUIRE(result.produced_gpu_memory_pressure_rows);
+    MK_REQUIRE(result.input_resident_page_mount_count == 3U);
+    MK_REQUIRE(result.input_estimated_page_count == 3U);
+    MK_REQUIRE(result.output_pressure_row_count == 3U);
+    MK_REQUIRE(result.local_video_memory_budget_bytes == 1000U);
+    MK_REQUIRE(result.local_video_memory_usage_bytes == 875U);
+    MK_REQUIRE(result.local_video_memory_pressure_score > 0U);
+    MK_REQUIRE(result.estimated_gpu_resident_bytes == 1536U);
+    MK_REQUIRE(result.pressure_rows.size() == 3U);
+    MK_REQUIRE(result.pressure_rows[0].page_index == 0U);
+    MK_REQUIRE(result.pressure_rows[0].eviction_pressure_score == result.local_video_memory_pressure_score);
+    MK_REQUIRE(result.pressure_rows[0].estimated_gpu_resident_bytes == 256U);
+    MK_REQUIRE(result.pressure_rows[1].page_index == 1U);
+    MK_REQUIRE(result.pressure_rows[1].estimated_gpu_resident_bytes == 768U);
+    MK_REQUIRE(result.pressure_rows[2].page_index == 2U);
+    MK_REQUIRE(result.pressure_rows[2].estimated_gpu_resident_bytes == 512U);
+    MK_REQUIRE(!result.invoked_file_io);
+    MK_REQUIRE(!result.mutated_mount_set);
+    MK_REQUIRE(!result.touched_renderer_or_rhi_handles);
+    MK_REQUIRE(!result.enforced_gpu_residency);
+    MK_REQUIRE(!result.reserved_video_memory);
+}
+
+MK_TEST("runtime rhi mavg dxgi gpu memory pressure rows feed mavg eviction ordering") {
+    const auto graph = make_mavg_pressure_graph();
+    mirakana::runtime::RuntimeResidentPackageMountSetV2 mount_set;
+    mount_mavg_pressure_page(mount_set, 10, mirakana::AssetId::from_name("mavg/pressure/page-0"), "root");
+    mount_mavg_pressure_page(mount_set, 11, mirakana::AssetId::from_name("mavg/pressure/page-1"), "large");
+    mount_mavg_pressure_page(mount_set, 12, mirakana::AssetId::from_name("mavg/pressure/page-2"), "small");
+
+    const std::vector<mirakana::runtime::RuntimeMavgResidentPageMountRow> page_mounts{
+        {.graph_asset = graph.asset, .page_index = 0, .mount_id = {.value = 10}},
+        {.graph_asset = graph.asset, .page_index = 1, .mount_id = {.value = 11}},
+        {.graph_asset = graph.asset, .page_index = 2, .mount_id = {.value = 12}},
+    };
+    const std::vector<mirakana::runtime::RuntimeMavgPageStreamingSelectedClusterRow> selected_clusters{
+        {.graph_asset = graph.asset, .cluster_index = 0},
+    };
+    const std::vector<mirakana::runtime_rhi::RuntimeMavgResidentPageGpuMemoryEstimateRow> estimates{
+        {.graph_asset = graph.asset, .page_index = 0, .mount_id = {.value = 10}, .estimated_gpu_resident_bytes = 128},
+        {.graph_asset = graph.asset, .page_index = 1, .mount_id = {.value = 11}, .estimated_gpu_resident_bytes = 1024},
+        {.graph_asset = graph.asset, .page_index = 2, .mount_id = {.value = 12}, .estimated_gpu_resident_bytes = 256},
+    };
+    const auto evidence = mirakana::runtime_rhi::build_runtime_mavg_dxgi_gpu_memory_pressure_rows(
+        mirakana::runtime_rhi::RuntimeMavgDxgiGpuMemoryPressureEvidenceDesc{
+            .graph_asset = graph.asset,
+            .backend = mirakana::rhi::BackendKind::d3d12,
+            .memory =
+                mirakana::rhi::RhiDeviceMemoryDiagnostics{
+                    .os_video_memory_budget_available = true,
+                    .local_video_memory_budget_bytes = 1000,
+                    .local_video_memory_usage_bytes = 900,
+                },
+            .resident_page_mounts = page_mounts,
+            .estimated_pages = estimates,
+        });
+    MK_REQUIRE(evidence.succeeded());
+
+    const auto evictions = mirakana::runtime::plan_runtime_mavg_page_streaming_automatic_evictions(
+        mount_set, mirakana::runtime::RuntimeMavgPageStreamingAutomaticEvictionPlanDesc{
+                       .graph_asset = graph.asset,
+                       .graph = &graph,
+                       .selected_clusters = selected_clusters,
+                       .resident_page_mounts = page_mounts,
+                       .policy_kind = mirakana::runtime::RuntimeMavgPageStreamingAutomaticEvictionPolicyKind::
+                           caller_supplied_gpu_memory_pressure,
+                       .gpu_memory_pressure_rows = evidence.pressure_rows,
+                       .target_budget =
+                           mirakana::runtime::RuntimeResourceResidencyBudgetV2{
+                               .max_resident_content_bytes = 4,
+                           },
+                   });
+
+    MK_REQUIRE(evictions.succeeded());
+    MK_REQUIRE(evictions.applied_caller_supplied_gpu_memory_pressure_policy);
+    MK_REQUIRE(evictions.gpu_memory_pressure_eviction_candidate_count == 2U);
+    MK_REQUIRE(evictions.protected_eviction_candidate_skip_count == 1U);
+    MK_REQUIRE(evictions.gpu_memory_pressure_protected_estimated_bytes == 128U);
+    MK_REQUIRE(evictions.gpu_memory_pressure_candidate_estimated_bytes == 1280U);
+    MK_REQUIRE(evictions.eviction_candidate_unmount_order.size() == 2U);
+    MK_REQUIRE(evictions.eviction_candidate_unmount_order[0] ==
+               mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 11});
+    MK_REQUIRE(evictions.eviction_candidate_unmount_order[1] ==
+               mirakana::runtime::RuntimeResidentPackageMountIdV2{.value = 12});
+    MK_REQUIRE(!evictions.touched_renderer_or_rhi_handles);
+}
+
+MK_TEST("runtime rhi mavg dxgi gpu memory pressure requires d3d12 dxgi budget evidence") {
+    const auto graph = make_mavg_pressure_graph();
+    const std::vector<mirakana::runtime::RuntimeMavgResidentPageMountRow> page_mounts{
+        {.graph_asset = graph.asset, .page_index = 0, .mount_id = {.value = 10}},
+    };
+    const std::vector<mirakana::runtime_rhi::RuntimeMavgResidentPageGpuMemoryEstimateRow> estimates{
+        {.graph_asset = graph.asset, .page_index = 0, .mount_id = {.value = 10}, .estimated_gpu_resident_bytes = 256},
+    };
+
+    const auto wrong_backend = mirakana::runtime_rhi::build_runtime_mavg_dxgi_gpu_memory_pressure_rows(
+        mirakana::runtime_rhi::RuntimeMavgDxgiGpuMemoryPressureEvidenceDesc{
+            .graph_asset = graph.asset,
+            .backend = mirakana::rhi::BackendKind::vulkan,
+            .memory =
+                mirakana::rhi::RhiDeviceMemoryDiagnostics{
+                    .os_video_memory_budget_available = true,
+                    .local_video_memory_budget_bytes = 1000,
+                    .local_video_memory_usage_bytes = 500,
+                },
+            .resident_page_mounts = page_mounts,
+            .estimated_pages = estimates,
+        });
+    MK_REQUIRE(!wrong_backend.succeeded());
+    MK_REQUIRE(has_diagnostic(
+        wrong_backend, mirakana::runtime_rhi::RuntimeMavgGpuMemoryPressureEvidenceDiagnosticCode::unsupported_backend));
+    MK_REQUIRE(wrong_backend.pressure_rows.empty());
+
+    const auto missing_budget = mirakana::runtime_rhi::build_runtime_mavg_dxgi_gpu_memory_pressure_rows(
+        mirakana::runtime_rhi::RuntimeMavgDxgiGpuMemoryPressureEvidenceDesc{
+            .graph_asset = graph.asset,
+            .backend = mirakana::rhi::BackendKind::d3d12,
+            .memory = mirakana::rhi::RhiDeviceMemoryDiagnostics{},
+            .resident_page_mounts = page_mounts,
+            .estimated_pages = estimates,
+        });
+    MK_REQUIRE(!missing_budget.succeeded());
+    MK_REQUIRE(has_diagnostic(
+        missing_budget,
+        mirakana::runtime_rhi::RuntimeMavgGpuMemoryPressureEvidenceDiagnosticCode::missing_dxgi_video_memory_budget));
+    MK_REQUIRE(missing_budget.pressure_rows.empty());
+}
+
+MK_TEST("runtime rhi mavg dxgi gpu memory pressure rejects missing estimate rows") {
+    const auto graph = make_mavg_pressure_graph();
+    const std::vector<mirakana::runtime::RuntimeMavgResidentPageMountRow> page_mounts{
+        {.graph_asset = graph.asset, .page_index = 0, .mount_id = {.value = 10}},
+        {.graph_asset = graph.asset, .page_index = 1, .mount_id = {.value = 11}},
+    };
+    const std::vector<mirakana::runtime_rhi::RuntimeMavgResidentPageGpuMemoryEstimateRow> estimates{
+        {.graph_asset = graph.asset, .page_index = 0, .mount_id = {.value = 10}, .estimated_gpu_resident_bytes = 256},
+    };
+
+    const auto result = mirakana::runtime_rhi::build_runtime_mavg_dxgi_gpu_memory_pressure_rows(
+        mirakana::runtime_rhi::RuntimeMavgDxgiGpuMemoryPressureEvidenceDesc{
+            .graph_asset = graph.asset,
+            .backend = mirakana::rhi::BackendKind::d3d12,
+            .memory =
+                mirakana::rhi::RhiDeviceMemoryDiagnostics{
+                    .os_video_memory_budget_available = true,
+                    .local_video_memory_budget_bytes = 1000,
+                    .local_video_memory_usage_bytes = 800,
+                },
+            .resident_page_mounts = page_mounts,
+            .estimated_pages = estimates,
+        });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.missing_estimate_row_count == 1U);
+    MK_REQUIRE(has_diagnostic(
+        result, mirakana::runtime_rhi::RuntimeMavgGpuMemoryPressureEvidenceDiagnosticCode::missing_estimate_row));
+    MK_REQUIRE(result.pressure_rows.empty());
+}
+
+MK_TEST("runtime rhi mavg dxgi gpu memory pressure rejects duplicate estimate rows") {
+    const auto graph = make_mavg_pressure_graph();
+    const std::vector<mirakana::runtime::RuntimeMavgResidentPageMountRow> page_mounts{
+        {.graph_asset = graph.asset, .page_index = 0, .mount_id = {.value = 10}},
+    };
+    const std::vector<mirakana::runtime_rhi::RuntimeMavgResidentPageGpuMemoryEstimateRow> estimates{
+        {.graph_asset = graph.asset, .page_index = 0, .mount_id = {.value = 10}, .estimated_gpu_resident_bytes = 256},
+        {.graph_asset = graph.asset, .page_index = 0, .mount_id = {.value = 10}, .estimated_gpu_resident_bytes = 512},
+    };
+
+    const auto result = mirakana::runtime_rhi::build_runtime_mavg_dxgi_gpu_memory_pressure_rows(
+        mirakana::runtime_rhi::RuntimeMavgDxgiGpuMemoryPressureEvidenceDesc{
+            .graph_asset = graph.asset,
+            .backend = mirakana::rhi::BackendKind::d3d12,
+            .memory =
+                mirakana::rhi::RhiDeviceMemoryDiagnostics{
+                    .os_video_memory_budget_available = true,
+                    .local_video_memory_budget_bytes = 1000,
+                    .local_video_memory_usage_bytes = 800,
+                },
+            .resident_page_mounts = page_mounts,
+            .estimated_pages = estimates,
+        });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.duplicate_estimate_row_count == 1U);
+    MK_REQUIRE(has_diagnostic(
+        result, mirakana::runtime_rhi::RuntimeMavgGpuMemoryPressureEvidenceDiagnosticCode::duplicate_estimate_row));
+    MK_REQUIRE(result.pressure_rows.empty());
+}
+
+MK_TEST("runtime rhi mavg dxgi gpu memory pressure rejects estimated byte overflow") {
+    const auto graph = make_mavg_pressure_graph();
+    const std::vector<mirakana::runtime::RuntimeMavgResidentPageMountRow> page_mounts{
+        {.graph_asset = graph.asset, .page_index = 0, .mount_id = {.value = 10}},
+        {.graph_asset = graph.asset, .page_index = 1, .mount_id = {.value = 11}},
+    };
+    const std::vector<mirakana::runtime_rhi::RuntimeMavgResidentPageGpuMemoryEstimateRow> estimates{
+        {.graph_asset = graph.asset,
+         .page_index = 0,
+         .mount_id = {.value = 10},
+         .estimated_gpu_resident_bytes = std::numeric_limits<std::uint64_t>::max()},
+        {.graph_asset = graph.asset, .page_index = 1, .mount_id = {.value = 11}, .estimated_gpu_resident_bytes = 1},
+    };
+
+    const auto result = mirakana::runtime_rhi::build_runtime_mavg_dxgi_gpu_memory_pressure_rows(
+        mirakana::runtime_rhi::RuntimeMavgDxgiGpuMemoryPressureEvidenceDesc{
+            .graph_asset = graph.asset,
+            .backend = mirakana::rhi::BackendKind::d3d12,
+            .memory =
+                mirakana::rhi::RhiDeviceMemoryDiagnostics{
+                    .os_video_memory_budget_available = true,
+                    .local_video_memory_budget_bytes = 1000,
+                    .local_video_memory_usage_bytes = 800,
+                },
+            .resident_page_mounts = page_mounts,
+            .estimated_pages = estimates,
+        });
+
+    MK_REQUIRE(!result.succeeded());
+    MK_REQUIRE(result.estimated_gpu_resident_byte_overflow);
+    MK_REQUIRE(has_diagnostic(
+        result, mirakana::runtime_rhi::RuntimeMavgGpuMemoryPressureEvidenceDiagnosticCode::estimated_byte_overflow));
+    MK_REQUIRE(result.pressure_rows.empty());
+}
 
 MK_TEST("runtime rhi upload creates texture resource and records byte upload when payload bytes exist") {
     mirakana::rhi::NullRhiDevice device;
