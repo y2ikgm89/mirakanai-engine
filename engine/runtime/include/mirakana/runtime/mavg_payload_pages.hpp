@@ -138,6 +138,7 @@ struct RuntimeMavgPayloadNativeIoDispatchBackendDesc {
     bool require_native_directstorage{true};
     bool enqueue_status_after_requests{true};
     bool signal_fence_after_requests{false};
+    bool use_directstorage_d3d12_buffer_destination{false};
 };
 
 struct RuntimeMavgPayloadNativeIoDispatchDesc;
@@ -242,6 +243,9 @@ struct RuntimeMavgPayloadNativeIoDispatchBackendResult {
     bool signaled_native_fence{false};
     std::uint64_t native_fence_signal_value{0};
     std::uint64_t native_fence_completed_value{0};
+    bool used_directstorage_resource_destination{false};
+    std::size_t directstorage_resource_destination_request_count{0};
+    std::uint64_t directstorage_resource_destination_bytes{0};
     bool used_native_directstorage{false};
     bool used_win32_async_io{false};
     bool executed_background_worker{false};
@@ -264,6 +268,9 @@ struct RuntimeMavgPayloadNativeIoStatusBackendResult {
     bool signaled_native_fence{false};
     std::uint64_t native_fence_signal_value{0};
     std::uint64_t native_fence_completed_value{0};
+    bool used_directstorage_resource_destination{false};
+    std::size_t directstorage_resource_destination_request_count{0};
+    std::uint64_t directstorage_resource_destination_bytes{0};
     bool executed_background_worker{false};
     bool touched_renderer_or_rhi_handles{false};
 
@@ -294,6 +301,7 @@ struct RuntimeMavgPayloadNativeIoDispatchDesc {
     bool require_native_directstorage{true};
     bool enqueue_status_after_requests{true};
     bool signal_fence_after_requests{false};
+    bool use_directstorage_d3d12_buffer_destination{false};
 };
 
 struct RuntimeMavgPayloadNativeIoDispatchResult {
@@ -310,6 +318,9 @@ struct RuntimeMavgPayloadNativeIoDispatchResult {
     bool signaled_native_fence{false};
     std::uint64_t native_fence_signal_value{0};
     std::uint64_t native_fence_completed_value{0};
+    bool used_directstorage_resource_destination{false};
+    std::size_t directstorage_resource_destination_request_count{0};
+    std::uint64_t directstorage_resource_destination_bytes{0};
     bool used_native_directstorage{false};
     bool used_win32_async_io{false};
     bool mutated_mount_set{false};
@@ -338,6 +349,9 @@ struct RuntimeMavgPayloadNativeIoStatusPollResult {
     bool signaled_native_fence{false};
     std::uint64_t native_fence_signal_value{0};
     std::uint64_t native_fence_completed_value{0};
+    bool used_directstorage_resource_destination{false};
+    std::size_t directstorage_resource_destination_request_count{0};
+    std::uint64_t directstorage_resource_destination_bytes{0};
     bool mutated_mount_set{false};
     bool executed_background_worker{false};
     bool touched_renderer_or_rhi_handles{false};

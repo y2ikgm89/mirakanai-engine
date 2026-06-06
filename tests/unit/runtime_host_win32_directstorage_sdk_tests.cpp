@@ -141,6 +141,9 @@ void run_directstorage_file_to_memory_queue_status_execution_test() {
     require(dispatch.submitted_native_queue);
     require(dispatch.enqueued_status_write);
     require(!dispatch.signaled_native_fence);
+    require(!dispatch.used_directstorage_resource_destination);
+    require(dispatch.directstorage_resource_destination_request_count == 0U);
+    require(dispatch.directstorage_resource_destination_bytes == 0U);
     require(dispatch.used_native_directstorage);
     require(!dispatch.used_win32_async_io);
     require(!dispatch.executed_background_worker);
@@ -155,6 +158,9 @@ void run_directstorage_file_to_memory_queue_status_execution_test() {
     require(status.used_native_directstorage);
     require(!status.used_win32_async_io);
     require(!status.signaled_native_fence);
+    require(!status.used_directstorage_resource_destination);
+    require(status.directstorage_resource_destination_request_count == 0U);
+    require(status.directstorage_resource_destination_bytes == 0U);
     require(!status.executed_background_worker);
     require(!status.touched_renderer_or_rhi_handles);
     require(destination[0] == 0xcdU);
@@ -208,6 +214,9 @@ void run_directstorage_fence_signal_execution_test() {
     require(dispatch.signaled_native_fence);
     require(dispatch.native_fence_signal_value != 0U);
     require(dispatch.native_fence_completed_value <= dispatch.native_fence_signal_value);
+    require(!dispatch.used_directstorage_resource_destination);
+    require(dispatch.directstorage_resource_destination_request_count == 0U);
+    require(dispatch.directstorage_resource_destination_bytes == 0U);
     require(!dispatch.touched_renderer_or_rhi_handles);
 
     const auto status = poll_until_complete(dispatcher, dispatch.ticket);
@@ -220,11 +229,74 @@ void run_directstorage_fence_signal_execution_test() {
     require(status.signaled_native_fence);
     require(status.native_fence_signal_value == dispatch.native_fence_signal_value);
     require(status.native_fence_completed_value >= status.native_fence_signal_value);
+    require(!status.used_directstorage_resource_destination);
+    require(status.directstorage_resource_destination_request_count == 0U);
+    require(status.directstorage_resource_destination_bytes == 0U);
     require(!status.touched_renderer_or_rhi_handles);
     require(destination[3] == 0xa0U);
     require(destination[4] == 0xa1U);
     require(destination[5] == 0xa2U);
     require(destination[6] == 0xa3U);
+}
+
+void run_directstorage_d3d12_buffer_destination_execution_test() {
+    ScopedTempDirectory temp;
+    const std::vector<std::uint8_t> source_bytes{0x10U, 0x11U, 0xa0U, 0xa1U, 0xa2U, 0xa3U,
+                                                 0xeeU, 0xefU, 0xb0U, 0xb1U, 0xb2U, 0xb3U};
+    write_binary_file(temp.path / "payload.bin", source_bytes);
+
+    auto request_plan = make_directstorage_request_plan();
+    mirakana::Win32MavgPayloadDirectStorageDispatcher dispatcher{
+        mirakana::Win32MavgPayloadDirectStorageDispatcherDesc{.root_path = temp.path}};
+
+    const auto dispatch = mirakana::runtime::dispatch_runtime_mavg_payload_native_io_requests(
+        mirakana::runtime::RuntimeMavgPayloadNativeIoDispatchDesc{
+            .dispatcher = &dispatcher,
+            .request_plan = &request_plan,
+            .required_backend = mirakana::runtime::RuntimeMavgPayloadNativeIoBackend::directstorage,
+            .submission_tag = 103U,
+            .require_native_directstorage = true,
+            .enqueue_status_after_requests = true,
+            .signal_fence_after_requests = true,
+            .use_directstorage_d3d12_buffer_destination = true,
+        });
+
+    require(dispatch.succeeded());
+    require(dispatch.ticket != 0U);
+    require(dispatch.backend == mirakana::runtime::RuntimeMavgPayloadNativeIoBackend::directstorage);
+    require(dispatch.request_count == 2U);
+    require(dispatch.total_source_bytes == 8U);
+    require(dispatch.total_destination_bytes == 8U);
+    require(dispatch.submitted_io_queue);
+    require(dispatch.enqueued_native_requests);
+    require(dispatch.submitted_native_queue);
+    require(dispatch.enqueued_status_write);
+    require(dispatch.signaled_native_fence);
+    require(dispatch.native_fence_signal_value != 0U);
+    require(dispatch.used_directstorage_resource_destination);
+    require(dispatch.directstorage_resource_destination_request_count == 2U);
+    require(dispatch.directstorage_resource_destination_bytes == 8U);
+    require(dispatch.used_native_directstorage);
+    require(!dispatch.used_win32_async_io);
+    require(!dispatch.executed_background_worker);
+    require(!dispatch.touched_renderer_or_rhi_handles);
+
+    const auto status = poll_until_complete(dispatcher, dispatch.ticket);
+
+    require(status.succeeded());
+    require(status.status == mirakana::runtime::RuntimeMavgPayloadNativeIoStatus::complete);
+    require(status.complete);
+    require(!status.failed);
+    require(status.used_native_directstorage);
+    require(!status.used_win32_async_io);
+    require(status.signaled_native_fence);
+    require(status.native_fence_signal_value == dispatch.native_fence_signal_value);
+    require(status.native_fence_completed_value >= status.native_fence_signal_value);
+    require(status.used_directstorage_resource_destination);
+    require(status.directstorage_resource_destination_request_count == 2U);
+    require(status.directstorage_resource_destination_bytes == 8U);
+    require(!status.executed_background_worker);
+    require(!status.touched_renderer_or_rhi_handles);
 }
 
 void run_directstorage_rejects_unsafe_source_paths_before_factory_test() {
@@ -283,6 +355,7 @@ int main() {
 
     run_directstorage_file_to_memory_queue_status_execution_test();
     run_directstorage_fence_signal_execution_test();
+    run_directstorage_d3d12_buffer_destination_execution_test();
     run_directstorage_rejects_unsafe_source_paths_before_factory_test();
     return 0;
 }

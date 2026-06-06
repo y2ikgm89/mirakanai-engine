@@ -74,6 +74,13 @@ foreach ($needle in @(
         "CreateDXGIFactory2",
         "EnumWarpAdapter",
         "CreateFence",
+        "Microsoft::WRL::ComPtr<ID3D12Resource>",
+        "CreateCommittedResource",
+        "D3D12_RESOURCE_STATE_COPY_DEST",
+        "DSTORAGE_REQUEST_DESTINATION_BUFFER",
+        "use_directstorage_d3d12_buffer_destination",
+        "used_directstorage_resource_destination = true",
+        "directstorage_resource_destination_bytes",
         "reserve_pending_submission",
         "SubmissionReservation",
         "has_root_name()",
@@ -132,6 +139,7 @@ foreach ($needle in @(
         "&DStorageGetFactory",
         "run_directstorage_file_to_memory_queue_status_execution_test",
         "run_directstorage_fence_signal_execution_test",
+        "run_directstorage_d3d12_buffer_destination_execution_test",
         "run_directstorage_rejects_unsafe_source_paths_before_factory_test",
         "Win32MavgPayloadDirectStorageDispatcher",
         "used_native_directstorage",
@@ -141,6 +149,8 @@ foreach ($needle in @(
         "signal_fence_after_requests = true",
         "native_fence_signal_value",
         "native_fence_completed_value",
+        "use_directstorage_d3d12_buffer_destination = true",
+        "used_directstorage_resource_destination",
         "C:payload.bin",
         "payload.bin"
     )) {
@@ -200,7 +210,7 @@ foreach ($needle in @(
         "native_fence_completed_value",
         "no default DirectStorage dependency",
         "no public native handles",
-        "no D3D12 resource destination",
+        "used_directstorage_resource_destination",
         "no GPU decompression",
         "no Nanite compatibility/equivalence/superiority"
     )) {
@@ -214,7 +224,7 @@ foreach ($needle in @(
         "used_native_directstorage=true",
         "native_fence_signal_value",
         "unsafe source-path rejection",
-        "no D3D12 resource destination",
+        "DSTORAGE_REQUEST_DESTINATION_BUFFER",
         "no GPU decompression"
     )) {
     Assert-ContainsText $validationRecipesFragmentText $needle "engine/agent/manifest.fragments/009-validationRecipes.json DirectStorage native execution recipe"
@@ -239,7 +249,7 @@ foreach ($needle in @(
         "signal_fence_after_requests",
         "native_fence_signal_value",
         "no public native handles",
-        "no D3D12 resource destination",
+        "used_directstorage_resource_destination",
         "no GPU decompression",
         "unsupportedProductionGaps = []"
     )) {
@@ -256,7 +266,7 @@ foreach ($needle in @(
         "enqueued_native_requests",
         "native_fence_signal_value",
         "no default DirectStorage SDK dependency",
-        "no D3D12 resource-destination IO",
+        "used_directstorage_resource_destination",
         "no GPU decompression"
     )) {
     Assert-ContainsText $runtimeManifestText $needle "engine/agent/manifest.json MK_runtime DirectStorage native execution boundary"
@@ -276,7 +286,7 @@ foreach ($needle in @(
         "IDStorageQueue::EnqueueSignal",
         "native_fence_signal_value",
         "no public native handles",
-        "no D3D12 resource destination",
+        "used_directstorage_resource_destination",
         "no GPU decompression"
     )) {
     Assert-ContainsText $win32RuntimeHostManifestText $needle "engine/agent/manifest.json MK_runtime_host_win32 DirectStorage native execution evidence"
@@ -299,7 +309,7 @@ foreach ($needle in @(
         "IDStorageQueue::EnqueueSignal",
         "native_fence_signal_value",
         "not a default dependency",
-        "not D3D12 resource-destination IO",
+        "used_directstorage_resource_destination",
         "not GPU decompression",
         "private DirectStorage fence signal"
     )) {

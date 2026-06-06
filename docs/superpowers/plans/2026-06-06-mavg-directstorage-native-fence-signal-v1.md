@@ -68,7 +68,7 @@
 - [x] Run focused C++ build/tests.
 - [x] Run agent-surface/static validation after docs and manifest edits.
 - [x] Run `pwsh -NoProfile -ExecutionPolicy Bypass -File tools/validate.ps1`.
-- [ ] Run publication preflight, commit the validated candidate, push, and open a stacked draft PR.
+- [x] Run publication preflight, commit the validated candidate, push, and open stacked draft PR #499 from commit `a0d32c01a9ac8d5af5bd334a5a3aef6e3754d9c1`.
 
 ## Validation Evidence
 

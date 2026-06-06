@@ -461,14 +461,16 @@ dispatch_runtime_mavg_payload_native_io_requests(const RuntimeMavgPayloadNativeI
     RuntimeMavgPayloadNativeIoDispatchBackendResult backend_result;
     try {
         backend_result = desc.dispatcher->dispatch(
-            desc.request_plan->requests, RuntimeMavgPayloadNativeIoDispatchBackendDesc{
-                                             .required_backend = desc.required_backend,
-                                             .submission_tag = desc.submission_tag,
-                                             .destination_memory = desc.destination_memory,
-                                             .require_native_directstorage = desc.require_native_directstorage,
-                                             .enqueue_status_after_requests = desc.enqueue_status_after_requests,
-                                             .signal_fence_after_requests = desc.signal_fence_after_requests,
-                                         });
+            desc.request_plan->requests,
+            RuntimeMavgPayloadNativeIoDispatchBackendDesc{
+                .required_backend = desc.required_backend,
+                .submission_tag = desc.submission_tag,
+                .destination_memory = desc.destination_memory,
+                .require_native_directstorage = desc.require_native_directstorage,
+                .enqueue_status_after_requests = desc.enqueue_status_after_requests,
+                .signal_fence_after_requests = desc.signal_fence_after_requests,
+                .use_directstorage_d3d12_buffer_destination = desc.use_directstorage_d3d12_buffer_destination,
+            });
     } catch (const std::exception& error) {
         add_diagnostic(result, RuntimeMavgPayloadNativeIoDiagnosticCode::dispatch_failed, 0, 0, 0, error.what());
         return result;
@@ -487,6 +489,10 @@ dispatch_runtime_mavg_payload_native_io_requests(const RuntimeMavgPayloadNativeI
     result.signaled_native_fence = backend_result.signaled_native_fence;
     result.native_fence_signal_value = backend_result.native_fence_signal_value;
     result.native_fence_completed_value = backend_result.native_fence_completed_value;
+    result.used_directstorage_resource_destination = backend_result.used_directstorage_resource_destination;
+    result.directstorage_resource_destination_request_count =
+        backend_result.directstorage_resource_destination_request_count;
+    result.directstorage_resource_destination_bytes = backend_result.directstorage_resource_destination_bytes;
     result.used_native_directstorage = backend_result.used_native_directstorage;
     result.used_win32_async_io = backend_result.used_win32_async_io;
     result.executed_background_worker = backend_result.executed_background_worker;
@@ -543,6 +549,10 @@ poll_runtime_mavg_payload_native_io_status(const RuntimeMavgPayloadNativeIoStatu
     result.signaled_native_fence = backend_result.signaled_native_fence;
     result.native_fence_signal_value = backend_result.native_fence_signal_value;
     result.native_fence_completed_value = backend_result.native_fence_completed_value;
+    result.used_directstorage_resource_destination = backend_result.used_directstorage_resource_destination;
+    result.directstorage_resource_destination_request_count =
+        backend_result.directstorage_resource_destination_request_count;
+    result.directstorage_resource_destination_bytes = backend_result.directstorage_resource_destination_bytes;
     result.executed_background_worker = backend_result.executed_background_worker;
     result.touched_renderer_or_rhi_handles = backend_result.touched_renderer_or_rhi_handles;
 
