@@ -4,7 +4,7 @@
 
 **Plan ID:** `environment-production-excellence-v1`
 
-**Status:** Active. Selected milestone. Phases 0-3 are complete; the next exact gates are weather audio playback, strict Vulkan/Metal feature evidence, first-party editor authoring expansion, quality budgets, and aggregate `environment_ready`.
+**Status:** Active. Selected milestone. Phases 0-4 are complete; the next exact gates are strict Vulkan/Metal feature evidence, first-party editor authoring expansion, quality budgets, and aggregate `environment_ready`.
 
 **Goal:** Promote the completed environment foundation into a production-grade, backend-evidence-backed environment settings system for sky, atmosphere, fog, volumetrics, clouds, rain, snow, storms, IBL, runtime cubemap capture, local volumes, material weathering, audio cues, editor authoring, quality budgets, and exact `environment_ready` aggregation.
 
@@ -50,7 +50,7 @@ Unclaimed by design:
 - Vulkan/Metal IBL proof.
 - Metal actual environment readiness without Apple-host execution.
 - Broad material weathering beyond the selected D3D12 package-visible material wetness/snow accumulation evidence row.
-- Audio playback execution for weather; existing rows are handoff or zero-playback evidence.
+- Physical endpoint playback execution for weather remains unclaimed; Phase 4 proves only selected `MK_environment` trigger rows consumed by the `MK_audio` mixer/render lane with zero environment-owned device, device IO, or native-handle access.
 - OpenEXR/KTX/Basis/source-image dependencies for environment assets.
 
 ## Official Source Baseline
@@ -138,7 +138,7 @@ These items are included in this plan as explicit future gates so they are not m
 | IBL Metal proof | Host-gated | Apple-host texture cube/HDR/pipeline proof through `renderer-metal-apple-host-evidence`. |
 | Material wetness | Selected D3D12 package evidence ready | First-party material-weathering rows, renderer material parameter binding, package counters, zero source-material mutation unless explicitly authored. Broad backend parity remains unclaimed. |
 | Snow accumulation | Selected D3D12 package evidence ready | First-party snow/ice coverage rows, material parameter binding, package counters, and separate precipitation particle evidence. Broad backend parity remains unclaimed. |
-| Weather audio playback | Handoff only | Audio trigger rows consumed by runtime/audio lane with WASAPI package counters and no direct environment audio-device ownership. |
+| Weather audio playback | Selected D3D12 package evidence ready | Audio trigger rows consumed by the selected runtime/audio lane through `MK_audio` mixer/render counters, with no direct environment audio-device ownership, no physical endpoint playback claim, and no native-handle access. |
 | Vulkan precipitation | Unclaimed | Strict particle texture/buffer upload, descriptor, depth-occlusion, draw/readback proof with validation layers. |
 | Vulkan volumetric cloud/fog | Unclaimed | Strict compute/render paths with synchronization2 barriers, package recipes, positive dispatch/raymarch/readback counters. |
 | Metal environment execution | Host-gated rows only | Apple-host feature-local render/compute pipeline, texture, cube/HDR, and synchronization evidence for selected features. |
@@ -344,7 +344,7 @@ Phase 3 focused validation evidence on 2026-06-06:
 - `tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-environment-material-weathering')`: pass.
 - Installed sample counter extraction reports `environment_material_weathering_status=ready`, `environment_material_weathering_ready=1`, `environment_material_weathering_state=mixed`, constants binding `14`, constants byte size `256`, one wet row, one snow row, one ice row, positive material parameter binding/upload/backend counters, `environment_material_weathering_source_material_mutations=0`, `environment_material_weathering_native_handle_access=0`, and `environment_material_weathering_diagnostics=0`.
 
-Phase 3 closeout: the selected D3D12 package lane now proves material wetness and snow accumulation as renderer material state evidence without rewriting source `.material` documents. This remains a selected D3D12 material-weathering evidence row only. Precipitation particle execution, weather audio playback, Vulkan/Metal material-weathering execution, backend parity, broad optimization, and broad `environment_ready` remain unclaimed until their explicit phase gates pass.
+Phase 3 closeout: the selected D3D12 package lane now proves material wetness and snow accumulation as renderer material state evidence without rewriting source `.material` documents. This remains a selected D3D12 material-weathering evidence row only. Precipitation particle execution, Vulkan/Metal material-weathering execution, backend parity, broad optimization, and broad `environment_ready` remain unclaimed until their explicit phase gates pass.
 
 ## Phase 4: Weather Audio Playback Execution
 
@@ -352,24 +352,48 @@ Phase 3 closeout: the selected D3D12 package lane now proves material wetness an
 
 **Files:** `MK_audio`, `MK_runtime_host`, sample package, `games/sample_desktop_runtime_game/main.cpp`, package validation, docs/manifest.
 
-- [ ] Add RED tests for environment-to-audio trigger planning: rain loop, snow ambience, thunder one-shot, wind loop.
-- [ ] Add RED tests that `MK_environment` does not own audio devices and only emits value rows.
+- [x] Add RED tests for environment-to-audio trigger planning: rain loop, snow ambience, thunder one-shot, wind loop.
+- [x] Add RED tests that `MK_environment` does not own audio devices and only emits value rows.
 - [ ] Add package counters:
 
 ```text
 environment_audio_playback_status=ready
 environment_audio_playback_ready=1
+environment_audio_playback_requested=1
+environment_audio_runtime_lane_ready=1
 environment_audio_trigger_rows=4
 environment_audio_runtime_cues_started>0
 environment_audio_runtime_cues_stopped>=0
+environment_audio_runtime_render_commands>0
+environment_audio_runtime_render_frames>0
+environment_audio_device_host_evidence=0
+environment_audio_device_io_invoked=0
 environment_audio_device_owned_by_environment=0
 environment_audio_native_handle_access=0
+environment_audio_diagnostics=0
+environment_precipitation_audio_playback=0
 ```
 
-- [ ] Execute playback only through the existing audio/runtime-host surface and selected package lane.
-- [ ] Keep missing WASAPI/device host evidence as `host_gated`, not `ready`.
+- [x] Execute playback only through the existing audio/runtime-host surface and selected package lane.
+- [x] Keep physical WASAPI/device endpoint evidence unclaimed; selected proof is `MK_audio` mixer/render lane evidence with `environment_audio_device_host_evidence=0` and `environment_audio_device_io_invoked=0`.
 
-Expected: weather audio playback is proven only where the selected host/runtime audio lane can execute it.
+Expected: weather audio playback is proven only as selected package-visible trigger consumption through the `MK_audio` mixer/render lane. Physical WASAPI endpoint playback, Vulkan, Metal, backend parity, broad optimization, and broad `environment_ready` remain unclaimed.
+
+Phase 4 focused validation evidence on 2026-06-06:
+
+- TDD RED: `tools/cmake.ps1 --build --preset dev --target MK_environment_weather_tests` failed before implementation because `wind_loop` and the weather-audio planning API were missing.
+- `tools/cmake.ps1 --build --preset dev --target MK_environment_weather_tests`: pass.
+- `tools/ctest.ps1 --preset dev --output-on-failure -R "^MK_environment_weather_tests$"`: pass.
+- `tools/cmake.ps1 --preset desktop-runtime`: pass.
+- `tools/cmake.ps1 --build --preset desktop-runtime --target sample_desktop_runtime_game MK_environment_weather_tests`: pass.
+- `tools/ctest.ps1 --preset desktop-runtime --output-on-failure -R "^MK_environment_weather_tests$"`: pass.
+- Validation recipe id: `desktop-runtime-sample-game-environment-audio-playback`.
+- `tools/package-desktop-runtime.ps1 -GameTarget sample_desktop_runtime_game -RequireD3d12Shaders -SmokeArgs @('--smoke','--max-frames','2','--require-config','runtime/sample_desktop_runtime_game.config','--require-scene-package','runtime/sample_desktop_runtime_game.geindex','--require-d3d12-scene-shaders','--require-d3d12-renderer','--require-scene-gpu-bindings','--require-postprocess','--require-postprocess-depth-input','--require-d3d12-postprocess-evidence','--require-environment-audio-playback')`: pass.
+- `tools/run-validation-recipe.ps1 -Mode DryRun -Recipe desktop-runtime-sample-game-environment-audio-playback`: pass.
+- `tools/run-validation-recipe.ps1 -Mode Execute -Recipe desktop-runtime-sample-game-environment-audio-playback -HostGateAcknowledgements d3d12-windows-primary -TimeoutSeconds 300`: pass.
+- Installed sample counter extraction reports `environment_audio_playback_status=ready`, `environment_audio_playback_ready=1`, `environment_audio_playback_requested=1`, `environment_audio_runtime_lane_ready=1`, `environment_audio_trigger_rows=4`, `environment_audio_runtime_cues_started=4`, `environment_audio_runtime_cues_stopped=1`, `environment_audio_runtime_render_commands=3`, `environment_audio_runtime_render_frames=512`, `environment_audio_device_host_evidence=0`, `environment_audio_device_io_invoked=0`, `environment_audio_device_owned_by_environment=0`, `environment_audio_native_handle_access=0`, `environment_audio_diagnostics=0`, and `environment_precipitation_audio_playback=0`.
+
+Phase 4 closeout: the selected D3D12 package lane now proves `MK_environment` weather audio trigger rows are consumed by a package-local `MK_audio` mixer/render lane with positive `environment_audio_runtime_cues_started`, positive `environment_audio_runtime_render_commands`, positive `environment_audio_runtime_render_frames`, and zero environment-owned device, device IO, or native-handle access. This is selected package-visible weather-audio playback evidence only. Physical WASAPI endpoint playback, Vulkan/Metal weather-audio parity, backend parity, broad optimization, and broad `environment_ready` remain unclaimed until their explicit phase gates pass.
 
 ## Phase 5: Strict Vulkan Environment Feature Execution
 

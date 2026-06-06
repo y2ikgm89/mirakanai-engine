@@ -3,6 +3,7 @@
 
 #include "mirakana/animation/skeleton.hpp"
 #include "mirakana/assets/asset_identity.hpp"
+#include "mirakana/audio/audio_mixer.hpp"
 #include "mirakana/core/application.hpp"
 #include "mirakana/core/diagnostics.hpp"
 #include "mirakana/core/job_execution.hpp"
@@ -87,6 +88,7 @@ struct DesktopRuntimeGameOptions {
     bool require_environment_volumetric_cloud_package_evidence{false};
     bool require_environment_volumetric_cloud_renderer_execution{false};
     bool require_environment_material_weathering{false};
+    bool require_environment_audio_playback{false};
     bool require_gpu_memory_policy{false};
     bool require_memory_diagnostics{false};
     bool require_d3d12_gpu_memory_evidence{false};
@@ -840,6 +842,30 @@ struct EnvironmentLightingPackageEvidence {
     std::uint32_t diagnostics{0};
 };
 
+enum class EnvironmentAudioPlaybackStatus : std::uint8_t {
+    not_requested,
+    blocked,
+    host_gated,
+    ready,
+};
+
+struct EnvironmentAudioPlaybackEvidence {
+    EnvironmentAudioPlaybackStatus status{EnvironmentAudioPlaybackStatus::not_requested};
+    bool requested{false};
+    bool ready{false};
+    bool runtime_audio_lane_ready{false};
+    bool device_host_evidence_available{false};
+    bool device_io_invoked{false};
+    std::uint32_t trigger_rows{0};
+    std::uint32_t runtime_cues_started{0};
+    std::uint32_t runtime_cues_stopped{0};
+    std::uint32_t runtime_render_commands{0};
+    std::uint32_t runtime_render_frames{0};
+    std::uint32_t diagnostics{0};
+    bool device_owned_by_environment{false};
+    bool native_handle_access{false};
+};
+
 enum class EnvironmentMaterialWeatheringStatus : std::uint8_t {
     not_requested,
     missing_package,
@@ -934,6 +960,20 @@ environment_lighting_renderer_upload_status_name(const EnvironmentLightingPackag
         return "not_requested";
     }
     return evidence.renderer_upload_evidence_ready ? "ready" : "blocked";
+}
+
+[[nodiscard]] std::string_view environment_audio_playback_status_name(EnvironmentAudioPlaybackStatus status) noexcept {
+    switch (status) {
+    case EnvironmentAudioPlaybackStatus::not_requested:
+        return "not_requested";
+    case EnvironmentAudioPlaybackStatus::blocked:
+        return "blocked";
+    case EnvironmentAudioPlaybackStatus::host_gated:
+        return "host_gated";
+    case EnvironmentAudioPlaybackStatus::ready:
+        return "ready";
+    }
+    return "unknown";
 }
 
 [[nodiscard]] std::string_view
@@ -1174,6 +1214,162 @@ environment_lighting_texture_format_name(mirakana::EnvironmentLightingTextureFor
     evidence.status =
         evidence.ready ? EnvironmentLightingPackageStatus::ready : EnvironmentLightingPackageStatus::policy_failed;
     evidence.diagnostics = evidence.ready ? 0U : std::max(evidence.diagnostics, 1U);
+    return evidence;
+}
+
+[[nodiscard]] mirakana::EnvironmentWeatherAudioPlaybackPlan make_sample_environment_audio_playback_plan() {
+    const auto precipitation = make_sample_environment_precipitation_policy_desc();
+    return mirakana::plan_environment_weather_audio_playback(mirakana::EnvironmentWeatherAudioPlaybackDesc{
+        .handoff_rows = precipitation.environment_plan.audio_handoff_rows,
+        .cue_bindings = mirakana::default_environment_weather_audio_cue_bindings(),
+    });
+}
+
+[[nodiscard]] mirakana::AudioClipSampleData make_environment_audio_clip_samples(mirakana::AssetId clip,
+                                                                                std::uint32_t source_index) {
+    constexpr auto frame_count = std::uint64_t{256U};
+    constexpr auto channel_count = std::uint32_t{2U};
+    std::vector<float> samples;
+    samples.reserve(static_cast<std::size_t>(frame_count * channel_count));
+    const auto base_sample = 0.03F + (static_cast<float>(source_index) * 0.01F);
+    for (std::uint64_t frame = 0; frame < frame_count; ++frame) {
+        const auto pulse = (frame % 17U) == 0U ? 0.025F : 0.0F;
+        samples.push_back(base_sample + pulse);
+        samples.push_back((base_sample * 0.75F) + pulse);
+    }
+    return mirakana::AudioClipSampleData{
+        .clip = clip,
+        .format =
+            mirakana::AudioDeviceFormat{
+                .sample_rate = 48000,
+                .channel_count = channel_count,
+                .sample_format = mirakana::AudioSampleFormat::float32,
+            },
+        .frame_count = frame_count,
+        .interleaved_float_samples = std::move(samples),
+    };
+}
+
+[[nodiscard]] EnvironmentAudioPlaybackEvidence evaluate_environment_audio_playback(bool requested) {
+    EnvironmentAudioPlaybackEvidence evidence;
+    evidence.requested = requested;
+    if (!requested) {
+        return evidence;
+    }
+
+    const auto audio_plan = make_sample_environment_audio_playback_plan();
+    evidence.trigger_rows = static_cast<std::uint32_t>(audio_plan.trigger_rows.size());
+    evidence.device_owned_by_environment = audio_plan.owns_audio_device;
+    evidence.native_handle_access = audio_plan.exposes_native_handles;
+    evidence.diagnostics = static_cast<std::uint32_t>(audio_plan.diagnostics.size());
+    if (!audio_plan.succeeded()) {
+        evidence.status = EnvironmentAudioPlaybackStatus::blocked;
+        evidence.diagnostics = std::max(evidence.diagnostics, 1U);
+        return evidence;
+    }
+
+    try {
+        mirakana::AudioGameplayMixRequest request;
+        request.buses.push_back(mirakana::AudioGameplayBusMixDesc{
+            .name = "environment.weather",
+            .gain = 1.0F,
+            .muted = false,
+            .paused = false,
+            .fade_from_gain = 1.0F,
+            .fade_to_gain = 1.0F,
+            .fade_elapsed_seconds = 0.0F,
+            .fade_duration_seconds = 0.0F,
+        });
+
+        mirakana::AudioMixer mixer;
+        std::vector<mirakana::AudioClipSampleData> sample_rows;
+        sample_rows.reserve(audio_plan.trigger_rows.size());
+        mixer.add_bus(mirakana::AudioBusDesc{.name = "environment.weather", .gain = 1.0F, .muted = false});
+
+        std::uint32_t source_index = 0U;
+        for (const auto& row : audio_plan.trigger_rows) {
+            const auto clip = asset_id_from_game_asset_key(row.clip_asset_ref);
+            mixer.add_clip(mirakana::AudioClipDesc{
+                .clip = clip,
+                .sample_rate = 48000,
+                .channel_count = 2,
+                .frame_count = 256U,
+                .sample_format = mirakana::AudioSampleFormat::float32,
+                .streaming = false,
+                .buffered_frame_count = 0U,
+            });
+            sample_rows.push_back(make_environment_audio_clip_samples(clip, source_index++));
+            request.cues.push_back(mirakana::AudioGameplayCueDesc{
+                .id = row.cue_id,
+                .kind = row.one_shot ? mirakana::AudioGameplayCueKind::sfx : mirakana::AudioGameplayCueKind::ambience,
+                .clip = clip,
+                .bus = row.bus,
+                .gain = row.gain,
+                .looping = row.looping,
+                .spatialized = false,
+                .position = mirakana::AudioPoint3{},
+                .min_distance = 1.0F,
+                .max_distance = 64.0F,
+            });
+            request.triggers.push_back(mirakana::AudioGameplayCueTrigger{
+                .cue_id = row.cue_id,
+                .start_frame = static_cast<std::uint64_t>(row.delay_seconds * 48000.0F),
+                .gain_scale = 1.0F,
+            });
+        }
+
+        const auto mix = mirakana::plan_gameplay_audio_mix(request);
+        evidence.diagnostics += static_cast<std::uint32_t>(mix.diagnostics.size());
+        if (!mix.succeeded()) {
+            evidence.status = EnvironmentAudioPlaybackStatus::blocked;
+            evidence.diagnostics = std::max(evidence.diagnostics, 1U);
+            return evidence;
+        }
+
+        for (const auto& bus : mix.buses) {
+            mixer.set_bus_gain(bus.name, bus.gain);
+            mixer.set_bus_muted(bus.name, bus.muted);
+        }
+        for (const auto& command : mix.commands) {
+            (void)mixer.play(command.voice);
+            ++evidence.runtime_cues_started;
+            if (!command.voice.looping) {
+                ++evidence.runtime_cues_stopped;
+            }
+        }
+
+        const auto render = mixer.render_interleaved_float(
+            mirakana::AudioRenderRequest{
+                .format =
+                    mirakana::AudioDeviceFormat{
+                        .sample_rate = 48000,
+                        .channel_count = 2,
+                        .sample_format = mirakana::AudioSampleFormat::float32,
+                    },
+                .frame_count = 512U,
+                .device_frame = 0U,
+                .underrun_warning_threshold_frames = 0U,
+                .resampling_quality = mirakana::AudioResamplingQuality::linear,
+            },
+            std::span<const mirakana::AudioClipSampleData>{sample_rows});
+        evidence.runtime_render_commands = static_cast<std::uint32_t>(render.plan.commands.size());
+        evidence.runtime_render_frames = render.frame_count;
+        float sample_abs_sum = 0.0F;
+        for (const auto sample : render.interleaved_float_samples) {
+            sample_abs_sum += std::fabs(sample);
+        }
+
+        evidence.runtime_audio_lane_ready = evidence.trigger_rows == 4U && evidence.runtime_cues_started > 0U &&
+                                            evidence.runtime_render_commands > 0U &&
+                                            evidence.runtime_render_frames > 0U && sample_abs_sum > 0.0F;
+        evidence.ready = evidence.runtime_audio_lane_ready && !evidence.device_owned_by_environment &&
+                         !evidence.native_handle_access && !evidence.device_io_invoked && evidence.diagnostics == 0U;
+        evidence.status =
+            evidence.ready ? EnvironmentAudioPlaybackStatus::ready : EnvironmentAudioPlaybackStatus::host_gated;
+    } catch (const std::exception&) {
+        evidence.status = EnvironmentAudioPlaybackStatus::blocked;
+        evidence.diagnostics = std::max(evidence.diagnostics + 1U, 1U);
+    }
     return evidence;
 }
 
@@ -1883,6 +2079,7 @@ void print_usage() {
                  "[--require-volumetric-cloud-package-evidence] "
                  "[--require-volumetric-cloud-renderer-execution] "
                  "[--require-environment-material-weathering] "
+                 "[--require-environment-audio-playback] "
                  "[--require-gpu-memory-policy] [--require-memory-diagnostics] [--require-d3d12-gpu-memory-evidence] "
                  "[--require-vulkan-gpu-memory-evidence] "
                  "[--require-debug-profiling-policy] [--require-d3d12-debug-profiling-evidence] "
@@ -2152,6 +2349,16 @@ void print_usage() {
             options.require_postprocess_depth_input = true;
             options.require_d3d12_postprocess_evidence = true;
             options.require_environment_material_weathering = true;
+            continue;
+        }
+        if (arg == "--require-environment-audio-playback") {
+            options.require_d3d12_renderer = true;
+            options.require_scene_gpu_bindings = true;
+            options.require_postprocess = true;
+            options.require_postprocess_depth_input = true;
+            options.require_d3d12_postprocess_evidence = true;
+            options.require_environment_precipitation_package_evidence = true;
+            options.require_environment_audio_playback = true;
             continue;
         }
         if (arg == "--require-vulkan-postprocess-evidence") {
@@ -4280,6 +4487,8 @@ int main(int argc, char** argv) {
         environment_ibl_renderer_execution, runtime_package);
     const auto environment_material_weathering = evaluate_environment_material_weathering(
         options.require_environment_material_weathering, report, runtime_package);
+    const auto environment_audio_playback =
+        evaluate_environment_audio_playback(options.require_environment_audio_playback);
     const auto vulkan_postprocess_execution =
         mirakana::evaluate_win32_desktop_presentation_vulkan_postprocess_execution(
             report, static_cast<std::uint64_t>(options.max_frames), options.require_vulkan_postprocess_evidence);
@@ -4591,6 +4800,23 @@ int main(int argc, char** argv) {
         << " environment_precipitation_material_mutations=" << (environment_precipitation.mutates_materials ? 1 : 0)
         << " environment_precipitation_audio_playback=" << (environment_precipitation.plays_audio ? 1 : 0)
         << " environment_precipitation_diagnostics=" << environment_precipitation.diagnostics_count
+        << " environment_audio_playback_status="
+        << environment_audio_playback_status_name(environment_audio_playback.status)
+        << " environment_audio_playback_ready=" << (environment_audio_playback.ready ? 1 : 0)
+        << " environment_audio_playback_requested=" << (environment_audio_playback.requested ? 1 : 0)
+        << " environment_audio_runtime_lane_ready=" << (environment_audio_playback.runtime_audio_lane_ready ? 1 : 0)
+        << " environment_audio_trigger_rows=" << environment_audio_playback.trigger_rows
+        << " environment_audio_runtime_cues_started=" << environment_audio_playback.runtime_cues_started
+        << " environment_audio_runtime_cues_stopped=" << environment_audio_playback.runtime_cues_stopped
+        << " environment_audio_runtime_render_commands=" << environment_audio_playback.runtime_render_commands
+        << " environment_audio_runtime_render_frames=" << environment_audio_playback.runtime_render_frames
+        << " environment_audio_device_host_evidence="
+        << (environment_audio_playback.device_host_evidence_available ? 1 : 0)
+        << " environment_audio_device_io_invoked=" << (environment_audio_playback.device_io_invoked ? 1 : 0)
+        << " environment_audio_device_owned_by_environment="
+        << (environment_audio_playback.device_owned_by_environment ? 1 : 0)
+        << " environment_audio_native_handle_access=" << (environment_audio_playback.native_handle_access ? 1 : 0)
+        << " environment_audio_diagnostics=" << environment_audio_playback.diagnostics
         << " environment_material_weathering_status="
         << environment_material_weathering_status_name(environment_material_weathering.status)
         << " environment_material_weathering_ready=" << (environment_material_weathering.ready ? 1 : 0)
@@ -5593,6 +5819,9 @@ int main(int argc, char** argv) {
             return 3;
         }
         if (options.require_environment_material_weathering && !environment_material_weathering.ready) {
+            return 3;
+        }
+        if (options.require_environment_audio_playback && !environment_audio_playback.ready) {
             return 3;
         }
         if (options.require_environment_volumetric_fog_package_evidence && !environment_volumetric_fog.ready) {

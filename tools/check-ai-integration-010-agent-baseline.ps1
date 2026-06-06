@@ -560,6 +560,9 @@ Assert-ContainsText $planRegistryContent "Active milestone" "docs/superpowers/pl
 foreach ($planVolumeNeedle in @("Plan Volume Policy", "live execution stack", "capability/gap-cluster/milestone", "Plan width is wider than PR width", "phase behavior/API/validation boundary", "Distinguish plan files from execution steps", "validation-only follow-up", "Git history", "Historical/static-check retained literals")) {
     Assert-ContainsText $planRegistryContent $planVolumeNeedle "docs/superpowers/plans/README.md"
 }
+foreach ($environmentAudioPlaybackNeedle in @("desktop-runtime-sample-game-environment-audio-playback", "environment_audio_playback_status=ready", "environment_precipitation_audio_playback=0", "no physical WASAPI endpoint playback claim")) {
+    Assert-ContainsText $planRegistryContent $environmentAudioPlaybackNeedle "docs/superpowers/plans/README.md"
+}
 Assert-ProductionCompletionCorpus
 Assert-SpecStatusSection
 

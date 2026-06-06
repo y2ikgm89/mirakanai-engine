@@ -1557,6 +1557,7 @@ if(MK_DESKTOP_RUNTIME_ENABLED)
         PRIVATE
             MK_core
             MK_animation
+            MK_audio
             MK_runtime
             MK_runtime_rhi
             MK_runtime_scene

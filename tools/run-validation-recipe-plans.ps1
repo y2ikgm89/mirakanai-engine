@@ -244,6 +244,13 @@ function Get-ValidationRecipeCommandPlan {
         $diagD3dMaterialWeathering = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'D3D12 material weathering validation is restricted to the reviewed sample_desktop_runtime_game D3D12 material-parameter package lane and proves wet/snow material response rows, positive material binding/upload counters, zero source-material mutation, and zero native-handle counters without claiming Vulkan, Metal, backend parity, broad optimization, or broad environment_ready.' -ValidationRecipe $RecipeName -HostGate 'd3d12-windows-primary'
         return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('d3d12-windows-primary') -RequiredAcknowledgements @('d3d12-windows-primary') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12') -Diagnostics @($diagD3dMaterialWeathering)
     }
+    elseif ($RecipeName -eq 'desktop-runtime-sample-game-environment-audio-playback') {
+        $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
+        $smokeTail = @(Get-SampleDesktopRuntimeGameEnvironmentAudioPlaybackSmokeArgs)
+        $pwEntry = Get-DesktopRuntimePackageCommandPlan -ScriptPath $packageScript -GameTarget $target -RequireD3d12Shaders -SmokeArgs $smokeTail
+        $diagD3dWeatherAudio = New-RunnerDiagnostic -Severity 'info' -Code 'host-gate-acknowledged' -Message 'D3D12 environment weather audio playback validation uses --require-environment-audio-playback and is restricted to the reviewed sample_desktop_runtime_game package lane; it proves MK_environment trigger rows consumed by the MK_audio mixer/render lane with positive environment_audio_runtime_cues_started, positive environment_audio_runtime_render_commands, positive environment_audio_runtime_render_frames, and zero environment-owned device, device IO, and native-handle counters; it does not claim physical WASAPI endpoint playback, Vulkan, Metal, backend parity, broad optimization, or broad environment_ready.' -ValidationRecipe $RecipeName -HostGate 'd3d12-windows-primary'
+        return New-RecipePlanRow -Recipe $RecipeName -CommandPlan @($pwEntry) -HostGates @('d3d12-windows-primary') -RequiredAcknowledgements @('d3d12-windows-primary') -AllowedGameTargets @('sample_desktop_runtime_game') -AllowedStrictBackend @('', 'D3D12') -Diagnostics @($diagD3dWeatherAudio)
+    }
     elseif ($RecipeName -eq 'desktop-runtime-sample-game-environment-profile-package') {
         $target = if ([string]::IsNullOrWhiteSpace($SelectedGameTarget)) { 'sample_desktop_runtime_game' } else { $SelectedGameTarget }
         $smokeTail = @(Get-SampleDesktopRuntimeGameEnvironmentProfileSmokeArgs)

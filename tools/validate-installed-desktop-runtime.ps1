@@ -191,6 +191,7 @@ $requiresEnvironmentSnowRendererExecution = @($SmokeArgs) -contains "--require-e
 $requiresEnvironmentVolumetricCloudPackageEvidence = @($SmokeArgs) -contains "--require-volumetric-cloud-package-evidence"
 $requiresEnvironmentVolumetricCloudRendererExecution = @($SmokeArgs) -contains "--require-volumetric-cloud-renderer-execution"
 $requiresEnvironmentMaterialWeathering = @($SmokeArgs) -contains "--require-environment-material-weathering"
+$requiresEnvironmentAudioPlayback = @($SmokeArgs) -contains "--require-environment-audio-playback"
 $requiresGpuMemoryPolicy = @($SmokeArgs) -contains "--require-gpu-memory-policy"
 $requiresMemoryDiagnostics = @($SmokeArgs) -contains "--require-memory-diagnostics"
 $requiresD3d12GpuMemoryEvidence = @($SmokeArgs) -contains "--require-d3d12-gpu-memory-evidence"
@@ -222,6 +223,12 @@ if ($requiresEnvironmentFogEvidence) {
     $requiresPostprocess = $true
     $requiresPostprocessDepthInput = $true
     $requiresD3d12PostprocessEvidence = $true
+}
+if ($requiresEnvironmentAudioPlayback) {
+    $requiresPostprocess = $true
+    $requiresPostprocessDepthInput = $true
+    $requiresD3d12PostprocessEvidence = $true
+    $requiresEnvironmentPrecipitationPackageEvidence = $true
 }
 if ($requiresEnvironmentFogVulkanPackageEvidence) {
     $requiresPostprocess = $true
@@ -5026,6 +5033,41 @@ if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\bscene_gpu_status=rea
                         Write-Error "Installed desktop runtime smoke status line did not prove package-only environment precipitation field: $field=$($expectedEnvironmentPrecipitationPackageOnlyFields[$field])"
                     }
                 }
+            }
+        }
+        if ($requiresEnvironmentAudioPlayback) {
+            if ($smokeOutput -match "(?m)^$escapedGameTarget status=.*\benvironment_ready=") {
+                Write-Error "Installed desktop runtime smoke status line must not claim broad environment_ready for environment audio playback evidence."
+            }
+            $expectedEnvironmentAudioPlaybackFields = @{
+                "environment_audio_playback_status" = "ready"
+                "environment_audio_playback_ready" = "1"
+                "environment_audio_playback_requested" = "1"
+                "environment_audio_runtime_lane_ready" = "1"
+                "environment_audio_trigger_rows" = "4"
+                "environment_audio_device_host_evidence" = "0"
+                "environment_audio_device_io_invoked" = "0"
+                "environment_audio_device_owned_by_environment" = "0"
+                "environment_audio_native_handle_access" = "0"
+                "environment_audio_diagnostics" = "0"
+                "environment_precipitation_audio_playback" = "0"
+            }
+            foreach ($field in $expectedEnvironmentAudioPlaybackFields.Keys) {
+                $expectedValue = [regex]::Escape($expectedEnvironmentAudioPlaybackFields[$field])
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=$expectedValue\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove environment audio playback field: $field=$($expectedEnvironmentAudioPlaybackFields[$field])"
+                }
+            }
+            foreach ($field in @(
+                    "environment_audio_runtime_cues_started",
+                    "environment_audio_runtime_render_commands",
+                    "environment_audio_runtime_render_frames")) {
+                if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\b$field=([1-9][0-9]*)\b") {
+                    Write-Error "Installed desktop runtime smoke status line did not prove positive environment audio playback field: $field"
+                }
+            }
+            if ($smokeOutput -notmatch "(?m)^$escapedGameTarget status=.*\benvironment_audio_runtime_cues_stopped=([0-9]+)\b") {
+                Write-Error "Installed desktop runtime smoke status line did not prove environment audio playback stopped-cue counter."
             }
         }
         if ($requiresEnvironmentSnowPackageEvidence) {
