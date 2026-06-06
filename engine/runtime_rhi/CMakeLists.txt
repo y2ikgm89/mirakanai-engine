@@ -1,6 +1,7 @@
 add_library(mirakana_runtime_rhi
     src/mavg_conventional_upload.cpp
     src/mavg_gpu_memory_pressure.cpp
+    src/mavg_residency.cpp
     src/package_streaming_frame_graph.cpp
     src/runtime_upload.cpp
 )
