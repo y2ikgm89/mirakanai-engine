@@ -9,7 +9,9 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <utility>
+#include <vector>
 
 namespace mirakana::rhi::metal::native {
 
@@ -119,6 +121,31 @@ void end_render_encoder_object(void* object) noexcept {
         MTLClearColorMake(desc.clear_color.red, desc.clear_color.green, desc.clear_color.blue, desc.clear_color.alpha);
 
     return [command_buffer renderCommandEncoderWithDescriptor:pass];
+}
+
+[[nodiscard]] std::string metal_error_message(NSError* error, const char* fallback) {
+    if (error != nil && error.localizedDescription != nil && error.localizedDescription.UTF8String != nullptr) {
+        return std::string{error.localizedDescription.UTF8String};
+    }
+    return fallback == nullptr ? std::string{} : std::string{fallback};
+}
+
+[[nodiscard]] bool metal_buffer_has_nonzero_byte(id<MTLBuffer> buffer, NSUInteger byte_count) {
+    if (buffer == nil || byte_count == 0) {
+        return false;
+    }
+
+    const auto* bytes = static_cast<const std::uint8_t*>([buffer contents]);
+    if (bytes == nullptr) {
+        return false;
+    }
+
+    for (NSUInteger index = 0; index < byte_count; ++index) {
+        if (bytes[index] != 0U) {
+            return true;
+        }
+    }
+    return false;
 }
 
 } // namespace
@@ -519,6 +546,231 @@ MetalRuntimeDrawablePresentResult present_native_drawable(MetalRuntimeCommandBuf
 
     result.scheduled = true;
     result.diagnostic = "Metal native drawable scheduled for present";
+    return result;
+}
+
+MetalNativeEnvironmentFeatureHostEvidenceResult
+create_native_environment_feature_host_evidence(const MetalNativeEnvironmentFeatureHostEvidenceDesc& desc) {
+    MetalNativeEnvironmentFeatureHostEvidenceResult result;
+    const auto host = desc.host == RhiHostPlatform::unknown ? current_rhi_host_platform() : desc.host;
+    const auto availability = diagnose_platform_availability(host, true);
+    if (!availability.host_supported) {
+        result.diagnostic = "Metal environment native feature evidence requires an Apple host";
+        return result;
+    }
+    if (desc.metallib_path.empty()) {
+        result.diagnostic = "Metal environment native feature evidence requires a metallib artifact";
+        return result;
+    }
+
+    auto native_device = create_native_device_and_command_queue(MetalNativeDeviceQueueDesc{.host = host});
+    result.runtime_ready = native_device.created;
+    result.command_queue_ready = native_device.device.owns_command_queue();
+    if (!native_device.created) {
+        result.diagnostic = native_device.diagnostic;
+        return result;
+    }
+
+    id<MTLDevice> metal_device = (__bridge id<MTLDevice>)native_device.device.impl_->device;
+    id<MTLCommandQueue> command_queue = (__bridge id<MTLCommandQueue>)native_device.device.impl_->command_queue;
+
+    NSString* metallib_path = [NSString stringWithUTF8String:desc.metallib_path.c_str()];
+    if (metallib_path == nil) {
+        result.diagnostic = "Metal environment native feature evidence metallib path is not UTF-8";
+        return result;
+    }
+
+    NSError* error = nil;
+    id<MTLLibrary> library = [metal_device newLibraryWithFile:metallib_path error:&error];
+    if (library == nil) {
+        result.diagnostic = metal_error_message(error, "Metal environment metallib load failed");
+        return result;
+    }
+    result.shader_library_ready = true;
+
+    id<MTLFunction> vertex_function = [library newFunctionWithName:@"mk_environment_feature_vertex"];
+    id<MTLFunction> fragment_function = [library newFunctionWithName:@"mk_environment_feature_fragment"];
+    id<MTLFunction> compute_function = [library newFunctionWithName:@"mk_environment_feature_compute"];
+    if (vertex_function == nil || fragment_function == nil || compute_function == nil) {
+        result.diagnostic = "Metal environment metallib is missing feature evidence entry points";
+        return result;
+    }
+
+    MTLRenderPipelineDescriptor* render_pipeline_desc = [MTLRenderPipelineDescriptor new];
+    render_pipeline_desc.vertexFunction = vertex_function;
+    render_pipeline_desc.fragmentFunction = fragment_function;
+    render_pipeline_desc.colorAttachments[0].pixelFormat = MTLPixelFormatRGBA8Unorm;
+    render_pipeline_desc.depthAttachmentPixelFormat = MTLPixelFormatDepth32Float;
+    id<MTLRenderPipelineState> render_pipeline =
+        [metal_device newRenderPipelineStateWithDescriptor:render_pipeline_desc error:&error];
+    if (render_pipeline == nil) {
+        result.diagnostic = metal_error_message(error, "Metal environment render pipeline creation failed");
+        return result;
+    }
+    result.render_pipeline_ready = true;
+
+    id<MTLComputePipelineState> compute_pipeline =
+        [metal_device newComputePipelineStateWithFunction:compute_function error:&error];
+    if (compute_pipeline == nil) {
+        result.diagnostic = metal_error_message(error, "Metal environment compute pipeline creation failed");
+        return result;
+    }
+    result.compute_pipeline_ready = true;
+
+    MTLTextureDescriptor* cube_desc = [MTLTextureDescriptor textureCubeDescriptorWithPixelFormat:MTLPixelFormatRGBA16Float
+                                                                                           size:4
+                                                                                      mipmapped:NO];
+    cube_desc.usage = MTLTextureUsageShaderRead;
+    id<MTLTexture> cube_texture = [metal_device newTextureWithDescriptor:cube_desc];
+    if (cube_texture == nil) {
+        result.diagnostic = "Metal environment HDR cube texture creation failed";
+        return result;
+    }
+    metal_set_gpu_debug_label(cube_texture,
+                              metal_next_debug_label(native_device.device.impl_.get(),
+                                                     "GameEngine.RHI.Metal.EnvironmentCubeTexture"));
+    result.cube_map_texture_feature_available = true;
+    result.hdr_texture_feature_available = true;
+
+    constexpr NSUInteger cube_size = 4;
+    constexpr NSUInteger channels_per_pixel = 4;
+    constexpr NSUInteger bytes_per_half = 2;
+    constexpr NSUInteger cube_row_bytes = cube_size * channels_per_pixel * bytes_per_half;
+    constexpr NSUInteger cube_face_bytes = cube_row_bytes * cube_size;
+    std::vector<std::uint16_t> cube_face(cube_size * cube_size * channels_per_pixel, 0x3c00U);
+    for (NSUInteger slice = 0; slice < 6; ++slice) {
+        [cube_texture replaceRegion:MTLRegionMake2D(0, 0, cube_size, cube_size)
+                         mipmapLevel:0
+                               slice:slice
+                           withBytes:cube_face.data()
+                         bytesPerRow:cube_row_bytes
+                       bytesPerImage:cube_face_bytes];
+    }
+
+    MTLTextureDescriptor* target_desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatRGBA8Unorm
+                                                                                           width:4
+                                                                                          height:4
+                                                                                       mipmapped:NO];
+    target_desc.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
+    target_desc.storageMode = MTLStorageModePrivate;
+    id<MTLTexture> render_target = [metal_device newTextureWithDescriptor:target_desc];
+    if (render_target == nil) {
+        result.diagnostic = "Metal environment render target creation failed";
+        return result;
+    }
+    metal_set_gpu_debug_label(render_target,
+                              metal_next_debug_label(native_device.device.impl_.get(),
+                                                     "GameEngine.RHI.Metal.EnvironmentRenderTarget"));
+
+    MTLTextureDescriptor* depth_desc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat:MTLPixelFormatDepth32Float
+                                                                                          width:4
+                                                                                         height:4
+                                                                                      mipmapped:NO];
+    depth_desc.usage = MTLTextureUsageRenderTarget | MTLTextureUsageShaderRead;
+    depth_desc.storageMode = MTLStorageModePrivate;
+    id<MTLTexture> depth_texture = [metal_device newTextureWithDescriptor:depth_desc];
+    if (depth_texture == nil) {
+        result.diagnostic = "Metal environment depth texture creation failed";
+        return result;
+    }
+    metal_set_gpu_debug_label(depth_texture,
+                              metal_next_debug_label(native_device.device.impl_.get(),
+                                                     "GameEngine.RHI.Metal.EnvironmentDepthTexture"));
+    result.depth_texture_ready = true;
+
+    MTLRenderPassDescriptor* pass = [MTLRenderPassDescriptor renderPassDescriptor];
+    pass.colorAttachments[0].texture = render_target;
+    pass.colorAttachments[0].loadAction = MTLLoadActionClear;
+    pass.colorAttachments[0].storeAction = MTLStoreActionStore;
+    pass.colorAttachments[0].clearColor = MTLClearColorMake(0.0, 0.0, 0.0, 1.0);
+    pass.depthAttachment.texture = depth_texture;
+    pass.depthAttachment.loadAction = MTLLoadActionClear;
+    pass.depthAttachment.storeAction = MTLStoreActionDontCare;
+    pass.depthAttachment.clearDepth = 1.0;
+
+    id<MTLCommandBuffer> render_command = [command_queue commandBuffer];
+    id<MTLRenderCommandEncoder> render_encoder = [render_command renderCommandEncoderWithDescriptor:pass];
+    if (render_command == nil || render_encoder == nil) {
+        result.diagnostic = "Metal environment render command creation failed";
+        return result;
+    }
+    metal_set_gpu_debug_label(render_command,
+                              metal_next_debug_label(native_device.device.impl_.get(),
+                                                     "GameEngine.RHI.Metal.EnvironmentRenderCommandBuffer"));
+    metal_set_gpu_debug_label(render_encoder,
+                              metal_next_debug_label(native_device.device.impl_.get(),
+                                                     "GameEngine.RHI.Metal.EnvironmentRenderEncoder"));
+    [render_encoder setRenderPipelineState:render_pipeline];
+    [render_encoder setFragmentTexture:cube_texture atIndex:0];
+    [render_encoder drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:3];
+    [render_encoder endEncoding];
+    [render_command commit];
+    [render_command waitUntilCompleted];
+    if (render_command.status != MTLCommandBufferStatusCompleted) {
+        result.diagnostic = "Metal environment render command buffer failed";
+        return result;
+    }
+    result.render_pass_ready = true;
+
+    constexpr NSUInteger render_row_bytes = 4 * 4;
+    constexpr NSUInteger render_byte_count = render_row_bytes * 4;
+    id<MTLBuffer> render_readback =
+        [metal_device newBufferWithLength:render_byte_count options:MTLResourceStorageModeShared];
+    id<MTLCommandBuffer> blit_command = [command_queue commandBuffer];
+    id<MTLBlitCommandEncoder> blit_encoder = [blit_command blitCommandEncoder];
+    if (render_readback == nil || blit_command == nil || blit_encoder == nil) {
+        result.diagnostic = "Metal environment render readback command creation failed";
+        return result;
+    }
+    [blit_encoder copyFromTexture:render_target
+                      sourceSlice:0
+                      sourceLevel:0
+                     sourceOrigin:MTLOriginMake(0, 0, 0)
+                       sourceSize:MTLSizeMake(4, 4, 1)
+                         toBuffer:render_readback
+                destinationOffset:0
+           destinationBytesPerRow:render_row_bytes
+         destinationBytesPerImage:render_byte_count];
+    [blit_encoder endEncoding];
+    [blit_command commit];
+    [blit_command waitUntilCompleted];
+    if (blit_command.status != MTLCommandBufferStatusCompleted) {
+        result.diagnostic = "Metal environment render readback command buffer failed";
+        return result;
+    }
+    result.render_readback_nonzero = metal_buffer_has_nonzero_byte(render_readback, render_byte_count);
+
+    id<MTLBuffer> compute_output =
+        [metal_device newBufferWithLength:sizeof(std::uint32_t) options:MTLResourceStorageModeShared];
+    id<MTLCommandBuffer> compute_command = [command_queue commandBuffer];
+    id<MTLComputeCommandEncoder> compute_encoder = [compute_command computeCommandEncoder];
+    if (compute_output == nil || compute_command == nil || compute_encoder == nil) {
+        result.diagnostic = "Metal environment compute command creation failed";
+        return result;
+    }
+    metal_set_gpu_debug_label(compute_output,
+                              metal_next_debug_label(native_device.device.impl_.get(),
+                                                     "GameEngine.RHI.Metal.EnvironmentParticleBuffer"));
+    [compute_encoder setComputePipelineState:compute_pipeline];
+    [compute_encoder setBuffer:compute_output offset:0 atIndex:0];
+    [compute_encoder dispatchThreads:MTLSizeMake(1, 1, 1) threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
+    [compute_encoder endEncoding];
+    [compute_command commit];
+    [compute_command waitUntilCompleted];
+    if (compute_command.status != MTLCommandBufferStatusCompleted) {
+        result.diagnostic = "Metal environment compute command buffer failed";
+        return result;
+    }
+    result.particle_buffer_ready = true;
+    result.compute_readback_nonzero = metal_buffer_has_nonzero_byte(compute_output, sizeof(std::uint32_t));
+    result.synchronization_evidence_ready = result.render_readback_nonzero && result.compute_readback_nonzero;
+    result.ready = result.runtime_ready && result.command_queue_ready && result.shader_library_ready &&
+                   result.render_pass_ready && result.render_pipeline_ready && result.compute_pipeline_ready &&
+                   result.depth_texture_ready && result.particle_buffer_ready &&
+                   result.cube_map_texture_feature_available && result.hdr_texture_feature_available &&
+                   result.synchronization_evidence_ready && !result.native_handle_access;
+    result.diagnostic =
+        result.ready ? "Metal environment native feature evidence ready" : "Metal environment native evidence incomplete";
     return result;
 }
 

@@ -239,6 +239,7 @@ std::vector<MetalEnvironmentFeatureEvidenceRequirement> default_environment_feat
             .selected = true,
             .render_pass_required = true,
             .render_pipeline_required = true,
+            .synchronization_evidence_required = true,
         },
         MetalEnvironmentFeatureEvidenceRequirement{
             .feature = MetalEnvironmentFeatureKind::height_fog,
@@ -246,12 +247,14 @@ std::vector<MetalEnvironmentFeatureEvidenceRequirement> default_environment_feat
             .render_pass_required = true,
             .render_pipeline_required = true,
             .depth_texture_required = true,
+            .synchronization_evidence_required = true,
         },
         MetalEnvironmentFeatureEvidenceRequirement{
             .feature = MetalEnvironmentFeatureKind::cloud_layer,
             .selected = true,
             .render_pass_required = true,
             .render_pipeline_required = true,
+            .synchronization_evidence_required = true,
         },
         MetalEnvironmentFeatureEvidenceRequirement{
             .feature = MetalEnvironmentFeatureKind::precipitation,
@@ -260,17 +263,20 @@ std::vector<MetalEnvironmentFeatureEvidenceRequirement> default_environment_feat
             .render_pipeline_required = true,
             .depth_texture_required = true,
             .particle_buffer_required = true,
+            .synchronization_evidence_required = true,
         },
         MetalEnvironmentFeatureEvidenceRequirement{
             .feature = MetalEnvironmentFeatureKind::volumetric_fog,
             .selected = true,
             .compute_pipeline_required = true,
             .depth_texture_required = true,
+            .synchronization_evidence_required = true,
         },
         MetalEnvironmentFeatureEvidenceRequirement{
             .feature = MetalEnvironmentFeatureKind::volumetric_cloud,
             .selected = true,
             .compute_pipeline_required = true,
+            .synchronization_evidence_required = true,
         },
         MetalEnvironmentFeatureEvidenceRequirement{
             .feature = MetalEnvironmentFeatureKind::environment_lighting_ibl,
@@ -279,6 +285,7 @@ std::vector<MetalEnvironmentFeatureEvidenceRequirement> default_environment_feat
             .render_pipeline_required = true,
             .cube_map_texture_required = true,
             .hdr_texture_required = true,
+            .synchronization_evidence_required = true,
         },
     };
 }
@@ -332,7 +339,8 @@ namespace {
            (!requirement.depth_texture_required || desc.depth_texture_ready) &&
            (!requirement.particle_buffer_required || desc.particle_buffer_ready) &&
            (!requirement.cube_map_texture_required || desc.cube_map_texture_feature_available) &&
-           (!requirement.hdr_texture_required || desc.hdr_texture_feature_available);
+           (!requirement.hdr_texture_required || desc.hdr_texture_feature_available) &&
+           (!requirement.synchronization_evidence_required || desc.synchronization_evidence_ready);
 }
 
 [[nodiscard]] MetalEnvironmentFeatureEvidenceRow
@@ -353,6 +361,7 @@ make_environment_feature_evidence_row(const MetalEnvironmentFeatureHostEvidenceD
     row.particle_buffer_ready = desc.particle_buffer_ready;
     row.cube_map_texture_feature_available = desc.cube_map_texture_feature_available;
     row.hdr_texture_feature_available = desc.hdr_texture_feature_available;
+    row.synchronization_evidence_ready = desc.synchronization_evidence_ready;
     row.native_handle_access = desc.native_handles_exposed;
     row.host_validation_recipe_id = desc.host_validation_recipe_id;
 
@@ -389,8 +398,10 @@ make_environment_feature_evidence_row(const MetalEnvironmentFeatureHostEvidenceD
 
     if (!has_required_feature_evidence(desc, requirement)) {
         row.status = MetalEnvironmentFeatureEvidenceStatus::blocked;
-        row.diagnostic = std::string{"Metal environment feature is missing feature-local pipeline or texture proof: "} +
-                         std::string{feature_label};
+        row.diagnostic =
+            std::string{"Metal environment feature is missing feature-local pipeline, texture, or synchronization "
+                        "proof: "} +
+            std::string{feature_label};
         return row;
     }
 
@@ -448,6 +459,58 @@ build_environment_feature_host_evidence_plan(const MetalEnvironmentFeatureHostEv
     plan.diagnostic = "Metal environment feature evidence ready";
     return plan;
 }
+
+std::string metal_environment_feature_host_evidence_status_line(const MetalEnvironmentFeatureHostEvidencePlan& plan) {
+    auto feature_status = [&plan](MetalEnvironmentFeatureKind feature) {
+        for (const auto& row : plan.rows) {
+            if (row.feature == feature) {
+                return metal_environment_feature_evidence_status_label(row.status);
+            }
+        }
+        return std::string_view{"blocked"};
+    };
+
+    std::string line;
+    line += "metal_environment_status=";
+    line += metal_environment_feature_evidence_status_label(plan.status);
+    line += " metal_environment_selected_backend=metal";
+    line += " metal_environment_host_validation_recipe_id=renderer-metal-apple-host-evidence";
+    line += " metal_environment_ready_rows=" + std::to_string(plan.ready_row_count);
+    line += " metal_environment_host_gated_rows=" + std::to_string(plan.host_gated_row_count);
+    line += " metal_environment_blocked_rows=" + std::to_string(plan.blocked_row_count);
+    line += " metal_environment_physical_sky_status=";
+    line += feature_status(MetalEnvironmentFeatureKind::physical_sky);
+    line += " metal_environment_height_fog_status=";
+    line += feature_status(MetalEnvironmentFeatureKind::height_fog);
+    line += " metal_environment_cloud_layer_status=";
+    line += feature_status(MetalEnvironmentFeatureKind::cloud_layer);
+    line += " metal_environment_precipitation_status=";
+    line += feature_status(MetalEnvironmentFeatureKind::precipitation);
+    line += " metal_environment_volumetric_fog_status=";
+    line += feature_status(MetalEnvironmentFeatureKind::volumetric_fog);
+    line += " metal_environment_volumetric_cloud_status=";
+    line += feature_status(MetalEnvironmentFeatureKind::volumetric_cloud);
+    line += " metal_environment_lighting_ibl_status=";
+    line += feature_status(MetalEnvironmentFeatureKind::environment_lighting_ibl);
+    line += " metal_environment_native_handle_access=" + std::to_string(plan.native_handle_access_count);
+    line += " metal_environment_broad_environment_ready_claimed=0";
+    return line;
+}
+
+#if !defined(__APPLE__)
+MetalNativeEnvironmentFeatureHostEvidenceResult
+create_native_environment_feature_host_evidence(const MetalNativeEnvironmentFeatureHostEvidenceDesc& desc) {
+    MetalNativeEnvironmentFeatureHostEvidenceResult result;
+    const auto host = desc.host == RhiHostPlatform::unknown ? current_rhi_host_platform() : desc.host;
+    if (!supports_host(host)) {
+        result.diagnostic = "Metal environment native feature evidence requires an Apple host";
+        return result;
+    }
+
+    result.diagnostic = "Metal environment native feature evidence is unavailable without Objective-C++";
+    return result;
+}
+#endif
 
 MetalRuntimeDevice::MetalRuntimeDevice() noexcept = default;
 

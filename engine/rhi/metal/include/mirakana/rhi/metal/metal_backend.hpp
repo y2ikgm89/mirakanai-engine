@@ -116,6 +116,7 @@ struct MetalEnvironmentFeatureEvidenceRequirement {
     bool particle_buffer_required{false};
     bool cube_map_texture_required{false};
     bool hdr_texture_required{false};
+    bool synchronization_evidence_required{false};
 };
 
 struct MetalEnvironmentFeatureHostEvidenceDesc {
@@ -132,6 +133,7 @@ struct MetalEnvironmentFeatureHostEvidenceDesc {
     bool particle_buffer_ready{false};
     bool cube_map_texture_feature_available{false};
     bool hdr_texture_feature_available{false};
+    bool synchronization_evidence_ready{false};
     bool native_handles_exposed{false};
     std::vector<MetalEnvironmentFeatureEvidenceRequirement> requirements;
 };
@@ -153,6 +155,7 @@ struct MetalEnvironmentFeatureEvidenceRow {
     bool particle_buffer_ready{false};
     bool cube_map_texture_feature_available{false};
     bool hdr_texture_feature_available{false};
+    bool synchronization_evidence_ready{false};
     bool native_handle_access{false};
     std::string host_validation_recipe_id;
     std::string diagnostic;
@@ -165,6 +168,30 @@ struct MetalEnvironmentFeatureHostEvidencePlan {
     std::size_t ready_row_count{0U};
     std::size_t blocked_row_count{0U};
     std::size_t native_handle_access_count{0U};
+    std::string diagnostic;
+};
+
+struct MetalNativeEnvironmentFeatureHostEvidenceDesc {
+    RhiHostPlatform host{RhiHostPlatform::unknown};
+    std::string metallib_path;
+};
+
+struct MetalNativeEnvironmentFeatureHostEvidenceResult {
+    bool ready{false};
+    bool runtime_ready{false};
+    bool command_queue_ready{false};
+    bool shader_library_ready{false};
+    bool render_pass_ready{false};
+    bool render_pipeline_ready{false};
+    bool compute_pipeline_ready{false};
+    bool depth_texture_ready{false};
+    bool particle_buffer_ready{false};
+    bool cube_map_texture_feature_available{false};
+    bool hdr_texture_feature_available{false};
+    bool synchronization_evidence_ready{false};
+    bool render_readback_nonzero{false};
+    bool compute_readback_nonzero{false};
+    bool native_handle_access{false};
     std::string diagnostic;
 };
 
@@ -463,6 +490,10 @@ default_environment_feature_evidence_requirements();
 metal_environment_feature_evidence_status_label(MetalEnvironmentFeatureEvidenceStatus status) noexcept;
 [[nodiscard]] MetalEnvironmentFeatureHostEvidencePlan
 build_environment_feature_host_evidence_plan(const MetalEnvironmentFeatureHostEvidenceDesc& desc);
+[[nodiscard]] std::string
+metal_environment_feature_host_evidence_status_line(const MetalEnvironmentFeatureHostEvidencePlan& plan);
+[[nodiscard]] MetalNativeEnvironmentFeatureHostEvidenceResult
+create_native_environment_feature_host_evidence(const MetalNativeEnvironmentFeatureHostEvidenceDesc& desc);
 [[nodiscard]] MetalRuntimeDeviceQueueCreateResult
 create_native_device_and_command_queue(const MetalNativeDeviceQueueDesc& desc = {});
 [[nodiscard]] MetalRuntimeCommandBufferCreateResult create_native_command_buffer(MetalRuntimeDevice& device);
