@@ -656,7 +656,7 @@ parse_package_index(std::vector<RegisteredSourceAssetCookPackageDiagnostic>& dia
     case AssetImportActionKind::scene:
         return "GameEngine.Scene.v1";
     case AssetImportActionKind::environment_profile:
-        return "GameEngine.CookedEnvironmentProfile.v1";
+        return "GameEngine.CookedEnvironmentProfile.v2";
     case AssetImportActionKind::unknown:
         break;
     }

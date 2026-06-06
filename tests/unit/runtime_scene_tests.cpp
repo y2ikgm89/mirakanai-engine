@@ -316,7 +316,7 @@ MK_TEST("runtime scene validates environment profile references") {
         scene_asset, make_environment_scene(environment),
         {
             make_record(mirakana::runtime::RuntimeAssetHandle{1}, environment, mirakana::AssetKind::environment_profile,
-                        "assets/environment/default_outdoor.geenv", "format=GameEngine.CookedEnvironmentProfile.v1\n"),
+                        "assets/environment/default_outdoor.geenv", "format=GameEngine.CookedEnvironmentProfile.v2\n"),
         });
 
     const auto result = mirakana::runtime_scene::instantiate_runtime_scene(
